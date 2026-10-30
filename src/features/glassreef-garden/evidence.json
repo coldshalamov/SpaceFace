@@ -1,0 +1,60 @@
+{
+  "baseSha": "871c27854bb2acff09a80595844d9731d33b037a",
+  "baseTreeSha": "a3bb1bb7b8cccca0ab280f53bd6035f5f92124b4",
+  "modelCapability": "unknown",
+  "checks": [
+    {
+      "command": "node --test test/pro-glassreef-garden.test.mjs",
+      "passed": 31,
+      "failed": 0,
+      "skipped": 0,
+      "todos": 0,
+      "runtime": "Node v24.22.1",
+      "scope": "pure simulation and contract-owner harness; no actual Rapier/WebGL route"
+    }
+  ],
+  "bounds": {
+    "bodies": 10,
+    "links": 9,
+    "seedLots": 3,
+    "wasteLots": 2,
+    "maxOrdinaryCoreNodeVisits": 10,
+    "maxOrdinaryCoreEdgeVisits": 18,
+    "intactAdapterBodyLookupAttempts": 30,
+    "intactAdapterJointReads": 18,
+    "receiverContainmentChecksUpperBound": 30,
+    "nativePreparationAttempts": 8,
+    "nativePreparationRetrySimSeconds": 0.25,
+    "growthAndViabilityRange": [
+      0,
+      1
+    ],
+    "maxAwardCredits": 630
+  },
+  "sourceGrounding": [
+    "src/core/coreSystem.js: canonical helper methods and exact-reference destroyed receipt",
+    "src/core/entity.js: occupantGeneration stamped by core",
+    "src/core/physics.js: physics:impact generation/tick payload",
+    "src/core/sg02DynamicBodyOwner.js: existing native records required before attachment creation",
+    "src/combat/attachments.js: create/get/cut/reel, shared socket accounting",
+    "src/combat/runtime.js: explicit combatProfileId resolution",
+    "src/data/combatDefs.js: attachment_salvage_clamp tether-to-tether, maxLength 40; combat_profile_tether_anchor has four tether slots",
+    "src/systems/mining.js: physicalCustodyOnly excludes _drainWreck",
+    "src/systems/economy.js: grantCredits writes credits and emits credits:changed",
+    "src/systems/missions.js and missionBoardOps.js: venue proof/source allowlists require controller extension"
+  ],
+  "notRun": [
+    "live native physics route",
+    "native snapshot reconstruction/adoption qualification",
+    "ordinary POI/input/mission reachability",
+    "headed playtest/player-truth gate",
+    "WebGL/authored asset qualification",
+    "FPS/performance qualification"
+  ],
+  "knownIntegrationLimits": [
+    "generic and feature native snapshots must not both restore the same cohort",
+    "native warm-start/capture history is not persisted by this envelope",
+    "consumed but unconfirmed economy receipts require explicit reconciliation, never automatic retry",
+    "synchronous root save boundary must serialize all feature and owner state together"
+  ]
+}

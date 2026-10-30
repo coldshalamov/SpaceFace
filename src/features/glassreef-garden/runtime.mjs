@@ -8,6 +8,8 @@ const clone = v => JSON.parse(JSON.stringify(v));
 const states = new Set(['attached', 'loose', 'stored', 'planted', 'quarantined', 'destroyed']);
 const plain = v => v && typeof v === 'object' && !Array.isArray(v)
   && [Object.prototype, null].includes(Object.getPrototypeOf(v));
+const exactKeys = (v, keys) => plain(v) && Object.keys(v).length === keys.length
+  && keys.every(k => Object.hasOwn(v, k));
 
 export function createGarden(state) {
   if (typeof state?.rng !== 'function' || !finite(state.simTime) || state.simTime < 0)
@@ -18,6 +20,7 @@ export function createGarden(state) {
     if (!finite(r) || r < 0 || r >= 1) throw new TypeError('Invalid seeded RNG sample');
     nodes[p.id] = { status: 'attached', inspected: false, stress: 0,
       viability: p.kind === 'pod' ? 0.84 + r * 0.12 : 0,
+      maturity: p.kind === 'pod' ? 0.65 + r * 0.1 : p.kind === 'growth' ? 0.35 : 0,
       cleaned: false, peak: 0 };
   }
   return { version: SITE.version, id: SITE.id, lastTime: state.simTime,
@@ -28,7 +31,8 @@ export function createGarden(state) {
 
 // Reject incompatible/corrupt saves as a whole. Never turn a bad receipt into an unpaid one.
 export function restoreGarden(raw, simTime) {
-  if (!plain(raw) || raw.version !== SITE.version || raw.id !== SITE.id
+  if (!exactKeys(raw, ['version', 'id', 'lastTime', 'nodes', 'links', 'worker', 'choice',
+    'vented', 'manualBrace', 'retired', 'settlement', 'revision']) || raw.version !== SITE.version || raw.id !== SITE.id
     || !finite(simTime) || simTime < 0 || !finite(raw.lastTime) || raw.lastTime < 0
     || raw.lastTime > simTime || !plain(raw.nodes)
     || Object.keys(raw.nodes).length !== PARTS.length
@@ -41,23 +45,27 @@ export function restoreGarden(raw, simTime) {
     throw new TypeError('Invalid Glassreef save');
   for (const p of PARTS) {
     const n = raw.nodes[p.id];
-    if (!plain(n) || !states.has(n.status)
+    if (!exactKeys(n, ['status', 'inspected', 'stress', 'viability', 'maturity', 'cleaned', 'peak']) || !states.has(n.status)
       || ['inspected', 'cleaned'].some(k => typeof n[k] !== 'boolean')
-      || ['stress', 'viability', 'peak'].some(k => !finite(n[k]) || n[k] < 0 || n[k] > 1)
+      || ['stress', 'viability', 'maturity', 'peak'].some(k => !finite(n[k]) || n[k] < 0 || n[k] > 1)
+      || n.peak < n.stress || (n.status === 'destroyed' && n.viability !== 0)
       || (p.kind !== 'pod' && n.viability !== 0)
+      || (p.kind === 'machine' && !['attached', 'destroyed'].includes(n.status))
       || (n.status === 'stored' && (p.kind !== 'pod' || raw.choice !== 'harvest'))
-      || (n.status === 'planted' && (p.kind !== 'pod' || raw.choice !== 'restore'))
-      || (n.status === 'quarantined' && p.kind !== 'waste')) throw new TypeError('Invalid Glassreef node');
+      || (n.status === 'planted' && (p.kind !== 'pod' || !['restore', 'emergency'].includes(raw.choice)))
+      || (['stored', 'planted'].includes(n.status) && (!n.inspected || n.viability < 0.5))
+      || (n.status === 'quarantined' && (p.kind !== 'waste' || !n.inspected))) throw new TypeError('Invalid Glassreef node');
   }
   LINKS.forEach((e, i) => {
-    if (raw.links[i] && (raw.nodes[e.child].status !== 'attached'
-      || raw.nodes[e.parent].status === 'destroyed')) throw new TypeError('Invalid Glassreef link');
+    if (raw.links[i] !== (raw.nodes[e.child].status === 'attached')
+      || (raw.links[i] && raw.nodes[e.parent].status === 'destroyed')) throw new TypeError('Invalid Glassreef link');
   });
   if ((raw.worker === 'lost') !== (raw.nodes.worker.status === 'destroyed'))
     throw new TypeError('Invalid worker state');
+  if (raw.worker === 'rescued' && raw.nodes.worker.status !== 'loose') throw new TypeError('Invalid worker release');
   if (raw.settlement !== null) {
     const s = raw.settlement;
-    if (!plain(s) || s.id !== `${SITE.id}:settlement:v1` || s.choice !== raw.choice
+    if (!exactKeys(s, ['id', 'choice', 'amount', 'status']) || s.id !== `${SITE.id}:settlement:v1` || s.choice !== raw.choice
       || !['harvest', 'restore', 'emergency'].includes(s.choice)
       || !Number.isSafeInteger(s.amount) || s.amount < 0 || s.amount > 630
       || !['prepared', 'consumed', 'paid'].includes(s.status) || s.amount !== quoteGarden(raw))
@@ -102,8 +110,13 @@ export function updateGarden(g, simTime, samples = {}) {
   PARTS.forEach((p, i) => {
     const n = g.nodes[p.id];
     if (n.status === 'destroyed' || ['stored', 'planted', 'quarantined'].includes(n.status)) return;
-    const baseline = n.status === 'attached' && !g.vented && !g.manualBrace ? 0.06 : 0;
-    const relaxation = g.vented || g.manualBrace ? 0.32 : 0.12;
+    const growing = ['pod', 'growth'].includes(p.kind) && n.status === 'attached'
+      && !g.vented && !g.manualBrace && g.nodes.machine.status !== 'destroyed';
+    if (growing) n.maturity = clamp(n.maturity + dt * 0.005);
+    // A still-powered nursery slowly fills the finite ribs, loading their biological necks.
+    // Maturity stays inside the authored body envelope; it creates no new bodies or force solver.
+    const baseline = growing ? 0.012 + n.maturity * 0.018 : 0;
+    const relaxation = g.vented || g.manualBrace ? 0.32 : 0.01;
     n.stress = clamp(n.stress + routed[i] + (baseline - relaxation) * dt);
     n.peak = Math.max(n.peak, n.stress);
     if (p.kind === 'pod') n.viability = clamp(n.viability - Math.max(0, n.stress - 0.65) * dt * 0.18);
@@ -114,7 +127,7 @@ export function updateGarden(g, simTime, samples = {}) {
     if (g.links[i] && e.child !== 'worker' && g.nodes[e.child].stress >= 0.98) releaseLink(g, i);
   });
   g.revision++;
-  return { nodes: PARTS.length, edges: LINKS.length };
+  return { nodes: PARTS.length, edges: LINKS.length * 2 };
 }
 export function inspect(g, id) {
   if (g.retired || g.settlement || !g.nodes[id] || g.nodes[id].status === 'destroyed') return false;

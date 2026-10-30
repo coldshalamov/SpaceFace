@@ -1,0 +1,87 @@
+{
+  "id": "glassreef_garden",
+  "version": 1,
+  "disposition": "candidate-not-integrated-not-accepted",
+  "baseSha": "871c27854bb2acff09a80595844d9731d33b037a",
+  "baseTreeSha": "a3bb1bb7b8cccca0ab280f53bd6035f5f92124b4",
+  "resultBranch": "codex/pro-glassreef-garden",
+  "modelCapability": "unknown",
+  "dependencies": [],
+  "entrypoints": {
+    "simulation": "src/features/glassreef-garden/runtime.mjs",
+    "data": "src/features/glassreef-garden/data.mjs",
+    "adapter": "src/features/glassreef-garden/adapter.mjs#createGlassreefGarden",
+    "presentation": "src/features/glassreef-garden/presentation.mjs",
+    "integration": "src/features/glassreef-garden/INTEGRATION.md",
+    "test": "test/pro-glassreef-garden.test.mjs"
+  },
+  "requiredOwners": [
+    "core",
+    "physics",
+    "actions/combat attachments",
+    "economy",
+    "missions (root registration only)",
+    "save (root schema only)",
+    "input/UI (root route only)"
+  ],
+  "eventsConsumed": [
+    "physics:impact",
+    "entity:destroyed",
+    "sector:enter",
+    "sector:exit",
+    "save:restoring",
+    "game:newGame"
+  ],
+  "eventsEmitted": [
+    "comms:log"
+  ],
+  "changedFiles": [
+    "src/features/glassreef-garden/INTEGRATION.md",
+    "src/features/glassreef-garden/adapter.mjs",
+    "src/features/glassreef-garden/data.mjs",
+    "src/features/glassreef-garden/evidence.json",
+    "src/features/glassreef-garden/presentation.mjs",
+    "src/features/glassreef-garden/runtime.mjs",
+    "test/pro-glassreef-garden.test.mjs",
+    "src/features/glassreef-garden/manifest.json"
+  ],
+  "sha256": {
+    "src/features/glassreef-garden/INTEGRATION.md": "51aede97e5fb0643bf4ed9812b2d00999337f45d83554b7a47ecc1186961ae68",
+    "src/features/glassreef-garden/adapter.mjs": "0ab73a358dd1cd7487bb13152692a4e13a6acc1e30e405cc742d097ddb1d31a8",
+    "src/features/glassreef-garden/data.mjs": "925ef16370980c119f7412b5e44f62f4796fb9efbe036f3e176d7bfb379c1576",
+    "src/features/glassreef-garden/evidence.json": "a5d9c7ec36f057555115f336e2af87a2c670445f120674be66d9bf71c23fa5ea",
+    "src/features/glassreef-garden/presentation.mjs": "6d94e4af96a06eca7e6e7794d5fec827e56834a25541d0a1e4e6e6d29dd45b13",
+    "src/features/glassreef-garden/runtime.mjs": "82395ed5c89d0e5300f3e537c09277468e62cd66e6f3cec542b533dc454d9ac1",
+    "test/pro-glassreef-garden.test.mjs": "0b045fae8be834e4851a70217b9492182dfb6c6a5546906c6e91cfc36fdfdb77"
+  },
+  "hashNote": "Manifest excludes its own hash to avoid a self-reference; Git commit/tree pins its bytes.",
+  "checks": [
+    {
+      "command": "node --test test/pro-glassreef-garden.test.mjs",
+      "passed": 31,
+      "failed": 0,
+      "skipped": 0,
+      "todos": 0,
+      "runtime": "Node v24.22.1",
+      "scope": "pure simulation and contract-owner harness; no actual Rapier/WebGL route"
+    }
+  ],
+  "limits": {
+    "bodies": 10,
+    "links": 9,
+    "seedLots": 3,
+    "wasteLots": 2,
+    "maxOrdinaryCoreNodeVisits": 10,
+    "maxOrdinaryCoreEdgeVisits": 18,
+    "intactAdapterBodyLookupAttempts": 30,
+    "intactAdapterJointReads": 18,
+    "receiverContainmentChecksUpperBound": 30,
+    "nativePreparationAttempts": 8,
+    "nativePreparationRetrySimSeconds": 0.25,
+    "growthAndViabilityRange": [
+      0,
+      1
+    ],
+    "maxAwardCredits": 630
+  }
+}

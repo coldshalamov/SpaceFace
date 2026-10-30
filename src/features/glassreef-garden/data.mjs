@@ -3,6 +3,7 @@ export const SITE = Object.freeze({ id: 'glassreef_garden', version: 1,
   missionId: 'mission_glassreef_garden', radius: 110, interactionRange: 14,
   maxBodies: 10, maxEdges: 9, maxStep: 0.1, harvestPerPod: 180,
   restoreGrant: 420, rescueGrant: 90, emergencyGrant: 45 });
+export const GROWTH_ATTACHMENT_DEF = 'attachment_salvage_clamp';
 export const PARTS = Object.freeze([
   { id: 'machine', kind: 'machine', x: 0, z: 0, radius: 8, mass: 800, color: '#39677b' },
   { id: 'collar', kind: 'growth', x: 20, z: 0, radius: 5, mass: 32, color: '#45d6cf' },
@@ -15,12 +16,12 @@ export const PARTS = Object.freeze([
   { id: 'waste_b', kind: 'waste', x: 20, z: 18, radius: 3, mass: 10, color: '#efa74d' },
   { id: 'worker', kind: 'worker', x: -13, z: 0, radius: 2, mass: 3, color: '#f8d987' },
 ].map(Object.freeze));
-// Each child owns exactly one ordinary tether_standard attachment. The physics owner
+// Each child owns exactly one ordinary attachment_salvage_clamp. The physics owner
 // supplies constraints, tension and collision response; this graph never integrates motion.
 export const LINKS = Object.freeze([
   ['collar', 'machine'], ['bough_a', 'collar'], ['bough_b', 'collar'],
   ['pod_a', 'bough_a'], ['pod_b', 'bough_a'], ['pod_c', 'bough_b'],
-  ['waste_a', 'bough_b'], ['waste_b', 'collar'], ['worker', 'machine'],
+  ['waste_a', 'bough_b'], ['waste_b', 'machine'], ['worker', 'machine'],
 ].map(([child, parent], i) => Object.freeze({ id: `growth_${i}`, child, parent })));
 export const ZONES = Object.freeze({
   harvest: Object.freeze({ x: -34, z: -30, radius: 11 }),

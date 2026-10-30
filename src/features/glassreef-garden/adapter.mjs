@@ -1,26 +1,29 @@
-import { SITE, PARTS, LINKS, ZONES } from './data.mjs';
+import { SITE, PARTS, LINKS, ZONES, GROWTH_ATTACHMENT_DEF } from './data.mjs';
 import { createGarden, restoreGarden, saveGarden, updateGarden, act, destroy,
   releaseLink, deliver, objectives, prepareSettlement, consumeSettlement, markPaid } from './runtime.mjs';
 
 const finite = v => typeof v === 'number' && Number.isFinite(v);
 const distance = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
 const copyPose = e => ({ x: e.pos.x, z: e.pos.z, vx: e.vel.x, vz: e.vel.z,
-  rot: e.rot, angVel: e.angVel });
+  rot: e.rot, angVel: e.angVel, hull: e.hull });
 const validPose = p => p && ['x', 'z', 'vx', 'vz', 'rot', 'angVel'].every(k => finite(p[k])
-  && Math.abs(p[k]) <= (k === 'x' || k === 'z' ? 1e7 : 1e4));
+  && Math.abs(p[k]) <= (k === 'x' || k === 'z' ? 1e7 : 1e4))
+  && finite(p.hull) && p.hull >= 0 && p.hull <= 240 && Object.keys(p).length === 7;
 const clone = o => JSON.parse(JSON.stringify(o));
+const instances = new WeakSet();
 
 export function bodySpec(part, origin, pose = null) {
   const p = pose || { x: origin.x + part.x, z: origin.z + part.z, vx: 0, vz: 0, rot: 0, angVel: 0 };
   return { type: 'wreck', pos: { x: p.x, y: 0, z: p.z },
     vel: { x: p.vx, y: 0, z: p.vz }, rot: p.rot, angVel: p.angVel,
-    radius: part.radius, mass: part.mass, hull: part.kind === 'machine' ? 240 : 80,
+    radius: part.radius, mass: part.mass, hull: pose ? pose.hull : part.kind === 'machine' ? 240 : 80,
     hullMax: part.kind === 'machine' ? 240 : 80, collides: true,
     collisionMask: 1 | 2 | 8 | 32 | 64 | 128,
     physicsBody: { shape: 'ball', dynamic: part.kind !== 'machine', mass: part.mass,
       radius: part.radius, material: 'debris', ccd: true, useMeasuredSkin: false,
       anchorRecoil: false, contact: { restitution: 0.15, friction: 0.6 } },
-    data: { glassreefPart: part.id, glassreefSite: SITE.id, salvageable: false,
+    data: { glassreefPart: part.id, glassreefSite: SITE.id, physicalCustodyOnly: true,
+      combatProfileId: 'combat_profile_tether_anchor',
       masslineTetherable: part.kind !== 'machine', name: part.kind === 'worker'
         ? 'Iona Vale — work cradle' : `Glassreef ${part.id.replaceAll('_', ' ')}` } };
 }
@@ -28,6 +31,7 @@ export function bodySpec(part, origin, pose = null) {
 /** Independent system candidate. Registration, save root and input ownership stay with root. */
 export function createGlassreefGarden(ctx, placement, saved = null) {
   const { state, bus, helpers, registry } = ctx;
+  if (state && instances.has(state)) throw new Error('Glassreef already owns this state; dispose before replacement');
   if (!state?.entities || typeof helpers?.spawnEntity !== 'function'
     || typeof helpers?.removeEntity !== 'function' || typeof bus?.on !== 'function')
     throw new TypeError('Glassreef requires canonical core helpers and bus');
@@ -37,32 +41,42 @@ export function createGlassreefGarden(ctx, placement, saved = null) {
   const origin = { x: placement.x, z: placement.z }, sectorId = placement.sectorId;
   let garden = saved ? restoreGarden(saved.garden, state.simTime) : createGarden(state);
   let poses = {};
+  let jointLengths = LINKS.map(() => null);
   if (saved) {
     if (saved.version !== 1 || saved.sectorId !== sectorId || saved.origin?.x !== origin.x
       || saved.origin?.z !== origin.z || !saved.poses || typeof saved.poses !== 'object'
       || Array.isArray(saved.poses) || Object.keys(saved.poses).length > PARTS.length
+      || !Array.isArray(saved.jointLengths) || saved.jointLengths.length !== LINKS.length
+      || saved.jointLengths.some(v => v !== null && (!finite(v) || v < 0 || v > 40))
       || Object.keys(saved.poses).some(k => !PARTS.some(p => p.id === k) || !validPose(saved.poses[k])))
       throw new TypeError('Invalid Glassreef body snapshot');
     for (const p of PARTS) if (!['destroyed', 'stored', 'planted', 'quarantined'].includes(garden.nodes[p.id].status)
       && !validPose(saved.poses[p.id])) throw new TypeError('Missing live Glassreef pose');
+    for (const p of PARTS) if (saved.poses[p.id]?.hull > (p.kind === 'machine' ? 240 : 80))
+      throw new TypeError('Invalid Glassreef hull');
     poses = clone(saved.poses);
+    jointLengths = [...saved.jointLengths];
   }
   const bindings = new Map(), byId = new Map(), joints = new Map();
   const inbox = Object.create(null), impactTicks = Object.create(null);
   let active = false, disposed = false, epoch = 0, lastUpdate = state.simTime;
+  let ready = false, prepareAttempts = 0, nextPrepareTime = 0;
+  let meter = null;
   let lastError = null, lastCost = { nodes: 0, edges: 0, bodyReads: 0, jointReads: 0 };
   const kernel = () => registry?.get?.('actions')?.kernel || registry?.get?.('combat')?.kernel;
   const attachments = () => kernel()?.attachments;
+  const readJoint = id => { if (meter) meter.jointReads++; return attachments()?.get?.(id); };
   const live = id => {
+    if (meter) meter.bodyReads++;
     const b = bindings.get(id), e = b && state.entities.get(b.id);
-    return e === b?.entity && e?.alive !== false && e.occupantGeneration === b.generation
+    return b && e && e === b.entity && e.alive !== false && e.occupantGeneration === b.generation
       && e.data?.glassreefEpoch === epoch && e.data?.glassreefPart === id ? e : null;
   };
   const emitLine = (text, kind = 'info') => bus.emit('comms:log', { from: 'Iona Vale', kind, text });
   const closeJoint = i => {
     const binding = joints.get(i);
     if (!binding) return true;
-    const owner = attachments(), a = owner?.get?.(binding.id);
+    const owner = attachments(), a = readJoint(binding.id);
     if (!a || a.state !== 'active') { joints.delete(i); return true; }
     if (a.ownerId !== binding.ownerId || a.targetId !== binding.targetId
       || a.ownerGeneration !== binding.ownerGeneration || a.targetGeneration !== binding.targetGeneration) {
@@ -77,16 +91,22 @@ export function createGlassreefGarden(ctx, placement, saved = null) {
   };
   const rememberPoses = () => {
     for (const p of PARTS) { const e = live(p.id); if (e) poses[p.id] = copyPose(e); }
+    for (const [i, b] of joints) {
+      const a = readJoint(b.id);
+      if (a?.state === 'active' && finite(a.restLength) && a.restLength >= 0 && a.restLength <= 40)
+        jointLengths[i] = a.restLength;
+    }
   };
   function leave() {
     if (!active) return;
-    rememberPoses(); active = false;
+    rememberPoses(); active = false; ready = false;
     for (const i of [...joints.keys()]) closeJoint(i);
     // Clear identities before core emits retirement callbacks. No delayed callback owns new bodies.
     const owned = [...bindings.values()]; bindings.clear(); byId.clear(); joints.clear();
     for (const b of owned) if (state.entities.get(b.id) === b.entity)
       helpers.removeEntity(b.id, { immediate: true, reason: 'glassreef_shelved' });
     for (const key of Object.keys(inbox)) delete inbox[key];
+    for (const key of Object.keys(impactTicks)) delete impactTicks[key];
     lastUpdate = state.simTime; garden.lastTime = state.simTime;
   }
   function enter() {
@@ -95,7 +115,8 @@ export function createGlassreefGarden(ctx, placement, saved = null) {
     if (typeof owner?.create !== 'function' || typeof owner?.get !== 'function' || typeof owner?.cut !== 'function') {
       lastError = 'attachment_authority_unavailable'; return false;
     }
-    epoch++; active = true; lastError = null;
+    epoch++; active = true; ready = false; prepareAttempts = 0;
+    nextPrepareTime = state.simTime; lastError = null;
     try {
       for (const p of PARTS) {
         if (['destroyed', 'stored', 'planted', 'quarantined'].includes(garden.nodes[p.id].status)) continue;
@@ -106,21 +127,43 @@ export function createGlassreefGarden(ctx, placement, saved = null) {
         const b = { id: e.id, generation: e.occupantGeneration, entity: e };
         bindings.set(p.id, b); byId.set(e.id, p.id);
       }
+      garden.lastTime = state.simTime; lastUpdate = state.simTime;
+      rememberPoses(); return true;
+    } catch (error) { lastError = String(error.message); leave(); return false; }
+  }
+  // Core publication is synchronous; native body admission happens in physics afterwards.
+  // Keep the same ten bodies while waiting. Never spawn/remove in an endless failed-joint loop.
+  function prepareJoints() {
+    if (state.simTime < nextPrepareTime) return false;
+    prepareAttempts++; nextPrepareTime = state.simTime + 0.25;
+    const owner = attachments();
+    try {
       LINKS.forEach((edge, i) => {
         if (!garden.links[i]) return;
+        if (joints.has(i)) return;
         const child = live(edge.child), parent = live(edge.parent);
         if (!child || !parent) throw new Error('growth_endpoint_missing');
-        const r = owner.create({ defId: 'tether_standard', ownerId: child.id, targetId: parent.id,
+        const r = owner.create({ defId: GROWTH_ATTACHMENT_DEF, ownerId: child.id, targetId: parent.id,
           sourceWorld: { x: child.pos.x, y: 0, z: child.pos.z },
           targetWorld: { x: parent.pos.x, y: 0, z: parent.pos.z } });
         if (!r?.ok || !r.attachment) throw new Error(r?.reason || 'growth_attachment_rejected');
         const a = r.attachment;
         joints.set(i, { id: a.id, ownerId: a.ownerId, targetId: a.targetId,
           ownerGeneration: a.ownerGeneration, targetGeneration: a.targetGeneration });
+        const restLength = finite(a.restLength) ? a.restLength : distance(child.pos, parent.pos);
+        if (jointLengths[i] !== null && Math.abs(jointLengths[i] - restLength) > 1e-6) {
+          const restored = owner.reel?.(a.id, jointLengths[i] - restLength, 0);
+          if (restored?.ok !== true) throw new Error(restored?.reason || 'growth_length_restore_rejected');
+        } else jointLengths[i] = restLength;
       });
+      ready = true; lastError = null;
       garden.lastTime = state.simTime; lastUpdate = state.simTime;
       rememberPoses(); return true;
-    } catch (error) { lastError = String(error.message); leave(); return false; }
+    } catch (error) {
+      lastError = String(error.message);
+      if (prepareAttempts >= 8) leave();
+      return false;
+    }
   }
   const onImpact = p => {
     if (!active || disposed || garden.retired || !Number.isSafeInteger(p?.tick) || p.tick !== state.tick
@@ -148,14 +191,20 @@ export function createGlassreefGarden(ctx, placement, saved = null) {
   function update() {
     if (disposed || !active || garden.retired || state.world?.currentSectorId !== sectorId
       || state.mode !== 'flight' || state.simTime <= lastUpdate) return lastCost = { nodes: 0, edges: 0, bodyReads: 0, jointReads: 0 };
-    let bodyReads = 0, jointReads = 0;
+    if (!ready) {
+      meter = { bodyReads: 0, jointReads: 0 };
+      prepareJoints(); lastUpdate = state.simTime;
+      lastCost = { nodes: 0, edges: LINKS.length, ...meter }; meter = null;
+      return lastCost;
+    }
+    meter = { bodyReads: 0, jointReads: 0 };
     for (const p of PARTS) {
-      bodyReads++; const e = live(p.id);
+      const e = live(p.id);
       if (bindings.has(p.id) && (!e || e.hull <= 0)) destroy(garden, p.id);
     }
     for (let i = 0; i < LINKS.length; i++) {
       if (!garden.links[i]) continue;
-      jointReads++; const b = joints.get(i), a = b && attachments()?.get(b.id);
+      const b = joints.get(i), a = b && readJoint(b.id);
       if (!a || a.state !== 'active') { releaseLink(garden, i); continue; }
       if (a.ownerId !== b.ownerId || a.targetId !== b.targetId
         || a.ownerGeneration !== b.ownerGeneration || a.targetGeneration !== b.targetGeneration) {
@@ -173,6 +222,7 @@ export function createGlassreefGarden(ctx, placement, saved = null) {
       for (const [zoneId, z] of Object.entries(ZONES)) {
         if (distance(e.pos, { x: origin.x + z.x, z: origin.z + z.z }) + p.radius > z.radius) continue;
         if (deliver(garden, p.id, zoneId, slow)) {
+          poses[p.id] = copyPose(e);
           bindings.delete(p.id); byId.delete(e.id);
           helpers.removeEntity(e.id, { immediate: true, reason: 'glassreef_received' });
           break;
@@ -180,10 +230,12 @@ export function createGlassreefGarden(ctx, placement, saved = null) {
       }
     }
     lastUpdate = state.simTime; rememberPoses();
-    return lastCost = { ...work, bodyReads, jointReads };
+    lastCost = { ...work, ...meter }; meter = null;
+    return lastCost;
   }
   function request(action, partId) {
     if (disposed || !active || garden.retired || state.mode !== 'flight') return { ok: false, reason: 'site_inactive' };
+    if (!ready) return { ok: false, reason: 'site_preparing' };
     const player = state.entities.get(state.playerId), target = live(partId);
     if (!player || player.alive === false || !target || player.flags?.docked
       || distance(player.pos, target.pos) > SITE.interactionRange + target.radius)
@@ -220,17 +272,21 @@ export function createGlassreefGarden(ctx, placement, saved = null) {
     rememberPoses();
     // Fill untouched authored poses even if serialized before first sector entry.
     for (const p of PARTS) if (!poses[p.id]) poses[p.id] = copyPose(bodySpec(p, origin));
-    return { version: 1, sectorId, origin: { ...origin }, garden: saveGarden(garden), poses: clone(poses) };
+    return { version: 1, sectorId, origin: { ...origin }, garden: saveGarden(garden), poses: clone(poses), jointLengths: [...jointLengths] };
   }
-  function dispose() { if (disposed) return; leave(); disposed = true; for (const off of unsubscribes) off?.(); }
+  function dispose() { if (disposed) return; leave(); disposed = true; instances.delete(state); for (const off of unsubscribes) off?.(); }
+  instances.add(state);
   return Object.freeze({ name: 'glassreefGarden', enter, leave, update, request, serialize: snapshot, dispose,
-    read: () => ({ garden: saveGarden(garden), origin: { ...origin }, sectorId, active,
+    read: () => ({ garden: saveGarden(garden), origin: { ...origin }, sectorId, active, ready, prepareAttempts,
       lastError, cost: { ...lastCost }, bodies: PARTS.flatMap(p => {
         const e = live(p.id); return e ? [{ partId: p.id, entityId: e.id,
           generation: e.occupantGeneration, ...copyPose(e), hull: e.hull }] : [];
       }) }),
     missionEvidence: () => ({ missionId: SITE.missionId, ...objectives(garden),
       choice: garden.choice, receipt: garden.settlement && clone(garden.settlement),
-      complete: garden.settlement?.status === 'paid' }),
+      failed: garden.worker === 'lost', complete: garden.settlement?.status === 'paid' }),
+    verifyMissionProof: payload => ({ ok: payload?.missionId === SITE.missionId
+      && payload?.siteId === SITE.id && payload?.receiptId === garden.settlement?.id
+      && garden.settlement?.status === 'paid' }),
   });
 }
