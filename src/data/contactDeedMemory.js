@@ -33,6 +33,8 @@ export const CONTACT_DEED_LINES = Object.freeze({
     'An original left your hold unfiled. The archive keeps the gap.'),
   'vols.business': memory('CAPTAIN MAERA VOLS', 'My message is still somewhere out there.', 'You found what my crew left. The hull remembers.',
     'You passed my crew and kept the throttle down. She remembers.'),
+  'march.reconciliation': memory('PROVOST MARCH', 'The yard has no file on you yet. Walk some wrecks.', 'Your hulls reconciled clean. The yard trusts your tow lines.',
+    'Your sums came back crooked once. The desk keeps the page.'),
 });
 
 export function contactDeedMemory(contactId, counters = {}) {

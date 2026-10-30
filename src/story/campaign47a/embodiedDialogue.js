@@ -52,6 +52,10 @@ export const DEPTH_PROGRAM_CONTACTS = Object.freeze([
   depthCard('G13', 'contact_wraith_kell', '“Wraith” Kell', 'Deep-Cover Operative', ['station_customs'], 'I file manifests by day, copy them by night. Burn?', 'kell.cover', 'split-clerk', { role: 'smuggler', factionId: 'faction_quiet', gate: { minBeat: 5 } }),
   depthCard('G14', 'contact_halev_doss', 'Prof. Halev Doss', 'University Archivist', ['station_helios'], 'The sector has a paper trail. I walk it daily.', 'doss.sources', 'precise-warm', { role: 'merchant', factionId: 'faction_scn', gate: { minBeat: 1 } }),
   depthCard('G15', 'contact_maera_vols', 'Captain Maera Vols', 'Hull Ghost', ['station_helios'], 'I left the engines warm. You fly her further than I did.', 'vols.business', 'tired-fragment', { role: 'pilot', factionId: 'faction_dmc', poiHint: 'poi_helios_yard' }),
+  // W3 — the starter sector's return visit: a yard clerk who only exists once the pilot has
+  // history. Beat 6 and three walked wrecks is "hour ten"; the reconciliation desk is the reason
+  // the first berth still matters then.
+  depthCard('G16', 'contact_ledger_march', 'Provost March', 'Yard Reconciliation Clerk', ['station_helios'], 'Every hull you dragged home is filed here. I square the sums.', 'march.reconciliation', 'dry-ledger', { role: 'merchant', factionId: 'faction_scn', gate: { minBeat: 6, minUniqueWrecks: 3 } }),
 ]);
 
 export const CONTACT_CARDS = Object.freeze([
