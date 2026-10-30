@@ -185,7 +185,7 @@ html.sf-reduce-motion .orr-hrig__spot { display:none; }
 .orr-hrig__alt { font-family:var(--dp-face-numeral, "Archivo"); font-size:clamp(14px, .73vw, 18px); font-weight:500; line-height:1; color:rgb(${BONE} / .72); white-space:nowrap; }
 /* Second binding reads as "SPACE · F", the separator the EVERY KEY list uses, not a loose
    suffix jammed against the first key. */
-.orr-hrig__alt::before { content:"\\00B7"; margin-right:.32em; color:rgb(${BONE} / .62); }
+.orr-hrig__alt::before { content:"\\00B7"; content:"\\00B7" / ""; margin-right:.32em; color:rgb(${BONE} / .62); }
 .orr-hrig__pad { display:none; }
 .orr-hrig.is-pad .orr-hrig__kb { display:none; }
 .orr-hrig.is-pad .orr-hrig__pad { display:inline-flex; }
