@@ -87,6 +87,11 @@ import { nurseryInitialHabitatOffset, nurseryHabitatGoal } from '../world/veilRa
 
 const TWO_PI = Math.PI * 2;
 
+/** F5 — the tether's drumbeat: the wake floor for a 'massline_slam' vibration impulse, in the
+ *  emitter's own severity units (relSpeed / crushing). Below a solid hit, a tether touch is
+ *  quiet work; at solid-and-worse the seam hears the slam. */
+export const MASSLINE_SLAM_WAKE_SEVERITY = 0.55;
+
 /** Membership lanes for the sector fauna cast — members are type 'fauna' only. */
 // 'sectorMemberships' joins the latch: a post-append re-home used to leave the
 // (laneVersion, sectorId) pair unchanged, so the cache served pre-move membership.
@@ -864,9 +869,14 @@ export function handleAlienEcologyEvent(world, type, payload) {
     }
     case 'sectorsim:impulse': {
       // AE-051 vibration stimulus: mining noise wakes dormant fauna (casket worms).
-      if (!payload || payload.kind !== 'mining_noise') break;
+      // F5 — the tether's drumbeat: a solid-or-worse Massline whip impact is the same physical
+      // stimulus class at a higher floor (masslineImpacts emits 'massline_slam' with severity).
+      const slam = payload && payload.kind === 'massline_slam'
+        && Number(payload.severity) >= MASSLINE_SLAM_WAKE_SEVERITY;
+      if (!payload || (payload.kind !== 'mining_noise' && !slam)) break;
       // AE-168 (G14): a Resonant Massline's strike carries a dead-matter signature —
-      // dormant fauna do not read the beam as a threat.
+      // dormant fauna do not read the beam as a threat. The fitted gate keeps the quiet-work
+      // contract for both kinds.
       if (fittedFlag(state, 'resonantMassline')) break;
       const sectorId = payload.sectorId;
       if (!sectorId) break;

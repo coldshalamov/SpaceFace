@@ -306,6 +306,21 @@ export const masslineImpacts = {
     runtime.latest = record;
     if (this.bus && typeof this.bus.emit === 'function') {
       this.bus.emit('tether:whipImpact', record);
+      // The tether's drumbeat (F5 — creatures that react to Massline vibration): a solid-or-worse
+      // whip impact is physical vibration, the same stimulus class the ecology's mining noise
+      // answers. The resonant module's dead-matter signature stays the player's quiet-work
+      // contract — the ecology handler keeps its own fitted-flag gate.
+      if (rating !== 'glance') {
+        this.bus.emit('sectorsim:impulse', {
+          kind: 'massline_slam',
+          sectorId: (state.world && state.world.currentSectorId) || null,
+          x: Number.isFinite(record.pos && record.pos.x) ? record.pos.x
+            : (victim && victim.pos ? victim.pos.x : null),
+          z: Number.isFinite(record.pos && record.pos.z) ? record.pos.z
+            : (victim && victim.pos ? victim.pos.z : null),
+          severity: record.severity,
+        });
+      }
     }
   },
 
