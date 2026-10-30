@@ -209,6 +209,14 @@ Rows are the spec (`build_map.md` §31–§32; read each row's prose before brie
   + production profile) reaches focus → trainer lease `match=true` → beat done → burst at
   ~265 s. Focused tests pin both contracts (11/11 flight-drill + flyby-focus green). Run 4
   launched with a `flybyFocus:start` target-vs-trainer tap for the authoritative verdict.
+  **Run 4 named the third wall, fixed `0b2e6d40a187`:** the pilot reached focus towing the
+  claimed salvage — the authored "take it anyway" path delivers a tethered player to beat 6 —
+  and every census returned early on `player.tether.active` (zero flyby events for the rest of
+  the run). While a line is out, acquisition isn't running, so a lease's latch bias is inert:
+  only the flagged trainer may now lease while tethered; refused hostiles stay refused.
+  **Run 5 evidence (in flight):** `flybyFocus:start` on the trainer `match=true` at t=308 while
+  tethered — beat done, rail advanced to `burst`. The hour continues: burst → disengage →
+  seam → dock → choice, with the rescue `shove` stage live alongside.
 - **Audit-fix packets landed 2026-10-29/30:** encounter bookkeeping `37e1ebe0d24`, heat victim
   `d79feb41121`, mining/careers `bfa9ec3b6a9`, save restore `7b4cced23e8`, unique-wreck persistence
   `bd978111178`, special500 registered in production `6ca62459ba5`, c47a truth `97283ecd9c1`,
