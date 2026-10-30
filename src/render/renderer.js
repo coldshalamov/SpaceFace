@@ -356,7 +356,7 @@ import {
   survivalDefersArenaDressingJob,
 } from './authoredUpgradePolicy.js';
 import { supportsOpaqueMaterialBatch } from './opaqueMaterialBatch.js';
-import { createRetainedRigidOpaqueBatchController, mintRigidOpaqueBatchSpecimen, planRigidOpaqueBatchSpecimenGroups, isRigidOpaqueBatchProgramWarmed, noteRigidOpaqueBatchProgramWarmed, clearRigidOpaqueBatchWarmedKeys, retainRigidOpaqueBatchSpecimenMaterial } from './rigidOpaqueBatch.js';
+import { createRetainedRigidOpaqueBatchController, mintRigidOpaqueBatchSpecimen, planRigidOpaqueBatchSpecimenGroups, isRigidOpaqueBatchProgramWarmed, noteRigidOpaqueBatchProgramWarmed, clearRigidOpaqueBatchWarmedKeys, retainRigidOpaqueBatchSpecimenMaterial, retireDisposedRigidOpaqueBatchBeforeSceneDraw } from './rigidOpaqueBatch.js';
 import {
   scheduleRealtimeShadowRefresh,
   shouldRefreshRealtimeShadowMap,
@@ -12372,11 +12372,7 @@ export const render = {
               // while still referenced by the active cohort. Restore the canonical source layers
               // and remove that dead batch before any forced scene render can call its hooks; the
               // normal cohort sync rebuilds it through the ordinary admission owner after resume.
-              const retiredRigidBatch = this._rigidOpaqueBatchController
-                ?.retireUnusableActiveResources?.();
-              if (retiredRigidBatch && state.render) {
-                state.render.rigidOpaqueBatch = this._rigidOpaqueBatchController.getDiagnostics();
-              }
+              retireDisposedRigidOpaqueBatchBeforeSceneDraw(this._rigidOpaqueBatchController, state.render);
             } catch (rehydrateError) {
               if (typeof console !== 'undefined') {
                 console.warn('[render] context-restore package rehydrate failed', rehydrateError);
@@ -13669,6 +13665,7 @@ export const render = {
       return this._compilePostRoute(route, subject, cam.obj, scene, compileOptions);
     };
     const touchExactTargetSubject = (subject) => {
+      retireDisposedRigidOpaqueBatchBeforeSceneDraw(this._rigidOpaqueBatchController, state.render);
       stampSubjectEnv(subject);
       const drawableSession = resolveTouchDrawableSession(
         this._touchDrawableCensus, scene, this._liveSectorCookGeneration || 0,
@@ -13725,6 +13722,7 @@ export const render = {
       const list = (Array.isArray(subjects) ? subjects : [subjects]).filter(Boolean);
       if (list.length === 0) return { skipped: true, reason: 'empty touch group' };
       for (const subject of list) await stampSubjectEnvAsync(subject);
+      retireDisposedRigidOpaqueBatchBeforeSceneDraw(this._rigidOpaqueBatchController, state.render);
       // Environment preparation can suspend behind other admission producers. Reveal only
       // around the synchronous submitted draw: another group must never capture these
       // ancestors' temporary warm visibility as their live state (idle rifts/beam pools).
