@@ -14,7 +14,7 @@ import * as esbuild from 'esbuild';
 import { spawn } from 'node:child_process';
 import { readFile, writeFile, mkdir, readdir, stat, rm } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   acquireReleaseBuildLock,
@@ -35,6 +35,28 @@ const SRC = join(ROOT, 'src');
 const FINAL_OUT = join(ROOT, 'build', 'web');
 const OUT = join(ROOT, 'build', 'web.__building');
 const PREVIOUS_OUT = join(ROOT, 'build', 'web.__previous');
+
+function requestedMetafilePath() {
+  const args = process.argv.slice(2);
+  const option = args.find((arg) => arg.startsWith('--metafile='));
+  if (args.includes('--metafile') && !option) {
+    throw new Error('[bundle] use --metafile=<path> to write the optional esbuild graph');
+  }
+  if (!option) return null;
+  const value = option.slice('--metafile='.length).trim();
+  if (!value) throw new Error('[bundle] --metafile requires a file path');
+  const target = resolve(ROOT, value);
+  for (const releaseDir of [OUT, FINAL_OUT, PREVIOUS_OUT]) {
+    const withinReleaseDir = relative(resolve(releaseDir), target);
+    if (withinReleaseDir === '' || (withinReleaseDir !== '..'
+      && !withinReleaseDir.startsWith(`..${sep}`) && !isAbsolute(withinReleaseDir))) {
+      throw new Error(`[bundle] metafile must be outside retail output trees: ${target}`);
+    }
+  }
+  return target;
+}
+
+const METAFILE_OUT = requestedMetafilePath();
 
 // Count screen modules for the build log. They are imported from uiRoot.js through literal dynamic
 // import call sites, so main.js is the only entry point; adding screens here as independent entries
@@ -108,6 +130,7 @@ async function build() {
     // ...except the vendor-patched modules the dev importmap already loads (GLTFLoader), so dev and
     // retail parse render packages with the same code.
     alias: retailBundleAliases(ROOT),
+    metafile: !!METAFILE_OUT,
     logLevel: 'info',
     // Treat dynamic imports of literal strings as code-splittable chunks (default).
     legalComments: 'none',
@@ -120,6 +143,14 @@ async function build() {
       __SPACEFACE_RELEASE_BASE__: JSON.stringify(releaseBase),
     },
   });
+
+  // Keep the optional graph outside the staged/published retail tree. It is diagnostic build
+  // metadata, never a packaged runtime file or an input to the release receipt.
+  if (METAFILE_OUT) {
+    await mkdir(dirname(METAFILE_OUT), { recursive: true });
+    await writeFile(METAFILE_OUT, `${JSON.stringify(result.metafile, null, 2)}\n`, 'utf8');
+    console.log('[bundle] esbuild metafile → ' + METAFILE_OUT);
+  }
 
   // Copy every URL-fetched runtime root from one canonical map. Ship authoring sources, Blender
   // files, evidence, rejected candidates, and previous exports are intentionally excluded: normal
