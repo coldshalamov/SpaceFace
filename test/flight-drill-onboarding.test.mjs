@@ -55,9 +55,23 @@ test('training actor is the only non-hostile contact eligible for flyby Focus', 
     data: { ai: { passive: true }, weapons: [] },
   });
   ordinaryFriendly.id = 3;
-  const state = { playerId: 1, player: {}, entities: new Map([[1, player], [2, trainer], [3, ordinaryFriendly]]) };
+  const hostile = makeEntity({
+    id: 4,
+    type: 'ship',
+    team: 3,
+    pos: { x: 120, z: -10 },
+    vel: { x: -125, z: 0 },
+    radius: 8,
+    data: { combat: { targetId: 1 }, weapons: [{ defId: 'pulse_laser_s' }] },
+  });
+  hostile.id = 4;
+  const state = { playerId: 1, player: {}, entities: new Map([[1, player], [2, trainer], [3, ordinaryFriendly], [4, hostile]]) };
   assert.equal(pickFlybyTarget(state, player, [ordinaryFriendly, trainer])?.id, 2);
   assert.equal(pickFlybyTarget(state, player, [ordinaryFriendly]), null);
+  assert.equal(pickFlybyTarget(state, player, [hostile, trainer])?.id, 2,
+    'a flagged trainer owns the lease over a direct attacker — its pass is the staged lesson');
+  assert.equal(pickFlybyTarget(state, player, [hostile])?.id, 4,
+    'without the trainer in the envelope the attacker still leases normally');
 });
 
 test('marker trainer cannot consume Focus before its authored flyby', () => {
@@ -213,6 +227,54 @@ test('nonlethal trainer and real event receipts complete the hands-on drill', ()
     pos: { x: rock.pos.x, z: rock.pos.z },
   });
   assert.ok(state.onboarding.beatDoneAt.seam != null, 'three units from the marked rock complete mining');
+});
+
+test('a spent flyby pass restages instead of walling the focus beat', () => {
+  const bus = createBus();
+  const state = makeState();
+  const helpers = {
+    spawnEntity(spec) {
+      const entity = makeEntity(spec);
+      entity.id = state.nextEntityId++;
+      state.entities.set(entity.id, entity);
+      state.entityList.push(entity);
+      return entity;
+    },
+    removeEntity(id) {
+      const entity = state.entities.get(id);
+      if (entity) entity.alive = false;
+    },
+  };
+  const sys = Object.create(onboarding);
+  sys.init({ state, bus, helpers, registry: null });
+  state.onboarding = freshOnboarding();
+  state.onboarding.currentBeat = beatIndex('focus');
+
+  const trainer = sys._spawnTrainer('marker');
+  assert.ok(trainer);
+  // The first pass ended behind the player and damped to a crawl: alive but never again able
+  // to satisfy the arm envelope. Restaging must retry the authored crossing, not wall the beat.
+  trainer.pos.x = -500;
+  trainer.pos.z = 0;
+  trainer.vel.x = -20;
+  trainer.vel.z = 0;
+  trainer.prevPos.copy(trainer.pos);
+  sys._resolveProximityDone();
+  assert.equal(Math.hypot(trainer.vel.x, trainer.vel.z), 118,
+    'restaged pass runs at the authored flyby speed');
+  assert.ok(Math.hypot(trainer.pos.x, trainer.pos.z) > 100,
+    'restaged back onto a fresh crossing line ahead of the player');
+  assert.equal(state.onboarding.beatDoneAt.focus, undefined, 'restage is a retry, not a skip');
+
+  // A live closing pass is left alone.
+  trainer.pos.x = 138;
+  trainer.pos.z = 52;
+  trainer.vel.x = -118;
+  trainer.vel.z = 0;
+  const posBefore = { x: trainer.pos.x, z: trainer.pos.z };
+  sys._resolveProximityDone();
+  assert.deepEqual({ x: trainer.pos.x, z: trainer.pos.z }, posBefore,
+    'a pass still closing on the player is not restaged');
 });
 
 test('weapon heat helper ignores invalid/no-heat mounts', () => {

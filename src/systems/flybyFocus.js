@@ -171,11 +171,15 @@ function compareStableId(a, b) {
 // instead of waiting for the tilted camera's compressed depth axis to allow it.
 
 function beatsBest(
-  direct, timeToClosestS, closestSurfaceMiss, armed, mass, relativeSpeed, distance, id,
-  bestDirect, bestTimeToClosestS, bestClosestSurfaceMiss, bestArmed, bestMass,
+  training, direct, timeToClosestS, closestSurfaceMiss, armed, mass, relativeSpeed, distance, id,
+  bestTraining, bestDirect, bestTimeToClosestS, bestClosestSurfaceMiss, bestArmed, bestMass,
   bestRelativeSpeed, bestDistance, bestId,
 ) {
   if (bestId == null) return true;
+  // The onboarding flyby is a staged lesson: while a flagged trainer is a viable pass it owns
+  // the lease ahead of even a direct attacker, or a stray hostile in the pocket starves the
+  // lesson gate behind it. Flagged trainers only exist during onboarding.
+  if (training !== bestTraining) return training;
   if (direct !== bestDirect) return direct;
   if (timeToClosestS !== bestTimeToClosestS) return timeToClosestS < bestTimeToClosestS;
   if (closestSurfaceMiss !== bestClosestSurfaceMiss) return closestSurfaceMiss < bestClosestSurfaceMiss;
@@ -210,6 +214,7 @@ export function pickFlybyTarget(state, player, list, isCoolingDown = null) {
   let bestDirect = false;
   let bestArmed = false;
   let bestMass = -Infinity;
+  let bestTraining = false;
   for (const ent of list || []) {
     if (!isFocusEligibleShip(state, ent, player)) continue;
     if (cooling && cooling(ent.id, ent)) continue;
@@ -235,10 +240,11 @@ export function pickFlybyTarget(state, player, list, isCoolingDown = null) {
     if (closestSurfaceMiss > MAX_SURFACE_MISS) continue;
     const direct = targetsPlayer(ent, player.id);
     const armed = isArmed(ent);
+    const training = isTrainingFocusTarget(ent, player);
     const mass = Math.max(0, finite(ent.mass, finite(ent.data && ent.data.mass)));
     if (!beatsBest(
-      direct, timeToClosestS, closestSurfaceMiss, armed, mass, relativeSpeed, distance, ent.id,
-      bestDirect, bestTimeToClosestS, bestClosestSurfaceMiss, bestArmed, bestMass,
+      training, direct, timeToClosestS, closestSurfaceMiss, armed, mass, relativeSpeed, distance, ent.id,
+      bestTraining, bestDirect, bestTimeToClosestS, bestClosestSurfaceMiss, bestArmed, bestMass,
       bestRelativeSpeed, bestDistance, bestId,
     )) continue;
     bestId = ent.id;
@@ -250,6 +256,7 @@ export function pickFlybyTarget(state, player, list, isCoolingDown = null) {
     bestDirect = direct;
     bestArmed = armed;
     bestMass = mass;
+    bestTraining = training;
   }
   if (bestId == null) return null;
   return {

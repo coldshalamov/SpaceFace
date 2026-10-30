@@ -2419,6 +2419,24 @@ export const onboarding = {
     const trainerDistance = trainer && trainer.pos
       ? Math.hypot(trainer.pos.x - player.pos.x, trainer.pos.z - player.pos.z)
       : Infinity;
+    // A flyby pass spent without leasing — the player dodged, fired, or held boost through the
+    // crossing window and the census refuses the arm while the stick is hot — leaves the
+    // wingman alive but inert, and the respawn path above only fires on a lost actor. Restage
+    // the authored pass once it stops closing or slows below arming speed: retry, never a wall,
+    // same contract as the seam rock above. A live approach is left alone, so a player's own
+    // fast closing can still arm the pair on its way in.
+    if (beat.key === 'focus' && trainer && trainer.pos) {
+      const rvx = (trainer.vel ? trainer.vel.x : 0) - (player.vel ? player.vel.x : 0);
+      const rvz = (trainer.vel ? trainer.vel.z : 0) - (player.vel ? player.vel.z : 0);
+      const relSpeed = Math.hypot(rvx, rvz);
+      const dxT = trainer.pos.x - player.pos.x;
+      const dzT = trainer.pos.z - player.pos.z;
+      if (dxT * rvx + dzT * rvz > 0 || relSpeed < TRAINER_FLYBY_SPEED_WU * 0.5) {
+        this._beginTrainerFlyby();
+        this._setObjectiveWaypoint(true);
+        return;
+      }
+    }
     if (beat.key === 'tether' && this._derelictId != null
       && this.state.player.targetId === this._derelictId
       && !ob.firedFollowups['tether:target:acquired']) {

@@ -1142,7 +1142,7 @@ export function createStrangerPilot({ state, bus, ledger, services }) {
       const o = ob();
       if (process.env.STRANGER_PILOT_TRACE && (state.tick % 180) === 0) {
         const pl = p;
-        console.log(`    [step] t=${Math.round(state.simTime)} beat=${o && o.currentBeat} v=${Math.round(speedOf(pl))} resc=${o && o.rescue ? o.rescue.current : '-'} docked=${!!(state.ui && state.ui.docked) || !!(pl.flags && pl.flags.docked)} mode=${state.mode} beatAct='${(o && o.beatAction) || ''}'.slice(0,30)`);
+        console.log(`    [step] t=${Math.round(state.simTime)} beat=${o && o.currentBeat} v=${Math.round(speedOf(pl))} resc=${o && o.rescue ? o.rescue.current : '-'} docked=${!!(state.ui && state.ui.docked) || !!(pl.flags && pl.flags.docked)} mode=${state.mode} teth=${!!(state.player && state.player.tether && state.player.tether.active)} beatAct='${(o && o.beatAction) || ''}'.slice(0,30)`);
       }
 
       // Docked: sell, breathe, undock (the same station verbs the UI uses).
@@ -1611,8 +1611,13 @@ export function createStrangerPilot({ state, bus, ledger, services }) {
           return;
         }
         if (/cross your bow/i.test(line) && wp.pos) {
-          // Flyby lesson: meet the trainer head-on — relative speed and closing arm the lease.
-          flyTo(input, wp.pos, { arrive: 20, boost: energyFull(p) });
+          // Flyby lesson: "hold course" — the staged pass crosses the player's bow. Chasing the
+          // wingman on boost keeps the stick hot through the whole crossing window, and the
+          // flyby census refuses to arm while input.boost/fire is held, so the pass can never
+          // lease. Settle to near-stationary and let the pass come; spent passes restage.
+          input.boost = false;
+          input.fire = false;
+          if (speedOf(p) > 15) input.brake = true;
           return;
         }
         if (/leaves scope|thrust away/i.test(line) && wp.pos) {
