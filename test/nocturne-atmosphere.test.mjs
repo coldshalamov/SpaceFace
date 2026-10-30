@@ -82,6 +82,42 @@ test('vacuum and disabled atmosphere submit no rendering and cannot reuse a stal
   h.pass.dispose();
 });
 
+test('current-frame work admission agrees with draws across medium and enable transitions', () => {
+  const h = setup();
+  assert.equal(h.pass.hasRenderWork(h.depth, h.camera), true);
+  assert.equal(h.renderer.draws.length, 0, 'checking admission never submits or warms the pass');
+  h.pass.render(h.depth, h.camera);
+  assert.equal(h.renderer.draws.length, 1);
+
+  h.pass.setMedia([]);
+  assert.equal(h.pass.hasRenderWork(h.depth, h.camera), false,
+    'a formerly active pass becomes empty in this frame');
+  h.pass.render(h.depth, h.camera);
+  assert.equal(h.renderer.draws.length, 1);
+  assert.equal(h.pass.getDiagnostics().historyValid, false,
+    'the empty invocation still retires illuminated history');
+
+  for (const invalid of [{ ...h.medium, enabled: false }, { ...h.medium, density: 0 },
+    { ...h.medium, radii: new THREE.Vector3(0, 50, 100) }]) {
+    h.pass.setMedia([invalid]);
+    assert.equal(h.pass.hasRenderWork(h.depth, h.camera), false);
+    h.pass.render(h.depth, h.camera);
+    assert.equal(h.renderer.draws.length, 1);
+  }
+  h.pass.setMedia([h.medium]);
+  h.pass.setEnabled(false);
+  assert.equal(h.pass.hasRenderWork(h.depth, h.camera), false);
+  h.pass.setEnabled(true);
+  assert.equal(h.pass.hasRenderWork(null, h.camera), false);
+  assert.equal(h.pass.hasRenderWork(h.depth, null), false);
+  assert.equal(h.pass.hasRenderWork(h.depth, h.camera), true,
+    'the first newly active frame is admitted, without waiting for a previous draw');
+  h.pass.render(h.depth, h.camera);
+  assert.equal(h.renderer.draws.length, 2);
+  h.pass.dispose();
+  assert.equal(h.pass.hasRenderWork(h.depth, h.camera), false);
+});
+
 test('steady scenes reuse bounded targets/materials; changed sources and camera cuts reject history', () => {
   const h = setup({ quality: 'integrated' });
   const resources = h.pass.contextLossResources();

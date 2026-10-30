@@ -2852,7 +2852,15 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     // from here we only draw the full-screen quad; disable autoClear so blits don't wipe each other
     renderer.autoClear = false;
 
-    if (atmosphere) timePassGroup('nocturneAtmosphere', renderAtmospherePass, camera, tier1);
+    if (atmosphere) {
+      // The current-frame preflight avoids timing a disabled, unsupported, or empty-media no-op.
+      // Still call the owner when it will not draw so vacuum/history state advances.
+      if (atmosphere.hasRenderWork(rtScene.depthTexture, camera)) {
+        timePassGroup('nocturneAtmosphere', renderAtmospherePass, camera, tier1);
+      } else {
+        renderAtmospherePass(camera, tier1);
+      }
+    }
 
     // ---- downsample chain: full -> ½ (bright-pass) -> ¼ ----
     // level 0 reads the full-res scene with the bright-pass; deeper levels pass through.
