@@ -633,6 +633,11 @@ test('LIVE GATE: the starter gun applies impulse to the staged scout', () => {
   assert.equal(beacon.flags.invuln, true, 'leftover beacon stays leftover invuln');
   assert.equal(specs.beacon.physicsBody && specs.beacon.physicsBody.dynamic, false,
     'the exit ring is a fixed body — contact impulses cannot punt the finish line');
+  assert.ok(
+    (specs.beacon.physicsBody && specs.beacon.physicsBody.radius || specs.beacon.radius) + 8
+      <= specs.beacon.radius,
+    'the collider core is smaller than the delivery ring — a solid 60-radius body makes the pod delivery physically impossible',
+  );
 
   const player = makeEntity({ type: 'ship', team: 0, pos: { x: 0, z: 0 }, radius: 14, mass: 320 });
   player.id = 1;

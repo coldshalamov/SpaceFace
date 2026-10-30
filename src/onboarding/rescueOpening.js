@@ -205,8 +205,11 @@ export function makeRescueCastSpecs(playerPos, rng) {
       _invulnUntil: Infinity,
       // The exit marker must hold still: mass 1 as a dynamic body meant any field
       // impulse or ambient traffic bump punted the ring and it coasted away at
-      // ~30 wu/s — a real player watches the finish line drift off forever.
-      physicsBody: { dynamic: false },
+      // ~30 wu/s — a real player watches the finish line drift off forever. But a
+      // FIXED body at radius 60 fills the delivery ring with solid collider — the
+      // pod's center can never reach inside 60 and the beat is unwinnable. A small
+      // solid core keeps the marker pinned while the ring stays open space.
+      physicsBody: { dynamic: false, radius: 6 },
       data: {
         rescueExit: true,
         onboarding: true, rescue: true, rescueRole: 'beacon',

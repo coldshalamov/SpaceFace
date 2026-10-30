@@ -907,14 +907,12 @@ export function createStrangerPilot({ state, bus, ledger, services }) {
   let escapeFrom = null;         // {x,z} the wanted-escape runs away from
   let nearBreakUntil = -1;       // ease the winch when the line warns it is near break
   let grabBraking = false;       // stops a circling beacon approach dead before the creep
-  let grabParking = false;       // delivery-ratchet: hull parked, pod gliding toward the ring
-  let grabParkAt = -1;           // simTime the current park began (timeout guard)
-  let grabBiteUntil = -1;        // simTime end of the current ratchet bite
   let latchedTargetId = null;    // the body this policy intends to hold
   let needWinch = true;          // every fresh latch must be winched tight before a swing
   let raidWall = null;           // cached throw-target rock (static, so position is stable)
   let stuckTicks = 0;            // consecutive slow ticks while the hull should be moving
   let winchUntil = -1;           // simTime: reel this long after each fresh attach
+  let traceWallMark = 0;         // wall-clock mark for the tick-rate heartbeat
   const decided = {};            // one decision log per choice point
 
   bus.on('tether:attached', (e) => { lineAttached = true; if (e && e.targetId != null) latchedId = e.targetId; needWinch = true; winchUntil = (state.simTime || 0) + 5; });
@@ -1131,6 +1129,17 @@ export function createStrangerPilot({ state, bus, ledger, services }) {
     name: 'stranger',
     traceMeta: Object.freeze({ mode: 'adventure', tutorialPilot: true, driver: 'stranger', seed: state.meta.seed }),
     step(dt, tick) {
+      if (process.env.STRANGER_PILOT_TRACE) {
+        const nowMs = Date.now();
+        if (!traceWallMark || nowMs - traceWallMark > 15000) {
+          traceWallMark = nowMs;
+          const p0 = player();
+          const ents = state.entityList ? state.entityList.length : (state.entities ? state.entities.size : -1);
+          const evs = state.combat && state.combat.trace && state.combat.trace.events ? state.combat.trace.events.length : -1;
+          const att = state.combat && state.combat.attachments && state.combat.attachments.byId ? Object.keys(state.combat.attachments.byId).length : -1;
+          console.log(`    [wall] t=${Math.round(state.simTime)} tick=${state.tick} ents=${ents} traceEvs=${evs} attach=${att} alive=${p0 ? p0.alive : 'null'} hull=${p0 ? Math.round(p0.hull || 0) : '-'} docked=${!!(state.ui && state.ui.docked)}`);
+        }
+      }
       const p = player();
       if (!p || !p.alive) return;
       // Read the same live line state as the HUD. Global line events can belong to NPCs,
@@ -1400,46 +1409,39 @@ export function createStrangerPilot({ state, bus, ledger, services }) {
             input.turnIntent = Math.max(-1, Math.min(1, errB / 0.6));
             input.boost = false;
             const podSpeed = pod.vel ? Math.hypot(pod.vel.x || 0, pod.vel.z || 0) : 0;
-            if (dB < 100) {
-              // Delivery ratchet: the pod only needs to graze the 60-ring while the
-              // line holds, and its tow momentum carries it ~line-length forward of
-              // the hull whenever the hull stops. Park — let it glide — bite a few
-              // wu closer — park again. Each cycle puts the pod ~18wu nearer; no
-              // precision station-keeping against tether tension required (runs
-              // 7–14 parked the hull in stable circles or dithered off the mark).
-              if (grabParking) {
-                input.brake = true;
-                input.moveZ = 0;
-                if (vNow < 1.5 && podSpeed < 1.5) {
-                  grabParking = false;
-                  grabBiteUntil = (state.simTime || 0) + 2.2;
-                } else if ((state.simTime || 0) - grabParkAt > 8) {
-                  // Tether jitter can hold the pod above the settle threshold —
-                  // never let a park become a wall.
-                  grabParking = false;
-                  grabBiteUntil = (state.simTime || 0) + 2.2;
-                }
-              } else if ((state.simTime || 0) < grabBiteUntil) {
-                input.brake = false;
-                input.moveZ = Math.abs(errB) < 0.4 ? 1 : 0;
-              } else {
-                grabParking = true;
-                grabParkAt = state.simTime || 0;
-                input.brake = true;
-                input.moveZ = 0;
-              }
+            if (dB < 130) {
+              // Drive-through delivery: the predicate is pod-inside-radius at ANY
+              // instant, and a taut-line pod follows the hull's ground track — so fly
+              // the hull on a straight line THROUGH the beacon and the pod sweeps the
+              // ring behind it. Stopping inside the ring is actively wrong: the taut
+              // trailing line is an anchor, and every park/bite ratchet let tension
+              // drag the hull back out (run 28 sat at dB≈72–77 for 300+ sim-s).
+              // Aim a leg past the beacon, cap speed so the line stays settled, and
+              // if the pass misses, the outer approach turns the ship for another run.
+              const aimX = beacon.pos.x + Math.cos(aimB) * 160;
+              const aimZ = beacon.pos.z + Math.sin(aimB) * 160;
+              input.aimAngle = Math.atan2(aimZ - p.pos.z, aimX - p.pos.x);
+              const errT = wrapAngle(input.aimAngle - (p.rot || 0));
+              input.turnIntent = Math.max(-1, Math.min(1, errT / 0.6));
+              // Slow transit: the pod trails the VELOCITY vector, so it only cuts
+              // inside the hull's turn — a tight low-speed hook around the beacon
+              // swings the pod deepest (run 30's v≈45 passes floored dPB at ~68).
+              input.brake = vNow > 15;
+              input.moveZ = (!input.brake && Math.abs(errT) < 0.5) ? 1 : 0;
             } else {
-              grabParking = false;
               input.brake = grabBraking || vNow > Math.max(6, dB / 10);
               input.moveZ = (!input.brake && Math.abs(errB) < 0.4 && dB > 20) ? 1 : 0;
             }
             // Keep the pod reeled to the hull for delivery — a slack line let it sail
-            // 390wu off on its own momentum (run 13) and the predicate needs IT in
-            // the ring, not the hull.
+            // 390wu off on its own momentum (run 13; again at ~55+ in run 31) and the
+            // predicate needs IT in the ring, not the hull.
             cmd.lineControl = true;
             cmd.lineLength = -0.35;
             if (process.env.STRANGER_PILOT_TRACE && (state.tick % 120) === 0) {
-              console.log(`    [grab] t=${Math.round(state.simTime)} dPod=${Math.round(dist(p.pos, pod.pos))} dB=${Math.round(dB)} v=${Math.round(vNow)} podV=${Math.round(podSpeed)} closing=${Math.round(closing)} err=${errB.toFixed(2)} brk=${input.brake} mz=${input.moveZ} park=${grabParking} latched=${r.podLatched}`);
+              const dPB = dist(pod.pos, beacon.pos);
+              const podOff = Math.atan2(pod.pos.z - p.pos.z, pod.pos.x - p.pos.x);
+              const bOff = Math.atan2(beacon.pos.z - p.pos.z, beacon.pos.x - p.pos.x);
+              console.log(`    [grab] t=${Math.round(state.simTime)} dPod=${Math.round(dist(p.pos, pod.pos))} dB=${Math.round(dB)} dPB=${Math.round(dPB)} off=${wrapAngle(podOff - bOff).toFixed(2)} v=${Math.round(vNow)} podV=${Math.round(podSpeed)} closing=${Math.round(closing)} err=${errB.toFixed(2)} brk=${input.brake} mz=${input.moveZ} latched=${r.podLatched}`);
             }
             return;
           }
@@ -1450,6 +1452,9 @@ export function createStrangerPilot({ state, bus, ledger, services }) {
       const t3 = three();
       if (t3) {
         if (t3.current === 'boost') {
+          // A held line is an anchor — the delivered pod pins the hull at v=0 while the
+          // beat asks for speed (run 33). A real player cuts the tow to boost.
+          if (lineAttached) { cmd.cut = true; unhook(); return; }
           if (!decided.boostUse) {
             decided.boostUse = true;
             ledger.recordDecision({
