@@ -170,6 +170,11 @@ export const PLAYER_ACTION_CUES = Object.freeze({
   'charge:thrown': 'sfx_massline_throw',
   'charge:stuck': 'sfx_hitch_latch',
   'charge:armed': 'sfx_snare_arm_tick',
+
+  // ── Crew casualties answer under their own comms words (one voice per event window) ─────────
+  // An injury is a warn tick; a death is the hull's own low groan — somber, never a chime.
+  'crew:injured': 'sfx_ui_alert',
+  'crew:lost': 'sfx_hull_stress_groan',
   'credits:changed': 'sfx_cash_register',
   payout: 'sfx_cash_register',
 
@@ -490,6 +495,13 @@ export function playAuthoredVerbCue(host, id, payload) {
     const now = typeof host._wallClockMs === 'function' ? host._wallClockMs() : 0;
     const group = payload && (payload.squadId != null ? payload.squadId : payload.entityId);
     if (!admitSurrenderVoice(book, group, now)) return null;
+  }
+  if (id === 'crew:injured' || id === 'crew:lost') {
+    // One voice per event type per window: a mass-casualty tick is one dark beat, not a chorus.
+    const rt = host.rt || (host.rt = {});
+    const book = rt._casualtyAdmit || (rt._casualtyAdmit = Object.create(null));
+    const now = typeof host._wallClockMs === 'function' ? host._wallClockMs() : 0;
+    if (!admitSurrenderVoice(book, id, now)) return null;
   }
   if (typeof host.play !== 'function') return null;
   // Emitters name a point two ways: pos {x,z} or bare x/z (pirateDisengage's surrender).
