@@ -956,7 +956,7 @@ function stepSquadFrames(liveStack, state, tick, dt, shipLikeList = indexedShipL
   const entities = state && state.entities;
   director.stepAll(tick, dt, squads, (id) => (
     entities && typeof entities.get === 'function' ? entities.get(id) : null
-  ));
+  ), (entity) => isTumbling(state, entity));
 }
 
 export function markCheapCohortMembers(state, shipLikeList = indexedShipLikeScan(state)) {
