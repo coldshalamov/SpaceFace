@@ -3328,6 +3328,18 @@ export const onboarding = {
         }
         return;
       }
+      // The beacon is the delivery target: the disengage burn can carry a pod-latched
+      // pilot kilometres off the ring with the pod healthy in tow — no drift check ever
+      // fires and the run becomes a quarter-hour commute. Restage the ring on its own
+      // bearing one run out — the same retry, never a wall.
+      if (Math.hypot(beacon.pos.x - player.pos.x, beacon.pos.z - player.pos.z) > 3000) {
+        const bx = beacon.pos.x - player.pos.x;
+        const bz = beacon.pos.z - player.pos.z;
+        const bd = Math.hypot(bx, bz) || 1;
+        beacon.pos.x = player.pos.x + (bx / bd) * 700;
+        beacon.pos.z = player.pos.z + (bz / bd) * 700;
+        return;
+      }
       const latched = rescue.podLatched
         || rescuePlayerLatchedTo(this.state, this.state.playerId, rescue.ids.pod);
       if (latched) rescue.podLatched = true;

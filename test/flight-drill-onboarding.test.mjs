@@ -367,6 +367,25 @@ test('a pocket the pilot left behind restages whole instead of churning fails', 
   assert.equal(rescue.beats.shove.fails, 1, 'no fail on an attemptable tableau');
   assert.equal(state.entities.get(rescue.ids.scout).id, liveScout.id,
     'a scout still in reach of both pilot and wall is left alone');
+
+  // The beacon is the delivery target: a pod-latched pilot who burned out of the pocket
+  // leaves the ring kilometres behind while the pod rides healthy in tow — the commute
+  // alone is the wall. The ring restages on its own bearing, one run out, quietly.
+  rescue.beats.shove.state = 'done';
+  rescue.beats.grab.state = 'current';
+  rescue.current = 'grab';
+  const livePod = state.entities.get(rescue.ids.pod);
+  const farRing = state.entities.get(rescue.ids.beacon);
+  livePod.pos.x = player.pos.x + 18;
+  livePod.pos.z = player.pos.z;
+  farRing.pos.x = player.pos.x + 16000;
+  farRing.pos.z = player.pos.z;
+  sys._resolveRescueDone();
+  assert.equal(state.entities.get(rescue.ids.beacon).id, farRing.id,
+    'the ring is repositioned in place, not respawned');
+  const ringD = Math.hypot(farRing.pos.x - player.pos.x, farRing.pos.z - player.pos.z);
+  assert.ok(Math.abs(ringD - 700) < 1, `the ring reopens one run out on its bearing (got ${Math.round(ringD)})`);
+  assert.equal(rescue.beats.grab.fails, 0, 'a carried-away ring is not a charged miss');
 });
 
 test('weapon heat helper ignores invalid/no-heat mounts', () => {
