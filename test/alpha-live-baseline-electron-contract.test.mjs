@@ -310,6 +310,58 @@ async function testApplicationWideIssueTrackerAndBackfill() {
   assert.equal(optionalCoverage.backfill.requests.supported, false,
     'missing optional request history API is explicit rather than silently assumed');
   optionalTracker.stop();
+
+  const lateContext = new EventEmitter();
+  const lateApp = new EventEmitter();
+  lateApp.context = () => lateContext;
+  const lateTracker = createStrictElectronApplicationIssueTracker(lateApp);
+  let rejectLateResponse;
+  const lateResponse = new Promise((_, reject) => { rejectLateResponse = reject; });
+  const lateRequest = {
+    method: () => 'GET',
+    url: () => `${CANONICAL}late-history.js`,
+    response: () => lateResponse,
+  };
+  const latePage = new HistoryFakePage(CANONICAL, { requests: [lateRequest] });
+  lateApp.emit('window', latePage);
+  const lateBackfill = lateTracker.bindAndBackfillPage(latePage);
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(lateTracker.retirePageHistoryBackfill(latePage, 'optional-setup-timeout'), true);
+  latePage.closed = true;
+  rejectLateResponse(new Error('request.response: Target page, context or browser has been closed'));
+  await lateBackfill;
+  assert.equal(lateTracker.errors().length, 0,
+    'the timed-out optional history read that rejects only after owned page close is not a runtime console error');
+  const lateCoverage = lateTracker.coverage();
+  assert.equal(lateCoverage.backfill.requests.completed, false,
+    'retirement does not claim that the optional history snapshot completed');
+  assert.equal(lateCoverage.backfill.requests.retiredAfterPageClose, true,
+    'the known page-close cancellation is explicit in retained coverage');
+  assert.equal(lateCoverage.backfill.requests.retirementReason, 'optional-setup-timeout');
+  const readiness = evaluateElectronPublicationReadiness({
+    routeResult: { pass: true },
+    urlAcceptance: { pass: true },
+    processHealth: { pass: true },
+    cleanup: { pass: true },
+    pageErrors: [],
+    pageIssueCoverage: lateCoverage,
+    viewportFloorAssessment: assessElectronViewportFloor(realElectronRuntimeMetadata()),
+    screenshotDimensionAssessment: assessElectronScreenshotDimensions([
+      { name: '01-main-menu.png', width: 1833, height: 974, bytes: 100_000 },
+    ]),
+    fingerprints: {
+      start: { digest: 'same' },
+      afterRoute: { digest: 'same' },
+      afterCleanup: { digest: 'same' },
+    },
+    evidenceValidation: { pass: true },
+  });
+  assert.equal(readiness.pass, true,
+    'only the explicitly retired optional history reader is exempt from backfill completion');
+  lateContext.emit('console', fakeConsoleMessage('error', 'live error remains fatal after backfill retirement'));
+  assert.equal(lateTracker.errors().length, 1,
+    'retiring optional history does not stop live console error observation');
+  lateTracker.stop();
 }
 
 async function testOptInExpectedSoakNetworkPolicy() {
@@ -321,6 +373,9 @@ async function testOptInExpectedSoakNetworkPolicy() {
     playerStoreMounted: false,
     allowCancelledMedia: true,
   });
+  const page = new FakePage(CANONICAL);
+  page.context = () => context;
+  await tracker.bindNetworkProvenance(page);
   const storeGet = {
     status: () => 404,
     url: () => `${CANONICAL}__spaceface_player_store`,
@@ -404,7 +459,7 @@ async function testOptInExpectedSoakNetworkPolicy() {
   strictTracker.stop();
 }
 
-async function testStorelessResponseMethodFallback() {
+async function testStorelessResponseMethodFallbackRemainsStrict() {
   const exactUrl = `${CANONICAL}__spaceface_player_store`;
   const genericNotFound = 'Failed to load resource: the server responded with a status of 404 (Not Found)';
   const context = new EventEmitter();
@@ -423,9 +478,9 @@ async function testStorelessResponseMethodFallback() {
     request: () => ({}),
   });
   context.emit('console', fakeConsoleMessage('error', genericNotFound));
-  assert.equal(tracker.errors().length, 0,
-    'a store-less GET remains diagnostic when the response wrapper omits its method');
-  assert.equal(tracker.ignored().filter((issue) => issue.absentPlayerStore || issue.absentPlayerStoreConsole).length, 2);
+  assert(tracker.errors().some((issue) => issue.source === 'response'),
+    'a response with no directly observed method remains fatal');
+  assert.equal(tracker.ignored().filter((issue) => issue.absentPlayerStore || issue.absentPlayerStoreConsole).length, 0);
   tracker.stop();
 
   const finishedContext = new EventEmitter();
@@ -446,8 +501,8 @@ async function testStorelessResponseMethodFallback() {
     request: () => ({}),
   });
   finishedContext.emit('console', fakeConsoleMessage('error', genericNotFound));
-  assert.equal(finishedTracker.errors().length, 0,
-    'a methodless store response remains diagnostic after requestfinished metadata handoff');
+  assert(finishedTracker.errors().some((issue) => issue.source === 'response'),
+    'requestfinished metadata does not turn a methodless response into an exempt GET');
   finishedTracker.stop();
 
   const replayContext = new EventEmitter();
@@ -468,8 +523,8 @@ async function testStorelessResponseMethodFallback() {
     request: () => ({}),
   });
   replayContext.emit('console', fakeConsoleMessage('error', genericNotFound));
-  assert.equal(replayTracker.errors().length, 0,
-    'backfill replay must not duplicate retained store-request metadata');
+  assert(replayTracker.errors().some((issue) => issue.source === 'response'),
+    'backfill replay cannot turn a methodless response into an exempt GET');
   replayTracker.stop();
 
   const negativeContext = new EventEmitter();
@@ -620,7 +675,7 @@ async function testStorelessCdpRequestIdProvenance() {
   assert.equal(detached, true, 'tracker cleanup detaches its CDP session');
 }
 
-async function testStorelessCdpUnmatchedPlaywrightFailsClosed() {
+async function testStorelessUnmatchedObservedGet() {
   const exactUrl = `${CANONICAL}__spaceface_player_store`;
   const context = new EventEmitter();
   const cdp = new EventEmitter();
@@ -638,19 +693,126 @@ async function testStorelessCdpUnmatchedPlaywrightFailsClosed() {
   });
   await tracker.bindNetworkProvenance(page);
 
-  // CDP is attached, but this Playwright response has no matching
-  // Network.responseReceived. It must remain fatal at finalization rather than
-  // disappearing behind the CDP-attached flag.
+  cdp.emit('Network.requestWillBeSent', {
+    requestId: 'store-unmatched-get',
+    request: { url: exactUrl, method: 'GET' },
+    type: 'Fetch',
+  });
+  cdp.emit('Network.requestWillBeSent', {
+    requestId: 'store-unmatched-put',
+    request: { url: exactUrl, method: 'PUT' },
+    type: 'Fetch',
+  });
+  let wrappersLive = true;
+  let responseRequestReads = 0;
+  let methodReads = 0;
+  const responseRequest = {
+    method() {
+      assert.equal(wrappersLive, true, 'Playwright request method is read before teardown');
+      methodReads += 1;
+      return 'GET';
+    },
+  };
   context.emit('response', {
     status: () => 404,
     url: () => exactUrl,
-    request: () => ({}),
+    request: () => {
+      assert.equal(wrappersLive, true, 'Playwright response request is read before teardown');
+      responseRequestReads += 1;
+      return responseRequest;
+    },
   });
-  assert.equal(tracker.errors().length, 1,
-    'an unmatched Playwright store 404 remains fatal when CDP reports no response');
-  assert.equal(tracker.errors()[0].networkProvenance.source, 'playwright-unmatched-cdp-response');
+  wrappersLive = false;
+  assert.equal(tracker.errors().length, 0,
+    'a directly observed unmatched Playwright store GET 404 is diagnostic when the store is absent');
+  const ignored = tracker.ignored().find((issue) => issue.absentPlayerStore === true);
+  assert(ignored, 'the absent-store GET remains available as bounded diagnostic evidence');
+  const provenance = ignored.networkProvenance;
+  assert.equal(provenance.source, 'playwright-unmatched-cdp-response');
+  assert.equal(provenance.method, 'GET');
+  assert.equal(provenance.methodSource, 'playwright-response-request');
+  assert.equal(provenance.requestId, 'store-unmatched-get');
+  assert.equal(provenance.requestIdSource, 'unique-pending-cdp-request-url-method');
+  assert.equal(provenance.cdpRequestCandidateCount, 2);
+  assert.deepEqual(provenance.cdpRequestCandidates.map((candidate) => [candidate.requestId, candidate.method]), [
+    ['store-unmatched-get', 'GET'],
+    ['store-unmatched-put', 'PUT'],
+  ]);
+  assert.equal(responseRequestReads, 1, 'response wrapper metadata is snapshotted before teardown');
+  assert.equal(methodReads, 1, 'method is not re-read after teardown');
+  assert.equal(tracker.ignored().length, 1, 'the unmatched exact GET is the only ignored response');
   tracker.stop();
   assert.equal(detached, true, 'void-valued CDP detach is still invoked safely');
+}
+
+async function testStorelessCdpAmbiguityPreservesObservedGet() {
+  const exactUrl = `${CANONICAL}__spaceface_player_store`;
+  const context = new EventEmitter();
+  const cdp = new EventEmitter();
+  cdp.send = async () => {};
+  cdp.detach = () => {};
+  context.newCDPSession = async () => cdp;
+  const electronApp = new EventEmitter();
+  electronApp.context = () => context;
+  const page = new FakePage(CANONICAL);
+  page.context = () => context;
+  const tracker = createStrictElectronApplicationIssueTracker(electronApp, { playerStoreMounted: false });
+  await tracker.bindNetworkProvenance(page);
+  for (const requestId of ['store-get-a', 'store-get-b']) {
+    cdp.emit('Network.requestWillBeSent', {
+      requestId,
+      request: { url: exactUrl, method: 'GET' },
+      type: 'Fetch',
+    });
+  }
+  context.emit('response', {
+    status: () => 404,
+    url: () => exactUrl,
+    request: () => ({ method: () => 'GET' }),
+  });
+  tracker.errors(); // Finalization materializes any unmatched Playwright response.
+  const issue = tracker.ignored()[0];
+  assert.equal(issue.networkProvenance.method, 'GET');
+  assert.equal(issue.networkProvenance.requestId, null, 'ambiguous CDP candidates are not joined');
+  assert.equal(issue.networkProvenance.cdpRequestCandidateCount, 2);
+  assert.deepEqual(issue.networkProvenance.cdpRequestCandidates.map((row) => row.requestId), ['store-get-a', 'store-get-b']);
+  assert.equal(tracker.errors().length, 0, 'the observed GET remains diagnostic despite ambiguous CDP candidates');
+  assert.equal(issue.absentPlayerStore, true);
+  tracker.stop();
+}
+
+async function testUnmatchedAbsentStoreOnlyIgnoresObservedCanonicalGet() {
+  const exactUrl = `${CANONICAL}__spaceface_player_store`;
+  const cases = [
+    { label: 'unknown method', url: exactUrl, method: null, ignored: false },
+    { label: 'PUT write', url: exactUrl, method: 'PUT', ignored: false },
+    { label: 'POST write', url: exactUrl, method: 'POST', ignored: false },
+    { label: 'DELETE write', url: exactUrl, method: 'DELETE', ignored: false },
+    { label: 'cross-origin GET', url: 'http://127.0.0.1:53067/__spaceface_player_store', method: 'GET', ignored: false },
+    { label: 'canonical GET', url: exactUrl, method: 'GET', ignored: true },
+  ];
+  for (const row of cases) {
+    const context = new EventEmitter();
+    const cdp = new EventEmitter();
+    cdp.send = async () => {};
+    cdp.detach = () => {};
+    context.newCDPSession = async () => cdp;
+    const electronApp = new EventEmitter();
+    electronApp.context = () => context;
+    const page = new FakePage(CANONICAL);
+    page.context = () => context;
+    const tracker = createStrictElectronApplicationIssueTracker(electronApp, { playerStoreMounted: false });
+    await tracker.bindNetworkProvenance(page);
+    context.emit('response', {
+      status: () => 404,
+      url: () => row.url,
+      request: row.method ? () => ({ method: () => row.method }) : () => ({}),
+    });
+    assert.equal(tracker.errors().length, row.ignored ? 0 : 1, `${row.label} classification`);
+    assert.equal(tracker.ignored().some((issue) => issue.absentPlayerStore === true), row.ignored,
+      `${row.label} diagnostic retention`);
+    tracker.stop();
+  }
 }
 
 async function testElectronUrlLifecycle() {
@@ -1525,9 +1687,11 @@ function delay(ms) {
 await testStrictPageIssueTracker();
 await testApplicationWideIssueTrackerAndBackfill();
 await testOptInExpectedSoakNetworkPolicy();
-await testStorelessResponseMethodFallback();
+await testStorelessResponseMethodFallbackRemainsStrict();
 await testStorelessCdpRequestIdProvenance();
-await testStorelessCdpUnmatchedPlaywrightFailsClosed();
+await testStorelessUnmatchedObservedGet();
+await testStorelessCdpAmbiguityPreservesObservedGet();
+await testUnmatchedAbsentStoreOnlyIgnoresObservedCanonicalGet();
 await testElectronUrlLifecycle();
 await testProcessMonitorAndCrashRejection();
 await testOwnedElectronCleanup();

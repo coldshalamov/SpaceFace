@@ -24,6 +24,7 @@ import {
 } from '../src/render/imageSourceDedupe.js';
 import {
   createPackageDetachManifest,
+  assertPackageGeometryRefillReady,
   detachPackageGeometry,
   detachPackageTexture,
   detachedGeometryUploadPending,
@@ -33,6 +34,7 @@ import {
   noteGeometryGpuResident,
   noteOrientationDetachedHold,
   packageDetachDiagnostics,
+  packageGeometryUploadDiagnostics,
   presentedDetachRehydrateInFlight,
   rehydrateDetachedGeometries,
   resetPackageDetachManifestsForTests,
@@ -113,6 +115,23 @@ function decodedFixture() {
   hull.userData = semanticLocator('Hull', ['fixture.body']);
   root.add(hull);
   return { scene: root, geometry, material, sharedBuffer };
+}
+
+function decodedPairFixture({ secondColorLength = 9 } = {}) {
+  const first = decodedFixture();
+  const second = decodedFixture();
+  second.geometry.setAttribute('color', new THREE.Float32BufferAttribute(
+    new Float32Array(secondColorLength), 3,
+  ));
+  second.scene.children[0].name = 'SecondHull';
+  second.scene.children[0].userData = {};
+  first.scene.add(second.scene.children[0]);
+  return {
+    scene: first.scene,
+    geometry: first.geometry,
+    secondGeometry: second.geometry,
+    material: first.material,
+  };
 }
 
 function stubRenderer() {
@@ -311,8 +330,40 @@ test('rehydrate refills released arrays from an ordinal-paired donor and bumps v
   assert.equal(decodes, 2, 'one immutable re-decode refilled the manifest');
   assert.equal(decoded.sharedBuffer.array.byteLength, 3 * 8 * 4, 'interleaved array refilled');
   assert.equal(isPackageGeometryDetached(geometry), false);
+  assert.deepEqual(assertPackageGeometryRefillReady([geometry], receipt), {
+    ready: true,
+    restoredGeometries: 1,
+    unrelatedEvidence: { geometryMismatches: [], errors: [] },
+  }, 'an exact shape donor clears the admission gate normally');
   assert.ok(decoded.sharedBuffer.version > bufferVersionAfterDetach,
     'refilled buffers version-bump so live records re-upload real bytes');
+  loader.dispose();
+});
+
+test('an unrelated LOD donor mismatch remains evidence without blocking the requested geometry', async () => {
+  const original = decodedPairFixture();
+  const changedDonor = decodedPairFixture({ secondColorLength: 12 });
+  let decodes = 0;
+  const loader = freshLoader(async () => (++decodes === 1 ? original : changedDonor));
+  await loader.load(packageMetadata('fixture.unrelated-lod-mismatch'), { baseUrl: 'https://fixtures.test/' });
+  const requested = original.geometry;
+  const unrelated = original.secondGeometry;
+  const renderer = stubRenderer();
+
+  assert.equal(detachPackageGeometry(requested, renderer), true);
+  assert.equal(detachPackageGeometry(unrelated, renderer), true);
+  const receipt = await rehydrateDetachedGeometries([requested], { yieldToMain: async () => {} });
+  assert.equal(receipt.geometries, 1, 'the requested source geometry refilled');
+  assert.equal(isPackageGeometryDetached(requested), false);
+  assert.equal(isPackageGeometryDetached(unrelated), true, 'the unrelated incompatible LOD stays detached');
+  assert.equal(receipt.geometryMismatches.length, 1);
+  assert.equal(receipt.geometryMismatches[0].geometryOrdinal, unrelated.userData.spacefaceCpuDetach.ordinal);
+
+  const readiness = assertPackageGeometryRefillReady([requested], receipt);
+  assert.equal(readiness.ready, true, 'a mismatch in another LOD does not refuse valid requested buffers');
+  assert.equal(readiness.unrelatedEvidence.geometryMismatches.length, 1,
+    'unrelated package mismatch evidence remains available to diagnostics');
+  assert.equal(readiness.unrelatedEvidence.geometryMismatches[0].assetId, 'fixture.unrelated-lod-mismatch');
   loader.dispose();
 });
 
@@ -340,8 +391,40 @@ test('rehydrate rejects an ordinal donor with a resized non-position attribute',
   assert.equal(receipt.geometryMismatches[0].geometryOrdinal, 0);
   assert.equal(receipt.geometryMismatches[0].expected.bufferShapes.color.length, 9);
   assert.equal(receipt.geometryMismatches[0].actual.bufferShapes.color.length, 12);
+  assert.equal(receipt.geometryMismatches[0].assetId, 'fixture.resized-donor');
   assert.equal(color.array.length, 0, 'the released BufferAttribute identity is not resized under its old GPU record');
   assert.equal(isPackageGeometryDetached(geometry), true, 'the geometry remains draw-gated for a safe retry');
+  assert.throws(() => assertPackageGeometryRefillReady([geometry], receipt), (error) => {
+    assert.equal(error.code, 'SF_PACKAGE_GEOMETRY_REFILL_INCOMPLETE');
+    assert.equal(error.geometryRefill.geometryMismatches[0].geometryOrdinal, 0);
+    assert.equal(error.geometryRefill.geometryMismatches[0].expected.bufferShapes.color.byteLength, 36);
+    assert.equal(error.geometryRefill.geometryMismatches[0].actual.bufferShapes.color.byteLength, 48);
+    assert.equal(error.geometryRefill.unresolved[0].contentHash,
+      geometry.userData.spacefaceCpuDetach.contentHash);
+    assert.equal(error.geometryRefill.unresolved[0].current.bufferShapes.color.length, 0);
+    return true;
+  }, 'exact-target admission must not render or admit a geometry whose CPU refill did not complete');
+  loader.dispose();
+});
+
+test('exact-target geometry diagnostics name a live resized attribute even after detach clears', async () => {
+  const decoded = decodedFixture();
+  decoded.geometry.setAttribute('color', new THREE.Float32BufferAttribute(new Float32Array(9), 3));
+  const loader = freshLoader(async () => decoded);
+  await loader.load(packageMetadata('fixture.live-buffer-diagnostic'), { baseUrl: 'https://fixtures.test/' });
+  const color = decoded.geometry.getAttribute('color');
+  color.array = new Float32Array(12);
+  color.needsUpdate = true;
+
+  assert.equal(isPackageGeometryDetached(decoded.geometry), false,
+    'the captured resize is outside the CPU-detached state');
+  const diagnostic = packageGeometryUploadDiagnostics([decoded.geometry]);
+  assert.equal(diagnostic.total, 1);
+  assert.equal(diagnostic.rows[0].manifestShapeMatches, false);
+  assert.equal(diagnostic.rows[0].mark.assetId, 'fixture.live-buffer-diagnostic');
+  assert.equal(diagnostic.rows[0].expected.bufferShapes.color.byteLength, 36);
+  assert.equal(diagnostic.rows[0].current.bufferShapes.color.byteLength, 48);
+  assert.equal(diagnostic.rows[0].currentAttributes.color.version, color.version);
   loader.dispose();
 });
 

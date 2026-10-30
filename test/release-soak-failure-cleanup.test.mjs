@@ -38,7 +38,14 @@ test('error evidence retains exact store request provenance without waiving writ
   const raw = [
     { source: 'response', level: 'error', text: `HTTP 404 ${url}`, networkProvenance: provenance },
     { source: 'response', level: 'error', text: `HTTP 404 ${url}`, networkProvenance: {
-      source: 'playwright-unmatched-cdp-response', status: 404, url, method: null,
+      source: 'playwright-unmatched-cdp-response', status: 404, url,
+      method: 'GET', methodSource: 'playwright-response-request',
+      requestId: '39096.25', requestIdSource: 'unique-pending-cdp-request-url-method',
+      cdpRequestCandidateCount: 1,
+      cdpRequestCandidates: [{
+        requestId: '39096.25', method: 'GET', resourceType: 'Fetch',
+        startedAt: '2026-10-15T10:08:24.100Z', startedPhase: 'electron-bootstrap',
+      }],
     } },
     { source: 'console', level: 'error', text: 'WebGL shader compilation failed' },
   ];
@@ -55,6 +62,14 @@ test('network provenance bounds text and excludes arbitrary request payloads', (
   const evidence = buildErrorEvidence('browser', { issues: [{
     source: 'response', type: 'error', text: 'HTTP 404 optional store', networkProvenance: {
       source: 'cdp-network', requestId: 'r'.repeat(300), url: 'u'.repeat(3000), method: null,
+      cdpRequestCandidates: Array.from({ length: 10 }, (_, index) => ({
+        requestId: `request-${index}`,
+        method: 'GET',
+        resourceType: 'Fetch',
+        startedAt: '2026-10-15T10:08:24.100Z',
+        startedPhase: 'save',
+        payload: 'must not be copied',
+      })),
       status: 404, body: 'must not be copied', request: { arbitrary: true },
     },
   }] });
@@ -64,8 +79,12 @@ test('network provenance bounds text and excludes arbitrary request payloads', (
   assert.equal(copied.method, null, 'an unknown method must remain unknown');
   assert.equal(copied.status, 404);
   assert.deepEqual(copied.truncatedFields, ['requestId', 'url']);
+  assert.equal(copied.cdpRequestCandidates.length, 8);
+  assert.equal(copied.cdpRequestCandidatesTruncated, true);
+  assert.equal(copied.cdpRequestCandidateCount, undefined);
   assert.equal('body' in copied, false);
   assert.equal('request' in copied, false);
+  assert.equal('payload' in copied.cdpRequestCandidates[0], false);
   assert.deepEqual(evidence.httpErrors, ['HTTP 404 optional store']);
 });
 

@@ -182,6 +182,76 @@ Rows are the spec (`build_map.md` §31–§32; read each row's prose before brie
   genuinely skips stick drills + power ladder + first-flight card while the rail stays; situation
   lines honor the rail's silence gate (stroke no longer starved). 21/21 + rc-458 12/12.
 - **Row 454 GOLD-M1** — the integration pass: play the first hour on the real route, fix until every first-hour system is gold or names its missing file.
+  **Run 1 (stranger s4242 1h, `.devshots/actual-game/stranger-seed4242-1h.json`):** clean sim
+  (216k ticks, no death/freeze/wrap) and the rail engaged — attach +1 s, five powerSituation
+  lessons, momentumKill `throw` +513 s, wantedBeat `reportDenied` +518 s (the designed
+  no-wall path), 45 tutorial lines, 13 milestones, 8 verbs, 4 pursuits resolved, 3 kills,
+  heat peak 0.1425. **But docks/sales/missions = 0:** the rescue `grab` beat never
+  completed, and the gate chain (grab gates seam; the missing-three rail — never started,
+  `firsthour:started` absent — also holds seam via the `|| 'seam'` fallback) kept
+  seam→dock→choice unreachable. Mechanism: scripted-pilot choreography under emergent
+  physics (191 broken lines, 623 latch denials). **Pilot recovery `4f1816bb7d3c`:** the
+  extracted twin's evolved mechanics (drift-reel winch, orbit-side sweep, press-onto-ring
+  grab, direct-away burns) ported into the harness copy — rc-458 lands momentumKill at
+  135 s (was 513 s). Run 2 launched on the ported pilot; verdict follows its ledger.
+  **Run 2/3 stall diagnosed + fixed `ab676eaa96d9`:** the run reached beat 6 (`focus`, "Hold
+  course. Let the raider cross your bow.") and parked ~1 000 sim-s. Live probe evidence: the
+  flyby census armed leases repeatedly, but on *other* entities (a surviving hostile wing and
+  traffic ships won `beatsBest` on the `direct` tiebreak) — `p.targetId === _trainerId` almost
+  never matched, and a missed/spent authored pass never restaged (respawn only fires on a
+  *lost* actor). Two production defects + one pilot defect, all fixed: (a) `_resolveProximityDone`
+  now restages the authored pass once it stops closing or slows below arming speed — retry,
+  never a wall, same contract as the seam rock; (b) a flagged training target outranks
+  `direct` in `beatsBest`, so a stray hostile in the pocket can no longer starve the staged
+  lesson (flagged trainers exist only during onboarding — normal targeting unchanged);
+  (c) the pilot now holds course with a cold stick instead of burning at the trainer on boost
+  through the crossing window the census refuses. In-process replay (`createAuthoritativeRuntime`
+  + production profile) reaches focus → trainer lease `match=true` → beat done → burst at
+  ~265 s. Focused tests pin both contracts (11/11 flight-drill + flyby-focus green). Run 4
+  launched with a `flybyFocus:start` target-vs-trainer tap for the authoritative verdict.
+  **Run 4 named the third wall, fixed `0b2e6d40a187`:** the pilot reached focus towing the
+  claimed salvage — the authored "take it anyway" path delivers a tethered player to beat 6 —
+  and every census returned early on `player.tether.active` (zero flyby events for the rest of
+  the run). While a line is out, acquisition isn't running, so a lease's latch bias is inert:
+  only the flagged trainer may now lease while tethered; refused hostiles stay refused.
+  **Run 5 evidence:** `flybyFocus:start` on the trainer `match=true` at t=308 while
+  tethered — beat done, rail advanced to `burst`. The hour continues: burst → disengage →
+  seam → dock → choice, with the rescue `shove` stage live alongside.
+  **Run 5 named the rescue-wall defect (fixed, commit follows probe):** the run parked at
+  `resc=shove` ("Put the scout into the asteroid") for ~800 sim-s. Live cast dump: the scout
+  is a *fleeing* drone and the escape predicate measured only scout→pilot distance — a chased
+  scout stays in the pilot's envelope while the pair drifts kilometres off the wall's line:
+  no escape fires, no fail, and the push can never arrive. Earlier in the same window the
+  fail/restage pair could also churn (~3 `scout escaped` fails/s) whenever the standing wall
+  itself sat beyond the pilot's reach, because a respawned scout re-anchors on the far wall's
+  line and lands out of reach again — the same loop the missing-piece comment already warns
+  about. Production fix: all three rescue drift branches (swing rock >1800, shove scout
+  escape, grab pod >3000) now restage the whole tableau near the pilot when the *standing
+  anchor* is also out of reach (quiet — a carried-away pocket is not a charged miss), and the
+  shove escape check anchors to the wall as well as the pilot so a runaway chase is a spent
+  tableau, not an invisible wall. Pilot fix: the shove branch now uses the taught verb —
+  latch the scout (it cannot run tethered), winch tight, burn at the wall, cut when it flies
+  true — instead of tail-chasing a fleeing drone and firing. Regression test pins the
+  whole-tableau restage, the charged single-fail retry on a near wall, and the wall-anchor
+  runaway case (7/7 flight-drill green). Commit `f1060d81d347`.
+  **Probe verdict (in-process, seed 4242):** intercept latch `target=612→614:drone/scout` at
+  t=278-280 (first press caught an ambient drone, retried onto the marked body), tethered
+  tow dragged the scout through the wall zone — `shove:complete fails=0` at t=286, ~8 s
+  after latch. Rail advanced `disengage` → `resc=grab` at t=296 → pod latch t=316. Named
+  the next defect on the same probe: the beacon run boosted onto the ring at ~190 wu/s —
+  the turn circle misses the 60-radius ring by 40+ every pass (dBeacon oscillates 75→105,
+  never <60). Pilot fix `ac61e3597d69`: bleed the final leg until the aim line actually
+  crosses the ring. Run 6 launched on the full fix set.
+  **Beacon delivery saga (runs 7–15, seed 4242):** four pursuit/guidance schemes parked in
+  stable circles off the ring (dB 111–420). Root cause named: nose-at-beacon is radial
+  thrust — centripetal force only — and cannot remove tangential velocity; plus the
+  mass-1 dynamic beacon got punted by field impulse/ambient traffic and coasted off at
+  ~30–150 wu/s (probe beacon:live@74→919 receding). Two fixes: the beacon is now a fixed
+  body (`physicsBody.dynamic:false`, gate-pinned in rescue-opening test — a real player
+  watches the finish line hold still too), and the pilot brakes a circling approach
+  dead via closing-rate detection then *ratchets*: park, let the winched pod glide
+  ~line-length forward of the hull, bite closer, park again — the pod only needs to
+  graze the 60-ring with the line held. Commits `0e883dec`→`35332cd5`, `647d720a`.
 - **Audit-fix packets landed 2026-10-29/30:** encounter bookkeeping `37e1ebe0d24`, heat victim
   `d79feb41121`, mining/careers `bfa9ec3b6a9`, save restore `7b4cced23e8`, unique-wreck persistence
   `bd978111178`, special500 registered in production `6ca62459ba5`, c47a truth `97283ecd9c1`,
@@ -281,9 +351,15 @@ Every verb has a voice, the mix has a hierarchy, silence exists (`FINISH_LANES.m
 `src/audio/**`). Audit first: list verbs with no sound or a placeholder, then fix in batches.
 Audit state 2026-10-30: the cue contract suite is green — `check:audio-identity` (91 semantic
 cues resolve; `sfx_accel_transition` was uncovered, listed `1b500b762e7`), `check:first-hour-audio`
-(audible/blocked trace green), asteroid routing, beam-verb truth table, mining signatures. Still
-owed under lane 8: live audition of mix hierarchy / room tone / silence placement — a runtime
-listen, not a check.
+(audible/blocked trace green), asteroid routing, beam-verb truth table, mining signatures.
+**Live audition done `scripts/capture-wave-s-audition.mjs`** (real headed boot, analyser taps on
+the live buses, webm artifact + JSON in `.devshots/audio/`): master floor 0.0002 RMS at idle
+drift pre- and post-dock (silence exists), 24 distinct non-click recipes over the walk
+(combat verbs each answer with their own voice), the music bus dipped 0.00154→0.0005 on the
+duck:true danger cue and recovered (hierarchy ducks predictably), `stationHum` loop lived
+while docked and released on undock (the place answers). Residual honesty: audible distinctness
+is judged from the artifact, not a metric; ambient peak under the hum is quiet (0.0003) — the
+loop's structural presence is the measured leg.
 
 ### H1 — The full razor (last, when the other lanes no longer cite old docs)
 README §7 end state: `AGENTS.md` ≤ 150 lines, `build_map.md` ≤ 600 lines, one perf document, one

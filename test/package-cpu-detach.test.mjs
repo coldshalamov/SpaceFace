@@ -15,6 +15,7 @@ import { createAssetResidencyRegistry } from '../src/render/assetResidency.js';
 import { createRenderPackageLoader } from '../src/render/renderPackageLoader.js';
 import {
   createPackageDetachManifest,
+  assertPackageTextureRefillReady,
   detachPackageTexture,
   detachedTextureUploadPending,
   dropPackageDetachManifest,
@@ -285,6 +286,107 @@ test('rehydrate re-decodes the immutable package and refills payloads in place',
   });
   assert.equal(afterRestore.uploads.length, 3);
   assert.equal(isPackageTextureDetached(first.compressed), true, 'detached again after re-upload');
+  loader.dispose();
+});
+
+test('rehydrate rejects a zero-byte texture donor without attaching it', async () => {
+  const original = decodedFixture();
+  const emptyDonor = decodedFixture();
+  emptyDonor.regular.source.data.data = new Uint8Array(0);
+  let decodeCount = 0;
+  const loader = freshLoader(async () => {
+    decodeCount += 1;
+    if (decodeCount === 1) return original;
+    return emptyDonor;
+  });
+  const loaded = await loader.load(packageMetadata('fixture.zero-byte-texture-donor'), { baseUrl: 'https://fixtures.test/' });
+  const subject = loaded.createInstance().root;
+  await prepareStartupGpuResidency(stubRenderer(), subject, {
+    includeGeometry: false,
+    yieldToMain: async () => {},
+  });
+  assert.equal(isPackageTextureDetached(original.regular), true);
+  assert.equal(original.regular.source.data, null);
+
+  const receipt = await rehydrateDetachedPackages({ yieldToMain: async () => {} });
+  assert.equal(decodeCount, 2, 'the immutable donor is decoded once per refill attempt');
+  assert.equal(receipt.textureMismatches.length, 1);
+  assert.equal(receipt.textureMismatches[0].reason, 'ordinal-donor-cpu-payload-missing');
+  assert.equal(receipt.textureMismatches[0].actual.payload.sourcePixelsByteLength, 0);
+  assert.equal(original.regular.source.data, null, 'zero-byte donor never overwrites the live texture');
+  assert.equal(isPackageTextureDetached(original.regular), true);
+  loader.dispose();
+});
+
+test('rehydrate rejects a zero-byte raw ArrayBuffer texture donor', async () => {
+  const original = decodedFixture();
+  const emptyDonor = decodedFixture();
+  emptyDonor.regular.source.data.data = new ArrayBuffer(0);
+  let decodeCount = 0;
+  const loader = freshLoader(async () => (++decodeCount === 1 ? original : emptyDonor));
+  const assetId = 'fixture.zero-byte-array-buffer-texture-donor';
+  const loaded = await loader.load(packageMetadata(assetId), { baseUrl: 'https://fixtures.test/' });
+  const subject = loaded.createInstance().root;
+  await prepareStartupGpuResidency(stubRenderer(), subject, {
+    includeGeometry: false,
+    yieldToMain: async () => {},
+  });
+
+  const receipt = await rehydrateDetachedPackages({ yieldToMain: async () => {} });
+  assert.equal(receipt.textureMismatches.length, 1);
+  assert.equal(receipt.textureMismatches[0].assetId, assetId);
+  assert.equal(receipt.textureMismatches[0].reason, 'ordinal-donor-cpu-payload-missing');
+  assert.equal(receipt.textureMismatches[0].actual.payload.sourcePixelsType, 'ArrayBuffer');
+  assert.equal(receipt.textureMismatches[0].actual.payload.sourcePixelsByteLength, 0);
+  assert.equal(original.regular.source.data, null, 'empty raw buffer cannot replace the detached source');
+  assert.equal(isPackageTextureDetached(original.regular), true);
+  loader.dispose();
+});
+
+test('rehydrate preserves detached state and asset ordinal evidence when donor data is absent', async () => {
+  const original = decodedFixture();
+  const emptyDonorA = decodedFixture();
+  emptyDonorA.regular.source.data = null;
+  let decodeCount = 0;
+  const loader = freshLoader(async () => {
+    decodeCount += 1;
+    return decodeCount === 1 ? original : emptyDonorA;
+  });
+  const assetId = 'fixture.persistently-empty-texture-donor';
+  const loaded = await loader.load(packageMetadata(assetId), { baseUrl: 'https://fixtures.test/' });
+  const subject = loaded.createInstance().root;
+  await prepareStartupGpuResidency(stubRenderer(), subject, {
+    includeGeometry: false,
+    yieldToMain: async () => {},
+  });
+
+  const receipt = await rehydrateDetachedPackages({ yieldToMain: async () => {} });
+  assert.equal(decodeCount, 2, 'the direct immutable-byte re-decode is not repeated');
+  assert.equal(receipt.textureMismatches.length, 1);
+  assert.deepEqual(
+    {
+      assetId: receipt.textureMismatches[0].assetId,
+      textureOrdinal: receipt.textureMismatches[0].textureOrdinal,
+      reason: receipt.textureMismatches[0].reason,
+      expectedWidth: receipt.textureMismatches[0].expected.width,
+      actualSourceDataPresent: receipt.textureMismatches[0].actual.payload.sourceDataPresent,
+    },
+    {
+      assetId,
+      textureOrdinal: 2,
+      reason: 'ordinal-donor-cpu-payload-missing',
+      expectedWidth: 4,
+      actualSourceDataPresent: false,
+    },
+  );
+  assert.equal(original.regular.source.data, null, 'invalid donors never overwrite the live texture');
+  assert.equal(isPackageTextureDetached(original.regular), true, 'the missing texture remains gated');
+  assert.throws(() => assertPackageTextureRefillReady([original.regular], receipt), (error) => {
+    assert.equal(error.code, 'SF_PACKAGE_TEXTURE_REFILL_INCOMPLETE');
+    assert.equal(error.textureRefill.unresolved[0].assetId, assetId);
+    assert.equal(error.textureRefill.unresolved[0].textureOrdinal, 2);
+    return true;
+  });
   loader.dispose();
 });
 

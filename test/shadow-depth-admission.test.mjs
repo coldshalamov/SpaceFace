@@ -550,6 +550,24 @@ test('disposeAdmissionShadowResources clears references without GL calls when th
   assert.equal(staged.shadow.mapPass, null, 'mapPass reference cleared');
 });
 
+test('context-loss abandonment clears old admission state and the next drive stages fresh resources', () => {
+  const rig = stagedShadowRig();
+  compileShadowDepthPipelines(admissionOptions(rig));
+  const abandoned = rig.stagedLights[0];
+  const abandonedMap = abandoned.shadow.map;
+
+  disposeAdmissionShadowResources(rig.renderer, { disposeGpu: false });
+
+  assert.equal(abandonedMap.disposed, false, 'lost-generation maps are abandoned without dispatching GPU disposal');
+  assert.equal(abandoned.shadow.map, null, 'the dead map is no longer retained by the staged shadow');
+  assert.equal(abandoned.shadow.mapPass, null, 'the dead map pass is no longer retained');
+
+  compileShadowDepthPipelines(admissionOptions(rig));
+  const restored = rig.stagedLights[1];
+  assert.notEqual(restored, abandoned, 'the next admission mints a fresh staged light after abandonment');
+  assert.notEqual(restored.shadow.map, abandonedMap, 'the restored generation receives a new shadow map');
+});
+
 test('shadow depth admission restores renderer flags and live maps when the depth render throws', () => {
   const rig = stagedShadowRig();
   const priorTarget = { name: 'prior-target' };

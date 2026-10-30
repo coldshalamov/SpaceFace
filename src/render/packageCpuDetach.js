@@ -880,6 +880,88 @@ function textureFingerprint(resource) {
   };
 }
 
+function textureRefillPayloadShape(texture) {
+  const sourceData = texture?.source?.data || null;
+  const sourcePixels = sourceData?.data || null;
+  const mips = Array.isArray(texture?.mipmaps) ? texture.mipmaps : [];
+  return {
+    sourceDataPresent: !!sourceData,
+    sourceDataType: sourceData?.constructor?.name || null,
+    sourceWidth: Number(sourceData?.width) || 0,
+    sourceHeight: Number(sourceData?.height) || 0,
+    sourceDataByteLength: Number(sourceData?.byteLength) || 0,
+    sourcePixelsType: sourcePixels?.constructor?.name || null,
+    sourcePixelsByteLength: Number(sourcePixels?.byteLength ?? sourceData?.byteLength) || 0,
+    mipCount: mips.length,
+    mipLevels: mips.slice(0, 8).map((mip) => {
+      const payload = mip && (mip.data ?? mip);
+      return {
+        payloadType: payload?.constructor?.name || null,
+        width: Number(mip?.width) || 0,
+        height: Number(mip?.height) || 0,
+        byteLength: Number(payload?.byteLength) || 0,
+      };
+    }),
+  };
+}
+
+function hasTextureRefillPayload(entry, texture) {
+  if (!texture) return false;
+  const shape = textureRefillPayloadShape(texture);
+  if (entry.hadSourceData && (!shape.sourceDataPresent
+      || shape.sourceWidth <= 0 || shape.sourceHeight <= 0)) return false;
+  const sourceBytes = texture.source?.data?.data ?? texture.source?.data;
+  if (ArrayBuffer.isView(sourceBytes) && sourceBytes.byteLength === 0) return false;
+  if ((sourceBytes instanceof ArrayBuffer
+      || Object.prototype.toString.call(sourceBytes) === '[object ArrayBuffer]')
+      && sourceBytes.byteLength === 0) return false;
+  if ((entry.hadMipmaps || entry.compressed) && shape.mipCount === 0) return false;
+  if (entry.compressed || entry.hadMipmaps) {
+    const mips = Array.isArray(texture.mipmaps) ? texture.mipmaps : [];
+    if (mips.some((mip) => {
+      const payload = mip && (mip.data ?? mip);
+      return !(Number(mip?.width) > 0 && Number(mip?.height) > 0
+        && Number(payload?.byteLength) > 0);
+    })) return false;
+  }
+  return true;
+}
+
+function textureRefillMismatchReason(entry, texture) {
+  const fp = textureFingerprint(texture);
+  if (!fp) return 'ordinal-donor-missing';
+  if (fp.compressed !== entry.compressed || fp.format !== entry.format || fp.name !== entry.name) {
+    return 'ordinal-donor-shape-mismatch';
+  }
+  if (!hasTextureRefillPayload(entry, texture)) return 'ordinal-donor-cpu-payload-missing';
+  if ((entry.width > 0 && fp.width !== entry.width)
+      || (entry.height > 0 && fp.height !== entry.height)) return 'ordinal-donor-shape-mismatch';
+  return null;
+}
+
+function textureRefillMismatch(entry, manifest, texture, reason) {
+  return {
+    manifestId: manifest.manifestId,
+    contentHash: manifest.contentHash,
+    assetId: manifest.assetId,
+    textureOrdinal: entry.ordinal,
+    name: entry.name || null,
+    reason,
+    expected: {
+      compressed: entry.compressed,
+      format: entry.format,
+      width: entry.width,
+      height: entry.height,
+      hadMipmaps: entry.hadMipmaps,
+      hadSourceData: entry.hadSourceData,
+    },
+    actual: {
+      fingerprint: textureFingerprint(texture),
+      payload: textureRefillPayloadShape(texture),
+    },
+  };
+}
+
 /**
  * Mirrors three's setTexture2D upload gate (r184): whether this texture's next bind re-enters
  * uploadTexture — its version moved (needsUpdate) or its properties record was recreated after
@@ -1232,6 +1314,7 @@ async function rehydrateManifest(manifest) {
   let restoredBytes = 0;
   let restoredGeometries = 0;
   const geometryMismatches = [];
+  const textureMismatches = [];
   for (const entry of manifest.geometryEntries) {
     if (!entry.detached) continue;
     const donor = freshGeometries[entry.ordinal];
@@ -1240,6 +1323,8 @@ async function rehydrateManifest(manifest) {
     if (!donor || !sameGeometryFingerprint(entry.fingerprint, geometryFingerprint(donor))) {
       manifest.totals.mismatches += 1;
       geometryMismatches.push({
+        manifestId: manifest.manifestId,
+        contentHash: manifest.contentHash,
         assetId: manifest.assetId,
         geometryOrdinal: entry.ordinal,
         expected: geometryFingerprintEvidence(entry.fingerprint),
@@ -1276,14 +1361,12 @@ async function rehydrateManifest(manifest) {
   for (const entry of manifest.entries) {
     if (!textureEntryReleased(entry)) continue;
     const fresh = freshTextures[entry.ordinal];
-    const fp = textureFingerprint(fresh);
-    if (!fp || fp.compressed !== entry.compressed || fp.format !== entry.format
-        || fp.name !== entry.name
-        || (entry.width > 0 && fp.width > 0 && fp.width !== entry.width)
-        || (entry.height > 0 && fp.height > 0 && fp.height !== entry.height)) {
-      // Identical bytes decode deterministically, so a mismatch means the package changed under
-      // the content hash — leave the entry detached and count it rather than corrupt the texture.
+    const mismatchReason = textureRefillMismatchReason(entry, fresh);
+    if (mismatchReason) {
+      // Never replace a live texture's source/mip chain with a missing or wrong ordinal donor.
+      // Keep the entry detached and retain asset/hash/ordinal evidence for the owning loader.
       manifest.totals.mismatches += 1;
+      textureMismatches.push(textureRefillMismatch(entry, manifest, fresh, mismatchReason));
       continue;
     }
     const texture = entry.texture;
@@ -1326,7 +1409,147 @@ async function rehydrateManifest(manifest) {
     geometries: restoredGeometries,
     bytes: restoredBytes,
     geometryMismatches,
+    textureMismatches,
   };
+}
+
+/** Fail closed when a requested geometry refill did not restore every released source buffer. */
+export function assertPackageGeometryRefillReady(geometries, receipt) {
+  const mismatches = Array.isArray(receipt?.geometryMismatches) ? receipt.geometryMismatches : [];
+  const errors = Array.isArray(receipt?.errors) ? receipt.errors : [];
+  const unresolved = [];
+  for (const geometry of geometries || []) {
+    if (!isPackageGeometryDetached(geometry)) continue;
+    const mark = geometry.userData?.spacefaceCpuDetach;
+    const manifest = mark && manifestForMark(mark);
+    const entry = manifest && manifest.geometryEntries[mark.ordinal];
+    unresolved.push({
+      uuid: geometry.uuid || null,
+      name: geometry.name || null,
+      manifestId: mark.manifestId ?? null,
+      contentHash: mark.contentHash || null,
+      assetId: manifest?.assetId || null,
+      geometryOrdinal: mark.ordinal ?? null,
+      expected: geometryFingerprintEvidence(entry?.fingerprint),
+      current: geometryFingerprintEvidence(geometryFingerprint(geometry)),
+    });
+  }
+  const requestedKeys = new Set((geometries || []).map((geometry) => {
+    const mark = geometry?.userData?.spacefaceCpuDetach;
+    return mark && mark.kind === 'geometry'
+      ? `${mark.manifestId}:${mark.ordinal}` : null;
+  }).filter(Boolean));
+  const requestedAssetIds = new Set(unresolved.map((row) => row.assetId).filter(Boolean));
+  const requestedMismatches = mismatches.filter((row) => requestedKeys.has(`${row.manifestId}:${row.geometryOrdinal}`));
+  const unrelatedMismatches = mismatches.filter((row) => !requestedKeys.has(`${row.manifestId}:${row.geometryOrdinal}`));
+  const requestedErrors = errors.filter((row) => requestedAssetIds.has(row.assetId));
+  const unrelatedErrors = errors.filter((row) => !requestedAssetIds.has(row.assetId));
+  if (unresolved.length === 0) {
+    return {
+      ready: true,
+      restoredGeometries: receipt?.geometries || 0,
+      unrelatedEvidence: {
+        geometryMismatches: unrelatedMismatches,
+        errors: unrelatedErrors,
+      },
+    };
+  }
+  const evidence = {
+    errors: requestedErrors,
+    geometryMismatches: requestedMismatches,
+    unresolved,
+    unrelatedEvidence: {
+      geometryMismatches: unrelatedMismatches,
+      errors: unrelatedErrors,
+    },
+  };
+  const error = new Error(`Package geometry CPU refill incomplete: ${JSON.stringify(evidence)}`);
+  error.name = 'PackageGeometryRefillError';
+  error.code = 'SF_PACKAGE_GEOMETRY_REFILL_INCOMPLETE';
+  error.geometryRefill = evidence;
+  throw error;
+}
+
+/** Fail context restore closed while a required scene texture still has no refilled CPU payload. */
+export function assertPackageTextureRefillReady(textures, receipt) {
+  const mismatches = Array.isArray(receipt?.textureMismatches) ? receipt.textureMismatches : [];
+  const errors = Array.isArray(receipt?.errors) ? receipt.errors : [];
+  const unresolved = [];
+  for (const texture of textures || []) {
+    if (!isPackageTextureDetached(texture)) continue;
+    const mark = texture.userData?.spacefaceCpuDetach || null;
+    const manifest = mark && manifestForMark(mark);
+    unresolved.push({
+      uuid: texture.uuid || null,
+      name: texture.name || null,
+      manifestId: mark?.manifestId ?? null,
+      contentHash: mark?.contentHash || null,
+      textureOrdinal: Number.isInteger(mark?.ordinal) ? mark.ordinal : null,
+      assetId: manifest?.assetId || null,
+      current: textureRefillPayloadShape(texture),
+    });
+  }
+  if (unresolved.length === 0) {
+    return { ready: true, restoredTextures: receipt?.textures || 0 };
+  }
+  const unresolvedKeys = new Set(unresolved.map((row) => `${row.manifestId}:${row.textureOrdinal}`));
+  const evidence = {
+    errors,
+    textureMismatches: mismatches.filter((row) => unresolvedKeys.has(`${row.manifestId}:${row.textureOrdinal}`)),
+    unresolved,
+  };
+  const error = new Error(`Package texture CPU refill incomplete: ${JSON.stringify(evidence)}`);
+  error.name = 'PackageTextureRefillError';
+  error.code = 'SF_PACKAGE_TEXTURE_REFILL_INCOMPLETE';
+  error.textureRefill = evidence;
+  throw error;
+}
+
+/** Compact current/manifest geometry shapes for an exact-target VBO upload failure. */
+export function packageGeometryUploadDiagnostics(geometries, { limit = 24 } = {}) {
+  const input = Array.from(geometries || []).filter(isGeometryLike);
+  const rows = input.slice(0, Math.max(0, limit | 0)).map((geometry) => {
+    const mark = geometry.userData?.spacefaceCpuDetach || null;
+    const manifest = mark && manifestForMark(mark);
+    const entry = mark?.kind === 'geometry' && manifest
+      ? manifest.geometryEntries[mark.ordinal] : null;
+    const current = geometryFingerprint(geometry);
+    const currentAttributes = {};
+    for (const [name, attribute] of Object.entries(geometry.attributes || {})) {
+      const record = attribute?.isInterleavedBufferAttribute === true ? attribute.data : attribute;
+      const array = record?.array;
+      currentAttributes[name] = {
+        count: Number(attribute?.count) || 0,
+        itemSize: Number(attribute?.itemSize) || 0,
+        version: Number(record?.version) || 0,
+        length: Number(array?.length) || 0,
+        byteLength: Number(array?.byteLength) || 0,
+        arrayType: array?.constructor?.name || null,
+        stride: attribute?.isInterleavedBufferAttribute === true
+          ? Number(record?.stride) || 0 : null,
+        offset: attribute?.isInterleavedBufferAttribute === true
+          ? Number(attribute?.offset) || 0 : null,
+      };
+    }
+    const markMatches = entry ? sameGeometryFingerprint(entry.fingerprint, current) : null;
+    return {
+      uuid: geometry.uuid || null,
+      name: geometry.name || null,
+      detached: isPackageGeometryDetached(geometry),
+      mark: mark ? {
+        manifestId: mark.manifestId ?? null,
+        contentHash: mark.contentHash || null,
+        assetId: manifest?.assetId || null,
+        geometryOrdinal: mark.ordinal ?? null,
+      } : null,
+      manifestShapeMatches: markMatches,
+      expected: entry ? geometryFingerprintEvidence(entry.fingerprint) : null,
+      current: geometryFingerprintEvidence(current),
+      currentAttributes,
+      indexVersion: Number(geometry.index?.version) || 0,
+    };
+  });
+  return { total: input.length, truncated: input.length > rows.length, rows };
 }
 
 function rehydrateManifestOnce(manifest) {
@@ -1367,6 +1590,7 @@ export async function rehydrateDetachedTextures(textures, options = {}) {
     bytes: 0,
     errors: [],
     geometryMismatches: [],
+    textureMismatches: [],
   };
   for (const manifest of wanted) {
     try {
@@ -1376,6 +1600,7 @@ export async function rehydrateDetachedTextures(textures, options = {}) {
       result.geometries += receipt.geometries;
       result.bytes += receipt.bytes;
       result.geometryMismatches.push(...(receipt.geometryMismatches || []));
+      result.textureMismatches.push(...(receipt.textureMismatches || []));
     } catch (error) {
       result.errors.push({ assetId: manifest.assetId, error: String(error && error.message || error) });
     }
@@ -1406,6 +1631,7 @@ export async function rehydrateDetachedGeometries(geometries, options = {}) {
     bytes: 0,
     errors: [],
     geometryMismatches: [],
+    textureMismatches: [],
   };
   for (const manifest of wanted) {
     try {
@@ -1415,6 +1641,7 @@ export async function rehydrateDetachedGeometries(geometries, options = {}) {
       result.geometries += receipt.geometries;
       result.bytes += receipt.bytes;
       result.geometryMismatches.push(...(receipt.geometryMismatches || []));
+      result.textureMismatches.push(...(receipt.textureMismatches || []));
     } catch (error) {
       result.errors.push({ assetId: manifest.assetId, error: String(error && error.message || error) });
     }
@@ -1440,6 +1667,7 @@ export async function rehydrateDetachedPackages(options = {}) {
     bytes: 0,
     errors: [],
     geometryMismatches: [],
+    textureMismatches: [],
   };
   if (detached.length === 0) return result;
   for (const manifest of detached) {
@@ -1451,6 +1679,7 @@ export async function rehydrateDetachedPackages(options = {}) {
       result.geometries += receipt.geometries;
       result.bytes += receipt.bytes;
       result.geometryMismatches.push(...(receipt.geometryMismatches || []));
+      result.textureMismatches.push(...(receipt.textureMismatches || []));
     } catch (error) {
       result.errors.push({ assetId: manifest.assetId, error: String(error && error.message || error) });
     }

@@ -10,11 +10,14 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import * as THREE from 'three';
+import { EnergyBoltPool } from '../src/render/weapons/energyBoltPool.js';
 
 import {
   presentUiStage,
   releaseUiStage,
   releaseUiStagePrewarm,
+  retireUiStageForContextLoss,
+  resumeUiStageAfterContextRestore,
   setUiStagePartLoaderForTest,
   tickUiStagePrewarm,
   uiStageReport,
@@ -271,6 +274,135 @@ test('the prewarm follows the approach: it starts in range, survives a brief dri
   state.mode = 'loading';
   assert.equal(tickUiStagePrewarm({ render, state }), false);
   assert.equal(uiStageReport().prewarm, null, 'leaving flight (new game, sector load) drops the prewarm');
+});
+
+test('context loss abandons a pending berth prewarm without post-restore disposal', async (t) => {
+  t.after(reset);
+  let resolveLoad;
+  const delayedLoad = new Promise(resolve => { resolveLoad = resolve; });
+  const log = [];
+  let disposeCalls = 0;
+  const originalDispose = THREE.BufferGeometry.prototype.dispose;
+  t.mock.method(THREE.BufferGeometry.prototype, 'dispose', function (...args) {
+    disposeCalls++;
+    return originalDispose.apply(this, args);
+  });
+  setUiStagePartLoaderForTest(async (url, options = {}) => {
+    log.push({ op: 'load', url, slot: options.slot || null });
+    return delayedLoad;
+  });
+  const renderer = stubRenderer(log);
+  const render = { renderer };
+  const state = flightState(log);
+
+  assert.equal(tickUiStagePrewarm({ render, state }), true);
+  await settle(() => ops(log, 'load').length > 0, 'prewarm package loads to start');
+  const disposalsBeforeLoss = disposeCalls;
+
+  assert.equal(retireUiStageForContextLoss(renderer), 1, 'the pending prewarm is retired by its owner');
+  assert.equal(uiStageReport().prewarm, null);
+  assert.equal(disposeCalls, disposalsBeforeLoss,
+    'context loss abandons old-context stage geometry instead of dispatching dispose callbacks');
+  assert.equal(tickUiStagePrewarm({ render, state }), false,
+    'the flight frame cannot recreate prewarm work while restore is pending');
+
+  resolveLoad({ primitives: [{
+    name: 'late-prop', geometry: new THREE.BoxGeometry(1, 1, 1),
+    material: new THREE.MeshStandardMaterial(), matrix: new THREE.Matrix4(),
+  }] });
+  await new Promise(resolve => setTimeout(resolve, 0));
+  assert.equal(ops(log, 'load').some(entry => entry.slot === 'hull'), false,
+    'retired pending props do not start the hull leg after their await settles');
+  assert.equal(uiStageReport().prewarm, null);
+
+  resumeUiStageAfterContextRestore(renderer);
+  assert.equal(tickUiStagePrewarm({ render, state }), true,
+    'the owner accepts new prewarm work after complete context recovery');
+});
+
+test('loss of a replaced renderer does not suspend or retire the replacement renderer stage', async (t) => {
+  t.after(reset);
+  let resolveLoad;
+  const delayedLoad = new Promise(resolve => { resolveLoad = resolve; });
+  const log = [];
+  setUiStagePartLoaderForTest(async (url, options = {}) => {
+    log.push({ op: 'load', url, slot: options.slot || null });
+    return options.slot === 'place' ? delayedLoad : null;
+  });
+  const oldRenderer = stubRenderer(log);
+  const newRenderer = stubRenderer(log);
+  const oldRender = { renderer: oldRenderer };
+  const newRender = { renderer: newRenderer };
+  const state = flightState(log);
+
+  assert.equal(tickUiStagePrewarm({ render: oldRender, state }), true);
+  await settle(() => ops(log, 'load').length > 0, 'old renderer prewarm load to start');
+  assert.equal(retireUiStageForContextLoss(oldRenderer), 1);
+
+  assert.equal(tickUiStagePrewarm({ render: newRender, state }), true,
+    'replacement renderer can start its own prewarm while the old context remains lost');
+  await settle(() => ops(log, 'load').filter(entry => entry.slot === 'place').length >= 2,
+    'replacement renderer props load to start');
+
+  assert.equal(retireUiStageForContextLoss(oldRenderer), 0,
+    'a late old-renderer loss cannot retire replacement-owned stage data');
+  assert.ok(uiStageReport().prewarm, 'replacement stage remains cached');
+  assert.equal(tickUiStagePrewarm({ render: oldRender, state }), false,
+    'the old renderer remains suspended until its own successful restore');
+  assert.ok(uiStageReport().prewarm, 'an old-renderer flight frame leaves replacement cache intact');
+
+  resolveLoad({ primitives: [{
+    name: 'replacement-prop', geometry: new THREE.BoxGeometry(1, 1, 1),
+    material: new THREE.MeshStandardMaterial(), matrix: new THREE.Matrix4(),
+  }] });
+  await settle(() => ops(log, 'load').filter(entry => entry.slot === 'hull').length >= 1,
+    'only the active replacement owner advances to its hull load');
+  assert.ok(uiStageReport().prewarm, 'replacement stage survives completion of old async work');
+  resumeUiStageAfterContextRestore(oldRenderer);
+});
+
+test('late live-stage completion releases its CPU owners without old-context dispose events', async (t) => {
+  t.after(reset);
+  let lost = false;
+  const pending = [];
+  const poolDisposals = [];
+  const gpuDisposeEvents = [];
+  const originalPoolDispose = EnergyBoltPool.prototype.dispose;
+  const originalGeometryDispose = THREE.BufferGeometry.prototype.dispose;
+  const originalMaterialDispose = THREE.Material.prototype.dispose;
+  t.mock.method(EnergyBoltPool.prototype, 'dispose', function (options) {
+    poolDisposals.push(options);
+    return originalPoolDispose.call(this, options);
+  });
+  t.mock.method(THREE.BufferGeometry.prototype, 'dispose', function (...args) {
+    if (lost) gpuDisposeEvents.push(new Error('geometry dispose').stack);
+    return originalGeometryDispose.apply(this, args);
+  });
+  t.mock.method(THREE.Material.prototype, 'dispose', function (...args) {
+    if (lost) gpuDisposeEvents.push(new Error('material dispose').stack);
+    return originalMaterialDispose.apply(this, args);
+  });
+  setUiStagePartLoaderForTest(async () => {
+    if (lost) return null;
+    return new Promise(resolve => pending.push(resolve));
+  });
+  const log = [];
+  const renderer = stubRenderer(log);
+  const state = flightState(log);
+  state.mode = 'menu';
+  state.ui.stageRequest = { scene: 'title-attract' };
+
+  assert.equal(presentUiStage({ render: { renderer }, state }), true);
+  await settle(() => pending.length > 0, 'the live title hull decode to begin');
+  lost = true;
+  assert.equal(retireUiStageForContextLoss(renderer), 1);
+  resumeUiStageAfterContextRestore(renderer);
+  for (const resolve of pending.splice(0)) resolve(null);
+
+  await settle(() => poolDisposals.length === 1, 'late title content CPU disposal');
+  assert.equal(poolDisposals[0]?.disposeGpu, false,
+    'late live owners still run their disposer with GPU teardown disabled');
+  assert.equal(gpuDisposeEvents.length, 0, `no old-context resource dispatches dispose after restore boundary: ${gpuDisposeEvents.slice(0, 2).join('\n---\n')}`);
 });
 
 test('the presentation frame warms the prewarm directly ahead of the world draw, in the same task', async (t) => {

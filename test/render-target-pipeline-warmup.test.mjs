@@ -346,6 +346,55 @@ test('graph normal pass replays the captured list, dropping zero-count instanced
   material.dispose();
 });
 
+test('graph AO uses ordinary render passes when either capture-list method is absent', () => {
+  for (const partial of ['neither', 'capture-only', 'replay-only']) {
+    const previousTarget = { name: 'previous' };
+    const previousOverride = new THREE.MeshBasicMaterial();
+    let activeTarget = previousTarget;
+    let failNormal = false;
+    const calls = [];
+    const renderer = {
+      isWebGLRenderer: true,
+      capabilities: { isWebGL2: false },
+      autoClear: false,
+      getRenderTarget: () => activeTarget,
+      setRenderTarget(target) { activeTarget = target; },
+      clear() {},
+      render(scene, camera) {
+        calls.push({ scene, camera, target: activeTarget, override: scene.overrideMaterial });
+        if (activeTarget === graph.normalTarget && failNormal) throw new Error('normal pass failed');
+      },
+    };
+    const forbidden = () => { throw new Error('partial capture API must not be used'); };
+    if (partial === 'capture-only') renderer.renderAndCaptureList = forbidden;
+    if (partial === 'replay-only') renderer.renderCapturedList = forbidden;
+    const graph = new SpaceRenderGraph(renderer, { ao: true, bloom: false });
+    graph.setSize(64, 64);
+    const scene = new THREE.Scene();
+    scene.overrideMaterial = previousOverride;
+    const camera = new THREE.PerspectiveCamera();
+
+    graph.render(scene, camera);
+    const worldPasses = calls.filter((call) => call.scene === scene);
+    assert.equal(worldPasses.length, 2, partial);
+    assert.deepEqual(worldPasses.map((call) => call.target), [graph.sceneTarget, graph.normalTarget]);
+    assert.deepEqual(worldPasses.map((call) => call.override), [previousOverride, graph.normalMaterial]);
+    assert.ok(calls.some((call) => call.target === graph.aoTarget), 'AO is rendered');
+    assert.strictEqual(graph.compositeMaterial.uniforms.tAo.value, graph.aoTarget.texture);
+    assert.strictEqual(scene.overrideMaterial, previousOverride);
+    assert.strictEqual(activeTarget, previousTarget);
+    assert.equal(renderer.autoClear, false);
+
+    failNormal = true;
+    assert.throws(() => graph.render(scene, camera), /normal pass failed/);
+    assert.strictEqual(scene.overrideMaterial, previousOverride, 'normal override is restored on error');
+    assert.strictEqual(activeTarget, previousTarget);
+    assert.equal(renderer.autoClear, false);
+    graph.dispose();
+    previousOverride.dispose();
+  }
+});
+
 test('graph normal admission substitutes exact subject materials for compile and restores them', async () => {
   const normal = { name: 'normal prepass' };
   const original = { name: 'normal-eligible', allowOverride: true };

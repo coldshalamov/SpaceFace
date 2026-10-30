@@ -1,7 +1,6 @@
 // The one reader. Measurements live in modelTruthCensus.json, written only by
 // scripts/model-truth-census.mjs. Sim, camera, weapons, and labels import this module.
 
-import { CENSUS_JSON } from './modelTruthCensus.generated.js';
 import { isMothlightTender, MOTHLIGHT_GUN_SOCKET } from './mothlightBody.js';
 import {
   CAMERA_NEAR_MARGIN_WU,
@@ -33,12 +32,9 @@ import {
   weaponSocketNameForSlot,
 } from './modelTruthMounts.js';
 
-// Boot-eval deferral (wave-142): the ~2.1MB census used to JSON.parse inside the post-gate
-// eval task through the static `with { type: 'json' }` import. The generated module now
-// interns the text only; the document materializes on first real access — a modelTruth*
-// call below or the post-eval warm at the bottom of this module — never inside module eval.
-// deferredObject/deferredArray are mirrored verbatim from src/localization/pipeline.js: this
-// file sits on the sim import graph (src/core imports it), so it cannot import that layer.
+// The full census is a fetched JSON asset instead of a multi-megabyte bundled JS string.
+// Browser boot and the simulation worker call loadModelTruthCensus() before synchronous
+// consumers run. Node consumers initialize from the canonical source JSON during import.
 
 /** A plain object whose real contents are built synchronously on first property access. */
 function deferredObject(build) {
@@ -92,7 +88,11 @@ function deferredArray(build) {
   });
 }
 
-const census = deferredObject(() => JSON.parse(CENSUS_JSON));
+let censusData = null;
+const census = deferredObject(() => {
+  if (!censusData) throw new Error('Model truth census is not loaded; await loadModelTruthCensus() before synchronous consumers run');
+  return censusData;
+});
 const ROWS = deferredArray(() => (Array.isArray(census.rows) ? census.rows : []));
 // A Map cannot take the deferredObject proxy (its methods need the real receiver), so the
 // id index materializes through a memo instead — same laziness contract, internal only.
@@ -100,6 +100,42 @@ let byIdCache = null;
 function byIdMap() {
   if (byIdCache === null) byIdCache = new Map(ROWS.map((row) => [row.id, row]));
   return byIdCache;
+}
+
+let censusLoadPromise = null;
+const isNodeRuntime = typeof process !== 'undefined'
+  && typeof import.meta.url === 'string'
+  && import.meta.url.startsWith('file:')
+  && Boolean(process.versions?.node);
+function installCensusJson(jsonText) {
+  const parsed = JSON.parse(jsonText);
+  if (!parsed || !Array.isArray(parsed.rows)) throw new Error('Model truth census JSON has no rows array');
+  censusData = parsed;
+  // Warm exactly once after parsing, matching the former generated-module first-use behavior.
+  void ROWS.length;
+  return census;
+}
+/** Load the complete measured census once, before any synchronous modelTruth API is used. */
+export function loadModelTruthCensus(assetUrl = null) {
+  if (censusData) return censusLoadPromise || Promise.resolve(census);
+  if (censusLoadPromise) return censusLoadPromise;
+  censusLoadPromise = (async () => {
+    let jsonText;
+    if (isNodeRuntime) {
+      // Keep Node-only IO out of the browser bundle's static import graph.
+      const fsSpecifier = 'node:' + 'fs/promises';
+      const { readFile } = await import(fsSpecifier);
+      jsonText = await readFile(new URL('./modelTruthCensus.json', import.meta.url), 'utf8');
+    } else {
+      const url = assetUrl || new URL('./modelTruthCensus.json', import.meta.url);
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`Model truth census fetch failed (${response.status})`);
+      jsonText = await response.text();
+    }
+    return installCensusJson(jsonText);
+  })();
+  censusLoadPromise.catch(() => { censusLoadPromise = null; });
+  return censusLoadPromise;
 }
 
 // MODEL SUBSTANCE TRUTH TABLE (Rapier SG-02 live collider truth — READ-ONLY data).
@@ -625,12 +661,14 @@ export function modelTruthWeaponSocketName(entity, weapon) {
   return weaponSocketNameForSlot(row, slot);
 }
 
-// Post-eval warm: materialize the deferred census in the post-gate idle window so the first
-// station render or LOS query never pays ~2.1MB of JSON.parse inside a frame. One task —
-// the same setTimeout seam the RU-7 asset warm uses — and a real consumer arriving first
-// still materializes synchronously through the same proxies.
-if (typeof window !== 'undefined') {
-  setTimeout(() => { void ROWS.length; }, 0);
+// Preserve the direct, synchronous API for Node scripts and tests without import-time top-level
+// await (some browser-only bundling tools still parse this module). Node 22.12+ exposes builtins
+// through process.getBuiltinModule, which keeps Node IO out of the browser's static import graph.
+// Browser boot/worker code explicitly awaits the async fetch loader before synchronous consumers.
+if (isNodeRuntime && typeof process.getBuiltinModule === 'function') {
+  const fs = process.getBuiltinModule('node:fs');
+  installCensusJson(fs.readFileSync(new URL('./modelTruthCensus.json', import.meta.url), 'utf8'));
+  censusLoadPromise = Promise.resolve(census);
 }
 
 export { flightPlaneToleranceWu, CAMERA_NEAR_MARGIN_WU, fittedSocketLocal };

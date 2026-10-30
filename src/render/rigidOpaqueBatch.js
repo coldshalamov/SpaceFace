@@ -498,6 +498,13 @@ function disposeBatch(batch, scene) {
   }
 }
 
+function hasLiveBatchDataTextures(batch) {
+  const mesh = batch && batch.mesh;
+  return mesh?.isBatchedMesh === true
+    && mesh._matricesTexture?.image?.data != null
+    && mesh._indirectTexture?.image?.data != null;
+}
+
 function createBatch(scene, source, lane, capacity) {
   const material = copyMaterialForBatch(source.material);
   if (!material) return null;
@@ -1117,6 +1124,11 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
 
   const validateAndRefresh = () => {
     if (!active) return false;
+    for (const batch of active.batches) {
+      if (hasLiveBatchDataTextures(batch)) continue;
+      stats.lastDetail = `disposed-batch@${batch?.mesh?.name || '?'}`;
+      return false;
+    }
     if (!entryTopologyMatches(active.entryTopology)) {
       stats.lastDetail = 'entry-topology';
       return false;
@@ -1488,6 +1500,12 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
   return {
     sync: request,
     request,
+    retireUnusableActiveResources() {
+      if (!active || active.batches.every(hasLiveBatchDataTextures)) return false;
+      stats.lastDetail = 'disposed-batch-resources';
+      disposeActive('disposed-batch-resources');
+      return true;
+    },
     getDiagnostics() {
       return refreshDiagnostics();
     },

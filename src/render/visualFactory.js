@@ -4959,7 +4959,10 @@ function attachPackagedBody(root, relativeFile, entity, readyBodies = null) {
           && typeof record.renderPackage.createInstanceSteps === 'function') {
         const instance = await driveLeg(record.renderPackage.createInstanceSteps({
           name: `RenderPackage_PackagedBody_${record.assetId || record.url}`,
-          residencyOwner: liveEntity,
+          // The package claim follows this render boundary's lifetime. `liveEntity` is a
+          // plain simulation record, so the renderer's detached-boundary sweep cannot release
+          // it when a drone/wreck is replaced during save restore or entity teardown.
+          residencyOwner: root,
           residencyRole: 'live-boundary',
         }));
         if (instance === COMMIT_ORPHANED) {

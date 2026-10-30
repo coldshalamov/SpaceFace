@@ -12,6 +12,7 @@ import { lstat, readFile } from 'node:fs/promises';
 import path from 'node:path';
 
 export const RELEASE_SOAK_SCHEMA = 'spaceface.releaseSoak.v1';
+export const RUNTIME_INPUT_FINGERPRINT_SCHEMA = 'spaceface.releaseSoakRuntimeInputs.v1';
 /** Structured full-quality frame-pacing attribution output (measurement-only; not primary soak acceptance). */
 export const PERFORMANCE_ATTRIBUTION_SCHEMA = 'spaceface.performanceAttribution.v1';
 export const REQUIRED_PRIMARY_CYCLE_MARKS = Object.freeze([
@@ -103,7 +104,20 @@ export function validateReleaseSoakEvidence(envelope, { requireArtifacts = true 
           failures.push('full-runtime source overlay did not prove uncovered worktree and HEAD stability');
         }
       } else if (end.digest !== start.digest || end.id !== start.id) {
-        failures.push('worktree fingerprint changed during capture');
+        const runtimeInputs = envelope.runtimeInputs;
+        const runtimeInputStable = envelope.sourceOverlay == null
+          && envelope.sourceStability?.mode === 'runtime-inputs'
+          && envelope.sourceStability?.pass === true
+          && envelope.sourceStability?.runtimeInputsStable === true
+          && envelope.sourceStability?.runtimeInputsSchema === RUNTIME_INPUT_FINGERPRINT_SCHEMA
+          && runtimeInputs?.start?.schema === RUNTIME_INPUT_FINGERPRINT_SCHEMA
+          && runtimeInputs?.end?.schema === RUNTIME_INPUT_FINGERPRINT_SCHEMA
+          && /^[a-f0-9]{64}$/i.test(String(runtimeInputs.start.digest || ''))
+          && runtimeInputs.start.digest === runtimeInputs.end.digest
+          && Number.isSafeInteger(runtimeInputs.start.fileCount)
+          && runtimeInputs.start.fileCount > 0
+          && runtimeInputs.start.fileCount === runtimeInputs.end.fileCount;
+        if (!runtimeInputStable) failures.push('worktree fingerprint changed during capture');
       }
     }
   }
@@ -419,6 +433,55 @@ export async function strictWorktreeFingerprint(root, { excludePaths = [] } = {}
   }
   const value = digest.digest('hex');
   return { id: `${head.slice(0, 12)}-${value.slice(0, 16)}`, digest: value, head, branch, changedFileCount: effectiveChanged.length };
+}
+
+/**
+ * Fingerprint only files that can supply the running game or its local launch shell.
+ * This intentionally ignores Git metadata and harness/docs churn while remaining
+ * sensitive to tracked, staged, unstaged, deleted, and non-ignored untracked runtime files.
+ */
+export async function strictRuntimeInputFingerprint(root) {
+  const digest = createHash('sha256');
+  const paths = splitNul(await runGitCapture(root, [
+    'ls-files', '--cached', '--others', '--exclude-standard', '-z', '--',
+    'index.html', 'package.json', 'package-lock.json', 'server.js', 'electron',
+    'src', 'styles', 'assets', 'vendor', 'scripts/lib',
+  ])).filter((relative) => !new Set([
+    'scripts/lib/releaseSoakProbe.mjs',
+    'scripts/lib/releaseSoakContracts.mjs',
+    'scripts/lib/alphaLiveBaselineContracts.mjs',
+    'scripts/lib/alphaLiveBaselineElectronContracts.mjs',
+    'scripts/lib/electronTestIsolation.mjs',
+    'scripts/lib/browser-issues.mjs',
+    'scripts/lib/playwrightCspPolling.mjs',
+  ]).has(relative.replaceAll('\\', '/'))).sort();
+  const rootPath = path.resolve(root);
+  for (const relative of paths) {
+    const normalized = normalizeFingerprintPath(relative);
+    if (!normalized) throw new Error(`runtime input path is not normalized: ${relative}`);
+    const absolute = path.resolve(rootPath, normalized);
+    const safe = path.relative(rootPath, absolute);
+    if (safe.startsWith('..') || path.isAbsolute(safe)) throw new Error(`runtime input path escapes root: ${relative}`);
+    let metadata;
+    try { metadata = await lstat(absolute); } catch (error) {
+      if (error.code === 'ENOENT') {
+        digest.update(`MISSING\0${normalized}\0`);
+        continue;
+      }
+      throw error;
+    }
+    if (!metadata.isFile() || metadata.isSymbolicLink()) {
+      throw new Error(`runtime input fingerprint refuses non-regular path: ${normalized}`);
+    }
+    digest.update(`FILE\0${normalized}\0${metadata.size}\0`);
+    await pipeFileIntoHash(absolute, digest);
+    digest.update('\0');
+  }
+  return {
+    schema: RUNTIME_INPUT_FINGERPRINT_SCHEMA,
+    digest: digest.digest('hex'),
+    fileCount: paths.length,
+  };
 }
 
 export function normalizeFingerprintPath(value) {

@@ -27,6 +27,7 @@ import {
   installPostTeardownGlDeleteTrapCapture,
   launchIsolatedElectronApplication,
   probeWebGlContextLoss,
+  reloadElectronWithBufferResizeDiagnostic,
   readGlDeleteTrap,
   readPostTeardownGlDeleteTrapConsoleMessage,
 } from './lib/releaseSoakProbe.mjs';
@@ -48,6 +49,14 @@ function parseArgs(argv = process.argv.slice(2)) {
     else if (value === '--flight-timeout-ms') args.flightTimeoutMs = Number(argv[++index]);
     else if (value === '--task-id') args.taskId = String(argv[++index] || TASK_ID);
     else if (value === '--attribute-delete-errors') args.attributeDeleteErrors = true;
+    else if (value === '--public-save-load-before-context') args.publicSaveLoadBeforeContext = true;
+    else if (value === '--flight-before-save-seconds') {
+      args.flightBeforeSaveSeconds = Number(argv[++index]);
+      if (!Number.isInteger(args.flightBeforeSaveSeconds)
+        || args.flightBeforeSaveSeconds < 0 || args.flightBeforeSaveSeconds > 600) {
+        throw new Error('--flight-before-save-seconds must be an integer in [0, 600]');
+      }
+    }
     else if (value === '--help' || value === '-h') args.help = true;
     else throw new Error(`unknown argument: ${value}`);
   }
@@ -78,10 +87,25 @@ function serializeError(error) {
   };
 }
 
-function compactIssues(issues) {
+function phaseForIssue(at, windows) {
+  const timestamp = Date.parse(at);
+  if (!Number.isFinite(timestamp)) return null;
+  for (let index = (windows || []).length - 1; index >= 0; index -= 1) {
+    const window = windows[index];
+    const start = Date.parse(window.startedAt);
+    const end = window.endedAt ? Date.parse(window.endedAt) : Infinity;
+    if (Number.isFinite(start) && timestamp >= start && timestamp <= end) return window.phase;
+  }
+  return null;
+}
+
+function compactIssues(issues, phaseWindows = []) {
   return (Array.isArray(issues) ? issues : []).slice(-24).map((issue) => ({
     source: issue?.source || null,
     level: issue?.level || null,
+    at: issue?.at || null,
+    phase: issue?.phase || phaseForIssue(issue?.at, phaseWindows),
+    location: issue?.location || null,
     text: String(issue?.text || '').slice(0, 500),
   }));
 }
@@ -132,6 +156,7 @@ function compactPageState(state) {
     tick: Number.isFinite(Number(state.tick)) ? Number(state.tick) : null,
     simTime: Number.isFinite(Number(state.simTime)) ? Number(state.simTime) : null,
     timeScale: Number.isFinite(Number(state.timeScale)) ? Number(state.timeScale) : null,
+    paused: state.paused === true,
     docked: state.ui?.docked === true,
     screenStack: Array.isArray(state.ui?.screenStack) ? state.ui.screenStack.slice(0, 12) : [],
     player: state.player ? {
@@ -145,10 +170,15 @@ function compactPageState(state) {
     authoredReady: state.authoredReady === true,
     opening: state.opening ? {
       firstPictureReady: state.opening.firstPictureReady === true,
+      firstPlayableFrameAt: Number.isFinite(state.opening.firstPlayableFrameAt)
+        ? Number(state.opening.firstPlayableFrameAt) : null,
+      flightVeilHoldsSim: state.opening.flightVeilHoldsSim === true,
       firstPicturePhase: state.opening.firstPicturePhase || null,
       currentSectorFailure: state.opening.currentSectorFailure || null,
       gpuResidencyOwnerInactive: state.opening.gpuResidencyOwnerInactive || null,
     } : null,
+    bufferResizeDiagnostic: state.bufferResizeDiagnostic || null,
+    timeEffectsRequests: state.timeEffectsRequests || null,
     contextRecovery: state.contextRecovery ? {
       losses: Number(state.contextRecovery.losses) || 0,
       restores: Number(state.contextRecovery.restores) || 0,
@@ -189,6 +219,7 @@ async function readPageState(page) {
       tick: Number(state?.tick || 0),
       simTime: Number(state?.simTime || 0),
       timeScale: Number(state?.timeScale ?? 0),
+      paused: state?.paused === true,
       ui: {
         docked: state?.ui?.docked === true,
         screenStack: Array.isArray(state?.ui?.screenStack) ? state.ui.screenStack.slice(0, 12) : [],
@@ -201,6 +232,9 @@ async function readPageState(page) {
       authoredReady,
       opening: state?.render ? {
         firstPictureReady: state.render.openingFirstPictureReady === true,
+        firstPlayableFrameAt: Number.isFinite(state.render.firstPlayableFrameAt)
+          ? Number(state.render.firstPlayableFrameAt) : null,
+        flightVeilHoldsSim: state.render.flightVeilHoldsSim === true,
         firstPicturePhase: state.render.openingFirstPicturePhase ? {
           stage: state.render.openingFirstPicturePhase.stage || null,
           outcome: state.render.openingFirstPicturePhase.outcome || null,
@@ -213,6 +247,8 @@ async function readPageState(page) {
           owner: state.render.lastGpuResidencyOwnerInactive.owner || null,
         } : null,
       } : null,
+      bufferResizeDiagnostic: state.render?.renderer?.__sfBufferResizeFailure || null,
+      bufferResizeDiagnosticPerformanceEligible: state.render?.bufferResizeDiagnostic?.performanceEligible ?? null,
       contextRecovery: recovery ? {
         losses: Number(recovery.losses || 0),
         restores: Number(recovery.restores || 0),
@@ -231,8 +267,135 @@ async function readPageState(page) {
         simulationFailure: loop.simulationFailure || null,
       } : null,
       failurePresenterText: String(overlay?.innerText || overlay?.textContent || ''),
+      timeEffectsRequests: (() => {
+        try {
+          return Object.fromEntries(Object.entries(sf?.timeEffects?.describeRequests?.() || {}).slice(0, 16)
+            .map(([source, request]) => [String(source).slice(0, 100), {
+              scale: Number.isFinite(request?.scale) ? request.scale : null,
+            }]));
+        } catch (_) { return null; }
+      })(),
     };
   }).then(compactPageState);
+}
+
+export function releasedPlayableFlightInPage({ minimumTick = null, minimumSimTime = null } = {}) {
+  const sf = window.SF;
+  const state = sf?.state;
+  const render = state?.render;
+  if (!state || !render) return false;
+  let readiness = null;
+  let requests = null;
+  try { readiness = typeof sf.authoredVisualReadiness === 'function' ? sf.authoredVisualReadiness() : null; } catch (_) {}
+  try { requests = typeof sf.timeEffects?.describeRequests === 'function' ? sf.timeEffects.describeRequests() : null; } catch (_) {}
+  if (!readiness?.ready || !requests) return false;
+  const pauseRequested = Object.values(requests).some((request) => Number(request?.scale) === 0);
+  const tick = Number(state.tick);
+  const simTime = Number(state.simTime);
+  return state.mode === 'flight'
+    && state.ui?.docked !== true
+    && Array.isArray(state.ui?.screenStack) && state.ui.screenStack.length === 0
+    && state.paused !== true
+    && Number.isFinite(state.timeScale) && state.timeScale > 0
+    && !pauseRequested
+    && document.visibilityState === 'visible'
+    && Number.isFinite(render.firstPlayableFrameAt)
+    && render.flightVeilHoldsSim !== true
+    && Number.isFinite(tick) && Number.isFinite(simTime)
+    && (!Number.isFinite(minimumTick) || tick >= minimumTick)
+    && (!Number.isFinite(minimumSimTime) || simTime >= minimumSimTime);
+}
+
+async function waitForReleasedPlayableFlight(page, { deadline, minimumTick = null, minimumSimTime = null } = {}) {
+  const timeout = Math.max(1, deadline - Date.now());
+  await page.waitForFunction(releasedPlayableFlightInPage, { minimumTick, minimumSimTime }, { timeout });
+  return readPageState(page);
+}
+
+async function runPublicSaveLoadBeforeContext(page, {
+  saveTimeoutMs = 30_000,
+  loadTimeoutMs = 120_000,
+  flightTimeoutMs = 240_000,
+  flightBeforeSaveSeconds = 0,
+} = {}) {
+  const flightDeadline = Date.now() + flightTimeoutMs;
+  const startupFlight = await readPageState(page);
+  const releasedBeforeSave = await waitForReleasedPlayableFlight(page, {
+    deadline: flightDeadline,
+    minimumTick: (startupFlight?.tick ?? 0) + 1,
+    minimumSimTime: (startupFlight?.simTime ?? 0) + (1 / 60),
+  });
+  let matureBeforeSave = releasedBeforeSave;
+  if (flightBeforeSaveSeconds > 0) {
+    const targetSimTime = releasedBeforeSave.simTime + flightBeforeSaveSeconds;
+    matureBeforeSave = await waitForReleasedPlayableFlight(page, {
+      deadline: flightDeadline,
+      minimumTick: releasedBeforeSave.tick + 1,
+      minimumSimTime: targetSimTime,
+    });
+  }
+  await page.evaluate(() => {
+    if (window.__SF_CONTEXT_SAVE_LOAD_TRIGGER__) return;
+    const events = { saves: 0, loads: 0, errors: [] };
+    window.__SF_CONTEXT_SAVE_LOAD_TRIGGER__ = events;
+    const bus = window.SF?.bus;
+    if (!bus || typeof bus.on !== 'function') {
+      events.errors.push('SF event bus unavailable');
+      return;
+    }
+    bus.on('save:completed', (payload = {}) => {
+      if (payload.autosave === true) return;
+      events.saves++;
+      events.savedSlot = payload.slot || null;
+    });
+    bus.on('save:loaded', (payload = {}) => {
+      events.loads++;
+      events.loadedSlot = payload.slot || null;
+      events.loadedTick = Number(window.SF?.state?.tick) || 0;
+      events.loadedSimTime = Number(window.SF?.state?.simTime) || 0;
+    });
+    bus.on('save:error', (payload = {}) => {
+      if (events.errors.length < 8) events.errors.push(String(payload.reason || payload.failure || 'save-error').slice(0, 180));
+    });
+  });
+  const before = await readPageState(page);
+  const saveCount = await page.evaluate(() => Number(window.__SF_CONTEXT_SAVE_LOAD_TRIGGER__?.saves) || 0);
+  await page.keyboard.press('F5');
+  await page.waitForFunction((baseline) => {
+    const events = window.__SF_CONTEXT_SAVE_LOAD_TRIGGER__;
+    return !!events && events.saves > baseline;
+  }, saveCount, { timeout: saveTimeoutMs });
+  const loadCount = await page.evaluate(() => Number(window.__SF_CONTEXT_SAVE_LOAD_TRIGGER__?.loads) || 0);
+  const loadDeadline = Date.now() + loadTimeoutMs;
+  await page.keyboard.press('F9');
+  await page.waitForFunction((baseline) => {
+    const events = window.__SF_CONTEXT_SAVE_LOAD_TRIGGER__;
+    return !!events && events.loads > baseline;
+  }, loadCount, { timeout: Math.max(1, loadDeadline - Date.now()) });
+  const loaded = await page.evaluate(() => ({
+    tick: Number(window.__SF_CONTEXT_SAVE_LOAD_TRIGGER__?.loadedTick) || 0,
+    simTime: Number(window.__SF_CONTEXT_SAVE_LOAD_TRIGGER__?.loadedSimTime) || 0,
+  }));
+  const releasedAfterLoad = await waitForReleasedPlayableFlight(page, {
+    deadline: loadDeadline,
+    minimumTick: loaded.tick + 2,
+    minimumSimTime: loaded.simTime + (2 / 60),
+  });
+  const after = releasedAfterLoad;
+  if (after?.mode !== 'flight' || after?.authoredReady !== true || after?.docked === true) {
+    throw new Error(`public F5/F9 trigger did not leave authored active flight: ${JSON.stringify(after)}`);
+  }
+  const events = await page.evaluate(() => ({
+    saves: Number(window.__SF_CONTEXT_SAVE_LOAD_TRIGGER__?.saves) || 0,
+    loads: Number(window.__SF_CONTEXT_SAVE_LOAD_TRIGGER__?.loads) || 0,
+    savedSlot: window.__SF_CONTEXT_SAVE_LOAD_TRIGGER__?.savedSlot || null,
+    loadedSlot: window.__SF_CONTEXT_SAVE_LOAD_TRIGGER__?.loadedSlot || null,
+    loadedTick: Number(window.__SF_CONTEXT_SAVE_LOAD_TRIGGER__?.loadedTick) || 0,
+    loadedSimTime: Number(window.__SF_CONTEXT_SAVE_LOAD_TRIGGER__?.loadedSimTime) || 0,
+    errors: Array.isArray(window.__SF_CONTEXT_SAVE_LOAD_TRIGGER__?.errors)
+      ? window.__SF_CONTEXT_SAVE_LOAD_TRIGGER__.errors.slice(0, 8) : [],
+  }));
+  return { flightBeforeSaveSeconds, releasedBeforeSave, matureBeforeSave, before, after, events };
 }
 
 async function writeJsonAtomic(filePath, value) {
@@ -270,6 +433,7 @@ export function buildContextRecoveryReceipt({
   postRecoveryFlightStable = false,
   contextLoss = null,
   liveGlDeleteTrap = null,
+  liveGlDeleteTrapCapture = null,
   attributeDeleteErrors = false,
   postTeardown = null,
   postTeardownInstall = null,
@@ -278,7 +442,10 @@ export function buildContextRecoveryReceipt({
   profileCleanup = false,
   primaryError = null,
   pageIssues = [],
+  phaseWindows = [],
   milestones = [],
+  publicSaveLoadBeforeContext = null,
+  bufferResizeDiagnosticEnabled = false,
   runtime = {},
 } = {}) {
   const cleanup = compactCleanupReport(cleanupReport);
@@ -290,9 +457,12 @@ export function buildContextRecoveryReceipt({
     pass: false,
     runtimeKind: 'electron',
     route: {
-      sequence: 'isolated Electron canonical root -> public New Game -> Launch -> authored flight',
+      sequence: publicSaveLoadBeforeContext
+        ? 'isolated Electron canonical root -> public New Game -> Launch -> authored flight -> public F5 save -> public F9 load -> forced context loss/restore'
+        : 'isolated Electron canonical root -> public New Game -> Launch -> authored flight',
       snapshot: compactFlightSnapshot(routeSnapshot),
     },
+    publicSaveLoadBeforeContext,
     milestones: Array.isArray(milestones) ? milestones.slice(-32) : [],
     runtime: {
       rootUrl: runtime.rootUrl || null,
@@ -305,6 +475,7 @@ export function buildContextRecoveryReceipt({
     contextLoss,
     glDeleteTrap: {
       live: liveGlDeleteTrap,
+      liveCapture: liveGlDeleteTrapCapture,
       postTeardown: buildPostTeardownGlDeleteTrapDiagnostic({
         runtimeKind: 'electron',
         install: postTeardownInstall,
@@ -313,14 +484,16 @@ export function buildContextRecoveryReceipt({
     },
     diagnosticMode: {
       deleteErrorAttributionEnabled: attributeDeleteErrors === true,
-      performanceClaimsEligible: attributeDeleteErrors !== true,
+      bufferResizeDiagnosticEnabled: bufferResizeDiagnosticEnabled === true,
+      performanceClaimsEligible: attributeDeleteErrors !== true && bufferResizeDiagnosticEnabled !== true,
+      phaseWindows,
     },
     teardown: {
       closeCallCount: Number(closeCallCount) || 0,
       cleanup,
       isolatedProfileRemoved: profileCleanup === true,
     },
-    issues: compactIssues(pageIssues),
+    issues: compactIssues(pageIssues, phaseWindows),
     error: serializeError(primaryError),
     artifacts: {
       receipt: path.relative(ROOT, path.join(outputDir || ROOT, 'receipt.json')).replace(/\\/g, '/'),
@@ -340,7 +513,16 @@ export async function runContextRecoveryElectronDiagnostic({
   taskId = TASK_ID,
   flightTimeoutMs = positiveInteger(process.env.SF_CONTEXT_RECOVERY_FLIGHT_TIMEOUT_MS, 240_000),
   attributeDeleteErrors = false,
+  publicSaveLoadBeforeContext = false,
+  bufferResizeDiagnosticEnabled = process.env.SF_BUFFER_RESIZE_DIAG === '1',
+  flightBeforeSaveSeconds = 0,
 } = {}) {
+  if (!Number.isInteger(flightBeforeSaveSeconds) || flightBeforeSaveSeconds < 0 || flightBeforeSaveSeconds > 600) {
+    throw new RangeError('flightBeforeSaveSeconds must be an integer in [0, 600]');
+  }
+  if (flightBeforeSaveSeconds > 0 && !publicSaveLoadBeforeContext) {
+    throw new Error('flightBeforeSaveSeconds requires publicSaveLoadBeforeContext');
+  }
   const normalizedTaskId = safeTaskId(taskId);
   const resolvedOutputDir = path.resolve(outputDir || runDirectory(DEFAULT_OUTPUT_ROOT, normalizedTaskId));
   await mkdir(resolvedOutputDir, { recursive: true });
@@ -369,23 +551,49 @@ export async function runContextRecoveryElectronDiagnostic({
   let rootUrl = null;
   let primaryError = null;
   let routeSnapshot = null;
+  let publicSaveLoadResult = null;
   let preRecovery = null;
   let postRecovery = null;
   let postRecoveryFlightStable = false;
   let contextLoss = null;
   let liveGlDeleteTrap = null;
+  let liveGlDeleteTrapCapture = null;
   let postTeardownInstall = null;
   let postTeardown = null;
   let cleanupReport = null;
   let profileCleanup = false;
   const consoleMessages = [];
+  const phaseWindows = [];
+  let activePhase = { phase: 'startup-route', startedAt: new Date().toISOString(), endedAt: null };
+  phaseWindows.push(activePhase);
+  const setCapturePhase = (phase) => {
+    const now = new Date().toISOString();
+    if (activePhase) activePhase.endedAt = now;
+    activePhase = { phase, startedAt: now, endedAt: null };
+    phaseWindows.push(activePhase);
+  };
   const postTeardownConsoleHandler = (message) => {
     const snapshot = readPostTeardownGlDeleteTrapConsoleMessage(message);
     if (snapshot && postTeardown == null) postTeardown = snapshot;
     if (consoleMessages.length < 24) {
       const type = typeof message?.type === 'function' ? message.type() : null;
       const text = typeof message?.text === 'function' ? message.text() : String(message || '');
-      if (type === 'error' || type === 'warning') consoleMessages.push({ type, text: String(text).slice(0, 500) });
+      if (type === 'error' || type === 'warning') {
+        let location = null;
+        try {
+          const raw = message?.location?.();
+          if (raw && (raw.url || raw.lineNumber || raw.columnNumber)) {
+            location = { url: raw.url || '', line: raw.lineNumber ?? raw.line ?? 0, column: raw.columnNumber ?? raw.column ?? 0 };
+          }
+        } catch (_) { /* console location is best-effort */ }
+        consoleMessages.push({
+          type,
+          at: new Date().toISOString(),
+          phase: activePhase?.phase || null,
+          location,
+          text: String(text).slice(0, 500),
+        });
+      }
     }
   };
 
@@ -427,6 +635,11 @@ export async function runContextRecoveryElectronDiagnostic({
     });
     rootUrl = assertIsolatedElectronRootUrl(await canonicalUrlTracker.waitForCanonicalRoot(10_000));
     await awaitElectronInitialCanonicalLoad(page, electronApp, rootUrl);
+    if (bufferResizeDiagnosticEnabled) {
+      await reloadElectronWithBufferResizeDiagnostic(page, pageIssueTracker);
+      await awaitElectronInitialCanonicalLoad(page, electronApp, rootUrl);
+      mark('buffer-resize-diagnostic-armed', { performanceClaimsEligible: false, canonicalRootPreserved: true });
+    }
     await page.bringToFront();
     mark('canonical-root', { rootUrl });
     await installFirstLightPromptHandler(page, (name, _ok, detail) => mark(name, { note: detail }));
@@ -441,6 +654,30 @@ export async function runContextRecoveryElectronDiagnostic({
       onMilestone: async (name, detail) => mark(name, detail),
     });
     mark('authored-flight-ready', { tick: routeSnapshot?.tick ?? null });
+
+    if (publicSaveLoadBeforeContext) {
+      setCapturePhase('public-f5-f9-before-context');
+      publicSaveLoadResult = await runPublicSaveLoadBeforeContext(page, {
+        flightTimeoutMs,
+        flightBeforeSaveSeconds,
+      });
+      mark('public-f5-f9-complete', {
+        saves: publicSaveLoadResult.events.saves,
+        loads: publicSaveLoadResult.events.loads,
+        savedSlot: publicSaveLoadResult.events.savedSlot,
+        loadedSlot: publicSaveLoadResult.events.loadedSlot,
+        authoredReady: publicSaveLoadResult.after.authoredReady,
+        tick: publicSaveLoadResult.after.tick,
+        releasedBeforeSave: {
+          tick: publicSaveLoadResult.releasedBeforeSave.tick,
+          simTime: publicSaveLoadResult.releasedBeforeSave.simTime,
+          firstPictureReady: publicSaveLoadResult.releasedBeforeSave.opening?.firstPictureReady,
+          firstPlayableFrameAt: publicSaveLoadResult.releasedBeforeSave.opening?.firstPlayableFrameAt,
+          flightVeilHoldsSim: publicSaveLoadResult.releasedBeforeSave.opening?.flightVeilHoldsSim,
+        },
+        matureBeforeSaveSimTime: publicSaveLoadResult.matureBeforeSave.simTime,
+      });
+    }
 
     await page.waitForFunction(
       () => typeof window.SF?.registry?.destroy === 'function',
@@ -460,11 +697,11 @@ export async function runContextRecoveryElectronDiagnostic({
       performanceClaimsEligible: attributeDeleteErrors !== true,
     });
     preRecovery = await readPageState(page);
+    setCapturePhase('forced-context-loss-and-restore');
     contextLoss = await probeWebGlContextLoss(page, {
       outputDir: resolvedOutputDir,
       log,
     });
-    liveGlDeleteTrap = await readGlDeleteTrap(page);
     mark('context-recovery-complete', {
       recovered: contextLoss?.recovered === true,
       restores: contextLoss?.contextRecovery?.restores ?? null,
@@ -472,6 +709,7 @@ export async function runContextRecoveryElectronDiagnostic({
     if (contextLoss?.recovered !== true) {
       throw new Error(`controlled WebGL context recovery did not pass: ${JSON.stringify(contextLoss)}`);
     }
+    setCapturePhase('post-restore-flight-observation');
     const recoveryFlightObserveMs = 120_000;
     const recoveryFlightStartedAt = Date.now();
     let nextProgressAt = 30_000;
@@ -508,13 +746,27 @@ export async function runContextRecoveryElectronDiagnostic({
       simTime: postRecovery?.simTime ?? null,
       contextRecoveryGeneration: postRecovery?.contextRecovery?.generation ?? null,
     });
+    liveGlDeleteTrap = await readGlDeleteTrap(page);
+    liveGlDeleteTrapCapture = {
+      phase: activePhase?.phase || 'post-restore-flight-observation',
+      at: new Date().toISOString(),
+    };
   } catch (error) {
     primaryError = error;
     log(`FAIL ${error?.message || error}`);
   } finally {
     if (page && !page.isClosed()) {
       preRecovery ||= await readPageState(page).catch(() => null);
+      if (liveGlDeleteTrap == null) {
+        liveGlDeleteTrap = await readGlDeleteTrap(page).catch(() => null);
+        liveGlDeleteTrapCapture = {
+          phase: activePhase?.phase || 'pre-destroy-partial',
+          at: new Date().toISOString(),
+          partial: true,
+        };
+      }
     }
+    setCapturePhase('ordinary-destroy');
     try {
       cleanupReport = await closeOnce.invoke();
     } catch (error) {
@@ -535,16 +787,22 @@ export async function runContextRecoveryElectronDiagnostic({
     page?.off?.('console', postTeardownConsoleHandler);
     electronApp?.off?.('console', postTeardownConsoleHandler);
     const issues = pageIssueTracker?.stop?.() || [];
-    issues.push(...consoleMessages.map((entry) => ({ source: 'diagnostic-console', level: entry.type, text: entry.text })));
+    issues.push(...consoleMessages.map((entry) => ({
+      source: 'diagnostic-console', level: entry.type, at: entry.at, phase: entry.phase,
+      location: entry.location, text: entry.text,
+    })));
     const receipt = buildContextRecoveryReceipt({
       outputDir: resolvedOutputDir,
       taskId: normalizedTaskId,
       routeSnapshot,
+      publicSaveLoadBeforeContext: publicSaveLoadResult,
+      bufferResizeDiagnosticEnabled,
       preRecovery,
       postRecovery,
       contextLoss,
       postRecoveryFlightStable,
       liveGlDeleteTrap,
+      liveGlDeleteTrapCapture,
       attributeDeleteErrors,
       postTeardown,
       postTeardownInstall,
@@ -553,6 +811,7 @@ export async function runContextRecoveryElectronDiagnostic({
       profileCleanup,
       primaryError,
       pageIssues: issues,
+      phaseWindows,
       milestones,
       runtime: { rootUrl, pid: childProcess?.pid ?? null, isolated: true },
     });
@@ -589,13 +848,15 @@ function isEntrypoint() {
 if (isEntrypoint()) {
   const args = parseArgs();
   if (args.help) {
-    console.log('Usage: node scripts/probe-context-recovery-electron.mjs [--out DIR] [--flight-timeout-ms N] [--task-id ID] [--attribute-delete-errors]');
+    console.log('Usage: node scripts/probe-context-recovery-electron.mjs [--out DIR] [--flight-timeout-ms N] [--task-id ID] [--attribute-delete-errors] [--public-save-load-before-context] [--flight-before-save-seconds N]');
   } else {
     const report = await runContextRecoveryElectronDiagnostic({
       outputDir: args.out ? path.resolve(ROOT, args.out) : undefined,
       taskId: args.taskId || TASK_ID,
       flightTimeoutMs: positiveInteger(args.flightTimeoutMs, positiveInteger(process.env.SF_CONTEXT_RECOVERY_FLIGHT_TIMEOUT_MS, 240_000)),
       attributeDeleteErrors: args.attributeDeleteErrors === true,
+      publicSaveLoadBeforeContext: args.publicSaveLoadBeforeContext === true,
+      flightBeforeSaveSeconds: Number.isInteger(args.flightBeforeSaveSeconds) ? args.flightBeforeSaveSeconds : 0,
     });
     if (report.pass !== true) process.exitCode = 1;
   }

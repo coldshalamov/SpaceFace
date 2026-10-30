@@ -171,11 +171,15 @@ function compareStableId(a, b) {
 // instead of waiting for the tilted camera's compressed depth axis to allow it.
 
 function beatsBest(
-  direct, timeToClosestS, closestSurfaceMiss, armed, mass, relativeSpeed, distance, id,
-  bestDirect, bestTimeToClosestS, bestClosestSurfaceMiss, bestArmed, bestMass,
+  training, direct, timeToClosestS, closestSurfaceMiss, armed, mass, relativeSpeed, distance, id,
+  bestTraining, bestDirect, bestTimeToClosestS, bestClosestSurfaceMiss, bestArmed, bestMass,
   bestRelativeSpeed, bestDistance, bestId,
 ) {
   if (bestId == null) return true;
+  // The onboarding flyby is a staged lesson: while a flagged trainer is a viable pass it owns
+  // the lease ahead of even a direct attacker, or a stray hostile in the pocket starves the
+  // lesson gate behind it. Flagged trainers only exist during onboarding.
+  if (training !== bestTraining) return training;
   if (direct !== bestDirect) return direct;
   if (timeToClosestS !== bestTimeToClosestS) return timeToClosestS < bestTimeToClosestS;
   if (closestSurfaceMiss !== bestClosestSurfaceMiss) return closestSurfaceMiss < bestClosestSurfaceMiss;
@@ -210,6 +214,7 @@ export function pickFlybyTarget(state, player, list, isCoolingDown = null) {
   let bestDirect = false;
   let bestArmed = false;
   let bestMass = -Infinity;
+  let bestTraining = false;
   for (const ent of list || []) {
     if (!isFocusEligibleShip(state, ent, player)) continue;
     if (cooling && cooling(ent.id, ent)) continue;
@@ -235,10 +240,11 @@ export function pickFlybyTarget(state, player, list, isCoolingDown = null) {
     if (closestSurfaceMiss > MAX_SURFACE_MISS) continue;
     const direct = targetsPlayer(ent, player.id);
     const armed = isArmed(ent);
+    const training = isTrainingFocusTarget(ent, player);
     const mass = Math.max(0, finite(ent.mass, finite(ent.data && ent.data.mass)));
     if (!beatsBest(
-      direct, timeToClosestS, closestSurfaceMiss, armed, mass, relativeSpeed, distance, ent.id,
-      bestDirect, bestTimeToClosestS, bestClosestSurfaceMiss, bestArmed, bestMass,
+      training, direct, timeToClosestS, closestSurfaceMiss, armed, mass, relativeSpeed, distance, ent.id,
+      bestTraining, bestDirect, bestTimeToClosestS, bestClosestSurfaceMiss, bestArmed, bestMass,
       bestRelativeSpeed, bestDistance, bestId,
     )) continue;
     bestId = ent.id;
@@ -250,6 +256,7 @@ export function pickFlybyTarget(state, player, list, isCoolingDown = null) {
     bestDirect = direct;
     bestArmed = armed;
     bestMass = mass;
+    bestTraining = training;
   }
   if (bestId == null) return null;
   return {
@@ -439,7 +446,7 @@ export const flybyFocus = {
 
     focus.zoom = Math.max(0, focus.zoom - dt * 2.2);
     if (now < focus.cooldownUntil) return;
-    if (st.player && st.player.tether && st.player.tether.active) return;
+    const tethered = !!(st.player && st.player.tether && st.player.tether.active);
 
     // Hands already on the stick (same verb the mid-lease cancel reads): there is no lease to
     // refuse, so do not open one. Opening here would burn the global anti-spam cooldown and fire
@@ -471,7 +478,12 @@ export const flybyFocus = {
     const list = indexedShipLikeScan(st);
     this._expireTargetCooldowns(now);
     this._cooldownNow = now;
-    const pick = pickFlybyTarget(st, player, list, this._isTargetCoolingDown);
+    let pick = pickFlybyTarget(st, player, list, this._isTargetCoolingDown);
+    // An attached massline owns the verb: while a line is out the only leasable crossing is
+    // the flagged trainer's staged pass. Its acquisition bias stays inert until the line
+    // releases anyway, and refusing it would wall the onboarding beat that stages it — the
+    // claimed-salvage path can deliver a towing player to that lesson.
+    if (pick && tethered && !isTrainingFocusTarget(st.entities.get(pick.id), player)) pick = null;
     if (!pick) {
       if (FLYBY_FOCUS_EMPTY_QUIET_LATCH !== false) {
         const laneVersion = entityIndexLaneVersion(st, FLYBY_FOCUS_QUIET_LANES);

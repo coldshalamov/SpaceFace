@@ -507,6 +507,18 @@ export function createNocturneAtmosphere(renderer, width, height, options = {}) 
     uniforms.uLightCount.value = count;
   }
 
+  function hasRenderWork(depthTexture, camera) {
+    if (disposed || !enabled || !supported || !depthTexture || !camera || targets.length !== 2) return false;
+    if (!media) return false;
+    for (let i = 0; i < media.length; i++) {
+      const m = media[i];
+      if (!m || m.enabled === false) continue;
+      const density = clamp(finite(m.density) * Math.max(0, finite(m.extinction, 1)), 0, 1);
+      const rx = component(m.radii, 'x', 0), ry = component(m.radii, 'y', 1), rz = component(m.radii, 'z', 2);
+      if (density > 0 && rx > 0 && ry > 0 && rz > 0) return true;
+    }
+    return false;
+  }
   function render(depthTexture, camera, uvScale = null) {
     active = false;
     if (disposed || !enabled || !supported || !depthTexture || !camera || targets.length !== 2) return null;
@@ -659,7 +671,7 @@ export function createNocturneAtmosphere(renderer, width, height, options = {}) 
   }
 
   return {
-    render, setSize, setQuality, bindComposite, prepareResources, rebuild, getDiagnostics, dispose,
+    render, hasRenderWork, setSize, setQuality, bindComposite, prepareResources, rebuild, getDiagnostics, dispose,
     invalidateHistory,
     setMedia(value) { media = Array.isArray(value) ? value : null; },
     setLights(value) { lights = Array.isArray(value) ? value : null; },

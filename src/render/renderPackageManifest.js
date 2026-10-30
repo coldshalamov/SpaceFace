@@ -852,7 +852,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.ceres-second-measure",
-    "expectedContentHash": "6d4d3fe002d18a719ce098923fea4ec637931fe4a02ce2cf047ba9bb167aa594",
+    "expectedContentHash": "0939b09ecc3b1f16e99186032ce7f80c3f6d9f7be8ad750d25c0ce9860b2e3c1",
     "key": "ceres-second-measure",
     "metadataUrl": "assets/ships/release/render-packages/ceres-second-measure/render-package.json",
     "runtimeAssetId": "SF_PLACE_CERES_SECOND_MEASURE",

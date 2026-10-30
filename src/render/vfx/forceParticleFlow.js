@@ -407,11 +407,15 @@ export class ForceParticleFlow {
     this.system.particleNum = 0; this.batch.geometry.instanceCount = 0; this.renderer.visible = false;
     this.contactLight.active = false; this.contactLight.intensity = 0;
   }
-  dispose() {
+  dispose({ disposeGpu = true } = {}) {
     if (this.disposed) return;
     this.clear(); this.disposed = true; unregisterMaterialOwner(this);
-    this.system.dispose(); this.batch.material.dispose(); this.batch.dispose();
-    this.geometry.dispose(); this.material.dispose(); this.renderer.removeFromParent();
+    this.system.dispose();
+    if (disposeGpu) {
+      this.batch.material.dispose(); this.batch.dispose();
+      this.geometry.dispose(); this.material.dispose();
+    }
+    this.renderer.removeFromParent();
     this.renderer.batches.length = 0; this.renderer.systemToBatchIndex.clear();
   }
 }

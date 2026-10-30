@@ -56,6 +56,7 @@ export function createStrictElectronPageIssueTracker(page) {
 export function createStrictElectronApplicationIssueTracker(electronApp, options = {}) {
   const context = typeof electronApp?.context === 'function' ? electronApp.context() : null;
   const allowAbsentPlayerStore = options.playerStoreMounted === false;
+  let canonicalPageOrigin = null;
   const allowCancelledCinematicMedia = options.allowCancelledMedia === true;
   const issues = [];
   const ignoredIssues = [];
@@ -67,6 +68,7 @@ export function createStrictElectronApplicationIssueTracker(electronApp, options
   const removers = [];
   const boundPages = new WeakSet();
   const backfillPromises = new WeakMap();
+  const backfillRetirements = new WeakMap();
   const seenConsoleMessages = new WeakSet();
   const seenPageErrors = new WeakSet();
   const seenFailedRequests = new WeakSet();
@@ -77,11 +79,9 @@ export function createStrictElectronApplicationIssueTracker(electronApp, options
   const activeRequests = new Set();
   const requestProvenance = new WeakMap();
   const pendingStoreRequests = new Map();
-  // Electron can deliver requestfinished before a response wrapper is handed to the
-  // application-wide listener. Keep the exact store request metadata through that
-  // boundary so a methodless response can still be classified from its own request.
-  // Entries are retired when their response (or failure) is observed; an unknown or
-  // ambiguous method remains fatal rather than falling back to GET.
+  // Retain exact request objects through requestfinished so store lifecycle entries can be
+  // retired correctly. These entries never authorize the optional-store exemption: only a
+  // joined CDP method or the response's directly observed request method can do that.
   const completedStoreRequests = new Map();
   // Playwright's Electron response/request façade can omit the method and can hand the
   // response a different wrapper object from the request event. Keep the exact CDP requestId
@@ -112,6 +112,8 @@ export function createStrictElectronApplicationIssueTracker(electronApp, options
     supported: null,
     attempted: false,
     completed: false,
+    retiredAfterPageClose: false,
+    retirementReason: null,
     pageCount: 0,
     itemCount: 0,
     unsupportedPageCount: 0,
@@ -177,12 +179,23 @@ export function createStrictElectronApplicationIssueTracker(electronApp, options
     cdpClassifiedResponseCounts.set(key, (cdpClassifiedResponseCounts.get(key) || 0) + 1);
     cdpClassifiedResponseTotal += 1;
   };
-  const failUnmatchedPlaywrightStoreResponse = ({ response, status, url }) => {
-    // This response was observed by Playwright but never paired to an exact CDP response.
-    // Its method is therefore unknown even if a wrapper happens to expose a stale GET.
+  const classifyUnmatchedPlaywrightStoreResponse = ({
+    response,
+    responseRequest,
+    responseMethod,
+    pendingCdpRequestCount,
+    cdpRequestCandidates,
+    uniqueRequest,
+    status,
+    url,
+  }) => {
+    // This response has no paired CDP response. Preserve the observed Playwright method
+    // and pending CDP request candidates. A directly observed GET to the exact optional
+    // endpoint on the bound canonical page origin is diagnostic; all other unmatched
+    // responses remain fatal.
     flushPendingGenericNotFoundConsoles();
     expectedAbsentStoreConsoleTokens = 0;
-    push({
+    const issue = {
       source: 'response',
       level: 'error',
       text: `HTTP ${status} ${url}`,
@@ -190,20 +203,61 @@ export function createStrictElectronApplicationIssueTracker(electronApp, options
         source: 'playwright-unmatched-cdp-response',
         status,
         url,
+        cdpRequestCandidateCount: pendingCdpRequestCount,
+        cdpRequestCandidatesTruncated: pendingCdpRequestCount > cdpRequestCandidates.length,
+        // Preserve observed method and exact requestId candidates across teardown without
+        // treating a URL coincidence as a CDP response join or excusing the 404.
+        method: responseMethod,
+        methodSource: responseMethod ? 'playwright-response-request' : null,
+        requestId: uniqueRequest?.requestId || null,
+        requestIdSource: uniqueRequest ? 'unique-pending-cdp-request-url-method' : null,
+        cdpRequestCandidates: cdpRequestCandidates.map((request) => ({
+          requestId: request.requestId,
+          method: request.method,
+          resourceType: request.resourceType,
+          startedAt: request.startedAt,
+          startedPhase: request.startedPhase,
+        })),
       },
-    });
-    retireStoreResponse(response, url, pendingStoreRequests, completedStoreRequests);
+    };
+    if (allowAbsentPlayerStore && isAbsentPlayerStoreGetResponse(status, url, responseMethod, canonicalPageOrigin)) {
+      expectedAbsentStoreConsoleTokens += 1;
+      pushIgnored(issue, { absentPlayerStore: true });
+    } else {
+      push(issue);
+    }
+    retireStoreResponse(response, url, pendingStoreRequests, completedStoreRequests, responseRequest, true);
   };
   const flushDeferredPlaywrightStoreResponses = () => {
     while (deferredPlaywrightStoreResponses.length > 0) {
-      failUnmatchedPlaywrightStoreResponse(deferredPlaywrightStoreResponses.shift());
+      classifyUnmatchedPlaywrightStoreResponse(deferredPlaywrightStoreResponses.shift());
     }
   };
   const deferPlaywrightStoreResponse = (response, status, url) => {
+    let responseRequest = null;
+    let responseMethod = null;
+    try { responseRequest = readMaybeFunction(response, 'request'); } catch (_) { /* method remains unavailable */ }
+    try { responseMethod = normalizeCdpMethod(readMaybeFunction(responseRequest, 'method')); } catch (_) { /* method remains unavailable */ }
+    const pendingCdpRequests = [...cdpStoreRequests.values()].filter((request) => request.url === url);
+    const cdpRequestCandidates = pendingCdpRequests.slice(0, 8).map((request) => ({ ...request }));
+    const methodCandidates = responseMethod
+      ? pendingCdpRequests.filter((request) => request.method === responseMethod)
+      : [];
+    const uniqueRequest = methodCandidates.length === 1 ? methodCandidates[0] : null;
+    const deferred = {
+      response,
+      responseRequest,
+      responseMethod,
+      pendingCdpRequestCount: pendingCdpRequests.length,
+      cdpRequestCandidates,
+      uniqueRequest,
+      status,
+      url,
+    };
     if (deferredPlaywrightStoreResponses.length >= MAX_CDP_STORE_PROVENANCE) {
-      failUnmatchedPlaywrightStoreResponse(deferredPlaywrightStoreResponses.shift());
+      classifyUnmatchedPlaywrightStoreResponse(deferredPlaywrightStoreResponses.shift());
     }
-    deferredPlaywrightStoreResponses.push({ response, status, url });
+    deferredPlaywrightStoreResponses.push(deferred);
   };
   const recordConsole = (message) => {
     if (!markOnce(seenConsoleMessages, message)) return;
@@ -323,14 +377,10 @@ export function createStrictElectronApplicationIssueTracker(electronApp, options
       flushPendingGenericNotFoundConsoles();
       const issue = { source: 'response', level: 'error', text: `HTTP ${status} ${url}` };
       // A CDP response is authoritative only when its requestId joined a tracked request.
-      // Never let a same-URL Playwright map entry turn an unknown CDP method into an expected
-      // GET; URL fallback is for the Playwright-only path and remains ambiguity-checked there.
-      const fallbackStoreMethod = allowAbsentPlayerStore
-        ? (networkProvenance?.source === 'cdp-network'
-          ? networkProvenance.method
-          : resolvePendingStoreRequestMethod(response, url, pendingStoreRequests, completedStoreRequests))
-        : null;
-      if (allowAbsentPlayerStore && isAbsentPlayerStoreGetResponse(response, status, url, fallbackStoreMethod)) {
+      // Request-event URL matches never supply a method for the optional-store exemption.
+      const observedMethod = normalizeCdpMethod(networkProvenance?.method)
+        || normalizeCdpMethod(readMaybeFunction(readMaybeFunction(response, 'request'), 'method'));
+      if (allowAbsentPlayerStore && isAbsentPlayerStoreGetResponse(status, url, observedMethod, canonicalPageOrigin)) {
         expectedAbsentStoreConsoleTokens += 1;
         pushIgnored(issue, {
           absentPlayerStore: true,
@@ -442,6 +492,13 @@ export function createStrictElectronApplicationIssueTracker(electronApp, options
   };
   const bindNetworkProvenance = async (page) => {
     if (!page || stopped || cdpPages.has(page)) return cdpNetwork.attached;
+    bindPage(page);
+    const captureCanonicalPageOrigin = () => {
+      if (canonicalPageOrigin) return;
+      try { canonicalPageOrigin = normalizeHttpOrigin(readMaybeFunction(page, 'url')); } catch (_) { /* wait for canonical navigation */ }
+    };
+    captureCanonicalPageOrigin();
+    listen(page, 'framenavigated', captureCanonicalPageOrigin);
     cdpPages.add(page);
     cdpNetwork.attempted = true;
     const pageContext = typeof page.context === 'function' ? page.context() : context;
@@ -516,6 +573,14 @@ export function createStrictElectronApplicationIssueTracker(electronApp, options
       status.completed = status.errors.length === 0;
     } catch (error) {
       status.completed = false;
+      const retirementReason = backfillRetirements.get(page);
+      if (retirementReason === 'optional-setup-timeout'
+        && isPageClosed(page)
+        && isClosedPageHistoryError(error)) {
+        status.retiredAfterPageClose = true;
+        status.retirementReason = retirementReason;
+        return;
+      }
       recordBackfillFailure(name, error);
     }
   };
@@ -558,6 +623,11 @@ export function createStrictElectronApplicationIssueTracker(electronApp, options
 
   return {
     bindAndBackfillPage,
+    retirePageHistoryBackfill(page, reason = 'optional-setup-timeout') {
+      if (!page || stopped || reason !== 'optional-setup-timeout') return false;
+      backfillRetirements.set(page, reason);
+      return true;
+    },
     bindNetworkProvenance,
     all: () => {
       flushPendingGenericNotFoundConsoles();
@@ -644,20 +714,36 @@ function isExactNavigationCancellation(failure) {
   return /^net::ERR_ABORTED$/i.test(String(failure?.errorText || '').trim());
 }
 
+function isPageClosed(page) {
+  try { return typeof page?.isClosed === 'function' && page.isClosed() === true; }
+  catch (_) { return false; }
+}
+
+function isClosedPageHistoryError(error) {
+  return /target page, context or browser has been closed/i.test(String(error?.message || error));
+}
+
 function isGenericNotFoundConsole(text) {
   return /^Failed to load resource: the server responded with a status of 404 \(Not Found\)$/i
     .test(String(text || '').trim());
 }
 
-function isAbsentPlayerStoreGetResponse(response, status, url, fallbackMethod = null) {
+function isAbsentPlayerStoreGetResponse(status, url, observedMethod = null, canonicalOrigin = null) {
   if (status !== 404) return false;
-  if (!isPlayerStorePath(url)) return false;
-  const request = readMaybeFunction(response, 'request');
-  const responseMethod = readMaybeFunction(request, 'method');
-  const method = String(responseMethod || fallbackMethod || '').toUpperCase();
-  // Playwright responses expose request(); without a method there is no safe way to
-  // distinguish the optional bootstrap GET from a failed write, so keep it fatal.
-  return method === 'GET';
+  let parsed;
+  try { parsed = new URL(String(url || '')); } catch (_) { return false; }
+  if (parsed.pathname !== '/__spaceface_player_store' || !canonicalOrigin || parsed.origin !== canonicalOrigin) return false;
+  return String(observedMethod || '').trim().toUpperCase() === 'GET';
+}
+
+function normalizeHttpOrigin(value) {
+  try {
+    const parsed = new URL(String(value || ''));
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return null;
+    return parsed.origin;
+  } catch (_) {
+    return null;
+  }
 }
 
 function isPlayerStorePath(url) {
@@ -668,21 +754,9 @@ function isPlayerStorePath(url) {
   }
 }
 
-function resolvePendingStoreRequestMethod(response, url, pendingRequests, completedRequests = null) {
-  if (!isPlayerStorePath(url)) return null;
-  const responseRequest = readMaybeFunction(response, 'request');
-  const maps = [pendingRequests, completedRequests].filter(Boolean);
-  const direct = maps.map((requests) => requests.get(responseRequest)).find(Boolean);
-  if (direct?.method) return direct.method;
-  const matching = maps.flatMap((requests) => [...requests.values()]).filter((entry) => entry.url === url);
-  // Any unknown or multiple same-URL requests make the fallback ambiguous. Keep the
-  // response fatal rather than allowing a GET to hide a write or another failure.
-  return matching.length === 1 && matching[0].method ? matching[0].method : null;
-}
-
-function retireStoreResponse(response, url, pendingRequests, completedRequests) {
+function retireStoreResponse(response, url, pendingRequests, completedRequests, responseRequestOverride = null, hasResponseRequestOverride = false) {
   if (!isPlayerStorePath(url)) return;
-  const responseRequest = readMaybeFunction(response, 'request');
+  const responseRequest = hasResponseRequestOverride ? responseRequestOverride : readMaybeFunction(response, 'request');
   for (const requests of [pendingRequests, completedRequests]) {
     if (requests?.has(responseRequest)) {
       requests.delete(responseRequest);
@@ -1638,7 +1712,12 @@ export function evaluateElectronPublicationReadiness({
     for (const name of ['consoleMessages', 'pageErrors', 'requests']) {
       const status = pageIssueCoverage.backfill?.[name];
       if (typeof status?.supported !== 'boolean') failures.push(`${name} backfill support was not inspected`);
-      else if (status.supported === true && (status.attempted !== true || status.completed !== true)) {
+      else if (status.supported === true && (status.attempted !== true || (
+        status.completed !== true
+        && !(status.retiredAfterPageClose === true
+          && status.retirementReason === 'optional-setup-timeout'
+          && (status.errors?.length || 0) === 0)
+      ))) {
         failures.push(`${name} retained history backfill did not complete`);
       }
     }

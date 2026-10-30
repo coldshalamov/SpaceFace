@@ -8,6 +8,8 @@ import { seedFortifyBench } from './ui-bench-fortify.js';
 // cannot mount stays with `ui-look`.
 
 import { createGameState } from '../src/core/gameState.js';
+import { loadModelTruthCensus } from '../src/data/modelTruth.js';
+import { ensureLocalizationReady } from '../src/localization/gameLocalization.js';
 import { createScreenMemory } from '../src/ui/screenMemory.js';
 import { BENCH_HELIOS_BOARD } from './ui-bench-board.js';
 import { missions } from '../src/systems/missions.js';
@@ -40,6 +42,8 @@ import { seedImpoundShot } from './ui-bench-impound.js';
 import { MOBILE_CSS } from '../src/systems/mobile/styles.js';
 
 window.__BENCH_READY = false;
+// This tool bypasses main.boot(), so it owns the same data-ready boundary before fixture mounts.
+await Promise.all([loadModelTruthCensus(), ensureLocalizationReady()]);
 window.__BENCH_OVERLAY = '';
 // The element the bench deliberately opened over the screen, if any. Type it covers is covered on
 // purpose -- a radial menu is supposed to sit on the deck while it is open.

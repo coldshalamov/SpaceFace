@@ -214,6 +214,17 @@ servicesRef.current = services;
 services.undockCooldownUntilTick = 0;
 const pilot = ARCHETYPES[archetype]({ state, bus, ledger, services });
 
+if (process.env.STRANGER_PILOT_TRACE) {
+  bus.on('flybyFocus:start', (p) => {
+    const e = state.entities.get(p && p.targetId);
+    const trId = registry.get('onboarding')._trainerId;
+    const tag = e
+      ? `${e.type}/${e.name || (e.data && e.data.name) || '-'}/t${e.team}${e.data && e.data.trainingFocusEligible ? '/elig' : ''}`
+      : '?gone';
+    console.log(`    [flyby] t=${Math.round(state.simTime)} target=${p.targetId}:${tag} trainer=${trId} match=${p.targetId === trId}`);
+  });
+}
+
 const enter = registry.get('world').enterSector('sector_helios_prime', {});
 log(`boot ok: sector enter ${enter ? 'ok' : 'null'}; systems ${registry.systems.length}; ticks ${totalTicks}`);
 

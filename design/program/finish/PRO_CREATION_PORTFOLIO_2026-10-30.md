@@ -5,9 +5,18 @@
 The five conversations below were created in ChatGPT Work on the default GPT-6.1 Sol Medium model.
 This was the wrong product for the request. **No ChatGPT Pro jobs were dispatched, no Pro artifacts
 are awaited, and none of these Work chats is accepted for the Pro request.** The user intended Pro
-through integratedBrowser only. Browser runtime reported that local browser use was disabled in
-Work settings; that was not authorization to use ChatGPT Work instead. No further Work prompts or
+through integrated Browser only. Browser runtime returned `Local browser use is disabled in Work
+settings`; that was not authorization to use ChatGPT Work instead. No further Work prompts or
 Work creation are authorized for this Pro request.
+
+The documented Browser setup is `environment: 'codex-app'` with browser ID `iab`; those were the
+values used. A bounded read of the bundled SDK confirmed that the quoted error is emitted when the
+signed host `browser/access` response fails validation against the expected access grant. Its wording
+does not identify which settings interface controls the response, establish that the visible Browser
+window is broken, or prove that the user's Codex setting is disabled. No documented local setup
+correction was found. The unchanged access call has already failed; repeating it or substituting
+another app/model is not a next action. Correct dispatch still requires access to the intended
+ChatGPT conversation and verification of the actual Pro model control before sending.
 
 All five Work chats were archived through native controls. A later native read confirmed every
 turn completed and every chat is idle; no generation remains active in them. Their chat IDs below

@@ -19,7 +19,7 @@ export function isFirstLightPrompt(title, cancelLabel, confirmLabel = '') {
 // dialogs retain normal input ownership. No force click or settings mutation is involved.
 export async function installFirstLightPromptHandler(page, step) {
   if (firstLightHandlerPages.has(page) || typeof page.addLocatorHandler !== 'function') return;
-  await page.addLocatorHandler(page.locator('#sf-confirm-title').filter({ hasText: /^First light$/ }), async () => {
+  await page.addLocatorHandler(page.locator('#sf-confirm-root.sf-confirm--in #sf-confirm-title').filter({ hasText: /^First light$/ }), async () => {
     await answerFirstRunPrompt(page, step);
   }, { noWaitAfter: true });
   firstLightHandlerPages.add(page);
@@ -146,10 +146,8 @@ export async function bootToMenu(page, baseUrl, step) {
 // chooses the actual "Play" control (legacy "keep" cancel) and records the answer; nothing else is
 // dismissed. The dialog and its choices are selected by their public accessible names.
 export async function answerFirstRunPrompt(page, step = () => {}) {
-  const heading = page.locator('#sf-confirm-title').first();
-  if (!await heading.isVisible()) return;
-  const title = norm(await heading.textContent());
-  if (title !== 'First light') return;
+  if (!await isActiveFirstLightPrompt(page)) return;
+  const title = 'First light';
   const dialog = page.getByRole('dialog', { name: 'First light', exact: true });
   const play = dialog.getByRole('button', { name: /^Play$/i });
   const keep = dialog.getByRole('button', { name: /^Keep my settings$/i });
@@ -158,12 +156,30 @@ export async function answerFirstRunPrompt(page, step = () => {}) {
   const choice = playCount === 1 ? { control: play, name: 'Play' }
     : playCount === 0 && keepCount === 1 ? { control: keep, name: 'Keep my settings' } : null;
   if (!choice) {
+    // Confirm owns a 160 ms close animation: its title can remain in the DOM while the
+    // controls have already left the accessibility tree. A locator handler scheduled just
+    // before the close must treat that dismissed snapshot as complete, not a broken dialog.
+    // A still-active First light with unsupported controls remains a hard gate failure.
+    if (!await isActiveFirstLightPrompt(page)) return;
     const labels = await dialog.getByRole('button').allTextContents();
+    if (!await isActiveFirstLightPrompt(page)) return;
     throw new Error(`First light has no uniquely supported settings choice (expected Play or Keep my settings); controls: ${JSON.stringify(labels.map(norm))}`);
   }
   // A disabled/covered control must still fail the gate normally; never force it or choose a preset.
   await choice.control.click();
   step('first-run prompt', true, `answered "${title}" with ${choice.name} (shipped settings)`);
+}
+
+async function isActiveFirstLightPrompt(page) {
+  return page.evaluate(() => {
+    const root = document.getElementById('sf-confirm-root');
+    if (!root || !root.classList.contains('sf-confirm--in')) return false;
+    const dialog = root.querySelector('[role="dialog"]');
+    const title = dialog?.querySelector('#sf-confirm-title');
+    if (!title || String(title.textContent || '').replace(/\s+/g, ' ').trim() !== 'First light') return false;
+    const style = getComputedStyle(title);
+    return style.display !== 'none' && style.visibility !== 'hidden' && title.getClientRects().length > 0;
+  }).catch(() => false);
 }
 
 /** Flight, or a quoted load error. `active` also requires the run phase to be active. */

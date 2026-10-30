@@ -906,6 +906,10 @@ export function createStrangerPilot({ state, bus, ledger, services }) {
   let strokeTicks = 0;
   let escapeFrom = null;         // {x,z} the wanted-escape runs away from
   let nearBreakUntil = -1;       // ease the winch when the line warns it is near break
+  let grabBraking = false;       // stops a circling beacon approach dead before the creep
+  let grabParking = false;       // delivery-ratchet: hull parked, pod gliding toward the ring
+  let grabParkAt = -1;           // simTime the current park began (timeout guard)
+  let grabBiteUntil = -1;        // simTime end of the current ratchet bite
   let latchedTargetId = null;    // the body this policy intends to hold
   let needWinch = true;          // every fresh latch must be winched tight before a swing
   let raidWall = null;           // cached throw-target rock (static, so position is stable)
@@ -1142,7 +1146,7 @@ export function createStrangerPilot({ state, bus, ledger, services }) {
       const o = ob();
       if (process.env.STRANGER_PILOT_TRACE && (state.tick % 180) === 0) {
         const pl = p;
-        console.log(`    [step] t=${Math.round(state.simTime)} beat=${o && o.currentBeat} v=${Math.round(speedOf(pl))} resc=${o && o.rescue ? o.rescue.current : '-'} docked=${!!(state.ui && state.ui.docked) || !!(pl.flags && pl.flags.docked)} mode=${state.mode} beatAct='${(o && o.beatAction) || ''}'.slice(0,30)`);
+        console.log(`    [step] t=${Math.round(state.simTime)} beat=${o && o.currentBeat} v=${Math.round(speedOf(pl))} resc=${o && o.rescue ? o.rescue.current : '-'} docked=${!!(state.ui && state.ui.docked) || !!(pl.flags && pl.flags.docked)} mode=${state.mode} teth=${!!(state.player && state.player.tether && state.player.tether.active)} beatAct='${(o && o.beatAction) || ''}'.slice(0,30)`);
       }
 
       // Docked: sell, breathe, undock (the same station verbs the UI uses).
@@ -1186,13 +1190,18 @@ export function createStrangerPilot({ state, bus, ledger, services }) {
               unhook();
               return;
             }
+            if (!lineAttached && dist(p.pos, rock.pos) > 1200) {
+              // The released rock is running: hold station — the rail restages it nearby.
+              input.brake = true;
+              return;
+            }
             if (!lineAttached || latchedId !== rock.id) {
               // Pre-position BEHIND the rock on the wreck line: the whole swing then sweeps
               // through the wreck direction twice per revolution and the cut lands.
               const wdx = derelict.pos.x - rock.pos.x;
               const wdz = derelict.pos.z - rock.pos.z;
               const wd = Math.hypot(wdx, wdz) || 1;
-              const launch = { x: rock.pos.x - (wdx / wd) * 150, z: rock.pos.z - (wdz / wd) * 150 };
+              const launch = { x: rock.pos.x - (wdx / wd) * 60, z: rock.pos.z - (wdz / wd) * 60 };
               // Unstick: a recoil can grind the hull along a static rock — sidestep 90 deg
               // for a beat whenever thrust is commanded but the hull is not moving.
               if (speedOf(p) < 5) {
@@ -1224,14 +1233,25 @@ export function createStrangerPilot({ state, bus, ledger, services }) {
               swingStartTick = 0;
               return;
             }
+            if (process.env.STRANGER_PILOT_TRACE && (state.tick % 120) === 0) {
+              const wdx2 = derelict.pos.x - rock.pos.x;
+              const wdz2 = derelict.pos.z - rock.pos.z;
+              const wd2 = Math.hypot(wdx2, wdz2) || 1;
+              const rk2 = speedOf(rock);
+              const rkDot2 = rock.vel ? (rock.vel.x * wdx2 + rock.vel.z * wdz2) / ((rk2 || 1) * wd2) : 0;
+              console.log(`    [swing] t=${Math.round(state.simTime)} lineAtt=${lineAttached} latched=${latchedId} dRock=${Math.round(dist(p.pos, rock.pos))} needWinch=${needWinch} v=${Math.round(speedOf(p))} rkV=${Math.round(rk2)} rkDot=${rkDot2.toFixed(3)} dWreck=${Math.round(wd2)}`);
+            }
             // Winch tight, then SWING exactly like the verbs-bench predator: turn across the
             // line, burn the tangent (boost pulses load the arc), and cut when the rock's
             // velocity actually points at the wreck.
             if (needWinch && (state.simTime || 0) >= winchUntil) needWinch = false;
             if (needWinch) {
-              input.brake = true;
+              // No brake here: braking anchors the hull while the winch drags a light rock
+              // into it — the yank snaps the line. Drift and reel gently instead.
+              input.brake = false;
+              input.moveZ = 0;
               cmd.lineControl = true;
-              cmd.lineLength = (state.simTime || 0) < nearBreakUntil ? 0.5 : -0.5;
+              cmd.lineLength = (state.simTime || 0) < nearBreakUntil ? 0.5 : -0.35;
               return;
             }
             const toWreck = { x: derelict.pos.x - rock.pos.x, z: derelict.pos.z - rock.pos.z };
@@ -1241,85 +1261,110 @@ export function createStrangerPilot({ state, bus, ledger, services }) {
               / ((rkSpeed || 1) * toWreckD) : 0;
             swingStartTick = swingStartTick || state.tick;
             const stretchTicks = state.tick - swingStartTick;
-            // Cut when the swing geometry lines the rock up with the wreck (or failsafe late).
-            if ((rkSpeed >= 18 && rkDot > 0.93) || stretchTicks > 420) {
+            // Pick the orbit side that carries the sweep toward the wreck first.
+            const crossWR = (rock.pos.x - p.pos.x) * (derelict.pos.z - rock.pos.z)
+              - (rock.pos.z - p.pos.z) * (derelict.pos.x - rock.pos.x);
+            orbitDir = crossWR > 0 ? -1 : 1;
+            // Cut when the swing geometry lines the rock up with the wreck. The sweep
+            // crosses the wreck direction every revolution; a mid-sweep cut flings the
+            // rock exactly the wrong way, so there is no early failsafe here.
+            // Contact pad at the wreck is ~32 wu at ~230 wu range: the release needs a
+            // near-exact alignment or the rock sails past. The sweep crosses this window
+            // every revolution, so hold on until it truly lines up.
+            if ((rkSpeed >= 25 && rkDot > 0.995) || stretchTicks > 2400) {
               input.tetherCut = true;
               cmd.cut = true;
               unhook();
               swingStartTick = 0;
               return;
             }
-            // Burn the tangent: aim across the line (orbit side), full burn, boost pulses.
-            const linex = (rock.pos.x - p.pos.x) / (dist(p.pos, rock.pos) || 1);
-            const linez = (rock.pos.z - p.pos.z) / (dist(p.pos, rock.pos) || 1);
-            const tanx = -linez * orbitDir;
-            const tanz = linex * orbitDir;
-            input.aimAngle = Math.atan2(tanz, tanx);
-            input.turnIntent = Math.max(-1, Math.min(1, wrapAngle(input.aimAngle - (p.rot || 0)) / 0.5));
+            // The launch sits behind the rock ON the wreck line: burn toward the wreck and the
+            // pair's velocity carries the rock straight into it. Cut when the rock is truly
+            // flying at the wreck.
+            const wreckA = Math.atan2(derelict.pos.z - p.pos.z, derelict.pos.x - p.pos.x);
+            input.aimAngle = wreckA;
+            input.turnIntent = Math.max(-1, Math.min(1, wrapAngle(wreckA - (p.rot || 0)) / 0.5));
             input.moveZ = 1;
-            input.boost = energyFull(p) && ((stretchTicks % 90) === 20 || (stretchTicks % 90) === 60);
-            // The line rides passive through the stretch: holding line-control bleeds idle
-            // energy every tick, and an empty capacitor means no thrust means no swing.
+            input.boost = energyFull(p);
+            cmd.lineControl = true;
+            cmd.lineLength = -0.35; // keep winching while burning: rockReeled must hold at cut
+            if (r.rockReeled && rkSpeed >= 30 && rkDot > 0.9) {
+              input.tetherCut = true;
+              cmd.cut = true;
+              unhook();
+              swingStartTick = 0;
+              return;
+            }
             return;
           }
         } else if (r.current === 'shove') {
           const scout = rescueEntity('scout');
           const wall = rescueEntity('asteroid');
           if (scout && wall) {
-            if (!decided.shoveAim) {
-              decided.shoveAim = true;
-              ledger.recordDecision({
-                situation: 'shove: push the scout from here or reposition behind him',
-                options: [
-                  { id: 'push_from_here', tradeoff: 'instant, rougher angle' },
-                  { id: 'reposition', tradeoff: 'clean line into the rock, seconds lost' },
-                ],
-                chosen: 'reposition',
-              });
-            }
-            // Take the firing position BEHIND the scout on the scout→asteroid line, then push.
-            const dx = wall.pos.x - scout.pos.x;
-            const dz = wall.pos.z - scout.pos.z;
-            const dd = Math.hypot(dx, dz) || 1;
-            const behind = { x: scout.pos.x - (dx / dd) * 220, z: scout.pos.z - (dz / dd) * 220 };
-            const dBehind = dist(p.pos, behind);
-            if (dBehind < 2400 && speedOf(p) > Math.max(12, dBehind / 25)) {
-              // Same settle-brake math as the latch: bleed speed or the approach slides past.
-              flyTo(input, behind, { arrive: 60 });
-              input.moveZ = 0;
-              input.brake = true;
-              return;
-            }
-            const aligned = dBehind < 160;
-            const toScout = Math.atan2(scout.pos.z - p.pos.z, scout.pos.x - p.pos.x);
-            const err = Math.abs(wrapAngle(toScout - (p.rot || 0)));
-            const dScout = dist(p.pos, scout.pos);
-            if (!aligned) {
-              flyTo(input, behind, { arrive: 60, boost: energyFull(p) });
-              return;
-            }
-            // Hold fire when the escape pod sits downrange — killing it restages the beat.
-            const podEnt = r.ids.pod != null ? state.entities.get(r.ids.pod) : null;
-            let podDownrange = false;
-            if (podEnt && podEnt.pos) {
-              const pdx = podEnt.pos.x - p.pos.x;
-              const pdz = podEnt.pos.z - p.pos.z;
-              const pd = Math.hypot(pdx, pdz);
-              if (pd < dScout) {
-                const along = (pdx * Math.cos(toScout) + pdz * Math.sin(toScout)) / (pd || 1);
-                const off = Math.abs(-pdx * Math.sin(toScout) + pdz * Math.cos(toScout));
-                podDownrange = along > 0 && off < 60;
+            // The scout is a live drone that flees the ship: no firing lane holds against a
+            // runner and chasing only leads the pair off the wall's line. The taught verb
+            // finishes it — put a line on him (he cannot run tethered), then throw him at
+            // the rock, exactly like the raider tow.
+            if (lineAttached && latchedId === scout.id) {
+              if (needWinch && (state.simTime || 0) >= winchUntil) needWinch = false;
+              if (needWinch) {
+                input.brake = false;
+                input.moveZ = 0;
+                cmd.lineControl = true;
+                cmd.lineLength = (state.simTime || 0) < nearBreakUntil ? 0.5 : -0.35;
+                return;
               }
+              const toWall = { x: wall.pos.x - scout.pos.x, z: wall.pos.z - scout.pos.z };
+              const toWallD = Math.hypot(toWall.x, toWall.z) || 1;
+              const scSpeed = speedOf(scout);
+              const scDot = scout.vel
+                ? (scout.vel.x * toWall.x + scout.vel.z * toWall.z) / ((scSpeed || 1) * toWallD) : 0;
+              swingStartTick = swingStartTick || state.tick;
+              // Burn at the wall with him in tow; cut when he truly flies at it — the same
+              // release the swing beat lands on the wreck.
+              const wallA = Math.atan2(wall.pos.z - p.pos.z, wall.pos.x - p.pos.x);
+              input.aimAngle = wallA;
+              input.turnIntent = Math.max(-1, Math.min(1, wrapAngle(wallA - (p.rot || 0)) / 0.5));
+              input.moveZ = 1;
+              input.boost = energyFull(p);
+              cmd.lineControl = true;
+              cmd.lineLength = -0.35;
+              // He resumes fleeing the moment the line goes — and away-from-player now
+              // points off the wall. Release close enough that 20+ wu/s carries him to the
+              // rock before the dodge can bleed it off.
+              if ((scSpeed >= 20 && scDot > 0.9 && toWallD < 300) || state.tick - swingStartTick > 2400) {
+                input.tetherCut = true;
+                cmd.cut = true;
+                unhook();
+                swingStartTick = 0;
+                return;
+              }
+              return;
             }
-            flyTo(input, behind, { arrive: 60 });
-            input.aimAngle = toScout;
-            input.turnIntent = Math.max(-1, Math.min(1, wrapAngle(toScout - (p.rot || 0)) / 0.5));
-            // Any impulse-class hit on the scout counts — fire whenever roughly on line.
-            input.fire = err < 0.3 && dScout < 520 && energyReady(p) && !podDownrange;
-            input.fireGroup = 1;
+            if (lineAttached) {
+              // Whatever else holds the line (claimed salvage, a loose scrap box) is not the
+              // lesson — let it go and take the body the verb names.
+              input.tetherCut = true;
+              cmd.cut = true;
+              unhook();
+              swingStartTick = 0;
+              return;
+            }
             if (process.env.STRANGER_PILOT_TRACE && (state.tick % 120) === 0) {
-              console.log(`    [shove] t=${Math.round(state.simTime)} aligned=${aligned} err=${err.toFixed(2)} d=${Math.round(dScout)} fire=${input.fire} cap=${p.capMax ? Math.round((p.cap / p.capMax) * 100) : '?'}% scoutToWall=${Math.round(dd)}`);
+              console.log(`    [shove] t=${Math.round(state.simTime)} dScout=${Math.round(dist(p.pos, scout.pos))} scoutToWall=${Math.round(dist(scout.pos, wall.pos))} v=${Math.round(speedOf(p))}`);
             }
+            // Run him down — fly the intercept lead, not his tail: tryLatch's own approach
+            // throttle bleeds arrival speed on a fleeing drone forever, while the led point
+            // keeps the closing vector honest. Same id so the reticle still names him.
+            const scLead = 1.0;
+            tryLatch(input, cmd, {
+              id: scout.id,
+              pos: {
+                x: scout.pos.x + (scout.vel ? scout.vel.x * scLead : 0),
+                z: scout.pos.z + (scout.vel ? scout.vel.z * scLead : 0),
+              },
+            }, 'rescue-scout');
+            swingStartTick = 0;
             return;
           }
         } else if (r.current === 'grab') {
@@ -1333,21 +1378,68 @@ export function createStrangerPilot({ state, bus, ledger, services }) {
               return;
             }
             if (!latched) { tryLatch(input, cmd, pod, 'rescue-pod'); return; }
-            // Run the pod home: cruise far out, then brake into the beacon so the trailing
-            // pod crosses the beacon ring at a speed the tick reads can catch.
+            // Run the pod home: the towed pod crosses the ring trailing the hull, and the
+            // predicate is pod-inside-radius only — proximity, no speed proof. Radial
+            // thrust cannot remove tangential velocity — nose-at-beacon supplies only
+            // centripetal force, which is exactly what holds a stable circle (runs
+            // 7–12 pinned at dB≈111–420 across every pursuit/guidance scheme). Only
+            // the brake acts on the velocity vector itself: a circling approach must
+            // stop dead before it can straighten onto the mark and creep in.
             const dB = dist(p.pos, beacon.pos);
-            const toBx = beacon.pos.x - p.pos.x;
-            const toBz = beacon.pos.z - p.pos.z;
-            const toBd = Math.hypot(toBx, toBz) || 1;
-            const vDot = (p.vel.x * toBx + p.vel.z * toBz) / ((speedOf(p) || 1) * toBd);
-            if (vDot < 0.3) {
-              // Overshot: kill the wrong-way momentum before re-approaching.
-              input.brake = true;
-              flyTo(input, beacon.pos, { arrive: 60 });
-            } else if (dB > 700) {
-              flyTo(input, beacon.pos, { arrive: 60, boost: energyFull(p) && speedOf(p) < 150 });
+            const vx = (p.vel && Number(p.vel.x)) || 0;
+            const vz = (p.vel && Number(p.vel.z)) || 0;
+            const vNow = Math.hypot(vx, vz);
+            const closing = ((vx * (beacon.pos.x - p.pos.x)) + (vz * (beacon.pos.z - p.pos.z))) / (dB || 1);
+            if (!grabBraking && (vNow > Math.max(10, dB / 6) || (vNow > 4 && closing < vNow * 0.4))) {
+              grabBraking = true;
+            }
+            if (grabBraking && vNow < 2) grabBraking = false;
+            const aimB = Math.atan2(beacon.pos.z - p.pos.z, beacon.pos.x - p.pos.x);
+            const errB = wrapAngle(aimB - (p.rot || 0));
+            input.aimAngle = aimB;
+            input.turnIntent = Math.max(-1, Math.min(1, errB / 0.6));
+            input.boost = false;
+            const podSpeed = pod.vel ? Math.hypot(pod.vel.x || 0, pod.vel.z || 0) : 0;
+            if (dB < 100) {
+              // Delivery ratchet: the pod only needs to graze the 60-ring while the
+              // line holds, and its tow momentum carries it ~line-length forward of
+              // the hull whenever the hull stops. Park — let it glide — bite a few
+              // wu closer — park again. Each cycle puts the pod ~18wu nearer; no
+              // precision station-keeping against tether tension required (runs
+              // 7–14 parked the hull in stable circles or dithered off the mark).
+              if (grabParking) {
+                input.brake = true;
+                input.moveZ = 0;
+                if (vNow < 1.5 && podSpeed < 1.5) {
+                  grabParking = false;
+                  grabBiteUntil = (state.simTime || 0) + 2.2;
+                } else if ((state.simTime || 0) - grabParkAt > 8) {
+                  // Tether jitter can hold the pod above the settle threshold —
+                  // never let a park become a wall.
+                  grabParking = false;
+                  grabBiteUntil = (state.simTime || 0) + 2.2;
+                }
+              } else if ((state.simTime || 0) < grabBiteUntil) {
+                input.brake = false;
+                input.moveZ = Math.abs(errB) < 0.4 ? 1 : 0;
+              } else {
+                grabParking = true;
+                grabParkAt = state.simTime || 0;
+                input.brake = true;
+                input.moveZ = 0;
+              }
             } else {
-              flyTo(input, beacon.pos, { arrive: 40 });
+              grabParking = false;
+              input.brake = grabBraking || vNow > Math.max(6, dB / 10);
+              input.moveZ = (!input.brake && Math.abs(errB) < 0.4 && dB > 20) ? 1 : 0;
+            }
+            // Keep the pod reeled to the hull for delivery — a slack line let it sail
+            // 390wu off on its own momentum (run 13) and the predicate needs IT in
+            // the ring, not the hull.
+            cmd.lineControl = true;
+            cmd.lineLength = -0.35;
+            if (process.env.STRANGER_PILOT_TRACE && (state.tick % 120) === 0) {
+              console.log(`    [grab] t=${Math.round(state.simTime)} dPod=${Math.round(dist(p.pos, pod.pos))} dB=${Math.round(dB)} v=${Math.round(vNow)} podV=${Math.round(podSpeed)} closing=${Math.round(closing)} err=${errB.toFixed(2)} brk=${input.brake} mz=${input.moveZ} park=${grabParking} latched=${r.podLatched}`);
             }
             return;
           }
@@ -1548,15 +1640,15 @@ export function createStrangerPilot({ state, bus, ledger, services }) {
             chosen: 'outrun',
           });
         }
-        const d = dist(p.pos, escapeFrom);
-        if (heat() > 0.001 && d < 2000) {
-          flyTo(input, {
-            x: escapeFrom.x + (p.pos.x - escapeFrom.x) * 10,
-            z: escapeFrom.z + (p.pos.z - escapeFrom.z) * 10,
-          }, { arrive: 400, boost: true });
+        const awayA = Math.atan2(p.pos.z - escapeFrom.z, p.pos.x - escapeFrom.x);
+        if (heat() > 0.001) {
+          input.aimAngle = awayA;
+          input.turnIntent = Math.max(-1, Math.min(1, wrapAngle(awayA - (p.rot || 0)) / 0.5));
+          input.moveZ = 1;
+          input.boost = energyFull(p);
           return;
         }
-        input.brake = true; // outside the ring: coast while the level drains
+        input.brake = true; // heat cleared: coast while the beat resolves
         return;
       }
 
@@ -1579,17 +1671,25 @@ export function createStrangerPilot({ state, bus, ledger, services }) {
           return;
         }
         if (/cross your bow/i.test(line) && wp.pos) {
-          // Flyby lesson: meet the trainer head-on — relative speed and closing arm the lease.
-          flyTo(input, wp.pos, { arrive: 20, boost: energyFull(p) });
+          // Flyby lesson: "hold course" — the staged pass crosses the player's bow. Chasing the
+          // wingman on boost keeps the stick hot through the whole crossing window, and the
+          // flyby census refuses to arm while input.boost/fire is held, so the pass can never
+          // lease. Settle to near-stationary and let the pass come; spent passes restage.
+          input.boost = false;
+          input.fire = false;
+          if (speedOf(p) > 15) input.brake = true;
           return;
         }
         if (/leaves scope|thrust away/i.test(line) && wp.pos) {
-          // Disengage: the waypoint marks the trainer — fly directly AWAY from it.
-          const awayPoint = { x: p.pos.x + (p.pos.x - wp.pos.x), z: p.pos.z + (p.pos.z - wp.pos.z) };
-          flyTo(input, awayPoint, { arrive: 50, boost: energyFull(p) });
+          // Disengage: aim directly away from the trainer and hold the burn. (A receding
+          // relative target never opens the brake band — the hull would creep forever.)
+          input.aimAngle = Math.atan2(p.pos.z - wp.pos.z, p.pos.x - wp.pos.x);
+          input.turnIntent = Math.max(-1, Math.min(1, wrapAngle(input.aimAngle - (p.rot || 0)) / 0.5));
+          input.moveZ = 1;
+          input.boost = energyFull(p);
           return;
         }
-        if (/trainer|raider|burst/i.test(line) && wp.pos) {
+        if (/trainer|burst/i.test(line) && wp.pos) {
           const fd = flyTo(input, wp.pos, { arrive: 160 });
           if (process.env.STRANGER_PILOT_TRACE && (state.tick % 120) === 0) {
             console.log(`    [marker] t=${Math.round(state.simTime)} d=${Math.round(fd)} v=${Math.round(speedOf(p))} line='${line.slice(0, 30)}' burst=${/burst/i.test(line)}`);
@@ -1601,7 +1701,7 @@ export function createStrangerPilot({ state, bus, ledger, services }) {
           }
           return;
         }
-        if (/derelict|trainer|raider|wingman|buoy|beacon|rock/i.test(wp.label || '') && wp.pos) {
+        if (/derelict|trainer|buoy|beacon|rock/i.test(wp.label || '') && wp.pos) {
           // The attach lesson: fly to the marked body, take the offered line, winch, cut.
           if (/derelict/i.test(wp.label || '')) {
             const d = dist(p.pos, wp.pos);
@@ -1652,6 +1752,10 @@ export function createStrangerPilot({ state, bus, ledger, services }) {
         }
         if (/scanner|seams/i.test(line) && wp.pos) {
           const d = flyTo(input, wp.pos, { arrive: 150 });
+          if (process.env.STRANGER_PILOT_TRACE && (state.tick % 120) === 0) {
+            const rock9 = wp.label === 'Training Seam' ? nearestEntityTo(wp.pos, 80) : null;
+            console.log(`    [seam] t=${Math.round(state.simTime)} d=${Math.round(d)} v=${Math.round(speedOf(p))} act='${(o.beatAction || '').slice(0, 30)}' scanHi=${rock9 && rock9.data ? (rock9.data.scanHighlightUntil > (state.simTime || 0)) : '?'} fire=${input.fire}`);
+          }
           if (d <= 260 && !decided.scanPulse) {
             decided.scanPulse = true;
             ledger.recordDecision({

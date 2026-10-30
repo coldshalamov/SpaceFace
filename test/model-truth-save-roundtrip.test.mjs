@@ -45,8 +45,8 @@ function makeVec(x = 0, z = 0) {
   };
 }
 
-test('a populated save round-trips every persisted field at version 14', () => {
-  assert.equal(CURRENT_VERSION, 14);
+test('a populated save round-trips every persisted field at the current save version', () => {
+  assert.ok(Number.isInteger(CURRENT_VERSION) && CURRENT_VERSION >= 14, `current save version: ${CURRENT_VERSION}`);
   const state = createGameState(4242);
   state.mode = 'flight';
   state.player.credits = 4321;
@@ -107,7 +107,7 @@ test('a populated save round-trips every persisted field at version 14', () => {
   save.registry = { get() { return null; } };
   try {
     const envelope = save.serialize('roundtrip');
-    assert.equal(envelope.version, 14);
+    assert.equal(envelope.version, CURRENT_VERSION);
     const persisted = JSON.parse(JSON.stringify(envelope.data));
     state.player.credits = 1;
     state.player.cargo.items.ore_iron = 0;

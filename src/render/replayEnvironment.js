@@ -32,7 +32,7 @@ export function createReplayEnvironment(root, tape, film) {
       }
       syncBolusView(owner);
     },
-    dispose() { disposeBolusView(owner); },
+    dispose({ disposeGpu = true } = {}) { disposeBolusView(owner, { disposeGpu }); },
   };
   // Admit and compile the whole machine with the stage, before its first frame.
   environment.update(frames[0].sample);

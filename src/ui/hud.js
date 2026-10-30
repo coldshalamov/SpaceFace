@@ -2750,11 +2750,13 @@ export function createHud(ctx, alerts) {
       else setTimeout(releaseCaptionFlush, 16);
     }
     caption.classList.add('show');
+    placeReceiptLane();
     // A voice body carries its real duration — the caption outlives a long slow-register bark
     // instead of dying mid-word (assertive/polite defaults stand for non-voice captions).
+    const readableTtl = Math.max(2400, Math.min(12000, Math.ceil((caption.scrollHeight || 0) / 19) * 900));
     const ttl = Number.isFinite(p.durationMs) && p.durationMs > 0
       ? Math.max(2400, p.durationMs)
-      : (p.assertive ? 3200 : 2400);
+      : Math.max(p.assertive ? 3200 : 2400, readableTtl);
     captionHideTimer = setTimeout(() => {
       caption.classList.remove('show');
       captionFadeTimer = setTimeout(() => {
@@ -5862,6 +5864,9 @@ export function createHud(ctx, alerts) {
     stale: true,
     left: null,
     right: null,
+    rightEl: rightDock,
+    rail: null,
+    railEl: null,
     orrery: null,
     orreryEl: null,
   };
@@ -5885,6 +5890,10 @@ export function createHud(ctx, alerts) {
     // to display:none, so plateBox returns null and nothing is reserved.
     objectiveEdgeBoxes.left = plateBox(leftContext);
     objectiveEdgeBoxes.right = plateBox(rightDock);
+    // Caption/receipt placement shares this geometry snapshot. The rail and dock only need to be
+    // read when the HUD layout changes, not on every slow presentation frame.
+    const railEl = root.querySelector('.orr-hud-cluster .orr-cluster, .sf-prail');
+    objectiveEdgeBoxes.railEl = railEl;
     // The prompt deck anchors its right edge to this var (styles/prompt-deck.css): measured here so
     // decisions sit left of the dock column instead of growing over the target card. The dock's
     // left edge only moves with the layout step, which is exactly this box's stale lifecycle.
@@ -5897,13 +5906,133 @@ export function createHud(ctx, alerts) {
     const orreryEl = orreryCluster ? orreryCluster.host.querySelector('.orr-cluster') : null;
     objectiveEdgeBoxes.orreryEl = orreryEl;
     objectiveEdgeBoxes.orrery = orreryCluster ? plateBox(orreryEl) : null;
+    objectiveEdgeBoxes.rail = railEl === orreryEl ? objectiveEdgeBoxes.orrery : plateBox(railEl);
     return objectiveEdgeBoxes;
   }
+  let overlayLayoutObserver = null;
+  if (typeof ResizeObserver === 'function') {
+    overlayLayoutObserver = new ResizeObserver(invalidateObjectiveEdgeBoxes);
+    const railEl = root.querySelector('.orr-hud-cluster .orr-cluster, .sf-prail');
+    if (railEl) overlayLayoutObserver.observe(railEl);
+    if (rightDock) overlayLayoutObserver.observe(rightDock);
+    hudUnsubscribers.push(() => overlayLayoutObserver?.disconnect());
+  }
+  on('hud:layoutChanged', invalidateObjectiveEdgeBoxes);
+  on('settings:changed', invalidateObjectiveEdgeBoxes);
 
-  const ORRERY_RECEIPT_INSET = 30;
   // Both roots are static index.html markup: resolve each once, retrying only while absent.
   let toastsLaneEl = null;
   let alertsEl = null;
+  function overlaySafeSlot(layout, w, h) {
+    const safe = layout && layout.centerSafe;
+    const measured = objectiveEdgeObstacles();
+    const rail = measured.rail;
+    const dock = measured.right;
+    const railVisible = rail && rail.width > 0 && rail.height > 0;
+    const dockVisible = dock && dock.width > 0 && dock.height > 0;
+    if (w > 760 && h <= 500 && layout?.safe) {
+      const left = Math.max(layout.safe.left + 12, railVisible ? rail.right + 12 : layout.safe.left + 12);
+      // The right dock is tall on desktop but may sit above the actual caption/receipt band in
+      // compact landscape. Let vertical obstacle measurement reserve only the rows it occupies.
+      const right = layout.safe.right - 12;
+      if (right - left >= 160) {
+        const captionWidth = Math.max(160, Math.min(320, Math.round((railVisible ? rail.width : w * 0.42) - 24)));
+        return { x: left, width: right - left, wide: false,
+          captionSlot: { x: 12, width: Math.min(captionWidth, w - 24), wide: false } };
+      }
+    }
+    if (w > 1180 && safe && safe.width >= 180) {
+      const left = Math.max(safe.x, railVisible ? rail.right + 12 : safe.x);
+      const right = Math.min(safe.x + safe.width, dockVisible ? dock.left - 12 : safe.x + safe.width);
+      if (right - left >= 180) {
+        return { x: left, width: right - left, wide: true };
+      }
+    }
+    if (safe && safe.width >= 140 && h <= 620) {
+      const x = safe.x;
+      const width = safe.width;
+      if (width >= 140) return { x, width, wide: false };
+    }
+    // In portrait the canonical center-safe column collapses between the corner instruments.
+    // Use the full inset playfield above the dock/objective instead; those lower instruments
+    // remain clear even when long copy wraps or several receipts are present.
+    const x = (layout?.safe?.left || 0) + 12;
+    const width = Math.max(160, (layout?.safe?.width || w) - 24);
+    return { x, width: Math.min(width, w - x - 12), wide: false };
+  }
+  function freeOverlayBands(slot, h, layout) {
+    const measured = objectiveEdgeObstacles();
+    const candidates = [
+      ...root.querySelectorAll?.('.orr-hud-cluster .orr-cluster, .sf-prail, .sf-rightdock, .sf-command-deck, .sf-nav-readout, .sf-nav-label, .sf-mt-obj, .sf-vtape--on, .sf-commtape, .sf-dock-prompt, .sf-tell.is-on, #sf-prompt-deck, #sf-tutorial-flight-card') || [],
+      ...document.querySelectorAll?.('#alerts > .sf-alert:not([hidden])') || [],
+    ];
+    const blockers = candidates.map((el) => {
+      const rect = el === measured.railEl ? measured.rail
+        : el === measured.rightEl ? measured.right
+          : el.getBoundingClientRect?.();
+      return rect && {
+        left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom,
+        width: rect.width, height: rect.height,
+        topInset: el.matches?.('.orr-cluster') ? 16 : 8,
+      };
+    }).filter((r) => r && r.width > 0 && r.height > 0
+      && r.left < slot.x + slot.width && r.right > slot.x);
+    const viewportWidth = layout?.viewport?.width
+      || (typeof window !== 'undefined' ? window.innerWidth : 1280);
+    const canonical = viewportWidth > 1180
+      ? [layout.commandDeck, layout.action]
+      : viewportWidth <= 760
+        ? [layout.objective, layout.vitals, layout.rightDock, layout.action]
+        : [layout.action];
+    for (const rect of canonical) {
+      if (rect && rect.width > 0 && rect.height > 0 && rect.x < slot.x + slot.width && rect.x + rect.width > slot.x) blockers.push({
+        left: rect.x, right: rect.x + rect.width, top: rect.y, bottom: rect.y + rect.height,
+      });
+    }
+    blockers.sort((a, b) => a.top - b.top);
+    const bands = [];
+    let cursor = 8;
+    for (const blocker of blockers) {
+      const top = Math.max(8, blocker.top - (blocker.topInset ?? 8));
+      const bottom = Math.min(h - 8, blocker.bottom + 8);
+      if (top > cursor + 1) bands.push({ top: cursor, bottom: top });
+      cursor = Math.max(cursor, bottom);
+    }
+    if (cursor < h - 8) bands.push({ top: cursor, bottom: h - 8 });
+    // The canonical lower corner bounds remain reserved when the DOM has not mounted them yet.
+    if (!root.querySelector?.('.orr-hud-cluster .orr-cluster')) {
+      for (const anchor of [layout.objective, layout.vitals, layout.rightDock, layout.action]) {
+        if (anchor && anchor.x < slot.x + slot.width && anchor.x + anchor.width > slot.x) {
+          const next = [];
+          for (const band of bands) {
+            if (anchor.y <= band.top || anchor.y + anchor.height >= band.bottom) { next.push(band); continue; }
+            next.push({ top: band.top, bottom: anchor.y - 8 }, { top: anchor.y + anchor.height + 8, bottom: band.bottom });
+          }
+          bands.splice(0, bands.length, ...next.filter((band) => band.bottom - band.top > 0));
+        }
+      }
+    }
+    return bands.filter((band) => band.bottom - band.top >= 48).sort((a, b) => b.bottom - b.top - (a.bottom - a.top));
+  }
+  function placeCaptionInSafeSlot(layout, slot, laneRoot, band = null) {
+    if (!caption || caption.hidden || !slot) return;
+    const h = typeof window !== 'undefined' ? window.innerHeight : 720;
+    const available = band || freeOverlayBands(slot, h, layout)[0] || { top: 8, bottom: h - 8 };
+    const laneRect = laneRoot?.querySelector?.('.sf-toast:not(.sf-toast--out)') ? laneRoot.getBoundingClientRect?.() : null;
+    const top = laneRect ? Math.max(available.top, laneRect.bottom + 12) : available.top;
+    const maxHeight = Math.max(48, Math.round(available.bottom - top));
+    caption.style.left = `${Math.round(slot.x)}px`;
+    caption.style.right = 'auto';
+    caption.style.top = `${Math.round(top)}px`;
+    caption.style.bottom = 'auto';
+    caption.style.width = 'fit-content';
+    caption.style.maxWidth = `${Math.round(slot.width)}px`;
+    caption.style.maxHeight = `${maxHeight}px`;
+    caption.style.overflowY = caption.scrollHeight > maxHeight ? 'auto' : 'visible';
+    caption.style.textAlign = 'center';
+    caption.style.transform = 'none';
+    caption.style.pointerEvents = caption.scrollHeight > maxHeight ? 'auto' : 'none';
+  }
   function placeReceiptLane(resolvedLayout = null) {
     if (toastsLaneEl === null) toastsLaneEl = document.getElementById('toasts');
     const laneRoot = toastsLaneEl;
@@ -5913,55 +6042,121 @@ export function createHud(ctx, alerts) {
     const layout = resolvedLayout || resolveObjectiveHudLayout(w, h);
     const lane = layout.receipt;
     if (!lane) return;
-    // The fixed receipt lane does not need collision measurement while it is empty. Toasts are
-    // short-lived and the next existing slow HUD placement tick handles their first visible frame.
     const activeReceipt = laneRoot.querySelector?.('.sf-toast:not(.sf-toast--out)');
-    if (!activeReceipt) {
+    const captionVisible = caption && !caption.hidden && caption.classList.contains('show');
+    if (!activeReceipt && !captionVisible) {
       placeFlightReadouts(w, h);
       return;
     }
-    setStyle(laneRoot, 'top', 'auto');
-    setStyle(laneRoot, 'width', `${Math.round(lane.width)}px`);
-    // The bottom-left Cluster normally ends left of this lane. When its actual footprint reaches
-    // the receipt band, lift the stack into the reserved lane above the action row.
-    let bottomInset = orreryCluster ? ORRERY_RECEIPT_INSET : lane.bottomInset;
-    let laneLeft = lane.x;
-    const receiptHeight = Math.max(lane.height, laneRoot.getBoundingClientRect?.().height || 0);
-    const clusterEl = orreryCluster && orreryCluster.host?.querySelector('.orr-cluster');
-    const cluster = clusterEl && clusterEl.getBoundingClientRect ? clusterEl.getBoundingClientRect() : null;
-    const receiptTop = h - bottomInset - receiptHeight;
-    const receiptBottom = h - bottomInset;
-    const receiptRight = laneLeft + lane.width;
-    if (cluster && laneLeft < cluster.right && receiptRight > cluster.left
-      && receiptTop < cluster.bottom && cluster.top < receiptBottom) {
-      bottomInset = lane.bottomInset;
-    }
-    // A live decision outranks a receipt. If the prompt deck grows over either receipt position,
-    // seat the fading stack in the free band immediately above it and left of the player-centered
-    // playfield, below the first-flight instruction.
-    const promptDeck = document.getElementById('sf-prompt-deck');
-    if (promptDeck && !promptDeck.hidden && typeof promptDeck.getBoundingClientRect === 'function') {
-      const prompt = promptDeck.getBoundingClientRect();
-      const currentTop = h - bottomInset - receiptHeight;
-      const currentBottom = h - bottomInset;
-      const horizontalOverlap = laneLeft < prompt.right && laneLeft + lane.width > prompt.left;
-      const verticalOverlap = currentTop < prompt.bottom && prompt.top < currentBottom;
-      if (horizontalOverlap && verticalOverlap) {
-        const tutorial = document.getElementById('sf-tutorial-flight-card');
-        const tutorialBottom = tutorial && !tutorial.hidden
-          ? tutorial.getBoundingClientRect().bottom : 0;
-        const candidateTop = prompt.top - 8 - receiptHeight;
-        if (candidateTop >= tutorialBottom + 8) {
-          bottomInset = h - prompt.top + 8;
-          laneLeft = (layout.safe?.left ?? 0) + 12;
-        }
+    const slot = overlaySafeSlot(layout, w, h);
+    let captionSlot = slot.captionSlot || slot;
+    const bands = freeOverlayBands(slot, h, layout);
+    let captionBands = slot.captionSlot ? freeOverlayBands(captionSlot, h, layout) : bands;
+    if (!activeReceipt) {
+      caption.style.width = 'fit-content';
+      caption.style.maxWidth = `${Math.round(captionSlot.width)}px`;
+      caption.style.maxHeight = 'none';
+      caption.style.overflowY = 'visible';
+      let captionHeight = Math.max(48, caption.scrollHeight || caption.getBoundingClientRect?.().height || 0);
+      let captionBand = captionBands.find((band) => band.bottom - band.top >= captionHeight + 8);
+      if (slot.captionSlot && !captionBand) {
+        captionSlot = slot;
+        captionBands = bands;
+        caption.style.maxWidth = `${Math.round(captionSlot.width)}px`;
+        captionHeight = Math.max(48, caption.scrollHeight || caption.getBoundingClientRect?.().height || 0);
+        captionBand = captionBands.find((band) => band.bottom - band.top >= captionHeight + 8);
       }
+      placeCaptionInSafeSlot(layout, captionSlot, null, captionBand || captionBands[0]);
+      placeFlightReadouts(w, h);
+      return;
     }
+    let laneWidth = Math.min(lane.width, slot.width);
+    let laneLeft = slot.x + (slot.width - laneWidth) / 2;
+    setStyle(laneRoot, 'width', `${Math.round(laneWidth)}px`);
+    setStyle(laneRoot, 'maxHeight', 'none');
+    setStyle(laneRoot, 'overflowY', 'visible');
+    setStyle(laneRoot, 'pointerEvents', 'none');
+    const receiptCards = [...(laneRoot.querySelectorAll?.('.sf-toast:not(.sf-toast--out)') || [])];
+    const receiptGap = typeof getComputedStyle === 'function'
+      ? Math.max(0, parseFloat(getComputedStyle(laneRoot).rowGap) || 0) : 0;
+    const receiptHeight = Math.max(lane.height,
+      receiptCards.reduce((sum, card) => sum + (card.getBoundingClientRect?.().height || 0), 0)
+        + Math.max(0, receiptCards.length - 1) * receiptGap);
+    if (captionVisible) {
+      caption.style.width = 'fit-content';
+      caption.style.maxWidth = `${Math.round(captionSlot.width)}px`;
+      caption.style.maxHeight = 'none';
+      caption.style.overflowY = 'visible';
+    }
+    let captionHeight = captionVisible ? Math.max(48, caption.scrollHeight || caption.getBoundingClientRect?.().height || 0) : 0;
+    const gap = captionVisible ? 12 : 0;
+    if (captionVisible && slot.captionSlot && !captionBands.some((band) => band.bottom - band.top >= captionHeight + 8)) {
+      // At compact landscape sizes an alert can consume the small left strip above the power
+      // instrument. Keep the narration in the measured rail-to-dock corridor instead of falling
+      // back across the instruments; overflow remains scrollable there with the receipts.
+      captionSlot = slot;
+      captionBands = bands;
+      slot.captionSlot = null;
+      caption.style.maxWidth = `${Math.round(captionSlot.width)}px`;
+      captionHeight = Math.max(48, caption.scrollHeight || caption.getBoundingClientRect?.().height || 0);
+    }
+    const splitBand = captionVisible ? ((slot.captionSlot ? captionBands : bands).find((band) => band.bottom - band.top >= captionHeight + 8)
+      || (slot.captionSlot ? captionBands : bands)[0]) : null;
+    const receiptBand = captionVisible && splitBand
+      ? (slot.captionSlot
+        ? bands.find((band) => band.bottom - band.top >= receiptHeight + 8)
+        : bands.find((band) => band !== splitBand && band.bottom - band.top >= receiptHeight + 8))
+      : null;
+    const combinedBand = captionVisible && !receiptBand
+      ? bands.find((band) => band.bottom - band.top >= receiptHeight + captionHeight + gap + 8)
+      : null;
+    const sharedBand = receiptBand || combinedBand || bands[0] || { top: 8, bottom: h - 8 };
+    let laneTop = receiptBand ? receiptBand.top : sharedBand.top;
+    let receiptMaxHeight = receiptBand ? sharedBand.bottom - sharedBand.top
+      : Math.min(receiptHeight, Math.max(48, Math.floor((sharedBand.bottom - sharedBand.top) * (captionVisible ? 0.54 : 1))));
+    if (captionVisible && !receiptBand) receiptMaxHeight = Math.min(receiptMaxHeight, Math.max(48, sharedBand.bottom - sharedBand.top - captionHeight - gap));
+    setStyle(laneRoot, 'maxHeight', `${Math.round(receiptMaxHeight)}px`);
+    setStyle(laneRoot, 'overflowY', receiptHeight > receiptMaxHeight ? 'auto' : 'visible');
+    setStyle(laneRoot, 'pointerEvents', receiptHeight > receiptMaxHeight ? 'auto' : 'none');
     setStyle(laneRoot, 'left', `${Math.round(laneLeft)}px`);
-    setStyle(laneRoot, 'bottom', `${Math.round(bottomInset)}px`);
+    setStyle(laneRoot, 'top', `${Math.round(laneTop)}px`);
+    setStyle(laneRoot, 'bottom', 'auto');
     setStyle(laneRoot, 'right', 'auto');
     setStyle(laneRoot, 'transform', 'none');
+    const captionBand = receiptBand ? splitBand : sharedBand;
+    if (captionVisible) {
+      if (!receiptBand) captionBand.top = laneTop + receiptMaxHeight + gap;
+      placeCaptionInSafeSlot(layout, captionSlot, receiptBand ? null : laneRoot, captionBand);
+    }
     placeFlightReadouts(w, h);
+  }
+  if (typeof window !== 'undefined' && window.addEventListener) {
+    const repositionHudOverlays = () => placeReceiptLane();
+    window.addEventListener('resize', repositionHudOverlays);
+    hudUnsubscribers.push(() => window.removeEventListener('resize', repositionHudOverlays));
+  }
+  if (typeof MutationObserver !== 'undefined') {
+    const alertLaneOptions = {
+      attributes: true, attributeFilter: ['class', 'hidden', 'style'],
+      childList: true, subtree: true, characterData: true,
+    };
+    let alertLaneObserver = null;
+    const observeAlertLane = () => {
+      const alertLane = document.getElementById('alerts');
+      if (!alertLane || alertLaneObserver) return false;
+      alertLaneObserver = new MutationObserver(() => placeReceiptLane());
+      alertLaneObserver.observe(alertLane, alertLaneOptions);
+      placeReceiptLane();
+      return true;
+    };
+    if (!observeAlertLane()) {
+      const waitForAlertLane = new MutationObserver(() => {
+        if (observeAlertLane()) waitForAlertLane.disconnect();
+      });
+      waitForAlertLane.observe(document.documentElement, { childList: true, subtree: true });
+      hudUnsubscribers.push(() => waitForAlertLane.disconnect());
+    }
+    hudUnsubscribers.push(() => alertLaneObserver?.disconnect());
   }
 
   function placeFlightBox(el, rect) {
