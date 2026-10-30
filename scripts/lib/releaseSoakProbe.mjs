@@ -791,7 +791,7 @@ export async function runReleaseSoakProbe({
     // calls, which the browser's own GL warning text cannot identify.
     const programQueryTrap = await readGlProgramQueryTrap(page);
     if (programQueryTrap.length > 0) {
-      doLog(`program-query trap captured ${programQueryTrap.length} invalid getProgramParameter caller(s): ${
+      doLog(`program-query trap captured ${programQueryTrap.length} getProgramParameter observation(s): ${
         programQueryTrap.slice(0, 4).map((entry) => `${entry.count}x ${String(entry.stack || '').split('\n')[2] || '?'}${entry.lost === true ? ' [context-lost]' : ''}`).join(' | ')
       }`);
     }
@@ -1002,6 +1002,7 @@ export async function runReleaseSoakProbe({
         lastFailure: bufferResizeFailure,
         lastFailureAfterRecovery: postRecoveryDiagnostics?.lastFailureAfterRecovery || null,
         lastBatchedFailure: postRecoveryDiagnostics?.lastBatchedFailure || null,
+        lastTextureUploadFailure: postRecoveryDiagnostics?.lastTextureUploadFailure || null,
       } : null,
       hardware,
       soakWindow,
@@ -1591,6 +1592,8 @@ export function readFailureRuntimeSnapshot() {
       lastBatchedFailure: render.bufferResizeDiagnostic?.lastBatchedFailure
         || render.renderer?.__sfBatchedMeshFailure
         || null,
+      lastTextureUploadFailure: render.bufferResizeDiagnostic?.lastTextureUploadFailure
+        || render.renderer?.__sfTextureUploadFailure || null,
       bufferResizeDiagnosticPerformanceEligible: render.bufferResizeDiagnostic?.performanceEligible ?? null,
       firstPictureReady: render.openingFirstPictureReady === true,
       firstPicturePhase: render.openingFirstPicturePhase ? {
@@ -1638,6 +1641,8 @@ export function readPostRecoveryRenderDiagnostics() {
       || render?.renderer?.__sfBufferResizeFailure || null,
     lastBatchedFailure: render?.bufferResizeDiagnostic?.lastBatchedFailure
       || render?.renderer?.__sfBatchedMeshFailure || null,
+    lastTextureUploadFailure: render?.bufferResizeDiagnostic?.lastTextureUploadFailure
+      || render?.renderer?.__sfTextureUploadFailure || null,
   };
 }
 
@@ -1657,11 +1662,11 @@ export async function installBufferResizeDiagnosticInitScript(target) {
 // frame that issued the query. Dead-handle getProgramParameter calls are a known failure class here
 // (compileAsync's uncancellable 10 ms poll, retire polls on force-lost preview contexts), so the
 // soak arms a writer trap — same pattern as __M6_POS_TRAP_EVENTS__ — that records the stack of every
-// program-parameter query the driver answered with null — the same condition the decoder reports as
-// GL_INVALID_VALUE "Program object expected" (a JS-binding-level isProgram check is unsound: stale
-// post-restore wrappers still belong to the context object and can pass it). The trap is read-only:
-// it never filters, throws, or alters the return value, so product behaviour is untouched and the
-// captured stacks travel with the evidence when warnings fail validation.
+// program-parameter query the driver answered with null. During the existing error-only buffer
+// diagnostic, it also records false-return queries with read-only validity/loss metadata. Those
+// rows are observations, not proof of an invalid handle: pending compilation and stale wrappers
+// can make isProgram ambiguous. The trap never filters, throws, drains the GL error queue, or
+// alters the original return value.
 // The in-page bodies are exported so the same source arms the trap two ways: addInitScript
 // (browser contexts, and any Electron page created after installation) and a live-page evaluate
 // (Electron's first window, which exists before Playwright can install an init script at all).
@@ -1670,34 +1675,68 @@ export function armGlProgramQueryTrapInPage() {
   if (globalThis.__SF_PROGRAM_QUERY_TRAP__) return;
   const queries = [];
   const seen = new Map();
+  // Context identity is diagnostic-only and weakly keyed: no WebGL context or program wrapper is
+  // retained by the evidence collector after the page releases it.
+  const contextIds = new WeakMap();
+  let nextContextId = 1;
   const wrap = (proto, ctxKind) => {
     if (!proto || typeof proto.getProgramParameter !== 'function') return;
     const original = proto.getProgramParameter;
     if (original.__sfProgramQueryTrap === true) return;
     const wrapped = function (program, pname) {
       const result = original.call(this, program, pname);
-      // The driver-level verdict is the only version-proof predicate: the JS binding accepts
-      // stale wrappers that "belong" to this context object (post-restore pre-loss handles) and
-      // forwards them to the decoder, which answers GL_INVALID_VALUE "Program object expected"
-      // and returns null. isProgram() is unreliable here — it can still answer true for those
-      // wrappers, which is how the earlier isProgram-based trap observed a 256-warning storm as
-      // zero bad queries. A live same-context program never returns null for a valid pname.
-      if (result === null) {
+      const diagnosticEnabled = globalThis.__SF_BUFFER_RESIZE_DIAG__ === true;
+      let lost = null;
+      if (result === null || (result === false && diagnosticEnabled)) {
+        try {
+          lost = typeof this.isContextLost === 'function' ? this.isContextLost() === true : null;
+        } catch (_) { /* read-only diagnostic; preserve the native query result */ }
+      }
+      let programValid = null;
+      // Null remains captured by the existing trap. In the opt-in diagnostic, false-return
+      // observations are retained regardless of validity/loss metadata: pending compilation and
+      // restored wrappers make those fields ambiguous, so they must not filter an observation.
+      if (result === null || (result === false && diagnosticEnabled)) {
+        try {
+          programValid = typeof this.isProgram === 'function' ? this.isProgram(program) === true : null;
+        } catch (_) { /* an observer failure must not alter the native query result */ }
+      }
+      const recordQuery = result === null || (result === false && diagnosticEnabled);
+      if (recordQuery) {
         try {
           const stack = (new Error('sf-program-query-trap')).stack || '';
-          const key = stack.split('\n').slice(2, 8).join('|');
+          let contextId = null;
+          if (this && (typeof this === 'object' || typeof this === 'function')) {
+            contextId = contextIds.get(this);
+            if (contextId == null) {
+              contextId = nextContextId++;
+              contextIds.set(this, contextId);
+            }
+          }
+          const returnType = result === null ? 'null' : typeof result;
+          const returnValue = result === null || ['boolean', 'number', 'string'].includes(typeof result)
+            ? result
+            : null;
+          const at = Math.round(performance.now());
+          const key = [contextId, Number(pname), returnType, String(returnValue), programValid, lost,
+            stack.split('\n').slice(2, 8).join('|')].join('|');
           const existing = seen.get(key);
           if (existing != null) {
             queries[existing].count += 1;
+            queries[existing].lastAt = at;
           } else if (queries.length < 64) {
             seen.set(key, queries.length);
             queries.push({
               count: 1,
               ctx: ctxKind,
+              contextId,
               pname: Number(pname),
-              isProgram: typeof this.isProgram === 'function' ? this.isProgram(program) : null,
-              lost: typeof this.isContextLost === 'function' ? this.isContextLost() === true : null,
-              at: Math.round(performance.now()),
+              isProgram: programValid,
+              lost,
+              returnType,
+              returnValue,
+              firstAt: at,
+              lastAt: at,
               stack: stack.slice(0, 3000),
             });
           }

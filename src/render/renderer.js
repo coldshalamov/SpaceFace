@@ -14,7 +14,7 @@ import { retireUiStageForContextLoss, resumeUiStageAfterContextRestore } from '.
 import { updatePresentedSceneMatrices } from './presentedSceneMatrices.js';
 import { isOrchardFrame } from '../data/anvilOrchardIdentity.js';
 import { installShaderLinkReporter } from './shaderLinkReporter.js';
-import { createBufferResizeDiagnostic, installBatchedMeshFailureDiagnostic, captureBatchedMeshFailure } from './bufferResizeDiagnostic.js';
+import { createBufferResizeDiagnostic, installBatchedMeshFailureDiagnostic, captureBatchedMeshFailure, installTextureUploadFailureDiagnostic } from './bufferResizeDiagnostic.js';
 import { createRacingCourseView } from './racingCourseView.js';
 import { installProgramBinaryCache } from './programBinaryCache.js';
 import { pickNextContactCompileSubject } from './nextContactWarm.js';
@@ -11726,6 +11726,15 @@ export const render = {
       const contextGeneration = () => state.render?.contextRecovery?.generation
         ?? state.contextRestoreSeq
         ?? 0;
+      installTextureUploadFailureDiagnostic(renderer, { enabled: true, contextGeneration,
+        publish(record) {
+          renderer.__sfTextureUploadFailure = record;
+          if (state.render) state.render.bufferResizeDiagnostic = {
+            ...state.render.bufferResizeDiagnostic, enabled: true, performanceEligible: false,
+            lastTextureUploadFailure: record,
+          };
+        },
+      });
       const publishResizeFailure = (error, scene) => {
         try {
           const record = resizeDiagnostic.captureFailure(
@@ -11752,6 +11761,7 @@ export const render = {
           performanceEligible: false,
           lastFailure: null,
           lastBatchedFailure: null,
+          lastTextureUploadFailure: null,
         };
       }
       if (typeof renderer.render === 'function') {

@@ -1,3 +1,5 @@
+import { sharedImageSourceEntry, sharedImageSourceUserCount } from './imageSourceDedupe.js';
+
 const DIAGNOSTIC_PROPERTY = '__sfBufferResizeDiagnostic';
 const SIZE_MISMATCH = /The size of the buffer attribute's array buffer does not match the original size/i;
 const MAX_MATCHES = 16;
@@ -30,6 +32,47 @@ function geometrySummary(geometry) {
       ordinal: Number.isFinite(detach.ordinal) ? detach.ordinal : null,
     } : null,
   };
+}
+
+/** Opt-in, error-only observation of the exact texture passed to initTexture. */
+export function installTextureUploadFailureDiagnostic(renderer, { enabled = false, publish, contextGeneration } = {}) {
+  if (!enabled || !renderer || typeof renderer.initTexture !== 'function') return false;
+  const original = renderer.initTexture;
+  renderer.initTexture = function diagnosticInitTexture(texture, ...args) {
+    try { return original.call(this, texture, ...args); }
+    catch (error) {
+      try {
+        const mark = texture?.userData?.spacefaceCpuDetach;
+        const shared = sharedImageSourceEntry(texture);
+        const mips = Array.isArray(texture?.mipmaps) ? texture.mipmaps : null;
+        const first = mips?.[0];
+        const generation = typeof contextGeneration === 'function' ? contextGeneration() : null;
+        const record = {
+          schema: 'spaceface.textureUploadFailureDiagnostic.v1',
+          texture: {
+            uuid: boundedText(texture?.uuid), name: boundedText(texture?.name),
+            type: boundedText(texture?.type), compressed: texture?.isCompressedTexture === true,
+            mipCount: mips?.length ?? null,
+            firstWidth: Number.isFinite(first?.width) ? first.width : null,
+            firstHeight: Number.isFinite(first?.height) ? first.height : null,
+            sourceUuid: boundedText(texture?.source?.uuid),
+            mark: mark ? { manifestId: boundedText(mark.manifestId, 100),
+              contentHash: boundedText(mark.contentHash, 100), kind: boundedText(mark.kind, 32),
+              ordinal: Number.isInteger(mark.ordinal) ? mark.ordinal : null } : null,
+            shared: shared ? { users: sharedImageSourceUserCount(texture),
+              sourceReleased: shared.sourceReleased === true,
+              userReleased: shared.releasedUsers?.has(texture) === true } : null,
+          },
+          contextGeneration: Number.isFinite(generation) ? generation : null,
+          error: { message: String(error?.message || error).slice(0, 500),
+            stack: typeof error?.stack === 'string' ? error.stack.slice(0, 3000) : null },
+        };
+        if (typeof publish === 'function') publish(record);
+      } catch (_) { /* diagnostics never replace the original error */ }
+      throw error;
+    }
+  };
+  return true;
 }
 
 function attributeMatches(candidate, failingAttribute) {

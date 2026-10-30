@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import * as THREE from 'three';
-import { createBufferResizeDiagnostic, installBatchedMeshFailureDiagnostic, captureBatchedMeshFailure } from '../src/render/bufferResizeDiagnostic.js';
+import { createBufferResizeDiagnostic, installBatchedMeshFailureDiagnostic, captureBatchedMeshFailure, installTextureUploadFailureDiagnostic } from '../src/render/bufferResizeDiagnostic.js';
 import { createRetainedRigidOpaqueBatchController, isRetiredRigidOpaqueBatch } from '../src/render/rigidOpaqueBatch.js';
 
 function taggedSizeError(attribute, expectedByteLength, actualByteLength) {
@@ -14,6 +14,29 @@ function taggedSizeError(attribute, expectedByteLength, actualByteLength) {
   });
   return error;
 }
+
+test('opt-in texture upload diagnostic preserves the exception and exact primitive identity', () => {
+  const failure = new TypeError('Cannot read properties of undefined (reading width)');
+  const texture = new THREE.CompressedTexture([], 16, 16);
+  texture.name = 'tracked texture';
+  texture.userData.spacefaceCpuDetach = { manifestId: 'manifest', contentHash: 'hash', kind: 'texture', ordinal: 3 };
+  let calls = 0, record;
+  const renderer = { initTexture(value) { assert.equal(value, texture); calls++; throw failure; } };
+  const original = renderer.initTexture;
+  assert.equal(installTextureUploadFailureDiagnostic(renderer), false);
+  assert.equal(renderer.initTexture, original, 'the default path remains unwrapped');
+  assert.equal(installTextureUploadFailureDiagnostic(renderer, { enabled: true,
+    contextGeneration: () => 2, publish: value => { record = value; } }), true);
+  assert.throws(() => renderer.initTexture(texture), error => error === failure);
+  assert.equal(calls, 1);
+  assert.equal(record.texture.uuid, texture.uuid);
+  assert.equal(record.texture.sourceUuid, texture.source.uuid);
+  assert.equal(record.texture.mipCount, 0);
+  assert.equal(record.texture.mark.ordinal, 3);
+  assert.equal(record.contextGeneration, 2);
+  assert.equal(record.error.message, failure.message);
+  assert.doesNotThrow(() => JSON.stringify(record));
+});
 
 function geometry(attributes = {}, { index = null, uuid = 'geometry-1' } = {}) {
   return { uuid, name: 'Authored geometry', type: 'BufferGeometry', attributes, index, userData: {} };

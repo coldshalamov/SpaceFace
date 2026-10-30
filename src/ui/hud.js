@@ -54,7 +54,7 @@ import { verbAcceptsType } from '../data/interactionDescriptorCatalog.js';
 import { indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
 import { resolveWorldPresentationEntity } from '../world/presentationSources.js';
 import { presentationAllowsTargetLock } from '../core/presentationAdmission.js';
-import { objectiveText } from './screens/missionLog.js';
+import { objectiveText } from './sim/missionRecap.js';
 import { adventureDecisionHudLine } from './adventureDecisions.js';
 import { mountOrreryCluster } from './orrery/hudAdapter.js';
 import { createForkInstrument } from './forkInstrument.js';
@@ -96,7 +96,7 @@ import {
 import { MOMENTUM_SINK_STATUS_ID } from '../data/combatDefs.js';
 import {
   buildCorridorOpeningWaypoint,
-} from '../systems/missions.js';
+} from '../missions/corridorOpeningReadModel.js';
 import {
   admitReceipt,
   contactRosterExpanded,
