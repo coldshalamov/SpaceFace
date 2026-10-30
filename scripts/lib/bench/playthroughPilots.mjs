@@ -1381,14 +1381,14 @@ export function createStrangerPilot({ state, bus, ledger, services }) {
             // the towed pod crosses the ring trailing the hull, and a creep would just pin
             // the pod against the beacon's hull at 2 wu/s (below the run-speed proof).
             const dB = dist(p.pos, beacon.pos);
-            // Fly ONTO the beacon and winch. The final approach bypasses the chase brakes:
-            // this is a delivery bump, not a chase — the hull presses onto the ring and the
-            // full winch hauls the towed pod in (delivery is pod-in-ring while latched).
+            // Fly ONTO the beacon and winch — but bleed first: at ~190 wu/s the turn circle
+            // carries every pass 40+ wu wide of the 60-radius ring and the towed pod never
+            // enters it. Slow the final leg until the aim line actually crosses the ring.
             input.aimAngle = Math.atan2(beacon.pos.z - p.pos.z, beacon.pos.x - p.pos.x);
             input.turnIntent = Math.max(-1, Math.min(1, wrapAngle(input.aimAngle - (p.rot || 0)) / 0.5));
-            input.moveZ = dB > 25 ? 1 : 0;
-            input.brake = false;
-            input.boost = energyFull(p) && dB > 120;
+            input.brake = dB < 420 && speedOf(p) > Math.max(25, dB / 6);
+            input.moveZ = (!input.brake && dB > 25) ? 1 : 0;
+            input.boost = energyFull(p) && dB > 420;
             cmd.lineControl = true;
             cmd.lineLength = -1; // full winch: haul the pod home to the hull on the ring
             return;
