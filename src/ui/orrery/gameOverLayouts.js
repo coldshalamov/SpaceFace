@@ -96,6 +96,23 @@ ${GO} > .sf-go-tape .orr-tape__empty { fill:rgb(${BONE} / .8); }
   ${GO} > .k-title .k-t-title { font-size:calc(40px * var(--sv)) !important; max-width:24ch; }
   ${GO} > .k-title .k-sentence { margin-top:calc(8px * var(--sv)) !important; }
 }
+/* rim stations (641w+): the bezel's ticks reach r + 10% past the track, and a diagonal station's two
+   lines centre on its bearing, so the figure nearest the ring sat on the ticks. Every station clears
+   the bezel; the diagonals step out sideways by their sy^2 (0 at 3 and 9 o'clock), so nothing moves
+   up into the title or down into the verb rail. */
+@media (min-width:641px) {
+  ${GO} .sf-go-st:not(.sf-go-st--hub) {
+    left:calc(50% + var(--sx, 0) * (var(--r) + 26px * var(--sv) + 110px * var(--sv) * var(--sy, 0) * var(--sy, 0))); }
+}
+@media (min-width:641px) and (max-width:1500px) {
+  ${GO} .sf-go-st:not(.sf-go-st--hub) {
+    left:calc(50% + var(--sx, 0) * (var(--r) + 28px * var(--sv) + 110px * var(--sv) * var(--sy, 0) * var(--sy, 0))); }
+}
+/* the short desktop band (1101w+, <=640h) keeps its 124px ring and the 720p placement: there the
+   sideways step would run Contracts done off the right edge */
+@media (min-width:1101px) and (max-width:1500px) and (max-height:640px) {
+  ${GO} .sf-go-st:not(.sf-go-st--hub) { left:calc(50% + var(--sx, 0) * (var(--r) + 14px * var(--sv))); }
+}
 /* stacked (<=1100): the screen scrolls, so the rays and the scrim hold to the window instead of
    stretching the scroll sideways and past the tape into bare backdrop */
 @media (max-width:1100px) {
