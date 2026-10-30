@@ -33,7 +33,9 @@ function boot() {
   const sim = createSimulation({ seed: SEED, bus, systems: [choirResonance] });
   const { state } = sim;
   state.mode = 'flight';
-  state.world.currentSectorId = 'sector_vesta_forge';
+  // A fixture sector with no CHOIR_SITES row: these tests hand-build their own shrines
+  // and bells, so the live furniture seeder (Vesta Forge) must not add more.
+  state.world.currentSectorId = 'sector_choir_fixture';
   const player = sim.spawn({
     type: 'ship', team: 0, pos: { x: -3000, z: -3000 }, radius: 12, mass: 24,
     hull: 100, hullMax: 100, collides: true, data: { name: 'PLAYER' },

@@ -40,8 +40,11 @@ import {
   CHOIR_CARRIED_RELIC,
   CHOIR_BELL_HEAD,
   CHOIR_SHRINE,
+  CHOIR_SITES,
 } from '../data/factions/choir.js';
 import { occupantGenerationOf } from '../core/entity.js';
+import { hash32 } from '../core/rng.js';
+import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 import { makeShipEntitySpec } from './ships.js';
 
 const FACTION_ID = 'faction_choir';
@@ -249,7 +252,8 @@ const HERESY_BOOK_KEYS = new Set(['marks', 'resolved', 'nextAt']);
 // hostile save packs at the top level cannot ride the ledger into a new save.
 const CHOIR_KEYS = new Set(['shatters', 'tribute', 'alarms', 'sacrilege',
   'sanctuary', 'offerings', 'offeringUnits', 'blessings', 'pilgrimage',
-  'tithe', 'pilgrims', 'heresy']);
+  'tithe', 'pilgrims', 'heresy', 'sites']);
+const SITES_KEYS = new Set(['down', 'relics']);
 
 /** Strip non-whitelist keys in place — identity preserved so held refs stay live. */
 function _keepKeys(row, keys) {
@@ -428,6 +432,24 @@ export function ensureChoirState(state) {
   h.resolved = _int(h.resolved);
   h.nextAt = _num(h.nextAt, -1);
   c.heresy = h;
+
+  // The holy furniture book: `down[siteId]` is the simTime a slain shrine or bell
+  // may be re-raised; `relics[relicId]` latches a relic already put into the world
+  // (a recovered or lost relic is not minted again on the next visit).
+  const st = _keepKeys(_obj(c.sites), SITES_KEYS);
+  const down = _obj(st.down);
+  for (const k of Object.keys(down)) {
+    const v = _num(down[k], -1);
+    if (v < 0) delete down[k]; else down[k] = v;
+  }
+  st.down = down;
+  const relics = _obj(st.relics);
+  for (const k of Object.keys(relics)) {
+    if (relics[k] === true) continue;
+    delete relics[k];
+  }
+  st.relics = relics;
+  c.sites = st;
 
   return c;
 }
@@ -1131,6 +1153,13 @@ export const choirResonance = {
     // the ear already wrote up must not charge the ledger twice — the heresy
     // mark carries its own dedup; the other paths latch on the body itself.
     if (vd.choirKillSeen === true) return;
+    // A slain shrine or bell stays down for the re-raise window, whoever felled it.
+    if ((vd.choirShrine === true || vd.choirBell === true) && typeof vd.choirSiteId === 'string') {
+      const down = ensureChoirState(state).sites.down;
+      if (!(_num(down[vd.choirSiteId], -1) > state.simTime)) {
+        down[vd.choirSiteId] = _num(state.simTime, 0) + CHOIR_SITES.reraiseS;
+      }
+    }
     const byPlayer = p.killerId != null && p.killerId === state.playerId;
     const factionId = p.factionId || (victim && victim.factionId) || null;
 
@@ -1599,8 +1628,84 @@ export const choirResonance = {
     });
   },
 
+  // ── The holy furniture: shrines, bells, and the sealed relic ─────────────────
+  /** Sector-local authored spot + a per-run jitter → galactic-global position. */
+  _sitePos(state, sectorId, row) {
+    const seed = (state.meta && state.meta.seed) >>> 0;
+    const a = ((hash32('choir-site-a', row.id, seed) >>> 0) / 4294967296) * Math.PI * 2;
+    const r = ((hash32('choir-site-r', row.id, seed) >>> 0) / 4294967296) * CHOIR_SITES.jitterR;
+    const local = { x: row.pos.x + Math.cos(a) * r, z: row.pos.z + Math.sin(a) * r };
+    return sectorLocalToGlobalForSector(local, sectorId);
+  },
+
+  /**
+   * Raise the Choir's furniture for the sector the player is flying. Before this,
+   * nothing in the game stamped choirShrine / choirBell / carriedRelic, so bells,
+   * sanctuary, tithe, pilgrims, heresy and the relic never started on the live route.
+   * Shrines and bells are sector furniture (culled with the sector, re-raised on the
+   * next visit at the same seeded spot); a slain one stays down for `reraiseS`. The
+   * relic is minted once per run and is persistent so it can be carried away.
+   */
+  _tickSites(state) {
+    const sectorId = _str(state.world && state.world.currentSectorId);
+    const table = sectorId && Object.prototype.hasOwnProperty.call(CHOIR_SITES.sectors, sectorId)
+      ? CHOIR_SITES.sectors[sectorId] : null;
+    if (!table || typeof this.helpers.spawnEntity !== 'function') return;
+    if (this._siteSector === sectorId && state.simTime < (this._siteScanAt ?? -1)) return;
+    this._siteSector = sectorId;
+    this._siteScanAt = state.simTime + CHOIR_SITES.scanGapS;
+    const c = ensureChoirState(state);
+    const live = new Set();
+    for (const e of state.entityList) {
+      if (e && e.alive !== false && typeof e.data?.choirSiteId === 'string') live.add(e.data.choirSiteId);
+    }
+    const raise = (row, kind) => {
+      if (live.has(row.id)) return;
+      if (state.simTime < _num(c.sites.down[row.id], -1)) return;
+      delete c.sites.down[row.id];
+      const pos = this._sitePos(state, sectorId, row);
+      const e = this.helpers.spawnEntity({
+        type: 'station', factionId: FACTION_ID,
+        pos: { x: pos.x, z: pos.z }, radius: row.radius, mass: 1e6,
+        hull: row.hull, hullMax: row.hull, collides: true,
+        data: {
+          choirSiteId: row.id,
+          ...(kind === 'shrine' ? { choirShrine: true, shrineId: row.id } : { choirBell: true }),
+          name: row.name, typeId: kind === 'shrine' ? 'choir_shrine' : 'choir_bell',
+          homeSectorId: sectorId, scannable: true, scanLabel: row.scanLabel,
+        },
+      });
+      if (e) {
+        live.add(row.id);
+        this.bus.emit('choir:siteRaised', { siteId: row.id, kind, entityId: e.id, sectorId, tick: state.tick });
+      }
+    };
+    for (const row of table.shrines || []) raise(row, 'shrine');
+    for (const row of table.bells || []) raise(row, 'bell');
+    for (const row of table.relics || []) {
+      if (c.sites.relics[row.id] === true || live.has(row.id)) continue;
+      // Latch before the spawn speaks: a listener re-entering this tick must not mint a second.
+      c.sites.relics[row.id] = true;
+      const pos = this._sitePos(state, sectorId, row);
+      const e = this.helpers.spawnEntity({
+        // No faction stamp: the relic is cargo, not a chorister — breaking it is not sacrilege.
+        type: 'payload', team: 0,
+        pos: { x: pos.x, z: pos.z }, radius: row.radius, mass: row.mass,
+        hull: row.hull, hullMax: row.hull, collides: true,
+        flags: { persistent: true },
+        data: {
+          choirSiteId: row.id, carriedRelic: true, name: row.name,
+          scannable: true, scanLabel: row.scanLabel, homeSectorId: sectorId,
+        },
+      });
+      if (e) this.bus.emit('choir:siteRaised', { siteId: row.id, kind: 'relic', entityId: e.id, sectorId, tick: state.tick });
+      else delete c.sites.relics[row.id];
+    }
+  },
+
   update(dt, state) {
     ensureChoirState(state);
+    if (state.mode === 'flight') this._tickSites(state);
     this._tickBells(state);
     this._shatterCrystal(state, dt);
     this._bellHeads(state);
