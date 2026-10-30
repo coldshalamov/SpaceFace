@@ -694,6 +694,50 @@ html.sf-reduce-motion ${S} :is(.orr-vdial__fill, .orr-vdial__hand) { transition:
   ${D} .sxb-vital__label { letter-spacing:.02em !important; font-stretch:100% !important; white-space:nowrap !important; overflow-wrap:normal !important; }
   ${D} .sxb-vital--note .orr-vnum.is-word { letter-spacing:.04em !important; overflow-wrap:normal !important; }
 }
+/* …and a phone-landscape window (≤650 × ≤400, e.g. 568×320 or 640×360): the ≤600 head above still drew 100px and the
+   foot 130px (rail, its rule, then COMMS and a two-line UNDOCK), so a 320px window left the tab a 78px strip and the dials'
+   verbs sat under the mechanic's note. The name and credits share one line, the five dials take the full width with their
+   verbs on one line (Draw and Rearm put the price under the verb), the notes scroll under them, the ad boards step aside,
+   and the foot is two short rows: the tab gets 122px at 568×320 and 162px at 640×360. */
+@media (max-width:650px) and (max-height:400px) {
+  ${D} { padding-top:8px !important; }
+  ${D} .sxb-berth.dp-frame__head, ${D}:has(.sx-mkt.orr-market) .sxb-berth.dp-frame__head {
+    grid-template-columns:minmax(0, 1fr) auto !important;
+    grid-template-areas:"title purse" "vitals vitals" "tape tape" "handoff handoff" "signs signs" "trig trig" !important;
+    grid-template-rows:auto auto auto auto auto auto !important;
+    max-height:136px !important; row-gap:4px !important; column-gap:12px !important; }
+  ${D} .sxb-berth.dp-frame__head > .sxb-crown { display:contents !important; }
+  ${D} .sxb-crown > .sxb-purse { grid-area:purse !important; align-self:end !important; margin:0 !important; }
+  ${D} .sxb-crown > .sxb-vitals { grid-area:vitals !important; }
+  ${D} .sxb-berth.dp-frame__head > .sxb-tape { grid-area:tape !important; grid-column:1 / -1 !important; }
+  ${D} .sxb-berth.dp-frame__head > .sxb-handoff { grid-area:handoff !important; grid-column:1 / -1 !important; }
+  ${D} .sxb-berth.dp-frame__head > .sxb-signs { display:none !important; }
+  ${D} .sxb-berth.dp-frame__head > .so-command-trigger { grid-area:trig !important; position:static !important; justify-self:end !important; }
+  ${D} .sxb-berth .so-station-title .dp-title__name { font-size:20px !important; }
+  ${D} .sxb-berth .so-station-title .dp-title__rule { display:none !important; }
+  ${D} .sxb-crown .sxb-purse__value { font-size:20px !important; }
+  ${D} .sxb-vital [data-vital-act] { flex-wrap:nowrap !important; white-space:nowrap !important; justify-content:center !important; gap:0 6px !important; letter-spacing:.02em !important; }
+  ${D} .sxb-vital:is(.sxb-vital--note, .sxb-vital--muni) [data-vital-act] { flex-wrap:wrap !important; row-gap:0 !important; }
+  ${D} .sxb-vital:is(.sxb-vital--note, .sxb-vital--muni) [data-vital-act] .orr-act__cost { flex:1 0 100%; text-align:center; }
+  ${D} .sxb-vital [data-vital-act] :is(.orr-act__verb, .orr-act__cost) { letter-spacing:.02em !important; }
+  ${D} .sxb-vital--note .orr-vnum.is-word { font-size:12px !important; line-height:1.15 !important; letter-spacing:.04em !important; }
+  /* the foot closes to two short rows: the destination words (their rule and indicator step aside), then COMMS,
+     the open destination's line and UNDOCK · READY on one line */
+  ${D} .sxb-ops.dp-frame__foot { padding:2px 32px 6px !important; row-gap:0 !important; align-items:center !important; }
+  ${D} .sxb-ops .sx-dock__group--nav { position:relative !important; padding:0 0 0 2px !important; min-height:0 !important; height:auto !important; }
+  ${D} .sxb-ops :is(.sxb-ops__dock, .sx-dock) { min-height:0 !important; height:auto !important; padding-bottom:0 !important; }
+  ${D} .sxb-ops .sx-dock__group--nav > li:not(:has(> .sx-tile)), ${D} .sxb-ops .so-dock-indicator, ${D} .sxb-ops .orr-stationrow__rule { display:none !important; }
+  ${D} .sxb-ops .sx-tile { min-height:0 !important; padding:4px 1px !important; }
+  ${D} .sxb-ops .sx-dock__group--nav > li:not(:has(> .sx-tile:is(.is-active, :focus-visible))) > .sx-tile__gloss { display:none !important; }
+  ${D} .sxb-ops .sx-dock__group--nav > li:has(> .sx-tile:focus-visible) ~ li > .sx-tile__gloss { display:none !important; }
+  ${D} .sxb-ops .sx-dock__group--nav > li > .sx-tile__gloss { display:block; position:absolute !important; top:calc(100% + 4px) !important; bottom:auto !important; left:76px !important; right:104px !important;
+    width:auto !important; max-width:none !important; margin:0 !important; padding:0 !important; transform:none !important; text-align:center !important;
+    white-space:nowrap !important; overflow:hidden !important; text-overflow:ellipsis !important; line-height:18px !important; }
+  ${D} .sxb-ops .sx-comms { flex-direction:row !important; align-self:center !important; gap:0 10px !important; }
+  ${D} .sxb-ops > .sxb-launch-seat { align-self:center !important; }
+  ${D} .sxb-launch { min-height:0 !important; padding-block:2px !important; }
+  ${D} .sxb-launch__copy { display:flex !important; flex-direction:row !important; align-items:baseline !important; gap:8px !important; }
+}
 /* A narrow, tall desktop window (≤650 wide, 801+ tall, e.g. 600×844): the head stacked five dials one under another
    with both ad boards below them, 607px of a 844px frame, so the tab body got 0px and the Missions dossier's ACCEPT
    could not be reached; the foot's destination words sat in a 182px side-scroller with their glosses printed under them.
