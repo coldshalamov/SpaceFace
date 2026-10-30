@@ -1105,8 +1105,10 @@ export const encounterDirector = {
     const row = this._openDeniableRow(p && p.missionId);
     if (!row) return;
     if (kind === 'completed') {
+      // A scheduled clause the pilot never walked into is still a clean delivery: without this
+      // branch the row retires silently on the next tick — no rep, no thanks, no fence beat.
       if (row.hit && row.fired) this._settleDeniable(row, 'survived');
-      else if (!row.hit) this._settleDeniable(row, 'clean');
+      else this._settleDeniable(row, 'clean');
       return;
     }
     if (row.hit && row.fired && !/abandon/i.test(String((p && p.reason) || ''))) {
@@ -1311,6 +1313,7 @@ export const encounterDirector = {
     // crossing is the eligibility proof for only the catalog's generic min-sector-tier rule. Every
     // other current/future authored gate remains enforced through the same fail-closed evaluator.
     if (!this._gatesPass(shape, state, { ignoreMinSectorTier: ceresActivityAmbush })) return gateDefer();
+    let relocatedToPlayer = false;
     if (shape.proximity && !this._playerNearItemZone(item)) {
       // The authored Ceres throughline ambush is anchored to its killbox, not to a spawnable
       // zone: relocating it would detach the telegraph from the durable cohort still holding
@@ -1323,9 +1326,12 @@ export const encounterDirector = {
       if (shape.deck !== 'combat' || !this._relocateProximityStarvedItem(dir, state, item)) {
         return gateDefer();
       }
+      relocatedToPlayer = true;
     }
-    if (shape.proximity && shape.deck === 'combat') {
-      // The player reached an authored zone: the starvation clock resets.
+    if (shape.proximity && shape.deck === 'combat' && !relocatedToPlayer) {
+      // The player reached an authored zone: the starvation clock resets. A relocation to the
+      // player does NOT reset it — the sector is still starved of reachable zones, and wiping
+      // the record would re-arm the full PROXIMITY_STARVE_S window on every relocated beat.
       const starve = dir.proxStarve || (dir.proxStarve = {});
       delete starve[this._currentSectorId() || 'sector'];
     }
@@ -1336,6 +1342,13 @@ export const encounterDirector = {
     // without spending pressure/window/voice state; genuine distress needs both a victim and one
     // threat before it can truthfully become live.
     if (!this._spawnAdmissionAvailable(item, shape)) return defer();
+    // The nest is a singleton: the live visit owns the shape until it ends, so a second due item
+    // waits in the queue. Reaching _fire's guard after the splice below would drop the item from
+    // the universe entirely — deferring keeps it pending until the nest frees.
+    if (shape.id === 'the_nest'
+      && Object.values(dir.live).some((l) => l && l.shapeId === 'the_nest' && l.phase !== 'done')) {
+      return defer();
+    }
     const fireReady = ENCOUNTER_FIRE_READY.get(shape.id);
     if (fireReady && item.fireReadyExpired !== true) {
       let ready = false;
@@ -2058,7 +2071,7 @@ export const encounterDirector = {
     const spawnEntity = this.helpers && this.helpers.spawnEntity;
     if (typeof spawnEntity !== 'function' || !opts || !opts.pos) return null;
     // Same entity contract as salvage.js debris — tether/beam/scanner all just work on it.
-    return spawnEntity({
+    const ent = spawnEntity({
       type: 'wreck',
       pos: { x: opts.pos.x, z: opts.pos.z },
       radius: 9,
@@ -2083,6 +2096,14 @@ export const encounterDirector = {
         ...(opts.provenance ? { provenance: opts.provenance } : {}),
       },
     });
+    // Wreck bodies are encounter-owned dressing, not squad: they ride live.propIds (lazily —
+    // live records minted before this roster exist) so resolve/despawnAll can retire them.
+    // A script that needs one in the combat roster still pushes live.ids itself (whisper, kiln).
+    if (ent && ent.id != null && live) {
+      const props = live.propIds || (live.propIds = []);
+      if (!props.includes(ent.id)) props.push(ent.id);
+    }
+    return ent;
   },
 
   restoreNestTerminal(visit) {
@@ -2155,7 +2176,14 @@ export const encounterDirector = {
       },
     };
     if (live.shapeId === 'the_nest' && opts.storyPropKind === 'nest_door' && opts.nestSavedActor) applyNestSavedSpawnSpec(spec, opts.nestSavedActor);
-    return spawnEntity(spec);
+    const ent = spawnEntity(spec);
+    // Same ownership seam as spawnWreck: props are encounter-owned dressing (live.propIds),
+    // never squad — a script that needs roster semantics pushes live.ids itself.
+    if (ent && ent.id != null && live) {
+      const props = live.propIds || (live.propIds = []);
+      if (!props.includes(ent.id)) props.push(ent.id);
+    }
+    return ent;
   },
 
   /** A loose physical cargo pod on the field — the same jettisoned-cargo path the player
@@ -2379,6 +2407,9 @@ export const encounterDirector = {
       e.data.despawnAt = now + (afterS || 20) + i * 0.5;   // small stagger so departures read natural
       i++;
     }
+    // Encounter-owned props are not squad — a role filter does not name them — but a blanket
+    // despawn owns them too (otherwise abort/exit strands every wreck and story prop it made).
+    if (role == null) stampLivePropsDespawn(this.state, live, now, afterS || 20, true);
   },
 
   // ── one voice ───────────────────────────────────────────────────────────────────────────────
@@ -2409,7 +2440,9 @@ export const encounterDirector = {
     const state = this.state;
     const options = [];
     for (const id of optionIds) {
-      const def = defs.find((c) => c.id === id) || { id, label: id };
+      // A choice the shape never authored still needs a speakable label — never the raw
+      // snake_case id on a player-facing deck button.
+      const def = defs.find((c) => c.id === id) || { id, label: humanizeId(id, 'Respond') };
       let available = true;
       if (def.needs === 'credits') available = (state.player.credits | 0) >= (live.vars.amount | 0);
       else if (def.needs === 'cargo') available = this.cargoValue() >= (live.vars.amount | 0);
@@ -2418,7 +2451,8 @@ export const encounterDirector = {
       options.push({ id: def.id, label: def.label, available });
     }
     this.emit('encounter:choiceOffered', {
-      encounterId: live.id, kind: live.shapeId, title: live.shape.title || live.zoneName || live.shapeId,
+      encounterId: live.id, kind: live.shapeId,
+      title: live.shape.title || live.zoneName || humanizeId(live.shapeId, 'Encounter'),
       options, deadlineAt,
       timeoutChoice: timeoutChoice || live.shape.timeoutChoice || null,
     });
@@ -2489,6 +2523,10 @@ export const encounterDirector = {
     dir.cooldowns[live.shapeId] = now + (live.shape.cooldownS || 300);
     dir.lastEndAt = now;
     dir.stats.resolved++;
+    // The durable row _gatesPass reads: uniqueOnce, blockAfterOutcome, and requiresCompletedShape
+    // chains (the salvage tail waits on the opening raid) all key off this record. Without it a
+    // chained second chapter deadlocks and every once-only shape re-offers forever.
+    noteEncounterCompleted(this.state, live, outcome, now);
     // Stragglers spawned by the director give up rather than chain-hunting the player past the
     // encounter's end. Adopted durable world actors return to world ownership instead.
     if (live.data && live.data.adoptedWorldActors === true) {
@@ -2502,6 +2540,10 @@ export const encounterDirector = {
         if (!e.data || e.data.despawnAt == null) { e.data = e.data || {}; e.data.despawnAt = now + 45; }
       }
     }
+    // Encounter-owned wrecks and story props ride their own roster (live.propIds — never squad:
+    // aliveCount squad-wipe reads and squadMembership kill-routing must not see set dressing).
+    // They release on the same straggler contract instead of orbiting the sector forever.
+    stampLivePropsDespawn(this.state, live, now, 45, false);
     this.emit('encounter:resolved', {
       encounterId: live.id, shape: live.shapeId, kind: (live.plan && live.plan.variantKind) || live.shapeId,
       outcome, sectorId: live.sectorId, zoneId: live.zoneId, tier: live.tier, deck: live.deck, t: now,
@@ -2520,18 +2562,21 @@ export const encounterDirector = {
       const voice = this.helpers && this.helpers.voice;
       if (voice && typeof voice.say === 'function') voice.say({ channel: o.channel || 'info', text, kind: 'receipt' });
       else this.emit('toast', { text, kind: 'info', ttl: 5 });
-      this.emit('encounter:receipt', {
-        encounterId: live.id, shape: live.shapeId, outcome, text, t: now,
-        fingerprint: live.causality && live.causality.fingerprint || null,
-        motiveId: live.causality && live.causality.motiveId || null,
-      });
-      dir.receipts.push({
-        t: now, shape: live.shapeId, outcome, text,
-        fingerprint: live.causality && live.causality.fingerprint || null,
-        motiveId: live.causality && live.causality.motiveId || null,
-      });
-      if (dir.receipts.length > RECEIPT_CAP) dir.receipts.splice(0, dir.receipts.length - RECEIPT_CAP);
     }
+    // The receipt is bookkeeping, not the bark: a silent resolution ({ speak: false } or no
+    // authored line) still lands in the saved ledger and still reaches receipt listeners
+    // (recovery prompt, ace memory) — only the spoken/toasted line honors the speak gate.
+    this.emit('encounter:receipt', {
+      encounterId: live.id, shape: live.shapeId, outcome, text: text || null, t: now,
+      fingerprint: live.causality && live.causality.fingerprint || null,
+      motiveId: live.causality && live.causality.motiveId || null,
+    });
+    dir.receipts.push({
+      t: now, shape: live.shapeId, outcome, text: text || null,
+      fingerprint: live.causality && live.causality.fingerprint || null,
+      motiveId: live.causality && live.causality.motiveId || null,
+    });
+    if (dir.receipts.length > RECEIPT_CAP) dir.receipts.splice(0, dir.receipts.length - RECEIPT_CAP);
     dropLiveSquadMembership(dir, live);
     noteScriptProbeRow(dir, live, -1);
     delete dir.live[live.id];
@@ -2733,6 +2778,8 @@ export const encounterDirector = {
       if (live.roles && typeof live.roles === 'object') delete live.roles[id];
       dropSquadMember(dir, live, id);
     }
+    const propIndex = Array.isArray(live.propIds) ? live.propIds.indexOf(id) : -1;
+    if (propIndex !== -1) live.propIds.splice(propIndex, 1);
   },
 
   _onEntityKilled(p) {
@@ -2759,7 +2806,6 @@ export const encounterDirector = {
       named.killedBy = byPlayer ? 'player' : 'world';
       named.deathSector = sectorId;
       named.deathTick = this.state.tick | 0;
-      named.kills = (named.kills || 0) + (byPlayer ? 0 : 1);
       delete dir.externalNamed[p.id];
       if (byPlayer) {
         for (const survivor of NAMED_CAPTAINS) {
@@ -2778,6 +2824,17 @@ export const encounterDirector = {
         t: this.now(),
         tick: this.state.tick | 0,
       });
+    }
+    // `kills` is the "downed you" tally the watchlist shows — it accrues when that captain's
+    // hull lands the killing blow on the player, never when the captain itself dies (the old
+    // line counted a world death against the player).
+    if (p.id === this.state.playerId && p.killerId != null && dir.externalNamed) {
+      const killerCaptainId = dir.externalNamed[p.killerId];
+      if (killerCaptainId) {
+        const named = dir.named[killerCaptainId]
+          || (dir.named[killerCaptainId] = { alive: true, tier: 0, escapes: 0, kills: 0, lastSeenSector: null });
+        named.kills = (named.kills || 0) + 1;
+      }
     }
     let handled = null;
     // squadMembership answers the squad question in O(1); the walk below stays as the cold path
@@ -3673,6 +3730,9 @@ function makeEncounterLiveRecord(state, item, shape, now) {
     deadlineAt: 0,
     ids: [],
     roles: {},
+    // Encounter-owned wrecks/story props — spawned, not squad: cleanup rosters this, aliveCount
+    // and squadMembership never do. Records minted before the field lazily grow it on first spawn.
+    propIds: [],
     vars: {},
     data: item.data && typeof item.data === 'object' ? { ...item.data } : {},
     outcome: null,
@@ -5013,6 +5073,66 @@ function noteScriptProbeRow(dir, live, sign) {
   if (!live || (live.script !== 'salvageSignal' && live.script !== 'whisper')) return;
   if (!Number.isFinite(dir.scriptProbeRows)) dir.scriptProbeRows = 0;
   dir.scriptProbeRows += sign;
+}
+
+// The durable resolution record _gatesPass reads (uniqueOnce / blockAfterOutcome /
+// requiresCompletedShape) — the same ledger shape the self-registered runtimes write through
+// their own settle paths (crSituationKit, the e1 finish, the kiln's remember). Those scripts
+// record a richer row (facts, visits, sourceAnchor) before calling resolve, so a row already
+// stamped with THIS encounter's own id is left alone: resolve fills the gap, never flattens.
+function noteEncounterCompleted(state, live, outcome, now) {
+  const story = state.story || (state.story = { flags: {} });
+  if (!story.flags || typeof story.flags !== 'object') story.flags = {};
+  const memory = story.depthProgramEncounters && typeof story.depthProgramEncounters === 'object'
+    ? story.depthProgramEncounters
+    : (story.depthProgramEncounters = { schemaVersion: 1, completed: {}, history: [] });
+  if (!memory.completed || typeof memory.completed !== 'object' || Array.isArray(memory.completed)) memory.completed = {};
+  if (!Array.isArray(memory.history)) memory.history = [];
+  const prev = memory.completed[live.shapeId];
+  if (prev && prev.encounterId === live.id) return;
+  const prevFields = prev && typeof prev === 'object' && !Array.isArray(prev) ? prev : {};
+  const rec = {
+    ...prevFields,                      // repeat visits keep facts/sourceAnchor the prior row authored
+    outcome,
+    at: now,
+    tick: state.tick | 0,
+    encounterId: live.id,
+    sectorId: live.sectorId || prevFields.sectorId || null,
+    seed: prevFields.seed != null ? prevFields.seed : (state.meta && state.meta.seed),
+    visits: (prevFields.visits | 0) + 1,
+  };
+  memory.completed[live.shapeId] = rec;
+  memory.history.push({ shapeId: live.shapeId, ...rec });
+  if (memory.history.length > 64) memory.history.splice(0, memory.history.length - 64);
+}
+
+// Player-facing fallback for an id that reaches a deck button or choice title — the raw
+// snake_case slug must never render ("Pirate Toll", not "pirate_toll").
+function humanizeId(value, fallback) {
+  const s = String(value || '').replace(/[_:.-]+/g, ' ').trim();
+  if (!s) return fallback || 'Encounter';
+  return s.replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+// Spawned wrecks/story props are encounter-owned but never squad: they ride live.propIds so
+// aliveCount squad-wipe reads and the squadMembership kill-routing never see them, while
+// resolve's straggler release and despawnAll can still retire them instead of leaving orphans.
+// `overwrite` mirrors the caller's contract: despawnAll restamps authored windows, resolve
+// honors a despawnAt the script already set.
+function stampLivePropsDespawn(state, live, now, afterS, overwrite) {
+  const propIds = live && live.propIds;
+  if (!Array.isArray(propIds) || !propIds.length) return;
+  const entities = state && state.entities;
+  if (!entities || typeof entities.get !== 'function') return;
+  let stagger = 0;
+  for (const id of propIds) {
+    const e = entities.get(id);
+    if (!e || e.alive === false || !encounterMayScheduleDespawn(e)) continue;
+    if (!overwrite && e.data && e.data.despawnAt != null) continue;
+    e.data = e.data || {};
+    e.data.despawnAt = now + afterS + stagger * 0.5;
+    stagger++;
+  }
 }
 
 function ensureDirectorState(state) {
