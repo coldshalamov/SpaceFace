@@ -446,7 +446,7 @@ export const flybyFocus = {
 
     focus.zoom = Math.max(0, focus.zoom - dt * 2.2);
     if (now < focus.cooldownUntil) return;
-    if (st.player && st.player.tether && st.player.tether.active) return;
+    const tethered = !!(st.player && st.player.tether && st.player.tether.active);
 
     // Hands already on the stick (same verb the mid-lease cancel reads): there is no lease to
     // refuse, so do not open one. Opening here would burn the global anti-spam cooldown and fire
@@ -478,7 +478,12 @@ export const flybyFocus = {
     const list = indexedShipLikeScan(st);
     this._expireTargetCooldowns(now);
     this._cooldownNow = now;
-    const pick = pickFlybyTarget(st, player, list, this._isTargetCoolingDown);
+    let pick = pickFlybyTarget(st, player, list, this._isTargetCoolingDown);
+    // An attached massline owns the verb: while a line is out the only leasable crossing is
+    // the flagged trainer's staged pass. Its acquisition bias stays inert until the line
+    // releases anyway, and refusing it would wall the onboarding beat that stages it — the
+    // claimed-salvage path can deliver a towing player to that lesson.
+    if (pick && tethered && !isTrainingFocusTarget(st.entities.get(pick.id), player)) pick = null;
     if (!pick) {
       if (FLYBY_FOCUS_EMPTY_QUIET_LATCH !== false) {
         const laneVersion = entityIndexLaneVersion(st, FLYBY_FOCUS_QUIET_LANES);
