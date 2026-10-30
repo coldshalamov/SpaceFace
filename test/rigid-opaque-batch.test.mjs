@@ -6,7 +6,9 @@ import { ShaderChunk } from 'three';
 import {
   createRetainedRigidOpaqueBatchController,
   RETAINED_BATCH_MEMBERSHIP_QUIET_FRAMES,
+  retireDisposedRigidOpaqueBatchBeforeSceneDraw,
 } from '../src/render/rigidOpaqueBatch.js';
+import { touchSubjectOnExactTarget } from '../src/render/openingGpuAdmission.js';
 import { installIllustratedSurface } from '../src/render/illustratedSurface.js';
 import { attachRetroMounts } from '../src/render/thruster/retroMounts.js';
 import { render as renderSystem } from '../src/render/renderer.js';
@@ -344,7 +346,9 @@ test('context restore retires disposed retained batches and canonical sync rebui
     // while an external scene owner may still hold its Object3D until canonical cleanup runs.
     retired.dispose();
     assert.equal(retired.parent, scene);
-    assert.equal(controller.retireUnusableActiveResources(), true);
+    const renderState = {};
+    assert.equal(retireDisposedRigidOpaqueBatchBeforeSceneDraw(controller, renderState), true);
+    assert.equal(renderState.rigidOpaqueBatch.status, 'idle', 'the live diagnostic follows owner retirement');
     assert.equal(retired.parent, null, 'the retained owner removes the unusable scene child');
     assert.equal(a.layers.mask, 1, 'authored source A returns to its original draw layer');
     assert.equal(b.layers.mask, 1, 'authored source B returns to its original draw layer');
@@ -360,6 +364,60 @@ test('context restore retires disposed retained batches and canonical sync rebui
   } finally {
     controller.dispose();
     a.geometry.dispose(); b.geometry.dispose(); a.material.dispose(); b.material.dispose();
+  }
+});
+
+test('admission retires a disposed retained batch before warming its authored sources', async () => {
+  const { root, a, b } = makeRoot();
+  const scene = new THREE.Scene();
+  scene.add(root);
+  scene.updateMatrixWorld(true);
+  const controller = createRetainedRigidOpaqueBatchController({
+    scene,
+    prepare: () => ({ ready: true }),
+  });
+  try {
+    await controller.sync(root);
+    const retired = scene.children.find(child => child.isBatchedMesh);
+    assert.ok(retired);
+    assert.equal(a.layers.mask, 0);
+    assert.equal(b.layers.mask, 0);
+
+    // The retained textures can be disposed while the scene still references the mesh,
+    // before its canonical batch owner reaches the next retirement boundary.
+    retired.dispose();
+    const draws = [];
+    const renderer = {
+      autoClear: true,
+      getRenderTarget() { return null; },
+      setRenderTarget() {},
+      render(targetScene) {
+        targetScene.traverse(object => {
+          if (object.visible === false || object.layers.mask === 0) return;
+          if (object === retired) {
+            retired.onBeforeRender(renderer, targetScene, new THREE.PerspectiveCamera(),
+              retired.geometry, retired.material);
+          }
+          if (object === a || object === b) draws.push(object);
+        });
+      },
+    };
+
+    // This is Three r184's native BatchedMesh hook, not a stubbed null-image check.
+    assert.throws(() => touchSubjectOnExactTarget(renderer, null, scene, new THREE.PerspectiveCamera(), scene),
+      /reading 'image'/);
+    const renderState = {};
+    assert.equal(retireDisposedRigidOpaqueBatchBeforeSceneDraw(controller, renderState), true);
+    const receipt = touchSubjectOnExactTarget(renderer, null, scene, new THREE.PerspectiveCamera(), scene);
+    assert.equal(receipt.skipped, false, 'the ordinary exact-target warm still runs');
+    assert.equal(scene.children.includes(retired), false, 'the dead retained child leaves before the touch');
+    assert.ok(draws.includes(a) && draws.includes(b), 'restored authored surfaces are warmed');
+    assert.equal(a.layers.mask, 1);
+    assert.equal(b.layers.mask, 1);
+  } finally {
+    controller.dispose();
+    a.geometry.dispose(); b.geometry.dispose();
+    a.material.dispose(); b.material.dispose();
   }
 });
 

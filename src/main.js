@@ -58,6 +58,9 @@ import {
 import { authoredVisualBudgetMs, openingGateBudgetMs } from './render/startupPacing.js';
 import { releaseUiStage } from './render/uiStage.js';
 import { SCENARIO_47A_CONTRACT_PATH } from './data/scenarios/47aLiveScene.js';
+import { loadModelTruthCensus } from './data/modelTruth.js';
+import { ensureLocalizationReady } from './localization/gameLocalization.js';
+import { runtimeAssetUrl } from './core/runtimeAssetUrl.js';
 
 // Debug surfaces (the mutable window.SF handle + boot logs) are exposed outside production bundles.
 // Launcher URLs stay identical for browser/Electron; release/debug behavior must not fork gameplay.
@@ -91,6 +94,11 @@ let diagnosticsState = null;
 async function boot() {
   installGlobalErrorBoundary();
   try {
+    const modelTruthCensusUrl = runtimeAssetUrl('src/data/modelTruthCensus.json', import.meta.url);
+    const runtimeDataReady = Promise.all([
+      loadModelTruthCensus(modelTruthCensusUrl),
+      ensureLocalizationReady(),
+    ]);
     // Kick the scenario-contract fetch+hash at boot top: it is consumed only at helpers
     // construction below, so the fetch RTT overlaps everything in between instead of
     // serializing ahead of registry init.
@@ -99,6 +107,8 @@ async function boot() {
     // Belt: a rejection surfacing before the real await below still counts as handled (a boot
     // error thrown earlier would otherwise leave it as an unhandled rejection).
     contractPromise.catch(() => {});
+    // Synchronous model measurements and localized copy are available before any system starts.
+    await runtimeDataReady;
     const seed = (Date.now() & 0x7fffffff) >>> 0;
     const state = createGameState(seed);
     diagnosticsState = state;
@@ -141,6 +151,7 @@ async function boot() {
       label: 'Preparing flight systems', detail: 'Reading the opening scenario' });
     const contract = await contractPromise;
     const helpers = {
+      modelTruthCensusUrl,
       scenarioContract: contract.document,
       scenarioContractPath: contract.path,
       scenarioContractHash: contract.sha256,

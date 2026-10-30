@@ -242,6 +242,16 @@ Rows are the spec (`build_map.md` §31–§32; read each row's prose before brie
   the turn circle misses the 60-radius ring by 40+ every pass (dBeacon oscillates 75→105,
   never <60). Pilot fix `ac61e3597d69`: bleed the final leg until the aim line actually
   crosses the ring. Run 6 launched on the full fix set.
+  **Beacon delivery saga (runs 7–15, seed 4242):** four pursuit/guidance schemes parked in
+  stable circles off the ring (dB 111–420). Root cause named: nose-at-beacon is radial
+  thrust — centripetal force only — and cannot remove tangential velocity; plus the
+  mass-1 dynamic beacon got punted by field impulse/ambient traffic and coasted off at
+  ~30–150 wu/s (probe beacon:live@74→919 receding). Two fixes: the beacon is now a fixed
+  body (`physicsBody.dynamic:false`, gate-pinned in rescue-opening test — a real player
+  watches the finish line hold still too), and the pilot brakes a circling approach
+  dead via closing-rate detection then *ratchets*: park, let the winched pod glide
+  ~line-length forward of the hull, bite closer, park again — the pod only needs to
+  graze the 60-ring with the line held. Commits `0e883dec`→`35332cd5`, `647d720a`.
 - **Audit-fix packets landed 2026-10-29/30:** encounter bookkeeping `37e1ebe0d24`, heat victim
   `d79feb41121`, mining/careers `bfa9ec3b6a9`, save restore `7b4cced23e8`, unique-wreck persistence
   `bd978111178`, special500 registered in production `6ca62459ba5`, c47a truth `97283ecd9c1`,

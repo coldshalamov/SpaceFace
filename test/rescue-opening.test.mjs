@@ -631,6 +631,8 @@ test('LIVE GATE: the starter gun applies impulse to the staged scout', () => {
   const beacon = makeEntity(specs.beacon);
   assert.equal(derelict.flags.invuln, true, 'leftover derelict stays leftover invuln');
   assert.equal(beacon.flags.invuln, true, 'leftover beacon stays leftover invuln');
+  assert.equal(specs.beacon.physicsBody && specs.beacon.physicsBody.dynamic, false,
+    'the exit ring is a fixed body — contact impulses cannot punt the finish line');
 
   const player = makeEntity({ type: 'ship', team: 0, pos: { x: 0, z: 0 }, radius: 14, mass: 320 });
   player.id = 1;

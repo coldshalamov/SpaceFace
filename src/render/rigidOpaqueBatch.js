@@ -1540,6 +1540,18 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
 }
 
 /**
+ * A render admission can race an external retirement of the retained GPU textures while the
+ * scene still references the BatchedMesh. Retire through the canonical owner before touching
+ * the live scene, which restores authored source layers and removes the dead batch so those
+ * real source draws can receive their warm pass.
+ */
+export function retireDisposedRigidOpaqueBatchBeforeSceneDraw(controller, renderState = null) {
+  if (controller?.retireUnusableActiveResources?.() !== true) return false;
+  if (renderState) renderState.rigidOpaqueBatch = controller.getDiagnostics();
+  return true;
+}
+
+/**
  * Specimen planning for the roster-prewarm cohort warm. The retained path above only
  * learns a group's (material, geometry, lane) combination once a real authored root
  * arrives, so its first BatchedMesh pays a USE_BATCHING program link inside flight.

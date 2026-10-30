@@ -40,26 +40,18 @@ test('core warning and pulse are bounded volume meshes, with non-flashing access
  }
 });
 
-test('every deferred RUCKUS payload has a literal path from the default game graph', async () => {
- const {collectReachable}=await import('../scripts/check-src-reachability.mjs');
- const {fileURLToPath}=await import('node:url');
- const {RUCKUS_MESH_KEYS}=await import('../src/render/characters/ruckusMeshData.js');
- const reachable=collectReachable();
- for(const key of RUCKUS_MESH_KEYS)assert.ok(reachable.has(fileURLToPath(new URL(`../src/render/characters/ruckusMeshData/${key}.js`,import.meta.url))),key);
-});
-
-test('generated lazy manifest is reproducible and loaders retain exact authored payloads', async () => {
+test('generated manifest routes the four deferred keys to their exact authored GLBs', async () => {
  const {renderRuckusMeshManifest}=await import('../tools/ruckus/meshManifest.mjs');
- const {RUCKUS_MESH_KEYS:keys,RUCKUS_MESH_LOADERS:loaders}=await import('../src/render/characters/ruckusMeshData.js');
+ const {RUCKUS_MESH_KEYS:keys,RUCKUS_MESH_ASSETS:assets}=await import('../src/render/characters/ruckusMeshData.js');
  const source=await readFile(new URL('../src/render/characters/ruckusMeshData.js',import.meta.url),'utf8');
  assert.equal(source,renderRuckusMeshManifest(keys));
- assert.deepEqual(Object.keys(loaders),keys);
- assert.ok(Object.isFrozen(loaders));
- assert.doesNotMatch(source,/^import\s/m,'no eager payload imports');
+ assert.deepEqual(Object.keys(assets),keys);
+ assert.ok(Object.isFrozen(assets));
+ assert.doesNotMatch(source,/import\s*\(/,'no JavaScript payload chunks remain');
  for(const key of keys){
-  const loaded=await loaders[key]();
-  const original=await import(`../src/render/characters/ruckusMeshData/${key}.js`);
-  assert.equal(loaded.default,original.default,key);
+  const file=assets[key].split('/').at(-1);
+  const bytes=await readFile(new URL(`../assets/characters/ruckus/${file}`,import.meta.url));
+  assert.equal(bytes.toString('ascii',0,4),'glTF',key);
  }
  for(const invalid of [[],['body0','body0'],['../body0'],['body-0'],[null]])assert.throws(()=>renderRuckusMeshManifest(invalid),TypeError);
 });
@@ -69,30 +61,68 @@ test('browser-shaped model import is cold and standalone Crucible skips its unre
  const {fileURLToPath}=await import('node:url');
  const code=`
   import assert from 'node:assert/strict';
+  import {readFile} from 'node:fs/promises';
+  const cold=await import('./src/render/characters/ruckusModel.js?node-cold-path');
+  const {ruckusEntitySpec}=await import('./src/systems/ruckus.js');
+  const coldRoot=cold.buildRuckusVisual(ruckusEntitySpec());
+  let coldLod;coldRoot.traverse(o=>{if(o.isLOD)coldLod=o;});
+  const coldMeshes=[];coldLod.levels[0].object.traverse(o=>{if(o.isMesh)coldMeshes.push(o);});
   globalThis.window={};
+  globalThis.document={baseURI:'http://127.0.0.1:8123/index.html'};
   const nativeSetTimeout=globalThis.setTimeout.bind(globalThis);
   let warmSlices=0;
+  let fetches=0, failCoreOnce=true;
+  globalThis.fetch=async url=>{
+   fetches++;
+   const pathname=new URL(url).pathname;
+   if(pathname.endsWith('/pressure-core.glb')&&failCoreOnce){failCoreOnce=false;return {ok:false,status:503};}
+   const file=decodeURIComponent(pathname.split('/').at(-1));
+   const bytes=await readFile(new URL('./assets/characters/ruckus/'+file,import.meta.url));
+   return {ok:true,status:200,arrayBuffer:async()=>bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength)};
+  };
   globalThis.setTimeout=(fn,ms,...rest)=>{
    if((new Error().stack||'').includes('ruckusModel.js'))warmSlices++;
    return nativeSetTimeout(fn,ms,...rest);
   };
-  const m=await import('./src/render/characters/ruckusModel.js');
-  const {ruckusEntitySpec}=await import('./src/systems/ruckus.js');
+  const m=await import('./src/render/characters/ruckusModel.js?browser-glb-fetch-test');
   await new Promise(resolve=>nativeSetTimeout(resolve,80));
   assert.equal(warmSlices,0,'importing the production model requests no RU-7 payload or template slices');
   assert.equal(m.requiresRuckusWarmForNewGame({crucibleLaunch:true}),false,'standalone Crucible cannot enter Ceres');
   assert.equal(m.requiresRuckusWarmForNewGame({}),true,'ordinary Adventure keeps the pre-flight Ceres readiness gate');
   assert.equal(m.requiresRuckusWarmForNewGame({crucibleLaunch:true,startSectorId:'sector_ceres_belt'}),true,'an explicit Ceres start still warms');
-  assert.equal(warmSlices,0,'classification alone does not request RU-7 chunks');
+  assert.equal(warmSlices,0,'classification alone does not request RU-7 data');
+  assert.equal(fetches,0,'importing the production model makes no asset requests');
   const ready=m.warmRuckusModel();
   assert.strictEqual(m.warmRuckusModel(),ready,'repeated callers share one warm');
-  await ready;
-  assert.ok(warmSlices>0,'demand warm advances authored templates in bounded tasks');
+  await assert.rejects(ready,error=>error.message.includes('RU-7 asset fetch failed (503)'), 'a failed binary request rejects the shared warm');
+  assert.equal(fetches,4,'the initial warm requests each exact GLB once');
+  const retry=m.warmRuckusModel();
+  assert.notStrictEqual(retry,ready,'a failed warm clears its memo and can be retried');
+  assert.strictEqual(m.warmRuckusModel(),retry,'retry callers share the retry promise');
+  await retry;
+  assert.equal(fetches,8,'retry requests a complete consistent four-asset set');
+  assert.ok(warmSlices>0,'demand warm fully decodes authored templates in bounded tasks');
   for(const part of [undefined,'core']){
    const root=m.buildRuckusVisual(ruckusEntitySpec(part));
    assert.equal(root.userData.authoredAssetState,'authored');
+   if(part===undefined){
+    let lod;root.traverse(o=>{if(o.isLOD)lod=o;});
+    const runtimeMeshes=[];
+    lod.levels[0].object.traverse(o=>{if(o.isMesh)runtimeMeshes.push(o);});
+    const sameArray=(a,b)=>!!a&&!!b&&a.constructor===b.constructor&&a.length===b.length
+     &&Buffer.from(a.buffer,a.byteOffset,a.byteLength).equals(Buffer.from(b.buffer,b.byteOffset,b.byteLength));
+    const sameGeometry=(a,b)=>{
+     const aa=a.attributes,bb=b.attributes;
+     return Object.keys(aa).length===Object.keys(bb).length&&Object.keys(aa).every(name=>sameArray(aa[name].array,bb[name].array))
+      &&((a.index===null&&b.index===null)||(a.index!==null&&b.index!==null&&sameArray(a.index.array,b.index.array)));
+    };
+    assert.equal(runtimeMeshes.length,coldMeshes.length,'all fetched LOD0 meshes are present');
+    for(const authored of coldMeshes)assert.ok(runtimeMeshes.some(runtime=>sameGeometry(runtime.geometry,authored.geometry)),'fetched vertex attributes and triangle indices match the Node-read authored GLB');
+   }
    m.disposeRuckusVisual(root);
   }
+  cold.disposeRuckusVisual(coldRoot);
+  cold.clearRuckusModelCache();
   m.clearRuckusModelCache();
  `;
  execFileSync(process.execPath,['--input-type=module','-e',code],{cwd:fileURLToPath(new URL('..',import.meta.url)),timeout:30000,stdio:'pipe'});

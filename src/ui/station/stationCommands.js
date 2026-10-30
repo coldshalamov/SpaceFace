@@ -56,8 +56,11 @@ export function createStationCommands({ root, trigger, getCommands, canOpen = ()
     trigger.setAttribute('aria-expanded', 'false');
     if (restoreFocus && restore?.isConnected) restore.focus({ preventScroll: true });
   }
+  function anotherModalOpen() {
+    return [...document.querySelectorAll('dialog:modal')].some((other) => other !== dialog);
+  }
   function open() {
-    if (!enabled || disposed || !canOpen() || dialog.open) return;
+    if (!enabled || disposed || !canOpen() || dialog.open || anotherModalOpen()) return;
     restore = document.activeElement;
     input.value = '';
     dialog.showModal();
@@ -80,7 +83,7 @@ export function createStationCommands({ root, trigger, getCommands, canOpen = ()
   on(dialog, 'click', e => { if (e.target === dialog) { const r = dialog.getBoundingClientRect(); if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) close(); } });
   on(window, 'keydown', e => {
     if (!enabled || disposed || e.isComposing) return;
-    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k' && !e.altKey && canOpen()) {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k' && !e.altKey && canOpen() && !anotherModalOpen()) {
       e.preventDefault(); e.stopImmediatePropagation(); if (!e.repeat) dialog.open ? close() : open(); return;
     }
     if (!dialog.open) return;

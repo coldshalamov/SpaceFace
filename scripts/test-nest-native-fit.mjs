@@ -19,7 +19,8 @@ function funcs(src,names){return names.map(n=>fn(src,n)).join('\n');}
 const model=read('src/data/modelTruth.js'), proxy=read('src/data/collisionProxyManifests.js');
 const physics=read('src/core/physicsAuthority.js'), core=read('src/core/coreSystem.js');
 const sg=read('src/core/sg02DynamicBodyOwner.js'), entities=read('src/core/entity.js');
-const materials=read('src/data/physicsMaterials.js'), census=read('src/data/modelTruthCensus.generated.js');
+const materials=read('src/data/physicsMaterials.js');
+const censusRows=JSON.parse(read('src/data/modelTruthCensus.json')).rows;
 const ceres=read('src/data/ceresWorkfleetArticulation.js');
 const no=n=>()=>{throw new Error('Unexercised unrelated port: '+n)};
 const context=vm.createContext({...math,planarProxyPrismHalfHeight,console,assert,Map,WeakMap,Set,WeakSet,Object,Array,Number,Math,JSON,
@@ -36,7 +37,7 @@ const physicsBody=physics.replace(/^import\s[\s\S]*?;\s*/gm,'').replace(/^export
 vm.runInContext(materials.replace(/^export /gm,'')+'\n'+physicsBody,context);
 vm.runInContext(entities.replace(/^export /gm,''),context);
 vm.runInContext(read('src/data/rockSubstances.js').replace(/^export /gm,''),context);
-vm.runInContext(census.replace(/^export /gm,'')+'\nconst ROWS=JSON.parse(CENSUS_JSON).rows;let byIdCache=null;\n'+
+vm.runInContext(`const ROWS=${JSON.stringify(censusRows)};let byIdCache=null;\n`+
  funcs(model,['byIdMap','modelTruthRow','stationRow','modelTruthRowForEntity','modelTruthProxyRowForEntity','openingPrimitivesForRow','hoopOpeningPrimitives','modelTruthProxyManifest','skinReference','modelTruthSkinHull','modelTruthSkinPolygon'])+
  '\nconst SKIN_HULL_CACHE=new Map(),SKIN_POLYGON_CACHE=new Map();const HOOP_OPENING_ROW_IDS=new Set(["place_aftermath_aft_dock_collar","place_aftermath_deb_ore_freighter_ring_span","place_transponder_gate"]);',context);
 // Exact resolver code with fresh native caches. No authored/declared static table row is reached.

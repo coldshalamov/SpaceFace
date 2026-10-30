@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { transform } from 'esbuild';
+import { build } from 'esbuild';
 import { pinVercelReleaseHtml, vercelReleaseBase, VERCEL_RELEASE_HOST_PATTERN } from '../scripts/lib/vercelReleaseBase.mjs';
 import { runtimeWorkerUrl, RUNTIME_WORKERS } from '../src/render/runtimeWorkers.js';
 
@@ -91,10 +91,12 @@ test('the real worker helper consumes the compiled release identity and keeps lo
   const source = readFileSync(new URL('../src/render/runtimeWorkers.js', import.meta.url), 'utf8');
   for (const hostname of [undefined, oldHost]) {
     const releaseBase = vercelReleaseBase(hostname);
-    const { code } = await transform(source, { format: 'esm', define: {
-      __SPACEFACE_PRODUCTION__: 'true', __SPACEFACE_RELEASE_BASE__: JSON.stringify(releaseBase),
-    } });
-    const compiled = await import(`data:text/javascript;base64,${Buffer.from(code).toString('base64')}`);
+    const { outputFiles } = await build({
+      stdin: { contents: source, resolveDir: fileURLToPath(new URL('../src/render', import.meta.url)), sourcefile: 'runtimeWorkers.js' },
+      bundle: true, write: false, format: 'esm', platform: 'browser',
+      define: { __SPACEFACE_PRODUCTION__: 'true', __SPACEFACE_RELEASE_BASE__: JSON.stringify(releaseBase) },
+    });
+    const compiled = await import(`data:text/javascript;base64,${Buffer.from(outputFiles[0].text).toString('base64')}`);
     for (const spec of RUNTIME_WORKERS) {
       assert.equal(compiled.runtimeWorkerUrl(spec.id, `${canonical}chunk.js`, { documentBase: canonical }),
         new URL(`${releaseBase}${spec.output}`, canonical).href);
