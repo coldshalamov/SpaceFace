@@ -466,6 +466,16 @@ export const mining = {
       return;
     }
 
+    // A section already cut free is spent: holding the beam on the hulk must neither remint the
+    // panel nor re-announce a fresh lock every tick. Refuse once, quietly, like any worked-out lot.
+    if (resolved.verb === 'cut' && target.data && target.data.cutSpent === true
+      && !cutRoutesToDrain(target)) {
+      if (this._beaming) this._stopBeam();
+      this._beamSpentThisHold = true;
+      this._noteBeamRefusal('worked-out');
+      return;
+    }
+
     if (!this._beaming || this._lockTargetId !== target.id || this._activeVerb !== resolved.verb) {
       this._setLockTargetId(target.id);
       this._activeVerb = resolved.verb;
@@ -492,7 +502,10 @@ export const mining = {
         // The authored Vesta freighter still presents the familiar CUT interaction, but its
         // value lives in salvage's finite source ledger. Never route that gesture through the
         // generic cut-panel payload generator, which would create a second pool beside the wreck.
-        if (target.type === 'wreck' && target.data && target.data.salvageSourceKey) {
+        // The same holds for an ordinary kill wreck already carrying a salvagePool: it is a
+        // finite lot to strip, not a section to cut — otherwise its real pool never drains and
+        // the beam just prints generic panels beside it forever.
+        if (cutRoutesToDrain(target)) {
           this._drainWreck(player, target, dps, dt);
         } else {
           this._applyCut(player, target, resolved, dps, dt);
@@ -724,10 +737,14 @@ export const mining = {
 
   _applyCut(player, target, resolved, dps, dt) {
     const d = target.data || (target.data = {});
+    // The section comes free exactly once. Without this latch a held beam re-crossed the
+    // threshold every few ticks and printed a fresh payload each time (a cargo printer).
+    if (d.cutSpent === true) return;
     d.cutProgress = (d.cutProgress || 0) + dps * dt;
     const threshold = Number(d.cutThreshold) || 50;
     if (d.cutProgress >= threshold) {
       d.cutProgress = 0;
+      d.cutSpent = true;
       const action = actionForWreck(target);
       const pool = action ? poolForAction(action) : { cmdty_scrap_metal: 4 };
       const radius = Math.max(3, Math.round((target.radius || 10) * 0.35));
@@ -3506,6 +3523,13 @@ function salvagePoolHasCargo(data) {
     if (finiteWholePickupAmount(qty) > 0) return true;
   }
   return false;
+}
+
+/** A CUT on a wreck that already owns a finite ledger/pool strips that lot instead of minting panels. */
+function cutRoutesToDrain(target) {
+  const d = target && target.type === 'wreck' ? target.data : null;
+  if (!d) return false;
+  return !!d.salvageSourceKey || (d.physicalCustodyOnly !== true && salvagePoolHasCargo(d));
 }
 
 function payloadHasCollectibleContent(data) {
