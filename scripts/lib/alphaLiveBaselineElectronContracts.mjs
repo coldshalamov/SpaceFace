@@ -180,9 +180,18 @@ export function createStrictElectronApplicationIssueTracker(electronApp, options
     cdpClassifiedResponseCounts.set(key, (cdpClassifiedResponseCounts.get(key) || 0) + 1);
     cdpClassifiedResponseTotal += 1;
   };
-  const failUnmatchedPlaywrightStoreResponse = ({ response, status, url }) => {
-    // This response was observed by Playwright but never paired to an exact CDP response.
-    // Its method is therefore unknown even if a wrapper happens to expose a stale GET.
+  const failUnmatchedPlaywrightStoreResponse = ({
+    response,
+    responseRequest,
+    responseMethod,
+    pendingCdpRequestCount,
+    cdpRequestCandidates,
+    uniqueRequest,
+    status,
+    url,
+  }) => {
+    // This response has no paired CDP response. Preserve the observed Playwright method
+    // and pending CDP request candidates, but keep the response fatal unless CDP joined it.
     flushPendingGenericNotFoundConsoles();
     expectedAbsentStoreConsoleTokens = 0;
     push({
@@ -193,9 +202,24 @@ export function createStrictElectronApplicationIssueTracker(electronApp, options
         source: 'playwright-unmatched-cdp-response',
         status,
         url,
+        cdpRequestCandidateCount: pendingCdpRequestCount,
+        cdpRequestCandidatesTruncated: pendingCdpRequestCount > cdpRequestCandidates.length,
+        // Preserve observed method and exact requestId candidates across teardown without
+        // treating a URL coincidence as a CDP response join or excusing the 404.
+        method: responseMethod,
+        methodSource: responseMethod ? 'playwright-response-request' : null,
+        requestId: uniqueRequest?.requestId || null,
+        requestIdSource: uniqueRequest ? 'unique-pending-cdp-request-url-method' : null,
+        cdpRequestCandidates: cdpRequestCandidates.map((request) => ({
+          requestId: request.requestId,
+          method: request.method,
+          resourceType: request.resourceType,
+          startedAt: request.startedAt,
+          startedPhase: request.startedPhase,
+        })),
       },
     });
-    retireStoreResponse(response, url, pendingStoreRequests, completedStoreRequests);
+    retireStoreResponse(response, url, pendingStoreRequests, completedStoreRequests, responseRequest, true);
   };
   const flushDeferredPlaywrightStoreResponses = () => {
     while (deferredPlaywrightStoreResponses.length > 0) {
@@ -203,10 +227,30 @@ export function createStrictElectronApplicationIssueTracker(electronApp, options
     }
   };
   const deferPlaywrightStoreResponse = (response, status, url) => {
+    let responseRequest = null;
+    let responseMethod = null;
+    try { responseRequest = readMaybeFunction(response, 'request'); } catch (_) { /* method remains unavailable */ }
+    try { responseMethod = normalizeCdpMethod(readMaybeFunction(responseRequest, 'method')); } catch (_) { /* method remains unavailable */ }
+    const pendingCdpRequests = [...cdpStoreRequests.values()].filter((request) => request.url === url);
+    const cdpRequestCandidates = pendingCdpRequests.slice(0, 8).map((request) => ({ ...request }));
+    const methodCandidates = responseMethod
+      ? pendingCdpRequests.filter((request) => request.method === responseMethod)
+      : [];
+    const uniqueRequest = methodCandidates.length === 1 ? methodCandidates[0] : null;
+    const deferred = {
+      response,
+      responseRequest,
+      responseMethod,
+      pendingCdpRequestCount: pendingCdpRequests.length,
+      cdpRequestCandidates,
+      uniqueRequest,
+      status,
+      url,
+    };
     if (deferredPlaywrightStoreResponses.length >= MAX_CDP_STORE_PROVENANCE) {
       failUnmatchedPlaywrightStoreResponse(deferredPlaywrightStoreResponses.shift());
     }
-    deferredPlaywrightStoreResponses.push({ response, status, url });
+    deferredPlaywrightStoreResponses.push(deferred);
   };
   const recordConsole = (message) => {
     if (!markOnce(seenConsoleMessages, message)) return;
@@ -705,9 +749,9 @@ function resolvePendingStoreRequestMethod(response, url, pendingRequests, comple
   return matching.length === 1 && matching[0].method ? matching[0].method : null;
 }
 
-function retireStoreResponse(response, url, pendingRequests, completedRequests) {
+function retireStoreResponse(response, url, pendingRequests, completedRequests, responseRequestOverride = null, hasResponseRequestOverride = false) {
   if (!isPlayerStorePath(url)) return;
-  const responseRequest = readMaybeFunction(response, 'request');
+  const responseRequest = hasResponseRequestOverride ? responseRequestOverride : readMaybeFunction(response, 'request');
   for (const requests of [pendingRequests, completedRequests]) {
     if (requests?.has(responseRequest)) {
       requests.delete(responseRequest);

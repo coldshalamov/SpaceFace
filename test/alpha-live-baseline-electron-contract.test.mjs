@@ -690,19 +690,89 @@ async function testStorelessCdpUnmatchedPlaywrightFailsClosed() {
   });
   await tracker.bindNetworkProvenance(page);
 
-  // CDP is attached, but this Playwright response has no matching
-  // Network.responseReceived. It must remain fatal at finalization rather than
-  // disappearing behind the CDP-attached flag.
+  cdp.emit('Network.requestWillBeSent', {
+    requestId: 'store-unmatched-get',
+    request: { url: exactUrl, method: 'GET' },
+    type: 'Fetch',
+  });
+  cdp.emit('Network.requestWillBeSent', {
+    requestId: 'store-unmatched-put',
+    request: { url: exactUrl, method: 'PUT' },
+    type: 'Fetch',
+  });
+  let wrappersLive = true;
+  let responseRequestReads = 0;
+  let methodReads = 0;
+  const responseRequest = {
+    method() {
+      assert.equal(wrappersLive, true, 'Playwright request method is read before teardown');
+      methodReads += 1;
+      return 'GET';
+    },
+  };
   context.emit('response', {
     status: () => 404,
     url: () => exactUrl,
-    request: () => ({}),
+    request: () => {
+      assert.equal(wrappersLive, true, 'Playwright response request is read before teardown');
+      responseRequestReads += 1;
+      return responseRequest;
+    },
   });
+  wrappersLive = false;
   assert.equal(tracker.errors().length, 1,
-    'an unmatched Playwright store 404 remains fatal when CDP reports no response');
-  assert.equal(tracker.errors()[0].networkProvenance.source, 'playwright-unmatched-cdp-response');
+    'an unmatched Playwright store GET 404 remains fatal when CDP reports no response');
+  const provenance = tracker.errors()[0].networkProvenance;
+  assert.equal(provenance.source, 'playwright-unmatched-cdp-response');
+  assert.equal(provenance.method, 'GET');
+  assert.equal(provenance.methodSource, 'playwright-response-request');
+  assert.equal(provenance.requestId, 'store-unmatched-get');
+  assert.equal(provenance.requestIdSource, 'unique-pending-cdp-request-url-method');
+  assert.equal(provenance.cdpRequestCandidateCount, 2);
+  assert.deepEqual(provenance.cdpRequestCandidates.map((candidate) => [candidate.requestId, candidate.method]), [
+    ['store-unmatched-get', 'GET'],
+    ['store-unmatched-put', 'PUT'],
+  ]);
+  assert.equal(responseRequestReads, 1, 'response wrapper metadata is snapshotted before teardown');
+  assert.equal(methodReads, 1, 'method is not re-read after teardown');
+  assert.deepEqual(tracker.ignored(), [], 'an unmatched GET response is not exempted');
   tracker.stop();
   assert.equal(detached, true, 'void-valued CDP detach is still invoked safely');
+}
+
+async function testStorelessCdpUnmatchedAmbiguousCandidatesStayFatal() {
+  const exactUrl = `${CANONICAL}__spaceface_player_store`;
+  const context = new EventEmitter();
+  const cdp = new EventEmitter();
+  cdp.send = async () => {};
+  cdp.detach = () => {};
+  context.newCDPSession = async () => cdp;
+  const electronApp = new EventEmitter();
+  electronApp.context = () => context;
+  const page = new FakePage(CANONICAL);
+  page.context = () => context;
+  const tracker = createStrictElectronApplicationIssueTracker(electronApp, { playerStoreMounted: false });
+  await tracker.bindNetworkProvenance(page);
+  for (const requestId of ['store-get-a', 'store-get-b']) {
+    cdp.emit('Network.requestWillBeSent', {
+      requestId,
+      request: { url: exactUrl, method: 'GET' },
+      type: 'Fetch',
+    });
+  }
+  context.emit('response', {
+    status: () => 404,
+    url: () => exactUrl,
+    request: () => ({ method: () => 'GET' }),
+  });
+  const issue = tracker.errors()[0];
+  assert.equal(issue.networkProvenance.method, 'GET');
+  assert.equal(issue.networkProvenance.requestId, null, 'ambiguous CDP candidates are not joined');
+  assert.equal(issue.networkProvenance.cdpRequestCandidateCount, 2);
+  assert.deepEqual(issue.networkProvenance.cdpRequestCandidates.map((row) => row.requestId), ['store-get-a', 'store-get-b']);
+  assert.equal(tracker.errors().length, 1, 'an unmatched 404 remains fatal even when its observed method is GET');
+  assert.deepEqual(tracker.ignored(), []);
+  tracker.stop();
 }
 
 async function testElectronUrlLifecycle() {
@@ -1580,6 +1650,7 @@ await testOptInExpectedSoakNetworkPolicy();
 await testStorelessResponseMethodFallback();
 await testStorelessCdpRequestIdProvenance();
 await testStorelessCdpUnmatchedPlaywrightFailsClosed();
+await testStorelessCdpUnmatchedAmbiguousCandidatesStayFatal();
 await testElectronUrlLifecycle();
 await testProcessMonitorAndCrashRejection();
 await testOwnedElectronCleanup();

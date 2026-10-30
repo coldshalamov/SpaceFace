@@ -571,6 +571,9 @@ export async function runReleaseSoakProbe({
             `release-soak cycle ${index}`,
           );
         } catch (attemptError) {
+          if (attemptError?.stationScreenWaitDiagnostic) {
+            doLog(`[cycle ${index}] station-screen-wait-diagnostic ${JSON.stringify(attemptError.stationScreenWaitDiagnostic)}`);
+          }
           if (attempt === 0) {
             doLog(`[cycle ${index}] failed; retrying once (${String(attemptError && attemptError.message || attemptError).slice(0, 160)})`);
             await setSoakTransition(page, null).catch(() => {});
@@ -2996,7 +2999,76 @@ async function runSoakCycle(page, {
       `${sawDockPrompt ? 'dock key did not dock within the retry window' : 'dock prompt never appeared'}: ${JSON.stringify({ attempts: attemptDiags, final: diag })}`,
     );
   }
-  await page.locator('[data-screen="station"]').waitFor({ state: 'visible', timeout: 20_000 });
+  const stationWaitProbeKey = '__M8_STATION_SCREEN_WAIT__';
+  await page.evaluate((key) => {
+    const state = window.SF?.state;
+    const asFinite = (value) => Number.isFinite(Number(value)) ? Number(value) : null;
+    const probe = {
+      startedAtMs: performance.now(),
+      startTick: asFinite(state?.tick),
+      startSimTime: asFinite(state?.simTime),
+      rafCallbackCount: 0,
+      lastRafAt: null,
+      maxRafGapMs: 0,
+      rafId: 0,
+    };
+    const frame = (timestamp) => {
+      probe.rafCallbackCount += 1;
+      if (probe.lastRafAt !== null) probe.maxRafGapMs = Math.max(probe.maxRafGapMs, timestamp - probe.lastRafAt);
+      probe.lastRafAt = timestamp;
+      probe.rafId = requestAnimationFrame(frame);
+    };
+    probe.rafId = requestAnimationFrame(frame);
+    window[key] = probe;
+  }, stationWaitProbeKey);
+  try {
+    await page.locator('[data-screen="station"]').waitFor({ state: 'visible', timeout: 20_000 });
+  } catch (error) {
+    const diagnostic = await page.evaluate((key) => {
+      const probe = window[key] || null;
+      if (probe?.rafId) cancelAnimationFrame(probe.rafId);
+      const state = window.SF?.state;
+      const root = document.querySelector('[data-screen="station"]');
+      const style = root ? getComputedStyle(root) : null;
+      const rect = root?.getBoundingClientRect?.();
+      const asFinite = (value) => Number.isFinite(Number(value)) ? Number(value) : null;
+      const endTick = asFinite(state?.tick);
+      const endSimTime = asFinite(state?.simTime);
+      const result = {
+        elapsedMs: probe ? Number((performance.now() - probe.startedAtMs).toFixed(1)) : null,
+        documentVisibility: document.visibilityState,
+        docked: typeof state?.ui?.docked === 'boolean' ? state.ui.docked : null,
+        startTick: probe?.startTick ?? null,
+        endTick,
+        tickDelta: probe && probe.startTick !== null && endTick !== null ? endTick - probe.startTick : null,
+        startSimTime: probe?.startSimTime ?? null,
+        endSimTime,
+        simTimeDelta: probe && probe.startSimTime !== null && endSimTime !== null ? Number((endSimTime - probe.startSimTime).toFixed(4)) : null,
+        rafCallbackCount: probe?.rafCallbackCount ?? null,
+        maxRafGapMs: probe ? Number(probe.maxRafGapMs.toFixed(1)) : null,
+        stationRoot: root ? {
+          present: true,
+          hidden: root.hidden,
+          ariaHidden: root.getAttribute('aria-hidden'),
+          display: style?.display || null,
+          visibility: style?.visibility || null,
+          opacity: style?.opacity || null,
+          rect: rect ? { x: Number(rect.x.toFixed(1)), y: Number(rect.y.toFixed(1)), width: Number(rect.width.toFixed(1)), height: Number(rect.height.toFixed(1)) } : null,
+        } : { present: false },
+      };
+      delete window[key];
+      return result;
+    }, stationWaitProbeKey).catch((diagnosticError) => ({ unavailable: String(diagnosticError?.message || diagnosticError).slice(0, 500) }));
+    const failure = error instanceof Error ? error : new Error(String(error));
+    failure.stationScreenWaitDiagnostic = diagnostic;
+    throw failure;
+  } finally {
+    await page.evaluate((key) => {
+      const probe = window[key];
+      if (probe?.rafId) cancelAnimationFrame(probe.rafId);
+      delete window[key];
+    }, stationWaitProbeKey).catch(() => {});
+  }
   mark('docked');
 
   const marketTab = page.locator('[role="tab"]', { hasText: /market/i }).first();
@@ -6293,6 +6365,21 @@ function boundedErrorNetworkProvenance(value) {
     }
   }
   if (Number.isFinite(value.status)) copy.status = value.status;
+  for (const key of ['methodSource', 'requestIdSource']) {
+    if (typeof value[key] === 'string') copy[key] = value[key].slice(0, 128);
+  }
+  if (Number.isFinite(value.cdpRequestCandidateCount)) copy.cdpRequestCandidateCount = value.cdpRequestCandidateCount;
+  if (value.cdpRequestCandidatesTruncated === true) copy.cdpRequestCandidatesTruncated = true;
+  if (Array.isArray(value.cdpRequestCandidates)) {
+    copy.cdpRequestCandidates = value.cdpRequestCandidates.slice(0, 8).map((candidate) => ({
+      requestId: typeof candidate?.requestId === 'string' ? candidate.requestId.slice(0, 256) : null,
+      method: typeof candidate?.method === 'string' ? candidate.method.slice(0, 16) : null,
+      resourceType: typeof candidate?.resourceType === 'string' ? candidate.resourceType.slice(0, 64) : null,
+      startedAt: typeof candidate?.startedAt === 'string' ? candidate.startedAt.slice(0, 64) : null,
+      startedPhase: typeof candidate?.startedPhase === 'string' ? candidate.startedPhase.slice(0, 128) : null,
+    }));
+    if (value.cdpRequestCandidates.length > 8) copy.cdpRequestCandidatesTruncated = true;
+  }
   return copy;
 }
 
