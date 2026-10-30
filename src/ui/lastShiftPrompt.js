@@ -25,7 +25,7 @@ export const lastShiftPrompt = {
     this._subs.push(ctx.bus.on('lastShift:cue', row => this.cue(row)));
     this._subs.push(ctx.bus.on('lastShift:offer', row => {
       if (row?.view === 'recoveryUpdate') {
-        if (!this._active?.accepted || !['recovery', 'advice'].includes(this._view)) return;
+        if (!this._active?.accepted || !['recovery', 'advice', 'guidance'].includes(this._view)) return;
         this.offer(row, this._view); return;
       }
       if (row?.requestId != null && row.requestId !== this._epoch) return;
@@ -65,27 +65,40 @@ export const lastShiftPrompt = {
     if (!row?.canArchive && !row?.canReturnRecorder) { this.clear(); return false; }
     const recovery = typeof row.recorderRecovery === 'string' && Object.hasOwn(recoveryDetail, row.recorderRecovery)
       ? recoveryDetail[row.recorderRecovery] : null;
-    if (!recovery) view = 'sources';
+    if (view === 'guidance' && (!row.recoveryActive || !row.recoveryGuidance)) view = 'sources';
+    else if (view !== 'guidance' && !recovery) view = 'sources';
     const choices = [];
     if (view === 'sources' && row.canArchive && row.archiveFiled !== true) choices.push({ id: 'archive', label: `FILE ${row.clueIds.length}/3 SOURCES`, title: 'Publish only the facts already read. No extra payout.' });
     if (view !== 'advice' && row.canReturnRecorder) choices.push({ id: 'return', label: 'RETURN ORIGINAL RECORDER', title: 'Give the actual towed recorder to this berth; keep its evidence, surrender its hardware value.' });
-    if (view === 'sources' && recovery) choices.push({ id: 'recovery', label: 'ORIGINAL RECOVERY', title: 'Read optional hardware-return directions. Filing evidence is separate.' });
+    if (view === 'sources' && recovery) choices.push({ id: 'recovery', label: 'RETURN INSTRUCTIONS', title: 'Read optional hardware-return directions. Filing evidence is separate.' });
+    if (view === 'sources' && row.recoveryActive) choices.push({ id: 'guidance', label: 'RECOVERY GUIDANCE', title: 'Reopen the active, physical return guidance.' });
+    if (view === 'sources' && !row.recoveryActive && row.canRecoverRecorder && !row.canReturnRecorder) choices.push({ id: 'recover', label: 'START RETURN GUIDANCE', title: 'Start optional physical recovery guidance. This does not return the recorder or file evidence.' });
+    if (view === 'guidance') choices.push({ id: 'sources', label: 'READ SOURCES', title: 'Return to the evidence already read.' });
     if (view === 'recovery' && !['returned', 'lost'].includes(row.recorderRecovery)) choices.push({ id: 'advice', label: 'TOWING ADVICE' });
-    if (view !== 'sources') choices.push({ id: 'back', label: view === 'advice' ? 'BACK TO RECOVERY' : 'BACK TO SOURCES' });
+    if (view === 'guidance') choices.push({ id: 'cancelRecovery', label: 'STOP RECOVERY GUIDANCE', title: 'Keep the read evidence; stop optional return guidance.' });
+    if (view === 'recovery' || view === 'advice') choices.push({ id: 'back', label: view === 'advice' ? 'BACK TO RECOVERY' : 'BACK TO SOURCES' });
     choices.push({ id: 'leave', label: view === 'sources' ? 'KEEP INVESTIGATING' : 'CLOSE', cancel: true });
     this._view = view;
     const token = { accepted: false }, epoch = ++this._epoch, allowed = new Set(choices.map(choice => choice.id)); this._active = token;
     const accepted = getPromptDeck()?.offerDecision({ id: this._deckId, kind: 'info', sender: 'LAST SHIFT — SOURCE REGISTER',
       statusFlag: `${row.clueIds.length}/3 SOURCES · ${row.archiveFiled === true ? 'REPORT FILED' : row.recorderReturned ? 'ORIGINAL RETURNED' : 'PARTIAL REPORTS ALLOWED'}${row.archiveFiled === true && row.recorderReturned ? ' · ORIGINAL RETURNED' : ''}`,
       headline: view === 'sources' ? 'What the wreck can prove' : view === 'advice' ? 'Bring it back intact' : 'Optional original recovery',
-      detail: view === 'sources' ? row.text : view === 'advice' ? towingAdvice : recovery, choices,
+      detail: view === 'sources' ? row.text : view === 'advice' ? towingAdvice : view === 'guidance' ? row.recoveryGuidance : recovery, choices,
       onChoose: id => {
-        if (this._active !== token || !token.accepted || !allowed.has(id)) return false;
+        if (this._active !== token || !token.accepted) return false;
+        if (!allowed.has(id)) {
+          // The canonical owner is idempotent. Let a stale duplicate FILE request receive its
+          // visible already-filed receipt without reopening or mutating the current dossier.
+          if (id === 'archive' && row.archiveFiled === true) this.bus.emit('lastShift:archive', { revision: row.revision });
+          return false;
+        }
         const clearedEpoch = this.clear();
         if (this._epoch !== clearedEpoch || this._destroyed) return false;
         if (id === 'recovery' || (id === 'back' && view === 'advice')) this.bus.emit('lastShift:readRecovery', { requestId: this._epoch });
         if (id === 'advice') this.offer(row, 'advice');
         if (id === 'back' && view === 'recovery') this.bus.emit('lastShift:readRecovery', { view: 'sources', requestId: this._epoch });
+        if (id === 'sources' && view === 'guidance') this.offer(row, 'sources');
+        if (id === 'guidance') this.offer(row, 'guidance');
         if (id === 'archive') this.bus.emit('lastShift:archive', { revision: row.revision });
         if (id === 'recover') this.bus.emit('lastShift:recover');
         if (id === 'cancelRecovery') this.bus.emit('lastShift:cancelRecovery');
