@@ -32,7 +32,7 @@ export const CIVILIANS = Object.freeze({
 // Five real travel legs, approximately 620 s at the authored 18 wu/s, plus preparation,
 // bend hold, recovery and final mooring. Minimum holds never substitute for spatial arrival.
 export const ROUTE = Object.freeze([
-  { id: 'departure', label: 'Departure apron', x: 1100, z: 0, minS: 55 },
+  { id: 'departure', label: 'Departure apron', x: 1100, z: 0, minS: 75 },
   { id: 'lee', label: 'Lee of the broken carrier', x: 3000, z: 600, minS: 100 },
   { id: 'throat', label: 'Needle throat — slow before the bend', x: 4700, z: -250, minS: 100 },
   { id: 'shelter', label: 'Shelter pocket', x: 6600, z: 500, minS: 110 },

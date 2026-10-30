@@ -1,0 +1,67 @@
+{
+  "baseSha": "871c27854bb2acff09a80595844d9731d33b037a",
+  "capability": "unknown",
+  "status": "candidate",
+  "checks": [
+    {
+      "command": "node --check src/features/wayfarer-house/adapter.mjs",
+      "exitCode": 0,
+      "output": ""
+    },
+    {
+      "command": "node --check src/features/wayfarer-house/core.mjs",
+      "exitCode": 0,
+      "output": ""
+    },
+    {
+      "command": "node --check src/features/wayfarer-house/corridor.mjs",
+      "exitCode": 0,
+      "output": ""
+    },
+    {
+      "command": "node --check src/features/wayfarer-house/data.mjs",
+      "exitCode": 0,
+      "output": ""
+    },
+    {
+      "command": "node --check src/features/wayfarer-house/presentation.mjs",
+      "exitCode": 0,
+      "output": ""
+    },
+    {
+      "command": "node --test test/pro-wayfarer-house.test.mjs",
+      "exitCode": 0,
+      "output": "\u2714 authored relocation lasts 10\u201315 minutes with real-distance travel at authored speed (93.946066ms)\n\u2714 fixed-seed/no-randomness replay and mid-relocation restore preserve the entire trace (296.253512ms)\n\u2714 elapsed time never substitutes for physical arrival or connected pods (37.120936ms)\n\u2714 leaving freezes objective progress and rejoining does not aggregate the gap (0.551666ms)\n\u2714 separation requires owner receipt, sustained recovery envelope and owner reconnect receipt (1.962873ms)\n\u2714 a fast catch resets the recovery dwell; abandoning is explicit and recoverable episode continues (0.223819ms)\n\u2714 pod and crew loss reduces consequences and never deadlocks the relocation (70.633496ms)\n\u2714 loss of tug/all pods is terminal without completion or minted reward (0.381718ms)\n\u2714 unavailable destination cancels the berth and requires a fresh available choice (0.309518ms)\n\u2714 services require both survival and finite supplies, with distinct persistent destinations (0.38952ms)\n\u2714 restore is closed, bounded, detached and rejects invalid versions/numbers/pod states (0.570143ms)\n\u2714 adapter creates one tug, three pods and six finite physical corridor fragments through factory (1.340851ms)\n\u2714 revision guard and owner debit make repeated supply/depart callbacks harmless (1.114789ms)\n\u2714 recycled body ids cannot authorize supply, movement, link adoption or loss of the new occupant (0.494529ms)\n\u2714 retained dead exact occupant reports pod loss after removal, and does not kill a recycled body (0.364392ms)\n\u2714 save restore requires canonical stable-record rebinding before any navigation (0.84531ms)\n\u2714 settlement cash and faction effects occur once across reentry, duplicate ticks and restore (73.483051ms)\n\u2714 destination adapter refuses closed choice; retired instance releases its navigation and refuses input (0.523633ms)\n\u2714 readout exposes named needs, unavailable choices and textual recovery status without rendering dependencies (0.377862ms)\n\u2714 loss sampling still terminates when the dead tug makes player presence false (0.212682ms)\n\u2714 save capture records a removed casualty without advancing live feature clocks or objectives (0.299694ms)\n\u2714 recovery after clinic loss uses the surviving hearth rather than a dead receiver (0.483433ms)\n\u2714 adapter cuts through owner, requires a physical player tow, reconnects once, and bounds defense spawns (14.766436ms)\n\u2714 owner refusal cannot complete physical separation (0.390982ms)\n\u2714 invalid restore leaves the active instance intact (0.252472ms)\n\u2714 helm/custody transfer retires feature authority instead of piloting the captured tug (0.233864ms)\n\u2714 restoring missing active defense blocks until exact lifecycle retirement, rejecting stale receipts (0.790437ms)\n\u2139 tests 27\n\u2139 suites 0\n\u2139 pass 27\n\u2139 fail 0\n\u2139 cancelled 0\n\u2139 skipped 0\n\u2139 todo 0\n\u2139 duration_ms 693.099367\n"
+    }
+  ],
+  "testCount": 27,
+  "testLayer": "deterministic core + real adapter with owner doubles",
+  "notPerformed": [
+    "Full repository build",
+    "Canonical Rapier towing runtime",
+    "Headed ordinary discovery/playtest",
+    "Visual/asset/performance qualification",
+    "Mission/save/service global registration"
+  ],
+  "sourceInterfaceVerification": [
+    "core spawnEntity and occupant generation",
+    "makeShipEntitySpec",
+    "npcJobs assign/release/claimControl/releaseControl",
+    "aiManeuver version 1 and activity lease",
+    "combat attachments create/get/cut/listForEntity",
+    "cargo removeCargo/sellableCargoQuantity",
+    "economy grantCredits",
+    "factions applyRep",
+    "world ui:setCourse",
+    "mission venue proof source allowlist",
+    "canonical commodity and faction IDs",
+    "AI hostility team-1 vs team-2 authority"
+  ],
+  "knownLimits": [
+    "Runtime episode pacing is not established by synthetic navigation",
+    "Surviving defense actors must rematerialize or receive exact retirement receipts before feature restore resumes",
+    "Services require canonical catalogue admission",
+    "Mission proof requires owner allowlist/query registration",
+    "Candidate pod geometry requires visual/physics scale acceptance"
+  ]
+}

@@ -1,0 +1,92 @@
+{
+  "featureId": "wayfarer_house",
+  "schemaVersion": 1,
+  "baseSha": "871c27854bb2acff09a80595844d9731d33b037a",
+  "baseTreeSha": "a3bb1bb7b8cccca0ab280f53bd6035f5f92124b4",
+  "resultBranch": "codex/pro-wayfarer-house",
+  "capability": "unknown",
+  "disposition": "candidate; requires root integration and acceptance",
+  "changedFiles": [
+    "src/features/wayfarer-house/EVIDENCE.json",
+    "src/features/wayfarer-house/INTEGRATION.md",
+    "src/features/wayfarer-house/adapter.mjs",
+    "src/features/wayfarer-house/core.mjs",
+    "src/features/wayfarer-house/corridor.mjs",
+    "src/features/wayfarer-house/data.mjs",
+    "src/features/wayfarer-house/manifest.json",
+    "src/features/wayfarer-house/presentation.mjs",
+    "test/pro-wayfarer-house.test.mjs"
+  ],
+  "sha256": {
+    "src/features/wayfarer-house/EVIDENCE.json": "6c1d27cbd4b48bfe1e4c53c241e4156ddc58a255c9fce48674aeea44e0000260",
+    "src/features/wayfarer-house/INTEGRATION.md": "b2067a57c4d7940ed883bf83bb8bd2c4664fe6c40c5c4c42596cb37ccfe6294c",
+    "src/features/wayfarer-house/adapter.mjs": "9dd4fad008a5d2986a28cc7966e5c69259cb42af132e0df190dad2a238dccb55",
+    "src/features/wayfarer-house/core.mjs": "8742f153d6134b9ec19c16ccabcae49ec77993610b996de6460b31501d4eb056",
+    "src/features/wayfarer-house/corridor.mjs": "a5f12fdcb80729e327275ae7ab831a9c64dc1bfacbe21ff9f54f8dbd50e12827",
+    "src/features/wayfarer-house/data.mjs": "868be9d12cb9c3459605d481cb358a1c374cb9c7e34b4d69990516aab758419d",
+    "src/features/wayfarer-house/presentation.mjs": "84a01cb09fb098c205c7af98ec5f9c9c34aa7e082561bfac0a0f3bc22fd9ac44",
+    "test/pro-wayfarer-house.test.mjs": "87665b44717eace0f4c9bd9dfbd348b6681a66f2c5957c76b8f09303272e5ac7"
+  },
+  "hashNote": "Manifest excluded from its own hash map to avoid recursive hashing. Git commit authenticates the complete tree.",
+  "tests": [
+    {
+      "command": "node --check src/features/wayfarer-house/adapter.mjs",
+      "exitCode": 0
+    },
+    {
+      "command": "node --check src/features/wayfarer-house/core.mjs",
+      "exitCode": 0
+    },
+    {
+      "command": "node --check src/features/wayfarer-house/corridor.mjs",
+      "exitCode": 0
+    },
+    {
+      "command": "node --check src/features/wayfarer-house/data.mjs",
+      "exitCode": 0
+    },
+    {
+      "command": "node --check src/features/wayfarer-house/presentation.mjs",
+      "exitCode": 0
+    },
+    {
+      "command": "node --test test/pro-wayfarer-house.test.mjs",
+      "exitCode": 0
+    }
+  ],
+  "integrationEntrypoints": {
+    "factory": "src/features/wayfarer-house/adapter.mjs#createWayfarerHouse",
+    "lifecycle": [
+      "activate",
+      "update",
+      "serialize",
+      "deserialize",
+      "bind",
+      "bindRaider",
+      "finishRestore",
+      "dispose",
+      "recordRaiderRetirement"
+    ],
+    "interaction": "act({revision,kind,pod,destination})",
+    "missions": "missionProof(missionId)",
+    "services": [
+      "serviceProfile(destinationId)",
+      "dockedServiceProfile()"
+    ],
+    "presentation": [
+      "readout",
+      "mountReadout",
+      "createPodSkin"
+    ],
+    "documentation": "src/features/wayfarer-house/INTEGRATION.md"
+  },
+  "bounds": {
+    "episodesPerInstance": 1,
+    "convoyBodies": 4,
+    "carrierFragments": 6,
+    "defenseBodies": 2,
+    "activeConvoyLinks": 3,
+    "featureGlobalEntityScansPerTick": 0
+  },
+  "dependencies": []
+}

@@ -15,7 +15,7 @@ export function createJourney({ origin, sectorId, id = 'wayfarer_house_1' }, sim
   return { version: VERSION, id, origin: { x: origin.x, z: origin.z }, sectorId,
     phase: 'preparing', revision: 0, lastSimTime: simTime, elapsed: 0, legTime: 0,
     leg: 0, destination: null, separation: 'pending', captureTime: 0, berthTime: 0,
-    participation: 0, rewardClaimed: false, consequence: null, departureConfirmed: false,
+    participation: 0, rewardClaimed: false, reputationClaimed: false, consequence: null, departureConfirmed: false,
     pods: Object.fromEntries(PODS.map(p => [p.id, { disposition: 'aboard', supplied: false }])),
     civilians: { mara: 'alive', ivo: 'alive', sen: 'alive' },
     threat: 'pending', retiredReason: null };
@@ -36,7 +36,7 @@ export function restoreJourney(input) {
     if (!finite(input[k]) || input[k] < 0 || input[k] > 1e7) throw new TypeError('Invalid Wayfarer timer');
     s[k] = input[k];
   }
-  for (const k of ['rewardClaimed', 'departureConfirmed']) {
+  for (const k of ['rewardClaimed', 'reputationClaimed', 'departureConfirmed']) {
     if (typeof input[k] !== 'boolean') throw new TypeError('Invalid Wayfarer latch');
     s[k] = input[k];
   }
@@ -49,6 +49,7 @@ export function restoreJourney(input) {
     s.civilians[p.civilian] = input.civilians[p.civilian];
   }
   for (const k of ['phase', 'revision', 'leg', 'destination', 'separation', 'threat']) s[k] = input[k];
+  if (input.phase !== 'settled' && (s.rewardClaimed || s.reputationClaimed)) throw new TypeError('Premature settlement latch');
   if (input.phase === 'settled') {
     if (!input.destination || input.leg !== ROUTE.length) throw new TypeError('Invalid settlement');
     s.consequence = consequenceFor(s); // derive; never trust imported services or reward amounts
@@ -104,9 +105,9 @@ export function stepJourney(s, simTime, view) {
   if (!finite(simTime) || simTime < s.lastSimTime) return effects;
   const dt = simTime - s.lastSimTime;
   s.lastSimTime = simTime;
-  if (terminal(s) || dt === 0) return effects;
+  if (terminal(s)) return effects;
   // Integration must use the fixed-step clock. A load/sector gap is NOT offscreen progress.
-  if (dt > LIMITS.maxStepS || !view.present) return effects;
+  if (dt > LIMITS.maxStepS) return effects;
   if (view.bodies.tug?.alive === false) { s.phase = 'lost'; s.revision++; return effects; }
   for (const pod of PODS) {
     if (view.bodies[pod.id]?.alive === false && !['lost', 'abandoned'].includes(s.pods[pod.id].disposition)) {
@@ -116,9 +117,10 @@ export function stepJourney(s, simTime, view) {
     }
   }
   if (PODS.every(p => s.pods[p.id].disposition === 'lost')) { s.phase = 'lost'; s.revision++; return effects; }
+  if (dt === 0 || !view.present) return effects;
   const needed = ['tug', ...PODS.filter(p => !['lost', 'abandoned'].includes(s.pods[p.id].disposition)).map(p => p.id)];
   if (needed.some(id => !view.bodies[id])) return effects;
-  s.elapsed += dt;
+  s.elapsed = Math.min(1e7, s.elapsed + dt);
   if (s.phase !== 'preparing') s.participation = Math.min(1e7, s.participation + dt);
   if (s.phase === 'berthing' && view.available[s.destination] !== true) {
     s.phase = 'choosing'; s.destination = null; s.berthTime = 0; s.revision++;
@@ -126,7 +128,7 @@ export function stepJourney(s, simTime, view) {
   }
   const tug = view.bodies.tug;
   if (s.phase === 'moving') {
-    s.legTime += dt;
+    s.legTime = Math.min(1e7, s.legTime + dt);
     if (s.leg === 2 && s.separation === 'pending' && s.pods.garden.disposition === 'aboard') {
       s.separation = 'requested'; s.revision++; effects.push({ kind: 'separate' });
     }
@@ -144,7 +146,8 @@ export function stepJourney(s, simTime, view) {
       if (s.leg === ROUTE.length) s.phase = 'choosing';
     }
   } else if (s.phase === 'recovery') {
-    const pod = view.bodies.garden, receiver = view.bodies.clinic || tug;
+    const pod = view.bodies.garden;
+    const receiver = ['clinic','hearth'].map(id => view.bodies[id]).find(body => body?.alive) || tug;
     const stable = view.playerTowingGarden && distance(pod.pos, receiver.pos) <= LIMITS.captureRange
       && relativeSpeed(pod.vel, receiver.vel) <= LIMITS.relativeSpeed;
     s.captureTime = stable ? Math.min(LIMITS.recoverS, s.captureTime + dt) : 0;

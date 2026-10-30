@@ -1,4 +1,5 @@
 import { PODS, ROLES, ROUTE, DESTINATIONS, LIMITS, CIVILIANS, at } from './data.mjs';
+import { corridorSpecs } from './corridor.mjs';
 import { createJourney, restoreJourney, stepJourney, command, targetFor, distance,
   relativeSpeed, survivors, clone, objective } from './core.mjs';
 
@@ -10,20 +11,25 @@ const signature = e => ({ id: e.id, generation: e.occupantGeneration ?? null });
  * No subscriptions are required; tick samples owner truth, avoiding stale destruction callbacks.
  */
 export function createWayfarerHouse({ state, bus, helpers, registry, makeShipEntitySpec,
-  removeCargo, sellableCargoQuantity, destinationAvailable }) {
+  removeCargo, sellableCargoQuantity, destinationAvailable, destinationStationId }) {
   if (!state || !bus || !helpers || !registry || typeof makeShipEntitySpec !== 'function'
     || typeof removeCargo !== 'function' || typeof sellableCargoQuantity !== 'function'
-    || typeof destinationAvailable !== 'function') throw new TypeError('Missing canonical Wayfarer owners');
+    || typeof destinationAvailable !== 'function' || typeof destinationStationId !== 'function') throw new TypeError('Missing canonical Wayfarer owners');
   let journey = null;
+  let retiredRaiders = [false,false];
   let bindings = {}, raiders = [null, null], links = { hearth: null, clinic: null, garden: null };
+  let corridor = Array(6).fill(null);
   let jobId = null, routeKey = null, lease = null, lastError = null, busy = false;
-  let nextAttempt = 0;
+  let nextAttempt = 0, rebound = true;
+  const retained = new Map();
   const attachments = () => registry.get('combat')?.kernel?.attachments;
   const jobs = () => helpers.npcJobs;
   const stableKey = role => `${journey.id}:${role}`;
   const live = role => {
     const b = bindings[role];
     const e = b && state.entities?.get(b.id);
+    if (role === 'tug' && e && (e.isPlayer === true || e.id === state.playerId
+      || e.data?.ai?.activity !== 'wayfarer_house')) return null;
     return e && e.occupantGeneration === b.generation && e.data?.wayfarerKey === stableKey(role) ? e : null;
   };
   const raider = index => {
@@ -44,7 +50,7 @@ export function createWayfarerHouse({ state, bus, helpers, registry, makeShipEnt
     const a = links[pod] && attachments()?.get(links[pod]);
     if (!a || a.state !== 'active') return null;
     const owner = live(previous(pod)), target = live(pod);
-    return owner && target && a.ownerId === owner.id && a.targetId === target.id
+    return owner && target && a.actionInstanceId === stableKey(pod) && a.ownerId === owner.id && a.targetId === target.id
       && a.ownerGeneration === owner.occupantGeneration && a.targetGeneration === target.occupantGeneration ? a : null;
   }
   function previous(pod) {
@@ -79,7 +85,8 @@ export function createWayfarerHouse({ state, bus, helpers, registry, makeShipEnt
     lease = null;
     if (jobId) {
       const entry = jobs()?.get(jobId);
-      if (entry?.worldRecordId === live('tug')?.data?.worldRecordId) {
+      if (entry?.worldRecordId === retained.get('tug')?.data?.worldRecordId
+        && entry.entityId === retained.get('tug')?.id) {
         jobs().releaseControl(jobId, `${journey.id}:hold`);
         jobs().release(jobId);
       }
@@ -139,7 +146,7 @@ export function createWayfarerHouse({ state, bus, helpers, registry, makeShipEnt
     // Exactly two authored interceptors. Never replace a killed/retired member or retry a bound id.
     for (let i = 0; i < 2; i++) {
       if (raiders[i]) continue;
-      const spec = makeShipEntitySpec('ship_wasp', { team: 3, factionId: 'faction_pirates',
+      const spec = makeShipEntitySpec('ship_wasp', { team: 1, factionId: 'faction_quiet',
         pos: { x: tug.pos.x + 650, z: tug.pos.z + (i ? -260 : 260) },
         ai: { archetype: 'fighter', spawnContext: 'mission' } });
       const entity = helpers.spawnEntity({ ...spec, flags: { ...spec.flags, persistent: true },
@@ -152,10 +159,12 @@ export function createWayfarerHouse({ state, bus, helpers, registry, makeShipEnt
   function snapshotView() {
     const bodies = Object.fromEntries(ROLES.map(role => {
       const e = live(role);
-      return [role, e ? { alive: e.alive !== false && e.hull > 0, pos: e.pos, vel: e.vel } : null];
+      const old = retained.get(role);
+      const dead = !e && old && old.alive === false;
+      return [role, dead ? { alive: false, pos: old.pos, vel: old.vel } : e ? { alive: e.alive !== false && e.hull > 0, pos: e.pos, vel: e.vel } : null];
     }));
     const garden = live('garden'), pilot = player();
-    const playerTowingGarden = !!garden && !!pilot && !!attachments()?.listForEntity(garden.id, true).some(a =>
+    const playerTowingGarden = journey.phase === 'recovery' && !!garden && !!pilot && !!attachments()?.listForEntity(garden.id, true).some(a =>
       a.state === 'active' && (a.ownerId === pilot.id || a.controllerId === pilot.id)
       && (a.targetId === garden.id || a.ownerId === garden.id)
       && (a.targetId !== garden.id || a.targetGeneration === garden.occupantGeneration));
@@ -163,33 +172,42 @@ export function createWayfarerHouse({ state, bus, helpers, registry, makeShipEnt
       linked: Object.fromEntries(PODS.map(p => [p.id, !!currentLink(p.id)])),
       available: Object.fromEntries(Object.keys(DESTINATIONS).map(id => [id, destinationAvailable(id, journey) === true])),
       // A deleted/recycled raider is retired by its owner. A live raider far away still matters.
-      threatCleared: journey.threat === 'active' && raiders.every((b,i) => b && (!raider(i) || raider(i).alive === false || raider(i).hull <= 0)) };
+      threatCleared: journey.threat === 'active' && raiders.every((b,i) => b && (retiredRaiders[i] || !raider(i) || raider(i).alive === false || raider(i).hull <= 0)) };
   }
   function settle() {
-    if (journey.phase !== 'settled' || journey.rewardClaimed) return;
+    if (journey.phase !== 'settled' || (journey.rewardClaimed && journey.reputationClaimed)) return;
     const economy = registry.get('economy'), factions = registry.get('factions');
     if (typeof economy?.grantCredits !== 'function' || typeof factions?.applyRep !== 'function') {
       error('settlement_owners_unavailable'); return;
     }
     // Synchronous owner calls; latch before callbacks can re-enter. Save owner must capture all
     // registered owners in one snapshot, never feature and economy in separate asynchronous saves.
-    journey.rewardClaimed = true; journey.revision++;
     const c = journey.consequence;
-    if (c.rewardCr) economy.grantCredits(c.rewardCr, `wayfarer:${journey.id}`);
-    if (c.reputation) bus.emit('faction:repDelta', { factionId: c.factionId, delta: c.reputation,
-      reason: `wayfarer:${journey.id}` });
+    if (!journey.rewardClaimed) {
+      journey.rewardClaimed = true; journey.revision++;
+      if (c.rewardCr) economy.grantCredits(c.rewardCr, `wayfarer:${journey.id}`);
+    }
+    if (!journey.reputationClaimed) {
+      journey.reputationClaimed = true; journey.revision++;
+      if (c.reputation) factions.applyRep(c.factionId,c.reputation,`wayfarer:${journey.id}`);
+    }
   }
   const api = {
     name: 'wayfarerHouse',
     // Called once at ordinary discovery by root. Subsequent activation is idempotent.
     activate(spec) {
-      if (journey) return journey.id === spec.id;
+      if (journey) return journey.id === spec.id && ROLES.every(role => !!live(role)) && corridor.every(Boolean);
       journey = createJourney(spec, state.simTime);
       if (!helpers.spawnEntity) return error('entity_factory_unavailable');
       for (const role of ROLES) {
         const e = helpers.spawnEntity(spawnSpec(role, journey.origin));
         if (!e || e.occupantGeneration == null) return error(`body_admission_failed:${role}`);
-        bindings[role] = signature(e);
+        bindings[role] = signature(e); retained.set(role,e);
+      }
+      for (const [i,spec] of corridorSpecs(journey).entries()) {
+        const e = helpers.spawnEntity(spec);
+        if (!e || e.occupantGeneration == null) return error(`corridor_admission_failed:${i}`);
+        corridor[i] = signature(e);
       }
       for (const p of PODS) connect(p.id);
       say('mara', 'greeting'); return true;
@@ -201,12 +219,18 @@ export function createWayfarerHouse({ state, bus, helpers, registry, makeShipEnt
         || (role !== 'tug' && ['lost','abandoned'].includes(journey.pods[role].disposition))) return false;
       const old = live(role);
       if (old && old !== e && old.alive !== false) return false;
-      bindings[role] = signature(e); return true;
+      bindings[role] = signature(e); retained.set(role,e); return true;
     },
     update() {
-      if (!journey || busy) return;
+      if (!journey || busy || !rebound) return;
       busy = true;
       try {
+        const formerTug = retained.get('tug');
+        if (!ended(journey) && formerTug?.alive && state.entities.get(formerTug.id) === formerTug
+          && (formerTug.isPlayer === true || formerTug.id === state.playerId
+            || formerTug.data?.ai?.activity !== 'wayfarer_house')) {
+          command(journey,'retire');journey.retiredReason='tug_custody_changed';dropJob();return;
+        }
         const view = snapshotView();
         // Preparing and ordinary post-break repairs are real capture operations, never teleport.
         if (view.present && state.simTime >= nextAttempt) {
@@ -239,9 +263,9 @@ export function createWayfarerHouse({ state, bus, helpers, registry, makeShipEnt
             || !body?.alive || distance(player().pos, body.pos) > LIMITS.supplyRange) return false;
           if (sellableCargoQuantity(state,p.need) < p.quantity) return error('insufficient_unreserved_supplies');
           // Single cargo owner; debit receipt is the actual quantity, not an optimistic event.
+          accepted = command(journey,'supplied',pod);
           const taken = removeCargo(state,p.need,p.quantity);
-          if (taken !== p.quantity) return error('cargo_owner_short_transfer');
-          accepted = command(journey,'supplied',pod); if (accepted) say(p.civilian,'supplied');
+          if (taken !== p.quantity) { journey.pods[pod].supplied = false; journey.revision++; return error('cargo_owner_short_transfer'); } if (accepted) say(p.civilian,'supplied');
         } else if (kind === 'choose') {
           if (!Object.hasOwn(DESTINATIONS,destination) || destinationAvailable(destination,journey) !== true) return false;
           accepted = command(journey,'choose',destination);
@@ -262,29 +286,63 @@ export function createWayfarerHouse({ state, bus, helpers, registry, makeShipEnt
         objective: journey ? objective(journey) : 'Not discovered',
         consequence: journey?.consequence ? clone(journey.consequence) : null };
     },
+    // Read only after the canonical dock/UI owner has committed docking. This never docks the player.
+    dockedServiceProfile() {
+      if (!journey || state.ui?.docked !== true || !journey.destination
+        || state.ui.dockedStationId !== destinationStationId(journey.destination)) return null;
+      return api.serviceProfile(journey.destination);
+    },
     serviceProfile(id) {
       return journey?.phase === 'settled' && journey.destination === id
         ? clone(journey.consequence) : null;
     },
     read() { return journey ? { ...clone(journey), lastError,
       available: Object.fromEntries(Object.keys(DESTINATIONS).map(id=>[id,destinationAvailable(id,journey) === true])) } : null; },
-    serialize() { return journey ? { version: 1, journey: clone(journey), bindings: clone(bindings),
-      links: clone(links), raiders: clone(raiders) } : null; },
+    serialize() {
+      const savedJourney = journey ? clone(journey) : null;
+      if (savedJourney && rebound && !busy) stepJourney(savedJourney,savedJourney.lastSimTime,snapshotView());
+      return journey ? { version: 1, journey: savedJourney, bindings: clone(bindings),
+      links: clone(links), raiders: clone(raiders), corridor: clone(corridor),
+      retiredRaiders: raiders.map((b,i)=>!!b && (retiredRaiders[i] || rebound && (!raider(i) || raider(i).alive === false || raider(i).hull <= 0))) } : null; },
     deserialize(saved) {
-      if (!saved) { dropJob(); journey = null; bindings = {}; raiders = [null,null]; return; }
+      if (!saved) { dropJob(); journey = null; bindings = {}; raiders = [null,null];retiredRaiders=[false,false];
+        links = {hearth:null,clinic:null,garden:null}; corridor=Array(6).fill(null);retained.clear();rebound=true;return; }
       if (saved.version !== 1) throw new TypeError('Unsupported Wayfarer adapter version');
       const restored = restoreJourney(saved.journey), checked = {};
       const check = b => b && Number.isSafeInteger(b.id) && b.id >= 0 && Number.isSafeInteger(b.generation)
         && b.generation >= 0 ? { id:b.id,generation:b.generation } : null;
       for (const role of ROLES) checked[role] = check(saved.bindings?.[role]);
+      const checkedCorridor = [0,1,2,3,4,5].map(i=>check(saved.corridor?.[i]));
       const checkedRaiders = [0,1].map(i=>check(saved.raiders?.[i]));
+      const checkedRetired = [0,1].map(i=>saved.retiredRaiders?.[i] === true);
       if (restored.threat === 'active' && checkedRaiders.some(b=>!b)) throw new TypeError('Missing active defense binding');
-      dropJob(); journey = restored; bindings = checked; raiders = checkedRaiders;
+      dropJob(); journey = restored; bindings = checked; raiders = checkedRaiders; retiredRaiders=checkedRetired; corridor = checkedCorridor;
       links = Object.fromEntries(PODS.map(p => [p.id, typeof saved.links?.[p.id] === 'string'
         && saved.links[p.id].length < 100 ? saved.links[p.id] : null]));
-      nextAttempt = 0; lastError = null;
+      retained.clear(); rebound = false; nextAttempt = 0; lastError = null;
     },
-    dispose() { dropJob(); },
+    // Save owner calls after rebuilding entity generations and rebinding four stable records.
+    finishRestore() {
+      if (!journey) return false;
+      rebound = ended(journey) || ROLES.every(role => role !== 'tug' && ['lost','abandoned'].includes(journey.pods[role].disposition) || !!live(role));
+      if (journey.threat === 'active' && !ended(journey)
+        && raiders.some((b,i)=>!retiredRaiders[i] && !raider(i))) rebound=false;
+      if (rebound) journey.lastSimTime = state.simTime;
+      return rebound;
+    },
+    bindRaider(index,e) {
+      if (!journey || ![0,1].includes(index) || !e || e.occupantGeneration == null
+        || state.entities.get(e.id) !== e || e.data?.wayfarerKey !== stableKey(`raider_${index}`)) return false;
+      if (retiredRaiders[index]) return false;
+      raiders[index] = signature(e); return true;
+    },
+    // Internal lifecycle adapter. Root supplies a generation-verified canonical retirement receipt.
+    recordRaiderRetirement(index,id,generation) {
+      const b=raiders[index];
+      if (![0,1].includes(index) || !b || b.id!==id || b.generation!==generation || retiredRaiders[index]) return false;
+      retiredRaiders[index]=true;return true;
+    },
+    dispose() { dropJob(); retained.clear(); },
   };
   return api;
 }
