@@ -177,10 +177,18 @@ Rows are the spec (`build_map.md` §31–§32; read each row's prose before brie
 - **Audit-fix packets landed 2026-10-29/30:** encounter bookkeeping `37e1ebe0d24`, heat victim
   `d79feb41121`, mining/careers `bfa9ec3b6a9`, save restore `7b4cced23e8`, unique-wreck persistence
   `bd978111178`, special500 registered in production `6ca62459ba5`, c47a truth `97283ecd9c1`,
-  spine live vocabulary + first-blood sheet `cc0a86c423b`. Open follow-ups: unique-wreck story
-  reward flags (`unlockFlag`/buyer choices, Choir–Vael treaty) have no production reader yet;
-  ironmaw-board + onboarding-continue finishing; story reds batch 2 (beat-standard bookContracts
-  fallback, campaign47a-live, embodied-save, ecology-reactions, stranger-replay, f15 wrecks).
+  spine live vocabulary + first-blood sheet `cc0a86c423b`, Iron Maw + board retention
+  `a5bcb39034f`, onboarding Continue restage `242aba9fc73`, chart Set Course/zoom/labels
+  `310e9d30033`, faction reachability `07b48d6736d`, broke-pilot note offers + onboarding
+  re-init `52dff9cf272`; story/wreck reds green (beat standard 5/5 sheets, campaign47a-live
+  18/18, embodied-save, ecology-reactions, stranger-replay, f15 wrecks).
+  In flight: faction save wiring + choir spawner + fulfillment hand-in; unique-wreck story
+  rewards get station readers + Choir–Vael treaty effect; D261 phone HUD; reds batch 4
+  (stationApp insertBefore, yard keepalive, station pricing memory, leaked DOM stubs, WU units).
+  Recorded for later packets: world.js:1553 sector content rng publishes to `state.world.rng`
+  (determinism shift — needs its own packet); chart waypoint identity record from missions.js
+  (:12291) and `world._onSetCourse` carrying onboarding/presentation fields (:12307); chart
+  :3347 raw station-id fallback, :5758 invented 0.5 security, :3284 "fresh ago".
 - **Audit-fix implementers originally launched** (digests `.devshots/finish/lane3/triage-*.md`):
   fix-c47a-truth (embodied register→Pick-a-Side lock, Deep Reach softlock, NG+ latch, dock gating),
   fix-onboarding-continue (rescue-era Continue restores no actors/panel — top systems-b item),
