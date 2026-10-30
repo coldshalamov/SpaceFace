@@ -34,6 +34,7 @@ import { ENDING_IDS, endingDef } from '../../story/endings/endingDefs.js';
 import { escapeHtml } from '../comms.js';
 import { isStorySpineContract, STORY_SPINE_KEEP_TEXT } from '../../data/storySpine.js';
 import { unsatisfiedRequiredConditions } from '../../data/contractClauses.js';
+import { failReasonWord } from '../../data/missionFailReasons.js';
 import { missionNextActionRow } from '../sim/missionNextAction.js';
 import { BINDINGS } from '../bindings.js';
 import { entitySpanHtml } from '../entityResolver.js';
@@ -1882,16 +1883,11 @@ function receiptTone(outcome) {
   return 'warn';
 }
 
+// The receipt says why in the same words the failure toast used (data/missionFailReasons.js).
+// A reason with no known words prints nothing rather than a title-cased internal id.
 function receiptReasonLabel(reason) {
-  switch (reason) {
-    case 'deadline': return 'Deadline missed';
-    case 'abandoned': return 'Abandoned by pilot';
-    case 'escort_abandoned': return 'Convoy left behind';
-    case 'escortee_lost': return 'Escort lost';
-    case 'busted': return 'Customs scan detected contraband';
-    case 'failed': return 'Contract failed';
-    default: return reason ? prettyId(reason, 'settled') : '';
-  }
+  const word = failReasonWord(reason);
+  return word ? word.charAt(0).toUpperCase() + word.slice(1) : '';
 }
 
 export function missionReceiptRows(state, limit = 5) {
@@ -1917,6 +1913,8 @@ export function missionReceiptRows(state, limit = 5) {
     } else {
       parts.push('No payout');
       if (repDelta < 0) parts.push(repDelta + ' contract standing');
+      // A voided failure handed the deposit back (systems/missions.js `_failMission`).
+      if (refundCr > 0) parts.push(formatCredits(refundCr) + ' stake returned');
       if (lostCr > 0) parts.push(formatCredits(lostCr) + ' stake forfeited');
     }
 
@@ -1933,10 +1931,11 @@ export function missionReceiptRows(state, limit = 5) {
     });
 
     const dest = receiptDestinationLabel(receipt);
+    const why = receiptReasonLabel(receipt.reason);
     const meta = [
       prettyType(receipt.type),
       dest,
-      receipt.reason ? 'Reason: ' + receiptReasonLabel(receipt.reason) : '',
+      why ? 'Reason: ' + why : '',
       nextStations.length ? 'Next: ' + nextStations.join(' or ') : '',
     ].filter(Boolean).join(' · ');
 

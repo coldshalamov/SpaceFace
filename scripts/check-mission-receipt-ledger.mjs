@@ -151,8 +151,8 @@ assert.match(rows[0].body, /-3 contract standing/, 'failed row should show contr
 assert.match(rows[0].body, /300 cr stake forfeited/, 'failed row should show collateral loss as stake loss');
 assert.match(rows[0].meta, /Bulk Trade/, 'failed row should show mission type');
 assert.match(rows[0].meta, /Tethys/, 'failed row should show destination');
-assert.match(rows[0].meta, /Reason: Abandoned by pilot/, 'failed row should show player-safe reason');
-assert.doesNotMatch(rows[0].meta, /abandoned/, 'failed row should not expose raw reason tokens');
+assert.match(rows[0].meta, /Reason: The job was abandoned/, 'failed row should show the same reason words as the failure toast');
+assert.doesNotMatch(rows[0].meta, /Reason: abandoned\b/, 'failed row should not expose raw reason tokens');
 assert.match(rows[1].body, /Paid \+1,200 cr/, 'completed row should show payout');
 assert.match(rows[1].body, /\+5 contract standing/, 'completed row should show contract standing gain');
 assert.match(rows[1].body, /300 cr stake returned/, 'completed row should show collateral refund as stake return');
@@ -161,6 +161,6 @@ assert.match(rows[1].body, /\+2 research/, 'completed row should show research p
 const expiredRows = missionReceiptRows({ missions: { receipts: [expired] } });
 assert.equal(expiredRows[0].outcome, 'Expired', 'expired receipt should render as expired');
 assert.match(expiredRows[0].meta, /Helios Prime/, 'sector-only expired receipt should render sector destination');
-assert.match(expiredRows[0].meta, /Reason: Deadline missed/, 'expired receipt should render deadline reason');
+assert.match(expiredRows[0].meta, /Reason: The window lapsed/, 'expired receipt should render deadline reason');
 
 console.log('Mission receipt ledger OK: settlement receipts persist and render recent completed/failed/expired outcomes.');
