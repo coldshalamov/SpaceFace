@@ -158,6 +158,10 @@ function seedPosition(state, pos, seedId) {
 // --- positional model (ARCHITECTURE / spec) ---
 const D_NEAR = 40;     // wu — full volume within this
 const D_FAR = TABLE_HEARING_FAR_WU;     // wu — silent / culled beyond the table
+// Undocked station approach bed (WF-13): the swell reaches the player inside this radius and
+// peaks well under the docked hum — you hear the place before you reach the ring.
+const APPROACH_HUM_FAR_WU = 620;
+const APPROACH_HUM_PEAK = 0.028;
 const PAN_SPAN = TABLE_HEARING_PAN_WU;  // wu — half-pan distance
 
 // --- music ---
@@ -6660,6 +6664,63 @@ export const audio = {
     delete rt.loops.stationHum;
   },
 
+  /**
+   * THE PLACE ANSWERS WF-13 — undocked, the nearest dockable station's hum answers proximity.
+   * One unpositioned ambient loop (the docked bed's own recipe) whose gain is the distance falloff
+   * the positioned voices use; the docked hum owns the berth, so this stays silent while docked.
+   * Read-only over state; the loop is a resident sample body, so a station sounds like a place
+   * before the player ever reaches the ring.
+   */
+  _updateApproachHum(now) {
+    const rt = this.rt;
+    if (!rt || !rt.loops) return;
+    const stop = () => {
+      if (!rt.loops.approachHum) return;
+      this._endLoopVoice(rt.loops.approachHum);
+      delete rt.loops.approachHum;
+    };
+    if (rt._docked || rt._paused || rt._lifecycleSuspended || !this.state) { stop(); return; }
+    const station = this._nearestDockableStation();
+    const pp = station ? this._playerPos() : null;
+    const target = station && pp
+      ? this._approachHumGain(Math.hypot(station.pos.x - pp.x, station.pos.z - pp.z))
+      : 0;
+    if (target <= 0.0004) { stop(); return; }
+    let voice = rt.loops.approachHum;
+    if (!voice) {
+      if (rt.voices && rt.voices.length >= MAX_AUDIO_VOICES && !this._reserveVoiceSlot(false)) return;
+      const amp = this._ampFor(AUDIO_RECIPE_BY_ID.sfx_station_hum) || 1;
+      voice = this._startLoopVoice('sfx_station_hum', null, APPROACH_HUM_PEAK / amp, { busName: 'ambient' });
+      if (!voice) return;
+      rt.loops.approachHum = voice;
+    }
+    // Smooth seconds-scale ramp: the approach is a swell, not a fader snap.
+    try { voice.gain.gain.setTargetAtTime(target, rt.ctx.currentTime, 0.35); } catch (_) {}
+  },
+
+  _approachHumGain(distanceWu) {
+    const frac = clamp(1 - (distanceWu - D_NEAR) / (APPROACH_HUM_FAR_WU - D_NEAR), 0, 1);
+    return frac * frac * APPROACH_HUM_PEAK;
+  },
+
+  /** Nearest live dockable station body (read-only; dockless platforms run no hum). */
+  _nearestDockableStation() {
+    const state = this.state;
+    const player = state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
+    if (!player || !player.pos) return null;
+    const list = (state.entityIndex && state.entityIndex.stations) || state.entityList || [];
+    let best = null;
+    let bestD2 = Infinity;
+    for (const e of list) {
+      if (!e || e.alive === false || e.type !== 'station' || !e.pos) continue;
+      if (e.data && e.data.dockless === true) continue;
+      const d2 = (e.pos.x - player.pos.x) * (e.pos.x - player.pos.x)
+        + (e.pos.z - player.pos.z) * (e.pos.z - player.pos.z);
+      if (d2 < bestD2) { bestD2 = d2; best = e; }
+    }
+    return best;
+  },
+
   _emitPresentationCaption(text, opts = {}) {
     if (!text || !this.bus || typeof this.bus.emit !== 'function') return;
     const player = this.state?.entities?.get?.(this.state.playerId);
@@ -8411,6 +8472,7 @@ export const audio = {
     this._updateSectorCues(now);
     this._updateStationMurmur(now);
     this._updatePlaceContext(now);
+    this._updateApproachHum(now);
     this._updatePressureLayer();
     this._writeMixLedger(now);
 
