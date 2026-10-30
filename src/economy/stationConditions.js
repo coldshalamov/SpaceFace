@@ -176,13 +176,25 @@ export function stationYardRateMult(state, stationId) {
  *  the berth's weekly market day and any festival tilt fold in the same way the blockade does —
  *  derived on read from the world calendar, nothing stored, nothing to expire). */
 export function stationTradeMults(state, stationId, info = null) {
+  const parts = stationTradeMultParts(state, stationId, info);
+  return {
+    buy: parts.calendar.buy * parts.causal.buy,
+    sell: parts.calendar.sell * parts.causal.sell,
+  };
+}
+
+/** The same fold kept in its two halves. `causal` is what the berth's memory of the player did
+ *  (strike, blockade) — it only ever worsens a price, and the quote's standing math clamps it that
+ *  way. `calendar` is the market day / festival tilt — it moves the price either way, so the quote
+ *  applies it after that clamp (a market day used to be clamped to nothing, and diluted the strike
+ *  and blockade it shared a day with). */
+export function stationTradeMultParts(state, stationId, info = null) {
   const live = liveStationConditions(state, stationId, info);
   const cal = marketDayMults(stationId, state && state.simTime);
-  const mults = { buy: cal.buy, sell: cal.sell };
-  if (!live) return mults;
-  if (live.strike) mults.sell *= STATION_CONDITION_LAW.strike.sellMult;
-  if (live.blockade) mults.buy *= STATION_CONDITION_LAW.blockade.buyMult;
-  return mults;
+  const causal = { buy: 1, sell: 1 };
+  if (live && live.strike) causal.sell *= STATION_CONDITION_LAW.strike.sellMult;
+  if (live && live.blockade) causal.buy *= STATION_CONDITION_LAW.blockade.buyMult;
+  return { calendar: { buy: cal.buy, sell: cal.sell }, causal };
 }
 
 /** Units of fuel the pumps will still put in the tank right now (Infinity when not rationed). */

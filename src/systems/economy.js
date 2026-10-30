@@ -42,7 +42,7 @@ import { BOLUS_SECTOR_ID, BOLUS_STATION_ID } from '../data/theBolus.js';
 import { SHIPS } from '../data/ships.js';
 import { conflictPressureForSector } from '../data/conflictZones.js';
 import {
-  STATION_CONDITION_LAW, STATION_CREW_ROLES, liveStationConditions, stationServiceMult, stationTradeMults,
+  STATION_CONDITION_LAW, STATION_CREW_ROLES, liveStationConditions, stationServiceMult, stationTradeMults, stationTradeMultParts,
   stationRefuelRationU, grudgeLive, splitStationConditionsForSave, stationGrudgeOwedCr,
 } from '../economy/stationConditions.js';
 import { ECON_CONTRACT_THRESHOLDS } from '../data/economyContractTemplates.js';
@@ -2818,7 +2818,9 @@ export const economy = {
     const standingBase = priceModForState(state, info && info.factionId);
     // THE WORLD REMEMBERS — a strike worsens what this berth pays the player; a blockade makes
     // its goods dear. One lookup, applied here so quote/execute/automation all see the same price.
-    const conditionMult = stationTradeMults(state, stationId, info);
+    // The causal half (strike, blockade) only worsens and rides the standing clamp; the calendar
+    // half (market day, festival) moves either way and is applied after it, like the ending terms.
+    const { causal: conditionMult, calendar: calendarMult } = stationTradeMultParts(state, stationId, info);
     const frontier = info ? this.frontierPenalty(info) : 0;
     const spread = spreadOf(entry, frontier);
     // Reputation alone, before the strike/blockade multiply. The market names this component
@@ -2828,6 +2830,8 @@ export const economy = {
     const endingTerms = endingStationTradeMults(state, stationId);
     standing.buy *= endingTerms.buy;
     standing.sell *= endingTerms.sell;
+    standing.buy *= calendarMult.buy;
+    standing.sell *= calendarMult.sell;
     // Low-tier ports buy valuable finds from the player but do not create an infinite local
     // supply of resources that only occur deeper in the world. This preserves discovery value
     // and stops starter markets from becoming risk-free rare-ore vending machines.
