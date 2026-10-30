@@ -88,3 +88,31 @@ test('D202b quiet/negative: desktop sizes stay pixel-identical and intermediate 
   assert.doesNotMatch(hudStylesSrc.slice(0, 700), /#hud\s+\.sf-rightdock\s*\{[^}]*transform:\s*scale/,
     'desktop rightdock has no scale transform outside media queries');
 });
+
+test('D261: the drive tape and right dock ride a reserved lane above the cluster at phone width', () => {
+  // D261 — at ≤640px the dock-anchored tape row collapses onto the ORRERY cluster
+  // (TOP SPEED printed through the hull ring; keytags through the radar). The fix
+  // reserves one lane above the cluster for both edge stacks instead of magic offsets.
+  const hudSrc = readFileSync(root('src/ui/hud.js'), 'utf8');
+  const adapterSrc = readFileSync(root('src/ui/orrery/hudAdapter.js'), 'utf8');
+
+  assert.match(hudSrc, /@media \(max-width: 640px\)\s*\{[^}]*#hud\[data-hud="orrery"\] > \.sf-vtape[^}]*bottom:calc\(24px \+ var\(--orr-cluster-h/s,
+    'the vtape must leave the dock band and sit above the cluster at ≤640px');
+  assert.match(hudSrc, /#hud\[data-hud="orrery"\] > \.sf-vtape[^}]*transform-origin:0 100%/,
+    'the phone vtape scales from its bottom-left anchor like the cluster');
+
+  assert.match(hudStylesSrc, /#hud\[data-hud="orrery"\] \.sf-rightdock[^}]*bottom:calc\(24px \+ var\(--orr-cluster-h/s,
+    'the right dock shares the same reserved lane on a phone');
+
+  // The lane height must track the cluster's own scaled height, not a constant —
+  // --orr-cluster-h is declared on #hud next to every --orr-cluster-scale step.
+  const scaleSteps = adapterSrc.match(/--orr-cluster-scale:\s*[0-9.]+/g) || [];
+  const heightSteps = adapterSrc.match(/--orr-cluster-h:\s*calc\(540px \* [0-9.]+\)/g) || [];
+  assert.ok(scaleSteps.length >= 3, 'cluster declares scale steps');
+  assert.equal(heightSteps.length, scaleSteps.length,
+    'every --orr-cluster-scale step must mirror an --orr-cluster-h');
+
+  // The phone rules stay scoped to ≤640px — desktop keeps the dock-anchored tape.
+  assert.match(hudSrc, /@media \(max-width: 1279px\), \(max-height: 719px\)\s*\{[^}]*right:calc\(var\(--sf-dock-w/s,
+    'the ≤1279 dock-anchored vtape rule must be preserved');
+});

@@ -873,6 +873,10 @@ export function injectHudCss() {
 
     #hud { --sf-dock-w:150px; --sf-radar-size:132px; }
     .sf-rightdock { right:calc(8px + var(--sf-safe-inset-x, 0px)); bottom:96px; gap:5px; }
+    /* ORRERY phone band: the dock rides the same reserved lane above the cluster as
+       the drive tape (hud.js ≤640px rule), so the cluster's key crescent and keytags
+       keep the whole bottom-right strip instead of printing through the radar. */
+    #hud[data-hud="orrery"] .sf-rightdock { bottom:calc(24px + var(--orr-cluster-h, 240px) + 8px); }
     .sf-target__name { font-size:var(--k-fs-data); }
     .sf-target__meta { font-size:var(--k-fs-data); }
     .sf-radar-wrap { gap:4px; }
