@@ -1,0 +1,135 @@
+{
+  "baseSha": "871c27854bb2acff09a80595844d9731d33b037a",
+  "baseTreeSha": "a3bb1bb7b8cccca0ab280f53bd6035f5f92124b4",
+  "modelCapability": "unknown",
+  "status": "candidate-unregistered",
+  "focusedTests": {
+    "command": "node --test test/pro-iona-vey-rival.test.mjs",
+    "exitCode": 0,
+    "passed": 27,
+    "failed": 0,
+    "skipped": 0,
+    "layer": "deterministic model and actual adapter with narrow owner doubles"
+  },
+  "syntaxChecks": [
+    {
+      "command": [
+        "node",
+        "--check",
+        "src/features/iona-vey-rival/adapter.js"
+      ],
+      "exitCode": 0,
+      "output": ""
+    },
+    {
+      "command": [
+        "node",
+        "--check",
+        "src/features/iona-vey-rival/catalog.js"
+      ],
+      "exitCode": 0,
+      "output": ""
+    },
+    {
+      "command": [
+        "node",
+        "--check",
+        "src/features/iona-vey-rival/index.js"
+      ],
+      "exitCode": 0,
+      "output": ""
+    },
+    {
+      "command": [
+        "node",
+        "--check",
+        "src/features/iona-vey-rival/model.js"
+      ],
+      "exitCode": 0,
+      "output": ""
+    },
+    {
+      "command": [
+        "node",
+        "--check",
+        "src/features/iona-vey-rival/presentation.js"
+      ],
+      "exitCode": 0,
+      "output": ""
+    }
+  ],
+  "files": [
+    {
+      "path": "src/features/iona-vey-rival/INTEGRATION.md",
+      "bytes": 9982,
+      "sha256": "0c153b3406c4989f37f4747e73b22db9b1c7509e613f2ccedc1d6bc3fc559bab"
+    },
+    {
+      "path": "src/features/iona-vey-rival/adapter.js",
+      "bytes": 20979,
+      "sha256": "6ac5895ed462d33af492dbab7a234d959e69a536334167d786f4f095f4ce9781"
+    },
+    {
+      "path": "src/features/iona-vey-rival/catalog.js",
+      "bytes": 2441,
+      "sha256": "28a963aab5049ac42d2be183ca9b606a189da9a64869e9f2c6090a76565f22ee"
+    },
+    {
+      "path": "src/features/iona-vey-rival/feature.json",
+      "bytes": 858,
+      "sha256": "df924451d75b326b3b4a970df607bf908ac3499721326fca4291793b9e2ed975"
+    },
+    {
+      "path": "src/features/iona-vey-rival/index.js",
+      "bytes": 1792,
+      "sha256": "7c485dae59ff07eb2fa01547ab285b2ef38d0ef676cd51479c44873e6cab4404"
+    },
+    {
+      "path": "src/features/iona-vey-rival/model.js",
+      "bytes": 11138,
+      "sha256": "0feacf99dfb5011c165fc95cdbda161f2d6a44344dc35970ab53f5d7f5e75e3f"
+    },
+    {
+      "path": "src/features/iona-vey-rival/presentation.js",
+      "bytes": 4011,
+      "sha256": "3e45da5a86d7ce302e889e5577327447bc4c7c6f2977781982a24912fb2699c9"
+    },
+    {
+      "path": "test/pro-iona-vey-rival.test.mjs",
+      "bytes": 18559,
+      "sha256": "91827844b12ccd4b87039b68b362bae9fbf605fe01deae1cd340dfcfc35aaea9"
+    }
+  ],
+  "inspectedOwnerSeams": [
+    "src/systems/npcJobs.js",
+    "src/systems/npcJobsRuntime.js",
+    "src/core/coreSystem.js",
+    "src/core/entity.js",
+    "src/systems/mining.js",
+    "src/systems/cargo.js",
+    "src/systems/factions.js",
+    "src/data/ships.js",
+    "src/features/salvageOutfits/physical.js",
+    "test/npc-jobs-runtime-towing.test.mjs"
+  ],
+  "integrationDecisions": [
+    "salvor tractor job, not hauler: avoids phantom manifest and unrelated miner-lot custody",
+    "tender job plus explicit control lease owns standby braking; travel remains npcJobsRuntime",
+    "generation-bound queued destruction survives map removal and refuses replacement occupants",
+    "no bespoke economy transfers: only finite existing physical salvage",
+    "third joint stake release is earned from two prior observed cooperative recoveries"
+  ],
+  "notRun": [
+    "production boot/worker registration",
+    "native Rapier towing on a placed route",
+    "headed player-truth test",
+    "visual/art and performance qualification"
+  ],
+  "controllerWork": [
+    "central registration and save/schema declaration",
+    "exclude persistenceOwner ionaVeyRival from generic world replay",
+    "ordinary reachable route and hail/input bridge",
+    "native physics and headed acceptance"
+  ],
+  "blockers": []
+}

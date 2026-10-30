@@ -32,7 +32,7 @@ export function createIonaVeyRivalSystem() {
     update() { runtime?.update(); },
     newGame() { runtime?.newGame(); },
     serialize() { return runtime?.serialize(); },
-    deserialize(raw) { if (raw != null) runtime.deserialize(raw); },
+    deserialize(raw) { runtime.deserialize(raw); },
     destroy() { runtime?.destroy(); runtime = null; },
   };
 }

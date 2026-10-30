@@ -52,6 +52,10 @@ export function chooseTerms(s, verb) {
   // In the first encounter cooperation means the PLAYER returns her frame. Later she
   // carries her own load while the player carries the unclaimed instrument rack.
   if (s.active === 0 && verb === 'cooperate') a.bodies[0].claim = 'joint';
+  // Partnership has a physical dividend: Iona supplies the tug time and relinquishes
+  // her final frame's exclusive stake. These are existing units, not a reward spawn.
+  if (s.active === 2 && verb === 'cooperate' && s.appearances.slice(0, 2).every(row => row.cooperation))
+    a.bodies[0].claim = 'joint';
   s.revision++;
   return true;
 }
@@ -102,7 +106,10 @@ export function observeBody(s, key, sample, now) {
 }
 export function capturePose(entity) {
   return { pos: point(entity.pos), vel: point(entity.vel) || { x: 0, z: 0 },
-    rot: finite(entity.rot), angVel: finite(entity.angVel), hull: Math.max(0, finite(entity.hull)) };
+    rot: finite(entity.rot), angVel: finite(entity.angVel), hull: Math.max(0, finite(entity.hull)),
+    ...(Number.isFinite(entity.shield) ? { shield: Math.max(0, entity.shield) } : {}),
+    ...(Number.isFinite(entity.armorHp) ? { armorHp: Math.max(0, entity.armorHp) } : {}),
+    ...(Number.isFinite(entity.cap) ? { cap: Math.max(0, entity.cap) } : {}) };
 }
 export function pauseIona(s) {
   const a = currentAppearance(s);
@@ -174,6 +181,8 @@ export function restoreIona(raw) {
 function restorePose(p) {
   if (p == null) return null;
   if (!point(p.pos) || !point(p.vel) || !Number.isFinite(p.hull) || p.hull < 0) throw new TypeError('Invalid Iona pose');
+  for (const field of ['shield', 'armorHp', 'cap'])
+    if (Object.hasOwn(p, field) && (!Number.isFinite(p[field]) || p[field] < 0)) throw new TypeError('Invalid Iona protection');
   return capturePose(p);
 }
 export function serializeIona(s) { return JSON.parse(JSON.stringify(s)); }

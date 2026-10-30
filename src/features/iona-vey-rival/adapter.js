@@ -11,6 +11,7 @@ export function createIonaAdapter(ctx, { shipSpec, lineBetween }) {
   let data = freshIona(), disposed = false, restoring = false, mutating = false;
   const bindings = new Map(), retiring = new WeakSet(), off = [];
   const now = () => Number.isFinite(state.simTime) ? state.simTime : 0;
+  const protection = e => (Number(e?.hull) || 0) + (Number(e?.shield) || 0) + (Number(e?.armorHp) || 0);
   const jobs = () => helpers.npcJobs;
   const on = (event, fn) => {
     const remove = bus.on(event, fn);
@@ -29,7 +30,8 @@ export function createIonaAdapter(ctx, { shipSpec, lineBetween }) {
     const key = e.data.worldRecordId, old = bindings.get(key);
     // An ambiguous stable identity is unavailable, never first-one-wins.
     if (old && same(old) && old.entity !== e) { old.ambiguous = true; return; }
-    bindings.set(key, { entity: e, generation: e.occupantGeneration, ambiguous: false });
+    bindings.set(key, { entity: e, generation: e.occupantGeneration, ambiguous: false,
+      protection: protection(e) });
   }
   function entity(key) {
     const row = bindings.get(key);
@@ -60,12 +62,19 @@ export function createIonaAdapter(ctx, { shipSpec, lineBetween }) {
       ai: { passive: true, holdFire: true } });
     const pose = sourcePose(data.tug, spec.pos);
     Object.assign(spec, pose);
+    for (const [field, max] of [['hull', 'hullMax'], ['shield', 'shieldMax'], ['armorHp', 'armorMax'], ['cap', 'capMax']])
+      if (Number.isFinite(spec[field]) && Number.isFinite(spec[max])) spec[field] = Math.min(spec[max], spec[field]);
     spec.flags = { ...spec.flags, persistent: true };
     spec.data = { ...spec.data, ...stamp(TUG_KEY, a.sectorId),
       name: TUG.name, callsign: 'FAIR MEASURE', role: 'tug', trafficRole: 'tug',
       weapons: [], fittings: [], miningBeam: null };
+    const run = data;
     const e = helpers.spawnEntity?.(spec);
     if (!e) { budget.release(TUG_KEY); return null; }
+    if (data !== run || disposed || restoring) {
+      if (state.entities?.get(e.id) === e) { retiring.add(e); helpers.removeEntity?.(e.id); }
+      budget.release(TUG_KEY); return null;
+    }
     if (!budget.bindEntity(e.id, TUG_KEY)) {
       retiring.add(e); helpers.removeEntity?.(e.id); budget.release(TUG_KEY); return null;
     }
@@ -85,16 +94,24 @@ export function createIonaAdapter(ctx, { shipSpec, lineBetween }) {
       data: { ...stamp(row.key, a.sectorId), name: def.label, scanLabel: def.label,
         parentType: 'ship', salvagePool: { ...row.pool }, authoredSalvagePool: { ...row.pool },
         salvageTimeLeft: 8, debrisCache: 'empty', salvorClaimedBy: row.claim === 'iona' ? TUG_KEY : null } };
+    const run = data;
     const e = helpers.spawnEntity?.(spec);
+    if (data !== run || disposed || restoring) {
+      if (e && state.entities?.get(e.id) === e) { retiring.add(e); helpers.removeEntity?.(e.id); }
+      return null;
+    }
     if (e) { row.status = row.status === 'pending' ? 'live' : row.status; note(e); }
     return e || null;
   }
   function capture() {
     const tug = entity(TUG_KEY);
-    if (tug) data.tug.pose = capturePose(tug);
+    if (tug) { data.tug.pose = capturePose(tug); bindings.get(TUG_KEY).protection = protection(tug); }
     for (const a of data.appearances) for (const row of a.bodies) {
       const e = entity(row.key);
-      if (e) { row.pose = capturePose(e); row.pool = poolBelow(e.data.salvagePool, row.pool); }
+      if (e) {
+        row.pose = capturePose(e); row.pool = poolBelow(e.data.salvagePool, row.pool);
+        bindings.get(row.key).protection = protection(e);
+      }
     }
   }
   function releaseJob() {
@@ -115,12 +132,15 @@ export function createIonaAdapter(ctx, { shipSpec, lineBetween }) {
     return null;
   }
   function gone(payload) {
-    const e = payload?.entity, row = e && rowForEntity(e.id);
-    if (!row || row.entity !== e || retiring.has(e) || restoring) return;
-    if (row.key === TUG_KEY) {
+    const e = payload?.entity, key = e?.data?.worldRecordId, row = e && bindings.get(key);
+    // Core queues destruction AFTER removing the map entry. Compare the retained original,
+    // not whichever occupant has this numeric id when the queue eventually flushes.
+    if (!row || row.entity !== e || row.generation !== e.occupantGeneration
+      || row.ambiguous || retiring.has(e) || restoring) return;
+    if (key === TUG_KEY) {
       data.tug.status = 'destroyed'; data.retired = true; releaseJob();
     } else {
-      const source = record(row.key);
+      const source = record(key);
       if (source) {
         source.pool = poolBelow(e.data?.salvagePool, source.pool);
         source.status = e.data?._salvaged === true || quantity(source.pool) === 0 ? 'recovered' : 'destroyed';
@@ -131,35 +151,61 @@ export function createIonaAdapter(ctx, { shipSpec, lineBetween }) {
   }
   function damage(p) {
     if (!(p?.applied > 0)) return;
-    const row = rowForEntity(p.targetId);
+    const row = rowForEntity(p.targetId), binding = row && bindings.get(row.key);
     if (!row) return;
+    const after = protection(row.entity);
+    if (!(after < binding.protection)) return; // duplicate/stale scalar callback lacks a new physical hit
+    binding.protection = after;
     const byPlayer = p.attackerId === state.playerId;
     recordDamage(data, row.key, byPlayer);
-    if (!byPlayer && row.key === TUG_KEY) {
-      // Existing NPC owner owns flee and resume; the character never writes flight intents.
-      jobs()?.interrupt?.(`job:${TUG_KEY}`, p.attackerId);
+    if (row.key === TUG_KEY) {
+      // Existing NPC owner owns flee/resume and all travel; standby only writes leased brake.
+      const id = `job:${TUG_KEY}`, entry = jobs()?.get?.(id);
+      if (entry?.control?.holder === OWNER) jobs()?.releaseControl?.(id, entry.control.claimId);
+      jobs()?.interrupt?.(id, { entityId: p.attackerId });
     }
+  }
+  function park(a, tug) {
+    const id = `job:${TUG_KEY}`, claimId = `${OWNER}:idle`;
+    let entry = jobs()?.get?.(id);
+    if (entry && entry.worldRecordId !== TUG_KEY) return;
+    if (entry?.job?.kind !== 'tender') { releaseJob(); entry = null; }
+    if (!entry) {
+      jobs()?.assign?.(tug, { kind: 'tender', sectorId: a.sectorId, speed: TUG.speed,
+        workS: 1e6, route: [{ id: `${a.id}_standby`, pos: { ...tug.pos } },
+          { id: `${a.id}_standclear`, pos: { ...tug.pos } }] });
+      entry = jobs()?.get?.(id);
+    }
+    if (!entry || entry.entityId !== tug.id) return;
+    // npcJobsRuntime explicitly yields its intent writer under this live control lease.
+    // Braking is the only feature-written intent; all actual travel/towing uses its salvor job.
+    const result = jobs()?.claimControl?.(id, { claimId, holder: OWNER });
+    if (result?.granted && entity(TUG_KEY) === tug) tug.data.intent = {
+      moveX: 0, moveZ: 0, boost: false, brake: true, aimAngle: tug.rot || 0,
+      fire: false, fireGroup: null,
+    };
   }
   function drive(a, tug) {
     const frame = a.bodies[0], target = entity(frame.key);
     const playerRecovering = data.active === 0 && a.agreement === 'cooperate';
-    if (data.retired || a.closed || frame.status !== 'live' || !target || playerRecovering) { releaseJob(); return; }
+    if (jobs()?.get?.(`job:${TUG_KEY}`)?.job?.phase === 'flee') return;
+    if (data.retired) { releaseJob(); return; }
+    if (a.closed || frame.status !== 'live' || !target || playerRecovering || a.remainingGrace > 0) { park(a, tug); return; }
     const id = `job:${TUG_KEY}`;
     let entry = jobs()?.get?.(id);
     if (entry && (entry.entityId !== tug.id || entry.worldRecordId !== TUG_KEY)) return;
-    if (entry?.job?.phase === 'complete') { releaseJob(); entry = null; }
+    if (entry && (entry.job?.kind !== 'salvor' || entry.job?.phase === 'complete')) { releaseJob(); entry = null; }
     tug.data.towTargetId = target.id; // consumed by npcJobsRuntime._findTugTowTarget
     if (!entry) {
-      jobs()?.assign?.(tug, { kind: 'hauler', sectorId: a.sectorId, speed: TUG.speed,
-        loadS: 2, unloadS: 2, payload: { role: 'tug', towTargetId: target.id },
-        route: [{ id: `${a.id}_load`, pos: { ...target.pos } },
-          { id: `${a.id}_receiver`, pos: { ...a.receiver } }] });
+      // A salvor's physical tractor accepts an explicit staked source without a phantom
+      // freight manifest. A hauler would require a manifest AND could consume a miner lot.
+      jobs()?.assign?.(tug, { kind: 'salvor', sectorId: a.sectorId, speed: TUG.speed,
+        workS: 2, loadS: 2, unloadS: 2, payload: { role: 'tug', targetId: target.id },
+        route: [{ id: `${a.id}_receiver`, pos: { ...a.receiver } },
+          { id: `${a.id}_load`, pos: { ...target.pos } }] });
       entry = jobs()?.get?.(id);
     }
     if (!entry) return;
-    const claimId = `${OWNER}:grace`;
-    if (a.remainingGrace > 0) jobs()?.claimControl?.(id, { claimId, holder: OWNER });
-    else if (entry.control?.claimId === claimId) jobs()?.releaseControl?.(id, claimId);
   }
   function inReach() {
     const a = currentAppearance(data), tug = entity(TUG_KEY), player = state.entities?.get(state.playerId);
@@ -173,11 +219,17 @@ export function createIonaAdapter(ctx, { shipSpec, lineBetween }) {
   on('combat:damage', damage);
   on('salvage:claimJumped', p => {
     const row = rowForEntity(p?.wreckId);
-    if (row && p.claimantId === TUG_KEY && p.offenderId === state.playerId) recordTheft(data, row.key);
+    const d = row?.entity.data;
+    if (row && p.claimantId === TUG_KEY && p.offenderId === state.playerId
+      && p.visits === d.claimJumpVisits && p.t === d.claimJumpProtestAt
+      && Number.isFinite(p.t) && quantity(d.salvagePool) < quantity(record(row.key)?.pool)) recordTheft(data, row.key);
   });
   on('salvage:completed', p => {
     const row = rowForEntity(p?.wreckId);
-    if (row && quantity(row.entity.data.salvagePool) === 0) loseBody(data, row.key, true);
+    if (row && quantity(row.entity.data.salvagePool) === 0) {
+      const r = record(row.key); if (r) r.pool = {};
+      loseBody(data, row.key, true);
+    }
   });
   on('sector:exit', p => {
     if (p?.continuous === true || p?.continuousHandoff === true) return;
@@ -199,6 +251,7 @@ export function createIonaAdapter(ctx, { shipSpec, lineBetween }) {
         pauseIona(data); return;
       }
       mutating = true;
+      const run = data;
       try {
         // Numeric id reuse or removal without a callback is a loss, never permission
         // to spawn another original when the sector is entered again.
@@ -215,15 +268,27 @@ export function createIonaAdapter(ctx, { shipSpec, lineBetween }) {
         }
         if (data.retired) { releaseJob(); return; }
         const tug = ensureTug(a);
+        if (data !== run || disposed || restoring) return;
         // Restore all finite earlier staged loads too; never reprint depleted cargo.
         for (let i = 0; i < data.appearances.length; i++) {
           const past = data.appearances[i];
           for (let j = 0; j < past.bodies.length; j++) ensureBody(past, past.bodies[j], APPEARANCES[i].bodies[j]);
+          if (data !== run || disposed || restoring) return;
         }
         if (!tug) { pauseIona(data); return; }
         const allPresent = a.bodies.every(b => ['destroyed', 'recovered', 'lost'].includes(b.status) || entity(b.key));
         if (!allPresent) { pauseIona(data); return; }
-        if (!a.announced && inReach()) { a.announced = true; say(APPEARANCES[data.active].opening); }
+        if (!a.announced && inReach()) {
+          a.announced = true;
+          const past = data.appearances.slice(0, data.active);
+          const memory = past.some(p => p.theft) ? 'I remember the staked cargo you stripped. These terms are public; no revenge flight. '
+            : past.some(p => p.damagedByPlayer) ? 'I remember your weapons on the last lift. Keep this one civil. '
+              : past.length && past.every(p => p.cooperation) ? 'You brought the last recovery home intact. I would work with you again. '
+                : past.some(p => p.intervention) ? 'The last lift drew outside fire. That was not your debt. '
+                  : past.length ? 'We have worked the same field before. Clean claims, clean competition. ' : '';
+          say(memory + APPEARANCES[data.active].opening);
+          if (data !== run || disposed || restoring) return;
+        }
         for (const b of a.bodies) {
           const e = entity(b.key);
           if (!e) continue;
@@ -235,7 +300,11 @@ export function createIonaAdapter(ctx, { shipSpec, lineBetween }) {
         capture();
         const closed = stepIona(data, now(), true);
         drive(a, tug);
-        if (closed) say(a.cooperation ? 'Both loads accounted for. You did the work. I remember that.'
+        if (data !== run || disposed || restoring) return;
+        if (closed) say(data.active === 2 ? data.outcome === 'alliance'
+          ? 'Three lifts, intact loads, kept terms. Fair Measure calls you a partner. Both final loads are joint salvage, as agreed. My tug time is my stake.'
+          : 'The record makes us rivals. Lawful claims, public terms. You can take the open rack; I keep my frame. No ambushes.'
+          : a.cooperation ? 'Recovery accounted for. You did the work. I remember that.'
           : a.theft ? 'That was a staked load. The record stays; I will compete through claims, not ambushes.'
             : 'Recovery is closed. What arrived counts. Next time, we race again.');
       } finally { mutating = false; }
@@ -244,6 +313,7 @@ export function createIonaAdapter(ctx, { shipSpec, lineBetween }) {
       const a = currentAppearance(data);
       if (disposed || mutating || !inReach() || !a || a.id !== appearanceId || revision !== data.revision)
         return { ok: false, reason: 'stale_or_out_of_reach' };
+      if (jobs()?.get?.(`job:${TUG_KEY}`)?.job?.phase === 'flee') return { ok: false, reason: 'under_threat' };
       mutating = true;
       try {
         if (!chooseTerms(data, verb)) return { ok: false, reason: 'terms_closed' };
@@ -251,7 +321,9 @@ export function createIonaAdapter(ctx, { shipSpec, lineBetween }) {
           releaseJob(); const frame = entity(a.bodies[0].key);
           if (frame) frame.data.salvorClaimedBy = null;
         }
-        say(verb === 'cooperate' ? data.active === 0
+        say(verb === 'cooperate' ? data.active === 2 && a.bodies[0].claim === 'joint'
+          ? 'You earned this: I supply the tug time and release my exclusive stake. Both final loads are joint salvage. I tow the frame; you tow the rack. Settle them intact before stripping either.'
+          : data.active === 0
           ? 'Joint claim recorded. Tow the marked frame intact into the receiver ring; keep it below eight metres per second. I will stand clear.'
           : 'Agreed. I carry the staked frame; you carry the open rack. Settle both in the receiver ring before stripping either.'
           : verb === 'yield' ? 'Understood. My stake stops at the marked frame. Everything outside it remains open.'
@@ -281,11 +353,15 @@ export function createIonaAdapter(ctx, { shipSpec, lineBetween }) {
         faction: { id: TUG.factionId, rep: state.factions?.[TUG.factionId]?.rep ?? 0 },
         bodies: a.bodies.map(b => ({ key: b.key, label: APPEARANCES[data.active].bodies.find(d => d.id === b.id).label,
           status: b.status, claim: b.claim, remaining: quantity(b.pool), pos: entity(b.key)?.pos
-            ? { x: entity(b.key).pos.x, z: entity(b.key).pos.z } : b.pose?.pos || null })),
+            ? { x: entity(b.key).pos.x, z: entity(b.key).pos.z } : b.pose?.pos ? { ...b.pose.pos } : null })),
         choices: a.closed || data.retired || a.agreement !== 'none' ? [] : ['cooperate', 'compete', 'yield'] };
     },
     serialize() { capture(); return serializeIona(data); },
-    deserialize(raw) { const restored = restoreIona(raw); data = restored; bindings.clear(); },
+    deserialize(raw) {
+      if (!restoring) throw new Error('Iona restore requires save:restoring boundary');
+      const restored = raw == null ? freshIona() : restoreIona(raw);
+      data = restored; bindings.clear();
+    },
     newGame() { shelve(); data = freshIona(); restoring = false; },
     retire() { if (mutating) return false; shelve(); data.retired = true; data.revision++; return true; },
     destroy() { if (disposed) return; shelve(); disposed = true; off.splice(0).forEach(fn => fn()); },

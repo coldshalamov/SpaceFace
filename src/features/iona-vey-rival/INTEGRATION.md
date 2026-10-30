@@ -19,7 +19,9 @@ finite source remainders, and uses the ordinary `helpers.spawnEntity` / `removeE
 persistence would create ambiguous stable identities; the adapter deliberately refuses to pick one.
 `save:restoring` must precede owner deserialization; `save:loaded` follows sector reconstruction.
 The root's save load sequence must not update this feature between those boundaries.
-On a missing slice in an older save, the instance stays fresh. On a malformed or future slice,
+Always call deserialize, including a null/missing slice: an older save resets the character to
+fresh instead of inheriting a newer run's history. Deserialization outside save:restoring refuses.
+On a malformed or future slice,
 propagate the validation failure; do not catch it and start a fresh source.
 
 ## Ordinary route and authored placement (controller owns this)
@@ -55,26 +57,37 @@ Staged bodies retain their finite cargo and can still be worked. Iona's stake re
 frame; an open/joint load remains collectible normally. Cargo extraction and buyer proceeds go
 through existing mining/cargo/economy owners. The feature makes **no economic transfers** and
 issues no bespoke reward, so there is no second wallet, minted cargo, or replayable reward receipt.
+After two actual joint recoveries, accepting the final joint lift releases Iona's exclusive stake
+on the existing final frame: she supplies tug time and both final loads become joint salvage.
+This is the alliance's physical dividend, using existing finite units rather than another spawn.
 An alliance is character memory, not an unbacked faction-reputation payment. Later theft of a
 staged staked frame revokes alliance. A dead tug retires the character permanently.
 
 ## Consumed owner interfaces (inspected at the pinned base)
 
-* `helpers.npcJobs.assign(entity,{kind:'hauler',sectorId,speed,loadS,unloadS,payload,route})`,
+* `helpers.npcJobs.assign(entity,{kind:'salvor',sectorId,speed,workS,loadS,unloadS,payload,route})`,
   `get('job:'+worldRecordId)`, `release`, `claimControl`, `releaseControl`, `interrupt`.
-  `npcJobsRuntime` consumes the tug's `data.trafficRole='tug'`, `towTargetId` and the frame's
-  `salvorClaimedBy`. It owns the occupational tow and all flight intents. A completed clock with
-  an undelivered physical frame causes re-dispatch, never success. Claim-control grace is 30
-  observed seconds; choices do not reset it. The initial cooperative player lift releases the job.
+  `npcJobsRuntime` consumes the salvor job's explicit target (`data.towTargetId`) and the frame's
+  `salvorClaimedBy`. It owns the occupational tractor and travel intents. The salvor route is
+  `[receiver, source]`; its actual return leg tows the frame. This deliberately avoids a hauler:
+  haulers require a freight manifest and their LOAD can consume unrelated miner handoff lots.
+  Iona does not carry a phantom manifest. A completed clock without physical arrival never grants
+  success. Grace lasts 30 observed seconds; choices do not reset it. Standby uses a long-work
+  `tender` job with `claimControl` and one braking intent under that granted external-control
+  lease. The adapter does not steer. Damage releases its own standby lease, then calls the owner's
+  `interrupt(jobId,{entityId})`; a live flee phase takes precedence over re-parking or towing.
 * `makeShipEntitySpec` from `systems/ships.js`; core spawn/remove helpers; spawn budget
   `request(1,key)`, `bindEntity(id,key)`, `release(key)`.
 * Existing combat kernel `attachments.listForEntity`, `attachmentBindsOccupant`, native physics
   readiness and `helpers.combatPhysics.getAttachmentTelemetry` for generation-bound live ropes.
-* Existing `salvage:claimJumped` payload `{wreckId,claimantId,offenderId}`. Mining already reports
+* Existing `salvage:claimJumped` payload `{wreckId,claimantId,offenderId,visits,t}`. The live source's
+  protest stamps and a real pool decrease must match before recording theft. Mining already reports
   theft to `lawSecurity.reportIncident`; this feature observes the result, never reports twice.
 * Existing `salvage:completed`, `combat:damage` (`targetId,attackerId,applied`),
   `entity:spawned`, `entity:killed`, `entity:destroyed`, `sector:exit`,
-  `save:restoring`, `save:loaded`. Destruction callbacks require the retained object and generation.
+  `save:restoring`, `save:loaded`. Queued destruction may arrive after core removes the map entry;
+  it requires the retained object and generation, and never mutates a replacement occupant.
+  Scalar damage callbacks additionally require an observed protection decrease.
 * `comms:log` for concise factual lines. No alternate radio catalog or new bus protocol.
 * `bindMission(missionId)` optionally associates an **already-active** `tow_recovery` mission
   only if its canonical `targetEntityIds` includes an actual current Iona body. It does not create,
