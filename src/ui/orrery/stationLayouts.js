@@ -753,6 +753,10 @@ html.sf-reduce-motion ${S} :is(.orr-vdial__fill, .orr-vdial__hand) { transition:
     width:auto !important; max-width:none !important; margin:0 !important; padding:0 !important; transform:none !important; text-align:center !important;
     white-space:nowrap !important; overflow:hidden !important; text-overflow:ellipsis !important; line-height:18px !important; }
   ${D} .sxb-ops .sx-comms { flex-direction:row !important; align-self:center !important; gap:0 10px !important; }
+  /* The narrow station sheet hides Help's label while ORRERY hides its icon, leaving an
+     empty, unclickable button. Restore the word and keep both foot controls at their width. */
+  ${D} .sxb-ops .sxb-help span { display:inline !important; }
+  ${D} .sxb-ops :is(.sx-comms__toggle, .sxb-help) { flex:0 0 auto !important; }
   ${D} .sxb-ops > .sxb-launch-seat { align-self:center !important; }
   ${D} .sxb-launch { min-height:0 !important; padding-block:2px !important; }
   ${D} .sxb-launch__copy { display:flex !important; flex-direction:row !important; align-items:baseline !important; gap:8px !important; }

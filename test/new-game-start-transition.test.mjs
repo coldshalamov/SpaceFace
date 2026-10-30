@@ -6,6 +6,7 @@ import {
   describeGameStartFailure,
   runNewGameStartTransition,
 } from '../src/core/newGameStartTransition.js';
+import { waitForOpeningFirstPictureWithSingleOwnerRetry } from '../src/render/pipelineReadiness.js';
 
 test('fresh New Game prepares the player and world before waiting for authored assets', async () => {
   const guard = createRunTransitionGuard();
@@ -116,6 +117,58 @@ test('New Game yields a presentation frame before synchronous preparation and re
     'progress:entering-flight:0.96',
     'enter:flight',
   ]);
+});
+
+test('one superseded opening owner gets a fresh gate, then exactly one flight handoff', async () => {
+  const guard = createRunTransitionGuard();
+  const token = guard.begin('new-game');
+  const ownerFailure = Object.assign(new Error('owner superseded before upload'), {
+    name: 'AbortError', code: 'GPU_RESIDENCY_OWNER_INACTIVE',
+  });
+  let sectorAttempts = 0;
+  let prepareRunCalls = 0;
+  let flightCalls = 0;
+  const state = {
+    mode: 'loading',
+    contextRestoreSeq: 0,
+    world: { currentSectorId: 'helios', enterSerial: 1 },
+    render: {
+      admissionRunGeneration: token.generation,
+      beginOpeningLoadingAdmission: async () => {},
+      prepareLiveSectorBeforeFlight: () => {
+        sectorAttempts += 1;
+        return sectorAttempts === 1
+          ? Promise.reject(ownerFailure)
+          : { skipped: false, opening: { settled: true } };
+      },
+      prepareOpeningFirstPicture: async () => true,
+      captureOpeningSubmissionPlan: () => ({ complete: true, firstPlayablePipelineSet: { complete: true } }),
+      drainOpeningSubmissionPlan: async () => ({ ok: true }),
+      prepareOpeningGpuResources: async () => ({ skipped: false }),
+    },
+  };
+
+  const result = await runNewGameStartTransition({
+    guard,
+    token,
+    prepareRun: () => { prepareRunCalls += 1; },
+    waitForLibrary: () => true,
+    waitForVisuals: () => true,
+    waitForWarmup: () => true,
+    waitForGpuResources: () => waitForOpeningFirstPictureWithSingleOwnerRetry(state, 1000, {
+      isActive: () => guard.isCurrent(token),
+      isTransitionCurrent: () => guard.isCurrent(token),
+    }),
+    enterFlight: () => {
+      flightCalls += 1;
+      state.mode = 'flight';
+    },
+  });
+
+  assert.deepEqual(result, { stale: false, enteredFlight: true });
+  assert.equal(prepareRunCalls, 1, 'retry must not restart simulation/bootstrap');
+  assert.equal(sectorAttempts, 2, 'only the opening readiness owner is refreshed');
+  assert.equal(flightCalls, 1, 'only one accepted gate can enter flight');
 });
 
 test('repeated New Game starts admit only the latest transition to flight', async () => {

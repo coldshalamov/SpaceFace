@@ -465,7 +465,7 @@ html body #screens > .sx-berth.orr-station .sx-receipt__delta { color:var(--dp-i
   ${M} .so-trade-total { align-items:center; display:grid !important; grid-template-columns:auto auto !important; justify-content:center; align-items:center; column-gap:14px; }
   ${M} .so-trade-total > span { grid-column:1 / -1; text-align:center; }
   ${M} .so-trade-total > strong { grid-column:1; white-space:nowrap !important; }
-  ${M} .orr-mkt-holdarc { grid-column:2; margin-top:0 !important; }
+  ${M} .orr-mkt-holdarc { grid-column:1 / -1; margin-top:0 !important; }
   ${M} .orr-mkt-holdarc svg { width:84px; height:48px; }
   ${M} .sx-trade__words { margin-top:0 !important; }
   ${M} .sx-trade__note { text-align:center; }
@@ -971,6 +971,48 @@ const CSS_TAIL = `
   ${MP} { overflow-x:hidden !important; overflow-y:auto !important; padding-bottom:0 !important; scroll-padding-bottom:0 !important; }
   ${MP} .dp-frame__body--station, ${MP} .dp-frame__body--station > .sx-screen__body { flex:none !important; overflow:visible !important; }
   ${MP} footer.sxb-ops { position:sticky !important; bottom:0 !important; z-index:2; background:rgb(5 7 10) !important; }
+}
+/* ---- ≤650 × ≤400 desktop (phone landscape, e.g. 568×320 or 640×360): the tab body is ~120–200px tall. The family
+   ladder stood beside the register and pushed the names down to ~50px ("Iron / Ore"), the analysis column got ~20px
+   and printed "RAW ORE · LEGAL" one letter per line, and the stacked console (dial, total, breakdown, verbs) ran 60px
+   past the body, so BUY 1 / SELL could not be reached. The families now run as a strip over the register, and the
+   console sits on its side: dial on the left, with the words, total and verbs beside it, all inside the body. */
+@media (max-width:650px) and (max-height:400px) {
+  ${MD.replace(' .sx-mkt.orr-market', ' .sx-screen__body > .sx-mkt.orr-market')} {
+    grid-template-columns:minmax(0, 1.25fr) minmax(0, 1fr) !important; grid-template-rows:minmax(232px, 1fr) 0 !important; row-gap:0 !important; column-gap:16px !important; height:auto !important; min-height:100% !important; }
+  /* the panel may run taller than a 60px phone-landscape body: the body scrolls it, as on master, so the register keeps
+     room for whole rows (rework: at 568x320 a 33px rail under 81px rows left 50 goods unreachable) */
+  ${MD} > .sx-mkt__list { height:auto !important; max-height:none !important; padding-top:4px !important; }
+  /* the register: the 'Station exchange' heading with the find box beside it, then the families as one strip over the
+     table (it scrolls sideways and fades at its end), so the rows get the whole column */
+  ${MD} .sx-mkt-browser { grid-template-columns:minmax(0, 1fr) !important; grid-template-rows:auto auto minmax(150px, 1fr) !important; row-gap:2px !important; }
+  ${MD} .sx-mkt-browser__mode { grid-column:1 !important; grid-row:1 !important; display:flex !important; min-height:24px !important; padding-right:min(50%, 160px) !important; }
+  ${MD} .orr-mkt-find { display:block !important; width:min(48%, 150px) !important; padding:0 0 4px !important; }
+  ${MD} .sx-mkt-browser__rail { min-height:150px !important; }
+  ${MD} .sx-mkt-browser__filters { grid-column:1 !important; grid-row:2 !important; flex-direction:row !important; flex-wrap:nowrap !important;
+    width:auto !important; min-width:0 !important; max-width:100% !important; overflow-x:auto !important; overflow-y:hidden !important; scrollbar-width:none; gap:0 12px !important; padding:0 24px 2px 9px !important; background:none !important;
+    -webkit-mask-image:linear-gradient(to right, #000 calc(100% - 24px), transparent); mask-image:linear-gradient(to right, #000 calc(100% - 24px), transparent); }
+  ${MD} .sx-mkt-browser__filters li { flex:none !important; }
+  ${MD} .sx-mkt-filter { padding:3px 0 !important; line-height:14px !important; letter-spacing:.05em !important; }
+  ${MD} .sx-mkt-browser__rail { grid-column:1 !important; grid-row:3 !important; }
+  /* the stage is one column: the console first, then the decision and the reading under it in the stage's own scroll */
+  ${MD} .sx-mkt__stage.dp-work__stage { grid-template-columns:minmax(0, 1fr) !important; grid-template-rows:max-content max-content max-content !important; align-content:start !important; row-gap:10px !important; overflow-y:auto !important; overflow-x:hidden !important; }
+  ${MD} .sx-mkt__stage.dp-work__stage > .sx-mkt__console { grid-column:1 !important; grid-row:1 !important; width:auto !important; max-height:none !important; overflow:visible !important; }
+  ${MD} .sx-mkt__stage.dp-work__stage > .sx-mkt__decision:not(:empty) { grid-column:1 !important; grid-row:2 !important; max-height:none !important; }
+  ${MD} .sx-mkt__stage.dp-work__stage > .sx-mkt__analysis { grid-column:1 !important; grid-row:3 !important; overflow:visible !important; }
+  /* the console: an 80px dial, with its three words, the total, BUY / SELL and the breakdown stacked beside it */
+  ${MD} .sx-trade { grid-template-columns:80px minmax(0, 1fr) !important;
+    grid-template-rows:18px auto auto auto !important; grid-template-areas:"dial ." "dial total" "dial verb" "dial breakdown" !important; column-gap:10px !important; row-gap:4px !important; justify-items:start !important; align-items:center !important; }
+  ${MD} .sx-trade > .sx-qty { width:80px !important; height:80px !important; align-self:start !important; }
+  ${MD} .sx-qty .orr-qdial { left:0; top:0; width:80px; height:80px; }
+  ${MD} .sx-qty .sx-qty__in { left:5px; top:18px; }
+  ${MD} .sx-qty .sx-qty__k { left:0; width:80px; top:46px; }
+  ${MD} .sx-qty .sx-qty__words { top:0 !important; left:90px !important; right:auto !important; width:max-content !important; justify-content:flex-start !important; gap:0 8px !important; }
+  ${MD} .sx-qty :is(.sx-qty__b, .sx-qty__max) { letter-spacing:.02em !important; }
+  ${MD} .sx-trade__words { width:auto !important; justify-content:flex-start !important; flex-wrap:nowrap !important; gap:0 12px !important; }
+  ${MD} .so-trade-breakdown { justify-self:start !important; text-align:left !important; }
+  ${MD} :is(.sx-qty .sx-qty__k, .so-trade-breakdown > summary) { font-stretch:100%; font-variation-settings:"wdth" 100, "wght" 650 !important; letter-spacing:.03em !important; white-space:nowrap !important; }
+  ${MD} .sx-trade__go.orr-lampkey { white-space:nowrap !important; }
 }
 /* Quote breakdown, opened: one column of figures, read in place. The kit laid the eleven rows in
    two columns inside the trade console (~146-244px wide), so labels broke mid-word ("Cr/ed/its") and

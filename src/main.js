@@ -52,7 +52,7 @@ import { authoredCriticalVisualReadiness, isAuthoredPartLibraryUsable } from './
 import { requiresRuckusWarmForNewGame, warmRuckusModel } from './render/characters/ruckusModel.js';
 import {
   settleRequiredPackageAdmission,
-  waitForOpeningFirstPicture,
+  waitForOpeningFirstPictureWithSingleOwnerRetry,
   holdOpeningPresentationUntilPaint,
 } from './render/pipelineReadiness.js';
 import { authoredVisualBudgetMs, openingGateBudgetMs } from './render/startupPacing.js';
@@ -793,7 +793,10 @@ async function waitForRequiredOpeningPicture(state, isActive) {
     const budgetMs = state.run?.kind === 'survival'
       ? INITIAL_AUTHORED_VISUAL_TIMEOUT_MS
       : openingGateBudgetMs();
-    return await waitForOpeningFirstPicture(state, budgetMs, { isActive });
+    return await waitForOpeningFirstPictureWithSingleOwnerRetry(state, budgetMs, {
+      isActive,
+      isTransitionCurrent: isActive,
+    });
   } catch (cause) {
     const error = new GameStartReadinessError('GPU_RESIDENCY_UNAVAILABLE', 'gpu-resources',
       cause?.message || 'The opening picture could not be prepared. Retry Launch.');

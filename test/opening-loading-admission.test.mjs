@@ -6,7 +6,7 @@ import { createTimeEffects } from '../src/core/timeEffects.js';
 import { prepareAuthoredVisualPipelines, isInitialAuthoredCompositionEntity } from '../src/render/partsLibrary.js';
 import { openingLoadPolicy } from '../src/render/openingLoadPolicy.js';
 import { openingPreparedLeafKey, openingAdmissionSubjects, applyFirstPlayablePaintRelease, releaseOpeningGraphPublication,
-  enqueueMissingMeshBuildsSteps, render as renderSystem } from '../src/render/renderer.js';
+  enqueueMissingMeshBuildsSteps, preparePipelineSubjectResidency, render as renderSystem } from '../src/render/renderer.js';
 import { admitOpeningUnitsAcrossSlices, touchSubjectOnExactTarget } from '../src/render/openingGpuAdmission.js';
 import { collectFirstFlightLayerDrawables } from '../src/render/latePipelineAdmission.js';
 import { revealSubjectForCompile, revealSubjectWithAncestors } from '../src/render/compilePresentSlice.js';
@@ -14,7 +14,8 @@ import { createGasSystem } from '../src/render/combat/gas/gasVolumeField.js';
 import { ExplosionRupture } from '../src/render/combat/explosionRupture.js';
 import { SelectionSigil } from '../src/render/selectionSigil.js';
 import {
-  createOpeningLoadingAdmission, waitForOpeningFirstPicture, holdOpeningPresentationUntilPaint,
+  createOpeningLoadingAdmission, waitForOpeningFirstPicture, waitForOpeningFirstPictureWithSingleOwnerRetry,
+  holdOpeningPresentationUntilPaint,
   openingFirstPictureIsReady,
 } from '../src/render/pipelineReadiness.js';
 import { __setStartupBudgetScaleForTests } from '../src/render/startupPacing.js';
@@ -395,6 +396,152 @@ test('New Game and Continue callers join one exact sequence and acceptance follo
   assert.equal(state.render.requiredPackageAdmission.status, 'accepted');
   assert.equal(state.render.openingFirstPictureReady, true);
   assert.equal(openingFirstPictureIsReady(state), true);
+});
+
+test('first-picture cancellation reports the exact captured and current residency owner bits', async () => {
+  const resources = deferred();
+  let isActive;
+  const { state } = fixture({
+    prepareOpeningGpuResources: (options) => {
+      isActive = options.isActive;
+      return resources.promise;
+    },
+  });
+  const first = waitForOpeningFirstPicture(state, 1000);
+  await flush();
+  assert.equal(typeof isActive?.ownerSnapshot, 'function');
+
+  state.mode = 'flight';
+  assert.deepEqual(isActive.ownerSnapshot(), {
+    localActive: true,
+    expectedMode: 'loading',
+    currentMode: 'flight',
+    renderMatches: true,
+    worldMatches: true,
+    expectedEnterSerial: 1,
+    currentEnterSerial: 1,
+    expectedSector: 'helios',
+    currentSector: 'helios',
+    expectedAdmissionGeneration: 1,
+    currentAdmissionGeneration: 1,
+    rendererMatches: true,
+    expectedContextRestoreSeq: null,
+    currentContextRestoreSeq: null,
+    transitionActive: true,
+  });
+  resources.resolve({ skipped: false });
+  await assert.rejects(first, (error) => error.name === 'AbortError');
+  assert.notEqual(state.render.openingFirstPictureReady, true);
+});
+
+test('subject-bound residency keeps the first-picture owner diagnostic across its active wrapper', () => {
+  const subject = { name: 'opening subject' };
+  const snapshot = { currentMode: 'menu' };
+  const isActive = () => false;
+  isActive.ownerSnapshot = () => snapshot;
+  let captured;
+  preparePipelineSubjectResidency({
+    pendingFor: () => null,
+    prepare: (_subject, options) => { captured = options; return Promise.resolve(false); },
+  }, subject, { isActive });
+
+  assert.equal(captured.isActive(subject), false);
+  assert.deepEqual(captured.isActive.ownerSnapshot(), snapshot);
+});
+
+test('only a current loading transition retries a typed owner-inactive first-picture gate once', async () => {
+  const ownerFailure = Object.assign(new Error('owner superseded before upload'), {
+    name: 'AbortError', code: 'GPU_RESIDENCY_OWNER_INACTIVE',
+  });
+  for (const scenario of [
+    { name: 'current owner', current: true, failure: ownerFailure, expectedAttempts: 2, resolves: true },
+    { name: 'stale transition', current: false, failure: ownerFailure, expectedAttempts: 1, resolves: false },
+    { name: 'real GPU failure', current: true, failure: new Error('texture upload failed'), expectedAttempts: 1, resolves: false },
+  ]) {
+    let sectorAttempts = 0;
+    const { state, calls } = fixture({
+      prepareLiveSectorBeforeFlight: () => {
+        sectorAttempts += 1;
+        return sectorAttempts === 1
+          ? Promise.reject(scenario.failure)
+          : { skipped: false, opening: { settled: true } };
+      },
+    });
+    const options = { isActive: () => true, isTransitionCurrent: () => scenario.current };
+    if (scenario.resolves) {
+      assert.equal(await waitForOpeningFirstPictureWithSingleOwnerRetry(state, 1000, options), true,
+        scenario.name);
+      assert.equal(state.render.openingFirstPictureReady, true, scenario.name);
+    } else {
+      await assert.rejects(
+        waitForOpeningFirstPictureWithSingleOwnerRetry(state, 1000, options),
+        scenario.failure,
+        scenario.name,
+      );
+      assert.notEqual(state.render.openingFirstPictureReady, true, scenario.name);
+    }
+    assert.equal(sectorAttempts, scenario.expectedAttempts, scenario.name);
+    if (scenario.resolves) {
+      assert.equal(calls.filter((call) => call === 'begin').length, 2,
+        'only the opening admission gate reruns; run preparation is outside this helper');
+    }
+  }
+});
+
+test('a late rejected owner cannot clear a newer first-picture run or sector cook', async () => {
+  const oldCook = deferred();
+  const newCook = deferred();
+  let cookCalls = 0;
+  const { state } = fixture({
+    prepareLiveSectorBeforeFlight: () => (++cookCalls === 1 ? oldCook.promise : newCook.promise),
+  });
+
+  const oldRun = waitForOpeningFirstPicture(state, 1000);
+  await flush();
+  const oldOwnerCook = state.render.openingLiveSectorReady;
+  assert.ok(oldOwnerCook);
+
+  state.render.admissionRunGeneration += 1;
+  state.render.openingLiveSectorReady = newCook.promise;
+  const newRun = waitForOpeningFirstPicture(state, 1000);
+  assert.notEqual(newRun, oldRun);
+  await flush();
+  assert.equal(state.render.openingLiveSectorReady, newCook.promise);
+
+  oldCook.reject(Object.assign(new Error('old residency owner retired'), {
+    name: 'AbortError', code: 'GPU_RESIDENCY_OWNER_INACTIVE',
+  }));
+  await assert.rejects(oldRun, (error) => error.code === 'GPU_RESIDENCY_OWNER_INACTIVE');
+  assert.equal(state.render.openingLiveSectorReady, newCook.promise,
+    'retiring the old run must preserve the newer owner’s sector cook');
+  assert.equal(waitForOpeningFirstPicture(state, 1000), newRun,
+    'the old rejection must not evict the newer cached first-picture run');
+
+  newCook.resolve({ skipped: false, opening: { settled: true } });
+  assert.equal(await newRun, true);
+});
+
+test('typed owner retry cannot start after the original readiness deadline expires', async () => {
+  let now = 0;
+  let sectorAttempts = 0;
+  const ownerFailure = Object.assign(new Error('owner superseded at the deadline'), {
+    name: 'AbortError', code: 'GPU_RESIDENCY_OWNER_INACTIVE',
+  });
+  const { state } = fixture({
+    prepareLiveSectorBeforeFlight: () => {
+      sectorAttempts += 1;
+      now = 2000;
+      return Promise.reject(ownerFailure);
+    },
+  });
+
+  await assert.rejects(waitForOpeningFirstPictureWithSingleOwnerRetry(state, 1000, {
+    isActive: () => true,
+    isTransitionCurrent: () => true,
+    now: () => now,
+    presentBudgetMs: 1000,
+  }), ownerFailure);
+  assert.equal(sectorAttempts, 1);
 });
 
 test('launch joins the current-sector cook before sealing the exact picture', async () => {

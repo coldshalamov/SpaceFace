@@ -21,7 +21,7 @@ export async function installFirstLightPromptHandler(page, step) {
   if (firstLightHandlerPages.has(page) || typeof page.addLocatorHandler !== 'function') return;
   await page.addLocatorHandler(page.locator('#sf-confirm-title').filter({ hasText: /^First light$/ }), async () => {
     await answerFirstRunPrompt(page, step);
-  });
+  }, { noWaitAfter: true });
   firstLightHandlerPages.add(page);
 }
 

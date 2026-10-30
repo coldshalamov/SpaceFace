@@ -185,9 +185,10 @@ function deinterleaveKeptAttribute(geometry, name) {
   }
 }
 
-// Rehydrate pairing fingerprint (SPEC F2 §3.5): attr name set + position/index counts +
-// per-attr itemSize/normalized — identical bytes re-decode deterministically, so any drift
-// means the package changed under its content hash and the entry stays detached.
+// Rehydrate pairing fingerprint (SPEC F2 §3.5): attribute identity is ordinal-paired only when
+// every source buffer still has the same shape. Position/index counts alone are insufficient:
+// Three caches the original GPU buffer byte length, so assigning a longer/shorter donor array to
+// an existing BufferAttribute makes its next update throw instead of resizing that buffer.
 function geometryFingerprint(geometry) {
   const attrs = geometry.attributes || {};
   // sfHullPosition is runtime shading layout, not part of the verified decoder's source shape.
@@ -195,32 +196,100 @@ function geometryFingerprint(geometry) {
   const names = Object.keys(attrs).filter(name => name !== 'sfHullPosition').sort();
   const itemSizes = {};
   const normalized = {};
+  const bufferShapes = {};
   for (const name of names) {
     const attribute = attrs[name];
     itemSizes[name] = attribute ? attribute.itemSize : 0;
     normalized[name] = !!(attribute && attribute.normalized);
+    const record = attribute && attribute.isInterleavedBufferAttribute === true
+      ? attribute.data
+      : attribute;
+    const array = record && record.array;
+    bufferShapes[name] = {
+      count: Number(attribute && attribute.count) || 0,
+      length: Number(array && array.length) || 0,
+      byteLength: Number(array && array.byteLength) || 0,
+      arrayType: array && array.constructor,
+      stride: attribute && attribute.isInterleavedBufferAttribute === true
+        ? Number(attribute.data && attribute.data.stride) || 0 : null,
+      offset: attribute && attribute.isInterleavedBufferAttribute === true
+        ? Number(attribute.offset) || 0 : null,
+    };
   }
   const position = attrs.position;
+  const indexArray = geometry.index && geometry.index.array;
   return {
     attrNames: names,
     positionCount: Number(position && position.count) || 0,
     indexCount: Number(geometry.index && geometry.index.count) || 0,
     itemSizes,
     normalized,
+    bufferShapes,
+    indexShape: {
+      count: Number(geometry.index && geometry.index.count) || 0,
+      length: Number(indexArray && indexArray.length) || 0,
+      byteLength: Number(indexArray && indexArray.byteLength) || 0,
+      arrayType: indexArray && indexArray.constructor,
+    },
   };
 }
 
 function sameGeometryFingerprint(a, b) {
   if (!a || !b) return false;
   if (a.positionCount !== b.positionCount || a.indexCount !== b.indexCount) return false;
+  if (!a.indexShape || !b.indexShape
+      || a.indexShape.count !== b.indexShape.count
+      || a.indexShape.length !== b.indexShape.length
+      || a.indexShape.byteLength !== b.indexShape.byteLength
+      || a.indexShape.arrayType !== b.indexShape.arrayType) return false;
   if (a.attrNames.length !== b.attrNames.length) return false;
   for (let i = 0; i < a.attrNames.length; i++) {
     const name = a.attrNames[i];
     if (b.attrNames[i] !== name) return false;
     if (a.itemSizes[name] !== b.itemSizes[name]) return false;
     if (a.normalized[name] !== b.normalized[name]) return false;
+    const aShape = a.bufferShapes && a.bufferShapes[name];
+    const bShape = b.bufferShapes && b.bufferShapes[name];
+    if (!aShape || !bShape
+        || aShape.count !== bShape.count
+        || aShape.length !== bShape.length
+        || aShape.byteLength !== bShape.byteLength
+        || aShape.arrayType !== bShape.arrayType
+        || aShape.stride !== bShape.stride
+        || aShape.offset !== bShape.offset) return false;
   }
   return true;
+}
+
+function geometryFingerprintEvidence(fingerprint) {
+  if (!fingerprint) return null;
+  const typeName = (ctor) => typeof ctor === 'function' ? ctor.name : null;
+  const bufferShapes = {};
+  for (const name of fingerprint.attrNames || []) {
+    const shape = fingerprint.bufferShapes && fingerprint.bufferShapes[name];
+    if (!shape) continue;
+    bufferShapes[name] = {
+      count: shape.count,
+      length: shape.length,
+      byteLength: shape.byteLength,
+      arrayType: typeName(shape.arrayType),
+      stride: shape.stride,
+      offset: shape.offset,
+    };
+  }
+  const index = fingerprint.indexShape;
+  return {
+    attrNames: [...(fingerprint.attrNames || [])],
+    positionCount: fingerprint.positionCount,
+    indexCount: fingerprint.indexCount,
+    indexShape: index ? {
+      count: index.count,
+      length: index.length,
+      byteLength: index.byteLength,
+      arrayType: typeName(index.arrayType),
+    } : null,
+    bufferShapes,
+  };
 }
 
 function payloadBytes(value) {
@@ -365,6 +434,10 @@ export function createPackageDetachManifest(loaded, options = {}) {
   });
   manifest.geometryEntries.forEach((entry, ordinal) => {
     const geometry = entry.geometry;
+    // Keep the donor-comparison shape from the decoder output. The retention pass below may
+    // split kept attributes out of a shared interleaved buffer, which is a runtime layout change
+    // and must not make an otherwise identical re-decode look like package drift.
+    entry.fingerprint = geometryFingerprint(geometry);
     // Pull position out of the shared interleaved buffer and cache bounds BEFORE any upload:
     // the first upload then builds the position VBO from the standalone array, and every later
     // bounds query (asteroidInstancePool culls, raycast early-outs) hits the cached fields once
@@ -374,7 +447,6 @@ export function createPackageDetachManifest(loaded, options = {}) {
       try { geometry.computeBoundingSphere(); } catch (_) {}
       try { geometry.computeBoundingBox(); } catch (_) {}
     }
-    entry.fingerprint = geometryFingerprint(geometry);
     geometry.userData = {
       ...(geometry.userData || {}),
       spacefaceCpuDetach: { ...mark, kind: 'geometry', ordinal },
@@ -1159,6 +1231,7 @@ async function rehydrateManifest(manifest) {
   let restored = 0;
   let restoredBytes = 0;
   let restoredGeometries = 0;
+  const geometryMismatches = [];
   for (const entry of manifest.geometryEntries) {
     if (!entry.detached) continue;
     const donor = freshGeometries[entry.ordinal];
@@ -1166,6 +1239,12 @@ async function rehydrateManifest(manifest) {
     // changed under its content hash; keep the entry detached and count it (texture doctrine).
     if (!donor || !sameGeometryFingerprint(entry.fingerprint, geometryFingerprint(donor))) {
       manifest.totals.mismatches += 1;
+      geometryMismatches.push({
+        assetId: manifest.assetId,
+        geometryOrdinal: entry.ordinal,
+        expected: geometryFingerprintEvidence(entry.fingerprint),
+        actual: donor ? geometryFingerprintEvidence(geometryFingerprint(donor)) : null,
+      });
       continue;
     }
     for (const { name, record } of entry.released) {
@@ -1242,7 +1321,12 @@ async function rehydrateManifest(manifest) {
   for (const fresh of freshTextures) {
     try { if (typeof fresh.dispose === 'function') fresh.dispose(); } catch (_) {}
   }
-  return { textures: restored, geometries: restoredGeometries, bytes: restoredBytes };
+  return {
+    textures: restored,
+    geometries: restoredGeometries,
+    bytes: restoredBytes,
+    geometryMismatches,
+  };
 }
 
 function rehydrateManifestOnce(manifest) {
@@ -1282,6 +1366,7 @@ export async function rehydrateDetachedTextures(textures, options = {}) {
     geometries: 0,
     bytes: 0,
     errors: [],
+    geometryMismatches: [],
   };
   for (const manifest of wanted) {
     try {
@@ -1290,6 +1375,7 @@ export async function rehydrateDetachedTextures(textures, options = {}) {
       result.textures += receipt.textures;
       result.geometries += receipt.geometries;
       result.bytes += receipt.bytes;
+      result.geometryMismatches.push(...(receipt.geometryMismatches || []));
     } catch (error) {
       result.errors.push({ assetId: manifest.assetId, error: String(error && error.message || error) });
     }
@@ -1319,6 +1405,7 @@ export async function rehydrateDetachedGeometries(geometries, options = {}) {
     geometries: 0,
     bytes: 0,
     errors: [],
+    geometryMismatches: [],
   };
   for (const manifest of wanted) {
     try {
@@ -1327,6 +1414,7 @@ export async function rehydrateDetachedGeometries(geometries, options = {}) {
       result.textures += receipt.textures;
       result.geometries += receipt.geometries;
       result.bytes += receipt.bytes;
+      result.geometryMismatches.push(...(receipt.geometryMismatches || []));
     } catch (error) {
       result.errors.push({ assetId: manifest.assetId, error: String(error && error.message || error) });
     }
@@ -1351,6 +1439,7 @@ export async function rehydrateDetachedPackages(options = {}) {
     geometries: 0,
     bytes: 0,
     errors: [],
+    geometryMismatches: [],
   };
   if (detached.length === 0) return result;
   for (const manifest of detached) {
@@ -1361,6 +1450,7 @@ export async function rehydrateDetachedPackages(options = {}) {
       result.textures += receipt.textures;
       result.geometries += receipt.geometries;
       result.bytes += receipt.bytes;
+      result.geometryMismatches.push(...(receipt.geometryMismatches || []));
     } catch (error) {
       result.errors.push({ assetId: manifest.assetId, error: String(error && error.message || error) });
     }

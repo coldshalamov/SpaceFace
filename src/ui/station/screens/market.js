@@ -73,6 +73,23 @@ for (const sec of SECTORS) {
 export function chartTrendRole(up) { return up ? 'you' : 'foe'; }
 export function chartTrendColor(up) { return up ? 'var(--dp-lamp)' : 'var(--dp-danger)'; }
 export { maxAffordableQuantity } from '../../../economy/tradePlanning.js';
+
+// Reveal the selected commodity without scrolling the station's outer body or header.
+export function revealMarketRowInRail(rail, row) {
+  if (!rail || !row || typeof rail.getBoundingClientRect !== 'function'
+    || typeof row.getBoundingClientRect !== 'function') return;
+  const box = rail.getBoundingClientRect();
+  const selected = row.getBoundingClientRect();
+  const scale = rail.offsetHeight > 0 ? box.height / rail.offsetHeight : 1;
+  if (!(scale > 0) || !(rail.clientHeight > 0)) return;
+  const top = box.top + (rail.clientTop || 0) * scale;
+  const bottom = top + rail.clientHeight * scale;
+  const delta = selected.top < top ? selected.top - top
+    : selected.bottom > bottom ? selected.bottom - bottom : 0;
+  if (!delta) return;
+  const max = Math.max(0, rail.scrollHeight - rail.clientHeight);
+  rail.scrollTop = Math.max(0, Math.min(max, rail.scrollTop + delta / scale));
+}
 /**
  * INF-084: the stated-terms binding for the go handler. Returns the rounded quoted
  * total when the stashed render quote covers exactly the confirmed quantity, else
@@ -2535,9 +2552,7 @@ export function createMarketScreen(ctx) {
       const active = tbodyEl && tbodyEl.querySelector('.is-active');
       // A phone's market shares the berth's page scroll. Opening the tab must preserve the
       // station header; only the desktop's independent commodity rail scrolls to its selection.
-      if (!isPhoneLayout() && active && typeof active.scrollIntoView === 'function') {
-        try { active.scrollIntoView({ block: 'nearest' }); } catch (_) {}
-      }
+      if (!isPhoneLayout() && active) revealMarketRowInRail(listEl.querySelector('.sx-mkt-browser__rail'), active);
     },
     refresh(c) { if (visible && !disposed) renderAll((c || ctx).state || {}); },
     onHide() {

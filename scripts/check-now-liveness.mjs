@@ -89,9 +89,9 @@ function main() {
     const cells = row.split('|').map((c) => c.trim());
     const task = cells[1] || '(unnamed)';
     const thread = cells[2] || '(no thread)';
-    const backtickPaths = [...row.matchAll(/`([^`]+)`/g)].map((m) => m[1]).filter((p) => /[\/\\.]/.test(p));
-    const checkpointPaths = backtickPaths.filter((p) => CHECKPOINT_MARKER.test(p.replaceAll('\\', '/')));
-    const paths = backtickPaths.filter((p) => !CHECKPOINT_MARKER.test(p.replaceAll('\\', '/')));
+    const rowPaths = pathsInRow(row);
+    const checkpointPaths = rowPaths.filter((p) => CHECKPOINT_MARKER.test(p.replaceAll('\\', '/')));
+    const paths = rowPaths.filter((p) => !CHECKPOINT_MARKER.test(p.replaceAll('\\', '/')));
     let newest = 0;
     for (const p of paths) { const t = newestMtime(p); if (t > newest) newest = t; }
     let ageMin = newest ? Math.round((nowMs - newest) / 60000) : Infinity;
@@ -159,6 +159,16 @@ function checkpointPathsForRows(rows) {
   return rows.flatMap((row) => [...row.matchAll(/`([^`]+)`/g)]
     .map((m) => m[1])
     .filter((p) => CHECKPOINT_MARKER.test(p.replaceAll('\\', '/'))));
+}
+
+function pathsInRow(row) {
+  const backtickPaths = [...row.matchAll(/`([^`]+)`/g)]
+    .map((match) => match[1])
+    .filter((candidate) => /[\/\\.]/.test(candidate));
+  const exactPathCell = row.split('|')[4] || '';
+  const plainPaths = [...exactPathCell.matchAll(/(?:^|[\s+,:;])((?:src\/(?:[A-Za-z0-9_.-]+\/)*[A-Za-z0-9_.-]+\.js|test\/(?:[A-Za-z0-9_.-]+\/)*[A-Za-z0-9_.-]+\.mjs))(?=$|[\s+,:;])/g)]
+    .map((match) => match[1]);
+  return [...new Set([...backtickPaths, ...plainPaths])];
 }
 
 main();

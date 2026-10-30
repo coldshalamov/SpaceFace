@@ -51,3 +51,20 @@ test('context diagnostic receipt keeps recovery and teardown attribution on fail
   assert.equal(receipt.teardown.closeCallCount, 1);
   assert.match(receipt.error.message, /cleanup failed/);
 });
+
+test('context diagnostic cannot pass on low-level restore without sustained authored flight', () => {
+  const base = {
+    outputDir: '.devshots/context-recovery-electron/test',
+    contextLoss: { available: true, lostEvent: true, restoredEvent: true, recovered: true },
+    postTeardownInstall: { installed: true },
+    postTeardown: { armed: true, entries: [], evicted: 0, dropped: 0 },
+    cleanupReport: { pass: true, appCloseCompleted: true, pageClosed: true, processExited: true, listenerReleased: true },
+    closeCallCount: 1,
+    profileCleanup: true,
+  };
+  const lowLevelOnly = buildContextRecoveryReceipt(base);
+  assert.equal(lowLevelOnly.pass, false);
+
+  const gameplayRestored = buildContextRecoveryReceipt({ ...base, postRecoveryFlightStable: true });
+  assert.equal(gameplayRestored.pass, true);
+});

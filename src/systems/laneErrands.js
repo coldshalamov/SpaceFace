@@ -1,14 +1,15 @@
 // Lane errands — visible chores on hulls the traffic spool already spawned.
 //
-// Presentation only. The npcJobs kernel keeps advancing, so an offscreen catch-up
+// Chatter and bounded idle motion. The npcJobs kernel keeps advancing, so an offscreen catch-up
 // still matches a watched hull's phase graph. This module never calls advance(),
 // interrupt(), or spawn, and it never writes credits, rep, cargo, or heat.
 // npcJobsRuntime remains the single intent writer: it calls applyLaneErrandIntent
-// after its own _drive and overwrites that frame's intent.
+// after its own _drive. Working routes and physical holds retain that intent.
 
 import { hash32 } from '../core/rng.js';
 import { ZONE_TETHYS_TALLY } from '../data/authoredPlaces.js';
 import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
+import { ACTIVITY_POCKETS } from '../data/sectorActivityPockets.js';
 
 const PLAYER_RANGE = 2200;
 const PARTNER_RANGE = 480;
@@ -17,6 +18,18 @@ const TALLY_SECTOR = 'sector_tethys_junction';
 const TALLY_POST = 'poi_tethys_tally_post';
 const TALLY_CENTER = sectorLocalToGlobalForSector(ZONE_TETHYS_TALLY.center, TALLY_SECTOR);
 const POST_ERRANDS = new Set(['tally_creep', 'invoice_match']);
+const IDLE_PHASES = new Set(['commission', 'hold']);
+const AUTHORED_WORK_SLOTS = new Map(ACTIVITY_POCKETS.flatMap(pocket => pocket.actorSlots
+  .filter(slot => slot.route?.owner === 'npcJobsRuntime')
+  .map(slot => [slot.id, slot.jobKind])));
+export const LANE_IDLE_MOTION = Object.freeze({ maxSpeed: 18, radius: 24, positionGain: 0.65 });
+
+function authoredWorkOwns(entry, entity) {
+  const data = entity.data;
+  return !!(data && data.jobId === entry.job.id && entry.entityId === entity.id
+    && data.worldRecordId && data.worldRecordId === entry.worldRecordId
+    && AUTHORED_WORK_SLOTS.get(data.activityActorSlotId) === entry.job.kind);
+}
 
 function insideTally(pos) {
   return !!pos && Number.isFinite(pos.x) && Number.isFinite(pos.z)
@@ -138,8 +151,6 @@ export function laneContractOwns(entry, entity, simT) {
   if (entry.closeCallUntil != null && simT < entry.closeCallUntil) return true;
   return false;
 }
-
-function clamp1(v) { return v < -1 ? -1 : v > 1 ? 1 : v; }
 
 function eligible(entry, entity, simT) {
   if (!entry || !entry.job || entry.job.corrupt) return false;
@@ -322,8 +333,19 @@ export function armLaneErrands(runtime, simT) {
   }
 }
 
-function writeIntent(runtime, entity, moveX, moveZ, aim, brake) {
-  runtime._writeIntent(entity, moveX, moveZ, false, aim, brake);
+function writeIdleVelocity(runtime, entry, entity, vx, vz, heading, speed) {
+  const length = Math.hypot(vx, vz);
+  const scale = length > speed ? speed / length : 1;
+  runtime._writeIntent(entity, 0, 0, false, heading, false);
+  const data = entity.data || (entity.data = {});
+  const intent = data.intent || (data.intent = {});
+  // This scratch is derived entirely from the existing errand clock and current pose. Reusing
+  // it avoids per-motor allocations; it never owns velocity or adds a second physical writer.
+  const guidance = entry.errand.guidance || (entry.errand.guidance = { velocity: { x: 0, z: 0 }, heading: 0 });
+  guidance.velocity.x = vx * scale;
+  guidance.velocity.z = vz * scale;
+  guidance.heading = heading;
+  intent.rendezvous = guidance;
 }
 
 export function applyLaneErrandIntent(runtime, entry, entity, simT) {
@@ -357,20 +379,29 @@ export function applyLaneErrandIntent(runtime, entry, entity, simT) {
       });
     } catch { /* advisory */ }
   }
+  // An ambient story beat may speak during a shift, but cannot replace an authored worker's
+  // motor, a moving leg, an arrival brake, or an already owned moving-frame hold. The catalog
+  // covers Helios and every other authored work pocket rather than a growing Ceres-only list.
+  if (authoredWorkOwns(entry, entity) || !IDLE_PHASES.has(entry.job.phase)
+    || entity.data?.intent?.brake || entity.data?.intent?.rendezvous) return true;
   const origin = errand.origin || entity.pos;
-  const elapsed = Math.max(0, simT - (errand.started || simT));
+  const elapsed = Math.max(0, simT - (Number.isFinite(errand.started) ? errand.started : simT));
+  const speed = Math.min(LANE_IDLE_MOTION.maxSpeed,
+    Math.max(3, Number.isFinite(entry.job.speed) ? entry.job.speed : 12));
+  const heading = Number.isFinite(entry.job.heading) ? entry.job.heading : 0;
   if (errand.motion === 'brake') {
-    writeIntent(runtime, entity, 0, 0, entity.rot || 0, true);
+    writeIdleVelocity(runtime, entry, entity, 0, 0, entity.rot || 0, speed);
     return true;
   }
   if (errand.motion === 'half') {
     const aim = entity.rot || 0;
-    writeIntent(runtime, entity, 0, 0.28, aim, false);
+    writeIdleVelocity(runtime, entry, entity, Math.cos(aim) * speed * 0.28,
+      Math.sin(aim) * speed * 0.28, aim, speed);
     return true;
   }
   if (errand.motion === 'flash') {
-    const wobble = Math.sin(simT * 6) * 0.6;
-    writeIntent(runtime, entity, clamp1(wobble), 0, (entity.rot || 0) + wobble, true);
+    const wobble = Math.sin(simT * 6) * 0.15;
+    writeIdleVelocity(runtime, entry, entity, 0, 0, heading + wobble, speed);
     return true;
   }
   if (errand.motion === 'face' && errand.partnerId != null) {
@@ -380,27 +411,27 @@ export function applyLaneErrandIntent(runtime, entry, entity, simT) {
       const dz = partner.pos.z - entity.pos.z;
       const aim = Math.atan2(dz, dx);
       const dist = Math.hypot(dx, dz);
-      writeIntent(runtime, entity, 0, dist > 160 ? 0.35 : 0, aim, dist <= 160);
+      const closing = Math.min(speed, Math.max(0, dist - 160) * 0.5);
+      writeIdleVelocity(runtime, entry, entity, (partner.vel?.x || 0) + dx / Math.max(1, dist) * closing,
+        (partner.vel?.z || 0) + dz / Math.max(1, dist) * closing, aim, speed);
       return true;
     }
   }
-  const ang = elapsed * (errand.motion === 'weave' ? 1.1 : 0.7);
-  const radius = errand.motion === 'weave' ? 90 : 140;
-  const tx = origin.x + Math.cos(ang) * radius;
-  const tz = origin.z + Math.sin(ang) * (errand.motion === 'weave' ? 50 : radius);
+  const weave = errand.motion === 'weave';
+  const radius = LANE_IDLE_MOTION.radius;
+  const rate = speed / (weave ? radius * Math.SQRT2 : radius);
+  const ang = elapsed * rate;
+  // Start at the held position, then follow a small continuous curve. The former radius140 ×
+  // rate0.7 goal demanded 98 WU/s and open-loop engine axes launched miners through the belt.
+  const tx = origin.x + radius * (weave ? Math.sin(ang) : Math.cos(ang) - 1);
+  const tz = origin.z + radius * (weave ? Math.sin(2 * ang) * 0.5 : Math.sin(ang));
+  const tvx = radius * rate * (weave ? Math.cos(ang) : -Math.sin(ang));
+  const tvz = radius * rate * (weave ? Math.cos(2 * ang) : Math.cos(ang));
   const dx = tx - entity.pos.x;
   const dz = tz - entity.pos.z;
-  const aim = Math.atan2(dz, dx);
-  const cf = Math.cos(entity.rot || 0);
-  const sf = Math.sin(entity.rot || 0);
-  const len = Math.hypot(dx, dz) || 1;
-  writeIntent(
-    runtime,
-    entity,
-    clamp1((-sf * dx + cf * dz) / len),
-    clamp1((cf * dx + sf * dz) / len) * (errand.motion === 'half' ? 0.4 : 0.7),
-    aim,
-    false,
-  );
+  const vx = tvx + dx * LANE_IDLE_MOTION.positionGain;
+  const vz = tvz + dz * LANE_IDLE_MOTION.positionGain;
+  writeIdleVelocity(runtime, entry, entity, vx, vz,
+    Math.hypot(vx, vz) > 0.05 ? Math.atan2(vz, vx) : entity.rot || 0, speed);
   return true;
 }
