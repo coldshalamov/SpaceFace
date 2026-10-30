@@ -41,9 +41,14 @@ Batch verdicts in (`.devshots/finish/lane3/batch-{a,b,c}/RECEIPT.md`):
   proof escalates a vengeful debt with `moralMemory:escalated` on the bus. Row deleted.
   **710f1e1 FIXED 6b470a4eb45** — bounded `v.returns` ledger in `state.verge` rides the
   vergeCourt slot; repro test proves a sector-unloaded warden re-claims and walks home. Row deleted.
-- New OPEN row found at top of ledger: **R-c1225fa** (presentation craft: palette skin, market
-  SOLD OUT, bar rail bands, HC focus signal) — not in the original seven; needs a ui-bench
-  breakpoint pass, queue in the next review batch.
+- **R-c1225fa — IN PROGRESS** (presentation craft: palette skin, market SOLD OUT, bar rail bands,
+  HC focus signal): bar rail verified clean at 1300px and 800px (NEW ARRIVAL badges whole, board
+  foot clears). Market SOLD OUT verified via new `?soldout=<cmdtyId>` bench fixture — hero/row
+  print SOLD OUT + Restock ~30s, BUY disabled with the honest reason. That shot exposed a real
+  defect, **fixed `3e37b0b6d1d`**: at ≤880px height the hold arc sat in a 2-col grid beside the
+  total, so "Unavailable" crushed "HOLD 1 / 40 u" into clipped fragments — now spans the row
+  under the total, verified on both sold-out and in-stock PNGs + a 24-control walk. Ctrl+K
+  palette fixture (`?cmdk=1`) added; HC-focus + remaining palette shots still owed.
 - **8962e68 ORRERY row — surveyed** (batch-a2 RECEIPT.md): 23 title findings are the designed
   first-light modal (FP); REAL = shipworks receipt-over-verbs + delta off-1920 edge, crucible-door
   tile sliver, comms+wingman radial crest svg overflow (helix x≈-3); LIKELY-FP = tech-tree
@@ -214,8 +219,9 @@ Rows are the spec (`build_map.md` §31–§32; read each row's prose before brie
 - **Save writelane landed `1fc335672aa`** — D1/D2/D3/D4/D5/D7 fixed (mirror deltas, gzip recovery
   rotation, prepared-envelope cache, redundant worker validate removed, serialized player key
   order, superseded pending marker); 4 new tests; schema+fuzz green.
-- **D222 UI budget** — baseline re-shooting over the live rendered set (`units.js` refactor
-  in-flight); grammar debt (chart 6.3ms, flight 1713 DOM, range 3.4ms) stays named, not hidden.
+- **D222 UI budget** — full headed `capture-ui-matrix --budgets-out` running (PID live, ~400
+  frames written as of 2026-10-30 ~01:45); grammar debt (chart 6.3ms, flight 1713 DOM, range
+  3.4ms) stays named, not hidden. Validate `check:ui:budgets` when the capture lands.
 
 ### Wave G — the glass (every 2D surface; DeepSeek via OpenCode builds, Claude Sonnet reviews every ~5)
 Direction: `design/frontend/ORRERY.md`, `ORRERY_RUBRIC.md`; method: `docs/UI_VISUAL_ITERATION.md`
