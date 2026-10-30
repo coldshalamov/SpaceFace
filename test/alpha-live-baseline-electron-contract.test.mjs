@@ -373,6 +373,9 @@ async function testOptInExpectedSoakNetworkPolicy() {
     playerStoreMounted: false,
     allowCancelledMedia: true,
   });
+  const page = new FakePage(CANONICAL);
+  page.context = () => context;
+  await tracker.bindNetworkProvenance(page);
   const storeGet = {
     status: () => 404,
     url: () => `${CANONICAL}__spaceface_player_store`,
@@ -456,7 +459,7 @@ async function testOptInExpectedSoakNetworkPolicy() {
   strictTracker.stop();
 }
 
-async function testStorelessResponseMethodFallback() {
+async function testStorelessResponseMethodFallbackRemainsStrict() {
   const exactUrl = `${CANONICAL}__spaceface_player_store`;
   const genericNotFound = 'Failed to load resource: the server responded with a status of 404 (Not Found)';
   const context = new EventEmitter();
@@ -475,9 +478,9 @@ async function testStorelessResponseMethodFallback() {
     request: () => ({}),
   });
   context.emit('console', fakeConsoleMessage('error', genericNotFound));
-  assert.equal(tracker.errors().length, 0,
-    'a store-less GET remains diagnostic when the response wrapper omits its method');
-  assert.equal(tracker.ignored().filter((issue) => issue.absentPlayerStore || issue.absentPlayerStoreConsole).length, 2);
+  assert(tracker.errors().some((issue) => issue.source === 'response'),
+    'a response with no directly observed method remains fatal');
+  assert.equal(tracker.ignored().filter((issue) => issue.absentPlayerStore || issue.absentPlayerStoreConsole).length, 0);
   tracker.stop();
 
   const finishedContext = new EventEmitter();
@@ -498,8 +501,8 @@ async function testStorelessResponseMethodFallback() {
     request: () => ({}),
   });
   finishedContext.emit('console', fakeConsoleMessage('error', genericNotFound));
-  assert.equal(finishedTracker.errors().length, 0,
-    'a methodless store response remains diagnostic after requestfinished metadata handoff');
+  assert(finishedTracker.errors().some((issue) => issue.source === 'response'),
+    'requestfinished metadata does not turn a methodless response into an exempt GET');
   finishedTracker.stop();
 
   const replayContext = new EventEmitter();
@@ -520,8 +523,8 @@ async function testStorelessResponseMethodFallback() {
     request: () => ({}),
   });
   replayContext.emit('console', fakeConsoleMessage('error', genericNotFound));
-  assert.equal(replayTracker.errors().length, 0,
-    'backfill replay must not duplicate retained store-request metadata');
+  assert(replayTracker.errors().some((issue) => issue.source === 'response'),
+    'backfill replay cannot turn a methodless response into an exempt GET');
   replayTracker.stop();
 
   const negativeContext = new EventEmitter();
@@ -672,7 +675,7 @@ async function testStorelessCdpRequestIdProvenance() {
   assert.equal(detached, true, 'tracker cleanup detaches its CDP session');
 }
 
-async function testStorelessCdpUnmatchedPlaywrightFailsClosed() {
+async function testStorelessUnmatchedObservedGet() {
   const exactUrl = `${CANONICAL}__spaceface_player_store`;
   const context = new EventEmitter();
   const cdp = new EventEmitter();
@@ -720,9 +723,11 @@ async function testStorelessCdpUnmatchedPlaywrightFailsClosed() {
     },
   });
   wrappersLive = false;
-  assert.equal(tracker.errors().length, 1,
-    'an unmatched Playwright store GET 404 remains fatal when CDP reports no response');
-  const provenance = tracker.errors()[0].networkProvenance;
+  assert.equal(tracker.errors().length, 0,
+    'a directly observed unmatched Playwright store GET 404 is diagnostic when the store is absent');
+  const ignored = tracker.ignored().find((issue) => issue.absentPlayerStore === true);
+  assert(ignored, 'the absent-store GET remains available as bounded diagnostic evidence');
+  const provenance = ignored.networkProvenance;
   assert.equal(provenance.source, 'playwright-unmatched-cdp-response');
   assert.equal(provenance.method, 'GET');
   assert.equal(provenance.methodSource, 'playwright-response-request');
@@ -735,12 +740,12 @@ async function testStorelessCdpUnmatchedPlaywrightFailsClosed() {
   ]);
   assert.equal(responseRequestReads, 1, 'response wrapper metadata is snapshotted before teardown');
   assert.equal(methodReads, 1, 'method is not re-read after teardown');
-  assert.deepEqual(tracker.ignored(), [], 'an unmatched GET response is not exempted');
+  assert.equal(tracker.ignored().length, 1, 'the unmatched exact GET is the only ignored response');
   tracker.stop();
   assert.equal(detached, true, 'void-valued CDP detach is still invoked safely');
 }
 
-async function testStorelessCdpUnmatchedAmbiguousCandidatesStayFatal() {
+async function testStorelessCdpAmbiguityPreservesObservedGet() {
   const exactUrl = `${CANONICAL}__spaceface_player_store`;
   const context = new EventEmitter();
   const cdp = new EventEmitter();
@@ -765,14 +770,49 @@ async function testStorelessCdpUnmatchedAmbiguousCandidatesStayFatal() {
     url: () => exactUrl,
     request: () => ({ method: () => 'GET' }),
   });
-  const issue = tracker.errors()[0];
+  tracker.errors(); // Finalization materializes any unmatched Playwright response.
+  const issue = tracker.ignored()[0];
   assert.equal(issue.networkProvenance.method, 'GET');
   assert.equal(issue.networkProvenance.requestId, null, 'ambiguous CDP candidates are not joined');
   assert.equal(issue.networkProvenance.cdpRequestCandidateCount, 2);
   assert.deepEqual(issue.networkProvenance.cdpRequestCandidates.map((row) => row.requestId), ['store-get-a', 'store-get-b']);
-  assert.equal(tracker.errors().length, 1, 'an unmatched 404 remains fatal even when its observed method is GET');
-  assert.deepEqual(tracker.ignored(), []);
+  assert.equal(tracker.errors().length, 0, 'the observed GET remains diagnostic despite ambiguous CDP candidates');
+  assert.equal(issue.absentPlayerStore, true);
   tracker.stop();
+}
+
+async function testUnmatchedAbsentStoreOnlyIgnoresObservedCanonicalGet() {
+  const exactUrl = `${CANONICAL}__spaceface_player_store`;
+  const cases = [
+    { label: 'unknown method', url: exactUrl, method: null, ignored: false },
+    { label: 'PUT write', url: exactUrl, method: 'PUT', ignored: false },
+    { label: 'POST write', url: exactUrl, method: 'POST', ignored: false },
+    { label: 'DELETE write', url: exactUrl, method: 'DELETE', ignored: false },
+    { label: 'cross-origin GET', url: 'http://127.0.0.1:53067/__spaceface_player_store', method: 'GET', ignored: false },
+    { label: 'canonical GET', url: exactUrl, method: 'GET', ignored: true },
+  ];
+  for (const row of cases) {
+    const context = new EventEmitter();
+    const cdp = new EventEmitter();
+    cdp.send = async () => {};
+    cdp.detach = () => {};
+    context.newCDPSession = async () => cdp;
+    const electronApp = new EventEmitter();
+    electronApp.context = () => context;
+    const page = new FakePage(CANONICAL);
+    page.context = () => context;
+    const tracker = createStrictElectronApplicationIssueTracker(electronApp, { playerStoreMounted: false });
+    await tracker.bindNetworkProvenance(page);
+    context.emit('response', {
+      status: () => 404,
+      url: () => row.url,
+      request: row.method ? () => ({ method: () => row.method }) : () => ({}),
+    });
+    assert.equal(tracker.errors().length, row.ignored ? 0 : 1, `${row.label} classification`);
+    assert.equal(tracker.ignored().some((issue) => issue.absentPlayerStore === true), row.ignored,
+      `${row.label} diagnostic retention`);
+    tracker.stop();
+  }
 }
 
 async function testElectronUrlLifecycle() {
@@ -1647,10 +1687,11 @@ function delay(ms) {
 await testStrictPageIssueTracker();
 await testApplicationWideIssueTrackerAndBackfill();
 await testOptInExpectedSoakNetworkPolicy();
-await testStorelessResponseMethodFallback();
+await testStorelessResponseMethodFallbackRemainsStrict();
 await testStorelessCdpRequestIdProvenance();
-await testStorelessCdpUnmatchedPlaywrightFailsClosed();
-await testStorelessCdpUnmatchedAmbiguousCandidatesStayFatal();
+await testStorelessUnmatchedObservedGet();
+await testStorelessCdpAmbiguityPreservesObservedGet();
+await testUnmatchedAbsentStoreOnlyIgnoresObservedCanonicalGet();
 await testElectronUrlLifecycle();
 await testProcessMonitorAndCrashRejection();
 await testOwnedElectronCleanup();

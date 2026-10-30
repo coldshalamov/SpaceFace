@@ -56,6 +56,7 @@ export function createStrictElectronPageIssueTracker(page) {
 export function createStrictElectronApplicationIssueTracker(electronApp, options = {}) {
   const context = typeof electronApp?.context === 'function' ? electronApp.context() : null;
   const allowAbsentPlayerStore = options.playerStoreMounted === false;
+  let canonicalPageOrigin = null;
   const allowCancelledCinematicMedia = options.allowCancelledMedia === true;
   const issues = [];
   const ignoredIssues = [];
@@ -78,11 +79,9 @@ export function createStrictElectronApplicationIssueTracker(electronApp, options
   const activeRequests = new Set();
   const requestProvenance = new WeakMap();
   const pendingStoreRequests = new Map();
-  // Electron can deliver requestfinished before a response wrapper is handed to the
-  // application-wide listener. Keep the exact store request metadata through that
-  // boundary so a methodless response can still be classified from its own request.
-  // Entries are retired when their response (or failure) is observed; an unknown or
-  // ambiguous method remains fatal rather than falling back to GET.
+  // Retain exact request objects through requestfinished so store lifecycle entries can be
+  // retired correctly. These entries never authorize the optional-store exemption: only a
+  // joined CDP method or the response's directly observed request method can do that.
   const completedStoreRequests = new Map();
   // Playwright's Electron response/request façade can omit the method and can hand the
   // response a different wrapper object from the request event. Keep the exact CDP requestId
@@ -180,7 +179,7 @@ export function createStrictElectronApplicationIssueTracker(electronApp, options
     cdpClassifiedResponseCounts.set(key, (cdpClassifiedResponseCounts.get(key) || 0) + 1);
     cdpClassifiedResponseTotal += 1;
   };
-  const failUnmatchedPlaywrightStoreResponse = ({
+  const classifyUnmatchedPlaywrightStoreResponse = ({
     response,
     responseRequest,
     responseMethod,
@@ -191,10 +190,12 @@ export function createStrictElectronApplicationIssueTracker(electronApp, options
     url,
   }) => {
     // This response has no paired CDP response. Preserve the observed Playwright method
-    // and pending CDP request candidates, but keep the response fatal unless CDP joined it.
+    // and pending CDP request candidates. A directly observed GET to the exact optional
+    // endpoint on the bound canonical page origin is diagnostic; all other unmatched
+    // responses remain fatal.
     flushPendingGenericNotFoundConsoles();
     expectedAbsentStoreConsoleTokens = 0;
-    push({
+    const issue = {
       source: 'response',
       level: 'error',
       text: `HTTP ${status} ${url}`,
@@ -218,12 +219,18 @@ export function createStrictElectronApplicationIssueTracker(electronApp, options
           startedPhase: request.startedPhase,
         })),
       },
-    });
+    };
+    if (allowAbsentPlayerStore && isAbsentPlayerStoreGetResponse(status, url, responseMethod, canonicalPageOrigin)) {
+      expectedAbsentStoreConsoleTokens += 1;
+      pushIgnored(issue, { absentPlayerStore: true });
+    } else {
+      push(issue);
+    }
     retireStoreResponse(response, url, pendingStoreRequests, completedStoreRequests, responseRequest, true);
   };
   const flushDeferredPlaywrightStoreResponses = () => {
     while (deferredPlaywrightStoreResponses.length > 0) {
-      failUnmatchedPlaywrightStoreResponse(deferredPlaywrightStoreResponses.shift());
+      classifyUnmatchedPlaywrightStoreResponse(deferredPlaywrightStoreResponses.shift());
     }
   };
   const deferPlaywrightStoreResponse = (response, status, url) => {
@@ -248,7 +255,7 @@ export function createStrictElectronApplicationIssueTracker(electronApp, options
       url,
     };
     if (deferredPlaywrightStoreResponses.length >= MAX_CDP_STORE_PROVENANCE) {
-      failUnmatchedPlaywrightStoreResponse(deferredPlaywrightStoreResponses.shift());
+      classifyUnmatchedPlaywrightStoreResponse(deferredPlaywrightStoreResponses.shift());
     }
     deferredPlaywrightStoreResponses.push(deferred);
   };
@@ -370,14 +377,10 @@ export function createStrictElectronApplicationIssueTracker(electronApp, options
       flushPendingGenericNotFoundConsoles();
       const issue = { source: 'response', level: 'error', text: `HTTP ${status} ${url}` };
       // A CDP response is authoritative only when its requestId joined a tracked request.
-      // Never let a same-URL Playwright map entry turn an unknown CDP method into an expected
-      // GET; URL fallback is for the Playwright-only path and remains ambiguity-checked there.
-      const fallbackStoreMethod = allowAbsentPlayerStore
-        ? (networkProvenance?.source === 'cdp-network'
-          ? networkProvenance.method
-          : resolvePendingStoreRequestMethod(response, url, pendingStoreRequests, completedStoreRequests))
-        : null;
-      if (allowAbsentPlayerStore && isAbsentPlayerStoreGetResponse(response, status, url, fallbackStoreMethod)) {
+      // Request-event URL matches never supply a method for the optional-store exemption.
+      const observedMethod = normalizeCdpMethod(networkProvenance?.method)
+        || normalizeCdpMethod(readMaybeFunction(readMaybeFunction(response, 'request'), 'method'));
+      if (allowAbsentPlayerStore && isAbsentPlayerStoreGetResponse(status, url, observedMethod, canonicalPageOrigin)) {
         expectedAbsentStoreConsoleTokens += 1;
         pushIgnored(issue, {
           absentPlayerStore: true,
@@ -489,6 +492,13 @@ export function createStrictElectronApplicationIssueTracker(electronApp, options
   };
   const bindNetworkProvenance = async (page) => {
     if (!page || stopped || cdpPages.has(page)) return cdpNetwork.attached;
+    bindPage(page);
+    const captureCanonicalPageOrigin = () => {
+      if (canonicalPageOrigin) return;
+      try { canonicalPageOrigin = normalizeHttpOrigin(readMaybeFunction(page, 'url')); } catch (_) { /* wait for canonical navigation */ }
+    };
+    captureCanonicalPageOrigin();
+    listen(page, 'framenavigated', captureCanonicalPageOrigin);
     cdpPages.add(page);
     cdpNetwork.attempted = true;
     const pageContext = typeof page.context === 'function' ? page.context() : context;
@@ -718,15 +728,22 @@ function isGenericNotFoundConsole(text) {
     .test(String(text || '').trim());
 }
 
-function isAbsentPlayerStoreGetResponse(response, status, url, fallbackMethod = null) {
+function isAbsentPlayerStoreGetResponse(status, url, observedMethod = null, canonicalOrigin = null) {
   if (status !== 404) return false;
-  if (!isPlayerStorePath(url)) return false;
-  const request = readMaybeFunction(response, 'request');
-  const responseMethod = readMaybeFunction(request, 'method');
-  const method = String(responseMethod || fallbackMethod || '').toUpperCase();
-  // Playwright responses expose request(); without a method there is no safe way to
-  // distinguish the optional bootstrap GET from a failed write, so keep it fatal.
-  return method === 'GET';
+  let parsed;
+  try { parsed = new URL(String(url || '')); } catch (_) { return false; }
+  if (parsed.pathname !== '/__spaceface_player_store' || !canonicalOrigin || parsed.origin !== canonicalOrigin) return false;
+  return String(observedMethod || '').trim().toUpperCase() === 'GET';
+}
+
+function normalizeHttpOrigin(value) {
+  try {
+    const parsed = new URL(String(value || ''));
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return null;
+    return parsed.origin;
+  } catch (_) {
+    return null;
+  }
 }
 
 function isPlayerStorePath(url) {
@@ -735,18 +752,6 @@ function isPlayerStorePath(url) {
   } catch (_) {
     return false;
   }
-}
-
-function resolvePendingStoreRequestMethod(response, url, pendingRequests, completedRequests = null) {
-  if (!isPlayerStorePath(url)) return null;
-  const responseRequest = readMaybeFunction(response, 'request');
-  const maps = [pendingRequests, completedRequests].filter(Boolean);
-  const direct = maps.map((requests) => requests.get(responseRequest)).find(Boolean);
-  if (direct?.method) return direct.method;
-  const matching = maps.flatMap((requests) => [...requests.values()]).filter((entry) => entry.url === url);
-  // Any unknown or multiple same-URL requests make the fallback ambiguous. Keep the
-  // response fatal rather than allowing a GET to hide a write or another failure.
-  return matching.length === 1 && matching[0].method ? matching[0].method : null;
 }
 
 function retireStoreResponse(response, url, pendingRequests, completedRequests, responseRequestOverride = null, hasResponseRequestOverride = false) {
