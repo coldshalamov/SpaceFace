@@ -2167,6 +2167,9 @@ ${T} .sx-bar__hang:is(:hover, :focus-within)::after { background:${SPINE(3, .62)
   ${D} .sx-ledger__read > .sx-ledger__read-line { grid-column:2; grid-row:3; align-self:start; margin:0 !important; font-size:12.5px !important; line-height:1.3 !important; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   ${D} .sx-ledger__read-num { font-size:30px !important; line-height:1 !important; }
   ${D} .sx-ledger__read-hand { display:none !important; }
+  /* the ~42px ring here is narrower than NET · CR at the label's .14em tracking, so the key's ends
+     printed across the ring's lower bends; the key tightens and lifts into the ring's wider middle */
+  ${D} .sx-ledger .orr-ltape__purse text.orr-ltape__net-key { letter-spacing:.06em; font-stretch:100%; transform:translateY(-3px); }
 }
 
 /* Ledger at 1101–1440 wide × 461–720 tall (ui-polish-124): the purse sat under the tape, so at 1101×700 its
