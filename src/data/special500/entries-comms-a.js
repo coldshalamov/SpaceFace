@@ -318,6 +318,8 @@ export const ENTRIES_COMMS_A = [
       text: 'A formal reading of everything on file against your hull, verbatim, names and registration numbers included: the toll you ran ("witness: three hulls, one of them a child"), the queue you cut, the wake that rattled a pilgrim\'s lamp. The clerk reads all of it. The clerk has heard worse. The clerk has a favorite, and will not say which.',
       ttl: 9,
     },
+    dormant: true,
+    dormantReason: "Reads back a skipped toll, a cut queue and a pilgrim's lamp as facts on file; fires on any fine and the world records none of them.",
   },
 
   // SP2-128 — Scissorwake Spares The Tessera: the roamer's old-hulls mercy
@@ -464,6 +466,8 @@ export const ENTRIES_COMMS_A = [
       text: 'The whisper pool, which never addresses anyone, addresses you: "the toll you skipped still counts your engine note" — and then, once, for one transmission only, it names the exact lane. Same voice as always. The specificity is new.',
       ttl: 6,
     },
+    dormant: true,
+    dormantReason: "Claims the whisper names the exact lane the player skipped; no skipped-lane record exists and the sentence has no lane.",
   },
 
   // SP2-114 — The Fulfillment Queue Miracle: the queue files an emotion.
@@ -481,6 +485,8 @@ export const ENTRIES_COMMS_A = [
       text: 'DELIVERY RECEIVED. BUFFER: 0.00s. CLASSIFICATION: MIRACLE (STATISTICAL). MIRACLE HAS BEEN FILED. MIRACLE WILL NOT BE REPEATED. THE QUEUE IS EMOTIONAL ABOUT THIS AND DECLINES TO ELABORATE.',
       ttl: 7,
     },
+    dormant: true,
+    dormantReason: "Prints BUFFER: 0.00s / MIRACLE on any first delivery; no delivery-timing read exists.",
   },
 
   // SP2-020 — The Quiet's Receipt: sixty seconds after the fence deal closes,
@@ -547,6 +553,8 @@ export const ENTRIES_COMMS_A = [
       text: 'Recorded badly, in the contact\'s own voice: "I am not here. I am exactly where you are not, which is the point of a vacation. For seal codes press nothing. For anything else, wait, like the paperwork does."',
       ttl: 6,
     },
+    dormant: true,
+    dormantReason: "Vacation recording in the contact's own voice fires on any first hail from any contact; needs a per-contact voice/vacation state.",
   },
 
   // SP1-075 — The Ration Ledger: a hull two months off-lane sells its log by
@@ -580,6 +588,8 @@ export const ENTRIES_COMMS_A = [
       text: 'Vonn hails on an open channel and conducts the whole interview herself, three questions fast, answering them by reading your logged deeds back as quotes. Sign-off: "The Margin thanks you. The Margin bills nobody. Advertisers are afraid of us."',
       ttl: 9,
     },
+    dormant: true,
+    dormantReason: "Claims Lira read the player's logged deeds back as quotes; the payload carries no deed.",
   },
 
   // SP2-095 — The Helix Fine That Is A Compliment: zero invoices is anomalous,
@@ -597,6 +607,8 @@ export const ENTRIES_COMMS_A = [
       text: 'AUDIT COMPLETE. NO FINES OUTSTANDING. THIS IS ANOMALOUS. AN ANOMALY IS EITHER AN ERROR OR A STANDARD. WE HAVE FILED YOU AS A STANDARD. DO NOT DEVIATE. DEVIATION IS INVOICED.',
       ttl: 8,
     },
+    dormant: true,
+    dormantReason: "Asserts zero fines outstanding on any mission completion; no fine query backs it.",
   },
 
   // SP1-141 — The Weather Desk: a forecaster selling honest hazard calls.

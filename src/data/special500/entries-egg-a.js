@@ -78,6 +78,7 @@ export const ENTRIES_EGG_A = [
     title: 'The Rookie Scratch',
     sectors: ['sector_helios_prime'],
     trigger: { type: 'receipt', event: 'dock:docked' },
+    notBeforeS: 1200, // two world days in: not the very first dock
     channel: 'commsLog',
     payload: {
       from: 'Helios launch rack',
@@ -99,6 +100,8 @@ export const ENTRIES_EGG_A = [
       kind: 'bounties',
     },
     followup: 'seeded encounter with the real 7713 (QUARRY_NAMES in src/data/bountyHunters.js) keyed to the fired flag',
+    dormant: true,
+    dormantReason: "Posts a hardcoded bounty tag 7713 as one digit off your tag; no tag is derived from the player.",
   },
 
   // SPX-A-09 — The Half a Conversation: hail the retired buoy after SP2-029's flag
@@ -130,6 +133,8 @@ export const ENTRIES_EGG_A = [
       text: 'Scan complete. Nothing found, nothing filed — except the one line the receipt never prints: PROVENANCE: HONORED. Somewhere past the scanner\'s reach, a relay you will never see stamps your sale as complete.',
     },
     followup: 'flag origin_honored: the next Quiet fence greets the player by the canister contents, not their name; codex page "The Tell"',
+    dormant: true,
+    dormantReason: "contraband:scanned fires WITH a find, fine and confiscation; the line narrates a clean scan and PROVENANCE: HONORED.",
   },
 
   // SPX-B-07 — The Three Liars' Cache: the lock that accepts any answer, at the rim
@@ -169,7 +174,7 @@ export const ENTRIES_EGG_A = [
     kind: 'easter-egg',
     title: 'The Berth That Moves Out',
     sectors: ['sector_helios_prime'],
-    trigger: { type: 'receipt', event: 'dock:docked' },
+    trigger: { type: 'receipt', event: 'dock:docked', nth: 5 },
     channel: 'commsLog',
     payload: {
       from: 'Dockmaster slate',
@@ -260,6 +265,7 @@ export const ENTRIES_EGG_A = [
     title: 'The 47-A Refund',
     sectors: ['sector_helios_prime'],
     trigger: { type: 'receipt', event: 'dock:docked' },
+    notBeforeS: 60000, // 100 world days: the authored gate, so it is not the first Helios dock
     channel: 'comms',
     payload: {
       from: 'Kessler, Scale 4',
@@ -395,7 +401,7 @@ export const ENTRIES_EGG_A = [
     kind: 'easter-egg',
     title: 'Morrow\'s Hundredth Push',
     sectors: ['sector_helios_prime'],
-    trigger: { type: 'receipt', event: 'morrow:launch' },
+    trigger: { type: 'receipt', event: 'morrow:launch', nth: 100 },
     channel: 'comms',
     payload: {
       from: 'MORROW R-07',
@@ -416,7 +422,7 @@ export const ENTRIES_EGG_A = [
     payload: {
       from: 'Retired channel buoy',
       ttl: 7,
-      text: 'Third hail on a channel the network retired. The array answers, and it is not the standard no-registry: She asked me to keep answering. I am keeping. Do not tell the network. Then the buoy goes back to insisting nothing is out here, on schedule, forever.',
+      text: 'A hail on a channel the network retired. The array answers, and it is not the standard no-registry: She asked me to keep answering. I am keeping. Do not tell the network. Then the buoy goes back to insisting nothing is out here, on schedule, forever.',
     },
     followup: 'hail-count branch in the new hail-response data file (shared with SP2-018); codex overlay; flag buoy_keeping',
   },
@@ -478,7 +484,7 @@ export const ENTRIES_EGG_A = [
     payload: {
       from: 'RUBRIC HM-11',
       ttl: 7,
-      text: 'The stencil arrives unasked, applied gently somewhere near your airlock: HM-11 X [your callsign]. The mark is dated. The date is the day of your first Rubric sighting — not today. It has been planning this since you met.',
+      text: 'The stencil arrives unasked, applied gently somewhere near your airlock: HM-11 X, and your callsign in the same neat letters. The mark is dated. The date is the day of your first Rubric sighting — not today. It has been planning this since you met.',
     },
     followup: 'witnessed-marks counter (10+) + permanent shipScreen dressing + co-marked hail variance on Rubric-marked hulls',
   },
@@ -513,6 +519,8 @@ export const ENTRIES_EGG_A = [
       text: 'The registry pings one final line at the last dock of the crawl: OPERATOR FIELD REVIEW: UNKNOWN IS A STATUS, NOT AN ERASURE. THE FIELD REMAINS. THE FIELD IS WAITING FOR A VALUE. THIS IS THE ADMINISTRATIVE DEFINITION OF HOPE.',
     },
     followup: 'gate on the late_registry_unknown popup having fired + every-station-in-home-sector crawl check; flag field_waiting adds a blinking cursor after UNKNOWN in registry dressing',
+    dormant: true,
+    dormantReason: "Announces the last dock of the crawl on the first dock of the save; no end-of-crawl state exists.",
   },
 
   // SP1-089 — The Far-Side Message. Hone: the engine casts no shadow-text — the word
@@ -656,11 +664,11 @@ export const ENTRIES_EGG_A = [
     kind: 'easter-egg',
     title: 'The Fulfillment Kiosk Confesses',
     sectors: [],
-    trigger: { type: 'receipt', event: 'service:completed' },
+    trigger: { type: 'receipt', event: 'service:completed', nth: 50 },
     channel: 'commsLog',
     payload: {
       from: 'Service kiosk',
-      text: 'Between transactions, the queue-recital prints one line it was not supposed to: QUEUE NOTE: REGULAR CUSTOMER RECOGNIZED. PREFERENCE PROFILE: [52 ENTRIES]. ESTIMATED GESTALT OF PREFERENCES: THE CUSTOMER IS TRYING. Hailed about it later, the kiosk replies: NO NOTE FILED. RECALIBRATING.',
+      text: 'Between transactions, the queue-recital prints one line it was not supposed to: QUEUE NOTE: REGULAR CUSTOMER RECOGNIZED. PREFERENCE PROFILE: FIFTY ENTRIES AND COUNTING. ESTIMATED GESTALT OF PREFERENCES: THE CUSTOMER IS TRYING. Hailed about it later, the kiosk replies: NO NOTE FILED. RECALIBRATING.',
     },
     followup: 'per-kiosk use counter (50+) + flag kiosk_noticed; service prices at that kiosk -2% permanently',
   },

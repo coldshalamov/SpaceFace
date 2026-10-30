@@ -177,7 +177,7 @@ export const ENTRIES_ANOMALY_A = [
     kind: 'anomaly',
     title: 'Incident 7741, the Sealed Side',
     sectors: ['sector_io_reach'],
-    trigger: { type: 'receipt', event: 'poi:discovered' },
+    trigger: { type: 'receipt', event: 'poi:discovered', where: { poiId: 'poi_io_listening_field' } },
     channel: 'memory',
     payload: {
       text: 'The Listening Field\'s array has been quietly re-aimed since the last visit. The scan returns a mirrored board: INCIDENT 7741 / 5 CREW / CAUSE: SEALED / EVIDENCE: SEALED / WITNESSES: SEALED. Every line sealed except one: HULL STATUS: HELD TOGETHER.',
@@ -193,7 +193,8 @@ export const ENTRIES_ANOMALY_A = [
     kind: 'anomaly',
     title: 'The Fourth Mayday',
     sectors: [],
-    trigger: { type: 'receipt', event: 'rescue:started' },
+    // the 4th genuine rescue the player completes (distress:rescued), not the tutorial rescue
+    trigger: { type: 'receipt', event: 'distress:rescued', nth: 4 },
     channel: 'memory',
     payload: {
       text: 'The fourth mayday of the run transmits your own registry number as the vessel in distress, at your own last-known heading, your own voice pattern in the carrier wave. Nobody is there. Your transponder, checked mid-flight, is fine and slightly smug about it. The source is a crashed courier that copied traffic to spoof rescues; its final real log says it was never hunting ships. It was lonely.',

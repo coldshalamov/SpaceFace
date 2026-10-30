@@ -239,6 +239,7 @@ import { priceForecastSystem } from '../ui/priceForecast.js';
 import { contractClausesSystem } from '../systems/contractClauses.js';
 import { moralTrapSystem } from '../systems/moralTrap.js';
 import { moralMemorySystem } from '../systems/moralMemory.js';
+import { special500Director } from '../systems/special500Director.js';
 import { mail } from '../systems/mail.js';
 import { worldClock } from '../systems/worldClock.js';
 import { worldPressure } from '../systems/worldPressure.js';
@@ -542,6 +543,7 @@ export function getNodeSystemFactoryTable(options = {}) {
     ['contractClausesSystem', contractClausesSystem],
     ['moralTrapSystem', moralTrapSystem],
     ['moralMemory', moralMemorySystem],
+    ['special500', special500Director],
     ['mail', mail],
     ['worldClock', worldClock],
     ['worldPressure', worldPressure],

@@ -14,7 +14,7 @@
 
 import { SPECIAL500 } from '../data/special500/index.js';
 import { CAL_DAY_S, CAL_YEAR_DAYS } from '../data/worldCalendar.js';
-import { alive, entityById, situationMemory } from './crSituationKit.js';
+import { alive, situationMemory } from './crSituationKit.js';
 
 const CHECK_S = 0.5;
 
@@ -26,36 +26,79 @@ const RUNTIME = new WeakMap();
 function runtime(state) {
   let rt = RUNTIME.get(state);
   if (!rt) {
-    rt = { receipts: new Set(), lastSectorId: null, nextCheckAt: 0, anchorCache: new Map() };
+    rt = { lastSectorId: null, nextCheckAt: 0 };
     RUNTIME.set(state, rt);
   }
   return rt;
 }
 
-// Station/POI entities carry allocated ids; the catalog anchor is their world
-// id in data.stationId / data.poiId (or the literal entity id). Resolve once
-// per save and cache — stations do not move.
-function resolveAnchor(state, rt, anchorId) {
-  if (rt.anchorCache.has(anchorId)) {
-    const cached = rt.anchorCache.get(anchorId);
-    return cached && alive(cached) ? cached : null;
-  }
-  let found = null;
+// Live-world reads. The catalog was authored against state.player.sectorId/x/z, which
+// the real player record does not carry: the live sector is state.world.currentSectorId
+// and the hull position is the player entity's pos.
+function currentSectorId(state) {
+  const w = state && state.world;
+  return (w && w.currentSectorId) || (state && state.player && state.player.sectorId) || null;
+}
+
+function playerPos(state) {
+  const ent = state && state.entities && typeof state.entities.get === 'function'
+    ? state.entities.get(state.playerId) : null;
+  const p = (ent && ent.pos) || (state && state.player && state.player.pos) || state.player;
+  if (p && Number.isFinite(p.x) && Number.isFinite(p.z)) return { x: p.x, z: p.z };
+  return null;
+}
+
+// A catalog anchor is a world id (station id, poi id, or unique-wreck id). Sources, in
+// priority order:
+//   1. a live entity stamped data.uniqueWreckId — the hull of a runtime-owned wreck POI
+//      (its active.pois row has no authored pos, so the entity is the only true position);
+//   2. state.world.active.stations / .pois — the world owner publishes these for the
+//      loaded sector, INCLUDING runtime-owned POIs that have no marker entity;
+//   3. any live entity with data.stationId / data.poiId.
+// The index is rebuilt every check and never persisted: a miss now (sector not loaded,
+// station not spawned) retries next check, and nothing goes stale across sector change or
+// Continue.
+function buildAnchorIndex(state) {
+  const index = new Map();
+  const put = (id, pos) => {
+    if (id && pos && Number.isFinite(pos.x) && Number.isFinite(pos.z) && !index.has(id)) {
+      index.set(id, { x: pos.x, z: pos.z });
+    }
+  };
   const entities = state && state.entities;
-  if (entities) {
-    if (typeof entities.get === 'function') {
-      const direct = entities.get(anchorId);
-      if (direct) found = direct;
-    }
-    if (!found && typeof entities.values === 'function') {
-      for (const e of entities.values()) {
-        const d = e && e.data;
-        if (d && (d.stationId === anchorId || d.poiId === anchorId)) { found = e; break; }
-      }
+  const live = [];
+  if (entities && typeof entities.values === 'function') {
+    for (const e of entities.values()) {
+      const d = e && e.data;
+      if (d && e.pos && alive(e) && (d.uniqueWreckId || d.stationId || d.poiId)) live.push(e);
     }
   }
-  rt.anchorCache.set(anchorId, found);
-  return found && alive(found) ? found : null;
+  for (const e of live) put(e.data.uniqueWreckId, e.pos);
+  const active = state && state.world && state.world.active;
+  if (active) {
+    for (const row of active.stations || []) {
+      if (row) { put(row.stationId, row.pos); put(row.id, row.pos); }
+    }
+    for (const row of active.pois || []) {
+      if (row) put(row.poiId, row.pos);
+    }
+  }
+  for (const e of live) { put(e.data.stationId, e.pos); put(e.data.poiId, e.pos); }
+  return index;
+}
+
+/** Anchor id aliases: a catalog row may name the POI id of a runtime-owned unique wreck. */
+const ANCHOR_ALIAS = Object.freeze({
+  poi_helios_choir_tender: 'wreck_choir_tender',
+});
+
+function resolveAnchor(index, anchorId) {
+  if (!anchorId) return null;
+  const alias = ANCHOR_ALIAS[anchorId];
+  // an aliased unique wreck has no authored position: its active.pois row carries a
+  // scatter fallback, so only the live hull is a true anchor.
+  if (alias) return index.get(alias) || null;
+  return index.get(anchorId) || null;
 }
 
 function flagKey(id) {
@@ -120,13 +163,14 @@ export const special500Director = {
   name: 'special500',
 
   init(ctx) {
+    for (const off of this.off || []) { if (typeof off === 'function') off(); }
     this.bus = ctx.bus;
     this.events = [...new Set(SPECIAL500
       .filter((e) => e.trigger && e.trigger.type === 'receipt' && e.trigger.event)
       .map((e) => e.trigger.event))];
     this.off = [];
     for (const ev of this.events) {
-      const off = this.bus.on(ev, () => PENDING_RECEIPTS.add(ev));
+      const off = this.bus.on(ev, (payload) => { const l = pendingFor(ev); if (l.length < 64) l.push(payload); });
       this.off.push(off);
     }
   },
@@ -134,21 +178,28 @@ export const special500Director = {
   update(dt, state) {
     const rt = runtime(state);
     const now = state.simTime;
-    if (now < rt.nextCheckAt) return;
+    // (a clock that ran backwards — new game on a reused state — re-opens the throttle)
+    if (now < rt.nextCheckAt && now >= rt.nextCheckAt - CHECK_S * 2) return;
     rt.nextCheckAt = now + CHECK_S;
     // per-check receipt window: a receipt makes its entries eligible for this
     // check only, then clears — receipts do not accumulate.
-    const receipts = rt.receipts;
-    for (const ev of PENDING_RECEIPTS) receipts.add(ev);
+    const receipts = new Map(PENDING_RECEIPTS);
     PENDING_RECEIPTS.clear();
 
     const flags = (state.story && state.story.flags) || {};
-    const player = state.player || {};
-    const sectorId = player.sectorId || null;
+    const pos = playerPos(state);
+    const sectorId = currentSectorId(state);
     const dayIndex = Math.floor(now / CAL_DAY_S);
 
+    let anchors = null; // built lazily, once per check, only if a proximity row is reached
     for (const e of SPECIAL500) {
+      if (e.dormant) continue; // authored-but-unarmed: entry.dormantReason says why
       const t = e.trigger || {};
+      // after: extra gate — every listed entry id must already have fired (chains that the
+      // single trigger slot cannot express, e.g. proximity AND the predecessor beat).
+      if (e.after && !e.after.every((id) => firedAt(state, id) != null)) continue;
+      // notBeforeS: the authored "N days in" gate — a pure simTime floor.
+      if (e.notBeforeS && now < e.notBeforeS) continue;
       if (firedAt(state, e.id) != null && !(e.recurring && t.type === 'calendar')) continue;
       // sector scoping: a catalog entry bound to sectors fires only there
       if (e.sectors && e.sectors.length) {
@@ -166,17 +217,31 @@ export const special500Director = {
             (!e.sectors || !e.sectors.length || e.sectors.includes(sectorId)));
           break;
         case 'proximity': {
-          if (!Number.isFinite(player.x) || !Number.isFinite(player.z)) break;
-          const anchor = resolveAnchor(state, rt, t.nearStation);
+          if (!pos) break;
+          if (!anchors) anchors = buildAnchorIndex(state);
+          const anchor = resolveAnchor(anchors, t.nearStation);
           if (!anchor) break;
-          const dx = player.x - anchor.x;
-          const dz = player.z - anchor.z;
+          const dx = pos.x - anchor.x;
+          const dz = pos.z - anchor.z;
           ok = dx * dx + dz * dz <= t.wu * t.wu;
           break;
         }
-        case 'receipt':
-          ok = t.event ? receipts.has(t.event) : false;
+        case 'receipt': {
+          const heard = t.event ? receiptMatches(receipts.get(t.event), t.where) : 0;
+          if (!heard) break;
+          // nth: fire on the Nth matching receipt (default 1). The running count is a
+          // save-carried flag so "third escape" survives Continue.
+          const nth = t.nth > 1 ? t.nth | 0 : 1;
+          if (nth > 1) {
+            const key = `${flagKey(e.id)}.n`;
+            const total = ((flags[key] | 0) + heard);
+            if (state.story && state.story.flags) state.story.flags[key] = Math.min(total, nth);
+            ok = total >= nth;
+          } else {
+            ok = true;
+          }
           break;
+        }
         case 'hashDaily':
           ok = seededChance(`${e.id}|${dayIndex}|${(state.meta && state.meta.seed) || 0}`) < (t.chance || 0);
           break;
@@ -184,7 +249,8 @@ export const special500Director = {
           ok = now >= t.startS && now <= t.endS;
           break;
         case 'flag':
-          ok = !!(t.requires && flags[t.requires]);
+          // min: the flag must be a counter at or above this value (e.g. quill_copied >= 2)
+          ok = !!(t.requires && (t.min != null ? Number(flags[t.requires]) >= t.min : flags[t.requires]));
           break;
         default:
           break;
@@ -199,7 +265,7 @@ export const special500Director = {
   fire(e, state, rt, yearIndex) {
     markFired(state, e.id, state.simTime, yearIndex, e.recurring);
     if (e.channel === 'memory' || e.channel === 'spectacle') {
-      recordMemory(state, e.id, state.player && state.player.sectorId);
+      recordMemory(state, e.id, currentSectorId(state));
     }
     const p = e.payload || {};
     if (e.channel === 'comms') {
@@ -230,6 +296,24 @@ export const special500Director = {
   },
 };
 
-// Receipts can arrive between update checks; they park here until the next
-// update drains them into that check's eligibility window.
-const PENDING_RECEIPTS = new Set();
+// Receipts can arrive between update checks; they park here (event -> payload list) until
+// the next update drains them into that check's eligibility window.
+const PENDING_RECEIPTS = new Map();
+
+function pendingFor(ev) {
+  let list = PENDING_RECEIPTS.get(ev);
+  if (!list) { list = []; PENDING_RECEIPTS.set(ev, list); }
+  return list;
+}
+
+// How many of this window's payloads satisfy the declarative `where` filter
+// ({ key: value } shallow equality on the payload). No filter = every receipt counts.
+function receiptMatches(payloads, where) {
+  if (!payloads || !payloads.length) return 0;
+  if (!where) return payloads.length;
+  let n = 0;
+  for (const p of payloads) {
+    if (p && typeof p === 'object' && Object.keys(where).every((k) => p[k] === where[k])) n++;
+  }
+  return n;
+}

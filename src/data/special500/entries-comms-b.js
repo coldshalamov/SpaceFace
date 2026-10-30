@@ -73,6 +73,8 @@ export const ENTRIES_COMMS_B = [
       text: 'Third chase this run you have made more expensive than the cargo, and the voice you have never let catch up finally transmits direct: "You\'re expensive to chase. Cheaper to talk." They are selling the bearing of their rival pack\'s stash — for you, not for them — if you keep their name out of it.',
       ttl: 8,
     },
+    dormant: true,
+    dormantReason: "ai:flee is not the player's third escape (wing/AI flee emits share the event); needs a player-escape receipt.",
   },
 
   // SP2-015 — The Station That Counts Itself: the Red Cable Yard repeats the
@@ -87,7 +89,7 @@ export const ENTRIES_COMMS_B = [
     channel: 'comms',
     payload: {
       from: 'Red Cable Yard',
-      text: 'Second pass, and the yard\'s count is off by one. The extra cadence is your own last hail, played back note for note — the yard repeats you to yourself exactly once, then goes back to counting hulls. It counts. It rehearses.',
+      text: 'The yard\'s count is off by one. The extra cadence sounds a lot like a hail, played back once, note for note — then the yard goes back to counting hulls. It counts. It rehearses.',
       ttl: 8,
     },
   },
@@ -103,7 +105,7 @@ export const ENTRIES_COMMS_B = [
     channel: 'commsLog',
     payload: {
       from: 'Helios traffic',
-      text: 'Between shifts the station\'s band plays one song for empty lanes and holds one rule: nobody talks over it. Approach traffic goes silent and dances its docking in lights until the song ends. Break the rule once and the band names you for it — gently, permanently, in front of everyone: the one who talked.',
+      text: 'At some hours the station\'s band plays one song for empty lanes and holds one rule: nobody talks over it. Approach traffic goes silent and dances its docking in lights until the song ends.',
     },
   },
 
@@ -131,7 +133,7 @@ export const ENTRIES_COMMS_B = [
     kind: 'comms-event',
     title: 'The Blind Welder Sees You',
     sectors: ['sector_vesta_forge'],
-    trigger: { type: 'receipt', event: 'npcJobs:towAssistComplete' },
+    trigger: { type: 'receipt', event: 'npcJobs:towAssistComplete', nth: 2 },
     channel: 'comms',
     payload: {
       from: 'The Blind Welder',
@@ -214,7 +216,8 @@ export const ENTRIES_COMMS_B = [
     kind: 'comms-event',
     title: 'The Phoebe Encore',
     sectors: ['sector_phoebe_echo'],
-    trigger: { type: 'flag', requires: 'special500.SP2-029' },
+    trigger: { type: 'proximity', nearStation: 'poi_phoebe_echo', wu: 400 },
+    after: ['SP2-029'],
     channel: 'commsLog',
     payload: {
       from: 'Phoebe Echo array',
@@ -285,6 +288,8 @@ export const ENTRIES_COMMS_B = [
       text: 'Traffic control has developed opinions. "Tower to hull 4471-T: welcome back. Berth 12, as usual. Try not to dent 12." The regulars on the band consider this high society. The one day you dock sloppily, the whole approach goes quiet, and the tower says only: "...noted."',
       ttl: 7,
     },
+    dormant: true,
+    dormantReason: "Hardcodes hull 4471-T and Berth 12 and promises a sloppy-dock beat; needs per-station dock counts and the player callsign.",
   },
   // SP1-136 — The Broadcast Will: a dying captain's live will names the
   // nearest clean hull. Seeded rare; the sensor-math inheritance, the contest
@@ -314,7 +319,7 @@ export const ENTRIES_COMMS_B = [
     channel: 'comms',
     payload: {
       from: 'CONCORD RECORDS',
-      text: '"NOTICE OF RECIPROCAL FILING: YOUR PATTERNS HAVE BEEN FILED AS A FORM. FORM NUMBER ASSIGNED: 44-C-P[DAY OF FILING]. YOU ARE NOW CITABLE." Within the week, unrelated correspondence begins citing you by form number.',
+      text: '"NOTICE OF RECIPROCAL FILING: YOUR PATTERNS HAVE BEEN FILED AS A FORM. FORM NUMBER ASSIGNED: 44-C-P1. YOU ARE NOW CITABLE." Within the week, unrelated correspondence begins citing you by form number.',
       ttl: 8,
     },
   },
@@ -326,7 +331,7 @@ export const ENTRIES_COMMS_B = [
     kind: 'comms-event',
     title: 'The Helix Invoice Poem',
     sectors: [],
-    trigger: { type: 'receipt', event: 'helix:finePaid' },
+    trigger: { type: 'receipt', event: 'helix:finePaid', nth: 10 },
     channel: 'comms',
     payload: {
       from: 'HELIX DIRECTORATE',
@@ -410,6 +415,8 @@ export const ENTRIES_COMMS_B = [
       text: 'A month after the interview she billed nobody for, Lira Vonn publishes a correction — to an article about you that she never wrote: "THE MARGIN DOES NOT CORRECT RUMORS. THE MARGIN REPLACES THEM. THE PILOT IN QUESTION IS [DEED-LINE]. THE RUMOR IS [RUMOR-LINE]. ONE OF THESE IS FILED." Her filing system files only one kind of thing.',
       kind: 'incidents',
     },
+    dormant: true,
+    dormantReason: "Chained on the dormant SP2-073 and its copy carries unfilled DEED-LINE / RUMOR-LINE tokens; needs a deed ledger read.",
   },
   // SP3-093 — The Pour Announcement: thirty seconds of warning before the
   // landed SP3-083 pour (day 9, window [250,345]). Hones: announcement +
@@ -488,7 +495,7 @@ export const ENTRIES_COMMS_B = [
     channel: 'comms',
     payload: {
       from: 'station wire',
-      text: '"UNATTENDED CARGO, BAY 7. CLAIM OR IT DRILLS." Bay 7, the regulars will tell you, has been empty for nine years — which is exactly why the wire uses it: nothing in bay 7 has ever contradicted the wire yet. The pod on the apron is real, tagged, and yours if you latch it inside the hour.',
+      text: '"UNATTENDED CARGO, BAY 7. CLAIM OR IT DRILLS." Bay 7, the regulars will tell you, has been empty for nine years — which is exactly why the wire uses it: nothing in bay 7 has ever contradicted the wire yet. Nobody has ever found a pod there to claim, and the regulars take that as proof the wire is working.',
       ttl: 7,
     },
   },
@@ -525,7 +532,7 @@ export const ENTRIES_COMMS_B = [
     channel: 'comms',
     payload: {
       from: 'Kael',
-      text: 'One letter, no subject line: "Three days dark. Either you are rich, dead, or thinking. All three end at my bar eventually. Rate your odds on the way in."',
+      text: 'One letter, no subject line: "Three days in. Either you are rich, dead, or thinking. All three end at my bar eventually. Rate your odds on the way in."',
       ttl: 8,
     },
   },
@@ -672,7 +679,7 @@ export const ENTRIES_COMMS_B = [
     channel: 'commsLog',
     payload: {
       from: 'no callsign',
-      text: 'A flat voice reads seven digits, pauses, reads seven more, and signs off. Across nights the numbers count something real — the digit pairs match the sector\'s weather phases, three ahead. It is a forecast, sent to no one, and it is never wrong at the third pair.',
+      text: 'A flat voice reads seven digits, pauses, reads seven more, and signs off. The numbers count something. Nobody on any band can say what, or who is counting, and the voice has never answered a hail.',
     },
   },
 ];

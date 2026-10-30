@@ -14,6 +14,13 @@
 //   trigger  discriminated union, see src/systems/special500Director.js
 //   recurring  true = calendar entries re-arm every cycle (tracked per year)
 //   channel  comms | commsLog | news | mail | memory | spectacle
+//   dormant  true = authored but deliberately unarmed (needs dormantReason): the
+//            director skips it because its copy states facts the world cannot yet
+//            back, or its trigger cannot be made reliable. Never ships to a player.
+//   after    [ids] extra gate: every listed entry must already have fired
+//   notBeforeS  simTime floor ("N days in")
+//   trigger.where / trigger.nth  receipt filter (payload equality) / fire on Nth hit
+//   trigger.min  flag trigger: counter flag must be >= min
 //   payload  channel-shaped: { from, text } comms; { text, kind? } news;
 //            { event? } mail receipt; { text } memory/spectacle flavor line.
 //
@@ -68,6 +75,7 @@ export const SPECIAL500_TRIGGER_TYPES = Object.freeze([
 export function validateSpecial500(entries = SPECIAL500) {
   const problems = [];
   const seen = new Set();
+  const ids = new Set(entries.map((x) => x.id));
   for (const e of entries) {
     const at = `${e.id || '(no id)'}`;
     if (!e.id || seen.has(e.id)) problems.push(`${at}: missing or duplicate id`);
@@ -79,6 +87,14 @@ export function validateSpecial500(entries = SPECIAL500) {
     if (!e.title || !e.title.trim()) problems.push(`${at}: empty title`);
     const text = e.payload && e.payload.text;
     if (e.channel !== 'mail' && (!text || !String(text).trim())) problems.push(`${at}: empty payload text`);
+    if (e.dormant && !(typeof e.dormantReason === 'string' && e.dormantReason.trim())) {
+      problems.push(`${at}: dormant entry needs a dormantReason`);
+    }
+    if (t.nth != null && !(Number.isInteger(t.nth) && t.nth >= 1)) problems.push(`${at}: bad nth`);
+    if (t.where != null && (typeof t.where !== 'object' || Array.isArray(t.where))) problems.push(`${at}: bad where`);
+    if (e.after != null && !(Array.isArray(e.after) && e.after.every((id) => ids.has(id)))) {
+      problems.push(`${at}: after must list existing entry ids`);
+    }
     for (const s of e.sectors || []) {
       if (!String(s).startsWith('sector_')) problems.push(`${at}: suspicious sector id ${s}`);
     }

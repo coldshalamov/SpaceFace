@@ -442,7 +442,7 @@ export const ENTRIES_WORLD_A = [
     channel: 'memory',
     followup: 'Kiln runtime counter crossing the cool threshold on delivered/jettisoned coolant mass across visits; the state transition persists per save (flag kiln_cooled, Pitborn standing +2); a Pitborn fence later offers a discount memoized "the kiln put in a word."',
     payload: {
-      text: 'The Runaway Kiln\'s temperature curve bends down for the first time in its recorded life. It does not thank anyone: "COOLING. SCHEDULE: FIRST TIME. CAUSE: [YOUR HULL]. LOG: THE CAUSE IS NOTED. THE CAUSE MAY RETURN."',
+      text: 'The Runaway Kiln\'s temperature curve bends down for the first time in its recorded life. It does not thank anyone: "COOLING. SCHEDULE: FIRST TIME. CAUSE: YOUR HULL. LOG: THE CAUSE IS NOTED. THE CAUSE MAY RETURN."',
     },
   },
 

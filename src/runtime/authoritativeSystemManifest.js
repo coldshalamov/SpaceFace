@@ -92,6 +92,9 @@ export const PRODUCTION_INIT_ORDER = Object.freeze([
   // simTime-bucketed consequence pass (pressure escalation, offer expiry, witness
   // souring). Calendar clock beside its moralTrapSystem neighbor — see below.
   'moralMemory',
+  // special500: the 500-entry special catalog runtime. init subscribes the receipt events;
+  // update is the 0.5 s self-throttled trigger sweep (calendar clock, matches CHECK_S).
+  'special500',
   // PULSE-MAIL (435) / PULSE-TIME (439): listener+tick delivery and the world calendar's
   // transition announcer — both slow observers on the calendar clock.
   // worldPressure (§34 rows 520–523): the tide/gate-audit/slow-gray owner — reads
@@ -198,6 +201,10 @@ export const PRODUCTION_UPDATE_ORDER = Object.freeze([
   // posture as moralTrapSystem above: verbs are bus events, the clocked pass is the
   // expiry lane. Before voiceArbiter so a same-tick escalated collect lands together.
   'moralMemory',
+  // special500: sweeps the catalog after the story/deed/salvage owners have settled this
+  // tick, so receipts and flags they produced are visible; comms lines it emits are
+  // collected by voiceArbiter below on the same tick.
+  'special500',
   'voiceArbiter',
   // PULSE-MAIL / PULSE-TIME: mail delivery and calendar announcements run after the story
   // and deed systems so same-tick triggers resolve before letters and headlines go out.
@@ -410,6 +417,9 @@ export const CALENDAR_CLOCK_IDS = Object.freeze([
   // per 30 s simTime bucket — the 2 Hz declaration only schedules that check. Appended
   // last so every existing cohort index stays put.
   'moralMemory',
+  // special500: the catalog sweep self-throttles to 0.5 s of simTime (CHECK_S), which is
+  // exactly this clock's period. Appended last so every cohort index stays put.
+  'special500',
 ]);
 
 /**

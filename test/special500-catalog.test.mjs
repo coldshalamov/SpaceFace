@@ -32,11 +32,16 @@ function fixtureState() {
     tick: 0,
     mode: 'flight',
     meta: { seed: 2011 },
-    player: { sectorId: 'sector_helios_prime', x: 0, z: 0 },
+    // Live shapes: sector on state.world, hull position on the player entity's pos,
+    // stations published by the world owner on state.world.active.
+    playerId: 1,
+    player: {},
+    world: {
+      currentSectorId: 'sector_helios_prime',
+      active: { stations: [{ id: 7, stationId: 'station_tethys', pos: { x: 5000, z: -2000 } }], pois: [] },
+    },
     story: { flags: {} },
-    entities: new Map([
-      ['station_tethys_junction', { id: 'station_tethys_junction', alive: true, x: 5000, z: -2000 }],
-    ]),
+    entities: new Map([[1, { id: 1, type: 'player', alive: true, pos: { x: 0, z: 0 } }]]),
   };
 }
 
@@ -95,7 +100,7 @@ test('sectorEntry and proximity triggers fire once per save', () => {
   const bus = stubBus();
   special500Director.init({ bus });
   const state = fixtureState();
-  state.player.sectorId = 'sector_ceres_belt';
+  state.world.currentSectorId = 'sector_ceres_belt';
   special500Director.update(0.5, state);
   let logs = bus.seen.filter((s) => s.event === 'comms:log' && /eleven real cargo tethers/.test(s.payload.text));
   assert.equal(logs.length, 1);
@@ -107,9 +112,8 @@ test('sectorEntry and proximity triggers fire once per save', () => {
 
   // proximity: near the tethys buoy line (advance past the check throttle)
   state.simTime += 2;
-  state.player.sectorId = 'sector_tethys_junction';
-  state.player.x = 5200;
-  state.player.z = -2100;
+  state.world.currentSectorId = 'sector_tethys_junction';
+  state.entities.get(1).pos = { x: 5200, z: -2100 };
   special500Director.update(0.5, state);
   const popups = bus.seen.filter((s) => s.event === 'comms:popup' && s.payload.sender === 'Unregistered buoy');
   assert.equal(popups.length, 1);
