@@ -671,6 +671,7 @@ export const world = {
     this._sectorSeq = 0;          // legacy counter (kept for compat; residency epoch owns content RNG)
     this._tethysRunEntities = {};
     this._nextCriticalSpawnTick = 0;
+    this._deferredCriticalRecordIds = new Map(); // recordId → sectorId, spawn-cap retries
     this._pendingResidency = [];
     this._vestaDecisionSignature = null;
     this._vestaDecisionNeedsRebind = false;
@@ -728,6 +729,13 @@ export const world = {
       // The loaded save carries its own simTime; stamps taken against the pre-load clock are
       // stale — a leftover entry could suppress a fresh wire report for up to the full cooldown.
       if (this._wireReportAt) this._wireReportAt.clear();
+      // A corridor candidate stamped pre-load keeps a sinceT the rewound simTime can never
+      // reach (now - sinceT goes negative), so the border switch stalls while the player sits
+      // across the line. Re-arm the dwell against the loaded clock instead.
+      this._membershipCandidate = null;
+      // Spawn decisions belong to the incoming restore's materialize lane — a pre-load
+      // deferral would answer a record the restore envelope already owns.
+      if (this._deferredCriticalRecordIds) this._deferredCriticalRecordIds.clear();
     });
     bus.on('save:loaded', () => {
       if (this._vestaDecisionNeedsRebind) this._vestaDecisionSignature = null;
@@ -1642,12 +1650,22 @@ export const world = {
     this._promotePoiRowsToLive(sector, active);
     // Already has combat presence → keep anchors; still may need dressing.
     if ((active.enemies && active.enemies.length) || (active.dressing && active.dressing.length)) {
+      const resident = state.world.residentSectors[sectorId] || { epoch: 0 };
+      const epoch = Number.isFinite(resident.epoch) ? resident.epoch : 0;
       if (!(active.dressing && active.dressing.length)) {
-        const rec = state.world.residentSectors[sectorId] || { epoch: 0 };
-        const epoch = Number.isFinite(rec.epoch) ? rec.epoch : 0;
         state.world.rng = this.helpers.mulberry32(this.helpers.hash32(state.meta.seed, sectorId, epoch, 'full_extra'));
         this._spawnDressing(sector, active, state.world.rng);
         this.helpers.requestPresentationRebuild?.('sector-full-dressing');
+      }
+      // Combat presence must not latch fullExtrasBuilt over the boss gate: a rematerialized
+      // mission target or projected raid recipe put a hull in active.enemies, so the normal
+      // neighbor promote (Charon → Ashfall REDUCED→FULL) returned here without ever running
+      // _spawnBossIfDue — the Iron Maw stayed absent on every later promote. Same gate as the
+      // cold-FULL materialize and the full promote below: only when no boss record spawned.
+      if (!rematerialized.spawnedBoss) {
+        const bossRng = this.helpers.mulberry32(
+          this.helpers.hash32(state.meta.seed, sectorId, epoch, 'full_extra_boss'));
+        this._spawnBossIfDue(sector, active, bossRng);
       }
       this._ensureOpticStructures(sector, active);
       active.fullExtrasBuilt = true;
@@ -2167,13 +2185,21 @@ export const world = {
     const budgeted = spec.type === 'ship' && budget && typeof budget.request === 'function';
     if (budgeted && budget.request(1, requester) <= 0) {
       if (rec.kind === RECORD_KIND.MISSION_TARGET || rec.isBoss) {
-        this._noteSpawnWitness('criticalDeferred');
-        this.bus.emit('world:criticalSpawnDeferred', {
-          kind: rec.isBoss ? 'boss_record' : 'mission_record',
-          recordId: rec.recordId || null,
-          sectorId,
-          reason: 'spawn_cap',
-        });
+        // The only retry (_tickDeferredCriticalSpawns) watched just poi_boss.bossSpawnDeferred,
+        // so a capped mission/boss record stayed missing until the whole sector bag rebuilt.
+        // Track the deferral on the system; the tick re-attempts while the sector is resident.
+        const deferred = this._deferredCriticalRecordIds
+          || (this._deferredCriticalRecordIds = new Map());
+        if (!deferred.has(rec.recordId)) {
+          deferred.set(rec.recordId, sectorId);
+          this._noteSpawnWitness('criticalDeferred');
+          this.bus.emit('world:criticalSpawnDeferred', {
+            kind: rec.isBoss ? 'boss_record' : 'mission_record',
+            recordId: rec.recordId || null,
+            sectorId,
+            reason: 'spawn_cap',
+          });
+        }
       }
       return null;
     }
@@ -2215,6 +2241,9 @@ export const world = {
     if (advanced !== rec) {
       const bag = ensureWorldRecords(state.world);
       upsertRecord(bag, advanced);
+    }
+    if (this._deferredCriticalRecordIds && rec.recordId) {
+      this._deferredCriticalRecordIds.delete(rec.recordId);
     }
     return ent;
   },
@@ -2369,7 +2398,15 @@ export const world = {
     const entity=this.state.entities.get(entityId);
     if(!entity?.alive||entity.data?.vesselId!==vesselId)return false;
     const data=entity.data;
-    if(data.worldRecordId)this.markWorldRecordDestroyed(data.worldRecordId,{outcome:'custody_transferred',pos:{x:entity.pos.x,z:entity.pos.z}});
+    if(data.worldRecordId){
+      // 'custody_transferred' is not a terminal outcome normalizeRecord keeps — a save
+      // round-trip rewrote it to 'active', so a later upsert could flip the slot alive and
+      // rematerialize a twin of the jacked hull. 'destroyed' is the terminal latch the bag's
+      // normalize/upsert contract preserves; the custody provenance rides in extra, which
+      // normalizeRecord passes through verbatim.
+      const rec=this.markWorldRecordDestroyed(data.worldRecordId,{outcome:'destroyed',pos:{x:entity.pos.x,z:entity.pos.z}});
+      if(rec)rec.extra={...(rec.extra||{}),custodyOutcome:'custody_transferred'};
+    }
     if(data.jobId)this.helpers?.npcJobs?.release?.(data.jobId);
     data.persistenceOwner='shipjack';
     return true;
@@ -2749,8 +2786,11 @@ export const world = {
     for (const fdef of fieldDefs) {
       const depleted = (disc.fieldsDepleted && disc.fieldsDepleted[fdef.id]) || 0;
       const share = (fdef.countWeight || 1) / totalWeight;
+      // An authored `count` is exact — including 0 for an intentionally empty field (a named
+      // grit row that owes the sector a field entry but no rocks). The floor of one used to
+      // force a rock the author removed; only the interior-host early return hid it on Bolus.
       const count = fdef.count != null
-        ? Math.max(1, Math.round(fdef.count * (1 - 0.6 * depleted)))
+        ? Math.max(0, Math.round(fdef.count * (1 - 0.6 * depleted)))
         : Math.max(4, Math.round(budget * share * (1 - 0.6 * depleted)));
       // Authored fields may pin their center/radius for onboarding or landmark readability.
       // Math stays sector-local for layout/RNG; convert the center once for live records + rocks.
@@ -2816,7 +2856,12 @@ export const world = {
           }
         }
       }
-      this._ensureRockLadderBedrock(sector, fdef, params, centerLocal, clusterR, count, astIds);
+      // Authored count: 0 means a deliberately empty field — the ladder is for stocked belts,
+      // so its rungs respect the same authored floor the scatter pass does. Explicitly authored
+      // boulders (above) still stand: they are named bodies, not scatter.
+      if (fdef.count !== 0) {
+        this._ensureRockLadderBedrock(sector, fdef, params, centerLocal, clusterR, count, astIds);
+      }
       active.fields.push({ id: fdef.id, type: fdef.type, center: { x: center.x, z: center.z }, asteroidIds: astIds });
     }
   },
@@ -2994,8 +3039,10 @@ export const world = {
     }
     // Logical field rows include dormant rocks, so the result is independent of promotion order.
     // Reserve machine geometry from authored data too: its adapters materialize after the field.
+    // Only this sector's rocks block the spoke walk — a foreign-sector rock on the ray used to
+    // push a ladder rung tens of thousands of WU out of its own belt.
     const blockers = (this.state.world?.asteroidField?.rocks || [])
-      .filter(rock => rock && rock.alive !== false && rock.pos)
+      .filter(rock => rock && rock.alive !== false && rock.pos && rock.homeSectorId === sector.id)
       .map(rock => ({ pos: rock.pos,
         radius: asteroidColliderRadius(rock.data?.typeId, rock.radius) }));
     for (const machine of killMachinesForSector(sector.id)) {
@@ -5623,17 +5670,65 @@ export const world = {
     const sectorId = state.world && state.world.currentSectorId;
     const active = state.world && state.world.activeSector;
     const sector = sectorId && (state.world.sectors[sectorId] || SECTOR_BY_ID.get(sectorId));
-    if (!sector || !active) return;
-    const bossPoi = (sector.pois || []).find((p) => p.type === 'anomaly' && p.id === 'poi_boss');
-    const discovery = bossPoi && this._discoveryFor(sectorId).pois;
-    if (!bossPoi || !discovery || !discovery[bossPoi.id]?.bossSpawnDeferred) return;
-    const resident = state.world.residentSectors && state.world.residentSectors[sectorId];
-    if (!resident || resident.tier !== RESIDENCY_TIER.FULL) return;
-    const epoch = Number.isFinite(resident.epoch) ? resident.epoch : 0;
-    const rng = this.helpers.mulberry32(this.helpers.hash32(
-      state.meta.seed, sectorId, epoch, 'deferred_boss',
-    ));
-    this._spawnBossIfDue(sector, active, rng);
+    if (sector && active) {
+      const bossPoi = (sector.pois || []).find((p) => p.type === 'anomaly' && p.id === 'poi_boss');
+      const discovery = bossPoi && this._discoveryFor(sectorId).pois;
+      if (bossPoi && discovery && discovery[bossPoi.id]?.bossSpawnDeferred) {
+        const resident = state.world.residentSectors && state.world.residentSectors[sectorId];
+        if (resident && resident.tier === RESIDENCY_TIER.FULL) {
+          const epoch = Number.isFinite(resident.epoch) ? resident.epoch : 0;
+          const rng = this.helpers.mulberry32(this.helpers.hash32(
+            state.meta.seed, sectorId, epoch, 'deferred_boss',
+          ));
+          this._spawnBossIfDue(sector, active, rng);
+        }
+      }
+    }
+    this._retryDeferredCriticalRecords(state);
+  },
+
+  /**
+   * Retry mission-target/boss records a spawn-cap miss deferred (world:criticalSpawnDeferred
+   * reason 'spawn_cap'). The records loop is the same authority it deferred under: exactly-once
+   * by live holder, far-actor shelf, and restore envelope; tier still gates through
+   * recordShouldRematerialize. A still-capped retry re-marks nothing — the id stays mapped and
+   * _spawnFromDurableRecord only witnesses the first deferral. The flag dies when its record or
+   * its sector bag does; the next materialize is then the owning retry again.
+   */
+  _retryDeferredCriticalRecords(state) {
+    const deferred = this._deferredCriticalRecordIds;
+    if (!deferred || !deferred.size) return;
+    const world = state.world;
+    const bag = ensureWorldRecords(world);
+    const liveByRecordId = liveRecordEntityIndex(state);
+    const farRecordIds = farActorRecordIdSet(state);
+    const envelopeRecordIds = restoreEnvelopeRecordIds(state);
+    for (const [recordId, sectorId] of [...deferred]) {
+      const rec = bag && bag.byId ? bag.byId[recordId] : null;
+      const holder = rec ? liveByRecordId.get(recordId) : null;
+      if (!rec || (holder && holder.alive !== false)) { deferred.delete(recordId); continue; }
+      // Shelved far actors and restore-envelope rows own their live body elsewhere.
+      if (farRecordIds.has(recordId)
+        || (envelopeRecordIds && envelopeRecordIds.has(recordId))) continue;
+      const resident = world.residentSectors && world.residentSectors[sectorId];
+      const active = world.sectorContents && world.sectorContents[sectorId];
+      if (!resident || !active) { deferred.delete(recordId); continue; }
+      // Same FULL gate the boss retry uses: below FULL the strip equilibrium would take the
+      // body straight back to a record, and the next promote's records loop is the retry then.
+      if (resident.tier !== RESIDENCY_TIER.FULL || !recordShouldRematerialize(rec, resident.tier)) {
+        continue;
+      }
+      const ent = this._spawnFromDurableRecord(rec, sectorId);
+      if (!ent) continue;
+      if (ent.data && ent.data.isBoss) {
+        active.boss = { entityId: ent.id, poiId: ent.data.bossPoiId || rec.bossPoiId };
+      }
+      if (ent.type === 'ship') {
+        if (!active.enemies) active.enemies = [];
+        if (!active.enemies.includes(ent.id)) active.enemies.push(ent.id);
+      }
+      deferred.delete(recordId);
+    }
   },
 
   // Floating origin owner: derive a snapped frame from the player global position.
@@ -7843,6 +7938,8 @@ export const world = {
     resetFarActors(state);
     state.world.currentSectorId = null;
     this._nextCriticalSpawnTick = 0;
+    if (this._deferredCriticalRecordIds) this._deferredCriticalRecordIds.clear();
+    this._membershipCandidate = null;
     // simTime restarts at 0 on a new run — drop the wire-report cooldown map with it, or every
     // stamped sector suppresses its first report for up to WIRE_REPORT_COOLDOWN_S.
     this._wireReportAt = new Map();
