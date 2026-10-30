@@ -465,7 +465,7 @@ html body #screens > .sx-berth.orr-station .sx-receipt__delta { color:var(--dp-i
   ${M} .so-trade-total { align-items:center; display:grid !important; grid-template-columns:auto auto !important; justify-content:center; align-items:center; column-gap:14px; }
   ${M} .so-trade-total > span { grid-column:1 / -1; text-align:center; }
   ${M} .so-trade-total > strong { grid-column:1; white-space:nowrap !important; }
-  ${M} .orr-mkt-holdarc { grid-column:2; margin-top:0 !important; }
+  ${M} .orr-mkt-holdarc { grid-column:1 / -1; margin-top:0 !important; }
   ${M} .orr-mkt-holdarc svg { width:84px; height:48px; }
   ${M} .sx-trade__words { margin-top:0 !important; }
   ${M} .sx-trade__note { text-align:center; }

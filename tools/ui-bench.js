@@ -1115,6 +1115,16 @@ async function goto(rawId) {
         state.ui.docked = false;
         state.ui.dockedStationId = null;
       }
+      // Fixture: ?soldout=<cmdtyId> leaves the docked exchange with zero stock so the market
+      // row and hero print the authored SOLD OUT state (economy.marketStockStatus sells out
+      // under 2 units). Must run after the dock id is set: the table materializes on
+      // benchEconomyOwner()'s ensureMarket, and the screen later reuses the same owner.
+      if (params.get('soldout') && state.ui.dockedStationId) {
+        benchEconomyOwner();
+        const mkt = state.economy && state.economy.markets && state.economy.markets[state.ui.dockedStationId];
+        const entry = mkt && mkt[params.get('soldout')];
+        if (entry) entry.stock = 0;
+      }
       screensEl.appendChild(root);
       // The armory's "Rearrange loadout" opens the refit over the SAME open draft; keep that run.
       const sameRun = id === 'crucibleRefit' && current === 'crucibleDraft' && !!benchDraftOwner
@@ -1163,6 +1173,11 @@ async function goto(rawId) {
       if (shot.receipts) root.querySelector('[aria-controls="sf-mlog-completed-list"]')?.click();
       // An ORRERY screen arrives with choreography (rings draw, springs settle); shoot it at rest.
       if (typeof screen.settled === 'function') await screen.settled();
+      // Fixture: ?cmdk=1 opens the station command palette the way a player does — the real
+      // Ctrl+K keystroke through stationCommands' window listener.
+      if (params.get('cmdk') === '1') {
+        window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', code: 'KeyK', ctrlKey: true, bubbles: true, cancelable: true }));
+      }
       // A populated drill shot re-asserts its staged gauges (mount re-opened the session) and,
       // for -build, opens the palette the way a player does.
       if (id === 'drill' && shot.drill) settleDrillShot(state, shot, screen, ctx);
