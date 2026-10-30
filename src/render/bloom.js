@@ -867,6 +867,54 @@ export function scenePipelineReadinessBatchOpen() {
   return !!(pipelineReadinessBatch && pipelineReadinessBatch.accepting);
 }
 
+// Three returns materials, not the individual program variants it compiled. Capture
+// assignments and cache hits during the synchronous compile, including the early-out
+// cache hit which does not assign currentProgram. Never retain or poll other cache entries.
+function compileWithProgramCapture(renderer, subject, camera, lightingScene, programs) {
+  const store = renderer.properties;
+  const original = store.get;
+  const descriptor = Object.getOwnPropertyDescriptor(store, 'get');
+  const propertiesProxies = new WeakMap();
+  const mapProxies = new WeakMap();
+  const record = (program) => {
+    if (store.get === captureGet && program && typeof program.isReady === 'function') programs.add(program);
+    return program;
+  };
+  const captureMap = (map) => {
+    if (!(map instanceof Map)) return map;
+    if (!mapProxies.has(map)) mapProxies.set(map, new Proxy(map, {
+      get(target, key) {
+        if (key === 'get') return (cacheKey) => record(target.get(cacheKey));
+        const value = Reflect.get(target, key, target);
+        return typeof value === 'function' ? value.bind(target) : value;
+      },
+    }));
+    return mapProxies.get(map);
+  };
+  function captureGet(object) {
+    const properties = original.call(this, object);
+    if (!object?.isMaterial || !properties || typeof properties !== 'object') return properties;
+    if (!propertiesProxies.has(properties)) propertiesProxies.set(properties, new Proxy(properties, {
+      get(target, key, receiver) {
+        const value = Reflect.get(target, key, receiver);
+        return key === 'programs' ? captureMap(value) : value;
+      },
+      set(target, key, value, receiver) {
+        if (key === 'currentProgram') record(value);
+        return Reflect.set(target, key, value, receiver);
+      },
+    }));
+    return propertiesProxies.get(properties);
+  }
+  try {
+    store.get = captureGet;
+    return renderer.compile(subject, camera, lightingScene);
+  } finally {
+    if (descriptor) Object.defineProperty(store, 'get', descriptor);
+    else delete store.get;
+  }
+}
+
 export function compilePipelinesContextSafe(renderer, subject, camera, lightingScene, options = {}) {
   // Callers forward a nullable compileOptions slot: an explicit null slips past the `= {}`
   // default and would throw on the skipSharedBatch read below, rejecting every admission.
@@ -910,12 +958,14 @@ export function compilePipelinesContextSafe(renderer, subject, camera, lightingS
     canvas.addEventListener('webglcontextlost', onContextLost, false);
 
     let materials;
+    const programs = new Set();
     try {
-      materials = renderer.compile(subject, camera, lightingScene);
+      materials = compileWithProgramCapture(renderer, subject, camera, lightingScene, programs);
     } catch (error) {
       fail(error);
       return;
     }
+    if (settled) return;
 
     // Measured on this project's Intel/ANGLE D3D11 baseline: the extension IS present here, and
     // renderer.compile() above returns in ~0.4 ms because it only STARTS the driver link. The
@@ -927,7 +977,6 @@ export function compilePipelinesContextSafe(renderer, subject, camera, lightingS
       return;
     }
 
-    const programs = new Set();
     for (const material of materials) {
       const properties = renderer.properties.get(material);
       const program = properties && properties.currentProgram;

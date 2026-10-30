@@ -78,6 +78,7 @@ export function mountRacingHud({ root, bus, state, screens }) {
   // worker lane that registry is not visible to this main-thread HUD, so retain the public
   // launch option for the result-screen presentation decision.
   let temporaryCircuitRun = false;
+  let pendingResult = null;
   const offs = [];
   const combatLock = createHudCombatLock({ bus, state });
   let rowLocked = false;
@@ -91,9 +92,9 @@ export function mountRacingHud({ root, bus, state, screens }) {
     if (locked && row.contains?.(document.activeElement)) { try { document.activeElement.blur(); } catch {} }
   };
   const listen = (name,fn) => { const off=bus?.on?.(name,fn); if(typeof off==='function')offs.push(off); };
-  listen('game:new', (opts) => { temporaryCircuitRun = opts?.racingSession === true; });
+  listen('game:new', (opts) => { pendingResult = null; temporaryCircuitRun = opts?.racingSession === true; });
   for (const event of ['game:load', 'save:restoring', 'game:exitToMenu']) {
-    listen(event, () => { temporaryCircuitRun = false; });
+    listen(event, () => { pendingResult = null; temporaryCircuitRun = false; });
   }
   listen('race:toggleView',()=>{toggleSteeringView(state,bus);lastTick=-Infinity;});
   listen('settings:changed',()=>{lastTick=-Infinity;});
@@ -104,7 +105,32 @@ export function mountRacingHud({ root, bus, state, screens }) {
     pulse = `${p.lapCompleted ? 'LAP' : 'GATE'} ${p.gateIndex+1} CLEAR${split}`;
     pulseUntil = (state.simTime||0)+1.6; live.textContent=pulse;
   });
-  const showResult=()=>{if(temporaryCircuitRun)queueMicrotask(()=>{if(state.mode==='flight')screens?.pushScreen?.('raceBoard');});};
+  const tryShowResult = () => {
+    const pending = pendingResult;
+    if (!pending || pending.queued || state.mode !== 'flight') return;
+    const active = state.missions?.active;
+    if (Array.isArray(active) && active.some((mission) => mission?.status === 'active'
+      && (pending.missionId != null ? mission.id === pending.missionId
+        : mission.params?.racingContractId === pending.contractId))) return;
+    pending.queued = true;
+    queueMicrotask(() => {
+      if (pendingResult !== pending) return;
+      pending.queued = false;
+      const rows = state.missions?.active;
+      if (state.mode !== 'flight' || (Array.isArray(rows) && rows.some((mission) => mission?.status === 'active'
+        && (pending.missionId != null ? mission.id === pending.missionId
+          : mission.params?.racingContractId === pending.contractId)))) return;
+      pendingResult = null;
+      screens?.pushScreen?.('raceBoard');
+    });
+  };
+  const showResult = (payload) => {
+    if (!temporaryCircuitRun) return;
+    const active = activeAuthoredRace(state);
+    pendingResult = { missionId: payload?.missionId ?? (active?.params?.racingContractId === payload?.racingContractId ? active.id : null),
+      contractId: payload?.racingContractId, queued: false };
+    tryShowResult();
+  };
   listen('mission:completed',p=>{ if(p?.racingContractId) {
     rememberRacingResult(p);
     let storage=null;try{storage=globalThis.localStorage;}catch{}
@@ -115,12 +141,12 @@ export function mountRacingHud({ root, bus, state, screens }) {
         bus?.emit?.('toast',{text:'Race finished. This browser could not store the rival result.',kind:'info',ttl:4});
     }
     live.textContent=`Circuit complete in ${formatRaceTime(p.raceElapsedS)}`;
-    showResult();
+    showResult(p);
   } });
-  listen('race:ended',p=>{rememberRacingResult(p);releaseRacingCupHeat(p);showResult();});
+  listen('race:ended',p=>{rememberRacingResult(p);releaseRacingCupHeat(p);showResult(p);});
   listen('race:launchFailed',()=>releaseRacingCupHeat());
   listen('race:armed',()=>{ pulse=''; lastTick=-Infinity; });
-  listen('mission:updated',()=>{lastTick=-Infinity;});
+  listen('mission:updated',()=>{lastTick=-Infinity;tryShowResult();});
   // A player-attributed takedown is a fact/result — the shared receipt floor voices it.
   listen('race:takedown',p=>{
     const raceId = missionId ?? activeAuthoredRace(state)?.id;
@@ -133,6 +159,7 @@ export function mountRacingHud({ root, bus, state, screens }) {
 
   return {
     frame(liveState) {
+      tryShowResult();
       const st = liveState || state;
       const authored = activeAuthoredRace(st);
       syncParent(authored);
@@ -246,6 +273,6 @@ export function mountRacingHud({ root, bus, state, screens }) {
         `${tape.steerHint.toUpperCase()} ${Math.round(tape.distanceToGate)} u`+
         (tape.delta===null||personal?'':` · ${tape.delta>=0?'+':''}${tape.delta.toFixed(1)}s reference pace`))+personal+precision;
     },
-    dispose(){ for(const off of offs)off();combatLock.dispose();panel.remove(); },
+    dispose(){ pendingResult=null;for(const off of offs)off();combatLock.dispose();panel.remove(); },
   };
 }

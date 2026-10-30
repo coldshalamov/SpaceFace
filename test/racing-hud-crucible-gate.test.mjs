@@ -221,6 +221,51 @@ function busStub() {
   };
 }
 
+test('temporary result waits for the matching terminal mission projection before pausing on the board', async () => {
+  const dom = installDom();
+  let hud;
+  try {
+    const root = document.createElement('div'), state = flightState(), bus = busStub();
+    const pushed = [];
+    const mission = { id: 'm_2', type: 'race', status: 'active', params: { racingContractId: 'circuit-a' } };
+    state.missions = { active: [mission] };
+    hud = mountRacingHud({ root, state, bus, screens: { pushScreen: (id) => pushed.push(id) } });
+    bus.emit('game:new', { racingSession: true });
+    bus.emit('mission:completed', { missionId: 'm_2', racingContractId: 'circuit-a', raceMode: 'time-trial', raceElapsedS: 42 });
+    await Promise.resolve();
+    assert.deepEqual(pushed, [], 'forwarded completion cannot pause the stale active projection');
+    bus.emit('mission:updated', { missionId: 'm_2' });
+    await Promise.resolve();
+    assert.deepEqual(pushed, [], 'an update without terminal state is not enough');
+    state.missions.active = [];
+    bus.emit('mission:updated', { missionId: null });
+    await Promise.resolve();
+    assert.deepEqual(pushed, ['raceBoard'], 'the landed projection releases the result board');
+    bus.emit('mission:updated', {});
+    await Promise.resolve();
+    assert.deepEqual(pushed, ['raceBoard'], 'the result opens only once');
+  } finally { hud?.dispose(); dom.restore(); }
+});
+
+test('a pending DNF result is canceled by a new run before its terminal projection', async () => {
+  const dom = installDom();
+  let hud;
+  try {
+    const state = flightState(), bus = busStub(), pushed = [];
+    state.missions = { active: [{ id: 'm_2', type: 'race', status: 'active', params: { racingContractId: 'circuit-a' } }] };
+    hud = mountRacingHud({ root: document.createElement('div'), state, bus, screens: { pushScreen: (id) => pushed.push(id) } });
+    bus.emit('game:new', { racingSession: true });
+    bus.emit('race:ended', { racingContractId: 'circuit-a', status: 'dnf' });
+    await Promise.resolve();
+    assert.deepEqual(pushed, []);
+    bus.emit('game:new', {});
+    state.missions.active = [];
+    bus.emit('mission:updated', {});
+    await Promise.resolve();
+    assert.deepEqual(pushed, []);
+  } finally { hud?.dispose(); dom.restore(); }
+});
+
 test('temporary Circuits result auto-opens from the public launch marker without worker WeakMap state', async () => {
   const dom = installDom();
   let hud;
