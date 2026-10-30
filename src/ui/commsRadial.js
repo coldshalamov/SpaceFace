@@ -24,7 +24,7 @@ import { createMorphLabel } from './effects/morphLabel.js';
 import { factionIcon, icon as stationIcon } from './station/icons.js';
 import { dpIcon } from './deckplate/icons.js';
 import { injectCommsLayouts } from './orrery/commsLayouts.js';
-import { injectFlightRadialsLayouts } from './orrery/flight-radialsLayouts.js';
+import { injectFlightRadialsLayouts, syncRadialOwnsFrame } from './orrery/flight-radialsLayouts.js';
 import { FACTION_META } from '../data/factions.js';
 import { tierFor, factionStandingGuidance } from './factionStanding.js';
 import { resolveEntity } from './entityResolver.js';
@@ -625,6 +625,7 @@ export function createCommsRadial(ctx) {
     activePayload = probe;
     fan.hidden = false;
     fan.classList.add('is-open');
+    syncRadialOwnsFrame();
     if (!state.ui) state.ui = {};
     state.ui.commsRadialOpen = true;
     bus.emit('audio:cue', { id: 'ui_open' });
@@ -643,6 +644,7 @@ export function createCommsRadial(ctx) {
     lastWedgeSig = '';
     fan.classList.remove('is-open');
     fan.hidden = true;
+    syncRadialOwnsFrame();
     wedgeHost.replaceChildren();
     wedgeButtons = [];
     if (state.ui) state.ui.commsRadialOpen = false;
@@ -794,6 +796,7 @@ export function createCommsRadial(ctx) {
     deckOpen = true;
     deck.hidden = false;
     deck.classList.add('is-open');
+    syncRadialOwnsFrame();
     nextUiUpdateAt = Number(state.simTime) || 0;
     focusSafely(closeDeckBtn);
     return true;
@@ -805,6 +808,7 @@ export function createCommsRadial(ctx) {
     deckOpen = false;
     deck.classList.remove('is-open');
     deck.hidden = true;
+    syncRadialOwnsFrame();
     if (open) focusSafely(hubBtn);
     else if (heldFocus) restoreFlightFocus();
   }
@@ -1002,6 +1006,7 @@ export function createCommsRadial(ctx) {
     try { freqMorph.dispose(); } catch (_) {}
     fan.remove();
     deck.remove();
+    syncRadialOwnsFrame();
     // A torn-down fan must not leave the held-open flag set, or the velocity tape stays
     // suppressed on this state object with nothing left to clear it.
     if (state.ui) state.ui.commsRadialOpen = false;
