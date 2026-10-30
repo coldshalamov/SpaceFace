@@ -299,7 +299,6 @@ export function releasedPlayableFlightInPage({ minimumTick = null, minimumSimTim
     && Number.isFinite(state.timeScale) && state.timeScale > 0
     && !pauseRequested
     && document.visibilityState === 'visible'
-    && render.openingFirstPictureReady === true
     && Number.isFinite(render.firstPlayableFrameAt)
     && render.flightVeilHoldsSim !== true
     && Number.isFinite(tick) && Number.isFinite(simTime)

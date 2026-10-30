@@ -112,6 +112,18 @@ export function renderGeneratedCatalog(inventory) {
   return lines.join('\n');
 }
 
+/** Runtime payload kept outside the JavaScript bundle and fetched during boot. */
+export function renderGeneratedCatalogJson(inventory) {
+  const messages = {};
+  for (const entry of inventory.entries || []) messages[entry.key] = entry.message;
+  return `${JSON.stringify({
+    schema: 'spaceface.localizationCatalog.v1',
+    locale: 'en-US',
+    inventoryDigest: inventory.digest,
+    messages,
+  }, null, 2)}\n`;
+}
+
 export function inventoryDigest(entries) {
   const stable = (entries || []).map((entry) => [entry.key, entry.message, entry.path, entry.sink, entry.line]);
   return createHash('sha256').update(JSON.stringify(stable)).digest('hex');

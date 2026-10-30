@@ -1,16 +1,191 @@
 // Translation pipeline: machine first for inventory copy, overlays for store + bark (reviewed).
 // Deterministic. Placeholders, numbers, and proper nouns pass through untouched.
 
-import { messages as englishMessages } from './catalogs/en-US.generated.js';
 import { STORE_COPY } from './storeCopy.js';
-import { barkMessagesFor, barkTextMap } from './barks.js';
+import {
+  barkMessagesFor,
+  barkTextMap,
+  installBarkTranslations,
+  isBarkTranslationsReady,
+} from './barks.js';
 import { FIRST_HOUR_OVERLAY } from './firstHourOverlay.js';
+import { runtimeAssetUrl } from '../core/runtimeAssetUrl.js';
 import GLOSSARY_ES from './glossary/es-ES.js';
 import GLOSSARY_FR from './glossary/fr-FR.js';
 import GLOSSARY_DE from './glossary/de-DE.js';
 import GLOSSARY_PT from './glossary/pt-BR.js';
 
 export const SHIPPED_LOCALES = Object.freeze(['en-US', 'es-ES', 'fr-FR', 'de-DE', 'pt-BR']);
+
+const ENGLISH_CATALOG_SCHEMA = 'spaceface.localizationCatalog.v1';
+const ENGLISH_CATALOG_PATH = 'src/localization/catalogs/en-US.generated.json';
+const BARK_TRANSLATION_PATH = 'src/localization/barks.generated.json';
+const IS_RETAIL_BUILD = typeof __SPACEFACE_PRODUCTION__ !== 'undefined'
+  && __SPACEFACE_PRODUCTION__ === true;
+const IS_BROWSER_RUNTIME = typeof self !== 'undefined';
+// File-backed Node tests/tools (including worker shims) read the sidecar locally. Browser and
+// Electron runtime modules are served over HTTP(S), even when Electron exposes `process`.
+const IS_NODE_RUNTIME = typeof process !== 'undefined' && Boolean(process.versions?.node)
+  && import.meta.url.startsWith('file:');
+
+let englishMessages = null;
+let englishCatalogLoadPromise = null;
+let barkTranslationsLoadPromise = null;
+
+function validateEnglishCatalogPayload(payload) {
+  if (!payload || payload.schema !== ENGLISH_CATALOG_SCHEMA || payload.locale !== 'en-US'
+    || !/^[a-f0-9]{64}$/i.test(payload.inventoryDigest || '')
+    || !payload.messages || typeof payload.messages !== 'object' || Array.isArray(payload.messages)) {
+    throw new Error('English localization catalog has an invalid schema or inventory');
+  }
+  for (const [key, message] of Object.entries(payload.messages)) {
+    if (!key || typeof message !== 'string') throw new Error('English localization catalog contains an invalid message row');
+  }
+  return payload;
+}
+
+function installEnglishCatalog(payload) {
+  validateEnglishCatalogPayload(payload);
+  englishMessages = Object.freeze(payload.messages);
+  return englishMessages;
+}
+
+function readNodeEnglishCatalog() {
+  // Node-only test/tool fallback. Access builtins through Node's process object so no Node
+  // module import enters the browser graph; the retail build folds this branch away.
+  const nodeProcess = typeof process !== 'undefined' ? process : null;
+  if (!nodeProcess?.versions?.node || typeof nodeProcess.getBuiltinModule !== 'function') return false;
+  const fs = nodeProcess.getBuiltinModule('node:fs');
+  const { fileURLToPath } = nodeProcess.getBuiltinModule('node:url');
+  const filePath = fileURLToPath(new URL('./catalogs/en-US.generated.json', import.meta.url));
+  const payload = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+  installEnglishCatalog(payload);
+  englishCatalogLoadPromise = Promise.resolve(englishMessages);
+  return true;
+}
+
+export function resolveEnglishCatalogUrl({
+  production = IS_RETAIL_BUILD,
+  moduleUrl = import.meta.url,
+  documentBase = globalThis.document?.baseURI,
+  workerEntry = typeof document === 'undefined' ? globalThis.self?.location?.href : null,
+  releaseBase = typeof __SPACEFACE_RELEASE_BASE__ === 'string' ? __SPACEFACE_RELEASE_BASE__ : '',
+} = {}) {
+  return runtimeAssetUrl(ENGLISH_CATALOG_PATH, moduleUrl, {
+    production,
+    documentBase,
+    workerEntry,
+    releaseBase,
+  });
+}
+
+export function createEnglishCatalogRequest({ fetchImpl, url }) {
+  if (typeof fetchImpl !== 'function') throw new TypeError('English catalog fetch implementation is required');
+  if (typeof url !== 'string' || !url) throw new TypeError('English catalog URL is required');
+  let pending = null;
+  return () => {
+    if (!pending) {
+      pending = Promise.resolve().then(() => fetchImpl(url)).then(async (response) => {
+        if (!response || response.ok !== true) {
+          throw new Error(`English localization catalog request failed${response ? ` (${response.status})` : ''}`);
+        }
+        return validateEnglishCatalogPayload(await response.json());
+      }).catch((error) => {
+        pending = null;
+        throw error;
+      });
+    }
+    return pending;
+  };
+}
+
+export function resolveBarkTranslationsUrl({
+  production = IS_RETAIL_BUILD,
+  moduleUrl = import.meta.url,
+  documentBase = globalThis.document?.baseURI,
+  workerEntry = typeof document === 'undefined' ? globalThis.self?.location?.href : null,
+  releaseBase = typeof __SPACEFACE_RELEASE_BASE__ === 'string' ? __SPACEFACE_RELEASE_BASE__ : '',
+} = {}) {
+  return runtimeAssetUrl(BARK_TRANSLATION_PATH, moduleUrl, {
+    production,
+    documentBase,
+    workerEntry,
+    releaseBase,
+  });
+}
+
+export function createBarkTranslationsRequest({ fetchImpl, url }) {
+  if (typeof fetchImpl !== 'function') throw new TypeError('Bark translation request requires fetch');
+  if (typeof url !== 'string' || !url) throw new TypeError('Bark translation URL is required');
+  let pending = null;
+  return () => {
+    if (!pending) {
+      pending = Promise.resolve().then(() => fetchImpl(url)).then(async (response) => {
+        if (!response || response.ok !== true) {
+          throw new Error(`Bark translation catalog request failed${response ? ` (${response.status})` : ''}`);
+        }
+        return installBarkTranslations(await response.json());
+      }).catch((error) => {
+        pending = null;
+        throw error;
+      });
+    }
+    return pending;
+  };
+}
+
+export function ensureBarkTranslationsLoaded() {
+  if (isBarkTranslationsReady()) return Promise.resolve(true);
+  if (!barkTranslationsLoadPromise) {
+    const fetchImpl = globalThis.fetch;
+    if (typeof fetchImpl !== 'function') {
+      return Promise.reject(new Error('Bark translations are not available before localization initialization'));
+    }
+    const request = createBarkTranslationsRequest({
+      fetchImpl: (url) => fetchImpl(url, { credentials: 'same-origin' }),
+      url: resolveBarkTranslationsUrl(),
+    });
+    barkTranslationsLoadPromise = request().then(() => true).catch((error) => {
+      barkTranslationsLoadPromise = null;
+      throw error;
+    });
+  }
+  return barkTranslationsLoadPromise;
+}
+
+export function ensureEnglishCatalogLoaded() {
+  if (englishMessages) return Promise.resolve(englishMessages);
+  if (!englishCatalogLoadPromise) {
+    const fetchImpl = globalThis.fetch;
+    if (typeof fetchImpl !== 'function') {
+      return Promise.reject(new Error('English localization catalog is not available before localization initialization'));
+    }
+    const request = createEnglishCatalogRequest({
+      fetchImpl: (url) => fetchImpl(url, { credentials: 'same-origin' }),
+      url: resolveEnglishCatalogUrl(),
+    });
+    englishCatalogLoadPromise = request().then(installEnglishCatalog).catch((error) => {
+      englishCatalogLoadPromise = null;
+      throw error;
+    });
+  }
+  return englishCatalogLoadPromise;
+}
+
+export function isEnglishCatalogReady() {
+  return englishMessages !== null;
+}
+
+if (!IS_RETAIL_BUILD && IS_NODE_RUNTIME) readNodeEnglishCatalog();
+// Make the synchronous localization API safe as soon as import() resolves. If the first
+// request fails, leave the module usable so ensureLocalizationReady() can retry and surface the
+// failure through the ordinary boot error path.
+if (IS_BROWSER_RUNTIME) {
+  await Promise.all([
+    ensureEnglishCatalogLoaded().catch(() => {}),
+    ensureBarkTranslationsLoaded().catch(() => {}),
+  ]);
+}
 
 const PLACEHOLDER_SPLIT_RE = /(\{[A-Za-z_][A-Za-z0-9_.-]*\})/g;
 const PLACEHOLDER_TOKEN_RE = /^\{[A-Za-z_][A-Za-z0-9_.-]*\}$/;
@@ -353,6 +528,11 @@ export function translateMessage(locale, english, key) {
 
 const catalogCache = new Map();
 
+function requireEnglishMessages() {
+  if (!englishMessages) throw new Error('English localization catalog is not ready; await ensureEnglishCatalogLoaded()');
+  return englishMessages;
+}
+
 // The source locale merges once and the merge is shared: CATALOGS['en-US'] (through
 // deferredCatalog in gameLocalization.js) and this builder hand out the same frozen object —
 // the post-eval warm used to Object.assign a second full copy of every English row into
@@ -361,7 +541,7 @@ let englishMerged = null;
 function englishMergedCatalog() {
   if (englishMerged === null) {
     const out = {};
-    Object.assign(out, englishMessages, barkMessagesFor('en-US'), STORE_COPY['en-US']);
+    Object.assign(out, requireEnglishMessages(), barkMessagesFor('en-US'), STORE_COPY['en-US']);
     englishMerged = Object.freeze(out);
   }
   return englishMerged;
@@ -369,13 +549,14 @@ function englishMergedCatalog() {
 
 export function buildTranslatedCatalog(locale) {
   if (catalogCache.has(locale)) return catalogCache.get(locale);
+  const sourceMessages = requireEnglishMessages();
   if (locale === 'en-US') {
     const merged = englishMergedCatalog();
     catalogCache.set(locale, merged);
     return merged;
   }
   const out = {};
-  for (const [key, english] of Object.entries(englishMessages)) {
+  for (const [key, english] of Object.entries(sourceMessages)) {
     out[key] = translateMessage(locale, english, key);
   }
   Object.assign(out, barkMessagesFor(locale), STORE_COPY[locale] || {});
@@ -469,13 +650,13 @@ export function warmTranslatedCatalog(locale, sliceCount = 1600) {
   }
   let state = catalogWarmState.get(locale);
   if (!state) {
-    state = { out: {}, keys: Object.keys(englishMessages), index: 0 };
+    state = { out: {}, keys: Object.keys(requireEnglishMessages()), index: 0 };
     catalogWarmState.set(locale, state);
   }
   const end = Math.min(state.index + Math.max(1, Math.floor(sliceCount) || 1600), state.keys.length);
   for (; state.index < end; state.index++) {
     const key = state.keys[state.index];
-    state.out[key] = translateMessage(locale, englishMessages[key], key);
+    state.out[key] = translateMessage(locale, requireEnglishMessages()[key], key);
   }
   if (state.index < state.keys.length) return false;
   Object.assign(state.out, barkMessagesFor(locale), STORE_COPY[locale] || {});
@@ -512,11 +693,11 @@ export function localeReadiness(locale) {
   let total = 0;
   if (id === 'en-US') {
     // The source locale is reviewed by definition — every string is its own authored copy.
-    total = Object.keys(englishMessages).length;
+    total = Object.keys(requireEnglishMessages()).length;
     reviewed = total;
   } else {
     const barkMap = barkTextMap(id);
-    for (const [key, entry] of Object.entries(englishMessages)) {
+    for (const [key, entry] of Object.entries(requireEnglishMessages())) {
       total += 1;
       const english = typeof entry === 'string' ? entry : entry && entry.message;
       if (typeof english === 'string' && isReviewedString(id, english, key, barkMap)) reviewed += 1;
@@ -545,7 +726,7 @@ export function unreviewedKeys(locale, limit = 50) {
   if (id === 'en-US') return [];
   const barkMap = barkTextMap(id);
   const rows = [];
-  for (const [key, entry] of Object.entries(englishMessages)) {
+  for (const [key, entry] of Object.entries(requireEnglishMessages())) {
     if (rows.length >= limit) break;
     const english = typeof entry === 'string' ? entry : entry && entry.message;
     if (typeof english !== 'string') continue;

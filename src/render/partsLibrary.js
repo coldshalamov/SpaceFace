@@ -7958,7 +7958,23 @@ export function residencyOptionsForBoundary(entity, boundary, renderer) {
             && (typeof admissionOptions.isResidencyOwnerActive !== 'function'
               || admissionOptions.isResidencyOwnerActive());
           isActive.ownerKey = ownerKey;
-          isActive.ownerSnapshot = residency.isActive.ownerSnapshot;
+          isActive.ownerSnapshot = () => {
+            const outer = residency.isActive.ownerSnapshot?.() || {};
+            const nested = admissionOptions.isResidencyOwnerActive;
+            let nestedActive = null;
+            let nestedSnapshot = null;
+            if (typeof nested === 'function') {
+              try { nestedActive = nested() === true; } catch { nestedActive = false; }
+              try { nestedSnapshot = nested.ownerSnapshot?.() || null; } catch (error) {
+                nestedSnapshot = { snapshotError: String(error?.message || error) };
+              }
+            }
+            return {
+              ...outer,
+              nestedAdmissionOwnerActive: nestedActive,
+              nestedAdmissionOwner: nestedSnapshot,
+            };
+          };
           return trackOpeningWork(residency.call(root, {
             isActive,
             ownerKey: isActive.ownerKey,
@@ -8548,6 +8564,27 @@ function admitNextUpgradeJob(state) {
     && jobStillNeeded(state, owner)
     && (typeof requestedOwnerActive !== 'function' || requestedOwnerActive() === true);
   job.isAdmissionOwnerActive = isOwnerActive;
+  const isResidencyOwnerActive = () => !admission.signal.aborted && isOwnerActive();
+  isResidencyOwnerActive.ownerSnapshot = () => {
+    let requestedActive = null;
+    let requestedSnapshot = null;
+    if (typeof requestedOwnerActive === 'function') {
+      try { requestedActive = requestedOwnerActive() === true; } catch { requestedActive = false; }
+      try { requestedSnapshot = requestedOwnerActive.ownerSnapshot?.() || null; } catch (error) {
+        requestedSnapshot = { snapshotError: String(error?.message || error) };
+      }
+    }
+    return {
+      lifecycle: job.lifecycle || null,
+      admissionAborted: admission.signal.aborted,
+      queueRetired: state.retired === true,
+      boundaryCurrent: isBoundaryCurrent(),
+      abortedStalled: job.abortedStalled === true,
+      jobStillNeeded: jobStillNeeded(state, owner),
+      requestedOwnerActive: requestedActive,
+      requestedOwner: requestedSnapshot,
+    };
+  };
   // The rebuild below severs job.options from the caller's request bag (queued jobs shared the
   // identity — mergeQueuedJobOptions wrote through it). Keep the request bag reachable so a
   // same-boundary join's carryAdmissionEpochToJoinedJob still lands the newest epoch on the
@@ -8558,7 +8595,7 @@ function admitNextUpgradeJob(state) {
     asyncAdmission: job.admission,
     signal: job.admission.signal,
     isAdmissionBoundaryCurrent: isBoundaryCurrent,
-    isResidencyOwnerActive: () => !admission.signal.aborted && isOwnerActive(),
+    isResidencyOwnerActive,
   };
   promoteReadableAdmission(job);
   if (authoredRuntimeState()?.mode === 'flight') {

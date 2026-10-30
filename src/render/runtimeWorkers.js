@@ -1,5 +1,7 @@
 // One contract for the raw-module route, retail bundler and deployment reachability checks.
 // Worker URLs are not imports: esbuild cannot discover these through the main-thread graph.
+import { runtimeAssetUrl } from '../core/runtimeAssetUrl.js';
+export { runtimeAssetUrl };
 export const RUNTIME_WORKERS = Object.freeze([
   Object.freeze({ id: 'digest', source: 'src/render/renderPackageDigestWorker.js',
     output: 'workers/renderPackageDigestWorker.js', type: 'classic', format: 'iife' }),
@@ -12,21 +14,10 @@ export const RUNTIME_WORKERS = Object.freeze([
     output: 'workers/wholeSimBrowserWorker.js', type: 'module', format: 'esm' }),
 ]);
 
-export function runtimeWorkerUrl(id, moduleUrl, {
-  production = typeof __SPACEFACE_PRODUCTION__ !== 'undefined' && __SPACEFACE_PRODUCTION__ === true,
-  documentBase = globalThis.document?.baseURI,
-  releaseBase = typeof __SPACEFACE_RELEASE_BASE__ === 'string' ? __SPACEFACE_RELEASE_BASE__ : '',
-} = {}) {
+export function runtimeWorkerUrl(id, moduleUrl, options = {}) {
   const spec = RUNTIME_WORKERS.find(entry => entry.id === id);
   if (!spec) throw new RangeError(`Unknown runtime worker: ${id}`);
-  // A split chunk's import.meta.url is NOT the document root. Use the deployment's
-  // document base for retail. Vercel pins worker entries to the same release as the
-  // bundled entry without changing document.baseURI (inline SVG fragments depend on it).
-  if (production) {
-    const base = documentBase || moduleUrl;
-    return new URL(spec.output, releaseBase ? new URL(releaseBase, base) : base).href;
-  }
-  // Dev serves the source tree at the origin root — spec.source is a repo-root
-  // path, so resolve it there regardless of which module asks.
-  return new URL(`/${spec.source}`, moduleUrl).href;
+  const production = options.production ?? (typeof __SPACEFACE_PRODUCTION__ !== 'undefined'
+    && __SPACEFACE_PRODUCTION__ === true);
+  return runtimeAssetUrl(production ? spec.output : spec.source, moduleUrl, { ...options, production });
 }

@@ -444,10 +444,10 @@ export async function buildKillcamStage(built, io, options = {}) {
     roots: [stageRoot],
     update,
     controlsCamera: true,
-    dispose() {
-      environmentStage?.dispose();
-      weaponStage.dispose();
-      forceStage.dispose();
+    dispose({ disposeGpu = true } = {}) {
+      environmentStage?.dispose({ disposeGpu });
+      weaponStage.dispose({ disposeGpu });
+      forceStage.dispose({ disposeGpu });
       for (const slot of slots) if (slot.obj) { fleet.remove(slot.obj); slot.obj = null; }
       activeFlashes.length = 0;
       slots.length = 0;
@@ -523,7 +523,10 @@ function createForceStage(root, frames) {
       cables.update(facade);
       fields.update(dt, facade);
     },
-    dispose() { cables.dispose(); fields.dispose(); },
+    dispose({ disposeGpu = true } = {}) {
+      cables.dispose({ disposeGpu });
+      fields.dispose({ disposeGpu });
+    },
   };
 }
 

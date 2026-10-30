@@ -1933,6 +1933,8 @@ export function createSimLaneRuntime({
     scenarioContract: helpers && helpers.scenarioContract ? canonicalClone(helpers.scenarioContract) : null,
     scenarioContractPath: helpers && helpers.scenarioContractPath ? helpers.scenarioContractPath : null,
     scenarioContractHash: helpers && helpers.scenarioContractHash ? helpers.scenarioContractHash : null,
+    // The worker loads complete measurements in its own realm from the same immutable release.
+    modelTruthCensusUrl: helpers?.modelTruthCensusUrl || null,
     // ?simSab=1 honours the flag: the arena is minted here (crossOriginIsolated
     // was already resolved into warnings → sab=false when unavailable) and the
     // worker binds it for journal packs. Attach locally so busy-bit release

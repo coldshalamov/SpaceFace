@@ -15,7 +15,7 @@ import { ExplosionRupture } from '../src/render/combat/explosionRupture.js';
 import { SelectionSigil } from '../src/render/selectionSigil.js';
 import {
   createOpeningLoadingAdmission, waitForOpeningFirstPicture, waitForOpeningFirstPictureWithSingleOwnerRetry,
-  holdOpeningPresentationUntilPaint,
+  holdOpeningPresentationUntilPaint, openingLoadingModeResetAction,
   openingFirstPictureIsReady,
 } from '../src/render/pipelineReadiness.js';
 import { __setStartupBudgetScaleForTests } from '../src/render/startupPacing.js';
@@ -75,9 +75,11 @@ function loadingOwnerFixture() {
   const listenerStart = source.indexOf("onBus('mode:changed', ({ mode } = {}) => {");
   const listenerEnd = source.indexOf("onBus('jump:arrive'", listenerStart);
   new Function('onBus', 'state', 'vf', 'serviceFaultEpoch', 'mintResidentReattachSweep',
+    'openingLoadingModeResetAction', 'queueMicrotask',
     'resumeAuthoredUpgradeQueueForLoadingHulls', source.slice(listenerStart, listenerEnd))
     .call(owner, (_event, listener) => { loadingListener = listener; }, state,
-      { clearReadyPackagedBodies() {} }, () => 'fixture', () => {}, () => {});
+      { clearReadyPackagedBodies() {} }, () => 'fixture', () => {},
+      openingLoadingModeResetAction, queueMicrotask, () => {});
   return { state, owner, player, spindle, pelican, distant, built, loadingListener };
 }
 
@@ -95,19 +97,50 @@ test('loading cohort schedules valid runway actors outside the camera before the
   assert.deepEqual(new Set(built), new Set([1, 373, 534]));
 });
 
-test('delayed loading acknowledgement preserves the cohort that already owns this restore', async () => {
+test('replayed loading acknowledgement cannot revoke a ready picture after live state returns to flight', async () => {
+  const { state, owner, loadingListener } = loadingOwnerFixture();
+  await state.render.beginOpeningLoadingAdmission();
+  state.render.openingFirstPictureReady = true;
+  state.render.openingFirstPictureOwner = {
+    world: state.world, generation: state.render.admissionRunGeneration,
+    serial: state.world.enterSerial, sector: state.world.currentSectorId,
+    renderer: state.render.renderer, context: state.contextRestoreSeq,
+  };
+
+  loadingListener({ mode: 'loading' }); // simLaneMain is replaying the event-time mode
+  state.mode = 'flight'; // the reply's live/end mode is restored after dispatch
+  await flush();
+
+  assert.equal(state.render.openingFirstPictureReady, true);
+  assert.ok(state.render.openingFirstPictureOwner);
+  assert.ok(owner._openingLoadingAdmission,
+    'the stale loading event must not retire the current opening cohort');
+});
+
+test('delayed loading acknowledgement preserves the cohort and accepted receipt it owns', async () => {
   const { state, owner, loadingListener } = loadingOwnerFixture();
   await state.render.beginOpeningLoadingAdmission();
   const cohort = owner._openingLoadingAdmission;
   const ready = owner._openingLoadingMeshesReady;
+  state.render.openingFirstPictureReady = true;
+  state.render.openingFirstPictureOwner = {
+    world: state.world, generation: state.render.admissionRunGeneration,
+    serial: state.world.enterSerial, sector: state.world.currentSectorId,
+    renderer: state.render.renderer, context: state.contextRestoreSeq,
+  };
   loadingListener({ mode: 'loading' });
+  await flush();
   assert.equal(owner._openingLoadingAdmission, cohort,
     'the worker MODE acknowledgement must not retire the finite restore cohort');
   assert.equal(owner._openingLoadingMeshesReady, ready);
+  assert.equal(state.render.openingFirstPictureReady, true,
+    'a still-current exact receipt remains published');
   state.render.admissionRunGeneration++;
   loadingListener({ mode: 'loading' });
+  await flush();
   assert.equal(owner._openingLoadingAdmission, null, 'a new generation still resets the old owner');
   assert.equal(owner._openingLoadingMeshesReady, null);
+  assert.equal(state.render.openingFirstPictureReady, false);
 });
 
 test('another restore with the same player id still retires the prior cohort', async () => {
@@ -117,6 +150,7 @@ test('another restore with the same player id still retires the prior cohort', a
   state.entities.set(player.id, replacement);
   state.entityList[0] = replacement;
   loadingListener({ mode: 'loading' });
+  await flush();
   assert.equal(owner._openingLoadingAdmission, null,
     'an id reused by a different entity reference is a new restore owner');
   assert.equal(owner._openingLoadingMeshesReady, null);

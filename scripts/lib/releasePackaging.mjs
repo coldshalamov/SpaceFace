@@ -59,6 +59,10 @@ export const RELEASE_COPY_MAPPINGS = Object.freeze([
   // during authoring. Omitting this small JSON subtree rejects otherwise valid GLBs.
   Object.freeze({ source: 'assets/ships/motions', destination: 'assets/ships/motions' }),
   Object.freeze({ source: 'assets/portraits', destination: 'assets/portraits' }),
+  Object.freeze({ source: 'assets/characters/ruckus/ruckus-lod0.glb', destination: 'assets/characters/ruckus/ruckus-lod0.glb' }),
+  Object.freeze({ source: 'assets/characters/ruckus/ruckus-lod1.glb', destination: 'assets/characters/ruckus/ruckus-lod1.glb' }),
+  Object.freeze({ source: 'assets/characters/ruckus/ruckus-lod2.glb', destination: 'assets/characters/ruckus/ruckus-lod2.glb' }),
+  Object.freeze({ source: 'assets/characters/ruckus/pressure-core.glb', destination: 'assets/characters/ruckus/pressure-core.glb' }),
   // The authored audio tree ships: SAMPLE_MANIFEST sfx, bark_* register clips, and music beds
   // are all fetched from assets/audio/** at runtime (sampleLibrary.js, barkVoice.js).
   // Omitting it silently degrades the retail build to synth-only voices.
@@ -77,6 +81,9 @@ export const RELEASE_COPY_MAPPINGS = Object.freeze([
   // The live wreck investigation catalog imports this small authored variant table.
   Object.freeze({ source: 'assets/wreck-court', destination: 'assets/wreck-court' }),
   Object.freeze({ source: 'src/data/scenarios', destination: 'data/scenarios' }),
+  Object.freeze({ source: 'src/data/modelTruthCensus.json', destination: 'src/data/modelTruthCensus.json' }),
+  Object.freeze({ source: 'src/localization/catalogs/en-US.generated.json', destination: 'src/localization/catalogs/en-US.generated.json' }),
+  Object.freeze({ source: 'src/localization/barks.generated.json', destination: 'src/localization/barks.generated.json' }),
   Object.freeze({ source: 'vendor/addons/libs', destination: 'vendor/addons/libs' }),
 ]);
 
@@ -216,6 +223,12 @@ export async function copyReleaseRuntimeTrees({
     const source = resolveContained(projectRoot, plan.mapping.source, 'release copy source');
     const destination = resolveContained(bundleRoot, plan.mapping.destination, 'release copy destination');
     await assertNoSymlinkPath(bundleRoot, plan.mapping.destination, 'release copy destination', { allowMissing: true });
+    const sourceInfo = await lstat(source);
+    if (sourceInfo.isFile()) {
+      await mkdir(dirname(destination), { recursive: true });
+      await copyFile(source, destination);
+      continue;
+    }
     const excluded = new Set(plan.omissions.map((entry) => entry.path));
     await copyProjectedDir(source, destination, source, excluded);
   }
@@ -345,6 +358,14 @@ export async function validateReleaseBuildReceipt({
 export async function digestTree(root, { exclude = new Set() } = {}) {
   const base = resolve(root);
   const files = [];
+  const info = await lstat(base);
+  if (info.isSymbolicLink()) throw new Error(`release receipt refuses symbolic link ${base}`);
+  if (info.isFile()) {
+    const path = basename(base);
+    if (!exclude.has(path)) files.push({ path, bytes: info.size,
+      sha256: createHash('sha256').update(await readFile(base)).digest('hex') });
+    return digestFileRecords(files);
+  }
   await walk(base, base, files, exclude);
   return digestFileRecords(files);
 }

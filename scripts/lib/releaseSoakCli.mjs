@@ -5,9 +5,12 @@ import path from 'node:path';
 
 import {
   DEFAULT_CYCLES,
+  DEFAULT_POST_CONTEXT_OBSERVE_MS,
   DEFAULT_VIEWPORT,
   MAX_IMMUTABLE_SAVE_CYCLES,
   MAX_MIN_DURATION_MS,
+  MAX_POST_CONTEXT_OBSERVE_MS,
+  MIN_POST_CONTEXT_OBSERVE_MS,
   runReleaseSoakProbe,
 } from './releaseSoakProbe.mjs';
 import {
@@ -52,6 +55,7 @@ export function parseReleaseSoakArgs(argv, { runtime, root } = {}) {
     'dock-timeout-ms',
     'cycle-timeout-ms',
     'min-duration-ms',
+    'post-context-observe-ms',
     'cycle-screenshots',
     'immutable-save-cycles',
     'baseline-source',
@@ -74,6 +78,15 @@ export function parseReleaseSoakArgs(argv, { runtime, root } = {}) {
   if (immutableSaveCycles === 1) {
     throw new Error('--immutable-save-cycles must be 0 or at least 2 (one fixed save plus one reload)');
   }
+  const postContextObserveMs = readBoundedInteger(
+    values,
+    'post-context-observe-ms',
+    DEFAULT_POST_CONTEXT_OBSERVE_MS,
+    MAX_POST_CONTEXT_OBSERVE_MS,
+  );
+  if (postContextObserveMs < MIN_POST_CONTEXT_OBSERVE_MS) {
+    throw new Error(`--post-context-observe-ms must be >= ${MIN_POST_CONTEXT_OBSERVE_MS}`);
+  }
 
   return {
     runtime,
@@ -87,6 +100,7 @@ export function parseReleaseSoakArgs(argv, { runtime, root } = {}) {
     dockTimeoutMs: readPositiveInteger(values, 'dock-timeout-ms', 90_000),
     cycleTimeoutMs: readPositiveInteger(values, 'cycle-timeout-ms', 300_000),
     minDurationMs: readBoundedInteger(values, 'min-duration-ms', 0, MAX_MIN_DURATION_MS),
+    postContextObserveMs,
     cycleScreenshots: readBoolean(values, 'cycle-screenshots', true),
     immutableSaveCycles,
     baselineSource,

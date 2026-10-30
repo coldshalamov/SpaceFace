@@ -1496,6 +1496,7 @@
       "releaseBytes": 2894544,
       "rootNode": "SF_PLACE_CERES_SECOND_MEASURE_ROOT",
       "dynamicNameIncludes": [],
+      "positionPrecisionPolicy": "strict-clearance",
       "outputDir": "assets/ships/release/render-packages/ceres-second-measure",
       "metadataUrl": "assets/ships/release/render-packages/ceres-second-measure/render-package.json"
     },

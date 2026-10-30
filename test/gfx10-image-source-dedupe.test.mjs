@@ -172,6 +172,21 @@ test('a payload-released owner is a miss: clones of empty mips would crash the u
   assert.ok(adopted.source && adopted.source.data, 'the adopted texture keeps its own pixels');
 });
 
+test('a truthy closed image source does not replace pixels from a fresh decode', async () => {
+  const key = await imageSourceKeyAsync(bytes(42), 64, 'image/png');
+  const owner = claimSharedImageTexture(key, decodedTexture(1));
+  owner.source.data = { width: 0, height: 0, close() {} };
+
+  const fresh = decodedTexture(2);
+  const adopted = claimSharedImageTexture(key, fresh);
+
+  assert.equal(adopted, fresh, 'a closed ImageBitmap-shaped payload is treated as unavailable');
+  assert.notEqual(adopted.source, owner.source, 'the fresh source remains canonical');
+  assert.ok(adopted.source.data.width > 0 && adopted.source.data.height > 0);
+  assert.equal(sharedImageTextureFor(key)?.source, fresh.source,
+    'subsequent users share the usable payload, not the stale owner');
+});
+
 test('a fresh decode after owner payload release becomes the new owner', async () => {
   const key = await imageSourceKeyAsync(bytes(45), 64, 'image/ktx2');
   const owner = claimSharedImageTexture(key, decodedTexture(1));

@@ -113,6 +113,12 @@ ${GO} > .sf-go-tape .orr-tape__empty { fill:rgb(${BONE} / .8); }
 @media (min-width:1101px) and (max-width:1500px) and (max-height:640px) {
   ${GO} .sf-go-st:not(.sf-go-st--hub) { left:calc(50% + var(--sx, 0) * (var(--r) + 14px * var(--sv))); }
 }
+/* narrow short desktop (1101-1260w, <=640h): the left column is narrower than the one-line verb rail,
+   so Load latest ran under Lifetime profit. The primary keeps its own line; the two loads sit beneath it */
+@media (min-width:1101px) and (max-width:1260px) and (max-height:640px) {
+  ${GO} .sf-go-foot > .k-words { flex-wrap:wrap !important; row-gap:calc(4px * var(--sv)) !important; }
+  ${GO} .sf-go-foot > .k-words > li:first-child { flex-basis:100%; }
+}
 /* stacked (<=1100): the screen scrolls, so the rays and the scrim hold to the window instead of
    stretching the scroll sideways and past the tape into bare backdrop */
 @media (max-width:1100px) {

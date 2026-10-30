@@ -544,6 +544,67 @@ test('captured residency owner snapshot distinguishes a retired same-id entity f
   }
 });
 
+test('GPU residency snapshot names nested authored-job cancellation while outer boundary stays live', async () => {
+  const pump = fakeDisplayPump();
+  const fixture = liveRenderFixture();
+  const scene = new THREE.Group();
+  const boundary = new THREE.Group();
+  scene.add(boundary);
+  const entity = { id: 'cutter-residency-owner', type: 'ship', alive: true, data: {} };
+  fixture.liveState.entities.set(entity.id, entity);
+  fixture.liveState.entityList = [entity];
+  let requestedActive = true;
+  const requestedOwner = () => requestedActive;
+  requestedOwner.ownerSnapshot = () => ({ requestedBoundaryCurrent: requestedActive });
+  const pending = deferred();
+  let jobOwnerActive;
+  const job = {
+    boundary,
+    entity,
+    key: `entity:ship:${entity.id}`,
+    assetUrls: [],
+    run: ({ options }) => { jobOwnerActive = options.isResidencyOwnerActive; return pending.promise; },
+    options: { isResidencyOwnerActive: requestedOwner },
+  };
+  let warningSnapshot = null;
+  fixture.render.prepareAuthoredGpuResidency = (_root, options) => {
+    warningSnapshot = options.isActive.ownerSnapshot();
+    assert.equal(options.isActive(), false, 'the nested job owner is the cancellation source');
+    return Promise.resolve('resident');
+  };
+  try {
+    const completion = enqueueBoundaryUpgrade(scene, job);
+    pump.flushFrame();
+    await flushMicrotasks();
+    assert.equal(typeof jobOwnerActive, 'function');
+    requestedActive = false;
+
+    const residency = residencyOptionsForBoundary(entity, boundary, fixture.render.renderer);
+    await residency.prepareAuthoredGpuResidency(boundary, {
+      isResidencyOwnerActive: jobOwnerActive,
+    });
+
+    assert.equal(warningSnapshot.entityAlive, true);
+    assert.equal(warningSnapshot.entityIsCurrent, true);
+    assert.equal(warningSnapshot.renderMatches, true);
+    assert.equal(warningSnapshot.portMatches, true);
+    assert.equal(warningSnapshot.nestedAdmissionOwnerActive, false);
+    assert.equal(warningSnapshot.nestedAdmissionOwner.jobStillNeeded, true,
+      'the live scene job was cancelled by its requested owner, not detachment');
+    assert.equal(warningSnapshot.nestedAdmissionOwner.requestedOwnerActive, false);
+    assert.deepEqual(warningSnapshot.nestedAdmissionOwner.requestedOwner,
+      { requestedBoundaryCurrent: false });
+
+    cancelAuthoredUpgradeQueue(scene, 'fixture-retired');
+    await completion;
+  } finally {
+    pending.resolve('settled-after-cancel');
+    cancelAuthoredUpgradeQueue(scene, 'fixture-retired');
+    fixture.restore();
+    pump.restore();
+  }
+});
+
 test('identical port functions on a replaced native renderer still fail closed', async () => {
   const fixture = liveRenderFixture();
   try {

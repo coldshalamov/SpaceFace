@@ -282,7 +282,8 @@ export function createWorldObjectInteraction(ctx, screenManager) {
   }
 
   function hidePreview() {
-    if (tag) tag.el.hidden = true;
+    // tick() calls this every idle frame; re-setting [hidden] would invalidate style each time.
+    if (tag && !tag.el.hidden) tag.el.hidden = true;
     previewTextKey = '';
   }
 

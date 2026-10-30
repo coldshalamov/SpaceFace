@@ -17,6 +17,7 @@ import {
 import { MeshoptDecoder, MeshoptEncoder } from 'meshoptimizer';
 import { encodeRenderPackageGlb } from './renderPackageStorage.mjs';
 import { RELEASE_MESHOPT_OPTIONS } from './releaseMeshoptProfile.mjs';
+import { releasePlaceGeometryCompression } from './releaseStrictClearancePrecision.mjs';
 import { SINGLE_SIDE_REPORT_SCHEMA, singleSideWatertightOpaque } from './singleSideWatertightOpaque.mjs';
 
 import {
@@ -96,19 +97,37 @@ export async function compileRenderPackage(options = {}) {
   // source used, in glTF-Transform's documented optimize order (quantize -> reorder -> meshopt):
   // identical triangles, identical materials, identical pixels, roughly half the bytes to fetch,
   // parse and keep resident.
-  await document.transform(
-    weld({ overwrite: true }),
-    quantize({
-      quantizePosition: RELEASE_MESHOPT_OPTIONS.quantizePosition,
-      quantizeNormal: RELEASE_MESHOPT_OPTIONS.quantizeNormal,
-      quantizeTexcoord: RELEASE_MESHOPT_OPTIONS.quantizeTexcoord,
-      quantizeColor: RELEASE_MESHOPT_OPTIONS.quantizeColor,
-      quantizeWeight: RELEASE_MESHOPT_OPTIONS.quantizeWeight,
-      quantizeGeneric: RELEASE_MESHOPT_OPTIONS.quantizeGeneric,
-    }),
-    reorder({ encoder: MeshoptEncoder, target: 'performance', cleanup: true }),
-    meshopt({ encoder: MeshoptEncoder, ...RELEASE_MESHOPT_OPTIONS }),
-  );
+  if (options.positionPrecisionPolicy === 'strict-clearance') {
+    if (options.sourceAssetId !== 'place_ceres_second_measure') {
+      throw new Error('strict-clearance position precision is reserved for place_ceres_second_measure');
+    }
+    const certificate = document.getRoot().getAsset().extras?.ceresSecondMeasure;
+    await document.transform(
+      weld({ overwrite: true }),
+      releasePlaceGeometryCompression({
+        assetId: options.sourceAssetId,
+        certificate,
+        encoder: MeshoptEncoder,
+      }),
+    );
+  } else {
+    if (options.positionPrecisionPolicy !== undefined && options.positionPrecisionPolicy !== 'standard') {
+      throw new Error(`Unknown render package position precision policy ${options.positionPrecisionPolicy}`);
+    }
+    await document.transform(
+      weld({ overwrite: true }),
+      quantize({
+        quantizePosition: RELEASE_MESHOPT_OPTIONS.quantizePosition,
+        quantizeNormal: RELEASE_MESHOPT_OPTIONS.quantizeNormal,
+        quantizeTexcoord: RELEASE_MESHOPT_OPTIONS.quantizeTexcoord,
+        quantizeColor: RELEASE_MESHOPT_OPTIONS.quantizeColor,
+        quantizeWeight: RELEASE_MESHOPT_OPTIONS.quantizeWeight,
+        quantizeGeneric: RELEASE_MESHOPT_OPTIONS.quantizeGeneric,
+      }),
+      reorder({ encoder: MeshoptEncoder, target: 'performance', cleanup: true }),
+      meshopt({ encoder: MeshoptEncoder, ...RELEASE_MESHOPT_OPTIONS }),
+    );
+  }
   stampSemanticLocators(semanticManifest, resolvedNodes);
 
   const renderBytes = await encodeRenderPackageGlb(io, document);

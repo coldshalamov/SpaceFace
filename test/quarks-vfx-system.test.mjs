@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { QuarksVfxSystem } from '../src/render/vfx/quarksSystem.js';
 import { createSpindleGeometry } from '../src/render/weapons/projectileGeometries.js';
 import { EnergyBoltPool } from '../src/render/weapons/energyBoltPool.js';
+import { createDynamicBufferCoordinator, disposeDynamicBufferCoordinator } from '../src/render/dynamicBufferRanges.js';
 
 test('createSpindleGeometry produces 3D multi-planar vertices and indices', () => {
   const geo = createSpindleGeometry(3);
@@ -30,6 +31,24 @@ test('EnergyBoltPool integrates 3D spindle geometry and non-billboard shader', (
   assert.ok(pool.material.vertexShader.includes('r1 * shaped.y + r2 * shaped.z'));
   assert.ok(!pool.material.vertexShader.includes('cross(axis, toCam)'), 'billboard cross-product must be removed');
   pool.dispose();
+});
+
+test('EnergyBoltPool loss retirement releases JS owners without dispatching GPU disposal', () => {
+  const scene = new THREE.Scene();
+  const coordinator = createDynamicBufferCoordinator(scene);
+  const pool = new EnergyBoltPool(scene, { capacity: 2 });
+  const owner = pool.dynamicBufferOwner;
+  const resources = [pool.geometry, pool.material, pool.mesh];
+  let disposeEvents = 0;
+  for (const resource of resources) resource.addEventListener('dispose', () => { disposeEvents++; });
+
+  pool.dispose({ disposeGpu: false });
+
+  assert.equal(owner.disposed, true, 'dynamic-buffer callbacks are unregistered');
+  assert.equal(pool.dynamicBufferOwner, null);
+  assert.equal(pool.mesh.parent, null, 'the old pool is detached from its scene');
+  assert.equal(disposeEvents, 0, 'lost-context retirement does not dispatch Three GPU dispose events');
+  disposeDynamicBufferCoordinator(coordinator);
 });
 
 test('QuarksVfxSystem attaches to scene, spawns 3D particle bursts, and disposes cleanly', () => {

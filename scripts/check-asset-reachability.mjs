@@ -22,7 +22,6 @@ import {
 import { WRECK_CATHEDRAL_EVIDENCE_CATALOG } from '../src/data/wreckCathedralEvidenceCatalog.js';
 import { renderPackagePilotForSourceUrl } from '../src/render/renderPackageManifest.js';
 import { RELEASE_COPY_MAPPINGS, releaseCopyExcludePrefixes, safeRelativePath } from './lib/releasePackaging.mjs';
-import { CENSUS_JSON } from '../src/data/modelTruthCensus.generated.js';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -49,9 +48,6 @@ const SCAN_DIRS = ['src', 'styles'];
 const SCAN_EXT = /\.(m?js|css)$/;
 const NON_RUNTIME_SCAN_FILES = new Set([
   'src/contracts/assetValidation.js',
-  // This data-only document embeds authoring provenance as well as runtime URLs.
-  // Collect its declared row URLs below; source-manifest paths are not fetches.
-  'src/data/modelTruthCensus.generated.js',
 ]);
 // Match a relative assets/... path with a media extension (the leading ../ or ./ falls outside).
 const ASSET_RE = /assets\/[A-Za-z0-9_./-]+\.(?:jpg|jpeg|png|webp|gif|mp4|webm|ogg|wav|mp3|aac|m4a|flac|opus|glb|gltf|ktx2|svg|json)/g;
@@ -103,8 +99,9 @@ for (const dir of SCAN_DIRS) {
 
 const thrusterManifestPath = 'assets/fx/thruster/manifest.json';
 const thrusterManifest = JSON.parse(readFileSync(join(ROOT, thrusterManifestPath), 'utf8'));
+const modelTruthCensus = JSON.parse(readFileSync(join(ROOT, 'src/data/modelTruthCensus.json'), 'utf8'));
 const dynamicRegistries = Object.freeze({
-  modelTruthRuntime: Object.freeze(JSON.parse(CENSUS_JSON).rows
+  modelTruthRuntime: Object.freeze(modelTruthCensus.rows
     .map(row => row.url).filter(url => typeof url === 'string' && url.startsWith('assets/'))),
   portraits: Object.freeze(
     [...Object.values(CANONICAL_PORTRAITS), ...Object.values(NAMED_CONTACT_PORTRAITS)]
@@ -119,7 +116,7 @@ const dynamicRegistries = Object.freeze({
 });
 
 for (const asset of dynamicRegistries.modelTruthRuntime) {
-  addReference(asset, 'src/data/modelTruthCensus.generated.js#rows.url');
+  addReference(asset, 'src/data/modelTruthCensus.json#rows.url');
 }
 
 for (const asset of dynamicRegistries.portraits) {

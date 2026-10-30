@@ -23,6 +23,25 @@ import { BLIND_REGISTER_CLIPS, enumerateDeliveredBarkWavs } from '../src/audio/b
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
+test('individual JSON runtime assets copy exactly and remain covered by the release receipt', async (t) => {
+  const root = await mkdtemp(join(tmpdir(), 'spaceface-copy-json-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const web = join(root, 'build', 'web');
+  const path = 'src/data/measurements.json';
+  await mkdir(join(root, 'src', 'data'), { recursive: true });
+  await writeFile(join(root, path), '{"ship":{"radius":19.25,"offset":[1,2,3]}}\n');
+  const mappings = [{ source: path, destination: path }];
+  await copyReleaseRuntimeTrees({ root, webRoot: web, mappings });
+  assert.equal(await readFile(join(web, path), 'utf8'), await readFile(join(root, path), 'utf8'));
+  const receipt = await createReleaseBuildReceipt({ root, webRoot: web, mappings });
+  assert.equal(receipt.copies[0].exact, true);
+  assert.equal(receipt.copies[0].fileCount, 1);
+  assert.equal((await validateReleaseBuildReceipt({ root, webRoot: web, mappings, receipt })).pass, true);
+  await writeFile(join(web, path), '{"ship":{"radius":1}}');
+  assert.equal((await validateReleaseBuildReceipt({ root, webRoot: web, mappings, receipt })).pass, false,
+    'a changed measurement payload cannot retain a passing release receipt');
+});
+
 test('release copy map includes only the live thruster texture runtime subtree', () => {
   assert.ok(
     RELEASE_COPY_MAPPINGS.some(({ source, destination }) =>

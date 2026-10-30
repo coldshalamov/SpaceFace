@@ -50,5 +50,5 @@
       "drawCalls": 5
     }
   },
-  "runtime": "Synchronous generated GLB accessors; identical geometry, rigid nodes and materials"
+  "runtime": "Demand-fetched optimized GLB accessors; identical geometry, rigid nodes and materials"
 }

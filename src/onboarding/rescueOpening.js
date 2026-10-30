@@ -203,6 +203,10 @@ export function makeRescueCastSpecs(playerPos, rng) {
       hullMax: 1,
       flags: { invuln: true },
       _invulnUntil: Infinity,
+      // The exit marker must hold still: mass 1 as a dynamic body meant any field
+      // impulse or ambient traffic bump punted the ring and it coasted away at
+      // ~30 wu/s — a real player watches the finish line drift off forever.
+      physicsBody: { dynamic: false },
       data: {
         rescueExit: true,
         onboarding: true, rescue: true, rescueRole: 'beacon',
