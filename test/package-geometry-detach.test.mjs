@@ -316,6 +316,57 @@ test('rehydrate refills released arrays from an ordinal-paired donor and bumps v
   loader.dispose();
 });
 
+test('rehydrate rejects an ordinal donor with a resized non-position attribute', async () => {
+  const original = decodedFixture();
+  original.geometry.setAttribute('color', new THREE.Float32BufferAttribute(new Float32Array(3 * 3), 3));
+  const changedDonor = decodedFixture();
+  changedDonor.geometry.setAttribute('color', new THREE.Float32BufferAttribute(new Float32Array(4 * 3), 3));
+  let decodes = 0;
+  const loader = freshLoader(async () => (++decodes === 1 ? original : changedDonor));
+  await loader.load(packageMetadata('fixture.resized-donor'), { baseUrl: 'https://fixtures.test/' });
+  const geometry = original.geometry;
+  const color = geometry.getAttribute('color');
+  const renderer = stubRenderer();
+
+  detachPackageGeometry(geometry, renderer);
+  assert.equal(color.array.length, 0, 'the non-position CPU array was released');
+  const mismatchesBefore = packageDetachDiagnostics().mismatches;
+  const receipt = await rehydrateDetachedGeometries([geometry], { yieldToMain: async () => {} });
+
+  assert.equal(receipt.geometries, 0, 'a donor with incompatible attribute length is not installed');
+  assert.equal(packageDetachDiagnostics().mismatches, mismatchesBefore + 1);
+  assert.equal(receipt.geometryMismatches.length, 1);
+  assert.equal(receipt.geometryMismatches[0].assetId, 'fixture.resized-donor');
+  assert.equal(receipt.geometryMismatches[0].geometryOrdinal, 0);
+  assert.equal(receipt.geometryMismatches[0].expected.bufferShapes.color.length, 9);
+  assert.equal(receipt.geometryMismatches[0].actual.bufferShapes.color.length, 12);
+  assert.equal(color.array.length, 0, 'the released BufferAttribute identity is not resized under its old GPU record');
+  assert.equal(isPackageGeometryDetached(geometry), true, 'the geometry remains draw-gated for a safe retry');
+  loader.dispose();
+});
+
+test('rehydrate rejects a same-count ordinal donor with a different index type', async () => {
+  const original = decodedFixture();
+  const changedDonor = decodedFixture();
+  changedDonor.geometry.setIndex(new THREE.Uint32BufferAttribute(new Uint32Array([0, 1, 2]), 1));
+  let decodes = 0;
+  const loader = freshLoader(async () => (++decodes === 1 ? original : changedDonor));
+  await loader.load(packageMetadata('fixture.index-type-drift'), { baseUrl: 'https://fixtures.test/' });
+  const geometry = original.geometry;
+
+  detachPackageGeometry(geometry, stubRenderer());
+  const receipt = await rehydrateDetachedGeometries([geometry], { yieldToMain: async () => {} });
+
+  assert.equal(receipt.geometries, 0, 'same index count does not make a differently typed donor compatible');
+  assert.equal(receipt.geometryMismatches.length, 1);
+  assert.equal(receipt.geometryMismatches[0].assetId, 'fixture.index-type-drift');
+  assert.equal(receipt.geometryMismatches[0].geometryOrdinal, 0);
+  assert.equal(receipt.geometryMismatches[0].expected.indexShape.arrayType, 'Uint16Array');
+  assert.equal(receipt.geometryMismatches[0].actual.indexShape.arrayType, 'Uint32Array');
+  assert.equal(isPackageGeometryDetached(geometry), true, 'an incompatible source remains draw-gated');
+  loader.dispose();
+});
+
 test('Mesh.raycast still intersects detached marked geometry (position+index kept)', async () => {
   const decoded = decodedFixture();
   const loader = freshLoader(async () => decoded);

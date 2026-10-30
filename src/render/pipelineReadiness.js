@@ -335,6 +335,32 @@ export function waitForOpeningFirstPicture(state, timeoutMs = DEFAULT_OPENING_BU
     && render.admissionRunGeneration === generation && world?.enterSerial === serial && world?.currentSectorId === sector
     && render.renderer === nativeRenderer && state.contextRestoreSeq === context
     && (typeof options.isActive !== 'function' || options.isActive());
+  // If a residency await rejects as superseded while the launch transition token still appears
+  // current, preserve the exact owner predicate that changed. This is read only on the rejected
+  // path by the renderer's failure receipt; it does not alter cancellation or admission behavior.
+  isActive.ownerSnapshot = () => {
+    let transitionActive = true;
+    if (typeof options.isActive === 'function') {
+      try { transitionActive = options.isActive() === true; } catch (_) { transitionActive = false; }
+    }
+    return {
+      localActive: active,
+      expectedMode: 'loading',
+      currentMode: state.mode,
+      renderMatches: state.render === render,
+      worldMatches: state.world === world,
+      expectedEnterSerial: serial ?? null,
+      currentEnterSerial: world?.enterSerial ?? null,
+      expectedSector: sector ?? null,
+      currentSector: world?.currentSectorId ?? null,
+      expectedAdmissionGeneration: generation ?? null,
+      currentAdmissionGeneration: render.admissionRunGeneration ?? null,
+      rendererMatches: render.renderer === nativeRenderer,
+      expectedContextRestoreSeq: context ?? null,
+      currentContextRestoreSeq: state.contextRestoreSeq ?? null,
+      transitionActive,
+    };
+  };
   const assertActive = () => {
     if (!isActive()) {
       const error = new Error('opening first-picture admission was superseded');
@@ -345,6 +371,7 @@ export function waitForOpeningFirstPicture(state, timeoutMs = DEFAULT_OPENING_BU
   };
   let phase = null;
   let phaseBudgetMs = timeoutMs;
+  let ownedSectorCook = null;
   const finishPhase = (outcome) => {
     if (!phase || phase.outcome !== 'pending' || !isActive() || render.openingFirstPicturePhase !== phase) return;
     phase.outcome = outcome;
@@ -358,11 +385,15 @@ export function waitForOpeningFirstPicture(state, timeoutMs = DEFAULT_OPENING_BU
     render.openingFirstPicturePhase = phase;
   };
   const bounded = async (work, budgetMs) => {
-    const settled = await settleWithin(work, budgetMs);
+    const deadlineRemaining = Number.isFinite(options.deadlineAt)
+      ? Math.max(0, Number(options.deadlineAt) - openingClockNow(options))
+      : budgetMs;
+    const effectiveBudgetMs = Math.min(budgetMs, deadlineRemaining);
+    const settled = await settleWithin(work, effectiveBudgetMs);
     if (settled.ok) return settled.value;
     if (settled.error) throw settled.error;
     const error = new Error(`opening first-picture admission timed out at ${phase?.stage || 'unknown'} `
-      + `after ${Math.round(ledgerNow() - (phase?.startedAt ?? ledgerNow()))}ms (budget ${budgetMs}ms)`);
+      + `after ${Math.round(ledgerNow() - (phase?.startedAt ?? ledgerNow()))}ms (budget ${effectiveBudgetMs}ms)`);
     error.stage = phase?.stage;
     error.timeout = true;
     finishPhase('timeout');
@@ -386,6 +417,7 @@ export function waitForOpeningFirstPicture(state, timeoutMs = DEFAULT_OPENING_BU
       startPhase('current-sector');
       const sectorCook = render.openingLiveSectorReady || observePipelineAdmission(Promise.resolve()
         .then(() => render.prepareLiveSectorBeforeFlight({ isActive })));
+      ownedSectorCook = sectorCook;
       render.openingLiveSectorReady = sectorCook;
       const cooked = await bounded(sectorCook, phaseBudgetMs);
       assertActive();
@@ -477,11 +509,55 @@ export function waitForOpeningFirstPicture(state, timeoutMs = DEFAULT_OPENING_BU
   work.catch(() => {});
   const promise = work.catch((error) => {
     finishPhase(error?.timeout ? 'timeout' : 'error');
+    if (error?.code === 'GPU_RESIDENCY_OWNER_INACTIVE'
+        && ownedSectorCook && render.openingLiveSectorReady === ownedSectorCook) {
+      render.openingLiveSectorReady = null;
+    }
+    if (openingFirstPictureRuns.get(render)?.promise === promise) {
+      openingFirstPictureRuns.delete(render);
+    }
     active = false;
     throw error;
   });
   openingFirstPictureRuns.set(render, { world, generation, serial, sector, renderer: nativeRenderer, context, promise });
   return promise;
+}
+
+/** Retry one superseded opening owner without restarting New Game or extending its total budget. */
+export async function waitForOpeningFirstPictureWithSingleOwnerRetry(state, timeoutMs, options = {}) {
+  const baseTimeoutMs = Math.max(1, Number(timeoutMs) || DEFAULT_OPENING_BUDGET_MS);
+  const startedAt = openingClockNow(options);
+  const totalBudgetMs = openingPresentBudgetMs(state, baseTimeoutMs, options) + baseTimeoutMs;
+  const deadlineAt = startedAt + totalBudgetMs;
+  let attempt = 0;
+  for (;;) {
+    const remainingMs = Math.max(0, deadlineAt - openingClockNow(options));
+    const attemptTimeoutMs = attempt === 0 ? baseTimeoutMs : Math.min(baseTimeoutMs, remainingMs);
+    const presentBudgetMs = attempt === 0
+      ? options.presentBudgetMs
+      : Math.min(openingPresentBudgetMs(state, baseTimeoutMs, options), remainingMs);
+    try {
+      return await waitForOpeningFirstPicture(state, attemptTimeoutMs, {
+        ...options,
+        deadlineAt,
+        ...(presentBudgetMs === undefined ? {} : { presentBudgetMs }),
+      });
+    } catch (error) {
+      const remainingAfterFailureMs = Math.max(0, deadlineAt - openingClockNow(options));
+      let transitionCurrent = false;
+      if (typeof options.isTransitionCurrent === 'function') {
+        try { transitionCurrent = options.isTransitionCurrent() === true; } catch (_) { transitionCurrent = false; }
+      }
+      const canRetry = attempt === 0
+        && error?.name === 'AbortError'
+        && error?.code === 'GPU_RESIDENCY_OWNER_INACTIVE'
+        && state?.mode === 'loading'
+        && transitionCurrent
+        && remainingAfterFailureMs > 0;
+      if (!canRetry) throw error;
+      attempt += 1;
+    }
+  }
 }
 
 /**
