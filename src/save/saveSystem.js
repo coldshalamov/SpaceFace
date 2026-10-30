@@ -400,6 +400,11 @@ export const save = {
     this._publishSharedStoreStatus();
     this._sharedStorePatch = null;
     this._sharedStoreFlushTimer = null;
+    this._sharedStoreMirrorWaiters = [];
+    this._sharedStoreMirrorPending = new Set();
+    this._sharedStoreMirrorGeneration = (this._sharedStoreMirrorGeneration || 0) + 1;
+    this._sharedStoreCollectQueued = false;
+    this._sharedStoreCollectPromise = null;
     this._dirtyJournal = createSaveDirtyJournal();
     this._lastSaveSnapshotBoundary = null;
     this._playerCollectionRevision = 0;
@@ -786,7 +791,7 @@ export const save = {
   },
 
   _queueSharedStoreMirror(patch = null) {
-    if (!sharedPlayerStoreAvailable()) return;
+    if (!sharedPlayerStoreAvailable() || sharedPlayerStoreCapability().status === 'absent') return Promise.resolve(true);
     if (!patch || typeof patch !== 'object') {
       // No delta supplied: the whole-corpus collect is megabyte-scale sync work, so it runs
       // through the chunked generation-bracketed walk off this call and re-queues the
@@ -795,35 +800,54 @@ export const save = {
       // for a writer the patch contract does not cover yet.
       if (!this._sharedStoreCollectQueued) {
         this._sharedStoreCollectQueued = true;
-        Promise.resolve()
+        const generation = this._sharedStoreMirrorGeneration;
+        this._sharedStoreCollectPromise = Promise.resolve()
           .then(() => this._collectSharedStoreKeysChunked())
           .then((keys) => {
+            if (generation !== this._sharedStoreMirrorGeneration) return false;
             this._sharedStoreCollectQueued = false;
-            if (!keys) return;
+            if (!keys) return false;
             // A writer delta that landed between the collect's generation check and
             // this merge is fresher than the collect's row for that key — keep it
             // dominant; the collect only fills keys the delta doesn't cover.
             const pending = this._sharedStorePatch;
-            this._queueSharedStoreMirror(pending
+            return this._queueSharedStoreMirror(pending
               ? Object.fromEntries(Object.entries(keys).filter(([k]) => !Object.hasOwn(pending, k)))
               : keys);
           })
-          .catch(() => { this._sharedStoreCollectQueued = false; });
+          .catch(() => {
+            if (generation === this._sharedStoreMirrorGeneration) this._sharedStoreCollectQueued = false;
+            return false;
+          });
       }
-      return;
+      return this._sharedStoreCollectPromise;
     }
+    const completion = new Promise((resolve) => {
+      (this._sharedStoreMirrorWaiters ||= []).push(resolve);
+    });
+    (this._sharedStoreMirrorPending ||= new Set()).add(completion);
+    completion.then(() => this._sharedStoreMirrorPending.delete(completion));
     this._sharedStorePatch = this._sharedStorePatch || {};
     Object.assign(this._sharedStorePatch, patch);
-    if (this._sharedStoreFlushTimer != null) return;
+    if (this._sharedStoreFlushTimer != null) return completion;
     const flush = () => {
       this._sharedStoreFlushTimer = null;
       const keys = this._sharedStorePatch;
       this._sharedStorePatch = null;
-      if (!keys) return;
+      const waiters = this._sharedStoreMirrorWaiters || [];
+      this._sharedStoreMirrorWaiters = [];
+      if (!keys) { for (const resolve of waiters) resolve(false); return; }
+      const ownerState = this.state;
+      const ownerEpoch = this._runEpoch;
+      const ownerRestore = this._restoreSequence;
+      const ownerGeneration = this._sharedStoreMirrorGeneration;
+      const ownerCurrent = () => this.state === ownerState && this._runEpoch === ownerEpoch
+        && this._restoreSequence === ownerRestore && this._sharedStoreMirrorGeneration === ownerGeneration;
       // INF-092: a missed mirror write flips health (no toast per save — the flag is the
       // status); a later landed write clears it with one recovery notice. Neither arm
       // duplicates a save nor touches transitions.
-      pushSharedPlayerStore(keys, { keepalive: true }).then((landed) => {
+      const work = pushSharedPlayerStore(keys, { keepalive: true }).then((landed) => {
+        if (!ownerCurrent()) return landed || sharedPlayerStoreCapability().status === 'absent';
         if (landed) {
           const wasUnhealthy = this._sharedStoreMirrorHealthy === false;
           this._sharedStoreMirrorHealthy = true;
@@ -838,14 +862,45 @@ export const save = {
           this._sharedStoreMirrorHealthy = false;
           this._publishSharedStoreStatus();
         }
+        return landed || sharedPlayerStoreCapability().status === 'absent';
       }, () => {
-        this._sharedStoreMirrorHealthy = false;
-        this._publishSharedStoreStatus();
+        if (ownerCurrent()) {
+          this._sharedStoreMirrorHealthy = false;
+          this._publishSharedStoreStatus();
+        }
+        return false;
+      });
+      work.then((ok) => {
+        for (const resolve of waiters) resolve(ok);
       });
     };
     if (typeof setTimeout === 'function') this._sharedStoreFlushTimer = setTimeout(flush, 0);
     else flush();
+    return completion;
   },
+
+  async drainSharedStoreWrites() {
+    const pending = [...(this._sharedStoreMirrorPending || [])];
+    if (this._sharedStoreCollectQueued && this._sharedStoreCollectPromise) pending.push(this._sharedStoreCollectPromise);
+    const results = await Promise.all(pending);
+    const localOnly = !sharedPlayerStoreAvailable() || sharedPlayerStoreCapability().status === 'absent';
+    return { ok: results.every(Boolean) && (localOnly || this._sharedStoreMirrorHealthy !== false), pending: pending.length };
+  },
+
+  async prepareForQuit() {
+    const activePaced = this._activePacedSave?.promise;
+    if (activePaced && !(await activePaced)) return { ok: false, reason: 'pending-save-failed' };
+    const state = this.state;
+    const eligible = state && (state.mode === 'flight' || state.mode === 'paused') && !this._campaignSaveSuppressed()
+      && !this._restoring && !this._playerDead
+      && state.jump?.state !== 'CHARGING' && state.jump?.state !== 'JUMPING';
+    if (eligible && !(await this.requestExitAutosave({ paced: true }))) return { ok: false, reason: 'exit-save-failed' };
+    const result = await this.drainSharedStoreWrites();
+    if (result.ok) this._suppressUnloadExitSave = true;
+    return result;
+  },
+
+  cancelPreparedQuit() { this._suppressUnloadExitSave = false; },
 
   // Interval autosave is the only periodic job; playtime accrual is core's (§ core.preStep).
   update(dt, state) {
@@ -2014,7 +2069,10 @@ export const save = {
     }
     // Live sim: the chunked walk can't stay coherent across yields, so the documented
     // one-task coherent capture still owns this lane.
-    if (!this._frozenTickBoundary()) return Promise.resolve(this.save(slot, options));
+    if (!this._frozenTickBoundary()) {
+      const accepted = this.save(slot, options);
+      return accepted ? this._lastSaveDurability : Promise.resolve(false);
+    }
 
     const job = { slot, reason, autosave, started, superseded: false, runEpoch: this._runEpoch };
     if (this._activePacedSave) this._activePacedSave.superseded = true;
@@ -2231,7 +2289,7 @@ export const save = {
       });
       const ok = this._publishSaveResult(slot, envelope, write, timing);
       if (ok) this._acknowledgeSaveSnapshotBoundary(snapshotBoundary);
-      return ok;
+      return ok ? this._lastSaveDurability : false;
     } finally {
       endFocusLossSaveWrite(state);
       if (this._activePacedSave === job) this._activePacedSave = null;
@@ -2561,8 +2619,6 @@ export const save = {
     this._recordSaveTiming(timing);
     if (write && write.ok) {
       this.state.save.currentSlot = slot;
-      this.state.meta.lastSavedAt = envelope.savedAt;
-      this._noteWriteOutcome(slot, timing);
       if (write.backupCreated) {
         this.bus.emit('save:backup', {
           slot,
@@ -2570,8 +2626,32 @@ export const save = {
           savedAt: write.backupSavedAt,
         });
       }
-      this.bus.emit('save:completed', timing);
-      this._queueSharedStoreMirror(write.mirrorPatch);
+      const pendingWrite = this.state.save?.pendingWrite;
+      const savedState = this.state;
+      const savedBus = this.bus;
+      const savedRunEpoch = this._runEpoch;
+      const savedRestoreSequence = this._restoreSequence;
+      const savedMirrorGeneration = this._sharedStoreMirrorGeneration;
+      this._lastSaveDurability = Promise.resolve(this._queueSharedStoreMirror(write.mirrorPatch)).then((landed) => {
+        const current = this.state === savedState && this.bus === savedBus
+          && this._runEpoch === savedRunEpoch && this._restoreSequence === savedRestoreSequence
+          && this._sharedStoreMirrorGeneration === savedMirrorGeneration;
+        // The original caller still receives the actual durability result, but a later run
+        // must not inherit its old completion, error, or saved timestamp.
+        if (!current) return landed === true;
+        if (landed) {
+          if (!pendingWrite || this.state.save?.pendingWrite === pendingWrite) {
+            this.state.meta.lastSavedAt = envelope.savedAt;
+            this._noteWriteOutcome(slot, timing);
+          }
+          this.bus.emit('save:completed', timing);
+          return true;
+        } else {
+          this._emitSaveTimingError({ ...timing, ok: false, failure: 'shared_store_write_failed',
+            reason: 'shared_store_write_failed', localSaved: true });
+          return false;
+        }
+      });
       return true;
     }
     this._emitSaveTimingError(timing);
@@ -3692,6 +3772,7 @@ export const save = {
     let flushed = null;
     const rearm = () => { flushed = null; };
     const flush = () => {
+      if (this._suppressUnloadExitSave === true) return;
       const state = this.state;
       const stamp = `${this._runEpoch || 0}:${state?.tick}:${state?.simTime}:${state?.mode}`;
       if (flushed === stamp) return;
@@ -7891,6 +7972,13 @@ export const save = {
   },
 
   destroy() {
+    this._sharedStoreMirrorGeneration = (this._sharedStoreMirrorGeneration || 0) + 1;
+    this._sharedStoreCollectQueued = false;
+    if (this._sharedStoreFlushTimer != null) clearTimeout(this._sharedStoreFlushTimer);
+    this._sharedStoreFlushTimer = null;
+    this._sharedStorePatch = null;
+    for (const resolve of this._sharedStoreMirrorWaiters || []) resolve(false);
+    this._sharedStoreMirrorWaiters = [];
     this._removeUnloadExitSave();
     this._cancelCeresAttachmentRestore();
     this._cancelCeresEntityReferenceRestore();

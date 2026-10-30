@@ -76,6 +76,110 @@ function installSave() {
 
 const tick = (ms = 20) => new Promise((resolve) => setTimeout(resolve, ms));
 
+test('a local save receipt waits for the shared mirror and failure preserves local bytes', async () => {
+  const previous = { location: globalThis.location, fetch: globalThis.fetch, localStorage: globalThis.localStorage };
+  const storage = makeStorage();
+  globalThis.location = { protocol: 'http:', origin: 'http://test-save' };
+  globalThis.localStorage = storage;
+  const events = [];
+  const owner = { ...save, state: { save: {}, meta: {}, simTime: 1 }, bus: { emit: (name, payload) => events.push({ name, payload }) },
+    _sharedStoreMirrorHealthy: true, _sharedStorePatch: null, _sharedStoreFlushTimer: null,
+    _sharedStoreMirrorWaiters: [], _sharedStoreMirrorPending: new Set() };
+  let release;
+  globalThis.fetch = () => new Promise((resolve) => { release = resolve; });
+  try {
+    storage.setItem('sf.save.quick', 'local bytes');
+    assert.equal(owner._publishSaveResult('quick', { savedAt: 'now' }, { ok: true, mirrorPatch: { 'sf.save.quick': 'local bytes' } }, { ok: true, slot: 'quick' }), true);
+    await tick();
+    assert.equal(events.some((e) => e.name === 'save:completed'), false);
+    const drain = owner.drainSharedStoreWrites();
+    release({ ok: true });
+    assert.equal((await drain).ok, true);
+    await owner._lastSaveDurability;
+    assert.equal(events.filter((e) => e.name === 'save:completed').length, 1);
+    globalThis.fetch = async () => ({ ok: false, status: 500 });
+    owner._publishSaveResult('quick', { savedAt: 'later' }, { ok: true, mirrorPatch: { 'sf.save.quick': 'local bytes' } }, { ok: true, slot: 'quick' });
+    assert.equal(await owner._lastSaveDurability, false);
+    assert.equal(storage.getItem('sf.save.quick'), 'local bytes');
+    assert.ok(events.some((e) => e.name === 'save:error' && e.payload.localSaved === true));
+    assert.equal(events.filter((e) => e.name === 'save:completed').length, 1);
+  } finally {
+    for (const [key, value] of Object.entries(previous)) {
+      if (value === undefined) delete globalThis[key]; else globalThis[key] = value;
+    }
+  }
+});
+
+test('normal quit waits for the existing exit save and pending mirror before suppressing unload', async () => {
+  let finishSave, finishMirror;
+  const calls = [];
+  const owner = {
+    ...save, state: { mode: 'flight', jump: null }, _playerDead: false, _restoring: false,
+    _campaignSaveSuppressed: () => false,
+    requestExitAutosave(options) { calls.push(options); return new Promise((resolve) => { finishSave = resolve; }); },
+    _sharedStoreMirrorPending: new Set(),
+  };
+  owner._sharedStoreMirrorPending.add(new Promise((resolve) => { finishMirror = resolve; }));
+  const quit = owner.prepareForQuit();
+  assert.deepEqual(calls, [{ paced: true }]);
+  assert.notEqual(owner._suppressUnloadExitSave, true);
+  finishSave(true);
+  await Promise.resolve();
+  assert.notEqual(owner._suppressUnloadExitSave, true, 'mirror is still pending');
+  finishMirror(true);
+  assert.equal((await quit).ok, true);
+  assert.equal(owner._suppressUnloadExitSave, true);
+});
+
+test('fallback collection returns the actual mirror result and shares an in-flight collection', async () => {
+  const storage = makeStorage(), globals = installGlobals({ storage });
+  let finishCollect;
+  const owner = { ...save, state: { save: {} }, bus: { emit() {} },
+    _sharedStoreMirrorHealthy: true, _sharedStorePatch: null, _sharedStoreFlushTimer: null,
+    _sharedStoreMirrorWaiters: [], _sharedStoreMirrorPending: new Set(),
+    _sharedStoreMirrorGeneration: 1, _sharedStoreCollectQueued: false,
+    _collectSharedStoreKeysChunked: () => new Promise((resolve) => { finishCollect = resolve; }) };
+  try {
+    const first = owner._queueSharedStoreMirror(null);
+    assert.equal(first, owner._queueSharedStoreMirror(null));
+    await Promise.resolve();
+    finishCollect({ 'sf.save.quick': 'local bytes' });
+    assert.equal(await first, true);
+    assert.equal(globals.puts.length, 1);
+  } finally { globals.restore(); }
+});
+
+test('destroy cancels an unsent mirror and settles its waiter', async () => {
+  const storage = makeStorage(), globals = installGlobals({ storage });
+  const owner = { ...save, state: { save: {} }, bus: { emit() {} },
+    _sharedStoreMirrorHealthy: true, _sharedStorePatch: null, _sharedStoreFlushTimer: null,
+    _sharedStoreMirrorWaiters: [], _sharedStoreMirrorPending: new Set(), _sharedStoreMirrorGeneration: 1,
+    _removeUnloadExitSave() {}, _cancelCeresAttachmentRestore() {}, _cancelCeresEntityReferenceRestore() {} };
+  try {
+    const pending = owner._queueSharedStoreMirror({ 'sf.save.quick': 'local bytes' });
+    owner.destroy();
+    assert.equal(await pending, false);
+    assert.equal(globals.puts.length, 0);
+  } finally { globals.restore(); }
+});
+
+test('old-run mirror settlement stays truthful without changing the new run or emitting its receipt', async () => {
+  let finish;
+  const events = [];
+  const state = { save: {}, meta: {}, simTime: 1 };
+  const owner = { ...save, state, bus: { emit: (name) => events.push(name) },
+    _runEpoch: 1, _restoreSequence: 1, _sharedStoreMirrorGeneration: 1,
+    _queueSharedStoreMirror: () => new Promise((resolve) => { finish = resolve; }) };
+  owner._publishSaveResult('auto', { savedAt: 'old' }, { ok: true, mirrorPatch: {} }, { ok: true, slot: 'auto' });
+  const original = owner._lastSaveDurability;
+  owner._runEpoch += 1;
+  state.meta.lastSavedAt = 'new';
+  finish(true);
+  assert.equal(await original, true);
+  assert.equal(state.meta.lastSavedAt, 'new');
+  assert.deepEqual(events, []);
+});
+
 test('INF-092 missed mirror write reports failure and names the durable local store', async () => {
   const storage = makeStorage();
   storage.setItem('sf.save.quick', '{"fmt":"x"}');

@@ -10876,6 +10876,12 @@ export function disposeRendererOwnedResources(owner, options = {}) {
   // cleanup remains responsible for boundaries still in preparation; generation guards prevent it
   // from publishing or disposing through this renderer after lifecycle.destroy().
   try { owner._rendererLifecycle?.destroy?.(); } catch (_) { /* best effort */ }
+  owner._environmentVariantAdmissionGeneration = (owner._environmentVariantAdmissionGeneration || 0) + 1;
+  owner._environmentVariantAdmissionPending = false;
+  owner._environmentVariantAdmission = null;
+  owner._environmentVariantAdmissionEnv = null;
+  owner._environmentVariantAdmissionEnvKey = null;
+  owner._environmentVariantAdmissionTargetKey = null;
   try { owner._contextRestoreReceipt?.cancel?.(); } catch (_) { /* best effort */ }
   try { releaseOpeningGraphPublication(owner); } catch (_) { /* best effort */ }
   owner._contextRestoreReceipt = null;
@@ -11017,6 +11023,11 @@ export function disposeRendererOwnedResources(owner, options = {}) {
   owner._videoSettingsOff = null;
   owner._firstPresentGpuAdmission = null;
   owner._firstPresentGpuReady = false;
+  owner._environmentVariantAdmission = null;
+  owner._environmentVariantAdmissionPending = false;
+  owner._environmentVariantAdmissionEnv = null;
+  owner._environmentVariantAdmissionEnvKey = null;
+  owner._environmentVariantAdmissionTargetKey = null;
   owner._rebuildRestoredGpuResources = null;
   owner._envMap = null;
   owner._envMapTarget = null;
@@ -13048,7 +13059,11 @@ export const render = {
           await yieldToBrowser();
         }
         const route = this._selectPostRoute();
+        const firstPresentEnvironmentKey = this._environmentAdmissionKey();
         const admitSubjects = leaves.concat(extraVfx);
+        const firstPresentCoversQuarks = admitSubjects.some(
+          (subject) => subject?.name === 'SF_QuarksBatchedRenderer',
+        );
         const admitSeenMaterials = new Set();
         const admitSeenGeometries = new Set();
         const admitProgramSubjects = [];
@@ -13118,6 +13133,10 @@ export const render = {
             if (!lifecycle.isActive()) throw new Error('renderer lifecycle destroyed during opening yield');
           },
         });
+        if (firstPresentCoversQuarks) {
+          this._environmentVariantAdmissionEnvKey = firstPresentEnvironmentKey;
+          this._environmentVariantAdmissionEnv = this._envMap;
+        }
         // Final residency seal: the leaf census can miss drawables rebuilt or added after the
         // census (menu deep-field layers, count-0 pools). Upload every scene geometry buffer
         // behind the shell so the first presented frame admits nothing new.
@@ -28051,11 +28070,120 @@ export const render = {
       // Any committed foundry bake (the opening-picture freeze, a seam drain, a context-restore
       // force) satisfies an armed promotion — leaving it armed would re-convolve the same source.
       if (iblSource === IBL_SOURCE_FOUNDRY) this._foundryEnvPending = false;
+      this._queueEnvironmentVariantAdmission(envMap);
     } catch (error) {
       // env-map is optional — chrome falls back to high-metalness matte — but
       // a failed bake is a quality deficit worth a line of telemetry.
       console.warn('[render] env bake failed', error);
     }
+  },
+
+  _environmentAdmissionKey(envMap = this._envMap) {
+    const context = Number(this.state?.contextRestoreSeq) || 0;
+    if (!envMap) return `${context}:no-environment`;
+    const mapping = Number.isFinite(envMap.mapping) ? envMap.mapping : 'unknown-mapping';
+    const height = Number(envMap.image?.height ?? envMap.source?.data?.height) || 0;
+    return `${context}:environment:${mapping}:${height}`;
+  },
+
+  _queueEnvironmentVariantAdmission(envMap = this._envMap) {
+    if (!envMap || !this.renderer || !this.scene) return null;
+    const lifecycle = this._rendererLifecycle;
+    if (!lifecycle || !lifecycle.isActive()) return null;
+    const key = this._environmentAdmissionKey(envMap);
+    if (this._environmentVariantAdmissionEnvKey === key) {
+      if (this._environmentVariantAdmissionPending === true) {
+        this._environmentVariantAdmissionGeneration = (this._environmentVariantAdmissionGeneration || 0) + 1;
+        this._environmentVariantAdmissionPending = false;
+        this._environmentVariantAdmissionTargetKey = key;
+        this._environmentVariantAdmissionEnv = this._envMap;
+        this._environmentVariantAdmission = null;
+      }
+      return null;
+    }
+    if (this._environmentVariantAdmissionPending === true
+        && this._environmentVariantAdmissionTargetKey === key) {
+      return this._environmentVariantAdmission;
+    }
+    const generation = (this._environmentVariantAdmissionGeneration || 0) + 1;
+    this._environmentVariantAdmissionGeneration = generation;
+    this._environmentVariantAdmissionTargetKey = key;
+    this._environmentVariantAdmissionPending = true;
+    const isCurrent = () => this._environmentVariantAdmissionGeneration === generation
+      && lifecycle.isActive()
+      && this._environmentAdmissionKey() === key;
+    const admit = async () => {
+      // The boot census may still be using the old key. Let it finish before submitting the
+      // environment-specific work, then explicitly admit the live Quarks renderer cohort.
+      const firstPresent = this._firstPresentGpuAdmission;
+      if (firstPresent) {
+        try { await firstPresent; } catch (_) { /* targeted admission remains independently useful */ }
+      } else {
+        await lifecycle.wait(0);
+      }
+      if (!isCurrent()) return false;
+      // A first-present census that began after this PMREM committed already compiled and
+      // touched this shader key; texture-object replacement with identical key needs no new gate.
+      if (this._environmentVariantAdmissionEnvKey === key) return true;
+      const scene = this.scene;
+      const camera = this.cam?.obj || this.state?.render?.camera;
+      if (!scene || !camera) return false;
+      const roots = collectFirstFlightEffectRoots(scene)
+        .filter((root) => root?.name === 'SF_QuarksBatchedRenderer');
+      if (roots.length === 0) return true;
+      const route = this._selectPostRoute();
+      for (const root of roots) {
+        if (!isCurrent()) return false;
+        const restore = revealSubjectForCompile(root);
+        let compiled;
+        try {
+          compiled = observePipelineAdmission(this._compilePostRoute(route, root, camera, scene));
+        } finally {
+          restore();
+        }
+        await compiled;
+        if (!isCurrent()) return false;
+        const restoreForTouch = revealSubjectForCompile(root);
+        let touch;
+        try {
+          touch = this.bloom && typeof this.bloom.touchScenePipelines === 'function'
+            ? this.bloom.touchScenePipelines(root, camera, scene)
+            : touchSubjectOnExactTarget(this.renderer, null, root, camera, scene);
+        } finally {
+          restoreForTouch();
+        }
+        await touch;
+      }
+      return isCurrent();
+    };
+    let succeeded = false;
+    const pending = Promise.resolve().then(admit).then((ready) => {
+      succeeded = ready === true && isCurrent();
+      if (succeeded) {
+        this._environmentVariantAdmissionEnvKey = key;
+        this._environmentVariantAdmissionEnv = this._envMap;
+      }
+      return succeeded;
+    }).catch((error) => {
+      if (isCurrent()) console.warn('[render] environment variant admission failed', error);
+      return false;
+    }).finally(() => {
+      if (this._environmentVariantAdmissionGeneration !== generation) return;
+      if (!lifecycle.isActive()) {
+        this._environmentVariantAdmissionPending = false;
+        return;
+      }
+      if (this._environmentAdmissionKey() !== key) {
+        this._queueEnvironmentVariantAdmission(this._envMap);
+        return;
+      }
+      this._environmentVariantAdmissionPending = false;
+      if (!succeeded) {
+        console.warn('[render] environment variant admission remains unready', key);
+      }
+    });
+    this._environmentVariantAdmission = pending;
+    return pending;
   },
 
   // Self-healing entity<->mesh reconciliation. Guarantees every alive, renderable entity has a
@@ -32436,6 +32564,10 @@ export const render = {
     // background programs and uploaded their buffers; otherwise bloomScene pays 17 first-use
     // links on Intel/ANGLE in one presented frame.
     if (this.state.mode === 'menu' && this._firstPresentGpuReady !== true) return false;
+    // The initial admission can complete before the boot shell retires and PMREM commits. That
+    // changes MeshStandardMaterial's program key, so keep the world behind the same draw gate
+    // until live first-flight effect roots have been admitted for the committed environment.
+    if (this._environmentVariantAdmissionPending === true) return false;
     // The fulfillment boarding blackout covers the canvas with an opaque UI surface while the
     // simulation and its FSM keep advancing underneath — the flight submit is pure waste for the
     // duration. prepareFrame still ran, so the journal drained and the scene stays hot for resume.

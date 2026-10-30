@@ -44,6 +44,27 @@ function asteroidReadViewFor(state, siteId) {
 }
 
 export function createLaneSystemFacade(ctx) {
+  let nextSaveToken = 0;
+  function durableSaveCommand(op, args = {}) {
+    const bus = ctx?.bus;
+    if (typeof bus?.on !== 'function') return Promise.resolve({ ok: false, reason: 'save-events-unavailable' });
+    const token = `save-durable-${++nextSaveToken}`;
+    return new Promise((resolve) => {
+      let settled = false;
+      let off = () => {};
+      const finish = (result) => {
+        if (settled) return;
+        settled = true; clearTimeout(timer); off(); resolve(result);
+      };
+      const timer = setTimeout(() => finish({ ok: false, reason: 'save-durability-timeout' }), 160000);
+      off = bus.on('save:durabilitySettled', (payload) => {
+        if (payload?.token === token) finish(payload);
+      });
+      Promise.resolve(laneRpc(op, { ...args, token })).then((ack) => {
+        if (!ack?.ok || ack.result?.ok === false) finish({ ok: false, reason: ack?.reason || ack?.result?.reason || 'save-command-failed' });
+      }, (error) => finish({ ok: false, reason: String(error?.message || error) }));
+    });
+  }
   // Facade-miss diagnostic: a sim-owned id with no facade resolves undefined
   // and every caller silently degrades — cargo:jettison proved that can mean
   // a dead feature. Name each miss once so it surfaces instead.
@@ -113,7 +134,10 @@ export function createLaneSystemFacade(ctx) {
       case 'save':
         return {
           name: 'save',
-          save: (slot) => laneRpc('saveWrite', { slot: slot === undefined ? null : slot }),
+          save: (slot) => durableSaveCommand('saveWrite', { slot: slot === undefined ? null : slot }),
+          drainSharedStoreWrites: () => durableSaveCommand('saveDrain'),
+          prepareForQuit: () => durableSaveCommand('savePrepareQuit'),
+          cancelPreparedQuit: () => laneRpc('saveCancelPreparedQuit', {}),
           load: (slot) => laneRpc('saveLoad', { slot: slot === undefined ? null : slot }),
           delete: (slot) => laneRpc('saveDelete', { slot: slot === undefined ? null : slot }),
           // saveLoad.js's delete path — the delete must reach the worker's save
