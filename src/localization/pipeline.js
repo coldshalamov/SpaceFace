@@ -2,7 +2,12 @@
 // Deterministic. Placeholders, numbers, and proper nouns pass through untouched.
 
 import { STORE_COPY } from './storeCopy.js';
-import { barkMessagesFor, barkTextMap } from './barks.js';
+import {
+  barkMessagesFor,
+  barkTextMap,
+  installBarkTranslations,
+  isBarkTranslationsReady,
+} from './barks.js';
 import { FIRST_HOUR_OVERLAY } from './firstHourOverlay.js';
 import { runtimeAssetUrl } from '../core/runtimeAssetUrl.js';
 import GLOSSARY_ES from './glossary/es-ES.js';
@@ -14,6 +19,7 @@ export const SHIPPED_LOCALES = Object.freeze(['en-US', 'es-ES', 'fr-FR', 'de-DE'
 
 const ENGLISH_CATALOG_SCHEMA = 'spaceface.localizationCatalog.v1';
 const ENGLISH_CATALOG_PATH = 'src/localization/catalogs/en-US.generated.json';
+const BARK_TRANSLATION_PATH = 'src/localization/barks.generated.json';
 const IS_RETAIL_BUILD = typeof __SPACEFACE_PRODUCTION__ !== 'undefined'
   && __SPACEFACE_PRODUCTION__ === true;
 const IS_BROWSER_RUNTIME = typeof self !== 'undefined';
@@ -24,6 +30,7 @@ const IS_NODE_RUNTIME = typeof process !== 'undefined' && Boolean(process.versio
 
 let englishMessages = null;
 let englishCatalogLoadPromise = null;
+let barkTranslationsLoadPromise = null;
 
 function validateEnglishCatalogPayload(payload) {
   if (!payload || payload.schema !== ENGLISH_CATALOG_SCHEMA || payload.locale !== 'en-US'
@@ -92,6 +99,60 @@ export function createEnglishCatalogRequest({ fetchImpl, url }) {
   };
 }
 
+export function resolveBarkTranslationsUrl({
+  production = IS_RETAIL_BUILD,
+  moduleUrl = import.meta.url,
+  documentBase = globalThis.document?.baseURI,
+  workerEntry = typeof document === 'undefined' ? globalThis.self?.location?.href : null,
+  releaseBase = typeof __SPACEFACE_RELEASE_BASE__ === 'string' ? __SPACEFACE_RELEASE_BASE__ : '',
+} = {}) {
+  return runtimeAssetUrl(BARK_TRANSLATION_PATH, moduleUrl, {
+    production,
+    documentBase,
+    workerEntry,
+    releaseBase,
+  });
+}
+
+export function createBarkTranslationsRequest({ fetchImpl, url }) {
+  if (typeof fetchImpl !== 'function') throw new TypeError('Bark translation request requires fetch');
+  if (typeof url !== 'string' || !url) throw new TypeError('Bark translation URL is required');
+  let pending = null;
+  return () => {
+    if (!pending) {
+      pending = Promise.resolve().then(() => fetchImpl(url)).then(async (response) => {
+        if (!response || response.ok !== true) {
+          throw new Error(`Bark translation catalog request failed${response ? ` (${response.status})` : ''}`);
+        }
+        return installBarkTranslations(await response.json());
+      }).catch((error) => {
+        pending = null;
+        throw error;
+      });
+    }
+    return pending;
+  };
+}
+
+export function ensureBarkTranslationsLoaded() {
+  if (isBarkTranslationsReady()) return Promise.resolve(true);
+  if (!barkTranslationsLoadPromise) {
+    const fetchImpl = globalThis.fetch;
+    if (typeof fetchImpl !== 'function') {
+      return Promise.reject(new Error('Bark translations are not available before localization initialization'));
+    }
+    const request = createBarkTranslationsRequest({
+      fetchImpl: (url) => fetchImpl(url, { credentials: 'same-origin' }),
+      url: resolveBarkTranslationsUrl(),
+    });
+    barkTranslationsLoadPromise = request().then(() => true).catch((error) => {
+      barkTranslationsLoadPromise = null;
+      throw error;
+    });
+  }
+  return barkTranslationsLoadPromise;
+}
+
 export function ensureEnglishCatalogLoaded() {
   if (englishMessages) return Promise.resolve(englishMessages);
   if (!englishCatalogLoadPromise) {
@@ -119,7 +180,12 @@ if (!IS_RETAIL_BUILD && IS_NODE_RUNTIME) readNodeEnglishCatalog();
 // Make the synchronous localization API safe as soon as import() resolves. If the first
 // request fails, leave the module usable so ensureLocalizationReady() can retry and surface the
 // failure through the ordinary boot error path.
-if (IS_BROWSER_RUNTIME) await ensureEnglishCatalogLoaded().catch(() => {});
+if (IS_BROWSER_RUNTIME) {
+  await Promise.all([
+    ensureEnglishCatalogLoaded().catch(() => {}),
+    ensureBarkTranslationsLoaded().catch(() => {}),
+  ]);
+}
 
 const PLACEHOLDER_SPLIT_RE = /(\{[A-Za-z_][A-Za-z0-9_.-]*\})/g;
 const PLACEHOLDER_TOKEN_RE = /^\{[A-Za-z_][A-Za-z0-9_.-]*\}$/;

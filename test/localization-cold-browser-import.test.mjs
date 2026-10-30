@@ -5,10 +5,12 @@ import { readFileSync } from 'node:fs';
 test('cold browser import waits for the sidecar before synchronous language and text consumers exist', async () => {
   const payload = JSON.parse(readFileSync(
     new URL('../src/localization/catalogs/en-US.generated.json', import.meta.url), 'utf8'));
+  const barkPayload = JSON.parse(readFileSync(
+    new URL('../src/localization/barks.generated.json', import.meta.url), 'utf8'));
   const previousProcess = globalThis.process;
   const previousFetch = globalThis.fetch;
   let calls = 0;
-  let resolveFetch;
+  const pendingFetches = new Map();
   const fetched = [];
 
   globalThis.__SPACEFACE_PRODUCTION__ = false;
@@ -20,8 +22,9 @@ test('cold browser import waits for the sidecar before synchronous language and 
   };
   globalThis.fetch = (url) => {
     calls += 1;
-    fetched.push(String(url));
-    return new Promise((resolve) => { resolveFetch = resolve; });
+    const requestUrl = String(url);
+    fetched.push(requestUrl);
+    return new Promise((resolve) => { pendingFetches.set(requestUrl, resolve); });
   };
 
   let importSettled = false;
@@ -31,16 +34,20 @@ test('cold browser import waits for the sidecar before synchronous language and 
       return module;
     });
   await new Promise((resolve) => setImmediate(resolve));
-  assert.equal(calls, 1, 'catalog request begins while the localization dependency graph evaluates');
+  assert.equal(calls, 2, 'English and bark data requests begin while the localization dependency graph evaluates');
   assert.equal(importSettled, false, 'synchronous catalog consumers are not exposed before the fetch completes');
   assert.match(fetched[0], /src\/localization\/catalogs\/en-US\.generated\.json$/);
+  assert.match(fetched[1], /src\/localization\/barks\.generated\.json$/);
 
-  resolveFetch({ ok: true, json: async () => payload });
+  pendingFetches.get(fetched[0])({ ok: true, json: async () => payload });
+  pendingFetches.get(fetched[1])({ ok: true, json: async () => barkPayload });
   const localization = await modulePromise;
   assert.equal(await localization.ensureLocalizationReady(), true);
   assert.equal(localization.LANGUAGE_OPTIONS[0].id, 'en-US');
   assert.equal(localization.currentGameLocale(), 'es-ES');
   assert.equal(localization.localizeText('Continue'), 'Continuar');
+  assert.match(localization.localizeText(
+    'Concord Patrol. Stand by for routine transponder verification. Ref 44-C.'), /Patrulla Concord/);
   localization.setGameLocale('en-US');
   assert.equal(localization.localizeText('Continue'), 'Continue');
   globalThis.process = previousProcess;

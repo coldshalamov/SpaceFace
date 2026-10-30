@@ -12,9 +12,11 @@ import {
 } from './runtime.js';
 import { installLocalizedDocumentBridge, localizationBridgeStats } from './domBridge.js';
 import { IS_DEV } from '../core/devMode.js';
+import { isBarkTranslationsReady } from './barks.js';
 import {
   deferredArray,
   deferredCatalog,
+  ensureBarkTranslationsLoaded,
   ensureEnglishCatalogLoaded,
   isEnglishCatalogReady,
   localeReadiness,
@@ -119,7 +121,7 @@ export const gameLocalization = createLocalizationRuntime({
  * use; en-US and the pseudo locale keep the deterministic source/pseudo path. */
 export function localizeText(message, values = {}) {
   const source = String(message == null ? '' : message);
-  if (!isEnglishCatalogReady()) {
+  if (!isEnglishCatalogReady() || !isBarkTranslationsReady()) {
     const sourceFallback = gameLocalization.locale === PSEUDO_LOCALE ? pseudoLocalize(source) : source;
     return interpolate(sourceFallback, values);
   }
@@ -179,7 +181,10 @@ let localizationReadyPromise = null;
 /** Resolve once the English inventory and synchronous message lookup are ready. */
 export function ensureLocalizationReady() {
   if (!localizationReadyPromise) {
-    localizationReadyPromise = ensureEnglishCatalogLoaded().then(async () => {
+    localizationReadyPromise = Promise.all([
+      ensureEnglishCatalogLoaded(),
+      ensureBarkTranslationsLoaded(),
+    ]).then(async () => {
       keyByEnglishMessage();
       for (const locale of SHIPPED_LOCALES) localeReadiness(locale);
       void SHIPPED_LANGUAGE_ROWS.length;
