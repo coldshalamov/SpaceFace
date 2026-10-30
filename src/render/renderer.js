@@ -11757,6 +11757,11 @@ export const render = {
                   ...state.render.bufferResizeDiagnostic, enabled: true, performanceEligible: false,
                   lastBatchedFailure: batchRecord,
                 };
+                if (typeof window !== 'undefined' && typeof CustomEvent === 'function') {
+                  window.dispatchEvent(new CustomEvent('sf:batched-mesh-failure-diagnostic', {
+                    detail: { ...batchRecord, observedAt: performance.now() },
+                  }));
+                }
               }
             } catch (_) { /* diagnostic failures must never replace the render error */ }
             throw error;
@@ -14110,7 +14115,17 @@ export const render = {
           };
         }
         if (ownerSnapshot && typeof console !== 'undefined') {
-          console.warn('[render] authored GPU residency owner became inactive', ownerSnapshot);
+          const retiredAuthoredBoundary = ownerSnapshot.ownerType === 'authored-boundary'
+            && ownerSnapshot.entityAlive === false
+            && ownerSnapshot.entityIsCurrent === false
+            && ownerSnapshot.entityStillRequired === false;
+          if (retiredAuthoredBoundary) {
+            console.info(
+              `[render] authored GPU residency cancelled for retired boundary ${String(ownerSnapshot.entityId ?? 'unknown')}`,
+            );
+          } else {
+            console.warn('[render] authored GPU residency owner became inactive', ownerSnapshot);
+          }
         }
         const error = new Error('Authored GPU residency owner became inactive before texture upload');
         error.name = 'AbortError';

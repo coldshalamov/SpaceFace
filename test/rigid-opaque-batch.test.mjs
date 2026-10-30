@@ -9,6 +9,7 @@ import {
   retireDisposedRigidOpaqueBatchBeforeSceneDraw,
 } from '../src/render/rigidOpaqueBatch.js';
 import { touchSubjectOnExactTarget } from '../src/render/openingGpuAdmission.js';
+import { warmScenePipelinesForRenderTarget } from '../src/render/bloom.js';
 import { createShadowDepthStagingSession } from '../src/render/shadowDepthAdmission.js';
 import { installIllustratedSurface } from '../src/render/illustratedSurface.js';
 import { attachRetroMounts } from '../src/render/thruster/retroMounts.js';
@@ -44,6 +45,38 @@ function makeRoot() {
   root.add(a, b);
   root.updateMatrixWorld(true);
   return { root, a, b };
+}
+
+for (const phase of ['pending', 'active']) {
+  test(`bloom warmup cannot restore a ${phase} rigid batch retired in its draw`, async () => {
+    const scene = new THREE.Scene();
+    const { root, a, b } = makeRoot();
+    scene.add(root);
+    scene.updateMatrixWorld(true);
+    let finishPreparation;
+    const controller = createRetainedRigidOpaqueBatchController({ scene,
+      prepare: () => phase === 'pending'
+        ? new Promise(resolve => { finishPreparation = resolve; }) : { ready: true } });
+    try {
+      const request = controller.sync(root);
+      if (phase === 'pending') await Promise.resolve(); else await request;
+      const batch = scene.children.find(child => child.userData?.spacefaceRigidOpaqueBatch);
+      assert.ok(batch);
+      const renderer = { getRenderTarget: () => null, setRenderTarget() {}, render() {
+        controller.rollback('retired-during-bloom-warm');
+        assert.equal(batch.parent, null);
+      } };
+      await warmScenePipelinesForRenderTarget(renderer, null, batch, new THREE.PerspectiveCamera(), scene);
+      assert.equal(batch.parent, null, 'a retired batch must not be reattached to its old scene');
+      assert.equal(scene.children.includes(batch), false);
+      assert.equal(a.layers.mask, 1);
+      assert.equal(b.layers.mask, 1);
+      if (phase === 'pending') { finishPreparation({ ready: true }); await request; }
+    } finally {
+      controller.dispose();
+      for (const source of [a, b]) { source.geometry.dispose(); source.material.dispose(); }
+    }
+  });
 }
 
 for (const phase of ['pending', 'active']) {

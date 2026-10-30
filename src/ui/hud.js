@@ -5578,7 +5578,8 @@ export function createHud(ctx, alerts) {
       }
       setClass(missionTracker, 'sf-mt--nobearing', bearingDeg == null);
       setDisplay(mtTitle, false);
-      setDisplay(mtTime, false);
+      // mtTime's display is owned by paintTutorialTrackerCaption below; pre-hiding it here
+      // flipped its inline display none -> block on every tick while a caption was up.
       if (dest.line) rememberObjective(objectiveRecall, dest.line);
       const showObjective = objectiveVisible(objectiveRecall, dest.show);
       // The muted-safe tutorial caption rides the tracker's secondary line. It is additive:
@@ -6028,10 +6029,13 @@ export function createHud(ctx, alerts) {
     caption.style.width = 'fit-content';
     caption.style.maxWidth = `${Math.round(slot.width)}px`;
     caption.style.maxHeight = `${maxHeight}px`;
-    caption.style.overflowY = caption.scrollHeight > maxHeight ? 'auto' : 'visible';
+    // One read: a second scrollHeight after the overflowY write forced another layout, and a
+    // scrollbar only makes overflowing text taller, so the pointer decision cannot change.
+    const overflows = caption.scrollHeight > maxHeight;
+    caption.style.overflowY = overflows ? 'auto' : 'visible';
     caption.style.textAlign = 'center';
     caption.style.transform = 'none';
-    caption.style.pointerEvents = caption.scrollHeight > maxHeight ? 'auto' : 'none';
+    caption.style.pointerEvents = overflows ? 'auto' : 'none';
   }
   function placeReceiptLane(resolvedLayout = null) {
     if (toastsLaneEl === null) toastsLaneEl = document.getElementById('toasts');
@@ -6053,10 +6057,17 @@ export function createHud(ctx, alerts) {
     const bands = freeOverlayBands(slot, h, layout);
     let captionBands = slot.captionSlot ? freeOverlayBands(captionSlot, h, layout) : bands;
     if (!activeReceipt) {
-      caption.style.width = 'fit-content';
-      caption.style.maxWidth = `${Math.round(captionSlot.width)}px`;
-      caption.style.maxHeight = 'none';
-      caption.style.overflowY = 'visible';
+      // Measure in place when the caption already fits its slot (overflow visible, same width):
+      // scrollHeight then reports the full text height under any max-height, so clearing
+      // max-height first only toggled it none -> px on every slow tick and forced two layouts.
+      const captionMaxWidth = `${Math.round(captionSlot.width)}px`;
+      if (caption.style.overflowY !== 'visible' || caption.style.maxWidth !== captionMaxWidth
+        || caption.style.width !== 'fit-content') {
+        caption.style.width = 'fit-content';
+        caption.style.maxWidth = captionMaxWidth;
+        caption.style.maxHeight = 'none';
+        caption.style.overflowY = 'visible';
+      }
       let captionHeight = Math.max(48, caption.scrollHeight || caption.getBoundingClientRect?.().height || 0);
       let captionBand = captionBands.find((band) => band.bottom - band.top >= captionHeight + 8);
       if (slot.captionSlot && !captionBand) {
@@ -6073,8 +6084,13 @@ export function createHud(ctx, alerts) {
     let laneWidth = Math.min(lane.width, slot.width);
     let laneLeft = slot.x + (slot.width - laneWidth) / 2;
     setStyle(laneRoot, 'width', `${Math.round(laneWidth)}px`);
-    setStyle(laneRoot, 'maxHeight', 'none');
-    setStyle(laneRoot, 'overflowY', 'visible');
+    // A card's own height does not depend on the lane's max-height, so clear it only when the
+    // lane is scrolling (a scrollbar narrows the cards). Clearing it every slow tick toggled it
+    // none -> px and made the card reads below force a layout each time.
+    if (laneRoot.style.overflowY !== 'visible') {
+      setStyle(laneRoot, 'maxHeight', 'none');
+      setStyle(laneRoot, 'overflowY', 'visible');
+    }
     setStyle(laneRoot, 'pointerEvents', 'none');
     const receiptCards = [...(laneRoot.querySelectorAll?.('.sf-toast:not(.sf-toast--out)') || [])];
     const receiptGap = typeof getComputedStyle === 'function'

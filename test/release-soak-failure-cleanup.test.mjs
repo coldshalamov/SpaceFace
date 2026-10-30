@@ -6,7 +6,57 @@ import test from 'node:test';
 import {
   buildErrorEvidence,
   buildPostTeardownGlDeleteTrapDiagnostic,
+  readFailureRuntimeSnapshot,
+  readPostRecoveryRenderDiagnostics,
 } from '../scripts/lib/releaseSoakProbe.mjs';
+
+test('abort snapshot retains state diagnostic after renderer teardown and uses renderer fallback', () => {
+  const previousWindow = globalThis.window, previousDocument = globalThis.document;
+  const stateResize = { contextGeneration: 0, matchingSceneSlots: [{ slot: 'attribute:normal' }] };
+  const rendererResize = { contextGeneration: 1, matchingSceneSlots: [{ slot: 'index' }] };
+  const batch = { object: { uuid: 'batch-id' } };
+  try {
+    globalThis.document = { visibilityState: 'visible', getElementById: () => null };
+    globalThis.window = { SF: { state: { render: { bufferResizeDiagnostic: {
+      lastFailure: stateResize, lastBatchedFailure: batch, performanceEligible: false,
+    } } } } };
+    const afterTeardown = readFailureRuntimeSnapshot().opening;
+    assert.deepEqual(afterTeardown.bufferResizeDiagnostic, stateResize);
+    assert.deepEqual(afterTeardown.lastBatchedFailure, batch);
+    assert.equal(afterTeardown.bufferResizeDiagnosticPerformanceEligible, false);
+    globalThis.window.SF.state.render = { renderer: {
+      __sfBufferResizeFailure: rendererResize, __sfBatchedMeshFailure: batch,
+    } };
+    const fallback = readFailureRuntimeSnapshot().opening;
+    assert.deepEqual(fallback.bufferResizeDiagnostic, rendererResize);
+    assert.deepEqual(fallback.lastBatchedFailure, batch);
+  } finally {
+    if (previousWindow === undefined) delete globalThis.window; else globalThis.window = previousWindow;
+    if (previousDocument === undefined) delete globalThis.document; else globalThis.document = previousDocument;
+  }
+});
+
+test('post-recovery diagnostic preserves late resize identity and separate batch failure', () => {
+  const previous = globalThis.window;
+  const resize = { contextGeneration: 1, expectedByteLength: 80, actualByteLength: 0,
+    error: { message: 'size mismatch', stack: 'render-stack' }, matchingSceneSlots: [{ slot: 'attribute:normal' }] };
+  const batch = { contextGeneration: 1, object: { uuid: 'batch-id' } };
+  try {
+    globalThis.window = { SF: { state: { render: { bufferResizeDiagnostic: {
+      lastFailure: resize, lastBatchedFailure: batch,
+    } } } } };
+    assert.deepEqual(readPostRecoveryRenderDiagnostics(), {
+      lastFailureAfterRecovery: resize, lastBatchedFailure: batch,
+    });
+    globalThis.window.SF.state.render = { renderer: { __sfBufferResizeFailure: resize } };
+    assert.deepEqual(readPostRecoveryRenderDiagnostics(), {
+      lastFailureAfterRecovery: resize, lastBatchedFailure: null,
+    });
+  } finally {
+    if (previous === undefined) delete globalThis.window;
+    else globalThis.window = previous;
+  }
+});
 
 test('failure-path teardown diagnostic preserves the one-shot caller snapshot', () => {
   const snapshot = {

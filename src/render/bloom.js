@@ -36,6 +36,7 @@
 import * as THREE from 'three';
 import { recordPostRenderTargetAllocation } from './postTelemetry.js';
 import { touchSubjectOnExactTarget } from './openingGpuAdmission.js';
+import { isRetiredRigidOpaqueBatch } from './rigidOpaqueBatch.js';
 import { postTaskAtBackgroundPriorityBounded, revealSubjectWithAncestors } from './compilePresentSlice.js';
 import { makeGpuQueuePacer } from './gpuQueuePace.js';
 import { CAS_FRAG, CAS_SHARPNESS, applyCasSetup, createCasUniforms, resolveCasSharpenActive } from './cas.js';
@@ -1063,7 +1064,7 @@ export async function warmScenePipelinesForRenderTarget(
     };
   } finally {
     if (subject.parent && subject.parent !== previousParent) subject.parent.remove(subject);
-    if (previousParent && subject.parent !== previousParent) {
+    if (previousParent && subject.parent !== previousParent && !isRetiredRigidOpaqueBatch(subject)) {
       previousParent.add(subject);
       if (previousIndex >= 0 && previousIndex < previousParent.children.length - 1) {
         const currentIndex = previousParent.children.indexOf(subject);
@@ -1072,6 +1073,7 @@ export async function warmScenePipelinesForRenderTarget(
       }
     }
     for (const entry of objectState) {
+      if (isRetiredRigidOpaqueBatch(entry.object)) continue;
       entry.object.visible = entry.visible;
       entry.object.frustumCulled = entry.frustumCulled;
     }
