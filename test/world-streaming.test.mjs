@@ -218,18 +218,35 @@ test('enterSector entry point is galactic-global for the target sector', () => {
 });
 
 test('rebasing mutates only frameOrigin/seq and leaves every entity global pose untouched', () => {
-  const { state, bus, world, player } = bootWorld(19);
-  world.enterSector(HELIOS);
+  // Helios hosts kinematic Verge-Layer machines (precursorMachines.js orbit/sweep their anchors
+  // every world tick), so "pose before == pose after" is not the rebase invariant — a world tick
+  // legitimately moves self-driven bodies. The invariant is that the rebase itself moves nothing:
+  // a twin world at the identical pose whose frame origin already sits at the snapped target
+  // (so no rebase fires) must end the same tick with identical entity poses.
+  const staged = (seed) => {
+    const booted = bootWorld(seed);
+    booted.world.enterSector(HELIOS);
+    // Place player past rebase threshold; keep other entities at their global anchors.
+    booted.player.pos.x = FRAME_REBASE_THRESHOLD_WU + 100;
+    booted.player.pos.z = -FRAME_REBASE_THRESHOLD_WU - 50;
+    booted.player.vel.x = 3.5;
+    booted.player.vel.z = -1.25;
+    booted.state.simTime = 44.5;
+    booted.state.tick = 9001;
+    return booted;
+  };
+  const control = staged(19);
+  control.state.world.frameOrigin = snapFrameOrigin(control.player.pos);
+  const controlShifts = [];
+  control.bus.on('world:originShift', (p) => controlShifts.push(p));
+  const controlBefore = captureEntitySnapshot(control.state);
+  control.world.update(1 / 60, control.state);
+  assert.equal(controlShifts.length, 0, 'control twin must not rebase');
+  const controlAfter = captureEntitySnapshot(control.state);
 
-  // Place player past rebase threshold; keep other entities at their global anchors.
-  player.pos.x = FRAME_REBASE_THRESHOLD_WU + 100;
-  player.pos.z = -FRAME_REBASE_THRESHOLD_WU - 50;
-  player.vel.x = 3.5;
-  player.vel.z = -1.25;
-  state.simTime = 44.5;
-  state.tick = 9001;
-
+  const { state, bus, world, player } = staged(19);
   const before = captureEntitySnapshot(state);
+  assert.deepEqual(before, controlBefore, 'twin worlds must start identical');
   const simTime = state.simTime;
   const tick = state.tick;
   // Draw once from rng after snapshotting the function identity; compare a second stream step
@@ -255,7 +272,21 @@ test('rebasing mutates only frameOrigin/seq and leaves every entity global pose 
   assert.equal(state.world.frameOriginSeq, 1);
 
   const after = captureEntitySnapshot(state);
-  assert.deepEqual(after, before);
+  // Every entity ends exactly where the no-rebase twin ends; anything the tick did not drive
+  // (stations, gates, rocks, dressing) is byte-identical to its pre-tick pose.
+  assert.deepEqual(after, controlAfter);
+  const controlBeforeById = new Map(controlBefore.map((e) => [e.id, JSON.stringify(e)]));
+  const selfDriven = new Set(controlAfter
+    .filter((e) => controlBeforeById.get(e.id) !== JSON.stringify(e))
+    .map((e) => e.id));
+  for (const e of controlAfter) {
+    if (!selfDriven.has(e.id)) continue;
+    assert.equal(e.type, 'machine', `unexpected self-driven entity ${e.id} (${e.type})`);
+  }
+  assert.deepEqual(
+    after.filter((e) => !selfDriven.has(e.id)),
+    before.filter((e) => !selfDriven.has(e.id)),
+  );
   assert.equal(state.simTime, simTime);
   assert.equal(state.tick, tick);
   assert.equal(state.rng, rngRef);

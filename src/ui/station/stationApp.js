@@ -698,7 +698,9 @@ export function createStationApp(rootEl, ctx, opts = {}) {
   kiteButton.textContent = 'Kite’s Corner';
   kiteButton.setAttribute('aria-label', 'Watch Kite’s Corner, Ceres service-room programme');
   kiteButton.setAttribute('aria-expanded', 'false');
-  helpEl.parentNode.insertBefore(kiteButton, helpEl);
+  // The station frame always parents the help word; a detached frame (a DOM double, a frame
+  // variant without the ops strip) keeps the entry unmounted instead of failing the whole dock.
+  if (helpEl && helpEl.parentNode) helpEl.parentNode.insertBefore(kiteButton, helpEl);
   let kiteScreen = null, kiteOpen = false;
   function kiteHere() { return state().ui?.docked === true && stationId() === 'station_ceres'; }
   function syncKiteEntry() { kiteButton.hidden = !kiteHere(); }

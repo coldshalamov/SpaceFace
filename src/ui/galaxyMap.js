@@ -2496,7 +2496,8 @@ export function resolveCourseTarget(target) {
         : { x: target.x, z: target.z },
       label,
       reason: label,
-      waypointKind: kind === 'zone' ? 'zone' : kind === 'station' || kind === 'gate' ? 'nav' : 'local',
+      waypointKind: target.courseWaypointKind
+        || (kind === 'zone' ? 'zone' : kind === 'station' || kind === 'gate' ? 'nav' : 'local'),
       arrivalRadius,
       autopilot: true,
     };
@@ -3409,7 +3410,7 @@ function weightedCommodityLabel(lines = []) {
     .sort((a, b) => (Number(b.weight) || 0) - (Number(a.weight) || 0))
     .slice(0, 2)
     .map((line) => {
-      const name = COMMODITY_NAME_BY_ID.get(line.commodityId) || line.commodityId;
+      const name = COMMODITY_NAME_BY_ID.get(line.commodityId) || commodityDisplayName(line.commodityId);
       return `${name} ${Math.round((Number(line.weight) || 0) * 100)}%`;
     });
   return top.length ? top.join(' · ') : 'No dominant lines';
@@ -3542,8 +3543,9 @@ function missionChartBlockHtml(mission, sectionTitle, geometry) {
 }
 
 function securityPips(sec) {
-  if (sec >= 0.7) return `<span style="color:${INK.good}; letter-spacing: 2px;">●●●</span>`;
-  if (sec >= 0.4) return `<span style="color:${INK.warn}; letter-spacing: 2px;">●●○</span>`;
+  // Same cuts as sectorLawProfile (0.75 / 0.45 / 0.15), so the pips agree with the law word.
+  if (sec >= 0.75) return `<span style="color:${INK.good}; letter-spacing: 2px;">●●●</span>`;
+  if (sec >= 0.45) return `<span style="color:${INK.warn}; letter-spacing: 2px;">●●○</span>`;
   if (sec >= 0.15) return `<span style="color:${INK.warn}; letter-spacing: 2px;">●○○</span>`;
   return `<span style="color:${INK.red}; letter-spacing: 2px;">○○○</span>`;
 }
@@ -3647,6 +3649,25 @@ export function galaxyPresenceMarkerRows(presence = []) {
   }));
 }
 
+/** Presence phase tokens (factionPresence / resolveVergePhase) in the words the pilot reads. */
+const PRESENCE_PHASE_WORDS = Object.freeze({
+  active: 'Active',
+  observer: 'Watching',
+  awake: 'Awake',
+  asleep: 'Dormant',
+});
+
+/** A security value for a search/detail line; a missing reading is unknown, not lawless. */
+function securityDetailText(sec) {
+  return Number.isFinite(sec) ? sec.toFixed(2) : 'unknown';
+}
+
+/** A data id (service, hazard, role, identity key) in words, never the raw token. */
+function mapIdWords(id) {
+  if (id === 'ore_buy') return 'Ore buy';
+  return id ? humanizeId(id) : '';
+}
+
 export function galaxyPresenceInspectorHtml(presence = []) {
   const rows = galaxyPresenceMarkerRows(presence);
   if (!rows.length) return '';
@@ -3656,7 +3677,7 @@ export function galaxyPresenceInspectorHtml(presence = []) {
       ${rows.map((row) => `
         <div class="gm-ins-row gm-ins-presence-row">
           <span><span aria-hidden="true" style="display:inline-block;width:7px;height:7px;margin-right:6px;transform:rotate(45deg);background:${row.color};"></span>${escapeMapHtml(row.label)}</span>
-          <span class="gm-ins-row-val" style="color:${row.color}">${escapeMapHtml(row.phase)}</span>
+          <span class="gm-ins-row-val" style="color:${row.color}">${escapeMapHtml(PRESENCE_PHASE_WORDS[row.phase] || humanizeId(row.phase))}</span>
         </div>`).join('')}
     </div>`;
 }
@@ -3830,7 +3851,7 @@ function getSearchTargets(state, level, curSecId, claimsSystem = null, isHostile
         security: n.security,
         presence: n.presence,
         searchText: n.searchText,
-        detail: `Sector · ${factionNameOf(n.factionId)} · Sec: ${n.security ? n.security.toFixed(2) : '0.00'}`,
+        detail: `Sector · ${factionNameOf(n.factionId)} · Sec: ${securityDetailText(n.security)}`,
       });
     }
   }
@@ -6632,7 +6653,7 @@ _stepAnimation(now) {
     const heatClearS = heatClearSecondsForLevel(heatLevel);
     const wanted = isPlayerWanted(state);
     const hazards = (record && record.hazards && record.hazards.length)
-      ? record.hazards.map((h) => `${hazardTypeGlyph(h.type)} ${escapeMapHtml(String(h.type))}`).join(' · ')
+      ? record.hazards.map((h) => `${hazardTypeGlyph(h.type)} ${escapeMapHtml(mapIdWords(String(h.type)))}`).join(' · ')
       : 'None recorded';
     const conflict = sectorConflictSignal(state, sectorId);
     const holdings = sectorHoldingsSignal(state, sectorId);
@@ -6647,10 +6668,10 @@ _stepAnimation(now) {
       ? `${holdings.count} claims · ${holdings.active} active · defense ${Math.round(holdings.defenseAvg)}`
       : 'none';
     const ecologyHazards = ecology && ecology.hazards && ecology.hazards.types && ecology.hazards.types.length
-      ? ecology.hazards.types.join(', ')
+      ? ecology.hazards.types.map((type) => mapIdWords(String(type))).join(', ')
       : 'clear';
     const profileRole = economyProfile
-      ? [economyProfile.primaryRole].concat(economyProfile.secondaryRoles || []).join(' / ')
+      ? [economyProfile.primaryRole].concat(economyProfile.secondaryRoles || []).filter(Boolean).map(mapIdWords).join(' / ')
       : 'none';
     return `
       <div class="gm-ins-section">
@@ -6677,7 +6698,7 @@ _stepAnimation(now) {
       </div>
       <div class="gm-ins-section">
         <div class="gm-ins-title">Regional economy dossier</div>
-        <div class="gm-ins-row"><span>Identity</span><span class="gm-ins-row-val">${escapeMapHtml(economyProfile ? economyProfile.identityKey : 'Unknown')}</span></div>
+        <div class="gm-ins-row"><span>Identity</span><span class="gm-ins-row-val">${escapeMapHtml(economyProfile && economyProfile.identityKey ? mapIdWords(economyProfile.identityKey) : 'Unknown')}</span></div>
         <div class="gm-ins-row"><span>Role stack</span><span class="gm-ins-row-val">${escapeMapHtml(profileRole)}</span></div>
         <div class="gm-ins-row"><span>Produces</span><span class="gm-ins-row-val">${escapeMapHtml(weightedCommodityLabel(economyProfile && economyProfile.produces))}</span></div>
         <div class="gm-ins-row"><span>Consumes</span><span class="gm-ins-row-val">${escapeMapHtml(weightedCommodityLabel(economyProfile && economyProfile.consumes))}</span></div>
@@ -6714,7 +6735,7 @@ _stepAnimation(now) {
       const sectorId = (t && (t.sectorId || t.id)) || currentSectorId(state);
       const record = sectorRecordById(state, sectorId);
       for (const s of (record && record.stations) || []) {
-        stations.push({ id: s.id, name: s.name || s.id, services: s.services || [] });
+        stations.push({ id: s.id, name: s.name || mapIdWords(String(s.id).replace(/^station[_-]/i, '')), services: s.services || [] });
       }
     }
     if (!stations.length) {
@@ -6724,7 +6745,7 @@ _stepAnimation(now) {
       <div class="gm-ins-section">
         <div class="gm-ins-title"><span${entityAttr('station:' + s.id)}>${escapeMapHtml(s.name)}</span></div>
         ${s.services.length
-          ? `<div class="gm-svc-row k-words k-words--row">${s.services.map((svc) => `<span class="gm-svc-chip k-word k-word--fine k-word--static"><span class="gm-svc-ico" aria-hidden="true">${serviceIconSvg(svc)}</span>${escapeMapHtml(svc === 'ore_buy' ? 'Ore buy' : svc)}</span>`).join('')}</div>`
+          ? `<div class="gm-svc-row k-words k-words--row">${s.services.map((svc) => `<span class="gm-svc-chip k-word k-word--fine k-word--static"><span class="gm-svc-ico" aria-hidden="true">${serviceIconSvg(svc)}</span>${escapeMapHtml(mapIdWords(String(svc)))}</span>`).join('')}</div>`
           : '<div class="gm-ins-note">No services listed.</div>'}
       </div>`).join('');
   },
@@ -7883,7 +7904,7 @@ _stepAnimation(now) {
     this._selectSearchTarget({
       id: node.id, name: node.name, kind: 'sector', sectorId: node.id, x: node.x, y: node.y,
       factionId: node.factionId, security: node.security, presence: node.presence, searchText: node.searchText,
-      detail: `Sector · ${factionNameOf(node.factionId)} · Sec: ${node.security ? node.security.toFixed(2) : '0.00'}`,
+      detail: `Sector · ${factionNameOf(node.factionId)} · Sec: ${securityDetailText(node.security)}`,
     });
   },
 
@@ -8160,6 +8181,18 @@ _stepAnimation(now) {
     if (!this._ctx || !this._ctx.bus || !stationId) return;
     const target = tradeLaneTarget(this._ctx.state, stationId);
     if (!target) return;
+    // A berth in another sector is a destination, not a local fix: its catalogue anchor is in that
+    // sector's local units, so arming it as a waypoint flew the ship to a point near this origin and
+    // ui:setCourse wiped nav.route. Plot it like the cargo deck does and keep the chart open.
+    const plot = resolveGalaxyMapPlotAction(this._ctx.state, target);
+    if (plot.available) {
+      if (!emitGalaxyMapPrimaryAction(this._ctx.bus, plot)) return;
+      this._selectedTarget = target;
+      this._updateEngageControl();
+      this._updateRailSections(this._ctx.state);
+      this.refresh();
+      return;
+    }
     const action = resolveGalaxyMapPrimaryAction(this._ctx.state, target);
     if (!action) return;
     if (!emitGalaxyMapPrimaryAction(this._ctx.bus, action)) return;
@@ -8500,12 +8533,19 @@ _onMouseLeave() {
       const field = this._clearField(w, h);
       const ox = field.x + field.width / 2;
       const oy = field.y + field.height / 2;
-      const wx = cam.cx + sign * (mx - ox) / (baseScale * oldZoom);
-      const wy = cam.cy + sign * (my - oy) / (baseScale * oldZoom);
+      // _drawLocal scales by `baseScale * cam.zoom`, so the notch must move cam.zoom — anchoring on
+      // `this._zoom` while cam.zoom stayed frozen slid the scope instead of magnifying it.
+      const oldCamZoom = Number(cam.zoom) > 0 ? cam.zoom : 1.5;
+      const newCamZoom = oldCamZoom * (nextZoom / oldZoom);
+      const wx = cam.cx + sign * (mx - ox) / (baseScale * oldCamZoom);
+      const wy = cam.cy + sign * (my - oy) / (baseScale * oldCamZoom);
 
-      cam.cx = wx - sign * (mx - ox) / (baseScale * nextZoom);
-      cam.cy = wy - sign * (my - oy) / (baseScale * nextZoom);
+      cam.zoom = newCamZoom;
+      cam.cx = wx - sign * (mx - ox) / (baseScale * newCamZoom);
+      cam.cy = wy - sign * (my - oy) / (baseScale * newCamZoom);
     } else {
+      // The next entry into LOCAL starts from the fitted scope again.
+      if (this._cams.local) this._cams.local.zoom = 1.5;
       // Threshold crossing reads as passing through a membrane, not a hard clip.
       this._triggerIris(newLevel);
       // Leaving LOCAL hands control to the camera, so the camera must adopt where LOCAL actually
@@ -8558,11 +8598,25 @@ _onCanvasDblClick(ev) {
     // identity is gone arms only its position, never the body that inherited a recycled id.
     const payload = commitCoursePayload(this._ctx && this._ctx.state, target);
     if (!payload || !this._ctx || !this._ctx.bus) return false;
-    if (payload.type === 'sector' && payload.sectorId) {
-      this._ctx.bus.emit('world:requestRoute', { targetSectorId: payload.sectorId, mode: 'fuel' });
+    // The gesture does what the card promises. A neighbour reads "Set Course & Jump" / "2× jump",
+    // so it goes through the same emitter as the inspector's primary (world:requestJump + course);
+    // a closed gate refuses out loud instead of arming a fix at a sealed aperture; a multi-hop
+    // plot stays on the chart, because Engage lives here.
+    const action = resolveGalaxyMapPrimaryAction(this._ctx.state, target);
+    if (action && action.kind === 'closed') {
+      this._ctx.bus.emit('toast', { text: action.reason || action.label, kind: 'warn', ttl: 3 });
+      return false;
     }
-    this._ctx.bus.emit('ui:setCourse', payload);
-    this._ctx.bus.emit('toast', { text: 'Course set: ' + (payload.label || 'target'), kind: 'info', ttl: 3 });
+    const keepOpen = !!action && action.kind === 'route';
+    if (action && action.kind === 'jump') {
+      emitGalaxyMapPrimaryAction(this._ctx.bus, action);
+    } else {
+      if (payload.type === 'sector' && payload.sectorId) {
+        this._ctx.bus.emit('world:requestRoute', { targetSectorId: payload.sectorId, mode: 'fuel' });
+      }
+      this._ctx.bus.emit('ui:setCourse', payload);
+      this._ctx.bus.emit('toast', { text: 'Course set: ' + (payload.label || 'target'), kind: 'info', ttl: 3 });
+    }
     // A laid line locks in before the chart hands over: the beam swells into the course, one ice
     // pulse runs it end to end and the foot's tape lights, then the chart closes (~half a second).
     // The commit itself has already happened above, exactly as a double-click commits it.
@@ -8601,8 +8655,14 @@ _onCanvasDblClick(ev) {
         this._lock = null;
         if (this._navFootEl && this._navFootEl.classList) this._navFootEl.classList.remove('is-locking');
         if (this._engageButton && this._engageButton.classList) this._engageButton.classList.remove('is-locking');
+        if (keepOpen) { this.refresh(); return; }
         if (this._visible) popCurrentScreen(ctx);
       }, CHART_LOCK_MS);
+      return true;
+    }
+    if (keepOpen) {
+      this._updateEngageControl();
+      if (this._ctx.state) this._updateRailSections(this._ctx.state);
       return true;
     }
     popCurrentScreen(this._ctx);
@@ -9603,7 +9663,7 @@ _draw() {
         events: eventSignal,
         holdings: holdingsSignal,
         current: !!n.current,
-        detail: `Sector · ${factionNameOf(n.factionId)} · Sec: ${n.security ? n.security.toFixed(2) : '0.00'} · Events: ${eventDetail} · Holdings: ${holdingsDetail}`
+        detail: `Sector · ${factionNameOf(n.factionId)} · Sec: ${securityDetailText(n.security)} · Events: ${eventDetail} · Holdings: ${holdingsDetail}`
       });
 
       // The token: the sector's produced art (or its bone fallback), lifted under the pointer.
@@ -11066,7 +11126,8 @@ _drawLocal(g, state, w, h) {
     g.font = chartFont(640, 12, { stretch: 'normal' });
     g.textAlign = 'left'; g.textBaseline = 'middle';
     g.lineJoin = 'round';
-    const ringUnits = Math.round(span / 2);
+    // Read the radius off the scale the rings are actually drawn at (the wheel moves cam.zoom).
+    const ringUnits = Math.round(ringBase / (baseScale * (Number(cam.zoom) > 0 ? cam.zoom : 1.5)));
     for (let i = 0; i < 3; i++) {
       const frac = [0.33, 0.66, 1.0][i];
       const rrPx = ringBase * frac;
@@ -12336,6 +12397,10 @@ function waypointClickTarget(wp, pos, sx, sy, state) {
     targetEntityId: wp.targetEntityId,
     stable: wp.stable || null,
     stationId: wp.stationId,
+    // Double-click re-arms the course the pilot already has: keep its kind and arrival radius
+    // instead of freezing it into a generic 48 WU local fix.
+    courseWaypointKind: wp.kind || null,
+    courseArrivalRadius: Number.isFinite(wp.arrivalRadius) ? wp.arrivalRadius : undefined,
   });
 }
 

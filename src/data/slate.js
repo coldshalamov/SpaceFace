@@ -22,7 +22,11 @@ export const SLATE_COLUMN = Object.freeze({
   // {n} = the hull's logged spike count.
   readOne: 'Column reads {n} weld-spike on this hull. It holds to three.',
   readMany: 'Column reads {n} weld-spikes on this hull. It holds to three.',
-  readFailed: 'Your number is already in the column — {n} spikes. The seam went at four, same as he said.',
+  // Past the canon number on welds alone: the entry is filed, the seam has not opened yet.
+  readEntry: 'Column reads {n} weld-spikes on this hull. Your entry is filed at four. The seam has not gone yet. It will.',
+  // Only when the seam actually opened (story flag variance_seam_failed).
+  // The seam's strain spikes are not weld-spikes, so this line carries no weld count.
+  readFailed: 'Your number is already in the column. The seam went at four, same as the column said.',
   spike: 'The weld rings the column — {n} on this hull.',
   // {n} is always 4 here: the prediction lands the moment the count reaches it.
   fourth: 'Fourth spike. The column wrote your name the day it predicted it — Slate welds the seam again and logs the entry.',

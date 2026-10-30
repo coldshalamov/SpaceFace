@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import { economy } from '../src/systems/economy.js';
 import { predictPriceCurve } from '../src/systems/economyCycles.js';
+import { stationTradeMults } from '../src/economy/stationConditions.js';
 import { COMMODITIES } from '../src/data/commodities.js';
 import { SECTORS } from '../src/data/sectors.js';
 
@@ -97,8 +98,11 @@ test('board, history, forecast, and executable quote share one demand-adjusted p
   assert.ok(entry.demandDrivers.some((driver) => driver.id === 'war-footing'));
   assert.equal(entry.history.at(-1).mid, entry.lastMid);
   assert.equal(forecast[0].mid, entry.lastMid);
-  assert.ok(Math.abs(quote.unitAvg - entry.lastBuy) / entry.lastBuy < 0.01,
-    `one-unit executable quote ${quote.unitAvg} should agree with displayed buy ${entry.lastBuy}`);
+  // The displayed buy is the book price with the berth's trade fold on it (market day, festival,
+  // strike/blockade) — the same composition the intel snapshot and the market screen print.
+  const displayedBuy = entry.lastBuy * stationTradeMults(state, stationId).buy;
+  assert.ok(Math.abs(quote.unitAvg - displayedBuy) / displayedBuy < 0.01,
+    `one-unit executable quote ${quote.unitAvg} should agree with displayed buy ${displayedBuy}`);
 
   economy._instance = null;
 });

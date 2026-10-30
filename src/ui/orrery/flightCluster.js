@@ -151,6 +151,19 @@ const CSS = `
     max-width:calc((100vw - 32px) / var(--orr-cluster-scale, 1) - var(--orr-key-x, 0px) - 26px); }
   .orr-cluster__keyword { min-width:0; overflow:hidden; text-overflow:ellipsis; }
   .orr-cluster__keytag b { flex:0 0 auto; margin-left:5px; padding-left:5px; }
+  /* The lane between the sockets and the screen edge is too short for verb + cap on a
+     phone — the keyword and its neighbour's cap print on each other. Keep the key-cap
+     frame; the full sentence stays on the socket's accessible name and tip. */
+  .orr-cluster__keytag .orr-cluster__keyword { display:none; }
+  /* The next-decision line sits left of the key column on a phone — 250px of
+     artboard width would run its tail under the keytags. Wrap it in the lane. */
+  .orr-cluster__next { width:calc(172px / var(--orr-cluster-scale, 1));
+    font-size:max(12px, calc(12px / var(--orr-cluster-scale, 1))); }
+  /* D261: the ring legend's swatch tick prints across the hull/shield/armor values at
+     phone scale. Reserve a fixed value column so the tick and the word never share it. */
+  .orr-cluster__legend { grid-template-columns:14px 4.2ch 1fr; column-gap:6px; }
+  .orr-cluster__legend svg { width:14px; }
+  .orr-cluster__legend .orr-label { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 }
 .orr-cluster__count { position:absolute; left:50%; top:50%; transform:translate(17px, 11px); font-family:var(--dp-face-numeral); font-weight:700; font-size: 12px; color:var(--dp-phos, #dfeeff); }
 /* D240: the floating text reads over open field, so a hull parked under the instrument used to take

@@ -98,6 +98,8 @@ const trimLabel = (v, max = 28) => String(v || '').replace(/[^\x20-\x7e]/g, '').
 
 const humanize = (id, max = 40) => String(id || '').replace(/^(?:manifest|cmdty|ship|faction|role)_/i, '')
   .replace(/_/g, ' ').replace(/[^ -~]/g, '').trim().toLowerCase().slice(0, max);
+/** A ship def id read as a hull class: 'enemy_raider_skiff' → 'raider skiff'. */
+const humanizeDef = (id) => humanize(String(id || '').replace(/^(?:enemy|npc|def)_/i, ''), 28);
 
 /** Top salvage-pool lines of a wreck: [{label, n}] — the hold as the sim actually recorded it. */
 export function poolLines(pool, limit = 2) {
@@ -121,7 +123,8 @@ export function truthFacts(wreck, state, now = state?.simTime || 0) {
   let killerLabel = '';
   if (killerId != null && !byPlayer) {
     const k = state?.entities?.get?.(killerId);
-    killerLabel = trimLabel(k?.name || k?.data?.callsign || k?.data?.defId || '');
+    // A bare def id is a raw key, not a name: humanize it like the freight ids below.
+    killerLabel = trimLabel(k?.name || k?.data?.callsign || humanizeDef(k?.data?.defId) || '');
   }
   const ledger = prov.lossId != null || prov.kind != null;
   let cause = 'u';
@@ -181,9 +184,17 @@ export function truthLine(facts, seedBase = 1) {
     else if (mins >= 1) parts.push(fill(pick(T.ageMinutes, seed, 'a'), { n: mins }));
     else parts.push(T.ageFresh);
   }
-  parts.push(facts.restricted ? T.legalRestricted : T.legalOpen);
-  let text = parts.join(' ');
-  if (text.length > C.markTextMax) text = parts.filter((_, i) => i !== 3).join(' ').slice(0, C.markTextMax);
+  const legal = facts.restricted ? T.legalRestricted : T.legalOpen;
+  let text = [...parts, legal].join(' ');
+  if (text.length > C.markTextMax) {
+    // Over length: drop the age line first (only present when dated), then trim the body. The
+    // legal sentence is the mark's verdict and always survives, last, intact.
+    const body = (facts.ageSeconds != null ? parts.slice(0, -1) : parts).join(' ');
+    const room = C.markTextMax - legal.length - 1;
+    const kept = body.length <= room ? body
+      : `${body.slice(0, Math.max(0, room - 1)).replace(/[\s.,;:]+$/, '')}.`;
+    text = `${kept} ${legal}`;
+  }
   return text;
 }
 

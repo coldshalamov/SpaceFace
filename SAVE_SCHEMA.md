@@ -31,6 +31,9 @@ Current save version: `22`
 - `meridian`
 - `archive`
 - `tallyho`
+- `choir`
+- `concord`
+- `fulfillment`
 - `environmentMaterials`
 - `reactiveMatter`
 - `spectrum`
@@ -205,6 +208,7 @@ Current save version: `22`
 | `$.cargo.capVolume` | number | 40 |
 | `$.cargo.items` | object | {} |
 | `$.charges` | null | null |
+| `$.choir` | object | {} |
 | `$.chronicler` | object | {} |
 | `$.claims` | object | {} |
 | `$.claims.bodies` | array | length 0 |
@@ -223,6 +227,7 @@ Current save version: `22`
 | `$.combat.lastPlayerDefeat` | null | null |
 | `$.combat.schemaVersion` | number | 1 |
 | `$.combat.statusNextPendingSeq` | number | 1 |
+| `$.concord` | object | {} |
 | `$.crafting` | object | {} |
 | `$.crafting.queues` | object | {} |
 | `$.crew` | object | {} |
@@ -290,6 +295,7 @@ Current save version: `22`
 | `$.flight.previousMode` | string | manual |
 | `$.formations` | object | {} |
 | `$.frontier` | object | {} |
+| `$.fulfillment` | object | {} |
 | `$.helix` | object | {} |
 | `$.ilexArk` | null | null |
 | `$.industrialDisasters` | object | {} |

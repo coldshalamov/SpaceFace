@@ -114,6 +114,14 @@ export const FULFILLMENT_ORDER_ONE = Object.freeze({
   destination: 'the Pit',
   addressee: 'Sump',
   failedYears: 14,
+  // The hand-in: the Pit is Ruined Cache Station (Sump sweeps there). The crate closes
+  // the ticket once it sits inside the station's berth (hull/dock radius + slack) with the
+  // player close by — towed, pushed, or flown in beside it.
+  destinationStationId: 'station_ashcache',
+  destinationLabel: 'Sump at the Pit (Ruined Cache Station) — tow it into the berth',
+  deliverySlackWU: 90,
+  deliverPlayerR: 1500,
+  deliveryPayCr: 600,       // paid through the economy intent — the Pit tips its sweeper's courier
   closeLine: 'LOG: ticket 0000001 CLOSED — delivered by hand. The air does not change.',
   payoffLine: "Sump's broom arrives. Fourteen years of patience, swept.",
 });

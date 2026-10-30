@@ -5,7 +5,7 @@
 // owns re-staging the world. A restore that returns "resumed" with no live
 // lesson is the stranded-pilot bug this file pins.
 // Run: node --test test/onboarding-continue-resume.test.mjs
-import test from 'node:test';
+import nodeTest from 'node:test';
 import assert from 'node:assert/strict';
 
 import { createBus } from '../src/core/eventBus.js';
@@ -40,7 +40,9 @@ function stubElement() {
   };
 }
 
-globalThis.document = {
+// The onboarding presenters reach for `document`; the stub lives only inside each test here so
+// a shared-process run (--test-isolation=none) never inherits it in another file.
+const DOCUMENT_STUB = {
   getElementById: () => null,
   querySelector: () => null,
   head: stubElement(),
@@ -48,6 +50,19 @@ globalThis.document = {
   documentElement: null,
   createElement: () => stubElement(),
 };
+
+function test(name, fn) {
+  return nodeTest(name, async (t) => {
+    const had = Object.prototype.hasOwnProperty.call(globalThis, 'document');
+    const prev = globalThis.document;
+    globalThis.document = DOCUMENT_STUB;
+    try {
+      return await fn(t);
+    } finally {
+      if (had) globalThis.document = prev; else delete globalThis.document;
+    }
+  });
+}
 
 function makeState() {
   const player = makeEntity({
@@ -206,7 +221,7 @@ test('Continue mid-raid restages the raid cast AND the still-open rescue cast, t
   // An uncredited kill restages the raider and keeps the beat alive.
   const firstRaider = ob.raid.ids.raider;
   h.bus.emit('entity:killed', { id: firstRaider, killerId: 999, ownerId: 999 });
-  assert.equal(ob.beatAction, 'the raider broke off');
+  assert.equal(ob.beatAction, 'The raider broke off.');
   assert.ok(ob.raid.ids.raider && ob.raid.ids.raider !== firstRaider, 'a fresh raider is staged');
   assert.ok(alive(h, ob.raid.ids.raider));
 

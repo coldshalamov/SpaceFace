@@ -22,7 +22,25 @@ const STUB_LEDGER = {
 // Acquisition fixed on board row 560: the latch now hands the wing an authoritative
 // 'onboarding_raid:' ATTACK_RUN (doctrine.js AUTHORITATIVE_ASSIGNMENT_PREFIXES) that outranks
 // the squad vote the passive raider was poisoning, and flee swaps it for DISENGAGE.
-test('X-02 v4: the wing fires, hits only the player, opens no law case, and exits on its own terms', { timeout: 600000 }, async () => {
+// The node-safe production lane is headless by contract. Several onboarding test files install a
+// partial `globalThis.document` stub at module scope and never remove it; under
+// `--test-isolation=none` that stub outlives them and flips DOM-aware systems (onboarding's panel,
+// sectorPostcard's dismiss listeners) onto half-stubbed DOM paths mid-run. Hide any inherited DOM
+// globals for this test and put them back afterwards, so the result never depends on batch order.
+function withHeadlessGlobals() {
+  const keys = ['document', 'window'];
+  const saved = keys.map((k) => [k, Object.getOwnPropertyDescriptor(globalThis, k)]);
+  for (const [k, desc] of saved) if (desc && desc.configurable) delete globalThis[k];
+  return () => {
+    for (const [k, desc] of saved) {
+      if (desc) Object.defineProperty(globalThis, k, desc);
+      else delete globalThis[k];
+    }
+  };
+}
+
+test('X-02 v4: the wing fires, hits only the player, opens no law case, and exits on its own terms', { timeout: 600000 }, async (t) => {
+  t.after(withHeadlessGlobals());
   const runtime = await createAuthoritativeRuntime({
     profileId: 'production', nodeSafeOnly: true, seed: 4242,
     systemLookup: getNodeSystemFactoryTable(),

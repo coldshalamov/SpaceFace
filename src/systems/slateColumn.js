@@ -148,7 +148,9 @@ export function createSlateColumn() {
       const spikes = flags ? (Number(flags[SLATE_COLUMN.spikeFlag]) || 0) : 0;
       this.bus?.emit('comms:popup', {
         id: `slate_column_read_${s.tick || 0}`, sender: SLATE_COLUMN.sender, category: 'story',
-        text: slateColumnLine(spikes), ttl: 9, persist: false,
+        // "The seam went" only when the story actually opened it — never off the weld count.
+        text: slateColumnLine(spikes, { seamWent: !!flags && flags.variance_seam_failed === true }),
+        ttl: 9, persist: false,
       });
       this.bus?.emit('slate:columnRead', {
         spikes, entry: flags ? flags[SLATE_COLUMN.entryFlag] === true : false,

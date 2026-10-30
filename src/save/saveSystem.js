@@ -939,6 +939,13 @@ export const save = {
       ['meridian', () => this._callSerialize('faction_meridian') || {}],
       ['archive', () => this._callSerialize('archiveRedaction') || {}],
       ['tallyho', () => this._callSerialize('tallyho') || {}],
+      // The Choir's resonance ledger (visits, paid legs, pilgrims), Concord's formation
+      // locks and clamps, and Fulfillment's order book and route clocks ride the same
+      // boundary — a Continue must not re-pay a paid leg or reopen a closed order.
+      // Same slots as _serializeDataSteps; an absent key restores a fresh bag.
+      ['choir', () => this._callSerialize('choirResonance') || {}],
+      ['concord', () => this._callSerialize('faction_concord') || {}],
+      ['fulfillment', () => this._callSerialize('fulfillmentRoutes') || {}],
       // Material heat must persist resource records before the world snapshot is copied.
       ['environmentMaterials', () => this._callSerialize('environmentMaterials') || { reactions: [], blasts: [] }],
       ['reactiveMatter', () => this._callSerialize('reactiveMatter')],
@@ -1138,6 +1145,13 @@ export const save = {
     yield 'serialize:archive';
     data.tallyho = this._callSerialize('tallyho') || {};
     yield 'serialize:tallyho';
+    // Same slots as the capture plan — the envelope checksum is insertion-order sensitive.
+    data.choir = this._callSerialize('choirResonance') || {};
+    yield 'serialize:choir';
+    data.concord = this._callSerialize('faction_concord') || {};
+    yield 'serialize:concord';
+    data.fulfillment = this._callSerialize('fulfillmentRoutes') || {};
+    yield 'serialize:fulfillment';
     data.environmentMaterials = this._callSerialize('environmentMaterials') || { reactions: [], blasts: [] };
     yield 'serialize:environmentMaterials';
     data.reactiveMatter = this._callSerialize('reactiveMatter');
@@ -6873,6 +6887,10 @@ export const save = {
       this._callDeserialize('faction_meridian', data.meridian);
       this._callDeserialize('archiveRedaction', data.archive);
       this._callDeserialize('tallyho', data.tallyho);
+      // Absent on older saves — each deserialize heals a missing bag to a fresh ledger.
+      this._callDeserialize('choirResonance', data.choir);
+      this._callDeserialize('faction_concord', data.concord);
+      this._callDeserialize('fulfillmentRoutes', data.fulfillment);
       yield 'deserialized-factions';
       yield* this._callDeserializeChunked('world', data.world); // sets currentSectorId; does NOT spawn entities
       yield 'deserialized-world';

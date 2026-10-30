@@ -14,6 +14,7 @@ import { CONTESTED_SECTOR_BY_PAIR, contestedSectorForPair } from '../data/confli
 import { SECTORS, stationGrowthLadderFor } from '../data/sectors.js';
 import { KillCause, compactKillCausality } from '../combat/killCausality.js';
 import { forEachLivingWorldActor } from '../world/livingWorldViews.js';
+import { activeTreatyBetween, treatyForFlag } from '../data/factionTreaties.js';
 
 // ── Tiers (§0.9 / spec): 9 named bands across -1000..+1000, evaluated high→low. ──────────────
 const TIERS = [
@@ -119,6 +120,16 @@ function spilloverWeight(a, b) {
   const mb = META_BY_ID[b];
   if (mb && mb.relations && typeof mb.relations[a] === 'number') return mb.relations[a];
   return 0;
+}
+
+/**
+ * The live relation weight: an unlocked treaty (data/factionTreaties.js, flag written by the
+ * story reward that carries it) replaces the pair's authored rivalry with its own share.
+ */
+export function relationWeightFor(state, a, b) {
+  if (a === b) return 0;
+  const treaty = activeTreatyBetween(state, a, b);
+  return treaty ? treaty.weight : spilloverWeight(a, b);
 }
 
 /** First tier (high→low) whose `min` threshold is satisfied by `rep`. */
@@ -335,6 +346,21 @@ export const factions = {
     bus.on('faction:repDelta', ({ factionId, delta, reason }) => {
       this.applyRep(factionId, delta, reason || 'event');
     });
+    // A recovered treaty's unlock flag changes the pair's spillover (relationWeightFor). Say so
+    // once, at the moment it starts counting, so the player knows why the rivalry stopped biting.
+    bus.on('uniqueWreck:storyRewardGranted', (p) => {
+      const treaty = p && typeof p.unlockFlag === 'string' ? treatyForFlag(p.unlockFlag) : null;
+      if (!treaty) return;
+      this.bus.emit('news:publish', {
+        text: treaty.news,
+        kind: 'faction_treaty',
+        sourceRef: `faction:treaty:${treaty.id}`,
+        factionId: treaty.factions[0],
+        factionIds: [...treaty.factions],
+        treatyId: treaty.id,
+        channelId: 'news',
+      });
+    });
     // Narrative trade posture (E1 first-contact consequences: open_early / cautious / grudge).
     // The record is the durable faction-owned truth; story flags mirror it for narrative reads.
     bus.on('faction:tradePosture', (p) => {
@@ -409,7 +435,7 @@ export const factions = {
         // Rivals of the victim approve once, witness or not. A later clear does not pay it again.
         for (const other of FACTION_IDS) {
           if (other === victim) continue;
-          if (spilloverWeight(victim, other) < 0) {
+          if (relationWeightFor(state, victim, other) < 0) {
             this.applyRep(other, ENEMY_KILL_BONUS, 'kill_faction_enemy_ship');
           }
         }
@@ -633,7 +659,7 @@ export const factions = {
     const state = this.state || _state;
     for (const other of FACTION_IDS) {
       if (other === srcId) continue;
-      const w = spilloverWeight(srcId, other);
+      const w = relationWeightFor(state, srcId, other);
       if (!w) continue;
       let sd = Math.round(delta * w);
       if (sd === 0) continue;

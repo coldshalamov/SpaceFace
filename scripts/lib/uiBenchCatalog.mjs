@@ -103,6 +103,10 @@ export const UI_BENCH_SHOTS = Object.freeze([
   { id: 'station-contracts', screen: 'station', tab: 'contracts', backdrop: 'shell' },
   { id: 'station-factions', screen: 'station', tab: 'factions', backdrop: 'shell' },
   { id: 'station-bar', screen: 'station', tab: 'bar', backdrop: 'shell' },
+  // Story-reward readers (tools/ui-bench.js seedStoryRewardShot): the Concord docket officer for a
+  // held Lost Ledger at Helios; the Cassandra Treaty line on the Choir's own berth.
+  { id: 'station-bar-story-buyer', screen: 'station', tab: 'bar', backdrop: 'shell', story: 'ledger' },
+  { id: 'station-factions-treaty', screen: 'station', tab: 'factions', backdrop: 'shell', story: 'treaty', dock: 'station_depot3' },
   { id: 'station-ledger', screen: 'station', tab: 'ledger', backdrop: 'shell' },
 
   { id: 'crucible', screen: 'crucible', backdrop: 'world' },

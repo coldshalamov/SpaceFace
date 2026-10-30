@@ -59,6 +59,10 @@ import { deedLine } from '../../data/deedPhrases.js';
 import { mostCitedShipDeed } from '../../systems/shipLedger.js';
 import { deedToneFor, markTold, peekDeedRecord, pickDeedToTell } from '../../systems/deedRecord.js'; // U-E: the bar gossips
 import { getActiveAceRouteForSector } from '../../data/namedAces.js';
+import {
+  STORY_BUYER_CHOICE_PREFIX, STORY_BUYER_CONTACT_PREFIX, STORY_BUYER_DECLINE_CHOICE,
+  STORY_REWARD_BUYERS, storyBuyerOffersAt, storyBuyerRepDeltas, storyBuyerRow,
+} from '../../data/storyRewardBuyers.js';
 
 /* ── lookup tables ──────────────────────────────────────────────────── */
 
@@ -805,7 +809,7 @@ export function generateContacts(stationId, state = {}, opts = {}) {
   const fence = fenceBarContact(stationId, state);
   const sori = soriComparisonContact(state, stationId);
   const listed = [
-    ...endingCourier, ...(sori ? [sori] : []), ...authoredBarContactsForStation(stationId, state), ...(fence ? [fence] : []), ...contacts,
+    ...endingCourier, ...storyBuyerContacts(state, stationId), ...(sori ? [sori] : []), ...authoredBarContactsForStation(stationId, state), ...(fence ? [fence] : []), ...contacts,
   ];
   stampUnheardBarRumor(listed, stationId, state);
   stampHeliosBay7Rumor(listed, stationId, state);
@@ -815,6 +819,68 @@ export function generateContacts(stationId, state = {}, opts = {}) {
   stampAceRouteRumor(listed, stationId, state);
   stampLastShiftLocalReport(listed, stationId, state);
   return listed;
+}
+
+function signedRep(n) { return `${n > 0 ? '+' : '\u2212'}${Math.abs(n)}`; }
+function creditsText(n) { return `${Math.round(n).toLocaleString('en-US')} cr`; }
+
+/**
+ * A claimed story item's buyer sits at the bar of a berth that matches one of its authored
+ * choices (data/storyRewardBuyers.js). The choice says the price and who it costs; choosing
+ * emits ui:talkContact, which the sim owner (systems/uniqueWrecks.js) settles. Once sold the
+ * record carries a disposition and this contact is no longer generated.
+ */
+export function storyBuyerContacts(state, stationId) {
+  const out = [];
+  for (const offer of storyBuyerOffersAt(state, stationId)) {
+    const item = STORY_REWARD_BUYERS[offer.rewardId];
+    const first = item.choices[offer.choiceIds[0]];
+    const choices = offer.choiceIds.map((choiceId) => {
+      const row = item.choices[choiceId];
+      const terms = [
+        ...(row.credits > 0 ? [creditsText(row.credits)] : []),
+        ...storyBuyerRepDeltas(row, stationId).map((rep) => {
+          const meta = FACTION_BY_ID.get(rep.factionId);
+          return `${(meta && (meta.short || meta.name)) || rep.factionId} ${signedRep(rep.delta)}`;
+        }),
+      ];
+      return { id: STORY_BUYER_CHOICE_PREFIX + choiceId, label: `${row.label} (${terms.join(' · ')})` };
+    });
+    choices.push({ id: STORY_BUYER_DECLINE_CHOICE, label: 'Not yet. It stays in my hold.' });
+    out.push({
+      id: STORY_BUYER_CONTACT_PREFIX + offer.rewardId,
+      name: first.buyerName,
+      role: first.role,
+      roleLabel: first.roleLabel,
+      factionId: barStationInfo(stationId, state)?.station?.factionId || null,
+      line: first.line,
+      canonicalKey: 'story_buyer',
+      storyBuyer: { rewardId: offer.rewardId, itemName: offer.itemName, choiceIds: [...offer.choiceIds] },
+      choices,
+    });
+  }
+  return out;
+}
+
+function storyBuyerReply(contact, choiceId) {
+  const rewardId = contact.storyBuyer.rewardId;
+  if (contact.storyBuyer.soldLine) return { text: contact.storyBuyer.soldLine };
+  if (typeof choiceId === 'string' && choiceId.startsWith(STORY_BUYER_CHOICE_PREFIX)) {
+    const row = storyBuyerRow(rewardId, choiceId.slice(STORY_BUYER_CHOICE_PREFIX.length));
+    if (row) {
+      // The sold buyer stays on the rail for this visit with one closing word, so the reply is
+      // read next to the face that said it; the next visit regenerates without them.
+      return {
+        text: row.reply,
+        pinContact: {
+          ...contact,
+          storyBuyer: { ...contact.storyBuyer, soldLine: row.reply },
+          choices: [{ id: 'story_buyer_closed', label: 'Done.' }],
+        },
+      };
+    }
+  }
+  return { text: `Then keep the ${contact.storyBuyer.itemName} close. Someone else will ask.` };
 }
 
 // The existing refinery host can discuss a filed local record without replacing local work,
@@ -1360,6 +1426,7 @@ export function buildReply(role, choiceId, ctx, stationId, contact = null) {
   if (stationId === BORROWED_SUN.stationId && !barStationInfo(stationId, state)) {
     return { text: 'The Borrowed Sun has no current berth record here. Its carrier must confirm the next visit.' };
   }
+  if (contact && contact.storyBuyer) return storyBuyerReply(contact, choiceId);
   if (choiceId === 'last_shift_report') return lastShiftLocalReply(state, stationId, contact);
   if (contact && contact.id === SORI_COMPARISON_CONTACT_ID) return soriComparisonReply(state, stationId, choiceId);
   if (contact && contact.id === DOSS_ARCHIVE_CONTACT_ID) return buildDossArchiveReply(choiceId, state);

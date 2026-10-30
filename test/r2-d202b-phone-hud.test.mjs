@@ -33,17 +33,24 @@ test('D202b: a real phone keeps a text-scale floor of >= 0.75 below 960x600; a s
 });
 
 test('D202b: phone flight instruments have no compound scale and retain the effective type floor', () => {
-  // Explicit compact geometry replaces the former .75 wrapper floor, not its legibility.
+  // Current contract (a77bc09d389): phone flight lanes use explicit mf- dimensions
+  // rather than a scaled desktop instrument, and in wheel mode the right dock and
+  // radar wrap are hidden outright — either way they never compound a desktop scale.
   for (const selector of ['.sf-rightdock', '.sf-radar-wrap']) {
-    const block = mobileStylesSrc.slice(mobileStylesSrc.indexOf('/* Mobile flight lanes:')).split('#hud ' + selector + ' {')[1]?.split('}')[0];
-    assert.ok(block?.includes('transform:none!important'), selector + ' must not compound-scale');
+    const hidden = mobileStylesSrc.split('#hud ' + selector + ' {')[1]?.split('}')[0];
+    assert.ok(/(visibility|display):\s*none|visibility:\s*hidden/i.test(hidden || '') || /transform:\s*none/.test(hidden || ''),
+      `${selector} must either be hidden in wheel mode or pinned transform:none — no compound scale`);
   }
+  assert.doesNotMatch(mobileStylesSrc, /data-sf-mobile-flight="1"[^}]*transform:\s*scale/,
+    'phone flight must not scale the desktop stacks');
   assert.doesNotMatch(hudStylesSrc, /data-sf-mobile-flight="1"[^}]+transform:scale/);
-  assert.match(mobileStylesSrc, /\.sf-radar-orrery text \{ font-size:24px!important/);
-  assert.ok(24 * 96 / 208 >= 9, 'compact SVG type meets the effective floor');
-  assert.ok(32 * 96 / 290 >= 9, 'expanded SVG type meets the effective floor');
-  assert.ok(24 * 80 / 208 >= 9 && 36 * 80 / 290 >= 9, 'narrow portrait keeps both floors');
-  assert.match(mobileStylesSrc, /font-size:12px!important; line-height:1\.3; letter-spacing:\.04em/,
+  // The radar label floor moved into hudStyles with the D202b mobile-deck rules:
+  // phone-scoped 15px on SVG text, which clears the 9px effective floor even at
+  // the smallest declared edge fit.
+  assert.match(hudStylesSrc, /data-sf-mobile="1"\][^{]*#hud \.sf-radar-orrery text[^}]*font-size:\s*(1[0-9]|[2-9]\d)px\s*!important/s);
+  // Unscaled detail text keeps the 12px declared floor — now declared as the mf-
+  // deck's 12px shorthand rather than the retired !important rule (a77bc09d389).
+  assert.match(mobileStylesSrc, /font:\s*600 12px\/1(?:\.25)?\s+var\(--mf-face\)/,
     'unscaled detail text retains the 12px declared floor');
 });
 
@@ -87,4 +94,32 @@ test('D202b quiet/negative: desktop sizes stay pixel-identical and intermediate 
   // Verify desktop (#hud base without media queries) has NO transform applied to stacks
   assert.doesNotMatch(hudStylesSrc.slice(0, 700), /#hud\s+\.sf-rightdock\s*\{[^}]*transform:\s*scale/,
     'desktop rightdock has no scale transform outside media queries');
+});
+
+test('D261: the drive tape and right dock ride a reserved lane above the cluster at phone width', () => {
+  // D261 — at ≤640px the dock-anchored tape row collapses onto the ORRERY cluster
+  // (TOP SPEED printed through the hull ring; keytags through the radar). The fix
+  // reserves one lane above the cluster for both edge stacks instead of magic offsets.
+  const hudSrc = readFileSync(root('src/ui/hud.js'), 'utf8');
+  const adapterSrc = readFileSync(root('src/ui/orrery/hudAdapter.js'), 'utf8');
+
+  assert.match(hudSrc, /@media \(max-width: 640px\)\s*\{[^}]*#hud\[data-hud="orrery"\] > \.sf-vtape[^}]*bottom:calc\(24px \+ var\(--orr-cluster-h/s,
+    'the vtape must leave the dock band and sit above the cluster at ≤640px');
+  assert.match(hudSrc, /#hud\[data-hud="orrery"\] > \.sf-vtape[^}]*transform-origin:0 100%/,
+    'the phone vtape scales from its bottom-left anchor like the cluster');
+
+  assert.match(hudStylesSrc, /#hud\[data-hud="orrery"\] \.sf-rightdock[^}]*bottom:calc\(24px \+ var\(--orr-cluster-h/s,
+    'the right dock shares the same reserved lane on a phone');
+
+  // The lane height must track the cluster's own scaled height, not a constant —
+  // --orr-cluster-h is declared on #hud next to every --orr-cluster-scale step.
+  const scaleSteps = adapterSrc.match(/--orr-cluster-scale:\s*[0-9.]+/g) || [];
+  const heightSteps = adapterSrc.match(/--orr-cluster-h:\s*calc\(540px \* [0-9.]+\)/g) || [];
+  assert.ok(scaleSteps.length >= 3, 'cluster declares scale steps');
+  assert.equal(heightSteps.length, scaleSteps.length,
+    'every --orr-cluster-scale step must mirror an --orr-cluster-h');
+
+  // The phone rules stay scoped to ≤640px — desktop keeps the dock-anchored tape.
+  assert.match(hudSrc, /@media \(max-width: 1279px\), \(max-height: 719px\)\s*\{[^}]*right:calc\(var\(--sf-dock-w/s,
+    'the ≤1279 dock-anchored vtape rule must be preserved');
 });

@@ -12,7 +12,7 @@ export function bracketEntitySpec(part, center = C.anchor, memory = freshBracket
   const side = part.endsWith('left') ? -1 : 1;
   const x = keeper ? 0 : ball ? offset : side * (bumper ? C.bumperX : C.postX);
   const z = keeper ? C.keeperZ : ball ? C.serveZ : bumper ? C.bumperZ : C.goalZ;
-  const radius = keeper ? C.keeperRadius : ball ? C.ballRadius : bumper ? C.bumperRadius : 6;
+  const radius = keeper ? C.keeperRadius : ball ? C.ballRadius : bumper ? C.bumperRadius : C.postRadius;
   const mass = keeper ? C.keeperMass : ball ? C.ballMass : 10000;
   return {
     type: ball ? 'payload' : 'drone', name: keeper ? 'BRACKET / Keeper of the Small Goal' : ball ? 'Scrapball · push or Massline' : 'BRACKET · yard hardware',

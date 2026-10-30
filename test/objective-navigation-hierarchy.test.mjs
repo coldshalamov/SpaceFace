@@ -113,7 +113,8 @@ test('goal readout reports honest distance and ETA only while closing', () => {
   assert.equal(closing.distanceWu, 500);
   assert.equal(closing.closingSpeed, 50);
   assert.equal(closing.etaS, 10);
-  assert.equal(closing.distanceText, '500 WU');
+  // The player reads world units as "u" (src/ui/units.js, owner 2026-10-28) — never "WU".
+  assert.equal(closing.distanceText, '500 u');
   assert.equal(closing.etaText, 'ETA 10s');
 
   player.vel = { x: -30, z: -40 };
@@ -133,7 +134,7 @@ test('goal presenters can rewrite caller-owned records without changing their va
     distanceWu: 500,
     closingSpeed: 50,
     etaS: 10,
-    distanceText: '500 WU',
+    distanceText: '500 u',
     etaText: 'ETA 10s',
   });
 

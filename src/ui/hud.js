@@ -1712,6 +1712,14 @@ function injectTravelTapeStyle() {
     #hud[data-hud="orrery"] > .sf-vtape { left:auto; right:calc(var(--sf-dock-w, 236px) + 36px);
       transform:scale(var(--sf-vtape-fit, .85)); transform-origin:100% 100%; }
   }
+  /* Phone band: the dock-anchored row collapses onto the ORRERY cluster, so the tape
+     moves into the open lane directly above the cluster (left-anchored like it).
+     The bottom offset tracks the cluster's own scaled height, not a magic band. */
+  @media (max-width: 640px) {
+    #hud[data-hud="orrery"] > .sf-vtape { left:calc(8px + var(--sf-safe-inset-x, 0px)); right:auto;
+      bottom:calc(24px + var(--orr-cluster-h, 232px) + 8px); transform:scale(var(--sf-vtape-fit, .62));
+      transform-origin:0 100%; max-width:calc(100vw - 16px); }
+  }
   /* Reduced motion: kill the pulse and the eases, KEEP the information. The cue still appears, it
      just stops blinking — suppressing the animation must never suppress the message. */
   @media (prefers-reduced-motion: reduce) {

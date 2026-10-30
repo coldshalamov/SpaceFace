@@ -3,7 +3,7 @@
 
 import { COMMODITIES } from '../../data/commodities.js';
 import { presenceServiceForStation } from '../../data/factionPresence.js';
-import { SERVICE_PRICES, INSURANCE_DEFAULTS, loanLimitFor, cargoPolicyQuoteFor, serviceUnitCr, stationOffersService, stationServiceOutage, stationConditionsFor, stationRefuelRation, AMMO_BATCH } from '../../systems/economy.js';
+import { SERVICE_PRICES, INSURANCE_DEFAULTS, loanLimitFor, cargoPolicyQuoteFor, serviceUnitCr, stationOffersService, stationServiceOutage, stationConditionsFor, stationRefuelRation, AMMO_BATCH, EMERGENCY_FUEL_U, emergencyRepairReserve } from '../../systems/economy.js';
 import { planSurveyFix, openSurveyFix, soldBearingOpen, bearingCharted, SURVEY_FIX_PRICE } from '../../systems/surveyFix.js';
 import { stationConditionChips } from '../../economy/stationConditions.js';
 import { livingHullCyclesSinceWash, livingHullGrimeAt } from '../../core/livingHull.js';
@@ -382,20 +382,20 @@ function baseServiceQuote(type, state, entity) {
     }
     const affordableUnits = Math.max(0, Math.floor(credits / fuelUnit));
     if (credits < cost && affordableUnits <= 0) {
-      // INF-089 dead end: broke with an empty tank. The blocking condition is exact and the
-      // remedy names the nearest real credit source (cargo in the hold → Market sell).
-      const carrying = Number(state && state.player && state.player.cargo && state.player.cargo.usedVolume) > 0;
+      // FB-101 hardship fill: a pilot who cannot pay for one unit still gets the smallest fill
+      // that can jump, filed on the note — economy's refuel handler takes this exact branch
+      // (realUnits <= 0) and owns the debit. Offer that verb instead of a disabled button
+      // that claims a dead end the engine does not have.
+      const reserve = Math.min(EMERGENCY_FUEL_U, missing);
+      const debtCr = Math.round(reserve * fuelUnit);
       return {
-        amount: 0,
-        cost,
-        detail: 'Fuel ' + current + '/' + max + ' · ' + Math.round(missing) + 'u @ ' + fmtCr(fuelUnit) + ' cr/u',
-        buttonLabel: 'Refuel',
-        disabled: true,
-        disabledReason: 'need ' + fmtCr(fuelUnit) + ' cr/u',
-        remedy: carrying
-          ? 'Sell cargo at the Market to raise fuel money'
-          : 'Take a station contract or sell salvage, then refuel',
-        chips: [{ text: fmtCr(cost) + ' cr', kind: 'cost' }, { text: 'need ' + fmtCr(fuelUnit) + ' cr/u', kind: 'bad' }],
+        amount: reserve,
+        cost: 0,
+        debtCr,
+        detail: 'Fuel ' + current + '/' + max + ' · emergency ' + Math.round(reserve) + 'u on the note (' + fmtCr(debtCr) + ' cr debt)',
+        buttonLabel: 'Refuel on the Note',
+        disabled: false,
+        chips: [{ text: fmtCr(debtCr) + ' cr debt', kind: 'warn' }, { text: 'emergency fill', kind: 'warn' }],
       };
     }
     if (credits < cost) {
@@ -452,6 +452,24 @@ function baseServiceQuote(type, state, entity) {
       return { amount: 0, cost: 0, detail: hullText + ' · ' + armorText + ' · intact', buttonLabel: 'Full', disabled: true, chips: [{ text: 'intact', kind: 'ok' }] };
     }
     if (credits <= 0) {
+      // FB-101 emergency weld: up to the daily hull floor, filed on the note by economy's
+      // repair handler. Same formula as the handler, so the offer is exactly what lands.
+      const { reserve, allowance } = emergencyRepairReserve(state, entity);
+      if (reserve > 0) {
+        const debtCr = Math.round(reserve * repairUnit);
+        return {
+          amount: reserve,
+          cost: 0,
+          debtCr,
+          detail: hullText + ' · ' + armorText + ' · emergency weld +' + fmtCr(reserve) + ' hull on the note (' + fmtCr(debtCr) + ' cr debt)',
+          buttonLabel: 'Weld on the Note',
+          disabled: false,
+          chips: [{ text: fmtCr(debtCr) + ' cr debt', kind: 'warn' }, { text: 'emergency weld', kind: 'warn' }],
+        };
+      }
+      // INF-089 dead end: the note will not weld past the floor. The blocking condition is
+      // exact and the remedy names the nearest real credit source (cargo → Market sell).
+      const carrying = Number(state && state.player && state.player.cargo && state.player.cargo.usedVolume) > 0;
       return {
         amount: missing.total,
         cost,
@@ -459,6 +477,12 @@ function baseServiceQuote(type, state, entity) {
         buttonLabel: 'Repair Hull',
         disabled: true,
         disabledReason: 'need credits',
+        remedy: (allowance <= 0
+          ? 'The emergency weld allowance is used for today. '
+          : 'The hull is above the emergency weld floor. ')
+          + (carrying
+            ? 'Sell cargo at the Market to raise repair money'
+            : 'Take a station contract or sell salvage, then repair'),
         chips: [{ text: fmtCr(cost) + ' cr', kind: 'cost' }, { text: 'need credits', kind: 'bad' }],
       };
     }

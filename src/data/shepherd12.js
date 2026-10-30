@@ -50,6 +50,8 @@ export const SHEPHERD12 = Object.freeze({
   flockPresent: 'FLOCK: PRESENT.',
   flockShy: 'FLOCK: SHY — {strays} OUT.',
   strayHome: 'ONE HOME. {strays} STILL OUT.',
+  // Two or more cross the edge on the same census: the count says how many came home.
+  strayHomeMany: '{home} HOME. {strays} STILL OUT.',
   paidLine: 'FLOCK: PRESENT. A FRAGMENT FOR THE HAND THAT HERDS.',
   goneLine: 'SHEPHERD-12 DOWN. THE TIDE KEEPS THE COUNT NOW.',
   lostLine: 'FLOCK: SHY. A MEMBER LOST.',

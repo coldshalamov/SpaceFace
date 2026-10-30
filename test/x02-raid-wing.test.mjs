@@ -389,7 +389,7 @@ test('X-02 a recycled wing id is not honored by the kill receipt', () => {
   // not a silent wing stray.
   h.bus.emit('entity:killed', { id: raid.ids.raider, killerId: wingId, pos: { x: 0, z: 0 } });
   assert.equal(raid.strayKills | 0, 0, 'a foreign hull wearing the id is not a wing stray');
-  assert.ok(h.said.some((s) => s.text === 'the raider broke off'), 'the uncredited bark plays');
+  assert.ok(h.said.some((s) => s.text === 'The raider broke off.'), 'the uncredited bark plays');
   assert.equal(h.state.onboarding.beatDoneAt.raid == null, true, 'no stray beat resolution');
   // And a stranger dying on the recycled id never passes for the wing's own receipt: a wing
   // that vanished without its honest exit keeps the slot open for a restage rather than
@@ -417,7 +417,7 @@ test('X-02 a recycled wing id is not honored by the kill receipt', () => {
   assert.equal(raid4.ids.wing == null, true, 'the clinic never records a wing id');
   h4.bus.emit('entity:killed', { id: raid4.ids.raider, pos: { x: 0, z: 0 } });
   assert.equal(raid4.strayKills | 0, 0, 'a kill with no killer is not a wing stray');
-  assert.ok(h4.said.some((s) => s.text === 'the raider broke off'), 'the uncredited bark plays');
+  assert.ok(h4.said.some((s) => s.text === 'The raider broke off.'), 'the uncredited bark plays');
   h4.bus.emit('entity:killed', { pos: { x: 0, z: 0 } });
   assert.equal(raid4.wingDone == null || raid4.wingDone === false, true,
     'a receipt with no dead id never closes the wing slot');

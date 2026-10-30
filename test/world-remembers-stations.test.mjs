@@ -18,6 +18,7 @@ import {
   stationConditionsFor, stationConditionLine, stationRefuelRation,
 } from '../src/systems/economy.js';
 import { STATION_CONDITION_LAW, stationYardRateMult } from '../src/economy/stationConditions.js';
+import { CAL_DAY_S, marketDayMults } from '../src/data/worldCalendar.js';
 import { stationBerthAdmits, stationBerthRefusal } from '../src/data/frontierRumors.js';
 import { resolveDockDeny } from '../src/core/dockAccess.js';
 import { serviceQuote } from '../src/ui/station/serviceQuotes.js';
@@ -63,6 +64,15 @@ function makeCtx(seed) {
   economy.init(ctx);
   economy.newGame();
   return { state, bus, emitted, player };
+}
+
+/** First simTime at/after `fromT` (same time of day) when no listed berth has a market day or festival tilt. */
+function calmCalendarT(stationIds, fromT) {
+  for (let day = 0; day < 400; day++) {
+    const t = fromT + day * CAL_DAY_S;
+    if (stationIds.every((id) => { const m = marketDayMults(id, t); return m.buy === 1 && m.sell === 1; })) return t;
+  }
+  throw new Error('no calendar-neutral day for these berths');
 }
 
 const receiptsOf = (emitted, name) => emitted.filter((e) => e.event === name).map((e) => e.payload);
@@ -146,6 +156,9 @@ for (const seed of [4242, 8008]) {
   test(`strike: two of Ceres' own crew killed in a window worsen ITS sell quote and yard, then expire (seed ${seed})`, () => {
     const ctx = makeCtx(seed);
     const { state, emitted } = ctx;
+    // The strike's own magnitude is read on a calendar-neutral day: t=120 is Founders' Day and
+    // Ceres' market day, whose tilt the same-port book guard partly absorbs before any strike.
+    state.simTime = calmCalendarT([CERES, HELIOS, BELT], state.simTime);
     const good = tradedCommodity(CERES, HELIOS);
     const beforeCeres = economy.quote(CERES, good, 'sell', 3);
     const beforeHelios = economy.quote(HELIOS, good, 'sell', 3);

@@ -42,7 +42,7 @@ import { BOLUS_SECTOR_ID, BOLUS_STATION_ID } from '../data/theBolus.js';
 import { SHIPS } from '../data/ships.js';
 import { conflictPressureForSector } from '../data/conflictZones.js';
 import {
-  STATION_CONDITION_LAW, STATION_CREW_ROLES, liveStationConditions, stationServiceMult, stationTradeMults,
+  STATION_CONDITION_LAW, STATION_CREW_ROLES, liveStationConditions, stationServiceMult, stationTradeMults, stationTradeMultParts,
   stationRefuelRationU, grudgeLive, splitStationConditionsForSave, stationGrudgeOwedCr,
 } from '../economy/stationConditions.js';
 import { ECON_CONTRACT_THRESHOLDS } from '../data/economyContractTemplates.js';
@@ -159,10 +159,29 @@ const CARGO_POLICY_DANGER_MULT = 0.5;
 const CARGO_POLICY_COVER_FRAC = 0.6;
 // FB-101 — the hardship floor: the smallest fill that can still make a jump, once a day, filed
 // as debt. BASE_FUEL·LY·tier lands a real shortest leg at ~4–8u; eight covers it.
-const EMERGENCY_FUEL_U = 8;
+export const EMERGENCY_FUEL_U = 8;
 // A penniless hull can buy enough welding on its note to leave the berth and work again.
 // This is a daily survival floor; ordinary repairs still charge the full missing protection.
-const EMERGENCY_REPAIR_HULL_FRAC = 0.25;
+export const EMERGENCY_REPAIR_HULL_FRAC = 0.25;
+
+/**
+ * The zero-credit weld the berth will file on the note right now — one formula shared by the
+ * repair handler (which files it) and the dock service quote (which offers it). Pure read.
+ * `bookedHull` is hull already queued on the yard for this pilot.
+ */
+export function emergencyRepairReserve(state, entity, bookedHull = 0) {
+  const hullMax = Number(entity && entity.hullMax) || 0;
+  const hull = Number(entity && entity.hull) || 0;
+  const missHull = Math.max(0, hullMax - hull - (Number(bookedHull) || 0));
+  const day = state && Number.isInteger(state.days)
+    ? state.days : Math.floor((Number(state && state.simTime) || 0) / 600);
+  const stored = state && state.player && state.player.emergencyRepairBudget;
+  const budget = stored && stored.day === day ? stored : { day, usedHull: 0 };
+  const floor = hullMax * EMERGENCY_REPAIR_HULL_FRAC;
+  const allowance = Math.max(0, floor - (Number(budget.usedHull) || 0));
+  const reserve = Math.min(missHull, allowance, Math.max(0, floor - hull - (Number(bookedHull) || 0)));
+  return { day, budget, floor, allowance, reserve };
+}
 export const TRADE_LEDGER_MAX = 10;
 const SALVAGE_INTAKE_RECEIPT_CAP = 256;
 const NPC_SALVAGE_INTAKE_COMMODITY_ID = 'cmdty_scrap_metal';
@@ -2799,7 +2818,9 @@ export const economy = {
     const standingBase = priceModForState(state, info && info.factionId);
     // THE WORLD REMEMBERS — a strike worsens what this berth pays the player; a blockade makes
     // its goods dear. One lookup, applied here so quote/execute/automation all see the same price.
-    const conditionMult = stationTradeMults(state, stationId, info);
+    // The causal half (strike, blockade) only worsens and rides the standing clamp; the calendar
+    // half (market day, festival) moves either way and is applied after it, like the ending terms.
+    const { causal: conditionMult, calendar: calendarMult } = stationTradeMultParts(state, stationId, info);
     const frontier = info ? this.frontierPenalty(info) : 0;
     const spread = spreadOf(entry, frontier);
     // Reputation alone, before the strike/blockade multiply. The market names this component
@@ -2809,6 +2830,8 @@ export const economy = {
     const endingTerms = endingStationTradeMults(state, stationId);
     standing.buy *= endingTerms.buy;
     standing.sell *= endingTerms.sell;
+    standing.buy *= calendarMult.buy;
+    standing.sell *= calendarMult.sell;
     // Low-tier ports buy valuable finds from the player but do not create an infinite local
     // supply of resources that only occur deeper in the world. This preserves discovery value
     // and stops starter markets from becoming risk-free rare-ore vending machines.
@@ -5085,11 +5108,7 @@ export const economy = {
       const cost = round(totalMiss * repairUnit);
       const credits = normalizeCredits(state.player.credits);
       if (credits <= 0) {
-        const day = Number.isInteger(state.days) ? state.days : Math.floor((Number(state.simTime) || 0) / 600);
-        const budget = state.player.emergencyRepairBudget?.day === day ? state.player.emergencyRepairBudget : { day, usedHull: 0 };
-        const floor = hullMax * EMERGENCY_REPAIR_HULL_FRAC;
-        const allowance = Math.max(0, floor - (Number(budget.usedHull) || 0));
-        const reserve = Math.min(missHull, allowance, Math.max(0, floor - beforeHull - bookedRepair.hull));
+        const { day, budget, allowance, reserve } = emergencyRepairReserve(state, e, bookedRepair.hull);
         if (reserve > 0) {
           const stationId = (state.ui && state.ui.dockedStationId) || this._lastDockedStation || null;
           const debtCr = this._fileDebt(round(reserve * repairUnit));

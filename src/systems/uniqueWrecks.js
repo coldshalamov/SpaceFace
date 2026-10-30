@@ -23,6 +23,10 @@ import {
 } from '../core/uniqueWreckComplications.js';
 import { provenanceStamp } from '../data/lineProgression.js';
 import {
+  STORY_BUYER_CHOICE_PREFIX, STORY_BUYER_CONTACT_PREFIX, STORY_REWARD_BUYERS,
+  storyBuyerAtStation, storyBuyerOffersAt, storyBuyerRepDeltas, storyBuyerRow,
+} from '../data/storyRewardBuyers.js';
+import {
   UNIQUE_WRECK_MATERIALIZE_PHASES,
   UNIQUE_WRECK_RECEIPT_LIMIT,
   UNIQUE_WRECK_SCAN_RADIUS,
@@ -343,6 +347,9 @@ export function normalizeUniqueWreckState(value, metaSeed) {
       ...(typeof reward.unlockFlag === 'string' ? { unlockFlag: reward.unlockFlag } : {}),
       ...(Array.isArray(reward.choices)
         ? { choices: reward.choices.filter((c) => typeof c === 'string') } : {}),
+      // Additive: who bought the story item, where, and for what. Present only once sold.
+      ...(normalizeStoryDisposition(rewardId, reward.disposition)
+        ? { disposition: normalizeStoryDisposition(rewardId, reward.disposition) } : {}),
     };
   }
   const complications = input.complications && typeof input.complications === 'object' ? input.complications : {};
@@ -431,6 +438,22 @@ function normalizePlayerWreckRecord(input) {
 export function playerWreckCitation(state) {
   const own = state && state.player && state.player.uniqueWrecks;
   return own && own.playerWreck ? clonePlain(own.playerWreck) : null;
+}
+
+function normalizeStoryDisposition(rewardId, value) {
+  if (!value || typeof value !== 'object') return null;
+  if (typeof value.choiceId !== 'string' || !storyBuyerRow(rewardId, value.choiceId)) return null;
+  return {
+    choiceId: value.choiceId,
+    stationId: typeof value.stationId === 'string' ? value.stationId : null,
+    resolvedAtS: Math.max(0, finite(value.resolvedAtS, 0)),
+    credits: Math.max(0, Math.floor(finite(value.credits, 0))),
+    repDeltas: Array.isArray(value.repDeltas)
+      ? value.repDeltas
+        .filter((rep) => rep && typeof rep.factionId === 'string' && Number.isFinite(Number(rep.delta)))
+        .map((rep) => ({ factionId: rep.factionId, delta: Number(rep.delta) }))
+      : [],
+  };
 }
 
 function ensurePlayer(state) {
@@ -573,6 +596,9 @@ export const uniqueWrecks = {
     this._listen('wreckEcology:departed', (payload) => this._occupationSwitch.departed(payload || {}));
     this._listen('salvage:completed', (payload) => this._onSalvageCompleted(payload));
     this._listen('uniqueWreck:choose', (payload) => this._onChoose(payload));
+    // A claimed story item's buyers wait at the bar of a matching berth (data/storyRewardBuyers.js).
+    this._listen('ui:talkContact', (payload) => this._onStoryBuyerTalk(payload));
+    this._listen('dock:docked', (payload) => this._onStoryBuyerDock(payload));
     this._listen('uniqueWreck:decisionRequest', (payload) => this._republishPendingDecisions(payload));
     this._listen('band:bearingRequest', (payload) => this._onBandBearingRequest(payload));
     this._listen('encounter:resolved', (payload) => this._onEncounterResolved(payload));
@@ -2055,6 +2081,87 @@ export const uniqueWrecks = {
     // outcome-stamped scan identity, placard scan line, and the outcome's residual pool.
     this._materialize(def.id);
     return record;
+  },
+
+  /**
+   * Docking at a berth that keeps a buyer for an unsold story item says so once per dock, in the
+   * comms log: the buyer is at the bar. The offer itself is a pure read (storyBuyerOffersAt).
+   */
+  _onStoryBuyerDock(payload) {
+    const stationId = payload && payload.stationId;
+    if (!stationId || (this.host && this.host._saveRestoring)) return;
+    for (const offer of storyBuyerOffersAt(this.state, stationId)) {
+      const item = STORY_REWARD_BUYERS[offer.rewardId];
+      const row = item && item.choices[offer.choiceIds[0]];
+      if (!row) continue;
+      this.bus.emit('comms:log', {
+        from: row.buyerName,
+        text: `${row.buyerName} is asking at the bar about the ${offer.itemName}.`,
+        kind: 'story_buyer',
+        sourceRef: `storyBuyer:${offer.rewardId}:${stationId}`,
+      });
+    }
+  },
+
+  /**
+   * The bar buyer's choice (ui:talkContact from barContacts' story-buyer contact). Sole settler of
+   * a story item's disposition: validates berth + undisposed, records it durably, then asks the
+   * credit and reputation owners by intent and publishes the consequence.
+   */
+  _onStoryBuyerTalk(payload) {
+    if (!payload || typeof payload.contactId !== 'string' || typeof payload.choiceId !== 'string') return null;
+    if (!payload.contactId.startsWith(STORY_BUYER_CONTACT_PREFIX)) return null;
+    if (!payload.choiceId.startsWith(STORY_BUYER_CHOICE_PREFIX)) return null;
+    const rewardId = payload.contactId.slice(STORY_BUYER_CONTACT_PREFIX.length);
+    const choiceId = payload.choiceId.slice(STORY_BUYER_CHOICE_PREFIX.length);
+    return this.disposeStoryReward({ rewardId, choiceId, stationId: payload.stationId });
+  },
+
+  disposeStoryReward({ rewardId, choiceId, stationId } = {}) {
+    const own = this._ensureState();
+    const record = own.storyRewards[rewardId];
+    const row = storyBuyerRow(rewardId, choiceId);
+    if (!record || !row || record.disposition) return null;
+    if (Array.isArray(record.choices) && !record.choices.includes(choiceId)) return null;
+    const ui = this.state && this.state.ui;
+    const dockedAt = ui && ui.docked !== false && typeof ui.dockedStationId === 'string' ? ui.dockedStationId : null;
+    const at = typeof stationId === 'string' ? stationId : dockedAt;
+    if (!at || (dockedAt && dockedAt !== at) || !storyBuyerAtStation(rewardId, choiceId, at)) return null;
+
+    const repDeltas = storyBuyerRepDeltas(row, at);
+    const credits = Math.max(0, Math.floor(finite(row.credits, 0)));
+    record.disposition = {
+      choiceId,
+      stationId: at,
+      resolvedAtS: Math.max(0, finite(this.state && this.state.simTime, 0)),
+      credits,
+      repDeltas: repDeltas.map((rep) => ({ ...rep })),
+    };
+    const reason = `story-buyer:${rewardId}:${choiceId}`;
+    if (credits > 0) this.bus.emit('economy:grantCredits', { amount: credits, reason });
+    for (const rep of repDeltas) {
+      this.bus.emit('faction:repDelta', { factionId: rep.factionId, delta: rep.delta, reason });
+    }
+    this.bus.emit('news:publish', {
+      text: row.news,
+      kind: 'story_disposition',
+      sourceRef: `followup.${record.wreckId || rewardId}.${choiceId}`,
+      wreckId: record.wreckId || null,
+      rewardId,
+      choiceId,
+      stationId: at,
+      channelId: 'news',
+      followup: true,
+    });
+    this.bus.emit('uniqueWreck:storyRewardDisposed', {
+      rewardId,
+      wreckId: record.wreckId || null,
+      choiceId,
+      stationId: at,
+      credits,
+      repDeltas: repDeltas.map((rep) => ({ ...rep })),
+    });
+    return record.disposition;
   },
 
   _onEntityDestroyed(payload) {

@@ -3,8 +3,9 @@ export const BRACKET = Object.freeze({
   id: 'character_bracket', name: 'BRACKET', callsign: 'BX-9 / BRACKET',
   sectorId: 'sector_helios_prime', anchor: Object.freeze({ x: -520, z: 440 }),
   keeperRadius: 14, keeperMass: 140, hull: 900,
-  ballRadius: 4.5, ballMass: 10, goalZ: -78, keeperZ: -54, postX: 56,
-  aperture: 48, serveZ: 48, bumperX: 87, bumperZ: -4, bumperRadius: 10,
+  ballRadius: 4.5, ballMass: 10, goalZ: -78, keeperZ: -54, postX: 56, postRadius: 6,
+  // The legal mouth is the clear gap the player sees: the posts' inner faces (postX - postRadius).
+  aperture: 50, serveZ: 48, bumperX: 87, bumperZ: -4, bumperRadius: 10,
   discoverRadius: 340, hailRadius: 260, leaveRadius: 410,
   rounds: 5, serveSeconds: 2.4, shotSeconds: 32, resultSeconds: 2.3,
   maxBallSpeed: 300, minShotSpeed: 6, playerTouchSeconds: 35,

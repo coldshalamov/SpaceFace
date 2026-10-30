@@ -227,9 +227,10 @@ function finiteXZ(v) {
   return Number.isFinite(v && v.x) && Number.isFinite(v && v.z);
 }
 
+// A log is what a scanner READ. Aftermath stamps a markerId on every wreck at
+// birth, so marker stamps alone never make a log (same gate as quillCopyable).
 function logOf(d) {
-  return !!(d && (d.scanRevealed || d.markerId || d.aftermathMarkerId
-    || (d.provenance && d.provenance.markerId)));
+  return !!(d && d.scanRevealed);
 }
 
 function settledInRing(entity, post) {
