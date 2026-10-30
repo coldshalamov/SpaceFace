@@ -922,6 +922,11 @@ const CSS_TAIL = `
   ${MD} .sx-mkt-table :is(th, td):nth-child(3) { grid-column:2; width:auto !important; padding-right:0 !important; text-align:right !important; }
   ${MD} .sx-mkt-table :is(th, td):nth-child(4) { grid-column:3; width:auto !important; padding-right:0 !important; text-align:right !important; }
   ${MD} .sx-mkt-row td:nth-child(n+2) { padding-top:0 !important; }
+  /* the two lines of a good stood 12px apart, with nothing between one good's numbers and the next
+     good's name, so "32 ▼11% 29 32u" read as Silicate Rock's. Name and numbers close to 1px, a
+     hairline parts the goods, and the register shows a third good at 420×700 (ui-polish-205) */
+  ${MD} .sx-mkt-table .sx-mkt-row { row-gap:1px !important; padding:0 !important; align-content:center !important; }
+  ${MD} .sx-mkt-table .sx-mkt-row + .sx-mkt-row { border-top:1px solid rgb(${BONE} / .08) !important; }
 }
 /* …and on short windows (≤650 × 601–800, e.g. 375×667, 620×700) the berth's dials leave the Market ~160px:
    the eight families stood one per line and filled it, so no good showed, and BUY 1 sat under the
