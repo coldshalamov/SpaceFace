@@ -8,6 +8,7 @@
 // and mesh-backed for clearance, picking, ownership masks, and other semantic readers.
 
 import * as THREE from 'three';
+import { motionGroupIdFor } from '../contracts/motionBank.js';
 import {
   OPAQUE_BATCH_MAX_INDICES,
   OPAQUE_BATCH_MAX_INSTANCES,
@@ -433,6 +434,43 @@ function matrixChanged(previous, elements) {
   return false;
 }
 
+function attestedMotionPivotForSource(source, options) {
+  const ownsMotion = options && options.isAttestedRigidMotionOwner;
+  if (typeof ownsMotion !== 'function') return null;
+  try {
+    if (ownsMotion(source, source) !== true) return null;
+  } catch (_) {
+    return null;
+  }
+  for (let node = source && source.parent; node; node = node.parent) {
+    if (node.userData?.animated === true && motionGroupIdFor(node.name) !== null) return node;
+  }
+  return null;
+}
+
+function refreshMotionPivots(pivots) {
+  if (!pivots || pivots.size === 0) return;
+  try {
+    // One pivot refresh composes its parent chain and descendants. Prefer the highest
+    // attested pivot in a nested set so an owner subtree is walked once per batch sync.
+    for (const pivot of pivots) {
+      let covered = false;
+      for (let parent = pivot.parent; parent; parent = parent.parent) {
+        if (pivots.has(parent)) { covered = true; break; }
+      }
+      if (!covered) pivot.updateWorldMatrix(true, true);
+    }
+  } finally {
+    pivots.clear();
+  }
+}
+
+function refreshEntryMotionPivots(entries, scratch) {
+  scratch.clear();
+  for (const entry of entries || EMPTY_ARRAY) if (entry.motionPivot) scratch.add(entry.motionPivot);
+  refreshMotionPivots(scratch);
+}
+
 function copyMatrix(previous, elements) {
   if (!previous || !elements) return;
   for (let i = 0; i < 16; i++) previous[i] = elements[i];
@@ -513,6 +551,10 @@ function buildCandidate(scene, plan, options) {
   const batches = [];
   const entries = [];
   const materialUniforms = new Map();
+  const motionPivotBySource = options.motionPivotBySource;
+  const motionPivots = options.motionPivots;
+  motionPivotBySource.clear();
+  motionPivots.clear();
   _sceneInverse.copy(scene.matrixWorld || _sceneInverse.identity()).invert();
   const destroy = () => {
     for (const batch of batches) disposeBatch(batch, scene);
@@ -521,6 +563,16 @@ function buildCandidate(scene, plan, options) {
   };
 
   try {
+    for (const group of plan.groups) {
+      for (const source of group.surfaces) {
+        const pivot = attestedMotionPivotForSource(source, options);
+        if (pivot) {
+          motionPivotBySource.set(source, pivot);
+          motionPivots.add(pivot);
+        }
+      }
+    }
+    refreshMotionPivots(motionPivots);
     for (const group of plan.groups) {
       let pendingSources = [];
       let pendingVerts = 0;
@@ -552,6 +604,7 @@ function buildCandidate(scene, plan, options) {
           }
           const entry = {
             source,
+            motionPivot: motionPivotBySource.get(source) || null,
             root: rootForSource(source, options.roots),
             batch,
             instanceId,
@@ -605,6 +658,8 @@ function buildCandidate(scene, plan, options) {
   } catch (error) {
     destroy();
     throw error;
+  } finally {
+    motionPivotBySource.clear();
   }
 
   return { batches, entries, destroy };
@@ -697,6 +752,8 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
   const isAttestedRigidMotionOwner = typeof options.isAttestedRigidMotionOwner === 'function'
     ? options.isAttestedRigidMotionOwner : undefined;
   const motionOptions = { getTags, isTransformOnlySource, isAttestedRigidMotionOwner };
+  const motionPivotBySource = new Map();
+  const motionPivots = new Set();
   // Selection only narrows the admitted cohort. It cannot override the policy's shader,
   // material, motion or geometry guards, and remains binding until the candidate retires.
   const selectSource = typeof options.selectSource === 'function' ? options.selectSource : null;
@@ -1064,6 +1121,7 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
       stats.lastDetail = 'entry-topology';
       return false;
     }
+    refreshEntryMotionPivots(active.entries, motionPivots);
     const shadowChangedOwners = new Map();
     for (const entry of active.entries) {
       const source = entry.source;
@@ -1240,6 +1298,7 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
     try {
       candidate = buildCandidate(scene, plan, {
         maxInstances, maxVerts, maxIndices, roots: normalized,
+        isAttestedRigidMotionOwner, motionPivotBySource, motionPivots,
       });
     } catch (error) {
       stats.status = 'failed';
@@ -1353,6 +1412,7 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
         }
         const topologyStable = entryTopologyMatches(record.entryTopology);
         if (!topologyStable) stats.lastDetail = 'entry-topology-before-commit';
+        refreshEntryMotionPivots(candidate.entries, motionPivots);
         const materialUniformStability = new Map();
         if (!topologyStable
             || !candidate.entries.every((entry) => sourceStaticStateStable(entry, false, isRenderHookSafe,

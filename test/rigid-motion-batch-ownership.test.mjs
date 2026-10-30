@@ -207,17 +207,74 @@ test('a retained opaque leaf uses the attested motion pose and refreshes its ins
     const before = new THREE.Matrix4();
     batch.getMatrixAt(0, before);
 
+    const updateWorldMatrix = fixture.pivot.updateWorldMatrix;
+    let pivotRefreshes = 0;
+    fixture.pivot.updateWorldMatrix = function countedUpdateWorldMatrix(...args) {
+      pivotRefreshes += 1;
+      return updateWorldMatrix.apply(this, args);
+    };
     motion.handleEvent('ship:boostStart', {}, 0);
     motion.update(0.31);
-    scene.updateMatrixWorld(true);
     const refreshed = await controller.sync(boundary);
     assert.equal(refreshed.status, 'active');
+    assert.equal(pivotRefreshes, 1,
+      'two retained leaves under one attested pivot share one scoped matrix refresh');
     const after = new THREE.Matrix4();
     batch.getMatrixAt(0, after);
     assert.notDeepEqual(after.elements, before.elements,
       'the retained draw follows the bank-driven pivot instead of freezing its admission pose');
+    assert.ok(after.elements.every((value, index) =>
+      Math.abs(value - hull.matrixWorld.elements[index]) < 1e-6),
+    'the retained instance uses the canonical leaf world matrix for this frame');
     assert.ok(controller.getDiagnostics().matrixUpdates > 0);
   } finally {
+    delete fixture.pivot.updateWorldMatrix;
+    controller.dispose();
+    fixture.dispose();
+  }
+});
+
+test('an attested pivot that moves during residency is freshened once at retained commit', async () => {
+  const fixture = await makeFixture();
+  const { scene, boundary, hull, hullLod1, motion, pivot } = fixture;
+  const sources = new Set([hull, hullLod1]);
+  let finishPreparation;
+  const controller = createRetainedRigidOpaqueBatchController({
+    scene,
+    selectSource: (source) => sources.has(source),
+    isTransformOnlySource: (source) => sources.has(source),
+    isAttestedRigidMotionOwner: (source) => isAttestedRigidMotionOwner(motion, source, expected),
+    prepare: () => new Promise((resolve) => { finishPreparation = resolve; }),
+  });
+  try {
+    const pending = controller.sync(boundary);
+    await Promise.resolve();
+    assert.equal(typeof finishPreparation, 'function');
+    assert.equal(hull.layers.mask, 1, 'direct leaves remain visible while residency is pending');
+
+    const updateWorldMatrix = pivot.updateWorldMatrix;
+    let pivotRefreshes = 0;
+    pivot.updateWorldMatrix = function countedUpdateWorldMatrix(...args) {
+      pivotRefreshes += 1;
+      return updateWorldMatrix.apply(this, args);
+    };
+    motion.handleEvent('ship:boostStart', {}, 0);
+    motion.update(0.31);
+    finishPreparation({ ready: true });
+    const committed = await pending;
+    assert.equal(committed.status, 'active', JSON.stringify(committed));
+    assert.equal(hull.layers.mask, 0, 'the retained leaves suppress direct draws only at commit');
+    assert.equal(pivotRefreshes, 1,
+      'the latest pose is composed once for the owner subtree at the atomic commit');
+    const batch = scene.children.find((node) => node.isBatchedMesh);
+    assert.ok(batch);
+    const retained = new THREE.Matrix4();
+    batch.getMatrixAt(0, retained);
+    assert.ok(retained.elements.every((value, index) =>
+      Math.abs(value - hull.matrixWorld.elements[index]) < 1e-6),
+    'commit publishes the current canonical source matrix without a scene-wide refresh');
+  } finally {
+    delete pivot.updateWorldMatrix;
     controller.dispose();
     fixture.dispose();
   }
