@@ -264,6 +264,16 @@ export function createStrictElectronApplicationIssueTracker(electronApp, options
     const level = readMaybeFunction(message, 'type') || 'unknown';
     if (level === 'error' || level === 'warning') {
       const issue = { source: 'console', level, text: readMaybeFunction(message, 'text') || '' };
+      // Resource-load errors can carry their URL only in the ConsoleMessage location.
+      // Retain it for attribution without changing the strict response/method verdict.
+      try {
+        const location = readMaybeFunction(message, 'location');
+        if (location?.url) issue.location = {
+          url: String(location.url),
+          lineNumber: location.lineNumber,
+          columnNumber: location.columnNumber,
+        };
+      } catch (_) { /* Some Electron console events have no page location. */ }
       if (allowAbsentPlayerStore && level === 'error' && isGenericNotFoundConsole(issue.text)) {
         if (expectedAbsentStoreConsoleTokens > 0) {
           expectedAbsentStoreConsoleTokens -= 1;

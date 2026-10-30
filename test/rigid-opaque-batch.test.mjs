@@ -9,6 +9,7 @@ import {
   retireDisposedRigidOpaqueBatchBeforeSceneDraw,
 } from '../src/render/rigidOpaqueBatch.js';
 import { touchSubjectOnExactTarget } from '../src/render/openingGpuAdmission.js';
+import { createShadowDepthStagingSession } from '../src/render/shadowDepthAdmission.js';
 import { installIllustratedSurface } from '../src/render/illustratedSurface.js';
 import { attachRetroMounts } from '../src/render/thruster/retroMounts.js';
 import { render as renderSystem } from '../src/render/renderer.js';
@@ -43,6 +44,104 @@ function makeRoot() {
   root.add(a, b);
   root.updateMatrixWorld(true);
   return { root, a, b };
+}
+
+for (const phase of ['pending', 'active']) {
+  test(`retiring a ${phase} rigid batch during shadow staging cannot restore a disposed batch`, async () => {
+    const scene = new THREE.Scene();
+    const { root, a, b } = makeRoot();
+    const light = new THREE.DirectionalLight(0xffffff, 1);
+    const survivor = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial());
+    survivor.castShadow = true;
+    light.castShadow = true;
+    scene.add(root, survivor, light, light.target);
+    scene.updateMatrixWorld(true);
+    let finishPreparation;
+    const controller = createRetainedRigidOpaqueBatchController({
+      scene,
+      prepare: () => phase === 'pending'
+        ? new Promise((resolve) => { finishPreparation = resolve; })
+        : { ready: true },
+    });
+    let request;
+    try {
+      request = controller.sync(root);
+      if (phase === 'pending') await Promise.resolve();
+      else await request;
+      const batch = scene.children.find((child) => child.userData?.spacefaceRigidOpaqueBatch);
+      assert.ok(batch);
+      const renderer = {
+        shadowMap: { enabled: true, needsUpdate: false },
+        getRenderTarget: () => null, setRenderTarget() {}, renderBufferDirect() {},
+        render(staging) {
+          if (batch.parent !== staging) return; // session's initial lights-only census
+          controller.rollback('retired-in-shadow-draw');
+          assert.equal(batch.parent, null, 'retirement removes it from its actual staging parent');
+        },
+      };
+      const session = createShadowDepthStagingSession({
+        renderer, light, camera: new THREE.PerspectiveCamera(), lightingScene: scene, THREE,
+        captureObjectHome: (object) => ({ object, parent: object.parent, index: object.parent?.children.indexOf(object) }),
+        restoreObjectHome: ({ object, parent }) => { if (parent) parent.add(object); },
+      });
+      assert.ok(session);
+      session.slice([batch, survivor], { forceEnable: true });
+      session.close();
+      assert.equal(batch.parent, null, 'staging must not resurrect the disposed batch');
+      assert.equal(scene.children.includes(batch), false);
+      assert.equal(survivor.parent, scene, 'an unrelated live caster returns to its original home');
+      assert.equal(a.layers.mask, 1, 'canonical source layers are restored');
+      assert.equal(b.layers.mask, 1);
+      if (phase === 'pending') { finishPreparation({ ready: true }); await request; }
+      assert.notEqual(controller.getDiagnostics().status, 'active');
+    } finally {
+      controller.dispose();
+      for (const source of [a, b]) { source.geometry.dispose(); source.material.dispose(); }
+      survivor.geometry.dispose(); survivor.material.dispose();
+    }
+  });
+}
+
+for (const phase of ['pending', 'active']) {
+  test(`exact-target parking does not restore a ${phase} batch retired during its draw`, async () => {
+    const scene = new THREE.Scene();
+    const foreignHome = new THREE.Group();
+    const { root, a, b } = makeRoot();
+    const survivor = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial());
+    scene.add(root);
+    foreignHome.add(survivor);
+    scene.updateMatrixWorld(true);
+    let finishPreparation;
+    const controller = createRetainedRigidOpaqueBatchController({
+      scene,
+      prepare: () => phase === 'pending'
+        ? new Promise((resolve) => { finishPreparation = resolve; })
+        : { ready: true },
+    });
+    let request;
+    try {
+      request = controller.sync(root);
+      if (phase === 'pending') await Promise.resolve();
+      else await request;
+      const batch = scene.children.find((child) => child.userData?.spacefaceRigidOpaqueBatch);
+      assert.ok(batch);
+      foreignHome.add(batch);
+      batch.visible = true;
+      const renderer = { autoClear: true, getRenderTarget: () => null, setRenderTarget() {},
+        render() { controller.rollback('retired-in-exact-target-draw'); } };
+      touchSubjectOnExactTarget(renderer, null, [batch, survivor], new THREE.PerspectiveCamera(), scene);
+      assert.equal(batch.parent, null, 'park cleanup must not reattach the retired batch');
+      assert.equal(survivor.parent, foreignHome, 'a live parked subject returns to its original home');
+      assert.equal(a.layers.mask, 1);
+      assert.equal(b.layers.mask, 1);
+      if (phase === 'pending') { finishPreparation({ ready: true }); await request; }
+      assert.notEqual(controller.getDiagnostics().status, 'active');
+    } finally {
+      controller.dispose();
+      for (const source of [a, b]) { source.geometry.dispose(); source.material.dispose(); }
+      survivor.geometry.dispose(); survivor.material.dispose();
+    }
+  });
 }
 
 function verifiedSourcePackage(root, contentHash = 'a'.repeat(64)) {

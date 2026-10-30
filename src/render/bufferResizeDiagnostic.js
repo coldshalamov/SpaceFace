@@ -119,3 +119,52 @@ export function createBufferResizeDiagnostic() {
 
   return Object.freeze({ captureFailure });
 }
+
+// Temporary error-only observation. The wrapper retains only the original prototype function;
+// it does not capture a renderer, scene, object, or successful draw history.
+const BATCH_FAILURE_PROPERTY = '__sfBatchedMeshFailureDiagnostic';
+const BATCH_HOOK_MARK = Symbol.for('spaceface.batchedFailureDiagnostic.installed');
+
+export function installBatchedMeshFailureDiagnostic(BatchedMesh) {
+  const prototype = BatchedMesh?.prototype;
+  if (!prototype || prototype[BATCH_HOOK_MARK]) return false;
+  const original = prototype.onBeforeRender;
+  if (typeof original !== 'function') return false;
+  function diagnosticOnBeforeRender(...args) {
+    try { return original.apply(this, args); }
+    catch (error) {
+      try {
+        const indirectNull = this._indirectTexture == null;
+        const matricesNull = this._matricesTexture == null;
+        if ((indirectNull || matricesNull) && /(?:reading|read properties of).*image/i.test(String(error?.message || ''))) {
+          const parents = [];
+          for (let node = this.parent; node && parents.length < 8; node = node.parent) {
+            parents.push(objectSummary(node));
+          }
+          Object.defineProperty(error, BATCH_FAILURE_PROPERTY, { configurable: true, value: {
+            object: objectSummary(this), geometry: geometrySummary(this.geometry), parents,
+            indirectTextureNull: indirectNull, matricesTextureNull: matricesNull,
+            colorsTextureNull: this._colorsTexture == null,
+          } });
+        }
+      } catch (_) { /* observation must preserve the original exception */ }
+      throw error;
+    }
+  }
+  Object.defineProperty(prototype, BATCH_HOOK_MARK, { value: true });
+  prototype.onBeforeRender = diagnosticOnBeforeRender;
+  return true;
+}
+
+export function captureBatchedMeshFailure(error, contextGeneration) {
+  const detail = error?.[BATCH_FAILURE_PROPERTY];
+  if (!detail) return null;
+  try {
+    return { schema: 'spaceface.batchedMeshFailureDiagnostic.v1', ...detail,
+      contextGeneration: Number.isFinite(contextGeneration) ? contextGeneration : null,
+      error: { message: String(error?.message || error).slice(0, 500),
+        stack: typeof error?.stack === 'string' ? error.stack.slice(0, 3000) : null } };
+  } finally {
+    try { delete error[BATCH_FAILURE_PROPERTY]; } catch (_) { /* original error is preserved */ }
+  }
+}

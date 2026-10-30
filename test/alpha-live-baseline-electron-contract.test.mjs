@@ -210,6 +210,7 @@ async function testApplicationWideIssueTrackerAndBackfill() {
   const tracker = createStrictElectronApplicationIssueTracker(electronApp);
 
   const consoleError = fakeConsoleMessage('error', 'console error before firstWindow resolved');
+  consoleError.location = () => ({ url: `${CANONICAL}early.glb`, lineNumber: 0, columnNumber: 0 });
   const request = {
     method: () => 'GET',
     url: () => `${CANONICAL}early.glb`,
@@ -221,6 +222,9 @@ async function testApplicationWideIssueTrackerAndBackfill() {
   const webError = { error: () => pageError };
 
   context.emit('console', consoleError);
+  assert.deepEqual(tracker.errors()[0].location, {
+    url: `${CANONICAL}early.glb`, lineNumber: 0, columnNumber: 0,
+  }, 'retain the resource URL while keeping the console failure fatal');
   context.emit('weberror', webError);
   context.emit('requestfailed', request);
   context.emit('response', response);

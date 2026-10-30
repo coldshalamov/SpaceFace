@@ -708,6 +708,14 @@ export async function runReleaseSoakProbe({
     if (process.env.SF_SOAK_HEAP_SNAPSHOTS === '1' && outputDir) {
       await captureHeapSnapshot(page, path.join(outputDir, 'heap-end.heapsnapshot'));
     }
+    const bufferResizeFailure = bufferResizeDiagnostic
+      ? await page.evaluate(() => {
+        const render = window.SF?.state?.render;
+        return render?.bufferResizeDiagnostic?.lastFailure
+          || render?.renderer?.__sfBufferResizeFailure
+          || null;
+      }).catch(() => null)
+      : null;
 
     await setSoakTransition(page, 'undock');
     try {
@@ -758,6 +766,17 @@ export async function runReleaseSoakProbe({
       throw recoveryError;
     }
     const recoverySamples = recoveryWindow.samples;
+    // The approved error-only BatchedMesh hook can observe late callbacks after
+    // context restoration, so keep this post-tail snapshot separate from the
+    // pre-context resize failure captured above.
+    const lastBatchedFailure = bufferResizeDiagnostic
+      ? await page.evaluate(() => {
+        const render = window.SF?.state?.render;
+        return render?.bufferResizeDiagnostic?.lastBatchedFailure
+          || render?.renderer?.__sfBatchedMeshFailure
+          || null;
+      }).catch(() => null)
+      : null;
     const samples = [...flightSamples, ...recoverySamples];
     assert(samples.length > 0, 'steady-state rAF sampler produced no finite frame samples');
     const finalSettings = await readSettingsTruth(page);
@@ -982,6 +1001,8 @@ export async function runReleaseSoakProbe({
         enabled: true,
         performanceEligible: false,
         reason: 'opt-in error-only attribute capture is diagnostic-only',
+        lastFailure: bufferResizeFailure,
+        lastBatchedFailure,
       } : null,
       hardware,
       soakWindow,
@@ -1069,6 +1090,9 @@ export async function runReleaseSoakProbe({
           } : null,
           opening: render ? {
             bufferResizeDiagnostic: render.renderer?.__sfBufferResizeFailure || null,
+            lastBatchedFailure: render.bufferResizeDiagnostic?.lastBatchedFailure
+              || render.renderer?.__sfBatchedMeshFailure
+              || null,
             bufferResizeDiagnosticPerformanceEligible: render.bufferResizeDiagnostic?.performanceEligible ?? null,
             firstPictureReady: render.openingFirstPictureReady === true,
             firstPicturePhase: render.openingFirstPicturePhase ? {
@@ -6453,9 +6477,13 @@ function boundedErrorNetworkProvenance(value) {
 
 export function buildErrorEvidence(runtime, tracker) {
   const raw = runtime === 'electron' ? tracker?.all?.() || [] : tracker?.issues || [];
-  const normalized = raw.map((issue) => {
+  const normalizeIssue = (issue) => {
     const networkProvenance = boundedErrorNetworkProvenance(issue.networkProvenance);
-    return {
+    const issueUrl = boundedIssueUrlPath(issue.url)
+      || boundedIssueUrlPath(issue.networkProvenance?.url)
+      || boundedIssueUrlPath(issue.requestProvenance?.url);
+    const location = boundedIssueLocation(issue.location);
+    const normalizedIssue = {
       type: issue.type || issue.level || 'unknown',
       source: issue.source || 'console',
       text: String(issue.text || ''),
@@ -6463,8 +6491,22 @@ export function buildErrorEvidence(runtime, tracker) {
       // Retain the tracker's exact requestId/method join so an optional GET, a failed PUT,
       // and a deferred observer duplicate remain distinguishable in the saved evidence.
       ...(networkProvenance ? { networkProvenance } : {}),
+      ...(issueUrl ? { url: issueUrl } : {}),
+      ...(location ? { location } : {}),
     };
-  });
+    for (const key of ['absentPlayerStore', 'absentPlayerStoreConsole', 'cancelledCinematicMedia']) {
+      if (issue[key] === true) normalizedIssue[key] = true;
+    }
+    if (Array.isArray(issue.expectedNavigation)) {
+      normalizedIssue.expectedNavigation = issue.expectedNavigation.slice(0, 8)
+        .map((label) => String(label || '').slice(0, 128));
+      if (issue.expectedNavigation.length > 8) normalizedIssue.expectedNavigationTruncated = true;
+    }
+    return normalizedIssue;
+  };
+  const normalized = raw.map(normalizeIssue);
+  const ignoredRaw = typeof tracker?.ignored === 'function' ? tracker.ignored() : null;
+  const trackerCoverage = typeof tracker?.coverage === 'function' ? tracker.coverage() : null;
   const expectedWarnings = normalized.filter((issue) => issue.type === 'warning' && /WebGL context (?:lost|restored)/i.test(issue.text));
   // These two ANGLE translator diagnostics are stable Chromium/vendor compiler noise on this
   // machine, not application shader or resource-lifecycle defects. Keep them visible in evidence,
@@ -6484,7 +6526,33 @@ export function buildErrorEvidence(runtime, tracker) {
     expectedWarnings: expectedWarnings.map((issue) => issue.text),
     vendorWarnings: vendorWarnings.map((issue) => issue.text),
     all: normalized,
+    ignored: Array.isArray(ignoredRaw) ? ignoredRaw.slice(0, 128).map(normalizeIssue) : null,
+    ignoredTruncated: Array.isArray(ignoredRaw) && ignoredRaw.length > 128,
+    trackerCoverage,
   };
+}
+
+function boundedIssueUrlPath(value) {
+  if (typeof value !== 'string' || !value) return null;
+  const bounded = value.slice(0, 4096);
+  try {
+    return new URL(bounded).pathname.slice(0, 1_024) || '/';
+  } catch {
+    return bounded.split(/[?#]/, 1)[0].slice(0, 1_024) || null;
+  }
+}
+
+function boundedIssueLocation(value) {
+  if (typeof value === 'string') {
+    const path = boundedIssueUrlPath(value);
+    return path ? { path } : null;
+  }
+  if (!value || typeof value !== 'object') return null;
+  const path = boundedIssueUrlPath(value.url || value.path);
+  const lineNumber = Number.isSafeInteger(value.lineNumber) ? value.lineNumber : null;
+  const columnNumber = Number.isSafeInteger(value.columnNumber) ? value.columnNumber : null;
+  if (!path && lineNumber === null && columnNumber === null) return null;
+  return { ...(path ? { path } : {}), lineNumber, columnNumber };
 }
 
 async function readPerformanceRouteFailureState(page) {

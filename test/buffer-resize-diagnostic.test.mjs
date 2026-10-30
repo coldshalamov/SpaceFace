@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { createBufferResizeDiagnostic } from '../src/render/bufferResizeDiagnostic.js';
+import * as THREE from 'three';
+import { createBufferResizeDiagnostic, installBatchedMeshFailureDiagnostic, captureBatchedMeshFailure } from '../src/render/bufferResizeDiagnostic.js';
 
 function taggedSizeError(attribute, expectedByteLength, actualByteLength) {
   const error = new Error("THREE.WebGLAttributes: The size of the buffer attribute's array buffer does not match the original size. Resizing buffer attributes is not supported.");
@@ -88,4 +89,29 @@ test('finds an instanced mesh matrix buffer outside geometry attributes', () => 
   assert.equal(result.matchingSceneSlots[0].owner.type, 'InstancedMesh');
   assert.equal(result.failingAttribute.arrayByteLength, 128);
   assert.equal(Object.hasOwn(error, '__sfBufferResizeDiagnostic'), false);
+});
+
+
+test('native disposed BatchedMesh reports its primitive identity and rethrows the original error', () => {
+  assert.equal(installBatchedMeshFailureDiagnostic(THREE.BatchedMesh), true);
+  assert.equal(installBatchedMeshFailureDiagnostic(THREE.BatchedMesh), false);
+  const parent = new THREE.Group(); parent.name = 'Owned parent';
+  const mesh = new THREE.BatchedMesh(1, 3, 3, new THREE.MeshBasicMaterial());
+  mesh.name = 'Retired batch'; parent.add(mesh);
+  const uuid = mesh.uuid, geometryUuid = mesh.geometry.uuid;
+  mesh.dispose();
+  let thrown;
+  try { mesh.onBeforeRender(null, null, new THREE.PerspectiveCamera(), mesh.geometry, mesh.material); }
+  catch (error) { thrown = error; }
+  assert.ok(thrown instanceof TypeError);
+  const record = captureBatchedMeshFailure(thrown, 7);
+  assert.equal(record.object.uuid, uuid);
+  assert.equal(record.geometry.uuid, geometryUuid);
+  assert.equal(record.parents[0].name, 'Owned parent');
+  assert.equal(record.indirectTextureNull, true);
+  assert.equal(record.matricesTextureNull, true);
+  assert.equal(record.contextGeneration, 7);
+  assert.equal(captureBatchedMeshFailure(thrown, 7), null);
+  assert.equal(JSON.stringify(record).includes('Owned parent'), true);
+  mesh.material.dispose();
 });

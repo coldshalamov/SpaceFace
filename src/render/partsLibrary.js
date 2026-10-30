@@ -147,6 +147,10 @@ const flightRenderPackages = createFlightRenderPackageCache();
 // safe template lane below covers immutable procedural/static-batch compositions and rebuilds only
 // per-instance callbacks, bindings, transforms, and materials on a cache hit.
 const flightRootTemplates = new Map();
+// Eviction can drop the cache's strong reference while a live instance still owns the entry.
+// Index those entries weakly for the context-loss walk; the instance's release closure owns
+// their lifetime. Older environments without WeakRef use the same reference-counted lifetime.
+const retiredFlightTemplateRefs = new Set();
 const FLIGHT_ROOT_TEMPLATE_CACHE_LIMIT = 32;
 let flightTemplateProbeSequence = 0;
 
@@ -159,6 +163,20 @@ export function getFlightRootTemplateCacheDiagnostics() {
     size: flightRootTemplates.size,
     keys: Object.freeze([...flightRootTemplates.keys()]),
   });
+}
+
+/** Roots whose shared GPU resources may still carry the renderer's lost-generation listeners. */
+export function collectFlightRootTemplateContextLossRoots() {
+  const roots = new Set();
+  for (const entry of flightRootTemplates.values()) {
+    if (entry && !entry.disposed && entry.root) roots.add(entry.root);
+  }
+  for (const ref of retiredFlightTemplateRefs) {
+    const entry = ref.deref();
+    if (!entry || entry.disposed) retiredFlightTemplateRefs.delete(ref);
+    else if (entry.root) roots.add(entry.root);
+  }
+  return [...roots];
 }
 import { applyInstanceChunkSubmitPolicy } from './instanceChunkSubmitPolicy.js';
 import {
@@ -7820,10 +7838,15 @@ export function residencyOptionsForBoundary(entity, boundary, renderer) {
   const render = liveState && liveState.render;
   const nativeRenderer = render && render.renderer;
   const generation = render && render.admissionRunGeneration;
+  const recovery = render && render.contextRecovery;
+  const contextLosses = recovery && recovery.losses;
+  const contextGeneration = recovery && recovery.generation;
   const ownerKey = {};
   const ownerActive = () => !!boundary && !!entity && entity.alive !== false
     && (!render || (authoredRuntimeState() === liveState && liveState.render === render
-      && render.renderer === nativeRenderer && render.admissionRunGeneration === generation));
+      && render.renderer === nativeRenderer && render.admissionRunGeneration === generation
+      && render.contextRecovery === recovery && (!recovery || (recovery.losses === contextLosses
+        && recovery.generation === contextGeneration))));
   // A save/load or teardown can replace these ports while a decoded body is still waiting.
   // Keep the original owner and cancel its continuation instead of invoking the new renderer
   // or throwing a TypeError because the old port has been removed.
@@ -7854,6 +7877,8 @@ export function residencyOptionsForBoundary(entity, boundary, renderer) {
         renderMatches: authoredRuntimeState() === liveState && liveState?.render === render,
         rendererMatches: render?.renderer === nativeRenderer,
         admissionGenerationMatches: render?.admissionRunGeneration === generation,
+        contextLossGenerationMatches: render?.contextRecovery === recovery
+          && (!recovery || (recovery.losses === contextLosses && recovery.generation === contextGeneration)),
         portMatches: render?.[name] === port,
         sectorId: sectorId ?? null,
         currentSectorId: liveState?.world?.currentSectorId ?? null,
@@ -13456,6 +13481,11 @@ function removeFlightRootTemplate(key) {
   if (!entry) return false;
   flightRootTemplates.delete(key);
   entry.cacheHeld = false;
+  if ((entry.instanceRefs || 0) > 0 && !entry.retiredContextRef) {
+    const ref = typeof WeakRef === 'function' ? new WeakRef(entry) : { deref: () => entry };
+    entry.retiredContextRef = ref;
+    retiredFlightTemplateRefs.add(ref);
+  }
   finalizeFlightRootTemplateIfUnused(entry);
   return true;
 }
@@ -13478,6 +13508,10 @@ function finalizeFlightRootTemplateIfUnused(entry) {
     return false;
   }
   entry.disposed = true;
+  if (entry.retiredContextRef) {
+    retiredFlightTemplateRefs.delete(entry.retiredContextRef);
+    entry.retiredContextRef = null;
+  }
   const geometries = new Set();
   const materials = new Set();
   entry.root?.traverse?.((object) => {
@@ -13499,7 +13533,7 @@ function finalizeFlightRootTemplateIfUnused(entry) {
 }
 
 /** Focused seam probe: template hits share immutable geometry but own mutable materials and hooks. */
-export function runFlightRootTemplateCacheProbe() {
+export function runFlightRootTemplateCacheProbe(onPhase = null) {
   const source = new THREE.Group();
   source.name = 'FlightRootTemplateProbe';
   source.userData = {
@@ -13558,11 +13592,15 @@ export function runFlightRootTemplateCacheProbe() {
     reboundHooks: !!first && typeof first.root.userData.updateLod === 'function'
       && typeof first.root.userData.updateDamageState === 'function',
   };
-  first?.releaseFlightTemplate?.('probe-first-release');
-  second?.releaseFlightTemplate?.('probe-second-release');
   const probeKey = '__spaceface-flight-root-template-probe__';
   storeFlightRootTemplate(probeKey, entry);
+  onPhase?.('cached', entry.root, templateMesh?.geometry);
   removeFlightRootTemplate(probeKey);
+  onPhase?.('evicted-held', entry.root, templateMesh?.geometry);
+  first?.releaseFlightTemplate?.('probe-first-release');
+  onPhase?.('one-held', entry.root, templateMesh?.geometry);
+  second?.releaseFlightTemplate?.('probe-second-release');
+  onPhase?.('finalized', entry.root, templateMesh?.geometry);
   const materials = new Set();
   for (const root of [first?.root, second?.root, source]) {
     root?.traverse?.((object) => {

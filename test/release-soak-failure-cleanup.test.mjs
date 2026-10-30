@@ -88,6 +88,62 @@ test('network provenance bounds text and excludes arbitrary request payloads', (
   assert.deepEqual(evidence.httpErrors, ['HTTP 404 optional store']);
 });
 
+test('error evidence keeps ignored diagnostics and bounded tracker coverage without waiving unknown 404s', () => {
+  const unknownUrl = 'http://127.0.0.1:54369/assets/missing.bin?token=private';
+  const ignoredUrl = 'http://127.0.0.1:54369/__spaceface_player_store?token=private';
+  const coverage = {
+    schema: 'spaceface.electronApplicationIssueCoverage.v1',
+    contextAvailable: true,
+    applicationEvents: ['console', 'response'],
+    contextEvents: ['weberror'],
+    pageEvents: ['console', 'response', 'request'],
+    currentPhase: 'soak',
+    networkProvenance: {
+      schema: 'spaceface.electronNetworkProvenance.v1', attempted: true, supported: true,
+      attached: true, enabled: true, trackedRequests: 12, observedResponses: 10,
+      pendingStoreRequests: 2, errors: ['CDP still attached'],
+    },
+    backfill: { requests: { supported: true, attempted: true, completed: false,
+      retiredAfterPageClose: true, retirementReason: 'page-closed', pageCount: 2,
+      itemCount: 9, unsupportedPageCount: 1, errors: ['late request unavailable'] } },
+  };
+  const longErrorText = 'page error '.repeat(300);
+  const evidence = buildErrorEvidence('electron', {
+    all: () => [{
+      source: 'response', level: 'error', text: `HTTP 404 ${unknownUrl}`,
+      location: { url: 'http://127.0.0.1:54369/app.js?token=private', lineNumber: 12, columnNumber: 3 },
+      networkProvenance: { source: 'cdp-network', requestId: 'req-unknown', method: null,
+        resourceType: 'Fetch', url: unknownUrl, status: 404 },
+    }, { source: 'pageerror', level: 'error', text: longErrorText }],
+    ignored: () => [{
+      source: 'response', level: 'diagnostic', text: `HTTP 404 ${ignoredUrl}`,
+      absentPlayerStore: true,
+      networkProvenance: { source: 'cdp-network', requestId: 'req-ignored', method: 'GET',
+        resourceType: 'Fetch', url: ignoredUrl, status: 404 },
+    }, {
+      source: 'request', level: 'diagnostic', text: 'cancelled navigation',
+      requestProvenance: { method: 'REQUEST', url: 'http://127.0.0.1:54369/app.js?secret=x',
+        startedAt: '2026-10-15T10:08:24.100Z', startedPhase: 'electron-bootstrap' },
+      expectedNavigation: ['cold-reload'],
+    }],
+    coverage: () => coverage,
+  });
+
+  assert.deepEqual(evidence.httpErrors, [`HTTP 404 ${unknownUrl}`], 'unknown 404 remains fatal');
+  assert.equal(evidence.all[0].networkProvenance.method, null, 'unknown method remains unknown');
+  assert.equal(evidence.all[0].url, '/assets/missing.bin', 'diagnostic URL path excludes query data');
+  assert.equal(evidence.all[0].networkProvenance.url, unknownUrl, 'existing provenance URL semantics stay intact');
+  assert.equal(evidence.all[1].text, longErrorText, 'existing issue text is not truncated');
+  assert.deepEqual(evidence.all[0].location, { path: '/app.js', lineNumber: 12, columnNumber: 3 });
+  assert.equal(evidence.ignored[0].absentPlayerStore, true, 'ignored reason stays explicit and separate');
+  assert.equal(evidence.ignored[0].networkProvenance.method, 'GET');
+  assert.equal(evidence.ignored[0].url, '/__spaceface_player_store');
+  assert.equal(evidence.ignored[1].url, '/app.js', 'request URL is included only as a scrubbed path');
+  assert.deepEqual(evidence.ignored[1].expectedNavigation, ['cold-reload']);
+  assert.deepEqual(evidence.trackerCoverage, coverage, 'reuse the tracker controlled coverage DTO');
+  assert.equal(evidence.ignoredTruncated, false);
+});
+
 test('failure-path teardown diagnostic records unavailable capture instead of implying clean teardown', () => {
   const diagnostic = buildPostTeardownGlDeleteTrapDiagnostic({
     runtimeKind: 'electron',

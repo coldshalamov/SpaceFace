@@ -14,6 +14,7 @@
 // `beginReadinessBatch` to pool that wait. See design/perf/OPENING-COMPILE-BATCH-2026-08-28.md.
 
 import { compileSubjectsAcrossPresents } from './compilePresentSlice.js';
+import { isRetiredRigidOpaqueBatch } from './rigidOpaqueBatch.js';
 import {
   detachedGeometryUploadPending,
   detachedTextureUploadPending,
@@ -941,6 +942,9 @@ export function touchSubjectOnExactTarget(renderer, renderTarget, subject, camer
     // order, so unwinding in reverse keeps each reparent consistent with the one before it.
     for (let i = parked.length - 1; i >= 0; i--) {
       const { item, parent, index } = parked[i];
+      // Retirement during the draw invalidates this saved home. The canonical batch owner has
+      // already restored the authored sources and removed the disposed mesh from its parent.
+      if (isRetiredRigidOpaqueBatch(item)) continue;
       if (parent && typeof parent.add === 'function') {
         parent.add(item);
         if (index >= 0 && index < parent.children.length - 1) {

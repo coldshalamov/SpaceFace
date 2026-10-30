@@ -2,6 +2,7 @@
 // variants. Admission must run the exact casters through the real shadow pass or the first
 // bloomScene draw still links a depth program (~460 ms on Intel/ANGLE without parallel compile).
 import { revealSubjectForCompile } from './compilePresentSlice.js';
+import { isRetiredRigidOpaqueBatch } from './rigidOpaqueBatch.js';
 
 // Scratch color target for staged depth admission: the real renderer.render needs somewhere
 // valid to present the trivial staging scene; 8x8 keeps the color pass near-free while the
@@ -1247,7 +1248,11 @@ export function createShadowDepthStagingSession(options = {}) {
         }
         for (const object of castShadowRestore) object.castShadow = false;
         for (const restore of restoreCasters) restore();
-        for (const home of homes) restoreObjectHome(home);
+        for (const home of homes) {
+          // A canonical owner can retire the batch during the render callback. Its old home
+          // is no longer valid; restoring it would reattach a mesh whose data textures are gone.
+          if (!isRetiredRigidOpaqueBatch(home?.object)) restoreObjectHome(home);
+        }
       }
   };
   return {

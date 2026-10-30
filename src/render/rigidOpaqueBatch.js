@@ -22,6 +22,12 @@ import {
 import { stampOpeningSubmissionPackage } from './openingSubmissionPlan.js';
 
 const EMPTY_ARRAY = Object.freeze([]);
+// A staging snapshot can outlive its owner's synchronous retirement. Weak identity prevents
+// the staging cleanup from putting a disposed batch back into the live scene.
+const retiredRigidOpaqueMeshes = new WeakSet();
+export function isRetiredRigidOpaqueBatch(mesh) {
+  return !!mesh && retiredRigidOpaqueMeshes.has(mesh);
+}
 // A streamed world can add one authored root per frame while the player crosses a sector. Keep
 // the already admitted cohort alive through that burst; additions remain on their direct path until
 // this many consecutive syncs observe the same root set, at which point one bounded full rebuild
@@ -485,7 +491,8 @@ function rootsEqual(a, b) {
 function disposeBatch(batch, scene) {
   if (!batch) return;
   const mesh = batch.mesh;
-  if (mesh && mesh.parent === scene) {
+  if (mesh) retiredRigidOpaqueMeshes.add(mesh);
+  if (mesh && mesh.parent) {
     const notes = scene && scene.userData && scene.userData.shadowMeshNotes;
     if (notes && typeof notes.removed === 'function') {
       try { notes.removed(mesh); } catch (_) { /* diagnostics only */ }

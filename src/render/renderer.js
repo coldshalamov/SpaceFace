@@ -14,7 +14,7 @@ import { retireUiStageForContextLoss, resumeUiStageAfterContextRestore } from '.
 import { updatePresentedSceneMatrices } from './presentedSceneMatrices.js';
 import { isOrchardFrame } from '../data/anvilOrchardIdentity.js';
 import { installShaderLinkReporter } from './shaderLinkReporter.js';
-import { createBufferResizeDiagnostic } from './bufferResizeDiagnostic.js';
+import { createBufferResizeDiagnostic, installBatchedMeshFailureDiagnostic, captureBatchedMeshFailure } from './bufferResizeDiagnostic.js';
 import { createRacingCourseView } from './racingCourseView.js';
 import { installProgramBinaryCache } from './programBinaryCache.js';
 import { pickNextContactCompileSubject } from './nextContactWarm.js';
@@ -106,6 +106,7 @@ import {
   releaseOwnerInstances,
   prepareFirstQueuedAuthoredBoundaryForOpening,
   prepareAuthoredInstancePoolsForContextLoss,
+  collectFlightRootTemplateContextLossRoots,
   publishPreparedAuthoredBoundary,
   resumeAuthoredUpgradeQueueAfterOpening,
   resumeAuthoredUpgradeQueueForLoadingHulls,
@@ -356,7 +357,7 @@ import {
   survivalDefersArenaDressingJob,
 } from './authoredUpgradePolicy.js';
 import { supportsOpaqueMaterialBatch } from './opaqueMaterialBatch.js';
-import { createRetainedRigidOpaqueBatchController, mintRigidOpaqueBatchSpecimen, planRigidOpaqueBatchSpecimenGroups, isRigidOpaqueBatchProgramWarmed, noteRigidOpaqueBatchProgramWarmed, clearRigidOpaqueBatchWarmedKeys, retainRigidOpaqueBatchSpecimenMaterial, retireDisposedRigidOpaqueBatchBeforeSceneDraw } from './rigidOpaqueBatch.js';
+import { createRetainedRigidOpaqueBatchController, mintRigidOpaqueBatchSpecimen, planRigidOpaqueBatchSpecimenGroups, isRigidOpaqueBatchProgramWarmed, noteRigidOpaqueBatchProgramWarmed, clearRigidOpaqueBatchWarmedKeys, retainRigidOpaqueBatchSpecimenMaterial, retireDisposedRigidOpaqueBatchBeforeSceneDraw, isRetiredRigidOpaqueBatch } from './rigidOpaqueBatch.js';
 import {
   scheduleRealtimeShadowRefresh,
   shouldRefreshRealtimeShadowMap,
@@ -7889,7 +7890,7 @@ function captureObjectHome(object) {
 
 function restoreObjectHome(home) {
   const object = home && home.object;
-  if (!object) return;
+  if (!object || isRetiredRigidOpaqueBatch(object)) return;
   const parent = home.parent;
   // Reparenting never re-dirties on its own: a staging pass consumed
   // matrixWorldNeedsUpdate under the identity root, and the vendored
@@ -11708,6 +11709,7 @@ export const render = {
     // history or success-path allocation. The outer render wrapper catches WebGLObjects.update
     // failures that occur in projectObject before renderBufferDirect receives the failing geometry.
     if ((query && query.get('bufferResizeDiag') === '1') || globalThis.__SF_BUFFER_RESIZE_DIAG__ === true) {
+      installBatchedMeshFailureDiagnostic(THREE.BatchedMesh);
       const resizeDiagnostic = createBufferResizeDiagnostic();
       const contextGeneration = () => state.render?.contextRecovery?.generation
         ?? state.contextRestoreSeq
@@ -11724,6 +11726,7 @@ export const render = {
           renderer.__sfBufferResizeFailure = record;
           if (state.render) {
             state.render.bufferResizeDiagnostic = {
+              ...state.render.bufferResizeDiagnostic,
               enabled: true,
               performanceEligible: false,
               lastFailure: record,
@@ -11736,6 +11739,7 @@ export const render = {
           enabled: true,
           performanceEligible: false,
           lastFailure: null,
+          lastBatchedFailure: null,
         };
       }
       if (typeof renderer.render === 'function') {
@@ -11745,6 +11749,16 @@ export const render = {
             return originalRender.call(this, scene, camera);
           } catch (error) {
             publishResizeFailure(error, scene);
+            try {
+              const batchRecord = captureBatchedMeshFailure(error, contextGeneration());
+              if (batchRecord) {
+                renderer.__sfBatchedMeshFailure = batchRecord;
+                if (state.render) state.render.bufferResizeDiagnostic = {
+                  ...state.render.bufferResizeDiagnostic, enabled: true, performanceEligible: false,
+                  lastBatchedFailure: batchRecord,
+                };
+              }
+            } catch (_) { /* diagnostic failures must never replace the render error */ }
             throw error;
           }
         };
@@ -12138,6 +12152,9 @@ export const render = {
         if (this._envMapTarget) contextRoots.push(this._envMapTarget);
         if (this._foundryEnvTexture) contextRoots.push(this._foundryEnvTexture);
         contextRoots.push(...preparedPoolResources.roots);
+        // Immutable template geometries can be rendered by instances while their owning template
+        // stays parked outside the scene and residency index, including after cache eviction.
+        contextRoots.push(...collectFlightRootTemplateContextLossRoots());
         // Residency-tracked resources can live entirely outside the scene (decoded package
         // caches, warm-sector holds). They keep the same pre-loss dispose listeners, so they
         // need the same detach pass before a post-restore eviction runs them.
