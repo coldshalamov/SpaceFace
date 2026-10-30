@@ -56,7 +56,9 @@ Batch verdicts in (`.devshots/finish/lane3/batch-{a,b,c}/RECEIPT.md`):
   orr-spot under-words authored spotlight, gm-level sr-only carrier, tabscale underlay.
   8 partials reconstructed: crucible-lab, photo-mode, manifest, demoEnd, localmap-legacy,
   starmap-legacy, resultsSheet, shareCode. Worst-five pixel queue: shipworks → crucible-door →
-  wingman-radial → comms-radial → ship. Harness defect found: dock fixture opens only ONE
+  wingman-radial → comms-radial → ship — **all five verified clean on 2026-10-30 PNGs**
+  (shipworks incl. impound variant, no tile sliver, no crest overflow, ship callouts whole).
+  Harness defect found: dock fixture opens only ONE
   dock-tree surface per boot — 7 surfaces (station-dock/market/industry/contracts/factions,
   asteroid-works, base) silently unmeasured; needs fixture fix (Lane 2/G).
   batch-a1 CLOSED: crest/morph clips were a clipped-column root cause — the hail panel re-seated
