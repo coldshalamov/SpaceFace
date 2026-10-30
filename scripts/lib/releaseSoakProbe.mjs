@@ -270,7 +270,7 @@ export async function runReleaseSoakProbe({
     log(line);
   };
   if (bufferResizeDiagnostic) {
-    doLog('buffer-resize diagnostic enabled; per-draw tracking is performance-ineligible');
+    doLog('buffer-resize diagnostic enabled; error-only capture is performance-ineligible');
   }
 
   let ownedServer = null;
@@ -963,7 +963,7 @@ export async function runReleaseSoakProbe({
       bufferResizeDiagnostic: bufferResizeDiagnostic ? {
         enabled: true,
         performanceEligible: false,
-        reason: 'opt-in per-draw attribute history is diagnostic-only',
+        reason: 'opt-in error-only attribute capture is diagnostic-only',
       } : null,
       hardware,
       soakWindow,

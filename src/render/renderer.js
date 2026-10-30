@@ -11700,23 +11700,21 @@ export const render = {
       powerPreference: glFlags.powerPreference,
       preserveDrawingBuffer: glFlags.preserveDrawingBuffer,
     });
-    // Failure-only geometry history for the exact Three VBO resize error. This is explicitly
-    // query-gated because it records per-draw attribute shapes; diagnostic runs are not
-    // performance evidence. The outer render wrapper catches WebGLObjects.update failures that
-    // occur in projectObject before renderBufferDirect receives the failing geometry.
+    // Error-only identity capture for the exact Three VBO resize error. The vendor throw attaches
+    // the failing attribute only when this query/init-script flag is enabled; there is no draw-path
+    // history or success-path allocation. The outer render wrapper catches WebGLObjects.update
+    // failures that occur in projectObject before renderBufferDirect receives the failing geometry.
     if ((query && query.get('bufferResizeDiag') === '1') || globalThis.__SF_BUFFER_RESIZE_DIAG__ === true) {
       const resizeDiagnostic = createBufferResizeDiagnostic();
       const contextGeneration = () => state.render?.contextRecovery?.generation
         ?? state.contextRestoreSeq
         ?? 0;
-      const publishResizeFailure = (error, scene, geometry = null, object = null) => {
+      const publishResizeFailure = (error, scene) => {
         try {
           const record = resizeDiagnostic.captureFailure(
             error,
             scene,
             contextGeneration(),
-            geometry,
-            object,
             (candidateGeometry) => packageGeometryUploadDiagnostics([candidateGeometry], { limit: 1 }).rows[0] || null,
           );
           if (!record) return;
@@ -11735,19 +11733,6 @@ export const render = {
           enabled: true,
           performanceEligible: false,
           lastFailure: null,
-        };
-      }
-      if (typeof renderer.renderBufferDirect === 'function') {
-        const originalRenderBufferDirect = renderer.renderBufferDirect;
-        renderer.renderBufferDirect = function renderBufferDirect(camera, scene, geometry, material, object, group) {
-          try {
-            const result = originalRenderBufferDirect.call(this, camera, scene, geometry, material, object, group);
-            resizeDiagnostic.snapshotSuccessfulDraw({ geometry, object, contextGeneration: contextGeneration() });
-            return result;
-          } catch (error) {
-            publishResizeFailure(error, scene, geometry, object);
-            throw error;
-          }
         };
       }
       if (typeof renderer.render === 'function') {
