@@ -6,7 +6,30 @@ import test from 'node:test';
 import {
   buildErrorEvidence,
   buildPostTeardownGlDeleteTrapDiagnostic,
+  readPostRecoveryRenderDiagnostics,
 } from '../scripts/lib/releaseSoakProbe.mjs';
+
+test('post-recovery diagnostic preserves late resize identity and separate batch failure', () => {
+  const previous = globalThis.window;
+  const resize = { contextGeneration: 1, expectedByteLength: 80, actualByteLength: 0,
+    error: { message: 'size mismatch', stack: 'render-stack' }, matchingSceneSlots: [{ slot: 'attribute:normal' }] };
+  const batch = { contextGeneration: 1, object: { uuid: 'batch-id' } };
+  try {
+    globalThis.window = { SF: { state: { render: { bufferResizeDiagnostic: {
+      lastFailure: resize, lastBatchedFailure: batch,
+    } } } } };
+    assert.deepEqual(readPostRecoveryRenderDiagnostics(), {
+      lastFailureAfterRecovery: resize, lastBatchedFailure: batch,
+    });
+    globalThis.window.SF.state.render = { renderer: { __sfBufferResizeFailure: resize } };
+    assert.deepEqual(readPostRecoveryRenderDiagnostics(), {
+      lastFailureAfterRecovery: resize, lastBatchedFailure: null,
+    });
+  } finally {
+    if (previous === undefined) delete globalThis.window;
+    else globalThis.window = previous;
+  }
+});
 
 test('failure-path teardown diagnostic preserves the one-shot caller snapshot', () => {
   const snapshot = {

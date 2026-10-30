@@ -28,6 +28,7 @@ import {
   ATTRIBUTION_DIAGNOSTIC_VARIANTS,
   strictWorktreeFingerprint,
   normalizeFingerprintPath,
+  diffRuntimeInputFiles,
   summarizeSamples,
   validateArtifactFiles,
   validateCleanupEvidence,
@@ -309,8 +310,7 @@ export async function runReleaseSoakProbe({
   let sourceOverlayCoverage = null;
   let startRuntimeInputs = null;
   let endRuntimeInputs = null;
-  let startUncoveredFingerprint = null;
-  let endUncoveredFingerprint = null;
+  let runtimeInputChanges = null;
   let immutableSaveDiagnostic = null;
   let cleanupReport = null;
   let isolatedLaunch = null;
@@ -349,13 +349,16 @@ export async function runReleaseSoakProbe({
 
   try {
     const startFingerprint = await strictWorktreeFingerprint(root);
-    startRuntimeInputs = await strictRuntimeInputFingerprint(root);
     doLog(`worktree start ${startFingerprint.id}`);
     sourceOverlayCoverage = await readSourceOverlayCoverage(baselineSource);
-    if (sourceOverlayCoverage?.fullRuntime) {
-      startUncoveredFingerprint = await strictWorktreeFingerprint(root, {
-        excludePaths: sourceOverlayCoverage.pinnedPaths,
-      });
+    const runtimeInputExclusions = sourceOverlayCoverage?.fullRuntime
+      ? sourceOverlayCoverage.pinnedPaths : [];
+    startRuntimeInputs = await strictRuntimeInputFingerprint(root, {
+      excludePaths: runtimeInputExclusions,
+      includeFileHashes: true,
+    });
+    if (baselineSource && !sourceOverlayCoverage?.valid) {
+      doLog('source overlay coverage is missing or unsupported; provenance will fail closed');
     }
 
     if (runtime === 'electron' && authority.primaryAcceptance) {
@@ -766,16 +769,10 @@ export async function runReleaseSoakProbe({
       throw recoveryError;
     }
     const recoverySamples = recoveryWindow.samples;
-    // The approved error-only BatchedMesh hook can observe late callbacks after
-    // context restoration, so keep this post-tail snapshot separate from the
-    // pre-context resize failure captured above.
-    const lastBatchedFailure = bufferResizeDiagnostic
-      ? await page.evaluate(() => {
-        const render = window.SF?.state?.render;
-        return render?.bufferResizeDiagnostic?.lastBatchedFailure
-          || render?.renderer?.__sfBatchedMeshFailure
-          || null;
-      }).catch(() => null)
+    // Preserve the pre-undock resize sample separately: either diagnostic can
+    // receive its first failure during the final flight or recovery tail.
+    const postRecoveryDiagnostics = bufferResizeDiagnostic
+      ? await page.evaluate(readPostRecoveryRenderDiagnostics).catch(() => null)
       : null;
     const samples = [...flightSamples, ...recoverySamples];
     assert(samples.length > 0, 'steady-state rAF sampler produced no finite frame samples');
@@ -829,26 +826,27 @@ export async function runReleaseSoakProbe({
       }
     }
     const endFingerprint = await strictWorktreeFingerprint(root);
-    endRuntimeInputs = await strictRuntimeInputFingerprint(root);
-    if (sourceOverlayCoverage?.fullRuntime) {
-      endUncoveredFingerprint = await strictWorktreeFingerprint(root, {
-        excludePaths: sourceOverlayCoverage.pinnedPaths,
-      });
-    }
+    const endRuntimeInputExclusions = sourceOverlayCoverage?.fullRuntime
+      ? sourceOverlayCoverage.pinnedPaths : [];
+    endRuntimeInputs = await strictRuntimeInputFingerprint(root, {
+      excludePaths: endRuntimeInputExclusions,
+      includeFileHashes: true,
+    });
+    runtimeInputChanges = diffRuntimeInputFiles(startRuntimeInputs?.files, endRuntimeInputs?.files);
     const worktreeStable = endFingerprint.digest === startFingerprint.digest;
+    const runtimeInputsStable = startRuntimeInputs?.digest === endRuntimeInputs?.digest
+      && Array.isArray(runtimeInputChanges) && runtimeInputChanges.length === 0
+      && startRuntimeInputs?.files?.every((entry) => entry.missing !== true) === true
+      && endRuntimeInputs?.files?.every((entry) => entry.missing !== true) === true;
     const sourceStability = evaluateSourceStability({
       baselineSource,
       coverage: sourceOverlayCoverage,
       servedAtStart: servedSourceOverlay,
       servedAtEnd: servedSourceOverlayAtEnd,
       worktreeStable,
-      runtimeInputsStable: startRuntimeInputs?.digest === endRuntimeInputs?.digest,
-      uncoveredWorktreeStable: startUncoveredFingerprint && endUncoveredFingerprint
-        ? endUncoveredFingerprint.digest === startUncoveredFingerprint.digest
-        : null,
-      uncoveredHeadStable: startUncoveredFingerprint && endUncoveredFingerprint
-        ? endUncoveredFingerprint.head === startUncoveredFingerprint.head
-        : null,
+      runtimeInputsStable,
+      uncoveredRuntimeInputsStable: sourceOverlayCoverage?.fullRuntime ? runtimeInputsStable : null,
+      uncoveredHeadStable: endFingerprint.head === startFingerprint.head,
     });
     if (!worktreeStable) {
       if (sourceStability.mode === 'served-overlay' && sourceStability.pass) {
@@ -1002,7 +1000,8 @@ export async function runReleaseSoakProbe({
         performanceEligible: false,
         reason: 'opt-in error-only attribute capture is diagnostic-only',
         lastFailure: bufferResizeFailure,
-        lastBatchedFailure,
+        lastFailureAfterRecovery: postRecoveryDiagnostics?.lastFailureAfterRecovery || null,
+        lastBatchedFailure: postRecoveryDiagnostics?.lastBatchedFailure || null,
       } : null,
       hardware,
       soakWindow,
@@ -1021,7 +1020,12 @@ export async function runReleaseSoakProbe({
         coverage: compactSourceOverlayCoverage(sourceOverlayCoverage),
       } : null,
       sourceStability,
-      runtimeInputs: { start: startRuntimeInputs, end: endRuntimeInputs },
+      runtimeInputs: {
+        scope: sourceOverlayCoverage?.fullRuntime ? 'uncovered-runtime-inputs' : 'runtime-inputs',
+        start: summarizeRuntimeInputFingerprint(startRuntimeInputs),
+        end: summarizeRuntimeInputFingerprint(endRuntimeInputs),
+        changedPaths: runtimeInputChanges,
+      },
       consumedClaim: authority.consumedClaim,
       fixedSeed: authority.fixedSeed,
       inputSource: 'keyboard-mouse',
@@ -1234,11 +1238,15 @@ function isFullRuntimeCaptureScope(captureScope) {
   return /^all-runtime(?:-|$)/i.test(String(captureScope || '').trim());
 }
 
-async function readSourceOverlayCoverage(baselineSource) {
+const ALL_RUNTIME_PATH_POLICY = 'index.html + vendor/three.module.js + src/**/*.{js,json} + scripts/lib/**/*.{js,mjs,cjs} + styles/**/*';
+const PERFORMANCE_PATH_POLICY = 'explicit performance path set';
+
+export async function readSourceOverlayCoverage(baselineSource) {
   if (!baselineSource?.path) return null;
   try {
     const manifest = JSON.parse(await readFile(baselineSource.path, 'utf8'));
     const captureScope = String(manifest.captureScope || '').trim() || null;
+    const runtimePathPolicy = String(manifest.runtimePathPolicy || '').trim() || null;
     const rawPinnedPaths = Array.isArray(manifest.files)
       ? manifest.files.map((entry) => entry?.path)
       : [];
@@ -1246,11 +1254,16 @@ async function readSourceOverlayCoverage(baselineSource) {
     const validPinnedPaths = rawPinnedPaths.length > 0
       && pinnedPaths.every(Boolean)
       && new Set(pinnedPaths).size === pinnedPaths.length;
+    const hasNoOmissions = Array.isArray(manifest.omittedPaths) && manifest.omittedPaths.length === 0;
+    const knownScope = (captureScope === 'all-runtime' && runtimePathPolicy === ALL_RUNTIME_PATH_POLICY)
+      || (captureScope === 'performance-paths' && runtimePathPolicy === PERFORMANCE_PATH_POLICY);
+    const valid = knownScope && validPinnedPaths && hasNoOmissions;
     return {
       sourceMode: String(manifest.sourceMode || '').trim() || null,
       captureScope,
-      runtimePathPolicy: String(manifest.runtimePathPolicy || '').trim() || null,
-      fullRuntime: isFullRuntimeCaptureScope(captureScope) && validPinnedPaths,
+      runtimePathPolicy,
+      valid,
+      fullRuntime: valid && isFullRuntimeCaptureScope(captureScope),
       pinnedPaths: validPinnedPaths ? pinnedPaths : [],
       pinnedPathCount: validPinnedPaths ? pinnedPaths.length : 0,
     };
@@ -1259,6 +1272,7 @@ async function readSourceOverlayCoverage(baselineSource) {
       sourceMode: null,
       captureScope: null,
       runtimePathPolicy: null,
+      valid: false,
       fullRuntime: false,
       pinnedPaths: [],
       pinnedPathCount: 0,
@@ -1273,10 +1287,22 @@ function compactSourceOverlayCoverage(coverage) {
     sourceMode: coverage.sourceMode || null,
     captureScope: coverage.captureScope || null,
     runtimePathPolicy: coverage.runtimePathPolicy || null,
+    valid: coverage.valid === true,
     fullRuntime: coverage.fullRuntime === true,
     pinnedPathCount: Number.isSafeInteger(coverage.pinnedPathCount) ? coverage.pinnedPathCount : 0,
     ...(coverage.readError ? { readError: coverage.readError } : {}),
   };
+}
+
+function summarizeRuntimeInputFingerprint(fingerprint) {
+  return fingerprint ? {
+    schema: fingerprint.schema,
+    digest: fingerprint.digest,
+    fileCount: fingerprint.fileCount,
+    missingPaths: Array.isArray(fingerprint.files)
+      ? fingerprint.files.filter((entry) => entry.missing === true).map((entry) => entry.path)
+      : null,
+  } : null;
 }
 
 function sourceOverlayIdentityMatches(expected, observed) {
@@ -1292,7 +1318,7 @@ export function evaluateSourceStability({
   servedAtEnd = null,
   worktreeStable = false,
   runtimeInputsStable = null,
-  uncoveredWorktreeStable = null,
+  uncoveredRuntimeInputsStable = null,
   uncoveredHeadStable = null,
 } = {}) {
   if (!baselineSource) {
@@ -1302,16 +1328,28 @@ export function evaluateSourceStability({
       worktreeStable: worktreeStable === true,
       runtimeInputsStable: runtimeInputsStable === true,
       servedSourceStable: null,
-      uncoveredWorktreeStable: null,
+      uncoveredRuntimeInputsStable: null,
       uncoveredHeadStable: null,
       pass: runtimeInputsStable === true,
       runtimeInputsSchema: 'spaceface.releaseSoakRuntimeInputs.v1',
     };
   }
+  if (!coverage || coverage.valid !== true) {
+    return {
+      mode: 'invalid-overlay',
+      overlayCoversRuntime: false,
+      worktreeStable: worktreeStable === true,
+      runtimeInputsStable: runtimeInputsStable === true,
+      servedSourceStable: null,
+      uncoveredRuntimeInputsStable: null,
+      uncoveredHeadStable: uncoveredHeadStable === true,
+      pass: false,
+    };
+  }
   const overlayCoversRuntime = coverage?.fullRuntime === true;
   const servedSourceStable = sourceOverlayIdentityMatches(baselineSource.identity, servedAtStart)
     && sourceOverlayIdentityMatches(baselineSource.identity, servedAtEnd);
-  const uncoveredStable = uncoveredWorktreeStable === true;
+  const uncoveredRuntimeStable = uncoveredRuntimeInputsStable === true;
   const headStable = uncoveredHeadStable === true;
   return {
     mode: overlayCoversRuntime ? 'served-overlay' : 'worktree',
@@ -1319,10 +1357,10 @@ export function evaluateSourceStability({
     worktreeStable: worktreeStable === true,
     runtimeInputsStable: runtimeInputsStable === true,
     servedSourceStable,
-    uncoveredWorktreeStable: overlayCoversRuntime ? uncoveredStable : null,
+    uncoveredRuntimeInputsStable: overlayCoversRuntime ? uncoveredRuntimeStable : null,
     uncoveredHeadStable: overlayCoversRuntime ? headStable : null,
     pass: overlayCoversRuntime
-      ? (servedSourceStable && uncoveredStable && headStable)
+      ? (servedSourceStable && uncoveredRuntimeStable && headStable)
       : (worktreeStable === true && servedSourceStable),
   };
 }
@@ -1586,6 +1624,17 @@ export async function installTier1CountersInitScript(target) {
       writable: false,
     });
   });
+}
+
+/** Read the existing error-only DTOs after the recovery tail, in the page realm. */
+export function readPostRecoveryRenderDiagnostics() {
+  const render = window.SF?.state?.render;
+  return {
+    lastFailureAfterRecovery: render?.bufferResizeDiagnostic?.lastFailure
+      || render?.renderer?.__sfBufferResizeFailure || null,
+    lastBatchedFailure: render?.bufferResizeDiagnostic?.lastBatchedFailure
+      || render?.renderer?.__sfBatchedMeshFailure || null,
+  };
 }
 
 export async function installBufferResizeDiagnosticInitScript(target) {
