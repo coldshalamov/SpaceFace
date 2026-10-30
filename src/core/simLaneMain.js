@@ -2028,8 +2028,28 @@ function createBrowserChannel() {
   );
   const messageHandlers = [];
   const errorHandlers = [];
+  const preBootMessages = [];
+  let workerBooted = false;
+  let workerTerminated = false;
   worker.onmessage = (event) => {
     const msg = event && event.data;
+    // The worker posts `boot` only after its onmessage handler is installed.
+    // Hold the first init (and a possible close-before-ready shutdown) until
+    // that handshake, so module evaluation cannot consume a directive before
+    // the worker has a receiver. The normal seq-keyed ready/error contract is
+    // unchanged; the caller's existing startup deadline still bounds this wait.
+    if (msg?.kind === 'boot' && !workerBooted) {
+      workerBooted = true;
+      for (const queued of preBootMessages.splice(0)) {
+        try { worker.postMessage(queued); }
+        catch (error) {
+          for (const h of errorHandlers) {
+            try { h(error); } catch (_) {}
+          }
+          break;
+        }
+      }
+    }
     for (const h of messageHandlers) {
       try { h(msg); } catch (_) { /* handler faults are caller bugs */ }
     }
@@ -2050,10 +2070,22 @@ function createBrowserChannel() {
     }
   };
   return {
-    post(msg) { worker.postMessage(msg); },
+    post(msg) {
+      if (workerTerminated) throw new Error('sim worker channel is terminated');
+      if (workerBooted) { worker.postMessage(msg); return; }
+      // Before ready, current callers can queue only init plus a close-triggered
+      // shutdown. Keep this seam bounded and fail through the existing caller
+      // error path if that invariant ever changes.
+      if (preBootMessages.length >= 2) throw new Error('sim worker pre-boot message queue is full');
+      preBootMessages.push(msg);
+    },
     onMessage(cb) { messageHandlers.push(cb); },
     onError(cb) { errorHandlers.push(cb); },
-    terminate() { try { worker.terminate(); } catch (_) {} },
+    terminate() {
+      workerTerminated = true;
+      preBootMessages.length = 0;
+      try { worker.terminate(); } catch (_) {}
+    },
     raw: worker,
   };
 }
