@@ -18,6 +18,7 @@ import {
   REQUIRED_PRIMARY_CYCLE_MARKS,
   summarizeSamples,
   strictWorktreeFingerprint,
+  strictRuntimeInputFingerprint,
   validateReleaseSoakEvidence,
   validatePerformanceEvidence,
 } from '../scripts/lib/releaseSoakContracts.mjs';
@@ -447,6 +448,19 @@ test('full pinned overlays use served identity while partial overlays remain wor
     uncoveredHeadStable: false,
   });
   assert.equal(headDrift.pass, false, 'a HEAD change remains fatal even when served bytes match');
+
+  const scopedRuntime = evaluateSourceStability({
+    worktreeStable: false,
+    runtimeInputsStable: true,
+  });
+  assert.equal(scopedRuntime.mode, 'runtime-inputs');
+  assert.equal(scopedRuntime.pass, true,
+    'without an overlay, unrelated Git/worktree drift is accepted only when runtime inputs match');
+  const changedRuntime = evaluateSourceStability({
+    worktreeStable: true,
+    runtimeInputsStable: false,
+  });
+  assert.equal(changedRuntime.pass, false, 'runtime input changes remain fatal');
 });
 
 test('primary evidence accepts worktree drift only with a stable full-runtime overlay', () => {
@@ -492,6 +506,75 @@ test('primary evidence accepts worktree drift only with a stable full-runtime ov
   const partialResult = validateReleaseSoakEvidence(partial);
   assert.equal(partialResult.pass, false);
   assert(partialResult.failures.some((failure) => /worktree fingerprint changed/i.test(failure)));
+});
+
+test('primary evidence accepts unrelated Git drift only when scoped runtime inputs match', () => {
+  const evidence = makeValidEvidence({
+    runtime: 'electron',
+    taskId: 'runtime-input-stability',
+    artifact: { kind: 'screenshot', path: 'route.png', bytes: 1, sha256: 'c'.repeat(64) },
+  });
+  const digest = 'a'.repeat(64);
+  evidence.fingerprints.end = {
+    ...evidence.fingerprints.end,
+    digest: 'b'.repeat(64),
+    id: `0123456789ab-${'b'.repeat(16)}`,
+  };
+  evidence.runtimeInputs = {
+    start: { schema: 'spaceface.releaseSoakRuntimeInputs.v1', digest, fileCount: 18000 },
+    end: { schema: 'spaceface.releaseSoakRuntimeInputs.v1', digest, fileCount: 18000 },
+  };
+  evidence.sourceStability = {
+    mode: 'runtime-inputs',
+    runtimeInputsSchema: 'spaceface.releaseSoakRuntimeInputs.v1',
+    runtimeInputsStable: true,
+    worktreeStable: false,
+    pass: true,
+  };
+  const stable = validateReleaseSoakEvidence(evidence);
+  assert.equal(stable.pass, true, stable.failures.join('; '));
+
+  const changed = structuredClone(evidence);
+  changed.runtimeInputs.end.digest = 'c'.repeat(64);
+  const changedResult = validateReleaseSoakEvidence(changed);
+  assert.equal(changedResult.pass, false);
+  assert(changedResult.failures.some((failure) => /worktree fingerprint changed/i.test(failure)));
+});
+
+test('runtime input fingerprint follows app, worker, asset, and launch bytes but ignores docs', async () => {
+  const fixture = await mkdtemp(path.join(os.tmpdir(), 'spaceface-runtime-input-fingerprint-'));
+  const runGit = (args) => execFileAsync('git', args, { cwd: fixture, windowsHide: true });
+  try {
+    for (const directory of ['src', 'scripts/lib', 'assets', 'docs']) {
+      await mkdir(path.join(fixture, directory), { recursive: true });
+    }
+    await writeFile(path.join(fixture, 'index.html'), '<script type="module" src="/src/app.js"></script>\n');
+    await writeFile(path.join(fixture, 'src', 'app.js'), 'import "../scripts/lib/simReadModel.mjs";\n');
+    await writeFile(path.join(fixture, 'scripts', 'lib', 'simReadModel.mjs'), 'export const revision = 1;\n');
+    await writeFile(path.join(fixture, 'assets', 'ship.svg'), '<svg/>\n');
+    await writeFile(path.join(fixture, 'docs', 'notes.md'), 'initial\n');
+    await runGit(['init', '-q']);
+    await runGit(['config', 'user.email', 'runtime-fingerprint@example.invalid']);
+    await runGit(['config', 'user.name', 'Runtime Fingerprint']);
+    await runGit(['add', '.']);
+    await runGit(['commit', '-qm', 'fixture']);
+
+    const baseline = await strictRuntimeInputFingerprint(fixture);
+    assert.equal(baseline.schema, 'spaceface.releaseSoakRuntimeInputs.v1');
+    assert.equal(baseline.fileCount, 4);
+
+    await writeFile(path.join(fixture, 'docs', 'notes.md'), 'documentation-only drift\n');
+    const docsChanged = await strictRuntimeInputFingerprint(fixture);
+    assert.equal(docsChanged.digest, baseline.digest,
+      'documentation-only drift does not change actual app input identity');
+
+    await writeFile(path.join(fixture, 'scripts', 'lib', 'simReadModel.mjs'), 'export const revision = 2;\n');
+    const workerChanged = await strictRuntimeInputFingerprint(fixture);
+    assert.notEqual(workerChanged.digest, baseline.digest,
+      'a browser/worker module under scripts/lib remains part of runtime identity');
+  } finally {
+    await rm(fixture, { recursive: true, force: true });
+  }
 });
 
 test('excluded overlay files do not hide unpinned runtime mutations from the fingerprint', async () => {

@@ -36,6 +36,7 @@ import {
   validateReleaseSoakEvidence,
   validatePerformanceAttribution,
   validateSettingsTruth,
+  strictRuntimeInputFingerprint,
 } from './releaseSoakContracts.mjs';
 import {
   closeOwnedResources,
@@ -283,6 +284,8 @@ export async function runReleaseSoakProbe({
   let servedSourceOverlay = null;
   let servedSourceOverlayAtEnd = null;
   let sourceOverlayCoverage = null;
+  let startRuntimeInputs = null;
+  let endRuntimeInputs = null;
   let startUncoveredFingerprint = null;
   let endUncoveredFingerprint = null;
   let immutableSaveDiagnostic = null;
@@ -323,6 +326,7 @@ export async function runReleaseSoakProbe({
 
   try {
     const startFingerprint = await strictWorktreeFingerprint(root);
+    startRuntimeInputs = await strictRuntimeInputFingerprint(root);
     doLog(`worktree start ${startFingerprint.id}`);
     sourceOverlayCoverage = await readSourceOverlayCoverage(baselineSource);
     if (sourceOverlayCoverage?.fullRuntime) {
@@ -775,6 +779,7 @@ export async function runReleaseSoakProbe({
       }
     }
     const endFingerprint = await strictWorktreeFingerprint(root);
+    endRuntimeInputs = await strictRuntimeInputFingerprint(root);
     if (sourceOverlayCoverage?.fullRuntime) {
       endUncoveredFingerprint = await strictWorktreeFingerprint(root, {
         excludePaths: sourceOverlayCoverage.pinnedPaths,
@@ -787,6 +792,7 @@ export async function runReleaseSoakProbe({
       servedAtStart: servedSourceOverlay,
       servedAtEnd: servedSourceOverlayAtEnd,
       worktreeStable,
+      runtimeInputsStable: startRuntimeInputs?.digest === endRuntimeInputs?.digest,
       uncoveredWorktreeStable: startUncoveredFingerprint && endUncoveredFingerprint
         ? endUncoveredFingerprint.digest === startUncoveredFingerprint.digest
         : null,
@@ -958,6 +964,7 @@ export async function runReleaseSoakProbe({
         coverage: compactSourceOverlayCoverage(sourceOverlayCoverage),
       } : null,
       sourceStability,
+      runtimeInputs: { start: startRuntimeInputs, end: endRuntimeInputs },
       consumedClaim: authority.consumedClaim,
       fixedSeed: authority.fixedSeed,
       inputSource: 'keyboard-mouse',
@@ -1221,18 +1228,21 @@ export function evaluateSourceStability({
   servedAtStart = null,
   servedAtEnd = null,
   worktreeStable = false,
+  runtimeInputsStable = null,
   uncoveredWorktreeStable = null,
   uncoveredHeadStable = null,
 } = {}) {
   if (!baselineSource) {
     return {
-      mode: 'worktree',
+      mode: 'runtime-inputs',
       overlayCoversRuntime: false,
       worktreeStable: worktreeStable === true,
+      runtimeInputsStable: runtimeInputsStable === true,
       servedSourceStable: null,
       uncoveredWorktreeStable: null,
       uncoveredHeadStable: null,
-      pass: worktreeStable === true,
+      pass: runtimeInputsStable === true,
+      runtimeInputsSchema: 'spaceface.releaseSoakRuntimeInputs.v1',
     };
   }
   const overlayCoversRuntime = coverage?.fullRuntime === true;
@@ -1244,6 +1254,7 @@ export function evaluateSourceStability({
     mode: overlayCoversRuntime ? 'served-overlay' : 'worktree',
     overlayCoversRuntime,
     worktreeStable: worktreeStable === true,
+    runtimeInputsStable: runtimeInputsStable === true,
     servedSourceStable,
     uncoveredWorktreeStable: overlayCoversRuntime ? uncoveredStable : null,
     uncoveredHeadStable: overlayCoversRuntime ? headStable : null,
@@ -1276,7 +1287,7 @@ async function launchElectron(
   { enableTier1Counters = false, baselineSourcePath = null, log = console.log } = {},
 ) {
   const setupLog = typeof log === 'function' ? log : console.log;
-  const awaitOptionalSetup = async (label, operation, timeoutMs = 10_000) => {
+  const awaitOptionalSetup = async (label, operation, timeoutMs = 10_000, onTimeout = null) => {
     setupLog(`electron setup ${label} begin`);
     let timer = null;
     let timedOut = false;
@@ -1299,6 +1310,7 @@ async function launchElectron(
     if (timer) clearTimeout(timer);
     if (result.status === 'timeout') {
       timedOut = true;
+      try { onTimeout?.(); } catch (_) { /* optional diagnostics cannot own launcher readiness */ }
       setupLog(`electron setup ${label} timed out after ${timeoutMs}ms; continuing with live event tracking`);
       return { completed: false, timedOut: true };
     }
@@ -1384,7 +1396,12 @@ async function launchElectron(
     page,
     canonicalUrlTracker,
   });
-  await awaitOptionalSetup('page history backfill', () => pageIssueTracker.bindAndBackfillPage(page));
+  await awaitOptionalSetup(
+    'page history backfill',
+    () => pageIssueTracker.bindAndBackfillPage(page),
+    10_000,
+    () => pageIssueTracker.retirePageHistoryBackfill?.(page, 'optional-setup-timeout'),
+  );
   setupLog('electron setup canonical-root wait begin (10s)');
   const rootUrl = assertIsolatedElectronRootUrl(
     await canonicalUrlTracker.waitForCanonicalRoot(10_000),

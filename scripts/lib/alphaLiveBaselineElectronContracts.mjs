@@ -67,6 +67,7 @@ export function createStrictElectronApplicationIssueTracker(electronApp, options
   const removers = [];
   const boundPages = new WeakSet();
   const backfillPromises = new WeakMap();
+  const backfillRetirements = new WeakMap();
   const seenConsoleMessages = new WeakSet();
   const seenPageErrors = new WeakSet();
   const seenFailedRequests = new WeakSet();
@@ -112,6 +113,8 @@ export function createStrictElectronApplicationIssueTracker(electronApp, options
     supported: null,
     attempted: false,
     completed: false,
+    retiredAfterPageClose: false,
+    retirementReason: null,
     pageCount: 0,
     itemCount: 0,
     unsupportedPageCount: 0,
@@ -516,6 +519,14 @@ export function createStrictElectronApplicationIssueTracker(electronApp, options
       status.completed = status.errors.length === 0;
     } catch (error) {
       status.completed = false;
+      const retirementReason = backfillRetirements.get(page);
+      if (retirementReason === 'optional-setup-timeout'
+        && isPageClosed(page)
+        && isClosedPageHistoryError(error)) {
+        status.retiredAfterPageClose = true;
+        status.retirementReason = retirementReason;
+        return;
+      }
       recordBackfillFailure(name, error);
     }
   };
@@ -558,6 +569,11 @@ export function createStrictElectronApplicationIssueTracker(electronApp, options
 
   return {
     bindAndBackfillPage,
+    retirePageHistoryBackfill(page, reason = 'optional-setup-timeout') {
+      if (!page || stopped || reason !== 'optional-setup-timeout') return false;
+      backfillRetirements.set(page, reason);
+      return true;
+    },
     bindNetworkProvenance,
     all: () => {
       flushPendingGenericNotFoundConsoles();
@@ -642,6 +658,15 @@ export function createStrictElectronApplicationIssueTracker(electronApp, options
 
 function isExactNavigationCancellation(failure) {
   return /^net::ERR_ABORTED$/i.test(String(failure?.errorText || '').trim());
+}
+
+function isPageClosed(page) {
+  try { return typeof page?.isClosed === 'function' && page.isClosed() === true; }
+  catch (_) { return false; }
+}
+
+function isClosedPageHistoryError(error) {
+  return /target page, context or browser has been closed/i.test(String(error?.message || error));
 }
 
 function isGenericNotFoundConsole(text) {
@@ -1638,7 +1663,12 @@ export function evaluateElectronPublicationReadiness({
     for (const name of ['consoleMessages', 'pageErrors', 'requests']) {
       const status = pageIssueCoverage.backfill?.[name];
       if (typeof status?.supported !== 'boolean') failures.push(`${name} backfill support was not inspected`);
-      else if (status.supported === true && (status.attempted !== true || status.completed !== true)) {
+      else if (status.supported === true && (status.attempted !== true || (
+        status.completed !== true
+        && !(status.retiredAfterPageClose === true
+          && status.retirementReason === 'optional-setup-timeout'
+          && (status.errors?.length || 0) === 0)
+      ))) {
         failures.push(`${name} retained history backfill did not complete`);
       }
     }

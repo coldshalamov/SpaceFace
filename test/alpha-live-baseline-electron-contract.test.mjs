@@ -310,6 +310,58 @@ async function testApplicationWideIssueTrackerAndBackfill() {
   assert.equal(optionalCoverage.backfill.requests.supported, false,
     'missing optional request history API is explicit rather than silently assumed');
   optionalTracker.stop();
+
+  const lateContext = new EventEmitter();
+  const lateApp = new EventEmitter();
+  lateApp.context = () => lateContext;
+  const lateTracker = createStrictElectronApplicationIssueTracker(lateApp);
+  let rejectLateResponse;
+  const lateResponse = new Promise((_, reject) => { rejectLateResponse = reject; });
+  const lateRequest = {
+    method: () => 'GET',
+    url: () => `${CANONICAL}late-history.js`,
+    response: () => lateResponse,
+  };
+  const latePage = new HistoryFakePage(CANONICAL, { requests: [lateRequest] });
+  lateApp.emit('window', latePage);
+  const lateBackfill = lateTracker.bindAndBackfillPage(latePage);
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(lateTracker.retirePageHistoryBackfill(latePage, 'optional-setup-timeout'), true);
+  latePage.closed = true;
+  rejectLateResponse(new Error('request.response: Target page, context or browser has been closed'));
+  await lateBackfill;
+  assert.equal(lateTracker.errors().length, 0,
+    'the timed-out optional history read that rejects only after owned page close is not a runtime console error');
+  const lateCoverage = lateTracker.coverage();
+  assert.equal(lateCoverage.backfill.requests.completed, false,
+    'retirement does not claim that the optional history snapshot completed');
+  assert.equal(lateCoverage.backfill.requests.retiredAfterPageClose, true,
+    'the known page-close cancellation is explicit in retained coverage');
+  assert.equal(lateCoverage.backfill.requests.retirementReason, 'optional-setup-timeout');
+  const readiness = evaluateElectronPublicationReadiness({
+    routeResult: { pass: true },
+    urlAcceptance: { pass: true },
+    processHealth: { pass: true },
+    cleanup: { pass: true },
+    pageErrors: [],
+    pageIssueCoverage: lateCoverage,
+    viewportFloorAssessment: assessElectronViewportFloor(realElectronRuntimeMetadata()),
+    screenshotDimensionAssessment: assessElectronScreenshotDimensions([
+      { name: '01-main-menu.png', width: 1833, height: 974, bytes: 100_000 },
+    ]),
+    fingerprints: {
+      start: { digest: 'same' },
+      afterRoute: { digest: 'same' },
+      afterCleanup: { digest: 'same' },
+    },
+    evidenceValidation: { pass: true },
+  });
+  assert.equal(readiness.pass, true,
+    'only the explicitly retired optional history reader is exempt from backfill completion');
+  lateContext.emit('console', fakeConsoleMessage('error', 'live error remains fatal after backfill retirement'));
+  assert.equal(lateTracker.errors().length, 1,
+    'retiring optional history does not stop live console error observation');
+  lateTracker.stop();
 }
 
 async function testOptInExpectedSoakNetworkPolicy() {
