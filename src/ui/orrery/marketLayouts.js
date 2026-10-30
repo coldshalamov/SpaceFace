@@ -951,6 +951,16 @@ const CSS_TAIL = `
 @media (max-width:389px) and (min-height:601px) {
   ${MD} .sx-mkt-table :is(th, td):nth-child(2) { padding-left:14px !important; }
 }
+/* …and on a tall narrow window (≤480 × ≥801, e.g. 390×844) the families closed up still took four
+   lines, so the register under them showed one good and half of the next. They ride the same
+   sideways strip as the short windows above, and the goods get those three lines back. */
+@media (max-width:480px) and (min-height:801px) {
+  ${MD} .sx-mkt-browser__filters { flex-wrap:nowrap !important; overflow-x:auto !important; overflow-y:hidden !important; column-gap:12px !important;
+    scrollbar-width:none; -webkit-mask-image:linear-gradient(90deg, #000 calc(100% - 18px), transparent) !important;
+    mask-image:linear-gradient(90deg, #000 calc(100% - 18px), transparent) !important; }
+  ${MD} .sx-mkt-browser__filters li { flex:none !important; }
+  ${MD} .sx-mkt-filter { white-space:nowrap !important; }
+}
 /* Real phones (data-sf-mobile) carry their own Market sheet, where the families already ride one
    swiped line and the register stacks full width. On a short portrait phone (≤600 × 561–800, e.g.
    375×667) the berth header left that sheet a ~128px slit that scrolled on its own under the header,
