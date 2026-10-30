@@ -906,6 +906,7 @@ export function createStrangerPilot({ state, bus, ledger, services }) {
   let strokeTicks = 0;
   let escapeFrom = null;         // {x,z} the wanted-escape runs away from
   let nearBreakUntil = -1;       // ease the winch when the line warns it is near break
+  let grabBraking = false;       // stops a circling beacon approach dead before the creep
   let latchedTargetId = null;    // the body this policy intends to hold
   let needWinch = true;          // every fresh latch must be winched tight before a swing
   let raidWall = null;           // cached throw-target rock (static, so position is stable)
@@ -1366,9 +1367,6 @@ export function createStrangerPilot({ state, bus, ledger, services }) {
         } else if (r.current === 'grab') {
           const pod = rescueEntity('pod');
           const beacon = rescueEntity('beacon');
-          if (process.env.STRANGER_PILOT_TRACE && (state.tick % 120) === 0) {
-            console.log(`    [grab] t=${Math.round(state.simTime)} pod=${pod ? 'live' : 'null'} dPod=${pod ? Math.round(dist(p.pos, pod.pos)) : '?'} dBeacon=${beacon ? Math.round(dist(p.pos, beacon.pos)) : '?'} lineAtt=${lineAttached} latched=${latchedId} podLatched=${r.podLatched} v=${Math.round(speedOf(p))}`);
-          }
           if (pod && beacon) {
             const latched = lineAttached && latchedId === pod.id;
             if (lineAttached && !latched) {
@@ -1378,34 +1376,36 @@ export function createStrangerPilot({ state, bus, ledger, services }) {
             }
             if (!latched) { tryLatch(input, cmd, pod, 'rescue-pod'); return; }
             // Run the pod home: the towed pod crosses the ring trailing the hull, and the
-            // predicate is pod-inside-radius only — proximity, no speed proof. Velocity-
-            // vector guidance, not nose pursuit: every pursuit cap left tangential speed
-            // alive and parked a stable circle off the ring (runs 7–10, dB≈111–420 —
-            // this hull's turn circle is ~100+ at approach speeds, wider than the ring).
-            // Aiming the burn at (desired velocity − current velocity) kills tangential
-            // drift and overspeed in one law, so the approach straightens onto the mark.
+            // predicate is pod-inside-radius only — proximity, no speed proof. Radial
+            // thrust cannot remove tangential velocity — nose-at-beacon supplies only
+            // centripetal force, which is exactly what holds a stable circle (runs
+            // 7–12 pinned at dB≈111–420 across every pursuit/guidance scheme). Only
+            // the brake acts on the velocity vector itself: a circling approach must
+            // stop dead before it can straighten onto the mark and creep in.
             const dB = dist(p.pos, beacon.pos);
             const vx = (p.vel && Number(p.vel.x)) || 0;
             const vz = (p.vel && Number(p.vel.z)) || 0;
-            const vDes = Math.max(8, Math.min(40, dB / 8));
-            const ax = ((beacon.pos.x - p.pos.x) / dB) * vDes - vx;
-            const az = ((beacon.pos.z - p.pos.z) / dB) * vDes - vz;
-            const aMag = Math.hypot(ax, az);
-            const aimB = aMag > 0.5
-              ? Math.atan2(az, ax)
-              : Math.atan2(beacon.pos.z - p.pos.z, beacon.pos.x - p.pos.x);
+            const vNow = Math.hypot(vx, vz);
+            const closing = -((vx * (beacon.pos.x - p.pos.x)) + (vz * (beacon.pos.z - p.pos.z))) / (dB || 1);
+            if (!grabBraking && (vNow > Math.max(10, dB / 6) || (vNow > 4 && closing < vNow * 0.4))) {
+              grabBraking = true;
+            }
+            if (grabBraking && vNow < 2) grabBraking = false;
+            const aimB = Math.atan2(beacon.pos.z - p.pos.z, beacon.pos.x - p.pos.x);
             const errB = wrapAngle(aimB - (p.rot || 0));
             input.aimAngle = aimB;
             input.turnIntent = Math.max(-1, Math.min(1, errB / 0.6));
-            input.moveZ = (aMag > 1.5 && Math.abs(errB) < 0.5) ? 1 : 0;
-            input.brake = false;
+            input.brake = grabBraking || vNow > Math.max(6, dB / 10);
+            input.moveZ = (!input.brake && Math.abs(errB) < 0.4 && dB > 20) ? 1 : 0;
             input.boost = false;
-            // A fully winched line makes the ship+pod a dumbbell — the line's tension
-            // is an unmeasured force no guidance law can see, and every scheme parked
-            // in the same circle (runs 7–12). Pay the line out to slack instead: the
-            // ship steers free and the trailing pod sweeps the ring on the same track.
+            // Keep the pod reeled to the hull for delivery — a slack line let it sail
+            // 390wu off on its own momentum (run 13) and the predicate needs IT in
+            // the ring, not the hull.
             cmd.lineControl = true;
-            cmd.lineLength = dist(p.pos, pod.pos) < 80 ? 1 : 0;
+            cmd.lineLength = -0.35;
+            if (process.env.STRANGER_PILOT_TRACE && (state.tick % 120) === 0) {
+              console.log(`    [grab] t=${Math.round(state.simTime)} dPod=${Math.round(dist(p.pos, pod.pos))} dB=${Math.round(dB)} v=${Math.round(vNow)} closing=${Math.round(closing)} err=${errB.toFixed(2)} brk=${input.brake} mz=${input.moveZ} latched=${r.podLatched}`);
+            }
             return;
           }
         }
