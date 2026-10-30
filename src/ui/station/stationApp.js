@@ -158,6 +158,14 @@ export const STATION_HELP = {
   ledger: ["Ship's Ledger", 'The Tessera keeps what the manifests leave out. Recovered evidence opens to full detail.'],
 };
 
+// Drops a tile's data-sx-quiet-focus once the player acts on it (see the arrival focus below).
+function clearQuietFocus(ev) {
+  const tile = ev.currentTarget;
+  tile.removeAttribute('data-sx-quiet-focus');
+  tile.removeEventListener('keydown', clearQuietFocus);
+  tile.removeEventListener('blur', clearQuietFocus);
+}
+
 /** Put each destination's existing help line on the rail tile, as a sub and as its spoken name. */
 export function stampDestinationRail(dockEl, destinations = DESTINATIONS, help = STATION_HELP) {
   if (!dockEl || typeof dockEl.querySelector !== 'function') return [];
@@ -1588,7 +1596,15 @@ export function createStationApp(rootEl, ctx, opts = {}) {
       // dock — so every keyboard-driven arrival painted a focus ring on the cargo readout. The tile
       // is the roving-tabindex owner the dock already maintains; focusing it changes no tabindex.
       const activeTile = dock.el && dock.el.querySelector('.sx-tile.is-active');
-      if (activeTile) { try { activeTile.focus({ preventScroll: true }); } catch (_) {} }
+      if (activeTile) {
+        // Mark this arrival focus as quiet, the station's and not the player's: the wide-rail
+        // caption plate (station.css, 1701+ × 901+) stays off for it, so it can't cover the body at
+        // rest. The first key on the tab, or focus leaving it, hands the focus back to the player.
+        activeTile.setAttribute('data-sx-quiet-focus', '');
+        activeTile.addEventListener('keydown', clearQuietFocus);
+        activeTile.addEventListener('blur', clearQuietFocus);
+        try { activeTile.focus({ preventScroll: true }); } catch (_) {}
+      }
       const attention = applyDockAttention({ allowAutoOpen: !kiteOpen, refreshActive: !kiteOpen });
       if (!(attention && attention.autoOpen)) {
         const scr = activeScreen();

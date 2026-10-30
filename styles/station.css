@@ -1210,12 +1210,14 @@ html[data-k-temp="wanted"] #screens .sx-berth .sxb-berth__lamp {
   }
   /* …and pointing at a tab, or focusing it from the keyboard, lifts its whole line into a plate
      just above the tab (the clamp cut most lines in half). That includes the open tab, so its own
-     line is never stuck half cut; while any tab is pointed at, only that one plate shows. The row
-     keeps its height, since the other six lines still hold it, so nothing under the rail moves. */
+     line is never stuck half cut (but not while that focus is quiet, data-sx-quiet-focus: the
+     station's own arrival focus, which would cover the body at rest); while any tab is pointed at,
+     only that one plate shows. The row keeps its height, since the other six lines still hold it,
+     so nothing under the rail moves. */
   html:root:not([data-sf-mobile="1"]) #screens .sx-berth .sx-dock:has(.sx-tile__gloss) { overflow: visible; }
   html:root:not([data-sf-mobile="1"]) #screens .sx-berth .sx-dock__group--nav > li:has(.sx-tile__gloss) { position: relative; align-content: flex-start; }
   html:root:not([data-sf-mobile="1"]) #screens .sx-berth .sx-dock__group--nav > li:hover > .sx-tile__gloss,
-  html:root:not([data-sf-mobile="1"]) #screens .sx-berth .sx-dock__group--nav:not(:has(> li:hover)) > li:has(> .sx-tile:focus-visible) > .sx-tile__gloss {
+  html:root:not([data-sf-mobile="1"]) #screens .sx-berth .sx-dock__group--nav:not(:has(> li:hover)) > li:has(> .sx-tile:focus-visible:not([data-sx-quiet-focus])) > .sx-tile__gloss {
     position: absolute;
     left: 0;
     bottom: calc(100% + 6px);

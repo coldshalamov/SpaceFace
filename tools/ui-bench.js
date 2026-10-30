@@ -962,7 +962,15 @@ async function finishShot(shot) {
         // A player's click moves focus to the tab it pressed; a synthetic .click() does not, so the
         // shot kept the focus bracket on the Market tile while another tab was current.
         const tabEl = document.querySelector(`#screens [data-nav="${shot.tab}"]`);
+        // Mark it quiet (as the station marks its arrival focus): a real click's focus is not
+        // :focus-visible, but this scripted one is, and would raise the wide-rail caption plate.
         tabEl?.click();
+        if (tabEl) {
+          tabEl.setAttribute('data-sx-quiet-focus', '');
+          const clear = () => { tabEl.removeAttribute('data-sx-quiet-focus'); tabEl.removeEventListener('keydown', clear); tabEl.removeEventListener('blur', clear); };
+          tabEl.addEventListener('keydown', clear);
+          tabEl.addEventListener('blur', clear);
+        }
         tabEl?.focus({ preventScroll: true });
       }
       if (shot.focus) {
