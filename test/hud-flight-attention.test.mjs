@@ -203,7 +203,9 @@ test('one destination line already carries distance and ETA', () => {
   );
   assert.match(paint, /flightDestinationSurface\(state, command\)/);
   assert.match(paint, /setDisplay\(mtTitle,\s*false\)/);
-  assert.match(paint, /setDisplay\(mtTime,\s*false\)/);
+  // mtTime's display is owned by paintTutorialTrackerCaption; no redundant pre-hide.
+  assert.match(paint, /paintTutorialTrackerCaption\(mtTime,\s*state\)/);
+  assert.doesNotMatch(paint, /setDisplay\(mtTime,\s*false\)/);
   assert.doesNotMatch(paint, /setText\(mtTitle/);
   assert.doesNotMatch(paint, /mtMarkerLine\(/);
   assert.doesNotMatch(paint, /coreText\('currentObjective'\)/);
