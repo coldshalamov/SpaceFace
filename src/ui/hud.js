@@ -5578,7 +5578,8 @@ export function createHud(ctx, alerts) {
       }
       setClass(missionTracker, 'sf-mt--nobearing', bearingDeg == null);
       setDisplay(mtTitle, false);
-      setDisplay(mtTime, false);
+      // mtTime's display is owned by paintTutorialTrackerCaption below; pre-hiding it here
+      // flipped its inline display none -> block on every tick while a caption was up.
       if (dest.line) rememberObjective(objectiveRecall, dest.line);
       const showObjective = objectiveVisible(objectiveRecall, dest.show);
       // The muted-safe tutorial caption rides the tracker's secondary line. It is additive:
