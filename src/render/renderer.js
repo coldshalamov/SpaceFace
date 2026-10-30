@@ -10,6 +10,7 @@ import { publishSceneTruthPlayStep } from '../testing/sceneTruthHook.js';
 // lifecycle. Exposes worldToScreen / raycastToPlane via ctx.helpers and a renderFrame() the loop
 // calls each animation frame. Sim never touches this; it's all in renderFrame (ARCHITECTURE §1,§2.4).
 import * as THREE from 'three';
+import { retireUiStageForContextLoss, resumeUiStageAfterContextRestore } from './uiStage.js';
 import { updatePresentedSceneMatrices } from './presentedSceneMatrices.js';
 import { isOrchardFrame } from '../data/anvilOrchardIdentity.js';
 import { installShaderLinkReporter } from './shaderLinkReporter.js';
@@ -490,6 +491,7 @@ import { createCookQueuePaceDebt, makeGpuQueuePacer } from './gpuQueuePace.js';
 import { whenBootOverlayRetired, bootOverlayRetired } from '../core/bootShellPacing.js';
 import {
   assertPackageGeometryRefillReady,
+  assertPackageTextureRefillReady,
   detachedGeometryUploadPending,
   detachedTextureUploadPending,
   isPackageGeometryDetached,
@@ -12078,6 +12080,7 @@ export const render = {
       detachedContextResources: null,
     };
     state.render.contextRecovery = this._contextRecovery;
+    const contextRenderer = this.renderer;
     if (canvas) {
       lifecycle.listen(canvas, 'webglcontextlost', (ev) => {
         ev.preventDefault();        // allow restoration
@@ -12164,6 +12167,11 @@ export const render = {
         stashStaleWebGlDisposeProvenance(contextDisposeProvenance);
         this._environmentDisposeListenerProvenance = createWebGlDisposeListenerProvenance();
         if (this._assetResidency) this._assetResidency.handleContextLost();
+        // UI stages keep their own scene/camera shells outside the renderer scene. Retire both
+        // the visible stage and berth prewarm now, while residency owners are already marked lost,
+        // instead of letting a post-restore idle TTL dispose old render targets through the new GL.
+        try { retireUiStageForContextLoss(contextRenderer); }
+        catch (error) { stormWarn('render:ui-stage-context-lost', '[render] UI stage context-loss retirement failed', error); }
         vf.clearReadyPackagedBodies('context-lost');
         retireAppearanceGpuGeneration(this, 'webgl-context-lost');
         // The restored WebGL context has a fresh driver program cache. Drop only our JS-side
@@ -12242,6 +12250,7 @@ export const render = {
                 void runWebGlContextRestoreRebuild(this, this._contextRecovery, this._rebuildRestoredGpuResources)
                   .then(lifecycle.guard((restored) => {
                     if (!restored.ok) return;
+                    resumeUiStageAfterContextRestore(contextRenderer);
                     this._publishAssetResidencyDiagnostics();
                     resumeSimAfterContextRestore(state);
                     bus.emit('toast', { text: 'Graphics recovered.', kind: 'good', ttl: 3 });
@@ -12336,6 +12345,7 @@ export const render = {
             try {
               const packageRehydrate = await rehydrateDetachedPackages({ yieldToMain: yieldToBrowser });
               const remainingDetachedGeometry = [];
+              assertPackageTextureRefillReady(collectStartupTextures(scene), packageRehydrate);
               scene.traverse((object) => {
                 if (!isPackageGeometryDetached(object && object.geometry)) return;
                 const mark = object.geometry.userData && object.geometry.userData.spacefaceCpuDetach;
@@ -12356,6 +12366,15 @@ export const render = {
                   packageErrors: packageErrors.slice(0, 8),
                 };
                 throw new Error(`context restore left authored package geometry detached: ${JSON.stringify(failure)}`);
+              }
+              // A retained BatchedMesh whose owner textures are already null has been disposed
+              // while still referenced by the active cohort. Restore the canonical source layers
+              // and remove that dead batch before any forced scene render can call its hooks; the
+              // normal cohort sync rebuilds it through the ordinary admission owner after resume.
+              const retiredRigidBatch = this._rigidOpaqueBatchController
+                ?.retireUnusableActiveResources?.();
+              if (retiredRigidBatch && state.render) {
+                state.render.rigidOpaqueBatch = this._rigidOpaqueBatchController.getDiagnostics();
               }
             } catch (rehydrateError) {
               if (typeof console !== 'undefined') {

@@ -34,9 +34,27 @@ const SHARED_SOURCE_TRACKED = 'spacefaceSharedImageSourceTracked';
 function texturePayloadIntact(texture) {
   if (!texture || !texture.isTexture) return false;
   if (texture.isCompressedTexture) {
-    return Array.isArray(texture.mipmaps) && texture.mipmaps.length > 0;
+    const mipmaps = texture.mipmaps;
+    return Array.isArray(mipmaps) && mipmaps.length > 0 && mipmaps.every((mip) => {
+      const payload = mip && (mip.data ?? mip);
+      return Number(mip?.width) > 0 && Number(mip?.height) > 0
+        && Number(payload?.byteLength) > 0;
+    });
   }
-  return !!(texture.source && texture.source.data);
+  const data = texture.source && texture.source.data;
+  if (!data) return false;
+  const width = Number(data.width) || Number(data.naturalWidth) || Number(data.videoWidth) || 0;
+  const height = Number(data.height) || Number(data.naturalHeight) || Number(data.videoHeight) || 0;
+  // A closed ImageBitmap remains truthy but browsers set its dimensions to zero. Do not adopt
+  // that source over the fresh pixels from the current GLB parse.
+  const hasDimensions = ['width', 'height', 'naturalWidth', 'naturalHeight', 'videoWidth', 'videoHeight']
+    .some((key) => Number.isFinite(Number(data[key])));
+  if (hasDimensions && (width <= 0 || height <= 0)) return false;
+  const pixels = data.data;
+  if ((ArrayBuffer.isView(pixels) || pixels instanceof ArrayBuffer) && pixels.byteLength === 0) {
+    return false;
+  }
+  return true;
 }
 
 export { texturePayloadIntact };

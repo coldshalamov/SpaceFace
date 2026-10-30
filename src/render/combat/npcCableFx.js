@@ -177,14 +177,18 @@ export class NpcCableFx {
     updateEnergyMaterial(cable.group.children[2].material, frame);
   }
 
-  dispose() {
+  dispose({ disposeGpu = true } = {}) {
     this.group.removeFromParent();
-    for (let i = 0; i < this.cables.length; i++) {
-      const children = this.cables[i].group.children;
-      for (let j = 0; j < children.length; j++) {
-        children[j].geometry.dispose();
-        children[j].material.dispose();
+    if (disposeGpu) {
+      for (let i = 0; i < this.cables.length; i++) {
+        const children = this.cables[i].group.children;
+        for (let j = 0; j < children.length; j++) {
+          children[j].geometry.dispose();
+          children[j].material.dispose();
+        }
       }
     }
+    this.cables.length = 0;
+    this.selected.fill(null);
   }
 }

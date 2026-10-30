@@ -303,6 +303,7 @@ let idleFrames = 0;
  */
 let prewarm = null;
 let prewarmIdleFrames = 0;
+const contextLostRenderers = new WeakSet();
 
 /**
  * How long a prewarm outlives the approach that started it. Lining up on a berth crosses the
@@ -382,7 +383,7 @@ export function presentUiStage({ render, state, frameDt = 0 } = {}) {
   idleFrames = 0;
 
   const renderer = rendererFrom(render, state);
-  if (!renderer) {
+  if (!renderer || contextLostRenderers.has(renderer)) {
     publishStatus(request, 'unavailable');
     return false;
   }
@@ -392,7 +393,8 @@ export function presentUiStage({ render, state, frameDt = 0 } = {}) {
   // a different hull when the player changes ship, and comparing scene ids alone would have shown
   // whichever hull was built first for the rest of the session.
   const hullFile = hullFileForRequest(request);
-  if (stage && stage.id !== sceneId) releaseUiStage('scene-swap');
+  if (stage && stage.renderer !== renderer) releaseUiStage('renderer-swap');
+  else if (stage && stage.id !== sceneId) releaseUiStage('scene-swap');
   else if (stage && stage.hullFile !== hullFile) releaseUiStage('hull-swap');
   else if (stage?.live?.tape && request.tape && stage.live.tape !== request.tape) releaseUiStage('tape-swap');
   else if (stage?.request?.control !== request.control) releaseUiStage('transport-swap');
@@ -490,6 +492,37 @@ export function releaseUiStagePrewarm(reason = 'release') {
   return true;
 }
 
+/** Abandon stage GPU objects at loss so their Three dispose callbacks cannot run after restore. */
+export function retireUiStageForContextLoss(renderer) {
+  if (!renderer || (typeof renderer !== 'object' && typeof renderer !== 'function')) return 0;
+  contextLostRenderers.add(renderer);
+  let retired = 0;
+  if (stage?.renderer === renderer) {
+    const dyingStage = stage;
+    stage = null;
+    resident = false;
+    idleFrames = 0;
+    disposeBuilt(dyingStage, 'context-lost');
+    if (dyingStage.request) publishStatus(dyingStage.request, 'loading');
+    retired++;
+  }
+  if (prewarm?.renderer === renderer) {
+    const dyingPrewarm = prewarm;
+    prewarm = null;
+    prewarmIdleFrames = 0;
+    disposeBuilt(dyingPrewarm, 'prewarm-context-lost');
+    retired++;
+  }
+  return retired;
+}
+
+/** Let a fresh stage build resume only after the renderer completes context recovery. */
+export function resumeUiStageAfterContextRestore(renderer) {
+  if (!renderer || (typeof renderer !== 'object' && typeof renderer !== 'function')) return false;
+  contextLostRenderers.delete(renderer);
+  return true;
+}
+
 // ---------------------------------------------------------------------------------------------
 // The berth prewarm. Both entry points run ONLY from the flight branch of the presentation frame.
 
@@ -524,13 +557,14 @@ export function tickUiStagePrewarm({ render, state } = {}) {
     return false;
   }
   prewarmIdleFrames = 0;
+  const renderer = rendererFrom(render, state);
+  if (!renderer || contextLostRenderers.has(renderer)) return false;
   const hullDefId = approachHullDefId(state);
   if (prewarm && (prewarm.id !== BERTH_SCENE || prewarm.hullDefId !== hullDefId || prewarm.disposed === true)) {
     releaseUiStagePrewarm('hull-changed');
   }
+  if (prewarm && prewarm.renderer !== renderer) releaseUiStagePrewarm('renderer-swap');
   if (prewarm || stage) return false;
-  const renderer = rendererFrom(render, state);
-  if (!renderer) return false;
   const wanted = { scene: BERTH_SCENE, hullDefId, hullFile: null };
   try {
     prewarm = buildStage(wanted.scene, renderer, wanted, hullFileForRequest(wanted), {
@@ -555,7 +589,8 @@ export function tickUiStagePrewarm({ render, state } = {}) {
  * player sees is the flight frame. Returns true when a draw was taken.
  */
 export function warmUiStagePrewarm({ render, state } = {}) {
-  if (!prewarm || prewarm.warmupPending !== true || prewarm.disposed === true) return false;
+  if (!prewarm || prewarm.warmupPending !== true || prewarm.disposed === true
+      || contextLostRenderers.has(prewarm.renderer)) return false;
   if (!state || state.mode !== 'flight' || canvasIsProtectedDuringFreeze(state)) return false;
   const renderer = rendererFrom(render, state);
   if (!renderer) return false;
@@ -563,9 +598,24 @@ export function warmUiStagePrewarm({ render, state } = {}) {
   return true;
 }
 
+function disposeLateLive(built, live) {
+  // Retired stages still release JS owners/subscriptions; only their old-context GPU events are
+  // suppressed. The disposer option keeps both halves explicit.
+  try {
+    live?.dispose?.({
+      disposeGpu: built.contextLostRetirement !== true && !contextLostRenderers.has(built.renderer),
+    });
+  } catch (error) { console.warn('[uiStage] late live content dispose failed', error); }
+}
+
 function disposeBuilt(dying, reason) {
+  const abandonGpu = contextLostRenderers.has(dying.renderer);
   dying.disposed = true;
-  dying.captureTarget?.dispose();
+  // A late asynchronous live build may settle after this renderer is restored. Preserve the
+  // retirement generation on the record so its eventual disposer cannot target the fresh GL.
+  if (abandonGpu) dying.contextLostRetirement = true;
+  if (!abandonGpu) dying.captureTarget?.dispose();
+  dying.captureTarget = null;
   if (dying.request?.control && dying.request.control.renderAt === dying.capture) dying.request.control.renderAt = null;
   // Release the stage's residency owner first: mounted props/hull were pinned under it, so this
   // is the moment they drop to soft-cache leases the byte budgets can reclaim. Without it the
@@ -577,32 +627,40 @@ function disposeBuilt(dying, reason) {
     }
   }
   if (dying.live && typeof dying.live.dispose === 'function') {
-    try { dying.live.dispose(); } catch (error) { console.warn('[uiStage] live content dispose failed', error); }
-    dying.live = null;
+    try { dying.live.dispose({ disposeGpu: !abandonGpu }); }
+    catch (error) { console.warn('[uiStage] live content dispose failed', error); }
   }
+  dying.live = null;
   try {
     dying.scene.traverse((node) => {
       // Only what this module created: the sky shell, the star field and the arena floor. Authored
       // GLB geometry and materials are shared with the asset cache and outlive every stage.
-      if (node.userData && node.userData.uiStageOwned === true) {
+      if (!abandonGpu && node.userData && node.userData.uiStageOwned === true) {
         if (node.geometry) node.geometry.dispose();
         const materials = Array.isArray(node.material) ? node.material : [node.material];
         for (const material of materials) if (material && material.dispose) material.dispose();
       }
     });
     dying.scene.clear();
-    if (dying.rig && dying.rig.depthMaterial) dying.rig.depthMaterial.dispose();
+    if (!abandonGpu && dying.rig && dying.rig.depthMaterial) dying.rig.depthMaterial.dispose();
+    if (dying.rig) dying.rig.depthMaterial = null;
     // Shadow maps live on the light, not the scene: each mount's key light allocates a fresh
     // WebGLRenderTarget + depth texture that scene.clear() does not free. Dispose them or every
     // rebuild leaves a shadow-map pair orphaned on the context.
     for (const light of (dying.rig && dying.rig.lights) || []) {
       const shadow = light && light.shadow;
       if (shadow && shadow.map) {
-        if (shadow.map.depthTexture) { shadow.map.depthTexture.dispose(); shadow.map.depthTexture = null; }
-        shadow.map.dispose();
+        if (!abandonGpu) {
+          if (shadow.map.depthTexture) shadow.map.depthTexture.dispose();
+          shadow.map.dispose();
+        }
+        if (shadow.map.depthTexture) shadow.map.depthTexture = null;
         shadow.map = null;
       }
     }
+    dying.scene.environment = null;
+    dying.scene.background = null;
+    dying.scene.fog = null;
   } catch (error) {
     console.warn('[uiStage] release failed', error);
   }
@@ -795,11 +853,11 @@ async function loadSceneContent(built, renderer, request) {
     }
     // Released while the live content was still building: the stage's traverse never sees
     // roots that were never admitted, so the live owner must dispose its own pools here.
-    if (built.disposed) { live?.dispose?.(); return; }
+    if (built.disposed) { disposeLateLive(built, live); return; }
     built.phase = 'preparing';
     const admitted = live && Array.isArray(live.roots) ? live.roots.filter(Boolean) : [];
     await prepareForFirstDraw(admitted, renderer, built);
-    if (built.disposed) { live?.dispose?.(); return; }
+    if (built.disposed) { disposeLateLive(built, live); return; }
     for (const group of admitted) group.visible = true;
     built.live = live;
     built.marks.prepared = stageNow() - built.marks.start;
@@ -826,11 +884,11 @@ async function loadSceneContent(built, renderer, request) {
       console.warn('[uiStage] kill-cam content failed; the plate stays', error);
       live = null;
     }
-    if (built.disposed) { live?.dispose?.(); return; }
+    if (built.disposed) { disposeLateLive(built, live); return; }
     built.phase = 'preparing';
     const admitted = live && Array.isArray(live.roots) ? live.roots.filter(Boolean) : [];
     await prepareForFirstDraw(admitted, renderer, built);
-    if (built.disposed) { live?.dispose?.(); return; }
+    if (built.disposed) { disposeLateLive(built, live); return; }
     for (const group of admitted) group.visible = true;
     built.live = live;
     built.marks.prepared = stageNow() - built.marks.start;

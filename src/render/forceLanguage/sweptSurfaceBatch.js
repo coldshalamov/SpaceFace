@@ -523,10 +523,11 @@ export class SweptSurfaceBatch {
     if(this.owner){markDynamicBufferItems(this.owner,0,0,this.mesh.count);markDynamicBufferItems(this.owner,8,0,this.mesh.count);commitDynamicBufferOwner(this.owner,this.mesh.count);}
     else {attr.needsUpdate=true;pivot.needsUpdate=true;}
   }
-  dispose(){
+  dispose({disposeGpu=true}={}){
     if(this.disposed)return;this.disposed=true;
     unregisterDynamicBufferOwner(this.owner);this.owner=null;
-    this.mesh.removeFromParent();this.geometry.dispose();this.material.dispose();this.mesh.dispose();
+    this.mesh.removeFromParent();
+    if(disposeGpu){this.geometry.dispose();this.material.dispose();this.mesh.dispose();}
   }
 }
 

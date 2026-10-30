@@ -323,6 +323,46 @@ test('retained rigid batches wait for residency before suppressing direct source
   b.material.dispose();
 });
 
+test('context restore retires disposed retained batches and canonical sync rebuilds them', async () => {
+  const { root, a, b } = makeRoot();
+  const scene = new THREE.Scene();
+  scene.add(root);
+  scene.updateMatrixWorld(true);
+  const controller = createRetainedRigidOpaqueBatchController({
+    scene,
+    prepare: () => ({ ready: true }),
+  });
+  try {
+    await controller.sync(root);
+    assert.equal(controller.getDiagnostics().status, 'active');
+    const retired = scene.children.find(child => child.isBatchedMesh);
+    assert.ok(retired);
+    assert.equal(a.layers.mask, 0);
+    assert.equal(b.layers.mask, 0);
+
+    // Mirrors Three's dispose contract: a retired BatchedMesh nulls its internal data textures,
+    // while an external scene owner may still hold its Object3D until canonical cleanup runs.
+    retired.dispose();
+    assert.equal(retired.parent, scene);
+    assert.equal(controller.retireUnusableActiveResources(), true);
+    assert.equal(retired.parent, null, 'the retained owner removes the unusable scene child');
+    assert.equal(a.layers.mask, 1, 'authored source A returns to its original draw layer');
+    assert.equal(b.layers.mask, 1, 'authored source B returns to its original draw layer');
+    assert.equal(controller.getDiagnostics().status, 'idle');
+
+    await controller.sync(root);
+    assert.equal(controller.getDiagnostics().status, 'active');
+    const rebuilt = scene.children.find(child => child.isBatchedMesh);
+    assert.ok(rebuilt);
+    assert.notEqual(rebuilt, retired);
+    assert.ok(rebuilt._matricesTexture?.image?.data);
+    assert.ok(rebuilt._indirectTexture?.image?.data);
+  } finally {
+    controller.dispose();
+    a.geometry.dispose(); b.geometry.dispose(); a.material.dispose(); b.material.dispose();
+  }
+});
+
 test('active non-vertex material color changes invalidate the retained copy', async () => {
   const scene = new THREE.Scene();
   const { root, a, b } = makeRoot();
