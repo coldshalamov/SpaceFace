@@ -6,6 +6,7 @@
 // that reason. The fallback now takes one slice per spaced tick, and none while the loading shell animates.
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { readFileSync } from 'node:fs';
 
 import {
   FALLBACK_IDLE_WARM_DELAY_MS,
@@ -25,15 +26,20 @@ test('the fallback spacing is longer while the loading shell is on screen', () =
 test('without requestIdleCallback the warm schedules spaced slices, not a zero-delay spin', async () => {
   const delays = [];
   const realSetTimeout = globalThis.setTimeout;
+  const realFetch = globalThis.fetch;
   globalThis.setTimeout = (fn, ms, ...rest) => { delays.push(ms ?? 0); return realSetTimeout(fn, ms, ...rest); };
-  // A window with no requestIdleCallback and no document. It stays defined for the rest of this process:
-  // the background warm keeps taking spaced slices after the assertions, and they read it.
+  // A browser-like realm with no requestIdleCallback or document. It stays defined while
+  // the background warm takes spaced slices after the assertions.
   globalThis.window = {};
+  globalThis.self = globalThis.window;
+  const payload = JSON.parse(readFileSync(new URL('../src/localization/catalogs/en-US.generated.json', import.meta.url), 'utf8'));
+  globalThis.fetch = async () => ({ ok: true, json: async () => payload });
   try {
     await import('../src/localization/gameLocalization.js');
     await new Promise((resolve) => realSetTimeout(resolve, 900));
   } finally {
     globalThis.setTimeout = realSetTimeout;
+    globalThis.fetch = realFetch;
   }
   const zero = delays.filter((ms) => ms === 0).length;
   // The five phased steps (0..4) are the only zero-delay timers; the old fallback produced hundreds in 900 ms.

@@ -81,6 +81,8 @@ export async function buildRenderPackagePilots(options = {}) {
         sourceGlbPath: sourcePath,
         sourceManifestPath: manifestPath,
         semanticManifest,
+        sourceAssetId: pilot.releaseAssetId,
+        positionPrecisionPolicy: pilot.positionPrecisionPolicy || 'standard',
         outputDir,
       });
       await attachRuntimeTable(outputDir, pilot, result.package, repoRoot);

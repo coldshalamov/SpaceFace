@@ -3,12 +3,20 @@ import { messages as spanishMessages } from './catalogs/es-ES.js';
 import { messages as frenchMessages } from './catalogs/fr-FR.js';
 import { messages as germanMessages } from './catalogs/de-DE.js';
 import { messages as portugueseMessages } from './catalogs/pt-BR.js';
-import { createLocalizationRuntime, DEFAULT_LOCALE, PSEUDO_LOCALE } from './runtime.js';
+import {
+  createLocalizationRuntime,
+  DEFAULT_LOCALE,
+  interpolate,
+  PSEUDO_LOCALE,
+  pseudoLocalize,
+} from './runtime.js';
 import { installLocalizedDocumentBridge, localizationBridgeStats } from './domBridge.js';
 import { IS_DEV } from '../core/devMode.js';
 import {
   deferredArray,
   deferredCatalog,
+  ensureEnglishCatalogLoaded,
+  isEnglishCatalogReady,
   localeReadiness,
   SHIPPED_LOCALES,
   translateMessage,
@@ -66,7 +74,7 @@ const PSEUDO_LANGUAGE_OPTION = Object.freeze({
 /** Picker rows for a dev flag. Only a strict true adds the layout pseudo-locale. */
 export function languageOptionsFor(isDev) {
   if (isDev !== true) return SHIPPED_LANGUAGE_ROWS;
-  return Object.freeze([...SHIPPED_LANGUAGE_ROWS, PSEUDO_LANGUAGE_OPTION]);
+  return deferredArray(() => Object.freeze([...SHIPPED_LANGUAGE_ROWS, PSEUDO_LANGUAGE_OPTION]));
 }
 
 /** The locales the Settings picker offers in this process. */
@@ -111,6 +119,10 @@ export const gameLocalization = createLocalizationRuntime({
  * use; en-US and the pseudo locale keep the deterministic source/pseudo path. */
 export function localizeText(message, values = {}) {
   const source = String(message == null ? '' : message);
+  if (!isEnglishCatalogReady()) {
+    const sourceFallback = gameLocalization.locale === PSEUDO_LOCALE ? pseudoLocalize(source) : source;
+    return interpolate(sourceFallback, values);
+  }
   const key = keyByEnglishMessage().get(source) || `runtime:${source}`;
   return gameLocalization.t(key, values, () => {
     const locale = gameLocalization.locale;
@@ -157,14 +169,41 @@ export function currentGameLocale() {
 }
 
 if (typeof document !== 'undefined' && document.documentElement) {
-  if (startupLocale !== DEFAULT_LOCALE) {
-    applyDocumentLocale(startupLocale);
-  } else {
-    document.documentElement.lang = startupLocale;
-    document.documentElement.dataset.locale = startupLocale;
-    publishLocalizationApi();
-  }
+  document.documentElement.lang = startupLocale;
+  document.documentElement.dataset.locale = startupLocale;
+  publishLocalizationApi();
 }
+
+let localizationReadyPromise = null;
+
+/** Resolve once the English inventory and synchronous message lookup are ready. */
+export function ensureLocalizationReady() {
+  if (!localizationReadyPromise) {
+    localizationReadyPromise = ensureEnglishCatalogLoaded().then(async () => {
+      keyByEnglishMessage();
+      for (const locale of SHIPPED_LOCALES) localeReadiness(locale);
+      void SHIPPED_LANGUAGE_ROWS.length;
+      if (startupLocale !== DEFAULT_LOCALE) {
+        while (!warmTranslatedCatalog(startupLocale, 400)) {
+          await new Promise((resolve) => setTimeout(resolve, 0));
+        }
+      } else {
+        warmTranslatedCatalog(DEFAULT_LOCALE);
+      }
+      if (startupLocale !== DEFAULT_LOCALE) applyDocumentLocale(startupLocale);
+      return true;
+    }).catch((error) => {
+      localizationReadyPromise = null;
+      throw error;
+    });
+  }
+  return localizationReadyPromise;
+}
+
+// Start fetching at module initialization. The boot owner awaits this before screens are
+// interactive; any earlier English copy call still has its source text as a safe fallback.
+const initialLocalizationReady = ensureLocalizationReady();
+initialLocalizationReady.catch(() => {});
 
 // Post-eval warm for the deferred data: run once the blocking eval task returns to the event
 // loop, inside the media-gate window, so the parse/translate passes finish before the Settings
@@ -261,5 +300,5 @@ if (typeof window !== 'undefined') {
       if (warmIndex < warmQueue.length) step();
     }, { timeout: 30000 });
   };
-  setTimeout(warmStep, 0);
+  void ensureLocalizationReady().then(() => setTimeout(warmStep, 0)).catch(() => {});
 }

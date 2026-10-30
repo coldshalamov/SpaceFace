@@ -1,40 +1,67 @@
 /** RUCKUS is the Blender-authored mesh, not a procedural substitute.
- * Its generated GLB buffers are decoded synchronously on first use and shared thereafter.
+ * Its generated GLB buffers are fetched and decoded before flight, then shared thereafter.
  * This deliberately supports only the validated rigid, texture-free GLB subset emitted by
  * tools/ruckus/pack-model.mjs. Unsupported assets fail loudly at build/test time.
  */
 import * as THREE from 'three';
-import { RUCKUS_MESH_KEYS, RUCKUS_MESH_LOADERS } from './ruckusMeshData.js';
+import { RUCKUS_MESH_KEYS, RUCKUS_MESH_ASSETS } from './ruckusMeshData.js';
+import { runtimeAssetUrl } from '../../core/runtimeAssetUrl.js';
 import { RUCKUS as C } from '../../data/ruckus.js';
 const templates = new Map();
-// Boot-eval deferral (wave-140 B5): each entry's `json` is stored as text so the module-eval task
-// only interns the string; the document is parsed here on first use or by an explicit warm before
-// the first RU-7 spawn can reach a real frame.
+// Keep parsed documents deferred from module evaluation and populate them only inside the warm.
 const parsedDocs = new Map();
-// Wave-143 (boot F1): the packed {json, binary} entries moved off the static import graph into
-// ruckusMeshData/<key>.js modules. The explicit warm dynamic-imports each payload and feeds the
-// same sliced decode; consumers only ever read this map — populated by warm, or synchronously by
-// coldEntry() where a Node/Electron require() exists.
+// Authored GLB JSON/BIN chunks arrive only through explicit warm demand; Node tests can read the
+// same checked-in files synchronously without requiring browser HTTP.
 const meshData = new Map();
-// Cold payload path: require(esm) returns the identical bytes synchronously without a static
-// import — the route Node tests and the Electron renderer take. A browser caller can never
-// reach this: every real template() consumer is post-title, and both title→flight transitions
-// await warmRuckusModel() before any entity can materialize. Browser Adventure launches and
-// restores await this promise; standalone Crucible launches omit it because RU-7 cannot spawn
-// there. The renderer's mesh-build lane also retries a failed build three times before latching _noMesh.
+// Node-only cold path keeps model/unit tooling independent of a browser server. Production
+// browser callers await the asset warm on New Game/Continue before any authored entity appears.
 function coldEntry(key) {
-  const nodeModule = globalThis.process?.getBuiltinModule?.('module');
+  const nodeProcess = globalThis.process;
+  const nodeModule = import.meta.url.startsWith('file:') && nodeProcess?.versions?.node
+    ? nodeProcess.getBuiltinModule?.('module')
+    : null;
   const req = nodeModule?.createRequire?.(import.meta.url);
   if (req) {
-    const entry = req(`./ruckusMeshData/${key}.js`).default;
+    const fs = globalThis.process?.getBuiltinModule?.('fs');
+    if (!fs) throw new Error('RU-7 Node asset read is unavailable');
+    const sourceName = RUCKUS_MESH_ASSETS[key].split('/').at(-1);
+    const glb = fs.readFileSync(new URL(`../../../assets/characters/ruckus/${sourceName}`, import.meta.url));
+    const entry = parseRuckusGlb(glb, key);
     meshData.set(key, entry);
     return entry;
   }
   throw new Error(
-    `RU-7 asset "${key}" template was read before its data module decoded. This is unreachable `
-    + 'in production (warmRuckusModel() is awaited before Ceres spawns) — in a workshop, '
-    + 'await warmRuckusModel() first; in Node the require() path resolves the payload synchronously.',
+    `RU-7 asset "${key}" template was read before its GLB was fetched. This is unreachable `
+    + 'in production (warmRuckusModel() is awaited before Ceres spawns); await the warm first.',
   );
+}
+const GLB_MAGIC = 0x46546c67;
+const GLB_JSON = 0x4e4f534a;
+const GLB_BIN = 0x004e4942;
+function parseRuckusGlb(source, key) {
+  const bytes = source instanceof Uint8Array ? source : new Uint8Array(source);
+  if (bytes.byteLength < 20) throw Error(`RU-7 asset ${key} is too small to be GLB2`);
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  if (view.getUint32(0, true) !== GLB_MAGIC || view.getUint32(4, true) !== 2
+    || view.getUint32(8, true) !== bytes.byteLength) {
+    throw Error(`RU-7 asset ${key} has an invalid GLB2 header`);
+  }
+  let offset = 12, json = null, binary = null;
+  while (offset + 8 <= bytes.byteLength) {
+    const length = view.getUint32(offset, true), type = view.getUint32(offset + 4, true);
+    const start = offset + 8, end = start + length;
+    if (end > bytes.byteLength) throw Error(`RU-7 asset ${key} has a truncated GLB chunk`);
+    if (type === GLB_JSON && json === null) {
+      json = new TextDecoder().decode(bytes.subarray(start, end)).trimEnd();
+    } else if (type === GLB_BIN && binary === null) {
+      binary = bytes.slice(start, end);
+    }
+    offset = end;
+  }
+  if (offset !== bytes.byteLength || json === null || binary === null) {
+    throw Error(`RU-7 asset ${key} is missing a valid JSON or BIN chunk`);
+  }
+  return { json, binary };
 }
 const TYPES = { 5120: Int8Array, 5121: Uint8Array, 5122: Int16Array, 5123: Uint16Array, 5125: Uint32Array, 5126: Float32Array };
 const WIDTH = { SCALAR: 1, VEC2: 2, VEC3: 3, VEC4: 4, MAT4: 16 };
@@ -54,11 +81,11 @@ function* templateSteps(key) {
   if (!doc) { doc = JSON.parse(entry.json); parsedDocs.set(key, doc); }
   yield;
   const { binary } = entry;
-  const raw = atob(binary), buffer = new ArrayBuffer(raw.length), u8 = new Uint8Array(buffer);
+  const buffer = new ArrayBuffer(binary.byteLength), u8 = new Uint8Array(buffer);
   yield;
-  for (let i = 0; i < raw.length; i += DECODE_CHUNK) {
-    const end = Math.min(i + DECODE_CHUNK, raw.length);
-    for (let j = i; j < end; j++) u8[j] = raw.charCodeAt(j);
+  for (let i = 0; i < binary.byteLength; i += DECODE_CHUNK) {
+    const end = Math.min(i + DECODE_CHUNK, binary.byteLength);
+    u8.set(binary.subarray(i, end), i);
     yield;
   }
   const accessor = index => {
@@ -206,21 +233,23 @@ export function disposeRuckusVisual(root) {
   root.traverse(o => { if (o.geometry && !o.geometry.userData.spacefaceSharedAsset) geometries.add(o.geometry); if (o.material) materials.add(o.material); });
   for (const g of geometries) g.dispose(); for (const m of materials) m.dispose(); root.removeFromParent();
 }
-// Demand warm (wave-143): the four authored payload modules stay off standalone Crucible's
-// initial-launch request path. Adventure and Continue preserve their pre-flight readiness gate;
-// repeated callers share one promise, and synchronous template() remains authoritative if a
-// renderer consumer arrives mid-warm.
+// Demand warm: the four authored GLBs stay off standalone Crucible's initial request path.
+// Adventure and Continue await this promise; it resolves only after every fetched GLB has been
+// decoded into its shared template, so no first-use JSON/base64/geometry decode remains in flight.
 let ruckusWarmPromise = null;
 export function warmRuckusModel() {
   if (typeof window === 'undefined') return Promise.resolve();
   if (ruckusWarmPromise) return ruckusWarmPromise;
   const pending = (async () => {
-    const arrivals = new Map(RUCKUS_MESH_KEYS.map((key) => [
-      key,
-      RUCKUS_MESH_LOADERS[key]().then((mod) => meshData.set(key, mod.default)),
-    ]));
+    const entries = await Promise.all(RUCKUS_MESH_KEYS.map(async (key) => {
+      const path = RUCKUS_MESH_ASSETS[key];
+      const url = runtimeAssetUrl(path, import.meta.url);
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`RU-7 asset fetch failed (${response.status}): ${url}`);
+      return [key, parseRuckusGlb(await response.arrayBuffer(), key)];
+    }));
+    for (const [key, entry] of entries) meshData.set(key, entry);
     for (const key of RUCKUS_MESH_KEYS) {
-      await arrivals.get(key);
       if (templates.has(key)) continue;
       let it = pendingTemplates.get(key);
       if (!it) { it = templateSteps(key); pendingTemplates.set(key, it); }

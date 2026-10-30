@@ -329,24 +329,24 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "6d4d3fe002d18a719ce098923fea4ec637931fe4a02ce2cf047ba9bb167aa594",
+  "contentHash": "0939b09ecc3b1f16e99186032ce7f80c3f6d9f7be8ad750d25c0ce9860b2e3c1",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
           89.43977355957031,
-          8.803294521155646,
-          49.04622881645417
+          8.800000190734863,
+          49.04999923706055
         ],
         "min": [
           -89,
-          -11.803294521155646,
-          -33.821230342333074
+          -11.800000190734863,
+          -33.82500076293945
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2722b89c5fbfd078466b0046301e61a69ee117fcd8e39d137af298bc1818e8cf",
+      "geometryHash": "7351824054639a34b5d6c7601f37ac793e87c548f7aa14212a2bb60e23e4b27d",
       "id": "sf.render.ceres-second-measure.mesh.lod0-armor.primitive.0",
       "indexCount": 18891,
       "indexed": true,
@@ -361,17 +361,17 @@
       "bounds": {
         "max": [
           59.13999938964844,
-          9.100862192977361,
-          47.63864703121215
+          9.097999572753906,
+          47.63999938964844
         ],
         "min": [
           -59.13999938964844,
-          4.89913733018548,
-          -27.63864703121215
+          4.9019999504089355,
+          -27.639999389648438
         ]
       },
       "drawMode": 4,
-      "geometryHash": "013b49858197b0337d7eb10244a4eca465f6a2f0bfdb3699aa01cae9c000dcc7",
+      "geometryHash": "f256c5253e7c27536c649d4e22bc2c516785b5ddcc279758db5325159e45b5e1",
       "id": "sf.render.ceres-second-measure.mesh.lod0-beacon-amber.primitive.0",
       "indexCount": 108,
       "indexed": true,
@@ -386,17 +386,17 @@
       "bounds": {
         "max": [
           90,
-          12.499009769734936,
-          40.0007605837754
+          12.5,
+          40
         ],
         "min": [
           -90,
-          -12.199009579000073,
-          -33.219857721226575
+          -12.199999809265137,
+          -33.21909713745117
         ]
       },
       "drawMode": 4,
-      "geometryHash": "93fcfefab8df06a3c85367a42384d34587119a66afefa41f4e6982f80c214ad7",
+      "geometryHash": "acf0c0cb4304ec9c3ad3714de0042a233e9e6f3aea18ea065e9723364d360715",
       "id": "sf.render.ceres-second-measure.mesh.lod0-brushedmetal.primitive.0",
       "indexCount": 137292,
       "indexed": true,
@@ -411,17 +411,17 @@
       "bounds": {
         "max": [
           89.5,
-          9.503337961973937,
-          33.407124546037174
+          9.5,
+          33.40553283691406
         ],
         "min": [
           -89,
-          -7.253337961973937,
-          -33.407124546037174
+          -7.25,
+          -33.40553283691406
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7f093181a64b36a7f200c64472cda05736d8845935dd36c98512806435830ceb",
+      "geometryHash": "b315bf58ed35678ed94f5866e18bf9961cbc3ab34fc12bc7b1672055eaa8449e",
       "id": "sf.render.ceres-second-measure.mesh.lod0-hull.primitive.0",
       "indexCount": 20259,
       "indexed": true,
@@ -436,17 +436,17 @@
       "bounds": {
         "max": [
           89,
-          6.691188374622757,
-          49.49528031252118
+          6.692307472229004,
+          49.5
         ],
         "min": [
           -89,
-          -5.498880902393753,
-          -32.820281075460635
+          -5.5,
+          -32.82500076293945
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a73470bc212704c78a1e3b10054b2bcb06b0e26ba16c95fa866dd5e0ff742bde",
+      "geometryHash": "f476a0255abe22d5d9cee049423b02ec3ccedccacbbcc258cde8a9816e6aacb1",
       "id": "sf.render.ceres-second-measure.mesh.lod0-livery.primitive.0",
       "indexCount": 7392,
       "indexed": true,
@@ -461,17 +461,17 @@
       "bounds": {
         "max": [
           89.05609893798828,
-          13.997762546899622,
-          44.81480649330576
+          14,
+          44.81510543823242
         ],
         "min": [
           -89.05609893798828,
-          -11.789287433984583,
-          -33.747637303852635
+          -11.791524887084961,
+          -33.7479362487793
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a9f2182bf20714f7d7088bcf99a793f61f752f46001761b8ed028b269f46433a",
+      "geometryHash": "a6c4bc3fcb12febef4e646f0b17ffd0dfc4d09da6635776d6155d8940a77db06",
       "id": "sf.render.ceres-second-measure.mesh.lod0-mechanical.primitive.0",
       "indexCount": 71400,
       "indexed": true,
@@ -486,17 +486,17 @@
       "bounds": {
         "max": [
           86.25,
-          9.253690546125817,
-          24.197007278652865
+          9.25,
+          24.200000762939453
         ],
         "min": [
           -86.25,
-          -10.203690355390954,
-          -26.747006515713412
+          -10.199999809265137,
+          -26.75
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8eaf0c1ce2b8345bf6738fb776df2e593153198724eec05ac11b01581e4a396e",
+      "geometryHash": "7b3e026d19c0cf5eb96a7332b63c6ec48d4a9b6ab120012f74ce153ddc55f81a",
       "id": "sf.render.ceres-second-measure.mesh.lod0-mechanicaldark.primitive.0",
       "indexCount": 7536,
       "indexed": true,
@@ -511,17 +511,17 @@
       "bounds": {
         "max": [
           60.5,
-          8.002929776909696,
-          49.50344859157079
+          8,
+          49.5
         ],
         "min": [
           -60.5,
-          -0.0029297769096965354,
-          -30.503448591570788
+          0,
+          -30.5
         ]
       },
       "drawMode": 4,
-      "geometryHash": "485df3799d32bda96daed3e6c20094aca7c80c26026c4b706879d6c63f22f5b4",
+      "geometryHash": "833c68561ab6ebb55628882df91ba4d98a57af10953879c61e7a7af6205be5a6",
       "id": "sf.render.ceres-second-measure.mesh.lod0-warning.primitive.0",
       "indexCount": 1692,
       "indexed": true,
@@ -536,17 +536,17 @@
       "bounds": {
         "max": [
           89.43977355957031,
-          8.803294521155646,
-          49.0483001970694
+          8.800000190734863,
+          49.04999923706055
         ],
         "min": [
           -89,
-          -11.803294521155646,
-          -33.81915896171784
+          -11.800000190734863,
+          -33.820858001708984
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a2fca58e44827f08f84f1d45195b4856d7dbae55b8ff9ce3fab6c1f533a2ab53",
+      "geometryHash": "3a4344c59ddc1f2e1c61d9dd63cbe04e66dc2091679c0a2d2e135d24a9c1da0d",
       "id": "sf.render.ceres-second-measure.mesh.lod1-armor.primitive.0",
       "indexCount": 10734,
       "indexed": true,
@@ -561,17 +561,17 @@
       "bounds": {
         "max": [
           59.13999938964844,
-          9.100862192977361,
-          47.63864703121215
+          9.097999572753906,
+          47.63999938964844
         ],
         "min": [
           -59.13999938964844,
-          4.89913733018548,
-          -27.63864703121215
+          4.9019999504089355,
+          -27.639999389648438
         ]
       },
       "drawMode": 4,
-      "geometryHash": "fd0856a9ce0a05e27a01ea5bea81185de26f38f7f45f488e0337bfe03fef1335",
+      "geometryHash": "54a7c1da3207a616cfc9f6808eb9acf69dd9eb31da14b63e75b1d95a934a06bf",
       "id": "sf.render.ceres-second-measure.mesh.lod1-beacon-amber.primitive.0",
       "indexCount": 108,
       "indexed": true,
@@ -586,17 +586,17 @@
       "bounds": {
         "max": [
           89.99459838867188,
-          12.496016983001144,
-          39.9934859477077
+          12.49549674987793,
+          39.99352264404297
         ],
         "min": [
           -89.99459838867188,
-          -12.200520042388352,
-          -33.22273780927996
+          -12.199999809265137,
+          -33.222774505615234
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cace4e1680194bf48a09b7a1b530b01b575ae3680055e0c6eb5e5a7bec3f2d5b",
+      "geometryHash": "ad190f47f66a0e9081ff16b94d3e0055301ccc2749c7b063657321bdd98458c9",
       "id": "sf.render.ceres-second-measure.mesh.lod1-brushedmetal.primitive.0",
       "indexCount": 39864,
       "indexed": true,
@@ -611,17 +611,17 @@
       "bounds": {
         "max": [
           89.5008773803711,
-          9.503379143986654,
-          33.407288751949395
+          9.5,
+          33.40553283691406
         ],
         "min": [
           -89,
-          -7.253379143986654,
-          -33.407288751949395
+          -7.25,
+          -33.40553283691406
         ]
       },
       "drawMode": 4,
-      "geometryHash": "605909c864b14c4cca69b5887e8f9a760f3c6ec2bee7a8bfe03f5816e144782c",
+      "geometryHash": "6930aea341359990602ab6f617a0e50e7473d7a3cbdc586340a2a6b37b847123",
       "id": "sf.render.ceres-second-measure.mesh.lod1-hull.primitive.0",
       "indexCount": 18480,
       "indexed": true,
@@ -636,17 +636,17 @@
       "bounds": {
         "max": [
           88.99549865722656,
-          7.00089583349762,
-          49.50406272005263
+          7.002213001251221,
+          49.5
         ],
         "min": [
           -88.99549865722656,
-          -5.492750024324036,
-          -32.82906348299208
+          -5.494067192077637,
+          -32.82500076293945
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0b618e0011d4a574b4618cfca8c0299144c49c75002e8c991b4e1d2f2522acca",
+      "geometryHash": "04ab7036bf442e271c9a7d2d65be29e6c976328b77bab9a1cdc0cd9c55b4c264",
       "id": "sf.render.ceres-second-measure.mesh.lod1-livery.primitive.0",
       "indexCount": 5088,
       "indexed": true,
@@ -661,17 +661,17 @@
       "bounds": {
         "max": [
           89.05609893798828,
-          13.996278152826136,
-          44.81334355690439
+          13.995497703552246,
+          44.81460189819336
         ],
         "min": [
           -89.05609893798828,
-          -11.79077182805807,
-          -33.749100240254
+          -11.78999137878418,
+          -33.75035858154297
         ]
       },
       "drawMode": 4,
-      "geometryHash": "73bcf39401ad89b315f9da3c84d836819f992385d75d0d49ba5b54b844e0a9ec",
+      "geometryHash": "f6a74c022ca98b7cd80690437c6ebeefd2ec68857529ec48a8954c272519976e",
       "id": "sf.render.ceres-second-measure.mesh.lod1-mechanical.primitive.0",
       "indexCount": 23718,
       "indexed": true,
@@ -686,17 +686,17 @@
       "bounds": {
         "max": [
           86.25,
-          9.242735367937165,
-          24.197745422573764
+          9.245501518249512,
+          24.19635581970215
         ],
         "min": [
           -86.25,
-          -10.193587762041169,
-          -26.746268371792514
+          -10.196353912353516,
+          -26.7448787689209
         ]
       },
       "drawMode": 4,
-      "geometryHash": "80b54e3ebaf8d4aca451b659bf6e1853670d74d5195875cbbdf5e052ffda5c44",
+      "geometryHash": "fdd771070f54adf7db8b1cb6e49b0830a47c25b072da62af7e918675f3a8117d",
       "id": "sf.render.ceres-second-measure.mesh.lod1-mechanicaldark.primitive.0",
       "indexCount": 6144,
       "indexed": true,
@@ -711,17 +711,17 @@
       "bounds": {
         "max": [
           60.5,
-          8.002929776909696,
-          49.50344859157079
+          8,
+          49.5
         ],
         "min": [
           -60.5,
-          -0.0029297769096965354,
-          -30.503448591570788
+          0,
+          -30.5
         ]
       },
       "drawMode": 4,
-      "geometryHash": "55a872bc93bcbedeb5725fb4bbbcab8ed166baeb602ea0a803fbaea93c0403ce",
+      "geometryHash": "d500c48035a6622d7973d29f1fe9326ede250e0d078e511f2eb6a4f07ceec6c0",
       "id": "sf.render.ceres-second-measure.mesh.lod1-warning.primitive.0",
       "indexCount": 1692,
       "indexed": true,
@@ -736,17 +736,17 @@
       "bounds": {
         "max": [
           89.4820327758789,
-          8.794136058772331,
-          49.04640888385597
+          8.800000190734863,
+          49.04999923706055
         ],
         "min": [
           -88.98778533935547,
-          -11.794136058772331,
-          -33.81321644000831
+          -11.800000190734863,
+          -33.81680679321289
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cf6957af26990b8d4d9b8ae0c2d25f961b2fc1d0a4ab1c6101a7d7d27dc224df",
+      "geometryHash": "158eef34b76a978e6149710b873e1eea8dff801aa3a0c0f52aeab8ce403aecf7",
       "id": "sf.render.ceres-second-measure.mesh.lod2-armor.primitive.0",
       "indexCount": 5241,
       "indexed": true,
@@ -761,17 +761,17 @@
       "bounds": {
         "max": [
           59.13999938964844,
-          9.100862192977361,
-          47.63864703121215
+          9.097999572753906,
+          47.63999938964844
         ],
         "min": [
           -59.13999938964844,
-          4.89913733018548,
-          -27.63864703121215
+          4.9019999504089355,
+          -27.639999389648438
         ]
       },
       "drawMode": 4,
-      "geometryHash": "fd0856a9ce0a05e27a01ea5bea81185de26f38f7f45f488e0337bfe03fef1335",
+      "geometryHash": "54a7c1da3207a616cfc9f6808eb9acf69dd9eb31da14b63e75b1d95a934a06bf",
       "id": "sf.render.ceres-second-measure.mesh.lod2-beacon-amber.primitive.0",
       "indexCount": 108,
       "indexed": true,
@@ -786,17 +786,17 @@
       "bounds": {
         "max": [
           89.98098754882812,
-          12.490297532515994,
-          39.989885272631064
+          12.48779296875,
+          39.99352264404297
         ],
         "min": [
           -89.98098754882812,
-          -12.20250437303113,
-          -33.21526521647872
+          -12.199999809265137,
+          -33.218902587890625
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a24400fc3f9328c9cfefe1713972ea9d96c2f1f387e9a889ce51d0ecd9adb1a7",
+      "geometryHash": "8b6bd6d6e837cb867b772024f636781bd217f374b62d239d64771becb67940eb",
       "id": "sf.render.ceres-second-measure.mesh.lod2-brushedmetal.primitive.0",
       "indexCount": 13596,
       "indexed": true,
@@ -811,17 +811,17 @@
       "bounds": {
         "max": [
           89.50243377685547,
-          9.499141080162584,
-          33.40262105772209
+          9.5,
+          33.40553283691406
         ],
         "min": [
           -88.98030090332031,
-          -7.234125954887926,
-          -33.40516546079826
+          -7.234984874725342,
+          -33.408077239990234
         ]
       },
       "drawMode": 4,
-      "geometryHash": "de9604285d8eebdeeae13a40d326c6ffc7dd5dd63b711f7f7951b91e29fc5a75",
+      "geometryHash": "b0ff3163ef01e5dd42717d37cbe13257b04e129ead63f86783f9bf4c6f91897e",
       "id": "sf.render.ceres-second-measure.mesh.lod2-hull.primitive.0",
       "indexCount": 11775,
       "indexed": true,
@@ -836,17 +836,17 @@
       "bounds": {
         "max": [
           88.98780059814453,
-          7.004807000223229,
-          49.47838653678311
+          7.002213001251221,
+          49.48368453979492
         ],
         "min": [
           -88.98780059814453,
-          -5.4877581644688345,
-          -32.80416549796475
+          -5.485164165496826,
+          -32.80946350097656
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b34680523fa1b4c5df4b77a31056f13c44e6869c2b4b371b5b614d9d6923165e",
+      "geometryHash": "c5faf327c6f7f1661e8910e76a8262e3c6fa8ebd47b92304fd9d4b922e4f3880",
       "id": "sf.render.ceres-second-measure.mesh.lod2-livery.primitive.0",
       "indexCount": 1968,
       "indexed": true,
@@ -861,17 +861,17 @@
       "bounds": {
         "max": [
           89.05609893798828,
-          13.983740169360878,
-          44.81362202980478
+          13.987793922424316,
+          44.81229019165039
         ],
         "min": [
           -89.05609893798828,
-          -11.781566936328652,
-          -33.74882176735361
+          -11.78562068939209,
+          -33.74748992919922
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4d777a517f572a3f141b8169305245a52668ceaf38afd653598786549252370c",
+      "geometryHash": "eb64cd848e2b676cb88b1002e49ee450b7e225112dc1cb4a7f4b354281e25d92",
       "id": "sf.render.ceres-second-measure.mesh.lod2-mechanical.primitive.0",
       "indexCount": 10008,
       "indexed": true,
@@ -886,17 +886,17 @@
       "bounds": {
         "max": [
           86.23311614990234,
-          9.22789094183746,
-          24.193770736844282
+          9.233808517456055,
+          24.18889045715332
         ],
         "min": [
           -86.2277603149414,
-          -10.182970974186093,
-          -26.738688797147017
+          -10.188888549804688,
+          -26.733808517456055
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7fac7e268027e76ebcaaf466703672edf7cf69c429a1b6eaa3c8de39121f8eaa",
+      "geometryHash": "8747a6e8c66c01ae6267a8b23369273ab343355b58faa3cda61b4f9766f89d2a",
       "id": "sf.render.ceres-second-measure.mesh.lod2-mechanicaldark.primitive.0",
       "indexCount": 2112,
       "indexed": true,
@@ -911,17 +911,17 @@
       "bounds": {
         "max": [
           60.48368453979492,
-          7.9813922953825145,
-          49.47346283436534
+          7.983684062957764,
+          49.47300720214844
         ],
         "min": [
           -60.48368453979492,
-          0.02199266357015084,
-          -30.48232437611339
+          0.019700895994901657,
+          -30.481868743896484
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c942e0cbd42e39ae9680d453408b7b89f7c91ac38774f9b60ea83cd4cfb5ebcc",
+      "geometryHash": "ed7f4cdd7937bab8310032b46e5a75813de15fe8e4bb132afe0aa10095cc583a",
       "id": "sf.render.ceres-second-measure.mesh.lod2-warning.primitive.0",
       "indexCount": 678,
       "indexed": true,
@@ -1173,21 +1173,21 @@
     {
       "id": "sf.render.ceres-second-measure.mesh.lod0-armor",
       "localTransform": [
-        89.21988677978516,
+        1,
         0,
         0,
         0,
         0,
-        89.21988677978516,
+        1,
         0,
         0,
         0,
         0,
-        89.21988677978516,
+        1,
         0,
-        0.21988677978515625,
-        -1.5,
-        7.612499237060547,
+        0,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1201,42 +1201,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-second-measure.body",
       "worldTransform": [
-        89.21988677978516,
+        1,
         0,
         0,
         0,
         0,
-        89.21988677978516,
+        1,
         0,
         0,
         0,
         0,
-        89.21988677978516,
+        1,
         0,
-        0.21988677978515625,
-        -1.5,
-        7.612499237060547,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.ceres-second-measure.mesh.lod0-beacon-amber",
       "localTransform": [
-        59.13999938964844,
+        1,
         0,
         0,
         0,
         0,
-        59.13999938964844,
+        1,
         0,
         0,
         0,
         0,
-        59.13999938964844,
+        1,
         0,
         0,
-        6.999999761581421,
-        10,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1250,42 +1250,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-second-measure.body",
       "worldTransform": [
-        59.13999938964844,
+        1,
         0,
         0,
         0,
         0,
-        59.13999938964844,
+        1,
         0,
         0,
         0,
         0,
-        59.13999938964844,
+        1,
         0,
         0,
-        6.999999761581421,
-        10,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.ceres-second-measure.mesh.lod0-brushedmetal",
       "localTransform": [
-        90,
+        1,
         0,
         0,
         0,
         0,
-        90,
+        1,
         0,
         0,
         0,
         0,
-        90,
+        1,
         0,
         0,
-        0.15000009536743164,
-        3.390451431274414,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1299,41 +1299,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-second-measure.body",
       "worldTransform": [
-        90,
+        1,
         0,
         0,
         0,
         0,
-        90,
+        1,
         0,
         0,
         0,
         0,
-        90,
+        1,
         0,
         0,
-        0.15000009536743164,
-        3.390451431274414,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.ceres-second-measure.mesh.lod0-hull",
       "localTransform": [
-        89.25,
+        1,
         0,
         0,
         0,
         0,
-        89.25,
+        1,
         0,
         0,
         0,
         0,
-        89.25,
+        1,
         0,
-        0.25,
-        1.125,
+        0,
+        0,
         0,
         1
       ],
@@ -1348,20 +1348,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-second-measure.body",
       "worldTransform": [
-        89.25,
+        1,
         0,
         0,
         0,
         0,
-        89.25,
+        1,
         0,
         0,
         0,
         0,
-        89.25,
+        1,
         0,
-        0.25,
-        1.125,
+        0,
+        0,
         0,
         1
       ]
@@ -1369,21 +1369,21 @@
     {
       "id": "sf.render.ceres-second-measure.mesh.lod0-livery",
       "localTransform": [
-        89,
+        1,
         0,
         0,
         0,
         0,
-        89,
+        1,
         0,
         0,
         0,
         0,
-        89,
+        1,
         0,
         0,
-        0.596153736114502,
-        8.337499618530273,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1397,42 +1397,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-second-measure.body",
       "worldTransform": [
-        89,
+        1,
         0,
         0,
         0,
         0,
-        89,
+        1,
         0,
         0,
         0,
         0,
-        89,
+        1,
         0,
         0,
-        0.596153736114502,
-        8.337499618530273,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.ceres-second-measure.mesh.lod0-mechanical",
       "localTransform": [
-        89.05609893798828,
+        1,
         0,
         0,
         0,
         0,
-        89.05609893798828,
+        1,
         0,
         0,
         0,
         0,
-        89.05609893798828,
+        1,
         0,
         0,
-        1.1042375564575195,
-        5.5335845947265625,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1446,42 +1446,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-second-measure.body",
       "worldTransform": [
-        89.05609893798828,
+        1,
         0,
         0,
         0,
         0,
-        89.05609893798828,
+        1,
         0,
         0,
         0,
         0,
-        89.05609893798828,
+        1,
         0,
         0,
-        1.1042375564575195,
-        5.5335845947265625,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.ceres-second-measure.mesh.lod0-mechanicaldark",
       "localTransform": [
-        86.25,
+        1,
         0,
         0,
         0,
         0,
-        86.25,
+        1,
         0,
         0,
         0,
         0,
-        86.25,
+        1,
         0,
         0,
-        -0.47499990463256836,
-        -1.2749996185302734,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1495,42 +1495,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-second-measure.body",
       "worldTransform": [
-        86.25,
+        1,
         0,
         0,
         0,
         0,
-        86.25,
+        1,
         0,
         0,
         0,
         0,
-        86.25,
+        1,
         0,
         0,
-        -0.47499990463256836,
-        -1.2749996185302734,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.ceres-second-measure.mesh.lod0-warning",
       "localTransform": [
-        60.5,
+        1,
         0,
         0,
         0,
         0,
-        60.5,
+        1,
         0,
         0,
         0,
         0,
-        60.5,
+        1,
         0,
         0,
-        4,
-        9.5,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1544,42 +1544,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-second-measure.body",
       "worldTransform": [
-        60.5,
+        1,
         0,
         0,
         0,
         0,
-        60.5,
+        1,
         0,
         0,
         0,
         0,
-        60.5,
+        1,
         0,
         0,
-        4,
-        9.5,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.ceres-second-measure.mesh.lod1-armor",
       "localTransform": [
-        89.21988677978516,
+        1,
         0,
         0,
         0,
         0,
-        89.21988677978516,
+        1,
         0,
         0,
         0,
         0,
-        89.21988677978516,
+        1,
         0,
-        0.21988677978515625,
-        -1.5,
-        7.614570617675781,
+        0,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1593,42 +1593,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-second-measure.body",
       "worldTransform": [
-        89.21988677978516,
+        1,
         0,
         0,
         0,
         0,
-        89.21988677978516,
+        1,
         0,
         0,
         0,
         0,
-        89.21988677978516,
+        1,
         0,
-        0.21988677978515625,
-        -1.5,
-        7.614570617675781,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.ceres-second-measure.mesh.lod1-beacon-amber",
       "localTransform": [
-        59.13999938964844,
+        1,
         0,
         0,
         0,
         0,
-        59.13999938964844,
+        1,
         0,
         0,
         0,
         0,
-        59.13999938964844,
+        1,
         0,
         0,
-        6.999999761581421,
-        10,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1642,42 +1642,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-second-measure.body",
       "worldTransform": [
-        59.13999938964844,
+        1,
         0,
         0,
         0,
         0,
-        59.13999938964844,
+        1,
         0,
         0,
         0,
         0,
-        59.13999938964844,
+        1,
         0,
         0,
-        6.999999761581421,
-        10,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.ceres-second-measure.mesh.lod1-brushedmetal",
       "localTransform": [
-        89.99459838867188,
+        1,
         0,
         0,
         0,
         0,
-        89.99459838867188,
+        1,
         0,
         0,
         0,
         0,
-        89.99459838867188,
+        1,
         0,
         0,
-        0.14774847030639648,
-        3.385374069213867,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1691,41 +1691,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-second-measure.body",
       "worldTransform": [
-        89.99459838867188,
+        1,
         0,
         0,
         0,
         0,
-        89.99459838867188,
+        1,
         0,
         0,
         0,
         0,
-        89.99459838867188,
+        1,
         0,
         0,
-        0.14774847030639648,
-        3.385374069213867,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.ceres-second-measure.mesh.lod1-hull",
       "localTransform": [
-        89.25043869018555,
+        1,
         0,
         0,
         0,
         0,
-        89.25043869018555,
+        1,
         0,
         0,
         0,
         0,
-        89.25043869018555,
+        1,
         0,
-        0.2504386901855469,
-        1.125,
+        0,
+        0,
         0,
         1
       ],
@@ -1740,20 +1740,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-second-measure.body",
       "worldTransform": [
-        89.25043869018555,
+        1,
         0,
         0,
         0,
         0,
-        89.25043869018555,
+        1,
         0,
         0,
         0,
         0,
-        89.25043869018555,
+        1,
         0,
-        0.2504386901855469,
-        1.125,
+        0,
+        0,
         0,
         1
       ]
@@ -1761,21 +1761,21 @@
     {
       "id": "sf.render.ceres-second-measure.mesh.lod1-livery",
       "localTransform": [
-        88.99549865722656,
+        1,
         0,
         0,
         0,
         0,
-        88.99549865722656,
+        1,
         0,
         0,
         0,
         0,
-        88.99549865722656,
+        1,
         0,
         0,
-        0.754072904586792,
-        8.337499618530273,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1789,42 +1789,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-second-measure.body",
       "worldTransform": [
-        88.99549865722656,
+        1,
         0,
         0,
         0,
         0,
-        88.99549865722656,
+        1,
         0,
         0,
         0,
         0,
-        88.99549865722656,
+        1,
         0,
         0,
-        0.754072904586792,
-        8.337499618530273,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.ceres-second-measure.mesh.lod1-mechanical",
       "localTransform": [
-        89.05609893798828,
+        1,
         0,
         0,
         0,
         0,
-        89.05609893798828,
+        1,
         0,
         0,
         0,
         0,
-        89.05609893798828,
+        1,
         0,
         0,
-        1.1027531623840332,
-        5.532121658325195,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1838,42 +1838,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-second-measure.body",
       "worldTransform": [
-        89.05609893798828,
+        1,
         0,
         0,
         0,
         0,
-        89.05609893798828,
+        1,
         0,
         0,
         0,
         0,
-        89.05609893798828,
+        1,
         0,
         0,
-        1.1027531623840332,
-        5.532121658325195,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.ceres-second-measure.mesh.lod1-mechanicaldark",
       "localTransform": [
-        86.25,
+        1,
         0,
         0,
         0,
         0,
-        86.25,
+        1,
         0,
         0,
         0,
         0,
-        86.25,
+        1,
         0,
         0,
-        -0.47542619705200195,
-        -1.274261474609375,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1887,42 +1887,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-second-measure.body",
       "worldTransform": [
-        86.25,
+        1,
         0,
         0,
         0,
         0,
-        86.25,
+        1,
         0,
         0,
         0,
         0,
-        86.25,
+        1,
         0,
         0,
-        -0.47542619705200195,
-        -1.274261474609375,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.ceres-second-measure.mesh.lod1-warning",
       "localTransform": [
-        60.5,
+        1,
         0,
         0,
         0,
         0,
-        60.5,
+        1,
         0,
         0,
         0,
         0,
-        60.5,
+        1,
         0,
         0,
-        4,
-        9.5,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1936,42 +1936,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-second-measure.body",
       "worldTransform": [
-        60.5,
+        1,
         0,
         0,
         0,
         0,
-        60.5,
+        1,
         0,
         0,
         0,
         0,
-        60.5,
+        1,
         0,
         0,
-        4,
-        9.5,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.ceres-second-measure.mesh.lod2-armor",
       "localTransform": [
-        89.23490905761719,
+        1,
         0,
         0,
         0,
         0,
-        89.23490905761719,
+        1,
         0,
         0,
         0,
         0,
-        89.23490905761719,
+        1,
         0,
-        0.24712371826171875,
-        -1.5,
-        7.616596221923828,
+        0,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1985,42 +1985,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-second-measure.body",
       "worldTransform": [
-        89.23490905761719,
+        1,
         0,
         0,
         0,
         0,
-        89.23490905761719,
+        1,
         0,
         0,
         0,
         0,
-        89.23490905761719,
+        1,
         0,
-        0.24712371826171875,
-        -1.5,
-        7.616596221923828,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.ceres-second-measure.mesh.lod2-beacon-amber",
       "localTransform": [
-        59.13999938964844,
+        1,
         0,
         0,
         0,
         0,
-        59.13999938964844,
+        1,
         0,
         0,
         0,
         0,
-        59.13999938964844,
+        1,
         0,
         0,
-        6.999999761581421,
-        10,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2034,42 +2034,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-second-measure.body",
       "worldTransform": [
-        59.13999938964844,
+        1,
         0,
         0,
         0,
         0,
-        59.13999938964844,
+        1,
         0,
         0,
         0,
         0,
-        59.13999938964844,
+        1,
         0,
         0,
-        6.999999761581421,
-        10,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.ceres-second-measure.mesh.lod2-brushedmetal",
       "localTransform": [
-        89.98098754882812,
+        1,
         0,
         0,
         0,
         0,
-        89.98098754882812,
+        1,
         0,
         0,
         0,
         0,
-        89.98098754882812,
+        1,
         0,
         0,
-        0.14389657974243164,
-        3.387310028076172,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2083,42 +2083,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-second-measure.body",
       "worldTransform": [
-        89.98098754882812,
+        1,
         0,
         0,
         0,
         0,
-        89.98098754882812,
+        1,
         0,
         0,
         0,
         0,
-        89.98098754882812,
+        1,
         0,
         0,
-        0.14389657974243164,
-        3.387310028076172,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.ceres-second-measure.mesh.lod2-hull",
       "localTransform": [
-        89.24136734008789,
+        1,
         0,
         0,
         0,
         0,
-        89.24136734008789,
+        1,
         0,
         0,
         0,
         0,
-        89.24136734008789,
+        1,
         0,
-        0.2610664367675781,
-        1.132507562637329,
-        -0.0012722015380859375,
+        0,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2132,42 +2132,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-second-measure.body",
       "worldTransform": [
-        89.24136734008789,
+        1,
         0,
         0,
         0,
         0,
-        89.24136734008789,
+        1,
         0,
         0,
         0,
         0,
-        89.24136734008789,
+        1,
         0,
-        0.2610664367675781,
-        1.132507562637329,
-        -0.0012722015380859375,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.ceres-second-measure.mesh.lod2-livery",
       "localTransform": [
-        88.98780059814453,
+        1,
         0,
         0,
         0,
         0,
-        88.98780059814453,
+        1,
         0,
         0,
         0,
         0,
-        88.98780059814453,
+        1,
         0,
         0,
-        0.7585244178771973,
-        8.33711051940918,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2181,42 +2181,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-second-measure.body",
       "worldTransform": [
-        88.98780059814453,
+        1,
         0,
         0,
         0,
         0,
-        88.98780059814453,
+        1,
         0,
         0,
         0,
         0,
-        88.98780059814453,
+        1,
         0,
         0,
-        0.7585244178771973,
-        8.33711051940918,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.ceres-second-measure.mesh.lod2-mechanical",
       "localTransform": [
-        89.05609893798828,
+        1,
         0,
         0,
         0,
         0,
-        89.05609893798828,
+        1,
         0,
         0,
         0,
         0,
-        89.05609893798828,
+        1,
         0,
         0,
-        1.1010866165161133,
-        5.532400131225586,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2230,42 +2230,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-second-measure.body",
       "worldTransform": [
-        89.05609893798828,
+        1,
         0,
         0,
         0,
         0,
-        89.05609893798828,
+        1,
         0,
         0,
         0,
         0,
-        89.05609893798828,
+        1,
         0,
         0,
-        1.1010866165161133,
-        5.532400131225586,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.ceres-second-measure.mesh.lod2-mechanicaldark",
       "localTransform": [
-        86.23043823242188,
+        1,
         0,
         0,
         0,
         0,
-        86.23043823242188,
+        1,
         0,
         0,
         0,
         0,
-        86.23043823242188,
+        1,
         0,
-        0.00267791748046875,
-        -0.4775400161743164,
-        -1.2724590301513672,
+        0,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2279,42 +2279,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-second-measure.body",
       "worldTransform": [
-        86.23043823242188,
+        1,
         0,
         0,
         0,
         0,
-        86.23043823242188,
+        1,
         0,
         0,
         0,
         0,
-        86.23043823242188,
+        1,
         0,
-        0.00267791748046875,
-        -0.4775400161743164,
-        -1.2724590301513672,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.ceres-second-measure.mesh.lod2-warning",
       "localTransform": [
-        60.48368453979492,
+        1,
         0,
         0,
         0,
         0,
-        60.48368453979492,
+        1,
         0,
         0,
         0,
         0,
-        60.48368453979492,
+        1,
         0,
         0,
-        4.001692479476333,
-        9.495569229125977,
+        0,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2328,21 +2328,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-second-measure.body",
       "worldTransform": [
-        60.48368453979492,
+        1,
         0,
         0,
         0,
         0,
-        60.48368453979492,
+        1,
         0,
         0,
         0,
         0,
-        60.48368453979492,
+        1,
         0,
         0,
-        4.001692479476333,
-        9.495569229125977,
+        0,
+        0,
         1
       ]
     },
@@ -2405,37 +2405,37 @@
       "uri": "place_ceres_second_measure.glb"
     },
     "sourceManifest": {
-      "bytes": 323116,
-      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
+      "bytes": 323169,
+      "sha256": "ca22c1a243dd61ba8d2042d939914d32834fee986e49560b31b18880d638de12",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 2320608,
-    "sha256": "fa72b10bc4e07f42ffde07555d67312db06bfaf55923f089c87707a6e8cb565a",
+    "bytes": 2900108,
+    "sha256": "a8060825c2d2b75c0e86548b63052c3e3448230bf84457b1642d68de597a9cdb",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
         0,
-        0.8976290869342458,
-        7.841416188859778
+        0.9000000953674316,
+        7.837499618530273
       ],
       "max": [
         90,
-        13.997762546899622,
-        49.50406272005263
+        14,
+        49.5
       ],
       "min": [
         -90,
-        -12.20250437303113,
-        -33.821230342333074
+        -12.199999809265137,
+        -33.82500076293945
       ],
       "size": [
         180,
-        26.200266919930755,
-        83.3252930623857
+        26.199999809265137,
+        83.32500076293945
       ]
     },
     "hidden": [],
@@ -2933,21 +2933,21 @@
       {
         "canopy": false,
         "matrix": [
-          89.21988677978516,
+          1,
           0,
           0,
           0,
           0,
-          89.21988677978516,
+          1,
           0,
           0,
           0,
           0,
-          89.21988677978516,
+          1,
           0,
-          0.21988677978515625,
-          -1.5,
-          7.612499237060547,
+          0,
+          0,
+          0,
           1
         ],
         "name": "LOD0_Armor",
@@ -2960,21 +2960,21 @@
       {
         "canopy": false,
         "matrix": [
-          59.13999938964844,
+          1,
           0,
           0,
           0,
           0,
-          59.13999938964844,
+          1,
           0,
           0,
           0,
           0,
-          59.13999938964844,
+          1,
           0,
           0,
-          6.999999761581421,
-          10,
+          0,
+          0,
           1
         ],
         "name": "LOD0_Beacon_Amber",
@@ -2987,21 +2987,21 @@
       {
         "canopy": false,
         "matrix": [
-          90,
+          1,
           0,
           0,
           0,
           0,
-          90,
+          1,
           0,
           0,
           0,
           0,
-          90,
+          1,
           0,
           0,
-          0.15000009536743164,
-          3.390451431274414,
+          0,
+          0,
           1
         ],
         "name": "LOD0_BrushedMetal",
@@ -3014,20 +3014,20 @@
       {
         "canopy": false,
         "matrix": [
-          89.25,
+          1,
           0,
           0,
           0,
           0,
-          89.25,
+          1,
           0,
           0,
           0,
           0,
-          89.25,
+          1,
           0,
-          0.25,
-          1.125,
+          0,
+          0,
           0,
           1
         ],
@@ -3041,21 +3041,21 @@
       {
         "canopy": false,
         "matrix": [
-          89,
+          1,
           0,
           0,
           0,
           0,
-          89,
+          1,
           0,
           0,
           0,
           0,
-          89,
+          1,
           0,
           0,
-          0.596153736114502,
-          8.337499618530273,
+          0,
+          0,
           1
         ],
         "name": "LOD0_Livery",
@@ -3068,21 +3068,21 @@
       {
         "canopy": false,
         "matrix": [
-          89.05609893798828,
+          1,
           0,
           0,
           0,
           0,
-          89.05609893798828,
+          1,
           0,
           0,
           0,
           0,
-          89.05609893798828,
+          1,
           0,
           0,
-          1.1042375564575195,
-          5.5335845947265625,
+          0,
+          0,
           1
         ],
         "name": "LOD0_Mechanical",
@@ -3095,21 +3095,21 @@
       {
         "canopy": false,
         "matrix": [
-          86.25,
+          1,
           0,
           0,
           0,
           0,
-          86.25,
+          1,
           0,
           0,
           0,
           0,
-          86.25,
+          1,
           0,
           0,
-          -0.47499990463256836,
-          -1.2749996185302734,
+          0,
+          0,
           1
         ],
         "name": "LOD0_MechanicalDark",
@@ -3122,21 +3122,21 @@
       {
         "canopy": false,
         "matrix": [
-          60.5,
+          1,
           0,
           0,
           0,
           0,
-          60.5,
+          1,
           0,
           0,
           0,
           0,
-          60.5,
+          1,
           0,
           0,
-          4,
-          9.5,
+          0,
+          0,
           1
         ],
         "name": "LOD0_Warning",
@@ -3149,21 +3149,21 @@
       {
         "canopy": false,
         "matrix": [
-          89.21988677978516,
+          1,
           0,
           0,
           0,
           0,
-          89.21988677978516,
+          1,
           0,
           0,
           0,
           0,
-          89.21988677978516,
+          1,
           0,
-          0.21988677978515625,
-          -1.5,
-          7.614570617675781,
+          0,
+          0,
+          0,
           1
         ],
         "name": "LOD1_Armor",
@@ -3176,21 +3176,21 @@
       {
         "canopy": false,
         "matrix": [
-          59.13999938964844,
+          1,
           0,
           0,
           0,
           0,
-          59.13999938964844,
+          1,
           0,
           0,
           0,
           0,
-          59.13999938964844,
+          1,
           0,
           0,
-          6.999999761581421,
-          10,
+          0,
+          0,
           1
         ],
         "name": "LOD1_Beacon_Amber",
@@ -3203,21 +3203,21 @@
       {
         "canopy": false,
         "matrix": [
-          89.99459838867188,
+          1,
           0,
           0,
           0,
           0,
-          89.99459838867188,
+          1,
           0,
           0,
           0,
           0,
-          89.99459838867188,
+          1,
           0,
           0,
-          0.14774847030639648,
-          3.385374069213867,
+          0,
+          0,
           1
         ],
         "name": "LOD1_BrushedMetal",
@@ -3230,20 +3230,20 @@
       {
         "canopy": false,
         "matrix": [
-          89.25043869018555,
+          1,
           0,
           0,
           0,
           0,
-          89.25043869018555,
+          1,
           0,
           0,
           0,
           0,
-          89.25043869018555,
+          1,
           0,
-          0.2504386901855469,
-          1.125,
+          0,
+          0,
           0,
           1
         ],
@@ -3257,21 +3257,21 @@
       {
         "canopy": false,
         "matrix": [
-          88.99549865722656,
+          1,
           0,
           0,
           0,
           0,
-          88.99549865722656,
+          1,
           0,
           0,
           0,
           0,
-          88.99549865722656,
+          1,
           0,
           0,
-          0.754072904586792,
-          8.337499618530273,
+          0,
+          0,
           1
         ],
         "name": "LOD1_Livery",
@@ -3284,21 +3284,21 @@
       {
         "canopy": false,
         "matrix": [
-          89.05609893798828,
+          1,
           0,
           0,
           0,
           0,
-          89.05609893798828,
+          1,
           0,
           0,
           0,
           0,
-          89.05609893798828,
+          1,
           0,
           0,
-          1.1027531623840332,
-          5.532121658325195,
+          0,
+          0,
           1
         ],
         "name": "LOD1_Mechanical",
@@ -3311,21 +3311,21 @@
       {
         "canopy": false,
         "matrix": [
-          86.25,
+          1,
           0,
           0,
           0,
           0,
-          86.25,
+          1,
           0,
           0,
           0,
           0,
-          86.25,
+          1,
           0,
           0,
-          -0.47542619705200195,
-          -1.274261474609375,
+          0,
+          0,
           1
         ],
         "name": "LOD1_MechanicalDark",
@@ -3338,21 +3338,21 @@
       {
         "canopy": false,
         "matrix": [
-          60.5,
+          1,
           0,
           0,
           0,
           0,
-          60.5,
+          1,
           0,
           0,
           0,
           0,
-          60.5,
+          1,
           0,
           0,
-          4,
-          9.5,
+          0,
+          0,
           1
         ],
         "name": "LOD1_Warning",
@@ -3365,21 +3365,21 @@
       {
         "canopy": false,
         "matrix": [
-          89.23490905761719,
+          1,
           0,
           0,
           0,
           0,
-          89.23490905761719,
+          1,
           0,
           0,
           0,
           0,
-          89.23490905761719,
+          1,
           0,
-          0.24712371826171875,
-          -1.5,
-          7.616596221923828,
+          0,
+          0,
+          0,
           1
         ],
         "name": "LOD2_Armor",
@@ -3392,21 +3392,21 @@
       {
         "canopy": false,
         "matrix": [
-          59.13999938964844,
+          1,
           0,
           0,
           0,
           0,
-          59.13999938964844,
+          1,
           0,
           0,
           0,
           0,
-          59.13999938964844,
+          1,
           0,
           0,
-          6.999999761581421,
-          10,
+          0,
+          0,
           1
         ],
         "name": "LOD2_Beacon_Amber",
@@ -3419,21 +3419,21 @@
       {
         "canopy": false,
         "matrix": [
-          89.98098754882812,
+          1,
           0,
           0,
           0,
           0,
-          89.98098754882812,
+          1,
           0,
           0,
           0,
           0,
-          89.98098754882812,
+          1,
           0,
           0,
-          0.14389657974243164,
-          3.387310028076172,
+          0,
+          0,
           1
         ],
         "name": "LOD2_BrushedMetal",
@@ -3446,21 +3446,21 @@
       {
         "canopy": false,
         "matrix": [
-          89.24136734008789,
+          1,
           0,
           0,
           0,
           0,
-          89.24136734008789,
+          1,
           0,
           0,
           0,
           0,
-          89.24136734008789,
+          1,
           0,
-          0.2610664367675781,
-          1.132507562637329,
-          -0.0012722015380859375,
+          0,
+          0,
+          0,
           1
         ],
         "name": "LOD2_Hull",
@@ -3473,21 +3473,21 @@
       {
         "canopy": false,
         "matrix": [
-          88.98780059814453,
+          1,
           0,
           0,
           0,
           0,
-          88.98780059814453,
+          1,
           0,
           0,
           0,
           0,
-          88.98780059814453,
+          1,
           0,
           0,
-          0.7585244178771973,
-          8.33711051940918,
+          0,
+          0,
           1
         ],
         "name": "LOD2_Livery",
@@ -3500,21 +3500,21 @@
       {
         "canopy": false,
         "matrix": [
-          89.05609893798828,
+          1,
           0,
           0,
           0,
           0,
-          89.05609893798828,
+          1,
           0,
           0,
           0,
           0,
-          89.05609893798828,
+          1,
           0,
           0,
-          1.1010866165161133,
-          5.532400131225586,
+          0,
+          0,
           1
         ],
         "name": "LOD2_Mechanical",
@@ -3527,21 +3527,21 @@
       {
         "canopy": false,
         "matrix": [
-          86.23043823242188,
+          1,
           0,
           0,
           0,
           0,
-          86.23043823242188,
+          1,
           0,
           0,
           0,
           0,
-          86.23043823242188,
+          1,
           0,
-          0.00267791748046875,
-          -0.4775400161743164,
-          -1.2724590301513672,
+          0,
+          0,
+          0,
           1
         ],
         "name": "LOD2_MechanicalDark",
@@ -3554,21 +3554,21 @@
       {
         "canopy": false,
         "matrix": [
-          60.48368453979492,
+          1,
           0,
           0,
           0,
           0,
-          60.48368453979492,
+          1,
           0,
           0,
           0,
           0,
-          60.48368453979492,
+          1,
           0,
           0,
-          4.001692479476333,
-          9.495569229125977,
+          0,
+          0,
           1
         ],
         "name": "LOD2_Warning",
@@ -3583,20 +3583,20 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_ceres_second_measure.glb"
   },
-  "runtimeHash": "9a9eab0d1962f7c45879aedf9e3a8f35068cec1202d18c33be074d74eccc7c81",
+  "runtimeHash": "4371c2c18b119905060a53022b39e303172165bdc8c1f43b2c67b0bf6eadbcf3",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
           90,
-          13.997762546899622,
-          49.50406272005263
+          14,
+          49.5
         ],
         "min": [
           -90,
-          -12.20250437303113,
-          -33.821230342333074
+          -12.199999809265137,
+          -33.82500076293945
         ]
       },
       "id": "sf.render.ceres-second-measure.body",
