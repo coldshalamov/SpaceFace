@@ -83,16 +83,16 @@
     "twist": "Escorts want the leftover line more than the hulls. Latch a leftover pod in the field and fly home does not pay. Leftover story latch-dock is dest station + cargo + 24 WU. Or drop the escorts and reel.",
     "solutions": [
       {
-        "id": "stage_tow",
+        "id": "tow_under_fire",
         "verb": "tow",
-        "leftoverMechanic": "stage_tow",
-        "how": "Latch leftover life_pod and bring it to leftover dest dock station_expanse. Leftover story settle is _entityAtStoryDestDock, not 700 WU PHYSICAL_BERTH_WU. PQ-032.00 leftover."
+        "leftoverMechanic": "tow_under_fire",
+        "how": "Latch the marked hull under fire and bring it to Rook's ring at leftover dest dock station_expanse, at rest. Live completionMethod tow_under_fire (campaign47a:b2:cinder)."
       },
       {
-        "id": "corridor_pull",
-        "verb": "reel",
-        "leftoverMechanic": "corridor_pull",
-        "how": "Open a leftover corridor: leftover rescue_escorts down, then leftover reel on leftover life_pod from stand-off. Leftover completionMethod corridor_pull."
+        "id": "clear_and_tow",
+        "verb": "fire",
+        "leftoverMechanic": "clear_and_tow",
+        "how": "Drop the leftover escorts first — Cinder One, Two and Three — then tow one intact hull to the ring. Live completionMethod clear_and_tow (campaign47a:b2:cinder)."
       }
     ],
     "provingFrame": "Seed 3200 leftover headless test/pq-032-00-set-pieces.test.mjs: leftover pod at dest dock pays. Leftover pod 189 WU from the berth does not. Headed GPU strip is peeled this leaf. Live settle is PQ-032.00, not this sheet."
@@ -101,15 +101,15 @@
     {
       "id": "comms.47a.b2.primary",
       "speaker": "ROOK",
-      "line": "Pods in the field. Pull them under fire.",
-      "consequence": "Player steers to leftover life_pods. Escorts hold the corridor. No menu.",
+      "line": "Cinder board first. Compost, the Nest, the register after.",
+      "consequence": "Player reads the cinder board first. No menu.",
       "cite": "src/story/campaign47a/embodiedDialogue.js#comms.47a.b2.primary"
     },
     {
       "id": "comms.47a.b2.recovery",
       "speaker": "ROOK",
-      "line": "Pods still drift. Pull them out.",
-      "consequence": "Leftover recovery. The pull is still the verb.",
+      "line": "The board still holds. The book re-posts the next job.",
+      "consequence": "Leftover recovery. The next job re-posts on the board.",
       "cite": "src/story/campaign47a/embodiedDialogue.js#comms.47a.b2.recovery"
     }
   ],

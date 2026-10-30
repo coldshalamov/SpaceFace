@@ -9,10 +9,23 @@
 import { BRANCH_IDS } from './campaignData.js';
 import { pushChoiceLog } from './campaignSchema.js';
 
+// Each beat lists every solution pair a contract on it can carry. The live Book 1/2 legs
+// (embodiedMissions bookContracts) name their own pairs; the retired knock/pull pairs stay
+// because pre-book saves and legacy contracts still file them through completeBeatStepsForLegacy.
+// Beat 3 deliberately omits the foreman's pair: the beat's one row keeps the last method seen,
+// and the foreman leg would overwrite the tow/sling record that reckoning and Coldburn read.
 const PAIR = Object.freeze({
-  1: Object.freeze(['wrecking_ball', 'cut_down']),
-  2: Object.freeze(['stage_tow', 'corridor_pull']),
-  3: Object.freeze(['tow_in', 'sling_in']),
+  1: Object.freeze([
+    Object.freeze(['sealed_delivery', 'partial_settle']),
+    Object.freeze(['mites_then_furnace', 'furnace_then_mites']),
+    Object.freeze(['wrecking_ball', 'cut_down']),
+  ]),
+  2: Object.freeze([
+    Object.freeze(['clear_and_tow', 'tow_under_fire']),
+    Object.freeze(['terminal_register_kill', 'custody_reel']),
+    Object.freeze(['stage_tow', 'corridor_pull']),
+  ]),
+  3: Object.freeze([Object.freeze(['tow_in', 'sling_in'])]),
 });
 const PAIR_7 = Object.freeze({
   patrol: Object.freeze(['park_the_hulk', 'swing_the_wedge']),
@@ -94,17 +107,22 @@ function branchOf(state) {
   return BRANCH_IDS.includes(branch) ? branch : null;
 }
 
-function pairFor(beat, branch) {
-  if (beat === 7) return branch && PAIR_7[branch] ? PAIR_7[branch] : null;
-  return PAIR[beat] || null;
+function pairsFor(beat, branch) {
+  if (beat === 7) return branch && PAIR_7[branch] ? [PAIR_7[branch]] : [];
+  return PAIR[beat] || [];
+}
+
+/** The solution pair on this beat that names `method`, or null. */
+function pairFor(beat, branch, method) {
+  if (!method) return null;
+  return pairsFor(beat, branch).find((pair) => pair.includes(method)) || null;
 }
 
 export function methodFromPayload(payload, beat, branch) {
   if (!payload || typeof payload !== 'object') return null;
   const raw = token(payload.completionMethod) || token(payload.failedMethod);
   if (!raw) return null;
-  const pair = pairFor(beat, branch);
-  return pair && pair.includes(raw) ? raw : null;
+  return pairFor(beat, branch, raw) ? raw : null;
 }
 
 function verbFrom(payload) {
@@ -434,15 +452,30 @@ function filedMaera(view) {
   if (tower && tower.method === 'cut_down') return 'You cut the tower. I watched you file and leave.';
   if (tower && tower.method === 'wrecking_ball') return 'You threw the tower. I watched you file and leave.';
   if (tower && tower.verb === 'knock_down') return 'You knocked the tower. I watched you file and leave.';
-  if (tower && tower.verb === 'burn') return 'You fed the furnace. I watched you file and leave.';
+  // The furnace row persists for the whole run; the door the player took is the later fact.
   if (view.door === 'traders') return 'You took the grain door. I watched you file and leave.';
   if (view.door === 'patrol') return 'You took the patrol door. I watched you file and leave.';
   if (view.door === 'free') return 'You took the free door. I watched you file and leave.';
+  if (tower && tower.verb === 'burn') return 'You fed the furnace. I watched you file and leave.';
   if (sample && sample.stepId === 'dock') return 'You docked the sample. I watched you file and leave.';
   if (view.morrow && view.morrow.destroyed) return 'R-07 is dark. I watched you file and leave.';
   if (view.morrow && view.morrow.launches > 0) return 'R-07 threw you. I watched you file and leave.';
   if (view.morrow && view.morrow.met) return 'R-07 has your hull. I watched you file and leave.';
   return 'Same hull. I watched it leave and return.';
+}
+
+function maeraDoorFact(view) {
+  if (view.door === 'traders') return 'You took the grain door. I kept the others.';
+  if (view.door === 'patrol') return 'You took the patrol door. I kept the others.';
+  if (view.door === 'free') return 'You took the free door. I kept the others.';
+  return null;
+}
+
+function maeraMorrowFact(view) {
+  if (view.morrow && view.morrow.destroyed) return 'R-07 is dark. I still know your hull.';
+  if (view.morrow && view.morrow.launches > 0) return 'R-07 threw you. I felt the yard move.';
+  if (view.morrow && view.morrow.met) return 'R-07 has your hull. The engines stayed warm.';
+  return null;
 }
 
 function maeraLine(view) {
@@ -453,7 +486,8 @@ function maeraLine(view) {
   if (sit && sit.beat === 0) return 'The sample missed. Take the marked face.';
   if (sit && sit.beat === 1 && sit.openMethod === 'cut_down') return 'The throw missed. Cut the spar.';
   if (sit && sit.beat === 1 && sit.openMethod === 'wrecking_ball') return 'The cut slipped. Throw the mass.';
-  if (sit && sit.beat === 1) return 'The tower cracked. It is not the same one.';
+  // Live Book 1 is the sealed run and the furnace detail; no tower stands to crack.
+  if (sit && sit.beat === 1) return 'The honest work came up short. It is still yours.';
   if (sit && sit.openMethod === 'corridor_pull') return 'The yard dock is hot. Reel the pods.';
   if (sit && sit.openMethod === 'stage_tow') return 'The corridor collapsed. Tow a pod in.';
   if (sit && sit.openMethod === 'sling_in') return 'The line parted. Sling the core in.';
@@ -471,19 +505,18 @@ function maeraLine(view) {
     return view.climax.withTower;
   }
   if (view.climax) return view.climax.alone;
-  // W-BOOKS-0-2: the book route closes B1 on the furnace detail and B2 on the writ.
-  if (solved1 && solved1.verb === 'burn') return 'You fed the hauler to the furnace.';
-  if (solved1 && solved1.verb === 'weigh') return 'You weighed the sealed crate here.';
   if (solved1 && solved1.method === 'wrecking_ball') return 'You threw the tower. The yard still rings.';
   if (solved1 && solved1.verb === 'knock_down') return 'You knocked the tower. The yard still rings.';
+  // W-BOOKS-0-2: the book route closes B1 on the furnace detail and B2 on the writ. That row
+  // persists for the whole run, so the door the player took speaks ahead of it.
+  const doorFact = maeraDoorFact(view);
+  if (doorFact) return doorFact;
+  if (solved1 && solved1.verb === 'burn') return 'You fed the hauler to the furnace.';
+  if (solved1 && solved1.verb === 'weigh') return 'You weighed the sealed crate here.';
   if (solved0 && solved0.stepId === 'dock') return 'You docked the variance sample here.';
   if (solved0 && solved0.stepId === 'mine') return 'The variance sample is aboard. Dock it.';
-  if (view.door === 'traders') return 'You took the grain door. I kept the others.';
-  if (view.door === 'patrol') return 'You took the patrol door. I kept the others.';
-  if (view.door === 'free') return 'You took the free door. I kept the others.';
-  if (view.morrow && view.morrow.destroyed) return 'R-07 is dark. I still know your hull.';
-  if (view.morrow && view.morrow.launches > 0) return 'R-07 threw you. I felt the yard move.';
-  if (view.morrow && view.morrow.met) return 'R-07 has your hull. The engines stayed warm.';
+  const morrowFact = maeraMorrowFact(view);
+  if (morrowFact) return morrowFact;
   return null;
 }
 
@@ -493,8 +526,6 @@ function filedHalev(view) {
   const missedKnock = view.missed && tower && (tower.method === 'wrecking_ball' || tower.verb === 'knock_down' || tower.method === 'cut_down');
   if (missedKnock && tower.method === 'cut_down') return 'Filed: a miss, the cut, then the disposition.';
   if (missedKnock) return 'Filed: a miss, the knock, then the disposition.';
-  if (view.missed && tower && tower.verb === 'burn') return 'Filed: a miss, the furnace, then the disposition.';
-  if (tower && tower.verb === 'burn') return 'Filed: the furnace, then the disposition.';
   if (tower && tower.method === 'cut_down') return 'Filed: the cut, then the disposition.';
   if (tower && (tower.method === 'wrecking_ball' || tower.verb === 'knock_down')) return 'Filed: the knock, then the disposition.';
   if (view.door === 'traders') return 'Filed: the grain door, then the disposition.';
@@ -503,6 +534,9 @@ function filedHalev(view) {
   if (view.morrow && (view.morrow.met || view.morrow.destroyed || view.morrow.launches > 0)) {
     return 'Filed: R-07, then the disposition.';
   }
+  // The furnace row persists for the whole run; the door and R-07 are the later facts.
+  if (view.missed && tower && tower.verb === 'burn') return 'Filed: a miss, the furnace, then the disposition.';
+  if (tower && tower.verb === 'burn') return 'Filed: the furnace, then the disposition.';
   if (view.solved['0']) return 'Filed: the sample, then the disposition.';
   return 'Filed: the disposition. The road stays in the margin.';
 }
@@ -516,10 +550,6 @@ function halevLine(view) {
   if (sit) return 'Filed: a miss. The work is not the same.';
   const filed = filedHalev(view);
   if (filed) return filed;
-  // W-BOOKS-0-2: book-route filings for Honest Work.
-  if (hadMiss && solved1 && solved1.verb === 'burn') return 'Filed: a miss, then the furnace.';
-  if (solved1 && solved1.verb === 'burn') return 'Filed: the furnace. The scale still lies.';
-  if (solved1 && solved1.verb === 'weigh') return 'Filed: the sealed crate. The scale lied low.';
   if (hadMiss && solved1 && solved1.method === 'cut_down') return 'Filed: a miss, then the cut.';
   if (hadMiss && solved1 && (solved1.method === 'wrecking_ball' || solved1.verb === 'knock_down')) return 'Filed: a miss, then the knock.';
   if (solved1 && solved1.method === 'cut_down') return 'Filed: the cut. The throw never ran.';
@@ -539,6 +569,11 @@ function halevLine(view) {
   if (view.door === 'traders') return 'Filed: the grain door. Patrol and free refused.';
   if (view.door === 'patrol') return 'Filed: the patrol door. Grain and free refused.';
   if (view.door === 'free') return 'Filed: the free door. Grain and patrol refused.';
+  // W-BOOKS-0-2: book-route filings for Honest Work. That row persists for the whole run, so
+  // the door speaks ahead of it.
+  if (hadMiss && solved1 && solved1.verb === 'burn') return 'Filed: a miss, then the furnace.';
+  if (solved1 && solved1.verb === 'burn') return 'Filed: the furnace. The scale still lies.';
+  if (solved1 && solved1.verb === 'weigh') return 'Filed: the sealed crate. The scale lied low.';
   if (view.morrow && view.morrow.destroyed) return 'Filed: R-07 is dark. The hull remains.';
   if (view.morrow && (view.morrow.met || view.morrow.launches > 0)) return 'Filed in the margin: you met R-07.';
   if (view.solved['0']) return 'Filed: variance sample. The berth signed.';
@@ -605,10 +640,20 @@ function zellLine(view) {
 
 function maraLine(view) {
   const pods = view.solved['2'];
-  if (view.open && view.open.beat === 2) return 'The pods got colder. Pull the ones left.';
+  const open = view.open;
+  // Live Book 2 is the cinder board, the compost, the nest and the Elroy writ. The pod-rescue
+  // methods below are the retired contract's; they stay for pre-book saves.
+  if (open && open.beat === 2) {
+    return open.openMethod === 'corridor_pull' || open.openMethod === 'stage_tow'
+      ? 'The pods got colder. Pull the ones left.'
+      : 'The writ went wrong. Three of us still wait.';
+  }
   if (pods && pods.method === 'stage_tow') return 'You towed them in. Three of us still wait.';
   if (pods && pods.method === 'corridor_pull') return 'You reeled a corridor. We still need room.';
   if (pods && pods.verb === 'pull') return 'You pulled the pods. Three of us still wait.';
+  if (pods && pods.method === 'terminal_register_kill') return 'You fired on the register. Three of us still wait.';
+  if (pods && pods.method === 'custody_reel') return 'You reeled the mark in whole. Three of us still wait.';
+  if (pods && (pods.stepId === 'elroy' || pods.verb === 'hunt')) return 'You answered the writ. Three of us still wait.';
   return null;
 }
 
@@ -622,11 +667,13 @@ function irenLine(view) {
 
 function sennaLine(view) {
   const tower = view.solved['1'];
-  if (view.open || view.missed) return 'I wrote the miss. The dark kept that.';
+  // Only the miss still open speaks first. A miss already closed must not mute the rest of the run.
+  if (view.open) return 'I wrote the miss. The dark kept that.';
   if (tower && tower.method === 'cut_down') return 'I wrote the cut down. The dark kept it.';
   if (tower && tower.method === 'wrecking_ball') return 'I wrote the throw. The dark kept it.';
   if (tower && tower.verb === 'knock_down') return 'I wrote the knock. The dark kept it.';
   if (view.door) return 'I wrote the door. The dark kept the rest.';
+  if (view.missed) return 'I wrote the miss. The dark kept that.';
   return null;
 }
 
@@ -641,8 +688,9 @@ function questionLine(view) {
 }
 
 function yuneLine(view) {
-  if (view.open || view.missed) return 'The miss is sealed. Re-opening costs a fee.';
+  if (view.open) return 'The miss is sealed. Re-opening costs a fee.';
   if (view.door) return 'Your door is sealed. The fee still stands.';
+  if (view.missed) return 'The miss is sealed. Re-opening costs a fee.';
   return null;
 }
 
@@ -769,17 +817,17 @@ export function noteSpineFailure(state, own, beatIndex, reason, extra, simTime) 
   stampMorrow(spine, state);
   const branch = branchOf(state);
   const method = methodFromPayload(extra, beat, branch);
-  const pair = pairFor(beat, branch);
   const existing = spine.situation;
   const prev = existing && existing.beat === beat ? existing : null;
   // A later miss must not erase an earlier one. The old ask is filed, then replaced.
   if (existing && !prev) pushClosed(spine, existing);
   let closedMethod = null;
   let openMethod = null;
-  if (method && pair && pair.includes(method)) {
+  const pair = pairFor(beat, branch, method);
+  if (pair) {
     closedMethod = method;
     openMethod = pair.find((candidate) => candidate !== method) || null;
-  } else if (prev && prev.closedMethod && (!pair || pair.includes(prev.closedMethod))) {
+  } else if (prev && prev.closedMethod && pairFor(beat, branch, prev.closedMethod)) {
     closedMethod = prev.closedMethod;
     openMethod = prev.openMethod;
   }

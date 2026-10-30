@@ -147,8 +147,8 @@ test('B0 through B7 record the physical step and leave the beat cursor alone', (
   state.story.beatIndex = 2;
   const elroy = driveBook2(state, 8);
   assert.equal(elroy.stepsComplete, true);
-  // The register's custody/kill token is not one of the beat's two physical solutions.
-  assert.equal(readSpine(state).solved['2'].method, null);
+  // The live register's reel is one of the beat's two physical solutions now.
+  assert.equal(readSpine(state).solved['2'].method, 'custody_reel');
   assert.equal(readSpine(state).solved['2'].verb, 'hunt');
 
   state.story.beatIndex = 3;
@@ -175,7 +175,8 @@ test('B0 through B7 record the physical step and leave the beat cursor alone', (
   assert.equal(fakeIntro.reason, 'not_live_branch_intro');
   const intro = recordBeatStep(state, 'mission:accepted', liveBranchIntroPayload('traders'), 10);
   assert.equal(intro.ok, true);
-  assert.equal(intro.stepsComplete, true);
+  // The intro is only the door; the door's operation still has to run.
+  assert.equal(intro.stepsComplete, false);
   assert.equal(intro.branch, 'traders');
   assert.equal(readSpine(state).door, 'traders');
   assert.deepEqual(readSpine(state).refused.slice().sort(), ['free', 'patrol']);
@@ -476,8 +477,9 @@ test('Helios remembers the hull, and two contacts do not give the same account',
   recordBeatStep(missed, 'mission:accepted', liveBranchIntroPayload('traders'), 40);
   const maera = contact(missed, 'station_helios', 'contact_maera_vols');
   const halev = contact(missed, 'station_helios', 'contact_halev_doss');
-  assert.equal(maera.blurb, 'You fed the hauler to the furnace.');
-  assert.equal(halev.blurb, 'Filed: a miss, then the furnace.');
+  // The taken door is the later fact — it speaks ahead of the persistent furnace row.
+  assert.equal(maera.blurb, 'You took the grain door. I kept the others.');
+  assert.equal(halev.blurb, 'Filed: the grain door. Patrol and free refused.');
   assert.notEqual(maera.blurb, maeraAuthored);
   assert.notEqual(halev.blurb, DEPTH_PROGRAM_CONTACTS.find((row) => row.id === 'contact_halev_doss').blurb);
 
@@ -499,8 +501,9 @@ test('Helios remembers the hull, and two contacts do not give the same account',
   assert.notEqual(spineGreeting('contact_maera_vols', pods), spineGreeting('contact_halev_doss', pods));
 
   missed.story.endgameChoice = 'E';
-  assert.equal(spineGreeting('contact_maera_vols', missed), 'You fed the furnace. I watched you file and leave.');
-  assert.equal(spineGreeting('contact_halev_doss', missed), 'Filed: a miss, the furnace, then the disposition.');
+  // At the filed ending the taken door leads the furnace row it used to be shadowed by.
+  assert.equal(spineGreeting('contact_maera_vols', missed), 'You took the grain door. I watched you file and leave.');
+  assert.equal(spineGreeting('contact_halev_doss', missed), 'Filed: the grain door, then the disposition.');
 
   // Compat: the retired demolition route still files through the legacy fill, so the
   // method the receipt carried is still the one contacts name.

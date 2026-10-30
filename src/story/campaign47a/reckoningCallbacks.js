@@ -6,8 +6,14 @@ export function reckoningCallbacks(input) {
   const { story } = ledgerSource(input);
   const solved = readSpine({ story }).solved;
   const rows = [];
-  const method = solved['1']?.method;
+  const first = solved['1'];
+  const method = first?.method;
   if (method === 'cut_down') rows.push({ id: 'b1_cut', label: 'Your first cut leaves a loose shield plate', kind: 'plate', mass: 110 });
+  // Live Book 1 closes on the furnace detail, which files verb 'burn' (never a cut or a throw).
+  // The scorched hauler plate rides the same plate body and id the board title already names.
+  else if (method !== 'wrecking_ball' && (first?.verb === 'burn' || first?.stepId === 'infested')) {
+    rows.push({ id: 'b1_cut', label: 'Your furnace-fed hauler leaves a loose shield plate', kind: 'plate', mass: 110 });
+  }
   if (method === 'wrecking_ball') rows.push({ id: 'b1_ram', label: 'Your first wreck returns as a swinging hammer', kind: 'hammer', mass: 180 });
   if (Number(story.flags?.reckoning_b2_saved_pods) >= 2) rows.push({ id: 'b2_crew', label: 'Two rescued crews hold a tug line for you', kind: 'crew', mass: 240 });
   const tow = solved['3']?.method;

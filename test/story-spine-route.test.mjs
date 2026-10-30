@@ -571,7 +571,8 @@ test('the played road survives save and Continue and is cited at the ending', ()
   assert.equal(readSpine(continued.state).solved['6'].stepId, 'asset_deploy');
   assert.equal(continued.state.story.flags.deep_reach_variant, 'ashfall_siege');
   assert.equal(barLine(continued.state, 'contact_maera_vols'), 'You finished the siege. I watched it leave.');
-  assert.equal(barLine(continued.state, 'contact_halev_doss'), 'Filed: the furnace. The scale still lies.');
+  // The taken door is the later fact — it files ahead of the persistent furnace row.
+  assert.equal(barLine(continued.state, 'contact_halev_doss'), 'Filed: the grain door. Patrol and free refused.');
 
   const facts = readLifeLedger(continued.state);
   assert.match(facts.spineRoad.cite, /the grain door taken/);
