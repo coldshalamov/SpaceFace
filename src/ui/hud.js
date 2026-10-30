@@ -6028,10 +6028,13 @@ export function createHud(ctx, alerts) {
     caption.style.width = 'fit-content';
     caption.style.maxWidth = `${Math.round(slot.width)}px`;
     caption.style.maxHeight = `${maxHeight}px`;
-    caption.style.overflowY = caption.scrollHeight > maxHeight ? 'auto' : 'visible';
+    // One read: a second scrollHeight after the overflowY write forced another layout, and a
+    // scrollbar only makes overflowing text taller, so the pointer decision cannot change.
+    const overflows = caption.scrollHeight > maxHeight;
+    caption.style.overflowY = overflows ? 'auto' : 'visible';
     caption.style.textAlign = 'center';
     caption.style.transform = 'none';
-    caption.style.pointerEvents = caption.scrollHeight > maxHeight ? 'auto' : 'none';
+    caption.style.pointerEvents = overflows ? 'auto' : 'none';
   }
   function placeReceiptLane(resolvedLayout = null) {
     if (toastsLaneEl === null) toastsLaneEl = document.getElementById('toasts');
@@ -6053,10 +6056,17 @@ export function createHud(ctx, alerts) {
     const bands = freeOverlayBands(slot, h, layout);
     let captionBands = slot.captionSlot ? freeOverlayBands(captionSlot, h, layout) : bands;
     if (!activeReceipt) {
-      caption.style.width = 'fit-content';
-      caption.style.maxWidth = `${Math.round(captionSlot.width)}px`;
-      caption.style.maxHeight = 'none';
-      caption.style.overflowY = 'visible';
+      // Measure in place when the caption already fits its slot (overflow visible, same width):
+      // scrollHeight then reports the full text height under any max-height, so clearing
+      // max-height first only toggled it none -> px on every slow tick and forced two layouts.
+      const captionMaxWidth = `${Math.round(captionSlot.width)}px`;
+      if (caption.style.overflowY !== 'visible' || caption.style.maxWidth !== captionMaxWidth
+        || caption.style.width !== 'fit-content') {
+        caption.style.width = 'fit-content';
+        caption.style.maxWidth = captionMaxWidth;
+        caption.style.maxHeight = 'none';
+        caption.style.overflowY = 'visible';
+      }
       let captionHeight = Math.max(48, caption.scrollHeight || caption.getBoundingClientRect?.().height || 0);
       let captionBand = captionBands.find((band) => band.bottom - band.top >= captionHeight + 8);
       if (slot.captionSlot && !captionBand) {
