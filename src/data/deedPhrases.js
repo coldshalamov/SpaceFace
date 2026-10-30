@@ -175,6 +175,15 @@ const LINES = {
       (c) => `${c.n} hulls off one tumbling wreck at ${c.place}. Pilots here still argue about the angle.`,
     ],
   },
+  kill_thrown: {
+    neutral: [(c) => `Threw a wreck into a ${c.subject || 'hull'} at ${c.place}.`],
+    grievance: [
+      (c) => `That ${c.subject || 'hull'} at ${c.place} never saw your guns. It saw what you sent at it, still moving.`,
+    ],
+    praise: [
+      (c) => `You put a ${c.subject || 'hull'} down at ${c.place} without firing a shot. They're still drawing the vectors on napkins.`,
+    ],
+  },
   stunt: {
     neutral: [(c) => `Landed ${c.subject || 'a stunt'} at ${c.place}.`],
     grievance: [],
@@ -286,7 +295,7 @@ export function deedLine(deed, opts = {}) {
 function prettySubject(deed) {
   if (!deed.subject) return null;
   if (deed.kind === 'wanted_tier') return String(deed.subject).toUpperCase();
-  if (deed.kind === 'ore_flood' || deed.kind === 'kill_lawful' || deed.kind === 'kill_outlaw' || deed.kind === 'base_destroyed') {
+  if (deed.kind === 'ore_flood' || deed.kind === 'kill_lawful' || deed.kind === 'kill_outlaw' || deed.kind === 'kill_thrown' || deed.kind === 'base_destroyed') {
     return humanize(deed.subject);
   }
   if (deed.kind === 'dock_slam' || deed.kind === 'fence_burned') return null;
