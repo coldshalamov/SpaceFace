@@ -641,7 +641,7 @@ const CSS_TAIL = `
   ${MD} .sx-mkt-browser { column-gap:10px !important; }
   ${MD} .sx-mkt-browser__filters { padding-right:0 !important; }
   ${MD} .sx-mkt-table thead th:nth-child(2) { width:60px !important; }
-  ${MD} .sx-mkt-table thead th:nth-child(3) { width:36px !important; }
+  ${MD} .sx-mkt-table thead th:nth-child(3) { width:44px !important; }
   ${MD} .sx-mkt-table thead th:nth-child(4) { width:44px !important; }
   ${MD} .sx-mkt-table :is(th, td):nth-child(n+2) { padding-left:4px !important; }
   ${MD} .sx-mkt-table thead th:nth-child(n+2) { letter-spacing:.02em !important; padding-left:0 !important; text-align:right !important; }
@@ -995,6 +995,18 @@ const CSS_TAIL = `
   ${MD} .sx-mkt-browser__filters li { flex:none !important; }
   ${MD} .sx-mkt-filter { padding:3px 0 !important; line-height:14px !important; letter-spacing:.05em !important; }
   ${MD} .sx-mkt-browser__rail { grid-column:1 !important; grid-row:3 !important; }
+  /* rework 2: the rows keep master's 37px tap height (they had shrunk to 23px), the price's
+     trend sits under the price in three fixed 44px figure columns so the name gets the rest, and a wrapped name or the
+     sold-out note grows its row instead of being cut */
+  ${MD} .sx-mkt-browser__rail .sx-mkt-row > td { height:37px !important; padding-top:4px !important; padding-bottom:4px !important; vertical-align:middle !important; }
+  ${MD} .sx-mkt-browser__rail .sx-mkt-row__price { line-height:14px !important; }
+  ${MD} .sx-mkt-browser__rail .sx-mkt-table :is(th, td):first-child { width:auto !important; }
+  ${MD} .sx-mkt-browser__rail .sx-mkt-table :is(th, td):nth-child(2) { width:44px !important; }
+  ${MD} .sx-mkt-browser__rail .sx-mkt-table :is(th, td):nth-child(3) { width:44px !important; }
+  ${MD} .sx-mkt-browser__rail .sx-mkt-table :is(th, td):nth-child(4) { width:44px !important; }
+  ${MD} .sx-mkt-browser__rail .sx-mkt-row__price > .sx-mkt-row__tr { display:block !important; }
+  ${MD} .sx-mkt-browser__rail .sx-mkt-row > td.sx-mkt-row__name { white-space:normal !important; overflow:visible !important; }
+  ${MD} .sx-mkt-browser__rail .sx-mkt-row__none { white-space:normal !important; line-height:14px !important; }
   /* the stage is one column: the console first, then the decision and the reading under it in the stage's own scroll */
   ${MD} .sx-mkt__stage.dp-work__stage { grid-template-columns:minmax(0, 1fr) !important; grid-template-rows:max-content max-content max-content !important; align-content:start !important; row-gap:10px !important; overflow-y:auto !important; overflow-x:hidden !important; }
   ${MD} .sx-mkt__stage.dp-work__stage > .sx-mkt__console { grid-column:1 !important; grid-row:1 !important; width:auto !important; max-height:none !important; overflow:visible !important; }
