@@ -45,6 +45,9 @@ const MIN_EXPECTED_PROGRAMS = 8;
 
 const pageErrors = [];
 const consoleShaderErrors = [];
+const consoleShaderEvents = [];
+const openingAdmissionRecoveries = [];
+const openingAdmissionErrors = [];
 
 let server = null;
 let browser = null;
@@ -67,9 +70,18 @@ try {
   page.on('pageerror', (error) => { pageErrors.push(String(error && error.message ? error.message : error)); });
   page.on('console', (msg) => {
     const text = msg.text();
-    if (/shader|program|glsl|webgl/i.test(text) && /error|fail|invalid|could not|unable/i.test(text)) {
-      consoleShaderErrors.push(text);
+    if (!/shader|program|glsl|webgl/i.test(text)) return;
+    const event = { type: msg.type(), text };
+    consoleShaderEvents.push(event);
+    // The opening gate deliberately reports its first refused draw at info level while it
+    // re-admits the exact unbound live subject behind the shell. Preserve that receipt, but
+    // classify it by severity: the renderer escalates a persistent 120-refusal failure to error.
+    if (/\[render\] opening submission pre-submit gate failed closed\b/i.test(text)) {
+      if (msg.type() === 'error') openingAdmissionErrors.push(text);
+      else openingAdmissionRecoveries.push(event);
+      return;
     }
+    if (/error|fail|invalid|could not|unable/i.test(text)) consoleShaderErrors.push(text);
   });
 
   await page.addInitScript(() => {
@@ -219,6 +231,9 @@ try {
     broken: diagnostics.broken,
     pageErrors,
     consoleShaderErrors,
+    consoleShaderEvents,
+    openingAdmissionRecoveries,
+    openingAdmissionErrors,
     openingFailure,
   }, null, 2)}\n`, 'utf8');
 
@@ -240,6 +255,9 @@ try {
 
   assert.deepEqual(consoleShaderErrors, [],
     `WebGL reported shader errors on the console:\n${consoleShaderErrors.join('\n')}`);
+
+  assert.deepEqual(openingAdmissionErrors, [],
+    `opening first-draw admission failed persistently:\n${openingAdmissionErrors.join('\n')}`);
 
   console.log(`[shader-compile] PASS — ${diagnostics.programs} GL programs compiled and linked, 0 broken, 0 page errors`);
   console.log(`[shader-compile] evidence: ${EVIDENCE_PATH.replace(ROOT, '')}`);
