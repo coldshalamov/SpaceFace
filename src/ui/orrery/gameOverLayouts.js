@@ -95,6 +95,8 @@ ${GO} > .sf-go-tape .orr-tape__empty { fill:rgb(${BONE} / .8); }
   ${GO} > .k-title .k-caps { margin-bottom:calc(8px * var(--sv)) !important; }
   ${GO} > .k-title .k-t-title { font-size:calc(40px * var(--sv)) !important; max-width:24ch; }
   ${GO} > .k-title .k-sentence { margin-top:calc(8px * var(--sv)) !important; }
+  /* a blank record has no rim stations, so its bare dial takes the short-desktop ring and fits the frame */
+  ${GO} > .sf-go-recap.is-blank { --r:calc(112px * var(--sv)); height:calc(var(--r) * 2.6 + 44px * var(--sv)); }
 }
 /* rim stations (641w+): the bezel's ticks reach r + 10% past the track, and a diagonal station's two
    lines centre on its bearing, so the figure nearest the ring sat on the ticks. Every station clears
