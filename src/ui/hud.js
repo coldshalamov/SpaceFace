@@ -5864,6 +5864,9 @@ export function createHud(ctx, alerts) {
     stale: true,
     left: null,
     right: null,
+    rightEl: rightDock,
+    rail: null,
+    railEl: null,
     orrery: null,
     orreryEl: null,
   };
@@ -5887,6 +5890,10 @@ export function createHud(ctx, alerts) {
     // to display:none, so plateBox returns null and nothing is reserved.
     objectiveEdgeBoxes.left = plateBox(leftContext);
     objectiveEdgeBoxes.right = plateBox(rightDock);
+    // Caption/receipt placement shares this geometry snapshot. The rail and dock only need to be
+    // read when the HUD layout changes, not on every slow presentation frame.
+    const railEl = root.querySelector('.orr-hud-cluster .orr-cluster, .sf-prail');
+    objectiveEdgeBoxes.railEl = railEl;
     // The prompt deck anchors its right edge to this var (styles/prompt-deck.css): measured here so
     // decisions sit left of the dock column instead of growing over the target card. The dock's
     // left edge only moves with the layout step, which is exactly this box's stale lifecycle.
@@ -5899,18 +5906,28 @@ export function createHud(ctx, alerts) {
     const orreryEl = orreryCluster ? orreryCluster.host.querySelector('.orr-cluster') : null;
     objectiveEdgeBoxes.orreryEl = orreryEl;
     objectiveEdgeBoxes.orrery = orreryCluster ? plateBox(orreryEl) : null;
+    objectiveEdgeBoxes.rail = railEl === orreryEl ? objectiveEdgeBoxes.orrery : plateBox(railEl);
     return objectiveEdgeBoxes;
   }
+  let overlayLayoutObserver = null;
+  if (typeof ResizeObserver === 'function') {
+    overlayLayoutObserver = new ResizeObserver(invalidateObjectiveEdgeBoxes);
+    const railEl = root.querySelector('.orr-hud-cluster .orr-cluster, .sf-prail');
+    if (railEl) overlayLayoutObserver.observe(railEl);
+    if (rightDock) overlayLayoutObserver.observe(rightDock);
+    hudUnsubscribers.push(() => overlayLayoutObserver?.disconnect());
+  }
+  on('hud:layoutChanged', invalidateObjectiveEdgeBoxes);
+  on('settings:changed', invalidateObjectiveEdgeBoxes);
 
   // Both roots are static index.html markup: resolve each once, retrying only while absent.
   let toastsLaneEl = null;
   let alertsEl = null;
   function overlaySafeSlot(layout, w, h) {
     const safe = layout && layout.centerSafe;
-    const railEl = root.querySelector?.('.orr-hud-cluster .orr-cluster, .sf-prail');
-    const dockEl = root.querySelector?.('.sf-rightdock');
-    const rail = railEl?.getBoundingClientRect?.();
-    const dock = dockEl?.getBoundingClientRect?.();
+    const measured = objectiveEdgeObstacles();
+    const rail = measured.rail;
+    const dock = measured.right;
     const railVisible = rail && rail.width > 0 && rail.height > 0;
     const dockVisible = dock && dock.width > 0 && dock.height > 0;
     if (w > 760 && h <= 500 && layout?.safe) {
@@ -5944,12 +5961,15 @@ export function createHud(ctx, alerts) {
     return { x, width: Math.min(width, w - x - 12), wide: false };
   }
   function freeOverlayBands(slot, h, layout) {
+    const measured = objectiveEdgeObstacles();
     const candidates = [
       ...root.querySelectorAll?.('.orr-hud-cluster .orr-cluster, .sf-prail, .sf-rightdock, .sf-command-deck, .sf-nav-readout, .sf-nav-label, .sf-mt-obj, .sf-vtape--on, .sf-commtape, .sf-dock-prompt, .sf-tell.is-on, #sf-prompt-deck, #sf-tutorial-flight-card') || [],
       ...document.querySelectorAll?.('#alerts > .sf-alert:not([hidden])') || [],
     ];
     const blockers = candidates.map((el) => {
-      const rect = el.getBoundingClientRect?.();
+      const rect = el === measured.railEl ? measured.rail
+        : el === measured.rightEl ? measured.right
+          : el.getBoundingClientRect?.();
       return rect && {
         left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom,
         width: rect.width, height: rect.height,
