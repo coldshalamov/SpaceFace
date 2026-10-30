@@ -77,16 +77,28 @@
     "twist": "The leftover tower is solid wreck. Naming it on a throw release does not knock it. The swing has to contact. Guns are the leftover slow cut.",
     "solutions": [
       {
-        "id": "wrecking_ball",
-        "verb": "whip",
-        "leftoverMechanic": "wrecking_ball",
-        "how": "Latch leftover mass and whip it through leftover demolition_tower. Leftover settle is whip contact (tether:whipImpact). Throw release does not pay. PQ-032.00 leftover."
+        "id": "sealed_delivery",
+        "verb": "fly",
+        "leftoverMechanic": "sealed_delivery",
+        "how": "Run the sealed alloys from Helios to the Tethys berth and let the manifest re-categorize silent. Live completionMethod sealed_delivery (campaign47a:b1:alloy_run)."
       },
       {
-        "id": "cut_down",
+        "id": "partial_settle",
+        "verb": "fly",
+        "leftoverMechanic": "partial_settle",
+        "how": "Deliver the run short — a partial settle still files. Live completionMethod partial_settle (campaign47a:b1:alloy_run)."
+      },
+      {
+        "id": "mites_then_furnace",
         "verb": "fire",
-        "leftoverMechanic": "cut_down",
-        "how": "Kill leftover demolition_tower with leftover guns. Leftover completionMethod cut_down. Same leftover tower, second leftover verb."
+        "leftoverMechanic": "mites_then_furnace",
+        "how": "Clear the repair mites off the infested hauler, then feed the ore pods to the CR-FEED intake. Live completionMethod mites_then_furnace (campaign47a:b1:infested)."
+      },
+      {
+        "id": "furnace_then_mites",
+        "verb": "tow",
+        "leftoverMechanic": "furnace_then_mites",
+        "how": "Feed the hauler's pods to the furnace first, then finish the mites. Live completionMethod furnace_then_mites (campaign47a:b1:infested)."
       }
     ],
     "provingFrame": "Seed 3200 leftover headless test/pq-032-00-set-pieces.test.mjs: leftover whip contact settles B1. Throw release does not. Headed GPU strip is peeled this leaf. Live settle is PQ-032.00, not this sheet."
@@ -95,15 +107,15 @@
     {
       "id": "comms.47a.b1.primary",
       "speaker": "KESSLER",
-      "line": "Knock the dead tower. Swing mass or cut it.",
-      "consequence": "Player steers to leftover demolition_tower. No menu.",
+      "line": "The book posts the alloy run. Scale 4 and the furnace follow.",
+      "consequence": "Player reads the alloy run first. No menu.",
       "cite": "src/story/campaign47a/embodiedDialogue.js#comms.47a.b1.primary"
     },
     {
       "id": "comms.47a.b1.recovery",
       "speaker": "KESSLER",
-      "line": "Tower still stands. Knock it down.",
-      "consequence": "Leftover recovery. The tower is still the verb.",
+      "line": "Honest work holds. The book re-posts the next job.",
+      "consequence": "Leftover recovery. The next job re-posts on the board.",
       "cite": "src/story/campaign47a/embodiedDialogue.js#comms.47a.b1.recovery"
     }
   ],

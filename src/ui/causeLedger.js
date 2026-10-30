@@ -211,7 +211,7 @@ export const causeLedger = {
 
   // ── hover tooltip over market commodity rows (cosmetic; fully guarded; read-only) ────────────
   _mountTooltip() {
-    if (typeof document === 'undefined') return;
+    if (typeof document === 'undefined' || typeof document.addEventListener !== 'function') return;
     this._over = (ev) => {
       const row = ev.target && ev.target.closest && ev.target.closest('[data-cmdty], .st-row');
       // `.st-market` is the legacy hub host; `.sx-mkt` is the live station rebuild's market screen

@@ -93,6 +93,18 @@
         "verb": "fire",
         "leftoverMechanic": "clear_and_tow",
         "how": "Drop the leftover escorts first — Cinder One, Two and Three — then tow one intact hull to the ring. Live completionMethod clear_and_tow (campaign47a:b2:cinder)."
+      },
+      {
+        "id": "terminal_register_kill",
+        "verb": "fire",
+        "leftoverMechanic": "terminal_register_kill",
+        "how": "Scan the marked vessel, then fire on the register mark — the register decides what the wreck is worth. Live completionMethod terminal_register_kill (campaign47a:b2:elroy)."
+      },
+      {
+        "id": "custody_reel",
+        "verb": "reel",
+        "leftoverMechanic": "custody_reel",
+        "how": "Reel the mark in whole — custody over a kill. Live completionMethod custody_reel (campaign47a:b2:elroy)."
       }
     ],
     "provingFrame": "Seed 3200 leftover headless test/pq-032-00-set-pieces.test.mjs: leftover pod at dest dock pays. Leftover pod 189 WU from the berth does not. Headed GPU strip is peeled this leaf. Live settle is PQ-032.00, not this sheet."

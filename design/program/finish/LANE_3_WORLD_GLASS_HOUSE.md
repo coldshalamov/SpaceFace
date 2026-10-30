@@ -13,7 +13,6 @@ Status words: `OPEN`, `ACTIVE`, `LANDED <sha>`, `SKIPPED (<reason>)`.
 ## Claimed paths (beyond README §3)
 
 ## Inbox (other lanes append one line: date, lane, path, what/why)
-2026-10-29, Lane 1, `b6673fe1b3c` (`beatStandard`/`factionRegisters`) — refresh the active `fix-spine-vocab` packet and validate `docs/worldbuilding/beats/47a-first-blood.beat.json` before finish: lines 88/94 use `stage_tow`/`corridor_pull`; lines 104/111 cite barks that differ from live text.
 
 ## Defects (this lane's share of the demo defect ledger — delete a row in the commit that fixes it)
 
@@ -175,7 +174,14 @@ Rows are the spec (`build_map.md` §31–§32; read each row's prose before brie
   genuinely skips stick drills + power ladder + first-flight card while the rail stays; situation
   lines honor the rail's silence gate (stroke no longer starved). 21/21 + rc-458 12/12.
 - **Row 454 GOLD-M1** — the integration pass: play the first hour on the real route, fix until every first-hour system is gold or names its missing file.
-- **Audit-fix implementers in flight** (digests `.devshots/finish/lane3/triage-*.md`):
+- **Audit-fix packets landed 2026-10-29/30:** encounter bookkeeping `37e1ebe0d24`, heat victim
+  `d79feb41121`, mining/careers `bfa9ec3b6a9`, save restore `7b4cced23e8`, unique-wreck persistence
+  `bd978111178`, special500 registered in production `6ca62459ba5`, c47a truth `97283ecd9c1`,
+  spine live vocabulary + first-blood sheet `cc0a86c423b`. Open follow-ups: unique-wreck story
+  reward flags (`unlockFlag`/buyer choices, Choir–Vael treaty) have no production reader yet;
+  ironmaw-board + onboarding-continue finishing; story reds batch 2 (beat-standard bookContracts
+  fallback, campaign47a-live, embodied-save, ecology-reactions, stranger-replay, f15 wrecks).
+- **Audit-fix implementers originally launched** (digests `.devshots/finish/lane3/triage-*.md`):
   fix-c47a-truth (embodied register→Pick-a-Side lock, Deep Reach softlock, NG+ latch, dock gating),
   fix-onboarding-continue (rescue-era Continue restores no actors/panel — top systems-b item),
   fix-heat-victim (unprovoked fire adds zero heat — victim type read damage channel),

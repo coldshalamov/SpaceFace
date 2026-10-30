@@ -83,7 +83,19 @@ export function leftoverSpineMethods(beatId) {
   const def = leftoverSpineDef(beatId);
   const methods = def && def.missionBoardContract && def.missionBoardContract.params
     && def.missionBoardContract.params.completionMethods;
-  return Array.isArray(methods) ? methods.slice() : [];
+  if (Array.isArray(methods)) return methods.slice();
+  // Book-route beats carry no single board contract; their live vocabulary is the
+  // union of each posted book contract's two physical solutions.
+  const book = def && Array.isArray(def.bookContracts) ? def.bookContracts : [];
+  const live = [];
+  for (const row of book) {
+    const pair = row && row.params && row.params.completionMethods;
+    if (!Array.isArray(pair)) continue;
+    for (const mech of pair) {
+      if (typeof mech === 'string' && mech && !live.includes(mech)) live.push(mech);
+    }
+  }
+  return live;
 }
 
 export function leftoverSpinePlaces(beatId) {

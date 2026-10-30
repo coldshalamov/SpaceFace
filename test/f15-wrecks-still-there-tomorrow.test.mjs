@@ -104,8 +104,11 @@ function dropLiveWrecks(state) {
 test('two kills respawn as wrecks near their death positions after save and load', () => {
   const h = boot();
   try {
-    const posA = sectorLocalToGlobalForSector({ x: 64000, z: -61000 }, SECTOR_ID);
-    const posB = sectorLocalToGlobalForSector({ x: 64300, z: -60880 }, SECTOR_ID);
+    // Positions must classify inside Helios itself — after The Bolus claimed the
+    // dione lane rect, the old 64k offsets drifted into another sector and the
+    // wrecks correctly rematerialized over there instead.
+    const posA = sectorLocalToGlobalForSector({ x: 6000, z: -5000 }, SECTOR_ID);
+    const posB = sectorLocalToGlobalForSector({ x: 6300, z: -4880 }, SECTOR_ID);
     killAt(h, posA, 7001, 'Gray Havoc');
     killAt(h, posB, 7002, 'Pale Ember');
     assert.equal(aftermathForSector(h.state, SECTOR_ID).length, 2);
@@ -137,7 +140,7 @@ test('two kills respawn as wrecks near their death positions after save and load
 test('past the cap the count holds and the save wreck bytes stop growing', () => {
   const h = boot();
   try {
-    const pos = sectorLocalToGlobalForSector({ x: 64000, z: -61000 }, SECTOR_ID);
+    const pos = sectorLocalToGlobalForSector({ x: 6000, z: -5000 }, SECTOR_ID);
     for (let i = 0; i < MAX_PER_SECTOR; i++) killAt(h, pos, 7100 + i, 'Gray Havoc');
     const atCap = aftermathForSector(h.state, SECTOR_ID);
     assert.equal(atCap.length, MAX_PER_SECTOR);
