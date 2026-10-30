@@ -2197,6 +2197,11 @@ html.sf-reduce-motion .sf-drawer--entity .sf-drawer__deck > * { animation: none;
 .orr-replay__transport { position:absolute; left:0; right:0; bottom:22px; z-index:3;
   display:flex; justify-content:center; align-items:center; gap:clamp(18px, 3vw, 44px); }
 html.sf-reduce-motion .orr-replay__pulse { display:none; }
+/* Phone widths: the legend wraps to 4-5 lines, taller than the 64px above the
+ * playhead, so it grows upward from just above the hand instead of down into it. */
+@media (max-width:560px) {
+  .orr-replay__readout { top:auto; bottom:calc(100% - 52px); }
+}
 @media (forced-colors:active) {
   .orr-replay__count, .orr-replay__total, .orr-replay__sep { color:CanvasText; text-shadow:none; }
   .orr-replay__codes, .orr-replay__readout, .orr-replay__ev, .orr-replay__sec {
