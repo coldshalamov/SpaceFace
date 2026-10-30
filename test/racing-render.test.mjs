@@ -54,6 +54,27 @@ test('phase-scoped mission view restores the preference in the real camera owner
   assert.equal(state.settings.gameplay.steeringView,'overhead');
 });
 
+test('ordinary Swarm defers racing resources until an authored race becomes active',()=>{
+  const state={mode:'flight',simTime:2,ui:{},world:{currentSectorId:'sector_swarm',frameOrigin:{x:0,z:0}},missions:{active:[]}};
+  const scene=new THREE.Scene(),view=createRacingCourseView(scene,state);
+  view.frame();
+  assert.equal(view.root,null,'no authored race means no course root or race-only materials');
+  assert.equal(scene.children.length,0,'ordinary Swarm does not join the hidden racing cohort to its scene');
+
+  const offer=racingOfferFor('contract_junction_draft');offer.status='active';offer.params.phase='chase';offer.params.raceStartSimS=0;
+  state.world.currentSectorId=offer.params.courseSectorId;
+  state.missions.active.push(offer);
+  view.frame();
+  assert.equal(view.root.visible,true,'the active race builds before its frame is drawn');
+  assert.equal(view.root.getObjectByName('Next checkpoint')?.isMesh,true);
+  assert.equal(view.root.getObjectByName('Draft pace beacon')?.isMesh,true);
+  assert.equal(view.root.getObjectByName('Massline anchors and crossing refuges')?.isInstancedMesh,true);
+  assert.equal(view.root.children.filter((o)=>o.name==='Rival Massline core').length,3);
+  assert.equal(view.root.children.filter((o)=>o.name==='Rival Massline strand').length,3);
+  view.dispose();
+  assert.equal(scene.children.length,0,'disposal removes the admitted race cohort');
+});
+
 test('course view uses vertical apertures and the same pace sampler, survives rebases, disposes idempotently',()=>{
   const offer=racingOfferFor('contract_junction_draft');offer.status='active';offer.params.phase='chase';offer.params.raceStartSimS=0;
   const state={mode:'flight',simTime:2,ui:{},world:{currentSectorId:offer.params.courseSectorId,frameOrigin:{x:0,z:0}},missions:{active:[offer]}};
