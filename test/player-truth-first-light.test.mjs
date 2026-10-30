@@ -16,7 +16,9 @@ test('the public settings actor only accepts the known First light choices', () 
 function fixture({ title = 'First light', visible = true, cancel = 'Use first light', confirm = 'Play',
   cancelVisible = true, confirmText = confirm, clickError = null } = {}) {
   const clicks = [], events = [];
-  let handler, handlerOptions, registrations = 0;
+  let handler, handlerOptions, handlerSelector, registrations = 0;
+  let active = visible;
+  let beforeFirstCount = null;
   const control = (name, raw, shown = true) => ({
     name, raw, shown,
     first() { return this; },
@@ -26,6 +28,9 @@ function fixture({ title = 'First light', visible = true, cancel = 'Use first li
       assert.equal(options, undefined, 'trusted default click; no force or dispatch bypass');
       if (clickError && name === 'Play') throw clickError;
       clicks.push(name);
+      active = false;
+      cancelControl.shown = false;
+      confirmControl.shown = false;
     },
   });
   const cancelControl = control(cancel, `${cancel} ESC`, cancelVisible);
@@ -36,28 +41,47 @@ function fixture({ title = 'First light', visible = true, cancel = 'Use first li
   const dialog = {
     getByRole(role, options = {}) {
       assert.equal(role, 'button');
-      const matches = controls.filter(button => button.shown && (!options.name
+      const matches = () => controls.filter(button => active && button.shown && (!options.name
         || (options.name instanceof RegExp ? options.name.test(button.name) : options.name === button.name)));
-      return { async count() { return matches.length; },
-        async allTextContents() { return matches.map(button => button.raw); },
-        async click(options) { assert.equal(matches.length, 1); return matches[0].click(options); } };
+      return { async count() { return matches().length; },
+        async allTextContents() { return matches().map(button => button.raw); },
+        async click(options) { const current = matches(); assert.equal(current.length, 1); return current[0].click(options); } };
     },
   };
   const page = {
-    locator(selector) { return selector.includes('__cancel') ? cancelControl : selector.includes('__ok') ? confirmControl : titleLocator; },
+    locator(selector) { handlerSelector = selector; return selector.includes('__cancel') ? cancelControl : selector.includes('__ok') ? confirmControl : titleLocator; },
+    async evaluate() { return active && title.trim() === 'First light'; },
     getByRole(role, options) {
       assert.equal(role, 'dialog');
       assert.deepEqual(options, { name: 'First light', exact: true });
       return dialog;
     },
-    async addLocatorHandler(_locator, callback, options) {
+    async addLocatorHandler(locator, callback, options) {
       registrations++;
+      handlerSelector = locator.selector || handlerSelector;
       handlerOptions = options;
       handler = callback;
     },
   };
+  const dialogButtons = dialog.getByRole.bind(dialog);
+  dialog.getByRole = (role, options = {}) => {
+    const locator = dialogButtons(role, options);
+    if (role === 'button' && options.name instanceof RegExp) {
+      const originalCount = locator.count;
+      locator.count = async () => {
+        if (beforeFirstCount) {
+          const close = beforeFirstCount;
+          beforeFirstCount = null;
+          close();
+        }
+        return originalCount();
+      };
+    }
+    return locator;
+  };
   return { page, clicks, events, get registrations() { return registrations; },
-    get handlerOptions() { return handlerOptions; },
+    get handlerOptions() { return handlerOptions; }, get handlerSelector() { return handlerSelector; },
+    closeBeforeCounts() { beforeFirstCount = () => { active = false; cancelControl.shown = false; confirmControl.shown = false; }; },
     install: () => installFirstLightPromptHandler(page, (...row) => events.push(row)),
     answer: () => handler() };
 }
@@ -83,7 +107,18 @@ test('the locator handler does not wait for its title to hide inside another act
   await f.answer();
   assert.deepEqual(f.clicks, ['Play']);
   assert.deepEqual(f.handlerOptions, { noWaitAfter: true });
+  assert.match(f.handlerSelector, /#sf-confirm-root\.sf-confirm--in #sf-confirm-title/,
+    'the handler only owns an actively presented confirm, not its closing fade');
   assert.equal(f.events.length, 1, 'the settings choice is recorded once');
+});
+
+test('a prompt dismissed between active read and accessible controls is treated as dismissed', async () => {
+  const f = fixture();
+  await f.install();
+  f.closeBeforeCounts();
+  await f.answer();
+  assert.deepEqual(f.clicks, [], 'the actor never clicks after the prompt has started closing');
+  assert.deepEqual(f.events, [], 'a stale callback is not reported as a settings choice');
 });
 
 test('Play takes precedence when legacy Keep my settings is also present', async () => {
