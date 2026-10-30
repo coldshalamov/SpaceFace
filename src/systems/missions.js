@@ -288,6 +288,8 @@ import { getDressingRow } from '../world/dressingTable.js';
 // Cargo single-writer helper (same pattern economy.js uses) — delivery missions consume the
 // required cargo through this so usedVolume/usedMass caches stay correct (§0.6).
 import { addCargo, releasableContractUnits, removeCargo, sellableCargoQuantity } from './cargo.js';
+
+const COMMODITY_NAME = new Map(COMMODITIES.map((row) => [row.id, row.name]));
 // NXI-169 — acceptance-time revalidation of shortage-backed offers reads the same live hopper
 // the posting used (pure exported read; economy stays the sole stock/market writer).
 import { starvedIndustryNeedFor, marketStockStatus } from './economy.js';
@@ -1657,6 +1659,7 @@ export const missions = {
       // recorded — the ordered B0 list needs 'skim' landed before 'dock'.
       this._resolveContract47aSkimForDock(stationId);
       this._onDockedObjectives(stationId);
+      this._settleCaptainGratitude(stationId);
       this._onContract47aB3Docked(stationId);
       // W-BOOKS-3-4: a blown Hawser seam gets Slate's second pass at the yard — the
       // column keeps its entry once the weld lands.
@@ -4540,6 +4543,35 @@ export const missions = {
       ttl: 4,
     });
     this._completeMission(m, index);
+  },
+
+  /**
+   * THE SAVED FREIGHTER SENDS CARGO (W5): after enough completed relief runs, the captain ships
+   * you a gratuitous lot of the run's own goods, waiting at their home dock. The gift rides the
+   * cycle record (saved with the game), pays through cargo's own addCargo funnel, and waits out
+   * a full hold for the next dock. A dead captain ships nothing; the stamp closes either way.
+   */
+  _settleCaptainGratitude(stationId) {
+    const state = this.state;
+    const cycles = state.missions?.captainOrderCycles;
+    if (!cycles || !stationId) return;
+    for (const [captainId, rec] of Object.entries(cycles)) {
+      const gift = rec?.gratitude;
+      if (!gift || gift.paid === true || gift.stationId !== stationId) continue;
+      const captain = state.traffic?.captainRoster?.find((row) => row && row.id === captainId);
+      if (captain && captain.alive === false) { gift.paid = true; continue; }
+      let added = 0;
+      try { added = addCargo(state, gift.cmdtyId, gift.qty) || 0; } catch (_) { added = 0; }
+      if (added <= 0) continue;
+      gift.paid = true;
+      const name = captain?.name || 'The captain you rescued';
+      const label = COMMODITY_NAME.get(gift.cmdtyId) || 'the relief goods';
+      this.bus.emit('toast', {
+        text: `${name}'s gratitude lands in your hold: ${added}u of ${label}, off the relief route.`,
+        kind: 'success', ttl: 6,
+      });
+      this.bus.emit('freight:gratitudeGift', { captainId, stationId, cmdtyId: gift.cmdtyId, qty: added });
+    }
   },
 
   /** Dock-at-destination objectives: delivery / passenger / salvage / smuggling / escort. These are

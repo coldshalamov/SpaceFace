@@ -75,13 +75,29 @@ export function normalizeStandingOrders(raw) {
       seen: Array.isArray(row.seen) ? row.seen.map(String).slice(-8) : [] })) : [];
 }
 
+/** Relief cycles that earn the captain's gratuitous gift — the seed shape "a freighter you saved
+ *  sends cargo later": the third completed run, then every fourth after. */
+export function captainGratitudeDue(cycle) {
+  const n = Math.max(0, Math.floor(Number(cycle) || 0));
+  return n >= 3 && (n - 3) % 4 === 0;
+}
+
 export function noteStandingOrderCompletion(state, mission) {
   if (!mission?.stationId || !mission.type) return;
   if (mission.source === 'captainStandingOrder') {
     const captainId = mission.cause?.captainId;
     if (captainId) {
       const cycles = state.missions.captainOrderCycles || (state.missions.captainOrderCycles = {});
-      cycles[captainId] = { cycle: (cycles[captainId]?.cycle || 0) + 1, dueAtS: (state.simTime || 0) + 600 };
+      const previous = cycles[captainId];
+      const rec = { cycle: (previous?.cycle || 0) + 1, dueAtS: (state.simTime || 0) + 600,
+        gratitude: previous?.gratitude || null };
+      // The gift rides the run's own goods, waiting at the captain's home dock. A full hold
+      // keeps it waiting; a stamp already paid stays paid.
+      if (captainGratitudeDue(rec.cycle)) {
+        rec.gratitude = { stationId: mission.stationId, cmdtyId: mission.params?.cmdtyId || 'cmdty_food',
+          qty: 2, paid: false };
+      }
+      cycles[captainId] = rec;
       while (Object.keys(cycles).length > 24) delete cycles[Object.keys(cycles)[0]];
     }
     const row = state.missions.standingOrders?.find(item => item.id === mission.cause?.standingOrderId);
