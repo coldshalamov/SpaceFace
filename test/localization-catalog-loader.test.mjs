@@ -3,11 +3,15 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 import {
+  createBarkTranslationsRequest,
   createEnglishCatalogRequest,
+  ensureBarkTranslationsLoaded,
   ensureEnglishCatalogLoaded,
   isEnglishCatalogReady,
+  resolveBarkTranslationsUrl,
   resolveEnglishCatalogUrl,
 } from '../src/localization/pipeline.js';
+import { barkMessagesFor, barkParityErrors, isBarkTranslationsReady } from '../src/localization/barks.js';
 import {
   ensureLocalizationReady,
   localizeText,
@@ -20,6 +24,10 @@ test('Node tools initialize the English catalog from the generated sidecar witho
   const messages = await ensureEnglishCatalogLoaded();
   assert.equal(isEnglishCatalogReady(), true);
   assert.deepEqual(messages, generated.messages);
+  assert.equal(isBarkTranslationsReady(), true, 'the sibling bark sidecar is installed synchronously for Node tools');
+  assert.equal(await ensureBarkTranslationsLoaded(), true);
+  assert.deepEqual(barkParityErrors(), []);
+  assert.equal(Object.keys(barkMessagesFor('pt-BR')).length, 1455);
 });
 
 test('boot readiness keeps default English and live locale switching on the loaded catalog', async () => {
@@ -61,6 +69,25 @@ test('English catalog URL follows dev-root and pinned retail release bases', () 
   );
 });
 
+test('bark translation URL follows dev-root and pinned retail release bases', () => {
+  assert.equal(
+    resolveBarkTranslationsUrl({
+      production: false,
+      moduleUrl: 'https://game.example/src/localization/pipeline.js',
+    }),
+    'https://game.example/src/localization/barks.generated.json',
+  );
+  assert.equal(
+    resolveBarkTranslationsUrl({
+      production: true,
+      moduleUrl: 'https://game.example/chunks/localization.js',
+      documentBase: 'https://game.example/app/index.html',
+      releaseBase: './releases/candidate-123/',
+    }),
+    'https://game.example/app/releases/candidate-123/src/localization/barks.generated.json',
+  );
+});
+
 test('English catalog request coalesces callers and rejects malformed payloads', async () => {
   let calls = 0;
   const payload = {
@@ -88,4 +115,30 @@ test('English catalog request coalesces callers and rejects malformed payloads',
     fetchImpl: async () => ({ ok: true, json: async () => ({ ...payload, locale: 'fr-FR' }) }),
   });
   await assert.rejects(invalid(), /invalid schema or inventory/);
+});
+
+test('bark translation request installs the complete sidecar, coalesces callers, and rejects bad shapes', async () => {
+  const payload = JSON.parse(readFileSync(
+    new URL('../src/localization/barks.generated.json', import.meta.url), 'utf8'));
+  let calls = 0;
+  const load = createBarkTranslationsRequest({
+    url: 'https://game.example/src/localization/barks.generated.json',
+    fetchImpl: async (url) => {
+      calls += 1;
+      assert.equal(url, 'https://game.example/src/localization/barks.generated.json');
+      return { ok: true, json: async () => payload };
+    },
+  });
+  const first = load();
+  const second = load();
+  assert.equal(first, second);
+  assert.equal(await first, true);
+  assert.equal(calls, 1);
+  assert.deepEqual(barkParityErrors(), []);
+
+  const invalid = createBarkTranslationsRequest({
+    url: 'https://game.example/barks.json',
+    fetchImpl: async () => ({ ok: true, json: async () => ({ ...payload, schema: 'wrong' }) }),
+  });
+  await assert.rejects(invalid(), /Bark translation catalog is invalid/);
 });
