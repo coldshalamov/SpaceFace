@@ -13,6 +13,7 @@ import * as THREE from 'three';
 import { updatePresentedSceneMatrices } from './presentedSceneMatrices.js';
 import { isOrchardFrame } from '../data/anvilOrchardIdentity.js';
 import { installShaderLinkReporter } from './shaderLinkReporter.js';
+import { createBufferResizeDiagnostic } from './bufferResizeDiagnostic.js';
 import { createRacingCourseView } from './racingCourseView.js';
 import { installProgramBinaryCache } from './programBinaryCache.js';
 import { pickNextContactCompileSubject } from './nextContactWarm.js';
@@ -11699,6 +11700,68 @@ export const render = {
       powerPreference: glFlags.powerPreference,
       preserveDrawingBuffer: glFlags.preserveDrawingBuffer,
     });
+    // Failure-only geometry history for the exact Three VBO resize error. This is explicitly
+    // query-gated because it records per-draw attribute shapes; diagnostic runs are not
+    // performance evidence. The outer render wrapper catches WebGLObjects.update failures that
+    // occur in projectObject before renderBufferDirect receives the failing geometry.
+    if ((query && query.get('bufferResizeDiag') === '1') || globalThis.__SF_BUFFER_RESIZE_DIAG__ === true) {
+      const resizeDiagnostic = createBufferResizeDiagnostic();
+      const contextGeneration = () => state.render?.contextRecovery?.generation
+        ?? state.contextRestoreSeq
+        ?? 0;
+      const publishResizeFailure = (error, scene, geometry = null, object = null) => {
+        try {
+          const record = resizeDiagnostic.captureFailure(
+            error,
+            scene,
+            contextGeneration(),
+            geometry,
+            object,
+            (candidateGeometry) => packageGeometryUploadDiagnostics([candidateGeometry], { limit: 1 }).rows[0] || null,
+          );
+          if (!record) return;
+          renderer.__sfBufferResizeFailure = record;
+          if (state.render) {
+            state.render.bufferResizeDiagnostic = {
+              enabled: true,
+              performanceEligible: false,
+              lastFailure: record,
+            };
+          }
+        } catch (_) { /* diagnostic failures must never replace the render error */ }
+      };
+      if (state.render) {
+        state.render.bufferResizeDiagnostic = {
+          enabled: true,
+          performanceEligible: false,
+          lastFailure: null,
+        };
+      }
+      if (typeof renderer.renderBufferDirect === 'function') {
+        const originalRenderBufferDirect = renderer.renderBufferDirect;
+        renderer.renderBufferDirect = function renderBufferDirect(camera, scene, geometry, material, object, group) {
+          try {
+            const result = originalRenderBufferDirect.call(this, camera, scene, geometry, material, object, group);
+            resizeDiagnostic.snapshotSuccessfulDraw({ geometry, object, contextGeneration: contextGeneration() });
+            return result;
+          } catch (error) {
+            publishResizeFailure(error, scene, geometry, object);
+            throw error;
+          }
+        };
+      }
+      if (typeof renderer.render === 'function') {
+        const originalRender = renderer.render;
+        renderer.render = function render(scene, camera) {
+          try {
+            return originalRender.call(this, scene, camera);
+          } catch (error) {
+            publishResizeFailure(error, scene);
+            throw error;
+          }
+        };
+      }
+    }
     // three's first use of every program reads three shader logs, each a blocking round trip to the GPU
     // process. Link failures are still reported, from the program info that first use fetches anyway
     // (shaderLinkReporter.js); ?shaderChecks=1 keeps three's full check with the failing source lines.

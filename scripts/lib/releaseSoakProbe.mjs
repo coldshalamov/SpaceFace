@@ -235,6 +235,7 @@ export async function runReleaseSoakProbe({
   minDurationMs = 0,
   cycleScreenshots = true,
   immutableSaveCycles = 0,
+  bufferResizeDiagnostic = process.env.SF_BUFFER_RESIZE_DIAG === '1',
   baselineSource = null,
   log = () => {},
 } = {}) {
@@ -268,6 +269,9 @@ export async function runReleaseSoakProbe({
     logLines.push(line);
     log(line);
   };
+  if (bufferResizeDiagnostic) {
+    doLog('buffer-resize diagnostic enabled; per-draw tracking is performance-ineligible');
+  }
 
   let ownedServer = null;
   let browserServer = null;
@@ -364,7 +368,9 @@ export async function runReleaseSoakProbe({
       });
       assert.equal(ownedServer.ownsServer, true, 'browser soak must own its canonical in-process server');
       rootUrl = ownedServer.baseUrl;
-      ({ page, browser, context, browserServer, browserChildProcess } = await launchBrowser(viewport));
+      ({ page, browser, context, browserServer, browserChildProcess } = await launchBrowser(viewport, {
+        bufferResizeDiagnostic,
+      }));
       // Lane selection for soaks: the canonical root forbids query strings, so
       // SF_SOAK_SIM_LANE seeds localStorage 'sf.simLane' before app scripts run.
       if (process.env.SF_SOAK_SIM_LANE) {
@@ -397,7 +403,11 @@ export async function runReleaseSoakProbe({
         page = owned.page || page;
         canonicalUrlTracker = owned.canonicalUrlTracker || canonicalUrlTracker;
         rootUrl = owned.rootUrl || rootUrl;
-      }, taskId, { baselineSourcePath: baselineSource?.path || null, log: doLog });
+      }, taskId, {
+        bufferResizeDiagnostic,
+        baselineSourcePath: baselineSource?.path || null,
+        log: doLog,
+      });
       ({
         page,
         electronApp,
@@ -950,6 +960,11 @@ export async function runReleaseSoakProbe({
       cycles: { count: cycleResults.length, results: cycleResults.map((cycle) => cycle.summary) },
       immutableSaveDiagnostic,
       boot,
+      bufferResizeDiagnostic: bufferResizeDiagnostic ? {
+        enabled: true,
+        performanceEligible: false,
+        reason: 'opt-in per-draw attribute history is diagnostic-only',
+      } : null,
       hardware,
       soakWindow,
       pass: false,
@@ -1035,6 +1050,8 @@ export async function runReleaseSoakProbe({
             },
           } : null,
           opening: render ? {
+            bufferResizeDiagnostic: render.renderer?.__sfBufferResizeFailure || null,
+            bufferResizeDiagnosticPerformanceEligible: render.bufferResizeDiagnostic?.performanceEligible ?? null,
             firstPictureReady: render.openingFirstPictureReady === true,
             firstPicturePhase: render.openingFirstPicturePhase ? {
               stage: render.openingFirstPicturePhase.stage || null,
@@ -1117,7 +1134,7 @@ export async function runReleaseSoakProbe({
   }
 }
 
-async function launchBrowser(viewport, { enableTier1Counters = false } = {}) {
+async function launchBrowser(viewport, { enableTier1Counters = false, bufferResizeDiagnostic = false } = {}) {
   const executablePath = findSystemBrowser();
   assert(executablePath, 'headed Chrome or Edge is required for browser release-soak evidence');
   const { chromium } = await loadPlaywright();
@@ -1142,6 +1159,7 @@ async function launchBrowser(viewport, { enableTier1Counters = false } = {}) {
     assert(browserChildProcess, 'browser launch server must expose its owned child process');
     browser = await chromium.connect(browserServer.wsEndpoint());
     const context = await browser.newContext({ viewport, screen: viewport, deviceScaleFactor: 1, locale: 'en-US', colorScheme: 'dark' });
+    if (bufferResizeDiagnostic) await installBufferResizeDiagnosticInitScript(context);
     // Context and page init scripts have the same pre-document guarantee. Keep the context-level
     // install so any replacement page inherits the immutable measurement authority; the causal
     // New Game failure was a product-side counter-owner swap, not Playwright injection ordering.
@@ -1287,7 +1305,7 @@ async function launchElectron(
   root,
   onOwnership = () => {},
   taskId = 'release-soak-electron',
-  { enableTier1Counters = false, baselineSourcePath = null, log = console.log } = {},
+  { enableTier1Counters = false, bufferResizeDiagnostic = false, baselineSourcePath = null, log = console.log } = {},
 ) {
   const setupLog = typeof log === 'function' ? log : console.log;
   const awaitOptionalSetup = async (label, operation, timeoutMs = 10_000, onTimeout = null) => {
@@ -1421,6 +1439,11 @@ async function launchElectron(
   setupLog('electron setup initial load-state wait begin (60s + one 180s retry)');
   await awaitElectronInitialCanonicalLoad(page, electronApp, rootUrl);
   setupLog('electron setup initial load-state wait complete');
+  if (bufferResizeDiagnostic) {
+    setupLog('electron setup buffer-resize diagnostic reload begin (performance-ineligible)');
+    await reloadElectronWithBufferResizeDiagnostic(page, pageIssueTracker);
+    setupLog('electron setup buffer-resize diagnostic reload complete');
+  }
   // Arm the read-only GL traps on the live page: without this the Electron route ran every soak
   // with both traps disarmed — they only rode the opt-in tier1-counter reload — which is why the
   // v6 acceptance pair captured 256 dead-handle warnings with zero trapped stacks. launchBrowser
@@ -1515,6 +1538,18 @@ export async function installTier1CountersInitScript(target) {
   assert(target && typeof target.addInitScript === 'function', 'Tier-1 counters require an init-script seam');
   await target.addInitScript(() => {
     Object.defineProperty(globalThis, '__SPACEFACE_PERF_COUNTERS__', {
+      value: true,
+      configurable: false,
+      enumerable: false,
+      writable: false,
+    });
+  });
+}
+
+export async function installBufferResizeDiagnosticInitScript(target) {
+  assert(target && typeof target.addInitScript === 'function', 'buffer resize diagnostic requires an init-script seam');
+  await target.addInitScript(() => {
+    Object.defineProperty(globalThis, '__SF_BUFFER_RESIZE_DIAG__', {
       value: true,
       configurable: false,
       enumerable: false,
@@ -2078,6 +2113,21 @@ export async function reloadElectronWithTier1Counters(page, pageIssueTracker, { 
   } finally {
     assert.equal(pageIssueTracker.endExpectedNavigation(navigationToken), true,
       'Tier-1 Electron reload must release its expected-navigation token');
+  }
+}
+
+export async function reloadElectronWithBufferResizeDiagnostic(page, pageIssueTracker, { timeoutMs = 90_000 } = {}) {
+  assert(pageIssueTracker
+    && typeof pageIssueTracker.beginExpectedNavigation === 'function'
+    && typeof pageIssueTracker.endExpectedNavigation === 'function',
+  'buffer resize diagnostic Electron reload requires expected-navigation ownership');
+  await installBufferResizeDiagnosticInitScript(page);
+  const navigationToken = pageIssueTracker.beginExpectedNavigation('buffer-resize-diagnostic-install');
+  try {
+    return await page.reload({ waitUntil: 'domcontentloaded', timeout: timeoutMs });
+  } finally {
+    assert.equal(pageIssueTracker.endExpectedNavigation(navigationToken), true,
+      'buffer resize diagnostic Electron reload must release its expected-navigation token');
   }
 }
 

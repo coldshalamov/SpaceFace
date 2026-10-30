@@ -27,11 +27,13 @@ import {
   installPostTeardownGlDeleteTrapCapture,
   launchIsolatedElectronApplication,
   probeWebGlContextLoss,
+  reloadElectronWithBufferResizeDiagnostic,
   readGlDeleteTrap,
   readPostTeardownGlDeleteTrapConsoleMessage,
 } from './lib/releaseSoakProbe.mjs';
 import { loadPlaywright } from './lib/load-playwright.mjs';
 import { installCspSafePlaywrightPolling, installFrameKeepalive } from './lib/playwrightCspPolling.mjs';
+import { flightReadyInPage } from './lib/alphaLiveBaselineRoute.mjs';
 import { bootToAuthoredFlight } from './lib/professionalTravelPublicRoute.mjs';
 import { installFirstLightPromptHandler } from './player-truth/routes.mjs';
 
@@ -48,6 +50,7 @@ function parseArgs(argv = process.argv.slice(2)) {
     else if (value === '--flight-timeout-ms') args.flightTimeoutMs = Number(argv[++index]);
     else if (value === '--task-id') args.taskId = String(argv[++index] || TASK_ID);
     else if (value === '--attribute-delete-errors') args.attributeDeleteErrors = true;
+    else if (value === '--public-save-load-before-context') args.publicSaveLoadBeforeContext = true;
     else if (value === '--help' || value === '-h') args.help = true;
     else throw new Error(`unknown argument: ${value}`);
   }
@@ -164,6 +167,7 @@ function compactPageState(state) {
       currentSectorFailure: state.opening.currentSectorFailure || null,
       gpuResidencyOwnerInactive: state.opening.gpuResidencyOwnerInactive || null,
     } : null,
+    bufferResizeDiagnostic: state.bufferResizeDiagnostic || null,
     contextRecovery: state.contextRecovery ? {
       losses: Number(state.contextRecovery.losses) || 0,
       restores: Number(state.contextRecovery.restores) || 0,
@@ -228,6 +232,8 @@ async function readPageState(page) {
           owner: state.render.lastGpuResidencyOwnerInactive.owner || null,
         } : null,
       } : null,
+      bufferResizeDiagnostic: state.render?.renderer?.__sfBufferResizeFailure || null,
+      bufferResizeDiagnosticPerformanceEligible: state.render?.bufferResizeDiagnostic?.performanceEligible ?? null,
       contextRecovery: recovery ? {
         losses: Number(recovery.losses || 0),
         restores: Number(recovery.restores || 0),
@@ -248,6 +254,59 @@ async function readPageState(page) {
       failurePresenterText: String(overlay?.innerText || overlay?.textContent || ''),
     };
   }).then(compactPageState);
+}
+
+async function runPublicSaveLoadBeforeContext(page, { saveTimeoutMs = 30_000, loadTimeoutMs = 120_000 } = {}) {
+  await page.evaluate(() => {
+    if (window.__SF_CONTEXT_SAVE_LOAD_TRIGGER__) return;
+    const events = { saves: 0, loads: 0, errors: [] };
+    window.__SF_CONTEXT_SAVE_LOAD_TRIGGER__ = events;
+    const bus = window.SF?.bus;
+    if (!bus || typeof bus.on !== 'function') {
+      events.errors.push('SF event bus unavailable');
+      return;
+    }
+    bus.on('save:completed', (payload = {}) => {
+      if (payload.autosave === true) return;
+      events.saves++;
+      events.savedSlot = payload.slot || null;
+    });
+    bus.on('save:loaded', (payload = {}) => {
+      events.loads++;
+      events.loadedSlot = payload.slot || null;
+    });
+    bus.on('save:error', (payload = {}) => {
+      if (events.errors.length < 8) events.errors.push(String(payload.reason || payload.failure || 'save-error').slice(0, 180));
+    });
+  });
+  const before = await readPageState(page);
+  const saveCount = await page.evaluate(() => Number(window.__SF_CONTEXT_SAVE_LOAD_TRIGGER__?.saves) || 0);
+  await page.keyboard.press('F5');
+  await page.waitForFunction((baseline) => {
+    const events = window.__SF_CONTEXT_SAVE_LOAD_TRIGGER__;
+    return !!events && events.saves > baseline;
+  }, saveCount, { timeout: saveTimeoutMs });
+  const loadCount = await page.evaluate(() => Number(window.__SF_CONTEXT_SAVE_LOAD_TRIGGER__?.loads) || 0);
+  const loadDeadline = Date.now() + loadTimeoutMs;
+  await page.keyboard.press('F9');
+  await page.waitForFunction((baseline) => {
+    const events = window.__SF_CONTEXT_SAVE_LOAD_TRIGGER__;
+    return !!events && events.loads > baseline;
+  }, loadCount, { timeout: Math.max(1, loadDeadline - Date.now()) });
+  await page.waitForFunction(flightReadyInPage, null, { timeout: Math.max(1, loadDeadline - Date.now()) });
+  const after = await readPageState(page);
+  if (after?.mode !== 'flight' || after?.authoredReady !== true || after?.docked === true) {
+    throw new Error(`public F5/F9 trigger did not leave authored active flight: ${JSON.stringify(after)}`);
+  }
+  const events = await page.evaluate(() => ({
+    saves: Number(window.__SF_CONTEXT_SAVE_LOAD_TRIGGER__?.saves) || 0,
+    loads: Number(window.__SF_CONTEXT_SAVE_LOAD_TRIGGER__?.loads) || 0,
+    savedSlot: window.__SF_CONTEXT_SAVE_LOAD_TRIGGER__?.savedSlot || null,
+    loadedSlot: window.__SF_CONTEXT_SAVE_LOAD_TRIGGER__?.loadedSlot || null,
+    errors: Array.isArray(window.__SF_CONTEXT_SAVE_LOAD_TRIGGER__?.errors)
+      ? window.__SF_CONTEXT_SAVE_LOAD_TRIGGER__.errors.slice(0, 8) : [],
+  }));
+  return { before, after, events };
 }
 
 async function writeJsonAtomic(filePath, value) {
@@ -296,6 +355,8 @@ export function buildContextRecoveryReceipt({
   pageIssues = [],
   phaseWindows = [],
   milestones = [],
+  publicSaveLoadBeforeContext = null,
+  bufferResizeDiagnosticEnabled = false,
   runtime = {},
 } = {}) {
   const cleanup = compactCleanupReport(cleanupReport);
@@ -307,9 +368,12 @@ export function buildContextRecoveryReceipt({
     pass: false,
     runtimeKind: 'electron',
     route: {
-      sequence: 'isolated Electron canonical root -> public New Game -> Launch -> authored flight',
+      sequence: publicSaveLoadBeforeContext
+        ? 'isolated Electron canonical root -> public New Game -> Launch -> authored flight -> public F5 save -> public F9 load -> forced context loss/restore'
+        : 'isolated Electron canonical root -> public New Game -> Launch -> authored flight',
       snapshot: compactFlightSnapshot(routeSnapshot),
     },
+    publicSaveLoadBeforeContext,
     milestones: Array.isArray(milestones) ? milestones.slice(-32) : [],
     runtime: {
       rootUrl: runtime.rootUrl || null,
@@ -331,7 +395,8 @@ export function buildContextRecoveryReceipt({
     },
     diagnosticMode: {
       deleteErrorAttributionEnabled: attributeDeleteErrors === true,
-      performanceClaimsEligible: attributeDeleteErrors !== true,
+      bufferResizeDiagnosticEnabled: bufferResizeDiagnosticEnabled === true,
+      performanceClaimsEligible: attributeDeleteErrors !== true && bufferResizeDiagnosticEnabled !== true,
       phaseWindows,
     },
     teardown: {
@@ -359,6 +424,8 @@ export async function runContextRecoveryElectronDiagnostic({
   taskId = TASK_ID,
   flightTimeoutMs = positiveInteger(process.env.SF_CONTEXT_RECOVERY_FLIGHT_TIMEOUT_MS, 240_000),
   attributeDeleteErrors = false,
+  publicSaveLoadBeforeContext = false,
+  bufferResizeDiagnosticEnabled = process.env.SF_BUFFER_RESIZE_DIAG === '1',
 } = {}) {
   const normalizedTaskId = safeTaskId(taskId);
   const resolvedOutputDir = path.resolve(outputDir || runDirectory(DEFAULT_OUTPUT_ROOT, normalizedTaskId));
@@ -388,6 +455,7 @@ export async function runContextRecoveryElectronDiagnostic({
   let rootUrl = null;
   let primaryError = null;
   let routeSnapshot = null;
+  let publicSaveLoadResult = null;
   let preRecovery = null;
   let postRecovery = null;
   let postRecoveryFlightStable = false;
@@ -471,6 +539,11 @@ export async function runContextRecoveryElectronDiagnostic({
     });
     rootUrl = assertIsolatedElectronRootUrl(await canonicalUrlTracker.waitForCanonicalRoot(10_000));
     await awaitElectronInitialCanonicalLoad(page, electronApp, rootUrl);
+    if (bufferResizeDiagnosticEnabled) {
+      await reloadElectronWithBufferResizeDiagnostic(page, pageIssueTracker);
+      await awaitElectronInitialCanonicalLoad(page, electronApp, rootUrl);
+      mark('buffer-resize-diagnostic-armed', { performanceClaimsEligible: false, canonicalRootPreserved: true });
+    }
     await page.bringToFront();
     mark('canonical-root', { rootUrl });
     await installFirstLightPromptHandler(page, (name, _ok, detail) => mark(name, { note: detail }));
@@ -485,6 +558,19 @@ export async function runContextRecoveryElectronDiagnostic({
       onMilestone: async (name, detail) => mark(name, detail),
     });
     mark('authored-flight-ready', { tick: routeSnapshot?.tick ?? null });
+
+    if (publicSaveLoadBeforeContext) {
+      setCapturePhase('public-f5-f9-before-context');
+      publicSaveLoadResult = await runPublicSaveLoadBeforeContext(page);
+      mark('public-f5-f9-complete', {
+        saves: publicSaveLoadResult.events.saves,
+        loads: publicSaveLoadResult.events.loads,
+        savedSlot: publicSaveLoadResult.events.savedSlot,
+        loadedSlot: publicSaveLoadResult.events.loadedSlot,
+        authoredReady: publicSaveLoadResult.after.authoredReady,
+        tick: publicSaveLoadResult.after.tick,
+      });
+    }
 
     await page.waitForFunction(
       () => typeof window.SF?.registry?.destroy === 'function',
@@ -602,6 +688,8 @@ export async function runContextRecoveryElectronDiagnostic({
       outputDir: resolvedOutputDir,
       taskId: normalizedTaskId,
       routeSnapshot,
+      publicSaveLoadBeforeContext: publicSaveLoadResult,
+      bufferResizeDiagnosticEnabled,
       preRecovery,
       postRecovery,
       contextLoss,
@@ -653,13 +741,14 @@ function isEntrypoint() {
 if (isEntrypoint()) {
   const args = parseArgs();
   if (args.help) {
-    console.log('Usage: node scripts/probe-context-recovery-electron.mjs [--out DIR] [--flight-timeout-ms N] [--task-id ID] [--attribute-delete-errors]');
+    console.log('Usage: node scripts/probe-context-recovery-electron.mjs [--out DIR] [--flight-timeout-ms N] [--task-id ID] [--attribute-delete-errors] [--public-save-load-before-context]');
   } else {
     const report = await runContextRecoveryElectronDiagnostic({
       outputDir: args.out ? path.resolve(ROOT, args.out) : undefined,
       taskId: args.taskId || TASK_ID,
       flightTimeoutMs: positiveInteger(args.flightTimeoutMs, positiveInteger(process.env.SF_CONTEXT_RECOVERY_FLIGHT_TIMEOUT_MS, 240_000)),
       attributeDeleteErrors: args.attributeDeleteErrors === true,
+      publicSaveLoadBeforeContext: args.publicSaveLoadBeforeContext === true,
     });
     if (report.pass !== true) process.exitCode = 1;
   }
