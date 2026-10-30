@@ -690,12 +690,38 @@ export async function runReleaseSoakProbe({
     // WebGL teardown gap is not charged to the game.
     const soakWindow = await stopSoakRecorder(page, { startedAt: soakStartedAt });
     const contextLoss = await probeWebGlContextLoss(page, { outputDir, log: doLog });
-    const recoveryWindow = await sampleRafWindow(page, {
-      phaseTag: 'context_recover_steady',
-      warmupMs: 5_000,
-      sampleMs: 5_000,
-      enableGpuTimers: true,
-    });
+    let recoveryWindow;
+    try {
+      recoveryWindow = await sampleRafWindow(page, {
+        phaseTag: 'context_recover_steady',
+        warmupMs: 5_000,
+        sampleMs: 5_000,
+        enableGpuTimers: true,
+      });
+    } catch (recoveryError) {
+      const runtime = await readContextRecoveryFailureState(page).catch((snapshotError) => ({
+        unavailable: String(snapshotError?.message || snapshotError).slice(0, 500),
+      }));
+      const consoleErrors = (pageIssueTracker?.issues || [])
+        .filter((issue) => ['error', 'pageerror', 'warning'].includes(issue?.type))
+        .slice(-32)
+        .map((issue) => ({
+          type: issue.type,
+          text: String(issue.text || '').slice(0, 1_000),
+          at: issue.at || null,
+          location: issue.location || null,
+        }));
+      const contextRecoveryFailure = {
+        schema: 'spaceface.contextRecoveryFailure.v1',
+        phase: 'context_recover_steady',
+        error: { name: recoveryError?.name || 'Error', message: String(recoveryError?.message || recoveryError).slice(0, 2_000) },
+        runtime,
+        consoleErrors,
+      };
+      await writeFile(path.join(outputDir, 'context-recovery-failure.json'), `${JSON.stringify(contextRecoveryFailure, null, 2)}\n`, 'utf8');
+      doLog(`context-recovery-failure ${JSON.stringify(contextRecoveryFailure)}`);
+      throw recoveryError;
+    }
     const recoverySamples = recoveryWindow.samples;
     const samples = [...flightSamples, ...recoverySamples];
     assert(samples.length > 0, 'steady-state rAF sampler produced no finite frame samples');
@@ -974,6 +1000,83 @@ export async function runReleaseSoakProbe({
     // ordinary cleanup can publish the same caller snapshot; this never calls teardown.
     await armPostTeardownGlDeleteTrap().catch(() => {});
     if (page && !page.isClosed()) {
+      const runtimeFailure = await page.evaluate(() => {
+        const state = window.SF?.state || null;
+        const render = state?.render || null;
+        const overlay = document.getElementById('boot-overlay');
+        const admission = render?.requiredPackageAdmission || null;
+        const owner = render?.lastGpuResidencyOwnerInactive || null;
+        return {
+          document: {
+            visibilityState: document.visibilityState,
+            failurePresenterText: String(overlay?.innerText || overlay?.textContent || '').slice(0, 1_200),
+          },
+          state: state ? {
+            mode: state.mode || null,
+            tick: Number.isFinite(Number(state.tick)) ? Number(state.tick) : null,
+            simTime: Number.isFinite(Number(state.simTime)) ? Number(state.simTime) : null,
+            admissionRunGeneration: Number.isFinite(Number(render?.admissionRunGeneration))
+              ? Number(render.admissionRunGeneration) : null,
+            contextRestoreSeq: Number.isFinite(Number(state.contextRestoreSeq))
+              ? Number(state.contextRestoreSeq) : null,
+            world: {
+              enterSerial: state.world?.enterSerial ?? null,
+              currentSectorId: state.world?.currentSectorId ?? null,
+            },
+          } : null,
+          opening: render ? {
+            firstPictureReady: render.openingFirstPictureReady === true,
+            firstPicturePhase: render.openingFirstPicturePhase ? {
+              stage: render.openingFirstPicturePhase.stage || null,
+              outcome: render.openingFirstPicturePhase.outcome || null,
+              ms: Number.isFinite(Number(render.openingFirstPicturePhase.ms))
+                ? Number(render.openingFirstPicturePhase.ms) : null,
+            } : null,
+            firstPictureOwner: render.openingFirstPictureOwner ? {
+              generation: render.openingFirstPictureOwner.generation ?? null,
+              serial: render.openingFirstPictureOwner.serial ?? null,
+              sector: render.openingFirstPictureOwner.sector ?? null,
+              context: render.openingFirstPictureOwner.context ?? null,
+            } : null,
+            liveSectorGpuAdmission: render.liveSectorGpuAdmission === true,
+            requiredPackageAdmission: admission ? {
+              status: admission.status || null,
+              packageId: admission.packageId || null,
+              reason: admission.reason || null,
+              generation: admission.generation ?? null,
+            } : null,
+            currentSectorFailure: render.openingCurrentSectorFailure || null,
+            gpuResidencyOwnerInactive: owner ? {
+              subjectName: owner.subjectName || null,
+              owner: owner.owner || null,
+            } : null,
+            cookLedgerTail: Array.isArray(render.openingCookLedger)
+              ? render.openingCookLedger.slice(-12).map((row) => ({
+                step: row?.step || null,
+                outcome: row?.outcome || null,
+                ms: Number.isFinite(Number(row?.ms)) ? Number(row.ms) : null,
+                reason: row?.reason || null,
+                fail: row?.fail || null,
+              }))
+              : [],
+          } : null,
+        };
+      }).catch((snapshotError) => ({ unavailable: String(snapshotError?.message || snapshotError).slice(0, 500) }));
+      const issues = (pageIssueTracker?.issues || [])
+        .filter((issue) => ['error', 'pageerror', 'warning'].includes(issue?.type))
+        .slice(-24)
+        .map((issue) => ({
+          type: issue.type,
+          text: String(issue.text || '').slice(0, 800),
+          at: issue.at || null,
+          location: issue.location || null,
+        }));
+      await writeFile(path.join(outputDir, 'failure-runtime-snapshot.json'), `${JSON.stringify({
+        schema: 'spaceface.releaseSoakFailureRuntime.v1',
+        error: { name: error?.name || 'Error', message: String(error?.message || error).slice(0, 1_500) },
+        runtime: runtimeFailure,
+        issues,
+      }, null, 2)}\n`, 'utf8').catch(() => {});
       await page.screenshot({ path: path.join(outputDir, 'failure-screenshot.png'), type: 'png', animations: 'allow' }).catch(() => {});
     }
     throw error;
@@ -2032,6 +2135,14 @@ export function summarizeSaveEnvelope(raw, { slot = 'quick' } = {}) {
       available: true,
       slot: slot || null,
       serializedIdentity,
+      playerSnapshot: player ? {
+        pos: player.pos ? { x: Number(player.pos.x), z: Number(player.pos.z) } : null,
+        speed: Math.hypot(Number(player.vel?.x || 0), Number(player.vel?.z || 0)),
+        economy: {
+          credits: Number(envelope?.data?.player?.credits),
+          cargoItems: Object.fromEntries(Object.entries(envelope?.data?.cargo?.items || {}).sort(([a], [b]) => a.localeCompare(b))),
+        },
+      } : null,
       envelopeIdentity: {
         fmt: envelope?.fmt ?? null,
         version: envelope?.version ?? envelope?.data?.version ?? null,
@@ -2060,6 +2171,22 @@ async function readSaveEnvelopeSnapshot(page, slot = 'quick') {
     try { return localStorage.getItem(`sf.save.${saveSlot}`); } catch (_) { return null; }
   }, slot).catch(() => null);
   return summarizeSaveEnvelope(raw, { slot });
+}
+
+async function readSaveEnvelopeSnapshots(page) {
+  const rawBySlot = await page.evaluate(() => {
+    const snapshots = {};
+    try {
+      for (let i = 0; i < localStorage.length; i += 1) {
+        const key = localStorage.key(i);
+        if (typeof key === 'string' && key.startsWith('sf.save.')) {
+          snapshots[key.slice('sf.save.'.length)] = localStorage.getItem(key);
+        }
+      }
+    } catch (_) { /* caller records unavailable snapshots as such */ }
+    return snapshots;
+  }).catch(() => ({}));
+  return Object.fromEntries(Object.entries(rawBySlot).map(([slot, raw]) => [slot, summarizeSaveEnvelope(raw, { slot })]));
 }
 
 function populationIdentityRows(rows) {
@@ -2121,7 +2248,22 @@ async function runSoakCycle(page, {
   const samples = [];
   const mark = (name, detail = {}) => {
     marks.push({ name, at: new Date().toISOString(), ...detail });
-    log(`[cycle ${index}] ${name}`);
+    const logDetail = name === 'pre-load-save-sources' || name === 'pre-load-divergence' ? detail
+      : name === 'load-observed' ? {
+        selectedSlotBeforeF9: detail.selectedSlotBeforeF9,
+        selectedSourceBeforeF9: detail.selectedSourceBeforeF9,
+        selectedSourceIdentityBeforeF9: detail.selectedSourceIdentityBeforeF9,
+        selectedSourceIdentityAtSaveLoaded: detail.selectedSourceIdentityAtSaveLoaded,
+        selectedSourcePoseAtSaveLoaded: detail.selectedSourcePoseAtSaveLoaded,
+        loadedPayloadSummary: detail.loadedPayloadSummary,
+        loadedAtEvent: detail.loadedAtEvent,
+        loaded: detail.loaded,
+        elapsedAfterSaveLoaded: detail.elapsedAfterSaveLoaded,
+        restoredDistance: detail.restoredDistance,
+        divergedDistance: detail.divergedDistance,
+        postLoadAdvanceDistance: detail.postLoadAdvanceDistance,
+      } : null;
+    log(`[cycle ${index}] ${name}${logDetail ? ` ${JSON.stringify(logDetail)}` : ''}`);
   };
   const transition = async (name, opts) => setSoakTransition(page, name, opts);
 
@@ -2237,11 +2379,39 @@ async function runSoakCycle(page, {
     });
   }
 
-  await page.keyboard.down('KeyW');
-  await page.waitForTimeout(650);
-  await page.keyboard.up('KeyW');
-  const diverged = await readPlayerSnapshot(page);
-  assert(distance(saved.pos, diverged.pos) > 0.05 || Math.abs(saved.speed - diverged.speed) > 0.05, 'post-save state must diverge before load');
+  const minRestoreDivergenceWu = 50;
+  const maxRestoreDivergenceInputMs = 8_000;
+  let divergenceInputMs = 0;
+  let quickBeforeInput = await readSaveEnvelopeSnapshot(page, 'quick');
+  let diverged = await readPlayerSnapshot(page);
+  while (quickBeforeInput.playerSnapshot?.pos
+      && distance(quickBeforeInput.playerSnapshot.pos, diverged.pos) < minRestoreDivergenceWu
+      && divergenceInputMs < maxRestoreDivergenceInputMs) {
+    const inputWindowMs = Math.min(500, maxRestoreDivergenceInputMs - divergenceInputMs);
+    // Public flight input creates a meaningful, measured separation from the exact Quick pose.
+    // Add yaw on alternating pulses so a hull brushing station structure can turn clear without
+    // injecting position, velocity, health, or simulation state into the restore experiment.
+    await page.keyboard.down('KeyW');
+    if (Math.floor(divergenceInputMs / 500) % 2 === 1) await page.keyboard.down('KeyD');
+    await page.waitForTimeout(inputWindowMs);
+    await page.keyboard.up('KeyD').catch(() => {});
+    await page.keyboard.up('KeyW');
+    divergenceInputMs += inputWindowMs;
+    diverged = await readPlayerSnapshot(page);
+    quickBeforeInput = await readSaveEnvelopeSnapshot(page, 'quick');
+  }
+  const preLoadEnvelopes = await readSaveEnvelopeSnapshots(page);
+  const quickSourceBeforeF9 = preLoadEnvelopes.quick?.playerSnapshot;
+  const quickSourceDivergenceWu = quickSourceBeforeF9?.pos ? distance(quickSourceBeforeF9.pos, diverged.pos) : null;
+  assert(quickSourceDivergenceWu >= minRestoreDivergenceWu,
+    `ordinary pre-load flight input must separate Quick save pose by at least ${minRestoreDivergenceWu} WU within ${maxRestoreDivergenceInputMs} ms: ${JSON.stringify({ divergenceInputMs, quickSourceDivergenceWu, quickSource: quickSourceBeforeF9, diverged })}`);
+  mark('pre-load-save-sources', Object.fromEntries(Object.entries(preLoadEnvelopes).map(([slot, envelope]) => [slot, {
+    available: envelope.available,
+    serializedIdentity: envelope.serializedIdentity,
+    playerSnapshot: envelope.playerSnapshot,
+    envelopeIdentity: envelope.envelopeIdentity,
+  }])));
+  mark('pre-load-divergence', { divergenceInputMs, minRestoreDivergenceWu, quickSourceDivergenceWu, quickSource: quickSourceBeforeF9, diverged });
   await transition('load-restore');
   await page.keyboard.press('F9');
   // The loaded-game visual gate legitimately owns up to ~180s of authored-visual staging on a
@@ -2290,13 +2460,15 @@ async function runSoakCycle(page, {
   const loaded = await readPlayerSnapshot(page);
   const loadedAtEvent = await page.evaluate(() => window.__M6_RELEASE_SOAK_EVENTS__?.loadedSnapshot || null);
   const loadedSlot = await page.evaluate(() => window.__M6_RELEASE_SOAK_EVENTS__?.loadedSlot || null);
+  const loadedPayloadSummary = await page.evaluate(() => window.__M6_RELEASE_SOAK_EVENTS__?.loadedPayloadSummary || null);
+  const loadedEnvelopeAtEventRaw = await page.evaluate(() => window.__M6_RELEASE_SOAK_EVENTS__?.loadedEnvelopeRaw || null);
+  const loadedEnvelopeAtEvent = summarizeSaveEnvelope(loadedEnvelopeAtEventRaw, { slot: loadedSlot || 'unknown' });
+  const preLoadSelectedEnvelope = loadedSlot ? preLoadEnvelopes[loadedSlot] : null;
   assert(loadedAtEvent?.pos, 'save:loaded observer must capture the exact restored player pose');
-  // F9 resolves 'latest' — a docking-triggered chunked autosave can land between the quick
-  // save and the quick load, and the public load then legitimately restores the autosave.
-  // The worker owns the save bytes, while save:started/save:loaded are replayed onto the
-  // presentation mirror. The mirror can be a few replies behind at either event boundary, so
-  // the envelope for the slot actually loaded is the authoritative restore reference. Keep the
-  // event snapshots as diagnostics, but never compare them as if they were worker-owned bytes.
+  // The public F9 load resolves a slot, then continued play/autosave can replace its current
+  // localStorage bytes before this probe samples them. Compare against the selected slot's
+  // immutable bytes captured immediately before F9; retain the event-time and post-load bytes
+  // as diagnostics so worker/presentation lag and legitimate post-restore movement stay visible.
   const loadedEnvelope = await page.evaluate((slot) => {
     const compactEntity = (entity) => entity ? {
       id: entity.id ?? null,
@@ -2343,7 +2515,9 @@ async function runSoakCycle(page, {
   loadedEnvelope.serializedIdentity = loadedEnvelopeSnapshot.serializedIdentity || null;
   loadedEnvelope.envelopeIdentity = loadedEnvelopeSnapshot.envelopeIdentity || null;
   loadedEnvelope.slot = loadedSlot || loadedEnvelopeSnapshot.slot || null;
-  const restoreReference = loadedEnvelope?.available === true ? loadedEnvelope : saved;
+  const restoreReference = preLoadSelectedEnvelope?.available === true
+    ? preLoadSelectedEnvelope.playerSnapshot
+    : null;
   assert(restoreReference?.pos, `loaded slot envelope must carry the restored pose (slot ${loadedSlot || 'unknown'})`);
   const restorePopulation = summarizeRestorePopulation({
     loadedSlot,
@@ -2352,25 +2526,41 @@ async function runSoakCycle(page, {
     postLoadEntities: loadedEnvelope?.postLoadEntities || [],
   });
   const loadedEconomy = await readEconomySnapshot(page);
-  const divergedDistance = distance(saved.pos, diverged.pos);
+  const divergedDistance = distance(restoreReference.pos, diverged.pos);
   const restoredDistance = distance(restoreReference.pos, loadedAtEvent.pos);
   const postLoadAdvanceDistance = distance(loadedAtEvent.pos, loaded.pos);
-  mark('load-observed', {
+  const restoreWitness = {
     saved,
+    divergenceInputMs,
+    minRestoreDivergenceWu,
+    quickSourceDivergenceWu,
+    selectedSlotBeforeF9: loadedSlot,
+    selectedSourceBeforeF9: preLoadSelectedEnvelope?.playerSnapshot || null,
+    selectedSourceIdentityBeforeF9: preLoadSelectedEnvelope?.serializedIdentity || null,
+    selectedSourceIdentityAtSaveLoaded: loadedEnvelopeAtEvent.serializedIdentity || null,
+    selectedSourcePoseAtSaveLoaded: loadedEnvelopeAtEvent.playerSnapshot || null,
+    loadedPayloadSummary,
     loadedSlot,
     diverged,
     loadedAtEvent,
     loaded,
+    elapsedAfterSaveLoaded: {
+      wallMs: Number.isFinite(loadedAtEvent?.observedAtPerformanceNow) && Number.isFinite(loaded?.observedAtPerformanceNow)
+        ? loaded.observedAtPerformanceNow - loadedAtEvent.observedAtPerformanceNow : null,
+      ticks: Number.isFinite(loadedAtEvent?.tick) && Number.isFinite(loaded?.tick) ? loaded.tick - loadedAtEvent.tick : null,
+      simTime: Number.isFinite(loadedAtEvent?.simTime) && Number.isFinite(loaded?.simTime) ? loaded.simTime - loadedAtEvent.simTime : null,
+    },
     divergedDistance,
     restoredDistance,
     postLoadAdvanceDistance,
     fixedSaveUnchanged,
     serializedIdentity: loadedEnvelope.serializedIdentity,
     restorePopulation,
-  });
+  };
+  mark('load-observed', restoreWitness);
   assert(
     restoredDistance <= (loadedSlot === 'quick' ? Math.max(1, divergedDistance * 0.25) : 1),
-    `load position restore exceeded tolerance: ${JSON.stringify({ loadedSlot, restoredDistance, divergedDistance, saved, diverged, loaded })}`,
+    `load position restore exceeded tolerance: ${JSON.stringify(restoreWitness)}`,
   );
   assert(Math.abs(restoreReference.speed - loadedAtEvent.speed) <= 2, `load speed restore exceeded tolerance: ${restoreReference.speed} -> ${loadedAtEvent.speed}`);
   mark('load-restored', { saved, loadedSlot, diverged, loadedAtEvent, loaded, postLoadAdvanceDistance, restorePopulation });
@@ -2766,6 +2956,8 @@ async function armSaveLoadObservers(page) {
       saveStartedSnapshot: null,
       loadedSnapshot: null,
       loadedSlot: null,
+      loadedEnvelopeRaw: null,
+      loadedPayloadSummary: null,
       errors: [],
       dock: [],
     };
@@ -2927,11 +3119,13 @@ async function armSaveLoadObservers(page) {
       const state = window.SF?.state;
       const player = state?.entityList?.find((entity) => entity?.id === state.playerId);
       const items = state?.player?.cargo?.items || {};
+      const slot = payload?.slot || null;
       window.__M6_RELEASE_SOAK_EVENTS__.loadedSnapshot = player ? {
         tick: Number(state.tick),
         simTime: Number(state.simTime),
         pos: { x: Number(player.pos.x), z: Number(player.pos.z) },
         speed: Math.hypot(Number(player.vel?.x || 0), Number(player.vel?.z || 0)),
+        observedAtPerformanceNow: performance.now(),
         // Economy at the event instant — grants that land after restore but before the
         // next probe read (resuming salvage drains, pickups, restore settlements) are
         // legitimate in-flight mutations, not envelope corruption.
@@ -2940,7 +3134,13 @@ async function armSaveLoadObservers(page) {
           cargoItems: Object.fromEntries(Object.entries(items).sort(([a], [b]) => a.localeCompare(b))),
         },
       } : null;
-      window.__M6_RELEASE_SOAK_EVENTS__.loadedSlot = payload?.slot || null;
+      window.__M6_RELEASE_SOAK_EVENTS__.loadedSlot = slot;
+      window.__M6_RELEASE_SOAK_EVENTS__.loadedEnvelopeRaw = slot ? localStorage.getItem(`sf.save.${slot}`) : null;
+      window.__M6_RELEASE_SOAK_EVENTS__.loadedPayloadSummary = payload ? {
+        keys: Object.keys(payload).slice(0, 16),
+        slot,
+        hasPlayerPose: !!payload?.data?.entities?.player?.pos,
+      } : null;
       window.__M6_RELEASE_SOAK_EVENTS__.loaded = true;
     });
   });
@@ -3596,6 +3796,58 @@ async function probeWebGlContextLoss(page, { outputDir, log }) {
   const result = { ...start, ...end, recovered: end.lostEvent && end.restoredEvent && end.meshResourceReady && end.pixelProof && end.frameAdvanced && end.after === false };
   log(`context-loss ${JSON.stringify(result)}`);
   return result;
+}
+
+async function readContextRecoveryFailureState(page) {
+  return page.evaluate(() => {
+    const sf = window.SF || {};
+    const state = sf.state || null;
+    const render = state?.render || null;
+    const recovery = render?.contextRecovery || null;
+    let loop = null;
+    try { loop = sf.loop?.getDiagnostics?.() || null; } catch (_) { /* loop may already be closed */ }
+    const stall = loop?.presentationStallEvidence || null;
+    const overlay = document.getElementById('boot-overlay');
+    return {
+      document: {
+        visibilityState: document.visibilityState,
+        failurePresenterText: String(overlay?.innerText || overlay?.textContent || '').slice(0, 1_500),
+      },
+      state: state ? {
+        mode: state.mode || null,
+        tick: Number.isFinite(Number(state.tick)) ? Number(state.tick) : null,
+        simTime: Number.isFinite(Number(state.simTime)) ? Number(state.simTime) : null,
+        timeScale: Number.isFinite(Number(state.timeScale)) ? Number(state.timeScale) : null,
+        docked: state.ui?.docked === true,
+        contextRestoreSeq: Number.isFinite(Number(state.contextRestoreSeq)) ? Number(state.contextRestoreSeq) : null,
+        admissionRunGeneration: Number.isFinite(Number(render?.admissionRunGeneration)) ? Number(render.admissionRunGeneration) : null,
+        rendererGeneration: Number.isFinite(Number(render?.rendererGeneration)) ? Number(render.rendererGeneration) : null,
+      } : null,
+      contextRecovery: recovery ? {
+        losses: Number(recovery.losses) || 0,
+        restores: Number(recovery.restores) || 0,
+        generation: Number(recovery.generation) || 0,
+        pending: recovery.pending === true,
+        terminal: recovery.terminal === true,
+        lastError: recovery.lastError ? String(recovery.lastError).slice(0, 1_000) : null,
+        retryCount: Number(recovery.retryCount) || 0,
+        forcedNewContext: recovery.forcedNewContext === true,
+      } : null,
+      loop: loop ? {
+        lastFrameError: loop.lastFrameError ? String(loop.lastFrameError).slice(0, 1_000) : null,
+        consecutiveFrameErrors: Number(loop.consecutiveFrameErrors) || 0,
+        presentationStalled: loop.presentationStalled === true,
+        presentationStallCount: Number(loop.presentationStallCount) || 0,
+        presentationFailure: loop.presentationFailure || null,
+        simulationFailure: loop.simulationFailure || null,
+        stallEvidence: stall ? {
+          closeCauseSite: stall.closeCauseSite || null,
+          timeEffectRequests: stall.timeEffectRequests || null,
+          graphicsContext: stall.graphicsContext || null,
+        } : null,
+      } : null,
+    };
+  });
 }
 
 /**
@@ -5212,6 +5464,7 @@ async function readPlayerSnapshot(page) {
       mode: state.mode || null,
       pos: { x: Number(player.pos.x), z: Number(player.pos.z) },
       speed: Math.hypot(Number(player.vel?.x || 0), Number(player.vel?.z || 0)),
+      observedAtPerformanceNow: performance.now(),
       autopilot: autopilot ? {
         active: autopilot.active === true,
         status: autopilot.status || null,

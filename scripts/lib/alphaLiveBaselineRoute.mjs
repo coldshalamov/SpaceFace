@@ -8,6 +8,7 @@ import {
   validateFinalStationFrameSuffix,
 } from './alphaLiveBaselineContracts.mjs';
 import { consumePageConditionValue } from './playwrightCspPolling.mjs';
+import { installFirstLightPromptHandler } from '../player-truth/routes.mjs';
 
 export {
   evaluateCanonicalUrlAcceptance,
@@ -60,6 +61,9 @@ export async function runBrowserPublicRoute({
       log(`[route] ${name}${detail.note ? ` - ${detail.note}` : ''}`);
       return record;
     };
+    // A fresh profile may show the public First light settings choice over the title. Install
+    // its public Play handler before startup/menu actions so it cannot intercept New Game.
+    await installFirstLightPromptHandler(page, (name, _ok, detail) => mark(name, { note: detail }));
     const recordCanonicalUrl = (boundary) => {
       const check = { boundary, ...inspectCanonicalRootUrl(page.url(), expectedRootUrl) };
       urlChecks.push(check);
@@ -114,6 +118,7 @@ export async function runBrowserPublicRoute({
     phase = 'new-game';
     const newGameButton = page.getByRole('button', { name: 'New Game', exact: true });
     await newGameButton.click({ timeout: 30_000 });
+    await page.locator('#sf-confirm-title').waitFor({ state: 'hidden', timeout: 10_000 });
     await waitForVisible(page, '[data-screen="newGame"]', 30_000, 'New Game');
     if (seed != null) {
       assert(Number.isSafeInteger(Number(seed)) && Number(seed) > 0, 'public-route seed must be a positive safe integer');

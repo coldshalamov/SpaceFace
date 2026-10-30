@@ -33,6 +33,7 @@ import {
 import { loadPlaywright } from './lib/load-playwright.mjs';
 import { installCspSafePlaywrightPolling, installFrameKeepalive } from './lib/playwrightCspPolling.mjs';
 import { bootToAuthoredFlight } from './lib/professionalTravelPublicRoute.mjs';
+import { installFirstLightPromptHandler } from './player-truth/routes.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const DEFAULT_OUTPUT_ROOT = path.join(ROOT, '.devshots', 'context-recovery-electron');
@@ -140,14 +141,31 @@ function compactPageState(state) {
         z: Number(state.player.pos.z) || 0,
       } : null,
     } : null,
+    authoredReady: state.authoredReady === true,
+    opening: state.opening ? {
+      firstPictureReady: state.opening.firstPictureReady === true,
+      firstPicturePhase: state.opening.firstPicturePhase || null,
+      currentSectorFailure: state.opening.currentSectorFailure || null,
+      gpuResidencyOwnerInactive: state.opening.gpuResidencyOwnerInactive || null,
+    } : null,
     contextRecovery: state.contextRecovery ? {
       losses: Number(state.contextRecovery.losses) || 0,
       restores: Number(state.contextRecovery.restores) || 0,
       generation: Number(state.contextRecovery.generation) || 0,
       pending: state.contextRecovery.pending === true,
+      terminal: state.contextRecovery.terminal === true,
       lastError: state.contextRecovery.lastError ? String(state.contextRecovery.lastError).slice(0, 500) : null,
+      retryCount: Number(state.contextRecovery.retryCount) || 0,
     } : null,
     rendererContextLost: state.rendererContextLost === true,
+    presentationLoop: state.presentationLoop ? {
+      lastFrameError: state.presentationLoop.lastFrameError ? String(state.presentationLoop.lastFrameError).slice(0, 1_000) : null,
+      consecutiveFrameErrors: Number(state.presentationLoop.consecutiveFrameErrors) || 0,
+      presentationStalled: state.presentationLoop.presentationStalled === true,
+      presentationFailure: state.presentationLoop.presentationFailure || null,
+      simulationFailure: state.presentationLoop.simulationFailure || null,
+    } : null,
+    failurePresenterText: String(state.failurePresenterText || '').slice(0, 1_500),
   };
 }
 
@@ -160,6 +178,11 @@ async function readPageState(page) {
       || state?.entityList?.find?.((entity) => entity?.id === state.playerId);
     const recovery = state?.render?.contextRecovery || state?.contextRecovery || null;
     const renderer = state?.render?.renderer || null;
+    let loop = null;
+    try { loop = sf?.loop?.getDiagnostics?.() || null; } catch (_) { /* loop may already be closed */ }
+    let authoredReady = false;
+    try { authoredReady = window.SF?.authoredVisualReadiness?.()?.ready === true; } catch (_) { /* report false */ }
+    const overlay = document.getElementById('boot-overlay');
     return {
       mode: state?.mode || null,
       tick: Number(state?.tick || 0),
@@ -174,14 +197,39 @@ async function readPageState(page) {
         alive: player.alive !== false,
         pos: { x: Number(player.pos?.x || 0), z: Number(player.pos?.z || 0) },
       } : null,
+      authoredReady,
+      opening: state?.render ? {
+        firstPictureReady: state.render.openingFirstPictureReady === true,
+        firstPicturePhase: state.render.openingFirstPicturePhase ? {
+          stage: state.render.openingFirstPicturePhase.stage || null,
+          outcome: state.render.openingFirstPicturePhase.outcome || null,
+          ms: Number.isFinite(Number(state.render.openingFirstPicturePhase.ms))
+            ? Number(state.render.openingFirstPicturePhase.ms) : null,
+        } : null,
+        currentSectorFailure: state.render.openingCurrentSectorFailure || null,
+        gpuResidencyOwnerInactive: state.render.lastGpuResidencyOwnerInactive ? {
+          subjectName: state.render.lastGpuResidencyOwnerInactive.subjectName || null,
+          owner: state.render.lastGpuResidencyOwnerInactive.owner || null,
+        } : null,
+      } : null,
       contextRecovery: recovery ? {
         losses: Number(recovery.losses || 0),
         restores: Number(recovery.restores || 0),
         generation: Number(recovery.generation || 0),
         pending: recovery.pending === true,
+        terminal: recovery.terminal === true,
         lastError: recovery.lastError ? String(recovery.lastError) : null,
+        retryCount: Number(recovery.retryCount || 0),
       } : null,
       rendererContextLost: renderer?.getContext?.()?.isContextLost?.() === true,
+      presentationLoop: loop ? {
+        lastFrameError: loop.lastFrameError || null,
+        consecutiveFrameErrors: Number(loop.consecutiveFrameErrors) || 0,
+        presentationStalled: loop.presentationStalled === true,
+        presentationFailure: loop.presentationFailure || null,
+        simulationFailure: loop.simulationFailure || null,
+      } : null,
+      failurePresenterText: String(overlay?.innerText || overlay?.textContent || ''),
     };
   }).then(compactPageState);
 }
@@ -218,6 +266,7 @@ export function buildContextRecoveryReceipt({
   routeSnapshot = null,
   preRecovery = null,
   postRecovery = null,
+  postRecoveryFlightStable = false,
   contextLoss = null,
   liveGlDeleteTrap = null,
   postTeardown = null,
@@ -250,6 +299,7 @@ export function buildContextRecoveryReceipt({
     },
     preRecovery,
     postRecovery,
+    postRecoveryFlightStable: postRecoveryFlightStable === true,
     contextLoss,
     glDeleteTrap: {
       live: liveGlDeleteTrap,
@@ -271,6 +321,7 @@ export function buildContextRecoveryReceipt({
     },
   };
   receipt.pass = contextLoss?.recovered === true
+    && postRecoveryFlightStable === true
     && postTeardownInstall?.installed === true
     && postTeardown != null
     && cleanup?.pass === true;
@@ -313,6 +364,7 @@ export async function runContextRecoveryElectronDiagnostic({
   let routeSnapshot = null;
   let preRecovery = null;
   let postRecovery = null;
+  let postRecoveryFlightStable = false;
   let contextLoss = null;
   let liveGlDeleteTrap = null;
   let postTeardownInstall = null;
@@ -370,6 +422,7 @@ export async function runContextRecoveryElectronDiagnostic({
     await awaitElectronInitialCanonicalLoad(page, electronApp, rootUrl);
     await page.bringToFront();
     mark('canonical-root', { rootUrl });
+    await installFirstLightPromptHandler(page, (name, _ok, detail) => mark(name, { note: detail }));
 
     // This helper is the same public New Game -> Launch implementation used by the travel route;
     // no debug route, injected game event, save cycle, docking cycle, or alternate launcher is used.
@@ -397,7 +450,6 @@ export async function runContextRecoveryElectronDiagnostic({
       outputDir: resolvedOutputDir,
       log,
     });
-    postRecovery = await readPageState(page);
     liveGlDeleteTrap = await readGlDeleteTrap(page);
     mark('context-recovery-complete', {
       recovered: contextLoss?.recovered === true,
@@ -406,6 +458,42 @@ export async function runContextRecoveryElectronDiagnostic({
     if (contextLoss?.recovered !== true) {
       throw new Error(`controlled WebGL context recovery did not pass: ${JSON.stringify(contextLoss)}`);
     }
+    const recoveryFlightObserveMs = 120_000;
+    const recoveryFlightStartedAt = Date.now();
+    let nextProgressAt = 30_000;
+    while (Date.now() - recoveryFlightStartedAt < recoveryFlightObserveMs) {
+      postRecovery = await readPageState(page);
+      const loop = postRecovery?.presentationLoop;
+      const recovery = postRecovery?.contextRecovery;
+      const failure = !postRecovery
+        ? 'post-restore runtime state unavailable'
+        : postRecovery.mode !== 'flight' ? `mode is ${postRecovery.mode || 'unknown'}`
+          : postRecovery.docked ? 'ship became docked'
+            : postRecovery.authoredReady !== true ? 'authored flight readiness was lost'
+              : postRecovery.rendererContextLost ? 'WebGL context is still lost'
+                : recovery?.terminal === true ? 'context recovery reached terminal failure'
+                  : recovery?.pending === true ? 'context recovery became pending again'
+                    : loop?.presentationFailure ? 'presentation failure reported'
+                      : loop?.simulationFailure ? 'simulation failure reported'
+                        : loop?.presentationStalled === true ? 'presentation stalled' : null;
+      if (failure) {
+        throw new Error(`authored active flight did not remain available after context restore: ${failure}; ${JSON.stringify(postRecovery)}`);
+      }
+      const elapsedMs = Date.now() - recoveryFlightStartedAt;
+      if (elapsedMs >= nextProgressAt) {
+        mark('post-context-restore-flight-still-active', { elapsedMs, tick: postRecovery.tick, simTime: postRecovery.simTime });
+        nextProgressAt += 30_000;
+      }
+      await page.waitForTimeout(Math.min(1_000, recoveryFlightObserveMs - elapsedMs));
+    }
+    postRecoveryFlightStable = true;
+    postRecovery = await readPageState(page);
+    mark('post-context-restore-flight-survived', {
+      observeMs: recoveryFlightObserveMs,
+      tick: postRecovery?.tick ?? null,
+      simTime: postRecovery?.simTime ?? null,
+      contextRecoveryGeneration: postRecovery?.contextRecovery?.generation ?? null,
+    });
   } catch (error) {
     primaryError = error;
     log(`FAIL ${error?.message || error}`);
@@ -441,6 +529,7 @@ export async function runContextRecoveryElectronDiagnostic({
       preRecovery,
       postRecovery,
       contextLoss,
+      postRecoveryFlightStable,
       liveGlDeleteTrap,
       postTeardown,
       postTeardownInstall,
