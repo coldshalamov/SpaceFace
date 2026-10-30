@@ -93,7 +93,7 @@ test('optional public F5/F9 context trigger is reported as diagnostic-only', () 
   assert.equal(receipt.pass, true, 'the trigger is reported but does not become an extra acceptance predicate');
 });
 
-test('released-flight predicate requires opening release, an unpaused clock, and advancing thresholds', () => {
+test('released-flight predicate requires visible unpaused authored flight, not the exact opening cohort flag', () => {
   const previousWindow = Object.getOwnPropertyDescriptor(globalThis, 'window');
   const previousDocument = Object.getOwnPropertyDescriptor(globalThis, 'document');
   const state = {
@@ -132,7 +132,8 @@ test('released-flight predicate requires opening release, an unpaused clock, and
     assert.equal(releasedPlayableFlightInPage({ minimumTick: 9 }), false);
     assert.equal(releasedPlayableFlightInPage({ minimumSimTime: 2 }), false);
     state.render.openingFirstPictureReady = false;
-    assert.equal(releasedPlayableFlightInPage(), false);
+    assert.equal(releasedPlayableFlightInPage(), true,
+      'the exact opening-cohort marker is diagnostic and does not define global flight control');
     state.render.openingFirstPictureReady = true;
     state.render.firstPlayableFrameAt = null;
     assert.equal(releasedPlayableFlightInPage(), false);
