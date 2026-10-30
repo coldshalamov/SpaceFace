@@ -176,12 +176,16 @@ test('biohazard cargo ripens through the chain inside a high-contamination field
   materializeSite(state, world, ALIEN_SITES.towed_moonlet, 'bloom');
   const player = fitModules(state, []);
   player.pos = { x: -200, z: -1500 }; // towed_moonlet center — sectorC well over minC
+  // Filament (620) -> resin (430) would be a downgrade: ripening skips it and never makes
+  // a sample lot cheaper. Resin (430) -> host archive (760) is a real maturation.
   state.player.cargo.items.cmdty_filament_sample = 2;
+  state.player.cargo.items.cmdty_cyst_resin = 2;
   const ae = ensureAlienEcologyState(state);
   ae._ripenT = RIPENING.periodS; // due this tick
   tickAlienEcology(world, 0.5);
-  assert.equal(state.player.cargo.items.cmdty_cyst_resin, 1, 'one unit ripened per period');
-  assert.equal(state.player.cargo.items.cmdty_filament_sample, 1);
+  assert.equal(state.player.cargo.items.cmdty_filament_sample, 2, 'a sample lot never ripens into a cheaper good');
+  assert.equal(state.player.cargo.items.cmdty_host_archive_sample, 1, 'one unit ripened per period');
+  assert.equal(state.player.cargo.items.cmdty_cyst_resin, 1);
   assert.ok(emitLog.some((e) => e.type === 'toast'), 'ripening toasted the log');
 });
 

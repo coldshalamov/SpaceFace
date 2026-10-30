@@ -73,9 +73,9 @@ import { materializePlayerHullEcho, handlePlayerHullEchoEvent, tickPlayerHullEch
   playerHullEchoReadout } from '../world/playerHullEcho.js';
 import { entityIndexVersion, entityIndexLaneVersion, indexedTypeScan, bumpCollidesFlipEpoch } from '../world/livingWorldViews.js';
 import { fittedModuleDefs } from '../core/fittedModules.js';
-import { addCargo, removeCargo } from './cargo.js';
+import { addCargo, removeCargo, sellableCargoQuantity } from './cargo.js';
 import { dockIntentStatus } from '../core/dockIntent.js';
-import { commodityIsBiohazard } from '../data/commodities.js';
+import { commodityIsBiohazard, COMMODITIES } from '../data/commodities.js';
 import { ALIEN_ECOLOGY_SCHEMA, ensureAlienEcologyState } from '../data/alienEcologyState.js';
 import { stationBerthAdmits } from '../data/frontierRumors.js';
 import { hasContractsDesk } from '../data/missions.js';
@@ -86,6 +86,8 @@ import { VEIL_NURSERY_ID, materializeNurseryDressing, tickVeilNursery,
 import { nurseryInitialHabitatOffset, nurseryHabitatGoal } from '../world/veilRayHabitat.js';
 
 const TWO_PI = Math.PI * 2;
+/** Sim seconds a scripted lure point (claim torches, bait-trap beacon) keeps steering fauna. */
+const SCRIPTED_LURE_S = 20;
 
 /** F5 — the tether's drumbeat: the wake floor for a 'massline_slam' vibration impulse, in the
  *  emitter's own severity units (relSpeed / crushing). Below a solid hit, a tether touch is
@@ -148,6 +150,14 @@ export function effectiveRevelation(state) {
     (m, d) => Math.max(m, Number(d && d.mods && d.mods.bioScanTier) || 0), 0,
   );
   return Math.min(ae.revelation + bonus, 3);
+}
+
+/** A species as the player may name it right now: the taxonomy name only from tier 2 up
+ *  (the same ladder the spawn label obeys), otherwise the scanner's generic term. */
+function revealedSpeciesName(state, species) {
+  if (!species) return 'Unknown organism';
+  const tier = effectiveRevelation(state);
+  return tier >= 2 && species.name ? species.name : scannerBiologyLabel(tier, species.signature || 'fauna');
 }
 
 function fittedFlag(state, key) {
@@ -336,7 +346,8 @@ export function materializeAlienEcology(world, sector, active, onlySites = null)
     // AE-175/176: morphology fingerprint per site; severed sites draw the dead palette.
     const growth = site.sterile ? [] : planInfestationModules(site, rng, rec.state);
     const bloom = rec.state === 'bloom';
-    const growthCount = bloom ? growth.length + 8 : growth.length;
+    // A sterile site plans no growth: there is nothing to spill (and `i % 0` would throw).
+    const growthCount = bloom && growth.length > 0 ? growth.length + 8 : growth.length;
     for (let i = 0; i < growthCount; i += 1) {
       const g = growth[i % growth.length];
       const extra = i >= growth.length; // bloom ring spills wider
@@ -504,7 +515,13 @@ export function materializeAlienEcology(world, sector, active, onlySites = null)
         });
       }
     }
+    // The plan is per sector and this loop runs per site (and again on the nursery's
+    // once-a-second retry): a phantom already on the board is not pushed twice.
+    const onBoard = new Set();
+    for (const p of active.pois) if (p && p.phantom === true && p.poiId) onBoard.add(p.poiId);
     for (const ph of phantomPlan) {
+      if (onBoard.has(ph.id)) continue;
+      onBoard.add(ph.id);
       active.pois.push({
         id: null,                 // markerless — no entity, projection only
         poiId: ph.id,
@@ -1181,8 +1198,9 @@ function ruptureCarrier(world, e, rec, species, pos) {
         homeSectorId: e.homeSectorId,
         hull: 30,
         data: {
-          name: `${scannerBiologyLabel(ensureAlienEcologyState(state).revelation, 'fauna')} (juvenile)`,
-          scanLabel: scannerBiologyLabel(ensureAlienEcologyState(state).revelation, 'fauna'),
+          // Effective tier, like every other label: a fitted Bio-Spectral Pass counts.
+          name: `${scannerBiologyLabel(effectiveRevelation(state), 'fauna')} (juvenile)`,
+          scanLabel: scannerBiologyLabel(effectiveRevelation(state), 'fauna'),
           scannerSignalKind: 'anomaly',
           strainId: e.data.strainId,
           siteId: e.data.ecology.siteId,
@@ -1296,10 +1314,14 @@ export function tickAlienEcology(world, dt) {
   if (!state || !state.entityList || dt <= 0) return;
   const sectorId = state.world && state.world.currentSectorId;
   if (!sectorId) return;
+  const player = state.playerId != null ? state.entities.get(state.playerId) : null;
+  // Hull exposure runs on EVERY sector, site or not: clean space is where biofilm decays,
+  // so gating it behind site presence left a fouled hull fouled until a purge dock.
+  const ae = ensureAlienEcologyState(state);
+  tickHullExposure(world, state, ae, sectorId, player, dt);
   const sites = alienSitesForSector(sectorId);
   if (!sites.length) return;
   reconcileClosedRefineryProps(world);
-  const player = state.playerId != null ? state.entities.get(state.playerId) : null;
   const nursery = ALIEN_SITES[VEIL_NURSERY_ID];
   const active = state.world.activeSector;
   if (sectorId === nursery.sectorId && effectiveRevelation(state) >= nursery.requiresRevelation
@@ -1308,10 +1330,12 @@ export function tickAlienEcology(world, dt) {
     // satellite; stable dressing keys and deadFauna preserve identity on re-entry.
     materializeAlienEcology(world, { id: sectorId }, active, [nursery]);
   }
+  tickAlienEcologySites(world, state, ae, sectorId, sites, player, nursery, active, dt);
+}
 
-  // ── AE-076 ship exposure: hull biofilm accrues with point contamination, throttled by
-  // fitted filters (mods.bioFilterMult), decaying in clean space. Logistics pressure.
-  const ae = ensureAlienEcologyState(state);
+// ── AE-076 ship exposure: hull biofilm accrues with point contamination, throttled by
+// fitted filters (mods.bioFilterMult), decaying in clean space. Logistics pressure.
+function tickHullExposure(world, state, ae, sectorId, player, dt) {
   if (player && player.pos) {
     const local = world._toLocal ? world._toLocal(player.pos, sectorId) : player.pos;
     const c = pointContaminationAt(state, sectorId, local.x, local.z);
@@ -1331,7 +1355,10 @@ export function tickAlienEcology(world, dt) {
       ae._exposureWarned = false; ae._exposureSevere = false;
     }
   }
+}
 
+// The site-bearing half of the tick: fauna drives, relays, setpieces.
+function tickAlienEcologySites(world, state, ae, sectorId, sites, player, nursery, active, dt) {
   // First collect fauna + relay coherence — relay severed = site record says severed.
   // The walk's gate is site presence, not membership — site-bearing sectors paid an
   // O(entities) walk per tick forever. The entity index bumps on every indexed
@@ -1512,9 +1539,11 @@ export function tickAlienEcology(world, dt) {
         if (nearest) {
           const sp = faunaSpeciesById(nearest.data.ecology.speciesId);
           nearest.data.ecology.tolling = true;
+          // Named only once the reveal ladder allows it; before that the band hears a contact.
+          const bellName = revealedSpeciesName(state, sp);
           world.bus.emit('comms:log', {
-            from: sp.name, kind: 'ecology',
-            text: `${sp.name} tolls on the band — it rings before the radiation front arrives.`,
+            from: effectiveRevelation(state) >= 2 ? bellName : 'Band intercept', kind: 'ecology',
+            text: `${bellName} tolls on the band — it rings before the radiation front arrives.`,
           });
         } else {
           world.bus.emit('comms:log', {
@@ -1987,7 +2016,9 @@ function tickFauna(world, e, site, rec, coherent, shepherds, player, now, dt, se
     const gx = site ? world._toGlobal({ x: supCx, z: supCz }, sectorId) : null;
     if (gx) {
       const ang = Math.atan2(e.pos.z - gx.z, e.pos.x - gx.x);
-      const push = species.fleeSpeed || species.speed || 20;
+      // An authored 0 is a real 0: sessile anchors stay pinned in the pocket.
+      const push = Number.isFinite(species.fleeSpeed) ? species.fleeSpeed
+        : Number.isFinite(species.speed) ? species.speed : 20;
       e.rot = angleLerp(e.rot, ang, Math.min(1, species.turnRate * dt * 2));
       e.pos.x += Math.cos(e.rot) * push * dt;
       e.pos.z += Math.sin(e.rot) * push * dt;
@@ -2033,10 +2064,23 @@ function tickFauna(world, e, site, rec, coherent, shepherds, player, now, dt, se
   // ── AE-124 (G10) lure override: a burning lure outranks the player plume for
   // heat-sensitive drives until it burns out. ──
   const aeL = ensureAlienEcologyState(state);
-  const lure = (aeL.lures || []).find((l) => l.sectorId === sectorId && l.until > now
-    && dist2(e.pos.x, e.pos.z, l.x, l.z) < Math.pow(alertR * 4, 2));
+  // Newest burning lure first: an older thrown beacon must not mask the one just lit
+  // (the heat-trial lure included). Lures are pushed in time order.
+  let lure = null;
+  const lureList = aeL.lures || [];
+  const lureR2 = Math.pow(alertR * 4, 2);
+  for (let li = lureList.length - 1; li >= 0; li--) {
+    const l = lureList[li];
+    if (l && l.sectorId === sectorId && l.until > now && dist2(e.pos.x, e.pos.z, l.x, l.z) < lureR2) {
+      lure = l;
+      break;
+    }
+  }
   if (lure && ((sens.heat || 0) >= 0.6 || species.heatHunter)) {
     eco.lureTarget = { x: lure.x, z: lure.z };
+  } else if (eco.lureTarget && Number(eco.lureTarget.until) > now) {
+    // A scripted lure point (claim torches, bait-trap beacon) carries its own expiry and
+    // holds until it burns out — clearing it here every tick meant nothing ever steered.
   } else {
     eco.lureTarget = null;
     // A cold maw follows a wake eel that is already trailing. Heat still outranks the trail.
@@ -2136,7 +2180,8 @@ function tickFauna(world, e, site, rec, coherent, shepherds, player, now, dt, se
     if (!hadNote && aeTrial.heatTrial.note && !aeTrial.heatTrial.spoken && world.bus && world.bus.emit) {
       aeTrial.heatTrial.spoken = true;
       world.bus.emit('comms:log', {
-        from: species.name || 'Field notebook',
+        // The maw is not named before the reveal ladder allows it.
+        from: effectiveRevelation(state) >= 2 && species.name ? species.name : 'Field notebook',
         kind: 'ecology',
         text: aeTrial.heatTrial.note,
       });
@@ -3023,7 +3068,8 @@ function fireClaimTorches(world, sectorId, now, target) {
     if (e.data.ecology.siteId !== NURSERY_CLAIM_CREW.siteId) continue;
     const eco = e.data.ecology;
     if (eco.driveState === 'flee' || eco.driveState === 'captured') continue;
-    eco.lureTarget = { x: target.x, z: target.z };
+    // The torch point holds past this tick (tickFauna keeps a lure until its `until`).
+    eco.lureTarget = { x: target.x, z: target.z, until: now + SCRIPTED_LURE_S };
     setDrive(eco, 'investigate');
   }
 }
@@ -3206,7 +3252,7 @@ function applyEncounterEdge(world, row, sectorId, fauna) {
       }
       const eco = best && best.data && best.data.ecology;
       if (eco && eco.driveState !== 'flee' && eco.driveState !== 'captured') {
-        eco.lureTarget = { x: player.pos.x + 300, z: player.pos.z + 120 };
+        eco.lureTarget = { x: player.pos.x + 300, z: player.pos.z + 120, until: now + SCRIPTED_LURE_S };
         setDrive(eco, 'investigate');
       }
       break;
@@ -3220,6 +3266,11 @@ function applyEncounterEdge(world, row, sectorId, fauna) {
   }
 }
 
+function ripeningBasePrice(commodityId) {
+  const def = COMMODITIES.find((c) => c && c.id === commodityId);
+  return def && Number.isFinite(def.basePrice) ? def.basePrice : 0;
+}
+
 // AE-230 — field ripening: one unsealed biohazard unit matures per period while the hull
 // sits in high-C space. Remove-then-add through the cargo API so hold math stays correct.
 function ripenCargo(world, sectorId) {
@@ -3228,8 +3279,16 @@ function ripenCargo(world, sectorId) {
   if (!cargo || !cargo.items) return;
   for (const [from, to] of Object.entries(RIPENING.chain)) {
     if ((cargo.items[from] || 0) <= 0) continue;
+    // "Rarer on the manifest" must be true: a step to a cheaper good is not ripening.
+    if (!(ripeningBasePrice(to) > ripeningBasePrice(from))) continue;
+    // Sealed contract freight is not the hold's to mature — a delivery must not come up short.
+    if (!(sellableCargoQuantity(state, from) > 0)) continue;
     if (removeCargo(state, from, 1) > 0) {
-      addCargo(state, to, 1, 'field_ripening');
+      if (!(addCargo(state, to, 1, 'field_ripening') > 0)) {
+        // The riper form would not fit: the unit stays what it was, never vanishes.
+        addCargo(state, from, 1, 'field_ripening');
+        continue;
+      }
       world.bus.emit('toast', {
         text: 'The lot in the hold matured — the tissue reads rarer on the manifest now.',
         kind: 'info', ttl: 5,
