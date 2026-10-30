@@ -194,6 +194,21 @@ Rows are the spec (`build_map.md` §31–§32; read each row's prose before brie
   extracted twin's evolved mechanics (drift-reel winch, orbit-side sweep, press-onto-ring
   grab, direct-away burns) ported into the harness copy — rc-458 lands momentumKill at
   135 s (was 513 s). Run 2 launched on the ported pilot; verdict follows its ledger.
+  **Run 2/3 stall diagnosed + fixed `ab676eaa96d9`:** the run reached beat 6 (`focus`, "Hold
+  course. Let the raider cross your bow.") and parked ~1 000 sim-s. Live probe evidence: the
+  flyby census armed leases repeatedly, but on *other* entities (a surviving hostile wing and
+  traffic ships won `beatsBest` on the `direct` tiebreak) — `p.targetId === _trainerId` almost
+  never matched, and a missed/spent authored pass never restaged (respawn only fires on a
+  *lost* actor). Two production defects + one pilot defect, all fixed: (a) `_resolveProximityDone`
+  now restages the authored pass once it stops closing or slows below arming speed — retry,
+  never a wall, same contract as the seam rock; (b) a flagged training target outranks
+  `direct` in `beatsBest`, so a stray hostile in the pocket can no longer starve the staged
+  lesson (flagged trainers exist only during onboarding — normal targeting unchanged);
+  (c) the pilot now holds course with a cold stick instead of burning at the trainer on boost
+  through the crossing window the census refuses. In-process replay (`createAuthoritativeRuntime`
+  + production profile) reaches focus → trainer lease `match=true` → beat done → burst at
+  ~265 s. Focused tests pin both contracts (11/11 flight-drill + flyby-focus green). Run 4
+  launched with a `flybyFocus:start` target-vs-trainer tap for the authoritative verdict.
 - **Audit-fix packets landed 2026-10-29/30:** encounter bookkeeping `37e1ebe0d24`, heat victim
   `d79feb41121`, mining/careers `bfa9ec3b6a9`, save restore `7b4cced23e8`, unique-wreck persistence
   `bd978111178`, special500 registered in production `6ca62459ba5`, c47a truth `97283ecd9c1`,
