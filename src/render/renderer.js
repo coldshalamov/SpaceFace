@@ -10219,8 +10219,12 @@ export function compilePipelineSubject(tracker, subject, options = {}, urgent = 
 }
 
 export function preparePipelineSubjectResidency(tracker, subject, admissionOptions = {}, urgent = false) {
+  const ownerKey = admissionOptions.ownerKey
+    ?? admissionOptions.isActive?.ownerKey
+    ?? admissionOptions.isActive
+    ?? null;
   const outstanding = tracker && typeof tracker.pendingFor === 'function'
-    ? tracker.pendingFor(subject)
+    ? tracker.pendingFor(subject, ownerKey)
     : null;
   if (outstanding) return outstanding;
   const isActive = typeof admissionOptions.isActive === 'function'
@@ -10231,8 +10235,10 @@ export function preparePipelineSubjectResidency(tracker, subject, admissionOptio
   if (isActive && typeof admissionOptions.isActive.ownerSnapshot === 'function') {
     isActive.ownerSnapshot = admissionOptions.isActive.ownerSnapshot;
   }
+  if (isActive) isActive.ownerKey = ownerKey;
   return tracker.prepare(subject, {
     isActive,
+    ownerKey,
     unSliced: urgent === true,
   });
 }
@@ -14081,7 +14087,17 @@ export const render = {
       && this._openingLoadingAdmission?.owns(entity) === true;
     state.render.trackOpeningLoadingWork = (entity, promise) => (
       state.render.isRequiredOpeningEntity(entity)
-        ? this._openingLoadingAdmission.track(promise) : promise
+        ? this._openingLoadingAdmission.track(promise, {
+          isStillRequired: () => {
+            if (!entity || entity.alive === false) return false;
+            const entities = state.entities;
+            if (typeof entities?.get === 'function') return entities.get(entity.id) === entity
+              && isInitialAuthoredCompositionEntity(entity, state);
+            if (Array.isArray(state.entityList)) return state.entityList.includes(entity)
+              && isInitialAuthoredCompositionEntity(entity, state);
+            return isInitialAuthoredCompositionEntity(entity, state);
+          },
+        }) : promise
     );
     state.render.beginOpeningLoadingAdmission = () => {
       const existing = this._openingLoadingAdmission;
@@ -14643,9 +14659,11 @@ export const render = {
         // lane and hold the pending latch so the subject stays hidden until resident.
         if (subject) {
           markSubjectPipelinesPending(subject, true, 'late-opening-residency');
-          const outstanding = gpuResidencyAdmissions.pendingFor(subject);
+          const ownerKey = options.ownerKey ?? options.isActive?.ownerKey ?? options.isActive ?? null;
+          const outstanding = gpuResidencyAdmissions.pendingFor(subject, ownerKey);
           observePipelineAdmission((outstanding || gpuResidencyAdmissions.prepare(subject, {
             isActive: options.isActive,
+            ownerKey,
             unSliced: options.unSliced === true,
           }))
             .catch(() => null)
@@ -14654,10 +14672,12 @@ export const render = {
         return Promise.resolve({ skipped: true, reason: 'late-opening-root' });
       }
       if (!openingCohort.frozen) openingCohort.extendBlocked(openingSubjectIdentity(subject));
-      const outstandingResidency = gpuResidencyAdmissions.pendingFor(subject);
+      const ownerKey = options.ownerKey ?? options.isActive?.ownerKey ?? options.isActive ?? null;
+      const outstandingResidency = gpuResidencyAdmissions.pendingFor(subject, ownerKey);
       if (outstandingResidency) return outstandingResidency;
       return gpuResidencyAdmissions.prepare(subject, {
         isActive: options.isActive,
+        ownerKey,
         unSliced: options.unSliced === true,
       });
     };

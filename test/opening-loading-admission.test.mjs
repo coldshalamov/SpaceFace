@@ -449,6 +449,61 @@ test('subject-bound residency keeps the first-picture owner diagnostic across it
   assert.deepEqual(captured.isActive.ownerSnapshot(), snapshot);
 });
 
+test('the opening cohort drops only a tagged upload retired with its exact required entity', async () => {
+  const original = { id: 'wasp', alive: true, type: 'ship' };
+  const replacement = { id: 'wasp', alive: true, type: 'ship' };
+  const entities = new Map([[original.id, original]]);
+  const cohort = createOpeningLoadingAdmission({
+    entities: [original],
+    isRequired: (entity) => entity.alive !== false && entities.get(entity.id) === entity,
+    isActive: () => true,
+  });
+  const retired = deferred();
+  const completion = cohort.track(retired.promise, {
+    isStillRequired: () => original.alive !== false
+      && entities.get(original.id) === original
+      && original.type === 'ship',
+  });
+  const drain = cohort.drain();
+
+  entities.set(original.id, replacement);
+  retired.reject(Object.assign(new Error('old pool owner retired before upload'), {
+    name: 'AbortError', code: 'GPU_RESIDENCY_OWNER_INACTIVE',
+  }));
+  await assert.rejects(completion, (error) => error.code === 'GPU_RESIDENCY_OWNER_INACTIVE');
+  assert.deepEqual(await drain, { requiredCount: 1 },
+    'a same-id replacement retires the captured owner without poisoning the current launch');
+});
+
+test('a tagged inactive owner still fails while its captured entity remains required', async () => {
+  const entity = { id: 'live-wasp', alive: true, type: 'ship' };
+  const cohort = createOpeningLoadingAdmission({
+    entities: [entity], isRequired: (candidate) => candidate === entity && candidate.alive !== false,
+    isActive: () => true,
+  });
+  const retired = deferred();
+  cohort.track(retired.promise, {
+    isStillRequired: () => entity.alive !== false && entity.type === 'ship',
+  });
+  const drain = cohort.drain();
+  retired.reject(Object.assign(new Error('required owner retired before upload'), {
+    name: 'AbortError', code: 'GPU_RESIDENCY_OWNER_INACTIVE',
+  }));
+  await assert.rejects(drain, (error) => error.code === 'GPU_RESIDENCY_OWNER_INACTIVE');
+});
+
+test('a non-owner GPU failure remains fatal even after its entity retires', async () => {
+  const entity = { id: 'failed-wasp', alive: true, type: 'ship' };
+  const cohort = createOpeningLoadingAdmission({
+    entities: [entity], isRequired: () => true, isActive: () => true,
+  });
+  const failed = deferred();
+  cohort.track(failed.promise, { isStillRequired: () => false });
+  const drain = cohort.drain();
+  failed.reject(new Error('required texture upload failed'));
+  await assert.rejects(drain, /required texture upload failed/);
+});
+
 test('only a current loading transition retries a typed owner-inactive first-picture gate once', async () => {
   const ownerFailure = Object.assign(new Error('owner superseded before upload'), {
     name: 'AbortError', code: 'GPU_RESIDENCY_OWNER_INACTIVE',

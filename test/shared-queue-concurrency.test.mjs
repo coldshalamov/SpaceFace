@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import * as THREE from 'three';
-import { openingCompileIssueKey, render as renderSystem } from '../src/render/renderer.js';
+import { openingCompileIssueKey, preparePipelineSubjectResidency, render as renderSystem } from '../src/render/renderer.js';
 import { beginScenePipelineReadinessBatch, compileScenePipelinesForRenderTarget, scenePipelineReadinessBatchOpen } from '../src/render/bloom.js';
 import { makeGpuQueuePacer, makeGpuQueueSubmitter } from '../src/render/gpuQueuePace.js';
 import { collectUniqueCompileSubjects, compileSubjectsAcrossPresents,
@@ -84,7 +84,7 @@ function fixture({ parallel = false, active = () => true, rejectIndex = -1, mode
     admissionPaceYield: async () => {}, pacedFrameSpend: () => 0,
     PACED_FRAME_BUDGET_MS: 4, notePacedFrameSpend: () => {} };
   const compile = new Function(...Object.keys(deps), `return (${body});`).call(
-    { _shadowSettingOn: false, _selectPostRoute: () => 'fixture' }, ...Object.values(deps));
+    { _shadowSettingOn: false, _shadowDepthEnabled: () => false, _selectPostRoute: () => 'fixture' }, ...Object.values(deps));
   const tracker = createPipelineAdmissionTracker(compile);
   return { root, renderer, submissions, uploads, geometrySubmissions, geometryCompiles, events, drains, fault, peak: () => peak,
     run: () => tracker.compile(root, { urgent, isActive: active }) };
@@ -182,6 +182,30 @@ test('residency owner retired while queued cannot upload after its earlier yield
   assert.deepEqual(h.uploads, []);
   await prepareStartupGpuResidency(h.renderer, textureRoot(1), { yieldToMain: async () => {}, includeGeometry: false });
   assert.deepEqual(h.uploads, ['upload-1']);
+});
+
+test('a replacement residency owner does not inherit a queued same-subject promise', async () => {
+  let releaseOld, oldActive = true, calls = 0;
+  const oldWork = new Promise((resolve, reject) => { releaseOld = { resolve, reject }; });
+  const oldOwner = () => oldActive;
+  const newOwner = () => true;
+  const tracker = createGpuResidencyAdmissionTracker((_subject, options) => {
+    calls++;
+    return options.ownerKey === oldOwner ? oldWork : Promise.resolve({ resident: true });
+  });
+  const subject = { name: 'shared instance-pool chunk' };
+
+  const oldAdmission = preparePipelineSubjectResidency(tracker, subject, { isActive: oldOwner });
+  await Promise.resolve();
+  const replacementAdmission = preparePipelineSubjectResidency(tracker, subject, { isActive: newOwner });
+  oldActive = false;
+  releaseOld.reject(Object.assign(new Error('retired pool owner'), {
+    name: 'AbortError', code: 'GPU_RESIDENCY_OWNER_INACTIVE',
+  }));
+
+  await assert.rejects(oldAdmission, (error) => error.code === 'GPU_RESIDENCY_OWNER_INACTIVE');
+  assert.deepEqual(await replacementAdmission, { resident: true });
+  assert.equal(calls, 2, 'the replacement owner submits its own residency pass');
 });
 
 test('a texture deadline that expires in the queue still prevents submission', async () => {

@@ -84,14 +84,27 @@ export function createOpeningLoadingAdmission({ entities = [], isRequired = () =
   return {
     owns(entity) { return isActive() && required.has(entity); },
     entities() { return [...required]; },
-    track(promise) {
+    track(promise, owner = null) {
       assertActive();
       const completion = Promise.resolve(promise);
-      work.add(completion);
-      completion.then(() => work.delete(completion), (error) => {
-        work.delete(completion);
-        if (isActive() && !failure) failure = error;
+      const tracked = completion.then((value) => value, (error) => {
+        if (!isActive() || failure) throw error;
+        // A typed cancellation only stops blocking this launch when its captured entity no
+        // longer owns a required opening slot. A live required subject, and every real error,
+        // still fail closed. This matters when a queued pool upload retires with its old owner
+        // while the current world continues to own the loading cohort.
+        if (error?.name === 'AbortError'
+            && error?.code === 'GPU_RESIDENCY_OWNER_INACTIVE'
+            && typeof owner?.isStillRequired === 'function') {
+          let stillRequired = true;
+          try { stillRequired = owner.isStillRequired() === true; } catch { /* fail closed */ }
+          if (!stillRequired) return { skipped: true, reason: 'retired-opening-owner' };
+        }
+        failure = error;
+        throw error;
       });
+      work.add(tracked);
+      tracked.then(() => work.delete(tracked), () => work.delete(tracked));
       return completion;
     },
     async drain() {
@@ -1374,6 +1387,8 @@ export function createGpuResidencyAdmissionTracker(prepare) {
       const entry = {
         id: ++nextAdmissionId,
         subject,
+        ownerKey: options.ownerKey ?? options.isActive?.ownerKey ?? options.isActive ?? null,
+        isActive: typeof options.isActive === 'function' ? options.isActive : null,
         completion: null,
       };
       entry.completion = preparation.finally(() => {
@@ -1399,10 +1414,23 @@ export function createGpuResidencyAdmissionTracker(prepare) {
     waitForPending,
     // Outstanding upload for a subject, if one is queued or running. Callers that
     // would queue a second walk for the same root join the existing entry instead.
-    pendingFor(subject) {
+    pendingFor(subject, ownerKey = undefined) {
       const entries = pendingBySubject.get(subject);
       if (!entries || entries.size === 0) return null;
-      return Promise.all([...entries].map((entry) => entry.completion));
+      const compatible = [...entries].filter((entry) => {
+        if (ownerKey === undefined) return true;
+        // Ownerless residency is shared resource work. Owner-bound work can be joined only by
+        // the same captured owner; a replacement owner must submit its own live admission rather
+        // than inherit a queued promise that may be retired before its upload.
+        if (entry.ownerKey !== null && entry.ownerKey !== ownerKey) return false;
+        if (entry.isActive) {
+          try { if (entry.isActive() !== true) return false; } catch { return false; }
+        }
+        return true;
+      });
+      return compatible.length > 0
+        ? Promise.all(compatible.map((entry) => entry.completion))
+        : null;
     },
     get pendingCount() { return pending.size; },
   };

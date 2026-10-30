@@ -7820,6 +7820,7 @@ export function residencyOptionsForBoundary(entity, boundary, renderer) {
   const render = liveState && liveState.render;
   const nativeRenderer = render && render.renderer;
   const generation = render && render.admissionRunGeneration;
+  const ownerKey = {};
   const ownerActive = () => !!boundary && !!entity && entity.alive !== false
     && (!render || (authoredRuntimeState() === liveState && liveState.render === render
       && render.renderer === nativeRenderer && render.admissionRunGeneration === generation));
@@ -7830,6 +7831,34 @@ export function residencyOptionsForBoundary(entity, boundary, renderer) {
     const port = render && render[name];
     if (typeof port !== 'function') return null;
     const isActive = () => ownerActive() && render[name] === port;
+    // Admission failures are rare and this snapshot is read only by the residency failure path.
+    // Keep enough identity to distinguish an entity that left the opening set from a still-live
+    // boundary whose render port/generation was replaced while its pool upload waited.
+    isActive.ownerKey = ownerKey;
+    isActive.ownerSnapshot = () => {
+      const entities = liveState && liveState.entities;
+      const entityIsCurrent = typeof entities?.get === 'function'
+        ? entities.get(entity && entity.id) === entity
+        : Array.isArray(liveState?.entityList)
+          ? liveState.entityList.includes(entity)
+          : null;
+      let entityStillRequired = false;
+      try { entityStillRequired = isInitialAuthoredCompositionEntity(entity, liveState); } catch { }
+      return {
+        ownerType: 'authored-boundary',
+        entityId: entity?.id ?? null,
+        entityAlive: entity?.alive !== false,
+        entityIsCurrent,
+        entityStillRequired,
+        boundaryAttached: !!boundary?.parent,
+        renderMatches: authoredRuntimeState() === liveState && liveState?.render === render,
+        rendererMatches: render?.renderer === nativeRenderer,
+        admissionGenerationMatches: render?.admissionRunGeneration === generation,
+        portMatches: render?.[name] === port,
+        sectorId: sectorId ?? null,
+        currentSectorId: liveState?.world?.currentSectorId ?? null,
+      };
+    };
     const assertActive = () => {
       if (isActive()) return;
       const error = new Error(`Authored ${name} owner became inactive`);
@@ -7925,10 +7954,14 @@ export function residencyOptionsForBoundary(entity, boundary, renderer) {
           const onGlass = !!(st && st.mode === 'flight'
             && entityIsOnscreen(boundaryLiveEntity(boundary, entity), st));
           const required = openingRequired();
+          const isActive = () => residency.isActive()
+            && (typeof admissionOptions.isResidencyOwnerActive !== 'function'
+              || admissionOptions.isResidencyOwnerActive());
+          isActive.ownerKey = ownerKey;
+          isActive.ownerSnapshot = residency.isActive.ownerSnapshot;
           return trackOpeningWork(residency.call(root, {
-            isActive: () => residency.isActive()
-              && (typeof admissionOptions.isResidencyOwnerActive !== 'function'
-                || admissionOptions.isResidencyOwnerActive()),
+            isActive,
+            ownerKey: isActive.ownerKey,
             unSliced: admissionOptions.unSliced === true || onGlass,
             openingRequired: required,
           }), required);
