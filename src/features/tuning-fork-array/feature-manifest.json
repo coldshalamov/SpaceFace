@@ -1,0 +1,86 @@
+{
+  "feature": "tuning_fork_array",
+  "version": 1,
+  "baseSha": "871c27854bb2acff09a80595844d9731d33b037a",
+  "baseTree": "a3bb1bb7b8cccca0ab280f53bd6035f5f92124b4",
+  "resultBranch": "codex/pro-tuning-fork-array",
+  "status": "candidate_unintegrated",
+  "modelCapability": "unknown",
+  "files": [
+    {
+      "path": "src/features/tuning-fork-array/EVIDENCE.md",
+      "sha256": "4c253c2bb861f64af6a00ef041125ff4949463989d18673590705b396727f2ee",
+      "bytes": 3234
+    },
+    {
+      "path": "src/features/tuning-fork-array/INTEGRATION.md",
+      "sha256": "27fcde4f5ca0e3777d0217df5745e7723774ddec122d824b629c37e9c656f5ad",
+      "bytes": 12654
+    },
+    {
+      "path": "src/features/tuning-fork-array/adapter.mjs",
+      "sha256": "2885a7443e21841e5f45c1fdede6dbdd6ce1487c791d9d7bbe84377890b1a8be",
+      "bytes": 14040
+    },
+    {
+      "path": "src/features/tuning-fork-array/core.mjs",
+      "sha256": "5f60245ccc15581c5ecdcad4b8fbced5913cc140b026d3ca4b746add8545e4fc",
+      "bytes": 9137
+    },
+    {
+      "path": "src/features/tuning-fork-array/definition.mjs",
+      "sha256": "f13f607de13781583332c39be046616cb39cb3c57d47711909278329f08c1918",
+      "bytes": 3983
+    },
+    {
+      "path": "src/features/tuning-fork-array/presentation.mjs",
+      "sha256": "958c16a43c46336216396f634b788a46586e74eba07ca771bed8482e1a5731ba",
+      "bytes": 6242
+    },
+    {
+      "path": "src/features/tuning-fork-array/signal.mjs",
+      "sha256": "c1407e08fa5c75824ee06c3ca2c8a1b26fc30ac08fb0704e4419dd6343fb7007",
+      "bytes": 3087
+    },
+    {
+      "path": "test/pro-tuning-fork-array.test.mjs",
+      "sha256": "365d08c88729b77ded89b6b55975efc7fd55d35d0b1c57d31486d517742fa6a9",
+      "bytes": 15672
+    }
+  ],
+  "manifestHashPolicy": "payload hashes exclude this manifest to avoid a recursive hash",
+  "changedFiles": [
+    "src/features/tuning-fork-array/EVIDENCE.md",
+    "src/features/tuning-fork-array/INTEGRATION.md",
+    "src/features/tuning-fork-array/adapter.mjs",
+    "src/features/tuning-fork-array/core.mjs",
+    "src/features/tuning-fork-array/definition.mjs",
+    "src/features/tuning-fork-array/presentation.mjs",
+    "src/features/tuning-fork-array/signal.mjs",
+    "test/pro-tuning-fork-array.test.mjs",
+    "src/features/tuning-fork-array/feature-manifest.json"
+  ],
+  "tests": [
+    {
+      "command": "node --test test/pro-tuning-fork-array.test.mjs",
+      "passed": 20,
+      "failed": 0
+    },
+    {
+      "check": "pinned canonical npcJobs kernel probe",
+      "result": "sell 1 circuit in 33s; publish 2 circuits in 63s; payload and save/restore valid"
+    }
+  ],
+  "integrationEntrypoints": {
+    "controller": "src/features/tuning-fork-array/adapter.mjs#createTuningForkArray",
+    "view": "src/features/tuning-fork-array/presentation.mjs#mountReadout",
+    "overlay": "src/features/tuning-fork-array/presentation.mjs#createSignalOverlay",
+    "guide": "src/features/tuning-fork-array/INTEGRATION.md"
+  },
+  "remainingOwnerWork": [
+    "central registration and save/schema declarations",
+    "ordinary placement and authored asset mapping",
+    "traffic hull selection and publicCorridor route consumption",
+    "headed playtest, worker facades, physics/art/performance qualification and acceptance"
+  ]
+}
