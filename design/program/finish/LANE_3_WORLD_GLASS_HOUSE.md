@@ -179,7 +179,18 @@ Rows are the spec (`build_map.md` §31–§32; read each row's prose before brie
   fix-onboarding-continue (rescue-era Continue restores no actors/panel — top systems-b item),
   fix-heat-victim (unprovoked fire adds zero heat — victim type read damage channel),
   fix-encounter-bookkeeping (resolve never records completed → gated chains deadlock),
-  fix-spine-vocab (obsolete Beat-1/2 method ids → spine records nothing, six voices silenced).
+  fix-spine-vocab (obsolete Beat-1/2 method ids → spine records nothing, six voices silenced),
+  fix-ironmaw-board (Iron Maw never spawns on Charon→Ashfall; epoch rebuild deletes contract
+  classes), fix-save-restore (Continue crash on signature mismatch; restore drops boost-regen,
+  weaponless hulls, empty-ownedShips normalization), fix-uniquewrecks-persist (wreck progress
+  lost across saves; elapsed fuse detonates reminted hull), fix-mining-careers (held-beam cargo
+  printer; hauler expiresAtEpoch:1 kills chain at ~5 min), verify-economy-honesty (dirty 200-line
+  economy.js diff vs packet — landable?).
+- **Save writelane landed `1fc335672aa`** — D1/D2/D3/D4/D5/D7 fixed (mirror deltas, gzip recovery
+  rotation, prepared-envelope cache, redundant worker validate removed, serialized player key
+  order, superseded pending marker); 4 new tests; schema+fuzz green.
+- **D222 UI budget** — baseline re-shooting over the live rendered set (`units.js` refactor
+  in-flight); grammar debt (chart 6.3ms, flight 1713 DOM, range 3.4ms) stays named, not hidden.
 
 ### Wave G — the glass (every 2D surface; DeepSeek via OpenCode builds, Claude Sonnet reviews every ~5)
 Direction: `design/frontend/ORRERY.md`, `ORRERY_RUBRIC.md`; method: `docs/UI_VISUAL_ITERATION.md`
