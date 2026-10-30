@@ -183,6 +183,9 @@ html.sf-reduce-motion .orr-hrig__spot { display:none; }
   letter-spacing:.02em; color:rgb(${HOT}); white-space:nowrap; transition:color .16s linear, text-shadow .16s linear; }
 .orr-hrig__key--word { font-size:clamp(13px, .68vw, 17px); ${LABEL} letter-spacing:.14em; }
 .orr-hrig__alt { font-family:var(--dp-face-numeral, "Archivo"); font-size:clamp(14px, .73vw, 18px); font-weight:500; line-height:1; color:rgb(${BONE} / .72); white-space:nowrap; }
+/* Second binding reads as "SPACE · F", the separator the EVERY KEY list uses, not a loose
+   suffix jammed against the first key. */
+.orr-hrig__alt::before { content:"\\00B7"; margin-right:.32em; color:rgb(${BONE} / .62); }
 .orr-hrig__pad { display:none; }
 .orr-hrig.is-pad .orr-hrig__kb { display:none; }
 .orr-hrig.is-pad .orr-hrig__pad { display:inline-flex; }
