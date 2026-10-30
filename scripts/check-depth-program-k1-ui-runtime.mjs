@@ -127,7 +127,7 @@ try {
       lines: ['Administrative channel open.'],
       actions: [{ id: 'acknowledge', label: 'Acknowledge' }],
     });
-    const hailShown = document.querySelector('#sf-contact-hail [data-k="panel"]')?.hidden === false;
+    const hailShown = document.querySelector('.sf-contact-hail__panel')?.hidden === false;
     const directParleyBlocked = parleyPrompt.choose('comply', 'direct') === false;
     const directHailRequestBlocked = contactHailPrompt.request('direct') === false;
     const directHailChoiceBlocked = contactHailPrompt.choose('acknowledge', 'direct') === false;
@@ -249,6 +249,17 @@ try {
       fencedPropagation,
       fencedIntents,
       fencedCommsPrompts,
+      commsPromptDetails: {
+        parleyShown,
+        hailShown,
+        directParleyBlocked,
+        directHailRequestBlocked,
+        directHailChoiceBlocked,
+        signalShown,
+        recoveryShown,
+        directSignalBlocked,
+        directRecoveryBlocked,
+      },
       releasedSemanticModal,
       releasedPropagation,
       inputTeardown,
