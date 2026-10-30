@@ -1,4 +1,5 @@
 import { barFrameHtml } from '../../views/stationFrames.js';
+import { mountDataState } from '../../uiPrimitives.js';
 import { stationRegularRecognition } from '../stationArrival.js';
 // src/ui/station/screens/bar.js — "Bar": the conversation as a kit panel (Frontend Task C §1.8).
 // Left: who is here tonight as a column of words, then the leads as rows (survey data and board
@@ -364,7 +365,20 @@ export function createBarScreen(ctx) {
   function renderRail(state) {
     const list = contacts(state);
     if (!list.length) {
-      railEl.innerHTML = `<p class="k-caps">Here tonight</p><p class="k-empty sx-empty">Nobody here.</p>`;
+      // Empty tells a tiny story (the contracts board's shape): why it is quiet and a way out.
+      railEl.innerHTML = `<p class="k-caps">Here tonight</p>`;
+      const quiet = document.createElement('div');
+      railEl.appendChild(quiet);
+      mountDataState(quiet, 'empty', {
+        code: 'BAR_QUIET',
+        compact: true,
+        headline: 'Nobody in tonight.',
+        fills: 'Regulars drift in with the day shift at busier berths — or once a job makes you worth talking to.',
+        verb: {
+          label: 'Open the Chart',
+          onActivate: () => openGalaxyMap(ctx, { focus: MAP_FOCUS.SYSTEM, source: 'bar-empty' }),
+        },
+      });
       dressRail();
       return;
     }
@@ -390,7 +404,15 @@ export function createBarScreen(ctx) {
   function renderStage(state) {
     const c = selected(state);
     if (!c) {
-      stageEl.innerHTML = `<p class="k-empty sx-empty">The bar is empty. Try a larger station.</p>`;
+      mountDataState(stageEl, 'empty', {
+        code: 'BAR_EMPTY',
+        headline: 'The bar is empty tonight.',
+        fills: 'Whoever drinks at a port this thin is out working. A larger station keeps its regulars later.',
+        verb: {
+          label: 'Open the Chart',
+          onActivate: () => openGalaxyMap(ctx, { focus: MAP_FOCUS.SYSTEM, source: 'bar-empty' }),
+        },
+      });
       dressStage();
       return;
     }

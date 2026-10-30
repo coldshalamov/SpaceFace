@@ -3114,7 +3114,7 @@ export const missionLogScreen = {
     const receipts = missionReceiptRows(this._ctx.state, 5);
     this._compListEl.innerHTML = '';
     if (!receipts.length && !log.length) {
-      this._compListEl.innerHTML = '<div class="sf-mlog-empty"><p class="k-sentence k-38">No settlement receipts yet.</p></div>';
+      this._compListEl.innerHTML = '<div class="sf-mlog-empty"><p class="k-sentence k-38">No settlement receipts yet. The ledger writes its first line the first time a job pays out.</p></div>';
       return;
     }
     // Completed rows read at 38 %: plain spans inside static rows (k-row__name would lift them).
@@ -3169,7 +3169,7 @@ export const missionLogScreen = {
     const receipts = Array.isArray(dir && dir.receipts) ? dir.receipts.slice(-5).reverse() : [];
     this._corrListEl.innerHTML = '';
     if (!receipts.length) {
-      this._corrListEl.innerHTML = '<div class="sf-mlog-empty"><p class="k-sentence k-38">Nothing worth logging yet. Fly the lane.</p></div>';
+      this._corrListEl.innerHTML = '<div class="sf-mlog-empty"><p class="k-sentence k-38">Nothing in the corridor log yet. What happens out there writes itself in here.</p></div>';
       return;
     }
     const now = Number(this._ctx.state.simTime) || 0;
