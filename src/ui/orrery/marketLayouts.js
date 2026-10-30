@@ -979,19 +979,22 @@ const CSS_TAIL = `
    console sits on its side: dial on the left, with the words, total and verbs beside it, all inside the body. */
 @media (max-width:650px) and (max-height:400px) {
   ${MD.replace(' .sx-mkt.orr-market', ' .sx-screen__body > .sx-mkt.orr-market')} {
-    grid-template-columns:minmax(0, 1.25fr) minmax(0, 1fr) !important; grid-template-rows:minmax(0, 1fr) 0 !important; row-gap:0 !important; column-gap:16px !important; height:100% !important; }
-  ${MD} > .sx-mkt__list { height:auto !important; max-height:100% !important; padding-top:4px !important; }
-  /* the register: the families run as one strip over the table (it scrolls sideways and fades at its end), and the
-     legend and the find step aside, so the rows get the whole column */
-  ${MD} .sx-mkt-browser { grid-template-columns:minmax(0, 1fr) !important; grid-template-rows:auto minmax(0, 1fr) !important; row-gap:2px !important; }
-  ${MD} .sx-mkt-browser__mode { display:none !important; }
-  ${MD} .orr-mkt-find { display:none !important; }
-  ${MD} .sx-mkt-browser__filters { grid-column:1 !important; grid-row:1 !important; flex-direction:row !important; flex-wrap:nowrap !important;
+    grid-template-columns:minmax(0, 1.25fr) minmax(0, 1fr) !important; grid-template-rows:minmax(232px, 1fr) 0 !important; row-gap:0 !important; column-gap:16px !important; height:auto !important; min-height:100% !important; }
+  /* the panel may run taller than a 60px phone-landscape body: the body scrolls it, as on master, so the register keeps
+     room for whole rows (rework: at 568x320 a 33px rail under 81px rows left 50 goods unreachable) */
+  ${MD} > .sx-mkt__list { height:auto !important; max-height:none !important; padding-top:4px !important; }
+  /* the register: the 'Station exchange' heading with the find box beside it, then the families as one strip over the
+     table (it scrolls sideways and fades at its end), so the rows get the whole column */
+  ${MD} .sx-mkt-browser { grid-template-columns:minmax(0, 1fr) !important; grid-template-rows:auto auto minmax(150px, 1fr) !important; row-gap:2px !important; }
+  ${MD} .sx-mkt-browser__mode { grid-column:1 !important; grid-row:1 !important; display:flex !important; min-height:24px !important; padding-right:min(50%, 160px) !important; }
+  ${MD} .orr-mkt-find { display:block !important; width:min(48%, 150px) !important; padding:0 0 4px !important; }
+  ${MD} .sx-mkt-browser__rail { min-height:150px !important; }
+  ${MD} .sx-mkt-browser__filters { grid-column:1 !important; grid-row:2 !important; flex-direction:row !important; flex-wrap:nowrap !important;
     width:auto !important; min-width:0 !important; max-width:100% !important; overflow-x:auto !important; overflow-y:hidden !important; scrollbar-width:none; gap:0 12px !important; padding:0 24px 2px 9px !important; background:none !important;
     -webkit-mask-image:linear-gradient(to right, #000 calc(100% - 24px), transparent); mask-image:linear-gradient(to right, #000 calc(100% - 24px), transparent); }
   ${MD} .sx-mkt-browser__filters li { flex:none !important; }
   ${MD} .sx-mkt-filter { padding:3px 0 !important; line-height:14px !important; letter-spacing:.05em !important; }
-  ${MD} .sx-mkt-browser__rail { grid-column:1 !important; grid-row:2 !important; }
+  ${MD} .sx-mkt-browser__rail { grid-column:1 !important; grid-row:3 !important; }
   /* the stage is one column: the console first, then the decision and the reading under it in the stage's own scroll */
   ${MD} .sx-mkt__stage.dp-work__stage { grid-template-columns:minmax(0, 1fr) !important; grid-template-rows:max-content max-content max-content !important; align-content:start !important; row-gap:10px !important; overflow-y:auto !important; overflow-x:hidden !important; }
   ${MD} .sx-mkt__stage.dp-work__stage > .sx-mkt__console { grid-column:1 !important; grid-row:1 !important; width:auto !important; max-height:none !important; overflow:visible !important; }
