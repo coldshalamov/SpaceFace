@@ -274,6 +274,11 @@ and Compost opening experiences", plus files staged in the shared index under
 ### Wave S — the ear
 Every verb has a voice, the mix has a hierarchy, silence exists (`FINISH_LANES.md` lane 8 checklist,
 `src/audio/**`). Audit first: list verbs with no sound or a placeholder, then fix in batches.
+Audit state 2026-10-30: the cue contract suite is green — `check:audio-identity` (91 semantic
+cues resolve; `sfx_accel_transition` was uncovered, listed `1b500b762e7`), `check:first-hour-audio`
+(audible/blocked trace green), asteroid routing, beam-verb truth table, mining signatures. Still
+owed under lane 8: live audition of mix hierarchy / room tone / silence placement — a runtime
+listen, not a check.
 
 ### H1 — The full razor (last, when the other lanes no longer cite old docs)
 README §7 end state: `AGENTS.md` ≤ 150 lines, `build_map.md` ≤ 600 lines, one perf document, one
