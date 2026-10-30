@@ -1,0 +1,18 @@
+{
+  "id": "ionaVeyRival",
+  "schema": "spaceface.ionaVey.v1",
+  "baseSha": "871c27854bb2acff09a80595844d9731d33b037a",
+  "status": "candidate-unregistered",
+  "modelCapability": "unknown",
+  "entrypoint": "src/features/iona-vey-rival/index.js",
+  "factory": "createIonaVeyRivalSystem",
+  "presentation": "src/features/iona-vey-rival/presentation.js",
+  "integration": "src/features/iona-vey-rival/INTEGRATION.md",
+  "tests": ["node --test test/pro-iona-vey-rival.test.mjs"],
+  "limits": {"tugs": 1, "appearances": 3, "cargoBodies": 5},
+  "writes": ["src/features/iona-vey-rival/**", "test/pro-iona-vey-rival*.test.mjs"],
+  "requiredOwners": ["core", "ships", "npcJobsRuntime", "combat", "physics", "mining", "cargo", "lawSecurity", "world", "save"],
+  "optionalOwners": ["missions", "factions"],
+  "centralRegistration": false,
+  "headedAcceptance": false
+}
