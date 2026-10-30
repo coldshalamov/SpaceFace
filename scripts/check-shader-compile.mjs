@@ -32,6 +32,7 @@ import { fileURLToPath } from 'node:url';
 
 import { loadPlaywright } from './lib/load-playwright.mjs';
 import { acquireVisualProbeServer } from './lib/visualProbeServer.mjs';
+import { installFirstLightPromptHandler } from './player-truth/routes.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const VIEWPORT = Object.freeze({ width: 1280, height: 800 });
@@ -64,6 +65,7 @@ try {
   context = await browser.newContext({ viewport: VIEWPORT, screen: VIEWPORT, deviceScaleFactor: 1 });
   const page = await context.newPage();
   page.setDefaultTimeout(30_000);
+  await installFirstLightPromptHandler(page, () => {});
 
   // Both listeners are armed BEFORE navigation: a module that fails to parse does so during the
   // very first evaluation, and a listener attached after goto() would miss the only report of it.
