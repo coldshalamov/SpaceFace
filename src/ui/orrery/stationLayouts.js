@@ -779,6 +779,16 @@ html.sf-reduce-motion ${S} :is(.orr-vdial__fill, .orr-vdial__hand) { transition:
   /* five dials share ~68px each: MUNITIONS and CREDIT LINE OPEN keep inside their dial instead of running off the frame */
   ${D} .sxb-vital__label { letter-spacing:.02em !important; font-stretch:100% !important; white-space:nowrap !important; }
   ${D} .sxb-vital .orr-vnum.is-word { letter-spacing:.04em !important; }
+  /* the hull stacks two priced verbs (Repair, Insure) at 45px each, so the crown ran 35px past the 40% head at 420x700 and
+     INSURE sat half under the job board: each verb sits flush over its price, and the dials close up under the credits */
+  ${D} .sxb-crown .sxb-vital__acts { margin-top:2px !important; gap:2px !important; }
+  ${D} .sxb-crown .sxb-vital__acts .k-word { min-height:0 !important; padding:1px 0 !important; gap:0 !important; line-height:14px !important; }
+  ${D} .sxb-crown .sxb-vital__acts .k-word > :is(.orr-act__verb, .orr-act__cost) { line-height:14px !important; margin:0 !important; }
+  ${D} .sxb-crown .sxb-vitals { margin-top:-4px !important; }
+  /* the services under the crown scroll inside the head: their last visible line fades out instead of being sliced
+     by the job board, and the head's end can scroll clear of the fade */
+  ${D} .sxb-berth.dp-frame__head { -webkit-mask-image:linear-gradient(to bottom, #000 calc(100% - 22px), transparent) !important;
+    mask-image:linear-gradient(to bottom, #000 calc(100% - 22px), transparent) !important; padding-bottom:22px !important; }
 }
 /* a 1440p screen shows the 1080p composition at 1.25 (the kit scale is folded into the zoom, so nothing scales twice) */
 @media (min-width:2200px) and (min-height:1200px) {
