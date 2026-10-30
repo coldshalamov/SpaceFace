@@ -233,7 +233,15 @@ Rows are the spec (`build_map.md` §31–§32; read each row's prose before brie
   latch the scout (it cannot run tethered), winch tight, burn at the wall, cut when it flies
   true — instead of tail-chasing a fleeing drone and firing. Regression test pins the
   whole-tableau restage, the charged single-fail retry on a near wall, and the wall-anchor
-  runaway case (7/7 flight-drill green).
+  runaway case (7/7 flight-drill green). Commit `f1060d81d347`.
+  **Probe verdict (in-process, seed 4242):** intercept latch `target=612→614:drone/scout` at
+  t=278-280 (first press caught an ambient drone, retried onto the marked body), tethered
+  tow dragged the scout through the wall zone — `shove:complete fails=0` at t=286, ~8 s
+  after latch. Rail advanced `disengage` → `resc=grab` at t=296 → pod latch t=316. Named
+  the next defect on the same probe: the beacon run boosted onto the ring at ~190 wu/s —
+  the turn circle misses the 60-radius ring by 40+ every pass (dBeacon oscillates 75→105,
+  never <60). Pilot fix `ac61e3597d69`: bleed the final leg until the aim line actually
+  crosses the ring. Run 6 launched on the full fix set.
 - **Audit-fix packets landed 2026-10-29/30:** encounter bookkeeping `37e1ebe0d24`, heat victim
   `d79feb41121`, mining/careers `bfa9ec3b6a9`, save restore `7b4cced23e8`, unique-wreck persistence
   `bd978111178`, special500 registered in production `6ca62459ba5`, c47a truth `97283ecd9c1`,
