@@ -33,6 +33,21 @@ let defaultDecoderModules = null;
 const VERIFIED_METADATA_CACHE_MAX = 512;
 const VERIFIED_METADATA_CACHE_MAX_BYTES = 16 * 1024 * 1024;
 
+function createPackageEvictionHandler(entry, loaded, cache, contentHash, assetId) {
+  return function onEvict() {
+    entry.evicted = true;
+    loaded.markEvicted();
+    if (cache.get(contentHash) === entry) cache.delete(contentHash);
+    // A content hash can have multiple decoded generations in separate loaders. Retire
+    // only the manifest registered by this residency generation; a hash-only drop could
+    // erase a still-mounted sibling package during preview/runtime teardown.
+    if (entry.detachManifest) {
+      dropPackageDetachManifest(contentHash, entry.detachManifest);
+    }
+    entry.admission.abort(new Error(`Render package ${assetId} was evicted mid-decode.`));
+  };
+}
+
 export function createRenderPackageLoader(options = {}) {
   const fetchImpl = options.fetchImpl || globalThis.fetch;
   const decodeGlb = typeof options.loadGlb === 'function'
@@ -391,18 +406,9 @@ export function createRenderPackageLoader(options = {}) {
               assetId: metadata.assetId,
               contentHash,
             },
-            onEvict() {
-              entry.evicted = true;
-              loaded.markEvicted();
-              if (cache.get(contentHash) === entry) cache.delete(contentHash);
-              // A content hash can have multiple decoded generations in separate loaders. Retire
-              // only the manifest registered by this residency generation; a hash-only drop could
-              // erase a still-mounted sibling package during preview/runtime teardown.
-              if (entry.detachManifest) {
-                dropPackageDetachManifest(contentHash, entry.detachManifest);
-              }
-              entry.admission.abort(new Error(`Render package ${metadata.assetId} was evicted mid-decode.`));
-            },
+            // Keep this callback outside preparePackageTail(decoded)'s activation so its
+            // persistent residency record cannot retain the completed GLTF parser/binary.
+            onEvict: createPackageEvictionHandler(entry, loaded, cache, contentHash, metadata.assetId),
           });
         } catch (error) {
           disposeDecodedResources(decoded, loaded.resources);
@@ -436,6 +442,9 @@ export function createRenderPackageLoader(options = {}) {
         } catch (error) {
           dedupWarn('renderPackageLoader:cpu-detach-manifest', '[renderPackageLoader] cpu detach manifest failed', error);
         }
+        // The source scene and flat instance plan now own everything runtime needs. Drop the
+        // decoder wrapper too: it can retain the GLTFParser and its large binary body.
+        decoded = null;
         return loaded;
       })();
   }
