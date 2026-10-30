@@ -55,7 +55,8 @@ test('selected station services resolve from the live record, preserve point met
       data: { stationId: 'station_borrowed_sun', services: ['trade', 'refuel', 'repair'] },
     }] };
     const borrowedSunHtml = galaxyMapScreen._servicesTabHtml(liveStationState);
-    for (const service of ['trade', 'refuel', 'repair']) assert.ok(borrowedSunHtml.includes(service));
+    // Chips print the service as a word ("Trade"), not the raw id; resolution is what is pinned.
+    for (const service of ['trade', 'refuel', 'repair']) assert.ok(borrowedSunHtml.toLowerCase().includes(service));
     assert.equal(borrowedSunHtml.includes('No services listed.'), false);
 
     galaxyMapScreen._selectedTarget = {
@@ -70,7 +71,7 @@ test('selected station services resolve from the live record, preserve point met
     galaxyMapScreen._selectedTarget = {
       kind: 'station', id: 'charted_point', stationId: 'station_charted_point', name: 'Charted Point', services: ['trade'],
     };
-    assert.ok(galaxyMapScreen._servicesTabHtml({ entityList: [] }).includes('>trade</span>'));
+    assert.ok(galaxyMapScreen._servicesTabHtml({ entityList: [] }).includes('>Trade</span>'));
   } finally {
     galaxyMapScreen._selectedTarget = original;
   }
