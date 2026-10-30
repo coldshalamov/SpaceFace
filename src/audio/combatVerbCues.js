@@ -163,6 +163,13 @@ export const PLAYER_ACTION_CUES = Object.freeze({
   // the strain instrument, and the reading is the customs desk's record.
   'jump:interdictionWarning': SILENT('The pull is the toast and the felt thrust; no second siren.'),
   'tether:massWeighed': SILENT('The strain instrument already carries the rope; the weigh is the desk\'s record.'),
+
+  // ── The thrown-charge sequence earns its ladder (the detonation was already its own voice) ──
+  // The throw rides the massline throw's whoosh, the bite into the host is the hitch latch, and
+  // the arming beat is the readiness tick — the blast stays the payoff, never doubled here.
+  'charge:thrown': 'sfx_massline_throw',
+  'charge:stuck': 'sfx_hitch_latch',
+  'charge:armed': 'sfx_snare_arm_tick',
   'credits:changed': 'sfx_cash_register',
   payout: 'sfx_cash_register',
 
