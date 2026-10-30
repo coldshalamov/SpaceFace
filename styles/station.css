@@ -1208,6 +1208,32 @@ html[data-k-temp="wanted"] #screens .sx-berth .sxb-berth__lamp {
     overflow: hidden;
     overflow-wrap: break-word;
   }
+  /* …and pointing at a tab, or focusing it from the keyboard, lifts its whole line into a plate
+     just above the tab (the clamp cut most lines in half). The open tab, which holds focus when the
+     station opens, lifts its plate only when pointed at, so the plate never sits on its body, and
+     while any tab is pointed at, only that one plate shows. The row keeps its height, since the
+     other six lines still hold it, so nothing under the rail moves. */
+  html:root:not([data-sf-mobile="1"]) #screens .sx-berth .sx-dock:has(.sx-tile__gloss) { overflow: visible; }
+  html:root:not([data-sf-mobile="1"]) #screens .sx-berth .sx-dock__group--nav > li:has(.sx-tile__gloss) { position: relative; align-content: flex-start; }
+  html:root:not([data-sf-mobile="1"]) #screens .sx-berth .sx-dock__group--nav > li:hover > .sx-tile__gloss,
+  html:root:not([data-sf-mobile="1"]) #screens .sx-berth .sx-dock__group--nav:not(:has(> li:hover)) > li:has(> .sx-tile:not([aria-selected="true"]):focus-visible) > .sx-tile__gloss {
+    position: absolute;
+    left: 0;
+    bottom: calc(100% + 6px);
+    z-index: 6;
+    display: block;
+    width: 18rem;
+    max-width: none;
+    -webkit-line-clamp: none;
+    line-clamp: none;
+    overflow: visible;
+    padding: 8px 12px 9px;
+    text-align: left;
+    color: var(--dp-ink, #e8e2d4);
+    background: color-mix(in srgb, var(--bg) 94%, transparent);
+    border: 1px solid color-mix(in srgb, var(--dp-ink, #e8e2d4) 22%, transparent);
+    box-shadow: 0 6px 18px rgb(0 0 0 / 0.45);
+  }
 }
 
 #screens .sx-berth .sx-comms { flex: 1 1 12rem; flex-direction: row; justify-content: flex-start; gap: calc(8px * var(--k-s)); }
