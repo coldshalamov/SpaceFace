@@ -1068,73 +1068,7 @@ export async function runReleaseSoakProbe({
     // ordinary cleanup can publish the same caller snapshot; this never calls teardown.
     await armPostTeardownGlDeleteTrap().catch(() => {});
     if (page && !page.isClosed()) {
-      const runtimeFailure = await page.evaluate(() => {
-        const state = window.SF?.state || null;
-        const render = state?.render || null;
-        const overlay = document.getElementById('boot-overlay');
-        const admission = render?.requiredPackageAdmission || null;
-        const owner = render?.lastGpuResidencyOwnerInactive || null;
-        return {
-          document: {
-            visibilityState: document.visibilityState,
-            failurePresenterText: String(overlay?.innerText || overlay?.textContent || '').slice(0, 1_200),
-          },
-          state: state ? {
-            mode: state.mode || null,
-            tick: Number.isFinite(Number(state.tick)) ? Number(state.tick) : null,
-            simTime: Number.isFinite(Number(state.simTime)) ? Number(state.simTime) : null,
-            admissionRunGeneration: Number.isFinite(Number(render?.admissionRunGeneration))
-              ? Number(render.admissionRunGeneration) : null,
-            contextRestoreSeq: Number.isFinite(Number(state.contextRestoreSeq))
-              ? Number(state.contextRestoreSeq) : null,
-            world: {
-              enterSerial: state.world?.enterSerial ?? null,
-              currentSectorId: state.world?.currentSectorId ?? null,
-            },
-          } : null,
-          opening: render ? {
-            bufferResizeDiagnostic: render.renderer?.__sfBufferResizeFailure || null,
-            lastBatchedFailure: render.bufferResizeDiagnostic?.lastBatchedFailure
-              || render.renderer?.__sfBatchedMeshFailure
-              || null,
-            bufferResizeDiagnosticPerformanceEligible: render.bufferResizeDiagnostic?.performanceEligible ?? null,
-            firstPictureReady: render.openingFirstPictureReady === true,
-            firstPicturePhase: render.openingFirstPicturePhase ? {
-              stage: render.openingFirstPicturePhase.stage || null,
-              outcome: render.openingFirstPicturePhase.outcome || null,
-              ms: Number.isFinite(Number(render.openingFirstPicturePhase.ms))
-                ? Number(render.openingFirstPicturePhase.ms) : null,
-            } : null,
-            firstPictureOwner: render.openingFirstPictureOwner ? {
-              generation: render.openingFirstPictureOwner.generation ?? null,
-              serial: render.openingFirstPictureOwner.serial ?? null,
-              sector: render.openingFirstPictureOwner.sector ?? null,
-              context: render.openingFirstPictureOwner.context ?? null,
-            } : null,
-            liveSectorGpuAdmission: render.liveSectorGpuAdmission === true,
-            requiredPackageAdmission: admission ? {
-              status: admission.status || null,
-              packageId: admission.packageId || null,
-              reason: admission.reason || null,
-              generation: admission.generation ?? null,
-            } : null,
-            currentSectorFailure: render.openingCurrentSectorFailure || null,
-            gpuResidencyOwnerInactive: owner ? {
-              subjectName: owner.subjectName || null,
-              owner: owner.owner || null,
-            } : null,
-            cookLedgerTail: Array.isArray(render.openingCookLedger)
-              ? render.openingCookLedger.slice(-12).map((row) => ({
-                step: row?.step || null,
-                outcome: row?.outcome || null,
-                ms: Number.isFinite(Number(row?.ms)) ? Number(row.ms) : null,
-                reason: row?.reason || null,
-                fail: row?.fail || null,
-              }))
-              : [],
-          } : null,
-        };
-      }).catch((snapshotError) => ({ unavailable: String(snapshotError?.message || snapshotError).slice(0, 500) }));
+      const runtimeFailure = await page.evaluate(readFailureRuntimeSnapshot).catch((snapshotError) => ({ unavailable: String(snapshotError?.message || snapshotError).slice(0, 500) }));
       const issues = (pageIssueTracker?.issues || [])
         .filter((issue) => ['error', 'pageerror', 'warning'].includes(issue?.type))
         .slice(-24)
@@ -1624,6 +1558,76 @@ export async function installTier1CountersInitScript(target) {
       writable: false,
     });
   });
+}
+
+/** Read the abort snapshot after runtime teardown, in the page realm. */
+export function readFailureRuntimeSnapshot() {
+  const state = window.SF?.state || null;
+  const render = state?.render || null;
+  const overlay = document.getElementById('boot-overlay');
+  const admission = render?.requiredPackageAdmission || null;
+  const owner = render?.lastGpuResidencyOwnerInactive || null;
+  return {
+    document: {
+      visibilityState: document.visibilityState,
+      failurePresenterText: String(overlay?.innerText || overlay?.textContent || '').slice(0, 1_200),
+    },
+    state: state ? {
+      mode: state.mode || null,
+      tick: Number.isFinite(Number(state.tick)) ? Number(state.tick) : null,
+      simTime: Number.isFinite(Number(state.simTime)) ? Number(state.simTime) : null,
+      admissionRunGeneration: Number.isFinite(Number(render?.admissionRunGeneration))
+        ? Number(render.admissionRunGeneration) : null,
+      contextRestoreSeq: Number.isFinite(Number(state.contextRestoreSeq))
+        ? Number(state.contextRestoreSeq) : null,
+      world: {
+        enterSerial: state.world?.enterSerial ?? null,
+        currentSectorId: state.world?.currentSectorId ?? null,
+      },
+    } : null,
+    opening: render ? {
+      bufferResizeDiagnostic: render.bufferResizeDiagnostic?.lastFailure
+        || render.renderer?.__sfBufferResizeFailure || null,
+      lastBatchedFailure: render.bufferResizeDiagnostic?.lastBatchedFailure
+        || render.renderer?.__sfBatchedMeshFailure
+        || null,
+      bufferResizeDiagnosticPerformanceEligible: render.bufferResizeDiagnostic?.performanceEligible ?? null,
+      firstPictureReady: render.openingFirstPictureReady === true,
+      firstPicturePhase: render.openingFirstPicturePhase ? {
+        stage: render.openingFirstPicturePhase.stage || null,
+        outcome: render.openingFirstPicturePhase.outcome || null,
+        ms: Number.isFinite(Number(render.openingFirstPicturePhase.ms))
+          ? Number(render.openingFirstPicturePhase.ms) : null,
+      } : null,
+      firstPictureOwner: render.openingFirstPictureOwner ? {
+        generation: render.openingFirstPictureOwner.generation ?? null,
+        serial: render.openingFirstPictureOwner.serial ?? null,
+        sector: render.openingFirstPictureOwner.sector ?? null,
+        context: render.openingFirstPictureOwner.context ?? null,
+      } : null,
+      liveSectorGpuAdmission: render.liveSectorGpuAdmission === true,
+      requiredPackageAdmission: admission ? {
+        status: admission.status || null,
+        packageId: admission.packageId || null,
+        reason: admission.reason || null,
+        generation: admission.generation ?? null,
+      } : null,
+      currentSectorFailure: render.openingCurrentSectorFailure || null,
+      gpuResidencyOwnerInactive: owner ? {
+        subjectName: owner.subjectName || null,
+        owner: owner.owner || null,
+      } : null,
+      cookLedgerTail: Array.isArray(render.openingCookLedger)
+        ? render.openingCookLedger.slice(-12).map((row) => ({
+          step: row?.step || null,
+          outcome: row?.outcome || null,
+          ms: Number.isFinite(Number(row?.ms)) ? Number(row.ms) : null,
+          reason: row?.reason || null,
+          fail: row?.fail || null,
+        }))
+        : [],
+    } : null,
+  };
 }
 
 /** Read the existing error-only DTOs after the recovery tail, in the page realm. */
