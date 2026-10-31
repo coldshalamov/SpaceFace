@@ -142,6 +142,24 @@ ${P} .sxb-vital__acts .orr-act__cost { font-family:${NUM} !important; font-size:
   ${P} .sxb-ops > .sxb-launch-seat { order:3 !important; margin:0 0 0 auto !important; }
 }
 
+/* Phone portrait (≤480 wide): the ruled 232px purse no longer fit the 104px the older sheet left at the name's end, so
+   it sat across HELIOS STATION. The purse takes the empty left of the palette-key row as one ruled line instead,
+   and the name gets its full width back -- the head grows by nothing. */
+@media (max-width:480px) and (min-height:601px) {
+  ${P} .sxb-berth.dp-frame__head { grid-template-columns:minmax(0, 1fr) auto !important;
+    grid-template-areas:"purse trigger" "title title" "crown crown" "handoff handoff" "tape tape" "signs signs" !important; }
+  ${P} .sxb-berth.dp-frame__head > .sxb-crown { margin-top:0 !important; }
+  ${P} .sxb-berth.dp-frame__head > .sxb-crown > .sxb-purse { grid-area:purse !important; }
+  ${P} .sxb-berth.dp-frame__head > .sxb-crown { display:contents !important; }
+  ${P} .sxb-berth.dp-frame__head > .sxb-crown > .sxb-vitals { grid-area:crown !important; }
+  ${P} .so-station-title > .sxb-berth__name { padding-right:0 !important; }
+  ${P} .sxb-crown .sxb-purse { grid-template-columns:auto auto auto !important; grid-template-areas:"label value delta" !important;
+    justify-self:start !important; align-self:center !important; align-items:center !important; column-gap:10px !important;
+    min-width:0 !important; height:32px; box-sizing:border-box; padding:0 12px !important; margin:0 !important; }
+  ${P} .sxb-crown .sxb-purse__label { width:auto !important; padding:0 !important; border:0 !important; line-height:1 !important; }
+  ${P} .sxb-crown .sxb-purse__value { font-size:20px !important; line-height:1 !important; }
+}
+
 /* ---- the ad-boards: legible, never faint ----------------------------------------------------- */
 ${P} .sx-adboard, ${P} .sx-adboard * { font-family:${UI} !important; font-size:13px !important; letter-spacing:0 !important;
   text-transform:none !important; color:rgb(${BONE} / .82) !important; }
