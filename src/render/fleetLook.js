@@ -293,7 +293,9 @@ export function installFleetLook(SF) {
     if (typeof admit !== 'function') throw new Error('fleet-look pipeline admission unavailable');
     const result = await admit(holder, { explicit: true, strict: true, joinOutstanding: true,
       isActive: () => built.root.parent === holder });
-    if (!result || result.skipped === true) throw new Error(`fleet-look pipeline admission incomplete: ${result?.reason || 'no receipt'}`);
+    if (!result || result.skipped === true || result.incomplete === true || result.contextLost === true) {
+      throw new Error(`fleet-look pipeline admission incomplete: ${result?.reason || (result ? 'incomplete receipt' : 'no receipt')}`);
+    }
     // Draw through the normal route with the same private camera used for this view.
     const pose = () => poseCamera(cam, opts.view || 'inspect', radius, opts.heading || 0, placeCenter);
     // Same task as the draw: without preserveDrawingBuffer the canvas clears after compositing.
