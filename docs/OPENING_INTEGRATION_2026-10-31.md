@@ -11,7 +11,7 @@ not a replacement tree and does not include the separate older campaign overlay.
 - Hitch work follows available Helios iron, including dormant field records.
 - Wasp work follows Nim Gatecut, Joss Wire and Vex Tollcut rather than the station anchor,
   including its durable restored target identity. Existing ram/payout rules stay.
-- Genuine first buoy delivery can trigger existing receiving machinery within
+- Each genuine authored buoy delivery can trigger existing receiving machinery within
   the receipt's original time window. A queued but unseen scene can now retry
   after sector exit; a scene that fired is not duplicated. This was a reproduced
   integration defect, fixed by recording presentation only when the seam fires.
@@ -205,3 +205,25 @@ set passes **218/218 focused checks and six production imports**. The added rout
 suite includes actual attachment creation, generation stamps, mirror publication
 and cut before mirror refresh, with only the physics-joint port stubbed. This is
 component-route evidence, not a rendered normal-input trip or full Save/Continue.
+
+### Earned receiving activity across the three returns
+
+All three existing Pelican settlements now qualify the same bounded receiving
+operation using their exact v1 step and physical completion method. A completed,
+paid canonical receipt is required. The newest eligible receipt wins within the
+original 180-second window; newer pending work supersedes older queued work.
+A bounded ten-ID transient list prevents same-session replay after history
+reordering or invalidation. Continue may reproject ongoing work only within its
+remaining original window, without a new payout or body.
+
+The existing budget-free repair-drone packet drives crawler-and-stitch frames and
+the station gantry. It is a station response, not a simulation of unloading the
+returned buoy. Internal context labels have no confirmed displayed UI reader.
+Normal valid seen lists retain their array identity; normalization allocates only
+for malformed state. **223 focused checks and six production imports pass.**
+
+`HELIOS_OPENING_EXPERIENCE_DOSSIER.md` connects these local jobs to the separate
+47-A storyline and actual outbound mission geography. It distinguishes candidate
+work from master and does not make starter settlement an invented campaign unlock.
+It preserves story-text and ordinary-control verification gaps as executable next
+work rather than declaring the opening accepted.

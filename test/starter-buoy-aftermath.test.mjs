@@ -4,17 +4,19 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { firstBuoyReceiptFields, firstBuoyReceivingReceipt, firstBuoyReceivingItem } from '../src/missions/starterBuoyAftermath.js';
 const read = p => readFileSync(new URL('../' + p, import.meta.url), 'utf8');
-const mission = () => ({ id:'buoy-1', source:'starterJob', type:'tow_recovery', destStationId:'station_helios', destSectorId:'sector_helios_prime', reward_cr:520,
- params:{ starterWorkdayVersion:1, starterJobId:'starter_pelican', starterStep:1, requiredModule:'mod_winch_hd', completionMethod:'tow_in' } });
+const STEP_REWARD = { 1:520, 2:760, 3:960 };
+const mission = (step=1,id=`buoy-${step}`) => ({ id, source:'starterJob', type:'tow_recovery', destStationId:'station_helios', destSectorId:'sector_helios_prime', reward_cr:STEP_REWARD[step] || 520,
+ params:{ starterWorkdayVersion:1, starterJobId:'starter_pelican', starterStep:step, requiredModule:'mod_winch_hd', completionMethod:'tow_in' } });
 const ms = read('src/systems/missions.js');
 const receiptSource = ms.slice(ms.indexOf('export function missionReceiptFor('), ms.indexOf('export const CLEAN_PHYSICAL_RELEASE'));
 const receiptFor = Function('firstBuoyReceiptFields','receiptTitle','missionRepDeltaFor','SET_PIECE_MISSION_SOURCE',receiptSource.replace('export ', '')+';return missionReceiptFor;')(firstBuoyReceiptFields,()=> '44-C',()=>0,'authored');
-const receipt = () => receiptFor(mission(),'completed',null,{at_s:100,rewardCr:520});
+const receipt = (step=1,at_s=100,id=`buoy-${step}`) => receiptFor(mission(step,id),'completed',null,{at_s,rewardCr:STEP_REWARD[step] || 520});
 const station = {id:42,alive:true,type:'station',pos:{x:1280,z:-420},data:{stationId:'station_helios'}};
-const state = () => ({mode:'flight',simTime:110,player:{flags:{}},world:{currentSectorId:'sector_helios_prime'},missions:{receipts:[receipt()]}});
+const state = (receipts=[receipt()]) => ({mode:'flight',simTime:110,player:{flags:{}},world:{currentSectorId:'sector_helios_prime'},missions:{receipts}});
 const ds = read('src/systems/stationSideEventDirector.js').replace(/^import[^;]+;\n/gm,'').replace(/export default stationSideEventDirector;/,'').replace(/export /g,'');
 const deps = {firstBuoyReceivingItem,firstBuoyReceivingReceipt,planStationSideEvents:()=>[],rushHourSideEvents:()=>[],SIDE_EVENTS:{},SIDE_EVENT_IDS:[],bubblesFor:()=>({traffic:{radius:100},docking:{radius:20},noFire:{radius:40}}),tableSimAuthorityWuFromState:()=>100,sessionRhythmOf:()=>null,sessionRhythmAllowsCombat:()=>true};
-const director = Function(...Object.keys(deps),ds+';return stationSideEventDirector;')(...Object.values(deps));
+const stationModule = Function(...Object.keys(deps),ds+';return {stationSideEventDirector,ensureState};')(...Object.values(deps));
+const director = stationModule.stationSideEventDirector, ensureStationState = stationModule.ensureState;
 function fixture(s=state()) {const events=[];const d=Object.create(director);d.state=s;d.bus={emit:(name,p)=>events.push({name,p})};d.helpers={spawnEntity:()=>assert.fail('no physical spawn'),spawnBudget:{request:()=>assert.fail('no budget')}};s.playerId=1;const player={id:1,type:'ship',alive:true,pos:{...station.pos}};s.entities=new Map([[1,player],[station.id,station]]);s.entityIndex={stations:[station]};return {s,d,events};}
 
 test('sector exit before a queued receiving scene fires does not consume the scene',()=>{
@@ -29,12 +31,45 @@ test('sector exit before a queued receiving scene fires does not consume the sce
  d._onSectorExit();d.update(1,s);
  assert.equal(events.length,1);
 });
+test('a newer pending settlement supersedes the older queue without duplicating either seam',()=>{
+ const {s,d,events}=fixture(state([receipt(1,100)]));
+ d._planBuoyReceiving(s,station,110);assert.deepEqual(s.stationSideEvents.pending.map(x=>x.receivingMissionId),['buoy-1']);
+ const two=receipt(2,120);s.missions.receipts=[two,receipt(1,100)];
+ d._planBuoyReceiving(s,station,130);
+ assert.deepEqual(s.stationSideEvents.pending.map(x=>x.receivingMissionId),['buoy-2']);
+ assert.equal(events.length,0);s.stationSideEvents.anchorId=String(station.id);s.simTime=130;
+ d._pump(s,station,130);assert.equal(events.length,1);assert.equal(events[0].p.receivingMissionId,'buoy-2');
+ s.missions.receipts=[receipt(1,100),two,two];d._planBuoyReceiving(s,station,130);
+ assert.equal(s.stationSideEvents.pending.length,0);d._pump(s,station,130);assert.equal(events.length,1);
+});
+test('a shown job never replays when a newer receipt is invalid or the newer queue expires',()=>{
+ const {s,d,events}=fixture(state([receipt(1,100)]));d.update(1,s);assert.equal(events.length,1);
+ s.simTime=160;s.missions.receipts=[{...receipt(2,150),rewardCr:0},receipt(1,100)];d.update(1,s);
+ assert.equal(events.length,1);assert.equal(s.stationSideEvents.pending.length,0);
+ s.missions.receipts=[receipt(2,120),receipt(1,100)];s.simTime=301;d.update(1,s);
+ assert.equal(events.length,1);assert.equal(s.stationSideEvents.pending.length,0);
+});
+test('ensureState keeps a valid bounded seen-list allocation-stable and normalizes malformed input once',()=>{
+ const valid=state([]);valid.stationSideEvents={buoyReceivingSeenMissionIds:['one','two','three']};
+ const stable=valid.stationSideEvents.buoyReceivingSeenMissionIds;
+ ensureStationState(valid);assert.strictEqual(valid.stationSideEvents.buoyReceivingSeenMissionIds,stable);
+ ensureStationState(valid);assert.strictEqual(valid.stationSideEvents.buoyReceivingSeenMissionIds,stable);
+ const malformed=state([]);const external=['old','old','',7,...Array.from({length:12},(_,i)=>`id-${i}`)];
+ malformed.stationSideEvents={buoyReceivingSeenMissionIds:external};
+ ensureStationState(malformed);const clean=malformed.stationSideEvents.buoyReceivingSeenMissionIds;
+ assert.notStrictEqual(clean,external);assert.deepEqual(clean,Array.from({length:10},(_,i)=>`id-${i+2}`));
+ ensureStationState(malformed);assert.strictEqual(malformed.stationSideEvents.buoyReceivingSeenMissionIds,clean);
+});
 test('canonical receipt adds exact successful physical provenance only',()=>{
  const r=receipt();assert.deepEqual(r.starterBuoyRecovery,{version:1,jobId:'starter_pelican',step:1,completionMethod:'tow_in'});
  for(const outcome of ['failed','expired','abandoned']) assert.equal(receiptFor(mission(),outcome).starterBuoyRecovery,undefined);
- for(const [key,value] of [['starterStep',2],['starterStep',3],['starterStep','1'],['starterWorkdayVersion',2],['starterWorkdayVersion',undefined],['starterJobId','starter_hitch'],['completionMethod','cut_down'],['requiredModule','mod_drill_amp']]) {const m=mission();m.params[key]=value;assert.deepEqual(firstBuoyReceiptFields(m,'completed'),{});}
+ for(const step of [1,2,3]) {
+  const m=mission(step);assert.deepEqual(firstBuoyReceiptFields(m,'completed').starterBuoyRecovery,
+   {version:1,jobId:'starter_pelican',step,completionMethod:'tow_in'});
+  m.params.completionMethod='sling_in';assert.equal(firstBuoyReceiptFields(m,'completed').starterBuoyRecovery.completionMethod,'sling_in');
+ }
+ for(const [key,value] of [['starterStep',0],['starterStep',4],['starterStep','1'],['starterWorkdayVersion',2],['starterWorkdayVersion',undefined],['starterJobId','starter_hitch'],['completionMethod','cut_down'],['requiredModule','mod_drill_amp']]) {const m=mission();m.params[key]=value;assert.deepEqual(firstBuoyReceiptFields(m,'completed'),{});}
  for(const key of ['source','type','destStationId','destSectorId']) {const m=mission();m[key]='wrong';assert.deepEqual(firstBuoyReceiptFields(m,'completed'),{});}
- const sling=mission();sling.params.completionMethod='sling_in';assert.equal(firstBuoyReceiptFields(sling,'completed').starterBuoyRecovery.completionMethod,'sling_in');
 });
 test('legacy counter, wrong station, unpaid, missing, malformed and future history cannot manufacture receiving work',()=>{
  const s=state();s.missions={starterJobStep:{starter_pelican:3},completedLog:[{type:'tow_recovery',success:3}]};assert.equal(firstBuoyReceivingReceipt(s,110),null);
@@ -44,10 +79,49 @@ test('legacy counter, wrong station, unpaid, missing, malformed and future histo
  assert.equal(firstBuoyReceivingItem(state(),{...station,id:'station_helios',data:{stationId:'station_coalition'}},110),null);
  const capped=state();capped.missions.receipts=Array(10).fill({}).concat(receipt());assert.equal(firstBuoyReceivingReceipt(capped,110),null);
 });
+test('steps 1–3 select the newest genuine receipt independent of duplicate or reordered history',()=>{
+ const one=receipt(1,100),two=receipt(2,125),three=receipt(3,140);
+ for(const rows of [[one,two,three],[three,two,one],[two,one,three,three]]) {
+  assert.equal(firstBuoyReceivingReceipt(state(rows),150).missionId,'buoy-3');
+ }
+ const tieZ=receipt(2,140,'buoy-z'),tieA=receipt(3,140,'buoy-a');
+ assert.equal(firstBuoyReceivingReceipt(state([tieZ,tieA]),150).missionId,'buoy-a');
+ // A pre-extension, already-saved step-1 receipt retains its original schema and scene identity.
+ const savedFirst={...receipt(),starterBuoyRecovery:{version:1,jobId:'starter_pelican',step:1,completionMethod:'tow_in'}};
+ assert.equal(firstBuoyReceivingReceipt(state([savedFirst]),110),savedFirst);
+ assert.equal(firstBuoyReceivingItem(state([savedFirst]),station,110).eventId,'sse:44c-receiving:buoy-1');
+ for(const invalid of [
+  {...receipt(2),rewardCr:0},
+  {...receipt(2),source:'foreign'},
+  {...receipt(2),starterBuoyRecovery:{version:1,jobId:'starter_hitch',step:2,completionMethod:'tow_in'}},
+  {...receipt(2),starterBuoyRecovery:{version:1,jobId:'starter_pelican',step:4,completionMethod:'tow_in'}},
+  {...receipt(3),starterBuoyRecovery:{version:1,jobId:'starter_pelican',step:3,completionMethod:'cut_down'}},
+ ]) assert.equal(firstBuoyReceivingReceipt(state([invalid]),160),null);
+});
 test('settlement produces one visible existing repair scene, zero entities and no economy side effects',()=>{
  const {s,d,events}=fixture();d.update(1,s);d.update(1,s);
- assert.equal(events.length,1);const {name,p}=events[0];assert.equal(name,'station:sideEvent');assert.equal(p.kind,'repair_drone');assert.equal(p.path,'hull-crawl');assert.equal(p.budget,0);assert.deepEqual(p.entityIds,[]);assert.equal(p.durationS,90);assert.equal(p.receivingMissionId,'buoy-1');assert.deepEqual(p.from,{x:1320,z:-420});assert.deepEqual(p.to,{x:1322,z:-420});
+ assert.equal(events.length,1);const {name,p}=events[0];assert.equal(name,'station:sideEvent');assert.equal(p.kind,'repair_drone');assert.equal(p.path,'hull-crawl');assert.equal(p.budget,0);assert.deepEqual(p.entityIds,[]);assert.equal(p.durationS,90);assert.equal(p.receivingMissionId,'buoy-1');assert.equal(p.stationId,'42');assert.equal(p.bearing,0);assert.deepEqual(p.from,{x:1320,z:-420});assert.deepEqual(p.to,{x:1322,z:-420});
+ assert.equal(p.eventId,'sse:44c-receiving:buoy-1');assert.equal(p.contextLabel,'44-C receiving check — berth intake');
  assert.equal(s.missions.receipts[0].rewardCr,520);assert.equal(s.stationSideEvents.pending.length,0);
+});
+test('each later authored return reuses the same budget-free crawler/gantry packet once',()=>{
+ const {s,d,events}=fixture(state([receipt(1,100)]));
+ d.update(1,s);assert.equal(events.length,1);
+ s.simTime=140;s.missions.receipts=[receipt(2,130),receipt(1,100)];d.update(1,s);
+ assert.equal(events.length,2);
+ s.simTime=170;s.missions.receipts=[receipt(3,160),receipt(2,130),receipt(1,100)];d.update(1,s);
+ assert.equal(events.length,3);
+ for(const [index,stepLabel] of [[0,'44-C'],[1,'Claim-rim'],[2,'Outer-yard']]) {
+  const p=events[index].p;
+  assert.equal(events[index].name,'station:sideEvent');assert.equal(p.kind,'repair_drone');
+  assert.equal(p.path,'hull-crawl');assert.equal(p.budget,0);assert.deepEqual(p.entityIds,[]);
+  assert.equal(p.stationId,'42');assert.equal(p.bearing,0);assert.equal(p.durationS,90);
+  assert.deepEqual(p.from,{x:1320,z:-420});assert.deepEqual(p.to,{x:1322,z:-420});
+  assert.equal(p.receivingMissionId,`buoy-${index+1}`);
+  assert.equal(p.eventId,`sse:44c-receiving:buoy-${index+1}`);
+  assert.equal(p.contextLabel,`${stepLabel} receiving check — berth intake`);
+ }
+ assert.deepEqual(s.stationSideEvents.buoyReceivingSeenMissionIds,['buoy-1','buoy-2','buoy-3']);
 });
 test('visibility, docking and tutorial gates preserve the scene until ordinary flight can show it',()=>{
  for(const blocked of ['dock','tutorial','invisible']) {const {s,d,events}=fixture();if(blocked==='dock')s.player.flags.docked=true;if(blocked==='tutorial')s.onboarding={active:true};if(blocked==='invisible')d._resolveAnchor=()=>null;d.update(1,s);assert.equal(events.length,0);s.player.flags.docked=false;s.onboarding=null;d._resolveAnchor=()=>station;d.update(1,s);assert.equal(events.length,1);}
