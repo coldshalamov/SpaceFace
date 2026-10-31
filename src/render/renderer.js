@@ -11984,7 +11984,6 @@ export const render = {
     this._rosterPartCatalogRoot = null;
     this._sectorBoundaryPreparations = createSectorBoundaryGenerationManager({
       startBudgetPerTurn: RUNTIME_MESH_BUILD_BUDGET,
-      scheduleNextStartTurn: scheduleSectorBoundaryBuildTurn,
       captureBeforeStart: (record) => {
         if (!rendererGenerationIsActive()) return;
         record.presentationAdmissionBefore = record.entity?.presentationAdmission;
