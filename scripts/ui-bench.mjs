@@ -83,7 +83,10 @@ async function shoot(page, id, outDir, base) {
 async function settleAnimations(page) {
   await page.evaluate(async () => {
     for (let pass = 0; pass < 3; pass++) {
-      const running = document.getAnimations().filter(a => a.playState === 'running');
+      // Scroll- and view-driven animations show where the scroller sits; finishing one paints its
+      // end state (e.g. Help's section row faded on its left edge at scroll 0), so leave them.
+      const running = document.getAnimations()
+        .filter(a => a.playState === 'running' && (!a.timeline || a.timeline === document.timeline));
       for (const animation of running) {
         if (animation.effect?.getTiming?.().iterations === Infinity) animation.pause();
         else { try { animation.finish(); } catch { /* unresolved effect */ } }
