@@ -806,6 +806,18 @@
   to { transform: translateY(0); opacity: 1; }
 }
 .aw-palette.settle { animation: aw-palette-settle 160ms var(--k-ease) both; }
+/* Phone-width windows: right: 316px pushes the row off the left edge and over the
+   bottom-left Plan key, since the rig takes most of the width. Lift the keys above the rig
+   (16px margin + its ~160px height + 10px air) and let them wrap from the left edge. */
+@media (max-width: 600px) {
+  .aw-palette {
+    left: 12px;
+    right: 12px;
+    bottom: 186px;
+    flex-wrap: wrap;
+    align-content: flex-end;
+  }
+}
 
 /* ---------------------------------------------------------------- §6.4 cursor lens
    "A little field-notebook tag next to their cursor — a colour, a number, two or three
