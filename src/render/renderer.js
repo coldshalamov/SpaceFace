@@ -8057,6 +8057,7 @@ export function assertCompleteAppearanceAdmission(receipt) {
     if (Array.isArray(value)) { for (const entry of value) visit(entry); return; }
     if (!value || typeof value !== 'object'
         || value.contextLost === true || value.partial === true || value.cancelled === true
+        || value.incomplete === true || value.readinessTimedOut === true
         || (value.skipped === true && value.reason !== 'no drawable geometry')) {
       const reason = value?.reason || 'missing/partial receipt';
       const error = new Error(`Incomplete appearance admission: ${reason}`);
@@ -8077,23 +8078,17 @@ export function assertCompleteAppearanceAdmission(receipt) {
   return receipt;
 }
 
+function appearanceAdmissionHasUnreadyPipeline(value) {
+  if (Array.isArray(value)) return value.some(appearanceAdmissionHasUnreadyPipeline);
+  if (!value || typeof value !== 'object') return false;
+  if (value.readinessTimedOut === true || value.incomplete === true) return true;
+  return ['pipelines', 'results'].some((key) => appearanceAdmissionHasUnreadyPipeline(value[key]));
+}
+
 export function compilePipelineSubject(tracker, subject, options = {}, urgent = false) {
   if (urgent === true) return tracker.compile(subject, { ...options, urgent: true });
   if (options && options.explicit === true) return tracker.compileExplicit(subject, options);
   return tracker.compile(subject, options);
-}
-
-/** Narrow only the provisional live-sector cook; the later full sweep and exact seal remain owners. */
-export function selectPreliminaryOpeningCookUnits(plan, fullUnits, eligible) {
-  if (eligible !== true || plan?.complete !== true
-      || plan.firstPlayablePipelineSet?.complete !== true
-      || !Array.isArray(plan.compileSubjects) || plan.compileSubjects.length === 0) {
-    return { units: fullUnits, narrowed: false };
-  }
-  // Identity-only dedupe: the same material can require different programs on
-  // mesh, instanced, skinned or attribute-distinct subjects.
-  const subjects = [...new Set(plan.compileSubjects.filter(Boolean))];
-  return { units: { ...fullUnits, programSubjects: subjects }, narrowed: true };
 }
 
 export function preparePipelineSubjectResidency(tracker, subject, admissionOptions = {}, urgent = false) {
@@ -12351,6 +12346,7 @@ export const render = {
         admission = compilation
         .then((result) => {
           if (admissionOptions.strict === true) assertCompleteAppearanceAdmission(result);
+          else if (appearanceAdmissionHasUnreadyPipeline(result)) return result;
           // Once a subject's programs have linked it can keep drawing through any
           // later re-admission: the pending latch's hide exists to keep a never-
           // compiled root out of bloomScene, and an already-linked root has
@@ -12401,7 +12397,7 @@ export const render = {
           }
           const recovering = state.render
             && state.render.contextRecovery && state.render.contextRecovery.pending === true;
-          if (!result || result.contextLost === true || recovering
+          if (appearanceAdmissionHasUnreadyPipeline(result) || !result || result.contextLost === true || recovering
               || !subject || !this.scene || !cam.obj) {
             if (admissionOptions.strict === true) throw new Error('Exact-target appearance admission unavailable');
             return result;
@@ -16389,18 +16385,12 @@ export const render = {
           if (part.geometrySubjects.length > 0) cohortGeometrySubjects.push(...part.geometrySubjects);
           await paceCookStretch();
         }
-        const fullUnits = {
+        const units = {
           programSubjects: cohortProgramSubjects,
           geometrySubjects: cohortGeometrySubjects,
           materialCount: unitSeenMaterials.size,
           geometryCount: unitSeenGeometries.size,
         };
-        const preliminary = selectPreliminaryOpeningCookUnits(cookPicturePlan, fullUnits,
-          state.mode === 'loading' && state.render.liveSectorGpuAdmission === true
-          && !survivalRunHoldsArena(state) && options.skipCompile !== true
-          && this._postOpeningPipelineAdmissionReleased !== true
-          && typeof state.render.preparePostOpeningPipelines === 'function');
-        const units = preliminary.units;
         // Compile and touch both consume this list front-to-back under one shared budget. Order it
         // by the opening submission plan so the exact first-picture leaves (player, background,
         // visible entities, pools) warm before any beyond-runway subject — a timed-out pass then
@@ -16554,8 +16544,6 @@ export const render = {
           recordOpeningCookStep(state.render, 'cook.touchCompile', touchCompileStarted,
             !cohort ? 'skipped' : (issued.length < units.programSubjects.length ? 'timeout' : 'resolved'), {
               issued: issued.length,
-              firstPictureOnly: preliminary.narrowed,
-              fullSubjects: preliminary.narrowed ? fullUnits.programSubjects.length : undefined,
               unlinked: cohortDrain ? cohortDrain.programs : undefined,
               contextLost: cohortDrain && cohortDrain.contextLost === true ? true : undefined,
               yields: compileYield ? compileYield.yields : undefined,

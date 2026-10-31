@@ -604,6 +604,9 @@ export async function compileScenePipelinesForRenderTarget(
         contextLost: true,
       };
     }
+    if (admission?.readinessTimedOut === true || admission?.incomplete === true) {
+      return { skipped: false, incomplete: true, readinessTimedOut: admission.readinessTimedOut === true };
+    }
     return {
       skipped: false,
       programCount: Array.isArray(renderer.info && renderer.info.programs)

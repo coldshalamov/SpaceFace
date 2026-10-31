@@ -10,6 +10,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { compileScenePipelinesForRenderTarget } from '../src/render/bloom.js';
+import { assertCompleteAppearanceAdmission } from '../src/render/renderer.js';
 
 function fakeRenderer({ count, isReady, contextLost = () => false }) {
   const programs = Array.from({ length: count }, (_, index) => ({
@@ -99,6 +100,24 @@ test('a link that never reports ready resolves at the readiness deadline instead
     fake: { count: 6, isReady: () => false },
     compile: { readinessTimeoutMs: 40 },
   });
-  assert.equal(result.skipped, false, 'a timed-out wait still returns a normal admission result');
+  assert.equal(result.readinessTimedOut, true);
+  assert.equal(result.incomplete, true);
+  assert.throws(() => assertCompleteAppearanceAdmission({ pipelines: [result] }), /Incomplete appearance admission/);
   assert.ok(perTask.length > 1, 'it polled repeatedly before giving up');
+});
+
+test('a timed-out program can be admitted once it actually becomes ready', async () => {
+  let ready = false;
+  const { renderer } = fakeRenderer({ count: 1, isReady: () => ready });
+  const gl = { isContextLost: () => false };
+  renderer.getContext = () => gl;
+  const pending = await compileScenePipelinesForRenderTarget(renderer, null, {}, {}, {}, {
+    skipSharedBatch: true, readinessTimeoutMs: 0,
+  });
+  assert.throws(() => assertCompleteAppearanceAdmission(pending), /Incomplete appearance admission/);
+  ready = true;
+  const completed = await compileScenePipelinesForRenderTarget(renderer, null, {}, {}, {}, {
+    skipSharedBatch: true, readinessTimeoutMs: 0,
+  });
+  assert.equal(assertCompleteAppearanceAdmission(completed), completed);
 });

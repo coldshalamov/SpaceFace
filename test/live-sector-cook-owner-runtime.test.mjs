@@ -16,34 +16,11 @@ import { createCatalogStationRestore } from '../src/save/catalogStationRestore.j
 import { createBus } from '../src/core/eventBus.js';
 import { createSimLaneRuntime } from '../src/core/simLaneMain.js';
 import { createDomainDiffer } from '../scripts/lib/simReadModel.mjs';
-import { selectPreliminaryOpeningCookUnits } from '../src/render/renderer.js';
-
-test('preliminary cook selects current picture before broad work and fails back to the full cohort', () => {
-  const shared = new THREE.MeshBasicMaterial(), distinct = new THREE.MeshBasicMaterial();
-  const geometry = new THREE.BoxGeometry();
-  const optional = { material: shared, geometry: {} };
-  const required = new THREE.Mesh(geometry, shared);
-  const instanced = new THREE.InstancedMesh(geometry, shared, 1);
-  const laterRequired = { material: distinct, geometry: {} };
-  const full = { programSubjects: [optional, laterRequired], geometrySubjects: [optional, laterRequired] };
-  const plan = { complete: true, firstPlayablePipelineSet: { complete: true }, compileSubjects: [required, instanced, required] };
-  const selected = selectPreliminaryOpeningCookUnits(plan, full, true);
-  assert.equal(selected.narrowed, true);
-  assert.deepEqual(selected.units.programSubjects, [required, instanced], 'shared material still issues both drawable variants');
-  assert.strictEqual(selected.units.geometrySubjects, full.geometrySubjects);
-  assert.strictEqual(selectPreliminaryOpeningCookUnits(plan, full, false).units, full);
-  assert.strictEqual(selectPreliminaryOpeningCookUnits({ ...plan, complete: false }, full, true).units, full);
-  assert.strictEqual(selectPreliminaryOpeningCookUnits({ ...plan, firstPlayablePipelineSet: { complete: false } }, full, true).units, full);
-  assert.strictEqual(selectPreliminaryOpeningCookUnits({ ...plan, compileSubjects: [] }, full, true).units, full);
-  const final = selectPreliminaryOpeningCookUnits({ ...plan, compileSubjects: [required, laterRequired] }, full, true);
-  assert.deepEqual(final.units.programSubjects, [required, laterRequired], 'a later picture census retains a newly materialized descendant');
-  geometry.dispose(); shared.dispose(); distinct.dispose();
-});
 const require = createRequire(import.meta.url);
 const { parse } = require(require.resolve('@babel/parser', { paths: [process.env.SPACEFACE_DEPS_ROOT || process.cwd()] }));
 const source = readFileSync(process.env.ENTRY_SOURCE_RENDERER || new URL('../src/render/renderer.js', import.meta.url), 'utf8');
 const ast = parse(source, { sourceType: 'module' });
-let cookNode, pipelineNode, enterNode, guardNode, preflightNode, gpuNode, compileNode, openingCaptureNode, loadingNode, pictureNode, ownerInactiveTouchNode, ownerInactiveTouchCheckNode, ownerActiveAdmissionNode, touchSubmitNode, touchFacadeNode, groupTouchNode, settleTouchManyNode;
+let cookNode, pipelineNode, enterNode, guardNode, preflightNode, gpuNode, compileNode, openingCaptureNode, loadingNode, pictureNode, ownerInactiveTouchNode, ownerInactiveTouchCheckNode, ownerActiveAdmissionNode, touchSubmitNode, touchFacadeNode, groupTouchNode, settleTouchManyNode, admitSubjectNode, unreadyPipelineNode;
 const rendererMethodNodes = new Map();
 const ownerActiveAdmissionMatches = [];
 function containsOwnedExactTouch(node) {
@@ -58,6 +35,8 @@ function containsOwnedExactTouch(node) {
 }
 function walk(node) {
   if (!node || typeof node !== 'object') return;
+  if (node.type === 'FunctionDeclaration' && node.id?.name === 'appearanceAdmissionHasUnreadyPipeline') unreadyPipelineNode = node;
+  if (node.type === 'VariableDeclarator' && node.id?.name === 'admitSubjectPipelines') admitSubjectNode = node.init;
   if (node.type === 'ObjectMethod' && ['_shadowDepthLight', '_shadowDepthEnabled', 'prepareOpeningFirstPicture'].includes(node.key?.name)) {
     rendererMethodNodes.set(node.key.name, node);
   }
@@ -138,6 +117,38 @@ function deferred() {
   const promise = new Promise(r => { resolve = r; });
   return { promise, resolve };
 }
+
+test('actual best-effort admission neither touches nor stamps a timed-out compile and retries when ready', async () => {
+  const subject = { userData: {} }, calls = [];
+  let ready = false;
+  const owner = { scene: {} };
+  const values = {
+    state: { mode: 'flight', render: {} }, cam: { obj: {} }, renderer: {},
+    isRetiredRigidOpaqueBatch: () => false,
+    laneWarn: (...args) => { throw args[3] || new Error('unexpected admission warning'); },
+    inFlightSubjectAdmissions: new Map(), pipelineAdmissions: {}, gpuResidencyAdmissions: {},
+    compilePipelineSubject: () => Promise.resolve(ready ? { skipped: false } : { incomplete: true, readinessTimedOut: true }),
+    preparePipelineSubjectResidency: async () => { calls.push('residency'); return { skipped: false }; },
+    markSubjectPipelinesPending: (_subject, pending) => { subject.userData.pipelinesPending = pending; },
+    reattachDetachedSubjectTextures: async () => {}, reattachDetachedSubjectGeometries: async () => {},
+    refillPresentedCompressedUploads: async () => {}, collectStartupTextures: () => [],
+    submitExactSubjectTouch: async () => { calls.push('touch'); },
+    markAuthoredGeologyFallbackAdmitted: () => {},
+    rememberOpeningPreparedLeaves: () => { calls.push('stamp'); },
+    observePipelineAdmission: (promise) => promise,
+  };
+  values.appearanceAdmissionHasUnreadyPipeline = evaluate(source.slice(unreadyPipelineNode.start, unreadyPipelineNode.end), owner, values);
+  const admit = evaluate(source.slice(admitSubjectNode.start, admitSubjectNode.end), owner, values);
+  const pending = await admit(subject);
+  assert.equal(pending.incomplete, true);
+  assert.equal(subject.userData.sfAdmittedOnce, undefined);
+  assert.equal(subject.userData.pipelinesPending, false);
+  assert.deepEqual(calls, []);
+  ready = true;
+  await admit(subject);
+  assert.equal(subject.userData.sfAdmittedOnce, true);
+  assert.deepEqual(calls, ['residency', 'touch', 'stamp']);
+});
 
 function queuedTouchFixture({ detached = false, failTouch = false, serialPacer = true } = {}) {
   const scene = new THREE.Scene(), root = new THREE.Group(); root.visible = false; scene.add(root);
@@ -247,6 +258,7 @@ test('pipeline continuation rejects a retired owner instead of resolving stale r
   let exactTouches = 0;
   const continuation = evaluate(ownerActiveAdmissionCode, owner, {
     admissionOptions: { isActive: () => false },
+    appearanceAdmissionHasUnreadyPipeline: evaluate(source.slice(unreadyPipelineNode.start, unreadyPipelineNode.end), owner, {}),
     cam: { obj: {} },
     ownerInactiveTouchError: errorFactory,
     state: { mode: 'flight', render: {} },
@@ -948,7 +960,6 @@ function gpuFixture() {
     collectFirstFlightLayerDrawables: () => [], collectInstancePoolCompileRoots: () => [],
     buildOpeningSubmissionPlan: () => ({ compileSubjects: [] }),
     buildOpeningSubmissionPlanSteps: function* () { return { compileSubjects: [] }; },
-    selectPreliminaryOpeningCookUnits,
     uniqueAdmissionUnits: () => ({ programSubjects: [] }),
     collectCompileSubjects: () => [],
   });
