@@ -162,6 +162,126 @@ export const CONSOLE_STANDARD_CSS = `
 .sf-dot--cool { background:var(--dp-phos, #dfeeff); box-shadow:0 0 6px rgb(150 210 255 / .45); }
 .sf-dot--off { background:rgb(236 230 216 / .3); box-shadow:none; }
 
+/* ═══ §9 surfaces — the depth system. The diagnosis behind this section: every face in the game
+   was ONE flat alpha (var(--dp-field) = rgb(10 12 16 / .84)) over whatever is beneath it, so a
+   screen could stack five panels and read as one plane of grey glass. Real console UIs are built
+   from LIT PLANES: the face brightens toward its key light, falls darker at the foot, catches a
+   1px highlight along its top edge, occludes along its bottom, dithers so large faces do not
+   band, and throws one soft shadow onto whatever it floats over. Three elevations so panels read
+   as stacked planes instead of siblings:
+
+     E0  the instrument face        — panels resting on the screen
+     E1  a raised face              — the selected card, an open drawer
+     E2  a floating plane           — dialogs, the comms fan, anything over the world
+
+   These are rules of LIGHT, not materials: no bevels, no metal ramps, no texture tiles — the
+   geometry-and-light craft the material ban always allowed but nothing used. */
+
+:root {
+  /* the lit face: key-light pool from the panel's own top corner, a vertical light ramp, and a
+     1-in-3px dither so the ramp is continuous on any panel size */
+  --sf-face:
+    repeating-linear-gradient(0deg, rgb(255 255 255 / .013) 0 1px, transparent 1px 3px),
+    radial-gradient(130% 80% at 20% 0%, rgb(33 40 52 / .30), rgb(33 40 52 / 0) 58%),
+    linear-gradient(180deg, rgb(16 19 25 / .95), rgb(10 12 16 / .92) 56%, rgb(7 9 12 / .95));
+  --sf-face-raised:
+    repeating-linear-gradient(0deg, rgb(255 255 255 / .016) 0 1px, transparent 1px 3px),
+    radial-gradient(130% 80% at 20% 0%, rgb(40 48 62 / .34), rgb(40 48 62 / 0) 58%),
+    linear-gradient(180deg, rgb(20 24 31 / .96), rgb(13 16 21 / .93) 56%, rgb(9 11 15 / .96));
+  --sf-face-float:
+    repeating-linear-gradient(0deg, rgb(255 255 255 / .018) 0 1px, transparent 1px 3px),
+    radial-gradient(130% 80% at 20% 0%, rgb(46 55 70 / .36), rgb(46 55 70 / 0) 58%),
+    linear-gradient(180deg, rgb(23 27 35 / .97), rgb(15 18 24 / .94) 56%, rgb(10 13 17 / .97));
+  /* the machined edge: a lit top rim, an occluded bottom rim, and a hairline the full way round */
+  --sf-edge: inset 0 1px 0 rgb(236 230 216 / .085), inset 0 -1px 0 rgb(0 0 0 / .55),
+    inset 0 0 0 1px rgb(236 230 216 / .04);
+  --sf-edge-raised: inset 0 1px 0 rgb(236 230 216 / .12), inset 0 -1px 0 rgb(0 0 0 / .55),
+    inset 0 0 0 1px rgb(236 230 216 / .055);
+  --sf-edge-float: inset 0 1px 0 rgb(236 230 216 / .14), inset 0 -1px 0 rgb(0 0 0 / .6),
+    inset 0 0 0 1px rgb(236 230 216 / .07);
+  /* the plane over the plane: one large soft shadow onto the world, one tight contact shadow */
+  --sf-drop: 0 18px 44px rgb(0 0 0 / .5), 0 4px 12px rgb(0 0 0 / .38);
+  --sf-drop-raised: 0 10px 26px rgb(0 0 0 / .45), 0 2px 8px rgb(0 0 0 / .32);
+  --sf-drop-float: 0 24px 56px rgb(0 0 0 / .55), 0 6px 16px rgb(0 0 0 / .4);
+}
+
+/* E0 — every instrument face the deckplate system defines. Their old single-alpha field is the
+   flatness; the lit face replaces it without moving a single pixel of anyone's layout. */
+.dp-mfd, .dp-glass, .dp-plate-hw, .sf-panel, .dp-tip {
+  background:var(--sf-face) !important;
+  box-shadow:var(--sf-edge), var(--sf-drop-raised);
+}
+.dp-tip { padding:10px 12px !important; border:1px solid rgb(236 230 216 / .16) !important;
+  border-radius:2px !important; }
+
+/* the panel head: a named strip — amber tick, label, then the hairline that seats the body */
+.sf-panel__head { position:relative; }
+.sf-panel__head::before { content:""; position:absolute; left:0; top:6px; bottom:6px; width:3px;
+  background:var(--dp-lamp, #f2b950); box-shadow:0 0 8px rgb(242 185 80 / .3); }
+
+/* E2 — the floating planes: dialogs and the comms fan, which open OVER the world */
+.dp-dialog {
+  background:var(--sf-face-float) !important;
+  box-shadow:var(--sf-edge-float), var(--sf-drop-float) !important;
+  border:1px solid rgb(236 230 216 / .14) !important; border-radius:2px;
+}
+.dp-dialog::after { content:""; position:absolute; left:-1px; top:14px; bottom:14px; width:3px;
+  background:var(--dp-lamp, #f2b950); box-shadow:0 0 10px rgb(242 185 80 / .35); }
+.dp-dialog--danger::after { background:var(--dp-danger, #ff5038); box-shadow:0 0 10px rgb(255 80 56 / .4); }
+#sf-commsfan { background:var(--sf-face-float) !important;
+  box-shadow:var(--sf-edge-float), var(--sf-drop-float) !important;
+  border:1px solid rgb(236 230 216 / .14); border-radius:2px; }
+#sf-commsfan::before { background:radial-gradient(ellipse closest-side at 44% 50%,
+  rgb(3 4 7 / .72), rgb(3 4 7 / .5) 58%, rgb(3 4 7 / 0)) !important; }
+
+/* E0 over the world — the pause brief and the save ledger stop being free text and become the
+   instruments they read as: the same face, the same edge, seated with real padding. */
+#screens > .of-pause .sf-pause-brief.orr-brief {
+  background:var(--sf-face) !important; box-shadow:var(--sf-edge), var(--sf-drop) !important;
+  border:1px solid rgb(236 230 216 / .12) !important; border-radius:2px;
+  padding:16px 20px 18px !important;
+}
+#screens > .of-pause .sf-pause-brief.orr-brief::before { content:none !important; }
+/* The ledger's element background is swallowed by an unresolved cascade anomaly (a matching
+   !important rule in this very sheet computes to none — probed 2026-10-31, see the tracker), so
+   the face is painted by its own ::after plane inside the element's stacking context. */
+html body #screens > .k-screen.of-saveload.orr-saveload .sf-save-ledger.sf-save-ledger {
+  padding:18px 22px 16px !important;
+  border:1px solid rgb(236 230 216 / .12) !important; border-radius:2px;
+}
+html body #screens > .k-screen.of-saveload.orr-saveload .sf-save-ledger.sf-save-ledger::before {
+  content:none !important; }
+html body #screens > .k-screen.of-saveload.orr-saveload .sf-save-ledger.sf-save-ledger::after {
+  content:""; position:absolute; inset:0; z-index:-1; pointer-events:none;
+  background:var(--sf-face); border-radius:2px;
+  box-shadow:var(--sf-edge), var(--sf-drop); }
+
+/* E1 — the crucible cards: the armory, refit and results lists are the game's densest data and
+   they were zeroed to bare hairlines; as lit cards they finally sit in front of the world. */
+html body #screens > .k-screen.orr-crucible:is(.sf-crucible-draft, .sf-crucible-refit, .sf-crucible-results) .sf-cru-card.sf-cru-card {
+  background:var(--sf-face) !important;
+  box-shadow:var(--sf-edge), var(--sf-drop-raised) !important;
+  border:1px solid rgb(236 230 216 / .1) !important; border-radius:2px;
+}
+html body #screens > .k-screen.orr-crucible:is(.sf-crucible-draft, .sf-crucible-refit, .sf-crucible-results) .sf-cru-card.sf-cru-card::before { content:none !important; }
+html body #screens > .k-screen.orr-crucible:is(.sf-crucible-draft, .sf-crucible-refit, .sf-crucible-results) .sf-cru-card.sf-cru-card::after { content:""; position:absolute; left:0; top:10px; bottom:10px; width:2px;
+  background:rgb(236 230 216 / .28); }
+html body #screens > .k-screen.orr-crucible:is(.sf-crucible-draft, .sf-crucible-refit, .sf-crucible-results) .sf-cru-card.is-active::after,
+html body #screens > .k-screen.orr-crucible:is(.sf-crucible-draft, .sf-crucible-refit, .sf-crucible-results) .sf-cru-card.is-selected::after {
+  background:var(--dp-lamp, #f2b950); box-shadow:0 0 8px rgb(242 185 80 / .35); }
+
+/* data rows: a floor, so any list without its own hover still answers the pointer */
+#screens .k-rows .k-row { transition:background var(--dp-d-cut, 80ms) linear, box-shadow var(--dp-d-cut, 80ms) linear; }
+#screens .k-rows .k-row:is(:hover, :focus-within) { background:rgb(236 230 216 / .045);
+  box-shadow:inset 2px 0 0 rgb(242 185 80 / .8); }
+#screens .k-rows .k-row[aria-selected="true"], #screens .k-rows .k-row.is-active {
+  background:rgb(242 185 80 / .1); box-shadow:inset 2px 0 0 var(--dp-lamp, #f2b950); }
+
+@media (forced-colors:active) {
+  .dp-mfd, .dp-glass, .dp-plate-hw, .sf-panel, .dp-dialog, #sf-commsfan {
+    background:Canvas; box-shadow:none; forced-color-adjust:none; }
+}
+
 /* ═══ §8 station tabs — the bench's shipworks/industry verbs read as bare chevron words. Deckplate's
    printedKey and the shipworks sheet out-specific a bare class rule, so this selector is
    deliberately maximal (id + five class/attr hooks): a hairline key a player can press, 13px

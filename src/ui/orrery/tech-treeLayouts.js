@@ -75,6 +75,19 @@ ${T} .con-curve__fly.is-closing { opacity:0; transition:opacity var(--k-d-settle
    the arrival's fill-forwards label animation (.con-sky.is-arriving .con-label-in) otherwise holds
    opacity 1 above the covered state, and the walk photographs inside that window */
 ${T} .con-sky .con-label.is-curve-covered { opacity:0 !important; animation:none !important; }
+/* ui-polish-231: a narrow mid-height desktop frame (761–1100 × 501–640, e.g. 960×540) stacked the two
+   costs gauge over gauge in the 270px reading, so they took ~130px and the unlock list stopped after
+   its first row, with Requires under the column's fade. The costs stand side by side as words and
+   figures, the arrangement ui-polish-67 gave the ≤500-tall frame (the "% held" line already says what
+   the gauge draws), and the unlock list reads on the first paint. */
+@media (min-width:761px) and (max-width:1100px) and (min-height:501px) and (max-height:640px) {
+  ${T} dl.con-dossier__cost { grid-template-columns:repeat(2, minmax(0, 1fr)); column-gap:12px; row-gap:0; margin:2px 0 4px !important; }
+  ${T} .con-cost { grid-template-columns:minmax(0, 1fr); }
+  ${T} .con-cost__gauge { display:none; }
+  ${T} .con-cost dt { line-height:1.2; letter-spacing:.14em; }
+  ${T} .con-cost dd { font-size:24px; margin-top:1px; }
+  ${T} .con-cost__sub { margin-top:2px; letter-spacing:.06em; }
+}
 @media (max-width:560px) {
   ${T} .con-curve__fly { max-width:min(44ch, 92vw); }
 }

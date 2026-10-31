@@ -38,7 +38,8 @@ const {
 } = await import('../src/render/visualFactory.js');
 const { installVisualOverrides } = await import('../src/render/visualOverrides.js');
 const { makeRescueCastSpecs } = await import('../src/onboarding/rescueOpening.js');
-const { warmHullFilesForSpecs } = await import('../src/render/renderer.js');
+const { render: renderSystem, warmHullFilesForSpecs } = await import('../src/render/renderer.js');
+const { scriptedOnboardingRosterRows } = await import('../src/render/saveEnvelopeSectorWarm.js');
 
 const RENDERER_SOURCE = readFileSync(
   new URL('../src/render/renderer.js', import.meta.url), 'utf8',
@@ -227,6 +228,31 @@ test('the ordinary opening cook runs the bounded warm with the intro species pro
 });
 
 test('ordinary opening keeps its live/embark hull set and releases the warm after first paint', () => {
+  const menuWarms = [];
+  const menuOwner = Object.create(renderSystem);
+  Object.assign(menuOwner, {
+    renderer: {},
+    _warmSectorRecipeStubs(...args) { menuWarms.push(args); },
+  });
+  menuOwner._prefetchEmbarkVisuals({
+    sectorId: 'sector_helios_prime', seed: 123, shipDefId: 'ship_mule',
+  });
+  assert.equal(menuWarms.length, 1);
+  const [placeStubs, shipStubs, roster, sectorId] = menuWarms[0];
+  assert.equal(sectorId, 'sector_helios_prime');
+  assert.deepEqual(placeStubs.map(stub => stub.data.packagedPropFile), [
+    'pods/pod_47a_evidence_spindle.glb', 'places/place_dead_hulk.glb',
+  ], 'menu dwell keeps the 47-A spindle and carrier hulk');
+  assert.deepEqual(shipStubs.map(stub => stub.data.defId), [
+    'ship_wasp', 'ship_mule', 'ship_mule',
+  ], 'fixed intro hulls and the selected starter remain warm');
+  assert.deepEqual(roster, scriptedOnboardingRosterRows(),
+    'scripted onboarding hulls remain warm without enumerating sector recipes');
+  const embarkStart = RENDERER_SOURCE.indexOf('_prefetchEmbarkVisuals(payload)');
+  const embarkEnd = RENDERER_SOURCE.indexOf('_admitSurvivalRosterPrewarm(payload, options = {})', embarkStart);
+  const embark = RENDERER_SOURCE.slice(embarkStart, embarkEnd);
+  assert.doesNotMatch(embark, /saveEnvelopeSectorStubs|saveEnvelopeFullExtrasStubs/);
+
   const helperStart = RENDERER_SOURCE.indexOf('function openingWarmHullFilesForState(state)');
   const beginDef = RENDERER_SOURCE.indexOf('_beginCrucibleBoundedRosterWarm(options = {})');
   const finishDef = RENDERER_SOURCE.indexOf('_finishCrucibleBoundedRosterWarm(warm, options = {})');

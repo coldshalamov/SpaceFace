@@ -51,7 +51,7 @@ import {
   firstDockHandoffVisible,
   firstDockHandoffSteps,
 } from './stationDepartureModel.js';
-import { bindStationMarkup, stationControlAttrs, stationControlLabel } from './stationBindingMap.js';
+import { bindStationMarkup, markStationControl, stationControlAttrs, stationControlLabel } from './stationBindingMap.js';
 import { missionDockAttention } from './missionDockAttention.js';
 import { yardJobReadout } from './serviceQuotes.js';
 import { isChoiceECourierReady } from '../../story/endings/eligibility.js';
@@ -696,6 +696,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
   const kiteButton = document.createElement('button');
   kiteButton.type = 'button'; kiteButton.className = 'k-word sx-kite-corner-open';
   kiteButton.textContent = 'Kite’s Corner';
+  markStationControl(kiteButton, 'kite-corner-open');
   kiteButton.setAttribute('aria-label', 'Watch Kite’s Corner, Ceres service-room programme');
   kiteButton.setAttribute('aria-expanded', 'false');
   // The station frame always parents the help word; a detached frame (a DOM double, a frame

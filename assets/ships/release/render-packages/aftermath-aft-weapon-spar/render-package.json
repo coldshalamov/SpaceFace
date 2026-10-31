@@ -53,30 +53,30 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "5a9c72ac35a270b8c8508a150ba2bda792c3e45c023f156b73c6bf69e22fe1f0",
+  "contentHash": "02378f187e7563aa5c04ba0e1bd780ee6e3463da8847c221cf5c272ea4ef77fa",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
           14,
-          -0.9474575192033635,
-          0.8099714102159906
+          -0.9468076684948116,
+          0.8100833155308694
         ],
         "min": [
-          -11.568721771240234,
-          -2.4893684118688717,
-          -0.8099714102159906
+          -11.569750053407393,
+          -2.4883586191463816,
+          -0.8100833155308694
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2996f6b26a30536b58bb8fad0f3e0e312cad3a658dbf89a7c4f7d6fc4504a66b",
+      "geometryHash": "7b54c3f7a61987ee38bfe77b56ee89176730fbffd7abc74b21e1afde76028bf0",
       "id": "sf.render.aftermath-aft-weapon-spar.node.spar.primitive.0",
       "indexCount": 48,
       "indexed": true,
       "materialHash": "11ed44a130019ebcdc096ccdf7af531aa846f64c515c24f6b3854060e8455ff2",
-      "materialPipelineKey": "opaque",
-      "meshName": "Spar",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "meshName": "render:sf.render.aftermath-aft-weapon-spar.flight-static-lane.1",
       "nodeId": "sf.render.aftermath-aft-weapon-spar.node.spar",
       "primitiveIndex": 0,
       "vertexCount": 30
@@ -84,477 +84,177 @@
     {
       "bounds": {
         "max": [
-          -11.439140319824219,
-          -2.0855119129115947,
-          0.3206534415586251
-        ],
-        "min": [
-          -13.631938934326172,
-          -3.500354538351833,
-          -0.28250503839090046
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "0a4baae33ca60371af8ffcda6b6dd4792d1b106e2e4a7e7731c6105c3d80c5fc",
-      "id": "sf.render.aftermath-aft-weapon-spar.node.sparend-tear0.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "a0b9525a2334f9c031ad55fd0646183c63e2899a199e5c84a2d07d6294452789",
-      "materialPipelineKey": "opaque",
-      "meshName": "sparEnd_tear0",
-      "nodeId": "sf.render.aftermath-aft-weapon-spar.node.sparend-tear0",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          -11.412089529532839,
-          -1.557284767182705,
-          1.7798727750778198
-        ],
-        "min": [
-          -12.60428124378259,
-          -1.9970743112245826,
-          0.5754779577255249
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "c5a17bf5376bf602b4d94519d36dfb070ed7c2be3ce0996f22e101fb28c89b3a",
-      "id": "sf.render.aftermath-aft-weapon-spar.node.sparend-tear1.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "a0b9525a2334f9c031ad55fd0646183c63e2899a199e5c84a2d07d6294452789",
-      "materialPipelineKey": "opaque",
-      "meshName": "sparEnd_tear1",
-      "nodeId": "sf.render.aftermath-aft-weapon-spar.node.sparend-tear1",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          -11.422649383544922,
-          -0.0576166612713952,
-          0.5022259681146314
+          -11.371501815851314,
+          -0.05810867255377326,
+          1.7791070284127324
         ],
         "min": [
           -14,
-          -1.6787353540152887,
-          -0.53801152395417
+          -3.5005355044273045,
+          -1.8884853663747063
         ]
       },
       "drawMode": 4,
-      "geometryHash": "26c9dd36d3c26eeef76031e9817c489556e70c36b65591907524ae2f66a992ff",
-      "id": "sf.render.aftermath-aft-weapon-spar.node.sparend-tear2.primitive.0",
-      "indexCount": 36,
+      "geometryHash": "0ce41bf4091ff5f92e98ec80ba50eccbd0487765803ecdbe29af2991163496e5",
+      "id": "sf.render.aftermath-aft-weapon-spar.node.spar.primitive.1",
+      "indexCount": 144,
       "indexed": true,
       "materialHash": "a0b9525a2334f9c031ad55fd0646183c63e2899a199e5c84a2d07d6294452789",
-      "materialPipelineKey": "opaque",
-      "meshName": "sparEnd_tear2",
-      "nodeId": "sf.render.aftermath-aft-weapon-spar.node.sparend-tear2",
-      "primitiveIndex": 0,
-      "vertexCount": 24
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "meshName": "render:sf.render.aftermath-aft-weapon-spar.flight-static-lane.1",
+      "nodeId": "sf.render.aftermath-aft-weapon-spar.node.spar",
+      "primitiveIndex": 1,
+      "vertexCount": 96
     },
     {
       "bounds": {
         "max": [
-          -11.37179183959961,
-          -1.3482594367556784,
-          -0.3429477081249859
+          6.54261909848323,
+          0.7571017525690638,
+          2.6626789147618033
         ],
         "min": [
-          -12.996149063110352,
-          -2.2942106846279886,
-          -1.8893762364436482
+          1.2151249732963043,
+          -1.266397499727454,
+          -2.6626789147618033
         ]
       },
       "drawMode": 4,
-      "geometryHash": "913b6464ca4dde612a8b2b70af953eaa77b8e1e548e538ac641f1c5200391b88",
-      "id": "sf.render.aftermath-aft-weapon-spar.node.sparend-tear3.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "a0b9525a2334f9c031ad55fd0646183c63e2899a199e5c84a2d07d6294452789",
-      "materialPipelineKey": "opaque",
-      "meshName": "sparEnd_tear3",
-      "nodeId": "sf.render.aftermath-aft-weapon-spar.node.sparend-tear3",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          6.542457103729248,
-          0.7571996777543042,
-          2.6634089946746826
-        ],
-        "min": [
-          1.2156391143798828,
-          -1.2672415106781934,
-          -2.6634089946746826
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "2777190cd5f6d8c513b311c091f4d9d187a86ae7e709689e380f35cc73e41ce3",
-      "id": "sf.render.aftermath-aft-weapon-spar.node.turretbbarbette.primitive.0",
+      "geometryHash": "c4ef3437d28b7b4b5eb33c3f403b0d96d711facdd48ec4505b6a818d155a9308",
+      "id": "sf.render.aftermath-aft-weapon-spar.node.spar.primitive.2",
       "indexCount": 1908,
       "indexed": true,
       "materialHash": "76af6f60878ca9b898f58bf7b26e4a8b478b866aefc633ce2bbc9d27699f4f06",
-      "materialPipelineKey": "opaque",
-      "meshName": "TurretBBarbette",
-      "nodeId": "sf.render.aftermath-aft-weapon-spar.node.turretbbarbette",
-      "primitiveIndex": 0,
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "meshName": "render:sf.render.aftermath-aft-weapon-spar.flight-static-lane.1",
+      "nodeId": "sf.render.aftermath-aft-weapon-spar.node.spar",
+      "primitiveIndex": 2,
       "vertexCount": 584
     },
     {
       "bounds": {
         "max": [
-          12.934638977050781,
-          2.336015726347651,
-          0.8121612798663029
+          12.93527024140141,
+          3.5005326434043553,
+          2.5293740653706474
         ],
         "min": [
-          6.808797359466553,
-          1.8948100554745535,
-          0.3597385156659236
+          1.3484298226874598,
+          0.6169607570552846,
+          -2.5293740653706474
         ]
       },
       "drawMode": 4,
-      "geometryHash": "356cca9d1dbec7f5985b3e8ffc5a86e7ddb439c9bb9a41b15d904442b20e5a18",
-      "id": "sf.render.aftermath-aft-weapon-spar.node.turretbbarrel-0-22.primitive.0",
-      "indexCount": 660,
+      "geometryHash": "efc59714893ba2dd592e9084f2f44988808d07011eed6c055e1f4ce38fb31aed",
+      "id": "sf.render.aftermath-aft-weapon-spar.node.spar.primitive.3",
+      "indexCount": 4488,
       "indexed": true,
       "materialHash": "2a85e9ff514d3991263809dc1fc3503b0883dc4e10219c245756fb647ea521a6",
-      "materialPipelineKey": "opaque",
-      "meshName": "TurretBBarrel-0.22",
-      "nodeId": "sf.render.aftermath-aft-weapon-spar.node.turretbbarrel-0-22",
-      "primitiveIndex": 0,
-      "vertexCount": 228
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "meshName": "render:sf.render.aftermath-aft-weapon-spar.flight-static-lane.1",
+      "nodeId": "sf.render.aftermath-aft-weapon-spar.node.spar",
+      "primitiveIndex": 3,
+      "vertexCount": 1528
     },
     {
       "bounds": {
         "max": [
-          12.934638977050781,
-          2.336015726347651,
-          -0.3597385156659236
+          13.201879940183721,
+          2.4268304430198224,
+          2.52424695577868
         ],
         "min": [
-          6.808797359466553,
-          1.8948100554745535,
-          -0.8121612798663029
+          1.3535569322794274,
+          0.5964523186874146,
+          -2.52424695577868
         ]
       },
       "drawMode": 4,
-      "geometryHash": "01b93cc3d165f0fe5f9d836a7003473e4b1cad532634727df232b1501f43cf5d",
-      "id": "sf.render.aftermath-aft-weapon-spar.node.turretbbarrel0-22.primitive.0",
-      "indexCount": 660,
-      "indexed": true,
-      "materialHash": "2a85e9ff514d3991263809dc1fc3503b0883dc4e10219c245756fb647ea521a6",
-      "materialPipelineKey": "opaque",
-      "meshName": "TurretBBarrel0.22",
-      "nodeId": "sf.render.aftermath-aft-weapon-spar.node.turretbbarrel0-22",
-      "primitiveIndex": 0,
-      "vertexCount": 228
-    },
-    {
-      "bounds": {
-        "max": [
-          13.200979232788086,
-          2.4270026227063384,
-          0.9055462257813414
-        ],
-        "min": [
-          12.535125732421875,
-          1.803822920697287,
-          0.26635368896017475
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "1873fccf306584b495c9ec8a4c6724039008d3d2d1ceaebf80c273647fbca2d7",
-      "id": "sf.render.aftermath-aft-weapon-spar.node.turretbbrake-0-22.primitive.0",
-      "indexCount": 660,
+      "geometryHash": "b333f3a04860ca1636bd5f50b6d4242ca5df35e22c5df93ef371865c8f82292b",
+      "id": "sf.render.aftermath-aft-weapon-spar.node.spar.primitive.4",
+      "indexCount": 4416,
       "indexed": true,
       "materialHash": "0a3083fab34e89419b4b9aa5a2f228c8ad7b14e46fed0e5a1ff4d33278b4b70f",
-      "materialPipelineKey": "opaque",
-      "meshName": "TurretBBrake-0.22",
-      "nodeId": "sf.render.aftermath-aft-weapon-spar.node.turretbbrake-0-22",
-      "primitiveIndex": 0,
-      "vertexCount": 228
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "meshName": "render:sf.render.aftermath-aft-weapon-spar.flight-static-lane.1",
+      "nodeId": "sf.render.aftermath-aft-weapon-spar.node.spar",
+      "primitiveIndex": 4,
+      "vertexCount": 1360
     },
     {
       "bounds": {
         "max": [
-          13.200979232788086,
-          2.4270026227063384,
-          -0.26635368896017475
+          6.67421491134373,
+          3.0403745575252694,
+          2.148258919034394
         ],
         "min": [
-          12.535125732421875,
-          1.803822920697287,
-          -0.9055462257813414
+          0.8186284981841487,
+          1.3586826113599204,
+          -2.148258919034394
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ed1f6a195e6bfecaf8bdc4c6d13d8fdd3094d070585a1f459dd4b8f24bd51544",
-      "id": "sf.render.aftermath-aft-weapon-spar.node.turretbbrake0-22.primitive.0",
-      "indexCount": 660,
-      "indexed": true,
-      "materialHash": "0a3083fab34e89419b4b9aa5a2f228c8ad7b14e46fed0e5a1ff4d33278b4b70f",
-      "materialPipelineKey": "opaque",
-      "meshName": "TurretBBrake0.22",
-      "nodeId": "sf.render.aftermath-aft-weapon-spar.node.turretbbrake0-22",
-      "primitiveIndex": 0,
-      "vertexCount": 228
-    },
-    {
-      "bounds": {
-        "max": [
-          6.673838999738014,
-          3.040880557551544,
-          2.148202933281252
-        ],
-        "min": [
-          0.8179161281687852,
-          1.3594061397005817,
-          -2.148202933281252
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "38adb48142d70881d9cdd8852e352725debb5ccb09a334fd7dba6c5598039284",
-      "id": "sf.render.aftermath-aft-weapon-spar.node.turretbhouse.primitive.0",
+      "geometryHash": "499fbbb0f060afde953d265859a3200b18f4205d00941f9e26b1ca81b8ca52dd",
+      "id": "sf.render.aftermath-aft-weapon-spar.node.spar.primitive.5",
       "indexCount": 1299,
       "indexed": true,
       "materialHash": "a74dd4b143963f79a060f17a3f39a90317a038bf97dfa49ab12c8587df6825fd",
-      "materialPipelineKey": "opaque",
-      "meshName": "TurretBHouse",
-      "nodeId": "sf.render.aftermath-aft-weapon-spar.node.turretbhouse",
-      "primitiveIndex": 0,
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "meshName": "render:sf.render.aftermath-aft-weapon-spar.flight-static-lane.1",
+      "nodeId": "sf.render.aftermath-aft-weapon-spar.node.spar",
+      "primitiveIndex": 5,
       "vertexCount": 443
     },
     {
       "bounds": {
         "max": [
-          6.6756272315979,
-          2.1270046655567185,
-          2.1507064578850925
+          6.675923947874386,
+          2.1260400136243938,
+          2.14996795556505
         ],
         "min": [
-          0.8161278963088989,
-          1.3658437743961718,
-          -2.1507064578850925
+          0.815210425122837,
+          1.3655187574825438,
+          -2.14996795556505
         ]
       },
       "drawMode": 4,
-      "geometryHash": "511fe7a8cd0ce9dce2cd11a7ff0bef6ff997a4293a57283cb7c14250f0244bb6",
-      "id": "sf.render.aftermath-aft-weapon-spar.node.turretbhouse.primitive.1",
+      "geometryHash": "6802e9918198dfa544b5820352eaf6a18867e00d537eb88194a739f5f66f9e23",
+      "id": "sf.render.aftermath-aft-weapon-spar.node.spar.primitive.6",
       "indexCount": 837,
       "indexed": true,
       "materialHash": "413bc5886588f6b46a4ecc0464398cdf9cc4773739979e2ceb997ed3ee5d2643",
-      "materialPipelineKey": "opaque",
-      "meshName": "TurretBHouse",
-      "nodeId": "sf.render.aftermath-aft-weapon-spar.node.turretbhouse",
-      "primitiveIndex": 1,
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "meshName": "render:sf.render.aftermath-aft-weapon-spar.flight-static-lane.1",
+      "nodeId": "sf.render.aftermath-aft-weapon-spar.node.spar",
+      "primitiveIndex": 6,
       "vertexCount": 280
     },
     {
       "bounds": {
         "max": [
-          3.3832241427684853,
-          3.060908754382269,
-          2.1707346547158175
+          3.3821832941679126,
+          3.06088299589314,
+          2.1704763939329204
         ],
         "min": [
-          2.776566484302103,
-          1.3297214908264712,
-          -2.1707346547158175
+          2.775475325785089,
+          1.3296289903387712,
+          -2.1704763939329204
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f8d0e7c619ae2c21b4775d68108245c5ca2ddee4de2ee9923323ab99fd752430",
-      "id": "sf.render.aftermath-aft-weapon-spar.node.turretbhouse.primitive.2",
+      "geometryHash": "10e925cbc2775ff7baa234f331887357091f1eb8914d658f068d7038d357785c",
+      "id": "sf.render.aftermath-aft-weapon-spar.node.spar.primitive.7",
       "indexCount": 1404,
       "indexed": true,
       "materialHash": "37885cdf4e6b5e498b4175dd3403cc250771377d1407b98b140610f10cb6b576",
-      "materialPipelineKey": "opaque",
-      "meshName": "TurretBHouse",
-      "nodeId": "sf.render.aftermath-aft-weapon-spar.node.turretbhouse",
-      "primitiveIndex": 2,
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "meshName": "render:sf.render.aftermath-aft-weapon-spar.flight-static-lane.1",
+      "nodeId": "sf.render.aftermath-aft-weapon-spar.node.spar",
+      "primitiveIndex": 7,
       "vertexCount": 492
-    },
-    {
-      "bounds": {
-        "max": [
-          7.075183498192544,
-          2.594745176617458,
-          1.0653635263442993
-        ],
-        "min": [
-          6.276071441840415,
-          1.5295442168075295,
-          -1.0653635263442993
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "15ee20890fca15e394fdfbf0afd6479b406fa44df84908944d437d490c583201",
-      "id": "sf.render.aftermath-aft-weapon-spar.node.turretbmantlet.primitive.0",
-      "indexCount": 564,
-      "indexed": true,
-      "materialHash": "2a85e9ff514d3991263809dc1fc3503b0883dc4e10219c245756fb647ea521a6",
-      "materialPipelineKey": "opaque",
-      "meshName": "TurretBMantlet",
-      "nodeId": "sf.render.aftermath-aft-weapon-spar.node.turretbmantlet",
-      "primitiveIndex": 0,
-      "vertexCount": 184
-    },
-    {
-      "bounds": {
-        "max": [
-          6.055052757263184,
-          1.4229799984510423,
-          2.1760048866271973
-        ],
-        "min": [
-          1.703042984008789,
-          1.2630685092393874,
-          -2.1760048866271973
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "d028465edb31022d914cd356a02a14efd8e5a100ecde6afcd2f48db5f7dd91a0",
-      "id": "sf.render.aftermath-aft-weapon-spar.node.turretbrace.primitive.0",
-      "indexCount": 1908,
-      "indexed": true,
-      "materialHash": "0a3083fab34e89419b4b9aa5a2f228c8ad7b14e46fed0e5a1ff4d33278b4b70f",
-      "materialPipelineKey": "opaque",
-      "meshName": "TurretBRace",
-      "nodeId": "sf.render.aftermath-aft-weapon-spar.node.turretbrace",
-      "primitiveIndex": 0,
-      "vertexCount": 584
-    },
-    {
-      "bounds": {
-        "max": [
-          6.409286141395569,
-          1.2430876487587559,
-          2.530238389968872
-        ],
-        "min": [
-          1.3488093614578247,
-          0.617304027667178,
-          -2.530238389968872
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "2e717ced97e3eab5449d5697dbfb6774efd1572248fb26aa9a3c1009ea786b08",
-      "id": "sf.render.aftermath-aft-weapon-spar.node.turretbring.primitive.0",
-      "indexCount": 720,
-      "indexed": true,
-      "materialHash": "2a85e9ff514d3991263809dc1fc3503b0883dc4e10219c245756fb647ea521a6",
-      "materialPipelineKey": "opaque",
-      "meshName": "TurretBRing",
-      "nodeId": "sf.render.aftermath-aft-weapon-spar.node.turretbring",
-      "primitiveIndex": 0,
-      "vertexCount": 264
-    },
-    {
-      "bounds": {
-        "max": [
-          6.404035242304475,
-          1.263164615871763,
-          2.524987490877778
-        ],
-        "min": [
-          1.354060260548919,
-          0.5972270605541707,
-          -2.524987490877778
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "becc33f145bafc231f3384a895083c94d0b8c73ea77f321d43fd1b0a4e469074",
-      "id": "sf.render.aftermath-aft-weapon-spar.node.turretbring.primitive.1",
-      "indexCount": 1188,
-      "indexed": true,
-      "materialHash": "0a3083fab34e89419b4b9aa5a2f228c8ad7b14e46fed0e5a1ff4d33278b4b70f",
-      "materialPipelineKey": "opaque",
-      "meshName": "TurretBRing",
-      "nodeId": "sf.render.aftermath-aft-weapon-spar.node.turretbring",
-      "primitiveIndex": 1,
-      "vertexCount": 320
-    },
-    {
-      "bounds": {
-        "max": [
-          3.2398297786712646,
-          3.5003516393217593,
-          -0.798988403609708
-        ],
-        "min": [
-          2.1211981773376465,
-          3.021006373831317,
-          -1.4382747394528836
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "aee8d066fdb62b07ac75ccecce2191e9c286912a1a56f9e511d8f9cfa6eaee56",
-      "id": "sf.render.aftermath-aft-weapon-spar.node.turretbsight.primitive.0",
-      "indexCount": 564,
-      "indexed": true,
-      "materialHash": "2a85e9ff514d3991263809dc1fc3503b0883dc4e10219c245756fb647ea521a6",
-      "materialPipelineKey": "opaque",
-      "meshName": "TurretBSight",
-      "nodeId": "sf.render.aftermath-aft-weapon-spar.node.turretbsight",
-      "primitiveIndex": 0,
-      "vertexCount": 168
-    },
-    {
-      "bounds": {
-        "max": [
-          8.67318344116211,
-          2.451824056446256,
-          0.9310095652621375
-        ],
-        "min": [
-          6.808797359466553,
-          1.7790018445852382,
-          0.24089027497357257
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "99a64b73066745a5408af9375b6d537357ed41a911c0637d7fe32d32354a2358",
-      "id": "sf.render.aftermath-aft-weapon-spar.node.turretbsleeve-0-22.primitive.0",
-      "indexCount": 660,
-      "indexed": true,
-      "materialHash": "2a85e9ff514d3991263809dc1fc3503b0883dc4e10219c245756fb647ea521a6",
-      "materialPipelineKey": "opaque",
-      "meshName": "TurretBSleeve-0.22",
-      "nodeId": "sf.render.aftermath-aft-weapon-spar.node.turretbsleeve-0-22",
-      "primitiveIndex": 0,
-      "vertexCount": 228
-    },
-    {
-      "bounds": {
-        "max": [
-          8.67318344116211,
-          2.451824056446256,
-          -0.24089027497357257
-        ],
-        "min": [
-          6.808797359466553,
-          1.7790018445852382,
-          -0.9310095652621375
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "46329b6b7a5452cb2dd37b2bdb84e1b29777eb5650a74b2f8155f03c0f7b4a4f",
-      "id": "sf.render.aftermath-aft-weapon-spar.node.turretbsleeve0-22.primitive.0",
-      "indexCount": 660,
-      "indexed": true,
-      "materialHash": "2a85e9ff514d3991263809dc1fc3503b0883dc4e10219c245756fb647ea521a6",
-      "materialPipelineKey": "opaque",
-      "meshName": "TurretBSleeve0.22",
-      "nodeId": "sf.render.aftermath-aft-weapon-spar.node.turretbsleeve0-22",
-      "primitiveIndex": 0,
-      "vertexCount": 228
     }
   ],
   "hlods": [],
@@ -919,25 +619,25 @@
     {
       "id": "sf.render.aftermath-aft-weapon-spar.node.spar",
       "localTransform": [
-        12.784360885620117,
+        14,
         0,
         0,
         0,
         0,
-        12.784360885620117,
+        14,
         0,
         0,
         0,
         0,
-        12.784360885620117,
+        14,
         0,
-        1.2156391143798828,
-        -1.7184129655361176,
+        0,
+        -0.000001430511474609375,
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "Spar",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
       "nodeName": "Spar",
       "nodePath": [
         0,
@@ -947,20 +647,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-weapon-spar.body",
       "worldTransform": [
-        12.784360885620117,
+        14,
         0,
         0,
         0,
         0,
-        12.784360885620117,
+        14,
         0,
         0,
         0,
         0,
-        12.784360885620117,
+        14,
         0,
-        1.2156391143798828,
-        -1.7184129655361176,
+        0,
+        -0.000001430511474609375,
         0,
         1
       ]
@@ -968,25 +668,25 @@
     {
       "id": "sf.render.aftermath-aft-weapon-spar.node.sparend-tear0",
       "localTransform": [
-        1.0963993072509766,
+        1,
         0,
         0,
         0,
         0,
-        1.0963993072509766,
+        1,
         0,
         0,
         0,
         0,
-        1.0963993072509766,
+        1,
         0,
-        -12.535539627075195,
-        -2.792933225631714,
-        0.019074201583862305,
+        0,
+        0,
+        0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "sparEnd_tear0",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
       "nodeName": "sparEnd_tear0",
       "nodePath": [
         0,
@@ -996,46 +696,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-weapon-spar.body",
       "worldTransform": [
-        1.0963993072509766,
+        1,
         0,
         0,
         0,
         0,
-        1.0963993072509766,
+        1,
         0,
         0,
         0,
         0,
-        1.0963993072509766,
+        1,
         0,
-        -12.535539627075195,
-        -2.792933225631714,
-        0.019074201583862305,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-weapon-spar.node.sparend-tear1",
       "localTransform": [
-        0.6021974086761475,
+        1,
         0,
         0,
         0,
         0,
-        0.6021974086761475,
+        1,
         0,
         0,
         0,
         0,
-        0.6021974086761475,
+        1,
         0,
-        -12.008185386657715,
-        -1.7771795392036438,
-        1.1776753664016724,
+        0,
+        0,
+        0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "sparEnd_tear1",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
       "nodeName": "sparEnd_tear1",
       "nodePath": [
         0,
@@ -1045,46 +745,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-weapon-spar.body",
       "worldTransform": [
-        0.6021974086761475,
+        1,
         0,
         0,
         0,
         0,
-        0.6021974086761475,
+        1,
         0,
         0,
         0,
         0,
-        0.6021974086761475,
+        1,
         0,
-        -12.008185386657715,
-        -1.7771795392036438,
-        1.1776753664016724,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-weapon-spar.node.sparend-tear2",
       "localTransform": [
-        1.288675308227539,
+        1,
         0,
         0,
         0,
         0,
-        1.288675308227539,
+        1,
         0,
         0,
         0,
         0,
-        1.288675308227539,
+        1,
         0,
-        -12.711324691772461,
-        -0.868176007643342,
-        -0.017892777919769287,
+        0,
+        0,
+        0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "sparEnd_tear2",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
       "nodeName": "sparEnd_tear2",
       "nodePath": [
         0,
@@ -1094,46 +794,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-weapon-spar.body",
       "worldTransform": [
-        1.288675308227539,
+        1,
         0,
         0,
         0,
         0,
-        1.288675308227539,
+        1,
         0,
         0,
         0,
         0,
-        1.288675308227539,
+        1,
         0,
-        -12.711324691772461,
-        -0.868176007643342,
-        -0.017892777919769287,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-weapon-spar.node.sparend-tear3",
       "localTransform": [
-        0.8121786117553711,
+        1,
         0,
         0,
         0,
         0,
-        0.8121786117553711,
+        1,
         0,
         0,
         0,
         0,
-        0.8121786117553711,
+        1,
         0,
-        -12.18397045135498,
-        -1.8212350606918335,
-        -1.116161972284317,
+        0,
+        0,
+        0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "sparEnd_tear3",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
       "nodeName": "sparEnd_tear3",
       "nodePath": [
         0,
@@ -1143,46 +843,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-weapon-spar.body",
       "worldTransform": [
-        0.8121786117553711,
+        1,
         0,
         0,
         0,
         0,
-        0.8121786117553711,
+        1,
         0,
         0,
         0,
         0,
-        0.8121786117553711,
+        1,
         0,
-        -12.18397045135498,
-        -1.8212350606918335,
-        -1.116161972284317,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-weapon-spar.node.turretbbarbette",
       "localTransform": [
-        2.6634089946746826,
+        1,
         0,
         0,
         0,
         0,
-        2.6634089946746826,
+        1,
         0,
         0,
         0,
         0,
-        2.6634089946746826,
+        1,
         0,
-        3.8790481090545654,
-        -0.2550209164619446,
+        0,
+        0,
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "TurretBBarbette",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
       "nodeName": "TurretBBarbette",
       "nodePath": [
         0,
@@ -1192,20 +892,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-weapon-spar.body",
       "worldTransform": [
-        2.6634089946746826,
+        1,
         0,
         0,
         0,
         0,
-        2.6634089946746826,
+        1,
         0,
         0,
         0,
         0,
-        2.6634089946746826,
+        1,
         0,
-        3.8790481090545654,
-        -0.2550209164619446,
+        0,
+        0,
         0,
         1
       ]
@@ -1213,25 +913,25 @@
     {
       "id": "sf.render.aftermath-aft-weapon-spar.node.turretbbarrel-0-22",
       "localTransform": [
-        3.0629208087921143,
+        1,
         0,
         0,
         0,
         0,
-        3.0629208087921143,
+        1,
         0,
         0,
         0,
         0,
-        3.0629208087921143,
+        1,
         0,
-        9.871718168258667,
-        2.1154128909111023,
-        0.5859498977661133,
+        0,
+        0,
+        0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "TurretBBarrel-0.22",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
       "nodeName": "TurretBBarrel-0.22",
       "nodePath": [
         0,
@@ -1241,46 +941,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-weapon-spar.body",
       "worldTransform": [
-        3.0629208087921143,
+        1,
         0,
         0,
         0,
         0,
-        3.0629208087921143,
+        1,
         0,
         0,
         0,
         0,
-        3.0629208087921143,
+        1,
         0,
-        9.871718168258667,
-        2.1154128909111023,
-        0.5859498977661133,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-weapon-spar.node.turretbbarrel0-22",
       "localTransform": [
-        3.0629208087921143,
+        1,
         0,
         0,
         0,
         0,
-        3.0629208087921143,
+        1,
         0,
         0,
         0,
         0,
-        3.0629208087921143,
+        1,
         0,
-        9.871718168258667,
-        2.1154128909111023,
-        -0.5859498977661133,
+        0,
+        0,
+        0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "TurretBBarrel0.22",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
       "nodeName": "TurretBBarrel0.22",
       "nodePath": [
         0,
@@ -1290,46 +990,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-weapon-spar.body",
       "worldTransform": [
-        3.0629208087921143,
+        1,
         0,
         0,
         0,
         0,
-        3.0629208087921143,
+        1,
         0,
         0,
         0,
         0,
-        3.0629208087921143,
+        1,
         0,
-        9.871718168258667,
-        2.1154128909111023,
-        -0.5859498977661133,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-weapon-spar.node.turretbbrake-0-22",
       "localTransform": [
-        0.33292675018310547,
+        1,
         0,
         0,
         0,
         0,
-        0.33292675018310547,
+        1,
         0,
         0,
         0,
         0,
-        0.33292675018310547,
+        1,
         0,
-        12.86805248260498,
-        2.1154127717018127,
-        0.5859499573707581,
+        0,
+        0,
+        0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "TurretBBrake-0.22",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
       "nodeName": "TurretBBrake-0.22",
       "nodePath": [
         0,
@@ -1339,46 +1039,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-weapon-spar.body",
       "worldTransform": [
-        0.33292675018310547,
+        1,
         0,
         0,
         0,
         0,
-        0.33292675018310547,
+        1,
         0,
         0,
         0,
         0,
-        0.33292675018310547,
+        1,
         0,
-        12.86805248260498,
-        2.1154127717018127,
-        0.5859499573707581,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-weapon-spar.node.turretbbrake0-22",
       "localTransform": [
-        0.33292675018310547,
+        1,
         0,
         0,
         0,
         0,
-        0.33292675018310547,
+        1,
         0,
         0,
         0,
         0,
-        0.33292675018310547,
+        1,
         0,
-        12.86805248260498,
-        2.1154127717018127,
-        -0.5859499573707581,
+        0,
+        0,
+        0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "TurretBBrake0.22",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
       "nodeName": "TurretBBrake0.22",
       "nodePath": [
         0,
@@ -1388,46 +1088,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-weapon-spar.body",
       "worldTransform": [
-        0.33292675018310547,
+        1,
         0,
         0,
         0,
         0,
-        0.33292675018310547,
+        1,
         0,
         0,
         0,
         0,
-        0.33292675018310547,
+        1,
         0,
-        12.86805248260498,
-        2.1154127717018127,
-        -0.5859499573707581,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-weapon-spar.node.turretbhouse",
       "localTransform": [
-        2.9297496676445007,
+        1,
         0,
         0,
         0,
         0,
-        2.9297496676445007,
+        1,
         0,
         0,
         0,
         0,
-        2.9297496676445007,
+        1,
         0,
-        3.7458775639533997,
-        2.19531512260437,
+        0,
+        0,
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "TurretBHouse",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
       "nodeName": "TurretBHouse",
       "nodePath": [
         0,
@@ -1437,20 +1137,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-weapon-spar.body",
       "worldTransform": [
-        2.9297496676445007,
+        1,
         0,
         0,
         0,
         0,
-        2.9297496676445007,
+        1,
         0,
         0,
         0,
         0,
-        2.9297496676445007,
+        1,
         0,
-        3.7458775639533997,
-        2.19531512260437,
+        0,
+        0,
         0,
         1
       ]
@@ -1458,25 +1158,25 @@
     {
       "id": "sf.render.aftermath-aft-weapon-spar.node.turretbmantlet",
       "localTransform": [
-        1.0653635263442993,
+        1,
         0,
         0,
         0,
         0,
-        1.0653635263442993,
+        1,
         0,
         0,
         0,
         0,
-        1.0653635263442993,
+        1,
         0,
-        6.6756274700164795,
-        2.062144696712494,
+        0,
+        0,
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "TurretBMantlet",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
       "nodeName": "TurretBMantlet",
       "nodePath": [
         0,
@@ -1486,20 +1186,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-weapon-spar.body",
       "worldTransform": [
-        1.0653635263442993,
+        1,
         0,
         0,
         0,
         0,
-        1.0653635263442993,
+        1,
         0,
         0,
         0,
         0,
-        1.0653635263442993,
+        1,
         0,
-        6.6756274700164795,
-        2.062144696712494,
+        0,
+        0,
         0,
         1
       ]
@@ -1507,25 +1207,25 @@
     {
       "id": "sf.render.aftermath-aft-weapon-spar.node.turretbrace",
       "localTransform": [
-        2.1760048866271973,
+        1,
         0,
         0,
         0,
         0,
-        2.1760048866271973,
+        1,
         0,
         0,
         0,
         0,
-        2.1760048866271973,
+        1,
         0,
-        3.8790478706359863,
-        1.3430242538452148,
+        0,
+        0,
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "TurretBRace",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
       "nodeName": "TurretBRace",
       "nodePath": [
         0,
@@ -1535,20 +1235,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-weapon-spar.body",
       "worldTransform": [
-        2.1760048866271973,
+        1,
         0,
         0,
         0,
         0,
-        2.1760048866271973,
+        1,
         0,
         0,
         0,
         0,
-        2.1760048866271973,
+        1,
         0,
-        3.8790478706359863,
-        1.3430242538452148,
+        0,
+        0,
         0,
         1
       ]
@@ -1556,25 +1256,25 @@
     {
       "id": "sf.render.aftermath-aft-weapon-spar.node.turretbring",
       "localTransform": [
-        2.530238389968872,
+        1,
         0,
         0,
         0,
         0,
-        2.530238389968872,
+        1,
         0,
         0,
         0,
         0,
-        2.530238389968872,
+        1,
         0,
-        3.8790477514266968,
-        0.9301958382129669,
+        0,
+        0,
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "TurretBRing",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
       "nodeName": "TurretBRing",
       "nodePath": [
         0,
@@ -1584,20 +1284,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-weapon-spar.body",
       "worldTransform": [
-        2.530238389968872,
+        1,
         0,
         0,
         0,
         0,
-        2.530238389968872,
+        1,
         0,
         0,
         0,
         0,
-        2.530238389968872,
+        1,
         0,
-        3.8790477514266968,
-        0.9301958382129669,
+        0,
+        0,
         0,
         1
       ]
@@ -1605,25 +1305,25 @@
     {
       "id": "sf.render.aftermath-aft-weapon-spar.node.turretbsight",
       "localTransform": [
-        0.5593158006668091,
+        1,
         0,
         0,
         0,
         0,
-        0.5593158006668091,
+        1,
         0,
         0,
         0,
         0,
-        0.5593158006668091,
+        1,
         0,
-        2.6805139780044556,
-        3.260679006576538,
-        -1.1186315715312958,
+        0,
+        0,
+        0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "TurretBSight",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
       "nodeName": "TurretBSight",
       "nodePath": [
         0,
@@ -1633,46 +1333,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-weapon-spar.body",
       "worldTransform": [
-        0.5593158006668091,
+        1,
         0,
         0,
         0,
         0,
-        0.5593158006668091,
+        1,
         0,
         0,
         0,
         0,
-        0.5593158006668091,
+        1,
         0,
-        2.6805139780044556,
-        3.260679006576538,
-        -1.1186315715312958,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-weapon-spar.node.turretbsleeve-0-22",
       "localTransform": [
-        0.9321930408477783,
+        1,
         0,
         0,
         0,
         0,
-        0.9321930408477783,
+        1,
         0,
         0,
         0,
         0,
-        0.9321930408477783,
+        1,
         0,
-        7.740990400314331,
-        2.115412950515747,
-        0.5859499201178551,
+        0,
+        0,
+        0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "TurretBSleeve-0.22",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
       "nodeName": "TurretBSleeve-0.22",
       "nodePath": [
         0,
@@ -1682,46 +1382,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-weapon-spar.body",
       "worldTransform": [
-        0.9321930408477783,
+        1,
         0,
         0,
         0,
         0,
-        0.9321930408477783,
+        1,
         0,
         0,
         0,
         0,
-        0.9321930408477783,
+        1,
         0,
-        7.740990400314331,
-        2.115412950515747,
-        0.5859499201178551,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-weapon-spar.node.turretbsleeve0-22",
       "localTransform": [
-        0.9321930408477783,
+        1,
         0,
         0,
         0,
         0,
-        0.9321930408477783,
+        1,
         0,
         0,
         0,
         0,
-        0.9321930408477783,
+        1,
         0,
-        7.740990400314331,
-        2.115412950515747,
-        -0.5859499201178551,
+        0,
+        0,
+        0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "TurretBSleeve0.22",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
       "nodeName": "TurretBSleeve0.22",
       "nodePath": [
         0,
@@ -1731,28 +1431,28 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-weapon-spar.body",
       "worldTransform": [
-        0.9321930408477783,
+        1,
         0,
         0,
         0,
         0,
-        0.9321930408477783,
+        1,
         0,
         0,
         0,
         0,
-        0.9321930408477783,
+        1,
         0,
-        7.740990400314331,
-        2.115412950515747,
-        -0.5859499201178551,
+        0,
+        0,
+        0,
         1
       ]
     }
   ],
   "provenance": {
     "semantics": {
-      "sha256": "438ee4e776a56b495cbbc7daaf6456ff17056c68f77929561bd6e475e1439e73"
+      "sha256": "7dd4f9d6f20251d02c6fe898ce4a5e13909c9e8f561efe3d369eeb0d0effdc56"
     },
     "sourceGlb": {
       "bytes": 210192,
@@ -1760,37 +1460,37 @@
       "uri": "place_aftermath_aft_weapon_spar.glb"
     },
     "sourceManifest": {
-      "bytes": 323116,
-      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
+      "bytes": 323169,
+      "sha256": "ca22c1a243dd61ba8d2042d939914d32834fee986e49560b31b18880d638de12",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 210128,
-    "sha256": "53d40050a479ebbc58a7a963ffd11d2e4c0593e9ee6acbb4769b5879b09429f5",
+    "bytes": 191496,
+    "sha256": "91c61243ae8800afacde8e0c3d59f811281f33fa45108ad0c1fb97cf05d9de58",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
         0,
-        -0.0000014495150368887266,
+        -0.000001430511474609375,
         0
       ],
       "max": [
         14,
-        3.5003516393217593,
-        2.6634089946746826
+        3.5005326434043553,
+        2.6626789147618033
       ],
       "min": [
         -14,
-        -3.500354538351833,
-        -2.6634089946746826
+        -3.5005355044273045,
+        -2.6626789147618033
       ],
       "size": [
         28,
-        7.000706177673592,
-        5.326817989349365
+        7.00106814783166,
+        5.325357829523607
       ]
     },
     "hidden": [],
@@ -1838,16 +1538,11 @@
     "materialProfileRoles": {
       "accent": 1,
       "hull": 3,
-      "mechanical": 16
+      "mechanical": 4
     },
     "materialProfiles": [
       {
         "allowTextures": true,
-        "planIndex": 3,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 4,
         "role": "mechanical"
       },
@@ -1859,7 +1554,7 @@
       {
         "allowTextures": true,
         "planIndex": 6,
-        "role": "mechanical"
+        "role": "hull"
       },
       {
         "allowTextures": true,
@@ -1869,129 +1564,47 @@
       {
         "allowTextures": true,
         "planIndex": 8,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 9,
-        "role": "mechanical"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 10,
-        "role": "mechanical"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 11,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 12,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 14,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 15,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 16,
         "role": "accent"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 17,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 18,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 20,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 21,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 22,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 23,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 24,
-        "role": "mechanical"
       }
     ],
-    "nodeCount": 25,
+    "nodeCount": 28,
     "primitives": [
       {
         "canopy": false,
         "matrix": [
-          12.784360885620117,
+          14,
           0,
           0,
           0,
           0,
-          12.784360885620117,
+          14,
           0,
           0,
           0,
           0,
-          12.784360885620117,
+          14,
           0,
-          1.2156391143798828,
-          -1.7184129655361176,
+          0,
+          0,
           0,
           1
         ],
-        "name": "Spar",
-        "planIndex": 3,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1.0963993072509766,
-          0,
-          0,
-          0,
-          0,
-          1.0963993072509766,
-          0,
-          0,
-          0,
-          0,
-          1.0963993072509766,
-          0,
-          -12.535539627075195,
-          -2.792933225631714,
-          0.019074201583862305,
-          1
-        ],
-        "name": "sparEnd_tear0",
+        "name": "rendersfrenderaftermath-aft-weapon-sparflight-static-lane1",
         "planIndex": 4,
         "tags": {
           "canopy": false,
@@ -2001,24 +1614,24 @@
       {
         "canopy": false,
         "matrix": [
-          0.6021974086761475,
+          14,
           0,
           0,
           0,
           0,
-          0.6021974086761475,
+          14,
           0,
           0,
           0,
           0,
-          0.6021974086761475,
+          14,
           0,
-          -12.008185386657715,
-          -1.7771795392036438,
-          1.1776753664016724,
+          0,
+          0,
+          0,
           1
         ],
-        "name": "sparEnd_tear1",
+        "name": "rendersfrenderaftermath-aft-weapon-sparflight-static-lane1_1",
         "planIndex": 5,
         "tags": {
           "canopy": false,
@@ -2028,24 +1641,24 @@
       {
         "canopy": false,
         "matrix": [
-          1.288675308227539,
+          14,
           0,
           0,
           0,
           0,
-          1.288675308227539,
+          14,
           0,
           0,
           0,
           0,
-          1.288675308227539,
+          14,
           0,
-          -12.711324691772461,
-          -0.868176007643342,
-          -0.017892777919769287,
+          0,
+          0,
+          0,
           1
         ],
-        "name": "sparEnd_tear2",
+        "name": "rendersfrenderaftermath-aft-weapon-sparflight-static-lane1_2",
         "planIndex": 6,
         "tags": {
           "canopy": false,
@@ -2055,24 +1668,24 @@
       {
         "canopy": false,
         "matrix": [
-          0.8121786117553711,
+          14,
           0,
           0,
           0,
           0,
-          0.8121786117553711,
+          14,
           0,
           0,
           0,
           0,
-          0.8121786117553711,
+          14,
           0,
-          -12.18397045135498,
-          -1.8212350606918335,
-          -1.116161972284317,
+          0,
+          0,
+          0,
           1
         ],
-        "name": "sparEnd_tear3",
+        "name": "rendersfrenderaftermath-aft-weapon-sparflight-static-lane1_3",
         "planIndex": 7,
         "tags": {
           "canopy": false,
@@ -2082,24 +1695,24 @@
       {
         "canopy": false,
         "matrix": [
-          2.6634089946746826,
+          14,
           0,
           0,
           0,
           0,
-          2.6634089946746826,
+          14,
           0,
           0,
           0,
           0,
-          2.6634089946746826,
+          14,
           0,
-          3.8790481090545654,
-          -0.2550209164619446,
+          0,
+          0,
           0,
           1
         ],
-        "name": "TurretBBarbette",
+        "name": "rendersfrenderaftermath-aft-weapon-sparflight-static-lane1_4",
         "planIndex": 8,
         "tags": {
           "canopy": false,
@@ -2109,24 +1722,24 @@
       {
         "canopy": false,
         "matrix": [
-          3.0629208087921143,
+          14,
           0,
           0,
           0,
           0,
-          3.0629208087921143,
+          14,
           0,
           0,
           0,
           0,
-          3.0629208087921143,
+          14,
           0,
-          9.871718168258667,
-          2.1154128909111023,
-          0.5859498977661133,
+          0,
+          0,
+          0,
           1
         ],
-        "name": "TurretBBarrel-022",
+        "name": "rendersfrenderaftermath-aft-weapon-sparflight-static-lane1_5",
         "planIndex": 9,
         "tags": {
           "canopy": false,
@@ -2136,24 +1749,24 @@
       {
         "canopy": false,
         "matrix": [
-          3.0629208087921143,
+          14,
           0,
           0,
           0,
           0,
-          3.0629208087921143,
+          14,
           0,
           0,
           0,
           0,
-          3.0629208087921143,
+          14,
           0,
-          9.871718168258667,
-          2.1154128909111023,
-          -0.5859498977661133,
+          0,
+          0,
+          0,
           1
         ],
-        "name": "TurretBBarrel022",
+        "name": "rendersfrenderaftermath-aft-weapon-sparflight-static-lane1_6",
         "planIndex": 10,
         "tags": {
           "canopy": false,
@@ -2163,322 +1776,25 @@
       {
         "canopy": false,
         "matrix": [
-          0.33292675018310547,
+          14,
           0,
           0,
           0,
           0,
-          0.33292675018310547,
+          14,
           0,
           0,
           0,
           0,
-          0.33292675018310547,
+          14,
           0,
-          12.86805248260498,
-          2.1154127717018127,
-          0.5859499573707581,
+          0,
+          0,
+          0,
           1
         ],
-        "name": "TurretBBrake-022",
+        "name": "rendersfrenderaftermath-aft-weapon-sparflight-static-lane1_7",
         "planIndex": 11,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.33292675018310547,
-          0,
-          0,
-          0,
-          0,
-          0.33292675018310547,
-          0,
-          0,
-          0,
-          0,
-          0.33292675018310547,
-          0,
-          12.86805248260498,
-          2.1154127717018127,
-          -0.5859499573707581,
-          1
-        ],
-        "name": "TurretBBrake022",
-        "planIndex": 12,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          2.9297496676445007,
-          0,
-          0,
-          0,
-          0,
-          2.9297496676445007,
-          0,
-          0,
-          0,
-          0,
-          2.9297496676445007,
-          0,
-          3.7458775639533997,
-          2.19531512260437,
-          0,
-          1
-        ],
-        "name": "TurretBHouse_1",
-        "planIndex": 14,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          2.9297496676445007,
-          0,
-          0,
-          0,
-          0,
-          2.9297496676445007,
-          0,
-          0,
-          0,
-          0,
-          2.9297496676445007,
-          0,
-          3.7458775639533997,
-          2.19531512260437,
-          0,
-          1
-        ],
-        "name": "TurretBHouse_2",
-        "planIndex": 15,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          2.9297496676445007,
-          0,
-          0,
-          0,
-          0,
-          2.9297496676445007,
-          0,
-          0,
-          0,
-          0,
-          2.9297496676445007,
-          0,
-          3.7458775639533997,
-          2.19531512260437,
-          0,
-          1
-        ],
-        "name": "TurretBHouse_3",
-        "planIndex": 16,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1.0653635263442993,
-          0,
-          0,
-          0,
-          0,
-          1.0653635263442993,
-          0,
-          0,
-          0,
-          0,
-          1.0653635263442993,
-          0,
-          6.6756274700164795,
-          2.062144696712494,
-          0,
-          1
-        ],
-        "name": "TurretBMantlet",
-        "planIndex": 17,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          2.1760048866271973,
-          0,
-          0,
-          0,
-          0,
-          2.1760048866271973,
-          0,
-          0,
-          0,
-          0,
-          2.1760048866271973,
-          0,
-          3.8790478706359863,
-          1.3430242538452148,
-          0,
-          1
-        ],
-        "name": "TurretBRace",
-        "planIndex": 18,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          2.530238389968872,
-          0,
-          0,
-          0,
-          0,
-          2.530238389968872,
-          0,
-          0,
-          0,
-          0,
-          2.530238389968872,
-          0,
-          3.8790477514266968,
-          0.9301958382129669,
-          0,
-          1
-        ],
-        "name": "TurretBRing_1",
-        "planIndex": 20,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          2.530238389968872,
-          0,
-          0,
-          0,
-          0,
-          2.530238389968872,
-          0,
-          0,
-          0,
-          0,
-          2.530238389968872,
-          0,
-          3.8790477514266968,
-          0.9301958382129669,
-          0,
-          1
-        ],
-        "name": "TurretBRing_2",
-        "planIndex": 21,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.5593158006668091,
-          0,
-          0,
-          0,
-          0,
-          0.5593158006668091,
-          0,
-          0,
-          0,
-          0,
-          0.5593158006668091,
-          0,
-          2.6805139780044556,
-          3.260679006576538,
-          -1.1186315715312958,
-          1
-        ],
-        "name": "TurretBSight",
-        "planIndex": 22,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.9321930408477783,
-          0,
-          0,
-          0,
-          0,
-          0.9321930408477783,
-          0,
-          0,
-          0,
-          0,
-          0.9321930408477783,
-          0,
-          7.740990400314331,
-          2.115412950515747,
-          0.5859499201178551,
-          1
-        ],
-        "name": "TurretBSleeve-022",
-        "planIndex": 23,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.9321930408477783,
-          0,
-          0,
-          0,
-          0,
-          0.9321930408477783,
-          0,
-          0,
-          0,
-          0,
-          0.9321930408477783,
-          0,
-          7.740990400314331,
-          2.115412950515747,
-          -0.5859499201178551,
-          1
-        ],
-        "name": "TurretBSleeve022",
-        "planIndex": 24,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -2489,20 +1805,20 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_aft_weapon_spar.glb"
   },
-  "runtimeHash": "fedf0166e3312862115b1b99b8641a9a9b2ed93d775741249d5ee41e54bcfb65",
+  "runtimeHash": "4379c3b32c5866b21e9acf58f2a181ad9d99ab901325d62c756b95a0da5f0c42",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
           14,
-          3.5003516393217593,
-          2.6634089946746826
+          3.5005326434043553,
+          2.6626789147618033
         ],
         "min": [
           -14,
-          -3.500354538351833,
-          -2.6634089946746826
+          -3.5005355044273045,
+          -2.6626789147618033
         ]
       },
       "id": "sf.render.aftermath-aft-weapon-spar.body",
