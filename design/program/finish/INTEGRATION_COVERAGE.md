@@ -113,6 +113,28 @@ result remains historical even where later builds supersede its size.
 
 ## Integrated changes and measurement limits
 
+- **Short heap diagnostic on `030aaf675118`:** nine measured save/load/trade cycles and same-mesh
+  context recovery complete. Normal quit is now graceful with no force kill; the snapshot-fence
+  warning does not recur. The aggregate fails for 69,376,132 bytes of retained heap growth,
+  169 geometries, eight programs and three warnings: one missing compressed-texture first mip
+  during shadow-depth staging and two foreign-context deletes. The existing shadow warning now
+  retains bounded primitive caster/sampler identity on failure; the original error and draw hook
+  restoration are covered by a passing focused case. Heap attribution remains active, and this
+  instrumented run supplies no performance qualification. Evidence is under
+  `.devshots/finish/integration-2026-10-31/m8-f9-heap-diagnostic/`.
+- **Drone composer exact-step restore:** all three existing physical seed-4242 MOVE, WAIT and
+  partial-transfer checkpoint cases pass through production serialize/deserialize and save-loaded
+  materialization, then continue for three cycles with matching counters, trajectories, freight
+  and receipts. This closes conditional owner review R-36df771; ordinary Automation UI remains
+  part of the queued public UI journey.
+- **Renderer organization:** 35 residency/admission queries plus their pooled band helper move
+  intact to a focused module, retaining scratch identity and public exports. Seventy-nine existing
+  focused cases pass; a stale source pin now tests actual composed-zoom residency behavior and
+  passes. The canonical first-flight collector also passes ordered/capped membership parity.
+  The integrated batch-twelve baseline passes 17/17 in 66,831 ms against 90,000 ms; this is a
+  working-tree check and supplies no isolated runtime speed claim. Log:
+  `.devshots/finish/integration-2026-10-31/batch12-baseline.log`.
+
 - **Latest full Adventure soak — FAIL:** `c6dc3ea137e4` completes 51 measured save/load/trade
   cycles over 30.2 minutes, same-mesh context recovery and a 120-second flight tail with zero
   page, console, GL and network errors. Earlier incomplete-plan and resize defects do not recur.

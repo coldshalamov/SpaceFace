@@ -257,6 +257,15 @@ owns the fence through commit; five actual-packer lifetime cases pass. Normal qu
 durable achievements to close while genuine server failures still veto; 14 achievement cases
 pass. Public close and a short matched heap capture are next; M8 and performance remain open.
 
+The subsequent nine-cycle heap diagnostic on `030aaf675118` completes those cycles and same-mesh
+context recovery, and normal quit now completes without a force kill. The fence warning does not
+recur. Heap still grows 69,376,132 bytes, geometries 169 and programs eight. Three warnings remain:
+a compressed-texture upload reads a missing first mip during shadow-depth staging, plus two
+foreign-context deletes. The existing shadow warning now carries bounded caster/sampler identity
+on that exact failure and preserves the original thrown error; its direct regression passes.
+Before/after heap attribution is active. Heap snapshots make this a diagnostic, not a performance
+qualification, and full M8 remains open.
+
 **M9 — Load less, load later.** 28 MB of minified JS in the eager closure (`scripts/build-bundle.mjs`,
 esbuild splitting): lazy-load per mode and per screen; make `modelTruthCensus.generated.js` and
 `en-US.generated.js` fetched JSON instead of chunk payload; move `ruckusMeshData/*.js` (3.4 MB of mesh
@@ -324,6 +333,16 @@ batch exposed one Gyre assertion in authored rather than converted Three-light u
 checks both canonical values and the complete two-case arsenal suite passes. No production light
 gain changed. Source preloads include the new families; full bundle/baseline qualification is
 still the next integrated batch, not a claim supplied by this extraction alone.
+
+Runtime residency/admission queries now have one focused module, with all 35 moved function bodies
+and the pooled band-argument helper matching their originals. Shared scratch identity and public
+renderer exports are preserved, and imported leaf graphs do not cycle to the renderer. The query
+batch passes 79 cases; its one stale file-text pin is replaced by a passing actual composed-zoom
+eviction/prefetch behavior case. The last true first-flight collector twin also shares a canonical
+iterator, preserving the synchronous live walk and paced snapshot/tail handling. Its ordered
+membership, deduplication and 25-variant cap case passes. Size and performance targets remain open.
+The integrated batch-twelve baseline passes 17/17 in 66,831 ms within the unchanged 90,000 ms
+budget; the bundle qualification is pending the next build batch.
 
 The current phase makes template instantiation and detached-object/place teardown use their
 canonical stepped implementations for synchronous callers too. Synchronous abandonment cleanup

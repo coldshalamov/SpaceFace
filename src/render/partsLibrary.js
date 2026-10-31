@@ -1228,44 +1228,21 @@ export function firstFlightRockCookRadiusWu(state) {
 
 /** Opening ships/places, the 47-A spindle, and the nearest inbound rock variants. */
 export function collectFirstFlightCookEntities(state) {
-  const list = Array.isArray(state && state.entityList) ? state.entityList : [];
-  const selected = [];
-  const asteroids = [];
-  const rockRadius = firstFlightRockCookRadiusWu(state);
-  const rockRadiusSq = rockRadius * rockRadius;
-  // The player resolve hoists out of the entity walk — resolving per asteroid paid a
-  // Map.get (or an entityList scan) per row inside the cook's unyielded collect window.
-  const cookPlayer = resolvePlanarPlayer(state);
-  for (const entity of list) {
-    if (!entity || entity.alive === false) continue;
-    if (isFirstFlightCookEntity(entity, state)) {
-      selected.push(entity);
-      continue;
-    }
-    if (entity.type !== 'asteroid') continue;
-    const distanceSq = planarDistanceSqToPlayer(entity, cookPlayer);
-    // Sort reads the distance the filter just paid for — a per-comparison
-    // playerPlanarDistanceSq call re-does entities.get(playerId) O(A·logA) times
-    // inside the cook's unyielded collect window.
-    if (distanceSq <= rockRadiusSq) asteroids.push({ entity, distanceSq });
-  }
-  asteroids.sort((left, right) => left.distanceSq - right.distanceSq);
-  const seenKeys = new Set();
-  for (const { entity } of asteroids) {
-    if (seenKeys.size >= FIRST_FLIGHT_ROCK_COOK_CAP) break;
-    const key = asteroidFirstFlightCookKey(entity);
-    if (seenKeys.has(key)) continue;
-    seenKeys.add(key);
-    selected.push(entity);
-  }
-  return selected;
+  const steps = collectFirstFlightCookEntitiesIterator(state, Infinity, false);
+  let step = steps.next();
+  while (!step.done) step = steps.next();
+  return step.value;
 }
 
-/** Chunked twin of collectFirstFlightCookEntities: yields every `rowsPerSlice`
- * scanned entities so a cook drives the census under its own slice clock. The
- * distance sort and the capped variant admit stay whole — their input is the
- * radius-filtered asteroid subset, bounded by FIRST_FLIGHT_ROCK_COOK_CAP. */
+/** Canonical first-flight cook walk. The synchronous API above drains this
+ * generator with an infinite slice; the opening cook yields every
+ * `rowsPerSlice` scanned entities under its own slice clock. The distance sort
+ * and capped variant admit stay whole over the radius-filtered asteroid subset. */
 export function* collectFirstFlightCookEntitiesSteps(state, rowsPerSlice = 256) {
+  return yield* collectFirstFlightCookEntitiesIterator(state, rowsPerSlice, true);
+}
+
+function* collectFirstFlightCookEntitiesIterator(state, rowsPerSlice, snapshotList) {
   const list = Array.isArray(state && state.entityList) ? state.entityList : [];
   const selected = [];
   const asteroids = [];
@@ -1277,7 +1254,7 @@ export function* collectFirstFlightCookEntitiesSteps(state, rowsPerSlice = 256) 
   // Walk a snapshot: a despawn splice across a suspension shifts unvisited rows
   // under a live for..of cursor (swap-pop lands a never-visited tail member at an
   // already-scanned index), while the snapshot still visits every member once.
-  const snapshot = list.slice();
+  const snapshot = snapshotList ? list.slice() : null;
   const visit = (entity) => {
     if (!entity || entity.alive === false) return;
     if (isFirstFlightCookEntity(entity, state)) {
@@ -1288,7 +1265,7 @@ export function* collectFirstFlightCookEntitiesSteps(state, rowsPerSlice = 256) 
     const distanceSq = planarDistanceSqToPlayer(entity, cookPlayer);
     if (distanceSq <= rockRadiusSq) asteroids.push({ entity, distanceSq });
   };
-  for (const entity of snapshot) {
+  for (const entity of snapshot || list) {
     visit(entity);
     sinceYield += 1;
     if (sinceYield >= every) {
@@ -1299,12 +1276,14 @@ export function* collectFirstFlightCookEntitiesSteps(state, rowsPerSlice = 256) 
   // Rows appended past the snapshot's span mid-walk are the remaining miss —
   // rescan the live tail; a member re-pushed after removal double-admits once,
   // which the cook's own enqueue dedupe absorbs.
-  for (let index = snapshot.length; index < list.length; index++) {
-    visit(list[index]);
-    sinceYield += 1;
-    if (sinceYield >= every) {
-      sinceYield = 0;
-      yield;
+  if (snapshot) {
+    for (let index = snapshot.length; index < list.length; index++) {
+      visit(list[index]);
+      sinceYield += 1;
+      if (sinceYield >= every) {
+        sinceYield = 0;
+        yield;
+      }
     }
   }
   asteroids.sort((left, right) => left.distanceSq - right.distanceSq);
