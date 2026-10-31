@@ -127,6 +127,10 @@ ${P} .sxb-vital__acts .orr-act__cost { font-family:${NUM} !important; font-size:
     min-height:0 !important; max-height:145px !important; overflow-y:auto !important; overflow-x:hidden !important;
   }
   ${P} .sxb-berth.dp-frame__head { grid-template-rows:auto auto auto auto auto !important; align-content:start !important; row-gap:4px !important; }
+  /* Market at 960x540: the exchange needs the body. Let it take the flexible row, and fold the
+     ambient bay/wire boards away here so the table and the Buy/Sell stage are not cut to a sliver. */
+  ${P}:has(#sx-panel > .sx-mkt) { grid-template-rows:max-content minmax(0,1fr) max-content !important; }
+  ${P}:has(#sx-panel > .sx-mkt) .sxb-berth > .sxb-signs { display:none !important; }
   ${P} .sxb-crown .sxb-purse { position:absolute !important; top:-44px !important; left:28px !important; right:auto !important; margin:0 !important; }
   ${P} .sxb-crown .sxb-vitals { min-width:0 !important; max-width:none !important; width:100% !important;
     flex-wrap:nowrap !important; justify-content:space-between !important; gap:8px !important; margin-top:32px !important; }
@@ -291,6 +295,24 @@ ${P} .sx-mkt .sx-decision__opt .k-row__sub { display:block !important; margin:2p
   ${P} .sx-mkt .sx-trade__words > li { flex:1 1 0 !important; min-width:0 !important; }
   ${P} .sx-mkt .sx-trade__words > li:is(:first-child, :not(:first-child)) > .sx-trade__go { width:100% !important; height:36px !important; min-height:36px !important;
     box-sizing:border-box !important; padding:0 6px !important; justify-content:center !important; }
+}
+
+/* Market in the short desktop berth (901–1100 x 461–640): after the rules above so it wins at equal weight. */
+@media (min-width:901px) and (max-width:1100px) and (min-height:461px) and (max-height:640px) {
+  /* the exchange reads as one column: title and finder on one line, the filters one scrolling row,
+     the table under them (the old side column of chips cannot hold the ruled chips); the price,
+     sell and stock columns size to their figures so the trend and STOCK read whole */
+  ${P} .sx-mkt .sx-mkt-browser { display:grid !important; grid-template-columns:minmax(0, 1fr) minmax(0, 200px) !important;
+    grid-template-rows:auto auto minmax(0, 1fr) !important; column-gap:12px !important; row-gap:6px !important; height:100%; }
+  ${P} .sx-mkt .sx-mkt-browser__mode { grid-column:1 !important; grid-row:1 !important; margin:0 !important; padding:6px 0 !important; align-self:center; }
+  ${P} .sx-mkt .orr-mkt-find { grid-column:2 !important; grid-row:1 !important; margin:0 !important; align-self:center; }
+  ${P} .sx-mkt .sx-mkt-browser__filters { grid-column:1 / -1 !important; grid-row:2 !important; flex-direction:row !important; flex-wrap:nowrap !important;
+    width:auto !important; min-width:0 !important; height:auto !important; margin:0 !important; overflow-x:auto !important; overflow-y:hidden !important; }
+  ${P} .sx-mkt .sx-mkt-browser__filters > li { flex:none !important; }
+  ${P} .sx-mkt .sx-mkt-browser__rail { grid-column:1 / -1 !important; grid-row:3 !important; min-height:0 !important; overflow-y:auto !important; }
+  ${P} .sx-mkt .sx-mkt-table { table-layout:auto !important; }
+  ${P} .sx-mkt .sx-mkt-table :is(th, td) { padding-left:6px !important; padding-right:6px !important; }
+  ${P} .sx-mkt .sx-mkt-table :is(th, td):is(:nth-child(2), :nth-child(3), :nth-child(4)) { width:1% !important; }
 }
 
 /* ==== BAR =================================================================================== */

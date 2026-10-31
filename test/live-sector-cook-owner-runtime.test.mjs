@@ -22,6 +22,7 @@ const source = readFileSync(process.env.ENTRY_SOURCE_RENDERER || new URL('../src
 const ast = parse(source, { sourceType: 'module' });
 let cookNode, pipelineNode, enterNode, guardNode, preflightNode, gpuNode, compileNode, openingCaptureNode, loadingNode, pictureNode, ownerInactiveTouchNode, ownerInactiveTouchCheckNode, ownerActiveAdmissionNode, touchSubmitNode, touchFacadeNode, groupTouchNode, settleTouchManyNode, admitSubjectNode, unreadyPipelineNode;
 const rendererMethodNodes = new Map();
+const cookStretchNodes = new Map();
 const ownerActiveAdmissionMatches = [];
 function containsOwnedExactTouch(node) {
   if (!node || typeof node !== 'object') return false;
@@ -35,6 +36,9 @@ function containsOwnedExactTouch(node) {
 }
 function walk(node) {
   if (!node || typeof node !== 'object') return;
+  if (node.type === 'VariableDeclarator' && ['restartCookStretchAfterFrame', 'yieldBufferFrame', 'paceCookStretch'].includes(node.id?.name)) {
+    cookStretchNodes.set(node.id.name, node.init);
+  }
   if (node.type === 'FunctionDeclaration' && node.id?.name === 'appearanceAdmissionHasUnreadyPipeline') unreadyPipelineNode = node;
   if (node.type === 'VariableDeclarator' && node.id?.name === 'admitSubjectPipelines') admitSubjectNode = node.init;
   if (node.type === 'ObjectMethod' && ['_shadowDepthLight', '_shadowDepthEnabled', 'prepareOpeningFirstPicture'].includes(node.key?.name)) {
@@ -117,6 +121,39 @@ function deferred() {
   const promise = new Promise(r => { resolve = r; });
   return { promise, resolve };
 }
+
+test('cook stretch charges only the current frame across real and microtask yields', async () => {
+  const expression = (name) => {
+    const node = cookStretchNodes.get(name);
+    assert.ok(node, `missing renderer owner ${name}`);
+    return source.slice(node.start, node.end);
+  };
+  const make = new Function('env', `with (env) {
+    let cookStretchSliceAt = 0, cookStretchDebitAt = 0;
+    const restartCookStretchAfterFrame = ${expression('restartCookStretchAfterFrame')};
+    const yieldBufferFrame = ${expression('yieldBufferFrame')};
+    const paceCookStretch = ${expression('paceCookStretch')};
+    return { yieldBufferFrame, paceCookStretch };
+  }`);
+  for (const advancesFrame of [true, false]) {
+    let time = 0, epoch = 1;
+    const debits = [];
+    const env = {
+      cookNow: () => time, paceEpochNow: () => epoch,
+      yieldBufferBase: async () => { if (advancesFrame) { time += 20; epoch++; } },
+      bufferYieldStats: { count: 0, ms: 0 },
+      pacedFrameSpend: () => 0, PACED_FRAME_BUDGET_MS: 4,
+      notePacedFrameSpend: (value) => debits.push(value),
+    };
+    const owner = make(env);
+    time = 3;
+    await owner.yieldBufferFrame();
+    time += advancesFrame ? 5 : 3;
+    await owner.paceCookStretch();
+    assert.deepEqual(debits, [advancesFrame ? 5 : 6],
+      advancesFrame ? 'prior-frame wait is not charged again' : 'a microtask does not forgive same-frame work');
+  }
+});
 
 test('actual best-effort admission neither touches nor stamps a timed-out compile and retries when ready', async () => {
   const subject = { userData: {} }, calls = [];
@@ -455,11 +492,17 @@ test('opening plan capture uses the renderer owner when invoked through the rend
   assert.equal(state.render.openingSubmissionPlan, plan);
 });
 test('opening capture retains bounded incomplete or stale identity diagnostics', () => {
-  for (const stale of [false, true]) {
-    const state = { world: { enterSerial: 4, currentSectorId: 'ceres' }, render: {} };
-    const owner = { state, _liveSectorCookGeneration: 7 };
+  for (const scenario of ['current', 'replaced', 'stale']) {
+    const stale = scenario === 'stale';
+    const root = new THREE.Group();
+    const leaf = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial());
+    leaf.visible = false; root.add(leaf);
+    const scene = new THREE.Scene(); scene.add(root);
+    const state = { world: { enterSerial: 4, currentSectorId: 'ceres' }, render: {},
+      entities: new Map([[42, { type: 'ship', alive: true, data: { defId: 'ship_test' } }]]) };
+    const owner = { state, _meshes: new Map([[42, root]]), _liveSectorCookGeneration: 7 };
     const plan = { complete: false, firstPlayablePipelineSet: { complete: false, reason: 'missing-opening-program-census' },
-      roots: [{ id: 'player', name: 'Hull', role: 'player', blocking: true, drawLeafCount: 0 }],
+      roots: [{ id: `uuid:${root.uuid}`, name: 'Hull', role: 'opening-entity-root', blocking: true, drawLeafCount: 0 }],
       drawLeaves: [], resourceIdentityCensusMatches: false,
       producerResourceIdentitySets: { geometryBufferIds: ['old'] },
       resourceIdentitySets: { geometryBufferIds: ['new'] },
@@ -467,7 +510,13 @@ test('opening capture retains bounded incomplete or stale identity diagnostics',
         { role: 'productionBoundary', reason: 'missing-or-unverified-blocking-content-hash' }] };
     const capture = evaluate(openingCaptureCode, owner, {
       state, captureLiveSectorCookStale: () => () => stale,
-      *buildOpeningSubmissionPlanSteps() { if (stale) state.world.enterSerial = 5; return plan; },
+      *buildOpeningSubmissionPlanSteps(onCandidate) {
+        onCandidate(root, { role: 'opening-entity-root', entityId: 42 },
+          { layers: new THREE.Layers(), frustum: { intersectsObject: () => false, planes: [] } });
+        if (scenario === 'replaced') owner._meshes.set(42, new THREE.Group());
+        if (stale) state.world.enterSerial = 5; return plan;
+      },
+      scene, cam: { obj: { layers: new THREE.Layers() } }, isRetiredRigidOpaqueBatch: () => false,
       rendererGenerationIsActive: () => true, stampProducerReceipt: () => {},
       openingSubjectIdentity: () => null, openingCohort: { capture() {}, snapshot: () => ({}) },
     });
@@ -476,8 +525,14 @@ test('opening capture retains bounded incomplete or stale identity diagnostics',
     assert.equal(detail.reason, stale ? 'stale-capture' : 'incomplete-plan');
     if (stale) assert.deepEqual([detail.expected.enterSerial, detail.actual.enterSerial], [4, 5]);
     else {
-      assert.equal(detail.emptyBlockingRoots[0].rootId, 'player');
-      assert.equal(detail.unverifiedBlockingRoots[0].rootId, 'player');
+      assert.equal(detail.emptyBlockingRoots[0].rootId, `uuid:${root.uuid}`);
+      assert.equal(detail.emptyBlockingRoots[0].entityId, 42);
+      assert.equal(detail.emptyBlockingRoots[0].defId, 'ship_test');
+      assert.equal(detail.emptyBlockingRoots[0].selectedStillCurrent, scenario !== 'replaced');
+      assert.equal(detail.emptyBlockingRoots[0].descendants[1].visible, false);
+      assert.equal(detail.emptyBlockingRoots[0].descendants[1].inFrustum, false);
+      assert.deepEqual(detail.emptyBlockingRoots[0].descendants[1].exclusions, ['hidden', 'outside-frustum']);
+      assert.equal(detail.unverifiedBlockingRoots[0].rootId, `uuid:${root.uuid}`);
       assert.equal(detail.failureReasons[0].role, 'productionBoundary');
       assert.equal(detail.drawLeafCount, 0);
       assert.equal(detail.resourceIdentityCensusMatches, false);

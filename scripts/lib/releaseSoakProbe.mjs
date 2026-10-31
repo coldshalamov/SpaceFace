@@ -653,7 +653,9 @@ export async function runReleaseSoakProbe({
       }
       cycleResults.push(cycle);
       const checkpoint = await withTimeout(
-        readPostGcMemorySnapshot(page, `docked-market-cycle-${index + 1}`),
+        readPostGcMemorySnapshot(page, `docked-market-cycle-${index + 1}`, {
+          includeGeometryCensus: index === Math.floor(Math.max(0, measuredCycleCount - 1) / 2),
+        }),
         30_000,
         `release-soak memory checkpoint ${index + 1}`,
       );
@@ -707,7 +709,7 @@ export async function runReleaseSoakProbe({
     assert.equal(await isDocked(page), true, 'release-soak cycles must finish docked for comparable retained-heap evidence');
     await page.waitForTimeout(1_500);
     const finalMemory = await withTimeout(
-      readPostGcMemorySnapshot(page, 'docked-market-end'),
+      readPostGcMemorySnapshot(page, 'docked-market-end', { includeGeometryCensus: true }),
       30_000,
       'release-soak final memory snapshot',
     );
@@ -3414,7 +3416,14 @@ async function armSaveLoadObservers(page) {
         const ev = window.__M6_RELEASE_SOAK_EVENTS__;
         if (!ev) return;
         if (!Array.isArray(ev.dock)) ev.dock = [];
-        if (ev.dock.length < 32) ev.dock.push(entry);
+        const state = window.SF?.state;
+        if (ev.dock.length >= 32) ev.dock.splice(0, 16);
+        ev.dock.push({
+          t: Math.round(performance.now()),
+          tick: Number.isFinite(state?.tick) ? state.tick : null,
+          simTime: Number.isFinite(state?.simTime) ? state.simTime : null,
+          ...entry,
+        });
       };
       // Nav arm tap: _onSetCourse emits nav:autopilot {status:'armed'} synchronously when a
       // waypoint click lands. When the ship is already inside the arrival radius the whole
@@ -6072,7 +6081,72 @@ export function postGcOwnerEvaluateArgument(phaseTag, ownerRowLimit = POST_GC_OW
   return { phaseTag, ownerRowLimit };
 }
 
-async function readPostGcMemorySnapshot(page, phaseTag) {
+// Snapshot-only observer: geometry can be shared by several roots, so group counts
+// are individually unique and do not add up to the scene-wide unique count.
+export function readSceneGeometryCensus() {
+  const state = window.SF?.state;
+  const owner = window.SF?.registry?.get?.('render');
+  const scene = owner?.scene;
+  if (!scene) return { available: false, reason: 'scene-unavailable' };
+  const rootOwners = new Map();
+  if (owner?._meshes && typeof owner._meshes[Symbol.iterator] === 'function') {
+    for (const [id, root] of owner._meshes) {
+      if (!root) continue;
+      const entity = state?.entities?.get?.(id);
+      rootOwners.set(root, { id: String(id).slice(0, 100), type: String(entity?.type || '').slice(0, 80) || null,
+        defId: String(entity?.data?.defId || entity?.defId || '').slice(0, 120) || null });
+    }
+  }
+  const unique = new Set();
+  const groups = new Map();
+  const stack = [{ node: scene, owner: null }];
+  let visited = 0;
+  while (stack.length) {
+    const item = stack.pop();
+    const node = item.node;
+    if (!node) continue;
+    visited += 1;
+    const root = rootOwners.get(node) || item.owner;
+    const id = node.geometry?.uuid;
+    if (typeof id === 'string' && id) {
+      unique.add(id);
+      const key = root ? `entity:${root.id}` : 'scene-unowned';
+      let group = groups.get(key);
+      if (!group) { group = { key, ...root, ids: new Set() }; groups.set(key, group); }
+      group.ids.add(id);
+    }
+    const children = node.children || [];
+    for (let i = children.length - 1; i >= 0; i--) stack.push({ node: children[i], owner: root });
+  }
+  const idLimit = 10000, groupLimit = 512, groupIdLimit = 512;
+  const ids = [...unique].sort();
+  const rows = [...groups.values()].sort((a, b) => a.key.localeCompare(b.key));
+  const queue = (name, head, iter) => {
+    const list = owner?.[name];
+    return { pending: Array.isArray(list) ? Math.max(0, list.length - (Number(owner?.[head]) || 0)) : null,
+      activeIterator: !!owner?.[iter] };
+  };
+  return {
+    available: true, visitedNodes: visited,
+    rendererGeometries: Number.isFinite(owner?.renderer?.info?.memory?.geometries)
+      ? owner.renderer.info.memory.geometries : null,
+    uniqueGeometryCount: ids.length, geometryIds: ids.slice(0, idLimit), geometryIdsTruncated: ids.length > idLimit,
+    groups: rows.slice(0, groupLimit).map((row) => {
+      const groupIds = [...row.ids].sort();
+      return { key: row.key, entityId: row.id ?? null, type: row.type ?? null, defId: row.defId ?? null,
+        uniqueGeometryCount: groupIds.length, geometryIds: groupIds.slice(0, groupIdLimit),
+        geometryIdsTruncated: groupIds.length > groupIdLimit };
+    }),
+    groupCount: rows.length, groupsTruncated: rows.length > groupLimit,
+    disposal: {
+      despawn: queue('_despawnDisposeQueue', '_despawnDisposeHead', '_despawnDisposeIter'),
+      warm: queue('_warmDisposeQueue', '_warmDisposeHead', '_warmDisposeIter'),
+      retainedLod: { available: false, reason: 'no-existing-diagnostic-getter' },
+    },
+  };
+}
+
+async function readPostGcMemorySnapshot(page, phaseTag, { includeGeometryCensus = false } = {}) {
   // The forced GC is measurement apparatus: pause the soak-window hitch register so a
   // stop-the-world collect is not billed to the game as a gameplay hitch.
   await setSoakPaused(page, true);
@@ -6133,6 +6207,11 @@ async function readPostGcMemorySnapshot(page, phaseTag) {
   }, postGcOwnerEvaluateArgument(phaseTag));
   const ownerDiagnostics = snapshot.assetResidencyOwnerDiagnostics;
   delete snapshot.assetResidencyOwnerDiagnostics;
+  if (includeGeometryCensus) {
+    await setSoakPaused(page, true);
+    try { snapshot.sceneGeometryCensus = await page.evaluate(readSceneGeometryCensus); }
+    finally { await setSoakPaused(page, false); }
+  }
   return {
     ...snapshot,
     assetResidencyOwners: canonicalPostGcOwnerRows(ownerDiagnostics),
@@ -6191,7 +6270,7 @@ export async function readReleaseSoakBaselineMemory(page, { timeoutMs = 30_000 }
   return withTimeout(
     (async () => {
       await waitForKnownAssetRequests(page, { timeoutMs });
-      return readPostGcMemorySnapshot(page, 'docked-market-start');
+      return readPostGcMemorySnapshot(page, 'docked-market-start', { includeGeometryCensus: true });
     })(),
     timeoutMs,
     'release-soak baseline memory snapshot',

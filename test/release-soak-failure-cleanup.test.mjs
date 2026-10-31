@@ -8,10 +8,37 @@ import {
   buildPostTeardownGlDeleteTrapDiagnostic,
   readFailureRuntimeSnapshot,
   readPostRecoveryRenderDiagnostics,
+  readSceneGeometryCensus,
   readSoakLoadLanding,
   shouldRetrySoakCycle,
   waitForSoakLoadLanding,
 } from '../scripts/lib/releaseSoakProbe.mjs';
+
+test('scene geometry census deduplicates shared geometry and attributes entity and unowned roots', () => {
+  const oldWindow = globalThis.window;
+  try {
+    const geometry = (uuid) => ({ uuid });
+    const shared = geometry('shared');
+    const first = { children: [{ geometry: shared, children: [] }, { geometry: geometry('first'), children: [] }] };
+    const second = { children: [{ geometry: shared, children: [] }] };
+    const scene = { children: [first, second, { geometry: geometry('unowned'), children: [] }] };
+    const owner = { scene, _meshes: new Map([[1, first], [2, second]]),
+      renderer: { info: { memory: { geometries: 7 } } },
+      _despawnDisposeQueue: [{}, {}], _despawnDisposeHead: 1, _despawnDisposeIter: {},
+      _warmDisposeQueue: [], _warmDisposeHead: 0 };
+    globalThis.window = { SF: { state: { entities: new Map([[1, { type: 'ship', data: { defId: 'hitch' } }],
+      [2, { type: 'station', data: { defId: 'helios' } }]]) }, registry: { get: () => owner } } };
+    const census = readSceneGeometryCensus();
+    assert.equal(census.uniqueGeometryCount, 3);
+    assert.deepEqual(census.geometryIds, ['first', 'shared', 'unowned']);
+    assert.equal(census.rendererGeometries, 7);
+    assert.deepEqual(census.groups.map((row) => [row.key, row.type, row.defId, row.uniqueGeometryCount]), [
+      ['entity:1', 'ship', 'hitch', 2], ['entity:2', 'station', 'helios', 1], ['scene-unowned', null, null, 1],
+    ]);
+    assert.deepEqual(census.disposal.despawn, { pending: 1, activeIterator: true });
+    assert.equal(census.disposal.retainedLod.available, false);
+  } finally { globalThis.window = oldWindow; }
+});
 
 test('F9 start-failed menu ends the cycle while loading keeps its grace and flight succeeds', async () => {
   const oldWindow = globalThis.window;

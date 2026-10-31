@@ -27,6 +27,7 @@ import {
   createIsolatedElectronLaunch,
 } from './lib/electronTestIsolation.mjs';
 import { loadPlaywright } from './lib/load-playwright.mjs';
+import { consumePageConditionValue } from './lib/playwrightCspPolling.mjs';
 import {
   PQ024_H3_PIPELINE_SETTLE_TIMEOUT_MS,
   PQ024_H3_PROFILE_IDS,
@@ -108,6 +109,7 @@ const FIXED_SEED = Number(process.env.SF_PROBE_SEED) > 0
     : PQ024_ASTEROID_CLAIM_FIXED_SEED;
 const ROUTE_SCREENSHOTS = Object.freeze([
   '01-market-materials.png',
+  '02-asteroid-ops-ready.png',
   '02-survey-reveal.png',
   '03-core-committed.png',
   '04-producing-relay.png',
@@ -473,7 +475,8 @@ async function runDefaultRoute(page, rootUrl, screenshot, options = {}) {
     phase = 'asteroid-course';
     const asteroid = await selectAsteroidOnLocalMap(page);
     await waitForAutopilotArrival(page, asteroid);
-    await enterAsteroidOps(page, asteroid.targetEntityId);
+    const asteroidRendererReadiness = await enterAsteroidOps(page, asteroid.targetEntityId);
+    if (!options.stopAfterCore) await screenshot('02-asteroid-ops-ready.png');
 
     phase = 'survey-reveal';
     await carveCoreBuildCorridor(page);
@@ -514,6 +517,7 @@ async function runDefaultRoute(page, rootUrl, screenshot, options = {}) {
         observations: {
           cargo,
           asteroid,
+          asteroidRendererReadiness,
           surveyReveal,
           core,
           committedPresentation,
@@ -579,6 +583,7 @@ async function runDefaultRoute(page, rootUrl, screenshot, options = {}) {
       observations: {
         cargo,
         asteroid,
+        asteroidRendererReadiness,
         surveyReveal,
         core,
         committedPresentation,
@@ -1803,8 +1808,35 @@ async function enterAsteroidOps(page, targetEntityId) {
   }
   await page.keyboard.press('KeyB');
   await waitVisible(page, '[data-screen="drill"]', 'Asteroid Ops');
-  await page.waitForFunction((id) => window.SF?.state?.drill?.active === true
-    && window.SF.state.drill.asteroidId === id, targetEntityId);
+  let readinessHandle;
+  try {
+    readinessHandle = await page.waitForFunction((id) => {
+      const drill = window.SF?.state?.drill;
+      if (drill?.active !== true || String(drill.asteroidId) !== String(id)) return null;
+      const hook = document.querySelector('.ast-canvas')?.__ast3d;
+      if (typeof hook?.readiness !== 'function') return null;
+      const readiness = hook.readiness();
+      return readiness?.ready === true || readiness?.failed === true
+        ? {
+          ready: readiness.ready === true,
+          failed: readiness.failed === true,
+          terrain: readiness.terrain === true,
+          rover: readiness.rover === true,
+        }
+        : null;
+    }, targetEntityId, { timeout: 30_000 });
+  } catch (error) {
+    const lastReadiness = await page.evaluate(() => {
+      const hook = document.querySelector('.ast-canvas')?.__ast3d;
+      return typeof hook?.readiness === 'function' ? hook.readiness() : null;
+    }).catch(() => null);
+    error.message += `; last Asteroid Ops renderer readiness: ${JSON.stringify(lastReadiness)}`;
+    throw error;
+  }
+  const readiness = await consumePageConditionValue(readinessHandle);
+  assert.equal(readiness.ready, true,
+    `Asteroid Ops renderer reported a terminal readiness failure: ${JSON.stringify(readiness)}`);
+  return readiness;
 }
 
 async function createPq024MasslineLatchError(page, targetEntityId, samples) {

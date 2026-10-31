@@ -953,7 +953,7 @@ function benchEconomyOwner() {
 const registry = {
   get(name) {
     if (name === 'economy') return benchEconomyOwner();
-    if (name === 'ui') return { screenManager: manager, manager };
+    if (name === 'ui') return { screenManager: manager, manager, hud: window.__benchHud || null };
     if (name === 'survivalResults') return { lastResult: () => BENCH_CRUCIBLE_RESULT };
     if (name === 'survivalDraft') return benchDraftOwner;
     // Populated drill/base shots mount over real owners (seedDrillShot / seedBaseShot below).
@@ -2110,6 +2110,8 @@ function controlAction(reference, kind) {
 window.BENCH = {
   goto,
   state,
+  get bus() { return bus; },
+  get registry() { return registry; },
   get log() { return log.slice(); },
   get screen() { return current; },
   screens: Object.keys(SCREENS),

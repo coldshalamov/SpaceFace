@@ -1984,6 +1984,8 @@ ${T} .sx-ind-process__items .sx-ind-row::before, ${T} .sx-ind-process__items .sx
 ${T} .sx-ind-row__name .sx-ind-row__from { margin-left:12px; font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-variation-settings:"wght" 600, "wdth" 112;
   font-size: 12px; letter-spacing:.14em; text-transform:uppercase; color:rgb(${BONE} / .52) !important; }
 @media (min-width:651px) and (max-height:800px), (max-height:600px) { ${T} .sx-ind-row__name .sx-ind-row__from { display:block; margin-left:0; margin-top:2px; } ${T} .sx-ind-process__items .sx-ind-row { --ind-name-y:12.5px; } }
+/* phone: the consumed module keeps the rung's one line by drawing in its tracking, so the ladder head stays in view */
+@media (max-width:650px) and (min-height:601px) { ${T} .sx-ind-row__name .sx-ind-row__from { margin-left:8px; letter-spacing:.05em; font-stretch:100%; font-variation-settings:"wght" 600, "wdth" 100; } }
 
 /* ================================ WEIGHT: THE BAND LIFTS WHERE THE PLAYER IS ========================== */
 /* a ladder under the pointer or holding focus lifts its band (~.27 -> .38 bone) and its line */
@@ -2064,6 +2066,8 @@ ${T} .sx-bar__hang:is(:hover, :focus-within)::after { background:${SPINE(3, .62)
   ${D} .orr-ind-chain .orr-chain__reason { font-size:17px !important; letter-spacing:.12em !important; white-space:normal !important; overflow-wrap:anywhere !important; }
   ${D} .orr-ind-chain .orr-chain__label:has(> .orr-chain__reason) :is(.orr-chain__verb, .orr-chain__verb > *) { white-space:normal !important; overflow-wrap:anywhere !important; font-size:12px !important; line-height:14px !important; letter-spacing:.1em !important; }
   ${D} .orr-ind-chain .orr-chain__verb > .orr-chain__wayout { margin-top:2px !important; }
+  /* a way-out that wraps keeps both lines inside its outline, balanced and set right like the note above it */
+  ${D} .orr-ind-chain .orr-chain__label:has(> .orr-chain__reason) .orr-chain__verb > .orr-chain__wayout { max-width:15em !important; margin-left:auto !important; margin-top:0 !important; padding:0 10px !important; line-height:13px !important; text-align:right !important; text-wrap:balance; overflow-wrap:normal !important; word-break:keep-all !important; hyphens:none !important; }
   ${D} .orr-ind-chain .orr-chain__reason-leader { display:none !important; }
   ${D} .orr-ind-chain .orr-chain__label.is-below { transform:translate(136px, -50px) !important; width:auto !important; text-align:left !important; }
   ${D} .orr-ind-chain .orr-chain__label.is-below :is(.orr-chain__qty, .orr-chain__unit) { text-align:left !important; }

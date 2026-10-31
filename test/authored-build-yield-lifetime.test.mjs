@@ -173,3 +173,85 @@ for (const kind of ['place', 'cargo']) {
     }
   });
 }
+
+test('stale authored place cleanup preserves canonical fallback disposal policy', async () => {
+  const record = recordFor(2, 2);
+  record.primitives[0].geometry.userData.spacefaceSharedFallback = true;
+  record.primitives[0].material.userData.spacefaceSharedAsset = true;
+  let sharedGeometryDisposals = 0;
+  let sharedMaterialDisposals = 0;
+  record.primitives[0].geometry.dispose = () => { sharedGeometryDisposals++; };
+  record.primitives[0].material.dispose = () => { sharedMaterialDisposals++; };
+
+  const localGeometry = new THREE.BoxGeometry();
+  const localMaterial = new THREE.MeshStandardMaterial();
+  let localGeometryDisposals = 0;
+  let localMaterialDisposals = 0;
+  localGeometry.dispose = () => { localGeometryDisposals++; };
+  localMaterial.dispose = () => { localMaterialDisposals++; };
+  let staleRoot = null;
+  let localMeshes = [];
+  const createInstance = record.renderPackage.createInstance;
+  let boundary;
+  record.primitives.forEach((primitive) => {
+    primitive.tags = { ...primitive.tags, instance: false };
+  });
+  record.renderPackage.createInstance = () => {
+    const instance = createInstance();
+    staleRoot = instance.root;
+    localMeshes = [new THREE.Mesh(localGeometry, localMaterial), new THREE.Mesh(localGeometry, localMaterial)];
+    for (const mesh of localMeshes) {
+      mesh.castShadow = true;
+      staleRoot.add(mesh);
+    }
+    boundary.userData.admissionEpoch = 2;
+    return instance;
+  };
+
+  const entity = { id: 'stale-place-disposal', type: 'place', alive: true, radius: 2, data: {} };
+  boundary = new THREE.Group();
+  const fallbackRoot = new THREE.Group();
+  boundary.add(fallbackRoot);
+  boundary.userData.admissionEpoch = 1;
+  const scene = new THREE.Scene();
+  scene.add(boundary);
+
+  try {
+    const swapped = await upgradeAuthoredPlaceBoundaryForProbe(
+      boundary, fallbackRoot, entity, 'places/yield-probe-stale.glb', {}, scene,
+      {
+        releaseMode: true,
+        admissionEpoch: 1,
+        admissionDeadline: true,
+        loadAuthoredPart: async () => record,
+      },
+    );
+    // A valid detached root enters the paced teardown queue. Wait for the
+    // resource callbacks themselves rather than assuming one scheduler turn
+    // drains the queue under every host scheduler.
+    const cleanupDeadline = Date.now() + 500;
+    while (localGeometryDisposals === 0 || localMaterialDisposals === 0) {
+      if (Date.now() >= cleanupDeadline) break;
+      await new Promise((resolve) => setTimeout(resolve, 1));
+    }
+
+    assert.equal(swapped, false, 'the superseded place build is not published');
+    assert.ok(staleRoot, 'the stale prepared root reached cleanup');
+    assert.equal(localGeometryDisposals, 1, 'repeated owner-local geometry is deduplicated');
+    assert.equal(localMaterialDisposals, 1, 'repeated owner-local material is deduplicated');
+    assert.equal(sharedGeometryDisposals, 0, 'shared fallback geometry remains owned by its cache');
+    assert.equal(sharedMaterialDisposals, 0, 'shared authored material remains owned by its cache');
+    assert.ok(localMeshes.every((mesh) => mesh.castShadow === false),
+      'the detached stale subtree is removed from shadow membership before disposal');
+  } finally {
+    boundary.userData.dispose?.();
+    localGeometry.dispose = () => {};
+    localMaterial.dispose = () => {};
+    localGeometry.dispose();
+    localMaterial.dispose();
+    record.primitives[0].geometry.dispose = () => {};
+    record.primitives[0].material.dispose = () => {};
+    record.primitives[0].geometry.dispose();
+    record.primitives[0].material.dispose();
+  }
+});

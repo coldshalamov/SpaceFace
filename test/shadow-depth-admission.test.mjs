@@ -190,6 +190,82 @@ test('shadow depth admission records the actual generated depth binding and rest
   assert.equal(renderer.renderBufferDirect, originalRenderBufferDirect);
 });
 
+test('shadow draw upload failures carry bounded compressed-sampler identity and rethrow the original error', () => {
+  const hull = {
+    isMesh: true, castShadow: true, name: 'broken-caster', uuid: 'caster-uuid', type: 'Mesh',
+    parent: { children: [] },
+  };
+  hull.parent.children.push(hull);
+  const texture = {
+    isCompressedTexture: true,
+    mipmaps: [],
+    uuid: 'texture-uuid',
+    name: 'detached-albedo',
+    type: 'CompressedTexture',
+    version: 3,
+    source: { uuid: 'source-uuid', version: 7 },
+    userData: {
+      spacefaceSharedImageSourceKey: 'shared-image-key',
+      spacefaceCpuDetach: { manifestId: 'manifest-1', contentHash: 'abc123', ordinal: 4 },
+    },
+  };
+  const generatedDepth = { map: texture, properties: { currentProgram: { cacheKey: 'depth-key' } } };
+  const originalError = new TypeError("Cannot read properties of undefined (reading 'width')");
+  const originalRenderBufferDirect = () => { throw originalError; };
+  let drawCalls = 0;
+  const renderer = {
+    shadowMap: { enabled: true },
+    render() {
+      if (renderer.shadowMap.enabled === false) return;
+      drawCalls += 1;
+      renderer.renderBufferDirect({}, null, {}, generatedDepth, hull, null);
+    },
+    renderBufferDirect: originalRenderBufferDirect,
+    properties: { get: (source) => source === texture.source ? { __version: 6 } : ({}) },
+    getRenderTarget() { return null; },
+    setRenderTarget() {},
+  };
+  let caught = null;
+  assert.throws(() => compileShadowDepthPipelines({
+    renderer,
+    light: { castShadow: true, shadow: {} },
+    camera: {},
+    subjects: [hull],
+    THREE: mockThree(),
+    captureObjectHome: (object) => ({ object }),
+    restoreObjectHome() {},
+  }), (error) => {
+    caught = error;
+    return error === originalError;
+  }, 'the original Three draw error is preserved');
+  assert.ok(caught);
+  assert.equal(drawCalls, 1, 'the staged depth draw failed once');
+  assert.equal(renderer.renderBufferDirect, originalRenderBufferDirect, 'the temporary hook is restored');
+  assert.equal(caught.shadowDepthAdmission.caster.name, 'broken-caster');
+  assert.deepEqual(caught.shadowDepthAdmission.samplers[0], {
+    role: 'depth-material',
+    materialIndex: 0,
+    sampler: 'map',
+    texture: {
+      uuid: 'texture-uuid',
+      name: 'detached-albedo',
+      type: 'CompressedTexture',
+      sourceKey: 'shared-image-key',
+      sourceUuid: 'source-uuid',
+      asset: null,
+      cpuDetach: { manifestId: 'manifest-1', contentHash: 'abc123', ordinal: 4 },
+      compressed: true,
+      mipCount: 0,
+      firstMip: null,
+      textureVersion: 3,
+      sourceVersion: 7,
+      rendererSourceVersion: 6,
+    },
+  });
+  assert.match(caught.stack, /\[shadow-depth-texture\] \{"caster":/,
+    'the existing warning stack carries the bounded identity record');
+});
+
 test('shadow depth admission fails closed when its actual depth draw has no program binding', () => {
   const hull = { isMesh: true, castShadow: true, parent: { children: [] } };
   hull.parent.children.push(hull);

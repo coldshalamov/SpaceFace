@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import * as THREE from 'three';
 import { vfx } from '../src/render/vfx.js';
+import { EVENT_LIGHT_GAIN } from '../src/render/vfxColorLightDirector.js';
 
 test('Gyre illuminates its actual payload using one existing light slot, then releases it', () => {
   const fx = Object.create(vfx);
@@ -19,7 +20,9 @@ test('Gyre illuminates its actual payload using one existing light slot, then re
   fx._updateGyrePayloadLight();
   assert.equal(fx._findSustainedEventLight('gyre-payload'), slot);
   assert.equal(slot.obj.position.x, 125);
-  assert.equal(slot.obj.intensity, 700);
+  assert.equal(slot.intensity, source.intensity, 'the pool retains the Gyre payload intensity in authored units');
+  assert.equal(slot.obj.intensity, source.intensity * EVENT_LIGHT_GAIN,
+    'the Three light uses the shared inverse-square presentation calibration');
   assert.deepEqual(fx._scene.children, lights, 'no added lights or shader-census change');
   source.active = false;
   fx._updateGyrePayloadLight();
