@@ -8,7 +8,7 @@ import {
   validateFinalStationFrameSuffix,
 } from './alphaLiveBaselineContracts.mjs';
 import { consumePageConditionValue } from './playwrightCspPolling.mjs';
-import { installFirstLightPromptHandler } from '../player-truth/routes.mjs';
+import { dismissCinematicIntro, installFirstLightPromptHandler } from '../player-truth/routes.mjs';
 
 export {
   evaluateCanonicalUrlAcceptance,
@@ -76,16 +76,7 @@ export async function runBrowserPublicRoute({
     await page.waitForFunction(() => !!(window.SF && window.SF.state), null, { timeout: 90_000 });
     recordCanonicalUrl('boot-ready');
 
-    const splash = page.locator('#cinematic-splash');
-    if (await splash.isVisible().catch(() => false)) {
-      await page.keyboard.press('Space');
-      // The is-closing fade removes the node on a 700ms timer; on a contended host
-      // that timer can starve several seconds. The wait proves dismissal, not speed.
-      await splash.waitFor({ state: 'hidden', timeout: 15_000 });
-      mark('intro-dismissed', { note: 'visible cinematic dismissed with Space' });
-    } else {
-      mark('intro-not-shown', { note: 'fresh route reached the menu without a visible cinematic' });
-    }
+    await dismissCinematicIntro(page, (name, _ok, detail) => mark(name, { note: detail }), { timeout: 15_000 });
 
     phase = 'main-menu';
     await page.waitForFunction(() => {
