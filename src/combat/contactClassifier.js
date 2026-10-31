@@ -20,7 +20,7 @@ import { isHostileToPlayer, isWreckLike } from '../systems/scanner.js';
 import { LIFECYCLE, lifecycleOf } from './lifecycle.js';
 import { concealedFromPlayer } from './targetIdentity.js';
 import { compileAttackSpec, mergeWeaponView } from './attackSpec.js';
-import { collectAttackModifiers } from '../systems/adventureMigration.js';
+import { collectAttackModifiers } from './adventureAttackReaders.js';
 import { WEAPONS } from '../data/weapons.js';
 import { witnessLineOfSight } from './lineOfSight.js';
 import { hasBlockingPanels, interceptSegment } from './pylonShieldQuery.js';

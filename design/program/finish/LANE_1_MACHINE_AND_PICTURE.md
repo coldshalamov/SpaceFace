@@ -205,10 +205,15 @@ as JS) to a binary asset; take `src/testing/**` out of the retail graph (static 
 the load rows of README §4 meet their floor.
 
 Current measured working-tree checkpoint (2026-10-31): physical main static ESM closure is
-15,873,188 raw / 4,933,042 summed-gzip bytes across 182 outputs, with bundle receipt
-`e6d380f344e41e37ddfe7804ad435b0f5958e5e59b2c691b09e0a1041775765e` (2806 files, 414 plans).
-This includes concurrent edits, not isolated attribution. The 12 MB raw floor and runtime load bars
-remain open; Codex callers now use its one-shot request mailbox without importing the lazy screen.
+15,682,105 raw / 4,873,956 summed-gzip bytes across 184 outputs, with bundle receipt
+`ddc0c11602622599e82f233fc2ef463cdb2b5f40b139e2a2b5d697ee9e275d3c` (2808 files, 414 plans).
+Batch nine is 200,318 raw / 62,355 summed-gzip bytes below batch eight. Pure attack readers now have
+one shared owner; six eager consumers no longer import arena construction through
+`adventureMigration.js`. Its legacy exports remain available. The emitted main closure excludes
+that migration module and `survivalArena.js`; four focused suites pass 59/59 and generated module
+preloads are synchronized. These working-tree builds include concurrent edits, so the exact delta
+is not isolated attribution. The 12 MB raw floor and runtime load bars remain open. Codex callers
+also use its one-shot request mailbox without importing the lazy screen.
 
 Optional new-game menu speculation now warms the fixed opening cast, chosen starter and scripted
 onboarding roster without enumerating positionless distant-sector recipe stubs. Materialized launch,

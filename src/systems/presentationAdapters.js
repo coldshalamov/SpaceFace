@@ -8,7 +8,7 @@ import {
   impactMaterialForTarget,
   resolveImpactAudioCue,
 } from '../presentation/causalVfxGrammar.js';
-import { isSurvivalRunLive } from './adventureMigration.js';
+import { isSurvivalRunLive } from '../combat/adventureAttackReaders.js';
 import { SECTOR_ARRIVAL_CUES } from '../data/audioRecipes.js';
 
 export const PRESENTATION_ADAPTERS_SCHEMA_VERSION = 1;
