@@ -337,6 +337,23 @@ ${P} .sx-bar .sx-choice::after { content:none !important; display:none !importan
 ${P} .sx-bar .sx-choice:is(:hover, :focus-visible) { border-color:rgb(${AMBER}) !important; background:rgb(${AMBER} / .14) !important; background-image:none !important; outline:none !important; }
 ${P} .sx-bar .sx-choice:focus-visible { outline:2px solid rgb(${AMBER}) !important; outline-offset:2px !important; }
 ${P} .sx-bar .sx-choice:disabled { opacity:.45; cursor:not-allowed; }
+
+/* Narrow portrait (481–650 wide, ≥601 tall): same collision as the phone -- the ruled 232px purse lands across
+   HELIOS STATION. It moves to the empty left of the palette-key row as one ruled line, and the name keeps its
+   full width. Kept apart from the ≤480 block so each range reads on its own. */
+@media (min-width:481px) and (max-width:650px) and (min-height:601px) {
+  ${P} .sxb-berth.dp-frame__head { grid-template-columns:minmax(0, 1fr) auto !important;
+    grid-template-areas:"purse trigger" "title title" "crown crown" "handoff handoff" "tape tape" "signs signs" !important; }
+  ${P} .sxb-berth.dp-frame__head > .sxb-crown { display:contents !important; margin-top:0 !important; }
+  ${P} .sxb-berth.dp-frame__head > .sxb-crown > .sxb-purse { grid-area:purse !important; }
+  ${P} .sxb-berth.dp-frame__head > .sxb-crown > .sxb-vitals { grid-area:crown !important; }
+  ${P} .so-station-title > .sxb-berth__name { padding-right:0 !important; }
+  ${P} .sxb-crown .sxb-purse { grid-template-columns:auto auto auto !important; grid-template-areas:"label value delta" !important;
+    justify-self:start !important; align-self:center !important; align-items:center !important; column-gap:10px !important;
+    min-width:0 !important; height:32px; box-sizing:border-box; padding:0 12px !important; margin:0 !important; }
+  ${P} .sxb-crown .sxb-purse__label { width:auto !important; padding:0 !important; border:0 !important; line-height:1 !important; }
+  ${P} .sxb-crown .sxb-purse__value { font-size:20px !important; line-height:1 !important; }
+}
 `;
 
 export function injectStationStandard(doc = globalThis.document) {
