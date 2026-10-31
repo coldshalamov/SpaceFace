@@ -433,9 +433,12 @@ html body #screens > .k-screen.con-achievements > .k-foot .con-back.sf-back.k-wo
   html body #screens > .k-screen.con-achievements .con-medal-read__dial { display:none; }
   html body #screens > .k-screen.con-achievements .con-medal-read__name { font-size:clamp(22px, 6.4vw, 28px); }
   html body #screens > .k-screen.con-achievements > .k-foot.con-foot { display:flex !important; flex-direction:column-reverse !important; align-items:stretch !important; gap:14px !important; }
-  html body #screens > .k-screen.con-achievements .k-hang.con-filters { margin:0; align-self:stretch; overflow-x:auto !important; scrollbar-width:none; }
+  html body #screens > .k-screen.con-achievements .k-hang.con-filters { margin:0 -8px; padding:0 8px 15px; align-self:stretch; overflow-x:auto !important; scrollbar-width:none;
+    clip-path:inset(-40px 0 -40px 5px); }
+  /* Keep category words separate and counts above the scroller's bottom fade. */
+  html body #screens > .k-screen.con-achievements .con-filters .con-wordscale { width:100%; }
   html body #screens > .k-screen.con-achievements .con-filters .k-words { gap:6px !important; padding:0; justify-content:space-between; }
-  html body #screens > .k-screen.con-achievements .con-filters .k-word { font-size:12px; letter-spacing:.02em; }
+  html body #screens > .k-screen.con-achievements .con-filters .k-word { font-size:12px; letter-spacing:.04em; font-stretch:100%; }
   html body #screens > .k-screen.con-achievements > .k-foot .k-words:not(.con-filters .k-words) { align-self:flex-start; }
 }
 /* a 561–760 window at least 520 tall: the orrery stands down under 320px of width, so the reading narrows to
