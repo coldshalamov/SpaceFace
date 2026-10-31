@@ -453,9 +453,15 @@ ${A} > .k-foot .con-back.sf-back.k-word:focus-visible::after { color:rgb(255 253
   ${A} .con-medal-read__dial { display:none; }
   ${A} .con-medal-read__name { font-size:clamp(22px, 6.4vw, 28px); }
   ${A} > .k-foot.con-foot { display:flex !important; flex-direction:column-reverse !important; align-items:stretch !important; gap:14px !important; }
-  ${A} .k-hang.con-filters { margin:0; align-self:stretch; overflow-x:auto !important; scrollbar-width:none; }
+  ${A} .k-hang.con-filters { margin:0 -8px; padding:0 8px 15px; align-self:stretch; overflow-x:auto !important; scrollbar-width:none;
+    clip-path:inset(-40px 0 -40px 5px); }
+  /* the five words at their normal width (not the label's 112% stretch), spread across the full row on a full-width
+     scale, so they stand apart as five tabs instead of running together like one line; the scroller reaches into the
+     side padding so the first count under ALL isn't cut, and its clip keeps the focus tick (and its glow) hidden there
+     as before; the bottom padding keeps the counts above the scroller's 20px bottom fade, at master's height. */
+  ${A} .con-filters .con-wordscale { width:100%; }
   ${A} .con-filters .k-words { gap:6px !important; padding:0; justify-content:space-between; }
-  ${A} .con-filters .k-word { font-size:12px; letter-spacing:.02em; }
+  ${A} .con-filters .k-word { font-size:12px; letter-spacing:.04em; font-stretch:100%; }
   ${A} > .k-foot .k-words:not(.con-filters .k-words) { align-self:flex-start; }
 }
 /* a 561–760 window at least 520 tall: the orrery stands down under 320px of width, so the reading narrows to
