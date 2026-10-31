@@ -343,11 +343,13 @@ test('opening warm compiles the exact double-sided hulk program keys instead of 
   assert.match(src, /const hulkShipSpecs = profile === 'opening' \? \[\] : shipSpecs;/);
   assert.match(src, /if \(profile === 'opening'\) this\._warmOpeningHulkProgramKeys\(\);/);
   const body = src.slice(src.indexOf('  _warmOpeningHulkProgramKeys() {'));
-  assert.match(body, /m\.side = THREE\.DoubleSide;/);
-  assert.match(body, /installIllustratedSurface\(m\);/);
-  assert.match(body, /new THREE\.MeshDepthMaterial\(\{ map: depthMap, side: THREE\.DoubleSide/);
-  assert.match(body, /scene\.fog = null;\s*renderer\.compile\(depthGroup, camera, scene\);/);
-  const releaseBody = body.slice(body.indexOf('const release = () => {'), body.indexOf('const firstUse = () => {'));
+  assert.match(body, /material\.side = THREE\.DoubleSide;/);
+  assert.match(body, /installIllustratedSurface\(material\);/);
+  // Trimmed to the one key that linked post-lift (lt12-lt14): no batched or depth-twin variants.
+  assert.doesNotMatch(body.slice(0, body.indexOf('return receipt;')), /BatchedMesh|MeshDepthMaterial/);
+  // First use runs one program per idle frame and stops once the shell is gone.
+  assert.match(body, /requestIdleCallback/);
+  const releaseBody = body.slice(body.indexOf('const release = () => {'), body.indexOf('const idle = ('));
   assert.match(releaseBody, /hold\.geometry\.dispose\(\);/);
   assert.doesNotMatch(releaseBody, /material[s]?\S*\.dispose\(/, 'materials must not dispose: that would release the warmed programs');
 });

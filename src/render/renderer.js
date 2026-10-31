@@ -22361,13 +22361,14 @@ export const render = {
   },
 
   /**
-   * A lane freighter killed just after the veil lifts publishes its 'place'-slot hulk: Forge
-   * barge / express-liner surfaces, double-sided, illustrated surface installed. That program
-   * (and the double-sided shadow-depth twin the shadow pass derives) is not in any opening
-   * picture, so it linked on first draw at lift+2 s (474–2978 ms). Instead of minting whole
-   * hulk bodies, compile just those keys: one tiny mesh per key with the same map slots,
-   * side and surface hook, against the live scene's lights/environment. Program sharing is
-   * by cache key, so the real hulk later finds the program resident.
+   * A lane freighter killed just after the veil lifts publishes its 'place'-slot hulk; its
+   * double-sided Forge hull surface (illustrated surface v19, layers 8388688/150531) is the one
+   * program that still linked in flight (lt12-lt14 master: 212-2114 ms, lift+1.6..9.8 s; the
+   * Forge_* label is just whichever hull material reached it first). The batched variants and
+   * the shadow-depth twin never linked post-lift in those runs, so only this key is warmed:
+   * one tiny mesh, compiled against the live scene, then its first use (the driver's deferred
+   * link) taken behind the loading shell on an idle frame. Program sharing is by cache key, so
+   * the real hulk material later finds the program resident and never links its own copy.
    */
   _warmOpeningHulkProgramKeys() {
     const { renderer, scene, state } = this;
@@ -22376,12 +22377,14 @@ export const render = {
     if (!renderer || !scene || !camera || !render) return null;
     if (render.openingHulkKeyWarm && render.openingHulkKeyWarm.issued) return render.openingHulkKeyWarm;
     const t0 = performance.now();
-    const receipt = { issued: true, ms: 0, linkMs: null, keys: [], error: null };
+    const receipt = { issued: true, issuedAt: Math.round(t0), ms: 0, linkMs: null, keys: [], error: null };
     render.openingHulkKeyWarm = receipt;
+    const textures = [];
     const texture = (srgb) => {
       const t = new THREE.DataTexture(new Uint8Array([255, 255, 255, 255]), 1, 1);
       if (srgb) t.colorSpace = THREE.SRGBColorSpace;
       t.needsUpdate = true;
+      textures.push(t);
       return t;
     };
     const geometry = new THREE.BufferGeometry();
@@ -22390,130 +22393,76 @@ export const render = {
     geometry.setAttribute('uv', new THREE.Float32BufferAttribute([0, 0, 1, 0, 0, 1], 2));
     const group = new THREE.Group();
     group.name = 'SF_OpeningHulkKeyWarm';
-    const textures = [];
-    const materials = [];
-    const add = (material) => {
-      materials.push(material);
+    let material = null;
+    const release = () => {
+      const hold = this._openingHulkKeyWarmHold;
+      if (!hold) return;
+      this._openingHulkKeyWarmHold = null;
+      try {
+        for (const child of hold.group.children.slice()) hold.group.remove(child);
+        for (const t of hold.textures) t.dispose();
+        hold.geometry.dispose();
+        hold.textures.length = 0;
+        hold.material = null;
+        receipt.released = Math.round(performance.now());
+      } catch (error) { receipt.releaseError = String(error && error.message || error); }
+    };
+    // One program per idle frame (here: exactly one), never once the first playable frame is up.
+    const idle = (fn) => {
+      const ric = typeof requestIdleCallback === 'function' ? requestIdleCallback : null;
+      const raf = typeof requestAnimationFrame === 'function' ? requestAnimationFrame : null;
+      if (raf && ric) raf(() => ric(fn, { timeout: 250 }));
+      else setTimeout(fn, 0);
+    };
+    try {
+      // Forge hull surface: map, ao, normal, emissive, metalness, roughness; illustrated
+      // surface; dithered; double-sided as the hulk is.
+      material = new THREE.MeshStandardMaterial({
+        map: texture(true), aoMap: texture(false), normalMap: texture(false),
+        metalnessMap: texture(false), roughnessMap: texture(false), emissiveMap: texture(true),
+      });
+      material.name = 'SF_OpeningHulkKeyWarm';
+      material.side = THREE.DoubleSide;
+      material.dithering = true;
+      installIllustratedSurface(material);
       const mesh = new THREE.Mesh(geometry, material);
       mesh.frustumCulled = false;
       group.add(mesh);
-    };
-    try {
-      // Forge hull surface (paint/ceramic/gunmetal family): map, ao, normal, emissive,
-      // metalness, roughness; illustrated surface; dithered; double-sided as the hulk is.
-      const mk = (withEmissive) => {
-        const maps = { map: texture(true), aoMap: texture(false), normalMap: texture(false),
-          metalnessMap: texture(false), roughnessMap: texture(false) };
-        if (withEmissive) maps.emissiveMap = texture(true);
-        textures.push(...Object.values(maps));
-        const m = new THREE.MeshStandardMaterial(maps);
-        m.name = 'SF_OpeningHulkKeyWarm';
-        m.side = THREE.DoubleSide;
-        m.dithering = true;
-        installIllustratedSurface(m);
-        return m;
-      };
-      add(mk(true));
-      add(mk(false));
-      // The hulk's opaque parts also publish through SF_RigidOpaqueBatch (BatchedMesh with
-      // per-instance color: batching + batchingColor layer bits), a second key per material.
-      const batched = (material) => {
-        const mesh = new THREE.BatchedMesh(1, 3, 0, material);
-        const id = mesh.addInstance(mesh.addGeometry(geometry));
-        mesh.setColorAt(id, new THREE.Color(1, 1, 1));
-        mesh.frustumCulled = false;
-        mesh.perObjectFrustumCulled = false;
-        return mesh;
-      };
-      for (const m of materials.slice()) group.add(batched(m));
+      this._openingHulkKeyWarmHold = { group, material, textures, geometry };
       const work = this._compilePostRoute(this._selectPostRoute(), group, camera, scene);
-      // Shadow-depth twin: double-sided caster -> DoubleSide depth material carrying the map.
-      // The shadow pass draws with no scene (fog off: key slot + layer bit 0), so compile the
-      // depth pair with the live lights but fog suppressed for the synchronous program build.
-      const depthGroup = new THREE.Group();
-      const depthMap = texture(true);
-      textures.push(depthMap);
-      for (const dm of [
-        new THREE.MeshDepthMaterial({ map: depthMap, side: THREE.DoubleSide, depthPacking: THREE.BasicDepthPacking }),
-        new THREE.MeshDepthMaterial({ side: THREE.DoubleSide, depthPacking: THREE.BasicDepthPacking }),
-      ]) {
-        materials.push(dm);
-        const mesh = new THREE.Mesh(geometry, dm);
-        mesh.frustumCulled = false;
-        depthGroup.add(mesh);
-        depthGroup.add(batched(dm));
-      }
-      const fog = scene.fog;
-      try {
-        scene.fog = null;
-        renderer.compile(depthGroup, camera, scene);
-      } finally {
-        scene.fog = fog;
-      }
       receipt.ms = Math.round((performance.now() - t0) * 10) / 10;
-      const props = renderer.properties;
-      // A material compiled under two objects (plain + batched) holds two programs; three's
-      // properties keep each in material programs map, so read them all.
       const programsOf = () => {
         const out = [];
-        for (const m of materials) {
-          const progs = props && props.get(m).programs;
-          if (progs && typeof progs.values === 'function') for (const p of progs.values()) if (p && !out.includes(p)) out.push(p);
-        }
+        const progs = renderer.properties && renderer.properties.get(material).programs;
+        if (progs && typeof progs.values === 'function') for (const p of progs.values()) if (p && !out.includes(p)) out.push(p);
         return out;
       };
-      const readKeys = () => programsOf().map((p) => p.cacheKey);
-      receipt.keys = readKeys();
-      // Held only until first use. Release then frees geometry, textures and the batched
-      // meshes' data textures, and drops the material refs WITHOUT material.dispose(): three
-      // releases a program only on a material dispose, so the compiled programs stay in the
-      // program cache (usedTimes >= 1) and the hulk's exact keys reuse them with no relink.
-      this._openingHulkKeyWarmHold = { group, depthGroup, materials, textures, geometry };
-      const release = () => {
-        const hold = this._openingHulkKeyWarmHold;
-        if (!hold) return;
-        this._openingHulkKeyWarmHold = null;
-        try {
-          for (const g of [hold.group, hold.depthGroup]) {
-            for (const child of g.children.slice()) {
-              if (child.isBatchedMesh && typeof child.dispose === 'function') child.dispose();
-              g.remove(child);
-            }
-          }
-          for (const t of hold.textures) t.dispose();
-          hold.geometry.dispose();
-          hold.materials.length = 0;
-          hold.textures.length = 0;
-          receipt.released = Math.round(performance.now());
-        } catch (error) { receipt.releaseError = String(error && error.message || error); }
-      };
-      // The serial driver defers the real link to the first program query, so a compiled
-      // program still pays its whole link at first draw (ltk2: the depth twin, compiled at
-      // warm begin, linked 1613 ms at lift+2.1 s). Take that first use here, behind the
-      // loading screen, one program per task; its cost is the warm's own (receipt.useMs).
       const firstUse = () => {
         const programs = programsOf();
+        receipt.keys = programs.map((p) => p.cacheKey);
         receipt.useMs = [];
         let i = 0;
         const step = () => {
           if (i >= programs.length) { receipt.usedAt = Math.round(performance.now()); release(); return; }
-          if (Number.isFinite(render.firstPlayableFrameAt)) { receipt.useSkipped = programs.length - i; release(); return; }
+          if (Number.isFinite(render.firstPlayableFrameAt) || state.mode !== 'loading') {
+            receipt.useSkipped = programs.length - i; release(); return;
+          }
           const program = programs[i++];
           const u0 = performance.now();
           try { program.getUniforms(); } catch (_) { /* reported through the link ledger */ }
           receipt.useMs.push(Math.round(performance.now() - u0));
-          setTimeout(step, 0);
+          idle(step);
         };
-        setTimeout(step, 0);
+        idle(step);
       };
       Promise.resolve(work).then(() => {
         receipt.linkMs = Math.round(performance.now() - t0);
-        receipt.keys = readKeys();
         firstUse();
       }, (error) => { receipt.error = String(error && error.message || error); release(); });
     } catch (error) {
       receipt.error = String(error && error.message || error);
       receipt.ms = Math.round((performance.now() - t0) * 10) / 10;
+      release();
     }
     return receipt;
   },
