@@ -155,8 +155,9 @@ ${BOTH} > .sf-pause-foot [data-role="version"] {
    words printed over each other. The brief becomes a top-right reading level with PAUSED and ends
    above the first long bank. */
 @media (min-width:701px) and (max-height:640px), (min-width:701px) and (max-width:1100px) and (max-height:720px) {
-  ${P} > .sf-pause-brief.orr-brief { top:clamp(40px, 8vh, 52px) !important; margin-top:0 !important;
+  ${P} > .sf-pause-brief.orr-brief { top:clamp(28px, 5vh, 52px) !important; margin-top:0 !important;
     width:min(400px, 42vw) !important; }
+  ${P} > .sf-pause-brief.orr-brief > .sf-slot-name { gap:3px !important; }
   ${P} > .sf-pause-brief.orr-brief > .dp-etch.sf-slot-sub:first-child { margin-bottom:6px !important; line-height:16px !important; }
   ${P} > .sf-pause-brief.orr-brief > .sf-slot-name { margin-top:0 !important; }
   ${P} .orr-brief__kind { line-height:14px !important; margin-bottom:2px !important; }
@@ -172,6 +173,14 @@ ${BOTH} > .sf-pause-foot [data-role="version"] {
   ${P} > .sf-pause-foot .sf-pause-key.dp-kbd {
     background:linear-gradient(rgb(${BONE} / .1), rgb(${BONE} / .1)), rgb(6 8 11 / .94) !important; }
   ${P} > .sf-pause-foot .sf-pause-key-verb { text-shadow:0 0 3px rgb(4 6 9), 0 0 8px rgb(4 6 9 / .9) !important; }
+}
+
+/* the console standard's lit face gave the brief 16/18px padding, which grew it ~20px past the
+   first long bank again: at 960×540 its Saved line sat over OPERATIONS (AUTOMATION) / LOCAL MAP, and
+   at 1024×768 its bottom edge touched them. In the same short and narrow windows the face keeps a
+   12px inset, and in the shortest ones (rule above) the brief climbs level with PAUSED. */
+@media (min-width:701px) and (max-height:640px), (min-width:701px) and (max-width:1100px) and (max-height:800px) {
+  ${P} > .sf-pause-brief.orr-brief { padding:12px 16px !important; }
 }
 
 /* a very short window (≤520 tall, e.g. 800×500): the dial climbs to y≈190, so the brief keeps only
@@ -227,7 +236,7 @@ ${BOTH} > .sf-pause-foot [data-role="version"] {
    the brief's Next line began (x 461). The brief climbs level with PAUSED and narrows so it starts right
    of LOAD (x≈485); Next still fits one line and ends above the SHIP bank. */
 @media (min-width:701px) and (max-width:900px) and (max-height:460px) {
-  ${P} > .sf-pause-brief.orr-brief { top:26px !important; width:min(330px, 40vw) !important; }
+  ${P} > .sf-pause-brief.orr-brief { top:18px !important; width:min(330px, 40vw) !important; padding:10px 14px !important; }
 }
 
 /* 1080p band: lift head + brief + foot only — never the dial stage (arcRail getBoundingClientRect) */
