@@ -320,4 +320,5 @@ test('opening warm compiles the exact double-sided hulk program keys instead of 
   assert.match(body, /m\.side = THREE\.DoubleSide;/);
   assert.match(body, /installIllustratedSurface\(m\);/);
   assert.match(body, /new THREE\.MeshDepthMaterial\(\{ map: depthMap, side: THREE\.DoubleSide/);
+  assert.match(body, /scene\.fog = null;\s*renderer\.compile\(depthGroup, camera, scene\);/);
 });

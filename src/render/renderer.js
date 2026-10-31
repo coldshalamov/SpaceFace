@@ -22983,12 +22983,29 @@ export const render = {
       };
       add(mk(true));
       add(mk(false));
+      const work = this._compilePostRoute(this._selectPostRoute(), group, camera, scene);
       // Shadow-depth twin: double-sided caster -> DoubleSide depth material carrying the map.
+      // The shadow pass draws with no scene (fog off: key slot + layer bit 0), so compile the
+      // depth pair with the live lights but fog suppressed for the synchronous program build.
+      const depthGroup = new THREE.Group();
       const depthMap = texture(true);
       textures.push(depthMap);
-      add(new THREE.MeshDepthMaterial({ map: depthMap, side: THREE.DoubleSide, depthPacking: THREE.BasicDepthPacking }));
-      add(new THREE.MeshDepthMaterial({ side: THREE.DoubleSide, depthPacking: THREE.BasicDepthPacking }));
-      const work = this._compilePostRoute(this._selectPostRoute(), group, camera, scene);
+      for (const dm of [
+        new THREE.MeshDepthMaterial({ map: depthMap, side: THREE.DoubleSide, depthPacking: THREE.BasicDepthPacking }),
+        new THREE.MeshDepthMaterial({ side: THREE.DoubleSide, depthPacking: THREE.BasicDepthPacking }),
+      ]) {
+        materials.push(dm);
+        const mesh = new THREE.Mesh(geometry, dm);
+        mesh.frustumCulled = false;
+        depthGroup.add(mesh);
+      }
+      const fog = scene.fog;
+      try {
+        scene.fog = null;
+        renderer.compile(depthGroup, camera, scene);
+      } finally {
+        scene.fog = fog;
+      }
       receipt.ms = Math.round((performance.now() - t0) * 10) / 10;
       const props = renderer.properties;
       const readKeys = () => materials.map((m) => {
@@ -22999,7 +23016,7 @@ export const render = {
       // Materials, textures and geometry are kept for the session (a few hundred bytes):
       // three releases a program when its last material user disposes, and the hulk can
       // first draw anywhere in the opening, so the warm owner must outlive it.
-      this._openingHulkKeyWarmHold = { group, materials, textures, geometry };
+      this._openingHulkKeyWarmHold = { group, depthGroup, materials, textures, geometry };
       Promise.resolve(work).then(() => {
         receipt.linkMs = Math.round(performance.now() - t0);
         receipt.keys = readKeys();
