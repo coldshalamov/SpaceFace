@@ -1,5 +1,6 @@
 import { requireCapitalBossEncounter } from '../data/encounters/capital-boss.js';
 import { LAST_ARGUMENT } from '../data/lastArgument.js';
+import { ironKrakenProfileFor } from '../data/ironKraken.js';
 import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
 import { entityLocalPointToWorld } from '../combat/geometry.js';
 import { capitalPlatePull, capitalPlateUnderLine } from '../combat/capitalPlates.js';
@@ -86,6 +87,14 @@ export function createCapitalBossEncounters({observe,spawnWing}={}) {
   if(typeof observe!=='function'||typeof spawnWing!=='function')
     throw new TypeError('Capital bosses require explicit observation and mission-owned wing spawning');
   let ctx=null;const unsubs=[];
+  // The score owns the character's role binding on every route, including a future mission
+  // spawn and save rematerialization. The marker carries no second animation/attack clock.
+  const bindCharacter=(record,attached=true)=>{
+    const body=ctx?.state.entities?.get(record.bossId),p=ironKrakenProfileFor(body);
+    if(p?.scoreId!==record.encounterId||!body?.data?.ironKraken) return;
+    if(attached) body.data.ironKraken.fightId=record.fightId;
+    else if(body.data.ironKraken.fightId===record.fightId) body.data.ironKraken.fightId=null;
+  };
   // Per swarm fight, not mission params. Detach drops it; a mission fight never reads it.
   const thrownMassHits=new Map();
   const routeSwarmThrownMass=(record,capital)=>{
@@ -224,6 +233,7 @@ export function createCapitalBossEncounters({observe,spawnWing}={}) {
       if(old) {
         if(old.encounterId!==encounterId) throw new Error('Fight id reused for a different encounter');
         if(old.bossId!==bossId||old.targetId!==targetId) system.rebind(id,{bossId,targetId});
+        bindCharacter(old);
         placeSwarmBallast(old.bossId);
         return old;
       }
@@ -231,6 +241,7 @@ export function createCapitalBossEncounters({observe,spawnWing}={}) {
       if(Object.values(store.fights).filter(r=>!r.terminal).length>=3) throw new Error('At most three live capital fights');
       const r=createCapitalBossFight({encounterId,fightId,bossId,targetId,mirror,tick:ctx.state.tick});
       store.fights[id]=r;
+      bindCharacter(r);
       // Close the stock-fire gate BEFORE the first AI tick, not on the first authored cast.
       store.orders[capitalOrderKey(bossId)]={fightId:id,scoreOwnsAttacks:true,suppressStockFire:true,forward:0,brake:true,phase:'intro'};
       placeSwarmBallast(bossId);
@@ -460,6 +471,7 @@ export function createCapitalBossEncounters({observe,spawnWing}={}) {
     },
     detach(fightId) {
       const store=root(),r=store.fights[String(fightId)];if(!r) return false;
+      bindCharacter(r,false);
       if(r.cast) ctx.bus.emit('capitalBoss:telegraphEnd',{fightId:r.fightId,castId:r.cast.id,reason:'detached'});
       // Removal/cleanup of entities is the mission owner’s decision, not ours.
       for(const [k,order] of Object.entries(store.orders)) if(order.fightId===r.fightId) delete store.orders[k];
@@ -486,7 +498,9 @@ export function createCapitalBossEncounters({observe,spawnWing}={}) {
       // grant the normal resume warning; an in-place restore (no rebind) preserves exact timing.
       if(r.cast) ctx.bus.emit('capitalBoss:telegraphEnd',{fightId:r.fightId,castId:r.cast.id,reason:'rebound'});
       r.cast=null;r.suspended=true;r.phase='suspended';
+      bindCharacter(r,false);
       rebindCapitalBossFight(r,roles);
+      bindCharacter(r);
       root().orders[capitalOrderKey(r.bossId)]={fightId:r.fightId,scoreOwnsAttacks:true,suppressStockFire:true,forward:0,brake:true,phase:r.phase};
       for(const w of Object.values(r.wings)) for(const id of w.ids) if(id!=null) root().orders[capitalOrderKey(id)]={fightId:r.fightId,suppressStockFire:true,scoreOwnsAttacks:false};
     },

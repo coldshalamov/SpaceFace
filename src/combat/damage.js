@@ -26,6 +26,7 @@ import { GRAVITY_MARK_STATUS_ID } from '../data/combatDefs.js';
 import { swarmFortifyDevice, SWARM_FORTIFY_SCHEMA_VERSION } from '../data/swarmFortify.js';
 import { swarmPilotHasActed } from '../systems/swarmSafety.js';
 import { crossfireDisciplineFor } from '../ai/temperament.js';
+import { ironKrakenCoreDamageMultiplier } from './ironKraken.js';
 
 /**
  * Linked shield pylons (packet 06): a pylon endpoint is a destructible body, so hostile fire reaches
@@ -180,6 +181,11 @@ export function createDamageRouter(context, statusService, options = {}) {
       for (const channel of catalog.damageModel.channelOrder) {
         packet.channels[channel] = (packet.channels[channel] || 0) * directional.factor;
       }
+    }
+    const coreFactor = shieldOnly || difficultyInvariantDisablePacket(packet)
+      ? 1 : ironKrakenCoreDamageMultiplier(state, target, input);
+    if (coreFactor !== 1) {
+      for (const channel of catalog.damageModel.channelOrder) packet.channels[channel] *= coreFactor;
     }
     // Run difficulty only scales hits involving the local player (outgoing or incoming). Ambient
     // NPC brawls stay on the authored baseline so sector ecology is not difficulty-rewritten.
@@ -368,6 +374,7 @@ export function createDamageRouter(context, statusService, options = {}) {
       subsystemResult,
       directionalArc: directional.arc,
       directionalFactor: directional.factor,
+      ...(coreFactor === 1 ? null : { ironKrakenCoreFactor: coreFactor }),
       heatApplied,
       shieldBroke,
       dominantLayer: hullDamage > 0 ? 'hull' : armorDamage > 0 ? 'armor' : shieldDamage > 0 ? 'shield' : null,
@@ -384,6 +391,11 @@ export function createDamageRouter(context, statusService, options = {}) {
     const playerId = state.playerId;
     const player = entity(playerId);
     const playerAttack = !!player && result.attackerId === playerId;
+    if (coreFactor > 1 && playerAttack && totalApplied > 0 && bus?.emit) {
+      bus.emit('combat:weakPointHit', { targetId: target.id, ownerId: playerId,
+        label: 'MANTLE CORE', mult: coreFactor, critical: true, criticalLabel: 'CORE',
+        pos: { x: packet.hit.pos.x, z: packet.hit.pos.z } });
+    }
     const playerIdentity = playerAttack ? currentPlayerRewardIdentity(state, player) : null;
     const durableTruth = playerAttack ? readPlayerFirstHitTruth(target, playerIdentity) : null;
     const fallbackTruth = playerAttack && !durableTruth ? playerDamageTruthByTarget.get(target) : null;

@@ -2320,7 +2320,7 @@ export const weapons = {
             targetId: body.id,
             packet: scalarHitToDamagePacket({
               damage: dmg * fall, damageType: 'explosive', pos,
-              source: { kind: 'weapon', weaponId: rec.weaponId },
+              source: { kind: 'weapon_splash', weaponId: rec.weaponId },
             }),
             origin: { kind: 'weapon', id: rec.weaponId },
           });

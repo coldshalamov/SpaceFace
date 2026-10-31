@@ -32,6 +32,8 @@ import { createParticlePriorityIndex } from './particlePriorityIndex.js';
 //   Event→handler wiring: see _subscribe (L256). Full event routing map: docs/EVENT_ROUTING.md
 // ── end index ──
 import * as THREE from 'three';
+import { createIronKrakenDebris, ironKrakenDeathProfile } from './ironKrakenDebris.js';
+import { occupantGenerationOf } from '../core/entity.js';
 import { publishMaterialFields } from './vfx/materialEnvironment.js';
 import { createMaterialContactRead, readMaterialContact } from './vfx/materialDirector.js';
 import { bolusCableStyle, applyBolusCableProfile } from './bolusCable.js';
@@ -1260,6 +1262,11 @@ export const vfx = {
   name: 'vfx',
 
   init(ctx) {
+    this._ironKrakenDebris?.dispose();
+    this._ironKrakenDebris = null;
+    this._ironKrakenDebrisOptions = { frameOrigin: null, reducedMotion: false, reducedFlash: false };
+    this._ironKrakenDeathEpoch = 0;
+    this._ironKrakenDeathReceipts = new WeakMap();
     this._destroyed = false;
     this.state = ctx.state;
     this.bus = ctx.bus;
@@ -1844,6 +1851,10 @@ export const vfx = {
     this._actionVfx = null;
     invokeVfxDisposer(this._broodPresentation, 'swarm brood');
     this._broodPresentation = null;
+    invokeVfxDisposer(this._ironKrakenDebris, 'Iron Kraken death pieces');
+    this._ironKrakenDebris = null;
+    this._ironKrakenDebrisOptions = null;
+    this._ironKrakenDeathReceipts = null;
     invokeVfxDisposer(this._stationOperationVfx, 'station operation matter');
     this._stationOperationVfx = null;
     invokeVfxDisposer(this._emergentPools, 'emergent primitive pools');
@@ -2101,6 +2112,7 @@ export const vfx = {
     add(this._bombDetonationVfx && this._bombDetonationVfx.mesh);
     add(this._statusMatterVfx && this._statusMatterVfx.mesh);
     add(this._combatContactVfx && this._combatContactVfx.mesh);
+    add(this._ironKrakenDebris && this._ironKrakenDebris.group);
     add(this._emergentPools && this._emergentPools.group);
     add(this._emergentPayloads && this._emergentPayloads.group);
     const arcadeRoots = this._arcadeStructural && (
@@ -2331,6 +2343,7 @@ export const vfx = {
         }
         : null,
       fieldForceLanguage: this._fieldGeom ? this._fieldGeom.inspect() : null,
+      ironKrakenDebris: this._ironKrakenDebris ? this._ironKrakenDebris.diagnostics() : null,
       arcadeStructuralFx: this._arcadeStructural ? this._arcadeStructural.inspect() : null,
       arcadeStructuralFxStats: this._arcadeStructural ? this._arcadeStructural.stats() : null,
     };
@@ -2674,6 +2687,10 @@ export const vfx = {
     // primitive; this subscription is the cradle hologram's half of the same departure.
     add('dock:undocked', () => this._releaseDockingCradle());
     for (const name of ['sector:exit', 'sector:enter', 'game:new', 'game:newGame', 'game:exitToMenu', 'save:restoring', 'save:loaded']) {
+      add(name, () => {
+        this._ironKrakenDeathEpoch = (this._ironKrakenDeathEpoch || 0) + 1;
+        this._ironKrakenDebris?.clear();
+      });
       add(name, () => { this._actionVfx?.clear(); this._stationOperationVfx?.clear(); this._bombDetonationVfx?.clear(); this._statusMatterVfx?.clear(); this._combatContactVfx?.clear(); this._emergentPayloads?.clear(); this._retireEventLightSlot(this._findSustainedEventLight('gyre-payload')); this._releaseTransientEventLights(); });
       add(name, () => this._clearWorldTransientMatter());
       add(name, () => this._resetDamagedPortVfx());
@@ -2726,6 +2743,23 @@ export const vfx = {
     // Kill/despawn bursts fan out to these tails inside one emit — the per-kill structural
     // spawn + spall compose is the single heaviest tail — so they ride the presentation
     // tier's per-frame drain instead of the sim tick.
+    // Capture the real occupant before the corpse sweep recycles its numeric id. Keep the epoch
+    // too: a sliced kill from the outgoing world cannot repopulate a cleared owner. The immutable
+    // presentation record also identifies shallow copies; never relabel a replay as a new death.
+    add('entity:killed', (p) => {
+      const live = this.state?.entities?.get(p?.id);
+      if (!ironKrakenDeathProfile(p, live)) return;
+      const records = this._ironKrakenDeathReceipts ||= new WeakMap();
+      const presentation = p.presentation && typeof p.presentation === 'object' ? p.presentation : null;
+      const prior = records.get(p) || (presentation && records.get(presentation));
+      if (prior) { records.set(p, prior); return; }
+      // combat.kill marks the victim dead before emitting. A live occupant here proves an old
+      // receipt was replayed after that id changed hands; it is not a second legitimate kill.
+      const record = { epoch: this._ironKrakenDeathEpoch || 0, entity: live || null,
+        generation: occupantGenerationOf(live), stale: live?.alive === true };
+      records.set(p, record);
+      if (presentation) records.set(presentation, record);
+    });
     add('entity:killed', (p) => { clearTumbleCadenceFor(p); this._forgetMomentumSinkEntity(p); this._markEntityCacheDirty(); this._onKilled(p); this._onChainEntityKilled(p); }, { presentation: true });
     // Packet 08: the kill's successor hull fails for a window, then ruptures once. The sim owns
     // the schedule; presentation only holds the already-queued death explosion for it.
@@ -2887,6 +2921,7 @@ export const vfx = {
     if (ox !== 0 || oz !== 0) {
       if (this._gas) this._gas.reproject(ox, oz);
       if (this._explosionRupture) this._explosionRupture.reproject(ox, oz);
+      this._ironKrakenDebris?.reproject(ox, oz);
       // Particles
       if (this._px && this._pz && this._alive) {
         const n = this._cap || 0;
@@ -5852,15 +5887,45 @@ export const vfx = {
     return this._emitLowCollisionContact(p);
   },
 
+  _krakenDebrisOptions() {
+    const options = this._ironKrakenDebrisOptions || (this._ironKrakenDebrisOptions = {});
+    options.frameOrigin = this._frameMembrane?.origin || this.state?.world?.frameOrigin || null;
+    options.reducedMotion = !!this.state?.settings?.video?.motionReduce;
+    options.reducedFlash = resolveVfxAccessibilityProfile(this.state?.settings).flashOpacityScale < 1;
+    return options;
+  },
+
+  _spawnIronKrakenDebris(p, live, receiptRecord) {
+    if (!this._scene || !ironKrakenDeathProfile(p, live)) return 0;
+    this._syncFrameMembrane();
+    this._ironKrakenDebris ||= createIronKrakenDebris(this._scene);
+    const options = this._krakenDebrisOptions();
+    options.occupantGeneration = receiptRecord ? receiptRecord.generation : occupantGenerationOf(live);
+    return this._ironKrakenDebris.spawn(p, live, live?.mesh || live?.view?.root,
+      Number.isFinite(this.state?.simTime) ? this.state.simTime : this._t || 0,
+      options);
+  },
+
   _onKilled(p) {
-    this._emitJuiceCue('combat.damage.kill', p, 2);
+    if (p?.reason === 'save_restore' || p?.reason === 'reset' || p?.reason === 'game_reset') return;
+    const receiptRecord = this._ironKrakenDeathReceipts?.get(p);
+    if (receiptRecord && (receiptRecord.stale || receiptRecord.epoch !== (this._ironKrakenDeathEpoch || 0))) return;
     const entities = this.state && this.state.entities;
-    const live = entities && typeof entities.get === 'function' && p && p.id != null
+    let live = entities && typeof entities.get === 'function' && p && p.id != null
       ? entities.get(p.id)
       : null;
+    if (receiptRecord) {
+      live = receiptRecord.entity;
+      if (occupantGenerationOf(live) !== receiptRecord.generation) live = null;
+    }
+    // The one real kill receipt owns the parts. Do not repeat its ordinary boom on a duplicate
+    // Kraken receipt either. lootTableId still identifies a victim removed before this drain.
+    const kraken = ironKrakenDeathProfile(p, live);
+    if (this._scene && kraken && !this._spawnIronKrakenDebris(p, live, receiptRecord)) return;
+    this._emitJuiceCue('combat.damage.kill', p, 2);
     const victim = {
-      mass: Number.isFinite(live && live.mass) ? live.mass : p && p.mass,
-      radius: Number.isFinite(live && live.radius) ? live.radius : p && p.radius,
+      mass: Number.isFinite(live && live.mass) ? live.mass : p?.mass ?? kraken?.mass,
+      radius: Number.isFinite(live && live.radius) ? live.radius : p?.radius ?? kraken?.coreRadius,
       capital: !!(live && live.capital) || !!(p && p.capital),
       victimClass: (p && p.victimClass)
         || (live && live.victimClass)
@@ -6292,6 +6357,7 @@ export const vfx = {
       : Math.max(2, Number(p && p.radius) || 6);
     const sourceMaterial = explosionSourceMaterial(p || {}, p?.entity || this._ent(p?.id));
     const mineralSource = sourceMaterial === 'rock' || sourceMaterial === 'ice';
+    const krakenPieces = !!ironKrakenDeathProfile(p, p?.entity || this._ent(p?.id));
     const entry = this._explosions.start({
       classId,
       x: pos.x,
@@ -6343,12 +6409,12 @@ export const vfx = {
     req.terrain = 0;
     // Mineral spall owns rock/ice fragments, and fuel gas has no solid material to throw.
     // Keep admitted audio without adding the generic hull shards to these material families.
-    this._admitAndSpawnArcadeStructural('entity:killed', p || {}, !mineralSource && sourceMaterial !== 'fuel');
+    this._admitAndSpawnArcadeStructural('entity:killed', p || {}, !krakenPieces && !mineralSource && sourceMaterial !== 'fuel');
     // IMPACTS: a large death EXPOSES structure. The breakup sheet parts plates first, shows the hot
     // interior between them, parts more, and only then settles -- instead of hiding the ship inside
     // a white ball. Only ordinary and capital classes qualify; a small hull keeps its existing
     // phased beats untouched.
-    if (classId !== 'small' && !mineralSource && sourceMaterial !== 'fuel') {
+    if (classId !== 'small' && !krakenPieces && !mineralSource && sourceMaterial !== 'fuel') {
       _impactOpts.vx = req.velX; _impactOpts.vy = req.velY; _impactOpts.vz = req.velZ;
       _impactOpts.serial = mixArcadeVictimId(p && p.id);
       _impactOpts.targetId = (p && p.id) ?? null;
@@ -6384,7 +6450,7 @@ export const vfx = {
           local.x, 0.4, local.z, entry?.dirX || 1, 0.25, entry?.dirZ || 0,
           Math.min(24, Math.max(8, Math.round(radius))), sourceMaterial,
         );
-      } else if (sourceMaterial !== 'fuel') {
+      } else if (!krakenPieces && sourceMaterial !== 'fuel') {
         this._weaponPresenter.quarks.spawnExplosion(
           local.x, 0.4, local.z,
           Math.min(48, Math.max(12, Math.round(radius * 2.5))),
@@ -13040,6 +13106,9 @@ export const vfx = {
     }
     // Observe frameOriginSeq even if renderer already reprojected — same-origin is a no-op.
     this._syncFrameMembrane();
+    this._ironKrakenDebris?.update(
+      Number.isFinite(this.state?.simTime) ? this.state.simTime : this._t || 0,
+      this._krakenDebrisOptions());
     let dt = frameDt;
     if (!(dt > 0)) return;
     if (dt > 0.1) dt = 0.1; // clamp pauses/tab-switches so particles don't teleport
