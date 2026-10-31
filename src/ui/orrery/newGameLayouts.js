@@ -296,10 +296,11 @@ ${NG} > .sf-ng-footer .k-word.sf-back:focus-visible::after {
   ${NGD} .sf-ng-route .sf-ng-route__step { padding:0 0 0 20px !important; height:auto !important; }
   ${NGD} .sf-ng-route .sf-ng-route__step::before { left:0 !important; top:4px !important; }
   ${NGD} .sf-ng-route .sf-ng-route__step .k-row__sub { display:block !important; opacity:1 !important; }
-  /* BACK / LAUNCH stay at the window's foot over a dark band while the column scrolls under them */
+  /* BACK / LAUNCH stay at the window's foot on an opaque band under a hairline (the sections' own rule)
+     while the column scrolls under them: nothing of the route reads through behind BACK */
   ${NGD} > .sf-ng-footer { position:sticky !important; bottom:0 !important; z-index:40 !important;
     margin:0 !important; padding:16px 0 16px !important;
-    border-image:linear-gradient(180deg, rgb(4 6 9 / 0), rgb(4 6 9 / .9) 18px, rgb(4 6 9 / .95)) fill 0 / / 0 100vw !important; }
+    border-image:linear-gradient(180deg, rgb(${BONE} / .16) 0 1px, rgb(6 8 11) 1px) fill 0 / / 0 100vw !important; }
   /* the yard's rear names hang on the ring's floor ellipse, which is drawn over them: they drop just below it */
   ${NGD} .orr-yard > .orr-turntable__row > li:not(.is-front) { translate:0 20px !important; }
   /* and the front name drops a line further, below the rear names, with the stage band grown to match */
