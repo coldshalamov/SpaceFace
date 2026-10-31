@@ -448,3 +448,26 @@ test('failed achievement mirror preserves the local bag and keeps unload fallbac
     }
   }
 });
+
+test('an absent shared store permits quit after the local achievement bag is saved', async () => {
+  const previous = { location: globalThis.location, fetch: globalThis.fetch, window: globalThis.window };
+  const listeners = new Map();
+  globalThis.location = { protocol: 'http:', origin: 'http://achievement-absent-store' };
+  globalThis.window = {
+    addEventListener: (name, fn) => listeners.set(name, fn),
+    removeEventListener: (name) => listeners.delete(name),
+  };
+  globalThis.fetch = async () => ({ ok: false, status: 404 });
+  let ledger;
+  try {
+    const h = harness(); ledger = h.ledger;
+    h.bus.emit('save:store-synced', { ok: true });
+    assert.deepEqual(await ledger.prepareForQuit(), { ok: true });
+    assert.ok(h.storage.getItem(ACHIEVEMENTS_STORAGE_KEY), 'the local achievement bag is durable');
+  } finally {
+    ledger?.dispose({ flush: false });
+    for (const [key, value] of Object.entries(previous)) {
+      if (value === undefined) delete globalThis[key]; else globalThis[key] = value;
+    }
+  }
+});

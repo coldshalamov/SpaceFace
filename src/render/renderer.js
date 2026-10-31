@@ -29455,6 +29455,37 @@ export const render = {
     return step.value;
   },
 
+  *_packOpeningSnapshotFenceSteps(simTime, poseEpoch) {
+    // The render loop can leave a loading-mode fence pack parked across frames.
+    // The fence has one writer cursor, so the opening publish must retire that
+    // iterator before it starts another pack and own the cursor until commit.
+    const pending = this._fencePackPending;
+    if (pending) {
+      closeCookStepsIter(pending.iter);
+      if (this._fencePackPending === pending) this._fencePackPending = null;
+    }
+    const packOwner = {};
+    this._openingFencePackOwner = packOwner;
+    try {
+      if (typeof packPresentationWorldToFenceSteps === 'function') {
+        return yield* packPresentationWorldToFenceSteps(
+          this._presentationWorld,
+          this._snapshotFence,
+          simTime,
+          poseEpoch,
+        );
+      }
+      return packPresentationWorldToFence(
+        this._presentationWorld,
+        this._snapshotFence,
+        simTime,
+        poseEpoch,
+      );
+    } finally {
+      if (this._openingFencePackOwner === packOwner) this._openingFencePackOwner = null;
+    }
+  },
+
   // Stepped twin: each settle pass (≤8 + final) pays the same leg chain — entity
   // sync, forced whole-scene compose, pool/shadow band, second compose — as one
   // atomic span. Yields split the legs so the async drives below pace them
@@ -29494,22 +29525,10 @@ export const render = {
     }
 
     if (this._snapshotFence && this._presentationWorld) {
-      let packed;
-      if (typeof packPresentationWorldToFenceSteps === 'function') {
-        packed = yield* packPresentationWorldToFenceSteps(
-          this._presentationWorld,
-          this._snapshotFence,
-          state && state.simTime,
-          this._advancePosePackEpoch(publication),
-        );
-      } else {
-        packed = packPresentationWorldToFence(
-          this._presentationWorld,
-          this._snapshotFence,
-          state && state.simTime,
-          this._advancePosePackEpoch(publication),
-        );
-      }
+      const packed = yield* this._packOpeningSnapshotFenceSteps(
+        state && state.simTime,
+        this._advancePosePackEpoch(publication),
+      );
       this._snapshotSourceTick = state && Number.isInteger(state.tick) ? state.tick : 0;
       this._publishSnapshotFenceStats(packed);
     }
@@ -30308,7 +30327,7 @@ export const render = {
       const packWalletSpent = !livePosePack && !pendingPack
         && pacedFrameSpend() >= PACED_FRAME_BUDGET_MS;
       if ((snapshotNeedsPack || pendingPack) && this._snapshotFence && this._presentationWorld
-          && !packFaulted && !packWalletSpent) {
+          && !this._openingFencePackOwner && !packFaulted && !packWalletSpent) {
         if (!pendingPack) {
           pendingPack = this._fencePackPending = {
             iter: !livePosePack && typeof packPresentationWorldToFenceSteps === 'function'
@@ -30378,7 +30397,8 @@ export const render = {
           this._fencePackPending = null;
         }
       } else if (packFaulted && snapshotNeedsPack && this._snapshotFence
-          && this._presentationWorld && this._fencePackDegradedEpoch !== packEpoch) {
+          && this._presentationWorld && !this._openingFencePackOwner
+          && this._fencePackDegradedEpoch !== packEpoch) {
         // A pose epoch whose pack is permanently faulted freezes every
         // interpolated pose world-wide — strictly worse than one atomic pack.
         // After ~1 s parked, run the sync twin ONCE per epoch, latched like

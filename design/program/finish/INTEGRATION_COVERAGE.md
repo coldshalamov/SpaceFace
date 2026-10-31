@@ -113,6 +113,22 @@ result remains historical even where later builds supersede its size.
 
 ## Integrated changes and measurement limits
 
+- **Latest full Adventure soak — FAIL:** `c6dc3ea137e4` completes 51 measured save/load/trade
+  cycles over 30.2 minutes, same-mesh context recovery and a 120-second flight tail with zero
+  page, console, GL and network errors. Earlier incomplete-plan and resize defects do not recur.
+  Heap grows 628,628,364 to 953,614,032 bytes; renderer geometries grow 2273 to 3076 while
+  scene-reachable unique geometries grow 1888 to 1912. The owner of the off-scene growth remains
+  unknown. Frame budgets fail. Three warnings identify competing snapshot-fence packers, now
+  serialized with five lifetime checks passing. Owned quit receives `achievements-mirror-failed`;
+  a reproduced local-only 404 case is repaired with 14 achievement checks passing, preserving
+  real-server-failure vetoes. Next is the existing short matched heap diagnostic and public close.
+  Evidence: `.devshots/finish/integration-2026-10-31/m8-full-soak-intro-r2/`.
+- **VFX family split:** 19 explosion/weapon picture methods move to two family modules with body
+  parity and scheduling/lifetime retained in VFX. The focused batch's Gyre intensity mismatch was
+  a stale assertion against authored units; the test now checks both authored and canonical
+  Three-light values. The two-case arsenal suite passes; production gain is unchanged. This is
+  source organization, with no startup or rendering performance gain claimed.
+
 - `57686d45cac` is the published 94-path connected implementation. `c7be545a6df` (published via
   `c1233cf7ad7`) fixes retained animated pivot freshness; 7 native cases and 29 guards pass, with
   no FPS gain claimed. `84f0fd8a230` makes B0's first-15 tracker instruction exclusive and preserves

@@ -244,6 +244,19 @@ Unknown root confirmation dialogs also remain genuine blockers; only the recogni
 dialog is exempted. Eighteen focused prompt cases pass without increasing the 15-second bound.
 This preflight failure supplies no soak, resource or recovery evidence.
 
+The normal full-duration run on `c6dc3ea137e4` completes 51 save/load/trade cycles over
+30.2 minutes, same-authored-mesh context recovery and the 120-second flight tail. There are no
+page, console, GL or network errors; the earlier incomplete-plan and buffer-resize failures do
+not recur. The aggregate still fails: post-GC heap grows 628,628,364 to 953,614,032 bytes,
+renderer geometries 2273 to 3076 versus scene-reachable unique geometries 1888 to 1912, and
+performance misses the frame budgets. Available disposal queues are empty at the checkpoints;
+the counts do not identify the retaining owner. Three opening warnings reproduce competing
+stepped snapshot-fence writers. Opening publication now retires the parked regular writer and
+owns the fence through commit; five actual-packer lifetime cases pass. Normal quit reports
+`achievements-mirror-failed`. A separately reproduced absent-store case now permits locally
+durable achievements to close while genuine server failures still veto; 14 achievement cases
+pass. Public close and a short matched heap capture are next; M8 and performance remain open.
+
 **M9 — Load less, load later.** 28 MB of minified JS in the eager closure (`scripts/build-bundle.mjs`,
 esbuild splitting): lazy-load per mode and per screen; make `modelTruthCensus.generated.js` and
 `en-US.generated.js` fetched JSON instead of chunk payload; move `ruckusMeshData/*.js` (3.4 MB of mesh
@@ -303,6 +316,14 @@ Current extraction: `d309751297b3` moves the six shadow-depth staging methods in
 The focused setting-enable case, 28 admission cases, two retirement cases and 10 real-renderer
 import cases pass. This is a bounded M13 step; the size target and current ordinary-route checks
 remain open.
+
+Explosion presentation and weapon-impact pictures now have two additional family modules,
+moving 19 methods while VFX retains pools, subscriptions, scheduling and lifetime. The moved
+bodies match their originals after random-callback normalization. The focused explosion/weapon
+batch exposed one Gyre assertion in authored rather than converted Three-light units; it now
+checks both canonical values and the complete two-case arsenal suite passes. No production light
+gain changed. Source preloads include the new families; full bundle/baseline qualification is
+still the next integrated batch, not a claim supplied by this extraction alone.
 
 The current phase makes template instantiation and detached-object/place teardown use their
 canonical stepped implementations for synchronous callers too. Synchronous abandonment cleanup
