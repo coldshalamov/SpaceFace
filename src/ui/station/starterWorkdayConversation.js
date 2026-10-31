@@ -38,6 +38,11 @@ function isLive47ARecord(mission) {
       return mission.campaign47aBeat === 1
         && mission.type === 'patrol_clear'
         && p.bookScene === 'infested_hauler'
+        && p.furnaceWorksiteVersion === 1
+        && p.clearCount === 4
+        && p.mitesNeeded === 4
+        && p.furnaceFeedsNeeded === 3
+        && mission.objectiveTarget === 4
         && mission.destStationId === 'station_ceres'
         && mission.destSectorId === 'sector_ceres_belt';
     default:
@@ -58,13 +63,6 @@ function live47AHandback(state) {
   const station = destStationName(mission.destStationId);
   const sector = contractSectorName(mission, '');
   if (station === 'destination' || !sector) return null;
-
-  // The canonical B1 furnace card is a two-part physical work order. The generic recap for
-  // patrol_clear still calls repair mites "hostiles" and omits its ore-pod disposal leg, so
-  // hand back its authored card/receiving location and let the Mission Log brief carry details.
-  if (mission.storyTag === 'campaign47a:b1:infested') {
-    return `47-A keeps its own account. The open card is “${title},” bound for ${station}, ${sector}. Read its brief in Mission Log for the work order, then Track that card when you’re ready.`;
-  }
   if (!objective) return null;
 
   return `47-A keeps its own account. The open card is “${title} — ${objective},” bound for ${station}, ${sector}. Track that card in Mission Log when you’re ready.`;

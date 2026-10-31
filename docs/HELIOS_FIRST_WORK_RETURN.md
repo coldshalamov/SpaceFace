@@ -49,14 +49,14 @@ never accepts or tracks it, changes another pin, or advances 47-A.
 The handback only recognizes B0 recovery, the current B1 sealed-alloy delivery, and the
 current B1 infested-hauler detail. Thus the already-live B0 card first points to the marked
 rock, then Helios after the sample is aboard; the Tethys delivery route appears only while
-that B1 contract is active. The furnace detail is handed back by its live card title and
-Ceres receiving berth, not the shared generic patrol counter (which mislabels mites as
-hostiles and omits the ore-pod disposal leg). Kessler directs the player to its authored
-Mission Log brief for the complete physical work order.
+that B1 contract is active. The furnace detail now uses the corrected shared work-order recap: four marked
+repair-mite sites and three marked ore pods, with CR-FEED receipts and losses shown
+separately. Kessler names its Ceres receiving berth without inventing a phase or pay.
+The live worksite owner still chooses the current target; neither leg is forced first.
 The Scale 4 interval has no active 47-A contract to hand back, and legacy, completed,
 malformed, missing, or ambiguous records keep the generic board line. `test/starter-story-handback.test.mjs`
 checks those boundaries, a foreign or stale pin, the actual mission-owner B0 waypoint
-projection before and after recovery, the furnace-owner objective mismatch, no mutation,
+projection before and after recovery, the furnace-owner objective and independent cargo ledger, no mutation,
 and active-local-ticket precedence.
 Combined with the existing Kessler conversation suite,
 the focused Kessler, board, route, and worker-wire checks pass 62/62; this is not a
@@ -67,3 +67,8 @@ imports, and 12/12 unchanged Mission Log contract/failure regression tests pass.
 The unrecovered B0 line names the immediate marked-rock recovery and the later
 Helios delivery; after recovery it names delivery only. Original pending-payment,
 authorization, mass terms and receiving-berth checks remain unchanged.
+
+The furnace reader follow-through passes the complete 236-test opening set, plus
+six imports and 12 unchanged Mission Log tests. Production intake, loss and
+settlement seams cover partial cargo pay and all-lost zero cargo pay. Rendered
+control-input and full Continue acceptance remain open.

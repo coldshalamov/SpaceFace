@@ -244,3 +244,20 @@ that shared reader with the existing furnace focus remains an explicit next
 SF-SECTOR-COHERENCE action, not a claimed fix. **232 opening tests, six production
 imports and 12 unchanged Mission Log regression cases pass.** No rendered-route,
 normal-input, full Continue or performance acceptance follows from these checks.
+
+### Ceres work-order reader follows the actual physical contract
+
+The previously recorded furnace-recap gap is now corrected for the exact authored
+version-1 work order. The shared objective and Kessler handback name the marked
+repair-mite sites and the marked ore pods, showing cleared sites, CR-FEED receipts
+and losses independently. They neither label mites generic hostiles nor imply that
+lost cargo was received or paid. Either leg can progress first; the existing worksite
+focus still owns target and phase selection. Malformed counts remain unavailable
+rather than becoming fabricated progress, and the B0 recovery-before-return fix stays.
+
+Production author, intake, loss and settlement tests demonstrate the real partial
+and all-lost outcomes without adding a mission owner. **236 focused tests, six
+production imports and 12 unchanged Mission Log tests pass.** This closes the scoped
+reader defect at the component layer, not SF-SECTOR-COHERENCE as a whole: rendered
+Ceres arrival, physical interventions, dialogue readability and full Save/Continue
+remain acceptance work. No actor, asset, reward or physics writer changed.

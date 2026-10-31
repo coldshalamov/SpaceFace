@@ -145,13 +145,13 @@ test('B1 after Scale 4 points to Ceres only when the current furnace mission is 
   assert.equal(mission.type, 'patrol_clear');
   assert.ok(mission.id);
   assert.match(text, /Furnace Detail — the infested hauler/);
-  assert.match(text, /Read its brief in Mission Log for the work order/);
+  assert.match(text, /Clear the marked repair-mite sites \(0\/4\)/);
+  assert.match(text, /tow or fling the remaining marked ore pods into CR-FEED \(0\/3 received; 0 lost\)/);
   assert.match(text, /Ceres Refinery, Ceres Belt/);
   assert.doesNotMatch(text, /Tethys Trade Hub/);
-  assert.doesNotMatch(text, /Clear 0\/4 hostiles|repair-mite sites/);
+  assert.doesNotMatch(text, /Clear 0\/4 hostiles/);
 
-  // The canonical worksite actually has a clearance phase followed by ore-pod hauling;
-  // don't quote the shared patrol counter, which calls mites "hostiles" and omits the haul.
+  // The shared card names both legs, while the live waypoint focus retains the current actor/phase.
   const ownerState = {
     missions: { active: [mission] }, entityList: [],
     world: { alienEcology: { sites: { closed_refinery: { deadFauna: {} } } } },
@@ -159,7 +159,7 @@ test('B1 after Scale 4 points to Ceres only when the current furnace mission is 
   const worksiteWaypoint = missions._missionWaypoint.call(missionOwnerFor(ownerState), mission);
   assert.match(worksiteWaypoint.reason, /four marked repair-mite sites/);
   assert.match(worksiteWaypoint.reason, /frag blasts/);
-  assert.match(objectiveText(mission), /Clear 0\/4 hostiles/);
+  assert.equal(objectiveText(mission), 'Clear the marked repair-mite sites (0/4); tow or fling the remaining marked ore pods into CR-FEED (0/3 received; 0 lost)');
 });
 
 test('Scale 4 interstitial, legacy, completed, malformed, or missing mission falls back instead of inventing a route', () => {
@@ -169,6 +169,10 @@ test('Scale 4 interstitial, legacy, completed, malformed, or missing mission fal
     { ...authorB1Mission(), storyTag: 'campaign47a:b1:honest_work', campaign47aBeat: 1 }, // legacy B1
     { ...authorB1Mission(), type: 'salvage_retrieval' },
     { ...authorB1Mission(['alloy_run', 'scale_4']), destSectorId: 'sector_tethys_junction' },
+    (() => {
+      const furnace = authorB1Mission(['alloy_run', 'scale_4']);
+      return { ...furnace, params: { ...furnace.params, furnaceWorksiteVersion: 0 } };
+    })(),
     { ...installB0Mission(), id: '' },
     { ...installB0Mission(), id: undefined },
   ];

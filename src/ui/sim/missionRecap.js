@@ -58,6 +58,51 @@ export function contractSectorName(m, fallback) {
   return sector && sector.name ? sector.name : fallback;
 }
 
+const B1_FURNACE_CLEAR_COUNT = 4;
+const B1_FURNACE_POD_COUNT = 3;
+
+function isAuthoredB1FurnaceWorkOrder(m, p) {
+  return m.storyTag === 'campaign47a:b1:infested'
+    && m.type === 'patrol_clear'
+    && m.destSectorId === 'sector_ceres_belt'
+    && m.objectiveTarget === B1_FURNACE_CLEAR_COUNT
+    && p.bookScene === 'infested_hauler'
+    && p.furnaceWorksiteVersion === 1
+    && p.clearCount === B1_FURNACE_CLEAR_COUNT
+    && p.mitesNeeded === B1_FURNACE_CLEAR_COUNT
+    && p.furnaceFeedsNeeded === B1_FURNACE_POD_COUNT;
+}
+
+function safeWorksiteCount(value, max, missingIsZero = false) {
+  if (value === undefined && missingIsZero) return 0;
+  if (!Number.isSafeInteger(value) || value < 0 || value > max) return null;
+  return value;
+}
+
+function b1FurnaceObjectiveText(m, p) {
+  const cleared = safeWorksiteCount(m.objectiveProgress, B1_FURNACE_CLEAR_COUNT);
+  const clearance = cleared === null
+    ? 'Repair-mite clearance record unavailable'
+    : cleared === B1_FURNACE_CLEAR_COUNT
+      ? `Repair-mite sites clear (${cleared}/${B1_FURNACE_CLEAR_COUNT})`
+      : `Clear the marked repair-mite sites (${cleared}/${B1_FURNACE_CLEAR_COUNT})`;
+
+  if (p.furnaceLedgerInvalid === true) {
+    return `${clearance}; ore-pod work paused — the saved cargo ledger is invalid`;
+  }
+
+  const received = safeWorksiteCount(p.furnaceFeeds, B1_FURNACE_POD_COUNT, true);
+  const lost = safeWorksiteCount(p.furnaceLosses, B1_FURNACE_POD_COUNT, true);
+  if (received === null || lost === null || received + lost > B1_FURNACE_POD_COUNT) {
+    return `${clearance}; ore-pod ledger unavailable`;
+  }
+
+  const podLedger = received + lost === B1_FURNACE_POD_COUNT
+    ? `ore-pod leg accounted (${received}/${B1_FURNACE_POD_COUNT} received; ${lost} lost)`
+    : `tow or fling the remaining marked ore pods into CR-FEED (${received}/${B1_FURNACE_POD_COUNT} received; ${lost} lost)`;
+  return `${clearance}; ${podLedger}`;
+}
+
 /** Build a human-readable objective description from the mission instance. */
 export function objectiveText(m) {
   const p = m.params || {};
@@ -82,6 +127,10 @@ export function objectiveText(m) {
       ? 'Deliver the 47-A sample to Helios Station'
       : 'Recover the 47-A sample from the marked rock, then deliver it to Helios Station';
   }
+  // This authored v1 card has two independent physical legs, not generic hostile kills.
+  // Read only the mission owner's progress/counters: the live worksite focus remains the
+  // authority for which actor or lot to target and for the current waypoint phase.
+  if (isAuthoredB1FurnaceWorkOrder(m, p)) return b1FurnaceObjectiveText(m, p);
   switch (m.type) {
     case 'cargo_delivery': {
       const serviceClass = `${m.originChoiceId || ''} ${m.title || ''} ${m.mapLabel || ''}`.toLowerCase();

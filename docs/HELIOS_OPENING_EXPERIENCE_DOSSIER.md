@@ -81,16 +81,24 @@ active B0 recovery, B1 alloy delivery or B1 furnace-detail record after the loca
 book settles. It preserves player-owned pins and does not advance or accept story
 work. The shared Mission Log objective now puts B0 recovery before return; it reads
 the actual sampleRecovered field rather than quoting a potentially stale waypoint.
-Canonical installer/contract-author tests verify the actual records used.
+For the B1 furnace detail, the shared objective now names both independent work legs:
+clear the four marked repair-mite sites and account for the three marked ore pods,
+showing CR-FEED receipts and losses separately. It only recognizes the authored
+version-1 Ceres work order, uses mission-owned counters without calling the mutating
+worksite focus, and leaves current target/phase selection with the live waypoint owner.
+Kessler now quotes the same corrected objective for that exact authored record; legacy
+or malformed records still fall back instead of inventing a route.
 
-The furnace contract still inherits a generic patrol recap that calls repair mites
-hostiles and omits the subsequent ore-pod leg. Kessler deliberately uses that
-card's authored title and Ceres destination, referring to its brief rather than
-quoting the misleading counter. This is the next specific SF-SECTOR-COHERENCE
-reader gap: reconcile the shared recap with existing furnaceWorksiteFocus without
-adding a second mission phase owner. Scale 4's between-contract state still falls
-back to general guidance; no invented active contract or unlock fills the gap.
+The recap makes no claim that received pods equal payment or that accepting the
+contract settles it. The authored owner records three pod outcomes: received pods
+earn proportional cargo pay, destroyed pods count as losses, and three accounted
+pods plus four clear sites advance even when all cargo is lost. The player-facing
+line reports those independent facts without forcing an order between the two legs.
+Scale 4's between-contract state still falls back to general guidance; no invented
+active contract or unlock fills the gap.
 
-232 opening tests, six imports and 12 unchanged Mission Log regression cases pass.
-This does not close the ordinary-control Wasp sample experiment, rendered dialogue
-readability, full Continue, or the remaining furnace-reader acceptance gap.
+The focused author/counter/settlement, B0/handback and starter-workday reader suites
+pass 45/45 across four test files; the new seam test uses the real CR-FEED intake event,
+missions listener, loss recorder, and worksite settlement owner. This does not close
+the ordinary-control Wasp sample experiment, rendered dialogue readability, full
+Continue, or default-route visual acceptance.
