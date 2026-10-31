@@ -1,0 +1,102 @@
+name: Iron Kraken native character
+
+on:
+  pull_request:
+    paths:
+      - 'src/data/ironKraken.js'
+      - 'src/data/enemies.js'
+      - 'src/data/encounters/capital-boss*'
+      - 'src/data/encounters/capital-boss/**'
+      - 'src/combat/capitalBoss*'
+      - 'src/combat/ironKraken.js'
+      - 'src/combat/damage.js'
+      - 'src/render/ironKraken*'
+      - 'src/render/visualFactory.js'
+      - 'src/render/visualOverrides.js'
+      - 'src/render/partsLibrary.js'
+      - 'src/render/renderer.js'
+      - 'src/render/illustratedSurface.js'
+      - 'src/render/visualCullRadius.js'
+      - 'src/systems/swarm*'
+      - 'src/systems/survivalWave*'
+      - 'src/systems/waveMaterialization.js'
+      - 'src/systems/capitalBoss*'
+      - 'src/render/vfx.js'
+      - 'src/missions/capitalBossSpawn.js'
+      - 'test/iron-kraken*'
+      - 'test/fixtures/iron-kraken*'
+      - 'scripts/inspect-iron-kraken.mjs'
+      - 'scripts/lib/gameServer.cjs'
+      - 'scripts/lib/load-playwright.mjs'
+      - '.github/workflows/iron-kraken.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: iron-kraken-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  native-character:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+          filter: blob:none
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /src/
+            /vendor/
+            /test/
+            /scripts/lib/
+            /scripts/inspect-iron-kraken.mjs
+            /assets/wreck-court/
+            /package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Link the shipped runtime libraries
+        run: |
+          mkdir -p node_modules/three node_modules/@dimforge/rapier3d-compat
+          printf '%s' '{"name":"three","type":"module","exports":{".":"./three.module.js","./addons/*":"./addons/*"}}' > node_modules/three/package.json
+          cp vendor/three.module.js vendor/three.core.js node_modules/three/
+          ln -s ../../vendor/addons node_modules/three/addons
+          printf '%s' '{"name":"@dimforge/rapier3d-compat","type":"module","exports":"./rapier.mjs"}' > node_modules/@dimforge/rapier3d-compat/package.json
+          ln -s ../../../vendor/rapier3d-compat/rapier.mjs node_modules/@dimforge/rapier3d-compat/rapier.mjs
+      - name: Install focused runtime dependencies
+        run: |
+          npm install --prefix "$RUNNER_TEMP/iron-kraken-runtime" --ignore-scripts --legacy-peer-deps --no-audit --no-fund three.quarks@0.17.1 quarks.core@0.17.1 three-mesh-bvh@0.9.15
+          ln -s "$GITHUB_WORKSPACE/node_modules/three" "$RUNNER_TEMP/iron-kraken-runtime/node_modules/three"
+          for dependency in three.quarks quarks.core three-mesh-bvh; do
+            ln -s "$RUNNER_TEMP/iron-kraken-runtime/node_modules/$dependency" "node_modules/$dependency"
+          done
+      - name: Focused behavior and resource tests
+        run: node --test test/iron-kraken*.test.mjs test/fb-024-swarm-capital-champions.test.mjs test/capital-boss-score-contract.test.mjs test/capital-boss-save-roundtrip.test.mjs
+      - name: Install the isolated browser
+        run: |
+          npm install --prefix "$RUNNER_TEMP/iron-kraken-browser" --ignore-scripts --no-audit --no-fund playwright@1.61.1
+          ln -s "$RUNNER_TEMP/iron-kraken-browser/node_modules/playwright" node_modules/playwright
+          node "$RUNNER_TEMP/iron-kraken-browser/node_modules/playwright/cli.js" install --with-deps chromium
+      - name: Verify fixed-frame video encoder
+        run: |
+          if ! command -v ffmpeg >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y --no-install-recommends ffmpeg
+          fi
+          ffmpeg -version
+          ffmpeg -hide_banner -loglevel error -f lavfi -i color=size=16x16:rate=1 -frames:v 1 -c:v libvpx-vp9 -f null -
+      - name: Render real character poses and score motion
+        run: node scripts/inspect-iron-kraken.mjs --motion-seconds=24
+      - name: Publish native screenshots and counters
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: iron-kraken-native-${{ github.run_id }}
+          path: .devshots/iron-kraken/
+          include-hidden-files: true
+          if-no-files-found: warn
+          retention-days: 7
