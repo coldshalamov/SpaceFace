@@ -1,43 +1,43 @@
 <!-- LIFETIME: ACTIVE_PROGRAM -->
-# ORRERY handoff — continue the frontend pass, more granular and more attentive
+# ORRERY handoff — historical frontend-pass notes
 
-Written 2026-09-23 at the end of a long ORRERY session. A fresh session picks the pass up from here.
-Direction lives in [`ORRERY.md`](./ORRERY.md) (owner authority); this file is the state of play, the
-method that worked, the traps that cost rounds, and a ranked, screen-by-screen backlog.
+> **2026-10-30 (owner): the pass below produced screens judged sloppy; its numeric approvals are
+> historical context, not current acceptance criteria.** Read [`STATION_STANDARD.md`](./STATION_STANDARD.md)
+> and the amendment at the top of [`ORRERY.md`](./ORRERY.md). The no-border, no-table, arc-for-everything,
+> and ≥ 8/10 rules below are retired. The backlog, old scores, multi-viewport quotas, and required
+> signature-interaction rules are historical, not active work or quality verdicts. Use the current
+> assignment and judge the screen's actual player experience.
+
+Written 2026-09-23 at the end of an ORRERY session. It records status, implementation notes, and
+ideas from that pass; it does not assign current work. Direction and ownership come from the active
+Finish assignment and current visual guidance.
 
 ## 0. The job in one paragraph
 
-The owner does not read code. They want every screen to read as a 2026 A-list game interface: an
-instrument of light, not a web page. That means rings, arcs, scales and leaders over borderless
-glass; warm bone at rest; one amber Hand on the current choice; ice only for data in motion; red
-only for threat; produced art for objects. It must never be recognisable as CSS: no cards, pills,
-table rows, bordered boxes or link underlines. Each screen passes only when an independent critic
-subagent scores it **>= 8/10 overall with no axis below 7**, looking at real screenshots at 1920x1080
-**and** 1280x720. Commit every round. Do not stop at "good enough". The owner's word for the gap is
-"cheap and vibe-coded"; the bar is "clean, expensive, a cockpit from the future".
+This paragraph records the original 2026-09-23 direction; it is not current acceptance guidance. Its
+borderless-only layout and numeric critic threshold were retired by the owner amendment above. Preserve
+useful visual intent where it serves the screen, and follow the current assignment and Station Standard
+guidance for present work.
 
-## 1. Read first (in this order, then stop reading and build)
+## 1. References from the original pass
 
-1. [`ORRERY.md`](./ORRERY.md): palette law (§3), the element catalogue (§4), the per-screen
-   intent (§6). §6 is the target for every screen below.
-2. [`docs/UI_VISUAL_ITERATION.md`](../../docs/UI_VISUAL_ITERATION.md): the bench loop.
-3. `src/ui/orrery/`, the library (see §3 here). Read `hullSchematic.js`, `stationLayouts.js` and
-   `marketLayouts.js` end to end. They are the reference compositions.
-4. The memory note `orrery-is-the-frontend-authority` (loaded automatically in this project) has the
-   same traps with history.
+The earlier pass consulted [`ORRERY.md`](./ORRERY.md), [`docs/UI_VISUAL_ITERATION.md`](../../docs/UI_VISUAL_ITERATION.md),
+and existing modules in `src/ui/orrery/`. They remain useful technical references where they match
+the current screen and assignment. The per-screen ideas and visual recipes below are optional, not
+requirements to reproduce.
 
-## 2. Status board (2026-09-28)
+## 2. Historical status board (2026-09-28)
 
-Since 2026-09-25 late the bar is the OWNER'S: every surface must also answer (a) no thin wireframe / generic
-elements and (b) one distinct signature interaction (`design/archive/frontend-OVERHAUL_PLAN_2026-09-25.md` §1, §2.1 —
-a band counts as body only at >= 2:1 on the glass, measured). Screens marked "letter" passed ORRERY before
-that bar existed and are re-scored after the weight sweep. Live per-surface status: the plan's §4 table.
+The following status and criteria are preserved as historical context, not current assignments or
+acceptance requirements. The old thin-wire/signature-interaction score gate and measured band threshold
+were retired by the owner amendment above. Use the active Finish board for current status and scope.
+The table's action language records what was proposed at that time; it is not a live task list.
 Latest critic report per surface: `design/frontend/review/reports/`. 31 surfaces approved — Wave 2
 fully APPROVED (Ship 8.2, Range 8.3, Automation 8.0, Replay 8.1, Clips 8.0; RG7 closed). Wave 3 audit done
 2026-09-28 (drill 3.0 / base 3.5 / sandbox 4.5 / loading 4.5†; orrery-flight 1.2 staging / flight 6.7 /
 power-rail 7.1 / comms 4.2 / wingman 6.3); w3b build running (seeds + sites paint, HUD next).
 
-| Screen | State | Last score | Composition file | What is left |
+| Screen | Then-current state | Historical score | Composition file at the time | Notes recorded then |
 |---|---|---|---|---|
 | Flight HUD (bench `orrery-flight`) | r1 ALL NOT PASSED: orrery 7.8 / flight 7.0 / rail 7.6 / comms 5.0 / wingman 7.7 (hud1-r1 + hud2-r1); recall-A running, recall-B queued | 7.8/7.0/7.6/5.0/7.7 | `flightPreview.js`, `hudSkin.js`, `hudAdapter.js`, `powerRail.js`, `commsRadial.js`, `wingmanRadial.js` | Recall-A: mount-time + T1-T7 + R1-R7 + C1-C6 + radar unit. Recall-B next: comms fan + wingman W-F. Fresh 1920 twins with mtime verification after. **2026-10-04: the Cluster's speed readout is now the Speed Dial** (`speedDial.js` replaced the hairline scale + loose numeral; owner brief "a real gauge that shifts colour with speed"). Not critic-scored yet: shoot `orrery-flight` and `flight` at 1920 and 1280, drive it with `window.__BENCH_CLUSTER.update({speed, speedRef, speedMax, boosting})` via `scripts/ui-bench-eval.mjs orrery-flight`. **2026-10-05: the comms fan and the wingman radial were restyled to the ORRERY language** (`commsLayouts.js`, `wingmanLayouts.js`: one feathered shade pool, arcs/words of light, bare numerals, bead-and-halo lamps, one Hand — the pointer's key is the only lit one; the per-frame drop-shadow filters are gone); the radar scope + contact roster were rebuilt the same day (chart-map pass). None of the four is critic-scored yet — re-shoot `comms-radial` / `wingman-radial` and send to the recall-B critic |
 | Title / main menu | **APPROVED 8.3** (frontdoor-r2) | 8.3 | `arcRail.js` (`place`, `clearOf`, `freeTrack`), `screenLayouts.js`, `mainMenu.js` | Done; Pause unregressed |
@@ -59,7 +59,7 @@ power-rail 7.1 / comms 4.2 / wingman 6.3); w3b build running (seeds + sites pain
 | Loading | r1 7.7 NOT PASSED (wave3-sbld-r1; nearest to passing). **The r1 stills were the parked 2026-09-29 build, not master** (hero 96px numeral beside the ring, lattice field, ring-masked tableaux live only in `0d93c19a5`); master has the worker ring at 240px + the ELAPSED chrome. **2026-10-05:** the percentage is now Archivo 300 28px phosphor in fixed digit cells (worker + SVG fallback) | 7.7 | `bootRing.js`, `bootRingWorker.js`, `loadingPresenter.js`, `loadingSignalTableaux.js`, `loadingTerminalArt.js`, `styles/boot-instrument.css` | Owed vs r1: upper-field light (the baked video is the field now — decide whether it stays full-bleed or is ring-masked), a hero-scale numeral if the owner wants one, a leader tick ring→numeral. Re-shoot at 1920/1280 and send to the critic |
 | Drill / Base / Sandbox | **2026-10-05 landed (not re-scored):** Drill = the parked Wave 3 chrome (arc gauges, staged unclaimed rock + one amber Stake-claim key, labelled Log key; theater check holds); Sandbox = the ladder (spine, ticks, faded scroll edge, N-setups foot counter) + a foot scrim so the pinned Launch key never covers text; Base = the exit keys (chart / Close / Dispatch) now stand at the plate bottom at every height (they used to scroll away). Last scores: Base r1 7.0 empty / 6.0 populated, Sandbox r1 6.4, Drill r3 pending | 7.0/6.0/6.4 | `asteroidScreen.js` + `styles/asteroid-ops.css`, `base.js`, `sandbox.js` + bench seeds | Re-score all three. Base still needs: a Dispatch Lamp Key state, selectable doctrines, a body plate behind the stat rows. Drill: the tool palette is still boxed keys; the cursor lens is a card |
 
-## 3. The library and the composition sheets
+## 3. The library and composition sheets (historical examples)
 
 - `tokens.js`: `--dp-hand`, `--dp-ice`, `--dp-danger`, `.orr-svg` stroke classes. `injectOrrery(doc)`.
 - `svg.js`: `svg()`, `polar()` (0° = up, clockwise), `arcD()`, `ticksD()`, `circularText()`
@@ -82,18 +82,14 @@ power-rail 7.1 / comms 4.2 / wingman 6.3); w3b build running (seeds + sites pain
   station arts, crests. Tools in `tools/art/` (Blender 5.1, Freestyle `render_jig.py` → `jig_glyph.py`).
   Codex image generation works (see the memory note for the exact command).
 
-The shared grammar every list-and-reading screen now follows:
-- **The list is a Ladder.** One ruled rail, a tick per row, the shared notched Hand
-  (`clip-path: polygon(0 0, 100% 50%, 0 100%, 26% 50%)`) on the chosen row. Bone at rest; amber
-  while focus or the pointer is in the list.
-- **The reading has no panel.** It sits on a pool of shade with soft edges, its figure in warm white,
-  its terms as a ledger of caps and values in fixed columns.
-- **The commit verb** is a bone word at 22px wide-800 caps that turns amber with an underline where
-  the player reaches it.
-- **Small verbs** are `› WORD PRICE` lines, never pills.
-- **A preview** shows its change in ice: a ghost arc, `18t → 20t`, a one-line proposed fit.
+The earlier pass used a shared ladder, shade pool, and emphasized commit verb on several screens.
+Those patterns may still be useful, but lists, panels, tables, buttons, and previews should fit each
+screen's content and interaction rather than follow a common recipe.
 
-## 4. The loop (exactly what worked)
+## 4. Earlier iteration workflow (historical)
+
+The commands below were used during that pass. Follow the current Finish Program's direct-check
+guidance instead of treating this workflow, critic score, shot size, or commit cadence as a gate.
 
 1. Shoot: `node scripts/ui-bench.mjs --shot=<id>`, and again with `--viewport=1280x720`. Open the PNG
    yourself (`.devshots/ui-bench/<id>.png`) and read its measure lines: "ON TOP OF", "CUT OFF",
@@ -106,11 +102,9 @@ The shared grammar every list-and-reading screen now follows:
    `economy:tradeCompleted` to make the station refresh.
 3. Fix in the screen's composition sheet (preferred) or its markup builder. Keep every class, role
    and attribute that checks and tests read (grep `test/` and `scripts/` before renaming anything).
-4. Critic: send the shots to a critic subagent (template in §6). Iterate until it scores ≥ 8 with no
-   axis < 7. A skin caps at 6.5–7.5. When the critic says "the old panel with its box removed",
-   rebuild on a geometry, as Shipworks was rebuilt on the jig.
-5. Verify, then commit with exact paths (`git add -- <paths>` then `git commit -m … -- <paths>`), read
-   `git show --stat HEAD`, and push. One commit per round.
+4. Earlier reviews used independent visual feedback and numeric scores. Those thresholds and round
+   structure are retired; address concrete comprehension, control, accessibility, or visual defects.
+5. Current verification and publication rules are in the repo instructions and Finish Program.
 
 Checks per area (run the ones the change touches):
 - Station runtime checks need an **isolated store dir**: `SPACEFACE_PLAYER_STORE_DIR=<a temp dir>`. An
@@ -123,11 +117,15 @@ Checks per area (run the ones the change touches):
   chart notes, and shipworks 3D occlusion.
 - `check-station-ui-temporal-stability.mjs` stalls (ledger D33). Don't wait on it.
 
-## 5. Traps (each one cost a round or more)
+## 5. Implementation gotchas from the original pass
 
-- **One amber.** The Hand is the only amber at rest. Watch for kit amber leaking through: link
-  underlines (`.sf-entity-link`), `k-signal` tags, lamp dots, active-tab underlines, filled lamp keys.
-  Drawbacks are not threats, so never draw them red.
+The code-level observations below came from that pass and may still help when the same implementation
+pattern appears. The visual prescriptions are historical; current player clarity and the owner
+amendment govern visual choices.
+
+- **Historical palette note.** Earlier screens sometimes used amber too broadly or threat colors
+  ambiguously. Diagnose the actual hierarchy and semantics before changing a surface; this is not a
+  one-accent or one-control-per-screen rule.
 - **Specificity and order.** A later rule of equal specificity wins. A `:not([hidden])` on the base
   rule beats your media-query override. Double the class (`.a.a`) rather than guessing.
 - **Kit leaks.** `fh-key` legend keys widen `font-variation-settings` on hover, which moves hitboxes;
@@ -174,65 +172,24 @@ Checks per area (run the ones the change touches):
   deeper than the deepest rung inside its own word's run; break words at their space into two
   lines. Three fixed rows collided every round.
 
-## 6. Critic protocol (revised 2026-09-25 — the version that converges)
+## 6. Historical critic protocol (retired)
 
-Five to eight rounds per tab moved every score by 0.1–0.3. Three causes, all in the protocol: a fresh
-critic each round re-ranked ten new items from zero (it could not see movement); the ask was "ten
-ranked fixes" so ten came back every time; and the six craft items got landed while the one
-structural item got skipped. The revised loop:
+The September 2026 pass used repeated critic rounds and numeric axes. That experiment produced
+little movement and is retained only to explain the old reports in the scratchpad. Current reviews
+should identify concrete player-facing issues; there is no required critic, score, or round count.
 
-1. **One critic per tab, kept alive.** Spawn it once with the shared brief
-   (`scratchpad/critic-brief.md`: the law in short, the axes, the artefacts to ignore, the report
-   format). For the next round SEND IT the new stills with `SendMessage` ("your nine items — here are
-   the stills; score the movement") instead of spawning a new one. It keeps its own numbers.
-2. **The ask.** After the axis scores and the item-by-item check of the previous list: (A) THE ONE
-   STRUCTURAL CHANGE that carries the tab from its score to 8.0 — one paragraph, concrete; (B) the
-   FEWEST craft items (≤ 5) so no axis is under 7.0. Not a list of ten.
-3. **Land (A) first**, then (B). Shoot 1920 and 1280 plus the states. Send back. One persistent
-   round per tab; if it is still under 8, record the score and the critic's named structural ask in §2
-   and move the door — the rest of the backlog is owed too.
-4. Tell the critic what is a bench artefact (the foot toast, CYCLE 0001, frozen motion, the hold at
-   46%) and never re-shoot for it: it scores the stills it is given.
 
-Reports live beside the session scratchpad as `<tab>-r<n>-critic.txt`.
+## 7. Historical backlog and status notes
 
-## 7. Ranked backlog — do these in order, each to a persistent-critic pass
+The status table and backlog in this document record the state of work in September 2026. Their scores,
+"owed" items, phase ordering, and references to agents or critics do not describe current assignments.
+Use the active Finish board and current implementation when checking present status.
 
-**2026-09-26 update (supersedes the order below where they differ):** New Game APPROVED 8.2. The station
-weight sweep landed (every tab's rings, tracks and spines measured >= 2:1; 15 commits 73b5a87aa…138988b43),
-so the five station tabs + shell + Title + Pause + Crucible are due a re-score under the owner criteria. In
-flight: Shipworks r16, Settings/Credits r2 (critics); Save/Load/Game Over, Codex/Mission Log,
-Research/Achievements, Chart, Help (builders). Next to dispatch: Footprint (`scratchpad/footprint-brief.md`),
-THE SHIP, Range, Automation, Replay/Clips, then Asteroid Works/Drill/Base, Loading, flight HUD weight
-(perf-gated). Codex imagen is locked until 2026-09-29; generated art until then is Blender (see the Chart row).
 
-Scores late on 2026-09-25: **Ledger 8.1, Factions 8.0, Missions 8.07, Industry 8.1, Bar 8.1 — all PASSED**;
-Shipworks 7.3 (r12, r13 with a builder); Title 7.1 / Pause 6.7 / New game 6.4 were round-1 scores before
-their rebuilds (r2 in critic). Critic reports: `scratchpad/<tab>-r<n>-critic.txt`, `frontdoor-r<n>-critic.txt`.
+## 8. Earlier working notes
 
-1. **Close the front door**: Title (8.1) and Pause (8.0) PASSED; New game r2 in critic.
-   Score Shipworks r13 with the Shipworks critic.
-2. (Done: the New Game launch key carries its word; the rebuild is in.)
-3. **Station motion.** Tabs arrive with a ring swing. Numerals roll with `createCounter` (credits,
-   prices, rewards). Labels resolve with `decrypt()` on arrival. The Missions tether carries an ice
-   pulse from the chosen row through the key into the origin; the Factions chords draw origin → crest
-   with the pulse, rivals last; the Ledger stem draws with settle and the purse sweeps on a receipt; the
-   Bar voice arc breathes with the line. All of it respects `html.sf-reduce-motion`.
-4. (Done 2026-09-25 late: Title, Pause and New game are rebuilt on geometries; see item 1.)
-5. **Meta** (Settings/Credits, Save/Load/Game over, Codex/Mission log, Research/Achievements) is with four
-   builder agents (shared brief `scratchpad/builder-brief.md`, each with its own composition module). Then
-   **Chart** (galaxyMap.js, 9.6k lines, canvas-drawn; its sector rings wear faction colours that collide with the
-   Hand's amber), Loading, THE SHIP, comms/radials/dialogs/toasts, Asteroid Works: each from §6 of ORRERY.md. Stills of title/pause/new-game/chart/ship at both sizes are in `.devshots/ui-bench/`.
-6. **2560×1440 is covered** by the shell's `zoom:1.25` rule; re-check the Missions tether and the
-   Shipworks verbs (both seated with `position:fixed` from page coordinates). Walks ran clean on
-   Missions and Industry on 2026-09-25 (42 / 46 controls, every picture changed; the "(unlabeled)"
-   rows are the bench's own hidden input, not a control).
-7. **Composited-contrast audit** of small type (`node scripts/ui-contrast.mjs --shot=<id>`).
-8. **Deferred by design, still owed:** Shipworks exploded schematic (needs part art) and the live
-   render framed by the ring; Factions RELATIONS detail as an unfold; the tape's left end dissolving
-   past the origin.
-
-## 8. Working rules that stay in force
+These notes reflect the repo workflow at the time of writing. Current repository instructions and
+the Finish Program supersede them.
 
 - Owner rules (`~/.claude/CLAUDE.md`): finish the task; never ask the owner to judge technical
   risk; report in plain language.

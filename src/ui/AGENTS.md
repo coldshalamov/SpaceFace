@@ -1,20 +1,26 @@
 # src/ui/ — Agent Notes
 
 DOM/CSS overlay. Reads state and emits gameplay intents. Narrow direct-write exception:
-UI/input-owned selection such as `state.player.targetId`. Root `AGENTS.md` §6 first.
-**ORRERY (`design/frontend/ORRERY.md`, `src/ui/orrery/`) over Deckplate (`src/ui/deckplate/`) is the live design system.**
-Every colour, size, duration, face, and instrument recipe on a player surface comes from `--dp-*`
-tokens (`src/ui/deckplate/tokens.js` + `src/ui/orrery/tokens.js`), the ORRERY instrument library
-(`src/ui/orrery/`), and the shared `.dp-*` / `.k-*` / `.orr-*` classes. Adding another token root is
-a defect. The active direction is [`../../design/frontend/ORRERY.md`](../../design/frontend/ORRERY.md)
-(handoff & lane status: [`../../design/frontend/ORRERY_HANDOFF.md`](../../design/frontend/ORRERY_HANDOFF.md)).
-`THE_BAR.md`, `ONE_PHOTOGRAPH.md`, and `FIELD_HARDWARE_PROGRAM.md` are superseded as direction (only
-their no-fake-CSS-material law and the `12px` type floor in `scripts/check-type-floor.mjs` still bind).
+UI/input-owned selection such as `state.player.targetId`. Read the root `AGENTS.md` first.
+The root operating agreement, architecture and active Finish assignment govern this subtree.
+Use [`../../design/frontend/STATION_STANDARD.md`](../../design/frontend/STATION_STANDARD.md) for current
+visual guidance and the amendment in [`../../design/frontend/ORRERY.md`](../../design/frontend/ORRERY.md)
+for the retained visual language. Their examples support design judgment; screen purpose, usable
+controls, accessibility and readable content take priority over a prescribed shape or treatment.
+Numeric critic gates and blanket bans on borders, tables or familiar controls are retired.
+
+Reuse `--dp-*` tokens (`src/ui/deckplate/tokens.js`, `src/ui/orrery/tokens.js`) and shared
+`.dp-*` / `.k-*` / `.orr-*` components where they fit, extending their canonical owners rather than
+stacking competing overrides. `THE_BAR.md`, `ONE_PHOTOGRAPH.md`, `FIELD_HARDWARE_PROGRAM.md` and
+`ORRERY_HANDOFF.md` provide historical context, not current assignments or acceptance gates.
+The 12px machine floor remains enforced by `scripts/check-type-floor.mjs`; it is a minimum,
+not a recommended size for every label. Station head, Market and Bar use `stationStandard.js`;
+this does not imply every tab or state has migrated or been accepted.
 
 Screen composition and responsive placement live in `src/ui/orrery/*Layouts.js` (and `src/ui/deckplate/screens.js`
-for legacy Deckplate placements). When narrow viewports squeeze a column, condense `Archivo`'s
-variable width (`"wdth" 82–100`) and letter-spacing (`.04–.08em`) rather than dropping below the
-`12px` type floor (`node scripts/check-type-floor.mjs`).
+for legacy Deckplate placements). On narrow viewports, reflow or wrap content before compressing
+type. Preserve readable glyph width, meaningful units and reachable controls; do not shrink text
+below the 12px floor to force a desktop composition into a smaller frame.
 
 ## Standing rules
 

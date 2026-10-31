@@ -345,6 +345,27 @@ function readGpuAndOpeningInPage() {
         [entry.id, entry.status, entry.type, entry.defId].filter((bit) => bit != null && bit !== '').join(':')
       ))
       : null,
+    openingPendingCount: Array.isArray(authored?.openingPending) ? authored.openingPending.length : null,
+    openingGatePending: Array.isArray(authored?.openingGatePending)
+      ? authored.openingGatePending.slice(0, 12).map((entry) => ({
+        id: entry.id ?? null,
+        status: entry.status ?? null,
+        type: entry.type ?? null,
+        defId: entry.defId ?? null,
+      }))
+      : null,
+    openingGatePendingCount: Array.isArray(authored?.openingGatePending) ? authored.openingGatePending.length : null,
+    flightReadyBlockers: Array.isArray(authored?.flightReadyBlockers)
+      ? authored.flightReadyBlockers.slice(0, 12).map((entry) => ({
+        kind: entry.kind ?? null,
+        role: entry.role ?? null,
+        id: entry.id ?? null,
+        layer: entry.layer ?? null,
+        type: entry.metadata?.type ?? null,
+        ownerRole: entry.metadata?.role ?? null,
+      }))
+      : null,
+    flightReadyBlockerCount: Array.isArray(authored?.flightReadyBlockers) ? authored.flightReadyBlockers.length : null,
     // The loading-shell cook ledger (src/render/pipelineReadiness.js): one row per awaited step.
     openingCookLedger: (() => {
       try {
@@ -714,6 +735,7 @@ function writeLaunchReport({ profile, trace, timeline, atFlight, atEnd, census, 
       ...(captureMetadata.launch.warmup ? [
         `Warm-up: first public Launch reached flight in ${captureMetadata.launch.warmup.launchToFlightMs} ms; `
         + `returned through Main Menu in the same Electron session.`,
+        'Cook ledger: cumulative across the warm-up and measured Launch; individual entries are not segmented by launch.',
         `Warm-up context at flight: ${JSON.stringify(captureMetadata.launch.warmup.rendererAtFlight || null)}.`,
         `Warm context before measured Launch: ${JSON.stringify(captureMetadata.launch.contextBeforeMeasuredLaunch || null)}.`,
         `Link ledger: ${captureMetadata.launch.linkLedgerReset ? 'reset before measured Launch' : 'not reset'}.`,
@@ -805,7 +827,15 @@ function writeLaunchReport({ profile, trace, timeline, atFlight, atEnd, census, 
   lines.push(`Dispose-registration probe renders: ${atFlight?.disposeProbeRuns ?? '?'} at flight, ${atEnd?.disposeProbeRuns ?? '?'} at end of profile (once per context generation is right).`, '');
   lines.push(...linkBlockLines(atEnd?.linkBlocks || atFlight?.linkBlocks));
   if (atFlight?.openingPending?.length) {
-    lines.push(`Opening work still pending when flight began: ${atFlight.openingPending.map((id) => `\`${id}\``).join(', ')}.`, '');
+    lines.push(`Current opening-composition candidates sampled after the flight witness changed mode (diagnostic only, not the readiness blocker set): ${atFlight.openingPending.map((id) => `\`${id}\``).join(', ')}.`, '');
+  }
+  if (Array.isArray(atFlight?.flightReadyBlockers)) {
+    const blockers = atFlight.flightReadyBlockers.map((entry) => {
+      const details = [entry.kind, entry.role, entry.id, entry.layer, entry.type, entry.ownerRole]
+        .filter((value) => value != null && value !== '');
+      return details.join(':') || 'unknown';
+    });
+    lines.push(`Explicit FlightReadySet blockers in that post-flight sample: ${blockers.length ? blockers.map((id) => `\`${id}\``).join(', ') : 'none'}.`, '');
   }
   try {
     lines.push(...cookLedgerLines(atEnd?.openingCookLedger || atFlight?.openingCookLedger, timeline));
