@@ -130,6 +130,12 @@ import {
   swarmBroodStrainFor,
   swarmBroodStrainMark,
 } from '../data/swarmBroodLate.js';
+import {
+  SWARM_MACHINE_FAMILIES,
+  foldMachinePlan,
+  swarmMachineFamily,
+  swarmMachineReserveCount,
+} from '../data/swarmMachine.js';
 
 const DT = 1 / 60;
 const CAP = SWARM_BROOD_MAX;
@@ -360,6 +366,11 @@ export function createBroodEngine(deps = {}) {
   // field sampling scratch — reused for every body, every tick
   const accel = { ax: 0, az: 0 };
   const creditAccel = { ax: 0, az: 0 };
+  // the Machine's steering scratch — formation/linker/salvager targets ride it
+  const machineAccel = { ax: 0, az: 0 };
+  // segment scratch for the beam sweep and the link-break tests — retained, never newed
+  const segA = { x: 0, z: 0 };
+  const segB = { x: 0, z: 0 };
   const playerFields = [];
   const posScratch = { x: 0, z: 0 };
   const velScratch = { x: 0, z: 0 };
@@ -437,6 +448,65 @@ export function createBroodEngine(deps = {}) {
   let strainMark = 0;
   let strainLeft = 0;
 
+  // --- the Machine: the second faction's machinery (src/data/swarmMachine.js) -----------
+  //
+  // Machine families ride the same buffers as flesh — one flag per row, one mechanism per
+  // flag. `machineReserve` is the wave's held-back rebuild budget (repairs/assembles mint
+  // out of it, spent from the mite share at prepareWave like every other reserve).
+  let machineReserve = 0;
+  // `shielded` is a per-tick flag like commandBuff: the link pass sets it on every body a
+  // live linker beams onto; kill() refuses a shielded body by ANY cause and direct hits
+  // absorb into the shield — the beam is the weak point, not the partner's hull.
+  const shielded = new Uint8Array(CAP);
+  // `linkPartner` is the linker's charge (a body slot, -1 none); `linkBrokenUntil` is the
+  // per-linker reform clock after a thrown body crosses the beam.
+  const linkPartner = new Int16Array(CAP);
+  const linkBrokenUntil = new Float64Array(CAP);
+  // Repair/assemble channels: the remain ENTITY being consumed (-1 none — entity ids
+  // are stable across ticks, mover-cache slots are not) and the one-shot tell for the
+  // channel's telegraph.
+  const channelEntity = new Int32Array(CAP);
+  const channelTold = new Uint8Array(CAP);
+  // Formation squads: each formation body rides a squad anchor (-1 none); anchors are a
+  // fixed pool orbiting the signature on a seeded lissajous — the Galaga weave. The peel
+  // clock feeds one member at a time into the authored dive.
+  const SQUAD_MAX = 12;
+  const squadId = new Int16Array(CAP);
+  const squadSlot = new Uint8Array(CAP);
+  const squadSeed = new Float64Array(SQUAD_MAX);
+  const squadPeelAt = new Float64Array(SQUAD_MAX);
+  const squadCursor = new Uint8Array(SQUAD_MAX);
+  const squadDefIdx = new Int16Array(SQUAD_MAX);
+  let squadCount = 0;
+  let formationSpawns = 0;
+  // Sawblade contact cooldown: one bite per body per authored window.
+  const contactAfter = new Float64Array(CAP);
+  // The beam pool: live sweeps the rooted turrets own. A beam is an origin plus an arc —
+  // a0→a1 walked over beamSweepS — and burns the signature once per sweep.
+  const BEAM_MAX = 8;
+  const beamX = new Float32Array(BEAM_MAX);
+  const beamZ = new Float32Array(BEAM_MAX);
+  const beamA0 = new Float32Array(BEAM_MAX);
+  const beamA1 = new Float32Array(BEAM_MAX);
+  const beamT = new Float32Array(BEAM_MAX);
+  const beamTotal = new Float32Array(BEAM_MAX);
+  const beamRange = new Float32Array(BEAM_MAX);
+  const beamWidth = new Float32Array(BEAM_MAX);
+  const beamDamage = new Float32Array(BEAM_MAX);
+  const beamAlive = new Uint8Array(BEAM_MAX);
+  const beamHitPlayer = new Uint8Array(BEAM_MAX);
+  const beamOwner = new Int16Array(BEAM_MAX);
+  let beamCount = 0;
+  // Beam FSM on the turret body: 0 cooling, 1 winding, 2 sweeping (sweep state lives in
+  // the beam pool; the body's timer drives the transitions).
+  const beamState = new Uint8Array(CAP);
+  const beamSlotOf = new Int8Array(CAP);
+
+  // Published machine instruments — retained arrays the presentation reads.
+  const viewBeams = [];
+  const viewLinks = [];
+  const viewAuras = [];
+
   const view = {
     schema: 'spaceface.swarmBrood.v4',
     cap: CAP,
@@ -468,13 +538,21 @@ export function createBroodEngine(deps = {}) {
     // tints by. `strain` is null on clean waves; `affix` is 0 on unmarked bodies.
     strain: null,
     affix,
+    // The Machine's instruments: live beam sweeps ({x,z,a0,a1,t,total,range,width,state}),
+    // live shield links ({x1,z1,x2,z2}), and magnet auras ({x,z,r}). Retained arrays —
+    // the renderer reads length, never allocates.
+    beams: viewBeams,
+    links: viewLinks,
+    auras: viewAuras,
+    shielded,
+    machineReserve: 0,
   };
 
   // --- family table mirror (numeric fields the hot loop reads, rebuilt on demand) ----------
 
   // Sized from the authored roster, not a fixed capacity: every family the catalog can
   // field must fit the mirror, or spawnWave silently drops its planned allocation.
-  const BROOD_FAMILY_DEFS = SWARM_BROOD_FAMILIES.concat(SWARM_BROOD_LATE_FAMILIES);
+  const BROOD_FAMILY_DEFS = SWARM_BROOD_FAMILIES.concat(SWARM_BROOD_LATE_FAMILIES, SWARM_MACHINE_FAMILIES);
   const FAMILY_SLOT_MAX = Math.max(8, BROOD_FAMILY_DEFS.length);
   const liveFamilyId = new Array(FAMILY_SLOT_MAX).fill(null);
   const liveFamilyDef = new Array(FAMILY_SLOT_MAX).fill(null);
@@ -499,7 +577,7 @@ export function createBroodEngine(deps = {}) {
       liveFamilyMass[liveFamilyCount] = def.mass;
       liveFamilyHull[liveFamilyCount] = def.hull;
       liveFamilySpeed[liveFamilyCount] = def.speed;
-      maxLiveFamilyRadius = Math.max(maxLiveFamilyRadius, def.radius);
+      maxLiveFamilyRadius = Math.max(maxLiveFamilyRadius, def.radius, finite(def.magnetRadius));
       maxLiveFamilySpeed = Math.max(maxLiveFamilySpeed, def.speed, BROOD_MAX_SPEED, BROOD_CHARGER_DASH_SPEED);
       liveFamilyCount += 1;
     }
@@ -516,9 +594,10 @@ export function createBroodEngine(deps = {}) {
     let pay = killPayCache.get(familyIdStr);
     if (pay) return pay;
     pay = swarmBroodKillPay(familyIdStr);
-    // The base table pays {0,0} for an id it does not know. Late families carry their own pay.
+    // The base table pays {0,0} for an id it does not know. Late and machine families
+    // carry their own pay.
     if (!pay || (pay.credits === 0 && pay.score === 0)) {
-      const late = swarmBroodLateFamily(familyIdStr);
+      const late = swarmBroodLateFamily(familyIdStr) || swarmMachineFamily(familyIdStr);
       if (late) pay = { credits: late.credits, score: late.score };
     }
     killPayCache.set(familyIdStr, pay);
@@ -566,6 +645,25 @@ export function createBroodEngine(deps = {}) {
     strainMark = 0;
     strainLeft = 0;
     commandBuff.fill(0);
+    // The Machine's wave state dies with the room — every link, channel, squad and beam.
+    machineReserve = 0;
+    shielded.fill(0);
+    linkPartner.fill(-1);
+    linkBrokenUntil.fill(0);
+    channelEntity.fill(-1);
+    channelTold.fill(0);
+    squadId.fill(-1);
+    squadSlot.fill(0);
+    squadCount = 0;
+    formationSpawns = 0;
+    contactAfter.fill(0);
+    beamAlive.fill(0);
+    beamState.fill(0);
+    beamSlotOf.fill(-1);
+    beamCount = 0;
+    viewBeams.length = 0;
+    viewLinks.length = 0;
+    viewAuras.length = 0;
     gridReady = false;
     // The Domino ledger dies with the room: an unflushed death must never shove in the next one.
     deathScratchCount = 0;
@@ -580,7 +678,8 @@ export function createBroodEngine(deps = {}) {
     clear('wave_planned');
     rng = mulberry32(broodStreamSeed(seed, w));
     // Late families replace mites. They do not add a second population on top of the plan.
-    pendingPlan = foldBroodLatePlan(swarmBroodPlan(w, rng), w);
+    // The Machine folds last — the second faction spends out of what the late fold left.
+    pendingPlan = foldMachinePlan(foldBroodLatePlan(swarmBroodPlan(w, rng), w), w);
     // The Tendril's wave arms the body: the engine waits for the champion hull to materialize
     // (a real entity, stamped by its catalog id) and trails the chain behind it.
     tendrilMode = swarmBroodBossFor(w) === SWARM_BROOD_TENDRIL_ID;
@@ -629,6 +728,21 @@ export function createBroodEngine(deps = {}) {
       motherReserve += take;
     }
     pendingPlan = pendingPlan.filter((part) => part.count > 0);
+    // The Machine's rebuild budget is the same kind of reserve: bodies held back from the
+    // mite share now, minted by repair/assemble channels later, stranded if the builders
+    // die first. The hold-back keys on the flags, not the family ids — every repairs or
+    // assembles body the wave fields funds its work out of the same law the splitters
+    // and mothers keep.
+    {
+      const want = swarmMachineReserveCount(pendingPlan);
+      const miteRow = pendingPlan.find((row) => row.id === 'mite');
+      const room = miteRow ? Math.max(0, miteRow.count - 1) : 0;
+      machineReserve = Math.min(want, room);
+      if (miteRow && machineReserve > 0) {
+        miteRow.count -= machineReserve;
+        pendingPlan = pendingPlan.filter((part) => part.count > 0);
+      }
+    }
     // B5 — a late non-Hive wave holds back one small specialist group for a mid-wave
     // drop. The Hive keeps its own sac tide instead (hiveMode), and champion waves are
     // exempt inside the picker — so this never touches the Hive's or a boss's plan.
@@ -699,6 +813,7 @@ export function createBroodEngine(deps = {}) {
           if (!open) { owed++; continue; }
           spawnAt(slot, famIdx, open.x, open.z);
           if (liveFamilyDef[famIdx] && liveFamilyDef[famIdx].burrows) parkBurrower(slot);
+          if (liveFamilyDef[famIdx] && liveFamilyDef[famIdx].rooted) parkRooted(slot);
           spawned++;
         }
       }
@@ -749,7 +864,63 @@ export function createBroodEngine(deps = {}) {
       affix[slot] = strainMark;
       strainLeft -= 1;
     }
+    // The Machine's per-body state dies with the slot the same way — a reused cell
+    // never inherits a dead linker's charge, a channel's target, or a squad seat.
+    shielded[slot] = 0;
+    linkPartner[slot] = -1;
+    linkBrokenUntil[slot] = 0;
+    channelEntity[slot] = -1;
+    channelTold[slot] = 0;
+    beamState[slot] = 0;
+    beamSlotOf[slot] = -1;
+    contactAfter[slot] = 0;
+    squadId[slot] = -1;
+    squadSlot[slot] = 0;
+    const spawnDef = liveFamilyDef[famIdx];
+    if (spawnDef && spawnDef.formation) {
+      const size = Math.max(3, Math.trunc(spawnDef.squadSize) || 6);
+      const squad = Math.min(SQUAD_MAX - 1, Math.floor(formationSpawns / size));
+      if (squad >= squadCount) {
+        squadCount = squad + 1;
+        squadSeed[squad] = rng() * Math.PI * 2;
+        squadCursor[squad] = 0;
+        squadPeelAt[squad] = finite(getState()?.simTime) + 2 + rng() * 2;
+        squadDefIdx[squad] = famIdx;
+      }
+      squadId[slot] = squad;
+      squadSlot[slot] = formationSpawns % size;
+      formationSpawns += 1;
+    }
     aliveCount += 1;
+  }
+
+  // A rooted body plants itself against the nearest rock face — the sentry read — and
+  // keeps that spot in teleX/teleZ for the rest of its life. No rocks, it holds its
+  // arrival point.
+  function parkRooted(slot) {
+    let best = -1;
+    let bestD = Infinity;
+    const x = px[slot];
+    const z = pz[slot];
+    for (let r = 0; r < rockCount; r++) {
+      const dx = x - rockX[r];
+      const dz = z - rockZ[r];
+      const d = dx * dx + dz * dz;
+      if (d < bestD) { best = r; bestD = d; }
+    }
+    const rad = liveFamilyRadius[family[slot]];
+    if (best >= 0 && bestD < 120 * 120) {
+      const dx = x - rockX[best];
+      const dz = z - rockZ[best];
+      const d = Math.sqrt(bestD) || 1;
+      px[slot] = rockX[best] + (dx / d) * (rockR[best] + rad + 2);
+      pz[slot] = rockZ[best] + (dz / d) * (rockR[best] + rad + 2);
+    }
+    vx[slot] = 0;
+    vz[slot] = 0;
+    teleX[slot] = px[slot];
+    teleZ[slot] = pz[slot];
+    heading[slot] = Math.atan2(playerZ - pz[slot], playerX - px[slot]);
   }
 
   function parkBurrower(slot) {
@@ -963,6 +1134,20 @@ export function createBroodEngine(deps = {}) {
       cmdAccel = finite(strainDef.commandAccel, 1);
       cmdSpeed = finite(strainDef.commandSpeed, 1);
     }
+    const simTime = finite(state.simTime);
+    // The Machine's link pass: rebuild the shield flags off the live links the same
+    // way the commander's aura rebuilds off the live marks — a broken beam drops its
+    // partner's protection this same tick. A thrown body crossing the beam is the
+    // authored break: the shield was never the partner's hull.
+    shielded.fill(0);
+    for (let i = 0; i < CAP; i++) {
+      if (!alive[i]) continue;
+      const linkDef = liveFamilyDef[family[i]];
+      if (!linkDef || !linkDef.linkShield) continue;
+      stepLinkUpkeep(i, linkDef, simTime);
+      const partner = linkPartner[i];
+      if (partner >= 0 && alive[partner] && shielded[partner] === 0) shielded[partner] = 1;
+    }
     // B5 — the held specialist group drops once, mid-wave, through the same gate ring.
     if (reservePending && finite(state.simTime) >= reserveReleaseAt) releaseReserve(state);
     killCount.fill(0);
@@ -971,7 +1156,6 @@ export function createBroodEngine(deps = {}) {
     killScore.fill(0);
 
     const fields = fieldList() || EMPTY_FIELDS;
-    const simTime = finite(state.simTime);
     const dt = DT;
     attackClock = simTime;
     // Windups, committed passes and airborne lobs share one attention budget. Never cancel
@@ -994,6 +1178,7 @@ export function createBroodEngine(deps = {}) {
     for (let i = 0; i < CAP; i++) {
       if (!alive[i]) continue;
       const fam = family[i];
+      const def = liveFamilyDef[fam];
       // B6 — the commander's aura: a flagged body hunts under the strain's own
       // multipliers this tick (dive force and speed cap below). Off-flag, the
       // ordinary law — the flag never rewrites a baseline.
@@ -1022,10 +1207,9 @@ export function createBroodEngine(deps = {}) {
       // A buried burrower stays inside its rock. Windup holds that same point so the
       // telegraph finishes before the body leaves the silhouette. Rock contact would
       // shove or kill a body parked in the stone, so this path skips it.
-      const buriedDef = liveFamilyDef[fam];
-      if (buriedDef && buriedDef.burrows
+      if (def && def.burrows
           && (phase[i] === BROOD_PHASE_BURIED || phase[i] === BROOD_PHASE_WINDUP)) {
-        stepBurrower(i, buriedDef, dt);
+        stepBurrower(i, def, dt);
         continue;
       }
 
@@ -1038,6 +1222,16 @@ export function createBroodEngine(deps = {}) {
         px[i] += vx[i] * dt;
         pz[i] += vz[i] * dt;
         stepChargerDash(i, fam, state);
+      } else if (def && def.rooted) {
+        // The Machine's planted bodies: pinned to the root point the whole life — no
+        // flock, no seek, no integrate. The beam turret's own FSM is the only motion
+        // it owns; contact law below still decides what thrown mass does to it.
+        stepRootedBody(i, def, simTime);
+      } else if (def && def.bounces) {
+        // The sawblade is ballistic — no flock, no seek, no steering at all. It keeps
+        // its own powered speed, reflects off rock and bounds, and cuts the pack by
+        // the room's own relative-velocity law.
+        stepSawblade(i, def, dt, simTime, state);
       } else {
 
         // -- flocking: neighbor forces through the spatial hash (3x3 cells covers both radii)
@@ -1086,14 +1280,27 @@ export function createBroodEngine(deps = {}) {
         const dxp = playerX - bx;
         const dzp = playerZ - bz;
         const dp = Math.sqrt(dxp * dxp + dzp * dzp);
-        const def = liveFamilyDef[fam];
-        if (dp > 24 && dp > 1e-4) {
+        // The Machine's movers steer to their own business instead of the signature's
+        // dive: a formation body rides its squad anchor, a linker hovers on its charge,
+        // a salvager runs down wreckage. Flocking forces above still apply — the squad
+        // reads inside the room, not beside it.
+        const machineSteer = def && (def.formation || def.linkShield || def.repairs || def.assembles);
+        if (!machineSteer && dp > 24 && dp > 1e-4) {
           const diveT = simTime * 0.42 + seedPhase[i];
           // A commander-flagged body presses the signature the strain's own factor
           // harder — same dive clock, a hotter seek.
           const seek = ((diveT % 1) < 0.22 ? 26 : 9) * (hot ? cmdAccel : 1);
           ax += (dxp / dp) * seek;
           az += (dzp / dp) * seek;
+        }
+        if (machineSteer) {
+          machineAccel.ax = ax;
+          machineAccel.az = az;
+          if (def.formation) steerFormation(i, def, simTime, machineAccel);
+          else if (def.linkShield) steerLinker(i, def, machineAccel);
+          else steerSalvager(i, def, simTime, machineAccel);
+          ax = machineAccel.ax;
+          az = machineAccel.az;
         }
         // wake_eel `trails`: the eel does not seek the hull, it rides the wake — steer to
         // a point astern of the signature's velocity so it wraps from behind. A coiling
@@ -1212,12 +1419,21 @@ export function createBroodEngine(deps = {}) {
             phase[i] = BROOD_PHASE_FLOCK;
             timer[i] = 0;
             attackAfter[i] = simTime + BROOD_WRAP_RETRY_S;
+          } else if (channelEntity[i] >= 0 && !trackChannel(i, def)) {
+            // The salvager's channel aborts the moment its wreck stops being there —
+            // spent by another builder, flung out of reach, or pulped mid-weld.
+            phase[i] = BROOD_PHASE_FLOCK;
+            timer[i] = 0;
+            channelEntity[i] = -1;
+            channelTold[i] = 0;
           } else {
             timer[i] -= dt;
             if (timer[i] <= 0) {
               if (def.id === 'spitter') fireLob(i, fam);
               else if (def.id === 'charger') beginDash(i, fam);
               else if (def.wrapRange > 0) beginWrap(i, fam);
+              else if (channelEntity[i] >= 0) finishChannel(i, def);
+              else if (def.formation) beginFormationDash(i, def);
               else phase[i] = BROOD_PHASE_FLOCK;
             }
           }
@@ -1229,6 +1445,10 @@ export function createBroodEngine(deps = {}) {
           stepLeecher(i, fam, dp);
         } else if (def && def.wrapRange > 0) {
           stepEelWrap(i, def, dp);
+        } else if (def && (def.repairs || def.assembles)) {
+          stepSalvagerArm(i, def, simTime);
+        } else if (def && def.formation) {
+          stepFormationPeel(i, def, simTime, dp);
         }
         if (def && def.births) stepMother(i, def, dt, simTime);
       }
@@ -1251,6 +1471,25 @@ export function createBroodEngine(deps = {}) {
           kill(i, 'collision', px[i], pz[i], !!rockCredited[r] || creditUntil[i] > simTime);
           break;
         }
+        // The sawblade does not die on the room's face — it ricochets: reflect off the
+        // contact normal and keep flying. A still wall is its racket, not its grave; a
+        // THROWN rock still cracks it by the mass law above.
+        if (def && def.bounces) {
+          const d = Math.sqrt(dx * dx + dz * dz) || 1;
+          const nx = d > 1e-6 ? dx / d : 1;
+          const nz = d > 1e-6 ? dz / d : 0;
+          px[i] = rockX[r] + nx * rr;
+          pz[i] = rockZ[r] + nz * rr;
+          const into = (vx[i] - rockVX[r]) * nx + (vz[i] - rockVZ[r]) * nz;
+          if (into < 0) {
+            vx[i] -= 2 * into * nx;
+            vz[i] -= 2 * into * nz;
+          }
+          break;
+        }
+        // A rooted body is pinned to its own point — the slide solve would walk it off
+        // the face it planted on. It repins next tick regardless.
+        if (def && def.rooted) break;
         if (rel2 >= slam * slam) {
           kill(i, 'terrain', px[i], pz[i], !!rockCredited[r]
             || creditUntil[i] > simTime || phase[i] === BROOD_PHASE_DASH);
@@ -1311,6 +1550,7 @@ export function createBroodEngine(deps = {}) {
     sweepWhipLine(state);
     stepLobs(state, dt);
     stepPools(state, dt);
+    stepBeams(simTime);
     stepTendril(state, dt, simTime);
     flushKills(state);
     publish();
@@ -1543,12 +1783,18 @@ export function createBroodEngine(deps = {}) {
   /** One tick of a live pass: the hull takes it and the shove it carries, once per dash. */
   function stepChargerDash(i, fam, state) {
     const rad = liveFamilyRadius[fam];
+    // The committed pass is the same law for every family that dives — the formation
+    // drone authors its own bite and its own exposed beat instead of the charger's.
+    const def = liveFamilyDef[fam];
+    const slamDamage = def && def.dashDamage > 0 ? def.dashDamage : BROOD_CHARGER_SLAM_DAMAGE;
+    const recoverS = def && def.dashRecoverS > 0 ? def.dashRecoverS : BROOD_CHARGER_RECOVER_S;
+    const sourceId = def && def.formation ? 'machine_formation' : 'brood_charger';
     if (signatureRef && signatureRef.alive !== false) {
       const sx = playerX - px[i];
       const sz = playerZ - pz[i];
       const rr = corridorHalfWidth(rad, playerRad);
       if (sx * sx + sz * sz <= rr * rr) {
-        routePlayerDamage(BROOD_CHARGER_SLAM_DAMAGE, px[i], pz[i], 'brood_charger');
+        routePlayerDamage(slamDamage, px[i], pz[i], sourceId);
         const d = Math.sqrt(sx * sx + sz * sz) || 1;
         // The pass lands as an ADDITIVE shove across the membrane, never a velocity write.
         queuePhysicsImpulse(signatureRef, {
@@ -1557,14 +1803,14 @@ export function createBroodEngine(deps = {}) {
           z: (sz / d) * BROOD_CHARGER_SHOVE_DV * playerMass,
         });
         phase[i] = BROOD_PHASE_RECOVER;
-        timer[i] = BROOD_CHARGER_RECOVER_S;
+        timer[i] = recoverS;
         return;
       }
     }
     timer[i] -= DT;
     if (timer[i] <= 0) {
       phase[i] = BROOD_PHASE_RECOVER;
-      timer[i] = BROOD_CHARGER_RECOVER_S;
+      timer[i] = recoverS;
     }
     void state;
   }
@@ -1706,6 +1952,471 @@ export function createBroodEngine(deps = {}) {
       timer[i] = 0;
       attackAfter[i] = attackClock + BROOD_WRAP_RETRY_S;
     }
+  }
+
+  // --- the Machine's mechanisms (src/data/swarmMachine.js) ----------------------------------
+  //
+  // One flag per row, one mechanism per flag, all of it running on the same buffers and
+  // the same law vocabulary the flesh uses: a rooted body is a planted one, a formation
+  // is steering plus the same committed pass the charger owns, a shield is a kill-refusal
+  // on the partner's byte, a channel is a windup that ends by consuming wreckage instead
+  // of firing, and a beam is a sweeping edge that burns by the room's terrain law.
+
+  /** A rooted body never moves: pinned to the root point, its beam FSM is its only life. */
+  function stepRootedBody(i, def, simTime) {
+    px[i] = teleX[i];
+    pz[i] = teleZ[i];
+    vx[i] = 0;
+    vz[i] = 0;
+    if (def.beam) stepBeamTurret(i, def, simTime);
+  }
+
+  /**
+   * The turret's three-state clock: cooling (counting to the next windup), winding
+   * (teleDir tracks the signature so the drawn arc tells the truth), sweeping (the
+   * beam pool owns the edge). The sweep itself steps once per tick in stepBeams.
+   */
+  function stepBeamTurret(i, def, simTime) {
+    if (beamState[i] === 0) {
+      timer[i] -= DT;
+      if (timer[i] > 0) return;
+      const dx = playerX - px[i];
+      const dz = playerZ - pz[i];
+      const reach = def.beamRange > 0 ? def.beamRange : 130;
+      if (!signatureRef || signatureRef.alive === false
+          || dx * dx + dz * dz > reach * reach * 1.44 || !takeAttackSlot()) {
+        timer[i] = 0.4;
+        return;
+      }
+      beamState[i] = 1;
+      timer[i] = def.beamWindupS > 0 ? def.beamWindupS : 1.2;
+      teleDir[i] = Math.atan2(dz, dx);
+      emitTelegraph(i, def);
+      return;
+    }
+    if (beamState[i] === 1) {
+      // The pivot tracks through the windup — the arc the card promises is the arc fired.
+      teleDir[i] = Math.atan2(playerZ - pz[i], playerX - px[i]);
+      timer[i] -= DT;
+      if (timer[i] <= 0) {
+        if (fireBeam(i, def)) beamState[i] = 2;
+        else { beamState[i] = 0; timer[i] = def.beamCooldownS > 0 ? def.beamCooldownS : 4; }
+      }
+      return;
+    }
+    void simTime;
+    // state 2: the pool owns the sweep until the beam slot frees itself.
+  }
+
+  function fireBeam(i, def) {
+    for (let b = 0; b < BEAM_MAX; b++) {
+      if (beamAlive[b]) continue;
+      const arc = def.beamArc > 0 ? def.beamArc : 1.6;
+      beamAlive[b] = 1;
+      beamX[b] = px[i];
+      beamZ[b] = pz[i];
+      beamA0[b] = teleDir[i] - arc * 0.5;
+      beamA1[b] = teleDir[i] + arc * 0.5;
+      beamT[b] = 0;
+      beamTotal[b] = def.beamSweepS > 0 ? def.beamSweepS : 1;
+      beamRange[b] = def.beamRange > 0 ? def.beamRange : 130;
+      beamWidth[b] = def.beamWidth > 0 ? def.beamWidth : 5;
+      beamDamage[b] = def.beamDamage > 0 ? def.beamDamage : 18;
+      beamHitPlayer[b] = 0;
+      beamOwner[b] = i;
+      beamCount += 1;
+      beamSlotOf[i] = b;
+      return true;
+    }
+    return false;
+  }
+
+  /** Kill a body's live sweep (the turret died mid-arc) — the edge dies with the mount. */
+  function freeBeamOf(i) {
+    const b = beamSlotOf[i];
+    if (b < 0) return;
+    if (beamAlive[b] && beamOwner[b] === i) {
+      beamAlive[b] = 0;
+      beamCount -= 1;
+    }
+    beamSlotOf[i] = -1;
+    beamState[i] = 0;
+  }
+
+  /**
+   * One tick of every live sweep: walk the edge a0→a1, burn the signature once per
+   * sweep, and cut every pack cell the segment crosses by the room's 'terrain' law —
+   * credited only when the player's hand was already on the body (the beam is the
+   * room's weapon the player can aim).
+   */
+  function stepBeams(simTime) {
+    if (beamCount <= 0) return;
+    for (let b = 0; b < BEAM_MAX; b++) {
+      if (!beamAlive[b]) continue;
+      const owner = beamOwner[b];
+      if (owner < 0 || !alive[owner]) {
+        beamAlive[b] = 0;
+        beamCount -= 1;
+        continue;
+      }
+      beamT[b] += DT;
+      const t = Math.min(1, beamT[b] / beamTotal[b]);
+      const a = beamA0[b] + (beamA1[b] - beamA0[b]) * t;
+      segA.x = beamX[b];
+      segA.z = beamZ[b];
+      segB.x = beamX[b] + Math.cos(a) * beamRange[b];
+      segB.z = beamZ[b] + Math.sin(a) * beamRange[b];
+      if (!beamHitPlayer[b] && signatureRef && signatureRef.alive !== false) {
+        const hit = segmentCircleT(segA, segB, playerX, playerZ, beamWidth[b] + playerRad);
+        if (hit != null) {
+          beamHitPlayer[b] = 1;
+          routePlayerDamage(beamDamage[b], beamX[b], beamZ[b], 'machine_beam');
+        }
+      }
+      for (let j = 0; j < CAP; j++) {
+        if (!alive[j] || j === owner) continue;
+        const hit = segmentCircleT(segA, segB, px[j], pz[j],
+          beamWidth[b] + liveFamilyRadius[family[j]]);
+        if (hit != null) kill(j, 'terrain', px[j], pz[j], creditUntil[j] > simTime);
+      }
+      // The sweep may have cut its own turret through a burst chain — freeBeamOf already
+      // retired the slot; touching the expiry now would spend beamCount twice.
+      if (beamAlive[b] && beamT[b] >= beamTotal[b]) {
+        beamAlive[b] = 0;
+        beamCount -= 1;
+        if (alive[owner]) {
+          const def = liveFamilyDef[family[owner]];
+          beamState[owner] = 0;
+          beamSlotOf[owner] = -1;
+          timer[owner] = def && def.beamCooldownS > 0 ? def.beamCooldownS : 4;
+        }
+      }
+    }
+  }
+
+  /**
+   * The sawblade: ballistic, powered, lawful. No steering — it holds its authored cruise,
+   * reflects off rock faces and the room's edge, cuts pack bodies it crosses fast by the
+   * same relative-velocity law the whip keeps, and bites the hull once per authored
+   * window. The player who learns its lanes feeds it the room; the room feeds it back.
+   */
+  function stepSawblade(i, def, dt, simTime, state) {
+    const cruise = def.bounceSpeed > 0 ? def.bounceSpeed : liveFamilySpeed[family[i]];
+    let sp = Math.hypot(vx[i], vz[i]);
+    if (sp < cruise) {
+      if (sp > 1e-4) { const k = cruise / sp; vx[i] *= k; vz[i] *= k; }
+      else { vx[i] = cruise; vz[i] = 0; }
+    } else if (sp > cruise * 1.6) {
+      const k = (cruise * 1.6) / sp;
+      vx[i] *= k;
+      vz[i] *= k;
+    }
+    px[i] += vx[i] * dt;
+    pz[i] += vz[i] * dt;
+    sp = Math.hypot(vx[i], vz[i]);
+    if (sp > 4) heading[i] = Math.atan2(vz[i], vx[i]);
+    // The room's edge is its racket: past the authored bound it turns back for the meat.
+    const bounds = def.bounceBounds > 0 ? def.bounceBounds : 320;
+    const bdx = playerX - px[i];
+    const bdz = playerZ - pz[i];
+    if (bdx * bdx + bdz * bdz > bounds * bounds) {
+      const bd = Math.sqrt(bdx * bdx + bdz * bdz) || 1;
+      vx[i] = (bdx / bd) * cruise;
+      vz[i] = (bdz / bd) * cruise;
+    }
+    // It cuts whatever it crosses fast enough — the pack included, credited like any plow.
+    const rad = liveFamilyRadius[family[i]];
+    let cuts = 0;
+    for (let j = 0; j < CAP && cuts < 6; j++) {
+      if (j === i || !alive[j]) continue;
+      const dx = px[j] - px[i];
+      const dz = pz[j] - pz[i];
+      const rr = rad + liveFamilyRadius[family[j]];
+      if (dx * dx + dz * dz > rr * rr) continue;
+      const rvx = vx[j] - vx[i];
+      const rvz = vz[j] - vz[i];
+      if (rvx * rvx + rvz * rvz < BROOD_PLOW_MIN_SPEED * BROOD_PLOW_MIN_SPEED) continue;
+      kill(j, 'collision', px[j], pz[j], creditUntil[j] > simTime);
+      cuts += 1;
+    }
+    // The hull bite — once per authored window, then the blade bounces off.
+    if (signatureRef && signatureRef.alive !== false && simTime >= contactAfter[i]) {
+      const dx = playerX - px[i];
+      const dz = playerZ - pz[i];
+      const rr = rad + playerRad;
+      if (dx * dx + dz * dz <= rr * rr) {
+        routePlayerDamage(def.contactDamage > 0 ? def.contactDamage : 14,
+          px[i], pz[i], 'machine_sawblade');
+        contactAfter[i] = simTime + (def.contactCooldownS > 0 ? def.contactCooldownS : 0.5);
+        const d = Math.sqrt(dx * dx + dz * dz) || 1;
+        vx[i] = -(dx / d) * cruise;
+        vz[i] = -(dz / d) * cruise;
+      }
+    }
+    void state;
+  }
+
+  /**
+   * The squad weave: the anchor orbits the signature on the squad's seeded lissajous —
+   * the Galaga pattern — and each member steers to its seat on the anchor's ring.
+   * Deterministic off simTime alone; a dead seat just stays empty.
+   */
+  function steerFormation(i, def, simTime, out) {
+    const sq = squadId[i];
+    if (sq < 0) return;
+    const seed = squadSeed[sq];
+    const size = Math.max(3, Math.trunc(def.squadSize) || 6);
+    const anchorX = playerX + Math.cos(seed + simTime * 0.30) * 110
+      + Math.cos(seed * 2.7 + simTime * 0.83) * 46;
+    const anchorZ = playerZ + Math.sin(seed * 1.3 + simTime * 0.22) * 110
+      + Math.sin(seed + simTime * 0.61) * 46;
+    const ang = (squadSlot[i] % size) * ((Math.PI * 2) / size) + seed;
+    out.ax += (anchorX + Math.cos(ang) * 18 - px[i]) * 3.0;
+    out.az += (anchorZ + Math.sin(ang) * 18 - pz[i]) * 3.0;
+  }
+
+  /** The peel: the squad's clock is due — this free member draws its dive line and arms. */
+  function stepFormationPeel(i, def, simTime, dp) {
+    const sq = squadId[i];
+    if (sq < 0 || phase[i] !== BROOD_PHASE_FLOCK) return;
+    const reach = def.dashRange > 0 ? def.dashRange : 130;
+    // The squad's own clock paces the peel (peelEveryS runs far slower than the
+    // room's attack gap) — competing for the shared budget's SLOT keeps the read
+    // honest, but the global gap gate would starve the wing under livelier rosters.
+    if (simTime < squadPeelAt[sq] || attackClock < attackAfter[i]
+        || dp > reach || dp < 1e-4 || attackSlots <= 0) return;
+    attackSlots--;
+    nextAttackAt = attackClock + BROOD_ATTACK_GAP_S;
+    const speed = def.dashSpeed > 0 ? def.dashSpeed : 150;
+    const lead = dp / speed;
+    teleX[i] = playerX + playerVX * lead;
+    teleZ[i] = playerZ + playerVZ * lead;
+    teleDir[i] = Math.atan2(teleZ[i] - pz[i], teleX[i] - px[i]);
+    phase[i] = BROOD_PHASE_WINDUP;
+    timer[i] = def.dashWindupS > 0 ? def.dashWindupS : 0.7;
+    squadPeelAt[sq] = simTime + (def.peelEveryS > 0 ? def.peelEveryS : 2.4);
+    emitTelegraph(i, def);
+  }
+
+  /** The peel commits: fixed velocity at the marked point — the charger's dodge law. */
+  function beginFormationDash(i, def) {
+    const dx = teleX[i] - px[i];
+    const dz = teleZ[i] - pz[i];
+    const d = Math.sqrt(dx * dx + dz * dz) || 1;
+    const speed = def.dashSpeed > 0 ? def.dashSpeed : BROOD_CHARGER_DASH_SPEED;
+    vx[i] = (dx / d) * speed;
+    vz[i] = (dz / d) * speed;
+    phase[i] = BROOD_PHASE_DASH;
+    timer[i] = def.dashMaxS > 0 ? def.dashMaxS : BROOD_CHARGER_DASH_MAX_S;
+  }
+
+  /** The linker hovers at slack range off its charge — the beam stays drawn, not taut. */
+  function steerLinker(i, def, out) {
+    const p = linkPartner[i];
+    if (p < 0 || !alive[p]) return;
+    const dx = px[i] - px[p];
+    const dz = pz[i] - pz[p];
+    const d = Math.sqrt(dx * dx + dz * dz) || 1;
+    const hold = (def.linkRange > 0 ? def.linkRange : 90) * 0.55;
+    out.ax += ((px[p] + (dx / d) * hold) - px[i]) * 2.0;
+    out.az += ((pz[p] + (dz / d) * hold) - pz[i]) * 2.0;
+  }
+
+  /**
+   * The link pass's per-linker upkeep: keep the charge alive, in range and unbroken —
+   * a thrown body crossing the beam snaps it and starts the reform clock — or pick a
+   * fresh charge off the pack (never another linker: a shield chain would draw itself).
+   * The partner flag is written by the caller after this runs.
+   */
+  function stepLinkUpkeep(i, def, simTime) {
+    const range = def.linkRange > 0 ? def.linkRange : 90;
+    if (linkPartner[i] >= 0) {
+      const p = linkPartner[i];
+      if (!alive[p]) {
+        linkPartner[i] = -1;
+      } else {
+        const dx = px[p] - px[i];
+        const dz = pz[p] - pz[i];
+        if (dx * dx + dz * dz > range * range * 1.5) {
+          linkPartner[i] = -1;
+          linkBrokenUntil[i] = simTime + 1.5;
+        } else {
+          // Thrown mass across the beam: the authored break verb.
+          segA.x = px[i];
+          segA.z = pz[i];
+          segB.x = px[p];
+          segB.z = pz[p];
+          for (let m = 0; m < movCount; m++) {
+            if (movVX[m] * movVX[m] + movVZ[m] * movVZ[m] < BROOD_PLOW_MIN_SPEED * BROOD_PLOW_MIN_SPEED) continue;
+            const t = segmentCircleT(segA, segB, movX[m], movZ[m], movRad[m] + 1);
+            if (t != null) {
+              linkPartner[i] = -1;
+              linkBrokenUntil[i] = simTime + (def.linkReformS > 0 ? def.linkReformS : 7);
+              break;
+            }
+          }
+        }
+      }
+    }
+    if (linkPartner[i] < 0 && simTime >= linkBrokenUntil[i]) {
+      let best = -1;
+      let bestD = range * range;
+      for (let j = 0; j < CAP; j++) {
+        if (j === i || !alive[j]) continue;
+        const jd = liveFamilyDef[family[j]];
+        if (jd && jd.linkShield) continue;
+        const dx = px[j] - px[i];
+        const dz = pz[j] - pz[i];
+        const d2 = dx * dx + dz * dz;
+        if (d2 < bestD) { best = j; bestD = d2; }
+      }
+      if (best >= 0) {
+        linkPartner[i] = best;
+        emitTelegraph(i, def);
+      }
+    }
+  }
+
+  /** The nearest throwable remain in the mover cache for a salvager's run, or -1. */
+  function nearestRemainMov(i, maxD) {
+    let best = -1;
+    let bestD = maxD * maxD;
+    for (let m = 0; m < movCount; m++) {
+      if (movRemainId[m] < 0) continue;
+      const dx = movX[m] - px[i];
+      const dz = movZ[m] - pz[i];
+      const d2 = dx * dx + dz * dz;
+      if (d2 < bestD) { best = m; bestD = d2; }
+    }
+    return best;
+  }
+
+  /** The salvager runs down wreckage — never the signature. */
+  function steerSalvager(i, def, simTime, out) {
+    const m = nearestRemainMov(i, 800);
+    if (m < 0) return;
+    const reach = def.repairs ? def.repairRange : def.assembleRange;
+    const dx = movX[m] - px[i];
+    const dz = movZ[m] - pz[i];
+    const d = Math.sqrt(dx * dx + dz * dz) || 1;
+    if (d > reach * 0.8) {
+      out.ax += (dx / d) * 26;
+      out.az += (dz / d) * 26;
+    }
+    void simTime;
+  }
+
+  /** The channel arms: a repair needs ONE wreck in reach, an assemble needs the cluster. */
+  function stepSalvagerArm(i, def, simTime) {
+    if (phase[i] !== BROOD_PHASE_FLOCK || attackClock < attackAfter[i]) return;
+    if (def.repairs) {
+      const reach = def.repairRange > 0 ? def.repairRange : 14;
+      const m = nearestRemainMov(i, 800);
+      if (m < 0) return;
+      const dx = movX[m] - px[i];
+      const dz = movZ[m] - pz[i];
+      if (dx * dx + dz * dz > reach * reach) return;
+      channelEntity[i] = movRemainId[m];
+      teleX[i] = movX[m];
+      teleZ[i] = movZ[m];
+      phase[i] = BROOD_PHASE_WINDUP;
+      timer[i] = def.repairS > 0 ? def.repairS : 3;
+      channelTold[i] = 1;
+      emitTelegraph(i, def);
+      return;
+    }
+    const reach = def.assembleRange > 0 ? def.assembleRange : 30;
+    const need = Math.max(2, Math.trunc(def.assembleDebrisMin) || 2);
+    let first = -1;
+    let near = 0;
+    for (let m = 0; m < movCount; m++) {
+      if (movRemainId[m] < 0) continue;
+      const dx = movX[m] - px[i];
+      const dz = movZ[m] - pz[i];
+      if (dx * dx + dz * dz <= reach * reach) {
+        near += 1;
+        if (first < 0) first = m;
+      }
+    }
+    if (near < need) return;
+    channelEntity[i] = movRemainId[first];
+    teleX[i] = movX[first];
+    teleZ[i] = movZ[first];
+    phase[i] = BROOD_PHASE_WINDUP;
+    timer[i] = def.assembleS > 0 ? def.assembleS : 5;
+    channelTold[i] = 1;
+    emitTelegraph(i, def);
+  }
+
+  /** The channel keeps its wreck: track the entity, abort when it stops being there. */
+  function trackChannel(i, def) {
+    const id = channelEntity[i];
+    if (id < 0) return true;
+    const reach = (def.repairs ? def.repairRange * 2.5 : def.assembleRange * 1.5) || 30;
+    for (let m = 0; m < movCount; m++) {
+      if (movRemainId[m] !== id) continue;
+      teleX[i] = movX[m];
+      teleZ[i] = movZ[m];
+      const dx = movX[m] - px[i];
+      const dz = movZ[m] - pz[i];
+      return dx * dx + dz * dz <= reach * reach;
+    }
+    return false;
+  }
+
+  /** The channel lands: the wreck is spent, the mint spends the wave's own reserve. */
+  function finishChannel(i, def) {
+    const id = channelEntity[i];
+    channelEntity[i] = -1;
+    channelTold[i] = 0;
+    phase[i] = BROOD_PHASE_FLOCK;
+    attackAfter[i] = attackClock + 1.5;
+    if (def.repairs) {
+      for (let m = 0; m < movCount; m++) {
+        if (movRemainId[m] === id) {
+          emitRemainSpent(m);
+          mintMachine(px[i] + 4, pz[i] + 4, def.repairYieldId);
+          break;
+        }
+      }
+      return;
+    }
+    const reach = def.assembleRange > 0 ? def.assembleRange : 30;
+    const need = Math.max(1, Math.trunc(def.assembleDebrisMin) || 2);
+    let ate = 0;
+    for (let m = 0; m < movCount && ate < need; m++) {
+      if (movRemainId[m] < 0) continue;
+      const dx = movX[m] - px[i];
+      const dz = movZ[m] - pz[i];
+      if (dx * dx + dz * dz > reach * reach) continue;
+      emitRemainSpent(m);
+      ate += 1;
+    }
+    if (ate > 0) mintMachine(px[i] + 4, pz[i] + 4, def.assembleYieldId);
+  }
+
+  /**
+   * Mint one rebuilt body from the wave's held-back machine reserve — the budget law
+   * the sacs, splitters and mothers already keep: a channel that fires when the reserve
+   * is spent simply mints nothing. The yield is authored per family row.
+   */
+  function mintMachine(x, z, yieldId) {
+    if (machineReserve <= 0) return false;
+    const yieldIdx = familyIndexOf(yieldId);
+    if (yieldIdx < 0) return false;
+    const slot = findFreeSlot();
+    if (slot < 0) return false;
+    spawnAt(slot, yieldIdx, x, z);
+    machineReserve -= 1;
+    return true;
+  }
+
+  /** The magnet's catch circle: its aura eats shots that would have flown past. */
+  function directRadiusFor(slot) {
+    const def = liveFamilyDef[family[slot]];
+    const base = liveFamilyRadius[family[slot]];
+    if (def && def.magnets && def.magnetRadius > base) return def.magnetRadius;
+    return base;
   }
 
   // --- B3: the Tendril's body --------------------------------------------------------------
@@ -2122,7 +2833,7 @@ export function createBroodEngine(deps = {}) {
         for (let gz = bounds.minZ; gz <= bounds.maxZ; gz++) {
           for (let i = gridHead[cellKey(gx, gz)]; i !== -1; i = gridNext[i]) {
             if (gridCellX[i] !== gx || gridCellZ[i] !== gz || !alive[i] || !(hp[i] > 0) || !directDamageAllowed(i)) continue;
-            const hitT = segmentCircleT(from, to, px[i], pz[i], liveFamilyRadius[family[i]] + radius);
+            const hitT = segmentCircleT(from, to, px[i], pz[i], directRadiusFor(i) + radius);
             if (hitT == null || !directCandidateBefore(hitT, 0, serial[i], bestT, bestKind, bestLife)) continue;
             bestT = hitT; bestKind = 0; bestSlot = i; bestLife = serial[i];
           }
@@ -2131,7 +2842,7 @@ export function createBroodEngine(deps = {}) {
     } else {
       for (let i = 0; i < CAP; i++) {
         if (!alive[i] || !(hp[i] > 0) || !directDamageAllowed(i)) continue;
-        const hitT = segmentCircleT(from, to, px[i], pz[i], liveFamilyRadius[family[i]] + radius);
+        const hitT = segmentCircleT(from, to, px[i], pz[i], directRadiusFor(i) + radius);
         if (hitT == null || !directCandidateBefore(hitT, 0, serial[i], bestT, bestKind, bestLife)) continue;
         bestT = hitT; bestKind = 0; bestSlot = i; bestLife = serial[i];
       }
@@ -2183,7 +2894,7 @@ export function createBroodEngine(deps = {}) {
   function insertDirectCandidate(from, to, radius, limit, count, kind, slot, life) {
     const x = kind === 0 ? px[slot] : segX[slot];
     const z = kind === 0 ? pz[slot] : segZ[slot];
-    const bodyRadius = kind === 0 ? liveFamilyRadius[family[slot]] : TENDRIL_SEG_RADIUS;
+    const bodyRadius = kind === 0 ? directRadiusFor(slot) : TENDRIL_SEG_RADIUS;
     const t = segmentCircleT(from, to, x, z, bodyRadius + radius);
     if (t == null) return count;
     let at = count;
@@ -2231,6 +2942,14 @@ export function createBroodEngine(deps = {}) {
     const cells = candidate.kind === 'cell';
     const slot = candidate.slot;
     const before = cells ? hp[slot] : segHp[slot];
+    // The linker's shield eats the shot whole — the projectile commits on the charge and
+    // dies there, so the link reads as a wall the beam draws, not a miss the hull dodges.
+    if (cells && shielded[slot]) {
+      if (bus) bus.emit('swarm:broodShielded', {
+        wave: liveWave, targetId: candidateId(candidate), pos: { x: candidate.x, z: candidate.z },
+      });
+      return { ok: true, damage: 0, hullBefore: before, hullAfter: before, killed: false };
+    }
     const after = Math.max(0, before - amount);
     if (cells) {
       hp[slot] = after;
@@ -2470,6 +3189,9 @@ export function createBroodEngine(deps = {}) {
     const def = liveFamilyDef[family[i]];
     if (!killLawAllows(def, cause)) return;
     if (markRefuses(i, cause)) return;
+    // The linker's beam is a full refusal on its charge — every cause, no exceptions:
+    // the authored out is the beam-break or the linker itself, never the partner's hull.
+    if (shielded[i]) return;
     if (def && def.swells && cause !== 'explosive' && swellStage[i] === 0) {
       // First strike inflates: the fuse starts, the second strike (or the clock) detonates.
       swellStage[i] = 1;
@@ -2482,6 +3204,13 @@ export function createBroodEngine(deps = {}) {
     }
     alive[i] = 0;
     aliveCount -= 1;
+    // A dying turret's sweep dies with it; a dying linker's charge drops its shield
+    // THIS tick — the link pass only rebuilds flags for the living.
+    freeBeamOf(i);
+    if (linkPartner[i] >= 0) {
+      shielded[linkPartner[i]] = 0;
+      linkPartner[i] = -1;
+    }
     const c = CAUSE_INDEX[cause];
     if (c == null) return;
     killCount[c] += 1;
@@ -2806,6 +3535,63 @@ export function createBroodEngine(deps = {}) {
     view.reserveFamily = reserveFamily;
     view.reserveBudget = reserveBudget;
     view.strain = strainDef ? strainDef.id : null;
+    // The Machine's instruments — retained records, refilled every publish. A turret
+    // mid-windup publishes its promised arc (state 0) so the pivot reads before the
+    // beam exists; live sweeps publish the walking edge (state 1).
+    view.machineReserve = machineReserve;
+    // Retained records refilled at a write cursor: truncating to `length = 0` would drop
+    // the refs and force a fresh {} per record per publish — the cursor keeps the pool.
+    let beamRecN = 0;
+    for (let i = 0; i < CAP; i++) {
+      if (!alive[i] || beamState[i] !== 1) continue;
+      const def = liveFamilyDef[family[i]];
+      if (!def || !def.beam) continue;
+      let rec = viewBeams[beamRecN];
+      if (!rec) rec = viewBeams[beamRecN] = {};
+      const arc = def.beamArc > 0 ? def.beamArc : 1.6;
+      rec.x = px[i]; rec.z = pz[i];
+      rec.a0 = teleDir[i] - arc * 0.5; rec.a1 = teleDir[i] + arc * 0.5;
+      rec.t = 0; rec.total = 1;
+      rec.range = def.beamRange > 0 ? def.beamRange : 130;
+      rec.width = def.beamWidth > 0 ? def.beamWidth : 5;
+      rec.state = 0;
+      beamRecN += 1;
+    }
+    for (let b = 0; b < BEAM_MAX; b++) {
+      if (!beamAlive[b]) continue;
+      let rec = viewBeams[beamRecN];
+      if (!rec) rec = viewBeams[beamRecN] = {};
+      rec.x = beamX[b]; rec.z = beamZ[b];
+      rec.a0 = beamA0[b]; rec.a1 = beamA1[b];
+      rec.t = beamT[b]; rec.total = beamTotal[b];
+      rec.range = beamRange[b]; rec.width = beamWidth[b];
+      rec.state = 1;
+      beamRecN += 1;
+    }
+    viewBeams.length = beamRecN;
+    let linkRecN = 0;
+    let auraRecN = 0;
+    for (let i = 0; i < CAP; i++) {
+      if (!alive[i]) continue;
+      const def = liveFamilyDef[family[i]];
+      if (!def) continue;
+      if (def.linkShield && linkPartner[i] >= 0 && alive[linkPartner[i]]) {
+        let rec = viewLinks[linkRecN];
+        if (!rec) rec = viewLinks[linkRecN] = {};
+        rec.x1 = px[i]; rec.z1 = pz[i];
+        rec.x2 = px[linkPartner[i]]; rec.z2 = pz[linkPartner[i]];
+        linkRecN += 1;
+      }
+      if (def.magnets) {
+        let rec = viewAuras[auraRecN];
+        if (!rec) rec = viewAuras[auraRecN] = {};
+        rec.x = px[i]; rec.z = pz[i];
+        rec.r = def.magnetRadius > 0 ? def.magnetRadius : 30;
+        auraRecN += 1;
+      }
+    }
+    viewLinks.length = linkRecN;
+    viewAuras.length = auraRecN;
     // The radius the damage queries add the victim's reach to, so the drawn footprints can use the
     // SAME number (telegraphFootprint.js). Runtime mirror, never serialized.
     view.victimRadius = playerRad;
@@ -2838,10 +3624,14 @@ export function createBroodEngine(deps = {}) {
     applyLegendaryShove,
     /** Live population figures, for tests and the lab overlay. */
     census() {
-      return { alive: aliveCount, cap: CAP, min: SWARM_BROOD_MIN, wave: liveWave, sacBudget, reserveBudget };
+      return { alive: aliveCount, cap: CAP, min: SWARM_BROOD_MIN, wave: liveWave, sacBudget, reserveBudget, machineReserve };
     },
     // Test seams: direct, read-only unless named as a seam.
-    _bodies: { px, pz, vx, vz, alive, family, heading, hp, phase, timer, teleX, teleZ, teleDir, serial, seedPhase, gluedUntil, birthLeft, birthTold, liveFamilyId, liveFamilyRadius, affix, commandBuff },
+    _bodies: { px, pz, vx, vz, alive, family, heading, hp, phase, timer, teleX, teleZ, teleDir, serial, seedPhase, gluedUntil, birthLeft, birthTold, liveFamilyId, liveFamilyRadius, affix, commandBuff, shielded, linkPartner, channelEntity, squadId, squadSlot, beamState },
+    _machine() {
+      return { reserve: machineReserve, squads: squadCount, beams: beamCount };
+    },
+    _beams: { x: beamX, z: beamZ, a0: beamA0, a1: beamA1, t: beamT, total: beamTotal, range: beamRange, width: beamWidth, alive: beamAlive, owner: beamOwner },
     _lobs: { x: lobX, z: lobZ, t: lobT, total: lobTotal, tx: lobTX, tz: lobTZ, alive: lobAlive },
     _pools: { x: poolX, z: poolZ, age: poolAge, ttl: poolTtl },
     // B3 — the Tendril's chain: read-only buffers plus one write seam for the split test.
