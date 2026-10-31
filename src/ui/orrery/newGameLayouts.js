@@ -274,9 +274,11 @@ ${NG} > .sf-ng-footer .k-word.sf-back:focus-visible::after {
   ${NGD} .orr-ng-caption > .sf-slot-card-title { position:absolute !important; left:0 !important; top:0 !important; font-size:28px !important; }
   ${NGD} .orr-ng-caption > .k-sentence { position:absolute !important; left:0 !important; top:40px !important; margin:0 !important;
     max-width:min(340px, 86%) !important; font-size:13px !important; line-height:1.4 !important; }
-  /* the hero box (the ring and the yard both measure it) keeps 68px left of it for MASS and 113px right of it
-     for LINE and its gloss (which may run 14px into the margin), and centres once the stage is wide enough */
-  ${NGD} > .k-stage { --ng-hero-w:min(50%, 100% - 181px); --ng-hero-x:max(68px, min(25%, 100% - var(--ng-hero-w) - 113px)); }
+  /* the hero box (the ring and the yard both measure it) keeps 100px either side of it, so the 24px side
+     readings (reserved at 68px, not the 32px desktop 92) sit clear outside the ring's ticks instead of on them
+     (MASS's 35 t at 390), and centres once the stage is wide enough */
+  ${NGD} > .k-stage { --ng-hero-w:min(50%, 100% - 200px); --ng-hero-x:max(100px, min(25%, 100% - var(--ng-hero-w) - 100px)); }
+  ${NGD} .orr-hullring { --orr-hullring-num-reserve:68; }
   ${NGD} > .k-stage > :is(.k-world--stage, .k-stage__poster),
   ${NGD} > .k-stage > .orr-ng-hero-box { left:var(--ng-hero-x) !important; width:var(--ng-hero-w) !important; top:150px !important; height:92px !important; }
   ${NGD} > .k-stage::before { left:var(--ng-hero-x); width:var(--ng-hero-w); top:226px; height:30px; }

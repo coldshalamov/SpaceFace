@@ -217,7 +217,13 @@ export function createHullRing({ host, anchor } = {}) {
         const fitKey = `${key}|${seg.labelText.data}|${seg.glossText.data}`;
         if (seg.fitKey !== fitKey) {
           seg.fitKey = fitKey;
+          // a layout that sets the numeral smaller (New Game ≤700 wide, 24px) says so with
+          // --orr-hullring-num-reserve, or the 32px reserve shoves MASS's reading onto its own ticks
           let width = NUM_RESERVE;
+          try {
+            const own = parseFloat(doc.defaultView.getComputedStyle(layer).getPropertyValue('--orr-hullring-num-reserve'));
+            if (own > 0) width = own;
+          } catch { /* unrendered host: keep the reserve */ }
           for (const node of [seg.label, seg.gloss]) {
             try { width = Math.max(width, node.getComputedTextLength ? node.getComputedTextLength() : 0); } catch { /* unrendered host: keep the reserve */ }
           }
