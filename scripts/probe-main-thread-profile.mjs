@@ -999,6 +999,63 @@ async function clickButton(page, pattern, timeoutMs = 60_000) {
   await page.mouse.click(center.x, center.y);
 }
 
+async function armPublicLaunchClickTimestamp(page) {
+  const armed = await page.evaluate(() => {
+    const stampKey = '__SF_PROFILE_PUBLIC_LAUNCH_CLICK__';
+    const cleanupKey = '__SF_PROFILE_PUBLIC_LAUNCH_CLICK_CLEANUP__';
+    try { globalThis[cleanupKey]?.(); } catch { /* clear an earlier attempt */ }
+    delete globalThis[stampKey];
+    const listener = (event) => {
+      if (!event.isTrusted) return;
+      const button = event.target instanceof Element ? event.target.closest('button') : null;
+      if (!button || !/^Launch$/i.test((button.textContent || '').trim())) return;
+      globalThis[stampKey] = {
+        wallMs: Date.now(),
+        eventTimeStamp: event.timeStamp,
+      };
+      globalThis[cleanupKey]?.();
+    };
+    const cleanup = () => {
+      document.removeEventListener('click', listener, true);
+      if (globalThis[cleanupKey] === cleanup) delete globalThis[cleanupKey];
+    };
+    globalThis[cleanupKey] = cleanup;
+    document.addEventListener('click', listener, true);
+    return true;
+  });
+  if (!armed) throw new Error('could not arm the public Launch click timestamp');
+}
+
+async function takePublicLaunchClickTimestamp(page) {
+  return page.evaluate(() => {
+    const stampKey = '__SF_PROFILE_PUBLIC_LAUNCH_CLICK__';
+    const cleanupKey = '__SF_PROFILE_PUBLIC_LAUNCH_CLICK_CLEANUP__';
+    try { globalThis[cleanupKey]?.(); } catch { /* page may be navigating */ }
+    const stamp = globalThis[stampKey] || null;
+    delete globalThis[stampKey];
+    delete globalThis[cleanupKey];
+    return stamp;
+  }).catch(() => null);
+}
+
+async function clickPublicLaunchButton(page, timeoutMs = 60_000) {
+  const center = await waitForButton(page, /^Launch$/i, timeoutMs);
+  if (!center) return null;
+  await armPublicLaunchClickTimestamp(page);
+  let clickError = null;
+  try {
+    await page.mouse.click(center.x, center.y);
+  } catch (error) {
+    clickError = error;
+  }
+  const stamp = await takePublicLaunchClickTimestamp(page);
+  if (clickError) throw clickError;
+  if (!stamp || !Number.isFinite(stamp.wallMs)) {
+    throw new Error('trusted public Launch click timestamp was not captured');
+  }
+  return stamp;
+}
+
 async function rememberWarmRendererContext(page) {
   return page.evaluate(() => {
     const renderer = window.SF?.registry?.get?.('render')?.renderer || null;
@@ -1074,8 +1131,9 @@ async function warmPublicLaunchAndReturnToTitle(page) {
   let contextAtFlight;
   try {
     await openNewGameWithSeed(page);
-    await clickButton(page, /^Launch$/i);
-    launchWallMs = Date.now();
+    const launchClick = await clickPublicLaunchButton(page);
+    if (!launchClick) throw new Error('Launch control was not present for the warm-up run');
+    launchWallMs = launchClick.wallMs;
     flightWallMs = await waitForFlight(page, 240_000, 250);
     contextAtFlight = await rememberWarmRendererContext(page);
     log(`warm-up public Adventure reached flight in ${flightWallMs - launchWallMs} ms`);
@@ -1679,16 +1737,10 @@ async function runLaunchProfile(page, cdp, profileNote) {
   }
   let linkLedgerReset = false;
   if (warmup) linkLedgerReset = await resetLinkBlockLedgerForMeasuredLaunch(page);
-  if (warmup) {
-    await clickButton(page, /^Launch$/i);
-  } else {
-    try {
-      await clickButton(page, /^Launch$/i);
-    } catch {
-      log('no Launch button on this route; continuing');
-    }
-  }
-  const launchWallMs = Date.now();
+  const launchClick = await clickPublicLaunchButton(page);
+  if (!launchClick && warmup) throw new Error('Launch control was not present for the measured warm run');
+  if (!launchClick) log('no Launch button on this route; continuing');
+  const launchWallMs = launchClick?.wallMs ?? Date.now();
 
   const flightWallMs = await waitForFlight(page, 240_000, 250);
   if (HEAP_SAMPLING) await markHeap('first flight frame');
