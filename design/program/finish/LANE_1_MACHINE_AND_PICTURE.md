@@ -221,7 +221,16 @@ release, including F9 with an old paint timestamp; ordinary post-paint flight re
 focused opening/lifetime cases pass. The original plan failure and buffer-size defect still need
 public-route verification. See `INTEGRATION_COVERAGE.md`.
 
-The next identity probe stops before F9: public autopilot reports Helios arrival, but the physical
+The `b0847dac39af` short public diagnostic completes nine save/load/trade cycles, same-mesh
+context recovery and the 120-second flight tail without reproducing the plan or buffer-size
+failure. Its aggregate still fails: the new receipt branch throws `captionSlot is not defined`
+(now repaired with 21 HUD cases passing), retained heap grows 83.0 MB and geometries 365 while
+entities grow six, and owned Electron close times out with a worker-clock stall during teardown.
+Package residency decreases, so those totals do not identify a leak owner. The next required soak
+records scene geometry identities at three checkpoints and the existing quit IPC reply through
+the process monitor; no budgets, shutdown behavior or pass criteria change.
+
+The earlier identity probe stops before F9: public autopilot reports Helios arrival, but the physical
 dock prompt never appears within 360 seconds. Its saved nav distance is telemetry, not a current
 anchor measurement. A normal real-flight/corridor/SG-02 fixture emits the range prompt and remains
 berthed for ten seconds; it does not reproduce this route failure. The existing approach snapshot
