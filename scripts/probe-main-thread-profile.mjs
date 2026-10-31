@@ -50,7 +50,7 @@ import { execFileSync } from 'node:child_process';
 import { installGameCadenceProbe, summarizeGameCadence } from './lib/gameCadenceProbe.mjs';
 import { captureHostPowerState } from './lib/performancePowerState.mjs';
 import { digestSourcePaths, listSrcJsSourcePaths } from './lib/validationFingerprint.mjs';
-import { racingToFlight, readLaunchedRunSeed } from './player-truth/routes.mjs';
+import { installFirstLightPromptHandler, racingToFlight, readLaunchedRunSeed } from './player-truth/routes.mjs';
 import { startSimulationWorkerProfile } from './lib/workerCpuProfile.mjs';
 import { renderTraceSummaryMarkdown, summarizeMainThread, traceEventsOf } from './lib/rendererTraceSummary.mjs';
 import { frameGapStats, smoothnessMarkdown, summarizeLoadingSmoothness } from './lib/loadingSmoothness.mjs';
@@ -121,6 +121,7 @@ const probeDigest = await digestSourcePaths(ROOT, [
   'scripts/lib/workerCpuProfile.mjs',
   'scripts/lib/presentedCanvasContent.mjs',
 ]);
+const repositoryCommit = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: ROOT, encoding: 'utf8' }).trim();
 let servedSourceOverlayIdentity = null;
 
 function sourceOverlayMetadata() {
@@ -315,7 +316,9 @@ function readGpuAndOpeningInPage() {
           totalMs: Math.round(ledger.totalMs), maxMs: Math.round(ledger.maxMs),
           families,
           worst: (ledger.worst || []).slice(0, 8).map((row) => ({
-            ms: Math.round(row.ms), name: row.name, stack: row.stack ? String(row.stack).slice(0, 700) : null,
+            ms: Math.round(row.ms), name: row.name, programId: row.programId ?? null,
+            cacheKey: typeof row.cacheKey === 'string' ? row.cacheKey.slice(0, 1536) : null,
+            stack: row.stack ? String(row.stack).slice(0, 700) : null,
           })),
         };
       } catch { return null; }
@@ -333,6 +336,79 @@ function readGpuAndOpeningInPage() {
         return Array.isArray(ledger) ? JSON.parse(JSON.stringify(ledger)) : null;
       } catch { return null; }
     })(),
+  };
+}
+
+/** One-shot runtime identity for a launch capture; unavailable renderer facts stay null. */
+function readLaunchRuntimeBindingInPage() {
+  let laneDiagnostic = null;
+  try { laneDiagnostic = window.SF?.simLaneDiag?.() || null; } catch { /* diagnostic is optional */ }
+  let renderer = null;
+  try {
+    const gl = window.SF?.state?.render?.renderer?.getContext?.();
+    if (gl) {
+      let debugInfo = null;
+      let parallelShaderCompile = null;
+      try { debugInfo = gl.getExtension('WEBGL_debug_renderer_info'); } catch { /* optional */ }
+      try { parallelShaderCompile = !!gl.getExtension('KHR_parallel_shader_compile'); } catch { /* optional */ }
+      const readParameter = (key) => {
+        try { return key != null ? gl.getParameter(key) : null; } catch { return null; }
+      };
+      renderer = {
+        vendor: readParameter(debugInfo?.UNMASKED_VENDOR_WEBGL),
+        adapter: readParameter(debugInfo?.UNMASKED_RENDERER_WEBGL),
+        parallelShaderCompile,
+      };
+    }
+  } catch { /* renderer may have been disposed during shutdown */ }
+  const lane = typeof laneDiagnostic?.lane === 'string' && laneDiagnostic.lane
+    ? laneDiagnostic.lane
+    : 'unknown';
+  return {
+    lane,
+    laneDiagnostic: laneDiagnostic ? {
+      lane: laneDiagnostic.lane ?? null,
+      clockOwner: laneDiagnostic.clockOwner ?? null,
+      workerClockMode: laneDiagnostic.workerClockMode ?? null,
+      laneReady: laneDiagnostic.laneReady ?? null,
+      domainProfile: laneDiagnostic.domainProfile ?? null,
+      closed: laneDiagnostic.closed ?? null,
+      inFlight: laneDiagnostic.inFlight ?? null,
+      pendingRpcs: Number.isFinite(laneDiagnostic.pendingRpcs) ? laneDiagnostic.pendingRpcs : null,
+    } : null,
+    renderer,
+  };
+}
+
+function sampleHostResources() {
+  const cpus = os.cpus();
+  const totals = cpus.reduce((out, cpu) => {
+    out.idle += cpu.times.idle;
+    out.total += Object.values(cpu.times).reduce((sum, value) => sum + value, 0);
+    return out;
+  }, { idle: 0, total: 0 });
+  return {
+    sampledAt: new Date().toISOString(),
+    platform: process.platform,
+    cpuModel: cpus[0]?.model || null,
+    logicalCpuCount: cpus.length || null,
+    cpuTimes: totals,
+    freeMemoryBytes: os.freemem(),
+    totalMemoryBytes: os.totalmem(),
+  };
+}
+
+function summarizeHostResources(start, end) {
+  const totalDelta = end.cpuTimes.total - start.cpuTimes.total;
+  const idleDelta = end.cpuTimes.idle - start.cpuTimes.idle;
+  return {
+    start: { sampledAt: start.sampledAt, cpuTimes: start.cpuTimes, freeMemoryBytes: start.freeMemoryBytes },
+    end: { sampledAt: end.sampledAt, cpuTimes: end.cpuTimes, freeMemoryBytes: end.freeMemoryBytes },
+    platform: start.platform,
+    cpuModel: start.cpuModel,
+    logicalCpuCount: start.logicalCpuCount,
+    totalMemoryBytes: start.totalMemoryBytes,
+    hostBusyPct: totalDelta > 0 ? 100 * (1 - idleDelta / totalDelta) : null,
   };
 }
 
@@ -607,7 +683,7 @@ function linkBlockLines(blocks) {
   return lines;
 }
 
-function writeLaunchReport({ profile, trace, timeline, atFlight, atEnd, census, profileNote }) {
+function writeLaunchReport({ profile, trace, timeline, atFlight, atEnd, census, profileNote, captureMetadata }) {
   const index = profileIndex(profile);
   const toMicros = (wallMs) => Math.max(0, (wallMs - timeline.profileStartWallMs) * 1000);
   const phases = buildLaunchPhases(timeline, trace.stages);
@@ -620,6 +696,14 @@ function writeLaunchReport({ profile, trace, timeline, atFlight, atEnd, census, 
     `**Launch click to flight: ${secondsBetween(timeline.launchWallMs, timeline.flightWallMs)} s.** `
       + `New Game click to flight: ${secondsBetween(timeline.newGameWallMs, timeline.flightWallMs)} s. `
       + `The profile continues ${secondsBetween(timeline.flightWallMs, timeline.endWallMs)} s into held-thrust flight.`,
+    '',
+    '## Runtime and host binding',
+    '',
+    `- Source commit: ${captureMetadata?.source?.sourceCommit || 'unknown'}; merged source digest: ${captureMetadata?.source?.mergedSourceDigest || 'unknown'}.`,
+    `- Baseline: ${captureMetadata?.source?.baselineManifest || 'none'}; source commit ${captureMetadata?.source?.baselineSourceCommit || 'n/a'}; overlay digest ${captureMetadata?.source?.baselineOverlayDigest || 'n/a'}.`,
+    `- Simulation lane: ${captureMetadata?.runtime?.lane || 'unknown'}; diagnostic ${JSON.stringify(captureMetadata?.runtime?.laneDiagnostic ?? null)}.`,
+    `- WebGL: vendor ${captureMetadata?.runtime?.renderer?.vendor || 'unknown'}; adapter ${captureMetadata?.runtime?.renderer?.adapter || 'unknown'}; KHR_parallel_shader_compile ${captureMetadata?.runtime?.renderer?.parallelShaderCompile == null ? 'unknown' : captureMetadata.runtime.renderer.parallelShaderCompile ? 'available' : 'unavailable'}.`,
+    `- Host: ${captureMetadata?.host?.cpuModel || 'unknown'} (${captureMetadata?.host?.logicalCpuCount ?? '?'} logical CPUs); busy ${captureMetadata?.host?.hostBusyPct == null ? 'unknown' : `${captureMetadata.host.hostBusyPct.toFixed(1)}%`}; free memory ${captureMetadata?.host?.start?.freeMemoryBytes ?? 'unknown'} → ${captureMetadata?.host?.end?.freeMemoryBytes ?? 'unknown'} bytes of ${captureMetadata?.host?.totalMemoryBytes ?? 'unknown'}.`,
     '',
     '## Where the time went, by phase',
     '',
@@ -889,14 +973,58 @@ async function clickButton(page, pattern, timeoutMs = 60_000) {
 }
 
 async function clickNewGameAndLaunch(page) {
-  await clickButton(page, /^New Game$/);
-  await page.locator('#sf-ng-seed').fill(String(FIXED_SEED));
-  log(`New Game seed ${FIXED_SEED}`);
+  await openNewGameWithSeed(page);
   try {
     await clickButton(page, /^Launch$/i);
   } catch {
     log('no Launch button on this route; continuing');
   }
+}
+
+async function openNewGameWithSeed(page) {
+  const step = (name, ok, detail) => { if (ok) log(`${name}: ${detail}`); };
+  await installFirstLightPromptHandler(page, step);
+  try {
+    // Locator actions let the existing public First Light handler answer its one known prompt;
+    // after the menu action, wait for ScreenManager's canonical top-screen transition before
+    // addressing New Game controls.
+    await page.getByRole('button', { name: 'New Game', exact: true }).click({ timeout: 60_000 });
+    await page.waitForFunction(
+      () => window.SF?.ctx?.screenManager?.top?.() === 'newGame',
+      null,
+      { timeout: 60_000 },
+    );
+    await page.locator('#sf-ng-seed').fill(String(FIXED_SEED));
+    log(`New Game seed ${FIXED_SEED}`);
+  } catch (error) {
+    await writeNewGameSetupFailure(page, error);
+    throw error;
+  }
+}
+
+async function writeNewGameSetupFailure(page, error) {
+  const ui = await page.evaluate(() => {
+    const visible = (node) => {
+      if (!node) return false;
+      const style = getComputedStyle(node), rect = node.getBoundingClientRect();
+      return style.display !== 'none' && style.visibility !== 'hidden'
+        && Number(style.opacity || 1) > 0.01 && rect.width > 0 && rect.height > 0;
+    };
+    const prompt = document.querySelector('#sf-confirm-root.sf-confirm--in [role="dialog"]');
+    return {
+      topScreen: window.SF?.ctx?.screenManager?.top?.() || null,
+      visiblePrompt: visible(prompt) ? String(prompt.innerText || '').slice(0, 1200) : null,
+      newGameVisible: visible(document.querySelector('[data-screen="newGame"]')),
+      seedVisible: visible(document.querySelector('#sf-ng-seed')),
+    };
+  }).catch(snapshotError => ({ snapshotError: String(snapshotError?.message || snapshotError) }));
+  try {
+    await page.screenshot({ path: path.join(OUT_DIR, 'new-game-setup-failure.png'), timeout: 5_000 });
+  } catch { /* the page may already be closing */ }
+  fs.writeFileSync(path.join(OUT_DIR, 'new-game-setup-failure.json'), JSON.stringify({
+    error: String(error?.stack || error),
+    ui,
+  }, null, 2), 'utf8');
 }
 
 async function waitForFlight(page, timeoutMs, pollMs, { signal = null } = {}) {
@@ -1403,11 +1531,10 @@ async function runLaunchProfile(page, cdp, profileNote) {
   // One user-timing mark on both clocks: the trace's monotonic microseconds <-> Date.now().
   const clockSync = TRACE ? await page.evaluate(() => { performance.mark('sf-clock-sync'); return Date.now(); }) : null;
   const profileStartWallMs = Date.now();
+  const hostStart = sampleHostResources();
 
   const newGameWallMs = Date.now();
-  await clickButton(page, /^New Game$/);
-  await page.locator('#sf-ng-seed').fill(String(FIXED_SEED));
-  log(`New Game seed ${FIXED_SEED}`);
+  await openNewGameWithSeed(page);
   if (LAUNCH_DWELL_MS > 0) {
     await waitForButton(page, /^Launch$/i, 60_000);
     log(`staying ${LAUNCH_DWELL_MS} ms on the New Game screen before Launch`);
@@ -1430,6 +1557,7 @@ async function runLaunchProfile(page, cdp, profileNote) {
   if (!HOLD_STILL) await page.keyboard.up('KeyW').catch(() => {});
   const { profile } = await cdp.send('Profiler.stop');
   const endWallMs = Date.now();
+  const hostEnd = sampleHostResources();
   if (HEAP_SAMPLING) {
     await markHeap('end of flight tail');
     await writeHeapSampling(cdp, heapMarks);
@@ -1438,14 +1566,30 @@ async function runLaunchProfile(page, cdp, profileNote) {
   if (TRACE) await stopTraceToFile(cdp, traceFile);
 
   const atEnd = await page.evaluate(readGpuAndOpeningInPage).catch(() => null);
+  const runtimeBinding = await page.evaluate(readLaunchRuntimeBindingInPage).catch(() => null);
   const census = await page.evaluate(canvasCensusInPage).catch(() => []);
   const trace = await collectLaunchObservers(page);
   const timeline = { profileStartWallMs, newGameWallMs, launchWallMs, flightWallMs, endWallMs };
+  const baseline = sourceOverlayMetadata();
+  const captureMetadata = {
+    source: {
+      sourceCommit: baseline?.sourceCommit || repositoryCommit,
+      repoCommit: repositoryCommit,
+      mergedSourceDigest: sourceDigest,
+      probeDigest,
+      baselineManifest: baseline?.manifest || null,
+      baselineSourceCommit: baseline?.sourceCommit || null,
+      baselineOverlayDigest: baseline?.sourceOverlayDigest || null,
+      servedSourceOverlayIdentity: baseline?.servedIdentity || null,
+    },
+    runtime: runtimeBinding,
+    host: summarizeHostResources(hostStart, hostEnd),
+  };
 
-  writeLaunchReport({ profile, trace, timeline, atFlight, atEnd, census, profileNote });
+  writeLaunchReport({ profile, trace, timeline, atFlight, atEnd, census, profileNote, captureMetadata });
   fs.writeFileSync(path.join(OUT_DIR, 'profile.cpuprofile'), JSON.stringify(profile), 'utf8');
   fs.writeFileSync(path.join(OUT_DIR, 'canvas-census.json'), JSON.stringify(census, null, 1), 'utf8');
-  fs.writeFileSync(path.join(OUT_DIR, 'launch-trace.json'), JSON.stringify({ timeline, stages: trace.stages, longTasks: trace.longTasks, atFlight, atEnd }, null, 1), 'utf8');
+  fs.writeFileSync(path.join(OUT_DIR, 'launch-trace.json'), JSON.stringify({ timeline, captureMetadata, stages: trace.stages, longTasks: trace.longTasks, atFlight, atEnd }, null, 1), 'utf8');
   if (TRACE) writeTraceSummary(traceFile, clockSync, timeline, trace.stages);
   log(`stages: ${trace.stages.map((stage) => `${stage.id}@${((stage.wallMs - launchWallMs) / 1000).toFixed(1)}s`).join(' ')}`);
   log(`long tasks: ${trace.longTasks.length}; resources observed: ${trace.resources.length}`);

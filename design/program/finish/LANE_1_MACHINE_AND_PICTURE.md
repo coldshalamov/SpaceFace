@@ -170,6 +170,8 @@ the title (0.6 s, 1.6 s), the credits render, native pipeline compile, opening G
 load. Map every long task ≥ 100 ms from Launch to first flight onto the CPU profile and fix it or slice it.
 Done when the longest main-thread task from Launch click to first flight frame meets the floor, then the target.
 
+Current cold Electron profile (`adventure-launch-import-fix-r2`, published ae3e source) reaches flight in 49.1 seconds, with 37.85 seconds in render-pipelines and 23.915 seconds of first-use shader waits. This is not a warm-load or improvement measurement. The pending-link admission repair is local and unaccepted after a real required-authored-root startup timeout; full preliminary membership is restored and timeout propagation is being corrected before a new ordinary launch. The existing profiler now records source/runtime/GPU/KHR and host samples plus the existing slow-program IDs/cache keys; its public First Light/New Game flow is repaired. No new profile result is claimed.
+
 **M7 — The loading screen is smooth and immersive.** The animation already draws in workers
 (`loadingTerminalArt.js:~1784`, `bootRingWorker.js:~150`) and boot pacing yields between slices
 (`bootShellPacing.js`), yet the owner sees it hitch. Measure with M0's gap probe *what* stalls it before
@@ -187,20 +189,9 @@ instead of terminating (`presentationRunner.js`). D250: cap concurrent asset fet
 backoff. Add a forced-context-loss test and a 30-minute Adventure soak to the M0 bench. Done when the
 soak + one forced context loss shows zero terminal panes.
 
-Integration checkpoint 2026-10-31: a public Ceres approach exposes valid Dock prompts whose intents
-are rejected because sector admission stays armed. The worker domain mirror omitted `world.enterSerial`;
-temporary event replay restored it to undefined, making the current renderer cook appear stale.
-The candidate now projects the serial without changing the Dock gate or successor guard. Actual
-projection/replay/renderer checks pass 4/4 and domain/wire checks 9/9. The source-770 public route now
-commits Ceres Dock, then times out on the combined settlement predicate before F5. Paused settlement
-publication is repaired (5 focused cases), with a fresh delivery/save/Continue route pending. The full
-30-minute soak remains required. The latest combined bundle passes; the current baseline has 16
-passing checks and a Massline timeout at 210 seconds, totaling 222,351 ms against its unchanged
-90-second budget. Isolated Massline passes 27/27 child checks in 166,204 ms; the broad gate remains failed. The source-70d1 public haul
-reaches physical Ceres Dock, delivers all eight cells and publishes the 760-credit receipt. Its
-observer incorrectly assumes reputation-event order across the worker transport; that observer is
-being corrected before retrying save/Continue. No save/Continue acceptance is claimed.
-See `INTEGRATION_COVERAGE.md`.
+Integration checkpoint 2026-10-31: world-entry serial projection and paused settlement publication are repaired. The public haul reaches physical Ceres Dock, delivers all eight cells, publishes one 760-credit mission payment, reputation award and completion receipt, then completes the manual quick save (4,105,181 bytes). The observer now waits for the canonical successful save event rather than assuming a localStorage key. Actual title Continue restoration is still untested.
+
+A later run on published ae3e exposes repeated real Three.js buffer-resize exceptions during travel, followed by a gate timeout. The existing error-only resize diagnostic is enabled for the next pinned route to identify the attribute and geometry owner; no autopilot defect is inferred from the timeout alone. Full 30-minute Adventure/context-loss qualification remains open. The current baseline has 16 passing checks and a Massline timeout at 210 seconds, totaling 222,351 ms against the unchanged 90-second budget; isolated Massline passes 27/27 in 166,204 ms, so the broad gate remains failed. See `INTEGRATION_COVERAGE.md`.
 
 **M9 — Load less, load later.** 28 MB of minified JS in the eager closure (`scripts/build-bundle.mjs`,
 esbuild splitting): lazy-load per mode and per screen; make `modelTruthCensus.generated.js` and
