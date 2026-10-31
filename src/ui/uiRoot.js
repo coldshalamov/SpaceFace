@@ -18,7 +18,7 @@ import { createUiInput } from './input.js';
 import { isConfirmOpen, bindConfirmBus } from './confirm.js';
 import { setPromptScheme, setPromptBindings } from './controlPrompts.js';
 import { resolveActionLabel } from '../systems/input.js';
-import { injectHudCss } from './views/hudStyles.js';
+import { ensureHudStylesheet } from './views/hudStylesheet.js';
 import { isHostileToPlayer, isWreckLike, SCANNER_CONTACT_RANGE } from '../systems/scanner.js';
 import { targetDisplayName } from './targetPanel.js';
 import { postTaskAtBackgroundPriorityBounded } from '../core/backgroundPost.js';
@@ -681,7 +681,7 @@ export const ui = {
     try { installStationExitGate(ctx); } catch (e) { console.error('[ui] station exit gate', e); }
     this.helpers = ctx.helpers;
 
-    injectHudCss();
+    ensureHudStylesheet();
     // The frontend kit (design/frontend/direction/KIT_SPEC.md §5, §8, §11.1): one sound binding
     // onto the existing audio:cue bus and one temperature binding that sets html[data-k-temp]
     // from the game's state. A screen never sets either itself.

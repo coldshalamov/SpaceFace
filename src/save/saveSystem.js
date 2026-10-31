@@ -402,9 +402,11 @@ export const save = {
     this._sharedStoreFlushTimer = null;
     this._sharedStoreMirrorWaiters = [];
     this._sharedStoreMirrorPending = new Set();
+    this._sharedStoreMirrorMetadata = new WeakMap();
     this._sharedStoreMirrorGeneration = (this._sharedStoreMirrorGeneration || 0) + 1;
     this._sharedStoreCollectQueued = false;
     this._sharedStoreCollectPromise = null;
+    this._profileMirrorDirty = null;
     this._dirtyJournal = createSaveDirtyJournal();
     this._lastSaveSnapshotBoundary = null;
     this._playerCollectionRevision = 0;
@@ -822,9 +824,11 @@ export const save = {
       }
       return this._sharedStoreCollectPromise;
     }
+    const metadata = { profileOnly: false };
     const completion = new Promise((resolve) => {
-      (this._sharedStoreMirrorWaiters ||= []).push(resolve);
+      (this._sharedStoreMirrorWaiters ||= []).push({ resolve, metadata });
     });
+    (this._sharedStoreMirrorMetadata ||= new WeakMap()).set(completion, metadata);
     (this._sharedStoreMirrorPending ||= new Set()).add(completion);
     completion.then(() => this._sharedStoreMirrorPending.delete(completion));
     this._sharedStorePatch = this._sharedStorePatch || {};
@@ -836,7 +840,10 @@ export const save = {
       this._sharedStorePatch = null;
       const waiters = this._sharedStoreMirrorWaiters || [];
       this._sharedStoreMirrorWaiters = [];
-      if (!keys) { for (const resolve of waiters) resolve(false); return; }
+      if (!keys) { for (const waiter of waiters) waiter.resolve(false); return; }
+      const batchKeys = Object.keys(keys);
+      const profileOnly = batchKeys.length === 1 && batchKeys[0] === PROFILE_SETTINGS_KEY;
+      for (const waiter of waiters) waiter.metadata.profileOnly = profileOnly;
       const ownerState = this.state;
       const ownerEpoch = this._runEpoch;
       const ownerRestore = this._restoreSequence;
@@ -846,13 +853,19 @@ export const save = {
       // INF-092: a missed mirror write flips health (no toast per save — the flag is the
       // status); a later landed write clears it with one recovery notice. Neither arm
       // duplicates a save nor touches transitions.
-      const work = pushSharedPlayerStore(keys, { keepalive: true }).then((landed) => {
+      // Profile generations must remain ordered while retaining page-outliving
+      // keepalive when the payload fits the browser's limit.
+      const profileRaw = typeof keys[PROFILE_SETTINGS_KEY] === 'string' ? keys[PROFILE_SETTINGS_KEY] : null;
+      const work = pushSharedPlayerStore(keys, { keepalive: true, serialize: profileRaw !== null }).then((landed) => {
         if (!ownerCurrent()) return landed || sharedPlayerStoreCapability().status === 'absent';
+        if (!landed && sharedPlayerStoreCapability().status === 'absent'
+          && profileRaw !== null && this._currentDirtyProfile() === profileRaw) this._profileMirrorDirty = null;
         if (landed) {
+          if (profileRaw !== null && this._currentDirtyProfile() === profileRaw) this._profileMirrorDirty = null;
           const wasUnhealthy = this._sharedStoreMirrorHealthy === false;
-          this._sharedStoreMirrorHealthy = true;
+          this._sharedStoreMirrorHealthy = this._profileMirrorDirty == null;
           this._publishSharedStoreStatus();
-          if (wasUnhealthy) {
+          if (wasUnhealthy && this._sharedStoreMirrorHealthy) {
             if (this.bus && typeof this.bus.emit === 'function') {
               this.bus.emit('save:store-synced', { ok: true, mirror: 'shared', durableStore: 'local', mirrorRecovered: true,
                 storeCapability: sharedPlayerStoreCapability() });
@@ -871,7 +884,7 @@ export const save = {
         return false;
       });
       work.then((ok) => {
-        for (const resolve of waiters) resolve(ok);
+        for (const waiter of waiters) waiter.resolve(ok);
       });
     };
     if (typeof setTimeout === 'function') this._sharedStoreFlushTimer = setTimeout(flush, 0);
@@ -880,11 +893,34 @@ export const save = {
   },
 
   async drainSharedStoreWrites() {
+    const state = this.state, epoch = this._runEpoch, restore = this._restoreSequence;
+    const generation = this._sharedStoreMirrorGeneration;
+    const current = () => this.state === state && this._runEpoch === epoch
+      && this._restoreSequence === restore && this._sharedStoreMirrorGeneration === generation;
     const pending = [...(this._sharedStoreMirrorPending || [])];
     if (this._sharedStoreCollectQueued && this._sharedStoreCollectPromise) pending.push(this._sharedStoreCollectPromise);
     const results = await Promise.all(pending);
+    if (!current()) return { ok: false, reason: 'superseded', pending: pending.length };
     const localOnly = !sharedPlayerStoreAvailable() || sharedPlayerStoreCapability().status === 'absent';
-    return { ok: results.every(Boolean) && (localOnly || this._sharedStoreMirrorHealthy !== false), pending: pending.length };
+    const profile = this._currentDirtyProfile();
+    let profileRecovered = false;
+    if (!localOnly && profile != null) {
+      profileRecovered = await this._queueSharedStoreMirror({ [PROFILE_SETTINGS_KEY]: profile });
+    }
+    if (!current()) return { ok: false, reason: 'superseded', pending: pending.length };
+    const failedUncovered = results.some((ok, index) => !ok
+      && !(profileRecovered && this._sharedStoreMirrorMetadata?.get(pending[index])?.profileOnly === true));
+    return { ok: !failedUncovered && (profile == null || localOnly || profileRecovered)
+      && (localOnly || (this._sharedStoreMirrorHealthy !== false
+      && this._profileMirrorDirty == null)), pending: pending.length };
+  },
+
+  _currentDirtyProfile() {
+    if (this._profileMirrorDirty == null) return null;
+    try {
+      if (typeof localStorage !== 'undefined') this._profileMirrorDirty = localStorage.getItem(PROFILE_SETTINGS_KEY);
+    } catch { /* retain the last known local bytes */ }
+    return this._profileMirrorDirty;
   },
 
   async prepareForQuit() {
@@ -1754,8 +1790,10 @@ export const save = {
         updatedAt: new Date().toISOString(),
         settings: profileSettingsSnapshot(this.state.settings),
       };
-      localStorage.setItem(PROFILE_SETTINGS_KEY, JSON.stringify(payload));
-      this._queueSharedStoreMirror({ [PROFILE_SETTINGS_KEY]: JSON.stringify(payload) });
+      const raw = JSON.stringify(payload);
+      localStorage.setItem(PROFILE_SETTINGS_KEY, raw);
+      this._profileMirrorDirty = sharedPlayerStoreAvailable() && sharedPlayerStoreCapability().status !== 'absent' ? raw : null;
+      this._queueSharedStoreMirror({ [PROFILE_SETTINGS_KEY]: raw });
       return true;
     } catch (err) {
       this.bus && this.bus.emit && this.bus.emit('save:error', { slot: 'settings', reason: 'settings_write_failed' });
@@ -2632,7 +2670,10 @@ export const save = {
       const savedRunEpoch = this._runEpoch;
       const savedRestoreSequence = this._restoreSequence;
       const savedMirrorGeneration = this._sharedStoreMirrorGeneration;
-      this._lastSaveDurability = Promise.resolve(this._queueSharedStoreMirror(write.mirrorPatch)).then((landed) => {
+      const profile = this._currentDirtyProfile();
+      const mirrorPatch = profile == null ? write.mirrorPatch
+        : { ...write.mirrorPatch, [PROFILE_SETTINGS_KEY]: profile };
+      this._lastSaveDurability = Promise.resolve(this._queueSharedStoreMirror(mirrorPatch)).then((landed) => {
         const current = this.state === savedState && this.bus === savedBus
           && this._runEpoch === savedRunEpoch && this._restoreSequence === savedRestoreSequence
           && this._sharedStoreMirrorGeneration === savedMirrorGeneration;
@@ -7977,7 +8018,7 @@ export const save = {
     if (this._sharedStoreFlushTimer != null) clearTimeout(this._sharedStoreFlushTimer);
     this._sharedStoreFlushTimer = null;
     this._sharedStorePatch = null;
-    for (const resolve of this._sharedStoreMirrorWaiters || []) resolve(false);
+    for (const waiter of this._sharedStoreMirrorWaiters || []) waiter.resolve(false);
     this._sharedStoreMirrorWaiters = [];
     this._removeUnloadExitSave();
     this._cancelCeresAttachmentRestore();

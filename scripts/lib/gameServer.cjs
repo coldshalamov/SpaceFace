@@ -346,6 +346,9 @@ function isAllowedStateChangingRequest(req) {
  * @param {string|object} [opts.sourceOverlay] Optional probe-only immutable source manifest. Only
  *                                      index.html, vendor/three.module.js, src/**, scripts/lib/**
  *                                      styles/** and assets/** entries are eligible.
+ * @param {object} [opts.devSimWorkerBundleProvider] Explicit source-dev-only provider for the
+ *                                      canonical whole-sim worker URL; ignored for overlays or
+ *                                      immutable app-source routes.
  * @returns {http.Server}               An http.Server (not yet listening).
  */
 function createGameServer(opts) {
@@ -369,6 +372,9 @@ function createGameServer(opts) {
   const devFreshnessPayload = makeFreshnessTracker(root, { async: useAsync });
   const appSourceBuildDigest = opts.appSourceImmutable === true
     ? readAppSourceBuildDigest(root)
+    : null;
+  const devSimWorkerBundleProvider = !sourceOverlay && opts.appSourceImmutable !== true
+    ? opts.devSimWorkerBundleProvider || null
     : null;
   const appSourceIndexHeaders = (requestHeaders) => {
     if (!appSourceBuildDigest) return {};
@@ -469,6 +475,49 @@ function createGameServer(opts) {
         res.writeHead(200, headers);
         if (method !== 'HEAD') res.end(overlayEntry.body);
         else res.end();
+        return;
+      }
+
+      // The opt-in development bundle occupies only the canonical sim-worker URL. It is
+      // generated from current source in memory; overlays and immutable/pinned routes above
+      // retain their exact bytes. A failed current build is an explicit error, never a stale or
+      // retail fallback.
+      if (devSimWorkerBundleProvider
+          && decodedPath === '/src/core/wholeSimBrowserWorker.js'
+          && (method === 'GET' || method === 'HEAD')) {
+        let bundle;
+        try {
+          bundle = await devSimWorkerBundleProvider.getBundle();
+          if (!bundle || !Buffer.isBuffer(bundle.bytes)
+              || !/^[a-f0-9]{64}$/i.test(String(bundle.digest || ''))) {
+            throw new Error('dev worker bundle provider returned an invalid current artifact');
+          }
+        } catch (error) {
+          console.error('[dev-sim-worker] current bundle unavailable:', error && (error.stack || error.message) || String(error));
+          const body = Buffer.from('503 Dev sim worker bundle unavailable', 'utf8');
+          res.writeHead(503, {
+            ...staticHeaders,
+            ...(staticHeadersByPath['src/core/wholeSimBrowserWorker.js'] || {}),
+            'Content-Type': 'text/plain; charset=utf-8',
+            'Cache-Control': 'no-store',
+            'Content-Length': body.length,
+          });
+          res.end(body);
+          return;
+        }
+        const digest = String(bundle.digest).toLowerCase();
+        const headers = {
+          ...staticHeaders,
+          ...(staticHeadersByPath['src/core/wholeSimBrowserWorker.js'] || {}),
+          'Content-Type': 'text/javascript; charset=utf-8',
+          'Cache-Control': 'no-store',
+          'Content-Length': bundle.bytes.length,
+          'ETag': `"sf-dev-sim-${digest}"`,
+          'X-SpaceFace-Dev-Sim-Worker-Digest': digest,
+        };
+        res.writeHead(200, headers);
+        if (method === 'HEAD') res.end();
+        else res.end(bundle.bytes);
         return;
       }
 

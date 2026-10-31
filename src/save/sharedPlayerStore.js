@@ -424,7 +424,7 @@ export async function fetchSharedPlayerStore() {
   }
 }
 
-export function pushSharedPlayerStore(keys, { keepalive = false, timeoutMs = SHARED_STORE_PUT_TIMEOUT_MS } = {}) {
+export function pushSharedPlayerStore(keys, { keepalive = false, serialize = false, timeoutMs = SHARED_STORE_PUT_TIMEOUT_MS } = {}) {
   if (!sharedPlayerStoreAvailable() || typeof fetch !== 'function') return Promise.resolve(false);
   const patch = {};
   const deletions = new Map();
@@ -502,7 +502,7 @@ export function pushSharedPlayerStore(keys, { keepalive = false, timeoutMs = SHA
       return false;
     }
   };
-  if (carriesKeepalive) {
+  if (carriesKeepalive && !serialize) {
     // A dying page cannot wait behind an in-flight mirror flush — fire now (unordered, as
     // before); the monotonic ledger below keeps an older late completion from relabeling.
     return attempt();

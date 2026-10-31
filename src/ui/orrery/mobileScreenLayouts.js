@@ -184,9 +184,14 @@ export const MOBILE_SCREEN_CSS = `
      text. The cut edge fades over 40px instead, so the peek reads as more to swipe: the right edge at rest,
      the left edge once swiped to the end, each lifting as the strip scrolls so the sign in view reads whole. */
   ${B} .sxb-signs:has(> .sx-adboard:not([hidden]) ~ .sx-adboard:not([hidden])) {
+    -webkit-mask-image:linear-gradient(to right, #000 calc(100% - 40px), transparent 100%);
+    mask-image:linear-gradient(to right, #000 calc(100% - 40px), transparent 100%); }
+  @supports (animation-timeline:scroll(self inline)) {
+  ${B} .sxb-signs:has(> .sx-adboard:not([hidden]) ~ .sx-adboard:not([hidden])) {
     -webkit-mask-image:linear-gradient(to right, transparent 0, #000 var(--sxb-signs-fade-l), #000 calc(100% - var(--sxb-signs-fade)), transparent 100%);
     mask-image:linear-gradient(to right, transparent 0, #000 var(--sxb-signs-fade-l), #000 calc(100% - var(--sxb-signs-fade)), transparent 100%);
     animation:sxb-signs-fade linear both; animation-timeline:scroll(self inline); }
+  }
   @keyframes sxb-signs-fade { 0% { --sxb-signs-fade-l:0px; --sxb-signs-fade:40px; } 20%, 80% { --sxb-signs-fade-l:40px; --sxb-signs-fade:40px; }
     100% { --sxb-signs-fade-l:40px; --sxb-signs-fade:0px; } }
   /* Next step: one line, after the vitals. */

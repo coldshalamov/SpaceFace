@@ -18,7 +18,7 @@ import {
   isPackageTextureDetached,
   resetPackageDetachManifestsForTests,
 } from '../src/render/packageCpuDetach.js';
-import { openingCompileIssueKey } from '../src/render/renderer.js';
+import { openingCompileIssueKey } from '../src/render/runtime/openingAdmissionPlanning.js';
 import { revealSubjectWithAncestors } from '../src/render/compilePresentSlice.js';
 
 test('compile issue key distinguishes onBeforeCompile bodies a sampled fingerprint would merge', () => {

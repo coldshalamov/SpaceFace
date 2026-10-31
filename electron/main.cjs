@@ -457,7 +457,25 @@ function ensureGameServerPort() {
   return gameServerPortPromise;
 }
 
-function listenGameServer(root, requestedPort) {
+async function listenGameServer(root, requestedPort) {
+  let devSimWorkerBundleProvider = null;
+  // Normal source launches use the measured bundled worker; 0 keeps the raw ESM escape hatch.
+  const devSimWorkerBundleEnabled = process.env.SPACEFACE_DEV_SIM_WORKER_BUNDLE !== '0'
+    && !app.isPackaged
+    && !launchConfig.isolatedEvidence
+    && !sourceOverlayManifest
+    && !String(process.env.SPACEFACE_BASELINE_SOURCE_MANIFEST || '').trim()
+    && process.env.SPACEFACE_EVIDENCE_ALLOW_BACKGROUND_EXECUTION !== '1'
+    && process.env.SPACEFACE_EVIDENCE_HIDE_WINDOW !== '1';
+  if (devSimWorkerBundleEnabled) {
+    const { pathToFileURL } = require('node:url');
+    const providerUrl = pathToFileURL(path.join(PROJECT_ROOT, 'scripts', 'lib', 'devSimWorkerBundle.mjs')).href;
+    const { createDevSimWorkerBundleProvider } = await import(providerUrl);
+    devSimWorkerBundleProvider = createDevSimWorkerBundleProvider({ root });
+    devSimWorkerBundleProvider.prewarm().catch((error) => {
+      console.error('[dev-sim-worker] asynchronous prewarm failed; current requests will rebuild or return 503:', error && (error.stack || error.message) || String(error));
+    });
+  }
   return new Promise((resolve, reject) => {
     const server = createGameServer({
       root,
@@ -473,6 +491,7 @@ function listenGameServer(root, requestedPort) {
       playerStoreDir,
       userContentDir: mountedUserContentDir(),
       sourceOverlay: sourceOverlayManifest,
+      ...(devSimWorkerBundleProvider ? { devSimWorkerBundleProvider } : {}),
       staticHeaders: { 'Content-Security-Policy': ELECTRON_CONTENT_SECURITY_POLICY },
       staticHeadersByPath: {
         [KTX2_TRANSCODER_WORKER_PATH]: {

@@ -27,6 +27,7 @@ import {
 import { retailBundleAliases } from './lib/retailBundleAliases.mjs';
 import { pinVercelReleaseHtml, vercelReleaseBase } from './lib/vercelReleaseBase.mjs';
 import { buildRetailRuntimeWorkers, moduleWorkerEntryPoints, validateRetailModuleWorkers, RETAIL_BROWSER_TARGETS } from './lib/retailRuntimeWorkers.mjs';
+import { buildUiCssSidecars } from './lib/buildUiCssSidecars.mjs';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const SRC = join(ROOT, 'src');
@@ -96,6 +97,7 @@ async function jsSize(dir) {
 
 async function build() {
   const releaseBase = vercelReleaseBase(process.env.VERCEL_URL);
+  await buildUiCssSidecars({ root: ROOT });
   await recoverPublishedOutput();
   const screens = await screenEntries();
   // bootEntry is the bundled entry: it paints the boot instrument, then imports the game graph.

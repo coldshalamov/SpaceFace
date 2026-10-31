@@ -31,10 +31,12 @@
   <link rel="stylesheet" href="./styles/kit.css" />
   <link rel="stylesheet" href="./styles/prompt-deck.css" />
   <link rel="stylesheet" href="./styles/crucible.css" />
+  <!-- Keep the historical cascade: Deckplate, station's inserted sheet set, then flight HUD. -->
+  <link rel="stylesheet" id="sf-deckplate-style" href="./styles/deckplate.generated.css" />
+  <link rel="stylesheet" id="sf-hud-style" href="./styles/hud-flight.generated.css" />
   <!-- The station sheet set is NOT linked here: it is injected by src/ui/station/stationStyles.js
-       (game boot calls ensureStylesheet; station/ship screens call it on mount). Runtime injection
-       positions it after the Deckplate <style> block, the cascade order the sheets were written
-       for; a static <link> here would put them before it and invert that order. -->
+       (game boot calls ensureStylesheet; station/ship screens call it on mount). Its links are
+       inserted after sf-deckplate-style and before sf-hud-style, matching the former style order. -->
   <!-- Keep quarks importmap below — PQ-190 VFX runtime still loads three.quarks. -->
   <script type="importmap">
   {
@@ -755,6 +757,7 @@
   <link rel="modulepreload" fetchpriority="low" href="./src/data/swarmHangar.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/data/swarmJuice.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/data/swarmLadder.js" />
+  <link rel="modulepreload" fetchpriority="low" href="./src/data/swarmMachine.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/data/swarmMode.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/data/swarmOpeningTerrain.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/data/swarmOpticArenas.js" />
@@ -1131,6 +1134,7 @@
   <link rel="modulepreload" fetchpriority="low" href="./src/render/rigidOpaqueBatchPolicy.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/render/rockFamilyLibrary.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/render/rockSurfaceLibrary.js" />
+  <link rel="modulepreload" fetchpriority="low" href="./src/render/runtime/openingAdmissionPlanning.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/render/runtimeWorkers.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/render/sableVennVisuals.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/render/saveEnvelopeSectorWarm.js" />
@@ -1241,6 +1245,7 @@
   <link rel="modulepreload" fetchpriority="low" href="./src/render/vfx/materialDirector.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/render/vfx/materialEnvironment.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/render/vfx/materialFlow.js" />
+  <link rel="modulepreload" fetchpriority="low" href="./src/render/vfx/monofilamentBlade.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/render/vfx/quarksSystem.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/render/vfx/runtime/eventGeometry.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/render/vfx/runtime/eventMaterial.glsl.js" />
@@ -1482,20 +1487,13 @@
   <link rel="modulepreload" fetchpriority="low" href="./src/ui/crucibleFocus.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/ui/damageIndicators.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/ui/deckplate/attend.js" />
-  <link rel="modulepreload" fetchpriority="low" href="./src/ui/deckplate/components.js" />
-  <link rel="modulepreload" fetchpriority="low" href="./src/ui/deckplate/hardware.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/ui/deckplate/iconPaths.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/ui/deckplate/icons.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/ui/deckplate/index.js" />
-  <link rel="modulepreload" fetchpriority="low" href="./src/ui/deckplate/layout.js" />
-  <link rel="modulepreload" fetchpriority="low" href="./src/ui/deckplate/light.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/ui/deckplate/markPaths.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/ui/deckplate/marks.js" />
-  <link rel="modulepreload" fetchpriority="low" href="./src/ui/deckplate/materials.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/ui/deckplate/motion.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/ui/deckplate/paint.js" />
-  <link rel="modulepreload" fetchpriority="low" href="./src/ui/deckplate/screens.js" />
-  <link rel="modulepreload" fetchpriority="low" href="./src/ui/deckplate/tokens.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/ui/deckplate/transition.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/ui/demandDriverSummary.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/ui/diagnosticsReport.js" />
@@ -1599,7 +1597,6 @@
   <link rel="modulepreload" fetchpriority="low" href="./src/ui/orrery/instruments.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/ui/orrery/lampKey.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/ui/orrery/logbookLayouts.js" />
-  <link rel="modulepreload" fetchpriority="low" href="./src/ui/orrery/mobileFlightLayouts.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/ui/orrery/motion.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/ui/orrery/nextDecision.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/ui/orrery/popupsLayouts.js" />
@@ -1676,7 +1673,7 @@
   <link rel="modulepreload" fetchpriority="low" href="./src/ui/units.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/ui/views/fhGlyphs.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/ui/views/flightInstruments.js" />
-  <link rel="modulepreload" fetchpriority="low" href="./src/ui/views/hudStyles.js" />
+  <link rel="modulepreload" fetchpriority="low" href="./src/ui/views/hudStylesheet.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/ui/views/hullIntegrity.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/ui/views/hullIntegrityStyles.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/ui/views/identity.js" />
