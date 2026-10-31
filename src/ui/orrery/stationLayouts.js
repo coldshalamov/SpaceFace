@@ -856,6 +856,14 @@ html.sf-reduce-motion ${S} :is(.orr-vdial__fill, .orr-vdial__hand) { transition:
      by the job board, and the head's end can scroll clear of the fade */
   ${D} .sxb-berth.dp-frame__head { -webkit-mask-image:linear-gradient(to bottom, #000 calc(100% - 22px), transparent) !important;
     mask-image:linear-gradient(to bottom, #000 calc(100% - 22px), transparent) !important; padding-bottom:22px !important; }
+  /* the credits took a row of their own above the dials, so the mechanic's note scrolled under the fade: as on the phone, the
+     purse stacks its label over a smaller figure at the name's right end, and the name wraps short of it */
+  ${D} .so-station-title > .sxb-berth__name { padding-right:104px !important; box-sizing:border-box; }
+  ${D} .sxb-berth.dp-frame__head > .sxb-crown { margin-top:-46px !important; pointer-events:none; }
+  ${D} .sxb-berth.dp-frame__head > .sxb-crown > * { pointer-events:auto; }
+  ${D} .sxb-crown .sxb-purse { flex-direction:column !important; align-items:flex-end !important; gap:2px !important; margin:0 !important; text-align:right; }
+  ${D} .sxb-crown .sxb-purse__label { line-height:14px !important; margin:0 !important; }
+  ${D} .sxb-crown .sxb-purse__value { font-size:28px !important; line-height:1.05 !important; }
 }
 /* a 1440p screen shows the 1080p composition at 1.25 (the kit scale is folded into the zoom, so nothing scales twice) */
 @media (min-width:2200px) and (min-height:1200px) {
