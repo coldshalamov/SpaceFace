@@ -27,7 +27,11 @@ test('first three courts expand without blocking the nose/rear escape lane or ti
   assert.equal(flank.length, 3, 'surviving first room is not duplicated or relocated');
   const outer = plan({ ...options(3), existing: near.concat(flank) });
   assert.equal(outer.length, 3);
-  assert.ok(Math.max(...outer.map(p => Math.hypot(p.x, p.z))) > Math.max(...near.map(p => Math.hypot(p.x, p.z))));
+  // Third court expands the rear throwing lane, not the maximum radial envelope.
+  assert.ok(Math.min(...outer.map(p => p.z)) < Math.min(...near.map(p => p.z)), 'round three reaches farther rearward');
+  assert.ok(Math.max(...flank.map(p => Math.abs(p.x))) > Math.max(...near.map(p => Math.abs(p.x))), 'round two broadens the flanks');
+  assert.equal(new Set(near.concat(flank, outer).map(p => p.openingTerrainSlot)).size, 14, 'each expansion occupies distinct authored stations');
+  assert.ok(near.concat(flank, outer).every(p => Math.hypot(p.x, p.z) <= 300), 'all stations remain inside actual T0 reach');
 });
 
 test('variants, upgraded lines and later rounds retain their established director', () => {
@@ -58,7 +62,7 @@ function arenaHarness({ source, clearance = true, pocket = false } = {}) {
   const emitted = [];
   Object.assign(bindings, {
     swarmOpeningTerrainStage: stageFor, planSwarmOpeningTerrain: plan,
-    swarmArenaTierForRun: () => ({ lineTier: 0 }), swarmArenaDebrisLayout: () => layout,
+    swarmArenaTierForRun: () => ({ ratingTierMin: 0 }), swarmArenaDebrisLayout: () => layout,
     mulberry32: () => () => 0.5, validateRunState: () => ({ ok: true }), isSwarmRuleset: x => x === 'swarm',
     indexedShipLikeScan: () => [], indexedTypeScan: () => [],
     ENVIRONMENT_FAMILIES: ['rock', 'metal', 'crystal', 'volatile', 'debris', 'cryo', 'calcite'],

@@ -2403,6 +2403,17 @@ export const encounterDirector = {
   clearPredation(live, reason) {
     return clearPredationBindingsForLive(this.state, live, reason || 'objective_cleared');
   },
+  releaseProp(live, entity) {
+    if (!live || !entity || this.state.entities.get(entity.id) !== entity
+      || entity.alive === false || !encounterMayScheduleDespawn(entity)
+      || entity.data?.encounterId !== live.id
+      || !Array.isArray(live.propIds)) return false;
+    const index = live.propIds.indexOf(entity.id);
+    if (index === -1) return false;
+    // Release roster custody, not lifetime: an authored expiry remains authoritative.
+    live.propIds.splice(index, 1);
+    return true;
+  },
   despawnAll(live, afterS, role) {
     if (live && live.data && live.data.adoptedWorldActors === true) return;
     const now = this.now();
@@ -4894,6 +4905,7 @@ function stampLivePropsDespawn(state, live, now, afterS, overwrite) {
   for (const id of propIds) {
     const e = entities.get(id);
     if (!e || e.alive === false || !encounterMayScheduleDespawn(e)) continue;
+    if (e.data?.encounterId != null && e.data.encounterId !== live.id) continue;
     if (!overwrite && e.data && e.data.despawnAt != null) continue;
     e.data = e.data || {};
     e.data.despawnAt = now + afterS + stagger * 0.5;

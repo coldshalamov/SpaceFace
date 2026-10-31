@@ -20,6 +20,8 @@ const read = relative => {
   console.log(JSON.stringify({ source: relative, filename, sha256: createHash('sha256').update(source).digest('hex') }));
   return { filename, source };
 };
+// Link the actual native route reader; its transitive JSON imports use Node's loader.
+const { compostRouteFocus } = await import(pathToFileURL(read('src/missions/compostRoute.js').filename));
 const context = vm.createContext({ console, structuredClone, Map, Set, Object, Number, Math, Array });
 const modules = new Map();
 function moduleFor(relative) {
@@ -66,6 +68,7 @@ function method(name, endName) {
   return missionSource.slice(start, end).trim().replace(/,$/, '');
 }
 Object.assign(context, {
+  compostRouteFocus,
   getBeatStepStatus: C.getBeatStepStatus,
   nestWaypoint: N.nestWaypoint, nestApproach: N.nestApproach, NEST_VISIT: N.NEST_VISIT, nestOutcomeReceipt: N.nestOutcomeReceipt,
   firstPlayerGardenGrowth: R.firstPlayerGardenGrowth,
@@ -186,7 +189,9 @@ test('destroyed receiver navigation retains run mass but promises no replacement
   h.receiver.hull = 0; h.receiver.alive = false;
   h.bus.emit('entity:killed', { id: h.receiver.id, entity: h.receiver });
   const wp = waypoint.call(h.missions, D.CAMPAIGN_BEATS.find(b => b.beat === 2));
-  assert(wp.reason.includes('100t from zero')); assert(wp.reason.includes('Retained growth 0 biomass'));
+  assert(wp.reason.includes('regrow from zero')); assert(wp.reason.includes('0 biomass'));
+  assert(wp.reason.includes('100t feed to the next visible stage'));
+  assert(wp.reason.includes('Material eligibility is unavailable; no usable load is being promised.'));
   assert(wp.reason.includes('8/240t')); assert(!wp.reason.includes('52 biomass'), 'no restored starting biomass is promised');
   assert.deepEqual(plain(wp.pos), plain(R.receiverApproach()));
   assert.deepEqual(completed(h), ['cinder_board']);
@@ -206,16 +211,25 @@ test('navigation names actual receiver and keeps approach outside mature mouth w
   const wp = waypoint.call(h.missions, beat);
   assert.equal(wp.sectorId, R.UNDERSTORY_RECEIVER.sectorId);
   assert(wp.label.includes(R.UNDERSTORY_RECEIVER.name));
-  assert(wp.reason.includes('from Rook on the west side'));
-  assert(wp.reason.includes('keep the load close and steer around loose clutter before the final approach'));
+  // Source-dependent guidance replaces constant cargo instructions. This VM has no
+  // material provider: assert honest unavailable eligibility, not invented 17u supply.
+  // Native first-feed cases separately prove real material/action wording.
+  assert(wp.reason.includes('Material eligibility is unavailable; no usable load is being promised.'));
+  assert(wp.pos.x < h.receiver.pos.x, 'safe approach stays west of the mouth');
+  assert.equal(wp.pos.z, h.receiver.pos.z + R.UNDERSTORY_RECEIVER.approachOffset.z);
   assert.equal(wp.targetEntityId, null, 'location is not rebound to receiving hull centre');
   assert(Math.hypot(wp.pos.x - h.receiver.pos.x, wp.pos.z - h.receiver.pos.z) > 380 * E.UNDERSTORY_GARDENS.absorbPadding + 100);
   assert(wp.reason.includes('52 biomass')); assert(wp.reason.includes('0/240t'));
-  assert(wp.reason.includes('13.4t feed')); assert(wp.reason.includes('13.6t of feed')); assert(wp.reason.includes('No feed is supplied'));
-  assert(wp.reason.includes('No pay before 240t')); assert(wp.reason.includes('12cr/t of actual run mass'));
+  assert(wp.reason.includes('13.4t feed to the next visible stage'));
+  assert(!/17u|13\.6t/.test(wp.reason), 'no available cargo is fabricated');
+  assert(wp.reason.includes('no pay before 240t'));
+  assert.equal(E.UNDERSTORY_COMPOST_RUN.targetMass, 240);
+  assert.equal(E.UNDERSTORY_COMPOST_RUN.creditPerTonne, 12);
   // Partial real feed does not cross a threshold; progress remains visible and no book credit.
   h.feed(8); const partial = waypoint.call(h.missions, beat);
   assert(partial.reason.includes('56.8 biomass')); assert(partial.reason.includes('8/240t'));
-  assert(partial.reason.includes('232t remain')); assert.deepEqual(completed(h), ['cinder_board']);
+  assert(partial.reason.includes('Material eligibility is unavailable; no usable load is being promised.'));
+  assert(partial.reason.includes('5.4t feed to the next visible stage'));
+  assert.deepEqual(completed(h), ['cinder_board']);
 });
 console.log(`Compost story: ${passed} focused owner groups passed. Sparse core-only adapter: ${coreOnly}. No browser/native physics/full-save claim.`);

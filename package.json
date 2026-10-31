@@ -786,7 +786,15 @@
     "check:encounter-director-cadence-boundary": "node --test test/encounter-director-cadence-boundary.test.mjs",
     "check:archive-record-tail-evidence": "node --test test/archive-record-tail-evidence.test.mjs",
     "check:confirm-dialog-observation": "node --test test/confirm-dialog-observation.test.mjs",
-    "check:nyx-clinic-receiving-broadcast": "node --test test/nyx-clinic-receiving-broadcast.test.mjs"
+    "check:nyx-clinic-receiving-broadcast": "node --test test/nyx-clinic-receiving-broadcast.test.mjs",
+    "check:starter-workday-conversation": "node --test test/starter-workday-conversation.test.mjs",
+    "check:starter-workday-route": "node --test test/starter-workday-route.test.mjs test/starter-workday-board-neighbors.test.mjs test/starter-workday-worker-wire.test.mjs",
+    "check:starter-buoy-aftermath": "node --test test/starter-buoy-aftermath.test.mjs",
+    "check:starter-wasp-route": "node --test test/starter-wasp-route.test.mjs",
+    "check:swarm-opening-bank-integration": "node --test test/swarm-opening-bank-integration.test.mjs",
+    "check:swarm-opening-options": "node --test test/swarm-opening-options.test.mjs",
+    "check:swarm-pack-arrival": "node --test test/swarm-pack-arrival.test.mjs",
+    "check:opening-mode-boundary": "node --test test/opening-mode-boundary.test.mjs"
   },
   "private": true,
   "devDependencies": {
@@ -866,3 +874,4 @@
     "three.quarks": "^0.17.1"
   }
 }
+

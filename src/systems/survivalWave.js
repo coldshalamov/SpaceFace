@@ -15,6 +15,7 @@
 //
 // Never writes state.run (runSession is the sole writer) and never touches campaign economy.
 
+import { occupantGenerationOf } from '../core/entity.js';
 import { mulberry32 } from '../core/rng.js';
 import { validateRunState } from '../core/runState.js';
 import {
@@ -1088,6 +1089,15 @@ export const survivalWave = {
         gateGroup: receipt.gateGroup || entry.gateGroup,
         ...(receipt.sourceGateGroup ? { sourceGateGroup: receipt.sourceGateGroup } : {}),
         ...(receipt.ingressPose ? { ingressPose: receipt.ingressPose } : {}),
+        // Presentation receipt only: identify a held scheduled group, never the scout or stream.
+        ...(this._swarm && this._wave === 1 && this._plan.openingLesson && entry.lesson !== true ? {
+          openingPack: { lesson: this._sourcePlan.openingLesson, seed,
+            packageIndex: entry.packageIndex,
+            arrivals: receipt.spawnedIds.map(id => {
+              const entity = this._cohort.get(id)?.entity;
+              return { entityId: id, generation: occupantGenerationOf(entity) };
+            }) },
+        } : {}),
         atTick,
         requested: receipt.requested,
         admitted: receipt.admitted,
@@ -1956,3 +1966,4 @@ export const survivalWave = {
     });
   },
 };
+

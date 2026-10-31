@@ -143,6 +143,11 @@ try {
 
   await page.evaluate(() => {
     const sf = window.SF;
+    // Station is demand-loaded on a committed dock. A direct pushScreen('station')
+    // before registration silently drops the request; exercise the same dock owner
+    // route as the mission-handoff probe, then install this readiness fixture after
+    // synchronous dock listeners have refreshed boards and processed objectives.
+    sf.bus.emit('dock:docked', { stationId: 'station_coalition' });
     sf.state.player.credits = 100;
     sf.state.ui.trackedMissionId = 'departure_probe';
     sf.state.missions.active = [{
@@ -166,14 +171,7 @@ try {
         time_limit_s: 900,
       }],
     };
-    // The station-exit gate only rewrites bare undocks into station:exitRequest when the docked
-    // flag is set — a fabricated berth must carry it or the click launches straight out with no
-    // Departure Check.
-    sf.state.ui.docked = true;
-    sf.state.ui.dockedStationId = 'station_coalition';
     if (sf.state.fuel) sf.state.fuel.current = 0;
-    sf.ctx.screenManager.pushScreen('station');
-    sf.ctx.screenManager.syncVisibility && sf.ctx.screenManager.syncVisibility();
   });
   // `.sx-app` is display:contents since the ORRERY station rewrite — the wrapper has no box, so
   // a visibility wait must name a real region (the berth hub) rather than the wrapper.
@@ -672,3 +670,4 @@ async function reachable(url) {
     return false;
   }
 }
+

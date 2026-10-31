@@ -760,6 +760,7 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
     gameStartedEmits: 0,
     playerTruthImpulseObserver: null,
     missionBoardMirrorUnsubscribe: null,
+    runShopMirrorUnsubscribe: null,
   };
 
   function drainEvents() {
@@ -1075,6 +1076,48 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
 
   function installBridgeCapture(bus, captureAll) {
     host.missionBoardMirrorUnsubscribe?.();
+    host.runShopMirrorUnsubscribe?.();
+    // Shop receipts are bounded owner events, not a wallet polling channel. A
+    // refit/draft event can be replayed during a frozen (steps:0) reply, so make
+    // the complete current run snapshot urgent before that reply's domain diff.
+    // Generic run awards are intentionally excluded: combat emits those often.
+    const runShopResultEvents = [
+      'run:draftOffered',       // opening shop / reroll stock snapshot
+      'run:refitOffered',       // opening refit screen
+      'run:shopPurchased',      // successful armory purchase
+      'run:draftRerolled',      // paid or Hangar/Gambler re-deal
+      'run:draftResolved',      // completed modifier choice
+      'run:partialBanked',      // successful extraction bank from the refit panel
+      'run:draftPickRejected',
+      'run:draftRerollRejected',
+      'run:refitChanged',       // fit, strip, or sell receipt (including refusal)
+    ];
+    const offRunShopResults = runShopResultEvents.map((event) => bus.on(event, () => {
+      if (host.state?.run?.kind === 'survival') host.domainDiffer?.invalidateSubtree('run');
+    }));
+    // The event bus also carries unrelated run-wallet traffic. Admit only the
+    // exact shop/refit rejection and refund receipts that can alter the visible
+    // purchase state; never subscribe to award requests or ordinary awards.
+    const offSpendRejected = bus.on('run:spendRejected', (payload) => {
+      if (host.state?.run?.kind === 'survival'
+          && (payload?.reason === 'crucible:purchase' || payload?.reason === 'crucible:draftReroll'
+            || payload?.reason === 'partial_bank')) {
+        host.domainDiffer?.invalidateSubtree('run');
+      }
+    });
+    const offShopRefund = bus.on('run:awarded', (payload) => {
+      if (host.state?.run?.kind === 'survival'
+          && (payload?.reason === 'crucible:purchaseRefund' || payload?.reason === 'swarm:sellBack'
+            || payload?.reason === 'partial_bank_refund')) {
+        host.domainDiffer?.invalidateSubtree('run');
+      }
+    });
+    host.runShopMirrorUnsubscribe = () => {
+      for (const off of offRunShopResults) off();
+      offSpendRejected();
+      offShopRefund();
+      host.runShopMirrorUnsubscribe = null;
+    };
     // Posted/withdrawn board rows must accompany their event/RPC even while the worker is
     // paused and has no future timer ticks. Progress and tracking use non-null mission ids;
     // those retain their normal cold root cadence and existing hot active-mission mirror.
@@ -2426,6 +2469,8 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
   function handleShutdown() {
     host.missionBoardMirrorUnsubscribe?.();
     host.missionBoardMirrorUnsubscribe = null;
+    host.runShopMirrorUnsubscribe?.();
+    host.runShopMirrorUnsubscribe = null;
     host.draftReadUnsubscribe?.();
     host.draftReadUnsubscribe = null;
     host.playerTruthImpulseObserver?.dispose?.();

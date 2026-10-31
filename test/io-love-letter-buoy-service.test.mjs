@@ -179,6 +179,50 @@ function admitAgain(t, id) {
   return t.state.encounterDirector.live[id];
 }
 const buoys = t => [...t.state.entities.values()].filter(e => e.data?.storyPropKind === 'love_letter_buoy');
+for (const terminal of ['resolve', 'abort']) test(terminal + ' releases only the original transmitter and is idempotent', () => {
+  const t = boot();
+  const prop = t.director.spawnProp(t.live, { type: 'beacon', pos: { x: 150, z: 150 }, storyPropKind: 'ordinary' });
+  const legacy = t.director.spawnProp(t.live, { type: 'beacon', pos: { x: 160, z: 160 } });
+  delete legacy.data.encounterId;
+  const end = () => terminal === 'resolve' ? t.director.resolve(t.live, 'heard') : t.director.abort(t.live, 'test');
+  end();
+  assert.equal(t.buoy.data.despawnAt, undefined);
+  assert.ok(Number.isFinite(prop.data.despawnAt));
+  assert.ok(Number.isFinite(legacy.data.despawnAt), 'untagged legacy cleanup is unchanged');
+  const ttl = prop.data.despawnAt;
+  end();
+  assert.equal(prop.data.despawnAt, ttl);
+  assert.equal(t.buoy.data.despawnAt, undefined);
+  assert.equal(admitAgain(t, terminal + '-retry')._loveLetterBuoy, t.buoy);
+});
+for (const kind of ['missing', 'replacement', 'foreign', 'dead']) test('terminal release rejects ' + kind + ' original identity', () => {
+  const t = boot();
+  if (kind === 'missing') t.state.entities.delete(t.buoy.id);
+  if (kind === 'replacement') t.state.entities.set(t.buoy.id, { ...t.buoy, data: { ...t.buoy.data } });
+  if (kind === 'foreign') { t.buoy.data.encounterId = 'foreign'; t.buoy.data.despawnAt = 900; }
+  if (kind === 'dead') t.buoy.hull = 0;
+  t.director.resolve(t.live, 'heard');
+  assert.ok(t.live.propIds.includes(t.buoy.id), 'invalid identity was not released as a surviving original');
+  assert.notEqual(admitAgain(t, kind + '-retry')._loveLetterBuoy, t.buoy);
+});
+for (const terminal of ['resolve', 'abort']) for (const ttl of [-1, 900]) test(terminal + ' preserves authored TTL ' + ttl + ' without making a buoy reusable', () => {
+  const t = boot();
+  t.buoy.data.despawnAt = ttl;
+  if (terminal === 'resolve') t.director.resolve(t.live, 'heard'); else t.director.abort(t.live, 'test');
+  assert.equal(t.buoy.data.despawnAt, ttl);
+  assert.notEqual(admitAgain(t, 'ttl-retry')._loveLetterBuoy, t.buoy);
+});
+for (const terminal of ['resolve', 'abort']) test(terminal + ' cannot stamp a foreign prop or protected owner', () => {
+  const t = boot();
+  const foreign = t.director.spawnProp(t.live, { type: 'beacon', pos: { x: 150, z: 150 } });
+  foreign.data.encounterId = 'foreign'; foreign.data.despawnAt = 123;
+  t.buoy.data.persistenceOwner = 'world'; t.buoy.data.despawnAt = 456;
+  if (terminal === 'resolve') t.director.resolve(t.live, 'heard'); else t.director.abort(t.live, 'test');
+  assert.equal(foreign.data.despawnAt, 123);
+  assert.equal(t.buoy.data.despawnAt, 456);
+  assert.equal(t.buoy.data.persistenceOwner, 'world');
+  assert.notEqual(admitAgain(t, 'protected-retry')._loveLetterBuoy, t.buoy);
+});
 test('heard readmission reuses the original transmitter and its actual location, then services it', () => {
   const t = boot(), original = t.buoy, pos = { ...original.pos };
   choose(t, 'listen'); const next = admitAgain(t, 'second-letter');
@@ -216,3 +260,4 @@ for (const kind of ['legacy', 'other-sector', 'foreign-owner', 'pinned', 'schedu
   assert.notEqual(next._loveLetterBuoy, t.buoy); assert.equal(t.buoy.data.encounterId, owner);
   assert.equal(t.state.entities.get(t.buoy.id), t.buoy);
 });
+
