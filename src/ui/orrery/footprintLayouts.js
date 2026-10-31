@@ -88,7 +88,7 @@ ${S} .fp-node__w { flex:1 1 auto; min-width:0; }
 ${S} .fp-node__d { flex:none; font-family:var(--dp-face-numeral, "Archivo"); font-variation-settings:"wdth" 100, "wght" 340; font-weight:340; font-variant-numeric:tabular-nums lining-nums;
   font-size:calc(19px * var(--fp-s, 1)); line-height:1; letter-spacing:-.01em; color:rgb(223 238 255); }
 ${S} .fp-node__meta { ${BODY} display:block; margin:0; font-size:calc(12.5px * var(--fp-s, 1)) !important; line-height:1.4 !important; color:rgb(${BONE} / .74) !important; }
-${S} .fp-node__stage { ${LABEL} font-size:calc(12px * var(--fp-s, 1)) !important; letter-spacing:.2em !important; color:rgb(${BONE} / .8) !important; }
+${S} .fp-node__stage { ${LABEL} font-size:calc(12px * var(--fp-s, 1)) !important; letter-spacing:.06em !important; color:rgb(${BONE} / .8) !important; }
 /* the bead on the spine (spine centre 33px from the board's edge, the row starts at 50px) */
 ${S} .fp-node::before { content:"" !important; position:absolute !important; left:-22px !important; top:calc(.35em + 3px) !important; width:10px !important; height:10px !important; margin:0 !important;
   border-radius:50% !important; background:rgb(10 12 16) !important; box-shadow:inset 0 0 0 2px rgb(${BONE} / .86) !important; transform:none !important; translate:none !important; scale:none !important;
@@ -131,7 +131,7 @@ ${S} .fp-dossier { display:grid; grid-template-columns:minmax(0, 1.5fr) minmax(0
 ${S} .fp-dossier__cell { position:relative; min-width:0; padding-left:14px; }
 ${S} .fp-dossier__cell::before { content:""; position:absolute; left:0; top:calc(.5em + 1px); width:7px; height:2px; background:rgb(${BONE} / .6); }
 ${S} .fp-dossier__cell--wide { grid-column:auto; }
-${S} .fp-dossier__cap { ${LABEL} margin:0 0 3px !important; font-size:calc(12px * var(--fp-s, 1)) !important; letter-spacing:.2em !important; color:rgb(${BONE} / .74) !important; }
+${S} .fp-dossier__cap { ${LABEL} margin:0 0 3px !important; font-size:calc(12px * var(--fp-s, 1)) !important; letter-spacing:.06em !important; color:rgb(${BONE} / .74) !important; }
 ${S} .fp-dossier__v { ${BODY} margin:0 !important; font-size:calc(14.5px * var(--fp-s, 1)) !important; line-height:1.35 !important; color:${INK} !important; }
 ${S} .fp-dossier__sub { ${BODY} margin:2px 0 0 !important; font-size:calc(12.5px * var(--fp-s, 1)) !important; line-height:1.4 !important; color:rgb(${BONE} / .74) !important; }
 ${S} .fp-dossier__names { display:flex; flex-wrap:wrap; gap:4px 16px; margin:5px 0 0 !important; }

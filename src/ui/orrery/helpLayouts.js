@@ -48,7 +48,7 @@ ${H} .orr-help__tabs { ${PLAIN} position:relative !important; display:flex !impo
 ${H} .orr-help__tabs > li { position:relative !important; width:100% !important; list-style:none !important; margin:0 !important; }
 ${H} .orr-help__tabs .sf-tab { all:unset !important; box-sizing:border-box !important; position:relative !important; display:flex !important; align-items:center !important;
   width:100% !important; min-height:clamp(38px, 4.8vh, 50px) !important; padding:0 6px 0 40px !important; cursor:pointer !important; ${LABEL} font-size:clamp(13px, .68vw, 17px) !important;
-  letter-spacing:.2em !important; color:rgb(${BONE} / .88) !important; white-space:nowrap !important; transition:color .16s linear; }
+  letter-spacing:.06em !important; color:rgb(${BONE} / .88) !important; white-space:nowrap !important; transition:color .16s linear; }
 ${H} .orr-help__tabs .sf-tab::before { content:"" !important; display:block !important; position:absolute !important; left:4px !important; top:50% !important; width:9px !important;
   height:2px !important; margin:-1px 0 0 !important; translate:none !important; scale:none !important; transform:none !important; background:rgb(${BONE} / .72) !important;
   box-shadow:none !important; border:0 !important; clip-path:none !important; border-radius:0 !important; opacity:1 !important; }
@@ -72,11 +72,11 @@ ${H} .orr-help__tabs .sf-tab[aria-selected="true"]:focus-visible { text-decorati
 ${H} > .k-foot { ${PLAIN} align-self:end; justify-content:flex-start; align-items:center !important; gap:0 !important; margin:0 !important; padding:0 !important; }
 ${H} .orr-help__close.sf-back.k-word { all:unset !important; box-sizing:border-box !important; display:inline-flex !important; align-items:baseline !important; gap:0 !important;
   cursor:pointer !important; padding:10px 0 12px !important; min-height:44px !important;
-  ${LABEL} font-size:13.5px !important; letter-spacing:.22em !important; color:rgb(255 253 248) !important;
+  ${LABEL} font-size:13.5px !important; letter-spacing:.1em !important; color:rgb(255 253 248) !important;
   background:linear-gradient(0deg, rgb(${BONE} / .28) 0 1.5px, transparent 1.5px) 0 100% / 120px 100% no-repeat !important; }
 ${H} .orr-help__close.sf-back.k-word::before { all:unset !important; content:"‹" !important; display:inline !important; margin-right:12px !important; font-size:15px !important; color:rgb(${BONE} / .6) !important; }
 ${H} .orr-help__close.sf-back.k-word::after { all:unset !important; content:"ESC" / "" !important; display:inline-block !important; margin-left:16px !important; padding:3px 7px 4px !important;
-  ${LABEL} font-size:12px !important; letter-spacing:.2em !important; line-height:1 !important;
+  ${LABEL} font-size:12px !important; letter-spacing:.06em !important; line-height:1 !important;
   color:rgb(${BONE} / .9) !important; background:rgb(${BONE} / .1) !important; border:1px solid rgb(${BONE} / .5) !important; border-radius:3px !important;
   box-shadow:inset 0 -1px 0 rgb(0 0 0 / .35) !important; vertical-align:baseline !important; }
 ${H} .orr-help__close-word { ${LABEL} font-size:13.5px !important; letter-spacing:.22em !important; font-stretch:112% !important; font-variation-settings:"wdth" 112, "wght" 650 !important; font-weight:650 !important;

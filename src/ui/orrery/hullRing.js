@@ -167,7 +167,9 @@ export function createHullRing({ host, anchor } = {}) {
         } else {
           const [x, y] = pt(mid, 27);
           const side = def.side === 'left' ? 'end' : 'start';
-          for (const [node, ny] of [[seg.num, y + 6], [seg.label, y + 24], [seg.gloss, y + 36]]) { setAttr(node, 'x', f(x)); setAttr(node, 'y', f(ny)); setAttr(node, 'text-anchor', side); }
+          // num / label / gloss each get their own band: a 24px numeral's unit and a gloss need
+          // real columns or the three lines print through each other (the LINE reading at 1440x900).
+          for (const [node, ny] of [[seg.num, y + 6], [seg.label, y + 32], [seg.gloss, y + 50]]) { setAttr(node, 'x', f(x)); setAttr(node, 'y', f(ny)); setAttr(node, 'text-anchor', side); }
         }
         seg.fracKey = null;
         seg.ghostKey = null;

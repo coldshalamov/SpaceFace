@@ -76,7 +76,9 @@ test('no CSS in the 2D interface imitates a physical material', () => {
 });
 
 test('the direction records the ruling that retired computed metal', () => {
-  const doc = readFileSync(join(ROOT, 'design/frontend/ONE_PHOTOGRAPH.md'), 'utf8');
-  assert.match(doc, /CSS may not imitate a material/);
-  assert.match(doc, /P4 — SUPERSEDED by the owner, 2026-09-22/);
+  // ONE_PHOTOGRAPH.md was archived by the razor (Finish README §7); the ruling's live home is the
+  // Deckplate token layer's header, which carries the owner's 2026-09-22 words verbatim.
+  const doc = readFileSync(join(ROOT, 'src/ui/deckplate/tokens.js'), 'utf8');
+  assert.match(doc, /CSS is pretending to be physical materials, it looks awful/);
+  assert.match(doc, /2026-09-22/);
 });

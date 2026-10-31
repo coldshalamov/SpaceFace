@@ -132,7 +132,7 @@ ${W}.orr-sw--jig .sx-sw__stage .sx-sw__delta:not([hidden]) { visibility:visible 
   display:flex !important; flex-wrap:nowrap !important; justify-content:center !important; align-items:baseline !important; gap:0 18px !important; ${PLAIN}
   font-size:12px !important; white-space:nowrap; color:var(--dp-ice, #8fcbff) !important; }
 ${W}.orr-sw--jig .sx-sw__delta > * { position:static !important; transform:none !important; margin:0 !important; }
-${W}.orr-sw--jig .sx-sw__delta .sx-sw__delta-k { ${LABEL} font-size: 12px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .7) !important; }
+${W}.orr-sw--jig .sx-sw__delta .sx-sw__delta-k { ${LABEL} font-size: 12px !important; letter-spacing:.06em !important; color:rgb(${BONE} / .7) !important; }
 ${W}.orr-sw--jig .sx-sw__delta :is(.k-good, .k-bad, .is-gain, .is-loss) { color:var(--dp-ice, #8fcbff) !important; }
 /* while choosing, the screen's own verbs and the instruction step back */
 ${W}.orr-sw--jig.is-choosing .sx-sw-verbs { visibility:hidden !important; }
@@ -159,7 +159,7 @@ ${W}.orr-sw--jig .sx-sw__stage { flex:1 1 auto !important; min-height:0; }
 ${W} .sx-sw__rail { ${PLAIN} }
 ${W} .sx-sw__rail .sx-seg { gap:0 22px !important; margin:0 0 14px !important; }
 ${W} .sx-sw__rail .sx-seg__btn { ${PLAIN} ${LABEL} min-height:0 !important; min-width:0 !important; height:auto !important; padding:4px 0 8px !important;
-  font-size: 12px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .58) !important; }
+  font-size: 12px !important; letter-spacing:.06em !important; color:rgb(${BONE} / .58) !important; }
 ${W} .sx-sw__rail .sx-seg__btn::before, ${W} .sx-sw__rail .sx-seg__btn::after { display:none !important; }
 ${W} .sx-sw__rail .sx-seg__btn.is-on { color:rgb(248 244 234) !important; background-image:linear-gradient(rgb(${BONE} / .9), rgb(${BONE} / .9)) !important;
   background-size:16px 2px !important; background-position:0 100% !important; background-repeat:no-repeat !important; }
@@ -183,7 +183,7 @@ ${W} .sx-sw-row:is(:hover, :focus-visible) .k-row__name { color:rgb(255 250 240)
 ${W} .sx-sw__name { color:rgb(248 244 234) !important; }
 ${W} .sx-sw__condition, ${W} .sx-sw__conditionVerb { ${LABEL} font-size: 12px !important; letter-spacing:.22em !important; color:rgb(${BONE} / .7) !important; }
 ${W} .sx-sw__blurb { color:rgb(${BONE} / .78) !important; }
-${W} .sx-sw__camera .k-word { ${PLAIN} ${LABEL} font-size: 12px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .55) !important; padding:3px 2px !important; min-height:0 !important; }
+${W} .sx-sw__camera .k-word { ${PLAIN} ${LABEL} font-size: 12px !important; letter-spacing:.06em !important; color:rgb(${BONE} / .55) !important; padding:3px 2px !important; min-height:0 !important; }
 ${W} .sx-sw__camera .k-word:is(:hover, :focus-visible) { color:rgb(248 244 234) !important; outline:none !important; }
 ${W} .sx-sw__dragcue { color:rgb(${BONE} / .5) !important; }
 ${W} .sx-sw__slotfield:not(.is-board) .sx-hardpoint__copy { ${PLAIN} padding:0 !important; border-radius:0 !important; }
@@ -211,7 +211,7 @@ ${W} .sx-sw__gauges { ${PLAIN} gap:0 26px !important; justify-content:center !im
 ${W} .sx-sw-rack .sx-sw-band__label > .k-38 { display:block; margin-top:3px; letter-spacing:.14em; }
 ${W} .sx-sw-band--presets .sx-sw-band__label > .k-38 { display:none !important; }
 ${W} .sx-sw-gauge { ${PLAIN} padding:0 !important; min-height:0 !important; gap:8px !important; }
-${W} .sx-sw-gauge .k-row__name { ${LABEL} font-size: 12px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .6) !important; }
+${W} .sx-sw-gauge .k-row__name { ${LABEL} font-size: 12px !important; letter-spacing:.06em !important; color:rgb(${BONE} / .6) !important; }
 ${W} .sx-sw-gauge .k-row__num { font-size:13px !important; color:rgb(248 244 234) !important; font-variant-numeric:tabular-nums; }
 
 /* ---- the handling: no plate; the figures quieter; the bars as scales of light ---------------- */
@@ -224,13 +224,13 @@ ${W} .sx-sw-hero::before, ${W} .sx-sw-hero::after { display:none !important; }
 ${W} .sx-sw-hero .k-hero__n { font-family:var(--dp-face-display, "Archivo") !important; font-stretch:100% !important; font-variation-settings:"wdth" 100, "wght" 560 !important;
   font-weight:560 !important; font-size:clamp(24px, 2.6vh, 32px) !important; line-height:1 !important; letter-spacing:.01em !important; color:rgb(248 244 234) !important;
   text-transform:none !important; text-shadow:none !important; }
-${W} .sx-sw-hero .k-hero__w { ${LABEL} font-size: 12px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .62) !important; margin-top:6px; }
+${W} .sx-sw-hero .k-hero__w { ${LABEL} font-size: 12px !important; letter-spacing:.06em !important; color:rgb(${BONE} / .62) !important; margin-top:6px; }
 ${W} .sx-sw-hero[data-band='condition'] { display:none !important; }
 ${W} .sx-sw-ghost { color:var(--dp-ice, #8fcbff) !important; }
 ${W} .sx-sw-hero:is(:hover, :focus-visible) .k-hero__n { color:var(--dp-hand-hot, #ffd98c) !important; }
 ${W} .sx-sw-hero:is(:hover, :focus-visible) { outline:none !important; }
 ${W} .sx-sw-band__meta { color:rgb(${BONE} / .6) !important; }
-${W} :is(.sx-sw-band__label, .sx-sw__stats .k-caps) { ${LABEL} font-size: 12px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .6) !important; }
+${W} :is(.sx-sw-band__label, .sx-sw__stats .k-caps) { ${LABEL} font-size: 12px !important; letter-spacing:.06em !important; color:rgb(${BONE} / .6) !important; }
 ${W} .sx-sw-bar { ${PLAIN} padding:6px 0 !important; min-height:0 !important; }
 ${W} .sx-sw-bar .k-row__name { font-size:12.5px !important; color:rgb(${BONE} / .8) !important; min-width:84px; }
 ${W} .sx-sw-bar .k-row__num { font-size:13px !important; color:rgb(248 244 234) !important; font-variant-numeric:tabular-nums; }
@@ -256,12 +256,12 @@ ${W} .sx-sw-verb:disabled { color:rgb(${BONE} / .45) !important; }
 ${W} .sx-sw__chooser, ${W} .sx-chooser__panel { ${PLAIN} }
 ${W} .sx-chooser__head { margin:0 0 12px !important; padding:0 !important; }
 ${W} .sx-chooser__x { ${PLAIN} ${LABEL} min-height:0 !important; min-width:0 !important; height:auto !important; padding:3px 0 !important; font-size: 12px !important;
-  letter-spacing:.2em !important; color:rgb(${BONE} / .75) !important; }
+  letter-spacing:.06em !important; color:rgb(${BONE} / .75) !important; }
 ${W} .sx-chooser__x::after { display:none !important; }
 ${W} .sx-chooser__x::before { all:unset !important; content:"‹  " !important; color:rgb(${BONE} / .55) !important; }
 ${W} .sx-chooser__x:is(:hover, :focus-visible) { color:rgb(248 244 234) !important; outline:none !important; }
 ${W} .sx-chooser__kicker { ${LABEL} font-size: 12px !important; letter-spacing:.14em !important; line-height:1.5 !important; color:rgb(${BONE} / .66) !important; margin:10px 0 2px !important; }
-${W} .sx-chooser__head h3 { ${LABEL} font-size: 12px !important; letter-spacing:.2em !important; color:rgb(248 244 234) !important; }
+${W} .sx-chooser__head h3 { ${LABEL} font-size: 12px !important; letter-spacing:.06em !important; color:rgb(248 244 234) !important; }
 ${W} .sx-chooser__head h3 .k-38 { color:rgb(${BONE} / .6) !important; }
 ${W} .sx-chooser__unfit { ${PLAIN} ${LABEL} font-size: 12px !important; letter-spacing:.16em !important; color:rgb(248 244 234) !important; padding:3px 0 !important; min-height:0 !important; }
 ${W} .sx-chooser__list { background:linear-gradient(90deg, transparent 7px, rgb(${BONE} / .22) 7px, rgb(${BONE} / .22) 8px, transparent 8px) !important; padding:0 !important; }
@@ -324,7 +324,7 @@ ${W} .sx-sw-circuit__core .k-hero__n { position:absolute; left:0; right:5.4%; to
 ${W} .sx-sw-circuit__core .k-hero__w { position:absolute; left:0; right:5.4%; top:88px; text-align:center; }
 ${W} .sx-sw-circuit__core .k-hero__n { font-family:var(--dp-face-display, "Archivo") !important; font-stretch:100% !important; font-variation-settings:"wdth" 100, "wght" 500 !important;
   font-size:34px !important; color:rgb(248 244 234) !important; text-shadow:none !important; }
-${W} .sx-sw-circuit__core .k-hero__w { ${LABEL} font-size: 12px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .62) !important; }
+${W} .sx-sw-circuit__core .k-hero__w { ${LABEL} font-size: 12px !important; letter-spacing:.06em !important; color:rgb(${BONE} / .62) !important; }
 ${W} :is(.sx-sw-flow, .sx-sw-rack__cell) { ${PLAIN} padding:5px 0 !important; min-height:0 !important; }
   /* the flow rows keep the Ladder's 26px left gutter: station.css draws the spine and the
      ::before tick inside it, and a flush-left row puts the name's first glyph under the tick. */
@@ -399,14 +399,14 @@ ${W} .sx-sw-side__hero { ${PLAIN} padding:0 !important; margin:8px 0 14px !impor
 ${W} .sx-sw-side__hero::before, ${W} .sx-sw-side__hero::after { display:none !important; }
 ${W} .sx-sw-side__hero .k-hero__n { display:block; font-family:var(--dp-face-display, "Archivo") !important; font-stretch:100% !important; font-variation-settings:"wdth" 100, "wght" 300 !important;
   font-weight:300 !important; font-size:48px !important; line-height:1 !important; letter-spacing:-.01em !important; color:rgb(248 244 234) !important; text-transform:none !important; text-shadow:none !important; }
-${W} .sx-sw-side__hero .k-hero__w { ${LABEL} display:block; font-size: 12px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .62) !important; margin-top:6px; }
+${W} .sx-sw-side__hero .k-hero__w { ${LABEL} display:block; font-size: 12px !important; letter-spacing:.06em !important; color:rgb(${BONE} / .62) !important; margin-top:6px; }
 ${W} .sx-spec { ${PLAIN} }
 ${W} .sx-spec > li { ${PLAIN} display:grid !important; grid-template-columns:96px minmax(0, 1fr); column-gap:14px; align-items:baseline; padding:6px 0 !important; min-height:0 !important; }
 ${W} .sx-spec > li > .k-row__name { ${LABEL} font-size: 12px !important; letter-spacing:.18em !important; color:rgb(${BONE} / .6) !important; }
 ${W} .sx-spec > li > .k-row__num { font-size:13px !important; color:rgb(248 244 234) !important; white-space:normal !important; text-align:left !important; justify-self:start; overflow:visible !important;
   text-overflow:clip !important; max-width:none !important; line-height:1.4; }
 ${W} .sx-buybar { ${PLAIN} margin-top:16px !important; }
-${W} .sx-btn-ghost { ${PLAIN} ${LABEL} font-size: 12px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .62) !important; padding:0 !important; }
+${W} .sx-btn-ghost { ${PLAIN} ${LABEL} font-size: 12px !important; letter-spacing:.06em !important; color:rgb(${BONE} / .62) !important; padding:0 !important; }
 /* the rack: two sockets on a short scale, a dashed ring where nothing is loaded */
 ${W} .sx-sw-rack { border-top:0 !important; margin-top:18px !important; padding-top:0 !important; }
 ${W} .sx-sw-rack__cells { display:flex !important; gap:0 22px !important; margin:6px 0 0 !important; }
@@ -415,7 +415,7 @@ ${W} .sx-sw-rack__cell::before { content:"" !important; display:block !important
   border:1.4px dashed rgb(${BONE} / .6) !important; background:none !important; box-shadow:none !important; transform:none !important; clip-path:none !important; margin:0 !important; }
 ${W} .sx-sw-rack__cell:not(.is-empty)::before { border:5px solid rgb(248 244 234) !important; }
 ${W} .sx-sw-rack__cell::after { display:none !important; }
-${W} .sx-sw-rack__cell .k-row__num { ${LABEL} order:-1; font-size: 12px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .55) !important; text-align:left; }
+${W} .sx-sw-rack__cell .k-row__num { ${LABEL} order:-1; font-size: 12px !important; letter-spacing:.06em !important; color:rgb(${BONE} / .55) !important; text-align:left; }
 ${W} .sx-sw-rack__cell .k-row__name { display:flex !important; flex-direction:column; font-size: 12px !important; }
 ${W} .sx-sw-rack__cell .k-row__sub { font-size: 12px !important; }
 ${W} .sx-sw-rack__cell:is(:hover, :focus-visible) { outline:none !important; }
@@ -708,7 +708,7 @@ ${W} .sx-sw__stage.has-salering > .sx-sw__poster { z-index:1; -webkit-mask-image
 /* the view words are marks on the ring's upper arc; the current one lit */
 ${W} .sx-sw__stage.has-salering .sx-sw__camera { position:absolute !important; left:0 !important; top:0 !important; right:auto !important; bottom:auto !important; width:0; height:0; margin:0 !important; padding:0 !important; overflow:visible; display:block !important; z-index:3; }
 ${W} .sx-sw__stage.has-salering .sx-sw__camera > li { position:absolute; left:0; top:0; }
-${W} .sx-sw__stage.has-salering .sx-sw__camera [data-camera] { position:absolute; transform:translate(-50%, -50%); font-size: 12px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .5) !important; white-space:nowrap; }
+${W} .sx-sw__stage.has-salering .sx-sw__camera [data-camera] { position:absolute; transform:translate(-50%, -50%); font-size: 12px !important; letter-spacing:.06em !important; color:rgb(${BONE} / .5) !important; white-space:nowrap; }
 ${W} .sx-sw__stage.has-salering .sx-sw__camera [data-camera].is-current { color:rgb(248 244 234) !important; }
 ${W} .sx-sw__stage.has-salering .sx-sw__camera [data-camera]::before { content:""; display:block; width:1.5px; height:8px; margin:0 auto 3px; background:rgb(${BONE} / .4); }
 ${W} .sx-sw__stage.has-salering .sx-sw__camera [data-camera].is-current::before { background:rgb(248 244 234); height:12px; }

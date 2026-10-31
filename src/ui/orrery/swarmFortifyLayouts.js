@@ -44,8 +44,26 @@ html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-plan text { fill:
 .sf-fortify-state button { margin-left:12px; }
 .sf-fortify-balance { color:var(--dp-hand); font-variant-numeric:tabular-nums; }
 .sf-crucible-fortify .k-foot { display:flex; gap:10px 28px; flex-wrap:wrap; align-items:center; }
-html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-build { font-size:clamp(18px,2vw,26px) !important; font-weight:600 !important; color:var(--dp-hand) !important; min-height:44px; }
-html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-close { font-size:20px !important; min-height:44px; }
+/* the commit verbs are keys: the build is the one amber primary (the 45° cut), the close a
+   secondary (STATION_STANDARD §5) — not amber and bone words a player could miss. */
+html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-build {
+  font:600 15px var(--dp-face-read) !important; letter-spacing:.04em; text-transform:none;
+  color:var(--dp-metal-0, #0b0d10) !important; min-height:42px; padding:0 20px;
+  background:var(--dp-lamp, #f2b950); border:1px solid rgb(242 185 80 / .9); border-radius:2px;
+  clip-path:polygon(0 0, calc(100% - 9px) 0, 100% 9px, 100% 100%, 0 100%);
+  transition:background var(--dp-d-cut, 80ms) linear, box-shadow var(--dp-d-cut, 80ms) linear; }
+html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-build:not([disabled]):is(:hover, :focus-visible) {
+  background:var(--dp-lamp-hot, #ffd98c); box-shadow:0 0 14px rgb(242 185 80 / .24); }
+html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-build[disabled],
+html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-build[aria-disabled="true"] {
+  opacity:.45; cursor:not-allowed; }
+html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-close {
+  font:600 14px var(--dp-face-read) !important; letter-spacing:.03em; text-transform:none;
+  color:rgb(236 230 216 / .92) !important; min-height:42px; padding:0 16px;
+  background:rgb(236 230 216 / .05); border:1px solid rgb(236 230 216 / .38); border-radius:2px;
+  transition:background var(--dp-d-cut, 80ms) linear, border-color var(--dp-d-cut, 80ms) linear; }
+html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-close:is(:hover, :focus-visible) {
+  color:#fff; background:rgb(236 230 216 / .12); border-color:rgb(236 230 216 / .75); }
 .sf-fortify-receipt { flex:1 0 100%; margin:0; min-height:1.5em; }
 @media (max-width:760px) {
   html body #screens > .k-screen.sf-crucible-fortify { padding:20px !important; gap:12px !important; }

@@ -24,7 +24,7 @@ ${GO} > .k-stage > .k-sentence { color:rgb(${BONE} / .86) !important; }
 ${GO} .sf-go-foot > .k-words { flex-wrap:nowrap !important; column-gap:calc(30px * var(--sv)) !important; }
 ${GO} .sf-go-foot .k-word.sf-go-verb {
   position:relative !important; padding:10px 0 11px !important; min-height:44px !important; white-space:nowrap !important;
-  font-size:max(12px, calc(12.5px * var(--sv))) !important; letter-spacing:.2em !important; color:rgb(250 247 240) !important;
+  font-size:max(12px, calc(12.5px * var(--sv))) !important; letter-spacing:.06em !important; color:rgb(250 247 240) !important;
   background:linear-gradient(0deg, rgb(${BONE} / .26) 0 1.5px, transparent 1.5px) 0 100% / 100% 100% no-repeat !important; }
 ${GO} .sf-go-foot .k-word.sf-go-verb::before { color:rgb(${BONE} / .7) !important; margin-right:.6em !important; }
 ${GO} .sf-go-foot .k-word.sf-go-verb:is(:hover, :focus-visible) {

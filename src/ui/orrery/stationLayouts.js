@@ -75,7 +75,7 @@ ${S} .sxb-next__t { color:rgb(248 244 234) !important; }
 ${S} .sxb-next__w { color:rgb(${BONE} / .78) !important; }
 ${S} .sxb-event__badge { color:rgb(248 244 234) !important; background:none !important; border:0 !important; }
 ${S} :is(.sxb-event__badge, .sxb-event__title, .sxb-next__t) { font-family:var(--dp-face-label, "Archivo") !important; font-stretch:112% !important;
-  font-variation-settings:"wdth" 112, "wght" 650 !important; font-weight:650 !important; font-size: 12px !important; letter-spacing:.2em !important; text-transform:uppercase; }
+  font-variation-settings:"wdth" 112, "wght" 650 !important; font-weight:650 !important; font-size: 12px !important; letter-spacing:.06em !important; text-transform:uppercase; }
 ${S} .sxb-next { color:rgb(${BONE} / .78) !important; }
 ${S} .sxb-next:is(:hover, :focus-visible) { color:rgb(248 244 234) !important; }
 ${S} .sxb-next__bead { background:rgb(${BONE} / .85) !important; color:rgb(${BONE} / .85) !important; box-shadow:none !important; }

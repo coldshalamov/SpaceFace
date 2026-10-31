@@ -110,7 +110,7 @@ ${T} .sx-ct__active, ${T} .sx-ct__jobs, ${T} .sx-job { ${PLAIN} }
 ${T} .sx-job { padding:6px 0 !important; min-height:0 !important; }
 ${T} .sx-job__title { font-size:13px !important; color:rgb(248 244 234) !important; }
 ${T} .sx-job__meta { font-size: 12px !important; color:rgb(${BONE} / .6) !important; }
-${T} .sx-job__track { ${PLAIN} ${LABEL} min-height:0 !important; height:auto !important; padding:3px 0 !important; font-size: 12px !important; letter-spacing:.2em !important;
+${T} .sx-job__track { ${PLAIN} ${LABEL} min-height:0 !important; height:auto !important; padding:3px 0 !important; font-size: 12px !important; letter-spacing:.06em !important;
   color:rgb(${BONE} / .8) !important; }
 ${T} .sx-job__track::after { display:none !important; }
 ${T} .sx-job__track::before { all:unset !important; content:"●  " !important; font-size: 12px; vertical-align:2px; color:rgb(248 244 234) !important; }
@@ -635,7 +635,7 @@ ${T} .sx-fac-contracts .sx-ladder__step.is-next { position:relative; margin-top:
 ${T} .sx-fac-contracts .sx-ladder__step.is-next::before { content:"" !important; display:block !important; position:absolute !important; left:0 !important; right:0 !important; top:-5px !important;
   width:auto !important; height:1px !important; margin:0 !important; background:linear-gradient(90deg, rgb(248 244 234 / .7), rgb(248 244 234 / 0)) !important; clip-path:none !important; }
 ${T} .sx-fac-contracts .sx-ladder__step.is-next::after { content:"you are here" !important; display:block !important; position:absolute !important; left:0; top:-13px; width:auto !important; height:auto !important;
-  ${LABEL} font-size: 12px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .55) !important; background:none !important; }
+  ${LABEL} font-size: 12px !important; letter-spacing:.06em !important; color:rgb(${BONE} / .55) !important; background:none !important; }
 /* a short screen: the index folds into the ring (every crest is a button); the ring takes the width */
 @media (min-width:651px) and (max-height:800px), (max-height:600px) {
   ${T} .sx-fac { grid-template-columns:minmax(0, 1fr) !important; }
@@ -1566,7 +1566,7 @@ ${T} .sx-fab-foot .orr-lampkey:disabled { color:rgb(${BONE} / .66) !important; }
 ${T} .sx-fab-foot .orr-lampkey:disabled::after { display:block !important; }
 ${T} .sx-fab-foot .orr-lampkey:disabled::before { background:rgb(${BONE} / .36) !important; }
 ${T} .orr-chain__label.is-below { z-index:2; }
-${T} .orr-chain__process.is-blocked { font-size:12px !important; letter-spacing:.2em !important; opacity:.6; }
+${T} .orr-chain__process.is-blocked { font-size:12px !important; letter-spacing:.06em !important; opacity:.6; }
 ${T} .orr-chain__blocknote { display:block; margin-top:6px; }
 
 /* ================================ ROUND 8: MISSIONS ========================================= */

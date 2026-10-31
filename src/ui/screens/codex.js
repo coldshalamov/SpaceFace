@@ -31,7 +31,7 @@ import { injectDeckplate } from '../deckplate/index.js';
 import { injectArchiveLayouts } from '../orrery/archiveLayouts.js';
 import { injectCodexLayouts } from '../orrery/codexLayouts.js';
 import {
-  archivePlateSvg, archiveBladeSvg, archiveHoverSvg, archiveDialAngle, archiveDialIndex, archiveGaugeSvg, archiveScramble, archiveHash,
+  archivePlateSvg, archiveBladeSvg, archiveHoverSvg, archiveDialAngle, archiveDialIndex, archiveScramble, archiveHash,
   archiveWedgeSvg, archiveZoom, createLadderHand,
 } from '../orrery/archiveInstruments.js';
 import { decrypt, rollTo } from '../orrery/text.js';
@@ -1621,19 +1621,20 @@ export const codexScreen = {
       let num = figure;
       let of = '';
       let frac = 0;
-      let count = 0;
       const ratio = /^(\d+)\/(\d+)$/.exec(figure);
       const pct = /^(\d+(?:\.\d+)?)%$/.exec(figure);
-      if (ratio) { num = ratio[1]; of = '/' + ratio[2]; frac = Number(ratio[2]) > 0 ? Number(ratio[1]) / Number(ratio[2]) : 0; count = Number(ratio[2]); }
+      if (ratio) { num = ratio[1]; of = '/' + ratio[2]; frac = Number(ratio[2]) > 0 ? Number(ratio[1]) / Number(ratio[2]) : 0; }
       else if (pct) { num = pct[1]; of = '%'; frac = Number(pct[1]) / 100; }
-      else if (item.key === 'Phase' && /^\d+$/.test(figure)) { of = '/' + MAX_PHASE; frac = Number(figure) / MAX_PHASE; count = MAX_PHASE; }
+      else if (item.key === 'Phase' && /^\d+$/.test(figure)) { of = '/' + MAX_PHASE; frac = Number(figure) / MAX_PHASE; }
       const cell = el('div', 'cx-index__item');
       cell.dataset.key = item.key.toLowerCase();
-      const dial = el('span', 'cx-index__dial');
-      dial.setAttribute('aria-hidden', 'true');
-      dial.innerHTML = archiveGaugeSvg(frac, { count });
-      cell.appendChild(dial);
-      // the dial is labelled by its section's name; the rest of the sentence is read, not shown
+      // STATION_STANDARD §4: a catalogue count is a bar + figure, not one dial per section —
+      // arcs are for hero gauges. The fraction drives the bar as --cx-p; the figure stays tabular.
+      const meter = el('span', 'cx-index__bar');
+      meter.setAttribute('aria-hidden', 'true');
+      meter.style.setProperty('--cx-p', frac.toFixed(3));
+      cell.appendChild(meter);
+      // the reading is labelled by its section's name; the rest of the sentence is read, not shown
       const shortWord = item.key === 'Phase' ? 'Phase' : item.key;
       const dt = el('dt', 'cx-index__w', shortWord);
       const rest = words.toLowerCase().startsWith(shortWord.toLowerCase()) ? words.slice(shortWord.length) : ' ' + words;

@@ -158,7 +158,7 @@ ${M} .sx-mkt-table thead th:nth-child(4), ${M} .sx-mkt-row td:nth-child(4) { wid
 ${M} .sx-mkt-table thead th:nth-child(5) { display:none !important; }
 ${M} .sx-mkt-table thead th:nth-child(1) { color:transparent !important; }
 ${M} .sx-mkt-table thead, ${M} .sx-mkt-table thead tr { background:none !important; box-shadow:none !important; position:static !important; }
-${M} .sx-mkt-table thead th { ${PLAIN} ${LABEL} font-size:12px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .5) !important;
+${M} .sx-mkt-table thead th { ${PLAIN} ${LABEL} font-size:12px !important; letter-spacing:.06em !important; color:rgb(${BONE} / .5) !important;
   padding:0 8px 8px !important; }
 ${M} .sx-mkt-table thead th:first-child { padding-left:46px !important; }
 /* the rail: the shared spine (2px at .55 over a 7px band at .27) with 1.5px minor ticks */

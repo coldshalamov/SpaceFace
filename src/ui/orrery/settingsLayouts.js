@@ -123,6 +123,7 @@ ${S} #sf-settings-pane::before, ${S} #sf-settings-pane::after { content:none !im
 ${S} #sf-settings-pane .k-rows { ${PLAIN} position:relative; margin:0 !important; padding:2px 0 !important; max-width:none !important; background:${RAIL_BG} !important; }
 ${S} #sf-settings-pane .k-row { ${PLAIN} position:relative !important; display:grid !important; grid-template-columns:var(--orr-label-w, 206px) minmax(0, 1fr) !important;
   align-items:center !important; column-gap:22px !important; row-gap:3px !important; min-height:50px !important; height:auto !important; padding:7px 0 7px 30px !important;
+  border-bottom:1px solid rgb(${BONE} / .09) !important;
   color:rgb(${BONE} / .82) !important; }
 ${S} #sf-settings-pane .k-row::after { content:none !important; display:none !important; }
 ${S} #sf-settings-pane .k-row::before { content:"" !important; display:block !important; position:absolute !important; left:4px !important; top:50% !important; width:9px !important;
@@ -138,7 +139,7 @@ ${S} #sf-settings-pane .k-row:has(.sf-bind-btn--capture)::before { left:6px !imp
   background:var(--dp-hand-hot, #ffd98c) !important; box-shadow:0 0 10px rgb(255 217 140 / .7) !important; }
 /* a short category spreads its rows over the column: the scales carry it, not a hole under them */
 @media (min-height:900px) { ${S} #sf-settings-pane.is-roomy .k-row { min-height:62px !important; } ${S} #sf-settings-pane.is-roomy.is-sparse .k-row { min-height:76px !important; } }
-${S} #sf-settings-pane .k-row > :is(label, span.k-t-body) { ${LABEL} font-size: 12.5px !important; letter-spacing:.12em !important; line-height:1.35 !important;
+${S} #sf-settings-pane .k-row > :is(label, span.k-t-body) { ${LABEL} font-size: 13px !important; letter-spacing:.04em !important; line-height:1.35 !important;
   color:rgb(${BONE} / .9) !important; white-space:normal; overflow-wrap:break-word; text-shadow:none !important; }
 ${S} #sf-settings-pane .k-row:is(:focus-within, :hover) > :is(label, span.k-t-body) { color:rgb(255 253 248) !important; text-shadow:0 0 18px rgb(255 250 236 / .16); }
 
@@ -180,29 +181,30 @@ ${S} #sf-settings-pane .k-row .k-words--row:has(> li) { ${PLAIN} display:flex !i
   gap:4px 22px !important; width:auto !important; height:auto !important; min-width:0 !important; padding:2px 0 6px !important; justify-self:start !important;
   background:linear-gradient(0deg, rgb(${BONE} / .22) 0 1.5px, transparent 1.5px) 0 100% / 100% 100% no-repeat !important; }
 ${S} #sf-settings-pane .k-row .k-words--row:has(> li) > li { list-style:none !important; margin:0 !important; }
-${S} #sf-settings-pane .k-row .k-words--row:has(> li) .k-word { all:unset !important; box-sizing:border-box !important; position:relative !important; display:inline-block !important;
-  cursor:pointer !important; padding:8px 2px 10px 14px !important; ${LABEL} font-size: 12.5px !important; letter-spacing:.18em !important; line-height:1 !important;
-  color:rgb(${BONE} / .55) !important; transition:color .16s linear; }
+/* a switch / a choice: ONE segmented control — a hairline box whose chosen side is lit. The state
+   reads from the fill, not from a bead the player has to decode (STATION_STANDARD §4: a stepper or
+   a segmented pair, not loose words). */
+${S} #sf-settings-pane .k-row .k-words--row:has(> li) { ${PLAIN} display:inline-flex !important; flex-direction:row !important; flex-wrap:nowrap !important; align-items:stretch !important;
+  gap:0 !important; width:auto !important; height:auto !important; min-width:0 !important; padding:0 !important; justify-self:start !important;
+  background:rgb(6 8 11 / .6) !important; border:1px solid rgb(${BONE} / .32) !important; border-radius:2px !important; overflow:hidden !important; }
+${S} #sf-settings-pane .k-row .k-words--row:has(> li) > li { list-style:none !important; margin:0 !important; }
+${S} #sf-settings-pane .k-row .k-words--row:has(> li) .k-word { all:unset !important; box-sizing:border-box !important; position:relative !important; display:inline-flex !important; align-items:center !important;
+  cursor:pointer !important; padding:7px 16px 8px !important; ${LABEL} font-size: 13px !important; letter-spacing:.05em !important; line-height:1 !important;
+  color:rgb(${BONE} / .58) !important; transition:color var(--dp-d-cut, 80ms) linear, background var(--dp-d-cut, 80ms) linear; }
 ${S} #sf-settings-pane .k-row .k-words--row:has(> li) .k-word::after { content:none !important; display:none !important; }
-${S} #sf-settings-pane .k-row .k-words--row:has(> li) .k-word::before { content:"" !important; display:block !important; position:absolute !important; left:1px !important; top:50% !important;
-  width:4px !important; height:4px !important; margin-top:-4px !important; border-radius:50% !important; background:rgb(${BONE} / .22) !important; transform:none !important;
-  translate:none !important; scale:none !important; border:0 !important; box-shadow:none !important; clip-path:none !important; opacity:1 !important; }
-${S} #sf-settings-pane .k-row .k-words--row:has(> li) .k-word:hover { color:rgb(${HOT}) !important; }
-${S} #sf-settings-pane .k-row .k-words--row:has(> li) .k-word[aria-pressed="true"] { color:rgb(255 253 248) !important; text-shadow:0 0 14px rgb(255 250 236 / .34); }
-${S} #sf-settings-pane .k-row .k-words--row:has(> li) .k-word[aria-pressed="true"]::before { left:0 !important; width:7px !important; height:7px !important; margin-top:-5.5px !important;
-  background:rgb(${HOT}) !important; box-shadow:0 0 9px rgb(255 250 236 / .75) !important; }
-${S} #sf-settings-pane .k-row .k-words--row:has(> li) .k-word[aria-pressed="true"]::after { content:"" !important; display:block !important; position:absolute !important;
-  left:14px !important; right:2px !important; bottom:0 !important; height:2px !important; background:linear-gradient(90deg, rgb(${HOT}), rgb(${HOT} / 0)) !important;
-  box-shadow:0 0 10px rgb(255 250 236 / .35) !important; }
-${S} #sf-settings-pane .k-row .k-words--row:has(> li) .k-word:focus-visible { color:var(--dp-hand-hot, #ffd98c) !important; }
-${S} #sf-settings-pane .k-row .k-words--row:has(> li) .k-word:focus-visible::before { left:1.5px !important; width:3px !important; height:16px !important; margin-top:-8px !important;
-  border-radius:0 !important; background:var(--dp-hand-hot, #ffd98c) !important; box-shadow:0 0 8px rgb(255 217 140 / .7) !important; }
+${S} #sf-settings-pane .k-row .k-words--row:has(> li) .k-word::before { content:none !important; display:none !important; }
+${S} #sf-settings-pane .k-row .k-words--row:has(> li) .k-word + .k-word { border-left:1px solid rgb(${BONE} / .22) !important; }
+${S} #sf-settings-pane .k-row .k-words--row:has(> li) .k-word:hover { color:rgb(${BONE} / .95) !important; background:rgb(${BONE} / .06) !important; }
+${S} #sf-settings-pane .k-row .k-words--row:has(> li) .k-word[aria-pressed="true"] { color:rgb(255 253 248) !important;
+  background:linear-gradient(0deg, rgb(${HOT} / .85) 0 2px, transparent 2px), rgb(${BONE} / .12) !important;
+  text-shadow:0 0 12px rgb(255 250 236 / .28); }
+${S} #sf-settings-pane .k-row .k-words--row:has(> li) .k-word[aria-pressed="true"]:hover { background:linear-gradient(0deg, rgb(${HOT} / .85) 0 2px, transparent 2px), rgb(${BONE} / .16) !important; }
 
 /* a choice from a list: the chosen word in the label face, its options engraved beneath as a short tick
    scale (one tick per option, the chosen one lit); it opens as the instrument column below */
 ${S} #sf-settings-pane select.k-select { all:unset !important; -webkit-appearance:none !important; appearance:none !important; box-sizing:border-box !important; display:inline-block !important;
   justify-self:start !important; align-self:end !important; max-width:100% !important; min-width:0 !important; cursor:pointer !important; padding:6px 0 4px !important;
-  ${LABEL} font-size:13px !important; letter-spacing:.14em !important; line-height:1.2 !important; color:rgb(255 253 248) !important; background:none !important;
+  ${LABEL} font-size:13px !important; letter-spacing:.05em !important; line-height:1.2 !important; color:rgb(255 253 248) !important; background:none !important;
   text-overflow:ellipsis; white-space:nowrap; overflow:hidden; text-shadow:0 0 14px rgb(255 250 236 / .28); }
 ${S} #sf-settings-pane select.k-select:hover { color:rgb(255 253 248) !important; }
 ${S} #sf-settings-pane select.k-select:focus-visible, ${S} #sf-settings-pane select.k-select:focus { color:var(--dp-hand-hot, #ffd98c) !important; outline:none !important; }
@@ -282,7 +284,7 @@ ${S} #sf-settings-pane { z-index:1; }
 /* ------------------------------------------------ the way back --------------------------------- */
 ${S} > .k-foot { align-items:center !important; }
 ${S} > .k-foot .sf-back { all:unset !important; box-sizing:border-box !important; cursor:pointer !important; display:inline-flex !important; align-items:baseline !important; gap:0 !important;
-  padding:10px 0 12px !important; ${LABEL} font-size:13.5px !important; letter-spacing:.22em !important; color:rgb(255 253 248) !important;
+  padding:10px 0 12px !important; ${LABEL} font-size:13.5px !important; letter-spacing:.1em !important; color:rgb(255 253 248) !important;
   background:linear-gradient(0deg, rgb(${BONE} / .28) 0 1.5px, transparent 1.5px) 0 100% / 120px 100% no-repeat !important; }
 ${S} > .k-foot .sf-back::before { content:"‹" !important; margin-right:12px; font-size:15px; color:rgb(${BONE} / .6); }
 ${S} > .k-foot .sf-back::after { all:unset !important; content:"ESC" / "" !important; display:inline-block !important; margin-left:16px !important; padding:3px 7px 4px !important;
@@ -489,14 +491,14 @@ ${C} .of-credits-rows .k-row__name { font-family:var(--dp-face-read, "Instrument
 /* the line under a name reads as text (versions, makers, addresses keep their case) */
 ${C} .of-credits-rows .k-row__sub { display:block; margin-top:5px !important; font-family:var(--dp-face-read, "Instrument Sans") !important; font-size:12.5px !important;
   font-weight:400 !important; letter-spacing:.01em !important; text-transform:none !important; line-height:1.45 !important; color:rgb(${BONE} / .82) !important; white-space:normal !important; overflow-wrap:anywhere; }
-${C} .of-credits-rows .k-row__num { ${LABEL} font-size: 12px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .84) !important; text-align:right; white-space:nowrap; }
+${C} .of-credits-rows .k-row__num { ${LABEL} font-size: 12px !important; letter-spacing:.06em !important; color:rgb(${BONE} / .84) !important; text-align:right; white-space:nowrap; }
 /* a licence: its name, its terms in labels, its text as quiet reading */
 ${C} .of-credits-notice { ${PLAIN} padding:0 0 0 30px !important; margin:0 0 40px !important; position:relative; max-width:none !important; }
 ${C} .of-credits-notice::before { content:"" !important; position:absolute; left:4px; top:10px; width:8px; height:1.5px; background:rgb(${BONE} / .55); }
 ${C} .of-credits-notice::after { content:none !important; display:none !important; }
 ${C} .of-credits-notice > h2 { font-family:var(--dp-face-read, "Instrument Sans") !important; font-size:16px !important; font-weight:600 !important; letter-spacing:0 !important;
   text-transform:none !important; color:rgb(${HOT}) !important; margin:0 !important; }
-${C} .of-credits-notice > .k-caps { ${LABEL} margin:6px 0 12px !important; font-size: 12px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .8) !important;
+${C} .of-credits-notice > .k-caps { ${LABEL} margin:6px 0 12px !important; font-size: 12px !important; letter-spacing:.06em !important; color:rgb(${BONE} / .8) !important;
   background:none !important; padding:0 !important; }
 ${C} .of-credits-notice > .k-sentence { font-family:var(--dp-face-read, "Instrument Sans") !important; font-size:12.5px !important; line-height:1.6 !important; max-width:66ch !important;
   color:rgb(${BONE} / .86) !important; margin:0 0 10px !important; text-transform:none !important; letter-spacing:0 !important; }
@@ -524,11 +526,11 @@ html.sf-reduce-motion ${C} .orr-cr-line { opacity:1 !important; transform:none !
 /* ------------------------------------------------ credits: the way back (‹ BACK + ESC keycap, matches settings/save-load/help) - */
 ${C} > .k-foot { align-items:center !important; }
 ${C} > .k-foot .sf-back { all:unset !important; box-sizing:border-box !important; cursor:pointer !important; display:inline-flex !important; align-items:baseline !important; gap:0 !important;
-  padding:10px 0 12px !important; min-height:44px !important; ${LABEL} font-size:13.5px !important; letter-spacing:.22em !important; color:rgb(255 253 248) !important;
+  padding:10px 0 12px !important; min-height:44px !important; ${LABEL} font-size:13.5px !important; letter-spacing:.1em !important; color:rgb(255 253 248) !important;
   background:linear-gradient(0deg, rgb(${BONE} / .28) 0 1.5px, transparent 1.5px) 0 100% / 120px 100% no-repeat !important; text-shadow:none !important; }
 ${C} > .k-foot .sf-back::before { all:unset !important; content:"‹" !important; margin-right:12px !important; font-size:15px !important; color:rgb(${BONE} / .6) !important; }
 ${C} > .k-foot .sf-back::after { all:unset !important; content:"ESC" / "" !important; display:inline-block !important; margin-left:16px !important; padding:3px 7px 4px !important;
-  ${LABEL} font-size:12px !important; letter-spacing:.2em !important; line-height:1 !important;
+  ${LABEL} font-size:12px !important; letter-spacing:.06em !important; line-height:1 !important;
   color:rgb(${BONE} / .9) !important; background:rgb(${BONE} / .08) !important; border:0 !important; border-radius:0 !important;
   box-shadow:none !important; vertical-align:baseline !important; }
 ${C} > .k-foot .sf-back:is(:hover, :focus-visible) { color:var(--dp-hand-hot, #ffd98c) !important; outline:none !important; }
@@ -619,7 +621,7 @@ ${C} > .k-foot .sf-back:focus-visible::after { color:rgb(255 253 248) !important
   ${CD} { padding-top:12px !important; padding-bottom:6px !important; row-gap:8px !important;
     column-gap:clamp(16px, 2.4vw, 40px) !important; }
   ${CD} > .k-title > :is(h1, .k-t-title, .k-display) { font-size:clamp(26px, 7vh, 36px) !important; line-height:1 !important; }
-  ${CD} > .k-title > p { margin:6px 0 0 !important; font-size:12px !important; letter-spacing:.2em !important; gap:10px; }
+  ${CD} > .k-title > p { margin:6px 0 0 !important; font-size:12px !important; letter-spacing:.06em !important; gap:10px; }
   ${CD} > .k-title > p::after { width:48px; }
   /* hang stays in its row: scroll if needed instead of painting through ‹ BACK */
   ${CD} > .k-hang { align-self:stretch !important; max-height:100% !important; min-height:0 !important;

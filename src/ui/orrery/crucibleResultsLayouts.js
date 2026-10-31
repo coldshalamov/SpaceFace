@@ -47,6 +47,29 @@ ${X} > .k-foot > .k-words { width:100% !important; max-width:100% !important; fl
 `;
 
 export const CRUCIBLE_RESULTS_LAYOUT_CSS = `
+/* ways-out are keys (STATION_STANDARD §5): the one amber primary, the rest secondary hairlines.
+   "RUN IT AGAIN" was an amber tracked word — a poster, not a control. */
+${R} > .k-foot .k-word, ${RP} > .k-foot .k-word {
+  display:inline-flex !important; align-items:center; min-height:38px; padding:0 16px;
+  font:600 14px var(--dp-face-read, "Instrument Sans") !important; letter-spacing:.03em; text-transform:none;
+  color:rgb(${BONE} / .88) !important;
+  background:rgb(${BONE} / .05); border:1px solid rgb(${BONE} / .34); border-radius:2px;
+  transition:background var(--dp-d-cut, 80ms) linear, border-color var(--dp-d-cut, 80ms) linear, color var(--dp-d-cut, 80ms) linear;
+}
+${R} > .k-foot .k-word:is(:hover, :focus-visible), ${RP} > .k-foot .k-word:is(:hover, :focus-visible) {
+  color:#fff !important; background:rgb(${BONE} / .12); border-color:rgb(${BONE} / .75);
+}
+${R} > .k-foot .k-word.k-word--primary, ${RP} > .k-foot .k-word.k-word--primary {
+  min-height:42px; padding:0 20px;
+  font:700 15px var(--dp-face-read, "Instrument Sans") !important;
+  color:var(--dp-metal-0, #0b0d10) !important;
+  background:var(--dp-lamp, #f2b950) !important; border:1px solid rgb(242 185 80 / .9);
+  clip-path:polygon(0 0, calc(100% - 9px) 0, 100% 9px, 100% 100%, 0 100%);
+}
+${R} > .k-foot .k-word.k-word--primary:is(:hover, :focus-visible), ${RP} > .k-foot .k-word.k-word--primary:is(:hover, :focus-visible) {
+  color:var(--dp-metal-0, #0b0d10) !important; background:var(--dp-lamp-hot, #ffd98c) !important;
+  box-shadow:0 0 14px rgb(242 185 80 / .24);
+}
 /* one column, one scroller: the ledger and story boxes dissolve so their bands share one order */
 ${R} .sf-crres__stage { display:flex !important; flex-direction:column !important; gap:20px !important; width:100%; max-width:min(600px, 46vw) !important;
   min-height:0 !important; overflow:hidden auto !important; overscroll-behavior:contain; padding:2px 16px 28px 0 !important; margin:0 !important;
@@ -87,7 +110,7 @@ ${R} .sf-crres__ledger > .sf-crres__band:not([data-band]) .k-row { min-height:30
 /* share: each code is a quiet field with its save word at the end */
 ${R} .sf-crres__share-item { margin:0 0 8px !important; max-width:560px; }
 ${R} .sf-crres__share-row { display:grid !important; grid-template-columns:96px minmax(0, 1fr) auto; align-items:center; column-gap:14px; }
-${R} .sf-crres__share-cap { font-size:12px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .62) !important; white-space:nowrap; }
+${R} .sf-crres__share-cap { font-size:12px !important; letter-spacing:.06em !important; color:rgb(${BONE} / .62) !important; white-space:nowrap; }
 ${R} .sf-crres__share-code { width:100% !important; min-width:0; height:30px; box-sizing:border-box; padding:0 10px !important; border:0 !important; border-radius:2px !important;
   background:rgb(${VOID} / .55) !important; box-shadow:inset 0 0 0 1px rgb(${BONE} / .16) !important; color:rgb(${BONE} / .9) !important;
   font-size:12.5px !important; text-overflow:ellipsis; outline:none; }

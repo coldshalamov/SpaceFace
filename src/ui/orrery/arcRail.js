@@ -63,10 +63,10 @@ const CSS = `
    --orr-head), so the hierarchy is the same grammar at any window height. */
 .orr-svg text.orr-arcrail__legend { font-family:var(--dp-face-display, "Archivo"), sans-serif;
   font-size:var(--orr-head, 12px); font-variation-settings:"wght" 700, "wdth" 106;
-  letter-spacing:.28em; fill:rgb(232 226 212 / .86); dominant-baseline:auto; transition:fill .18s linear; }
+  letter-spacing:.14em; fill:rgb(232 226 212 / .86); dominant-baseline:auto; transition:fill .18s linear; }
 /* the emblem's lettering: its name round the rim, quiet wide capitals */
 .orr-svg .orr-arcrail__lettering, .orr-svg .orr-arcrail__lettering text { font-family:var(--dp-face-display, "Archivo"), sans-serif; font-variation-settings:"wght" 600, "wdth" 112;
-  letter-spacing:.3em; fill:rgb(232 226 212 / .58); }
+  letter-spacing:.2em; fill:rgb(232 226 212 / .58); }
 .orr-svg .orr-arcrail__head.is-lit text.orr-arcrail__legend { fill:rgb(250 247 239 / .99); }
 /* the rule under a head: a hairline of light that fades as it runs out over the held world, and
    lights amber on the row the Hand is stopped on. It is the only thing in the column that says
@@ -118,11 +118,13 @@ html.sf-reduce-motion .orr-arcrail-host--arriving .orr-arcrail__rule { stroke-da
 .orr-arcrail-host--grouped .orr-arcrail__glow { background:radial-gradient(closest-side, rgb(4 6 9 / .66), rgb(4 6 9 / .6) 45%, rgb(4 6 9 / .5) 60%, rgb(4 6 9 / .18) 82%, transparent); }
 .orr-arcrail-host--grouped .dp-lit__item { text-shadow:0 0 8px rgb(4 6 9 / .95), 0 0 18px rgb(4 6 9 / .85), 0 0 32px rgb(4 6 9 / .6) !important; }
 .orr-arcrail-host--grouped .orr-svg text.orr-arcrail__legend { paint-order:stroke; stroke:rgb(4 6 9 / .9); stroke-width:4px; stroke-linejoin:round; }
-/* a dense dial (pause): smaller words, the primary a size up as the one lamp key */
-.orr-arcrail-host--dense .dp-lit__item { font-size:clamp(15px, 1.95vh, 22px) !important; letter-spacing:.09em !important; }
-.orr-arcrail-host--dense .dp-lit__item--primary { font-size:clamp(28px, 3.6vh, 42px) !important; letter-spacing:.05em !important; }
-.orr-arcrail-host--dense li[data-tier="low"] .dp-lit__item { font-size:clamp(12px, 1.45vh, 16px) !important; letter-spacing:.14em !important;
-  color:rgb(232 226 212 / .62) !important; }
+/* a dense dial (pause): smaller words, the primary a size up as the one lamp key.
+   STATION_STANDARD §2: tracking ≤.08em, 13px floor — the .14em/12px low tier was the
+   "tiny tracked low-resolution caps" the owner named on the live screen. */
+.orr-arcrail-host--dense .dp-lit__item { font-size:clamp(15px, 1.95vh, 22px) !important; letter-spacing:.05em !important; }
+.orr-arcrail-host--dense .dp-lit__item--primary { font-size:clamp(28px, 3.6vh, 42px) !important; letter-spacing:.04em !important; }
+.orr-arcrail-host--dense li[data-tier="low"] .dp-lit__item { font-size:clamp(13px, 1.45vh, 16px) !important; letter-spacing:.06em !important;
+  color:rgb(232 226 212 / .68) !important; }
 .orr-arcrail-host--dense li[data-tier="low"] .dp-lit__item[data-awake] { color:rgb(246 241 230) !important; }
 /* …and then the hierarchy: a grouped dial's verbs are the small print under their category's head.
    Written after the dense sizes (and never on the primary, which stays the one lamp key) so the
@@ -133,7 +135,7 @@ html.sf-reduce-motion .orr-arcrail-host--arriving .orr-arcrail__rule { stroke-da
   letter-spacing:.13em !important; font-variation-settings:"wght" 640, "wdth" 88 !important;
   color:rgb(232 226 212 / var(--orr-word, .74)) !important; }
 .orr-arcrail-host--grouped li[data-tier="low"] .dp-lit__item:not(.dp-lit__item--primary) { font-size:var(--orr-verb-low, 12px) !important;
-  letter-spacing:.2em !important; font-variation-settings:"wght" 600, "wdth" 82 !important;
+  letter-spacing:.06em !important; font-variation-settings:"wght" 600, "wdth" 82 !important;
   color:rgb(232 226 212 / var(--orr-word, .62)) !important; }
 .orr-arcrail-host--grouped li[data-head-hover] { --orr-word:.95; }
 .orr-arcrail-host--grouped .dp-lit__item[data-awake] { color:rgb(247 243 234) !important; }
@@ -159,7 +161,7 @@ html.sf-reduce-motion .orr-arcrail-host--arriving .orr-arcrail__rule { stroke-da
   color:rgb(232 226 212 / .64) !important; }
 .orr-arcrail-host .dp-lit--fine .dp-lit__item[data-awake] { color:var(--dp-ink, #e8e2d4) !important; transform:none; }
 .orr-arcrail-host .dp-kbd { background:none !important; border:0 !important; box-shadow:none !important; color:rgb(232 226 212 / .5) !important;
-  font-size:max(12px, .62em) !important; letter-spacing:.2em !important; padding:0 0 0 .4em !important; }
+  font-size:max(12px, .62em) !important; letter-spacing:.06em !important; padding:0 0 0 .4em !important; }
 .orr-arcrail__trail { fill:none; stroke:var(--dp-hand, #f2b950); stroke-linecap:round; animation:orr-trail-fade 520ms ease-out forwards; }
 @keyframes orr-trail-fade { from { opacity:.5; } to { opacity:0; } }
 @media (forced-colors: active) {

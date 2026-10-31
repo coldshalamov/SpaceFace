@@ -55,7 +55,7 @@ ${R} .pv-lane { display:flex !important; flex-direction:column !important; min-h
 ${R} .pv-lane__head { display:flex !important; align-items:baseline !important; gap:12px !important;
   margin:0 0 10px !important; padding:0 0 10px 18px !important;
   background:linear-gradient(90deg, rgb(${BONE} / .34) 0 22px, rgb(${BONE} / .16) 22px 100%) 0 100% / 100% 1px no-repeat !important; }
-${R} .pv-lane__head > .pv-lane__name { ${LABEL} font-size:12px !important; letter-spacing:.2em !important; line-height:1 !important;
+${R} .pv-lane__head > .pv-lane__name { ${LABEL} font-size:12px !important; letter-spacing:.06em !important; line-height:1 !important;
   color:rgb(${BONE} / .86) !important; margin:0 !important; }
 ${R} .pv-lane__head > .pv-lane__count { ${NUM} font-size:15px !important; line-height:1 !important; color:rgb(223 238 255 / .9) !important; margin:0 !important; }
 ${R} .pv-lane__head > .pv-lane__count small { ${LABEL} font-size:12px !important; letter-spacing:.12em !important; color:rgb(${BONE} / .56) !important; margin-left:4px; }
