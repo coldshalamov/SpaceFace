@@ -67,7 +67,24 @@ export function starterMiningRouteFocus(m, state, toGlobal, asteroidDefs = []) {
     return { ...base, reason: 'Return to Helios Prime; this ticket counts only iron you cut there.' };
   }
   const center = toGlobal(site.pos, m.destSectorId);
+  const { face, distance } = nearestMiningResourceFace(state, { sectorId: m.destSectorId,
+    center, commodityId: m.params.cmdtyId }, asteroidDefs);
+  if (face) return { ...base,
+    label: distance <= site.radius ? site.label : 'Helios — alternate iron face',
+    // Dormant field presentation IDs are not live control targets. Fly to the actual
+    // position; ordinary approach/mining owns promotion and generation-safe selection.
+    ...(!face.fieldResident ? { targetEntityId: face.id } : {}),
+    pos: { x: face.pos.x, z: face.pos.z },
+    reason: distance <= site.radius ? site.brief
+      : 'The marked face is unavailable. Cut iron at this Helios face; your own Helios iron counts.' };
+  return { ...base, pos: center,
+    reason: 'Search the Helios iron fields. No eligible iron face located; ice and crystal will not fill this ticket.' };
+}
+
+/** Existing field-owner view: no materialization, reservation, resource writes or fake contract. */
+export function nearestMiningResourceFace(state, { sectorId, center, commodityId }, asteroidDefs, accept = null) {
   let face = null, distance = Infinity;
+  if (!Number.isFinite(center?.x) || !Number.isFinite(center?.z)) return { face, distance };
   // Existing field view visits dormant records and the ready typed asteroid index
   // (entityList only while unready). One bounded pass at the existing nav refresh cadence.
   forEachFieldRock(state, (e) => {
@@ -82,23 +99,17 @@ export function starterMiningRouteFocus(m, state, toGlobal, asteroidDefs = []) {
     const chunkMass = Math.max(0, Number(e.data.bulkMassU ?? e.data.yieldU ?? e.mass) || 0);
     if (e.data.isChunk && chunkMass > 20) return; // ordinary mining owner requires towing this load
     if ([e.sectorId, e.homeSectorId, e.data?.sectorId, e.data?.homeSectorId]
-      .some((id) => id && id !== m.destSectorId)) return;
+      .some((id) => id && id !== sectorId)) return;
     // No speculative common-rock default: missing resource metadata is a search hint.
     const def = asteroidDefs.find((row) => row.id === e.data?.typeId);
-    if (!Number.isFinite(def?.oreTable?.[m.params.cmdtyId]) || def.oreTable[m.params.cmdtyId] <= 0) return;
+    if (!Number.isFinite(def?.oreTable?.[commodityId]) || def.oreTable[commodityId] <= 0) return;
     const d = Math.hypot(e.pos.x - center.x, e.pos.z - center.z);
-    if (d < distance) { face = e; distance = d; }
+    if (!(d < distance)) return;
+    // The optional read-only interaction check need not inspect farther candidates.
+    if (accept && !accept(e)) return;
+    face = e; distance = d;
   });
-  if (face) return { ...base,
-    label: distance <= site.radius ? site.label : 'Helios — alternate iron face',
-    // Dormant field presentation IDs are not live control targets. Fly to the actual
-    // position; ordinary approach/mining owns promotion and generation-safe selection.
-    ...(!face.fieldResident ? { targetEntityId: face.id } : {}),
-    pos: { x: face.pos.x, z: face.pos.z },
-    reason: distance <= site.radius ? site.brief
-      : 'The marked face is unavailable. Cut iron at this Helios face; your own Helios iron counts.' };
-  return { ...base, pos: center,
-    reason: 'Search the Helios iron fields. No eligible iron face located; ice and crystal will not fill this ticket.' };
+  return { face, distance };
 }
 
 export function starterBuoySpec(m, toGlobal) {

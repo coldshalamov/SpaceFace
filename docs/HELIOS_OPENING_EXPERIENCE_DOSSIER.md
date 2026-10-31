@@ -204,6 +204,86 @@ Both original Rook suites and the original Books 0–2 route suite pass unchange
 tests total, with the Books suite also asserting its five complete route cases).
 This is native source/reader evidence, not a rendered flight or full Continue acceptance.
 
+### Compost: find real feed, then return to the living receiver
+
+The live Book 2 continuation now connects material acquisition to the existing Rookside
+Receiving Garden. It does not activate the external-only `921-scene-compost-run.js`
+vignette or introduce another scene, source, cargo, reward, or save owner. After Cinder
+files (three clearances plus a real Rook delivery, or the canonical all-lost/stripped
+result after clearance), the existing
+story waypoint reads the player's current opportunity rather than always pointing at
+an empty-handed arrival at the garden.
+
+A valid current player attachment carrying any material the garden owner actually accepts
+points back to the receiving approach, including imported loads whose origin ledger is in
+another sector. Current physical position, not historical provenance, establishes locality. Otherwise free usable ordinary cargo stays on that return route, with an actual
+jettison quantity and the instruction to catch the pod with the Line and put it into the
+living mat. Jettison alone is not credited as growth. Without carried material, the route
+first locates a real eligible loose aftermath hull or player-jettisoned pod; after a
+successful Cinder sale, either unsold survivor can be that source. Only when those options
+are absent does it point to a real Charon iron face. The shared existing field reader sees
+both live and dormant records; depleted, stale, foreign, unknown-resource and anchored
+records are not invented supplies. A dormant face is a location, not a live control target.
+The pilot remains free to use other valid material; these recommendations do not gate intake.
+
+Material eligibility and actual remaining edible mass come from the registered
+`understoryGardens` read wrapper and its existing `aftermathWrecks` / `lootShards` providers.
+Cargo availability uses cargo's reservation reader, and the pod's actual physical mass—not
+its edible mass—is checked against the existing fitted-ship tow-capacity reader. Loose
+material is offered as an approach-and-acquire opportunity, not a guarantee that a latch
+can pass through intervening terrain. Missing providers, an unsuitable fit, unavailable
+beam/hold capacity, and exhausted fields produce an honest prerequisite/search state.
+Arbitrary decorative or site bodies are not advertised as supplies merely because their
+type appears edible. No source is reserved, spawned or consumed by a route read.
+
+The return point follows the real receiving hull's current pose plus its existing west
+outside-mouth offset. It never binds autopilot to the garden centre; an invalid live pose
+provides no navigation promise. Held-load guidance reports the load's distance outside
+the actual living mouth. Player local pins, trade routes and onboarding navigation survive
+both normal refresh and the earned Nest handoff. The original garden owner still consumes
+the physical material, grows the retained living mat and records first visible player
+growth. Initial 52 biomass is not player feed: 17 ordinary iron units contribute 13.6t,
+bringing biomass to 60.16 and stage 2. That opens the Nest; it does not pay the separate
+240t Compost Run. Partial feeds, the cumulative run, destroyed-receiver regrowth from zero,
+and prior growth receipts remain with their existing owners.
+
+The intake's old generic raw-mass fallback also admitted other owners' protected bodies.
+A native CR-FEED mission pod and a promoted asteroid with a live resource ledger reproduced
+silent deletion and garden credit without their owners retiring anything. The garden now
+uses one local refusal predicate for both read availability and the generic consume branch:
+foreign persistence/runtime/world/resource/field/mission/site/custody identities and
+protected flags are not meals. Existing aftermath and cargo delegation remains unchanged,
+and genuinely unowned held material stays usable. Native Understory caches retain their
+open owner-record/entity/generation validation and existing resolved-orphan ordinary-mass
+path after owner normalization, without another cache-return reward. Bare cache tags,
+conflicting ownership, copied/stale active identities and duplicate restored identities do
+not bypass the guard. Compatibility boundary: the old save format has no independent cache
+authenticity token, so a unique byte-identical forged orphan save cannot be distinguished
+from a genuine orphan here. No new persistence schema or authenticity claim was added.
+
+Native regrowth testing exposed two older owner defects on this same route. Reseeding
+looked for a nonexistent `understoryConsumed` prey stamp after the real owner had already
+consumed the load; it deleted the regrown body while leaving growth progress behind. The
+existing digest now returns its successful commit count, which the one-prey reseed uses
+without a second consume or a new saved flag. A refused commit leaves the original load
+and destroyed lifecycle intact. Separately, a rebuilt or restored garden lost partial paid-run
+credit when its transient run row was reconstructed at zero. That row now starts from the
+finite nonnegative canonical `compostFedMass` body stamp, then adds only actual new feed.
+The native 4 + 16 + 16 + 204 tonne sequence across destruction and owner restoration reaches
+240t and emits exactly one 2,880-credit intent; further restoration and feeding do not repay.
+Missing or malformed stamps invent no prior mass. No compensating rewards were introduced.
+
+Implementation: `src/missions/compostRoute.js`, the Book 2 branch in `missions.js`, the
+read-only wrapper and bounded intake/continuity corrections in `faction_understory.js`,
+and a minimal extraction of the existing
+field selector in `starterWorkday.js`. Native component tests exercise Cinder settlement,
+actual finite-rock mining and cargo acquisition, real attachment/jettison/digestion,
+canonical growth and the normal mission-update/HUD Nest handoff, as well as
+owner serialization/rematerialization and retained receipt projection. These are source,
+owner and visible-reader checks, not rendered flight, physical trajectory simulation or
+full browser Continue acceptance. The released dead-hulk and existing infestation props
+continue to own the garden's picture; no model or render path was changed.
+
 ### Elroy register route
 
 The live Elroy contract is `type: bounty_hunt`, story tag `campaign47a:b2:elroy`, target

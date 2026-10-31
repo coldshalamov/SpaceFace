@@ -420,3 +420,64 @@ Production missions-first imports pass. Direct helper-first import encounters an
 existing module-cycle TDZ also reproduced on pre-edit source; no broad module
 reorganization is included. This closes a reproduced source restoration gap, not
 full input-driven Save/Continue or rendered acceptance.
+
+### Compost: acquisition, retained growth and the Nest
+
+After Cinder, story-owned navigation now reads actual held feed, free usable cargo,
+canonical loose material or a real live/dormant Charon iron face. It returns to the
+existing safe west approach when delivery is ready, follows a moved garden without
+binding flight to its mouth, and preserves local/trade/onboarding pins. The existing
+0.75-second navigation cadence is retained; ready compact source lanes and nonzero
+inventory entries avoid a new broad per-frame census. The reused mining-face reader
+preserves Helios behavior and never invents ore in an exhausted record.
+
+The receiver is already a real physical garden. Its initial 52 biomass is not player
+feed: roughly 13.4 t reaches first visible growth and opens the Nest; destroyed-site
+regrowth starts at zero and needs 100 t for that stage. The separate optional paid
+run remains 240 t at 12 cr/t. Actual custody/mass owners decide what can be eaten; guide
+queries never consume, reserve or pay. Current physical pose, not origin-sector
+provenance, locates a transported load. An authentic held generic edible body can
+remain a valid choice, while automatic loose-source recommendations are narrower.
+
+Native route testing exposed four owner defects and drove bounded corrections:
+- Regrowth consumed real feed then removed the new garden because it checked a
+  nonexistent prey flag. It now uses the digest owner's actual successful commit
+  result; a refused intake preserves material and the destroyed lifecycle.
+- Raw fallback could eat a real 40 t CR-FEED mission payload without settling its
+  ledger. Shared read/commit refusal now protects other persistence, mission, field,
+  site and custody owners. Existing aftermath and cargo delegations stay intact.
+- Missing session rows reset previously stamped partial run credit. They now seed
+  from the finite nonnegative persistent compostFedMass stamp and add only newly
+  consumed material. Native 4 + 16 + 16 + 204 t across regrowth/restore yields one 2880 cr
+  intent; subsequent restore/feed does not repay. Invalid stamps invent no credit.
+- Missing player identity could compare equal to missing throw attribution. A null-id
+  guard prevents that false credit while retaining numeric zero and delayed real throws.
+
+Fresh Understory quiet caches and owner-normalized restored orphans remain edible
+under their existing identity/lifecycle. Bare tags, stale active identities, copied
+rows, duplicate restored identities and foreign ownership are refused. Legacy
+saves have no independent authenticity token: a unique byte-identical forged
+orphan is indistinguishable from a real one without a schema change, which this
+patch does not make. Orphan ordinary-mass behavior does not replay cache rewards.
+
+Tests use actual Cinder settlement, mining, attachment, jettison, material retirement,
+garden digestion, owner restoration, mission refresh and HUD readers. The new route
+module stays on the deferred simulation path: read-only preload validation remains
+in sync with no index rewrite. Full rendered flight, complete browser Continue and
+target-machine performance remain open, as do unrelated repository validation gaps.
+
+Validation also retains the original native Understory suites. Two legacy projection
+harnesses now link actual route helpers: the Story assertions track real growth and
+unavailable eligibility rather than the replaced fixed prose; W533 assertions and
+fixtures are unchanged. The missing Wasp helper was earlier candidate wiring debt,
+not upstream debt. Cargo/material extraction omissions reproduce on the exact
+pre-increment source. Receiver protection/identity cases improve, but its existing
+New Game/reset assertion remains unaccepted; no broad reset rewrite was attempted.
+
+Final local validation: **313 integrated Node tests, 148 unchanged regression tests,
+six production imports, 55 UI checks and services readiness pass.** The updated
+Story projection passes nine groups and W533 owner composition passes without
+sparse-core mode. These remain source/native component and owner-projection checks.
+The shared mining selector now skips expensive read-only interaction inspection for
+farther candidates after a closer eligible fix exists, and rejects an unknown origin;
+no frame-rate or target-machine performance gain is claimed.
