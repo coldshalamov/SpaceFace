@@ -832,7 +832,7 @@ export function beginScenePipelineReadinessBatch(renderer = null) {
       }
       const remaining = batch.programs.size;
       batch.programs.clear();
-      settleAll({ contextLost: false });
+      settleAll({ contextLost: false, ...(remaining > 0 ? { readinessTimedOut: true } : {}) });
       return { contextLost: false, programs: remaining };
     },
     /**

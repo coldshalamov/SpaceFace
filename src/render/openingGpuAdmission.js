@@ -1185,7 +1185,7 @@ export async function admitOpeningUnitsAcrossSlices(options = {}) {
       if (rejected) throw rejected.reason || new Error('opening GPU admission compile rejected');
       const failed = issueSettled.find((entry) => {
         if (!entry || entry.status !== 'fulfilled' || !entry.value) return false;
-        if (entry.value.contextLost === true) return true;
+        if (entry.value.contextLost === true || entry.value.readinessTimedOut === true) return true;
         return entry.value.skipped === true && entry.value.reason !== 'program-signature-covered';
       });
       if (failed) {
@@ -1200,6 +1200,22 @@ export async function admitOpeningUnitsAcrossSlices(options = {}) {
     // every one of them to unwind, then put the renderer back where the batch found it.
     await Promise.allSettled(issued);
     if (typeof batch.restoreEntryTarget === 'function') batch.restoreEntryTarget();
+  }
+  // A timed-out batch releases its local waiters, not the driver's pending programs. Do not
+  // force a draw against them; a later admission can recompile and wait for the same wrappers.
+  const incomplete = !drained || drained.contextLost === true || drained.incomplete === true
+    || Number(drained.programs) > 0
+    || issueSettled.some((entry) => entry.status === 'fulfilled'
+      && (entry.value?.contextLost === true || entry.value?.readinessTimedOut === true));
+  if (incomplete) {
+    return {
+      batched: true, incomplete: true, contextLost: drained?.contextLost === true,
+      skipped: false, subjects: ordered.length, issued: issued.length, issueDedupeSkips,
+      touched: 0, materials: Number(units.materialCount) || (units.programSubjects || []).length,
+      geometries: Number(units.geometryCount) || (units.geometrySubjects || []).length,
+      timing: { issueMs: Math.round(issueMs), drainMs: Math.round(drainMs), touchMs: 0 },
+      results: [],
+    };
   }
   // Touches run next: restore any cpu-detached payloads a forced upload would read empty before
   // the first draw binds them. Issue order above stays exactly as it was.
@@ -1291,6 +1307,10 @@ export async function admitOpeningUnitsAcrossSlices(options = {}) {
   if (strict && touchFailures.length > 0) throw touchFailures[0];
   return {
     batched: true,
+    incomplete: issued.length < ordered.length || results.length < issued.length
+      || issueSettled.some((entry) => entry.status === 'rejected')
+      || results.some((result) => result.touchError || result.touched?.skipped === true
+        || result.touched?.contextLost === true),
     contextLost: drained ? drained.contextLost === true : false,
     skipped: ordered.length === 0,
     subjects: ordered.length,

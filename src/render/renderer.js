@@ -8083,6 +8083,19 @@ export function compilePipelineSubject(tracker, subject, options = {}, urgent = 
   return tracker.compile(subject, options);
 }
 
+/** Narrow only the provisional live-sector cook; the later full sweep and exact seal remain owners. */
+export function selectPreliminaryOpeningCookUnits(plan, fullUnits, eligible) {
+  if (eligible !== true || plan?.complete !== true
+      || plan.firstPlayablePipelineSet?.complete !== true
+      || !Array.isArray(plan.compileSubjects) || plan.compileSubjects.length === 0) {
+    return { units: fullUnits, narrowed: false };
+  }
+  // Identity-only dedupe: the same material can require different programs on
+  // mesh, instanced, skinned or attribute-distinct subjects.
+  const subjects = [...new Set(plan.compileSubjects.filter(Boolean))];
+  return { units: { ...fullUnits, programSubjects: subjects }, narrowed: true };
+}
+
 export function preparePipelineSubjectResidency(tracker, subject, admissionOptions = {}, urgent = false) {
   const ownerKey = admissionOptions.ownerKey
     ?? admissionOptions.isActive?.ownerKey
@@ -10958,7 +10971,7 @@ export const render = {
           if (part.geometrySubjects.length > 0) admitGeometrySubjects.push(...part.geometrySubjects);
           await yieldToBrowser();
         }
-        await admitOpeningUnitsAcrossSlices({
+        const firstPresentAdmission = await admitOpeningUnitsAcrossSlices({
           deadlineMs: 8000,
           units: {
             programSubjects: admitProgramSubjects,
@@ -11013,7 +11026,7 @@ export const render = {
             if (!lifecycle.isActive()) throw new Error('renderer lifecycle destroyed during opening yield');
           },
         });
-        if (firstPresentCoversQuarks) {
+        if (firstPresentCoversQuarks && firstPresentAdmission?.incomplete !== true) {
           this._environmentVariantAdmissionEnvKey = firstPresentEnvironmentKey;
           this._environmentVariantAdmissionEnv = this._envMap;
         }
@@ -16376,12 +16389,18 @@ export const render = {
           if (part.geometrySubjects.length > 0) cohortGeometrySubjects.push(...part.geometrySubjects);
           await paceCookStretch();
         }
-        const units = {
+        const fullUnits = {
           programSubjects: cohortProgramSubjects,
           geometrySubjects: cohortGeometrySubjects,
           materialCount: unitSeenMaterials.size,
           geometryCount: unitSeenGeometries.size,
         };
+        const preliminary = selectPreliminaryOpeningCookUnits(cookPicturePlan, fullUnits,
+          state.mode === 'loading' && state.render.liveSectorGpuAdmission === true
+          && !survivalRunHoldsArena(state) && options.skipCompile !== true
+          && this._postOpeningPipelineAdmissionReleased !== true
+          && typeof state.render.preparePostOpeningPipelines === 'function');
+        const units = preliminary.units;
         // Compile and touch both consume this list front-to-back under one shared budget. Order it
         // by the opening submission plan so the exact first-picture leaves (player, background,
         // visible entities, pools) warm before any beyond-runway subject — a timed-out pass then
@@ -16535,6 +16554,8 @@ export const render = {
           recordOpeningCookStep(state.render, 'cook.touchCompile', touchCompileStarted,
             !cohort ? 'skipped' : (issued.length < units.programSubjects.length ? 'timeout' : 'resolved'), {
               issued: issued.length,
+              firstPictureOnly: preliminary.narrowed,
+              fullSubjects: preliminary.narrowed ? fullUnits.programSubjects.length : undefined,
               unlinked: cohortDrain ? cohortDrain.programs : undefined,
               contextLost: cohortDrain && cohortDrain.contextLost === true ? true : undefined,
               yields: compileYield ? compileYield.yields : undefined,

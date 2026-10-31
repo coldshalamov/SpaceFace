@@ -16,6 +16,29 @@ import { createCatalogStationRestore } from '../src/save/catalogStationRestore.j
 import { createBus } from '../src/core/eventBus.js';
 import { createSimLaneRuntime } from '../src/core/simLaneMain.js';
 import { createDomainDiffer } from '../scripts/lib/simReadModel.mjs';
+import { selectPreliminaryOpeningCookUnits } from '../src/render/renderer.js';
+
+test('preliminary cook selects current picture before broad work and fails back to the full cohort', () => {
+  const shared = new THREE.MeshBasicMaterial(), distinct = new THREE.MeshBasicMaterial();
+  const geometry = new THREE.BoxGeometry();
+  const optional = { material: shared, geometry: {} };
+  const required = new THREE.Mesh(geometry, shared);
+  const instanced = new THREE.InstancedMesh(geometry, shared, 1);
+  const laterRequired = { material: distinct, geometry: {} };
+  const full = { programSubjects: [optional, laterRequired], geometrySubjects: [optional, laterRequired] };
+  const plan = { complete: true, firstPlayablePipelineSet: { complete: true }, compileSubjects: [required, instanced, required] };
+  const selected = selectPreliminaryOpeningCookUnits(plan, full, true);
+  assert.equal(selected.narrowed, true);
+  assert.deepEqual(selected.units.programSubjects, [required, instanced], 'shared material still issues both drawable variants');
+  assert.strictEqual(selected.units.geometrySubjects, full.geometrySubjects);
+  assert.strictEqual(selectPreliminaryOpeningCookUnits(plan, full, false).units, full);
+  assert.strictEqual(selectPreliminaryOpeningCookUnits({ ...plan, complete: false }, full, true).units, full);
+  assert.strictEqual(selectPreliminaryOpeningCookUnits({ ...plan, firstPlayablePipelineSet: { complete: false } }, full, true).units, full);
+  assert.strictEqual(selectPreliminaryOpeningCookUnits({ ...plan, compileSubjects: [] }, full, true).units, full);
+  const final = selectPreliminaryOpeningCookUnits({ ...plan, compileSubjects: [required, laterRequired] }, full, true);
+  assert.deepEqual(final.units.programSubjects, [required, laterRequired], 'a later picture census retains a newly materialized descendant');
+  geometry.dispose(); shared.dispose(); distinct.dispose();
+});
 const require = createRequire(import.meta.url);
 const { parse } = require(require.resolve('@babel/parser', { paths: [process.env.SPACEFACE_DEPS_ROOT || process.cwd()] }));
 const source = readFileSync(process.env.ENTRY_SOURCE_RENDERER || new URL('../src/render/renderer.js', import.meta.url), 'utf8');
@@ -925,6 +948,7 @@ function gpuFixture() {
     collectFirstFlightLayerDrawables: () => [], collectInstancePoolCompileRoots: () => [],
     buildOpeningSubmissionPlan: () => ({ compileSubjects: [] }),
     buildOpeningSubmissionPlanSteps: function* () { return { compileSubjects: [] }; },
+    selectPreliminaryOpeningCookUnits,
     uniqueAdmissionUnits: () => ({ programSubjects: [] }),
     collectCompileSubjects: () => [],
   });
