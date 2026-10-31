@@ -797,7 +797,9 @@ ${T} .sx-ct__rows .sx-ct-row.sx-decision__opt--sub::before { content:"" !importa
   width:8px !important; height:1.5px !important; margin:0 !important; background:rgb(${BONE} / .42) !important; clip-path:none !important; transform:none !important; }
 ${T} .sx-ct__rows .sx-ct-row.sx-decision__opt--sub { padding:2px 0 8px 26px !important; margin-top:-2px; flex-wrap:nowrap !important; align-items:baseline !important; gap:0 6px !important; min-width:0; }
 ${T} .sx-ct__rows .sx-ct-row.sx-decision__opt--sub .k-row__name { flex:none; }
-${T} .sx-ct__rows .sx-ct-row.sx-decision__opt--sub .k-row__sub { display:block !important; white-space:nowrap !important; overflow:hidden; text-overflow:ellipsis; min-width:0; }
+/* the tradeoff facts are a status, not a preview: they wrap to two lines (STATION_STANDARD §6 —
+   never clip a status with an ellipsis; the accessible name still carries the whole tradeoff) */
+${T} .sx-ct__rows .sx-ct-row.sx-decision__opt--sub .k-row__sub { display:-webkit-box !important; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; min-width:0; line-height:1.3; }
 ${T} .sx-ct__rows .sx-ct-row.sx-decision__opt--sub .k-row__sub::before { content:"· "; color:rgb(${BONE} / .4); }
 ${T} .sx-ct__rows .sx-ct-row.sx-decision__opt--sub:focus-visible::before { width:16px !important; height:2px !important; box-shadow:0 0 6px rgb(248 244 234 / .6) !important; background:rgb(248 244 234) !important; }
 /* the rail ends with its last row: each block carries its own length of scale, edge to edge */
