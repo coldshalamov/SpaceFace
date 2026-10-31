@@ -2,6 +2,7 @@
 // controls a player clicks. No game service is called to skip a step.
 
 import { quoteLoadError } from './environment.mjs';
+import { consumePageConditionValue } from '../lib/playwrightCspPolling.mjs';
 
 const norm = (s) => String(s || '').replace(/\s+/g, ' ').trim();
 const firstLightHandlerPages = new WeakSet();
@@ -231,7 +232,7 @@ async function waitForFirstLightInputRelease(page) {
     if (root && (root._sfConfirmToken != null || root.innerHTML.trim())) return false;
     return { released: true };
   }, null, { timeout: 5000 });
-  const cleanup = await cleanupHandle.jsonValue();
+  const cleanup = await consumePageConditionValue(cleanupHandle);
   if (cleanup?.superseded) {
     throw new Error(`First light was superseded before input release; preserving ${cleanup.title}`);
   }

@@ -19,7 +19,7 @@ import {
   createIsolatedElectronLaunch,
 } from './electronTestIsolation.mjs';
 import { loadPlaywright } from './load-playwright.mjs';
-import { installCspSafePlaywrightPolling, installFrameKeepalive } from './playwrightCspPolling.mjs';
+import { consumePageConditionValue, installCspSafePlaywrightPolling, installFrameKeepalive } from './playwrightCspPolling.mjs';
 import {
   RELEASE_SOAK_SCHEMA,
   PERFORMANCE_ATTRIBUTION_SCHEMA,
@@ -2624,12 +2624,12 @@ export async function waitForSoakLoadLanding(page, { timeoutMs = 210_000, graceM
   let late = false;
   try {
     landed = await page.waitForFunction(readSoakLoadLanding, null, { timeout: timeoutMs, polling: 1000 })
-      .then((handle) => handle.jsonValue());
+      .then(consumePageConditionValue);
   } catch (loadWaitError) {
     // A still-loading session retains the existing grace period to land in flight or fail.
     late = true;
     landed = await page.waitForFunction(readSoakLoadLanding, null, { timeout: graceMs, polling: 1000 })
-      .then((handle) => handle.jsonValue()).catch(() => null);
+      .then(consumePageConditionValue).catch(() => null);
     if (!landed) throw loadWaitError;
   }
   if (landed === 'menu') {

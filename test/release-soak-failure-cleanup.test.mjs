@@ -39,6 +39,21 @@ test('F9 start-failed menu ends the cycle while loading keeps its grace and flig
   } finally { globalThis.window = oldWindow; }
 });
 
+test('F9 landing accepts raw CSP-safe flight and menu results without entering grace', async () => {
+  for (const result of ['flight', 'menu']) {
+    let waits = 0;
+    const page = {
+      waitForFunction: async () => { waits += 1; return result; },
+      evaluate: async () => ({ message: 'opening submission plan is incomplete' }),
+    };
+    if (result === 'flight') assert.deepEqual(await waitForSoakLoadLanding(page), { late: false });
+    else await assert.rejects(waitForSoakLoadLanding(page), (error) => (
+      error.code === 'SOAK_LOAD_START_FAILED' && /opening submission plan is incomplete/.test(error.message)
+    ));
+    assert.equal(waits, 1, `${result} must not enter the grace wait`);
+  }
+});
+
 test('abort snapshot retains state diagnostic after renderer teardown and uses renderer fallback', () => {
   const previousWindow = globalThis.window, previousDocument = globalThis.document;
   const stateResize = { contextGeneration: 0, matchingSceneSlots: [{ slot: 'attribute:normal' }] };
