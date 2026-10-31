@@ -6155,6 +6155,8 @@ export function createHud(ctx, alerts) {
     }
     const slot = overlaySafeSlot(layout, w, h);
     const bands = freeOverlayBands(slot, h, layout);
+    let captionSlot = slot.captionSlot || slot;
+    let captionBands = slot.captionSlot ? freeOverlayBands(captionSlot, h, layout) : bands;
     if (!activeReceipt) {
       placeOrdinaryCaptionInSafeBands(layout, w, h);
       placeExternalFlightCaptions(layout, w, h);
