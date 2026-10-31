@@ -47,6 +47,12 @@ import { logbookStill } from '../logbookMedia.js';
 import { decodedSuhlClauses, namesForTheDead } from '../../data/discoveryPresentation.js';
 import { hash32 } from '../../core/rng.js';
 import { recordSectionModel } from './codexRecord.js';
+import {
+  CODEX_TABS as TABS,
+  takeRequestedCodexDiscovery,
+  takeRequestedCodexTab,
+} from '../codexRequests.js';
+export { clearCodexDiscoveryRequest, requestCodexDiscovery, requestCodexTab } from '../codexRequests.js';
 
 /** Set a CSS custom property where the host supports it (test shims carry a plain style object). */
 function setVar(node, name, value) {
@@ -97,8 +103,6 @@ function nav(ctx, method, arg) {
   ctx.bus.emit('ui:' + method, { id: arg });
 }
 
-const TABS = ['Story', 'Comms', 'Discoveries', 'World', 'Graffiti', 'Figures', 'Ship', 'Archive', 'Catalog', 'Ledger'];
-
 /** The live tab's one-line description under the title. */
 const TAB_LINES = Object.freeze({
   Story: 'The eight beats, and what the endgame offers.',
@@ -131,34 +135,8 @@ export const SIGNAL_ARCHIVE = Object.freeze([
     caption: 'The boot relay, full length. Helmet, wreck field, courier burn, the ring at threshold.' },
 ]);
 
-// Deep-link support: the main menu's "Signal Archive" entry sets a pending tab so codex opens on it.
-let _requestedTab = null;
-export function requestCodexTab(tab) { if (TABS.includes(tab)) _requestedTab = tab; }
-
-// A discovery completion can request one exact, already-projected plate. This is UI-local by
-// design: world discovery remains the durable record and Continue reconstructs the plate from it.
-let _requestedDiscovery = null;
-
-function normalizeDiscoveryTarget(target) {
-  const sectorId = target && typeof target.sectorId === 'string' ? target.sectorId.trim() : '';
-  const poiId = target && typeof target.poiId === 'string' ? target.poiId.trim() : '';
-  return sectorId && poiId ? { sectorId, poiId } : null;
-}
-
-export function requestCodexDiscovery(target) {
-  const normalized = normalizeDiscoveryTarget(target);
-  if (!normalized) return false;
-  _requestedDiscovery = normalized;
-  return true;
-}
-
-export function clearCodexDiscoveryRequest() {
-  _requestedDiscovery = null;
-}
-
 export function consumeCodexDiscoveryRequest(state) {
-  const target = _requestedDiscovery;
-  _requestedDiscovery = null;
+  const target = takeRequestedCodexDiscovery();
   if (!target) return null;
   return explorationDiscoveryPlates(state).find((plate) => (
     plate.sectorId === target.sectorId && plate.poiId === target.poiId
@@ -929,8 +907,7 @@ export const codexScreen = {
     });
     // Consume both requests once. A valid plate is more specific than a tab request; a stale plate
     // fails closed and leaves the ordinary requested tab available.
-    const requestedTab = _requestedTab;
-    _requestedTab = null;
+    const requestedTab = takeRequestedCodexTab();
     const requestedPlate = consumeCodexDiscoveryRequest(ctx && ctx.state);
     this._requestedDiscoveryId = requestedPlate ? requestedPlate.id : null;
     if (requestedPlate) {
