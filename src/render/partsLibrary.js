@@ -13292,21 +13292,16 @@ function findFlightTemplatePackageRecord(library, recipe) {
 }
 
 function createFlightTemplateRootInstance(templateRoot) {
-  if (!templateRoot || typeof templateRoot.clone !== 'function') return null;
-  const root = templateRoot.clone(true);
-  const materials = new Map();
-  root.traverse((object) => {
-    object.onBeforeRender = THREE.Object3D.prototype.onBeforeRender;
-    object.onAfterRender = THREE.Object3D.prototype.onAfterRender;
-    object.userData = sanitizeFlightTemplateUserData(object.userData);
-    if (object.material) object.material = cloneFlightInstanceMaterials(object.material, materials);
-  });
-  return root;
+  const steps = createFlightTemplateRootInstanceSteps(templateRoot);
+  let step = steps.next();
+  while (!step.done) step = steps.next();
+  return step.value;
 }
 
-// Stepped twin — the clone itself is one atomic leg (THREE's deep clone cannot
-// suspend), but the sanitize/material pass paces per 128 nodes through the same
-// explicit-stack pre-order traverse() uses. Identical userData/material state.
+// Canonical stepped implementation — the clone itself is one atomic leg (THREE's
+// deep clone cannot suspend), while the sanitize/material pass paces per 128 nodes
+// through the same explicit-stack pre-order traverse() uses. The synchronous wrapper
+// drains this generator, preserving identical userData/material state.
 function* createFlightTemplateRootInstanceSteps(templateRoot, sliceEvery = 128) {
   if (!templateRoot || typeof templateRoot.clone !== 'function') return null;
   const root = templateRoot.clone(true);
@@ -14952,22 +14947,22 @@ function addStaticBatchMesh(parent, bindings, geometry, material, tags, urls, la
   return mesh;
 }
 
-// Generator twin of instantiatePart for composedShipSteps: render-package
-// records delegate to the stepped instantiation so their flat-plan
-// specialization and motion bind pace inside the compose instead of fusing
-// into the per-part leg.
+// Canonical stepped part instantiation for composedShipSteps. Render-package
+// records delegate to their paced flat-plan path; ordinary parts pace their
+// authored primitive/marker walk at the same stride. The sync wrapper above
+// drains this generator without scheduling or reordering work.
+function instantiatePart(record, parent, placement, palette, scene, owner, bindings, mutableMaterials, staticBatches = null) {
+  const steps = instantiatePartSteps(
+    record, parent, placement, palette, scene, owner, bindings, mutableMaterials, staticBatches,
+  );
+  let step = steps.next();
+  while (!step.done) step = steps.next();
+  return step.value;
+}
+
 function* instantiatePartSteps(record, parent, placement, palette, scene, owner, bindings, mutableMaterials, staticBatches = null) {
   if (record?.renderPackage && typeof record.renderPackage.createInstance === 'function') {
     return yield* instantiateRenderPackagePartSteps(
-      record, parent, placement, palette, scene, owner, bindings, mutableMaterials, staticBatches,
-    );
-  }
-  return instantiatePart(record, parent, placement, palette, scene, owner, bindings, mutableMaterials, staticBatches);
-}
-
-function instantiatePart(record, parent, placement, palette, scene, owner, bindings, mutableMaterials, staticBatches = null) {
-  if (record?.renderPackage && typeof record.renderPackage.createInstance === 'function') {
-    return instantiateRenderPackagePart(
       record, parent, placement, palette, scene, owner, bindings, mutableMaterials, staticBatches,
     );
   }
@@ -14981,7 +14976,9 @@ function instantiatePart(record, parent, placement, palette, scene, owner, bindi
   partRoot.updateMatrix();
   parent.add(partRoot);
 
+  let visited = 0;
   for (const primitive of compositionPrimitives(record)) {
+    if ((++visited % 128) === 0) yield;
     const dedicated = requiresPerShipMesh(primitive);
     let object;
     if (dedicated) {
@@ -15044,6 +15041,7 @@ function instantiatePart(record, parent, placement, palette, scene, owner, bindi
   }
 
   for (const marker of record.markers) {
+    if ((++visited % 128) === 0) yield;
     const object = new THREE.Object3D();
     object.name = marker.name;
     marker.matrix.decompose(object.position, object.quaternion, object.scale);
@@ -15069,168 +15067,19 @@ function instantiatePart(record, parent, placement, palette, scene, owner, bindi
 }
 
 function instantiateRenderPackagePart(record, parent, placement, palette, scene, owner, bindings, mutableMaterials, staticBatches = null) {
-  const partRoot = new THREE.Group();
-  partRoot.name = `GLTFKit_${placement.label}_${record.assetId}`;
-  applyPlacementTransform(partRoot, placement);
-  const sourceLength = Math.max(record.bounds.size[0], 1e-6);
-  const scale = placement.targetLength / sourceLength;
-  partRoot.scale.multiplyScalar(scale);
-  partRoot.updateMatrix();
-  partRoot.userData.spacefaceFlightPackageRecipe = {
-    url: record.url || null,
-    assetId: record.assetId || record.renderPackage?.assetId || null,
-    flightStaticV3: record.flightStaticV3 === true,
-    label: placement.label || record.assetId || record.url || 'Package',
-    position: partRoot.position.toArray(),
-    quaternion: partRoot.quaternion.toArray(),
-    scale: partRoot.scale.toArray(),
-  };
-  parent.add(partRoot);
-
-  const tagsByName = new Map([
-    ...(record.primitives || []).map((primitive) => [primitive.name, primitive.tags]),
-    ...(record.markers || []).map((marker) => [marker.name, marker.tags]),
-  ]);
-  const createNode = record.assetId !== CERES_BREAKER_ASSET
-    && canBatchRenderPackageOwner(owner?.userData?.kind) && scene?.isScene
-    ? createRenderPackageShipNodeFactory({
-        scene,
-      owner,
-      record,
-      palette,
-      tagsByName,
-      poolAdmissions: bindings.packagePoolAdmissions,
-    })
-    : null;
-  // Place/station props batch their static package primitives through the caller's collector —
-  // the same contract compositionPrimitives records already follow. Ships keep the cross-root
-  // instance pool instead: fleet-wide repetition is the stronger win there. flightStaticV3
-  // records stay direct because the flight-template cache deep-clones nodes, which would
-  // resurrect a demoted mesh alongside the merged batch.
-  const mergePackageMeshes = staticBatches
-    && record.flightStaticV3 !== true
-    && (owner?.userData?.kind === 'place' || owner?.userData?.kind === 'station');
-  const createPackageInstance = record.flightStaticV3 === true
-    ? record.renderPackage.createFlightInstance?.bind(record.renderPackage)
-    : record.renderPackage.createInstance.bind(record.renderPackage);
-  if (typeof createPackageInstance !== 'function') {
-    throw new Error(
-      `Render package ${record.renderPackage.assetId || record.assetId} has no `
-      + `${record.flightStaticV3 === true ? 'flight-static' : 'ordinary'} instance route.`,
-    );
-  }
-  const instance = createPackageInstance({
-    name: `RenderPackage_${placement.label}_${record.assetId}`,
-    residencyOwner: owner,
-    residencyRole: 'live-boundary',
-    ...(createNode ? { createNode } : {}),
-  });
-  const packageRoot = instance?.root;
-  if (!packageRoot?.isObject3D) {
-    throw new Error(`Render package ${record.renderPackage.assetId || record.assetId} returned no Object3D root.`);
-  }
-  packageRoot.userData = {
-    ...(packageRoot.userData || {}),
-    spacefaceRenderPackageDirect: true,
-    spacefacePartUrl: record.url,
-    ...(record.flightStaticV3 === true ? { spacefaceFlightStaticV3: true } : {}),
-  };
-  partRoot.userData.renderPackageInstance = instance;
-  partRoot.add(packageRoot);
-  if (mergePackageMeshes) packageRoot.updateMatrixWorld(true);
-
-  // Specialisation walks the loader's FLAT instance plan, not packageRoot.traverse(). The plan is
-  // in depth-first pre-order with the root at index 0, so this visits exactly the same nodes in
-  // exactly the same order as the traversal it replaces — without the recursive descent or the
-  // per-node callback. Index 0 is skipped for the same reason the traversal skipped packageRoot.
-  const planNodes = instance.planNodes;
-  if (!Array.isArray(planNodes) || planNodes[0] !== packageRoot) {
-    throw new Error(
-      `Render package ${record.renderPackage.assetId || record.assetId} instance exposed no flat plan; `
-      + 'the loader must publish planNodes for package instantiation.',
-    );
-  }
-  for (let i = 1; i < planNodes.length; i++) {
-    const object = planNodes[i];
-    const tags = tagsByName.get(object.name) || object.userData?.spacefaceTags || {};
-    object.userData = {
-      ...(object.userData || {}),
-      spacefacePartUrl: record.url,
-      spacefaceTags: tags,
-      spacefaceRenderPackageDirect: true,
-      spacefacePartNormalization: scale,
-    };
-
-    // NOTE: `continue`, not `return` — this body used to be a traverse() callback, where `return`
-    // meant "skip this node". In the flat loop the same word would abandon the whole instance.
-    if (object.isMesh) {
-      if (object.visible === false) continue;
-      stampGeometryBatchKey(object.geometry, `${record.assetId || record.url}|${object.name}`);
-      const primitive = { material: object.material, tags };
-      if (object.userData?.spacefacePackageMaterialPrepared !== true) {
-        object.material = requiresPerShipMesh(primitive)
-          ? dedicatedMaterialFor(
-              object.material, tags, palette, mutableMaterials,
-              `${record.url}|${placement.label}|${object.name}`,
-            )
-          : sharedMaterialFor(object.material, tags, palette);
-      }
-      const materials = Array.isArray(object.material) ? object.material : [object.material];
-      object.castShadow = materials.some((material) => material && !material.transparent && material.depthWrite !== false);
-      object.receiveShadow = materials.some((material) => material && !material.transparent);
-      const batchable = mergePackageMeshes
-        && isRigidOpaqueBatchableSurface(object, tags, { requiresPerShipMesh });
-      object.visible = !tags.lod || tags.lod === 'lod0';
-      if (batchable) {
-        staticBatches.add({
-          record,
-          primitive: {
-            geometry: object.geometry,
-            matrix: packageMeshMatrixInPartSpace(object, partRoot),
-            name: object.name,
-            tags,
-          },
-          partRoot,
-          material: object.material,
-        });
-        retirePackagePoolCandidate(scene, object);
-        demotePackageMeshToStaticBatch(object);
-      }
-      registerBinding(object, tags, bindings);
-      continue;
-    }
-
-    if (tags.socket) {
-      if (bindings.socketNames.has(object.name)) {
-        object.visible = false;
-        continue;
-      }
-      bindings.socketNames.add(object.name);
-      object.userData.spacefaceSocket = true;
-      object.userData.role = tags.socketRole || object.userData.role || 'attachment';
-      object.userData.forward = tags.socketForward || object.userData.forward || [1, 0, 0];
-    }
-    object.visible = !tags.lod || tags.lod === 'lod0';
-    registerBinding(object, tags, bindings);
-  }
-  const tier1 = tier1CausalCounters();
-  if (tier1) tier1.countPlanInstantiation(planNodes.length - 1, 'package-instance-specialize');
-
-  // ANI-00: the package's verified motion bank binds every same-named MOTION_* pivot in this
-  // instance (one per mounted LOD file), so LOD switches never pop a transform. The template
-  // path recreates packages through this same call, so cached roots rebind identically.
-  const motionController = bindInstanceMotion(packageRoot, record.motionBank, {
-    sourceAssetId: record.assetId, packageIdentity: packageRoot.userData.spacefaceRenderPackage,
-    residencyOwner: owner,
-  });
-  if (motionController) bindings.authoredMotions.push(motionController);
-  return partRoot;
+  // Keep synchronous template instantiation on the same ordered implementation as paced
+  // composition. Draining here is deliberately synchronous: the generator's yield points
+  // preserve the stepped caller's work budget but do not schedule or interleave this path.
+  const steps = instantiateRenderPackagePartSteps(
+    record, parent, placement, palette, scene, owner, bindings, mutableMaterials, staticBatches,
+  );
+  let step = steps.next();
+  while (!step.done) step = steps.next();
+  return step.value;
 }
 
-// Stepped twin of instantiateRenderPackagePart for generator callers — same
-// prologue, same plan specialization order, same binding side effects; the
-// flat-plan loop yields per 128 nodes and the motion bind delegates to its own
-// Steps twin so a fat package instance no longer fuses into one leg.
+// Canonical render-package instantiation. The flat-plan loop yields per 128 nodes and the motion
+// bind delegates to its Steps twin so a fat package instance no longer fuses into one leg.
 function* instantiateRenderPackagePartSteps(record, parent, placement, palette, scene, owner, bindings, mutableMaterials, staticBatches = null) {
   const partRoot = new THREE.Group();
   partRoot.name = `GLTFKit_${placement.label}_${record.assetId}`;

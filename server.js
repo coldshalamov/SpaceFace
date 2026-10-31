@@ -23,8 +23,9 @@ const PORT = Number(process.argv[2] || process.env.PORT || 8123);
 const sourceOverlay = process.env.SPACEFACE_PROBE_SOURCE_OVERLAY === '1'
   ? String(process.env.SPACEFACE_BASELINE_SOURCE_MANIFEST || '').trim() || null
   : null;
-// Normal source launches use the measured bundled worker; 0 keeps the raw ESM escape hatch.
-const devSimWorkerBundleEnabled = process.env.SPACEFACE_DEV_SIM_WORKER_BUNDLE !== '0'
+// Development source launches use the measured bundle. Production installs can omit its compiler.
+const devSimWorkerBundleEnabled = (process.env.SPACEFACE_DEV_SIM_WORKER_BUNDLE === '1'
+  || (process.env.SPACEFACE_DEV_SIM_WORKER_BUNDLE !== '0' && process.env.NODE_ENV !== 'production'))
   && process.env.SPACEFACE_PROBE_SOURCE_OVERLAY !== '1'
   && !String(process.env.SPACEFACE_BASELINE_SOURCE_MANIFEST || '').trim()
   && process.env.SPACEFACE_ELECTRON_TEST_MODE !== 'isolated-evidence'

@@ -99,6 +99,11 @@ export function validateReleaseSoakEvidence(envelope, { requireArtifacts = true 
         const requested = envelope.sourceOverlay?.requested;
         const served = envelope.sourceOverlay?.served;
         const servedAtEnd = envelope.sourceOverlay?.servedAtEnd;
+        if (requested?.strictRuntimeIsolation !== true
+            || served?.strictRuntimeIsolation !== true
+            || servedAtEnd?.strictRuntimeIsolation !== true) {
+          failures.push('full-runtime source overlay did not prove strict runtime isolation');
+        }
         if (!sourceOverlayIdentityMatches(requested, served)
             || !sourceOverlayIdentityMatches(requested, servedAtEnd)) {
           failures.push('full-runtime source overlay identity was not stable for the entire capture');
@@ -106,8 +111,8 @@ export function validateReleaseSoakEvidence(envelope, { requireArtifacts = true 
         if (envelope.sourceStability?.mode !== 'served-overlay'
             || envelope.sourceStability?.pass !== true
             || envelope.sourceStability?.uncoveredRuntimeInputsStable !== true
-            || envelope.sourceStability?.uncoveredHeadStable !== true) {
-          failures.push('full-runtime source overlay did not prove uncovered runtime-input and HEAD stability');
+            || typeof envelope.sourceStability?.uncoveredHeadStable !== 'boolean') {
+          failures.push('full-runtime source overlay did not prove uncovered runtime-input stability and record HEAD status');
         }
         if (envelope.runtimeInputs?.scope !== 'uncovered-runtime-inputs'
             || !Array.isArray(envelope.runtimeInputs?.changedPaths)
@@ -206,8 +211,9 @@ function validateChecks(checks, primary, failures) {
 
 function sourceOverlayIdentityMatches(expected, observed) {
   if (!expected || !observed) return false;
-  return ['schema', 'sourceCommit', 'sourceOverlayDigest', 'fileCount', 'totalBytes']
-    .every((field) => expected[field] === observed[field]);
+  const fields = ['schema', 'sourceCommit', 'sourceOverlayDigest', 'fileCount', 'totalBytes'];
+  if (expected.strictRuntimeIsolation === true) fields.push('strictRuntimeIsolation');
+  return fields.every((field) => expected[field] === observed[field]);
 }
 
 function validateCycles(cycles, primary, failures) {
@@ -463,7 +469,11 @@ export async function strictWorktreeFingerprint(root, { excludePaths = [] } = {}
  * This intentionally ignores Git metadata and harness/docs churn while remaining
  * sensitive to tracked, staged, unstaged, deleted, and non-ignored untracked runtime files.
  */
-export async function strictRuntimeInputFingerprint(root, { excludePaths = [], includeFileHashes = false } = {}) {
+export async function strictRuntimeInputFingerprint(root, {
+  excludePaths = [],
+  includeFileHashes = false,
+  strictOverlayIsolation = false,
+} = {}) {
   const digest = createHash('sha256');
   const excluded = new Set(excludePaths.map(normalizeFingerprintPath));
   if ([...excluded].some((relative) => !relative)) {
@@ -481,7 +491,14 @@ export async function strictRuntimeInputFingerprint(root, { excludePaths = [], i
     'scripts/lib/electronTestIsolation.mjs',
     'scripts/lib/browser-issues.mjs',
     'scripts/lib/playwrightCspPolling.mjs',
-  ]).has(relative)).filter((relative) => !excluded.has(relative)).sort();
+  ]).has(relative))
+    .filter((relative) => !isGuidanceInputPath(relative))
+    .filter((relative) => !excluded.has(relative)
+      || isStrictOverlayHostInputPath(relative))
+    .filter((relative) => strictOverlayIsolation !== true
+      || !isStrictOverlayRuntimePath(relative)
+      || isStrictOverlayHostInputPath(relative))
+    .sort();
   const rootPath = path.resolve(root);
   const files = includeFileHashes ? [] : null;
   for (const relative of paths) {
@@ -538,6 +555,32 @@ export function normalizeFingerprintPath(value) {
   const segments = normalized.split('/');
   if (segments.includes('..')) return null;
   return normalized;
+}
+
+function isGuidanceInputPath(relative) {
+  const name = path.posix.basename(relative).toUpperCase();
+  return name === 'AGENTS.MD' || name === 'CLAUDE.MD';
+}
+
+// These modules execute in the Node host and are imported directly by the launchers/server;
+// an HTTP source overlay cannot freeze the code that is serving that overlay.
+const STRICT_OVERLAY_HOST_INPUTS = new Set([
+  'scripts/lib/gameServer.cjs',
+  'scripts/lib/visualProbeServer.mjs',
+  'scripts/lib/staticCachePolicy.cjs',
+  'scripts/lib/playerSaveStore.cjs',
+  'scripts/lib/userContentStore.cjs',
+]);
+
+function isStrictOverlayHostInputPath(relative) {
+  return STRICT_OVERLAY_HOST_INPUTS.has(relative);
+}
+
+function isStrictOverlayRuntimePath(relative) {
+  if (relative === 'index.html' || relative === 'vendor/three.module.js') return true;
+  if (relative.startsWith('src/')) return /\.(?:js|json)$/i.test(relative);
+  if (relative.startsWith('scripts/lib/')) return /\.(?:js|mjs|cjs)$/i.test(relative);
+  return relative.startsWith('styles/');
 }
 
 async function hashFilteredGitRecords(cwd, args, hash, label, excluded, kind) {

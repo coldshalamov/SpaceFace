@@ -289,6 +289,66 @@ test('the repair drone consumes a remain and mints from the wave reserve', () =>
   assert.equal(minted, true, 'the mint lands beside the welder inside the population budget');
 });
 
+test('a second live linker keeps its charge shielded when the first dies', () => {
+  const h = boot({ wave: 55 });
+  const engine = makeEngine(h);
+  spawn(h, engine, 55);
+  const linkers = slotsOf(engine, 'shield_linker');
+  const partner = slotsOf(engine, 'mite')[0];
+  assert.ok(linkers.length >= 2 && partner != null);
+  const [first, second] = linkers;
+  for (let i = 0; i < SWARM_BROOD_MAX; i++) {
+    if (!engine._bodies.alive[i]) continue;
+    engine._bodies.px[i] = 2000 + i * 200;
+    engine._bodies.pz[i] = 2000;
+  }
+  for (const [slot, x] of [[partner, 0], [first, 10], [second, -10]]) {
+    engine._bodies.px[slot] = x; engine._bodies.pz[slot] = -500;
+    engine._bodies.vx[slot] = 0; engine._bodies.vz[slot] = 0;
+  }
+  stepSeconds(engine, h.state, DT);
+  assert.equal(engine._bodies.linkPartner[first], partner);
+  assert.equal(engine._bodies.linkPartner[second], partner);
+  engine._killDirectForTest(first, 'direct');
+  assert.equal(engine._bodies.shielded[partner], 1, 'the surviving link protects the same tick');
+  engine._killDirectForTest(partner, 'direct');
+  assert.equal(engine._bodies.alive[partner], 1);
+});
+
+test('an assembler cannot consume or mint from a partial cluster at completion', () => {
+  const h = boot({ wave: 60 });
+  const engine = makeEngine(h);
+  spawn(h, engine, 60);
+  const assembler = slotsOf(engine, 'assembler')[0];
+  assert.ok(assembler != null);
+  for (let i = 0; i < SWARM_BROOD_MAX; i++) {
+    if (!engine._bodies.alive[i] || i === assembler) continue;
+    engine._bodies.px[i] = 2000 + i * 200; engine._bodies.pz[i] = 2000;
+  }
+  engine._bodies.px[assembler] = 0; engine._bodies.pz[assembler] = -500;
+  engine._bodies.vx[assembler] = 0; engine._bodies.vz[assembler] = 0;
+  const first = addRemain(h, 4, -500);
+  const second = addRemain(h, 8, -500);
+  for (let tick = 0; tick < 600 && engine._bodies.phase[assembler] !== BROOD_PHASE_WINDUP; tick++) {
+    stepSeconds(engine, h.state, DT);
+  }
+  assert.equal(engine._bodies.phase[assembler], BROOD_PHASE_WINDUP);
+  assert.equal(engine._bodies.channelEntity[assembler], first.id);
+  const reserve = engine._machine().reserve;
+  second.alive = false;
+  stepSeconds(engine, h.state, 6);
+  assert.equal(engine._machine().reserve, reserve, 'no partial recipe mints a body');
+  assert.ok(!h.emitted.some((e) => e.event === 'swarm:broodRemainsSpent' && e.payload.entityId === first.id),
+    'the remaining ingredient is not consumed');
+  second.alive = true;
+  for (let tick = 0; tick < 900 && engine._machine().reserve === reserve; tick++) {
+    stepSeconds(engine, h.state, DT);
+  }
+  assert.equal(engine._machine().reserve, reserve - 1, 'a restored full cluster can mint');
+  const spent = h.emitted.filter((e) => e.event === 'swarm:broodRemainsSpent').map((e) => e.payload.entityId);
+  assert.ok(spent.includes(first.id) && spent.includes(second.id), 'the full recipe is consumed');
+});
+
 test('the turret winds, sweeps, and the beam cuts the pack it crosses', () => {
   const h = boot({ wave: 64 });
   const engine = makeEngine(h);

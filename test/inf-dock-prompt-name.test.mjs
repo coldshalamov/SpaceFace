@@ -7,6 +7,8 @@ import { createBus } from '../src/core/eventBus.js';
 import { createAlerts, dockPromptText } from '../src/ui/alerts.js';
 import { createGameState } from '../src/core/gameState.js';
 import { SECTORS } from '../src/data/sectors.js';
+import { createDockIntent } from '../src/core/dockIntent.js';
+import { commitDockedUiState } from '../src/ui/dockStateCommit.js';
 
 function makeEl(tag = 'div') {
   const el = {
@@ -74,4 +76,26 @@ test('dock:range raises the named prompt and docking clears it', () => {
   assert.ok(!h.texts().some((t) => /DOCK AT/.test(t)), 'leaving range clears it');
   h.bus.emit('dock:range', { stationId: 'station_ghost', inRange: true });
   assert.ok(h.texts().some((t) => /DOCK AT STATION$/.test(t)), 'an unknown id keeps the old words');
+});
+
+test('only a committed player dock clears an in-range prompt', () => {
+  const h = harness();
+  const player = { id: 1, alive: true, occupantGeneration: 1 };
+  h.state.playerId = player.id;
+  h.state.entities.set(player.id, player);
+  h.state.mode = 'flight';
+  const stale = createDockIntent(h.state, { stationId: 'station_ceres', via: 'tow' }, player);
+  h.state.entities.set(player.id, { ...player, occupantGeneration: 2 });
+  h.bus.on('dock:docked', (payload) => commitDockedUiState(h.state, payload, h.bus));
+  const hasPrompt = () => h.texts().some((text) => /DOCK AT CERES REFINERY$/.test(text));
+  h.bus.emit('dock:range', { stationId: 'station_ceres', shipId: player.id, inRange: true });
+  assert.equal(hasPrompt(), true);
+  h.bus.emit('dock:docked', stale);
+  assert.equal(h.state.ui.docked, false);
+  assert.equal(hasPrompt(), true, 'a stale tow intent must not clear the player prompt');
+  h.bus.emit('dock:docked', { stationId: 'station_ceres', shipId: 99 });
+  assert.equal(hasPrompt(), true, 'another ship must not clear the player prompt');
+  h.bus.emit('dock:docked', { stationId: 'station_ceres', shipId: player.id, shipGeneration: 2 });
+  assert.equal(h.state.ui.docked, true);
+  assert.equal(hasPrompt(), false, 'a committed player dock clears the prompt');
 });

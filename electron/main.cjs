@@ -459,8 +459,9 @@ function ensureGameServerPort() {
 
 async function listenGameServer(root, requestedPort) {
   let devSimWorkerBundleProvider = null;
-  // Normal source launches use the measured bundled worker; 0 keeps the raw ESM escape hatch.
-  const devSimWorkerBundleEnabled = process.env.SPACEFACE_DEV_SIM_WORKER_BUNDLE !== '0'
+  // Development source launches use the measured bundle. Production installs can omit its compiler.
+  const devSimWorkerBundleEnabled = (process.env.SPACEFACE_DEV_SIM_WORKER_BUNDLE === '1'
+    || (process.env.SPACEFACE_DEV_SIM_WORKER_BUNDLE !== '0' && process.env.NODE_ENV !== 'production'))
     && !app.isPackaged
     && !launchConfig.isolatedEvidence
     && !sourceOverlayManifest

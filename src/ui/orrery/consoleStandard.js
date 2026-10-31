@@ -192,15 +192,19 @@ html body #screens .orr-station .sx-sw-verbs .sx-sw-verb[data-verb]::before,
 html body #screens .orr-station :is(.fh-key, .k-word)[data-rack-upgrade]::before,
 html body #screens .orr-station :is(.fh-key, .k-word)[data-rack-restock]::before { content:none !important; }
 html body #screens .orr-station .sx-sw-verbs .k-word.sx-sw-verb[data-verb]:is(:hover, :focus-visible),
-html body #screens > :not(.sx-observatory):not(.of-title):not([data-screen="drill"]) .fh-key[data-rack-upgrade]:is(:hover, :focus-visible),
-html body #screens > :not(.sx-observatory):not(.of-title):not([data-screen="drill"]) .fh-key[data-rack-restock]:is(:hover, :focus-visible),
-html body #screens .orr-station :is(.fh-key, .k-word)[data-rack-upgrade]:is(:hover, :focus-visible),
-html body #screens .orr-station :is(.fh-key, .k-word)[data-rack-restock]:is(:hover, :focus-visible),
+html body #screens > :not(.sx-observatory):not(.of-title):not([data-screen="drill"]) .fh-key[data-rack-upgrade]:not(:disabled):is(:hover, :focus-visible),
+html body #screens > :not(.sx-observatory):not(.of-title):not([data-screen="drill"]) .fh-key[data-rack-restock]:not(:disabled):is(:hover, :focus-visible),
+html body #screens .orr-station :is(.fh-key, .k-word)[data-rack-upgrade]:not(:disabled):is(:hover, :focus-visible),
+html body #screens .orr-station :is(.fh-key, .k-word)[data-rack-restock]:not(:disabled):is(:hover, :focus-visible),
 .orr-station .orr-chain__source:is(:hover, :focus-visible),
 .orr-station .orr-chain__wayout:is(:hover, :focus-visible) {
   --dpk-fill:rgb(236 230 216 / .12);
   color:#fff !important; background-color:rgb(236 230 216 / .12) !important;
   border-color:rgb(236 230 216 / .75) !important;
+}
+html body #screens :is(.fh-key, .k-word)[data-rack-upgrade]:disabled,
+html body #screens :is(.fh-key, .k-word)[data-rack-restock]:disabled {
+  opacity:.45 !important; cursor:not-allowed !important;
 }
 html body #screens .orr-station .sx-sw-verbs .sx-sw-verb[data-verb]:disabled,
 html body #screens .orr-station .sx-sw-verbs .sx-sw-verb[data-verb][aria-disabled="true"] {

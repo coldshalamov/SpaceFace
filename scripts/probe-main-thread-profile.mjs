@@ -66,6 +66,11 @@ import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 import launchProtocol from './lib/electronLaunchProtocol.cjs';
 import { buildIsolatedElectronEnv, createIsolatedElectronLaunch } from './lib/electronTestIsolation.mjs';
+import {
+  createElectronProcessMonitor,
+  forceCloseOwnedElectronTree,
+  waitForElectronProcessClose,
+} from './lib/alphaLiveBaselineElectronContracts.mjs';
 import { loadPlaywright } from './lib/load-playwright.mjs';
 
 const { electronEvidenceProfileRoot, inspectElectronEvidenceProfilePath } = launchProtocol;
@@ -228,6 +233,20 @@ async function stopTraceToFile(cdp, file) {
 }
 
 const log = (message) => console.log(`[main-thread-profile ${new Date().toISOString().slice(11, 19)}] ${message}`);
+
+async function boundedProbeOperation(label, timeoutMs, operation) {
+  let timer = null;
+  const work = Promise.resolve().then(operation).then(
+    (value) => ({ settled: true, value }),
+    (error) => ({ settled: true, error: String(error?.message || error) }),
+  );
+  const timeout = new Promise((resolve) => {
+    timer = setTimeout(() => resolve({ settled: false, error: `${label} timed out after ${timeoutMs} ms` }), timeoutMs);
+  });
+  const result = await Promise.race([work, timeout]);
+  if (timer) clearTimeout(timer);
+  return result;
+}
 
 function keptProfileDir(name) {
   // The evidence-profile contract only accepts creator-issued names: probe-<task>-<6 chars>.
@@ -1458,12 +1477,17 @@ const profileNote = KEEP_PROFILE
 
 let app = null;
 let diagnosticPage = null;
+let cdpSession = null;
+let electronChildProcess = null;
+let electronProcessMonitor = null;
 const startupIssues = [];
 let displayHz = null;
 let runtimeClosed = false;
 try {
   log(`launching isolated Electron; ${profileNote}`);
   app = await electron.launch(launch.options);
+  electronChildProcess = app.process();
+  electronProcessMonitor = createElectronProcessMonitor({ electronApp: app, childProcess: electronChildProcess });
   displayHz = await app.evaluate(({ screen, BrowserWindow }) => {
     const win = BrowserWindow.getAllWindows()[0];
     const display = win ? screen.getDisplayMatching(win.getBounds()) : screen.getPrimaryDisplay();
@@ -1490,13 +1514,13 @@ try {
     }
   }
 
-  const cdp = await page.context().newCDPSession(page);
-  await cdp.send('Profiler.enable');
+  cdpSession = await page.context().newCDPSession(page);
+  await cdpSession.send('Profiler.enable');
   // A launch window runs ~60 s; half-millisecond sampling keeps the profile a manageable size.
-  await cdp.send('Profiler.setSamplingInterval', { interval: EFFECTIVE_SAMPLING_US });
+  await cdpSession.send('Profiler.setSamplingInterval', { interval: EFFECTIVE_SAMPLING_US });
 
-  if (FROM_LAUNCH) await runLaunchProfile(page, cdp, profileNote);
-  else await runSteadyFlightProfile(page, cdp);
+  if (FROM_LAUNCH) await runLaunchProfile(page, cdpSession, profileNote);
+  else await runSteadyFlightProfile(page, cdpSession);
   if (fs.existsSync(path.join(OUT_DIR, 'cadence.json'))) {
     const record = JSON.parse(fs.readFileSync(path.join(OUT_DIR, 'cadence.json'), 'utf8'));
     record.metadata.sourceDigestAfter = await digestServedSourcePaths();
@@ -1603,15 +1627,90 @@ try {
   }, null, 2));
   throw error;
 } finally {
-  try {
-    await app?.close();
-    runtimeClosed = true;
-  } catch { /* the app may already be gone */ }
-  try {
-    launch.cleanup({ runtimeClosed });
-  } catch (error) {
-    console.warn('[main-thread-profile] isolated profile cleanup failed:', error?.message);
+  const cleanup = {
+    startedAt: new Date().toISOString(),
+    cdpDetached: false,
+    appCloseSettled: false,
+    appCloseError: null,
+    gracefulProcessClose: null,
+    forcedClose: null,
+    runtimeClosed: false,
+    profileRemoved: false,
+    disposition: 'unconfirmed',
+  };
+  if (cdpSession) {
+    const detached = await boundedProbeOperation('CDP session detach', 2_000, () => cdpSession.detach());
+    cleanup.cdpDetached = detached.settled && !detached.error;
+    if (!cleanup.cdpDetached) cleanup.cdpDetachError = detached.error || 'CDP detach did not settle';
+    cdpSession = null;
   }
+
+  if (app) {
+    electronProcessMonitor?.markClosing();
+    const closeResult = await boundedProbeOperation('Electron application close', 5_000, () => app.close());
+    cleanup.appCloseSettled = closeResult.settled && !closeResult.error;
+    cleanup.appCloseError = closeResult.error || null;
+
+    try {
+      cleanup.gracefulProcessClose = await waitForElectronProcessClose(
+        electronChildProcess, 5_000, electronProcessMonitor,
+      );
+    } catch (error) {
+      cleanup.gracefulProcessClose = { closed: false, error: String(error?.message || error) };
+    }
+    runtimeClosed = cleanup.gracefulProcessClose?.closed === true;
+
+    if (!runtimeClosed && !KEEP_PROFILE) {
+      const snapshot = electronProcessMonitor?.snapshot?.() || {};
+      const capturedPid = Number(snapshot.pid);
+      const childPid = Number(electronChildProcess?.pid);
+      const exactLiveChild = !!electronChildProcess
+        && electronProcessMonitor?.childProcess === electronChildProcess
+        && Number.isSafeInteger(childPid) && childPid > 0 && capturedPid === childPid
+        && electronChildProcess.exitCode == null && electronChildProcess.signalCode == null
+        && snapshot.processExitEvents?.length === 0;
+      if (exactLiveChild) {
+        try {
+          cleanup.forcedClose = await forceCloseOwnedElectronTree({ pid: childPid, platform: process.platform });
+          if (cleanup.forcedClose?.pass === true) {
+            const closed = await waitForElectronProcessClose(electronChildProcess, 5_000, electronProcessMonitor);
+            cleanup.forcedClose.close = closed;
+            runtimeClosed = closed?.closed === true;
+          }
+        } catch (error) {
+          cleanup.forcedClose = { pass: false, error: String(error?.message || error) };
+        }
+      } else {
+        cleanup.forcedClose = { attempted: false, reason: 'exact live Electron child ownership was not provable' };
+      }
+    } else if (!runtimeClosed) {
+      cleanup.forcedClose = { attempted: false, reason: 'kept evidence profile does not permit forced runtime cleanup' };
+    }
+  } else {
+    runtimeClosed = true;
+  }
+
+  cleanup.runtimeClosed = runtimeClosed;
+  cleanup.disposition = runtimeClosed
+    ? (cleanup.forcedClose?.pass === true ? 'forced-owned-runtime-close' : 'graceful-runtime-close')
+    : 'runtime-close-unconfirmed';
+  if (runtimeClosed) {
+    try {
+      launch.cleanup({ runtimeClosed: true });
+      cleanup.profileRemoved = !KEEP_PROFILE;
+    } catch (error) {
+      cleanup.profileCleanupError = String(error?.message || error);
+      console.warn('[main-thread-profile] isolated profile cleanup failed:', cleanup.profileCleanupError);
+    }
+  } else {
+    cleanup.profileRetained = !KEEP_PROFILE;
+    console.warn('[main-thread-profile] runtime shutdown was not confirmed; retaining isolated profile');
+  }
+  cleanup.finishedAt = new Date().toISOString();
+  fs.mkdirSync(OUT_DIR, { recursive: true });
+  fs.writeFileSync(path.join(OUT_DIR, 'cleanup.json'), JSON.stringify(cleanup, null, 1), 'utf8');
+  log(`cleanup ${cleanup.disposition}`);
+  electronProcessMonitor?.stop?.();
 }
 
 for (const analyze of deferredTraceAnalyses) analyze();

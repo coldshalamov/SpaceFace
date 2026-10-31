@@ -475,7 +475,7 @@ export function pushSharedPlayerStore(keys, { keepalive = false, serialize = fal
     try {
       const response = await fetch(SHARED_PLAYER_STORE_PATH, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Prefer: 'return=minimal' },
         body,
         signal: AbortSignal.timeout(putTimeoutMs),
         keepalive: carriesKeepalive,
@@ -483,7 +483,7 @@ export function pushSharedPlayerStore(keys, { keepalive = false, serialize = fal
       if (response.status === 404 || response.status === 405) {
         applySharedPlayerStoreCapability({ origin: capability.origin, status: 'absent' });
       }
-      // fetch resolves at headers, while the store's acknowledgement includes its full key bag.
+      // Older stores may ignore the minimal preference and return their full key bag.
       // Drain without retaining/parsing that unused payload before releasing this write's queue
       // ownership. An unread body otherwise keeps network work and its deadline alive after a
       // reported success, so a later timeout can abort an apparently completed mirror.

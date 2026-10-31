@@ -351,11 +351,14 @@ export async function runReleaseSoakProbe({
     const startFingerprint = await strictWorktreeFingerprint(root);
     doLog(`worktree start ${startFingerprint.id}`);
     sourceOverlayCoverage = await readSourceOverlayCoverage(baselineSource);
+    const strictOverlayIsolation = sourceOverlayCoverage?.fullRuntime === true
+      && baselineSource?.identity?.strictRuntimeIsolation === true;
     const runtimeInputExclusions = sourceOverlayCoverage?.fullRuntime
       ? sourceOverlayCoverage.pinnedPaths : [];
     startRuntimeInputs = await strictRuntimeInputFingerprint(root, {
       excludePaths: runtimeInputExclusions,
       includeFileHashes: true,
+      strictOverlayIsolation,
     });
     if (baselineSource && !sourceOverlayCoverage?.valid) {
       doLog('source overlay coverage is missing or unsupported; provenance will fail closed');
@@ -831,6 +834,7 @@ export async function runReleaseSoakProbe({
     endRuntimeInputs = await strictRuntimeInputFingerprint(root, {
       excludePaths: endRuntimeInputExclusions,
       includeFileHashes: true,
+      strictOverlayIsolation,
     });
     runtimeInputChanges = diffRuntimeInputFiles(startRuntimeInputs?.files, endRuntimeInputs?.files);
     const worktreeStable = endFingerprint.digest === startFingerprint.digest;
@@ -1166,6 +1170,7 @@ function compactSourceOverlayIdentity(identity) {
     sourceOverlayDigest: identity.sourceOverlayDigest || null,
     fileCount: Number.isSafeInteger(identity.fileCount) ? identity.fileCount : null,
     totalBytes: Number.isSafeInteger(identity.totalBytes) ? identity.totalBytes : null,
+    ...(identity.strictRuntimeIsolation === true ? { strictRuntimeIsolation: true } : {}),
   } : null;
 }
 
@@ -1242,8 +1247,9 @@ function summarizeRuntimeInputFingerprint(fingerprint) {
 
 function sourceOverlayIdentityMatches(expected, observed) {
   if (!expected || !observed) return false;
-  return ['schema', 'sourceCommit', 'sourceOverlayDigest', 'fileCount', 'totalBytes']
-    .every((field) => expected[field] === observed[field]);
+  const fields = ['schema', 'sourceCommit', 'sourceOverlayDigest', 'fileCount', 'totalBytes'];
+  if (expected.strictRuntimeIsolation === true) fields.push('strictRuntimeIsolation');
+  return fields.every((field) => expected[field] === observed[field]);
 }
 
 export function evaluateSourceStability({
@@ -1282,8 +1288,12 @@ export function evaluateSourceStability({
     };
   }
   const overlayCoversRuntime = coverage?.fullRuntime === true;
+  const strictRuntimeIsolation = baselineSource.identity?.strictRuntimeIsolation === true
+    && servedAtStart?.strictRuntimeIsolation === true
+    && servedAtEnd?.strictRuntimeIsolation === true;
   const servedSourceStable = sourceOverlayIdentityMatches(baselineSource.identity, servedAtStart)
-    && sourceOverlayIdentityMatches(baselineSource.identity, servedAtEnd);
+    && sourceOverlayIdentityMatches(baselineSource.identity, servedAtEnd)
+    && (!overlayCoversRuntime || strictRuntimeIsolation);
   const uncoveredRuntimeStable = uncoveredRuntimeInputsStable === true;
   const headStable = uncoveredHeadStable === true;
   return {
@@ -1295,7 +1305,7 @@ export function evaluateSourceStability({
     uncoveredRuntimeInputsStable: overlayCoversRuntime ? uncoveredRuntimeStable : null,
     uncoveredHeadStable: overlayCoversRuntime ? headStable : null,
     pass: overlayCoversRuntime
-      ? (servedSourceStable && uncoveredRuntimeStable && headStable)
+      ? (servedSourceStable && uncoveredRuntimeStable)
       : (worktreeStable === true && servedSourceStable),
   };
 }
@@ -1309,6 +1319,7 @@ async function readServedSourceOverlayIdentity(page, expected) {
   });
   const compact = compactSourceOverlayIdentity(observed);
   const fields = ['schema', 'sourceCommit', 'sourceOverlayDigest', 'fileCount', 'totalBytes'];
+  if (expected.identity?.strictRuntimeIsolation === true) fields.push('strictRuntimeIsolation');
   const mismatch = fields.find((field) => compact?.[field] !== expected.identity?.[field]);
   if (mismatch) {
     throw new Error(`served source overlay identity mismatch at ${mismatch}: expected ${JSON.stringify(expected.identity)} got ${JSON.stringify(compact)}`);

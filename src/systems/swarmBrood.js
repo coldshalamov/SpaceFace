@@ -2383,6 +2383,14 @@ export function createBroodEngine(deps = {}) {
     }
     const reach = def.assembleRange > 0 ? def.assembleRange : 30;
     const need = Math.max(1, Math.trunc(def.assembleDebrisMin) || 2);
+    let available = 0;
+    for (let m = 0; m < movCount; m++) {
+      if (movRemainId[m] < 0) continue;
+      const dx = movX[m] - px[i];
+      const dz = movZ[m] - pz[i];
+      if (dx * dx + dz * dz <= reach * reach) available += 1;
+    }
+    if (available < need) return;
     let ate = 0;
     for (let m = 0; m < movCount && ate < need; m++) {
       if (movRemainId[m] < 0) continue;
@@ -2392,7 +2400,7 @@ export function createBroodEngine(deps = {}) {
       emitRemainSpent(m);
       ate += 1;
     }
-    if (ate > 0) mintMachine(px[i] + 4, pz[i] + 4, def.assembleYieldId);
+    if (ate === need) mintMachine(px[i] + 4, pz[i] + 4, def.assembleYieldId);
   }
 
   /**
@@ -3208,8 +3216,21 @@ export function createBroodEngine(deps = {}) {
     // THIS tick — the link pass only rebuilds flags for the living.
     freeBeamOf(i);
     if (linkPartner[i] >= 0) {
-      shielded[linkPartner[i]] = 0;
+      const partner = linkPartner[i];
       linkPartner[i] = -1;
+      shielded[partner] = 0;
+      for (let j = 0; j < CAP; j++) {
+        if (!alive[j] || linkPartner[j] !== partner) continue;
+        const linkDef = liveFamilyDef[family[j]];
+        if (!linkDef?.linkShield) continue;
+        const range = linkDef.linkRange > 0 ? linkDef.linkRange : 90;
+        const dx = px[partner] - px[j];
+        const dz = pz[partner] - pz[j];
+        if (dx * dx + dz * dz <= range * range * 1.5) {
+          shielded[partner] = 1;
+          break;
+        }
+      }
     }
     const c = CAUSE_INDEX[cause];
     if (c == null) return;

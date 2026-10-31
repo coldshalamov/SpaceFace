@@ -129,6 +129,14 @@ toggle `light.visible`, it recompiles); (d) per-hull-family `InstancedMesh` or t
 `BatchedMesh` path (`renderer.js` `_opaqueBatchEnabled`, PQ-129.12) — whichever wins the A/B. Done
 when programs per Crucible run and draws per frame are both down ≥ 40 % and `setProgram` < 2 %.
 
+Current integration checkpoint (2026-10-31): the retained rigid controller is already default-on;
+`_opaqueBatchEnabled` is a separate package-planning switch. A published-144e434 Swarm wave-one
+held-scene ABBA measures 742 retained versus 982 direct draws and 50.005 versus 66.645/66.555 ms p50
+intervals at the same scene/camera/settings. Its original aggregate rejected retained off-state
+census history; a separate source-backed reassessment accepts the live-mode and scene checks.
+No default changed, active-flight causal win or visual parity is claimed, and M3's targets remain
+open. See `INTEGRATION_COVERAGE.md` and `.devshots/main-thread-profile/opaque-retained-default-ab-144e/`.
+
 **M4 — The composite pass.** One full-screen composite draw costs 7.1 ms of GPU per frame
 (`bloom.js:240-460`: 5-tap edge detect, extra edge taps, three bloom samples, contrast LUT, grade,
 grain on a half-float target). Gate the expensive taps by tier, fold grain/vignette/grade into one
