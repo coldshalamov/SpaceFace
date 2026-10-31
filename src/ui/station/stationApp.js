@@ -696,6 +696,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
   const kiteButton = document.createElement('button');
   kiteButton.type = 'button'; kiteButton.className = 'k-word sx-kite-corner-open';
   kiteButton.textContent = 'Kite’s Corner';
+  markStationControl(kiteButton, 'kite-corner-open');
   kiteButton.setAttribute('aria-label', 'Watch Kite’s Corner, Ceres service-room programme');
   kiteButton.setAttribute('aria-expanded', 'false');
   // The station frame always parents the help word; a detached frame (a DOM double, a frame
