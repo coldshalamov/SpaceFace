@@ -400,6 +400,12 @@ teaches by situation; tooltips that explain *why* in one line; every screen's la
 
 ## Traps
 
+Integration 2026-10-31: phone station title/credits and Shipworks diagram/nameplate overlaps are
+repaired in the shared Standard and Shipworks style owners. Inspected 390×844 and 960×540 fixture
+captures have no browser errors or geometry overlap/clipping findings. The control walk remains
+incomplete after resets/confirmations; the impound fixture has no canonical lot desk. These visual
+repairs do not close ordinary station-tab last-row reachability (RC-49) or impound controls.
+
 - Save compatibility: every new persistent field needs a migration and a reload test (`src/save/`).
 - Single writers: economy→credits, factions→reputation, cargo→cargo (`AGENTS.md` §6) — emit intents, do not write another system's state.
 - Localization: four of five locales are machine-filled; new player text goes through the localization pipeline, never hard-coded.

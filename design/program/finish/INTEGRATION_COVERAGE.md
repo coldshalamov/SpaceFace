@@ -113,6 +113,14 @@ result remains historical even where later builds supersede its size.
 
 ## Integrated changes and measurement limits
 
+- **Phone station layout:** the 390×844 station header now puts its compact credits reading below
+  the title, and Shipworks gives the nameplate a separate band above its diagram. Current-tree
+  phone and 960×540 fixture captures are inspected with zero browser errors and no geometry
+  overlap/clipping findings. The Shipworks body remains scrollable. This is visual acceptance;
+  reset/confirmation states leave the fixture control walk incomplete, and its impound seed does
+  not expose the canonical lot desk. Ordinary station-tab last-row and impound reachability remain
+  open. Captures: `.devshots/finish/integration-2026-10-31/station-phone-layout-fix-r3/`.
+
 - **Confirmed Vesper retention repair:** saved heap graphs identify a detached `seated_fastener`
   mesh/new geometry absent from the start snapshot and end scene. Both become unreachable when
   the shadow-caster registry edge is excluded. Its baker now unregisters permanently retired
