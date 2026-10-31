@@ -216,7 +216,7 @@
   "src/ui/orrery/saveSortieTape.js": "334f1cc08383490e735950ae2a5df115c2537194455298d50b2790e2ecf4aca7",
   "src/ui/orrery/screenLayouts.js": "fdc7007e48118a7d50c557e65f73f575815b48dd82e3d61d9089bf65a278968e",
   "src/ui/orrery/scrollExtent.js": "3ce8cfd26641228da0258bdf2ae77f324316a40ce9640a46f5b68a64e83ac126",
-  "src/ui/orrery/settingsLayouts.js": "0e45a85eff58acbe8f73a2d061cb57e2c30a4d91afe22bcbfb7bf7e7fff7caf0",
+  "src/ui/orrery/settingsLayouts.js": "02f63c6e51a316137f4c7708a89bfe883782826cbe9d71d40fe5f4df4762bd7a",
   "src/ui/orrery/settingsPreview.js": "3d2bc9a9d29bdd81d5dda0398654dbdff7e89e26f612de44449e9b979499a416",
   "src/ui/orrery/shipLayouts.js": "fb3dbafe45b3df6ef2a25f786009384ffd8ff81ab1db9b7b4476409f235c3c6a",
   "src/ui/orrery/shipworksLayouts.js": "752ad0adc6dfe3a4bf2929dd558983fd428b5a1961805b7e5d3ed6611c510640",
