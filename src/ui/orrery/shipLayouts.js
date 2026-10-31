@@ -381,6 +381,13 @@ html.sf-reduce-motion ${W} * { transition:none !important; animation:none !impor
   ${W} .sx-sw-hero[data-band='handling'] .k-hero__n { font-size:clamp(36px, 5.2vh, 52px) !important; }
   ${W} .sx-sw__stats .k-row { padding:3px 0 !important; }
 }
+/* ≤1100×≤640 (960×540): the hull sits under the nameplate on this short stage, so a 52ch blurb ran
+   across its beads and leader lines. The blurb keeps to the column left of the hull, a size down, and
+   reads whole: the narrower column clears the beads, and the callouts already step around its ink. */
+@media (max-width:1100px) and (max-height:640px) {
+  ${W} .sx-sw__nameplate .sx-sw__blurb { max-width:256px !important; font-size:13px !important; line-height:1.4 !important;
+    max-height:none !important; overflow:visible !important; }
+}
 `;
 
 let injected = false;
