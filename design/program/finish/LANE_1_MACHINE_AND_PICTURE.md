@@ -204,11 +204,13 @@ cycles, cycle 8's F9 restore lands in the startup-failed menu at `gpu-resources`
 opening submission plan is incomplete. The strict capture phase fails after 142 ms; no frame
 errors or page issues are recorded in its failure snapshot. This is an open production restore
 defect. A subsequent targeted run on `1318a7ca4edb` reproduces it at cycle 2, with the first-playable
-shader set complete. Its original diagnostic truncated ordinary root classifications before the
-actual failed predicates. The corrected bounded diagnostic captures empty or unverified blocking
-roots, exact failure reasons, and producer-versus-captured resource differences; the gate remains
-strict. Another targeted run completes nine F9 cycles but fails the context-recovery tail with a
-real Three.js buffer-size mismatch. Neither defect is repaired. See `INTEGRATION_COVERAGE.md`.
+shader set complete. The corrected `526589161e1e` capture reproduces the failure at cycle 1: one
+blocking entity root has zero drawable leaves, while hashes, first-playable programs and all three
+resource identity sets match. That root was drawable when selected, so its eligibility changed
+between paced walks. The existing failure diagnostic now retains its entity identity and compares
+the selected/current root and exact leaf-exclusion state; no gate or admission behavior changes.
+Another targeted run completes nine F9 cycles but fails the context-recovery tail with a real
+Three.js buffer-size mismatch. Neither defect is repaired. See `INTEGRATION_COVERAGE.md`.
 
 **M9 — Load less, load later.** 28 MB of minified JS in the eager closure (`scripts/build-bundle.mjs`,
 esbuild splitting): lazy-load per mode and per screen; make `modelTruthCensus.generated.js` and

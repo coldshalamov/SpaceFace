@@ -52,6 +52,7 @@ export function* collectOpeningEntityRootCandidatesSteps(meshes, entities, optio
     if (leaves.length === 0) continue;
     candidates.push({
       root: mesh,
+      entityId: id,
       role: entity.type === 'station' ? 'tableStationShell' : 'opening-entity-root',
       startupRole: 'first-picture-entity-root',
       blocking: true,

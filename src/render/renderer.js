@@ -12963,7 +12963,7 @@ export const render = {
     // legs so async drives pace it under their slice clocks instead of paying one
     // atomic ~multi-tens-of-ms window (and 3-4 times per boot). Sync callers drive
     // the generator inline for identical output.
-    const buildOpeningSubmissionPlanSteps = function* () {
+    const buildOpeningSubmissionPlanSteps = function* (onCandidate = null) {
       // prepareFrame() selects the final entity poses without rendering while the loading shell is
       // visible. Refresh world matrices once so frustum/layer admission observes those exact poses,
       // not the transform cache from the previous scene attachment.
@@ -12975,6 +12975,7 @@ export const render = {
         if (!root || seenRoots.has(root)) return false;
         seenRoots.add(root);
         candidates.push({ root, ...metadata });
+        if (onCandidate) onCandidate(root, metadata, submissionCamera);
         return true;
       };
 
@@ -13370,7 +13371,25 @@ export const render = {
         cookGeneration: this._liveSectorCookGeneration ?? null,
       };
       captureRender.openingPlanCaptureFailure = null;
-      const plan = yield* buildOpeningSubmissionPlanSteps.call(this);
+      const selectedRoots = new Map();
+      const cameraState = () => {
+        const camera = cam?.obj;
+        const matrix = (value) => value?.elements ? Array.from(value.elements).slice(0, 16) : null;
+        return { projection: matrix(camera?.projectionMatrix), worldInverse: matrix(camera?.matrixWorldInverse),
+          layerMask: camera?.layers?.mask ?? null };
+      };
+      const captureCandidate = (root, metadata, camera) => {
+        if (metadata?.role !== 'opening-entity-root' && metadata?.role !== 'tableStationShell') return;
+        const entityId = metadata.entityId ?? null;
+        const data = root.userData || {};
+        const key = data.openingSubmissionId != null ? String(data.openingSubmissionId)
+          : data.entityId != null ? `entity:${data.entityId}`
+            : data.sfEntityId != null ? `entity:${data.sfEntityId}`
+              : root.uuid ? `uuid:${root.uuid}` : root.id != null ? `id:${root.id}` : null;
+        if (key) selectedRoots.set(key, { root, entityId, camera, cameraAtSelection: cameraState(),
+          includeOffscreen: metadata.includeOffscreen === true });
+      };
+      const plan = yield* buildOpeningSubmissionPlanSteps.call(this, captureCandidate);
       if (captureStale()) {
         captureRender.openingPlanCaptureFailure = {
           reason: 'stale-capture', expected,
@@ -13389,6 +13408,77 @@ export const render = {
       if (!plan || plan.complete !== true || plan.firstPlayablePipelineSet?.complete !== true) {
         const emptyRoots = (Array.isArray(plan?.roots) ? plan.roots : [])
           .filter((root) => root?.blocking === true && root.drawLeafCount === 0);
+        const describeEmptyRoot = (descriptor) => {
+          const selection = selectedRoots.get(descriptor.id);
+          const root = selection?.root;
+          const entityId = selection?.entityId ?? null;
+          const entity = entityId != null ? state.entities?.get?.(entityId) : null;
+          const current = entityId != null ? this._meshes?.get?.(entityId) : null;
+          const camera = selection?.camera;
+          const descendants = [];
+          const pending = root ? [{ object: root, hiddenAncestor: false }] : [];
+          let visited = 0;
+          while (pending.length && visited < 256 && descendants.length < 12) {
+            const { object, hiddenAncestor } = pending.pop(); visited += 1;
+            const hidden = hiddenAncestor || object.visible === false;
+            const drawable = object.isMesh || object.isSkinnedMesh || object.isPoints || object.isLine || object.isSprite;
+            if (drawable || object === root || object.isLOD || object.isBatchedMesh) {
+              let inFrustum = null;
+              try { if (camera?.frustum?.intersectsObject) inFrustum = camera.frustum.intersectsObject(object); } catch (_) {}
+              const materials = Array.isArray(object.material) ? object.material : [object.material].filter(Boolean);
+              const range = object.geometry?.drawRange;
+              const layerMatch = camera?.layers?.test && object.layers ? camera.layers.test(object.layers) : null;
+              const exclusions = [];
+              if (hidden) exclusions.push('hidden');
+              if (!drawable) exclusions.push('not-drawable');
+              if ((object.isInstancedMesh || object.isPoints || object.isLine || object.isSprite)
+                  && Number.isFinite(Number(object.count)) && Number(object.count) <= 0) exclusions.push('empty-instance-count');
+              if (range && Number.isFinite(Number(range.count)) && Number(range.count) <= 0) exclusions.push('empty-draw-range');
+              if (object.userData?.authoredResolvingMarker === true) exclusions.push('resolving-marker');
+              if (layerMatch === false) exclusions.push('camera-layer');
+              if (!selection?.includeOffscreen && object.frustumCulled !== false && inFrustum === false) exclusions.push('outside-frustum');
+              descendants.push({
+                uuid: String(object.uuid || '').slice(0, 100) || null,
+                name: String(object.name || '').slice(0, 120) || null,
+                type: String(object.type || '').slice(0, 80) || null,
+                visible: object.visible !== false, hiddenAncestor,
+                parentUuid: object.parent?.uuid || null,
+                layerMask: object.layers?.mask ?? null, cameraLayerMask: camera?.layers?.mask ?? null,
+                layerMatch, exclusions,
+                inFrustum, frustumCulled: object.frustumCulled !== false,
+                resolvingMarker: object.userData?.authoredResolvingMarker === true,
+                instanceCount: Number.isFinite(object.count) ? object.count : null,
+                drawRangeCount: Number.isFinite(range?.count) ? range.count : null,
+                geometryUuid: object.geometry?.uuid || null,
+                materials: materials.slice(0, 4).map((material) => ({
+                  name: String(material?.name || '').slice(0, 100) || null,
+                  type: String(material?.type || '').slice(0, 80) || null,
+                  visible: material?.visible !== false,
+                })),
+                batched: object.isBatchedMesh === true,
+                retiredBatch: object.isBatchedMesh === true && isRetiredRigidOpaqueBatch(object),
+                lod: String(object.userData?.lod?.level ?? '').slice(0, 80) || null,
+              });
+            }
+            for (let i = (object.children?.length || 0) - 1; i >= 0; i--) {
+              pending.push({ object: object.children[i], hiddenAncestor: hidden });
+            }
+          }
+          return {
+            rootId: String(descriptor.id || '').slice(0, 160) || null,
+            name: String(descriptor.name || '').slice(0, 160) || null,
+            role: String(descriptor.role || '').slice(0, 120) || null,
+            entityId, entityType: entity?.type || null, entityAlive: entity?.alive ?? null,
+            defId: entity?.data?.defId || entity?.defId || null,
+            selectedRootFound: !!root, selectedStillCurrent: root ? current === root : null,
+            currentRootUuid: current?.uuid || null, rootParentIsScene: root ? root.parent === scene : null,
+            cameraAtSelection: selection?.cameraAtSelection || null, cameraAtFailure: cameraState(),
+            censusFrustum: camera?.frustum?.planes?.map((plane) => [plane.normal.x, plane.normal.y, plane.normal.z, plane.constant]) || null,
+            includeOffscreen: selection?.includeOffscreen === true,
+            authoredState: root?.userData?.authoredAssetState || null,
+            descendants, visited, truncated: pending.length > 0,
+          };
+        };
         const failureReasons = (Array.isArray(plan?.blockingReasons) ? plan.blockingReasons : [])
           .filter((row) => ['productionBoundary', 'producerResourceIdentityCensus', 'firstPlayablePipelineSet'].includes(row?.role));
         const unverifiedRoots = (Array.isArray(plan?.roots) ? plan.roots : []).filter((root) => (
@@ -13413,11 +13503,7 @@ export const render = {
           complete: plan?.complete === true,
           drawLeafCount: Array.isArray(plan?.drawLeaves) ? plan.drawLeaves.length : null,
           emptyBlockingRootCount: emptyRoots.length,
-          emptyBlockingRoots: emptyRoots.slice(0, 12).map((root) => ({
-            rootId: String(root.id || '').slice(0, 160) || null,
-            name: String(root.name || '').slice(0, 160) || null,
-            role: String(root.role || '').slice(0, 120) || null,
-          })),
+          emptyBlockingRoots: emptyRoots.slice(0, 12).map(describeEmptyRoot),
           unverifiedBlockingRootCount: unverifiedRoots.length,
           unverifiedBlockingRoots: unverifiedRoots.slice(0, 12).map((root) => ({
             rootId: String(root.id || '').slice(0, 160) || null,

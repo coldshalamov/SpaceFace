@@ -455,11 +455,17 @@ test('opening plan capture uses the renderer owner when invoked through the rend
   assert.equal(state.render.openingSubmissionPlan, plan);
 });
 test('opening capture retains bounded incomplete or stale identity diagnostics', () => {
-  for (const stale of [false, true]) {
-    const state = { world: { enterSerial: 4, currentSectorId: 'ceres' }, render: {} };
-    const owner = { state, _liveSectorCookGeneration: 7 };
+  for (const scenario of ['current', 'replaced', 'stale']) {
+    const stale = scenario === 'stale';
+    const root = new THREE.Group();
+    const leaf = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial());
+    leaf.visible = false; root.add(leaf);
+    const scene = new THREE.Scene(); scene.add(root);
+    const state = { world: { enterSerial: 4, currentSectorId: 'ceres' }, render: {},
+      entities: new Map([[42, { type: 'ship', alive: true, data: { defId: 'ship_test' } }]]) };
+    const owner = { state, _meshes: new Map([[42, root]]), _liveSectorCookGeneration: 7 };
     const plan = { complete: false, firstPlayablePipelineSet: { complete: false, reason: 'missing-opening-program-census' },
-      roots: [{ id: 'player', name: 'Hull', role: 'player', blocking: true, drawLeafCount: 0 }],
+      roots: [{ id: `uuid:${root.uuid}`, name: 'Hull', role: 'opening-entity-root', blocking: true, drawLeafCount: 0 }],
       drawLeaves: [], resourceIdentityCensusMatches: false,
       producerResourceIdentitySets: { geometryBufferIds: ['old'] },
       resourceIdentitySets: { geometryBufferIds: ['new'] },
@@ -467,7 +473,13 @@ test('opening capture retains bounded incomplete or stale identity diagnostics',
         { role: 'productionBoundary', reason: 'missing-or-unverified-blocking-content-hash' }] };
     const capture = evaluate(openingCaptureCode, owner, {
       state, captureLiveSectorCookStale: () => () => stale,
-      *buildOpeningSubmissionPlanSteps() { if (stale) state.world.enterSerial = 5; return plan; },
+      *buildOpeningSubmissionPlanSteps(onCandidate) {
+        onCandidate(root, { role: 'opening-entity-root', entityId: 42 },
+          { layers: new THREE.Layers(), frustum: { intersectsObject: () => false, planes: [] } });
+        if (scenario === 'replaced') owner._meshes.set(42, new THREE.Group());
+        if (stale) state.world.enterSerial = 5; return plan;
+      },
+      scene, cam: { obj: { layers: new THREE.Layers() } }, isRetiredRigidOpaqueBatch: () => false,
       rendererGenerationIsActive: () => true, stampProducerReceipt: () => {},
       openingSubjectIdentity: () => null, openingCohort: { capture() {}, snapshot: () => ({}) },
     });
@@ -476,8 +488,14 @@ test('opening capture retains bounded incomplete or stale identity diagnostics',
     assert.equal(detail.reason, stale ? 'stale-capture' : 'incomplete-plan');
     if (stale) assert.deepEqual([detail.expected.enterSerial, detail.actual.enterSerial], [4, 5]);
     else {
-      assert.equal(detail.emptyBlockingRoots[0].rootId, 'player');
-      assert.equal(detail.unverifiedBlockingRoots[0].rootId, 'player');
+      assert.equal(detail.emptyBlockingRoots[0].rootId, `uuid:${root.uuid}`);
+      assert.equal(detail.emptyBlockingRoots[0].entityId, 42);
+      assert.equal(detail.emptyBlockingRoots[0].defId, 'ship_test');
+      assert.equal(detail.emptyBlockingRoots[0].selectedStillCurrent, scenario !== 'replaced');
+      assert.equal(detail.emptyBlockingRoots[0].descendants[1].visible, false);
+      assert.equal(detail.emptyBlockingRoots[0].descendants[1].inFrustum, false);
+      assert.deepEqual(detail.emptyBlockingRoots[0].descendants[1].exclusions, ['hidden', 'outside-frustum']);
+      assert.equal(detail.unverifiedBlockingRoots[0].rootId, `uuid:${root.uuid}`);
       assert.equal(detail.failureReasons[0].role, 'productionBoundary');
       assert.equal(detail.drawLeafCount, 0);
       assert.equal(detail.resourceIdentityCensusMatches, false);
