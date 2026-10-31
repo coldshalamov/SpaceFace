@@ -11,6 +11,8 @@ import { injectOrrery } from './tokens.js';
 
 const STYLE_ID = 'sf-orrery-station-factions';
 const T = 'html body #screens > .sx-berth.orr-station';
+// a desktop window, not the phone composition (mobileScreenLayouts.js owns data-sf-mobile)
+const D = 'html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station';
 // the same warm bone the station tabs' grammar is drawn with (stationTabsLayouts.js)
 const BONE = '236 230 216';
 // one class deeper than stationTabsLayouts.js selectors, so same-property overrides win ties
@@ -45,6 +47,13 @@ ${ROW}:is(.is-active, [aria-selected="true"]):is(:hover, :focus-visible) .sx-fac
    the unfolded rows wrap to their own full-width lines) */
 ${T} .sx-fac-network { display:flex !important; flex-wrap:wrap; align-items:baseline; column-gap:18px; row-gap:2px; }
 ${T} .sx-fac-network__rows, ${T} .sx-fac-network__empty { flex-basis:100%; }
+/* a desktop window 650px wide or narrower (390x844): the stage kept its two desktop columns, the
+   ring took 300px and the reading got the rest, so CURRENT STATION AUTHORITY stood one letter a
+   line down the right edge and the ring sat under the tab bar (ui-bench still, 2026-10-30). The
+   stage stacks here the way the phone composition already does: ring first, the reading under it. */
+@media (max-width:650px) {
+  ${D} .sx-fac .sx-fac__stage { grid-template-columns:minmax(0, 1fr) !important; column-gap:0 !important; row-gap:18px; }
+}
 `;
 
 export function injectOrreryStationFactions(doc = globalThis.document) {
