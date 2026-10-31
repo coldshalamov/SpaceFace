@@ -193,7 +193,7 @@ soak + one forced context loss shows zero terminal panes.
 
 Integration checkpoint 2026-10-31: world-entry serial projection and paused settlement publication are repaired. The committed 7f0 static-host public journey completes physical Ceres delivery, one 760-credit mission payment and completion, then F5 and title Continue restore the exact settled credits, cargo, standing, receipt and log. With the shared endpoint absent, actual browser quota handling stores the 4.61 MB serialized save as 1.43 MB gzip. Native worker checks also preserve the prior save after rejected raw and gzip writes, and serialize a delayed quota-failure acknowledgment before a newer save. The normal mounted-store public journey also passes, restoring the same exact settled identity while its large Quick primary is absent from localStorage. Both storage paths are accepted functionally; this is not a performance claim.
 
-The earlier ae3e travel run exposed repeated real Three.js buffer-resize exceptions; they did not recur in the static journey. The existing error-only resize diagnostic remains enabled for functional route diagnosis. Full 30-minute Adventure/context-loss qualification remains open. The latest baseline has 16 top-level passes but the Massline aggregate times out one physical-branch check: 26/27 children pass, total 177,338 ms against the unchanged 90-second budget. The paired runner now shares one identical 5,200-tick setup and passes both original checks in a focused run; the full timing gate remains failed and unremeasured after that change. See `INTEGRATION_COVERAGE.md`.
+The earlier ae3e travel run exposed repeated real Three.js buffer-resize exceptions; they did not recur in the static journey. The existing error-only resize diagnostic remains enabled for functional route diagnosis. Full 30-minute Adventure/context-loss qualification remains open. The earlier baseline failed in 177,338 ms against the unchanged 90-second budget, with 26/27 Massline children passing and one physical-branch timeout. After the paired runner shares one identical 5,200-tick setup, the integrated batch-ten baseline passes 17/17 in 63,812 ms. This closes the current baseline check, not gameplay performance or the older resize cause. See `INTEGRATION_COVERAGE.md`.
 
 **M9 — Load less, load later.** 28 MB of minified JS in the eager closure (`scripts/build-bundle.mjs`,
 esbuild splitting): lazy-load per mode and per screen; make `modelTruthCensus.generated.js` and
@@ -205,15 +205,19 @@ as JS) to a binary asset; take `src/testing/**` out of the retail graph (static 
 the load rows of README §4 meet their floor.
 
 Current measured working-tree checkpoint (2026-10-31): physical main static ESM closure is
-15,682,105 raw / 4,873,956 summed-gzip bytes across 184 outputs, with bundle receipt
-`ddc0c11602622599e82f233fc2ef463cdb2b5f40b139e2a2b5d697ee9e275d3c` (2808 files, 414 plans).
+15,490,568 raw / 4,816,400 summed-gzip bytes across 182 outputs, with batch-ten bundle receipt
+`77ff49a0f7a2d9314830a4030594712b5c5ce3dadba8825521bddfd17f9f5795` (2808 files, 414 plans).
 Batch nine is 200,318 raw / 62,355 summed-gzip bytes below batch eight. Pure attack readers now have
 one shared owner; six eager consumers no longer import arena construction through
 `adventureMigration.js`. Its legacy exports remain available. The emitted main closure excludes
 that migration module and `survivalArena.js`; four focused suites pass 59/59 and generated module
 preloads are synchronized. These working-tree builds include concurrent edits, so the exact delta
-is not isolated attribution. The 12 MB raw floor and runtime load bars remain open. Codex callers
-also use its one-shot request mailbox without importing the lazy screen.
+is not isolated attribution. Batch ten removes another 191,537 raw / 57,556 summed-gzip bytes:
+the claims facade and renderer now use a shared read model without importing the claims simulation
+owner and automation branch. Canonical claims uses the same readers, preserves the mutating owner
+and legacy exports, and retains all four published facade reads. Its focused suites pass 50/50.
+The 12 MB raw floor and runtime load bars remain open. Codex callers also use its one-shot request
+mailbox without importing the lazy screen.
 
 Optional new-game menu speculation now warms the fixed opening cast, chosen starter and scripted
 onboarding roster without enumerating positionless distant-sector recipe stubs. Materialized launch,

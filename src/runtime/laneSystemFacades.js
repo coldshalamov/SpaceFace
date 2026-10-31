@@ -1,6 +1,6 @@
 import { laneRpc, laneDomEvent } from '../core/simLaneCommands.js';
 import { economyReadView } from '../systems/economy.js';
-import { claimsReadView } from '../systems/claims.js';
+import { claimsReadView } from '../systems/claimsReadModel.js';
 import { drillReadView, CHARGE_PAYLOAD_ORDER } from '../systems/drill.js';
 import { asteroidSites, canInstallAsteroidSiteFromState, findAsteroidSiteFromState, getAsteroidSiteFromState, projectAsteroidSiteFromState } from '../systems/asteroidSites.js';
 import { careerLadders, listLadderDefinitions } from '../careers/ladders/careerLadders.js';

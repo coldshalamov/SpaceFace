@@ -675,7 +675,7 @@ import {
   DEPOT_PATROL_ID_PREFIX,
   DEPOT_PATROL_SHAPE_ID,
   DEPOT_PATROL_ZONE_RADIUS_WU,
-} from '../systems/claims.js';
+} from '../systems/claimsReadModel.js';
 import { uniqueWreckById } from '../data/uniqueWrecks.js';
 
 const PRESENTATION_SELF_REGISTERED_ENCOUNTER_IDS = new Set(
