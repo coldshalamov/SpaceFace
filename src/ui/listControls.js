@@ -26,29 +26,33 @@ function injectStyle() {
   // Deckplate-first with legacy fallbacks: where the system is injected these read --dp-*; anywhere
   // else they render the legacy values. Colours obey the ORRERY law (design/frontend/ORRERY.md §3.3):
   // warm bone is the rest light and the focus light of a field; amber is the Hand (never a focus
-  // ring, a chip selection or a sort state), and no blue literals — rest light is never blue. The
-  // edge steps rest (--dp-rule-hi) → hover (ink 45%) → focus (ink 85% + bone halo). Chips are
-  // buttons and get the global :focus-visible ring.
+  // ring, a chip selection or a sort state), and no blue literals.
+  // The field is the library's dp-field answer (deckplate/layout.js §4): NO box and NO pill — a
+  // hairline rail under the word that becomes the lamp on focus. Chips join the scale-line answer:
+  // bare etched words, the selection lit by ink and a bone underline.
   s.textContent = `
   .sf-lc { display:flex; align-items:center; gap:var(--dp-gap, var(--sp-2)); flex-wrap:wrap; margin-bottom:var(--dp-pad, var(--sp-3)); }
   .sf-lc__search { flex:1; min-width:160px; max-width:340px; font-family:inherit;
-    background:var(--dp-field, rgba(5,7,10,.6)); color:var(--dp-ink, var(--ink)); border:1px solid var(--dp-rule-hi, var(--panel-edge));
-    border-radius:var(--dp-r-instrument, var(--r-md)); padding:var(--dp-gap, var(--sp-2)) var(--dp-pad, var(--sp-3)); font-size:var(--dp-fs-data, var(--t-sm));
-    pointer-events:auto; transition:border-color var(--dp-d-settle, var(--dur)) var(--dp-ease-lamp, var(--ease)), box-shadow var(--dp-d-settle, var(--dur)) var(--dp-ease-lamp, var(--ease)); }
-  /* Hover authored (P6): the edge anticipates focus — above the rest rule, below focus, never while focused. */
-  .sf-lc__search:hover:not(:focus) { border-color:color-mix(in srgb, var(--dp-ink, var(--ink)) 45%, transparent); }
-  .sf-lc__search:focus { outline:none; border-color:color-mix(in srgb, var(--dp-ink, var(--ink)) 85%, transparent);
-    box-shadow:0 0 0 2px color-mix(in srgb, var(--dp-ink, var(--ink)) 16%, transparent); }
+    color:var(--dp-ink, var(--ink)); border:0; border-radius:0;
+    background:linear-gradient(0deg, var(--dp-rule-hi, var(--panel-edge)) 2px, transparent 0);
+    padding:var(--dp-gap, var(--sp-2)) var(--dp-pad, var(--sp-3)); font-size:var(--dp-fs-data, var(--t-sm));
+    pointer-events:auto; transition:box-shadow var(--dp-d-cut, var(--dur)) var(--dp-ease-lamp, var(--ease)); }
+  /* Hover authored (P6): the rail anticipates focus — above rest, below the lamp. */
+  .sf-lc__search:hover:not(:focus) { background:linear-gradient(0deg, color-mix(in srgb, var(--dp-ink, var(--ink)) 45%, transparent) 2px, transparent 0); }
+  .sf-lc__search:focus { outline:none;
+    background:linear-gradient(0deg, var(--dp-lamp, #f2b950) 2px, transparent 0);
+    box-shadow:0 8px 12px -10px var(--dp-lamp-bloom, rgb(242 185 80 / .5)); }
   /* Authored placeholder tint — the browser default gray reads low-contrast on the dark face. */
   .sf-lc__search::placeholder { color:var(--dp-ink-mute, var(--ink-mute)); opacity:1; }
   .sf-lc__chips { display:flex; gap:calc(var(--dp-u, 4px) * 1); flex-wrap:wrap; }
-  .sf-lc__chip { font-family:inherit; cursor:pointer; pointer-events:auto; border-radius:var(--dp-r-instrument, var(--r-pill));
-    padding:calc(var(--dp-u, 4px) * .75) calc(var(--dp-u, 4px) * 2.75); font-size:var(--dp-fs-etch, var(--t-xs)); letter-spacing:.04em;
-    background:var(--dp-field-ink, rgba(232,226,212,.08)); color:var(--dp-ink-dim, var(--ink-dim)); border:1px solid var(--dp-rule, var(--panel-edge));
-    transition:color var(--dp-d-cut, var(--dur)) var(--dp-ease-lamp, var(--ease)), border-color var(--dp-d-cut, var(--dur)) var(--dp-ease-lamp, var(--ease)), background-color var(--dp-d-cut, var(--dur)) var(--dp-ease-lamp, var(--ease)); }
-  .sf-lc__chip:hover { color:var(--dp-ink, var(--ink)); border-color:var(--dp-rule-hi, var(--panel-edge-2)); }
-  /* Active chip is a selection: bone field, full ink word — amber stays the one Hand. */
-  .sf-lc__chip.active { color:var(--dp-ink, var(--ink)); background:var(--dp-field-ink-hi, rgba(232,226,212,.14)); border-color:color-mix(in srgb, var(--dp-ink, var(--ink)) 55%, transparent); }
+  .sf-lc__chip { font-family:inherit; cursor:pointer; pointer-events:auto; border:0; border-radius:0;
+    padding:calc(var(--dp-u, 4px) * .75) calc(var(--dp-u, 4px) * 1.75); font-size:var(--dp-fs-etch, var(--t-xs)); letter-spacing:.04em;
+    background:transparent; color:var(--dp-ink-dim, var(--ink-dim));
+    transition:color var(--dp-d-cut, var(--dur)) var(--dp-ease-lamp, var(--ease)), box-shadow var(--dp-d-cut, var(--dur)) var(--dp-ease-lamp, var(--ease)); }
+  .sf-lc__chip:hover { color:var(--dp-ink, var(--ink)); }
+  /* Active chip is a selection: full ink word on a bone underline — no box, no pill. */
+  .sf-lc__chip.active { color:var(--dp-ink, var(--ink));
+    box-shadow:inset 0 -2px 0 0 color-mix(in srgb, var(--dp-ink, var(--ink)) 55%, transparent); }
   /* Sortable header cell — used inside existing .st-row-head style grids */
   .sf-sort { cursor:pointer; pointer-events:auto; user-select:none; display:inline-flex;
     align-items:center; gap:3px; transition:color var(--dp-d-cut, var(--dur)) var(--dp-ease-lamp, var(--ease));

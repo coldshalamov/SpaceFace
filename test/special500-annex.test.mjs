@@ -55,7 +55,7 @@ function fixtureState() {
 test('annex is exactly 50 entries: the 20 ratified bench ids plus 30 SPX-D ids', () => {
   assert.equal(SPECIAL500_ANNEX.length, 50);
   assert.equal(SPECIAL500.length, 500, 'the ratified catalog stays exactly 500');
-  assert.equal(SPECIAL500_ALL.length, 550);
+  assert.equal(SPECIAL500_ALL.length, 750, 'the sweep set is base + annex + annex wave 2');
   assert.ok(SPECIAL500_COMPLETE);
 
   const annexIds = new Set(SPECIAL500_ANNEX.map((e) => e.id));

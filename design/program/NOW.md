@@ -11,4 +11,4 @@ restore superseded dispatch, worktree, provider, review or verification procedur
 
 | Task | Thread | State | Exact paths being changed now | Next terminal action |
 |---|---|---|---|---|
-| INFERENCE 20 — unscoped look-then-rotate batch (board seed directions, all lanes' free paths) | zcode-inf20c | active 2026-10-29 | per-unit exact paths, each committed by pathspec as it lands; first unit: src/systems/stationBroadcast.js + new src/data/stationMarketBroadcast.js + new test/inf-station-market-broadcast.test.mjs | 20 complete production units: implement → focused test → pathspec commit+push → inference-record; every currently-dirty foreign path avoided |
+<!-- zcode-inf20c released 2026-10-29: INFERENCE 20 complete — 20/20 units landed and pushed (2e5bf4c5633 … e5ac485619fd), each recorded via inference-record; see design/program/inference-memory.json and the sitting's final report. -->

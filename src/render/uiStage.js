@@ -37,6 +37,7 @@ import { canvasIsProtectedDuringFreeze } from '../core/presentationFreeze.js';
 import { activeOwnedShip } from '../data/hullIdentity.js';
 import { loadAuthoredPart as loadAuthoredPartLive } from './assetLoader.js';
 import { getAssetResidency } from './assetResidency.js';
+import { detachStashedStaleWebGlDisposeListeners } from './contextResourceLifecycle.js';
 import { wholeShipVisualForEntity } from './partsLibrary.js';
 import { dedupWarn } from '../core/warnDedup.js';
 import { isReleaseAssetMode } from './releaseMode.js';
@@ -614,6 +615,15 @@ function disposeBuilt(dying, reason) {
   // A late asynchronous live build may settle after this renderer is restored. Preserve the
   // retirement generation on the record so its eventual disposer cannot target the fresh GL.
   if (abandonGpu) dying.contextLostRetirement = true;
+  if (!abandonGpu) {
+    // The stage is outside the flight scene's loss-time walk. Strip only the exact old-manager
+    // callbacks before disposing its own geometry and separately owned shadow/capture targets.
+    const resources = [dying.scene, dying.captureTarget, dying.rig?.depthMaterial];
+    for (const light of dying.rig?.lights || []) {
+      if (light?.shadow?.map) resources.push(light.shadow.map);
+    }
+    detachStashedStaleWebGlDisposeListeners(resources);
+  }
   if (!abandonGpu) dying.captureTarget?.dispose();
   dying.captureTarget = null;
   if (dying.request?.control && dying.request.control.renderAt === dying.capture) dying.request.control.renderAt = null;

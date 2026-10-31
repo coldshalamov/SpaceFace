@@ -40,7 +40,7 @@ import { syncScrollExtent } from '../orrery/scrollExtent.js';
 import { dressLampKey } from '../orrery/lampKey.js';
 import { uniqueWreckById } from '../../data/uniqueWrecks.js';
 import { knownAces, stanceForRecord, rememberedBarkFor } from '../../data/namedAces.js';
-import { FACTION_LABELS } from '../../data/encounters.js';
+import { FACTION_LABELS } from '../../data/encounterIdentity.js';
 import { logbookEntries } from '../../chronicler/logbook.js';
 import { logbookStill } from '../logbookMedia.js';
 import { decodedSuhlClauses, namesForTheDead } from '../../data/discoveryPresentation.js';

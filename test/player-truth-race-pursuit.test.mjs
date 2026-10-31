@@ -39,6 +39,13 @@ test('race pilot reads the painted map target and text fallback only', () => {
     globalThis.document = { querySelector: selector => selector === '#race-tape' ? dom.root : null };
     const textCue = readVisibleRaceCue();
     assert.deepEqual(textCue, { direction: 'left', bearingDeg: -30, distanceWU: 240, hintText: 'LEFT 240 wu' });
+
+    dom = raceDom({ target: [0, 0], ship: [0, 0, 90], hint: 'AHEAD 358 u' });
+    dom.root.querySelector = selector => selector === '.race-tape-map svg' ? null : null;
+    globalThis.document = { querySelector: selector => selector === '#race-tape' ? dom.root : null };
+    const renderedUnitCue = readVisibleRaceCue();
+    assert.equal(renderedUnitCue.distanceWU, 358,
+      'the public HUD unit is parsed so the pilot can use its near-gate control');
   } finally {
     if (oldDocument === undefined) delete globalThis.document; else globalThis.document = oldDocument;
   }

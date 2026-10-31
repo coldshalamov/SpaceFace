@@ -690,7 +690,16 @@ export function pinnedSpans(trace, samples) {
   const T = THRESHOLDS; const spans = []; let i = 0;
   while (i < samples.length) {
     let j = i; let expect = 0;
-    while (j + 1 < samples.length && samples[j + 1].sim - samples[i].sim <= 1.0) { j++; expect += Math.hypot(samples[j].p.vx, samples[j].p.vz) * Math.max(0, samples[j].sim - samples[j - 1].sim); }
+    while (j + 1 < samples.length && samples[j + 1].sim - samples[i].sim <= 1.0) {
+      j++;
+      const dt = Math.max(0, samples[j].sim - samples[j - 1].sim);
+      const priorSpeed = Math.hypot(samples[j - 1].p.vx, samples[j - 1].p.vz);
+      const currentSpeed = Math.hypot(samples[j].p.vx, samples[j].p.vz);
+      // Trace samples are irregular and may span a late acceleration or impulse. Integrating
+      // only the later endpoint treats that final speed as if it held for the whole interval,
+      // which can falsely label an answering ship as pinned.
+      expect += (priorSpeed + currentSpeed) * 0.5 * dt;
+    }
     const dur = samples[j].sim - samples[i].sim;
     if (dur >= 0.8 && expect >= T.pinnedMinExpect) {
       let path = 0; for (let k = i + 1; k <= j; k++) path += Math.hypot(samples[k].p.x - samples[k - 1].p.x, samples[k].p.z - samples[k - 1].p.z);

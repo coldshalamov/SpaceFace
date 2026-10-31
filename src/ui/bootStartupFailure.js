@@ -101,11 +101,11 @@ async function defaultFetchText(href) {
   } catch { return null; } // a server that cannot answer cannot be diagnosed either
 }
 
-// Re-parse ONE module's own text by importing it as a blob and returning whatever it threw.
-// A malformed file throws SyntaxError. A healthy file may have no static imports, so prepend
-// a guaranteed-unresolvable static import: the module grammar is still parsed, but dependency
-// resolution fails before any of the candidate's top-level code (including dynamic imports) runs.
-// The SyntaxError call is made by the caller.
+// Ask the browser's real module parser to parse ONE module's own text without evaluating it.
+// Syntax is checked before linking, so a malformed candidate still throws SyntaxError. For a
+// syntactically valid candidate, the prepended unresolved static dependency fails linking before
+// its body runs; this matters because evaluating fetched source as a blob would make its ordinary
+// relative dynamic imports reject and could trigger unrelated top-level work on the failure path.
 export function startupParseOnlySource(sourceText) {
   return `import 'spaceface-startup-diagnostics:parse-only';\n${sourceText}`;
 }

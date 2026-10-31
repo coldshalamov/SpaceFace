@@ -82,6 +82,7 @@ export const RELEASE_COPY_MAPPINGS = Object.freeze([
   Object.freeze({ source: 'assets/wreck-court', destination: 'assets/wreck-court' }),
   Object.freeze({ source: 'src/data/scenarios', destination: 'data/scenarios' }),
   Object.freeze({ source: 'src/data/modelTruthCensus.json', destination: 'src/data/modelTruthCensus.json' }),
+  Object.freeze({ source: 'src/sim/titleAttractTapeData.json', destination: 'src/sim/titleAttractTapeData.json' }),
   Object.freeze({ source: 'src/localization/catalogs/en-US.generated.json', destination: 'src/localization/catalogs/en-US.generated.json' }),
   Object.freeze({ source: 'src/localization/barks.generated.json', destination: 'src/localization/barks.generated.json' }),
   Object.freeze({ source: 'vendor/addons/libs', destination: 'vendor/addons/libs' }),

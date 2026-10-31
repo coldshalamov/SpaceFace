@@ -39,7 +39,7 @@ import { createLineStrainReadout } from './lineStrainReadout.js';
 // INF-078: the throw preview names protected bodies inside the predicted corridor using
 // the law's own protected definition and the release geometry's advisory corridor. Read
 // only on both sides — the cue never touches release authority.
-import { isLawProtectedBody } from '../systems/lawSecurity.js';
+import { isLawProtectedBody } from '../law/protectedBodies.js';
 import { isWreckLike } from '../systems/scanner.js';
 import { targetDisplayName } from './targetPanel.js';
 import { isMassSeedTetherEligible, massSeedLatchPreview } from '../systems/massSeed.js';
@@ -193,6 +193,32 @@ export function massSeedPreviewRead(entity) {
 
 export function massSeedPreviewWord(entity) {
   const read = massSeedPreviewRead(entity);
+  return read ? read.word : '';
+}
+
+// F4 — a body you can latch says what the swing will feel like BEFORE the line lands: the
+// target's share of the coupled pair (the bridle's own fraction, m_t / (m_p + m_t)) bands the
+// verdict, and the mass prints in the target panel's own bare-number convention. Seeds keep
+// their VERB-25 word; stations are not latch candidates and read nothing.
+const MASS_BANDS = Object.freeze([
+  { share: 0.8, word: "WON'T BUDGE" },
+  { share: 0.55, word: 'HEAVY HAUL' },
+  { share: 0.35, word: 'EVEN PULL' },
+]);
+
+export function massPreviewRead(entity, playerMass) {
+  const body = entity && entity.physicsBody;
+  const targetMass = finite((body && Number.isFinite(body.mass)) ? body.mass : (entity && entity.mass));
+  const selfMass = finite(playerMass);
+  if (!(targetMass > 0) || !(selfMass > 0)) return null;
+  const share = targetMass / (selfMass + targetMass);
+  const band = (MASS_BANDS.find((b) => share >= b.share) || { word: 'SWINGS LOOSE' }).word;
+  const shown = Number.isInteger(targetMass) ? targetMass : Math.round(targetMass * 100) / 100;
+  return { mass: targetMass, share, word: `MASS ${shown} · ${band}` };
+}
+
+export function massPreviewWord(entity, playerMass) {
+  const read = massPreviewRead(entity, playerMass);
   return read ? read.word : '';
 }
 
@@ -1312,8 +1338,11 @@ export const masslineHud = {
       selected.seedStateWord = seedPreview.word;
     }
     const seedText = masslineSeedPreviewText(seedPreview);
-    const text = seedText || bracketReadText(read);
-    const paint = seedText || bracketPaintText(read);
+    // F4: a latchable body with mass answers the swing question on the same caption line.
+    const playerMass = finite(player && player.physicsBody && player.physicsBody.mass) || finite(player && player.mass);
+    const massText = !seedPreview && ready ? massPreviewWord(target, playerMass) : '';
+    const text = seedText || massText || bracketReadText(read);
+    const paint = seedText || massText || bracketPaintText(read);
     const captionWidth = estimateCaptionWidth(paint || text);
     const placed = placeBracketWords(
       { x: cueX, y: cueY },

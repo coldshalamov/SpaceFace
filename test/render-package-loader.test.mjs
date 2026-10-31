@@ -687,6 +687,45 @@ test('loader disposal cancels an in-flight package generation and releases decod
   await assert.rejects(loader.load(packageMetadata()), /loader has been disposed/i);
 });
 
+test('late package progress and decode completion retain cancellation safety after admission settles', async () => {
+  const disposals = { geometry: 0, material: 0, texture: 0 };
+  const decoded = decodedFixture(disposals);
+  let resolveDecode;
+  let markDecodeStarted;
+  let reportProgress;
+  let ownerProgressCalls = 0;
+  const decodeStarted = new Promise((resolve) => { markDecodeStarted = resolve; });
+  const loader = createRenderPackageLoader({
+    loadGlb: async (_url, _metadata, onProgress) => {
+      reportProgress = onProgress;
+      markDecodeStarted();
+      return new Promise((resolve) => { resolveDecode = resolve; });
+    },
+  });
+
+  const pending = loader.load(packageMetadata(), { onFetchProgress: () => { ownerProgressCalls++; } });
+  await decodeStarted;
+  assert.equal(loader.dispose('fixture-late-decode-cancel'), true);
+  await assert.rejects(pending, { name: 'AbortError' },
+    'the caller retains the original cancellation verdict');
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(typeof reportProgress, 'function');
+  assert.doesNotThrow(() => reportProgress(),
+    'a late decoder progress callback must remain cancellation-safe after the cache entry detaches admission');
+  assert.equal(ownerProgressCalls, 0, 'late progress does not call back into a completed/canceled owner scope');
+
+  resolveDecode({ scene: decoded.scene });
+  await new Promise((resolve) => setImmediate(resolve));
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.doesNotThrow(() => reportProgress(),
+    'progress arriving after the underlying decode settles is ignored safely');
+  assert.deepEqual(disposals, { geometry: 1, material: 1, texture: 1 },
+    'a late decoded payload is disposed instead of being published');
+  assert.equal(loader.diagnostics().cacheEntries, 0, 'the canceled generation is not cached');
+  assert.equal(loader.diagnostics().residency.residentAssets, 0,
+    'the late decode does not publish residency');
+});
+
 test('loader disposal during content hashing cannot admit a later decode', async () => {
   const metadata = packageMetadata();
   let decodeCount = 0;

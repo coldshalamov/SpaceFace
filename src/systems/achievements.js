@@ -33,6 +33,7 @@ import {
   isSharedPlayerStoreKey,
   pushSharedPlayerStore,
   sharedPlayerStoreAvailable,
+  sharedPlayerStoreCapability,
 } from '../save/sharedPlayerStore.js';
 import { loadCrucibleMeta, recordKey } from './survivalRecords.js';
 import { isOnboardingTeaching } from '../ui/voiceArbiter.js';
@@ -355,7 +356,7 @@ export function readStoredAchievementSavedAt(storage = liveStorage()) {
  * `savedAt` pins the envelope time (a pre-sync write keeps the stored time); `push: false` keeps the
  * write local to this shell.
  */
-export function saveAchievementBag(bag, storage = liveStorage(), { savedAt: pinnedSavedAt = null, push = true } = {}) {
+export function saveAchievementBag(bag, storage = liveStorage(), { savedAt: pinnedSavedAt = null, push = true, onPush = null, keepalive = false } = {}) {
   if (!storage || typeof storage.setItem !== 'function') return null;
   const merged = boundBests(mergeAchievementBags(bag, loadAchievementBag(storage)));
   const savedAt = typeof pinnedSavedAt === 'string' && pinnedSavedAt ? pinnedSavedAt : nowIso();
@@ -378,7 +379,8 @@ export function saveAchievementBag(bag, storage = liveStorage(), { savedAt: pinn
   }
   if (push && isSharedPlayerStoreKey(ACHIEVEMENTS_STORAGE_KEY) && sharedPlayerStoreAvailable()) {
     try {
-      const pending = pushSharedPlayerStore({ [ACHIEVEMENTS_STORAGE_KEY]: json });
+      const pending = pushSharedPlayerStore({ [ACHIEVEMENTS_STORAGE_KEY]: json }, { keepalive });
+      if (typeof onPush === 'function') onPush(pending);
       if (pending && typeof pending.catch === 'function') pending.catch(() => {});
     } catch {
       // sharing is best-effort; the local bag already wrote
@@ -844,6 +846,8 @@ export function installAchievements({
   let lastNotice = null;
   let saveTimer = null;
   let disposed = false;
+  let preparedForQuit = false;
+  const pendingMirrors = new Set();
   let bag = loadAchievementBag(store);
   let crucible = crucibleFactsFromProfile(null);
   // Until the save system's first shared-store sync lands, the store may still hold the other
@@ -962,17 +966,23 @@ export function installAchievements({
     return profile;
   }
 
-  function saveNow() {
+  function saveNow({ keepalive = false } = {}) {
     if (saveTimer !== null) {
       try { clearTimeout(saveTimer); } catch { /* ignore */ }
       saveTimer = null;
     }
     checkpointSectorStamp();
-    const merged = saveAchievementBag(bag, store, synced ? {} : { savedAt: preSyncSavedAt, push: false });
+    let mirror = null;
+    const merged = saveAchievementBag(bag, store, synced ? { keepalive, onPush: (pending) => {
+      mirror = Promise.resolve(pending).then((ok) => ok === true, () => false);
+      pendingMirrors.add(mirror);
+      mirror.then(() => pendingMirrors.delete(mirror));
+    } } : { savedAt: preSyncSavedAt, push: false });
     if (merged) {
       bag = merged;
       reconcileCareerTotals();
     }
+    return { localSaved: !!merged, mirror };
   }
 
   function scheduleSave() {
@@ -1203,7 +1213,7 @@ export function installAchievements({
   let onPageHide = null;
   try {
     if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
-      onPageHide = () => { if (!disposed) saveNow(); };
+      onPageHide = () => { if (!disposed && !preparedForQuit) saveNow({ keepalive: true }); };
       window.addEventListener('pagehide', onPageHide);
       window.addEventListener('beforeunload', onPageHide);
     }
@@ -1231,9 +1241,25 @@ export function installAchievements({
     isUnlocked: (id) => !!(bag && bag.unlocked[id]),
     pendingNoticeCount: () => pendingNotice.length,
     flush: () => { if (!disposed) saveNow(); },
+    async prepareForQuit() {
+      if (disposed) return { ok: false, reason: 'achievements-disposed' };
+      if (!synced && sharedPlayerStoreAvailable() && sharedPlayerStoreCapability().status !== 'absent') {
+        return { ok: false, reason: 'achievements-sync-pending' };
+      }
+      const result = saveNow();
+      if (!result.localSaved) return { ok: false, reason: 'achievements-local-write-failed' };
+      const pending = [...pendingMirrors];
+      const outcomes = await Promise.all(pending);
+      const localOnly = !sharedPlayerStoreAvailable() || sharedPlayerStoreCapability().status === 'absent';
+      if ((!localOnly && !result.mirror) || outcomes.some((ok) => !ok)) {
+        return { ok: false, reason: 'achievements-mirror-failed', localSaved: true };
+      }
+      preparedForQuit = true;
+      return { ok: true };
+    },
     dispose({ flush = true } = {}) {
       if (disposed) return;
-      if (flush) {
+      if (flush && !preparedForQuit) {
         settleSectorStamp();
         saveNow();
       }

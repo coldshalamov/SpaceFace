@@ -55,6 +55,8 @@ test('every index.html source modulepreload points to a shipped file', () => {
   assert.ok(targets.length > 0, 'must inspect real source modulepreloads');
   assert.ok(targets.some((target) => target.startsWith('src/data/encounters/')),
     'must include the encounter preload wave');
+  assert.ok(!targets.includes('src/core/registry.js'),
+    'the full simulation registry stays on its ordinary dynamic-import fallback path');
   assert.deepEqual(targets.filter((target) => target.startsWith('src/render/characters/ruckusMeshData/')), [],
     'RU-7 payloads stay off unconditional source preloads and load through explicit warm demand');
   const missing = missingTargets(targets, (target) => {

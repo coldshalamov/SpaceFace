@@ -1,14 +1,14 @@
 #!/usr/bin/env node
-// Keeps index.html's <link rel="modulepreload"> waves in sync with the transitive static-import
-// closure of src/main.js and src/core/registry.js.
+// Keeps index.html's generated <link rel="modulepreload"> source closure in sync with the eager
+// static-import closure of src/main.js. Hand-maintained hints remain explicit in index.html.
 //
 // Why: on the unbundled path the transitive src graph is otherwise discovered fetch-by-fetch
-// during the post-media eval cascade. modulepreload is fetch-only (no eval, no execution), so
+// during the post-media eval cascade. modulepreload fetches and prepares modules without executing them, so
 // preloading the whole closure moves every discovery fetch up to document parse and leaves
 // the cascade fetch-free — without changing the artwork-first evaluation contract.
 //
 // Usage:
-//   node scripts/sync-modulepreload.mjs          — rewrite the generated registry-wave block
+//   node scripts/sync-modulepreload.mjs          — rewrite the generated eager source block
 //   node scripts/sync-modulepreload.mjs --check  — diff only; exit 1 on any drift
 
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
@@ -18,7 +18,6 @@ import { dirname, join, normalize } from 'node:path';
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const INDEX = join(root, 'index.html');
 const MAIN = join(root, 'src/main.js');
-const REGISTRY = join(root, 'src/core/registry.js');
 
 const BEGIN = '<!-- modulepreload:registry:begin -->';
 const END = '<!-- modulepreload:registry:end -->';
@@ -105,21 +104,20 @@ if (importmapMatch) {
 
 const existing = preloadedHrefs(htmlSansBlock);
 const mainImports = staticImports(MAIN, importmap);
-const registryImports = staticImports(REGISTRY, importmap);
 
-// Registry wave: the transitive static-import closure of main.js + registry.js, minus
-// anything already preloaded by the hand-maintained waves. The eval cascade would fetch
-// exactly this set — one hop was never enough (depth-1 is ~17% of the closure).
-// Walk through already-preloaded files too: the cascade fetches their unseen imports just
-// as lazily, so `visited` (the walk guard) must not collapse into `seen` (the wanted guard).
+// Eager source closure: follow main.js only. Existing hand-maintained hints are still honored by
+// the document but are not traversal roots; expanding their lazy routes here pulled the whole
+// simulation catalog into the boot hint wave. The whole simulation registry is also intentionally
+// absent: main.js imports it dynamically only for the in-process fallback, after the default
+// presentation registry / worker lane has failed or been declined. Normal imports fetch each
+// deferred route's dependencies when that route is actually selected.
 const seen = new Set(existing);
 const visited = new Set();
 const wanted = [];
 // BFS in source order: the queue holds `staticImports` results verbatim, so sibling order
-// matches each importer's own order. The hand-maintained wave seeds the walk too — its
-// files' unseen imports fetch just as lazily inside eval (e.g. KTX2Loader's transcoder
-// deps, three.module.js's three.core.js).
-const queue = [...mainImports, ...registryImports, ...existing];
+// matches each importer's own order. Explicit document hints suppress duplicate entries through
+// `seen`, but their unrelated module graphs do not seed this eager-closure walk.
+const queue = [...mainImports];
 while (queue.length) {
   const href = queue.shift();
   if (visited.has(href)) continue;
@@ -173,8 +171,7 @@ if (!existsSync(join(root, 'node_modules'))) {
 wanted.sort();
 
 // Main wave drift: every static import of main.js should appear as a modulepreload somewhere
-// in the document (hand-maintained list — this check only reports, never rewrites it). With
-// the closure now generated, "missing" means uncovered by either wave — i.e. unreadable.
+// in the document (hand-maintained list — this check only reports, never rewrites it).
 const wantedSetForMain = new Set(wanted);
 const mainMissing = [...new Set(mainImports)].filter((href) => !existing.has(href) && !wantedSetForMain.has(href));
 const block = [
@@ -197,20 +194,20 @@ if (check) {
     bad = true;
     const wantedSet = new Set(wanted);
     const currentSet = new Set([...current.matchAll(/href="([^"]+)"/g)].map((m) => m[1]));
-    for (const href of wantedSet) if (!currentSet.has(href)) console.error(`[modulepreload] missing registry import: ${href}`);
-    for (const href of currentSet) if (!wantedSet.has(href)) console.error(`[modulepreload] stale registry preload: ${href}`);
-    if (!hasBlock) console.error('[modulepreload] no managed registry block found');
+    for (const href of wantedSet) if (!currentSet.has(href)) console.error(`[modulepreload] missing source-closure import: ${href}`);
+    for (const href of currentSet) if (!wantedSet.has(href)) console.error(`[modulepreload] stale source-closure preload: ${href}`);
+    if (!hasBlock) console.error('[modulepreload] no managed source-closure block found');
   }
   if (bad) {
     console.error('[modulepreload] run `node scripts/sync-modulepreload.mjs` to regenerate.');
     process.exit(1);
   }
-  console.log(`[modulepreload] in sync — ${mainImports.length} main + ${wanted.length} registry imports covered.`);
+  console.log(`[modulepreload] in sync — ${mainImports.length} main + ${wanted.length} source-closure imports covered.`);
   process.exit(0);
 }
 
 if (!drift && !mainMissing.length) {
-  console.log(`[modulepreload] already in sync (${wanted.length} registry imports).`);
+  console.log(`[modulepreload] already in sync (${wanted.length} eager source imports).`);
   process.exit(0);
 }
 
@@ -226,4 +223,4 @@ if (mainMissing.length) {
   console.log('[modulepreload] note: hand-maintained main wave is missing:');
   for (const href of mainMissing) console.log(`  ${href}`);
 }
-console.log(`[modulepreload] wrote ${wanted.length} registry-wave preloads to index.html.`);
+console.log(`[modulepreload] wrote ${wanted.length} source-closure preloads to index.html.`);

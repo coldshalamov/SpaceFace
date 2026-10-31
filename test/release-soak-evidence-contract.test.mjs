@@ -19,6 +19,7 @@ import {
   summarizeSamples,
   strictWorktreeFingerprint,
   strictRuntimeInputFingerprint,
+  diffRuntimeInputFiles,
   validateReleaseSoakEvidence,
   validatePerformanceEvidence,
 } from '../scripts/lib/releaseSoakContracts.mjs';
@@ -26,6 +27,7 @@ import {
   canonicalPostGcOwnerRows,
   createReleaseSoakCycleRunner,
   evaluateSourceStability,
+  readSourceOverlayCoverage,
   POST_GC_OWNER_ROW_LIMIT,
   postGcOwnerEvaluateArgument,
   readReleaseSoakBaselineMemory,
@@ -385,11 +387,11 @@ test('full pinned overlays use served identity while partial overlays remain wor
   };
   const stableOverlay = evaluateSourceStability({
     baselineSource: { identity },
-    coverage: { captureScope: 'all-runtime', fullRuntime: true, pinnedPathCount: 2220 },
+    coverage: { captureScope: 'all-runtime', valid: true, fullRuntime: true, pinnedPathCount: 2220 },
     servedAtStart: { ...identity },
     servedAtEnd: { ...identity },
     worktreeStable: false,
-    uncoveredWorktreeStable: true,
+    uncoveredRuntimeInputsStable: true,
     uncoveredHeadStable: true,
   });
   assert.equal(stableOverlay.mode, 'served-overlay');
@@ -397,55 +399,55 @@ test('full pinned overlays use served identity while partial overlays remain wor
 
   const changedOverlay = evaluateSourceStability({
     baselineSource: { identity },
-    coverage: { captureScope: 'all-runtime', fullRuntime: true, pinnedPathCount: 2220 },
+    coverage: { captureScope: 'all-runtime', valid: true, fullRuntime: true, pinnedPathCount: 2220 },
     servedAtStart: { ...identity },
     servedAtEnd: { ...identity, sourceOverlayDigest: 'c'.repeat(64) },
     worktreeStable: true,
-    uncoveredWorktreeStable: true,
+    uncoveredRuntimeInputsStable: true,
     uncoveredHeadStable: true,
   });
   assert.equal(changedOverlay.pass, false, 'a served-byte identity change remains fatal');
 
   const partialOverlay = evaluateSourceStability({
     baselineSource: { identity },
-    coverage: { captureScope: 'performance-paths', fullRuntime: false },
+    coverage: { captureScope: 'performance-paths', valid: true, fullRuntime: false },
     servedAtStart: { ...identity },
     servedAtEnd: { ...identity },
     worktreeStable: false,
   });
   assert.equal(partialOverlay.pass, false, 'partial overlays still reject live worktree drift');
 
-  const unpinnedStyleChange = evaluateSourceStability({
+  const uncoveredAssetChange = evaluateSourceStability({
     baselineSource: { identity },
-    coverage: { captureScope: 'all-runtime', fullRuntime: true, pinnedPathCount: 2220 },
+    coverage: { captureScope: 'all-runtime', valid: true, fullRuntime: true, pinnedPathCount: 2220 },
     servedAtStart: { ...identity },
     servedAtEnd: { ...identity },
     worktreeStable: false,
-    uncoveredWorktreeStable: false,
+    uncoveredRuntimeInputsStable: false,
     uncoveredHeadStable: true,
   });
-  assert.equal(unpinnedStyleChange.pass, false,
-    'a live styles/kit.css mutation outside the pinned source graph remains fatal');
+  assert.equal(uncoveredAssetChange.pass, false,
+    'an asset outside the source overlay remains a required stable runtime input');
 
-  const unpinnedModuleChange = evaluateSourceStability({
+  const uncoveredRuntimeFileChange = evaluateSourceStability({
     baselineSource: { identity },
-    coverage: { captureScope: 'all-runtime', fullRuntime: true, pinnedPathCount: 2220 },
+    coverage: { captureScope: 'all-runtime', valid: true, fullRuntime: true, pinnedPathCount: 2220 },
     servedAtStart: { ...identity },
     servedAtEnd: { ...identity },
     worktreeStable: false,
-    uncoveredWorktreeStable: false,
+    uncoveredRuntimeInputsStable: false,
     uncoveredHeadStable: true,
   });
-  assert.equal(unpinnedModuleChange.pass, false,
-    'a newly-added runtime module outside the pinned manifest remains fatal');
+  assert.equal(uncoveredRuntimeFileChange.pass, false,
+    'a runtime file outside the pinned source manifest remains fatal');
 
   const headDrift = evaluateSourceStability({
     baselineSource: { identity },
-    coverage: { captureScope: 'all-runtime', fullRuntime: true, pinnedPathCount: 2220 },
+    coverage: { captureScope: 'all-runtime', valid: true, fullRuntime: true, pinnedPathCount: 2220 },
     servedAtStart: { ...identity },
     servedAtEnd: { ...identity },
     worktreeStable: false,
-    uncoveredWorktreeStable: true,
+    uncoveredRuntimeInputsStable: true,
     uncoveredHeadStable: false,
   });
   assert.equal(headDrift.pass, false, 'a HEAD change remains fatal even when served bytes match');
@@ -487,14 +489,20 @@ test('primary evidence accepts worktree drift only with a stable full-runtime ov
     requested: identity,
     served: { ...identity },
     servedAtEnd: { ...identity },
-    coverage: { captureScope: 'all-runtime', fullRuntime: true, pinnedPathCount: 2220 },
+    coverage: { captureScope: 'all-runtime', valid: true, fullRuntime: true, pinnedPathCount: 2220 },
+  };
+  evidence.runtimeInputs = {
+    scope: 'uncovered-runtime-inputs',
+    start: { schema: 'spaceface.releaseSoakRuntimeInputs.v1', digest: 'e'.repeat(64), fileCount: 4, missingPaths: [] },
+    end: { schema: 'spaceface.releaseSoakRuntimeInputs.v1', digest: 'e'.repeat(64), fileCount: 4, missingPaths: [] },
+    changedPaths: [],
   };
   evidence.sourceStability = {
     mode: 'served-overlay',
     overlayCoversRuntime: true,
     worktreeStable: false,
     servedSourceStable: true,
-    uncoveredWorktreeStable: true,
+    uncoveredRuntimeInputsStable: true,
     uncoveredHeadStable: true,
     pass: true,
   };
@@ -522,8 +530,10 @@ test('primary evidence accepts unrelated Git drift only when scoped runtime inpu
     id: `0123456789ab-${'b'.repeat(16)}`,
   };
   evidence.runtimeInputs = {
-    start: { schema: 'spaceface.releaseSoakRuntimeInputs.v1', digest, fileCount: 18000 },
-    end: { schema: 'spaceface.releaseSoakRuntimeInputs.v1', digest, fileCount: 18000 },
+    scope: 'runtime-inputs',
+    start: { schema: 'spaceface.releaseSoakRuntimeInputs.v1', digest, fileCount: 18000, missingPaths: [] },
+    end: { schema: 'spaceface.releaseSoakRuntimeInputs.v1', digest, fileCount: 18000, missingPaths: [] },
+    changedPaths: [],
   };
   evidence.sourceStability = {
     mode: 'runtime-inputs',
@@ -540,6 +550,34 @@ test('primary evidence accepts unrelated Git drift only when scoped runtime inpu
   const changedResult = validateReleaseSoakEvidence(changed);
   assert.equal(changedResult.pass, false);
   assert(changedResult.failures.some((failure) => /worktree fingerprint changed/i.test(failure)));
+});
+
+test('full-runtime overlay coverage rejects missing or unknown path policy', async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'sf-release-soak-overlay-coverage-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const manifestPath = path.join(root, 'baseline.json');
+  const base = {
+    captureScope: 'all-runtime',
+    runtimePathPolicy: 'index.html + vendor/three.module.js + src/**/*.{js,json} + scripts/lib/**/*.{js,mjs,cjs} + styles/**/*',
+    files: [{ path: 'index.html' }],
+    omittedPaths: [],
+  };
+  await writeFile(manifestPath, JSON.stringify(base), 'utf8');
+  const supported = await readSourceOverlayCoverage({ path: manifestPath });
+  assert.equal(supported.valid, true);
+  assert.equal(supported.fullRuntime, true);
+
+  await writeFile(manifestPath, JSON.stringify({ ...base, runtimePathPolicy: 'unknown future policy' }), 'utf8');
+  const unknown = await readSourceOverlayCoverage({ path: manifestPath });
+  assert.equal(unknown.valid, false);
+  assert.equal(unknown.fullRuntime, false);
+
+  const missing = { ...base };
+  delete missing.omittedPaths;
+  await writeFile(manifestPath, JSON.stringify(missing), 'utf8');
+  const incomplete = await readSourceOverlayCoverage({ path: manifestPath });
+  assert.equal(incomplete.valid, false);
+  assert.equal(incomplete.fullRuntime, false);
 });
 
 test('runtime input fingerprint follows app, worker, asset, and launch bytes but ignores docs', async () => {
@@ -560,22 +598,88 @@ test('runtime input fingerprint follows app, worker, asset, and launch bytes but
     await runGit(['add', '.']);
     await runGit(['commit', '-qm', 'fixture']);
 
-    const baseline = await strictRuntimeInputFingerprint(fixture);
+    const baseline = await strictRuntimeInputFingerprint(fixture, { includeFileHashes: true });
     assert.equal(baseline.schema, 'spaceface.releaseSoakRuntimeInputs.v1');
     assert.equal(baseline.fileCount, 4);
 
     await writeFile(path.join(fixture, 'docs', 'notes.md'), 'documentation-only drift\n');
-    const docsChanged = await strictRuntimeInputFingerprint(fixture);
+    const docsChanged = await strictRuntimeInputFingerprint(fixture, { includeFileHashes: true });
     assert.equal(docsChanged.digest, baseline.digest,
       'documentation-only drift does not change actual app input identity');
 
     await writeFile(path.join(fixture, 'scripts', 'lib', 'simReadModel.mjs'), 'export const revision = 2;\n');
-    const workerChanged = await strictRuntimeInputFingerprint(fixture);
+    const workerChanged = await strictRuntimeInputFingerprint(fixture, { includeFileHashes: true });
     assert.notEqual(workerChanged.digest, baseline.digest,
       'a browser/worker module under scripts/lib remains part of runtime identity');
+    assert.deepEqual(diffRuntimeInputFiles(baseline.files, workerChanged.files).map((entry) => entry.path), [
+      'scripts/lib/simReadModel.mjs',
+    ], 'changed runtime evidence identifies the exact changed module');
   } finally {
     await rm(fixture, { recursive: true, force: true });
   }
+});
+
+test('full-runtime overlay stability fingerprints only uncovered runtime inputs', async (t) => {
+  const fixture = await mkdtemp(path.join(os.tmpdir(), 'spaceface-uncovered-runtime-fingerprint-'));
+  t.after(() => rm(fixture, { recursive: true, force: true }));
+  const runGit = (args) => execFileAsync('git', args, { cwd: fixture, windowsHide: true });
+  for (const directory of ['src', 'scripts/lib', 'assets', 'docs', 'electron']) {
+    await mkdir(path.join(fixture, directory), { recursive: true });
+  }
+  await writeFile(path.join(fixture, 'index.html'), '<script type="module"></script>\n');
+  await writeFile(path.join(fixture, 'src', 'pinned.js'), 'export const revision = 1;\n');
+  await writeFile(path.join(fixture, 'scripts', 'lib', 'worker.mjs'), 'export const revision = 1;\n');
+  await writeFile(path.join(fixture, 'assets', 'ship.glb'), 'asset-one');
+  await writeFile(path.join(fixture, 'electron', 'main.cjs'), 'module.exports = 1;\n');
+  await writeFile(path.join(fixture, 'server.js'), 'export const boot = 1;\n');
+  await writeFile(path.join(fixture, 'package.json'), '{"type":"module"}\n');
+  await writeFile(path.join(fixture, 'docs', 'notes.md'), 'initial\n');
+  await runGit(['init', '-q']);
+  await runGit(['config', 'user.email', 'uncovered-runtime@example.invalid']);
+  await runGit(['config', 'user.name', 'Uncovered Runtime']);
+  await runGit(['add', '.']);
+  await runGit(['commit', '-qm', 'fixture']);
+
+  const pinned = ['index.html', 'src/pinned.js', 'scripts/lib/worker.mjs'];
+  const baseline = await strictRuntimeInputFingerprint(fixture, {
+    excludePaths: pinned,
+    includeFileHashes: true,
+  });
+  await writeFile(path.join(fixture, 'docs', 'notes.md'), 'docs-only edit\n');
+  const docsOnly = await strictRuntimeInputFingerprint(fixture, {
+    excludePaths: pinned,
+    includeFileHashes: true,
+  });
+  assert.equal(docsOnly.digest, baseline.digest, 'docs-only changes do not affect uncovered runtime identity');
+  assert.deepEqual(diffRuntimeInputFiles(baseline.files, docsOnly.files), []);
+
+  await writeFile(path.join(fixture, 'assets', 'ship.glb'), 'asset-two');
+  const assetChanged = await strictRuntimeInputFingerprint(fixture, {
+    excludePaths: pinned,
+    includeFileHashes: true,
+  });
+  assert.notEqual(assetChanged.digest, baseline.digest, 'uncovered authored assets remain part of runtime identity');
+  assert.deepEqual(diffRuntimeInputFiles(baseline.files, assetChanged.files).map((entry) => entry.path), [
+    'assets/ship.glb',
+  ]);
+
+  await writeFile(path.join(fixture, 'server.js'), 'export const boot = 2;\n');
+  await writeFile(path.join(fixture, 'package.json'), '{"type":"module","boot":2}\n');
+  const bootstrapChanged = await strictRuntimeInputFingerprint(fixture, {
+    excludePaths: pinned,
+    includeFileHashes: true,
+  });
+  assert.deepEqual(diffRuntimeInputFiles(assetChanged.files, bootstrapChanged.files).map((entry) => entry.path), [
+    'package.json', 'server.js',
+  ], 'bootstrap and package changes are attributed separately from overlay-covered source');
+
+  await rm(path.join(fixture, 'assets', 'ship.glb'));
+  const missingAsset = await strictRuntimeInputFingerprint(fixture, {
+    excludePaths: pinned,
+    includeFileHashes: true,
+  });
+  assert.equal(missingAsset.files.find((entry) => entry.path === 'assets/ship.glb').missing, true,
+    'deleted runtime inputs remain visible instead of silently vanishing from the fingerprint');
 });
 
 test('excluded overlay files do not hide unpinned runtime mutations from the fingerprint', async () => {

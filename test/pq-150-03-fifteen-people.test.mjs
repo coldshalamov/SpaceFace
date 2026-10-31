@@ -83,13 +83,13 @@ function boot(seed = SEED) {
   return { sim, state, bus };
 }
 
-test('PQ-150.03 seed 15003: fifteen named people already live at reachable places with a reaction', () => {
+test('PQ-150.03 seed 15003: sixteen named people already live at reachable places with a reaction', () => {
   const { byStation, neighbors } = stationIndex();
   const graph = reachableSectors(neighbors, START_SECTOR);
   const { state, bus } = boot(SEED);
 
   assert.equal(state.meta.seed, SEED);
-  assert.equal(DEPTH_PROGRAM_CONTACTS.length, 15);
+  assert.equal(DEPTH_PROGRAM_CONTACTS.length, 16);
 
   const rows = [];
   for (const card of DEPTH_PROGRAM_CONTACTS) {
@@ -144,12 +144,12 @@ test('PQ-150.03 seed 15003: fifteen named people already live at reachable place
   const onRoute = rows.filter((row) => row.onRoute).length;
 
   console.log(`PQ-150.03 SEED ${SEED}`);
-  console.log(`PLACED ${placed}/15`);
-  console.log(`GRAPH_REACHABLE ${graphReachable}/15`);
-  console.log(`SENTENCE ${sentence}/15`);
-  console.log(`REACTION ${reaction}/15`);
-  console.log(`AVAILABLE_AT_START ${atStart}/15`);
-  console.log(`AVAILABLE_ON_ROUTE ${onRoute}/15`);
+  console.log(`PLACED ${placed}/16`);
+  console.log(`GRAPH_REACHABLE ${graphReachable}/16`);
+  console.log(`SENTENCE ${sentence}/16`);
+  console.log(`REACTION ${reaction}/16`);
+  console.log(`AVAILABLE_AT_START ${atStart}/16`);
+  console.log(`AVAILABLE_ON_ROUTE ${onRoute}/16`);
   for (const row of rows) {
     console.log(
       `${row.programId} ${row.id} ${row.stationId} ${row.sectorId || 'NO_SECTOR'}`
@@ -158,11 +158,11 @@ test('PQ-150.03 seed 15003: fifteen named people already live at reachable place
     );
   }
 
-  assert.equal(placed, 15, `placed ${placed}/15`);
-  assert.equal(graphReachable, 15, `graph-reachable ${graphReachable}/15`);
-  assert.equal(sentence, 15, `sentence ${sentence}/15`);
-  assert.equal(reaction, 15, `reaction ${reaction}/15`);
-  assert.equal(onRoute, 15, `on-route ${onRoute}/15`);
+  assert.equal(placed, 16, `placed ${placed}/16`);
+  assert.equal(graphReachable, 16, `graph-reachable ${graphReachable}/16`);
+  assert.equal(sentence, 16, `sentence ${sentence}/16`);
+  assert.equal(reaction, 16, `reaction ${reaction}/16`);
+  assert.equal(onRoute, 16, `on-route ${onRoute}/16`);
   assert.equal(
     stationContactCounterValue(state, 'doss.sources'),
     0,

@@ -6,7 +6,7 @@ import { createGameState } from './core/gameState.js';
 import { clearEntityRuntime } from './core/entity.js';
 import { bootstrapProfileSettingsBeforeRegistry } from './core/graphicsProfileBootstrap.js';
 import { createBus } from './core/eventBus.js';
-import { createRegistry } from './core/registry.js';
+import { createPresentationRegistry } from './runtime/presentationRegistry.js';
 import { resolveSimLaneFlags, createSimLaneRuntime } from './core/simLaneMain.js';
 import { startLoop } from './core/loop.js';
 import { createPresentationJournal } from './core/presentationJournal.js';
@@ -172,7 +172,8 @@ async function boot() {
       simLane: simLaneFlags.lane,
     };
 
-    let registry = createRegistry(ctx);
+    const createFullRegistry = async () => (await import('./core/registry.js')).createRegistry(ctx);
+    let registry = ctx.simLane === 'worker' ? createPresentationRegistry(ctx) : await createFullRegistry();
     ctx.registry = registry;
     // Whole-sim worker lane: null on the main lane (zero behavior change);
     // otherwise a createSimulationRunner-compatible lane runner plus the
@@ -208,10 +209,15 @@ async function boot() {
         state.entityList.length = 0;
         ctx.simLane = 'main';
         simLaneRuntime = null;
-        registry = createRegistry(ctx);
+        registry = await createFullRegistry();
         ctx.registry = registry;
         console.warn(`[simLane] worker boot failed — in-process sim serves: ${(error && error.message) || error}`);
       }
+    }
+    if (!simLaneRuntime && ctx.simLane === 'worker') {
+      ctx.simLane = 'main';
+      registry = await createFullRegistry();
+      ctx.registry = registry;
     }
     // The render publisher binds ctx.presentationJournal at renderer init —
     // under the lane it must read the transport journal, not the in-process
@@ -227,6 +233,20 @@ async function boot() {
           label: 'Starting flight systems', detail: `${completed} of ${total} online`,
         });
       },
+    });
+    // The shell's normal close waits for the existing exit-save owner and queued mirrors.
+    window.spacefaceShell?.onPrepareQuit?.(async () => {
+      const owner = ctx.registry?.get?.('save');
+      const result = owner?.prepareForQuit ? await owner.prepareForQuit() : { ok: false, reason: 'save-system-unavailable' };
+      if (result?.ok !== true) return result;
+      const achievements = ctx.achievements;
+      let achievementResult;
+      try {
+        achievementResult = achievements?.prepareForQuit ? await achievements.prepareForQuit() : { ok: true };
+        return achievementResult;
+      } finally {
+        if (achievementResult?.ok !== true) await owner.cancelPreparedQuit?.();
+      }
     });
     SF_DEBUG_ONLY: if (SF_DEBUG) window.__SF_BOOT_INIT__ = bootInitMetrics;
     // Kick SG-02 backend bring-up the moment the saved envelope decodes: the whole chunked

@@ -4,10 +4,11 @@
 // state. Rewards route through cargo's pickup:collected seam and ships.grantModule().
 
 import { FLAVOR_SOURCE_BY_REF } from '../data/flavor/index.generated.js';
-import { ENCOUNTERS } from '../data/encounters/index.generated.js';
+import { ENCOUNTERS, ENCOUNTER_MODULES } from '../data/encounters/index.generated.js';
+import { NAMED_CAPTAINS } from '../data/encounters.js';
+import { planUniqueWreckEncounter as planUniqueWreckEncounterPure } from '../data/encounters/planning.js';
 import { salvagePoolForWreck } from '../data/salvageLegality.js';
 import { WRECK_COLLIDER_PROPORTIONS } from '../data/wreckClasses.js';
-import { globalToSectorLocalForSector } from '../data/sectorCoordinates.js';
 import { hash32, mulberry32 } from '../core/rng.js';
 import { syncEntitySectorMembership } from '../core/coreSystem.js';
 import { deferSectorEnterMaterialization, deferredEnterNow, deferredEnterTick } from '../core/sectorEnterDefer.js';
@@ -40,7 +41,6 @@ import {
   uniqueWreckById,
   uniqueWreckForSource,
 } from '../data/uniqueWrecks.js';
-import { planEncounterShape } from './encounterDirector.js';
 import { isSurvivalRunLive } from './adventureMigration.js';
 import {
   isPlayerWreckMarker,
@@ -58,6 +58,10 @@ import { createScavengerOccupationSwitch, normalizeOccupationSwitch } from './sc
 // SF-141: warm-site freight rides the same physical pod contract as every other spilled lot —
 // persistent, colliding, salvage-scoopable, and theft-priced by law through its owner stamp.
 import { spawnJettisonedCargoPod } from './lootShards.js';
+
+const SELF_REGISTERED_ENCOUNTER_IDS = new Set(ENCOUNTER_MODULES
+  .filter((module) => module && module.runtime)
+  .map((module) => module.trigger?.id));
 
 // The materialize phase set lives beside the registry so the sector decode warms grade
 // the same gate without importing this module (data/uniqueWrecks.js owns the constants).
@@ -191,30 +195,17 @@ function copyPoint(value, fallback) {
  * _activateEncounter and the renderer's decode warm so the warm replays the same shape.
  */
 export function planUniqueWreckEncounter({ programSeed, def, bearing, complication, sectorId, simTime, shape }) {
-  const center = globalToSectorLocalForSector(copyPoint(complication.anchor || bearing.exactPos), sectorId);
-  const rng = mulberry32(hash32(
+  return planUniqueWreckEncounterPure({
     programSeed,
-    def.id,
-    complication.encounterId,
-    'unique-wreck-direct-encounter:v1',
-  ) || 1);
-  const zone = {
-    id: `unique-wreck-zone:${def.id}`,
-    name: def.name,
-    type: 'unique_wreck',
-    center,
-    radius: 520,
-    threat: def.programSlot === 'D6' ? 4 : 3,
-    factionId: def.factionId,
-  };
-  return planEncounterShape(
-    shape,
-    zone,
+    def,
+    bearing,
+    complication,
     sectorId,
-    Math.floor(Math.max(0, finite(simTime, 0)) / 600),
-    0,
-    rng,
-  );
+    simTime,
+    shape,
+    selfRegisteredEncounterIds: SELF_REGISTERED_ENCOUNTER_IDS,
+    namedCaptains: NAMED_CAPTAINS,
+  });
 }
 
 export function createUniqueWreckState(metaSeed) {

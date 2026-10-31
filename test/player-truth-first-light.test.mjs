@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { isFirstLightPrompt, installFirstLightPromptHandler } from '../scripts/player-truth/routes.mjs';
+import { answerFirstRunPrompt, isFirstLightPrompt, installFirstLightPromptHandler } from '../scripts/player-truth/routes.mjs';
 
 test('the public settings actor only accepts the known First light choices', () => {
   assert.equal(isFirstLightPrompt('First light','Keep my settings'),true);
@@ -14,10 +14,13 @@ test('the public settings actor only accepts the known First light choices', () 
 });
 
 function fixture({ title = 'First light', visible = true, cancel = 'Use first light', confirm = 'Play',
-  cancelVisible = true, confirmText = confirm, clickError = null } = {}) {
+  cancelVisible = true, confirmText = confirm, clickError = null, reenterHandlerDuringPlay = false,
+  closePageOnClickError = false } = {}) {
   const clicks = [], events = [];
   let handler, handlerOptions, handlerSelector, registrations = 0;
   let active = visible;
+  let pageClosed = false;
+  let reentered = false;
   let beforeFirstCount = null;
   const control = (name, raw, shown = true) => ({
     name, raw, shown,
@@ -26,7 +29,14 @@ function fixture({ title = 'First light', visible = true, cancel = 'Use first li
     async textContent() { return raw; },
     async click(options) {
       assert.equal(options, undefined, 'trusted default click; no force or dispatch bypass');
-      if (clickError && name === 'Play') throw clickError;
+      if (clickError && name === 'Play') {
+        if (closePageOnClickError) pageClosed = true;
+        throw clickError;
+      }
+      if (reenterHandlerDuringPlay && name === 'Play' && handler && !reentered) {
+        reentered = true;
+        await handler();
+      }
       clicks.push(name);
       active = false;
       cancelControl.shown = false;
@@ -62,6 +72,7 @@ function fixture({ title = 'First light', visible = true, cancel = 'Use first li
       handlerOptions = options;
       handler = callback;
     },
+    isClosed() { return pageClosed; },
   };
   const dialogButtons = dialog.getByRole.bind(dialog);
   dialog.getByRole = (role, options = {}) => {
@@ -83,7 +94,8 @@ function fixture({ title = 'First light', visible = true, cancel = 'Use first li
     get handlerOptions() { return handlerOptions; }, get handlerSelector() { return handlerSelector; },
     closeBeforeCounts() { beforeFirstCount = () => { active = false; cancelControl.shown = false; confirmControl.shown = false; }; },
     install: () => installFirstLightPromptHandler(page, (...row) => events.push(row)),
-    answer: () => handler() };
+    answer: () => handler(),
+    answerDirect: () => answerFirstRunPrompt(page, (...row) => events.push(row)) };
 }
 
 test('visible known First light clicks Play without a cancel-control precondition', async () => {
@@ -110,6 +122,22 @@ test('the locator handler does not wait for its title to hide inside another act
   assert.match(f.handlerSelector, /#sf-confirm-root\.sf-confirm--in #sf-confirm-title/,
     'the handler only owns an actively presented confirm, not its closing fade');
   assert.equal(f.events.length, 1, 'the settings choice is recorded once');
+});
+
+test('the public locator handler allows its own Play click through without reentering', async () => {
+  const f = fixture({ reenterHandlerDuringPlay: true });
+  await f.install();
+  await f.answer();
+  assert.deepEqual(f.clicks, ['Play']);
+  assert.equal(f.events.length, 1, 'the public choice is recorded exactly once');
+});
+
+test('a direct public answer also guards its click against an installed locator handler', async () => {
+  const f = fixture({ reenterHandlerDuringPlay: true });
+  await f.install();
+  await f.answerDirect();
+  assert.deepEqual(f.clicks, ['Play']);
+  assert.equal(f.events.length, 1, 'the direct answer is recorded exactly once');
 });
 
 test('a prompt dismissed between active read and accessible controls is treated as dismissed', async () => {
@@ -161,4 +189,13 @@ test('a failed Play action remains a gate error and never falls back to a settin
   await assert.rejects(f.answer(), actual => actual === error);
   assert.deepEqual(f.clicks, []);
   assert.deepEqual(f.events, []);
+});
+
+test('page-close rejection during handler teardown does not escape as an unhandled actor error', async () => {
+  const error = new Error('Target page, context or browser has been closed');
+  const f = fixture({ clickError: error, closePageOnClickError: true });
+  await f.install();
+  await f.answer();
+  assert.deepEqual(f.clicks, []);
+  assert.deepEqual(f.events, [], 'teardown never reports a choice that did not complete');
 });

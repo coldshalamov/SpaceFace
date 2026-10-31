@@ -12,7 +12,10 @@ import {
   CINDER_SLUICE_SITE_ID,
   CINDER_SLUICE_TRAFFIC_STAGING_POS,
 } from '../src/data/environmentalMachinery.js';
-import { traffic as trafficBase } from '../src/systems/traffic.js';
+import { traffic as trafficBase, sectorEnterTrafficShipStubs as authoritativeStubs,
+  ceresActivityActorWorldRecordId as authoritativeActorId, TRAFFIC_ROLES as authoritativeRoles } from '../src/systems/traffic.js';
+import { sectorEnterTrafficShipStubs, ceresActivityActorWorldRecordId, TRAFFIC_ROLES } from '../src/data/trafficPresentationReads.js';
+import { SECTORS } from '../src/data/sectors.js';
 import {
   salvagePoolFromManifest,
   validCivilianManifestForPayload,
@@ -22,6 +25,22 @@ import { normalizeRecord, RECORD_KIND, stableRecordId } from '../src/world/world
 
 const SEED = 0x5ce2e5;
 const TENDER_SLOT_ID = 'ceres_refinery_tender';
+
+test('presentation traffic reads share authority and cover the authored Ceres cast', () => {
+  assert.equal(sectorEnterTrafficShipStubs, authoritativeStubs);
+  assert.equal(ceresActivityActorWorldRecordId, authoritativeActorId);
+  assert.equal(TRAFFIC_ROLES, authoritativeRoles);
+  const sector = SECTORS.find(row => row.id === CERES_ACTIVITY_SECTOR_ID);
+  const state = { meta: { seed: SEED } };
+  const stubs = sectorEnterTrafficShipStubs(sector, state);
+  for (const slot of [...CERES_ACTIVITY_POCKETS.flatMap(pocket => pocket.actorSlots), ...CERES_ACTIVITY_SERVICE_SLOTS]) {
+    const role = TRAFFIC_ROLES[slot.presentationRole];
+    if (role?.ship) assert.ok(stubs.some(row => row.defId === role.ship && row.trafficRole === slot.presentationRole), slot.id);
+  }
+  const slot = CERES_ACTIVITY_SERVICE_SLOTS[0];
+  assert.equal(ceresActivityActorWorldRecordId(state, slot.id),
+    stableRecordId(SEED, CERES_ACTIVITY_SECTOR_ID, RECORD_KIND.CONVOY, slot.worldRecordSlotId || `ceres:activity:${slot.id}`));
+});
 
 const POCKET_SLOTS = CERES_ACTIVITY_POCKETS.flatMap((pocket) => (
   pocket.actorSlots

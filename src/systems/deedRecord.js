@@ -20,6 +20,11 @@ import { LAWFUL_STATION_FACTIONS } from '../data/factions/index.js';
 import { wantedTierFor, WANTED_TIER } from './heat.js';
 import { KillCause, classifyImpactResponsibility, impactLinkFromPresentation, killCauseFromPayload } from '../combat/killCausality.js';
 
+// A dodge must have been lethal: below this closing speed the round was never a threat.
+export const NEAR_MISS_DODGE_MIN_SPEED = 120;
+// One dodge stunt per window: a fight sprays near misses; the Record honors the fight.
+export const NEAR_MISS_DODGE_WINDOW_S = 45;
+
 export const DEED_RECORD_VERSION = 1;
 export const DEED_CAP = 64;
 /** Age at which a deed weighs half as much to notoriety/standing readers (sim seconds). */
@@ -354,6 +359,7 @@ export const deedRecord = {
     this._listen('bounty:cleared', (p) => this._onBountyCleared(p));
     this._listen('heat:changed', (p) => this._onHeatChanged(p));
     this._listen('combat:tumbleRake', (p) => this._onTumbleRake(p));
+    this._listen('projectile:nearMiss', (p) => this._onNearMissDodge(p));
     this._listen('stunt:salvageRights', (p) => this._onStunt(p));
     this._listen('warrant:hunterDisabled', (p) => this._onHunterDisabled(p));
     this._listen('warrant:hunterEscaped', (p) => this._onHunterEscaped(p));
@@ -580,6 +586,27 @@ export const deedRecord = {
       weight: 1 + Math.min(2, (victims - 1) * 0.5),
       detail: { victims },
       tick: p.tick,
+    });
+  },
+
+  /**
+   * THE NEAR MISS IS REMEMBERED (Lane 2 seed: "the near miss rewarded") — a hostile round
+   * threading past the player inside the near-miss margin, fast enough to have killed, is a
+   * dodge the street talks about. One stunt per window: a fight sprays near misses; the Record
+   * honors the fight, not each bullet. The existing indicator, bark and crack already carry the
+   * moment; this adds only the durable notice.
+   */
+  _onNearMissDodge(p) {
+    if (!p || !this._isPlayer(p.targetId)) return;
+    const speed = Number(p.speed);
+    if (!Number.isFinite(speed) || speed < NEAR_MISS_DODGE_MIN_SPEED) return;
+    const now = Number(this.state && this.state.simTime) || 0;
+    recordDeed(this.state, {
+      kind: 'stunt',
+      id: `near-miss-dodge:${Math.floor(now / NEAR_MISS_DODGE_WINDOW_S)}`,
+      sectorId: this._here(),
+      weight: 1,
+      detail: { speed: Math.round(speed), distance: Math.round(Number(p.distance) || 0) },
     });
   },
 

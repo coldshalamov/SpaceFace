@@ -27,7 +27,7 @@ function host({ docked = false, paused = false, station = null } = {}) {
     world: {},
   };
   host._startLoopVoice = (recipeId, position, gain, opts = {}) => {
-    const voice = { recipeId, busName: opts.busName, gain: { gain: { setTargetAtTime: (v) => gains.push(v) } } };
+    const voice = { recipeId, busName: opts.busName, rate: opts.rate || 1, gain: { gain: { setTargetAtTime: (v) => gains.push(v) } } };
     started.push(voice);
     return voice;
   };
@@ -81,4 +81,33 @@ test('a dockless platform runs no hum, and a running bed stops when the player l
   h.host.state.entityIndex.stations[0].pos.x = 900;
   h.host._updateApproachHum(6);
   assert.deepEqual(h.ended, [h.started[0]], 'leaving the radius releases the loop');
+});
+
+test('the hum leans the station house direction: faction rates, re-voiced on change', () => {
+  const scn = host({ station: station(120) });
+  scn.host.state.entityIndex.stations[0].data.factionId = 'faction_scn';
+  scn.host._updateApproachHum(5);
+  assert.equal(scn.started[0].rate, 1.0, 'Concord rests');
+
+  const reach = host({ station: station(120) });
+  reach.host.state.entityIndex.stations[0].data.factionId = 'faction_reach';
+  reach.host._updateApproachHum(5);
+  assert.equal(reach.started[0].rate, 0.94, 'Reach leans a half-step down');
+
+  const choir = host({ station: station(120) });
+  choir.host.state.entityIndex.stations[0].data.factionId = 'faction_choir';
+  choir.host._updateApproachHum(5);
+  assert.equal(choir.started[0].rate, 1.06, 'Choir hangs a raised fourth up');
+
+  // a faction change under a running bed re-voices it on the next pass
+  const swap = host({ station: station(120) });
+  swap.host.state.entityIndex.stations[0].data.factionId = 'faction_scn';
+  swap.host._updateApproachHum(5);
+  swap.host.rt.loops.approachHum = swap.started[0];
+  swap.host.state.entityIndex.stations[0].data.factionId = 'faction_choir';
+  swap.host._updateApproachHum(6);
+  assert.deepEqual(swap.ended, [swap.started[0]], 'the Concord bed releases');
+  swap.host._updateApproachHum(7);
+  assert.equal(swap.started.length, 2, 'the Choir bed starts in its own voice');
+  assert.equal(swap.started[1].rate, 1.06);
 });
