@@ -174,6 +174,20 @@ ${RESULTS_PLATE(R)}
   ${R} > .k-foot .k-word.k-word--primary { font-size:13px !important; }
 }
 
+/* 780–939 × ≤600 (800×600): the even four-up grid gave each figure ~80px, so BEST KILL CHAIN broke
+   onto three lines and SALVAGE ran out of its cell into the dial's PORT label. Each figure takes its
+   own width on one line at a slightly tighter tracking, which fits the column with room to spare. */
+@media (min-width:780px) and (max-width:939px) and (max-height:600px) {
+  ${RD} .orr-crres-figures { grid-template-columns:repeat(4, max-content) !important; column-gap:14px !important; }
+  ${RD} .orr-crres-figure__w { white-space:nowrap; letter-spacing:.08em !important; }
+}
+/* 701–779 × ≤600: one-line figures overflow the narrower column (SALVAGE clipped, 88 over PORT), so
+   columns may shrink and BEST KILL CHAIN wraps to two lines while every label stays whole. */
+@media (min-width:701px) and (max-width:779px) and (max-height:600px) {
+  ${RD} .orr-crres-figures { grid-template-columns:repeat(4, minmax(0, auto)) !important; column-gap:10px !important; }
+  ${RD} .orr-crres-figure__w { letter-spacing:.08em !important; overflow-wrap:normal; }
+}
+
 /* 601–720 tall: keep a thin safety clip so a long killer name cannot bleed into the foot */
 @media (min-width:701px) and (min-height:601px) and (max-height:720px) {
   ${R} > .sf-crres__dial { overflow:hidden !important; }
