@@ -2064,6 +2064,8 @@ ${T} .sx-bar__hang:is(:hover, :focus-within)::after { background:${SPINE(3, .62)
   ${D} .orr-ind-chain .orr-chain__reason { font-size:17px !important; letter-spacing:.12em !important; white-space:normal !important; overflow-wrap:anywhere !important; }
   ${D} .orr-ind-chain .orr-chain__label:has(> .orr-chain__reason) :is(.orr-chain__verb, .orr-chain__verb > *) { white-space:normal !important; overflow-wrap:anywhere !important; font-size:12px !important; line-height:14px !important; letter-spacing:.1em !important; }
   ${D} .orr-ind-chain .orr-chain__verb > .orr-chain__wayout { margin-top:2px !important; }
+  /* a way-out that wraps keeps both lines inside its outline, balanced and set right like the note above it */
+  ${D} .orr-ind-chain .orr-chain__label:has(> .orr-chain__reason) .orr-chain__verb > .orr-chain__wayout { max-width:15em !important; margin-left:auto !important; margin-top:0 !important; padding:0 10px !important; line-height:13px !important; text-align:right !important; text-wrap:balance; overflow-wrap:normal !important; word-break:keep-all !important; hyphens:none !important; }
   ${D} .orr-ind-chain .orr-chain__reason-leader { display:none !important; }
   ${D} .orr-ind-chain .orr-chain__label.is-below { transform:translate(136px, -50px) !important; width:auto !important; text-align:left !important; }
   ${D} .orr-ind-chain .orr-chain__label.is-below :is(.orr-chain__qty, .orr-chain__unit) { text-align:left !important; }
