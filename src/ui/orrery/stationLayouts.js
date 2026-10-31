@@ -331,6 +331,9 @@ html.sf-reduce-motion ${S} :is(.orr-vdial__fill, .orr-vdial__hand) { transition:
   ${S} .sxb-berth.dp-frame__head { grid-template-columns:minmax(0, 280px) minmax(0, 1fr) !important; }
   ${S} .sxb-berth .sxb-crown { width:auto !important; justify-self:stretch !important; left:0 !important; right:auto !important; }
   ${S} .sxb-crown .sxb-vitals { max-width:none !important; gap:6px !important; justify-content:space-between !important; }
+  /* a blocked verb ("REPAIR  NO YARD", ~14px wider than a price) left the row 5px too wide for the 6px
+     gaps, so MUNITIONS wrapped down over the bay screen; with one on the row the dials close up instead */
+  ${S} .sxb-crown .sxb-vitals:has(> .sxb-vital [data-vital-act][aria-disabled="true"]) { column-gap:2px !important; }
   ${S} .sxb-vital { min-width:max-content !important; width:auto !important; }
   ${S} .sxb-crown .sxb-vitals > .sxb-vital:last-child .sxb-vital__acts { position:static !important; width:auto !important; }
   ${S} .sxb-berth > :is(.sxb-tape, .sxb-handoff) { min-width:0 !important; max-width:100% !important; }
