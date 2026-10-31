@@ -51,7 +51,7 @@ import {
   firstDockHandoffVisible,
   firstDockHandoffSteps,
 } from './stationDepartureModel.js';
-import { bindStationMarkup, stationControlAttrs, stationControlLabel } from './stationBindingMap.js';
+import { bindStationMarkup, markStationControl, stationControlAttrs, stationControlLabel } from './stationBindingMap.js';
 import { missionDockAttention } from './missionDockAttention.js';
 import { yardJobReadout } from './serviceQuotes.js';
 import { isChoiceECourierReady } from '../../story/endings/eligibility.js';

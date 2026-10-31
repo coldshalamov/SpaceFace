@@ -134,7 +134,7 @@ import {
   pinKeyrack,
   syncKeys,
 } from './fhChrome.js';
-import { bindStationMarkup, stationControlAttrs, stationControlLabel } from '../stationBindingMap.js';
+import { bindStationMarkup, markStationControl, stationControlAttrs, stationControlLabel } from '../stationBindingMap.js';
 
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
 export function shipworksHullName(defId) {
