@@ -100,6 +100,12 @@ try {
   report.captures.push(breakup);
   images.push({ data: `data:image/png;base64,${breakupBuffer.toString('base64')}`,
     label: `mechanical breakup · ${breakup.render.calls} calls / ${breakup.diagnostics.active} fragments` });
+  const wreck = await page.evaluate(() => window.ironKrakenProbe.captureWreck());
+  const wreckBuffer = await page.screenshot({ path: join(output, `${wreck.name}.png`) });
+  wreck.file = `${wreck.name}.png`;
+  report.captures.push(wreck);
+  images.push({ data: `data:image/png;base64,${wreckBuffer.toString('base64')}`,
+    label: `persistent mechanical wreck · ${wreck.render.calls} calls / ${wreck.render.triangles} triangles` });
   report.checks = await page.evaluate(() => window.ironKrakenProbe.checks());
   const sheet = await contactSheet(page, images);
   await writeFile(join(output, 'contact-sheet.png'), Buffer.from(sheet, 'base64'));

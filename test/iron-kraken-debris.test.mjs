@@ -5,6 +5,8 @@ import { createIronKrakenDebris, IRON_KRAKEN_DEBRIS_CAPACITY,
   IRON_KRAKEN_DEBRIS_PER_DEATH, IRON_KRAKEN_DEBRIS_MAX_LIFE } from '../src/render/ironKrakenDebris.js';
 import { createRenderFrameMembrane } from '../src/render/frameCoordinates.js';
 import { allocateEntityId, stampOccupantGeneration } from '../src/core/entity.js';
+import { createIronKrakenVisual } from '../src/render/ironKrakenVisuals.js';
+import { IRON_KRAKEN_PROFILES } from '../src/data/ironKraken.js';
 import { vfx } from '../src/render/vfx.js';
 
 const receipt=(id=17,extra={})=>({id,type:'ship',lootTableId:'enemy_iron_kraken',
@@ -24,7 +26,9 @@ test('only real Kraken identities admit death-only, opaque manufactured fragment
     data:Object.freeze({lootTableId:'enemy_iron_kraken'})});
   assert.equal(fx.spawn(receipt(),entity,null,0),IRON_KRAKEN_DEBRIS_PER_DEATH);
   assert.equal(count(fx),24);
-  assert.equal(fx.diagnostics().drawCalls,4);
+  assert.equal(fx.diagnostics().drawCalls,5);
+  assert.deepEqual(fx.group.children.map(mesh=>mesh.count),[8,4,4,4,4],
+    'four mantle shards replace the four oversized sleeves without adding fragments');
   for(const mesh of fx.group.children){
     assert.equal(mesh.isInstancedMesh,true);
     assert.equal(mesh.material.type,'MeshStandardMaterial');
@@ -154,12 +158,47 @@ test('visible pieces capture nested instance world transforms, never parent-only
     rig.shell.matrixWorld.clone().multiply(new THREE.Matrix4().makeTranslation(0,1,-.5)));
   const fx=createIronKrakenDebris(scene);fx.spawn(receipt(),null,root,0);
   const actual=new THREE.Vector3(),matrix=new THREE.Matrix4();
-  fx.group.children[0].getMatrixAt(0,matrix);actual.setFromMatrixPosition(matrix);
+  fx.group.getObjectByName('sf-iron-kraken-debris-mantle').getMatrixAt(0,matrix);actual.setFromMatrixPosition(matrix);
   assert.ok(actual.distanceTo(expected)<.0001);
   assert.equal(fx.diagnostics().snapshots,20);
   root.position.set(999,999,999);root.updateMatrixWorld(true);
   const frozen=matrices(fx);fx.update(0);assert.deepEqual(matrices(fx),frozen,'debris copies pose, not source references');
   fx.dispose();geo.dispose();mat.dispose();
+});
+
+test('mantle fragments are thin curved closed panels that retain the real nested petal pose',()=>{
+  for(const p of Object.values(IRON_KRAKEN_PROFILES)){
+    const entity={id:31,type:'ship',pos:{x:17,z:-29},rot:.65,data:{lootTableId:p.enemyId}};
+    const root=createIronKrakenVisual(entity),scene=new THREE.Scene(),fx=createIronKrakenDebris(scene);
+    root.position.set(17,4,-29);root.rotation.set(.13,.65,-.17);scene.add(root);root.updateMatrixWorld(true);
+    fx.spawn(receipt(entity.id,{lootTableId:p.enemyId}),entity,root,0);
+    const mantle=fx.group.getObjectByName('sf-iron-kraken-debris-mantle'),source=root.userData.ironKrakenRig.shell;
+    try {
+      assert.equal(mantle.count,4);assert.equal(fx.diagnostics().snapshots,20);
+      assert.notEqual(mantle.geometry,fx.group.getObjectByName('sf-iron-kraken-debris-armor').geometry);
+      const positions=mantle.geometry.attributes.position,normals=mantle.geometry.attributes.normal;
+      const a=new THREE.Vector3(),b=new THREE.Vector3(),c=new THREE.Vector3(),cross=new THREE.Vector3();
+      let signedVolume=0;const directions=new Set();
+      for(let i=0;i<positions.count;i+=3){
+        a.fromBufferAttribute(positions,i);b.fromBufferAttribute(positions,i+1);c.fromBufferAttribute(positions,i+2);
+        signedVolume+=a.dot(cross.crossVectors(b,c))/6;
+        directions.add([normals.getX(i),normals.getY(i),normals.getZ(i)].map(x=>Math.round(x*20)).join(','));
+      }
+      const size=mantle.geometry.boundingBox.getSize(new THREE.Vector3());
+      const fill=Math.abs(signedVolume)/(size.x*size.y*size.z);
+      assert.ok(fill>0 && fill<.10,`thin panel wall volume must stay below10% of its curved envelope: ${fill}`);
+      assert.ok(directions.size>20,'the shard must retain dome curvature rather than becoming a flat card');
+      const instance=new THREE.Matrix4(),world=new THREE.Matrix4(),fragment=new THREE.Matrix4();
+      for(let i=0;i<4;i++){
+        source.getMatrixAt(i*2,instance);world.multiplyMatrices(source.matrixWorld,instance);
+        const expected=source.geometry.boundingBox.clone().applyMatrix4(world);
+        mantle.getMatrixAt(i,fragment);
+        const actual=mantle.geometry.boundingBox.clone().applyMatrix4(fragment);
+        assert.ok(expected.min.distanceTo(actual.min)<.0001 && expected.max.distanceTo(actual.max)<.0001,
+          `${p.variant} mantle shard must preserve sampled center, bank and body scale`);
+      }
+    } finally { fx.dispose();root.userData.disposeIronKraken(); }
+  }
 });
 
 test('clear permits a new world to reuse ids; dispose releases only its owned geometry and material',()=>{
@@ -171,7 +210,7 @@ test('clear permits a new world to reuse ids; dispose releases only its owned ge
   fx.clear();assert.equal(fx.diagnostics().active,0);
   assert.equal(fx.spawn(receipt(),null,null,0),24);
   fx.dispose();fx.dispose();
-  assert.equal(geometries,4);assert.equal(materials,1);assert.equal(scene.children.length,0);
+  assert.equal(geometries,5);assert.equal(materials,1);assert.equal(scene.children.length,0);
   assert.equal(fx.spawn(receipt(99),null,null,2),0);
 });
 

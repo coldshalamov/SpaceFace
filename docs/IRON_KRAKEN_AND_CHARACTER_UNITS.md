@@ -150,13 +150,15 @@ The separate death-only pump chunks are created by the VFX owner only when a val
 requires the shared debris pool; no corpse geometry is preloaded inside each living creature.
 
 [Kraken debris](../src/render/ironKrakenDebris.js), owned by the existing VFX system, emits 24
-cosmetic pieces per death: 12 ivory armor sections, four dark joints, four red-rimmed suction
-pieces, and four pump sections. When the model remains available, 20 pieces copy selected live
+cosmetic pieces per death: four thin curved mantle shards, eight ivory arm sleeves, four dark
+joints, four red-rimmed suction pieces, and four pump sections. Mantle shards have ivory outer
+enamel, dark inner faces, and closed thin edges; never scale an arm sleeve to the head's dimensions.
+When the model remains available, 20 pieces copy selected live
 shell/arm poses. Multiply each instance by its own `matrixWorld`, including the scaled and banked
 body ancestor; applying the root transform alone loses the normalized rig's scale. A removed
 model falls back to the canonical kill position, projected through the floating-origin membrane.
 
-The pool has a global ceiling of 96 live pieces, four instanced draws, and a maximum 4.8-second
+The pool has a global ceiling of 96 live pieces, five instanced draws, and a maximum 4.8-second
 lifetime. Repeated families share their geometry and one opaque material. Motion is cosmetic and
 deterministically seeded without consuming `state.rng`; there are no per-piece simulation entities
 or lights. Reduced motion holds a small separation instead of continuous tumble. The pieces add

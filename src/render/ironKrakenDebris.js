@@ -8,7 +8,7 @@ export const IRON_KRAKEN_DEBRIS_MAX_LIFE = 4.8;
 const HISTORY_CAPACITY = 512;
 const TAU = Math.PI * 2;
 const NON_DEATH_REASONS = new Set(['save_restore', 'reset', 'game_reset', 'new_game', 'sector_exit', 'sector_unload', 'unload', 'despawn']);
-const FAMILY_NAMES = ['armor', 'joint', 'sucker', 'reactor'];
+const FAMILY_NAMES = ['armor', 'joint', 'sucker', 'reactor', 'mantle'];
 const EMPTY_OPTIONS = Object.freeze({});
 
 /** The kill's lootTableId survives the entity's removal and the sliced presentation drain. */
@@ -66,7 +66,7 @@ function buildGeometry(family) {
     cylinder(.74,.6,.27,0x20252a);
     add(new THREE.TorusGeometry(.71,.12,5,12),0xb63b29,0,.18,0,Math.PI/2);
     cylinder(.24,.27,.12,0x454d50,.17);
-  } else {
+  } else if (family === 3) {
     // Death-only pump section: ribbed core, red seals and two offset silver pistons.
     cylinder(.45,.52,1.35,0x252b30);
     for (let i=0;i<4;i++) cylinder(.64,.64,.09,0x596266,-.5+i*.33);
@@ -74,11 +74,48 @@ function buildGeometry(family) {
     cylinder(.52,.52,.12,0xbb422d,.64);
     add(new THREE.CylinderGeometry(.12,.12,1.05,6),0x9b9e99,.72,0,.2);
     add(new THREE.CylinderGeometry(.12,.12,.76,6),0x9b9e99,-.63,-.15,-.1);
+  } else {
+    // A narrow section of pressure dome, not an enlarged arm sleeve. Outer enamel, dark inner
+    // skin and closed thin edges share one geometry; no full creature or interior is built here.
+    const profile = [[.94,-.62],[.92,-.39],[.83,-.12],[.65,.14],[.43,.36],[.20,.53],[.06,.60]];
+    const steps = 6, last = profile.length-1, thickness = .035;
+    const outer = [], inner = [], edges = [], inspection = [], warning = [];
+    const point = (row,column,inset=0) => {
+      const [radius,y] = profile[row], angle = -.36+column/steps*.72;
+      return [(radius-inset)*Math.cos(angle),y,(radius-inset)*Math.sin(angle)];
+    };
+    const quad = (list,a,b,c,d) => list.push(...a,...b,...c,...a,...c,...d);
+    const surface = (positions,tint) => {
+      const shape = new THREE.BufferGeometry();
+      shape.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));
+      shape.computeVertexNormals(); add(shape,tint);
+    };
+    for (let row=0;row<last;row++) for (let column=0;column<steps;column++) {
+      quad(outer,point(row,column),point(row+1,column),point(row+1,column+1),point(row,column+1));
+      quad(inner,point(row,column,thickness),point(row,column+1,thickness),
+        point(row+1,column+1,thickness),point(row+1,column,thickness));
+    }
+    for (let column=0;column<steps;column++) {
+      quad(edges,point(0,column),point(0,column+1),point(0,column+1,thickness),point(0,column,thickness));
+      quad(edges,point(last,column),point(last,column,thickness),point(last,column+1,thickness),point(last,column+1));
+    }
+    for (let row=0;row<last;row++) {
+      quad(edges,point(row,0),point(row,0,thickness),point(row+1,0,thickness),point(row+1,0));
+      quad(edges,point(row,steps),point(row+1,steps),point(row+1,steps,thickness),point(row,steps,thickness));
+      if (row>=2 && row<5) quad(inspection,point(row,2.7,-.003),point(row+1,2.7,-.003),
+        point(row+1,3.3,-.003),point(row,3.3,-.003));
+    }
+    quad(warning,point(1,1.4,-.004),point(2,1.4,-.004),point(2,2.2,-.004),point(1,2.2,-.004));
+    surface(outer,0xdedbd1); surface(inner,0x272a2e); surface(edges,0x62696a);
+    surface(inspection,0x272a2e); surface(warning,0xcc452d);
   }
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));
   geometry.setAttribute('normal',new THREE.Float32BufferAttribute(normals,3));
   geometry.setAttribute('color',new THREE.Float32BufferAttribute(colors,3));
+  // snapshot() places its origin at the live petal's bounding-box center. Keep the shard's
+  // matching local center at zero so the sampled world pose is preserved without an offset.
+  if (family===4) geometry.center();
   geometry.computeBoundingBox(); geometry.computeBoundingSphere();
   return geometry;
 }
@@ -253,10 +290,10 @@ export function createIronKrakenDebris(scene) {
     for (let i=0;i<IRON_KRAKEN_DEBRIS_PER_DEATH;i++) {
       const s=slots[cursor]; cursor=(cursor+1)%slots.length;
       if (s.active) evicted++; else active++;
-      const family=i<12?0:i<16?1:i<20?2:3;
+      const family=i<4?4:i<12?0:i<16?1:i<20?2:3;
       const angle=heading+(i%8)*TAU/8+noise(seed,i)*.24;
       let captured=false;
-      if (rig && family<3) {
+      if (rig && family!==3) {
         const source=i<4?rig.shell:family===0?rig.armor:family===1?rig.joints:rig.suckers;
         const index=i<4?i*2:(i%8)*22+3+(i*3)%12;
         captured=snapshot(source,index,family);
@@ -264,7 +301,7 @@ export function createIronKrakenDebris(scene) {
       if (!captured) {
         const distance=family===3?r*.28:r*(i<4?.72:1.05+noise(seed,i+26)*1.2);
         position.set(cx+Math.cos(angle)*distance,r*(family===3?.18:.12+noise(seed,i+31)*.2),cz+Math.sin(angle)*distance);
-        quaternion.setFromAxisAngle(axis.set(0,1,0),angle);
+        quaternion.setFromAxisAngle(axis.set(0,1,0),family===4?-angle:angle);
         const size=r*(family===3?.14:family===2?.10:i<4?.34:.15)*(1+noise(seed,i+52)*.25);
         scale.setScalar(size);
       } else snapshots++;

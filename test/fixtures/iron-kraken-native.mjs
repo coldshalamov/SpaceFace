@@ -15,6 +15,11 @@ import { SECTORS } from '../../src/data/sectors.js';
 import { resolveSectorVisualProfile } from '../../src/data/sectorVisualProfiles.js';
 import { resolveLookLighting, resolveLookMoodId, resolveLookPost } from '../../src/data/lookMoods.js';
 import { beginLookMood } from '../../src/render/look.js';
+import { createBus } from '../../src/core/eventBus.js';
+import { makeEnemySpawnSpec } from '../../src/systems/combat.js';
+import { aftermathWrecks } from '../../src/systems/aftermathWrecks.js';
+import { zonesForSector } from '../../src/data/sectorZones.js';
+import { sectorLocalToGlobalForSector } from '../../src/data/sectorCoordinates.js';
 
 const stage = document.querySelector('#stage');
 const warningCanvas = document.querySelector('#warnings');
@@ -135,6 +140,7 @@ function mount(run) {
   if (live) release(live.root, live.run.state);
   debris?.clear();
   removeProxy();
+  resetWarningCanvas();
   const root = build(run);
   scene.add(root);
   live = { run, root };
@@ -151,6 +157,42 @@ function bounds(root) {
   // Bounds are sampled only in this diagnostic, never scanned in the production frame loop.
   root.traverse(node => { if (node.isInstancedMesh) node.computeBoundingBox(); });
   return new THREE.Box3().setFromObject(root);
+}
+
+function resetWarningCanvas() {
+  // Reset the backing bitmap and clip/state stack at the capture boundary. Explicit visibility
+  // also prevents a previous GPU-backed canvas layer from appearing over a later idle capture.
+  warningCanvas.hidden = true;
+  warningCanvas.width = width;
+  warningCanvas.height = height;
+}
+
+function painted() {
+  // WebGL, the warning canvas and DOM labels use separate compositor layers. Give all three a
+  // presentation boundary before Playwright samples pixels from the next capture.
+  return new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+}
+
+function visibleFitPoints(root) {
+  const points = [];
+  const matrix = new THREE.Matrix4(), instance = new THREE.Matrix4();
+  root.updateMatrixWorld(true);
+  root.traverseVisible(node => {
+    if (!node.geometry) return;
+    if (!node.geometry.boundingBox) node.geometry.computeBoundingBox();
+    const box = node.geometry.boundingBox;
+    const count = node.isInstancedMesh ? node.count : 1;
+    for (let i = 0; i < count; i++) {
+      if (node.isInstancedMesh) {
+        node.getMatrixAt(i, instance);
+        matrix.multiplyMatrices(node.matrixWorld, instance);
+      } else matrix.copy(node.matrixWorld);
+      for (const x of [box.min.x, box.max.x]) for (const y of [box.min.y, box.max.y]) {
+        for (const z of [box.min.z, box.max.z]) points.push(new THREE.Vector3(x, y, z).applyMatrix4(matrix));
+      }
+    }
+  });
+  return points;
 }
 
 function poseHash(root) {
@@ -179,15 +221,33 @@ function objectResources(root) {
   return { geometries, materials, instances, instanceBatches, renderNodes };
 }
 
-function frameCamera(box, view) {
+function frameCamera(box, view, fitPoints = null) {
   const center = box.getCenter(new THREE.Vector3());
-  const radius = Math.max(1, box.getBoundingSphere(new THREE.Sphere()).radius);
-  const distance = radius / Math.sin(THREE.MathUtils.degToRad(camera.fov / 2)) * 1.15;
+  const direction = new THREE.Vector3();
   camera.up.set(0, 1, 0);
-  if (view === 'top') { camera.up.set(1, 0, 0); camera.position.copy(center).add(new THREE.Vector3(0, distance, 0)); }
-  else if (view === 'front') camera.position.copy(center).add(new THREE.Vector3(distance, distance * 0.16, 0));
-  else if (view === 'gameplay') camera.position.copy(center).add(new THREE.Vector3(0, distance * Math.sin(Math.PI / 3), -distance * 0.5));
-  else camera.position.copy(center).add(new THREE.Vector3(distance * 0.72, distance * 0.57, -distance * 0.53));
+  if (view === 'top') { camera.up.set(1, 0, 0); direction.set(0, 1, 0); }
+  else if (view === 'front') direction.set(1, 0.16, 0).normalize();
+  else if (view === 'gameplay') direction.set(0, Math.sin(Math.PI / 3), -0.5);
+  else direction.set(0.72, 0.57, -0.53).normalize();
+  const right = new THREE.Vector3().crossVectors(camera.up, direction).normalize();
+  const up = new THREE.Vector3().crossVectors(direction, right).normalize();
+  const tanV = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+  const tanH = tanV * camera.aspect;
+  const points = fitPoints || [];
+  if (!points.length) {
+    for (const x of [box.min.x, box.max.x]) for (const y of [box.min.y, box.max.y]) {
+      for (const z of [box.min.z, box.max.z]) points.push(new THREE.Vector3(x, y, z));
+    }
+  }
+  let distance = 1;
+  const offset = new THREE.Vector3();
+  for (const p of points) {
+    offset.copy(p).sub(center);
+    const near = offset.dot(direction);
+    distance = Math.max(distance, near + Math.abs(offset.dot(right)) / (tanH * 0.84),
+      near + Math.abs(offset.dot(up)) / (tanV * 0.70));
+  }
+  camera.position.copy(center).addScaledVector(direction, distance * 1.025);
   camera.lookAt(center);
   camera.updateMatrixWorld(true);
 }
@@ -221,8 +281,10 @@ function project(x, z) {
 
 function draw(run, { warnings = false, reducedMotion = false } = {}) {
   renderer.render(scene, camera);
+  const showWarning = !!(warnings && run.warning);
+  warningCanvas.hidden = !showWarning;
   warningContext.clearRect(0, 0, width, height);
-  if (warnings && run.warning) drawCapitalWarning(warningContext, run.warning, run.fight.clock, project, { reducedMotion });
+  if (showWarning) drawCapitalWarning(warningContext, run.warning, run.fight.clock, project, { reducedMotion });
   if (proxy) {
     const screen = project(proxy.position.x, proxy.position.z);
     referenceLabel.style.left = `${screen.x}px`;
@@ -248,18 +310,24 @@ async function capture(spec) {
   const actualXZRadius = Math.max(...[box.min.x, box.max.x].flatMap(x =>
     [box.min.z, box.max.z].map(z => Math.hypot(x, z))));
   expect(cullRadius + 0.1 >= actualXZRadius, `Animated pose exceeds its visual cull radius (${cullRadius} < ${actualXZRadius})`);
-  if (spec.scaleReference) addScaleReference(run, box);
+  const fitPoints = visibleFitPoints(root);
+  if (spec.scaleReference) { addScaleReference(run, box); fitPoints.push(...visibleFitPoints(proxy)); }
   if (spec.warnings && run.warning) {
     for (const shape of run.warning.shapes) for (const line of capitalShapeOutlines(shape)) {
-      for (const p of line) box.expandByPoint(point.set(p.x, 0, p.z));
+      for (const p of line) {
+        const position = new THREE.Vector3(p.x, 0, p.z);
+        box.expandByPoint(position); fitPoints.push(position);
+      }
     }
   }
-  frameCamera(box, spec.view);
+  frameCamera(box, spec.view, fitPoints);
   scene.background.set(spec.inspection ? 0x333a46 : 0x080d16);
   title.textContent = `${run.p.name} · ${spec.title}`;
-  caption.textContent = `${spec.view} view · ${run.fight.phase}${run.fight.cast ? ` / ${run.fight.cast.beatId}` : ''} · tick ${run.tick}${spec.reducedMotion ? ' · reduced motion + flash' : ''}`;
+  const viewLabel = spec.view === 'gameplay' ? '60° gameplay-angle inspection' : `${spec.view} inspection`;
+  caption.textContent = `${viewLabel} · ${run.fight.phase}${run.fight.cast ? ` / ${run.fight.cast.beatId}` : ''} · tick ${run.tick}${spec.reducedMotion ? ' · reduced motion + flash' : ''}`;
   footer.textContent = 'Production model, illustrated surfaces and score clock · Helios lighting · no post effects · stationary diagnostic';
   draw(run, spec);
+  await painted();
   const resources = objectResources(root);
   return { name: spec.name, variant: run.p.variant, spec, tick: run.tick,
     simulationTime: run.state.simTime, phase: run.fight.phase, beatId: run.fight.cast?.beatId || run.recovery?.beatId || null,
@@ -267,6 +335,7 @@ async function capture(spec) {
     actualBounds, cullRadius, actualXZRadius, poseHash: poseHash(root),
     render: counters(), resources: { geometries: resources.geometries.size, materials: resources.materials.size,
       renderNodes: resources.renderNodes, instanceBatches: resources.instanceBatches, instances: resources.instances },
+    warningVisible: !warningCanvas.hidden, warningShapeCount: warningCanvas.hidden ? 0 : run.warning.shapes.length,
     camera: { fov: camera.fov, position: camera.position.toArray(), up: camera.up.toArray() },
     scaleReference: spec.scaleReference ? { kind: 'collision-diameter-proxy', sourceId: hitch.id, diameter: hitch.collisionRadius * 2 } : null };
 }
@@ -288,12 +357,13 @@ async function captureBreakup() {
   live = null;
   debris.update(run.state.simTime + 0.8);
   const box = bounds(debris.group);
-  frameCamera(box, 'inspect');
+  frameCamera(box, 'inspect', visibleFitPoints(debris.group));
   title.textContent = 'Iron Kraken · mechanical breakup';
   caption.textContent = 'Arm sleeves, dark joints, suction rims and death-only pump sections · 0.8 simulation seconds after the kill';
   footer.textContent = 'Canonical kill receipt shape · model pieces sampled before teardown · no living interior geometry';
   scene.background.set(0x080d16);
   draw(run);
+  await painted();
   const after = debris.diagnostics();
   const result = { name: '09-mechanical-breakup', variant: run.p.variant, tick: run.tick,
     simulationTime: run.state.simTime + 0.8, render: counters(),
@@ -301,6 +371,48 @@ async function captureBreakup() {
     actualBounds: { min: box.min.toArray(), max: box.max.toArray() } };
   expect(after.snapshots > 0, 'Breakup did not sample the real articulated model');
   return result;
+}
+
+async function captureWreck() {
+  if (live) release(live.root, live.run.state);
+  live = null;
+  debris?.clear(); removeProxy(); resetWarningCanvas();
+  const p = IRON_KRAKEN_PROFILES.heavy, sectorId = 'sector_helios_prime';
+  const bus = createBus();
+  const state = { meta: { seed: 4242 }, tick: 470, simTime: 47, playerId: 1,
+    world: { currentSectorId: sectorId }, entities: new Map(), entityList: [],
+    rng() { throw new Error('Wreck presentation consumed simulation RNG'); } };
+  const pos = sectorLocalToGlobalForSector(zonesForSector(sectorId)[0].center, sectorId);
+  const victim = { ...makeEnemySpawnSpec(p.enemyId, 1, pos), id: 40, alive: false };
+  state.entities.set(victim.id, victim); state.entityList.push(victim);
+  const owner = Object.create(aftermathWrecks);
+  owner.init({ state, bus, helpers: {}, registry: { get() { return null; } } });
+  let wreck;
+  try {
+    const receipt = { id: victim.id, killerId: 1, type: 'ship', lootTableId: p.enemyId,
+      victimClass: 'capital', factionId: victim.factionId, pos: { ...pos }, sectorId };
+    bus.emit('entity:killed', receipt);
+    const plan = owner.immediateWreckPlan(receipt);
+    expect(plan?.spec, 'Production aftermath did not create a static wreck plan');
+    wreck = { ...plan.spec, id: 901, alive: true };
+  } finally { owner.destroy(); }
+  const root = factory.build(wreck);
+  expect(root?.userData.ironKrakenWreck && wreck.presentationAdmission === 'ready', 'Production factory did not admit the static Kraken wreck');
+  expect(!root.userData.updateAuthoredMotion && !root.userData.ironKrakenRig, 'Static wreck retained a live attack rig');
+  scene.add(root);
+  live = { root, run: { state } };
+  const box = bounds(root);
+  frameCamera(box, 'inspect', visibleFitPoints(root));
+  title.textContent = 'Iron Kraken · persistent mechanical wreck';
+  caption.textContent = 'Production aftermath plan + authored factory · four curled arms, broken roots, dead optics and splayed mantle';
+  footer.textContent = 'Static salvage body · no live animation, pressure jet, hidden pump or added simulation controller';
+  scene.background.set(0x080d16);
+  draw({});
+  await painted();
+  return { name: '10-persistent-wreck', variant: p.variant, render: counters(),
+    identity: root.userData.ironKrakenWreck, animated: root.userData.animated,
+    actualBounds: { min: box.min.toArray(), max: box.max.toArray() },
+    camera: { fov: camera.fov, position: camera.position.toArray(), up: camera.up.toArray() } };
 }
 
 async function checks() {
@@ -405,6 +517,6 @@ function runtime() {
     measurement: 'Renderer counters are workload diagnostics for this exact capture; no hardware FPS claim.' };
 }
 
-window.ironKrakenProbe = { capture, captureBreakup, checks, animate, runtime,
+window.ironKrakenProbe = { capture, captureBreakup, captureWreck, checks, animate, runtime,
   dispose() { if (live) release(live.root, live.run.state); removeProxy(); debris?.dispose(); renderer.dispose(); } };
 window.ironKrakenReady = true;
