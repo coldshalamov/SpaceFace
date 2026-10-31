@@ -100,6 +100,12 @@ ${T} .con-reqs .con-row[data-met="1"]::before { background:rgb(${WARM}); }
 ${T} .con-row__name { ${READ} font-size:clamp(14px, .82vw, 17px); line-height:1.3; color:rgb(${WARM}); min-width:0; }
 ${T} .con-row__sub { ${LABEL} font-size:12px; letter-spacing:.16em; color:rgb(${BONE} / .78); white-space:nowrap; }
 ${T} .con-reqs .con-row[data-met="0"] .con-row__name { color:rgb(${BONE} / .82); }
+/* A prerequisite's state drops under its name when the two can't share the column (the narrow
+   inspector at 961–1100 wide), instead of the name folding into a sliver beside it. The tick keeps
+   to the name's first line. */
+${T} .con-reqs .con-row { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:baseline; row-gap:1px; }
+${T} .con-reqs .con-row__name { flex:1 1 auto; }
+${T} .con-reqs .con-row::before { top:calc(clamp(3px, .5vh, 6px) + clamp(14px, .82vw, 17px) * .65); }
 ${T} .con-sentence, ${T} .con-empty { ${READ} font-size:clamp(13.5px, .78vw, 16px); line-height:1.45; color:rgb(${BONE} / .88); margin:0; }
 ${T} .con-dossier .sf-entity-link { text-decoration:none !important; box-shadow:none !important; border:0 !important; color:inherit !important; background:none !important; cursor:pointer; }
 ${T} .con-dossier .sf-entity-link:is(:hover, :focus-visible) { outline:none !important; text-decoration:underline !important; text-decoration-thickness:1px !important; text-underline-offset:4px; }
