@@ -95,7 +95,13 @@ export function sampleIronKrakenArm(arm, pose = EMPTY_POSE, points, pointOffset 
   const forearmTuck = index === 1 ? 1 - rakeWeight : 0;
   const tuckDrift = forearmTuck && quiet ? drift(time * 0.07 + 0.41, 2833) : 0;
   const coilStart = 0.29 + (0.225 + tuckDrift * 0.025 - 0.29) * forearmTuck;
-  const yaw = angle + (SWEEP[index] + reachDrift * 0.065) * (1 - jet);
+  // Adjacent foreground chains pass at different depths during the rake. A small committed
+  // yaw separates their sleeve lips; an early roll clears the tiny tip during coil release.
+  // Both vanish in holding, and the jet's target pose removes them completely.
+  const rakeYawClearance = index === 2 ? rake * 0.05 : 0;
+  const rakeRollClearance = index === 1 ? 0.06 * smooth(rake / 0.12)
+    * (1 - smooth((rake - 0.40) / 0.30)) : 0;
+  const yaw = angle + (SWEEP[index] + reachDrift * 0.065 + rakeYawClearance) * (1 - jet);
   const totalLength = IRON_KRAKEN_ARM_MOTION.chainLength * LENGTH[index];
   const proximalCount = Math.min(PROXIMAL_LENGTHS.length, links);
   let proximalLength = 0;
@@ -107,7 +113,8 @@ export function sampleIronKrakenArm(arm, pose = EMPTY_POSE, points, pointOffset 
   const coilTurns = (CURL[index] + curlDrift * 0.48) * (1 + inkCurl * 0.30);
   const shoulder = SHOULDER[index] + reachDrift * 0.07 + forearmTuck * 0.12;
   const droop = DROOP[index] + reachDrift * 0.10 + mantle * 0.04;
-  const planeBase = PLANE[index] + rollDrift * 0.18 - forearmTuck * (0.65 + tuckDrift * 0.08);
+  const planeBase = PLANE[index] + rollDrift * 0.18 - forearmTuck * (0.65 + tuckDrift * 0.08)
+    - rakeRollClearance;
   let x = rootCos * IRON_KRAKEN_ARM_MOTION.rootRadius;
   let y = IRON_KRAKEN_ARM_MOTION.rootHeight;
   let z = rootSin * IRON_KRAKEN_ARM_MOTION.rootRadius;

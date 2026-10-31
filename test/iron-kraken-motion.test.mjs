@@ -1,6 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { sampleIronKrakenArm, ironKrakenBodyPose, ironKrakenArmRadius } from '../src/render/ironKrakenMotion.js';
+import { createIronKrakenVisual } from '../src/render/ironKrakenVisuals.js';
+import { IRON_KRAKEN_PROFILES } from '../src/data/ironKraken.js';
+import { createCapitalBossFight, stepCapitalBossFight } from '../src/combat/capitalBossScore.js';
 
 const links = 22;
 const pointCount = (links + 1) * 3;
@@ -9,6 +12,55 @@ const distance = (p, index) => Math.hypot(p[index + 3] - p[index],
   p[index + 4] - p[index + 1], p[index + 5] - p[index + 2]);
 const close = (a, b, message, tolerance = 1e-10) => assert.ok(Math.abs(a - b) < tolerance,
   `${message}: ${a} versus ${b}`);
+
+function segmentDistance(points, a, b) {
+  const ux=points[a+3]-points[a], uy=points[a+4]-points[a+1], uz=points[a+5]-points[a+2];
+  const vx=points[b+3]-points[b], vy=points[b+4]-points[b+1], vz=points[b+5]-points[b+2];
+  const rx=points[a]-points[b], ry=points[a+1]-points[b+1], rz=points[a+2]-points[b+2];
+  const aa=ux*ux+uy*uy+uz*uz, ee=vx*vx+vy*vy+vz*vz, bb=ux*vx+uy*vy+uz*vz;
+  const cc=ux*rx+uy*ry+uz*rz, ff=vx*rx+vy*ry+vz*rz, denominator=aa*ee-bb*bb;
+  const clamp=value=>Math.max(0,Math.min(1,value));
+  let s=denominator>1e-14?clamp((bb*ff-cc*ee)/denominator):0, t=(bb*s+ff)/ee;
+  if(t<0){t=0;s=clamp(-cc/aa);}else if(t>1){t=1;s=clamp((bb-cc)/aa);}
+  return Math.hypot(rx+s*ux-t*vx,ry+s*uy-t*vy,rz+s*uz-t*vz);
+}
+
+test('foreground sleeve envelopes clear each other through the real rake and recovery driver', () => {
+  const p=IRON_KRAKEN_PROFILES.heavy;
+  for(const cadence of [{start:0,step:1},{start:205,step:2}]) {
+    const id=`rake-sleeve-${cadence.step}`,fightId=`test:${id}`;
+    const entity={id,type:'ship',alive:true,rot:0,pos:{x:0,z:0},vel:{x:0,z:0},
+      radius:p.coreRadius,visualRadius:p.armReach,hull:p.hull,hullMax:p.hull,
+      data:{shipId:'ship_bastion',lootTableId:p.enemyId,enemyTypeId:p.enemyId,
+        ironKraken:{variant:p.variant,scale:p.scale,fightId}}};
+    const target={id:`${id}:target`,alive:true,hull:100,hullMax:100,radius:14,pos:{x:p.armReach*1.2,z:0}};
+    const fight=createCapitalBossFight({encounterId:p.scoreId,fightId,bossId:id,targetId:target.id});
+    const state={simTime:0,entities:new Map([[id,entity],[target.id,target]]),
+      capitalBossEncounters:{version:1,fights:{[fightId]:fight},orders:{}}};
+    let tick=-1;
+    const advance=()=>{tick++;state.simTime=tick/60;stepCapitalBossFight(fight,
+      {tick,simTime:state.simTime,boss:entity,target,active:true});};
+    while(tick<cadence.start)advance();
+    const root=createIronKrakenVisual(entity);
+    try {
+      for(;;) {
+        root.userData.updateAuthoredMotion(entity,state.simTime,{},state);
+        if(tick>=180) {
+          const points=root.userData.ironKrakenRig.points;
+          for(let a=0;a<links;a++)for(let b=0;b<links;b++) {
+            // Whole-segment capsules deliberately include the empty axial joint gaps. The
+            // extra2% covers sleeve paint/trim, so positive separation also clears actual armor.
+            const gap=segmentDistance(points,pointCount+a*3,pointCount*2+b*3)
+              -1.02*(ironKrakenArmRadius(a)+ironKrakenArmRadius(b));
+            assert.ok(gap>0,`tick${tick}, cadence${cadence.step}, sleeves${a}/${b} overlap by${-gap}R`);
+          }
+        }
+        if(tick>=473)break;
+        for(let step=0;step<cadence.step;step++)advance();
+      }
+    } finally { root.userData.disposeIronKraken(); }
+  }
+});
 
 test('live and wreck sleeves share four large barrels followed by a steadily tapered fine chain', () => {
   for (const count of [22, 18]) {
