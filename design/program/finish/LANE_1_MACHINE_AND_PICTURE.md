@@ -196,7 +196,7 @@ commits Ceres Dock, then times out on the combined settlement predicate before F
 publication is repaired (5 focused cases), with a fresh delivery/save/Continue route pending. The full
 30-minute soak remains required. The latest combined bundle passes; the current baseline has 16
 passing checks and a Massline timeout at 210 seconds, totaling 222,351 ms against its unchanged
-90-second budget. An isolated Massline check is in progress. The source-70d1 public haul
+90-second budget. Isolated Massline passes 27/27 child checks in 166,204 ms; the broad gate remains failed. The source-70d1 public haul
 reaches physical Ceres Dock, delivers all eight cells and publishes the 760-credit receipt. Its
 observer incorrectly assumes reputation-event order across the worker transport; that observer is
 being corrected before retrying save/Continue. No save/Continue acceptance is claimed.
