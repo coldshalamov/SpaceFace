@@ -176,6 +176,36 @@ normal Charon sector entry spawns its target (`missionStoryOps.js:_activateBookC
 `missions.js:dock:undocked`, `missionStoryOps.js:_onSectorEnterSteps`,
 `missionSpawningOps.js:_spawnTargetsFor`).
 
+### Cinder: live Rook intake control feedback
+
+The first required Charon return now gives the pilot actual **load** arrival feedback
+through the existing tracked-flight objective: hull distance outside Rook's 100-WU ring,
+hull world speed against the existing 8-WU/s limit, and a specific brake/bring-inside state.
+This closes a control gap: target/contact closing speed is relative to the cockpit, and
+navigation distance is cockpit-to-pad; a player and hull co-moving at 12 WU/s can show
+zero closing speed while Rook correctly refuses the load.
+
+`cinderRoute.js` projects only an unresolved canonical marked hull on the current
+player-owned active attachment, with matching endpoint occupant generations and wreck
+provenance. The successful held-load path uses direct entity/attachment lookups, not an
+additional entity census. Numeric feedback is local to flight within 600 WU of the pad;
+remote, docked or non-finite readings keep instructions rather than fictitious telemetry.
+The outside gap and displayed speed round upward, while status uses the exact unrounded
+`rookDeliveryCheck`. “Inside and slow enough — hold for Rook” does not claim settlement:
+no sale, reward, negotiation, material retirement or campaign progress is written here.
+
+The normal `missions.update` Cinder driver refreshes the tracked waypoint each simulation
+update, and the existing `flightDestinationSurface` consumes its changing reason. Six
+new behavior tests exercise authored board acceptance, real combat kills and aftermath
+wrecks, native attachment creation, native mission update and visible-reader text, exact
+arrival thresholds, co-moving cockpit/load, stale/NPC/broken attachments, invalid material,
+locality, and native aftermath serialization/rematerialization followed by reattachment.
+Both original Rook suites and the original Books 0–2 route suite pass unchanged (45 Node
+tests total, with the Books suite also asserting its five complete route cases).
+This is native source/reader evidence, not a rendered flight or full Continue acceptance.
+
+### Elroy register route
+
 The live Elroy contract is `type: bounty_hunt`, story tag `campaign47a:b2:elroy`, target
 `npc_elroy` / `register_mark`, zone `zone_charon_ambush` (Ashfall Approach), and receiving
 station `station_expanse` (`src/story/campaign47a/embodiedMissions.js`). This is separate from

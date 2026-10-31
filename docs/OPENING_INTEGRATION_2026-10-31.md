@@ -352,3 +352,27 @@ Actual Ceres GLB structure was also inspected: no named gantry is present. The
 earned inspection is the existing bounds-projected hull repair/scan effect, not
 physical unloading, a drone entity or actual gantry articulation. Exact asset
 hashes and nesting evidence are in the dossier. No model or motion owner changed.
+
+### Cinder tow: readable physical arrival
+
+Rook requires the wreck, not merely the cockpit, inside his ring and at no more
+than 8 WU/s. Existing target speed is relative to the player: a pilot and hull
+co-moving at 12 WU/s can show zero closing speed while the sale correctly refuses.
+The tracked Cinder route now displays the held hull's actual ring gap and world
+speed through the existing flight objective, with brake/bring-inside/hold feedback.
+Only a canonical unresolved marked wreck on the current generation-matched player
+attachment qualifies. Released, NPC-held, stale or invalid material cannot create
+false intake priority. The successful path reuses accounting and direct lookups
+instead of adding an entity census. Outside gaps and speeds round upward, but
+acceptance status uses the unrounded canonical Rook check. No payment or offer is
+inferred from arrival geometry, and no economic/physical owner was changed.
+
+Six tests cover real authored acceptance, combat deaths/aftermath hulls, attachment
+service, live mission refresh, visible-reader text, thresholds and native aftermath
+rematerialization with fresh reattachment. The unchanged Rook/Books suites remain
+separate gates. Rendered maneuver readability and full Save/Continue remain open.
+
+An initially considered ore-hauler pull-aside scene was rejected after measuring
+actual geometry: its 112-WU route is inside the existing 136.86-WU safe-admission
+radius. Safety margins and ordinary routes were not changed to manufacture a scene.
+Rook's existing real purchase/negotiation and garden handoff remain authoritative.
