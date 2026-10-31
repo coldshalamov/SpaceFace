@@ -9426,6 +9426,16 @@ export function isRigidOpaqueDefaultCohortSource(owner, source) {
     || rigidOpaqueShipSourceRoot(owner, source) != null;
 }
 
+function defaultRigidBatchMayPrepare(owner) {
+  const state = owner?.state;
+  const renderState = state?.render;
+  return state?.mode === 'flight' && Number.isFinite(renderState?.firstPlayableFrameAt)
+    && renderState.openingGraphPublicationFrozen !== true
+    && renderState.sectorShellAdmission !== true
+    && owner._contextLost !== true && owner._contextRecovery?.pending !== true
+    && owner._rendererResourcesDisposed !== true;
+}
+
 function createRigidOpaqueBatchProbe(owner, scene, options = {}) {
   const state = owner?.state;
   const defaultCohort = options.defaultCohort === true;
@@ -9456,6 +9466,26 @@ function createRigidOpaqueBatchProbe(owner, scene, options = {}) {
     : undefined;
   return createRetainedRigidOpaqueBatchController({
     scene,
+    capturePreparationGuard: defaultCohort ? () => {
+      const renderState = state.render, world = state.world;
+      const serial = world?.enterSerial, sector = world?.currentSectorId;
+      const generation = renderState?.admissionRunGeneration;
+      const restore = state.contextRestoreSeq, nativeRenderer = owner.renderer;
+      const rendererGeneration = owner._rendererGeneration;
+      const recovery = owner._contextRecovery;
+      const recoveryGeneration = recovery?.generation, recoveryLosses = recovery?.losses;
+      const pictureEpoch = owner._rigidOpaqueBatchPictureEpoch || 0;
+      const paint = renderState?.firstPlayableFrameAt;
+      return () => defaultRigidBatchMayPrepare(owner)
+        && owner.state === state && state.render === renderState && state.world === world
+        && world?.enterSerial === serial && world?.currentSectorId === sector
+        && renderState?.admissionRunGeneration === generation && state.contextRestoreSeq === restore
+        && owner.renderer === nativeRenderer && owner._rendererGeneration === rendererGeneration
+        && owner._contextRecovery === recovery && recovery?.generation === recoveryGeneration
+        && recovery?.losses === recoveryLosses
+        && (owner._rigidOpaqueBatchPictureEpoch || 0) === pictureEpoch
+        && renderState?.firstPlayableFrameAt === paint;
+    } : undefined,
     supported: owner?._opaqueBatchSupported === true,
     assumeUniqueRoots: true,
     selectSource,
@@ -20545,6 +20575,11 @@ export const render = {
             state, this._openingLoadingAdmission, player,
           );
           if (resetAction === 'ignore' || resetAction === 'preserve') return;
+          // The next exact picture owns direct authored leaves, including on Continue.
+          // Retire only the default optimizer; an explicit bench remains independently owned.
+          if (this._rigidOpaqueBatchDefaultCohort === true) {
+            this._rigidOpaqueBatchController?.rollback?.('opening-first-picture');
+          }
           resetRender.openingFirstPictureReady = false;
           resetRender.openingFirstPictureOwner = null;
           resetRender.openingLiveSectorReady = null;
@@ -28819,10 +28854,9 @@ export const render = {
     const controller = this._rigidOpaqueBatchController;
     const state = this.state;
     if (!controller || this._rigidOpaqueBatchProbeEnabled !== true || !this._meshes) return;
-    // The bounded default is allowed to submit its existing loading admission here. The prepare
-    // callback joins the renderer's paced compile queue and the controller keeps direct leaves
-    // visible until that queue resolves; this prewarms a supported Kestrel without adding a new
-    // first-flight shader/upload burst. The broad bench probe retains its old loading exclusion.
+    if (this._rigidOpaqueBatchDefaultCohort === true && !defaultRigidBatchMayPrepare(this)) return;
+    // The default waits until the first picture is painted and its graph hold is released.
+    // The explicit bench probe retains its existing loading exclusion.
     if (state && state.mode === 'loading' && this._rigidOpaqueBatchDefaultCohort !== true) return;
     const roots = this._rigidOpaqueBatchRootsScratch || (this._rigidOpaqueBatchRootsScratch = []);
     roots.length = 0;
@@ -29406,12 +29440,6 @@ export const render = {
       },
     )).map((candidate) => candidate.root));
     const pending = new Map();
-    if (state?.mode === 'loading' && this._rigidOpaqueBatchDefaultCohort === true) {
-      const retained = this._syncRigidOpaqueBatchProbe();
-      if (retained && typeof retained.then === 'function') {
-        pending.set(retained, { kind: 'rigid-opaque-batch' });
-      }
-    }
     let upgradeVisited = 0;
     // Same stride-cost bound as the shadow-caster census: each row can pay a
     // subtree bounds walk + an upgrade mint, so a fat 64-row stride yields
@@ -34611,6 +34639,7 @@ export function releaseOpeningMeshDefer(owner, mode, options = {}) {
 export function freezeOpeningGraphPublication(owner) {
   if (!owner || !owner.state || !owner.state.render) return false;
   if (owner._openingGraphPublicationGate) return true;
+  owner._rigidOpaqueBatchPictureEpoch = (owner._rigidOpaqueBatchPictureEpoch || 0) + 1;
   let resolveRelease;
   const promise = new Promise((resolve) => { resolveRelease = resolve; });
   const gate = { promise, resolveRelease };

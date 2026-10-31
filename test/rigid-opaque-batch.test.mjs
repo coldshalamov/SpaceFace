@@ -13,7 +13,8 @@ import { warmScenePipelinesForRenderTarget } from '../src/render/bloom.js';
 import { createShadowDepthStagingSession } from '../src/render/shadowDepthAdmission.js';
 import { installIllustratedSurface } from '../src/render/illustratedSurface.js';
 import { attachRetroMounts } from '../src/render/thruster/retroMounts.js';
-import { render as renderSystem } from '../src/render/renderer.js';
+import { render as renderSystem, applyFirstPlayablePaintRelease, freezeOpeningGraphPublication,
+  releaseOpeningGraphPublication } from '../src/render/renderer.js';
 import {
   collectOpeningSubmissionLeaves,
   combineOpeningProducerCensuses,
@@ -281,58 +282,74 @@ function makeDefaultKestrelOwner(compile) {
   } };
 }
 
-test('default renderer submission joins strict loading preparation before first-picture capture', async () => {
-  let finish, compileOptions;
+test('default batch waits for the first picture and promotes only a current prepared candidate', async () => {
+  const pending = [];
   const fixture = makeDefaultKestrelOwner((batch, options) => {
-    assert.equal(batch.isBatchedMesh, true); compileOptions = options;
+    assert.equal(batch.isBatchedMesh, true);
     assert.equal(batch.userData.openingSubmissionPackage?.contentHashVerified, true,
       'the producer publishes the derived package before pipeline preparation');
-    return new Promise(resolve => { finish = resolve; });
+    return new Promise(resolve => pending.push({ resolve, options }));
   });
-  const { owner, scene, a, b } = fixture;
+  const { owner, scene, root, a, b, state } = fixture;
   const hotIris = new THREE.Mesh(new THREE.BoxGeometry(), a.material);
-  hotIris.name = 'Retro_Iris_Port'; fixture.root.add(hotIris);
+  hotIris.name = 'Retro_Iris_Port'; root.add(hotIris);
   const npc = new THREE.Mesh(new THREE.BoxGeometry(), a.material);
   npc.name = a.name; scene.add(npc);
-  owner._meshes.set(2, npc); fixture.state.entities.set(2, { id: 2, data: { defId: 'ship_kestrel' } });
+  owner._meshes.set(2, npc); state.entities.set(2, { id: 2, data: { defId: 'ship_kestrel' } });
   scene.updateMatrixWorld(true);
   try {
+    // An old stamp must not authorize a new loading/frozen picture.
+    state.render.firstPlayableFrameAt = 5;
+    freezeOpeningGraphPublication(owner);
     owner._syncAuthoredInstanceSubmission(100);
-    const completion = owner._syncRigidOpaqueBatchProbe();
-    await Promise.resolve();
-    assert.equal(typeof completion?.then, 'function', 'the real renderer returns its pending controller preparation');
-    assert.equal(compileOptions.openingRequired, true);
-    assert.equal(compileOptions.strict, true); assert.equal(compileOptions.explicit, true);
-    assert.equal(compileOptions.joinOutstanding, true); assert.equal(compileOptions.isActive(), true);
-    const compiling = owner.getRigidOpaqueBatchDiagnosticsForBench();
-    assert.equal(compiling.preparationStage, 'compiling');
-    assert.equal(compiling.preparationCurrentGroup, 1);
-    assert.equal(compiling.preparationCompletedGroups, 0);
-    assert.equal(compiling.preparationGroupCount, 1);
-    const waitSet = owner._openingFirstPictureUpgradePromises();
-    assert.ok(waitSet.includes(completion), 'the existing bounded opening settle joins that exact promise');
+    assert.equal(owner._syncRigidOpaqueBatchProbe(), undefined);
+    assert.equal(pending.length, 0, 'loading never mints the optional batch');
+    assert.equal(scene.children.some(child => child.isBatchedMesh), false);
+    assert.deepEqual(owner._openingFirstPictureUpgradePromises(), []);
+    const leaves = collectOpeningSubmissionLeaves(root, { includeOffscreen: true });
+    assert.ok(leaves.includes(a) && leaves.includes(b), 'the first-picture census uses the real direct leaves');
+    assert.equal(strictOpeningPlan(root).complete, true, 'direct authored content owns a complete opening plan');
     assert.equal(a.layers.mask, 1); assert.equal(b.layers.mask, 1);
-    finish({ pipelines: {}, gpuResidency: {} });
-    await Promise.all(waitSet);
-    const active = owner.getRigidOpaqueBatchDiagnosticsForBench();
-    assert.equal(active.status, 'active');
-    assert.equal(active.preparationStage, 'active');
-    assert.equal(active.preparationCompletedGroups, 1);
-    assert.equal(owner.getRigidOpaqueBatchDiagnosticsForBench().instances, 2);
+
+    // The actual first paint sets the new latch; the publication owner still controls its hold.
+    state.render.firstPlayableFrameAt = null;
+    state.mode = 'flight';
+    applyFirstPlayablePaintRelease(owner);
+    assert.ok(Number.isFinite(state.render.firstPlayableFrameAt));
+    assert.equal(owner._syncRigidOpaqueBatchProbe(), undefined, 'the frozen graph remains protected after paint');
+    releaseOpeningGraphPublication(owner);
+    const first = owner._syncRigidOpaqueBatchProbe();
+    await Promise.resolve();
+    assert.equal(pending.length, 1);
+    assert.equal(pending[0].options.strict, true);
+    assert.equal(pending[0].options.explicit, true);
+    assert.equal(pending[0].options.joinOutstanding, true);
+    assert.equal(a.layers.mask, 1); assert.equal(b.layers.mask, 1);
+
+    // A new frozen picture invalidates the old candidate even if released before its promise.
+    freezeOpeningGraphPublication(owner);
+    releaseOpeningGraphPublication(owner);
+    pending[0].resolve({ pipelines: {}, gpuResidency: {} });
+    await first;
+    assert.notEqual(owner.getRigidOpaqueBatchDiagnosticsForBench().status, 'active');
+    assert.equal(a.layers.mask, 1); assert.equal(b.layers.mask, 1);
+    const second = owner._syncRigidOpaqueBatchProbe();
+    await Promise.resolve();
+    assert.equal(pending.length, 2);
+    pending[1].resolve({ pipelines: {}, gpuResidency: {} });
+    await second;
+    assert.equal(owner.getRigidOpaqueBatchDiagnosticsForBench().status, 'active');
     assert.equal(a.layers.mask, 0); assert.equal(b.layers.mask, 0);
-    assert.equal(hotIris.layers.mask, 1, 'the player hot iris stays on its live direct material');
-    assert.equal(npc.layers.mask, 1, 'an identically named NPC source is outside the player cohort');
+    assert.equal(hotIris.layers.mask, 1, 'the player hot iris stays direct');
+    assert.equal(npc.layers.mask, 1, 'an identically named NPC stays direct');
     const batch = scene.children.find(child => child.isBatchedMesh);
-    const roots = owner._collectOpeningDerivedPoolRoots();
-    assert.ok(roots.includes(batch), 'the real scene-owned copy enters the exact opening root census');
+    assert.ok(owner._collectOpeningDerivedPoolRoots().includes(batch));
     assert.deepEqual(collectOpeningSubmissionLeaves(batch), [batch]);
     assert.equal(createOpeningProducerCensus(batch, { includeOffscreen: true }).drawLeafIds.length, 1);
-    const openingPlan = strictOpeningPlan(batch);
-    assert.equal(openingPlan.roots[0].productionBoundary.contentHashVerified, true,
-      'the retained copy carries its own verified producer boundary');
-    assert.equal(openingPlan.complete, true,
-      'the actual scene batch passes the strict opening plan, beyond its draw census');
-    fixture.state.entities.get(1).data.defId = 'ship_other';
+    const plan = strictOpeningPlan(batch);
+    assert.equal(plan.roots[0].productionBoundary.contentHashVerified, true);
+    assert.equal(plan.complete, true, 'the retained copy has a complete verified producer plan');
+    state.entities.get(1).data.defId = 'ship_other';
     await owner._syncRigidOpaqueBatchProbe();
     assert.equal(a.layers.mask, 1); assert.equal(b.layers.mask, 1);
   } finally { fixture.dispose(); hotIris.geometry.dispose(); npc.geometry.dispose(); }
@@ -418,6 +435,8 @@ test('default renderer never suppresses sources after skipped or rejected prepar
         : { pipelines: {}, gpuResidency: { partial: true } };
     });
     try {
+      fixture.state.mode = 'flight';
+      applyFirstPlayablePaintRelease(fixture.owner);
       await fixture.owner._syncRigidOpaqueBatchProbe();
       assert.notEqual(fixture.owner.getRigidOpaqueBatchDiagnosticsForBench().status, 'active');
       assert.equal(fixture.a.layers.mask, 1); assert.equal(fixture.b.layers.mask, 1);
@@ -433,6 +452,8 @@ test('default renderer preparation cannot activate across a replaced run or cont
       isActive = options.isActive; return new Promise(resolve => { finish = resolve; });
     });
     try {
+      fixture.state.mode = 'flight';
+      applyFirstPlayablePaintRelease(fixture.owner);
       const pending = fixture.owner._syncRigidOpaqueBatchProbe(); await Promise.resolve();
       if (replacement === 'run') fixture.state.render.admissionRunGeneration += 1;
       else if (replacement === 'world') fixture.state.world = { ...fixture.state.world };

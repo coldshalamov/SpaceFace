@@ -1261,12 +1261,16 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
       }
     }
     const signature = signatureFor(normalized);
-    if (pending && pending.signature === signature) return pending.promise;
+    if (pending && pending.signature === signature
+        && (typeof pending.ownerIsActive !== 'function' || pending.ownerIsActive() === true)) return pending.promise;
     if (pending) {
       pending.cancelled = true;
       releaseCandidate(pending.candidate, scene, true);
       pending = null;
       stats.preparationLeg = null;
+      lastSignature = null;
+      lastRoots = [];
+      lastTopology = null;
     }
     if (syncSerial - lastShadowFlipSync < RETAINED_BATCH_SHADOW_FLIP_REPLAN_QUIET) {
       // Flips are still landing — re-planning now would commit against source state the next
@@ -1334,6 +1338,8 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
       candidate,
       entryTopology: captureEntryTopology(candidate.entries),
       cancelled: false,
+      ownerIsActive: typeof options.capturePreparationGuard === 'function'
+        ? options.capturePreparationGuard() : null,
       promise: null,
     };
     stats.status = 'preparing';
@@ -1344,7 +1350,8 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
     stats.preparationGroupCount = candidate.batches.length;
     stats.lastReason = 'preparation-running';
     stats.lastError = null;
-    const activeNow = () => !disposed && pending === record && record.cancelled !== true;
+    const activeNow = () => !disposed && pending === record && record.cancelled !== true
+      && (typeof record.ownerIsActive !== 'function' || record.ownerIsActive() === true);
     const reportProgress = (stage, currentGroup, completedGroups, groupCount) => {
       if (!activeNow()) return false;
       const boundedCount = Math.max(0, Math.min(candidate.batches.length,
@@ -1380,7 +1387,18 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
             || result?.ready === false || result?.timedOut === true
             || result?.superseded === true) {
           releaseCandidate(candidate, scene, true);
-          if (pending === record) pending = null;
+          if (pending === record) {
+            pending = null;
+            if (!wasActive) {
+              lastSignature = null;
+              lastRoots = [];
+              lastTopology = null;
+              stats.preparationLeg = null;
+              stats.status = 'idle';
+              stats.preparationStage = 'stale';
+              stats.lastReason = 'preparation-stale';
+            }
+          }
           if (!wasActive) return refreshDiagnostics();
           if (wasActive && (!ready || result?.skipped === true
               || result?.ready === false || result?.timedOut === true
@@ -1502,6 +1520,16 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
       .catch((error) => {
         const wasActive = activeNow();
         releaseCandidate(candidate, scene, true);
+        if (!wasActive && pending === record) {
+          pending = null;
+          lastSignature = null;
+          lastRoots = [];
+          lastTopology = null;
+          stats.preparationLeg = null;
+          stats.status = 'idle';
+          stats.preparationStage = 'stale';
+          stats.lastReason = 'preparation-stale';
+        }
         if (!wasActive) return refreshDiagnostics();
         if (pending === record) pending = null;
         stats.preparationLeg = null;
