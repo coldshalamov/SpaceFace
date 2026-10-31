@@ -26,7 +26,7 @@ not a replacement tree and does not include the separate older campaign overlay.
 
 Current mission/bar changes, native radii, optic spacing, brood/combat, worker
 registries, save/quit, station loading and renderer code are retained. `index.html`
-is byte-identical to the pinned base; old preload hints are not restored.
+retains all current hints and adds only the newly required eager `verbSpeech.js` hint; obsolete preload hints are not restored.
 All 779 existing npm scripts and non-script package fields remain unchanged;
 eight focused test entry points are added. No models, assets, save schema,
 credentials, CI workflows, deployment or new reward owner are changed.
@@ -57,3 +57,15 @@ Use the normal menu → Adventure → Helios → Bar → Kessler → Accept + Tr
 complete each starter job with ordinary controls, inspect earned receiving activity
 and Continue, then compare ordinary immediate-horde Swarm with explicit Training.
 Preserve all upstream open acceptance gates and existing lane owners.
+
+## CI follow-up
+
+The first PR run caught one introduced eager-source preload omission:
+`./src/onboarding/verbSpeech.js`. The follow-up adds that single sorted entry,
+preserving all 1,508 existing generated hints and hand-maintained hints.
+Retail boot smoke passed on the first commit. Mobile browser jobs stopped in
+packaging because their sparse checkout omits the existing Ruckus asset directory;
+the same failure was reproduced in earlier PR runs with identical relevant
+workflow/packaging/assets. The minimal workflow correction is pending and is not
+part of this source fix. Other repository-wide check failures remain separately
+under investigation; no all-CI-green claim is made.

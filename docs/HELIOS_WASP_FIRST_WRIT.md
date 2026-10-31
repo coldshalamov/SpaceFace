@@ -18,7 +18,7 @@ Candidate reconciled against `coldshalamov/SpaceFace` commit
 historical delta by three-way reconciliation, not replacement with archived files.
 Newer mission acceptance, navigation identity and bar contact changes are retained.
 Worker/registry, rescue collider, training-rock and asset owners are unchanged.
-`index.html` stays current; historical preload hints are not restored.
+`index.html` retains current hints and adds only the newly required eager `verbSpeech.js` hint; historical preload lists are not restored.
 
 The Helios focused suites pass 76/76 against current dependencies: conversation
 25, board composition 9, iron route 17, Wasp route 10, buoy aftermath 13, native worker-wire 2.
