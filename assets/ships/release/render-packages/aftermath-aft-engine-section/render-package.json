@@ -99,1533 +99,308 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "1f225594f225c0e8b6106a8cda4d99fae4323472215ae9dd9684e6679552a321",
+  "contentHash": "601e7d320c505ddebc630ad86196ccf8b58e926a95fcb4b06e6c3edb5a99f3ec",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
-          4.140889604269111,
-          5.849962184167736,
-          11.989389568222567
+          4.604056197315547,
+          5.849269796488112,
+          11.988814966277047
         ],
         "min": [
-          -7.553868853533261,
-          -4.853129015591131,
-          -11.989389568222567
+          -7.554136496553285,
+          -4.8528085140072035,
+          -11.988814966277047
         ]
       },
       "drawMode": 4,
-      "geometryHash": "54062591e88936be454ade56a7f42d3933c7082af6ec783602996158317b4f4e",
+      "geometryHash": "aaa424d699bb9bfd3c6c94d3cdc53455ca857f7395311202482c7ff5ae0b3d02",
       "id": "sf.render.aftermath-aft-engine-section.node.drive.primitive.0",
-      "indexCount": 5187,
+      "indexCount": 6948,
       "indexed": true,
       "materialHash": "b7b0be5052ab4f1138a547dbaf6e6c56dd50226bde0061c42d8958e0f9ff4ae0",
-      "materialPipelineKey": "opaque",
-      "meshName": "Drive",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "meshName": "render:sf.render.aftermath-aft-engine-section.flight-static-lane.1",
       "nodeId": "sf.render.aftermath-aft-engine-section.node.drive",
       "primitiveIndex": 0,
-      "vertexCount": 1619
+      "vertexCount": 2344
     },
     {
       "bounds": {
         "max": [
-          4.057024569093324,
-          -3.5877969059213766,
-          11.400863005585473
+          4.080663759802194,
+          3.4276260695677343,
+          11.4013336588641
         ],
         "min": [
-          -7.5523975371266685,
-          -5.759459922052257,
-          -11.400863005585473
+          -7.5526105710794855,
+          -5.75920824544432,
+          -11.4013336588641
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bcd1098e939b6b484df854eab43a9df7194f70afa31c68cb964eb6222204e609",
+      "geometryHash": "6230c3da131ae8eb654d63ee0829f99d2178307a68287889dff734e371e2ddb2",
       "id": "sf.render.aftermath-aft-engine-section.node.drive.primitive.1",
-      "indexCount": 1737,
+      "indexCount": 3843,
       "indexed": true,
       "materialHash": "9e925530abc8aa063cee7e347eb47c4d67b6c1de375e4fa2da9a057c7b8de817",
-      "materialPipelineKey": "opaque",
-      "meshName": "Drive",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "meshName": "render:sf.render.aftermath-aft-engine-section.flight-static-lane.1",
       "nodeId": "sf.render.aftermath-aft-engine-section.node.drive",
       "primitiveIndex": 1,
-      "vertexCount": 575
+      "vertexCount": 1384
     },
     {
       "bounds": {
         "max": [
-          -0.9737740541488922,
-          5.841134285728179,
-          10.796151962475857
+          0.14186863055630686,
+          6.756051009293678,
+          12.303155613879818
         ],
         "min": [
-          -7.568582017599189,
-          -4.9575924804592155,
-          -10.796151962475857
+          -9.594680336392146,
+          -5.612719399959534,
+          -12.303155613879818
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e5a083feb7b50326f1c106e4bdca6092f63e5bcc7adcdc4e9a5a875f12b53c9b",
+      "geometryHash": "72ba8ef5103d412be60cd9fdd049b97f7386ecd22473d6904ee38307dba1a4fb",
+      "id": "sf.render.aftermath-aft-engine-section.node.drive.primitive.10",
+      "indexCount": 4152,
+      "indexed": true,
+      "materialHash": "0dac9b269e88e4a2a6e51b7bf6248debd278b25fee1792292551028b9097783c",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "meshName": "render:sf.render.aftermath-aft-engine-section.flight-static-lane.1",
+      "nodeId": "sf.render.aftermath-aft-engine-section.node.drive",
+      "primitiveIndex": 10,
+      "vertexCount": 1392
+    },
+    {
+      "bounds": {
+        "max": [
+          -8.239277034289422,
+          4.178381402677266,
+          6.63243507187109
+        ],
+        "min": [
+          -8.239277034289422,
+          -4.0867939261596735,
+          -6.63243507187109
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b6fa1b20481d2075854253e016f24d6ba4044043cb0ee6b7f4000f1b0b49cdba",
+      "id": "sf.render.aftermath-aft-engine-section.node.drive.primitive.11",
+      "indexCount": 360,
+      "indexed": true,
+      "materialHash": "f14da993a92f546d13e369181f470a393fc468943d53f27ef381ff5377e04307",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "meshName": "render:sf.render.aftermath-aft-engine-section.flight-static-lane.1",
+      "nodeId": "sf.render.aftermath-aft-engine-section.node.drive",
+      "primitiveIndex": 11,
+      "vertexCount": 128
+    },
+    {
+      "bounds": {
+        "max": [
+          1.3839719662293926,
+          5.841640169119112,
+          12.365718558305613
+        ],
+        "min": [
+          -9.594680336392146,
+          -5.43113426857735,
+          -12.365718558305613
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "af6e896ec035e23e932122eaca6771ad57811cf7b7f9082e6d74546e4a99d11d",
       "id": "sf.render.aftermath-aft-engine-section.node.drive.primitive.2",
-      "indexCount": 1200,
+      "indexCount": 4365,
       "indexed": true,
       "materialHash": "998e0169135cb83ed523b293ba43c23d12e1949c4e75727b8428d97ed993fa3b",
-      "materialPipelineKey": "opaque",
-      "meshName": "Drive",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "meshName": "render:sf.render.aftermath-aft-engine-section.flight-static-lane.1",
       "nodeId": "sf.render.aftermath-aft-engine-section.node.drive",
       "primitiveIndex": 2,
-      "vertexCount": 309
+      "vertexCount": 1473
     },
     {
       "bounds": {
         "max": [
-          0.5843500204328165,
-          5.913228789651223,
-          12.052656173706055
+          4.179848915599186,
+          5.913358666387706,
+          12.052903836176641
         ],
         "min": [
-          -1.0149709135334888,
-          -5.822726527535744,
-          -12.052656173706055
+          -1.0147828785839867,
+          -5.823297115343915,
+          -12.052903836176641
         ]
       },
       "drawMode": 4,
-      "geometryHash": "98210655fc58b9027ebeaf81ad11f7b42b581f7a3087a09c9035f0e517c36f51",
+      "geometryHash": "9f85d667dba35995cf2e2034c0e23da9007ef31dc73a1b2bc3459875b9098ea0",
       "id": "sf.render.aftermath-aft-engine-section.node.drive.primitive.3",
-      "indexCount": 3174,
+      "indexCount": 3873,
       "indexed": true,
       "materialHash": "15ed238ec68bfce5920f3de3318a46f7ec374c6e52a293abe76f742a2ee51e7e",
-      "materialPipelineKey": "opaque",
-      "meshName": "Drive",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "meshName": "render:sf.render.aftermath-aft-engine-section.flight-static-lane.1",
       "nodeId": "sf.render.aftermath-aft-engine-section.node.drive",
       "primitiveIndex": 3,
-      "vertexCount": 1013
+      "vertexCount": 1263
     },
     {
       "bounds": {
         "max": [
-          -5.0761720248310915,
-          5.886745094332554,
-          12.026172478387386
+          3.3848417437494587,
+          5.885892007859308,
+          12.026963103122043
         ],
         "min": [
-          -5.8721542007977625,
-          -5.796242832217075,
-          -12.026172478387386
+          -5.87218514305739,
+          -5.795830456815517,
+          -12.026963103122043
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b8ecc60d13d628a7102fe6f305967a547d28874a7c63a0bf9f496dd55e409f07",
+      "geometryHash": "530d7e07814aa74b07426bca15ab7946e60cf075057943967e89c07a55067cee",
       "id": "sf.render.aftermath-aft-engine-section.node.drive.primitive.4",
-      "indexCount": 3168,
+      "indexCount": 3762,
       "indexed": true,
       "materialHash": "82b7377d75c8e24eb65947a25b571ac6de1e2e087f1b592921c54430db9301a9",
-      "materialPipelineKey": "opaque",
-      "meshName": "Drive",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "meshName": "render:sf.render.aftermath-aft-engine-section.flight-static-lane.1",
       "nodeId": "sf.render.aftermath-aft-engine-section.node.drive",
       "primitiveIndex": 4,
-      "vertexCount": 948
+      "vertexCount": 1193
     },
     {
       "bounds": {
         "max": [
-          5.295841217041016,
-          -5.378566920115171,
-          1.7213858423060096
+          5.295300436946883,
+          7.425932292291817,
+          11.543244727927487
         ],
         "min": [
-          3.116443634033203,
-          -7.42653685872394,
-          0.15396485652268765
+          3.0777492421472368,
+          -7.425900344202217,
+          -11.20754112369152
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b91a4c9fb629b4ea209808c8a46c7f95d77977c37acfe819a822dfbf3d7b1a06",
-      "id": "sf.render.aftermath-aft-engine-section.node.engcut-f-rib0.primitive.0",
-      "indexCount": 48,
+      "geometryHash": "3682f6bfe747b47c4f5242d3905cb6189cbe7592f8f8624f84e45abb4eea30e4",
+      "id": "sf.render.aftermath-aft-engine-section.node.drive.primitive.5",
+      "indexCount": 432,
       "indexed": true,
       "materialHash": "cd333b2cda5928c0c354680090b7bd00921bcc04d8583b5cc997d28ae451e830",
-      "materialPipelineKey": "opaque",
-      "meshName": "engCut_f_rib0",
-      "nodeId": "sf.render.aftermath-aft-engine-section.node.engcut-f-rib0",
-      "primitiveIndex": 0,
-      "vertexCount": 30
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "meshName": "render:sf.render.aftermath-aft-engine-section.flight-static-lane.1",
+      "nodeId": "sf.render.aftermath-aft-engine-section.node.drive",
+      "primitiveIndex": 5,
+      "vertexCount": 270
     },
     {
       "bounds": {
         "max": [
-          4.842620849609375,
-          -4.433706993986414,
-          -5.3104933071177225
+          9.594595459377986,
+          6.601932536439892,
+          11.581392864772484
         ],
         "min": [
-          3.15692138671875,
-          -5.946139578889563,
-          -6.727032346721389
+          3.0411270307760403,
+          -6.810952378260873,
+          -11.105304116946927
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c8dd80cd7c20dbbf456cd87fd5dc6c87da62dd0ed52a6a43fdfdf602a252b8bc",
-      "id": "sf.render.aftermath-aft-engine-section.node.engcut-f-rib1.primitive.0",
-      "indexCount": 48,
-      "indexed": true,
-      "materialHash": "cd333b2cda5928c0c354680090b7bd00921bcc04d8583b5cc997d28ae451e830",
-      "materialPipelineKey": "opaque",
-      "meshName": "engCut_f_rib1",
-      "nodeId": "sf.render.aftermath-aft-engine-section.node.engcut-f-rib1",
-      "primitiveIndex": 0,
-      "vertexCount": 30
-    },
-    {
-      "bounds": {
-        "max": [
-          5.158985137939453,
-          -0.8138705506990392,
-          -9.292314874455386
-        ],
-        "min": [
-          3.148468017578125,
-          -2.2728407367994348,
-          -11.207358968928403
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "ceddd5766a6acb10b3a99005981d3ba354b83a3d55981898598e9a540a6663a7",
-      "id": "sf.render.aftermath-aft-engine-section.node.engcut-f-rib2.primitive.0",
-      "indexCount": 48,
-      "indexed": true,
-      "materialHash": "cd333b2cda5928c0c354680090b7bd00921bcc04d8583b5cc997d28ae451e830",
-      "materialPipelineKey": "opaque",
-      "meshName": "engCut_f_rib2",
-      "nodeId": "sf.render.aftermath-aft-engine-section.node.engcut-f-rib2",
-      "primitiveIndex": 0,
-      "vertexCount": 30
-    },
-    {
-      "bounds": {
-        "max": [
-          4.710456848144531,
-          3.3352323981932472,
-          -8.818503565262493
-        ],
-        "min": [
-          3.18927001953125,
-          2.1739271667786766,
-          -10.245170407821004
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "a0333af6b776b95e3d70ded4da4ebf1eb9044265dcfaa7bd60c259a7751c0f5b",
-      "id": "sf.render.aftermath-aft-engine-section.node.engcut-f-rib3.primitive.0",
-      "indexCount": 48,
-      "indexed": true,
-      "materialHash": "cd333b2cda5928c0c354680090b7bd00921bcc04d8583b5cc997d28ae451e830",
-      "materialPipelineKey": "opaque",
-      "meshName": "engCut_f_rib3",
-      "nodeId": "sf.render.aftermath-aft-engine-section.node.engcut-f-rib3",
-      "primitiveIndex": 0,
-      "vertexCount": 30
-    },
-    {
-      "bounds": {
-        "max": [
-          5.020198822021484,
-          6.791224368808144,
-          -3.7002580223454
-        ],
-        "min": [
-          3.1686553955078125,
-          5.115754715206749,
-          -5.1856403293239115
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "5fa51c0a4a58579893e689c10677ec32e5cb80cc64641b44b04941692bd2f16c",
-      "id": "sf.render.aftermath-aft-engine-section.node.engcut-f-rib4.primitive.0",
-      "indexCount": 48,
-      "indexed": true,
-      "materialHash": "cd333b2cda5928c0c354680090b7bd00921bcc04d8583b5cc997d28ae451e830",
-      "materialPipelineKey": "opaque",
-      "meshName": "engCut_f_rib4",
-      "nodeId": "sf.render.aftermath-aft-engine-section.node.engcut-f-rib4",
-      "primitiveIndex": 0,
-      "vertexCount": 30
-    },
-    {
-      "bounds": {
-        "max": [
-          5.279468536376953,
-          7.426568744565823,
-          3.4523909616325543
-        ],
-        "min": [
-          3.078601837158203,
-          5.419680835817478,
-          1.826273746504958
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "a221a6f5532cc51247834e35e21bb3a7d5cbf5a19ca2bc51d95d5f306468c713",
-      "id": "sf.render.aftermath-aft-engine-section.node.engcut-f-rib5.primitive.0",
-      "indexCount": 48,
-      "indexed": true,
-      "materialHash": "cd333b2cda5928c0c354680090b7bd00921bcc04d8583b5cc997d28ae451e830",
-      "materialPipelineKey": "opaque",
-      "meshName": "engCut_f_rib5",
-      "nodeId": "sf.render.aftermath-aft-engine-section.node.engcut-f-rib5",
-      "primitiveIndex": 0,
-      "vertexCount": 30
-    },
-    {
-      "bounds": {
-        "max": [
-          4.8643341064453125,
-          4.475727522184383,
-          9.359109663827253
-        ],
-        "min": [
-          3.1650848388671875,
-          3.1025648476581464,
-          7.816265797751116
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "478e64ec743a0bea12d3829c8634084a1b6b510c1fcb28fa2d9d84e0d92566cf",
-      "id": "sf.render.aftermath-aft-engine-section.node.engcut-f-rib6.primitive.0",
-      "indexCount": 48,
-      "indexed": true,
-      "materialHash": "cd333b2cda5928c0c354680090b7bd00921bcc04d8583b5cc997d28ae451e830",
-      "materialPipelineKey": "opaque",
-      "meshName": "engCut_f_rib6",
-      "nodeId": "sf.render.aftermath-aft-engine-section.node.engcut-f-rib6",
-      "primitiveIndex": 0,
-      "vertexCount": 30
-    },
-    {
-      "bounds": {
-        "max": [
-          5.150951385498047,
-          0.29208966946403225,
-          11.54358195635704
-        ],
-        "min": [
-          3.1208877563476562,
-          -1.086150495765607,
-          9.609919554263078
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "e06b0f2232a29426e6557b51d2155e780ba999ae8a5e88ce1850e56934d00543",
-      "id": "sf.render.aftermath-aft-engine-section.node.engcut-f-rib7.primitive.0",
-      "indexCount": 48,
-      "indexed": true,
-      "materialHash": "cd333b2cda5928c0c354680090b7bd00921bcc04d8583b5cc997d28ae451e830",
-      "materialPipelineKey": "opaque",
-      "meshName": "engCut_f_rib7",
-      "nodeId": "sf.render.aftermath-aft-engine-section.node.engcut-f-rib7",
-      "primitiveIndex": 0,
-      "vertexCount": 30
-    },
-    {
-      "bounds": {
-        "max": [
-          4.7293853759765625,
-          -3.758015762152669,
-          8.142170783317743
-        ],
-        "min": [
-          3.19696044921875,
-          -5.074188579735759,
-          6.80504620429212
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "8b70de7539e74bfdac137aa3175abdf788ca0123b772331d5125c36d4e895e19",
-      "id": "sf.render.aftermath-aft-engine-section.node.engcut-f-rib8.primitive.0",
-      "indexCount": 48,
-      "indexed": true,
-      "materialHash": "cd333b2cda5928c0c354680090b7bd00921bcc04d8583b5cc997d28ae451e830",
-      "materialPipelineKey": "opaque",
-      "meshName": "engCut_f_rib8",
-      "nodeId": "sf.render.aftermath-aft-engine-section.node.engcut-f-rib8",
-      "primitiveIndex": 0,
-      "vertexCount": 30
-    },
-    {
-      "bounds": {
-        "max": [
-          5.233399842177398,
-          4.2328691482543945,
-          -7.780810644644299
-        ],
-        "min": [
-          3.4287896414651793,
-          2.3006513118743896,
-          -9.364407250863515
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "b6922cfcafdbb976805bb08b73fbad4409e3b270aa56dcb434b4c692293072c7",
-      "id": "sf.render.aftermath-aft-engine-section.node.engcut-t-tear0.primitive.0",
-      "indexCount": 36,
+      "geometryHash": "b5fa0dc29cb72b9a56ca43d5f726f05f8bb6b8aeda02168eb9c2135668f84302",
+      "id": "sf.render.aftermath-aft-engine-section.node.drive.primitive.6",
+      "indexCount": 252,
       "indexed": true,
       "materialHash": "26127603b853d7f44c27cfbb18001cf394fdad4b6ac571d37f44acd9d603024c",
-      "materialPipelineKey": "opaque",
-      "meshName": "engCut_t_tear0",
-      "nodeId": "sf.render.aftermath-aft-engine-section.node.engcut-t-tear0",
-      "primitiveIndex": 0,
-      "vertexCount": 24
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "meshName": "render:sf.render.aftermath-aft-engine-section.flight-static-lane.1",
+      "nodeId": "sf.render.aftermath-aft-engine-section.node.drive",
+      "primitiveIndex": 6,
+      "vertexCount": 168
     },
     {
       "bounds": {
         "max": [
-          8.032257080078125,
-          6.602075428020733,
-          0.1297095849792631
+          4.604056197315547,
+          3.9433888797120873,
+          10.053941465498825
         ],
         "min": [
-          3.339397430419922,
-          4.449062973010761,
-          -2.1585016831438217
+          2.82597153897026,
+          -4.137149466795069,
+          -10.050889614551226
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e58aa9e1a7c256fc067ea3e11db6c8e856a3ab0ed9575ed32d0a978509213e39",
-      "id": "sf.render.aftermath-aft-engine-section.node.engcut-t-tear1.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "26127603b853d7f44c27cfbb18001cf394fdad4b6ac571d37f44acd9d603024c",
-      "materialPipelineKey": "opaque",
-      "meshName": "engCut_t_tear1",
-      "nodeId": "sf.render.aftermath-aft-engine-section.node.engcut-t-tear1",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          6.272422790527344,
-          5.295662504871338,
-          8.467249877852968
-        ],
-        "min": [
-          3.0671348571777344,
-          3.0291589672966306,
-          5.855537406998106
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "11c02eed364380f2df285d4109285dc1efc81c97160cc4323e77bfc1b45bd611",
-      "id": "sf.render.aftermath-aft-engine-section.node.engcut-t-tear2.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "26127603b853d7f44c27cfbb18001cf394fdad4b6ac571d37f44acd9d603024c",
-      "materialPipelineKey": "opaque",
-      "meshName": "engCut_t_tear2",
-      "nodeId": "sf.render.aftermath-aft-engine-section.node.engcut-t-tear2",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          9.007514953613281,
-          0.4466874114754078,
-          11.581292006648354
-        ],
-        "min": [
-          3.0415115356445312,
-          -1.6429705135109303,
-          7.440575745426841
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "41e2db748387a7d36790ddf4f9dc97274de6daf11c89a035d6fdf92487ab16e6",
-      "id": "sf.render.aftermath-aft-engine-section.node.engcut-t-tear3.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "26127603b853d7f44c27cfbb18001cf394fdad4b6ac571d37f44acd9d603024c",
-      "materialPipelineKey": "opaque",
-      "meshName": "engCut_t_tear3",
-      "nodeId": "sf.render.aftermath-aft-engine-section.node.engcut-t-tear3",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          6.670768737792969,
-          -4.078036848508534,
-          6.362179121572542
-        ],
-        "min": [
-          3.346160888671875,
-          -5.60980981210548,
-          4.084355512063933
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "c18437b09636ab7d29773e60c5f732442cfd2ddc1f04ff4548807d0ee1a295c7",
-      "id": "sf.render.aftermath-aft-engine-section.node.engcut-t-tear4.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "26127603b853d7f44c27cfbb18001cf394fdad4b6ac571d37f44acd9d603024c",
-      "materialPipelineKey": "opaque",
-      "meshName": "engCut_t_tear4",
-      "nodeId": "sf.render.aftermath-aft-engine-section.node.engcut-t-tear4",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          9.594566345214844,
-          -3.027190354860898,
-          -2.2636942407611698
-        ],
-        "min": [
-          3.1318321228027344,
-          -6.811302992307071,
-          -4.117881820487609
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "86191c2f09286320fb3034707d6dbe0f4a7500617cd835ca3d071f3ccf34f363",
-      "id": "sf.render.aftermath-aft-engine-section.node.engcut-t-tear5.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "26127603b853d7f44c27cfbb18001cf394fdad4b6ac571d37f44acd9d603024c",
-      "materialPipelineKey": "opaque",
-      "meshName": "engCut_t_tear5",
-      "nodeId": "sf.render.aftermath-aft-engine-section.node.engcut-t-tear5",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          7.594753265380859,
-          -1.2004430689751895,
-          -7.47415707201365
-        ],
-        "min": [
-          3.0995330810546875,
-          -2.348564585214874,
-          -11.104547761970725
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "c2b6b7453040dc0e75f4934d82da70a067ab996bcd455485e2c85e366c7ee2d4",
-      "id": "sf.render.aftermath-aft-engine-section.node.engcut-t-tear6.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "26127603b853d7f44c27cfbb18001cf394fdad4b6ac571d37f44acd9d603024c",
-      "materialPipelineKey": "opaque",
-      "meshName": "engCut_t_tear6",
-      "nodeId": "sf.render.aftermath-aft-engine-section.node.engcut-t-tear6",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          4.603387891902447,
-          3.943431724724773,
-          10.05447006225586
-        ],
-        "min": [
-          1.3735943718410868,
-          -3.087382094876885,
-          -10.048908487290202
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "5ce94a39e6ec6985234c944b585c79a651d37c5a313fa8a5dcd6e984dbc82cbd",
-      "id": "sf.render.aftermath-aft-engine-section.node.hull.primitive.0",
-      "indexCount": 1761,
-      "indexed": true,
-      "materialHash": "b7b0be5052ab4f1138a547dbaf6e6c56dd50226bde0061c42d8958e0f9ff4ae0",
-      "materialPipelineKey": "opaque",
-      "meshName": "Hull",
-      "nodeId": "sf.render.aftermath-aft-engine-section.node.hull",
-      "primitiveIndex": 0,
-      "vertexCount": 725
-    },
-    {
-      "bounds": {
-        "max": [
-          4.080632557728382,
-          3.428039141736258,
-          9.393049580753932
-        ],
-        "min": [
-          1.3662316206555365,
-          -4.136574138817791,
-          -9.52860740351132
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "f8fed6008720b53498bd6867adbbde623b0fd514a1b8c2414ed7238b75adcc25",
-      "id": "sf.render.aftermath-aft-engine-section.node.hull.primitive.1",
-      "indexCount": 2106,
-      "indexed": true,
-      "materialHash": "9e925530abc8aa063cee7e347eb47c4d67b6c1de375e4fa2da9a057c7b8de817",
-      "materialPipelineKey": "opaque",
-      "meshName": "Hull",
-      "nodeId": "sf.render.aftermath-aft-engine-section.node.hull",
-      "primitiveIndex": 1,
-      "vertexCount": 809
-    },
-    {
-      "bounds": {
-        "max": [
-          1.384638498619412,
-          3.2034752305769763,
-          8.684998341743519
-        ],
-        "min": [
-          1.3772757474338617,
-          -3.9009661008801837,
-          -8.68557239276582
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "e86da14440640f06be86ed75677d958987d557af4f73cd01c7a90161555003e1",
-      "id": "sf.render.aftermath-aft-engine-section.node.hull.primitive.2",
-      "indexCount": 765,
-      "indexed": true,
-      "materialHash": "998e0169135cb83ed523b293ba43c23d12e1949c4e75727b8428d97ed993fa3b",
-      "materialPipelineKey": "opaque",
-      "meshName": "Hull",
-      "nodeId": "sf.render.aftermath-aft-engine-section.node.hull",
-      "primitiveIndex": 2,
-      "vertexCount": 236
-    },
-    {
-      "bounds": {
-        "max": [
-          4.18002969873331,
-          -0.2156023512129039,
-          10.022564807118474
-        ],
-        "min": [
-          1.3797299978290452,
-          -2.8996319396453547,
-          -10.003504854979308
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "52b75a09c6de70ebca39b6d1badceb6a9931b4b8ad5a767b248f81ab80ac5fa4",
-      "id": "sf.render.aftermath-aft-engine-section.node.hull.primitive.3",
-      "indexCount": 699,
-      "indexed": true,
-      "materialHash": "15ed238ec68bfce5920f3de3318a46f7ec374c6e52a293abe76f742a2ee51e7e",
-      "materialPipelineKey": "opaque",
-      "meshName": "Hull",
-      "nodeId": "sf.render.aftermath-aft-engine-section.node.hull",
-      "primitiveIndex": 3,
-      "vertexCount": 250
-    },
-    {
-      "bounds": {
-        "max": [
-          3.384852570693887,
-          2.0189926336015858,
-          9.758732889636258
-        ],
-        "min": [
-          1.3797299978290452,
-          1.1354624913355602,
-          -9.992460728200983
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "48204b183aed60712ca8b1b44613c994f8e3ac433b092be1c18629b808963140",
-      "id": "sf.render.aftermath-aft-engine-section.node.hull.primitive.4",
-      "indexCount": 594,
-      "indexed": true,
-      "materialHash": "82b7377d75c8e24eb65947a25b571ac6de1e2e087f1b592921c54430db9301a9",
-      "materialPipelineKey": "opaque",
-      "meshName": "Hull",
-      "nodeId": "sf.render.aftermath-aft-engine-section.node.hull",
-      "primitiveIndex": 4,
-      "vertexCount": 245
-    },
-    {
-      "bounds": {
-        "max": [
-          4.603387891902447,
-          3.943431724724773,
-          10.05447006225586
-        ],
-        "min": [
-          2.8265106057896623,
-          -4.136574138817791,
-          -10.050135612487793
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "3f61962c1acb32832dcb0ca423b847bbeec0b28a2515569d0c907306b52e4565",
-      "id": "sf.render.aftermath-aft-engine-section.node.hull.primitive.5",
+      "geometryHash": "fa7d7ab7ee8f33b10a86cfa6111cbf963e4ae0e7b9b926239b939fc4dfb99761",
+      "id": "sf.render.aftermath-aft-engine-section.node.drive.primitive.7",
       "indexCount": 1455,
       "indexed": true,
       "materialHash": "c36a4bf93ab869729a357a6a98da82157199acc4c36601de8c66450ca2c3bc76",
-      "materialPipelineKey": "opaque",
-      "meshName": "Hull",
-      "nodeId": "sf.render.aftermath-aft-engine-section.node.hull",
-      "primitiveIndex": 5,
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "meshName": "render:sf.render.aftermath-aft-engine-section.flight-static-lane.1",
+      "nodeId": "sf.render.aftermath-aft-engine-section.node.drive",
+      "primitiveIndex": 7,
       "vertexCount": 702
     },
     {
       "bounds": {
         "max": [
-          -1.3840389251708984,
-          2.9531593753576506,
-          -11.710525512695312
+          -1.3840568432435527,
+          2.952681765847528,
+          -11.711096530045474
         ],
         "min": [
-          -2.173513412475586,
-          2.400500731301285,
+          -2.17296031319808,
+          2.400296744331979,
           -12.5
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f9d185c6ccfeba0a2252515db6ff7179061f72a649ca01a53246fb11eed2a501",
-      "id": "sf.render.aftermath-aft-engine-section.node.navport.primitive.0",
+      "geometryHash": "544f19acb2f8060cddedc5573b7deecae91d671821a89ee5c3c7456f6a23f853",
+      "id": "sf.render.aftermath-aft-engine-section.node.drive.primitive.8",
       "indexCount": 36,
       "indexed": true,
       "materialHash": "58f6989fbe83662f9735ef6588fe4c5c668490c4734d0789ce10dc6e506aa39c",
-      "materialPipelineKey": "opaque",
-      "meshName": "NavPort",
-      "nodeId": "sf.render.aftermath-aft-engine-section.node.navport",
-      "primitiveIndex": 0,
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "meshName": "render:sf.render.aftermath-aft-engine-section.flight-static-lane.1",
+      "nodeId": "sf.render.aftermath-aft-engine-section.node.drive",
+      "primitiveIndex": 8,
       "vertexCount": 24
     },
     {
       "bounds": {
         "max": [
-          -1.3840389251708984,
-          2.9531593753576506,
+          -1.3840568432435527,
+          2.952681765847528,
           12.5
         ],
         "min": [
-          -2.173513412475586,
-          2.400500731301285,
-          11.710525512695312
+          -2.17296031319808,
+          2.400296744331979,
+          11.711096530045474
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1b6733635c3861a0b747e9926ee80a7cd8489623777394136cdf832673f43ad0",
-      "id": "sf.render.aftermath-aft-engine-section.node.navstarboard.primitive.0",
+      "geometryHash": "f05639dc65b3a0d8fc1ac1e0e0f47825c92213bfb6e95d773c45104d4e6e8ce2",
+      "id": "sf.render.aftermath-aft-engine-section.node.drive.primitive.9",
       "indexCount": 36,
       "indexed": true,
       "materialHash": "56d7ff668e29accaa352d247689ad564414281a6fa27387be325f9fa677794f2",
-      "materialPipelineKey": "opaque",
-      "meshName": "NavStarboard",
-      "nodeId": "sf.render.aftermath-aft-engine-section.node.navstarboard",
-      "primitiveIndex": 0,
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "meshName": "render:sf.render.aftermath-aft-engine-section.flight-static-lane.1",
+      "nodeId": "sf.render.aftermath-aft-engine-section.node.drive",
+      "primitiveIndex": 9,
       "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          -6.64711682657576,
-          5.703146293759346,
-          8.1578950881958
-        ],
-        "min": [
-          -9.594651056725022,
-          -0.3494860380887985,
-          2.1052627563476562
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "d6253f2e0e00b0c695ffd2313192ed813b6a2b0fec4ce798ecfc8191513012d8",
-      "id": "sf.render.aftermath-aft-engine-section.node.nozzle-19-10-2.primitive.0",
-      "indexCount": 666,
-      "indexed": true,
-      "materialHash": "0dac9b269e88e4a2a6e51b7bf6248debd278b25fee1792292551028b9097783c",
-      "materialPipelineKey": "opaque",
-      "meshName": "Nozzle-19_10",
-      "nodeId": "sf.render.aftermath-aft-engine-section.node.nozzle-19-10-2",
-      "primitiveIndex": 0,
-      "vertexCount": 204
-    },
-    {
-      "bounds": {
-        "max": [
-          -8.23947245927625,
-          5.521753888294247,
-          7.976502682730702
-        ],
-        "min": [
-          -9.594651056725022,
-          -0.16809363262370036,
-          2.2866551618127544
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "c9f95e0c2fbcb4bfba806c66ba389f1a7a3d913c1cf1d43b0b8ada4c49ee3052",
-      "id": "sf.render.aftermath-aft-engine-section.node.nozzle-19-10-2.primitive.1",
-      "indexCount": 384,
-      "indexed": true,
-      "materialHash": "998e0169135cb83ed523b293ba43c23d12e1949c4e75727b8428d97ed993fa3b",
-      "materialPipelineKey": "opaque",
-      "meshName": "Nozzle-19_10",
-      "nodeId": "sf.render.aftermath-aft-engine-section.node.nozzle-19-10-2",
-      "primitiveIndex": 1,
-      "vertexCount": 136
-    },
-    {
-      "bounds": {
-        "max": [
-          -8.23947245927625,
-          4.1779354058516915,
-          6.632684200288146
-        ],
-        "min": [
-          -8.23947245927625,
-          1.1757248498188564,
-          3.630473644255311
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "f114db3113b4354a74e5892f5bf749cab85d67d3407151a0a78eda15cf431bff",
-      "id": "sf.render.aftermath-aft-engine-section.node.nozzle-19-10-2.primitive.2",
-      "indexCount": 90,
-      "indexed": true,
-      "materialHash": "f14da993a92f546d13e369181f470a393fc468943d53f27ef381ff5377e04307",
-      "materialPipelineKey": "opaque",
-      "meshName": "Nozzle-19_10",
-      "nodeId": "sf.render.aftermath-aft-engine-section.node.nozzle-19-10-2",
-      "primitiveIndex": 2,
-      "vertexCount": 32
-    },
-    {
-      "bounds": {
-        "max": [
-          -6.64711682657576,
-          0.43998806178569794,
-          8.1578950881958
-        ],
-        "min": [
-          -9.594651056725022,
-          -5.612644270062447,
-          2.1052627563476562
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "a86f42fea58bcb2c2027c14e045ec6e8c8c4f058de3a4e6d10ce443dddc487ce",
-      "id": "sf.render.aftermath-aft-engine-section.node.nozzle-19-10.primitive.0",
-      "indexCount": 666,
-      "indexed": true,
-      "materialHash": "0dac9b269e88e4a2a6e51b7bf6248debd278b25fee1792292551028b9097783c",
-      "materialPipelineKey": "opaque",
-      "meshName": "Nozzle-19_-10",
-      "nodeId": "sf.render.aftermath-aft-engine-section.node.nozzle-19-10",
-      "primitiveIndex": 0,
-      "vertexCount": 204
-    },
-    {
-      "bounds": {
-        "max": [
-          -8.23947245927625,
-          0.2585956563205998,
-          7.976502682730702
-        ],
-        "min": [
-          -9.594651056725022,
-          -5.431251864597348,
-          2.2866551618127544
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "17c5c0825769402ce50df04af3b8a48da3ac516fa401a066fe688cd441ac1926",
-      "id": "sf.render.aftermath-aft-engine-section.node.nozzle-19-10.primitive.1",
-      "indexCount": 384,
-      "indexed": true,
-      "materialHash": "998e0169135cb83ed523b293ba43c23d12e1949c4e75727b8428d97ed993fa3b",
-      "materialPipelineKey": "opaque",
-      "meshName": "Nozzle-19_-10",
-      "nodeId": "sf.render.aftermath-aft-engine-section.node.nozzle-19-10",
-      "primitiveIndex": 1,
-      "vertexCount": 136
-    },
-    {
-      "bounds": {
-        "max": [
-          -8.23947245927625,
-          -1.085222826121957,
-          6.632684200288146
-        ],
-        "min": [
-          -8.23947245927625,
-          -4.087433382154792,
-          3.630473644255311
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "b1fb02b283b11e10a003fa6136aa62be43016203b78c679df3e695d64ad50d34",
-      "id": "sf.render.aftermath-aft-engine-section.node.nozzle-19-10.primitive.2",
-      "indexCount": 90,
-      "indexed": true,
-      "materialHash": "f14da993a92f546d13e369181f470a393fc468943d53f27ef381ff5377e04307",
-      "materialPipelineKey": "opaque",
-      "meshName": "Nozzle-19_-10",
-      "nodeId": "sf.render.aftermath-aft-engine-section.node.nozzle-19-10",
-      "primitiveIndex": 2,
-      "vertexCount": 32
-    },
-    {
-      "bounds": {
-        "max": [
-          -6.64711682657576,
-          5.703146293759346,
-          -2.1052627563476562
-        ],
-        "min": [
-          -9.594651056725022,
-          -0.3494860380887985,
-          -8.1578950881958
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "11e0501199890c4ed6babd288a0a414d6d911ecb1d1db47a5932bfdaf44cff5d",
-      "id": "sf.render.aftermath-aft-engine-section.node.nozzle19-10-2.primitive.0",
-      "indexCount": 666,
-      "indexed": true,
-      "materialHash": "0dac9b269e88e4a2a6e51b7bf6248debd278b25fee1792292551028b9097783c",
-      "materialPipelineKey": "opaque",
-      "meshName": "Nozzle19_10",
-      "nodeId": "sf.render.aftermath-aft-engine-section.node.nozzle19-10-2",
-      "primitiveIndex": 0,
-      "vertexCount": 204
-    },
-    {
-      "bounds": {
-        "max": [
-          -8.23947245927625,
-          5.521753888294247,
-          -2.2866551618127544
-        ],
-        "min": [
-          -9.594651056725022,
-          -0.16809363262370036,
-          -7.976502682730702
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "39106b4bbe68589fe5168d3b75f8e77d3a6329941765ac1f837f88d839b35ca1",
-      "id": "sf.render.aftermath-aft-engine-section.node.nozzle19-10-2.primitive.1",
-      "indexCount": 384,
-      "indexed": true,
-      "materialHash": "998e0169135cb83ed523b293ba43c23d12e1949c4e75727b8428d97ed993fa3b",
-      "materialPipelineKey": "opaque",
-      "meshName": "Nozzle19_10",
-      "nodeId": "sf.render.aftermath-aft-engine-section.node.nozzle19-10-2",
-      "primitiveIndex": 1,
-      "vertexCount": 136
-    },
-    {
-      "bounds": {
-        "max": [
-          -8.23947245927625,
-          4.1779354058516915,
-          -3.630473644255311
-        ],
-        "min": [
-          -8.23947245927625,
-          1.1757248498188564,
-          -6.632684200288146
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "a521ef738498dd7b1f9b920f494fe4256f558bc459f2ed95414981abb4435cb7",
-      "id": "sf.render.aftermath-aft-engine-section.node.nozzle19-10-2.primitive.2",
-      "indexCount": 90,
-      "indexed": true,
-      "materialHash": "f14da993a92f546d13e369181f470a393fc468943d53f27ef381ff5377e04307",
-      "materialPipelineKey": "opaque",
-      "meshName": "Nozzle19_10",
-      "nodeId": "sf.render.aftermath-aft-engine-section.node.nozzle19-10-2",
-      "primitiveIndex": 2,
-      "vertexCount": 32
-    },
-    {
-      "bounds": {
-        "max": [
-          -6.64711682657576,
-          0.43998806178569794,
-          -2.1052627563476562
-        ],
-        "min": [
-          -9.594651056725022,
-          -5.612644270062447,
-          -8.1578950881958
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "b6b9e36fcba8e7b31d8cc1f0cdd8be0cd24d08ab5082acbf6b88fc2f25669751",
-      "id": "sf.render.aftermath-aft-engine-section.node.nozzle19-10.primitive.0",
-      "indexCount": 666,
-      "indexed": true,
-      "materialHash": "0dac9b269e88e4a2a6e51b7bf6248debd278b25fee1792292551028b9097783c",
-      "materialPipelineKey": "opaque",
-      "meshName": "Nozzle19_-10",
-      "nodeId": "sf.render.aftermath-aft-engine-section.node.nozzle19-10",
-      "primitiveIndex": 0,
-      "vertexCount": 204
-    },
-    {
-      "bounds": {
-        "max": [
-          -8.23947245927625,
-          0.2585956563205998,
-          -2.2866551618127544
-        ],
-        "min": [
-          -9.594651056725022,
-          -5.431251864597348,
-          -7.976502682730702
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "ad736e4daa9c7fd17638c9046e538393916c0756662ee8d91ab74a40f47761f4",
-      "id": "sf.render.aftermath-aft-engine-section.node.nozzle19-10.primitive.1",
-      "indexCount": 384,
-      "indexed": true,
-      "materialHash": "998e0169135cb83ed523b293ba43c23d12e1949c4e75727b8428d97ed993fa3b",
-      "materialPipelineKey": "opaque",
-      "meshName": "Nozzle19_-10",
-      "nodeId": "sf.render.aftermath-aft-engine-section.node.nozzle19-10",
-      "primitiveIndex": 1,
-      "vertexCount": 136
-    },
-    {
-      "bounds": {
-        "max": [
-          -8.23947245927625,
-          -1.085222826121957,
-          -3.630473644255311
-        ],
-        "min": [
-          -8.23947245927625,
-          -4.087433382154792,
-          -6.632684200288146
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "c769afbcf1e079332e781bedc6b3bb0d345dc902319c5aaba77a33a5371d64af",
-      "id": "sf.render.aftermath-aft-engine-section.node.nozzle19-10.primitive.2",
-      "indexCount": 90,
-      "indexed": true,
-      "materialHash": "f14da993a92f546d13e369181f470a393fc468943d53f27ef381ff5377e04307",
-      "materialPipelineKey": "opaque",
-      "meshName": "Nozzle19_-10",
-      "nodeId": "sf.render.aftermath-aft-engine-section.node.nozzle19-10",
-      "primitiveIndex": 2,
-      "vertexCount": 32
-    },
-    {
-      "bounds": {
-        "max": [
-          -4.278802060031707,
-          6.755703235584251,
-          8.947368621826172
-        ],
-        "min": [
-          -4.489283419704621,
-          5.57164118198777,
-          5.526315689086914
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "d0f0f7a16f483f5e30e722adff2161f332f164f135c6783c37271f2fb30b28e5",
-      "id": "sf.render.aftermath-aft-engine-section.node.radiator-0-m.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "0dac9b269e88e4a2a6e51b7bf6248debd278b25fee1792292551028b9097783c",
-      "materialPipelineKey": "opaque",
-      "meshName": "Radiator_0_M",
-      "nodeId": "sf.render.aftermath-aft-engine-section.node.radiator-0-m",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          -4.278802060031707,
-          6.755703235584251,
-          -5.526315689086914
-        ],
-        "min": [
-          -4.489283419704621,
-          5.57164118198777,
-          -8.947368621826172
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "fab525718ead43a62b5aa80002378611c26891fbaaa660606d8e510a620dcef0",
-      "id": "sf.render.aftermath-aft-engine-section.node.radiator-0.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "0dac9b269e88e4a2a6e51b7bf6248debd278b25fee1792292551028b9097783c",
-      "materialPipelineKey": "opaque",
-      "meshName": "Radiator_0",
-      "nodeId": "sf.render.aftermath-aft-engine-section.node.radiator-0",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          -3.173539303684051,
-          6.755703235584251,
-          8.947368621826172
-        ],
-        "min": [
-          -3.3840206633569645,
-          5.57164118198777,
-          5.526315689086914
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "be9d96f38687d557394811171b4f892ee79d409fdc714aecbfeb48ee8e771482",
-      "id": "sf.render.aftermath-aft-engine-section.node.radiator-1-m.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "0dac9b269e88e4a2a6e51b7bf6248debd278b25fee1792292551028b9097783c",
-      "materialPipelineKey": "opaque",
-      "meshName": "Radiator_1_M",
-      "nodeId": "sf.render.aftermath-aft-engine-section.node.radiator-1-m",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          -3.173539303684051,
-          6.755703235584251,
-          -5.526315689086914
-        ],
-        "min": [
-          -3.3840206633569645,
-          5.57164118198777,
-          -8.947368621826172
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "2939a42ae6e81aa1318a534c158186bea0e933212272acd6820b789b5e5b0237",
-      "id": "sf.render.aftermath-aft-engine-section.node.radiator-1.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "0dac9b269e88e4a2a6e51b7bf6248debd278b25fee1792292551028b9097783c",
-      "materialPipelineKey": "opaque",
-      "meshName": "Radiator_1",
-      "nodeId": "sf.render.aftermath-aft-engine-section.node.radiator-1",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          -2.068276547336395,
-          6.755703235584251,
-          8.947368621826172
-        ],
-        "min": [
-          -2.2787579070093082,
-          5.57164118198777,
-          5.526315689086914
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "a8fca94d09888659ff041de4c3132c68dc24a09a514c41f6cbf46ee1fb0bf681",
-      "id": "sf.render.aftermath-aft-engine-section.node.radiator-2-m.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "0dac9b269e88e4a2a6e51b7bf6248debd278b25fee1792292551028b9097783c",
-      "materialPipelineKey": "opaque",
-      "meshName": "Radiator_2_M",
-      "nodeId": "sf.render.aftermath-aft-engine-section.node.radiator-2-m",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          -2.068276547336395,
-          6.755703235584251,
-          -5.526315689086914
-        ],
-        "min": [
-          -2.2787579070093082,
-          5.57164118198777,
-          -8.947368621826172
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "c72cdec3a03d9780a5cda18b5e1482dd19dbfb405b12344f0fd04cba2710e51b",
-      "id": "sf.render.aftermath-aft-engine-section.node.radiator-2.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "0dac9b269e88e4a2a6e51b7bf6248debd278b25fee1792292551028b9097783c",
-      "materialPipelineKey": "opaque",
-      "meshName": "Radiator_2",
-      "nodeId": "sf.render.aftermath-aft-engine-section.node.radiator-2",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          -0.9630137909887387,
-          6.755703235584251,
-          8.947368621826172
-        ],
-        "min": [
-          -1.1734951506616518,
-          5.57164118198777,
-          5.526315689086914
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "ee5915f66119a4f5968f7a94fd4193d79c86f7214f109d20661238a0db8e9a61",
-      "id": "sf.render.aftermath-aft-engine-section.node.radiator-3-m.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "0dac9b269e88e4a2a6e51b7bf6248debd278b25fee1792292551028b9097783c",
-      "materialPipelineKey": "opaque",
-      "meshName": "Radiator_3_M",
-      "nodeId": "sf.render.aftermath-aft-engine-section.node.radiator-3-m",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          -0.9630137909887387,
-          6.755703235584251,
-          -5.526315689086914
-        ],
-        "min": [
-          -1.1734951506616518,
-          5.57164118198777,
-          -8.947368621826172
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "259ead9363b1797b5fc62151885de04f87268928f02d60ca3529307cbc56d378",
-      "id": "sf.render.aftermath-aft-engine-section.node.radiator-3.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "0dac9b269e88e4a2a6e51b7bf6248debd278b25fee1792292551028b9097783c",
-      "materialPipelineKey": "opaque",
-      "meshName": "Radiator_3",
-      "nodeId": "sf.render.aftermath-aft-engine-section.node.radiator-3",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          0.14225086898226,
-          6.755703235584251,
-          8.947368621826172
-        ],
-        "min": [
-          -0.0682304906906531,
-          5.57164118198777,
-          5.526315689086914
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "36b3fc694f9fc7cd66154dd3f164d408433f6bad293e86e31a867d048c0d0641",
-      "id": "sf.render.aftermath-aft-engine-section.node.radiator-4-m.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "0dac9b269e88e4a2a6e51b7bf6248debd278b25fee1792292551028b9097783c",
-      "materialPipelineKey": "opaque",
-      "meshName": "Radiator_4_M",
-      "nodeId": "sf.render.aftermath-aft-engine-section.node.radiator-4-m",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          0.14225086898226,
-          6.755703235584251,
-          -5.526315689086914
-        ],
-        "min": [
-          -0.0682304906906531,
-          5.57164118198777,
-          -8.947368621826172
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "142d0bada8bd0679b761aa329fae937a4dcc233d0aeece32dcf305f8d55092c1",
-      "id": "sf.render.aftermath-aft-engine-section.node.radiator-4.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "0dac9b269e88e4a2a6e51b7bf6248debd278b25fee1792292551028b9097783c",
-      "materialPipelineKey": "opaque",
-      "meshName": "Radiator_4",
-      "nodeId": "sf.render.aftermath-aft-engine-section.node.radiator-4",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          -1.9103584289550781,
-          0.32157911042726794,
-          12.30264415274418
-        ],
-        "min": [
-          -2.6998291015625,
-          -0.23107686321295062,
-          11.749988179103964
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "d174e88e04a3e4220a7a8c15a8ea0595705069ebb123fd568f43dbc98314889d",
-      "id": "sf.render.aftermath-aft-engine-section.node.rcsaft-m.primitive.0",
-      "indexCount": 564,
-      "indexed": true,
-      "materialHash": "0dac9b269e88e4a2a6e51b7bf6248debd278b25fee1792292551028b9097783c",
-      "materialPipelineKey": "opaque",
-      "meshName": "RCSAft_M",
-      "nodeId": "sf.render.aftermath-aft-engine-section.node.rcsaft-m",
-      "primitiveIndex": 0,
-      "vertexCount": 168
-    },
-    {
-      "bounds": {
-        "max": [
-          -2.415618896484375,
-          -0.020998311749268583,
-          12.365787001573217
-        ],
-        "min": [
-          -2.5419349670410156,
-          -0.1411309972791185,
-          12.286844758070337
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "9786056094026e43d9681cdafbd13a6f561015fbfd5749bfca68c571f3b0cc6a",
-      "id": "sf.render.aftermath-aft-engine-section.node.rcsaft-n-0-07-0-05-m.primitive.0",
-      "indexCount": 108,
-      "indexed": true,
-      "materialHash": "998e0169135cb83ed523b293ba43c23d12e1949c4e75727b8428d97ed993fa3b",
-      "materialPipelineKey": "opaque",
-      "meshName": "RCSAft_N-0.07-0.05_M",
-      "nodeId": "sf.render.aftermath-aft-engine-section.node.rcsaft-n-0-07-0-05-m",
-      "primitiveIndex": 0,
-      "vertexCount": 48
-    },
-    {
-      "bounds": {
-        "max": [
-          -2.415618896484375,
-          -0.020998311749268583,
-          -12.286844758070337
-        ],
-        "min": [
-          -2.5419349670410156,
-          -0.1411309972791185,
-          -12.365787001573217
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "562b894beffc8ee35533bd2bc981f2086ccf0e03b5cca1ae423a510ff3222f4b",
-      "id": "sf.render.aftermath-aft-engine-section.node.rcsaft-n-0-07-0-05.primitive.0",
-      "indexCount": 108,
-      "indexed": true,
-      "materialHash": "998e0169135cb83ed523b293ba43c23d12e1949c4e75727b8428d97ed993fa3b",
-      "materialPipelineKey": "opaque",
-      "meshName": "RCSAft_N-0.07-0.05",
-      "nodeId": "sf.render.aftermath-aft-engine-section.node.rcsaft-n-0-07-0-05",
-      "primitiveIndex": 0,
-      "vertexCount": 48
-    },
-    {
-      "bounds": {
-        "max": [
-          -2.415618896484375,
-          0.23163325753195185,
-          12.365787001573217
-        ],
-        "min": [
-          -2.5419349670410156,
-          0.11150057200210195,
-          12.286844758070337
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "456106276c51e29520691d1c1db1a7f1a9ca0dc9dc578f7e56ae0fb256f81b5e",
-      "id": "sf.render.aftermath-aft-engine-section.node.rcsaft-n-0-070-05-m.primitive.0",
-      "indexCount": 108,
-      "indexed": true,
-      "materialHash": "998e0169135cb83ed523b293ba43c23d12e1949c4e75727b8428d97ed993fa3b",
-      "materialPipelineKey": "opaque",
-      "meshName": "RCSAft_N-0.070.05_M",
-      "nodeId": "sf.render.aftermath-aft-engine-section.node.rcsaft-n-0-070-05-m",
-      "primitiveIndex": 0,
-      "vertexCount": 48
-    },
-    {
-      "bounds": {
-        "max": [
-          -2.415618896484375,
-          0.23163325753195185,
-          -12.286844758070337
-        ],
-        "min": [
-          -2.5419349670410156,
-          0.11150057200210195,
-          -12.365787001573217
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "ed4fabb8fd8fcb683e2cdbbe9a028119cc180398ed0ce96e8e8234d4d38af0cd",
-      "id": "sf.render.aftermath-aft-engine-section.node.rcsaft-n-0-070-05.primitive.0",
-      "indexCount": 108,
-      "indexed": true,
-      "materialHash": "998e0169135cb83ed523b293ba43c23d12e1949c4e75727b8428d97ed993fa3b",
-      "materialPipelineKey": "opaque",
-      "meshName": "RCSAft_N-0.070.05",
-      "nodeId": "sf.render.aftermath-aft-engine-section.node.rcsaft-n-0-070-05",
-      "primitiveIndex": 0,
-      "vertexCount": 48
-    },
-    {
-      "bounds": {
-        "max": [
-          -2.0682525634765625,
-          -0.020998311749268583,
-          12.365787001573217
-        ],
-        "min": [
-          -2.194568634033203,
-          -0.1411309972791185,
-          12.286844758070337
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "7f29febd7a6f3bf4f88769ce6285a50e0227e0c82b85b8be434bcdc62b929275",
-      "id": "sf.render.aftermath-aft-engine-section.node.rcsaft-n0-07-0-05-m.primitive.0",
-      "indexCount": 108,
-      "indexed": true,
-      "materialHash": "998e0169135cb83ed523b293ba43c23d12e1949c4e75727b8428d97ed993fa3b",
-      "materialPipelineKey": "opaque",
-      "meshName": "RCSAft_N0.07-0.05_M",
-      "nodeId": "sf.render.aftermath-aft-engine-section.node.rcsaft-n0-07-0-05-m",
-      "primitiveIndex": 0,
-      "vertexCount": 48
-    },
-    {
-      "bounds": {
-        "max": [
-          -2.0682525634765625,
-          -0.020998311749268583,
-          -12.286844758070337
-        ],
-        "min": [
-          -2.194568634033203,
-          -0.1411309972791185,
-          -12.365787001573217
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "9b5c499b7a1c203ff97809fe33a5ee2a05de99bc5d27f5534ad996ca8c1ee678",
-      "id": "sf.render.aftermath-aft-engine-section.node.rcsaft-n0-07-0-05.primitive.0",
-      "indexCount": 108,
-      "indexed": true,
-      "materialHash": "998e0169135cb83ed523b293ba43c23d12e1949c4e75727b8428d97ed993fa3b",
-      "materialPipelineKey": "opaque",
-      "meshName": "RCSAft_N0.07-0.05",
-      "nodeId": "sf.render.aftermath-aft-engine-section.node.rcsaft-n0-07-0-05",
-      "primitiveIndex": 0,
-      "vertexCount": 48
-    },
-    {
-      "bounds": {
-        "max": [
-          -2.0682525634765625,
-          0.23163325753195185,
-          12.365787001573217
-        ],
-        "min": [
-          -2.194568634033203,
-          0.11150057200210195,
-          12.286844758070337
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "050f7a3ebff96e812c315f36f042f7891bde4f223a27d41b15bae88d97f8421a",
-      "id": "sf.render.aftermath-aft-engine-section.node.rcsaft-n0-070-05-m.primitive.0",
-      "indexCount": 108,
-      "indexed": true,
-      "materialHash": "998e0169135cb83ed523b293ba43c23d12e1949c4e75727b8428d97ed993fa3b",
-      "materialPipelineKey": "opaque",
-      "meshName": "RCSAft_N0.070.05_M",
-      "nodeId": "sf.render.aftermath-aft-engine-section.node.rcsaft-n0-070-05-m",
-      "primitiveIndex": 0,
-      "vertexCount": 48
-    },
-    {
-      "bounds": {
-        "max": [
-          -2.0682525634765625,
-          0.23163325753195185,
-          -12.286844758070337
-        ],
-        "min": [
-          -2.194568634033203,
-          0.11150057200210195,
-          -12.365787001573217
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "4c66d222fcff8f3eba39642baf527c3027edca95e5b92884380ae081d9b645a6",
-      "id": "sf.render.aftermath-aft-engine-section.node.rcsaft-n0-070-05.primitive.0",
-      "indexCount": 108,
-      "indexed": true,
-      "materialHash": "998e0169135cb83ed523b293ba43c23d12e1949c4e75727b8428d97ed993fa3b",
-      "materialPipelineKey": "opaque",
-      "meshName": "RCSAft_N0.070.05",
-      "nodeId": "sf.render.aftermath-aft-engine-section.node.rcsaft-n0-070-05",
-      "primitiveIndex": 0,
-      "vertexCount": 48
-    },
-    {
-      "bounds": {
-        "max": [
-          -1.9103584289550781,
-          0.32157911042726794,
-          -11.749988179103964
-        ],
-        "min": [
-          -2.6998291015625,
-          -0.23107686321295062,
-          -12.30264415274418
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "64201def157d4d65f44024d7d9d465a1bb1789ee809df0cbb53055387bf1edbd",
-      "id": "sf.render.aftermath-aft-engine-section.node.rcsaft.primitive.0",
-      "indexCount": 564,
-      "indexed": true,
-      "materialHash": "0dac9b269e88e4a2a6e51b7bf6248debd278b25fee1792292551028b9097783c",
-      "materialPipelineKey": "opaque",
-      "meshName": "RCSAft",
-      "nodeId": "sf.render.aftermath-aft-engine-section.node.rcsaft",
-      "primitiveIndex": 0,
-      "vertexCount": 168
     }
   ],
   "hlods": [],
@@ -1994,25 +769,25 @@
     {
       "id": "sf.render.aftermath-aft-engine-section.node.drive",
       "localTransform": [
-        12.052656173706055,
+        12.5,
         0,
         0,
         0,
         0,
-        12.052656173706055,
+        12.5,
         0,
         0,
         0,
         0,
-        12.052656173706055,
+        12.5,
         0,
-        -1.713846206665039,
-        0.04525113105773926,
+        -0.000042438507080078125,
+        0.000015974044799804688,
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "Drive",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
       "nodeName": "Drive",
       "nodePath": [
         0,
@@ -2022,20 +797,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-engine-section.body",
       "worldTransform": [
-        12.052656173706055,
+        12.5,
         0,
         0,
         0,
         0,
-        12.052656173706055,
+        12.5,
         0,
         0,
         0,
         0,
-        12.052656173706055,
+        12.5,
         0,
-        -1.713846206665039,
-        0.04525113105773926,
+        -0.000042438507080078125,
+        0.000015974044799804688,
         0,
         1
       ]
@@ -2043,25 +818,25 @@
     {
       "id": "sf.render.aftermath-aft-engine-section.node.engcut-f-rib0",
       "localTransform": [
-        1.0896987915039062,
+        1,
         0,
         0,
         0,
         0,
-        1.0896987915039062,
+        1,
         0,
         0,
         0,
         0,
-        1.0896987915039062,
+        1,
         0,
-        4.206142425537109,
-        -6.402551889419556,
-        0.9376753494143486,
+        0,
+        0,
+        0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "engCut_f_rib0",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
       "nodeName": "engCut_f_rib0",
       "nodePath": [
         0,
@@ -2071,46 +846,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-engine-section.body",
       "worldTransform": [
-        1.0896987915039062,
+        1,
         0,
         0,
         0,
         0,
-        1.0896987915039062,
+        1,
         0,
         0,
         0,
         0,
-        1.0896987915039062,
+        1,
         0,
-        4.206142425537109,
-        -6.402551889419556,
-        0.9376753494143486,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-engine-section.node.engcut-f-rib1",
       "localTransform": [
-        0.8428497314453125,
+        1,
         0,
         0,
         0,
         0,
-        0.8428497314453125,
+        1,
         0,
         0,
         0,
         0,
-        0.8428497314453125,
+        1,
         0,
-        3.9997711181640625,
-        -5.189923286437988,
-        -6.018762826919556,
+        0,
+        0,
+        0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "engCut_f_rib1",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
       "nodeName": "engCut_f_rib1",
       "nodePath": [
         0,
@@ -2120,46 +895,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-engine-section.body",
       "worldTransform": [
-        0.8428497314453125,
+        1,
         0,
         0,
         0,
         0,
-        0.8428497314453125,
+        1,
         0,
         0,
         0,
         0,
-        0.8428497314453125,
+        1,
         0,
-        3.9997711181640625,
-        -5.189923286437988,
-        -6.018762826919556,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-engine-section.node.engcut-f-rib2",
       "localTransform": [
-        1.005258560180664,
+        1,
         0,
         0,
         0,
         0,
-        1.005258560180664,
+        1,
         0,
         0,
         0,
         0,
-        1.005258560180664,
+        1,
         0,
-        4.153726577758789,
-        -1.543355643749237,
-        -10.249836921691895,
+        0,
+        0,
+        0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "engCut_f_rib2",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
       "nodeName": "engCut_f_rib2",
       "nodePath": [
         0,
@@ -2169,46 +944,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-engine-section.body",
       "worldTransform": [
-        1.005258560180664,
+        1,
         0,
         0,
         0,
         0,
-        1.005258560180664,
+        1,
         0,
         0,
         0,
         0,
-        1.005258560180664,
+        1,
         0,
-        4.153726577758789,
-        -1.543355643749237,
-        -10.249836921691895,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-engine-section.node.engcut-f-rib3",
       "localTransform": [
-        0.7605934143066406,
+        1,
         0,
         0,
         0,
         0,
-        0.7605934143066406,
+        1,
         0,
         0,
         0,
         0,
-        0.7605934143066406,
+        1,
         0,
-        3.9498634338378906,
-        2.754579782485962,
-        -9.531836986541748,
+        0,
+        0,
+        0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "engCut_f_rib3",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
       "nodeName": "engCut_f_rib3",
       "nodePath": [
         0,
@@ -2218,46 +993,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-engine-section.body",
       "worldTransform": [
-        0.7605934143066406,
+        1,
         0,
         0,
         0,
         0,
-        0.7605934143066406,
+        1,
         0,
         0,
         0,
         0,
-        0.7605934143066406,
+        1,
         0,
-        3.9498634338378906,
-        2.754579782485962,
-        -9.531836986541748,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-engine-section.node.engcut-f-rib4",
       "localTransform": [
-        0.9257717132568359,
+        1,
         0,
         0,
         0,
         0,
-        0.9257717132568359,
+        1,
         0,
         0,
         0,
         0,
-        0.9257717132568359,
+        1,
         0,
-        4.094427108764648,
-        5.953489542007446,
-        -4.442949175834656,
+        0,
+        0,
+        0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "engCut_f_rib4",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
       "nodeName": "engCut_f_rib4",
       "nodePath": [
         0,
@@ -2267,46 +1042,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-engine-section.body",
       "worldTransform": [
-        0.9257717132568359,
+        1,
         0,
         0,
         0,
         0,
-        0.9257717132568359,
+        1,
         0,
         0,
         0,
         0,
-        0.9257717132568359,
+        1,
         0,
-        4.094427108764648,
-        5.953489542007446,
-        -4.442949175834656,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-engine-section.node.engcut-f-rib5",
       "localTransform": [
-        1.100433349609375,
+        1,
         0,
         0,
         0,
         0,
-        1.100433349609375,
+        1,
         0,
         0,
         0,
         0,
-        1.100433349609375,
+        1,
         0,
-        4.179035186767578,
-        6.42312479019165,
-        2.639332354068756,
+        0,
+        0,
+        0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "engCut_f_rib5",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
       "nodeName": "engCut_f_rib5",
       "nodePath": [
         0,
@@ -2316,46 +1091,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-engine-section.body",
       "worldTransform": [
-        1.100433349609375,
+        1,
         0,
         0,
         0,
         0,
-        1.100433349609375,
+        1,
         0,
         0,
         0,
         0,
-        1.100433349609375,
+        1,
         0,
-        4.179035186767578,
-        6.42312479019165,
-        2.639332354068756,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-engine-section.node.engcut-f-rib6",
       "localTransform": [
-        0.8496246337890625,
+        1,
         0,
         0,
         0,
         0,
-        0.8496246337890625,
+        1,
         0,
         0,
         0,
         0,
-        0.8496246337890625,
+        1,
         0,
-        4.01470947265625,
-        3.7891461849212646,
-        8.587687730789185,
+        0,
+        0,
+        0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "engCut_f_rib6",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
       "nodeName": "engCut_f_rib6",
       "nodePath": [
         0,
@@ -2365,46 +1140,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-engine-section.body",
       "worldTransform": [
-        0.8496246337890625,
+        1,
         0,
         0,
         0,
         0,
-        0.8496246337890625,
+        1,
         0,
         0,
         0,
         0,
-        0.8496246337890625,
+        1,
         0,
-        4.01470947265625,
-        3.7891461849212646,
-        8.587687730789185,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-engine-section.node.engcut-f-rib7",
       "localTransform": [
-        1.0150318145751953,
+        1,
         0,
         0,
         0,
         0,
-        1.0150318145751953,
+        1,
         0,
         0,
         0,
         0,
-        1.0150318145751953,
+        1,
         0,
-        4.135919570922852,
-        -0.39703041315078735,
-        10.576750755310059,
+        0,
+        0,
+        0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "engCut_f_rib7",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
       "nodeName": "engCut_f_rib7",
       "nodePath": [
         0,
@@ -2414,46 +1189,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-engine-section.body",
       "worldTransform": [
-        1.0150318145751953,
+        1,
         0,
         0,
         0,
         0,
-        1.0150318145751953,
+        1,
         0,
         0,
         0,
         0,
-        1.0150318145751953,
+        1,
         0,
-        4.135919570922852,
-        -0.39703041315078735,
-        10.576750755310059,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-engine-section.node.engcut-f-rib8",
       "localTransform": [
-        0.7662124633789062,
+        1,
         0,
         0,
         0,
         0,
-        0.7662124633789062,
+        1,
         0,
         0,
         0,
         0,
-        0.7662124633789062,
+        1,
         0,
-        3.9631729125976562,
-        -4.416102170944214,
-        7.473608493804932,
+        0,
+        0,
+        0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "engCut_f_rib8",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
       "nodeName": "engCut_f_rib8",
       "nodePath": [
         0,
@@ -2463,46 +1238,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-engine-section.body",
       "worldTransform": [
-        0.7662124633789062,
+        1,
         0,
         0,
         0,
         0,
-        0.7662124633789062,
+        1,
         0,
         0,
         0,
         0,
-        0.7662124633789062,
+        1,
         0,
-        3.9631729125976562,
-        -4.416102170944214,
-        7.473608493804932,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-engine-section.node.engcut-t-tear0",
       "localTransform": [
-        0.9661089181900024,
+        1,
         0,
         0,
         0,
         0,
-        0.9661089181900024,
+        1,
         0,
         0,
         0,
         0,
-        0.9661089181900024,
+        1,
         0,
-        4.331094741821289,
-        3.266760230064392,
-        -8.572608947753906,
+        0,
+        0,
+        0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "engCut_t_tear0",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
       "nodeName": "engCut_t_tear0",
       "nodePath": [
         0,
@@ -2512,46 +1287,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-engine-section.body",
       "worldTransform": [
-        0.9661089181900024,
+        1,
         0,
         0,
         0,
         0,
-        0.9661089181900024,
+        1,
         0,
         0,
         0,
         0,
-        0.9661089181900024,
+        1,
         0,
-        4.331094741821289,
-        3.266760230064392,
-        -8.572608947753906,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-engine-section.node.engcut-t-tear1",
       "localTransform": [
-        2.3464298248291016,
+        1,
         0,
         0,
         0,
         0,
-        2.3464298248291016,
+        1,
         0,
         0,
         0,
         0,
-        2.3464298248291016,
+        1,
         0,
-        5.685827255249023,
-        5.525569200515747,
-        -1.0143960490822792,
+        0,
+        0,
+        0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "engCut_t_tear1",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
       "nodeName": "engCut_t_tear1",
       "nodePath": [
         0,
@@ -2561,46 +1336,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-engine-section.body",
       "worldTransform": [
-        2.3464298248291016,
+        1,
         0,
         0,
         0,
         0,
-        2.3464298248291016,
+        1,
         0,
         0,
         0,
         0,
-        2.3464298248291016,
+        1,
         0,
-        5.685827255249023,
-        5.525569200515747,
-        -1.0143960490822792,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-engine-section.node.engcut-t-tear2",
       "localTransform": [
-        1.6026439666748047,
+        1,
         0,
         0,
         0,
         0,
-        1.6026439666748047,
+        1,
         0,
         0,
         0,
         0,
-        1.6026439666748047,
+        1,
         0,
-        4.669778823852539,
-        4.162410736083984,
-        7.161393642425537,
+        0,
+        0,
+        0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "engCut_t_tear2",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
       "nodeName": "engCut_t_tear2",
       "nodePath": [
         0,
@@ -2610,46 +1385,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-engine-section.body",
       "worldTransform": [
-        1.6026439666748047,
+        1,
         0,
         0,
         0,
         0,
-        1.6026439666748047,
+        1,
         0,
         0,
         0,
         0,
-        1.6026439666748047,
+        1,
         0,
-        4.669778823852539,
-        4.162410736083984,
-        7.161393642425537,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-engine-section.node.engcut-t-tear3",
       "localTransform": [
-        2.983001708984375,
+        1,
         0,
         0,
         0,
         0,
-        2.983001708984375,
+        1,
         0,
         0,
         0,
         0,
-        2.983001708984375,
+        1,
         0,
-        6.024513244628906,
-        -0.5981415510177612,
-        9.510933876037598,
+        0,
+        0,
+        0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "engCut_t_tear3",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
       "nodeName": "engCut_t_tear3",
       "nodePath": [
         0,
@@ -2659,46 +1434,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-engine-section.body",
       "worldTransform": [
-        2.983001708984375,
+        1,
         0,
         0,
         0,
         0,
-        2.983001708984375,
+        1,
         0,
         0,
         0,
         0,
-        2.983001708984375,
+        1,
         0,
-        6.024513244628906,
-        -0.5981415510177612,
-        9.510933876037598,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-engine-section.node.engcut-t-tear4",
       "localTransform": [
-        1.6623039245605469,
+        1,
         0,
         0,
         0,
         0,
-        1.6623039245605469,
+        1,
         0,
         0,
         0,
         0,
-        1.6623039245605469,
+        1,
         0,
-        5.008464813232422,
-        -4.843923330307007,
-        5.223267316818237,
+        0,
+        0,
+        0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "engCut_t_tear4",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
       "nodeName": "engCut_t_tear4",
       "nodePath": [
         0,
@@ -2708,46 +1483,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-engine-section.body",
       "worldTransform": [
-        1.6623039245605469,
+        1,
         0,
         0,
         0,
         0,
-        1.6623039245605469,
+        1,
         0,
         0,
         0,
         0,
-        1.6623039245605469,
+        1,
         0,
-        5.008464813232422,
-        -4.843923330307007,
-        5.223267316818237,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-engine-section.node.engcut-t-tear5",
       "localTransform": [
-        3.2313671112060547,
+        1,
         0,
         0,
         0,
         0,
-        3.2313671112060547,
+        1,
         0,
         0,
         0,
         0,
-        3.2313671112060547,
+        1,
         0,
-        6.363199234008789,
-        -4.919246673583984,
-        -3.1907880306243896,
+        0,
+        0,
+        0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "engCut_t_tear5",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
       "nodeName": "engCut_t_tear5",
       "nodePath": [
         0,
@@ -2757,46 +1532,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-engine-section.body",
       "worldTransform": [
-        3.2313671112060547,
+        1,
         0,
         0,
         0,
         0,
-        3.2313671112060547,
+        1,
         0,
         0,
         0,
         0,
-        3.2313671112060547,
+        1,
         0,
-        6.363199234008789,
-        -4.919246673583984,
-        -3.1907880306243896,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-engine-section.node.engcut-t-tear6",
       "localTransform": [
-        2.247610092163086,
+        1,
         0,
         0,
         0,
         0,
-        2.247610092163086,
+        1,
         0,
         0,
         0,
         0,
-        2.247610092163086,
+        1,
         0,
-        5.347143173217773,
-        -1.7745038270950317,
-        -9.289352416992188,
+        0,
+        0,
+        0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "engCut_t_tear6",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
       "nodeName": "engCut_t_tear6",
       "nodePath": [
         0,
@@ -2806,46 +1581,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-engine-section.body",
       "worldTransform": [
-        2.247610092163086,
+        1,
         0,
         0,
         0,
         0,
-        2.247610092163086,
+        1,
         0,
         0,
         0,
         0,
-        2.247610092163086,
+        1,
         0,
-        5.347143173217773,
-        -1.7745038270950317,
-        -9.289352416992188,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-engine-section.node.hull",
       "localTransform": [
-        10.052302837371826,
+        1,
         0,
         0,
         0,
         0,
-        10.052302837371826,
+        1,
         0,
         0,
         0,
         0,
-        10.052302837371826,
+        1,
         0,
-        2.9848097562789917,
-        -0.09657120704650879,
-        0.002167224884033203,
+        0,
+        0,
+        0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "Hull",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
       "nodeName": "Hull",
       "nodePath": [
         0,
@@ -2855,46 +1630,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-engine-section.body",
       "worldTransform": [
-        10.052302837371826,
+        1,
         0,
         0,
         0,
         0,
-        10.052302837371826,
+        1,
         0,
         0,
         0,
         0,
-        10.052302837371826,
+        1,
         0,
-        2.9848097562789917,
-        -0.09657120704650879,
-        0.002167224884033203,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-engine-section.node.navport",
       "localTransform": [
-        0.39473724365234375,
+        1,
         0,
         0,
         0,
         0,
-        0.39473724365234375,
+        1,
         0,
         0,
         0,
         0,
-        0.39473724365234375,
+        1,
         0,
-        -1.7787761688232422,
-        2.6768300533294678,
-        -12.105262756347656,
+        0,
+        0,
+        0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "NavPort",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
       "nodeName": "NavPort",
       "nodePath": [
         0,
@@ -2904,46 +1679,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-engine-section.body",
       "worldTransform": [
-        0.39473724365234375,
+        1,
         0,
         0,
         0,
         0,
-        0.39473724365234375,
+        1,
         0,
         0,
         0,
         0,
-        0.39473724365234375,
+        1,
         0,
-        -1.7787761688232422,
-        2.6768300533294678,
-        -12.105262756347656,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-engine-section.node.navstarboard",
       "localTransform": [
-        0.39473724365234375,
+        1,
         0,
         0,
         0,
         0,
-        0.39473724365234375,
+        1,
         0,
         0,
         0,
         0,
-        0.39473724365234375,
+        1,
         0,
-        -1.7787761688232422,
-        2.6768300533294678,
-        12.105262756347656,
+        0,
+        0,
+        0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "NavStarboard",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
       "nodeName": "NavStarboard",
       "nodePath": [
         0,
@@ -2953,46 +1728,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-engine-section.body",
       "worldTransform": [
-        0.39473724365234375,
+        1,
         0,
         0,
         0,
         0,
-        0.39473724365234375,
+        1,
         0,
         0,
         0,
         0,
-        0.39473724365234375,
+        1,
         0,
-        -1.7787761688232422,
-        2.6768300533294678,
-        12.105262756347656,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-engine-section.node.nozzle-19-10",
       "localTransform": [
-        3.0263161659240723,
+        1,
         0,
         0,
         0,
         0,
-        3.0263161659240723,
+        1,
         0,
         0,
         0,
         0,
-        3.0263161659240723,
+        1,
         0,
-        -8.12088394165039,
-        -2.5863281041383743,
-        5.1315789222717285,
+        0,
+        0,
+        0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "Nozzle-19_-10",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
       "nodeName": "Nozzle-19_-10",
       "nodePath": [
         0,
@@ -3002,46 +1777,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-engine-section.body",
       "worldTransform": [
-        3.0263161659240723,
+        1,
         0,
         0,
         0,
         0,
-        3.0263161659240723,
+        1,
         0,
         0,
         0,
         0,
-        3.0263161659240723,
+        1,
         0,
-        -8.12088394165039,
-        -2.5863281041383743,
-        5.1315789222717285,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-engine-section.node.nozzle-19-10-2",
       "localTransform": [
-        3.0263161659240723,
+        1,
         0,
         0,
         0,
         0,
-        3.0263161659240723,
+        1,
         0,
         0,
         0,
         0,
-        3.0263161659240723,
+        1,
         0,
-        -8.12088394165039,
-        2.6768301278352737,
-        5.1315789222717285,
+        0,
+        0,
+        0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "Nozzle-19_10",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
       "nodeName": "Nozzle-19_10",
       "nodePath": [
         0,
@@ -3051,46 +1826,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-engine-section.body",
       "worldTransform": [
-        3.0263161659240723,
+        1,
         0,
         0,
         0,
         0,
-        3.0263161659240723,
+        1,
         0,
         0,
         0,
         0,
-        3.0263161659240723,
+        1,
         0,
-        -8.12088394165039,
-        2.6768301278352737,
-        5.1315789222717285,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-engine-section.node.nozzle19-10",
       "localTransform": [
-        3.0263161659240723,
+        1,
         0,
         0,
         0,
         0,
-        3.0263161659240723,
+        1,
         0,
         0,
         0,
         0,
-        3.0263161659240723,
+        1,
         0,
-        -8.12088394165039,
-        -2.5863281041383743,
-        -5.1315789222717285,
+        0,
+        0,
+        0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "Nozzle19_-10",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
       "nodeName": "Nozzle19_-10",
       "nodePath": [
         0,
@@ -3100,46 +1875,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-engine-section.body",
       "worldTransform": [
-        3.0263161659240723,
+        1,
         0,
         0,
         0,
         0,
-        3.0263161659240723,
+        1,
         0,
         0,
         0,
         0,
-        3.0263161659240723,
+        1,
         0,
-        -8.12088394165039,
-        -2.5863281041383743,
-        -5.1315789222717285,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-engine-section.node.nozzle19-10-2",
       "localTransform": [
-        3.0263161659240723,
+        1,
         0,
         0,
         0,
         0,
-        3.0263161659240723,
+        1,
         0,
         0,
         0,
         0,
-        3.0263161659240723,
+        1,
         0,
-        -8.12088394165039,
-        2.6768301278352737,
-        -5.1315789222717285,
+        0,
+        0,
+        0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "Nozzle19_10",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
       "nodeName": "Nozzle19_10",
       "nodePath": [
         0,
@@ -3149,46 +1924,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-engine-section.body",
       "worldTransform": [
-        3.0263161659240723,
+        1,
         0,
         0,
         0,
         0,
-        3.0263161659240723,
+        1,
         0,
         0,
         0,
         0,
-        3.0263161659240723,
+        1,
         0,
-        -8.12088394165039,
-        2.6768301278352737,
-        -5.1315789222717285,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-engine-section.node.radiator-0",
       "localTransform": [
-        1.710526466369629,
+        1,
         0,
         0,
         0,
         0,
-        1.710526466369629,
+        1,
         0,
         0,
         0,
         0,
-        1.710526466369629,
+        1,
         0,
-        -4.384042739868164,
-        6.163672208786011,
-        -7.236842155456543,
+        0,
+        0,
+        0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "Radiator_0",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
       "nodeName": "Radiator_0",
       "nodePath": [
         0,
@@ -3198,46 +1973,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-engine-section.body",
       "worldTransform": [
-        1.710526466369629,
+        1,
         0,
         0,
         0,
         0,
-        1.710526466369629,
+        1,
         0,
         0,
         0,
         0,
-        1.710526466369629,
+        1,
         0,
-        -4.384042739868164,
-        6.163672208786011,
-        -7.236842155456543,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-engine-section.node.radiator-0-m",
       "localTransform": [
-        1.710526466369629,
+        1,
         0,
         0,
         0,
         0,
-        1.710526466369629,
+        1,
         0,
         0,
         0,
         0,
-        1.710526466369629,
+        1,
         0,
-        -4.384042739868164,
-        6.163672208786011,
-        7.236842155456543,
+        0,
+        0,
+        0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "Radiator_0_M",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
       "nodeName": "Radiator_0_M",
       "nodePath": [
         0,
@@ -3247,46 +2022,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-engine-section.body",
       "worldTransform": [
-        1.710526466369629,
+        1,
         0,
         0,
         0,
         0,
-        1.710526466369629,
+        1,
         0,
         0,
         0,
         0,
-        1.710526466369629,
+        1,
         0,
-        -4.384042739868164,
-        6.163672208786011,
-        7.236842155456543,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-engine-section.node.radiator-1",
       "localTransform": [
-        1.710526466369629,
+        1,
         0,
         0,
         0,
         0,
-        1.710526466369629,
+        1,
         0,
         0,
         0,
         0,
-        1.710526466369629,
+        1,
         0,
-        -3.278779983520508,
-        6.163672208786011,
-        -7.236842155456543,
+        0,
+        0,
+        0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "Radiator_1",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
       "nodeName": "Radiator_1",
       "nodePath": [
         0,
@@ -3296,46 +2071,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-engine-section.body",
       "worldTransform": [
-        1.710526466369629,
+        1,
         0,
         0,
         0,
         0,
-        1.710526466369629,
+        1,
         0,
         0,
         0,
         0,
-        1.710526466369629,
+        1,
         0,
-        -3.278779983520508,
-        6.163672208786011,
-        -7.236842155456543,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-engine-section.node.radiator-1-m",
       "localTransform": [
-        1.710526466369629,
+        1,
         0,
         0,
         0,
         0,
-        1.710526466369629,
+        1,
         0,
         0,
         0,
         0,
-        1.710526466369629,
+        1,
         0,
-        -3.278779983520508,
-        6.163672208786011,
-        7.236842155456543,
+        0,
+        0,
+        0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "Radiator_1_M",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
       "nodeName": "Radiator_1_M",
       "nodePath": [
         0,
@@ -3345,46 +2120,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-engine-section.body",
       "worldTransform": [
-        1.710526466369629,
+        1,
         0,
         0,
         0,
         0,
-        1.710526466369629,
+        1,
         0,
         0,
         0,
         0,
-        1.710526466369629,
+        1,
         0,
-        -3.278779983520508,
-        6.163672208786011,
-        7.236842155456543,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-engine-section.node.radiator-2",
       "localTransform": [
-        1.710526466369629,
+        1,
         0,
         0,
         0,
         0,
-        1.710526466369629,
+        1,
         0,
         0,
         0,
         0,
-        1.710526466369629,
+        1,
         0,
-        -2.1735172271728516,
-        6.163672208786011,
-        -7.236842155456543,
+        0,
+        0,
+        0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "Radiator_2",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
       "nodeName": "Radiator_2",
       "nodePath": [
         0,
@@ -3394,46 +2169,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-engine-section.body",
       "worldTransform": [
-        1.710526466369629,
+        1,
         0,
         0,
         0,
         0,
-        1.710526466369629,
+        1,
         0,
         0,
         0,
         0,
-        1.710526466369629,
+        1,
         0,
-        -2.1735172271728516,
-        6.163672208786011,
-        -7.236842155456543,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-engine-section.node.radiator-2-m",
       "localTransform": [
-        1.710526466369629,
+        1,
         0,
         0,
         0,
         0,
-        1.710526466369629,
+        1,
         0,
         0,
         0,
         0,
-        1.710526466369629,
+        1,
         0,
-        -2.1735172271728516,
-        6.163672208786011,
-        7.236842155456543,
+        0,
+        0,
+        0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "Radiator_2_M",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
       "nodeName": "Radiator_2_M",
       "nodePath": [
         0,
@@ -3443,46 +2218,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-engine-section.body",
       "worldTransform": [
-        1.710526466369629,
+        1,
         0,
         0,
         0,
         0,
-        1.710526466369629,
+        1,
         0,
         0,
         0,
         0,
-        1.710526466369629,
+        1,
         0,
-        -2.1735172271728516,
-        6.163672208786011,
-        7.236842155456543,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-engine-section.node.radiator-3",
       "localTransform": [
-        1.710526466369629,
+        1,
         0,
         0,
         0,
         0,
-        1.710526466369629,
+        1,
         0,
         0,
         0,
         0,
-        1.710526466369629,
+        1,
         0,
-        -1.0682544708251953,
-        6.163672208786011,
-        -7.236842155456543,
+        0,
+        0,
+        0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "Radiator_3",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
       "nodeName": "Radiator_3",
       "nodePath": [
         0,
@@ -3492,46 +2267,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-engine-section.body",
       "worldTransform": [
-        1.710526466369629,
+        1,
         0,
         0,
         0,
         0,
-        1.710526466369629,
+        1,
         0,
         0,
         0,
         0,
-        1.710526466369629,
+        1,
         0,
-        -1.0682544708251953,
-        6.163672208786011,
-        -7.236842155456543,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-engine-section.node.radiator-3-m",
       "localTransform": [
-        1.710526466369629,
+        1,
         0,
         0,
         0,
         0,
-        1.710526466369629,
+        1,
         0,
         0,
         0,
         0,
-        1.710526466369629,
+        1,
         0,
-        -1.0682544708251953,
-        6.163672208786011,
-        7.236842155456543,
+        0,
+        0,
+        0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "Radiator_3_M",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
       "nodeName": "Radiator_3_M",
       "nodePath": [
         0,
@@ -3541,46 +2316,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-engine-section.body",
       "worldTransform": [
-        1.710526466369629,
+        1,
         0,
         0,
         0,
         0,
-        1.710526466369629,
+        1,
         0,
         0,
         0,
         0,
-        1.710526466369629,
+        1,
         0,
-        -1.0682544708251953,
-        6.163672208786011,
-        7.236842155456543,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-engine-section.node.radiator-4",
       "localTransform": [
-        1.710526466369629,
+        1,
         0,
         0,
         0,
         0,
-        1.710526466369629,
+        1,
         0,
         0,
         0,
         0,
-        1.710526466369629,
+        1,
         0,
-        0.03701018914580345,
-        6.163672208786011,
-        -7.236842155456543,
+        0,
+        0,
+        0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "Radiator_4",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
       "nodeName": "Radiator_4",
       "nodePath": [
         0,
@@ -3590,46 +2365,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-engine-section.body",
       "worldTransform": [
-        1.710526466369629,
+        1,
         0,
         0,
         0,
         0,
-        1.710526466369629,
+        1,
         0,
         0,
         0,
         0,
-        1.710526466369629,
+        1,
         0,
-        0.03701018914580345,
-        6.163672208786011,
-        -7.236842155456543,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-engine-section.node.radiator-4-m",
       "localTransform": [
-        1.710526466369629,
+        1,
         0,
         0,
         0,
         0,
-        1.710526466369629,
+        1,
         0,
         0,
         0,
         0,
-        1.710526466369629,
+        1,
         0,
-        0.03701018914580345,
-        6.163672208786011,
-        7.236842155456543,
+        0,
+        0,
+        0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "Radiator_4_M",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
       "nodeName": "Radiator_4_M",
       "nodePath": [
         0,
@@ -3639,46 +2414,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-engine-section.body",
       "worldTransform": [
-        1.710526466369629,
+        1,
         0,
         0,
         0,
         0,
-        1.710526466369629,
+        1,
         0,
         0,
         0,
         0,
-        1.710526466369629,
+        1,
         0,
-        0.03701018914580345,
-        6.163672208786011,
-        7.236842155456543,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-engine-section.node.rcsaft",
       "localTransform": [
-        0.39473533630371094,
+        1,
         0,
         0,
         0,
         0,
-        0.39473533630371094,
+        1,
         0,
         0,
         0,
         0,
-        0.39473533630371094,
+        1,
         0,
-        -2.305093765258789,
-        0.04525112360715866,
-        -12.026316165924072,
+        0,
+        0,
+        0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "RCSAft",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
       "nodeName": "RCSAft",
       "nodePath": [
         0,
@@ -3688,46 +2463,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-engine-section.body",
       "worldTransform": [
-        0.39473533630371094,
+        1,
         0,
         0,
         0,
         0,
-        0.39473533630371094,
+        1,
         0,
         0,
         0,
         0,
-        0.39473533630371094,
+        1,
         0,
-        -2.305093765258789,
-        0.04525112360715866,
-        -12.026316165924072,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-engine-section.node.rcsaft-m",
       "localTransform": [
-        0.39473533630371094,
+        1,
         0,
         0,
         0,
         0,
-        0.39473533630371094,
+        1,
         0,
         0,
         0,
         0,
-        0.39473533630371094,
+        1,
         0,
-        -2.305093765258789,
-        0.04525112360715866,
-        12.026316165924072,
+        0,
+        0,
+        0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "RCSAft_M",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
       "nodeName": "RCSAft_M",
       "nodePath": [
         0,
@@ -3737,46 +2512,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-engine-section.body",
       "worldTransform": [
-        0.39473533630371094,
+        1,
         0,
         0,
         0,
         0,
-        0.39473533630371094,
+        1,
         0,
         0,
         0,
         0,
-        0.39473533630371094,
+        1,
         0,
-        -2.305093765258789,
-        0.04525112360715866,
-        12.026316165924072,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-engine-section.node.rcsaft-n-0-07-0-05",
       "localTransform": [
-        0.06315803527832031,
+        1,
         0,
         0,
         0,
         0,
-        0.06315803527832031,
+        1,
         0,
         0,
         0,
         0,
-        0.06315803527832031,
+        1,
         0,
-        -2.4787769317626953,
-        -0.08106465451419353,
-        -12.326315879821777,
+        0,
+        0,
+        0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "RCSAft_N-0.07-0.05",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
       "nodeName": "RCSAft_N-0.07-0.05",
       "nodePath": [
         0,
@@ -3786,46 +2561,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-engine-section.body",
       "worldTransform": [
-        0.06315803527832031,
+        1,
         0,
         0,
         0,
         0,
-        0.06315803527832031,
+        1,
         0,
         0,
         0,
         0,
-        0.06315803527832031,
+        1,
         0,
-        -2.4787769317626953,
-        -0.08106465451419353,
-        -12.326315879821777,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-engine-section.node.rcsaft-n-0-07-0-05-m",
       "localTransform": [
-        0.06315803527832031,
+        1,
         0,
         0,
         0,
         0,
-        0.06315803527832031,
+        1,
         0,
         0,
         0,
         0,
-        0.06315803527832031,
+        1,
         0,
-        -2.4787769317626953,
-        -0.08106465451419353,
-        12.326315879821777,
+        0,
+        0,
+        0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "RCSAft_N-0.07-0.05_M",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
       "nodeName": "RCSAft_N-0.07-0.05_M",
       "nodePath": [
         0,
@@ -3835,46 +2610,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-engine-section.body",
       "worldTransform": [
-        0.06315803527832031,
+        1,
         0,
         0,
         0,
         0,
-        0.06315803527832031,
+        1,
         0,
         0,
         0,
         0,
-        0.06315803527832031,
+        1,
         0,
-        -2.4787769317626953,
-        -0.08106465451419353,
-        12.326315879821777,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-engine-section.node.rcsaft-n-0-070-05",
       "localTransform": [
-        0.06315803527832031,
+        1,
         0,
         0,
         0,
         0,
-        0.06315803527832031,
+        1,
         0,
         0,
         0,
         0,
-        0.06315803527832031,
+        1,
         0,
-        -2.4787769317626953,
-        0.1715669147670269,
-        -12.326315879821777,
+        0,
+        0,
+        0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "RCSAft_N-0.070.05",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
       "nodeName": "RCSAft_N-0.070.05",
       "nodePath": [
         0,
@@ -3884,46 +2659,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-engine-section.body",
       "worldTransform": [
-        0.06315803527832031,
+        1,
         0,
         0,
         0,
         0,
-        0.06315803527832031,
+        1,
         0,
         0,
         0,
         0,
-        0.06315803527832031,
+        1,
         0,
-        -2.4787769317626953,
-        0.1715669147670269,
-        -12.326315879821777,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-engine-section.node.rcsaft-n-0-070-05-m",
       "localTransform": [
-        0.06315803527832031,
+        1,
         0,
         0,
         0,
         0,
-        0.06315803527832031,
+        1,
         0,
         0,
         0,
         0,
-        0.06315803527832031,
+        1,
         0,
-        -2.4787769317626953,
-        0.1715669147670269,
-        12.326315879821777,
+        0,
+        0,
+        0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "RCSAft_N-0.070.05_M",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
       "nodeName": "RCSAft_N-0.070.05_M",
       "nodePath": [
         0,
@@ -3933,46 +2708,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-engine-section.body",
       "worldTransform": [
-        0.06315803527832031,
+        1,
         0,
         0,
         0,
         0,
-        0.06315803527832031,
+        1,
         0,
         0,
         0,
         0,
-        0.06315803527832031,
+        1,
         0,
-        -2.4787769317626953,
-        0.1715669147670269,
-        12.326315879821777,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-engine-section.node.rcsaft-n0-07-0-05",
       "localTransform": [
-        0.06315803527832031,
+        1,
         0,
         0,
         0,
         0,
-        0.06315803527832031,
+        1,
         0,
         0,
         0,
         0,
-        0.06315803527832031,
+        1,
         0,
-        -2.131410598754883,
-        -0.08106465451419353,
-        -12.326315879821777,
+        0,
+        0,
+        0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "RCSAft_N0.07-0.05",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
       "nodeName": "RCSAft_N0.07-0.05",
       "nodePath": [
         0,
@@ -3982,46 +2757,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-engine-section.body",
       "worldTransform": [
-        0.06315803527832031,
+        1,
         0,
         0,
         0,
         0,
-        0.06315803527832031,
+        1,
         0,
         0,
         0,
         0,
-        0.06315803527832031,
+        1,
         0,
-        -2.131410598754883,
-        -0.08106465451419353,
-        -12.326315879821777,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-engine-section.node.rcsaft-n0-07-0-05-m",
       "localTransform": [
-        0.06315803527832031,
+        1,
         0,
         0,
         0,
         0,
-        0.06315803527832031,
+        1,
         0,
         0,
         0,
         0,
-        0.06315803527832031,
+        1,
         0,
-        -2.131410598754883,
-        -0.08106465451419353,
-        12.326315879821777,
+        0,
+        0,
+        0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "RCSAft_N0.07-0.05_M",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
       "nodeName": "RCSAft_N0.07-0.05_M",
       "nodePath": [
         0,
@@ -4031,46 +2806,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-engine-section.body",
       "worldTransform": [
-        0.06315803527832031,
+        1,
         0,
         0,
         0,
         0,
-        0.06315803527832031,
+        1,
         0,
         0,
         0,
         0,
-        0.06315803527832031,
+        1,
         0,
-        -2.131410598754883,
-        -0.08106465451419353,
-        12.326315879821777,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-engine-section.node.rcsaft-n0-070-05",
       "localTransform": [
-        0.06315803527832031,
+        1,
         0,
         0,
         0,
         0,
-        0.06315803527832031,
+        1,
         0,
         0,
         0,
         0,
-        0.06315803527832031,
+        1,
         0,
-        -2.131410598754883,
-        0.1715669147670269,
-        -12.326315879821777,
+        0,
+        0,
+        0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "RCSAft_N0.070.05",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
       "nodeName": "RCSAft_N0.070.05",
       "nodePath": [
         0,
@@ -4080,46 +2855,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-engine-section.body",
       "worldTransform": [
-        0.06315803527832031,
+        1,
         0,
         0,
         0,
         0,
-        0.06315803527832031,
+        1,
         0,
         0,
         0,
         0,
-        0.06315803527832031,
+        1,
         0,
-        -2.131410598754883,
-        0.1715669147670269,
-        -12.326315879821777,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-engine-section.node.rcsaft-n0-070-05-m",
       "localTransform": [
-        0.06315803527832031,
+        1,
         0,
         0,
         0,
         0,
-        0.06315803527832031,
+        1,
         0,
         0,
         0,
         0,
-        0.06315803527832031,
+        1,
         0,
-        -2.131410598754883,
-        0.1715669147670269,
-        12.326315879821777,
+        0,
+        0,
+        0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "RCSAft_N0.070.05_M",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
       "nodeName": "RCSAft_N0.070.05_M",
       "nodePath": [
         0,
@@ -4129,21 +2904,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-engine-section.body",
       "worldTransform": [
-        0.06315803527832031,
+        1,
         0,
         0,
         0,
         0,
-        0.06315803527832031,
+        1,
         0,
         0,
         0,
         0,
-        0.06315803527832031,
+        1,
         0,
-        -2.131410598754883,
-        0.1715669147670269,
-        12.326315879821777,
+        0,
+        0,
+        0,
         1
       ]
     },
@@ -4248,7 +3023,7 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "89f4aa88f62b228d1bda61e91d5de49e94b8c66d46acecad2770f624fca3c2f2"
+      "sha256": "eb535cbb17ed81d8a2abf9aefd7f7f51d68b92acec3c3fc139b08b50442749f3"
     },
     "sourceGlb": {
       "bytes": 327388,
@@ -4256,36 +3031,36 @@
       "uri": "place_aftermath_aft_engine_section.glb"
     },
     "sourceManifest": {
-      "bytes": 323116,
-      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
+      "bytes": 323169,
+      "sha256": "ca22c1a243dd61ba8d2042d939914d32834fee986e49560b31b18880d638de12",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 330292,
-    "sha256": "6b1215f3575ff7f873731fc950b95e29d64c5e1ed42481fcc866fd76d9440a7d",
+    "bytes": 281348,
+    "sha256": "150bd4cb43f721a2987999ebc0d7c00677802a09ae518152eead01df4f7c341b",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
-        -0.00004235575508904077,
-        0.000015942920941203198,
+        -0.000042438507080078125,
+        0.000015974044799804688,
         0
       ],
       "max": [
-        9.594566345214844,
-        7.426568744565823,
+        9.594595459377986,
+        7.425932292291817,
         12.5
       ],
       "min": [
-        -9.594651056725022,
-        -7.42653685872394,
+        -9.594680336392146,
+        -7.425900344202217,
         -12.5
       ],
       "size": [
-        19.189217401939864,
-        14.853105603289762,
+        19.189275795770133,
+        14.851832636494034,
         25
       ]
     },
@@ -4312,7 +3087,7 @@
           1
         ],
         "name": "SOCKET_Hazard_Core",
-        "planIndex": 69,
+        "planIndex": 58,
         "tags": {
           "lod": "lod0",
           "socket": true,
@@ -4350,7 +3125,7 @@
           1
         ],
         "name": "SOCKET_Salvage_Drive",
-        "planIndex": 70,
+        "planIndex": 59,
         "tags": {
           "lod": "lod0",
           "socket": true,
@@ -4370,13 +3145,13 @@
       }
     ],
     "materialProfileRoles": {
-      "accent": 2,
+      "accent": 1,
       "ceramic": 1,
-      "drive": 4,
-      "hull": 4,
-      "mechanical": 46,
+      "drive": 1,
+      "hull": 2,
+      "mechanical": 4,
       "signal": 2,
-      "warning": 2
+      "warning": 1
     },
     "materialProfiles": [
       {
@@ -4417,17 +3192,17 @@
       {
         "allowTextures": true,
         "planIndex": 10,
-        "role": "mechanical"
+        "role": "ceramic"
       },
       {
         "allowTextures": true,
         "planIndex": 11,
-        "role": "mechanical"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 12,
-        "role": "mechanical"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -4437,277 +3212,32 @@
       {
         "allowTextures": true,
         "planIndex": 14,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 15,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 16,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 17,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 18,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 19,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 20,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 21,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 22,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 23,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 25,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 26,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 27,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 28,
-        "role": "accent"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 29,
-        "role": "warning"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 30,
-        "role": "ceramic"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 31,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 32,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 34,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 35,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 36,
         "role": "drive"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 38,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 39,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 40,
-        "role": "drive"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 42,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 43,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 44,
-        "role": "drive"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 46,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 47,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 48,
-        "role": "drive"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 49,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 50,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 51,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 52,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 53,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 54,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 55,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 56,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 57,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 58,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 59,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 60,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 61,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 62,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 63,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 64,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 65,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 66,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 67,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 68,
-        "role": "mechanical"
       }
     ],
-    "nodeCount": 71,
+    "nodeCount": 60,
     "primitives": [
       {
         "canopy": false,
         "matrix": [
-          12.052656173706055,
+          12.5,
           0,
           0,
           0,
           0,
-          12.052656173706055,
+          12.5,
           0,
           0,
           0,
           0,
-          12.052656173706055,
+          12.5,
           0,
-          -1.713846206665039,
-          0.04525113105773926,
+          -0.000042438507080078125,
+          0.000015974044799804688,
           0,
           1
         ],
-        "name": "Drive_1",
+        "name": "rendersfrenderaftermath-aft-engine-sectionflight-static-lane1",
         "planIndex": 3,
         "tags": {
           "canopy": false,
@@ -4717,24 +3247,24 @@
       {
         "canopy": false,
         "matrix": [
-          12.052656173706055,
+          12.5,
           0,
           0,
           0,
           0,
-          12.052656173706055,
+          12.5,
           0,
           0,
           0,
           0,
-          12.052656173706055,
+          12.5,
           0,
-          -1.713846206665039,
-          0.04525113105773926,
+          -0.000042438507080078125,
+          0.000015974044799804688,
           0,
           1
         ],
-        "name": "Drive_2",
+        "name": "rendersfrenderaftermath-aft-engine-sectionflight-static-lane1_1",
         "planIndex": 4,
         "tags": {
           "canopy": false,
@@ -4744,24 +3274,24 @@
       {
         "canopy": false,
         "matrix": [
-          12.052656173706055,
+          12.5,
           0,
           0,
           0,
           0,
-          12.052656173706055,
+          12.5,
           0,
           0,
           0,
           0,
-          12.052656173706055,
+          12.5,
           0,
-          -1.713846206665039,
-          0.04525113105773926,
+          -0.000042438507080078125,
+          0.000015974044799804688,
           0,
           1
         ],
-        "name": "Drive_3",
+        "name": "rendersfrenderaftermath-aft-engine-sectionflight-static-lane1_2",
         "planIndex": 5,
         "tags": {
           "canopy": false,
@@ -4771,24 +3301,24 @@
       {
         "canopy": false,
         "matrix": [
-          12.052656173706055,
+          12.5,
           0,
           0,
           0,
           0,
-          12.052656173706055,
+          12.5,
           0,
           0,
           0,
           0,
-          12.052656173706055,
+          12.5,
           0,
-          -1.713846206665039,
-          0.04525113105773926,
+          -0.000042438507080078125,
+          0.000015974044799804688,
           0,
           1
         ],
-        "name": "Drive_4",
+        "name": "rendersfrenderaftermath-aft-engine-sectionflight-static-lane1_3",
         "planIndex": 6,
         "tags": {
           "canopy": false,
@@ -4798,24 +3328,24 @@
       {
         "canopy": false,
         "matrix": [
-          12.052656173706055,
+          12.5,
           0,
           0,
           0,
           0,
-          12.052656173706055,
+          12.5,
           0,
           0,
           0,
           0,
-          12.052656173706055,
+          12.5,
           0,
-          -1.713846206665039,
-          0.04525113105773926,
+          -0.000042438507080078125,
+          0.000015974044799804688,
           0,
           1
         ],
-        "name": "Drive_5",
+        "name": "rendersfrenderaftermath-aft-engine-sectionflight-static-lane1_4",
         "planIndex": 7,
         "tags": {
           "canopy": false,
@@ -4825,24 +3355,24 @@
       {
         "canopy": false,
         "matrix": [
-          1.0896987915039062,
+          12.5,
           0,
           0,
           0,
           0,
-          1.0896987915039062,
+          12.5,
           0,
           0,
           0,
           0,
-          1.0896987915039062,
+          12.5,
           0,
-          4.206142425537109,
-          -6.402551889419556,
-          0.9376753494143486,
+          -0.000042438507080078125,
+          0.000015974044799804688,
+          0,
           1
         ],
-        "name": "engCut_f_rib0",
+        "name": "rendersfrenderaftermath-aft-engine-sectionflight-static-lane1_5",
         "planIndex": 8,
         "tags": {
           "canopy": false,
@@ -4852,24 +3382,24 @@
       {
         "canopy": false,
         "matrix": [
-          0.8428497314453125,
+          12.5,
           0,
           0,
           0,
           0,
-          0.8428497314453125,
+          12.5,
           0,
           0,
           0,
           0,
-          0.8428497314453125,
+          12.5,
           0,
-          3.9997711181640625,
-          -5.189923286437988,
-          -6.018762826919556,
+          -0.000042438507080078125,
+          0.000015974044799804688,
+          0,
           1
         ],
-        "name": "engCut_f_rib1",
+        "name": "rendersfrenderaftermath-aft-engine-sectionflight-static-lane1_6",
         "planIndex": 9,
         "tags": {
           "canopy": false,
@@ -4879,24 +3409,24 @@
       {
         "canopy": false,
         "matrix": [
-          1.005258560180664,
+          12.5,
           0,
           0,
           0,
           0,
-          1.005258560180664,
+          12.5,
           0,
           0,
           0,
           0,
-          1.005258560180664,
+          12.5,
           0,
-          4.153726577758789,
-          -1.543355643749237,
-          -10.249836921691895,
+          -0.000042438507080078125,
+          0.000015974044799804688,
+          0,
           1
         ],
-        "name": "engCut_f_rib2",
+        "name": "rendersfrenderaftermath-aft-engine-sectionflight-static-lane1_7",
         "planIndex": 10,
         "tags": {
           "canopy": false,
@@ -4906,24 +3436,24 @@
       {
         "canopy": false,
         "matrix": [
-          0.7605934143066406,
+          12.5,
           0,
           0,
           0,
           0,
-          0.7605934143066406,
+          12.5,
           0,
           0,
           0,
           0,
-          0.7605934143066406,
+          12.5,
           0,
-          3.9498634338378906,
-          2.754579782485962,
-          -9.531836986541748,
+          -0.000042438507080078125,
+          0.000015974044799804688,
+          0,
           1
         ],
-        "name": "engCut_f_rib3",
+        "name": "rendersfrenderaftermath-aft-engine-sectionflight-static-lane1_8",
         "planIndex": 11,
         "tags": {
           "canopy": false,
@@ -4933,24 +3463,24 @@
       {
         "canopy": false,
         "matrix": [
-          0.9257717132568359,
+          12.5,
           0,
           0,
           0,
           0,
-          0.9257717132568359,
+          12.5,
           0,
           0,
           0,
           0,
-          0.9257717132568359,
+          12.5,
           0,
-          4.094427108764648,
-          5.953489542007446,
-          -4.442949175834656,
+          -0.000042438507080078125,
+          0.000015974044799804688,
+          0,
           1
         ],
-        "name": "engCut_f_rib4",
+        "name": "rendersfrenderaftermath-aft-engine-sectionflight-static-lane1_9",
         "planIndex": 12,
         "tags": {
           "canopy": false,
@@ -4960,24 +3490,24 @@
       {
         "canopy": false,
         "matrix": [
-          1.100433349609375,
+          12.5,
           0,
           0,
           0,
           0,
-          1.100433349609375,
+          12.5,
           0,
           0,
           0,
           0,
-          1.100433349609375,
+          12.5,
           0,
-          4.179035186767578,
-          6.42312479019165,
-          2.639332354068756,
+          -0.000042438507080078125,
+          0.000015974044799804688,
+          0,
           1
         ],
-        "name": "engCut_f_rib5",
+        "name": "rendersfrenderaftermath-aft-engine-sectionflight-static-lane1_10",
         "planIndex": 13,
         "tags": {
           "canopy": false,
@@ -4987,1348 +3517,25 @@
       {
         "canopy": false,
         "matrix": [
-          0.8496246337890625,
+          12.5,
           0,
           0,
           0,
           0,
-          0.8496246337890625,
+          12.5,
           0,
           0,
           0,
           0,
-          0.8496246337890625,
+          12.5,
           0,
-          4.01470947265625,
-          3.7891461849212646,
-          8.587687730789185,
+          -0.000042438507080078125,
+          0.000015974044799804688,
+          0,
           1
         ],
-        "name": "engCut_f_rib6",
+        "name": "rendersfrenderaftermath-aft-engine-sectionflight-static-lane1_11",
         "planIndex": 14,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1.0150318145751953,
-          0,
-          0,
-          0,
-          0,
-          1.0150318145751953,
-          0,
-          0,
-          0,
-          0,
-          1.0150318145751953,
-          0,
-          4.135919570922852,
-          -0.39703041315078735,
-          10.576750755310059,
-          1
-        ],
-        "name": "engCut_f_rib7",
-        "planIndex": 15,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.7662124633789062,
-          0,
-          0,
-          0,
-          0,
-          0.7662124633789062,
-          0,
-          0,
-          0,
-          0,
-          0.7662124633789062,
-          0,
-          3.9631729125976562,
-          -4.416102170944214,
-          7.473608493804932,
-          1
-        ],
-        "name": "engCut_f_rib8",
-        "planIndex": 16,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.9661089181900024,
-          0,
-          0,
-          0,
-          0,
-          0.9661089181900024,
-          0,
-          0,
-          0,
-          0,
-          0.9661089181900024,
-          0,
-          4.331094741821289,
-          3.266760230064392,
-          -8.572608947753906,
-          1
-        ],
-        "name": "engCut_t_tear0",
-        "planIndex": 17,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          2.3464298248291016,
-          0,
-          0,
-          0,
-          0,
-          2.3464298248291016,
-          0,
-          0,
-          0,
-          0,
-          2.3464298248291016,
-          0,
-          5.685827255249023,
-          5.525569200515747,
-          -1.0143960490822792,
-          1
-        ],
-        "name": "engCut_t_tear1",
-        "planIndex": 18,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1.6026439666748047,
-          0,
-          0,
-          0,
-          0,
-          1.6026439666748047,
-          0,
-          0,
-          0,
-          0,
-          1.6026439666748047,
-          0,
-          4.669778823852539,
-          4.162410736083984,
-          7.161393642425537,
-          1
-        ],
-        "name": "engCut_t_tear2",
-        "planIndex": 19,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          2.983001708984375,
-          0,
-          0,
-          0,
-          0,
-          2.983001708984375,
-          0,
-          0,
-          0,
-          0,
-          2.983001708984375,
-          0,
-          6.024513244628906,
-          -0.5981415510177612,
-          9.510933876037598,
-          1
-        ],
-        "name": "engCut_t_tear3",
-        "planIndex": 20,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1.6623039245605469,
-          0,
-          0,
-          0,
-          0,
-          1.6623039245605469,
-          0,
-          0,
-          0,
-          0,
-          1.6623039245605469,
-          0,
-          5.008464813232422,
-          -4.843923330307007,
-          5.223267316818237,
-          1
-        ],
-        "name": "engCut_t_tear4",
-        "planIndex": 21,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          3.2313671112060547,
-          0,
-          0,
-          0,
-          0,
-          3.2313671112060547,
-          0,
-          0,
-          0,
-          0,
-          3.2313671112060547,
-          0,
-          6.363199234008789,
-          -4.919246673583984,
-          -3.1907880306243896,
-          1
-        ],
-        "name": "engCut_t_tear5",
-        "planIndex": 22,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          2.247610092163086,
-          0,
-          0,
-          0,
-          0,
-          2.247610092163086,
-          0,
-          0,
-          0,
-          0,
-          2.247610092163086,
-          0,
-          5.347143173217773,
-          -1.7745038270950317,
-          -9.289352416992188,
-          1
-        ],
-        "name": "engCut_t_tear6",
-        "planIndex": 23,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          10.052302837371826,
-          0,
-          0,
-          0,
-          0,
-          10.052302837371826,
-          0,
-          0,
-          0,
-          0,
-          10.052302837371826,
-          0,
-          2.9848097562789917,
-          -0.09657120704650879,
-          0.002167224884033203,
-          1
-        ],
-        "name": "Hull_1",
-        "planIndex": 25,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          10.052302837371826,
-          0,
-          0,
-          0,
-          0,
-          10.052302837371826,
-          0,
-          0,
-          0,
-          0,
-          10.052302837371826,
-          0,
-          2.9848097562789917,
-          -0.09657120704650879,
-          0.002167224884033203,
-          1
-        ],
-        "name": "Hull_2",
-        "planIndex": 26,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          10.052302837371826,
-          0,
-          0,
-          0,
-          0,
-          10.052302837371826,
-          0,
-          0,
-          0,
-          0,
-          10.052302837371826,
-          0,
-          2.9848097562789917,
-          -0.09657120704650879,
-          0.002167224884033203,
-          1
-        ],
-        "name": "Hull_3",
-        "planIndex": 27,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          10.052302837371826,
-          0,
-          0,
-          0,
-          0,
-          10.052302837371826,
-          0,
-          0,
-          0,
-          0,
-          10.052302837371826,
-          0,
-          2.9848097562789917,
-          -0.09657120704650879,
-          0.002167224884033203,
-          1
-        ],
-        "name": "Hull_4",
-        "planIndex": 28,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          10.052302837371826,
-          0,
-          0,
-          0,
-          0,
-          10.052302837371826,
-          0,
-          0,
-          0,
-          0,
-          10.052302837371826,
-          0,
-          2.9848097562789917,
-          -0.09657120704650879,
-          0.002167224884033203,
-          1
-        ],
-        "name": "Hull_5",
-        "planIndex": 29,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          10.052302837371826,
-          0,
-          0,
-          0,
-          0,
-          10.052302837371826,
-          0,
-          0,
-          0,
-          0,
-          10.052302837371826,
-          0,
-          2.9848097562789917,
-          -0.09657120704650879,
-          0.002167224884033203,
-          1
-        ],
-        "name": "Hull_6",
-        "planIndex": 30,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.39473724365234375,
-          0,
-          0,
-          0,
-          0,
-          0.39473724365234375,
-          0,
-          0,
-          0,
-          0,
-          0.39473724365234375,
-          0,
-          -1.7787761688232422,
-          2.6768300533294678,
-          -12.105262756347656,
-          1
-        ],
-        "name": "NavPort",
-        "planIndex": 31,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.39473724365234375,
-          0,
-          0,
-          0,
-          0,
-          0.39473724365234375,
-          0,
-          0,
-          0,
-          0,
-          0.39473724365234375,
-          0,
-          -1.7787761688232422,
-          2.6768300533294678,
-          12.105262756347656,
-          1
-        ],
-        "name": "NavStarboard",
-        "planIndex": 32,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          3.0263161659240723,
-          0,
-          0,
-          0,
-          0,
-          3.0263161659240723,
-          0,
-          0,
-          0,
-          0,
-          3.0263161659240723,
-          0,
-          -8.12088394165039,
-          -2.5863281041383743,
-          5.1315789222717285,
-          1
-        ],
-        "name": "Nozzle-19_-10_1",
-        "planIndex": 34,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          3.0263161659240723,
-          0,
-          0,
-          0,
-          0,
-          3.0263161659240723,
-          0,
-          0,
-          0,
-          0,
-          3.0263161659240723,
-          0,
-          -8.12088394165039,
-          -2.5863281041383743,
-          5.1315789222717285,
-          1
-        ],
-        "name": "Nozzle-19_-10_2",
-        "planIndex": 35,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          3.0263161659240723,
-          0,
-          0,
-          0,
-          0,
-          3.0263161659240723,
-          0,
-          0,
-          0,
-          0,
-          3.0263161659240723,
-          0,
-          -8.12088394165039,
-          -2.5863281041383743,
-          5.1315789222717285,
-          1
-        ],
-        "name": "Nozzle-19_-10_3",
-        "planIndex": 36,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          3.0263161659240723,
-          0,
-          0,
-          0,
-          0,
-          3.0263161659240723,
-          0,
-          0,
-          0,
-          0,
-          3.0263161659240723,
-          0,
-          -8.12088394165039,
-          2.6768301278352737,
-          5.1315789222717285,
-          1
-        ],
-        "name": "Nozzle-19_10_1",
-        "planIndex": 38,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          3.0263161659240723,
-          0,
-          0,
-          0,
-          0,
-          3.0263161659240723,
-          0,
-          0,
-          0,
-          0,
-          3.0263161659240723,
-          0,
-          -8.12088394165039,
-          2.6768301278352737,
-          5.1315789222717285,
-          1
-        ],
-        "name": "Nozzle-19_10_2",
-        "planIndex": 39,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          3.0263161659240723,
-          0,
-          0,
-          0,
-          0,
-          3.0263161659240723,
-          0,
-          0,
-          0,
-          0,
-          3.0263161659240723,
-          0,
-          -8.12088394165039,
-          2.6768301278352737,
-          5.1315789222717285,
-          1
-        ],
-        "name": "Nozzle-19_10_3",
-        "planIndex": 40,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          3.0263161659240723,
-          0,
-          0,
-          0,
-          0,
-          3.0263161659240723,
-          0,
-          0,
-          0,
-          0,
-          3.0263161659240723,
-          0,
-          -8.12088394165039,
-          -2.5863281041383743,
-          -5.1315789222717285,
-          1
-        ],
-        "name": "Nozzle19_-10_1",
-        "planIndex": 42,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          3.0263161659240723,
-          0,
-          0,
-          0,
-          0,
-          3.0263161659240723,
-          0,
-          0,
-          0,
-          0,
-          3.0263161659240723,
-          0,
-          -8.12088394165039,
-          -2.5863281041383743,
-          -5.1315789222717285,
-          1
-        ],
-        "name": "Nozzle19_-10_2",
-        "planIndex": 43,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          3.0263161659240723,
-          0,
-          0,
-          0,
-          0,
-          3.0263161659240723,
-          0,
-          0,
-          0,
-          0,
-          3.0263161659240723,
-          0,
-          -8.12088394165039,
-          -2.5863281041383743,
-          -5.1315789222717285,
-          1
-        ],
-        "name": "Nozzle19_-10_3",
-        "planIndex": 44,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          3.0263161659240723,
-          0,
-          0,
-          0,
-          0,
-          3.0263161659240723,
-          0,
-          0,
-          0,
-          0,
-          3.0263161659240723,
-          0,
-          -8.12088394165039,
-          2.6768301278352737,
-          -5.1315789222717285,
-          1
-        ],
-        "name": "Nozzle19_10_1",
-        "planIndex": 46,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          3.0263161659240723,
-          0,
-          0,
-          0,
-          0,
-          3.0263161659240723,
-          0,
-          0,
-          0,
-          0,
-          3.0263161659240723,
-          0,
-          -8.12088394165039,
-          2.6768301278352737,
-          -5.1315789222717285,
-          1
-        ],
-        "name": "Nozzle19_10_2",
-        "planIndex": 47,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          3.0263161659240723,
-          0,
-          0,
-          0,
-          0,
-          3.0263161659240723,
-          0,
-          0,
-          0,
-          0,
-          3.0263161659240723,
-          0,
-          -8.12088394165039,
-          2.6768301278352737,
-          -5.1315789222717285,
-          1
-        ],
-        "name": "Nozzle19_10_3",
-        "planIndex": 48,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1.710526466369629,
-          0,
-          0,
-          0,
-          0,
-          1.710526466369629,
-          0,
-          0,
-          0,
-          0,
-          1.710526466369629,
-          0,
-          -4.384042739868164,
-          6.163672208786011,
-          -7.236842155456543,
-          1
-        ],
-        "name": "Radiator_0",
-        "planIndex": 49,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1.710526466369629,
-          0,
-          0,
-          0,
-          0,
-          1.710526466369629,
-          0,
-          0,
-          0,
-          0,
-          1.710526466369629,
-          0,
-          -4.384042739868164,
-          6.163672208786011,
-          7.236842155456543,
-          1
-        ],
-        "name": "Radiator_0_M",
-        "planIndex": 50,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1.710526466369629,
-          0,
-          0,
-          0,
-          0,
-          1.710526466369629,
-          0,
-          0,
-          0,
-          0,
-          1.710526466369629,
-          0,
-          -3.278779983520508,
-          6.163672208786011,
-          -7.236842155456543,
-          1
-        ],
-        "name": "Radiator_1",
-        "planIndex": 51,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1.710526466369629,
-          0,
-          0,
-          0,
-          0,
-          1.710526466369629,
-          0,
-          0,
-          0,
-          0,
-          1.710526466369629,
-          0,
-          -3.278779983520508,
-          6.163672208786011,
-          7.236842155456543,
-          1
-        ],
-        "name": "Radiator_1_M",
-        "planIndex": 52,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1.710526466369629,
-          0,
-          0,
-          0,
-          0,
-          1.710526466369629,
-          0,
-          0,
-          0,
-          0,
-          1.710526466369629,
-          0,
-          -2.1735172271728516,
-          6.163672208786011,
-          -7.236842155456543,
-          1
-        ],
-        "name": "Radiator_2",
-        "planIndex": 53,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1.710526466369629,
-          0,
-          0,
-          0,
-          0,
-          1.710526466369629,
-          0,
-          0,
-          0,
-          0,
-          1.710526466369629,
-          0,
-          -2.1735172271728516,
-          6.163672208786011,
-          7.236842155456543,
-          1
-        ],
-        "name": "Radiator_2_M",
-        "planIndex": 54,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1.710526466369629,
-          0,
-          0,
-          0,
-          0,
-          1.710526466369629,
-          0,
-          0,
-          0,
-          0,
-          1.710526466369629,
-          0,
-          -1.0682544708251953,
-          6.163672208786011,
-          -7.236842155456543,
-          1
-        ],
-        "name": "Radiator_3",
-        "planIndex": 55,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1.710526466369629,
-          0,
-          0,
-          0,
-          0,
-          1.710526466369629,
-          0,
-          0,
-          0,
-          0,
-          1.710526466369629,
-          0,
-          -1.0682544708251953,
-          6.163672208786011,
-          7.236842155456543,
-          1
-        ],
-        "name": "Radiator_3_M",
-        "planIndex": 56,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1.710526466369629,
-          0,
-          0,
-          0,
-          0,
-          1.710526466369629,
-          0,
-          0,
-          0,
-          0,
-          1.710526466369629,
-          0,
-          0.03701018914580345,
-          6.163672208786011,
-          -7.236842155456543,
-          1
-        ],
-        "name": "Radiator_4",
-        "planIndex": 57,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1.710526466369629,
-          0,
-          0,
-          0,
-          0,
-          1.710526466369629,
-          0,
-          0,
-          0,
-          0,
-          1.710526466369629,
-          0,
-          0.03701018914580345,
-          6.163672208786011,
-          7.236842155456543,
-          1
-        ],
-        "name": "Radiator_4_M",
-        "planIndex": 58,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.39473533630371094,
-          0,
-          0,
-          0,
-          0,
-          0.39473533630371094,
-          0,
-          0,
-          0,
-          0,
-          0.39473533630371094,
-          0,
-          -2.305093765258789,
-          0.04525112360715866,
-          -12.026316165924072,
-          1
-        ],
-        "name": "RCSAft",
-        "planIndex": 59,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.39473533630371094,
-          0,
-          0,
-          0,
-          0,
-          0.39473533630371094,
-          0,
-          0,
-          0,
-          0,
-          0.39473533630371094,
-          0,
-          -2.305093765258789,
-          0.04525112360715866,
-          12.026316165924072,
-          1
-        ],
-        "name": "RCSAft_M",
-        "planIndex": 60,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.06315803527832031,
-          0,
-          0,
-          0,
-          0,
-          0.06315803527832031,
-          0,
-          0,
-          0,
-          0,
-          0.06315803527832031,
-          0,
-          -2.4787769317626953,
-          -0.08106465451419353,
-          -12.326315879821777,
-          1
-        ],
-        "name": "RCSAft_N-007-005",
-        "planIndex": 61,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.06315803527832031,
-          0,
-          0,
-          0,
-          0,
-          0.06315803527832031,
-          0,
-          0,
-          0,
-          0,
-          0.06315803527832031,
-          0,
-          -2.4787769317626953,
-          -0.08106465451419353,
-          12.326315879821777,
-          1
-        ],
-        "name": "RCSAft_N-007-005_M",
-        "planIndex": 62,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.06315803527832031,
-          0,
-          0,
-          0,
-          0,
-          0.06315803527832031,
-          0,
-          0,
-          0,
-          0,
-          0.06315803527832031,
-          0,
-          -2.4787769317626953,
-          0.1715669147670269,
-          -12.326315879821777,
-          1
-        ],
-        "name": "RCSAft_N-007005",
-        "planIndex": 63,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.06315803527832031,
-          0,
-          0,
-          0,
-          0,
-          0.06315803527832031,
-          0,
-          0,
-          0,
-          0,
-          0.06315803527832031,
-          0,
-          -2.4787769317626953,
-          0.1715669147670269,
-          12.326315879821777,
-          1
-        ],
-        "name": "RCSAft_N-007005_M",
-        "planIndex": 64,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.06315803527832031,
-          0,
-          0,
-          0,
-          0,
-          0.06315803527832031,
-          0,
-          0,
-          0,
-          0,
-          0.06315803527832031,
-          0,
-          -2.131410598754883,
-          -0.08106465451419353,
-          -12.326315879821777,
-          1
-        ],
-        "name": "RCSAft_N007-005",
-        "planIndex": 65,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.06315803527832031,
-          0,
-          0,
-          0,
-          0,
-          0.06315803527832031,
-          0,
-          0,
-          0,
-          0,
-          0.06315803527832031,
-          0,
-          -2.131410598754883,
-          -0.08106465451419353,
-          12.326315879821777,
-          1
-        ],
-        "name": "RCSAft_N007-005_M",
-        "planIndex": 66,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.06315803527832031,
-          0,
-          0,
-          0,
-          0,
-          0.06315803527832031,
-          0,
-          0,
-          0,
-          0,
-          0.06315803527832031,
-          0,
-          -2.131410598754883,
-          0.1715669147670269,
-          -12.326315879821777,
-          1
-        ],
-        "name": "RCSAft_N007005",
-        "planIndex": 67,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.06315803527832031,
-          0,
-          0,
-          0,
-          0,
-          0.06315803527832031,
-          0,
-          0,
-          0,
-          0,
-          0.06315803527832031,
-          0,
-          -2.131410598754883,
-          0.1715669147670269,
-          12.326315879821777,
-          1
-        ],
-        "name": "RCSAft_N007005_M",
-        "planIndex": 68,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -6339,19 +3546,19 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_aft_engine_section.glb"
   },
-  "runtimeHash": "63d3cbeebf7686e9e4e7a447bb1fd086924a5042b86203e7367d5bcfd2ce7922",
+  "runtimeHash": "24a4e6cf40949d3abbcaae18903f91f9db24798ad175f4f0984c70daf5138b1e",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
-          9.594566345214844,
-          7.426568744565823,
+          9.594595459377986,
+          7.425932292291817,
           12.5
         ],
         "min": [
-          -9.594651056725022,
-          -7.42653685872394,
+          -9.594680336392146,
+          -7.425900344202217,
           -12.5
         ]
       },

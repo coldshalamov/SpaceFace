@@ -137,9 +137,10 @@ census history; a separate source-backed reassessment accepts the live-mode and 
 No default changed, active-flight causal win or visual parity is claimed, and M3's targets remain
 open. See `INTEGRATION_COVERAGE.md` and `.devshots/main-thread-profile/opaque-retained-default-ab-144e/`.
 
-The static cockpit pilot is now configured alongside Helios (2/414 packages): 31→9 primitives,
-22 legal joins, matching decoded materials/triangles/anchors within quantization tolerance. Live
-look/shadow and matched frame checks remain open. A separate compiler repair preserves dynamic
+Seven packages are now configured: Helios, the cockpit pilot (31→9 primitives, 22 joins), and five
+shipbreaking-yard packages (169→43 primitives, 126 joins). Decoded same-winding/material triangles,
+semantic IDs, anchors and collision metadata match; the five-package maximum vertex delta is
+0.001608 WU. Live look/shadow and matched frame checks remain open. A separate compiler repair preserves dynamic
 semantic pivots through quantization (13 compiler cases); actual compiled pivots in all 196 existing
 dynamic packages match source, so that defect requires no package rebuild.
 
