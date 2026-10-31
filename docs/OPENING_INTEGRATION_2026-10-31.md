@@ -281,3 +281,24 @@ DOM tests, with campaign progress and pilot pins preserved.
 55 UI import/check assertions pass.** No screenshot, rendered layout, physical
 Scale 4 weighing or full Save/Continue is established. Upstream Mission Log CSS
 changes were inspected and remain outside this patch; preserve them at integration.
+
+### Swarm first-shop forecast and confirmed results
+
+The Armory/Refit forecast now reads the actual pure next-wave planner rather than
+base-ladder quotas that ignored stake, Threats, build and mutators. Finite Circuit
+keeps its own panel; valid Overtime uses the ordinary plan. Concurrency is labeled
+a room cap, not an admission guarantee.
+
+A real paused-publication defect was found while integrating the result refresh:
+owner offers/notice could update before cold run credits/build fields. The fix
+urgently signs changed run descendants only for bounded shop/refit results and
+openings, retaining normal cadence and signatures. Visible screens coalesce real
+receipts, unsubscribe cleanly and refresh current state on return. No wallet-only
+surrogate, reward writer, pricing change or population/model edit is introduced.
+
+See `SWARM_FIRST_SHOP_FORECAST.md` for the player loop, canonical owners and native
+paused-host/reader evidence. **248 integrated tests, 22 unchanged publisher/domain
+regressions, 12 Mission Log regressions, six imports, services readiness and 55 UI
+checks pass.** Browser-worker, normal-input, rendered focus and performance
+acceptance remain open. The publisher preserves newer upstream serial/mission/
+faction hooks and is recorded in the owning Lane 1 Inbox.
