@@ -237,6 +237,13 @@ berthed for ten seconds; it does not reproduce this route failure. The existing 
 now records sampled main-read-model anchor geometry, prompt transitions and timestamped dock
 events so the next ordinary attempt can distinguish physical admission from UI/event delivery.
 
+The first full-duration retry on `d5c4a9de8de5` stops before gameplay: the intro actor times out
+after First Light cleanup even though its final screenshot is the ordinary main menu. Its final
+sample now uses the same visibility predicate as the polling loop before declaring a timeout.
+Unknown root confirmation dialogs also remain genuine blockers; only the recognized First Light
+dialog is exempted. Eighteen focused prompt cases pass without increasing the 15-second bound.
+This preflight failure supplies no soak, resource or recovery evidence.
+
 **M9 — Load less, load later.** 28 MB of minified JS in the eager closure (`scripts/build-bundle.mjs`,
 esbuild splitting): lazy-load per mode and per screen; make `modelTruthCensus.generated.js` and
 `en-US.generated.js` fetched JSON instead of chunk payload; move `ruckusMeshData/*.js` (3.4 MB of mesh
