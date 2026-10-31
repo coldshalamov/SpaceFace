@@ -32,6 +32,8 @@ Targets and floors: README §4.
 
 ## Inbox (other lanes append one line: date, lane, path, what/why)
 
+- 2026-10-31 integration: `check-vfx-frame-sleep.mjs` now gives its unchanged 420 seam-bearing bodies the canonical GameState/index/hash setup. Setup assertions and the unchanged 0.25 ms ceiling pass at 0.06493 ms; existing hash/fallback marker parity passes 3/3. This corrects the measurement fixture, not runtime VFX or fallback speed. Full UI performance matrix remains stale after style changes.
+
 - 2026-10-28, Lane 3: H0 razor commit a054f36530a touched `assets/**/measured-contract.json`, `assets/ui/kit/*`, `assets/incubator/*/INTEGRATION.md`, `assets/ships/m5_*/MATERIAL_TRUTH_PREFLIGHT.md`, `assets/ships/npc_work_fleet/PROVENANCE.json`, `tools/blender/forge/source_assets/pip_spanner/provenance.json` — mechanical ref rewrite only (provenance strings now point at `design/archive/…` after the doc moves). No asset content changed.
 - 2026-10-28, Lane 3: foreign-dirty work seen in the tree, not mine — `electron/preload.cjs`, `scripts/lib/ui-layout-measure.mjs`, `src/ui/contactHailPrompt.js`, `src/ui/views/hudStyles.js`, `test/ceres-five-minute-acceptance.test.mjs` left unstaged and preserved.
 - 2026-10-28, Lane 3 (W1-473): title-interactive on the VM profile (headless SwiftShader, retail `build/web`) measured **16.5–17.4 s** clean, ~26–42 s under host load vs the 10 s budget — over entirely inside your boot/loading/render path, nothing UI-side (menu mounts+usable the same frame the shell drops). Tape: `bootEntry.js:33` media hold → `import('../main.js')` eval ~2.5 s longtask ~3–5.5 s → `main.js:141–216` "Preparing/Starting flight systems" ~4–5 s → `main.js:470` "Opening the command deck" → **~5 s tail** (first title-scene paint: serial shader compile on software GL in `src/render/**` admission) → `loadingPresenter.hide()` (`loadingPresenter.js:374–388`, hideDelayMs 600). Evidence script+tape: `.devshots/w1-473-title-timing.mjs` (`--bundle`), run on the hour-old bundle.
@@ -170,6 +172,17 @@ the title (0.6 s, 1.6 s), the credits render, native pipeline compile, opening G
 load. Map every long task ≥ 100 ms from Launch to first flight onto the CPU profile and fix it or slice it.
 Done when the longest main-thread task from Launch click to first flight frame meets the floor, then the target.
 
+Current cold Electron profile (`adventure-required-retry-r1`, committed 118d016 source) reaches flight in 55.5 seconds on the worker lane, Intel/ANGLE D3D11 with KHR parallel compile, at 85.7% sampled host busy. Render-pipelines takes 41.17 seconds; 46 first-use shader waits total 26.4 seconds. This is functional Launch acceptance, not a warm-load or matched improvement measurement; startup targets remain open.
+
+The full preliminary authored cohort is restored, incomplete pipeline receipts no longer receive forced draws or readiness stamps, and required loading retries a typed pending-shader timeout under one tracked promise with the existing owner/cap/deadline guards. Focused owner checks pass. The earlier profile exposed a pass-specific readiness gap: bloom could inspect the last-bound program before Three selected a transmission variant. The guard now selects the target tone-mapping/output-color-space and instancing variant, with 18 focused cases passing against vendor-generated cache keys.
+
+The `023c6fac5ee6` same-session public route reaches first flight in 41.1 seconds and its second Launch in 25.4 seconds, retaining the same renderer, canvas and WebGL context. The measured second run has two driver-link waits totaling 47 ms (maximum 27 ms), but render-pipelines still takes 23.21 seconds. Its loading-stage animation p99 is 17.3 ms; host busy is 48.2%. These are diagnostic observations, not a matched code-speed comparison or completion of the startup bars. The first cook timed out before touch/buffer completion; existing identity/version residency caches already skip work, so wholesale cook reuse is not justified. The profiler now measures the trusted Launch click and distinguishes post-transition composition diagnostics from explicit readiness blockers. See `.devshots/main-thread-profile/adventure-warm-claims-r1/` and `INTEGRATION_COVERAGE.md`.
+
+Cook-stretch accounting now resets after a confirmed presented-frame advance across touch/buffer
+yields, so later census work does not charge prior frames' wait time to the current frame. A
+microtask yield retains its same-frame charge. The focused owner case passes; no startup-speed
+improvement is claimed without a matched measurement.
+
 **M7 — The loading screen is smooth and immersive.** The animation already draws in workers
 (`loadingTerminalArt.js:~1784`, `bootRingWorker.js:~150`) and boot pacing yields between slices
 (`bootShellPacing.js`), yet the owner sees it hitch. Measure with M0's gap probe *what* stalls it before
@@ -187,20 +200,33 @@ instead of terminating (`presentationRunner.js`). D250: cap concurrent asset fet
 backoff. Add a forced-context-loss test and a 30-minute Adventure soak to the M0 bench. Done when the
 soak + one forced context loss shows zero terminal panes.
 
-Integration checkpoint 2026-10-31: a public Ceres approach exposes valid Dock prompts whose intents
-are rejected because sector admission stays armed. The worker domain mirror omitted `world.enterSerial`;
-temporary event replay restored it to undefined, making the current renderer cook appear stale.
-The candidate now projects the serial without changing the Dock gate or successor guard. Actual
-projection/replay/renderer checks pass 4/4 and domain/wire checks 9/9. The source-770 public route now
-commits Ceres Dock, then times out on the combined settlement predicate before F5. Paused settlement
-publication is repaired (5 focused cases), with a fresh delivery/save/Continue route pending. The full
-30-minute soak remains required. The latest combined bundle passes; the current baseline has 16
-passing checks and a Massline timeout at 210 seconds, totaling 222,351 ms against its unchanged
-90-second budget. Isolated Massline passes 27/27 child checks in 166,204 ms; the broad gate remains failed. The source-70d1 public haul
-reaches physical Ceres Dock, delivers all eight cells and publishes the 760-credit receipt. Its
-observer incorrectly assumes reputation-event order across the worker transport; that observer is
-being corrected before retrying save/Continue. No save/Continue acceptance is claimed.
-See `INTEGRATION_COVERAGE.md`.
+Integration checkpoint 2026-10-31: world-entry serial projection and paused settlement publication are repaired. The committed 7f0 static-host public journey completes physical Ceres delivery, one 760-credit mission payment and completion, then F5 and title Continue restore the exact settled credits, cargo, standing, receipt and log. With the shared endpoint absent, actual browser quota handling stores the 4.61 MB serialized save as 1.43 MB gzip. Native worker checks also preserve the prior save after rejected raw and gzip writes, and serialize a delayed quota-failure acknowledgment before a newer save. The normal mounted-store public journey also passes, restoring the same exact settled identity while its large Quick primary is absent from localStorage. Both storage paths are accepted functionally; this is not a performance claim.
+
+The earlier ae3e travel run exposed repeated real Three.js buffer-resize exceptions; they did not recur in the static journey. The existing error-only resize diagnostic remains enabled for functional route diagnosis. Full 30-minute Adventure/context-loss qualification remains open. The earlier baseline failed in 177,338 ms against the unchanged 90-second budget, with 26/27 Massline children passing and one physical-branch timeout. After the paired runner shares one identical 5,200-tick setup, the integrated batch-ten baseline passes 17/17 in 63,812 ms. This closes the current baseline check, not gameplay performance or the older resize cause. See `INTEGRATION_COVERAGE.md`.
+
+The full-duration attempt on `99004b7cef7c` fails before context loss: after six warm-up
+cycles, cycle 8's F9 restore lands in the startup-failed menu at `gpu-resources` because the
+opening submission plan is incomplete. The strict capture phase fails after 142 ms; no frame
+errors or page issues are recorded in its failure snapshot. This is an open production restore
+defect. A subsequent targeted run on `1318a7ca4edb` reproduces it at cycle 2, with the first-playable
+shader set complete. The corrected `526589161e1e` capture reproduces the failure at cycle 1: one
+blocking entity root has zero drawable leaves, while hashes, first-playable programs and all three
+resource identity sets match. That root was drawable when selected, so its eligibility changed
+between paced walks. The existing failure diagnostic now retains its entity identity and compares
+the selected/current root and exact leaf-exclusion state; no gate or admission behavior changes.
+Another targeted run completes nine F9 cycles but fails the context-recovery tail with a real
+Three.js buffer-size mismatch. A real loading-frame regression separately reproduces visibility/LOD
+sync running after the picture graph freezes. Loading now holds its prepared scene until graph
+release, including F9 with an old paint timestamp; ordinary post-paint flight remains live. Thirty
+focused opening/lifetime cases pass. The original plan failure and buffer-size defect still need
+public-route verification. See `INTEGRATION_COVERAGE.md`.
+
+The next identity probe stops before F9: public autopilot reports Helios arrival, but the physical
+dock prompt never appears within 360 seconds. Its saved nav distance is telemetry, not a current
+anchor measurement. A normal real-flight/corridor/SG-02 fixture emits the range prompt and remains
+berthed for ten seconds; it does not reproduce this route failure. The existing approach snapshot
+now records sampled main-read-model anchor geometry, prompt transitions and timestamped dock
+events so the next ordinary attempt can distinguish physical admission from UI/event delivery.
 
 **M9 — Load less, load later.** 28 MB of minified JS in the eager closure (`scripts/build-bundle.mjs`,
 esbuild splitting): lazy-load per mode and per screen; make `modelTruthCensus.generated.js` and
@@ -212,10 +238,19 @@ as JS) to a binary asset; take `src/testing/**` out of the retail graph (static 
 the load rows of README §4 meet their floor.
 
 Current measured working-tree checkpoint (2026-10-31): physical main static ESM closure is
-15,873,188 raw / 4,933,042 summed-gzip bytes across 182 outputs, with bundle receipt
-`e6d380f344e41e37ddfe7804ad435b0f5958e5e59b2c691b09e0a1041775765e` (2806 files, 414 plans).
-This includes concurrent edits, not isolated attribution. The 12 MB raw floor and runtime load bars
-remain open; Codex callers now use its one-shot request mailbox without importing the lazy screen.
+15,490,568 raw / 4,816,400 summed-gzip bytes across 182 outputs, with batch-ten bundle receipt
+`77ff49a0f7a2d9314830a4030594712b5c5ce3dadba8825521bddfd17f9f5795` (2808 files, 414 plans).
+Batch nine is 200,318 raw / 62,355 summed-gzip bytes below batch eight. Pure attack readers now have
+one shared owner; six eager consumers no longer import arena construction through
+`adventureMigration.js`. Its legacy exports remain available. The emitted main closure excludes
+that migration module and `survivalArena.js`; four focused suites pass 59/59 and generated module
+preloads are synchronized. These working-tree builds include concurrent edits, so the exact delta
+is not isolated attribution. Batch ten removes another 191,537 raw / 57,556 summed-gzip bytes:
+the claims facade and renderer now use a shared read model without importing the claims simulation
+owner and automation branch. Canonical claims uses the same readers, preserves the mutating owner
+and legacy exports, and retains all four published facade reads. Its focused suites pass 50/50.
+The 12 MB raw floor and runtime load bars remain open. Codex callers also use its one-shot request
+mailbox without importing the lazy screen.
 
 Optional new-game menu speculation now warms the fixed opening cast, chosen starter and scripted
 onboarding roster without enumerating positionless distant-sector recipe stubs. Materialized launch,
@@ -253,6 +288,16 @@ The focused setting-enable case, 28 admission cases, two retirement cases and 10
 import cases pass. This is a bounded M13 step; the size target and current ordinary-route checks
 remain open.
 
+The current phase makes template instantiation and detached-object/place teardown use their
+canonical stepped implementations for synchronous callers too. Synchronous abandonment cleanup
+finishes inline; paced composition retains its existing queue and resource-retain lifetime. AI
+doctrine tells and NPC Working Light signatures/contact/intercept methods now have family modules;
+VFX keeps pools, subscriptions and cadence. All 26 moved method bodies match the originals after
+normalizing the cosmetic random callback. The focused batch passes 70 cases, the baseline passes
+17/17 in 62,394 ms against 90,000 ms, and the batch-eleven bundle gate passes (2808 files, receipt
+`b6887a7a0427d120edfd878cc2f6f2655ca9e0cc166a582446e7b5bc1d136b36`). These working-tree checks
+include concurrent edits; they establish neither the monolith size target nor a runtime frame gain.
+
 ### Wave A — the picture (taste; interleave with Wave M once M0–M5 have landed)
 
 **A1 — Review every shipped asset.** 831 GLBs in `assets/ships/release` (`npm run perf:assets`,
@@ -263,6 +308,8 @@ that sit a few hundred pixels tall to 1024 (`place_works_derrick` 21 MB, `works_
 every hull has an LOD chain, dedupe the duplicate refinery GLB and ORM textures, write a triangle and
 texture budget per asset class into `check-asset-census.mjs`. Forge is the only way to build a body
 (`tools/blender/forge/FORGE.md`, skill `forge-graphics`).
+Current static-pilot appearance check: matched PLACE previews preserve the engine section, cargo module, corvette turret, weapon spar, pressure tank and cockpit section after material-group merging. Engine and cockpit INSPECT views also match. The repaired private-camera preview waits for strict authored admission before capture. These checks cover reconstructed preview meshes; gameplay placement, shadow parity and matched frame-cost savings remain open. The remaining-five capture is `.devshots/finish/integration-2026-10-31/shipbreaking-look/remaining-five-private-camera/`; Helios has no matched pair in this batch.
+
 **A2 — Hero hulls and landmarks.** Row 428 (the five hulls a player meets in the first two hours, incl.
 row 18 / D72 Pelican), row 17 / D54 (dark-freighter place model, Anvil well-edge, Wreck Cathedral draw
 scale), row 557 art half (stencils, wear, kill tallies on traffic variants).

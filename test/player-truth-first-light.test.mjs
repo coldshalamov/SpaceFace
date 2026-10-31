@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { answerFirstRunPrompt, isFirstLightPrompt, installFirstLightPromptHandler } from '../scripts/player-truth/routes.mjs';
+import { answerFirstRunPrompt, dismissCinematicIntro, isFirstLightPrompt, installFirstLightPromptHandler } from '../scripts/player-truth/routes.mjs';
 
 test('the public settings actor only accepts the known First light choices', () => {
   assert.equal(isFirstLightPrompt('First light','Keep my settings'),true);
@@ -15,30 +15,55 @@ test('the public settings actor only accepts the known First light choices', () 
 
 function fixture({ title = 'First light', visible = true, cancel = 'Use first light', confirm = 'Play',
   cancelVisible = true, confirmText = confirm, clickError = null, reenterHandlerDuringPlay = false,
-  closePageOnClickError = false } = {}) {
+  closePageOnClickError = false, introVisible = false, promptAfterFirstSpace = false,
+  supersedeOnPlay = false, cinematicAriaModal = false, conditionReturn = 'handle' } = {}) {
   const clicks = [], events = [];
+  const locatorClicks = [], mouseClicks = [];
   let handler, handlerOptions, handlerSelector, registrations = 0;
+  let handlerInvocations = 0;
   let active = visible;
+  let splashVisible = introVisible;
+  let spacePresses = 0;
+  let dialogPresent = visible;
+  let modalFence = visible;
+  let otherDialogTitle = '';
+  const cleanupWaitObservations = [];
+  let handleJsonCalls = 0;
+  let handleDisposals = 0;
+  const conditionValue = (value) => conditionReturn === 'raw' ? value : ({
+    async jsonValue() { handleJsonCalls++; return value; },
+    async dispose() { handleDisposals++; },
+  });
   let pageClosed = false;
   let reentered = false;
   let beforeFirstCount = null;
   const control = (name, raw, shown = true) => ({
     name, raw, shown,
     first() { return this; },
+    async isVisible() { return active && this.shown; },
+    async isEnabled() { return true; },
+    async boundingBox() { return active && this.shown ? { x: 100, y: 200, width: 80, height: 30 } : null; },
     async waitFor() { if (!shown) throw new Error('cancel precondition unavailable'); },
     async textContent() { return raw; },
     async click(options) {
+      locatorClicks.push(name);
       assert.equal(options, undefined, 'trusted default click; no force or dispatch bypass');
-      if (clickError && name === 'Play') {
-        if (closePageOnClickError) pageClosed = true;
-        throw clickError;
-      }
       if (reenterHandlerDuringPlay && name === 'Play' && handler && !reentered) {
         reentered = true;
         await handler();
       }
+      return this.activate();
+    },
+    async activate() {
+      if (clickError && name === 'Play') {
+        if (closePageOnClickError) pageClosed = true;
+        throw clickError;
+      }
       clicks.push(name);
       active = false;
+      if (supersedeOnPlay && name === 'Play') otherDialogTitle = 'Confirm purchase';
+      dialogPresent = true;
+      modalFence = true;
       cancelControl.shown = false;
       confirmControl.shown = false;
     },
@@ -53,24 +78,81 @@ function fixture({ title = 'First light', visible = true, cancel = 'Use first li
       assert.equal(role, 'button');
       const matches = () => controls.filter(button => active && button.shown && (!options.name
         || (options.name instanceof RegExp ? options.name.test(button.name) : options.name === button.name)));
+      const selected = () => matches()[0];
       return { async count() { return matches().length; },
         async allTextContents() { return matches().map(button => button.raw); },
+        async isVisible() { return matches().length === 1; },
+        async isEnabled() { return matches().length === 1; },
+        async boundingBox() { return selected()?.boundingBox() || null; },
         async click(options) { const current = matches(); assert.equal(current.length, 1); return current[0].click(options); } };
     },
   };
   const page = {
     locator(selector) { handlerSelector = selector; return selector.includes('__cancel') ? cancelControl : selector.includes('__ok') ? confirmControl : titleLocator; },
-    async evaluate() { return active && title.trim() === 'First light'; },
+    async evaluate(fn) {
+      if (String(fn).includes('cinematic-splash')) {
+        const excludesCinematic = String(fn).includes("node.id === 'cinematic-splash'");
+        return { splashVisible, firstLightVisible: active && title.trim() === 'First light',
+          firstLightDialogPresent: dialogPresent && !otherDialogTitle,
+          otherModalActive: !!otherDialogTitle || (modalFence && !active) || (cinematicAriaModal && !excludesCinematic),
+          otherModalTitle: otherDialogTitle || null };
+      }
+      if (String(fn).includes('dialogPresent')) return {
+        active: active && title.trim() === 'First light',
+        dialogPresent: dialogPresent && title.trim() === 'First light' && !otherDialogTitle,
+      };
+      return active && title.trim() === 'First light';
+    },
     getByRole(role, options) {
       assert.equal(role, 'dialog');
       assert.deepEqual(options, { name: 'First light', exact: true });
       return dialog;
     },
+    mouse: { async click(x, y) {
+      assert.equal(x, 140, 'public coordinate input clicks the center of the actual visible control');
+      assert.equal(y, 215, 'public coordinate input clicks the center of the actual visible control');
+      const choice = controls.find((button) => active && button.shown && button.name === 'Play')
+        || controls.find((button) => active && button.shown && button.name === 'Keep my settings');
+      assert.ok(choice, 'the selected public prompt control is still present at click time');
+      mouseClicks.push(choice.name);
+      await choice.activate();
+    } },
+    keyboard: { async press(key) {
+      assert.equal(key, 'Space', 'intro dismissal uses the public Space input');
+      spacePresses++;
+      if (promptAfterFirstSpace && spacePresses === 1) {
+        active = true;
+        dialogPresent = true;
+        modalFence = true;
+      }
+      else splashVisible = false;
+    } },
+    async waitForFunction(fn, _arg, _options) {
+      if (String(fn).includes('cinematic-splash')) {
+        if (cinematicAriaModal) assert.ok(String(fn).includes("node.id === 'cinematic-splash'"),
+          'the intro dialog is excluded from unrelated-modal checks');
+        assert.ok(!splashVisible || (active && title.trim() === 'First light'),
+          'intro polling wakes when Space dismisses the splash or First light interrupts it');
+        return true;
+      } else if (String(fn).includes('_sfConfirmToken')) {
+        assert.equal(active, false, 'the First light entrance class has already been removed');
+        assert.equal(dialogPresent, true, 'the old dialog remains in the DOM during delayed cleanup');
+        assert.equal(modalFence, true, 'the old dialog still owns the keyboard input fence');
+        cleanupWaitObservations.push({ active, dialogPresent, modalFence });
+        if (otherDialogTitle) return conditionValue({ superseded: true, title: otherDialogTitle });
+        dialogPresent = false;
+        modalFence = false;
+        return conditionValue({ released: true });
+      } else {
+        assert.equal(active, false, 'the trusted click dismissed the active prompt');
+        return true;
+      }
+    },
     async addLocatorHandler(locator, callback, options) {
       registrations++;
       handlerSelector = locator.selector || handlerSelector;
       handlerOptions = options;
-      handler = callback;
+      handler = async () => { handlerInvocations++; return callback(); };
     },
     isClosed() { return pageClosed; },
   };
@@ -91,11 +173,16 @@ function fixture({ title = 'First light', visible = true, cancel = 'Use first li
     return locator;
   };
   return { page, clicks, events, get registrations() { return registrations; },
+    locatorClicks, mouseClicks, get handlerInvocations() { return handlerInvocations; },
+    get spacePresses() { return spacePresses; }, get otherDialogTitle() { return otherDialogTitle; },
+    cleanupWaitObservations, get handleJsonCalls() { return handleJsonCalls; },
+    get handleDisposals() { return handleDisposals; },
     get handlerOptions() { return handlerOptions; }, get handlerSelector() { return handlerSelector; },
     closeBeforeCounts() { beforeFirstCount = () => { active = false; cancelControl.shown = false; confirmControl.shown = false; }; },
     install: () => installFirstLightPromptHandler(page, (...row) => events.push(row)),
     answer: () => handler(),
-    answerDirect: () => answerFirstRunPrompt(page, (...row) => events.push(row)) };
+    answerDirect: () => answerFirstRunPrompt(page, (...row) => events.push(row)),
+    dismissIntro: () => dismissCinematicIntro(page, (...row) => events.push(row)) };
 }
 
 test('visible known First light clicks Play without a cancel-control precondition', async () => {
@@ -104,6 +191,8 @@ test('visible known First light clicks Play without a cancel-control preconditio
   assert.equal(f.registrations, 1, 'late prompt handler registers once');
   await f.answer();
   assert.deepEqual(f.clicks, ['Play']);
+  assert.deepEqual(f.mouseClicks, ['Play']);
+  assert.deepEqual(f.locatorClicks, [], 'the handler never asks Playwright to run its own locator handler');
   assert.match(f.events[0][2], /Play.*shipped settings/);
 });
 
@@ -124,20 +213,54 @@ test('the locator handler does not wait for its title to hide inside another act
   assert.equal(f.events.length, 1, 'the settings choice is recorded once');
 });
 
-test('the public locator handler allows its own Play click through without reentering', async () => {
+test('the public locator handler answers with trusted coordinates and never nests its own actionability handler', async () => {
   const f = fixture({ reenterHandlerDuringPlay: true });
   await f.install();
   await f.answer();
   assert.deepEqual(f.clicks, ['Play']);
+  assert.deepEqual(f.mouseClicks, ['Play']);
+  assert.deepEqual(f.locatorClicks, []);
+  assert.equal(f.handlerInvocations, 1, 'the Play activation did not recursively invoke the prompt handler');
   assert.equal(f.events.length, 1, 'the public choice is recorded exactly once');
 });
 
-test('a direct public answer also guards its click against an installed locator handler', async () => {
+test('a direct public answer shares the trusted-coordinate path when a locator handler is installed', async () => {
   const f = fixture({ reenterHandlerDuringPlay: true });
   await f.install();
   await f.answerDirect();
   assert.deepEqual(f.clicks, ['Play']);
+  assert.deepEqual(f.mouseClicks, ['Play']);
+  assert.deepEqual(f.locatorClicks, [], 'direct answer shares the reentrancy-safe coordinate path');
   assert.equal(f.events.length, 1, 'the direct answer is recorded exactly once');
+});
+
+test('a late First light interrupts intro Space, is answered, then intro receives a fresh Space', async () => {
+  const f = fixture({ visible: false, introVisible: true, promptAfterFirstSpace: true, cinematicAriaModal: true,
+    conditionReturn: 'raw' });
+  await f.install();
+  const result = await f.dismissIntro();
+  assert.deepEqual(result, { shown: true, spacePresses: 2, promptAnswers: 1 });
+  assert.deepEqual(f.clicks, ['Play']);
+  assert.deepEqual(f.mouseClicks, ['Play']);
+  assert.deepEqual(f.locatorClicks, [], 'the late prompt answer avoids recursive locator actionability');
+  assert.equal(f.handlerInvocations, 0, 'the page-state observer uses the shared answer helper directly');
+  assert.deepEqual(f.cleanupWaitObservations, [{ active: false, dialogPresent: true, modalFence: true }],
+    'the answer waits past class removal until the dialog DOM and input fence are actually released');
+  assert.equal(f.handleJsonCalls, 0, 'the CSP-safe raw value is consumed without a Playwright JSHandle');
+  assert.equal(f.events.at(-1)[0], 'intro-dismissed');
+  assert.match(f.events.at(-1)[2], /after 1 First light interruption/i);
+});
+
+test('a superseding dialog is preserved and never receives an intro Space press', async () => {
+  const f = fixture({ visible: false, introVisible: true, promptAfterFirstSpace: true, supersedeOnPlay: true });
+  await f.install();
+  await assert.rejects(f.dismissIntro(), /First light was superseded.*Confirm purchase/);
+  assert.equal(f.spacePresses, 1, 'no second Space is sent after the superseding modal appears');
+  assert.equal(f.cleanupWaitObservations.length, 1);
+  assert.equal(f.otherDialogTitle, 'Confirm purchase', 'the new dialog remains the owner');
+  assert.equal(f.handleJsonCalls, 1, 'the native Playwright handle result is consumed');
+  assert.equal(f.handleDisposals, 1, 'the native Playwright handle is disposed after consumption');
+  assert.deepEqual(f.clicks, ['Play']);
 });
 
 test('a prompt dismissed between active read and accessible controls is treated as dismissed', async () => {

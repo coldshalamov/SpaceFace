@@ -339,11 +339,6 @@ ${W} .sx-sw-circuit__instruction { font-size:12.5px !important; color:rgb(${BONE
 ${W} :is(.sx-sw-flow, .sx-sw-rack__cell) .k-row__name { font-size:13px !important; color:rgb(${BONE} / .85) !important; }
 ${W} :is(.sx-sw-flow, .sx-sw-rack__cell) .k-row__sub { font-size: 12px !important; color:rgb(${BONE} / .55) !important; }
 ${W} :is(.sx-sw-flow, .sx-sw-rack__cell) .k-row__num { color:rgb(248 244 234) !important; font-variant-numeric:tabular-nums; }
-${W} .sx-sw__side :is([data-rack-restock], [data-rack-upgrade]) { ${PLAIN} ${LABEL} min-height:0 !important; height:auto !important; padding:4px 0 !important;
-  font-size: 12px !important; letter-spacing:.16em !important; color:rgb(248 244 234) !important; }
-${W} .sx-sw__side :is([data-rack-restock], [data-rack-upgrade])::after { display:none !important; }
-${W} .sx-sw__side :is([data-rack-restock], [data-rack-upgrade])::before { all:unset !important; content:"›  " !important; color:rgb(${BONE} / .55) !important; }
-${W} .sx-sw__side :is([data-rack-restock], [data-rack-upgrade]):is(:hover, :focus-visible) { color:var(--dp-hand, #f2b950) !important; outline:none !important; }
 ${W} .sx-sw__side .k-t-fine, ${W} .sx-sw__side .k-sentence { color:rgb(${BONE} / .7) !important; }
 
 /* ================================ ROUND 6 ==================================================== */
@@ -1038,24 +1033,34 @@ ${W} .sx-sw-verbs.sx-sw-verbs--unseated { position:static !important; width:auto
   flex-wrap:wrap !important; gap:6px 16px !important; justify-content:flex-start !important; padding:6px 0 12px !important; }
 ${W}:is(.orr-sw--jig, .sx-sw--buying) .sx-sw__main:has(.sx-sw__stats--unseated),
 ${W}:is(.orr-sw--jig, .sx-sw--buying) .sx-sw__main:has(.sx-sw-verbs--unseated) { overflow:auto !important; }
-/* 960×540: unseated verbs sit in flow under the stage, clear of Tessera and the destination rail */
+/* A short desktop berth scrolls the Shipworks instrument inside its tab cell: keep the hull large
+   enough for its authored callouts, then leave the readouts and every verb in the same scroll flow. */
 @media (max-width:1100px) and (max-height:800px) {
-  /* verbs pin to the berth panel foot; main absolutely fills the 192px cell */
+  /* Keep the tab rail fixed beside the internal scroll area; its contents may exceed the cell. */
   ${W}.orr-sw--jig { position:relative !important; overflow:hidden !important; }
   ${W}.orr-sw--jig .sx-sw__main,
   ${W}.orr-sw--jig .sx-sw__main:has(.sx-sw-verbs--unseated),
   ${W}.orr-sw--jig .sx-sw__main:has(.sx-sw__stats--unseated) {
-    overflow:hidden !important; min-height:0 !important; position:absolute !important;
+    overflow-x:hidden !important; overflow-y:auto !important; overscroll-behavior:contain; min-height:0 !important; position:absolute !important;
     left:0 !important; right:0 !important; top:0 !important; bottom:0 !important;
-    width:auto !important; height:auto !important; max-height:none !important; display:block !important; }
-  ${W}.orr-sw--jig .sx-sw__main > .sx-sw__stage { position:absolute !important; inset:0 0 30px 0 !important;
-    height:auto !important; width:auto !important; min-height:0 !important; max-height:none !important; }
-  ${W}.orr-sw--jig .sx-sw__stats { display:none !important; }
-  ${W} .sx-sw-verbs.sx-sw-verbs--unseated { position:absolute !important; left:8px !important; right:8px !important; bottom:4px !important;
-    top:auto !important; z-index:6; width:auto !important; max-width:none !important; margin:0 !important; padding:2px 4px !important;
-    flex-direction:row !important; flex-wrap:wrap !important; gap:2px 12px !important;
-    background:linear-gradient(0deg, rgb(7 8 10 / .92) 40%, rgb(7 8 10 / 0)) !important; }
+    width:auto !important; height:auto !important; max-height:none !important; display:flex !important;
+    flex-direction:column !important; align-items:stretch !important; gap:10px !important; }
+  ${W}.orr-sw--jig .sx-sw__main > .sx-sw__stage { position:relative !important; inset:auto !important; flex:0 0 240px !important;
+    height:240px !important; width:100% !important; min-height:240px !important; max-height:none !important; }
+  ${W}.orr-sw--jig .sx-sw__stats { display:block !important; position:relative !important; inset:auto !important; transform:none !important;
+    flex:0 0 auto !important; width:auto !important; max-width:100% !important; max-height:none !important; overflow:visible !important; }
+  ${W}.orr-sw--jig .sx-sw-verbs.sx-sw-verbs--unseated { position:static !important; inset:auto !important; z-index:auto !important;
+    flex:0 0 auto !important; width:auto !important; max-width:100% !important; margin:0 !important; padding:4px 4px 12px !important;
+    flex-direction:row !important; flex-wrap:wrap !important; justify-content:flex-start !important; gap:4px 12px !important;
+    background:none !important; }
   ${W} .sx-sw-verb { font-size:12px !important; letter-spacing:.1em !important; }
+}
+@media (min-width:901px) and (max-width:1100px) and (max-height:640px) {
+  ${W}.orr-sw--jig .sx-sw__main > .sx-sw__stage { flex-basis:340px !important; height:340px !important; min-height:340px !important; }
+  ${W}.orr-sw--jig .sx-sw__main > .sx-sw__side { position:relative !important; inset:auto !important; transform:none !important;
+    width:auto !important; max-width:none !important; max-height:none !important; height:auto !important; overflow:visible !important;
+    flex:0 0 auto !important; pointer-events:auto !important; }
+  ${W} .orr-sw-node__name { white-space:normal !important; overflow:visible !important; text-overflow:clip !important; }
 }
 /* ≤1100×≤640 desktop (960×540): the dock stage is ~162px tall and the left callout column shares
    it with the nameplate and the camera words, so long system names landed on "Name this hull" and
@@ -1294,7 +1299,7 @@ html body #screens > .sx-berth.orr-station .sx-sw.orr-sw--jig .sx-sw__rail .sx-s
 }
 /* 960×540 / 1024×768 desktop: the local foot also applies before the first ring
    measurement, when the rack has not yet received its unseated class. */
-@media (min-width:901px) and (max-width:1100px) and (max-height:800px) {
+@media (min-width:901px) and (max-width:1100px) and (min-height:641px) and (max-height:800px) {
   ${D}.orr-sw--jig .sx-sw-verbs {
     position:absolute !important; left:8px !important; right:8px !important; top:auto !important; bottom:4px !important;
     width:auto !important; max-width:none !important; margin:0 !important; padding:2px 4px !important;
@@ -1305,25 +1310,6 @@ html body #screens > .sx-berth.orr-station .sx-sw.orr-sw--jig .sx-sw__rail .sx-s
    clipped berth; let the fleet's own scroll column shrink with this shorter stage. */
 @media (min-width:901px) and (max-width:1100px) and (max-height:640px) {
   ${D}.orr-sw--jig { grid-template-rows:minmax(0, 1fr) !important; }
-}
-/* 901-1100 x 461-640 (960x540): the stage is ~160px tall and the centred verb row takes its
-   foot, so a column of three two-line cards (Cargo · Weapon · Mining) ran down onto TAKE THE
-   HITCH TO THE RANGE. One-line cards, as at <=460 tall: each column stands in half the height. */
-@media (min-width:901px) and (max-width:1100px) and (min-height:461px) and (max-height:640px) and (hover:hover) {
-  ${W} .sx-sw__slotfield:not(.is-board) .sx-hardpoint__copy { display:flex !important; align-items:baseline !important; gap:0 8px !important;
-    line-height:15px !important; padding-block:1px !important; }
-  ${W} .sx-sw__slotfield:not(.is-board) .sx-hardpoint__copy :is(b, em) { display:inline !important; line-height:15px !important; }
-  /* …and the live hull drawing's own callouts (1024×640, 1100×640): four two-line labels in the right
-     column needed ~210px of a ~200px band, so the Drive label ran under the verb row and its
-     "STOCK · M" was cut by the foot's fade. Name and state share one line; the solver measures them. */
-  ${W} .orr-sw-jig .orr-sw-node { padding:2px 0 3px !important; }
-  ${W} .orr-sw-jig .orr-sw-node__body { flex-direction:row !important; align-items:baseline !important; gap:0 8px !important; }
-  ${W} .orr-sw-jig .orr-sw-node.is-left .orr-sw-node__body { justify-content:flex-end !important; }
-  ${W} .orr-sw-jig .orr-sw-node__name { flex:0 1 auto !important; }
-  ${W} .orr-sw-jig .orr-sw-node__state { flex:none !important; }
-  /* the right column grows away from the ring (its left edge is the solver's), so a long name like
-     Vector Reaction Drive M reads whole beside STOCK · M instead of "Vector Rea…" in 220px */
-  ${W} .orr-sw-jig .orr-sw-node.is-right { width:max-content !important; max-width:300px !important; }
 }
 /* 1001-1100 x 461-640 (1024×640): the identity (STARTER · 1/7 systems fitted · 0 t modules) wrapped in
    its 220px box and its second line sat on the hull drawing's top-right numeral (05, Mining). Keep it to

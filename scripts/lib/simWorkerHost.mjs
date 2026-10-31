@@ -85,7 +85,7 @@ import {
 } from '../../src/core/timeEffects.js';
 import { canonicalClone, deepAssignInPlace } from './simReadModel.mjs';
 import { setLaneViewport, setLaneModalActive } from '../../src/systems/input.js';
-import { nowNs, realmMemoryUsage, installLaneStorage, stageLaneStorage } from './simRealm.mjs';
+import { nowNs, realmMemoryUsage, installLaneStorage, stageLaneStorage, settleLaneStorageCheck } from './simRealm.mjs';
 import { sabArenaTotalBytes } from './simSabEnvelope.mjs';
 import { insertAsteroidFieldRock, promoteAsteroidFieldRock } from '../../src/world/asteroidField.js';
 import { insertFarActor, promoteFarActor } from '../../src/world/farActorTable.js';
@@ -671,7 +671,10 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
   // worker-side writes relay back through the tick reply's storageOps so
   // durable persistence stays main-owned.
   const pendingStorageOps = [];
-  installLaneStorage(globalThis, { onWrite: (op, key, value) => pendingStorageOps.push({ op, key, value }) });
+  installLaneStorage(globalThis, { onWrite: (op, key, value) => {
+    pendingStorageOps.push({ op, key, value });
+    if (op === 'check') onAsyncSaveReady?.();
+  } });
   // Reply attachment for ANY reply kind — writes must not wait for the next
   // tickDone (init-ready/finalize/done/bye replies carry them too).
   const drainStorageOps = () => (pendingStorageOps.length ? pendingStorageOps.splice(0) : undefined);
@@ -1070,7 +1073,7 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
     });
     // Paused saves finish on later task turns, after the command's tick reply. Their real
     // bytes and terminal event need a transport wake even when no sim timer is running.
-    if (type === 'save:completed' || type === 'save:error' || type === 'save:durabilitySettled') onAsyncSaveReady?.();
+    if (type === 'save:completed' || type === 'save:loaded' || type === 'save:error' || type === 'save:durabilitySettled') onAsyncSaveReady?.();
   }
 
   function installBridgeCapture(bus, captureAll) {
@@ -1280,6 +1283,7 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
       // Save persistence ops — the worker realm has no localStorage, so these
       // execute against in-memory state only (documented stage-8 gap: writes
       // do not persist to disk this stage).
+      ['saveStorageAck', (args) => ({ ok: settleLaneStorageCheck(args?.token, args?.result) })],
       ['saveWrite', (args) => {
         const s = registry.get('save');
         if (!s || typeof s.save !== 'function') return { ok: false, reason: 'save-system-unavailable' };

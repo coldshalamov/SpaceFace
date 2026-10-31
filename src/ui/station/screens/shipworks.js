@@ -505,6 +505,17 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   }
   const statsEl = el.querySelector('.sx-sw__stats');
   const sideEl = el.querySelector('.sx-sw__side');
+  const compactInstrument = window.matchMedia('(min-width:901px) and (max-width:1100px) and (max-height:640px)');
+  const sideHome = document.createComment('shipworks side');
+  sideEl?.before(sideHome);
+  const syncCompactInstrument = () => {
+    const main = el.querySelector('.sx-sw__main');
+    if (!sideEl || !main) return;
+    if (host === 'dock' && compactInstrument.matches) main.appendChild(sideEl);
+    else if (sideHome.parentNode) sideHome.after(sideEl);
+  };
+  syncCompactInstrument();
+  compactInstrument.addEventListener('change', syncCompactInstrument);
   // The short landscape berth needs a separate decision surface: its service column is below
   // the fold. The native top layer escapes the station's clipping and owns keyboard focus.
   const lotOpener = document.createElement('button');
@@ -641,6 +652,10 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         if (stale !== verbsRack && stale.classList && stale.classList.contains('sx-sw-verbs')) stale.remove();
       }
       statsEl.parentElement.appendChild(verbsRack);
+    }
+    if (verbsRack && host === 'dock' && compactInstrument.matches) {
+      verbsRack.classList.add('sx-sw-verbs--unseated');
+      verbsRack.style.cssText = '';
     }
     pinKeyrack(verbsRack);
     // at rest no verb is the Lamp Key: the amber key appears with BUY & FIT when a socket is chosen;
@@ -911,6 +926,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     host = next;
     // Flight entry: inspect-only. Buy mode and MAKE ACTIVE belong to a station berth.
     el.classList.toggle('sx-sw--flight', host === 'flight');
+    syncCompactInstrument();
     if (!chooserEl.hidden) closeChooser({ silent: true });
     if (host === 'flight') {
       mode = 'fleet';
@@ -3106,6 +3122,11 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     seatSaleStats(g);
     const rack = el.querySelector('.sx-sw-verbs');
     if (!rack) return;
+    // The compact berth scrolls the instrument: its actions must scroll with it.
+    if (host === 'dock' && typeof window !== 'undefined'
+        && window.matchMedia('(min-width:901px) and (max-width:1100px) and (max-height:640px)').matches) {
+      rack.classList.add('sx-sw-verbs--unseated'); rack.style.cssText = ''; return;
+    }
     if (!g) { rack.classList.remove('sx-sw-verbs--unseated'); rack.style.cssText = ''; return; }
     const sr = stageEl.getBoundingClientRect();
     const k = stageScale();
@@ -3157,6 +3178,10 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     clearVerbsOfCallouts(rack, sr);
   }
   function clearVerbsOfCallouts(rack, sr) {
+    const releaseToFlow = () => {
+      rack.classList.add('sx-sw-verbs--unseated');
+      rack.style.cssText = '';
+    };
     const labels = [...stageEl.querySelectorAll('.orr-sw-node.orr-hull__label'), ...el.querySelectorAll('.sx-sw__stats')]
       .map((n) => n.getBoundingClientRect())
       .filter((b) => b.width > 0 && b.height > 0);
@@ -3176,7 +3201,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     const mid = (r.left + r.right) / 2;
     const left = blocking.filter((b) => (b.left + b.right) / 2 < mid);
     const right = blocking.filter((b) => (b.left + b.right) / 2 >= mid);
-    if (left.length && right.length) return;
+    if (left.length && right.length) { releaseToFlow(); return; }
     const seatBeside = (w) => {
       const x = left.length
         ? Math.max(...left.map((b) => b.right)) + 12
@@ -3188,7 +3213,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     if (x == null) {
       rack.style.setProperty('column-gap', '8px', 'important');
       x = seatBeside(rack.getBoundingClientRect().width);
-      if (x == null) { rack.style.removeProperty('column-gap'); return; }
+      if (x == null) { releaseToFlow(); return; }
     }
     placeFixed(rack, x, r.top);
   }
@@ -5932,6 +5957,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       closeLotDesk(false);
       window.removeEventListener('keydown', interceptLotKeys, true);
       compactLotMedia.removeEventListener('change', onLotMediaChange);
+      compactInstrument.removeEventListener('change', syncCompactInstrument);
       blackFlagRegistry.dispose();
       clearSableDemo(); for (const off of sableLifecycleUnsubs) off();
       if (chooserCloseTimer) clearTimeout(chooserCloseTimer);

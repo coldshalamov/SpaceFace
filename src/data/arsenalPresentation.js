@@ -36,7 +36,7 @@ import {
 import { cloakTimeS, fittedCloakModule } from '../systems/cloak.js';
 import { resolveImpulseChargeCapacity } from '../systems/impulseCharges.js';
 import { resolveActionCodes, formatBindingCode } from '../systems/input.js';
-import { collectAttackModifiers } from '../systems/adventureMigration.js';
+import { collectAttackModifiers } from '../combat/adventureAttackReaders.js';
 import { compileAttackSpec, describeAttackMetrics } from '../combat/attackSpec.js';
 import { indexedTypeScan } from '../world/livingWorldViews.js';
 import { arsenalGlyphSource } from '../ui/orrery/arsenalGlyphs.js';

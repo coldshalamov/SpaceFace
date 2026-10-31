@@ -57,6 +57,7 @@ import { yardJobReadout } from './serviceQuotes.js';
 import { isChoiceECourierReady } from '../../story/endings/eligibility.js';
 import { injectOrreryStation, setVitalDial, vitalDialSvg, vitalValueHtml } from '../orrery/stationLayouts.js';
 import { injectOrreryStationTabs } from '../orrery/stationTabsLayouts.js';
+import { injectStationStandard } from '../orrery/stationStandard.js';
 import { createStationRow } from '../orrery/stopDial.js';
 import { AMMO_BATCH as MUNITIONS_LOAD } from './serviceQuotes.js';
 import { tradeClearedReceipt, TRADE_EXPECTATION_KEY } from './tradeReceipt.js';
@@ -287,6 +288,8 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     // ORRERY: the shell's composition (vitals as dials, the destination rail's Hand, Undock in bone)
     injectOrreryStation(rootEl.ownerDocument || globalThis.document);
     injectOrreryStationTabs(rootEl.ownerDocument || globalThis.document);
+    // Station Standard (design/frontend/STATION_STANDARD.md): organised, legible layer over the above
+    injectStationStandard(rootEl.ownerDocument || globalThis.document);
     rootEl.dataset.dp = '1';
     rootEl.setAttribute('data-fh-temp', 'docked');
     rootEl.setAttribute('data-fh-register', 'bench');

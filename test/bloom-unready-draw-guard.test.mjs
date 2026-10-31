@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import * as THREE from 'three';
+import { WebGLPrograms } from 'three/src/renderers/webgl/WebGLPrograms.js';
 
 import { createUnreadyDrawableGuard, programWrapperDead } from '../src/render/bloom.js';
 import { bumpPackageDetachSerial, packageDetachSerialNow } from '../src/render/imageSourceDedupe.js';
@@ -250,6 +251,84 @@ test('ready current wrappers keep warm draws free of native readiness and livene
     assert.equal(draws.length, 8);
     assert.equal(admissions.length, 0);
   } finally { guard.restore(); }
+});
+
+test('transmission draw checks its pass-specific sibling without waiting unrelated variants', () => {
+  const { renderer, draws, admissions } = rendererHarness();
+  const screenColorSpace = THREE.SRGBColorSpace;
+  const transmissionColorSpace = THREE.ColorManagement.workingColorSpace;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.outputColorSpace = screenColorSpace;
+  renderer.currentRenderTarget = null;
+  renderer.getRenderTarget = () => renderer.currentRenderTarget;
+  const material = new THREE.MeshStandardMaterial();
+  material.userData.spacefaceProgramCanon = 1;
+
+  const vendorCache = new WebGLPrograms(
+    { outputColorSpace: screenColorSpace }, null, null,
+    { precision: 'highp', logarithmicDepthBuffer: false }, null, null,
+  );
+  const makeCacheKey = (toneMapping, outputColorSpace) => vendorCache.getProgramCacheKey({
+    shaderID: 'physical',
+    isRawShaderMaterial: false,
+    precision: 'highp',
+    outputColorSpace,
+    toneMapping,
+    instancing: false,
+    instancingColor: false,
+    instancingMorph: false,
+    customProgramCacheKey: material.customProgramCacheKey(),
+  });
+  const makeProgram = (toneMapping, outputColorSpace, ready) => {
+    const cacheKey = makeCacheKey(toneMapping, outputColorSpace);
+    return { cacheKey, program: {}, isReady: () => ready() };
+  };
+
+  const readyScreen = makeProgram(THREE.ACESFilmicToneMapping, screenColorSpace, () => true);
+  let transmissionReady = false;
+  const pendingTransmission = makeProgram(THREE.NoToneMapping, transmissionColorSpace, () => transmissionReady);
+  let unrelatedReady = false;
+  const pendingUnrelated = makeProgram(THREE.ACESFilmicToneMapping, transmissionColorSpace, () => unrelatedReady);
+  const programs = new Map([
+    [readyScreen.cacheKey, readyScreen],
+    [pendingTransmission.cacheKey, pendingTransmission],
+    [pendingUnrelated.cacheKey, pendingUnrelated],
+  ]);
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(), material);
+  const scene = new THREE.Scene();
+  scene.add(mesh);
+  const rec = {
+    currentProgram: readyScreen,
+    programs,
+    instancing: false,
+    instancingColor: false,
+    instancingMorph: false,
+    // A compiled currentProgram may be captured before adapters mirror these material fields.
+    // The vendor cache key still identifies the bound pass and must keep its ready root visible.
+    __version: material.version,
+  };
+  renderer.properties.get = () => rec;
+  const guard = createUnreadyDrawableGuard(renderer);
+
+  guard.hide(scene);
+  try {
+    assert.equal(mesh.visible, true, 'the ready screen variant does not hide the shared material');
+    renderer.currentRenderTarget = { isXRRenderTarget: false, texture: { colorSpace: screenColorSpace } };
+    assert.equal(renderer.renderBufferDirect(null, scene, mesh.geometry, material, mesh, null), undefined,
+      'the pending no-tone-map transmission sibling is refused');
+    assert.deepEqual(admissions, [mesh]);
+    assert.deepEqual(draws, []);
+
+    transmissionReady = true;
+    assert.equal(renderer.renderBufferDirect(null, scene, mesh.geometry, material, mesh, null), 'drawn',
+      'the exact pass variant can draw while an unrelated sibling remains pending');
+    assert.deepEqual(draws, [mesh]);
+    assert.equal(unrelatedReady, false);
+  } finally {
+    guard.restore();
+    mesh.geometry.dispose();
+    material.dispose();
+  }
 });
 
 test('unarmed readiness cleanup does not retain hidden drawable roots', () => {
