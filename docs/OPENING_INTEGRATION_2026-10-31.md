@@ -91,3 +91,20 @@ native component route, not a rendered whole-game or full Save/Continue claim.
 
 Owners: `src/systems/e1EncounterRuntime.js`, `src/systems/encounterDirector.js`;
 coverage: `test/io-love-letter-buoy-service.test.mjs`. No assets or workflows changed.
+
+## Bar readiness probe route correction
+
+The first-job UI review found the Coalition Bar probe directly pushed the station
+screen before its demand-loaded registration. Its pinned base and PR versions
+shared this defect; the timeout occurred before reaching Bar or Kessler. The probe
+now emits the existing committed-dock notification before setting its readiness
+fixture, allowing normal UI registration and dock listeners to run. All original
+assertions and wait budgets remain. This is a fixture-driven UI integration check,
+not evidence of physical docking through player controls.
+
+Syntax and executable fixture-order checks pass. A local live attempt could not
+create a browser page; no screenshot or local live-pass claim is made. Existing CI
+must establish the corrected route. Separately, the handoff probe's timeout
+snapshot contained an enabled visible Accept button, while its trace recorded
+long renderer/GPU stalls. No control removal or Kessler-related cause was shown;
+that route and performance remain unproven rather than being patched speculatively.
