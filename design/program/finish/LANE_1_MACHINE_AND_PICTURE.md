@@ -272,6 +272,16 @@ The focused setting-enable case, 28 admission cases, two retirement cases and 10
 import cases pass. This is a bounded M13 step; the size target and current ordinary-route checks
 remain open.
 
+The current phase makes template instantiation and detached-object/place teardown use their
+canonical stepped implementations for synchronous callers too. Synchronous abandonment cleanup
+finishes inline; paced composition retains its existing queue and resource-retain lifetime. AI
+doctrine tells and NPC Working Light signatures/contact/intercept methods now have family modules;
+VFX keeps pools, subscriptions and cadence. All 26 moved method bodies match the originals after
+normalizing the cosmetic random callback. The focused batch passes 70 cases, the baseline passes
+17/17 in 62,394 ms against 90,000 ms, and the batch-eleven bundle gate passes (2808 files, receipt
+`b6887a7a0427d120edfd878cc2f6f2655ca9e0cc166a582446e7b5bc1d136b36`). These working-tree checks
+include concurrent edits; they establish neither the monolith size target nor a runtime frame gain.
+
 ### Wave A — the picture (taste; interleave with Wave M once M0–M5 have landed)
 
 **A1 — Review every shipped asset.** 831 GLBs in `assets/ships/release` (`npm run perf:assets`,
