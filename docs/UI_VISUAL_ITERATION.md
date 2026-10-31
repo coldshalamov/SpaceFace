@@ -88,11 +88,13 @@ type rules. `consoleStandard.js` §9 now defines:
   crucible-draft, save-load, flight (no HUD regression), game-over, mission-log. Perf: the three
   pre-existing PQ-184 grammar-debt entries are unchanged to the third decimal. The budget baseline
   is STALE by design of the gate (the UI source digest changed): `check:ui:perf` reports
-  `baseline:stale` and prescribes `capture:ui-matrix --budgets-out`; that capture was started on
-  2026-10-31 ~01:16 but stalled with no output alongside the concurrent agent's headed suites —
-  re-run it on an uncontended machine. The same `check:ui:perf` chain also fails on
-  `check-vfx-frame-sleep` (idle VFX 0.46 ms > 0.25 ms share with 420 inert bodies) — that is the
-  concurrent render/vfx work in this tree, not a UI change; it belongs to Lane 1.
+  `baseline:stale` and prescribes `capture:ui-matrix --budgets-out`. Two captures on 2026-10-31
+  (01:16 and 04:45) both ended incomplete under contention with the other agent's headed suites
+  (363/480 and 367/480 frames; 32 node + 13 chrome processes live during the second), and the
+  writer correctly refuses to write a partial matrix — the re-capture needs the machine to
+  itself. The same `check:ui:perf` chain also fails on `check-vfx-frame-sleep` (idle VFX
+  0.46 ms > 0.25 ms share with 420 inert bodies) — that is the concurrent render/vfx work in this
+  tree, not a UI change; it belongs to Lane 1.
 
 Still open from the same audit (next sitting, worst first):
 
