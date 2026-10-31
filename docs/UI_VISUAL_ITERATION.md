@@ -85,9 +85,14 @@ type rules. `consoleStandard.js` §9 now defines:
   (armory / refit / results lists) as lit E1 cards with an amber selection edge; and a data-row
   hover floor (`#screens .k-rows .k-row`) for lists without their own.
 - **Verified on the bench**: pause, popup-confirm/find/tooltip/dossier, comms-radial,
-  crucible-draft, flight (no HUD regression), game-over, mission-log. Perf: the three pre-existing
-  PQ-184 grammar-debt entries are unchanged to the third decimal; the budget baseline was
-  re-captured (`capture:ui-matrix --budgets-out`) because the UI source digest changed.
+  crucible-draft, save-load, flight (no HUD regression), game-over, mission-log. Perf: the three
+  pre-existing PQ-184 grammar-debt entries are unchanged to the third decimal. The budget baseline
+  is STALE by design of the gate (the UI source digest changed): `check:ui:perf` reports
+  `baseline:stale` and prescribes `capture:ui-matrix --budgets-out`; that capture was started on
+  2026-10-31 ~01:16 but stalled with no output alongside the concurrent agent's headed suites —
+  re-run it on an uncontended machine. The same `check:ui:perf` chain also fails on
+  `check-vfx-frame-sleep` (idle VFX 0.46 ms > 0.25 ms share with 420 inert bodies) — that is the
+  concurrent render/vfx work in this tree, not a UI change; it belongs to Lane 1.
 
 Still open from the same audit (next sitting, worst first):
 
