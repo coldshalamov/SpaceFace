@@ -401,7 +401,7 @@ import {
   shouldSliceFlightAdmission,
   yieldAfterPresent,
 } from './compilePresentSlice.js';
-import { canonicalizeObjectSurfaceProgramKeys } from './illustratedSurface.js';
+import { canonicalizeObjectSurfaceProgramKeys, installIllustratedSurface } from './illustratedSurface.js';
 import {
   bindEnvironmentToStandardMaterials,
   bindEnvironmentToStandardMaterialsSteps,
@@ -22712,9 +22712,10 @@ export const render = {
         // program sweep never sees. One exemplar per roster ship runs the real attach → deaden →
         // fit → pipeline path so the first mid-round kill finds blueprint, programs and buffers
         // already resident instead of linking inside the fight (the +4 wreck_PackagedBody links).
-        const hulkShipSpecs = profile === 'opening'
-          ? openingWarmShipSpecsForState(state).filter((spec) => spec && spec.type === 'ship')
-          : shipSpecs;
+        // Opening: no whole-hulk minting (it cost ~4.7 s of load and still missed keys when
+        // the freighter wasn't in the opening cast); _warmOpeningHulkProgramKeys compiles
+        // the exact double-sided hulk programs instead.
+        const hulkShipSpecs = profile === 'opening' ? [] : shipSpecs;
         for (const spec of hulkExemplarSpecsForShips(hulkShipSpecs, `${specPrefix}hulk:`)) {
           await paceIfDue();
           try {
@@ -22923,7 +22924,91 @@ export const render = {
     }
     if (profile === 'opening') this._touchOpeningBargeFamilyUnderShell(root, warm);
     if (profile === 'opening') this._touchOpeningEffectFamilyUnderShell();
+    if (profile === 'opening') this._warmOpeningHulkProgramKeys();
     return warm;
+  },
+
+  /**
+   * A lane freighter killed just after the veil lifts publishes its 'place'-slot hulk: Forge
+   * barge / express-liner surfaces, double-sided, illustrated surface installed. That program
+   * (and the double-sided shadow-depth twin the shadow pass derives) is not in any opening
+   * picture, so it linked on first draw at lift+2 s (474–2978 ms). Instead of minting whole
+   * hulk bodies, compile just those keys: one tiny mesh per key with the same map slots,
+   * side and surface hook, against the live scene's lights/environment. Program sharing is
+   * by cache key, so the real hulk later finds the program resident.
+   */
+  _warmOpeningHulkProgramKeys() {
+    const { renderer, scene, state } = this;
+    const render = state && state.render;
+    const camera = this.cam && this.cam.obj;
+    if (!renderer || !scene || !camera || !render) return null;
+    if (render.openingHulkKeyWarm && render.openingHulkKeyWarm.issued) return render.openingHulkKeyWarm;
+    const t0 = performance.now();
+    const receipt = { issued: true, ms: 0, linkMs: null, keys: [], error: null };
+    render.openingHulkKeyWarm = receipt;
+    const texture = (srgb) => {
+      const t = new THREE.DataTexture(new Uint8Array([255, 255, 255, 255]), 1, 1);
+      if (srgb) t.colorSpace = THREE.SRGBColorSpace;
+      t.needsUpdate = true;
+      return t;
+    };
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute([0, 0, 0, 1, 0, 0, 0, 1, 0], 3));
+    geometry.setAttribute('normal', new THREE.Float32BufferAttribute([0, 0, 1, 0, 0, 1, 0, 0, 1], 3));
+    geometry.setAttribute('uv', new THREE.Float32BufferAttribute([0, 0, 1, 0, 0, 1], 2));
+    const group = new THREE.Group();
+    group.name = 'SF_OpeningHulkKeyWarm';
+    const textures = [];
+    const materials = [];
+    const add = (material) => {
+      materials.push(material);
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.frustumCulled = false;
+      group.add(mesh);
+    };
+    try {
+      // Forge hull surface (paint/ceramic/gunmetal family): map, ao, normal, emissive,
+      // metalness, roughness; illustrated surface; dithered; double-sided as the hulk is.
+      const mk = (withEmissive) => {
+        const maps = { map: texture(true), aoMap: texture(false), normalMap: texture(false),
+          metalnessMap: texture(false), roughnessMap: texture(false) };
+        if (withEmissive) maps.emissiveMap = texture(true);
+        textures.push(...Object.values(maps));
+        const m = new THREE.MeshStandardMaterial(maps);
+        m.name = 'SF_OpeningHulkKeyWarm';
+        m.side = THREE.DoubleSide;
+        m.dithering = true;
+        installIllustratedSurface(m);
+        return m;
+      };
+      add(mk(true));
+      add(mk(false));
+      // Shadow-depth twin: double-sided caster -> DoubleSide depth material carrying the map.
+      const depthMap = texture(true);
+      textures.push(depthMap);
+      add(new THREE.MeshDepthMaterial({ map: depthMap, side: THREE.DoubleSide, depthPacking: THREE.BasicDepthPacking }));
+      add(new THREE.MeshDepthMaterial({ side: THREE.DoubleSide, depthPacking: THREE.BasicDepthPacking }));
+      const work = this._compilePostRoute(this._selectPostRoute(), group, camera, scene);
+      receipt.ms = Math.round((performance.now() - t0) * 10) / 10;
+      const props = renderer.properties;
+      const readKeys = () => materials.map((m) => {
+        const program = props && props.get(m).currentProgram;
+        return program ? program.cacheKey : null;
+      });
+      receipt.keys = readKeys();
+      // Materials, textures and geometry are kept for the session (a few hundred bytes):
+      // three releases a program when its last material user disposes, and the hulk can
+      // first draw anywhere in the opening, so the warm owner must outlive it.
+      this._openingHulkKeyWarmHold = { group, materials, textures, geometry };
+      Promise.resolve(work).then(() => {
+        receipt.linkMs = Math.round(performance.now() - t0);
+        receipt.keys = readKeys();
+      }, (error) => { receipt.error = String(error && error.message || error); });
+    } catch (error) {
+      receipt.error = String(error && error.message || error);
+      receipt.ms = Math.round((performance.now() - t0) * 10) / 10;
+    }
+    return receipt;
   },
 
   /**

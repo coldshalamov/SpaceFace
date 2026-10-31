@@ -311,11 +311,13 @@ test('wreck and asteroid exemplar helpers still cover the intro bodies', () => {
   }
 });
 
-test('opening warm mints one hulk exemplar per opening-cast hulk file (prelift program warm)', () => {
+test('opening warm compiles the exact double-sided hulk program keys instead of minting hulks', () => {
   const src = readFileSync(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
-  // The opening cast's ship specs feed both the hull file set and the hulk exemplars, so a lane
-  // freighter killed just after the veil lifts finds its place-slot hulk programs already linked.
   assert.match(src, /function openingWarmHullFilesForState\(state\) \{\s*return warmHullFilesForSpecs\(openingWarmShipSpecsForState\(state\)\);/);
-  assert.match(src, /const hulkShipSpecs = profile === 'opening'\s*\? openingWarmShipSpecsForState\(state\)\.filter\(\(spec\) => spec && spec\.type === 'ship'\)\s*: shipSpecs;/);
-  assert.match(src, /for \(const spec of hulkExemplarSpecsForShips\(hulkShipSpecs, `\$\{specPrefix\}hulk:`\)\)/);
+  assert.match(src, /const hulkShipSpecs = profile === 'opening' \? \[\] : shipSpecs;/);
+  assert.match(src, /if \(profile === 'opening'\) this\._warmOpeningHulkProgramKeys\(\);/);
+  const body = src.slice(src.indexOf('  _warmOpeningHulkProgramKeys() {'));
+  assert.match(body, /m\.side = THREE\.DoubleSide;/);
+  assert.match(body, /installIllustratedSurface\(m\);/);
+  assert.match(body, /new THREE\.MeshDepthMaterial\(\{ map: depthMap, side: THREE\.DoubleSide/);
 });
