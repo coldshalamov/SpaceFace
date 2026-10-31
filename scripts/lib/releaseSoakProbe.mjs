@@ -1627,6 +1627,7 @@ export function readFailureRuntimeSnapshot() {
         generation: admission.generation ?? null,
       } : null,
       currentSectorFailure: render.openingCurrentSectorFailure || null,
+      planCaptureFailure: render.openingFirstPicturePlanFailure || null,
       gpuResidencyOwnerInactive: owner ? {
         subjectName: owner.subjectName || null,
         owner: owner.owner || null,

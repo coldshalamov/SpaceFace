@@ -454,6 +454,25 @@ test('opening plan capture uses the renderer owner when invoked through the rend
   assert.equal(steps.next().value, plan);
   assert.equal(state.render.openingSubmissionPlan, plan);
 });
+test('opening capture retains bounded incomplete or stale identity diagnostics', () => {
+  for (const stale of [false, true]) {
+    const state = { world: { enterSerial: 4, currentSectorId: 'ceres' }, render: {} };
+    const owner = { state, _liveSectorCookGeneration: 7 };
+    const plan = { complete: false, firstPlayablePipelineSet: { complete: false, reason: 'missing-opening-program-census' },
+      blockingReasons: [{ rootId: 'player', role: 'player', reason: 'no-leaves' }] };
+    const capture = evaluate(openingCaptureCode, owner, {
+      state, captureLiveSectorCookStale: () => () => stale,
+      *buildOpeningSubmissionPlanSteps() { if (stale) state.world.enterSerial = 5; return plan; },
+      rendererGenerationIsActive: () => true, stampProducerReceipt: () => {},
+      openingSubjectIdentity: () => null, openingCohort: { capture() {}, snapshot: () => ({}) },
+    });
+    capture().next();
+    const detail = state.render.openingPlanCaptureFailure;
+    assert.equal(detail.reason, stale ? 'stale-capture' : 'incomplete-plan');
+    if (stale) assert.deepEqual([detail.expected.enterSerial, detail.actual.enterSerial], [4, 5]);
+    else assert.equal(detail.blockingReasons[0].rootId, 'player');
+  }
+});
 function fixture(providers = []) {
   const frames = [], marks = [];
   let now = 0;

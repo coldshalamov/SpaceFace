@@ -481,6 +481,7 @@ export function waitForOpeningFirstPicture(state, timeoutMs = DEFAULT_OPENING_BU
       }
       assertActive();
       startPhase('capture');
+      render.openingFirstPicturePlanFailure = null;
       let plan;
       if (typeof render.captureOpeningSubmissionPlanSteps === 'function') {
         const steps = render.captureOpeningSubmissionPlanSteps();
@@ -495,6 +496,9 @@ export function waitForOpeningFirstPicture(state, timeoutMs = DEFAULT_OPENING_BU
       } else plan = render.captureOpeningSubmissionPlan();
       assertActive();
       if (!plan || plan.complete !== true || plan.firstPlayablePipelineSet?.complete !== true) {
+        render.openingFirstPicturePlanFailure = render.openingPlanCaptureFailure || {
+          reason: plan ? 'incomplete-plan-no-capture-detail' : 'null-plan-no-capture-detail',
+        };
         throw new Error('opening submission plan is incomplete');
       }
       startPhase('submission');

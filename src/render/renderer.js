@@ -13362,8 +13362,45 @@ export const render = {
       // would otherwise commit rows minted under two epochs into the new
       // world's plan + cohort (entity:${id} identities collide across worlds).
       const captureStale = captureLiveSectorCookStale();
+      const captureWorld = state.world;
+      const captureRender = state.render;
+      const expected = {
+        enterSerial: captureWorld?.enterSerial ?? null,
+        sectorId: captureWorld?.currentSectorId ?? null,
+        cookGeneration: this._liveSectorCookGeneration ?? null,
+      };
+      captureRender.openingPlanCaptureFailure = null;
       const plan = yield* buildOpeningSubmissionPlanSteps.call(this);
-      if (captureStale()) return null;
+      if (captureStale()) {
+        captureRender.openingPlanCaptureFailure = {
+          reason: 'stale-capture', expected,
+          actual: {
+            enterSerial: state.world?.enterSerial ?? null,
+            sectorId: state.world?.currentSectorId ?? null,
+            cookGeneration: this._liveSectorCookGeneration ?? null,
+            sameWorld: state.world === captureWorld,
+            sameRender: state.render === captureRender,
+            sameState: this.state === state,
+            rendererActive: rendererGenerationIsActive(),
+          },
+        };
+        return null;
+      }
+      if (!plan || plan.complete !== true || plan.firstPlayablePipelineSet?.complete !== true) {
+        captureRender.openingPlanCaptureFailure = {
+          reason: 'incomplete-plan',
+          complete: plan?.complete === true,
+          firstPlayableComplete: plan?.firstPlayablePipelineSet?.complete === true,
+          firstPlayableReason: String(plan?.firstPlayablePipelineSet?.reason || '').slice(0, 160) || null,
+          blockingReasons: (Array.isArray(plan?.blockingReasons) ? plan.blockingReasons : []).slice(0, 12)
+            .map((row) => ({ rootId: String(row?.rootId || '').slice(0, 160) || null,
+              role: String(row?.role || '').slice(0, 120) || null,
+              reason: String(row?.reason || '').slice(0, 160) || null })),
+          blockingReasonCount: Array.isArray(plan?.blockingReasons) ? plan.blockingReasons.length : 0,
+          requiredHashCount: Array.isArray(plan?.firstPlayablePipelineSet?.requiredContentHashes)
+            ? plan.firstPlayablePipelineSet.requiredContentHashes.length : 0,
+        };
+      }
       stampProducerReceipt(plan);
       state.render.openingSubmissionPlan = plan;
       const identities = (plan.compileSubjects || []).map((subject) => openingSubjectIdentity(subject))
@@ -16093,9 +16130,16 @@ export const render = {
         programs.skipped === true ? 'skipped' : (programs.error ? 'error' : 'resolved'), {
           method: programs.method || programs.reason || undefined,
         });
-      const yieldBufferFrame = typeof options.yieldToMain === 'function'
+      const yieldBufferBase = typeof options.yieldToMain === 'function'
         ? options.yieldToMain
         : yieldToBrowser;
+      const bufferYieldStats = { count: 0, ms: 0 };
+      const yieldBufferFrame = async () => {
+        const started = cookNow();
+        bufferYieldStats.count += 1;
+        try { return await yieldBufferBase(); }
+        finally { bufferYieldStats.ms += cookNow() - started; }
+      };
       // The shared stretch clock covers every paced stretch of this cook — the
       // cohort mint, the pool census, the subject buckets — so a fat leg
       // debits the same ledger the slices debit.
@@ -16441,7 +16485,13 @@ export const render = {
         let switched = 0;
         let touchMs = 0;
         let maxTouchMs = 0;
-        const yieldTouch = typeof options.yieldToMain === 'function' ? options.yieldToMain : null;
+        const touchYieldStats = { count: 0, ms: 0 };
+        const yieldTouch = typeof options.yieldToMain === 'function' ? async () => {
+          const started = cookNow();
+          touchYieldStats.count += 1;
+          try { return await options.yieldToMain(); }
+          finally { touchYieldStats.ms += cookNow() - started; }
+        } : null;
         // Issue every touch subject's compile as one readiness cohort on the exact post target, drain
         // once, then touch: a draw against an unlinked program blocks the main thread in onFirstUse
         // until ANGLE finishes the link (laneB-fixA: 5 of 89 touch subjects had no program at their
@@ -16571,6 +16621,7 @@ export const render = {
             })
             : yieldTouch;
           const touchStarted = cookNow();
+          const touchYieldStart = { ...touchYieldStats };
           // Names of subjects that still had no compiled program at touch time — they are the
           // programs the first presented frame will link synchronously. Counts alone never said
           // which objects escaped every admission gate.
@@ -16585,6 +16636,7 @@ export const render = {
           // bound as the cohort above instead of a frame wait + gl.finish per touch.
           const touchPace = createCookQueuePaceDebt();
           let touchPaces = 0;
+          let touchPaceWaitMs = 0;
           for (let index = 0; index < units.programSubjects.length; index += 1) {
             const subject = units.programSubjects[index];
             if (cookOverBudget()) break;
@@ -16613,7 +16665,9 @@ export const render = {
               touchPace.note(drawMs);
               if (!coalesce || before.status !== 'ready' || touchPace.due()
                 || index === units.programSubjects.length - 1) {
-                await cohort.paceQueue();
+                const paceStarted = cookNow();
+                try { await cohort.paceQueue(); }
+                finally { touchPaceWaitMs += cookNow() - paceStarted; }
                 touchPace.clear();
                 touchPaces += 1;
                 paced = coalesce;
@@ -16641,7 +16695,10 @@ export const render = {
             touchMs: Math.round(touchMs),
             maxTouchMs: Math.round(maxTouchMs),
             yields: touchYield && typeof touchYield.yields === 'number' ? touchYield.yields : undefined,
+            yieldWaitCount: touchYieldStats.count - touchYieldStart.count,
+            yieldWaitMs: Math.round(touchYieldStats.ms - touchYieldStart.ms),
             paces: cohort && typeof cohort.paceQueue === 'function' ? touchPaces : undefined,
+            paceWaitMs: Math.round(touchPaceWaitMs),
           });
         } finally {
           restoreTouchShadows();
@@ -16852,6 +16909,9 @@ export const render = {
         : await driveRevealCohort(firstFlightRoots);
       if (restoreFirstFlight === null) return cookSuperseded;
       const buffersStarted = cookNow();
+      const bufferYieldStart = { ...bufferYieldStats };
+      const bufferSliceStart = typeof yieldBuffers.yields === 'number' ? yieldBuffers.yields : 0;
+      const bufferTiming = { submissions: 0, submissionMs: 0, syncMs: 0 };
       const bufferPolicy = openingLoadPolicy({
         shouldAwaitGpuCook: shouldAwaitOpeningGpuCook({ gpu: state.render && state.render.gpu, renderer }),
         mode: state.mode,
@@ -16868,6 +16928,7 @@ export const render = {
               includeGeometry: true,
               includeEmpty: true,
               yieldToMain: yieldBuffers,
+              cookTiming: bufferTiming,
             })
             : await prepareStartupGpuResidency(renderer, scene, {
               geometryBatchDrawables: bufferPolicy.geometryBatchDrawables,
@@ -16875,6 +16936,7 @@ export const render = {
               includeGeometry: true,
               includeEmpty: true,
               yieldToMain: yieldBuffers,
+              cookTiming: bufferTiming,
             });
         }
       } finally {
@@ -16885,9 +16947,17 @@ export const render = {
         buffers && buffers.reason === 'loading-budget' ? 'timeout' : 'resolved', {
           roots: firstFlightBufferRoots.length,
           textures: buffers ? buffers.textures : undefined,
-          yields: typeof yieldBuffers.yields === 'number' ? yieldBuffers.yields : undefined,
+          yields: typeof yieldBuffers.yields === 'number' ? yieldBuffers.yields - bufferSliceStart : undefined,
+          yieldWaitCount: bufferYieldStats.count - bufferYieldStart.count,
+          yieldWaitMs: Math.round(bufferYieldStats.ms - bufferYieldStart.ms),
+          residencySubmissions: bufferTiming.submissions,
+          residencySubmissionMs: Math.round(bufferTiming.submissionMs),
+          residencySyncMs: Math.round(bufferTiming.syncMs),
         });
       const layersStarted = cookNow();
+      const layerYieldStart = { ...bufferYieldStats };
+      const layerSliceStart = typeof yieldBuffers.yields === 'number' ? yieldBuffers.yields : 0;
+      const layerTiming = { submissions: 0, submissionMs: 0, syncMs: 0 };
       // Count-0 / drawRange-0 effect drawables (plumes, RCS, plasma strips, retro,
       // ribbon trails) are skipped unless revealed. 1x1 every first-flight layer.
       // InstancedMesh-only left a +6 geo stall that first-drew in bloom (164 ms).
@@ -16933,6 +17003,7 @@ export const render = {
             includeGeometry: true,
             includeEmpty: true,
             yieldToMain: yieldBuffers,
+            cookTiming: layerTiming,
           });
         } finally {
           await driveRestoreCohort(restoreLayers);
@@ -16942,7 +17013,12 @@ export const render = {
       recordOpeningCookStep(state.render, 'cook.layers', layersStarted,
         layerRoots.length === 0 ? 'skipped' : 'resolved', {
           roots: layerRoots.length,
-          yields: typeof yieldBuffers.yields === 'number' ? yieldBuffers.yields : undefined,
+          yields: typeof yieldBuffers.yields === 'number' ? yieldBuffers.yields - layerSliceStart : undefined,
+          yieldWaitCount: bufferYieldStats.count - layerYieldStart.count,
+          yieldWaitMs: Math.round(bufferYieldStats.ms - layerYieldStart.ms),
+          residencySubmissions: layerTiming.submissions,
+          residencySubmissionMs: Math.round(layerTiming.submissionMs),
+          residencySyncMs: Math.round(layerTiming.syncMs),
         });
       if (typeof state.render.restLiveFlightEffectsAfterCook === 'function') {
         state.render.restLiveFlightEffectsAfterCook();
