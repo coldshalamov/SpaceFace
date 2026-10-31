@@ -29,6 +29,7 @@ import { createShipLedgerPanel } from '../shipLedgerPanel.js';
 import { el, words, rows, hero, settle, cue } from '../kit/index.js';
 import { injectDeckplate } from '../deckplate/index.js';
 import { injectArchiveLayouts } from '../orrery/archiveLayouts.js';
+import { deferScreenCssReady } from '../orrery/cssSidecar.js';
 import { injectCodexLayouts } from '../orrery/codexLayouts.js';
 import {
   archivePlateSvg, archiveBladeSvg, archiveHoverSvg, archiveDialAngle, archiveDialIndex, archiveScramble, archiveHash,
@@ -743,7 +744,7 @@ export const codexScreen = {
   mount(rootEl, ctx) {
 
     injectDeckplate();
-    injectArchiveLayouts();
+    const markCssReady = deferScreenCssReady(rootEl, injectArchiveLayouts());
     injectCodexLayouts();
     // A fresh mount opens on the first section with no search (a deep link still picks its tab in
     // onShow); a hidden-and-shown codex keeps the page the player left it on.
@@ -909,7 +910,7 @@ export const codexScreen = {
     this._unsubs.push(ctx.bus.on('endgame:archive', refreshIfVisible));
 
     this._render(ctx);
-    rootEl.dataset.kReady = '1';
+    markCssReady();
   },
 
   refresh(ctx, options) {

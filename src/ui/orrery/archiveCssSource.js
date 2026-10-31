@@ -1,0 +1,1258 @@
+import { SCROLL_EXTENT_CSS } from './scrollExtent.js';
+
+const BONE = '236 230 216';
+const INK = 'rgb(248 244 234)';
+const CX = 'html body #screens > .k-screen.of-codex.orr-archive.orr-archive';
+const ML = 'html body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog';
+/** the same roots under the game's reduced-motion setting (the class sits on <html> itself) */
+const RCX = CX.replace(/^html /, 'html.sf-reduce-motion ');
+const RML = ML.replace(/^html /, 'html.sf-reduce-motion ');
+const LABEL = 'font-family:var(--dp-face-label, "Archivo") !important; font-stretch:112% !important; font-variation-settings:"wdth" 112, "wght" 650 !important; font-weight:650 !important; text-transform:uppercase !important; font-style:normal !important;';
+const BODY = 'font-family:var(--dp-face-body, "Instrument Sans"), system-ui, sans-serif !important; font-variation-settings:normal !important; text-transform:none !important; letter-spacing:0 !important;';
+const PLAIN = 'background:none !important; border:0 !important; border-image:none !important; box-shadow:none !important; clip-path:none !important; outline:none; border-radius:0 !important;';
+const DISPLAY = 'font-family:var(--dp-face-display, "Archivo") !important; font-stretch:125% !important; font-variation-settings:"wdth" 125, "wght" 800 !important; font-weight:800 !important; text-transform:uppercase !important;';
+/** a small verb: a caps word; white with a hairline where the player reaches it (the amber is the Hand's) */
+/* A verb is a key, not a word: STATION_STANDARD §5 secondary — a hairline box a player can press,
+   13px labels with ≤.06em tracking (the amendment retires the .16em chevron caps). */
+const verb = (sel) => `
+${sel} { ${PLAIN} ${LABEL} display:inline-flex !important; align-items:center; gap:0; width:auto !important; min-width:0 !important; min-height:28px !important; height:auto !important;
+  margin:2px 0 !important; padding:0 12px !important; font-size: 13px !important; letter-spacing:.05em !important; line-height:1.2 !important; color:rgb(${BONE} / .92) !important; cursor:pointer; text-shadow:none !important;
+  background:rgb(${BONE} / .05) !important; border:1px solid rgb(${BONE} / .38) !important; border-radius:2px !important; box-shadow:none !important;
+  transition:background var(--dp-d-cut, 80ms) linear, border-color var(--dp-d-cut, 80ms) linear, color var(--dp-d-cut, 80ms) linear; }
+${sel}::after { display:none !important; content:none !important; }
+${sel}::before, ${sel}::after { white-space:pre; }
+${sel}:is(:hover, :focus-visible) { color:#fff !important; outline:none !important;
+  background:rgb(${BONE} / .12) !important; border-color:rgb(${BONE} / .75) !important; }
+${sel}:is([aria-disabled="true"], :disabled) { color:rgb(${BONE} / .56) !important; cursor:default; background:none !important;
+  border-color:rgb(${BONE} / .22) !important; }`;
+/** the notched Hand (the ORRERY handoff's shared chevron), riding a ladder on a spring */
+const HAND = `
+.orr-arc-hand { position:absolute; left:0; top:0; z-index:3; width:44px; height:18px; margin-top:-9px; pointer-events:none; will-change:transform; background:none !important; }
+.orr-arc-hand[hidden] { display:none !important; }
+.orr-arc-hand::before { content:""; position:absolute; left:var(--orr-hand-x, 22px); top:2px; width:10px; height:14px; background:var(--dp-hand, #f2b950);
+  clip-path:polygon(0 0, 100% 50%, 0 100%, 26% 50%); }
+.orr-arc-hand::after { content:""; position:absolute; left:var(--orr-hand-from, 7px); top:8px; width:calc(var(--orr-hand-x, 22px) + 2px - var(--orr-hand-from, 7px)); height:2px; border-radius:1px;
+  background:var(--dp-hand, #f2b950); box-shadow:0 0 0 2px rgb(242 185 80 / .22), 0 0 8px 1px rgb(242 185 80 / .35); }
+:is(:focus-within, :hover) > .orr-arc-hand::before { background:var(--dp-hand-hot, #ffd98c); }
+:is(:focus-within, :hover) > .orr-arc-hand::after { background:var(--dp-hand-hot, #ffd98c); }
+/* the rail's chosen row where the screen's hero instrument carries the Hand: bone, a bead and an arm */
+.orr-arc-hand--bone::before { left:calc(var(--orr-hand-x, 22px) + 1px); top:4px; width:10px; height:10px; clip-path:none; border-radius:50%; background:rgb(252 250 244);
+  box-shadow:0 0 0 3px rgb(252 250 244 / .16), 0 0 10px 1px rgb(252 250 244 / .4); }
+.orr-arc-hand--bone::after { background:rgb(252 250 244); box-shadow:0 0 0 2px rgb(252 250 244 / .14); }
+:is(:focus-within, :hover) > .orr-arc-hand--bone::before, :is(:focus-within, :hover) > .orr-arc-hand--bone::after { background:rgb(255 255 255); }
+`;
+
+const CODEX_CSS = `
+/* ================================ CODEX ===================================================== */
+${CX} { --cx-sections:134px; --cx-gap:44px; row-gap:clamp(24px, 4.4vh, 52px) !important; }
+/* the title band: the name and its line on the left, the archive's fill as dials on the right */
+${CX} > .k-title { display:grid !important; grid-template-columns:minmax(0, 1fr) auto; grid-template-rows:auto auto; column-gap:48px; align-items:end; }
+${CX} > .k-title > :not(.cx-index) { grid-column:1; }
+${CX} > .k-title > p { margin:10px 0 0 !important; font-size:15px !important; color:rgb(${BONE} / .86) !important; ${BODY} }
+${CX} > .k-title > .cx-index { grid-column:2; grid-row:1 / span 2; justify-self:end; align-self:end; }
+${CX} .cx-index { display:grid !important; grid-template-columns:auto; justify-items:end; row-gap:8px; margin:0 !important; }
+${CX} .cx-index[hidden] { display:none !important; }
+${CX} .cx-index__cap { ${LABEL} margin:0 !important; font-size: 13px !important; letter-spacing:.06em !important; color:rgb(${BONE} / .78) !important; }
+${CX} .cx-index__list { display:flex !important; flex-wrap:nowrap; gap:0 clamp(10px, 1.2vw, 26px); margin:0 !important; }
+/* STATION_STANDARD §4: the catalogue is a row of readings — figure over word over a 3px fill bar —
+   not seven micro-dials competing with the archive's one hero instrument. */
+${CX} .cx-index__item { position:relative; display:flex !important; flex-direction:column-reverse; justify-items:center; align-items:center; width:clamp(64px, 5.4vw, 92px); margin:0 !important; }
+${CX} .cx-index__bar { position:relative; width:100%; height:3px; margin-top:6px; overflow:hidden; border-radius:1px; background:rgb(${BONE} / .14); }
+${CX} .cx-index__bar::before { content:""; position:absolute; inset:0; transform-origin:left center; transform:scaleX(var(--cx-p, 0));
+  background:rgb(223 238 255 / .95); box-shadow:0 0 6px rgb(150 210 255 / .4); }
+${CX}.cx-arrive .cx-index__bar::before { animation:cx-bar-in 700ms var(--dp-ease-out, ease-out) both; animation-delay:var(--orr-delay, 0ms); }
+@keyframes cx-bar-in { from { transform:scaleX(0); } }
+${CX} .cx-index__n { margin:0 !important; padding:0; order:0 !important;
+  font-family:var(--dp-face-num, "Spline Sans Mono", ui-monospace, Consolas, monospace) !important; font-stretch:100%; font-variation-settings:normal !important; font-weight:500 !important;
+  font-size:15px !important; line-height:1 !important; letter-spacing:0 !important; font-variant-numeric:tabular-nums lining-nums; color:rgb(223 238 255) !important; text-shadow:none !important; white-space:nowrap; }
+${CX} .cx-index__of { font-family:var(--dp-face-num, "Spline Sans Mono", ui-monospace, Consolas, monospace); font-size: 12px; font-weight:500; letter-spacing:0; color:rgb(${BONE} / .66); margin-left:.35em; }
+${CX} .cx-index__w { margin:4px 0 5px !important; ${LABEL} font-size: 13px !important; letter-spacing:.05em !important; line-height:1.25 !important;
+  color:rgb(${BONE} / .8) !important; text-align:center; text-wrap:balance; }
+${CX} .cx-index__item { --orr-delay:0ms; }
+
+/* ---- the ladder: the sections as graduations on a scale, the open one's entries on its own rail ---- */
+${CX} > .k-hang { position:relative; display:grid !important; grid-template-columns:var(--cx-sections) minmax(0, 1fr); grid-template-rows:auto minmax(0, 1fr);
+  column-gap:var(--cx-gap); row-gap:clamp(12px, 2.2vh, 22px); min-height:0 !important; overflow:visible !important; padding:0 !important; ${PLAIN} -webkit-mask-image:none !important; mask-image:none !important; }
+${CX} > .k-hang > .cx-search { grid-column:1 / -1; grid-row:1; position:relative; }
+${CX} > .k-hang > .cx-search[hidden] { display:none !important; }
+${CX} > .k-hang > .sf-tabbar { grid-column:1; grid-row:2; align-self:stretch; margin-bottom:calc(var(--cx-foot-gap, 24px) + 6px) !important; }
+${CX}[data-plate="on"] > .k-hang > .cx-ladder { padding-bottom:calc(var(--cx-foot-gap, 24px) + 6px) !important; }
+${CX} > .k-hang > .cx-ladder { grid-column:2; grid-row:2; min-height:0; position:relative; overflow:hidden auto; scrollbar-width:none; padding:0 0 18px !important; }
+${CX} > .k-hang > .cx-ladder::-webkit-scrollbar { display:none; }
+${CX} > .k-hang > .cx-ladder > .orr-extent::before { display:none !important; }
+${CX} > .k-hang > .cx-ladder[data-overflow="1"] { -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 34px), transparent); mask-image:linear-gradient(180deg, #000 calc(100% - 34px), transparent); }
+${CX} > .k-hang > .cx-wedge { position:absolute; left:0; top:0; width:100%; height:100%; pointer-events:none; overflow:visible; z-index:0; }
+${CX} .cx-wedge > svg { position:absolute; left:0; top:0; overflow:visible; }
+${CX} .cx-wedge .cx-wedge__fan { stroke:none; }
+${CX} .cx-wedge .cx-wedge__edge { fill:none; stroke:rgb(${BONE} / .78); stroke-width:2; vector-effect:non-scaling-stroke; }
+${CX} .cx-wedge .cx-wedge__bloom { fill:none; stroke:rgb(${BONE} / .3); stroke-width:8; stroke-linecap:round; vector-effect:non-scaling-stroke; }
+${CX} .cx-wedge .cx-wedge__pip { fill:${INK}; }
+/* the search: a field of light on a ruled line, no box */
+${CX} .cx-search .sf-codex-search { ${PLAIN} ${BODY} display:block; width:100% !important; min-height:0 !important; height:34px !important; box-sizing:border-box; padding:0 0 4px 26px !important;
+  font-size:14px !important; color:${INK} !important; caret-color:${INK};
+  background:linear-gradient(0deg, rgb(${BONE} / .52) 1px, transparent 1px) 0 100% / 100% 100% no-repeat,
+    repeating-linear-gradient(90deg, rgb(${BONE} / .4) 0 1px, transparent 1px 12px) 0 100% / 100% 5px no-repeat !important; }
+${CX} .cx-search .sf-codex-search::placeholder { ${LABEL} font-size: 12px; letter-spacing:.2em; color:rgb(${BONE} / .78); opacity:1; }
+${CX} .cx-search .sf-codex-search:focus-visible { outline:none !important;
+  background:linear-gradient(0deg, ${INK} 1.5px, transparent 1.5px) 0 100% / 100% 100% no-repeat,
+    repeating-linear-gradient(90deg, rgb(${BONE} / .4) 0 1px, transparent 1px 12px) 0 100% / 100% 5px no-repeat !important; }
+${CX} .cx-search .sf-codex-search::-webkit-search-cancel-button { filter:grayscale(1) brightness(1.6); }
+/* a lens glyph drawn in two strokes of light before the field */
+${CX} .cx-search::before { content:""; position:absolute; left:2px; top:8px; width:10px; height:10px; border-radius:50%; box-shadow:inset 0 0 0 1.5px rgb(${BONE} / .88); pointer-events:none; }
+${CX} .cx-search::after { content:""; position:absolute; left:11px; top:18px; width:6px; height:1.5px; background:rgb(${BONE} / .88); transform:rotate(45deg); transform-origin:0 50%; pointer-events:none; }
+/* the sections: caps graduations standing on the scale's right edge */
+${CX} .sf-tabbar { ${PLAIN} display:flex !important; flex-direction:column !important; flex-wrap:nowrap !important; align-items:stretch !important; gap:0 !important; margin:0 !important; padding:4px 0 !important; list-style:none;
+  background:linear-gradient(90deg, transparent calc(100% - 2px), rgb(${BONE} / .72) calc(100% - 2px)) 0 0 / 100% 100% no-repeat,
+    linear-gradient(90deg, transparent calc(100% - 7px), rgb(${BONE} / .12) calc(100% - 7px)) 0 0 / 100% 100% no-repeat,
+    repeating-linear-gradient(180deg, rgb(${BONE} / .46) 0 1px, transparent 1px 8px) 100% 0 / 6px 100% no-repeat !important; }
+${CX} .sf-tabbar > li { display:block !important; margin:0 !important; padding:0 !important; }
+${CX} .sf-tabbar .sf-tab { ${PLAIN} ${LABEL} position:relative; display:flex !important; justify-content:flex-end !important; align-items:center !important; width:100% !important;
+  min-width:0 !important; min-height:0 !important; height:clamp(26px, 3.3vh, 34px) !important; box-sizing:border-box; padding:0 20px 0 0 !important; margin:0 !important;
+  font-size: 12px !important; letter-spacing:.16em !important; line-height:1 !important; color:rgb(${BONE} / .82) !important; text-align:right; cursor:pointer; text-shadow:none !important; }
+${CX} .sf-tabbar .sf-tab::after { content:"" !important; display:block !important; position:absolute !important; right:0 !important; left:auto !important; top:50% !important; bottom:auto !important;
+  width:12px !important; height:2px !important; margin:-1px 0 0 !important; translate:none !important; scale:none !important; transform:none !important; opacity:1 !important;
+  background:rgb(${BONE} / .78) !important; border:0 !important; box-shadow:none !important; clip-path:none !important; }
+${CX} .sf-tabbar .sf-tab::before { display:none !important; content:none !important; }
+${CX} .sf-tabbar .sf-tab:is(:hover, :focus-visible) { color:rgb(255 255 255) !important; outline:none !important; }
+${CX} .sf-tabbar .sf-tab:is(:hover, :focus-visible)::after { width:16px !important; background:${INK} !important; }
+${CX} .sf-tabbar .sf-tab[aria-current="true"] { color:${INK} !important; font-variation-settings:"wdth" 112, "wght" 760 !important; font-weight:760 !important; }
+${CX} .sf-tabbar .sf-tab[aria-current="true"]::after { width:20px !important; height:3px !important; margin-top:-1.5px !important; box-shadow:0 0 8px rgb(255 250 236 / .45) !important; background:${INK} !important; }
+${CX} .sf-tabbar .sf-tab[aria-current="true"]:focus-visible { text-shadow:0 0 12px rgb(255 250 236 / .45) !important; }
+/* the open section's rail: a tick per entry, the section heads as long graduations */
+${CX} .cx-ladder > .k-rows { position:relative; margin:0 !important; padding:2px 0 0 !important; list-style:none; min-height:calc(100% - 12px); box-sizing:border-box; ${PLAIN}
+  background:linear-gradient(90deg, transparent 7px, rgb(${BONE} / .72) 7px, rgb(${BONE} / .72) 9px, transparent 9px) 0 0 / 100% 100% no-repeat,
+    linear-gradient(90deg, transparent 3px, rgb(${BONE} / .12) 3px, rgb(${BONE} / .12) 13px, transparent 13px) 0 0 / 100% 100% no-repeat,
+    repeating-linear-gradient(180deg, rgb(${BONE} / .42) 0 1px, transparent 1px 8px) 3px 0 / 4px 100% no-repeat !important; }
+${CX} .cx-ladder .k-row { ${PLAIN} position:relative !important; display:flex !important; align-items:center; gap:10px; min-height:0 !important; height:auto !important;
+  padding:6px 6px 6px 38px !important; margin:0 !important; color:rgb(${BONE} / .84) !important; cursor:pointer; }
+${CX} .cx-ladder .k-row::after { display:none !important; content:none !important; }
+${CX} .cx-ladder .k-row::before { content:"" !important; display:block !important; position:absolute !important; left:3px !important; top:15px !important; width:10px !important; height:2px !important;
+  margin:-1px 0 0 !important; translate:none !important; scale:none !important; transform:none !important; background:rgb(${BONE} / .8) !important; border:0 !important; box-shadow:none !important; clip-path:none !important; border-radius:0 !important; }
+${CX} .cx-ladder .k-row > div { min-width:0; flex:1 1 auto; }
+${CX} .cx-ladder .k-row .k-row__name { ${BODY} display:block; font-size:14px !important; line-height:1.3 !important; font-weight:450; color:rgb(${BONE} / .92) !important;
+  white-space:normal; overflow:visible; text-wrap:balance; text-shadow:none !important; }
+${CX} .cx-ladder .k-row .k-row__sub, ${CX} .cx-ladder .k-row .k-row__num { display:none !important; }
+${CX} .cx-ladder .k-row:is(:hover, :focus-visible) .k-row__name { color:rgb(255 255 255) !important; }
+${CX} .cx-ladder .k-row:focus-visible { outline:none !important; }
+${CX} .cx-ladder .k-row:focus-visible:not([aria-selected="true"])::before { width:12px !important; height:2px !important; background:${INK} !important; }
+${CX} .cx-ladder .k-row[aria-selected="true"] .k-row__name { color:rgb(252 250 244) !important; font-weight:600 !important; }
+${CX} .cx-ladder .k-row[aria-selected="true"]::before { opacity:0; }
+${CX} .cx-ladder .k-row.k-row--static { cursor:default; padding-top:14px !important; padding-bottom:4px !important; }
+${CX} .cx-ladder .k-row.k-row--static:first-child { padding-top:4px !important; }
+${CX} .cx-ladder .k-row.k-row--static::before { left:0 !important; width:14px !important; background:rgb(${BONE} / .66) !important; top:auto !important; bottom:calc(4px + .5em) !important; }
+${CX} .cx-ladder .k-row.k-row--static .cx-count { margin-left:10px; font-family:var(--dp-face-numeral, "Archivo"); font-variation-settings:"wdth" 100, "wght" 480; font-size: 12px; letter-spacing:.04em; color:rgb(223 238 255); font-variant-numeric:tabular-nums; }
+${CX} .cx-ladder .k-row.k-row--static .k-caps { ${LABEL} font-size: 12px !important; letter-spacing:.06em !important; color:rgb(${BONE} / .8) !important; text-shadow:none !important; margin:0 !important; }
+${CX} .cx-ladder .k-row.k-row--static > .k-38 { ${BODY} font-size:12.5px !important; color:rgb(${BONE} / .78) !important; white-space:normal; }
+${CX} .cx-ladder .k-row.k-row--static:has(> .k-38)::before { width:6px !important; background:rgb(${BONE} / .3) !important; top:50% !important; bottom:auto !important; }
+${CX} .cx-ladder .k-row.k-row--static:has(> .k-38) { padding-top:4px !important; }
+${CX} .cx-ladder > .k-empty { ${BODY} margin:6px 0 0 !important; padding-left:38px; font-size:13px !important; color:rgb(${BONE} / .8) !important; }
+/* a locked entry's name is cipher: the real words stay for assistive tech, the eye sees noise */
+${CX} .cx-sr { position:absolute !important; width:1px !important; height:1px !important; overflow:hidden !important; clip:rect(0 0 0 0) !important; white-space:nowrap !important; margin:-1px !important; padding:0 !important; }
+${CX} .cx-cipher { color:rgb(${BONE} / .72); letter-spacing:.06em; font-family:var(--dp-face-code, "Spline Sans Mono"), ui-monospace, monospace; font-size:max(12px, .92em); }
+${CX} .cx-ladder .k-row[aria-selected="true"] .cx-cipher { color:rgb(${BONE} / .8); }
+${CX} .cx-ladder .k-row .cx-code { color:rgb(${BONE} / .86); }
+${CX} .cx-filed { color:rgb(252 250 244); }
+
+/* ---- the reading: one column, wrapped to meet the plate ---- */
+${CX} > .k-stage { ${PLAIN} padding:0 0 26px 14px !important; margin-left:-14px !important; overflow:hidden auto; }
+${CX}[data-plate="on"] > .k-stage { padding-right:calc(var(--cx-plate) + clamp(28px, 3vw, 64px)) !important; }
+${CX} > .k-stage { display:flex !important; flex-direction:column; }
+${CX} .sf-codex-entry { ${PLAIN} position:relative; display:block !important; max-width:none !important; min-height:0 !important; padding:0 !important; margin:0 !important; color:${INK}; }
+/* the reading stands level with the plate's heart; a long one starts at the top and scrolls */
+${CX}[data-plate="on"] .sf-codex-entry { margin-top:auto !important; margin-bottom:0 !important; }
+${CX} > .k-stage > .sf-codex-entry { flex:0 1 auto; min-height:0 !important; overflow:hidden auto; scrollbar-width:none; padding-left:14px !important; margin-left:-14px !important; }
+${CX} > .k-stage > .sf-codex-entry::-webkit-scrollbar { display:none; }
+/* the scroll-extent thumb rides the 14px left gutter at every desktop size, not through the reading's first letters (960x540) */
+${CX} > .k-stage > .sf-codex-entry > .orr-extent::before { left:-10px; }
+${CX} > .k-stage > .sf-codex-entry[data-overflow="1"]:not(.is-at-end) { -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 44px), transparent); mask-image:linear-gradient(180deg, #000 calc(100% - 44px), transparent); }
+${CX} > .k-stage > .cx-reader__turn { flex:none; }
+/* the Ledger on the plate: the hull it is kept aboard, one ring, no blade */
+${CX} .cx-plate.is-ledger { cursor:default; }
+${CX} .cx-plate.is-ledger .cx-plate__blade { display:none; }
+${CX} .cx-plate__art.is-ledger > img { opacity:.34; transform:scale(1.02); }
+${CX} .cx-plate__art.is-ledger.is-filled > img { opacity:.72; }
+/* the Ship's Ledger read like an entry: the station's own panel, in this column's grammar */
+${CX} #sf-codex-stage > .st-ledger { ${PLAIN} display:flex !important; flex-direction:column; min-height:0; margin:auto 0 0 !important; padding:0 !important; }
+${CX} #sf-codex-stage .st-ledger-intro { ${BODY} margin:12px 0 0 !important; max-width:52ch; font-size:16px !important; line-height:1.55 !important; color:rgb(${BONE} / .84) !important; }
+${CX} #sf-codex-stage .st-ledger-status { ${LABEL} margin:16px 0 0 !important; font-size: 12px !important; letter-spacing:.06em !important; color:rgb(${BONE} / .68) !important; }
+${CX} #sf-codex-stage .st-ledger-empty { ${BODY} margin:18px 0 0 !important; font-size:18px !important; line-height:1.5 !important; color:rgb(${BONE} / .82) !important; }
+${CX} #sf-codex-stage .st-ledger-list { ${PLAIN} flex:0 1 auto; min-height:0; overflow:hidden auto; scrollbar-width:none; margin:18px 0 0 !important; padding:0 !important; list-style:none; }
+${CX} #sf-codex-stage .st-ledger-list[hidden], ${CX} #sf-codex-stage .st-ledger-empty[hidden], ${CX} #sf-codex-stage .st-ledger-nav[hidden], ${CX} #sf-codex-stage .st-ledger-entry[hidden] { display:none !important; }
+${CX} #sf-codex-stage .st-ledger-entry { ${PLAIN} position:relative !important; display:block !important; min-height:0 !important; height:auto !important; padding:10px 0 10px 24px !important; margin:0 !important; cursor:default; }
+${CX} #sf-codex-stage .st-ledger-entry::before { content:"" !important; position:absolute !important; left:4px !important; top:20px !important; width:10px !important; height:2px !important; margin:0 !important; display:block !important;
+  background:rgb(${BONE} / .62) !important; border:0 !important; box-shadow:none !important; transform:none !important; translate:none !important; scale:none !important; clip-path:none !important; border-radius:0 !important; }
+${CX} #sf-codex-stage .st-ledger-entry::after { display:none !important; content:none !important; }
+${CX} #sf-codex-stage .st-ledger-entry:focus-visible { outline:none !important; }
+${CX} #sf-codex-stage .st-ledger-entry:focus-visible::before { background:${INK} !important; width:14px !important; }
+${CX} #sf-codex-stage .st-ledger-cycle { font-family:var(--dp-face-numeral, "Archivo") !important; font-variation-settings:"wdth" 100, "wght" 480; font-size:13px !important; letter-spacing:.04em !important; color:rgb(223 238 255) !important; }
+${CX} #sf-codex-stage .st-ledger-type { ${LABEL} font-size: 12px !important; letter-spacing:.18em !important; color:rgb(${BONE} / .68) !important; }
+${CX} #sf-codex-stage .st-ledger-line { ${BODY} font-size:15px !important; line-height:1.45 !important; color:${INK} !important; }
+${CX} #sf-codex-stage .st-ledger-annotation { ${BODY} font-size:13.5px !important; font-style:italic; color:rgb(${BONE} / .78) !important; }
+${CX} #sf-codex-stage .st-ledger-nav { display:flex !important; align-items:baseline; gap:26px; margin:18px 0 0 !important; }
+${CX} #sf-codex-stage .st-ledger-page { font-family:var(--dp-face-numeral, "Archivo") !important; font-size:13px !important; letter-spacing:.06em !important; color:rgb(223 238 255) !important; }
+${verb(`${CX} #sf-codex-stage .st-ledger .st-btn`)}
+${verb(`${CX} #sf-codex-stage .st-ledger-evidence-btn`)}
+${CX}[data-plate="on"] > .k-stage { padding-bottom:calc(var(--cx-foot-gap, 0px) + 6px) !important; }
+${CX} .cx-reader__num { display:flex; align-items:baseline; gap:12px; margin:0 0 6px !important; line-height:1; }
+${CX} .cx-reader__num-n { font-family:var(--dp-face-numeral, "Archivo"); font-stretch:100%; font-variation-settings:"wdth" 100, "wght" 230; font-weight:230;
+  font-size:clamp(60px, 9.5vh, 108px); line-height:.82; letter-spacing:-.03em; color:rgb(223 238 255); font-variant-numeric:tabular-nums lining-nums; }
+${CX} .cx-reader__num-of { font-family:var(--dp-face-numeral, "Archivo"); font-variation-settings:"wdth" 100, "wght" 420; font-size:15px; letter-spacing:.06em; color:rgb(${BONE} / .82); }
+${CX} .cx-reader__turn-at { position:absolute !important; width:1px !important; min-width:0 !important; height:1px !important; overflow:hidden !important; clip:rect(0 0 0 0) !important; white-space:nowrap !important; }
+${CX} .sf-codex-entry > * { margin-right:0 !important; min-width:0; }
+${CX} .sf-codex-entry > .cx-reader__mark { display:none !important; }
+
+/* ---- the plate: the hero instrument. The entry's art in an aperture, every entry of the section on
+   the ring round it (the ring is the dial you turn), the Hand an amber blade across the ring ---- */
+${CX} { --cx-plate:min(640px, 59vh, 34vw); }
+${CX} > .cx-plate-host { position:absolute; grid-area:auto; z-index:1; right:var(--k-margin, 96px); top:calc(50% + 20px - var(--cx-plate) / 2); width:var(--cx-plate); height:var(--cx-plate); }
+${CX} > .cx-plate-host[hidden] { display:none !important; }
+${CX} .cx-plate { position:absolute; inset:0; border-radius:50%; outline:none; cursor:grab; touch-action:none; user-select:none; -webkit-user-select:none;
+  transform:perspective(1400px) rotateX(var(--cx-tilt-x, 0deg)) rotateY(var(--cx-tilt-y, 0deg)); transition:transform 460ms var(--dp-ease-over, ease-out); }
+${CX} .cx-plate.is-dragging { cursor:grabbing; }
+${CX} .cx-plate:is(:focus, :focus-visible) { outline:none !important; box-shadow:none !important; }
+${CX} .cx-plate:focus-visible:not(.is-dragging) { box-shadow:0 0 0 2px rgb(${BONE} / .55), 0 0 18px 2px rgb(${BONE} / .18) !important; }
+${CX} .cx-plate__rings, ${CX} .cx-plate__blade { position:absolute; inset:0; pointer-events:none; }
+${CX} .cx-plate__rings > svg, ${CX} .cx-plate__blade > svg { position:absolute; inset:0; width:100%; height:100%; overflow:visible; }
+/* a shade under the plate so its light reads over any world behind it */
+${CX} > .cx-plate-host::before { content:""; position:absolute; inset:-8%; z-index:-1; border-radius:50%; pointer-events:none;
+  background:radial-gradient(closest-side, rgb(5 7 10 / .78), rgb(5 7 10 / .55) 70%, rgb(5 7 10 / 0)); }
+/* the aperture (radius 140 of the dial's 200) */
+${CX} .cx-plate__art { position:absolute; left:15%; top:15%; width:70%; height:70%; border-radius:50%; overflow:hidden; background:rgb(6 8 11 / .6); }
+${CX} .cx-plate__art > img { display:block; width:100%; height:100%; object-fit:cover; margin:0 !important; filter:saturate(.9) contrast(1.04); }
+${CX} .cx-plate__art::after { content:""; position:absolute; inset:0; border-radius:50%; pointer-events:none;
+  background:radial-gradient(circle, rgb(5 7 10 / 0) 62%, rgb(5 7 10 / .5) 88%, rgb(5 7 10 / .85)); }
+${CX} .cx-plate__art.is-crest { background:radial-gradient(circle, rgb(18 20 24 / .7), rgb(6 8 11 / .6)); }
+${CX} .cx-plate__art.is-crest > img { object-fit:contain; padding:17%; box-sizing:border-box; mix-blend-mode:screen; filter:none; opacity:.9; }
+${CX} .cx-plate__art.is-plate > img { transform:scale(1.04); }
+${CX} .cx-plate__art.is-hull { background:radial-gradient(circle at 50% 42%, rgb(${BONE} / .1), rgb(6 8 11 / .6) 72%); }
+${CX} .cx-plate__art.is-hull > img { object-fit:contain; transform:scale(1.18) translateY(3%); filter:none; }
+${CX} .cx-plate__art.is-station > img, ${CX} .cx-plate__art.is-still > img { transform:scale(1.12); }
+/* a locked entry: its art held back, dim and out of focus behind the cipher */
+${CX} .cx-plate__art.is-locked > img { filter:blur(16px) brightness(.55) saturate(.45); transform:scale(1.2); }
+${CX} .cx-plate__art.is-locked::after { background:radial-gradient(circle, rgb(5 7 10 / .2), rgb(5 7 10 / .7) 90%); }
+/* the ring: bands of light with a bloom of their own, graded by what the player has read */
+${CX} .orr-arc-major { fill:none; stroke:rgb(${BONE} / .5); stroke-width:2.5; vector-effect:non-scaling-stroke; }
+${CX} .orr-arc-band { fill:none; stroke:rgb(${BONE} / .07); vector-effect:non-scaling-stroke; }
+${CX} .orr-arc-seg { fill:none; vector-effect:non-scaling-stroke; stroke-linecap:butt; stroke-width:8; }
+${CX} .orr-arc-seg-glow { fill:none; vector-effect:non-scaling-stroke; stroke-linecap:butt; stroke-width:20; }
+${CX} .orr-arc-seg--read { stroke:rgb(${BONE} / .7); }
+${CX} .orr-arc-seg-glow--read { stroke:rgb(${BONE} / .3); }
+${CX} .orr-arc-seg--open { stroke:rgb(${BONE} / .5); }
+${CX} .orr-arc-seg-glow--open { stroke:rgb(${BONE} / .3); }
+${CX} .orr-arc-seg--locked { stroke:none; }
+${CX} .orr-arc-seg-glow--locked { stroke:rgb(${BONE} / .3); }
+${CX} .orr-arc-seg--now { stroke:rgb(223 238 255); stroke-width:10; }
+${CX} .orr-arc-seg-bloom { fill:none; stroke:rgb(223 238 255 / .26); stroke-width:24; vector-effect:non-scaling-stroke; }
+${CX} .orr-arc-now.is-locked .orr-arc-seg--now { stroke:rgb(${BONE} / .6); }
+${CX} .orr-arc-now.is-locked .orr-arc-seg-bloom { stroke:rgb(${BONE} / .1); }
+${CX} .orr-arc-start { fill:none; stroke:rgb(${BONE} / .85); stroke-width:2.5; vector-effect:non-scaling-stroke; }
+${CX} .orr-arc-tick { fill:none; stroke:rgb(${BONE} / .5); stroke-width:1.5; vector-effect:non-scaling-stroke; }
+${CX} .orr-arc-tick--hi { stroke:rgb(${BONE} / .8); stroke-width:2.5; }
+${CX} .orr-arc-ring { fill:none; stroke:rgb(${BONE} / .4); stroke-width:2; vector-effect:non-scaling-stroke; }
+${CX} .orr-arc-ring--rim { stroke:rgb(${BONE} / .7); stroke-width:3; }
+${CX} .orr-arc-engrave { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; letter-spacing:.3em; fill:rgb(${BONE} / .84); text-transform:uppercase; }
+${CX} .orr-arc-cipher { font-family:var(--dp-face-code, "Spline Sans Mono"), ui-monospace, monospace; letter-spacing:.16em; fill:rgb(${BONE} / .5); }
+${CX} .orr-arc-drift { transform-box:view-box; transform-origin:50% 50%; animation:orr-drift 720s linear infinite; }
+/* the Hand: an amber blade across the ring, its bloom a wider stroke of the same light */
+${CX} .cx-blade__arm { transform-box:view-box; transform-origin:50% 50%; will-change:transform; }
+${CX} .cx-blade__core { fill:none; stroke:var(--dp-hand, #f2b950); stroke-width:3; stroke-linecap:round; vector-effect:non-scaling-stroke; }
+${CX} .cx-blade__bloom { fill:none; stroke:rgb(242 185 80 / .3); stroke-width:10; stroke-linecap:round; vector-effect:non-scaling-stroke; }
+${CX} .cx-blade__tip { fill:none; stroke:var(--dp-hand, #f2b950); stroke-width:2.5; stroke-linejoin:miter; stroke-linecap:round; vector-effect:non-scaling-stroke; }
+${CX} .cx-blade__pip { fill:var(--dp-hand-hot, #ffd98c); stroke:rgb(5 7 10); stroke-width:1.5; vector-effect:non-scaling-stroke; }
+${CX} .cx-plate:is(:focus-visible, .is-dragging, .is-over-ring) .cx-blade__core { stroke:var(--dp-hand-hot, #ffd98c); }
+${CX} .cx-plate.is-dragging .cx-blade__bloom { stroke:rgb(255 217 140 / .42); }
+/* pointing at the ring: the arc under the pointer lights and its name hangs on a leader over the aperture */
+${CX} .cx-plate__hover { position:absolute; inset:0; pointer-events:none; z-index:1; }
+/* while the pointer names an entry the engraving steps back so the leader reads clean */
+${CX} .cx-plate .orr-arc-engrave { transition:opacity .18s ease; }
+${CX} .cx-plate.is-pointing .orr-arc-engrave { opacity:.28; }
+${CX} .cx-plate__hover > svg { position:absolute; inset:0; width:100%; height:100%; overflow:visible; }
+${CX} .cx-hover__arc { fill:none; stroke:rgb(248 244 234 / .92); stroke-width:9; vector-effect:non-scaling-stroke; }
+${CX} .cx-hover__bloom { fill:none; stroke:rgb(248 244 234 / .2); stroke-width:22; vector-effect:non-scaling-stroke; }
+${CX} .cx-hover__leader { fill:none; stroke:rgb(248 244 234 / .92); stroke-width:2; stroke-linejoin:round; vector-effect:non-scaling-stroke; }
+${CX} .cx-hover__leader-bloom { fill:none; stroke:rgb(5 7 10 / .7); stroke-width:6; stroke-linejoin:round; vector-effect:non-scaling-stroke; }
+${CX} .cx-hover__pip { fill:rgb(248 244 234); }
+/* the reading under the plate while the ring is being turned or pointed at */
+${CX} .cx-plate__caption { position:absolute; left:50%; top:50%; z-index:2; transform:translate(calc(-100% - 8px), -50%); white-space:nowrap; pointer-events:none; display:flex; align-items:baseline; gap:10px;
+  padding:8px 18px; background:radial-gradient(closest-side, rgb(5 7 10 / .94), rgb(5 7 10 / .9) 62%, rgb(5 7 10 / .62) 86%, rgb(5 7 10 / 0)); }
+${CX} .cx-plate__caption.is-right { transform:translate(8px, -50%); }
+${CX} .cx-plate__caption[hidden] { display:none !important; }
+${CX} .cx-plate__caption-at { font-family:var(--dp-face-numeral, "Archivo"); font-variation-settings:"wdth" 100, "wght" 480; font-size:12px; letter-spacing:.06em; color:rgb(223 238 255); font-variant-numeric:tabular-nums; }
+${CX} .cx-plate__caption-name { ${BODY} font-size:14px !important; color:${INK}; }
+${CX} .cx-plate__caption-name.is-locked .cx-cipher { font-size:13px; color:rgb(${BONE} / .78); }
+/* arrival: a fresh page's ring draws and its art opens */
+${CX} .cx-plate.is-arriving .orr-arc-draw { stroke-dasharray:1 1; stroke-dashoffset:1; animation:orr-draw 620ms var(--dp-ease-out, ease-out) forwards; }
+${CX} .cx-plate.is-arriving .orr-arc-now { animation:orr-arc-fade 520ms ease-out 180ms both; }
+${CX} .cx-plate.is-arriving > .cx-plate__art > img { animation:orr-arc-open 560ms var(--dp-ease-out, ease-out) both; }
+${CX} .cx-plate.is-unlocking .orr-arc-now { animation:cx-flare-arc 1.6s var(--dp-ease-out, ease-out) both; }
+@keyframes cx-flare-arc { 0% { filter:drop-shadow(0 0 16px rgb(223 238 255)); } 100% { filter:none; } }
+@keyframes orr-arc-open { from { opacity:0; filter:blur(6px); } to { opacity:1; } }
+/* the words */
+${CX} .cx-reader__filed { ${LABEL} margin:2px 0 0 !important; font-size: 12px !important; letter-spacing:.06em !important; color:rgb(${BONE} / .8) !important; }
+${CX} .sf-codex-entry > h2 { margin:12px 0 0 !important; }
+${CX} .sf-codex-entry > h2, ${CX} .sf-codex-entry > h2 .k-signal, ${CX} .sf-codex-entry > h2 .k-38 { ${DISPLAY} font-size:clamp(24px, min(2.1vw, 4vh), 40px) !important; line-height:1.04 !important;
+  letter-spacing:.01em !important; color:rgb(242 237 226) !important; text-shadow:0 2px 18px rgb(0 0 0 / .5) !important; text-wrap:balance; }
+${CX} .sf-codex-entry.is-locked > h2 .cx-cipher { font-family:inherit !important; letter-spacing:.04em; font-size:1em; color:rgb(${BONE} / .5); }
+${CX} .sf-codex-entry > .fh-legend, ${CX} .sf-codex-entry > .cx-reader__meta { ${LABEL} margin:10px 0 0 !important; font-size: 12px !important; letter-spacing:.18em !important; color:rgb(${BONE} / .82) !important; }
+${CX} .sf-codex-entry :is(.sf-entity-link, [data-entity]) { color:${INK} !important; text-decoration:none !important; background-image:none !important; box-shadow:none !important; border-bottom:0 !important; }
+${CX} .sf-codex-entry :is(.sf-entity-link, [data-entity]):is(:hover, :focus-visible) { text-decoration:underline 1px rgb(${BONE} / .6) !important; text-underline-offset:4px; outline:none !important; }
+${CX} .sf-codex-entry .k-measure { ${PLAIN} margin:22px 0 0 !important; padding:18px 0 0 !important; max-width:60ch !important; min-height:0 !important;
+  background:linear-gradient(90deg, rgb(${BONE} / .62), rgb(${BONE} / .62)) 0 0 / 56px 1px no-repeat,
+    repeating-linear-gradient(90deg, rgb(${BONE} / .44) 0 1px, transparent 1px 8px) 0 0 / 160px 5px no-repeat !important; }
+${CX} .sf-codex-entry .k-measure .k-sentence { ${BODY} margin:0 0 .8em !important; font-size:16.5px !important; line-height:1.6 !important; color:rgb(${BONE} / .94) !important; font-style:normal !important; }
+${CX} .sf-codex-entry .k-measure .k-sentence.k-38 { ${LABEL} font-size: 12px !important; letter-spacing:.06em !important; color:rgb(${BONE} / .62) !important; }
+${CX} .sf-codex-entry .k-measure .k-rule { height:1px !important; margin:16px 0 !important; border:0 !important; width:56px; background:rgb(${BONE} / .3) !important; }
+${CX} .sf-codex-entry .k-measure .k-sentence--emph, ${CX} .sf-codex-entry .k-measure .k-sentence--emph.k-bad { color:rgb(${BONE} / .86) !important; font-size:15px !important; }
+${CX} .sf-codex-entry .k-measure .k-rows { margin:4px 0 12px !important; }
+${CX} .sf-codex-entry .k-measure .k-row { ${PLAIN} display:grid !important; grid-template-columns:minmax(120px, 11em) minmax(0, 1fr) !important; column-gap:18px; min-height:0 !important; padding:6px 0 !important; cursor:default; }
+${CX} .sf-codex-entry .k-measure .k-row > span:first-child { ${LABEL} font-size: 12px !important; letter-spacing:.16em !important; color:rgb(${BONE} / .64) !important; padding-top:3px; }
+${CX} .sf-codex-entry .k-measure .k-row .k-row__name { ${BODY} font-size:14.5px !important; color:${INK} !important; white-space:normal !important; }
+/* the cipher block a locked entry shows where its lore will be */
+${CX} .cx-cipher-block { margin:0 0 14px !important; font-family:var(--dp-face-code, "Spline Sans Mono"), ui-monospace, monospace; font-size:14px; line-height:1.7; letter-spacing:.12em; color:rgb(${BONE} / .7); word-break:break-all; }
+/* the survey's readings */
+${CX} #sf-codex-stage .st-ledger .st-sub-h { ${DISPLAY} font-size:clamp(24px, min(2.1vw, 4vh), 40px) !important; line-height:1.04 !important; letter-spacing:.01em !important; color:rgb(242 237 226) !important; }
+${CX} .sf-codex-entry > .k-words--row { display:flex !important; flex-wrap:wrap; gap:14px 44px; margin:20px 0 0 !important; }
+${CX} .sf-codex-entry > .k-words--row .k-hero__n { font-family:var(--dp-face-numeral, "Archivo") !important; font-variation-settings:"wdth" 100, "wght" 260 !important; font-weight:260 !important;
+  font-size:clamp(34px, min(3vw, 5.6vh), 58px) !important; line-height:.95 !important; color:rgb(223 238 255) !important; text-shadow:none !important; }
+${CX} .sf-codex-entry > .k-words--row .k-hero__w { ${LABEL} margin-top:8px !important; font-size: 12px !important; letter-spacing:.18em !important; color:rgb(${BONE} / .66) !important; }
+/* the page turn: two words and the place between them as a reading */
+${CX} .cx-reader__turn { ${PLAIN} display:flex !important; align-items:baseline; gap:26px; margin:26px 0 0 !important; padding:0 !important; }
+${verb(`${CX} .cx-reader__turn-key`)}
+${CX} .cx-reader__turn-key--next { margin-left:0 !important; }
+${CX} .cx-reader__turn-key--prev::before { content:"‹  "; color:rgb(${BONE} / .6); }
+${CX} .cx-reader__turn-key--next::before { content:""; }
+${CX} .cx-reader__turn-key--next::after { content:"  ›" !important; display:inline !important; position:static !important; background:none !important; width:auto !important; height:auto !important;
+  transform:none !important; translate:none !important; scale:none !important; opacity:1 !important; clip-path:none !important; color:rgb(${BONE} / .6) !important; }
+${CX} .cx-reader__turn-at { order:-1; font-family:var(--dp-face-numeral, "Archivo"); font-variation-settings:"wdth" 100, "wght" 420; font-size:13px; letter-spacing:.06em; color:rgb(223 238 255); font-variant-numeric:tabular-nums; min-width:4.2em; }
+/* a conditional return to the chart: a verb, not a second amber */
+${CX} .sf-codex-entry > [data-action="tethys-return"] { margin-top:22px !important; justify-self:start; }
+${CX} .sf-codex-entry > .cx-play { margin-top:22px !important; }
+/* the Signal Archive: four stills with their corners marked in light, no frames */
+${CX} .sf-codex-entry > ul.fh-cluster { align-items:start !important; display:grid !important; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:26px 22px; width:100%; margin:22px 0 0 !important; padding:0 !important; list-style:none; grid-column:1 / -1; }
+${CX} .sf-codex-entry > ul.fh-cluster > li { display:flex !important; flex-direction:column; gap:8px; min-width:0; }
+${CX} .sf-codex-entry > ul.fh-cluster .cx-still { ${PLAIN} position:relative; display:block !important; width:100% !important; min-width:0 !important; min-height:0 !important; padding:0 !important; cursor:pointer; aspect-ratio:16 / 9; overflow:visible; }
+${CX} .sf-codex-entry > ul.fh-cluster .cx-still img { display:block; width:100% !important; height:100% !important; object-fit:cover; }
+${CX} .sf-codex-entry > ul.fh-cluster .cx-still::before { content:""; position:absolute; inset:-6px; pointer-events:none;
+  background:linear-gradient(rgb(${BONE} / .6) 0 0) 0 0 / 12px 1px no-repeat, linear-gradient(rgb(${BONE} / .6) 0 0) 0 0 / 1px 12px no-repeat,
+    linear-gradient(rgb(${BONE} / .6) 0 0) 100% 0 / 12px 1px no-repeat, linear-gradient(rgb(${BONE} / .6) 0 0) 100% 0 / 1px 12px no-repeat,
+    linear-gradient(rgb(${BONE} / .6) 0 0) 0 100% / 12px 1px no-repeat, linear-gradient(rgb(${BONE} / .6) 0 0) 0 100% / 1px 12px no-repeat,
+    linear-gradient(rgb(${BONE} / .6) 0 0) 100% 100% / 12px 1px no-repeat, linear-gradient(rgb(${BONE} / .6) 0 0) 100% 100% / 1px 12px no-repeat; }
+${CX} .sf-codex-entry > ul.fh-cluster .cx-still:is(:hover, :focus-visible) { outline:none !important; }
+${CX} .sf-codex-entry > ul.fh-cluster .cx-still:is(:hover, :focus-visible)::before { inset:-8px;
+  background:linear-gradient(${INK} 0 0) 0 0 / 16px 1.5px no-repeat, linear-gradient(${INK} 0 0) 0 0 / 1.5px 16px no-repeat,
+    linear-gradient(${INK} 0 0) 100% 0 / 16px 1.5px no-repeat, linear-gradient(${INK} 0 0) 100% 0 / 1.5px 16px no-repeat,
+    linear-gradient(${INK} 0 0) 0 100% / 16px 1.5px no-repeat, linear-gradient(${INK} 0 0) 0 100% / 1.5px 16px no-repeat,
+    linear-gradient(${INK} 0 0) 100% 100% / 16px 1.5px no-repeat, linear-gradient(${INK} 0 0) 100% 100% / 1.5px 16px no-repeat; }
+${CX} .sf-codex-entry > ul.fh-cluster .cx-still__name { ${LABEL} font-size: 12px !important; letter-spacing:.18em !important; color:${INK} !important; margin-top:4px; }
+${CX} .sf-codex-entry > ul.fh-cluster .fh-fine { ${BODY} min-height:0 !important; font-size:13px !important; line-height:1.4 !important; color:rgb(${BONE} / .74) !important; }
+${verb(`${CX} .sf-codex-entry > ul.fh-cluster .k-word`)}
+${CX} .sf-codex-entry > ul.fh-cluster .k-word::before { content:"›  "; color:rgb(${BONE} / .6); }
+${CX} .sf-codex-entry.cx-archive > p.k-sentence { ${BODY} margin:18px 0 0 !important; font-size:16px !important; line-height:1.55; color:rgb(${BONE} / .86) !important; max-width:60ch; }
+/* the foot: ‹ CLOSE + ESC keycap rail */
+${CX} > .k-foot { align-items:center !important; min-height:0 !important; }
+/* the plate's sheen follows the pointer across its art */
+${CX} .cx-plate__art::before { content:""; position:absolute; inset:0; z-index:1; border-radius:50%; pointer-events:none; opacity:0; transition:opacity .3s linear;
+  background:radial-gradient(circle at var(--cx-sheen-x, 50%) var(--cx-sheen-y, 30%), rgb(255 246 226 / .26), rgb(255 246 226 / 0) 48%); mix-blend-mode:screen; }
+${CX} .cx-plate.is-lit .cx-plate__art::before { opacity:1; }
+/* an entry that has just unlocked: its name decrypts in a flare of phosphor */
+${CX} .cx-ladder .k-row.is-unlocking .k-row__name { animation:cx-unlock 1.6s var(--dp-ease-out, ease-out) both; }
+@keyframes cx-unlock { 0% { color:rgb(223 238 255); text-shadow:0 0 14px rgb(223 238 255 / .9); } 100% { text-shadow:0 0 0 rgb(223 238 255 / 0); } }
+${RCX} .cx-plate { transition:none !important; transform:none !important; }
+${RCX} .cx-plate__art::before { transition:none !important; }
+${RCX} :is(.cx-plate.is-unlocking .orr-arc-now, .cx-ladder .k-row.is-unlocking .k-row__name, .cx-plate.is-arriving .orr-arc-now) { animation:none !important; }
+${RCX} .cx-plate.is-arriving > .cx-plate__art > img { animation:none !important; }
+${RCX} .cx-plate.is-arriving .orr-arc-draw { animation:none !important; stroke-dashoffset:0; }
+/* the foot: ‹ CLOSE + ESC keycap (matches settings/save-load/help/credits) */
+${CX} > .k-foot .sf-back.k-word { all:unset !important; box-sizing:border-box !important; cursor:pointer !important; display:inline-flex !important; align-items:baseline !important; gap:0 !important;
+  padding:10px 0 12px !important; min-height:44px !important; ${LABEL} font-size:13.5px !important; letter-spacing:.1em !important; color:rgb(255 253 248) !important;
+  background:linear-gradient(0deg, rgb(${BONE} / .28) 0 1.5px, transparent 1.5px) 0 100% / 120px 100% no-repeat !important; text-shadow:none !important; }
+${CX} > .k-foot .sf-back.k-word::before { all:unset !important; content:"‹" !important; display:inline !important; margin-right:12px !important; font-size:15px !important; color:rgb(${BONE} / .6) !important; }
+${CX} > .k-foot .sf-back.k-word::after { all:unset !important; content:"ESC" / "" !important; display:inline-block !important; margin-left:16px !important; padding:3px 7px 4px !important;
+  ${LABEL} font-size:12px !important; letter-spacing:.06em !important; line-height:1 !important;
+  color:rgb(${BONE} / .9) !important; background:rgb(${BONE} / .1) !important; border:1px solid rgb(${BONE} / .5) !important; border-radius:3px !important;
+  box-shadow:inset 0 -1px 0 rgb(0 0 0 / .35) !important; vertical-align:baseline !important; }
+${CX} > .k-foot .sf-back.k-word:is(:hover, :focus-visible) { color:var(--dp-hand-hot, #ffd98c) !important; outline:none !important; }
+${CX} > .k-foot .sf-back.k-word:focus-visible::after { color:rgb(255 253 248) !important; border-color:rgb(255 253 248 / .45) !important; }
+${CX} .cx-index__num.orr-counter { height:1em; }
+${CX} .cx-index__num .orr-counter__digit { width:.5em; }
+/* arrival: the lore rises line by line under its title (reduced motion: it simply is there) */
+${CX} .cx-rise { animation:orr-rise 460ms var(--dp-ease-out, ease-out) both; animation-delay:var(--orr-delay, 0ms); }
+${CX}.cx-arrive .sf-tabbar > li, ${CX}.cx-arrive .cx-index__item { animation:orr-rise 420ms var(--dp-ease-out, ease-out) both; animation-delay:var(--orr-delay, 0ms); }
+${RCX} :is(.cx-rise, .orr-arc-drift, .orr-arc-draw, .orr-arc-gauge__fill, .orr-arc-gauge__bloom, .orr-arc-gauge__bead, .orr-arc-now),
+${RCX} .sf-tabbar > li, ${RCX} .cx-index__item, ${RCX} .cx-plate__art { animation:none !important; }
+${RCX} .orr-arc-draw { stroke-dashoffset:0; }
+@media (max-width:1400px) {
+  ${CX} { --cx-sections:124px; --cx-gap:30px; }
+  ${CX} .cx-index__n { font-size:13.5px !important; }
+}
+/* a short screen: the ladder's rungs close up so a section's closing note is not cut by the fold */
+@media (max-height:820px) {
+  ${CX} .cx-ladder .k-row:not(.k-row--static) { padding-bottom:2px !important; }
+}
+/* a narrow desktop (960 and 1024 wide): smaller dials beside the title and a smaller plate, so the
+   reading between the ladder and the plate keeps a column wide enough for its words */
+@media (max-width:1100px) and (min-width:640px) {
+  ${CX} { --cx-sections:108px; --cx-gap:20px; --cx-plate:min(300px, 48vh, 29vw); grid-template-columns:316px minmax(0, 1fr) !important; }
+  ${CX} > .k-title { column-gap:28px; }
+  ${CX} > .k-title > p { margin-top:6px !important; font-size:14px !important; }
+  ${CX} .cx-index { row-gap:4px; }
+  ${CX} .cx-index__cap { font-size:12px !important; letter-spacing:.06em !important; }
+  ${CX} .cx-index__list { gap:0 4px; }
+  ${CX} .cx-index__item { grid-template-rows:46px auto; width:64px; }
+  ${CX} .cx-index__dial { width:46px; height:46px; }
+  ${CX} .cx-index__n { font-size:12px !important; font-stretch:78% !important; font-variation-settings:"wdth" 78, "wght" 480 !important; letter-spacing:-.03em !important; }
+  ${CX} .cx-index__num .orr-counter__digit { width:.45em; }
+  ${CX} .cx-index__of { font-size:12px; font-stretch:76%; font-variation-settings:"wdth" 76, "wght" 500; letter-spacing:-.03em; margin-left:0; }
+  ${CX} .cx-index__w { margin-top:3px !important; font-size:12px !important; letter-spacing:.04em !important; }
+  ${CX} .cx-ladder .k-row .k-row__name { font-size:13px !important; }
+  ${CX} .cx-ladder .orr-arc-hand { --orr-hand-x:15px; }
+  ${CX} .cx-ladder .k-row { padding-left:32px !important; }
+  ${CX} .cx-ladder .k-row.k-row--static .k-caps { letter-spacing:.14em !important; }
+  ${CX} > .cx-plate-host { top:calc(50% + 34px - var(--cx-plate) / 2); }
+  ${CX}[data-plate="on"] > .k-stage { padding-right:calc(var(--cx-plate) + 24px) !important; }
+  ${CX} .cx-reader__num-n { font-size:44px; }
+  ${CX} .sf-codex-entry > h2, ${CX} .sf-codex-entry > h2 .k-signal, ${CX} .sf-codex-entry > h2 .k-38 { font-size:22px !important; }
+  ${CX} .sf-codex-entry > h2 { margin-top:8px !important; }
+  ${CX} .sf-codex-entry > .fh-legend, ${CX} .sf-codex-entry > .cx-reader__meta { margin-top:6px !important; font-size:12px !important; }
+  ${CX} .sf-codex-entry .k-measure { margin-top:12px !important; padding-top:12px !important; }
+  ${CX} .sf-codex-entry .k-measure .k-sentence { font-size:14px !important; line-height:1.5 !important; }
+  ${CX} .sf-codex-entry .k-measure .k-row { grid-template-columns:minmax(0, 1fr) !important; row-gap:2px; padding:5px 0 !important; }
+  ${CX} .cx-reader__turn { margin-top:14px !important; }
+}
+/* an 800-wide window: the subtitle wraps under CODEX instead of running into the STORY dial, and
+   PREVIOUS / NEXT keep a real gap between them */
+@media (max-width:900px) and (min-width:640px) {
+  ${CX} > .k-title > p { max-width:250px !important; line-height:1.35 !important; }
+  ${CX} { --cx-plate:min(200px, 40vh, 25vw); }
+  ${CX} .sf-codex-entry > h2, ${CX} .sf-codex-entry > h2 .k-signal, ${CX} .sf-codex-entry > h2 .k-38 { font-size:19px !important; }
+  ${CX} .cx-reader__turn { column-gap:18px !important; flex-wrap:nowrap; white-space:nowrap; }
+}
+/* 640–760: the 316px hang left too little stage for plate + PREVIOUS/NEXT; shrink hang, dials and
+   plate so the reader column stays clear (800×600 already clears with the ≤900 rules above) */
+@media (max-width:760px) and (min-width:640px) {
+  ${CX} { --cx-sections:96px; --cx-gap:12px; --cx-plate:min(132px, 32vh, 18vw); grid-template-columns:minmax(220px, 38vw) minmax(0, 1fr) !important; }
+  ${CX} > .k-title { column-gap:16px; }
+  ${CX} > .k-title > p { max-width:160px !important; font-size:12px !important; }
+  /* At the type floor the section words need a second line instead of running into the reader. */
+  ${CX} .cx-index { row-gap:2px !important; }
+  ${CX} .cx-index__list { flex-wrap:wrap !important; row-gap:4px !important; align-content:start !important; }
+  ${CX} .cx-index__w { line-height:1.15 !important; white-space:normal !important; max-width:100%; overflow-wrap:anywhere; }
+  ${CX} .cx-index__item { grid-template-rows:38px auto; width:48px; }
+  ${CX} .cx-index__dial { width:38px; height:38px; }
+  ${CX} .cx-index__n { font-size:12px !important; }
+  ${CX} .cx-index__of { font-size:12px; }
+  ${CX} .cx-index__w { margin-top:2px !important; font-size:12px !important; letter-spacing:.02em !important; }
+  ${CX}[data-plate="on"] > .k-stage { padding-right:calc(var(--cx-plate) + 14px) !important; }
+  ${CX} .cx-reader__num-n { font-size:34px; }
+  ${CX} .sf-codex-entry > h2, ${CX} .sf-codex-entry > h2 .k-signal, ${CX} .sf-codex-entry > h2 .k-38 { font-size:16px !important; }
+  ${CX} .cx-reader__turn { column-gap:12px !important; }
+}
+/* ...and a short one (960×540, 1280×540): the scale's rungs and the foot close up so LEDGER clears CLOSE */
+@media (max-width:1400px) and (min-width:640px) and (max-height:640px) {
+  ${CX} { row-gap:14px !important; }
+  ${CX} > .k-hang { row-gap:10px; }
+  ${CX} .cx-search .sf-codex-search { height:28px !important; }
+  ${CX} .cx-search::before { top:5px; }
+  ${CX} .cx-search::after { top:15px; }
+  ${CX} .sf-tabbar .sf-tab { height:22px !important; font-size:12px !important; letter-spacing:.14em !important; }
+  ${CX} .cx-ladder .k-row { padding-top:4px !important; padding-bottom:2px !important; }
+  ${CX} .cx-ladder .k-row::before { top:12px !important; }
+  ${CX} > .k-foot .sf-back.k-word { padding:6px 0 8px !important; min-height:36px !important; }
+}
+/* a wide, short window (1280×540): the full-size dials made the title row so tall that the section
+   scale ran under CLOSE, and the plate rode up into the dials. Use the 960 dial and plate sizes. */
+@media (min-width:1101px) and (max-width:1400px) and (max-height:640px) {
+  ${CX} { --cx-plate:min(300px, 48vh, 29vw); }
+  ${CX} .cx-index { row-gap:4px; }
+  ${CX} .cx-index__item { grid-template-rows:46px auto; width:72px; }
+  ${CX} .cx-index__dial { width:46px; height:46px; }
+  ${CX} .cx-index__w { margin-top:3px !important; font-size:12px !important; letter-spacing:.06em !important; }
+  ${CX} .sf-tabbar .sf-tab { height:20px !important; }
+  ${CX} > .cx-plate-host { top:calc(50% + 34px - var(--cx-plate) / 2); }
+}
+/* 1080p band: match settings/save-load/credits composition zoom */
+@media (min-width:1800px) and (max-width:2199px) and (min-height:1000px) {
+  ${CX} { zoom:1.12; }
+}
+/* a 1440p screen shows the 1080p composition at 1.25 (the kit scale is folded into the zoom), as the station does */
+@media (min-width:2200px) and (min-height:1200px) {
+  ${CX}, ${ML} { zoom:1.25; --k-s:1; }
+}
+@media (min-width:3400px) and (min-height:1900px) {
+  ${CX}, ${ML} { zoom:1.85; --k-s:1; }
+}
+/* a very short desktop window (844×390): the kit's 42px frame, the 58px dials and nine 22px section
+   rungs need more than 390px, so STORY…LEDGER ran down through ‹ CLOSE. Thin the frame, shrink the
+   dials and rungs and the plate, so the whole section list and the foot both fit above the fold */
+@media (max-width:1100px) and (min-width:801px) and (max-height:460px) {
+  ${CX} { padding-top:14px !important; padding-bottom:8px !important; row-gap:8px !important; --cx-plate:min(138px, 38vh, 17vw); --cx-foot-gap:0px; }
+  ${CX} > .k-title > :is(h1, .k-t-title, .k-display) { font-size:30px !important; line-height:1 !important; }
+  ${CX} > .k-title > p { margin-top:4px !important; font-size:12.5px !important; line-height:1.3 !important; }
+  ${CX} .cx-index { row-gap:2px; }
+  ${CX} .cx-index__cap { font-size:12px !important; }
+  ${CX} .cx-index__item { grid-template-rows:38px auto; width:58px; }
+  ${CX} .cx-index__dial { width:38px; height:38px; }
+  ${CX} .cx-index__n { font-size:12px !important; }
+  ${CX} .cx-index__of { font-size:12px; }
+  ${CX} .cx-index__w { margin-top:1px !important; font-size:12px !important; line-height:1.1 !important; white-space:normal !important; max-width:100%; overflow-wrap:anywhere; }
+  ${CX} > .k-hang { row-gap:6px; }
+  ${CX} .cx-search .sf-codex-search { height:24px !important; }
+  ${CX} .cx-search::before { top:3px; }
+  ${CX} .cx-search::after { top:13px; }
+  ${CX} > .k-hang > .sf-tabbar { margin-bottom:0 !important; padding:0 !important; }
+  ${CX} .sf-tabbar .sf-tab { height:18px !important; font-size:12px !important; letter-spacing:.12em !important; }
+  ${CX} .cx-ladder .k-row { padding-top:2px !important; padding-bottom:1px !important; }
+  ${CX} .cx-ladder .k-row::before { top:10px !important; }
+  ${CX} > .k-hang > .cx-ladder { padding-bottom:10px !important; }
+  /* the plate stands on the hang's foot (8px pad + 32px foot + 8px gap above the frame's bottom), not
+     mid-height: the reading ends where the plate does, so it gains ~60px, and an entry's opening
+     paragraph shows above PREVIOUS / NEXT instead of a single line */
+  ${CX} > .cx-plate-host { top:calc(100% - 48px - var(--cx-plate)); }
+  ${CX}[data-plate="on"] > .k-stage { padding-right:calc(var(--cx-plate) + 20px) !important; }
+  /* ...and the rail's last rung, scrolled to the end, rests above the 34px fold instead of fading in it */
+  ${CX}[data-plate="on"] > .k-hang > .cx-ladder { padding-bottom:calc(var(--cx-foot-gap, 0px) + 36px) !important; }
+  /* the scroll-extent thumb rides the reading's left gutter, not through the entry number's "0" */
+  ${CX} > .k-stage > .sf-codex-entry > .orr-extent::before { left:-10px !important; }
+  ${CX} .cx-reader__num-n { font-size:32px; }
+  ${CX} .sf-codex-entry > h2, ${CX} .sf-codex-entry > h2 .k-signal, ${CX} .sf-codex-entry > h2 .k-38 { font-size:17px !important; }
+  ${CX} .sf-codex-entry > h2 { margin-top:4px !important; }
+  /* filed + meta stay at the 12px floor with condensed width/tracking, so STORY · THE EIGHT BEATS / ARCHIVE · RECOVERED SIGNALS fit one line;
+     a longer filing (GRAFFITI · BULKHEAD — THE PREVIOUS CREW) still wraps rather than clipping mid-word */
+  ${CX} .cx-reader__filed { font-size:12px !important; font-stretch:92% !important; font-variation-settings:"wdth" 92, "wght" 600 !important; letter-spacing:.01em !important; margin-top:0 !important; }
+  ${CX} .sf-codex-entry > .fh-legend, ${CX} .sf-codex-entry > .cx-reader__meta { margin-top:4px !important; font-size:12px !important; font-stretch:92% !important; font-variation-settings:"wdth" 92, "wght" 600 !important; letter-spacing:.01em !important; }
+  ${CX} .sf-codex-entry .k-measure { margin-top:6px !important; padding-top:6px !important; }
+  ${CX} .sf-codex-entry .k-measure .k-sentence { font-size:13px !important; line-height:1.4 !important; }
+  /* ARCHIVE Play lamp sits above the reader fade instead of requiring a scroll to reach it */
+  ${CX} .sf-codex-entry > .cx-play { margin-top:6px !important; }
+  ${CX} .cx-reader__turn { margin-top:8px !important; column-gap:18px !important; white-space:nowrap; }
+  ${CX} > .k-foot .sf-back.k-word { padding:4px 0 6px !important; min-height:32px !important; }
+}
+/* 640–800px short desktop: the same compact frame as 844×390, with the smaller 640–760 index.
+   Keep all nine section keys above CLOSE after the 12px floor; the reader/stage keeps its existing
+   narrow-column geometry. */
+@media (max-width:800px) and (min-width:640px) and (max-height:460px) {
+  ${CX} { padding-top:14px !important; padding-bottom:8px !important; row-gap:8px !important; --cx-foot-gap:0px; }
+  ${CX} > .k-title > :is(h1, .k-t-title, .k-display) { font-size:30px !important; line-height:1 !important; }
+  ${CX} > .k-title > p { margin-top:4px !important; line-height:1.3 !important; }
+  ${CX} .cx-index { row-gap:1px !important; }
+  ${CX} .cx-index__item { grid-template-rows:34px auto; width:48px; }
+  ${CX} .cx-index__dial { width:34px; height:34px; }
+  ${CX} .cx-index__w { margin-top:1px !important; line-height:1.05 !important; }
+  ${CX} > .k-hang { row-gap:6px; }
+  ${CX} .cx-search .sf-codex-search { height:24px !important; }
+  ${CX} .cx-search::before { top:3px; }
+  ${CX} .cx-search::after { top:13px; }
+  ${CX} > .k-hang > .sf-tabbar { margin-bottom:0 !important; padding:0 !important; }
+  ${CX} .sf-tabbar .sf-tab { height:18px !important; letter-spacing:.12em !important; }
+  ${CX} .cx-ladder .k-row { padding-top:2px !important; padding-bottom:1px !important; }
+  ${CX} .cx-ladder .k-row::before { top:10px !important; }
+  ${CX} > .k-hang > .cx-ladder { padding-bottom:6px !important; }
+  ${CX} > .k-foot .sf-back.k-word { padding:4px 0 6px !important; min-height:32px !important; }
+}
+@media (forced-colors:active) {
+  ${CX} .cx-ladder .k-row[aria-selected="true"] { outline:2px solid Highlight !important; }
+  ${CX} .orr-arc-hand::before, ${CX} .orr-arc-hand::after { background:Highlight !important; forced-color-adjust:none; }
+}
+/* Compact dial captions use Archivo's width axis instead of splitting a single
+   section name mid-word. Keep the readable height and weight of the instrument. */
+@media (min-width:640px) and (max-width:1100px) {
+  ${CX} .cx-index__w { font-stretch:85% !important; font-variation-settings:"wdth" 85, "wght" 650 !important; letter-spacing:0 !important; white-space:nowrap !important; overflow-wrap:normal; }
+}
+`;
+
+/** Phone Codex — the kit's hang column is 480×k-s, so at 390 the stage track collapses to 0 and the
+ *  absolute plate + title dials paint over the ladder and CLOSE. Portrait: one column (title, plate,
+ *  hang, reading, foot). Landscape ≤560px: hang | reader side by side so the entry title and first
+ *  sentence show on first view. Scoped to data-sf-mobile only (desktop 801–1100 stays on #356). */
+const CX_PHONE = 'html:root[data-sf-mobile="1"] body #screens > .k-screen.of-codex.orr-archive.orr-archive';
+const CODEX_PHONE_CSS = `
+${CX_PHONE} { display:flex !important; flex-direction:column !important; row-gap:10px !important; column-gap:0 !important;
+  padding:12px 14px 0 !important; overflow:hidden !important; --cx-plate:min(140px, 36vw); --cx-sections:118px; --cx-gap:10px; --cx-foot-gap:0px; }
+${CX_PHONE} > .k-title { flex:none; order:1; display:flex !important; flex-direction:column !important; align-items:stretch !important;
+  gap:6px; grid-template-columns:none !important; grid-template-rows:none !important; column-gap:0 !important; }
+${CX_PHONE} > .k-title > :not(.cx-index) { grid-column:auto; grid-row:auto; }
+${CX_PHONE} > .k-title > :is(h1, .k-t-title, .k-display) { order:1; margin:0 !important; font-size:clamp(28px, 9vw, 40px) !important; }
+${CX_PHONE} > .k-title > .cx-index { order:2; grid-column:auto !important; grid-row:auto !important; justify-self:stretch !important; align-self:stretch !important;
+  width:100% !important; justify-items:start !important; row-gap:4px; margin:0 !important; }
+${CX_PHONE} > .k-title > p { order:3; margin:2px 0 0 !important; font-size:13px !important; line-height:1.35 !important; max-width:none !important; }
+${CX_PHONE} .cx-index__cap { font-size:12px !important; letter-spacing:.18em !important; }
+${CX_PHONE} .cx-index__list { flex-wrap:wrap !important; gap:2px 2px !important; width:100%; justify-content:space-between !important; }
+/* 7 × 48px + gaps fits one row at 390, so SURVEY no longer wraps alone and the reader gets that height back. */
+${CX_PHONE} .cx-index__item { grid-template-rows:36px auto; width:min(48px, calc((100vw - 42px) / 7)); }
+${CX_PHONE} .cx-index__dial { width:36px; height:36px; }
+${CX_PHONE} .cx-index__n { font-size:12px !important; padding-top:0; }
+${CX_PHONE} .cx-index__of { font-size:12px; }
+${CX_PHONE} .cx-index__w { margin-top:2px !important; font-size:12px !important; letter-spacing:.02em !important; line-height:1.15 !important; white-space:normal !important; overflow-wrap:anywhere; }
+@media (max-width:379px) { ${CX_PHONE} .cx-index__w { font-size:12px !important; letter-spacing:0 !important; } }
+/* The 48px cells broke the words mid-letter (STOR / Y, GRAF / FITI). Cells now size to their word at a condensed 76 width
+ *  on one line, still 12px; the seven share the row by content, so the dial row stays one row tall. */
+${CX_PHONE} .cx-index__list { flex-wrap:nowrap !important; gap:0 4px !important; }
+${CX_PHONE} .cx-index__item { width:auto; flex:1 1 auto; min-width:0; }
+${CX_PHONE} .cx-index__w { white-space:nowrap !important; overflow-wrap:normal; font-stretch:76% !important; font-variation-settings:"wdth" 76, "wght" 650 !important; letter-spacing:0 !important; }
+@media (max-width:339px) { ${CX_PHONE} .cx-index__list { flex-wrap:wrap !important; justify-content:center !important; row-gap:2px !important; } ${CX_PHONE} .cx-index__item { flex:0 0 auto; } }
+${CX_PHONE} > .cx-plate-host { flex:none; order:2; position:relative !important; inset:auto !important; right:auto !important; top:auto !important;
+  width:var(--cx-plate) !important; height:var(--cx-plate) !important; margin:2px auto 0 !important; }
+${CX_PHONE} > .cx-plate-host[hidden] { display:none !important; }
+${CX_PHONE} > .cx-plate-host::before { inset:-4% !important; }
+${CX_PHONE}[data-plate="on"] > .k-stage { padding-right:0 !important; padding-bottom:0 !important; }
+${CX_PHONE} > .k-hang { flex:1 1 0; order:3; min-height:150px !important; overflow:hidden auto !important; -webkit-mask-image:none !important; mask-image:none !important;
+  grid-template-columns:var(--cx-sections) minmax(0, 1fr) !important; column-gap:var(--cx-gap) !important; row-gap:8px !important; padding:0 !important; }
+${CX_PHONE} > .k-hang > .cx-wedge { display:none !important; }
+${CX_PHONE} > .k-hang > .sf-tabbar { margin-bottom:0 !important; }
+${CX_PHONE}[data-plate="on"] > .k-hang > .cx-ladder { padding-bottom:0 !important; }
+/* .06em tracking (was .1em) so DISCOVERIES fits the 118px section column instead of running past its left edge */
+${CX_PHONE} .sf-tabbar .sf-tab { height:24px !important; font-size:12px !important; letter-spacing:.06em !important; padding-right:16px !important; }
+/* Shorter leaders on phone (rest 8 / hover 10 / current 12px) so the current tick no longer strikes the label's last letter. */
+${CX_PHONE} .sf-tabbar .sf-tab::after { width:8px !important; }
+${CX_PHONE} .sf-tabbar .sf-tab:is(:hover, :focus-visible)::after { width:10px !important; }
+${CX_PHONE} .sf-tabbar .sf-tab[aria-current="true"]::after { width:12px !important; }
+/* Hand sits on the rail; pull it left of the name so the bone dot clears the leading B. */
+${CX_PHONE} .cx-ladder .orr-arc-hand { --orr-hand-from:1px; --orr-hand-x:6px; }
+${CX_PHONE} .cx-ladder .k-row { padding:4px 4px 4px 32px !important; }
+${CX_PHONE} .cx-ladder .k-row::before { top:12px !important; left:2px !important; width:8px !important; }
+${CX_PHONE} .cx-ladder .k-row .k-row__name { font-size:13px !important; }
+${CX_PHONE} > .k-stage { flex:0 1 auto; order:4; min-height:0 !important; max-height:30% !important; overflow:hidden auto !important;
+  padding:0 !important; margin:0 !important; }
+/* Scroll-extent thumb (.orr-extent::before at left:7px) was painting through the reader "0". Moving it to left:-12px puts
+ *  it outside the stage's overflow:hidden box, so on phone it is clipped out of view (not parked in a visible gutter);
+ *  the reading fade still says "more below". The padding/margin pair keeps the entry text where it was. */
+${CX_PHONE} > .k-stage > .sf-codex-entry > .orr-extent::before { left:-12px !important; width:2px !important; }
+${CX_PHONE} > .k-stage > .sf-codex-entry { padding-left:16px !important; margin-left:-16px !important; }
+${CX_PHONE} .cx-reader__num { gap:8px; margin-bottom:2px !important; }
+${CX_PHONE} .cx-reader__num-n { font-size:28px; line-height:1 !important; }
+${CX_PHONE} .cx-reader__num-of { font-size:12px; }
+${CX_PHONE} .cx-reader__filed { margin-top:0 !important; }
+${CX_PHONE} .sf-codex-entry > h2, ${CX_PHONE} .sf-codex-entry > h2 .k-signal, ${CX_PHONE} .sf-codex-entry > h2 .k-38 { font-size:18px !important; }
+${CX_PHONE} .sf-codex-entry > h2 { margin-top:6px !important; }
+${CX_PHONE} .sf-codex-entry .k-measure .k-sentence { font-size:14px !important; line-height:1.45 !important; }
+${CX_PHONE} .cx-reader__turn { margin-top:8px !important; gap:14px; flex-wrap:wrap; }
+${CX_PHONE} .cx-reader__turn-key { margin-left:0 !important; }
+${CX_PHONE} > .k-foot { flex:none; order:5; z-index:4; margin:0 -14px !important; padding:10px 14px calc(10px + env(safe-area-inset-bottom, 0px)) !important;
+  background:linear-gradient(180deg, rgb(5 7 10 / 0), rgb(5 7 10) 16px) !important; align-items:center !important; min-height:0 !important; }
+${CX_PHONE} > .k-foot .sf-back.k-word { padding:8px 0 10px !important; min-height:40px !important; }
+/* Short portrait phones (375×667): the 140px plate and 10px gaps left the reading 100px tall, so an entry showed its title
+ *  and nothing it says. A 96px plate, 6px gaps and a 40% reading cap hand the reader ~60px: the meta and first lines show. */
+@media (min-height:561px) and (max-height:740px) {
+  ${CX_PHONE} { row-gap:6px !important; --cx-plate:min(96px, 26vw); }
+  ${CX_PHONE} > .k-stage { max-height:40% !important; }
+}
+@media (max-height:560px) {
+  /* Landscape phone: hang | reader as two columns so section head + entry title + first sentence clear on first view. */
+  ${CX_PHONE} { display:grid !important; grid-template-columns:minmax(0, 1.05fr) minmax(0, 1fr) !important; grid-template-rows:auto minmax(0, 1fr) auto !important;
+    row-gap:6px !important; column-gap:14px !important; padding-top:8px !important; }
+  ${CX_PHONE} > .k-title { grid-column:1 / -1; grid-row:1; order:unset; flex:unset; }
+  ${CX_PHONE} > .k-title > p { display:none !important; }
+  ${CX_PHONE} > .cx-plate-host { display:none !important; }
+  /* Dial | word side by side: the row stays 26px tall but each fraction keeps its category. */
+  ${CX_PHONE} .cx-index__item { grid-template-columns:26px auto; grid-template-rows:26px; column-gap:5px; align-items:center; width:auto; }
+  ${CX_PHONE} .cx-index__dial { width:26px; height:26px; }
+  ${CX_PHONE} .cx-index__w { grid-row:1 !important; grid-column:2 !important; margin:0 !important; font-size:12px !important; letter-spacing:.06em !important;
+    text-align:left !important; white-space:nowrap; }
+  ${CX_PHONE} .cx-index__n { font-size:12px !important; }
+  ${CX_PHONE} .cx-index__list { gap:2px 14px !important; justify-content:flex-start !important; }
+  ${CX_PHONE} > .k-hang { grid-column:1; grid-row:2; order:unset; flex:unset; max-height:none !important; min-height:0 !important;
+    --cx-sections:116px; --cx-gap:8px; }
+  /* the portrait one-row dial rule (flex:1 1 auto, nowrap) would spread these side-by-side pairs across the row; keep them packed */
+  ${CX_PHONE} .cx-index__list { flex-wrap:wrap !important; }
+  ${CX_PHONE} .cx-index__item { flex:none; }
+  ${CX_PHONE} > .k-stage { grid-column:2; grid-row:2; order:unset; flex:unset; max-height:none !important; min-height:0 !important; }
+  ${CX_PHONE} > .k-foot { grid-column:1 / -1; grid-row:3; order:unset; flex:unset;
+    padding-top:6px !important; padding-bottom:calc(6px + env(safe-area-inset-bottom, 0px)) !important; }
+  /* 116px column (was 104) and .06em tracking so DISCOVERIES no longer loses its first letters */
+  ${CX_PHONE} .sf-tabbar .sf-tab { height:18px !important; font-size:12px !important; letter-spacing:.06em !important; padding-right:15px !important; }
+  ${CX_PHONE} .cx-ladder .orr-arc-hand { --orr-hand-from:1px; --orr-hand-x:4px; }
+  ${CX_PHONE} .cx-ladder .k-row { padding:3px 2px 3px 30px !important; }
+  ${CX_PHONE} .cx-ladder .k-row .k-row__name { font-size:12px !important; }
+  ${CX_PHONE} .cx-reader__num-n { font-size:22px; }
+  ${CX_PHONE} .cx-reader__num-of { font-size:12px; }
+  ${CX_PHONE} .sf-codex-entry > h2, ${CX_PHONE} .sf-codex-entry > h2 .k-signal, ${CX_PHONE} .sf-codex-entry > h2 .k-38 { font-size:15px !important; }
+  ${CX_PHONE} .sf-codex-entry > h2 { margin-top:4px !important; }
+  ${CX_PHONE} .sf-codex-entry > .fh-legend, ${CX_PHONE} .sf-codex-entry > .cx-reader__meta { margin-top:4px !important; font-size:12px !important; }
+  ${CX_PHONE} .sf-codex-entry .k-measure { margin-top:8px !important; padding-top:8px !important; }
+  ${CX_PHONE} .sf-codex-entry .k-measure .k-sentence { font-size:13px !important; line-height:1.35 !important; }
+  ${CX_PHONE} .cx-reader__turn { margin-top:6px !important; gap:10px; }
+  /* Soften the reading fade so the title isn't half-eaten on first view. */
+  ${CX_PHONE} > .k-stage > .sf-codex-entry[data-overflow="1"]:not(.is-at-end) { -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 28px), transparent); mask-image:linear-gradient(180deg, #000 calc(100% - 28px), transparent); }
+}
+`;
+
+const MLOG_CSS = `
+/* ================================ MISSION LOG =============================================== */
+${ML} { --ml-dial:clamp(190px, min(16vw, 30vh), 300px); row-gap:clamp(24px, 4.4vh, 52px) !important; grid-template-areas:"title title" "hang stage" "foot stage" !important; }
+${ML} > .k-title .sf-mlog-story-line { margin:10px 0 0 !important; ${BODY} font-size:15px !important; color:rgb(${BONE} / .88) !important; }
+/* the hang is the beam: one ruled line down its left edge, carried with the scroll */
+${ML} > .k-hang.sf-mlog-body { ${PLAIN} position:relative; padding:4px 8px 30px 0 !important; overflow:hidden auto; scrollbar-width:none; background:none !important; -webkit-mask-image:none !important; mask-image:none !important; animation:none !important; }
+${ML} > .k-hang.sf-mlog-body::-webkit-scrollbar { display:none; }
+${ML} > .k-hang.sf-mlog-body[data-overflow="1"] { -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - var(--ml-cut, 0px) - 18px), transparent calc(100% - var(--ml-cut, 0px))) !important;
+  mask-image:linear-gradient(180deg, #000 calc(100% - var(--ml-cut, 0px) - 18px), transparent calc(100% - var(--ml-cut, 0px))) !important; }
+${ML} .ml-beam { position:absolute; left:9px; top:0; width:10px; height:0; z-index:0; pointer-events:none; will-change:transform;
+  background:linear-gradient(90deg, transparent 4px, rgb(${BONE} / .82) 4px, rgb(${BONE} / .82) 6px, transparent 6px),
+    linear-gradient(90deg, transparent 2px, rgb(${BONE} / .42) 2px, rgb(${BONE} / .42) 8px, transparent 8px),
+    repeating-linear-gradient(180deg, rgb(${BONE} / .55) 0 2px, transparent 2px 8px) 0 0 / 2px 100% no-repeat; border-radius:5px; }
+${ML} .ml-beam[hidden] { display:none !important; }
+${ML} .ml-beam::after { content:""; position:absolute; left:3px; right:3px; bottom:-10px; height:10px; border-radius:0 0 3px 3px;
+  background:linear-gradient(180deg, rgb(${BONE} / .45), rgb(${BONE} / 0)); }
+${ML} > .k-hang.sf-mlog-body > .orr-extent::before { display:none !important; }
+${ML} .orr-arc-hand { --orr-hand-from:22px; --orr-hand-x:25px; }
+/* section heads: long graduations with a caps word */
+${ML} .sf-mlog-body > .k-row.k-row--static, ${ML} .sf-mlog-story > .k-row.k-row--static, ${ML} .sf-mlog-comp-subhead { ${PLAIN} position:relative !important; display:flex !important; align-items:baseline; justify-content:space-between; gap:12px;
+  min-height:0 !important; height:auto !important; padding:22px 0 8px 40px !important; margin:0 !important; }
+${ML} .sf-mlog-body > .k-row.k-row--static:first-of-type, ${ML} .sf-mlog-story > .k-row.k-row--static { padding-top:6px !important; }
+${ML} .sf-mlog-body > .k-row.k-row--static[hidden] { display:none !important; }
+${ML} .sf-mlog-body > .k-row.k-row--static::before, ${ML} .sf-mlog-story > .k-row.k-row--static::before, ${ML} .sf-mlog-comp-subhead::before { content:"" !important; position:absolute !important; left:6px !important; bottom:calc(8px + .45em) !important; top:auto !important;
+  width:18px !important; height:2px !important; margin:0 !important; background:rgb(${BONE} / .9) !important; translate:none !important; scale:none !important; transform:none !important; border:0 !important; box-shadow:none !important; border-radius:0 !important; clip-path:none !important; display:block !important; }
+${ML} .sf-mlog-body .k-row.k-row--static::after { display:none !important; content:none !important; }
+${ML} .sf-mlog-body .k-caps { ${LABEL} font-size: 13px !important; letter-spacing:.06em !important; color:rgb(${BONE} / .86) !important; text-shadow:none !important; margin:0 !important; }
+${verb(`${ML} .sf-mlog-toggle`)}
+${ML} .sf-mlog-toggle { font-size: 13px !important; }
+${ML} .sf-mlog-toggle::before { content:none !important; }
+/* the current action: the beam's head, a ring round a point of phosphor */
+${ML} .sf-mlog-recommend > .k-rows { margin:0 !important; padding:0 !important; }
+${ML} .sf-mlog-rec-item.k-row { ${PLAIN} position:relative !important; display:grid !important; grid-template-columns:minmax(0, 1fr) auto; align-items:start; column-gap:12px;
+  min-height:0 !important; height:auto !important; padding:2px 0 6px 40px !important; margin:0 !important; cursor:default; }
+${ML} .sf-mlog-rec-item.k-row::before { content:"" !important; position:absolute !important; left:6px !important; top:3px !important; width:16px !important; height:16px !important; margin:0 !important; display:block !important;
+  translate:none !important; scale:none !important; transform:none !important; border:0 !important; box-shadow:none !important; clip-path:none !important; border-radius:50% !important;
+  background:radial-gradient(circle, rgb(223 238 255) 0 2.6px, transparent 3px 5.4px, rgb(${BONE} / .8) 5.6px 6.9px, transparent 7.2px), radial-gradient(circle, rgb(8 10 13) 0 7px, transparent 7.4px) !important; }
+${ML} .sf-mlog-rec-item.k-row::after { display:none !important; }
+${ML} .sf-mlog-rec-item.is-now { padding-bottom:2px !important; }
+${ML} .sf-mlog-rec-now { ${LABEL} display:inline-block; margin-right:12px; font-size: 12px !important; letter-spacing:.24em !important; color:rgb(223 238 255) !important; }
+${ML} .sf-mlog-rec-item.is-now .sf-mlog-rec-body { display:inline !important; margin:0 !important; font-size:13.5px !important; color:${INK} !important; }
+${ML} .sf-mlog-rec-item .sf-mlog-rec-title { ${BODY} display:block; font-size:15px !important; line-height:1.3 !important; font-weight:560; color:${INK} !important; white-space:normal !important; }
+${ML} .sf-mlog-rec-item .k-row__sub { ${BODY} display:block; margin-top:4px; font-size:12.5px !important; line-height:1.45 !important; color:rgb(${BONE} / .86) !important; white-space:normal; }
+${ML} .sf-mlog-rec-item .sf-mlog-rec-meta { font-size:12px !important; color:rgb(${BONE} / .82) !important; }
+${ML} .sf-mlog-rec-item .sf-mlog-rec-marker { ${LABEL} margin-top:8px !important; font-size: 12px !important; letter-spacing:.16em !important; color:rgb(${BONE} / .78) !important; }
+${ML} .sf-mlog-rec-item .sf-mlog-rec-label { display:block !important; ${PLAIN} ${LABEL} min-height:0 !important; padding:2px 0 0 !important; font-size: 12px !important; letter-spacing:.06em !important; color:rgb(${BONE} / .84) !important; }
+${ML} .sf-mlog-rec-item .sf-mlog-rec-label::before { content:"●  "; font-size: 12px; vertical-align:2px; color:rgb(${BONE} / .84); }
+${ML} .sf-mlog-rec-actions, ${ML} .sf-mlog-story .sf-mlog-rec-actions { display:flex !important; flex-wrap:wrap; gap:6px 26px; margin:4px 0 0 !important; padding:0 0 0 40px !important; list-style:none; }
+${ML} .sf-mlog-rec-actions > li { display:flex !important; flex-direction:column; align-items:flex-start; }
+${verb(`${ML} .sf-mlog-rec-action`)}
+${ML} .sf-mlog-rec-action::before { content:"›  "; color:rgb(${BONE} / .78); }
+${ML} :is(.sf-mlog-rec-actions, .sf-mlog-btns) .k-word-sub { ${LABEL} margin:1px 0 0 14px !important; font-size: 12px !important; letter-spacing:.16em !important; color:rgb(${BONE} / .78) !important; }
+/* the active contracts: nodes on the beam; below each node the beam is lit as far as the contract has come */
+${ML} .sf-mlog-list > .k-rows { margin:0 !important; padding:0 !important; ${PLAIN} }
+/* the trace: the beam lit from the current action down to a bead (the chosen node at rest, the pointer's
+   place on the beam while it traces), an ice pulse running down it */
+${ML} .ml-trace { position:absolute; left:12px; top:0; width:4px; height:0; z-index:1; pointer-events:none; border-radius:2px; will-change:transform;
+  background:linear-gradient(180deg, rgb(223 238 255 / .35), rgb(223 238 255 / .95)); box-shadow:0 0 10px 1px rgb(223 238 255 / .32); }
+${ML} .ml-trace[hidden], ${ML} .ml-trace__bead[hidden] { display:none !important; }
+${ML} .ml-trace::after { content:""; position:absolute; left:-2px; top:-36px; width:8px; height:36px; border-radius:4px;
+  background:linear-gradient(180deg, rgb(143 203 255 / 0), rgb(143 203 255 / .95) 70%, rgb(223 238 255)); box-shadow:0 0 10px 2px rgb(143 203 255 / .4);
+  animation:ml-pulse 2.8s cubic-bezier(.4, 0, .6, 1) infinite; opacity:.95; }
+@keyframes ml-pulse { 0% { transform:translateY(0); opacity:0; } 12% { opacity:.95; } 88% { opacity:.95; } 100% { transform:translateY(calc(var(--ml-trace-h, 0px) + 36px)); opacity:0; } }
+${ML} .ml-trace__bead { position:absolute; left:6px; top:-8px; width:16px; height:16px; z-index:2; pointer-events:none; border-radius:50%; will-change:transform;
+  background:radial-gradient(circle, rgb(255 255 255) 0 2.6px, rgb(223 238 255 / .9) 3px 4.2px, rgb(223 238 255 / 0) 7.5px); box-shadow:0 0 14px 3px rgb(223 238 255 / .45); }
+${ML} .sf-mlog-list .k-row.sf-mlog-row.is-traced::before { background:radial-gradient(circle, rgb(8 10 13) 0 4.2px, rgb(223 238 255) 4.5px 7px, rgb(8 10 13 / 0) 7.3px) !important; }
+${ML} .sf-mlog-list .k-row.sf-mlog-row.is-traced .k-row__name { color:rgb(255 255 255) !important; }
+${ML} .sf-mlog-list .k-row.sf-mlog-row.is-traced .k-row__sub { color:rgb(${BONE} / .86) !important; }
+${ML} .sf-mlog-list .k-row.sf-mlog-row.is-traced .k-row__sub.k-bad { color:rgb(255 112 92) !important; }
+${ML} > .k-hang.sf-mlog-body { cursor:default; }
+${RML} .ml-trace::after { animation:none !important; display:none; }
+${ML} .orr-mdial__pct .orr-mdial__num.orr-counter { height:.9em; line-height:.9; }
+${ML} .orr-mdial__pct .orr-counter__digit { width:.58em; }
+${ML} .sf-mlog-card > .k-hero .k-hero__n.orr-counter { height:.92em; line-height:.92; overflow:hidden; }
+${ML} .sf-mlog-card > .k-hero .k-hero__n .orr-counter__digit { width:.58em; }
+${ML} .sf-mlog-list .k-row.sf-mlog-row { ${PLAIN} position:relative !important; display:grid !important; grid-template-columns:minmax(0, 1fr) auto; align-items:start; column-gap:14px;
+  min-height:0 !important; height:auto !important; padding:10px 4px 12px 40px !important; margin:0 !important; cursor:pointer; color:${INK} !important; }
+${ML} .sf-mlog-list .k-row.sf-mlog-row::before { content:"" !important; position:absolute !important; left:6.5px !important; top:12px !important; width:15px !important; height:15px !important; margin:0 !important; display:block !important;
+  translate:none !important; scale:none !important; transform:none !important; border:0 !important; box-shadow:none !important; clip-path:none !important; border-radius:50% !important; z-index:1;
+  background:radial-gradient(circle, rgb(${BONE} / .24) 0 4.4px, rgb(${BONE} / .9) 4.7px 6.8px, rgb(8 10 13 / 0) 7.1px) !important;
+  box-shadow:0 0 0 3px rgb(8 10 13), 0 0 10px 2px rgb(${BONE} / .16) !important; }
+${ML} .sf-mlog-list .k-row.sf-mlog-row.tracked::before { background:radial-gradient(circle, rgb(${BONE} / .24) 0 4.4px, rgb(${BONE} / .9) 4.7px 6.8px, rgb(8 10 13 / 0) 7.1px),
+  linear-gradient(rgb(${BONE} / .9), rgb(${BONE} / .9)) 100% 50% / 4px 2px no-repeat !important; }
+${ML} .sf-mlog-list .k-row.sf-mlog-row.tracked::before { width:19px !important; border-radius:7.5px 0 0 7.5px !important; }
+${ML} .sf-mlog-list .k-row.sf-mlog-row::after { content:"" !important; position:absolute !important; left:12px !important; top:27px !important; width:4px !important; margin:0 !important; display:block !important;
+  height:calc((100% - 13px) * var(--mlog-p, 0)) !important; translate:none !important; scale:none !important; transform:none !important; border:0 !important; clip-path:none !important; border-radius:2px !important;
+  background:linear-gradient(180deg, rgb(223 238 255), rgb(223 238 255 / .7)) !important; box-shadow:0 0 8px 1px rgb(223 238 255 / .32) !important; opacity:1 !important; }
+/* the stretch to the next node, faint, so the lit stub reads as a share of it */
+${ML} .sf-mlog-list .k-row.sf-mlog-row { background:linear-gradient(90deg, transparent 12px, rgb(${BONE} / .16) 12px, rgb(${BONE} / .16) 16px, transparent 16px) 0 27px / 100% calc(100% - 13px) no-repeat !important; }
+${ML} .sf-mlog-list .k-row.sf-mlog-row[aria-selected="true"]::before { background:radial-gradient(circle, rgb(252 250 244) 0 6.8px, rgb(8 10 13 / 0) 7.1px) !important;
+  box-shadow:0 0 0 3px rgb(8 10 13), 0 0 14px 3px rgb(252 250 244 / .35) !important; }
+${ML} .sf-mlog-list .k-row.sf-mlog-row:focus-visible { outline:none !important; }
+${ML} .sf-mlog-list .k-row.sf-mlog-row:focus-visible:not([aria-selected="true"])::before { background:radial-gradient(circle, rgb(8 10 13) 0 4.2px, ${INK} 4.5px 7px, rgb(8 10 13 / 0) 7.3px) !important; }
+${ML} .sf-mlog-list .k-row.sf-mlog-row .k-row__name { ${BODY} display:inline; font-size:14.5px !important; line-height:1.3 !important; font-weight:500; color:rgb(${BONE} / .9) !important; white-space:normal !important; text-shadow:none !important; }
+${ML} .sf-mlog-list .k-row.sf-mlog-row[aria-selected="true"] .k-row__name { color:rgb(252 250 244) !important; font-weight:600 !important; }
+${ML} .sf-mlog-list .k-row.sf-mlog-row:is(:hover, :focus-visible) .k-row__name { color:rgb(255 255 255) !important; }
+${ML} .sf-mlog-list .k-row.sf-mlog-row .k-row__sub { ${BODY} display:block; margin-top:4px; font-size:12.5px !important; line-height:1.4 !important; color:rgb(${BONE} / .86) !important; }
+${ML} .sf-mlog-list .k-row.sf-mlog-row .k-row__sub.k-bad { color:rgb(255 112 92) !important; }
+${ML} .sf-mlog-list .k-row.sf-mlog-row .k-row__num { ${PLAIN} min-height:0 !important; padding:1px 0 0 !important; display:block !important;
+  font-family:var(--dp-face-numeral, "Archivo") !important; font-variation-settings:"wdth" 100, "wght" 480 !important; font-weight:480 !important; font-size:14px !important; letter-spacing:0 !important;
+  text-transform:none !important; color:rgb(223 238 255) !important; font-variant-numeric:tabular-nums; }
+${ML} .sf-mlog-tag { ${LABEL} display:inline-block; margin-left:10px; font-size: 12px !important; letter-spacing:.06em !important; color:rgb(${BONE} / .8); vertical-align:1px; white-space:nowrap; }
+${ML} .sf-mlog-tag::before { content:"●  "; font-size: 12px; vertical-align:1.5px; }
+${ML} .sf-mlog-pct { ${LABEL} display:block; margin-top:6px; font-size: 12px !important; letter-spacing:.18em !important; color:rgb(${BONE} / .8); }
+${ML} .sf-mlog-list .sf-mlog-empty .k-sentence, ${ML} .sf-mlog-comp-list .sf-mlog-empty .k-sentence { ${BODY} margin:0 !important; padding:2px 0 6px 40px; font-size:13px !important; color:rgb(${BONE} / .84) !important; }
+/* the career paths: a diamond on the beam, their verbs as words */
+${ML} .sf-mlog-career.k-row { ${PLAIN} position:relative !important; display:grid !important; grid-template-columns:minmax(0, 1fr) auto; column-gap:12px; align-items:start;
+  min-height:0 !important; height:auto !important; padding:8px 0 12px 40px !important; margin:0 !important; cursor:default; }
+${ML} .sf-mlog-career.k-row::before { content:"" !important; position:absolute !important; left:9.5px !important; top:12px !important; width:9px !important; height:9px !important; margin:0 !important; display:block !important;
+  transform:rotate(45deg) !important; translate:none !important; scale:none !important; border:0 !important; border-radius:0 !important; clip-path:none !important;
+  background:rgb(8 10 13) !important; box-shadow:inset 0 0 0 1.5px rgb(${BONE} / .82) !important; }
+${ML} .sf-mlog-career.k-row::after { display:none !important; }
+${ML} .sf-mlog-career .sf-mlog-career-title { ${BODY} font-size:14.5px !important; font-weight:560; color:${INK} !important; white-space:normal !important; }
+${ML} .sf-mlog-career .k-row__sub { ${BODY} margin-top:3px; font-size:12.5px !important; line-height:1.4; color:rgb(${BONE} / .86) !important; white-space:normal; }
+${ML} .sf-mlog-career .sf-mlog-career-status { ${LABEL} font-size: 12px !important; letter-spacing:.18em !important; color:rgb(${BONE} / .76) !important; }
+${ML} .sf-mlog-career .sf-mlog-career-progress { ${PLAIN} ${LABEL} min-height:0 !important; padding:2px 0 0 !important; font-size: 12px !important; letter-spacing:.16em !important; color:rgb(223 238 255) !important; }
+${ML} .sf-mlog-career :is(.sf-mlog-career-actions, .sf-mlog-career-choices) { display:flex !important; flex-wrap:wrap; gap:4px 22px; margin:8px 0 0 !important; padding:0 !important; list-style:none; }
+${verb(`${ML} .sf-mlog-career .sf-mlog-career-btn`)}
+${ML} .sf-mlog-career .sf-mlog-career-btn { font-size: 12px !important; }
+${ML} .sf-mlog-career .sf-mlog-career-btn::before { content:"›  "; color:rgb(${BONE} / .78); }
+${ML} .sf-mlog-career .sf-mlog-career-btn[aria-pressed="true"] { color:rgb(255 255 255) !important; background:linear-gradient(90deg, ${INK}, rgb(${BONE} / 0)) 0 100% / 100% 1.5px no-repeat !important; }
+${ML} .sf-mlog-career .sf-mlog-career-btn-abandon:is(:hover, :focus-visible) { color:var(--dp-danger, #ff5038) !important; background:linear-gradient(90deg, var(--dp-danger, #ff5038), rgb(255 80 56 / 0)) 0 100% / 100% 1.5px no-repeat !important; }
+${ML} .sf-mlog-body :is(a, .sf-entity-link, [data-entity]) { color:${INK} !important; text-decoration:none !important; box-shadow:none !important; background-image:none !important; border-bottom:0 !important; }
+${ML} .sf-mlog-body :is(a, .sf-entity-link, [data-entity]):is(:hover, :focus-visible) { text-decoration:underline 1px rgb(${BONE} / .6) !important; text-underline-offset:3px; outline:none !important; }
+/* the settled: past nodes on the beam, hollow and dim; the totals as a ledger */
+${ML} .sf-mlog-comp-list :is(.sf-mlog-receipts, .sf-mlog-comp-rows) { margin:0 !important; padding:0 !important; }
+${ML} .sf-mlog-comp-list .k-row { ${PLAIN} position:relative !important; display:grid !important; grid-template-columns:minmax(0, 1fr) auto; column-gap:12px; align-items:start;
+  min-height:0 !important; height:auto !important; padding:6px 0 8px 40px !important; margin:0 !important; cursor:default; }
+${ML} .sf-mlog-comp-list .k-row::before { content:"" !important; position:absolute !important; left:10.5px !important; top:10px !important; width:7px !important; height:7px !important; margin:0 !important; display:block !important;
+  border-radius:50% !important; translate:none !important; scale:none !important; transform:none !important; border:0 !important; clip-path:none !important; background:rgb(${BONE} / .58) !important; box-shadow:none !important; }
+${ML} .sf-mlog-comp-list .k-row::after { display:none !important; }
+${ML} .sf-mlog-comp-list .k-row.sf-mlog-receipt-row::before { border-radius:1px !important; width:8px !important; height:8px !important; left:10px !important; background:rgb(${BONE} / .6) !important; }
+${ML} .sf-mlog-comp-list .k-row.sf-mlog-receipt-row--bad::before { background:var(--dp-danger, #ff5038) !important; width:9px !important; height:2.5px !important; top:13px !important;
+  transform:rotate(-45deg) !important; border-radius:1px !important; }
+${ML} .sf-mlog-comp-list .k-row .k-38 { ${BODY} font-size:13px !important; color:rgb(${BONE} / .9) !important; }
+${ML} .sf-mlog-comp-list .k-row .k-row__sub { ${BODY} margin-top:2px; font-size:12px !important; color:rgb(${BONE} / .8) !important; }
+${ML} .sf-mlog-comp-list .k-row :is(.sf-mlog-receipt-outcome, .sf-mlog-comp-cr) { ${LABEL} font-size: 12px !important; letter-spacing:.16em !important; color:rgb(${BONE} / .84) !important; }
+${ML} .sf-mlog-comp-list .sf-mlog-receipt-row--bad .sf-mlog-receipt-outcome { color:rgb(${BONE} / .7) !important; }
+/* the campaign thread (post-ending only) keeps the same voice */
+${ML} .sf-mlog-story-tile { padding:0 0 10px 40px !important; ${PLAIN} }
+${ML} .sf-mlog-story-tile .k-sentence { ${BODY} font-size:13px !important; line-height:1.5; color:rgb(${BONE} / .8) !important; }
+${ML} .sf-mlog-story-tile .sf-mlog-rec-actions { padding-left:0 !important; }
+
+/* ---- the stage: the chosen contract's reading beside its dial ---- */
+${ML} > .k-stage.sf-mlog-stage { ${PLAIN} padding:0 0 26px !important; overflow:hidden auto; -webkit-mask-image:none !important; mask-image:none !important; animation:none !important; }
+${ML} > .k-stage.sf-mlog-stage { display:flex !important; flex-direction:column; align-self:stretch !important; max-height:none !important; padding-bottom:clamp(16px, calc(12vh - 50px), 90px) !important; }
+${ML} .sf-mlog-card { position:relative; display:grid !important; flex:1 0 auto; grid-template-columns:minmax(0, 1fr) var(--ml-dial);
+  grid-template-rows:repeat(6, auto) minmax(18px, 1fr) auto; column-gap:clamp(28px, 3.6vw, 72px); align-content:stretch; align-items:start; min-height:100%; }
+${ML} .sf-mlog-card > * { grid-column:1; min-width:0; margin-left:0 !important; }
+${ML} .sf-mlog-side { grid-column:2 !important; grid-row:1 / span 7; display:flex; flex-direction:column; align-items:center; }
+${ML} .sf-mlog-side > .sf-mlog-btns { margin:74px 0 0 !important; }
+${ML} .sf-mlog-side .sf-mlog-btns > .k-words--row { flex-direction:column; align-items:center; gap:14px; }
+${ML} .sf-mlog-side .sf-mlog-btns > .k-words--row > li { align-items:center; }
+/* centered under the dial: a verb's sub-line (LOCAL MAP) sits under its verb, not 14px right of it,
+   and the story-spine note is a quiet sentence-case caption instead of three tracked caps lines */
+${ML} .sf-mlog-side .sf-mlog-btns > .k-words--row > li > .k-word-sub { margin-left:0 !important; text-align:center; }
+${ML} .sf-mlog-side .sf-mlog-btns > .k-words--row > li > .sf-mlog-story-note.sf-mlog-story-note.sf-mlog-story-note { ${BODY} font-weight:400 !important; font-style:italic !important; font-size:13px !important; line-height:1.4 !important; color:rgb(${BONE} / .72) !important; max-width:22ch; text-wrap:balance; margin-top:6px !important; }
+${ML} .sf-mlog-card > .ml-route-host { grid-column:1 !important; align-self:start; margin-top:clamp(30px, 4.8vh, 58px); }
+${ML} .sf-mlog-card.is-empty > .sf-mlog-empty { grid-row:2; }
+${ML} .sf-mlog-kicker { ${LABEL} margin:2px 0 0 !important; font-size: 12px !important; letter-spacing:.06em !important; color:rgb(${BONE} / .86) !important; }
+${ML} .sf-mlog-kicker .sf-mlog-tag { margin-left:14px; }
+/* ---- the route band: the chosen contract's lane from here to the berth, its clock ruled under it; while
+   the beam is traced, the traced contract's ghost lane under it (the two weigh side by side) ---- */
+${ML} .ml-route { --ml-disc:72px; --ml-lane-y:calc(var(--ml-disc) / 2); --ml-ghost-y:calc(var(--ml-disc) * 1.39); --ml-ghost-disc:calc(var(--ml-disc) * .56);
+  position:relative; padding:12px 0 4px; }
+${ML} .ml-route::before { content:""; position:absolute; inset:-18px -40px -8px; z-index:-1; pointer-events:none;
+  background:radial-gradient(60% 90% at 50% 55%, rgb(5 7 10 / .72), rgb(5 7 10 / .4) 70%, rgb(5 7 10 / 0)); }
+${ML} .ml-route__ends { display:grid; grid-template-columns:minmax(0, 1fr) auto minmax(0, 1fr); align-items:end; gap:18px; margin:0 0 12px !important; }
+${ML} .ml-route__from, ${ML} .ml-route__to { ${BODY} font-size:14px !important; color:${INK} !important; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; }
+${ML} .ml-route__to { text-align:right; }
+${ML} :is(.ml-route__from, .ml-route__to) small { ${LABEL} display:block; margin-bottom:3px; font-size: 12px !important; letter-spacing:.06em !important; color:rgb(${BONE} / .82) !important; }
+${ML} .ml-route__to :is(a, .sf-entity-link, [data-entity]) { color:${INK} !important; text-decoration:none !important; box-shadow:none !important; background-image:none !important; border-bottom:0 !important; }
+${ML} .ml-route__to :is(a, .sf-entity-link, [data-entity]):is(:hover, :focus-visible) { text-decoration:underline 1px rgb(${BONE} / .6) !important; text-underline-offset:4px; outline:none !important; }
+${ML} .ml-route__jumps { ${LABEL} font-size: 12px !important; letter-spacing:.06em !important; color:rgb(223 238 255) !important; white-space:nowrap; }
+${ML} .ml-route__track { position:relative; height:calc(var(--ml-disc) + 16px); }
+${ML} .ml-route.has-slot .ml-route__track { height:calc(var(--ml-ghost-y) + 32px); }
+${ML} .ml-route__run { position:absolute; left:var(--ml-disc); right:var(--ml-disc); top:0; bottom:0; }
+/* the lane: a filled band with a lit core (never a bare line), the stretch you have come in phosphor */
+${ML} .ml-lane { position:absolute; left:0; right:0; top:var(--ml-lane-y); height:0; }
+${ML} .ml-lane__band { position:absolute; left:0; right:0; top:-5px; height:10px; border-radius:5px; background:rgb(${BONE} / .42); }
+${ML} .ml-lane__band::after { content:""; position:absolute; left:0; right:0; top:3.5px; height:3px; border-radius:2px; background:rgb(${BONE} / .92); }
+${ML} .ml-lane__lit { position:absolute; left:0; top:-3px; height:6px; border-radius:3px; background:rgb(223 238 255); box-shadow:0 0 12px 2px rgb(223 238 255 / .35); }
+${ML} .ml-lane__run { position:absolute; top:-6px; height:12px; overflow:hidden; pointer-events:none; }
+${ML} .ml-route__pulse { position:absolute; left:0; top:0; width:100%; height:100%; transform:translateX(-100%); animation:ml-route-pulse 3.2s cubic-bezier(.4, 0, .6, 1) infinite;
+  background:linear-gradient(90deg, rgb(143 203 255 / 0), rgb(143 203 255 / .55) 82%, rgb(220 240 255 / .95) 97%, rgb(143 203 255 / 0)); }
+@keyframes ml-route-pulse { from { transform:translateX(-100%); } to { transform:translateX(0); } }
+/* a tick where each jump lands, named for the sector it lands in */
+${ML} .ml-lane__hop { position:absolute; top:0; width:0; pointer-events:none; }
+${ML} .ml-lane__hop > i { position:absolute; left:-1.5px; top:-7px; width:3px; height:14px; border-radius:1px; background:rgb(${BONE} / .88); box-shadow:0 0 0 3px rgb(5 7 10 / .92); }
+${ML} .ml-lane__hop > b { position:absolute; left:0; bottom:14px; transform:translateX(-50%); ${LABEL} font-size: 12px !important; letter-spacing:.18em !important; font-weight:650; color:rgb(${BONE} / .9); white-space:nowrap; }
+${ML} .ml-lane__hop.is-near > b { visibility:hidden; }
+${ML} .ml-lane__threat { position:absolute; top:-4px; height:8px; border-radius:2px; background:var(--dp-danger, #ff5038); box-shadow:0 0 12px 1px rgb(255 80 56 / .4); pointer-events:none; }
+${ML} .ml-lane__threat > b { position:absolute; right:0; bottom:10px; ${LABEL} font-size: 12px !important; letter-spacing:.06em !important; color:var(--dp-danger, #ff5038); white-space:nowrap; }
+/* you: a chevron of phosphor on the lane (no slider thumb), your share over it once you have one */
+${ML} .ml-lane__ship { position:absolute; top:0; width:0; z-index:2; pointer-events:none; filter:drop-shadow(0 0 2px rgb(5 7 10)) drop-shadow(0 0 6px rgb(223 238 255 / .65)); }
+${ML} .ml-lane__ship > i { position:absolute; left:-6px; top:-10px; width:17px; height:20px; background:rgb(244 250 255); clip-path:polygon(0 0, 100% 50%, 0 100%, 36% 50%); }
+${ML} .ml-lane__pct { position:absolute; bottom:14px; transform:translateX(-50%); font-family:var(--dp-face-numeral, "Archivo"); font-variation-settings:"wdth" 100, "wght" 520;
+  font-size: 13px; letter-spacing:.04em; color:rgb(223 238 255); white-space:nowrap; pointer-events:none; }
+/* the clock, folded onto the lane: a ruled scale just under it, the ticks still ahead lit, a mark at now */
+${ML} .ml-clock { position:absolute; left:0; right:0; top:calc(var(--ml-lane-y) + 11px); height:10px; pointer-events:none; }
+${ML} .ml-clock > i { position:absolute; top:0; width:2px; height:5px; margin-left:-1px; background:rgb(${BONE} / .48); }
+${ML} .ml-clock > i.is-major { height:10px; }
+${ML} .ml-clock > i.is-left { background:rgb(${BONE} / .94); }
+${ML} .ml-clock__now { position:absolute; top:-4px; width:3px; height:18px; margin-left:-1.5px; border-radius:1px; background:${INK}; box-shadow:0 0 0 2px rgb(5 7 10 / .9); }
+${ML} .ml-clock.is-threat > i.is-left, ${ML} .ml-clock.is-threat .ml-clock__now { background:var(--dp-danger, #ff5038); }
+${ML} .ml-clock.is-none > i { background:rgb(${BONE} / .3); }
+${ML} .ml-route__mid { display:flex; flex-direction:column; align-items:center; gap:5px; min-width:0; }
+${ML} .ml-clock__read { ${LABEL} font-size: 12px !important; letter-spacing:.06em !important; color:rgb(${BONE} / .86) !important; white-space:nowrap; }
+${ML} .ml-clock__read b { font-family:var(--dp-face-numeral, "Archivo"); font-variation-settings:"wdth" 100, "wght" 480; font-size:14px; letter-spacing:.02em; color:rgb(223 238 255); margin-right:8px; }
+${ML} .ml-clock__read.is-threat b { color:var(--dp-danger, #ff5038); }
+/* the two ends: produced art in a disc, always (station, sector, your hull from above, the relay still) */
+${ML} .ml-route__face { position:absolute; top:0; width:var(--ml-disc); height:var(--ml-disc); border-radius:50%; overflow:hidden; background:rgb(12 14 18);
+  box-shadow:0 0 0 2px rgb(${BONE} / .9), 0 0 0 6px rgb(5 7 10), 0 0 16px 4px rgb(${BONE} / .2); }
+${ML} .ml-route__face > img { display:block; width:100%; height:100%; object-fit:cover; transform:scale(1.35); filter:saturate(.9); }
+${ML} .ml-route__face--from { left:0; }
+${ML} .ml-route__face--to { right:0; box-shadow:0 0 0 2px rgb(223 238 255), 0 0 0 6px rgb(5 7 10), 0 0 18px 5px rgb(223 238 255 / .28); }
+${ML} .ml-route__face.is-hull { background:radial-gradient(circle, rgb(34 40 50), rgb(12 14 18) 74%); }
+${ML} .ml-route__face.is-hull > img { object-fit:contain; transform:rotate(90deg) scale(.82); filter:none; }
+/* the traced contract: a ghost lane off the start of the chosen one, its own end in a smaller disc */
+${ML} .ml-route__ghost { position:absolute; inset:0; pointer-events:none; }
+${ML} .ml-ghost__elbow { position:absolute; left:0; top:0; width:var(--ml-disc); height:var(--ml-ghost-y); overflow:visible; }
+${ML} .ml-ghost__elbow path { fill:none; stroke:rgb(143 203 255 / .55); stroke-width:3; stroke-linejoin:round; stroke-linecap:round; vector-effect:non-scaling-stroke; }
+${ML} .ml-route__ghost.is-rest .ml-ghost__elbow path { stroke:rgb(${BONE} / .36); }
+${ML} .ml-lane--ghost { top:var(--ml-ghost-y); left:var(--ml-disc); right:var(--ml-disc); }
+${ML} .ml-lane--ghost .ml-lane__band { top:-4px; height:8px; background:rgb(143 203 255 / .16); }
+${ML} .ml-lane--ghost .ml-lane__band::after { top:2.5px; background:rgb(143 203 255 / .5); }
+${ML} .ml-lane--ghost .ml-lane__lit { top:-2.5px; height:5px; background:rgb(143 203 255 / .8); box-shadow:0 0 10px 1px rgb(143 203 255 / .3); }
+${ML} .ml-lane--ghost .ml-lane__hop > i { top:-6px; height:12px; background:rgb(143 203 255 / .75); }
+${ML} .ml-lane--ghost .ml-lane__hop > b, ${ML} .ml-lane--ghost .ml-lane__threat > b { display:none; }
+${ML} .ml-lane--ghost .ml-lane__threat { opacity:.6; }
+${ML} .ml-lane--ghost .ml-lane__ship { filter:drop-shadow(0 0 2px rgb(5 7 10)) drop-shadow(0 0 5px rgb(143 203 255 / .5)); }
+${ML} .ml-lane--ghost .ml-lane__ship > i { background:rgb(143 203 255); transform:scale(.85); }
+${ML} .ml-route__face--ghost { right:calc((var(--ml-disc) - var(--ml-ghost-disc)) / 2); top:calc(var(--ml-ghost-y) - var(--ml-ghost-disc) / 2); width:var(--ml-ghost-disc); height:var(--ml-ghost-disc);
+  box-shadow:0 0 0 2px rgb(143 203 255 / .75), 0 0 0 5px rgb(5 7 10), 0 0 12px 3px rgb(143 203 255 / .2); }
+${ML} .ml-route__face--ghost > img { opacity:.72; }
+${ML} .ml-ghost__cap { position:absolute; left:var(--ml-disc); right:var(--ml-disc); top:calc(var(--ml-ghost-y) + 13px); display:flex; justify-content:space-between; gap:18px; margin:0 !important;
+  ${LABEL} font-size: 12px !important; letter-spacing:.06em !important; color:rgb(143 203 255) !important; white-space:nowrap; }
+${ML} .ml-ghost__name { flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; }
+${ML} .ml-ghost__end { position:absolute; right:calc(var(--ml-disc) + 6px); top:calc(var(--ml-ghost-y) - 24px); ${LABEL} font-size: 12px !important; letter-spacing:.06em !important;
+  color:rgb(143 203 255) !important; white-space:nowrap; line-height:14px; }
+${ML} .ml-ghost__cap b { font-weight:700; color:rgb(200 230 255); }
+${ML} .ml-ghost__hint { position:absolute; left:calc(var(--ml-disc) + 8px); top:calc(var(--ml-ghost-y) - 9px); margin:0 !important; ${LABEL} font-size: 12px !important; letter-spacing:.06em !important;
+  color:rgb(${BONE} / .64) !important; white-space:nowrap; }
+${ML} .ml-route.is-empty .ml-lane__band { -webkit-mask-image:linear-gradient(90deg, #000 38%, transparent 88%); mask-image:linear-gradient(90deg, #000 38%, transparent 88%); }
+${ML} .ml-route.is-empty .ml-route__to { color:rgb(${BONE} / .7) !important; }
+/* the stage's floor: the destination's establishing art, faded and dissolved at every edge, under the lane */
+${ML} > .ml-floor { position:absolute; z-index:-1; pointer-events:none; overflow:hidden; transition:opacity .4s ease;
+  -webkit-mask-image:linear-gradient(180deg, transparent, #000 30%, #000 60%, transparent), linear-gradient(90deg, transparent, #000 14%, #000 86%, transparent);
+  -webkit-mask-composite:source-in;
+  mask-image:linear-gradient(180deg, transparent, #000 30%, #000 60%, transparent), linear-gradient(90deg, transparent, #000 14%, #000 86%, transparent);
+  mask-composite:intersect; }
+${ML} > .ml-floor.is-collapsed, ${ML} > .ml-floor.is-settling { opacity:0; }
+${ML} > .ml-floor.is-collapsed { visibility:hidden; }
+${ML} > .ml-floor > img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:50% 58%; transition:opacity .45s ease; }
+${ML} > .ml-floor > .ml-floor__art { opacity:.3; }
+${ML} > .ml-floor > .ml-floor__ghost { opacity:0; filter:saturate(.6); }
+${ML} > .ml-floor > .ml-floor__ghost:not([src]) { display:none; }
+${ML} > .ml-floor.is-tracing > .ml-floor__art { opacity:.06; }
+${ML} > .ml-floor.is-tracing > .ml-floor__ghost { opacity:.15; }
+${RML} > .ml-floor, ${RML} > .ml-floor > img { transition:none !important; }
+/* the dial: the traced contract as a ghost ring inside the chosen progress, its reading in ice under the clock */
+${ML} .orr-mdial__ghost { position:absolute; inset:0; pointer-events:none; }
+${ML} .orr-mdial__ghost > svg { position:absolute; inset:0; width:100%; height:100%; overflow:visible; }
+${ML} .orr-mdial__ghost-track { fill:none; stroke:rgb(143 203 255 / .16); stroke-width:4; vector-effect:non-scaling-stroke; }
+${ML} .orr-mdial__ghost-prog { fill:none; stroke:rgb(143 203 255 / .8); stroke-width:4; stroke-linecap:round; vector-effect:non-scaling-stroke; }
+${ML} .orr-mdial__ghost-bead { fill:rgb(200 230 255); }
+${ML} .orr-mdial__trace-read { ${LABEL} white-space:nowrap; position:absolute; left:-50px; right:-50px; bottom:calc(var(--ml-dial) * -.02 - 46px); text-align:center; font-size: 12px !important; letter-spacing:.06em !important; color:rgb(143 203 255); }
+${ML} .orr-mdial__trace-read[hidden] { display:none !important; }
+${ML} .orr-mdial__trace-read b { font-family:var(--dp-face-numeral, "Archivo"); font-weight:480; font-variation-settings:"wdth" 100, "wght" 480; font-size:13px; letter-spacing:.04em; color:rgb(200 230 255); margin:0 8px; }
+${ML} .orr-mdial__trace-read b.is-threat { color:var(--dp-danger, #ff5038); }
+${ML} .orr-mdial__face { position:absolute; left:26%; top:26%; width:48%; height:48%; border-radius:50%; overflow:hidden; pointer-events:none; opacity:.3; }
+${ML} .orr-mdial__face > img { display:block; width:100%; height:100%; object-fit:cover; transform:scale(1.3); filter:saturate(.7); }
+${ML} .orr-mdial__face::after { content:""; position:absolute; inset:0; border-radius:50%; background:radial-gradient(circle, rgb(5 7 10 / .2), rgb(5 7 10 / .85) 92%); }
+${RML} .ml-route__pulse { animation:none !important; opacity:0; }
+${ML} .sf-mlog-card > h2.k-t-title { ${DISPLAY} margin:12px 0 0 !important; font-size:clamp(24px, min(2vw, 4vh), 38px) !important; line-height:1.05 !important; letter-spacing:.01em !important;
+  color:rgb(242 237 226) !important; text-shadow:0 2px 18px rgb(0 0 0 / .5) !important; text-wrap:balance; }
+${ML} .sf-mlog-card > :is(.sf-mlog-next, .sf-mlog-obj) { ${BODY} margin:12px 0 0 !important; max-width:60ch; font-size:16px !important; line-height:1.5 !important; font-style:normal !important; color:rgb(${BONE} / .92) !important; }
+${ML} .sf-mlog-card > .k-hero { margin:22px 0 0 !important; }
+${ML} .sf-mlog-card > .k-hero .k-hero__n { font-family:var(--dp-face-numeral, "Archivo") !important; font-variation-settings:"wdth" 100, "wght" 250 !important; font-weight:250 !important; font-stretch:100% !important;
+  font-size:clamp(56px, 8vh, 92px) !important; line-height:.9 !important; letter-spacing:-.02em !important; color:${INK} !important; text-shadow:0 0 24px rgb(0 0 0 / .5) !important; }
+${ML} .sf-mlog-card > .k-hero .k-hero__w { ${LABEL} margin-top:8px !important; font-size: 12px !important; letter-spacing:.18em !important; color:rgb(${BONE} / .84) !important; }
+/* the terms: a ledger of caps and values, each on a tick of one short scale */
+${ML} .sf-mlog-card .sf-mlog-terms { margin:24px 0 0 !important; padding:0 !important; max-width:640px; list-style:none; ${PLAIN}
+  background:linear-gradient(90deg, rgb(${BONE} / .62) 2px, transparent 2px) 0 0 / 2px 100% no-repeat !important; --k-row-cols:none !important; }
+${ML} .sf-mlog-card .sf-mlog-terms > .k-row { ${PLAIN} position:relative !important; display:grid !important; grid-template-columns:minmax(118px, 10.5em) minmax(0, 1fr) !important; align-items:baseline; column-gap:18px;
+  min-height:0 !important; height:auto !important; padding:7px 0 7px 16px !important; margin:0 !important; cursor:default; }
+${ML} .sf-mlog-card .sf-mlog-terms > .k-row::before { content:"" !important; display:block !important; position:absolute !important; left:0 !important; top:calc(7px + .55em) !important; width:8px !important; height:1px !important; margin:0 !important;
+  background:rgb(${BONE} / .72) !important; translate:none !important; scale:none !important; transform:none !important; border:0 !important; box-shadow:none !important; clip-path:none !important; border-radius:0 !important; }
+${ML} .sf-mlog-card .sf-mlog-terms > .k-row::after { display:none !important; }
+${ML} .sf-mlog-card .sf-mlog-terms > .k-row > .k-62 { ${LABEL} font-size: 12px !important; letter-spacing:.18em !important; color:rgb(${BONE} / .84) !important; }
+${ML} .sf-mlog-card .sf-mlog-terms > .k-row > .k-row__name { ${BODY} font-size:14.5px !important; line-height:1.4 !important; color:${INK} !important; white-space:normal !important; overflow:visible !important; }
+${ML} .sf-mlog-card .sf-mlog-terms > .k-row > .k-row__name .k-bad { color:var(--dp-danger, #ff5038) !important; }
+${ML} .sf-mlog-card .sf-mlog-terms :is(a, .sf-entity-link, [data-entity]) { color:${INK} !important; text-decoration:none !important; box-shadow:none !important; background-image:none !important; border-bottom:0 !important; }
+${ML} .sf-mlog-card .sf-mlog-terms :is(a, .sf-entity-link, [data-entity]):is(:hover, :focus-visible) { text-decoration:underline 1px rgb(${BONE} / .6) !important; text-underline-offset:4px; outline:none !important; }
+/* the verbs: Track is the one Lamp Key while untracked; tracked, it is a bone state; Abandon reddens only when reached */
+${ML} .sf-mlog-btns { margin:26px 0 0 !important; }
+${ML} .sf-mlog-btns > .k-words--row { display:flex !important; flex-wrap:wrap; align-items:center; gap:14px 34px; margin:0 !important; padding:0 !important; list-style:none; }
+${ML} .sf-mlog-btns > .k-words--row > li { display:flex !important; flex-direction:column; align-items:flex-start; }
+${verb(`${ML} .sf-mlog-btns .k-word:not(.orr-lampkey)`)}
+${ML} .sf-mlog-btns .k-word:not(.orr-lampkey) { font-size:12px !important; }
+${ML} .sf-mlog-btns .sf-mlog-btn-map::before { content:"›  "; color:rgb(${BONE} / .78); }
+${ML} .sf-mlog-btns .sf-mlog-btn-track[aria-pressed="true"]::before { content:"●  "; font-size: 12px; vertical-align:2px; color:${INK}; }
+${ML} .sf-mlog-btns .sf-mlog-btn-track[aria-pressed="true"] { color:${INK} !important; }
+${ML} .sf-mlog-btns .sf-mlog-btn-abandon { color:rgb(${BONE} / .88) !important; }
+${ML} .sf-mlog-btns .sf-mlog-btn-abandon:is(:hover, :focus-visible) { color:var(--dp-danger, #ff5038) !important;
+  background:linear-gradient(90deg, var(--dp-danger, #ff5038), rgb(255 80 56 / 0)) 0 100% / 100% 1.5px no-repeat !important; }
+/* the dial: the clock outside, the progress inside, the two readings at its heart */
+${ML} .orr-mdial { position:relative; width:var(--ml-dial); height:var(--ml-dial); margin:0 !important; }
+${ML} .orr-mdial > svg { position:absolute; inset:0; width:100%; height:100%; overflow:visible; }
+${ML} .orr-mdial__read { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; text-align:center; pointer-events:none; }
+${ML} .orr-mdial__pct { font-family:var(--dp-face-numeral, "Archivo"); font-stretch:100%; font-variation-settings:"wdth" 100, "wght" 260; font-weight:260; font-size:clamp(40px, calc(var(--ml-dial) * .22), 66px);
+  line-height:.9; letter-spacing:-.02em; color:rgb(223 238 255); font-variant-numeric:tabular-nums; }
+${ML} .orr-mdial__pct small { font-size:.42em; margin-left:2px; font-weight:400; color:rgb(${BONE} / .7); }
+${ML} .orr-mdial__w { ${LABEL} font-size: 12px !important; letter-spacing:.22em !important; color:rgb(${BONE} / .82); }
+${ML} .orr-mdial__clock-read { ${LABEL} white-space:nowrap; position:absolute; left:-40px; right:-40px; bottom:calc(var(--ml-dial) * -.02 - 22px); text-align:center; font-size: 12px !important; letter-spacing:.06em !important; color:rgb(${BONE} / .86); }
+${ML} .orr-mdial__clock-read b { font-family:var(--dp-face-numeral, "Archivo"); font-weight:480; font-variation-settings:"wdth" 100, "wght" 480; font-size:13px; letter-spacing:.04em; color:rgb(223 238 255); margin-right:8px; }
+${ML} .orr-mdial__clock-read.is-threat b { color:var(--dp-danger, #ff5038); }
+${ML} .orr-mdial .orr-arc-tick { fill:none; stroke:rgb(${BONE} / .55); stroke-width:1.25; vector-effect:non-scaling-stroke; }
+${ML} .orr-mdial .orr-arc-tick--hi { stroke:rgb(${BONE} / .88); stroke-width:2; }
+${ML} .orr-mdial .orr-arc-ring { fill:none; stroke:rgb(${BONE} / .38); stroke-width:4; vector-effect:non-scaling-stroke; }
+${ML} .orr-mdial .orr-arc-ring--rim { stroke:rgb(${BONE} / .16); stroke-width:6; }
+${ML} .orr-mdial__clock { fill:none; stroke:rgb(${BONE} / .86); stroke-width:4; stroke-linecap:round; vector-effect:non-scaling-stroke; }
+${ML} .orr-mdial__clock-bloom { fill:none; stroke:rgb(${BONE} / .14); stroke-width:12; vector-effect:non-scaling-stroke; }
+${ML} .orr-mdial__clock.is-threat { stroke:var(--dp-danger, #ff5038); }
+${ML} .orr-mdial__clock-bloom.is-threat { stroke:rgb(255 80 56 / .22); }
+${ML} .orr-mdial__prog { fill:none; stroke:rgb(223 238 255); stroke-width:6; stroke-linecap:round; vector-effect:non-scaling-stroke; }
+${ML} .orr-mdial__prog-bloom { fill:none; stroke:rgb(223 238 255 / .24); stroke-width:18; vector-effect:non-scaling-stroke; }
+${ML} .orr-mdial__bead { fill:rgb(240 248 255); }
+${ML} .orr-arc-drift { transform-box:view-box; transform-origin:50% 50%; animation:orr-drift 900s linear infinite; }
+${ML} .sf-mlog-empty.k-empty { ${BODY} max-width:46ch; margin:14px 0 0 !important; font-size:16px !important; line-height:1.55; color:rgb(${BONE} / .9) !important; padding-left:0; }
+${ML} .orr-mdial.is-empty .orr-mdial__w { letter-spacing:.12em !important; }
+${ML} .orr-mdial.is-empty .orr-mdial__pct { color:rgb(${BONE} / .5); font-size:clamp(34px, calc(var(--ml-dial) * .16), 50px); }
+/* arrival: the nodes come down the beam in turn, the dial draws its clock and its progress */
+${ML}.ml-arrive :is(.sf-mlog-rec-item, .sf-mlog-list .k-row, .sf-mlog-career) { animation:orr-rise 460ms var(--dp-ease-out, ease-out) both; animation-delay:var(--orr-delay, 0ms); }
+${ML}.ml-arrive :is(.orr-mdial__clock, .orr-mdial__clock-bloom, .orr-mdial__prog, .orr-mdial__prog-bloom) { stroke-dasharray:1 1; stroke-dashoffset:1; animation:orr-draw 900ms var(--dp-ease-out, ease-out) 180ms both; }
+${ML}.ml-arrive .orr-mdial__bead { animation:orr-arc-fade 1100ms ease-out both; }
+${ML}.ml-arrive .orr-mdial__pct { animation:orr-rise 520ms var(--dp-ease-out, ease-out) 260ms both; }
+${RML} :is(.orr-arc-drift, .sf-mlog-rec-item, .sf-mlog-list .k-row, .sf-mlog-career, .orr-mdial__clock, .orr-mdial__clock-bloom, .orr-mdial__prog, .orr-mdial__prog-bloom, .orr-mdial__bead, .orr-mdial__pct) { animation:none !important; }
+/* the foot: ‹ BACK + ESC keycap (matches settings/save-load/help/credits/codex) */
+${ML} > .k-foot { align-items:center !important; min-height:0 !important; }
+${ML} > .k-foot .sf-back.k-word { all:unset !important; box-sizing:border-box !important; cursor:pointer !important; display:inline-flex !important; align-items:baseline !important; gap:0 !important;
+  padding:10px 0 12px !important; min-height:44px !important; ${LABEL} font-size:13.5px !important; letter-spacing:.1em !important; color:rgb(255 253 248) !important;
+  background:linear-gradient(0deg, rgb(${BONE} / .28) 0 1.5px, transparent 1.5px) 0 100% / 120px 100% no-repeat !important; text-shadow:none !important; }
+${ML} > .k-foot .sf-back.k-word::before { all:unset !important; content:"‹" !important; display:inline !important; margin-right:12px !important; font-size:15px !important; color:rgb(${BONE} / .6) !important; }
+${ML} > .k-foot .sf-back.k-word::after { all:unset !important; content:"ESC" / "" !important; display:inline-block !important; margin-left:16px !important; padding:3px 7px 4px !important;
+  ${LABEL} font-size:12px !important; letter-spacing:.06em !important; line-height:1 !important;
+  color:rgb(${BONE} / .9) !important; background:rgb(${BONE} / .1) !important; border:1px solid rgb(${BONE} / .5) !important; border-radius:3px !important;
+  box-shadow:inset 0 -1px 0 rgb(0 0 0 / .35) !important; vertical-align:baseline !important; }
+${ML} > .k-foot .sf-back.k-word:is(:hover, :focus-visible) { color:var(--dp-hand-hot, #ffd98c) !important; outline:none !important; }
+${ML} > .k-foot .sf-back.k-word:focus-visible::after { color:rgb(255 253 248) !important; border-color:rgb(255 253 248 / .45) !important; }
+/* 1080p band: match settings/save-load/credits/codex composition zoom */
+@media (min-width:1800px) and (max-width:2199px) and (min-height:1000px) {
+  ${ML} { zoom:1.12; }
+}
+@media (max-width:1400px) {
+  ${ML} { --ml-dial:clamp(180px, min(20vw, 36vh), 240px); }
+}
+/* a short screen: tighter rows on the beam, a lower band */
+@media (max-height:820px) {
+  ${ML} { --ml-dial:clamp(150px, 25vh, 190px); }
+  ${ML} .sf-mlog-card { grid-template-columns:minmax(0, 1fr) max(var(--ml-dial), 220px); column-gap:clamp(20px, 2.6vw, 48px); }
+  ${ML} .sf-mlog-side > .sf-mlog-btns { margin-top:36px !important; }
+  ${ML} .sf-mlog-card > .k-hero { display:none !important; }
+  ${ML} .sf-mlog-side > .sf-mlog-btns { margin-top:40px !important; }
+  ${ML} .orr-mdial__clock-read { bottom:-26px; }
+  ${ML} .sf-mlog-side .sf-mlog-btns > .k-words--row { gap:8px; }
+  ${ML} .ml-route { --ml-disc:52px; }
+  ${ML} .ml-route__ends { margin-bottom:8px !important; }
+  ${ML} .ml-ghost__end { top:calc(var(--ml-ghost-y) - 23px); }
+  ${ML} .orr-mdial__trace-left { display:none; }
+  ${ML} .ml-clock__of { display:none; }
+  ${ML} .orr-mdial__trace-read { bottom:-46px; }
+  ${ML} .sf-mlog-side > .sf-mlog-btns { margin-top:60px !important; }
+  ${ML} .sf-mlog-card .sf-mlog-terms { margin-top:12px !important; }
+  ${ML} .sf-mlog-card .sf-mlog-terms > .k-row { padding-top:4px !important; padding-bottom:4px !important; }
+  ${ML} .sf-mlog-list .k-row.sf-mlog-row { padding-top:7px !important; padding-bottom:8px !important; }
+  ${ML} .sf-mlog-body > .k-row.k-row--static { padding-top:14px !important; }
+  ${ML} .ml-route { padding-top:6px; }
+  ${ML} .sf-mlog-card > .ml-route-host { margin-top:22px; }
+}
+/* a 960×540-class desktop (761–1100 wide, ≤640 tall): the stage was a 235px column under a 4-line title,
+   so the route band fell below the fold. A narrower hang, a smaller dial and a 2-line title give the
+   reading ~330px and the band a full lane in frame; 1024×768, 1280 and the phone are outside the query. */
+@media (min-width:761px) and (max-width:1100px) and (max-height:640px) {
+  ${ML} { --ml-dial:132px; grid-template-columns:minmax(0, 300px) minmax(0, 1fr) !important; column-gap:20px !important; }
+  ${ML} .sf-mlog-card { grid-template-columns:minmax(0, 1fr) 176px; column-gap:14px; }
+  ${ML} .orr-mdial__w { letter-spacing:.14em !important; }
+  ${ML} .sf-mlog-card > h2.k-t-title { margin-top:8px !important; font-size:21px !important; line-height:1.08 !important; }
+  ${ML} .sf-mlog-card > :is(.sf-mlog-next, .sf-mlog-obj) { margin-top:8px !important; font-size:14.5px !important; line-height:1.4 !important; }
+  ${ML} .sf-mlog-card .sf-mlog-terms { margin-top:10px !important; }
+  ${ML} .sf-mlog-card .sf-mlog-terms > .k-row { grid-template-columns:104px minmax(0, 1fr) !important; column-gap:12px; padding-top:3px !important; padding-bottom:3px !important; }
+  ${ML} .sf-mlog-card .sf-mlog-terms > .k-row > .k-row__name { font-size:14px !important; line-height:1.3 !important; }
+  ${ML} .sf-mlog-card > .ml-route-host { margin-top:18px; padding:0 12px; box-sizing:border-box; }
+  ${ML} .ml-route { --ml-disc:40px; padding-top:4px; }
+  /* ends were FROM | ROUTE PENDING | TO in ~200px: From sat on the mid word. Mid takes its own row. */
+  ${ML} .ml-route__ends { grid-template-columns:minmax(0, 1fr) minmax(0, 1fr); grid-template-rows:auto auto; gap:4px 12px; align-items:start; margin-bottom:6px !important; }
+  ${ML} .ml-route__mid { grid-column:1 / -1; grid-row:1; flex-direction:row; flex-wrap:wrap; justify-content:center; align-items:baseline; gap:10px 16px; }
+  ${ML} .ml-route__from { grid-row:2; grid-column:1; }
+  ${ML} .ml-route__to { grid-row:2; grid-column:2; }
+  ${ML} .ml-route__from, ${ML} .ml-route__to { font-size:13px !important; }
+  /* each end has half the card: wrap between place names rather than ellipsize the sector away */
+  ${ML} .ml-route__from, ${ML} .ml-route__to { white-space:normal; text-overflow:clip; line-height:1.3; }
+  ${ML} .ml-route__to .sf-entity-link { white-space:nowrap; }
+  ${ML} .sf-mlog-side > .sf-mlog-btns { margin-top:44px !important; }
+  ${ML} .sf-mlog-side .sf-mlog-btns > .k-words--row { gap:4px; }
+  ${ML} .sf-mlog-side .sf-mlog-btns .k-word:not(.orr-lampkey) { letter-spacing:.08em !important; font-size:12px !important; }
+  ${ML} .sf-mlog-side .sf-mlog-btns .k-word-sub { letter-spacing:.1em !important; font-size:12px !important; }
+}
+/* ui-polish-142: at 1101+ a long berth ("Helios Station (Helios Prime)") was ellipsized mid-word; the
+   end wraps between place names instead, and both ends hang from their labels */
+@media (min-width:1101px) {
+  ${ML} .ml-route__ends { align-items:start; }
+  ${ML} .ml-route__from, ${ML} .ml-route__to { white-space:normal; text-overflow:clip; line-height:1.3; text-wrap:balance; }
+}
+
+/* narrow desktop window (640–760): hang|stage stayed two equal columns, so the dial sat on the
+   reading and LOCAL MAP printed through PAYS. A short hang, a stacked card (dial then reading
+   with the verbs in a row), and the same route-ends reflow as the 960 band. Phones and
+   sub-640 windows keep the prior sheet. */
+@media (min-width:640px) and (max-width:760px) {
+  html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog {
+    --ml-dial:min(148px, 40vw); grid-template-columns:minmax(0, 248px) minmax(0, 1fr) !important;
+    column-gap:14px !important; row-gap:14px !important; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog .sf-mlog-card {
+    grid-template-columns:minmax(0, 1fr) !important; grid-template-rows:auto repeat(5, auto) minmax(12px, 1fr) auto;
+    column-gap:0; row-gap:0; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog .sf-mlog-side {
+    grid-column:1 !important; grid-row:1 !important; flex-direction:row; flex-wrap:wrap; align-items:flex-start;
+    justify-content:flex-start; gap:10px 18px; margin:0 0 8px !important; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog .sf-mlog-side > .sf-mlog-btns {
+    margin:4px 0 0 !important; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog .sf-mlog-side .sf-mlog-btns > .k-words--row {
+    flex-direction:row; flex-wrap:wrap; align-items:baseline; gap:6px 18px; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog .sf-mlog-card > .k-hero { display:none !important; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog .sf-mlog-card > h2.k-t-title {
+    margin-top:4px !important; font-size:20px !important; line-height:1.1 !important; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog .sf-mlog-card > :is(.sf-mlog-next, .sf-mlog-obj) {
+    margin-top:6px !important; font-size:14px !important; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog .sf-mlog-card .sf-mlog-terms { margin-top:8px !important; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog .sf-mlog-card .sf-mlog-terms > .k-row {
+    grid-template-columns:96px minmax(0, 1fr) !important; column-gap:10px; padding-top:3px !important; padding-bottom:3px !important; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog .sf-mlog-card > .ml-route-host { margin-top:6px; padding:0 10px; box-sizing:border-box; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog .ml-route { --ml-disc:44px; padding-top:0; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog .ml-route__ends {
+    grid-template-columns:minmax(0, 1fr) minmax(0, 1fr); grid-template-rows:auto auto; gap:4px 12px; align-items:start; margin-bottom:3px !important; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog .ml-route__mid {
+    grid-column:1 / -1; grid-row:1; flex-direction:row; flex-wrap:wrap; justify-content:center; align-items:baseline; gap:10px 16px; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog .ml-route__from { grid-row:2; grid-column:1; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog .ml-route__to { grid-row:2; grid-column:2; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog :is(.ml-route__from, .ml-route__to) { white-space:normal; text-overflow:clip; line-height:1.2; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog .ml-route__to .sf-entity-link { white-space:nowrap; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog .orr-mdial__clock-read { bottom:-22px; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog .orr-mdial__trace-read { bottom:-40px; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog .ml-clock__of { display:none; }
+}
+/* a 1024×768-class desktop (761–1100 wide, taller than 640): the hang kept its 350px and the side
+   column 220px, so the reading was ~290px. Values wrapped to four lines and both route ends ellipsized.
+   A 300px hang and a 176px side column (same as the 960 band) give the reading ~400px; the route ends
+   take the same two-row reflow. */
+@media (min-width:761px) and (max-width:1100px) and (min-height:641px) {
+  ${ML} { --ml-dial:150px; grid-template-columns:minmax(0, 300px) minmax(0, 1fr) !important; column-gap:28px !important; }
+  ${ML} .sf-mlog-card { grid-template-columns:minmax(0, 1fr) 176px; column-gap:20px; }
+  ${ML} .sf-mlog-card > h2.k-t-title { font-size:clamp(22px, 2.6vw, 28px) !important; }
+  ${ML} .ml-route__ends { grid-template-columns:minmax(0, 1fr) minmax(0, 1fr); grid-template-rows:auto auto; gap:4px 12px; align-items:start; margin-bottom:8px !important; }
+  ${ML} .ml-route__mid { grid-column:1 / -1; grid-row:1; flex-direction:row; flex-wrap:wrap; justify-content:center; align-items:baseline; gap:10px 16px; }
+  ${ML} .ml-route__from { grid-row:2; grid-column:1; }
+  ${ML} .ml-route__to { grid-row:2; grid-column:2; }
+  ${ML} :is(.ml-route__from, .ml-route__to) { white-space:normal; text-overflow:clip; line-height:1.3; }
+  ${ML} .ml-route__to .sf-entity-link { white-space:nowrap; }
+  ${ML} .sf-mlog-side .sf-mlog-btns .k-word:not(.orr-lampkey) { letter-spacing:.1em !important; }
+}
+/* 640–760: the dial and its verbs shared one wrapping row, so the verbs fell under the dial onto
+   its NO CLOCK reading and ABANDON took a line of its own. Dial left, verbs stacked to its right,
+   room under the dial for its reading. */
+@media (min-width:640px) and (max-width:760px) {
+  html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog .sf-mlog-side {
+    flex-wrap:nowrap; align-items:center; gap:0 26px; margin:0 0 34px !important; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog .sf-mlog-side > :not(.sf-mlog-btns) { flex:none; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog .sf-mlog-side > .sf-mlog-btns { flex:0 1 auto; min-width:0; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog .sf-mlog-side > .sf-mlog-btns { margin:0 !important; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog .sf-mlog-side .sf-mlog-btns > .k-words--row {
+    flex-direction:column; flex-wrap:nowrap; align-items:flex-start; gap:12px; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog .sf-mlog-side .sf-mlog-btns > .k-words--row > li { align-items:flex-start; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog .sf-mlog-side .sf-mlog-btns > .k-words--row > li > .k-word-sub { margin-left:14px !important; text-align:left; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog .sf-mlog-side .sf-mlog-btns > .k-words--row > li > .sf-mlog-story-note { margin-left:0 !important; }
+}
+@media (min-width:640px) and (max-width:700px) {
+  html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog { --ml-dial:132px; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog .sf-mlog-side { gap:0 18px; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog .sf-mlog-side .sf-mlog-btns .k-word:not(.orr-lampkey) { letter-spacing:.08em !important; white-space:normal !important; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog .sf-mlog-side .sf-mlog-btns .k-word-sub { letter-spacing:.1em !important; }
+}
+/* under 640 wide (phones and narrow windows): hang|stage stayed two columns, so the 360px hang
+   pushed the stage off the right edge and the chosen contract's dossier never showed. Stack them:
+   a capped hang, then the dossier scrolling beneath it with the dial and verbs in one row. */
+@media (max-width:639px) {
+  ${ML} { --ml-dial:120px; grid-template-columns:minmax(0, 1fr) !important; grid-template-rows:auto auto minmax(0, 1fr) auto !important;
+    grid-template-areas:"title" "hang" "stage" "foot" !important; row-gap:12px !important; }
+  ${ML} > .k-title { grid-area:title !important; }
+  ${ML} > .k-hang.sf-mlog-body { grid-area:hang !important; max-height:min(330px, 40vh) !important; min-height:0 !important; padding-bottom:6px !important; }
+  ${ML} > .k-stage.sf-mlog-stage { grid-area:stage !important; min-height:0 !important; width:auto !important; padding:12px 0 18px !important;
+    border-top:1px solid rgb(${BONE} / .18);
+    -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 28px), transparent) !important; mask-image:linear-gradient(180deg, #000 calc(100% - 28px), transparent) !important; }
+  ${ML} > .k-foot { grid-area:foot !important; }
+  ${ML} .sf-mlog-card { grid-template-columns:minmax(0, 1fr) !important; grid-template-rows:none; column-gap:0; min-height:0; }
+  ${ML} .sf-mlog-card > .k-hero { display:none !important; }
+  ${ML} .sf-mlog-card > h2.k-t-title { margin-top:4px !important; font-size:20px !important; line-height:1.12 !important; }
+  ${ML} .sf-mlog-card > :is(.sf-mlog-next, .sf-mlog-obj) { margin-top:6px !important; font-size:14px !important; line-height:1.4 !important; }
+  ${ML} .sf-mlog-card .sf-mlog-terms { margin-top:8px !important; }
+  ${ML} .sf-mlog-card .sf-mlog-terms > .k-row { grid-template-columns:104px minmax(0, 1fr) !important; column-gap:10px; padding-top:3px !important; padding-bottom:3px !important; }
+  ${ML} .sf-mlog-side { grid-column:1 !important; grid-row:auto !important; flex-direction:row; align-items:center; justify-content:flex-start; gap:12px 20px; margin:16px 0 0 !important; }
+  ${ML} .sf-mlog-side > .sf-mlog-btns { margin:0 !important; }
+  ${ML} .sf-mlog-side .sf-mlog-btns > .k-words--row { align-items:flex-start; gap:8px; }
+  ${ML} .sf-mlog-side .sf-mlog-btns > .k-words--row > li { align-items:flex-start; }
+  ${ML} .sf-mlog-side .sf-mlog-btns > .k-words--row > li > .k-word-sub { margin-left:14px !important; text-align:left; }
+  ${ML} .sf-mlog-side .sf-mlog-btns > .k-words--row > li > .sf-mlog-story-note { margin-left:0 !important; }
+  ${ML} .orr-mdial__clock-read { bottom:-20px; }
+  ${ML} .orr-mdial__trace-read { bottom:-38px; }
+  ${ML} .ml-clock__of { display:none; }
+  ${ML} .sf-mlog-card > .ml-route-host { margin-top:30px; padding:0 8px; box-sizing:border-box; }
+  ${ML} .ml-route { --ml-disc:44px; padding-top:0; }
+  ${ML} .ml-route__ends { grid-template-columns:minmax(0, 1fr) minmax(0, 1fr); grid-template-rows:auto auto; gap:4px 12px; align-items:start; margin-bottom:4px !important; }
+  ${ML} .ml-route__mid { grid-column:1 / -1; grid-row:1; flex-direction:row; flex-wrap:wrap; justify-content:center; align-items:baseline; gap:10px 16px; }
+  ${ML} .ml-route__from { grid-row:2; grid-column:1; }
+  ${ML} .ml-route__to { grid-row:2; grid-column:2; }
+  ${ML} :is(.ml-route__from, .ml-route__to) { font-size:13px !important; white-space:normal; text-overflow:clip; line-height:1.25; }
+  ${ML} .ml-route__to .sf-entity-link { white-space:nowrap; }
+}
+/* Short phone-width windows (639x461, 600x500): the 90px title and a 40vh list left the dossier ~95px. Smaller title, 36vh list (still shows the selected row). */
+@media (max-width:639px) and (max-height:620px) {
+  ${ML} { row-gap:8px !important; }
+  ${ML} > .k-title > :is(h1, .k-t-title, .k-display) { font-size:clamp(30px, 8vh, 44px) !important; line-height:1 !important; margin:0 !important; }
+  ${ML} > .k-hang.sf-mlog-body { max-height:36vh !important; }
+  ${ML} > .k-stage.sf-mlog-stage { padding-top:8px !important; }
+}
+/* Terms ledger: every row was its own grid with a fixed 96-118px label column, so AUTHORIZATION
+   (one 12px word, ~140px tracked) ran under its value and MASS ON ACCEPT / CONTRACT CODE broke in two
+   at 390-1280 wide. The list now owns one label column for all rows (each row a subgrid): as wide
+   as the longest label up to 10.5em (13em above 1100 wide; at 1100 or narrower just the longest word), never narrower than its longest word. Labels and values stay aligned. */
+html:root body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog.orr-mlog.orr-mlog .sf-mlog-card .sf-mlog-terms {
+  display:grid !important; grid-template-columns:fit-content(10.5em) minmax(0, 1fr) !important; }
+html:root body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog.orr-mlog.orr-mlog .sf-mlog-card .sf-mlog-terms > .k-row {
+  grid-column:1 / -1 !important; grid-template-columns:subgrid !important; }
+@media (max-width:1100px) {
+  html:root body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog.orr-mlog.orr-mlog .sf-mlog-card .sf-mlog-terms { grid-template-columns:fit-content(7.5em) minmax(0, 1fr) !important; }
+}
+@media (min-width:1101px) {
+  html:root body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog.orr-mlog.orr-mlog .sf-mlog-card .sf-mlog-terms { grid-template-columns:fit-content(13em) minmax(0, 1fr) !important; }
+}
+/* 960×540-class (901–1100 wide, ≤640 tall; 761–900 keeps the earlier band): the reading ended at the fold, so only the route band's
+   THIS SECTOR line showed. A slightly narrower hang, one-line labels, a tighter ledger and the route
+   ends back on one row (FROM | THIS SECTOR | TO, names wrapping) bring the whole lane into frame. */
+@media (min-width:901px) and (max-width:1100px) and (max-height:640px) {
+  ${ML} { grid-template-columns:minmax(0, 284px) minmax(0, 1fr) !important; }
+  ${ML} > .k-stage.sf-mlog-stage { padding-bottom:4px !important; margin-bottom:-28px !important; }
+  ${ML} .ml-route { --ml-disc:36px; }
+  ${ML} .ml-route__ends { grid-template-columns:minmax(0, 1fr) auto minmax(0, 1fr); grid-template-rows:auto; align-items:start; gap:12px; }
+  ${ML} .ml-route__mid { grid-column:2; grid-row:1; flex-direction:column; align-items:center; gap:3px; }
+  ${ML} :is(.ml-route__from, .ml-route__to) { grid-row:1; line-height:1.25; }
+  ${ML} .ml-route__from { grid-column:1; }
+  ${ML} .ml-route__to { grid-column:3; }
+  html:root body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog.orr-mlog.orr-mlog .sf-mlog-card .sf-mlog-terms { grid-template-columns:fit-content(10.5em) minmax(0, 1fr) !important; }
+  ${ML} .sf-mlog-card .sf-mlog-terms > .k-row { column-gap:12px; padding-top:2px !important; padding-bottom:2px !important; }
+  ${ML} .sf-mlog-card .sf-mlog-terms > .k-row > .k-62 { letter-spacing:.1em !important; white-space:nowrap; }
+  ${ML} .sf-mlog-card .sf-mlog-terms > .k-row > .k-row__name { line-height:1.25 !important; }
+  ${ML} .sf-mlog-card > .ml-route-host { margin-top:8px; }
+}
+@media (forced-colors:active) {
+  ${ML} .sf-mlog-list .k-row.sf-mlog-row[aria-selected="true"] { outline:2px solid Highlight !important; }
+}
+`;
+
+/* A desktop window narrower than 640px (split screen, a dragged-in browser) is not flagged data-sf-mobile, so the Codex got
+ *  the desktop grid squeezed to 390: the tab line wrapped one word per row beside the dials, GRAFFITI ran off the right edge
+ *  and the plate sat on the B0-B3 rows. Below 640px it takes the same stacked composition the phone does. */
+const CX_NARROW = 'html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.of-codex.orr-archive.orr-archive';
+const CODEX_NARROW_CSS = `@media (max-width:639px) {${CODEX_PHONE_CSS.replaceAll(CX_PHONE, CX_NARROW)}}
+`;
+
+export const ARCHIVE_CSS = HAND + CODEX_CSS + CODEX_PHONE_CSS + CODEX_NARROW_CSS + MLOG_CSS + SCROLL_EXTENT_CSS;

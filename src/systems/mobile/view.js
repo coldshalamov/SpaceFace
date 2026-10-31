@@ -1,6 +1,7 @@
 import { clamp, canFly, distanceToRect, stickRadius, wheelSlot } from './model.js';
 import { POWER_PAGES, icon } from './catalog.js';
-import { MOBILE_CSS } from './styles.js';
+import { MOBILE_CSS_PATH } from './styles.js';
+import { deferCssVisibility, loadCssSidecar } from '../../ui/orrery/cssSidecar.js';
 import { createStick, dialDeg } from './instrument.js';
 import { createWheel } from './wheel.js';
 import { injectOrrery } from '../../ui/orrery/tokens.js';
@@ -19,14 +20,14 @@ const row = (key, label) => `<div class="mf-row" data-k="${key}" role="meter" ar
 
 /** Pointer ownership and presentation. Physics is deliberately absent from this module. */
 export function mountMobileView({ state, model, activate, reset, config, saveConfig, doc = document, win = window }) {
-  if (!doc.getElementById('sf-mobile-style')) {
-    const style = doc.createElement('style'); style.id = 'sf-mobile-style'; style.textContent = MOBILE_CSS; doc.head.append(style);
-  }
+  const cssReady = loadCssSidecar(doc, { id: 'sf-mobile-style', path: MOBILE_CSS_PATH,
+    fallback: async () => (await import('./mobileCssSource.js')).MOBILE_CSS });
   injectOrrery(doc); // the --dp-void/-ice/-hand roots the deck's light is drawn in, even before the HUD mounts
   // Preserve browser zoom; safe areas are handled in CSS. Do not add maximum-scale/user-scalable=no.
   const viewport = doc.querySelector('meta[name="viewport"]');
   if (viewport && !viewport.content.includes('viewport-fit')) viewport.content += ', viewport-fit=cover';
   const root = doc.createElement('div'); root.id = 'sf-touch-overlay';
+  const cssVisibilityReady = deferCssVisibility(root, cssReady);
   root.innerHTML = `<div class="mf-flight" hidden>
     <div class="mf-top">
       <div class="mf-status" role="group" aria-label="Ship status">
@@ -416,7 +417,7 @@ export function mountMobileView({ state, model, activate, reset, config, saveCon
     if (clock() - lastNumbers > STATUS_MS) { lastNumbers = clock(); paintStatus(player); }
   }
   applyConfig(); render();
-  return { root, render, applyConfig, cancelAll, showMessage, openGuide,
+  return { root, cssReady: cssVisibilityReady, render, applyConfig, cancelAll, showMessage, openGuide,
     setDockReady(ready) { dockReady = !!ready; schedule(); },
     destroy() {
       destroyed = true; cancelAll(); delete doc.documentElement.dataset.sfMobileWheel; delete doc.documentElement.dataset.sfMobileLefty;

@@ -670,6 +670,9 @@ export const DOMAIN_MIRROR_KEYS = Object.freeze([
   'world.alienEcology',
   // Native store status settles Continue and is read synchronously by save event listeners.
   'save.sharedStoreStatus',
+  // Keep the sector epoch after event replay's temporary emit-time shim ends.
+  // Appending preserves existing domain slots and their staggered cadences.
+  'world.enterSerial',
 ]);
 
 // Per-key canonical-serialization ship cap (report-only): any single mirrored

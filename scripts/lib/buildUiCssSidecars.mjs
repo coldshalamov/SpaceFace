@@ -4,10 +4,16 @@ import { fileURLToPath } from 'node:url';
 
 import { DECKPLATE_CSS } from '../../src/ui/deckplate/css.js';
 import { HUD_CSS } from '../../src/ui/views/hudStyles.js';
+import { ARCHIVE_CSS } from '../../src/ui/orrery/archiveCssSource.js';
+import { CONSTELLATION_CSS } from '../../src/ui/orrery/constellationCssSource.js';
+import { MOBILE_CSS } from '../../src/systems/mobile/mobileCssSource.js';
 
 const OUTPUTS = Object.freeze([
   Object.freeze({ path: 'styles/deckplate.generated.css', content: DECKPLATE_CSS }),
   Object.freeze({ path: 'styles/hud-flight.generated.css', content: HUD_CSS }),
+  Object.freeze({ path: 'styles/archive.generated.css', content: ARCHIVE_CSS }),
+  Object.freeze({ path: 'styles/constellation.generated.css', content: CONSTELLATION_CSS }),
+  Object.freeze({ path: 'styles/mobile.generated.css', content: MOBILE_CSS }),
 ]);
 
 /** Generate or verify the tracked CSS used by source and retail index pages. */

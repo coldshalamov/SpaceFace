@@ -329,6 +329,11 @@ import {
 import { resolveCausalVfxPresentation } from '../presentation/causalVfxGrammar.js';
 import { CauseMarkLayer } from './vfx/causeMarks.js';
 import {
+  presentShipBoost,
+  presentShipDash,
+  presentShipRcsPulse,
+} from './vfx/shipManeuverVfx.js';
+import {
   createMonofilamentBlade,
   hideMonofilamentBlade,
   MONOFILAMENT_BLADE_HEAD,
@@ -645,6 +650,18 @@ const IMPULSE_SHOVE_RENDER_CAP = 8;
 // blindly multiplying spawns against a 1500-particle low cap (where recycle is O(cap) per spawn).
 const QUALITY_BURST = { low: 0.55, med: 0.8, medium: 0.8, high: 1.0 };
 const BOOST_BURST_NOZZLE_CLEARANCE = 0.9;
+const SHIP_MANEUVER_VFX_HELPERS = Object.freeze({
+  sprites: Object.freeze({ flash: SPR_FLASH, ring: SPR_RING }),
+  boostNozzleClearance: BOOST_BURST_NOZZLE_CLEARANCE,
+  resolveEntity: (owner, id) => owner._ent(id),
+  usesProductionThruster: (owner, entity) => owner._usesProductionThruster(entity),
+  trailSocketWorldPose: (owner, entity) => owner._trailSocketWorldPose(entity),
+  engineColor: (owner, entity) => owner._engineColor(entity),
+  spawnSprite: (owner, ...args) => owner._spawnSprite(...args),
+  eventLight: (owner, ...args) => owner._eventLight(...args),
+  spawnParticle: (owner, ...args) => owner._spawnParticle(...args),
+  isReduced: (owner) => owner._isReduced(),
+});
 const TRAIL_NOZZLE_CLEARANCE = 0.35;
 const ENERGY_PLUME_NOZZLE_CLEARANCE = 1.15;
 const ENERGY_PLUME_WIDTH_CLEARANCE = 1.05;
@@ -12536,75 +12553,11 @@ export const vfx = {
   },
 
   _onBoost(p, on) {
-    const e = this._ent(p && p.shipId);
-    if (!e || !this._scene) return;
-    if (this._usesProductionThruster(e)) return;
-    if (on) {
-      // Boost ignition: a tight rear-nozzle kick, not a ship-sized bloom.
-      const col = this._engineColor(e);
-      const cf = Math.cos(e.rot), sf = Math.sin(e.rot);
-      const sock = this._trailSocketWorldPose(e);
-      const exhaustX = sock ? sock.forwardX : -cf;
-      const exhaustZ = sock ? sock.forwardZ : -sf;
-      const rawBx = sock ? sock.x : e.pos.x - cf * (e.radius + 2);
-      const rawBz = sock ? sock.z : e.pos.z - sf * (e.radius + 2);
-      const bx = rawBx + exhaustX * BOOST_BURST_NOZZLE_CLEARANCE;
-      const bz = rawBz + exhaustZ * BOOST_BURST_NOZZLE_CLEARANCE;
-      const svx = (e.vel && e.vel.x) || 0;
-      const svz = (e.vel && e.vel.z) || 0;
-      this._spawnSprite(SPR_FLASH, bx, 0, bz, 0.14, 3.5, 7.5, 0.78, 0.0, '#ffffff', 0, 0);
-      this._spawnSprite(SPR_FLASH, bx, 0, bz, 0.22, 4.5, 10, 0.46, 0.0, col, 0, 0);
-      this._spawnSprite(SPR_RING, bx, 0, bz, 0.18, 2, 8, 0.45, 0.0, col, exhaustX * 5, exhaustZ * 5);
-      this._eventLight({ x: bx, z: bz }, 'thrust', { severity: 'boost', color: col });
-      this._c0.set('#ffffff'); this._c1.set(col);
-      const baseA = sock ? sock.angle : Math.atan2(-sf, -cf);
-      const n = Math.max(10, Math.round(22 * (this._burst || 1)));
-      for (let k = 0; k < n; k++) {
-        const a = baseA + (Math.random() - 0.5) * 0.42;
-        const sp = 90 + Math.random() * 80;
-        this._spawnParticle(bx, bz, svx + Math.cos(a) * sp, svz + Math.sin(a) * sp, 0.34, 2.5, 0.0, this._c0, this._c1, 1.4, 0, 0);
-      }
-    }
+    return presentShipBoost(this, p, on, SHIP_MANEUVER_VFX_HELPERS);
   },
 
-  // Phase 3 dash: pure thruster juice — hot violet afterburner kick at the nozzles, brief energy
-  // flash, no HUD word-pop. Distinct from sustained boost (whiter core, longer rear streak, punch).
   _onDash(p) {
-    const e = this._ent(p && p.shipId);
-    if (!e || !this._scene) return;
-    // Latch for the plume's one-shot supernova. The drive envelope consumes and clears it on the next
-    // frame it is read, so a dash fires exactly one flare regardless of frame pacing.
-    if (e.id === this.state?.playerId) this._plumeDashPending = true;
-    const cf = Math.cos(e.rot), sf = Math.sin(e.rot);
-    const sock = this._trailSocketWorldPose(e);
-    const exhaustX = sock ? sock.forwardX : -cf;
-    const exhaustZ = sock ? sock.forwardZ : -sf;
-    const bx = sock ? sock.x : e.pos.x - cf * (e.radius + 2);
-    const bz = sock ? sock.z : e.pos.z - sf * (e.radius + 2);
-    // Hot energy palette: white-hot core → violet plasma → deep purple falloff
-    const HOT = '#f0e8ff', VIOLET = '#c98cff', PLASMA = '#9b4dff', DEEP = '#5a1fb8';
-    const svx = (e.vel && e.vel.x) || 0;
-    const svz = (e.vel && e.vel.z) || 0;
-    // Nozzle ignition — hot flash + expanding energy ring at thrusters (not the nose)
-    this._spawnSprite(SPR_FLASH, bx, 0, bz, 0.18, 5.5, 11, 0.95, 0.0, HOT, 0, 0);
-    this._spawnSprite(SPR_FLASH, bx, 0, bz, 0.28, 4.0, 12, 0.7, 0.0, VIOLET, 0, 0);
-    this._spawnSprite(SPR_RING, bx, 0, bz, 0.26, 2.5, 10, 0.75, 0.0, VIOLET, exhaustX * 7, exhaustZ * 7);
-    this._eventLight({ x: bx, z: bz }, 'thrust', { severity: 'afterburner', color: VIOLET });
-    // Afterburner streak: fast rear particles (hot core → purple exhaust)
-    this._c0.set(HOT); this._c1.set(DEEP);
-    const baseA = sock ? sock.angle : Math.atan2(-sf, -cf);
-    const n = Math.max(12, Math.round(28 * (this._burst || 1)));
-    for (let k = 0; k < n; k++) {
-      const a = baseA + (Math.random() - 0.5) * 0.38;
-      const sp = 110 + Math.random() * 100;
-      const life = 0.38 + Math.random() * 0.22;
-      const size = 2.6 + Math.random() * 1.4;
-      // Alternate hot-white→violet and violet→deep for a layered plasma look
-      if (k & 1) { this._c0.set(HOT); this._c1.set(PLASMA); }
-      else { this._c0.set(VIOLET); this._c1.set(DEEP); }
-      this._spawnParticle(bx, bz, svx + Math.cos(a) * sp, svz + Math.sin(a) * sp, life, size, 0.0, this._c0, this._c1, 1.35, 0, 0);
-    }
-    if (e.id === this.state.playerId) this.helpers.camera && this.helpers.camera.addTrauma(0.28);
+    return presentShipDash(this, p, SHIP_MANEUVER_VFX_HELPERS);
   },
 
   // Successful pickup receipts are consumed by the native ActionVfx route. Keeping this adapter
@@ -12613,40 +12566,8 @@ export const vfx = {
     // Native ActionVfx handles successful pickup receipts.
   },
 
-  // Aerospace locomotion receipts (shipMicroMotion, render-side only). Deliberately
-  // cue-free: maneuvering puffs and death beats are continuous vocabulary, not scored
-  // moments, so they never touch _emitJuiceCue or cue-count contracts.
   _onShipRcsPulse(p) {
-    if (!this._scene || !p) return;
-    if (!Number.isFinite(p.x) || !Number.isFinite(p.z)) return;
-    // The production RCS path is player-only: skip the player when it serves them, so
-    // player and NPCs share this seam without double-puffing (legacy-mode player included).
-    if (p.shipId != null && p.shipId === this.state.playerId) {
-      const owner = this._ent(p.shipId);
-      if (owner && this._usesProductionThruster(owner)) return;
-    }
-    const intensity = Math.max(0, Math.min(1, Number(p.intensity) || 0));
-    if (intensity <= 0.01) return;
-    const reduced = this._isReduced();
-    const burst = this._burst || 1;
-    const dirX = Number.isFinite(p.dirX) ? p.dirX : 1;
-    const dirZ = Number.isFinite(p.dirZ) ? p.dirZ : 0;
-    const roll = Math.atan2(dirZ, dirX);
-    const sm = reduced ? 0.7 : 1;
-    // Razor-sharp white cold-gas slit along the exhaust axis.
-    this._spawnSprite(SPR_FLASH, p.x, 0.12, p.z, 0.10 + intensity * 0.08,
-      (0.9 + intensity * 1.2) * sm, (2.2 + intensity * 2.6) * sm,
-      reduced ? 0.55 : 0.85, 0, '#ffffff',
-      dirX * (10 + intensity * 14), dirZ * (10 + intensity * 14), 3.2, roll);
-    const count = Math.max(2, Math.round((2 + intensity * 4) * burst * (reduced ? 0.6 : 1)));
-    this._c0.set('#ffffff'); this._c1.set('#bcd2e8');
-    for (let k = 0; k < count; k++) {
-      const a = roll + (Math.random() - 0.5) * 0.5;
-      const sp = 26 + intensity * 40 + Math.random() * 18;
-      this._spawnParticle(p.x, p.z, Math.cos(a) * sp, Math.sin(a) * sp,
-        0.22 + intensity * 0.14, 1.1 + intensity * 0.8, 0.05,
-        this._c0, this._c1, 3.2, 0.1, 0, a, 2.4);
-    }
+    return presentShipRcsPulse(this, p, SHIP_MANEUVER_VFX_HELPERS);
   },
 
   _onShipDeathPop(p) {

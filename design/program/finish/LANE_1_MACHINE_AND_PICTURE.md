@@ -175,6 +175,14 @@ instead of terminating (`presentationRunner.js`). D250: cap concurrent asset fet
 backoff. Add a forced-context-loss test and a 30-minute Adventure soak to the M0 bench. Done when the
 soak + one forced context loss shows zero terminal panes.
 
+Integration checkpoint 2026-10-31: a public Ceres approach exposes valid Dock prompts whose intents
+are rejected because sector admission stays armed. The worker domain mirror omitted `world.enterSerial`;
+temporary event replay restored it to undefined, making the current renderer cook appear stale.
+The candidate now projects the serial without changing the Dock gate or successor guard. Actual
+projection/replay/renderer checks pass 4/4 and domain/wire checks 9/9; fresh public docking and the full
+30-minute soak remain required. Renderer lifecycle extraction and authored CSS sidecars pass their
+focused checks; the combined bundle and 17-case baseline pass. See `INTEGRATION_COVERAGE.md`.
+
 **M9 — Load less, load later.** 28 MB of minified JS in the eager closure (`scripts/build-bundle.mjs`,
 esbuild splitting): lazy-load per mode and per screen; make `modelTruthCensus.generated.js` and
 `en-US.generated.js` fetched JSON instead of chunk payload; move `ruckusMeshData/*.js` (3.4 MB of mesh

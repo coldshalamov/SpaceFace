@@ -1,4 +1,10 @@
 import {
+  authoredBoundaryPreparationSignature,
+  createSectorBoundaryGenerationManager,
+  publishPreparedSectorBoundary,
+  disposePreparedSectorBoundary,
+} from '../src/render/runtime/sectorBoundaryLifecycle.js';
+import {
   SECTOR_BOUNDARY_PREPARATION_STATE,
   isLiveSectorBoundaryRecordCurrent,
   pruneSettledSectorBoundaryRecords,
@@ -18,10 +24,6 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 
 import {
-  authoredBoundaryPreparationSignature,
-  createSectorBoundaryGenerationManager,
-  disposePreparedSectorBoundary,
-  publishPreparedSectorBoundary,
   bodyIsInsideSectorArrivalBand,
   entityHasOwnSectorPrewarmPlan,
   sectorPrewarmPopulationNeedsSynchronousRefresh,

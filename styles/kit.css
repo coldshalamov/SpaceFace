@@ -124,6 +124,10 @@ html[data-k-temp="works"]    { /* Asteroid Works keeps its own law; the kit sets
   grid-template-columns: var(--k-hang) minmax(0, 1fr);
   grid-template-rows: auto minmax(0, 1fr) auto;
   grid-template-areas: "title title" "hang stage" "foot foot"; }
+#screens > .k-screen[data-ui-css-pending],
+#screens > .k-screen[data-ui-css-pending] *,
+#sf-touch-overlay[data-ui-css-pending],
+#sf-touch-overlay[data-ui-css-pending] * { visibility: hidden !important; pointer-events: none !important; }
 .k-screen::before { content: ""; position: absolute; inset: 0; z-index: -1;
   background: var(--k-scrim); transition: background-color var(--k-d-temp) var(--k-ease); }
 .k-screen--dense::before { background: rgb(26 20 16 / 0.45); }

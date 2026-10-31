@@ -25,6 +25,7 @@ import {
   recommendedActions,
   stagedOpeningOwnsCommand,
 } from '../src/ui/screens/missionLog.js';
+import { world as worldProto } from '../src/systems/world.js';
 
 function harness({ tutorialHints = true, seed = 47 } = {}) {
   const state = createGameState(seed);
@@ -140,6 +141,56 @@ test('default New Game: cold-start tracks 47-A without claiming a mission waypoi
   );
   assert.equal(actions[0].label, 'STORY', 'opening CURRENT ACTION is the story first-route');
   assert.match(actions[0].title, /Follow the anomaly/i);
+});
+
+test('automatic tether entry yields to an armed player course, which can explicitly retarget the derelict', () => {
+  const h = harness();
+  h.bus.emit('game:started');
+  const derelict = {
+    id: 5, type: 'wreck', alive: true, pos: { x: 40, z: -25 },
+    data: { kind: 'derelict', onboarding: true },
+  };
+  h.state.entities.set(derelict.id, derelict);
+  h.state.entityList.push(derelict);
+  h.onboarding._derelictId = derelict.id;
+  h.state.onboarding.active = true;
+  h.state.onboarding.finished = false;
+  h.state.onboarding.currentBeat = BEATS.findIndex((beat) => beat.key === 'tether');
+  h.state.onboarding.beatAction = BEATS[h.state.onboarding.currentBeat].line;
+
+  const helioCourse = {
+    kind: 'nav', label: 'Helios Station', targetEntityId: 4,
+    pos: { x: -420, z: 100 },
+  };
+  const helioAutopilot = {
+    active: true, status: 'braking', label: 'Helios Station', targetEntityId: 4,
+    target: { x: -420, z: 100 },
+  };
+  h.state.nav.waypoint = { ...helioCourse };
+  h.state.nav.autopilot = { ...helioAutopilot };
+
+  // This is the production automatic lesson-entry path, including its forced objective stamp.
+  h.onboarding._enterBeat(BEATS[h.state.onboarding.currentBeat]);
+  assert.deepEqual(h.state.nav.waypoint, helioCourse,
+    'the tether lesson must not replace the active player-selected route');
+  assert.deepEqual(h.state.nav.autopilot, helioAutopilot,
+    'lesson entry leaves the canonical autopilot target alone');
+  assert.equal(h.state.onboarding.active, true, 'the tutorial remains live');
+  assert.equal(h.state.entities.get(derelict.id), derelict,
+    'the objective actor remains available to track from the map');
+
+  // Reuse the canonical public course owner: explicitly selecting the tutorial actor still works.
+  const world = Object.assign({}, worldProto, { state: h.state, bus: h.bus });
+  h.bus.on('ui:setCourse', (payload) => world._onSetCourse(payload || {}));
+  h.bus.emit('ui:setCourse', {
+    kind: 'nav', label: 'Derelict', pos: derelict.pos, targetEntityId: derelict.id,
+  });
+  assert.equal(h.state.nav.waypoint.kind, 'nav');
+  assert.equal(h.state.nav.waypoint.targetEntityId, derelict.id);
+  assert.equal(h.state.nav.autopilot.targetEntityId, derelict.id);
+  h.onboarding._setObjectiveWaypoint(true);
+  assert.equal(h.state.nav.waypoint.targetEntityId, derelict.id,
+    'later automatic lesson refreshes preserve the pilot’s explicit objective course');
 });
 
 test('tutorial:finished hands nav ownership back to the tracked 47-A mission', () => {

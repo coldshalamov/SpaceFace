@@ -13,6 +13,9 @@ import * as lifecycleHelpers from '../src/core/sectorEnterDefer.js';
 import { openingLoadPolicy } from '../src/render/openingLoadPolicy.js';
 import { createOpeningLoadingAdmission, observePipelineAdmission, prepareMobileOpeningFirstPicture, waitForOpeningFirstPicture } from '../src/render/pipelineReadiness.js';
 import { createCatalogStationRestore } from '../src/save/catalogStationRestore.js';
+import { createBus } from '../src/core/eventBus.js';
+import { createSimLaneRuntime } from '../src/core/simLaneMain.js';
+import { createDomainDiffer } from '../scripts/lib/simReadModel.mjs';
 const require = createRequire(import.meta.url);
 const { parse } = require(require.resolve('@babel/parser', { paths: [process.env.SPACEFACE_DEPS_ROOT || process.cwd()] }));
 const source = readFileSync(process.env.ENTRY_SOURCE_RENDERER || new URL('../src/render/renderer.js', import.meta.url), 'utf8');
@@ -555,6 +558,53 @@ test('actual pipeline normal completion still releases admission', async () => {
   await evaluate(pipelineCode, f.owner, f.values);
   assert.equal(f.state.render.sectorShellAdmission, false);
   assert.equal(f.state.render.firstFlightResidencyHoldUntil, 12);
+});
+
+test('worker sector serial survives event replay until its current cook settles', async (t) => {
+  const f = fixture(), posts = [], bus = createBus();
+  let pending = deferred();
+  let receive, pipeline;
+  f.state.entities = new Map(); f.state.entityList = []; f.state.settings = {};
+  f.state.meta = { seed: 1 }; f.state.tick = 0; f.state.accumulator = 0;
+  f.state.timeScale = 0; f.state.ui = { screenStack: [] };
+  // The main mirror begins without a serial; the worker's current snapshot owns it.
+  delete f.state.world.enterSerial;
+  f.values.compileSectorPipelines = (_sector, _epoch, receipt) => {
+    f.owner._liveSectorCookGeneration++;
+    receipt.generation = f.owner._liveSectorCookGeneration;
+    return pending.promise;
+  };
+  const lane = createSimLaneRuntime({ state: f.state, bus, registry: {}, helpers: {},
+    flags: { lane: 'worker', sab: false, warnings: [] }, clockMode: 'worker-local',
+    channelFactory: () => ({ post: m => posts.push(m), onMessage: fn => { receive = fn; }, terminate() {} }) });
+  t.after(() => lane.close());
+  receive({ kind: 'ready', seq: posts[0].seq, stateTick: 0, domainUpdates: [] });
+  await lane.readyPromise;
+  bus.on('sector:enter', () => { pipeline = evaluate(pipelineCode, f.owner, f.values); });
+  const worker = { world: { currentSectorId: 'ceres', enterSerial: 7 } };
+  const differ = createDomainDiffer();
+  const updates = differ.diff(worker, 1).updates;
+  receive({ kind: 'clockTick', stateTick: 1, simTime: 1 / 60, domainUpdates: updates,
+    events: [{ t: 'sector:enter', p: { sectorId: 'ceres', enterEpoch: 7 }, m: 'flight', es: 7 }] });
+  assert.ok(pipeline, 'the real replay delivered the enter');
+  assert.equal(f.state.world.enterSerial, 7, 'the canonical serial remains after the temporary event shim');
+  pending.resolve({ ok: true });
+  await pipeline;
+  assert.equal(f.state.render.sectorShellAdmission, false, 'the current cook releases its own admission');
+  // An old replay still sees its own serial during dispatch, but must not release
+  // the successor's admission after the authoritative mirror advances.
+  pending = deferred();
+  worker.world.enterSerial = 8;
+  f.state.render.sectorShellAdmission = true;
+  f.state.render.sectorShellAdmissionSerial = 8;
+  receive({ kind: 'clockTick', stateTick: 2, simTime: 2 / 60,
+    domainUpdates: differ.diff(worker, 2).updates,
+    events: [{ t: 'sector:enter', p: { sectorId: 'ceres', enterEpoch: 7 }, m: 'flight', es: 7 }] });
+  assert.equal(f.state.world.enterSerial, 8, 'the successor serial survives old-event replay');
+  pending.resolve({ ok: true });
+  await pipeline;
+  assert.equal(f.state.render.sectorShellAdmission, true, 'old completion cannot release the successor');
+  assert.equal(f.state.render.sectorShellAdmissionSerial, 8);
 });
 
 for (const [label, supersede] of [
