@@ -302,3 +302,25 @@ regressions, 12 Mission Log regressions, six imports, services readiness and 55 
 checks pass.** Browser-worker, normal-input, rendered focus and performance
 acceptance remain open. The publisher preserves newer upstream serial/mission/
 faction hooks and is recorded in the owning Lane 1 Inbox.
+
+### Ceres work earns a bounded inspection response
+
+The existing station director can now inspect the completed furnace detail at the
+visible Ceres Refinery. It correlates the exact recent completed receipt with the
+single retired version-1 worksite ledger, validates three unique terminal cargo
+slots, and permits full, partial and all-lost results without inventing payment.
+The original settlement toast remains the counts/pay readout; the new operation
+is the existing budget-free repair-drone/hull-crawl presentation, not unloading,
+restored cargo or a permanent repair flag. No new voice or model is introduced.
+
+The separate scene identity preserves Helios receiving, ordinary station pacing,
+visibility/dock/tutorial/mode gates, shown dedupe, unseen exit retry and original
+180-second simulation window. Continue may project only its remaining window.
+Authored contract → intake/loss → settlement/retirement → reader/director → existing
+VFX/articulation consumer is tested for all three outcomes. A representative arm
+node proves the articulation consumer, not current Ceres asset or rendered quality.
+
+**257 integrated tests, 34 unchanged regressions, six imports and 55 UI checks
+pass; read-only local preload validation is in sync.** Full rendered/normal-input
+Ceres and Continue acceptance remain open. This advances SF-LIVING-WORLD without
+closing the larger goal or creating a new physical/economic owner.

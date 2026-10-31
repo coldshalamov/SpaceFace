@@ -94,8 +94,9 @@ contract settles it. The authored owner records three pod outcomes: received pod
 earn proportional cargo pay, destroyed pods count as losses, and three accounted
 pods plus four clear sites advance even when all cargo is lost. The player-facing
 line reports those independent facts without forcing an order between the two legs.
-Scale 4's between-contract state still falls back to general guidance; no invented
-active contract or unlock fills the gap.
+Kessler does not invent an active contract during Scale 4's between-contract
+state; the Mission Log now guides that step directly through its existing waypoint
+projection, without an invented unlock.
 
 The focused author/counter/settlement, B0/handback and starter-workday reader suites
 pass 45/45 across four test files; the new seam test uses the real CR-FEED intake event,
@@ -103,7 +104,31 @@ missions listener, loss recorder, and worksite settlement owner. This does not c
 the ordinary-control Wasp sample experiment, rendered dialogue readability, full
 Continue, or default-route visual acceptance.
 
-## Scale 4 integration verification
+## Ceres completed-work inspection
+
+After the authored B1 furnace detail settles, the existing station-side event director
+can stage one short, budget-free repair-drone inspection at the visible Ceres Refinery.
+It reuses the existing hull-crawl crawler/stitch VFX and gantry-slide consumer where
+authored arm nodes are available;
+it creates no cargo or entity and writes no durable repair, mission, payout, or progression
+state. The scene is keyed to the exact completed Ceres mission receipt and the single
+version-1 retired furnace ledger, requiring three unique slots with exclusive received/lost
+outcomes and complete accounting. Full 3/3, partial 1–2/3, and all-lost 0/3 settlements all
+qualify—the last may have zero cargo pay. The existing settlement toast remains the readable
+count/pay record; this transient visual is an inspection, not unloading and not a claim that
+context metadata is visible. A queued unseen inspection can retry after a sector exit while
+the original 180-second sim-time window remains; Continue reprojects only the remaining
+window, following the director's transient-scene convention.
+
+`test/ceres-furnace-aftermath.test.mjs` runs the actual authored mission, CR-FEED intake and
+loss settlement, mission cleanup/retirement, receipt reader, station director, and the existing
+gantry/VFX consumer seam for full, partial, and all-lost results. It also covers invalid/stale
+receipts and ledgers, Ceres anchor/sector and ordinary visibility/mode gates, dedupe, exit retry,
+and Continue reprojection. The articulation test supplies a representative gantry
+node; it does not establish the current Ceres GLB node inventory or rendered result.
+This is source/native-component evidence, not rendered route or visual acceptance.
+
+## Scale 4 integration verification (earlier checkpoint)
 
 The integrated set now passes 240 opening tests, six production imports and 12
 unchanged Mission Log regression cases. The unchanged repository UI import/check
@@ -115,3 +140,13 @@ Only the shared helper import, coordinate decoder and beat-1 action block change
 in Mission Log. The target block was verified unchanged at upstream b68493ff;
 newer CSS-ready/deferred stylesheet changes outside this patch must be retained
 when integrating. The candidate snapshot must not replace the newer whole file.
+
+## Current Ceres increment verification
+
+257 integrated opening tests, 34 unchanged Mission Log/publisher/domain regression
+cases, six production imports and 55 UI import/check assertions pass. The local
+read-only preload check passes (44 main plus 1,509 source-closure entries), with no
+index rewrite. The older Helios fixture now supplies the real Ceres imports; no
+production guard was retained merely to accommodate an extracted-source test.
+Normal flight, rendered Ceres articulation, full Continue and release acceptance
+remain open; the native scene does not imply durable repair or cargo restoration.

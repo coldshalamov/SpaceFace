@@ -3,6 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { firstBuoyReceiptFields, firstBuoyReceivingReceipt, firstBuoyReceivingItem } from '../src/missions/starterBuoyAftermath.js';
+import { ceresFurnaceInspectionItem, ceresFurnaceInspectionReceipt } from '../src/missions/ceresFurnaceAftermath.js';
 const read = p => readFileSync(new URL('../' + p, import.meta.url), 'utf8');
 const STEP_REWARD = { 1:520, 2:760, 3:960 };
 const mission = (step=1,id=`buoy-${step}`) => ({ id, source:'starterJob', type:'tow_recovery', destStationId:'station_helios', destSectorId:'sector_helios_prime', reward_cr:STEP_REWARD[step] || 520,
@@ -14,7 +15,7 @@ const receipt = (step=1,at_s=100,id=`buoy-${step}`) => receiptFor(mission(step,i
 const station = {id:42,alive:true,type:'station',pos:{x:1280,z:-420},data:{stationId:'station_helios'}};
 const state = (receipts=[receipt()]) => ({mode:'flight',simTime:110,player:{flags:{}},world:{currentSectorId:'sector_helios_prime'},missions:{receipts}});
 const ds = read('src/systems/stationSideEventDirector.js').replace(/^import[^;]+;\n/gm,'').replace(/export default stationSideEventDirector;/,'').replace(/export /g,'');
-const deps = {firstBuoyReceivingItem,firstBuoyReceivingReceipt,planStationSideEvents:()=>[],rushHourSideEvents:()=>[],SIDE_EVENTS:{},SIDE_EVENT_IDS:[],bubblesFor:()=>({traffic:{radius:100},docking:{radius:20},noFire:{radius:40}}),tableSimAuthorityWuFromState:()=>100,sessionRhythmOf:()=>null,sessionRhythmAllowsCombat:()=>true};
+const deps = {firstBuoyReceivingItem,firstBuoyReceivingReceipt,ceresFurnaceInspectionItem,ceresFurnaceInspectionReceipt,planStationSideEvents:()=>[],rushHourSideEvents:()=>[],SIDE_EVENTS:{},SIDE_EVENT_IDS:[],bubblesFor:()=>({traffic:{radius:100},docking:{radius:20},noFire:{radius:40}}),tableSimAuthorityWuFromState:()=>100,sessionRhythmOf:()=>null,sessionRhythmAllowsCombat:()=>true};
 const stationModule = Function(...Object.keys(deps),ds+';return {stationSideEventDirector,ensureState};')(...Object.values(deps));
 const director = stationModule.stationSideEventDirector, ensureStationState = stationModule.ensureState;
 function fixture(s=state()) {const events=[];const d=Object.create(director);d.state=s;d.bus={emit:(name,p)=>events.push({name,p})};d.helpers={spawnEntity:()=>assert.fail('no physical spawn'),spawnBudget:{request:()=>assert.fail('no budget')}};s.playerId=1;const player={id:1,type:'ship',alive:true,pos:{...station.pos}};s.entities=new Map([[1,player],[station.id,station]]);s.entityIndex={stations:[station]};return {s,d,events};}
