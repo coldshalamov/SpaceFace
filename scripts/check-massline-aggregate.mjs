@@ -251,22 +251,32 @@ function selectChecks(all, only) {
 
 async function runSerial(ids) {
   const out = [];
-  for (const id of ids) out.push(await runChild(id));
+  const pair = ids.includes('check:47a:spindle') && ids.includes('check:47a:scavenger-threat');
+  for (const id of ids) {
+    if (pair && id === 'check:47a:scavenger-threat') continue;
+    if (pair && id === 'check:47a:spindle') out.push(...await runInspectPair());
+    else out.push(await runChild(id));
+  }
   return out;
 }
 
 async function runPooled(ids, limit) {
   // Longest first. The work is skewed enough that the wall clock is decided by whether
   // check:47a:physical-branches is in the first wave; in declaration order it is dead last.
+  const pair = ids.includes('check:47a:spindle') && ids.includes('check:47a:scavenger-threat');
   const queue = ids
     .map((id, index) => ({ id, index }))
+    .filter((item) => !pair || item.id !== 'check:47a:scavenger-threat')
     .sort((a, b) => costHint(b.id) - costHint(a.id));
   const out = new Array(ids.length);
   let cursor = 0;
   const worker = async () => {
     while (cursor < queue.length) {
       const item = queue[cursor++];
-      out[item.index] = await runChild(item.id);
+      if (pair && item.id === 'check:47a:spindle') {
+        const results = await runInspectPair();
+        for (const result of results) out[ids.indexOf(result.id)] = result;
+      } else out[item.index] = await runChild(item.id);
     }
   };
   await Promise.all(Array.from({ length: Math.min(limit, queue.length) }, worker));
@@ -275,6 +285,60 @@ async function runPooled(ids, limit) {
 
 function costHint(id) {
   return COST_HINT_MS[id] ?? DEFAULT_COST_HINT_MS;
+}
+
+// Each check reports independently. If the paired process dies or times out before its sibling
+// ran, run that sibling normally so one failure never hides another check's verdict.
+async function runInspectPair() {
+  const ids = ['check:47a:spindle', 'check:47a:scavenger-threat'];
+  const received = [];
+  let output = '';
+  let timedOut = false;
+  let finished = false;
+  const child = spawn(process.execPath, ['scripts/check-47a-paired-inspect.mjs'], {
+    cwd: ROOT, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe', 'ipc'],
+    env: { ...process.env, [JOBS_ENV]: '1' },
+  });
+  let timer;
+  const ended = new Promise((resolve) => {
+    const finish = (code) => {
+      if (finished) return;
+      finished = true;
+      clearTimeout(timer);
+      resolve(code);
+    };
+    const armTimeout = () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        timedOut = true;
+        killTree(child);
+        setTimeout(() => finish(null), KILL_GRACE_MS).unref();
+      }, CHILD_TIMEOUT_MS);
+    };
+    armTimeout();
+    child.stdout.on('data', (chunk) => { output += String(chunk); });
+    child.stderr.on('data', (chunk) => { output += String(chunk); });
+    child.on('message', (result) => {
+      if (!result || result.id !== ids[received.length]) return;
+      received.push({
+        id: result.id, command: packageJson.scripts[result.id], ok: result.ok === true,
+        code: result.ok === true ? 0 : 1, timedOut: false, timeoutMs: null,
+        durationMs: result.durationMs, output: result.error || '',
+      });
+      if (received.length < ids.length) armTimeout();
+    });
+    child.on('error', (error) => { output += `\n${error.message}`; finish(-1); });
+    child.on('close', finish);
+  });
+  const code = await ended;
+  if (received.length < ids.length) {
+    const id = ids[received.length];
+    received.push({ id, command: packageJson.scripts[id], ok: false, code,
+      timedOut, timeoutMs: timedOut ? CHILD_TIMEOUT_MS : null,
+      durationMs: timedOut ? CHILD_TIMEOUT_MS : 0, output });
+  }
+  while (received.length < ids.length) received.push(await runChild(ids[received.length]));
+  return received;
 }
 
 function runChild(id) {

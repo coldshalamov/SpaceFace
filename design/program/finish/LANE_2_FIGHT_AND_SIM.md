@@ -22,6 +22,8 @@ lean enough to change. Status words: `OPEN`, `ACTIVE`, `LANDED <sha>`, `SKIPPED 
 
 - 2026-10-31, integration: `scripts/sf-sim-cli.mjs` skips the redundant fresh physics prepare only for envelope resumes; the existing snapshot-bearing reset remains. All four real 47-A physical branch outcomes pass (48,075 ms). This verifies loaded physical behavior; no matched timing improvement or baseline-budget acceptance is claimed.
 
+- 2026-10-31, integration: the Massline aggregate shares the identical 5,200-tick spindle/scavenger inspection in one opt-in child while preserving separate assertions, verdicts, timeouts and standalone commands. The focused pair passes in 23.4 seconds; this does not establish the full 90-second baseline budget.
+
 ## Defects (this lane's share of the demo defect ledger — delete a row in the commit that fixes it)
 
 | # | What a stranger sees | Where | Next step |
