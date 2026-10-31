@@ -319,7 +319,7 @@ async function runInspectPair() {
     child.stdout.on('data', (chunk) => { output += String(chunk); });
     child.stderr.on('data', (chunk) => { output += String(chunk); });
     child.on('message', (result) => {
-      if (!result || result.id !== ids[received.length]) return;
+      if (finished || timedOut || !result || result.id !== ids[received.length]) return;
       received.push({
         id: result.id, command: packageJson.scripts[result.id], ok: result.ok === true,
         code: result.ok === true ? 0 : 1, timedOut: false, timeoutMs: null,
