@@ -141,6 +141,11 @@ ${RESULTS_PLATE(R)}
   ${R} :is(.sf-crres__stage, .sf-crres-celebrate) .sf-crres__band-title { margin:0 0 6px !important; }
   ${R} > .k-title .k-t-title { font-size:clamp(34px, 7.2vh, 48px) !important; }
   ${R} > .sf-crres-celebrate { margin:0 !important; }
+  /* The column scrolls in ~230px here, and the cut fell right after "3 drafts changed what your guns
+     do:" with the chain itself below the fold. WHAT YOU BUILT moves up under the figures (the dial
+     caption already carries who and from where), and THE RUN's lines run on under the fade. */
+  ${R} .sf-crres__band[data-band="build"] { order:2; }
+  ${R} .sf-crres__band[data-band="story"] { order:3; }
 }
 @media (min-width:701px) and (max-width:880px) and (max-height:600px) {
   ${R} > .k-foot .k-word.k-word--primary { font-size:13px !important; }
