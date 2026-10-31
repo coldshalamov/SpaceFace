@@ -74,6 +74,16 @@ export async function compileRenderPackage(options = {}) {
   document.setLogger(new Logger(Logger.Verbosity.SILENT));
   const resolvedNodes = resolveSourceNodes(document, semanticManifest);
   await prepareRenderDocument(document, semanticManifest, resolvedNodes);
+  // Quantization otherwise folds its position decode transform into a leaf mesh node.
+  // Runtime-controlled semantic groups need their authored transform as their pivot.
+  const dynamicMeshCarriers = new Map();
+  for (const group of semanticManifest.dynamicGroups) {
+    const node = resolvedNodes.semanticNodes.get(group.nodeId).node;
+    if (!node.getMesh() || node.listChildren().length || dynamicMeshCarriers.has(node)) continue;
+    const marker = document.createNode();
+    dynamicMeshCarriers.set(node, { marker, mesh: node.getMesh() });
+    node.addChild(marker);
+  }
   // A render package is a *render* artifact: it may narrow a material to what the geometry can
   // actually show. Double-sided opaque materials over watertight shells rasterise every triangle's
   // back face for a face the camera can never reach, and compile their own DOUBLESIDED program.
@@ -128,6 +138,10 @@ export async function compileRenderPackage(options = {}) {
       meshopt({ encoder: MeshoptEncoder, ...RELEASE_MESHOPT_OPTIONS }),
     );
   }
+  for (const [node, { marker }] of dynamicMeshCarriers) {
+    node.removeChild(marker);
+    marker.dispose();
+  }
   stampSemanticLocators(semanticManifest, resolvedNodes);
 
   const renderBytes = await encodeRenderPackageGlb(io, document);
@@ -135,7 +149,7 @@ export async function compileRenderPackage(options = {}) {
   const sourceHash = sha256(sourceBytes);
   const semanticsHash = sha256(Buffer.from(stableJsonStringify(semanticManifest)));
   const sourceManifestHash = sourceManifestBytes ? sha256(sourceManifestBytes) : null;
-  const compiled = compileMetadataRecords(semanticManifest, resolvedNodes);
+  const compiled = compileMetadataRecords(semanticManifest, resolvedNodes, dynamicMeshCarriers);
 
   const metadataWithoutHash = stableJsonValue({
     schema: RENDER_PACKAGE_SCHEMA,
@@ -725,7 +739,7 @@ function resolveSourceNodes(document, semanticManifest) {
   return { scene, semanticNodes, anchors };
 }
 
-function compileMetadataRecords(semanticManifest, resolved) {
+function compileMetadataRecords(semanticManifest, resolved, dynamicMeshCarriers = new Map()) {
   const currentPaths = indexScenePaths(resolved.scene);
   const nodes = semanticManifest.semanticNodes.map((entry) => {
     const source = resolved.semanticNodes.get(entry.id);
@@ -766,7 +780,9 @@ function compileMetadataRecords(semanticManifest, resolved) {
   const geometry = [];
   for (const semanticNode of semanticManifest.semanticNodes) {
     const sourceNode = resolved.semanticNodes.get(semanticNode.id).node;
-    const mesh = sourceNode.getMesh();
+    const carriedMesh = dynamicMeshCarriers.get(sourceNode)?.mesh;
+    const meshNode = sourceNode.getMesh() ? sourceNode : sourceNode.listChildren().find((node) => node.getMesh() === carriedMesh);
+    const mesh = meshNode?.getMesh();
     if (!mesh) continue;
     const primitives = mesh.listPrimitives();
     for (const [primitiveIndex, primitive] of primitives.entries()) {
@@ -787,7 +803,7 @@ function compileMetadataRecords(semanticManifest, resolved) {
         geometryHash: hashPrimitive(primitive),
         materialHash: materialRecord ? materialRecord.hash : null,
         materialPipelineKey: semanticNode.pipelineKey,
-        bounds: primitiveBounds(primitive, sourceNode.getWorldMatrix()),
+        bounds: primitiveBounds(primitive, meshNode.getWorldMatrix()),
       });
     }
   }
