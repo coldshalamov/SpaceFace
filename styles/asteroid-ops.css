@@ -1121,6 +1121,23 @@ html:not([data-locale="en-US"]) .aw-alert {
   max-width: 100%;
 }
 
+/* Narrow desktop window (≤600 wide, not the phone layout — e.g. 390×844): the one-row crest
+   ran its status line and the Log / Leave keys off the right edge, so there was no visible
+   way out. Like the phone sheet (mobileScreenLayouts.js), the name and the keys hold the
+   first row and the readings wrap underneath. */
+@media (max-width: 600px) {
+  html:not([data-sf-mobile="1"]) .ast-screen > .aw-crest {
+    flex: 0 0 auto;
+    min-height: 40px;
+    flex-wrap: wrap;
+    gap: 4px 12px;
+    padding: 6px 12px;
+  }
+  html:not([data-sf-mobile="1"]) .ast-screen .aw-crest-right { order: 1; margin-left: auto; gap: 10px; }
+  html:not([data-sf-mobile="1"]) .ast-screen .aw-chip,
+  html:not([data-sf-mobile="1"]) .ast-screen .aw-alert { order: 2; white-space: normal; max-width: 100%; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .ast-summary-modal, .aw-hold-fill, .aw-gauge-fill, .aw-build-key,
   .ast-screen .aw-leave, .ast-screen .sf-btn, .ast-summary-box .sf-btn { transition: none; }
