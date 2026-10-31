@@ -2333,6 +2333,12 @@ html body #screens > .sx-berth.orr-station .sx-mkt.orr-market .sx-mkt__hero.sx-m
 @media (max-width:1499px) {
   ${T} .sx-bar__rows .sx-bar-row .sx-bar-row__role { min-width: 0 !important; max-width: 100% !important; overflow: hidden !important; white-space: nowrap !important; text-overflow: ellipsis !important; }
 }
+/* ui-polish-244: in the 400px rail band a role that won't fit beside the name (the chosen captain's
+   "HULL GHOST · NEW A…" at 1280×720) drops whole onto its own line under the name instead of trailing off;
+   a role that fits stays inline. Narrower windows keep the one-line rows so the whole roster stays in view. */
+@media (min-width:1101px) and (max-width:1499px) {
+  ${T} .sx-bar__rows .sx-bar-row { flex-wrap: wrap !important; row-gap: 0 !important; }
+}
 @media (min-width:651px) and (max-height:800px), (max-height:600px) {
   /* F4 — the board verb used to sit under the hang's fold with the third lead. At ≤800px the
      hang's rhythm shortens (shallower leads margin, tighter row pitch, the keys hint stands
