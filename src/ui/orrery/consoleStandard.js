@@ -168,6 +168,12 @@ export const CONSOLE_STANDARD_CSS = `
    labels, no chevron caps (STATION_STANDARD §5). Scoped to the tab workspaces so the vitals' own
    acts (stationStandard.js) are untouched. */
 html body #screens .orr-station .sx-sw-verbs .k-word.sx-sw-verb[data-verb],
+html body #screens > :not(.sx-observatory):not(.of-title):not([data-screen="drill"]) .fh-key[data-rack-upgrade],
+html body #screens > :not(.sx-observatory):not(.of-title):not([data-screen="drill"]) .fh-key[data-rack-restock],
+html body #screens .orr-station .fh-key[data-rack-upgrade],
+html body #screens .orr-station .fh-key[data-rack-restock],
+html body #screens .orr-station .k-word[data-rack-upgrade],
+html body #screens .orr-station .k-word[data-rack-restock],
 .orr-station .orr-chain__source,
 .orr-station .orr-chain__wayout {
   --dpk-fill:rgb(236 230 216 / .06);
@@ -182,8 +188,14 @@ html body #screens .orr-station .sx-sw-verbs .k-word.sx-sw-verb[data-verb],
   border:1px solid rgb(236 230 216 / .38) !important; border-radius:2px !important;
   cursor:pointer;
 }
-html body #screens .orr-station .sx-sw-verbs .sx-sw-verb[data-verb]::before { content:none !important; }
+html body #screens .orr-station .sx-sw-verbs .sx-sw-verb[data-verb]::before,
+html body #screens .orr-station :is(.fh-key, .k-word)[data-rack-upgrade]::before,
+html body #screens .orr-station :is(.fh-key, .k-word)[data-rack-restock]::before { content:none !important; }
 html body #screens .orr-station .sx-sw-verbs .k-word.sx-sw-verb[data-verb]:is(:hover, :focus-visible),
+html body #screens > :not(.sx-observatory):not(.of-title):not([data-screen="drill"]) .fh-key[data-rack-upgrade]:is(:hover, :focus-visible),
+html body #screens > :not(.sx-observatory):not(.of-title):not([data-screen="drill"]) .fh-key[data-rack-restock]:is(:hover, :focus-visible),
+html body #screens .orr-station :is(.fh-key, .k-word)[data-rack-upgrade]:is(:hover, :focus-visible),
+html body #screens .orr-station :is(.fh-key, .k-word)[data-rack-restock]:is(:hover, :focus-visible),
 .orr-station .orr-chain__source:is(:hover, :focus-visible),
 .orr-station .orr-chain__wayout:is(:hover, :focus-visible) {
   --dpk-fill:rgb(236 230 216 / .12);
@@ -193,6 +205,13 @@ html body #screens .orr-station .sx-sw-verbs .k-word.sx-sw-verb[data-verb]:is(:h
 html body #screens .orr-station .sx-sw-verbs .sx-sw-verb[data-verb]:disabled,
 html body #screens .orr-station .sx-sw-verbs .sx-sw-verb[data-verb][aria-disabled="true"] {
   opacity:.45; cursor:not-allowed; }
+/* the ledger's empty board and archive status read as sentences, not faint engraved caps */
+.orr-station .sx-ledger .st-ledger-board-empty {
+  font-family:var(--dp-face-read, "Instrument Sans", system-ui, sans-serif) !important;
+  font-size:14px !important; letter-spacing:0 !important; text-transform:none !important; font-weight:500;
+  color:rgb(236 230 216 / .8) !important; }
+.orr-station .sx-ledger .st-ledger-status {
+  font-size:13px !important; letter-spacing:.04em !important; color:rgb(236 230 216 / .72) !important; }
 
 @media (forced-colors:active) {
   .sf-panel, .sf-panel__head, .sf-table__head, .sf-table__row { border-color:CanvasText; }
