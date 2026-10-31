@@ -376,3 +376,25 @@ An initially considered ore-hauler pull-aside scene was rejected after measuring
 actual geometry: its 112-WU route is inside the existing 136.86-WU safe-admission
 radius. Safety margins and ordinary routes were not changed to manufacture a scene.
 Rook's existing real purchase/negotiation and garden handoff remain authoritative.
+
+### Ordinary Swarm: safe nearby throwable admission
+
+Ordinary Swarm already opens through paid Armory and then immediate combat; its
+first wave already proposes five close throwables. No duplicate tutorial, shop or
+extra field was added. The pocket bypassed the native/swept clearance used elsewhere
+and left accepted bodies outside the arena's release list until a later census.
+
+The same proposals now check actual common-rock collider radius, native compound
+footprints and moving occupants through existing admission helpers. Accepted bodies
+reserve batch geometry and immediately enter normal teardown ownership. Reference
+radii alone can no longer admit a rock through a wider native collider. Empty-room
+placement is unchanged; an occupied room may safely refuse some or all proposals.
+There are no fallback positions, retries, admission ledger, save fields, repositioned
+survivors or changes to first-horde timing. Later rounds retain existing behavior.
+
+Twelve production-owner cases include real Rapier offset compounds in a rebased
+frame through ordinary wave planning, swept pilot/native paths, live-map/index
+disagreement, deferred publication reservations, rejected helper spawns, recycled
+records, extreme obstruction and run-end before census. All 35 original terrain/
+bank/arena cases pass unchanged. Full browser-worker play through first clear,
+purchase and second launch, full Continue and performance remain open.
