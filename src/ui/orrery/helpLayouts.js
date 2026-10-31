@@ -156,6 +156,16 @@ ${H} .orr-hreg__row.is-echo .orr-hreg__name { color:rgb(255 255 255); }
 ${H} .orr-hreg__row.is-echo .orr-hkey { color:rgb(255 255 255); text-shadow:0 0 12px rgb(143 203 255 / .9); }
 ${H} .orr-hreg__row.is-echo .orr-hkey::after { background:rgb(255 255 255); left:-4px; right:-4px; }
 ${H} .orr-hreg__row.is-echo .orr-hkey::before { background:rgb(143 203 255 / .34); }
+/* the register is a column of keycaps: letter bindings wear the same hairline chip as SHIFT and SPACE · F
+   (the dp-kbd voice) instead of half of them floating over a bar of light. The rig's big diagram keys keep the bar. */
+${H} .orr-hreg__row > .orr-hkey:not(.orr-hkey--text) { ${LABEL} font-size:12px !important; letter-spacing:.04em; line-height:1;
+  align-items:center; justify-content:center; gap:5px; min-width:24px; box-sizing:border-box; padding:4px 7px !important;
+  color:rgb(${BONE} / .92); background:linear-gradient(180deg, rgb(${BONE} / .09), rgb(${BONE} / .045)), rgb(6 8 11 / .72);
+  border:1px solid rgb(${BONE} / .42); border-radius:3px; box-shadow:inset 0 -1px 0 rgb(0 0 0 / .4); }
+${H} .orr-hreg__row > .orr-hkey:not(.orr-hkey--text)::before, ${H} .orr-hreg__row > .orr-hkey:not(.orr-hkey--text)::after { content:none; }
+${H} .orr-hreg__row > .orr-hkey--none:not(.orr-hkey--text) { color:rgb(${BONE} / .66); border-style:dashed; border-color:rgb(${BONE} / .3); background:transparent; }
+${H} .orr-hreg__row.is-echo > .orr-hkey:not(.orr-hkey--text) { color:rgb(255 255 255); text-shadow:none; border-color:rgb(255 255 255 / .85);
+  box-shadow:inset 0 -1px 0 rgb(0 0 0 / .4), 0 0 0 1px rgb(143 203 255 / .35), 0 0 10px rgb(143 203 255 / .45); }
 ${H} .orr-hreg__fine { margin:10px 0 0; padding-left:30px; font-family:var(--dp-face-body, "Instrument Sans"), system-ui, sans-serif; font-size:clamp(12px, .6vw, 15px); line-height:1.4; color:rgb(${BONE} / .84); }
 ${H} .orr-hreg .orr-extent::before { left:7px; width:2px; }
 
