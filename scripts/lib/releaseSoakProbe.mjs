@@ -609,7 +609,7 @@ export async function runReleaseSoakProbe({
           if (attemptError?.stationScreenWaitDiagnostic) {
             doLog(`[cycle ${index}] station-screen-wait-diagnostic ${JSON.stringify(attemptError.stationScreenWaitDiagnostic)}`);
           }
-          if (attempt === 0) {
+          if (shouldRetrySoakCycle(attemptError, attempt)) {
             doLog(`[cycle ${index}] failed; retrying once (${String(attemptError && attemptError.message || attemptError).slice(0, 160)})`);
             await setSoakTransition(page, null).catch(() => {});
             continue;
@@ -2606,6 +2606,46 @@ export function summarizeImmutableSavePopulation({
   };
 }
 
+// Executed in the page: only an actual failed-start menu ends the restore early.
+export function shouldRetrySoakCycle(error, attempt) {
+  return attempt === 0 && error?.code !== 'SOAK_LOAD_START_FAILED';
+}
+
+export function readSoakLoadLanding() {
+  const state = window.SF?.state;
+  if (state?.mode === 'flight' && window.__M6_RELEASE_SOAK_EVENTS__?.loaded === true) return 'flight';
+  const requests = typeof window.SF?.timeEffects?.describeRequests === 'function'
+    ? window.SF.timeEffects.describeRequests() : {};
+  return state?.mode === 'menu' && requests?.['runtime:start-failed'] ? 'menu' : false;
+}
+
+export async function waitForSoakLoadLanding(page, { timeoutMs = 210_000, graceMs = 240_000 } = {}) {
+  let landed;
+  let late = false;
+  try {
+    landed = await page.waitForFunction(readSoakLoadLanding, null, { timeout: timeoutMs, polling: 1000 })
+      .then((handle) => handle.jsonValue());
+  } catch (loadWaitError) {
+    // A still-loading session retains the existing grace period to land in flight or fail.
+    late = true;
+    landed = await page.waitForFunction(readSoakLoadLanding, null, { timeout: graceMs, polling: 1000 })
+      .then((handle) => handle.jsonValue()).catch(() => null);
+    if (!landed) throw loadWaitError;
+  }
+  if (landed === 'menu') {
+    const detail = await page.evaluate(() => ({
+      phase: window.SF?.state?.render?.openingFirstPicturePhase?.stage || null,
+      plan: window.SF?.state?.render?.openingFirstPicturePlanFailure || null,
+      message: (document.querySelector('[data-startup-stage]')?.textContent || '').trim().slice(0, 500),
+    })).catch(() => null);
+    const error = new Error(`F9 restore failed: runtime:start-failed menu${detail?.message ? `: ${detail.message}` : ''}`);
+    error.code = 'SOAK_LOAD_START_FAILED';
+    error.loadFailure = detail;
+    throw error;
+  }
+  return { late };
+}
+
 async function runSoakCycle(page, {
   index,
   outputDir,
@@ -2783,49 +2823,8 @@ async function runSoakCycle(page, {
   mark('pre-load-divergence', { divergenceInputMs, minRestoreDivergenceWu, quickSourceDivergenceWu, quickSource: quickSourceBeforeF9, diverged });
   await transition('load-restore');
   await page.keyboard.press('F9');
-  // The loaded-game visual gate legitimately owns up to ~180s of authored-visual staging on a
-  // contended host (the app's own bound); a restore that outlives a 90s wait is slow, not
-  // broken. A genuine wedge still surfaces early: a timed-out gate fails to mode 'menu' via
-  // failGameStart, which this predicate never satisfies either way.
-  const waitForLoadFlight = () => page.waitForFunction(() => window.__M6_RELEASE_SOAK_EVENTS__?.loaded === true && window.SF?.state?.mode === 'flight', null, { timeout: 210_000 });
-  try {
-    await waitForLoadFlight();
-  } catch (loadWaitError) {
-    // D31 + D35: a failed restore is designed to land in the retryable start-failed menu — but
-    // the app's own bounded gates can outlive the 210 s probe wait before that landing commits
-    // (the authored-visuals gate alone owns 180 s plus a 30 s retry, and the authored-library
-    // stage owns another pair of 180 s races). The one-shot sample this used to do could read
-    // mode:'loading' seconds before the recovery fired and report a bounded failure as a
-    // permanent freeze. So wait for the session to actually LAND: late flight means a slow but
-    // healthy load and the leg continues; the start-failed menu is the recoverable state a
-    // player would retry from; still 'loading' after the grace window is the real hang.
-    const landed = await page.waitForFunction(() => {
-      const s = window.SF?.state;
-      if (s?.mode === 'flight' && window.__M6_RELEASE_SOAK_EVENTS__?.loaded === true) return 'flight';
-      const reqs = typeof window.SF?.timeEffects?.describeRequests === 'function'
-        ? window.SF.timeEffects.describeRequests() : {};
-      return s?.mode === 'menu' && reqs && reqs['runtime:start-failed'] ? 'menu' : false;
-    }, null, { timeout: 240_000, polling: 1000 })
-      .then((handle) => handle.jsonValue())
-      .catch(() => null);
-    if (!landed) throw loadWaitError;
-    if (landed === 'flight') {
-      mark('load-late-flight', {});
-    } else {
-      const deadEnded = await page.evaluate(() => {
-        const s = window.SF?.state;
-        const reqs = typeof window.SF?.timeEffects?.describeRequests === 'function'
-          ? window.SF.timeEffects.describeRequests() : {};
-        return {
-          mode: s?.mode,
-          timeRequests: reqs,
-        };
-      }).catch(() => null);
-      mark('load-retry-start-failed', deadEnded);
-      await page.keyboard.press('F9');
-      await waitForLoadFlight();
-    }
-  }
+  const loadOutcome = await waitForSoakLoadLanding(page);
+  if (loadOutcome.late) mark('load-late-flight', {});
   const loaded = await readPlayerSnapshot(page);
   const loadedAtEvent = await page.evaluate(() => window.__M6_RELEASE_SOAK_EVENTS__?.loadedSnapshot || null);
   const loadedSlot = await page.evaluate(() => window.__M6_RELEASE_SOAK_EVENTS__?.loadedSlot || null);

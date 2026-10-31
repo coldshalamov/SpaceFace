@@ -17,7 +17,8 @@ export function isFirstLightPrompt(title, cancelLabel, confirmLabel = '') {
 // First light is scheduled after the title is painted. On a busy renderer it can appear
 // after the menu is ready, while a real New Game click is waiting for actionability.
 // Playwright's public locator handler answers that one known settings choice; all other
-// dialogs retain normal input ownership. No force click or settings mutation is involved.
+// dialogs retain normal input ownership. It uses the trusted page mouse for the inner choice
+// because a locator action from inside its own locator handler waits on that same handler.
 export async function installFirstLightPromptHandler(page, step) {
   if (firstLightHandlerPages.has(page) || typeof page.addLocatorHandler !== 'function') return;
   await page.addLocatorHandler(page.locator('#sf-confirm-root.sf-confirm--in #sf-confirm-title').filter({ hasText: /^First light$/ }), async () => {
@@ -155,9 +156,8 @@ export async function bootToMenu(page, baseUrl, step) {
 // chooses the actual "Play" control (legacy "keep" cancel) and records the answer; nothing else is
 // dismissed. The dialog and its choices are selected by their public accessible names.
 export async function answerFirstRunPrompt(page, step = () => {}) {
-  // The Play click is inside the matching dialog, so Playwright can invoke the installed handler
-  // again during this action. Guard the shared answer path so both handler and direct callers let
-  // that nested invocation proceed without answering the same prompt recursively.
+  // The choice is inside the matching dialog. The shared helper uses page.mouse rather than a
+  // locator click so an installed handler never waits for itself while activating its own target.
   if (firstLightHandlerActivePages.has(page)) return;
   firstLightHandlerActivePages.add(page);
   try {
@@ -187,8 +187,19 @@ async function answerFirstRunPromptOnce(page, step) {
     if (!await isActiveFirstLightPrompt(page)) return;
     throw new Error(`First light has no uniquely supported settings choice (expected Play or Keep my settings); controls: ${JSON.stringify(labels.map(norm))}`);
   }
-  // A disabled/covered control must still fail the gate normally; never force it or choose a preset.
-  await choice.control.click();
+  // Keep the semantic accessible-name lookup, then click the actual visible control with trusted
+  // mouse input. Locator.click() here re-enters the active locator handler and can wait on itself.
+  const visible = await choice.control.isVisible();
+  const enabled = await choice.control.isEnabled();
+  const box = await choice.control.boundingBox();
+  if (!visible || !enabled || !box || !(box.width > 0) || !(box.height > 0)) {
+    throw new Error(`First light ${choice.name} control is not visibly actionable`);
+  }
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  await page.waitForFunction(() => {
+    const root = document.getElementById('sf-confirm-root');
+    return !root || !root.classList.contains('sf-confirm--in');
+  }, null, { timeout: 5000 });
   step('first-run prompt', true, `answered "${title}" with ${choice.name} (shipped settings)`);
 }
 
