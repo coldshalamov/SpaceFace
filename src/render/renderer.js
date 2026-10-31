@@ -23017,9 +23017,29 @@ export const render = {
       // three releases a program when its last material user disposes, and the hulk can
       // first draw anywhere in the opening, so the warm owner must outlive it.
       this._openingHulkKeyWarmHold = { group, depthGroup, materials, textures, geometry };
+      // The serial driver defers the real link to the first program query, so a compiled
+      // program still pays its whole link at first draw (ltk2: the depth twin, compiled at
+      // warm begin, linked 1613 ms at lift+2.1 s). Take that first use here, behind the
+      // loading screen, one program per task; its cost is the warm's own (receipt.useMs).
+      const firstUse = () => {
+        const programs = materials.map((m) => props && props.get(m).currentProgram).filter(Boolean);
+        receipt.useMs = [];
+        let i = 0;
+        const step = () => {
+          if (i >= programs.length) { receipt.usedAt = Math.round(performance.now()); return; }
+          if (Number.isFinite(render.firstPlayableFrameAt)) { receipt.useSkipped = programs.length - i; return; }
+          const program = programs[i++];
+          const u0 = performance.now();
+          try { program.getUniforms(); } catch (_) { /* reported through the link ledger */ }
+          receipt.useMs.push(Math.round(performance.now() - u0));
+          setTimeout(step, 0);
+        };
+        setTimeout(step, 0);
+      };
       Promise.resolve(work).then(() => {
         receipt.linkMs = Math.round(performance.now() - t0);
         receipt.keys = readKeys();
+        firstUse();
       }, (error) => { receipt.error = String(error && error.message || error); });
     } catch (error) {
       receipt.error = String(error && error.message || error);
