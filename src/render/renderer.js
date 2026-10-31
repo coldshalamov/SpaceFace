@@ -12971,7 +12971,7 @@ export const render = {
     // legs so async drives pace it under their slice clocks instead of paying one
     // atomic ~multi-tens-of-ms window (and 3-4 times per boot). Sync callers drive
     // the generator inline for identical output.
-    const buildOpeningSubmissionPlanSteps = function* () {
+    const buildOpeningSubmissionPlanSteps = function* (onCandidate = null) {
       // prepareFrame() selects the final entity poses without rendering while the loading shell is
       // visible. Refresh world matrices once so frustum/layer admission observes those exact poses,
       // not the transform cache from the previous scene attachment.
@@ -12983,6 +12983,7 @@ export const render = {
         if (!root || seenRoots.has(root)) return false;
         seenRoots.add(root);
         candidates.push({ root, ...metadata });
+        if (onCandidate) onCandidate(root, metadata, submissionCamera);
         return true;
       };
 
@@ -13370,8 +13371,172 @@ export const render = {
       // would otherwise commit rows minted under two epochs into the new
       // world's plan + cohort (entity:${id} identities collide across worlds).
       const captureStale = captureLiveSectorCookStale();
-      const plan = yield* buildOpeningSubmissionPlanSteps.call(this);
-      if (captureStale()) return null;
+      const captureWorld = state.world;
+      const captureRender = state.render;
+      const expected = {
+        enterSerial: captureWorld?.enterSerial ?? null,
+        sectorId: captureWorld?.currentSectorId ?? null,
+        cookGeneration: this._liveSectorCookGeneration ?? null,
+      };
+      captureRender.openingPlanCaptureFailure = null;
+      const selectedRoots = new Map();
+      const cameraState = () => {
+        const camera = cam?.obj;
+        const matrix = (value) => value?.elements ? Array.from(value.elements).slice(0, 16) : null;
+        return { projection: matrix(camera?.projectionMatrix), worldInverse: matrix(camera?.matrixWorldInverse),
+          layerMask: camera?.layers?.mask ?? null };
+      };
+      const captureCandidate = (root, metadata, camera) => {
+        if (metadata?.role !== 'opening-entity-root' && metadata?.role !== 'tableStationShell') return;
+        const entityId = metadata.entityId ?? null;
+        const data = root.userData || {};
+        const key = data.openingSubmissionId != null ? String(data.openingSubmissionId)
+          : data.entityId != null ? `entity:${data.entityId}`
+            : data.sfEntityId != null ? `entity:${data.sfEntityId}`
+              : root.uuid ? `uuid:${root.uuid}` : root.id != null ? `id:${root.id}` : null;
+        if (key) selectedRoots.set(key, { root, entityId, camera, cameraAtSelection: cameraState(),
+          includeOffscreen: metadata.includeOffscreen === true });
+      };
+      const plan = yield* buildOpeningSubmissionPlanSteps.call(this, captureCandidate);
+      if (captureStale()) {
+        captureRender.openingPlanCaptureFailure = {
+          reason: 'stale-capture', expected,
+          actual: {
+            enterSerial: state.world?.enterSerial ?? null,
+            sectorId: state.world?.currentSectorId ?? null,
+            cookGeneration: this._liveSectorCookGeneration ?? null,
+            sameWorld: state.world === captureWorld,
+            sameRender: state.render === captureRender,
+            sameState: this.state === state,
+            rendererActive: rendererGenerationIsActive(),
+          },
+        };
+        return null;
+      }
+      if (!plan || plan.complete !== true || plan.firstPlayablePipelineSet?.complete !== true) {
+        const emptyRoots = (Array.isArray(plan?.roots) ? plan.roots : [])
+          .filter((root) => root?.blocking === true && root.drawLeafCount === 0);
+        const describeEmptyRoot = (descriptor) => {
+          const selection = selectedRoots.get(descriptor.id);
+          const root = selection?.root;
+          const entityId = selection?.entityId ?? null;
+          const entity = entityId != null ? state.entities?.get?.(entityId) : null;
+          const current = entityId != null ? this._meshes?.get?.(entityId) : null;
+          const camera = selection?.camera;
+          const descendants = [];
+          const pending = root ? [{ object: root, hiddenAncestor: false }] : [];
+          let visited = 0;
+          while (pending.length && visited < 256 && descendants.length < 12) {
+            const { object, hiddenAncestor } = pending.pop(); visited += 1;
+            const hidden = hiddenAncestor || object.visible === false;
+            const drawable = object.isMesh || object.isSkinnedMesh || object.isPoints || object.isLine || object.isSprite;
+            if (drawable || object === root || object.isLOD || object.isBatchedMesh) {
+              let inFrustum = null;
+              try { if (camera?.frustum?.intersectsObject) inFrustum = camera.frustum.intersectsObject(object); } catch (_) {}
+              const materials = Array.isArray(object.material) ? object.material : [object.material].filter(Boolean);
+              const range = object.geometry?.drawRange;
+              const layerMatch = camera?.layers?.test && object.layers ? camera.layers.test(object.layers) : null;
+              const exclusions = [];
+              if (hidden) exclusions.push('hidden');
+              if (!drawable) exclusions.push('not-drawable');
+              if ((object.isInstancedMesh || object.isPoints || object.isLine || object.isSprite)
+                  && Number.isFinite(Number(object.count)) && Number(object.count) <= 0) exclusions.push('empty-instance-count');
+              if (range && Number.isFinite(Number(range.count)) && Number(range.count) <= 0) exclusions.push('empty-draw-range');
+              if (object.userData?.authoredResolvingMarker === true) exclusions.push('resolving-marker');
+              if (layerMatch === false) exclusions.push('camera-layer');
+              if (!selection?.includeOffscreen && object.frustumCulled !== false && inFrustum === false) exclusions.push('outside-frustum');
+              descendants.push({
+                uuid: String(object.uuid || '').slice(0, 100) || null,
+                name: String(object.name || '').slice(0, 120) || null,
+                type: String(object.type || '').slice(0, 80) || null,
+                visible: object.visible !== false, hiddenAncestor,
+                parentUuid: object.parent?.uuid || null,
+                layerMask: object.layers?.mask ?? null, cameraLayerMask: camera?.layers?.mask ?? null,
+                layerMatch, exclusions,
+                inFrustum, frustumCulled: object.frustumCulled !== false,
+                resolvingMarker: object.userData?.authoredResolvingMarker === true,
+                instanceCount: Number.isFinite(object.count) ? object.count : null,
+                drawRangeCount: Number.isFinite(range?.count) ? range.count : null,
+                geometryUuid: object.geometry?.uuid || null,
+                materials: materials.slice(0, 4).map((material) => ({
+                  name: String(material?.name || '').slice(0, 100) || null,
+                  type: String(material?.type || '').slice(0, 80) || null,
+                  visible: material?.visible !== false,
+                })),
+                batched: object.isBatchedMesh === true,
+                retiredBatch: object.isBatchedMesh === true && isRetiredRigidOpaqueBatch(object),
+                lod: String(object.userData?.lod?.level ?? '').slice(0, 80) || null,
+              });
+            }
+            for (let i = (object.children?.length || 0) - 1; i >= 0; i--) {
+              pending.push({ object: object.children[i], hiddenAncestor: hidden });
+            }
+          }
+          return {
+            rootId: String(descriptor.id || '').slice(0, 160) || null,
+            name: String(descriptor.name || '').slice(0, 160) || null,
+            role: String(descriptor.role || '').slice(0, 120) || null,
+            entityId, entityType: entity?.type || null, entityAlive: entity?.alive ?? null,
+            defId: entity?.data?.defId || entity?.defId || null,
+            selectedRootFound: !!root, selectedStillCurrent: root ? current === root : null,
+            currentRootUuid: current?.uuid || null, rootParentIsScene: root ? root.parent === scene : null,
+            cameraAtSelection: selection?.cameraAtSelection || null, cameraAtFailure: cameraState(),
+            censusFrustum: camera?.frustum?.planes?.map((plane) => [plane.normal.x, plane.normal.y, plane.normal.z, plane.constant]) || null,
+            includeOffscreen: selection?.includeOffscreen === true,
+            authoredState: root?.userData?.authoredAssetState || null,
+            descendants, visited, truncated: pending.length > 0,
+          };
+        };
+        const failureReasons = (Array.isArray(plan?.blockingReasons) ? plan.blockingReasons : [])
+          .filter((row) => ['productionBoundary', 'producerResourceIdentityCensus', 'firstPlayablePipelineSet'].includes(row?.role));
+        const unverifiedRoots = (Array.isArray(plan?.roots) ? plan.roots : []).filter((root) => (
+          root?.blocking === true && (!root.productionBoundary?.contentHash
+            || root.productionBoundary.contentHashVerified !== true)
+        ));
+        const resourceDifferences = {};
+        for (const key of ['geometryBufferIds', 'blockingTextureIds', 'shadowResourceIds']) {
+          const producer = new Set(plan?.producerResourceIdentitySets?.[key] || []);
+          const captured = new Set(plan?.resourceIdentitySets?.[key] || []);
+          const producerOnly = [...producer].filter((id) => !captured.has(id));
+          const capturedOnly = [...captured].filter((id) => !producer.has(id));
+          resourceDifferences[key] = {
+            producerCount: producer.size, capturedCount: captured.size,
+            producerOnlyCount: producerOnly.length, capturedOnlyCount: capturedOnly.length,
+            producerOnly: producerOnly.slice(0, 12).map((id) => String(id).slice(0, 160)),
+            capturedOnly: capturedOnly.slice(0, 12).map((id) => String(id).slice(0, 160)),
+          };
+        }
+        captureRender.openingPlanCaptureFailure = {
+          reason: 'incomplete-plan',
+          complete: plan?.complete === true,
+          drawLeafCount: Array.isArray(plan?.drawLeaves) ? plan.drawLeaves.length : null,
+          emptyBlockingRootCount: emptyRoots.length,
+          emptyBlockingRoots: emptyRoots.slice(0, 12).map(describeEmptyRoot),
+          unverifiedBlockingRootCount: unverifiedRoots.length,
+          unverifiedBlockingRoots: unverifiedRoots.slice(0, 12).map((root) => ({
+            rootId: String(root.id || '').slice(0, 160) || null,
+            name: String(root.name || '').slice(0, 160) || null,
+            role: String(root.role || '').slice(0, 120) || null,
+          })),
+          failureReasons: failureReasons.slice(0, 12).map((row) => ({
+            role: String(row.role || '').slice(0, 120) || null,
+            reason: String(row.reason || '').slice(0, 160) || null,
+          })),
+          failureReasonCount: failureReasons.length,
+          resourceIdentityCensusMatches: plan?.resourceIdentityCensusMatches ?? null,
+          producerResourceCensusPresent: !!plan?.producerResourceIdentitySets,
+          resourceDifferences,
+          firstPlayableComplete: plan?.firstPlayablePipelineSet?.complete === true,
+          firstPlayableReason: String(plan?.firstPlayablePipelineSet?.reason || '').slice(0, 160) || null,
+          blockingReasons: (Array.isArray(plan?.blockingReasons) ? plan.blockingReasons : []).slice(0, 12)
+            .map((row) => ({ rootId: String(row?.rootId || '').slice(0, 160) || null,
+              role: String(row?.role || '').slice(0, 120) || null,
+              reason: String(row?.reason || '').slice(0, 160) || null })),
+          blockingReasonCount: Array.isArray(plan?.blockingReasons) ? plan.blockingReasons.length : 0,
+          requiredHashCount: Array.isArray(plan?.firstPlayablePipelineSet?.requiredContentHashes)
+            ? plan.firstPlayablePipelineSet.requiredContentHashes.length : 0,
+        };
+      }
       stampProducerReceipt(plan);
       state.render.openingSubmissionPlan = plan;
       const identities = (plan.compileSubjects || []).map((subject) => openingSubjectIdentity(subject))
@@ -16101,15 +16266,29 @@ export const render = {
         programs.skipped === true ? 'skipped' : (programs.error ? 'error' : 'resolved'), {
           method: programs.method || programs.reason || undefined,
         });
-      const yieldBufferFrame = typeof options.yieldToMain === 'function'
+      const yieldBufferBase = typeof options.yieldToMain === 'function'
         ? options.yieldToMain
         : yieldToBrowser;
-      // The shared stretch clock covers every paced stretch of this cook — the
-      // cohort mint, the pool census, the subject buckets — so a fat leg
-      // debits the same ledger the slices debit.
       const cookStretchStarted = cookNow();
       let cookStretchSliceAt = cookStretchStarted;
       let cookStretchDebitAt = cookStretchStarted;
+      const restartCookStretchAfterFrame = (previousEpoch) => {
+        const currentEpoch = paceEpochNow();
+        if (previousEpoch < 0 || currentEpoch < 0 || currentEpoch === previousEpoch) return;
+        cookStretchSliceAt = cookNow();
+        cookStretchDebitAt = cookStretchSliceAt;
+      };
+      const bufferYieldStats = { count: 0, ms: 0 };
+      const yieldBufferFrame = async () => {
+        const started = cookNow();
+        const previousEpoch = paceEpochNow();
+        bufferYieldStats.count += 1;
+        try { return await yieldBufferBase(); }
+        finally { bufferYieldStats.ms += cookNow() - started; restartCookStretchAfterFrame(previousEpoch); }
+      };
+      // The shared stretch clock covers every paced stretch of this cook — the
+      // cohort mint, the pool census, the subject buckets — so a fat leg
+      // debits the same ledger the slices debit.
       const paceCookStretch = async () => {
         const tick = cookNow();
         if (tick - cookStretchSliceAt <= 4 && pacedFrameSpend() < PACED_FRAME_BUDGET_MS) return;
@@ -16449,7 +16628,14 @@ export const render = {
         let switched = 0;
         let touchMs = 0;
         let maxTouchMs = 0;
-        const yieldTouch = typeof options.yieldToMain === 'function' ? options.yieldToMain : null;
+        const touchYieldStats = { count: 0, ms: 0 };
+        const yieldTouch = typeof options.yieldToMain === 'function' ? async () => {
+          const started = cookNow();
+          const previousEpoch = paceEpochNow();
+          touchYieldStats.count += 1;
+          try { return await options.yieldToMain(); }
+          finally { touchYieldStats.ms += cookNow() - started; restartCookStretchAfterFrame(previousEpoch); }
+        } : null;
         // Issue every touch subject's compile as one readiness cohort on the exact post target, drain
         // once, then touch: a draw against an unlinked program blocks the main thread in onFirstUse
         // until ANGLE finishes the link (laneB-fixA: 5 of 89 touch subjects had no program at their
@@ -16579,6 +16765,7 @@ export const render = {
             })
             : yieldTouch;
           const touchStarted = cookNow();
+          const touchYieldStart = { ...touchYieldStats };
           // Names of subjects that still had no compiled program at touch time — they are the
           // programs the first presented frame will link synchronously. Counts alone never said
           // which objects escaped every admission gate.
@@ -16593,6 +16780,7 @@ export const render = {
           // bound as the cohort above instead of a frame wait + gl.finish per touch.
           const touchPace = createCookQueuePaceDebt();
           let touchPaces = 0;
+          let touchPaceWaitMs = 0;
           for (let index = 0; index < units.programSubjects.length; index += 1) {
             const subject = units.programSubjects[index];
             if (cookOverBudget()) break;
@@ -16621,7 +16809,9 @@ export const render = {
               touchPace.note(drawMs);
               if (!coalesce || before.status !== 'ready' || touchPace.due()
                 || index === units.programSubjects.length - 1) {
-                await cohort.paceQueue();
+                const paceStarted = cookNow();
+                try { await cohort.paceQueue(); }
+                finally { touchPaceWaitMs += cookNow() - paceStarted; }
                 touchPace.clear();
                 touchPaces += 1;
                 paced = coalesce;
@@ -16649,7 +16839,10 @@ export const render = {
             touchMs: Math.round(touchMs),
             maxTouchMs: Math.round(maxTouchMs),
             yields: touchYield && typeof touchYield.yields === 'number' ? touchYield.yields : undefined,
+            yieldWaitCount: touchYieldStats.count - touchYieldStart.count,
+            yieldWaitMs: Math.round(touchYieldStats.ms - touchYieldStart.ms),
             paces: cohort && typeof cohort.paceQueue === 'function' ? touchPaces : undefined,
+            paceWaitMs: Math.round(touchPaceWaitMs),
           });
         } finally {
           restoreTouchShadows();
@@ -16860,6 +17053,9 @@ export const render = {
         : await driveRevealCohort(firstFlightRoots);
       if (restoreFirstFlight === null) return cookSuperseded;
       const buffersStarted = cookNow();
+      const bufferYieldStart = { ...bufferYieldStats };
+      const bufferSliceStart = typeof yieldBuffers.yields === 'number' ? yieldBuffers.yields : 0;
+      const bufferTiming = { submissions: 0, submissionMs: 0, syncMs: 0 };
       const bufferPolicy = openingLoadPolicy({
         shouldAwaitGpuCook: shouldAwaitOpeningGpuCook({ gpu: state.render && state.render.gpu, renderer }),
         mode: state.mode,
@@ -16876,6 +17072,7 @@ export const render = {
               includeGeometry: true,
               includeEmpty: true,
               yieldToMain: yieldBuffers,
+              cookTiming: bufferTiming,
             })
             : await prepareStartupGpuResidency(renderer, scene, {
               geometryBatchDrawables: bufferPolicy.geometryBatchDrawables,
@@ -16883,6 +17080,7 @@ export const render = {
               includeGeometry: true,
               includeEmpty: true,
               yieldToMain: yieldBuffers,
+              cookTiming: bufferTiming,
             });
         }
       } finally {
@@ -16893,9 +17091,17 @@ export const render = {
         buffers && buffers.reason === 'loading-budget' ? 'timeout' : 'resolved', {
           roots: firstFlightBufferRoots.length,
           textures: buffers ? buffers.textures : undefined,
-          yields: typeof yieldBuffers.yields === 'number' ? yieldBuffers.yields : undefined,
+          yields: typeof yieldBuffers.yields === 'number' ? yieldBuffers.yields - bufferSliceStart : undefined,
+          yieldWaitCount: bufferYieldStats.count - bufferYieldStart.count,
+          yieldWaitMs: Math.round(bufferYieldStats.ms - bufferYieldStart.ms),
+          residencySubmissions: bufferTiming.submissions,
+          residencySubmissionMs: Math.round(bufferTiming.submissionMs),
+          residencySyncMs: Math.round(bufferTiming.syncMs),
         });
       const layersStarted = cookNow();
+      const layerYieldStart = { ...bufferYieldStats };
+      const layerSliceStart = typeof yieldBuffers.yields === 'number' ? yieldBuffers.yields : 0;
+      const layerTiming = { submissions: 0, submissionMs: 0, syncMs: 0 };
       // Count-0 / drawRange-0 effect drawables (plumes, RCS, plasma strips, retro,
       // ribbon trails) are skipped unless revealed. 1x1 every first-flight layer.
       // InstancedMesh-only left a +6 geo stall that first-drew in bloom (164 ms).
@@ -16941,6 +17147,7 @@ export const render = {
             includeGeometry: true,
             includeEmpty: true,
             yieldToMain: yieldBuffers,
+            cookTiming: layerTiming,
           });
         } finally {
           await driveRestoreCohort(restoreLayers);
@@ -16950,7 +17157,12 @@ export const render = {
       recordOpeningCookStep(state.render, 'cook.layers', layersStarted,
         layerRoots.length === 0 ? 'skipped' : 'resolved', {
           roots: layerRoots.length,
-          yields: typeof yieldBuffers.yields === 'number' ? yieldBuffers.yields : undefined,
+          yields: typeof yieldBuffers.yields === 'number' ? yieldBuffers.yields - layerSliceStart : undefined,
+          yieldWaitCount: bufferYieldStats.count - layerYieldStart.count,
+          yieldWaitMs: Math.round(bufferYieldStats.ms - layerYieldStart.ms),
+          residencySubmissions: layerTiming.submissions,
+          residencySubmissionMs: Math.round(layerTiming.submissionMs),
+          residencySyncMs: Math.round(layerTiming.syncMs),
         });
       if (typeof state.render.restLiveFlightEffectsAfterCook === 'function') {
         state.render.restLiveFlightEffectsAfterCook();
@@ -30438,8 +30650,9 @@ export const render = {
     });
     const holdLoadingGpu = this.state && this.state.mode === 'loading';
     const holdOpeningPicture = this._openingFirstPicturePrepared === true
-      && this.state && this.state.mode === 'flight'
-      && !Number.isFinite(this.state.render && this.state.render.firstPlayableFrameAt);
+      && this.state && ((holdLoadingGpu && this.state.render?.openingGraphPublicationFrozen === true)
+        || (this.state.mode === 'flight'
+          && !Number.isFinite(this.state.render && this.state.render.firstPlayableFrameAt)));
     // No presentation path may hold poses while the sim keeps stepping. The kinetic crunch used to
     // do exactly that for 1–2 frames per heavy hit: every hull froze, the sim ran on underneath,
     // and the picture then snapped a frame or two forward — the player's own ship included. Weight
@@ -30449,7 +30662,7 @@ export const render = {
     // the hold would freeze syncEntityViews/camera/instance submission for the rest of the session.
     // Release it after a bounded grace so a missed latch degrades to one stale picture, not a
     // permanently frozen presentation.
-    if (holdOpeningPicture) {
+    if (holdOpeningPicture && !holdLoadingGpu) {
       const nowMs = typeof performance !== 'undefined' && typeof performance.now === 'function'
         ? performance.now()
         : Date.now();

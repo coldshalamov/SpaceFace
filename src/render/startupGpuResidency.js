@@ -717,6 +717,16 @@ function restoreRendererState(renderer, state) {
   }
 }
 
+// Optional cook-ledger timing. Submission time includes its synchronous work; syncMs is
+// reported separately so callers can distinguish that work from queue/drain waiting.
+async function timeResidencySubmission(timing, now, submit) {
+  if (!timing) return submit();
+  const started = now();
+  timing.submissions += 1;
+  try { return await submit(); }
+  finally { timing.submissionMs += now() - started; }
+}
+
 /**
  * Upload exact vertex/index/instance buffers through Three's public render path.
  *
@@ -857,9 +867,9 @@ export async function prepareStartupGeometryResidency(renderer, subjects, option
             };
             // Compile and draw are separate serial units. Release the compiled prefix before
             // yielding and queueing the draw, so sibling uploads cannot pile onto either unit.
-            const ready = submitSerial
-              ? await submitSerial(compile, { urgent: options.urgent === true })
-              : await compile();
+            const ready = await timeResidencySubmission(options.cookTiming, now, () => submitSerial
+              ? submitSerial(compile, { urgent: options.urgent === true })
+              : compile());
             if (ready?.skipped && ready?.contextLost) { interrupted = ready; break; }
             if (ready?.contextLost || ready?.readinessTimedOut
                 || (typeof options.isActive === 'function' && !options.isActive())) {
@@ -895,6 +905,7 @@ export async function prepareStartupGeometryResidency(renderer, subjects, option
             } finally {
               if (counters) counters.admissionSubject = priorSubject;
               const durationMs = now() - started;
+              if (options.cookTiming) options.cookTiming.syncMs += durationMs;
               restoreRendererState(renderer, state);
               const receipt = {
                 kind: 'gpuGeometryResidency',
@@ -926,7 +937,8 @@ export async function prepareStartupGeometryResidency(renderer, subjects, option
             }
           };
           if (submitSerial) {
-            const outcome = await submitSerial(upload, { urgent: options.urgent === true });
+            const outcome = await timeResidencySubmission(options.cookTiming, now,
+              () => submitSerial(upload, { urgent: options.urgent === true }));
             if (outcome && outcome.contextLost) { interrupted = outcome; break; }
           } else upload();
         } finally {
@@ -1054,11 +1066,12 @@ export async function prepareStartupGpuResidency(renderer, subjects, options = {
       }
     };
     if (submitSerial) {
-      const outcome = await submitSerial(runBatch, { urgent: options.urgent === true });
+      const outcome = await timeResidencySubmission(options.cookTiming, now,
+        () => submitSerial(runBatch, { urgent: options.urgent === true }));
       if (outcome && outcome.contextLost) return outcome;
     } else {
       runBatch();
-      if (paceQueue) await paceQueue();
+      if (paceQueue) await timeResidencySubmission(options.cookTiming, now, () => paceQueue());
     }
     return null;
   };
@@ -1137,6 +1150,7 @@ export async function prepareStartupGpuResidency(renderer, subjects, options = {
         success = true;
       } finally {
         const durationMs = now() - started;
+        if (options.cookTiming) options.cookTiming.syncMs += durationMs;
         const name = texture.name || texture.source?.data?.name || 'unnamed';
         const width = Number(texture.image?.width) || Number(texture.source?.data?.width) || 0;
         const height = Number(texture.image?.height) || Number(texture.source?.data?.height) || 0;

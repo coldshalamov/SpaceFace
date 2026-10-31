@@ -860,6 +860,12 @@ async function createAutopilotApproachRig({ startPos, startVel }) {
     boost: { energy: 200, max: 200 },
   };
   const bus = createBus();
+  const dockRangeEvents = [];
+  const dockRangeHost = {
+    _dockStationId: null,
+    _gateEntityId: null,
+    bus: { emit: (name, payload) => dockRangeEvents.push({ name, payload }) },
+  };
   const autopilot = {
     active: true, targetEntityId: station.id,
     target: { x: station.pos.x, z: station.pos.z },
@@ -884,9 +890,11 @@ async function createAutopilotApproachRig({ startPos, startVel }) {
     flightV3._stepCraft(player, state.input, dt, state, true);
     dockingCorridor.update(dt, state);
     owner.step(dt);
+    // Observe the same public owner the live physics tick uses after movement has settled.
+    physics.updateDockRange.call(dockRangeHost, state);
   };
   const dispose = () => { flightV3.bus = prevBus; owner.dispose(); };
-  return { owner, state, player, autopilot, station, berth, dt, stepCraft, dispose };
+  return { owner, state, player, autopilot, station, berth, dt, stepCraft, dockRangeEvents, dockRangeHost, dispose };
 }
 
 // The public Ceres route stopped near the authored Belt Outpost, but its contact and yaw were
@@ -976,6 +984,36 @@ async function flyAutopilotDockApproach({ startPos, startVel, secondsMax, onTick
     rig.dispose();
   }
 }
+
+test('real authority: ordinary autopilot berthing raises the public dock-range prompt', async () => {
+  const rig = await createAutopilotApproachRig({
+    startPos: skinPos(1200),
+    startVel: skinVel(-300),
+  });
+  try {
+    for (let t = 0; t < 120 * 60; t++) {
+      rig.stepCraft(t);
+      if (rig.state.dockingCorridor && rig.state.dockingCorridor.phase === 'berthed') break;
+    }
+
+    assert.equal(rig.state.dockingCorridor.phase, 'berthed',
+      'the ordinary flight owner must reach the physical berth');
+    assert.ok(rig.dockRangeEvents.some(({ name, payload }) => name === 'dock:range'
+      && payload.stationId === 'station_helios'
+      && payload.shipId === 'player'
+      && payload.inRange === true),
+    'the canonical dock-range owner must expose the prompt for the same settled berth');
+
+    // Let the normal idle flight/corridor/physics owners continue after arrival. A brief
+    // contact displacement must not leave the player parked outside the prompt envelope.
+    const settledTick = rig.state.tick;
+    for (let t = settledTick + 1; t <= settledTick + 10 * 60; t++) rig.stepCraft(t);
+    assert.equal(rig.dockRangeHost._dockStationId, 'station_helios',
+      'the settled player remains inside the dock prompt range after arrival');
+  } finally {
+    rig.dispose();
+  }
+});
 
 // The failed soak run's own coordinates: 55,888 wu out, velocity perpendicular to the target
 // line — radial closing speed ≈ 0, so the closing-only planner saw nothing to stop.

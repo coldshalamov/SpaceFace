@@ -8,7 +8,51 @@ import {
   buildPostTeardownGlDeleteTrapDiagnostic,
   readFailureRuntimeSnapshot,
   readPostRecoveryRenderDiagnostics,
+  readSoakLoadLanding,
+  shouldRetrySoakCycle,
+  waitForSoakLoadLanding,
 } from '../scripts/lib/releaseSoakProbe.mjs';
+
+test('F9 start-failed menu ends the cycle while loading keeps its grace and flight succeeds', async () => {
+  const oldWindow = globalThis.window;
+  try {
+    globalThis.window = { SF: { state: { mode: 'loading' }, timeEffects: { describeRequests: () => ({}) } } };
+    assert.equal(readSoakLoadLanding(), false);
+    window.SF.state.mode = 'menu';
+    assert.equal(readSoakLoadLanding(), false);
+    window.SF.timeEffects.describeRequests = () => ({ 'runtime:start-failed': { scale: 0 } });
+    assert.equal(readSoakLoadLanding(), 'menu');
+    let calls = 0;
+    const failedPage = { waitForFunction: async (fn) => { calls++; return { jsonValue: async () => fn() }; },
+      evaluate: async () => ({ message: 'opening submission plan is incomplete' }) };
+    let failure;
+    try { await waitForSoakLoadLanding(failedPage); } catch (error) { failure = error; }
+    assert.match(failure.message, /opening submission plan is incomplete/);
+    assert.equal(calls, 1);
+    assert.equal(shouldRetrySoakCycle(failure, 0), false);
+    assert.equal(shouldRetrySoakCycle(new Error('market'), 0), true);
+    window.SF.state.mode = 'flight'; window.__M6_RELEASE_SOAK_EVENTS__ = { loaded: true };
+    calls = 0;
+    const slowPage = { waitForFunction: async (fn) => { calls++; if (calls === 1) throw new Error('timeout'); return { jsonValue: async () => fn() }; } };
+    assert.deepEqual(await waitForSoakLoadLanding(slowPage), { late: true });
+    assert.equal(calls, 2);
+  } finally { globalThis.window = oldWindow; }
+});
+
+test('F9 landing accepts raw CSP-safe flight and menu results without entering grace', async () => {
+  for (const result of ['flight', 'menu']) {
+    let waits = 0;
+    const page = {
+      waitForFunction: async () => { waits += 1; return result; },
+      evaluate: async () => ({ message: 'opening submission plan is incomplete' }),
+    };
+    if (result === 'flight') assert.deepEqual(await waitForSoakLoadLanding(page), { late: false });
+    else await assert.rejects(waitForSoakLoadLanding(page), (error) => (
+      error.code === 'SOAK_LOAD_START_FAILED' && /opening submission plan is incomplete/.test(error.message)
+    ));
+    assert.equal(waits, 1, `${result} must not enter the grace wait`);
+  }
+});
 
 test('abort snapshot retains state diagnostic after renderer teardown and uses renderer fallback', () => {
   const previousWindow = globalThis.window, previousDocument = globalThis.document;

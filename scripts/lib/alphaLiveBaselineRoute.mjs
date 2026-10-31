@@ -8,7 +8,8 @@ import {
   validateFinalStationFrameSuffix,
 } from './alphaLiveBaselineContracts.mjs';
 import { consumePageConditionValue } from './playwrightCspPolling.mjs';
-import { installFirstLightPromptHandler } from '../player-truth/routes.mjs';
+import { dismissCinematicIntro, installFirstLightPromptHandler } from '../player-truth/routes.mjs';
+import { resolveCollisionProxyManifest, resolveDockAnchor } from '../../src/data/collisionProxyManifests.js';
 
 export {
   evaluateCanonicalUrlAcceptance,
@@ -76,16 +77,7 @@ export async function runBrowserPublicRoute({
     await page.waitForFunction(() => !!(window.SF && window.SF.state), null, { timeout: 90_000 });
     recordCanonicalUrl('boot-ready');
 
-    const splash = page.locator('#cinematic-splash');
-    if (await splash.isVisible().catch(() => false)) {
-      await page.keyboard.press('Space');
-      // The is-closing fade removes the node on a 700ms timer; on a contended host
-      // that timer can starve several seconds. The wait proves dismissal, not speed.
-      await splash.waitFor({ state: 'hidden', timeout: 15_000 });
-      mark('intro-dismissed', { note: 'visible cinematic dismissed with Space' });
-    } else {
-      mark('intro-not-shown', { note: 'fresh route reached the menu without a visible cinematic' });
-    }
+    await dismissCinematicIntro(page, (name, _ok, detail) => mark(name, { note: detail }), { timeout: 15_000 });
 
     phase = 'main-menu';
     await page.waitForFunction(() => {
@@ -352,8 +344,21 @@ export async function runBrowserPublicRoute({
     let manualBrakes = 0;
     let bestDistToBerth = Infinity;
     let progressAt = Date.now();
+    const dockPromptTransitions = [];
+    let previousDockPromptVisible = null;
     while (Date.now() < dockDeadline) {
       approachSnapshot = await readApproachSnapshot(page);
+      if (approachSnapshot.dockPromptVisible !== previousDockPromptVisible) {
+        dockPromptTransitions.push({
+          tick: approachSnapshot.tick,
+          simTime: approachSnapshot.simTime,
+          visible: approachSnapshot.dockPromptVisible,
+          dockInRange: approachSnapshot.dockInRange,
+        });
+        if (dockPromptTransitions.length > 12) dockPromptTransitions.splice(0, dockPromptTransitions.length - 12);
+        previousDockPromptVisible = approachSnapshot.dockPromptVisible;
+      }
+      approachSnapshot.dockPromptTransitions = dockPromptTransitions.slice();
       if (approachSnapshot.playerAlive !== true) {
         // The combat/law observer is installed before the baseline route starts (when present),
         // so an approach death can name its killer instead of arriving as a bare hull:0.
@@ -955,21 +960,83 @@ async function readNavigationSnapshot(page) {
 }
 
 async function readApproachSnapshot(page) {
-  return page.evaluate(() => {
+  const snapshot = await page.evaluate(() => {
     const state = window.SF?.state;
     const player = state?.entities?.get(state.playerId);
     const nav = state?.nav?.autopilot;
     const corridor = state?.dockingCorridor || null;
+    const stationCandidates = state?.entityIndex?.stations || state?.entityList || [];
+    const target = nav?.targetEntityId != null ? state?.entities?.get(nav.targetEntityId) : null;
+    const wantedStationId = target?.type === 'station'
+      ? target?.data?.stationId
+      : corridor?.stationId || 'station_helios';
+    const station = target?.type === 'station'
+      ? target
+      : stationCandidates.find((candidate) => candidate?.data?.stationId === wantedStationId) || null;
+    const prompt = document.querySelector('.sf-alert--dock');
+    const promptStyle = prompt ? getComputedStyle(prompt) : null;
+    const promptRect = prompt?.getBoundingClientRect();
+    const dockEvents = window.__M6_RELEASE_SOAK_EVENTS__?.dock;
+    const copyBody = (body) => {
+      if (!body || typeof body !== 'object') return body ?? null;
+      return {
+        shape: body.shape || null,
+        revision: Number.isFinite(body.revision) ? body.revision : null,
+        useMeasuredSkin: body.useMeasuredSkin,
+        collisionProxyManifest: body.collisionProxyManifest || null,
+      };
+    };
+    const dataFields = (data) => {
+      if (!data || typeof data !== 'object') return null;
+      return {
+        stationId: data.stationId || null,
+        stationTypeId: data.stationTypeId || null,
+        archetypeGlb: data.archetypeGlb || null,
+        placeId: data.placeId || null,
+        collisionProxy: data.collisionProxy || null,
+        dockRadius: Number.isFinite(data.dockRadius) ? data.dockRadius : null,
+        corridorBearingDeg: Number.isFinite(data.corridorBearingDeg) ? data.corridorBearingDeg : null,
+        isGate: data.isGate === true,
+        isWormhole: data.isWormhole === true,
+        defId: data.defId || null,
+        typeId: data.typeId || null,
+        proportions: data.proportions || null,
+        compoundSkin: data.compoundSkin === true,
+      };
+    };
     return {
       tick: Number(state?.tick || 0),
+      simTime: Number(state?.simTime || 0),
       playerAlive: !!(player && player.alive !== false && Number(player.hull) > 0),
       hull: Number(player?.hull || 0),
       pos: player ? { x: Number(player.pos?.x || 0), z: Number(player.pos?.z || 0) } : null,
       speed: player ? Math.hypot(Number(player.vel?.x || 0), Number(player.vel?.z || 0)) : null,
+      playerIdentity: player ? {
+        entityId: player.id ?? null,
+        occupantGeneration: player.occupantGeneration ?? null,
+        type: player.type || null,
+        radius: Number.isFinite(player.radius) ? player.radius : null,
+        data: dataFields(player.data),
+        physicsBody: copyBody(player.physicsBody),
+      } : null,
+      stationIdentity: station ? {
+        entityId: station.id ?? null,
+        occupantGeneration: station.occupantGeneration ?? null,
+        type: station.type || null,
+        alive: station.alive !== false,
+        collides: station.collides !== false,
+        pos: station.pos ? { x: Number(station.pos.x), z: Number(station.pos.z) } : null,
+        rot: Number(station.rot || 0),
+        radius: Number.isFinite(station.radius) ? station.radius : null,
+        data: dataFields(station.data),
+        physicsBody: copyBody(station.physicsBody),
+      } : null,
+      admissionRunGeneration: Number.isFinite(state?.render?.admissionRunGeneration)
+        ? state.render.admissionRunGeneration : null,
       autopilot: nav ? {
         active: nav.active === true,
         status: nav.status || '',
-        distance: Number(nav.distance || 0),
+        reportedDistance: Number(nav.distance || 0),
         label: nav.label || '',
       } : null,
       corridor: corridor ? {
@@ -979,12 +1046,65 @@ async function readApproachSnapshot(page) {
         inCapture: corridor.inCapture === true,
         headingOk: corridor.headingOk,
       } : null,
+      dockInRange: state?.ui?.dockInRange === true,
+      dockPromptVisible: !!(prompt && !prompt.hidden && promptStyle?.display !== 'none'
+        && promptStyle?.visibility !== 'hidden' && Number(promptStyle?.opacity || 1) > 0.01
+        && Number(promptRect?.width || 0) > 1 && Number(promptRect?.height || 0) > 1),
+      dockPromptText: prompt ? String(prompt.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 160) : '',
+      dockEventTail: Array.isArray(dockEvents) ? dockEvents.slice(-12) : null,
       tether: player?.tether
         ? { active: player.tether.active === true, phase: player.tether.phase || null,
             targetId: player.tether.targetId ?? null }
         : null,
     };
   });
+  const station = snapshot.stationIdentity;
+  const player = snapshot.playerIdentity;
+  if (station && player) {
+    const stationEntity = {
+      id: station.entityId,
+      type: station.type,
+      alive: station.alive,
+      collides: station.collides,
+      pos: station.pos,
+      rot: station.rot,
+      radius: station.radius,
+      data: station.data || {},
+      physicsBody: station.physicsBody,
+    };
+    const playerEntity = {
+      id: player.entityId,
+      type: player.type,
+      radius: player.radius,
+      data: player.data || {},
+      physicsBody: player.physicsBody,
+    };
+    const manifest = resolveCollisionProxyManifest(stationEntity);
+    const anchor = resolveDockAnchor(stationEntity, manifest, playerEntity);
+    if (anchor) {
+      const distance = snapshot.pos
+        ? Math.hypot(anchor.x - snapshot.pos.x, anchor.z - snapshot.pos.z)
+        : null;
+      snapshot.canonicalDockAnchor = {
+        source: 'sampled-main-read-model',
+        resolver: 'resolveDockAnchor',
+        manifestId: manifest?.id || null,
+        kind: anchor.kind,
+        x: anchor.x,
+        z: anchor.z,
+        dockRadius: anchor.dockRadius,
+        speedGate: anchor.speedGate,
+        distance,
+        withinDistanceGate: Number.isFinite(distance) && distance <= anchor.dockRadius,
+        withinSpeedGate: Number(snapshot.speed) <= anchor.speedGate,
+      };
+    } else {
+      snapshot.canonicalDockAnchor = { manifestId: manifest?.id || null, kind: null };
+    }
+  } else {
+    snapshot.canonicalDockAnchor = null;
+  }
+  return snapshot;
 }
 
 export function observeStableStationFramesInPage({ maximumFrames }) {

@@ -860,6 +860,16 @@ test('incomplete plans, partial residency and failed resources cannot accept fli
   }
 });
 
+test('strict picture failure retains its capture diagnostic for teardown', async () => {
+  const detail = { reason: 'incomplete-plan', blockingReasons: [{ role: 'player', reason: 'no-leaves' }] };
+  const { state } = fixture({ captureOpeningSubmissionPlan: () => {
+    state.render.openingPlanCaptureFailure = detail;
+    return { complete: false };
+  } });
+  await assert.rejects(waitForOpeningFirstPicture(state, 1000), /opening submission plan is incomplete/);
+  assert.equal(state.render.openingFirstPicturePlanFailure, detail);
+});
+
 test('a bounded readiness deadline stops late submission without authorizing flight', async (t) => {
   t.mock.timers.enable({ apis: ['setTimeout'] });
   const seal = deferred();

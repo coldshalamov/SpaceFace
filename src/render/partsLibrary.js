@@ -12941,149 +12941,19 @@ function instantiateFlightRootTemplate(
   ownerBoundary = null,
   palette = null,
 ) {
-  if (!entry || !entry.root) return null;
-  const root = createFlightTemplateRootInstance(entry.root);
-  if (!root) return null;
-  clearFlightTemplateDynamicUserData(root);
-  // Package subtrees are deliberately absent from the immutable template. Recreate them through
-  // the live package API before resolving bindings so Kestrel/other whole-ship hits bind the real
-  // package meshes, sockets, and pool admissions instead of silently losing those paths.
-  const packageBindings = (entry.packageRecipes || EMPTY_ARRAY).length ? createBindings() : null;
-  const rootName = `GLTFKit_${entity.data && entity.data.defId || 'ship'}`;
-  const assetId = `GLTFKIT_${entity.data && entity.data.defId || 'SHIP'}_${assemblySeed.toString(16)}`;
-  root.name = rootName;
-  root.userData.kind = 'ship';
-  root.userData.assetId = assetId;
-  root.userData.loadoutFingerprint = loadoutFingerprint;
-  root.userData.renderContract = cloneFlightTemplateMetadata(entry.renderContract || {});
-  root.userData.authoredPartsCache = [...(entry.authoredParts || EMPTY_ARRAY)];
-  root.userData.authoredSlotsCache = cloneFlightTemplateMetadata(entry.authoredSlots || {});
-  root.userData.wholeShip = entry.wholeShip === true;
-
-  // Package roots are never cloned as live instances. Recreate them through the package loader so
-  // residency ownership, pool candidates, and proxy activation remain per-boundary resources.
-  if ((entry.packageRecipes || EMPTY_ARRAY).length > 0) {
-    if (!library || !scene || !ownerBoundary) return null;
-    const packageMutableMaterials = new Map();
-    for (const recipe of entry.packageRecipes) {
-      const record = findFlightTemplatePackageRecord(library, recipe);
-      const parent = findFlightTemplateObject(root, recipe.parentPath);
-      if (!record || !parent) return null;
-      const sourceLength = Math.max(Number(record.bounds?.size?.[0]) || 1, 1e-6);
-      const placement = {
-        position: recipe.position || [0, 0, 0],
-        quaternion: new THREE.Quaternion().fromArray(recipe.quaternion || [0, 0, 0, 1]),
-        targetLength: sourceLength,
-        label: recipe.label || record.assetId || record.url || 'Package',
-      };
-      const partRoot = instantiateRenderPackagePart(
-        record, parent, placement, palette || paletteFor(entity), scene, ownerBoundary,
-        packageBindings, packageMutableMaterials,
-      );
-      if (Array.isArray(recipe.scale) && recipe.scale.length === 3) partRoot.scale.fromArray(recipe.scale);
-      partRoot.updateMatrix();
-      for (const path of recipe.objectPaths || EMPTY_ARRAY) {
-        const object = objectAtRootPath(partRoot, path.relativePath);
-        if (!object) continue;
-        object.userData = {
-          ...(object.userData || {}),
-          spacefaceFlightTemplatePath: (path.sourcePath || []).join('/'),
-        };
-        noteFlightTemplateMarker(root, object);
-      }
-    }
-  }
-  const hull = findFlightTemplateObject(root, entry.hullPath);
-  const shieldBubble = findFlightTemplateObject(root, entry.shieldBubblePath);
-  const safetyCore = findFlightTemplateObject(root, entry.safetyCorePath);
-  const bindings = restoreFlightTemplateBindings(root, entry.bindings, packageBindings);
-  if (!hull || !bindings) return null;
-  root.userData.hull = hull;
-  root.userData.shieldBubble = shieldBubble;
-  normalizeWaspDomeGlass(root, entity);
-
-  const primaryDrive = completeDriveBinding(bindings);
-  const navLightBase = bindings.navLights.map((mesh) => (
-    mesh && mesh.material && Number.isFinite(mesh.material.emissiveIntensity)
-      ? mesh.material.emissiveIntensity : 1
-  ));
-  kit.finalizeShip({
-    root,
-    hull,
-    entity,
-    designRadius: 1,
-    decals: bindings.decals,
-    driveParts: primaryDrive,
-    navLightBase,
-    damageParts: {
-      navLights: bindings.navLights,
-      navLightBase,
-      driveCore: primaryDrive && primaryDrive.driveCore,
-      plume: primaryDrive && primaryDrive.plume,
-      secondary: bindings.secondary,
-      armor: bindings.armor,
-      sensorSlits: bindings.sensorSlits,
-    },
-  });
-  synchronizeSecondaryDrives(primaryDrive, bindings);
-  installAuthoredLod(root, bindings, safetyCore, new Set(entry.authoredHullLevels || EMPTY_ARRAY), entry.wholeShip === true);
-  root.userData.updateLod('lod0');
-  attachAuthoredMotionDriver(root, entity, bindings.authoredMotions);
-  if (entry.producerManifest) {
-    stampOpeningSubmissionPackage(root, entry.producerManifest, {
-      replace: true,
-      producer: 'procedural-flight-ship',
-      assetId,
-    });
-  }
-  cookFlightProduct(root, 'chase', { runtime: true });
-
-  const releaseFlightTemplate = retainFlightRootTemplate(entry);
-  if (!releaseFlightTemplate) return null;
-  root.userData.releaseAuthoredAssetResidency = (reason = 'flight-template-root-disposed') => (
-    releaseFlightTemplate(reason)
+  const steps = instantiateFlightRootTemplateSteps(
+    entry, entity, templateKey, loadoutFingerprint, assemblySeed,
+    library, scene, ownerBoundary, palette, false,
   );
-
-  const ownerLocalMaterials = new Set();
-  const renderPackageInstances = [];
-  root.traverse((object) => {
-    const objectMaterials = object.material
-      ? (Array.isArray(object.material) ? object.material : [object.material])
-      : EMPTY_ARRAY;
-    for (const material of objectMaterials) {
-      // Package subtrees recreated through instantiateRenderPackagePart carry the fleet-shared
-      // authored variants — the same spacefaceSharedAsset exclusion the fresh-compose path applies
-      // when it builds ownerLocalMaterials. A failed sibling's cleanup must never dispose a shared
-      // material that live ships are still drawing.
-      if (material && material.userData?.spacefaceSharedAsset !== true) {
-        ownerLocalMaterials.add(material);
-      }
-    }
-    const instance = object.userData?.renderPackageInstance;
-    if (instance && typeof instance.dispose === 'function') renderPackageInstances.push(instance);
-  });
-  return {
-    root,
-    authoredParts: [...(entry.authoredParts || EMPTY_ARRAY)],
-    authoredSlots: cloneFlightTemplateMetadata(entry.authoredSlots || {}),
-    fallbackParts: [...(entry.fallbackParts || EMPTY_ARRAY)],
-    wholeShip: entry.wholeShip === true,
-    packagePoolAdmissions: [...bindings.packagePoolAdmissions],
-    ownerLocalObjects: [],
-    ownerLocalGeometries: [],
-    ownerLocalMaterials: [...ownerLocalMaterials],
-    renderPackageInstances,
-    fromFlightTemplateCache: true,
-    flightRootTemplateKey: templateKey,
-    releaseFlightTemplate,
-  };
+  let step = steps.next();
+  while (!step.done) step = steps.next();
+  return step.value;
 }
 
-// Stepped twin of instantiateFlightRootTemplate — identical instance output,
-// but the clone+sanitize, the per-recipe package recreates, the bindings
-// restore, and the owner-material census each run under their own slices.
-// Generator callers (composedShipSteps) suspend here safely: the instance
-// root is still detached, so a parked compose presents nothing.
+// Canonical stepped instantiation. The synchronous compatibility wrapper above
+// drains it without scheduling; composedShipSteps can suspend between clone,
+// package recreation, binding restore, and owner-material census while the root
+// remains detached.
 function* instantiateFlightRootTemplateSteps(
   entry,
   entity,
@@ -13094,6 +12964,7 @@ function* instantiateFlightRootTemplateSteps(
   scene = null,
   ownerBoundary = null,
   palette = null,
+  queueAbandonedCleanup = true,
 ) {
   if (!entry || !entry.root) return null;
   // Retain at the HEAD of the instantiate, not its end: every yield below leaves
@@ -13130,8 +13001,16 @@ function* instantiateFlightRootTemplateSteps(
             finally { releaseFlightTemplate('flight-template-instantiate-abandoned'); }
           }
         })();
-        // Close a small partial immediately; queue only the remaining slices.
-        if (!cleanup.next().done) queuePacedDetachedTeardown(partial.root, cleanup);
+        // The synchronous compatibility path drains abandonment cleanup before
+        // returning; only paced callers may queue the remaining slices.
+        const cleanupStep = cleanup.next();
+        if (!cleanupStep.done) {
+          if (queueAbandonedCleanup) queuePacedDetachedTeardown(partial.root, cleanup);
+          else {
+            let step = cleanupStep;
+            while (!step.done) step = cleanup.next();
+          }
+        }
       } else {
         releaseFlightTemplate('flight-template-instantiate-abandoned');
       }
@@ -18229,51 +18108,15 @@ function firstRenderable(root) {
 }
 
 export function disposeDetachedObject(root, state = null) {
-  // Same hook fences as the Steps twin: these are registration-bearing and a
-  // throwing hook must not veto the whole subtree's geometry/material walk.
-  const releaseStandIn = root && root.userData && root.userData.admissionStandInRelease;
-  if (typeof releaseStandIn === 'function') {
-    try { releaseStandIn(); }
-    catch (error) {
-      noteLaneFault(state, 'teardown.standInRelease');
-      dedupWarn('teardown:standInRelease', '[partsLibrary] admission stand-in release failed', error);
-    }
-  }
-  const disposePresentation = root && root.userData && root.userData.disposeWorldSitePresentation;
-  if (typeof disposePresentation === 'function') {
-    try { disposePresentation(); }
-    catch (error) {
-      noteLaneFault(state, 'teardown.sitePresentation');
-      dedupWarn('teardown:sitePresentation', '[partsLibrary] site presentation dispose failed', error);
-    }
-  }
-  const detachMotion = root && root.userData && root.userData.detachAuthoredMotion;
-  if (typeof detachMotion === 'function') {
-    try { detachMotion(state); }
-    catch (error) {
-      noteLaneFault(state, 'teardown.authoredMotion');
-      dedupWarn('teardown:authoredMotion', '[partsLibrary] authored-motion detach failed', error);
-    }
-  }
-  root.traverse((object) => {
-    object.castShadow = false;
-    try {
-      if (object.geometry && typeof object.geometry.dispose === 'function'
-        && !(object.geometry.userData && object.geometry.userData.spacefaceSharedAsset)) {
-        object.geometry.dispose();
-      }
-      const materials = object.material ? (Array.isArray(object.material) ? object.material : [object.material]) : [];
-      for (const material of materials) {
-        if (material && material.userData && material.userData.spacefaceSharedAsset) continue;
-        if (material && typeof material.dispose === 'function') material.dispose();
-      }
-    } catch { /* best-effort — a bad node cannot keep the subtree registered */ }
-  });
+  const steps = disposeDetachedObjectSteps(root, state);
+  let step = steps.next();
+  while (!step.done) step = steps.next();
+  return step.value;
 }
 
-// Stepped twin — identical DFS order (pre-order, root first), yields at stride
-// boundaries so the teardown paces inside a deferred commit tail. Shared-asset
-// guards are identical; a suspended walk still owns the whole detached subtree.
+// Canonical paced teardown; the synchronous compatibility API above fully drains
+// this generator. DFS order is pre-order, root first, and shared-asset guards remain
+// identical when a deferred commit suspends while owning the detached subtree.
 export function* disposeDetachedObjectSteps(root, state = null) {
   // Root hooks are fenced individually — a throwing hook must not veto the
   // subtree teardown (a retry mint would re-throw at the same hook and leak the
@@ -18326,61 +18169,15 @@ export function* disposeDetachedObjectSteps(root, state = null) {
 }
 
 function disposeDetachedPlaceFallback(root, state = null) {
-  // Root hooks are fenced individually — a throwing hook must not veto the
-  // subtree teardown (a retry mint would re-throw at the same hook and leak
-  // the whole tree). Registration/presentation/motion hooks warn through
-  // dedupWarn so the leak class stays observable; per-node disposes stay
-  // silent (per-node noise, not a registration leak).
-  const releaseStandIn = root && root.userData && root.userData.admissionStandInRelease;
-  if (typeof releaseStandIn === 'function') {
-    try { releaseStandIn(); }
-    catch (error) {
-      noteLaneFault(state, 'teardown.standInRelease');
-      dedupWarn('teardown:standInRelease', '[partsLibrary] admission stand-in release failed', error);
-    }
-  }
-  try { root?.userData?.ceresCradleLayoutGuard?.dispose(); }
-  catch (error) {
-    noteLaneFault(state, 'teardown.cradleGuard');
-    dedupWarn('teardown:cradleGuard', '[partsLibrary] cradle layout guard dispose failed', error);
-  }
-  const disposePresentation = root && root.userData && root.userData.disposeWorldSitePresentation;
-  if (typeof disposePresentation === 'function') {
-    try { disposePresentation(); }
-    catch (error) {
-      noteLaneFault(state, 'teardown.sitePresentation');
-      dedupWarn('teardown:sitePresentation', '[partsLibrary] site presentation dispose failed', error);
-    }
-  }
-  try { root?.userData?.detachAuthoredMotion?.(state); }
-  catch (error) {
-    noteLaneFault(state, 'teardown.authoredMotion');
-    dedupWarn('teardown:authoredMotion', '[partsLibrary] authored-motion detach failed', error);
-  }
-  const geometries = new Set();
-  const materials = new Set();
-  root.traverse((object) => {
-    object.castShadow = false;
-    if (object.geometry) geometries.add(object.geometry);
-    const list = object.material ? (Array.isArray(object.material) ? object.material : [object.material]) : [];
-    for (const material of list) if (material) materials.add(material);
-  });
-  for (const geometry of geometries) {
-    if (geometry.userData && geometry.userData.spacefaceSharedFallback) continue;
-    if (typeof geometry.dispose === 'function') {
-      try { geometry.dispose(); } catch { /* per-node dispose — teardown continues */ }
-    }
-  }
-  for (const material of materials) {
-    if (material.userData && material.userData.spacefaceSharedAsset) continue;
-    if (typeof material.dispose === 'function') {
-      try { material.dispose(); } catch { /* per-node dispose — teardown continues */ }
-    }
-  }
+  const steps = disposeDetachedPlaceFallbackSteps(root, state);
+  let step = steps.next();
+  while (!step.done) step = steps.next();
+  return step.value;
 }
 
-// Stepped twin — collect and dispose phases each yield at stride boundaries;
-// the dedup sets live in generator scope so a suspended walk keeps them.
+// Canonical paced fallback teardown; the synchronous compatibility API above
+// fully drains this generator. Dedup sets remain in generator scope so a suspended
+// walk keeps them across collection and disposal phases.
 function* disposeDetachedPlaceFallbackSteps(root, state = null) {
   const releaseStandIn = root && root.userData && root.userData.admissionStandInRelease;
   if (typeof releaseStandIn === 'function') {

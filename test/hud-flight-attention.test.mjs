@@ -2,7 +2,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { runInNewContext } from 'node:vm';
 import { fileURLToPath } from 'node:url';
+import { parse } from '@babel/parser';
 
 import {
   admitReceipt,
@@ -292,6 +294,76 @@ test('receipt lane sits in the HUD layout and misses radar/ship/objective', () =
     const lane = receiptLaneRect(layout);
     assert.deepEqual(lane, layout.receipt);
     assert.equal(receiptOverlapsReserved(layout), false, `${width}x${height} receipt misses reserved HUD`);
+  }
+});
+
+test('receipt placement handles visible and hidden captions with external flight captions', () => {
+  const ast = parse(HUD_SRC, { sourceType: 'module' });
+  let declaration = null;
+  const visit = (node) => {
+    if (!node || typeof node !== 'object' || declaration) return;
+    if (node.type === 'FunctionDeclaration' && node.id?.name === 'placeReceiptLane') {
+      declaration = node;
+      return;
+    }
+    for (const value of Object.values(node)) {
+      if (Array.isArray(value)) value.forEach(visit);
+      else if (value && typeof value === 'object') visit(value);
+    }
+  };
+  visit(ast);
+  assert.ok(declaration, 'the production receipt placement owner is present');
+  const owner = HUD_SRC.slice(declaration.start, declaration.end);
+
+  for (const { visible, external } of [
+    { visible: true, external: true },
+    { visible: false, external: true },
+    { visible: true, external: false },
+  ]) {
+    const placed = [];
+    let externalPlacements = 0;
+    let readoutPlacements = 0;
+    const receipt = { getBoundingClientRect: () => ({ height: 44 }) };
+    const laneRoot = {
+      style: {},
+      querySelector: () => receipt,
+      querySelectorAll: () => [receipt],
+    };
+    const caption = {
+      hidden: !visible,
+      scrollHeight: 56,
+      style: {},
+      classList: { contains: (name) => name === 'show' && visible },
+      getBoundingClientRect: () => ({ height: 56 }),
+    };
+    const slot = {
+      x: 10, width: 300, captionSlot: { x: 12, width: 120 },
+    };
+    const layout = { receipt: { x: 0, width: 320, height: 50 }, safe: {} };
+    const context = {
+      toastsLaneEl: laneRoot,
+      document: { getElementById: () => laneRoot },
+      window: { innerWidth: 800, innerHeight: 600 },
+      caption,
+      lastReceiptObstacle: null,
+      lastCaptionObstacleVisible: false,
+      externalCaptionsStale: false,
+      externalFlightCaptions: new Set(external ? [{}] : []),
+      overlaySafeSlot: () => slot,
+      freeOverlayBands: () => [{ top: 0, bottom: 160 }],
+      setStyle: (el, key, value) => { el.style[key] = value; },
+      getComputedStyle: () => ({ rowGap: '0px' }),
+      placeCaptionInSafeSlot: (...args) => placed.push(args),
+      placeExternalFlightCaptions: () => { externalPlacements++; },
+      placeFlightReadouts: () => { readoutPlacements++; },
+    };
+    const placeReceiptLane = runInNewContext(`(${owner})`, context);
+    placeReceiptLane(layout);
+
+    assert.equal(placed.length, visible ? 1 : 0);
+    if (visible) assert.equal(placed[0][2], slot.captionSlot);
+    assert.equal(externalPlacements, 1);
+    assert.equal(readoutPlacements, 1);
   }
 });
 
