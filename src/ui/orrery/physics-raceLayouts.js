@@ -179,6 +179,24 @@ html.sf-reduce-motion ${R} .pv-lane .k-row::before { transition:none !important;
   ${R} > .pv-foot { position:sticky; bottom:0; z-index:2;
     background-color:rgb(6 8 11 / .98) !important; background-origin:content-box !important;
     box-shadow:0 40px 0 rgb(6 8 11 / .98), 0 -18px 18px -6px rgb(6 8 11 / .9) !important; }
+  /* the band sits flush on the bottom edge (its own padding carries the frame's foot inset), so
+     no rung shows beneath it; a rung the keyboard reaches scrolls clear of the band */
+  ${R} { padding-bottom:0 !important; scroll-padding-bottom:150px; }
+  ${R} > .pv-foot { padding-bottom:clamp(18px, 3.5vh, 40px) !important; box-shadow:0 -18px 18px -6px rgb(6 8 11 / .9) !important; }
+}
+/* phone: the 120px Back gutter is only needed beside the kicker; the body line, the rung
+   readings and the band's status take the full column instead of a 215px strip */
+@media (max-width: 560px) {
+  ${R} > .k-title { padding-right:0; }
+  ${R} > .k-title > .k-sentence:first-child { padding-right:110px; }
+  ${R} > .k-title > .k-sentence:last-child { max-width:none !important; }
+  ${R} .pv-lane .k-row { padding-right:0 !important; }
+  ${R} .pv-lane .k-row .k-row__name { padding-right:84px; }
+  ${R} > .pv-foot { grid-template-columns:minmax(0, 1fr) auto !important; row-gap:6px; }
+  ${R} .pv-foot__read { display:contents; }
+  ${R} .pv-foot__title { grid-column:1; grid-row:1; align-self:center; }
+  ${R} > .pv-foot > button { grid-column:2; grid-row:1; }
+  ${R} .pv-foot__status { grid-column:1 / -1; grid-row:2; margin:0 !important; }
 }
 `;
 
