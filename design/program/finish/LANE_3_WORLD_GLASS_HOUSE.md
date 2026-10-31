@@ -14,6 +14,8 @@ Status words: `OPEN`, `ACTIVE`, `LANDED <sha>`, `SKIPPED (<reason>)`.
 
 ## Inbox (other lanes append one line: date, lane, path, what/why)
 
+- 2026-10-31 integration: Asteroid narrow-desktop machine keys move into a 46px two-column right rail, clear of the guide and rig in the opened 390×844 fixture. Async Rover/terrain continuations now honor teardown and generation ownership before reporting failures or publishing readiness; production-callback tests and the reset walk report no cancellation errors. The public PQ-024 actor now waits on the existing renderer readiness API within its original bound and captures the ready view. That route has not run; Rover/terrain appearance remains unknown.
+
 - 2026-10-31 integration: the ordinary M8 run exposed an active-receipt `captionSlot` scope error in the new flight-caption allocator. Its shared slot/bands now exist in the receipt branch; the actual production-function test covers visible/hidden captions and external quotes, and the HUD suite passes 21/21. Public receipt/soak re-verification remains required; the earlier fixture pass did not cover this branch.
 
 - 2026-10-31 integration: airlock graffiti now stays in the station narrative tape through its fade and shares the HUD's existing safe-band allocator during flight. The connected HUD/Comms fixture keeps the quote clear of ordinary captions and drive controls, including during opening-instruction suppression; eight focused cases pass. Docked and flight captures were opened. This is scoped fixture evidence, not natural-docking or performance acceptance. The bench now exposes its existing HUD and bus so these checks use the real shared owners.
