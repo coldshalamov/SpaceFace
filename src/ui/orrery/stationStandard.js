@@ -241,6 +241,21 @@ ${P} .sx-mkt .sx-mkt-instrument :is(.sx-mkt-instrument__y, .sx-mkt-instrument__a
 ${P} .sx-mkt .orr-mkt-demand svg { display:none !important; }
 ${P} .sx-mkt__stage :is(.so-trade-total > span:first-child, .sx-qty__k, .sx-mkt-readouts__item > span:first-child) { color:rgb(${BONE} / .72) !important; font-size:13px !important; font-weight:600 !important; }
 
+/* short desktop berth (901–1100 wide, 461–640 tall): the console column is ~155px, narrower than the 276px stepper row, so the
+   stepper sets Fewer + count on one row and More / Max on the next, and Buy / Sell share the column width inside the stage
+   (stage-scoped so it outranks the base console rules that follow) */
+@media (min-width:901px) and (max-width:1100px) and (min-height:461px) and (max-height:640px) {
+  ${P} .sx-mkt .sx-mkt__stage .sx-trade { grid-template-columns:minmax(0, 1fr) !important; column-gap:0 !important; }
+  ${P} .sx-mkt .sx-mkt__stage .sx-qty { width:100% !important; box-sizing:border-box !important; }
+  ${P} .sx-mkt .sx-mkt__stage .sx-qty__words > li:nth-child(1) > button { flex:0 0 auto !important; }
+  ${P} .sx-mkt .sx-mkt__stage .sx-qty__in { flex:1 1 40px !important; min-width:0 !important; width:auto !important; }
+  ${P} .sx-mkt .sx-mkt__stage .sx-qty__words > li:nth-child(n+2) > button { flex:1 1 40% !important; min-width:0 !important; padding:0 6px !important; }
+  ${P} .sx-mkt .sx-mkt__stage .sx-trade__words { width:100% !important; gap:6px !important; }
+  ${P} .sx-mkt .sx-mkt__stage .sx-trade__words > li { flex:1 1 0 !important; min-width:0 !important; }
+  ${P} .sx-mkt .sx-mkt__stage .sx-trade__words > li:is(:first-child, :not(:first-child)) > .sx-trade__go { width:100% !important; height:36px !important; min-height:36px !important;
+    box-sizing:border-box !important; padding:0 6px !important; justify-content:center !important; }
+}
+
 /* trade console & quantity stepper: one clean horizontal row for Fewer / input / More / Max */
 ${P} .sx-mkt .sx-trade { grid-template-columns:max-content minmax(0, 1fr) !important; align-items:start !important; column-gap:28px !important; }
 ${P} .sx-mkt .sx-qty { display:flex !important; flex-wrap:wrap !important; align-items:center !important; gap:6px !important; width:276px !important; height:auto !important;
