@@ -199,13 +199,16 @@ Integration checkpoint 2026-10-31: world-entry serial projection and paused sett
 
 The earlier ae3e travel run exposed repeated real Three.js buffer-resize exceptions; they did not recur in the static journey. The existing error-only resize diagnostic remains enabled for functional route diagnosis. Full 30-minute Adventure/context-loss qualification remains open. The earlier baseline failed in 177,338 ms against the unchanged 90-second budget, with 26/27 Massline children passing and one physical-branch timeout. After the paired runner shares one identical 5,200-tick setup, the integrated batch-ten baseline passes 17/17 in 63,812 ms. This closes the current baseline check, not gameplay performance or the older resize cause. See `INTEGRATION_COVERAGE.md`.
 
-The latest full-duration attempt on `99004b7cef7c` fails before context loss: after six warm-up
+The full-duration attempt on `99004b7cef7c` fails before context loss: after six warm-up
 cycles, cycle 8's F9 restore lands in the startup-failed menu at `gpu-resources` because the
 opening submission plan is incomplete. The strict capture phase fails after 142 ms; no frame
 errors or page issues are recorded in its failure snapshot. This is an open production restore
-defect. Bounded capture diagnostics now preserve incomplete-plan reasons or stale generation
-identity for a targeted reproduction; the gate remains strict. Two diagnostic cases and 37
-residency cases pass, without establishing a repair. See `INTEGRATION_COVERAGE.md`.
+defect. A subsequent targeted run on `1318a7ca4edb` reproduces it at cycle 2, with the first-playable
+shader set complete. Its original diagnostic truncated ordinary root classifications before the
+actual failed predicates. The corrected bounded diagnostic captures empty or unverified blocking
+roots, exact failure reasons, and producer-versus-captured resource differences; the gate remains
+strict. Another targeted run completes nine F9 cycles but fails the context-recovery tail with a
+real Three.js buffer-size mismatch. Neither defect is repaired. See `INTEGRATION_COVERAGE.md`.
 
 **M9 — Load less, load later.** 28 MB of minified JS in the eager closure (`scripts/build-bundle.mjs`,
 esbuild splitting): lazy-load per mode and per screen; make `modelTruthCensus.generated.js` and

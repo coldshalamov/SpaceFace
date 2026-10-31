@@ -13387,9 +13387,51 @@ export const render = {
         return null;
       }
       if (!plan || plan.complete !== true || plan.firstPlayablePipelineSet?.complete !== true) {
+        const emptyRoots = (Array.isArray(plan?.roots) ? plan.roots : [])
+          .filter((root) => root?.blocking === true && root.drawLeafCount === 0);
+        const failureReasons = (Array.isArray(plan?.blockingReasons) ? plan.blockingReasons : [])
+          .filter((row) => ['productionBoundary', 'producerResourceIdentityCensus', 'firstPlayablePipelineSet'].includes(row?.role));
+        const unverifiedRoots = (Array.isArray(plan?.roots) ? plan.roots : []).filter((root) => (
+          root?.blocking === true && (!root.productionBoundary?.contentHash
+            || root.productionBoundary.contentHashVerified !== true)
+        ));
+        const resourceDifferences = {};
+        for (const key of ['geometryBufferIds', 'blockingTextureIds', 'shadowResourceIds']) {
+          const producer = new Set(plan?.producerResourceIdentitySets?.[key] || []);
+          const captured = new Set(plan?.resourceIdentitySets?.[key] || []);
+          const producerOnly = [...producer].filter((id) => !captured.has(id));
+          const capturedOnly = [...captured].filter((id) => !producer.has(id));
+          resourceDifferences[key] = {
+            producerCount: producer.size, capturedCount: captured.size,
+            producerOnlyCount: producerOnly.length, capturedOnlyCount: capturedOnly.length,
+            producerOnly: producerOnly.slice(0, 12).map((id) => String(id).slice(0, 160)),
+            capturedOnly: capturedOnly.slice(0, 12).map((id) => String(id).slice(0, 160)),
+          };
+        }
         captureRender.openingPlanCaptureFailure = {
           reason: 'incomplete-plan',
           complete: plan?.complete === true,
+          drawLeafCount: Array.isArray(plan?.drawLeaves) ? plan.drawLeaves.length : null,
+          emptyBlockingRootCount: emptyRoots.length,
+          emptyBlockingRoots: emptyRoots.slice(0, 12).map((root) => ({
+            rootId: String(root.id || '').slice(0, 160) || null,
+            name: String(root.name || '').slice(0, 160) || null,
+            role: String(root.role || '').slice(0, 120) || null,
+          })),
+          unverifiedBlockingRootCount: unverifiedRoots.length,
+          unverifiedBlockingRoots: unverifiedRoots.slice(0, 12).map((root) => ({
+            rootId: String(root.id || '').slice(0, 160) || null,
+            name: String(root.name || '').slice(0, 160) || null,
+            role: String(root.role || '').slice(0, 120) || null,
+          })),
+          failureReasons: failureReasons.slice(0, 12).map((row) => ({
+            role: String(row.role || '').slice(0, 120) || null,
+            reason: String(row.reason || '').slice(0, 160) || null,
+          })),
+          failureReasonCount: failureReasons.length,
+          resourceIdentityCensusMatches: plan?.resourceIdentityCensusMatches ?? null,
+          producerResourceCensusPresent: !!plan?.producerResourceIdentitySets,
+          resourceDifferences,
           firstPlayableComplete: plan?.firstPlayablePipelineSet?.complete === true,
           firstPlayableReason: String(plan?.firstPlayablePipelineSet?.reason || '').slice(0, 160) || null,
           blockingReasons: (Array.isArray(plan?.blockingReasons) ? plan.blockingReasons : []).slice(0, 12)

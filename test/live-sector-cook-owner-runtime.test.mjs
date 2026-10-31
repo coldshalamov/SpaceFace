@@ -459,7 +459,12 @@ test('opening capture retains bounded incomplete or stale identity diagnostics',
     const state = { world: { enterSerial: 4, currentSectorId: 'ceres' }, render: {} };
     const owner = { state, _liveSectorCookGeneration: 7 };
     const plan = { complete: false, firstPlayablePipelineSet: { complete: false, reason: 'missing-opening-program-census' },
-      blockingReasons: [{ rootId: 'player', role: 'player', reason: 'no-leaves' }] };
+      roots: [{ id: 'player', name: 'Hull', role: 'player', blocking: true, drawLeafCount: 0 }],
+      drawLeaves: [], resourceIdentityCensusMatches: false,
+      producerResourceIdentitySets: { geometryBufferIds: ['old'] },
+      resourceIdentitySets: { geometryBufferIds: ['new'] },
+      blockingReasons: [{ rootId: 'player', role: 'player', reason: 'no-leaves' },
+        { role: 'productionBoundary', reason: 'missing-or-unverified-blocking-content-hash' }] };
     const capture = evaluate(openingCaptureCode, owner, {
       state, captureLiveSectorCookStale: () => () => stale,
       *buildOpeningSubmissionPlanSteps() { if (stale) state.world.enterSerial = 5; return plan; },
@@ -470,7 +475,15 @@ test('opening capture retains bounded incomplete or stale identity diagnostics',
     const detail = state.render.openingPlanCaptureFailure;
     assert.equal(detail.reason, stale ? 'stale-capture' : 'incomplete-plan');
     if (stale) assert.deepEqual([detail.expected.enterSerial, detail.actual.enterSerial], [4, 5]);
-    else assert.equal(detail.blockingReasons[0].rootId, 'player');
+    else {
+      assert.equal(detail.emptyBlockingRoots[0].rootId, 'player');
+      assert.equal(detail.unverifiedBlockingRoots[0].rootId, 'player');
+      assert.equal(detail.failureReasons[0].role, 'productionBoundary');
+      assert.equal(detail.drawLeafCount, 0);
+      assert.equal(detail.resourceIdentityCensusMatches, false);
+      assert.deepEqual(detail.resourceDifferences.geometryBufferIds.producerOnly, ['old']);
+      assert.deepEqual(detail.resourceDifferences.geometryBufferIds.capturedOnly, ['new']);
+    }
   }
 });
 function fixture(providers = []) {
