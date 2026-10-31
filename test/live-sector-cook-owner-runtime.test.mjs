@@ -20,7 +20,7 @@ const require = createRequire(import.meta.url);
 const { parse } = require(require.resolve('@babel/parser', { paths: [process.env.SPACEFACE_DEPS_ROOT || process.cwd()] }));
 const source = readFileSync(process.env.ENTRY_SOURCE_RENDERER || new URL('../src/render/renderer.js', import.meta.url), 'utf8');
 const ast = parse(source, { sourceType: 'module' });
-let cookNode, pipelineNode, enterNode, guardNode, preflightNode, gpuNode, compileNode, openingCaptureNode, loadingNode, pictureNode, ownerInactiveTouchNode, ownerInactiveTouchCheckNode, ownerActiveAdmissionNode, touchSubmitNode, touchFacadeNode, groupTouchNode, settleTouchManyNode;
+let cookNode, pipelineNode, enterNode, guardNode, preflightNode, gpuNode, compileNode, openingCaptureNode, loadingNode, pictureNode, ownerInactiveTouchNode, ownerInactiveTouchCheckNode, ownerActiveAdmissionNode, touchSubmitNode, touchFacadeNode, groupTouchNode, settleTouchManyNode, admitSubjectNode, unreadyPipelineNode;
 const rendererMethodNodes = new Map();
 const ownerActiveAdmissionMatches = [];
 function containsOwnedExactTouch(node) {
@@ -35,6 +35,8 @@ function containsOwnedExactTouch(node) {
 }
 function walk(node) {
   if (!node || typeof node !== 'object') return;
+  if (node.type === 'FunctionDeclaration' && node.id?.name === 'appearanceAdmissionHasUnreadyPipeline') unreadyPipelineNode = node;
+  if (node.type === 'VariableDeclarator' && node.id?.name === 'admitSubjectPipelines') admitSubjectNode = node.init;
   if (node.type === 'ObjectMethod' && ['_shadowDepthLight', '_shadowDepthEnabled', 'prepareOpeningFirstPicture'].includes(node.key?.name)) {
     rendererMethodNodes.set(node.key.name, node);
   }
@@ -115,6 +117,38 @@ function deferred() {
   const promise = new Promise(r => { resolve = r; });
   return { promise, resolve };
 }
+
+test('actual best-effort admission neither touches nor stamps a timed-out compile and retries when ready', async () => {
+  const subject = { userData: {} }, calls = [];
+  let ready = false;
+  const owner = { scene: {} };
+  const values = {
+    state: { mode: 'flight', render: {} }, cam: { obj: {} }, renderer: {},
+    isRetiredRigidOpaqueBatch: () => false,
+    laneWarn: (...args) => { throw args[3] || new Error('unexpected admission warning'); },
+    inFlightSubjectAdmissions: new Map(), pipelineAdmissions: {}, gpuResidencyAdmissions: {},
+    compilePipelineSubject: () => Promise.resolve(ready ? { skipped: false } : { incomplete: true, readinessTimedOut: true }),
+    preparePipelineSubjectResidency: async () => { calls.push('residency'); return { skipped: false }; },
+    markSubjectPipelinesPending: (_subject, pending) => { subject.userData.pipelinesPending = pending; },
+    reattachDetachedSubjectTextures: async () => {}, reattachDetachedSubjectGeometries: async () => {},
+    refillPresentedCompressedUploads: async () => {}, collectStartupTextures: () => [],
+    submitExactSubjectTouch: async () => { calls.push('touch'); },
+    markAuthoredGeologyFallbackAdmitted: () => {},
+    rememberOpeningPreparedLeaves: () => { calls.push('stamp'); },
+    observePipelineAdmission: (promise) => promise,
+  };
+  values.appearanceAdmissionHasUnreadyPipeline = evaluate(source.slice(unreadyPipelineNode.start, unreadyPipelineNode.end), owner, values);
+  const admit = evaluate(source.slice(admitSubjectNode.start, admitSubjectNode.end), owner, values);
+  const pending = await admit(subject);
+  assert.equal(pending.incomplete, true);
+  assert.equal(subject.userData.sfAdmittedOnce, undefined);
+  assert.equal(subject.userData.pipelinesPending, false);
+  assert.deepEqual(calls, []);
+  ready = true;
+  await admit(subject);
+  assert.equal(subject.userData.sfAdmittedOnce, true);
+  assert.deepEqual(calls, ['residency', 'touch', 'stamp']);
+});
 
 function queuedTouchFixture({ detached = false, failTouch = false, serialPacer = true } = {}) {
   const scene = new THREE.Scene(), root = new THREE.Group(); root.visible = false; scene.add(root);
@@ -224,6 +258,7 @@ test('pipeline continuation rejects a retired owner instead of resolving stale r
   let exactTouches = 0;
   const continuation = evaluate(ownerActiveAdmissionCode, owner, {
     admissionOptions: { isActive: () => false },
+    appearanceAdmissionHasUnreadyPipeline: evaluate(source.slice(unreadyPipelineNode.start, unreadyPipelineNode.end), owner, {}),
     cam: { obj: {} },
     ownerInactiveTouchError: errorFactory,
     state: { mode: 'flight', render: {} },

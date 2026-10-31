@@ -81,10 +81,19 @@ const _laneStore = new Map();
 // replies) so durable persistence stays main-owned while the bytes are the
 // worker's own — its real sim state, not a mirror serialize.
 let _laneWriteHook = null;
+let _laneCheckSerial = 0;
+const _laneChecks = new Map();
+let _laneQuotaKey = null;
 
 const laneStorageShim = {
   getItem(k) { const v = _laneStore.get(String(k)); return v === undefined ? null : v; },
   setItem(k, v) {
+    if (_laneQuotaKey === String(k)) {
+      _laneQuotaKey = null;
+      const error = new Error('main storage quota exceeded');
+      error.name = 'QuotaExceededError';
+      throw error;
+    }
     const s = String(v);
     _laneStore.set(String(k), s);
     if (_laneWriteHook) { try { _laneWriteHook('set', String(k), s); } catch (_) { /* relay best-effort */ } }
@@ -99,7 +108,32 @@ const laneStorageShim = {
   },
   key(i) { let n = 0; for (const k of _laneStore.keys()) { if (n++ === i) return k; } return null; },
   get length() { return _laneStore.size; },
+  checkSaveCommit(patch) {
+    if (!_laneWriteHook) return Promise.resolve({ ok: false, reason: 'storage-relay-unavailable' });
+    const token = ++_laneCheckSerial;
+    const result = new Promise((resolve) => _laneChecks.set(token, resolve));
+    _laneWriteHook('check', token, patch);
+    return result;
+  },
+  restoreSaveSnapshot(snapshot, quotaKey) {
+    for (const [key, value] of Object.entries(snapshot || {})) {
+      if (value === null) _laneStore.delete(key);
+      else if (typeof value === 'string') _laneStore.set(key, value);
+    }
+    _laneQuotaKey = quotaKey || null;
+  },
+  retireFailedSavePatches(patches) {
+    if (_laneWriteHook) _laneWriteHook('retire', null, patches);
+  },
 };
+
+export function settleLaneStorageCheck(token, result) {
+  const resolve = _laneChecks.get(token);
+  if (!resolve) return false;
+  _laneChecks.delete(token);
+  resolve(result);
+  return true;
+}
 
 /** Install the Map-backed shim as globalThis.localStorage when none exists. */
 export function installLaneStorage(globalObj, { onWrite } = {}) {

@@ -66,7 +66,7 @@ import {
   MOMENTUM_SINK_STATUS_ID,
   MOMENTUM_SINK_WEAPON_ID,
 } from '../data/combatDefs.js';
-import { causalKindsFromSpec, collectAttackModifiers } from './adventureMigration.js';
+import { causalKindsFromSpec, collectAttackModifiers } from '../combat/adventureAttackReaders.js';
 import { compactLineageRecord, createLineage } from '../combat/attackLineage.js';
 import { emitVolley, tryBounce } from '../combat/attackPropagation.js';
 import { resolvePayload } from '../combat/attackPayload.js';

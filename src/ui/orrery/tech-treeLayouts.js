@@ -91,6 +91,19 @@ ${T} .con-sky .con-label.is-curve-covered { opacity:0 !important; animation:none
 @media (max-width:560px) {
   ${T} .con-curve__fly { max-width:min(44ch, 92vw); }
 }
+/* ui-polish-232: on a narrow portrait frame (≤560 wide, ≥601 tall, e.g. 390×844) the two costs stood
+   gauge over gauge and took ~125px of the reading, so the inspector ran ~120px past the frame and
+   Requires opened under the Back footer. The costs stand side by side as words and figures, the
+   arrangement the short frames already use (the "% held" line says what the gauge draws), so the
+   unlock list and Requires sit higher on the first paint. */
+@media (max-width:560px) and (min-height:601px) {
+  ${T} dl.con-dossier__cost { grid-template-columns:repeat(2, minmax(0, 1fr)); column-gap:16px; row-gap:0; margin:4px 0 8px !important; }
+  ${T} .con-cost { grid-template-columns:minmax(0, 1fr); }
+  ${T} .con-cost__gauge { display:none; }
+  ${T} .con-cost dt { line-height:1.2; letter-spacing:.14em; }
+  ${T} .con-cost dd { font-size:24px; margin-top:1px; }
+  ${T} .con-cost__sub { margin-top:2px; letter-spacing:.06em; }
+}
 `;
 
 export function injectTechTreeScreens(doc = globalThis.document) {

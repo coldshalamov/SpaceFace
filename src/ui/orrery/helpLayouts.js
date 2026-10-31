@@ -92,9 +92,19 @@ ${H} .orr-help__close:focus-visible::after { color:rgb(255 253 248) !important; 
   letter-spacing:.02em; color:rgb(${HOT}); white-space:nowrap; text-transform:none; }
 .orr-hkey::before { content:""; position:absolute; left:-3px; right:-3px; bottom:0; height:8px; border-radius:4px; background:rgb(${HOT} / .13); }
 .orr-hkey::after { content:""; position:absolute; left:0; right:0; bottom:2.5px; height:2px; border-radius:2px; background:rgb(${HOT} / .74); transition:background .16s linear, left .2s, right .2s; }
-.orr-hkey--word { ${LABEL} font-size:clamp(12px, .62vw, 16px) !important; letter-spacing:.14em; }
+/* word bindings at small sizes are machine code, not underlined words: the dp-kbd chip voice
+   (consoleStandard §2). The big diagram keys keep their bar-of-light glyph. */
+.orr-hkey--word, .orr-hkey--small.orr-hkey--word {
+  ${LABEL} font-size:12px !important; letter-spacing:.04em;
+  align-items:center; padding:3px 7px 4px !important; bottom:auto;
+  color:rgb(${BONE} / .92);
+  background:linear-gradient(180deg, rgb(${BONE} / .09), rgb(${BONE} / .045)), rgb(6 8 11 / .72);
+  border:1px solid rgb(${BONE} / .42); border-radius:2px;
+  box-shadow:inset 0 -1px 0 rgb(0 0 0 / .4);
+}
+.orr-hkey--word::before, .orr-hkey--small.orr-hkey--word::before { content:none; }
+.orr-hkey--word::after, .orr-hkey--small.orr-hkey--word::after { content:none; }
 .orr-hkey--small { font-size:clamp(14px, .73vw, 18px); padding-bottom:7px; }
-.orr-hkey--small.orr-hkey--word { font-size:clamp(12px, .6vw, 15px) !important; }
 .orr-hkey__sep { color:rgb(${BONE} / .6); font-weight:400; }
 /* a binding that is a sentence, not a key, reads as a quiet line */
 .orr-hkey--text { padding:0; font-family:var(--dp-face-body, "Instrument Sans"), system-ui, sans-serif; font-variation-settings:normal; font-weight:500; font-size:clamp(13px, .68vw, 17px);

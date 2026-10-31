@@ -1061,7 +1061,8 @@ ${ML} > .k-foot .sf-back.k-word:focus-visible::after { color:rgb(255 253 248) !i
    reading ~330px and the band a full lane in frame; 1024×768, 1280 and the phone are outside the query. */
 @media (min-width:761px) and (max-width:1100px) and (max-height:640px) {
   ${ML} { --ml-dial:132px; grid-template-columns:minmax(0, 300px) minmax(0, 1fr) !important; column-gap:20px !important; }
-  ${ML} .sf-mlog-card { grid-template-columns:minmax(0, 1fr) 176px; column-gap:14px; }
+  /* ui-polish-238: the 14px gap folds into the side column (190px) so the verbs get its width and the reading keeps its own */
+  ${ML} .sf-mlog-card { grid-template-columns:minmax(0, 1fr) 190px; column-gap:0; }
   ${ML} .orr-mdial__w { letter-spacing:.14em !important; }
   ${ML} .sf-mlog-card > h2.k-t-title { margin-top:8px !important; font-size:21px !important; line-height:1.08 !important; }
   ${ML} .sf-mlog-card > :is(.sf-mlog-next, .sf-mlog-obj) { margin-top:8px !important; font-size:14.5px !important; line-height:1.4 !important; }
@@ -1083,6 +1084,10 @@ ${ML} > .k-foot .sf-back.k-word:focus-visible::after { color:rgb(255 253 248) !i
   ${ML} .sf-mlog-side .sf-mlog-btns > .k-words--row { gap:4px; }
   ${ML} .sf-mlog-side .sf-mlog-btns .k-word:not(.orr-lampkey) { letter-spacing:.08em !important; font-size:12px !important; }
   ${ML} .sf-mlog-side .sf-mlog-btns .k-word-sub { letter-spacing:.1em !important; font-size:12px !important; }
+  /* ui-polish-238: OPEN ON THE CHART measured 201px in a 176px column and the stage clipped its
+     right edge; tighter tracking, side padding and a one-space chevron bring it to 189px */
+  ${ML} .sf-mlog-side .sf-mlog-btns .sf-mlog-btn-map { letter-spacing:.03em !important; padding:0 8px !important; }
+  ${ML} .sf-mlog-side .sf-mlog-btns .sf-mlog-btn-map::before { content:"› "; }
 }
 /* ui-polish-142: at 1101+ a long berth ("Helios Station (Helios Prime)") was ellipsized mid-word; the
    end wraps between place names instead, and both ends hang from their labels */

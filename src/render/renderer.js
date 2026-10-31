@@ -675,7 +675,7 @@ import {
   DEPOT_PATROL_ID_PREFIX,
   DEPOT_PATROL_SHAPE_ID,
   DEPOT_PATROL_ZONE_RADIUS_WU,
-} from '../systems/claims.js';
+} from '../systems/claimsReadModel.js';
 import { uniqueWreckById } from '../data/uniqueWrecks.js';
 
 const PRESENTATION_SELF_REGISTERED_ENCOUNTER_IDS = new Set(
@@ -8057,9 +8057,12 @@ export function assertCompleteAppearanceAdmission(receipt) {
     if (Array.isArray(value)) { for (const entry of value) visit(entry); return; }
     if (!value || typeof value !== 'object'
         || value.contextLost === true || value.partial === true || value.cancelled === true
+        || value.incomplete === true || value.readinessTimedOut === true
         || (value.skipped === true && value.reason !== 'no drawable geometry')) {
       const reason = value?.reason || 'missing/partial receipt';
       const error = new Error(`Incomplete appearance admission: ${reason}`);
+      if (value?.readinessTimedOut === true && value.contextLost !== true
+          && value.cancelled !== true) error.code = 'SF_PIPELINE_READINESS_TIMEOUT';
       // A strict caller still receives the rejection, but an owner retired while
       // queued is expected cancellation. Keep it out of the background failure
       // channel just like the underlying async-admission AbortError.
@@ -8075,6 +8078,13 @@ export function assertCompleteAppearanceAdmission(receipt) {
   };
   visit(receipt);
   return receipt;
+}
+
+function appearanceAdmissionHasUnreadyPipeline(value) {
+  if (Array.isArray(value)) return value.some(appearanceAdmissionHasUnreadyPipeline);
+  if (!value || typeof value !== 'object') return false;
+  if (value.readinessTimedOut === true || value.incomplete === true) return true;
+  return ['pipelines', 'results'].some((key) => appearanceAdmissionHasUnreadyPipeline(value[key]));
 }
 
 export function compilePipelineSubject(tracker, subject, options = {}, urgent = false) {
@@ -10966,7 +10976,7 @@ export const render = {
           if (part.geometrySubjects.length > 0) admitGeometrySubjects.push(...part.geometrySubjects);
           await yieldToBrowser();
         }
-        await admitOpeningUnitsAcrossSlices({
+        const firstPresentAdmission = await admitOpeningUnitsAcrossSlices({
           deadlineMs: 8000,
           units: {
             programSubjects: admitProgramSubjects,
@@ -11021,7 +11031,7 @@ export const render = {
             if (!lifecycle.isActive()) throw new Error('renderer lifecycle destroyed during opening yield');
           },
         });
-        if (firstPresentCoversQuarks) {
+        if (firstPresentCoversQuarks && firstPresentAdmission?.incomplete !== true) {
           this._environmentVariantAdmissionEnvKey = firstPresentEnvironmentKey;
           this._environmentVariantAdmissionEnv = this._envMap;
         }
@@ -12346,6 +12356,7 @@ export const render = {
         admission = compilation
         .then((result) => {
           if (admissionOptions.strict === true) assertCompleteAppearanceAdmission(result);
+          else if (appearanceAdmissionHasUnreadyPipeline(result)) return result;
           // Once a subject's programs have linked it can keep drawing through any
           // later re-admission: the pending latch's hide exists to keep a never-
           // compiled root out of bloomScene, and an already-linked root has
@@ -12396,7 +12407,7 @@ export const render = {
           }
           const recovering = state.render
             && state.render.contextRecovery && state.render.contextRecovery.pending === true;
-          if (!result || result.contextLost === true || recovering
+          if (appearanceAdmissionHasUnreadyPipeline(result) || !result || result.contextLost === true || recovering
               || !subject || !this.scene || !cam.obj) {
             if (admissionOptions.strict === true) throw new Error('Exact-target appearance admission unavailable');
             return result;

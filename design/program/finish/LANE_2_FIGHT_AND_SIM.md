@@ -20,6 +20,10 @@ lean enough to change. Status words: `OPEN`, `ACTIVE`, `LANDED <sha>`, `SKIPPED 
 - 2026-10-28, Lane 3 (W1-479 sweep): two stale assertions red at HEAD on clean files, not mine and not foreign-dirty — `test/rc-472-racing-event-cards-4242.test.mjs:174` expects 1 polyline/course where `racingMap.js` deliberately draws 2 (bloom+core, ORRERY §3.1), and `test/station-orbital.test.mjs:66` expects the literal `styles/station-orbital.css` where `stationApp.js` routes through `ensureStylesheet()`. Update the assertions to match the landed visuals. Also `test/hud-contact-roster-visibility.test.mjs` remains 2-red (projection-count contract) — already yours.
 - 2026-10-29, Lane 3 (ear/INFERENCE sitting): `src/systems/swarmArena.js` + `src/systems/environmentMaterials.js` — payload additions only, to the existing `asteroid:chunked` emits (`count` + parent `pos`), so the new chunk-split voice in audioSystem sits at the split and grades by piece count. No sim logic touched; `test/inf-asteroid-chunk-voice.test.mjs` pins the audio side.
 
+- 2026-10-31, integration: `scripts/sf-sim-cli.mjs` skips the redundant fresh physics prepare only for envelope resumes; the existing snapshot-bearing reset remains. All four real 47-A physical branch outcomes pass (48,075 ms). This verifies loaded physical behavior; no matched timing improvement or baseline-budget acceptance is claimed.
+
+- 2026-10-31, integration: the Massline aggregate shares the identical 5,200-tick spindle/scavenger inspection in one opt-in child while preserving separate assertions, verdicts, timeouts and standalone commands. The focused pair passes in 23.4 seconds; this does not establish the full 90-second baseline budget.
+
 ## Defects (this lane's share of the demo defect ledger — delete a row in the commit that fixes it)
 
 | # | What a stranger sees | Where | Next step |

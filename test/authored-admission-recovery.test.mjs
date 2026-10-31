@@ -10,7 +10,10 @@ import {
   AUTHORED_ADMISSION_RETRY_MAX,
   markAuthoredBoundaryForReadmission,
   retryFailedAuthoredAdmission,
+  residencyOptionsForBoundary,
 } from '../src/render/partsLibrary.js';
+import { createOpeningLoadingAdmission } from '../src/render/pipelineReadiness.js';
+import { assertCompleteAppearanceAdmission } from '../src/render/renderer.js';
 import { shouldSubmitEntityMesh } from '../src/render/entityMeshVisibility.js';
 
 import { vfx } from '../src/render/vfx.js';
@@ -18,6 +21,90 @@ import { vfx } from '../src/render/vfx.js';
 function freshRuntime() {
   return { assets: new Map(), failures: new Map(), retiring: false };
 }
+
+test('required loading admission tracks its timeout retry until the same owner is ready', async () => {
+  const previousWindow = globalThis.window;
+  const entity = { id: 1, type: 'ship', alive: true };
+  const boundary = new THREE.Group(), authored = new THREE.Group();
+  let releaseYield;
+  const yielding = new Promise((resolve) => { releaseYield = resolve; });
+  let calls = 0, tracks = 0;
+  const cohort = createOpeningLoadingAdmission({ entities: [entity], isRequired: () => true });
+  const state = { mode: 'loading', render: {
+    renderer: {}, admissionRunGeneration: 1,
+    isRequiredOpeningEntity: () => true,
+    trackOpeningLoadingWork: (_entity, promise) => { tracks++; return cohort.track(promise); },
+    yieldToNextPresent: () => yielding,
+    compileObjectPipelines: async (root, options) => {
+      assert.equal(root, authored);
+      assert.equal(options.openingRequired, true);
+      if (++calls === 1) assertCompleteAppearanceAdmission([{ readinessTimedOut: true }]);
+      return { skipped: false };
+    },
+  } };
+  globalThis.window = { SF: { state } };
+  try {
+    const options = residencyOptionsForBoundary(entity, boundary, state.render.renderer);
+    const pending = options.prepareAuthoredPipelines(authored);
+    const drain = cohort.drain();
+    let settled = false;
+    drain.then(() => { settled = true; });
+    await Promise.resolve(); await Promise.resolve();
+    assert.equal(calls, 1);
+    assert.equal(settled, false);
+    assert.equal(tracks, 1, 'the outer attempt chain is tracked once');
+    releaseYield();
+    assert.deepEqual(await pending, { skipped: false });
+    await drain;
+    assert.equal(calls, 2);
+  } finally {
+    if (previousWindow === undefined) delete globalThis.window;
+    else globalThis.window = previousWindow;
+  }
+});
+
+test('a loading timeout does not retry a replaced owner or an unrelated failure', async () => {
+  const previousWindow = globalThis.window;
+  const entity = { id: 1, type: 'ship', alive: true };
+  const boundary = new THREE.Group();
+  let releaseYield, calls = 0;
+  const yielding = new Promise((resolve) => { releaseYield = resolve; });
+  const state = { mode: 'loading', render: {
+    renderer: {}, admissionRunGeneration: 1,
+    isRequiredOpeningEntity: () => true,
+    yieldToNextPresent: () => yielding,
+    compileObjectPipelines: async () => {
+      calls++;
+      assertCompleteAppearanceAdmission({ readinessTimedOut: true });
+    },
+  } };
+  globalThis.window = { SF: { state } };
+  try {
+    const options = residencyOptionsForBoundary(entity, boundary, state.render.renderer);
+    const pending = options.prepareAuthoredPipelines(new THREE.Group());
+    const rejected = assert.rejects(pending, { name: 'AbortError' });
+    await Promise.resolve(); await Promise.resolve();
+    state.render.admissionRunGeneration++;
+    releaseYield();
+    await rejected;
+    assert.equal(calls, 1);
+    state.render.compileObjectPipelines = async () => { calls++; throw new Error('compile broke'); };
+    const next = residencyOptionsForBoundary(entity, boundary, state.render.renderer);
+    await assert.rejects(next.prepareAuthoredPipelines(new THREE.Group()), /compile broke/);
+    assert.equal(calls, 2);
+    calls = 0;
+    state.render.compileObjectPipelines = async () => {
+      calls++;
+      assertCompleteAppearanceAdmission({ readinessTimedOut: true });
+    };
+    const capped = residencyOptionsForBoundary(entity, boundary, state.render.renderer);
+    await assert.rejects(capped.prepareAuthoredPipelines(new THREE.Group()), { code: 'SF_PIPELINE_READINESS_TIMEOUT' });
+    assert.equal(calls, AUTHORED_ADMISSION_RETRY_MAX);
+  } finally {
+    if (previousWindow === undefined) delete globalThis.window;
+    else globalThis.window = previousWindow;
+  }
+});
 
 test('captured admission cannot resolve a recycled id into another native owner', () => {
   const previousWindow = globalThis.window;

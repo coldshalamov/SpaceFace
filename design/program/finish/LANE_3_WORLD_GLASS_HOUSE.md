@@ -14,6 +14,8 @@ Status words: `OPEN`, `ACTIVE`, `LANDED <sha>`, `SKIPPED (<reason>)`.
 
 ## Inbox (other lanes append one line: date, lane, path, what/why)
 
+- 2026-10-31 integration: Station Standard connects the head, Market and Bar; Shipworks fixes its rack-button styling and uses a readable scrolling instrument at 960×540, with seven slot targets, a working fitting chooser, and reachable Range/Record/Paint controls. Relevant real-module fixture captures were opened; this is not ordinary-route acceptance. The frontend guidance, handoff, review briefs and UI front door retire conflicting numeric gates and blanket border/table/type recipes while retaining useful UX and accessibility guidance. Current details are in `INTEGRATION_COVERAGE.md`; other screens are not implicitly migrated or accepted.
+
 ## Defects (this lane's share of the demo defect ledger — delete a row in the commit that fixes it)
 
 | # | What a stranger sees | Where | Next step |
