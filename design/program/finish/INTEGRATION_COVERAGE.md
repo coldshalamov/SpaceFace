@@ -113,6 +113,18 @@ result remains historical even where later builds supersede its size.
 
 ## Integrated changes and measurement limits
 
+- **Confirmed Vesper retention repair:** saved heap graphs identify a detached `seated_fastener`
+  mesh/new geometry absent from the start snapshot and end scene. Both become unreachable when
+  the shadow-caster registry edge is excluded. Its baker now unregisters permanently retired
+  source casters before merging; the real-builder test fails before the fix and passes after it.
+  Model/registry suites pass 15/15 and live merged geometry retains shadows. This fixes one proven
+  family; the full heap/resource trend still needs the normal soak.
+- **Shadow-depth texture repair:** the actual driver now canonically refills CPU-detached texture
+  payloads and holds their lease through paced staging. The direct real-texture case reproduces
+  empty mip access before refill and passes normal drawing, generation cancellation and rejected
+  pacing after a partial 32-caster slice. Caster homes, renderer hooks and lease release survive
+  that error. Public recovery verification remains pending.
+
 - **Short heap diagnostic on `030aaf675118`:** nine measured save/load/trade cycles and same-mesh
   context recovery complete. Normal quit is now graceful with no force kill; the snapshot-fence
   warning does not recur. The aggregate fails for 69,376,132 bytes of retained heap growth,

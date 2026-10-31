@@ -266,6 +266,17 @@ on that exact failure and preserves the original thrown error; its direct regres
 Before/after heap attribution is active. Heap snapshots make this a diagnostic, not a performance
 qualification, and full M8 remains open.
 
+Heap identity analysis now proves one actual retirement leak: a detached Vesper `seated_fastener`
+mesh and its new geometry have no strong root when the shadow-caster registry edge is excluded.
+The Vesper baker now clears `castShadow` on source meshes before permanently replacing them with
+merged surfaces. The real-builder regression fails before the repair and passes afterward; model
+and registry suites pass 15/15, with live merged surfaces still casting. This establishes that
+family's fix, not closure of all measured growth. Separately, a real CPU-detached compressed-texture
+fixture reproduces the shadow-stage missing-mip failure. The ordinary paced driver now uses the
+canonical refill protocol and holds a texture lease through staging. Its direct case passes normal
+draw, context-generation cancellation and rejected pacing after partial draw, preserving error,
+caster homes and draw-hook ownership. A new normal soak is required for the integrated result.
+
 **M9 — Load less, load later.** 28 MB of minified JS in the eager closure (`scripts/build-bundle.mjs`,
 esbuild splitting): lazy-load per mode and per screen; make `modelTruthCensus.generated.js` and
 `en-US.generated.js` fetched JSON instead of chunk payload; move `ruckusMeshData/*.js` (3.4 MB of mesh
