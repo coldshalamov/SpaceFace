@@ -22983,6 +22983,17 @@ export const render = {
       };
       add(mk(true));
       add(mk(false));
+      // The hulk's opaque parts also publish through SF_RigidOpaqueBatch (BatchedMesh with
+      // per-instance color: batching + batchingColor layer bits), a second key per material.
+      const batched = (material) => {
+        const mesh = new THREE.BatchedMesh(1, 3, 0, material);
+        const id = mesh.addInstance(mesh.addGeometry(geometry));
+        mesh.setColorAt(id, new THREE.Color(1, 1, 1));
+        mesh.frustumCulled = false;
+        mesh.perObjectFrustumCulled = false;
+        return mesh;
+      };
+      for (const m of materials.slice()) group.add(batched(m));
       const work = this._compilePostRoute(this._selectPostRoute(), group, camera, scene);
       // Shadow-depth twin: double-sided caster -> DoubleSide depth material carrying the map.
       // The shadow pass draws with no scene (fog off: key slot + layer bit 0), so compile the
@@ -22998,6 +23009,7 @@ export const render = {
         const mesh = new THREE.Mesh(geometry, dm);
         mesh.frustumCulled = false;
         depthGroup.add(mesh);
+        depthGroup.add(batched(dm));
       }
       const fog = scene.fog;
       try {
@@ -23008,10 +23020,17 @@ export const render = {
       }
       receipt.ms = Math.round((performance.now() - t0) * 10) / 10;
       const props = renderer.properties;
-      const readKeys = () => materials.map((m) => {
-        const program = props && props.get(m).currentProgram;
-        return program ? program.cacheKey : null;
-      });
+      // A material compiled under two objects (plain + batched) holds two programs; three's
+      // properties keep each in material programs map, so read them all.
+      const programsOf = () => {
+        const out = [];
+        for (const m of materials) {
+          const progs = props && props.get(m).programs;
+          if (progs && typeof progs.values === 'function') for (const p of progs.values()) if (p && !out.includes(p)) out.push(p);
+        }
+        return out;
+      };
+      const readKeys = () => programsOf().map((p) => p.cacheKey);
       receipt.keys = readKeys();
       // Materials, textures and geometry are kept for the session (a few hundred bytes):
       // three releases a program when its last material user disposes, and the hulk can
@@ -23022,7 +23041,7 @@ export const render = {
       // warm begin, linked 1613 ms at lift+2.1 s). Take that first use here, behind the
       // loading screen, one program per task; its cost is the warm's own (receipt.useMs).
       const firstUse = () => {
-        const programs = materials.map((m) => props && props.get(m).currentProgram).filter(Boolean);
+        const programs = programsOf();
         receipt.useMs = [];
         let i = 0;
         const step = () => {
