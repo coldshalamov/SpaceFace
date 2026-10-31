@@ -194,8 +194,9 @@ The candidate now projects the serial without changing the Dock gate or successo
 projection/replay/renderer checks pass 4/4 and domain/wire checks 9/9. The source-770 public route now
 commits Ceres Dock, then times out on the combined settlement predicate before F5. Paused settlement
 publication is repaired (5 focused cases), with a fresh delivery/save/Continue route pending. The full
-30-minute soak remains required. The latest combined bundle passes; baseline assertions pass 17/17
-but the latest run fails its unchanged 90-second budget at 117,436 ms. The source-70d1 public haul
+30-minute soak remains required. The latest combined bundle passes; the current baseline has 16
+passing checks and a Massline timeout at 210 seconds, totaling 222,351 ms against its unchanged
+90-second budget. An isolated Massline check is in progress. The source-70d1 public haul
 reaches physical Ceres Dock, delivers all eight cells and publishes the 760-credit receipt. Its
 observer incorrectly assumes reputation-event order across the worker transport; that observer is
 being corrected before retrying save/Continue. No save/Continue acceptance is claimed.
@@ -245,6 +246,12 @@ object into per-concern modules (entity sync, shadows/LOD, residency/prewarm, po
 `vfx.js` (18,470) into `render/vfx/` per effect family. `partsLibrary.js`: collapse the 15 sync/"stepped
 twin" pairs into one generator with a sync driver. Keep the moves bounded and use a suitable implementation tool; prove with
 byte-identical golden digests, the boot census, and `check:baseline`. Do these **after** M1–M5 land.
+
+Current extraction: `d309751297b3` moves the six shadow-depth staging methods into
+`render/runtime/shadowDepthStage.js`, preserving their bodies and renderer-owned queues/lifecycle.
+The focused setting-enable case, 28 admission cases, two retirement cases and 10 real-renderer
+import cases pass. This is a bounded M13 step; the size target and current ordinary-route checks
+remain open.
 
 ### Wave A — the picture (taste; interleave with Wave M once M0–M5 have landed)
 
