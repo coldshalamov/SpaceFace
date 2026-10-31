@@ -854,6 +854,7 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
     lastReason: null,
     lastError: null,
     preparationStage: 'idle',
+    preparationLeg: null,
     preparationCurrentGroup: 0,
     preparationCompletedGroups: 0,
     preparationGroupCount: 0,
@@ -1265,6 +1266,7 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
       pending.cancelled = true;
       releaseCandidate(pending.candidate, scene, true);
       pending = null;
+      stats.preparationLeg = null;
     }
     if (syncSerial - lastShadowFlipSync < RETAINED_BATCH_SHADOW_FLIP_REPLAN_QUIET) {
       // Flips are still landing — re-planning now would commit against source state the next
@@ -1336,6 +1338,7 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
     };
     stats.status = 'preparing';
     stats.preparationStage = 'prepare-starting';
+    stats.preparationLeg = null;
     stats.preparationCurrentGroup = 0;
     stats.preparationCompletedGroups = 0;
     stats.preparationGroupCount = candidate.batches.length;
@@ -1355,15 +1358,23 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
         Math.trunc(Number(completedGroups) || 0)));
       return true;
     };
+    const reportLeg = (leg) => {
+      if (!activeNow()) return false;
+      if (!['pipeline', 'residency', 'exact-target'].includes(leg)) return false;
+      stats.preparationLeg = leg;
+      return true;
+    };
     record.promise = Promise.resolve()
       .then(() => prepare(candidate.batches.map((batch) => batch.mesh), {
         roots: normalized,
         plan,
         isActive: activeNow,
         reportProgress,
+        reportLeg,
       }))
       .then((result) => {
         const wasActive = activeNow();
+        if (wasActive) stats.preparationLeg = null;
         const ready = result === true || result?.ready === true;
         if (!wasActive || !ready || result?.skipped === true
             || result?.ready === false || result?.timedOut === true
@@ -1493,6 +1504,7 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
         releaseCandidate(candidate, scene, true);
         if (!wasActive) return refreshDiagnostics();
         if (pending === record) pending = null;
+        stats.preparationLeg = null;
         preparationRetry ||= { frames: 0, used: false };
         stats.status = 'failed';
         stats.preparationStage = 'failed';
@@ -1527,11 +1539,13 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
       lastRoots = [];
       lastTopology = null;
       preparationRetry = null;
+      stats.preparationLeg = null;
       return refreshDiagnostics();
     },
     dispose() {
       if (disposed) return false;
       disposed = true;
+      stats.preparationLeg = null;
       if (pending) {
         pending.cancelled = true;
         releaseCandidate(pending.candidate, scene, true);

@@ -9188,6 +9188,7 @@ function emptyRigidOpaqueBatchDiagnostics(owner, status = 'disabled', lastReason
     lastReason,
     lastError: null,
     preparationStage: status === 'disabled' ? 'disabled' : 'idle',
+    preparationLeg: null,
     preparationCurrentGroup: 0,
     preparationCompletedGroups: 0,
     preparationGroupCount: 0,
@@ -9501,6 +9502,7 @@ function createRigidOpaqueBatchProbe(owner, scene, options = {}) {
           // work. This finite default cohort must finish compile/residency/exact touch before seal.
           openingRequired: defaultCohort && loading,
           debugBy: 'rigid-opaque-batch',
+          onPreparationLeg: context.reportLeg,
           isActive,
         }));
         if (!isActive()) return { skipped: true, reason: 'candidate-superseded' };
@@ -12283,6 +12285,7 @@ export const render = {
       // so a subject that drifted off the glass while waiting stays ambient.
       let compilation;
       try {
+        admissionOptions.onPreparationLeg?.('pipeline');
         compilation = compilePipelineSubject(
           pipelineAdmissions, subject, admissionOptions, urgent,
         );
@@ -12331,6 +12334,7 @@ export const render = {
             || (state.mode === 'flight'
               && Number.isFinite(state.render && state.render.firstPlayableFrameAt)
               && admissionSubjectIsOnDeadlineGlass(subject, state));
+          admissionOptions.onPreparationLeg?.('residency');
           return preparePipelineSubjectResidency(
             gpuResidencyAdmissions, subject, admissionOptions, residencyUrgent,
           ).then(
@@ -12363,6 +12367,7 @@ export const render = {
             throw ownerInactiveTouchError();
           }
           if (isRetiredRigidOpaqueBatch(subject)) throw ownerInactiveTouchError();
+          admissionOptions.onPreparationLeg?.('exact-target');
           // A cpu-detached package texture this draw would force-upload reads an emptied mip
           // chain inside uploadTexture and throws — the touch exists to keep exactly that work
           // out of the presented pass, so re-attach those payloads first (D150).
@@ -12495,6 +12500,7 @@ export const render = {
     const preReleaseLaneOptions = (admissionOptions, debugBy = null) => {
       const lane = {};
       if (admissionOptions && admissionOptions.isActive !== undefined) lane.isActive = admissionOptions.isActive;
+      if (typeof admissionOptions?.onPreparationLeg === 'function') lane.onPreparationLeg = admissionOptions.onPreparationLeg;
       if (admissionOptions && admissionOptions.joinOutstanding === true) lane.joinOutstanding = true;
       if (admissionOptions && admissionOptions.unSliced === true) lane.unSliced = true;
       if (admissionOptions && admissionOptions.openingRequired === true) {
@@ -29810,6 +29816,8 @@ export const render = {
             contextRestoreSeq: ownerContextRestoreSeq ?? null,
           },
           pending: preparationPendingEvidence,
+          rigidOpaqueBatch: this._rigidOpaqueBatchController?.getDiagnostics?.()
+            ? { ...this._rigidOpaqueBatchController.getDiagnostics() } : null,
           meshes: [...(this._meshes || [])].map(([id, root]) => ({
             id, status: root?.userData?.authoredAssetState || null,
             pending: root?.userData?.pipelinesPending === true,

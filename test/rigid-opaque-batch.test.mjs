@@ -460,6 +460,7 @@ test('retained rigid batches wait for residency before suppressing direct source
       assert.equal(batches.length, 1);
       assert.equal(context.isActive(), true);
       context.reportProgress('compiling', 1, 0, batches.length);
+      assert.equal(context.reportLeg('residency'), true);
       markPreparationStarted();
       await preparation;
       context.reportProgress('group-ready', 1, 1, batches.length);
@@ -476,6 +477,7 @@ test('retained rigid batches wait for residency before suppressing direct source
   assert.equal(inProgress.status, 'preparing');
   assert.equal(inProgress.lastReason, 'preparation-running');
   assert.equal(inProgress.preparationStage, 'compiling');
+  assert.equal(inProgress.preparationLeg, 'residency');
   assert.equal(inProgress.preparationCurrentGroup, 1);
   assert.equal(inProgress.preparationCompletedGroups, 0);
   assert.equal(inProgress.preparationGroupCount, 1);
@@ -484,6 +486,7 @@ test('retained rigid batches wait for residency before suppressing direct source
   const result = await pending;
   assert.equal(result.status, 'active');
   assert.equal(result.preparationStage, 'active');
+  assert.equal(result.preparationLeg, null);
   assert.equal(result.preparationCompletedGroups, 1);
   assert.equal(a.visible, true, 'semantic source visibility stays canonical while the direct layer is suppressed');
   assert.equal(b.visible, true, 'semantic source visibility stays canonical while the direct layer is suppressed');
@@ -1341,11 +1344,12 @@ test('superseded preparation resolve or reject cannot overwrite a newer active c
     const first = makeRoot(), second = makeRoot();
     scene.add(first.root, second.root);
     scene.updateMatrixWorld(true);
-    let attempts = 0, settleOld;
+    let attempts = 0, settleOld, reportOldLeg;
     const controller = createRetainedRigidOpaqueBatchController({
       scene,
-      prepare: () => {
+      prepare: (_batches, context) => {
         if (++attempts > 1) return { ready: true };
+        reportOldLeg = context.reportLeg;
         return new Promise((resolve, reject) => {
           settleOld = () => outcome === 'resolve'
             ? resolve({ ready: true }) : reject(new Error('superseded preparation'));
@@ -1360,12 +1364,14 @@ test('superseded preparation resolve or reject cannot overwrite a newer active c
       const batches = scene.children.filter((child) => child.userData?.spacefaceRigidOpaqueBatch);
       assert.equal(current.status, 'active');
       assert.equal(current.hiddenSources, 4);
+      assert.equal(reportOldLeg('exact-target'), false, 'retired preparation cannot publish a stale leg');
       settleOld();
       await old;
       const after = controller.getDiagnostics();
       assert.equal(after.status, 'active', `late ${outcome} preserves current status`);
       assert.equal(after.lastReason, current.lastReason);
       assert.equal(after.lastError, current.lastError);
+      assert.equal(after.preparationLeg, null);
       assert.equal(after.activations, 1);
       assert.equal(after.hiddenSources, 4);
       assert.deepEqual(scene.children.filter((child) => child.userData?.spacefaceRigidOpaqueBatch), batches);
