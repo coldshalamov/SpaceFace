@@ -137,6 +137,12 @@ census history; a separate source-backed reassessment accepts the live-mode and 
 No default changed, active-flight causal win or visual parity is claimed, and M3's targets remain
 open. See `INTEGRATION_COVERAGE.md` and `.devshots/main-thread-profile/opaque-retained-default-ab-144e/`.
 
+The static cockpit pilot is now configured alongside Helios (2/414 packages): 31→9 primitives,
+22 legal joins, matching decoded materials/triangles/anchors within quantization tolerance. Live
+look/shadow and matched frame checks remain open. A separate compiler repair preserves dynamic
+semantic pivots through quantization (13 compiler cases); actual compiled pivots in all 196 existing
+dynamic packages match source, so that defect requires no package rebuild.
+
 **M4 — The composite pass.** One full-screen composite draw costs 7.1 ms of GPU per frame
 (`bloom.js:240-460`: 5-tap edge detect, extra edge taps, three bloom samples, contrast LUT, grade,
 grain on a half-float target). Gate the expensive taps by tier, fold grain/vignette/grade into one
@@ -179,9 +185,11 @@ Integration checkpoint 2026-10-31: a public Ceres approach exposes valid Dock pr
 are rejected because sector admission stays armed. The worker domain mirror omitted `world.enterSerial`;
 temporary event replay restored it to undefined, making the current renderer cook appear stale.
 The candidate now projects the serial without changing the Dock gate or successor guard. Actual
-projection/replay/renderer checks pass 4/4 and domain/wire checks 9/9; fresh public docking and the full
-30-minute soak remain required. Renderer lifecycle extraction and authored CSS sidecars pass their
-focused checks; the combined bundle and 17-case baseline pass. See `INTEGRATION_COVERAGE.md`.
+projection/replay/renderer checks pass 4/4 and domain/wire checks 9/9. The source-770 public route now
+commits Ceres Dock, then times out on the combined settlement predicate before F5. Paused settlement
+publication is repaired (5 focused cases), with a fresh delivery/save/Continue route pending. The full
+30-minute soak remains required. The latest combined bundle passes; baseline assertions pass 17/17
+but the latest run fails its unchanged 90-second budget at 92,319 ms. See `INTEGRATION_COVERAGE.md`.
 
 **M9 — Load less, load later.** 28 MB of minified JS in the eager closure (`scripts/build-bundle.mjs`,
 esbuild splitting): lazy-load per mode and per screen; make `modelTruthCensus.generated.js` and
@@ -191,6 +199,12 @@ as JS) to a binary asset; take `src/testing/**` out of the retail graph (static 
 `data/causalFoundry/presentation.js` → a hook registry or build alias). D251: ship a lean
 `FlightReadySet` and stream the rest after first flight. D252: fix the WebKit menu stall. Done when
 the load rows of README §4 meet their floor.
+
+Current measured working-tree checkpoint (2026-10-31): physical main static ESM closure is
+15,870,128 raw / 4,932,393 summed-gzip bytes across 182 outputs, with bundle receipt
+`fe828a29530c3fc105545e99b98e90eaf992839c22170a606f912e8297bc89ad` (2806 files, 414 plans).
+This includes concurrent edits, not isolated attribution. The 12 MB raw floor and runtime load bars
+remain open; Codex callers now use its one-shot request mailbox without importing the lazy screen.
 
 **M10 — First sight never stalls.** Adventure first-sight program links (`pipelineReadiness.js`
 serializes every link behind one `linkActive` tail): issue links in parallel batches, use
