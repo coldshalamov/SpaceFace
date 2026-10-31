@@ -29,6 +29,13 @@ import { occupantGenerationOf } from '../core/entity.js';
 
 const WPN = new Map(WEAPONS.map((w) => [w.id, w]));
 
+// Live surrender remains an AI-owned contact fact. Keep this small pure reader in the shared
+// contact-classification layer so presentation can inspect it without importing the recovery tick.
+export function isSurrenderedContact(entity) {
+  return !!entity && entity.alive !== false && (entity.type === 'ship' || entity.type === 'drone')
+    && entity.data?.ai?.fsm === 'surrender';
+}
+
 export const PHYSICAL = Object.freeze({
   SHIP: 'ship', DRONE: 'drone', FAUNA: 'fauna', STRUCTURE: 'structure', ROCK: 'rock',
   WRECK: 'wreck', CARGO: 'cargo', PROJECTILE: 'projectile', OTHER: 'other',

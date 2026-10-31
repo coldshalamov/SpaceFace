@@ -26,6 +26,21 @@ for (const sector of SECTORS) {
   }
 }
 
+// Pure story inputs shared by live-sector materialization and the saved-sector warm planner.
+// Keep the projection beside the planner so render preparation need not import the faction tick.
+export function currentStoryInputs(state) {
+  const story = (state && state.story) || {};
+  const verge = story.verge && typeof story.verge === 'object' ? story.verge : {};
+  const storyFlags = {
+    vergeLayersRevealed: verge.revealed === true,
+    vergeAwake: verge.awake === true,
+    valeGatesRevoked: verge.valeGatesRevoked === true,
+    playerUsedVergeClosureProtocol: verge.playerUsedClosureProtocol === true,
+  };
+  const revocationCount = Array.isArray(verge.revocations) ? verge.revocations.length : 0;
+  return { storyFlags, revocationCount };
+}
+
 export const FULFILLMENT_FIXED_ROUTES = freeze([
   {
     id: 'fulfillment_tethys_helios',

@@ -39,7 +39,8 @@ import { seedFootprintShot, unseedFootprintShot } from './ui-bench-footprint.js'
 import { seedRecordShot, unseedRecordShot } from './ui-bench-record.js';
 import { seedReceiptsShot, unseedReceiptsShot } from './ui-bench-receipts.js';
 import { seedImpoundShot } from './ui-bench-impound.js';
-import { MOBILE_CSS } from '../src/systems/mobile/styles.js';
+import { MOBILE_CSS_PATH } from '../src/systems/mobile/styles.js';
+import { loadCssSidecar } from '../src/ui/orrery/cssSidecar.js';
 
 window.__BENCH_READY = false;
 // This tool bypasses main.boot(), so it owns the same data-ready boundary before fixture mounts.
@@ -112,10 +113,8 @@ const params = new URLSearchParams(location.search);
 const PHONE = params.get('phone') === '1';
 if (PHONE) {
   document.documentElement.dataset.sfMobile = '1';
-  const phoneStyle = document.createElement('style');
-  phoneStyle.id = 'sf-mobile-style';
-  phoneStyle.textContent = MOBILE_CSS;
-  document.head.append(phoneStyle);
+  await loadCssSidecar(document, { id: 'sf-mobile-style', path: MOBILE_CSS_PATH,
+    fallback: async () => (await import('../src/systems/mobile/mobileCssSource.js')).MOBILE_CSS });
 }
 const log = [];
 const stack = [];

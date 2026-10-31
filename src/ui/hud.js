@@ -19,7 +19,6 @@ import { createRadar } from './radar.js';
 import { mountIonStormHud } from './ionStormHud.js';
 import { mountTravelVectorHud } from './travelVectorHud.js';
 import { createTargetPanel, targetDisplayName } from './targetPanel.js';
-import { isSurrenderedContact } from '../systems/surrenderRecovery.js';
 import { createFloatingText } from './floatingText.js';
 import { createDamageIndicators } from './damageIndicators.js';
 import { buildReducedMotionContactCue } from './reducedMotionInformation.js';
@@ -79,7 +78,7 @@ import { computeLeadPipOverlay, leadSolution, primaryProjSpeed, hasBallisticWeap
 import {
   createTargetTruth, projectTargetTruth, lineLeadSolution, SELECTION_STATUS, TARGET_REASON,
 } from '../combat/targetTruth.js';
-import { classifyContact, contactMark, gunLineDenial } from '../combat/contactClassifier.js';
+import { classifyContact, contactMark, gunLineDenial, isSurrenderedContact } from '../combat/contactClassifier.js';
 import { confirm } from './confirm.js';
 import { bestKnownSellFor, applyTradeNavigation } from './market/tradeLogic.js';
 import { createFlickerGrid, createHexPattern, createRouteBeam, createCircularGauge, createSupplyTree } from './effects/index.js';

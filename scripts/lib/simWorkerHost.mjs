@@ -1082,7 +1082,17 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
       if (payload?.missionId == null) host.domainDiffer.invalidateLeaf('missions');
     });
     const offAccepted = bus.on('mission:accepted', () => host.domainDiffer.invalidateLeaf('missions'));
-    host.missionBoardMirrorUnsubscribe = () => { offBoardUpdate(); offAccepted(); };
+    // Terminal settlement mutates the receipt/history root before its canonical event;
+    // a paused worker may have no later tick on which the cold root could publish.
+    const offTerminal = ['mission:completed', 'mission:failed', 'mission:expired']
+      .map((event) => bus.on(event, () => host.domainDiffer.invalidateLeaf('missions')));
+    // The factions owner emits only after it actually changes standing (including spillover).
+    const offRep = bus.on('faction:repChanged', () => host.domainDiffer.invalidateLeaf('factions'));
+    host.missionBoardMirrorUnsubscribe = () => {
+      offBoardUpdate(); offAccepted();
+      for (const off of offTerminal) off();
+      offRep();
+    };
     if (captureAll === true) {
       const origEmit = bus.emit.bind(bus);
       const origQueue = typeof bus.queue === 'function' ? bus.queue.bind(bus) : null;

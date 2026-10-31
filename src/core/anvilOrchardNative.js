@@ -10,6 +10,22 @@ import { planarProxyPrismHalfHeight } from './planarProxyGeometry.js';
 
 const canonical = ensurePhysicsBodySpec({ type: 'wreck', radius: G.radius, data: {}, physicsBody: orchardFrameBodySpec() });
 const leases = new WeakMap(), preparations = new WeakSet(), recoveryViews = new WeakMap();
+const poseReaders = new WeakMap();
+
+// Keep presentation's current native-pose read seam beside the Orchard native owner helpers.
+// Physics remains the registrar; the WeakMap does not extend either state or reader lifetime.
+export function registerOrchardPoseReader(state, reader) {
+  poseReaders.set(state, reader);
+}
+
+export function isCurrentOrchardPoseReader(state, reader) {
+  return poseReaders.get(state) === reader;
+}
+
+export function readOrchardNativePose(state, entity) {
+  return poseReaders.get(state)?.readOrchardFramePose(entity) ?? null;
+}
+
 const rigByPart = new Map(G.rigs.map(r => [r.partId, r]));
 let nextRevision = 1;
 const plain = x => !!x && typeof x === 'object' && !Array.isArray(x);
