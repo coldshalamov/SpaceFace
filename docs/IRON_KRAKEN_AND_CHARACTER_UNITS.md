@@ -20,11 +20,11 @@ SpaceFace character design.
 
 | Feature | Preserve at the gameplay camera |
 |---|---|
-| Head | Broad rounded lower hull and a segmented dome, rather than a pointed squid mantle. Dark vertical inspection panels and thin panel seams break up the white surface. |
-| Optics | Two thick black lenses in white barrels on the forward hemisphere, roughly either side of the nose. Narrow red rims remain recognizable when small. |
+| Head | Broad rounded lower hull and a segmented dome. Wide recessed glazed ports, shallow machinery pockets, bolted seams, and substantial orange inspection plates establish the reference's panel pattern. |
+| Optics | Two dark convex camera lenses in flared white sockets on the forward hemisphere. The black focusing barrels telescope axially; thin orange pressure seals and restrained lens reflections remain recognizable when small. |
 | Arm roots | Eight substantial joints around the dark collar under the hull. Arms emerge below the head, not from its crown. |
-| Arm links | Tapered white armored barrels separated by exposed charcoal joints. The transition from thick root to fine tip matters more than rivet count. |
-| Suction discs | Dark discs with red rims along the underside. These make the limbs read as mechanical cephalopod arms rather than generic cables. |
+| Arm links | Four substantial proximal white barrels, separated by exposed black hydraulic bays with silver piston rods and orange axle caps, lead into a much finer coiled chain. Preserve axial length and exposed mechanism; broad compressed beads are the wrong construction. |
+| Suction discs | Two rows of dark dished cups with orange rims along the underside. Their faces follow the arm's underside through every curl and twist. |
 | Underside | A compact dark beak/siphon, with a red throat visible during an appropriate move. |
 | Palette | Warm off-white painted armor, charcoal machinery, restrained warning red. Avoid making the whole creature shiny gray or uniformly emissive. |
 
@@ -54,14 +54,20 @@ move gathers tips, then fans them open; the drive gathers all arms aft. Pose the
 clearly before the hit and ease the recoil into recovery. If a future move selects just one arm
 pair, quiet the others enough that the selected pair remains readable.
 
-A practical procedural chain varies tangent angle nonlinearly along normalized arm distance `s`:
-`angle(s, t) = root(t) + broadBend(t) * s + tipCurl(t) * s^3`. Integrate bounded-length segments
-along that curve, taper radius toward the tip, and orient each shared plate along its segment.
-This is an implementation option, not a required formula. The current
-[procedural rig](../src/render/ironKrakenVisuals.js) uses eight arms with 22 links each, a quartic
-terminal curl, different arm phases and curl planes, and a body-scaled shared geometry cache.
-The acceptance condition is a stable root, broad middle, and curled tip. A uniform sine wave or a
-few rigid spokes misses the reference. Avoid a perfectly synchronized pinwheel.
+The [motion provider](../src/render/ironKrakenMotion.js) integrates rigid segment lengths along
+distance-parameterized bends. Each of the eight arms has 22 links: four proximal pitches of
+0.55, 0.53, 0.47, and 0.41 head radii, followed by 18 fine links tapering from approximately
+0.245 to 0.060 radii. The nominal uncoiled chain is 4.7 radii long; individual arms have small
+fixed anatomical length differences. Large sleeves occupy 64% of their pitch, leaving a visible
+hydraulic bay; fine sleeves occupy 80%. Do not compress these into short toroidal beads.
+
+Independent shoulder heights, bend planes, droop, and slowly eased posture changes produce
+raised elbows and terminal spirals. The [rig](../src/render/ironKrakenVisuals.js) aligns its nine
+shared arm geometry batches to caller-owned point and frame buffers. Jetting interpolates
+unwrapped bend angles, so a curled tip visibly unwinds without flipping through opposite
+tangents. Body pitch commits head-first and releases through a slower braking spread. A stable
+root, substantial elbow, closed coil, and independent forearm posture are the visual conditions;
+a uniform sine wave or synchronized pinwheel does not satisfy them.
 
 Keep pose state render-owned. Combat state supplies a small presentation snapshot such as phase,
 committed heading, attack sectors, and mantle exposure. Render interpolation must never become
@@ -144,8 +150,12 @@ resume, and terminal cleanup. A catalog entry with an attractive model is not a 
 
 ## 5. Make death specific without a hidden interior
 
-The live shell does not carry a complete invisible engine or a second robot. Its shallow three-mesh
-pump reveal is created on the first mantle opening and is hidden while the shell is closed.
+The live shell does not carry a complete invisible engine or a second robot. Its four-batch pump
+reveal is created on the first mantle opening and is hidden while the shell is closed. It models
+the visible cross-braced frame, cylinders, gears, pressure manifolds, routed hoses, and cap spindle.
+The closed dome carries only the shallow mechanisms visible through its inspection windows.
+Sliding hinges lower and spread the eight shell petals while the cap rises; preserve a compact
+opening around the pump rather than an oversized radial flower.
 The separate death-only pump chunks are created by the VFX owner only when a valid kill first
 requires the shared debris pool; no corpse geometry is preloaded inside each living creature.
 
@@ -185,7 +195,9 @@ The successor's persisted `hulkVisual.lootTableId` selects the
 [static Kraken wreck](../src/render/ironKrakenWreckVisuals.js), so dying or restored remains do not
 turn into the backing Bastion spaceship. It reuses the live shape cache with a shared darkened
 palette, five splayed mantle petals, four shortened curled arms, and four broken roots: 88 static
-links, with no attack animation, charge lights, or hidden engine. This is the existing wreck body,
+links, using the shared distant arm hardware so successive corpses do not retain all the living
+asset's small fasteners. Its silhouette, cups, hydraulic rods, and broad shoulder dimensions remain
+intact, with no attack animation, charge lights, or hidden engine. This is the existing wreck body,
 not another simulated object. Physical fracture pieces keep their own existing render owner. The
 roster warm admits the character wreck separately from ordinary ship packages; both ordinary and
 paced detached teardown release its private instance buffers while retaining shared shapes.
@@ -201,7 +213,22 @@ Render repeated links, joints, and discs through instancing or equivalent batchi
 materials, scratch vectors, matrices, and pose buffers. Avoid per-frame scene-node construction,
 geometry rebuilding, recursive child searches, or a physics chain for every visible arm. Cull and
 throttle presentation work outside the view without suspending combat authority. Lower detail may
-reduce rivets or link samples, but must retain the eight-arm silhouette, tip curls, and tells.
+reduce fine hardware, but must retain the eight-arm silhouette, tip curls, and tells.
+
+The current camera-driven detail switch uses the projected head diameter, independently of the
+large jet/culling bounds. Below 128 pixels it selects shared distant arm geometry; above 160 it
+restores close detail. The hysteresis avoids repeated switches around one distance. Both levels
+retain all 176 articulated links, all four cups per link, the white barrel profile, and four
+hydraulic mechanisms per joint. Distant geometry omits subpixel fasteners and pinstripes and uses
+simpler circular surfaces. It changes 1,542 triangles per link to 718; those source geometry counts
+do not establish frame-time savings. No new mesh, material, or pose buffer is allocated per frame.
+Camera changes can switch detail while paused without advancing the score or pose.
+
+The model is divided by responsibility: [hull and lazy pump construction](../src/render/ironKrakenHullGeometry.js),
+[shared arm hardware](../src/render/ironKrakenArmGeometry.js), [pure motion](../src/render/ironKrakenMotion.js),
+and the [production render owner](../src/render/ironKrakenVisuals.js). Keep the live actor, static
+wreck, reference inspection, and gameplay view on those shared dimensions and resources. A polished
+standalone replacement that bypasses the production factory is not evidence for the game asset.
 
 Before claiming acceptance, establish:
 

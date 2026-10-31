@@ -81,8 +81,16 @@ jobs:
           npm install --prefix "$RUNNER_TEMP/iron-kraken-browser" --ignore-scripts --no-audit --no-fund playwright@1.61.1
           ln -s "$RUNNER_TEMP/iron-kraken-browser/node_modules/playwright" node_modules/playwright
           node "$RUNNER_TEMP/iron-kraken-browser/node_modules/playwright/cli.js" install --with-deps chromium
+      - name: Verify fixed-frame video encoder
+        run: |
+          if ! command -v ffmpeg >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y --no-install-recommends ffmpeg
+          fi
+          ffmpeg -version
+          ffmpeg -hide_banner -loglevel error -f lavfi -i color=size=16x16:rate=1 -frames:v 1 -c:v libvpx-vp9 -f null -
       - name: Render real character poses and score motion
-        run: node scripts/inspect-iron-kraken.mjs
+        run: node scripts/inspect-iron-kraken.mjs --motion-seconds=24
       - name: Publish native screenshots and counters
         if: always()
         uses: actions/upload-artifact@v4

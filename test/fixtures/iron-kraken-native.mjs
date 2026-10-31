@@ -42,13 +42,35 @@ const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 5000);
 const profile = resolveSectorVisualProfile(SECTORS.find(s => s.id === 'sector_helios_prime'));
 const lighting = resolveLookLighting(profile);
 beginLookMood(resolveLookMoodId(profile), 0);
-renderer.toneMappingExposure = resolveLookPost(profile).exposure;
-scene.add(new THREE.AmbientLight(lighting.ambientColor, lighting.ambient));
+const productionExposure = resolveLookPost(profile).exposure;
+const productionLights = new THREE.Group();
+productionLights.name = 'Helios production light profile';
+productionLights.add(new THREE.AmbientLight(lighting.ambientColor, lighting.ambient));
 for (const [channel, position] of [['key', [60, 140, 40]], ['rim', [-70, 50, -60]], ['fill', [20, 30, 120]]]) {
   const light = new THREE.DirectionalLight(lighting[`${channel}Color`], lighting[channel]);
   light.position.fromArray(position);
-  scene.add(light);
+  productionLights.add(light);
 }
+const studioLights = new THREE.Group();
+studioLights.name = 'Neutral reference inspection lights';
+studioLights.add(new THREE.HemisphereLight(0xffffff, 0xc5c1b9, 1.8));
+for (const [intensity, position] of [[2.5, [100, 180, 100]], [1.1, [40, 60, -160]], [1.1, [-100, 100, 30]]]) {
+  const light = new THREE.DirectionalLight(0xffffff, intensity);
+  light.position.fromArray(position);
+  studioLights.add(light);
+}
+scene.add(productionLights, studioLights);
+let lightMode = 'production';
+function setLighting(mode = 'production', inspection = false) {
+  expect(mode === 'production' || mode === 'studio', `Unknown inspection lighting: ${mode}`);
+  lightMode = mode;
+  productionLights.visible = mode === 'production';
+  studioLights.visible = mode === 'studio';
+  renderer.toneMappingExposure = mode === 'studio' ? 1 : productionExposure;
+  scene.background.set(mode === 'studio' ? 0xf3f0e9 : inspection ? 0x333a46 : 0x080d16);
+  document.body.dataset.lighting = mode;
+}
+setLighting();
 const factory = createVisualFactory({ renderer });
 installVisualOverrides(factory, { directAuthoredMount: true, authoredShips: true });
 const hitch = SHIPS.find(ship => ship.id === 'ship_kestrel');
@@ -61,10 +83,10 @@ let nextId = 0;
 function expect(condition, message) { if (!condition) throw new Error(message); }
 function clone(value) { return JSON.parse(JSON.stringify(value)); }
 
-function makeRun(variant = 'heavy') {
+function makeRun(variant = 'heavy', entityId = null) {
   const p = IRON_KRAKEN_PROFILES[variant];
   expect(p, `Unknown Kraken variant: ${variant}`);
-  const id = `kraken-render-${++nextId}`;
+  const id = entityId || `kraken-render-${++nextId}`;
   const fightId = `inspect:${id}`;
   const entity = { id, type: 'ship', alive: true, rot: 0, pos: { x: 0, z: 0 },
     vel: { x: 0, z: 0 }, radius: p.coreRadius, visualRadius: p.armReach,
@@ -75,6 +97,7 @@ function makeRun(variant = 'heavy') {
     pos: { x: p.armReach * 1.2, z: 0 }, radius: hitch.collisionRadius };
   const fight = createCapitalBossFight({ encounterId: p.scoreId, fightId, bossId: id, targetId: target.id });
   const state = { simTime: 0, entities: new Map([[id, entity], [target.id, target]]),
+    render: { scene, camera, renderer, frameOrigin: { x: 0, z: 0 } },
     capitalBossEncounters: { version: 1, fights: { [fightId]: fight }, orders: {} } };
   return { p, entity, target, fight, state, tick: -1, warning: null, recovery: null,
     score: requireCapitalBossEncounter(p.scoreId).score };
@@ -222,6 +245,8 @@ function objectResources(root) {
 }
 
 function frameCamera(box, view, fitPoints = null) {
+  camera.fov = 45;
+  camera.updateProjectionMatrix();
   const center = box.getCenter(new THREE.Vector3());
   const direction = new THREE.Vector3();
   camera.up.set(0, 1, 0);
@@ -250,6 +275,40 @@ function frameCamera(box, view, fitPoints = null) {
   camera.position.copy(center).addScaledVector(direction, distance * 1.025);
   camera.lookAt(center);
   camera.updateMatrixWorld(true);
+}
+
+function frameReferenceCamera(run) {
+  // Frozen visual approximation of the supplied 4.8/6.0 s side-three-quarter frames: the near
+  // optic sits at the right edge of the pressure hull and the far optic is occluded. Keep the
+  // pressure-body origin as the target and distance fixed in core-radius units, never auto-fit
+  // to the arms. The paired full-body view reveals tips outside this reference composition.
+  camera.fov = 42;
+  camera.up.set(0, 1, 0);
+  const target = new THREE.Vector3(0, 0, 0);
+  const direction = new THREE.Vector3(0.18, 0.28, 0.94).normalize();
+  camera.position.copy(target).addScaledVector(direction, run.p.coreRadius * 9);
+  camera.lookAt(target);
+  camera.updateProjectionMatrix();
+  camera.updateMatrixWorld(true);
+}
+
+function frameDetailCamera(run, headDiameterPx) {
+  expect(Number.isFinite(headDiameterPx) && headDiameterPx > 0, 'Detail capture requires a positive projected head diameter');
+  camera.fov = 42;
+  camera.up.set(0, 1, 0);
+  camera.updateProjectionMatrix();
+  const distance = run.p.coreRadius * height * Math.abs(camera.projectionMatrix.elements[5]) / headDiameterPx;
+  camera.position.copy(new THREE.Vector3(0.18, 0.28, 0.94).normalize()).multiplyScalar(distance);
+  camera.lookAt(0, 0, 0);
+  camera.updateMatrixWorld(true);
+}
+
+function useCamera(run, root, spec, box = bounds(root), fitPoints = visibleFitPoints(root)) {
+  camera.fov = 45;
+  camera.updateProjectionMatrix();
+  if (Number.isFinite(spec.headDiameterPx)) frameDetailCamera(run, spec.headDiameterPx);
+  else if (spec.view === 'reference') frameReferenceCamera(run);
+  else frameCamera(box, spec.view, fitPoints);
 }
 
 function addScaleReference(run, box) {
@@ -299,6 +358,19 @@ function counters() {
     programs: renderer.info.programs?.length || 0 };
 }
 
+function detailInfo(run, root) {
+  const rig = root.userData.ironKrakenRig;
+  root.updateMatrixWorld(true);
+  camera.updateMatrixWorld(true);
+  const center = new THREE.Vector3().setFromMatrixPosition(root.matrixWorld).applyMatrix4(camera.matrixWorldInverse);
+  const projectedHeadDiameterPx = run.p.coreRadius * height * Math.abs(camera.projectionMatrix.elements[5]) / -center.z;
+  const visibleInstanceBatches = [];
+  root.traverseVisible(node => { if (node.isInstancedMesh) visibleInstanceBatches.push({ name: node.name, count: node.count }); });
+  return { detailLevel: rig.detailLevel ?? null, headDiameterPx: rig.headDiameterPx ?? null,
+    projectedHeadDiameterPx, visibleInstanceBatches,
+    cameraDistance: camera.position.length(), viewport: { width, height, pixelRatio: renderer.getPixelRatio() } };
+}
+
 async function capture(spec) {
   const run = seek(makeRun(spec.variant), spec);
   const root = mount(run);
@@ -320,12 +392,15 @@ async function capture(spec) {
       }
     }
   }
-  frameCamera(box, spec.view, fitPoints);
-  scene.background.set(spec.inspection ? 0x333a46 : 0x080d16);
+  useCamera(run, root, spec, box, fitPoints);
+  // The production detail owner reads the real camera even while the score is paused.
+  // Its final camera must be installed before the corresponding native draw is sampled.
+  update(run, root, a11y);
+  setLighting(spec.lighting, spec.inspection);
   title.textContent = `${run.p.name} · ${spec.title}`;
   const viewLabel = spec.view === 'gameplay' ? '60° gameplay-angle inspection' : `${spec.view} inspection`;
   caption.textContent = `${viewLabel} · ${run.fight.phase}${run.fight.cast ? ` / ${run.fight.cast.beatId}` : ''} · tick ${run.tick}${spec.reducedMotion ? ' · reduced motion + flash' : ''}`;
-  footer.textContent = 'Production model, illustrated surfaces and score clock · Helios lighting · no post effects · stationary diagnostic';
+  footer.textContent = `Production model, materials and score clock · ${lightMode === 'studio' ? 'neutral studio lights / fixed reference camera available' : 'Helios lighting'} · no post effects · stationary diagnostic`;
   draw(run, spec);
   await painted();
   const resources = objectResources(root);
@@ -333,14 +408,18 @@ async function capture(spec) {
     simulationTime: run.state.simTime, phase: run.fight.phase, beatId: run.fight.cast?.beatId || run.recovery?.beatId || null,
     scale: run.p.scale, coreRadius: run.p.coreRadius, armReach: run.p.armReach,
     actualBounds, cullRadius, actualXZRadius, poseHash: poseHash(root),
-    render: counters(), resources: { geometries: resources.geometries.size, materials: resources.materials.size,
+    render: counters(), detail: detailInfo(run, root), resources: { geometries: resources.geometries.size, materials: resources.materials.size,
       renderNodes: resources.renderNodes, instanceBatches: resources.instanceBatches, instances: resources.instances },
     warningVisible: !warningCanvas.hidden, warningShapeCount: warningCanvas.hidden ? 0 : run.warning.shapes.length,
-    camera: { fov: camera.fov, position: camera.position.toArray(), up: camera.up.toArray() },
+    lighting: lightMode,
+    camera: { fov: camera.fov, position: camera.position.toArray(), up: camera.up.toArray(),
+      framing: Number.isFinite(spec.headDiameterPx) ? `real perspective distance for ${spec.headDiameterPx}px head diameter`
+        : spec.view === 'reference' ? 'fixed 9 core radii, pressure-body origin; side-three-quarter approximation of supplied 4.8/6.0 s frames' : 'visible geometry fit' },
     scaleReference: spec.scaleReference ? { kind: 'collision-diameter-proxy', sourceId: hitch.id, diameter: hitch.collisionRadius * 2 } : null };
 }
 
 async function captureBreakup() {
+  setLighting();
   const run = seek(makeRun(), { beatId: 'siphon_jet', phase: 'recovery', progress: 0.4 });
   const root = mount(run);
   update(run, root);
@@ -374,6 +453,7 @@ async function captureBreakup() {
 }
 
 async function captureWreck() {
+  setLighting();
   if (live) release(live.root, live.run.state);
   live = null;
   debris?.clear(); removeProxy(); resetWarningCanvas();
@@ -415,9 +495,42 @@ async function captureWreck() {
     camera: { fov: camera.fov, position: camera.position.toArray(), up: camera.up.toArray() } };
 }
 
+async function lodChecks() {
+  const run = seek(makeRun());
+  const root = mount(run);
+  setLighting('studio');
+  const clock = run.fight.clock, time = run.state.simTime;
+  const fightBefore = JSON.stringify(run.fight);
+  const samples = [];
+  for (const [label, headDiameterPx] of [['near', 240], ['distant', 110], ['restored', 200]]) {
+    frameDetailCamera(run, headDiameterPx);
+    update(run, root);
+    draw(run);
+    await painted();
+    samples.push({ label, requestedHeadDiameterPx: headDiameterPx, ...detailInfo(run, root),
+      poseHash: poseHash(root), render: counters(), tick: run.tick, fightClock: run.fight.clock, simulationTime: run.state.simTime });
+  }
+  const [near, distant, restored] = samples;
+  expect(near.detailLevel === 'close' && distant.detailLevel === 'distant' && restored.detailLevel === 'close',
+    'Actual camera movement did not switch close → distant → close detail');
+  expect(samples.every(sample => Math.abs(sample.headDiameterPx - sample.requestedHeadDiameterPx) < 0.5),
+    'Detail owner did not report the measured real camera projection');
+  expect(samples.every(sample => sample.poseHash === near.poseHash), 'Paused camera zoom changed articulated transforms');
+  expect(run.fight.clock === clock && run.state.simTime === time && JSON.stringify(run.fight) === fightBefore,
+    'Detail selection advanced or mutated the simulation fight');
+  expect(distant.render.triangles < near.render.triangles, 'Distant detail did not reduce native submitted triangles');
+  return { kind: 'actual-camera-projection', forcedDetailOverride: false, pausedPoseStable: true,
+    simulationReadOnly: true, detailRestored: true, samples,
+    distantTriangleRatio: distant.render.triangles / near.render.triangles };
+}
+
 async function checks() {
+  setLighting();
   const run = seek(makeRun(), { beatId: 'siphon_jet', phase: 'recovery', progress: 0.4 });
   const root = mount(run);
+  // Resource identity is compared at one explicit close distance. The separate camera proof
+  // above tests swaps; a colossus must not turn this ownership check into a mixed-detail census.
+  frameDetailCamera(run, 240);
   const serializedFight = JSON.stringify(run.fight);
   update(run, root);
   const pausedBefore = poseHash(root);
@@ -440,7 +553,8 @@ async function checks() {
   const disposed = () => sharedDisposeCount++;
   for (const resource of instances) resource.addEventListener('dispose', disposed);
   const lifecycle = [];
-  frameCamera(bounds(root), 'inspect');
+  frameDetailCamera(run, 240);
+  update(run, root, { reducedMotion: true, reducedFlash: true });
   draw(run);
   const warm = counters();
   try {
@@ -482,29 +596,105 @@ async function checks() {
     warm, repeatedLifecycle: lifecycle, sharedDisposeCount };
 }
 
-async function animate(seconds = 12) {
-  const run = seek(makeRun(), { beatId: 'arm_rake', phase: 'tell', progress: 0.1 });
-  const root = mount(run);
+let motion = null;
+let motionWarmup = null;
+
+function finishMotion() {
+  if (!motionWarmup) return;
+  release(motionWarmup.root, motionWarmup.state);
+  motionWarmup = null;
+}
+
+async function prepareMotion(spec = {}) {
+  finishMotion();
+  const startPose = { beatId: 'arm_rake', phase: 'tell', progress: 0.1 };
+  let run = seek(makeRun(), startPose);
+  let root = mount(run);
+  setLighting(spec.lighting);
+  const warmPoses = [
+    { phase: 'intro' },
+    { beatId: 'arm_rake', phase: 'tell' }, { beatId: 'arm_rake', phase: 'active' },
+    { beatId: 'siphon_jet', phase: 'tell' }, { beatId: 'siphon_jet', phase: 'active' },
+    { beatId: 'siphon_jet', phase: 'recovery' }, { beatId: 'ink_ring', phase: 'active' },
+  ];
+  const box = new THREE.Box3();
+  const fitPoints = [];
+  // Warm real visibility/material states with the owning entity identity. A fresh production
+  // rig then starts the movie so warm-up seeking cannot rewind its stateful motion envelopes.
+  for (const pose of warmPoses) {
+    const warmRun = seek(makeRun('heavy', run.entity.id), pose);
+    update(warmRun, root);
+    box.union(bounds(root));
+    fitPoints.push(...visibleFitPoints(root));
+    useCamera(warmRun, root, spec, box, fitPoints);
+    update(warmRun, root);
+    await renderer.compileAsync(scene, camera);
+    draw(warmRun);
+  }
+  renderer.getContext().finish();
+  const warmRoot = root, warmState = run.state;
+  warmRoot.visible = false;
+  // Hidden effects on the fresh rig do not acquire their programs until their first live phase.
+  // Retain this non-drawing warm rig until encoding finishes, then release its temporary
+  // private buffers through the normal owner. Both rigs use the production factory.
+  motionWarmup = { root: warmRoot, state: warmState };
+  live = null;
+  run = seek(makeRun(), startPose);
+  root = mount(run);
   update(run, root);
-  frameCamera(bounds(root), 'inspect');
-  scene.background.set(0x080d16);
+  useCamera(run, root, { view: spec.view || 'inspect' }, box, fitPoints);
+  update(run, root);
+  await renderer.compileAsync(scene, camera);
+  draw(run);
+  renderer.getContext().finish();
   title.textContent = 'Iron Kraken · real score motion';
-  footer.textContent = 'Production motion driver and fixed score ticks · stationary body diagnostic · playback is not an FPS benchmark';
-  const startTick = run.tick;
-  const start = performance.now();
-  await new Promise(resolve => {
-    function frame(now) {
-      const elapsed = Math.min(seconds, (now - start) / 1000);
-      const desired = startTick + Math.floor(elapsed * 60);
-      while (run.tick < desired) advance(run);
-      update(run, root);
-      caption.textContent = `${run.fight.phase} / ${run.fight.cast?.beatId || run.recovery?.beatId || 'idle'} · simulation tick ${run.tick}`;
-      draw(run);
-      if (elapsed >= seconds) resolve(); else requestAnimationFrame(frame);
-    }
-    requestAnimationFrame(frame);
-  });
-  return { seconds, fixedTicks: run.tick - startTick, finalPhase: run.fight.phase, finalTick: run.tick };
+  footer.textContent = `Production motion driver · ${lightMode} lighting · prewarmed fixed-tick frames · stationary diagnostic, not an FPS benchmark`;
+  motion = { run, root, startTick: run.tick, frames: 0, spec };
+  draw(run);
+  await painted();
+  return { startTick: run.tick, prewarmedPoses: warmPoses, lighting: lightMode,
+    camera: { fov: camera.fov, position: camera.position.toArray() }, programs: counters().programs,
+    warmRigVisibleDuringMovie: false, warmProgramsRetainedUntilMovieEnd: true };
+}
+
+function motionFrame(ticks = 2) {
+  expect(motion && live?.root === motion.root, 'Call prepareMotion before requesting movie frames');
+  expect(Number.isInteger(ticks) && ticks >= 0 && ticks <= 60, 'Movie frame tick count must be a bounded integer');
+  const { run, root, spec } = motion;
+  for (let i = 0; i < ticks; i++) advance(run);
+  update(run, root);
+  caption.textContent = `${run.fight.phase} / ${run.fight.cast?.beatId || run.recovery?.beatId || 'idle'} · simulation tick ${run.tick}`;
+  draw(run, spec);
+  motion.frames++;
+  return { frames: motion.frames, fixedTicks: run.tick - motion.startTick,
+    finalPhase: run.fight.phase, finalTick: run.tick, poseHash: poseHash(root) };
+}
+
+let movieCanvas = null;
+function motionPixels(ticks = 2) {
+  const frame = motionFrame(ticks);
+  // Read the rendered native canvas directly. Playwright screenshots wait for unrelated DOM
+  // compositor work on every frame; this keeps the inner art loop short without skipping ticks.
+  movieCanvas ||= Object.assign(document.createElement('canvas'), { width, height });
+  const ctx = movieCanvas.getContext('2d');
+  ctx.drawImage(stage, 0, 0);
+  if (!warningCanvas.hidden) ctx.drawImage(warningCanvas, 0, 0);
+  ctx.fillStyle = lightMode === 'studio' ? '#252626' : '#e5eaf2';
+  ctx.font = '600 22px system-ui'; ctx.fillText('Iron Kraken · native score motion', 25, 34);
+  ctx.font = '14px system-ui'; ctx.fillText(caption.textContent, 25, 60);
+  ctx.font = '12px system-ui'; ctx.fillText(`${lightMode} lighting · fixed simulation ticks · not a hardware FPS measurement`, 25, height - 20);
+  return { frame, png: movieCanvas.toDataURL('image/png').split(',')[1] };
+}
+
+async function animate(seconds = 12, spec = {}) {
+  const warmup = await prepareMotion(spec);
+  const frames = Math.round(seconds * 60);
+  for (let i = 0; i < frames; i++) {
+    await new Promise(resolve => requestAnimationFrame(resolve));
+    motionFrame(1);
+  }
+  finishMotion();
+  return { seconds, ...warmup, ...motionFrame(0), timing: 'one fixed simulation tick per presented frame; playback speed depends on host' };
 }
 
 function runtime() {
@@ -517,6 +707,6 @@ function runtime() {
     measurement: 'Renderer counters are workload diagnostics for this exact capture; no hardware FPS claim.' };
 }
 
-window.ironKrakenProbe = { capture, captureBreakup, captureWreck, checks, animate, runtime,
-  dispose() { if (live) release(live.root, live.run.state); removeProxy(); debris?.dispose(); renderer.dispose(); } };
+window.ironKrakenProbe = { capture, captureBreakup, captureWreck, lodChecks, checks, prepareMotion, finishMotion, motionFrame, motionPixels, animate, runtime,
+  dispose() { finishMotion(); if (live) release(live.root, live.run.state); removeProxy(); debris?.dispose(); renderer.dispose(); } };
 window.ironKrakenReady = true;
