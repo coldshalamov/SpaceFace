@@ -279,6 +279,20 @@ ${P} .sx-mkt .sx-decision__opt .k-row__name { display:block !important; font-fam
 ${P} .sx-mkt .sx-decision__opt .k-row__sub { display:block !important; margin:2px 0 0 !important; font-family:${UI} !important; font-size:13px !important; line-height:1.35 !important;
   white-space:normal !important; overflow:visible !important; text-overflow:clip !important; color:rgb(${BONE} / .78) !important; }
 
+/* narrow portrait (481–650 wide, ≥601 tall): the console column is ~146px, so the stepper sets Fewer + count on one row and
+   More / Max on the next, and Buy / Sell share the column width instead of hanging past the right edge */
+@media (min-width:481px) and (max-width:650px) and (min-height:601px) {
+  ${P} .sx-mkt .sx-trade { grid-template-columns:minmax(0, 1fr) !important; column-gap:0 !important; }
+  ${P} .sx-mkt .sx-qty { width:100% !important; box-sizing:border-box !important; }
+  ${P} .sx-mkt .sx-qty__words > li:nth-child(1) > button { flex:0 0 auto !important; }
+  ${P} .sx-mkt .sx-qty__in { flex:1 1 40px !important; min-width:0 !important; width:auto !important; }
+  ${P} .sx-mkt .sx-qty__words > li:nth-child(n+2) > button { flex:1 1 40% !important; min-width:0 !important; padding:0 6px !important; }
+  ${P} .sx-mkt .sx-trade__words { width:100% !important; gap:6px !important; }
+  ${P} .sx-mkt .sx-trade__words > li { flex:1 1 0 !important; min-width:0 !important; }
+  ${P} .sx-mkt .sx-trade__words > li:is(:first-child, :not(:first-child)) > .sx-trade__go { width:100% !important; height:36px !important; min-height:36px !important;
+    box-sizing:border-box !important; padding:0 6px !important; justify-content:center !important; }
+}
+
 /* ==== BAR =================================================================================== */
 ${P} .sx-bar__hang { box-sizing:border-box; border:${LINE} !important; border-radius:2px; background:${PANEL} !important; background-image:none !important; padding:9px 12px !important; }
 ${P} .sx-bar__hang::before, ${P} .sx-bar__hang::after, ${P} .sx-bar__rows::before, ${P} .sx-bar__rows::after,
