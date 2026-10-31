@@ -670,6 +670,9 @@ export const DOMAIN_MIRROR_KEYS = Object.freeze([
   'world.alienEcology',
   // Native store status settles Continue and is read synchronously by save event listeners.
   'save.sharedStoreStatus',
+  // Keep the sector epoch after event replay's temporary emit-time shim ends.
+  // Appending preserves existing domain slots and their staggered cadences.
+  'world.enterSerial',
 ]);
 
 // Per-key canonical-serialization ship cap (report-only): any single mirrored
@@ -1803,6 +1806,29 @@ export function createDomainDiffer(options = {}) {
       if (!node || !node.leaf) return false;
       node.urgentSign = true;
       return true;
+    },
+    // A bounded result receipt may expose several values from one native owner
+    // before their staggered leaf slots are due. Urgent-sign only the existing
+    // leaves under that owner; signatures remain authoritative, so equal values
+    // do not ship, and the next successful sign restores the ordinary cadence.
+    // Unseen children need no special treatment: their first sign is already eager.
+    invalidateSubtree(path) {
+      const node = paths.get(path);
+      if (!node) return 0;
+      let invalidated = 0;
+      const markLeaves = (current) => {
+        if (!current || !current.alive) return;
+        if (!current.kids) {
+          if (current.leaf) {
+            current.urgentSign = true;
+            invalidated++;
+          }
+          return;
+        }
+        for (const child of current.kids.values()) markLeaves(child);
+      };
+      markLeaves(node);
+      return invalidated;
     },
     diff(state, tick) {
       const start = nowNs();

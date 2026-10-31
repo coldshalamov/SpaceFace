@@ -36,6 +36,8 @@ Targets and floors: README §4.
 - 2026-10-28, Lane 3: foreign-dirty work seen in the tree, not mine — `electron/preload.cjs`, `scripts/lib/ui-layout-measure.mjs`, `src/ui/contactHailPrompt.js`, `src/ui/views/hudStyles.js`, `test/ceres-five-minute-acceptance.test.mjs` left unstaged and preserved.
 - 2026-10-28, Lane 3 (W1-473): title-interactive on the VM profile (headless SwiftShader, retail `build/web`) measured **16.5–17.4 s** clean, ~26–42 s under host load vs the 10 s budget — over entirely inside your boot/loading/render path, nothing UI-side (menu mounts+usable the same frame the shell drops). Tape: `bootEntry.js:33` media hold → `import('../main.js')` eval ~2.5 s longtask ~3–5.5 s → `main.js:141–216` "Preparing/Starting flight systems" ~4–5 s → `main.js:470` "Opening the command deck" → **~5 s tail** (first title-scene paint: serial shader compile on software GL in `src/render/**` admission) → `loadingPresenter.hide()` (`loadingPresenter.js:374–388`, hideDelayMs 600). Evidence script+tape: `.devshots/w1-473-title-timing.mjs` (`--bundle`), run on the hour-old bundle.
 
+- 2026-10-31, opening integration (PR724): `scripts/lib/simReadModel.mjs`, `scripts/lib/simWorkerHost.mjs` add bounded result-time publication of changed run descendants for paused shop/refit receipts; normal cadence, signatures and combat awards stay unchanged. Native paused-host and UI wire tests cover coherent same-reply state; newer upstream sector-serial/mission/faction hooks are retained. Browser-worker and full shop acceptance remain open.
+
 ## Defects (this lane's share of the demo defect ledger — delete a row in the commit that fixes it)
 
 | # | What a stranger sees | Where | Next step |
