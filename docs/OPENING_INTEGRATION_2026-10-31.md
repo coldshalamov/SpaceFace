@@ -108,3 +108,23 @@ must establish the corrected route. Separately, the handoff probe's timeout
 snapshot contained an enabled visible Accept button, while its trace recorded
 long renderer/GPU stalls. No control removal or Kessler-related cause was shown;
 that route and performance remain unproven rather than being patched speculatively.
+
+## Service readiness preserves the existing hardship contract
+
+The zero-credit refuel failure was a stale test assertion, not a broken service:
+FB-101 already permits a bounded "Refuel on the Note" reserve and files its price
+as debt. UI quotes, economy execution and timed yard delivery agree. No player
+behavior, price, reward, UI helper or economy source was changed to satisfy CI.
+
+The readiness check now pins the action label, bounded amount, zero upfront cost,
+disclosed debt, partial/exact/sufficient funds, full-tank no-op and quote-level
+pending-job blocker. A real service-event/economy/yard seam rejects a NaN request
+without mutation, then queues the quoted 8-unit reserve, files 48 credits of debt
+for that single request, and leaves fuel unchanged until timed delivery. This is
+not a claim of arbitrary event-message idempotency or a rendered service visit.
+
+On the preceding ee34b064 head, the corrected Bar probe passed in CI. Retail boot
+also passed; overall checks/mobile readiness failed. The authored-catalog live
+check ran out of diagnostic time after partial coverage; it did not establish a
+missing or incorrect model, so no replacement model work is justified by that
+failure alone. Broader performance and release acceptance remain open.
