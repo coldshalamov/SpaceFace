@@ -50,7 +50,7 @@ The candidate Kessler work conversation is deliberately presentation-only: it ch
 
   `mining.js` consumes `player.data.miningBeam`, and B0 accepts a player `mining:yield` at its source without a Wasp-specific fit gate (`src/systems/mining.js:400-407, 494-499, 1350-1356`; `missionObjectiveOps.js:76-98`). This argues against the apparent slot-based deadlock, but it is not ordinary-control/event proof. **Smallest unresolved experiment:** start a Wasp New Game, mine the exact 47-A fix with the ordinary Mine input, observe the real `mining:yield` and sample recovery, then wait for the 8-second skim and dock Helios; separately confirm one ship swap/refit recompute leaves a usable player beam (recompute calls the same builder at `ships.js:2474, 2489-2492`). Do not redesign mining or declare this route blocked unless that test fails.
 - **Starting-vessel identity to verify:** fixed cold-open comms say Kael hands over “Tessera” / VHL-4471-T and call it “the 7741 ship” (`src/data/narrative.js:38-74`), while the live New Game selection can instantiate Hitch, Pelican, or Wasp (`src/ui/screens/newGame.js:1-40`, `src/core/newGameBoot.js:58-80`). A fixed vessel name/registration does not by itself contradict a selectable hull class. Check the actual vessel name and registration presented by New Game, the ship UI and the cold open before classifying this as a continuity defect; a Kessler reply should not invent an answer.
-- **Objective-card contradiction:** Campaign beat 1 is physically authored to auto-post the 47-A reserve shipment / Scale 4 / furnace sequence, but Mission Log's general beat-1 card still says “Take a haul” and tells the player to choose any low-risk board contract (`src/ui/screens/missionLog.js:1640-1664`). That generic wording is not the actual authored next story contract; verify when this card is visible alongside the campaign-specific task before changing its reader.
+- **Objective-card contradiction (narrow reader fix):** In the Mission Log's actual single-command policy, earlier beats are folded into CURRENT ACTION; the separate Campaign rail only persists for final/post-ending continuity. After B1's alloy delivery, with no tracked or active contract or trade route owning that command, the beat-1 reader therefore showed “Take a haul” instead of the authored Scale 4 action. It now asks the existing read-only `kesslerScaleWaypoint` projection, which requires canonical `stepProgress['1'].completed` to contain `alloy_run` and not `scale_4` / `infested`, then reuses its Scale 4 label and instructions. Its existing map word opens the Tethys pad locally when already in that sector, and otherwise focuses Tethys on the star map without a local coordinate or an automatically plotted route. The button decoder now requires a finite, explicit coordinate pair (while accepting explicit zeroes), preventing an absent remote fix from becoming `(0,0)`. The UI adds no mission, reward, pin, beat or sidecar writer. Focused tests exercise the real Mission Log click handler through a synthetic DOM and the shared map authority, plus Tethys/Helios routing, tracked/trade/tutorial precedence, coordinate edge cases and preservation of campaign progress and the pilot pin; the map authority still owns its normal transient UI intent. Rendered visual acceptance remains open.
 
 ## Concrete next integration: a truthful Kessler handback
 
@@ -102,3 +102,16 @@ pass 45/45 across four test files; the new seam test uses the real CR-FEED intak
 missions listener, loss recorder, and worksite settlement owner. This does not close
 the ordinary-control Wasp sample experiment, rendered dialogue readability, full
 Continue, or default-route visual acceptance.
+
+## Scale 4 integration verification
+
+The integrated set now passes 240 opening tests, six production imports and 12
+unchanged Mission Log regression cases. The unchanged repository UI import/check
+script was fetched from candidate parent 0620bc78 and passed 55 checks with zero
+failures; it is verification context, not a shipping modification. Synthetic-DOM
+mount/click coverage is not a screenshot or normal-flight weighing proof.
+
+Only the shared helper import, coordinate decoder and beat-1 action block changed
+in Mission Log. The target block was verified unchanged at upstream b68493ff;
+newer CSS-ready/deferred stylesheet changes outside this patch must be retained
+when integrating. The candidate snapshot must not replace the newer whole file.

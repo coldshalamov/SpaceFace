@@ -38,6 +38,7 @@ import { failReasonWord } from '../../data/missionFailReasons.js';
 import { missionNextActionRow } from '../sim/missionNextAction.js';
 import { BINDINGS } from '../bindings.js';
 import { entitySpanHtml } from '../entityResolver.js';
+import { kesslerScaleWaypoint } from '../../systems/kesslerScaleWorksite.js';
 import {
   missionClauseTerms,
   missionConsequenceSummary,
@@ -940,9 +941,16 @@ function mapOpenIntentFromButton(btn) {
   const focus = btn.getAttribute('data-map-focus')
     || btn.getAttribute('data-screen-id')
     || MAP_FOCUS.SYSTEM;
+  const rawX = btn.getAttribute('data-map-pos-x');
+  const rawZ = btn.getAttribute('data-map-pos-z');
   let pos = null;
-  const px = Number(btn.getAttribute('data-map-pos-x'));
-  const pz = Number(btn.getAttribute('data-map-pos-z'));
+  // An absent coordinate attribute is null, and Number(null) is 0. Accept only an explicit,
+  // complete pair so a remote sector handoff cannot turn into a bogus local (0, 0) pin. Zero is
+  // still a valid authored coordinate when it is actually present in the button.
+  const hasCoordinatePair = typeof rawX === 'string' && rawX.trim() !== ''
+    && typeof rawZ === 'string' && rawZ.trim() !== '';
+  const px = hasCoordinatePair ? Number(rawX) : NaN;
+  const pz = hasCoordinatePair ? Number(rawZ) : NaN;
   if (Number.isFinite(px) && Number.isFinite(pz)) pos = { x: px, z: pz };
   return {
     focus,
@@ -1655,6 +1663,34 @@ export function storyActionForBeat(beat, state) {
         meta: 'Mining',
       };
     case 1:
+      {
+        // Book 1's gap after the alloy delivery is an authored physical weigh, not an open
+        // invitation to take unrelated freight. Reuse the existing worksite projection so the
+        // log and the live waypoint share one canonical step gate and one set of instructions.
+        const scale = kesslerScaleWaypoint(state);
+        if (scale) {
+          const isAtScaleSector = state && state.world
+            && state.world.currentSectorId === scale.sectorId;
+          return {
+            tone: 'primary',
+            label: 'STORY',
+            title: scale.label,
+            body: scale.reason,
+            meta: scale.sectorName || 'Scale 4',
+            mapAction: mapHandoffAction({
+              focus: isAtScaleSector ? MAP_FOCUS.LOCAL : MAP_FOCUS.GALAXY,
+              label: isAtScaleSector ? 'LOCAL MAP' : 'STAR MAP',
+              title: isAtScaleSector ? 'Open Scale 4 on the Local Map' : 'Open Tethys on the Star Map',
+              body: isAtScaleSector
+                ? 'Show the live Scale 4 weigh-slip marker and nearby worksite.'
+                : 'Open the chart and review the route to Scale 4 at Tethys Junction.',
+              sectorId: scale.sectorId,
+              pos: isAtScaleSector ? scale.pos : null,
+              source: 'missionLog-story-scale-4',
+            }),
+          };
+        }
+      }
       return {
         tone: 'primary',
         label: 'CONTRACT',

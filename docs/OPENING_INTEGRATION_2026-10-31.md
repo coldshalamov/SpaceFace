@@ -261,3 +261,23 @@ production imports and 12 unchanged Mission Log tests pass.** This closes the sc
 reader defect at the component layer, not SF-SECTOR-COHERENCE as a whole: rendered
 Ceres arrival, physical interventions, dialogue readability and full Save/Continue
 remain acceptance work. No actor, asset, reward or physics writer changed.
+
+### Tethys Scale 4 remains visible between the authored contracts
+
+After the alloy settlement, the real single CURRENT ACTION reader now reuses the
+existing Scale 4 waypoint projection instead of inviting unrelated cargo work.
+It explains the fresh player-jettisoned pod, speed requirement and plate/stamp
+comparison without inventing an active mission. Tracked work, trade routes and
+the unfinished opening tutorial retain their existing priority.
+
+The existing map action focuses the pad locally in Tethys or the Tethys sector on
+the star map from elsewhere. It does not plot or replace the player's route. The
+shared button decoder now requires two explicit nonblank finite coordinates;
+missing attributes cannot become a false (0,0) target, while real zeroes remain
+valid. Actual Mission Log handlers and map authority are exercised in synthetic
+DOM tests, with campaign progress and pilot pins preserved.
+
+**240 focused tests, six imports, 12 unchanged Mission Log regression tests and
+55 UI import/check assertions pass.** No screenshot, rendered layout, physical
+Scale 4 weighing or full Save/Continue is established. Upstream Mission Log CSS
+changes were inspected and remain outside this patch; preserve them at integration.
