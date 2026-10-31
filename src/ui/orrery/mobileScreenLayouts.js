@@ -180,6 +180,15 @@ export const MOBILE_SCREEN_CSS = `
   ${B} .sxb-signs .sx-adboard__k { font-size:12px !important; letter-spacing:.14em !important; text-transform:uppercase; color:rgb(236 230 216 / .96) !important; }
   ${B} .sxb-signs .sx-adboard__sponsor { opacity:.74; }
   ${B} .sxb-signs .sx-adboard__text::before { content:" "; }
+  /* The peeking sign was a hard cut ("STA / inspe" at 390-473 wide, "bell." once swiped) that read as clipped
+     text. The cut edge fades over 40px instead, so the peek reads as more to swipe: the right edge at rest,
+     the left edge once swiped to the end, each lifting as the strip scrolls so the sign in view reads whole. */
+  ${B} .sxb-signs:has(> .sx-adboard:not([hidden]) ~ .sx-adboard:not([hidden])) {
+    -webkit-mask-image:linear-gradient(to right, transparent 0, #000 var(--sxb-signs-fade-l), #000 calc(100% - var(--sxb-signs-fade)), transparent 100%);
+    mask-image:linear-gradient(to right, transparent 0, #000 var(--sxb-signs-fade-l), #000 calc(100% - var(--sxb-signs-fade)), transparent 100%);
+    animation:sxb-signs-fade linear both; animation-timeline:scroll(self inline); }
+  @keyframes sxb-signs-fade { 0% { --sxb-signs-fade-l:0px; --sxb-signs-fade:40px; } 20%, 80% { --sxb-signs-fade-l:40px; --sxb-signs-fade:40px; }
+    100% { --sxb-signs-fade-l:40px; --sxb-signs-fade:0px; } }
   /* Next step: one line, after the vitals. */
   ${B} .sxb-handoff { grid-area:hand; max-width:100% !important; min-width:0 !important; margin:0 !important;
     padding:0 !important; gap:4px 12px !important; flex-wrap:nowrap !important; align-items:center !important; overflow:hidden !important; }
@@ -688,6 +697,9 @@ export const MOBILE_SCREEN_CSS = `
   ${C}[data-layout="compact"] .gm-navfoot { grid-template-columns:repeat(4, minmax(0,1fr)) !important; column-gap:var(--k-gap, 18px) !important; }
   ${C}[data-layout="compact"] .gmh-tools { left:auto !important; right:14px; bottom:auto !important; top:calc(var(--gm-sky-bottom, 320px) - 60px); }
 }
+/* Animatable edge-fade widths for the phone station signs strip (registered so the scroll timeline can tween them). */
+@property --sxb-signs-fade { syntax:"<length>"; inherits:false; initial-value:40px; }
+@property --sxb-signs-fade-l { syntax:"<length>"; inherits:false; initial-value:0px; }
 `;
 
 export function injectOrreryMobileScreens(doc = globalThis.document) {
