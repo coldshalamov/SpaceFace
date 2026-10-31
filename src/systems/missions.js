@@ -1,7 +1,7 @@
 import { firstWaspRouteFocus } from '../missions/starterWaspRoute.js';
 import { firstBuoyReceiptFields } from '../missions/starterBuoyAftermath.js';
 import { ASTEROIDS } from '../data/mining.js';
-import { starterMiningRouteFocus } from '../missions/starterWorkday.js';
+import { starterMiningRouteFocus, starterBuoyRouteFocus } from '../missions/starterWorkday.js';
 import { authoredCinderRoute, initializeCinderRoute, retainCinderRetry, observeCinderMarker, observeCinderRetirement, cinderRouteFocus, driveCinderRoute } from '../missions/cinderRoute.js';
 import { kesslerScalePending, kesslerScaleWaypoint } from './kesslerScaleWorksite.js';
 import { furnaceWorksiteFocus } from '../missions/furnaceWorksite.js';
@@ -3191,6 +3191,8 @@ export const missions = {
     };
     const waspFocus = firstWaspRouteFocus(m, this.state);
     if (waspFocus) return { ...base, ...waspFocus };
+    const buoyFocus = starterBuoyRouteFocus(m, this.state);
+    if (buoyFocus) return { ...base, ...buoyFocus };
     const cinderFocus = cinderRouteFocus(m, this.state);
     if (cinderFocus) return { ...base, ...cinderFocus, stationId: null };
     const furnaceFocus = furnaceWorksiteFocus(m, this.state);

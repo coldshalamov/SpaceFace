@@ -183,3 +183,50 @@ export function isOriginalStarterBuoyTow(state, entity) {
     &&lease.identity===entity.data.identityKey&&mission.targetEntityIds?.includes(entity.id)
     &&ship?.defId==='ship_pelican'&&shipCarriesModule(ship,'mod_winch_hd'));
 }
+
+
+// Presentation only. Read the mission's admitted original, never a copied marker or
+// an old latchedTargetId saved in mission params. The tether owner clears its mirror
+// on release; the attachment record proves the current player still holds this body.
+export function starterBuoyRouteFocus(m, state) {
+  const site = authoredStarterSite(m);
+  if (!site || m?.status !== 'active' || m.source !== 'starterJob'
+    || m.type !== 'tow_recovery' || m.destStationId !== 'station_helios'
+    || m.params.starterJobId !== 'starter_pelican' || !Number.isInteger(m.params.starterStep)
+    || m.params.requiredModule !== 'mod_winch_hd') return null;
+  const base = { label: site.label, stationId: null, sectorId: m.destSectorId };
+  if (state?.world?.currentSectorId !== m.destSectorId) {
+    return { ...base, reason: `Return to Helios Prime to recover ${site.label}.` };
+  }
+  let buoy = null;
+  for (const id of m.targetEntityIds || []) {
+    const e = state.entities?.get(id), lease = e && starterTowLeases.get(e);
+    if (!lease || activeStarterBuoyMission(state, e) !== m || lease.state !== state
+      || lease.generation !== occupantGenerationOf(e) || lease.missionId !== m.id
+      || lease.recordId !== e.data.worldRecordId || lease.identity !== e.data.identityKey
+      || !Number.isFinite(e.pos?.x) || !Number.isFinite(e.pos?.z)
+      || [e.sectorId, e.homeSectorId, e.data.sectorId, e.data.homeSectorId]
+        .some(id => id && id !== m.destSectorId)) continue;
+    buoy = e; break;
+  }
+  if (!buoy) return { ...base,
+    reason: `No live ${site.label} located. Keep this ticket tracked; a missing buoy is not a delivery.` };
+  const ship = activeOwnedShip(state);
+  const ready = ship?.defId === 'ship_pelican' && shipCarriesModule(ship, 'mod_winch_hd');
+  const tether = state.player?.tether;
+  const attachment = tether?.attachmentId != null
+    ? state.combat?.attachments?.byId?.[String(tether.attachmentId)] : null;
+  const player = state.entities?.get(state.playerId);
+  const held = tether?.active === true && tether.targetId === buoy.id
+    && attachment?.state === 'active' && attachment.ownerId === state.playerId
+    && attachment.targetId === buoy.id && attachment.targetGeneration === occupantGenerationOf(buoy)
+    && player?.alive === true && (attachment.ownerGeneration == null
+      || attachment.ownerGeneration === occupantGenerationOf(player));
+  if (held) return { label: 'Helios — buoy receiving berth', stationId: 'station_helios',
+    sectorId: m.destSectorId,
+    reason: `Bring ${site.label} into the Helios berth with the winch line attached.`
+      + (ready ? '' : ' This ticket requires a Pelican with Heavy-Duty Winch fitted.') };
+  return { ...base, targetEntityId: buoy.id, pos: { x: buoy.pos.x, z: buoy.pos.z },
+    reason: ready ? `Winch ${site.label}, then bring it back to Helios.`
+      : `Locate ${site.label}. Use a Pelican with Heavy-Duty Winch fitted to recover it.` };
+}

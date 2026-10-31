@@ -187,3 +187,21 @@ pass. The unchanged upstream Crucible announcer suite additionally passes 26/26
 Two existing VM test contexts now receive the real newly imported ruleset constant;
 no gameplay behavior was changed to satisfy those fixture contexts. These counts
 do not establish full-game, rendered shop or ordinary-input mission acceptance.
+
+### Pelican recovery now has an outbound and receiving leg
+
+All three authored buoy tickets now follow their actual admitted moving buoy before
+pickup, switch to Helios receiving while the player's live attachment holds that
+exact occupant, and switch back on release. The buoy is named as working lane
+hardware rather than generic slag. A changed hull/fit still sees the real route
+with its requirement stated; it gains no recovery eligibility. This closes the
+same station-priority mismatch exposed by Wasp, using the existing waypoint reader,
+mission leases, attachment authority and tether mirror. No new persistent writer,
+body, mission, physics rule, model or payout is introduced.
+
+See `HELIOS_BUOY_RECOVERY_ROUTE.md` for all three locations, expected arrival and
+return experience, exact ownership and interrupted-flow evidence. The integrated
+set passes **218/218 focused checks and six production imports**. The added route
+suite includes actual attachment creation, generation stamps, mirror publication
+and cut before mirror refresh, with only the physics-joint port stubbed. This is
+component-route evidence, not a rendered normal-input trip or full Save/Continue.
