@@ -9860,6 +9860,14 @@ export function warmHullFilesForSpecs(specs) {
 // spawnable catalog is intentionally excluded here; it belongs to the explicit Crucible/Swarm
 // roster warm and the armory dwell, not an ordinary opening.
 function openingWarmHullFilesForState(state) {
+  return warmHullFilesForSpecs(openingWarmShipSpecsForState(state));
+}
+
+// The opening cast's ship specs (see openingWarmHullFilesForState). The opening warm also mints
+// one hulk exemplar per resolved hulk file from these: a lane freighter killed right after the
+// veil lifts otherwise composes its place-slot hulk (double-sided Forge barge / express-liner
+// surfaces and their shadow-depth twin) and links those programs in flight.
+function openingWarmShipSpecsForState(state) {
   const specs = [];
   try {
     specs.push(...collectFirstFlightCookEntities(state));
@@ -9895,7 +9903,7 @@ function openingWarmHullFilesForState(state) {
       data: { lootTableId: row.archetype },
     });
   }
-  return warmHullFilesForSpecs(specs);
+  return specs;
 }
 
 const PRESENTATION_TEXTURE_KEYS = Object.freeze([
@@ -22704,7 +22712,10 @@ export const render = {
         // program sweep never sees. One exemplar per roster ship runs the real attach → deaden →
         // fit → pipeline path so the first mid-round kill finds blueprint, programs and buffers
         // already resident instead of linking inside the fight (the +4 wreck_PackagedBody links).
-        for (const spec of hulkExemplarSpecsForShips(shipSpecs, `${specPrefix}hulk:`)) {
+        const hulkShipSpecs = profile === 'opening'
+          ? openingWarmShipSpecsForState(state).filter((spec) => spec && spec.type === 'ship')
+          : shipSpecs;
+        for (const spec of hulkExemplarSpecsForShips(hulkShipSpecs, `${specPrefix}hulk:`)) {
           await paceIfDue();
           try {
             const hulk = this.vf.build(spec);
