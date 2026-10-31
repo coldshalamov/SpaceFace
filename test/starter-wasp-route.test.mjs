@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { firstWaspRouteFocus } from '../src/missions/starterWaspRoute.js';
-import { starterRamSentence, starterRamKill, shipCarriesModule } from '../src/data/starterJobs.js';
+import { STARTER_JOBS, starterRamSentence, starterRamKill, shipCarriesModule } from '../src/data/starterJobs.js';
 const source = readFileSync(new URL('../src/systems/missions.js', import.meta.url), 'utf8');
 // Execute the actual complete waypoint method. First-writ routing must return before
 // unrelated mission-family owners; missing dependencies make accidental fallthrough fail.
@@ -52,7 +52,7 @@ test('Continue can reattach a different runtime id without changing the named ro
   const m=mission(),e=body();e.id=42;m.targetEntityIds=[42];
   assert.equal(nav(m,state(e)).targetEntityId,42);
 });
-test('only exact first Wasp contract opts in; no invented Wasp site/version or later tickets',()=>{
+test('only an exact authored Wasp contract opts in; no invented Wasp site/version or mismatched tickets',()=>{
   for(const change of [m=>m.source='board',m=>m.status='completed',m=>m.type='patrol_clear',
     m=>m.destStationId='station_coalition',m=>m.destSectorId='sector_ceres_belt',
     m=>m.params.starterJobId='starter_hitch',m=>m.params.starterJobId='starter_pelican',
@@ -79,7 +79,7 @@ test('existing fit and lethal ram receipt semantics are not weakened by navigati
   assert.equal(starterRamKill({tag:'tow_flail'}),false);
 });
 
-test('actual HUD consumer aims at Nim instead of station-first override; named arrow tracks the hull',()=>{
+test('actual HUD consumer aims at every authored runner instead of station-first override',()=>{
   // Default to real repository owners. Explicit paths support the bounded sparse
   // proof bundle without making nonshipping evidence a repository dependency.
   const evidence=readFileSync(process.env.WASP_ROUTE_HUD_SOURCE || new URL('../src/ui/hud.js',import.meta.url),'utf8');
@@ -94,13 +94,20 @@ test('actual HUD consumer aims at Nim instead of station-first override; named a
   const consume=Function('resolveNavStation','resolveWaypointPresentationPosition',
     'return function(state){let wp=null,wpLabel=null,navMeta=null;'+evidence.slice(a,b)+';return {wp,wpLabel};}')(
     ()=>({pos:{x:1280,z:-420}}),resolve);
-  const m=mission(),e=body(),s=state(e);s.nav={waypoint:nav(m,s)};
-  assert.deepEqual(consume(s),{wp:e.pos,wpLabel:'Nim Gatecut — gate runner'});
-  // Demonstrate the old bug at the actual consumer: station wins over target position.
-  s.nav.waypoint={...s.nav.waypoint,stationId:'station_helios',label:'Helios Station'};
-  assert.deepEqual(consume(s).wp,{x:1280,z:-420});
-  s.nav.waypoint={...nav(m,s),stable:{id:7}};e.pos.x=1555;
-  assert.equal(consume(s).wp.x,1555);
+  for (const step of STARTER_JOBS.find(job => job.id === 'starter_wasp').steps) {
+    const m=mission(),e=body(),s=state(e);
+    m.id=`starter-starter_wasp-${step.step}`;
+    Object.assign(m.params,{starterStep:step.step,markName:step.runnerName});
+    Object.assign(m.storyTarget,{id:`mark:${m.id}`,name:step.runnerName});
+    Object.assign(e.data,{missionTag:m.id,storyTargetId:m.storyTarget.id,name:step.runnerName});
+    s.nav={waypoint:nav(m,s)};
+    assert.deepEqual(consume(s),{wp:e.pos,wpLabel:`${step.runnerName} — gate runner`});
+    // Demonstrate the old bug at the actual consumer: station wins over target position.
+    s.nav.waypoint={...s.nav.waypoint,stationId:'station_helios',label:'Helios Station'};
+    assert.deepEqual(consume(s).wp,{x:1280,z:-420});
+    s.nav.waypoint={...nav(m,s),stable:{id:7}};e.pos.x=1555;
+    assert.equal(consume(s).wp.x,1555);
+  }
 });
 test('completed or failed first writ retains canonical no-waypoint behavior',()=>{
   for(const status of ['completed','failed','expired','abandoned']) {
@@ -114,5 +121,85 @@ test('Continue record without storyTargetId uses only exact owned durable named 
   for(const [field,value] of [['missionId','other'],['missionTargetSlot',1],['identityKey',`mission:${m.id}:1`],['worldRecordId',null],['storyTargetId','foreign']]) {
     const bad=structuredClone(e);bad.data[field]=value;
     assert.equal(nav(m,state(bad)).targetEntityId,undefined,field);
+  }
+});
+
+
+// The next tickets are offered by the same board immediately after settlement.
+// Follow the existing authored runner rather than falling back to the receiving station.
+for (const step of STARTER_JOBS.find(job => job.id === 'starter_wasp').steps.slice(1)) {
+  const laterMission = () => {
+    const m = mission();
+    m.id = `starter-starter_wasp-${step.step}`;
+    m.title = step.title;
+    Object.assign(m.params, { starterStep: step.step, markName: step.runnerName });
+    Object.assign(m.storyTarget, { id: `mark:${m.id}`, name: step.runnerName });
+    return m;
+  };
+  const laterBody = m => {
+    const e = body();
+    Object.assign(e.data, { missionTag: m.id, storyTargetId: m.storyTarget.id, name: step.runnerName });
+    return e;
+  };
+  test(`ticket ${step.step}: actual waypoint follows ${step.runnerName}, preserves ram terms and removes dock override`, () => {
+    const m = laterMission(), e = laterBody(m), s = state(e);
+    const before = JSON.stringify(m);
+    const wp = nav(m, s);
+    assert.equal(wp.label, `${step.runnerName} — gate runner`);
+    assert.equal(wp.stationId, null);
+    assert.equal(wp.targetEntityId, e.id);
+    assert.equal(wp.reason, `Ram ${step.runnerName} — guns do not count`);
+    assert.equal(wp.missionTitle, step.title);
+    assert.deepEqual(wp.pos, e.pos);
+    e.pos.z += 200;
+    assert.equal(nav(m, s).pos.z, e.pos.z);
+    assert.equal(JSON.stringify(m), before);
+  });
+  test(`ticket ${step.step}: missing, foreign and recycled contacts never inherit ${step.runnerName}'s name`, () => {
+    for (const mutate of [e => e.alive = false, e => e.data.missionTag = 'starter-starter_wasp-1',
+      e => e.data.storyTargetId = 'mark:other', e => e.pos.x = NaN,
+      e => e.data.homeSectorId = 'sector_ceres_belt']) {
+      const m = laterMission(), e = laterBody(m); mutate(e);
+      const wp = nav(m, state(e));
+      assert.equal(wp.targetEntityId, undefined);
+      assert.equal(wp.pos, undefined);
+      assert.equal(wp.stationId, null);
+      assert.match(wp.reason, /missing contact is not a completed job/);
+    }
+    const m = laterMission();
+    assert.ok(nav(m, state(null)).reason.includes(`No live ${step.runnerName}`));
+    for (const status of ['completed', 'failed', 'expired', 'abandoned']) {
+      m.status = status; assert.equal(nav(m, state()), null);
+    }
+  });
+  test(`ticket ${step.step}: restored slot zero and sector return preserve exact writ identity`, () => {
+    const m = laterMission(), e = laterBody(m);
+    e.id = 42; m.targetEntityIds = [42]; delete e.data.storyTargetId;
+    Object.assign(e.data, { missionId: m.id, missionTargetSlot: 0,
+      identityKey: `mission:${m.id}:0`, worldRecordId: 'record-later' });
+    const s = state(e);
+    assert.equal(nav(m, s).targetEntityId, 42);
+    for (const [field, value] of [['missionId', 'other'], ['missionTargetSlot', 1],
+      ['identityKey', 'mission:starter-starter_wasp-1:0'], ['worldRecordId', null]]) {
+      const bad = structuredClone(e); bad.data[field] = value;
+      assert.equal(nav(m, state(bad)).targetEntityId, undefined);
+    }
+    s.world.currentSectorId = 'sector_ceres_belt';
+    const wp = nav(m, s);
+    assert.equal(wp.stationId, null); assert.equal(wp.pos, undefined);
+    assert.equal(wp.targetEntityId, undefined);
+    assert.ok(wp.reason.includes(`Return to Helios Prime to find ${step.runnerName}`));
+    assert.ok(wp.reason.includes(`Ram ${step.runnerName} — guns do not count`));
+  });
+}
+
+test('unknown, coerced and cross-writ step/name combinations stay outside starter routing', () => {
+  for (const step of [0, 4, -1, '2', 2.5, NaN, undefined]) {
+    const m = mission(); m.params.starterStep = step;
+    assert.equal(firstWaspRouteFocus(m, state()), null);
+  }
+  for (const step of [2, 3]) {
+    const m = mission(); m.params.starterStep = step;
+    assert.equal(firstWaspRouteFocus(m, state()), null, 'Nim cannot impersonate a later mark');
   }
 });

@@ -4,6 +4,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
+import { SWARM_RULESET } from '../src/data/swarmMode.js';
 const source = fs.readFileSync(process.env.SPACEFACE_COACHING_SOURCE || new URL('../src/systems/survivalAnnounce.js', import.meta.url), 'utf8');
 const code = source.replace(/import\s*\{[\s\S]*?\}\s*from\s*['"][^'"]+['"];?/g, '')
   .replace(/export\s+default\s+\w+\s*;/g, '').replace(/export\s+/g, '');
@@ -18,6 +19,7 @@ function harness({hints=true, device='kbm', lesson=true, fire='Mouse 1', tether=
   const bus={on(k,f){const a=listeners.get(k)||[];a.push(f);listeners.set(k,a);return ()=>{};},
     emit(k,p){emitted.push({k,p});for(const f of listeners.get(k)||[])f(p);}};
   const host=vm.runInNewContext(code+';({survivalAnnounce,waveOpeningLine})',{
+    SWARM_RULESET,
     ENEMY_TYPES:[{id:'wasp_swarmer',name:'Wasp',counterHint:'An ordinary counter.'}],SURVIVAL_TEMPLATE_BLOCK:30,
     physicalProblemFromPackages:()=>null,shippedQuestionFor:()=>null,SWARM_CHAMPION_LEAD_WAVES:3,
     swarmNextBossFor:()=>null,SWARM_AFFIX_BY_ID:{},validateRunState:()=>({ok:true}),

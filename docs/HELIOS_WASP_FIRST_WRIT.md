@@ -32,3 +32,27 @@ No visual/readability, performance, full Save/Continue route or deployment claim
 follows from these tests. Run the normal dock → Bar → Kessler → Accept + Track →
 physical work → settlement route in a fully built game before visual acceptance.
 No new asset, reward writer, control owner or persistent progression key is added.
+
+
+## Next-radius continuation: second and third writs (2026-10-31)
+
+After Nim's ticket settles, the existing board and Kessler conversation already
+point the player toward Joss Wire and then Vex Tollcut. The route now follows each
+actual named runner too. Previously only Nim opted into this reader; later writs
+fell through to ordinary bounty navigation, whose retained station anchor caused
+the HUD to prefer Helios Station over the target's moving position.
+
+The reader strictly selects an existing numeric authored step and verifies that
+step's exact mark name, story role, fit and destination. It retains the original
+`firstWaspRouteFocus` export for compatibility. Missing contacts remain searches,
+sector departure returns a sector direction, and restored slot zero must belong
+to the exact writ. No new target, mission, payout, saved state or encounter is added.
+
+The focused route suite passes 17/17. It executes the actual waypoint method and
+HUD consumer for all three named writs, plus moving targets, missing/dead/foreign
+contacts, reused runtime IDs, exact durable slot restoration, inactive missions,
+invalid steps and cross-writ name rejection. Ordinary bounty behavior is retained.
+This is executable component-route evidence, not a rendered or physical flight
+playthrough. Existing visual, performance and whole-game acceptance limits above
+still apply. Pre-edit owned files matched PR724 head `3f2124dd`; remote master
+`9eefbdb6` retains the same three authored starter jobs and board behavior.

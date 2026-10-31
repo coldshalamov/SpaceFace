@@ -9,7 +9,7 @@ not a replacement tree and does not include the separate older campaign overlay.
 - At Helios, Kessler offers the actual next starter ticket and acknowledges only
   settled work. Active jobs, hull changes and missing equipment remain truthful.
 - Hitch work follows available Helios iron, including dormant field records.
-- Wasp work follows Nim Gatecut's moving hull rather than the station anchor,
+- Wasp work follows Nim Gatecut, Joss Wire and Vex Tollcut rather than the station anchor,
   including its durable restored target identity. Existing ram/payout rules stay.
 - Genuine first buoy delivery can trigger existing receiving machinery within
   the receipt's original time window. A queued but unseen scene can now retry
@@ -31,7 +31,7 @@ All 779 existing npm scripts and non-script package fields remain unchanged;
 eight focused test entry points are added. No models, assets, save schema,
 credentials, CI workflows, deployment or new reward owner are changed.
 
-## Verification
+## Initial verification (historical checkpoint)
 
 154 focused tests pass together: 76 Helios, 69 Swarm/arena and 9 mode-boundary.
 The new queued-scene regression failed before its fix. Native production domain
@@ -48,7 +48,7 @@ changed to satisfy that test.
 
 These are source/behavior and worker-wire checks. This sparse source materialization
 is not a full application build. Rendered Adventure/Training play, full input-driven
-work/settlement/Continue, performance, complete baseline suite and CI remain unrun.
+work/settlement/Continue, performance, complete baseline suite and CI were unrun at this initial checkpoint. Later CI results are recorded below.
 Do not infer opening or whole-game acceptance from the focused test count.
 
 ## Next validation
@@ -128,3 +128,62 @@ also passed; overall checks/mobile readiness failed. The authored-catalog live
 check ran out of diagnostic time after partial coverage; it did not establish a
 missing or incorrect model, so no replacement model work is justified by that
 failure alone. Broader performance and release acceptance remain open.
+
+## Next-radius continuation and current upstream boundary
+
+The Wasp opening now carries through all three existing tickets. Kessler and the
+board already offered Joss Wire and Vex Tollcut after Nim; their navigation fell
+through to a station-anchored bounty route. The existing reader now selects the
+exact authored numeric step, preserving named-target and durable-slot identity,
+ram instructions, and honest missing-contact guidance. The existing HUD consumer
+follows each moving runner rather than preferring Helios Station. See
+`HELIOS_WASP_FIRST_WRIT.md` for executable route evidence and acceptance limits.
+
+Remote master was checked at `9eefbdb615b898b516396b96ec0315612c792083`. Its newer
+Machine faction, station UI, renderer and save work is not overwritten or folded
+into this sparse candidate. The candidate remains based on `31a011002036e625c971d315f8da08a7a32687ee`;
+only `index.html` overlaps those intervening changes among the original 39 paths.
+Preserve newer generated hints and sidecars when integrating the isolated verbSpeech
+hint. Do not copy this snapshot wholesale over master.
+
+At head `3f2124dd`, retail smoke and service-readiness passed; general and mobile
+CI failed. The latest Bar probe completed assertions and reported cleanup but its
+command timed out, so it is not a pass. The preceding `ee34b064` Bar command passed.
+Mobile sparse checkout still omits existing Ruckus art; the exact workflow change
+is awaiting approval, not applied. Rendered ordinary-control route, full
+Save/Continue and performance acceptance remain open.
+
+### Continuing goals, not completion declarations
+
+| Marker | Outcome / state | Owner and evidence | Next executable action / dependency |
+|---|---|---|---|
+| SF-WORLD-DIRECTION | Opening grows through authored work; implemented candidate, not accepted game | Experience integration; Kessler/board/route readers and this report | Follow the next settled ticket's actual destination; retain original larger scope |
+| SF-SECTOR-COHERENCE | Helios work has readable local routes and receiving consequences; partial | Experience integration; starterWorkday, starterWaspRoute, starterBuoyAftermath | Exercise ordinary-controls three-ticket returns and Continue when a usable runtime is available |
+| SF-LIVING-WORLD | Earned buoy receiving scene reuses existing machinery; partial | World owners; stationSideEventDirector and receipt tests | Verify visible activity and revisit timing without duplicating body/reward owners |
+| SF-GAME | Adventure and Swarm opening integration published for review; acceptance open | Controller and current Finish lanes; PR724, scoped tests, qualified CI | Resolve current route defects; separate workflow approval from independent source work |
+
+This scoped register does not archive or replace the original twenty-concept scope,
+asset review obligations or older bounded handoff goals. Local agents retain model
+production. No goal is closed by this document or its passing tests.
+
+### Swarm first-clear feedback
+
+Swarm's wave receipt uses a legacy `killed` field for resolved cohort slots, including
+fleeing or surrendered hulls. The announcer now says how many threats are out of the
+fight, rather than claiming those hulls died. It never derives a Swarm resolution
+count from admissions alone. Named boss outcomes, starved waves, non-Swarm copy,
+round pacing and rewards are unchanged.
+
+A focused test drives the production wave owner with a living fleeing hull, observes
+the real resolution receipt and truthful voice message, and exercises the production
+phase owners from cleanup to the draft/shop phase and wave two. This verifies the
+simulation/event route; it does not claim the shop was rendered, used through normal
+input, or visually accepted. Missing/invalid/zero counts, timed versus cohort clears,
+duplicates, named objectives and legacy non-Swarm messages have separate coverage.
+
+Final continuation checks: **203/203 focused tests** and six production imports
+pass. The unchanged upstream Crucible announcer suite additionally passes 26/26
+(blob `f688f5474f3a850d85db03b0121473464b86ca5c`, verified at master `9eefbdb6`).
+Two existing VM test contexts now receive the real newly imported ruleset constant;
+no gameplay behavior was changed to satisfy those fixture contexts. These counts
+do not establish full-game, rendered shop or ordinary-input mission acceptance.

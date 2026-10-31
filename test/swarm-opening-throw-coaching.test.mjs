@@ -6,6 +6,7 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { SWARM_RULESET } from '../src/data/swarmMode.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const owners = process.env.SPACEFACE_COACHING_OWNER_ROOT || path.join(root, 'src/systems');
@@ -56,6 +57,7 @@ function harness({ teach = true, device = 'kbm', hints = true } = {}) {
       return () => { const at=rows.indexOf(fn); if(at>=0)rows.splice(at,1); }; },
     emit(name, payload) { emitted.push({name,payload}); for (const fn of [...(subscribers.get(name)||[])]) fn(payload); } };
   const ann = evaluate(source, 'survivalAnnounce', { ENEMY_TYPES: [WASP], SURVIVAL_TEMPLATE_BLOCK: 30,
+    SWARM_RULESET,
     physicalProblemFromPackages: () => ({question:'Generic physical question.'}), shippedQuestionFor: () => null,
     SWARM_CHAMPION_LEAD_WAVES: 3, swarmNextBossFor: () => null, SWARM_AFFIX_BY_ID: {},
     validateRunState: () => ({ ok: true }), SURVIVAL_ARENA_INTRO_TICKS: 60, SURVIVAL_WAVE_INTRO_TICKS: 60,

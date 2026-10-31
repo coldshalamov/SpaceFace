@@ -33,7 +33,7 @@
 import { ENEMY_TYPES } from '../data/enemies.js';
 import { SURVIVAL_TEMPLATE_BLOCK } from '../data/survivalActs.js';
 import { physicalProblemFromPackages, shippedQuestionFor } from '../data/survivalWaves.js';
-import { SWARM_CHAMPION_LEAD_WAVES, swarmNextBossFor } from '../data/swarmMode.js';
+import { SWARM_CHAMPION_LEAD_WAVES, SWARM_RULESET, swarmNextBossFor } from '../data/swarmMode.js';
 import { SWARM_AFFIX_BY_ID } from '../data/swarmThreats.js';
 import { validateRunState } from '../core/runState.js';
 import {
@@ -951,21 +951,28 @@ export const survivalAnnounce = {
       this._say('alert', `survival:w${wave}:starved`, `Wave ${wave} closed empty. Nothing reached the field. That was not a clear.`, 6);
       return;
     }
-    // Swarm waves end on the clock: "survived", not "clear". Prefer actual kills when the
-    // receipt names them — admissions count bodies the stream fielded, not bodies the player
-    // put down.
+    // Swarm's legacy `killed` receipt field counts resolved cohort slots, including a hull that
+    // fled or surrendered. It is not a kill count. Admissions are even less specific, so never
+    // infer a Swarm tally from them; report only how many threats left the fight. Other modes
+    // keep their established wording and receipt fallback.
+    // Timed Swarm waves end on the clock: "survived", not "clear"; cohort rounds clear on resolution.
     // The commander round already wrote the named kill line. Say that, not a generic clear.
     const namedDown = typeof rec.killWord === 'string' ? rec.killWord.trim() : '';
     if (namedDown) {
       this._say('objective', `survival:w${wave}:down`, namedDown, 12, { force: true });
       return;
     }
-    const killed = Number.isInteger(rec.killed) && rec.killed >= 0 ? rec.killed : null;
+    const resolved = Number.isInteger(rec.killed) && rec.killed >= 0 ? rec.killed : null;
     const admitted = Number.isInteger(rec.admitted) && rec.admitted > 0 ? rec.admitted : 0;
-    const tallyCount = killed != null ? killed : admitted;
+    const swarm = this.state.run.ruleset === SWARM_RULESET;
+    const tallyCount = resolved != null ? resolved : (swarm ? 0 : admitted);
     const survived = rec.completionKind === 'duration';
     const verb = survived ? 'survived' : 'clear';
-    const tally = tallyCount > 0 ? ` ${capitalize(countWord(tallyCount))} down.` : '';
+    const tally = tallyCount > 0
+      ? swarm
+        ? ` ${capitalize(countWord(tallyCount))} ${tallyCount === 1 ? 'threat' : 'threats'} out of the fight.`
+        : ` ${capitalize(countWord(tallyCount))} down.`
+      : '';
     this._say('objective', `survival:w${wave}:clear`, `Wave ${wave} ${verb}.${tally}`, 4);
   },
 
