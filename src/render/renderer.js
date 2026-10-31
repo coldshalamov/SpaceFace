@@ -30454,8 +30454,9 @@ export const render = {
     });
     const holdLoadingGpu = this.state && this.state.mode === 'loading';
     const holdOpeningPicture = this._openingFirstPicturePrepared === true
-      && this.state && this.state.mode === 'flight'
-      && !Number.isFinite(this.state.render && this.state.render.firstPlayableFrameAt);
+      && this.state && ((holdLoadingGpu && this.state.render?.openingGraphPublicationFrozen === true)
+        || (this.state.mode === 'flight'
+          && !Number.isFinite(this.state.render && this.state.render.firstPlayableFrameAt)));
     // No presentation path may hold poses while the sim keeps stepping. The kinetic crunch used to
     // do exactly that for 1–2 frames per heavy hit: every hull froze, the sim ran on underneath,
     // and the picture then snapped a frame or two forward — the player's own ship included. Weight
@@ -30465,7 +30466,7 @@ export const render = {
     // the hold would freeze syncEntityViews/camera/instance submission for the rest of the session.
     // Release it after a bounded grace so a missed latch degrades to one stale picture, not a
     // permanently frozen presentation.
-    if (holdOpeningPicture) {
+    if (holdOpeningPicture && !holdLoadingGpu) {
       const nowMs = typeof performance !== 'undefined' && typeof performance.now === 'function'
         ? performance.now()
         : Date.now();

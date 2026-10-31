@@ -215,7 +215,11 @@ resource identity sets match. That root was drawable when selected, so its eligi
 between paced walks. The existing failure diagnostic now retains its entity identity and compares
 the selected/current root and exact leaf-exclusion state; no gate or admission behavior changes.
 Another targeted run completes nine F9 cycles but fails the context-recovery tail with a real
-Three.js buffer-size mismatch. Neither defect is repaired. See `INTEGRATION_COVERAGE.md`.
+Three.js buffer-size mismatch. A real loading-frame regression separately reproduces visibility/LOD
+sync running after the picture graph freezes. Loading now holds its prepared scene until graph
+release, including F9 with an old paint timestamp; ordinary post-paint flight remains live. Thirty
+focused opening/lifetime cases pass. The original plan failure and buffer-size defect still need
+public-route verification. See `INTEGRATION_COVERAGE.md`.
 
 **M9 — Load less, load later.** 28 MB of minified JS in the eager closure (`scripts/build-bundle.mjs`,
 esbuild splitting): lazy-load per mode and per screen; make `modelTruthCensus.generated.js` and
