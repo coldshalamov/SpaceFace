@@ -347,4 +347,7 @@ test('opening warm compiles the exact double-sided hulk program keys instead of 
   assert.match(body, /installIllustratedSurface\(m\);/);
   assert.match(body, /new THREE\.MeshDepthMaterial\(\{ map: depthMap, side: THREE\.DoubleSide/);
   assert.match(body, /scene\.fog = null;\s*renderer\.compile\(depthGroup, camera, scene\);/);
+  const releaseBody = body.slice(body.indexOf('const release = () => {'), body.indexOf('const firstUse = () => {'));
+  assert.match(releaseBody, /hold\.geometry\.dispose\(\);/);
+  assert.doesNotMatch(releaseBody, /material[s]?\S*\.dispose\(/, 'materials must not dispose: that would release the warmed programs');
 });

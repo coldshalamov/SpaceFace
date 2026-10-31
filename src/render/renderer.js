@@ -22241,10 +22241,29 @@ export const render = {
       };
       const readKeys = () => programsOf().map((p) => p.cacheKey);
       receipt.keys = readKeys();
-      // Materials, textures and geometry are kept for the session (a few hundred bytes):
-      // three releases a program when its last material user disposes, and the hulk can
-      // first draw anywhere in the opening, so the warm owner must outlive it.
+      // Held only until first use. Release then frees geometry, textures and the batched
+      // meshes' data textures, and drops the material refs WITHOUT material.dispose(): three
+      // releases a program only on a material dispose, so the compiled programs stay in the
+      // program cache (usedTimes >= 1) and the hulk's exact keys reuse them with no relink.
       this._openingHulkKeyWarmHold = { group, depthGroup, materials, textures, geometry };
+      const release = () => {
+        const hold = this._openingHulkKeyWarmHold;
+        if (!hold) return;
+        this._openingHulkKeyWarmHold = null;
+        try {
+          for (const g of [hold.group, hold.depthGroup]) {
+            for (const child of g.children.slice()) {
+              if (child.isBatchedMesh && typeof child.dispose === 'function') child.dispose();
+              g.remove(child);
+            }
+          }
+          for (const t of hold.textures) t.dispose();
+          hold.geometry.dispose();
+          hold.materials.length = 0;
+          hold.textures.length = 0;
+          receipt.released = Math.round(performance.now());
+        } catch (error) { receipt.releaseError = String(error && error.message || error); }
+      };
       // The serial driver defers the real link to the first program query, so a compiled
       // program still pays its whole link at first draw (ltk2: the depth twin, compiled at
       // warm begin, linked 1613 ms at lift+2.1 s). Take that first use here, behind the
@@ -22254,8 +22273,8 @@ export const render = {
         receipt.useMs = [];
         let i = 0;
         const step = () => {
-          if (i >= programs.length) { receipt.usedAt = Math.round(performance.now()); return; }
-          if (Number.isFinite(render.firstPlayableFrameAt)) { receipt.useSkipped = programs.length - i; return; }
+          if (i >= programs.length) { receipt.usedAt = Math.round(performance.now()); release(); return; }
+          if (Number.isFinite(render.firstPlayableFrameAt)) { receipt.useSkipped = programs.length - i; release(); return; }
           const program = programs[i++];
           const u0 = performance.now();
           try { program.getUniforms(); } catch (_) { /* reported through the link ledger */ }
@@ -22268,7 +22287,7 @@ export const render = {
         receipt.linkMs = Math.round(performance.now() - t0);
         receipt.keys = readKeys();
         firstUse();
-      }, (error) => { receipt.error = String(error && error.message || error); });
+      }, (error) => { receipt.error = String(error && error.message || error); release(); });
     } catch (error) {
       receipt.error = String(error && error.message || error);
       receipt.ms = Math.round((performance.now() - t0) * 10) / 10;
