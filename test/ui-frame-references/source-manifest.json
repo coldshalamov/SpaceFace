@@ -212,7 +212,7 @@
   "src/ui/orrery/save-loadLayouts.js": "d95f63936a1954a0a28d4b7e6646eff88c5d647b2f9de50e4f8e121e466303db",
   "src/ui/orrery/saveBerth.js": "3277b73ea17573dd3b42ad2b683b7f49889537b3d0baa7170427d7822b549fd6",
   "src/ui/orrery/saveFilmstrip.js": "22523decdcfc3832c70a9b2ae1ebf62fb477972f4e414b143610f834267e813b",
-  "src/ui/orrery/saveLayouts.js": "bcac9b8ab94dba24c6d98abad10adec5cd03f02228ede832f8bb0013a26e47e4",
+  "src/ui/orrery/saveLayouts.js": "891ccaa8eeb31dbec0ed0106c7827a5f0041e3b430fc54ad7bcd1553ed47ecf4",
   "src/ui/orrery/saveSortieTape.js": "334f1cc08383490e735950ae2a5df115c2537194455298d50b2790e2ecf4aca7",
   "src/ui/orrery/screenLayouts.js": "fdc7007e48118a7d50c557e65f73f575815b48dd82e3d61d9089bf65a278968e",
   "src/ui/orrery/scrollExtent.js": "3ce8cfd26641228da0258bdf2ae77f324316a40ce9640a46f5b68a64e83ac126",
