@@ -97,6 +97,7 @@ import {
 } from '../core/graphicsProfileBootstrap.js';
 import {
   encodeSavePayload,
+  decodeSaveEnvelopeText,
   SAVE_WORKER_SOURCE,
   isGzippedSaveText,
   saveGzipAvailable,
@@ -2716,7 +2717,51 @@ export const save = {
       const profile = this._currentDirtyProfile();
       const mirrorPatch = profile == null ? write.mirrorPatch
         : { ...write.mirrorPatch, [PROFILE_SETTINGS_KEY]: profile };
-      this._lastSaveDurability = Promise.resolve(this._queueSharedStoreMirror(mirrorPatch)).then((landed) => {
+      const localSerial = this._laneSaveCommitSerial = (this._laneSaveCommitSerial || 0) + 1;
+      const checkLocal = typeof localStorage?.checkSaveCommit === 'function'
+        ? (patch) => localStorage.checkSaveCommit(patch)
+        : null;
+      const ownerCurrent = () => this.state === savedState && this.bus === savedBus
+        && this._runEpoch === savedRunEpoch && this._restoreSequence === savedRestoreSequence
+        && this._sharedStoreMirrorGeneration === savedMirrorGeneration;
+      const localCommit = checkLocal && write.mirrorPatch
+        ? checkLocal(write.mirrorPatch) : Promise.resolve({ ok: true });
+      this._lastSaveDurability = Promise.all([
+        Promise.resolve(this._queueSharedStoreMirror(mirrorPatch)), localCommit,
+      ]).then(async ([mirrored, local]) => {
+        let landed = mirrored === true;
+        const localOnly = !sharedPlayerStoreAvailable() || sharedPlayerStoreCapability().status === 'absent';
+        if (localOnly && checkLocal && local?.ok !== true) {
+          const primary = LS_PREFIX + slot;
+          const expected = write.mirrorPatch?.[primary];
+          const attemptedPatches = [write.mirrorPatch];
+          let lastSnapshot = local?.snapshot;
+          let lastExpected = expected;
+          const canRetry = local?.quotaKeys?.includes(primary) === true && typeof expected === 'string'
+            && local.snapshot && local.snapshot[primary] !== expected
+            && this._laneSaveCommitSerial === localSerial && ownerCurrent()
+            && localStorage.getItem(primary) === expected
+            && typeof localStorage.restoreSaveSnapshot === 'function';
+          if (canRetry) {
+            localStorage.restoreSaveSnapshot(local.snapshot, primary);
+            bumpSaveStoreGeneration(null);
+            const retry = this._writeSlot(slot, envelope, { json: expected });
+            if (retry?.ok && retry.mirrorPatch) {
+              attemptedPatches.push(retry.mirrorPatch);
+              lastExpected = retry.mirrorPatch[primary];
+              local = await checkLocal(retry.mirrorPatch);
+              lastSnapshot = local?.snapshot || lastSnapshot;
+            }
+            else local = { ok: false };
+          }
+          landed = local?.ok === true;
+          if (!landed && this._laneSaveCommitSerial === localSerial && ownerCurrent()
+              && localStorage.getItem(primary) === lastExpected && lastSnapshot) {
+            localStorage.restoreSaveSnapshot(lastSnapshot, null);
+            bumpSaveStoreGeneration(null);
+            localStorage.retireFailedSavePatches?.(attemptedPatches);
+          }
+        }
         const current = this.state === savedState && this.bus === savedBus
           && this._runEpoch === savedRunEpoch && this._restoreSequence === savedRestoreSequence
           && this._sharedStoreMirrorGeneration === savedMirrorGeneration;
@@ -2731,8 +2776,9 @@ export const save = {
           this.bus.emit('save:completed', timing);
           return true;
         } else {
-          this._emitSaveTimingError({ ...timing, ok: false, failure: 'shared_store_write_failed',
-            reason: 'shared_store_write_failed', localSaved: true });
+          const failure = localOnly && local?.ok !== true ? 'local_storage_write_failed' : 'shared_store_write_failed';
+          this._emitSaveTimingError({ ...timing, ok: false, failure,
+            reason: failure, localSaved: local?.ok === true });
           return false;
         }
       });
@@ -5980,9 +6026,25 @@ export const save = {
     if (bytes > SAVE_IMPORT_MAX_BYTES) {
       return Promise.resolve(importLimitFailure('import_too_large', SAVE_IMPORT_MAX_BYTES, bytes));
     }
+    const prepareWithoutWorker = async () => {
+      if (!isGzippedSaveText(raw)) return this._prepareEnvelopeStringYielded(raw);
+      const decoded = await decodeSaveEnvelopeText(raw);
+      if (!decoded.ok) return decoded;
+      const prepared = await this._prepareEnvelopeStringYielded(decoded.text);
+      if (prepared.ok) {
+        if (decoded.profile != null && prepared.env && typeof prepared.env === 'object') {
+          prepared.env.profile = decoded.profile;
+        }
+        const cache = this._decodedSaveEnvelopes || (this._decodedSaveEnvelopes = new Map());
+        cache.set(raw, prepared);
+        while (cache.size > 8) cache.delete(cache.keys().next().value);
+        this._rememberPreparedEnvelope(raw, prepared);
+      }
+      return prepared;
+    };
     if (typeof this._requestSaveWorker !== 'function' || typeof Worker !== 'function') {
       // No-worker lane still paints between the envelope's graph walks.
-      return this._prepareEnvelopeStringYielded(raw);
+      return prepareWithoutWorker();
     }
     return new Promise((resolve) => {
       let settled = false;
@@ -6000,7 +6062,7 @@ export const save = {
         { timeoutMs: 2500 });
       if (!accepted) settle(null);
     }).then(async (prepared) => {
-      if (!prepared) return this._prepareEnvelopeStringYielded(raw);
+      if (!prepared) return prepareWithoutWorker();
       if (!prepared.ok) return { ok: false, reason: prepared.reason || 'load_failed' };
       const env = prepared.env;
       if (!env || typeof env !== 'object') return { ok: false, reason: 'bad_format' };

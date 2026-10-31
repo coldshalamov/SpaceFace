@@ -154,7 +154,7 @@ function collectLaneSaveStorage(relayFallback = null, authoritativeFallback = nu
 
 // Worker save writes ride on the next reply. Keep the relay per-operation so one malformed or
 // quota-blocked write cannot suppress later operations, and keep clear scoped to SpaceFace keys.
-function applyLaneSaveStorageOps(ops, relayFallback = null) {
+function applyLaneSaveStorageOps(ops, relayFallback = null, failedWrites = null, onCheck = null) {
   if (!Array.isArray(ops) || !ops.length) return;
   let storage;
   try { storage = globalThis.localStorage; } catch { storage = null; }
@@ -173,13 +173,46 @@ function applyLaneSaveStorageOps(ops, relayFallback = null) {
   for (const op of ops) {
     try {
       if (!op) continue;
-      if (op.op === 'set' && typeof op.key === 'string' && typeof op.value === 'string') {
+      if (op.op === 'retire' && Array.isArray(op.value)) {
+        for (const patch of op.value) {
+          for (const [key, rejected] of Object.entries(patch || {})) {
+            const retained = relayFallback?.get(key);
+            if (retained && retained.value === rejected) relayFallback.delete(key);
+          }
+        }
+      } else if (op.op === 'check' && Number.isSafeInteger(op.key) && op.value && typeof op.value === 'object') {
+        const snapshot = {};
+        let ok = !!storage;
+        let quota = false;
+        const quotaKeys = [];
+        for (const [key, expected] of Object.entries(op.value)) {
+          if (!isSharedPlayerStoreKey(key) || (expected !== null && typeof expected !== 'string')) { ok = false; continue; }
+          const actual = storage ? storage.getItem(key) : null;
+          snapshot[key] = actual;
+          if (actual !== expected) {
+            ok = false;
+            if (failedWrites?.get(key) === 'QuotaExceededError') { quota = true; quotaKeys.push(key); }
+          }
+        }
+        onCheck?.(op.key, { ok, quota, quotaKeys, snapshot });
+        for (const key of Object.keys(op.value)) failedWrites?.delete(key);
+      } else if (op.op === 'set' && typeof op.key === 'string' && typeof op.value === 'string') {
         if (!storage) throw new Error('main storage unavailable');
+        // Do not publish a new slot index over an older primary after a quota failure.
+        // The worker's commit check will see the unchanged index and retry or fail closed.
+        if (op.key === 'sf.save.index' && failedWrites
+            && [...failedWrites].some(([key, reason]) => key.startsWith('sf.save.')
+              && key !== 'sf.save.index' && reason === 'QuotaExceededError')) {
+          retainFailedWrite(op.key, op.value);
+          continue;
+        }
         storage.setItem(op.key, op.value);
+        failedWrites?.delete(op.key);
         if (isSharedPlayerStoreKey(op.key)) relayFallback?.delete(op.key);
       } else if (op.op === 'remove' && typeof op.key === 'string') {
         if (!storage) throw new Error('main storage unavailable');
         storage.removeItem(op.key);
+        failedWrites?.delete(op.key);
         if (isSharedPlayerStoreKey(op.key)) relayFallback?.delete(op.key);
       } else if (op.op === 'clear') {
         const doomed = [];
@@ -199,7 +232,9 @@ function applyLaneSaveStorageOps(ops, relayFallback = null) {
           }
         }
       }
-    } catch (_) {
+    } catch (error) {
+      if (op?.op === 'check') onCheck?.(op.key, { ok: false, quota: false, snapshot: {} });
+      if (typeof op?.key === 'string') failedWrites?.set(op.key, error?.name || 'storage-error');
       // A worker save can exceed this browser's localStorage quota even though its durable
       // shared-store write succeeded. Keep the exact allowlisted bytes for the next worker read.
       if (op?.op === 'set' && isSharedPlayerStoreKey(op.key) && typeof op.value === 'string') {
@@ -334,6 +369,11 @@ export function createSimLaneRuntime({
   const resolved = flags || resolveSimLaneFlags();
   if (!resolved || resolved.lane !== SIM_LANE.WORKER) return null;
   const laneSaveRelayFallback = new Map();
+  const laneSaveStorageFailures = new Map();
+  const acknowledgeLaneSaveStorage = (token, result) => {
+    const ack = enqueueDescriptor({ kind: 'rpc', id: nextToken(), op: 'saveStorageAck', args: { token, result } });
+    ack?.catch?.(() => {});
+  };
   // Browser production gets an autonomous worker clock. Injected channels are
   // directive-driven on purpose: the node/manual fixtures must retain their
   // explicit tick order and never acquire a second wall clock.
@@ -876,7 +916,7 @@ export function createSimLaneRuntime({
 
   // ---- reply application ------------------------------------------------------------------
   function applyInitReply(msg) {
-    applyLaneSaveStorageOps(msg.storageOps, laneSaveRelayFallback);
+    applyLaneSaveStorageOps(msg.storageOps, laneSaveRelayFallback, laneSaveStorageFailures, acknowledgeLaneSaveStorage);
     if (msg.initRebuild && msg.initRebuild.pack) {
       const applied = journal.applyRebuildPack(msg.initRebuild);
       retireMissingFullRebuildEntities(msg.initRebuild.start, msg.initRebuild.end, applied);
@@ -939,7 +979,7 @@ export function createSimLaneRuntime({
 
     // Apply worker save bytes before any mirrored domains or replayed events. Synchronous save
     // listeners must see the fresh index/envelope while the worker event is being dispatched.
-    applyLaneSaveStorageOps(msg.storageOps, laneSaveRelayFallback);
+    applyLaneSaveStorageOps(msg.storageOps, laneSaveRelayFallback, laneSaveStorageFailures, acknowledgeLaneSaveStorage);
 
     // Input boundary: replay the worker's publishes into the ring via
     // publish() — reserve+capture atomically, the only order the ring accepts
