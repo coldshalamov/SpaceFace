@@ -335,7 +335,7 @@ test('park-only without a renderer leg still assigns LSPR and never mints accept
   assert.equal(verdict, true);
 });
 
-test('opening barge touch is one pass after the warm settles and yields to a covering live cook', async () => {
+test('opening barge touch is one pass after the warm settles and skips only already-linked sections under a covering live cook', async () => {
   const touchOpeningBarge = extractedRendererMethod('_touchOpeningBargeFamilyUnderShell');
   const late = authoredSubject('Forge_ore_barge_glows');
   const root = { children: [authoredSubject('Forge_ore_barge_paint')] };
@@ -361,8 +361,22 @@ test('opening barge touch is one pass after the warm settles and yields to a cov
   const coveredOwner = renderOwner({ state: covered, root: coveredRoot, touchSubjectExactTarget: async () => { coveredTouches += 1; } });
   touchOpeningBarge.call(coveredOwner, coveredRoot);
   await wait(10);
-  assert.equal(coveredTouches, 0);
-  assert.equal(covered.render.openingBargeWarm.reason, 'live-cook-covers');
+  // The live cook's pass does not reliably reach the sections before lift: an unlinked
+  // barge section is still touched once under the shell.
+  assert.equal(coveredTouches, 1);
+  assert.equal(covered.render.openingBargeWarm.reason, 'single-pass');
+  assert.equal(covered.render.openingBargeWarm.liveCookCovered, true);
+
+  const linkedState = { mode: 'loading', world: {}, contextRestoreSeq: 1, render: { renderer: {}, admissionRunGeneration: 11, liveSectorGpuAdmission: true } };
+  let linkedTouches = 0;
+  const linkedRoot = { children: [authoredSubject('Forge_ore_barge_paint')] };
+  const linkedOwner = renderOwner({ state: linkedState, root: linkedRoot, touchSubjectExactTarget: async () => { linkedTouches += 1; } });
+  linkedOwner.renderer = { properties: { get: () => ({ currentProgram: { cacheKey: 'linked' } }) } };
+  linkedState.render.renderer = linkedOwner.renderer;
+  touchOpeningBarge.call(linkedOwner, linkedRoot);
+  await wait(10);
+  assert.equal(linkedTouches, 0, 'a section whose barge programs are linked costs no touch');
+  assert.equal(linkedState.render.openingBargeWarm.skippedLinked, 1);
 });
 
 function bargeWaitFixture() {

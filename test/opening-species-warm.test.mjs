@@ -336,3 +336,18 @@ test('wreck and asteroid exemplar helpers still cover the intro bodies', () => {
     assert.equal(spec.type, 'wreck');
   }
 });
+
+test('opening warm compiles the exact double-sided hulk program keys instead of minting hulks', () => {
+  const src = readFileSync(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
+  assert.match(src, /function openingWarmHullFilesForState\(state\) \{\s*return warmHullFilesForSpecs\(openingWarmShipSpecsForState\(state\)\);/);
+  assert.match(src, /const hulkShipSpecs = profile === 'opening' \? \[\] : shipSpecs;/);
+  assert.match(src, /if \(profile === 'opening'\) this\._warmOpeningHulkProgramKeys\(\);/);
+  const body = src.slice(src.indexOf('  _warmOpeningHulkProgramKeys() {'));
+  assert.match(body, /m\.side = THREE\.DoubleSide;/);
+  assert.match(body, /installIllustratedSurface\(m\);/);
+  assert.match(body, /new THREE\.MeshDepthMaterial\(\{ map: depthMap, side: THREE\.DoubleSide/);
+  assert.match(body, /scene\.fog = null;\s*renderer\.compile\(depthGroup, camera, scene\);/);
+  const releaseBody = body.slice(body.indexOf('const release = () => {'), body.indexOf('const firstUse = () => {'));
+  assert.match(releaseBody, /hold\.geometry\.dispose\(\);/);
+  assert.doesNotMatch(releaseBody, /material[s]?\S*\.dispose\(/, 'materials must not dispose: that would release the warmed programs');
+});
