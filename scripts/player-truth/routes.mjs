@@ -137,9 +137,10 @@ export async function bootToMenu(page, baseUrl, step) {
       return !!(window.SF && window.SF.state && window.SF.bus && el && getComputedStyle(el).display !== 'none');
     }).catch(() => false);
     if (ready) {
+      await dismissCinematicIntro(page, step, { timeout: 15_000 });
       step('main menu', true, 'menu visible');
-      // The registered handler owns the public click if First light appears now or
-      // later. A second explicit cancel would race the same handler's dismissal.
+      // The registered handler owns a First light prompt that arrives after the intro/title
+      // readiness boundary. A second explicit answer would race its public click.
       if (!firstLightHandlerPages.has(page)) await answerFirstRunPrompt(page, step);
       return;
     }
