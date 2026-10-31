@@ -7946,10 +7946,24 @@ export function residencyOptionsForBoundary(entity, boundary, renderer) {
           const onGlass = !!(st && st.mode === 'flight'
             && entityIsOnscreen(boundaryLiveEntity(boundary, entity), st));
           const required = openingRequired();
-          return trackOpeningWork(compile.call(root, {
+          const compileOptions = {
             urgent: onGlass, openingRequired: required,
             debugBy: 'authored-prepare', isActive: compile.isActive,
-          }), required);
+          };
+          const work = (async () => {
+            for (let attempt = 0; ; attempt++) {
+              try { return await compile.call(root, compileOptions); }
+              catch (error) {
+                if (!required || liveState?.mode !== 'loading'
+                    || error?.code !== 'SF_PIPELINE_READINESS_TIMEOUT'
+                    || attempt + 1 >= AUTHORED_ADMISSION_RETRY_MAX
+                    || !openingRequired() || !compile.isActive()) throw error;
+                if (present) await present.call();
+                if (liveState?.mode !== 'loading' || !openingRequired() || !compile.isActive()) throw error;
+              }
+            }
+          })();
+          return trackOpeningWork(work, required);
         }
       : null,
     touchAuthoredExactTarget: touch

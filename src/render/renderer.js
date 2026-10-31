@@ -8061,6 +8061,8 @@ export function assertCompleteAppearanceAdmission(receipt) {
         || (value.skipped === true && value.reason !== 'no drawable geometry')) {
       const reason = value?.reason || 'missing/partial receipt';
       const error = new Error(`Incomplete appearance admission: ${reason}`);
+      if (value?.readinessTimedOut === true && value.contextLost !== true
+          && value.cancelled !== true) error.code = 'SF_PIPELINE_READINESS_TIMEOUT';
       // A strict caller still receives the rejection, but an owner retired while
       // queued is expected cancellation. Keep it out of the background failure
       // channel just like the underlying async-admission AbortError.
