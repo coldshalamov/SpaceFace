@@ -18,6 +18,10 @@
 //     stage timeline, main-thread time per stage (busy JavaScript vs native vs idle), every long
 //     task, and the bytes fetched before flight. This is the window a player calls "it takes
 //     forever to load". A stage that is mostly idle is waiting on something off the main thread.
+//   node scripts/probe-main-thread-profile.mjs --from-launch --warm-second-launch
+//     Make one public Launch to flight, return through Pause → Main Menu, then profile a second
+//     public Launch in the same live Electron session. This is a warm-route diagnostic, not a cold
+//     baseline; it does not add a dwell between the two launches.
 //   --label=NAME          write under .devshots/main-thread-profile/NAME/ instead of the root
 //   --keep-profile=NAME   reuse one named evidence profile instead of a fresh temporary one. The
 //                         first run is a cold start; a later run with the same NAME starts with the
@@ -177,7 +181,20 @@ const TRACE_STACKS = TRACE && process.argv.includes('--trace-stacks');
 // --crucible profiles the swarm mode (seed 4242, default kit, drafts auto-answered) instead of open flight;
 // --settle-ms=N flies N ms of that flight before the profile window starts (0 profiles the opening).
 const CRUCIBLE = process.argv.includes('--crucible');
+const WARM_SECOND_LAUNCH = process.argv.includes('--warm-second-launch');
 const CADENCE_ONLY = process.argv.includes('--cadence-only');
+if (WARM_SECOND_LAUNCH && !FROM_LAUNCH) {
+  throw new Error('--warm-second-launch requires --from-launch');
+}
+if (WARM_SECOND_LAUNCH && CRUCIBLE) {
+  throw new Error('--warm-second-launch supports the public Adventure Launch route, not Crucible');
+}
+if (WARM_SECOND_LAUNCH && process.argv.includes('--racing')) {
+  throw new Error('--warm-second-launch supports the public Adventure Launch route, not Racing');
+}
+if (WARM_SECOND_LAUNCH && (MENU_DWELL_MS > 0 || LAUNCH_DWELL_MS > 0)) {
+  throw new Error('--warm-second-launch does not accept menu or launch dwell options');
+}
 const GAUNTLET = process.argv.includes('--gauntlet');
 const RACING = process.argv.includes('--racing');
 const WORKER_PROFILE = process.argv.includes('--worker-profile');
@@ -692,6 +709,16 @@ function writeLaunchReport({ profile, trace, timeline, atFlight, atEnd, census, 
     '# Launch-to-flight main-thread profile',
     '',
     `Profile: ${profileNote}. New Game seed ${FIXED_SEED}.`,
+    ...(captureMetadata?.launch ? [
+      `Launch mode: ${captureMetadata.launch.mode}.`,
+      ...(captureMetadata.launch.warmup ? [
+        `Warm-up: first public Launch reached flight in ${captureMetadata.launch.warmup.launchToFlightMs} ms; `
+        + `returned through Main Menu in the same Electron session.`,
+        `Warm-up context at flight: ${JSON.stringify(captureMetadata.launch.warmup.rendererAtFlight || null)}.`,
+        `Warm context before measured Launch: ${JSON.stringify(captureMetadata.launch.contextBeforeMeasuredLaunch || null)}.`,
+        `Link ledger: ${captureMetadata.launch.linkLedgerReset ? 'reset before measured Launch' : 'not reset'}.`,
+      ] : []),
+    ] : []),
     '',
     `**Launch click to flight: ${secondsBetween(timeline.launchWallMs, timeline.flightWallMs)} s.** `
       + `New Game click to flight: ${secondsBetween(timeline.newGameWallMs, timeline.flightWallMs)} s. `
@@ -970,6 +997,104 @@ async function clickButton(page, pattern, timeoutMs = 60_000) {
   const center = await waitForButton(page, pattern, timeoutMs);
   if (!center) throw new Error(`button ${pattern} never appeared`);
   await page.mouse.click(center.x, center.y);
+}
+
+async function rememberWarmRendererContext(page) {
+  return page.evaluate(() => {
+    const renderer = window.SF?.registry?.get?.('render')?.renderer || null;
+    const context = renderer?.getContext?.() || null;
+    if (!renderer || !context || typeof WeakRef !== 'function') {
+      return { available: false, reason: !renderer || !context ? 'renderer/context unavailable' : 'WeakRef unavailable' };
+    }
+    // Keep only weak references across the public menu return; the profiler must not keep the
+    // previous render owner alive or distort its teardown/lifetime.
+    window.__SF_PROFILE_WARM_RENDER_CONTEXT__ = {
+      available: true,
+      renderer: new WeakRef(renderer),
+      canvas: new WeakRef(renderer.domElement),
+      context: new WeakRef(context),
+      contextLostAtFlight: typeof context.isContextLost === 'function' ? context.isContextLost() : null,
+    };
+    return {
+      available: true,
+      contextLostAtFlight: window.__SF_PROFILE_WARM_RENDER_CONTEXT__.contextLostAtFlight,
+      programCountAtFlight: Array.isArray(renderer.info?.programs) ? renderer.info.programs.length : null,
+    };
+  });
+}
+
+async function compareWarmRendererContext(page) {
+  return page.evaluate(() => {
+    const prior = window.__SF_PROFILE_WARM_RENDER_CONTEXT__ || null;
+    const renderer = window.SF?.registry?.get?.('render')?.renderer || null;
+    const context = renderer?.getContext?.() || null;
+    delete window.__SF_PROFILE_WARM_RENDER_CONTEXT__;
+    if (!prior || !prior.available || !renderer || !context) {
+      return { available: false, reason: !prior?.available ? prior?.reason || 'warm reference unavailable' : 'second renderer/context unavailable' };
+    }
+    const priorRenderer = prior.renderer?.deref?.() || null;
+    const priorCanvas = prior.canvas?.deref?.() || null;
+    const priorContext = prior.context?.deref?.() || null;
+    return {
+      available: true,
+      rendererRetained: !!priorRenderer,
+      canvasRetained: !!priorCanvas,
+      contextRetained: !!priorContext,
+      sameRenderer: priorRenderer ? priorRenderer === renderer : null,
+      sameCanvas: priorCanvas ? priorCanvas === renderer.domElement : null,
+      sameWebglContext: priorContext ? priorContext === context : null,
+      contextLostAtFlight: prior.contextLostAtFlight,
+      contextLostBeforeMeasuredLaunch: typeof context.isContextLost === 'function' ? context.isContextLost() : null,
+      programCountBeforeMeasuredLaunch: Array.isArray(renderer.info?.programs) ? renderer.info.programs.length : null,
+    };
+  });
+}
+
+async function returnToTitleThroughPublicControls(page) {
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(
+    () => window.SF?.ctx?.screenManager?.top?.() === 'pause', null, { timeout: 30_000 },
+  );
+  await page.getByRole('button', { name: 'Main Menu', exact: true }).click({ timeout: 30_000 });
+  const confirmation = page.locator('#sf-confirm-root.sf-confirm--in [role="dialog"]');
+  await confirmation.waitFor({ state: 'visible', timeout: 30_000 });
+  await confirmation.locator('.sf-confirm__ok').click();
+  if (!(await waitForButton(page, /^New Game$/, 120_000))) {
+    throw new Error('public Main Menu confirmation did not return to the title New Game control');
+  }
+}
+
+async function warmPublicLaunchAndReturnToTitle(page) {
+  if (!(await waitForButton(page, /^New Game$/, 120_000))) {
+    throw new Error('the title menu never showed New Game for the warm-up launch');
+  }
+  await installFlightFailureObserver(page, { timeoutMs: 60_000 });
+  let launchWallMs;
+  let flightWallMs;
+  let contextAtFlight;
+  try {
+    await openNewGameWithSeed(page);
+    await clickButton(page, /^Launch$/i);
+    launchWallMs = Date.now();
+    flightWallMs = await waitForFlight(page, 240_000, 250);
+    contextAtFlight = await rememberWarmRendererContext(page);
+    log(`warm-up public Adventure reached flight in ${flightWallMs - launchWallMs} ms`);
+  } finally {
+    await disposeFlightFailureObserver(page);
+  }
+  await returnToTitleThroughPublicControls(page);
+  return { launchToFlightMs: flightWallMs - launchWallMs, contextAtFlight };
+}
+
+async function resetLinkBlockLedgerForMeasuredLaunch(page) {
+  const reset = await page.evaluate(() => {
+    const ledger = window.SF?.registry?.get?.('render')?.renderer?.userData?.spacefaceLinkBlocks;
+    if (!ledger || typeof ledger.reset !== 'function') return false;
+    ledger.reset();
+    return true;
+  });
+  if (!reset) throw new Error('warm Launch could not reset the existing shader-link ledger before measurement');
+  return true;
 }
 
 async function clickNewGameAndLaunch(page) {
@@ -1511,8 +1636,19 @@ async function writeHeapSampling(cdp, heapMarks) {
 async function runLaunchProfile(page, cdp, profileNote) {
   // window.SF and its bus exist only once boot finishes; the title screen's New Game button is the
   // public signal. Subscribing at domcontentloaded silently misses every loading stage.
-  if (!(await waitForButton(page, /^New Game$/, 120_000))) throw new Error('the title menu never showed New Game');
-  if (MENU_DWELL_MS > 0) { log(`reading the title menu for ${MENU_DWELL_MS} ms first`); await page.waitForTimeout(MENU_DWELL_MS); }
+  let warmup = null;
+  if (WARM_SECOND_LAUNCH) {
+    if (CRUCIBLE || GAUNTLET || RACING) throw new Error('--warm-second-launch is Adventure-only');
+    warmup = await warmPublicLaunchAndReturnToTitle(page);
+  } else {
+    if (!(await waitForButton(page, /^New Game$/, 120_000))) {
+      throw new Error('the title menu never showed New Game');
+    }
+    if (MENU_DWELL_MS > 0) {
+      log(`reading the title menu for ${MENU_DWELL_MS} ms first`);
+      await page.waitForTimeout(MENU_DWELL_MS);
+    }
+  }
   await installLaunchObservers(page);
   await installFlightFailureObserver(page, { timeoutMs: 60_000 });
   try {
@@ -1535,15 +1671,22 @@ async function runLaunchProfile(page, cdp, profileNote) {
 
   const newGameWallMs = Date.now();
   await openNewGameWithSeed(page);
+  if (warmup) warmup.context = await compareWarmRendererContext(page);
   if (LAUNCH_DWELL_MS > 0) {
     await waitForButton(page, /^Launch$/i, 60_000);
     log(`staying ${LAUNCH_DWELL_MS} ms on the New Game screen before Launch`);
     await page.waitForTimeout(LAUNCH_DWELL_MS);
   }
-  try {
+  let linkLedgerReset = false;
+  if (warmup) linkLedgerReset = await resetLinkBlockLedgerForMeasuredLaunch(page);
+  if (warmup) {
     await clickButton(page, /^Launch$/i);
-  } catch {
-    log('no Launch button on this route; continuing');
+  } else {
+    try {
+      await clickButton(page, /^Launch$/i);
+    } catch {
+      log('no Launch button on this route; continuing');
+    }
   }
   const launchWallMs = Date.now();
 
@@ -1584,9 +1727,21 @@ async function runLaunchProfile(page, cdp, profileNote) {
     },
     runtime: runtimeBinding,
     host: summarizeHostResources(hostStart, hostEnd),
+    ...(warmup ? { launch: {
+      mode: 'same-session-warm-second-public-adventure-launch',
+      warmup: {
+        launchToFlightMs: warmup.launchToFlightMs,
+        rendererAtFlight: warmup.contextAtFlight,
+      },
+      contextBeforeMeasuredLaunch: warmup.context,
+      linkLedgerReset,
+    } } : {}),
   };
 
-  writeLaunchReport({ profile, trace, timeline, atFlight, atEnd, census, profileNote, captureMetadata });
+  const measuredProfileNote = warmup
+    ? 'same live Electron session; second public Adventure Launch after first reached flight'
+    : profileNote;
+  writeLaunchReport({ profile, trace, timeline, atFlight, atEnd, census, profileNote: measuredProfileNote, captureMetadata });
   fs.writeFileSync(path.join(OUT_DIR, 'profile.cpuprofile'), JSON.stringify(profile), 'utf8');
   fs.writeFileSync(path.join(OUT_DIR, 'canvas-census.json'), JSON.stringify(census, null, 1), 'utf8');
   fs.writeFileSync(path.join(OUT_DIR, 'launch-trace.json'), JSON.stringify({ timeline, captureMetadata, stages: trace.stages, longTasks: trace.longTasks, atFlight, atEnd }, null, 1), 'utf8');
