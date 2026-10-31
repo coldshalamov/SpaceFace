@@ -592,6 +592,7 @@ import {
   assertPackageTextureRefillReady,
   detachedGeometryUploadPending,
   detachedTextureUploadPending,
+  dropGeometryGpuResidencyLedger,
   isPackageGeometryDetached,
   noteOrientationDetachedHold,
   packageGeometryUploadDiagnostics,
@@ -9568,6 +9569,7 @@ export const render = {
         this._contextRestoreReceipt?.cancel?.();
         this._contextRestoreReceipt = null;
         publishContextLostState(this, true);
+        dropGeometryGpuResidencyLedger(renderer);
         retireScenePipelineReadinessPrograms(renderer);
         invalidateMachineryPresentation(state);
         this._sessionLiveSectorCookedId = null;

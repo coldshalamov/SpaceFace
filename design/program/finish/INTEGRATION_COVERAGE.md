@@ -113,6 +113,37 @@ result remains historical even where later builds supersede its size.
 
 ## Integrated changes and measurement limits
 
+- **Current loading boundary (batch fifteen):** the main static ESM closure is 11,722,389 raw /
+  3,652,037 summed-gzip bytes across 132 outputs, below the 12 MB raw floor. Main now awaits the
+  presentation registry before creating its worker runtime and initializing owners; public registry
+  contracts and its full graph remain intact. Source preloads are synchronized. The canonical
+  shared worker build remains, and both worker graphs have zero missing outputs. Bundle build and
+  gates pass, including 414 render plans and 74 cases; receipt
+  `0d9e6869e0f77a17a11d7c4ce43efa10b93f6a808a5338f252e53df8bd48a0a7` (2819 files).
+  The ordinary worker/save/context route is next. This establishes static closure size, with no
+  total-transfer or startup-time gain claimed; the 6 MB target and runtime bars remain open.
+
+- **Current integrated checks (batch thirteen):** bundle build and gates pass all 414 render plans,
+  74 focused bundle cases and the 1399-entry voice corpus; receipt
+  `18c3d6057cb23a4453bebe3e8a70fc304456e88e006b34cd4bbd9fb86ed47318` covers 2808 files.
+  This working-tree build includes concurrent work and is not an isolated published-release
+  identity. The latest baseline has all 17 assertions green but **fails its timing budget**:
+  92,184 ms against 90,000 ms, with Massline on the critical path. Its cause is not attributed;
+  no budget or golden is relaxed. Logs are `batch13-build.log`, `batch13-bundle-check.log` and
+  `batch13-baseline.log` under the 2026-10-31 integration artifact tree.
+- **Normal repaired-candidate soak — FAIL:** `a4f1fe14452c` stops in cycle 14 with a terminal
+  Three.js buffer-attribute size mismatch. Graphics interrupted freezes presentation before
+  redocking; the player is in range. Resize capture was disabled, so the attribute remains
+  unidentified in that receipt. The same-source `m8-resize-owner-a4` diagnostic completes 20
+  cycles then fails context recovery with a captured SCN Wasp armor UV: GPU size zero versus
+  44,984 restored bytes. Old residency stamps survived on the same renderer after context loss.
+  The context owner now drops that ledger and the pre-projection guard blocks pending detached
+  uploads while canonical refill completes. Twenty guard/package cases pass; integrated normal
+  recovery verification remains pending. The observer also now fails fast on canonical graphics
+  interruption during docking; its eleven focused cases pass. The full-duration result remains
+  open. Output:
+  `.devshots/finish/integration-2026-10-31/m8-character-shadow-repairs-full/`.
+
 - **Phone station layout:** the 390×844 station header now puts its compact credits reading below
   the title, and Shipworks gives the nameplate a separate band above its diagram. Current-tree
   phone and 960×540 fixture captures are inspected with zero browser errors and no geometry
