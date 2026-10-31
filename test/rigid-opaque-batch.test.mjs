@@ -11,6 +11,8 @@ import {
 import { touchSubjectOnExactTarget } from '../src/render/openingGpuAdmission.js';
 import { warmScenePipelinesForRenderTarget } from '../src/render/bloom.js';
 import { createShadowDepthStagingSession } from '../src/render/shadowDepthAdmission.js';
+import { createPackageDetachManifest, detachPackageGeometry, rehydrateDetachedGeometries,
+  resetPackageDetachManifestsForTests } from '../src/render/packageCpuDetach.js';
 import { installIllustratedSurface } from '../src/render/illustratedSurface.js';
 import { attachRetroMounts } from '../src/render/thruster/retroMounts.js';
 import { render as renderSystem, applyFirstPlayablePaintRelease, freezeOpeningGraphPublication,
@@ -47,6 +49,101 @@ function makeRoot() {
   root.updateMatrixWorld(true);
   return { root, a, b };
 }
+
+test('retained batch copies marked package normals and UVs after CPU retirement', async () => {
+  resetPackageDetachManifestsForTests();
+  const scene = new THREE.Scene();
+  const { root, a, b } = makeRoot();
+  b.geometry.dispose();
+  b.geometry = a.geometry;
+  const geometry = a.geometry;
+  const normals = [...geometry.attributes.normal.array];
+  const uvs = [...geometry.attributes.uv.array];
+  createPackageDetachManifest({ contentHash: 'fixture.rigid-retained-copy', resources: [geometry] }, {
+    redecode: async () => new THREE.BoxGeometry(1, 1, 1), collectResources: donor => [donor],
+  });
+  assert.equal(detachPackageGeometry(geometry, {}), true);
+  assert.equal(geometry.attributes.normal.array.length, 0);
+  assert.equal(geometry.attributes.uv.array.length, 0);
+  scene.add(root); scene.updateMatrixWorld(true);
+  const controller = createRetainedRigidOpaqueBatchController({ scene, prepare: () => ({ ready: true }) });
+  try {
+    await controller.sync([root]);
+    assert.equal(controller.getDiagnostics().status, 'active');
+    const batch = scene.children.find(child => child.userData?.spacefaceRigidOpaqueBatch);
+    assert.ok(batch);
+    assert.deepEqual([...batch.geometry.attributes.normal.array.slice(0, normals.length)], normals);
+    assert.deepEqual([...batch.geometry.attributes.uv.array.slice(0, uvs.length)], uvs);
+    assert.equal(detachPackageGeometry(geometry, {}), true, 'the CPU copy lease is released after construction');
+  } finally {
+    controller.dispose(); geometry.dispose(); a.material.dispose(); b.material.dispose();
+    resetPackageDetachManifestsForTests();
+  }
+});
+
+test('retained batch deduplicates a held refill and releases its lease when cancelled', async () => {
+  resetPackageDetachManifestsForTests();
+  const scene = new THREE.Scene();
+  const { root, a, b } = makeRoot();
+  b.geometry.dispose(); b.geometry = a.geometry;
+  const geometry = a.geometry;
+  let releaseDecode, calls = 0;
+  createPackageDetachManifest({ contentHash: 'fixture.rigid-cancelled-refill', resources: [geometry] }, {
+    redecode: () => { calls++; return new Promise(resolve => { releaseDecode = resolve; }); },
+    collectResources: donor => [donor],
+  });
+  assert.equal(detachPackageGeometry(geometry, {}), true);
+  scene.add(root); scene.updateMatrixWorld(true);
+  const controller = createRetainedRigidOpaqueBatchController({ scene, prepare: () => ({ ready: true }) });
+  try {
+    const first = controller.sync([root]);
+    const second = controller.sync([root]);
+    assert.strictEqual(second, first, 'the same candidate joins its pending source refill');
+    await Promise.resolve();
+    assert.equal(calls, 1);
+    controller.rollback('cancel-refill');
+    releaseDecode(new THREE.BoxGeometry(1, 1, 1));
+    await first;
+    assert.equal(scene.children.some(child => child.isBatchedMesh), false);
+    assert.equal(a.layers.mask, 1); assert.equal(b.layers.mask, 1);
+    assert.equal(detachPackageGeometry(geometry, {}), true, 'cancellation releases the CPU read lease');
+  } finally {
+    controller.dispose(); geometry.dispose(); a.material.dispose(); b.material.dispose();
+    resetPackageDetachManifestsForTests();
+  }
+});
+
+test('retained batch releases a failed refill lease and preserves direct sources', async () => {
+  resetPackageDetachManifestsForTests();
+  const scene = new THREE.Scene();
+  const { root, a, b } = makeRoot();
+  b.geometry.dispose(); b.geometry = a.geometry;
+  const geometry = a.geometry;
+  let fail = true;
+  createPackageDetachManifest({ contentHash: 'fixture.rigid-failed-refill', resources: [geometry] }, {
+    redecode: async () => {
+      if (fail) throw new Error('fixture decode failure');
+      return new THREE.BoxGeometry(1, 1, 1);
+    },
+    collectResources: donor => [donor],
+  });
+  assert.equal(detachPackageGeometry(geometry, {}), true);
+  scene.add(root); scene.updateMatrixWorld(true);
+  const controller = createRetainedRigidOpaqueBatchController({ scene, prepare: () => ({ ready: true }) });
+  try {
+    await controller.sync([root]);
+    assert.equal(controller.getDiagnostics().lastReason, 'source-refill-failed');
+    assert.equal(scene.children.some(child => child.isBatchedMesh), false);
+    assert.equal(a.layers.mask, 1); assert.equal(b.layers.mask, 1);
+    fail = false;
+    const receipt = await rehydrateDetachedGeometries([geometry]);
+    assert.deepEqual(receipt.errors, []);
+    assert.equal(detachPackageGeometry(geometry, {}), true, 'a failed refill releases the CPU read lease');
+  } finally {
+    controller.dispose(); geometry.dispose(); a.material.dispose(); b.material.dispose();
+    resetPackageDetachManifestsForTests();
+  }
+});
 
 test('a queued exact-target touch rejects a batch retired before admission', async () => {
   const scene = new THREE.Scene();

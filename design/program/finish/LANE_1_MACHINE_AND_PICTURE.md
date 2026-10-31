@@ -144,6 +144,11 @@ semantic IDs, anchors and collision metadata match; the five-package maximum ver
 semantic pivots through quantization (13 compiler cases); actual compiled pivots in all 196 existing
 dynamic packages match source, so that defect requires no package rebuild.
 
+The retained controller now refills retired package CPU attributes under a lease before copying
+batch geometry. A causal native case previously copied zero normals after retirement; the repaired
+normal/UV case and cancellation, failure, deduplication and stale-owner cases pass (5 focused tests).
+This establishes the copy contract; live batch appearance and performance remain open.
+
 **M4 — The composite pass.** One full-screen composite draw costs 7.1 ms of GPU per frame
 (`bloom.js:240-460`: 5-tap edge detect, extra edge taps, three bloom samples, contrast LUT, grade,
 grain on a half-float target). Gate the expensive taps by tier, fold grain/vignette/grade into one
@@ -190,7 +195,11 @@ projection/replay/renderer checks pass 4/4 and domain/wire checks 9/9. The sourc
 commits Ceres Dock, then times out on the combined settlement predicate before F5. Paused settlement
 publication is repaired (5 focused cases), with a fresh delivery/save/Continue route pending. The full
 30-minute soak remains required. The latest combined bundle passes; baseline assertions pass 17/17
-but the latest run fails its unchanged 90-second budget at 92,319 ms. See `INTEGRATION_COVERAGE.md`.
+but the latest run fails its unchanged 90-second budget at 117,436 ms. The source-70d1 public haul
+reaches physical Ceres Dock, delivers all eight cells and publishes the 760-credit receipt. Its
+observer incorrectly assumes reputation-event order across the worker transport; that observer is
+being corrected before retrying save/Continue. No save/Continue acceptance is claimed.
+See `INTEGRATION_COVERAGE.md`.
 
 **M9 — Load less, load later.** 28 MB of minified JS in the eager closure (`scripts/build-bundle.mjs`,
 esbuild splitting): lazy-load per mode and per screen; make `modelTruthCensus.generated.js` and
@@ -202,10 +211,15 @@ as JS) to a binary asset; take `src/testing/**` out of the retail graph (static 
 the load rows of README §4 meet their floor.
 
 Current measured working-tree checkpoint (2026-10-31): physical main static ESM closure is
-15,870,128 raw / 4,932,393 summed-gzip bytes across 182 outputs, with bundle receipt
-`fe828a29530c3fc105545e99b98e90eaf992839c22170a606f912e8297bc89ad` (2806 files, 414 plans).
+15,873,188 raw / 4,933,042 summed-gzip bytes across 182 outputs, with bundle receipt
+`e6d380f344e41e37ddfe7804ad435b0f5958e5e59b2c691b09e0a1041775765e` (2806 files, 414 plans).
 This includes concurrent edits, not isolated attribution. The 12 MB raw floor and runtime load bars
 remain open; Codex callers now use its one-shot request mailbox without importing the lazy screen.
+
+Optional new-game menu speculation now warms the fixed opening cast, chosen starter and scripted
+onboarding roster without enumerating positionless distant-sector recipe stubs. Materialized launch,
+Continue and arrival retain their own membership logic. The real owner-method tests pass 10/10;
+source asset-byte estimates are not a measured network or startup improvement.
 
 **M10 — First sight never stalls.** Adventure first-sight program links (`pipelineReadiness.js`
 serializes every link behind one `linkActive` tail): issue links in parallel batches, use

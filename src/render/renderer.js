@@ -20840,14 +20840,10 @@ export const render = {
     }
   },
 
-  // New-game embark dwell: the only embark screen with no speculation emit used to pay every
-  // sector_helios_prime decode inside the loading window. A fresh run has no records — the
-  // enumerable authored cast is sector-def rows (stations, gates, POI landmarks, field heads,
-  // literal palette dressing; salted kit/wreck picks only when the emit carried a seed the
-  // launch will actually use) plus compile constants: the 47-A opening scene (carrier hulk,
-  // evidence spindle, wasp/mule cast), the picked starter hull, and the scripted onboarding
-  // cohort's roster hulls. seed==null skips every seed-hashed enumeration branch instead of
-  // warming seed-1's wrong files.
+  // New-game menu dwell warms only the fixed launch cast. Sector recipe stubs have no live poses,
+  // so this optional speculation cannot apply the opening-composition selector faithfully; the
+  // materialized launch and FlightReadySet own actual opening membership. Save/Continue and sector
+  // arrival keep their separate full-enumeration warmers, while distant places stream on demand.
   _prefetchEmbarkVisuals(payload) {
     if (!payload || !this.renderer) return;
     const sectorId = typeof payload.sectorId === 'string' && payload.sectorId
@@ -20865,35 +20861,25 @@ export const render = {
     if (latch.sig === sig && now - latch.at < 2000) return;
     latch.sig = sig;
     latch.at = now;
-    const data = {
-      world: { currentSectorId: sectorId, records: { byId: {} } },
-      meta: seed == null ? {} : { seed },
-      entities: { persistent: [] },
-    };
-    const sectorStubs = saveEnvelopeSectorStubs(data);
-    const fullExtras = saveEnvelopeFullExtrasStubs(data);
-    const placeStubs = sectorStubs.placeStubs.concat(fullExtras.placeStubs);
-    const shipStubs = sectorStubs.shipStubs.concat(fullExtras.shipStubs);
-    const roster = sectorStubs.roster.concat(fullExtras.roster);
     // The opening scene's cast is compile-constant: wasp/mule hulls via the ship lane, the
     // carrier hulk + evidence spindle through their packaged-prop resolution (a wreck-typed
     // stub would take the hash-picked residue table instead of the authored slice files).
-    shipStubs.push(
+    const shipStubs = [
       { type: 'ship', factionId: 'faction_reavers', data: { defId: 'ship_wasp' } },
       { type: 'ship', factionId: 'faction_free', data: { defId: 'ship_mule' } },
-    );
-    placeStubs.push(
+    ];
+    const placeStubs = [
       { type: 'payload', alive: true, data: { packagedPropFile: 'pods/pod_47a_evidence_spindle.glb', packagedPropSlot: 'pod' } },
       { type: 'payload', alive: true, data: { packagedPropFile: 'places/place_dead_hulk.glb', packagedPropSlot: 'place' } },
-    );
+    ];
     // The picked starter hull is the one body the first frame must show.
     if (typeof payload.shipDefId === 'string' && payload.shipDefId) {
       shipStubs.push({ type: 'ship', data: { defId: payload.shipDefId } });
     }
-    // The scripted onboarding cohort (raid raider + claims patrol) resolves its faction like
-    // makeEnemySpawnSpec does — def faction or the lawful fallback.
-    roster.push(...scriptedOnboardingRosterRows());
-    this._warmSectorRecipeStubs(placeStubs, shipStubs, roster, sectorStubs.sectorId);
+    // Keep the scripted onboarding cohort (raid raider + claims patrol); its faction resolution
+    // matches makeEnemySpawnSpec. Ordinary sector membership is admitted after materialization.
+    const roster = scriptedOnboardingRosterRows();
+    this._warmSectorRecipeStubs(placeStubs, shipStubs, roster, sectorId);
   },
 
   // PQ-210.00 Crucible roster prewarm. A wave that introduces a hull the GPU has never drawn
