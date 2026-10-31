@@ -312,6 +312,14 @@ ${P} .sx-mkt .sx-decision__opt .k-row__sub { display:block !important; margin:2p
   ${P} .sx-mkt .sx-mkt-table { table-layout:auto !important; }
   ${P} .sx-mkt .sx-mkt-table :is(th, td) { padding-left:6px !important; padding-right:6px !important; }
   ${P} .sx-mkt .sx-mkt-table :is(th, td):is(:nth-child(2), :nth-child(3), :nth-child(4)) { width:1% !important; }
+  /* The short berth gives the trade console a 244px column. Keep its quantity controls within
+     that column and flow the quote/actions vertically instead of letting the fixed desktop dial
+     track push BUY/SELL past the stage edge. The console remains the stage's own scroll surface. */
+  ${P} .sx-mkt__console { min-width:0 !important; max-width:100% !important; overflow-x:hidden !important; overflow-y:auto !important; }
+  ${P} .sx-mkt .sx-trade { grid-template-columns:minmax(0,1fr) !important; grid-template-rows:auto auto auto auto auto !important;
+    grid-template-areas:"dial" "total" "note" "verb" "breakdown" !important; column-gap:0 !important; row-gap:4px !important; }
+  ${P} .sx-mkt .sx-qty { width:100% !important; max-width:100% !important; box-sizing:border-box !important; }
+  ${P} .sx-mkt .sx-qty__words, ${P} .sx-mkt .sx-trade__words { flex-wrap:wrap !important; justify-content:flex-start !important; gap:6px !important; }
 }
 
 /* ==== BAR =================================================================================== */

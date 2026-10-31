@@ -120,6 +120,11 @@ result remains historical even where later builds supersede its size.
   reset/confirmation states leave the fixture control walk incomplete, and its impound seed does
   not expose the canonical lot desk. Ordinary station-tab last-row and impound reachability remain
   open. Captures: `.devshots/finish/integration-2026-10-31/station-phone-layout-fix-r3/`.
+  The merged PR749 Market layout also exposed a 960×540 trade-console overflow, now repaired
+  within that breakpoint. A scoped fixture filters 64 rows to 23, searches to one, scrolls to and
+  selects the last filtered row, and hit-tests Quantity/Fewer/More/Max/Buy/Sell inside the viewport.
+  Its disabled Buy and enabled Sell states remain canonical. This is fixture evidence, with the
+  ordinary trade route still pending. Artifact: `pr749-market-960-targeted-final` in the same tree.
 
 - **Confirmed Vesper retention repair:** saved heap graphs identify a detached `seated_fastener`
   mesh/new geometry absent from the start snapshot and end scene. Both become unreachable when
@@ -127,6 +132,9 @@ result remains historical even where later builds supersede its size.
   source casters before merging; the real-builder test fails before the fix and passes after it.
   Model/registry suites pass 15/15 and live merged geometry retains shadows. This fixes one proven
   family; the full heap/resource trend still needs the normal soak.
+  Matching permanent retirement helpers in Morrow, Ruud, Bracket, Ravel and Rubric are also
+  repaired; their five real-builder regressions fail before repair and pass after it. The focused
+  character batch passes 58/58, retaining shadows on merged live surfaces.
 - **Shadow-depth texture repair:** the actual driver now canonically refills CPU-detached texture
   payloads and holds their lease through paced staging. The direct real-texture case reproduces
   empty mip access before refill and passes normal drawing, generation cancellation and rejected

@@ -405,6 +405,9 @@ repaired in the shared Standard and Shipworks style owners. Inspected 390×844 a
 captures have no browser errors or geometry overlap/clipping findings. The control walk remains
 incomplete after resets/confirmations; the impound fixture has no canonical lot desk. These visual
 repairs do not close ordinary station-tab last-row reachability (RC-49) or impound controls.
+The new 960×540 Market layout's trade-console overflow is also repaired. Its scoped fixture
+filters/searches the list, scrolls to and selects its last filtered row, and hit-tests the quantity
+and trade controls inside the viewport; ordinary station/trade acceptance remains pending.
 
 - Save compatibility: every new persistent field needs a migration and a reload test (`src/save/`).
 - Single writers: economy→credits, factions→reputation, cargo→cargo (`AGENTS.md` §6) — emit intents, do not write another system's state.

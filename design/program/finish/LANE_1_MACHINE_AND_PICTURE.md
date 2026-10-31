@@ -276,6 +276,10 @@ fixture reproduces the shadow-stage missing-mip failure. The ordinary paced driv
 canonical refill protocol and holds a texture lease through staging. Its direct case passes normal
 draw, context-generation cancellation and rejected pacing after partial draw, preserving error,
 caster homes and draw-hook ownership. A new normal soak is required for the integrated result.
+The same permanent merge-retirement bug also exists in Morrow, Ruud, Bracket, Ravel and Rubric.
+Their source casters now unregister before removal too. All five real-builder regressions fail
+before repair and pass after it; the focused character batch passes 58/58. The merged live surfaces
+retain their shadows. Measured whole-soak growth remains open until the new run.
 
 **M9 — Load less, load later.** 28 MB of minified JS in the eager closure (`scripts/build-bundle.mjs`,
 esbuild splitting): lazy-load per mode and per screen; make `modelTruthCensus.generated.js` and
