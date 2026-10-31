@@ -69,3 +69,25 @@ the same failure was reproduced in earlier PR runs with identical relevant
 workflow/packaging/assets. The minimal workflow correction is pending and is not
 part of this source fix. Other repository-wide check failures remain separately
 under investigation; no all-CI-green claim is made.
+
+## Retained Io transmitter lifecycle repair
+
+Broad CI exposed an existing H4 cleanup/reuse conflict: terminal encounter cleanup
+put a TTL on its original buoy, while readmission correctly refused expiring
+objects. The original fully materialized suite failed four reuse cases on the
+unchanged base (21/25), including native physics.
+
+The H4 terminal hook now asks the canonical director to release only the exact
+surviving original from prop cleanup custody. It does not erase authored TTLs,
+resurrect bodies, move the buoy, weaken reuse eligibility or invent a replacement.
+Cleanup also refuses an explicitly foreign encounter owner; untagged legacy prop
+cleanup and normal matching props retain their existing behavior.
+
+The unchanged original suite passes 25/25. Twelve additional ownership, expiry and
+idempotency cases yield 37/37. Native verification retains the same physics body
+handle and two entities while approaching with thrust/brake. All 191 focused
+opening plus retained-buoy tests pass together after source freeze. This is a real
+native component route, not a rendered whole-game or full Save/Continue claim.
+
+Owners: `src/systems/e1EncounterRuntime.js`, `src/systems/encounterDirector.js`;
+coverage: `test/io-love-letter-buoy-service.test.mjs`. No assets or workflows changed.

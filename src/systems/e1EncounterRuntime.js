@@ -227,6 +227,17 @@ function reusableH4Buoy(live, state) {
 }
 
 const h4 = Object.freeze({
+  retire(d, live, state, reason) {
+    if (reason !== 'terminal') return;
+    const buoy = h4Buoy(live, state);
+    if (!buoy || buoy.type !== 'beacon' || !Number.isSafeInteger(buoy.id)
+      || !buoy.pos || !Number.isFinite(buoy.pos.x) || !Number.isFinite(buoy.pos.z)
+      || buoy.data.assetRef !== 'asset.slice.kessler_handoff_beacon'
+      || buoy.data.loveLetterSectorId !== live.sectorId) return;
+    // Release only this surviving original before generic terminal cleanup. Never
+    // clear an authored TTL, resurrect a disposed body, or retain unrelated props.
+    d.releaseProp(live, buoy);
+  },
   fire(d, live, state) {
     const reused = reusableH4Buoy(live, state);
     const buoy = reused || d.spawnProp(live, {
