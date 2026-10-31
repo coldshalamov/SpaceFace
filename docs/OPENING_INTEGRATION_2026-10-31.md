@@ -227,3 +227,20 @@ for malformed state. **223 focused checks and six production imports pass.**
 work from master and does not make starter settlement an invented campaign unlock.
 It preserves story-text and ordinary-control verification gaps as executable next
 work rather than declaring the opening accepted.
+
+### Kessler hands local work back to the existing story
+
+After the current hull's final local ticket settles, Kessler identifies a single
+provable active 47-A card and its receiving location. B0's shared objective now
+names the marked-rock recovery before the return, then delivery once the sample
+is aboard. The sentence is shared with Mission Log; it never reads a stale global
+waypoint or changes the player's pin. Canonical B0 installer and B1 contract-author
+records drive the tests. No local-job campaign unlock, payout or progression write
+is introduced. Missing, ambiguous, legacy or between-contract states stay honest.
+
+The current furnace patrol recap is incomplete for its two-part physical job, so
+Kessler refers to its authored brief instead of quoting that counter. Reconciling
+that shared reader with the existing furnace focus remains an explicit next
+SF-SECTOR-COHERENCE action, not a claimed fix. **232 opening tests, six production
+imports and 12 unchanged Mission Log regression cases pass.** No rendered-route,
+normal-input, full Continue or performance acceptance follows from these checks.

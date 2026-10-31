@@ -74,6 +74,14 @@ export function objectiveText(m) {
   if (p.setPieceObjective === 'long_read_fence') {
     return `CHOOSE / CONFIRM DISPOSITION · ${titleCaseWords(p.wreckChoiceId || 'wreck outcome')}`;
   }
+  // B0's manifest card has two real stages. Keep the shared log/HUD objective in lockstep with
+  // the mission owner: before the sample is aboard, point at the marked rock; after recovery,
+  // point home to Helios. This is a read of the canonical mission record, not a second stage writer.
+  if (m.storyTag === 'campaign47a:b0:recovery') {
+    return p.sampleRecovered
+      ? 'Deliver the 47-A sample to Helios Station'
+      : 'Recover the 47-A sample from the marked rock, then deliver it to Helios Station';
+  }
   switch (m.type) {
     case 'cargo_delivery': {
       const serviceClass = `${m.originChoiceId || ''} ${m.title || ''} ${m.mapLabel || ''}`.toLowerCase();

@@ -73,3 +73,24 @@ These references establish inventory and code wiring only. No visual asset inspe
 ## Status and source caveat
 
 The sparse candidate contains the Kessler starter-work conversation, Helios route readers, the all-three-ticket Pelican receiving extension, and the prior route notes. The receiving extension is implemented and its focused integration checks passed, but it has no rendered visual acceptance. `HELIOS_BUOY_RECEIVING.md` now documents all three returns; GitHub publication and exact commit identity are tracked in PR724 and the accompanying delivery receipt. The supplied current-master ref `d95d9187848f58f82c4b0f89d8493ab632ebeb59` was checked directly for the relevant starter-job / mission-board / 47-A route source. The core `starterJobs.js`, board injection, and B0/B1 embodied route are present there; the candidate-only `starterWorkdayConversation.js` and `starterWaspRoute.js` are not present at that master ref. Therefore this dossier describes the candidate's implementation boundary, not a merged/master-shipped experience. The materialized checkout has no usable Git `HEAD`; the master check was a read-only exact-ref file fetch. The Finish Lane 3 README/board is also absent from this snapshot, so no Lane 3 completion state is inferred.
+
+## Follow-through: character handback implemented in the candidate
+
+The recommended Kessler handback above is now implemented for a single provable
+active B0 recovery, B1 alloy delivery or B1 furnace-detail record after the local
+book settles. It preserves player-owned pins and does not advance or accept story
+work. The shared Mission Log objective now puts B0 recovery before return; it reads
+the actual sampleRecovered field rather than quoting a potentially stale waypoint.
+Canonical installer/contract-author tests verify the actual records used.
+
+The furnace contract still inherits a generic patrol recap that calls repair mites
+hostiles and omits the subsequent ore-pod leg. Kessler deliberately uses that
+card's authored title and Ceres destination, referring to its brief rather than
+quoting the misleading counter. This is the next specific SF-SECTOR-COHERENCE
+reader gap: reconcile the shared recap with existing furnaceWorksiteFocus without
+adding a second mission phase owner. Scale 4's between-contract state still falls
+back to general guidance; no invented active contract or unlock fills the gap.
+
+232 opening tests, six imports and 12 unchanged Mission Log regression cases pass.
+This does not close the ordinary-control Wasp sample experiment, rendered dialogue
+readability, full Continue, or the remaining furnace-reader acceptance gap.
