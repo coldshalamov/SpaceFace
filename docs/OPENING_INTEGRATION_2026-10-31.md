@@ -398,3 +398,25 @@ disagreement, deferred publication reservations, rejected helper spawns, recycle
 records, extreme obstruction and run-end before census. All 35 original terrain/
 bank/arena cases pass unchanged. Full browser-worker play through first clear,
 purchase and second launch, full Continue and performance remain open.
+
+### B2 durable restoration correction
+
+Independent review caught an introduced gap in the strict Elroy waypoint check:
+world records retain canonical mission/slot identity but omit optional story id/role
+labels. The earlier Continue test cloned the original entity data and therefore
+did not exercise this real persisted boundary. A genuinely rematerialized and
+adopted Elroy incorrectly produced search-area guidance.
+
+The existing mission-target identity writer now restores only missing B2 labels
+after checking retained mission owners, slot zero, deterministic record id/key
+and sector provenance before generic restamping. Conflicting story metadata is
+left untouched and the waypoint predicate remains strict. There is no save-schema
+change, new target, progress or reward writer. The replacement test captures the
+real target, calls the production world-record rematerializer, adopts through
+save:loaded, then verifies moving HUD/map focus, scanner identification and repeated
+callbacks. Original B2 investigation tests remain unchanged.
+
+Production missions-first imports pass. Direct helper-first import encounters an
+existing module-cycle TDZ also reproduced on pre-edit source; no broad module
+reorganization is included. This closes a reproduced source restoration gap, not
+full input-driven Save/Continue or rendered acceptance.

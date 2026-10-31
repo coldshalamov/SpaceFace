@@ -239,3 +239,18 @@ missing/dead/recycled/wrong-identity/non-finite contacts, Continue adoption unde
 id, a terminal contract, and the separate Tethys Cinder/Registry board waypoints. Existing B0,
 Scale 4, Wasp, and Pelican readers remain separate regression gates. This is native source/reader
 evidence, not a rendered playthrough or visual acceptance.
+
+B2 restoration review found that a cloned-data Continue fixture concealed a real durable-record
+boundary: world records retain mission/slot identity but omit `storyTargetId`/`storyTargetRole`.
+The existing mission-target identity writer now restores only missing Elroy dressing for the
+canonical active Registry Writ slot-zero record, authenticated by its original mission owners,
+identity key, deterministic world record id, and sector provenance before generic restamping.
+Present conflicting story metadata remains untouched and fails waypoint validation. No record
+schema or waypoint predicate was widened. The regression test now captures the real target,
+rematerializes through `world._spawnFromDurableRecord`, adopts via `save:loaded`, and checks
+moving HUD/map focus before and after scan plus duplicate restore and foreign/conflicting identities.
+This remains source/consumer integration evidence, not physical Continue or rendered acceptance.
+
+A canonical retained record with one stale owner tag can recover after the existing generic
+writer repairs that tag and a later authenticated pass restores dressing. This is not a
+foreign record: truly foreign keys/record ids/slots remain rejected across repeated callbacks.

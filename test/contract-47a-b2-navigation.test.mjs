@@ -2,6 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
+import { world } from '../src/systems/world.js';
+import { captureEntityRecord, RECORD_KIND } from '../src/world/worldRecords.js';
 import { createGameState } from '../src/core/gameState.js';
 import { createBus } from '../src/core/eventBus.js';
 import { STORY_BEATS } from '../src/data/missions.js';
@@ -313,29 +315,98 @@ test('off-sector B2 gives sector/search guidance and terminal B2 publishes no ro
   assert.equal(h.state.nav.waypoint, null);
 });
 
-test('Continue-adopted slot-zero Elroy survives a runtime-id change without exposing a recycled occupant', () => {
-  const h = openElroyWrit();
-  const restored = {
-    ...h.target,
-    id: h.target.id + 100,
-    pos: { ...h.target.pos },
-    data: structuredClone(h.target.data),
-  };
+function rematerializeElroy(h) {
+  const record = captureEntityRecord(h.target, CHARON, RECORD_KIND.MISSION_TARGET,
+    { seed: h.state.meta.seed });
+  assert.equal(record.storyTargetId, undefined, 'world records do not retain optional story dressing');
+  assert.equal(record.storyTargetRole, undefined);
   h.state.entities.delete(h.target.id);
-  h.state.entityList = h.state.entityList.filter((entity) => entity.id !== h.target.id);
-  h.state.entities.set(restored.id, restored);
-  h.state.entityList.push(restored);
+  h.state.entityList = h.state.entityList.filter(entity => entity !== h.target);
+  const worldOwner = Object.assign(Object.create(world), {
+    state: h.state, helpers: h.owner.helpers, bus: h.bus,
+  });
+  const restored = worldOwner._spawnFromDurableRecord(record, CHARON);
+  assert.ok(restored);
+  assert.notEqual(restored.id, h.target.id);
+  assert.equal(restored.data.storyTargetId, undefined);
+  assert.equal(restored.data.storyTargetRole, undefined);
+  assert.equal(restored.data.missionId, h.mission.id);
+  assert.equal(restored.data.missionTag, h.mission.id);
+  assert.equal(restored.data.identityKey, `mission:${h.mission.id}:0`);
   h.mission.targetEntityIds = [];
-  h.bus.emit('save:loaded', {});
-  assert.deepEqual(h.mission.targetEntityIds, [restored.id], 'real restore adoption rebinds the durable owned slot');
-  assert.equal(h.state.nav.waypoint.targetEntityId, restored.id);
-  assert.equal(h.state.nav.waypoint.stationId, null);
-  assert.deepEqual(hudPosition(h.state), restored.pos);
+  return restored;
+}
 
-  // A second, same-runtime-id occupant without the original durable/story identity cannot inherit it.
+test('real world-record rematerialization restores only the authenticated B2 mark and follows it through scan', () => {
+  const h = openElroyWrit();
+  const restored = rematerializeElroy(h);
+  h.bus.emit('save:loaded', {});
+  assert.deepEqual(h.mission.targetEntityIds, [restored.id]);
+  assert.equal(restored.data.storyTargetId, ELROY_ID);
+  assert.equal(restored.data.storyTargetRole, ELROY_ROLE);
+  assert.equal(h.state.nav.waypoint.targetEntityId, restored.id);
+  assert.equal(h.state.nav.waypoint.label, '47-A Signal');
+  assert.deepEqual(hudPosition(h.state), restored.pos);
+  checkMapIntent(h.state, h.mission, restored.pos);
+  const count = h.state.entities.size;
+  h.bus.emit('save:loaded', {});
+  assert.deepEqual(h.mission.targetEntityIds, [restored.id], 'duplicate restore does not duplicate the cast');
+  assert.equal(h.state.entities.size, count);
+  restored.pos.x += 137;
+  restored.pos.z -= 83;
+  assert.deepEqual(hudPosition(h.state), restored.pos);
+  checkMapIntent(h.state, h.mission, restored.pos);
+  h.player.pos = { x: restored.pos.x + 10, z: restored.pos.z + 10 };
+  h.state.player.targetId = restored.id;
+  h.bus.emit('scan:completed', { targetId: restored.id });
+  assert.equal(h.mission.params.investigationStage, 'identified');
+  assert.equal(h.state.nav.waypoint.label, 'Elroy');
+  assert.deepEqual(hudPosition(h.state), restored.pos);
+  checkMapIntent(h.state, h.mission, restored.pos);
   restored.data.storyTargetId = 'npc_someone_else';
-  h.owner._refreshTrackedMissionNav(h.mission);
+  h.bus.emit('save:loaded', {});
+  assert.equal(restored.data.storyTargetId, 'npc_someone_else');
   expectedSearchFix(h.state);
+});
+
+test('B2 restore does not overwrite conflicting story identity or dress a foreign durable slot', () => {
+  for (const [key, value] of [['storyTargetId', 'npc_someone_else'], ['storyTargetRole', 'foreign_role']]) {
+    const h = openElroyWrit(), restored = rematerializeElroy(h);
+    restored.data[key] = value;
+    h.bus.emit('save:loaded', {});
+    h.bus.emit('save:loaded', {});
+    assert.equal(restored.data[key], value);
+    expectedSearchFix(h.state);
+  }
+  for (const mutate of [
+    e => { e.data.identityKey = 'mission:foreign:0'; },
+    e => { e.data.worldRecordId = 'wr_foreign'; },
+    e => { e.data.missionTargetSlot = 1; },
+    e => { e.data.missionId = e.data.missionTag = 'foreign'; },
+  ]) {
+    const h = openElroyWrit(), restored = rematerializeElroy(h);
+    mutate(restored);
+    for (let attempt = 0; attempt < 3; attempt++) {
+      h.owner._adoptLiveMissionTargets(h.mission);
+      assert.equal(restored.data.storyTargetId, undefined);
+      assert.equal(restored.data.storyTargetRole, undefined);
+      h.owner._refreshTrackedMissionNav(h.mission);
+      expectedSearchFix(h.state);
+    }
+  }
+
+  // A canonical record with one stale owner tag is not a foreign record. The existing
+  // writer first repairs that tag; only a subsequent authenticated pass restores dressing.
+  const h = openElroyWrit(), restored = rematerializeElroy(h);
+  restored.data.missionTag = 'stale-owner';
+  h.owner._adoptLiveMissionTargets(h.mission);
+  assert.equal(restored.data.missionTag, h.mission.id);
+  assert.equal(restored.data.storyTargetId, undefined);
+  h.owner._adoptLiveMissionTargets(h.mission);
+  assert.equal(restored.data.storyTargetId, 'npc_elroy');
+  assert.equal(restored.data.storyTargetRole, 'register_mark');
+  h.owner._refreshTrackedMissionNav(h.mission);
+  assert.equal(h.state.nav.waypoint.targetEntityId, restored.id);
 });
 
 test('Mission Log map anchors retain explicit destination/return stations when no stationless fix owns them', () => {
