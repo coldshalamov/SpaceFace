@@ -655,8 +655,8 @@ export function createContractsScreen(ctx) {
     if (!list.length) {
       mountDataState(boardEl, 'empty', {
         code: 'BOARD_EMPTY',
-        headline: 'No missions posted at this berth.',
-        fills: 'Boards fill when a station has cargo it cannot move itself. Try a mission desk or black-market contact at another berth.',
+        headline: 'The board is blank tonight.',
+        fills: 'This berth can move everything it owns. Desks with freight they cannot shift post at busier stations — or wait a shift; boards answer to whoever gets desperate.',
         verb: {
           label: 'Open the Chart',
           onActivate: () => openGalaxyMap(ctx, { focus: MAP_FOCUS.SYSTEM, source: 'contracts-empty' }),
@@ -1374,8 +1374,8 @@ export function createContractsScreen(ctx) {
       endHold();
       mountDataState(dossierEl, 'empty', {
         code: 'BRIEF_UNSELECTED',
-        headline: 'No mission selected.',
-        fills: 'Pick a job to open its briefing.',
+        headline: 'Nothing under seal yet.',
+        fills: 'The board only talks about what you point at. Pick a job to read its terms.',
         verb: {
           label: 'Open the Chart',
           onActivate: () => openGalaxyMap(ctx, { focus: MAP_FOCUS.SYSTEM, source: 'contracts-brief' }),

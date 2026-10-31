@@ -379,7 +379,7 @@ export function createBarScreen(ctx) {
         code: 'BAR_QUIET',
         compact: true,
         headline: 'Nobody in tonight.',
-        fills: 'Regulars drift in with the day shift at busier berths — or once a job makes you worth talking to.',
+        fills: 'The regulars arrive with the day shift. The ones worth talking to arrive after a job makes you worth the hello.',
         verb: {
           label: 'Open the Chart',
           onActivate: () => openGalaxyMap(ctx, { focus: MAP_FOCUS.SYSTEM, source: 'bar-empty' }),
@@ -413,7 +413,7 @@ export function createBarScreen(ctx) {
       mountDataState(stageEl, 'empty', {
         code: 'BAR_EMPTY',
         headline: 'The bar is empty tonight.',
-        fills: 'Whoever drinks at a port this thin is out working. A larger station keeps its regulars later.',
+        fills: 'Everyone who drinks at a port this thin is out earning. Busier stations keep their regulars past second bell.',
         verb: {
           label: 'Open the Chart',
           onActivate: () => openGalaxyMap(ctx, { focus: MAP_FOCUS.SYSTEM, source: 'bar-empty' }),

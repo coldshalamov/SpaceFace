@@ -1488,8 +1488,8 @@ export function createMarketScreen(ctx) {
         fills: lotGone
           ? 'The confirmation still names the lot you had. Choose a listed lot before anything else is traded.'
           : (mode === 'sell'
-            ? 'Buy cargo here or bring material back from mining before opening Sell.'
-            : 'This station has no tradable stock. Another berth may still quote.'),
+            ? 'An empty hold is an opinion the market already priced. Buy cargo here, or come back with something worth weighing.'
+            : 'Nothing here trades — no stock, no buyers, no board. Another berth still quotes.'),
         verb: lotGone
           ? {
             label: 'Show ' + next.def.name,
