@@ -144,6 +144,16 @@ ${RESULTS_PLATE(RP)}
 @media (max-width:700px) {
 ${RESULTS_PLATE(R)}
 }
+/* phone portrait (≤560 wide, ≥701 tall, 390×844): THE TAKE sat wholly under the docked ways-out at
+   scroll 0, so the run's verdict needed a scroll to find. The ring is already at its 90px floor and
+   the caption is placed from the ring, not the box, so the room comes from the caption's slack: the
+   dial rides up into the empty band above BOW, the weapon/bearing/layer line goes (the death line
+   right above the ring says the same words), and the reserve under the caption shrinks to match.
+   The heading and first line of THE TAKE now read above the foot; strip and legend unchanged. */
+@media (max-width:560px) and (min-height:701px) {
+  :is(${R}, ${RP}) > .sf-crres__dial { margin-top:-20px !important; margin-bottom:8px !important; }
+  :is(${R}, ${RP}) > .sf-crres__dial .orr-deathdial__detail { display:none; }
+}
 
 /* ≤600 tall desktop (960×540): the dial plus its full caption (killer, detail, vitals, the
    LAST 5 HITS strip and its legend) needs ~520px, which the full-width foot row would cut in
