@@ -42,7 +42,9 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.aftermath-aft-cockpit-section",
-    "expectedContentHash": "973cafd460092c0047c8aa78d99e5bde2381cbb2d913cc875072e564c3031587",
+    "expectedContentHash": "54b1cea50a3d168d7d6ac45b48d40be7168d4fb60b4b42bc0f1f299487397906",
+    "expectedRuntimeHash": "3afbf1ab0f65963cbefd41e3d9c69afac65cb3ebbfc9bdc0773f700ec37f65cb",
+    "flightStaticV3": true,
     "key": "aftermath-aft-cockpit-section",
     "metadataUrl": "assets/ships/release/render-packages/aftermath-aft-cockpit-section/render-package.json",
     "runtimeAssetId": "place_aftermath_aft_cockpit_section",

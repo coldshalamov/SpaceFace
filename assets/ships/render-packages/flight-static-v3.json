@@ -1,6 +1,7 @@
 {
   "schema": "spaceface.flightRenderPackagePilots.v1",
   "packages": [
-    "helios-trade-hub"
+    "helios-trade-hub",
+    "aftermath-aft-cockpit-section"
   ]
 }
