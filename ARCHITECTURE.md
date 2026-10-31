@@ -179,16 +179,15 @@ Two distinct quantities that specs conflated:
 - Screen shake moves only the 3D camera; the DOM HUD is immune and stays readable (relied upon by UI spec).
 
 ### 1.3 Boot sequence (`src/main.js`)
-1. Parse importmap, import `THREE`.
-2. Create `WebGLRenderer`, scene, the bloom render targets (VFX), append `#gl-canvas`.
-3. Construct the empty `GameState` (`src/core/gameState.js → createGameState()`), seeded with `meta.seed` (from `Date.now()` or a loaded save's seed).
-4. Build the **event bus** (`src/core/eventBus.js`).
-5. Resolve the simulation lane. By default the worker owns simulation and the main thread builds `src/runtime/presentationRegistry.js`; init is sent after the worker's listener-ready boot handshake. Explicit main mode and failed-worker startup asynchronously load the full browser `src/core/registry.js`. Each realm initializes its own manifest owners (`ctx = { state, bus, three, registry, helpers }`).
-6. UI mounts `#ui-root`, shows **Main Menu** (`state.mode='menu'`). No sim runs yet.
-7. On **New Game**: `SaveSystem.newGame(seed)` calls each system's `newGame()` → populates GameState → emits `game:started` → `world:requestJump`/`sector:enter` for the home sector → `state.mode='flight'`.
-   On **Continue/Load**: `SaveSystem.load(slot)` (see §4.5) → rebuild scene → `state.mode='flight'`.
-8. Start the **single `requestAnimationFrame` loop** (`src/core/loop.js`). The fixed-timestep accumulator drives sim; render runs every frame.
-9. AudioContext is created lazily on the first user gesture (autoplay policy); a one-time `pointerdown`/`keydown` listener calls `ctx.resume()`.
+1. The browser resolves the import map and loads `src/main.js`. Boot starts the model-truth census and localization, which must finish before state creation; the scenario-contract load overlaps that setup and is awaited before registry initialization.
+2. `boot()` creates the seeded `GameState`, applies persisted graphics settings, then creates the event bus, time effects, presenters, and shared startup helpers. The default state is `mode: 'menu'`.
+3. Boot resolves the simulation lane and creates its registry. In worker mode, the presentation registry is created on the main thread and boot waits for worker readiness before initializing the presentation owners; an unavailable worker falls back to the full browser registry on the main thread.
+4. `registry.initAsync()` initializes the selected registry owners in manifest order. The render owner creates the `WebGLRenderer`, scene, and canvas; VFX, audio, and UI initialize through that presentation lifecycle. In worker mode, simulation and save owners are already initialized in the worker.
+5. The UI owner mounts `#ui-root` and shows the Main Menu. Boot installs New Game, load, and menu-transition handlers while the initial menu time effect keeps gameplay paused.
+6. `main.js` starts the single `requestAnimationFrame` loop after registry initialization and transition wiring. It presents the menu immediately while the boot menu time effect holds simulation time at zero.
+7. On **New Game**, the `game:new` handler calls `startNewGame()` in `src/main.js`. It runs the new-game simulation bootstrap locally or through the worker lane, completes the authored-visual and physics readiness gates, then releases player control in flight. `SaveSystem` does not own `newGame()`.
+8. On **Continue/Load**, the UI emits `game:load` and the save owner restores the selected slot. The main simulation lane finalizes inside the restore flow; the worker lane finalizes from the bridged `save:loaded` event. Both wait for the authored-visual, opening-picture, and physics gates before releasing player control in flight (see §4.5).
+9. The audio owner initializes with the registry but creates its `AudioContext` lazily on the first unmuted `pointerdown` or `keydown`, when it can resume audio under the browser autoplay policy.
 
 ---
 

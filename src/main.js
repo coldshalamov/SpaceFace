@@ -234,6 +234,20 @@ async function boot() {
         });
       },
     });
+    // The shell's normal close waits for the existing exit-save owner and queued mirrors.
+    window.spacefaceShell?.onPrepareQuit?.(async () => {
+      const owner = ctx.registry?.get?.('save');
+      const result = owner?.prepareForQuit ? await owner.prepareForQuit() : { ok: false, reason: 'save-system-unavailable' };
+      if (result?.ok !== true) return result;
+      const achievements = ctx.achievements;
+      let achievementResult;
+      try {
+        achievementResult = achievements?.prepareForQuit ? await achievements.prepareForQuit() : { ok: true };
+        return achievementResult;
+      } finally {
+        if (achievementResult?.ok !== true) await owner.cancelPreparedQuit?.();
+      }
+    });
     SF_DEBUG_ONLY: if (SF_DEBUG) window.__SF_BOOT_INIT__ = bootInitMetrics;
     // Kick SG-02 backend bring-up the moment the saved envelope decodes: the whole chunked
     // restore then overlaps WASM boot instead of the D26 gate waiting on a cold start.

@@ -10,6 +10,8 @@ export function createPlayerTruthImpulseObserver({ getState, getBus = () => null
   function detachImpulse() {
     session?.unsubscribe?.();
     if (session) session.unsubscribe = null;
+    session?.spawnUnsubscribe?.();
+    if (session) session.spawnUnsubscribe = null;
   }
   function dispose() {
     detachImpulse();
@@ -46,7 +48,10 @@ export function createPlayerTruthImpulseObserver({ getState, getBus = () => null
     // ran), a lifecycle change must reject it rather than relabel it as another run's proof.
     if (capture.started || capture.receiptCount || capture.pendingReceiptCount || capture.invalidCount || capture.overflow) {
       invalidate(`boundary:${name}`);
-    } else if (getState() === session.state) bindEpoch();
+    } else if (getState() === session.state) {
+      session.collector.clearLineage();
+      bindEpoch();
+    }
     else invalidate('authoritative-state-replaced');
   }
   function staleResult() {
@@ -70,6 +75,7 @@ export function createPlayerTruthImpulseObserver({ getState, getBus = () => null
         if (!validSession()) return;
         if (state.entities?.get(observation?.entity?.id) !== observation?.entity) return;
         if (!Number.isSafeInteger(observation?.tick) || observation.tick < session.tickFloor || observation.tick > state.tick) return;
+        collector.recordLineage(observation.entity, observation.tick, 'first-seen', observation.before);
         let delivered = observation;
         if (observation?.kind === 'field' && typeof getFields === 'function') {
           const evidenceField = observation.provenance?.field;
@@ -112,6 +118,16 @@ export function createPlayerTruthImpulseObserver({ getState, getBus = () => null
       if (bus?.on) for (const name of BOUNDARIES) {
         const off = bus.on(name, () => boundary(name));
         if (typeof off === 'function') session.lifecycleUnsubs.push(off);
+      }
+      if (bus?.on) {
+        const off = bus.on('entity:spawned', payload => {
+          if (!validSession()) return;
+          const entity = payload?.entity;
+          if (!entity || state.entities?.get(payload?.id) !== entity
+            || payload?.id !== entity.id || payload?.type !== entity.type) return;
+          collector.recordLineage(entity, state.tick, 'spawn', entity.vel);
+        });
+        if (typeof off === 'function') session.spawnUnsubscribe = off;
       }
       const limits = collector.snapshot();
       return { ok: true, status: 'armed', readOnly: true, installedTick: state.tick,

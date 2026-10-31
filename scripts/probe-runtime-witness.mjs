@@ -27,6 +27,8 @@ import {
   formatRuntimeWitnessProductionMatrix,
   productionRouteById,
   summarizeRuntimeWitnessProductionWindow,
+  installStartupRouteMarks,
+  alignStartupRouteMarks,
 } from './lib/runtimeWitnessProductionMatrix.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
@@ -75,7 +77,8 @@ const ALLOC_PROBE_BOOT = process.argv.includes('--alloc-probe-boot');
 // with scene submission replaced by a constant clear, so they are CPU work outside the frame
 // callback (timers, message handlers, decode, GC). A sampled CPU profile over the flight window
 // attributes that time per function and per file; the raw profile opens in DevTools.
-const CPU_PROFILE = process.argv.includes('--cpu-profile');
+const CPU_PROFILE_FROM_LAUNCH = process.argv.includes('--cpu-profile-from-launch');
+const CPU_PROFILE = process.argv.includes('--cpu-profile') || CPU_PROFILE_FROM_LAUNCH;
 // Exercise the reported failure using the normal nearest-latch, turn, winch and cut controls.
 // This is a diagnostic input route; it never spawns or teleports bodies or edits simulation state.
 const TETHER_BOOST_STRESS = process.argv.includes('--tether-boost-stress');
@@ -98,6 +101,9 @@ if (PRODUCTION_ROUTE_ID && !PRODUCTION_ROUTE) {
 }
 if (CONTINUE_ROUTE && PRODUCTION_CRUCIBLE_ROUTE) {
   throw new Error('--continue cannot be combined with Crucible production routes');
+}
+if (CPU_PROFILE_FROM_LAUNCH && (CONTINUE_ROUTE || PRODUCTION_CRUCIBLE_ROUTE)) {
+  throw new Error('--cpu-profile-from-launch requires the public New Game Adventure route');
 }
 const productionSourcePaths = PRODUCTION_ROUTE ? await listSrcJsSourcePaths(ROOT) : [];
 const productionSourceDigest = PRODUCTION_ROUTE ? await digestSourcePaths(ROOT, productionSourcePaths) : null;
@@ -209,6 +215,8 @@ function summarizeCpuProfile(profile) {
   return { totalMs: Math.round(totalUs / 1000), topSelf: top(bySite, 'site'), topFiles: top(byFile, 'file') };
 }
 let allocCdp = null;
+let cpuCdp = null;
+let startupRouteMarks = null;
 let finalHitchAttribution = null;
 let finalRenderWork = null;
 let finalSystemTiming = null;
@@ -695,6 +703,7 @@ async function installLoadingReadinessWitness(targetPage) {
         const wallMs = Date.now();
         trace.events.push({
           wallMs,
+          performanceAtMs: performance.now(),
           elapsedMs: wallMs - startedWallMs,
           id: String(payload.id || ''),
           progress: Number(payload.progress) || 0,
@@ -2385,6 +2394,7 @@ function readWitnessInPage() {
     const lastProgress = loadingTrace.events[loadingTrace.events.length - 1] || null;
     sample.loadingReadiness = {
       wallMs: Date.now(),
+      performanceAtMs: performance.now(),
       elapsedMs: Date.now() - loadingTrace.startedWallMs,
       stageId: lastProgress?.id || null,
       authored: authored ? {
@@ -2565,6 +2575,13 @@ async function installProductionMatrixRecorder(targetPage) {
           && Number.isFinite(sample.inputToPhotonMs) && sample.inputToPhotonMs >= 0) {
           inputToPresentMs = sample.inputToPhotonMs;
           trace.lastCapturedInputStamp = stamp;
+        }
+        const marks = window.__SF_STARTUP_ROUTE_MARKS__;
+        if (marks?.publicInput && !marks.inputPresented && Number.isFinite(stamp)
+          && stamp >= marks.publicInput.atMs && Number.isFinite(sample.inputToPhotonMs)
+          && sample.inputToPhotonMs >= 0 && state?.mode === 'flight') {
+          marks.inputPresented = { atMs: performance.now(), inputStampMs: stamp,
+            inputToPresentMs: sample.inputToPhotonMs, observation: 'first observed presented input; upper bound' };
         }
         trace.samples.push({
           elapsedMs: Math.max(0, now - trace.startedAt),
@@ -3158,8 +3175,39 @@ async function waitUntilFlight(targetPage, routeLabel, timeoutMs = 120_000) {
 }
 
 async function launchUntilFlight(targetPage, timeoutMs = 120_000) {
+  if (CPU_PROFILE_FROM_LAUNCH) await startCpuProfile(targetPage, 'before Launch');
   await targetPage.getByRole('button', { name: /^Launch$/i }).click({ timeout: 30_000 });
   return waitUntilFlight(targetPage, 'New Game', timeoutMs);
+}
+
+async function startCpuProfile(targetPage, label) {
+  try {
+    cpuCdp = await targetPage.context().newCDPSession(targetPage);
+    await cpuCdp.send('Profiler.enable');
+    await cpuCdp.send('Profiler.setSamplingInterval', { interval: 250 });
+    await cpuCdp.send('Profiler.start');
+    log(`cpu-profile: sampling started ${label}`);
+  } catch (error) {
+    cpuCdp = null;
+    log(`cpu-profile: start unavailable (${error && error.message})`);
+  }
+}
+
+async function stopCpuProfile() {
+  if (!cpuCdp) return;
+  const session = cpuCdp;
+  cpuCdp = null;
+  try {
+    const { profile } = await session.send('Profiler.stop');
+    await writeFile(path.join(OUT, CPU_PROFILE_FROM_LAUNCH ? 'startup-flight.cpuprofile' : 'flight.cpuprofile'), JSON.stringify(profile));
+    cpuProfile = summarizeCpuProfile(profile);
+    cpuProfile.window = CPU_PROFILE_FROM_LAUNCH ? 'before-launch-through-flight' : 'flight';
+    log(`cpu-profile: ${cpuProfile.totalMs} ms sampled; window ${cpuProfile.window}`);
+    for (const row of cpuProfile.topSelf.slice(0, 25)) log(`  self ${row.ms} ms  ${row.site}`);
+    for (const row of cpuProfile.topFiles.slice(0, 15)) log(`  file ${row.ms} ms  ${row.file}`);
+  } catch (error) {
+    log(`cpu-profile: stop failed (${error && error.message})`);
+  }
 }
 
 function readContinueSaveSnapshot() {
@@ -3345,6 +3393,7 @@ try {
   } else {
     log(PRODUCTION_CRUCIBLE_ROUTE ? 'Crucible Swarm' : 'new game');
     await installLoadingReadinessWitness(page);
+    if (!PRODUCTION_CRUCIBLE_ROUTE) await page.evaluate(installStartupRouteMarks);
     if (OPENING_FIRST_TOUCH_OWNER_DIAGNOSTIC) {
       openingFirstTouchOwner = await installOpeningFirstTouchOwnerWitness(page);
       if (openingFirstTouchOwner?.hooks?.openingInstalled !== true) {
@@ -3665,19 +3714,7 @@ try {
       log(`alloc-probe: startSampling unavailable (${error && error.message})`);
     }
   }
-  let cpuCdp = null;
-  if (CPU_PROFILE) {
-    try {
-      cpuCdp = await page.context().newCDPSession(page);
-      await cpuCdp.send('Profiler.enable');
-      await cpuCdp.send('Profiler.setSamplingInterval', { interval: 250 });
-      await cpuCdp.send('Profiler.start');
-      log('cpu-profile: sampling started');
-    } catch (error) {
-      cpuCdp = null;
-      log(`cpu-profile: start unavailable (${error && error.message})`);
-    }
-  }
+  if (CPU_PROFILE && !CPU_PROFILE_FROM_LAUNCH) await startCpuProfile(page, 'in flight');
   let traceCdp = null;
   const traceEvents = [];
   if (TIMELINE_TRACE) {
@@ -3839,18 +3876,7 @@ try {
       log(`timeline-trace: end failed (${error && error.message})`);
     }
   }
-  if (cpuCdp) {
-    try {
-      const { profile } = await cpuCdp.send('Profiler.stop');
-      await writeFile(path.join(OUT, 'flight.cpuprofile'), JSON.stringify(profile));
-      cpuProfile = summarizeCpuProfile(profile);
-      log(`cpu-profile: ${cpuProfile.totalMs} ms sampled; wrote flight.cpuprofile`);
-      for (const row of cpuProfile.topSelf.slice(0, 25)) log(`  self ${row.ms} ms  ${row.site}`);
-      for (const row of cpuProfile.topFiles.slice(0, 15)) log(`  file ${row.ms} ms  ${row.file}`);
-    } catch (error) {
-      log(`cpu-profile: stop failed (${error && error.message})`);
-    }
-  }
+  await stopCpuProfile();
   if (GC_PROBE) {
     const before = await page.evaluate(() => {
       const m = performance.memory;
@@ -3922,6 +3948,8 @@ try {
   primaryError = error;
   log(`probe failed: ${error && error.stack ? error.stack : error}`);
 } finally {
+  if (page && !page.isClosed()) startupRouteMarks = await page.evaluate(() => window.__SF_STARTUP_ROUTE_MARKS__ || null).catch(() => null);
+  await stopCpuProfile();
   if (productionRecorder?.installed === true && page && !page.isClosed()) {
     try { productionRecorder = await stopProductionMatrixRecorder(page); }
     catch (error) { log(`production recorder cleanup failed: ${error.message || error}`); }
@@ -4186,6 +4214,7 @@ const report = {
     events: loadingProgressEvents,
     samples: loadingReadinessSamples,
   },
+  startupRoute: alignStartupRouteMarks(startupRouteMarks, loadingProgressEvents, loadingReadinessSamples),
   openingRenderWork,
   openingFirstTouchOwner,
   openingExactOwnerTouch,

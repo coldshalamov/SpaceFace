@@ -18,7 +18,7 @@ import { createUiInput } from './input.js';
 import { isConfirmOpen, bindConfirmBus } from './confirm.js';
 import { setPromptScheme, setPromptBindings } from './controlPrompts.js';
 import { resolveActionLabel } from '../systems/input.js';
-import { injectHudCss } from './views/hudStyles.js';
+import { ensureHudStylesheet } from './views/hudStylesheet.js';
 import { isHostileToPlayer, isWreckLike, SCANNER_CONTACT_RANGE } from '../systems/scanner.js';
 import { targetDisplayName } from './targetPanel.js';
 import { postTaskAtBackgroundPriorityBounded } from '../core/backgroundPost.js';
@@ -54,6 +54,7 @@ import { ACQUISITION_PROTOTYPE, createAcquisitionTracker, resetAcquisitionTracke
 import { flightCursorMode, installNativeFlightCursor } from './flightCursor.js';
 import { saveErrorText, saveSlotLabel, shouldToastSaveError } from './saveFeedback.js';
 import { installWindowTitle, readWindowTitleView } from './windowTitle.js';
+import { installStationExitGate } from './station/stationHubModel.js';
 
 export { saveErrorText };
 
@@ -150,16 +151,13 @@ import { createComms } from './comms.js';
 import { mountNemesisComms } from './nemesisComms.js';
 import { createWingmanRadial } from './wingmanRadial.js';
 import { firstBootScreenId, shouldAskMotionPreference } from './accessibility.js';
-import { restoredDefeatIntent } from './screens/gameOver.js';
+import { restoredDefeatIntent } from './sim/restoredDefeatIntent.js';
 
 // id-of-export → { load, export }. Order matters only for nicer console logs.
 // Use literal dynamic-import call sites, not import(path): esbuild can rewrite these to bundled
 // chunks. A runtime string import works in the raw dev server but becomes /screens/*.js 404s in
 // build/web, which strands packaged players in an empty HUD before the menu registers.
 const SCREEN_MODULES = [
-  // Docked station: the "Orbital Command" rebuild (src/ui/station/). The adapter re-exports
-  // installStationExitGate; shared helpers live in src/ui/station/.
-  { path: './station/stationScreen.js', load: () => import('./station/stationScreen.js'), name: 'stationScreen' },
   // REVAMP 2.1 — one zoomable galaxy map (supersedes starmap+localmap once BP-03 parity passes). Lives in src/ui/, not screens/.
   { path: './galaxyMap.js', load: () => import('./galaxyMap.js'), name: 'galaxyMapScreen' },
   // THE SHIP (frontend program §11.3 / SCREENS_B): the promoted shipworks stage, one shared
@@ -208,9 +206,19 @@ const SCREEN_MODULES = [
   { path: './screens/physicsVenues.js', load: () => import('./screens/physicsVenues.js'), name: 'physicsVenuesScreen' },
 ];
 
-// Title / pause / death must win the first parse wave. Galaxy map, station, and shipworks
-// are huge modules; starting them in the same microtask as mainMenu freezes the loading
-// terminal. They still register before first dock/map use via the deferred wave below.
+// The station hub is requested only after a committed dock or Continue-docked restore. Keep its
+// literal dynamic import for bundled output, but outside the automatic registration waves so its
+// screen-only closure is fetched when the ordinary dock route actually needs it.
+// Its adapter re-exports installStationExitGate; the shared helpers remain in src/ui/station/.
+const STATION_SCREEN_MODULE = {
+  path: './station/stationScreen.js',
+  load: () => import('./station/stationScreen.js'),
+  name: 'stationScreen',
+};
+
+// Title / pause / death must win the first parse wave. Galaxy map and shipworks are huge modules;
+// starting them in the same microtask as mainMenu freezes the loading terminal. They register in
+// the deferred wave below. The station hub is loaded separately on its first committed dock.
 const BOOT_SCREEN_EXPORTS = new Set([
   'mainMenuScreen', 'motionAskScreen', 'newGameScreen', 'pauseScreen', 'gameOverScreen',
   'settingsScreen', 'saveLoadScreen', 'helpScreen', 'creditsScreen',
@@ -667,9 +675,13 @@ export const ui = {
     this.ctx = ctx;
     this.state = ctx.state;
     this.bus = ctx.bus;
+    // Keep undock interception live while the screen-only station app is still loading. The
+    // shared model module is already in the flight UI dependency graph; this does not import
+    // stationScreen/stationApp or their screen-only closure.
+    try { installStationExitGate(ctx); } catch (e) { console.error('[ui] station exit gate', e); }
     this.helpers = ctx.helpers;
 
-    injectHudCss();
+    ensureHudStylesheet();
     // The frontend kit (design/frontend/direction/KIT_SPEC.md §5, §8, §11.1): one sound binding
     // onto the existing audio:cue bus and one temperature binding that sets html[data-k-temp]
     // from the game's state. A screen never sets either itself.
@@ -719,6 +731,7 @@ export const ui = {
     ctx.screens = this.screenManager;
     this._screenRegistrationCycle = beginScreenRegistrationCycle(this, this.screenManager);
     this._screenPrewarmQueue = [];
+    this._stationScreenRegistration = null;
 
     // J5 "everything is a link": ONE delegated handler on #screens turns every [data-entity] into a
     // door onto that entity's dossier. Mounted after the screen manager because it reads which
@@ -1543,6 +1556,9 @@ export const ui = {
           finish();
         }, 50); // brief hold at full dark before fading back
       }, () => hideDockFade('dock')); // matches the CSS transition duration
+      // Start the screen-only module load under the dock veil. Phase 2 still owns the public open;
+      // its retry preserves the first dock intent if the import is slower than the ceremony.
+      if (screenPushRequestIsLive(this, 'station')) this._ensureStationScreenRegistered();
     });
     // Docked undock transition. Bare dock:undocked while docked is gated by installStationExitGate
     // (stationHub) into station:exitRequest; only committed undocks reach combat/save/this handler.
@@ -1703,7 +1719,7 @@ export const ui = {
     return !!(run && run.kind === 'survival' && run.phase !== 'inactive');
   },
 
-  // Dynamically import + register every screen; a missing/throwing module is logged and skipped.
+  // Dynamically import + register the automatic screen waves; station is demand-loaded at dock.
   registerScreens() {
     const registrationCycle = this._screenRegistrationCycle;
     const registerOne = ({ path, load, name }) => load()
@@ -1713,10 +1729,6 @@ export const ui = {
         if (!def || !def.id) { console.warn(`[ui] screen "${name}" missing valid export`); return; }
         try { this.screenManager.register(def); }
         catch (err) { console.error(`[ui] register("${def.id}") failed:`, err); return; }
-        // Station exit bus-gate must be live as soon as the hub module loads (before first dock).
-        if (def.id === 'station' && typeof mod.installStationExitGate === 'function') {
-          try { mod.installStationExitGate(this.ctx); } catch (e) { console.error('[ui] station exit gate', e); }
-        }
         if (!this._registeredScreens) this._registeredScreens = new Set();
         this._registeredScreens.add(def.id);
         // Mount + paint-warm on the serialized drain — one screen per yielded frame, in
@@ -1738,14 +1750,18 @@ export const ui = {
           try { if (this._showMainMenuWhenReady) this._showMainMenuWhenReady(); }
           catch (e) { console.error(e); }
         }
-        // if docked already but the station hub registered late, open it
+        // A docked arrival may have requested this module while the dock veil was running. Warm
+        // its owner-scheduled mount before the deferred first open; the pending screen retry still
+        // owns the public action and survives a slower import.
         if (def.id === 'station' && isDockedStationState(this.state)
           && this.state.mode !== 'menu' && this.state.mode !== 'loading'
           && this.screenManager.top() !== 'station') {
+          try { this._warmScreen('station'); } catch (e) { console.error(e); }
           try { this.screenManager.pushScreen('station'); } catch (e) { console.error(e); }
         }
       })
       .catch((err) => { console.warn(`[ui] screen module "${path}" unavailable:`, err && err.message ? err.message : err); });
+    this._registerScreenEntry = registerOne;
 
     const boot = [];
     const rest = [];
@@ -1884,6 +1900,9 @@ export const ui = {
         try { screenManager.pushScreen(id); } catch (e) { console.error(`[ui] open ${id}`, e); }
         return;
       }
+      if (id === 'station' && typeof this._ensureStationScreenRegistered === 'function') {
+        this._ensureStationScreenRegistered();
+      }
       if (attempts > maxAttempts) { finish(); console.warn(`[ui] ${id} screen never registered`); return; }
       request.timerId = setTimeout(() => {
         request.timerId = null;
@@ -1892,6 +1911,36 @@ export const ui = {
     };
     tryOpen(0);
     return request.token;
+  },
+
+  _ensureStationScreenRegistered() {
+    const registrationCycle = this._screenRegistrationCycle;
+    if (this._registeredScreens && this._registeredScreens.has('station')) return Promise.resolve(true);
+    if (!isScreenRegistrationCycleCurrent(registrationCycle)
+      || typeof this._registerScreenEntry !== 'function') return Promise.resolve(false);
+    const generation = registrationCycle.generation;
+    const existing = this._stationScreenRegistration;
+    if (existing && existing.generation === generation) return existing.promise;
+    const record = { generation, promise: null };
+    const clearFailedRegistration = () => {
+      if (this._stationScreenRegistration !== record
+        || this._screenRegistrationCycle !== registrationCycle
+        || !isScreenRegistrationCycleCurrent(registrationCycle)
+        || registrationCycle.generation !== generation
+        || (this._registeredScreens && this._registeredScreens.has('station'))) return;
+      this._stationScreenRegistration = null;
+    };
+    record.promise = Promise.resolve()
+      .then(() => this._registerScreenEntry(STATION_SCREEN_MODULE))
+      .then((value) => {
+        clearFailedRegistration();
+        return value;
+      }, (error) => {
+        clearFailedRegistration();
+        throw error;
+      });
+    this._stationScreenRegistration = record;
+    return record.promise;
   },
 
   // Per-render-frame cheap HUD path (§5.5). The expensive HUD paint/update path only runs when
@@ -1986,6 +2035,8 @@ export const ui = {
     invalidateScreenRegistrationCycle(this);
     this._screenRegistrationCycle = null;
     this._screenRegistrationSettledGeneration = null;
+    this._stationScreenRegistration = null;
+    this._registerScreenEntry = null;
     if (this.input && typeof this.input.dispose === 'function') this.input.dispose();
     this.input = null;
     if (this.worldObject && typeof this.worldObject.destroy === 'function') this.worldObject.destroy();

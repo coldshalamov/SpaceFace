@@ -6,7 +6,7 @@ import { readFileSync } from 'node:fs';
 import {
   CLS, VIS, E, checkLodChurn, regradeLodChurn, checkPlayerShip, checkPopping, checkRoundResolution, checkKillsBeforeInput,
   checkSpawnMotion, checkPlayerControl, checkTumble, checkVfx, checkLoadout, checkFrameTime, checkReadability, overall,
-  isLoadingAssetState, gradeSoftwareFrameTime, frameLoadNoise, checkOffscreenMarker, edgeMarkerSide, probeDead,
+  isLoadingAssetState, gradeSoftwareFrameTime, frameLoadNoise, checkOffscreenMarker, edgeMarkerSide, probeDead, pinnedSpans,
 } from '../scripts/player-truth/checks.mjs';
 import { classifyEntity } from '../src/testing/playerTruth/reader.js';
 import { auditItems, classifyArmoryArrival, formatArmoryMiss, formatSwarmTutorialMiss, SWARM_TUTORIAL_MISS, ARMORY_WORLD_GRACE_MS, classifyPreparationScreen, notePreparationWait, waitForPreparationLaunch, PREPARATION_UNEXPECTED_MS } from '../scripts/player-truth/routes.mjs';
@@ -213,6 +213,27 @@ test('thrust pin detection counts travelled path across a reversal, while a stat
   const dead = probeDead({ samples: samples.map((s) => ({ ...s, p: { ...s.p, x: 0, z: 0 } })) }, pinned);
   assert.equal(dead.dead, true);
   assert.match(dead.why, /pinned|moved/);
+});
+
+test('pinned-span travel integrates irregular samples across late acceleration', () => {
+  const accelerating = [
+    { sim: 59.067, p: { x: -1739.14, z: -3101.57, vx: 0, vz: 0 } },
+    { sim: 59.333, p: { x: -1739.14, z: -3101.57, vx: 0, vz: 0 } },
+    { sim: 59.4, p: { x: -1739.9, z: -3101.33, vx: -22.47, vz: 6.63 } },
+    { sim: 60.067, p: { x: -1735.85, z: -3112.27, vx: 55.81, vz: -85.27 } },
+  ];
+  assert.deepEqual(pinnedSpans({ samples: accelerating }, accelerating), [],
+    'late acceleration is not treated as the final speed held across the full sample interval');
+
+  const stationary = [
+    { sim: 0, p: { x: 0, z: 0, vx: 100, vz: 0 } },
+    { sim: 0.5, p: { x: 0, z: 0, vx: 100, vz: 0 } },
+    { sim: 1, p: { x: 0, z: 0, vx: 100, vz: 0 } },
+  ];
+  const pin = pinnedSpans({ samples: stationary }, stationary);
+  assert.equal(pin.length, 1, 'a sustained velocity with no traveled path remains a pin');
+  assert.equal(pin[0].expect, 100);
+  assert.equal(pin[0].path, 0);
 });
 
 test('yaw measures an observed turn even when a full revolution returns to the starting heading', () => {

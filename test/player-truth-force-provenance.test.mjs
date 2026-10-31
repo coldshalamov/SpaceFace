@@ -28,6 +28,10 @@ test('production-host observer reads and validates a live environmental field so
     const installed = observer({ action: 'install', maxReceipts: 256, maxTicks: 120 });
     assert.equal(installed.ok, true);
     assert.equal(installed.status, 'armed');
+    const bornWhileObserved = api.host.sim.spawn({ type: 'wreck', pos: { x: 20, z: 0 },
+      vel: { x: 3, z: -4 }, radius: 4, mass: 12, hull: 20, hullMax: 20,
+      data: { persistenceOwner: 'aftermathWrecks', markerId: 'marker-7' } });
+    assert.ok(bornWhileObserved);
     const deliveryTick = state.tick;
     observeAppliedImpulse(entity, { x: 0, z: 0 }, { x: 10, z: 0 }, {
       actorId: null, tag: 'field_well', field: { id: field.id, ownerId: null,
@@ -46,6 +50,17 @@ test('production-host observer reads and validates a live environmental field so
     assert.equal(capture.receipts[0].fieldId, field.id);
     assert.equal(capture.receipts[0].fieldSourceTag, 'environmental');
     assert.equal(capture.receipts[0].fieldSourceKind, 'well');
+    const firstSeenLineage = capture.lineage.find(entry => entry.rawEntityId === entity.id
+      && entry.occupantGeneration === entity.occupantGeneration);
+    assert.equal(firstSeenLineage['first-seen'].tick, deliveryTick);
+    assert.deepEqual(firstSeenLineage['first-seen'].velocityAtFirstSeen, { x: 0, z: 0 });
+    const spawnedLineage = capture.lineage.find(entry => entry.rawEntityId === bornWhileObserved.id
+      && entry.occupantGeneration === bornWhileObserved.occupantGeneration);
+    assert.equal(spawnedLineage.spawn.type, 'wreck');
+    assert.equal(spawnedLineage.spawn.tick, deliveryTick);
+    assert.deepEqual(spawnedLineage.spawn.velocityAtEvent, { x: 3, z: -4 });
+    assert.equal(spawnedLineage.spawn.tags.persistenceOwner, 'aftermathWrecks');
+    assert.equal(spawnedLineage.spawn.tags.markerId, 'marker-7');
 
     const nextWave = observer({ action: 'install', maxReceipts: 256, maxTicks: 20,
       maxSeriesPoints: 5120 });
@@ -66,6 +81,51 @@ test('production-host observer reads and validates a live environmental field so
   } finally {
     api.shutdown();
   }
+});
+
+test('opt-in lineage keeps reused raw entity ids attached to separate occupant lives', () => {
+  const collector = createBoundedImpulseReceiptCollector({ maxLineage: 4 });
+  collector.arm();
+  const earlier = { id: 519, occupantGeneration: 64, type: 'wreck',
+    vel: { x: 2, z: 3 }, data: { persistenceOwner: 'aftermathWrecks', markerId: 'old-marker',
+      aftermath: { victimId: 38 } } };
+  const current = { id: 519, occupantGeneration: 161, type: 'wreck',
+    vel: { x: 15.03, z: -86.32 }, data: { collisionTearOff: true, collisionTearOffOf: 42 } };
+  assert.equal(collector.recordLineage(earlier, 1, 'spawn'), true);
+  assert.equal(collector.recordLineage(current, 186, 'spawn'), true);
+  current.vel = { x: 20.41, z: -90.85 };
+  current.data.runCohort = 'survival';
+  assert.equal(collector.recordLineage(current, 190, 'first-seen', current.vel), true);
+  current.data.runWave = 9;
+  assert.equal(collector.recordLineage(current, 191, 'first-seen', current.vel), false,
+    'later impulses do not rewrite the first-seen snapshot');
+  const capture = mapImpulseReceiptIdentities(collector.snapshot(), (id, generation) => (
+    id === 519 ? `life-${generation}` : null
+  ));
+  assert.equal(capture.lineageOverflow, false);
+  assert.deepEqual(capture.lineage.map(({ rawEntityId, occupantGeneration, readerLifeId }) => (
+    [rawEntityId, occupantGeneration, readerLifeId]
+  )), [[519, 64, 'life-64'], [519, 161, 'life-161']]);
+  assert.equal(capture.lineage[0].spawn.tags.markerId, 'old-marker');
+  assert.equal(capture.lineage[0].spawn.tags.aftermathParentId, 38);
+  assert.equal(capture.lineage[1].spawn.tags.collisionTearOffOf, 42);
+  assert.equal(capture.lineage[1].spawn.tags.runCohort, undefined,
+    'birth evidence remains the original spawn-event snapshot');
+  assert.equal(capture.lineage[1]['first-seen'].tags.runCohort, 'survival',
+    'first-seen evidence can capture tags attached after spawn');
+  assert.equal(capture.lineage[1]['first-seen'].tags.runWave, undefined);
+  assert.deepEqual(capture.lineage[1].spawn.velocityAtEvent, { x: 15.03, z: -86.32 });
+  assert.deepEqual(capture.lineage[1]['first-seen'].velocityAtFirstSeen, { x: 20.41, z: -90.85 });
+  assert.equal(capture.lineage[1].spawn.tick, 186);
+  assert.equal(capture.lineage[1]['first-seen'].tick, 190);
+  collector.clearLineage();
+  assert.equal(collector.snapshot().lineageCount, 0, 'a clean lifecycle boundary cannot alias prior-run lives');
+
+  const bounded = createBoundedImpulseReceiptCollector({ maxLineage: 1 });
+  bounded.arm();
+  assert.equal(bounded.recordLineage(earlier, 1, 'spawn'), true);
+  assert.equal(bounded.recordLineage(current, 2, 'spawn'), false);
+  assert.equal(bounded.snapshot().lineageOverflow, true);
 });
 
 const observation = ({ id = 35, generation = 7, tick, delta = 10, mode = 'flight', field = {} } = {}) => ({

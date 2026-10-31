@@ -5,8 +5,8 @@ import * as THREE from 'three';
 import { createTimeEffects } from '../src/core/timeEffects.js';
 import { prepareAuthoredVisualPipelines, isInitialAuthoredCompositionEntity } from '../src/render/partsLibrary.js';
 import { openingLoadPolicy } from '../src/render/openingLoadPolicy.js';
-import { openingPreparedLeafKey, openingAdmissionSubjects, applyFirstPlayablePaintRelease, releaseOpeningGraphPublication,
-  enqueueMissingMeshBuildsSteps, preparePipelineSubjectResidency, render as renderSystem } from '../src/render/renderer.js';
+import { applyFirstPlayablePaintRelease, releaseOpeningGraphPublication, enqueueMissingMeshBuildsSteps, preparePipelineSubjectResidency, render as renderSystem } from '../src/render/renderer.js';
+import { openingPreparedLeafKey, openingAdmissionSubjects } from '../src/render/runtime/openingAdmissionPlanning.js';
 import { admitOpeningUnitsAcrossSlices, touchSubjectOnExactTarget } from '../src/render/openingGpuAdmission.js';
 import { collectFirstFlightLayerDrawables } from '../src/render/latePipelineAdmission.js';
 import { revealSubjectForCompile, revealSubjectWithAncestors } from '../src/render/compilePresentSlice.js';

@@ -1070,7 +1070,7 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
     });
     // Paused saves finish on later task turns, after the command's tick reply. Their real
     // bytes and terminal event need a transport wake even when no sim timer is running.
-    if (type === 'save:completed' || type === 'save:error') onAsyncSaveReady?.();
+    if (type === 'save:completed' || type === 'save:error' || type === 'save:durabilitySettled') onAsyncSaveReady?.();
   }
 
   function installBridgeCapture(bus, captureAll) {
@@ -1273,7 +1273,40 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
       ['saveWrite', (args) => {
         const s = registry.get('save');
         if (!s || typeof s.save !== 'function') return { ok: false, reason: 'save-system-unavailable' };
-        return { ok: true, result: s.save((args && args.name) || undefined) };
+        const accepted = s.save((args && args.slot) || undefined);
+        if (!accepted) return { ok: false, reason: 'save-not-accepted' };
+        Promise.resolve(s._lastSaveDurability).then((ok) => host.bus.emit('save:durabilitySettled', {
+          token: args?.token, ok: ok === true, localSaved: true,
+        }), (error) => host.bus.emit('save:durabilitySettled', {
+          token: args?.token, ok: false, localSaved: true, reason: String(error?.message || error),
+        }));
+        return { ok: true, pending: true };
+      }],
+      ['saveDrain', (args) => {
+        const s = registry.get('save');
+        if (!s?.drainSharedStoreWrites) return { ok: false, reason: 'save-system-unavailable' };
+        Promise.resolve(s.drainSharedStoreWrites()).then((result) => host.bus.emit('save:durabilitySettled', {
+          token: args?.token, ok: result?.ok === true,
+        }), (error) => host.bus.emit('save:durabilitySettled', {
+          token: args?.token, ok: false, reason: String(error?.message || error),
+        }));
+        return { ok: true, pending: true };
+      }],
+      ['savePrepareQuit', (args) => {
+        const s = registry.get('save');
+        if (!s?.prepareForQuit) return { ok: false, reason: 'save-system-unavailable' };
+        Promise.resolve(s.prepareForQuit()).then((result) => host.bus.emit('save:durabilitySettled', {
+          token: args?.token, ok: result?.ok === true, reason: result?.reason || null,
+        }), (error) => host.bus.emit('save:durabilitySettled', {
+          token: args?.token, ok: false, reason: String(error?.message || error),
+        }));
+        return { ok: true, pending: true };
+      }],
+      ['saveCancelPreparedQuit', () => {
+        const s = registry.get('save');
+        if (!s?.cancelPreparedQuit) return { ok: false, reason: 'save-system-unavailable' };
+        s.cancelPreparedQuit();
+        return { ok: true };
       }],
       ['saveLoad', (args) => {
         const s = registry.get('save');

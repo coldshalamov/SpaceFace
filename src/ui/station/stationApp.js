@@ -1013,7 +1013,14 @@ export function createStationApp(rootEl, ctx, opts = {}) {
         if (!r) return { text: '—' };
         const title = [r.buttonLabel, r.detail, r.cost > 0 ? `${fmtCr(r.cost)} credits` : '']
           .filter(Boolean).join(' · ');
-        if (r.disabled) return { text: r.buttonLabel || 'OK', disabled: true, tone: 'gain', title, why: disabledServiceWhy(r) };
+        if (r.disabled) {
+          // a blocked verb names its block in a word or two ("Repair · no yard"), not its own
+          // button label again ("Repair · Repair Hull"); done-state facts keep their label
+          const why = disabledServiceWhy(r);
+          const chips = Array.isArray(r.chips) ? r.chips : [];
+          const block = why && (chips.find((c) => c && (c.kind === 'bad' || c.kind === 'warn')) || chips[0]);
+          return { text: (block && block.text) || r.buttonLabel || 'OK', disabled: true, tone: 'gain', title, why };
+        }
         const contents = type === 'ammo' && r.amount > 0 ? `${fmtCr(r.amount)} mun · ` : '';
         return { text: contents + fmtCr(r.cost) + ' cr', tone: 'warn', title };
       };

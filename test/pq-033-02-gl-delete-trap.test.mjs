@@ -198,9 +198,50 @@ test('the program-query trap still records only driver-rejected (null-result) qu
     globalThis.__verdict = 1;
     gl.getProgramParameter({}, 0x8B84);
   `);
-  const entries = runIn(context, 'globalThis.__SF_PROGRAM_QUERY_TRAP__.slice()');
+  const entries = JSON.parse(runIn(context, 'JSON.stringify(globalThis.__SF_PROGRAM_QUERY_TRAP__.slice())'));
   assert.equal(entries.length, 1, 'only the null verdict is a dead-program query');
   assert.equal(entries[0].count, 1);
+});
+
+test('error-only query diagnostics retain false-return observations with validity metadata', async () => {
+  const context = vm.createContext({ performance: { now: () => 7 } });
+  vm.runInContext(`
+    globalThis.__SF_BUFFER_RESIZE_DIAG__ = true;
+    globalThis.__nativeCalls = 0;
+    globalThis.WebGL2RenderingContext = class {
+      isContextLost() { return false; }
+      isProgram(program) { return program.valid === true; }
+      getProgramParameter(program, pname) {
+        globalThis.__nativeCalls++;
+        return false;
+      }
+    };
+    globalThis.WebGLRenderingContext = class {};
+  `, context);
+  await installGlTrapsOnLivePage(fakePage(context));
+  const nativeReturn = JSON.parse(runIn(context, `
+    const gl = new WebGL2RenderingContext();
+    const query = (program) => gl.getProgramParameter(program, 0x8B84);
+    const pending = query({ valid: true });
+    const invalid = query({ valid: false });
+    JSON.stringify([pending, invalid]);
+  `));
+  assert.deepEqual(nativeReturn, [false, false], 'the original native return values are preserved');
+  assert.equal(runIn(context, '__nativeCalls'), 2, 'both original native queries ran exactly once');
+  const entries = JSON.parse(runIn(context, 'JSON.stringify(globalThis.__SF_PROGRAM_QUERY_TRAP__.slice())'));
+  assert.equal(entries.length, 2, 'validity metadata keeps the pending and suspect observations distinct');
+  assert.deepEqual(entries.map((entry) => entry.isProgram).sort(), [false, true]);
+  for (const entry of entries) {
+    assert.equal(entry.lost, false);
+    assert.equal(entry.pname, 0x8B84);
+    assert.equal(entry.returnType, 'boolean');
+    assert.equal(entry.returnValue, false);
+    assert.equal(typeof entry.contextId, 'number');
+    assert.equal(entry.firstAt, 7);
+    assert.equal(entry.lastAt, 7);
+    assert.match(entry.stack, /evalmachine\.<anonymous>/,
+      'the captured stack retains the issuing callsite');
+  }
 });
 
 test('init-script installation still arms the same bodies (browser route unchanged)', async () => {

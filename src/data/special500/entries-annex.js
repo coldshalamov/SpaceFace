@@ -406,13 +406,14 @@ export const ENTRIES_ANNEX = [
   },
 
   // SPX-D-05 — The Margin Answers: the handless line replies on the second fracture.
+  // (no after-gate: nth already orders it — an after-gate would starve the
+  // counter until the dependency fired and land this on the THIRD fracture.)
   {
     id: 'SPX-D-05',
     kind: 'easter-egg',
     title: 'The Margin Answers',
     sectors: [],
     trigger: { type: 'receipt', event: 'hull:fractured', nth: 2 },
-    after: ['SP2-007'],
     channel: 'commsLog',
     payload: {
       from: 'BULKHEAD 3 LOG',
@@ -634,13 +635,13 @@ export const ENTRIES_ANNEX = [
     },
   },
 
-  // SPX-D-21 — The Quiet Hours: the year's last hour belongs to no station.
+  // SPX-D-21 — The Unowned Hour: the year's last hour belongs to no station.
   {
     id: 'SPX-D-21',
     kind: 'comms-event',
-    title: 'The Quiet Hours',
+    title: 'The Unowned Hour',
     sectors: [],
-    trigger: { type: 'calendar', dayOfYear: 40, windowS: [540, 600] },
+    trigger: { type: 'calendar', dayOfYear: 39, windowS: [390, 539] },
     recurring: true,
     channel: 'commsLog',
     payload: {

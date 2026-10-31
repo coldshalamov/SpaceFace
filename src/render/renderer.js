@@ -14,7 +14,7 @@ import { retireUiStageForContextLoss, resumeUiStageAfterContextRestore } from '.
 import { updatePresentedSceneMatrices } from './presentedSceneMatrices.js';
 import { isOrchardFrame } from '../data/anvilOrchardIdentity.js';
 import { installShaderLinkReporter } from './shaderLinkReporter.js';
-import { createBufferResizeDiagnostic, installBatchedMeshFailureDiagnostic, captureBatchedMeshFailure } from './bufferResizeDiagnostic.js';
+import { createBufferResizeDiagnostic, installBatchedMeshFailureDiagnostic, captureBatchedMeshFailure, installTextureUploadFailureDiagnostic } from './bufferResizeDiagnostic.js';
 import { createRacingCourseView } from './racingCourseView.js';
 import { installProgramBinaryCache } from './programBinaryCache.js';
 import { pickNextContactCompileSubject } from './nextContactWarm.js';
@@ -506,6 +506,14 @@ import {
 } from './packageCpuDetach.js';
 import { sharedImageSourceUsers } from './imageSourceDedupe.js';
 import {
+  collectOpeningEntityRootCandidatesSteps,
+  collectOpeningShadowCasterRootCandidatesSteps,
+  openingCompileIssueKey,
+  openingPreparedLeafKey,
+  resolveTouchDrawableSession,
+  openingAdmissionSubjects,
+} from './runtime/openingAdmissionPlanning.js';
+import {
   collectOpeningSubmissionLeaves,
   collectOpeningSubmissionLeavesSteps,
   combineOpeningProducerCensuses,
@@ -513,7 +521,6 @@ import {
   createOpeningSubmissionPlan,
   createOpeningSubmissionReceipt,
   createOpeningSubmissionReceiptSteps,
-  openingProgramSubjectKey,
   openingSubmissionUnboundSubjects,
   validateOpeningSubmissionReceipt,
 } from './openingSubmissionPlan.js';
@@ -603,11 +610,15 @@ import {
 } from './tabletopPolicy.js';
 import { PRESENTATION_TIER, entityPresenceRadius } from '../world/activityClassification.js';
 import { getActivityFrame } from '../core/worldActivityManager.js';
-import { effectiveLawSecurity } from '../systems/lawSecurity.js';
 import { heatLevelFor, isPlayerWanted } from '../systems/heat.js';
 import { planGateScene } from '../data/gateControl.js';
-import { PURSUIT_RESOLVE_S, planAuthoredEncounterItem, sectorSecurityOf } from '../systems/encounterDirector.js';
-import { planUniqueWreckEncounter } from '../systems/uniqueWrecks.js';
+import {
+  planAuthoredEncounterItem,
+  planUniqueWreckEncounter,
+  PURSUIT_RESOLVE_S,
+  sectorSecurityOf,
+} from '../data/encounters/planning.js';
+import { ENCOUNTER_PRESENTATION_METADATA } from '../data/encounters/presentation.generated.js';
 import {
   DEPOT_PATROL_ANCHOR_FRAC,
   DEPOT_PATROL_ID_PREFIX,
@@ -615,7 +626,10 @@ import {
   DEPOT_PATROL_ZONE_RADIUS_WU,
 } from '../systems/claims.js';
 import { uniqueWreckById } from '../data/uniqueWrecks.js';
-import { ENCOUNTERS } from '../data/encounters/index.generated.js';
+
+const PRESENTATION_SELF_REGISTERED_ENCOUNTER_IDS = new Set(
+  ENCOUNTER_PRESENTATION_METADATA.selfRegisteredEncounterIds,
+);
 
 // M2 floating-origin scratch for mesh pose projection (no per-entity allocation).
 const _meshLocalXZ = { x: 0, z: 0 };
@@ -1093,123 +1107,6 @@ const POST_MSAA_UNSAFE_RENDERER_RE = /\(tm\)|webkit webgl/i;
 // entityVisualCullRadius + drawnCullRadiusForMesh live in ./visualCullRadius.js so the
 // partsLibrary glass mirror measures the same envelope the renderer does.
 export { entityVisualCullRadius };
-
-/**
- * Return only attached entity roots that can contribute to the current first camera picture.
- * Render residency intentionally lives elsewhere: this census observes the final mesh pose and
- * visibility selected by syncEntityViews() and never builds, stamps, or mutates a root.
- */
-export function collectOpeningEntityRootCandidates(meshes, entities, options = {}) {
-  const iterator = collectOpeningEntityRootCandidatesSteps(meshes, entities, options);
-  let step = iterator.next();
-  while (!step.done) step = iterator.next();
-  return step.value;
-}
-
-// Stepped twin: yields every 32 scanned mesh-map rows so the opening plan's
-// drives pace the census under their own slice clocks — identical visit order,
-// predicates, and output shape to the sync collector.
-export function* collectOpeningEntityRootCandidatesSteps(meshes, entities, options = {}) {
-  const candidates = [];
-  const playerId = options.playerId;
-  const scene = options.scene || null;
-  const camera = options.camera || null;
-  if (!meshes || typeof meshes[Symbol.iterator] !== 'function') return candidates;
-  let censusVisited = 0;
-  // Row-granular yields alone under-pace: each visited row pays a
-  // whole-subtree collectOpeningSubmissionLeaves traverse, so one 32-row
-  // stride can still blow the frame wallet — a fat stride yields early on
-  // wall clock too. Visit order and output stay identical.
-  const censusNow = () => (typeof performance !== 'undefined' && typeof performance.now === 'function'
-    ? performance.now() : Date.now());
-  // Every census/sweep generator in this file stamps its stride clock AFTER the yield: a driver that awaits a
-  // present per yield resumes a frame later, and a clock stamped before that wait reads over the 2 ms limit on
-  // the next row, so each following row would yield too.
-  let censusStrideAt = censusNow();
-  for (const [id, mesh] of meshes) {
-    if ((++censusVisited % 32) === 0 || censusNow() - censusStrideAt >= 2) {
-      yield;
-      censusStrideAt = censusNow();
-    }
-    if (!mesh || (playerId != null && id === playerId) || mesh.visible === false) continue;
-    // _meshes is the entity ownership map, but a prepared/deferred boundary may still be mounted in
-    // the scene without becoming an entity root. Only direct live roots belong to this census.
-    if (scene && mesh.parent !== scene) continue;
-    const entity = entities && typeof entities.get === 'function' ? entities.get(id) : null;
-    if (!entity || entity.alive === false || entity._noMesh) continue;
-    const authoredState = mesh.userData && mesh.userData.authoredAssetState;
-    // Boundaries still waiting on authored GLB admission only expose a temporary marker (or
-    // nothing). They must not block the opening submission plan; mid-flight admission owns them.
-    if (authoredState === 'awaiting-authored-admission' || authoredState === 'loading') continue;
-    const leaves = collectOpeningSubmissionLeaves(mesh, { camera });
-    if (leaves.length === 0) continue;
-    candidates.push({
-      root: mesh,
-      role: entity.type === 'station' ? 'tableStationShell' : 'opening-entity-root',
-      startupRole: 'first-picture-entity-root',
-      blocking: true,
-      reason: 'currently-visible-first-picture-entity-root',
-    });
-  }
-  return candidates;
-}
-
-/**
- * Roots outside the main camera can still be submitted by the opening directional-shadow pass.
- * Include their complete root because createOpeningSubmissionPlan has one main-camera census; the
- * root's cast-shadow leaf is the reason, while includeOffscreen keeps its exact siblings available
- * to the bounded compile/residency admission rather than dropping the candidate as empty.
- */
-export function collectOpeningShadowCasterRootCandidates(meshes, entities, options = {}) {
-  const iterator = collectOpeningShadowCasterRootCandidatesSteps(meshes, entities, options);
-  let step = iterator.next();
-  while (!step.done) step = iterator.next();
-  return step.value;
-}
-
-// Stepped twin: same cadence contract as the entity-root census — per-32-row
-// yields, identical visit order and output to the sync collector.
-export function* collectOpeningShadowCasterRootCandidatesSteps(meshes, entities, options = {}) {
-  const candidates = [];
-  const playerId = options.playerId;
-  const scene = options.scene || null;
-  const camera = options.camera || null;
-  const alreadyIncluded = new Set(Array.isArray(options.alreadyIncluded)
-    ? options.alreadyIncluded.filter(Boolean) : []);
-  if (!camera || !meshes || typeof meshes[Symbol.iterator] !== 'function') return candidates;
-  let censusVisited = 0;
-  // Row-granular yields alone under-pace: each visited row pays a
-  // whole-subtree collectOpeningSubmissionLeaves traverse, so one 32-row
-  // stride can still blow the frame wallet — a fat stride yields early on
-  // wall clock too. Visit order and output stay identical.
-  const censusNow = () => (typeof performance !== 'undefined' && typeof performance.now === 'function'
-    ? performance.now() : Date.now());
-  let censusStrideAt = censusNow();
-  for (const [id, root] of meshes) {
-    if ((++censusVisited % 32) === 0 || censusNow() - censusStrideAt >= 2) {
-      yield;
-      censusStrideAt = censusNow();
-    }
-    if (!root || alreadyIncluded.has(root) || root.visible === false
-        || (playerId != null && id === playerId)) continue;
-    if (scene && root.parent !== scene) continue;
-    const entity = entities && typeof entities.get === 'function' ? entities.get(id) : null;
-    if (!entity || entity.alive === false || entity._noMesh) continue;
-    const authoredState = root.userData && root.userData.authoredAssetState;
-    if (authoredState === 'awaiting-authored-admission' || authoredState === 'loading') continue;
-    const shadowLeaves = collectOpeningSubmissionLeaves(root, { camera });
-    if (!shadowLeaves.some((leaf) => leaf && leaf.castShadow === true)) continue;
-    candidates.push({
-      root,
-      role: 'firstFrameShadowCaster',
-      startupRole: 'first-shadow-pass-caster',
-      blocking: true,
-      reason: 'first-shadow-pass-caster-outside-main-camera',
-      includeOffscreen: true,
-    });
-  }
-  return candidates;
-}
 
 function openingEntityRootIntersectsCamera(root, entity, camera, scene) {
   if (!root || !entity || entity.alive === false || root.visible === false
@@ -1758,226 +1655,6 @@ export function holdFirstFlightStreaming(state) {
 function survivalRunHoldsArena(state) {
   const run = state && state.run;
   return !!(run && run.kind === 'survival' && run.phase && run.phase !== 'inactive');
-}
-
-// Compile-issue signature. Admission units dedupe by material OBJECT, so the bounded roster
-// warm's palette clones (~3000 unique materials sharing a handful of program signatures) each
-// issued their own compile — ~4 ms of reveal/env/compile JS per unit. The linked program is
-// keyed by signature, not material identity, so one issue per signature links the cohort.
-const _compileIssueMaterialKeys = new WeakMap();
-
-function compileIssueMaterialKey(material) {
-  if (!material || typeof material !== 'object') return null;
-  const cached = _compileIssueMaterialKeys.get(material);
-  if (cached !== undefined) return cached;
-  let key = null;
-  try {
-    // Producer-side subject key: material type + customProgramCacheKey + defines + blending +
-    // texture identities + shader source. Never customProgramCacheKey alone — authored
-    // families share that string across distinct maps/defines (openingSubmissionPlan §key).
-    key = openingProgramSubjectKey(material) || null;
-  } catch (_) { key = null; }
-  if (key) {
-    // three's program cache keys on the FULL customProgramCacheKey() — the default returns
-    // onBeforeCompile.toString(), so two same-length patches with equal sampled chars still
-    // link separate programs. A partial fingerprint would merge them and skip the compile
-    // the round then pays mid-flight; the whole string is the only honest dedupe.
-    try {
-      const cpck = typeof material.customProgramCacheKey === 'function'
-        ? String(material.customProgramCacheKey() || '')
-        : '';
-      key += `|cpck:${cpck}`;
-    } catch (_) { key = null; }
-  }
-  _compileIssueMaterialKeys.set(material, key);
-  return key;
-}
-
-/**
- * Program signature for one compile subject, or null when any material cannot be keyed —
- * null never dedupes, so an unkeyable subject always issues its own compile. Object and
- * geometry features that change the linked program while the material stays identical
- * (instancing, skinning, morphs, the vertex attribute set) ride in the same key.
- * Exported for the focused dedupe-key tests.
- */
-export function openingCompileIssueKey(subject) {
-  if (!subject || typeof subject !== 'object') return null;
-  const materials = Array.isArray(subject.material)
-    ? subject.material.filter(Boolean)
-    : (subject.material ? [subject.material] : []);
-  if (materials.length === 0) return null;
-  // Each material's full signature is multi-KB (shader source + customProgramCacheKey). Interned to
-  // a compact id once per distinct signature, so a subject's key is short: the dedupe Set hashes a
-  // few dozen characters per subject instead of rebuilding and hashing KBs for every one of the
-  // thousands of subjects an opening cook walks (0.9 s of main thread in the 2026-10-13 launch profile).
-  let parts = '';
-  for (let i = 0; i < materials.length; i++) {
-    const key = compileIssueMaterialKey(materials[i]);
-    if (!key) return null;
-    parts += (i > 0 ? ',' : '') + internCompileIssueKey(key);
-  }
-  const geometry = subject.geometry;
-  const { attributes, morphs } = compileIssueGeometrySignature(geometry);
-  const drawClass = (subject.isInstancedMesh === true ? 'I' : '')
-    + (subject.isSkinnedMesh === true ? 'S' : '')
-    + (subject.isBatchedMesh === true ? 'B' : '')
-    + (subject.isPoints === true ? 'P' : '')
-    + (subject.isLine === true ? 'L' : '')
-    + (subject.isSprite === true ? 'R' : '')
-    + (subject.isMesh === true ? 'M' : '');
-  return `${drawClass}|${attributes}|${morphs}`
-    + `|${geometry && geometry.morphTargetsRelative === true ? 'rel' : ''}`
-    + `${subject.isInstancedMesh === true && subject.instanceColor != null ? '|ic' : ''}`
-    + `${subject.isInstancedMesh === true && subject.morphTexture != null ? '|im' : ''}`
-    + `${subject.isBatchedMesh === true && subject._colorsTexture != null ? '|bc' : ''}`
-    + `|m${parts}`;
-}
-
-/** Exact preparation is reusable only while this leaf's upload and program inputs stay unchanged. */
-const openingResourceIds = new WeakMap();
-let nextOpeningResourceId = 0;
-function openingResourceVersion(resource) {
-  if (!resource || typeof resource !== 'object') return '';
-  if (!openingResourceIds.has(resource)) openingResourceIds.set(resource, ++nextOpeningResourceId);
-  return `${openingResourceIds.get(resource)}:${resource.version || resource.data?.version || 0}`
-    + `:${resource.array ? openingResourceVersion(resource.array) : ''}`;
-}
-export function openingPreparedLeafKey(subject, context = '') {
-  const program = openingCompileIssueKey(subject);
-  if (!program || !subject.geometry) return null;
-  const geometry = subject.geometry;
-  const versions = Object.entries(geometry.attributes || {}).map(([name, attribute]) => (
-    `${name}:${openingResourceVersion(attribute)}:${attribute.count || 0}`
-  )).join('|');
-  const materials = (Array.isArray(subject.material) ? subject.material : [subject.material]).filter(Boolean);
-  const materialState = materials.map((material) => {
-    const textures = Object.values(material).filter((value) => value?.isTexture)
-      .map((texture) => `${texture.uuid}:${texture.version}`).join(',');
-    return `${material.uuid}:${material.version}:${textures}`;
-  }).join('|');
-  const morphs = Object.values(geometry.morphAttributes || {}).flat().map(openingResourceVersion).join('|');
-  return `${context};${program};${geometry.uuid};${openingResourceVersion(geometry.index)};${versions};${morphs};${materialState}`
-    + `;${openingResourceVersion(subject.instanceMatrix)}:${openingResourceVersion(subject.instanceColor)}:${subject.count ?? ''}`;
-}
-
-/** Reuse a cook-owned drawable census only while it still belongs to this scene and generation. */
-export function resolveTouchDrawableSession(census, scene, generation = 0) {
-  return census && census.scene === scene && census.generation === (generation || 0)
-    ? census : null;
-}
-
-/** Required leaves stay strict; extra pool coverage only admits live, potentially drawn resources. */
-export function openingAdmissionSubjects(required, pooled, scene, { mobileFirstPicture = false } = {}) {
-  const requiredLeaves = new Set(required);
-  return required.concat(pooled.filter((subject) => {
-    if (!subject || requiredLeaves.has(subject) || subject.geometry?.id == null || !subject.material) return false;
-    // Immediate first-use producers publish on ordinary events/input without an async admission
-    // owner. They owe their live material's first draw while mobile loading owns the picture;
-    // other dormant effects keep their bounded on-use path outside the opening cohort.
-    if (mobileFirstPicture && subject.userData?.spacefaceOpeningImmediateFirstUse !== true) return false;
-    for (let owner = subject; owner; owner = owner.parent) {
-      const data = owner.userData;
-      // Warm exemplars have their own cook. Hidden authored fallbacks never present, while
-      // dormant real pools (count/range 0, hidden emitter parents) still owe their first draw.
-      if (data?.rosterPrewarm != null
-          || (data?.authoredReadableFallbackLayer === true && owner.visible === false)) return false;
-      if (owner === scene) return true;
-    }
-    return false; // A retired/detached pool is not a producer in this scene.
-  }));
-}
-
-// Long material signature -> compact id. Equal signatures share an id, so the key still dedupes
-// exactly the subjects whose full signatures were equal; the table holds one string per distinct
-// signature instead of one composite per subject.
-const _compileIssueKeyIds = new Map();
-// Ids are monotonic and never reused, so clearing the table can never alias two different signatures; the table is capped
-// because a long session that mints fresh canvas textures or custom program keys would otherwise retain every full
-// signature string forever (a few hundred distinct signatures is a normal cook, 20 000 is already pathological). The
-// only cost of a clear is that an equal signature interned on the other side of it gets a new id: one extra dedupe miss.
-const COMPILE_ISSUE_KEY_TABLE_CAP = 20000;
-let _compileIssueKeyNextId = 1;
-
-export function internCompileIssueKey(longKey) {
-  let id = _compileIssueKeyIds.get(longKey);
-  if (id === undefined) {
-    if (_compileIssueKeyIds.size >= COMPILE_ISSUE_KEY_TABLE_CAP) _compileIssueKeyIds.clear();
-    id = _compileIssueKeyNextId++;
-    _compileIssueKeyIds.set(longKey, id);
-  }
-  return id;
-}
-
-/** Table size, for the retention test. */
-export function compileIssueKeyTableSize() {
-  return _compileIssueKeyIds.size;
-}
-
-// A geometry's attribute/morph signature, memoized per geometry. An opening cook keys thousands of
-// subjects that share a few hundred geometries; sorting and joining the attribute names for each one
-// was the largest self-time in the key builder. A hit is proven exactly, not by an aggregate: the
-// recorded names and widths (attributes) or lengths (morphs) are compared with the live tables in
-// order, with no allocation. An aggregate (count plus width sum) cannot tell `normal` swapped for
-// `color` apart, and three selects different programs for those (review R03).
-const _compileIssueGeometrySignatures = new WeakMap();
-
-function attributeWidth(attribute) {
-  return attribute && typeof attribute.itemSize === 'number' ? attribute.itemSize : -1;
-}
-
-function morphListLength(list) {
-  return list && typeof list.length === 'number' ? list.length : -1;
-}
-
-// True when `table` still has exactly the recorded names, in order, each with the recorded size.
-function tableMatchesRecord(table, names, sizes, measure) {
-  let index = 0;
-  for (const name in table) {
-    if (index >= names.length || names[index] !== name || sizes[index] !== measure(table[name])) return false;
-    index++;
-  }
-  return index === names.length;
-}
-
-function recordTable(table, measure) {
-  const names = [];
-  const sizes = [];
-  if (table) {
-    for (const name in table) {
-      names.push(name);
-      sizes.push(measure(table[name]));
-    }
-  }
-  return { names, sizes };
-}
-
-function describeTable(record) {
-  const order = record.names.map((_, i) => i).sort((a, b) => (record.names[a] < record.names[b] ? -1 : 1));
-  return order.map((i) => `${record.names[i]}:${record.sizes[i] < 0 ? '' : record.sizes[i]}`).join(',');
-}
-
-function compileIssueGeometrySignature(geometry) {
-  if (!geometry) return { attributes: '', morphs: '' };
-  const attrs = geometry.attributes;
-  const morphAttrs = geometry.morphAttributes;
-  const memo = _compileIssueGeometrySignatures.get(geometry);
-  if (memo && memo.attrs === attrs && memo.morphAttrs === morphAttrs
-    && tableMatchesRecord(attrs, memo.attrRecord.names, memo.attrRecord.sizes, attributeWidth)
-    && tableMatchesRecord(morphAttrs, memo.morphRecord.names, memo.morphRecord.sizes, morphListLength)) {
-    return memo;
-  }
-  const attrRecord = recordTable(attrs, attributeWidth);
-  const morphRecord = recordTable(morphAttrs, morphListLength);
-  const fresh = {
-    attrs,
-    morphAttrs,
-    attrRecord,
-    morphRecord,
-    attributes: describeTable(attrRecord),
-    morphs: describeTable(morphRecord),
-  };
-  _compileIssueGeometrySignatures.set(geometry, fresh);
-  return fresh;
 }
 
 /**
@@ -7225,7 +6902,7 @@ function warmUniqueWreckComplicationDecode(owner) {
     if (!def || !bearing) continue;
     const sectorId = record.sectorId || bearing.sectorId || def.sectorId;
     if (sectorId !== currentSectorId) continue;
-    const shape = ENCOUNTERS[record.encounterId];
+    const shape = ENCOUNTER_PRESENTATION_METADATA.encounters[record.encounterId];
     if (!shape) continue;
     const memo = plans.get(record);
     let ships = null;
@@ -7241,6 +6918,8 @@ function warmUniqueWreckComplicationDecode(owner) {
         sectorId,
         simTime: state.simTime,
         shape,
+        selfRegisteredEncounterIds: PRESENTATION_SELF_REGISTERED_ENCOUNTER_IDS,
+        namedCaptains: ENCOUNTER_PRESENTATION_METADATA.namedCaptains,
       });
       ships = [];
       files = [];
@@ -7290,6 +6969,9 @@ function plannedAuthoredEncounterWarm(owner, payload) {
     state,
     payload,
     playerPos: player && player.pos,
+    encounters: ENCOUNTER_PRESENTATION_METADATA.encounters,
+    selfRegisteredEncounterIds: PRESENTATION_SELF_REGISTERED_ENCOUNTER_IDS,
+    namedCaptains: ENCOUNTER_PRESENTATION_METADATA.namedCaptains,
   });
   const item = planned && planned.item;
   if (!item) return null;
@@ -10864,6 +10546,12 @@ export function disposeRendererOwnedResources(owner, options = {}) {
   // cleanup remains responsible for boundaries still in preparation; generation guards prevent it
   // from publishing or disposing through this renderer after lifecycle.destroy().
   try { owner._rendererLifecycle?.destroy?.(); } catch (_) { /* best effort */ }
+  owner._environmentVariantAdmissionGeneration = (owner._environmentVariantAdmissionGeneration || 0) + 1;
+  owner._environmentVariantAdmissionPending = false;
+  owner._environmentVariantAdmission = null;
+  owner._environmentVariantAdmissionEnv = null;
+  owner._environmentVariantAdmissionEnvKey = null;
+  owner._environmentVariantAdmissionTargetKey = null;
   try { owner._contextRestoreReceipt?.cancel?.(); } catch (_) { /* best effort */ }
   try { releaseOpeningGraphPublication(owner); } catch (_) { /* best effort */ }
   owner._contextRestoreReceipt = null;
@@ -11005,6 +10693,11 @@ export function disposeRendererOwnedResources(owner, options = {}) {
   owner._videoSettingsOff = null;
   owner._firstPresentGpuAdmission = null;
   owner._firstPresentGpuReady = false;
+  owner._environmentVariantAdmission = null;
+  owner._environmentVariantAdmissionPending = false;
+  owner._environmentVariantAdmissionEnv = null;
+  owner._environmentVariantAdmissionEnvKey = null;
+  owner._environmentVariantAdmissionTargetKey = null;
   owner._rebuildRestoredGpuResources = null;
   owner._envMap = null;
   owner._envMapTarget = null;
@@ -11709,11 +11402,20 @@ export const render = {
     // history or success-path allocation. The outer render wrapper catches WebGLObjects.update
     // failures that occur in projectObject before renderBufferDirect receives the failing geometry.
     if ((query && query.get('bufferResizeDiag') === '1') || globalThis.__SF_BUFFER_RESIZE_DIAG__ === true) {
-      installBatchedMeshFailureDiagnostic(THREE.BatchedMesh);
+      installBatchedMeshFailureDiagnostic(THREE.BatchedMesh, isRetiredRigidOpaqueBatch);
       const resizeDiagnostic = createBufferResizeDiagnostic();
       const contextGeneration = () => state.render?.contextRecovery?.generation
         ?? state.contextRestoreSeq
         ?? 0;
+      installTextureUploadFailureDiagnostic(renderer, { enabled: true, contextGeneration,
+        publish(record) {
+          renderer.__sfTextureUploadFailure = record;
+          if (state.render) state.render.bufferResizeDiagnostic = {
+            ...state.render.bufferResizeDiagnostic, enabled: true, performanceEligible: false,
+            lastTextureUploadFailure: record,
+          };
+        },
+      });
       const publishResizeFailure = (error, scene) => {
         try {
           const record = resizeDiagnostic.captureFailure(
@@ -11740,6 +11442,7 @@ export const render = {
           performanceEligible: false,
           lastFailure: null,
           lastBatchedFailure: null,
+          lastTextureUploadFailure: null,
         };
       }
       if (typeof renderer.render === 'function') {
@@ -13026,7 +12729,11 @@ export const render = {
           await yieldToBrowser();
         }
         const route = this._selectPostRoute();
+        const firstPresentEnvironmentKey = this._environmentAdmissionKey();
         const admitSubjects = leaves.concat(extraVfx);
+        const firstPresentCoversQuarks = admitSubjects.some(
+          (subject) => subject?.name === 'SF_QuarksBatchedRenderer',
+        );
         const admitSeenMaterials = new Set();
         const admitSeenGeometries = new Set();
         const admitProgramSubjects = [];
@@ -13096,6 +12803,10 @@ export const render = {
             if (!lifecycle.isActive()) throw new Error('renderer lifecycle destroyed during opening yield');
           },
         });
+        if (firstPresentCoversQuarks) {
+          this._environmentVariantAdmissionEnvKey = firstPresentEnvironmentKey;
+          this._environmentVariantAdmissionEnv = this._envMap;
+        }
         // Final residency seal: the leaf census can miss drawables rebuilt or added after the
         // census (menu deep-field layers, count-0 pools). Upload every scene geometry buffer
         // behind the shell so the first presented frame admits nothing new.
@@ -13707,7 +13418,8 @@ export const render = {
     const submitExactSubjectTouch = (subject, isActive = null, urgent = false) => {
       const pace = makeGpuQueuePacer(renderer, { scheduleTask: postTaskAtBackgroundPriorityBounded });
       const submit = () => {
-        if (typeof isActive === 'function' && !isActive(subject)) throw ownerInactiveTouchError();
+        if (isRetiredRigidOpaqueBatch(subject)
+          || (typeof isActive === 'function' && !isActive(subject))) throw ownerInactiveTouchError();
         // The pacer may wait behind another producer. Reveal only inside its synchronous
         // reservation: overlapping root/descendant jobs must never capture each other's
         // temporary visibility/count/range and restore that warm state into live flight.
@@ -13722,7 +13434,8 @@ export const render = {
         // The serial queue can reject a stale owner before running submit. Convert its tagged
         // skip into the same cancellation used by the exact callback so awaited admission owners
         // never mistake an inactive target for a successful exact draw.
-        if (result && result.skipped === true && result.reason === 'owner-inactive') {
+        if (isRetiredRigidOpaqueBatch(subject)
+          || (result && result.skipped === true && result.reason === 'owner-inactive')) {
           throw ownerInactiveTouchError();
         }
         return result;
@@ -14115,7 +13828,31 @@ export const render = {
           };
         }
         if (ownerSnapshot && typeof console !== 'undefined') {
-          console.warn('[render] authored GPU residency owner became inactive', ownerSnapshot);
+          const retiredAuthoredBoundary = ownerSnapshot.ownerType === 'authored-boundary'
+            && ownerSnapshot.entityAlive === false
+            && ownerSnapshot.entityIsCurrent === false
+            && ownerSnapshot.entityStillRequired === false;
+          const supersededAuthoredBoundaryAfterContextLoss = ownerSnapshot.ownerType === 'authored-boundary'
+            && ownerSnapshot.entityAlive === true
+            && ownerSnapshot.entityIsCurrent === true
+            && ownerSnapshot.entityStillRequired === false
+            && ownerSnapshot.boundaryAttached === true
+            && ownerSnapshot.renderMatches === true
+            && ownerSnapshot.rendererMatches === true
+            && ownerSnapshot.admissionGenerationMatches === true
+            && ownerSnapshot.contextLossGenerationMatches === false
+            && ownerSnapshot.portMatches === true;
+          if (retiredAuthoredBoundary) {
+            console.info(
+              `[render] authored GPU residency cancelled for retired boundary ${String(ownerSnapshot.entityId ?? 'unknown')}`,
+            );
+          } else if (supersededAuthoredBoundaryAfterContextLoss) {
+            console.info(
+              `[render] authored GPU residency cancelled after context loss for boundary ${String(ownerSnapshot.entityId ?? 'unknown')}`,
+            );
+          } else {
+            console.warn('[render] authored GPU residency owner became inactive', ownerSnapshot);
+          }
         }
         const error = new Error('Authored GPU residency owner became inactive before texture upload');
         error.name = 'AbortError';
@@ -14449,6 +14186,7 @@ export const render = {
               && admissionOptions.isActive(subject) !== true) {
             throw ownerInactiveTouchError();
           }
+          if (isRetiredRigidOpaqueBatch(subject)) throw ownerInactiveTouchError();
           // A cpu-detached package texture this draw would force-upload reads an emptied mip
           // chain inside uploadTexture and throws — the touch exists to keep exactly that work
           // out of the presented pass, so re-attach those payloads first (D150).
@@ -28002,11 +27740,120 @@ export const render = {
       // Any committed foundry bake (the opening-picture freeze, a seam drain, a context-restore
       // force) satisfies an armed promotion — leaving it armed would re-convolve the same source.
       if (iblSource === IBL_SOURCE_FOUNDRY) this._foundryEnvPending = false;
+      this._queueEnvironmentVariantAdmission(envMap);
     } catch (error) {
       // env-map is optional — chrome falls back to high-metalness matte — but
       // a failed bake is a quality deficit worth a line of telemetry.
       console.warn('[render] env bake failed', error);
     }
+  },
+
+  _environmentAdmissionKey(envMap = this._envMap) {
+    const context = Number(this.state?.contextRestoreSeq) || 0;
+    if (!envMap) return `${context}:no-environment`;
+    const mapping = Number.isFinite(envMap.mapping) ? envMap.mapping : 'unknown-mapping';
+    const height = Number(envMap.image?.height ?? envMap.source?.data?.height) || 0;
+    return `${context}:environment:${mapping}:${height}`;
+  },
+
+  _queueEnvironmentVariantAdmission(envMap = this._envMap) {
+    if (!envMap || !this.renderer || !this.scene) return null;
+    const lifecycle = this._rendererLifecycle;
+    if (!lifecycle || !lifecycle.isActive()) return null;
+    const key = this._environmentAdmissionKey(envMap);
+    if (this._environmentVariantAdmissionEnvKey === key) {
+      if (this._environmentVariantAdmissionPending === true) {
+        this._environmentVariantAdmissionGeneration = (this._environmentVariantAdmissionGeneration || 0) + 1;
+        this._environmentVariantAdmissionPending = false;
+        this._environmentVariantAdmissionTargetKey = key;
+        this._environmentVariantAdmissionEnv = this._envMap;
+        this._environmentVariantAdmission = null;
+      }
+      return null;
+    }
+    if (this._environmentVariantAdmissionPending === true
+        && this._environmentVariantAdmissionTargetKey === key) {
+      return this._environmentVariantAdmission;
+    }
+    const generation = (this._environmentVariantAdmissionGeneration || 0) + 1;
+    this._environmentVariantAdmissionGeneration = generation;
+    this._environmentVariantAdmissionTargetKey = key;
+    this._environmentVariantAdmissionPending = true;
+    const isCurrent = () => this._environmentVariantAdmissionGeneration === generation
+      && lifecycle.isActive()
+      && this._environmentAdmissionKey() === key;
+    const admit = async () => {
+      // The boot census may still be using the old key. Let it finish before submitting the
+      // environment-specific work, then explicitly admit the live Quarks renderer cohort.
+      const firstPresent = this._firstPresentGpuAdmission;
+      if (firstPresent) {
+        try { await firstPresent; } catch (_) { /* targeted admission remains independently useful */ }
+      } else {
+        await lifecycle.wait(0);
+      }
+      if (!isCurrent()) return false;
+      // A first-present census that began after this PMREM committed already compiled and
+      // touched this shader key; texture-object replacement with identical key needs no new gate.
+      if (this._environmentVariantAdmissionEnvKey === key) return true;
+      const scene = this.scene;
+      const camera = this.cam?.obj || this.state?.render?.camera;
+      if (!scene || !camera) return false;
+      const roots = collectFirstFlightEffectRoots(scene)
+        .filter((root) => root?.name === 'SF_QuarksBatchedRenderer');
+      if (roots.length === 0) return true;
+      const route = this._selectPostRoute();
+      for (const root of roots) {
+        if (!isCurrent()) return false;
+        const restore = revealSubjectForCompile(root);
+        let compiled;
+        try {
+          compiled = observePipelineAdmission(this._compilePostRoute(route, root, camera, scene));
+        } finally {
+          restore();
+        }
+        await compiled;
+        if (!isCurrent()) return false;
+        const restoreForTouch = revealSubjectForCompile(root);
+        let touch;
+        try {
+          touch = this.bloom && typeof this.bloom.touchScenePipelines === 'function'
+            ? this.bloom.touchScenePipelines(root, camera, scene)
+            : touchSubjectOnExactTarget(this.renderer, null, root, camera, scene);
+        } finally {
+          restoreForTouch();
+        }
+        await touch;
+      }
+      return isCurrent();
+    };
+    let succeeded = false;
+    const pending = Promise.resolve().then(admit).then((ready) => {
+      succeeded = ready === true && isCurrent();
+      if (succeeded) {
+        this._environmentVariantAdmissionEnvKey = key;
+        this._environmentVariantAdmissionEnv = this._envMap;
+      }
+      return succeeded;
+    }).catch((error) => {
+      if (isCurrent()) console.warn('[render] environment variant admission failed', error);
+      return false;
+    }).finally(() => {
+      if (this._environmentVariantAdmissionGeneration !== generation) return;
+      if (!lifecycle.isActive()) {
+        this._environmentVariantAdmissionPending = false;
+        return;
+      }
+      if (this._environmentAdmissionKey() !== key) {
+        this._queueEnvironmentVariantAdmission(this._envMap);
+        return;
+      }
+      this._environmentVariantAdmissionPending = false;
+      if (!succeeded) {
+        console.warn('[render] environment variant admission remains unready', key);
+      }
+    });
+    this._environmentVariantAdmission = pending;
+    return pending;
   },
 
   // Self-healing entity<->mesh reconciliation. Guarantees every alive, renderable entity has a
@@ -32387,6 +32234,10 @@ export const render = {
     // background programs and uploaded their buffers; otherwise bloomScene pays 17 first-use
     // links on Intel/ANGLE in one presented frame.
     if (this.state.mode === 'menu' && this._firstPresentGpuReady !== true) return false;
+    // The initial admission can complete before the boot shell retires and PMREM commits. That
+    // changes MeshStandardMaterial's program key, so keep the world behind the same draw gate
+    // until live first-flight effect roots have been admitted for the committed environment.
+    if (this._environmentVariantAdmissionPending === true) return false;
     // The fulfillment boarding blackout covers the canvas with an opaque UI surface while the
     // simulation and its FSM keep advancing underneath — the flight submit is pure waste for the
     // duration. prepareFrame still ran, so the journal drained and the scene stays hot for resume.

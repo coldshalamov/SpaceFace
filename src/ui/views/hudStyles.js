@@ -7,12 +7,7 @@ import { bracketCss, INK_SHADOW } from '../hudBrackets.js';
 import { injectDeckplate } from '../deckplate/index.js';
 const HUD_STYLE_ID = 'sf-hud-style';
 
-export function injectHudCss() {
-  if (document.getElementById(HUD_STYLE_ID)) return;
-  injectDeckplate();
-  const s = document.createElement('style');
-  s.id = HUD_STYLE_ID;
-  s.textContent = `
+export const HUD_CSS = `
   /* ===== SpaceFace flight HUD ===== */
   #hud { font-size:calc(var(--k-fs-data) * var(--ui-scale, 1)); }
   #hud > * { pointer-events:none; }
@@ -3308,5 +3303,12 @@ export function injectHudCss() {
   }
   ${MOBILE_FLIGHT_LAYOUT_CSS}
   `;
+
+export function injectHudCss() {
+  if (document.getElementById(HUD_STYLE_ID)) return;
+  injectDeckplate();
+  const s = document.createElement('style');
+  s.id = HUD_STYLE_ID;
+  s.textContent = HUD_CSS;
   document.head.appendChild(s);
 }

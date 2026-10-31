@@ -22,6 +22,87 @@ function fakeProgram(name, ticks) {
 
 const liveGl = { isContextLost: () => false, isProgram: () => true };
 
+test('compile waits for each used material variant without polling unrelated cached variants', async () => {
+  const material = { isMaterial: true };
+  const back = fakeProgram('back', 2);
+  const front = fakeProgram('front', 0);
+  const unrelated = fakeProgram('unrelated', 1e9);
+  const properties = { programs: new Map([['back', back], ['unrelated', unrelated]]) };
+  const store = { get: () => properties };
+  const originalGet = store.get;
+  const renderer = {
+    domElement: fakeCanvas(), properties: store,
+    getContext: () => liveGl, extensions: { get: () => ({}) },
+    compile() {
+      const props = store.get(material);
+      // Three's cached-program early out reads the cache and need not assign currentProgram.
+      assert.equal(props.programs.get('back'), back);
+      props.programs.set('front', front);
+      props.currentProgram = front;
+      return new Set([material]);
+    },
+  };
+  const result = await compilePipelinesContextSafe(renderer, {}, {}, {});
+  assert.equal(result.contextLost, false);
+  assert.ok(back.polls() > 2);
+  assert.ok(front.polls() > 0);
+  assert.equal(unrelated.polls(), 0);
+  assert.equal(store.get, originalGet);
+});
+
+test('compile capture restores the properties getter when compilation throws', async () => {
+  const expected = new Error('compile failed');
+  const store = { get: () => ({}) };
+  const originalGet = store.get;
+  const renderer = {
+    domElement: fakeCanvas(), properties: store, getContext: () => liveGl,
+    extensions: { get: () => ({}) }, compile() { throw expected; },
+  };
+  await assert.rejects(compilePipelinesContextSafe(renderer, {}, {}, {}), (error) => error === expected);
+  assert.equal(store.get, originalGet);
+});
+
+test('reentrant compiles collect only their own variants and restore the getter', async () => {
+  const outerMaterial = { isMaterial: true }, innerMaterial = { isMaterial: true };
+  const outerProgram = fakeProgram('outer', 0), innerProgram = fakeProgram('inner', 1);
+  const entries = new Map([[outerMaterial, {}], [innerMaterial, {}]]);
+  const store = { get: (material) => entries.get(material) };
+  const originalGet = store.get;
+  let nested;
+  const renderer = {
+    domElement: fakeCanvas(), properties: store, getContext: () => liveGl,
+    extensions: { get: () => ({}) },
+    compile(subject) {
+      if (subject === outerMaterial) {
+        nested = compilePipelinesContextSafe(renderer, innerMaterial, {}, {});
+        store.get(outerMaterial).currentProgram = outerProgram;
+      } else store.get(innerMaterial).currentProgram = innerProgram;
+      return new Set([subject]);
+    },
+  };
+  await compilePipelinesContextSafe(renderer, outerMaterial, {}, {});
+  assert.equal(innerProgram.polls(), 1, 'outer completion did not poll the inner program');
+  await nested;
+  assert.ok(innerProgram.polls() > 1);
+  assert.equal(store.get, originalGet);
+});
+
+test('context loss during synchronous compile restores the getter without polling', async () => {
+  const canvas = fakeCanvas();
+  const material = { isMaterial: true }, program = fakeProgram('lost', 0);
+  const store = { get: () => ({ currentProgram: program }) };
+  const originalGet = store.get;
+  const renderer = {
+    domElement: canvas, properties: store, getContext: () => liveGl,
+    extensions: { get: () => ({}) },
+    compile() { canvas.fire('webglcontextlost'); return new Set([material]); },
+  };
+  const result = await compilePipelinesContextSafe(renderer, {}, {}, {});
+  assert.equal(result.contextLost, true);
+  assert.equal(program.polls(), 0);
+  assert.equal(store.get, originalGet);
+});
+
 test('a batch settles every waiter only after the whole cohort has linked', async () => {
   const slow = fakeProgram('slow', 3);
   const quick = fakeProgram('quick', 0);

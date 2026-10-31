@@ -2167,6 +2167,9 @@ ${T} .sx-bar__hang:is(:hover, :focus-within)::after { background:${SPINE(3, .62)
   ${D} .sx-ledger__read > .sx-ledger__read-line { grid-column:2; grid-row:3; align-self:start; margin:0 !important; font-size:12.5px !important; line-height:1.3 !important; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   ${D} .sx-ledger__read-num { font-size:30px !important; line-height:1 !important; }
   ${D} .sx-ledger__read-hand { display:none !important; }
+  /* the ~42px ring here is narrower than NET · CR at the label's .14em tracking, so the key's ends
+     printed across the ring's lower bends; the key tightens and lifts into the ring's wider middle */
+  ${D} .sx-ledger .orr-ltape__purse text.orr-ltape__net-key { letter-spacing:.06em; font-stretch:100%; transform:translateY(-3px); }
 }
 
 /* Ledger at 1101–1440 wide × 461–720 tall (ui-polish-124): the purse sat under the tape, so at 1101×700 its
@@ -2209,6 +2212,10 @@ ${T} .sx-bar__hang:is(:hover, :focus-within)::after { background:${SPINE(3, .62)
   ${D} .sx-ledger .st-ledger-list .st-ledger-entry { padding-top:4px !important; padding-bottom:4px !important; }
   ${D} .sx-ledger .st-ledger-cycle { font-size:12px !important; letter-spacing:.1em !important; white-space:normal !important; overflow-wrap:anywhere !important; }
   ${D} .sx-ledger .st-ledger-line { font-size:12.5px !important; }
+  /* with no entry open the reading hides and the tape spans both rows, but the purse's min-height:0 above left the grid
+     nothing to stand on: tape and purse fell to ~40px, the axis figures printed on each other and BOUGHT / SOLD were cut.
+     The purse keeps the 150px the 960 class gives it, so the tape stands with it. */
+  ${D} .sx-ledger__right:has(> .sx-ledger__row > .sx-ledger__read[hidden]) > .sx-ledger__row > .orr-ledger-purse { min-height:150px !important; }
 }
 
 /* After a trade, the TRADE CLEARED line (~480px) stood over the comms words, ~340px from the right edge,

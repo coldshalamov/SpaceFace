@@ -11,6 +11,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import * as THREE from 'three';
 import { EnergyBoltPool } from '../src/render/weapons/energyBoltPool.js';
+import { createWebGlDisposeListenerProvenance, stashStaleWebGlDisposeProvenance } from '../src/render/contextResourceLifecycle.js';
 
 import {
   presentUiStage,
@@ -104,6 +105,38 @@ function reset() {
   releaseUiStagePrewarm('test-reset');
   setUiStagePartLoaderForTest(null);
 }
+
+test('prewarm disposal removes only old-context listeners from stage and shadow resources', async (t) => {
+  reset(); t.after(reset);
+  const log = [];
+  setUiStagePartLoaderForTest(stubPartLoader(log));
+  const renderer = stubRenderer(log);
+  let stageScene;
+  renderer.compileAsync = async (scene) => { stageScene = scene; };
+  const state = flightState(log);
+  assert.equal(tickUiStagePrewarm({ render: { renderer }, state }), true);
+  await settle(() => uiStageReport().prewarm?.warmupPending === true, 'prewarm to prepare');
+  const sky = stageScene.children.find(node => node.userData?.uiStageOwned && node.geometry?.type === 'SphereGeometry');
+  const light = stageScene.children.find(node => node.isDirectionalLight && node.shadow);
+  assert.ok(sky && light);
+  const shadowTarget = new THREE.WebGLRenderTarget(16, 16);
+  shadowTarget.depthTexture = new THREE.DepthTexture(16, 16);
+  light.shadow.map = shadowTarget;
+  const counts = { old: 0, current: 0, foreign: 0 };
+  const old = () => counts.old++, current = () => counts.current++, foreign = () => counts.foreign++;
+  const provenance = createWebGlDisposeListenerProvenance();
+  for (const [resource, kind] of [[sky.geometry, 'geometries'], [sky.material, 'materials'],
+    [shadowTarget, 'renderTargets'], [shadowTarget.depthTexture, 'textures']]) {
+    resource.addEventListener('dispose', old);
+    resource.addEventListener('dispose', current);
+    resource.addEventListener('dispose', foreign);
+    provenance[kind].add(old);
+  }
+  stashStaleWebGlDisposeProvenance(provenance);
+  releaseUiStagePrewarm('test-post-restore');
+  assert.deepEqual(counts, { old: 0, current: 4, foreign: 4 });
+  assert.equal(uiStageReport().prewarm, null);
+});
 
 test('a title that finishes preparing under New Game defers its warm draw until Back', async (t) => {
   reset(); t.after(reset);

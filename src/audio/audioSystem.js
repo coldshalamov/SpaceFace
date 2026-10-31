@@ -42,7 +42,7 @@ import { resolveMasslineInstrument, resolveTetherTone } from './masslineInstrume
 import { tetherBreakCueForReason } from '../systems/presentationOrchestrator.js';
 import { postTaskAtBackgroundPriorityBounded } from '../core/backgroundPost.js';
 import { entityIndexLaneVersion, indexedWorldRecordEntity } from '../world/livingWorldViews.js';
-import { ceresActivityActorWorldRecordId } from '../systems/traffic.js';
+import { ceresActivityActorWorldRecordId } from '../data/trafficPresentationReads.js';
 import { isRunSealed } from '../core/runSeal.js';
 
 /** Remote-engine candidate lanes — hoisted so the 10 Hz census doesn't mint an array
@@ -162,6 +162,15 @@ const D_FAR = TABLE_HEARING_FAR_WU;     // wu — silent / culled beyond the tab
 // peaks well under the docked hum — you hear the place before you reach the ring.
 const APPROACH_HUM_FAR_WU = 620;
 const APPROACH_HUM_PEAK = 0.028;
+// Whose place it is, at hum scale: the room-tone layer colors the sector pedal by faction
+// ("Concord rests on a fifth, Reach leans a half-step, Choir hangs a raised fourth") — the
+// approach bed leans the same directions at a few percent, enough that the ear reads a
+// different place before the ring. Unlisted houses keep the rest rate.
+const APPROACH_HUM_FACTION_RATE = Object.freeze({
+  faction_scn: 1.0,
+  faction_reach: 0.94,
+  faction_choir: 1.06,
+});
 const PAN_SPAN = TABLE_HEARING_PAN_WU;  // wu — half-pan distance
 
 // --- music ---
@@ -6701,12 +6710,17 @@ export const audio = {
       ? this._approachHumGain(Math.hypot(station.pos.x - pp.x, station.pos.z - pp.z))
       : 0;
     if (target <= 0.0004) { stop(); return; }
+    // The hum speaks for the station's house: a faction change re-voices the bed (next tick).
+    const factionId = (station.data && station.data.factionId) || null;
     let voice = rt.loops.approachHum;
+    if (voice && voice._approachFaction !== factionId) { stop(); return; }
     if (!voice) {
       if (rt.voices && rt.voices.length >= MAX_AUDIO_VOICES && !this._reserveVoiceSlot(false)) return;
       const amp = this._ampFor(AUDIO_RECIPE_BY_ID.sfx_station_hum) || 1;
-      voice = this._startLoopVoice('sfx_station_hum', null, APPROACH_HUM_PEAK / amp, { busName: 'ambient' });
+      voice = this._startLoopVoice('sfx_station_hum', null, APPROACH_HUM_PEAK / amp,
+        { busName: 'ambient', rate: APPROACH_HUM_FACTION_RATE[factionId] || 1 });
       if (!voice) return;
+      voice._approachFaction = factionId;
       rt.loops.approachHum = voice;
     }
     // Smooth seconds-scale ramp: the approach is a swell, not a fader snap.

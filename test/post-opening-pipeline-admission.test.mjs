@@ -9,7 +9,8 @@ import {
   collectFirstFlightLayerDrawables,
 } from '../src/render/latePipelineAdmission.js';
 import { shouldSubmitEntityMesh } from '../src/render/entityMeshVisibility.js';
-import { isEntityRenderRelevant, resolveTouchDrawableSession } from '../src/render/renderer.js';
+import { isEntityRenderRelevant } from '../src/render/renderer.js';
+import { resolveTouchDrawableSession } from '../src/render/runtime/openingAdmissionPlanning.js';
 import { cookLiveSceneGpu } from '../src/render/liveSceneCook.js';
 import { touchSubjectOnExactTarget } from '../src/render/openingGpuAdmission.js';
 import { waitForCurrentRenderPipelines, waitForOpeningGpuResources } from '../src/render/pipelineReadiness.js';
@@ -447,7 +448,7 @@ test('individual exact-target touches reuse only the current cook drawable censu
   assert.match(renderer, /touchSubjectOnExactTarget\(renderer, null, subject, cam\.obj, scene, \{ drawableSession \}\)/);
   assert.match(renderer, /const restore = revealSubjectWithAncestors\(subject\);[\s\S]{0,140}touchExactTargetSubject\(subject\)/,
     'the owner reveal/submit cancellation envelope remains in place');
-  assert.match(renderer, /typeof isActive === 'function' && !isActive\(subject\)\) throw ownerInactiveTouchError\(\)/,
+  assert.match(renderer, /typeof isActive === 'function' && !isActive\(subject\)\)\) throw ownerInactiveTouchError\(\)/,
     'the exact touch still checks the source owner before drawing');
 });
 

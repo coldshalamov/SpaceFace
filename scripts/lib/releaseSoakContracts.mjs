@@ -86,7 +86,12 @@ export function validateReleaseSoakEvidence(envelope, { requireArtifacts = true 
     if (!start || !end) failures.push('primary evidence requires start/end worktree fingerprints');
     else {
       if (start.digest !== envelope.worktreeDigest || start.id !== envelope.worktreeId) failures.push('start fingerprint does not bind the evidence worktree');
-      const fullRuntimeOverlay = envelope.sourceOverlay?.coverage?.fullRuntime === true
+      const coverage = envelope.sourceOverlay?.coverage;
+      if (envelope.sourceOverlay != null && coverage?.valid !== true) {
+        failures.push('source overlay coverage is unknown or incomplete');
+      }
+      const fullRuntimeOverlay = coverage?.valid === true
+        && coverage.fullRuntime === true
         && /^all-runtime(?:-|$)/i.test(String(envelope.sourceOverlay?.coverage?.captureScope || ''))
         && Number.isSafeInteger(envelope.sourceOverlay?.coverage?.pinnedPathCount)
         && envelope.sourceOverlay.coverage.pinnedPathCount > 0;
@@ -99,9 +104,16 @@ export function validateReleaseSoakEvidence(envelope, { requireArtifacts = true 
           failures.push('full-runtime source overlay identity was not stable for the entire capture');
         }
         if (envelope.sourceStability?.mode !== 'served-overlay'
-            || envelope.sourceStability?.uncoveredWorktreeStable !== true
+            || envelope.sourceStability?.pass !== true
+            || envelope.sourceStability?.uncoveredRuntimeInputsStable !== true
             || envelope.sourceStability?.uncoveredHeadStable !== true) {
-          failures.push('full-runtime source overlay did not prove uncovered worktree and HEAD stability');
+          failures.push('full-runtime source overlay did not prove uncovered runtime-input and HEAD stability');
+        }
+        if (envelope.runtimeInputs?.scope !== 'uncovered-runtime-inputs'
+            || !Array.isArray(envelope.runtimeInputs?.changedPaths)
+            || envelope.runtimeInputs.changedPaths.length !== 0
+            || !stableRuntimeInputPair(envelope.runtimeInputs)) {
+          failures.push('full-runtime source overlay lacks a clean, path-attributed uncovered runtime-input fingerprint');
         }
       } else if (end.digest !== start.digest || end.id !== start.id) {
         const runtimeInputs = envelope.runtimeInputs;
@@ -110,13 +122,10 @@ export function validateReleaseSoakEvidence(envelope, { requireArtifacts = true 
           && envelope.sourceStability?.pass === true
           && envelope.sourceStability?.runtimeInputsStable === true
           && envelope.sourceStability?.runtimeInputsSchema === RUNTIME_INPUT_FINGERPRINT_SCHEMA
-          && runtimeInputs?.start?.schema === RUNTIME_INPUT_FINGERPRINT_SCHEMA
-          && runtimeInputs?.end?.schema === RUNTIME_INPUT_FINGERPRINT_SCHEMA
-          && /^[a-f0-9]{64}$/i.test(String(runtimeInputs.start.digest || ''))
-          && runtimeInputs.start.digest === runtimeInputs.end.digest
-          && Number.isSafeInteger(runtimeInputs.start.fileCount)
-          && runtimeInputs.start.fileCount > 0
-          && runtimeInputs.start.fileCount === runtimeInputs.end.fileCount;
+          && runtimeInputs?.scope === 'runtime-inputs'
+          && Array.isArray(runtimeInputs?.changedPaths)
+          && runtimeInputs.changedPaths.length === 0
+          && stableRuntimeInputPair(runtimeInputs);
         if (!runtimeInputStable) failures.push('worktree fingerprint changed during capture');
       }
     }
@@ -165,6 +174,20 @@ export function validateReleaseSoakEvidence(envelope, { requireArtifacts = true 
   }
 
   return { pass: failures.length === 0, failures: [...new Set(failures)], envelope };
+}
+
+function stableRuntimeInputPair(runtimeInputs) {
+  const start = runtimeInputs?.start;
+  const end = runtimeInputs?.end;
+  return start?.schema === RUNTIME_INPUT_FINGERPRINT_SCHEMA
+    && end?.schema === RUNTIME_INPUT_FINGERPRINT_SCHEMA
+    && /^[a-f0-9]{64}$/i.test(String(start.digest || ''))
+    && start.digest === end.digest
+    && Number.isSafeInteger(start.fileCount)
+    && start.fileCount > 0
+    && start.fileCount === end.fileCount
+    && Array.isArray(start.missingPaths) && start.missingPaths.length === 0
+    && Array.isArray(end.missingPaths) && end.missingPaths.length === 0;
 }
 
 function validateChecks(checks, primary, failures) {
@@ -440,13 +463,17 @@ export async function strictWorktreeFingerprint(root, { excludePaths = [] } = {}
  * This intentionally ignores Git metadata and harness/docs churn while remaining
  * sensitive to tracked, staged, unstaged, deleted, and non-ignored untracked runtime files.
  */
-export async function strictRuntimeInputFingerprint(root) {
+export async function strictRuntimeInputFingerprint(root, { excludePaths = [], includeFileHashes = false } = {}) {
   const digest = createHash('sha256');
+  const excluded = new Set(excludePaths.map(normalizeFingerprintPath));
+  if ([...excluded].some((relative) => !relative)) {
+    throw new Error('runtime input exclusions must be normalized repository paths');
+  }
   const paths = splitNul(await runGitCapture(root, [
     'ls-files', '--cached', '--others', '--exclude-standard', '-z', '--',
     'index.html', 'package.json', 'package-lock.json', 'server.js', 'electron',
     'src', 'styles', 'assets', 'vendor', 'scripts/lib',
-  ])).filter((relative) => !new Set([
+  ])).map(normalizeFingerprintPath).filter((relative) => !new Set([
     'scripts/lib/releaseSoakProbe.mjs',
     'scripts/lib/releaseSoakContracts.mjs',
     'scripts/lib/alphaLiveBaselineContracts.mjs',
@@ -454,8 +481,9 @@ export async function strictRuntimeInputFingerprint(root) {
     'scripts/lib/electronTestIsolation.mjs',
     'scripts/lib/browser-issues.mjs',
     'scripts/lib/playwrightCspPolling.mjs',
-  ]).has(relative.replaceAll('\\', '/'))).sort();
+  ]).has(relative)).filter((relative) => !excluded.has(relative)).sort();
   const rootPath = path.resolve(root);
+  const files = includeFileHashes ? [] : null;
   for (const relative of paths) {
     const normalized = normalizeFingerprintPath(relative);
     if (!normalized) throw new Error(`runtime input path is not normalized: ${relative}`);
@@ -466,6 +494,7 @@ export async function strictRuntimeInputFingerprint(root) {
     try { metadata = await lstat(absolute); } catch (error) {
       if (error.code === 'ENOENT') {
         digest.update(`MISSING\0${normalized}\0`);
+        if (files) files.push({ path: normalized, missing: true, sha256: null });
         continue;
       }
       throw error;
@@ -474,14 +503,33 @@ export async function strictRuntimeInputFingerprint(root) {
       throw new Error(`runtime input fingerprint refuses non-regular path: ${normalized}`);
     }
     digest.update(`FILE\0${normalized}\0${metadata.size}\0`);
-    await pipeFileIntoHash(absolute, digest);
+    const fileHash = includeFileHashes ? createHash('sha256') : null;
+    await pipeFileIntoHash(absolute, digest, fileHash);
     digest.update('\0');
+    if (files) files.push({ path: normalized, missing: false, sha256: fileHash.digest('hex') });
   }
   return {
     schema: RUNTIME_INPUT_FINGERPRINT_SCHEMA,
     digest: digest.digest('hex'),
     fileCount: paths.length,
+    ...(files ? { files } : {}),
   };
+}
+
+/** Return only changed runtime paths, with the content identities already computed by the fingerprint. */
+export function diffRuntimeInputFiles(before, after) {
+  if (!Array.isArray(before) || !Array.isArray(after)) return null;
+  const left = new Map(before.map((entry) => [entry.path, entry]));
+  const right = new Map(after.map((entry) => [entry.path, entry]));
+  const paths = [...new Set([...left.keys(), ...right.keys()])].sort();
+  return paths.filter((relative) => {
+    const a = left.get(relative), b = right.get(relative);
+    return !a || !b || a.missing !== b.missing || a.sha256 !== b.sha256;
+  }).map((relative) => ({
+    path: relative,
+    before: left.has(relative) ? { missing: left.get(relative).missing, sha256: left.get(relative).sha256 } : null,
+    after: right.has(relative) ? { missing: right.get(relative).missing, sha256: right.get(relative).sha256 } : null,
+  }));
 }
 
 export function normalizeFingerprintPath(value) {
@@ -553,10 +601,13 @@ function streamGitIntoHash(cwd, args, hash, label) {
   });
 }
 
-function pipeFileIntoHash(filePath, hash) {
+function pipeFileIntoHash(filePath, hash, secondaryHash = null) {
   return new Promise((resolve, reject) => {
     const stream = createReadStream(filePath);
-    stream.on('data', (chunk) => hash.update(chunk));
+    stream.on('data', (chunk) => {
+      hash.update(chunk);
+      if (secondaryHash) secondaryHash.update(chunk);
+    });
     stream.on('end', resolve);
     stream.on('error', reject);
   });

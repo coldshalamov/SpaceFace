@@ -457,7 +457,25 @@ function ensureGameServerPort() {
   return gameServerPortPromise;
 }
 
-function listenGameServer(root, requestedPort) {
+async function listenGameServer(root, requestedPort) {
+  let devSimWorkerBundleProvider = null;
+  // Normal source launches use the measured bundled worker; 0 keeps the raw ESM escape hatch.
+  const devSimWorkerBundleEnabled = process.env.SPACEFACE_DEV_SIM_WORKER_BUNDLE !== '0'
+    && !app.isPackaged
+    && !launchConfig.isolatedEvidence
+    && !sourceOverlayManifest
+    && !String(process.env.SPACEFACE_BASELINE_SOURCE_MANIFEST || '').trim()
+    && process.env.SPACEFACE_EVIDENCE_ALLOW_BACKGROUND_EXECUTION !== '1'
+    && process.env.SPACEFACE_EVIDENCE_HIDE_WINDOW !== '1';
+  if (devSimWorkerBundleEnabled) {
+    const { pathToFileURL } = require('node:url');
+    const providerUrl = pathToFileURL(path.join(PROJECT_ROOT, 'scripts', 'lib', 'devSimWorkerBundle.mjs')).href;
+    const { createDevSimWorkerBundleProvider } = await import(providerUrl);
+    devSimWorkerBundleProvider = createDevSimWorkerBundleProvider({ root });
+    devSimWorkerBundleProvider.prewarm().catch((error) => {
+      console.error('[dev-sim-worker] asynchronous prewarm failed; current requests will rebuild or return 503:', error && (error.stack || error.message) || String(error));
+    });
+  }
   return new Promise((resolve, reject) => {
     const server = createGameServer({
       root,
@@ -473,6 +491,7 @@ function listenGameServer(root, requestedPort) {
       playerStoreDir,
       userContentDir: mountedUserContentDir(),
       sourceOverlay: sourceOverlayManifest,
+      ...(devSimWorkerBundleProvider ? { devSimWorkerBundleProvider } : {}),
       staticHeaders: { 'Content-Security-Policy': ELECTRON_CONTENT_SECURITY_POLICY },
       staticHeadersByPath: {
         [KTX2_TRANSCODER_WORKER_PATH]: {
@@ -1272,6 +1291,60 @@ async function createWindow() {
   bindWindowStatePersistence(win, windowStatePath);
   let canonicalLoadCommitted = false;
   let initialCanonicalLoadPending = false;
+  // Normal close remains cancellable until the renderer's save owner has settled its
+  // existing exit save and shared-store writes. Forced process termination has no such guarantee.
+  let quitPrepared = false;
+  let quitPreparing = false;
+  let quitToken = 0;
+  const quitContents = win.webContents;
+  const releaseInterruptedQuit = () => {
+    if (!quitPreparing) return;
+    quitPreparing = false;
+    quitToken += 1;
+    appQuitting = false;
+  };
+  const onQuitPrepared = async (event, token, result) => {
+    if (event.sender !== quitContents || !quitPreparing || token !== quitToken) return;
+    quitPreparing = false;
+    if (win.isDestroyed() || quitContents.isDestroyed()) return;
+    if (result?.ok === true) {
+      quitPrepared = true;
+      win.close();
+      return;
+    }
+    appQuitting = false;
+    try {
+      await dialog.showMessageBox(win, {
+        type: 'error', title: 'Save not finished',
+        message: 'The game could not finish saving before closing.',
+        detail: 'Check the save and try quitting again.',
+        buttons: ['Return to game'], defaultId: 0,
+      });
+    } catch (_) { /* the window can close while the dialog is opening */ }
+  };
+  ipcMain.on('spaceface:quit-prepared', onQuitPrepared);
+  quitContents.on('render-process-gone', releaseInterruptedQuit);
+  quitContents.on('unresponsive', releaseInterruptedQuit);
+  win.once('closed', () => {
+    ipcMain.removeListener('spaceface:quit-prepared', onQuitPrepared);
+    if (!quitContents.isDestroyed()) {
+      quitContents.removeListener('render-process-gone', releaseInterruptedQuit);
+      quitContents.removeListener('unresponsive', releaseInterruptedQuit);
+    }
+  });
+  win.on('close', (event) => {
+    if (quitPrepared || !canonicalLoadCommitted) return;
+    event.preventDefault();
+    if (quitPreparing) return;
+    quitPreparing = true;
+    try { quitContents.send('spaceface:prepare-quit', ++quitToken); }
+    catch (_) {
+      releaseInterruptedQuit();
+      // The renderer cannot service the handoff. Honor the close without claiming a save.
+      quitPrepared = true;
+      if (!win.isDestroyed()) win.close();
+    }
+  });
   installWindowSecurity(win, gameUrl);
   // BrowserWindow.loadURL() can reject with ERR_ABORTED when the already-committed canonical page
   // reloads itself before Electron settles the original promise. That is no longer a startup
