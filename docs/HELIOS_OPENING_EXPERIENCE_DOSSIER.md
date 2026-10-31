@@ -150,3 +150,62 @@ index rewrite. The older Helios fixture now supplies the real Ceres imports; no
 production guard was retained merely to accommodate an extracted-source test.
 Normal flight, rendered Ceres articulation, full Continue and release acceptance
 remain open; the native scene does not imply durable repair or cargo restoration.
+
+**Asset boundary:** the release refinery GLB SHA-256 is
+`c5600c29dfeedc1a00feabb3104ecdd4259ac5a7d83f47fb9a94092319ceeada`; its render
+package SHA-256 is `b6adca2a05a282355f2eb73f9048a5103d1dc6376098d19d106293fcc25d3aa1`.
+Both contain `MOTION_REFINERY_CROWN` / `MOTION_REFINERY_SCAN`, but neither contains
+a named gantry. The actual mechanism follows boundary → authored root → part root →
+package root, beyond the direct-child scan used by `infrastructureMotion`; recursive
+`/arm/` matching would also catch `Armor/Lights_Warm` and is not safe. The earned
+scene is currently the bounds-projected hull-side repair/scan VFX (`stationOperationVfx`
+40–60), not a physical drone, unloading, or gantry movement. The test's representative
+gantry node and source seam do not establish the release GLB's mechanism or rendered result.
+
+## Next authored mission: B2 Registry Writ and Elroy
+
+The next authored objective after B1's Ceres furnace settlement is not a direct Ceres →
+Elroy jump. Canonical beat 2, **First Blood**, first sends the pilot to the **Tethys board**
+for Cinder marks. Rook's authored instruction is Cinder → Compost → the Nest → the register
+(`src/story/campaign47a/embodiedDialogue.js`; `src/story/campaign47a/campaignData.js`). The
+Cinder writ is an ordinary three-Wasp clear plus a real marked-wreck tow to Rook in Charon;
+the Compost step requires player-fed visible growth; the Nest requires its retained encounter
+outcome. Once those ordered steps are recorded, the story waypoint returns to **Tethys** for
+the **Registry Writ**. Normal undock from that board accepts the next authored contract and
+normal Charon sector entry spawns its target (`missionStoryOps.js:_activateBookContractOnDeparture`,
+`missions.js:dock:undocked`, `missionStoryOps.js:_onSectorEnterSteps`,
+`missionSpawningOps.js:_spawnTargetsFor`).
+
+The live Elroy contract is `type: bounty_hunt`, story tag `campaign47a:b2:elroy`, target
+`npc_elroy` / `register_mark`, zone `zone_charon_ambush` (Ashfall Approach), and receiving
+station `station_expanse` (`src/story/campaign47a/embodiedMissions.js`). This is separate from
+the retained/parallel `rescue_under_fire` pod-rescue route; the B2 route classification and
+story-spine comments explicitly keep the pod pull's lifecycle distinct from the authored
+register writ (`missions.js:campaign47aRouteKind`, `missionStoryOps.js:_advanceEmbodiedStoryMission`,
+`storySpine.js:maraLine`). The Elroy contract's order asks for a scan first; after the registry
+identifies the civilian maintenance vessel, the player chooses fire or to reel Elroy inside
+sixty. The alternative is a live custody/force choice, not a new mission or inferred motive.
+
+**Concrete route mismatch and bounded correction:** the old B2 mission waypoint combined the
+live target's position and identity with the mission's inherited `station_expanse` anchor.
+The actual HUD resolves station first, so its arrow landed at the Expanse Refinery instead of
+Elroy at Ashfall Approach (zone center ≈ `(-980, -540)` local, versus refinery ≈ `(880, -640)`;
+the target zone radius is 720 WU). Mission Log had the same inherited-station problem, and its
+map resolver would backfill `mission.destStationId` whenever the handoff retained `missionId`.
+The B2 waypoint now projects a moving target only when the active spawned/restored slot-zero
+entity has the authored Elroy id/role, exact mission ownership, finite coordinates, and no
+conflicting sector provenance. Its target fix is stationless; with no verified contact, the
+route honestly marks the Ashfall search area in Charon, or gives sector guidance when away.
+Mission Log consumes that explicit target/search intent without handing the map resolver a
+mission id that would silently select the refinery. The chart centers on the target/search fix;
+this bounded handoff does not create a separate Elroy inspector selection. Board and return
+station waypoints remain station-addressed. No scan, kill, custody, settlement, deadline, reward,
+or generic bounty owner changed.
+
+`test/contract-47a-b2-navigation.test.mjs` verifies the actual Tethys offer/departure and
+Charon spawn path, the HUD station-first consumer before/after scanner identification and while
+Elroy moves, the Mission Log map handoff and actual map target resolver, search fallbacks for
+missing/dead/recycled/wrong-identity/non-finite contacts, Continue adoption under a new runtime
+id, a terminal contract, and the separate Tethys Cinder/Registry board waypoints. Existing B0,
+Scale 4, Wasp, and Pelican readers remain separate regression gates. This is native source/reader
+evidence, not a rendered playthrough or visual acceptance.

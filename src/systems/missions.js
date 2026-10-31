@@ -3237,18 +3237,56 @@ export const missions = {
     }
 
     if (m.storyTag === CONTRACT_47A_B2_TAG && m.type === 'bounty_hunt') {
-      const target = this._firstLiveMissionTarget(m);
+      const targetId = m.storyTarget && m.storyTarget.id;
+      const targetRole = m.storyTarget && m.storyTarget.role;
+      const currentSectorId = this.state.world && this.state.world.currentSectorId;
+      const target = targetId === 'npc_elroy' && targetRole === 'register_mark'
+        && currentSectorId === m.destSectorId
+        ? (m.targetEntityIds || []).map((id) => this.state.entities.get(id)).find((entity) => {
+          if (!entity || entity.alive === false || !entity.pos
+            || !Number.isFinite(entity.pos.x) || !Number.isFinite(entity.pos.z)
+            || missionTargetSlotOf(entity, m.id) !== 0) return false;
+          const data = entity.data || {};
+          if (data.missionTag !== m.id || data.missionId !== m.id
+            || data.storyTargetId !== targetId || data.storyTargetRole !== targetRole) return false;
+          // These sector fields are stamped on fresh spawns and Continue-adopted targets. Do not
+          // require optional legacy fields, but reject any present provenance that names elsewhere.
+          for (const sectorId of [entity.homeSectorId, data.homeSectorId, data.sectorId]) {
+            if (sectorId != null && sectorId !== m.destSectorId) return false;
+          }
+          return true;
+        }) || null
+        : null;
       const identified = m.params && m.params.investigationStage === 'identified';
       if (target) {
         return {
           ...base,
+          stationId: null,
           label: identified ? 'Elroy' : '47-A Signal',
           targetEntityId: target.id,
           pos: { x: target.pos.x, z: target.pos.z },
           reason: missionNavReason(m, station, sector),
         };
       }
-      return base;
+      const targetZone = zonesForSector(m.destSectorId)
+        .find((candidate) => candidate && candidate.id === (m.storyTarget && m.storyTarget.zoneId));
+      const zoneName = targetZone && targetZone.name || 'the authored approach';
+      const searchPos = currentSectorId === m.destSectorId && targetZone && targetZone.center
+        ? sectorLocalToGlobalForSector(targetZone.center, m.destSectorId)
+        : null;
+      const objective = missionNavReason(m, station, sector);
+      const routeReason = currentSectorId === m.destSectorId
+        ? `No verified contact. Search ${zoneName} in ${sector && sector.name || 'Charon Expanse'}; ${objective.toLowerCase()}.`
+        : `Travel to ${sector && sector.name || 'Charon Expanse'} and search ${zoneName}; ${objective.toLowerCase()}.`;
+      return {
+        ...base,
+        label: `${zoneName} — search for 47-A`,
+        stationId: null,
+        targetEntityId: null,
+        pos: searchPos && Number.isFinite(searchPos.x) && Number.isFinite(searchPos.z)
+          ? { x: searchPos.x, z: searchPos.z } : null,
+        reason: routeReason,
+      };
     }
 
     // PQ-019C — the capsule run's marker is an OWNERSHIP cue, read off the run's own record rather

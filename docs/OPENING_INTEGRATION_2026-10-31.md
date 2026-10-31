@@ -324,3 +324,31 @@ node proves the articulation consumer, not current Ceres asset or rendered quali
 pass; read-only local preload validation is in sync.** Full rendered/normal-input
 Ceres and Continue acceptance remain open. This advances SF-LIVING-WORLD without
 closing the larger goal or creating a new physical/economic owner.
+
+### Registry Writ route and map destination
+
+The live Book 2 register follows Tethys, Cinder/Compost/Nest, then the Tethys
+Registry Writ and Elroy in Charon. Its target waypoint previously retained an
+Expanse Refinery station anchor, which won the HUD's station-first resolution.
+The B2 projection now follows only its live, finite, owned slot-zero Elroy. Missing
+or invalid contacts give Ashfall search/sector guidance instead of a false berth.
+Scan, custody, kill, rewards and mission progression are unchanged.
+
+Mission Log now honors explicit waypoint station intent and resolves the current
+presentation position. Stationless target/search actions omit the mission selection
+identity that would otherwise backfill the receiving station in the map resolver.
+The chart centers on the fix without selecting a separate Elroy inspector target;
+mission tracking and the player's route pin remain unchanged. Ordinary station
+returns and absent-waypoint fallback remain covered.
+
+Six new navigation tests execute the real offer/departure/spawn path and production
+HUD/map readers, including scanner identification, movement, stale/recycled ids,
+Continue adoption, terminal missions, actual button decoding and existing station
+routes. The original two scan/fire and custody tests are retained byte-for-byte.
+The integrated suite passes 263 tests; full rendered/normal-input play and complete
+Save/Continue acceptance remain open.
+
+Actual Ceres GLB structure was also inspected: no named gantry is present. The
+earned inspection is the existing bounds-projected hull repair/scan effect, not
+physical unloading, a drone entity or actual gantry articulation. Exact asset
+hashes and nesting evidence are in the dossier. No model or motion owner changed.

@@ -36,6 +36,7 @@ import { isStorySpineContract, STORY_SPINE_KEEP_TEXT } from '../../data/storySpi
 import { unsatisfiedRequiredConditions } from '../../data/contractClauses.js';
 import { failReasonWord } from '../../data/missionFailReasons.js';
 import { missionNextActionRow } from '../sim/missionNextAction.js';
+import { resolveWaypointPresentationPosition } from '../navigationWaypoint.js';
 import { BINDINGS } from '../bindings.js';
 import { entitySpanHtml } from '../entityResolver.js';
 import { kesslerScaleWaypoint } from '../../systems/kesslerScaleWorksite.js';
@@ -497,31 +498,53 @@ export function missionMapAction(state, mission, isTracked) {
   const currentSectorId = state.world && state.world.currentSectorId || null;
   const targetSectorId = (wp && wp.sectorId) || mission.destSectorId || null;
   const sameSector = targetSectorId && currentSectorId && targetSectorId === currentSectorId;
-  const hasLocalFix = !!(wp && wp.pos);
-  if (hasLocalFix || sameSector || !targetSectorId) {
-    return mapHandoffAction({
-      focus: MAP_FOCUS.LOCAL,
-      label: 'LOCAL MAP',
-      title: 'Open Local Map',
-      body: 'Show the live objective marker and nearby contacts.',
-      missionId: mission.id,
+  const resolvedPos = wp ? resolveWaypointPresentationPosition(state, wp) : null;
+  const hasResolvedPos = !!(resolvedPos && Number.isFinite(resolvedPos.x) && Number.isFinite(resolvedPos.z));
+  const targetBearing = !!(wp && wp.targetEntityId != null && hasResolvedPos);
+  const explicitWaypointStation = !!(wp && Object.prototype.hasOwnProperty.call(wp, 'stationId'));
+  // A route owner may deliberately publish a stationless target/search fix. A fallback to the
+  // contract's receiving berth would override that choice in the Mission Log (and again in the
+  // map resolver via missionId), even though the HUD follows the live waypoint correctly.
+  const waypointOwnsMapDestination = targetBearing || explicitWaypointStation;
+  const stationId = waypointOwnsMapDestination
+    ? (wp.stationId || null)
+    : (mission.destStationId || (wp && wp.stationId) || null);
+  const suppressMissionFallback = waypointOwnsMapDestination && !stationId;
+  const handoff = (focus, label, title, body, pos) => {
+    const action = mapHandoffAction({
+      focus,
+      label,
+      title,
+      body,
+      missionId: suppressMissionFallback ? null : mission.id,
       sectorId: targetSectorId,
-      stationId: mission.destStationId || (wp && wp.stationId) || null,
-      pos: wp && wp.pos ? wp.pos : null,
+      stationId,
+      pos,
       source: 'missionLog',
     });
+    // galaxyMap resolves missionId back to mission.destStationId when stationId is absent.
+    // Dropping only that selection identity lets the explicit sector/fix center the chart without
+    // secretly selecting a different berth; the visible mission pin and nav waypoint are untouched.
+    if (suppressMissionFallback) action.suppressMissionId = true;
+    return action;
+  };
+  const hasLocalFix = hasResolvedPos;
+  if (hasLocalFix || sameSector || !targetSectorId) {
+    return handoff(
+      MAP_FOCUS.LOCAL,
+      'LOCAL MAP',
+      'Open Local Map',
+      'Show the live objective marker and nearby contacts.',
+      hasLocalFix ? { x: resolvedPos.x, z: resolvedPos.z } : null,
+    );
   }
-  return mapHandoffAction({
-    focus: MAP_FOCUS.GALAXY,
-    label: 'STAR MAP',
-    title: 'Open Star Map',
-    body: 'Plot or review the jump route to this objective.',
-    missionId: mission.id,
-    sectorId: targetSectorId,
-    stationId: mission.destStationId || (wp && wp.stationId) || null,
-    pos: null,
-    source: 'missionLog',
-  });
+  return handoff(
+    MAP_FOCUS.GALAXY,
+    'STAR MAP',
+    'Open Star Map',
+    'Plot or review the jump route to this objective.',
+    null,
+  );
 }
 
 function tradeRouteWaypoint(state) {
@@ -984,7 +1007,9 @@ function mapActionButtonAttrs(mapAction, missionId) {
     + (pos && Number.isFinite(pos.x) ? ' data-map-pos-x="' + escapeHtml(String(pos.x)) + '"' : '')
     + (pos && Number.isFinite(pos.z) ? ' data-map-pos-z="' + escapeHtml(String(pos.z)) + '"' : '')
     + (mapAction.source ? ' data-map-source="' + escapeHtml(mapAction.source) + '"' : '')
-    + ' data-mid="' + escapeHtml(missionId || mapAction.missionId || '') + '"';
+    + (mapAction.suppressMissionId
+      ? ''
+      : ' data-mid="' + escapeHtml(missionId || mapAction.missionId || '') + '"');
 }
 
 /**
