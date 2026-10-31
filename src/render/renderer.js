@@ -24807,6 +24807,23 @@ export const render = {
       if (render) render.openingBargeWarm = { ...receipt };
       return true;
     };
+    // True when every barge-family material under the subject already has a linked program.
+    const bargeFamilyLinked = (subject) => {
+      const properties = nativeRenderer && nativeRenderer.properties;
+      if (!properties || typeof properties.get !== 'function') return false;
+      let linked = true;
+      subject.traverse((object) => {
+        if (!linked || !object.material) return;
+        const materials = Array.isArray(object.material) ? object.material : [object.material];
+        for (const material of materials) {
+          if (!material || !BARGE_FAMILY.test(material.name || '')) continue;
+          let program = null;
+          try { program = properties.get(material).currentProgram || null; } catch (_) { program = null; }
+          if (!program) { linked = false; return; }
+        }
+      });
+      return linked;
+    };
     const carriesBargeFamily = (subject) => {
       let hit = false;
       subject.traverse((object) => {
@@ -24827,14 +24844,22 @@ export const render = {
       if (!await waitForWarmAttachments(this, warm, owned)) return;
       if (!owned()) return;
       if (state.mode !== 'loading') return publish('shell-released');
-      if (liveCookCovers()) return publish('live-cook-covers');
+      // Pre-lift program warm (perf/prelift-program-warm): the live cook's post-opening pass
+      // does not reliably reach these sections before the veil's drain cap, and the first
+      // wreck that publishes after lift then links the double-sided barge-family program in
+      // flight (2.2-3.1 s on software GL). Keep the single pass under the live cook too, but
+      // only for sections whose barge materials still have no linked program, so a cook that
+      // already covered them costs a property read per material.
+      const covered = liveCookCovers();
+      receipt.liveCookCovered = covered;
+      receipt.skippedLinked = 0;
       const touch = render && render.touchSubjectExactTarget;
       if (typeof touch === 'function') {
         for (const child of [...root.children]) {
           if (!loading()) break;
           if (!child.userData || child.userData.authoredAssetState !== 'authored') continue;
           if (!carriesBargeFamily(child)) continue;
-          if (liveCookCovers()) return publish('live-cook-covers');
+          if (bargeFamilyLinked(child)) { receipt.skippedLinked += 1; continue; }
           try {
             await touch(child);
             // The touch may yield across teardown, a context restore, or a new admission run.
