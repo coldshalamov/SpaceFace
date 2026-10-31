@@ -43,6 +43,9 @@ import {
 import { playerBearingName } from '../core/playerCompass.js';
 import { CRYO_ARENA_ID } from './cryoDriftArena.js';
 import { GATE_BEARINGS } from './waveMaterialization.js';
+import { verbBindingLabel } from '../onboarding/verbSpeech.js';
+import { isHostileToPlayer } from './scanner.js';
+import { occupantGenerationOf } from '../core/entity.js';
 
 /**
  * Hard ceiling on player-facing lines per wave. Counts voice:say AND alert, because alerts.js
@@ -273,10 +276,10 @@ export function waveOpeningLine(wave, plan) {
               : circuit.kind === 'commander' ? `Assassinate ${circuit.commanderName || 'the commander'}.`
                 : circuit.kind === 'reach' ? 'Reach the gate.'
                   : 'Break the pack.';
-    // The first-run lesson names what is on the field, not the held pack: one hull, one rock
-    // worth throwing, and the pack still on its way.
+    // Explicit scout Training names what is on the field, not the held pack: one hull, one rock
+    // available as an optional weapon, and the pack still on its way.
     if (plan.openingLesson) {
-      return `Wave ${wave}. One hostile on the field — the rest are holding. The rock beside you is ammunition: line it and throw it.`;
+      return `Wave ${wave}. One hostile on the field — the rest are holding. Use fitted guns or swing debris into it — releasing the line is optional.`;
     }
     if (swarm.boss) {
       // The champion NAMES ITSELF. A boss wave can be one Dreadnought or a wing of three raiders,
@@ -375,6 +378,11 @@ export const survivalAnnounce = {
     this._unsubs.push(this.bus.on('swarm:affix', (p) => this._onAffix(p)));
     this._unsubs.push(this.bus.on('swarm:stallReleased', (p) => this._onStallReleased(p)));
     this._unsubs.push(this.bus.on('run:openingLessonReleased', (p) => this._onOpeningLessonReleased(p)));
+    this._unsubs.push(this.bus.on('tether:latched', (p) => this._onOpeningThrowLatch(p)));
+    this._unsubs.push(this.bus.on('tether:cut', (p) => this._onOpeningThrowCut(p)));
+    this._unsubs.push(this.bus.on('tether:released', (p) => this._onOpeningThrowReleased(p)));
+    this._unsubs.push(this.bus.on('tether:whipImpact', (p) => this._onOpeningThrowImpact(p)));
+    this._unsubs.push(this.bus.on('entity:destroyed', () => this._updateOpeningThrow()));
     this._unsubs.push(this.bus.on('run:waveCleared', (p) => this._onWaveCleared(p)));
     this._unsubs.push(this.bus.on('run:levelUp', (p) => this._onLevelUp(p)));
     this._unsubs.push(this.bus.on('run:transitioned', (p) => this._onTransitioned(p)));
@@ -386,6 +394,7 @@ export const survivalAnnounce = {
   destroy() {
     for (const off of this._unsubs || []) if (typeof off === 'function') off();
     this._unsubs = [];
+    this._openingThrow = null;
   },
 
   newGame() {
@@ -420,6 +429,8 @@ export const survivalAnnounce = {
     this._broodTeleLines = 0;      // telegraph lines spent this wave
     this._affixLines = 0;          // affix first-sight lines spent this wave
     this._stallSpokeWave = 0;      // the wave the stall release last spoke on
+    this._openingThrow = null;
+    this._openingPack = null;
   },
 
   // ── emit helpers ──────────────────────────────────────────────────────────────────────────────
@@ -477,6 +488,7 @@ export const survivalAnnounce = {
     if (this._muted) return;
     const run = liveSurvivalRun(this.state);
     if (!run) return;
+    this._updateOpeningThrow();
     if (run.phase === 'arena_intro') {
       if (this._arenaIntroArmed) {
         this._arenaIntroTicks += 1;
@@ -522,6 +534,18 @@ export const survivalAnnounce = {
     if (this._openedWave !== wave) {
       this._resetWave(wave);
       this._openedWave = wave;
+      if (wave === 1 && this.state.run.ruleset === 'swarm' && this._plan?.openingLesson
+        && !this._plan?.swarm?.circuit) {
+        const player = this.state.entities?.get(this.state.playerId);
+        this._openingPack = { seed: this.state.run.seed, player,
+          generation: occupantGenerationOf(player), spoken: false };
+      }
+      if (wave === 1 && this.state.run.ruleset === 'swarm' && this._plan?.openingLesson
+        && !this._plan?.swarm?.circuit) {
+        this._openingThrow = { seed: this.state.run.seed, player: this.state.entities?.get(this.state.playerId),
+          stage: 'offered', rock: null, startedAt: null, spokeLatch: false };
+        this._openingThrow.playerGeneration = occupantGenerationOf(this._openingThrow.player);
+      }
       this._speakOpening(wave);
     }
     this._waveIntroTicks = 0;
@@ -529,17 +553,33 @@ export const survivalAnnounce = {
   },
 
   _speakOpening(wave) {
-    const line = waveOpeningLine(wave, this._plan);
+    const teach = this._openingThrow && this.state.settings?.gameplay?.tutorialHints !== false;
+    const latch = teach ? verbBindingLabel(this.state, 'tether') : '';
+    const fire = teach ? verbBindingLabel(this.state, 'fire') : '';
+    const gunOption = fire ? `Fire fitted primary guns with ${fire}` : 'Fire fitted primary guns';
+    const line = teach
+      ? latch
+        ? `Wave ${wave}. One hostile — the pack is holding. ${gunOption}, or aim at the small rock and tap ${latch} to latch it.`
+        : `Wave ${wave}. One hostile — the pack is holding. ${gunOption}. Defeat it to bring the pack in.`
+      : waveOpeningLine(wave, this._plan);
     // 'objective' (60) — this IS the objective nudge: it yields to danger and story, and outranks
     // enemy chatter. voiceArbiter.js:41.
     const spoke = this._say('objective', `survival:w${wave}:open`, line, 6);
+    if (spoke && teach && latch) {
+      // The lesson's one teaching focus replaces this hull's generic counter-hint too.
+      // Otherwise its materialization spends the slot the real throw payoff needs.
+      const lessonHull = this._plan?.packages?.find((pkg) => pkg?.lesson === true);
+      if (lessonHull?.enemyId) this._hintedEnemyIds.add(lessonHull.enemyId);
+    }
     // PQ-140 — then the wave names the PHYSICAL problem it poses, as its own one-sentence beat
     // on the same channel. One line, inside the per-wave budget (the arc boss wave is the worst
     // authored case at five). A wave that cannot open cannot spend a second line.
     if (spoke) {
       const arenaId = this.state && this.state.run ? this.state.run.arenaId : null;
       const question = questionClauseFor(wave, this._plan, arenaId);
-      if (question) this._say('objective', `survival:w${wave}:why`, question, 6);
+      // This room's question is the optional live throw. Its two causal lines replace the
+      // abstract question, leaving the existing pack-arrival and clear inside the five-line cap.
+      if (question && !teach) this._say('objective', `survival:w${wave}:why`, question, 6);
       this._speakChampionApproach(wave);
     }
   },
@@ -583,6 +623,8 @@ export const survivalAnnounce = {
     if (!liveSurvivalRun(this.state)) return;
     const wave = payload && payload.wave;
     if (!Number.isInteger(wave) || wave < 1) return;
+    if (wave === 1 && this._openingThrow && this._openingThrow.startedAt == null
+      && Number.isFinite(this.state.simTime)) this._openingThrow.startedAt = this.state.simTime;
     if (this._openedWave === wave) return;
 
     // Fallback for a wave whose plan this voice never saw (e.g. a direct waveStarted): it still
@@ -601,6 +643,7 @@ export const survivalAnnounce = {
     if (!Number.isInteger(wave) || wave !== this._wave) return;
     // Nothing was admitted, so nothing arrived. Do not announce a body that does not exist.
     if (!Number.isInteger(rec.admitted) || rec.admitted <= 0) return;
+    this._tryOpeningPackArrival(rec);
     const enemyId = rec.enemyId;
     if (typeof enemyId !== 'string' || !ENEMY_BY_ID.has(enemyId)) return;
 
@@ -697,13 +740,156 @@ export const survivalAnnounce = {
     }
   },
 
-  /** The lesson's held pack arriving early is still an arrival — name it, or the room fills silently. */
+  /** End scout coaching on release; the pack speaks only when a held body is admitted. */
   _onOpeningLessonReleased(payload) {
     if (this._muted) return;
     if (!liveSurvivalRun(this.state)) return;
     const wave = payload && payload.wave;
     if (!Number.isInteger(wave) || wave !== this._wave) return;
-    this._say('objective', `survival:w${wave}:pack`, 'The pack is inbound. Anything you can throw is ammunition.', 4);
+    this._openingThrow = null;
+    // Release is intent, not admission. The existing pack line waits for an actual held body.
+  },
+
+  /** One existing voice slot, on real admission for both early release and hold expiry. */
+  _tryOpeningPackArrival(rec) {
+    const watch = this._openingPack;
+    const run = this.state.run;
+    const fact = rec.openingPack;
+    const player = this.state.entities?.get(this.state.playerId);
+    if (!watch || watch.spoken || !fact || run.ruleset !== 'swarm' || run.phase !== 'active'
+      || run.wave !== 1 || rec.wave !== this._planWave || watch.seed !== run.seed || fact.seed !== run.seed
+      || fact.lesson !== this._plan?.openingLesson || !player || player.alive === false
+      || player !== watch.player || occupantGenerationOf(player) !== watch.generation) return false;
+    const pkg = this._plan.packages?.[fact.packageIndex];
+    if (!Number.isInteger(fact.packageIndex) || !pkg || pkg.lesson === true || !(pkg.count > 0)
+      || pkg.enemyId !== rec.enemyId || pkg.gateGroup !== (rec.sourceGateGroup || rec.gateGroup)) return false;
+    const name = ENEMY_BY_ID.get(rec.enemyId)?.name;
+    const arrival = fact.arrivals?.find(item => {
+      const e = this.state.entities.get(item?.entityId);
+      return e && e.alive !== false && item.generation != null
+        && occupantGenerationOf(e) === item.generation && e.data?.runCohort === 'survival'
+        && e.data?.runWave === rec.wave && e.data?.lootTableId === rec.enemyId && Number.isFinite(e.pos?.x) && Number.isFinite(e.pos?.z);
+    });
+    if (!name || !arrival || !Number.isFinite(player.pos?.x) || !Number.isFinite(player.pos?.z)) return false;
+    // Clearance can move a spawn away from its scheduled gate. Speak its actual admitted body.
+    const entity = this.state.entities.get(arrival.entityId);
+    const dx = entity.pos.x - player.pos.x, dz = entity.pos.z - player.pos.z;
+    if (dx === 0 && dz === 0) return false;
+    const bearing = `the ${playerBearingName(dx, dz)}`;
+    // If the scout was refused, its archetype hint has not had a turn. Fold that same useful
+    // counter into this one line rather than let tutorial priority hide the arrival behind it.
+    const counter = !this._hintedEnemyIds.has(rec.enemyId) && this._hintsThisWave < MAX_HINTS_PER_WAVE
+      ? hintTextFor(rec.enemyId) : null;
+    const line = `The pack is arriving — ${name} from ${bearing}. ${counter || 'Use fitted guns or swing debris.'} Break the pack.`;
+    if (!this._say('objective', `survival:w${rec.wave}:pack`, line, 6)) return false;
+    watch.spoken = true;
+    if (counter) {
+      this._hintedEnemyIds.add(rec.enemyId);
+      this._hintsThisWave += 1;
+    }
+    this._openingThrow = null;
+    return true;
+  },
+
+  // An explicit Training opportunity, not a new objective or persistent tutorial. The
+  // launch owner alone decides whether openingLesson exists; kills, quota, timers and input stay theirs.
+  _openingThrowActive() {
+    const st = this.state;
+    const lesson = this._openingThrow;
+    const run = liveSurvivalRun(st);
+    if (!lesson || this._muted || !run || run.seed !== lesson.seed || run.ruleset !== 'swarm'
+      || run.wave !== 1 || run.phase !== 'active' || st.mode !== 'flight'
+      || st.ui?.screenStack?.length || st.settings?.gameplay?.tutorialHints === false
+      || !verbBindingLabel(st, 'tether')) return null;
+    const player = st.entities?.get(st.playerId);
+    if (!player || player !== lesson.player || player.alive === false
+      || occupantGenerationOf(player) !== lesson.playerGeneration) return null;
+    const hold = this._plan?.openingLesson?.holdTicks;
+    if (!Number.isFinite(hold) || hold <= 0 || !Number.isFinite(st.simTime)) return null;
+    if (lesson.startedAt == null) lesson.startedAt = st.simTime;
+    if (st.simTime - lesson.startedAt >= hold / 60) {
+      this._openingThrow = null;
+      return null;
+    }
+    return lesson;
+  },
+
+  _sayOpeningThrow(id, text, ttl) {
+    // Coaching yields its slot before the pack/clear, and never raises the shared cap.
+    if (this._linesThisWave >= MAX_LINES_PER_WAVE - 2) return false;
+    return this._say('objective', id, text, ttl);
+  },
+
+  _updateOpeningThrow() {
+    const lesson = this._openingThrowActive();
+    if (!lesson || !lesson.rock || lesson.stage === 'hit' || lesson.stage === 'lost') return;
+    if (this._openingThrowRockLive(lesson)) return;
+    lesson.stage = 'lost';
+    // Loss is not a successful throw, and never advances the actual lesson/pack.
+    this._sayOpeningThrow('survival:w1:throw-lost', 'That rock is gone. Keep fighting; the pack is still coming.', 4);
+  },
+
+  _openingThrowRockLive(lesson) {
+    const rock = lesson?.rock;
+    return !!rock && rock.alive !== false && this.state.entities?.get(rock.id) === rock
+      && occupantGenerationOf(rock) === lesson.rockGeneration
+      && rock.type === 'asteroid' && rock.data?.openingLesson === true && rock.data?.swarmArenaDebris === true;
+  },
+
+  _onOpeningThrowLatch(payload) {
+    const lesson = this._openingThrowActive();
+    if (!lesson || !payload || payload.sourceId !== this.state.playerId
+      || lesson.stage === 'hit' || lesson.stage === 'lost') return;
+    const rock = this.state.entities?.get(payload.targetId);
+    if (!rock || rock.alive === false || rock.type !== 'asteroid'
+      || rock.data?.openingLesson !== true || rock.data?.swarmArenaDebris !== true) return;
+    lesson.rock = rock; // reference identity rejects a later entity reusing its numeric id
+    lesson.rockGeneration = occupantGenerationOf(rock);
+    lesson.stage = 'held';
+    if (lesson.spokeLatch) return;
+    const latch = verbBindingLabel(this.state, 'tether');
+    // This ordinary asteroid keeps RMB as mining. Manual cut is the truthful throw route;
+    // do not teach the chunk-only auto-release/white-diamond control here.
+    lesson.spokeLatch = this._sayOpeningThrow('survival:w1:throw-held',
+      `Fly an arc to swing the held rock into the hostile. Tap ${latch} again if you want to sling it free.`, 6);
+  },
+
+  _onOpeningThrowCut(payload) {
+    const lesson = this._openingThrowActive();
+    const tether = this.state?.player?.tether;
+    if (!lesson || lesson.stage !== 'held' || !payload || payload.targetId !== lesson.rock?.id
+      || !this._openingThrowRockLive(lesson)
+      || tether?.active !== true || tether.targetId !== payload.targetId) return;
+    // A cut receipt has no owner field. The earlier player latch plus their still-active
+    // mirror binds it to this body. A release/break alone is never a deliberate throw.
+    lesson.stage = 'released';
+    lesson.cutAt = this.state.simTime;
+    lesson.priorImpacts = new Set(this.state.player?.masslineImpacts?.impacts || []);
+  },
+
+  _onOpeningThrowReleased(payload) {
+    const lesson = this._openingThrowActive();
+    if (!lesson || lesson.stage !== 'held' || payload?.targetId !== lesson.rock?.id) return;
+    lesson.stage = 'offered';
+    lesson.rock = null;
+  },
+
+  _onOpeningThrowImpact(payload) {
+    const lesson = this._openingThrowActive();
+    if (!lesson || lesson.stage !== 'released' || !payload || payload.slung !== true
+      || payload.targetId !== lesson.rock?.id || !this._openingThrowRockLive(lesson)
+      || !Number.isFinite(payload.time) || payload.time < lesson.cutAt
+      || payload.time !== this.state.simTime || payload.tick !== this.state.tick
+      || lesson.priorImpacts?.has(payload)) return;
+    const receipt = this.state.player?.masslineImpacts;
+    // The production player-only observer mirrors the exact record before emitting it.
+    // A generic same-body contact or a made-up bus payload must not earn the response.
+    if (receipt?.latest !== payload && !receipt?.impacts?.includes(payload)) return;
+    const victim = this.state.entities?.get(payload.victimId);
+    if (!victim || (victim.type !== 'ship' && victim.type !== 'drone')
+      || victim.id === this.state.playerId || !isHostileToPlayer(victim, lesson.player.team, this.state)
+      || victim.data?.runCohort !== 'survival' || victim.data?.runWave !== 1) return;
+    if (this._sayOpeningThrow('survival:w1:throw-hit', 'Direct hit. The room is ammunition.', 4)) lesson.stage = 'hit';
   },
 
   /**
@@ -794,6 +980,7 @@ export const survivalAnnounce = {
 
   _onTransitioned(payload) {
     const phase = payload && payload.phase;
+    if (phase && !['loadout', 'arena_intro', 'wave_intro', 'active'].includes(phase)) this._openingThrow = null;
     // 'victory' is a TERMINAL phase that emits no run:ended (uiRoot.js:1003), so run:ended alone
     // would leave a won run's announcer live. Both terminal phases mute.
     if (phase === 'victory' || phase === 'ended') {

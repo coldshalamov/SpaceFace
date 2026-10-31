@@ -1,5 +1,7 @@
+import { firstWaspRouteFocus } from '../missions/starterWaspRoute.js';
+import { firstBuoyReceiptFields } from '../missions/starterBuoyAftermath.js';
 import { ASTEROIDS } from '../data/mining.js';
-import { starterMiningFocus } from '../missions/starterWorkday.js';
+import { starterMiningRouteFocus } from '../missions/starterWorkday.js';
 import { authoredCinderRoute, initializeCinderRoute, retainCinderRetry, observeCinderMarker, observeCinderRetirement, cinderRouteFocus, driveCinderRoute } from '../missions/cinderRoute.js';
 import { kesslerScalePending, kesslerScaleWaypoint } from './kesslerScaleWorksite.js';
 import { furnaceWorksiteFocus } from '../missions/furnaceWorksite.js';
@@ -3187,6 +3189,8 @@ export const missions = {
       sectorId: m.destSectorId || null,
       sectorName: sector && sector.name || null,
     };
+    const waspFocus = firstWaspRouteFocus(m, this.state);
+    if (waspFocus) return { ...base, ...waspFocus };
     const cinderFocus = cinderRouteFocus(m, this.state);
     if (cinderFocus) return { ...base, ...cinderFocus, stationId: null };
     const furnaceFocus = furnaceWorksiteFocus(m, this.state);
@@ -3564,7 +3568,7 @@ export const missions = {
     }
 
     if (m.type === 'mining_quota') {
-      const workFace = starterMiningFocus(m, this.state.entityList, sectorLocalToGlobalForSector, ASTEROIDS);
+      const workFace = starterMiningRouteFocus(m, this.state, sectorLocalToGlobalForSector, ASTEROIDS);
       if (workFace) return { ...base, ...workFace, stationId: null, sectorId: m.destSectorId };
       const asteroid = this._nearestAsteroid();
       if (asteroid) {
@@ -6251,6 +6255,7 @@ export function missionReceiptFor(m, outcome, reason, settlement = {}) {
     sourceOfferId: m && m.sourceOfferId || null,
     causeFingerprint: m && m.cause && m.cause.fingerprint || null,
     ...setPieceFields,
+    ...firstBuoyReceiptFields(m, outcome),
     targetRecordId: m && m.params && m.params.poiSignalFollowup
       && m.params.poiSignalFollowup.targetRecordId || null,
     // PQ-138.04: mutation provenance on the FAILED contract's receipt, present only when this

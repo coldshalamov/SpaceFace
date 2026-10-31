@@ -1,3 +1,4 @@
+import { firstBuoyReceivingItem, firstBuoyReceivingReceipt } from '../missions/starterBuoyAftermath.js';
 // stationSideEventDirector.js — BP-11 packet A6 "Station Side-Events", the SEEDED DIRECTOR.
 // (See design/revamp/detail/A_sector_station.md packet A6.)
 //
@@ -116,6 +117,7 @@ export const stationSideEventDirector = {
     if (!station) { s.anchorId = null; return; }              // no visible station → strict no-op
     s.anchorId = stationKey(station);
     this._planStation(state, station, now);
+    this._planBuoyReceiving(state, station, now);
     this._pump(state, station, now);
   },
 
@@ -178,6 +180,19 @@ export const stationSideEventDirector = {
     }
   },
 
+  // Existing receiving-bay machinery answers the exact recently settled delivery.
+  // Transient session identity only: Continue can show ongoing work within its original window.
+  _planBuoyReceiving(state, station, now) {
+    const s = ensureState(state);
+    const receipt = firstBuoyReceivingReceipt(state, now);
+    s.pending = s.pending.filter(item => !item.receivingMissionId
+      || item.receivingMissionId === receipt?.missionId);
+    const item = firstBuoyReceivingItem(state, station, now);
+    if (!item || s.buoyReceivingMissionId === item.receivingMissionId
+      || s.pending.some(pending => pending.receivingMissionId === item.receivingMissionId)) return;
+    s.pending.push(item);
+  },
+
   // Fire at most one due item for the CURRENT anchor per beat, spaced by MIN_SPACING_S.
   _pump(state, station, now) {
     const s = ensureState(state);
@@ -194,6 +209,14 @@ export const stationSideEventDirector = {
     if (idx < 0) return;
 
     const item = s.pending[idx];
+    if (item.receivingMissionId) {
+      const current = firstBuoyReceivingItem(state, station, now);
+      if (!current || current.receivingMissionId !== item.receivingMissionId) {
+        s.pending.splice(idx, 1);
+        return;
+      }
+      item.durationS = current.durationS;
+    }
     if ((item.budget | 0) > 0 && countActive(s) >= MAX_BUDGETED) {
       item.dueAt = now + DEFER_S;                          // budgeted cap reached → defer, don't drop
       return;
@@ -214,6 +237,9 @@ export const stationSideEventDirector = {
 
     if ((item.budget | 0) <= 0) {
       this._emitSeam(item, station, geom, []);              // cosmetic: seam only, no budget, no entity
+      // A queued operation may be cleared on sector exit before it can be seen.
+      // Remember presentation only after the existing seam has actually fired.
+      if (item.receivingMissionId) s.buoyReceivingMissionId = item.receivingMissionId;
       s.nextFireAt = now + MIN_SPACING_S;
       return;
     }
@@ -274,6 +300,8 @@ export const stationSideEventDirector = {
       from: { x: geom.from.x, z: geom.from.z },
       to: { x: geom.to.x, z: geom.to.z },
       entityIds: entityIds || [],
+      ...(item.receivingMissionId ? { contextLabel: '44-C receiving check — berth intake',
+        receivingMissionId: item.receivingMissionId } : {}),
     });
   },
 

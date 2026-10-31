@@ -1210,7 +1210,9 @@ export const swarmArena = {
       const inFight = distSq <= fightSq;
       const ours = !!(entity.data && entity.data[SWARM_DEBRIS_TAG]);
       if (inReach) {
-        nearbySolids.push({ x: entity.pos.x, z: entity.pos.z, radius: entity.radius || 0 });
+        nearbySolids.push({ x: entity.pos.x, z: entity.pos.z, radius: entity.radius || 0,
+          ...(ours && inFight && Number.isInteger(entity.data.openingTerrainSlot)
+            ? { openingTerrainSlot: entity.data.openingTerrainSlot } : {}) });
         // Counted only if it is close enough to be part of the fight — see SWARM_DEBRIS_FIGHT_RADIUS.
         if (ours && inFight) {
           mine++;
@@ -1243,7 +1245,7 @@ export const swarmArena = {
     // same counts, same physics verbs; only the material the room hands you changes.
     const ballast = runHasMutator(run, 'wreck_ballast');
     const openingStage = swarmOpeningTerrainStage({
-      arenaId: run.arenaId, wave, lineTier: ladderTier.lineTier,
+      arenaId: run.arenaId, wave, lineTier: ladderTier.ratingTierMin,
       altered: reef || ballast || (Array.isArray(run.arenaMutators) && run.arenaMutators.length > 0),
     });
     const target = reef ? REEF_DEBRIS_TARGET
@@ -2155,3 +2157,4 @@ export const swarmArena = {
     if (this.bus && typeof this.bus.emit === 'function') this.bus.emit(event, payload);
   },
 };
+

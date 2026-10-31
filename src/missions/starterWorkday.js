@@ -1,3 +1,4 @@
+import { forEachFieldRock } from '../world/livingWorldViews.js';
 import { occupantGenerationOf } from '../core/entity.js';
 import { activeOwnedShip, shipCarriesModule } from '../data/starterJobs.js';
 
@@ -56,6 +57,50 @@ export function starterMiningFocus(m, entities, toGlobal, asteroidDefs = []) {
   return best ? { label: site.label, pos: { x: best.pos.x, z: best.pos.z }, targetEntityId: best.id,
     reason: site.brief } : null;
 }
+// A depleted first face must not send the iron ticket to the nearest ice rock.
+// This is a navigation readout only: receipts and settlement keep their existing owners.
+export function starterMiningRouteFocus(m, state, toGlobal, asteroidDefs = []) {
+  const site = authoredStarterSite(m);
+  if (!site || m.type !== 'mining_quota' || m.params.starterJobId !== 'starter_hitch') return null;
+  const base = { stationId: null, sectorId: m.destSectorId, label: 'Helios iron fields' };
+  if (state?.world?.currentSectorId !== m.destSectorId) {
+    return { ...base, reason: 'Return to Helios Prime; this ticket counts only iron you cut there.' };
+  }
+  const center = toGlobal(site.pos, m.destSectorId);
+  let face = null, distance = Infinity;
+  // Existing field view visits dormant records and the ready typed asteroid index
+  // (entityList only while unready). One bounded pass at the existing nav refresh cadence.
+  forEachFieldRock(state, (e) => {
+    if (e?.alive !== true || e.type !== 'asteroid' || !Number.isFinite(e.pos?.x)
+      || !Number.isFinite(e.pos?.z) || e.data?.missionTag || e.data?.respawnAt != null
+      || !Number.isFinite(e.data?.oreHP) || e.data.oreHP <= 0) return;
+    if (e.fieldResident && (state.world?.asteroidField?.schema !== 'spaceface.asteroidField.v1'
+      || e.liveEntityId != null || state.entities?.get(e.id))) return;
+    // Reject a stale indexed occupant rather than stamping a different live body.
+    if (!e.fieldResident && state.entities?.get(e.id) !== e) return;
+    if (e.data.siteAnchored || (typeof e.data.opticStructureId === 'string' && e.data.opticStructureId)) return;
+    const chunkMass = Math.max(0, Number(e.data.bulkMassU ?? e.data.yieldU ?? e.mass) || 0);
+    if (e.data.isChunk && chunkMass > 20) return; // ordinary mining owner requires towing this load
+    if ([e.sectorId, e.homeSectorId, e.data?.sectorId, e.data?.homeSectorId]
+      .some((id) => id && id !== m.destSectorId)) return;
+    // No speculative common-rock default: missing resource metadata is a search hint.
+    const def = asteroidDefs.find((row) => row.id === e.data?.typeId);
+    if (!Number.isFinite(def?.oreTable?.[m.params.cmdtyId]) || def.oreTable[m.params.cmdtyId] <= 0) return;
+    const d = Math.hypot(e.pos.x - center.x, e.pos.z - center.z);
+    if (d < distance) { face = e; distance = d; }
+  });
+  if (face) return { ...base,
+    label: distance <= site.radius ? site.label : 'Helios — alternate iron face',
+    // Dormant field presentation IDs are not live control targets. Fly to the actual
+    // position; ordinary approach/mining owns promotion and generation-safe selection.
+    ...(!face.fieldResident ? { targetEntityId: face.id } : {}),
+    pos: { x: face.pos.x, z: face.pos.z },
+    reason: distance <= site.radius ? site.brief
+      : 'The marked face is unavailable. Cut iron at this Helios face; your own Helios iron counts.' };
+  return { ...base, pos: center,
+    reason: 'Search the Helios iron fields. No eligible iron face located; ice and crystal will not fill this ticket.' };
+}
+
 export function starterBuoySpec(m, toGlobal) {
   const site = authoredStarterSite(m);
   if (!site || m.type !== 'tow_recovery' || m.params.starterJobId !== 'starter_pelican') return null;
