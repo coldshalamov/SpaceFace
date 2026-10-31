@@ -141,6 +141,14 @@ ${P} .sxb-vital__acts .orr-act__cost { font-family:${NUM} !important; font-size:
   ${P} .sxb-ops > .sx-comms { order:2 !important; margin:0 !important; }
   ${P} .sxb-ops > .sxb-launch-seat { order:3 !important; margin:0 0 0 auto !important; }
 }
+/* …and in that short 901–1100 berth the five readings took equal fifths (~105px), so LEDGER's Draw (+cost,
+   ~121px) and MUNITIONS' Rearm (~107px) ran past their cells and touched. The two verb-bearing cells take
+   their own width; HULL, FUEL and HOLD share what is left. Verbs close up 2px a side to make the room. */
+@media (min-width:901px) and (max-width:1100px) and (min-height:461px) and (max-height:640px) {
+  ${P} .sxb-crown .sxb-vitals { gap:6px !important; }
+  ${P} .sxb-crown .sxb-vitals > .sxb-vital:is(.sxb-vital--note, .sxb-vital--muni) { flex:0 0 auto !important; }
+  ${P} .sxb-crown .sxb-vital__acts > button { padding-left:7px !important; padding-right:7px !important; }
+}
 
 /* ---- the ad-boards: legible, never faint ----------------------------------------------------- */
 ${P} .sx-adboard, ${P} .sx-adboard * { font-family:${UI} !important; font-size:13px !important; letter-spacing:0 !important;
