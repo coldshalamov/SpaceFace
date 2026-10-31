@@ -2183,6 +2183,19 @@ ${T} .sx-bar__hang:is(:hover, :focus-within)::after { background:${SPINE(3, .62)
   ${D} .sx-ledger__row > .sx-ledger__read { grid-column:1 / -1; grid-row:2; min-width:0; }
 }
 
+/* Ledger at 1441+ wide × 721+ tall (ui-polish-240): the purse hung under the tape's lower edge at the panel's far
+   right, ~350px below its axis, so with no entry open the gauge stood alone in an empty field. It stands beside the
+   tape, centred on the tape's height, as 1101–1440 does; the reading keeps the full column under both. */
+@media (min-width:1441px) and (min-height:721px) {
+  ${D} .sx-ledger > .sx-ledger__right { display:grid !important; grid-template-columns:minmax(0, 1fr) 280px; grid-template-rows:auto minmax(0, 1fr); column-gap:24px; row-gap:6px !important; align-content:start; }
+  ${D} .sx-ledger__right > .orr-ledger-tape { grid-column:1; grid-row:1; }
+  ${D} .sx-ledger__right > .sx-ledger__row { display:contents !important; }
+  ${D} .sx-ledger__row > .orr-ledger-purse { grid-column:2; grid-row:1; align-self:center; margin:0 !important; }
+  ${D} .sx-ledger__row > .sx-ledger__read { grid-column:1 / -1; grid-row:2; min-width:0; }
+}
+/* the case-board head broke one word, TOGETHER, onto its own line at 960–1920; the two lines now split evenly */
+${T} .sx-ledger .st-ledger-board-head { text-wrap:balance; }
+
 /* Ledger at 800×600-class (651–900 wide, ≤640 tall): the prior 140px purse starved the ring so
    BOUGHT / SOLD / NET · CR clipped. Restore ~200px for the purse and narrow the list to ~34%
    so the reading column still holds title+cargo beside a trimmed figure; CYCLE stays above the
