@@ -170,7 +170,9 @@ the title (0.6 s, 1.6 s), the credits render, native pipeline compile, opening G
 load. Map every long task ≥ 100 ms from Launch to first flight onto the CPU profile and fix it or slice it.
 Done when the longest main-thread task from Launch click to first flight frame meets the floor, then the target.
 
-Current cold Electron profile (`adventure-launch-import-fix-r2`, published ae3e source) reaches flight in 49.1 seconds, with 37.85 seconds in render-pipelines and 23.915 seconds of first-use shader waits. This is not a warm-load or improvement measurement. The pending-link admission repair is local and unaccepted after a real required-authored-root startup timeout; full preliminary membership is restored and timeout propagation is corrected locally. Focused checks pass: the incomplete best-effort renderer chain skips residency/touch/readiness stamps and releases its hold; a later ready attempt completes normally. The required-loading port now retries only typed pending-shader timeouts under the same tracked promise, existing attempt cap and owner/deadline guards; focused authored/readiness checks pass. Ordinary Launch remains pending. The existing profiler now records source/runtime/GPU/KHR and host samples plus the existing slow-program IDs/cache keys; its public First Light/New Game flow is repaired. No new profile result is claimed.
+Current cold Electron profile (`adventure-required-retry-r1`, committed 118d016 source) reaches flight in 55.5 seconds on the worker lane, Intel/ANGLE D3D11 with KHR parallel compile, at 85.7% sampled host busy. Render-pipelines takes 41.17 seconds; 46 first-use shader waits total 26.4 seconds. This is functional Launch acceptance, not a warm-load or matched improvement measurement; startup targets remain open.
+
+The full preliminary authored cohort is restored, incomplete pipeline receipts no longer receive forced draws or readiness stamps, and required loading retries a typed pending-shader timeout under one tracked promise with the existing owner/cap/deadline guards. Focused owner checks pass. The new profile exposes a pass-specific readiness gap: bloom can inspect the last-bound program before Three selects a transmission variant. The local guard now selects the target tone-mapping/output-color-space and instancing variant, with 18 focused cases passing against vendor-generated cache keys; a new ordinary measurement is pending. The existing profiler records source/runtime/GPU/KHR, host samples and slow program IDs/keys.
 
 **M7 — The loading screen is smooth and immersive.** The animation already draws in workers
 (`loadingTerminalArt.js:~1784`, `bootRingWorker.js:~150`) and boot pacing yields between slices
@@ -254,6 +256,8 @@ that sit a few hundred pixels tall to 1024 (`place_works_derrick` 21 MB, `works_
 every hull has an LOD chain, dedupe the duplicate refinery GLB and ORM textures, write a triangle and
 texture budget per asset class into `check-asset-census.mjs`. Forge is the only way to build a body
 (`tools/blender/forge/FORGE.md`, skill `forge-graphics`).
+Current static-pilot appearance check: matched PLACE previews preserve the engine section, cargo module, corvette turret, weapon spar, pressure tank and cockpit section after material-group merging. Engine and cockpit INSPECT views also match. The repaired private-camera preview waits for strict authored admission before capture. These checks cover reconstructed preview meshes; gameplay placement, shadow parity and matched frame-cost savings remain open. The remaining-five capture is `.devshots/finish/integration-2026-10-31/shipbreaking-look/remaining-five-private-camera/`; Helios has no matched pair in this batch.
+
 **A2 — Hero hulls and landmarks.** Row 428 (the five hulls a player meets in the first two hours, incl.
 row 18 / D72 Pelican), row 17 / D54 (dark-freighter place model, Anvil well-edge, Wreck Cathedral draw
 scale), row 557 art half (stencils, wear, kill tallies on traffic variants).
