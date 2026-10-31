@@ -3414,7 +3414,14 @@ async function armSaveLoadObservers(page) {
         const ev = window.__M6_RELEASE_SOAK_EVENTS__;
         if (!ev) return;
         if (!Array.isArray(ev.dock)) ev.dock = [];
-        if (ev.dock.length < 32) ev.dock.push(entry);
+        const state = window.SF?.state;
+        if (ev.dock.length >= 32) ev.dock.splice(0, 16);
+        ev.dock.push({
+          t: Math.round(performance.now()),
+          tick: Number.isFinite(state?.tick) ? state.tick : null,
+          simTime: Number.isFinite(state?.simTime) ? state.simTime : null,
+          ...entry,
+        });
       };
       // Nav arm tap: _onSetCourse emits nav:autopilot {status:'armed'} synchronously when a
       // waypoint click lands. When the ship is already inside the arrival radius the whole

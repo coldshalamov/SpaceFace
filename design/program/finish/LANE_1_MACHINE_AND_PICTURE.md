@@ -221,6 +221,13 @@ release, including F9 with an old paint timestamp; ordinary post-paint flight re
 focused opening/lifetime cases pass. The original plan failure and buffer-size defect still need
 public-route verification. See `INTEGRATION_COVERAGE.md`.
 
+The next identity probe stops before F9: public autopilot reports Helios arrival, but the physical
+dock prompt never appears within 360 seconds. Its saved nav distance is telemetry, not a current
+anchor measurement. A normal real-flight/corridor/SG-02 fixture emits the range prompt and remains
+berthed for ten seconds; it does not reproduce this route failure. The existing approach snapshot
+now records sampled main-read-model anchor geometry, prompt transitions and timestamped dock
+events so the next ordinary attempt can distinguish physical admission from UI/event delivery.
+
 **M9 — Load less, load later.** 28 MB of minified JS in the eager closure (`scripts/build-bundle.mjs`,
 esbuild splitting): lazy-load per mode and per screen; make `modelTruthCensus.generated.js` and
 `en-US.generated.js` fetched JSON instead of chunk payload; move `ruckusMeshData/*.js` (3.4 MB of mesh
