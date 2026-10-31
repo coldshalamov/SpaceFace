@@ -584,7 +584,7 @@ export function createBarScreen(ctx) {
         : `<p class="k-sentence sx-muted">No leads on the board${survey ? '' : ' and no survey data for sale here'}.</p>`) +
       // the board verb carries the board's count; the intel facts live on the Missions tab (the count is
       // the one that matters here, so it rides the verb instead of a block of its own)
-      `<ul class="k-words k-words--row sx-bar__foot"><li><button type="button" ${stationControlAttrs('open-board')} class="k-word k-word--fine sx-bar__log" data-log>${stationControlLabel('open-board')}${boardCount > 0 ? ` <small class="sx-bar__log-n">· ${boardCount}</small>` : ''}</button></li><li><button type="button" class="k-word k-word--fine" data-play-manifest>Play Manifest</button></li></ul>` +
+      `<ul class="k-words k-words--row sx-bar__foot"><li><button type="button" ${stationControlAttrs('open-board')} class="k-word k-word--fine sx-bar__log" data-log>${stationControlLabel('open-board')}${boardCount > 0 ? ` <small class="sx-bar__log-n">· ${boardCount}</small>` : ''}</button></li><li><button type="button" ${stationControlAttrs('play-manifest')} class="k-word k-word--fine" data-play-manifest>${stationControlLabel('play-manifest')}</button></li></ul>` +
       `<div class="sx-bar__intel" hidden><p class="k-caps sx-intel__head">Intel</p>${intelHtml}</div>`;
     dressLeads();
     leadsKeysHint();

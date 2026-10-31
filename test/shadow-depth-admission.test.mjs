@@ -14,8 +14,42 @@ import {
   UNSTAGED_COLLECT_OVER_COVER,
   isUnstagedCollectOverCover,
   collectUnstagedShadowCastersFlag,
+  noteShadowCensusLightMutation,
+  shadowCensusEpoch,
 } from '../src/render/shadowDepthAdmission.js';
 import { scheduleRealtimeShadowRefresh } from '../src/render/shadowPresentCadence.js';
+import { createShadowDepthStageMethods } from '../src/render/runtime/shadowDepthStage.js';
+
+test('shadow-enable stages an invalidated census and sheds a detached root before its queued arm', () => {
+  let callback = null, closed = 0;
+  const methods = createShadowDepthStageMethods({
+    SHADOW_DEPTH_PASS_NODE_CAP: 4096,
+    STAGE_SELF_DIRTY_KEY: 'stageDirty', STAGE_COLLECT_EPOCH_KEY: 'stageEpoch',
+    armCallbackAfterPresent: fn => { callback = fn; },
+    closeShadowDepthStagingSession: () => { closed++; },
+    shadowPolicyEntityOf: () => null,
+    laneWarn: (_owner, _lane, _message, error) => { throw error; },
+  });
+  const scene = new THREE.Scene(), root = new THREE.Group();
+  scene.add(root);
+  const owner = Object.assign({
+    scene, renderer: {}, cam: { obj: {} }, _keyLight: {}, state: {},
+    _shadowCensusMemo: { epoch: shadowCensusEpoch() },
+    _shadowCensusForFrame: () => 'old-census',
+    _invalidateShadowPolicy() {},
+  }, methods);
+  noteShadowCensusLightMutation();
+  owner._stageShadowDepthOnSettingEnable();
+  assert.ok(owner._pendingDepthStageRoots.has(root), 'a stale census queues a fresh stage');
+  assert.equal(root.userData.stageEpoch, shadowCensusEpoch(), 'the live census epoch is read by the moved method');
+  assert.equal(typeof callback, 'function');
+  scene.remove(root);
+  noteShadowCensusLightMutation();
+  callback();
+  assert.equal(owner._pendingDepthStageRoots, null, 'a detached root is not staged');
+  assert.equal(owner._depthStageScheduled, false);
+  assert.equal(closed, 1, 'the existing staging session is closed');
+});
 
 test('collects mesh casters from a root and skips non-casters', () => {
   const hull = { isMesh: true, castShadow: true, name: 'hull' };

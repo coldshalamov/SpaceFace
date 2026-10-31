@@ -8,6 +8,8 @@
 // and mesh-backed for clearance, picking, ownership masks, and other semantic readers.
 
 import * as THREE from 'three';
+import { assertPackageGeometryRefillReady, isPackageGeometryDetached,
+  rehydrateDetachedGeometries, retainPackageGeometryCpu } from './packageCpuDetach.js';
 import { motionGroupIdFor } from '../contracts/motionBank.js';
 import {
   OPAQUE_BATCH_MAX_INDICES,
@@ -1261,12 +1263,17 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
       }
     }
     const signature = signatureFor(normalized);
-    if (pending && pending.signature === signature) return pending.promise;
+    if (pending && pending.signature === signature
+        && (typeof pending.ownerIsActive !== 'function' || pending.ownerIsActive() === true)) return pending.promise;
     if (pending) {
       pending.cancelled = true;
+      pending.releaseCpu?.();
       releaseCandidate(pending.candidate, scene, true);
       pending = null;
       stats.preparationLeg = null;
+      lastSignature = null;
+      lastRoots = [];
+      lastTopology = null;
     }
     if (syncSerial - lastShadowFlipSync < RETAINED_BATCH_SHADOW_FLIP_REPLAN_QUIET) {
       // Flips are still landing — re-planning now would commit against source state the next
@@ -1315,6 +1322,67 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
       return refreshDiagnostics();
     }
 
+    // Batch construction copies every source attribute synchronously. A package may have
+    // retired non-position CPU arrays after its direct draw uploaded them; hold all selected
+    // source geometry while refilling and copying so another residency pass cannot retire it.
+    const sourceGeometries = [...new Set(plan.groups.flatMap(group =>
+      group.surfaces.map(source => source.geometry)))];
+    if (sourceGeometries.some(isPackageGeometryDetached)) {
+      const record = {
+        signature, roots: normalized.slice(), candidate: null, cancelled: false,
+        ownerIsActive: typeof options.capturePreparationGuard === 'function'
+          ? options.capturePreparationGuard() : null,
+        releaseCpu: retainPackageGeometryCpu(sourceGeometries), promise: null,
+      };
+      const current = () => !disposed && pending === record && !record.cancelled
+        && (typeof record.ownerIsActive !== 'function' || record.ownerIsActive() === true);
+      stats.status = 'preparing';
+      stats.preparationStage = 'source-refill';
+      stats.preparationLeg = 'source-refill';
+      stats.lastReason = 'source-refill-running';
+      stats.lastError = null;
+      record.promise = Promise.resolve()
+        .then(() => current() ? rehydrateDetachedGeometries(sourceGeometries) : null)
+        .then((receipt) => {
+          if (!current()) return refreshDiagnostics();
+          assertPackageGeometryRefillReady(sourceGeometries, receipt);
+          pending = null;
+          lastSignature = null;
+          lastRoots = [];
+          lastTopology = null;
+          // Replan current membership after the await; the lease spans the synchronous copy.
+          const next = request(record.roots, requestOptions);
+          record.releaseCpu();
+          return next;
+        })
+        .catch((error) => {
+          if (!current()) return refreshDiagnostics();
+          pending = null;
+          preparationRetry ||= { frames: 0, used: false };
+          stats.status = 'failed';
+          stats.preparationStage = 'source-refill-failed';
+          stats.preparationLeg = null;
+          stats.lastReason = 'source-refill-failed';
+          stats.lastError = String(error && error.message || error);
+          return refreshDiagnostics();
+        })
+        .finally(() => {
+          record.releaseCpu();
+          if (pending === record && !current()) {
+            pending = null;
+            lastSignature = null;
+            lastRoots = [];
+            lastTopology = null;
+            stats.status = 'idle';
+            stats.preparationStage = 'stale';
+            stats.preparationLeg = null;
+            stats.lastReason = 'preparation-stale';
+          }
+        });
+      pending = record;
+      return record.promise;
+    }
+
     let candidate;
     try {
       candidate = buildCandidate(scene, plan, {
@@ -1334,6 +1402,8 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
       candidate,
       entryTopology: captureEntryTopology(candidate.entries),
       cancelled: false,
+      ownerIsActive: typeof options.capturePreparationGuard === 'function'
+        ? options.capturePreparationGuard() : null,
       promise: null,
     };
     stats.status = 'preparing';
@@ -1344,7 +1414,8 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
     stats.preparationGroupCount = candidate.batches.length;
     stats.lastReason = 'preparation-running';
     stats.lastError = null;
-    const activeNow = () => !disposed && pending === record && record.cancelled !== true;
+    const activeNow = () => !disposed && pending === record && record.cancelled !== true
+      && (typeof record.ownerIsActive !== 'function' || record.ownerIsActive() === true);
     const reportProgress = (stage, currentGroup, completedGroups, groupCount) => {
       if (!activeNow()) return false;
       const boundedCount = Math.max(0, Math.min(candidate.batches.length,
@@ -1380,7 +1451,18 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
             || result?.ready === false || result?.timedOut === true
             || result?.superseded === true) {
           releaseCandidate(candidate, scene, true);
-          if (pending === record) pending = null;
+          if (pending === record) {
+            pending = null;
+            if (!wasActive) {
+              lastSignature = null;
+              lastRoots = [];
+              lastTopology = null;
+              stats.preparationLeg = null;
+              stats.status = 'idle';
+              stats.preparationStage = 'stale';
+              stats.lastReason = 'preparation-stale';
+            }
+          }
           if (!wasActive) return refreshDiagnostics();
           if (wasActive && (!ready || result?.skipped === true
               || result?.ready === false || result?.timedOut === true
@@ -1502,6 +1584,16 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
       .catch((error) => {
         const wasActive = activeNow();
         releaseCandidate(candidate, scene, true);
+        if (!wasActive && pending === record) {
+          pending = null;
+          lastSignature = null;
+          lastRoots = [];
+          lastTopology = null;
+          stats.preparationLeg = null;
+          stats.status = 'idle';
+          stats.preparationStage = 'stale';
+          stats.lastReason = 'preparation-stale';
+        }
         if (!wasActive) return refreshDiagnostics();
         if (pending === record) pending = null;
         stats.preparationLeg = null;
@@ -1531,6 +1623,7 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
     rollback(reason = 'manual-rollback') {
       if (pending) {
         pending.cancelled = true;
+        pending.releaseCpu?.();
         releaseCandidate(pending.candidate, scene, true);
         pending = null;
       }
@@ -1548,6 +1641,7 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
       stats.preparationLeg = null;
       if (pending) {
         pending.cancelled = true;
+        pending.releaseCpu?.();
         releaseCandidate(pending.candidate, scene, true);
         pending = null;
       }

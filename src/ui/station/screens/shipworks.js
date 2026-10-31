@@ -134,7 +134,7 @@ import {
   pinKeyrack,
   syncKeys,
 } from './fhChrome.js';
-import { bindStationMarkup, stationControlAttrs, stationControlLabel } from '../stationBindingMap.js';
+import { bindStationMarkup, markStationControl, stationControlAttrs, stationControlLabel } from '../stationBindingMap.js';
 
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
 export function shipworksHullName(defId) {
@@ -511,13 +511,14 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   lotOpener.type = 'button';
   lotOpener.className = 'sx-sw-lot-open';
   lotOpener.textContent = 'Lot desk';
+  markStationControl(lotOpener, 'lot-desk-open');
   lotOpener.hidden = true;
   lotOpener.setAttribute('aria-haspopup', 'dialog');
   lotOpener.setAttribute('aria-expanded', 'false');
   const lotDialog = document.createElement('dialog');
   lotDialog.className = 'sx-sw-lot-dialog';
   lotDialog.setAttribute('aria-labelledby', 'sx-sw-lot-title');
-  lotDialog.innerHTML = `<header class="sx-sw-lot-dialog__head"><div><h2 id="sx-sw-lot-title">Lot desk</h2><p class="sx-sw-lot-dialog__context"></p></div><button type="button" data-lot-close>Close</button></header><div class="sx-sw-lot-dialog__body"></div>`;
+  lotDialog.innerHTML = `<header class="sx-sw-lot-dialog__head"><div><h2 id="sx-sw-lot-title">Lot desk</h2><p class="sx-sw-lot-dialog__context"></p></div><button type="button" ${stationControlAttrs('lot-desk-close')} data-lot-close>${stationControlLabel('lot-desk-close')}</button></header><div class="sx-sw-lot-dialog__body"></div>`;
   el.append(lotOpener, lotDialog);
   const compactLotMedia = window.matchMedia('(min-width:801px) and (max-width:1100px) and (max-height:460px) and (hover:hover)');
   function closeLotDesk(restoreFocus = true) {
@@ -4469,7 +4470,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     const researched = (ctx.state.player && Array.isArray(ctx.state.player.researchedNodes))
       ? ctx.state.player.researchedNodes : [];
     const sableTrialButton = d => sableVennServiceAvailable(ctx.state)
-      ? `<button type="button" class="k-word k-word--fine" data-sable-demo="${escapeHtml(d.id)}" data-sable-slot="${slotIndex}" aria-label="Sable Venn: demonstrate ${escapeHtml(d.name)}">Demonstrate</button>` : '';
+      ? `<button type="button" ${stationControlAttrs('sable-demo')} class="k-word k-word--fine" data-sable-demo="${escapeHtml(d.id)}" data-sable-slot="${slotIndex}" aria-label="Sable Venn: demonstrate ${escapeHtml(d.name)}">${stationControlLabel('sable-demo')}</button>` : '';
     const holdRowHtml = ({ d, count, instanceId, instText, mountBlock, provMark }) => {
       const headConflict = findMasslineHeadConflict(fittings, slotIndex, d);
       const prospective = fittings.slice();

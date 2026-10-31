@@ -2010,7 +2010,7 @@ export function createMarketScreen(ctx) {
         `<li class="k-row k-row--static sx-route-row">` +
           `<span class="sx-route-row__body"><span class="k-row__name sx-route-row__t">${entitySpanHtml('commodity:' + t.cmdtyId, escapeHtml(t.cmdtyName || t.cmdtyId))} → ${entitySpanHtml('station:' + t.destStation, escapeHtml(dest))}</span>` +
             `<span class="k-row__sub">${escapeHtml(card.sub + comparison)}</span>` +
-            `<button type="button" class="k-word k-word--fine" data-review-load="${escapeHtml(t.cmdtyId)}" aria-label="Review ${t.loadUnits} units of ${escapeHtml(t.cmdtyName)}">Review load</button></span>` +
+            `<button type="button" ${stationControlAttrs('review-load')} class="k-word k-word--fine" data-review-load="${escapeHtml(t.cmdtyId)}" aria-label="Review ${t.loadUnits} units of ${escapeHtml(t.cmdtyName)}">${stationControlLabel('review-load')}</button></span>` +
           `<span class="k-row__num sx-route-row__s${t.loadProfit > 0 ? ' k-good' : ''}">${escapeHtml(card.profitText)}</span>` +
           `<button type="button" ${stationControlAttrs('set-course')} class="k-word k-word--fine sx-lead__go" data-course="${escapeHtml(t.cmdtyId)}" data-dest="${escapeHtml(t.destStation)}">${stationControlLabel('set-course')}</button>` +
         `</li>`

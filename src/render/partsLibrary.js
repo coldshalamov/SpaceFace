@@ -14023,12 +14023,13 @@ const AUTHORED_JOB_SOCKETS = Object.freeze([
 ]);
 
 /** Sockets whose job the production body already models (by authored primitive name). */
-function authoredHullJobs(hullRecord) {
+export function authoredHullJobs(hullRecord) {
   const jobs = new Set();
   if (!hullRecord) return jobs;
-  let primitives = [];
-  try { primitives = compositionPrimitives(hullRecord) || []; } catch (_) { primitives = []; }
-  for (const primitive of primitives) {
+  // This is a semantic name query, not a geometry build. Whole-ship package records
+  // can outlive the CPU arrays of their cached GLB geometries, so deriving these names
+  // through compositionPrimitives would clone/merge retired buffers just to inspect them.
+  for (const primitive of hullRecord.primitives || []) {
     const name = String(primitive && primitive.name || '');
     for (const [pattern, socket] of AUTHORED_JOB_SOCKETS) if (pattern.test(name)) jobs.add(socket);
   }

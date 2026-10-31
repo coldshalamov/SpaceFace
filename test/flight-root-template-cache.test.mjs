@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  authoredHullJobs,
   runFlightKestrelTemplatePackageProbe,
   runFlightRootTemplateCacheProbe,
   collectFlightRootTemplateContextLossRoots,
@@ -10,6 +11,13 @@ import {
   createWebGlDisposeListenerProvenance,
   detachStaleWebGlDisposeListeners,
 } from '../src/render/contextResourceLifecycle.js';
+import * as THREE from 'three';
+import {
+  createPackageDetachManifest,
+  detachPackageGeometry,
+  isPackageGeometryDetached,
+  resetPackageDetachManifestsForTests,
+} from '../src/render/packageCpuDetach.js';
 
 if (!globalThis.document) {
   const context = {
@@ -90,4 +98,43 @@ test('Kestrel package-path template hits rehydrate bindings and close ownership'
     templateDisposed: true,
     detachedCloneGeometryDisposed: true,
   });
+});
+
+test('authored whole-ship job metadata survives retired merged geometry without cloning it', () => {
+  resetPackageDetachManifestsForTests();
+  const geometry = new THREE.BoxGeometry(1, 0.6, 0.8);
+  const material = new THREE.MeshStandardMaterial();
+  createPackageDetachManifest({
+    assetId: 'fixture.authored-hull-jobs',
+    contentHash: 'authored-hull-jobs-fixture',
+    resources: [geometry],
+  }, {
+    redecode: async () => new THREE.BoxGeometry(1, 0.6, 0.8),
+    collectResources: (donor) => [donor],
+  });
+  assert.equal(detachPackageGeometry(geometry), true);
+  assert.equal(isPackageGeometryDetached(geometry), true);
+  assert.equal(geometry.attributes.normal.array.length, 0, 'the fixture has retired package normals');
+
+  let cloneAttempts = 0;
+  const originalClone = geometry.clone;
+  geometry.clone = () => {
+    cloneAttempts += 1;
+    throw new Error('authored job name lookup must not clone retired package geometry');
+  };
+  try {
+    const jobs = authoredHullJobs({ primitives: [
+      { name: 'Kestrel_Frame', geometry, material, tags: {}, matrix: new THREE.Matrix4() },
+      { name: 'Kestrel_Mining_Drill', geometry, material, tags: {}, matrix: new THREE.Matrix4() },
+      { name: 'Kestrel_Drill_Module', geometry, material, tags: { instance: false }, matrix: new THREE.Matrix4() },
+    ] });
+    assert.deepEqual([...jobs], ['SOCKET_Mining_Front'],
+      'a later drill name in a mergeable bucket and a nonmergeable fallback name both preserve the authored job');
+    assert.equal(cloneAttempts, 0);
+  } finally {
+    geometry.clone = originalClone;
+    material.dispose();
+    geometry.dispose();
+    resetPackageDetachManifestsForTests();
+  }
 });
