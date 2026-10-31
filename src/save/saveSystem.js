@@ -126,6 +126,7 @@ import {
   SHARED_STORE_TIMEOUT_MS,
   sharedPlayerStoreAvailable,
   sharedPlayerStoreCapability,
+  isSharedPlayerStoreKey,
 } from './sharedPlayerStore.js';
 import { shipbreakingYardSavePlanEntry, serializeShipbreakingYardSteps,
   restoreShipbreakingYardSteps, afterContinueShipbreakingYard } from '../features/shipbreakingYard/save.js';
@@ -138,18 +139,14 @@ const INDEX_KEY = LS_PREFIX + 'index';
 
 // The sf.* keyspace snapshot staged onto worker-side storage for a forwarded
 // save/load — the sim realm resolves slots and recovery against real bytes.
-function _collectSfStorage() {
+function _collectSharedStoreFallback(owner = null) {
   const out = {};
-  try {
-    if (typeof localStorage === 'undefined') return out;
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (typeof key === 'string' && key.startsWith('sf.')) {
-        const v = localStorage.getItem(key);
-        if (typeof v === 'string') out[key] = v;
-      }
+  const fallback = owner && owner._sharedStoreUnavailableKeys;
+  if (fallback && typeof fallback.entries === 'function') {
+    for (const [key, value] of fallback) {
+      if (isSharedPlayerStoreKey(key) && typeof value === 'string') out[key] = value;
     }
-  } catch (_) { /* storage enumeration unavailable */ }
+  }
   return out;
 }
 
@@ -474,6 +471,11 @@ export const save = {
     // in-flight.
     _onSaveStoreBump = (bumpKey, bumpValue) => {
       try {
+        const unavailable = this._sharedStoreUnavailableKeys;
+        if (unavailable instanceof Map) {
+          if (bumpKey == null) unavailable.clear();
+          else if (isSharedPlayerStoreKey(String(bumpKey))) unavailable.delete(String(bumpKey));
+        }
         const spec = this._speculativeContinuePrepare;
         if (!spec || spec.sig === 'gen:' + _saveStoreGeneration) return;
         if (bumpKey === LS_PREFIX + spec.slot && typeof bumpValue === 'string' && bumpValue) {
@@ -690,6 +692,9 @@ export const save = {
 
   async _syncSharedPlayerStore() {
     if (this._sharedStoreReady) return;
+    const unavailable = this._sharedStoreUnavailableKeys instanceof Map
+      ? this._sharedStoreUnavailableKeys
+      : (this._sharedStoreUnavailableKeys = new Map());
     // No configured mirror: local-only shell, nothing to reconcile and nothing at risk.
     const mirrorConfigured = sharedPlayerStoreAvailable();
     let ok = true;
@@ -710,7 +715,16 @@ export const save = {
       // apply clobbers it and the delta push ships the stale value.
       const localNow = genAtCollect === _saveStoreGeneration
         ? local : await this._collectSharedStoreKeysChunked();
-      let merged = mergeSharedStoreKeys(localNow, remote || {});
+      const fallbackValues = {};
+      const fallbackDeletes = [];
+      for (const [key, value] of unavailable) {
+        if (!isSharedPlayerStoreKey(key)) continue;
+        if (value === null) fallbackDeletes.push(key);
+        else if (typeof value === 'string') fallbackValues[key] = value;
+      }
+      const localWithFallback = mergeSharedStoreKeys(localNow, fallbackValues);
+      for (const key of fallbackDeletes) delete localWithFallback[key];
+      let merged = mergeSharedStoreKeys(localWithFallback, remote || {});
       const genAtApply = _saveStoreGeneration;
       // The apply's own setItem/removeItem calls ride the wrapped store and would bump the
       // generation — silence them behind this facade so a bump inside the window can only
@@ -722,11 +736,23 @@ export const save = {
         getItem: (key) => globalThis.localStorage.getItem(key),
         setItem: (key, value) => {
           _saveStoreApplySilenced++;
-          try { globalThis.localStorage.setItem(key, value); } finally { _saveStoreApplySilenced--; }
+          try {
+            globalThis.localStorage.setItem(key, value);
+            if (isSharedPlayerStoreKey(key)) unavailable.delete(key);
+          } catch (err) {
+            if (isSharedPlayerStoreKey(key)) unavailable.set(key, value);
+            throw err;
+          } finally { _saveStoreApplySilenced--; }
         },
         removeItem: (key) => {
           _saveStoreApplySilenced++;
-          try { globalThis.localStorage.removeItem(key); } finally { _saveStoreApplySilenced--; }
+          try {
+            globalThis.localStorage.removeItem(key);
+            if (isSharedPlayerStoreKey(key)) unavailable.delete(key);
+          } catch (err) {
+            if (isSharedPlayerStoreKey(key)) unavailable.set(key, null);
+            throw err;
+          } finally { _saveStoreApplySilenced--; }
         },
       };
       // Chunked: the getItem-compare + setItem pass was the last multi-MB atomic
@@ -735,11 +761,28 @@ export const save = {
         yieldQueue: () => this._restoreFrameYield(),
         baseKeys: localNow,
       });
-      // Post-apply storage == merged for every shared key (skipped writes were identical by
-      // construction) — hand the materialized map to the slot signature so the first menu scan
-      // doesn't getItem the same megabytes a second time. Only stamp it when no foreign write
-      // landed inside the apply's yield windows: merged predates such a write, and a stale
-      // stamp would serve it to one consult as if current until the next bump.
+      // A remote save is durable even when this browser's localStorage quota cannot hold its
+      // large primary. Keep only validated shared-store values that failed local application;
+      // worker load/save forwards stage them by exact key without replacing local storage.
+      for (const [key, value] of unavailable) {
+        if (!isSharedPlayerStoreKey(key)) { unavailable.delete(key); continue; }
+        if (Object.hasOwn(merged, key) && typeof merged[key] === 'string') {
+          unavailable.set(key, merged[key]);
+          try {
+            if (globalThis.localStorage.getItem(key) === merged[key]) unavailable.delete(key);
+          } catch (_) { /* retain the merged durable value for the worker reader */ }
+        } else {
+          try {
+            if (globalThis.localStorage.getItem(key) != null) unavailable.set(key, null);
+            else unavailable.delete(key);
+          } catch (_) { unavailable.set(key, null); }
+        }
+      }
+      // Hand the materialized merged map to the slot signature so the first menu scan doesn't
+      // getItem the same megabytes a second time. A local quota failure can leave this cache as
+      // the only in-memory copy of a remote primary; _sharedStoreUnavailableKeys carries that
+      // exact value into worker load/save staging. Only stamp when no foreign write landed inside
+      // the apply's yield windows, since merged predates such a write.
       if (_saveStoreGeneration === genAtApply) {
         this._sharedStoreCollectCache = {
           gen: _saveStoreGeneration,
@@ -1996,7 +2039,7 @@ export const save = {
     // bytes; they relay back and persist to localStorage. The mirror facade
     // cannot produce a trustworthy envelope, so calls forward instead of run.
     if (laneCommandSink && laneCommandSink()) {
-      laneBusEmit('game:save', { slot, __laneStorage: _collectSfStorage() });
+      laneBusEmit('game:save', { slot, __laneStorageFallback: _collectSharedStoreFallback(this) });
       return true;
     }
     const reason = options.reason || (slot === AUTOSAVE_SLOT ? 'autosave' : 'manual');
@@ -5514,7 +5557,7 @@ export const save = {
     // Worker lane (main side): restore authority sits in the sim realm — the
     // forwarded event stages this realm's sf.* bytes for its slot resolution.
     if (laneCommandSink && laneCommandSink()) {
-      laneBusEmit('game:load', { slot: slot || 'latest', __laneStorage: _collectSfStorage() });
+      laneBusEmit('game:load', { slot: slot || 'latest', __laneStorageFallback: _collectSharedStoreFallback(this) });
       return true;
     }
     // preferAsync: the painted Continue lane asks for the worker-backed restore; callers that

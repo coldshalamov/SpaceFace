@@ -56,7 +56,7 @@ import { runtimeWorkerUrl } from '../render/runtimeWorkers.js';
 import { createLaneTouchSurface } from '../systems/mobile/laneTouchSurface.js';
 import { normalizePadSensitivity, sampleGamepadFrame } from '../systems/gamepad.js';
 import { getPromptDevice, getGamepadCaptureHandler } from '../ui/bindings.js';
-import { applySharedPlayerStoreCapability } from '../save/sharedPlayerStore.js';
+import { applySharedPlayerStoreCapability, isSharedPlayerStoreKey } from '../save/sharedPlayerStore.js';
 import { PRESENTATION_JOURNAL_KINDS } from './presentationJournal.js';
 import {
   installSimCommandSink,
@@ -102,44 +102,112 @@ const LANE_COMPLETED_TICK_CAPACITY = 8;
 
 // The save system's keyspace — shipped to the worker on save/load forwards so
 // its own slot-resolution and recovery logic sees real bytes.
-function collectLaneSaveStorage() {
+function collectLaneSaveStorage(relayFallback = null, authoritativeFallback = null) {
   const out = {};
   try {
-    if (typeof localStorage === 'undefined') return out;
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (typeof key === 'string' && key.startsWith('sf.')) {
-        const v = localStorage.getItem(key);
-        if (typeof v === 'string') out[key] = v;
+    if (typeof localStorage !== 'undefined') {
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (typeof key === 'string' && key.startsWith('sf.')) {
+          const v = localStorage.getItem(key);
+          if (typeof v === 'string') out[key] = v;
+        }
       }
     }
   } catch (_) { /* storage enumeration unavailable — ship the empty map */ }
+  // Explicit supplemental bytes come from the save owner's validated shared-store cache.
+  // Accept only keys from its durable store allowlist and only strings. They are fresher than
+  // a prior worker relay that failed local storage, so clear that per-key relay entry.
+  const suppliedKeys = new Set();
+  if (authoritativeFallback && typeof authoritativeFallback === 'object') {
+    for (const [key, value] of Object.entries(authoritativeFallback)) {
+      if (isSharedPlayerStoreKey(key) && typeof value === 'string') {
+        out[key] = value;
+        suppliedKeys.add(key);
+        relayFallback?.delete(key);
+      }
+    }
+  }
+  if (relayFallback && typeof relayFallback.entries === 'function') {
+    for (const [key, entry] of relayFallback) {
+      if (!isSharedPlayerStoreKey(key)) continue;
+      if (suppliedKeys.has(key)) continue;
+      let current = null;
+      let currentKnown = false;
+      try {
+        if (typeof localStorage !== 'undefined') {
+          current = localStorage.getItem(key);
+          currentKnown = true;
+        }
+      } catch (_) { /* retain the relay copy if local state cannot be observed */ }
+      if (entry && typeof entry === 'object' && entry.baselineKnown === true
+        && currentKnown && current !== entry.baseline) {
+        relayFallback.delete(key);
+        continue;
+      }
+      if (entry && typeof entry === 'object' && entry.value === null) delete out[key];
+      else if (entry && typeof entry === 'object' && typeof entry.value === 'string') out[key] = entry.value;
+    }
+  }
   return out;
 }
 
 // Worker save writes ride on the next reply. Keep the relay per-operation so one malformed or
 // quota-blocked write cannot suppress later operations, and keep clear scoped to SpaceFace keys.
-function applyLaneSaveStorageOps(ops) {
+function applyLaneSaveStorageOps(ops, relayFallback = null) {
   if (!Array.isArray(ops) || !ops.length) return;
   let storage;
-  try { storage = globalThis.localStorage; } catch { return; }
-  if (!storage) return;
+  try { storage = globalThis.localStorage; } catch { storage = null; }
+  const retainFailedWrite = (key, value) => {
+    if (!relayFallback || !isSharedPlayerStoreKey(key)) return;
+    let baseline = null;
+    let baselineKnown = false;
+    try {
+      if (storage) {
+        baseline = storage.getItem(key);
+        baselineKnown = true;
+      }
+    } catch (_) { /* unknown baseline keeps the retained value conservative */ }
+    relayFallback.set(key, { value, baseline, baselineKnown });
+  };
   for (const op of ops) {
     try {
       if (!op) continue;
       if (op.op === 'set' && typeof op.key === 'string' && typeof op.value === 'string') {
+        if (!storage) throw new Error('main storage unavailable');
         storage.setItem(op.key, op.value);
+        if (isSharedPlayerStoreKey(op.key)) relayFallback?.delete(op.key);
       } else if (op.op === 'remove' && typeof op.key === 'string') {
+        if (!storage) throw new Error('main storage unavailable');
         storage.removeItem(op.key);
+        if (isSharedPlayerStoreKey(op.key)) relayFallback?.delete(op.key);
       } else if (op.op === 'clear') {
         const doomed = [];
-        for (let i = 0; i < storage.length; i++) {
-          const key = storage.key(i);
-          if (key && key.startsWith('sf.')) doomed.push(key);
+        if (relayFallback) relayFallback.clear();
+        if (storage) {
+          for (let i = 0; i < storage.length; i++) {
+            const key = storage.key(i);
+            if (key && key.startsWith('sf.')) doomed.push(key);
+          }
         }
-        for (const key of doomed) storage.removeItem(key);
+        for (const key of doomed) {
+          try {
+            storage.removeItem(key);
+            if (isSharedPlayerStoreKey(key)) relayFallback?.delete(key);
+          } catch {
+            retainFailedWrite(key, null);
+          }
+        }
       }
-    } catch (_) { /* persistence relay is best-effort; quota policy stayed worker-side */ }
+    } catch (_) {
+      // A worker save can exceed this browser's localStorage quota even though its durable
+      // shared-store write succeeded. Keep the exact allowlisted bytes for the next worker read.
+      if (op?.op === 'set' && isSharedPlayerStoreKey(op.key) && typeof op.value === 'string') {
+        retainFailedWrite(op.key, op.value);
+      } else if (op?.op === 'remove' && isSharedPlayerStoreKey(op.key)) {
+        retainFailedWrite(op.key, null);
+      }
+    }
   }
 }
 
@@ -265,6 +333,7 @@ export function createSimLaneRuntime({
 }) {
   const resolved = flags || resolveSimLaneFlags();
   if (!resolved || resolved.lane !== SIM_LANE.WORKER) return null;
+  const laneSaveRelayFallback = new Map();
   // Browser production gets an autonomous worker clock. Injected channels are
   // directive-driven on purpose: the node/manual fixtures must retain their
   // explicit tick order and never acquire a second wall clock.
@@ -807,7 +876,7 @@ export function createSimLaneRuntime({
 
   // ---- reply application ------------------------------------------------------------------
   function applyInitReply(msg) {
-    applyLaneSaveStorageOps(msg.storageOps);
+    applyLaneSaveStorageOps(msg.storageOps, laneSaveRelayFallback);
     if (msg.initRebuild && msg.initRebuild.pack) {
       const applied = journal.applyRebuildPack(msg.initRebuild);
       retireMissingFullRebuildEntities(msg.initRebuild.start, msg.initRebuild.end, applied);
@@ -870,7 +939,7 @@ export function createSimLaneRuntime({
 
     // Apply worker save bytes before any mirrored domains or replayed events. Synchronous save
     // listeners must see the fresh index/envelope while the worker event is being dispatched.
-    applyLaneSaveStorageOps(msg.storageOps);
+    applyLaneSaveStorageOps(msg.storageOps, laneSaveRelayFallback);
 
     // Input boundary: replay the worker's publishes into the ring via
     // publish() — reserve+capture atomically, the only order the ring accepts
@@ -1624,7 +1693,11 @@ export function createSimLaneRuntime({
             // The worker realm has no localStorage of its own — stage this
             // realm's sf.* keyspace so its save system resolves slots and
             // recovery against real bytes.
-            wirePayload = Object.assign({}, payload, { __laneStorage: collectLaneSaveStorage() });
+            const authoritativeFallback = payload && payload.__laneStorageFallback;
+            wirePayload = Object.assign({}, payload);
+            delete wirePayload.__laneStorageFallback;
+            wirePayload.__laneStorage = collectLaneSaveStorage(laneSaveRelayFallback,
+              authoritativeFallback);
           }
           // Same projection the worker→main bridge applies: live sim objects
           // flatten to { entityRef } tokens and unflattenable members reject

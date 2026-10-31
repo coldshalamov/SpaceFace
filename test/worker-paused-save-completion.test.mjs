@@ -44,13 +44,25 @@ test('a failed paused save drain reports once without retrying still-pending dur
   assert.equal(pendingChecks, 1, 'failure does not poll pending data to manufacture another wake');
 });
 
-for (const [failWrite, delayedAck, raceSecond] of [[false, false, false], [true, false, false], [false, true, false], [false, false, true]]) {
-  test(`paused browser worker publishes real asynchronous save ${failWrite ? 'failure' : 'bytes and completion'}${delayedAck ? ' behind a delayed ACK' : ''}${raceSecond ? ' racing a second completion' : ''} without another command`, { timeout: 30000 }, async () => {
+for (const [failWrite, delayedAck, raceSecond, quotaDropPrimary] of [
+  [false, false, false, false], [true, false, false, false],
+  [false, true, false, false], [false, false, true, false],
+  [false, false, false, true],
+]) {
+  test(`paused browser worker publishes real asynchronous save ${quotaDropPrimary ? 'despite a main-realm quota rejection' : failWrite ? 'failure' : 'bytes and completion'}${delayedAck ? ' behind a delayed ACK' : ''}${raceSecond ? ' racing a second completion' : ''} without another command`, { timeout: 30000 }, async () => {
     const previousStorage = globalThis.localStorage;
     const rows = new Map();
     globalThis.localStorage = {
       getItem: key => rows.get(key) ?? null,
-      setItem: (key, value) => rows.set(String(key), String(value)),
+      setItem: (key, value) => {
+        const stringKey = String(key), stringValue = String(value);
+        // The worker's Map-backed localStorage accepts this save. Model a main-realm origin
+        // quota that can keep the small slot index but rejects the large primary blob.
+        if (quotaDropPrimary && stringKey === 'sf.save.quick' && stringValue.length > 20_000) {
+          throw Object.assign(new Error('fixture origin quota exceeded'), { name: 'QuotaExceededError' });
+        }
+        rows.set(stringKey, stringValue);
+      },
       removeItem: key => rows.delete(key), key: index => [...rows.keys()][index] ?? null,
       get length() { return rows.size; },
     };
@@ -85,7 +97,7 @@ for (const [failWrite, delayedAck, raceSecond] of [[false, false, false], [true,
       for (const data of pending) self.onmessage({data});
     `;
     const worker = new Worker(new URL(`data:text/javascript,${encodeURIComponent(source)}`), { workerData: { failWrite, raceSecond } });
-    const replies = [], posts = [], receipts = [];
+    const replies = [], posts = [], receipts = [], loaded = [];
     let receive, lane, heldStart;
     const state = createGameState(4242);
     state.timeScale = 0;
@@ -93,6 +105,7 @@ for (const [failWrite, delayedAck, raceSecond] of [[false, false, false], [true,
     for (const type of ['save:started', 'save:completed', 'save:error']) {
       bus.on(type, payload => receipts.push({ type, payload, bytes: rows.get(`sf.save.${payload.slot}`) }));
     }
+    bus.on('save:loaded', payload => loaded.push(payload));
     try {
       worker.on('message', message => {
         replies.push(message);
@@ -138,6 +151,19 @@ for (const [failWrite, delayedAck, raceSecond] of [[false, false, false], [true,
         'no extra actor command is needed to pull the async result');
       if (failWrite) {
         assert.equal(rows.has('sf.save.quick'), false);
+      } else if (quotaDropPrimary) {
+        assert.equal(rows.has('sf.save.quick'), false,
+          'the worker reports its Map-backed write, but main-realm quota rejects the relayed primary');
+        const index = JSON.parse(rows.get('sf.save.index'));
+        assert.ok(index.quick, 'the later small index op survives and advertises a Continue card');
+        assert.equal(receipts.find(row => row.type === 'save:completed').payload.ok, true,
+          'worker save completion is replayed despite the rejected main-realm primary write');
+        bus.emit('game:load', { slot: 'latest' });
+        await until(() => loaded.length > 0 || receipts.some(row => row.type === 'save:error'), 'worker load of saved slot');
+        assert.equal(receipts.some(row => row.type === 'save:error'), false,
+          'the main-lane relay fallback supplies the durable primary to the worker reader');
+        assert.equal(loaded.length, 1);
+        assert.equal(loaded[0].slot, 'quick');
       } else {
         const envelope = JSON.parse(receipts.find(row => row.type === 'save:completed' && row.payload.slot === 'quick').bytes);
         assert.equal(envelope.slot, 'quick');
@@ -149,7 +175,8 @@ for (const [failWrite, delayedAck, raceSecond] of [[false, false, false], [true,
       const last = replies.filter(row => row.kind === 'clockTick').at(-1);
       assert.equal(last.stateTick, before.result.tick);
       assert.equal(last.simTime, before.result.simTime);
-      assert.equal(state.mode, 'paused');
+      assert.equal(state.mode, quotaDropPrimary ? 'loading' : 'paused',
+        'a restored worker save holds the main mirror at the visual admission gate');
       assert.equal(lane.getDiagnostics().closed, false);
       assert.equal(replies.some(row => row.kind === 'error'), false);
     } finally {
