@@ -223,8 +223,10 @@ Earlier full `c6` and short `030aaf` receipts remain failed; their evidence is r
 misses are not closed by focused checks. The repaired full-duration and context-recovery outcome
 remains open.
 
-The batch 13 baseline is separately open: all 17 assertions passed, but the run took 92,184 ms
-against the unchanged 90,000 ms budget. M8 route progress does not close that budget check.
+The baseline timing is separately open. After removing three redundant per-tick scenario-state
+normalizations, nine scenario cases and all four physical branches pass, but the latest full
+baseline still takes 92,054 ms with all 17 assertions green against 90,000 ms. Public normalization
+boundaries remain intact; no timing gain or budget closure is claimed. M8 progress does not close it.
 
 **M9 — Load less, load later.** 28 MB of minified JS in the eager closure (`scripts/build-bundle.mjs`,
 esbuild splitting): lazy-load per mode and per screen; make `modelTruthCensus.generated.js` and

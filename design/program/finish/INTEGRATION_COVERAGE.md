@@ -113,6 +113,12 @@ result remains historical even where later builds supersede its size.
 
 ## Integrated changes and measurement limits
 
+- **Scenario normalization:** the three private synchronous update phases now reuse their tick's
+  canonical normalized record instead of cloning it again. Activation refreshes the reference;
+  public save, load and branch normalization boundaries remain. Nine focused scenario cases and
+  all four physical branches pass. The latest baseline remains a timing **FAIL**: all 17 assertions
+  pass in 92,054 ms against 90,000 ms. This cleanup does not establish a measured timing gain.
+
 - **Current loading boundary (batch fifteen):** the main static ESM closure is 11,722,389 raw /
   3,652,037 summed-gzip bytes across 132 outputs, below the 12 MB raw floor. Main now awaits the
   presentation registry before creating its worker runtime and initializing owners; public registry
