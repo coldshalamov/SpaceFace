@@ -1517,9 +1517,12 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     terrainReady = false;
     terrainFailed = false;
     queueWorksPipelines(rockGroup).then((ready) => {
-      if (generation === terrainGeneration) terrainReady = ready;
+      if (generation === terrainGeneration && !worksTearingDown && !disposed && !glTeardownDone) {
+        terrainReady = ready;
+      }
     }).catch((error) => {
-      if (generation === terrainGeneration) terrainFailed = true;
+      if (generation !== terrainGeneration || worksTearingDown || disposed || glTeardownDone) return;
+      terrainFailed = true;
       console.error('[asteroidRenderer3d] terrain pipeline admission failed', error);
     });
   }
@@ -3780,13 +3783,13 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     const gen = ++authoredRoverGen;
     authoredRoverState.failed = false;
     authoredRoverState.loadPromise = loader.loadWorksPart('place_works_rover').then(async (group) => {
+      if (worksTearingDown || disposed || glTeardownDone || gen !== authoredRoverGen) {
+        if (group) loader.releaseWorksPart(group);
+        return null;
+      }
       if (!group) {
         authoredRoverState.failed = true;
         console.error('[asteroidRenderer3d] authored Rover load returned null; keeping Rover hidden');
-        return null;
-      }
-      if (worksTearingDown || disposed || glTeardownDone || gen !== authoredRoverGen) {
-        loader.releaseWorksPart(group);
         return null;
       }
       if (!installAuthoredRover(group)) {
@@ -3795,9 +3798,12 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
         loader.releaseWorksPart(group);
         return null;
       }
-      authoredRoverState.ready = await queueWorksPipelines(rover);
+      const ready = await queueWorksPipelines(rover);
+      if (worksTearingDown || disposed || glTeardownDone || gen !== authoredRoverGen) return null;
+      authoredRoverState.ready = ready;
       return group;
     }).catch((error) => {
+      if (worksTearingDown || disposed || glTeardownDone || gen !== authoredRoverGen) return null;
       authoredRoverState.failed = true;
       console.error('[asteroidRenderer3d] authored Rover load failed; keeping Rover hidden', error);
       return null;

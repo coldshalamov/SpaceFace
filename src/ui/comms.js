@@ -29,6 +29,7 @@ import { openingInstructionSolo } from './hudAttention.js';
 
 const COMMS_STYLE_ID = 'sf-comms-style';
 const PLACE_GRAFFITI_HOLD_MS = 8000;
+const PLACE_GRAFFITI_FADE_MS = 400;
 
 /** Flight shows both lines. A dock keeps the place line and hides the ship's bulkhead. A menu hides both. */
 export function placeGraffitiDisplay(visible, docked) {
@@ -39,25 +40,27 @@ export function placeGraffitiDisplay(visible, docked) {
 }
 
 /**
- * Bulkhead lines stay on the ship. Every other place (airlock, yard, clearing)
- * is painted on its own readout, above the dock screen, and remembered on
- * state.ui.graffiti for a later reader. The two surfaces never share a node.
+ * Bulkhead lines stay on the ship. Place lines use the station tape while docked,
+ * the flight overlay otherwise, and are remembered on state.ui.graffiti for a later reader.
+ * The two surfaces never share a node.
  */
-export function mountPlaceGraffiti(bus, state, parent) {
-  const bulkhead = document.createElement('div');
+export function mountPlaceGraffiti(bus, state, parent, resolveHud = null) {
+  const homeParent = parent;
+  const ownerDocument = parent && parent.ownerDocument ? parent.ownerDocument : globalThis.document;
+  const bulkhead = ownerDocument.createElement('div');
   bulkhead.className = 'sf-bulkhead';
   bulkhead.id = 'sf-bulkhead';
   bulkhead.setAttribute('aria-hidden', 'true');
-  const bulkheadLine = document.createElement('div');
+  const bulkheadLine = ownerDocument.createElement('div');
   bulkheadLine.className = 'sf-bulkhead__line';
   bulkhead.appendChild(bulkheadLine);
 
-  const airlock = document.createElement('div');
+  const airlock = ownerDocument.createElement('div');
   airlock.className = 'sf-airlock';
   airlock.id = 'sf-airlock';
   airlock.setAttribute('aria-hidden', 'true');
   airlock.setAttribute('aria-live', 'polite');
-  const airlockLine = document.createElement('div');
+  const airlockLine = ownerDocument.createElement('div');
   airlockLine.className = 'sf-airlock__line';
   airlock.appendChild(airlockLine);
 
@@ -65,9 +68,70 @@ export function mountPlaceGraffiti(bus, state, parent) {
   parent.appendChild(airlock);
 
   let hideTimer = 0;
+  let fadeTimer = 0;
+  let fadeGeneration = 0;
   let alive = true;
   let showing = null;
+  let fadingOut = false;
+  let registeredHud = null;
   const pending = [];
+
+  function syncFlightCaptionRegistration(refresh = false) {
+    const shouldRegister = alive && (showing || fadingOut) && state.mode === 'flight'
+      && !(state.ui && state.ui.docked) && airlock.style.display !== 'none';
+    const hud = typeof resolveHud === 'function' ? resolveHud() : null;
+    if (!shouldRegister) {
+      if (registeredHud && typeof registeredHud.releaseExternalFlightCaption === 'function') {
+        registeredHud.releaseExternalFlightCaption(airlock);
+      }
+      if (hud && hud !== registeredHud && typeof hud.releaseExternalFlightCaption === 'function') {
+        hud.releaseExternalFlightCaption(airlock);
+      }
+      registeredHud = null;
+      airlock.classList.remove('sf-airlock--flight-safe');
+      return;
+    }
+    airlock.classList.add('sf-airlock--flight-safe');
+    if (registeredHud && registeredHud !== hud
+      && typeof registeredHud.releaseExternalFlightCaption === 'function') {
+      registeredHud.releaseExternalFlightCaption(airlock);
+      registeredHud = null;
+    }
+    if (hud && typeof hud.registerExternalFlightCaption === 'function') {
+      if (registeredHud !== hud) {
+        hud.registerExternalFlightCaption(airlock);
+        registeredHud = hud;
+      } else if (refresh && typeof hud.refreshExternalFlightCaption === 'function') {
+        hud.refreshExternalFlightCaption(airlock);
+      }
+    }
+  }
+
+  function syncAirlockPlacement(refreshFlightCaption = false) {
+    if (!alive || !airlock) return;
+    // The berth tape is the station's existing narrative lane. Keep a live place line in that
+    // lane's normal flow while docked, rather than floating it over the dossier/footer.
+    const dockedQuoteVisible = (showing || fadingOut) && state.ui && state.ui.docked === true
+      && airlock.style.display !== 'none';
+    const tape = dockedQuoteVisible
+      ? ownerDocument?.querySelector?.('#screens > .sx-berth.orr-station:not([aria-hidden="true"]) .sxb-tape') || null
+      : null;
+    const destination = tape || homeParent;
+    if (destination && airlock.parentNode !== destination) {
+      if (tape && typeof tape.insertBefore === 'function') tape.insertBefore(airlock, tape.firstChild || null);
+      else if (typeof destination.appendChild === 'function') destination.appendChild(airlock);
+    }
+    if (tape) airlock.classList.add('sf-airlock--station');
+    else airlock.classList.remove('sf-airlock--station');
+    syncFlightCaptionRegistration(refreshFlightCaption);
+  }
+
+  // Dock intent reaches this module before uiRoot commits `state.ui.docked`; the screen-top event
+  // follows that writer and fires after the station root has been mounted and made visible.
+  const onDockPlacement = () => syncAirlockPlacement();
+  const offDocked = bus.on('dock:docked', onDockPlacement);
+  const offUndocked = bus.on('dock:undocked', onDockPlacement);
+  const offScreenTop = bus.on('ui:screenTop', onDockPlacement);
 
   function rememberPlace(p) {
     if (!state.ui) state.ui = {};
@@ -84,12 +148,17 @@ export function mountPlaceGraffiti(bus, state, parent) {
 
   function pumpPlace() {
     if (!alive || showing || pending.length === 0) return;
+    if (fadeTimer) clearTimeout(fadeTimer);
+    fadeTimer = 0;
+    fadeGeneration += 1;
+    fadingOut = false;
     const next = pending.shift();
     showing = next;
     airlockLine.textContent = next.line;
     airlock.classList.add('sf-airlock--visible');
     airlock.setAttribute('aria-hidden', 'false');
     airlock.setAttribute('aria-label', next.where + ' graffiti: ' + next.line);
+    syncAirlockPlacement(true);
     hideTimer = setTimeout(() => {
       hideTimer = 0;
       if (!alive) return;
@@ -100,6 +169,15 @@ export function mountPlaceGraffiti(bus, state, parent) {
       }
       airlock.classList.remove('sf-airlock--visible');
       airlock.setAttribute('aria-hidden', 'true');
+      fadingOut = true;
+      const fadeToken = ++fadeGeneration;
+      syncAirlockPlacement();
+      fadeTimer = setTimeout(() => {
+        fadeTimer = 0;
+        if (!alive || fadeToken !== fadeGeneration || showing || pending.length) return;
+        fadingOut = false;
+        syncAirlockPlacement();
+      }, PLACE_GRAFFITI_FADE_MS);
     }, PLACE_GRAFFITI_HOLD_MS);
   }
 
@@ -128,16 +206,31 @@ export function mountPlaceGraffiti(bus, state, parent) {
     if (!alive) return;
     alive = false;
     if (hideTimer) clearTimeout(hideTimer);
+    if (fadeTimer) clearTimeout(fadeTimer);
     hideTimer = 0;
+    fadeTimer = 0;
+    fadeGeneration += 1;
     showing = null;
+    fadingOut = false;
     pending.length = 0;
+    if (registeredHud && typeof registeredHud.releaseExternalFlightCaption === 'function') {
+      registeredHud.releaseExternalFlightCaption(airlock);
+    }
+    registeredHud = null;
+    airlock.classList.remove('sf-airlock--flight-safe');
+    if (typeof offDocked === 'function') offDocked();
+    else bus?.off?.('dock:docked', onDockPlacement);
+    if (typeof offUndocked === 'function') offUndocked();
+    else bus?.off?.('dock:undocked', onDockPlacement);
+    if (typeof offScreenTop === 'function') offScreenTop();
+    else bus?.off?.('ui:screenTop', onDockPlacement);
     if (typeof off === 'function') off();
     else if (bus && typeof bus.off === 'function') bus.off('graffiti:show', onShow);
     bulkhead.remove();
     airlock.remove();
   }
 
-  return { bulkhead, airlock, bulkheadLine, airlockLine, destroy };
+  return { bulkhead, airlock, bulkheadLine, airlockLine, syncPlacement: syncAirlockPlacement, destroy };
 }
 
 // category → accent color + label prefix. Most are NOT addressed to the player.
@@ -493,7 +586,10 @@ export function createComms(ctx) {
 
   // Bulkhead stays on the ship. Place lines (airlock, yard, clearing) paint on their
   // own readout above the dock. Both mount on #ui-root, not #hud: createHud() wipes #hud.
-  const placeGraffiti = mountPlaceGraffiti(bus, state, document.getElementById('ui-root'));
+  const placeGraffiti = mountPlaceGraffiti(bus, state, document.getElementById('ui-root'), () => {
+    try { return ctx.registry?.get?.('ui')?.hud || ctx.ui?.hud || null; }
+    catch (_) { return null; }
+  });
 
   // ── 4. Contextual ending confirmations. Contract endings A/B remain board rows. ──────────
   function presentPhysicalChoice(
@@ -631,6 +727,7 @@ export function createComms(ctx) {
     const graffitiDisplay = placeGraffitiDisplay(visible, docked);
     placeGraffiti.bulkhead.style.display = graffitiDisplay.bulkhead;
     placeGraffiti.airlock.style.display = graffitiDisplay.airlock;
+    placeGraffiti.syncPlacement();
     traceHost.style.display = visible ? '' : 'none';
     if (!visible) commsTrace.update({ live: false });
     if (!visible) closeBacklog();
@@ -907,9 +1004,12 @@ function injectCommsCss() {
   .sf-bulkhead__line { font-family:var(--mono); font-size:clamp(12px, 1.2vw, 13px); letter-spacing:.06em;
     color:#b9c4d6; text-transform:uppercase; text-shadow:0 0 12px rgba(0,0,0,.85), 0 1px 2px #000;
     transform:rotate(-1.5deg); }
-  /* Place lines sit above the dock screen (#screens is z-index 100) and do not take clicks. */
+  /* Flight place lines float over the scene; docked lines move into the berth tape's normal flow. */
   .sf-airlock { position:absolute; left:50%; bottom:14%; transform:translateX(-50%); z-index:140;
     pointer-events:none; opacity:0; transition:opacity .4s ease; max-width:min(520px, 84vw); text-align:center; }
+  .sf-airlock--station { position:relative; inset:auto; left:auto; bottom:auto; z-index:auto; transform:none;
+    flex:0 0 100%; width:100%; max-width:100%; margin:0; text-align:left; }
+  .sf-airlock--station .sf-airlock__line { display:block; max-width:100%; line-height:1.35; overflow-wrap:anywhere; text-align:left; }
   .sf-airlock--visible { opacity:1; }
   body.ui-modal-open .sf-airlock--visible { opacity:1; }
   .sf-airlock__line { font-family:var(--mono); font-size:clamp(13px, 1.5vw, 16px); letter-spacing:.08em;

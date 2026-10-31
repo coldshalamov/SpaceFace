@@ -1,6 +1,43 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { runInNewContext } from 'node:vm';
+import { parse } from '@babel/parser';
 import { answerFirstRunPrompt, dismissCinematicIntro, isFirstLightPrompt, installFirstLightPromptHandler } from '../scripts/player-truth/routes.mjs';
+
+const ROUTES_SOURCE = readFileSync(new URL('../scripts/player-truth/routes.mjs', import.meta.url), 'utf8');
+
+function introSnapshotCallbackSource() {
+  const ast = parse(ROUTES_SOURCE, { sourceType: 'module' });
+  let intro = null;
+  const visit = (node) => {
+    if (!node || typeof node !== 'object') return;
+    if (node.type === 'FunctionDeclaration' && node.id?.name === 'dismissCinematicIntro') intro = node;
+    for (const value of Object.values(node)) {
+      if (Array.isArray(value)) value.forEach(visit);
+      else if (value && typeof value === 'object' && value.type) visit(value);
+    }
+  };
+  visit(ast);
+  assert.ok(intro, 'the production intro owner is present');
+  let snapshot = null;
+  const visitIntro = (node) => {
+    if (!node || typeof node !== 'object' || snapshot) return;
+    if (node.type === 'CallExpression' && node.callee?.type === 'MemberExpression'
+      && node.callee.object?.name === 'page' && node.callee.property?.name === 'evaluate'
+      && node.arguments?.[0]?.type === 'ArrowFunctionExpression') {
+      snapshot = node.arguments[0];
+      return;
+    }
+    for (const value of Object.values(node)) {
+      if (Array.isArray(value)) value.forEach(visitIntro);
+      else if (value && typeof value === 'object' && value.type) visitIntro(value);
+    }
+  };
+  visitIntro(intro);
+  assert.ok(snapshot, 'the production intro snapshot callback is present');
+  return ROUTES_SOURCE.slice(snapshot.start, snapshot.end);
+}
 
 test('the public settings actor only accepts the known First light choices', () => {
   assert.equal(isFirstLightPrompt('First light','Keep my settings'),true);
@@ -13,10 +50,52 @@ test('the public settings actor only accepts the known First light choices', () 
   assert.equal(isFirstLightPrompt('First light','Confirm purchase'),false);
 });
 
+test('the actual intro DOM predicate keeps an unrelated root confirmation blocking Space', () => {
+  const title = {
+    textContent: 'Confirm purchase',
+    hidden: false,
+    getClientRects: () => [{ width: 100, height: 20 }],
+    getBoundingClientRect: () => ({ width: 100, height: 20 }),
+  };
+  const dialog = {
+    querySelector: (selector) => selector === '#sf-confirm-title' ? title : null,
+    contains: (node) => node === title,
+  };
+  const root = {
+    id: 'sf-confirm-root',
+    hidden: false,
+    classList: { contains: () => true },
+    querySelector: (selector) => selector === '[role="dialog"]' ? dialog
+      : selector === 'h1,h2,[role="heading"]' ? title : null,
+    querySelectorAll: (selector) => selector === '[role="heading"]' ? [title] : [],
+    getAttribute: () => null,
+    contains: (node) => node === dialog || node === title,
+    getClientRects: () => [{ width: 500, height: 240 }],
+    getBoundingClientRect: () => ({ width: 500, height: 240 }),
+  };
+  const splash = {
+    id: 'cinematic-splash',
+    hidden: false,
+    getBoundingClientRect: () => ({ width: 1000, height: 700 }),
+  };
+  const result = runInNewContext(`(${introSnapshotCallbackSource()})()`, {
+    document: {
+      getElementById: (id) => id === 'cinematic-splash' ? splash : id === 'sf-confirm-root' ? root : null,
+      querySelectorAll: (selector) => selector === '[aria-modal="true"]' ? [root] : [],
+    },
+    getComputedStyle: () => ({ display: 'block', visibility: 'visible' }),
+  });
+  assert.equal(result.splashVisible, true);
+  assert.equal(result.firstLightDialogPresent, false);
+  assert.equal(result.otherModalActive, true);
+  assert.equal(result.otherModalTitle, 'Confirm purchase');
+});
+
 function fixture({ title = 'First light', visible = true, cancel = 'Use first light', confirm = 'Play',
   cancelVisible = true, confirmText = confirm, clickError = null, reenterHandlerDuringPlay = false,
   closePageOnClickError = false, introVisible = false, promptAfterFirstSpace = false,
-  supersedeOnPlay = false, cinematicAriaModal = false, conditionReturn = 'handle' } = {}) {
+  supersedeOnPlay = false, cinematicAriaModal = false, conditionReturn = 'handle',
+  dismissSplashOnPromptCleanup = false } = {}) {
   const clicks = [], events = [];
   const locatorClicks = [], mouseClicks = [];
   let handler, handlerOptions, handlerSelector, registrations = 0;
@@ -142,6 +221,7 @@ function fixture({ title = 'First light', visible = true, cancel = 'Use first li
         if (otherDialogTitle) return conditionValue({ superseded: true, title: otherDialogTitle });
         dialogPresent = false;
         modalFence = false;
+        if (dismissSplashOnPromptCleanup) splashVisible = false;
         return conditionValue({ released: true });
       } else {
         assert.equal(active, false, 'the trusted click dismissed the active prompt');
@@ -247,6 +327,25 @@ test('a late First light interrupts intro Space, is answered, then intro receive
   assert.deepEqual(f.cleanupWaitObservations, [{ active: false, dialogPresent: true, modalFence: true }],
     'the answer waits past class removal until the dialog DOM and input fence are actually released');
   assert.equal(f.handleJsonCalls, 0, 'the CSP-safe raw value is consumed without a Playwright JSHandle');
+  assert.equal(f.events.at(-1)[0], 'intro-dismissed');
+  assert.match(f.events.at(-1)[2], /after 1 First light interruption/i);
+});
+
+test('intro cleanup finishing at the deadline is judged from a fresh visible-splash sample', async () => {
+  const f = fixture({ visible: false, introVisible: true, promptAfterFirstSpace: true,
+    dismissSplashOnPromptCleanup: true });
+  await f.install();
+  const originalNow = Date.now;
+  const times = [0, 0, 0, 0, 20_000];
+  let reads = 0;
+  Date.now = () => times[Math.min(reads++, times.length - 1)];
+  try {
+    const result = await f.dismissIntro();
+    assert.deepEqual(result, { shown: true, spacePresses: 1, promptAnswers: 1 });
+  } finally {
+    Date.now = originalNow;
+  }
+  assert.deepEqual(f.clicks, ['Play']);
   assert.equal(f.events.at(-1)[0], 'intro-dismissed');
   assert.match(f.events.at(-1)[2], /after 1 First light interruption/i);
 });
