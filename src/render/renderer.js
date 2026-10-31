@@ -16261,19 +16261,26 @@ export const render = {
       const yieldBufferBase = typeof options.yieldToMain === 'function'
         ? options.yieldToMain
         : yieldToBrowser;
+      const cookStretchStarted = cookNow();
+      let cookStretchSliceAt = cookStretchStarted;
+      let cookStretchDebitAt = cookStretchStarted;
+      const restartCookStretchAfterFrame = (previousEpoch) => {
+        const currentEpoch = paceEpochNow();
+        if (previousEpoch < 0 || currentEpoch < 0 || currentEpoch === previousEpoch) return;
+        cookStretchSliceAt = cookNow();
+        cookStretchDebitAt = cookStretchSliceAt;
+      };
       const bufferYieldStats = { count: 0, ms: 0 };
       const yieldBufferFrame = async () => {
         const started = cookNow();
+        const previousEpoch = paceEpochNow();
         bufferYieldStats.count += 1;
         try { return await yieldBufferBase(); }
-        finally { bufferYieldStats.ms += cookNow() - started; }
+        finally { bufferYieldStats.ms += cookNow() - started; restartCookStretchAfterFrame(previousEpoch); }
       };
       // The shared stretch clock covers every paced stretch of this cook — the
       // cohort mint, the pool census, the subject buckets — so a fat leg
       // debits the same ledger the slices debit.
-      const cookStretchStarted = cookNow();
-      let cookStretchSliceAt = cookStretchStarted;
-      let cookStretchDebitAt = cookStretchStarted;
       const paceCookStretch = async () => {
         const tick = cookNow();
         if (tick - cookStretchSliceAt <= 4 && pacedFrameSpend() < PACED_FRAME_BUDGET_MS) return;
@@ -16616,9 +16623,10 @@ export const render = {
         const touchYieldStats = { count: 0, ms: 0 };
         const yieldTouch = typeof options.yieldToMain === 'function' ? async () => {
           const started = cookNow();
+          const previousEpoch = paceEpochNow();
           touchYieldStats.count += 1;
           try { return await options.yieldToMain(); }
-          finally { touchYieldStats.ms += cookNow() - started; }
+          finally { touchYieldStats.ms += cookNow() - started; restartCookStretchAfterFrame(previousEpoch); }
         } : null;
         // Issue every touch subject's compile as one readiness cohort on the exact post target, drain
         // once, then touch: a draw against an unlinked program blocks the main thread in onFirstUse

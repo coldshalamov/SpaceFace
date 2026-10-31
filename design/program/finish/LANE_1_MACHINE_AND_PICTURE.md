@@ -178,6 +178,11 @@ The full preliminary authored cohort is restored, incomplete pipeline receipts n
 
 The `023c6fac5ee6` same-session public route reaches first flight in 41.1 seconds and its second Launch in 25.4 seconds, retaining the same renderer, canvas and WebGL context. The measured second run has two driver-link waits totaling 47 ms (maximum 27 ms), but render-pipelines still takes 23.21 seconds. Its loading-stage animation p99 is 17.3 ms; host busy is 48.2%. These are diagnostic observations, not a matched code-speed comparison or completion of the startup bars. The first cook timed out before touch/buffer completion; existing identity/version residency caches already skip work, so wholesale cook reuse is not justified. The profiler now measures the trusted Launch click and distinguishes post-transition composition diagnostics from explicit readiness blockers. See `.devshots/main-thread-profile/adventure-warm-claims-r1/` and `INTEGRATION_COVERAGE.md`.
 
+Cook-stretch accounting now resets after a confirmed presented-frame advance across touch/buffer
+yields, so later census work does not charge prior frames' wait time to the current frame. A
+microtask yield retains its same-frame charge. The focused owner case passes; no startup-speed
+improvement is claimed without a matched measurement.
+
 **M7 — The loading screen is smooth and immersive.** The animation already draws in workers
 (`loadingTerminalArt.js:~1784`, `bootRingWorker.js:~150`) and boot pacing yields between slices
 (`bootShellPacing.js`), yet the owner sees it hitch. Measure with M0's gap probe *what* stalls it before

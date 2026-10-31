@@ -22,6 +22,7 @@ const source = readFileSync(process.env.ENTRY_SOURCE_RENDERER || new URL('../src
 const ast = parse(source, { sourceType: 'module' });
 let cookNode, pipelineNode, enterNode, guardNode, preflightNode, gpuNode, compileNode, openingCaptureNode, loadingNode, pictureNode, ownerInactiveTouchNode, ownerInactiveTouchCheckNode, ownerActiveAdmissionNode, touchSubmitNode, touchFacadeNode, groupTouchNode, settleTouchManyNode, admitSubjectNode, unreadyPipelineNode;
 const rendererMethodNodes = new Map();
+const cookStretchNodes = new Map();
 const ownerActiveAdmissionMatches = [];
 function containsOwnedExactTouch(node) {
   if (!node || typeof node !== 'object') return false;
@@ -35,6 +36,9 @@ function containsOwnedExactTouch(node) {
 }
 function walk(node) {
   if (!node || typeof node !== 'object') return;
+  if (node.type === 'VariableDeclarator' && ['restartCookStretchAfterFrame', 'yieldBufferFrame', 'paceCookStretch'].includes(node.id?.name)) {
+    cookStretchNodes.set(node.id.name, node.init);
+  }
   if (node.type === 'FunctionDeclaration' && node.id?.name === 'appearanceAdmissionHasUnreadyPipeline') unreadyPipelineNode = node;
   if (node.type === 'VariableDeclarator' && node.id?.name === 'admitSubjectPipelines') admitSubjectNode = node.init;
   if (node.type === 'ObjectMethod' && ['_shadowDepthLight', '_shadowDepthEnabled', 'prepareOpeningFirstPicture'].includes(node.key?.name)) {
@@ -117,6 +121,39 @@ function deferred() {
   const promise = new Promise(r => { resolve = r; });
   return { promise, resolve };
 }
+
+test('cook stretch charges only the current frame across real and microtask yields', async () => {
+  const expression = (name) => {
+    const node = cookStretchNodes.get(name);
+    assert.ok(node, `missing renderer owner ${name}`);
+    return source.slice(node.start, node.end);
+  };
+  const make = new Function('env', `with (env) {
+    let cookStretchSliceAt = 0, cookStretchDebitAt = 0;
+    const restartCookStretchAfterFrame = ${expression('restartCookStretchAfterFrame')};
+    const yieldBufferFrame = ${expression('yieldBufferFrame')};
+    const paceCookStretch = ${expression('paceCookStretch')};
+    return { yieldBufferFrame, paceCookStretch };
+  }`);
+  for (const advancesFrame of [true, false]) {
+    let time = 0, epoch = 1;
+    const debits = [];
+    const env = {
+      cookNow: () => time, paceEpochNow: () => epoch,
+      yieldBufferBase: async () => { if (advancesFrame) { time += 20; epoch++; } },
+      bufferYieldStats: { count: 0, ms: 0 },
+      pacedFrameSpend: () => 0, PACED_FRAME_BUDGET_MS: 4,
+      notePacedFrameSpend: (value) => debits.push(value),
+    };
+    const owner = make(env);
+    time = 3;
+    await owner.yieldBufferFrame();
+    time += advancesFrame ? 5 : 3;
+    await owner.paceCookStretch();
+    assert.deepEqual(debits, [advancesFrame ? 5 : 6],
+      advancesFrame ? 'prior-frame wait is not charged again' : 'a microtask does not forgive same-frame work');
+  }
+});
 
 test('actual best-effort admission neither touches nor stamps a timed-out compile and retries when ready', async () => {
   const subject = { userData: {} }, calls = [];
