@@ -320,6 +320,28 @@ ${T} .con-cost dt { align-self:end; }
 @media (min-width:3400px) and (min-height:1900px) {
   ${T}.k-screen { zoom:1.85; --k-s:1; }
 }
+/* ui-polish-280: the three corner readings (credits, research points, unlocked) were loose type over the
+   dial's sky, and "RESEARCH POINTS" broke under its figure while its neighbours stood on one line. On
+   desktop frames each reading now sits in its own hairline card, figure over a one-line word, the cards
+   sized to their words so the corner reads as one set (as the Codex unlock counts do). Padding, gap and
+   line-height stay tight so the card row is no taller than the old loose corner on short frames */
+@media (min-width:761px) {
+  ${T} > .k-corner.con-corner { display:grid !important; grid-template-columns:repeat(3, auto); justify-content:stretch; align-items:stretch;
+    column-gap:clamp(6px, .6vw, 10px) !important; row-gap:0 !important; text-align:left; }
+  ${T} > .k-corner.con-corner .con-read { box-sizing:border-box; align-items:flex-start; justify-content:flex-start; gap:2px;
+    padding:clamp(4px, .6vh, 9px) clamp(7px, .6vw, 12px); border:1px solid rgb(${BONE} / .16); border-radius:6px;
+    background:rgb(12 12 14 / .62); }
+  ${T} > .k-corner.con-corner .con-read__n { font-size:clamp(20px, min(1.6vw, 3.4vh), 40px); line-height:1.05; text-shadow:none; }
+  ${T} > .k-corner.con-corner .con-read__w { font-size:12px; max-width:none; white-space:nowrap; text-align:left; letter-spacing:.08em; line-height:1.2; text-shadow:none; }
+}
+/* the 270–320px reading of a ≤1280 frame: the three words hold one line only in the label's narrow cut with the
+   letters closed up, each card as wide as its word */
+@media (min-width:761px) and (max-width:1280px) {
+  ${T} > .k-corner.con-corner { column-gap:5px !important; }
+  ${T} > .k-corner.con-corner .con-read { min-width:max-content; padding:4px 6px; }
+  ${T} > .k-corner.con-corner .con-read__n { font-size:clamp(19px, 1.6vw, 21px); }
+  ${T} > .k-corner.con-corner .con-read__w { letter-spacing:.02em; font-stretch:78% !important; font-variation-settings:"wdth" 78, "wght" 650 !important; }
+}
 @media (forced-colors:active) {
   ${T} > .con-side::before, ${T} > .k-title::before { display:none; }
   ${T} .con-cost__fill { stroke:Highlight; }
