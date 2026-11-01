@@ -622,6 +622,13 @@ ${W} .sx-modrow .sx-modrow__metric i { font-style:normal; }
      below is the real scroller and keeps its own fade/padding; reserve the full rail for it. */
   ${W} .sx-sw__chooser { height:100% !important; max-height:none !important; padding-bottom:0 !important; }
   ${W} .sx-chooser__list { flex:1 1 auto !important; min-height:0 !important; max-height:none !important; overflow:hidden auto !important; }
+  /* The focused row can be much taller than the compact list while its Buy/lock action is in view.
+     Keep the item name pinned in that list's own scrollport so nested action focus never loses the
+     identity of the module being previewed. */
+  ${W} .sx-modrow .sx-modrow__body { overflow:visible !important; }
+  ${W} .sx-modrow__body > .sx-modrow__name { position:sticky !important; top:0 !important; z-index:2 !important;
+    display:block !important; width:100% !important; box-sizing:border-box !important; padding:3px 0 4px !important;
+    background:rgb(8 11 16 / .96) !important; }
   ${W} .sx-chooser__list[data-overflow="1"] { -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 36px), transparent) !important; mask-image:linear-gradient(180deg, #000 calc(100% - 36px), transparent) !important; }
   ${W} .sx-chooser__list[data-overflow="0"] { -webkit-mask-image:none !important; mask-image:none !important; }
   ${W} .sx-sw__chooser { -webkit-mask-image:none !important; mask-image:none !important; }

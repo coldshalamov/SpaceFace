@@ -57,7 +57,7 @@ import { wrapAngle } from '../core/rng.js';
 import { massline2Flag, travelFlag } from '../data/featureFlags.js';
 import { TRAVEL_DRIVE_STATES } from '../core/flight/propulsionKernel.js';
 import { isHostileToPlayer } from './scanner.js';
-import { isBeamTargetEligible } from './mining.js';
+import { isBeamTargetEligible } from './miningBeamTargetingRead.js';
 import { interactionProfileForEntity } from '../data/entityInteractionProfiles.js';
 import { resolveWorldPresentationEntity } from '../world/presentationSources.js';
 import { resolveSteeringView } from './racingSteer.js';

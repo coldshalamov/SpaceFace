@@ -120,7 +120,7 @@ ${P} .sxb-vital__acts .orr-act__cost { font-family:${NUM} !important; font-size:
 
 /* In the short desktop berth, the standard header's fourth track must not consume the station
    body as a flexible spacer. Keep the authored two-column areas and let the five bands size to
-   their content; the crown readings share their available column without wrapping. */
+   their content; the crown remains in the head's scroll flow when its readings need more height. */
 /* On a phone the station name and purse cannot share the same row: the older composition lifts
    the crown to save head height, but the Standard purse has a 232px ledger width. Let it follow the
    title as a compact two-column reading instead of painting across the name. Narrow portrait windows
@@ -179,27 +179,44 @@ ${P} .sxb-vital__acts .orr-act__cost { font-family:${NUM} !important; font-size:
      ambient bay/wire boards away here so the table and the Buy/Sell stage are not cut to a sliver. */
   ${P}:has(#sx-panel > .sx-mkt) { grid-template-rows:max-content minmax(0,1fr) max-content !important; }
   ${P}:has(#sx-panel > .sx-mkt) .sxb-berth > .sxb-signs { display:none !important; }
-  ${P} .sxb-crown .sxb-purse { position:absolute !important; top:-44px !important; left:28px !important; right:auto !important; margin:0 !important; }
+  /* The compact head itself is the scrollport. Keep the credit figure inside the crown's flow;
+     lifting it above the crown put its label outside the head's top edge at 960x540. */
+  ${P} .sxb-berth .sxb-crown { display:flex !important; flex-direction:column !important; align-items:stretch !important; min-width:0 !important; }
+  ${P} .sxb-crown .sxb-purse { position:static !important; align-self:flex-end !important; min-width:0 !important; width:max-content !important;
+    max-width:100% !important; grid-template-columns:auto auto !important; grid-template-areas:"label value" "delta delta" !important;
+    justify-content:start !important; align-items:center !important; gap:0 10px !important; margin:0 !important; padding:3px 8px !important; }
+  ${P} .sxb-crown .sxb-purse__label { width:auto !important; border:0 !important; padding:0 !important; }
+  ${P} .sxb-crown .sxb-purse__value { font-size:22px !important; line-height:1.1 !important; }
   ${P} .sxb-crown .sxb-vitals { min-width:0 !important; max-width:none !important; width:100% !important;
-    flex-wrap:nowrap !important; justify-content:space-between !important; gap:8px !important; margin-top:32px !important; }
-  ${P} .sxb-vital { flex:1 1 0 !important; min-width:0 !important; width:auto !important; max-width:none !important; box-sizing:border-box; }
+    display:grid !important; grid-template-columns:repeat(10,minmax(0,1fr)) !important;
+    grid-template-areas:"hull hull hull hull hull note note note note note" "fuel fuel fuel hold hold hold muni muni muni muni" !important;
+    gap:4px 6px !important; margin:0 !important; padding:0 !important; }
+  ${P} .sxb-crown .sxb-vitals > .sxb-vital { display:block !important; min-width:0 !important; width:auto !important;
+    max-width:100% !important; flex:none !important; box-sizing:border-box !important; }
+  ${P} .sxb-crown .sxb-vitals > .sxb-vital--hull { grid-area:hull !important; }
+  ${P} .sxb-crown .sxb-vitals > .sxb-vital--fuel { grid-area:fuel !important; }
+  ${P} .sxb-crown .sxb-vitals > .sxb-vital--hold { grid-area:hold !important; }
+  ${P} .sxb-crown .sxb-vitals > .sxb-vital--note { grid-area:note !important; }
+  ${P} .sxb-crown .sxb-vitals > .sxb-vital--muni { grid-area:muni !important; }
+  ${P} .sxb-crown .sxb-vital__head { min-width:0 !important; max-width:100% !important; }
+  ${P} .sxb-crown .sxb-vital__label { font-size:12px !important; letter-spacing:.02em !important; line-height:1.15 !important;
+    white-space:normal !important; overflow-wrap:anywhere; }
+  ${P} .sxb-crown .sxb-vital--note .sxb-vital__value { position:static !important; display:block !important; width:100% !important;
+    max-width:100% !important; margin:2px 0 0 !important; white-space:normal !important; }
+  ${P} .sxb-crown .sxb-vital--muni .sxb-vital__value { position:absolute !important; top:0 !important; right:0 !important; left:auto !important; width:auto !important; margin:0 !important; }
+  ${P} .sxb-crown .sxb-vital__acts { min-width:0 !important; max-width:100% !important; margin:4px 0 0 !important; gap:3px !important; }
+  ${P} .sxb-crown .sxb-vital__acts > button { max-width:100% !important; padding-left:6px !important; padding-right:6px !important; }
   ${P} .sxb-vital__head, ${P} .sxb-vital__value, ${P} .sxb-vital__acts { min-width:0 !important; max-width:100% !important; }
-  ${P} .sxb-vital__label { min-width:0 !important; max-width:100% !important; font-size:12px !important; letter-spacing:0 !important;
-    line-height:1.15 !important; white-space:normal !important; overflow-wrap:anywhere; text-align:center !important; }
-  ${P} .sxb-vital--muni .sxb-vital__head { justify-content:center !important; }
-  ${P} .sxb-vital--muni .sxb-vital__value { position:static !important; width:100% !important; margin:0 !important; }
+  ${P} .sxb-vital__label { min-width:0 !important; max-width:100% !important; text-align:left !important; }
   ${P} .sxb-ops { flex-wrap:wrap !important; column-gap:10px !important; row-gap:4px !important; }
   ${P} .sxb-ops > .of-facility-rail { flex:0 0 100% !important; max-width:none !important; width:100% !important; }
   ${P} .sxb-ops > .sx-comms { order:2 !important; margin:0 !important; }
   ${P} .sxb-ops > .sxb-launch-seat { order:3 !important; margin:0 0 0 auto !important; }
 }
-/* …and in that short 901–1100 berth the five readings took equal fifths (~105px), so LEDGER's Draw (+cost,
-   ~121px) and MUNITIONS' Rearm (~107px) ran past their cells and touched. The two verb-bearing cells take
-   their own width; HULL, FUEL and HOLD share what is left. Verbs close up 2px a side to make the room. */
+/* Keep the short desktop's two-row crown grid at the same column spacing after its responsive
+   overrides; the wider LEDGER/MUNITIONS cells carry their own actions without crowding the other readings. */
 @media (min-width:901px) and (max-width:1100px) and (min-height:461px) and (max-height:640px) {
-  ${P} .sxb-crown .sxb-vitals { gap:6px !important; }
-  ${P} .sxb-crown .sxb-vitals > .sxb-vital:is(.sxb-vital--note, .sxb-vital--muni) { flex:0 0 auto !important; }
-  ${P} .sxb-crown .sxb-vital__acts > button { padding-left:7px !important; padding-right:7px !important; }
+  ${P} .sxb-crown .sxb-vitals { gap:4px 6px !important; }
 }
 
 /* ---- the ad-boards: legible, never faint ----------------------------------------------------- */
