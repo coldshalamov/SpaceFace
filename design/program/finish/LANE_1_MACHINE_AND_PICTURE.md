@@ -63,6 +63,13 @@ asset previews. M8's pinned source-Electron run entered its measured window at 1
 then exited 1 at 14:24:53 on the market helper's buyable-row assertion before 30 minutes. It is
 not a soak pass; the failed public trade state is being traced and the original evidence retained.
 
+The Market helper recovery now passes its focused production-module control check. The next
+EDF source attempt exposed an actual F9 incomplete-plan failure: a selected wreck lost eligible
+leaves before sealing. Commit 92e515f955bb rebuilds the full candidate and producer census, capped
+at three attempts inside the existing deadline; stale owners and persistent invalidity still fail.
+The owner suite passes 84/84. A fresh 92e run passed its two public save/F9 warmups and entered the
+30-minute measured window at 15:41:47 UTC; final context recovery, tail and cleanup remain pending.
+
 ## Claimed paths (beyond README §3)
 
 *(Lane 1 writes border files it has taken here.)*
