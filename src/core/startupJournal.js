@@ -36,7 +36,15 @@ export function installStartupJournal({ bus, state, host = globalThis, document 
   previous = cleanPrevious(previous);
   let timer = null, disposed = false, lastSample = '', priorPicture = null;
   const removers = [];
-  const snapshot = () => JSON.parse(JSON.stringify({ schema: 1, previous, current }));
+  const snapshot = () => {
+    const result = JSON.parse(JSON.stringify({ schema: 1, previous, current }));
+    // This census is deliberately on demand, never on the journal's one-second sampler.
+    if (state?.mode === 'loading'
+        || (state?.mode === 'flight' && typeof state.render?.releaseOpeningPresentationHold === 'function')) {
+      result.loading = readLoadingStaging(state.render);
+    }
+    return result;
+  };
   function persist() {
     try { storage?.setItem(STARTUP_JOURNAL_KEY, JSON.stringify({ schema: 1, previous, current })); } catch {}
   }
@@ -145,4 +153,32 @@ function cleanSample(value = {}) {
   for (const key of ['tick', 'firstPlayableFrameAt', 'geometries', 'textures', 'programs']) result[key] = finite(value?.[key]);
   for (const key of ['contextLost', 'veil']) result[key] = typeof value?.[key] === 'boolean' ? value[key] : null;
   return result;
+}
+
+function readLoadingStaging(render) {
+  const get = (fn) => { try { return typeof fn === 'function' ? fn() : null; } catch { return null; } };
+  const readiness = get(render?.authoredVisualReadiness);
+  const queue = get(render?.openingAuthoredQueueDiagnostics);
+  const scalarId = value => Number.isSafeInteger(value) ? value : text(value)?.slice(0, 80) || null;
+  const bool = value => typeof value === 'boolean' ? value : null;
+  const rows = (value, map) => Array.isArray(value) ? value.slice(0, 12).map(map) : null;
+  const blockers = rows(readiness?.flightReadyBlockers, row => ({ kind: text(row?.kind) || null,
+    role: text(row?.role) || null, layer: text(row?.layer) || null,
+    id: scalarId(row?.metadata?.id ?? row?.id), type: text(row?.metadata?.type) || null }));
+  const pending = rows(readiness?.openingPipelinePending, row => ({ id: scalarId(row?.id),
+    type: text(row?.type) || null, defId: text(row?.defId) || null, status: text(row?.status) || null,
+    hook: bool(row?.hook), promised: bool(row?.promised) }));
+  return {
+    playerId: scalarId(readiness?.playerId), playerStatus: text(readiness?.playerStatus) || null,
+    startingHubId: scalarId(readiness?.startingHubId), startingHubStatus: text(readiness?.startingHubStatus) || null,
+    pipelineReady: bool(readiness?.pipelineReady), ready: bool(readiness?.ready),
+    flightReadyBlockers: blockers, flightReadyBlockerCount: Array.isArray(readiness?.flightReadyBlockers) ? readiness.flightReadyBlockers.length : null,
+    openingPipelinePending: pending, openingPipelinePendingCount: Array.isArray(readiness?.openingPipelinePending) ? readiness.openingPipelinePending.length : null,
+    queue: queue ? { present: bool(queue.present), pending: finite(queue.pending), inFlight: finite(queue.inFlight),
+      running: bool(queue.running), held: bool(queue.held), openingHeld: bool(queue.openingHeld),
+      firstFlightHeld: bool(queue.firstFlightHeld), frameScheduled: bool(queue.frameScheduled), compiling: finite(queue.compiling),
+      jobs: rows(queue.jobs, row => ({ key: text(row?.key) || null, lifecycle: text(row?.lifecycle) || null, status: text(row?.status) || null })) } : null,
+    pendingPipelineAdmissions: finite(get(render?.pendingPipelineAdmissions)),
+    pendingAuthoredGpuResidency: finite(get(render?.pendingAuthoredGpuResidency)),
+  };
 }

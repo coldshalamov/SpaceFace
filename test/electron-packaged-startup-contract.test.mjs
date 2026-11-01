@@ -84,7 +84,7 @@ test('packaged public recovery receipt requires visible save/load, restored cont
   const complete = {
     enabled: true,
     save: { toast: 'Saved Quick', quick: { changed: true } },
-    load: { toast: 'Loaded Quick', flightSurface: surface },
+    load: { toast: 'Loaded Quick', observationWindowMs: 300_000, flightSurface: surface },
     context: {
       extensionAvailable: true, lostEvent: true, restoredEvent: true, lostAfterRestore: false,
       flightSurface: surface,
@@ -101,6 +101,11 @@ test('packaged public recovery receipt requires visible save/load, restored cont
   const noRestore = structuredClone(complete);
   noRestore.context.restoredEvent = false;
   assert.match(assess(noRestore).failures.join('\n'), /restore event was not observed/);
+
+  const shortLoadWindow = structuredClone(complete);
+  shortLoadWindow.load.observationWindowMs = 60_000;
+  assert.deepEqual(assess(shortLoadWindow), { pass: true, failures: [] },
+    'an actually completed public load passes even when the configured observation cap was shorter');
 
   const shortTail = structuredClone(complete);
   shortTail.tail.durationMs = 119_999;

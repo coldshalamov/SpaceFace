@@ -8029,6 +8029,7 @@ const RENDER_STATE_REFERENCE_KEYS = Object.freeze([
   'captureOpeningSubmissionPlan', 'drainOpeningSubmissionPlan', 'captureOpeningPipelinePlan',
   'drainOpeningPipelinePlan', 'captureOpeningGpuResidencyPlan', 'drainOpeningGpuResidencyPlan',
   'resumeDeferredPipelineAdmissions', 'compileCurrentPipelines', 'pendingPipelineAdmissions',
+  'authoredVisualReadiness', 'openingAuthoredQueueDiagnostics',
   'preparePostOpeningPipelines', 'prepareOpeningGpuResources', 'retryAuthoredPartLibrary',
   'startupGpuResidency', 'rockSurfaceLibraryReady', 'rockFamilyLibraryReady', 'creatureSkinLibraryReady', 'planetDetailLibraryReady', 'authoredPartLibraryReady',
   'dynamicBufferRanges', 'presentationWorld', 'presentationPublisher', 'presentationQueries',
@@ -13202,6 +13203,9 @@ export const render = {
       unusedPrograms: () => (renderer && renderer.userData ? renderer.userData.spacefaceUnusedPrograms : null),
     });
     state.render.pendingPipelineAdmissions = () => pipelineAdmissions.pendingCount + veilSettlePending();
+    // Read only on explicit startup-report requests; the loading tick does no extra census.
+    state.render.authoredVisualReadiness = () => authoredCriticalVisualReadiness(state);
+    state.render.openingAuthoredQueueDiagnostics = () => describeAuthoredUpgradeQueue(scene);
     // Cook-ledger sampler (1 Hz while the opening cook runs): the admission lane and the upgrade queue.
     state.render.sampleOpeningCookLane = () => {
       const upgrades = describeAuthoredUpgradeQueue(scene);

@@ -184,6 +184,7 @@ export function buildDiagnosticsReport(state, opts = {}) {
   const startup = safe(() => opts.startup || startupJournalSnapshot(), null);
   if (startup) {
     out.push('', 'Startup history');
+    if (startup.loading) out.push('  Opening staging: ' + sanitizeErrorText(JSON.stringify(startup.loading), 12000));
     for (const [name, attempt] of [['Previous document', startup.previous], ['Current document', startup.current]]) {
       if (!attempt) continue;
       out.push('  ' + name + ': ' + plain(attempt.status) + ', last phase ' + plain(attempt.phase));

@@ -47,6 +47,7 @@ const REPORT_PATH = resolvePackagedStartupReportPath({
 });
 const REPORT_DIR = path.dirname(REPORT_PATH);
 const STARTUP_TIMEOUT_MS = Number(process.env.SF_PACKAGED_STARTUP_TIMEOUT_MS) || 90_000;
+const PACKAGED_F9_LOAD_OBSERVATION_MS = 300_000;
 assert(Number.isInteger(STARTUP_TIMEOUT_MS) && STARTUP_TIMEOUT_MS >= 5_000,
   'SF_PACKAGED_STARTUP_TIMEOUT_MS must be an integer of at least 5000ms');
 
@@ -504,6 +505,8 @@ async function readPackagedBuildReceipt(page) {
 
 async function runPackagedPublicRecovery(page, reportPath) {
   const startedAt = new Date().toISOString();
+  let f9LongWaitTimer = null;
+  let f9LongWaitSnapshot = Promise.resolve(null);
   const recovery = {
     enabled: true,
     startedAt,
@@ -545,16 +548,52 @@ async function runPackagedPublicRecovery(page, reportPath) {
     recovery.screenshots.afterSave = screenshotPath(reportPath, 'recovery-after-save');
     await page.screenshot({ path: recovery.screenshots.afterSave });
 
-    await page.keyboard.press('F9');
-    const loadedToast = await waitForPackagedToast(page, /Loaded Quick/, 60_000);
-    surface = await waitForPackagedFlightSurface(page, 60_000);
+    const loadStartedAt = Date.now();
+    const loadDeadlineAt = loadStartedAt + PACKAGED_F9_LOAD_OBSERVATION_MS;
     recovery.load = {
       action: 'F9',
+      observationWindowMs: PACKAGED_F9_LOAD_OBSERVATION_MS,
+      startedAt: new Date(loadStartedAt).toISOString(),
+      toast: null,
+      flightSurface: null,
+    };
+    f9LongWaitTimer = setTimeout(() => {
+      if (recovery.load?.completedAt) return;
+      const requestedAt = new Date().toISOString();
+      f9LongWaitSnapshot = readPackagedRetailLoadingSnapshot(page)
+        .then((loading) => {
+          recovery.load.loadingSnapshotAt25s = {
+            requestedAt,
+            capturedAt: new Date().toISOString(),
+            loading,
+          };
+          return loading;
+        })
+        .catch((error) => {
+          recovery.load.loadingSnapshotAt25s = {
+            requestedAt,
+            capturedAt: new Date().toISOString(),
+            error: String(error?.message || error).slice(0, 300),
+            loading: null,
+          };
+          return null;
+        });
+    }, 25_000);
+    await page.keyboard.press('F9');
+    const loadedToast = await waitForPackagedToast(page, /Loaded Quick/, Math.max(1, loadDeadlineAt - Date.now()));
+    recovery.load.toast = loadedToast;
+    surface = await waitForPackagedFlightSurface(page, Math.max(1, loadDeadlineAt - Date.now()));
+    recovery.load = {
+      ...recovery.load,
       toast: loadedToast,
       flightSurface: surface,
       storage: await readPackagedSaveStorage(page),
+      elapsedMs: Date.now() - loadStartedAt,
       capturedAt: new Date().toISOString(),
     };
+    recovery.load.completedAt = new Date().toISOString();
+    clearTimeout(f9LongWaitTimer);
+    await f9LongWaitSnapshot;
     recovery.screenshots.afterLoad = screenshotPath(reportPath, 'recovery-after-load');
     await page.screenshot({ path: recovery.screenshots.afterLoad });
 
@@ -640,6 +679,25 @@ async function runPackagedPublicRecovery(page, reportPath) {
     recovery.completedAt = new Date().toISOString();
     return recovery;
   } catch (error) {
+    if (recovery.load?.startedAt && !recovery.load.completedAt) {
+      if (f9LongWaitTimer != null) clearTimeout(f9LongWaitTimer);
+      await f9LongWaitSnapshot;
+      const requestedAt = new Date().toISOString();
+      try {
+        recovery.load.failureLoadingSnapshot = {
+          requestedAt,
+          capturedAt: new Date().toISOString(),
+          loading: await readPackagedRetailLoadingSnapshot(page),
+        };
+      } catch (snapshotError) {
+        recovery.load.failureLoadingSnapshot = {
+          requestedAt,
+          capturedAt: new Date().toISOString(),
+          error: String(snapshotError?.message || snapshotError).slice(0, 300),
+          loading: null,
+        };
+      }
+    }
     recovery.failure = { name: error?.name || 'Error', message: String(error?.message || error).slice(0, 700) };
     try { error.publicRecovery = recovery; } catch (_) { /* preserve original error */ }
     throw error;
@@ -653,6 +711,15 @@ async function runPackagedPublicRecovery(page, reportPath) {
       }
     }).catch(() => {});
   }
+}
+
+async function readPackagedRetailLoadingSnapshot(page) {
+  return page.evaluate(() => {
+    const startup = window.__SF_STARTUP__;
+    if (!startup || typeof startup.snapshot !== 'function') return null;
+    const snapshot = startup.snapshot();
+    return snapshot && typeof snapshot === 'object' ? snapshot.loading ?? null : null;
+  });
 }
 
 async function readPackagedFlightSurface(page) {
