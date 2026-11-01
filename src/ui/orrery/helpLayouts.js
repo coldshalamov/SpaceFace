@@ -360,6 +360,22 @@ ${H} .orr-hmix__lbl:focus-visible { outline:none; }
   ${HD} .orr-help-list--ores .orr-help-reading > .orr-help-reading__name { font-size:clamp(22px, 2.2vw, 28px); }
   ${HD} .orr-help-list--ores .orr-help-terms { margin:14px 0 0; grid-template-columns:auto minmax(0, 1fr); column-gap:18px; }
 }
+/* ui-polish-282: the readings beside the Ships, Commodities, Ores and Factions instruments were loose
+   label/value pairs floating on the glass (≥1201 wide), so the spec read unfinished next to the framed
+   section list. The ledger now sits in one hairline-framed sheet on a faint fill, a rule between rows,
+   and the Legality line under it wears the same frame; type, colours and the row data are unchanged. */
+@media (min-width:1201px) and (min-height:461px) {
+  ${HD} .orr-help-terms { margin:16px 0 0; padding:2px 12px; column-gap:0; border:1px solid rgb(${BONE} / .18); border-radius:6px; background:rgb(${BONE} / .025); }
+  ${HD} .orr-help-terms dt { padding:9px 18px 9px 0; border-top:1px solid rgb(${BONE} / .09); }
+  ${HD} .orr-help-terms dd { padding:7px 0; border-top:1px solid rgb(${BONE} / .09); }
+  ${HD} .orr-help-terms > .orr-help-terms__row:first-child > * { border-top:0; }
+  /* ORES lays two pairs to a line: the second pair opens the sheet too, and the first pair keeps its gutter */
+  ${HD} .orr-help-list--ores .orr-help-terms { margin:0; padding:2px 10px; }
+  ${HD} .orr-help-list--ores .orr-help-terms dt { padding-right:12px; }
+  ${HD} .orr-help-list--ores .orr-help-terms > .orr-help-terms__row:nth-child(2) > * { border-top:0; }
+  ${HD} .orr-help-list--ores .orr-help-terms > .orr-help-terms__row:nth-child(odd) > dd { padding-right:14px; }
+  ${HD} .orr-help-reading__legal { margin:8px 0 0; padding:8px 12px; gap:20px; border:1px solid rgb(${BONE} / .18); border-radius:6px; background:rgb(${BONE} / .025); }
+}
 /* UI polish 42: a short desktop (≤460 tall). The 761–1200 row of sections still sits beside the
    title, and the Controls stage still splits the ship rig beside EVERY KEY — but under ~460px of
    height the title row, the section ticks, the rig's "PRESS ANY KEY" echo and the register's rebound
@@ -492,6 +508,25 @@ ${H} .orr-hmix__lbl:focus-visible { outline:none; }
     ${HD} .orr-help__tabs { padding-right:20px !important; ${TAB_EDGES} }
   }
   html:root[data-sf-mobile="1"] body #screens > .k-screen.of-help.orr-help .orr-help__tabs { ${TAB_EDGES} }
+}
+
+/* ui-polish-281: the side ladder (≥1201 wide) read as loose words on a ruled spine with no edge, so the
+   six sections looked unfinished beside the bordered key register. They now sit in one hairline-framed
+   list: a rule between rows, the open row on a faint fill with a 2px bar at its left edge (amber on
+   Controls, bone elsewhere), and a framed focus ring for keyboard and pad. */
+@media (min-width:1201px) and (min-height:461px) {
+  ${HD} > .k-hang { -webkit-mask-image:none !important; mask-image:none !important; } /* six rows always fit; the kit fade only ate the frame's bottom edge */
+  ${HD} .orr-help__tabs { background:rgb(${BONE} / .025) !important; border:1px solid rgb(${BONE} / .2) !important; border-radius:6px !important; padding:4px !important; gap:2px !important; }
+  ${HD} .orr-help__tabs > li::before { display:none !important; }
+  ${HD} .orr-help__tabs > li + li { border-top:1px solid rgb(${BONE} / .09) !important; padding-top:2px !important; }
+  ${HD} .orr-help__tabs .sf-tab { min-height:clamp(36px, 4.4vh, 48px) !important; padding:0 12px 0 18px !important; border-radius:4px !important; color:rgb(${BONE} / .78) !important; transition:color .16s linear, background-color .16s linear; }
+  ${HD} .orr-help__tabs .sf-tab::before, ${HD} .orr-help__tabs .sf-tab::after { content:none !important; display:none !important; }
+  ${HD} .orr-help__tabs .sf-tab:hover { background:rgb(${BONE} / .05) !important; color:rgb(255 255 255) !important; }
+  ${HD} .orr-help__tabs .sf-tab:focus-visible, html.sf-gamepad-focus${HD.slice(4)} .orr-help__tabs .sf-tab:focus { box-shadow:inset 0 0 0 1px rgb(255 255 255 / .75) !important; text-decoration:none !important; }
+  ${HD} .orr-help__tabs .sf-tab[aria-selected="true"] { background:rgb(${BONE} / .085) !important; color:rgb(255 255 255) !important; text-shadow:none; }
+  ${HD} .orr-help__tabs .sf-tab[aria-selected="true"]::after { content:"" !important; display:block !important; position:absolute !important; left:0 !important; top:8px !important; bottom:8px !important;
+    width:2px !important; height:auto !important; margin:0 !important; border-radius:2px !important; background:rgb(${HOT} / .9) !important; }
+  ${HD}[data-tab="controls"] .orr-help__tabs .sf-tab[aria-selected="true"]::after { background:var(--dp-hand, #f2b950) !important; box-shadow:0 0 8px rgb(242 185 80 / .45) !important; }
 }
 
 /* UI polish: no 1080p zoom on Help — EVERY KEY + rebound footnote tangle under 1.12; contrast/foot rail carry the pass */
