@@ -207,6 +207,10 @@ export const survivalWave = {
   },
 
   destroy() {
+    if (this._characterFightId) {
+      this._emit('capitalBoss:detach', { fightId: this._characterFightId });
+      this._characterFightId = null;
+    }
     for (const off of this._unsubs || []) if (typeof off === 'function') off();
     this._unsubs = [];
   },
@@ -994,7 +998,8 @@ export const survivalWave = {
         (spec.kind === 'commander' && !spec.commanderMarked)
         || (spec.kind === 'nodes' && (spec.nodesMarked || 0) < (spec.nodeCount || 0))
       );
-      if (this._swarm && entry.champion !== true && entry.debut !== true && entry.wall !== true && !oweObjective) {
+      if (this._swarm && entry.champion !== true && entry.debut !== true && entry.wall !== true
+        && !entry.characterScoreId && !oweObjective) {
         count = Math.min(count, Math.max(0, this._concurrent - this._cohort.size));
         if (count <= 0) {
           this._pending[write++] = { ...item, entry: { ...entry, atTick: this._cursor + SWARM_SPAWN_RETRY_TICKS } };
@@ -1006,6 +1011,8 @@ export const survivalWave = {
         && typeof this._swarm.bossScoreId === 'string'
         && this._swarm.bossScoreId
         && entry.enemyId === this._swarm.bossEnemyId;
+      const characterScore = this._swarm && typeof entry.characterScoreId === 'string'
+        && entry.characterScoreId;
       const receipt = materializeWaveBatch(this.ctx, {
         ownerId,
         enemyId: entry.enemyId,
@@ -1024,7 +1031,7 @@ export const survivalWave = {
         arenaId: run && run.arenaId,
         // FB-024: the capital champion's single hull runs the authored score. FB-027: a
         // compositional champion's bodies carry the row's hunter trick.
-        capitalBoss: capitalChampion,
+        capitalBoss: !!(capitalChampion || characterScore),
         trickId: this._swarm && entry.champion === true && this._swarm.bossTrickId
           ? this._swarm.bossTrickId
           : null,
@@ -1047,7 +1054,7 @@ export const survivalWave = {
         // they are means a kill quota met on chaff cannot end a boss wave with the boss still
         // flying — and because the marker is a FLAG rather than an enemy id, a wave can owe a wing
         // of three raiders exactly as easily as it owes one Dreadnought.
-        if (entry.champion === true || entry.enemyId === SWARM_BOSS_ENEMY_ID) this._bossIds.add(id);
+        if (entry.champion === true || entry.enemyId === SWARM_BOSS_ENEMY_ID || characterScore) this._bossIds.add(id);
       }
       // FB-024 — the capital champion lands as an ordinary cohort body first (budget, gate,
       // cohort stamp, `requireBoss` debt all unchanged); only then is its hull handed to the
@@ -1061,6 +1068,12 @@ export const survivalWave = {
           bossId: receipt.spawnedIds[0],
           targetId: this.state && this.state.playerId != null ? this.state.playerId : null,
         });
+      }
+      if (characterScore && receipt.spawnedIds.length > 0 && !this._characterFightId) {
+        this._characterFightId = `swarm:w${this._wave}:kraken`;
+        const bossId = receipt.spawnedIds[0];
+        this._emit('capitalBoss:start', { encounterId: characterScore, fightId: this._characterFightId,
+          bossId, targetId: this.state?.playerId ?? null });
       }
       // A champion refused by the budget is still owed; ordinary reinforcements cannot replace it.
       // The same is true of a staged debut, a wall's heavies, or an act round's staged body: a
@@ -1253,7 +1266,12 @@ export const survivalWave = {
     }
     if (quiet) return;
     const index = Math.max(0, Math.min(SWARM_SHOOTERS_BY_WAVE.length - 1, (this._wave | 0) - 1));
-    const cap = SWARM_SHOOTERS_BY_WAVE[index];
+    const character = this._characterFightId && state.capitalBossEncounters?.fights?.[this._characterFightId];
+    // A character's readable move earns breathing room from its henchmen: two other
+    // shooters during the tell/attack, four while the mantle is open. Population is unchanged.
+    const cap = character && !character.terminal && !character.suspended
+      ? Math.min(SWARM_SHOOTERS_BY_WAVE[index], character.phase === 'recovery' ? 5 : 3)
+      : SWARM_SHOOTERS_BY_WAVE[index];
     rank.sort((a, b) => a.key - b.key || a.distance - b.distance || a.id - b.id);
     for (let i = 0; i < rank.length; i++) {
       if (i >= cap && rank[i].key !== 0) continue; // authored champions keep their own attack score
@@ -1816,6 +1834,10 @@ export const survivalWave = {
     if (this._capitalFightId) {
       this._emit('capitalBoss:detach', { fightId: this._capitalFightId });
       this._capitalFightId = null;
+    }
+    if (this._characterFightId) {
+      this._emit('capitalBoss:detach', { fightId: this._characterFightId });
+      this._characterFightId = null;
     }
   },
 

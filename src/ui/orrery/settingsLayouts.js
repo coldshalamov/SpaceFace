@@ -323,6 +323,11 @@ ${S} > .k-foot .sf-back:is(:hover, :focus-visible) { color:var(--dp-hand-hot, #f
   ${S} #sf-settings-pane .k-row > div.k-words--row > span { font-size:16px !important; }
   ${S} #sf-settings-pane .k-row .k-words--row:has(> li) .k-word { font-size:12px !important; letter-spacing:.1em !important; }
   ${S} .sf-tabbar .sf-tab { letter-spacing:.14em !important; padding-right:4px !important; }
+  /* the mixer shrinks to ~220px here but its hub kept the 1280 numeral, so 55 % and MASTER · OUT sat
+     across the rings: a smaller numeral, a tighter caption, and a dark well under both */
+  ${S} .orr-set-mixer__hub { gap:4px; padding:10px 12px; background:radial-gradient(closest-side, rgb(5 7 10 / .88) 62%, rgb(5 7 10 / 0)); }
+  ${S} .orr-set-mixer__out { font-size:34px; }
+  ${S} .orr-set-mixer__outlab { letter-spacing:.12em; }
 }
 
 /* a 1440p screen shows the 1080p composition at 1.25 (the kit scale folded into the zoom), as the station does */

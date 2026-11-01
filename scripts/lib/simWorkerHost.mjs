@@ -293,7 +293,7 @@ function pallasSeamStandbyTick(e) {
   return Number.isSafeInteger(e.data?.pallasSeamStandbyTick) ? e.data.pallasSeamStandbyTick : null;
 }
 
-export function entityVitalsOf(e) {
+export function entityVitalsOf(e, krakenFrame = VITAL_SHADOW_MISSING) {
   const fields = {};
   for (const k of VITAL_FIELDS) {
     if (e[k] !== undefined) fields[k] = e[k];
@@ -345,6 +345,7 @@ export function entityVitalsOf(e) {
     const value = authoredMotionFrameValue(e, key);
     if (value !== VITAL_SHADOW_MISSING) fields[key] = value;
   }
+  if (krakenFrame !== VITAL_SHADOW_MISSING) fields.ironKrakenMotionFrame = krakenFrame;
   return fields;
 }
 
@@ -373,7 +374,20 @@ function authoredMotionFrameValue(e, key) {
   return typeof value === 'string' && value.length <= 4096 ? value : null;
 }
 
-function vitalShadowMatches(e, shadow) {
+function krakenMotionFrame(state, e) {
+  const marker = e?.data?.ironKraken;
+  if (!marker) return VITAL_SHADOW_MISSING;
+  const fight = marker.fightId && state?.capitalBossEncounters?.fights?.[marker.fightId];
+  if (!fight || fight.bossId !== e.id) return null;
+  return JSON.stringify({ actorId: e.id, ownerLife: e.occupantGeneration ?? null,
+    fightId: marker.fightId, encounterId: fight.encounterId, clock: fight.clock,
+    phase: fight.phase, nextAt: fight.nextAt, suspended: !!fight.suspended, terminal: !!fight.terminal,
+    cast: fight.cast ? { beatId: fight.cast.beatId, startedAt: fight.cast.startedAt } : null,
+    plates: Array.isArray(fight.plates) ? fight.plates.filter(p => p.id === 'mantle_port' || p.id === 'mantle_starboard')
+      .map(p => ({ id: p.id, attached: p.attached !== false })) : [] });
+}
+
+function vitalShadowMatches(e, shadow, krakenFrame) {
   if (!Array.isArray(shadow)) return false;
   let i = 0;
   for (const key of VITAL_FIELDS) {
@@ -416,10 +430,11 @@ function vitalShadowMatches(e, shadow) {
   for (const key of AUTHORED_MOTION_FRAME_FIELDS) {
     if (authoredMotionFrameValue(e, key) !== shadow[i++]) return false;
   }
+  if (krakenFrame !== shadow[i++]) return false;
   return true;
 }
 
-function writeVitalShadow(e, shadow) {
+function writeVitalShadow(e, shadow, krakenFrame) {
   let i = 0;
   for (const key of VITAL_FIELDS) shadow[i++] = vitalShadowValue(e[key]);
   const vel = e.vel && typeof e.vel === 'object' ? e.vel : null;
@@ -458,6 +473,7 @@ function writeVitalShadow(e, shadow) {
   for (const key of AUTHORED_MOTION_FRAME_FIELDS) {
     shadow[i++] = authoredMotionFrameValue(e, key);
   }
+  shadow[i++] = krakenFrame;
   shadow.length = i;
   return shadow;
 }
@@ -503,7 +519,7 @@ function entityInfoBlock(state, entityId) {
     fieldResident: e.fieldResident === true,
     flags: flatFlags,
     ...(isOrchardFrame(e) ? { physicsBody: canonicalClone(e.physicsBody) } : {}),
-    vitals: entityVitalsOf(e),
+    vitals: entityVitalsOf(e, krakenMotionFrame(state, e)),
     data: canonicalClone(data),
   };
 }
@@ -553,11 +569,14 @@ export function collectEntityVitals(state, vitalShadow, seenScratch = null) {
     if (!e || !Number.isSafeInteger(e.id)) continue;
     seen.add(e.id);
     const previous = vitalShadow.get(e.id);
-    if (!vitalShadowMatches(e, previous)) {
+    const krakenFrame = krakenMotionFrame(state, e);
+    if (!vitalShadowMatches(e, previous, krakenFrame)) {
+      const retiredKrakenFrame = krakenFrame === VITAL_SHADOW_MISSING
+        && Array.isArray(previous) && previous[previous.length - 1] !== VITAL_SHADOW_MISSING;
       const shadow = Array.isArray(previous) ? previous : [];
-      writeVitalShadow(e, shadow);
+      writeVitalShadow(e, shadow, krakenFrame);
       vitalShadow.set(e.id, shadow);
-      const fields = entityVitalsOf(e);
+      const fields = entityVitalsOf(e, retiredKrakenFrame ? null : krakenFrame);
       out.push([e.id, fields]);
     }
   }

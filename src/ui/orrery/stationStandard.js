@@ -123,8 +123,9 @@ ${P} .sxb-vital__acts .orr-act__cost { font-family:${NUM} !important; font-size:
    their content; the crown readings share their available column without wrapping. */
 /* On a phone the station name and purse cannot share the same row: the older composition lifts
    the crown to save head height, but the Standard purse has a 232px ledger width. Let it follow the
-   title as a compact two-column reading instead of painting across the name. */
-@media (max-width:480px) and (min-height:601px) {
+   title as a compact two-column reading instead of painting across the name. Narrow portrait windows
+   (481–650 wide) hit the same collision, so they take the same stacked reading. */
+@media (max-width:650px) and (min-height:601px) {
   ${P} .sxb-berth.dp-frame__head > .sxb-crown { margin-top:0 !important; }
   ${P} .so-station-title > .sxb-berth__name { padding-right:0 !important; }
   ${P} .sxb-crown .sxb-purse { min-width:0 !important; width:max-content !important; max-width:100% !important;

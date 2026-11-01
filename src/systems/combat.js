@@ -1,5 +1,6 @@
 // LAST_ARGUMENT_INTEGRATION_V1
 import { applyLastArgumentSpawnSpec } from '../data/lastArgumentBody.js';
+import { applyIronKrakenSpawnSpec } from '../data/ironKraken.js';
 // combat system: the damage pipeline (shield→armor→hull), shield/cap regen, death + loot +
 // player respawn, and enemy spawn builders. Consumes projectile:hit from physics (ARCHITECTURE §2.3
 // step 8, §4.4). Single source of health mutation for ships/stations/drones.
@@ -529,7 +530,7 @@ export function makeEnemySpawnSpec(enemyTypeId, level, pos, opts = {}) {
     spec.flightModel = palletJackFlightModel(body, spec.flightModel);
     if (spec.data.derived) spec.data.derived.flightModel = palletJackFlightModel(body, spec.data.derived.flightModel);
   }
-  return applyLastArgumentSpawnSpec(spec, def.id);
+  return applyIronKrakenSpawnSpec(applyLastArgumentSpawnSpec(spec, def.id), def.id);
 }
 
 function doctrineTelegraphFor(doctrineId) {
@@ -1141,6 +1142,9 @@ export const combat = {
     if (!pos || ownerId !== this.state.playerId || !combatFlag('weakPoints')) return 1;
     const target = this.state.entities && this.state.entities.get ? this.state.entities.get(targetId) : null;
     if (!target || target.alive === false) return 1;
+    // The Kraken's timed aperture is adjudicated once by the canonical damage router,
+    // which has direct-hit provenance. The static scan arc must not announce a closed-core crit.
+    if (target.data?.ironKraken) return 1;
     const wp = weakPointForEntity(target);
     if (!wp || !isHitInWeakArc(target, pos, wp)) return 1;
     this.bus.emit('combat:weakPointHit', {
