@@ -19,6 +19,7 @@ import { LAST_ARGUMENT_ENEMY } from './lastArgument.js';
 import { KILNBACK_ENEMY } from './kilnback.js';
 import { MOTH_ENEMY } from './mothlight.js';
 import { PALLET_JACK_ENEMY } from './palletJack.js';
+import { IRON_KRAKEN_ENEMIES } from './ironKraken.js';
 
 export const ENEMY_TYPES = [
 
@@ -899,6 +900,7 @@ export const ENEMY_TYPES = [
   KILNBACK_ENEMY,
   MOTH_ENEMY,
   PALLET_JACK_ENEMY,
+  ...IRON_KRAKEN_ENEMIES,
 ];
 
 const ENEMY_BY_ID = new Map(ENEMY_TYPES.map((row) => [row.id, row]));
