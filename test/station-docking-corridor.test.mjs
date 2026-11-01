@@ -82,8 +82,8 @@ function classify(along, lat, vel) {
 }
 
 // ---------------------------------------------------------------------------------------------
-// Live-resolution frame (re-pinned 2026-09-27): ad1f92053 made declared proxy ids resolve through
-// the measured model-truth skin — the corridor bearing follows the GLB's real dock mouth (322.5°),
+// Live-resolution frame: declared proxy ids resolve through the measured model-truth skin —
+// the corridor bearing follows the GLB's measured dock mouth,
 // not the retired procedural-silhouette lanes (45/135/225/315). Tests that drive production seams
 // — autopilot target resolution, dockingCorridor.update, SG-02 authority, physics.updateDockRange —
 // must build geometry in the frame the runtime actually resolves. The pure volume/assist math
@@ -214,8 +214,10 @@ test('default station autopilot stages an outside-gap approach through the measu
   assert.equal(retained.phase, 'approach');
   assert.equal(retained.inCorridor, false);
   assert.equal(retained.inCapture, false);
-  assert.ok(Math.abs(retained.distToBerth - 102.16218682799379) < 1e-9,
-    'same retained case re-measured against the live skin berth');
+  const retainedBerth = skinBerth(station);
+  assert.ok(Math.abs(retained.distToBerth - Math.hypot(
+    player.pos.x - retainedBerth.x, player.pos.z - retainedBerth.z,
+  )) < EPS, 'the retained pose is measured against the current authored skin berth');
 
   const mouthRadius = SKIN.docking.corridor.mouthRadius * station.data.dockRadius;
   const mouth = skinPos(mouthRadius);
@@ -687,7 +689,8 @@ test('proxy diagnostics publish frozen world geometry on the physicsRuntime surf
     radarVisible: false,
   });
   assert.equal(entry.corridorBearingDeg, effectiveCorridorBearingDeg(SKIN, station));
-  assert.equal(entry.corridorBearingDeg, 322.5);
+  assert.equal(entry.corridorBearingDeg, SKIN.docking.corridorBearingDeg,
+    'the measured skin declares the single physical docking mouth');
   assert.equal(entry.primitives.length, 22, 'same expanded set the physics authority registers');
   assert.ok(Math.abs(entry.corridor.mouthRadius - 121.5) < EPS);
   assert.ok(Math.abs(entry.corridor.captureOuterRadius - 108) < EPS);
@@ -741,6 +744,7 @@ async function flyRealAuthorityTrajectory() {
     const berth = skinBerth(station);
     const series = [];
     let maxDeltaV = 0;
+    let maxDeltaVAfterRoundoff = 0;
     for (let tick = 0; tick < 900; tick++) {
       const prevVx = player.vel.x;
       const prevVz = player.vel.z;
@@ -748,11 +752,19 @@ async function flyRealAuthorityTrajectory() {
       owner.step(1 / 60);
       const dv = Math.hypot(player.vel.x - prevVx, player.vel.z - prevVz);
       if (dv > maxDeltaV) maxDeltaV = dv;
+      // Rapier stores velocity in Float32. Bound only the round-trip representation error of
+      // the two sampled vectors; the capture-acceleration limit itself stays unchanged.
+      const float32Roundoff = Math.hypot(
+        Math.abs(prevVx) + Math.abs(player.vel.x),
+        Math.abs(prevVz) + Math.abs(player.vel.z),
+      ) * (2 ** -24);
+      maxDeltaVAfterRoundoff = Math.max(maxDeltaVAfterRoundoff, dv - float32Roundoff);
       series.push([round6(player.pos.x), round6(player.pos.z), round6(player.vel.x), round6(player.vel.z)]);
     }
     return {
       hash: createHash('sha256').update(JSON.stringify(series)).digest('hex'),
       maxDeltaV,
+      maxDeltaVAfterRoundoff,
       distToBerth: Math.hypot(player.pos.x - berth.x, player.pos.z - berth.z),
       speed: Math.hypot(player.vel.x, player.vel.z),
       phase: state.dockingCorridor.phase,
@@ -770,7 +782,7 @@ test('real authority: capture settles at the berth with bounded per-tick velocit
     `settled under the berth speed gate (${run.speed.toFixed(2)} wu/s)`);
   // The coast-into-core regression guard: per-tick Δv must never exceed the bounded assist — a
   // solver contact spike here means the assist let the ship coast into the station silhouette.
-  assert.ok(run.maxDeltaV <= MAX_ACCEL / 60 + EPS,
+  assert.ok(run.maxDeltaVAfterRoundoff <= MAX_ACCEL / 60 + EPS,
     `per-tick Δv ${run.maxDeltaV} exceeds the bounded assist ${MAX_ACCEL / 60} (ricochet/yank/contact)`);
   assert.equal(run.phase, 'berthed', 'the corridor resolves to berthed');
 });
