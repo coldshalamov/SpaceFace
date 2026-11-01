@@ -129,7 +129,7 @@
   "src/ui/nemesisComms.js": "c93b7fb4e89b57b0cc85a09f9ce8c9075d885a4a093c0f1b9eefabd99b6a24c5",
   "src/ui/numberFormat.js": "8114f97cd95f7c4f40a8a5f624eb0824e7e81b97d83ce9f806c47d1db1861045",
   "src/ui/objectiveRecall.js": "0a35ce692daccae855624065c4c29faf0a772574fc951c7dce9fe7b5de4ca630",
-  "src/ui/orrery/achievementsLayouts.js": "3f2950c00d68b78cd59ef0ffde6dabe1d7273b6696a2f286b942ab9ffbff00d8",
+  "src/ui/orrery/achievementsLayouts.js": "37cd304f68940ab0369228d28f3940f790fe3685b8975a3483ef4620c459ceff",
   "src/ui/orrery/arcRail.js": "1a8c4931b5882273aeb5e18cc716ce62ff9741266e873f9c3abddcfe02e502a0",
   "src/ui/orrery/archiveCssSource.js": "00543c53f18cdd03510bf6654adc4cbe39842f54d3d5c3d363ffb5554ab58b79",
   "src/ui/orrery/archiveInstruments.js": "12f97d3488dd1af8b83e5e0ddb045b03541bec18f7d468fb9b3731d543306362",
