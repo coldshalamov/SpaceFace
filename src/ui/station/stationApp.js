@@ -51,12 +51,13 @@ import {
   firstDockHandoffVisible,
   firstDockHandoffSteps,
 } from './stationDepartureModel.js';
-import { bindStationMarkup, stationControlAttrs, stationControlLabel } from './stationBindingMap.js';
+import { bindStationMarkup, markStationControl, stationControlAttrs, stationControlLabel } from './stationBindingMap.js';
 import { missionDockAttention } from './missionDockAttention.js';
 import { yardJobReadout } from './serviceQuotes.js';
 import { isChoiceECourierReady } from '../../story/endings/eligibility.js';
 import { injectOrreryStation, setVitalDial, vitalDialSvg, vitalValueHtml } from '../orrery/stationLayouts.js';
 import { injectOrreryStationTabs } from '../orrery/stationTabsLayouts.js';
+import { injectStationStandard } from '../orrery/stationStandard.js';
 import { createStationRow } from '../orrery/stopDial.js';
 import { AMMO_BATCH as MUNITIONS_LOAD } from './serviceQuotes.js';
 import { tradeClearedReceipt, TRADE_EXPECTATION_KEY } from './tradeReceipt.js';
@@ -287,6 +288,8 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     // ORRERY: the shell's composition (vitals as dials, the destination rail's Hand, Undock in bone)
     injectOrreryStation(rootEl.ownerDocument || globalThis.document);
     injectOrreryStationTabs(rootEl.ownerDocument || globalThis.document);
+    // Station Standard (design/frontend/STATION_STANDARD.md): organised, legible layer over the above
+    injectStationStandard(rootEl.ownerDocument || globalThis.document);
     rootEl.dataset.dp = '1';
     rootEl.setAttribute('data-fh-temp', 'docked');
     rootEl.setAttribute('data-fh-register', 'bench');
@@ -696,6 +699,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
   const kiteButton = document.createElement('button');
   kiteButton.type = 'button'; kiteButton.className = 'k-word sx-kite-corner-open';
   kiteButton.textContent = 'Kite’s Corner';
+  markStationControl(kiteButton, 'kite-corner-open');
   kiteButton.setAttribute('aria-label', 'Watch Kite’s Corner, Ceres service-room programme');
   kiteButton.setAttribute('aria-expanded', 'false');
   // The station frame always parents the help word; a detached frame (a DOM double, a frame
@@ -1013,7 +1017,14 @@ export function createStationApp(rootEl, ctx, opts = {}) {
         if (!r) return { text: '—' };
         const title = [r.buttonLabel, r.detail, r.cost > 0 ? `${fmtCr(r.cost)} credits` : '']
           .filter(Boolean).join(' · ');
-        if (r.disabled) return { text: r.buttonLabel || 'OK', disabled: true, tone: 'gain', title, why: disabledServiceWhy(r) };
+        if (r.disabled) {
+          // a blocked verb names its block in a word or two ("Repair · no yard"), not its own
+          // button label again ("Repair · Repair Hull"); done-state facts keep their label
+          const why = disabledServiceWhy(r);
+          const chips = Array.isArray(r.chips) ? r.chips : [];
+          const block = why && (chips.find((c) => c && (c.kind === 'bad' || c.kind === 'warn')) || chips[0]);
+          return { text: (block && block.text) || r.buttonLabel || 'OK', disabled: true, tone: 'gain', title, why };
+        }
         const contents = type === 'ammo' && r.amount > 0 ? `${fmtCr(r.amount)} mun · ` : '';
         return { text: contents + fmtCr(r.cost) + ' cr', tone: 'warn', title };
       };

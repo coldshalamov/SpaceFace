@@ -624,6 +624,8 @@ export const DOMAIN_MIRROR_KEYS = Object.freeze([
   'ilexGreenhousePublic',
   'spectrumPublic', 'physicsVenuePublic', 'orbitalGalleryLedger', 'kineticLeague',
   'survivalDraftPublic', 'survivalResultsPublic', 'careers',
+  // Current score-backed fights feed the main-side warning and boss readouts.
+  'capitalBossEncounters',
   'physicsVenueSession', 'world.wreckCourtRulings',
   // Home/worksite labels and offers join native bodies through the ordinary entity journal.
   'salvageTender', 'salvageTenderOffer', 'salvageOutfits', 'rigWorkshop',
@@ -670,6 +672,9 @@ export const DOMAIN_MIRROR_KEYS = Object.freeze([
   'world.alienEcology',
   // Native store status settles Continue and is read synchronously by save event listeners.
   'save.sharedStoreStatus',
+  // Keep the sector epoch after event replay's temporary emit-time shim ends.
+  // Appending preserves existing domain slots and their staggered cadences.
+  'world.enterSerial',
 ]);
 
 // Per-key canonical-serialization ship cap (report-only): any single mirrored
@@ -871,6 +876,7 @@ export function configureDomainMirroring(config = {}) {
 // the full segment count (rule prefix + path suffix) so a rule can't reach
 // deeper into a subtree than it declared.
 function domainLeafViewFor(segs) {
+  if (segs.length === 1 && segs[0] === 'capitalBossEncounters') return { project: 'capitalBossPresentation' };
   if (segs.length === 1 && segs[0] === 'ilexGreenhousePublic') return ILEX_GREENHOUSE_MIRROR_RULE;
   if (segs.length === 1 && segs[0] === 'planet.orchardForecast') return ORCHARD_FORECAST_MIRROR_RULE;
   if (segs.length === 1 && segs[0] === 'planet.ships') return ORCHARD_EXPOSURE_MIRROR_RULE;
@@ -966,6 +972,21 @@ function projectDomainLeaf(rule, v, state) {
   // npcJobs.byId is authoritative in the worker but a presentation mirror on the main side.
   // Project before canonicalization so the expensive planner/cargo/sidecar fields do not enter
   // the signed string or structured-clone update.  The worker state itself is never modified.
+  if (rule?.project === 'capitalBossPresentation') {
+    const fights = {};
+    for (const [id, fight] of Object.entries(v?.fights || {})) {
+      if (!fight || fight.started !== true || fight.terminal != null) continue;
+      const cast = fight.cast;
+      fights[id] = { fightId: fight.fightId, encounterId: fight.encounterId,
+        bossId: fight.bossId, targetId: fight.targetId, started: true,
+        suspended: fight.suspended, terminal: null, actIndex: fight.actIndex,
+        phase: fight.phase, clock: fight.clock,
+        plates: Array.isArray(fight.plates) ? fight.plates.map(p => ({ id: p.id, attached: p.attached, strainTicks: p.strainTicks })) : null,
+        cast: cast ? { id: cast.id, beatId: cast.beatId, startedAt: cast.startedAt,
+          locked: cast.locked, shapes: cast.shapes } : null };
+    }
+    return { fights };
+  }
   if (rule?.project === 'ilexGreenhouse') return projectIlexGreenhouse(state);
   if (rule?.project === 'orchardForecast') return resolveOrchardForecast(state);
   if (rule?.project === 'ilexGreenhouse') return projectIlexGreenhouse(state);
@@ -1708,7 +1729,7 @@ export function createDomainDiffer(options = {}) {
     // The finite Orchard ledger (three sockets, at most twelve lots) also carries live motor progress.
     if (node.lastSign >= 0 && path !== 'sites.anvilOrchard' && !metadata.isCombatAttachments && !node.urgentSign && !freshOwnerSnapshot && !npcJobsRevisionChanged
         && !runAdmissionBootstrap && !marketLiveSourceChanged && !combatTracePlayerChanged) {
-      const tierTicks = node.bytes > DOMAIN_COLD_BYTES ? DOMAIN_COLD_TICKS
+      const tierTicks = leafRule?.project === 'capitalBossPresentation' ? 1 : node.bytes > DOMAIN_COLD_BYTES ? DOMAIN_COLD_TICKS
         : node.bytes > DOMAIN_WARM_BYTES ? DOMAIN_WARM_TICKS : 1;
       // minCadenceTicks is a true minimum after a sign, rather than a slot
       // phase. This keeps a projected market below 4 KiB from falling back to

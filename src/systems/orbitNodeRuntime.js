@@ -2,7 +2,7 @@
 // Consumes the fields system's kernel. Does not fork a second field. Identity is
 // type + index + counter on the node records and on state.fields.orbit.
 
-import { attackModifiersFromFit, compileFittedAttackSpec } from './adventureMigration.js';
+import { attackModifiersFromFit, compileFittedAttackSpec } from '../combat/adventureAttackReaders.js';
 import { ATTACK_TRAITS } from '../data/attackTraits.js';
 import { WEAPONS } from '../data/weapons.js';
 import { createLineage } from '../combat/attackLineage.js';

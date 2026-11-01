@@ -392,6 +392,7 @@ const CSS = `
   color: var(--ink-dim); }
 #sf-automation .au-metric .v { margin-top: 4px; font-family: var(--sf-data-face); font-variant-numeric: tabular-nums; font-weight: 600; font-size: 15px; color: var(--ink); }
 #sf-automation .au-metric .s { margin-top: 3px; font-size: 12px; line-height: 1.35; color: var(--ink-dim); }
+#sf-automation .au-metric__part { white-space: nowrap; }
 #sf-automation .au-note { font-size: 13px; color: var(--ink-dim); line-height: 1.45; margin-top: 6px; }
 #sf-automation .au-industry { margin: 0; }
 #sf-automation .au-industry .au-note { margin-top: 0; }
@@ -927,6 +928,21 @@ html body #screens #sf-automation.au-orrery .au-outpost-detail .au-detail-row {
   background: none; border: 0; border-radius: 0; padding: 6px 0; }
 html body #screens #sf-automation.au-orrery .au-program {
   border: 0; border-radius: 0; background: none; box-shadow: none; color: rgb(var(--au-bone)); }
+/* polish273: purchase rungs and the empty notice were loose rows hung on a 2px tick, so the
+   Drone Bay read as unframed text. Each rung is now its own hairline card (faint fill, radius 8)
+   with the tick dropped, and the empty notice is a dashed well — the same card language as the
+   Records Wall and Help keycaps. Spacing and the one-line rung layout are unchanged. */
+html body #screens #sf-automation.au-orrery .au-shop {
+  border: 1px solid rgb(var(--au-bone) / .16); border-radius: 8px;
+  background: rgb(var(--au-bone) / .025); padding: 6px 14px; margin-top: 4px; }
+html body #screens #sf-automation.au-orrery .au-shop:hover,
+html body #screens #sf-automation.au-orrery .au-shop:focus-within {
+  border: 1px solid rgb(var(--au-bone) / .34); background: rgb(var(--au-bone) / .05); }
+html body #screens #sf-automation.au-orrery .au-shop::before { display: none; }
+html body #screens #sf-automation.au-orrery .au-empty {
+  border: 1px dashed rgb(var(--au-bone) / .22); border-radius: 8px;
+  background: rgb(var(--au-bone) / .02); padding: 6px 14px; margin-top: 4px; }
+html body #screens #sf-automation.au-orrery .au-empty::before { display: none; }
 `;
 
 function injectStyle() {
@@ -1394,8 +1410,8 @@ export const automationScreen = {
         </div>
       </div>
       <div class="au-summary" aria-label="Automation summary">
-        ${metricHtml('Assets', String(summary.activeAssets), `${summary.drones} drones / ${summary.traders} traders / ${summary.outposts} outposts`)}
-        ${metricHtml('Net Flow', `${fmtCr(summary.netRatePerMin)} cr/min`, `gross ${fmtCr(summary.grossRatePerMin)} - upkeep ${fmtCr(summary.upkeepPerMin)}`)}
+        ${metricHtml('Assets', String(summary.activeAssets), [`${summary.drones} drones /`, `${summary.traders} traders /`, `${summary.outposts} outposts`])}
+        ${metricHtml('Net Flow', `${fmtCr(summary.netRatePerMin)} cr/min`, [`gross ${fmtCr(summary.grossRatePerMin)} -`, `upkeep ${fmtCr(summary.upkeepPerMin)}`])}
         ${metricHtml('Cap Load', capLoad.label, capLoad.detail)}
         ${metricHtml('Lifetime', `${fmtCr(summary.totalPassiveEarnedLifetime)} cr`, summary.distressedAssets ? `${summary.distressedAssets} distressed` : 'stable')}
       </div>`;
@@ -2338,8 +2354,10 @@ function programMetaText(id) {
   return opt ? opt.meta : 'Custom program assigned.';
 }
 
+// A sub-line given as an array wraps only between its parts, so a count never strands its noun.
 function metricHtml(k, v, s) {
-  return `<div class="au-metric"><div class="k">${escapeHtml(k)}</div><div class="v">${escapeHtml(v)}</div><div class="s">${escapeHtml(s)}</div></div>`;
+  const sub = Array.isArray(s) ? s.map(part => `<span class="au-metric__part">${escapeHtml(part)}</span>`).join(' ') : escapeHtml(s);
+  return `<div class="au-metric"><div class="k">${escapeHtml(k)}</div><div class="v">${escapeHtml(v)}</div><div class="s">${sub}</div></div>`;
 }
 
 function recipeText(r) {

@@ -379,7 +379,7 @@ export function createBarScreen(ctx) {
         code: 'BAR_QUIET',
         compact: true,
         headline: 'Nobody in tonight.',
-        fills: 'Regulars drift in with the day shift at busier berths — or once a job makes you worth talking to.',
+        fills: 'The regulars arrive with the day shift. The ones worth talking to arrive after a job makes you worth the hello.',
         verb: {
           label: 'Open the Chart',
           onActivate: () => openGalaxyMap(ctx, { focus: MAP_FOCUS.SYSTEM, source: 'bar-empty' }),
@@ -413,7 +413,7 @@ export function createBarScreen(ctx) {
       mountDataState(stageEl, 'empty', {
         code: 'BAR_EMPTY',
         headline: 'The bar is empty tonight.',
-        fills: 'Whoever drinks at a port this thin is out working. A larger station keeps its regulars later.',
+        fills: 'Everyone who drinks at a port this thin is out earning. Busier stations keep their regulars past second bell.',
         verb: {
           label: 'Open the Chart',
           onActivate: () => openGalaxyMap(ctx, { focus: MAP_FOCUS.SYSTEM, source: 'bar-empty' }),
@@ -584,7 +584,7 @@ export function createBarScreen(ctx) {
         : `<p class="k-sentence sx-muted">No leads on the board${survey ? '' : ' and no survey data for sale here'}.</p>`) +
       // the board verb carries the board's count; the intel facts live on the Missions tab (the count is
       // the one that matters here, so it rides the verb instead of a block of its own)
-      `<ul class="k-words k-words--row sx-bar__foot"><li><button type="button" ${stationControlAttrs('open-board')} class="k-word k-word--fine sx-bar__log" data-log>${stationControlLabel('open-board')}${boardCount > 0 ? ` <small class="sx-bar__log-n">· ${boardCount}</small>` : ''}</button></li><li><button type="button" class="k-word k-word--fine" data-play-manifest>Play Manifest</button></li></ul>` +
+      `<ul class="k-words k-words--row sx-bar__foot"><li><button type="button" ${stationControlAttrs('open-board')} class="k-word k-word--fine sx-bar__log" data-log>${stationControlLabel('open-board')}${boardCount > 0 ? ` <small class="sx-bar__log-n">· ${boardCount}</small>` : ''}</button></li><li><button type="button" ${stationControlAttrs('play-manifest')} class="k-word k-word--fine" data-play-manifest>${stationControlLabel('play-manifest')}</button></li></ul>` +
       `<div class="sx-bar__intel" hidden><p class="k-caps sx-intel__head">Intel</p>${intelHtml}</div>`;
     dressLeads();
     leadsKeysHint();

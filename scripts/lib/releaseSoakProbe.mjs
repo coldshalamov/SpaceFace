@@ -19,7 +19,7 @@ import {
   createIsolatedElectronLaunch,
 } from './electronTestIsolation.mjs';
 import { loadPlaywright } from './load-playwright.mjs';
-import { installCspSafePlaywrightPolling, installFrameKeepalive } from './playwrightCspPolling.mjs';
+import { consumePageConditionValue, installCspSafePlaywrightPolling, installFrameKeepalive } from './playwrightCspPolling.mjs';
 import {
   RELEASE_SOAK_SCHEMA,
   PERFORMANCE_ATTRIBUTION_SCHEMA,
@@ -351,11 +351,14 @@ export async function runReleaseSoakProbe({
     const startFingerprint = await strictWorktreeFingerprint(root);
     doLog(`worktree start ${startFingerprint.id}`);
     sourceOverlayCoverage = await readSourceOverlayCoverage(baselineSource);
+    const strictOverlayIsolation = sourceOverlayCoverage?.fullRuntime === true
+      && baselineSource?.identity?.strictRuntimeIsolation === true;
     const runtimeInputExclusions = sourceOverlayCoverage?.fullRuntime
       ? sourceOverlayCoverage.pinnedPaths : [];
     startRuntimeInputs = await strictRuntimeInputFingerprint(root, {
       excludePaths: runtimeInputExclusions,
       includeFileHashes: true,
+      strictOverlayIsolation,
     });
     if (baselineSource && !sourceOverlayCoverage?.valid) {
       doLog('source overlay coverage is missing or unsupported; provenance will fail closed');
@@ -606,7 +609,7 @@ export async function runReleaseSoakProbe({
           if (attemptError?.stationScreenWaitDiagnostic) {
             doLog(`[cycle ${index}] station-screen-wait-diagnostic ${JSON.stringify(attemptError.stationScreenWaitDiagnostic)}`);
           }
-          if (attempt === 0) {
+          if (shouldRetrySoakCycle(attemptError, attempt)) {
             doLog(`[cycle ${index}] failed; retrying once (${String(attemptError && attemptError.message || attemptError).slice(0, 160)})`);
             await setSoakTransition(page, null).catch(() => {});
             continue;
@@ -650,7 +653,9 @@ export async function runReleaseSoakProbe({
       }
       cycleResults.push(cycle);
       const checkpoint = await withTimeout(
-        readPostGcMemorySnapshot(page, `docked-market-cycle-${index + 1}`),
+        readPostGcMemorySnapshot(page, `docked-market-cycle-${index + 1}`, {
+          includeGeometryCensus: index === Math.floor(Math.max(0, measuredCycleCount - 1) / 2),
+        }),
         30_000,
         `release-soak memory checkpoint ${index + 1}`,
       );
@@ -704,7 +709,7 @@ export async function runReleaseSoakProbe({
     assert.equal(await isDocked(page), true, 'release-soak cycles must finish docked for comparable retained-heap evidence');
     await page.waitForTimeout(1_500);
     const finalMemory = await withTimeout(
-      readPostGcMemorySnapshot(page, 'docked-market-end'),
+      readPostGcMemorySnapshot(page, 'docked-market-end', { includeGeometryCensus: true }),
       30_000,
       'release-soak final memory snapshot',
     );
@@ -831,6 +836,7 @@ export async function runReleaseSoakProbe({
     endRuntimeInputs = await strictRuntimeInputFingerprint(root, {
       excludePaths: endRuntimeInputExclusions,
       includeFileHashes: true,
+      strictOverlayIsolation,
     });
     runtimeInputChanges = diffRuntimeInputFiles(startRuntimeInputs?.files, endRuntimeInputs?.files);
     const worktreeStable = endFingerprint.digest === startFingerprint.digest;
@@ -1166,6 +1172,7 @@ function compactSourceOverlayIdentity(identity) {
     sourceOverlayDigest: identity.sourceOverlayDigest || null,
     fileCount: Number.isSafeInteger(identity.fileCount) ? identity.fileCount : null,
     totalBytes: Number.isSafeInteger(identity.totalBytes) ? identity.totalBytes : null,
+    ...(identity.strictRuntimeIsolation === true ? { strictRuntimeIsolation: true } : {}),
   } : null;
 }
 
@@ -1242,8 +1249,9 @@ function summarizeRuntimeInputFingerprint(fingerprint) {
 
 function sourceOverlayIdentityMatches(expected, observed) {
   if (!expected || !observed) return false;
-  return ['schema', 'sourceCommit', 'sourceOverlayDigest', 'fileCount', 'totalBytes']
-    .every((field) => expected[field] === observed[field]);
+  const fields = ['schema', 'sourceCommit', 'sourceOverlayDigest', 'fileCount', 'totalBytes'];
+  if (expected.strictRuntimeIsolation === true) fields.push('strictRuntimeIsolation');
+  return fields.every((field) => expected[field] === observed[field]);
 }
 
 export function evaluateSourceStability({
@@ -1282,8 +1290,12 @@ export function evaluateSourceStability({
     };
   }
   const overlayCoversRuntime = coverage?.fullRuntime === true;
+  const strictRuntimeIsolation = baselineSource.identity?.strictRuntimeIsolation === true
+    && servedAtStart?.strictRuntimeIsolation === true
+    && servedAtEnd?.strictRuntimeIsolation === true;
   const servedSourceStable = sourceOverlayIdentityMatches(baselineSource.identity, servedAtStart)
-    && sourceOverlayIdentityMatches(baselineSource.identity, servedAtEnd);
+    && sourceOverlayIdentityMatches(baselineSource.identity, servedAtEnd)
+    && (!overlayCoversRuntime || strictRuntimeIsolation);
   const uncoveredRuntimeStable = uncoveredRuntimeInputsStable === true;
   const headStable = uncoveredHeadStable === true;
   return {
@@ -1295,7 +1307,7 @@ export function evaluateSourceStability({
     uncoveredRuntimeInputsStable: overlayCoversRuntime ? uncoveredRuntimeStable : null,
     uncoveredHeadStable: overlayCoversRuntime ? headStable : null,
     pass: overlayCoversRuntime
-      ? (servedSourceStable && uncoveredRuntimeStable && headStable)
+      ? (servedSourceStable && uncoveredRuntimeStable)
       : (worktreeStable === true && servedSourceStable),
   };
 }
@@ -1309,6 +1321,7 @@ async function readServedSourceOverlayIdentity(page, expected) {
   });
   const compact = compactSourceOverlayIdentity(observed);
   const fields = ['schema', 'sourceCommit', 'sourceOverlayDigest', 'fileCount', 'totalBytes'];
+  if (expected.identity?.strictRuntimeIsolation === true) fields.push('strictRuntimeIsolation');
   const mismatch = fields.find((field) => compact?.[field] !== expected.identity?.[field]);
   if (mismatch) {
     throw new Error(`served source overlay identity mismatch at ${mismatch}: expected ${JSON.stringify(expected.identity)} got ${JSON.stringify(compact)}`);
@@ -1616,6 +1629,7 @@ export function readFailureRuntimeSnapshot() {
         generation: admission.generation ?? null,
       } : null,
       currentSectorFailure: render.openingCurrentSectorFailure || null,
+      planCaptureFailure: render.openingFirstPicturePlanFailure || null,
       gpuResidencyOwnerInactive: owner ? {
         subjectName: owner.subjectName || null,
         owner: owner.owner || null,
@@ -2594,6 +2608,65 @@ export function summarizeImmutableSavePopulation({
   };
 }
 
+// Executed in the page: only an actual failed-start menu ends the restore early.
+export function shouldRetrySoakCycle(error, attempt) {
+  return attempt === 0 && error?.code !== 'SOAK_LOAD_START_FAILED'
+    && error?.code !== 'SOAK_PRESENTATION_FAILURE';
+}
+
+/** Convert the canonical loop diagnostic into a terminal dock-wait error, if present. */
+export function createSoakPresentationFailureError(loopDiagnostics) {
+  const source = loopDiagnostics?.presentationFailure;
+  if (!source || typeof source !== 'object' || source.headline !== 'Graphics interrupted'
+      || typeof source.code !== 'string' || !source.code) return null;
+  const failure = {
+    code: source.code.slice(0, 120),
+    headline: source.headline,
+    message: String(source.message || '').slice(0, 1_000),
+    tick: Number.isFinite(Number(source.tick)) ? Number(source.tick) : null,
+    simTime: Number.isFinite(Number(source.simTime)) ? Number(source.simTime) : null,
+  };
+  const error = new Error(`dock wait stopped by presentation failure ${failure.code}: ${failure.message}`);
+  error.code = 'SOAK_PRESENTATION_FAILURE';
+  error.presentationFailure = failure;
+  return error;
+}
+
+export function readSoakLoadLanding() {
+  const state = window.SF?.state;
+  if (state?.mode === 'flight' && window.__M6_RELEASE_SOAK_EVENTS__?.loaded === true) return 'flight';
+  const requests = typeof window.SF?.timeEffects?.describeRequests === 'function'
+    ? window.SF.timeEffects.describeRequests() : {};
+  return state?.mode === 'menu' && requests?.['runtime:start-failed'] ? 'menu' : false;
+}
+
+export async function waitForSoakLoadLanding(page, { timeoutMs = 210_000, graceMs = 240_000 } = {}) {
+  let landed;
+  let late = false;
+  try {
+    landed = await page.waitForFunction(readSoakLoadLanding, null, { timeout: timeoutMs, polling: 1000 })
+      .then(consumePageConditionValue);
+  } catch (loadWaitError) {
+    // A still-loading session retains the existing grace period to land in flight or fail.
+    late = true;
+    landed = await page.waitForFunction(readSoakLoadLanding, null, { timeout: graceMs, polling: 1000 })
+      .then(consumePageConditionValue).catch(() => null);
+    if (!landed) throw loadWaitError;
+  }
+  if (landed === 'menu') {
+    const detail = await page.evaluate(() => ({
+      phase: window.SF?.state?.render?.openingFirstPicturePhase?.stage || null,
+      plan: window.SF?.state?.render?.openingFirstPicturePlanFailure || null,
+      message: (document.querySelector('[data-startup-stage]')?.textContent || '').trim().slice(0, 500),
+    })).catch(() => null);
+    const error = new Error(`F9 restore failed: runtime:start-failed menu${detail?.message ? `: ${detail.message}` : ''}`);
+    error.code = 'SOAK_LOAD_START_FAILED';
+    error.loadFailure = detail;
+    throw error;
+  }
+  return { late };
+}
+
 async function runSoakCycle(page, {
   index,
   outputDir,
@@ -2771,49 +2844,8 @@ async function runSoakCycle(page, {
   mark('pre-load-divergence', { divergenceInputMs, minRestoreDivergenceWu, quickSourceDivergenceWu, quickSource: quickSourceBeforeF9, diverged });
   await transition('load-restore');
   await page.keyboard.press('F9');
-  // The loaded-game visual gate legitimately owns up to ~180s of authored-visual staging on a
-  // contended host (the app's own bound); a restore that outlives a 90s wait is slow, not
-  // broken. A genuine wedge still surfaces early: a timed-out gate fails to mode 'menu' via
-  // failGameStart, which this predicate never satisfies either way.
-  const waitForLoadFlight = () => page.waitForFunction(() => window.__M6_RELEASE_SOAK_EVENTS__?.loaded === true && window.SF?.state?.mode === 'flight', null, { timeout: 210_000 });
-  try {
-    await waitForLoadFlight();
-  } catch (loadWaitError) {
-    // D31 + D35: a failed restore is designed to land in the retryable start-failed menu — but
-    // the app's own bounded gates can outlive the 210 s probe wait before that landing commits
-    // (the authored-visuals gate alone owns 180 s plus a 30 s retry, and the authored-library
-    // stage owns another pair of 180 s races). The one-shot sample this used to do could read
-    // mode:'loading' seconds before the recovery fired and report a bounded failure as a
-    // permanent freeze. So wait for the session to actually LAND: late flight means a slow but
-    // healthy load and the leg continues; the start-failed menu is the recoverable state a
-    // player would retry from; still 'loading' after the grace window is the real hang.
-    const landed = await page.waitForFunction(() => {
-      const s = window.SF?.state;
-      if (s?.mode === 'flight' && window.__M6_RELEASE_SOAK_EVENTS__?.loaded === true) return 'flight';
-      const reqs = typeof window.SF?.timeEffects?.describeRequests === 'function'
-        ? window.SF.timeEffects.describeRequests() : {};
-      return s?.mode === 'menu' && reqs && reqs['runtime:start-failed'] ? 'menu' : false;
-    }, null, { timeout: 240_000, polling: 1000 })
-      .then((handle) => handle.jsonValue())
-      .catch(() => null);
-    if (!landed) throw loadWaitError;
-    if (landed === 'flight') {
-      mark('load-late-flight', {});
-    } else {
-      const deadEnded = await page.evaluate(() => {
-        const s = window.SF?.state;
-        const reqs = typeof window.SF?.timeEffects?.describeRequests === 'function'
-          ? window.SF.timeEffects.describeRequests() : {};
-        return {
-          mode: s?.mode,
-          timeRequests: reqs,
-        };
-      }).catch(() => null);
-      mark('load-retry-start-failed', deadEnded);
-      await page.keyboard.press('F9');
-      await waitForLoadFlight();
-    }
-  }
+  const loadOutcome = await waitForSoakLoadLanding(page);
+  if (loadOutcome.late) mark('load-late-flight', {});
   const loaded = await readPlayerSnapshot(page);
   const loadedAtEvent = await page.evaluate(() => window.__M6_RELEASE_SOAK_EVENTS__?.loadedSnapshot || null);
   const loadedSlot = await page.evaluate(() => window.__M6_RELEASE_SOAK_EVENTS__?.loadedSlot || null);
@@ -3102,6 +3134,26 @@ async function runSoakCycle(page, {
     let brakePulsed = false;
     while (Date.now() < waitDeadline) {
       dockPromptVisible = await dockPrompt.isVisible().catch(() => false);
+      const loopDiagnostics = await page.evaluate(() => {
+        let diagnostics = null;
+        try { diagnostics = window.SF?.loop?.getDiagnostics?.() || null; } catch (_) { /* runtime may be closing */ }
+        const failure = diagnostics?.presentationFailure;
+        if (!failure || typeof failure !== 'object') return null;
+        return {
+          presentationFailure: {
+            code: typeof failure.code === 'string' ? failure.code : null,
+            headline: typeof failure.headline === 'string' ? failure.headline : null,
+            message: typeof failure.message === 'string' ? failure.message : '',
+            tick: failure.tick,
+            simTime: failure.simTime,
+          },
+        };
+      }).catch(() => null);
+      const presentationError = createSoakPresentationFailureError(loopDiagnostics);
+      if (presentationError) {
+        mark('dock-presentation-failure', presentationError.presentationFailure);
+        throw presentationError;
+      }
       if (dockPromptVisible) break;
       if (lawFlees < 2) {
         const law = await readLawFlag();
@@ -3403,7 +3455,14 @@ async function armSaveLoadObservers(page) {
         const ev = window.__M6_RELEASE_SOAK_EVENTS__;
         if (!ev) return;
         if (!Array.isArray(ev.dock)) ev.dock = [];
-        if (ev.dock.length < 32) ev.dock.push(entry);
+        const state = window.SF?.state;
+        if (ev.dock.length >= 32) ev.dock.splice(0, 16);
+        ev.dock.push({
+          t: Math.round(performance.now()),
+          tick: Number.isFinite(state?.tick) ? state.tick : null,
+          simTime: Number.isFinite(state?.simTime) ? state.simTime : null,
+          ...entry,
+        });
       };
       // Nav arm tap: _onSetCourse emits nav:autopilot {status:'armed'} synchronously when a
       // waypoint click lands. When the ship is already inside the arrival radius the whole
@@ -6061,7 +6120,72 @@ export function postGcOwnerEvaluateArgument(phaseTag, ownerRowLimit = POST_GC_OW
   return { phaseTag, ownerRowLimit };
 }
 
-async function readPostGcMemorySnapshot(page, phaseTag) {
+// Snapshot-only observer: geometry can be shared by several roots, so group counts
+// are individually unique and do not add up to the scene-wide unique count.
+export function readSceneGeometryCensus() {
+  const state = window.SF?.state;
+  const owner = window.SF?.registry?.get?.('render');
+  const scene = owner?.scene;
+  if (!scene) return { available: false, reason: 'scene-unavailable' };
+  const rootOwners = new Map();
+  if (owner?._meshes && typeof owner._meshes[Symbol.iterator] === 'function') {
+    for (const [id, root] of owner._meshes) {
+      if (!root) continue;
+      const entity = state?.entities?.get?.(id);
+      rootOwners.set(root, { id: String(id).slice(0, 100), type: String(entity?.type || '').slice(0, 80) || null,
+        defId: String(entity?.data?.defId || entity?.defId || '').slice(0, 120) || null });
+    }
+  }
+  const unique = new Set();
+  const groups = new Map();
+  const stack = [{ node: scene, owner: null }];
+  let visited = 0;
+  while (stack.length) {
+    const item = stack.pop();
+    const node = item.node;
+    if (!node) continue;
+    visited += 1;
+    const root = rootOwners.get(node) || item.owner;
+    const id = node.geometry?.uuid;
+    if (typeof id === 'string' && id) {
+      unique.add(id);
+      const key = root ? `entity:${root.id}` : 'scene-unowned';
+      let group = groups.get(key);
+      if (!group) { group = { key, ...root, ids: new Set() }; groups.set(key, group); }
+      group.ids.add(id);
+    }
+    const children = node.children || [];
+    for (let i = children.length - 1; i >= 0; i--) stack.push({ node: children[i], owner: root });
+  }
+  const idLimit = 10000, groupLimit = 512, groupIdLimit = 512;
+  const ids = [...unique].sort();
+  const rows = [...groups.values()].sort((a, b) => a.key.localeCompare(b.key));
+  const queue = (name, head, iter) => {
+    const list = owner?.[name];
+    return { pending: Array.isArray(list) ? Math.max(0, list.length - (Number(owner?.[head]) || 0)) : null,
+      activeIterator: !!owner?.[iter] };
+  };
+  return {
+    available: true, visitedNodes: visited,
+    rendererGeometries: Number.isFinite(owner?.renderer?.info?.memory?.geometries)
+      ? owner.renderer.info.memory.geometries : null,
+    uniqueGeometryCount: ids.length, geometryIds: ids.slice(0, idLimit), geometryIdsTruncated: ids.length > idLimit,
+    groups: rows.slice(0, groupLimit).map((row) => {
+      const groupIds = [...row.ids].sort();
+      return { key: row.key, entityId: row.id ?? null, type: row.type ?? null, defId: row.defId ?? null,
+        uniqueGeometryCount: groupIds.length, geometryIds: groupIds.slice(0, groupIdLimit),
+        geometryIdsTruncated: groupIds.length > groupIdLimit };
+    }),
+    groupCount: rows.length, groupsTruncated: rows.length > groupLimit,
+    disposal: {
+      despawn: queue('_despawnDisposeQueue', '_despawnDisposeHead', '_despawnDisposeIter'),
+      warm: queue('_warmDisposeQueue', '_warmDisposeHead', '_warmDisposeIter'),
+      retainedLod: { available: false, reason: 'no-existing-diagnostic-getter' },
+    },
+  };
+}
+
+async function readPostGcMemorySnapshot(page, phaseTag, { includeGeometryCensus = false } = {}) {
   // The forced GC is measurement apparatus: pause the soak-window hitch register so a
   // stop-the-world collect is not billed to the game as a gameplay hitch.
   await setSoakPaused(page, true);
@@ -6122,6 +6246,11 @@ async function readPostGcMemorySnapshot(page, phaseTag) {
   }, postGcOwnerEvaluateArgument(phaseTag));
   const ownerDiagnostics = snapshot.assetResidencyOwnerDiagnostics;
   delete snapshot.assetResidencyOwnerDiagnostics;
+  if (includeGeometryCensus) {
+    await setSoakPaused(page, true);
+    try { snapshot.sceneGeometryCensus = await page.evaluate(readSceneGeometryCensus); }
+    finally { await setSoakPaused(page, false); }
+  }
   return {
     ...snapshot,
     assetResidencyOwners: canonicalPostGcOwnerRows(ownerDiagnostics),
@@ -6180,7 +6309,7 @@ export async function readReleaseSoakBaselineMemory(page, { timeoutMs = 30_000 }
   return withTimeout(
     (async () => {
       await waitForKnownAssetRequests(page, { timeoutMs });
-      return readPostGcMemorySnapshot(page, 'docked-market-start');
+      return readPostGcMemorySnapshot(page, 'docked-market-start', { includeGeometryCensus: true });
     })(),
     timeoutMs,
     'release-soak baseline memory snapshot',

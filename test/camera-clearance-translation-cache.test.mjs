@@ -6,7 +6,7 @@ import {
   CAMERA_CLEARANCE_MARGIN_WU,
   cameraClearanceFloorAt,
   setCameraClearanceFloorRetainForBench,
-} from '../src/render/renderer.js';
+} from '../src/render/cameraClearanceGuard.js';
 import { clearanceNeighborhoodRaw } from '../src/render/clearanceQuery.js';
 
 function ownerWith(root) {

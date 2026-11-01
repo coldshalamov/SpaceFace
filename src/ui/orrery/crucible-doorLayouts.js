@@ -138,7 +138,7 @@ ${FOOT} :is(.k-kbd, .dp-kbd, .sf-cru-kbd) .k-kbd__paren { color:rgb(${BONE} / .3
    screenLayouts' .sf-back strip both say so — so this out-specifies it */
 ${D} .k-foot .sf-back.k-word::after { all:unset !important; content:"ESC" / "" !important;
   display:inline-block !important; margin-left:14px !important; padding:0 !important;
-  font:600 12px var(--dp-face-label, "Archivo") !important; letter-spacing:.2em !important;
+  font:600 12px var(--dp-face-label, "Archivo") !important; letter-spacing:.06em !important;
   line-height:1 !important; text-transform:uppercase !important; color:rgb(${BONE} / .45) !important;
   background:none !important; border:0 !important; border-radius:0 !important;
   box-shadow:none !important; vertical-align:baseline !important; }

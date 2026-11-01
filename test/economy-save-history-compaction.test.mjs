@@ -77,6 +77,24 @@ const unvisitedRow = unvisited.markets.station_test.find((row) => row[0] === com
 assert.equal(unvisitedRow.length, 6,
   'derived chart history is not persisted for a station the player has never visited');
 
+function restoreUnvisitedHistory(prewarm) {
+  economy.state = makeState([], { knownStation: false });
+  if (prewarm) economy.newGame();
+  else economy._installRngFunction();
+  economy.deserialize(structuredClone(unvisited));
+  return {
+    history: structuredClone(economy.state.economy.markets.station_test[commodityId].history),
+    seed: economy.state.economy.rngSeed,
+  };
+}
+const coldRestore = restoreUnvisitedHistory(false);
+const prewarmedRestore = restoreUnvisitedHistory(true);
+assert.ok(coldRestore.history.length >= 2, 'an omitted history is reconstructed');
+assert.deepEqual(prewarmedRestore.history, coldRestore.history,
+  'restoring the same omitted history is independent of pre-load market warmup');
+assert.equal(coldRestore.seed, unvisited.rngSeed, 'reconstruction does not advance the saved RNG');
+assert.equal(prewarmedRestore.seed, unvisited.rngSeed, 'warmup cannot alter the restored RNG');
+
 economy.state = makeState([]);
 economy._installRngFunction();
 economy.deserialize(serialized);

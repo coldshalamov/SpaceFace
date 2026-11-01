@@ -1,6 +1,10 @@
 import { tickPhysicalEffects, clearPhysicalEffects } from '../combat/physicalEffects.js';
 import { hasBlockingPanels, interceptSegment, acceptIntercept, projectileDamageOf, PYLON_CONTACT } from '../combat/pylonShieldQuery.js';
-import {orchardRestoreInputsRequired,captureOrchardRestoreInputs,orchardRestoreInputsCurrent,orchardRestoreContextCurrent} from './anvilOrchardNative.js';
+import {
+  orchardRestoreInputsRequired, captureOrchardRestoreInputs, orchardRestoreInputsCurrent,
+  orchardRestoreContextCurrent, registerOrchardPoseReader, isCurrentOrchardPoseReader,
+} from './anvilOrchardNative.js';
+export { readOrchardNativePose } from './anvilOrchardNative.js';
 import { sweepCollisionProxyInto } from './collisionProxySweep.js';
 import { dedupWarn } from './warnDedup.js';
 import { reconcileMachineryBeforePhysics } from './machineryPresentation.js';
@@ -134,10 +138,6 @@ function projectileProxyRadius(entity, manifest) {
 // resolve only a verified current native pose; saved collar scalars are never a read source.
 const ORCHARD_COLD_RESTORE_BOUNDARIES=new WeakMap();
 const ORCHARD_RESTORE_CAPABILITIES=new WeakMap();
-const ORCHARD_POSE_READERS = new WeakMap();
-export function readOrchardNativePose(state, entity) {
-  return ORCHARD_POSE_READERS.get(state)?.readOrchardFramePose(entity) ?? null;
-}
 
 export const physics = {
   name: 'physics',
@@ -148,7 +148,7 @@ export const physics = {
     ORCHARD_RESTORE_CAPABILITIES.set(this,Object.freeze({}));
     this.state = ctx.state;
     this.registry = ctx.registry || null;
-    ORCHARD_POSE_READERS.set(ctx.state, this);
+    registerOrchardPoseReader(ctx.state, this);
     this.bus = ctx.bus;
     this.helpers = ctx.helpers || {};
     this._scratch = [];
@@ -382,7 +382,7 @@ export const physics = {
     const state = this.state, owner = this._sg02, world = owner?.world;
     const life = entity?.occupantGeneration, entities = state?.entities;
     const current = () => this.state === state && this._sg02 === owner && owner?.world === world
-      && ORCHARD_POSE_READERS.get(state) === this && state.entities === entities && entities?.get(entity?.id) === entity
+      && isCurrentOrchardPoseReader(state, this) && state.entities === entities && entities?.get(entity?.id) === entity
       && entity?.occupantGeneration === life && !this._nativeRestorePending && !this._nativeRestoreDeferred
       && !owner?._pendingNativeRebuilds?.size && owner?.orchardAuthorityAvailable() && this._diag.sg02Ready === true && usesSg02DynamicAuthority(state);
     try {
@@ -396,7 +396,7 @@ export const physics = {
     const state = this.state, owner = this._sg02, world = owner?.world;
     const life = entity?.occupantGeneration, entities = state?.entities;
     const current = () => this.state === state && this._sg02 === owner && owner?.world === world
-      && ORCHARD_POSE_READERS.get(state) === this && state.entities === entities && entities?.get(entity?.id) === entity
+      && isCurrentOrchardPoseReader(state, this) && state.entities === entities && entities?.get(entity?.id) === entity
       && entity?.occupantGeneration === life && !this._nativeRestorePending && !this._nativeRestoreDeferred
       && !owner?._pendingNativeRebuilds?.size && owner?.orchardAuthorityAvailable() && this._diag.sg02Ready === true && usesSg02DynamicAuthority(state);
     try {

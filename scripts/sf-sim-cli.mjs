@@ -513,7 +513,7 @@ async function run47a({
   const econ = registry.get('economy');
   if (econ && typeof econ.newGame === 'function') econ.newGame();
   bus.emit('game:started', { source: 'sf-sim', scenario: '47a' });
-  await preparePhysicsBackend(registry, state, physicsBackend);
+  if (!loadEnvelopePath) await preparePhysicsBackend(registry, state, physicsBackend);
   if (loadEnvelopePath) {
     await resumeLoadedEnvelope({
       registry,

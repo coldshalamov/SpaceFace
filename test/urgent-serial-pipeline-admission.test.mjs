@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import * as THREE from 'three';
-import { openingCompileIssueKey } from '../src/render/renderer.js';
+import { openingCompileIssueKey } from '../src/render/runtime/openingAdmissionPlanning.js';
 import { beginScenePipelineReadinessBatch, compileScenePipelinesForRenderTarget, scenePipelineReadinessBatchOpen } from '../src/render/bloom.js';
 import { makeGpuQueuePacer } from '../src/render/gpuQueuePace.js';
 import { collectUniqueCompileSubjects, compileSubjectsAcrossPresents,
@@ -62,7 +62,7 @@ function fixture({ parallel = false, active = () => true, rejectIndex = -1, mode
     admissionPaceYield: async () => {}, pacedFrameSpend: () => 0,
     PACED_FRAME_BUDGET_MS: 4, notePacedFrameSpend: () => {} };
   const compile = new Function(...Object.keys(deps), `return (${body});`).call(
-    { _shadowSettingOn: false, _selectPostRoute: () => 'fixture' }, ...Object.values(deps));
+    { _shadowSettingOn: false, _shadowDepthEnabled: () => false, _selectPostRoute: () => 'fixture' }, ...Object.values(deps));
   const tracker = createPipelineAdmissionTracker(compile);
   return { root, submissions, drains, fault, peak: () => peak,
     run: () => tracker.compile(root, { urgent, isActive: active }) };

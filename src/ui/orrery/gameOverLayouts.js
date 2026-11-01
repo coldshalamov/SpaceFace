@@ -24,7 +24,7 @@ ${GO} > .k-stage > .k-sentence { color:rgb(${BONE} / .86) !important; }
 ${GO} .sf-go-foot > .k-words { flex-wrap:nowrap !important; column-gap:calc(30px * var(--sv)) !important; }
 ${GO} .sf-go-foot .k-word.sf-go-verb {
   position:relative !important; padding:10px 0 11px !important; min-height:44px !important; white-space:nowrap !important;
-  font-size:max(12px, calc(12.5px * var(--sv))) !important; letter-spacing:.2em !important; color:rgb(250 247 240) !important;
+  font-size:max(12px, calc(12.5px * var(--sv))) !important; letter-spacing:.06em !important; color:rgb(250 247 240) !important;
   background:linear-gradient(0deg, rgb(${BONE} / .26) 0 1.5px, transparent 1.5px) 0 100% / 100% 100% no-repeat !important; }
 ${GO} .sf-go-foot .k-word.sf-go-verb::before { color:rgb(${BONE} / .7) !important; margin-right:.6em !important; }
 ${GO} .sf-go-foot .k-word.sf-go-verb:is(:hover, :focus-visible) {
@@ -95,6 +95,8 @@ ${GO} > .sf-go-tape .orr-tape__empty { fill:rgb(${BONE} / .8); }
   ${GO} > .k-title .k-caps { margin-bottom:calc(8px * var(--sv)) !important; }
   ${GO} > .k-title .k-t-title { font-size:calc(40px * var(--sv)) !important; max-width:24ch; }
   ${GO} > .k-title .k-sentence { margin-top:calc(8px * var(--sv)) !important; }
+  /* a blank record has no rim stations, so its bare dial takes the short-desktop ring and fits the frame */
+  ${GO} > .sf-go-recap.is-blank { --r:calc(112px * var(--sv)); height:calc(var(--r) * 2.6 + 44px * var(--sv)); }
 }
 /* rim stations (641w+): the bezel's ticks reach r + 10% past the track, and a diagonal station's two
    lines centre on its bearing, so the figure nearest the ring sat on the ticks. Every station clears

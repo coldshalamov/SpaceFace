@@ -477,6 +477,7 @@ function compactSourceOverlayIdentity(identity) {
     sourceOverlayDigest: identity.sourceOverlayDigest || null,
     fileCount: Number.isSafeInteger(identity.fileCount) ? identity.fileCount : null,
     totalBytes: Number.isSafeInteger(identity.totalBytes) ? identity.totalBytes : null,
+    ...(identity.strictRuntimeIsolation === true ? { strictRuntimeIsolation: true } : {}),
   } : null;
 }
 

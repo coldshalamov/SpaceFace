@@ -523,16 +523,28 @@ test('production manifest packages every live whole-ship family and admitted aut
   assert.equal(renderPackagePilotForAssetId('sf.render.unclaimed'), null);
 });
 
-test('production manifest enables the flight-static v3 canary only for Helios trade hub', () => {
+test('flight-static bindings follow the configured eligible packages and retain their semantic owners', async () => {
+  const config = JSON.parse(await readFile('assets/ships/render-packages/flight-static-v3.json', 'utf8'));
+  const pilots = JSON.parse(await readFile('assets/ships/render-packages/pilots.json', 'utf8'));
+  assert.equal(config.schema, 'spaceface.flightRenderPackagePilots.v1');
+  assert.equal(new Set(config.packages).size, config.packages.length, 'configured keys are unique');
   const flightStaticBindings = RENDER_PACKAGE_PILOTS.filter((binding) => binding.flightStaticV3 === true);
   assert.deepEqual(
-    flightStaticBindings.map((binding) => binding.key),
-    ['helios-trade-hub'],
+    flightStaticBindings.map((binding) => binding.key).sort(),
+    [...config.packages].sort(),
   );
-  const tradeHub = renderPackagePilotForAssetId('sf.render.helios-trade-hub');
-  assert.equal(tradeHub?.flightStaticV3, true);
-  for (const binding of RENDER_PACKAGE_PILOTS) {
-    if (binding.key !== 'helios-trade-hub') assert.notEqual(binding.flightStaticV3, true, binding.key);
+  for (const binding of flightStaticBindings) {
+    const pilot = pilots.pilots.find((row) => row.key === binding.key);
+    assert.ok(pilot && pilot.kind === 'place' && pilot.sceneRoot === true, binding.key);
+    assert.deepEqual(pilot.dynamicNameIncludes || [], [], `${binding.key}: static admission excludes dynamic-name groups`);
+    const semantic = await derivePilotSemanticManifest({ ...pilot, flightStaticV3: true }, pilot.sourceUrl);
+    const metadata = JSON.parse(await readFile(binding.metadataUrl, 'utf8'));
+    assert.deepEqual(metadata.dynamicGroups, [], `${binding.key}: static package has no dynamic owners`);
+    assert.ok(metadata.runtime && metadata.runtimeHash, `${binding.key}: sealed runtime table`);
+    assert.deepEqual(metadata.anchors.map((row) => row.id).sort(), semantic.anchors.map((row) => row.id).sort(),
+      `${binding.key}: source anchor identities survive compilation`);
+    assert.deepEqual(metadata.collisions.map((row) => row.id).sort(), semantic.collisions.map((row) => row.id).sort(),
+      `${binding.key}: source collision identities survive compilation`);
   }
 });
 

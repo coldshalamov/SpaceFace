@@ -1,10 +1,84 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
-import { createReadModel, applyEntityVitals } from '../scripts/lib/simReadModel.mjs';
+import { createReadModel, applyEntityVitals, createDomainDiffer, applyDomainPathUpdate } from '../scripts/lib/simReadModel.mjs';
+import { projectBridgeEvent } from '../scripts/lib/simEventBridge.mjs';
+import { createBus } from '../src/core/eventBus.js';
+import { createCapitalBossOverlay } from '../src/presentation/capitalBossPresentation.js';
 import { collectEntityVitals } from '../scripts/lib/simWorkerHost.mjs';
 import { createPalletJackVisualDriver } from '../src/render/palletJackVisuals.js';
 import { createKilnbackVisualDriver, KILNBACK_MOTION_NODES } from '../src/render/kilnbackVisuals.js';
+import { ironKrakenAnimationPose, createIronKrakenVisual } from '../src/render/ironKrakenVisuals.js';
+import { IRON_KRAKEN_PROFILES } from '../src/data/ironKraken.js';
+
+test('worker boss presentation retains live tell clock and clears retired fight', () => {
+  const fight = { fightId: 'f', encounterId: IRON_KRAKEN_PROFILES.heavy.scoreId,
+    bossId: 2, targetId: 1, started: true, terminal: null, clock: 110,
+    plates: [{ id: 'mantle_port', attached: true }],
+    cast: { id: 'c', beatId: 'arm_sweep', startedAt: 100, locked: true,
+      shapes: [{ kind: 'lane', a: { x: 0, z: 0 }, b: { x: 10, z: 0 }, radius: 2 }] } };
+  const live = { capitalBossEncounters: { fights: { f: fight } } };
+  const differ = createDomainDiffer(), domains = new Map(), touched = new Set();
+  const publish = tick => {
+    for (const update of differ.diff(live, tick).updates) {
+      touched.clear(); applyDomainPathUpdate(domains, JSON.parse(JSON.stringify(update)), touched);
+    }
+  };
+  publish(1);
+  const mirrored = () => domains.get('capitalBossEncounters').fights;
+  assert.equal(mirrored().f.clock, 110);
+  const cue = { fightId: 'f', castId: 'c', startedAt: 100, fireAt: 120, endAt: 140,
+    locked: true, shapes: fight.cast.shapes };
+  const bridged = projectBridgeEvent('capitalBoss:telegraph', cue);
+  assert.equal(bridged.dropped, false);
+  assert.deepEqual(bridged.flat.shapes, cue.shapes);
+  let strokes = 0;
+  const ctx = new Proxy({ canvas: { width: 200, height: 100 } }, { get(o, key) {
+    if (key in o) return o[key];
+    return key === 'stroke' ? () => { strokes++; } : () => {};
+  } });
+  const bus = createBus();
+  const overlay = createCapitalBossOverlay({ canvas: { getContext: () => ctx }, bus,
+    worldToScreen: p => ({ x: p.x, y: p.z }), clockForFight: id => mirrored()[id]?.clock ?? 0 });
+  bus.emit('capitalBoss:telegraph', bridged.flat); overlay.draw();
+  assert.ok(strokes > 0, 'the real overlay draws the worker tell at its live fight clock');
+  fight.clock = 111; publish(2); assert.equal(mirrored().f.clock, 111);
+  fight.terminal = 'defeated'; publish(3); assert.equal(mirrored().f, undefined);
+  overlay.destroy();
+});
+
+test('worker Kraken fight frame follows post-spawn start, update and retirement', () => {
+  const profile = IRON_KRAKEN_PROFILES.heavy, id = 7311, life = 12;
+  const source = { id, type: 'ship', alive: true, occupantGeneration: life,
+    data: { lootTableId: profile.enemyId, ironKraken: { variant: profile.variant, fightId: null } } };
+  const mirror = { ...source, data: structuredClone(source.data) };
+  const model = createReadModel(); model.entities.set(id, mirror);
+  const state = { entityList: [source], capitalBossEncounters: { fights: {} } }, shadow = new Map();
+  const publish = () => { const rows = collectEntityVitals(state, shadow); applyEntityVitals(model, JSON.parse(JSON.stringify(rows))); return rows; };
+  publish(); assert.equal(mirror.ironKrakenMotionFrame, null);
+  source.data.ironKraken.fightId = 'fight-1';
+  state.capitalBossEncounters.fights['fight-1'] = { bossId: id, encounterId: profile.scoreId,
+    phase: 'recovery', clock: 80, nextAt: 98, plates: [{ id: 'mantle_port', attached: false }] };
+  assert.equal(publish().length, 1);
+  let frame = JSON.parse(mirror.ironKrakenMotionFrame);
+  assert.equal(frame.fightId, 'fight-1'); assert.equal(frame.ownerLife, life);
+  assert.ok(ironKrakenAnimationPose(frame, 0).mantle > 0);
+  assert.notEqual(ironKrakenAnimationPose(frame, 0).missingShellMask, 0);
+  const root = createIronKrakenVisual(mirror);
+  root.userData.updateAuthoredMotion(mirror, 1, {}, { simTime: 1, render: {} });
+  assert.ok(root.userData.ironKrakenRig.pose.mantle > 0, 'actual visual reads the worker frame');
+  state.capitalBossEncounters.fights['fight-1'].clock = 90;
+  assert.equal(publish().length, 1);
+  frame = JSON.parse(mirror.ironKrakenMotionFrame); assert.equal(frame.clock, 90);
+  source.data.ironKraken.fightId = null;
+  assert.equal(publish().length, 1); assert.equal(mirror.ironKrakenMotionFrame, null);
+  root.userData.updateAuthoredMotion(mirror, 2, {}, { simTime: 2, render: {} });
+  assert.equal(root.userData.ironKrakenRig.pose.mantle, 0);
+  source.data.ironKraken.fightId = 'fight-1'; publish();
+  delete source.data.ironKraken;
+  assert.equal(publish().length, 1); assert.equal(mirror.ironKrakenMotionFrame, null);
+  root.userData.disposeIronKraken?.();
+});
 
 function mirrorVitals(source, model, shadow) {
   const rows = collectEntityVitals({ entityList: [source] }, shadow);

@@ -6,6 +6,7 @@ import { indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.
 
 export const SCENARIO_RUNTIME_SCHEMA_VERSION = 1;
 const SCENARIO_EVIDENCE_EVENT_CAP = 512;
+const NORMALIZED_SCENARIO_STATES = new WeakSet();
 
 export const scenarioRuntime = {
   name: 'scenarioRuntime',
@@ -42,14 +43,17 @@ export const scenarioRuntime = {
   update() {
     if (!this._contract) return;
     if (this.state.mode !== 'flight' || !this.state.playerId) return;
-    const scenario = ensureScenarioState(this.state);
+    let scenario = ensureScenarioState(this.state);
     const active = scenario.active;
     if (!active || active.id !== this._contract.id || active.contractHash !== this._contractHash) {
       activateScenario(this, this._contract);
+      scenario = this.state.scenario;
     }
-    updateActiveBeat(this, this._contract);
-    syncLiveColdStartCombatants(this);
-    evaluateBranchPredicates(this, this._contract);
+    // These private phases run synchronously inside one update. Share its normalized
+    // scenario record instead of cloning/normalizing the whole record at each phase.
+    updateActiveBeat(this, this._contract, scenario);
+    syncLiveColdStartCombatants(this, scenario);
+    evaluateBranchPredicates(this, this._contract, scenario);
   },
 
   serialize() {
@@ -118,6 +122,7 @@ function activateScenario(runtime, contract) {
     evidence: { schemaVersion: SCENARIO_RUNTIME_SCHEMA_VERSION, events: [] },
     safeOpening: { spindleClaimed: false, demandIssuedAt: null, noFireUntilS: null, response: null, provoked: false },
   };
+  state.scenario = normalizeScenarioState(state.scenario);
   runtime._lastBeatId = null;
 
   runtime.bus.emit('scenario:loaded', {
@@ -142,8 +147,7 @@ function activateScenario(runtime, contract) {
   });
 }
 
-function updateActiveBeat(runtime, contract) {
-  const scenario = ensureScenarioState(runtime.state);
+function updateActiveBeat(runtime, contract, scenario) {
   if (!scenario.active) return;
   const beat = beatForTime(contract.beats || [], contract.status === 'skeleton' ? 0 : (runtime.state.simTime || 0));
   if (!beat || beat.id === runtime._lastBeatId) return;
@@ -165,9 +169,8 @@ function updateActiveBeat(runtime, contract) {
   emitBeatDialogue(runtime, contract, beat);
 }
 
-function syncLiveColdStartCombatants(runtime) {
+function syncLiveColdStartCombatants(runtime, scenario) {
   const state = runtime.state;
-  const scenario = ensureScenarioState(state);
   const activeBeatId = scenario.active && scenario.active.activeBeatId || null;
   const entered = Array.isArray(scenario.enteredBeatIds) ? scenario.enteredBeatIds : [];
   const playerId = state.playerId;
@@ -377,8 +380,7 @@ function emitBeatDialogue(runtime, contract, beat) {
   }
 }
 
-function evaluateBranchPredicates(runtime, contract) {
-  const scenario = ensureScenarioState(runtime.state);
+function evaluateBranchPredicates(runtime, contract, scenario) {
   if (!scenario.active || (scenario.resolution && scenario.resolution.branchId)) return;
   const matches = [];
   for (const branch of contract.branches || []) {
@@ -724,11 +726,10 @@ function getAttachment(state, attachmentId) {
 }
 
 function ensureScenarioState(state) {
-  if (!state.scenario || typeof state.scenario !== 'object' || Array.isArray(state.scenario)) {
-    state.scenario = normalizeScenarioState(null);
-  } else {
-    state.scenario = normalizeScenarioState(state.scenario);
-  }
+  const current = state.scenario;
+  if (current && typeof current === 'object' && !Array.isArray(current)
+    && NORMALIZED_SCENARIO_STATES.has(current)) return current;
+  state.scenario = normalizeScenarioState(current);
   return state.scenario;
 }
 
@@ -751,6 +752,7 @@ function normalizeScenarioState(data) {
   if (src.resolution && typeof src.resolution === 'object' && !Array.isArray(src.resolution)) {
     out.resolution = clonePlain(src.resolution);
   }
+  NORMALIZED_SCENARIO_STATES.add(out);
   return out;
 }
 

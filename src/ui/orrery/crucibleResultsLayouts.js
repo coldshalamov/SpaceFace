@@ -47,6 +47,29 @@ ${X} > .k-foot > .k-words { width:100% !important; max-width:100% !important; fl
 `;
 
 export const CRUCIBLE_RESULTS_LAYOUT_CSS = `
+/* ways-out are keys (STATION_STANDARD §5): the one amber primary, the rest secondary hairlines.
+   "RUN IT AGAIN" was an amber tracked word — a poster, not a control. */
+${R} > .k-foot .k-word, ${RP} > .k-foot .k-word {
+  display:inline-flex !important; align-items:center; min-height:38px; padding:0 16px;
+  font:600 14px var(--dp-face-read, "Instrument Sans") !important; letter-spacing:.03em; text-transform:none;
+  color:rgb(${BONE} / .88) !important;
+  background:rgb(${BONE} / .05); border:1px solid rgb(${BONE} / .34); border-radius:2px;
+  transition:background var(--dp-d-cut, 80ms) linear, border-color var(--dp-d-cut, 80ms) linear, color var(--dp-d-cut, 80ms) linear;
+}
+${R} > .k-foot .k-word:is(:hover, :focus-visible), ${RP} > .k-foot .k-word:is(:hover, :focus-visible) {
+  color:#fff !important; background:rgb(${BONE} / .12); border-color:rgb(${BONE} / .75);
+}
+${R} > .k-foot .k-word.k-word--primary, ${RP} > .k-foot .k-word.k-word--primary {
+  min-height:42px; padding:0 20px;
+  font:700 15px var(--dp-face-read, "Instrument Sans") !important;
+  color:var(--dp-metal-0, #0b0d10) !important;
+  background:var(--dp-lamp, #f2b950) !important; border:1px solid rgb(242 185 80 / .9);
+  clip-path:polygon(0 0, calc(100% - 9px) 0, 100% 9px, 100% 100%, 0 100%);
+}
+${R} > .k-foot .k-word.k-word--primary:is(:hover, :focus-visible), ${RP} > .k-foot .k-word.k-word--primary:is(:hover, :focus-visible) {
+  color:var(--dp-metal-0, #0b0d10) !important; background:var(--dp-lamp-hot, #ffd98c) !important;
+  box-shadow:0 0 14px rgb(242 185 80 / .24);
+}
 /* one column, one scroller: the ledger and story boxes dissolve so their bands share one order */
 ${R} .sf-crres__stage { display:flex !important; flex-direction:column !important; gap:20px !important; width:100%; max-width:min(600px, 46vw) !important;
   min-height:0 !important; overflow:hidden auto !important; overscroll-behavior:contain; padding:2px 16px 28px 0 !important; margin:0 !important;
@@ -87,7 +110,7 @@ ${R} .sf-crres__ledger > .sf-crres__band:not([data-band]) .k-row { min-height:30
 /* share: each code is a quiet field with its save word at the end */
 ${R} .sf-crres__share-item { margin:0 0 8px !important; max-width:560px; }
 ${R} .sf-crres__share-row { display:grid !important; grid-template-columns:96px minmax(0, 1fr) auto; align-items:center; column-gap:14px; }
-${R} .sf-crres__share-cap { font-size:12px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .62) !important; white-space:nowrap; }
+${R} .sf-crres__share-cap { font-size:12px !important; letter-spacing:.06em !important; color:rgb(${BONE} / .62) !important; white-space:nowrap; }
 ${R} .sf-crres__share-code { width:100% !important; min-width:0; height:30px; box-sizing:border-box; padding:0 10px !important; border:0 !important; border-radius:2px !important;
   background:rgb(${VOID} / .55) !important; box-shadow:inset 0 0 0 1px rgb(${BONE} / .16) !important; color:rgb(${BONE} / .9) !important;
   font-size:12.5px !important; text-overflow:ellipsis; outline:none; }
@@ -121,6 +144,16 @@ ${RESULTS_PLATE(RP)}
 @media (max-width:700px) {
 ${RESULTS_PLATE(R)}
 }
+/* phone portrait (≤560 wide, ≥701 tall, 390×844): THE TAKE sat wholly under the docked ways-out at
+   scroll 0, so the run's verdict needed a scroll to find. The ring is already at its 90px floor and
+   the caption is placed from the ring, not the box, so the room comes from the caption's slack: the
+   dial rides up into the empty band above BOW, the weapon/bearing/layer line goes (the death line
+   right above the ring says the same words), and the reserve under the caption shrinks to match.
+   The heading and first line of THE TAKE now read above the foot; strip and legend unchanged. */
+@media (max-width:560px) and (min-height:701px) {
+  :is(${R}, ${RP}) > .sf-crres__dial { margin-top:-20px !important; margin-bottom:8px !important; }
+  :is(${R}, ${RP}) > .sf-crres__dial .orr-deathdial__detail { display:none; }
+}
 
 /* ≤600 tall desktop (960×540): the dial plus its full caption (killer, detail, vitals, the
    LAST 5 HITS strip and its legend) needs ~520px, which the full-width foot row would cut in
@@ -141,9 +174,28 @@ ${RESULTS_PLATE(R)}
   ${R} :is(.sf-crres__stage, .sf-crres-celebrate) .sf-crres__band-title { margin:0 0 6px !important; }
   ${R} > .k-title .k-t-title { font-size:clamp(34px, 7.2vh, 48px) !important; }
   ${R} > .sf-crres-celebrate { margin:0 !important; }
+  /* The column scrolls in ~230px here, and the cut fell right after "3 drafts changed what your guns
+     do:" with the chain itself below the fold. WHAT YOU BUILT moves up under the figures (the dial
+     caption already carries who and from where), and THE RUN's lines run on under the fade. */
+  ${R} .sf-crres__band[data-band="build"] { order:2; }
+  ${R} .sf-crres__band[data-band="story"] { order:3; }
 }
 @media (min-width:701px) and (max-width:880px) and (max-height:600px) {
   ${R} > .k-foot .k-word.k-word--primary { font-size:13px !important; }
+}
+
+/* 780–939 × ≤600 (800×600): the even four-up grid gave each figure ~80px, so BEST KILL CHAIN broke
+   onto three lines and SALVAGE ran out of its cell into the dial's PORT label. Each figure takes its
+   own width on one line at a slightly tighter tracking, which fits the column with room to spare. */
+@media (min-width:780px) and (max-width:939px) and (max-height:600px) {
+  ${RD} .orr-crres-figures { grid-template-columns:repeat(4, max-content) !important; column-gap:14px !important; }
+  ${RD} .orr-crres-figure__w { white-space:nowrap; letter-spacing:.08em !important; }
+}
+/* 701–779 × ≤600: one-line figures overflow the narrower column (SALVAGE clipped, 88 over PORT), so
+   columns may shrink and BEST KILL CHAIN wraps to two lines while every label stays whole. */
+@media (min-width:701px) and (max-width:779px) and (max-height:600px) {
+  ${RD} .orr-crres-figures { grid-template-columns:repeat(4, minmax(0, auto)) !important; column-gap:10px !important; }
+  ${RD} .orr-crres-figure__w { letter-spacing:.08em !important; overflow-wrap:normal; }
 }
 
 /* 601–720 tall: keep a thin safety clip so a long killer name cannot bleed into the foot */

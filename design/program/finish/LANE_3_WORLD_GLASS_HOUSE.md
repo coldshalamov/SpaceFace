@@ -14,6 +14,14 @@ Status words: `OPEN`, `ACTIVE`, `LANDED <sha>`, `SKIPPED (<reason>)`.
 
 ## Inbox (other lanes append one line: date, lane, path, what/why)
 
+- 2026-10-31 integration: Asteroid narrow-desktop machine keys move into a 46px two-column right rail, clear of the guide and rig in the opened 390×844 fixture. Async Rover/terrain continuations now honor teardown and generation ownership before reporting failures or publishing readiness; production-callback tests and the reset walk report no cancellation errors. The public PQ-024 actor now waits on the existing renderer readiness API within its original bound and captures the ready view. That route has not run; Rover/terrain appearance remains unknown.
+
+- 2026-10-31 integration: the ordinary M8 run exposed an active-receipt `captionSlot` scope error in the new flight-caption allocator. Its shared slot/bands now exist in the receipt branch; the actual production-function test covers visible/hidden captions and external quotes, and the HUD suite passes 21/21. Public receipt/soak re-verification remains required; the earlier fixture pass did not cover this branch.
+
+- 2026-10-31 integration: airlock graffiti now stays in the station narrative tape through its fade and shares the HUD's existing safe-band allocator during flight. The connected HUD/Comms fixture keeps the quote clear of ordinary captions and drive controls, including during opening-instruction suppression; eight focused cases pass. Docked and flight captures were opened. This is scoped fixture evidence, not natural-docking or performance acceptance. The bench now exposes its existing HUD and bus so these checks use the real shared owners.
+
+- 2026-10-31 integration: Station Standard connects the head, Market and Bar; Shipworks fixes its rack-button styling and uses a readable scrolling instrument at 960×540, with seven slot targets, a working fitting chooser, and reachable Range/Record/Paint controls. Relevant real-module fixture captures were opened; this is not ordinary-route acceptance. The frontend guidance, handoff, review briefs and UI front door retire conflicting numeric gates and blanket border/table/type recipes while retaining useful UX and accessibility guidance. Current details are in `INTEGRATION_COVERAGE.md`; other screens are not implicitly migrated or accepted.
+
 ## Defects (this lane's share of the demo defect ledger — delete a row in the commit that fixes it)
 
 | # | What a stranger sees | Where | Next step |
@@ -391,6 +399,15 @@ teaches by situation; tooltips that explain *why* in one line; every screen's la
 (open catalog line RC-49 carries over: station tabs hide their last row).
 
 ## Traps
+
+Integration 2026-10-31: phone station title/credits and Shipworks diagram/nameplate overlaps are
+repaired in the shared Standard and Shipworks style owners. Inspected 390×844 and 960×540 fixture
+captures have no browser errors or geometry overlap/clipping findings. The control walk remains
+incomplete after resets/confirmations; the impound fixture has no canonical lot desk. These visual
+repairs do not close ordinary station-tab last-row reachability (RC-49) or impound controls.
+The new 960×540 Market layout's trade-console overflow is also repaired. Its scoped fixture
+filters/searches the list, scrolls to and selects its last filtered row, and hit-tests the quantity
+and trade controls inside the viewport; ordinary station/trade acceptance remains pending.
 
 - Save compatibility: every new persistent field needs a migration and a reload test (`src/save/`).
 - Single writers: economy→credits, factions→reputation, cargo→cargo (`AGENTS.md` §6) — emit intents, do not write another system's state.

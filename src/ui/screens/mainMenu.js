@@ -7,7 +7,7 @@ import { createTitleFrame } from '../views/menuFrames.js';
 import { injectDeckplate, attachAttentionLamp } from '../deckplate/index.js';
 import { CREDITS } from '../../data/credits.js';
 import { NEW_GAME } from '../../data/newGameDefaults.js';
-import { requestCodexTab } from './codex.js';
+import { requestCodexTab } from '../codexRequests.js';
 import { coreText } from '../localizedCoreCopy.js';
 import { canQuit, requestQuit } from '../quitGame.js';
 import { IS_DEV } from '../../core/devMode.js';

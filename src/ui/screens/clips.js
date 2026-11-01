@@ -1242,7 +1242,7 @@ function buildContent(container, ctx) {
   container.append(veilTop, veilFoot);
 
   const exitWrap = el('div', 'orr-clips__exit');
-  const exitList = words([{ label: 'Exit', action: 'exit' }], {
+  const exitList = words([{ label: 'Exit (Esc)', action: 'exit', keycap: true }], {
     ariaLabel: CLIPS_LABEL,
     system: 'light',
     onPick: () => exitReel(view),

@@ -2,6 +2,7 @@
 // controls a player clicks. No game service is called to skip a step.
 
 import { quoteLoadError } from './environment.mjs';
+import { consumePageConditionValue } from '../lib/playwrightCspPolling.mjs';
 
 const norm = (s) => String(s || '').replace(/\s+/g, ' ').trim();
 const firstLightHandlerPages = new WeakSet();
@@ -17,7 +18,8 @@ export function isFirstLightPrompt(title, cancelLabel, confirmLabel = '') {
 // First light is scheduled after the title is painted. On a busy renderer it can appear
 // after the menu is ready, while a real New Game click is waiting for actionability.
 // Playwright's public locator handler answers that one known settings choice; all other
-// dialogs retain normal input ownership. No force click or settings mutation is involved.
+// dialogs retain normal input ownership. It uses the trusted page mouse for the inner choice
+// because a locator action from inside its own locator handler waits on that same handler.
 export async function installFirstLightPromptHandler(page, step) {
   if (firstLightHandlerPages.has(page) || typeof page.addLocatorHandler !== 'function') return;
   await page.addLocatorHandler(page.locator('#sf-confirm-root.sf-confirm--in #sf-confirm-title').filter({ hasText: /^First light$/ }), async () => {
@@ -135,9 +137,10 @@ export async function bootToMenu(page, baseUrl, step) {
       return !!(window.SF && window.SF.state && window.SF.bus && el && getComputedStyle(el).display !== 'none');
     }).catch(() => false);
     if (ready) {
+      await dismissCinematicIntro(page, step, { timeout: 15_000 });
       step('main menu', true, 'menu visible');
-      // The registered handler owns the public click if First light appears now or
-      // later. A second explicit cancel would race the same handler's dismissal.
+      // The registered handler owns a First light prompt that arrives after the intro/title
+      // readiness boundary. A second explicit answer would race its public click.
       if (!firstLightHandlerPages.has(page)) await answerFirstRunPrompt(page, step);
       return;
     }
@@ -155,20 +158,23 @@ export async function bootToMenu(page, baseUrl, step) {
 // chooses the actual "Play" control (legacy "keep" cancel) and records the answer; nothing else is
 // dismissed. The dialog and its choices are selected by their public accessible names.
 export async function answerFirstRunPrompt(page, step = () => {}) {
-  // The Play click is inside the matching dialog, so Playwright can invoke the installed handler
-  // again during this action. Guard the shared answer path so both handler and direct callers let
-  // that nested invocation proceed without answering the same prompt recursively.
+  // The choice is inside the matching dialog. The shared helper uses page.mouse rather than a
+  // locator click so an installed handler never waits for itself while activating its own target.
   if (firstLightHandlerActivePages.has(page)) return;
   firstLightHandlerActivePages.add(page);
   try {
-    await answerFirstRunPromptOnce(page, step);
+    return await answerFirstRunPromptOnce(page, step);
   } finally {
     firstLightHandlerActivePages.delete(page);
   }
 }
 
 async function answerFirstRunPromptOnce(page, step) {
-  if (!await isActiveFirstLightPrompt(page)) return;
+  const prompt = await readFirstLightDialogState(page);
+  if (!prompt.active) {
+    if (prompt.dialogPresent) await waitForFirstLightInputRelease(page);
+    return false;
+  }
   const title = 'First light';
   const dialog = page.getByRole('dialog', { name: 'First light', exact: true });
   const play = dialog.getByRole('button', { name: /^Play$/i });
@@ -182,14 +188,57 @@ async function answerFirstRunPromptOnce(page, step) {
     // controls have already left the accessibility tree. A locator handler scheduled just
     // before the close must treat that dismissed snapshot as complete, not a broken dialog.
     // A still-active First light with unsupported controls remains a hard gate failure.
-    if (!await isActiveFirstLightPrompt(page)) return;
+    if (!await isActiveFirstLightPrompt(page)) {
+      if ((await readFirstLightDialogState(page)).dialogPresent) await waitForFirstLightInputRelease(page);
+      return false;
+    }
     const labels = await dialog.getByRole('button').allTextContents();
-    if (!await isActiveFirstLightPrompt(page)) return;
+    if (!await isActiveFirstLightPrompt(page)) {
+      if ((await readFirstLightDialogState(page)).dialogPresent) await waitForFirstLightInputRelease(page);
+      return false;
+    }
     throw new Error(`First light has no uniquely supported settings choice (expected Play or Keep my settings); controls: ${JSON.stringify(labels.map(norm))}`);
   }
-  // A disabled/covered control must still fail the gate normally; never force it or choose a preset.
-  await choice.control.click();
+  // Keep the semantic accessible-name lookup, then click the actual visible control with trusted
+  // mouse input. Locator.click() here re-enters the active locator handler and can wait on itself.
+  const visible = await choice.control.isVisible();
+  const enabled = await choice.control.isEnabled();
+  const box = await choice.control.boundingBox();
+  if (!visible || !enabled || !box || !(box.width > 0) || !(box.height > 0)) {
+    throw new Error(`First light ${choice.name} control is not visibly actionable`);
+  }
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  await waitForFirstLightInputRelease(page);
   step('first-run prompt', true, `answered "${title}" with ${choice.name} (shipped settings)`);
+  return true;
+}
+
+async function readFirstLightDialogState(page) {
+  return page.evaluate(() => {
+    const root = document.getElementById('sf-confirm-root');
+    const dialog = root?.querySelector('[role="dialog"]');
+    const title = String(dialog?.querySelector('#sf-confirm-title')?.textContent || '').replace(/\s+/g, ' ').trim();
+    return { active: !!(root?.classList.contains('sf-confirm--in') && title === 'First light'),
+      dialogPresent: !!(dialog && title === 'First light') };
+  });
+}
+
+async function waitForFirstLightInputRelease(page) {
+  const cleanupHandle = await page.waitForFunction(() => {
+    const root = document.getElementById('sf-confirm-root');
+    const dialog = root?.querySelector('[role="dialog"]');
+    const currentTitle = String(dialog?.querySelector('#sf-confirm-title')?.textContent || '').replace(/\s+/g, ' ').trim();
+    if (dialog && currentTitle !== 'First light') return { superseded: true, title: currentTitle || 'another confirmation' };
+    if (dialog) return false;
+    if (root && (root._sfConfirmToken != null || root.innerHTML.trim())) return false;
+    return { released: true };
+  }, null, { timeout: 5000 });
+  const cleanup = await consumePageConditionValue(cleanupHandle);
+  if (cleanup?.superseded) {
+    throw new Error(`First light was superseded before input release; preserving ${cleanup.title}`);
+  }
+  if (cleanup?.released !== true) throw new Error('First light dialog did not release its modal input fence');
+  return true;
 }
 
 async function isActiveFirstLightPrompt(page) {
@@ -202,6 +251,126 @@ async function isActiveFirstLightPrompt(page) {
     const style = getComputedStyle(title);
     return style.display !== 'none' && style.visibility !== 'hidden' && title.getClientRects().length > 0;
   }).catch(() => false);
+}
+
+/** Dismiss the public cinematic, allowing First light to interrupt and consume one Space press. */
+export async function dismissCinematicIntro(page, step = () => {}, { timeout = 15_000 } = {}) {
+  const deadline = Date.now() + timeout;
+  let shown = false;
+  let spacePresses = 0;
+  let promptAnswers = 0;
+  let last = { splashVisible: false, firstLightVisible: false };
+
+  while (Date.now() < deadline) {
+    last = await page.evaluate(() => {
+      const visible = (node) => {
+        if (!node || node.hidden) return false;
+        const style = getComputedStyle(node);
+        const rect = node.getBoundingClientRect();
+        return style.display !== 'none' && style.visibility !== 'hidden'
+          && rect.width > 0 && rect.height > 0;
+      };
+      const splash = document.getElementById('cinematic-splash');
+      const root = document.getElementById('sf-confirm-root');
+      const dialog = root?.querySelector('[role="dialog"]');
+      const title = dialog?.querySelector('#sf-confirm-title');
+      const firstLightDialogPresent = !!(title && String(title.textContent || '').replace(/\s+/g, ' ').trim() === 'First light');
+      const firstLightVisible = !!(root?.classList.contains('sf-confirm--in') && firstLightDialogPresent && visible(title));
+      const otherModal = [...document.querySelectorAll('[aria-modal="true"]')].find((node) => {
+        if (node.id === 'cinematic-splash') return false;
+        if (firstLightDialogPresent && (node === dialog || node.contains(title))) return false;
+        return visible(node);
+      });
+      return { splashVisible: visible(splash), firstLightVisible, firstLightDialogPresent,
+        otherModalActive: !!otherModal,
+        otherModalTitle: String(otherModal?.getAttribute('aria-label') || otherModal?.querySelector('h1,h2,[role="heading"]')?.textContent || '').replace(/\s+/g, ' ').trim() || null };
+    });
+    if (!last.splashVisible) {
+      if (shown) step('intro-dismissed', true, `visible cinematic dismissed with Space${promptAnswers ? ` after ${promptAnswers} First light interruption` : ''}`);
+      else step('intro-not-shown', true, 'fresh route reached the menu without a visible cinematic');
+      return { shown, spacePresses, promptAnswers };
+    }
+    shown = true;
+
+    if (last.otherModalActive && !last.firstLightVisible) {
+      throw new Error(`cinematic input is blocked by an unrelated active modal; ${JSON.stringify(last)}`);
+    }
+
+    if (last.firstLightVisible) {
+      if (await answerFirstRunPrompt(page, step)) promptAnswers++;
+      continue;
+    }
+
+    if (last.firstLightDialogPresent) {
+      await waitForFirstLightInputRelease(page);
+      continue;
+    }
+
+    // The intro listens for Space. Observe the authored splash and the known prompt through page
+    // state instead of a splash locator: a locator wait can invoke the prompt handler after Space
+    // was consumed, then continue waiting for a dismissal that never received another keypress.
+    await page.keyboard.press('Space');
+    spacePresses++;
+    const remaining = Math.max(1, deadline - Date.now());
+    try {
+      await page.waitForFunction(() => {
+        const visible = (node) => {
+          if (!node || node.hidden) return false;
+          const style = getComputedStyle(node);
+          const rect = node.getBoundingClientRect();
+          return style.display !== 'none' && style.visibility !== 'hidden'
+            && rect.width > 0 && rect.height > 0;
+        };
+        const splash = document.getElementById('cinematic-splash');
+        const root = document.getElementById('sf-confirm-root');
+        const title = root?.querySelector('[role="dialog"] #sf-confirm-title');
+        const firstLightDialogPresent = !!(title && String(title.textContent || '').replace(/\s+/g, ' ').trim() === 'First light');
+        const firstLightVisible = !!(root?.classList.contains('sf-confirm--in') && firstLightDialogPresent && visible(title));
+        const otherModal = [...document.querySelectorAll('[aria-modal="true"]')].find((node) => {
+          if (node.id === 'cinematic-splash') return false;
+          if (firstLightDialogPresent && (node === root?.querySelector('[role="dialog"]') || node.contains(title))) return false;
+          return visible(node);
+        });
+        return !visible(splash) || firstLightVisible || firstLightDialogPresent || !!otherModal;
+      }, null, { timeout: remaining });
+    } catch (error) {
+      if (error?.name !== 'TimeoutError') throw error;
+    }
+  }
+
+  // Prompt answering and its input-fence cleanup can finish at the route deadline. The last loop
+  // sample may predate that cleanup, so use the same visibility test as the loop before reporting
+  // a timeout; an already-dismissed cinematic is complete even if its final animation crossed the
+  // deadline. A still-visible splash remains a real failure below.
+  last = await page.evaluate(() => {
+    const visible = (node) => {
+      if (!node || node.hidden) return false;
+      const style = getComputedStyle(node);
+      const rect = node.getBoundingClientRect();
+      return style.display !== 'none' && style.visibility !== 'hidden'
+        && rect.width > 0 && rect.height > 0;
+    };
+    const splash = document.getElementById('cinematic-splash');
+    const root = document.getElementById('sf-confirm-root');
+    const dialog = root?.querySelector('[role="dialog"]');
+    const title = dialog?.querySelector('#sf-confirm-title');
+    const firstLightDialogPresent = !!(title && String(title.textContent || '').replace(/\s+/g, ' ').trim() === 'First light');
+    const firstLightVisible = !!(root?.classList.contains('sf-confirm--in') && firstLightDialogPresent && visible(title));
+    const otherModal = [...document.querySelectorAll('[aria-modal="true"]')].find((node) => {
+      if (node.id === 'cinematic-splash') return false;
+      if (firstLightDialogPresent && (node === dialog || node.contains(title))) return false;
+      return visible(node);
+    });
+    return { splashVisible: visible(splash), firstLightVisible, firstLightDialogPresent,
+      otherModalActive: !!otherModal,
+      otherModalTitle: String(otherModal?.getAttribute('aria-label') || otherModal?.querySelector('h1,h2,[role="heading"]')?.textContent || '').replace(/\s+/g, ' ').trim() || null };
+  });
+  if (!last.splashVisible) {
+    if (shown) step('intro-dismissed', true, `visible cinematic dismissed with Space${promptAnswers ? ` after ${promptAnswers} First light interruption` : ''}`);
+    else step('intro-not-shown', true, 'fresh route reached the menu without a visible cinematic');
+    return { shown, spacePresses, promptAnswers };
+  }
+  throw new Error(`cinematic did not dismiss within ${timeout}ms; ${JSON.stringify({ ...last, spacePresses, promptAnswers })}`);
 }
 
 /** Flight, or a quoted load error. `active` also requires the run phase to be active. */

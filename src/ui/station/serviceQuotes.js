@@ -187,10 +187,13 @@ function escWhyAttr(s) {
 // so keyboard/controller focus can reach it; the whyReveal layer reads data-why on hover AND
 // focus, and the click path toasts the same phrase instead of failing silently.
 export function disabledVitalActHtml(id, label, text, why) {
-  const copy = `${label} · ${text}`;
+  // the same verb / reason spans as a live verb's verb / price, so it reads and lays out like its
+  // neighbours ("REPAIR  NO YARD" beside "REFUEL  22 CR"); the " · " stays for anything reading text
+  const copy = `<span class="orr-act__verb">${escWhyAttr(label)}</span><span class="orr-act__sep"> · </span>` +
+    `<span class="orr-act__cost">${escWhyAttr(text)}</span>`;
   return `<button type="button" ${stationControlAttrs(id)} class="k-word k-word--fine fh-key fh-key--small sxb-vital__act k-38"` +
     ` data-vital-act="${escWhyAttr(id)}" data-why="${escWhyAttr(why)}" aria-disabled="true"` +
-    ` aria-label="${escWhyAttr(label + '. ' + why)}">${escWhyAttr(copy)}</button>`;
+    ` aria-label="${escWhyAttr(label + '. ' + why)}">${copy}</button>`;
 }
 
 function recommendationCandidate(service, quote, stationServices, opts) {

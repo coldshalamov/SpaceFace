@@ -475,7 +475,9 @@ export function createAlerts(ctx) {
     if (inRange) raise({ key: 'dock', sev: 'dock', text: dockPromptText(ctx.state, stationId, promptLabel('dock')), ttl: Infinity });
     else clear('dock');
   });
-  bus.on('dock:docked', () => clear('dock'));
+  // A dock attempt can be stale or belong to another ship. Only the UI owner's accepted
+  // transition is entitled to remove the player's still-live range affordance.
+  bus.on('dock:committed', () => clear('dock'));
 
   bus.on('gate:range', ({ inRange, name }) => {
     if (inRange) raise({ key: 'gate', sev: 'info', text: `${name || 'JUMP GATE'} · OPEN STARMAP (${BINDINGS.starmap.label}) TO JUMP`, ttl: Infinity });

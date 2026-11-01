@@ -5,8 +5,8 @@ import * as THREE from 'three';
 import { createTimeEffects } from '../src/core/timeEffects.js';
 import { prepareAuthoredVisualPipelines, isInitialAuthoredCompositionEntity } from '../src/render/partsLibrary.js';
 import { openingLoadPolicy } from '../src/render/openingLoadPolicy.js';
-import { openingPreparedLeafKey, openingAdmissionSubjects, applyFirstPlayablePaintRelease, releaseOpeningGraphPublication,
-  enqueueMissingMeshBuildsSteps, preparePipelineSubjectResidency, render as renderSystem } from '../src/render/renderer.js';
+import { applyFirstPlayablePaintRelease, releaseOpeningGraphPublication, enqueueMissingMeshBuildsSteps, preparePipelineSubjectResidency, render as renderSystem } from '../src/render/renderer.js';
+import { openingPreparedLeafKey, openingAdmissionSubjects } from '../src/render/runtime/openingAdmissionPlanning.js';
 import { admitOpeningUnitsAcrossSlices, touchSubjectOnExactTarget } from '../src/render/openingGpuAdmission.js';
 import { collectFirstFlightLayerDrawables } from '../src/render/latePipelineAdmission.js';
 import { revealSubjectForCompile, revealSubjectWithAncestors } from '../src/render/compilePresentSlice.js';
@@ -858,6 +858,16 @@ test('incomplete plans, partial residency and failed resources cannot accept fli
     assert.notEqual(state.render.requiredPackageAdmission?.status, 'accepted');
     assert.notEqual(state.render.openingFirstPictureReady, true);
   }
+});
+
+test('strict picture failure retains its capture diagnostic for teardown', async () => {
+  const detail = { reason: 'incomplete-plan', blockingReasons: [{ role: 'player', reason: 'no-leaves' }] };
+  const { state } = fixture({ captureOpeningSubmissionPlan: () => {
+    state.render.openingPlanCaptureFailure = detail;
+    return { complete: false };
+  } });
+  await assert.rejects(waitForOpeningFirstPicture(state, 1000), /opening submission plan is incomplete/);
+  assert.equal(state.render.openingFirstPicturePlanFailure, detail);
 });
 
 test('a bounded readiness deadline stops late submission without authorizing flight', async (t) => {

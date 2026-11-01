@@ -21,10 +21,12 @@ import {
 import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 import {
   FULFILLMENT_FIXED_ROUTES,
+  currentStoryInputs,
   planBerthKeepers,
   planFactionPresence,
   presenceServiceForStation,
 } from '../data/factionPresence.js';
+export { currentStoryInputs } from '../data/factionPresence.js';
 import {
   FACTION_BERTHS,
   factionBerthById,
@@ -175,22 +177,6 @@ function factionReps(state) {
     reps[id] = Number(row && row.rep) || 0;
   }
   return reps;
-}
-
-// Exported so the live-sector warm can feed planFactionPresence the exact same story
-// inputs the enter listener does — the warm enumerates the plan hulls without running
-// the spawner.
-export function currentStoryInputs(state) {
-  const story = (state && state.story) || {};
-  const verge = story.verge && typeof story.verge === 'object' ? story.verge : {};
-  const storyFlags = {
-    vergeLayersRevealed: verge.revealed === true,
-    vergeAwake: verge.awake === true,
-    valeGatesRevoked: verge.valeGatesRevoked === true,
-    playerUsedVergeClosureProtocol: verge.playerUsedClosureProtocol === true,
-  };
-  const revocationCount = Array.isArray(verge.revocations) ? verge.revocations.length : 0;
-  return { storyFlags, revocationCount };
 }
 
 function spawnKey(plan) {

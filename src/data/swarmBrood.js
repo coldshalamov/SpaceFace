@@ -26,8 +26,9 @@ import { isSwarmBossWave, swarmBossFor } from './swarmMode.js';
 import { HIVE_ARENA_ID } from '../systems/theHiveArena.js';
 // The late table continues this file's roster clock (foldBroodLatePlan spends mites into it).
 // Read inside functions only — the sibling module already imports this one, so a top-level
-// dereference here would race the cycle.
+// dereference here would race the cycle. The Machine's table keeps the same contract.
 import { SWARM_BROOD_LATE_FAMILIES } from './swarmBroodLate.js';
+import { SWARM_MACHINE_FAMILIES } from './swarmMachine.js';
 // The Bloom's authored pathology windows live in one place; the BROOD_* names below are this
 // engine's aliases of them (values are never restated here).
 import {
@@ -339,6 +340,7 @@ export function swarmBroodNewcomerFor(wave) {
   if (w <= 1) return null;
   return SWARM_BROOD_FAMILIES.find((entry) => entry.fromWave === w)
     || SWARM_BROOD_LATE_FAMILIES.find((entry) => entry.fromWave === w)
+    || SWARM_MACHINE_FAMILIES.find((entry) => entry.fromWave === w)
     || null;
 }
 

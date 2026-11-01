@@ -13,12 +13,16 @@ import * as lifecycleHelpers from '../src/core/sectorEnterDefer.js';
 import { openingLoadPolicy } from '../src/render/openingLoadPolicy.js';
 import { createOpeningLoadingAdmission, observePipelineAdmission, prepareMobileOpeningFirstPicture, waitForOpeningFirstPicture } from '../src/render/pipelineReadiness.js';
 import { createCatalogStationRestore } from '../src/save/catalogStationRestore.js';
+import { createBus } from '../src/core/eventBus.js';
+import { createSimLaneRuntime } from '../src/core/simLaneMain.js';
+import { createDomainDiffer } from '../scripts/lib/simReadModel.mjs';
 const require = createRequire(import.meta.url);
 const { parse } = require(require.resolve('@babel/parser', { paths: [process.env.SPACEFACE_DEPS_ROOT || process.cwd()] }));
 const source = readFileSync(process.env.ENTRY_SOURCE_RENDERER || new URL('../src/render/renderer.js', import.meta.url), 'utf8');
 const ast = parse(source, { sourceType: 'module' });
-let cookNode, pipelineNode, enterNode, guardNode, preflightNode, gpuNode, compileNode, openingCaptureNode, loadingNode, pictureNode, ownerInactiveTouchNode, ownerInactiveTouchCheckNode, ownerActiveAdmissionNode, touchSubmitNode, touchFacadeNode, groupTouchNode, settleTouchManyNode;
+let cookNode, pipelineNode, enterNode, guardNode, preflightNode, gpuNode, compileNode, openingCaptureNode, loadingNode, pictureNode, ownerInactiveTouchNode, ownerInactiveTouchCheckNode, ownerActiveAdmissionNode, touchSubmitNode, touchFacadeNode, groupTouchNode, settleTouchManyNode, admitSubjectNode, unreadyPipelineNode;
 const rendererMethodNodes = new Map();
+const cookStretchNodes = new Map();
 const ownerActiveAdmissionMatches = [];
 function containsOwnedExactTouch(node) {
   if (!node || typeof node !== 'object') return false;
@@ -32,6 +36,11 @@ function containsOwnedExactTouch(node) {
 }
 function walk(node) {
   if (!node || typeof node !== 'object') return;
+  if (node.type === 'VariableDeclarator' && ['restartCookStretchAfterFrame', 'yieldBufferFrame', 'paceCookStretch'].includes(node.id?.name)) {
+    cookStretchNodes.set(node.id.name, node.init);
+  }
+  if (node.type === 'FunctionDeclaration' && node.id?.name === 'appearanceAdmissionHasUnreadyPipeline') unreadyPipelineNode = node;
+  if (node.type === 'VariableDeclarator' && node.id?.name === 'admitSubjectPipelines') admitSubjectNode = node.init;
   if (node.type === 'ObjectMethod' && ['_shadowDepthLight', '_shadowDepthEnabled', 'prepareOpeningFirstPicture'].includes(node.key?.name)) {
     rendererMethodNodes.set(node.key.name, node);
   }
@@ -112,6 +121,71 @@ function deferred() {
   const promise = new Promise(r => { resolve = r; });
   return { promise, resolve };
 }
+
+test('cook stretch charges only the current frame across real and microtask yields', async () => {
+  const expression = (name) => {
+    const node = cookStretchNodes.get(name);
+    assert.ok(node, `missing renderer owner ${name}`);
+    return source.slice(node.start, node.end);
+  };
+  const make = new Function('env', `with (env) {
+    let cookStretchSliceAt = 0, cookStretchDebitAt = 0;
+    const restartCookStretchAfterFrame = ${expression('restartCookStretchAfterFrame')};
+    const yieldBufferFrame = ${expression('yieldBufferFrame')};
+    const paceCookStretch = ${expression('paceCookStretch')};
+    return { yieldBufferFrame, paceCookStretch };
+  }`);
+  for (const advancesFrame of [true, false]) {
+    let time = 0, epoch = 1;
+    const debits = [];
+    const env = {
+      cookNow: () => time, paceEpochNow: () => epoch,
+      yieldBufferBase: async () => { if (advancesFrame) { time += 20; epoch++; } },
+      bufferYieldStats: { count: 0, ms: 0 },
+      pacedFrameSpend: () => 0, PACED_FRAME_BUDGET_MS: 4,
+      notePacedFrameSpend: (value) => debits.push(value),
+    };
+    const owner = make(env);
+    time = 3;
+    await owner.yieldBufferFrame();
+    time += advancesFrame ? 5 : 3;
+    await owner.paceCookStretch();
+    assert.deepEqual(debits, [advancesFrame ? 5 : 6],
+      advancesFrame ? 'prior-frame wait is not charged again' : 'a microtask does not forgive same-frame work');
+  }
+});
+
+test('actual best-effort admission neither touches nor stamps a timed-out compile and retries when ready', async () => {
+  const subject = { userData: {} }, calls = [];
+  let ready = false;
+  const owner = { scene: {} };
+  const values = {
+    state: { mode: 'flight', render: {} }, cam: { obj: {} }, renderer: {},
+    isRetiredRigidOpaqueBatch: () => false,
+    laneWarn: (...args) => { throw args[3] || new Error('unexpected admission warning'); },
+    inFlightSubjectAdmissions: new Map(), pipelineAdmissions: {}, gpuResidencyAdmissions: {},
+    compilePipelineSubject: () => Promise.resolve(ready ? { skipped: false } : { incomplete: true, readinessTimedOut: true }),
+    preparePipelineSubjectResidency: async () => { calls.push('residency'); return { skipped: false }; },
+    markSubjectPipelinesPending: (_subject, pending) => { subject.userData.pipelinesPending = pending; },
+    reattachDetachedSubjectTextures: async () => {}, reattachDetachedSubjectGeometries: async () => {},
+    refillPresentedCompressedUploads: async () => {}, collectStartupTextures: () => [],
+    submitExactSubjectTouch: async () => { calls.push('touch'); },
+    markAuthoredGeologyFallbackAdmitted: () => {},
+    rememberOpeningPreparedLeaves: () => { calls.push('stamp'); },
+    observePipelineAdmission: (promise) => promise,
+  };
+  values.appearanceAdmissionHasUnreadyPipeline = evaluate(source.slice(unreadyPipelineNode.start, unreadyPipelineNode.end), owner, values);
+  const admit = evaluate(source.slice(admitSubjectNode.start, admitSubjectNode.end), owner, values);
+  const pending = await admit(subject);
+  assert.equal(pending.incomplete, true);
+  assert.equal(subject.userData.sfAdmittedOnce, undefined);
+  assert.equal(subject.userData.pipelinesPending, false);
+  assert.deepEqual(calls, []);
+  ready = true;
+  await admit(subject);
+  assert.equal(subject.userData.sfAdmittedOnce, true);
+  assert.deepEqual(calls, ['residency', 'touch', 'stamp']);
+});
 
 function queuedTouchFixture({ detached = false, failTouch = false, serialPacer = true } = {}) {
   const scene = new THREE.Scene(), root = new THREE.Group(); root.visible = false; scene.add(root);
@@ -221,6 +295,7 @@ test('pipeline continuation rejects a retired owner instead of resolving stale r
   let exactTouches = 0;
   const continuation = evaluate(ownerActiveAdmissionCode, owner, {
     admissionOptions: { isActive: () => false },
+    appearanceAdmissionHasUnreadyPipeline: evaluate(source.slice(unreadyPipelineNode.start, unreadyPipelineNode.end), owner, {}),
     cam: { obj: {} },
     ownerInactiveTouchError: errorFactory,
     state: { mode: 'flight', render: {} },
@@ -416,6 +491,56 @@ test('opening plan capture uses the renderer owner when invoked through the rend
   assert.equal(steps.next().value, plan);
   assert.equal(state.render.openingSubmissionPlan, plan);
 });
+test('opening capture retains bounded incomplete or stale identity diagnostics', () => {
+  for (const scenario of ['current', 'replaced', 'stale']) {
+    const stale = scenario === 'stale';
+    const root = new THREE.Group();
+    const leaf = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial());
+    leaf.visible = false; root.add(leaf);
+    const scene = new THREE.Scene(); scene.add(root);
+    const state = { world: { enterSerial: 4, currentSectorId: 'ceres' }, render: {},
+      entities: new Map([[42, { type: 'ship', alive: true, data: { defId: 'ship_test' } }]]) };
+    const owner = { state, _meshes: new Map([[42, root]]), _liveSectorCookGeneration: 7 };
+    const plan = { complete: false, firstPlayablePipelineSet: { complete: false, reason: 'missing-opening-program-census' },
+      roots: [{ id: `uuid:${root.uuid}`, name: 'Hull', role: 'opening-entity-root', blocking: true, drawLeafCount: 0 }],
+      drawLeaves: [], resourceIdentityCensusMatches: false,
+      producerResourceIdentitySets: { geometryBufferIds: ['old'] },
+      resourceIdentitySets: { geometryBufferIds: ['new'] },
+      blockingReasons: [{ rootId: 'player', role: 'player', reason: 'no-leaves' },
+        { role: 'productionBoundary', reason: 'missing-or-unverified-blocking-content-hash' }] };
+    const capture = evaluate(openingCaptureCode, owner, {
+      state, captureLiveSectorCookStale: () => () => stale,
+      *buildOpeningSubmissionPlanSteps(onCandidate) {
+        onCandidate(root, { role: 'opening-entity-root', entityId: 42 },
+          { layers: new THREE.Layers(), frustum: { intersectsObject: () => false, planes: [] } });
+        if (scenario === 'replaced') owner._meshes.set(42, new THREE.Group());
+        if (stale) state.world.enterSerial = 5; return plan;
+      },
+      scene, cam: { obj: { layers: new THREE.Layers() } }, isRetiredRigidOpaqueBatch: () => false,
+      rendererGenerationIsActive: () => true, stampProducerReceipt: () => {},
+      openingSubjectIdentity: () => null, openingCohort: { capture() {}, snapshot: () => ({}) },
+    });
+    capture().next();
+    const detail = state.render.openingPlanCaptureFailure;
+    assert.equal(detail.reason, stale ? 'stale-capture' : 'incomplete-plan');
+    if (stale) assert.deepEqual([detail.expected.enterSerial, detail.actual.enterSerial], [4, 5]);
+    else {
+      assert.equal(detail.emptyBlockingRoots[0].rootId, `uuid:${root.uuid}`);
+      assert.equal(detail.emptyBlockingRoots[0].entityId, 42);
+      assert.equal(detail.emptyBlockingRoots[0].defId, 'ship_test');
+      assert.equal(detail.emptyBlockingRoots[0].selectedStillCurrent, scenario !== 'replaced');
+      assert.equal(detail.emptyBlockingRoots[0].descendants[1].visible, false);
+      assert.equal(detail.emptyBlockingRoots[0].descendants[1].inFrustum, false);
+      assert.deepEqual(detail.emptyBlockingRoots[0].descendants[1].exclusions, ['hidden', 'outside-frustum']);
+      assert.equal(detail.unverifiedBlockingRoots[0].rootId, `uuid:${root.uuid}`);
+      assert.equal(detail.failureReasons[0].role, 'productionBoundary');
+      assert.equal(detail.drawLeafCount, 0);
+      assert.equal(detail.resourceIdentityCensusMatches, false);
+      assert.deepEqual(detail.resourceDifferences.geometryBufferIds.producerOnly, ['old']);
+      assert.deepEqual(detail.resourceDifferences.geometryBufferIds.capturedOnly, ['new']);
+    }
+  }
+});
 function fixture(providers = []) {
   const frames = [], marks = [];
   let now = 0;
@@ -555,6 +680,53 @@ test('actual pipeline normal completion still releases admission', async () => {
   await evaluate(pipelineCode, f.owner, f.values);
   assert.equal(f.state.render.sectorShellAdmission, false);
   assert.equal(f.state.render.firstFlightResidencyHoldUntil, 12);
+});
+
+test('worker sector serial survives event replay until its current cook settles', async (t) => {
+  const f = fixture(), posts = [], bus = createBus();
+  let pending = deferred();
+  let receive, pipeline;
+  f.state.entities = new Map(); f.state.entityList = []; f.state.settings = {};
+  f.state.meta = { seed: 1 }; f.state.tick = 0; f.state.accumulator = 0;
+  f.state.timeScale = 0; f.state.ui = { screenStack: [] };
+  // The main mirror begins without a serial; the worker's current snapshot owns it.
+  delete f.state.world.enterSerial;
+  f.values.compileSectorPipelines = (_sector, _epoch, receipt) => {
+    f.owner._liveSectorCookGeneration++;
+    receipt.generation = f.owner._liveSectorCookGeneration;
+    return pending.promise;
+  };
+  const lane = createSimLaneRuntime({ state: f.state, bus, registry: {}, helpers: {},
+    flags: { lane: 'worker', sab: false, warnings: [] }, clockMode: 'worker-local',
+    channelFactory: () => ({ post: m => posts.push(m), onMessage: fn => { receive = fn; }, terminate() {} }) });
+  t.after(() => lane.close());
+  receive({ kind: 'ready', seq: posts[0].seq, stateTick: 0, domainUpdates: [] });
+  await lane.readyPromise;
+  bus.on('sector:enter', () => { pipeline = evaluate(pipelineCode, f.owner, f.values); });
+  const worker = { world: { currentSectorId: 'ceres', enterSerial: 7 } };
+  const differ = createDomainDiffer();
+  const updates = differ.diff(worker, 1).updates;
+  receive({ kind: 'clockTick', stateTick: 1, simTime: 1 / 60, domainUpdates: updates,
+    events: [{ t: 'sector:enter', p: { sectorId: 'ceres', enterEpoch: 7 }, m: 'flight', es: 7 }] });
+  assert.ok(pipeline, 'the real replay delivered the enter');
+  assert.equal(f.state.world.enterSerial, 7, 'the canonical serial remains after the temporary event shim');
+  pending.resolve({ ok: true });
+  await pipeline;
+  assert.equal(f.state.render.sectorShellAdmission, false, 'the current cook releases its own admission');
+  // An old replay still sees its own serial during dispatch, but must not release
+  // the successor's admission after the authoritative mirror advances.
+  pending = deferred();
+  worker.world.enterSerial = 8;
+  f.state.render.sectorShellAdmission = true;
+  f.state.render.sectorShellAdmissionSerial = 8;
+  receive({ kind: 'clockTick', stateTick: 2, simTime: 2 / 60,
+    domainUpdates: differ.diff(worker, 2).updates,
+    events: [{ t: 'sector:enter', p: { sectorId: 'ceres', enterEpoch: 7 }, m: 'flight', es: 7 }] });
+  assert.equal(f.state.world.enterSerial, 8, 'the successor serial survives old-event replay');
+  pending.resolve({ ok: true });
+  await pipeline;
+  assert.equal(f.state.render.sectorShellAdmission, true, 'old completion cannot release the successor');
+  assert.equal(f.state.render.sectorShellAdmissionSerial, 8);
 });
 
 for (const [label, supersede] of [

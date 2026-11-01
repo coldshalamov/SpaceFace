@@ -1,7 +1,7 @@
 <!-- LIFETIME: ACTIVE_PROGRAM -->
 # ORRERY — the SpaceFace interface, all the way through
 
-**Status: THE frontend authority from 2026-09-22 (late).** Owner, verbatim, the same evening:
+**Historical direction (2026-09-22, late; amended 2026-10-30).** Owner, verbatim, the same evening:
 
 > *"it should be based on modern game HUDs in 2026 … they almost never use anything recognizably
 > css, they custom make a lot of SVG assets, they create a work of art out of the frontend of their
@@ -11,89 +11,101 @@
 > unfolding and spinning elements, it has to feel like you're in some control cockpit in the future,
 > it can't read like basic web design … make a plan all the way through … and execute the plan."*
 
-This document is that plan. It replaces the per-screen restyle loop (Field Hardware → Deckplate →
-One Photograph → Printed and Lit), which kept producing a better-painted version of the same boxes.
-What survives from those programs is listed in §11; everything else here outranks them.
+This document preserves the original visual direction and screen-by-screen ideas. The 2026-10-30
+owner amendment below supersedes its retired recipes; current Finish assignments and player-facing
+requirements govern implementation. The earlier Field Hardware → Deckplate → One Photograph →
+Printed and Lit sequence is historical context, not a competing workflow.
+
+> ### AMENDMENT 2026-10-30 (owner) — "less sloppy, more organized": read this before §2–§4
+>
+> Owner, same day, reviewing the live station (Bar, Market): the screens read as *a bunch of random
+> elements slapped together* — no borders, monochrome buttons, arcs everywhere, tiny tracked
+> low-resolution caps, truncated and lopsided text, and a credits figure that does not look like a
+> money amount. Several of ORRERY's absolutes below produced exactly that, and they are **retired**.
+> Where this block and a later section disagree, **this block wins**. The current visual guidance and
+> review prompts are in [`STATION_STANDARD.md`](./STATION_STANDARD.md). Its examples are starting points;
+> screen purpose, readable content, usable controls, and accessibility take priority over a recipe.
+>
+> | Was (§) | Now |
+> |---|---|
+> | "No rectangles with borders, anywhere, ever" (§3.2) · "Glass never has a border" (§3.1) | Hairlines and ruled panels are valid ways to organize content when they improve scanning. Fake *materials* (bevels, brushed metal, screws, LED lenses) remain distinct from simple structure. |
+> | Quantities are arcs; choices ≤ 9 sit on a ring (§3.2) | Bars, figures, steppers, lists, or arcs can fit different content. Reserve a ring for cases where its shape helps explain the value or interaction. |
+> | Tables become ladders; "small verbs are `› WORD PRICE` lines, never pills" | Use a table for genuinely tabular information and controls that look and behave pressable. Choose the layout and button hierarchy that make the screen's actions clear. |
+> | Labels: caps, 12 px, tracking .10–.18em, `wdth` 62–112 (§3.4) | Prefer legible sentence-case labels, modest tracking, and type sizes suited to the viewport. Keep the 12 px floor enforced by `check-type-floor.mjs`; accessibility and actual readability govern above that floor. |
+> | One thin hero numeral, Archivo 250 (§3.4) | Format money and quantities so units and magnitudes are immediately clear; tabular figures and fixed columns are useful defaults. |
+> | Truncate with an ellipsis | Do not hide names or statuses when they are needed to act. Wrap or provide a clear full-text affordance. |
+>
+> **Retained as visual language, applied with context:** warm bone at rest, amber for the Hand or a
+> primary action, red for threat, ice for data in motion, produced art for objects, reduced-motion and
+> flash behavior, no `backdrop-filter` in flight, no first-person visor framing, and mono for figures
+> rather than ordinary labels. `src/ui/orrery/stationStandard.js` is used by current station surfaces;
+> that is not a claim that all screens or states have migrated or been reviewed.
 
 ---
 
 ## 1. The idea in one paragraph
 
 SpaceFace is a game about **mass, momentum and orbit** — you fling rocks, swing ships on a tether,
-and trade across a belt that turns. So the interface is an **orrery**: a working astronomical
-instrument made entirely of **light**. Every screen is an instrument that powers up when you arrive:
-rings draw themselves and spin to rest with real inertia, a single amber **Hand** swings to whatever
-you have chosen, scales tick in, telemetry decrypts, numbers roll like mechanical counters and
-settle. Nothing is a box. Information sits on **rings, arcs, scales and leader lines** floating over
-deep glass; objects are **produced art** (rendered hulls, painted stations, cut crests). It should
-feel like the flight deck of a ship that was designed by people who care — clean, expensive, alive,
-and impossible to mistake for a web page.
+and trade across a belt that turns. The interface can borrow from an astronomical instrument:
+readings, routes, and selections may use rings, beams, scales, or motion when those forms clarify
+the information. Produced art and considered typography help the world feel authored. These are
+design possibilities, not requirements that every screen use the same geometry or choreography.
 
-**The signature:** *the Hand.* One amber orrery arm, the only warm light in any screen, that points
-at your current choice and swings (spring, overshoot, settle) when the choice changes. The title
-menu, pause, the station's services, the crucible mode dial, the radial menus, the new-game hull
-carousel — the Hand is how SpaceFace says "this one". Players will remember it.
+**A recurring motif:** *the Hand* is an amber pointer that can identify a current choice. Use it
+where a pointer improves orientation; it is not required on every screen or the only valid way to
+show selection.
 
-## 2. What we are measured against
+## 2. Visual references from the original brief
 
-The bar is a screenshot that could sit beside these without embarrassment:
+The original brief looked to these games for inspiration. Their motifs are examples to adapt to
+SpaceFace's player needs, not a visual scorecard or a requirement to match their style:
 
-| Reference | What we take | What we do not take |
+| Reference | Possible inspiration | Avoid when it harms clarity or fit |
 |---|---|---|
 | **Armored Core VI** (garage, HUD) | Thin, bright vector lines; parts assembling on screen with mechanical motion; huge thin numerals; angled leader lines | Its grey-on-grey monotony |
 | **Death Stranding 2** | Holographic calm; lines of light as the only material; elegant reveals; generous negative space | First-person framing |
-| **Arknights: Endfield** | Industrial precision; technical scales and callouts; ruthless grid discipline; everything labelled like equipment | Square bordered panels |
+| **Arknights: Endfield** | Industrial precision; technical scales and callouts; considered alignment | Dense layouts where labels or grouping become hard to scan |
 | **Destiny 2 / Marathon** (Bungie) | Typographic confidence — a few fonts at dramatic scale contrast; cursor-driven light; kinetic graphic design | Marathon's "fontslop" noise — we keep ONE display voice |
 | **Zenless Zone Zero / Metaphor: ReFantazio** | Menus as choreography: every transition authored, nothing just "appears" | Comic-sticker tone |
 | **Helldivers 2** | Radial/stratagem input as a physical ritual; diegetic confirmation | Military terminal skin |
 | **Elite Dangerous / EVE Photon** | Density that stays readable; orbital maps that feel like instruments | Orange-on-black wall of text |
 
-The owner's standing rejections stay rejected (they are why earlier passes failed): **cyan wireframe
-boxes; uppercase monospace labels with heavy tracking; cramped floating panels with the scene
-bleeding round them; shadcn/neutral "cards"; any CSS impersonation of a material (bevels, brushed
-metal, LED lenses, screws); first-person visor/windshield framing (screen-edge arcs around the
-viewport, helmet avatars).** Rings and arcs in ORRERY are always *instruments anchored to content*
-(a hull, a target, a menu, the radar) — never a frame around the player's view.
+Avoid visual treatments that obscure information or imitate physical materials with decorative CSS
+bevels, screws, or LED lenses. Rings and arcs can anchor information to content, but panels, tables,
+and familiar controls are judged by how well they organize the particular screen. Avoid framing the
+viewport like a first-person visor unless a screen's purpose calls for it.
 
 ## 3. The language
 
-### 3.1 Light is the only material
-- **Lines** are emitted, not printed: a 1 px core (1.5 px when active, 3 px for gauge fills) plus a
-  bloom. Crisp at any DPI (SVG, `vector-effect: non-scaling-stroke`). **The bloom is geometry, not a
-  filter:** a second, wider stroke of the same path (4–6 px, 18–30 % alpha) drawn under the core.
+### 3.1 Light as a visual motif
+- **Lines** can read as emitted light. SVG strokes and a wider, softer second stroke are one way to
+  create that effect; choose weights and contrast for the actual display size.
   A live CSS/SVG `filter` (blur, drop-shadow) is allowed on menus over a paused world and **never in
   flight** — on the owner's iGPU a per-frame filter on HUD vectors would spend the whole HUD budget.
-- **Glass** is the only surface: a deep tint (`--dp-glass`) with `backdrop-filter: blur(18px)
-  saturate(1.15)` **only where the world behind is paused or static**, edges dissolved by a gradient
-  mask. **Glass never has a border.** Its edge is implied by corner ticks, a scale, or nothing.
-- **Depth** comes from parallax (3 layers: far ring field, instrument plane, near callouts) and from
-  depth-of-field — when a menu opens over the world, the world scales to 0.985, blurs and dims.
+- **Glass** is one possible surface treatment: a deep tint (`--dp-glass`) with `backdrop-filter` only
+  where the world behind is paused or static. A border, rule, or other edge treatment may be used
+  when it improves grouping and remains readable. Avoid live-world blur that harms rendering.
+- **Depth** can come from layering, parallax, or selective focus when those effects help orient the
+  player and remain within the surface's rendering budget.
 
-### 3.2 Geometry: circles, arcs and scales
-- Anything that shows *a quantity* is an **arc** (gauges, cooldowns, standing, progress, timers).
-- Anything that shows *a set of choices* sits on a **ring or arc rail** when there are ≤ 9 of them,
-  on a **ladder** (a vertical scale with tick marks, items hanging off it) when there are more.
-- Anything that shows *a relationship* is a **beam**: a line of light between two things, with a
-  travelling pulse showing direction (routes, dependencies, cargo flow, a contract's origin → berth).
-- Anything that labels *a point on an object* is a **leader line** with an elbow at 45°, laid out by a
-  collision-free solver (labels never touch dots, connectors or each other).
-- Straight edges appear only as **scales** (rulers with ticks) and the owner's **45° cut** on the one
-  primary key (§3.6). No rectangles with borders, anywhere, ever. Tables become ladders or
-  instruments; a genuinely tabular screen (the market exchange) uses a borderless ladder table with
-  a light cursor and pictograms.
+### 3.2 Geometry: choose the form that explains the content
+Rings, arcs, beams, scales, ladders, leader lines, tables, and panels are all available forms. Use
+the one that makes the information easiest to scan and the action easiest to understand. A ring can
+make a circular relationship visible; a table can make comparisons easier; a scale can make ordered
+values legible. Avoid adding geometry or motion without a clear purpose.
 
-### 3.3 Colour: warm light, one hand, one alarm
+### 3.3 Colour and meaning
 ORRERY adds to the **Deckplate token root** (`--dp-*`); it does not start a fifth token system.
 Existing Deckplate tokens are reused wherever they already mean the right thing.
 
-| Token | Value | Meaning — and the only meaning |
+| Token | Value | Earlier intended use |
 |---|---|---|
 | `--dp-void` (new) | `#05070A` | the space behind the instrument |
 | `--dp-glass` (new) | `rgb(8 11 16 / .62)` | the instrument's glass |
-| `--dp-ink` / `-dim` / `-mute` (existing) | `#E8E2D4` / `#B7B4A6` / `#B0AEA6` | words; **and the rest-state light of every ring, scale and rule** (at 14–40 % alpha) |
+| `--dp-ink` / `-dim` / `-mute` (existing) | `#E8E2D4` / `#B7B4A6` / `#B0AEA6` | words and supporting structure where these values suit the content |
 | `--dp-phos` (existing) | `#DFEEFF` | readings — the numbers the world tells you |
-| `--dp-ice` (new) | `#8FCBFF` | **data in motion only**: a beam's travelling pulse, the lattice's event ripple, a route being computed. Never a structural line, never a ring at rest, never a box. **One extension (2026-10-04):** the owner asked for a speed gauge whose colour shifts as speed rises. The Speed Dial answers with a blue-shift ramp — bone → phos → ice (the reference gate) → azure → violet (V-MAX) — because speed is the purest data in motion. The binding rule is that the ramp never warms toward amber or red (`test/orrery-speed-dial.test.mjs` pins it); the exact hues are the implementer's choice (`SPEED_RAMP` in `src/ui/orrery/speedDial.js`) and the frontend lane may revise them. |
-| `--dp-lamp` / `-hot` / `-dim` (existing) — alias `--dp-hand` | `#F2B950` / `#FFD98C` / `#8A6B3A` | **the Hand**: yours, chosen, actionable. At most one amber *thing* leads each screen |
+| `--dp-ice` (new) | `#8FCBFF` | A useful accent for information in motion, such as a travelling pulse or a route being computed. The Speed Dial uses a blue-shift ramp; its exact hues are implementation-specific. |
+| `--dp-lamp` / `-hot` / `-dim` (existing) — alias `--dp-hand` | `#F2B950` / `#FFD98C` / `#8A6B3A` | Amber can identify a selected item or emphasize an important action; use it where it helps hierarchy |
 | `--dp-danger` (existing) | `#FF5038` | **threat only**: hostile, incoming, loss, irreversible |
 
 **One extension (owner, 2026-10-04): the map's ground and the minimap's contacts carry colour.** The owner
@@ -107,68 +119,46 @@ the ground (Meridian's gold → yellow-lime, Reach's crimson → rose, Drift/Pit
 crests and the rest of the interface keep their authored colours. Glow is geometry (gradient washes and
 pre-rendered sprites), never a filter in flight.
 
-**Why the rest light is warm bone, not blue.** The owner's recorded rejection is "hard cyan
-wireframe on black reads as generic AI sci-fi". Blue hairlines at rest would be that look however
-beautifully they move. ORRERY's instrument light is the warm white of the station practicals the
-3D world is lit by; the cold note appears only when information is *moving*. The Phase 0 direction
-proof (§7) shoots the composed screen both ways once before the library commits — bone-at-rest is
-the default, and blue-at-rest only wins if the critic scores it clearly higher and it does not read
-as the rejected look.
+**Color is contextual.** The owner favored warm bone for resting interface structure, amber for a
+selected or primary action, red for threat, and ice for information in motion. Use those meanings
+consistently where they apply, while keeping text, status, and controls clear in context.
 
-The critics' 2026-09-18 note (amber was spent on everything, so danger had no channel) is resolved
-by decree: red is reserved for threat; amber for the Hand and the one primary verb; bone carries all
-ambient instrument light.
+An earlier review noted that using amber for too many unrelated elements made threat harder to
+distinguish. The current owner guidance favors warm bone for resting structure, amber for a selected
+or primary action, and red for threat; apply those meanings in context rather than as a one-accent
+rule.
 
 ### 3.4 Type
-Three faces already vendored (offline-safe): **Archivo** (variable width 62–125, weight 100–900),
-**Instrument Sans**, **Spline Sans Mono**.
-- **Display:** Archivo, width 125, weight 800, tight tracking (−0.01em). Screen titles, hero words.
-- **Numerals:** Archivo, width 100, **weight 250**, tabular, at hero sizes (64–144 px). Thin, huge,
-  bright numerals are the single most "expensive" typographic signal in modern HUDs. Inside compact
-  rings or dials (`≤48 px`), condense width (`"wdth" 76–86`) so multi-digit fractions (`26/46`) sit
-  cleanly inside the aperture without colliding with the arc stroke.
-- **Labels:** Archivo, width 112, weight 600–650, caps, tracking `.10–.18em`, **12 px minimum**
-  (`--dp-ink-dim`). **Nothing renders below `12 px`, ever** (`node scripts/check-type-floor.mjs`;
-  never write `10–11.5 px` or un-clamped sub-12px `em` rules). When a narrow viewport (`≤1100 px`)
-  squeezes a label column, condense `Archivo`'s width axis (`"wdth" 92–100`) and tighten tracking
-  (`.01–.08em`) rather than dropping `font-size` below `12 px`. (Not monospace — the owner rejected
-  mono labels.)
-- **Body:** Instrument Sans 400/500, 14–17 px, line-height 1.45, `--dp-ink`.
-- **Codes only** (seeds, build codes, share codes): Spline Sans Mono.
-- **Structural numbering (`01 / 02 / 03`):** Only number ladder rungs when the items are a genuine
-  sequence (e.g., Credits reel sections or ordered story chapters). Never prefix non-sequential
-  category tabs (e.g., Settings `Audio / Video / Gameplay / Access / Controls`) with `01..05` — it
-  wastes ~30 px of horizontal track width and reads as templated AI chrome.
-Scale contrast is the tool: a screen pairs one 96 px thin numeral with 12 px labels, not five
-medium sizes.
+The project includes **Archivo**, **Instrument Sans**, and **Spline Sans Mono**. Their existing roles
+can provide a useful starting point: display type for headings, a readable body face, and mono for
+codes or data where alignment helps. Choose size, weight, case, and spacing for the content and
+viewport. Keep text readable and retain the project type-floor check; it is a floor, not a target
+size or a prescribed label style. Format money and quantities so units and magnitudes are clear.
 
 ### 3.5 Motion has mass
-SpaceFace is a physics game, so its interface moves like objects with mass — springs, never
-easing curves on transforms.
+Motion can echo the game's physical character when it helps explain a state change. Springs are one
+useful option; use other transitions or still layouts when they communicate more clearly or cost less.
 | Preset | Spring (stiffness / damping, mass 1) | Use |
 |---|---|---|
 | **swing** | 170 / 16 (slight overshoot) | the Hand, radial selection, carousels |
 | **settle** | 260 / 28 (no overshoot) | panels arriving, rings coming to rest |
 | **snap** | 420 / 38 | focus, hover, press feedback |
 | **drift** | linear 0.4°/s | idle rotation of outer rings |
-Arrival choreography (every screen): **0 ms** glass fades in + world DOF → **60 ms** rings draw
-(stroke-dashoffset, 420 ms) and spin in from −30° with *settle* → **180 ms** scales tick in (28 ms
-stagger) → **240 ms** labels decrypt (220 ms) → **300 ms** numerals roll to value → **360 ms** the
-Hand swings to the current choice. Leaving is the reverse in 180 ms. **Reduced motion:** every
-state is reached instantly; drift and beams stop; decrypt and rolls resolve at once. This is a hard
-gate, not a nicety (existing `motionReduce` + the OS hint, asked once — PQ-210.07).
+Arrival choreography and the spring values above are examples from an earlier design pass, not
+timing requirements. Respect the user's reduced-motion setting and ensure important state remains
+clear without animation.
 
-### 3.6 The one primary verb
-The owner's lamp survives as ORRERY's only filled shape: the **Lamp Key** — amber field, dark ink,
-one 45° cut top-right, a slow sheen that crosses it every 6 s, a ripple ring on press, and for an
-irreversible verb a **hold ring** (press and hold; an arc fills round the key; release early to
-cancel). One Lamp Key per screen at most.
+### 3.6 Make the primary action clear
+The **Lamp Key** is an available treatment for a prominent action. Use a clear hierarchy and an
+appropriate control for the action; irreversible actions need confirmation or another suitable
+protection, but neither a particular shape nor one-action-per-screen rule is required.
 
-## 4. The ORRERY library — the showpiece elements
+## 4. The ORRERY library — reusable examples
 
-The 2020s interface vocabulary (Magic UI, Aceternity, React Bits, Motion Primitives, and the game
-interfaces in §2) translated into instruments. **Every element exists once, in the library, with a
-showcase entry. Screens compose; screens never hand-roll chrome.** That rule is what stops the drift.
+The library collects reusable interface elements from the original ORRERY direction. Reuse a
+component when it fits the screen and preserves its behavior; a screen may use another pattern when
+that better serves its purpose. The catalogue is a reference, not a required inventory or visual
+acceptance checklist.
 
 | # | Element | Web/game lineage | In SpaceFace it is… | Used on |
 |---|---|---|---|---|
@@ -181,9 +171,9 @@ showcase entry. Screens compose; screens never hand-roll chrome.** That rule is 
 | 7 | **Leader Callout** | AC6 part callouts | elbowed leader + label, placed by a collision-free solver | shipworks jig, codex plates, hull hotspots, tutorials |
 | 8 | **Scale** | Endfield rulers | a ruled line with major/minor ticks and floating value cursor | speed tape, sliders, timelines, ladders |
 | 9 | **Ladder** | list → instrument | a vertical scale; items hang off ticks; a light cursor rides it | long lists: commodities, contracts, codex, saves |
-| 10 | **Lamp Key** | Shimmer / Shine / Ripple button | the one primary verb: amber, 45° cut, sheen, ripple, optional hold ring | one per screen |
+| 10 | **Lamp Key** | Shimmer / Shine / Ripple button | one possible treatment for an emphasized action; optional hold ring | where it fits the screen |
 | 11 | **Hold Ring** | Destiny hold-to-confirm | an arc fills round a key while held | undock with risk, sell ship, abandon run, overwrite save |
-| 12 | **Glass** | Glassmorphism done right, Progressive Blur | borderless tinted blur, edges dissolved progressively | behind text over the world |
+| 12 | **Glass** | Glassmorphism done right, Progressive Blur | tinted blur with contextual edge treatment | behind text over the world |
 | 13 | **Spotlight** | Magic Card, Spotlight | the cursor carries a soft inspection light across glass and rings | all menus (off under reduced motion) |
 | 14 | **Sensor Lattice** | Flickering Grid, Interactive Dot Pattern | a canvas dot field that brightens around the cursor and pulses on events | chart, codex, tech tree, loading |
 | 15 | **Perspective Floor** | Retro Grid | a lit receding grid floor with a horizon glow | crucible door, results, sandbox |
@@ -246,12 +236,16 @@ Real objects are produced art. Nothing below is drawn with CSS.
 Every generated image is kept with its prompt, seed/model and date in a manifest beside it
 (`assets/ui/generated/<set>/manifest.json`), sized for display at 2×, WebP.
 
-## 6. Every screen
+## 6. Screen ideas
+
+The following compositions record design intent from the original pass. Treat them as options to
+adapt to the current screen, player task, and implementation; none of the named shapes or effects is
+mandatory. Preserve useful information hierarchy and controls even when changing the visual form.
 
 Each screen has a **hero instrument** — the thing its screenshot is remembered by — so screens share
 a grammar without looking alike.
 
-### Flight (always on)
+### Flight
 - **The Cluster** (bottom-left, one instrument, replacing ~8 boxes): the hull's top silhouette at
   the centre of a ring stack — shield (outer), armour, hull (inner) as Arc Gauges; energy and heat as
   two opposed arcs; speed as the **Speed Dial** (`speedDial.js`, upper-left of the Cluster): 50 lit
@@ -340,11 +334,12 @@ inspector Unfolds from the chosen body with its station art.
 
 ## 7. Build order
 
-Each phase ends only when its gates (§8) pass. Phases follow the demo path.
+These phases describe the original rollout plan. Apply the current Finish assignment and its player-facing
+done condition; §8 offers relevant verification ideas, not universal gates.
 
 | Phase | Delivers | Why first |
 |---|---|---|
-| **0a Direction proof** | `src/ui/orrery/` core (tokens, motion, svg, text), the elements the flight HUD needs (Orbit Ring, the Hand, Arc Gauge, Counter, Decrypt Text, Scale, Radial Menu, Signal Toasts, Threat Channel, Lock Ring), the showcase page + bench shot, **and the composed flight HUD** — shot, critic-scored ≥ 8/10 against §2, bone-at-rest vs blue-at-rest decided on the real screen | a library no one has seen composed is how drift starts; the flight HUD is seen for the whole demo and is overlapping today |
+| **0a Direction proof** | `src/ui/orrery/` core (tokens, motion, svg, text), the elements the flight HUD needs (Orbit Ring, the Hand, Arc Gauge, Counter, Decrypt Text, Scale, Radial Menu, Signal Toasts, Threat Channel, Lock Ring), the showcase page + bench shot, **and the composed flight HUD** — inspect the real screen and retain what serves its play purpose; bone-at-rest vs blue-at-rest is a design choice | a library no one has seen composed is how drift starts; the flight HUD is seen for the whole demo and is overlapping today |
 | **0b Library complete** | the remaining elements (fx canvases, beams, carousel, tilt, dock rail, lens, scroll reveal, warp, bursts), the guard test | every later screen composes from it |
 | **1 Flight HUD finish** | Objective tape, Radar Orrery, encounter radial, comms Waveform, crucible layer, perf + reduced-motion gates | the rest of flight |
 | **2 First impression** | Emblem, title, loading, pause, new game (+ 42 hull renders) | the first 30 seconds |
@@ -357,57 +352,57 @@ Each phase ends only when its gates (§8) pass. Phases follow the demo path.
 Asset production runs in parallel with code from Phase 0 (it is mostly waiting on renders and
 generations).
 
-## 8. Gates — how a phase is "done"
+## 8. Verification guidance
 
-1. **Bench shots** at 1920×1080 and 1366×768 (`node scripts/ui-bench.mjs --shot=<id>`), opened and
-   looked at, plus a short motion capture of the arrival choreography for the hero instrument.
+1. **Inspect the relevant screen and states** (`node scripts/ui-bench.mjs --shot=<id>` can help). Choose
+   viewports and captures that answer the change in question; no fixed screenshot count applies.
 2. **Legibility**: `node scripts/ui-contrast.mjs` — every reading ≥ 4.5:1 on composited pixels.
 3. **Every control works**: `--walk`; keyboard and gamepad reach everything; focus is visible.
-4. **Critic** (from Phase 0a on): an independent agent scores the shots against §2's references on six axes — *clean,
-   expensive, non-generic, coherent, alive, legible* — bar **8/10, no axis below 7**. Below bar means
-   iterate on structure, not paint.
+4. **Review**: use independent feedback to identify concrete issues in comprehension, control use,
+   accessibility, and polish. There is no numeric score or score threshold; feedback informs the change.
 5. **Performance** on the owner's iGPU class: menus hold 60 fps; the flight HUD ≤ 0.8 ms/frame.
 6. **Reduced motion**: every screen reaches every state instantly with motion off.
-7. **Guard** (`test/ui-orrery-guard.test.mjs`, ratcheting): screen code may not declare borders,
-   border-radius cards, box-shadow panels or raw `<table>` chrome outside `src/ui/orrery/`; every
-   library element has a showcase entry; the no-material-imitation guard stays.
+7. **Visual-system checks**: keep the no-fake-materials guidance and useful library coverage. Do not
+   treat borders, panels, tables, or familiar controls as defects solely by their form; judge whether they
+   serve the screen and remain usable.
 
-## 9. What must not happen again
+## 9. Lessons from the original rollout
 
-- **Restyling boxes.** If a screen still has its old boxes after its phase, the phase is not done.
+These notes describe issues encountered during the 2026 rollout. Use them as prompts to check for
+actual problems; they are not universal implementation or review rules.
+
+- **Unfocused restyling.** A visual change should improve a concrete player-facing need, rather than
+  reproduce a previous screen's treatment by default.
 - **A second system.** ORRERY lives on the Deckplate token root; old kit/fh/orbital sheets are
   retired screen by screen as each screen moves, and deleted when nothing references them.
 - **Effects without meaning.** Every element in §4 has an in-fiction job. A beam shows a real
   relationship; a counter rolls because the number changed; the Hand points at a real choice.
 - **Effects that cost the game.** Motion is budgeted; FX canvases pause off-screen; flight gets no
   menu FX.
-- **Relaying a lane's "done".** Every agent's output is re-shot and looked at by the lead.
+- **Unverified changes.** Use the check that answers the current claim; a screenshot is useful when
+  it resolves a visual question, not as a fixed ritual.
 
-## 10. Execution notes
+## 10. Implementation notes from the original rollout
+
+These notes record useful ownership and migration patterns from that work; current Finish ownership
+and assignment instructions take precedence.
 
 - Screens keep their controllers, data and bindings; ORRERY replaces their view templates and
   styles. Tests that pin behaviour stay; tests that pin old markup are updated to the new contract in
   the same commit, with the reason.
-- Parallel work: once Phase 0 lands, screen phases can run as separate agents, one screen family
-  each, composing only library elements; the lead reviews every shot.
+- Screen families can be worked on independently when path ownership is clear and shared interfaces
+  are coordinated.
 - Codex image generation: `codex exec -m gpt-5.5 -c model_reasoning_effort=low --skip-git-repo-check
   -s workspace-write "<prompt> … save as <file>"` in an asset folder; transparent backgrounds work
   (proven 2026-09-22). Generate in grids when a set must match, then cut.
 - Hull renders: the headless Blender script (session scratch `render_hull.py`, to be moved to
   `tools/renders/render_hull.py`) — hero/side/top, collision shells hidden, marks projected.
 
-## 11. What survives from earlier programs
+## 11. Historical notes from earlier programs
 
-**What the last program got wrong, so no one repeats it.** "Printed and lit" (2026-09-22) read the
-owner's "no CSS pretending to be materials" as "flat and thin": it stripped fills, bevels *and*
-detail until the owner said the detail was disappearing and quality was going backwards. No fake
-materials is not the same as flat. ORRERY's depth comes from **light, glass, parallax, motion and
-produced art** — richer than before, never plainer.
-
-- The owner law **no CSS material imitation** (2026-09-22) and its guard.
-- The **Deckplate token root** as the one token system (ORRERY extends it).
-- The **Lamp Key** (amber, dark ink, 45° cut) as the one primary verb.
-- **Produced art for objects**: hull renders, portraits, commodity pictograms already made.
-- The **bench** (`ui-bench`), **contrast** (`ui-contrast`) and **walk** tooling.
-- The demo defect ledger (`design/program/DEMO_READINESS_2026-09-20.md` §6) — rows on screens that
-  ORRERY rebuilds close when the rebuilt screen passes its gates.
+The September 2026 rollout learned that removing fake material effects does not require flattening
+the interface or removing useful detail. Produced art, the shared Deckplate token system, and the
+Lamp Key are part of the project's visual history; use the key where it clarifies an action rather
+than treating its old shape as mandatory. The `ui-bench`, `ui-contrast`, and control-walk tools can
+answer relevant review questions. This section's former phase/ledger workflow is not current; the
+Finish Program defines today's assignments and acceptance checks.

@@ -76,6 +76,125 @@ function installSave() {
 
 const tick = (ms = 20) => new Promise((resolve) => setTimeout(resolve, ms));
 
+function profileOwner() {
+  return { ...save, state: { settings: {}, save: {}, meta: {}, simTime: 1 }, bus: { emit() {} },
+    _sharedStoreMirrorHealthy: true, _sharedStorePatch: null, _sharedStoreFlushTimer: null,
+    _sharedStoreMirrorWaiters: [], _sharedStoreMirrorPending: new Set(), _sharedStoreMirrorGeneration: 1,
+    _runEpoch: 1, _restoreSequence: 1, _profileMirrorDirty: null };
+}
+
+test('failed profile mirror joins a later real save and is retried by explicit quit drain', async () => {
+  const storage = makeStorage(), globals = installGlobals({ storage });
+  const puts = [];
+  let fail = true;
+  globalThis.fetch = async (_url, options) => {
+    puts.push(JSON.parse(options.body).keys);
+    return fail ? { ok: false, status: 500 } : { ok: true };
+  };
+  const owner = profileOwner();
+  try {
+    assert.equal(owner._writeProfileSettings(), true);
+    await tick();
+    const profile = storage.getItem('sf.settings.profile.v1');
+    assert.equal(owner._profileMirrorDirty, profile);
+    fail = false;
+    owner._publishSaveResult('quick', { savedAt: 'now' }, { ok: true, mirrorPatch: { 'sf.save.quick': 'save' } }, { ok: true, slot: 'quick' });
+    assert.equal(await owner._lastSaveDurability, true);
+    assert.equal(puts.at(-1)['sf.settings.profile.v1'], profile);
+    assert.equal(owner._profileMirrorDirty, null);
+    fail = true;
+    assert.equal(owner._writeProfileSettings(), true);
+    await tick();
+    const latest = storage.getItem('sf.settings.profile.v1');
+    fail = false;
+    assert.equal((await owner.drainSharedStoreWrites()).ok, true);
+    assert.equal(puts.at(-1)['sf.settings.profile.v1'], latest);
+    assert.equal(owner._profileMirrorDirty, null);
+  } finally { globals.restore(); }
+});
+
+test('older failed profile cannot overtake or clear newer local profile', async () => {
+  const storage = makeStorage(), globals = installGlobals({ storage });
+  const calls = [];
+  globalThis.fetch = (_url, options) => new Promise((resolve) => calls.push({ keys: JSON.parse(options.body).keys, keepalive: options.keepalive, resolve }));
+  const owner = profileOwner();
+  try {
+    owner.state.settings.uiScale = 1;
+    assert.equal(owner._writeProfileSettings(), true);
+    await tick();
+    owner.state.settings.uiScale = 1.4;
+    assert.equal(owner._writeProfileSettings(), true);
+    const newest = storage.getItem('sf.settings.profile.v1');
+    await tick();
+    assert.equal(calls.length, 1, 'profile writes stay serialized');
+    assert.equal(calls[0].keepalive, true, 'the first small profile write can outlive the page');
+    calls[0].resolve({ ok: false, status: 500 });
+    await tick();
+    assert.equal(owner._profileMirrorDirty, newest);
+    assert.equal(calls.length, 2);
+    assert.equal(calls[1].keys['sf.settings.profile.v1'], newest);
+    calls[1].resolve({ ok: true });
+    await tick();
+    assert.equal(owner._profileMirrorDirty, null);
+  } finally { globals.restore(); }
+});
+
+test('a stale run profile completion does not mutate current dirty or mirror status', async () => {
+  const storage = makeStorage(), globals = installGlobals({ storage });
+  let release;
+  globalThis.fetch = () => new Promise((resolve) => { release = resolve; });
+  const owner = profileOwner();
+  try {
+    assert.equal(owner._writeProfileSettings(), true);
+    await tick();
+    const original = owner._profileMirrorDirty;
+    owner._runEpoch += 1;
+    owner._sharedStoreMirrorHealthy = false;
+    release({ ok: true });
+    await tick();
+    assert.equal(owner._profileMirrorDirty, original);
+    assert.equal(owner._sharedStoreMirrorHealthy, false);
+  } finally { globals.restore(); }
+});
+
+test('a confirmed store-less profile remains local without a dirty retry', async () => {
+  const storage = makeStorage(), globals = installGlobals({ storage });
+  globalThis.fetch = async () => ({ ok: false, status: 404 });
+  const owner = profileOwner();
+  try {
+    assert.equal(owner._writeProfileSettings(), true);
+    await tick();
+    assert.ok(storage.getItem('sf.settings.profile.v1'));
+    assert.equal(owner._profileMirrorDirty, null);
+    assert.equal((await owner.drainSharedStoreWrites()).ok, true);
+  } finally { globals.restore(); }
+});
+
+for (const mixed of [false, true]) {
+  test(`drain ${mixed ? 'does not hide a failed mixed save patch' : 'accepts a recovered profile-only failure'}`, async () => {
+    const storage = makeStorage(), globals = installGlobals({ storage });
+    globalThis.location = { protocol: 'http:', origin: `http://profile-drain-${mixed}` };
+    const calls = [];
+    globalThis.fetch = (_url, options) => new Promise((resolve) => calls.push({ keys: JSON.parse(options.body).keys, resolve }));
+    const owner = profileOwner();
+    try {
+      assert.equal(owner._writeProfileSettings(), true);
+      if (mixed) owner._queueSharedStoreMirror({ 'sf.save.quick': 'local save bytes' });
+      const drain = owner.drainSharedStoreWrites();
+      await tick();
+      assert.equal(calls.length, 1);
+      assert.equal(Boolean(calls[0].keys['sf.save.quick']), mixed);
+      calls[0].resolve({ ok: false, status: 500 });
+      await tick();
+      assert.equal(calls.length, 2, 'drain retries only the dirty profile at this boundary');
+      assert.deepEqual(Object.keys(calls[1].keys), ['sf.settings.profile.v1']);
+      calls[1].resolve({ ok: true });
+      assert.equal((await drain).ok, !mixed);
+      assert.equal(owner._profileMirrorDirty, null);
+    } finally { globals.restore(); }
+  });
+}
+
 test('a local save receipt waits for the shared mirror and failure preserves local bytes', async () => {
   const previous = { location: globalThis.location, fetch: globalThis.fetch, localStorage: globalThis.localStorage };
   const storage = makeStorage();

@@ -50,7 +50,7 @@ ${BOTH} .sf-pause-brief.orr-brief::before {
 ${BOTH} .sf-pause-brief .dp-etch,
 ${BOTH} .sf-pause-brief > .dp-etch.sf-slot-sub:first-child,
 ${BOTH} .orr-brief__kind {
-  color:rgb(${BONE} / .9) !important; letter-spacing:.24em !important; ${LABEL}
+  color:rgb(${BONE} / .9) !important; letter-spacing:.08em !important; ${LABEL}
   text-shadow:0 0 2px rgb(4 6 9), 0 0 10px rgb(4 6 9 / .8) !important; }
 ${BOTH} .sf-pause-brief .sf-slot-name,
 ${BOTH} .orr-brief__name {
@@ -63,7 +63,7 @@ ${BOTH} .sf-pause-brief .dp-copy.sf-muted {
   text-shadow:0 0 2px rgb(4 6 9), 0 0 10px rgb(4 6 9 / .75) !important; }
 ${BOTH} .sf-pause-brief .dp-copy--fine,
 ${BOTH} .sf-pause-brief .sf-slot-sub:not(.dp-etch) {
-  color:rgb(${BONE} / .82) !important; letter-spacing:.14em !important; }
+  color:rgb(${BONE} / .82) !important; letter-spacing:.05em !important; }
 ${BOTH} .orr-brief__read { color:rgb(${BONE} / .86) !important; }
 ${BOTH} .orr-brief__read b { color:var(--dp-phos, rgb(223 238 255)) !important;
   text-shadow:0 0 10px rgb(160 200 255 / .35) !important; }
@@ -94,7 +94,7 @@ ${P} .orr-svg .orr-arcrail__rule { stroke-opacity:1; }
 
 /* phone column (no dial): group heads + bank verbs clearer */
 ${PH} .k-words__group {
-  color:rgb(${BONE} / .78) !important; letter-spacing:.22em !important;
+  color:rgb(${BONE} / .78) !important; letter-spacing:.08em !important;
   margin:calc(14px * var(--dp-s, 1)) 0 6px !important; }
 ${PH} .k-words__group::after { background:rgb(${BONE} / .28) !important; }
 ${PH} .sf-pause-words .k-word {
@@ -111,7 +111,7 @@ ${PH} .sf-pause-brief .sf-slot-name { font-size:21px !important; line-height:1.2
 ${PH} .orr-brief__kind { display:block !important; margin:0 0 4px !important; line-height:16px !important; }
 ${PH} .sf-pause-brief .dp-copy { font-size:14.5px !important; color:rgb(${BONE} / .86) !important; }
 ${PH} .k-words--row { gap:12px 22px !important; row-gap:10px !important; }
-${PH} .sf-pause-words .k-word { letter-spacing:.14em !important; }
+${PH} .sf-pause-words .k-word { letter-spacing:.05em !important; }
 
 /* ---------- foot: real keycap boxes + verb labels (settings rail grammar) ---------- */
 ${BOTH} > .sf-pause-foot {
@@ -126,14 +126,15 @@ ${BOTH} > .sf-pause-foot .dp-kbd.sf-pause-key,
 ${BOTH} > .sf-pause-foot .sf-pause-key.dp-kbd {
   display:inline-block !important; box-sizing:border-box !important;
   margin:0 8px 0 0 !important; padding:3px 7px 4px !important;
-  ${LABEL} font-size:12px !important; letter-spacing:.18em !important; line-height:1 !important;
+  font-family:var(--dp-face-num, "Spline Sans Mono", ui-monospace, Consolas, monospace) !important; font-stretch:100% !important;
+  font-variation-settings:normal !important; font-weight:500 !important;
+  font-size:12px !important; letter-spacing:.03em !important; line-height:1 !important; text-transform:none !important;
   color:rgb(${BONE} / .92) !important;
-  background:rgb(${BONE} / .1) !important; background-color:rgb(${BONE} / .1) !important;
-  border:1px solid rgb(${BONE} / .5) !important; border-image:none !important; border-radius:3px !important;
-  box-shadow:inset 0 -1px 0 rgb(0 0 0 / .35) !important; vertical-align:baseline !important;
-  font-weight:650 !important; }
+  background:linear-gradient(180deg, rgb(${BONE} / .09), rgb(${BONE} / .045)), rgb(6 8 11 / .72) !important; background-color:rgb(6 8 11 / .72) !important;
+  border:1px solid rgb(${BONE} / .42) !important; border-image:none !important; border-radius:2px !important;
+  box-shadow:inset 0 -1px 0 rgb(0 0 0 / .4) !important; vertical-align:baseline !important; }
 ${BOTH} > .sf-pause-foot .sf-pause-key-verb {
-  ${LABEL} font-size:12px !important; letter-spacing:.16em !important;
+  ${LABEL} font-size:12px !important; letter-spacing:.08em !important;
   color:rgb(${BONE} / .88) !important; margin:0 22px 0 0 !important;
   vertical-align:baseline !important; line-height:1 !important; }
 ${BOTH} > .sf-pause-foot .dp-etch.dp-bar--end,
@@ -154,8 +155,9 @@ ${BOTH} > .sf-pause-foot [data-role="version"] {
    words printed over each other. The brief becomes a top-right reading level with PAUSED and ends
    above the first long bank. */
 @media (min-width:701px) and (max-height:640px), (min-width:701px) and (max-width:1100px) and (max-height:720px) {
-  ${P} > .sf-pause-brief.orr-brief { top:clamp(40px, 8vh, 52px) !important; margin-top:0 !important;
+  ${P} > .sf-pause-brief.orr-brief { top:clamp(28px, 5vh, 52px) !important; margin-top:0 !important;
     width:min(400px, 42vw) !important; }
+  ${P} > .sf-pause-brief.orr-brief > .sf-slot-name { gap:3px !important; }
   ${P} > .sf-pause-brief.orr-brief > .dp-etch.sf-slot-sub:first-child { margin-bottom:6px !important; line-height:16px !important; }
   ${P} > .sf-pause-brief.orr-brief > .sf-slot-name { margin-top:0 !important; }
   ${P} .orr-brief__kind { line-height:14px !important; margin-bottom:2px !important; }
@@ -171,6 +173,14 @@ ${BOTH} > .sf-pause-foot [data-role="version"] {
   ${P} > .sf-pause-foot .sf-pause-key.dp-kbd {
     background:linear-gradient(rgb(${BONE} / .1), rgb(${BONE} / .1)), rgb(6 8 11 / .94) !important; }
   ${P} > .sf-pause-foot .sf-pause-key-verb { text-shadow:0 0 3px rgb(4 6 9), 0 0 8px rgb(4 6 9 / .9) !important; }
+}
+
+/* the console standard's lit face gave the brief 16/18px padding, which grew it ~20px past the
+   first long bank again: at 960×540 its Saved line sat over OPERATIONS (AUTOMATION) / LOCAL MAP, and
+   at 1024×768 its bottom edge touched them. In the same short and narrow windows the face keeps a
+   12px inset, and in the shortest ones (rule above) the brief climbs level with PAUSED. */
+@media (min-width:701px) and (max-height:640px), (min-width:701px) and (max-width:1100px) and (max-height:800px) {
+  ${P} > .sf-pause-brief.orr-brief { padding:12px 16px !important; }
 }
 
 /* a very short window (≤520 tall, e.g. 800×500): the dial climbs to y≈190, so the brief keeps only
@@ -226,7 +236,7 @@ ${BOTH} > .sf-pause-foot [data-role="version"] {
    the brief's Next line began (x 461). The brief climbs level with PAUSED and narrows so it starts right
    of LOAD (x≈485); Next still fits one line and ends above the SHIP bank. */
 @media (min-width:701px) and (max-width:900px) and (max-height:460px) {
-  ${P} > .sf-pause-brief.orr-brief { top:26px !important; width:min(330px, 40vw) !important; }
+  ${P} > .sf-pause-brief.orr-brief { top:18px !important; width:min(330px, 40vw) !important; padding:10px 14px !important; }
 }
 
 /* 1080p band: lift head + brief + foot only — never the dial stage (arcRail getBoundingClientRect) */

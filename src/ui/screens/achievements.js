@@ -15,6 +15,7 @@ import { el, words, settle, cue } from '../kit/index.js';
 import { injectDeckplate, dpIcon } from '../deckplate/index.js';
 import { createMedalOrrery, createWordScale, medalDialSvg, medalProgress, medalState } from '../orrery/constellationMedals.js';
 import { injectConstellationScreens } from '../orrery/constellationLayouts.js';
+import { deferScreenCssReady } from '../orrery/cssSidecar.js';
 import { decrypt, rollTo } from '../orrery/text.js';
 import ACHIEVEMENT_MEDALS_MANIFEST from '../../../assets/ui/generated/achievements/manifest.json' with { type: 'json' };
 
@@ -213,7 +214,7 @@ export const achievementsScreen = {
   mount(rootEl, ctx) {
 
     injectDeckplate();
-    injectConstellationScreens();
+    this._markCssReady = deferScreenCssReady(rootEl, injectConstellationScreens());
     this._unsubscribe();
     rootEl.innerHTML = '';
     rootEl.classList.remove('panel', 'sf-menu', 'of-achievements');
@@ -418,7 +419,7 @@ export const achievementsScreen = {
     settle(refs.hang, { from: 'left', delay: 60, state: 'achievements-hang' });
     settle(refs.read, { from: 'right', delay: 90, state: 'achievements-read' });
     settle(refs.foot, { from: 'bottom', delay: 120, state: 'achievements-foot' });
-    refs.root.dataset.kReady = '1';
+    if (this._markCssReady) this._markCssReady();
     const current = refs.sectionWords.querySelector('.k-word[aria-current="true"]') || refs.sectionWords.querySelector('.k-word');
     if (current) try { current.focus(); } catch (e) {}
     cue('open');

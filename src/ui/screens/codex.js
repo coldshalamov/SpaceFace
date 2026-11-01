@@ -29,9 +29,10 @@ import { createShipLedgerPanel } from '../shipLedgerPanel.js';
 import { el, words, rows, hero, settle, cue } from '../kit/index.js';
 import { injectDeckplate } from '../deckplate/index.js';
 import { injectArchiveLayouts } from '../orrery/archiveLayouts.js';
+import { deferScreenCssReady } from '../orrery/cssSidecar.js';
 import { injectCodexLayouts } from '../orrery/codexLayouts.js';
 import {
-  archivePlateSvg, archiveBladeSvg, archiveHoverSvg, archiveDialAngle, archiveDialIndex, archiveGaugeSvg, archiveScramble, archiveHash,
+  archivePlateSvg, archiveBladeSvg, archiveHoverSvg, archiveDialAngle, archiveDialIndex, archiveScramble, archiveHash,
   archiveWedgeSvg, archiveZoom, createLadderHand,
 } from '../orrery/archiveInstruments.js';
 import { decrypt, rollTo } from '../orrery/text.js';
@@ -46,6 +47,12 @@ import { logbookStill } from '../logbookMedia.js';
 import { decodedSuhlClauses, namesForTheDead } from '../../data/discoveryPresentation.js';
 import { hash32 } from '../../core/rng.js';
 import { recordSectionModel } from './codexRecord.js';
+import {
+  CODEX_TABS as TABS,
+  takeRequestedCodexDiscovery,
+  takeRequestedCodexTab,
+} from '../codexRequests.js';
+export { clearCodexDiscoveryRequest, requestCodexDiscovery, requestCodexTab } from '../codexRequests.js';
 
 /** Set a CSS custom property where the host supports it (test shims carry a plain style object). */
 function setVar(node, name, value) {
@@ -96,8 +103,6 @@ function nav(ctx, method, arg) {
   ctx.bus.emit('ui:' + method, { id: arg });
 }
 
-const TABS = ['Story', 'Comms', 'Discoveries', 'World', 'Graffiti', 'Figures', 'Ship', 'Archive', 'Catalog', 'Ledger'];
-
 /** The live tab's one-line description under the title. */
 const TAB_LINES = Object.freeze({
   Story: 'The eight beats, and what the endgame offers.',
@@ -130,34 +135,8 @@ export const SIGNAL_ARCHIVE = Object.freeze([
     caption: 'The boot relay, full length. Helmet, wreck field, courier burn, the ring at threshold.' },
 ]);
 
-// Deep-link support: the main menu's "Signal Archive" entry sets a pending tab so codex opens on it.
-let _requestedTab = null;
-export function requestCodexTab(tab) { if (TABS.includes(tab)) _requestedTab = tab; }
-
-// A discovery completion can request one exact, already-projected plate. This is UI-local by
-// design: world discovery remains the durable record and Continue reconstructs the plate from it.
-let _requestedDiscovery = null;
-
-function normalizeDiscoveryTarget(target) {
-  const sectorId = target && typeof target.sectorId === 'string' ? target.sectorId.trim() : '';
-  const poiId = target && typeof target.poiId === 'string' ? target.poiId.trim() : '';
-  return sectorId && poiId ? { sectorId, poiId } : null;
-}
-
-export function requestCodexDiscovery(target) {
-  const normalized = normalizeDiscoveryTarget(target);
-  if (!normalized) return false;
-  _requestedDiscovery = normalized;
-  return true;
-}
-
-export function clearCodexDiscoveryRequest() {
-  _requestedDiscovery = null;
-}
-
 export function consumeCodexDiscoveryRequest(state) {
-  const target = _requestedDiscovery;
-  _requestedDiscovery = null;
+  const target = takeRequestedCodexDiscovery();
   if (!target) return null;
   return explorationDiscoveryPlates(state).find((plate) => (
     plate.sectorId === target.sectorId && plate.poiId === target.poiId
@@ -743,7 +722,7 @@ export const codexScreen = {
   mount(rootEl, ctx) {
 
     injectDeckplate();
-    injectArchiveLayouts();
+    const markCssReady = deferScreenCssReady(rootEl, injectArchiveLayouts());
     injectCodexLayouts();
     // A fresh mount opens on the first section with no search (a deep link still picks its tab in
     // onShow); a hidden-and-shown codex keeps the page the player left it on.
@@ -909,7 +888,7 @@ export const codexScreen = {
     this._unsubs.push(ctx.bus.on('endgame:archive', refreshIfVisible));
 
     this._render(ctx);
-    rootEl.dataset.kReady = '1';
+    markCssReady();
   },
 
   refresh(ctx, options) {
@@ -928,8 +907,7 @@ export const codexScreen = {
     });
     // Consume both requests once. A valid plate is more specific than a tab request; a stale plate
     // fails closed and leaves the ordinary requested tab available.
-    const requestedTab = _requestedTab;
-    _requestedTab = null;
+    const requestedTab = takeRequestedCodexTab();
     const requestedPlate = consumeCodexDiscoveryRequest(ctx && ctx.state);
     this._requestedDiscoveryId = requestedPlate ? requestedPlate.id : null;
     if (requestedPlate) {
@@ -1621,19 +1599,20 @@ export const codexScreen = {
       let num = figure;
       let of = '';
       let frac = 0;
-      let count = 0;
       const ratio = /^(\d+)\/(\d+)$/.exec(figure);
       const pct = /^(\d+(?:\.\d+)?)%$/.exec(figure);
-      if (ratio) { num = ratio[1]; of = '/' + ratio[2]; frac = Number(ratio[2]) > 0 ? Number(ratio[1]) / Number(ratio[2]) : 0; count = Number(ratio[2]); }
+      if (ratio) { num = ratio[1]; of = '/' + ratio[2]; frac = Number(ratio[2]) > 0 ? Number(ratio[1]) / Number(ratio[2]) : 0; }
       else if (pct) { num = pct[1]; of = '%'; frac = Number(pct[1]) / 100; }
-      else if (item.key === 'Phase' && /^\d+$/.test(figure)) { of = '/' + MAX_PHASE; frac = Number(figure) / MAX_PHASE; count = MAX_PHASE; }
+      else if (item.key === 'Phase' && /^\d+$/.test(figure)) { of = '/' + MAX_PHASE; frac = Number(figure) / MAX_PHASE; }
       const cell = el('div', 'cx-index__item');
       cell.dataset.key = item.key.toLowerCase();
-      const dial = el('span', 'cx-index__dial');
-      dial.setAttribute('aria-hidden', 'true');
-      dial.innerHTML = archiveGaugeSvg(frac, { count });
-      cell.appendChild(dial);
-      // the dial is labelled by its section's name; the rest of the sentence is read, not shown
+      // STATION_STANDARD §4: a catalogue count is a bar + figure, not one dial per section —
+      // arcs are for hero gauges. The fraction drives the bar as --cx-p; the figure stays tabular.
+      const meter = el('span', 'cx-index__bar');
+      meter.setAttribute('aria-hidden', 'true');
+      meter.style.setProperty('--cx-p', frac.toFixed(3));
+      cell.appendChild(meter);
+      // the reading is labelled by its section's name; the rest of the sentence is read, not shown
       const shortWord = item.key === 'Phase' ? 'Phase' : item.key;
       const dt = el('dt', 'cx-index__w', shortWord);
       const rest = words.toLowerCase().startsWith(shortWord.toLowerCase()) ? words.slice(shortWord.length) : ' ' + words;

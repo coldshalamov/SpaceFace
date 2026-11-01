@@ -38,7 +38,7 @@ test('no Deckplate CSS template holds a stray backtick', () => {
 });
 
 test('the whole system still parses and carries its primitives', async () => {
-  const { DECKPLATE_CSS } = await import('../src/ui/deckplate/index.js');
+  const { DECKPLATE_CSS } = await import('../src/ui/deckplate/css.js');
   for (const cls of ['dp-frame', 'dp-title__name', 'dp-menu__item', 'dp-field__slot',
     'dp-table__row', 'dp-work', 'dp-plate', 'dp-etch', 'dp-lamp', 'dp-logotype', 'dp-monogram']) {
     assert.ok(DECKPLATE_CSS.includes(`.${cls}`), `${cls} is missing from the combined sheet`);

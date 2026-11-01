@@ -1048,6 +1048,9 @@ export const lawSecurity = {
     const attacker = entityById(state, payload.attackerId);
     const target = entityById(state, payload.targetId);
     if (!attacker || !target || attacker.id === target.id) return;
+    // Direct-contact physics can identify the rock itself as the impactor. A thrown rock
+    // carries its responsible actor's id instead; only that actor can be an aggressor.
+    if (payload.origin?.kind === 'collision' && attacker.type === 'asteroid') return;
     const player = entityById(state, state.playerId);
 
     this._observeInspectionCollateral(payload, attacker, target);

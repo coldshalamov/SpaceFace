@@ -121,6 +121,7 @@ function budget(engine) {
     + engine._hive().sacBudget
     + engine._splitter().reserve
     + engine._mother().reserve
+    + engine._machine().reserve
     + engine._reserve().left;
 }
 

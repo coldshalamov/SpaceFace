@@ -151,6 +151,8 @@ export default defineFlavorPack({
         { id: 'margin_63', text: 'A freighter written off as sinking berthed herself a week later. Her crew had already filed the loss. The ledger kept the original.' },
         { id: 'margin_64', text: 'A Ceres clerk confessed to a manifest theft his own ledger had already cleared. He asked for the sentence in writing. He is still asking.' },
         { id: 'margin_65', text: 'A Drift desk sells a grain that will not reseed. Every sowing is a first purchase. The desk calls it yield.' },
+        { id: 'margin_66', eventKey: 'player.downed_hunter', text: 'Tessera put down a bonded hunter. The bond office logged it as a policy outcome and raised the premium.' },
+        { id: 'margin_67', eventKey: 'player.downed_hunter', text: 'A licensed hunter stopped answering mid-contract. The Tessera was the last thing on his scope. The office has already posted the next one.' },
       ],
     },
     {

@@ -4211,6 +4211,67 @@ test('production toolkit fixture scopes field/runtime cleanup around every setup
     'the outer finally must dispose any created runtime before restoring the global field flag');
 });
 
+test('Ceres toolkit stage selects a current exact cohort intercept inside the fixed camera', () => {
+  const playerPos = { x: 20, z: 30 };
+  const snapshot = {
+    playerPos,
+    camera: fixedSettledChaseCameraMatrices(playerPos),
+    candidates: [
+      { entityId: 'dead-stale', worldRecordId: 'wr_dead', alive: false, pos: { x: 0, y: 0, z: 250 } },
+      { entityId: 'live-exact', worldRecordId: 'wr_live', alive: true, pos: { x: 240, y: 0, z: 800 } },
+    ],
+  };
+  const plan = planCeresThroughlineToolkitReposition({ liveIntercept: snapshot });
+  assert.deepEqual(plan.waypoints.slice(0, 2).map((row) => row.targetPos), [
+    { x: AMBUSH_ZONE_GLOBAL.x - 67, z: AMBUSH_ZONE_GLOBAL.z + 183 },
+    { x: AMBUSH_ZONE_GLOBAL.x + 183, z: AMBUSH_ZONE_GLOBAL.z + 183 },
+  ], 'the original collision dogleg stays ahead of camera repositioning');
+  assert.equal(plan.liveIntercept.entityId, 'live-exact');
+  assert.equal(plan.liveIntercept.worldRecordId, 'wr_live');
+  assert.equal(plan.waypoints.at(-1).settleOnArrival, false,
+    'a moving cohort intercept completes at pointability instead of braking against a moving target');
+  assert.notDeepEqual(plan.waypoints.at(-1).targetPos,
+    planCeresThroughlineToolkitReposition().waypoints.at(-1).targetPos,
+  'the final target is derived from current cohort pose, not the stale static camera stage');
+  assert.ok(plan.liveIntercept.separationWU > 120 && plan.liveIntercept.separationWU < 200,
+    'the intercept keeps a collision-safe stand-off from the live cohort member');
+  assert.ok(Math.abs(plan.liveIntercept.ndc.x) <= 0.98
+    && Math.abs(plan.liveIntercept.ndc.y) <= 0.98,
+  'the exact live member lands inside the existing fixed-camera frustum');
+  assert.throws(() => planCeresThroughlineToolkitReposition({
+    liveIntercept: { ...snapshot, playerPos: { x: null, z: 30 } },
+  }), /requires current player, camera, and cohort poses/,
+  'null pose values cannot be coerced into valid zero-coordinate telemetry');
+  assert.throws(() => planCeresThroughlineToolkitReposition({
+    liveIntercept: { ...snapshot, camera: { ...snapshot.camera, view: [null, ...snapshot.camera.view.slice(1)] } },
+  }), /requires current player, camera, and cohort poses/,
+  'camera matrix entries must be actual finite numbers');
+  assert.equal(chooseCeresPocketApproachAction({ distanceWU: 20, headingError: 0, speed: 35 }, {
+    arrivalRadiusWU: 23,
+    settleOnArrival: false,
+  }).kind, 'complete', 'the live-target controller can select immediately while maintaining ordinary motion');
+  assert.equal(chooseCeresPocketApproachAction({ distanceWU: 20, headingError: 0, speed: 35 }, {
+    arrivalRadiusWU: 23,
+  }).kind, 'settle', 'stationary point routes retain their existing brake-to-settle contract');
+  const alreadyPointable = planCeresThroughlineToolkitReposition({
+    liveIntercept: {
+      playerPos: { x: 20, z: 30 },
+      playerRadiusWU: 12,
+      camera: fixedSettledChaseCameraMatrices({ x: 20, z: 30 }),
+      candidates: [{
+        entityId: 'already-visible-live-cohort',
+        worldRecordId: 'wr_already_visible',
+        alive: true,
+        radiusWU: 10,
+        pos: { x: -80, y: 0, z: 110 },
+      }],
+    },
+  });
+  assert.deepEqual(alreadyPointable.waypoints.at(-1).targetPos, { x: 20, z: 30 },
+    'an already pointable exact survivor avoids an unnecessary public reposition');
+  assert.equal(alreadyPointable.liveIntercept.travelWU, 0);
+});
+
 test('seed-47 authored ambush pack traverses the toolkit camera corridor with production Flight V3 and Rapier', async (t) => {
   const fieldFlagBeforeFixture = FIELD_FLAGS.enabled;
   const result = await runSeed47ToolkitCameraReposition();
@@ -4245,7 +4306,6 @@ test('seed-47 authored ambush pack traverses the toolkit camera corridor with pr
   assert.ok(result.elapsedTicks <= 1_200,
     `the two-sector bootstrap stage exceeded its bounded tick margin: ${result.elapsedTicks}`);
   assert.ok(result.receipts.at(-1).distanceWU <= 23);
-  assert.ok(result.receipts.at(-1).speed <= 1);
   assert.ok(result.playerHull > 0 && result.playerHull <= 260);
   // The authored zone_ceres_ambush presence is the [3,4] pack with a weighted detonator dart
   // (sectorZones.js); on seed 47 it materializes exactly these three members, sorted by
@@ -4351,14 +4411,14 @@ test('seed-47 authored ambush pack traverses the toolkit camera corridor with pr
     hostile.phase === 'conflict'
       && hostile.passive === false && hostile.roe === 'weapons_free'
       && hostile.targetId === result.authoredAmbushPrey.entityId
-  )), 'the first post-stage conflict read must retain the exact live cohort bound to its authored hauler');
+  )), `the first-pointable-acquisition conflict snapshot must retain the exact live cohort bound to its authored hauler: ${JSON.stringify(result.conflictSnapshot.boundHostiles)}`);
   const pointable = result.conflictSnapshot.boundHostiles.filter((hostile) => (
     hostile.alive === true && hostile.distanceWU <= 320
       && Math.abs(hostile.projection.x) <= 0.98
       && Math.abs(hostile.projection.y) <= 0.98
   ));
   assert.ok(pointable.length >= 1,
-    'at least one live exact cohort member must be Massline-ready at stage completion');
+    'at least one live exact cohort member must be Massline-ready on the recorded acquisition tick');
   assert.ok(pointable.some((hostile) => (
     hostile.entityId === result.selectedPointable.entityId
       && hostile.worldRecordId === result.selectedPointable.worldRecordId
@@ -4384,8 +4444,9 @@ test('seed-47 authored ambush pack traverses the toolkit camera corridor with pr
   }
   assert.ok(Math.abs(result.pointingStartSample.projection.x) <= 0.98
     && Math.abs(result.pointingStartSample.projection.y) <= 0.98,
-  'the same durable hostile projects inside the settled fixed camera after public translation');
-  const stage = planCeresThroughlineToolkitReposition().waypoints.at(-1);
+  'a live cohort member projects inside the settled fixed camera after public translation');
+  const stage = result.cameraStageWaypoint;
+  assert.equal(stage.targetId, 'ceres-throughline-live-cohort-camera-intercept');
   assert.ok(Math.hypot(
     result.pointingStartSample.playerPos.x - stage.targetPos.x,
     result.pointingStartSample.playerPos.z - stage.targetPos.z,
@@ -7315,6 +7376,8 @@ async function runSeed47ToolkitCameraReposition() {
   let stageClearanceTracking = false;
   let stageClearanceTargets = [];
   const stageMinimumHullGaps = Object.create(null);
+  let observeFirstPointableAcquisition = false;
+  let firstPointableAcquisition = null;
   const applyPublicControls = (controls) => {
     for (const key of ['KeyW', 'KeyA', 'KeyS', 'KeyD', 'Digit0', 'Digit2', 'ShiftLeft']) {
       inputSystem._keys[key] = false;
@@ -7334,6 +7397,65 @@ async function runSeed47ToolkitCameraReposition() {
   const memberTrail = [];
   const swoopTrace = [];
   const hashProbe = [];
+  const captureFirstPointableAcquisition = () => {
+    if (firstPointableAcquisition) return firstPointableAcquisition;
+    const boundHostiles = cohort.map((entity) => {
+      const distanceWU = Math.hypot(entity.pos.x - player.pos.x, entity.pos.z - player.pos.z);
+      const projection = projectThroughSettledChaseCamera(player.pos, entity.pos);
+      return {
+        entityId: entity.id,
+        worldRecordId: entity.data?.worldRecordId || null,
+        alive: entity.alive !== false,
+        phase: entity.data?.ai?.ceresActivityAmbushPhase || null,
+        passive: entity.data?.ai?.passive ?? null,
+        roe: entity.data?.ai?.roe || null,
+        targetId: entity.data?.ai?.activity?.targetId ?? null,
+        pos: { x: entity.pos.x, z: entity.pos.z },
+        playerPos: { x: player.pos.x, z: player.pos.z },
+        distanceWU,
+        projection,
+      };
+    });
+    if (!boundHostiles.every((hostile) => (
+      hostile.phase === 'conflict'
+        && hostile.passive === false
+        && hostile.roe === 'weapons_free'
+        && hostile.targetId === authoredAmbushPrey.id
+    ))) return null;
+    const selectedPointable = boundHostiles.filter((hostile) => {
+      const entity = cohort.find((row) => row.id === hostile.entityId);
+      const clearance = Number(player.radius) + Number(entity?.radius);
+      return hostile.alive === true
+        && Number.isFinite(clearance)
+        && hostile.distanceWU > clearance
+        && hostile.distanceWU <= 320
+        && Math.abs(hostile.projection.x) <= 0.98
+        && Math.abs(hostile.projection.y) <= 0.98;
+    }).sort((left, right) => left.distanceWU - right.distanceWU
+      || String(left.worldRecordId).localeCompare(String(right.worldRecordId)))[0] || null;
+    if (!selectedPointable) return null;
+    const sample = Object.freeze({
+      tick,
+      score: Math.max(Math.abs(selectedPointable.projection.x), Math.abs(selectedPointable.projection.y)),
+      hostilePos: Object.freeze({ ...selectedPointable.pos }),
+      playerPos: Object.freeze({ ...selectedPointable.playerPos }),
+      projection: Object.freeze({ ...selectedPointable.projection }),
+    });
+    firstPointableAcquisition = Object.freeze({
+      tick,
+      selectedPointable: Object.freeze({ ...selectedPointable }),
+      sample,
+      conflictSnapshot: Object.freeze({
+        tick,
+        durablePhase: dir.stats?.ceresActivityAmbush?.phase || null,
+        durableOutcome: dir.stats?.ceresActivityAmbush?.outcome || null,
+        livePhase: dir.live['ceres:activity:throughline-ambush']?.phase || null,
+        initialCount: dir.live['ceres:activity:throughline-ambush']?.data?.initialCount ?? null,
+        boundHostiles: Object.freeze(boundHostiles.map((hostile) => Object.freeze(hostile))),
+      }),
+    });
+    return firstPointableAcquisition;
+  };
   npcJobsRuntime._reconcileThreatResult = function (entry, resultId) {
     if (authoredAmbushPrey && entry && entry.entityId === authoredAmbushPrey.id) {
       const nearest = resultId != null ? state.entities.get(resultId) : null;
@@ -7362,6 +7484,9 @@ async function runSeed47ToolkitCameraReposition() {
       state.simTime = tick * dt;
       tick += 1;
       runtime.step(dt);
+      if (observeFirstPointableAcquisition && !firstPointableAcquisition) {
+        captureFirstPointableAcquisition();
+      }
       if (tick % 30 === 0 && memberTrail.length < 400 && cohort) {
         let haulerJob = null;
         if (authoredAmbushPrey && state.npcJobs?.byId) {
@@ -7594,16 +7719,27 @@ async function runSeed47ToolkitCameraReposition() {
   const drive = (target) => {
     let pulses = 0;
     for (; pulses < 220;) {
-      const current = status(target);
+      const activeTarget = typeof target === 'function' ? target() : target;
+      const current = status(activeTarget);
       const action = chooseCeresPocketApproachAction(current, {
-        arrivalRadiusWU: target.arrivalRadiusWU,
-        allowBoost: target.allowBoost,
+        arrivalRadiusWU: activeTarget.arrivalRadiusWU,
+        allowBoost: activeTarget.allowBoost,
+        settleOnArrival: activeTarget.settleOnArrival !== false,
       });
       if (action.kind === 'complete') {
-        return { pass: true, pulses, ...current };
+        return {
+          pass: true,
+          pulses,
+          targetId: activeTarget.targetId,
+          exactCohortEntityId: activeTarget.exactCohortEntityId ?? null,
+          exactCohortWorldRecordId: activeTarget.exactCohortWorldRecordId ?? null,
+          targetPos: { ...activeTarget.targetPos },
+          arrivalRadiusWU: activeTarget.arrivalRadiusWU,
+          ...current,
+        };
       }
       if (action.kind === 'settle') {
-        for (let index = 0; index < 600 && status(target).speed > 1; index += 1) {
+        for (let index = 0; index < 600 && status(activeTarget).speed > 1; index += 1) {
           step(1, projectPilotFlightControls({ brakeHeld: true }));
         }
         continue;
@@ -7628,7 +7764,8 @@ async function runSeed47ToolkitCameraReposition() {
         assert.fail(`unexpected toolkit reposition action ${action.kind}`);
       }
     }
-    return { pass: false, pulses, ...status(target) };
+    const lastTarget = typeof target === 'function' ? target() : target;
+    return { pass: false, pulses, targetPos: { ...lastTarget.targetPos }, ...status(lastTarget) };
   };
 
   const collisionAnchor = state.entityList.find((entity) => (
@@ -7722,20 +7859,43 @@ async function runSeed47ToolkitCameraReposition() {
     const stageStartTick = tick;
     const stageImpactStart = playerImpactEvents.length;
     const receipts = [];
-    for (const waypoint of planCeresThroughlineToolkitReposition().waypoints) {
+    observeFirstPointableAcquisition = true;
+    captureFirstPointableAcquisition();
+    const doglegPlan = planCeresThroughlineToolkitReposition();
+    for (const waypoint of doglegPlan.waypoints.slice(0, 2)) {
       const receipt = drive(waypoint);
       receipts.push(receipt);
       if (!receipt.pass) break;
       step(2);
     }
-    // The authored beat is the swarm's own dive: both survivors chase the fleeing hauler
-    // down the same pursuit line, and the swarm's faster, tighter legs carry it through the
-    // corridor first with the swoop trailing ~60 WU behind on the same track. The camera
-    // parks for a short observe beat so the poll lands inside the swarm's crossing — while
-    // it is the nearer in-frame member — not after it exits and leaves the trailing swoop
-    // alone in the settled frame. A longer hold overshoots the swarm's pass and binds the
-    // swoop; the ~150-tick beat restores the alignment Flight V3 traversal compressed out.
-    step(150);
+    // Keep following the exact live cohort on ordinary control pulses after the collision
+    // dogleg; any target selection is latched only at its actual first eligible fixed tick.
+    let preferredCohortEntityId = null;
+    const liveInterceptWaypoint = () => {
+      const liveInterceptPlan = planCeresThroughlineToolkitReposition({
+        liveIntercept: {
+          playerPos: { x: player.pos.x, z: player.pos.z },
+          camera: fixedSettledChaseCameraMatrices(player.pos),
+          candidates: cohort.map((entity) => ({
+            entityId: entity.id,
+            worldRecordId: entity.data.worldRecordId,
+            alive: entity.alive !== false,
+            pos: { x: entity.pos.x, y: entity.pos.y, z: entity.pos.z },
+          })),
+        },
+        preferredCohortEntityId,
+      });
+      const waypoint = liveInterceptPlan.waypoints.at(-1);
+      preferredCohortEntityId = waypoint.exactCohortEntityId;
+      return waypoint;
+    };
+    const cameraStageReceipt = drive(liveInterceptWaypoint);
+    receipts.push(cameraStageReceipt);
+    const cameraStageWaypoint = {
+      targetId: cameraStageReceipt.targetId,
+      targetPos: cameraStageReceipt.targetPos,
+      arrivalRadiusWU: cameraStageReceipt.arrivalRadiusWU,
+    };
     let pointingWaitTicks = 0;
     let bestPointingSample = null;
     let pointingStartSample = null;
@@ -7754,12 +7914,12 @@ async function runSeed47ToolkitCameraReposition() {
       };
       if (!bestPointingSample || score < bestPointingSample.score) bestPointingSample = sample;
       const pointable = distanceWU <= 320 && score <= 0.98;
-      if (pointable) pointingStartSample ||= sample;
+      if (pointable && !pointingStartSample) pointingStartSample = sample;
       return pointable;
     });
-    // The public harness polls the live camera for up to forty 150-ms attempts after movement.
-    // Advance the same neutral fixed-tick window here so production AI motion participates without
-    // moving either actor through observer-only state mutation.
+    hasPointableCohortMember();
+    // The same bounded observation remains available if no eligible target appeared during
+    // the normal-control route; it cannot overwrite or backdate an earlier selection.
     for (; pointingWaitTicks < 360 && !hasPointableCohortMember(); pointingWaitTicks += 9) {
       pointingTrail.push({
         tick,
@@ -7777,13 +7937,14 @@ async function runSeed47ToolkitCameraReposition() {
       });
       step(9);
     }
+    observeFirstPointableAcquisition = false;
     stageClearanceTracking = false;
     const cameraPlayerPos = { x: player.pos.x, z: player.pos.z };
     const cameraPlayerHull = player.hull;
     const cameraElapsedTicks = tick - stageStartTick;
     const stagePlayerImpactEvents = playerImpactEvents.slice(stageImpactStart);
     live = dir.live['ceres:activity:throughline-ambush'] || null;
-    const conflictSnapshot = {
+    const currentConflictSnapshot = {
       tick,
       durablePhase: dir.stats?.ceresActivityAmbush?.phase || null,
       durableOutcome: dir.stats?.ceresActivityAmbush?.outcome || null,
@@ -7803,8 +7964,10 @@ async function runSeed47ToolkitCameraReposition() {
         projection: projectThroughSettledChaseCamera(player.pos, entity.pos),
       })),
     };
+    const conflictSnapshot = firstPointableAcquisition?.conflictSnapshot || currentConflictSnapshot;
     const postCameraImpactStart = playerImpactEvents.length;
-    const selectedPointable = conflictSnapshot.boundHostiles.filter((hostile) => (
+    const selectedPointable = firstPointableAcquisition?.selectedPointable
+      || conflictSnapshot.boundHostiles.filter((hostile) => (
       hostile.alive === true && hostile.distanceWU <= 320
         && Math.abs(hostile.projection.x) <= 0.98
         && Math.abs(hostile.projection.y) <= 0.98
@@ -7827,6 +7990,10 @@ async function runSeed47ToolkitCameraReposition() {
           return dartTrace.slice(from, to).filter((_, i) => i % 2 === 0);
         })(),
       })}`);
+    if (firstPointableAcquisition) {
+      assert.equal(firstPointableAcquisition.tick, conflictSnapshot.tick,
+        'selection and conflict/pointability receipt must share the actual fixed tick');
+    }
     const combatVictim = cohort
       .find((entity) => entity.id === selectedPointable.entityId);
     const escapingSurvivors = cohort
@@ -7834,8 +8001,12 @@ async function runSeed47ToolkitCameraReposition() {
     assert.ok(combatVictim,
       'pointable selection must bind an exact cohort actor');
     assert.ok(escapingSurvivors.length === cohort.length - 1 && escapingSurvivors.length >= 1,
-      'the authored pack fixture kills exactly one member and retains its escaping survivors');
+      'the fixture selects one cohort member while retaining the other authored survivors');
+    // Let the authored swarm-dive observation proceed after the live target was selected.
+    step(150);
     const transitPlan = planCeresToolkitTransitHandoff();
+    // Controlled native lifecycle fixture step, not a player-caused kill: this exercises the
+    // selected member's retirement while preserving the other live encounter actors.
     combatVictim.alive = false;
     if (escapingSurvivors.length === 0) {
       for (let waited = 0; waited < 60 && !encounterResolutions.some((event) => (
@@ -7916,6 +8087,7 @@ async function runSeed47ToolkitCameraReposition() {
         captureContactImpacts: physicsSystem._sg02?.captureContactImpacts === true,
       },
       receipts,
+      cameraStageWaypoint,
       boostPulses,
       collisionReceipt,
       collisionPlayerImpactEvents,
@@ -7933,6 +8105,13 @@ async function runSeed47ToolkitCameraReposition() {
       postCameraPlayerImpactEvents,
       detonationEvents,
       selectedPointable,
+      pointabilityAcquisition: firstPointableAcquisition ? {
+        tick: firstPointableAcquisition.tick,
+        entityId: firstPointableAcquisition.selectedPointable.entityId,
+        worldRecordId: firstPointableAcquisition.selectedPointable.worldRecordId,
+        distanceWU: firstPointableAcquisition.selectedPointable.distanceWU,
+        projection: { ...firstPointableAcquisition.selectedPointable.projection },
+      } : null,
       conflictSnapshotHostiles: conflictSnapshot.boundHostiles,
       selectedTargetAliveAfter: combatVictim.alive !== false,
       repulsor,
@@ -8332,6 +8511,32 @@ function projectThroughSettledChaseCamera(focus, worldPoint) {
     y: Math.sin(tilt) * dz / halfHeight,
     z: (far + near) / (far - near) - (2 * far * near) / ((far - near) * depth),
   };
+}
+
+function fixedSettledChaseCameraMatrices(focus) {
+  const zoomWU = 144 * 0.88;
+  const tilt = 60 * Math.PI / 180;
+  const fov = 50 * Math.PI / 180;
+  const aspect = 1440 / 900;
+  const near = 1;
+  const far = 14_000;
+  const view = Array(16).fill(0);
+  view[0] = -1;
+  view[5] = 1;
+  view[9] = Math.sin(tilt);
+  view[10] = -Math.cos(tilt);
+  view[12] = Number(focus.x);
+  view[13] = -Math.sin(tilt) * Number(focus.z);
+  view[14] = Math.cos(tilt) * Number(focus.z) - zoomWU;
+  view[15] = 1;
+  const f = 1 / Math.tan(fov / 2);
+  const projection = [
+    f / aspect, 0, 0, 0,
+    0, f, 0, 0,
+    0, 0, -(far + near) / (far - near), -1,
+    0, 0, -(2 * far * near) / (far - near), 0,
+  ];
+  return { view, projection };
 }
 
 function actualPilotSources() {

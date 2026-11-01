@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { fakeDom, textLines } from './helpers/fake-dom.mjs';
 import { codexScreen, worldCodexEntries, requestCodexTab } from '../src/ui/screens/codex.js';
+import { requestCodexTab as requestCodexTabFromMailbox } from '../src/ui/codexRequests.js';
 import { knownAces } from '../src/data/namedAces.js';
 import { uniqueWreckById } from '../src/data/uniqueWrecks.js';
 
@@ -153,6 +154,7 @@ test('fb-037: the World tab renders its entries through the same entry path ever
 });
 
 test('fb-037: requestCodexTab(\'World\') deep-links to the new tab', () => {
+  assert.equal(requestCodexTabFromMailbox, requestCodexTab, 'the screen keeps its existing request export');
   const state = worldState();
   const previous = {
     activeTab: codexScreen._activeTab, body: codexScreen._body,
@@ -161,7 +163,7 @@ test('fb-037: requestCodexTab(\'World\') deep-links to the new tab', () => {
   try {
     codexScreen._body = null;
     codexScreen._activeTab = 'Story';
-    requestCodexTab('World');
+    requestCodexTabFromMailbox('World');
     codexScreen.onShow({ state });
     assert.equal(codexScreen._activeTab, 'World', 'the deep link lands on the world tab');
   } finally {

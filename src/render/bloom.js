@@ -48,6 +48,7 @@ import {
 import {
   orientationDetachedHoldActive,
   orientationHoldHidesDrawable,
+  detachedGeometryUploadPending,
   packageDetachSerialNow,
   preparePresentedDraw,
   presentedDetachDrawsArmed,
@@ -604,6 +605,9 @@ export async function compileScenePipelinesForRenderTarget(
         contextLost: true,
       };
     }
+    if (admission?.readinessTimedOut === true || admission?.incomplete === true) {
+      return { skipped: false, incomplete: true, readinessTimedOut: admission.readinessTimedOut === true };
+    }
     return {
       skipped: false,
       programCount: Array.isArray(renderer.info && renderer.info.programs)
@@ -832,7 +836,7 @@ export function beginScenePipelineReadinessBatch(renderer = null) {
       }
       const remaining = batch.programs.size;
       batch.programs.clear();
-      settleAll({ contextLost: false });
+      settleAll({ contextLost: false, ...(remaining > 0 ? { readinessTimedOut: true } : {}) });
       return { contextLost: false, programs: remaining };
     },
     /**
@@ -1333,26 +1337,44 @@ const COMPOSITE_FRAG = /* glsl */`
 const UNREADY_SCENE_CAP = 512;
 
 // Three's material properties describe the last-bound program, not every linked variant.
-// WebGLPrograms places instancing/color/morph in bits 0–2 of its first boolean mask. Memoize
-// alternate keys per live program so alternating shared Mesh/InstancedMesh draws allocate
-// no strings or arrays once warm. All other cache-key fields remain byte-for-byte unchanged.
-const instancingVariantKeys = new WeakMap();
+// WebGLPrograms places instancing/color/morph in bits 0–2 of its first boolean mask. A render
+// target can also select a different output color space and tone-mapping variant (notably the
+// no-tone-mapping transmission pass). Memoize exact alternate keys per live program so a ready
+// last-bound sibling cannot make a pending pass variant look safe.
+const drawPassVariantKeys = new WeakMap();
 
 function instancingFlags(object) {
   if (!object || object.isInstancedMesh !== true) return 0;
   return 1 | (object.instanceColor !== null ? 2 : 0) | (object.morphTexture !== null ? 4 : 0);
 }
 
-function linkedInstancingVariant(rec, material, object) {
+function linkedDrawProgramVariant(renderer, rec, material, object) {
   const current = rec && rec.currentProgram;
   if (!current || typeof rec.instancing !== 'boolean' || material.isRawShaderMaterial === true) return current;
   const wanted = instancingFlags(object);
   const bound = (rec.instancing ? 1 : 0) | (rec.instancingColor ? 2 : 0) | (rec.instancingMorph ? 4 : 0);
-  if (wanted === bound) return current;
+  const target = renderer && typeof renderer.getRenderTarget === 'function'
+    ? renderer.getRenderTarget()
+    : null;
+  const toneMapping = Number(material.toneMapped === true
+    && (!target || target.isXRRenderTarget === true)
+    ? renderer.toneMapping
+    : THREE.NoToneMapping);
+  const outputColorSpace = !target
+    ? renderer.outputColorSpace
+    : target.isXRRenderTarget === true
+      ? target.texture && target.texture.colorSpace
+      : THREE.ColorManagement.workingColorSpace;
+  const boundToneMapping = Number(rec.toneMapping);
+  const hasPassMetadata = Number.isFinite(boundToneMapping)
+    && typeof rec.outputColorSpace === 'string';
+  if (wanted === bound && hasPassMetadata
+      && toneMapping === boundToneMapping
+      && outputColorSpace === rec.outputColorSpace) return current;
   const variants = rec.programs;
   if (!variants || typeof variants.get !== 'function') return null;
   if (rec.__version !== undefined && rec.__version !== material.version) return null;
-  let keys = instancingVariantKeys.get(current);
+  let keys = drawPassVariantKeys.get(current);
   if (!keys) {
     const key = current.cacheKey;
     if (typeof key !== 'string' || typeof material.customProgramCacheKey !== 'function') return null;
@@ -1371,18 +1393,60 @@ function linkedInstancingVariant(rec, material, object) {
     if (!/^\d+$/.test(maskText)) return null;
     const mask = Number(maskText);
     if (!Number.isSafeInteger(mask) || (mask & 7) !== bound) return null;
+
+    const keyParts = key.slice(0, customDelimiter).split(',');
+    const maskIndex = keyParts.length - 3;
+    const toneMappingIndex = maskIndex - 4;
+    if (maskIndex < 0 || Number(keyParts[maskIndex]) !== mask) return null;
+    const precisionValues = new Set(['highp', 'mediump', 'lowp']);
+    let outputColorSpaceIndex = -1;
+    for (let i = 1; i < keyParts.length - 1; i++) {
+      if (precisionValues.has(keyParts[i - 1])
+          && (rec.outputColorSpace == null || keyParts[i] === rec.outputColorSpace)) {
+        outputColorSpaceIndex = i;
+        break;
+      }
+    }
+    const keyToneMapping = Number(keyParts[toneMappingIndex]);
+    if (toneMappingIndex < 0 || !Number.isFinite(keyToneMapping)
+        || (Number.isFinite(boundToneMapping) && keyToneMapping !== boundToneMapping)
+        || outputColorSpaceIndex < 0) return null;
     keys = {
       mask,
-      prefix: key.slice(0, firstMaskDelimiter + 1),
-      suffix: key.slice(secondMaskDelimiter),
-      variants: new Array(8),
+      keyParts,
+      customSuffix: key.slice(customDelimiter),
+      maskIndex,
+      toneMappingIndex,
+      outputColorSpaceIndex,
+      boundToneMapping: keyToneMapping,
+      boundOutputColorSpace: keyParts[outputColorSpaceIndex],
+      variantsByColorSpace: new Map(),
     };
-    instancingVariantKeys.set(current, keys);
+    drawPassVariantKeys.set(current, keys);
   }
-  let alternateKey = keys.variants[wanted];
+  // Some Three compile adapters expose the current wrapper before mirroring its common
+  // metadata. The pinned vendor key is authoritative in that case, so a ready matching
+  // wrapper remains drawable instead of being re-queued forever.
+  if (wanted === bound && toneMapping === keys.boundToneMapping
+      && outputColorSpace === keys.boundOutputColorSpace) return current;
+  let toneVariants = keys.variantsByColorSpace.get(outputColorSpace);
+  if (!toneVariants) {
+    toneVariants = new Map();
+    keys.variantsByColorSpace.set(outputColorSpace, toneVariants);
+  }
+  let variantsByMask = toneVariants.get(toneMapping);
+  if (!variantsByMask) {
+    variantsByMask = new Array(8);
+    toneVariants.set(toneMapping, variantsByMask);
+  }
+  let alternateKey = variantsByMask[wanted];
   if (alternateKey === undefined) {
-    alternateKey = keys.prefix + ((keys.mask & ~7) | wanted) + keys.suffix;
-    keys.variants[wanted] = alternateKey;
+    const parts = keys.keyParts.slice();
+    parts[keys.maskIndex] = String((keys.mask & ~7) | wanted);
+    parts[keys.toneMappingIndex] = String(toneMapping);
+    parts[keys.outputColorSpaceIndex] = outputColorSpace;
+    alternateKey = parts.join(',') + keys.customSuffix;
+    variantsByMask[wanted] = alternateKey;
   }
   return variants.get(alternateKey) || null;
 }
@@ -1402,6 +1466,23 @@ function installUnreadyDrawGuard(renderer) {
   renderer.__sfUnreadyDrawGuardDepth = 0;
   const inner = renderer.renderBufferDirect;
   const drawGuardGl = typeof renderer.getContext === 'function' ? renderer.getContext() : null;
+  // Exact-target admission uses the same context-generation ownership as presented draws.
+  renderer.__sfExactProgramInvalid = (program) => programWrapperDead(drawGuardGl, program);
+  renderer.__sfDeferSelectedProgram = (program, object, material) => {
+    let ready = !!program && !programWrapperDead(drawGuardGl, program);
+    if (ready && typeof program.isReady === 'function') {
+      try { ready = program.isReady() === true; } catch (_) { ready = false; }
+    }
+    if (ready) return false;
+    const data = material.userData || (material.userData = {});
+    const queue = renderer.userData && renderer.userData.spacefaceQueuePipelineAdmission;
+    if (data.__sfPipelineAdmission !== true && typeof queue === 'function') {
+      data.__sfPipelineAdmission = true;
+      Promise.resolve(queue(object)).catch(() => null)
+        .finally(() => { data.__sfPipelineAdmission = false; });
+    }
+    return true;
+  };
   function unreadyDrawGuard(camera, scene, geometry, material, object, group) {
     // Three already ran object/material before-hooks. Its instance renderer skips
     // zero counts only after program/uniform/binding work; avoid that work here.
@@ -1424,7 +1505,7 @@ function installUnreadyDrawGuard(renderer) {
       queuePresentedDetachRehydrate(renderer);
       return undefined;
     }
-    if (renderer.__sfUnreadyDrawGuardDepth > 0 && material) {
+    if (renderer.__sfUnreadyDrawGuardDepth > 0 && !renderer.__sfExactTargetTouch && material) {
       const data = material.userData;
       const stamped = data && (data.spacefaceSharedMaterialRole != null || data.spacefaceProgramCanon != null);
       const props = renderer.properties;
@@ -1435,7 +1516,7 @@ function installUnreadyDrawGuard(renderer) {
           const rec = props.get(material);
           const current = rec && rec.currentProgram;
           if (current) {
-            const variant = linkedInstancingVariant(rec, material, object);
+            const variant = linkedDrawProgramVariant(renderer, rec, material, object);
             // The current wrapper can still be linking when the scoped scene scan
             // misses a live bind, just as a cached sibling can. Validate either
             // selected wrapper before first-use discovery can block this draw.
@@ -1666,7 +1747,7 @@ export function createUnreadyDrawableGuard(renderer, options = {}) {
     // length+tail catches every mutation: acquireProgram pushes at the tail, releaseProgram
     // swap-removes (tail moves into the gap). Same length + same tail ⇒ the set is unchanged.
     // A grew-without-drain change means a mount path bypassed scene.add — failsafe below.
-    if (!orientationHold && unreadyProgramsPending !== true && programs.length === unreadyProgramCount
+    if (!orientationHold && detachGuardSettled && unreadyProgramsPending !== true && programs.length === unreadyProgramCount
       && programs[programs.length - 1] === unreadyProgramTail
       && !sceneSetChanged && unreadyMountedRoots.length === 0) {
       if (disarmOnSettle && detachGuardSettled) disarmPresentedDrawGuard(renderer);
@@ -1685,7 +1766,7 @@ export function createUnreadyDrawableGuard(renderer, options = {}) {
       try { ready = program.isReady() === true; } catch (_) { ready = false; }
       if (!ready) { unreadyProgramsPending = true; break; }
     }
-    if (!orientationHold && !unreadyProgramsPending && !(pendingSubjects && pendingSubjects.size > 0)
+    if (!orientationHold && detachGuardSettled && !unreadyProgramsPending && !(pendingSubjects && pendingSubjects.size > 0)
       && !sceneSetChanged && unreadyMountedRoots.length === 0) {
       if (disarmOnSettle && detachGuardSettled) disarmPresentedDrawGuard(renderer);
       return;
@@ -1710,7 +1791,7 @@ export function createUnreadyDrawableGuard(renderer, options = {}) {
     // sweep window — the draw-time renderBufferDirect guard already refuses
     // on-glass links for stamped materials in the meantime).
     const scopedPendingWindow = pendingOnlyWindow || unreadyProgramsPending === true;
-    if (orientationHold
+    if (orientationHold || !detachGuardSettled
         || (sceneSetChanged && drainRoots === null)
         || (!scopedPendingWindow && !drainRoots)) {
       // Uninstrumented growth with nothing queued, or no pending latch at all:
@@ -1757,7 +1838,9 @@ export function createUnreadyDrawableGuard(renderer, options = {}) {
       return;
     }
     if (object.isInstancedMesh && !(Number(object.count) > 0)) return;
-    if (orientationHoldHidesDrawable(renderer, object)) {
+    const pendingGeometry = detachedGeometryUploadPending(object.geometry, renderer);
+    if (orientationHoldHidesDrawable(renderer, object) || pendingGeometry) {
+      if (pendingGeometry) queuePresentedDetachRehydrate(renderer);
       unreadySceneScratch[unreadySceneCount] = object;
       unreadySceneCount += 1;
       object.visible = false;
@@ -1800,7 +1883,7 @@ export function createUnreadyDrawableGuard(renderer, options = {}) {
     // guard then refuses the instanced draw (the family flaps hidden-ready
     // while its missing variant links, 2026-10-18 asteroid-appear probe).
     const variant = (rec && rec.currentProgram)
-      ? linkedInstancingVariant(rec, material, object)
+      ? linkedDrawProgramVariant(renderer, rec, material, object)
       : null;
     // Never compiled, or the variant this draw needs is not linked yet: drawing
     // would link the driver program inside this presented pass. Hide the

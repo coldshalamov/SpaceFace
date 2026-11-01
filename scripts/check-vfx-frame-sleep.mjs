@@ -35,6 +35,10 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { vfx } from '../src/render/vfx.js';
+import { createGameState } from '../src/core/gameState.js';
+import { core } from '../src/core/coreSystem.js';
+import { makeEntity } from '../src/core/entity.js';
+import { hasActiveSpatialHash } from '../src/core/spatialQuery.js';
 
 // VFX owns 2.5 ms of the 16.7 ms frame (design/PERF_BUDGET.md:48). An idle frame gets a tenth of
 // that: enough headroom for a persistent glow or a nozzle idle, nowhere near enough to hide a
@@ -68,40 +72,92 @@ function makeBus() {
 
 function makeHarness(overrides = {}) {
   const scene = new THREE.Scene();
-  const player = {
-    id: 1,
-    type: 'ship',
-    alive: true,
-    team: 1,
-    pos: { x: 0, z: 0 },
-    vel: { x: 0, z: 0 },
-    rot: 0,
-    radius: 12,
-  };
-  const state = {
-    playerId: player.id,
-    player: { targetId: null, tether: { active: false } },
-    entities: new Map([[player.id, player]]),
-    entityList: [player],
-    settings: {
-      video: {
-        particleQuality: 'high',
-        motionReduce: false,
-        energyMaterials: false,
-        bloom: true,
-        ...(overrides.video || {}),
-      },
-    },
-    render: { scene },
-    ui: { radarRange: 4000 },
-    combat: { attachments: { byId: {} } },
-    content: {},
-    ...(overrides.state || {}),
-  };
   const bus = makeBus();
+  const productionWorld = overrides.productionWorld === true;
+  let player;
+  let state;
+  let coreRuntime = null;
+  if (productionWorld) {
+    // The idle-cost cell represents an ordinary populated flight world. Use the canonical state,
+    // entity schema/index reconcile, and spatial hash so this measurement exercises the candidate
+    // lanes the live game supplies instead of their entityList fallback.
+    state = createGameState(20260727);
+    state.mode = 'flight';
+    state.settings.video = {
+      ...state.settings.video,
+      particleQuality: 'high',
+      motionReduce: false,
+      energyMaterials: false,
+      bloom: true,
+      ...(overrides.video || {}),
+    };
+    state.render.scene = scene;
+    state.ui.radarRange = 4000;
+    state.player.targetId = null;
+    state.player.tether = { active: false };
+    Object.assign(state, overrides.state || {});
+    player = makeEntity({
+      id: 1, type: 'ship', alive: true, team: 1,
+      pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, rot: 0, radius: 12,
+    });
+    state.playerId = player.id;
+    state.entities.set(player.id, player);
+    state.entityList.push(player);
+    coreRuntime = Object.create(core);
+    coreRuntime.init({ state, bus, helpers: {} });
+    refreshProductionWorldIndexes({ state, coreRuntime });
+  } else {
+    player = {
+      id: 1,
+      type: 'ship',
+      alive: true,
+      team: 1,
+      pos: { x: 0, z: 0 },
+      vel: { x: 0, z: 0 },
+      rot: 0,
+      radius: 12,
+    };
+    state = {
+      playerId: player.id,
+      player: { targetId: null, tether: { active: false } },
+      entities: new Map([[player.id, player]]),
+      entityList: [player],
+      settings: {
+        video: {
+          particleQuality: 'high',
+          motionReduce: false,
+          energyMaterials: false,
+          bloom: true,
+          ...(overrides.video || {}),
+        },
+      },
+      render: { scene },
+      ui: { radarRange: 4000 },
+      combat: { attachments: { byId: {} } },
+      content: {},
+      ...(overrides.state || {}),
+    };
+  }
   const system = Object.create(vfx);
   system.init({ state, bus, helpers: { player: () => player } });
-  return { scene, state, bus, system, player };
+  return { scene, state, bus, system, player, coreRuntime, productionWorld };
+}
+
+function refreshProductionWorldIndexes(harness, expectedAsteroids = null) {
+  const { state, coreRuntime } = harness;
+  // The real core pre-step reconciles the typed lanes and marks the index ready. The real hash
+  // rebuild populates collision candidates from the same live entity list.
+  coreRuntime.preStep(0, state);
+  state.spatialHash.rebuild(state.entityList);
+  if (expectedAsteroids == null) return;
+  assert.equal(state.entityIndex.ready, true, 'production fixture entity index is ready');
+  assert.equal(state.entityIndex.asteroids.length, expectedAsteroids,
+    'typed asteroid lane contains every authored seam-bearing body');
+  assert.ok(hasActiveSpatialHash(state.spatialHash), 'production fixture spatial hash has live buckets');
+  const nearby = [];
+  state.spatialHash.queryRadius(0, 0, 2000, nearby);
+  assert.equal(nearby.filter((entity) => entity.type === 'asteroid').length, expectedAsteroids,
+    'spatial query includes all fixture asteroids inside the generated world bounds');
 }
 
 /** Add inert scenery so "idle" means a real populated sector, not an empty Map. */
@@ -109,19 +165,22 @@ function populate(harness, count) {
   let seed = 20260727;
   const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
   for (let i = 0; i < count; i++) {
-    const rock = {
+    const rockSpec = {
       id: 1000 + i,
       type: 'asteroid',
       alive: true,
+      collides: true,
       pos: { x: (rnd() - 0.5) * 1600, z: (rnd() - 0.5) * 1600 },
       vel: { x: 0, z: 0 },
       rot: rnd() * Math.PI * 2,
       radius: 6 + rnd() * 18,
       data: { typeId: 'rock_a', seams: [{ localOffset: { x: 2, z: 0 } }, { localOffset: { x: -3, z: 1 } }] },
     };
+    const rock = harness.productionWorld ? makeEntity(rockSpec) : rockSpec;
     harness.state.entities.set(rock.id, rock);
     harness.state.entityList.push(rock);
   }
+  if (harness.productionWorld) refreshProductionWorldIndexes(harness, count);
   return harness;
 }
 
@@ -137,7 +196,7 @@ function liveWork(system) {
 // 1. BUDGET — an idle frame in a populated sector stays inside its share of the VFX budget.
 // ---------------------------------------------------------------------------------------------
 {
-  const harness = populate(makeHarness(), IDLE_ASTEROIDS);
+  const harness = populate(makeHarness({ productionWorld: true }), IDLE_ASTEROIDS);
   const { system } = harness;
   for (let i = 0; i < IDLE_WARMUP_FRAMES; i++) system.update(1 / 60);
   const t0 = performance.now();

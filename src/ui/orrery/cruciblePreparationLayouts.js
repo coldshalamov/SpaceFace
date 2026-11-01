@@ -101,7 +101,7 @@ ${D} .k-foot .orr-door-hint { text-align:right; font:400 12px/1.45 var(--dp-face
 /* foot rail: ‹ BACK + ESC keycap (matches new-game / save / tech-tree) */
 ${D} .k-foot .sf-back.k-word { all:unset !important; box-sizing:border-box !important; cursor:pointer !important; display:inline-flex !important; align-items:baseline !important; gap:0 !important; padding:10px 0 12px !important; min-height:44px !important; font:600 13.5px var(--dp-face-label) !important; font-stretch:112% !important; letter-spacing:.22em !important; text-transform:uppercase !important; color:rgb(255 253 248) !important; background:linear-gradient(0deg, rgb(${BONE} / .28) 0 1.5px, transparent 1.5px) 0 100% / 120px 100% no-repeat !important; text-shadow:none !important; }
 ${D} .k-foot .sf-back.k-word::before { all:unset !important; content:"‹" !important; display:inline !important; margin-right:12px !important; font-size:15px !important; color:rgb(${BONE} / .6) !important; }
-${D} .k-foot .sf-back.k-word::after { all:unset !important; content:"ESC" / "" !important; display:inline-block !important; margin-left:16px !important; padding:3px 7px 4px !important; font:600 12px var(--dp-face-label) !important; letter-spacing:.2em !important; line-height:1 !important; text-transform:uppercase !important; color:rgb(${BONE} / .9) !important; background:rgb(${BONE} / .1) !important; border:1px solid rgb(${BONE} / .5) !important; border-radius:3px !important; box-shadow:inset 0 -1px 0 rgb(0 0 0 / .35) !important; vertical-align:baseline !important; }
+${D} .k-foot .sf-back.k-word::after { all:unset !important; content:"ESC" / "" !important; display:inline-block !important; margin-left:16px !important; padding:3px 7px 4px !important; font:600 12px var(--dp-face-label) !important; letter-spacing:.06em !important; line-height:1 !important; text-transform:uppercase !important; color:rgb(${BONE} / .9) !important; background:rgb(${BONE} / .1) !important; border:1px solid rgb(${BONE} / .5) !important; border-radius:3px !important; box-shadow:inset 0 -1px 0 rgb(0 0 0 / .35) !important; vertical-align:baseline !important; }
 ${D} .k-foot .sf-back.k-word :is(.k-kbd, .dp-kbd, kbd) { display:none !important; }
 ${D} .k-foot .sf-back.k-word:is(:hover, :focus-visible) { color:var(--dp-hand-hot, #ffd98c) !important; outline:none !important; text-decoration:none !important; }
 ${D} .k-foot .sf-back.k-word:focus-visible::after { color:rgb(255 253 248) !important; border-color:rgb(255 253 248 / .45) !important; }
@@ -468,19 +468,32 @@ ${A} > .k-foot {
   isolation:isolate;
 }
 ${A} .k-foot .k-words { position:relative; z-index:1; }
+/* the foot's verbs are keys (STATION_STANDARD §5): the primary is the amber Lamp fill, the rest
+   are secondary hairline keys — the armory's terminal choices were bare words, amber or not. */
 ${A} .k-foot .k-word--primary {
-  color:rgb(255 253 248) !important; font-weight:700 !important;
-  text-shadow:0 0 18px rgb(0 0 0 / .55) !important; background:none !important;
+  display:inline-flex !important; align-items:center; min-height:42px; padding:0 20px;
+  font:700 15px var(--dp-face-read) !important; letter-spacing:.03em; text-transform:none;
+  color:var(--dp-metal-0, #0b0d10) !important; text-shadow:none !important;
+  background:var(--dp-lamp, #f2b950) !important; border:1px solid rgb(242 185 80 / .9); border-radius:2px;
+  clip-path:polygon(0 0, calc(100% - 9px) 0, 100% 9px, 100% 100%, 0 100%);
+  transition:background var(--dp-d-cut, 80ms) linear, box-shadow var(--dp-d-cut, 80ms) linear;
 }
 ${A} .k-foot .k-word--primary:is(:hover, :focus-visible) {
-  color:var(--dp-hand-hot, #ffd98c) !important;
-  text-shadow:0 0 22px rgb(242 185 80 / .5) !important;
+  color:var(--dp-metal-0, #0b0d10) !important;
+  background:var(--dp-lamp-hot, #ffd98c) !important;
+  box-shadow:0 0 14px rgb(242 185 80 / .24);
+  text-shadow:none !important;
 }
 ${A} .k-foot .k-word:not(.k-word--primary) {
-  color:rgb(${BONE} / .72) !important; font-weight:600 !important;
+  display:inline-flex !important; align-items:center; min-height:36px; padding:0 14px;
+  font:600 14px var(--dp-face-read) !important; letter-spacing:.03em; text-transform:none;
+  color:rgb(${BONE} / .88) !important; font-weight:600 !important;
+  background:rgb(${BONE} / .05); border:1px solid rgb(${BONE} / .34); border-radius:2px;
+  transition:background var(--dp-d-cut, 80ms) linear, border-color var(--dp-d-cut, 80ms) linear, color var(--dp-d-cut, 80ms) linear;
 }
 ${A} .k-foot .k-word:not(.k-word--primary):is(:hover, :focus-visible) {
-  color:rgb(${BONE} / .92) !important;
+  color:#fff !important;
+  background:rgb(${BONE} / .12); border-color:rgb(${BONE} / .75);
 }
 /* Keycaps — .sf-cru-kbd on Launch/Esc + nested kbd language; fine-print 1/2/3/Tab caps. */
 ${A} .k-foot .sf-cru-kbd,
@@ -488,7 +501,7 @@ ${A} .sf-cru-fine .orr-armory-keycap {
   display:inline-block !important; box-sizing:border-box !important;
   margin-left:12px !important; margin-right:0 !important;
   padding:3px 7px 4px !important; min-width:0 !important; height:auto !important;
-  font:600 12px var(--dp-face-label) !important; letter-spacing:.2em !important;
+  font:600 12px var(--dp-face-label) !important; letter-spacing:.06em !important;
   line-height:1 !important; text-transform:uppercase !important;
   color:rgb(${BONE} / .9) !important; background:rgb(${BONE} / .1) !important;
   border:1px solid rgb(${BONE} / .5) !important; border-radius:3px !important;
@@ -572,18 +585,31 @@ ${R} > .k-foot {
 }
 ${R} .k-foot .k-words { position:relative; z-index:1; }
 ${R} .k-foot .k-word:not(.k-word--primary):not(.is-lamp) {
+  display:inline-flex !important; align-items:center; min-height:36px; padding:0 14px;
+  font:600 14px var(--dp-face-read) !important; letter-spacing:.03em; text-transform:none;
   color:rgb(${BONE} / .88) !important; font-weight:600 !important;
+  background:rgb(${BONE} / .05); border:1px solid rgb(${BONE} / .34); border-radius:2px;
+  transition:background var(--dp-d-cut, 80ms) linear, border-color var(--dp-d-cut, 80ms) linear, color var(--dp-d-cut, 80ms) linear;
 }
 ${R} .k-foot .k-word:not(.k-word--primary):not(.is-lamp):is(:hover, :focus-visible) {
-  color:rgb(${BONE} / .98) !important;
+  color:#fff !important;
+  background:rgb(${BONE} / .12); border-color:rgb(${BONE} / .75);
 }
 ${R} .k-foot .k-word.k-word--primary:not(.is-lamp) {
-  color:rgb(255 253 248) !important; font-weight:700 !important;
-  text-shadow:0 0 18px rgb(0 0 0 / .55) !important; background:none !important; background-image:none !important;
+  display:inline-flex !important; align-items:center; min-height:42px; padding:0 20px;
+  font:700 15px var(--dp-face-read) !important; letter-spacing:.03em; text-transform:none;
+  color:var(--dp-metal-0, #0b0d10) !important; font-weight:700 !important;
+  text-shadow:none !important;
+  background:var(--dp-lamp, #f2b950) !important; background-image:none !important;
+  border:1px solid rgb(242 185 80 / .9); border-radius:2px;
+  clip-path:polygon(0 0, calc(100% - 9px) 0, 100% 9px, 100% 100%, 0 100%);
+  transition:background var(--dp-d-cut, 80ms) linear, box-shadow var(--dp-d-cut, 80ms) linear;
 }
 ${R} .k-foot .k-word.k-word--primary:not(.is-lamp):is(:hover, :focus-visible) {
-  color:var(--dp-hand-hot, #ffd98c) !important;
-  text-shadow:0 0 22px rgb(242 185 80 / .5) !important;
+  color:var(--dp-metal-0, #0b0d10) !important;
+  background:var(--dp-lamp-hot, #ffd98c) !important;
+  box-shadow:0 0 14px rgb(242 185 80 / .24);
+  text-shadow:none !important;
 }
 ${R} .k-foot .sf-cru-fine, ${R} .k-foot .sf-cru-keynote {
   color:rgb(${BONE} / .86) !important; position:relative; z-index:1; max-width:42ch;
@@ -596,7 +622,7 @@ ${R} .k-foot .sf-cru-kbd {
   display:inline-block !important; box-sizing:border-box !important;
   margin-left:12px !important; margin-right:0 !important;
   padding:3px 7px 4px !important; min-width:0 !important; height:auto !important;
-  font:600 12px var(--dp-face-label) !important; letter-spacing:.2em !important;
+  font:600 12px var(--dp-face-label) !important; letter-spacing:.06em !important;
   line-height:1 !important; text-transform:uppercase !important;
   color:rgb(${BONE} / .9) !important; background:rgb(${BONE} / .1) !important;
   border:1px solid rgb(${BONE} / .5) !important; border-radius:3px !important;
@@ -607,7 +633,7 @@ ${R} > .sf-cru-stage.orr-hull--on .sf-cru-row.is-lit .sf-cru-act:not(:disabled):
   display:inline-block !important; box-sizing:border-box !important;
   margin-left:10px !important; padding:3px 7px 4px !important; min-width:0 !important;
   width:auto !important; height:auto !important;
-  font:600 12px var(--dp-face-label) !important; letter-spacing:.2em !important;
+  font:600 12px var(--dp-face-label) !important; letter-spacing:.06em !important;
   line-height:1 !important; text-transform:uppercase !important;
   color:rgb(${BONE} / .9) !important; background:rgb(${BONE} / .1) !important;
   border:1px solid rgb(${BONE} / .5) !important; border-radius:3px !important;

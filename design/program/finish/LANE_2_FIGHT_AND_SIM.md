@@ -20,27 +20,37 @@ lean enough to change. Status words: `OPEN`, `ACTIVE`, `LANDED <sha>`, `SKIPPED 
 - 2026-10-28, Lane 3 (W1-479 sweep): two stale assertions red at HEAD on clean files, not mine and not foreign-dirty — `test/rc-472-racing-event-cards-4242.test.mjs:174` expects 1 polyline/course where `racingMap.js` deliberately draws 2 (bloom+core, ORRERY §3.1), and `test/station-orbital.test.mjs:66` expects the literal `styles/station-orbital.css` where `stationApp.js` routes through `ensureStylesheet()`. Update the assertions to match the landed visuals. Also `test/hud-contact-roster-visibility.test.mjs` remains 2-red (projection-count contract) — already yours.
 - 2026-10-29, Lane 3 (ear/INFERENCE sitting): `src/systems/swarmArena.js` + `src/systems/environmentMaterials.js` — payload additions only, to the existing `asteroid:chunked` emits (`count` + parent `pos`), so the new chunk-split voice in audioSystem sits at the split and grades by piece count. No sim logic touched; `test/inf-asteroid-chunk-voice.test.mjs` pins the audio side.
 
+- 2026-10-31, integration: `scripts/sf-sim-cli.mjs` skips the redundant fresh physics prepare only for envelope resumes; the existing snapshot-bearing reset remains. All four real 47-A physical branch outcomes pass (48,075 ms). This verifies loaded physical behavior; no matched timing improvement or baseline-budget acceptance is claimed.
+
+- 2026-10-31, integration: the Massline aggregate shares the identical 5,200-tick spindle/scavenger inspection in one opt-in child while preserving separate assertions, verdicts, timeouts and standalone commands. The focused pair passes in 23.4 seconds; this does not establish the full 90-second baseline budget.
+
 ## Defects (this lane's share of the demo defect ledger — delete a row in the commit that fixes it)
 
 | # | What a stranger sees | Where | Next step |
 |---|---|---|---|
-| D191 | Ceres refinery pocket population churn and temporary arrays on re-entry | `test/ceres-table-authority-census.test.mjs`, `test/ceres-active-pockets.test.mjs` | packet F1 |
-| D241 | Residual sim-driven reds after the 2026-10-24 stale sweep | the suites named in the ledger row | packet F0 |
-| D224 | CI browser checks fail only by timeout on the software-GL runner | `check:assets:live`, `check:market-first-loop`, `probe-flight-visual` | packet T2 |
-| D175 | vm-drop `classify-*` patch jobs carry dead-location hunks (standing guard while importing vm-drop jobs) | `design/program/vm-drop/` (read-only) | guard only |
+| D191 | Ceres population-budget/re-entry churn is repaired; simulation performance remains OPEN | `test/ceres-table-authority-census.test.mjs`, `test/ceres-active-pockets.test.mjs` | F1: obtain a current uncontended Ceres attribution of the Rapier solve/guard cost; the 2026-10-17 profile is historical, not a current performance result |
+| D241 | Partial: stale-sweep fixes, the named Ceres Massline case, Ceres native ambush opportunity/lifecycle case, and RC-458 selective staged-pilot 180-second case pass; public Ceres toolkit route remains unverified | `test/ceres-five-minute-acceptance.test.mjs`, `test/rc-458-round1-budget.test.mjs` | F0: verify the Ceres public toolkit route; do not treat the native opportunity fixture as route acceptance |
+| D224 | OPEN verification: historical SwiftShader failures were timeouts and their budgets were widened; no current green affected SwiftShader shard is recorded here | `check:assets:live`, `check:market-first-loop`, `probe-flight-visual`, `probe-ship-visual-stability` | T2: rerun the affected software-GL shard; classify any non-timeout failure separately rather than treating the old timeout report as a current product defect |
 
 ## Day-one review (from `LANDED_REVIEW.md`; delete the row there when done)
 
-- **R-36df771** — row 403 AL-LONG-5 drone composer + warm flight restore: re-check a saved-and-restored
-  composed loop resumes at the exact step it paused on if that claim remains materially unresolved;
-  use the review approach in README §5.3 rather than a fixed batch.
+- **R-36df771 — closed 2026-10-31:** all three existing physical seed-4242 MOVE, WAIT and
+  partial-transfer checkpoint cases pass production save/load materialization and continue for
+  three cycles with matching program counters, trajectories, freight and receipts. This closes
+  the exact-step owner invariant; the ordinary Automation screen remains in the public UI journey.
 
 ## The ordered packets
 
 ### F0 — Green the floor
-Run the sim reds in D241 one suite at a time (never `check:all` in one go), fix root causes, and
-record which reds are environment-only. Done when D241's suites are green or each has a one-line
-root cause in this board.
+The stale-sweep/eligibility fixes in `LANDED_REVIEW.md` remain verified. The exact current
+`test/ceres-five-minute-acceptance.test.mjs` Massline case passes: the Reaver dies at 913 combat
+ticks, with the off-frustum hit at tick 194. The Ceres native opportunity/lifecycle case also
+passes: it records the exact live cohort member at the first pointable-acquisition tick, then
+marks that actor dead as a controlled native fixture step. That is not evidence of a player-caused
+kill, and it does not verify the public Ceres toolkit route, which remains OPEN. The selective
+staged-pilot case in `test/rc-458-round1-budget.test.mjs` passes its 180-second check. Keep D241
+open only for direct verification of the public Ceres toolkit route; do not repeat the passing
+native cases or stale-sweep suites.
 
 ### Wave F — the simulation is cheap at a crowd (do first; Lane 1's frame bars depend on it)
 
@@ -162,3 +172,7 @@ that keeps momentum and becomes the next round's terrain.
 - The feel contract: hands-off assisted flight gradually comes to rest (owner 2026-09-15); do not restore the old 90 WU/s retention target.
 - `src/systems/input.js` edits need focused input/rebind/sim validation (`AGENTS.md` §6).
 - A naive "emitted but never heard" event grep is noise here — events go through wrapper helpers; read before calling a wire dead.
+- **D175 is a standing import guard, not a current game defect.** All 12 `classify-*` jobs were
+  verified DONE+IMPORT with zero live dead-location reads in the 2026-10-07 check. On a future
+  `design/program/vm-drop/` import, drop hunks using writerless `player.data.*` or `state.comms.*`
+  locations; the remote-authoritative drop remains read-only here.

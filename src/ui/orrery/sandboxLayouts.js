@@ -458,6 +458,12 @@ const SANDBOX_LAYOUTS_CSS = `
   .sf-sandbox-lab-form { grid-template-columns: 1fr; }
   .sf-sandbox-tile { min-height: 0 !important; height: auto !important; padding: 14px 8px 10px 0; }
   .sf-sandbox-dial { display: none; }
+  /* The crest's reading line and the ladder's QUICK SETUPS tick were ~70px apart, stacked air from
+     the crest foot, the frame's row gap and the ladder's own lead-in. One 8px gap each keeps the
+     break a section break, not a hole, and gives the ladder that height back. */
+  .screen.sf-sandbox.dp-frame--screen { row-gap: 8px; }
+  .sf-sandbox .sf-crest { padding-bottom: 4px; }
+  .sf-sandbox-tiles { margin-top: 8px; }
 }
 /* Touch / phone deck (data-sf-mobile, any width): the global 44px touch floor crushed each
    title+desc tile and stacked them, so the tiles opt out of it and keep their own height. */
@@ -474,7 +480,8 @@ html:root[data-sf-mobile="1"] .screen.sf-sandbox.dp-frame--screen {
    below 500px of stage height the ladder drops its own bound — the stage alone scrolls. */
 @media (max-height: 640px) {
   .screen.sf-sandbox.dp-frame--screen { padding-top: 16px; row-gap: 8px; }
-  .sf-sandbox .sf-crest { padding-top: 8px; }
+  .sf-sandbox .sf-crest { padding-top: 8px; padding-bottom: 4px; }
+  .sf-sandbox-tiles { margin-top: 8px; }
   .sf-sandbox-dial { width: 84px; height: 84px; }
   .sf-sandbox .sf-sandbox-name { font-size: calc(var(--dp-fs-title) * .6); }
 }
