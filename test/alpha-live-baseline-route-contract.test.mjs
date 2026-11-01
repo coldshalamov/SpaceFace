@@ -124,8 +124,8 @@ for (const required of [
   /getByRole\(['"]button['"],\s*\{\s*name:\s*['"]New Game['"],\s*exact:\s*true\s*\}\)/,
   /getByRole\(['"]button['"],\s*\{\s*name:\s*['"]Launch['"],\s*exact:\s*true\s*\}\)/,
   /getByRole\(['"]button['"],\s*\{\s*name:\s*['"]Set Waypoint['"],\s*exact:\s*true\s*\}\)/,
-  /keyboard\.down\(['"]KeyW['"]\)/,
-  /keyboard\.down\(['"]Shift['"]\)/,
+  /await press\(['"]KeyW['"]\)/,
+  /await press\(['"]Shift['"]\)/,
   /keyboard\.press\(['"]KeyN['"]\)/,
   /#sf-galaxymap/,
   /keyboard\.press\(['"]\/['"]\)/,
@@ -273,6 +273,8 @@ assert.match(combined, /inputSource\s*:\s*['"]keyboard-mouse['"]/, 'evidence nam
 
 const routeModule = await import(new URL('../scripts/lib/alphaLiveBaselineRoute.mjs', import.meta.url));
 assert.equal(typeof routeModule.runBrowserPublicRoute, 'function', 'route helper exports the public-route runner');
+assert.equal(typeof routeModule.measureFlightInputWithBoundedHold, 'function',
+  'route helper exports the bounded public keyboard probe for behavior coverage');
 assert.equal(typeof routeModule.summarizePerformanceSamples, 'function', 'route helper exports its descriptive sampler summary');
 assert.equal(typeof routeModule.evaluateFlightInputCausality, 'function', 'route helper exports causal flight evaluation');
 assert.equal(typeof routeModule.inspectCanonicalRootUrl, 'function', 'route helper exports canonical URL inspection');
@@ -281,6 +283,142 @@ assert.equal(typeof routeModule.observeStableStationFramesInPage, 'function',
   'route helper exports the exact DOM observer used by page.evaluate');
 
 await testStationDomObserver(routeModule);
+
+const flightProbeEvents = (label) => {
+  const events = [];
+  const keyboard = {
+    async down(key) { events.push(`${label}:down:${key}`); },
+    async up(key) { events.push(`${label}:up:${key}`); },
+  };
+  return { events, keyboard };
+};
+const inertDeadline = (callback, delayMs) => {
+  assert.equal(delayMs, 4_000, 'flight key lifetime has the bounded four-second ceiling');
+  return callback;
+};
+
+const normalProbe = flightProbeEvents('normal');
+let normalSnapshots = 0;
+const normalResult = await routeModule.measureFlightInputWithBoundedHold({
+  keyboard: normalProbe.keyboard,
+  waitForTimeout: async (ms) => normalProbe.events.push(`normal:wait:${ms}`),
+  readSnapshot: async () => ({ sample: ++normalSnapshots }),
+  scheduleDeadline: inertDeadline,
+  cancelDeadline() {},
+});
+assert.deepEqual(normalResult, { wHeld: { sample: 1 }, boostHeld: { sample: 2 } },
+  'ordinary W and boost samples retain their order');
+assert.deepEqual(normalProbe.events, [
+  'normal:down:KeyW', 'normal:wait:500', 'normal:down:Shift', 'normal:wait:400',
+  'normal:up:Shift', 'normal:up:KeyW',
+], 'ordinary probe preserves the 500ms W and 400ms Shift holds and releases both keys');
+
+let unblockFlightSnapshot;
+let flightSnapshotBlocked;
+const blockedSnapshot = new Promise((resolve) => { unblockFlightSnapshot = resolve; });
+const snapshotStarted = new Promise((resolve) => { flightSnapshotBlocked = resolve; });
+let fireFlightDeadline;
+let snapshotUnblocked = false;
+let flightKeysReleased;
+const flightKeysReleasedPromise = new Promise((resolve) => { flightKeysReleased = resolve; });
+const blockedProbe = flightProbeEvents('blocked');
+const blockedFlightProbe = routeModule.measureFlightInputWithBoundedHold({
+  keyboard: {
+    async down(key) { blockedProbe.events.push(`blocked:down:${key}`); },
+    async up(key) {
+      blockedProbe.events.push(`blocked:up:${key}`);
+      if (blockedProbe.events.includes('blocked:up:Shift')
+        && blockedProbe.events.includes('blocked:up:KeyW')) flightKeysReleased();
+    },
+  },
+  waitForTimeout: async (ms) => blockedProbe.events.push(`blocked:wait:${ms}`),
+  readSnapshot: async () => {
+    flightSnapshotBlocked();
+    const value = await blockedSnapshot;
+    snapshotUnblocked = true;
+    return value;
+  },
+  scheduleDeadline: (callback, delayMs) => {
+    assert.equal(delayMs, 4_000);
+    fireFlightDeadline = callback;
+    return callback;
+  },
+  cancelDeadline() {},
+});
+await snapshotStarted;
+fireFlightDeadline();
+await flightKeysReleasedPromise;
+assert.deepEqual(blockedProbe.events.filter((event) => event.startsWith('blocked:up:')),
+  ['blocked:up:Shift', 'blocked:up:KeyW'],
+  'host deadline sends keyup for both probe keys while telemetry is still blocked');
+await assert.rejects(blockedFlightProbe, /exceeded the 4000ms held-key ceiling/);
+assert.equal(snapshotUnblocked, false, 'the release does not depend on DevTools telemetry completing');
+unblockFlightSnapshot({ sample: 'late' });
+assert.equal(blockedProbe.events.includes('blocked:down:Shift'), false,
+  'a late W snapshot cannot trigger a new Shift-down after timeout');
+
+let acknowledgeKeydown;
+let keydownStarted;
+const keydownStartedPromise = new Promise((resolve) => { keydownStarted = resolve; });
+const delayedKeydown = new Promise((resolve) => { acknowledgeKeydown = resolve; });
+let fireKeydownDeadline;
+let keydownAcknowledged = false;
+let lateKeydownReleased;
+const lateKeydownReleasedPromise = new Promise((resolve) => { lateKeydownReleased = resolve; });
+let keydownReleasedCount = 0;
+const keydownProbe = flightProbeEvents('keydown-blocked');
+const blockedKeydownFlightProbe = routeModule.measureFlightInputWithBoundedHold({
+  keyboard: {
+    async down(key) {
+      keydownProbe.events.push(`keydown-blocked:down:${key}`);
+      if (key === 'KeyW') {
+        keydownStarted();
+        await delayedKeydown;
+        keydownAcknowledged = true;
+      }
+    },
+    async up(key) {
+      keydownProbe.events.push(`keydown-blocked:up:${key}`);
+      if (key === 'KeyW') {
+        keydownReleasedCount++;
+        if (keydownAcknowledged && keydownReleasedCount >= 3) lateKeydownReleased();
+      }
+    },
+  },
+  waitForTimeout: async () => { throw new Error('wait must not run after blocked keydown expires'); },
+  readSnapshot: async () => { throw new Error('snapshot must not run after blocked keydown expires'); },
+  scheduleDeadline: (callback, delayMs) => {
+    assert.equal(delayMs, 4_000);
+    fireKeydownDeadline = callback;
+    return callback;
+  },
+  cancelDeadline() {},
+});
+await keydownStartedPromise;
+fireKeydownDeadline();
+await assert.rejects(blockedKeydownFlightProbe, /exceeded the 4000ms held-key ceiling/);
+assert.deepEqual(keydownProbe.events.filter((event) => event.startsWith('keydown-blocked:up:')),
+  ['keydown-blocked:up:Shift', 'keydown-blocked:up:KeyW',
+    'keydown-blocked:up:Shift', 'keydown-blocked:up:KeyW',
+    'keydown-blocked:up:Shift', 'keydown-blocked:up:KeyW'],
+  'deadline and cleanup submit keyup while keydown ack is blocked');
+assert.equal(keydownProbe.events.includes('keydown-blocked:down:Shift'), false,
+  'expired keydown cannot advance to a late boost press');
+acknowledgeKeydown();
+await lateKeydownReleasedPromise;
+assert.equal(keydownProbe.events.includes('keydown-blocked:down:Shift'), false,
+  'late keydown acknowledgement is followed by cleanup, never Shift-down');
+
+const errorProbe = flightProbeEvents('error');
+await assert.rejects(routeModule.measureFlightInputWithBoundedHold({
+  keyboard: errorProbe.keyboard,
+  waitForTimeout: async (ms) => errorProbe.events.push(`error:wait:${ms}`),
+  readSnapshot: async () => { throw new Error('snapshot failed'); },
+  scheduleDeadline: inertDeadline,
+  cancelDeadline() {},
+}), /snapshot failed/);
+assert.deepEqual(errorProbe.events.slice(-2), ['error:up:Shift', 'error:up:KeyW'],
+  'snapshot errors still release both keyboard inputs');
 
 assert.deepEqual(
   routeModule.summarizePerformanceSamples([

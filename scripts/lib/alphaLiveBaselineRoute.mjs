@@ -31,6 +31,93 @@ const SCREENSHOTS = Object.freeze({
 // 150s budget expired (run 2026-09-25T22-12-38Z), so 150s bound the budget, not the
 // product. 240s is ~2x the best observed load and still bounds a wedged page.
 export const AUTHORED_FLIGHT_READY_BUDGET_MS = 240_000;
+const FLIGHT_INPUT_HOLD_CEILING_MS = 4_000;
+
+// Keep ordinary keyboard holds bounded even when a DevTools snapshot stalls. The deadline runs
+// on the host while readFlightSnapshot is pending, releases every requested/held key, and makes
+// the operation fail instead of resuming with a late boost press.
+export async function measureFlightInputWithBoundedHold({
+  keyboard,
+  waitForTimeout,
+  readSnapshot,
+  holdCeilingMs = FLIGHT_INPUT_HOLD_CEILING_MS,
+  scheduleDeadline = (callback, delayMs) => setTimeout(callback, delayMs),
+  cancelDeadline = (timer) => clearTimeout(timer),
+} = {}) {
+  assert(keyboard && typeof keyboard.down === 'function' && typeof keyboard.up === 'function',
+    'bounded flight-input probe requires a keyboard');
+  assert(typeof waitForTimeout === 'function' && typeof readSnapshot === 'function',
+    'bounded flight-input probe requires wait and snapshot functions');
+  assert(Number.isFinite(holdCeilingMs) && holdCeilingMs > 0,
+    'bounded flight-input probe requires a positive hold ceiling');
+
+  let releaseInFlight = null;
+  let expired = false;
+  let timeoutRelease = Promise.resolve();
+  let deadlineTimer = null;
+  let resolveDeadline;
+  const deadlineReached = new Promise((resolve) => { resolveDeadline = resolve; });
+
+  const releaseKeys = async () => {
+    if (releaseInFlight) await releaseInFlight;
+    // Preserve the route's existing idempotent cleanup of both probe keys, including the case
+    // where the deadline fires while W's snapshot is blocked and Shift has not gone down yet.
+    const releasing = Promise.all(['Shift', 'KeyW'].map((key) => keyboard.up(key).catch(() => {})));
+    releaseInFlight = releasing;
+    try {
+      await releasing;
+    } finally {
+      if (releaseInFlight === releasing) releaseInFlight = null;
+    }
+  };
+
+  const awaitBeforeDeadline = async (operation) => {
+    const pendingOperation = Promise.resolve().then(operation);
+    const result = await Promise.race([
+      pendingOperation.then(
+        (value) => ({ completed: true, value }),
+        (error) => ({ completed: true, error }),
+      ),
+      deadlineReached.then(() => ({ completed: false })),
+    ]);
+    if (!result.completed || expired) {
+      await timeoutRelease;
+      await releaseKeys();
+      throw new Error(`flight input exceeded the ${holdCeilingMs}ms held-key ceiling`);
+    }
+    if (result.error) throw result.error;
+    return result.value;
+  };
+
+  const press = async (key) => {
+    const down = Promise.resolve().then(() => keyboard.down(key));
+    // If the keydown acknowledgement arrives after the deadline released the keys, issue a
+    // second cleanup then. This prevents a late CDP acknowledgement from leaving a key held.
+    down.then(() => expired ? releaseKeys() : undefined, () => {});
+    await awaitBeforeDeadline(() => down);
+  };
+
+  try {
+    deadlineTimer = scheduleDeadline(() => {
+      expired = true;
+      resolveDeadline();
+      timeoutRelease = releaseKeys();
+      timeoutRelease.catch(() => {});
+    }, holdCeilingMs);
+
+    await press('KeyW');
+    await awaitBeforeDeadline(() => waitForTimeout(500));
+    const wHeld = await awaitBeforeDeadline(readSnapshot);
+
+    await press('Shift');
+    await awaitBeforeDeadline(() => waitForTimeout(400));
+    const boostHeld = await awaitBeforeDeadline(readSnapshot);
+    return { wHeld, boostHeld };
+  } finally {
+    if (deadlineTimer != null) cancelDeadline(deadlineTimer);
+    await releaseKeys();
+  }
+}
 
 export async function runBrowserPublicRoute({
   page,
@@ -204,19 +291,11 @@ export async function runBrowserPublicRoute({
       assert(baselineStart, 'released baseline never observed a settled hull');
       await page.waitForTimeout(500);
       const baselineEnd = await readFlightSnapshot(page);
-      let wHeld = null;
-      let boostHeld = null;
-      try {
-        await page.keyboard.down('KeyW');
-        await page.waitForTimeout(500);
-        wHeld = await readFlightSnapshot(page);
-        await page.keyboard.down('Shift');
-        await page.waitForTimeout(400);
-        boostHeld = await readFlightSnapshot(page);
-      } finally {
-        await page.keyboard.up('Shift').catch(() => {});
-        await page.keyboard.up('KeyW').catch(() => {});
-      }
+      const { wHeld, boostHeld } = await measureFlightInputWithBoundedHold({
+        keyboard: page.keyboard,
+        waitForTimeout: (ms) => page.waitForTimeout(ms),
+        readSnapshot: () => readFlightSnapshot(page),
+      });
       // Shader admission can briefly occupy the page immediately after launch. Wait for the public
       // keyup events to reach a later fixed tick instead of sampling the still-held fields in the
       // same blocked frame. This remains a player-input proof; it does not write input or sim state.
