@@ -434,6 +434,59 @@ test('Repulsor Pylon cadence protects its team-zero pilot and arms the field wit
   }
 });
 
+test('purchased Fortify Gravity Beacon and live Pylon pulse move real Rapier bodies through fields', async () => {
+  const previousEnabled = FIELD_FLAGS.enabled;
+  FIELD_FLAGS.enabled = true;
+  const runDevice = async ({ seed, deviceId, socketId, offsetX, expectedSign, steps }) => {
+    const state = createGameState(seed);
+    state.run = makeRun({ credits: 1000, phase: 'draft' });
+    const sim = createSimulation({ seed, state, systems: [runSession, fieldOwner, swarmFortify, physics] });
+    try {
+      sim.state.mode = 'flight';
+      const physicsOwner = sim.registry.get('physics');
+      assert.equal(await physicsOwner.prepareBackend(sim.state, { initTimeoutMs: 5000 }), true,
+        'the authored device force must reach the real Rapier authority');
+      const player = sim.spawn({
+        type: 'ship', team: 0, alive: true, pos: { x: 0, z: 0 }, radius: 8,
+        factionId: 'faction_player', data: { defId: 'ship_kestrel' },
+      });
+      sim.state.playerId = player.id;
+      sim.bus.emit('run:wavePlanned', { wave: 1 });
+      const fortify = sim.registry.get('swarmFortify');
+      const receipt = fortify.build({
+        requestId: 1, runToken: fortify.getReadModel().runToken, deviceId, socketId,
+      });
+      assert.equal(receipt.accepted, true, `${deviceId} should be purchased through Fortify's run-wallet owner`);
+      const structure = sim.state.entities.get(receipt.structureId);
+      assert.ok(structure?.data?.fieldAnchor, `${deviceId} should register its authored field anchor`);
+      const body = sim.spawn({
+        type: 'wreck', team: 9, pos: { x: structure.pos.x + offsetX, z: structure.pos.z },
+        vel: { x: 0, z: 0 }, radius: 4, collides: true, hull: 40, hullMax: 40,
+        physicsBody: { schemaVersion: 1, radius: 4, mass: 2, inertiaY: 4, dynamic: true, ccd: false, material: 'debris', revision: 0 },
+        data: { majorDebris: true, parentType: 'debris' },
+      });
+      const startX = body.pos.x;
+      sim.state.run.phase = 'active';
+      for (let tick = 0; tick < steps; tick++) sim.step();
+      assert.ok(expectedSign * body.vel.x > 0.5,
+        `${deviceId} should impart its physical ${expectedSign > 0 ? 'outward' : 'inward'} force; velocity=${body.vel.x}`);
+      assert.ok(expectedSign * (body.pos.x - startX) > 0.1,
+        `${deviceId} should move the Rapier body, not only publish a field/read-model effect`);
+    } finally {
+      sim.dispose();
+    }
+  };
+
+  try {
+    await runDevice({ seed: 81201, deviceId: 'gravity_beacon', socketId: 'front-near',
+      offsetX: 65, expectedSign: -1, steps: 45 });
+    await runDevice({ seed: 81202, deviceId: 'repulsor_pylon', socketId: 'port-near',
+      offsetX: 65, expectedSign: 1, steps: 110 });
+  } finally {
+    FIELD_FLAGS.enabled = previousEnabled;
+  }
+});
+
 test('field ownership protects real fragile cargo spills and allies while still pulling unowned ore', () => {
   const player = {
     id: 'pilot-7', type: 'ship', team: 1, alive: true,
