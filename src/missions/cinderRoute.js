@@ -208,14 +208,53 @@ function markBody(state, markerId) {
   return (state.entityList || []).find(e => e?.alive !== false && e.type === 'wreck'
     && e.data?.persistenceOwner === 'aftermathWrecks' && e.data.markerId === markerId) || null;
 }
-const held = (state, e) => e && (e.flags?.tethered || state.player?.tether?.targetId === e.id);
+// Read the one current player line, not flags.tethered (an NPC may own that line).
+// No entity sweep or new receipt: attachment generations and the existing marked-material
+// account must both agree before control feedback can name a load.
+export function cinderPlayerTow(m, state) {
+  return cinderPlayerTowForAccount(m, state, cinderAccounting(m, state));
+}
+function cinderPlayerTowForAccount(m, state, account) {
+  const t = state.player?.tether;
+  if (m?.status !== 'active' || !account.valid || account.delivered || t?.active !== true
+    || t.attachmentId == null || !state.missions?.active?.includes(m)) return null;
+  const a = state.combat?.attachments?.byId?.[t.attachmentId];
+  const e = state.entities?.get(t.targetId), player = state.entities?.get(state.playerId);
+  if (!a || a.state !== 'active' || a.id !== t.attachmentId || a.ownerId !== state.playerId
+    || a.targetId !== t.targetId || !player || player.alive !== true || !e || e.alive !== true
+    || player.occupantGeneration == null || e.occupantGeneration == null
+    || a.ownerGeneration !== player.occupantGeneration || a.targetGeneration !== e.occupantGeneration
+    || e.data?.persistenceOwner !== 'aftermathWrecks'
+    || e.data.provenance?.markerId !== e.data.markerId || !rookBoothEligible(e)) return null;
+  const ref = account.remaining.find(r => r.markerId === e.data.markerId);
+  if (!ref || !canonicalCinderMarker(m, ref, findMarker(state, ref.markerId))) return null;
+  return e;
+}
+
+function cinderIntakeReason(state, hull) {
+  const instruction = 'Hull inside the 100-WU ring at no more than 8 WU/s. Clearance and tow can finish in either order.';
+  const pad = rookPadPosition(), check = rookDeliveryCheck(hull, pad);
+  const distance = Math.hypot(hull.pos?.x - pad.x, hull.pos?.z - pad.z);
+  if ((state.run?.kind && state.run.kind !== 'adventure') || state.mode !== 'flight'
+    || state.ui?.docked || state.world?.currentSectorId !== ROOK_BOOTH.sectorId
+    || !Number.isFinite(distance) || !Number.isFinite(check.speed) || distance > 600) return instruction;
+  // Round outside gap upward: a hull just outside must never read as already in the ring.
+  const gate = check.inZone ? 'HULL INSIDE RING'
+    : `HULL ${Math.ceil(Math.max(0, distance - ROOK_BOOTH.padRadius))} WU OUTSIDE RING`;
+  // Status uses the unrounded owner check; speed rounds upward so an over-limit
+  // 8.04 never looks like an acceptable 8.0 while the reader asks the pilot to brake.
+  const action = check.speed > ROOK_BOOTH.restSpeed ? 'BRAKE THE HULL'
+    : check.inZone ? 'Inside and slow enough — hold for Rook' : 'Bring the hull into the ring';
+  const displayedSpeed = (Math.ceil(check.speed * 10) / 10).toFixed(1);
+  return `${gate} · hull speed ${displayedSpeed} / ${ROOK_BOOTH.restSpeed} WU/s · ${action}.`;
+}
 export function cinderRouteFocus(m, state) {
   if (!authoredCinderRoute(m)) return null;
   const account = cinderAccounting(m, state);
-  const remaining = account.remaining || [], candidates = remaining.map(row => ({ row, body: markBody(state, row.markerId) }));
-  const towing = candidates.find(({ body }) => held(state, body));
-  if (towing && !account.delivered) return { label: "Rook's pad — brake the marked hull inside the ring", reason: 'Hull inside the 100-WU ring at no more than 8 WU/s. Clearance and tow can finish in either order.',
+  const towing = cinderPlayerTowForAccount(m, state, account);
+  if (towing) return { label: "Rook's pad — brake the marked hull inside the ring", reason: cinderIntakeReason(state, towing),
     pos: rookPadPosition(), sectorId: ROOK_BOOTH.sectorId, targetEntityId: null };
+  const remaining = account.remaining || [], candidates = remaining.map(row => ({ row, body: markBody(state, row.markerId) }));
   const target = (m.targetEntityIds || []).map(id => state.entities?.get(id)).find(e => e?.alive !== false && targetSlot(m, e) !== null);
   if (completed(m).size < 3) return { label: `Cinder Wasps — ${completed(m).size}/3 cleared`,
     reason: 'Three marked Wasps hold the Ashfall approach. Leave one real hull intact; ordinary unrelated wrecks do not count.',

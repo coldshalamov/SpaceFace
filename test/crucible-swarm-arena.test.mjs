@@ -143,13 +143,25 @@ test('nothing spawns on the player, or inside another rock', () => {
   }
 });
 
-test('the field is topped up, never re-poured — a second wave adds nothing', () => {
+test('the field is topped up, never re-poured — later waves retain survivors and stop at the tier target', () => {
   const h = boot();
-  h.bus.emit('run:wavePlanned', { wave: 1, plan: planFor(1) });
-  const first = rocks(h).length;
-  h.bus.emit('run:wavePlanned', { wave: 2, plan: planFor(2) });
-  h.bus.emit('run:wavePlanned', { wave: 3, plan: planFor(3) });
-  assert.equal(rocks(h).length, first, 'the field held at target across three waves');
+  // Generic steady-state contract, outside authored opening 1–3. Native admission can
+  // refuse one seeded spot, then admit a replacement on a later wave's fresh seed.
+  const tier = swarmArenaTierForRun({ wave: 7, ratingT: 0 });
+  assert.equal(tier.id, swarmArenaTierForRun({ wave: 9, ratingT: 0 }).id);
+  const target = swarmArenaDebrisLayout(tier).target;
+  h.bus.emit('run:wavePlanned', { wave: 7, plan: planFor(7) });
+  const survivors = rocks(h).map(rock => ({ rock, pos: { ...rock.pos } }));
+  for (const wave of [8, 9, 9]) {
+    h.bus.emit('run:wavePlanned', { wave, plan: planFor(wave) });
+    assert.ok(rocks(h).length >= survivors.length);
+    assert.ok(rocks(h).length <= target, 'refill never exceeds the tier target');
+    assert.equal(rocks(h).length, target, 'this seed fills the last clear berth, then repeated waves add nothing');
+    for (const { rock, pos } of survivors) {
+      assert.equal(h.state.entities.get(rock.id), rock, 'existing body identity is retained');
+      assert.deepEqual(rock.pos, pos, 'existing bodies are never re-poured');
+    }
+  }
   assert.ok(rocks(h).length <= SWARM_DEBRIS_MAX);
 });
 
@@ -171,11 +183,13 @@ test('a destroyed rock is replaced on the next wave', () => {
 
 test('the field follows the fight: drifting far re-anchors it around the player', () => {
   const h = boot();
-  h.bus.emit('run:wavePlanned', { wave: 1, plan: planFor(1) });
+  // Generic steady-state/drift contract: rounds 4–6 share one tier, outside authored opening 1–3.
+  assert.equal(swarmArenaTierForRun({wave:4,ratingT:0}).id, swarmArenaTierForRun({wave:6,ratingT:0}).id);
+  h.bus.emit('run:wavePlanned', { wave: 4, plan: planFor(4) });
   const before = rocks(h).map((r) => r.id);
   // Fly well past the keep radius, as a long run drifting across the sector would.
   h.player.pos.x = SWARM_DEBRIS_KEEP_RADIUS * 3;
-  h.bus.emit('run:wavePlanned', { wave: 2, plan: planFor(2) });
+  h.bus.emit('run:wavePlanned', { wave: 5, plan: planFor(5) });
   const near = rocks(h).filter(
     (r) => Math.hypot(r.pos.x - h.player.pos.x, r.pos.z - h.player.pos.z) <= SWARM_DEBRIS_KEEP_RADIUS,
   );
@@ -197,13 +211,15 @@ test('the field stays dense where the FIGHT is, not merely within reach', () => 
   // wave five instead of fourteen — the missing three were 600-900 away, still counted, and no use
   // to anybody. Drift a short distance and the field must fill back in around the player.
   const h = boot();
-  h.bus.emit('run:wavePlanned', { wave: 1, plan: planFor(1) });
+  // Generic steady-state/drift contract: rounds 4–6 share one tier, outside authored opening 1–3.
+  assert.equal(swarmArenaTierForRun({wave:4,ratingT:0}).id, swarmArenaTierForRun({wave:6,ratingT:0}).id);
+  h.bus.emit('run:wavePlanned', { wave: 4, plan: planFor(4) });
   assert.ok(rocks(h).length >= SWARM_DEBRIS_TARGET - 1);
 
   // Move less than the keep radius, so nothing is released, but far enough that the old field is
   // no longer around the fight.
   h.player.pos.x += SWARM_DEBRIS_FIGHT_RADIUS + 120;
-  h.bus.emit('run:wavePlanned', { wave: 2, plan: planFor(2) });
+  h.bus.emit('run:wavePlanned', { wave: 5, plan: planFor(5) });
 
   const near = rocks(h).filter(
     (r) => Math.hypot(r.pos.x - h.player.pos.x, r.pos.z - h.player.pos.z) <= SWARM_DEBRIS_FIGHT_RADIUS,

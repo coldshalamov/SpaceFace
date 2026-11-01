@@ -70,6 +70,17 @@ import { PHYSICS_MATERIALS } from '../data/physicsMaterials.js';
 
 const FACTION_ID = 'faction_understory';
 const EDIBLE = new Set(UNDERSTORY_GARDENS.edibleTypes);
+// Refusal only: generic meals cannot retire these other-owner identities.
+const GENERIC_MEAL_FOREIGN_KEYS = Object.freeze(['persistenceOwner', 'runtimeOwner', 'worldRecordId', 'identityKey', 'resourceBodyId',
+  'fieldId', 'worldSiteId', 'worldSitePayloadId', 'worldSiteComponentId', 'worldSiteStructural',
+  'worldObjectId', 'siteId', 'activityObjectSlotId', 'missionId', 'missionTag', 'missionPinned',
+  'wreckMissionId', 'claimId', 'claimedBy', 'custodyOwner', 'freightCustody', 'freightCustodyPod',
+  'caughtByNet', 'contractClaimSiteOf', 'salvorClaimedBy', 'recoveryEncounterId', 'survivorPod',
+  'storyPropKind', 'authored', 'authoredCharacter', 'uniqueWreckId', 'authoredWreckId', 'poiId',
+  'protected', 'durable', 'anchored', 'living', 'playerOwned', 'persistent', 'claimable',
+  'markerId', 'physicalCustodyOnly', 'orchardId', 'alienSiteId', 'arenaShardOf', 'reefMineId', 'reefMine',
+  'originId', 'destinationId', 'originStationId', 'destStationId', 'cargoIdentity', 'ownership']);
+
 const dist2 = (a, b) => { const dx = a.x - b.x, dz = a.z - b.z; return dx * dx + dz * dz; };
 
 // Normalization helpers — every record field is coerced, never trusted.
@@ -777,8 +788,49 @@ export const understoryGardens = {
     if (prey.data?.persistenceOwner === 'aftermathWrecks') {
       const owner = this.ctx.registry?.get?.('aftermathWrecks');
       if (owner?.consumeByGarden?.(prey, garden) !== true) return null;
+      return Number(prey.mass);
     }
-    return Number(prey.mass);
+    return this._rawMealMass(prey);
+  },
+
+  /** Garden-specific refusal: generic mass has no authority to retire another owner's body. */
+  _rawMealMass(prey) {
+    if (!this.isEdible(prey) || this.state.entities?.get(prey.id) !== prey
+      || !Number.isFinite(prey.mass) || prey.mass <= 0) return null;
+    const d = prey.data, f = prey.flags || {};
+    if (f.missionPinned || f.durable || f.protected || f.invuln
+      || prey.ownerId != null || d.ownerId != null
+      || GENERIC_MEAL_FOREIGN_KEYS.some(key => !!d[key])) return null;
+    if (f.persistent || d.understoryCacheId != null || d.understoryDrop) {
+      if (!this._ownCacheMeal(prey)) return null;
+    }
+    return prey.mass;
+  },
+
+  /** Existing quiet-cache custody, including its owner-normalized restored ordinary-mass path. */
+  _ownCacheMeal(prey) {
+    const d = prey.data;
+    if (prey.type !== 'payload' || prey.flags?.persistent !== true || d.understoryDrop !== true
+      || typeof d.understoryCacheId !== 'string' || !/^drop:\d+$/.test(d.understoryCacheId)
+      || !DROP_KINDS.has(d.cacheKind) || prey.mass !== UNDERSTORY_QUIET.dropMass
+      || prey.radius !== UNDERSTORY_QUIET.dropRadius || prey.hullMax !== UNDERSTORY_QUIET.dropHull
+      || !Number.isFinite(prey.hull) || prey.hull <= 0) return false;
+    const rows = Array.isArray(this.state.understory?.drops) ? this.state.understory.drops : [];
+    const row = rows.find(r => r.id === d.understoryCacheId && r.state === 'open');
+    if (row) return row.entityId === prey.id && (row.gen == null || row.gen === prey.occupantGeneration)
+      && row.kind === d.cacheKind && d.understoryResolved !== true;
+    // _tickDrops, not this read, normalizes an orphan/closed cache to ordinary mass.
+    // Legacy saves carry no independent authenticity token: a unique byte-identical forged
+    // orphan cannot be distinguished here without changing the save schema. Do not claim one.
+    if (d.understoryResolved !== true) return false;
+    if (rows.some(r => r.id === d.understoryCacheId
+      && (r.entityId !== prey.id || (r.gen != null && r.gen !== prey.occupantGeneration)))) return false;
+    let matches = 0;
+    for (const e of this.state.entityList || []) {
+      if (e?.alive !== false && this.state.entities?.get(e.id) === e
+        && e.data?.understoryCacheId === d.understoryCacheId) matches += 1;
+    }
+    return matches === 1;
   },
 
   /** Legacy persistent gardens receive only missing visual identity on real spawn, before queued mesh build. */
@@ -856,6 +908,11 @@ export const understoryGardens = {
     return e;
   },
 
+  /** Read-only intake eligibility for route readers; custody stays with the material owner. */
+  gardenFeedMass(prey) {
+    return this._feedMassAvailable(prey);
+  },
+
   _feedMassAvailable(prey) {
     if (!this.isEdible(prey)) return null;
     if (prey.data?.jettisonedCargo === true) {
@@ -864,7 +921,7 @@ export const understoryGardens = {
     if (prey.data?.persistenceOwner === 'aftermathWrecks') {
       return this.ctx.registry?.get?.('aftermathWrecks')?.gardenFeedMass?.(prey) ?? null;
     }
-    return Number(prey.mass);
+    return this._rawMealMass(prey);
   },
 
   _reseedDestroyedReceiver() {
@@ -891,9 +948,10 @@ export const understoryGardens = {
       rec.fedMass = saved.gardenFedMass; rec.fedByPlayer = saved.gardenFedByPlayer;
       delete own.compost[UNDERSTORY_RECEIVER.gardenId];
       own.authoredReceiver = { status: 'live' };
-      this._digest(garden, rec, prey);
-      // The exact owner rechecks at commit. A refusal never leaves a free living replacement.
-      if (prey.data?.understoryConsumed !== true) {
+      const consumed = this._digest(garden, rec, prey);
+      // The intake result follows its one canonical consume commit, not an unowned prey flag.
+      // A refusal never leaves a free living replacement or consumes another load.
+      if (!(consumed > 0)) {
         this.helpers.removeEntity(garden.id, { reason: 'understory_reseed_refused' });
         own.authoredReceiver = lifecycle; delete own.gardens[UNDERSTORY_RECEIVER.gardenId];
         return null;
@@ -975,6 +1033,7 @@ export const understoryGardens = {
    * both requiring the line to be active).
    */
   _playerHandled(state, e) {
+    if (state.playerId == null) return false;
     const d = e && e.data;
     if (d && (d.lastThrowerId === state.playerId || d.thrownBy === state.playerId
         || d.thrownBy === 'player')) return true;
@@ -990,6 +1049,7 @@ export const understoryGardens = {
   /** One body commits once: retire its actual owner before removal, then retain the receipt. */
   _digest(e, rec, onlyPrey = null) {
     const s = this.state;
+    let consumed = 0;
     const reach = e.radius * UNDERSTORY_GARDENS.absorbPadding;
     for (const prey of s.entityList) {
       if ((onlyPrey && prey !== onlyPrey) || prey === e || !this.isEdible(prey)) continue;
@@ -1013,6 +1073,7 @@ export const understoryGardens = {
         this._resolveDropEaten(s, e, rec, prey, byPlayer);
       }
       this.helpers.removeEntity(prey.id, { reason: 'understory_garden' });
+      consumed += 1;
       const { grew, stage } = syncGardenStage(s, e, rec);
       const receipt = { version: 1, gardenId: e.data.gardenId, entityId: e.id,
         eatenId: prey.id, eatenType: prey.type, fedMass, gained, byPlayer,
@@ -1035,6 +1096,7 @@ export const understoryGardens = {
         this._oweInformantByName(s, u, rec.informant, UNDERSTORY_QUIET.feedOwedCr, e.data.gardenId);
       }
     }
+    return consumed;
   },
 
   /** E-26 the Compost Run: player-fed mass accrues until the run closes. */
@@ -1045,7 +1107,11 @@ export const understoryGardens = {
     let run = u.compost[e.data.gardenId];
     if (!isObj(run)) {
       u.compost[e.data.gardenId] = run = {
-        gardenId: e.data.gardenId, fedMass: 0, complete: e.data.compostRunComplete === true,
+        gardenId: e.data.gardenId,
+        // The persistent body is the run receipt after Continue or destroyed-site regrowth.
+        fedMass: Number.isFinite(e.data.compostFedMass) && e.data.compostFedMass >= 0
+          ? e.data.compostFedMass : 0,
+        complete: e.data.compostRunComplete === true,
       };
     }
     // The entity stamp is the persistent truth — re-read it every credit so a

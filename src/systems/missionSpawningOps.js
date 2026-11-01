@@ -25,7 +25,7 @@ import { AUTHORED_SET_PIECE_TYPE, CAPITAL_BOSS_TYPE } from '../data/missions.js'
 import { QUIET_APPROACH_RANGE_WU } from '../data/missionConditions.js';
 import { syncEntityCollisionIndexMembership, syncEntitySectorMembership, syncEntityTypeLaneMembership } from '../core/coreSystem.js';
 import { registerEntityWorldRecordId } from '../world/livingWorldViews.js';
-import { missionTargetSlotOf } from './missions.js';
+import { CONTRACT_47A_B2_TAG, missionTargetSlotOf } from './missions.js';
 
 export const missionSpawningOps = {
   // =========================================================================================
@@ -362,6 +362,19 @@ export const missionSpawningOps = {
       || ent.data.homeSectorId
       || (this.state.world && this.state.world.currentSectorId);
     const targetOwner = cinderTargetOwner(m);
+    // World records retain mission/slot identity, not optional story dressing. Authenticate
+    // the existing record BEFORE the generic identity writer below can repair its owner tags.
+    const b2Key = `mission:${m.id}:0`;
+    const restoreB2Mark = m.status === 'active' && m.storyTag === CONTRACT_47A_B2_TAG
+      && m.type === 'bounty_hunt' && m.storyTarget?.id === 'npc_elroy'
+      && m.storyTarget?.role === 'register_mark' && seq === 0
+      && ent.type === 'ship' && ent.alive !== false
+      && ent.data.missionId === m.id && ent.data.missionTag === m.id
+      && missionTargetSlotOf(ent, m.id) === 0 && ent.data.identityKey === b2Key
+      && ent.data.worldRecordId === stableRecordId((this.state.meta && this.state.meta.seed) || 1,
+        m.destSectorId, RECORD_KIND.MISSION_TARGET, b2Key)
+      && [ent.homeSectorId, ent.data.homeSectorId, ent.data.sectorId]
+        .every(id => id == null || id === m.destSectorId);
     ent.data.missionTag = targetOwner;
     ent.data.missionId = targetOwner;
     ent.data.missionPinned = true;
@@ -397,6 +410,12 @@ export const missionSpawningOps = {
       // and a stale label on a rematerialized host is overwritten to match.
       if (m.storyTarget && m.storyTarget.name
         && (durableSlot === 0 || ent.data.storyTargetId === m.storyTarget.id)) {
+        if (restoreB2Mark) {
+          // A conflicting identity is evidence, not an omission: leave it for the waypoint
+          // validator to reject. Fresh spawns already carry these fields.
+          ent.data.storyTargetId ??= m.storyTarget.id;
+          ent.data.storyTargetRole ??= m.storyTarget.role;
+        }
         ent.data.name = m.storyTarget.name;
         ent.data.scanLabel = m.storyTarget.label || m.storyTarget.name;
         ent.data.ai.name = m.storyTarget.name;

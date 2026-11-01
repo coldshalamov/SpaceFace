@@ -911,8 +911,8 @@ export const swarmArena = {
       ? lesson.holdTicks / 60
       : null;
     if (lesson && wave <= 1) this._installOpeningLesson(lesson);
-    // §33 row 485 — wave 1's authored opening pocket: at least three pebble-class throwables
-    // inside a short fly of the pilot, so a stranger's first throw is nearly unavoidable.
+    // §33 row 485 — attempt the authored nearby throwable pocket. Physical occupancy may
+    // refuse a proposal; never manufacture a minimum count by overlapping the live room.
     if (wave <= 1) this._installOpeningPocket(run);
     const massGap = payload && payload.plan && payload.plan.swarm && payload.plan.swarm.massGap;
     if (massGap) this._installMassGapWall(massGap, wave);
@@ -962,8 +962,22 @@ export const swarmArena = {
       Number.isInteger(run.seed) ? run.seed : 1,
       1,
     ));
+    const footprints = opticPlacementFootprints(state, this.registry?.get?.('physics')?._sg02);
+    const reserved = [];
     for (const spot of spots) {
-      this._spawnDebrisRock(spot.x, spot.z, spot.radiusWu, rng, now, { openingPocket: true });
+      const radius = asteroidColliderRadius(TYPE_ID, spot.radiusWu);
+      // Same authored proposals, but the actual collider must clear both the live map and
+      // native compounds (including their offsets and motion), not just display radii.
+      // An unknown native bound refuses admission rather than becoming a zero-radius body.
+      if (footprints.some(body => !Number.isFinite(body.radius)
+        || sweptDiscsOverlap(spot, radius, body, { clearance: 8 }))
+        || !swarmPlacementIsClear(state, spot, radius, { clearance: 8, reserved })) continue;
+      const id = this._spawnDebrisRock(spot.x, spot.z, spot.radiusWu, rng, now, { openingPocket: true });
+      if (id == null || id === false) continue;
+      // The helper may publish the map after this batch; reserve accepted geometry now.
+      reserved.push({ alive: true, pos: { x: spot.x, z: spot.z }, radius, vel: { x: 0, z: 0 } });
+      // Run end must own these bodies before the next terrain census, too.
+      this._ids.push(id);
     }
   },
 
@@ -1210,7 +1224,9 @@ export const swarmArena = {
       const inFight = distSq <= fightSq;
       const ours = !!(entity.data && entity.data[SWARM_DEBRIS_TAG]);
       if (inReach) {
-        nearbySolids.push({ x: entity.pos.x, z: entity.pos.z, radius: entity.radius || 0 });
+        nearbySolids.push({ x: entity.pos.x, z: entity.pos.z, radius: entity.radius || 0,
+          ...(ours && inFight && Number.isInteger(entity.data.openingTerrainSlot)
+            ? { openingTerrainSlot: entity.data.openingTerrainSlot } : {}) });
         // Counted only if it is close enough to be part of the fight — see SWARM_DEBRIS_FIGHT_RADIUS.
         if (ours && inFight) {
           mine++;
@@ -1243,7 +1259,7 @@ export const swarmArena = {
     // same counts, same physics verbs; only the material the room hands you changes.
     const ballast = runHasMutator(run, 'wreck_ballast');
     const openingStage = swarmOpeningTerrainStage({
-      arenaId: run.arenaId, wave, lineTier: ladderTier.lineTier,
+      arenaId: run.arenaId, wave, lineTier: ladderTier.ratingTierMin,
       altered: reef || ballast || (Array.isArray(run.arenaMutators) && run.arenaMutators.length > 0),
     });
     const target = reef ? REEF_DEBRIS_TARGET
@@ -2155,3 +2171,4 @@ export const swarmArena = {
     if (this.bus && typeof this.bus.emit === 'function') this.bus.emit(event, payload);
   },
 };
+

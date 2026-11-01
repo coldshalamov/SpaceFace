@@ -1,3 +1,5 @@
+import { firstBuoyReceivingItem, firstBuoyReceivingReceipt } from '../missions/starterBuoyAftermath.js';
+import { ceresFurnaceInspectionItem, ceresFurnaceInspectionReceipt } from '../missions/ceresFurnaceAftermath.js';
 // stationSideEventDirector.js — BP-11 packet A6 "Station Side-Events", the SEEDED DIRECTOR.
 // (See design/revamp/detail/A_sector_station.md packet A6.)
 //
@@ -38,6 +40,13 @@ const DAY_SECONDS = 600;        // sector-day contract (mirrors encounterDirecto
 const MIN_SPACING_S = 25;       // min gap between fired side-events at a station
 const DEFER_S = 15;             // re-check period for a due-but-blocked item
 const MAX_BUDGETED = 1;         // concurrent BUDGETED side-events per sector (spawn-budget-war guard)
+const MAX_SEEN_BUOY_RECEIPTS = 10; // match the bounded canonical recent-receipt window
+const MAX_SEEN_CERES_INSPECTIONS = 10;
+const RECEIVING_CONTEXT_BY_STEP = Object.freeze({
+  1: '44-C receiving check — berth intake',
+  2: 'Claim-rim receiving check — berth intake',
+  3: 'Outer-yard receiving check — berth intake',
+});
 const PATROL_SHIP = 'ship_wasp';
 
 function pathRadius(path, bubbles) {
@@ -116,6 +125,8 @@ export const stationSideEventDirector = {
     if (!station) { s.anchorId = null; return; }              // no visible station → strict no-op
     s.anchorId = stationKey(station);
     this._planStation(state, station, now);
+    this._planBuoyReceiving(state, station, now);
+    this._planCeresFurnaceInspection(state, station, now);
     this._pump(state, station, now);
   },
 
@@ -178,6 +189,37 @@ export const stationSideEventDirector = {
     }
   },
 
+  // Existing receiving-bay machinery answers the exact recently settled delivery.
+  // Transient session identity only: Continue can show ongoing work within its original window.
+  _planBuoyReceiving(state, station, now) {
+    const s = ensureState(state);
+    const receipt = firstBuoyReceivingReceipt(state, now);
+    const currentMissionId = receipt && !hasSeenBuoyReceiving(s, receipt.missionId)
+      ? receipt.missionId : null;
+    s.pending = s.pending.filter(item => !item.receivingMissionId
+      || item.receivingMissionId === currentMissionId);
+    const item = firstBuoyReceivingItem(state, station, now);
+    if (!item || hasSeenBuoyReceiving(s, item.receivingMissionId)
+      || s.pending.some(pending => pending.receivingMissionId === item.receivingMissionId)) return;
+    s.pending.push(item);
+  },
+
+  // One bounded follow-through for the exact retired Ceres worksite. This is a second identity
+  // in the existing director, not another observer/scene: the Helios planner filters only its
+  // receivingMissionId tag and therefore cannot discard this inspection's separate tag.
+  _planCeresFurnaceInspection(state, station, now) {
+    const s = ensureState(state);
+    const receipt = ceresFurnaceInspectionReceipt(state, now);
+    const currentMissionId = receipt && !hasSeenCeresInspection(s, receipt.missionId)
+      ? receipt.missionId : null;
+    s.pending = s.pending.filter(item => !item.ceresFurnaceMissionId
+      || item.ceresFurnaceMissionId === currentMissionId);
+    const item = ceresFurnaceInspectionItem(state, station, now);
+    if (!item || hasSeenCeresInspection(s, item.ceresFurnaceMissionId)
+      || s.pending.some(pending => pending.ceresFurnaceMissionId === item.ceresFurnaceMissionId)) return;
+    s.pending.push(item);
+  },
+
   // Fire at most one due item for the CURRENT anchor per beat, spaced by MIN_SPACING_S.
   _pump(state, station, now) {
     const s = ensureState(state);
@@ -194,6 +236,33 @@ export const stationSideEventDirector = {
     if (idx < 0) return;
 
     const item = s.pending[idx];
+    if (item.ceresFurnaceMissionId) {
+      if (hasSeenCeresInspection(s, item.ceresFurnaceMissionId)) {
+        s.pending.splice(idx, 1);
+        return;
+      }
+      const current = ceresFurnaceInspectionItem(state, station, now);
+      if (!current || current.ceresFurnaceMissionId !== item.ceresFurnaceMissionId) {
+        s.pending.splice(idx, 1);
+        return;
+      }
+      item.durationS = current.durationS;
+    }
+    if (item.receivingMissionId) {
+      if (hasSeenBuoyReceiving(s, item.receivingMissionId)) {
+        s.pending.splice(idx, 1);
+        return;
+      }
+      const current = firstBuoyReceivingItem(state, station, now);
+      if (!current || current.receivingMissionId !== item.receivingMissionId) {
+        s.pending.splice(idx, 1);
+        return;
+      }
+      item.durationS = current.durationS;
+      const receipt = firstBuoyReceivingReceipt(state, now);
+      item.contextLabel = RECEIVING_CONTEXT_BY_STEP[receipt?.starterBuoyRecovery?.step]
+        || '44-C receiving check — berth intake';
+    }
     if ((item.budget | 0) > 0 && countActive(s) >= MAX_BUDGETED) {
       item.dueAt = now + DEFER_S;                          // budgeted cap reached → defer, don't drop
       return;
@@ -214,6 +283,10 @@ export const stationSideEventDirector = {
 
     if ((item.budget | 0) <= 0) {
       this._emitSeam(item, station, geom, []);              // cosmetic: seam only, no budget, no entity
+      // A queued operation may be cleared on sector exit before it can be seen.
+      // Remember presentation only after the existing seam has actually fired.
+      if (item.receivingMissionId) rememberBuoyReceiving(s, item.receivingMissionId);
+      if (item.ceresFurnaceMissionId) rememberCeresInspection(s, item.ceresFurnaceMissionId);
       s.nextFireAt = now + MIN_SPACING_S;
       return;
     }
@@ -274,6 +347,9 @@ export const stationSideEventDirector = {
       from: { x: geom.from.x, z: geom.from.z },
       to: { x: geom.to.x, z: geom.to.z },
       entityIds: entityIds || [],
+      ...(item.receivingMissionId ? { contextLabel: item.contextLabel || '44-C receiving check — berth intake',
+        receivingMissionId: item.receivingMissionId } : {}),
+      ...(item.ceresFurnaceMissionId ? { ceresFurnaceMissionId: item.ceresFurnaceMissionId } : {}),
     });
   },
 
@@ -401,7 +477,56 @@ export function pathPoints(station, item) {
 // ── state + small helpers ──────────────────────────────────────────────────────────────────────
 
 function freshState() {
-  return { accum: 0, plannedKeys: {}, pending: [], anchorId: null, nextFireAt: 0, active: {} };
+  return { accum: 0, plannedKeys: {}, pending: [], anchorId: null, nextFireAt: 0, active: {},
+    buoyReceivingSeenMissionIds: [], ceresFurnaceInspectionSeenMissionIds: [] };
+}
+
+function hasSeenBuoyReceiving(s, missionId) {
+  return typeof missionId === 'string' && !!missionId
+    && Array.isArray(s.buoyReceivingSeenMissionIds)
+    && s.buoyReceivingSeenMissionIds.includes(missionId);
+}
+
+function rememberBuoyReceiving(s, missionId) {
+  if (typeof missionId !== 'string' || !missionId) return;
+  if (!Array.isArray(s.buoyReceivingSeenMissionIds)) s.buoyReceivingSeenMissionIds = [];
+  if (!s.buoyReceivingSeenMissionIds.includes(missionId)) {
+    s.buoyReceivingSeenMissionIds.push(missionId);
+  }
+  if (s.buoyReceivingSeenMissionIds.length > MAX_SEEN_BUOY_RECEIPTS) {
+    s.buoyReceivingSeenMissionIds.splice(0,
+      s.buoyReceivingSeenMissionIds.length - MAX_SEEN_BUOY_RECEIPTS);
+  }
+  // Keep the former one-entry session marker for backward-compatible inspection.
+  s.buoyReceivingMissionId = missionId;
+}
+
+function hasSeenCeresInspection(s, missionId) {
+  return typeof missionId === 'string' && !!missionId
+    && Array.isArray(s.ceresFurnaceInspectionSeenMissionIds)
+    && s.ceresFurnaceInspectionSeenMissionIds.includes(missionId);
+}
+
+function rememberCeresInspection(s, missionId) {
+  if (typeof missionId !== 'string' || !missionId) return;
+  if (!Array.isArray(s.ceresFurnaceInspectionSeenMissionIds)) s.ceresFurnaceInspectionSeenMissionIds = [];
+  if (!s.ceresFurnaceInspectionSeenMissionIds.includes(missionId)) {
+    s.ceresFurnaceInspectionSeenMissionIds.push(missionId);
+  }
+  if (s.ceresFurnaceInspectionSeenMissionIds.length > MAX_SEEN_CERES_INSPECTIONS) {
+    s.ceresFurnaceInspectionSeenMissionIds.splice(0,
+      s.ceresFurnaceInspectionSeenMissionIds.length - MAX_SEEN_CERES_INSPECTIONS);
+  }
+}
+
+function isValidBuoyReceivingSeenList(ids) {
+  if (!Array.isArray(ids) || ids.length > MAX_SEEN_BUOY_RECEIPTS) return false;
+  // Normal 0–10-entry session state is checked in place; avoid per-tick copy/Set allocation.
+  for (let i = 0; i < ids.length; i++) {
+    if (typeof ids[i] !== 'string' || !ids[i]) return false;
+    for (let j = 0; j < i; j++) if (ids[j] === ids[i]) return false;
+  }
+  return true;
 }
 
 export function ensureState(state) {
@@ -413,9 +538,33 @@ export function ensureState(state) {
   if (!s.plannedKeys || typeof s.plannedKeys !== 'object' || Array.isArray(s.plannedKeys)) s.plannedKeys = {};
   if (!Array.isArray(s.pending)) s.pending = [];
   if (!s.active || typeof s.active !== 'object' || Array.isArray(s.active)) s.active = {};
+  if (!Array.isArray(s.buoyReceivingSeenMissionIds)) s.buoyReceivingSeenMissionIds = [];
+  else if (!isValidBuoyReceivingSeenList(s.buoyReceivingSeenMissionIds)) {
+    s.buoyReceivingSeenMissionIds = [...new Set(s.buoyReceivingSeenMissionIds
+      .filter((id) => typeof id === 'string' && id))].slice(-MAX_SEEN_BUOY_RECEIPTS);
+  }
+  // Existing in-session state used this single marker; migrate it into the bounded list.
+  if (typeof s.buoyReceivingMissionId === 'string' && s.buoyReceivingMissionId
+    && !hasSeenBuoyReceiving(s, s.buoyReceivingMissionId)) {
+    rememberBuoyReceiving(s, s.buoyReceivingMissionId);
+  }
+  if (!Array.isArray(s.ceresFurnaceInspectionSeenMissionIds)) s.ceresFurnaceInspectionSeenMissionIds = [];
+  else if (!isValidCeresInspectionSeenList(s.ceresFurnaceInspectionSeenMissionIds)) {
+    s.ceresFurnaceInspectionSeenMissionIds = [...new Set(s.ceresFurnaceInspectionSeenMissionIds
+      .filter((id) => typeof id === 'string' && id))].slice(-MAX_SEEN_CERES_INSPECTIONS);
+  }
   if (!('anchorId' in s)) s.anchorId = null;
   if (!Number.isFinite(s.nextFireAt)) s.nextFireAt = 0;
   return s;
+}
+
+function isValidCeresInspectionSeenList(ids) {
+  if (!Array.isArray(ids) || ids.length > MAX_SEEN_CERES_INSPECTIONS) return false;
+  for (let i = 0; i < ids.length; i++) {
+    if (typeof ids[i] !== 'string' || !ids[i]) return false;
+    for (let j = 0; j < i; j++) if (ids[j] === ids[i]) return false;
+  }
+  return true;
 }
 
 function countActive(s) {

@@ -6,7 +6,7 @@ import path from 'node:path';
 import vm from 'node:vm';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 const root = fileURLToPath(new URL('../', import.meta.url));
 const routeFile = path.join(root, 'scripts/test-cinder-route.mjs');
 const routeBytes = fs.readFileSync(routeFile);
@@ -19,6 +19,17 @@ route = route.slice(0, cut)
     'return {state,bus,events,helpers,owner,aft,booth,kill,stripHull,offer,accept,arrive,hull,sale,combat:fighter};');
 route += '\nexport {harness,mc,method,fn,read,story,trans,ns,inventory};\n//# sourceURL=compost-current-cinder-harness.mjs';
 const shared = await import('data:text/javascript;base64,' + Buffer.from(route).toString('base64'));
+// Candidate-added route readers must use their actual production modules, not VM stubs.
+const waspRoute = await import(pathToFileURL(path.join(root, 'src/missions/starterWaspRoute.js')));
+const compostRoute = await import(pathToFileURL(path.join(root, 'src/missions/compostRoute.js')));
+const nestRoute = await import(pathToFileURL(path.join(root, 'src/data/nestVisit.js')));
+const buoyAftermath = await import(pathToFileURL(path.join(root, 'src/missions/starterBuoyAftermath.js')));
+const starterRoute = await import(pathToFileURL(path.join(root, 'src/missions/starterWorkday.js')));
+Object.assign(shared.mc, { nestWaypoint: nestRoute.nestWaypoint,
+  firstBuoyReceiptFields: buoyAftermath.firstBuoyReceiptFields,
+  firstWaspRouteFocus: waspRoute.firstWaspRouteFocus,
+  compostRouteFocus: compostRoute.compostRouteFocus,
+  starterBuoyRouteFocus: starterRoute.starterBuoyRouteFocus });
 const fixturePath = path.join(root, 'test/w533-books-0-2.test.mjs');
 const fixtureBytes = fs.readFileSync(fixturePath), fixture = fixtureBytes.toString('utf8').replace(/\r\n/g, '\n');
 function named(name) {

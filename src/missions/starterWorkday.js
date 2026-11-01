@@ -1,3 +1,4 @@
+import { forEachFieldRock } from '../world/livingWorldViews.js';
 import { occupantGenerationOf } from '../core/entity.js';
 import { activeOwnedShip, shipCarriesModule } from '../data/starterJobs.js';
 
@@ -56,6 +57,61 @@ export function starterMiningFocus(m, entities, toGlobal, asteroidDefs = []) {
   return best ? { label: site.label, pos: { x: best.pos.x, z: best.pos.z }, targetEntityId: best.id,
     reason: site.brief } : null;
 }
+// A depleted first face must not send the iron ticket to the nearest ice rock.
+// This is a navigation readout only: receipts and settlement keep their existing owners.
+export function starterMiningRouteFocus(m, state, toGlobal, asteroidDefs = []) {
+  const site = authoredStarterSite(m);
+  if (!site || m.type !== 'mining_quota' || m.params.starterJobId !== 'starter_hitch') return null;
+  const base = { stationId: null, sectorId: m.destSectorId, label: 'Helios iron fields' };
+  if (state?.world?.currentSectorId !== m.destSectorId) {
+    return { ...base, reason: 'Return to Helios Prime; this ticket counts only iron you cut there.' };
+  }
+  const center = toGlobal(site.pos, m.destSectorId);
+  const { face, distance } = nearestMiningResourceFace(state, { sectorId: m.destSectorId,
+    center, commodityId: m.params.cmdtyId }, asteroidDefs);
+  if (face) return { ...base,
+    label: distance <= site.radius ? site.label : 'Helios — alternate iron face',
+    // Dormant field presentation IDs are not live control targets. Fly to the actual
+    // position; ordinary approach/mining owns promotion and generation-safe selection.
+    ...(!face.fieldResident ? { targetEntityId: face.id } : {}),
+    pos: { x: face.pos.x, z: face.pos.z },
+    reason: distance <= site.radius ? site.brief
+      : 'The marked face is unavailable. Cut iron at this Helios face; your own Helios iron counts.' };
+  return { ...base, pos: center,
+    reason: 'Search the Helios iron fields. No eligible iron face located; ice and crystal will not fill this ticket.' };
+}
+
+/** Existing field-owner view: no materialization, reservation, resource writes or fake contract. */
+export function nearestMiningResourceFace(state, { sectorId, center, commodityId }, asteroidDefs, accept = null) {
+  let face = null, distance = Infinity;
+  if (!Number.isFinite(center?.x) || !Number.isFinite(center?.z)) return { face, distance };
+  // Existing field view visits dormant records and the ready typed asteroid index
+  // (entityList only while unready). One bounded pass at the existing nav refresh cadence.
+  forEachFieldRock(state, (e) => {
+    if (e?.alive !== true || e.type !== 'asteroid' || !Number.isFinite(e.pos?.x)
+      || !Number.isFinite(e.pos?.z) || e.data?.missionTag || e.data?.respawnAt != null
+      || !Number.isFinite(e.data?.oreHP) || e.data.oreHP <= 0) return;
+    if (e.fieldResident && (state.world?.asteroidField?.schema !== 'spaceface.asteroidField.v1'
+      || e.liveEntityId != null || state.entities?.get(e.id))) return;
+    // Reject a stale indexed occupant rather than stamping a different live body.
+    if (!e.fieldResident && state.entities?.get(e.id) !== e) return;
+    if (e.data.siteAnchored || (typeof e.data.opticStructureId === 'string' && e.data.opticStructureId)) return;
+    const chunkMass = Math.max(0, Number(e.data.bulkMassU ?? e.data.yieldU ?? e.mass) || 0);
+    if (e.data.isChunk && chunkMass > 20) return; // ordinary mining owner requires towing this load
+    if ([e.sectorId, e.homeSectorId, e.data?.sectorId, e.data?.homeSectorId]
+      .some((id) => id && id !== sectorId)) return;
+    // No speculative common-rock default: missing resource metadata is a search hint.
+    const def = asteroidDefs.find((row) => row.id === e.data?.typeId);
+    if (!Number.isFinite(def?.oreTable?.[commodityId]) || def.oreTable[commodityId] <= 0) return;
+    const d = Math.hypot(e.pos.x - center.x, e.pos.z - center.z);
+    if (!(d < distance)) return;
+    // The optional read-only interaction check need not inspect farther candidates.
+    if (accept && !accept(e)) return;
+    face = e; distance = d;
+  });
+  return { face, distance };
+}
+
 export function starterBuoySpec(m, toGlobal) {
   const site = authoredStarterSite(m);
   if (!site || m.type !== 'tow_recovery' || m.params.starterJobId !== 'starter_pelican') return null;
@@ -137,4 +193,51 @@ export function isOriginalStarterBuoyTow(state, entity) {
     &&lease.missionId===mission.id&&lease.recordId===entity.data.worldRecordId
     &&lease.identity===entity.data.identityKey&&mission.targetEntityIds?.includes(entity.id)
     &&ship?.defId==='ship_pelican'&&shipCarriesModule(ship,'mod_winch_hd'));
+}
+
+
+// Presentation only. Read the mission's admitted original, never a copied marker or
+// an old latchedTargetId saved in mission params. The tether owner clears its mirror
+// on release; the attachment record proves the current player still holds this body.
+export function starterBuoyRouteFocus(m, state) {
+  const site = authoredStarterSite(m);
+  if (!site || m?.status !== 'active' || m.source !== 'starterJob'
+    || m.type !== 'tow_recovery' || m.destStationId !== 'station_helios'
+    || m.params.starterJobId !== 'starter_pelican' || !Number.isInteger(m.params.starterStep)
+    || m.params.requiredModule !== 'mod_winch_hd') return null;
+  const base = { label: site.label, stationId: null, sectorId: m.destSectorId };
+  if (state?.world?.currentSectorId !== m.destSectorId) {
+    return { ...base, reason: `Return to Helios Prime to recover ${site.label}.` };
+  }
+  let buoy = null;
+  for (const id of m.targetEntityIds || []) {
+    const e = state.entities?.get(id), lease = e && starterTowLeases.get(e);
+    if (!lease || activeStarterBuoyMission(state, e) !== m || lease.state !== state
+      || lease.generation !== occupantGenerationOf(e) || lease.missionId !== m.id
+      || lease.recordId !== e.data.worldRecordId || lease.identity !== e.data.identityKey
+      || !Number.isFinite(e.pos?.x) || !Number.isFinite(e.pos?.z)
+      || [e.sectorId, e.homeSectorId, e.data.sectorId, e.data.homeSectorId]
+        .some(id => id && id !== m.destSectorId)) continue;
+    buoy = e; break;
+  }
+  if (!buoy) return { ...base,
+    reason: `No live ${site.label} located. Keep this ticket tracked; a missing buoy is not a delivery.` };
+  const ship = activeOwnedShip(state);
+  const ready = ship?.defId === 'ship_pelican' && shipCarriesModule(ship, 'mod_winch_hd');
+  const tether = state.player?.tether;
+  const attachment = tether?.attachmentId != null
+    ? state.combat?.attachments?.byId?.[String(tether.attachmentId)] : null;
+  const player = state.entities?.get(state.playerId);
+  const held = tether?.active === true && tether.targetId === buoy.id
+    && attachment?.state === 'active' && attachment.ownerId === state.playerId
+    && attachment.targetId === buoy.id && attachment.targetGeneration === occupantGenerationOf(buoy)
+    && player?.alive === true && (attachment.ownerGeneration == null
+      || attachment.ownerGeneration === occupantGenerationOf(player));
+  if (held) return { label: 'Helios — buoy receiving berth', stationId: 'station_helios',
+    sectorId: m.destSectorId,
+    reason: `Bring ${site.label} into the Helios berth with the winch line attached.`
+      + (ready ? '' : ' This ticket requires a Pelican with Heavy-Duty Winch fitted.') };
+  return { ...base, targetEntityId: buoy.id, pos: { x: buoy.pos.x, z: buoy.pos.z },
+    reason: ready ? `Winch ${site.label}, then bring it back to Helios.`
+      : `Locate ${site.label}. Use a Pelican with Heavy-Duty Winch fitted to recover it.` };
 }

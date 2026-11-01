@@ -1,11 +1,13 @@
+import { compostRouteFocus } from '../missions/compostRoute.js';
+import { firstWaspRouteFocus } from '../missions/starterWaspRoute.js';
+import { firstBuoyReceiptFields } from '../missions/starterBuoyAftermath.js';
 import { ASTEROIDS } from '../data/mining.js';
-import { starterMiningFocus } from '../missions/starterWorkday.js';
+import { starterMiningRouteFocus, starterBuoyRouteFocus } from '../missions/starterWorkday.js';
 import { authoredCinderRoute, initializeCinderRoute, retainCinderRetry, observeCinderMarker, observeCinderRetirement, cinderRouteFocus, driveCinderRoute } from '../missions/cinderRoute.js';
 import { kesslerScalePending, kesslerScaleWaypoint } from './kesslerScaleWorksite.js';
 import { furnaceWorksiteFocus } from '../missions/furnaceWorksite.js';
-import { UNDERSTORY_RECEIVER, receiverApproach, receiverStatus, firstPlayerGardenGrowth } from '../data/understoryReceiver.js';
+import { UNDERSTORY_RECEIVER, firstPlayerGardenGrowth } from '../data/understoryReceiver.js';
 import { nestOutcomeReceipt, nestWaypoint } from '../data/nestVisit.js';
-import { UNDERSTORY_COMPOST_RUN, UNDERSTORY_GARDENS, UNDERSTORY_GARDEN_STAGES } from '../data/factions/understory.js';
 // Missions, contracts & story-spine system (ARCHITECTURE §2.3 step 15, §3.11 state, §4.4 event
 // table; design/specs/07-missions-contracts-story-spine.md).
 //
@@ -3187,6 +3189,10 @@ export const missions = {
       sectorId: m.destSectorId || null,
       sectorName: sector && sector.name || null,
     };
+    const waspFocus = firstWaspRouteFocus(m, this.state);
+    if (waspFocus) return { ...base, ...waspFocus };
+    const buoyFocus = starterBuoyRouteFocus(m, this.state);
+    if (buoyFocus) return { ...base, ...buoyFocus };
     const cinderFocus = cinderRouteFocus(m, this.state);
     if (cinderFocus) return { ...base, ...cinderFocus, stationId: null };
     const furnaceFocus = furnaceWorksiteFocus(m, this.state);
@@ -3231,18 +3237,56 @@ export const missions = {
     }
 
     if (m.storyTag === CONTRACT_47A_B2_TAG && m.type === 'bounty_hunt') {
-      const target = this._firstLiveMissionTarget(m);
+      const targetId = m.storyTarget && m.storyTarget.id;
+      const targetRole = m.storyTarget && m.storyTarget.role;
+      const currentSectorId = this.state.world && this.state.world.currentSectorId;
+      const target = targetId === 'npc_elroy' && targetRole === 'register_mark'
+        && currentSectorId === m.destSectorId
+        ? (m.targetEntityIds || []).map((id) => this.state.entities.get(id)).find((entity) => {
+          if (!entity || entity.alive === false || !entity.pos
+            || !Number.isFinite(entity.pos.x) || !Number.isFinite(entity.pos.z)
+            || missionTargetSlotOf(entity, m.id) !== 0) return false;
+          const data = entity.data || {};
+          if (data.missionTag !== m.id || data.missionId !== m.id
+            || data.storyTargetId !== targetId || data.storyTargetRole !== targetRole) return false;
+          // These sector fields are stamped on fresh spawns and Continue-adopted targets. Do not
+          // require optional legacy fields, but reject any present provenance that names elsewhere.
+          for (const sectorId of [entity.homeSectorId, data.homeSectorId, data.sectorId]) {
+            if (sectorId != null && sectorId !== m.destSectorId) return false;
+          }
+          return true;
+        }) || null
+        : null;
       const identified = m.params && m.params.investigationStage === 'identified';
       if (target) {
         return {
           ...base,
+          stationId: null,
           label: identified ? 'Elroy' : '47-A Signal',
           targetEntityId: target.id,
           pos: { x: target.pos.x, z: target.pos.z },
           reason: missionNavReason(m, station, sector),
         };
       }
-      return base;
+      const targetZone = zonesForSector(m.destSectorId)
+        .find((candidate) => candidate && candidate.id === (m.storyTarget && m.storyTarget.zoneId));
+      const zoneName = targetZone && targetZone.name || 'the authored approach';
+      const searchPos = currentSectorId === m.destSectorId && targetZone && targetZone.center
+        ? sectorLocalToGlobalForSector(targetZone.center, m.destSectorId)
+        : null;
+      const objective = missionNavReason(m, station, sector);
+      const routeReason = currentSectorId === m.destSectorId
+        ? `No verified contact. Search ${zoneName} in ${sector && sector.name || 'Charon Expanse'}; ${objective.toLowerCase()}.`
+        : `Travel to ${sector && sector.name || 'Charon Expanse'} and search ${zoneName}; ${objective.toLowerCase()}.`;
+      return {
+        ...base,
+        label: `${zoneName} — search for 47-A`,
+        stationId: null,
+        targetEntityId: null,
+        pos: searchPos && Number.isFinite(searchPos.x) && Number.isFinite(searchPos.z)
+          ? { x: searchPos.x, z: searchPos.z } : null,
+        reason: routeReason,
+      };
     }
 
     // PQ-019C — the capsule run's marker is an OWNERSHIP cue, read off the run's own record rather
@@ -3564,7 +3608,7 @@ export const missions = {
     }
 
     if (m.type === 'mining_quota') {
-      const workFace = starterMiningFocus(m, this.state.entityList, sectorLocalToGlobalForSector, ASTEROIDS);
+      const workFace = starterMiningRouteFocus(m, this.state, sectorLocalToGlobalForSector, ASTEROIDS);
       if (workFace) return { ...base, ...workFace, stationId: null, sectorId: m.destSectorId };
       const asteroid = this._nearestAsteroid();
       if (asteroid) {
@@ -3785,35 +3829,8 @@ export const missions = {
           pos: station?.pos ? { ...station.pos } : null };
       }
       if (!done.has('compost')) {
-        const receiver = receiverStatus(state);
-        const garden = receiver.garden;
-        if (receiver.status === 'unavailable') {
-          return { ...base, label: 'Compost receiver — not receiving',
-            reason: 'The receiver is unavailable. No cargo or growth is credited; the Nest still waits for real player-fed growth.',
-            stationId: null, sectorId: UNDERSTORY_RECEIVER.sectorId, targetEntityId: null, pos: null };
-        }
-        const saved = garden?.data || state.understory?.authoredReceiver?.terminalGardenData || {};
-        const fed = Math.max(0, Number(saved.compostFedMass) || 0);
-        const biomass = receiver.status === 'destroyed' ? 0 : Number.isFinite(saved.gardenBiomass)
-          ? Math.max(0, saved.gardenBiomass) : UNDERSTORY_RECEIVER.initialBiomass;
-        const target = UNDERSTORY_COMPOST_RUN.targetMass;
-        const mass = n => Number(n.toFixed(1)).toString();
-        const nextStage = UNDERSTORY_GARDEN_STAGES.find(row => row.massFloor > biomass);
-        const growthFeed = nextStage ? Math.ceil((nextStage.massFloor - biomass) / UNDERSTORY_GARDENS.digestionYield * 10) / 10 : null;
-        const growth = growthFeed == null ? 'The garden is at its last stage; no further growth can show.'
-          : `Retained growth ${mass(biomass)} biomass; ${mass(growthFeed)}t feed reaches the next visible stage.`;
-        const run = saved.compostRunComplete === true
-          ? `Run paid once at ${mass(fed)}t; no repeat payment.`
-          : `Your run ${mass(fed)}/${target}t; ${mass(Math.max(0, target - fed))}t remain. No pay before ${target}t; then ${UNDERSTORY_COMPOST_RUN.creditPerTonne}cr/t of actual run mass, once.`;
-        const regrowth = receiver.status === 'destroyed'
-          ? 'The receiver was destroyed; it regrows only from new feed — 100t from zero to reach stage 2. ' : '';
-        return { ...base, label: `Compost Run — ${UNDERSTORY_RECEIVER.name} west outside-mouth approach`,
-          reason: `${regrowth}${growth} ${run} First visible growth opens the Nest. No feed is supplied: tow a Cinder hull in, or mine ordinary iron in Charon and jettison 17u near the receiver (13.6t of feed). Only what reaches the mouth counts. Approach and feed from Rook on the west side; keep the load close and steer around loose clutter before the final approach. Use the Line and keep your cockpit outside the mouth.`,
-          stationId: null, sectorId: UNDERSTORY_RECEIVER.sectorId,
-          sectorName: SECTOR_BY_ID.get(UNDERSTORY_RECEIVER.sectorId)?.name || null,
-          // The location is deliberately not bound to the hull's centre: selection and
-          // autopilot consumers must retain the safe outside-mouth staging point.
-          targetEntityId: null, pos: receiverApproach() };
+        return { ...base, ...compostRouteFocus(this),
+          sectorName: SECTOR_BY_ID.get(UNDERSTORY_RECEIVER.sectorId)?.name || null };
       }
       if (!done.has('nest')) {
         return { ...base, ...nestWaypoint(state),
@@ -3956,6 +3973,11 @@ export const missions = {
     // course (even the completion path's forceStory refresh) to perform it.
     if (kesslerScalePending(state) && existing
         && (existing.kind === 'local' || existing.kind === 'trade' || existing.onboarding)) return false;
+    // Compost's source/return guidance is optional navigation, never a pilot-pin owner.
+    // Keep this protection through the earned Nest handoff, including forced refreshes.
+    const bookTwoDone = beat.beat === 2 ? new Set(getBeatStepStatus(state, 2)?.completed || []) : null;
+    if (bookTwoDone?.has('cinder_board') && !bookTwoDone.has('nest') && existing
+      && (existing.kind === 'local' || existing.kind === 'trade' || existing.onboarding)) return false;
     if (existing && existing.onboarding && !force) return false;
     if (existing && existing.kind === 'mission') return false;
     if (existing && existing.kind === 'trade' && !allowReplaceTrade) return false;
@@ -6251,6 +6273,7 @@ export function missionReceiptFor(m, outcome, reason, settlement = {}) {
     sourceOfferId: m && m.sourceOfferId || null,
     causeFingerprint: m && m.cause && m.cause.fingerprint || null,
     ...setPieceFields,
+    ...firstBuoyReceiptFields(m, outcome),
     targetRecordId: m && m.params && m.params.poiSignalFollowup
       && m.params.poiSignalFollowup.targetRecordId || null,
     // PQ-138.04: mutation provenance on the FAILED contract's receipt, present only when this

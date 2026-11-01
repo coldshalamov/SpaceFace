@@ -1,4 +1,5 @@
 import { kesslerWeightSlipChoice, kesslerWeightSlipReply } from './massSlipConversation.js';
+import { kesslerStarterWorkChoice, kesslerStarterWorkReply } from './starterWorkdayConversation.js';
 import { commodityDisplayName } from '../commodityNames.js';
 // Shared station-contact data, choices, replies, and map actions.
 // DOM rendering belongs to src/ui/station/screens/bar.js.
@@ -778,7 +779,9 @@ export function generateContacts(stationId, state = {}, opts = {}) {
   for (const canonical of canonicalContactsForStation(stationId)) {
     if (canonical.canonicalKey === 'kessler') {
       const slipChoice = kesslerWeightSlipChoice(state, stationId);
-      if (slipChoice) canonical.choices = [...getChoices(canonical.role, canonical), slipChoice];
+      const workChoice = kesslerStarterWorkChoice(state, stationId);
+      const extraChoices = [slipChoice, workChoice].filter(Boolean);
+      if (extraChoices.length) canonical.choices = [...getChoices(canonical.role, canonical), ...extraChoices];
     }
     if (canonical.role === 'barkeep') {
       contacts[0] = canonical;
@@ -1854,6 +1857,8 @@ function buildCanonicalReply(contact, choiceId, ctx, stationId) {
     case 'kessler': {
       const slipReply = kesslerWeightSlipReply(state, stationId, choiceId);
       if (slipReply) return slipReply;
+      const workReply = kesslerStarterWorkReply(state, stationId, choiceId);
+      if (workReply) return workReply;
       if (choiceId === 'routes') {
         const route = bestTradeRoute(state, stationId);
         if (route) {
