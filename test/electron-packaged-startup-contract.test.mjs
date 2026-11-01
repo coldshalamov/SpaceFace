@@ -173,6 +173,85 @@ test('canvas witness detects world-pixel motion and rejects a flat canvas', () =
   assert.equal(frozen.minimumDistinctColors, 1);
 });
 
+test('packaged world cadence uses valid flight deltas and leaves functional recovery independent', () => {
+  const summarize = actualScriptFunction('summarizePackagedWorldCadence');
+  const start = {
+    observedAtMonotonicMs: 5_000,
+    mode: 'flight',
+    tick: 100,
+    simTime: 30,
+    worldSubmittedFrames: 200,
+    executedFrames: 220,
+  };
+  const end = {
+    observedAtMonotonicMs: 125_000,
+    mode: 'flight',
+    tick: 7_300,
+    simTime: 150,
+    worldSubmittedFrames: 3_200,
+    executedFrames: 3_720,
+  };
+  const measured = summarize(start, end);
+  assert.equal(measured.status, 'measured');
+  assert.equal(measured.elapsedMs, 120_000);
+  assert.deepEqual(measured.deltas, {
+    tick: 7_200,
+    simTime: 120,
+    worldSubmittedFrames: 3_000,
+    executedFrames: 3_500,
+  });
+  assert.equal(measured.worldSubmissionHz, 25);
+  assert.equal(measured.simTimePerWallSecond, 1);
+
+  const missing = summarize(null, end);
+  assert.equal(missing.status, 'unavailable');
+  assert.equal(missing.reason, 'runtime-witness-sample-missing');
+  const missingCounter = summarize(start, { ...end, worldSubmittedFrames: null });
+  assert.equal(missingCounter.status, 'unavailable');
+  assert.match(missingCounter.reason, /counter-missing-or-nonfinite/);
+  const nonfiniteCounter = summarize(start, { ...end, simTime: Number.NaN });
+  assert.equal(nonfiniteCounter.status, 'unavailable');
+  assert.match(nonfiniteCounter.reason, /counter-missing-or-nonfinite/);
+  const resetCounter = summarize(start, { ...end, tick: 99 });
+  assert.equal(resetCounter.status, 'unavailable');
+  assert.equal(resetCounter.reason, 'counter-reset:tick');
+  const invalidWindow = summarize(start, { ...end, observedAtMonotonicMs: start.observedAtMonotonicMs });
+  assert.equal(invalidWindow.status, 'unavailable');
+  assert.equal(invalidWindow.reason, 'monotonic-window-invalid');
+  const modeChange = summarize(start, { ...end, mode: 'menu' });
+  assert.equal(modeChange.status, 'unavailable');
+  assert.equal(modeChange.reason, 'flight-mode-not-stable');
+
+  const assess = actualScriptFunction('assessPackagedPublicRecovery', ['assessPackagedMovementWitness']);
+  const movement = {
+    inputDispatched: true,
+    hud: { visible: true, response: true },
+    canvas: { visible: true, minimumDistinctColors: 20, changed: true, changedPixels: 500 },
+  };
+  const recovery = {
+    enabled: true,
+    save: { toast: 'Saved Quick', quick: { changed: true } },
+    load: { toast: 'Loaded Quick', flightSurface: { ready: true, sfDebugSurfaceAbsent: true } },
+    context: {
+      extensionAvailable: true,
+      lostEvent: true,
+      restoredEvent: true,
+      lostAfterRestore: false,
+      recoveredToast: 'Graphics recovered.',
+      flightSurface: { ready: true, sfDebugSurfaceAbsent: true },
+    },
+    movementAfterRestore: movement,
+    tail: {
+      durationMs: 120_000,
+      flightSurface: { ready: true, sfDebugSurfaceAbsent: true, documentVisible: true },
+      movement,
+      cadence: missing,
+    },
+  };
+  assert.deepEqual(assess(recovery), { pass: true, failures: [] },
+    'missing cadence remains unavailable without changing functional recovery acceptance');
+});
+
 test('canvas-only capture hides DOM overlays and restores their exact opacity on success or failure', async () => {
   const original = { value: '0.82', priority: '' };
   let current = { ...original };

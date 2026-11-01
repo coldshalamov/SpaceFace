@@ -476,6 +476,85 @@ export function assessPackagedPublicRecovery(recovery) {
   return { pass: failures.length === 0, failures };
 }
 
+async function readPackagedWorldCadenceSample(page) {
+  try {
+    return await page.evaluate(() => {
+      const witness = window.__SF_WITNESS__;
+      if (!witness || typeof witness.snapshot !== 'function') return null;
+      const sample = witness.snapshot();
+      if (!sample || typeof sample !== 'object') return null;
+      return {
+        observedAtMonotonicMs: performance.now(),
+        mode: typeof sample.mode === 'string' ? sample.mode : null,
+        tick: sample.tick ?? null,
+        simTime: sample.simTime ?? null,
+        worldSubmittedFrames: sample.worldSubmittedFrames ?? null,
+        executedFrames: sample.executedFrames ?? null,
+      };
+    });
+  } catch {
+    return null;
+  }
+}
+
+function summarizePackagedWorldCadence(start, end) {
+  const result = {
+    status: 'unavailable',
+    reason: null,
+    start: start && typeof start === 'object' ? start : null,
+    end: end && typeof end === 'object' ? end : null,
+    elapsedMs: null,
+    deltas: null,
+    worldSubmissionHz: null,
+    simTimePerWallSecond: null,
+  };
+  if (!start || !end || typeof start !== 'object' || typeof end !== 'object') {
+    result.reason = 'runtime-witness-sample-missing';
+    return result;
+  }
+  if (start.mode !== 'flight' || end.mode !== 'flight' || start.mode !== end.mode) {
+    result.reason = 'flight-mode-not-stable';
+    return result;
+  }
+  const elapsedMs = end.observedAtMonotonicMs - start.observedAtMonotonicMs;
+  if (!Number.isFinite(elapsedMs) || elapsedMs <= 0) {
+    result.reason = 'monotonic-window-invalid';
+    return result;
+  }
+  result.elapsedMs = elapsedMs;
+  const counterKeys = ['tick', 'simTime', 'worldSubmittedFrames', 'executedFrames'];
+  const deltas = {};
+  for (const key of counterKeys) {
+    if (!Number.isFinite(start[key]) || !Number.isFinite(end[key])) {
+      result.reason = `counter-missing-or-nonfinite:${key}`;
+      return result;
+    }
+    const delta = end[key] - start[key];
+    if (!Number.isFinite(delta)) {
+      result.reason = `counter-delta-nonfinite:${key}`;
+      return result;
+    }
+    if (delta < 0) {
+      result.reason = `counter-reset:${key}`;
+      return result;
+    }
+    deltas[key] = delta;
+  }
+  result.deltas = deltas;
+  result.worldSubmissionHz = deltas.worldSubmittedFrames / (elapsedMs / 1_000);
+  result.simTimePerWallSecond = deltas.simTime / (elapsedMs / 1_000);
+  if (!Number.isFinite(result.worldSubmissionHz) || !Number.isFinite(result.simTimePerWallSecond)) {
+    result.status = 'unavailable';
+    result.reason = 'derived-rate-nonfinite';
+    result.deltas = null;
+    result.worldSubmissionHz = null;
+    result.simTimePerWallSecond = null;
+    return result;
+  }
+  result.status = 'measured';
+  return result;
+}
+
 function assessPackagedMovementWitness(witness, label, failures) {
   if (witness?.inputDispatched !== true) failures.push(`public movement input was not dispatched ${label}`);
   if (witness?.hud?.visible !== true || witness?.hud?.response !== true) {
@@ -678,14 +757,17 @@ async function runPackagedPublicRecovery(page, reportPath) {
     await page.screenshot({ path: recovery.screenshots.afterContextRestore });
     recovery.movementAfterRestore = await capturePackagedMovementWitness(page, reportPath, 'after-context-restore');
 
+    const cadenceStart = await readPackagedWorldCadenceSample(page);
     const tailStartedAt = Date.now();
     await page.waitForTimeout(120_000);
     const tailEndedAt = Date.now();
+    const cadenceEnd = await readPackagedWorldCadenceSample(page);
     recovery.tail = {
       durationMs: tailEndedAt - tailStartedAt,
       startedAt: new Date(tailStartedAt).toISOString(),
       endedAt: new Date(tailEndedAt).toISOString(),
       flightSurface: await readPackagedFlightSurface(page),
+      cadence: summarizePackagedWorldCadence(cadenceStart, cadenceEnd),
     };
     recovery.tail.movement = await capturePackagedMovementWitness(page, reportPath, 'after-120-second-tail');
     recovery.screenshots.after120SecondTail = screenshotPath(reportPath, 'recovery-after-120s-tail');
