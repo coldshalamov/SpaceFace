@@ -110,6 +110,8 @@ function neutralInput(state) {
   input.boost = false; input.brake = false;
   input.fire = false; input.fireGroup = null; input.autoFire = false;
   input.deployCountermeasure = false;
+  input.aimIntentActive = false;
+  input.tetherMode = null;
   return input;
 }
 
@@ -915,10 +917,20 @@ export function createStrangerPilot({ state, bus, ledger, services }) {
   let traceWallMark = 0;         // wall-clock mark for the tick-rate heartbeat
   const decided = {};            // one decision log per choice point
 
-  bus.on('tether:attached', (e) => { lineAttached = true; if (e && e.targetId != null) latchedId = e.targetId; needWinch = true; winchUntil = (state.simTime || 0) + 5; });
+  // Canonical player-line events; keep the historical attached alias for older hosts.
+  const hook = (e) => {
+    if (!e || e.flail === true) return;
+    const owner = e.sourceId != null ? e.sourceId : e.actorId;
+    if (owner != null && state.playerId != null && owner !== state.playerId) return;
+    lineAttached = true;
+    if (e.targetId != null) latchedId = e.targetId;
+    needWinch = true; winchUntil = (state.simTime || 0) + 5;
+  };
+  bus.on('tether:latched', hook);
+  bus.on('tether:attached', hook);
   const unhook = () => { lineAttached = false; latchedId = null; };
   bus.on('tether:nearBreak', () => { nearBreakUntil = (state.simTime || 0) + 1.4; });
-  for (const ev of ['tether:broken', 'tether:cut', 'tether:cutPlayer', 'tether:released', 'tether:detached']) {
+  for (const ev of ['tether:broke', 'tether:broken', 'tether:cut', 'tether:cutPlayer', 'tether:released', 'tether:detached']) {
     bus.on(ev, unhook);
   }
 
@@ -1091,6 +1103,7 @@ export function createStrangerPilot({ state, bus, ledger, services }) {
     input.aimWorld = input.aimWorld || {};
     input.aimWorld.x = target.pos.x;
     input.aimWorld.z = target.pos.z;
+    input.aimIntentActive = true;
     // Get close and stopped, then wait for the reticle to actually NAME the body before
     // pressing — exactly how a player lines up the diamond. At point-blank the cone holds
     // only the marked body, so the press cannot grab a stranger.
@@ -1100,11 +1113,10 @@ export function createStrangerPilot({ state, bus, ledger, services }) {
     // Pulse the latch (press ~2 ticks, release ~10) — a held press is consumed once and the
     // tether never sees the retry, exactly like a player mashing the key until it takes.
     const pulse = (state.tick % 12) < 2;
-    // Point-blank precision pick (the Ctrl+Massline binding): latch the NEAREST body. Inside
-    // 60 wu the marked body is the nearest by construction, so the press cannot grab the
-    // heavier wreck the preview keeps ranking above the target on a shared bearing.
-    if (d < 90 && speed < 60 && !lineAttached && pulse) {
-      input.tetherMode = 'nearest';
+    // Use the ready scored receipt for the offered body. Ctrl-nearest is a separate player
+    // override and can grab a closer incidental hull while the pilot is pursuing a named target.
+    if (d < 90 && speed < 60 && !lineAttached && pulse && aimed) {
+      input.tetherMode = null;
       cmd.latch = true;
       latchedTargetId = target.id;
       const key = `latch:${label}:${target.id}`;
