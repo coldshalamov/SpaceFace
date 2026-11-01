@@ -30,11 +30,33 @@ Targets and floors: README §4.
 12.96 / 16.18 world-submit FPS, simulation/wall 0.421 / 0.657, host busy 84.2 / 72.2%.
 These CPU-profiled source captures are not retail qualification or a matched A/B; the first GPU
 timer receipt is invalid. Raw worker attribution puts the largest grouped cost in physics/SG-02,
-then tactical AI. Existing pose/velocity/CCD guards do not justify skipping their synchronization.
+then tactical AI. The inspected pose/velocity/CCD guards did not expose a redundant hot operation
+in these captures. Their starting worker clock was inactive, so steady-world readiness is unproven.
 The measured retained-batch material serialization path is repaired by the canonical texture-safe
 clone helper (47 focused checks pass); its live frame benefit is unmeasured. A controlled
-transmission-resolution A/B is in progress, with paired actual-world images required before any
-quality policy change. Full frame targets remain open.
+transmission-resolution A/B compared an incomplete first picture with a later world/camera, making
+its result inconclusive. Scale remains 1.0; no quality policy changed. The next diagnostic should
+reuse the existing retail runtime witness after actual public flight readiness. Full frame targets
+remain open.
+
+The later B27 packaged public-recovery tail uses the existing retail runtime witness, without
+`window.SF` or a CPU profiler: 2,754 successful world draws over 120,086.95 ms = 22.933 Hz average,
+and 110.267 simulation seconds = 0.9182 sim/wall. Public input and actual world-pixel response pass
+before and after this tail. These are averages, not scanout or frame-percentile qualification.
+The package predates the later clone repair; no speedup is inferred across these different runs.
+
+A separate B27 launch after closing the stalled fleet-look job passes the same public recovery
+route and cleanup. Its 120,027.765 ms tail records 3,686 completed world draws = 30.7096 Hz, with
+119.9833 simulation seconds = 0.99963 sim/wall. Executed-frame and world-draw deltas are equal;
+this does not establish scanout, frame percentiles or why callbacks arrived at that rate. The two
+launches are not a matched causal A/B. Receipts are in
+`.devshots/finish/integration-2026-11-01/batch27-packaged-world-cadence/` and
+`.devshots/finish/integration-2026-11-01/batch27-packaged-after-fleet-cleanup/`.
+
+The stalled fleet-look job is closed with its original 170 images preserved. Commit d2da0cc4564e
+bounds each view and records partial progress on timeout (one focused check passes). Capture of
+the missing Cradle close view and remaining 26 models is next; no ordinary placement verdict is
+inferred from this asset preview.
 
 ## Claimed paths (beyond README §3)
 
