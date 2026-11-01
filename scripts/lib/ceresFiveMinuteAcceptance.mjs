@@ -3468,44 +3468,190 @@ export function planCeresWorkingSeamEgress(beltOutpostArrival, {
 
 export function planCeresThroughlineToolkitReposition({
   minRemainingTicks = CERES_TOOLKIT_ROUTE_RESERVE_TICKS,
+  liveIntercept = null,
+  preferredCohortEntityId = null,
 } = {}) {
   if (!Number.isSafeInteger(minRemainingTicks) || minRemainingTicks < 120
       || minRemainingTicks >= CERES_FIVE_MINUTE_FIXED_TICKS) {
     throw new Error('toolkit camera reposition requires a valid fixed-tick reserve');
   }
+  const waypoints = [
+    Object.freeze({
+      targetId: 'ceres-throughline-toolkit-impact-settle',
+      targetName: 'Throughline toolkit impact settle',
+      targetPos: CERES_TOOLKIT_CAMERA_IMPACT_SETTLE_GLOBAL,
+      arrivalRadiusWU: CERES_TOOLKIT_CAMERA_STAGE_RADIUS_WU,
+      minRemainingTicks,
+      allowBoost: true,
+      controlClock: 'fixed-tick',
+    }),
+    Object.freeze({
+      targetId: 'ceres-throughline-toolkit-camera-clearance',
+      targetName: 'Throughline toolkit camera clearance',
+      targetPos: CERES_TOOLKIT_CAMERA_CLEARANCE_GLOBAL,
+      arrivalRadiusWU: CERES_TOOLKIT_CAMERA_STAGE_RADIUS_WU,
+      minRemainingTicks,
+      allowBoost: true,
+      controlClock: 'fixed-tick',
+    }),
+  ];
+  let intercept = null;
+  if (liveIntercept) {
+    intercept = planCeresLiveCohortCameraIntercept(liveIntercept, preferredCohortEntityId);
+    waypoints.push(Object.freeze({
+      targetId: 'ceres-throughline-live-cohort-camera-intercept',
+      targetName: 'Live Throughline cohort camera intercept',
+      targetPos: intercept.targetPos,
+      arrivalRadiusWU: CERES_TOOLKIT_CAMERA_STAGE_RADIUS_WU,
+      minRemainingTicks,
+      allowBoost: true,
+      controlClock: 'fixed-tick',
+      settleOnArrival: false,
+      exactCohortEntityId: intercept.entityId,
+      exactCohortWorldRecordId: intercept.worldRecordId,
+    }));
+  } else {
+    waypoints.push(Object.freeze({
+      targetId: 'ceres-throughline-toolkit-camera-stage',
+      targetName: 'Throughline toolkit camera stage',
+      targetPos: CERES_TOOLKIT_CAMERA_STAGE_GLOBAL,
+      arrivalRadiusWU: CERES_TOOLKIT_CAMERA_STAGE_RADIUS_WU,
+      minRemainingTicks,
+      allowBoost: true,
+      controlClock: 'fixed-tick',
+    }));
+  }
   return Object.freeze({
     source: 'public-flight-controls',
     reason: 'fixed-camera-hostile-acquisition',
-    waypoints: Object.freeze([
-      Object.freeze({
-        targetId: 'ceres-throughline-toolkit-impact-settle',
-        targetName: 'Throughline toolkit impact settle',
-        targetPos: CERES_TOOLKIT_CAMERA_IMPACT_SETTLE_GLOBAL,
-        arrivalRadiusWU: CERES_TOOLKIT_CAMERA_STAGE_RADIUS_WU,
-        minRemainingTicks,
-        allowBoost: true,
-        controlClock: 'fixed-tick',
-      }),
-      Object.freeze({
-        targetId: 'ceres-throughline-toolkit-camera-clearance',
-        targetName: 'Throughline toolkit camera clearance',
-        targetPos: CERES_TOOLKIT_CAMERA_CLEARANCE_GLOBAL,
-        arrivalRadiusWU: CERES_TOOLKIT_CAMERA_STAGE_RADIUS_WU,
-        minRemainingTicks,
-        allowBoost: true,
-        controlClock: 'fixed-tick',
-      }),
-      Object.freeze({
-        targetId: 'ceres-throughline-toolkit-camera-stage',
-        targetName: 'Throughline toolkit camera stage',
-        targetPos: CERES_TOOLKIT_CAMERA_STAGE_GLOBAL,
-        arrivalRadiusWU: CERES_TOOLKIT_CAMERA_STAGE_RADIUS_WU,
-        minRemainingTicks,
-        allowBoost: true,
-        controlClock: 'fixed-tick',
-      }),
-    ]),
+    liveIntercept: intercept,
+    waypoints: Object.freeze(waypoints),
   });
+}
+
+function planCeresLiveCohortCameraIntercept(snapshot, preferredCohortEntityId = null) {
+  const playerPos = snapshot?.playerPos;
+  const camera = snapshot?.camera;
+  const candidates = Array.isArray(snapshot?.candidates) ? snapshot.candidates : [];
+  const finiteNumber = (value) => typeof value === 'number' && Number.isFinite(value);
+  if (![playerPos?.x, playerPos?.z].every(finiteNumber)
+      || !Array.isArray(camera?.view) || camera.view.length !== 16
+      || !camera.view.every(finiteNumber)
+      || !Array.isArray(camera?.projection) || camera.projection.length !== 16
+      || !camera.projection.every(finiteNumber)
+      || !candidates.length) {
+    throw new Error('live Throughline intercept requires current player, camera, and cohort poses');
+  }
+  const rows = candidates.filter((row) => row?.alive === true && row.entityId != null
+    && String(row.worldRecordId || '')
+    && finiteNumber(row.pos?.x) && finiteNumber(row.pos?.y) && finiteNumber(row.pos?.z))
+    .sort((left, right) => String(left.worldRecordId).localeCompare(String(right.worldRecordId))
+      || String(left.entityId).localeCompare(String(right.entityId)));
+  if (!rows.length) throw new Error('live Throughline intercept has no surviving bound cohort member');
+
+  // Candidate pilot positions keep a deliberate ~145 WU separation from the hostile while
+  // placing it inside the settled fixed camera. The exact current view/projection matrices
+  // score each candidate; movement remains a normal fixed-tick public-control route.
+  const offsets = [
+    [120, 80], [-120, 80], [120, -80], [-120, -80],
+    [100, 105], [-100, 105], [100, -105], [-100, -105],
+    [135, 55], [-135, 55], [135, -55], [-135, -55],
+  ];
+  let best = null;
+  let currentPointable = null;
+  for (const row of rows) {
+    const currentSeparationWU = Math.hypot(
+      row.pos.x - playerPos.x,
+      row.pos.z - playerPos.z,
+    );
+    const collisionClearanceWU = Number(snapshot.playerRadiusWU) + Number(row.radiusWU);
+    if (Number.isFinite(collisionClearanceWU) && currentSeparationWU > collisionClearanceWU
+        && currentSeparationWU <= 320) {
+      const currentNdc = projectCeresPointAfterPlayerTranslation(
+        row.pos,
+        playerPos,
+        playerPos,
+        camera.view,
+        camera.projection,
+      );
+      if (currentNdc && Math.abs(currentNdc.x) <= 0.98 && Math.abs(currentNdc.y) <= 0.98) {
+        const pointable = {
+          entityId: row.entityId,
+          worldRecordId: String(row.worldRecordId),
+          separationWU: currentSeparationWU,
+          ndc: currentNdc,
+        };
+        if (!currentPointable || pointable.separationWU < currentPointable.separationWU) {
+          currentPointable = pointable;
+        }
+      }
+    }
+    for (const [offsetX, offsetZ] of offsets) {
+      const targetPos = { x: row.pos.x - offsetX, z: row.pos.z - offsetZ };
+      const separationWU = Math.hypot(offsetX, offsetZ);
+      if (separationWU > 320) continue;
+      const ndc = projectCeresPointAfterPlayerTranslation(
+        row.pos,
+        playerPos,
+        targetPos,
+        camera.view,
+        camera.projection,
+      );
+      if (!ndc || Math.abs(ndc.x) > 0.98 || Math.abs(ndc.y) > 0.98) continue;
+      const travelWU = Math.hypot(targetPos.x - playerPos.x, targetPos.z - playerPos.z);
+      const margin = Math.max(Math.abs(ndc.x), Math.abs(ndc.y));
+      const identitySwitchPenalty = preferredCohortEntityId != null
+        && row.entityId !== preferredCohortEntityId ? 200 : 0;
+      const score = travelWU + margin * 20 + identitySwitchPenalty;
+      if (!best || score < best.score) {
+        best = {
+          score,
+          targetPos,
+          entityId: row.entityId,
+          worldRecordId: String(row.worldRecordId),
+          separationWU,
+          ndc,
+          travelWU,
+        };
+      }
+    }
+  }
+  if (!best) throw new Error('no live exact Throughline cohort intercept fits the settled camera');
+  const selected = currentPointable || best;
+  return Object.freeze({
+    targetPos: Object.freeze(currentPointable
+      ? { x: playerPos.x, z: playerPos.z }
+      : best.targetPos),
+    entityId: selected.entityId,
+    worldRecordId: selected.worldRecordId,
+    separationWU: selected.separationWU,
+    ndc: Object.freeze(selected.ndc),
+    travelWU: currentPointable ? 0 : best.travelWU,
+    currentPointable: currentPointable ? Object.freeze(currentPointable) : null,
+  });
+}
+
+function projectCeresPointAfterPlayerTranslation(point, playerPos, targetPlayerPos, view, projection) {
+  const dx = targetPlayerPos.x - playerPos.x;
+  const dz = targetPlayerPos.z - playerPos.z;
+  const worldX = point.x;
+  const worldY = point.y;
+  const worldZ = point.z;
+  const vx = view[0] * worldX + view[4] * worldY + view[8] * worldZ + view[12]
+    - view[0] * dx - view[8] * dz;
+  const vy = view[1] * worldX + view[5] * worldY + view[9] * worldZ + view[13]
+    - view[1] * dx - view[9] * dz;
+  const vz = view[2] * worldX + view[6] * worldY + view[10] * worldZ + view[14]
+    - view[2] * dx - view[10] * dz;
+  const vw = view[3] * worldX + view[7] * worldY + view[11] * worldZ + view[15]
+    - view[3] * dx - view[11] * dz;
+  const cx = projection[0] * vx + projection[4] * vy + projection[8] * vz + projection[12] * vw;
+  const cy = projection[1] * vx + projection[5] * vy + projection[9] * vz + projection[13] * vw;
+  const cw = projection[3] * vx + projection[7] * vy + projection[11] * vz + projection[15] * vw;
+  if (!Number.isFinite(cw) || cw <= 0) return null;
+  const x = cx / cw;
+  const y = cy / cw;
+  return Number.isFinite(x) && Number.isFinite(y) ? { x, y } : null;
 }
 
 export function planCeresToolkitTransitHandoff({
@@ -3562,6 +3708,7 @@ export function planCeresToolkitTransitHandoff({
 export function chooseCeresPocketApproachAction(status, {
   arrivalRadiusWU = 90,
   allowBoost = true,
+  settleOnArrival = true,
 } = {}) {
   const distanceWU = status?.distanceWU;
   const headingError = status?.headingError;
@@ -3572,7 +3719,9 @@ export function chooseCeresPocketApproachAction(status, {
       || !Number.isFinite(arrivalRadiusWU) || arrivalRadiusWU <= 0) {
     return Object.freeze({ kind: 'invalid' });
   }
-  if (distanceWU <= arrivalRadiusWU && speed <= 1) return Object.freeze({ kind: 'complete' });
+  if (distanceWU <= arrivalRadiusWU && (speed <= 1 || settleOnArrival === false)) {
+    return Object.freeze({ kind: 'complete' });
+  }
   if (distanceWU <= arrivalRadiusWU && speed > 1) {
     return Object.freeze({
       kind: 'settle',
@@ -3602,6 +3751,48 @@ export function chooseCeresPocketApproachAction(status, {
     durationMs: 160,
     boost: allowBoost !== false && distanceWU > 220 && speed < 120,
   });
+}
+
+async function readCeresLiveCohortCameraSnapshot(page, authorityRows) {
+  return page.evaluate((rows) => {
+    const state = window.SF?.state;
+    const player = state?.entities?.get(state.playerId);
+    const camera = state?.render?.camera;
+    if (!player || !camera?.matrixWorldInverse?.elements || !camera?.projectionMatrix?.elements) {
+      return null;
+    }
+    const playerX = player.pos?.x;
+    const playerZ = player.pos?.z;
+    const view = Array.from(camera.matrixWorldInverse.elements);
+    const projection = Array.from(camera.projectionMatrix.elements);
+    if (typeof playerX !== 'number' || !Number.isFinite(playerX)
+        || typeof playerZ !== 'number' || !Number.isFinite(playerZ)
+        || view.length !== 16 || !view.every(Number.isFinite)
+        || projection.length !== 16 || !projection.every(Number.isFinite)) return null;
+    const bound = new Map((rows || []).map((row) => [row.entityId, row.worldRecordId]));
+    return {
+      playerPos: { x: playerX, z: playerZ },
+      playerRadiusWU: Number(player.radius),
+      camera: { view, projection },
+      candidates: (state.entityList || []).flatMap((entity) => {
+        if (entity?.alive === false || entity?.type !== 'ship'
+            || bound.get(entity.id) !== entity.data?.worldRecordId
+            || entity.data?.ai?.zoneId !== 'zone_ceres_ambush'
+            || entity.data?.ai?.squadId !== 'zone_ceres_ambush') return [];
+        const x = entity.pos?.x;
+        const y = entity.pos?.y;
+        const z = entity.pos?.z;
+        if (![x, y, z].every((value) => typeof value === 'number' && Number.isFinite(value))) return [];
+        return [{
+          entityId: entity.id,
+          worldRecordId: entity.data.worldRecordId,
+          alive: entity.alive !== false,
+          radiusWU: Number(entity.radius),
+          pos: { x, y, z },
+        }];
+      }),
+    };
+  }, authorityRows);
 }
 
 async function readCeresPocketApproachStatus(page, point, terminalTick) {
@@ -3719,6 +3910,8 @@ function createCeresPublicPointApproachReceipt(status, {
       ? 'public-keyboard-fixed-tick' : 'public-keyboard-wall-time',
     targetId: target.targetId,
     targetName: target.targetName,
+    exactCohortEntityId: target.exactCohortEntityId ?? null,
+    exactCohortWorldRecordId: target.exactCohortWorldRecordId ?? null,
     targetPos: Object.freeze({
       x: Number(target.targetPos.x),
       z: Number(target.targetPos.z),
@@ -3755,6 +3948,7 @@ export async function drivePublicToCeresPoint(page, target, endTick) {
     throw new Error('Ceres public point approach requires a valid fixed-tick reserve');
   }
   let approachPulses = 0;
+  let preferredCohortEntityId = target.exactCohortEntityId ?? null;
   const holdPulse = async (durationMs) => {
     if (target.controlClock === 'fixed-tick') {
       const ticks = Math.max(1, Math.round(
@@ -3767,11 +3961,26 @@ export async function drivePublicToCeresPoint(page, target, endTick) {
   };
   try {
     for (; approachPulses < 220;) {
-      const status = await readCeresPocketApproachStatus(page, target.targetPos, endTick);
+      let activeTarget = target;
+      if (Array.isArray(target.liveCohortAuthority)) {
+        const liveIntercept = await readCeresLiveCohortCameraSnapshot(
+          page,
+          target.liveCohortAuthority,
+        );
+        const livePlan = planCeresThroughlineToolkitReposition({
+          minRemainingTicks,
+          liveIntercept,
+          preferredCohortEntityId,
+        });
+        activeTarget = livePlan.waypoints.at(-1);
+        preferredCohortEntityId = activeTarget.exactCohortEntityId;
+      }
+      const status = await readCeresPocketApproachStatus(page, activeTarget.targetPos, endTick);
       if (status.missing) throw new Error(`${target.targetName} approach lost the player`);
       const action = chooseCeresPocketApproachAction(status, {
         arrivalRadiusWU,
-        allowBoost: target.allowBoost !== false,
+        allowBoost: activeTarget.allowBoost !== false,
+        settleOnArrival: activeTarget.settleOnArrival !== false,
       });
       recordCeresPocketApproachDecision(diagnostic, status, action.kind);
       if (action.kind === 'invalid') {
@@ -3782,7 +3991,7 @@ export async function drivePublicToCeresPoint(page, target, endTick) {
       }
       if (action.kind === 'complete') {
         return createCeresPublicPointApproachReceipt(status, {
-          target,
+          target: activeTarget,
           diagnostic,
           deadlineTick: endTick,
           arrivalRadiusWU,
@@ -3792,7 +4001,7 @@ export async function drivePublicToCeresPoint(page, target, endTick) {
       if (action.kind === 'settle') {
         diagnostic.counts.settleHolds += 1;
         const settled = await settleCeresPocketApproach(page, {
-          point: target.targetPos,
+          point: activeTarget.targetPos,
           endTick,
           minRemainingTicks,
           targetName: target.targetName,
@@ -3800,7 +4009,7 @@ export async function drivePublicToCeresPoint(page, target, endTick) {
         recordCeresPocketApproachDecision(diagnostic, settled, 'settle-result');
         if (settled.distanceWU <= arrivalRadiusWU) {
           return createCeresPublicPointApproachReceipt(settled, {
-            target,
+            target: activeTarget,
             diagnostic,
             deadlineTick: endTick,
             arrivalRadiusWU,
@@ -3910,19 +4119,29 @@ export async function repositionPublicForCeresToolkit(page, endTick, {
       || stableJson(start.boundHostiles) !== stableJson(normalizedBoundHostiles)) {
     throw new Error('toolkit camera reposition lost the exact collision authority');
   }
-  const plan = planCeresThroughlineToolkitReposition();
+  const doglegPlan = planCeresThroughlineToolkitReposition();
   const receipts = [];
-  for (const waypoint of plan.waypoints) {
+  for (const waypoint of doglegPlan.waypoints.slice(0, 2)) {
     receipts.push(await drivePublicToCeresPoint(page, waypoint, endTick));
   }
+  const liveInterceptSnapshot = await readCeresLiveCohortCameraSnapshot(
+    page,
+    normalizedBoundHostiles,
+  );
+  const livePlan = planCeresThroughlineToolkitReposition({ liveIntercept: liveInterceptSnapshot });
+  receipts.push(await drivePublicToCeresPoint(page, {
+    ...livePlan.waypoints.at(-1),
+    liveCohortAuthority: normalizedBoundHostiles,
+  }, endTick));
   const completedAtTick = Number(receipts.at(-1)?.tick);
   if (!Number.isSafeInteger(completedAtTick) || completedAtTick < start.tick) {
     throw new Error('toolkit camera reposition lacks an ordered completion tick');
   }
   return Object.freeze({
     pass: true,
-    source: plan.source,
-    reason: plan.reason,
+    source: livePlan.source,
+    reason: livePlan.reason,
+    liveIntercept: livePlan.liveIntercept,
     startTick: start.tick,
     movementEndTick: completedAtTick,
     playerEntityId,
@@ -3931,7 +4150,7 @@ export async function repositionPublicForCeresToolkit(page, endTick, {
     anchorImpactTick,
     boundHostiles: Object.freeze(normalizedBoundHostiles.map((row) => Object.freeze({ ...row }))),
     impactCaptureStartSeq: start.nextEventSeq,
-    waypoints: plan.waypoints,
+    waypoints: livePlan.waypoints,
     receipts: Object.freeze(receipts.map((receipt) => Object.freeze({ ...receipt }))),
   });
 }
@@ -5328,7 +5547,7 @@ async function exercisePublicPhysicsToolkit(page, routeBounds, collisionProof) {
       || collisionProof.selectedImpactTick !== Number(collisionProof.impact?.tick)) {
     throw new Error('toolkit exercise requires the exact preceding collision receipt');
   }
-  const cameraReposition = await repositionPublicForCeresToolkit(page, endTick, {
+  let cameraReposition = await repositionPublicForCeresToolkit(page, endTick, {
     playerEntityId: collisionProof.playerEntityId,
     anchorEntityId: collisionProof.anchorEntityId,
     anchorImpactSeq: collisionProof.selectedImpactSeq,
@@ -5338,6 +5557,24 @@ async function exercisePublicPhysicsToolkit(page, routeBounds, collisionProof) {
   const baseline = await waitForCeresToolkitConflictAuthority(page, prebound, endTick, {
     deadlineTick: toolkitActionDeadlineTick,
   });
+  const currentPointing = await readCeresHostilePointingSnapshot(
+    page,
+    prebound.boundHostiles,
+  );
+  const currentPointable = currentPointing.candidates.some((row) => (
+    row.alive === true && row.pointable === true && row.distanceWU <= 320
+  ));
+  if (!currentPointable) {
+    const liveStage = cameraReposition.waypoints.at(-1);
+    const refreshReceipt = await drivePublicToCeresPoint(page, {
+      ...liveStage,
+      liveCohortAuthority: prebound.boundHostiles,
+    }, endTick);
+    cameraReposition = Object.freeze({
+      ...cameraReposition,
+      conflictIntercept: Object.freeze({ ...refreshReceipt }),
+    });
+  }
   baseline.cameraReposition = cameraReposition;
   const target = await pointPublicAtCeresHostile(page, baseline.initialHostiles, endTick, {
     deadlineTick: toolkitActionDeadlineTick,
