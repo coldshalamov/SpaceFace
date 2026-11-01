@@ -11,7 +11,7 @@
   "measured": "synchronous registry.get(\"ui\").frame plus authored src/ui requestAnimationFrame callback CPU bucketed per presentation timestamp, 150 ms warm-up discarded; worst combined UI sample per surface over a 600 ms headed window",
   "excluded": "browser layout/paint deferred after the owner callback is outside this CPU window; unclassified non-game requestAnimationFrame callbacks are reported separately as auxiliaryRaf* diagnostics",
   "seed": 47,
-  "uiSourceDigest": "973e4f1758fb2c8489b4795383f10858d39f844fc74934c172dff948f2c9ee77",
+  "uiSourceDigest": "c626e5827ce4bbca3a089881fbd8b13e667a8bf67a7f5c582e0ac5e5a089e811",
   "uiSourceFiles": {
     "index.html": "2796755b401af2cf4fc2f1dfe0cdb3835216f4f09e3c4d1d8365430aac5aad3b",
     "src/ui/accessibility.js": "43e22e22f3d37dedf859ed62c16b3a038e6144d3718a3d87716b6df52b448657",
@@ -145,7 +145,7 @@
     "src/ui/objectiveRecall.js": "0a35ce692daccae855624065c4c29faf0a772574fc951c7dce9fe7b5de4ca630",
     "src/ui/orrery/achievementsLayouts.js": "3f2950c00d68b78cd59ef0ffde6dabe1d7273b6696a2f286b942ab9ffbff00d8",
     "src/ui/orrery/arcRail.js": "1a8c4931b5882273aeb5e18cc716ce62ff9741266e873f9c3abddcfe02e502a0",
-    "src/ui/orrery/archiveCssSource.js": "00543c53f18cdd03510bf6654adc4cbe39842f54d3d5c3d363ffb5554ab58b79",
+    "src/ui/orrery/archiveCssSource.js": "01528eb143bf1d7dee798f8ba5546acc756c0c8812ea5dad54ab33ea89057b61",
     "src/ui/orrery/archiveInstruments.js": "12f97d3488dd1af8b83e5e0ddb045b03541bec18f7d468fb9b3731d543306362",
     "src/ui/orrery/archiveLayouts.js": "0557220986a60e34b1ea9f003acd6d41ea001ab594850f3cb2a7f26d46897626",
     "src/ui/orrery/armoryPreviewMedia.js": "451f90dee2c354cb946c83278ad28a1d53e765c8a8bd3437bf9bf0763b1c1579",

@@ -1248,6 +1248,25 @@ html:root body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog.orr-mlog.orr-mlog 
   ${ML} .sf-mlog-card .sf-mlog-terms > .k-row > .k-row__name { line-height:1.25 !important; }
   ${ML} .sf-mlog-card > .ml-route-host { margin-top:8px; }
 }
+/* ui-polish-284: the contract terms were loose caps and values hung on a tick rail, the one reading on
+   the page with no frame. On desktop frames (past 1100 wide, past 640 tall) they now sit in one hairline
+   card with a divider between rows, the same card the Research, Codex and Game Over readings use */
+@media (min-width:1101px) and (min-height:641px) {
+  html:root body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog.orr-mlog.orr-mlog .sf-mlog-card .sf-mlog-terms {
+    box-sizing:border-box; padding:2px 16px !important; border:1px solid rgb(${BONE} / .16) !important; border-radius:6px !important;
+    background:rgb(12 12 14 / .62) !important; }
+  html:root body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog.orr-mlog.orr-mlog .sf-mlog-card .sf-mlog-terms > .k-row {
+    padding:8px 0 !important; border-top:1px solid rgb(${BONE} / .09) !important; }
+  html:root body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog.orr-mlog.orr-mlog .sf-mlog-card .sf-mlog-terms > .k-row:first-child { border-top:0 !important; }
+  html:root body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog.orr-mlog.orr-mlog .sf-mlog-card .sf-mlog-terms > .k-row::before { display:none !important; }
+  html:root body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog.orr-mlog.orr-mlog .sf-mlog-card .sf-mlog-terms > .k-row > .k-62 { letter-spacing:.14em !important; color:rgb(${BONE} / .7) !important; }
+}
+/* short desktop frames keep the tighter ledger pitch the bands above set, so the route band stays in frame */
+@media (min-width:1101px) and (min-height:641px) and (max-height:800px) {
+  html:root body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog.orr-mlog.orr-mlog .sf-mlog-card .sf-mlog-terms { padding:0 14px !important; }
+  html:root body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog.orr-mlog.orr-mlog .sf-mlog-card .sf-mlog-terms > .k-row { padding:4px 0 !important; }
+  html:root body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog.orr-mlog.orr-mlog .sf-mlog-card .sf-mlog-terms > .k-row > .k-row__name { line-height:1.3 !important; }
+}
 @media (forced-colors:active) {
   ${ML} .sf-mlog-list .k-row.sf-mlog-row[aria-selected="true"] { outline:2px solid Highlight !important; }
 }
