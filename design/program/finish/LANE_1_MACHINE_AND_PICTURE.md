@@ -223,10 +223,12 @@ Earlier full `c6` and short `030aaf` receipts remain failed; their evidence is r
 misses are not closed by focused checks. The repaired full-duration and context-recovery outcome
 remains open.
 
-The baseline timing is separately open. After removing three redundant per-tick scenario-state
-normalizations, nine scenario cases and all four physical branches pass, but the latest full
-baseline still takes 92,054 ms with all 17 assertions green against 90,000 ms. Public normalization
-boundaries remain intact; no timing gain or budget closure is claimed. M8 progress does not close it.
+The baseline timing now passes under the measured four-job configuration: all 17 assertions pass
+in 86,286 ms against 90,000 ms. The automatic pool ceiling is capped at four (minimum two); explicit
+`--jobs` and inherited `SPACEFACE_CHECK_JOBS` overrides remain unchanged. The earlier 92,054 ms and
+92,184 ms runs remain historical over-budget results; the four-job outcome is not a general speedup
+claim or a separate post-cap default run. Public scenario normalization boundaries and all four
+physical branches remain intact. M8 progress does not close its separate open work.
 
 **M9 — Load less, load later.** 28 MB of minified JS in the eager closure (`scripts/build-bundle.mjs`,
 esbuild splitting): lazy-load per mode and per screen; make `modelTruthCensus.generated.js` and
