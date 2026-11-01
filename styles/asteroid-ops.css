@@ -237,6 +237,21 @@
 .aw-alert.warn { color: var(--orr-bone-hot); }
 .aw-alert.bad { color: var(--orr-danger); }
 .aw-alert.good { color: var(--orr-bone); }
+/* 601–1100px: with the claim, assay and site readings up, the crest leaves the alert about
+   110px. A one-line centred flex slot clipped "Loading mining equipment…" at both ends (an
+   anonymous flex line never ellipsizes). Let it set on two 13px lines — 30px inside the
+   40px crest — and end any longer banner on an ellipsis after the second. */
+@media (min-width: 601px) and (max-width: 1100px) {
+  .ast-screen .aw-alert.live {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    white-space: normal;
+    line-height: 1.15;
+    overflow-wrap: break-word;
+  }
+}
 
 .aw-crest-right {
   display: flex;

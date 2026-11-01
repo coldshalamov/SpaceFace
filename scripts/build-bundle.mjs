@@ -1,9 +1,10 @@
 // scripts/build-bundle.mjs — production bundle for the Electron/web release (P2-18).
 //
 // The dev path (node server.js → browser) is ZERO-BUILD: raw ES modules + an importmap resolve
-// three/rapier from vendor/. That path stays exactly as-is. This script adds a SEPARATE production
+// three/rapier from vendor/. This production build keeps Three on that vendor core and resolves
+// Rapier from node_modules. It adds a SEPARATE production
 // build: esbuild bundles src/main.js + every dynamically-imported screen into a tree-shaken,
-// minified output in build/web/, resolving three/rapier/addons from node_modules. The Electron
+// minified output in build/web/. The Electron
 // builder ships build/web/ instead of the raw src/ tree, cutting load size substantially.
 //
 // Dynamic imports: src/ui/uiRoot.js imports screens through literal import() call sites,
@@ -24,7 +25,7 @@ import {
   validateReleaseBuildReceipt,
   writeReleaseBuildReceipt,
 } from './lib/releasePackaging.mjs';
-import { retailBundleAliases } from './lib/retailBundleAliases.mjs';
+import { retailBundleAliases, retailThreeCorePlugin } from './lib/retailBundleAliases.mjs';
 import { pinVercelReleaseHtml, vercelReleaseBase } from './lib/vercelReleaseBase.mjs';
 import { buildRetailRuntimeWorkers, moduleWorkerEntryPoints, validateRetailModuleWorkers, RETAIL_BROWSER_TARGETS } from './lib/retailRuntimeWorkers.mjs';
 import { buildUiCssSidecars } from './lib/buildUiCssSidecars.mjs';
@@ -125,13 +126,13 @@ async function build() {
     sourcemap: false,         // ship without sourcemaps (smaller; dev uses raw modules)
     target: [...RETAIL_BROWSER_TARGETS], // Include Safari rather than assuming Chromium syntax
     platform: 'browser',
-    // Resolve bare specifiers to the npm packages (three/rapier ship ESM in node_modules).
-    // The vendor/ copies are otherwise only for the zero-build dev path; the bundle uses node_modules...
+    // Resolve bare specifiers to npm packages (Rapier ships ESM in node_modules).
+    // The exact bare `three` specifier is redirected to the same vendor core the import map uses.
     mainFields: ['browser', 'module', 'main'],
     conditions: ['browser', 'import'],
-    // ...except the vendor-patched modules the dev importmap already loads (GLTFLoader), so dev and
-    // retail parse render packages with the same code.
+    // ...and the existing GLTFLoader alias remains pinned to its vendor copy.
     alias: retailBundleAliases(ROOT),
+    plugins: [retailThreeCorePlugin(ROOT)],
     metafile: !!METAFILE_OUT,
     logLevel: 'info',
     // Treat dynamic imports of literal strings as code-splittable chunks (default).

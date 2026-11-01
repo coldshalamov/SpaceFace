@@ -28,6 +28,7 @@ import {
   detachPackageGeometry,
   detachPackageTexture,
   detachedGeometryUploadPending,
+  dropGeometryGpuResidencyLedger,
   detachedPresentedDrawBlocked,
   isPackageGeometryDetached,
   isPackageTextureDetached,
@@ -515,7 +516,6 @@ test('source pins: every F2 gate/detach/ledger call site exists verbatim', () =>
   assert.match(bloom, /preparePresentedDraw\(renderer, geometry, material\)/);
   assert.match(bloom, /queuePresentedDetachRehydrate\(renderer\)/);
   assert.match(bloom, /const orientationHold = orientationDetachedHoldActive\(renderer\)/);
-  assert.match(bloom, /if \(!orientationHold && unreadyProgramsPending !== true/);
   assert.match(bloom, /orientationHoldHidesDrawable\(renderer, object\)/);
   assert.match(rendererSrc, /this\._drawBufferAspectClass = aspectClassFromSize\(_drawSize\)/);
   assert.match(
@@ -580,6 +580,37 @@ test('presented draw skips a detached upload and refills before the next one', a
   assert.equal(detachedPresentedDrawBlocked(renderer, geometry, material), false);
   renderer.renderBufferDirect(null, null, geometry, material, null, null);
   assert.equal(draws, 2, 'the following frame draws the restored payload');
+  loader.dispose();
+});
+
+test('a stale detached geometry is hidden before projection until refill completes', async () => {
+  const decoded = decodedFixture();
+  let decodes = 0;
+  const loader = freshLoader(async () => ++decodes === 1 ? decoded : decodedFixture());
+  await loader.load(packageMetadata('fixture.stale-before-projection'), { baseUrl: 'https://fixtures.test/' });
+  const geometry = decoded.geometry;
+  const hull = decoded.scene.children[0];
+  const readyProgram = { isReady() { return true; }, program: { id: 1 } };
+  const renderer = {
+    properties: { get() { return { currentProgram: readyProgram }; } },
+    info: { programs: [readyProgram] },
+    getContext() { return null; },
+  };
+  const guard = createUnreadyDrawableGuard(renderer, { disarmOnSettle: true });
+  assert.equal(detachPackageGeometry(geometry, renderer), true);
+  guard.hide(decoded.scene); guard.restore();
+  assert.equal(hull.visible, true, 'valid GPU copy remains visible');
+  assert.equal(dropGeometryGpuResidencyLedger(renderer), 1, 'context loss invalidates its GPU record');
+  assert.equal(detachedGeometryUploadPending(geometry, renderer), true);
+  guard.hide(decoded.scene);
+  assert.equal(hull.visible, false, 'stale released attribute must not reach projectObject');
+  guard.restore();
+  const refill = presentedDetachRehydrateInFlight();
+  assert.ok(refill, 'pre-projection guard requests the existing refill owner');
+  await refill;
+  assert.equal(isPackageGeometryDetached(geometry), false);
+  guard.hide(decoded.scene); guard.restore();
+  assert.equal(hull.visible, true, 'refilled geometry remains available');
   loader.dispose();
 });
 

@@ -6,7 +6,6 @@ import { createGameState } from './core/gameState.js';
 import { clearEntityRuntime } from './core/entity.js';
 import { bootstrapProfileSettingsBeforeRegistry } from './core/graphicsProfileBootstrap.js';
 import { createBus } from './core/eventBus.js';
-import { createPresentationRegistry } from './runtime/presentationRegistry.js';
 import { resolveSimLaneFlags, createSimLaneRuntime } from './core/simLaneMain.js';
 import { startLoop } from './core/loop.js';
 import { createPresentationJournal } from './core/presentationJournal.js';
@@ -173,7 +172,13 @@ async function boot() {
     };
 
     const createFullRegistry = async () => (await import('./core/registry.js')).createRegistry(ctx);
-    let registry = ctx.simLane === 'worker' ? createPresentationRegistry(ctx) : await createFullRegistry();
+    let registry;
+    if (ctx.simLane === 'worker') {
+      const { createPresentationRegistry } = await import('./runtime/presentationRegistry.js');
+      registry = createPresentationRegistry(ctx);
+    } else {
+      registry = await createFullRegistry();
+    }
     ctx.registry = registry;
     // Whole-sim worker lane: null on the main lane (zero behavior change);
     // otherwise a createSimulationRunner-compatible lane runner plus the

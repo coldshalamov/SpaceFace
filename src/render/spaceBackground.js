@@ -82,15 +82,45 @@ const PLANET_STYLE_GLSL = /* glsl */`
   // final value pull that lands the brightest limb well under gameplay emissives.
   float sfSkyOut = dot(sfSkyLit, vec3(0.2126, 0.7152, 0.0722));
   outgoingLight = mix(sfSkyLit, vec3(sfSkyOut), 0.20) * 0.82;
+  // DUST P3a — day/night terminator on the painted impostor. The atlas art is authored flat;
+  // without a terminator the hero body read as an unlit billboard (2026-10-31 capture audit).
+  // Same light direction law as the procedural bake (spec.lightAngle drives uPLightDir, sun
+  // biased overhead), so a planet keeps its day side whichever path drew it. The day side keeps
+  // the authored paint untouched; the night side sinks into a cool shadow floor so the disc
+  // reads as a lit sphere. Only the body is shaded (uPDiscR in quad space); ring art and the
+  // atlas alpha gutters pass through unchanged.
+  vec2 sfPd = (vSfPlanetUv - 0.5) / max(uPDiscR, 0.05);
+  float sfPr = length(sfPd);
+  vec3 sfPn = vec3(sfPd, sqrt(max(0.0, 1.0 - min(sfPr * sfPr, 1.0))));
+  vec3 sfPL = normalize(vec3(uPLightDir * 0.62, 0.72));
+  float sfPlit = smoothstep(0.02, 0.26, clamp(dot(sfPn, sfPL), 0.0, 1.0));
+  float sfPbody = 1.0 - smoothstep(0.96, 1.06, sfPr);
+  outgoingLight *= mix(vec3(1.0), mix(vec3(0.16, 0.19, 0.27), vec3(1.0), sfPlit), sfPbody);
 `;
 
 function stylePlanetMaterial(material) {
   material.onBeforeCompile = (shader) => {
     const needle = 'outgoingLight = diffuseColor.rgb;';
-    if (!shader.fragmentShader.includes(needle)) throw new Error('[background] planet style shader contract changed');
+    if (!shader.fragmentShader.includes(needle) || !shader.fragmentShader.includes('#include <common>')
+        || !shader.vertexShader.includes('#include <common>') || !shader.vertexShader.includes('#include <uv_vertex>')) {
+      throw new Error('[background] planet style shader contract changed');
+    }
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', '#include <common>\nvarying vec2 vSfPlanetUv;')
+      .replace('#include <uv_vertex>', '#include <uv_vertex>\nvSfPlanetUv = uv;');
+    shader.fragmentShader = shader.fragmentShader.replace('#include <common>',
+      '#include <common>\nvarying vec2 vSfPlanetUv;\nuniform vec2 uPLightDir;\nuniform float uPDiscR;');
     shader.fragmentShader = shader.fragmentShader.replace(needle, PLANET_STYLE_GLSL);
+    // Per-material terminator uniforms (light angle + disc radius). The uniform holders live on
+    // the material so _spawnPlanet can retarget them without a recompile; the shader adopts the
+    // SAME objects, so writes flow straight through to the program.
+    const style = material.userData && material.userData.sfPlanetStyle;
+    if (style) {
+      shader.uniforms.uPLightDir = style.uPLightDir;
+      shader.uniforms.uPDiscR = style.uPDiscR;
+    }
   };
-  material.customProgramCacheKey = () => 'spaceface-illustrated-planet-v2';
+  material.customProgramCacheKey = () => 'spaceface-illustrated-planet-v3';
 }
 
 // Retired: the old per-frame plate shader that shaded a 12-vertex outline by normalizing against
@@ -197,6 +227,22 @@ const LAYER_DEFS = [
   { name: 'L1_nebula', par: 0.08, tileH: 18.0, depth: -18, blend: 'normal' },
   { name: 'L2_wisps',  par: 0.13, tileH: 11.0, depth: -8,  blend: 'additive' },
 ];
+// DUST P3a — deep-space floor tone (see LAYER_COMPOSITE_FRAG). The palette haze is the hue;
+// brightness lifts it from "authored nebula tint" to a quiet full-frame floor that keeps the
+// dead band off pure void. Gain is the mix ceiling toward the frame's near half.
+const DUST_DEEP_TONE_GAIN = 0.85;
+const DUST_DEEP_TONE_BRIGHTNESS = 1.35;
+// DUST P3a — deep star floor. Group-local drop of the second (deep) star plane below the
+// shipped STAR_DEPTH plane; see _createStars for why it exists.
+const DEEP_STAR_DROP = 460;
+// DUST P3a — the resident hero planet's day-side light color, by body type. These are the same
+// atmosphere identities the procedural planet bake configures, so both draw paths agree.
+const PLANET_LIGHT_COLORS = Object.freeze({
+  gas: '#ffb070', ice: '#9fd4ff', rocky: '#93a8b8',
+});
+// Faint by design: the planet contributes atmosphere-tinted fill to its neighborhood, never a
+// second sun. Scaled against the background intensity each frame; eased, never popped.
+const PLANET_LIGHT_INTENSITY = 0.22;
 export const SPACE_BACKGROUND_GROUP_ORDER = -100;
 const STAR_DEPTH = 6;       // group-local y for star/flare/hero planes (above the tiles)
 const HERO_DEPTH = 12;
@@ -447,6 +493,8 @@ const LAYER_COMPOSITE_FRAG = /* glsl */`
   uniform vec3 uTintA;
   uniform vec3 uTintB;
   uniform float uNebulaOpacity;
+  uniform vec3 uDeepTone;
+  uniform float uDeepGain;
   varying vec3 vWorldPosition;
   varying vec4 vSkyClip;
 
@@ -495,6 +543,15 @@ const LAYER_COMPOSITE_FRAG = /* glsl */`
       plate = mix(vec3(dot(plate, vec3(0.2126, 0.7152, 0.0722))), plate, uPaintedSkySat);
       color = mix(color, plate, uPaintedSkyStrength);
     }
+    // DUST P3a — the dead-void floor becomes a deep-space tone. The sector plates are authored
+    // darker than the action (~0.013-0.017 mean) and their painted structure ends mid-frame;
+    // without a floor the rest of the frame is flat dead void with a hard read where the art
+    // stops. A closed-form screen gradient (no texture fetch, no noise) toward the palette's
+    // deep haze keeps every frame off pure void and dissolves that cut. Additive only — it can
+    // never demote authored plate art — and weighted toward the near half of the frame, where
+    // the plate's own composition is thinnest and the dead band measured widest.
+    float sfDeepBand = 0.30 + 0.70 * (1.0 - smoothstep(-0.95, 0.55, vSkyClip.y / max(vSkyClip.w, 1e-4)));
+    color += uDeepTone * (uDeepGain * sfDeepBand);
     gl_FragColor = vec4(max(color, vec3(0.0)), 1.0);
     #include <tonemapping_fragment>
     #include <colorspace_fragment>
@@ -1207,6 +1264,20 @@ export class SpaceBackground {
     applySpaceBackgroundRootContract(this.group, this.bgY);
     scene.add(this.group);
 
+    // DUST P3a — the resident hero planet is a light source, not just an image. One real
+    // DirectionalLight mounted here (this constructor runs before the renderer's shader
+    // warm-up), switched by intensity alone so the scene's baked light census never changes
+    // mid-flight — the same discipline the headlight pool documents. Direction aims from the
+    // planet's day side toward the play plane; the loop in update() eases it in and out.
+    this.planetLight = new THREE.DirectionalLight(0xffffff, 0);
+    this.planetLight.name = 'SF_PlanetLight';
+    this.planetLight.castShadow = false;
+    this._planetLightTarget = new THREE.Object3D();
+    this._planetLightTarget.position.set(0, HERO_DEPTH, 0);
+    this.planetLight.target = this._planetLightTarget;
+    this.group.add(this.planetLight, this._planetLightTarget);
+    this._planetLightLevel = 0;
+
     this.layers = [];
     this.layerGeometry = null;
     this.layerMaterial = null;
@@ -1255,6 +1326,8 @@ export class SpaceBackground {
     this._c1 = new THREE.Color();
     this._tintA = new THREE.Color(1, 1, 1);
     this._tintB = new THREE.Color(1, 1, 1);
+    // DUST P3a deep-space floor tone (set per palette in bakeAll; EMBER until the first bake).
+    this._deepTone = new THREE.Color(PALETTES.EMBER.haze).multiplyScalar(DUST_DEEP_TONE_BRIGHTNESS);
     this._starTint = new THREE.Color(1, 1, 1);
     this._sectorTintStart = new THREE.Color(PALETTES.EMBER.emission);
     this._sectorTintTarget = new THREE.Color(PALETTES.EMBER.emission);
@@ -1741,6 +1814,9 @@ export class SpaceBackground {
     this._disposeBakeTargets();
     this.currentPaletteName = PALETTES[paletteName] ? paletteName : 'EMBER';
     const p = this._paletteColors(this.currentPaletteName);
+    // DUST P3a: the deep-space floor follows the sector palette's haze hue.
+    this._deepTone.set((PALETTES[this.currentPaletteName] || PALETTES.EMBER).haze)
+      .multiplyScalar(DUST_DEEP_TONE_BRIGHTNESS);
     const sizes = this.bakeSizes;
     const bakeSeed = (this.skySeed % 100000) * 0.001;
 
@@ -2049,6 +2125,8 @@ export class SpaceBackground {
         uTintA: { value: this._tintA },
         uTintB: { value: this._tintB },
         uNebulaOpacity: { value: this.nebulaOpacity },
+        uDeepTone: { value: this._deepTone },
+        uDeepGain: { value: DUST_DEEP_TONE_GAIN },
       },
       transparent: false,
       blending: THREE.NoBlending,
@@ -2127,14 +2205,24 @@ export class SpaceBackground {
     // drawn by the SAME Points call, so L3's draw count is unchanged. Medium+ tiers only - low
     // tier reserves none and its allocation stays identical to the shipped field.
     const faintCount = this.lowTier ? 0 : 2048;
+    // DUST P3a — deep star floor. The star plane foreshortens under the tilted chase camera:
+    // uniform world density projects into ~1/d^2 screen density, which collapses toward the
+    // nadir. Default flight captures measured the near half of the frame at effectively zero
+    // visible stars (0.00-0.14% bright pixels, bottom bands) while the far half kept its field.
+    // A second population on a plane DEEP_STAR_DROP below the shipped star plane tiles the SAME
+    // wrap cell in the SAME Points draw (no new pass) and redensifies exactly where the shallow
+    // plane thins, because the same screen pixel samples ~(deepDist/nearDist)^2 more world area
+    // down there. Faint and low-parallax so it reads as depth, not a second starfield.
+    const deepCount = this.lowTier ? 1024 : this.tierName === 'mid' ? 2300 : 3000;
+    const total = count + faintCount + deepCount;
     const cell = this.starCell;
-    const positions = new Float32Array((count + faintCount) * 3);
-    const colors = new Float32Array((count + faintCount) * 3);
-    const sizes = new Float32Array(count + faintCount);
-    const pars = new Float32Array(count + faintCount);
-    const bases = new Float32Array(count + faintCount);
-    const twinklePhase = new Float32Array(count + faintCount);
-    const twinkleSpeed = new Float32Array(count + faintCount);
+    const positions = new Float32Array(total * 3);
+    const colors = new Float32Array(total * 3);
+    const sizes = new Float32Array(total);
+    const pars = new Float32Array(total);
+    const bases = new Float32Array(total);
+    const twinklePhase = new Float32Array(total);
+    const twinkleSpeed = new Float32Array(total);
 
     const rnd = mulberry32(this.skySeed + 101);
     const tmp = new THREE.Color();
@@ -2246,6 +2334,56 @@ export class SpaceBackground {
       }
     }
 
+    // Deep star floor fill (see the deepCount note above). Own stream, filled after both
+    // shipped RNG loops: the shipped star attribute sequences stay byte-identical. Gently
+    // varied acceptance (clustered at 0.35 strength over a 0.6 floor) so the deep field has
+    // the same soft large-scale structure as the shipped field without repeating its voids.
+    if (deepCount > 0) {
+      const deepRnd = mulberry32((this.skySeed + 505) >>> 0);
+      // World-size per pixel at the deep plane: sizes must scale by the distance ratio or the
+      // deeper stars would render ~3x smaller than intended (the vertex shader divides by
+      // view-space z, which grew by the same drop).
+      let deepPxToWorld = this.starPxToWorld * 2.3;
+      if (this.camera && this.camera.isCamera) {
+        const deepY = this.bgY + STAR_DEPTH - DEEP_STAR_DROP;
+        const cD = castToPlane(this.camera, 0, 0, deepY, new THREE.Vector3());
+        const starPlaneY = this.bgY + STAR_DEPTH;
+        const cS = castToPlane(this.camera, 0, 0, starPlaneY, new THREE.Vector3());
+        if (cD && cS) {
+          const ratio = this.camera.position.distanceTo(cD) / Math.max(1, this.camera.position.distanceTo(cS));
+          if (Number.isFinite(ratio) && ratio > 0.5 && ratio < 12) deepPxToWorld = this.starPxToWorld * ratio;
+        }
+      }
+      for (let d = 0; d < deepCount; d++) {
+        const i = accepted + faintCount + d;
+        // Rejection sample against the SAME clusters (weakly weighted) so the deep floor
+        // inherits the sector's composition rather than an alien uniform grid.
+        let x = 0;
+        let z = 0;
+        for (let tries = 0; tries < 8; tries++) {
+          x = (deepRnd() - 0.5) * cell;
+          z = (deepRnd() - 0.5) * cell;
+          let density = 0.6;
+          for (const cl of clusters) {
+            const d2 = (x - cl.x) ** 2 + (z - cl.z) ** 2;
+            density += cl.strength * 0.35 * Math.exp(-d2 / (2 * cl.r * cl.r));
+          }
+          if (deepRnd() <= Math.min(1, density)) break;
+        }
+        positions[i * 3] = x;
+        positions[i * 3 + 1] = -DEEP_STAR_DROP;
+        positions[i * 3 + 2] = z;
+        pickBlackbody(deepRnd, tmp);
+        colors[i * 3] = tmp.r; colors[i * 3 + 1] = tmp.g; colors[i * 3 + 2] = tmp.b;
+        pars[i] = 0.02 + deepRnd() * 0.07;
+        const mag = deepRnd();
+        sizes[i] = (0.9 + mag * 1.6) * deepPxToWorld;
+        bases[i] = 0.3 + mag * 0.28;
+        twinklePhase[i] = deepRnd() * Math.PI * 2;
+        twinkleSpeed[i] = 0;
+      }
+    }
+
     const geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     geo.setAttribute('aColor', new THREE.BufferAttribute(colors, 3));
@@ -2254,7 +2392,7 @@ export class SpaceBackground {
     geo.setAttribute('aBase', new THREE.BufferAttribute(bases, 1));
     geo.setAttribute('aTwinklePhase', new THREE.BufferAttribute(twinklePhase, 1));
     geo.setAttribute('aTwinkleSpeed', new THREE.BufferAttribute(twinkleSpeed, 1));
-    geo.setDrawRange(0, accepted + faintCount);
+    geo.setDrawRange(0, accepted + faintCount + deepCount);
 
     const mat = new THREE.ShaderMaterial({
       vertexShader: STAR_VERT,
@@ -2284,7 +2422,7 @@ export class SpaceBackground {
     pts.renderOrder = -80;
     pts.position.y = STAR_DEPTH;
     this.group.add(pts);
-    this.stars = { pts, mat, count: accepted + faintCount, cell };
+    this.stars = { pts, mat, count: accepted + faintCount + deepCount, cell };
   }
 
   // --------------------------------------------------------------------------
@@ -2573,6 +2711,12 @@ export class SpaceBackground {
         fog: false,
       });
       mat.dispose = () => {}; // cache-owned; the hero-clear path must not release the program
+      // DUST P3a: terminator uniforms owned per material (see stylePlanetMaterial). Defaults
+      // cover the atlas views; _spawnPlanet retargets them for the resident hero.
+      mat.userData.sfPlanetStyle = {
+        uPLightDir: { value: new THREE.Vector2(1, 0) },
+        uPDiscR: { value: (tex.userData?.paintedPlanetDiameter || 0.42) * 0.5 },
+      };
       stylePlanetMaterial(mat);
       this._spriteMatCache.set(tex, mat);
     }
@@ -2589,6 +2733,17 @@ export class SpaceBackground {
     // the Helios planet cover most of the live frame even though the standalone camera looked safe.
     const diameter = spec.frac * this.H * Math.max(1.15, this.heroSizeK) * 0.58;
     const quad = diameter / (tex.userData?.paintedPlanetDiameter || 0.42);
+    // DUST P3a: aim the painted impostor's terminator at this planet's authored light angle.
+    const style = mat.userData && mat.userData.sfPlanetStyle;
+    if (style) {
+      const angle = Number.isFinite(spec.lightAngle) ? spec.lightAngle : 0;
+      style.uPLightDir.value.set(Math.cos(angle), Math.sin(angle));
+      style.uPDiscR.value = Math.max(0.05, (tex.userData?.paintedPlanetDiameter || 0.42) * 0.5);
+    }
+    // ...and the resident planet becomes a faint real light source (see the constructor note).
+    if (this.planetLight) {
+      this.planetLight.color.set(PLANET_LIGHT_COLORS[spec.type] || PLANET_LIGHT_COLORS.rocky);
+    }
     sprite.scale.set(quad, quad, 1);
     sprite.renderOrder = -60;
     sprite.frustumCulled = false;
@@ -3342,6 +3497,20 @@ export class SpaceBackground {
       // Fully integrated landmark (not a washed overlay).
       p.mat.opacity = Number.isFinite(this.arenaFocus) ? this.arenaFocus : 1.0;
     }
+    // DUST P3a — drive the planet light from the (single) resident hero. Eased, so admission
+    // and retirement of the impostor never pop the scene lighting. The light sits at the
+    // sprite's group-local pose and aims at the play-plane point under the camera; both move
+    // with the camera-locked group, so the direction tracks the visible planet exactly.
+    if (this.planetLight) {
+      const resident = this.planets[0];
+      const wantLevel = resident
+        ? Math.max(0, Math.min(1, (Number.isFinite(this.arenaFocus) ? this.arenaFocus : 1) * this.bgIntensity))
+        : 0;
+      this._planetLightLevel += (wantLevel - this._planetLightLevel) * Math.min(1, dt * 1.5);
+      if (this._planetLightLevel < 0.002 && !resident) this._planetLightLevel = 0;
+      if (resident) this.planetLight.position.copy(resident.sprite.position);
+      this.planetLight.intensity = PLANET_LIGHT_INTENSITY * this._planetLightLevel;
+    }
     if (this.wormhole) {
       this.wormhole.mesh.position.x = this.wormhole.spec.bx - cx * WORM_PAR;
       this.wormhole.mesh.position.z = this.wormhole.spec.bz - cz * WORM_PAR;
@@ -3792,6 +3961,8 @@ export class SpaceBackground {
     this.layerGeometry = null;
     this.layerMaterial = null;
     this.layerMesh = null;
+    if (this.planetLight) { this.planetLight.dispose(); this.planetLight = null; }
+    this._planetLightTarget = null;
     this.scene.remove(this.group);
     if (this.bakePlane) this.bakePlane.geometry.dispose();
   }

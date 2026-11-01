@@ -35,9 +35,10 @@ lean enough to change. Status words: `OPEN`, `ACTIVE`, `LANDED <sha>`, `SKIPPED 
 
 ## Day-one review (from `LANDED_REVIEW.md`; delete the row there when done)
 
-- **R-36df771** — row 403 AL-LONG-5 drone composer + warm flight restore: re-check a saved-and-restored
-  composed loop resumes at the exact step it paused on if that claim remains materially unresolved;
-  use the review approach in README §5.3 rather than a fixed batch.
+- **R-36df771 — closed 2026-10-31:** all three existing physical seed-4242 MOVE, WAIT and
+  partial-transfer checkpoint cases pass production save/load materialization and continue for
+  three cycles with matching program counters, trajectories, freight and receipts. This closes
+  the exact-step owner invariant; the ordinary Automation screen remains in the public UI journey.
 
 ## The ordered packets
 

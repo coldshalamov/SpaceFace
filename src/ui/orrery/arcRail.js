@@ -948,14 +948,17 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
         cursor += (li.offsetWidth || 120) + (grouped ? seatOpts.gap : ROW_GAP);
       });
       if (head) {
-        // the rule: out from the head's end, over the width of the verbs it owns, fading as it runs
-        // out over the held world. Its extent is the row's own, so it groups exactly these words.
-        // Stacked, it divides the head from its verbs on the line between them. On one line it
-        // bridges head to verbs, so it is drawn at the head's own optical centre — through the
-        // middle of the caps — and stops short of the first verb rather than striking through it.
-        const rx0 = x + 16 + headW;
-        const rx1 = stacked ? Math.max(rx0 + 40, cursor - seatOpts.gap) : Math.max(rx0 + 22, cursor - seatOpts.gap + 2);
-        const ry = stacked ? y + 1 : y - headSize * 0.3;
+        // the rule: out from the head's end. Stacked, it divides the head from its verbs on the line
+        // between them, over the width of the verbs it owns, fading as it runs out over the held world.
+        // On one line it only bridges head to verbs: drawn at the head's optical centre, that height is
+        // the smaller verbs' cap line, so run on under them it struck through every verb's caps
+        // (960×540 read SETTINGS SAVE LOAD crossed out). It is a dash on the row's shared centre,
+        // 4px off the head's end and 6px short of the first verb.
+        const rx0 = stacked ? x + 16 + headW : x + 12 + headW;
+        const firstVerb = x + seatOpts.bridge + headW;
+        const rowEnd = stacked ? Math.max(rx0 + 40, cursor - seatOpts.gap) : Math.max(rx0 + 22, cursor - seatOpts.gap + 2);
+        const rx1 = stacked ? rowEnd : Math.max(rx0 + 6, firstVerb - 6);
+        const ry = stacked ? y + 1 : y;
         ruleDefs.append(
           mkRule(record.rest, rx0, rx1, 'rgb(232 226 212)'),
           mkRule(record.lit, rx0, rx1, 'var(--dp-hand, #f2b950)'),
@@ -971,7 +974,7 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
         const bandBottom = stacked ? Math.max(y - rowH / 2 + 3, y - 2) : bandTop + Math.max(headSize, rowH) + 8;
         head.appendChild(svg('rect', {
           class: 'orr-arcrail__headhit', x: (x + 2).toFixed(1), y: bandTop.toFixed(1),
-          width: (rx1 + 12 - x).toFixed(1), height: Math.max(14, bandBottom - bandTop).toFixed(1), rx: 3,
+          width: (rowEnd + 12 - x).toFixed(1), height: Math.max(14, bandBottom - bandTop).toFixed(1), rx: 3,
         }));
         heads.push(record);
       }
