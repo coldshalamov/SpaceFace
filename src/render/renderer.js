@@ -592,6 +592,7 @@ import {
   assertPackageTextureRefillReady,
   detachedGeometryUploadPending,
   detachedTextureUploadPending,
+  dropGeometryGpuResidencyLedger,
   isPackageGeometryDetached,
   noteOrientationDetachedHold,
   packageGeometryUploadDiagnostics,
@@ -9568,6 +9569,7 @@ export const render = {
         this._contextRestoreReceipt?.cancel?.();
         this._contextRestoreReceipt = null;
         publishContextLostState(this, true);
+        dropGeometryGpuResidencyLedger(renderer);
         retireScenePipelineReadinessPrograms(renderer);
         invalidateMachineryPresentation(state);
         this._sessionLiveSectorCookedId = null;
@@ -12427,8 +12429,15 @@ export const render = {
         registerAsteroidBaseLeaf(this._asteroidInstancePool, entity, root);
         this._persistentSubmitLanes.markDirty(entity.id, 'geometry-ready');
       },
-      onError: (error, entity) => laneWarn(this, 'liveGeometryAdmission',
-        '[render] live geometry admission failed', entity.id, error),
+      onError: (error, entity) => {
+        if (error?.name === 'AbortError'
+            && error?.message === 'post-route compile owner became inactive') {
+          console.info('[render] live geometry admission cancelled with its post route', entity.id, error);
+          return;
+        }
+        laneWarn(this, 'liveGeometryAdmission',
+          '[render] live geometry admission failed', entity.id, error);
+      },
     });
     state.render.yieldToNextPresent = yieldToNextPresent;
     state.render.openingAdmission = openingCohort;

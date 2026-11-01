@@ -42,14 +42,17 @@ export const scenarioRuntime = {
   update() {
     if (!this._contract) return;
     if (this.state.mode !== 'flight' || !this.state.playerId) return;
-    const scenario = ensureScenarioState(this.state);
+    let scenario = ensureScenarioState(this.state);
     const active = scenario.active;
     if (!active || active.id !== this._contract.id || active.contractHash !== this._contractHash) {
       activateScenario(this, this._contract);
+      scenario = this.state.scenario;
     }
-    updateActiveBeat(this, this._contract);
-    syncLiveColdStartCombatants(this);
-    evaluateBranchPredicates(this, this._contract);
+    // These private phases run synchronously inside one update. Share its normalized
+    // scenario record instead of cloning/normalizing the whole record at each phase.
+    updateActiveBeat(this, this._contract, scenario);
+    syncLiveColdStartCombatants(this, scenario);
+    evaluateBranchPredicates(this, this._contract, scenario);
   },
 
   serialize() {
@@ -142,8 +145,7 @@ function activateScenario(runtime, contract) {
   });
 }
 
-function updateActiveBeat(runtime, contract) {
-  const scenario = ensureScenarioState(runtime.state);
+function updateActiveBeat(runtime, contract, scenario) {
   if (!scenario.active) return;
   const beat = beatForTime(contract.beats || [], contract.status === 'skeleton' ? 0 : (runtime.state.simTime || 0));
   if (!beat || beat.id === runtime._lastBeatId) return;
@@ -165,9 +167,8 @@ function updateActiveBeat(runtime, contract) {
   emitBeatDialogue(runtime, contract, beat);
 }
 
-function syncLiveColdStartCombatants(runtime) {
+function syncLiveColdStartCombatants(runtime, scenario) {
   const state = runtime.state;
-  const scenario = ensureScenarioState(state);
   const activeBeatId = scenario.active && scenario.active.activeBeatId || null;
   const entered = Array.isArray(scenario.enteredBeatIds) ? scenario.enteredBeatIds : [];
   const playerId = state.playerId;
@@ -377,8 +378,7 @@ function emitBeatDialogue(runtime, contract, beat) {
   }
 }
 
-function evaluateBranchPredicates(runtime, contract) {
-  const scenario = ensureScenarioState(runtime.state);
+function evaluateBranchPredicates(runtime, contract, scenario) {
   if (!scenario.active || (scenario.resolution && scenario.resolution.branchId)) return;
   const matches = [];
   for (const branch of contract.branches || []) {
