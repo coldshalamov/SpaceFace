@@ -115,7 +115,7 @@ test('release-soak producer consumes authority before any runtime and publishes 
   const probe = await readFile(path.join(ROOT, 'scripts', 'lib', 'releaseSoakProbe.mjs'), 'utf8');
   const cli = await readFile(path.join(ROOT, 'scripts', 'lib', 'releaseSoakCli.mjs'), 'utf8');
   const authority = probe.indexOf('const authority = await authorizeReleaseSoak({');
-  const browserLaunch = probe.indexOf('await launchBrowser(viewport)');
+  const browserLaunch = probe.indexOf('await launchBrowser(viewport');
   const electronLaunch = probe.indexOf('await launchElectron(root');
   const packagedLaunch = probe.indexOf('packagedStartup = await runPackagedStartupSubroute({');
   assert.ok(authority >= 0 && authority < browserLaunch && authority < electronLaunch && authority < packagedLaunch);

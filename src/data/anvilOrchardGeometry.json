@@ -23,7 +23,7 @@
     },
     {
       "path": "tools/blender/forge/forge_export.py",
-      "sha256": "54923ea4302a17ddcc0fe9c530b2b01a0026a470e9eec2af66eee3fbffc802fa"
+      "sha256": "b53ea3d1a1841d78647c6b6b6a0320f7080c612542346dc7821cd1c3e07653ea"
     },
     {
       "path": "tools/blender/forge/motion.py",

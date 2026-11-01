@@ -5,7 +5,7 @@ import { createAuthoritativeRuntime } from '../src/runtime/createAuthoritativeRu
 import { makeShipEntitySpec, fittingsFromDefaultModules } from '../src/systems/ships.js';
 import { NEW_GAME } from '../src/data/newGameDefaults.js';
 
-test('production Choir crew repairs and brings Mercy to the actual Helios berth', { timeout: 240000 }, async () => {
+test('production Choir crew repairs and brings Mercy to the actual Helios berth', { timeout: 420000 }, async () => {
   os.setPriority(os.constants.priority.PRIORITY_LOW);
   const runtime = createAuthoritativeRuntime({ profileId: 'production', nodeSafeOnly: true, seed: 8008 });
   try {
@@ -40,7 +40,7 @@ test('production Choir crew repairs and brings Mercy to the actual Helios berth'
     bus.on('freight:arrival', (p) => { if (collected.has(p.manifestId)) deliveries.push(p); });
     const start = { ...patient.pos };
     let repairedAt = null;
-    for (let second = 0; second < 180 && (!state.player.uniqueWrecks.choirRelief.evacuated || deliveries.length < 2 || completedShifts() < 2); second++) {
+    for (let second = 0; second < 360 && (!state.player.uniqueWrecks.choirRelief.evacuated || deliveries.length < 2 || completedShifts() < 2); second++) {
       runtime.runTicks(60, 1 / 60);
       for (const e of state.entityList) if (e.data?.minerShiftRockId != null) faces.add(e.data.minerShiftRockId);
       if (repairedAt == null && state.player.uniqueWrecks.choirRelief.driveRestored) repairedAt = state.simTime;

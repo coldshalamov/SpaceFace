@@ -67,6 +67,11 @@ function makeHarness({
     boosting: npcBoost,
   });
   const entities = new Map([[PLAYER_ID, player], [NPC_ID, npc]]);
+  // npcPropulsionVisible: a live NPC's propulsion must belong to a hull presented in the
+  // live scene — the fixture mounts the NPC's mesh the way the real renderer does.
+  npc.mesh = new THREE.Group();
+  npc.mesh.visible = true;
+  scene.add(npc.mesh);
   const state = {
     playerId: PLAYER_ID,
     player: { cruise: { phase: 'idle' } },

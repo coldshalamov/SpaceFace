@@ -212,12 +212,24 @@ test('an authored discovery earns a distinct finite wonder stinger', () => {
     play(recipeId, options) { calls.push({ kind: 'play', recipeId, options }); },
   };
   harness._onDiscoveryUnlocked({ sectorId: 'sector_ashfall_reach', poiId: 'poi_vault' });
-  assert.deepEqual(calls, [
-    { kind: 'duck', seconds: 1.1 },
-    { kind: 'play', recipeId: 'sfx_discovery_plate_note', options: { gain: 0.7, critical: true } },
-    { kind: 'play', recipeId: 'sfx_discovery_plate_note', options: { gain: 0.62, rate: 1.26, critical: true } },
-    { kind: 'play', recipeId: 'sfx_discovery_plate_note', options: { gain: 0.55, rate: 1.5, critical: true } },
-  ]);
+  // The motif now plays as grid-scheduled rate-locked voices: duck, then the same recipe
+  // three times with descending gains and ascending start times (root, third, fifth).
+  assert.equal(calls.length, 4);
+  assert.deepEqual(calls[0], { kind: 'duck', seconds: 1.1 });
+  const gains = [0.7, 0.62, 0.55];
+  const rates = [1.0, 1.26, 1.5];
+  for (let i = 0; i < 3; i++) {
+    const call = calls[i + 1];
+    assert.equal(call.kind, 'play');
+    assert.equal(call.recipeId, 'sfx_discovery_plate_note');
+    assert.equal(call.options.gain, gains[i]);
+    assert.equal(call.options.critical, true);
+    assert.equal(call.options.lockRate, true);
+    assert.ok(Math.abs(call.options.rate - rates[i]) < 0.01, `voice ${i} rate ${call.options.rate}`);
+    assert.ok(call.options.startTime >= 0, `voice ${i} scheduled`);
+    if (i > 0) assert.ok(call.options.startTime > calls[i].options.startTime,
+      `voice ${i} arrives after the previous note`);
+  }
 
   calls.length = 0;
   harness._onDiscoveryUnlocked({ sectorId: 'sector_ashfall_reach' });

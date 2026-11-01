@@ -119,9 +119,9 @@ test('canonical fixture pins every SHA-256 identity', () => {
       cameraDigest: scenario.cameraDigest,
     },
     {
-      manifestDigest: 'f7b7694c53b38a346182d9e7f177d02656080ec4949101b53fd374661dfdda7c',
-      scenarioDigest: '2bdabcce3332dad7d6629e3bf4bb42b1e00364b11e13157ee832e3160007257f',
-      scenarioDefinitionDigest: '310c2553cfda7df00888dc4afd1afa869d5d567deed00c3ac5b3d386c4cfa217',
+      manifestDigest: 'b0f396bce08e1a860de5dea2e734b870494178dea12df56e251d2c1c6a590f8e',
+      scenarioDigest: 'e1df610d81c54aef2c7dff375336a9d164552f466b95d4382cd3223d0a47488b',
+      scenarioDefinitionDigest: '295234e8fc529acb20c4dd1d852f863f59b7175a8b9ae8c6b6d1ace431b751bd',
       saveDigest: '41e9fd33c745acb8544570483e55218fe10d23bc4ef94c694e0d733b0f5ec843',
       inputDigest: '9606bc9b06fe8a288da01bb1899a523532d840f3e562c3187695606e15158273',
       cameraDigest: 'c99aa272a48bc74a36ebaabc168e2e1c1ce71c622b5fad0957f1a2005995697b',

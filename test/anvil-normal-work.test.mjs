@@ -44,7 +44,7 @@ test('Anvil normal work: real flight/field/physics fly one finite load into a re
   const t = boot();
   assert.ok(t.collector && t.receiver);
   assert.equal(t.collector.physicsBody.collisionProxyManifest.id, 'stormshift-collector:fixed-cheeks:v1');
-  assert.equal(t.receiver.physicsBody?.collisionProxyManifest, undefined);
+  assert.equal(t.receiver.physicsBody?.collisionProxyManifest?.id, 'stormshift-receiver:fixed-service:v1');
   assert.equal(t.collector.data.defId, 'ship_mule', 'authored collector retains the canonical Mule gameplay def');
   assert.equal(await t.sim.registry.get('physics').prepareBackend(t.state), true);
   // Non-physical observation point keeps local activity awake without injecting participant

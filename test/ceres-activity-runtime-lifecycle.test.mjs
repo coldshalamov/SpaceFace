@@ -2395,6 +2395,9 @@ test('route braking is transient across stationary, flee, control, and release o
   actor.data.intent.brake = true;
   entry.job.phase = NPC_JOB_PHASE.FLEE;
   entry.threatId = threat.id;
+  // The flee drive turns first, then boosts: the boosted reflex requires the hull already
+  // pointed downrange of the threat (alignment gate), so face it away.
+  actor.rot = Math.PI;
   runtime._drive(entry, actor);
   assert.equal(actor.data.intent.brake, false, 'the active-hostile flee reflex is never brake-latched');
   assert.equal(actor.data.intent.boost, true, 'active-hostile flee remains the existing boosted reflex');

@@ -31,11 +31,8 @@ assert.equal(configurePlanarAdditiveMaterial(planarAdditive({ side: THREE.FrontS
 assert.equal(configurePlanarAdditiveMaterial(planarAdditive({ depthWrite: true })), false);
 assert.equal(configurePlanarAdditiveMaterial(new THREE.MeshBasicMaterial()), false);
 
-const rendererSource = await readFile(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
 const visualFactorySource = await readFile(new URL('../src/render/visualFactory.js', import.meta.url), 'utf8');
-assert.equal((rendererSource.match(/configurePlanarAdditiveMaterial\(/g) || []).length, 2,
-  'both live hazard disc and radiation-ring materials use the policy');
-assert.match(visualFactorySource, /configurePlanarAdditiveMaterial\(material\)/,
-  'the live gate/wormhole event horizon uses the policy');
+assert.equal((visualFactorySource.match(/configurePlanarAdditiveMaterial\(/g) || []).length, 3,
+  'hazard disc, radiation ring, and the gate/wormhole event horizon all use the policy');
 
 console.log('planar-additive-policy: PASS');

@@ -54,9 +54,16 @@ test('first-flight hold enqueues the rescue set and on-glass rows instead of sta
     _deferNoncriticalMeshStreaming: false,
     _drainProtectedFirstFlightBuilds() { drained += 1; return 0; },
   };
-  assert.equal(serviceRenderMeshResidency(owner, 0.5), 'held-first-flight');
+  // The exempt collect is sliced across beats now — one call can spend its slice on the
+  // warm/collect walk and commit the enqueue on a later beat, which is exactly how a slow
+  // frame behaves live. Drive the service a bounded few beats like consecutive hold frames.
+  let verdict = null;
+  for (let i = 0; i < 8 && !(owner._meshBuildQueuedIds.has(2) && owner._meshBuildQueuedIds.has(3)); i++) {
+    verdict = serviceRenderMeshResidency(owner, 0.5);
+  }
+  assert.equal(verdict, 'held-first-flight');
   assert.equal(owner._meshReconcileDirty, false);
-  assert.equal(drained, 1);
+  assert.equal(drained >= 1, true);
   assert.ok(owner._meshBuildQueuedIds.has(2), 'rescue rock queued under the hold');
   assert.ok(owner._meshBuildQueuedIds.has(3), 'on-glass ship queued under the hold');
   assert.equal(owner._meshBuildQueuedIds.has(4), false, 'distant ship keeps the hold');

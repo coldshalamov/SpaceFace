@@ -28,12 +28,12 @@ const ROOT = path.resolve(__dirname, '..');
 
 export const BASELINE_PATH = path.join(
   ROOT,
-  'design/program/roadmap/evidence/u11-displacement-ttk-baseline.json',
+  'design/archive/program/roadmap/evidence/u11-displacement-ttk-baseline.json',
 );
 
 export const TUNED_PATH = path.join(
   ROOT,
-  'design/program/roadmap/evidence/u11-displacement-ttk-tuned.json',
+  'design/archive/program/roadmap/evidence/u11-displacement-ttk-tuned.json',
 );
 
 export const DEFAULT_SEEDS = Object.freeze([

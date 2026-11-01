@@ -102,7 +102,7 @@ const layout = [
   ['port2', 'sm_cargo_port', 11, 13],
   ['matrix2', 'sm_extractor', 15, 13, null, 'dirt'],
 ];
-function factory(saved) {
+function factory(saved, fieldOverride = null) {
   const state = { simTime: 0, tick: 0, meta: { seed: 90130 }, entities: new Map(),
     player: { cargo: { items: {}, capVolume: 40, usedVolume: 0 } }, playerId: 1,
     world: { currentSectorId: 'sec_core_alpha' }, content: { commodities: COMMODITIES } };
@@ -118,19 +118,32 @@ function factory(saved) {
     const lines = new Set();
     for (let c = 1; c <= 24; c++) for (const r of [6, 10, 14]) lines.add(tileIndex(c, r));
     for (let r = 0; r <= 14; r++) lines.add(tileIndex(1, r));
-    site.overlays = { power: [...lines], lane: [...lines] };
+    // normalizeClearedTiles sorts on reload; emit the durable order so the live and
+    // deserialized runs number components identically.
+    site.overlays = { power: [...lines].sort((x, y) => x - y), lane: [...lines].sort((x, y) => x - y) };
+    // Live sites carry radiator vanes; an ~84MW hall needs about five to stay nominal.
+    site.radiatorFins = Array.from({ length: 6 }, (_, i) => ({ id: `skin${i + 1}`, intact: true, hull: 48 }));
     state.sites.byId[site.id] = site; state.sites.order.push(site.id);
   }
   const site = sys.getSite('site_balance');
-  const field = Array.from({ length: COLS }, () => Array.from({ length: ROWS }, empty));
-  for (const [, , col, row, , material] of layout) if (material) {
+  const field = fieldOverride || Array.from({ length: COLS }, () => Array.from({ length: ROWS }, empty));
+  if (!fieldOverride) for (const [, , col, row, , material] of layout) if (material) {
     for (const [dc, dr] of [[-1, -1], [0, -1], [1, -1], [-1, 0]]) {
       field[col + dc][row + dr] = material.startsWith('cmdty_')
         ? { type: 'vein', ore: material, hp: 10, maxHp: 10, yieldU: 3 }
         : { type: material, hp: 4, maxHp: 4 };
     }
   }
-  field[20][5] = { type: 'gas', hp: 4, maxHp: 4 };
+  if (!fieldOverride) {
+    field[20][5] = { type: 'gas', hp: 4, maxHp: 4 };
+    // Heavy machines on one axis with only hollow between them collapse the ceiling
+    // (siteStructuralModel): a pillar in each span keeps the fixture's geology up.
+    // These cells sit outside every machine's contact ring, so profiles are unchanged.
+    const pillar = () => ({ type: 'rock', hp: 4, maxHp: 4 });
+    for (const r of [5, 9, 13]) for (const c of [5, 9, 13, 17, 21]) field[c][r] = pillar();
+    for (const c of [3, 7, 11, 15, 19, 23]) field[c][7] = pillar();
+    for (const c of [3, 7, 11, 15]) field[c][11] = pillar();
+  }
   const rt = sys._runtime(site);
   rt.field = field; rt.fieldDirty = false; rt.geoDirty = true;
   sys._runtime(site);
@@ -146,7 +159,16 @@ test('a connected factory makes repeatable construction controllers from preserv
   const originalGeology = JSON.stringify(a.field);
   a.run(600);
   const halfway = a.sys.serialize();
-  const b = factory(JSON.parse(JSON.stringify(halfway)));
+  // Veins fall during the run (cave-ins move ore into empty cells), so b must start
+  // from a's evolved field, not a fresh fixture. Capturing the payload also dirties a's
+  // runtime field cache — re-seat the same injection there so both sides keep the
+  // fixture's geology truth instead of the boreSeed regeneration.
+  const halfwayField = JSON.parse(JSON.stringify(a.field));
+  {
+    const art = a.sys._runtime(a.site);
+    art.field = a.field; art.fieldDirty = false; art.geoDirty = true;
+  }
+  const b = factory(JSON.parse(JSON.stringify(halfway)), halfwayField);
   b.state.simTime = a.state.simTime;
   a.run(1200); b.run(1200);
   assert.deepEqual(a.goods(), b.goods(), 'cold continuation keeps every stock and paid job');

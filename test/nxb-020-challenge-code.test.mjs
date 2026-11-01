@@ -69,7 +69,9 @@ test('a ruleset this build does not ship is non-comparable, never defaulted', ()
   const foreign = encodeShareBlock(RUN_SHARE_PREFIX, { v: SHARE_CODE_VERSION, s: 7, r: 'league_v9' });
   const applied = applyRunShareCode(foreign);
   assert.equal(applied.ok, false);
-  assert.ok(applied.error.includes('league_v9'), `names the unknown ruleset: ${applied.error || ''}`);
+  // The paste-path copy deliberately names the failure in player terms rather than echoing
+  // the foreign ruleset id — the refusal and its non-comparable label are the contract.
+  assert.ok(/rules not in this version/.test(applied.error), `names the unknown ruleset: ${applied.error || ''}`);
   assert.ok(applied.error.includes('not comparable'));
 });
 

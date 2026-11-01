@@ -4180,7 +4180,7 @@ test('public toolkit acquisition stages before conflict and never treats yaw as 
     'utf8',
   );
   const repositionIndex = librarySource.indexOf(
-    'const cameraReposition = await repositionPublicForCeresToolkit(page, endTick, {',
+    'let cameraReposition = await repositionPublicForCeresToolkit(page, endTick, {',
   );
   const conflictIndex = librarySource.indexOf(
     'waitForCeresToolkitConflictAuthority(page, prebound, endTick, {', repositionIndex,
