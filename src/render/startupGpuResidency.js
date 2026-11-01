@@ -5,6 +5,10 @@ import { postTaskAtBackgroundPriorityBounded } from './compilePresentSlice.js';
 import {
   detachPackageGeometry,
   detachPackageTexture,
+  detachedGeometryUploadPending,
+  rehydrateDetachedGeometries,
+  retainPackageGeometryCpu,
+  assertPackageGeometryRefillReady,
   isPackageTextureDetached,
   noteGeometryGpuResident,
   packageTextureDetachCovers,
@@ -839,6 +843,8 @@ export async function prepareStartupGeometryResidency(renderer, subjects, option
         scene.name = `SF_StartupGeometryResidencyBatch:${index + 1}`;
         const proxyEntries = batch.work.map(({ object }) => createResidencyProxy(object, material));
         for (const entry of proxyEntries) scene.add(entry.proxy);
+        let releaseCpu = null;
+        let uploadSucceeded = false;
         try {
           // The residency material is a RawShaderMaterial, whose program cache key is only its
           // shader source and defines (no instancing/points/line/morph parameters), so every proxy
@@ -881,6 +887,15 @@ export async function prepareStartupGeometryResidency(renderer, subjects, option
               throw new Error('Residency program admission was superseded');
             }
           }
+          // The work list can contain shared package geometry detached by another context
+          // while this batch waited. Hold its CPU bytes through this renderer's actual upload.
+          const batchGeometries = [...new Set(batch.work.map(item => item.geometry).filter(Boolean))];
+          releaseCpu = retainPackageGeometryCpu(batchGeometries);
+          const pending = batchGeometries.filter(geometry => detachedGeometryUploadPending(geometry, renderer));
+          if (pending.length) {
+            const refill = await rehydrateDetachedGeometries(pending, { yieldToMain });
+            assertPackageGeometryRefillReady(pending, refill);
+          }
           const upload = () => {
             if (typeof options.beforeSubmit === 'function') options.beforeSubmit();
             if (typeof options.isActive === 'function' && !options.isActive()) {
@@ -902,6 +917,7 @@ export async function prepareStartupGeometryResidency(renderer, subjects, option
               applyResidencyRendererState(renderer, target);
               renderer.render(scene, camera);
               success = true;
+              uploadSucceeded = true;
             } finally {
               if (counters) counters.admissionSubject = priorSubject;
               const durationMs = now() - started;
@@ -923,11 +939,9 @@ export async function prepareStartupGeometryResidency(renderer, subjects, option
                   if (geometry) {
                     const data = geometry.userData || (geometry.userData = {});
                     data.spacefaceGpuResident = true;
-                    // The proxy render proved this context's attribute records: note the ledger for
-                    // the N2 pending gate, then release the marked non-kept CPU arrays (position +
-                    // index stay live for raycast/bounds).
+                    // The proxy render proved this context's attribute records. Record it now;
+                    // the outer finally releases the CPU lease before detaching the arrays.
                     noteGeometryGpuResident(geometry, renderer);
-                    detachPackageGeometry(geometry, renderer);
                   }
                 }
                 results.push(receipt);
@@ -942,6 +956,10 @@ export async function prepareStartupGeometryResidency(renderer, subjects, option
             if (outcome && outcome.contextLost) { interrupted = outcome; break; }
           } else upload();
         } finally {
+          if (releaseCpu) releaseCpu();
+          if (uploadSucceeded) {
+            for (const item of batch.work) detachPackageGeometry(item.geometry, renderer);
+          }
           for (const entry of proxyEntries) {
             scene.remove(entry.proxy);
             if (entry.cleanup) entry.cleanup();

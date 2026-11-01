@@ -16,6 +16,8 @@ import { createAssetResidencyRegistry } from '../src/render/assetResidency.js';
 import { createRenderPackageLoader } from '../src/render/renderPackageLoader.js';
 import { createUnreadyDrawableGuard } from '../src/render/bloom.js';
 import { touchSubjectOnExactTarget } from '../src/render/openingGpuAdmission.js';
+import { prepareStartupGeometryResidency } from '../src/render/startupGpuResidency.js';
+import { preparePreviewDetachedPayloads } from '../src/ui/shipPreviewMount.js';
 import {
   claimSharedImageTexture,
   resetImageSourceDedupeForTests,
@@ -338,6 +340,64 @@ test('rehydrate refills released arrays from an ordinal-paired donor and bumps v
   }, 'an exact shape donor clears the admission gate normally');
   assert.ok(decoded.sharedBuffer.version > bufferVersionAfterDetach,
     'refilled buffers version-bump so live records re-upload real bytes');
+  loader.dispose();
+});
+
+test('preview geometry remains available while a later texture refill waits', async () => {
+  const decoded = decodedFixture();
+  let decodes = 0;
+  const loader = freshLoader(async () => (++decodes === 1 ? decoded : decodedFixture()));
+  await loader.load(packageMetadata('fixture.preview-refill-race'), { baseUrl: 'https://fixtures.test/' });
+  const mainRenderer = stubRenderer(), previewRenderer = stubRenderer();
+  assert.equal(detachPackageGeometry(decoded.geometry, mainRenderer), true);
+  assert.equal(detachedGeometryUploadPending(decoded.geometry, previewRenderer), true);
+  let resume, started;
+  const waiting = new Promise(resolve => { started = resolve; });
+  const preparation = preparePreviewDetachedPayloads([decoded.geometry], [], {
+    yieldToMain: async () => {},
+    refillTextures: () => { started(); return new Promise(resolve => { resume = () => resolve({}); }); },
+  });
+  await waiting;
+  // The actual preview lease spans its later texture-refill wait.
+  assert.equal(detachPackageGeometry(decoded.geometry, mainRenderer), false,
+    'a pending preview draw must keep the refilled bytes leased');
+  assert.ok(decoded.sharedBuffer.array.byteLength > 0);
+  resume();
+  const release = await preparation;
+  assert.equal(detachPackageGeometry(decoded.geometry, mainRenderer), false, 'lease survives until the draw');
+  release(); release();
+  assert.equal(detachPackageGeometry(decoded.geometry, mainRenderer), true, 'draw releases the lease exactly once');
+  await assert.rejects(preparePreviewDetachedPayloads([decoded.geometry], [], {
+    yieldToMain: async () => {}, refillTextures: async () => { throw new Error('texture refill failed'); },
+  }), /texture refill failed/);
+  assert.equal(detachPackageGeometry(decoded.geometry, mainRenderer), true, 'failed refill releases its lease');
+  loader.dispose();
+});
+
+test('startup residency refills a detached package before another renderer uploads its proxy', async () => {
+  const decoded = decodedFixture();
+  let decodes = 0;
+  const loader = freshLoader(async () => (++decodes === 1 ? decoded : decodedFixture()));
+  await loader.load(packageMetadata('fixture.residency-refill'), { baseUrl: 'https://fixtures.test/' });
+  let target = null, draws = 0;
+  const renderer = { getRenderTarget: () => target, setRenderTarget: value => { target = value; },
+    render(scene) { scene.traverse(object => {
+      if (!object.geometry) return;
+      draws++;
+      assert.equal(detachPackageGeometry(decoded.geometry, stubRenderer()), false,
+        'another renderer cannot retire the refilled bytes while this upload is in progress');
+      assert.ok(object.geometry.getAttribute('uv').data.array.byteLength > 0, 'proxy must upload actual UV bytes');
+    }); } };
+  assert.equal(detachPackageGeometry(decoded.geometry, renderer), true);
+  await rehydrateDetachedGeometries([decoded.geometry], { yieldToMain: async () => {} });
+  assert.equal(detachPackageGeometry(decoded.geometry, stubRenderer()), true,
+    'a different context retires refilled CPU data before the original renderer returns');
+  assert.equal(detachedGeometryUploadPending(decoded.geometry, renderer), true);
+  const result = await prepareStartupGeometryResidency(renderer, decoded.scene, {
+    yieldToMain: async () => {}, paceQueue: async () => {},
+  });
+  assert.ok(draws > 0);
+  assert.equal(result.skipped, false);
   loader.dispose();
 });
 

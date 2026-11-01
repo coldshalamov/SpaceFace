@@ -25,11 +25,14 @@ import { isReleaseAssetMode } from '../render/releaseMode.js';
 import { collectStartupGeometries, collectStartupGeometryDrawables, collectStartupTextures, yieldToBrowser } from '../render/startupGpuResidency.js';
 import {
   armGeometryGpuResidentLedger,
+  assertPackageGeometryRefillReady,
+  assertPackageTextureRefillReady,
   detachedGeometryUploadPending,
   detachedTextureUploadPending,
   dropGeometryGpuResidencyLedger,
   rehydrateDetachedGeometries,
   rehydrateDetachedTextures,
+  retainPackageGeometryCpu,
 } from '../render/packageCpuDetach.js';
 import { setEnvMapForShips, createVisualFactory } from '../render/visualFactory.js';
 import { installVisualOverrides } from '../render/visualOverrides.js';
@@ -466,6 +469,22 @@ function meshCacheKey(defId, loadout) {
   return defId + '::' + loadout.fittings.map((id) => (id == null ? '-' : String(id))).join('|') + appearanceKey;
 }
 
+/** Refill shared payloads and return the CPU lease to release after the preview draws. */
+export async function preparePreviewDetachedPayloads(geometries, textures, options = {}) {
+  const release = retainPackageGeometryCpu(geometries);
+  const yieldToMain = options.yieldToMain || yieldToBrowser;
+  try {
+    const geometryReceipt = await rehydrateDetachedGeometries(geometries, { yieldToMain });
+    assertPackageGeometryRefillReady(geometries, geometryReceipt);
+    const textureReceipt = await (options.refillTextures || rehydrateDetachedTextures)(textures, { yieldToMain });
+    assertPackageTextureRefillReady(textures, textureReceipt);
+    return release;
+  } catch (error) {
+    release();
+    throw error;
+  }
+}
+
 /**
  * Create a ship preview mount attached to a canvas element.
  * @param {HTMLCanvasElement} canvas
@@ -566,6 +585,7 @@ export function createShipPreviewMount(canvas, opts) {
         // authored subtree before any consult, so without this a disarmed gate binds
         // detached-marked payloads unguarded.
         uploadAuditArmed = true;
+        uploadAuditFailed = false;
         uploadAuditSeq += 1;
         fitCameraToCurrent();
         renderNow();
@@ -580,6 +600,8 @@ export function createShipPreviewMount(canvas, opts) {
   // uploader on emptied payloads (the D150 secondary-context twin).
   let uploadAuditArmed = false;
   let uploadAuditInFlight = false;
+  let uploadAuditFailed = false;
+  const uploadCpuLeases = [];
   // Arm sequence number: an arm recorded while a rehydrate is in flight means new content
   // arrived after the pending snapshot — the finally re-arms instead of drawing blind (W140-D1).
   let uploadAuditSeq = 0;
@@ -833,6 +855,7 @@ export function createShipPreviewMount(canvas, opts) {
     dockRoot.position.y = 1.5;
     scene.add(dockRoot);
     uploadAuditArmed = true;
+    uploadAuditFailed = false;
     uploadAuditSeq += 1;
     alignDockToCurrent();
     renderNow();
@@ -850,6 +873,7 @@ export function createShipPreviewMount(canvas, opts) {
     if (disposed) return;
     dropGeometryGpuResidencyLedger(renderer);
     uploadAuditArmed = true;
+    uploadAuditFailed = false;
     uploadAuditSeq += 1;
     renderNow();
   };
@@ -1090,6 +1114,7 @@ export function createShipPreviewMount(canvas, opts) {
       current.rotation.y = yaw;
     }
     tickExploded();
+    if (uploadAuditFailed) return;
     if (uploadAuditArmed) {
       if (uploadAuditInFlight) return;  // the reattach continuation re-draws
       const armedSeq = uploadAuditSeq;
@@ -1101,20 +1126,27 @@ export function createShipPreviewMount(canvas, opts) {
         uploadAuditArmed = false;
       } else {
         uploadAuditInFlight = true;
-        rehydrateDetachedGeometries(pendingGeometries, { yieldToMain: yieldToBrowser })
-          .then(() => rehydrateDetachedTextures(pending, { yieldToMain: yieldToBrowser }))
-          .catch((error) => console.warn('[shipPreviewMount] detached payload reattach failed', error))
-          .finally(() => {
+        preparePreviewDetachedPayloads(pendingGeometries, pending)
+          .then((release) => {
             uploadAuditInFlight = false;
+            if (disposed) { release(); return; }
+            uploadCpuLeases.push(release);
             // A mid-flight arm (seq moved since collection) keeps the flag — the next
             // renderNow re-scans so the new subtree's detached payloads get rehydrated too.
             uploadAuditArmed = uploadAuditSeq !== armedSeq;
-            if (!disposed) renderNow();
+            renderNow();
+          }, (error) => {
+            uploadAuditInFlight = false;
+            uploadAuditArmed = true;
+            uploadAuditFailed = true;
+            for (const release of uploadCpuLeases.splice(0)) release();
+            console.warn('[shipPreviewMount] detached payload reattach failed', error);
           });
         return; // skip this draw — drawing now would upload the emptied payloads and throw
       }
     }
-    renderer.render(scene, cam);
+    try { renderer.render(scene, cam); }
+    finally { for (const release of uploadCpuLeases.splice(0)) release(); }
     const defId = current && current.userData && current.userData.previewDefId;
     if (defId && defId !== renderedDefId) {
       renderedDefId = defId;
@@ -1365,6 +1397,7 @@ export function createShipPreviewMount(canvas, opts) {
       armGeometryGpuResidentLedger(drawable);
     }
     uploadAuditArmed = true;
+    uploadAuditFailed = false;
     uploadAuditSeq += 1;
     fitCameraToCurrent();
     renderNow();
@@ -1474,6 +1507,7 @@ export function createShipPreviewMount(canvas, opts) {
   function dispose() {
     if (disposed) return;
     disposed = true;
+    for (const release of uploadCpuLeases.splice(0)) release();
     canvas.removeEventListener('webglcontextlost', onPreviewContextLost, false);
     canvas.removeEventListener('webglcontextrestored', onPreviewContextRestored, false);
     if (resizeObserver) resizeObserver.disconnect();
