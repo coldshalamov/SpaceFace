@@ -1,5 +1,6 @@
 import { ASTEROIDS } from '../data/mining.js';
 import { starterMiningFocus } from '../missions/starterWorkday.js';
+import { firstBuoyReceiptFields } from '../missions/starterBuoyAftermath.js';
 import { compostRouteFocus } from '../missions/compostRoute.js';
 import { authoredCinderRoute, initializeCinderRoute, retainCinderRetry, observeCinderMarker, observeCinderRetirement, cinderRouteFocus, driveCinderRoute } from '../missions/cinderRoute.js';
 import { kesslerScalePending, kesslerScaleWaypoint } from './kesslerScaleWorksite.js';
@@ -6223,6 +6224,7 @@ export function missionReceiptFor(m, outcome, reason, settlement = {}) {
     storyOutcome: m && m.params && m.params.investigationOutcome || null,
     source: m && m.source || null,
     sourceOfferId: m && m.sourceOfferId || null,
+    ...firstBuoyReceiptFields(m, outcome),
     causeFingerprint: m && m.cause && m.cause.fingerprint || null,
     ...setPieceFields,
     targetRecordId: m && m.params && m.params.poiSignalFollowup
