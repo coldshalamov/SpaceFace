@@ -392,6 +392,10 @@ html:root:not([data-sf-mobile="1"]) ${SLD} .sf-ledger-line { grid-template-colum
 @media (min-width:941px) and (max-width:1199px) and (min-height:461px) {
   html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .k-row:not(.empty) .k-row__sub.sf-slot-sub { display:none !important; }
   html:root:not([data-sf-mobile="1"]) ${SLD} .sf-save-ledger .sf-slot-context { letter-spacing:.05em; }
+  /* ui-polish-264: at 960 a long filed name still broke inside a word ("RECOVER / Y") over five lines;
+     it breaks between words with closer tracking, as it does under 640 */
+  html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list > .k-row.sf-slot:not(.empty) > div { overflow-wrap:normal; margin:0 -6px; }
+  html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .k-row:not(.empty) .k-row__name.sf-slot-name { letter-spacing:0 !important; }
 }
 /* ui-polish-183/186: a narrow desktop window (≤640 wide, up to the 641 band) gives each strip station ~68-90px,
    so a long filed name broke mid-word ("RECOV / ERY") or ran four lines with CURRENT and its credits into

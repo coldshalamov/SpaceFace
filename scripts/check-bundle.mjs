@@ -35,9 +35,23 @@ const SCENARIO_47A_BUNDLE_PATH = join(BUILD_WEB, 'data', 'scenarios', '47a.scena
 // (J05 removed UI_ICON_ATLAS_BUNDLE_PATH. Its assertion existed to guarantee the atlas shipped for
 // `.icon-ref` in styles/ui.css; that rule had no markup consumer and both it and the JPEG are gone.)
 
-function runBuild() {
+function requestedBuildArgs() {
+  const args = process.argv.slice(2);
+  if (args.length === 0) return [];
+  if (args.length !== 1 || !args[0].startsWith('--metafile=')) {
+    throw new Error('[check-bundle] only --metafile=<path> is supported');
+  }
+  if (!args[0].slice('--metafile='.length).trim()) {
+    throw new Error('[check-bundle] --metafile requires a file path');
+  }
+  return args;
+}
+
+const BUILD_ARGS = requestedBuildArgs();
+
+function runBuild(args = []) {
   return new Promise((resolve, reject) => {
-    const p = spawn(process.execPath, [join(ROOT, 'scripts', 'build-bundle.mjs')], { stdio: 'pipe' });
+    const p = spawn(process.execPath, [join(ROOT, 'scripts', 'build-bundle.mjs'), ...args], { stdio: 'pipe' });
     let out = '', err = '';
     p.stdout.on('data', (d) => (out += d));
     p.stderr.on('data', (d) => (err += d));
@@ -58,7 +72,7 @@ async function jsSize(dir) {
 }
 
 console.log('[check-bundle] building...');
-const { code, out, err } = await runBuild();
+const { code, out, err } = await runBuild(BUILD_ARGS);
 process.stdout.write(out);
 if (err) process.stderr.write(err);
 assert.equal(code, 0, 'bundle build must succeed (esbuild exited with an error)');

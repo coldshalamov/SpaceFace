@@ -291,6 +291,9 @@ export function materializeWaveBatch(ctx, request) {
         spec.pos = open;
       }
       spec.data = spec.data || {};
+      // Initial pose is spawn-owned. The eight-arm rig and the first locked tell share +X
+      // forward, without a runtime transform correction fighting the native helm.
+      if (spec.data.ironKraken) spec.rot = Math.atan2(anchor.z - spec.pos.z, anchor.x - spec.pos.x);
       spec.data.ai = spec.data.ai || {};
       spec.data.ai.spawnContext = 'encounter';
       // Admission owns the initial hold: the AI may run before the next wave update.

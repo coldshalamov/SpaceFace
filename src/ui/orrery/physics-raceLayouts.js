@@ -11,7 +11,7 @@
 // half at 1080p) cannot recur here.
 //
 // Scope: `#screens .k-screen.pv-board` only. No colour outside `--dp-*` tokens and the bone
-// alpha literals every layout sheet uses; no border, card, box-shadow or `<table>`; nothing
+// alpha literals every layout sheet uses; no `<table>`; nothing
 // below the 12 px floor; reduced motion reaches every state instantly.
 
 import { injectOrrery } from './tokens.js';
@@ -163,6 +163,7 @@ html.sf-reduce-motion ${R} .k-row, html.sf-reduce-motion ${R} .k-rows::before,
 html.sf-reduce-motion ${R} .pv-lane__head, html.sf-reduce-motion ${R} > .k-title,
 html.sf-reduce-motion ${R} > .pv-foot, html.sf-reduce-motion ${R} .pv-tools > button { animation:none !important; }
 html.sf-reduce-motion ${R} .pv-lane .k-row::before { transition:none !important; }
+html.sf-reduce-motion ${R} .pv-lane .k-row { transition:none !important; }
 
 /* ---- condense, never shrink ---- */
 @media (max-height: 760px) {
@@ -197,6 +198,45 @@ html.sf-reduce-motion ${R} .pv-lane .k-row::before { transition:none !important;
   ${R} .pv-foot__title { grid-column:1; grid-row:1; align-self:center; }
   ${R} > .pv-foot > button { grid-column:2; grid-row:1; }
   ${R} .pv-foot__status { grid-column:1 / -1; grid-row:2; margin:0 !important; }
+}
+/* polish278: the rungs were loose type hung off 2px ticks and Back was a bare word, so the
+   board read as unframed copy. Each rung is now its own hairline card (faint fill, radius 8)
+   still hung off the rail; the chosen rung's card lights, a locked rung's card is dashed and
+   unfilled. Back sits in a hairline frame with its Esc keycap, as on the other screen feet.
+   The Hand keeps its geometry: the cards start just past its tip. */
+${R} .pv-lane .k-rows { padding-left:36px !important; }
+${R} .pv-lane .k-row { margin:0 0 6px !important; padding:9px 104px 9px 14px !important;
+  border:1px solid rgb(${BONE} / .14) !important; border-radius:8px !important;
+  background:rgb(${BONE} / .025) !important;
+  transition:border-color 140ms linear, background-color 140ms linear; }
+${R} .pv-lane .k-row::before { left:-33.5px !important; width:12px !important; }
+${R} .pv-lane .k-row:is(:hover, :focus-visible)::before { width:16px !important; }
+${R} .pv-lane .k-row:not([aria-disabled="true"]):active::before { width:10px !important; }
+${R} .pv-lane .k-row[aria-selected="true"]::before { width:16px !important; }
+${R} .pv-lane .k-row[aria-disabled="true"]::before { width:8px !important; }
+${R} .pv-lane .k-row:is(:hover, :focus-visible) { border-color:rgb(${BONE} / .3) !important; background:rgb(${BONE} / .045) !important; }
+${R} .pv-lane .k-row[aria-selected="true"] { border-color:rgb(${BONE} / .5) !important; background:rgb(${BONE} / .07) !important; }
+${R} .pv-lane .k-row[aria-disabled="true"] { border-style:dashed !important; border-color:rgb(${BONE} / .14) !important; background:none !important; }
+${R} .pv-lane .k-row .k-row__num { right:14px !important; }
+${R} .pv-tools > button { gap:12px !important; padding:5px 6px 5px 14px !important; min-height:34px !important;
+  border:1px solid rgb(${BONE} / .26) !important; border-radius:6px !important; background:rgb(${BONE} / .03) !important; }
+${R} .pv-tools > button::before { display:none !important; }
+${R} .pv-tools > button::after { content:"Esc" / "" !important; display:inline-block !important; ${LABEL} font-size:12px !important;
+  letter-spacing:.06em !important; line-height:1 !important; padding:3px 6px 4px !important; margin:0 !important;
+  position:static !important; transform:none !important; width:auto !important; height:auto !important; opacity:1 !important;
+  border:1px solid rgb(${BONE} / .5) !important; border-radius:3px !important; background:rgb(${BONE} / .1) !important;
+  box-shadow:inset 0 -1px 0 rgb(0 0 0 / .35) !important; color:rgb(${BONE} / .9) !important; }
+${R} .pv-tools > button:is(:hover, :focus-visible) { border-color:rgb(255 250 236 / .5) !important; background:rgb(${BONE} / .06) !important; }
+${R} .pv-tools > button:is(:hover, :focus-visible)::after { color:rgb(255 253 248) !important; border-color:rgb(255 253 248 / .6) !important; }
+@media (max-height: 760px) {
+  ${R} .pv-lane .k-row { padding-top:7px !important; padding-bottom:7px !important; }
+}
+@media (max-width: 560px) {
+  ${R} .pv-lane .k-row { padding-right:12px !important; }
+  ${R} .pv-lane .k-row .k-row__num { right:12px !important; }
+  /* a phone has no Esc key, and the keycap would push the frame into the display line */
+  ${R} .pv-tools > button { padding:5px 12px !important; }
+  ${R} .pv-tools > button::after { display:none !important; }
 }
 `;
 

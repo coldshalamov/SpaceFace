@@ -640,7 +640,7 @@ function buildContent(container, recording, ctx, options = {}) {
   container.append(veilTop, veilFoot);
 
   const exitWrap = el('div', 'orr-replay__exit');
-  const exitList = words([{ label: 'Exit', action: 'exit' }], {
+  const exitList = words([{ label: 'Exit (Esc)', action: 'exit', keycap: true }], {
     ariaLabel: REPLAY_LABEL,
     system: 'light',
     onPick: () => exitTape(view),

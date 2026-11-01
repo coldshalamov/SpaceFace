@@ -5,6 +5,8 @@ import { isOrchardFrame, isOrchardPod, orchardPlaceTransform, orchardCatalogRows
 import { recordOrchardAuthoredSource } from './anvilOrchardVisuals.js';
 // LAST_ARGUMENT_INTEGRATION_V1
 import { LAST_ARGUMENT as LAST_ARGUMENT_SPEC } from '../data/lastArgument.js';
+import { ironKrakenProfileFor } from '../data/ironKraken.js';
+import { createIronKrakenVisual } from './ironKrakenVisuals.js';
 import { isLastArgument } from '../data/lastArgumentBody.js';
 import { isLatchActor,LATCH_PLACE_FILE,latchPlaceTransform,latchNineCatalogRow } from './latchNineVisuals.js';
 import { isTallyThreeAssessor, TALLY_THREE_PLACE_FILE } from './tallyThreeVisuals.js';
@@ -3319,6 +3321,14 @@ export function retryFailedAuthoredAdmission(boundary, nowMs) {
  */
 export function wrapShipWithAuthoredParts(entity, fallbackRoot, options = {}) {
   if (!fallbackRoot || !fallbackRoot.isObject3D || !entity || entity.type !== 'ship') return fallbackRoot;
+  // Preview callers use this wrapper directly. Preserve the same articulated identity as
+  // the live factory and never queue a generic capital hull over its procedural rig.
+  if (ironKrakenProfileFor(entity)) {
+    const character = fallbackRoot.userData?.ironKrakenRig ? fallbackRoot : createIronKrakenVisual(entity);
+    if (character !== fallbackRoot) disposeDetachedObject(fallbackRoot);
+    setPresentationAdmission(entity, PRESENTATION_ADMISSION.ready);
+    return character;
+  }
   // Pipeline precompile entities are deliberately disposable procedural probes. Wrapping them would
   // turn shader warm-up into authored GLB residency demand for ships that may never enter the world.
   if (entity.data && entity.data.precompileProbe === true) return fallbackRoot;

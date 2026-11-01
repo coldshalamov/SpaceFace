@@ -510,6 +510,7 @@ import {
   lightCensusSignature,
   lightCensusSignatureSteps,
   noteShadowCensusLightMutation,
+  prepareShadowDepthTextureLease,
   shadowCensusEpoch,
   isUnstagedCollectOverCover,
   withheldDepthCasterProvablyDead,
@@ -591,6 +592,7 @@ import {
   assertPackageTextureRefillReady,
   detachedGeometryUploadPending,
   detachedTextureUploadPending,
+  dropGeometryGpuResidencyLedger,
   isPackageGeometryDetached,
   noteOrientationDetachedHold,
   packageGeometryUploadDiagnostics,
@@ -630,6 +632,7 @@ import {
   drawableHideSessionSteps,
   materialHasCompiledProgram,
   materialList,
+  retryPendingExactTouch,
   touchSubjectOnExactTarget,
   uniqueAdmissionUnits,
 } from './openingGpuAdmission.js';
@@ -753,79 +756,183 @@ async function collectCompileSubjectsPaced(root, pace) {
   return step.value;
 }
 
-async function driveCompileShadowDepthPipelines(depthOpts, yieldStep) {
-  if (typeof compileShadowDepthPipelinesSteps !== 'function') {
-    return compileShadowDepthPipelines(depthOpts);
-  }
+export async function driveCompileShadowDepthPipelines(depthOpts, yieldStep) {
   const pace = typeof yieldStep === 'function' ? yieldStep : async () => {};
-  if (!Number.isFinite(depthOpts.lightSigEpoch)) {
-    depthOpts.lightSigEpoch = shadowCensusEpoch();
-  }
-  // The subject census is light-independent — collect it once so drift retries
-  // re-pay only the light census + session mint, not the whole subtree walk.
-  if (!depthOpts.precollectedCasting && depthOpts.subjects) {
-    const collectIter = collectPotentialShadowCastSubjectsSteps(depthOpts.subjects);
-    let precollected = null;
-    for (;;) {
-      let collectStep;
-      try {
-        collectStep = collectIter.next();
-      } catch (collectError) {
-        // A torn census used to propagate through the cook's best-effort catch
-        // (silent cold depth link) or reject the drain settle. Skip the
-        // pre-collect so the compile below pays the sync collect instead.
-        closeCookStepsIter(collectIter);
-        stormWarn('shadow-cast-subject-census-drive-failed-compilin', '[render] shadow-cast subject census drive failed; compiling without pre-collect', collectError);
-        break;
+  const state = depthOpts && depthOpts.state;
+  const contextRecovery = state && state.render && state.render.contextRecovery;
+  const startingGeneration = Number.isFinite(contextRecovery && contextRecovery.generation)
+    ? contextRecovery.generation : null;
+  const runIsCurrent = () => {
+    try {
+      if (typeof (depthOpts && depthOpts.isActive) === 'function'
+        && depthOpts.isActive() !== true) return false;
+      const renderer = depthOpts && depthOpts.renderer;
+      const gl = renderer && typeof renderer.getContext === 'function' ? renderer.getContext() : null;
+      if (gl && typeof gl.isContextLost === 'function' && gl.isContextLost()) return false;
+      if (startingGeneration !== null) {
+        const currentGeneration = state && state.render && state.render.contextRecovery
+          && state.render.contextRecovery.generation;
+        if (currentGeneration !== startingGeneration) return false;
       }
-      if (collectStep.done) { precollected = collectStep.value; break; }
-      await pace();
+      return true;
+    } catch (_) {
+      return false;
     }
-    if (precollected) depthOpts.precollectedCasting = precollected;
-  }
-  for (let attempt = 0; attempt < 4; attempt += 1) {
-    const iterator = compileShadowDepthPipelinesSteps(depthOpts);
-    for (;;) {
-      let step;
-      try {
-        step = iterator.next();
-      } catch (driveError) {
-        closeCookStepsIter(iterator);
-        noteLaneFault(depthOpts && depthOpts.state, 'depthPipelineDrive');
-        laneWarn(depthOpts && depthOpts.state, 'depthPipelineDrive', '[render] shadow-depth pipeline drive failed; degrading to sync twin', driveError);
-        const degraded = runCookSyncTwin('compile-shadow-depth-pipelines',
-          () => compileShadowDepthPipelines(depthOpts),
-          { skipped: true, reason: 'drive-fault', subjects: 0, aborted: true });
-        // The degrade discards the remaining drift retries and runs under
-        // census terms minted pre-fault — a {stale} or never-compiled shape
-        // must read aborted like this drive's own exhausted loop, or callers
-        // evaluate marks that never landed and park roots on unearned
-        // undrawable verdicts.
-        if (degraded && (degraded.stale === true || degraded.skipped === true)) {
-          degraded.aborted = true;
+  };
+  const abortedForContext = () => ({
+    skipped: true, reason: 'shadow-depth-context-changed', subjects: 0, aborted: true,
+  });
+  let textureLease = null;
+  try {
+    if (!runIsCurrent()) return abortedForContext();
+    const contextChanged = () => textureLease
+      ? !textureLease.isCurrent() : !runIsCurrent();
+    if (!Number.isFinite(depthOpts.lightSigEpoch)) {
+      depthOpts.lightSigEpoch = shadowCensusEpoch();
+    }
+    // The subject census is light-independent — collect it once so drift retries
+    // re-pay only the light census + session mint, not the whole subtree walk.
+    if (typeof compileShadowDepthPipelinesSteps === 'function'
+      && !depthOpts.precollectedCasting && depthOpts.subjects) {
+      const collectIter = collectPotentialShadowCastSubjectsSteps(depthOpts.subjects);
+      let precollected = null;
+      for (;;) {
+        if (contextChanged()) return abortedForContext();
+        let collectStep;
+        try {
+          collectStep = collectIter.next();
+        } catch (collectError) {
+          // A torn census used to propagate through the cook's best-effort catch
+          // (silent cold depth link) or reject the drain settle. Skip the
+          // pre-collect so the compile below pays the sync collect instead.
+          closeCookStepsIter(collectIter);
+          stormWarn('shadow-cast-subject-census-drive-failed-compilin', '[render] shadow-cast subject census drive failed; compiling without pre-collect', collectError);
+          break;
         }
-        return degraded;
+        if (collectStep.done) { precollected = collectStep.value; break; }
+        try {
+          await pace();
+        } catch (error) {
+          closeCookStepsIter(collectIter);
+          throw error;
+        }
+        if (contextChanged()) {
+          closeCookStepsIter(collectIter);
+          return abortedForContext();
+        }
       }
-      if (step.done) {
-        if (step.value && step.value.stale === true) break;
-        return step.value;
+      if (precollected) depthOpts.precollectedCasting = precollected;
+    }
+    const textureRoots = depthOpts
+      ? depthOpts.precollectedCasting || depthOpts.subjects : [];
+    let shadowTextures = [];
+    if (typeof collectStartupTexturesSteps === 'function') {
+      const textureIter = collectStartupTexturesSteps(textureRoots);
+      for (;;) {
+        if (contextChanged()) {
+          closeCookStepsIter(textureIter);
+          return abortedForContext();
+        }
+        let textureStep;
+        try {
+          textureStep = textureIter.next();
+        } catch (textureCollectError) {
+          closeCookStepsIter(textureIter);
+          throw textureCollectError;
+        }
+        if (textureStep.done) {
+          shadowTextures = textureStep.value;
+          break;
+        }
+        try {
+          await pace();
+        } catch (error) {
+          closeCookStepsIter(textureIter);
+          throw error;
+        }
+        if (contextChanged()) {
+          closeCookStepsIter(textureIter);
+          return abortedForContext();
+        }
       }
-      await pace();
+    } else if (textureRoots) {
+      shadowTextures = collectStartupTextures(textureRoots);
     }
-    depthOpts.lightSigEpoch = shadowCensusEpoch();
-    // A stale abort means the light set drifted — the retry collects the live
-    // set but a minted-once override would keep stamping marks under the old
-    // signature, so every leg caster re-collects as unstaged on the next arm.
-    // Prefer the caller's epoch-keyed memo: one census serves every retry.
-    if (typeof depthOpts.lightSigFor === 'function') {
-      depthOpts.lightSigOverride = depthOpts.lightSigFor();
-    } else if (typeof lightCensusSignature === 'function' && depthOpts.lightingScene) {
-      depthOpts.lightSigOverride = lightCensusSignature(depthOpts.lightingScene);
+    textureLease = await prepareShadowDepthTextureLease({
+      renderer: depthOpts && depthOpts.renderer,
+      textures: shadowTextures,
+      state,
+      expectedGeneration: startingGeneration,
+      isActive: depthOpts && depthOpts.isActive,
+      yieldToMain: pace,
+    });
+    if (!textureLease.ready) {
+      return { skipped: true, reason: textureLease.reason, subjects: 0, aborted: true };
     }
+    if (typeof compileShadowDepthPipelinesSteps !== 'function') {
+      return compileShadowDepthPipelines(depthOpts);
+    }
+    for (let attempt = 0; attempt < 4; attempt += 1) {
+      if (contextChanged()) return abortedForContext();
+      const iterator = compileShadowDepthPipelinesSteps(depthOpts);
+      for (;;) {
+        if (contextChanged()) {
+          closeCookStepsIter(iterator);
+          return abortedForContext();
+        }
+        let step;
+        try {
+          step = iterator.next();
+        } catch (driveError) {
+          closeCookStepsIter(iterator);
+          noteLaneFault(depthOpts && depthOpts.state, 'depthPipelineDrive');
+          laneWarn(depthOpts && depthOpts.state, 'depthPipelineDrive', '[render] shadow-depth pipeline drive failed; degrading to sync twin', driveError);
+          const degraded = runCookSyncTwin('compile-shadow-depth-pipelines',
+            () => compileShadowDepthPipelines(depthOpts),
+            { skipped: true, reason: 'drive-fault', subjects: 0, aborted: true });
+          // The degrade discards the remaining drift retries and runs under
+          // census terms minted pre-fault — a {stale} or never-compiled shape
+          // must read aborted like this drive's own exhausted loop, or callers
+          // evaluate marks that never landed and park roots on unearned
+          // undrawable verdicts.
+          if (degraded && (degraded.stale === true || degraded.skipped === true)) {
+            degraded.aborted = true;
+          }
+          return degraded;
+        }
+        if (step.done) {
+          if (contextChanged()) return abortedForContext();
+          if (step.value && step.value.stale === true) break;
+          return step.value;
+        }
+        try {
+          await pace();
+        } catch (error) {
+          closeCookStepsIter(iterator);
+          throw error;
+        }
+        if (contextChanged()) {
+          closeCookStepsIter(iterator);
+          return abortedForContext();
+        }
+      }
+      depthOpts.lightSigEpoch = shadowCensusEpoch();
+      // A stale abort means the light set drifted — the retry collects the live
+      // set but a minted-once override would keep stamping marks under the old
+      // signature, so every leg caster re-collects as unstaged on the next arm.
+      // Prefer the caller's epoch-keyed memo: one census serves every retry.
+      if (typeof depthOpts.lightSigFor === 'function') {
+        depthOpts.lightSigOverride = depthOpts.lightSigFor();
+      } else if (typeof lightCensusSignature === 'function' && depthOpts.lightingScene) {
+        depthOpts.lightSigOverride = lightCensusSignature(depthOpts.lightingScene);
+      }
+    }
+    // `aborted` rides the same contract as the callee-minted skip shapes: the
+    // drive never staged, so consumers must not evaluate marks that never landed.
+    return { skipped: true, reason: 'light-census-drifted-repeatedly', subjects: 0, aborted: true };
+  } finally {
+    textureLease?.release();
   }
-  // `aborted` rides the same contract as the callee-minted skip shapes: the
-  // drive never staged, so consumers must not evaluate marks that never landed.
-  return { skipped: true, reason: 'light-census-drifted-repeatedly', subjects: 0, aborted: true };
 }
 
 // Shared empty list for the on-glass pending diagnostics — the per-frame sync
@@ -9463,6 +9570,7 @@ export const render = {
         this._contextRestoreReceipt?.cancel?.();
         this._contextRestoreReceipt = null;
         publishContextLostState(this, true);
+        dropGeometryGpuResidencyLedger(renderer);
         retireScenePipelineReadinessPrograms(renderer);
         invalidateMachineryPresentation(state);
         this._sessionLiveSectorCookedId = null;
@@ -11078,9 +11186,11 @@ export const render = {
         try { return touchExactTargetSubject(subject); }
         finally { restore(); }
       };
-      const pending = pace?.submit
+      const pending = retryPendingExactTouch(() => pace?.submit
         ? pace.submit(submit, { urgent: urgent === true, isActive: () => !isActive || isActive(subject) })
-        : Promise.resolve().then(submit);
+        : Promise.resolve().then(submit), {
+        renderer, isActive: () => !isRetiredRigidOpaqueBatch(subject) && (!isActive || isActive(subject)),
+      });
       return Promise.resolve(pending).then((result) => {
         // The serial queue can reject a stale owner before running submit. Convert its tagged
         // skip into the same cancellation used by the exact callback so awaited admission owners
@@ -11776,6 +11886,7 @@ export const render = {
       let subjectPipelineReady = false;
       let subjectResidencyReady = false;
       let exactTargetReady = true;
+      let exactTouchFailure = null;
       try {
         admission = compilation
         .then((result) => {
@@ -11790,9 +11901,6 @@ export const render = {
           // authored hull behind a background recompile was the whole-ship
           // hide flake).
           subjectPipelineReady = !!(result && result.contextLost !== true && result.skipped !== true);
-          if (subjectPipelineReady && subject && subject.userData) {
-            subject.userData.sfAdmittedOnce = true;
-          }
           // A linked program still stalls inside the presented frame while its
           // textures/geometry upload. Run the residency pass behind the same
           // pending latch; the mode check runs at settle time so entries queued
@@ -11874,9 +11982,15 @@ export const render = {
           // state — the same touch the opening plan runs — so any residual variant links here,
           // behind the pending latch, instead of inside a presented bloom frame.
           try {
-            await submitExactSubjectTouch(subject, admissionOptions.isActive, urgent);
+            const touchReceipt = await submitExactSubjectTouch(subject, admissionOptions.isActive, urgent);
+            if (touchReceipt?.skipped || touchReceipt?.incomplete || touchReceipt?.contextLost) {
+              exactTargetReady = false;
+              exactTouchFailure = touchReceipt;
+              if (admissionOptions.strict === true) assertCompleteAppearanceAdmission(touchReceipt);
+            }
           } catch (error) {
             if (isOwnerInactiveTouchError(error)) throw error;
+            if (error?.code === 'SF_PIPELINE_READINESS_TIMEOUT') throw error;
             exactTargetReady = false;
             laneWarn(this, 'admissionTouch', '[render] exact-target admission touch failed', error, emptyCompressedTextureIdentity(subject));
             // Identify which texture threw on upload and why: package-detach empties a
@@ -11932,13 +12046,14 @@ export const render = {
             }
           }
           if (subjectPipelineReady && subjectResidencyReady && exactTargetReady) {
+            if (subject && subject.userData) subject.userData.sfAdmittedOnce = true;
             markAuthoredGeologyFallbackAdmitted(subject);
             rememberOpeningPreparedLeaves(subject);
           }
           if (admissionOptions.strict === true && (!subjectPipelineReady || !subjectResidencyReady || !exactTargetReady)) {
             throw new Error('Required authored appearance admission did not complete');
           }
-          return result;
+          return exactTouchFailure || result;
         })
         .finally(() => {
           if (counters) counters.admissionSubject = priorSubject;
@@ -12081,7 +12196,7 @@ export const render = {
                 }
                 try {
                   const result = await submitExactSubjectTouch(subject, admissionOptions.isActive);
-                  rememberOpeningPreparedLeaves(subject);
+                  if (!result?.skipped && !result?.incomplete && !result?.contextLost) rememberOpeningPreparedLeaves(subject);
                   return result;
                 } catch (error) {
                   // The returned promise must never land an unhandled rejection
@@ -12104,7 +12219,7 @@ export const render = {
           }
           try {
             const result = await submitExactSubjectTouch(subject, admissionOptions.isActive);
-            rememberOpeningPreparedLeaves(subject);
+            if (!result?.skipped && !result?.incomplete && !result?.contextLost) rememberOpeningPreparedLeaves(subject);
             return result;
           } catch (error) {
             if (isOwnerInactiveTouchError(error)) {
@@ -12322,8 +12437,15 @@ export const render = {
         registerAsteroidBaseLeaf(this._asteroidInstancePool, entity, root);
         this._persistentSubmitLanes.markDirty(entity.id, 'geometry-ready');
       },
-      onError: (error, entity) => laneWarn(this, 'liveGeometryAdmission',
-        '[render] live geometry admission failed', entity.id, error),
+      onError: (error, entity) => {
+        if (error?.name === 'AbortError'
+            && error?.message === 'post-route compile owner became inactive') {
+          console.info('[render] live geometry admission cancelled with its post route', entity.id, error);
+          return;
+        }
+        laneWarn(this, 'liveGeometryAdmission',
+          '[render] live geometry admission failed', entity.id, error);
+      },
     });
     state.render.yieldToNextPresent = yieldToNextPresent;
     state.render.openingAdmission = openingCohort;

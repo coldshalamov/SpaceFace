@@ -32,7 +32,7 @@ function rigid(group){
  for(const child of [...group.children]){if(!child.isMesh)continue;child.updateMatrix();
   const g=child.geometry.index?child.geometry.toNonIndexed():child.geometry.clone();g.applyMatrix4(child.matrix);g.clearGroups();
   if(!g.attributes.uv)g.setAttribute('uv',new THREE.Float32BufferAttribute(new Float32Array(g.attributes.position.count*2),2));
-  if(!byMat.has(child.material))byMat.set(child.material,[]);byMat.get(child.material).push(g);old.add(child.geometry);group.remove(child);}
+  if(!byMat.has(child.material))byMat.set(child.material,[]);byMat.get(child.material).push(g);old.add(child.geometry);child.castShadow=false;group.remove(child);}
  for(const [m,gs]of byMat){const g=mergeGeometries(gs,false);if(!g)throw new Error('RAVEL rigid geometry schema mismatch');add(group,g,m,`${group.name}:${m.name}`);gs.forEach(g=>g.dispose());}old.forEach(g=>g.dispose());
 }
 function forceMaterial(mode){return new THREE.ShaderMaterial({name:`RAVEL_force_${mode}`,transparent:true,depthWrite:false,side:THREE.DoubleSide,

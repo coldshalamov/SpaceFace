@@ -153,7 +153,7 @@ export const crucibleFortifyScreen = {
     this._build.disabled = !!this._pending || !selected || selected.blocked || selected.occupied || !(model.credits >= device.cost) || !['draft', 'refit'].includes(model.phase);
     this._paintMap(model, slots); this._structures.replaceChildren(element(this._doc, 'h2', 'k-t-emph', 'In the field'));
     const list = element(this._doc, 'ul');
-    if (!model.structures?.length) list.appendChild(element(this._doc, 'li', '', 'No defenses placed.'));
+    if (!model.structures?.length) list.appendChild(element(this._doc, 'li', 'sf-fortify-empty', 'No defenses placed.'));
     for (const structure of model.structures || []) {
       const name = SWARM_FORTIFY_DEVICES[structure.deviceId]?.name || 'Structure';
       let detail = name + ' · ' + Math.max(0, Math.ceil(structure.hull || 0)) + '/' + Math.ceil(structure.hullMax || 0) + ' hull';

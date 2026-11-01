@@ -48,6 +48,7 @@ import {
 import {
   orientationDetachedHoldActive,
   orientationHoldHidesDrawable,
+  detachedGeometryUploadPending,
   packageDetachSerialNow,
   preparePresentedDraw,
   presentedDetachDrawsArmed,
@@ -1465,6 +1466,23 @@ function installUnreadyDrawGuard(renderer) {
   renderer.__sfUnreadyDrawGuardDepth = 0;
   const inner = renderer.renderBufferDirect;
   const drawGuardGl = typeof renderer.getContext === 'function' ? renderer.getContext() : null;
+  // Exact-target admission uses the same context-generation ownership as presented draws.
+  renderer.__sfExactProgramInvalid = (program) => programWrapperDead(drawGuardGl, program);
+  renderer.__sfDeferSelectedProgram = (program, object, material) => {
+    let ready = !!program && !programWrapperDead(drawGuardGl, program);
+    if (ready && typeof program.isReady === 'function') {
+      try { ready = program.isReady() === true; } catch (_) { ready = false; }
+    }
+    if (ready) return false;
+    const data = material.userData || (material.userData = {});
+    const queue = renderer.userData && renderer.userData.spacefaceQueuePipelineAdmission;
+    if (data.__sfPipelineAdmission !== true && typeof queue === 'function') {
+      data.__sfPipelineAdmission = true;
+      Promise.resolve(queue(object)).catch(() => null)
+        .finally(() => { data.__sfPipelineAdmission = false; });
+    }
+    return true;
+  };
   function unreadyDrawGuard(camera, scene, geometry, material, object, group) {
     // Three already ran object/material before-hooks. Its instance renderer skips
     // zero counts only after program/uniform/binding work; avoid that work here.
@@ -1487,7 +1505,7 @@ function installUnreadyDrawGuard(renderer) {
       queuePresentedDetachRehydrate(renderer);
       return undefined;
     }
-    if (renderer.__sfUnreadyDrawGuardDepth > 0 && material) {
+    if (renderer.__sfUnreadyDrawGuardDepth > 0 && !renderer.__sfExactTargetTouch && material) {
       const data = material.userData;
       const stamped = data && (data.spacefaceSharedMaterialRole != null || data.spacefaceProgramCanon != null);
       const props = renderer.properties;
@@ -1729,7 +1747,7 @@ export function createUnreadyDrawableGuard(renderer, options = {}) {
     // length+tail catches every mutation: acquireProgram pushes at the tail, releaseProgram
     // swap-removes (tail moves into the gap). Same length + same tail ⇒ the set is unchanged.
     // A grew-without-drain change means a mount path bypassed scene.add — failsafe below.
-    if (!orientationHold && unreadyProgramsPending !== true && programs.length === unreadyProgramCount
+    if (!orientationHold && detachGuardSettled && unreadyProgramsPending !== true && programs.length === unreadyProgramCount
       && programs[programs.length - 1] === unreadyProgramTail
       && !sceneSetChanged && unreadyMountedRoots.length === 0) {
       if (disarmOnSettle && detachGuardSettled) disarmPresentedDrawGuard(renderer);
@@ -1748,7 +1766,7 @@ export function createUnreadyDrawableGuard(renderer, options = {}) {
       try { ready = program.isReady() === true; } catch (_) { ready = false; }
       if (!ready) { unreadyProgramsPending = true; break; }
     }
-    if (!orientationHold && !unreadyProgramsPending && !(pendingSubjects && pendingSubjects.size > 0)
+    if (!orientationHold && detachGuardSettled && !unreadyProgramsPending && !(pendingSubjects && pendingSubjects.size > 0)
       && !sceneSetChanged && unreadyMountedRoots.length === 0) {
       if (disarmOnSettle && detachGuardSettled) disarmPresentedDrawGuard(renderer);
       return;
@@ -1773,7 +1791,7 @@ export function createUnreadyDrawableGuard(renderer, options = {}) {
     // sweep window — the draw-time renderBufferDirect guard already refuses
     // on-glass links for stamped materials in the meantime).
     const scopedPendingWindow = pendingOnlyWindow || unreadyProgramsPending === true;
-    if (orientationHold
+    if (orientationHold || !detachGuardSettled
         || (sceneSetChanged && drainRoots === null)
         || (!scopedPendingWindow && !drainRoots)) {
       // Uninstrumented growth with nothing queued, or no pending latch at all:
@@ -1820,7 +1838,9 @@ export function createUnreadyDrawableGuard(renderer, options = {}) {
       return;
     }
     if (object.isInstancedMesh && !(Number(object.count) > 0)) return;
-    if (orientationHoldHidesDrawable(renderer, object)) {
+    const pendingGeometry = detachedGeometryUploadPending(object.geometry, renderer);
+    if (orientationHoldHidesDrawable(renderer, object) || pendingGeometry) {
+      if (pendingGeometry) queuePresentedDetachRehydrate(renderer);
       unreadySceneScratch[unreadySceneCount] = object;
       unreadySceneCount += 1;
       object.visible = false;

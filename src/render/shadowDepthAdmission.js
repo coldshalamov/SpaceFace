@@ -3,6 +3,79 @@
 // bloomScene draw still links a depth program (~460 ms on Intel/ANGLE without parallel compile).
 import { revealSubjectForCompile } from './compilePresentSlice.js';
 import { isRetiredRigidOpaqueBatch } from './rigidOpaqueBatch.js';
+import {
+  assertPackageTextureRefillReady,
+  detachedTextureUploadPending,
+  rehydrateDetachedTextures,
+  retainPresentedTextureLeases,
+} from './packageCpuDetach.js';
+
+/**
+ * Prepare texture payloads used by a paced shadow admission. The staged draw can
+ * yield between caster slices, so a residency pass must not detach a compressed
+ * chain between the preflight and its eventual bind.
+ */
+export async function prepareShadowDepthTextureLease(options = {}) {
+  const renderer = options.renderer;
+  const textures = Array.isArray(options.textures) ? options.textures : [];
+  const state = options.state;
+  const contextRecovery = state && state.render && state.render.contextRecovery;
+  const startingGeneration = Number.isFinite(options.expectedGeneration)
+    ? options.expectedGeneration
+    : Number.isFinite(contextRecovery && contextRecovery.generation)
+      ? contextRecovery.generation : null;
+  const isCurrent = () => {
+    try {
+      if (typeof options.isActive === 'function' && options.isActive() !== true) return false;
+      const gl = renderer && typeof renderer.getContext === 'function' ? renderer.getContext() : null;
+      if (gl && typeof gl.isContextLost === 'function' && gl.isContextLost()) return false;
+      if (startingGeneration !== null) {
+        const currentGeneration = state && state.render && state.render.contextRecovery
+          && state.render.contextRecovery.generation;
+        if (currentGeneration !== startingGeneration) return false;
+      }
+      return true;
+    } catch (_) {
+      return false;
+    }
+  };
+  const stale = (reason) => ({ ready: false, reason, release() {} });
+  if (!renderer || !isCurrent()) return stale('shadow-depth-context-inactive');
+  const release = retainPresentedTextureLeases(textures);
+  let released = false;
+  const releaseOnce = () => {
+    if (released) return;
+    released = true;
+    release();
+  };
+  try {
+    const pending = textures.filter((texture) => detachedTextureUploadPending(
+      texture, renderer.properties));
+    if (pending.length > 0) {
+      const receipt = await rehydrateDetachedTextures(pending, {
+        yieldToMain: typeof options.yieldToMain === 'function' ? options.yieldToMain : undefined,
+      });
+      if (!isCurrent()) {
+        releaseOnce();
+        return stale('shadow-depth-context-changed-during-texture-refill');
+      }
+      assertPackageTextureRefillReady(pending, receipt);
+    }
+    if (!isCurrent()) {
+      releaseOnce();
+      return stale('shadow-depth-context-changed-before-drive');
+    }
+  } catch (error) {
+    releaseOnce();
+    if (!isCurrent()) return stale('shadow-depth-context-changed-during-texture-refill');
+    throw error;
+  }
+  return {
+    ready: true,
+    isCurrent,
+    release: releaseOnce,
+  };
+}
 
 // Scratch color target for staged depth admission: the real renderer.render needs somewhere
 // valid to present the trivial staging scene; 8x8 keeps the color pass near-free while the

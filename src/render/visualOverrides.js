@@ -64,6 +64,8 @@ import {
 import { yieldToBrowser } from './startupGpuResidency.js';
 import { notePacedFrameSpend } from './decodeTaskBudget.js';
 import { attachNestBayIndicators } from './nestBayVisuals.js';
+import { ironKrakenProfileFor } from '../data/ironKraken.js';
+import { ironKrakenWreckProfileFor } from './ironKrakenWreckVisuals.js';
 
 const KESTREL_HERO_ASSET_ID = 'SF_K0_KESTREL_BORROWED_TIME';
 
@@ -1564,6 +1566,15 @@ export function installVisualOverrides(factory, options = {}) {
     ? options.admissionStandInRecord
     : () => null;
   factory.build = (entity) => {
+    // This is the authored character body, not a missing ship asset. Production's direct
+    // authored mount must not replace it with its stat-only Bastion backing definition.
+    if (ironKrakenProfileFor(entity) || ironKrakenWreckProfileFor(entity)) {
+      const character = fallbackBuild(entity);
+      if (character?.userData?.ironKrakenRig || character?.userData?.ironKrakenWreck) {
+        setPresentationAdmission(entity, PRESENTATION_ADMISSION.ready);
+      }
+      return character;
+    }
     let visual = null;
     const requiredWholeShip = requiresProductionWholeShip(entity);
     const directShip = directAuthoredMount

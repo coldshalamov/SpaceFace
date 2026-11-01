@@ -2318,10 +2318,10 @@ export const weapons = {
           this.helpers.routeCombatDamage({
             attackerId: rec.ownerId ?? null,
             targetId: body.id,
-            packet: scalarHitToDamagePacket({
+            packet: { ...scalarHitToDamagePacket({
               damage: dmg * fall, damageType: 'explosive', pos,
               source: { kind: 'weapon', weaponId: rec.weaponId },
-            }),
+            }), flags: { splash: true } },
             origin: { kind: 'weapon', id: rec.weaponId },
           });
         }

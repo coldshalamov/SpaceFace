@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import * as THREE from 'three';
 import { WebGLPrograms } from 'three/src/renderers/webgl/WebGLPrograms.js';
+import { spacefaceSelectedProgramDeferred } from '../vendor/three.module.js';
 
 import { createUnreadyDrawableGuard, programWrapperDead } from '../src/render/bloom.js';
 import { bumpPackageDetachSerial, packageDetachSerialNow } from '../src/render/imageSourceDedupe.js';
@@ -13,6 +14,58 @@ import {
 } from '../src/render/packageCpuDetach.js';
 import { revealSubjectForCompile } from '../src/render/compilePresentSlice.js';
 import { render } from '../src/render/renderer.js';
+import { touchSubjectOnExactTarget, retryPendingExactTouch, admitOpeningUnitsAcrossSlices } from '../src/render/openingGpuAdmission.js';
+
+test('exact touch waits for the actual already-current pending program and restores its guard', async () => {
+  let ready = false, uniforms = 0, submits = 0;
+  const program = { program: {}, isReady: () => ready, getUniforms() { uniforms++; } };
+  const material = new THREE.MeshStandardMaterial();
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(), material);
+  const scene = new THREE.Scene(); scene.add(mesh);
+  const oldDefer = () => false;
+  const renderer = { __sfUnreadyDrawGuardDepth: 0, __sfDeferSelectedProgram: oldDefer,
+    getRenderTarget: () => null, setRenderTarget() {}, render() {
+      submits++;
+      if (!spacefaceSelectedProgramDeferred(this, { currentProgram: program }, program, mesh, material, false)) program.getUniforms();
+    } };
+  const touch = () => touchSubjectOnExactTarget(renderer, null, mesh, new THREE.PerspectiveCamera(), scene);
+  const first = touch();
+  assert.equal(first.reason, 'pending-exact-program'); assert.equal(uniforms, 0);
+  assert.equal(renderer.__sfUnreadyDrawGuardDepth, 0); assert.equal(renderer.__sfDeferSelectedProgram, oldDefer);
+  assert.equal(Object.hasOwn(renderer, '__sfExactTargetTouch'), false);
+  setTimeout(() => { ready = true; }, 15);
+  const settled = await retryPendingExactTouch(touch, { renderer, timeoutMs: 1000 });
+  assert.equal(settled.skipped, false); assert.equal(uniforms, 1); assert.ok(submits >= 3);
+  ready = false;
+  const timedOut = await retryPendingExactTouch(touch, { renderer, timeoutMs: 0 });
+  assert.equal(timedOut.readinessTimedOut, true); assert.equal(uniforms, 1);
+  renderer.__sfExactProgramInvalid = () => true;
+  assert.equal(touch().contextLost, true);
+  delete renderer.__sfExactProgramInvalid;
+  let active = true;
+  setTimeout(() => { active = false; }, 5);
+  const cancelled = await retryPendingExactTouch(touch, { renderer, timeoutMs: 1000, isActive: () => active });
+  assert.equal(cancelled.cancelled, true); assert.equal(uniforms, 1);
+  await assert.rejects(admitOpeningUnitsAcrossSlices({ subjects: [mesh], renderer, strict: true,
+    deadlineMs: 1, beginReadinessBatch: () => ({ drain: async () => ({ programs: 0 }), close() {} }),
+    compileOne: async () => ({}), touchOne: touch,
+  }), error => error.code === 'SF_PIPELINE_READINESS_TIMEOUT');
+  assert.equal(uniforms, 1, 'strict admission rejects without drawing the pending wrapper');
+  renderer.render = () => { throw new Error('draw failed'); };
+  assert.throws(touch, /draw failed/);
+  assert.equal(renderer.__sfUnreadyDrawGuardDepth, 0); assert.equal(renderer.__sfDeferSelectedProgram, oldDefer);
+  assert.equal(Object.hasOwn(renderer, '__sfExactTargetTouch'), false);
+  mesh.geometry.dispose(); material.dispose();
+});
+
+test('exact-touch readiness wait stops when its context is lost', async () => {
+  const canvas = new EventTarget();
+  const program = { isReady: () => false };
+  const result = retryPendingExactTouch(() => ({ skipped: true, reason: 'pending-exact-program', pendingPrograms: [program] }),
+    { renderer: { domElement: canvas }, timeoutMs: 1000 });
+  setTimeout(() => canvas.dispatchEvent(new Event('webglcontextlost')), 5);
+  assert.equal((await result).contextLost, true);
+});
 
 // Draw-time safety net: while a hide→render→restore presented pass is active, a
 // stamped authored/shared material with no currentProgram must not link inside the
@@ -251,6 +304,54 @@ test('ready current wrappers keep warm draws free of native readiness and livene
     assert.equal(draws.length, 8);
     assert.equal(admissions.length, 0);
   } finally { guard.restore(); }
+});
+
+test('a skinned draw checks its own pending Three program rather than a ready mesh sibling', () => {
+  const { renderer, draws, admissions } = rendererHarness();
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.toneMapping = THREE.NoToneMapping;
+  renderer.getRenderTarget = () => null;
+  const material = new THREE.MeshStandardMaterial();
+  material.userData.spacefaceProgramCanon = 1;
+  const vendorCache = new WebGLPrograms(
+    { outputColorSpace: renderer.outputColorSpace }, null, null,
+    { precision: 'highp', logarithmicDepthBuffer: false }, null, null,
+  );
+  const key = skinning => vendorCache.getProgramCacheKey({
+    shaderID: 'physical', isRawShaderMaterial: false, precision: 'highp',
+    outputColorSpace: renderer.outputColorSpace, toneMapping: THREE.NoToneMapping,
+    instancing: false, instancingColor: false, instancingMorph: false, skinning,
+    customProgramCacheKey: material.customProgramCacheKey(),
+  });
+  const ready = { cacheKey: key(false), program: {}, isReady: () => true };
+  let skinnedReady = false;
+  const pending = { cacheKey: key(true), program: {}, isReady: () => skinnedReady };
+  assert.notEqual(ready.cacheKey, pending.cacheKey);
+  const rec = { currentProgram: ready, programs: new Map([[ready.cacheKey, ready], [pending.cacheKey, pending]]),
+    instancing: false, instancingColor: false, instancingMorph: false, skinning: false,
+    toneMapping: THREE.NoToneMapping, outputColorSpace: renderer.outputColorSpace, __version: material.version };
+  renderer.properties.get = () => rec;
+  // Exercise the real vendored selection-boundary seam after Three's actual cache-key choice.
+  renderer.renderBufferDirect = (_camera, _scene, _geometry, drawMaterial, object) => {
+    const selected = rec.programs.get(key(object.isSkinnedMesh === true));
+    const changed = selected !== rec.currentProgram;
+    rec.currentProgram = selected;
+    rec.skinning = object.isSkinnedMesh === true;
+    if (spacefaceSelectedProgramDeferred(renderer, rec, selected, object, drawMaterial, changed)) return undefined;
+    draws.push(object);
+    return 'drawn';
+  };
+  const mesh = new THREE.SkinnedMesh(new THREE.BoxGeometry(), material);
+  const scene = new THREE.Scene(); scene.add(mesh);
+  const guard = createUnreadyDrawableGuard(renderer);
+  guard.hide(scene);
+  try {
+    assert.equal(renderer.renderBufferDirect(null, scene, mesh.geometry, material, mesh, null), undefined);
+    assert.deepEqual(admissions, [mesh]); assert.deepEqual(draws, []);
+    skinnedReady = true;
+    assert.equal(renderer.renderBufferDirect(null, scene, mesh.geometry, material, mesh, null), 'drawn');
+    assert.deepEqual(draws, [mesh]);
+  } finally { guard.restore(); mesh.geometry.dispose(); material.dispose(); }
 });
 
 test('transmission draw checks its pass-specific sibling without waiting unrelated variants', () => {

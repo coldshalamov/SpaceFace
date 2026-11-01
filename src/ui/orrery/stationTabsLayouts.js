@@ -322,8 +322,9 @@ ${T} .sx-ct-commit .k-word-sub, ${T} .sx-dossier__foot .k-word-sub { font-size: 
   ${D} .sx-bar__stage .sx-talk__choices > li .sx-choice { padding-top:4px !important; padding-bottom:4px !important; }
   ${D} .sx-bar__stage .sx-talk:has(.sx-talk__reply.is-said) .sx-talk__memory { display:none !important; }
 }
-/* under 481 wide two halves would be ~170px and cut every job title: the board stands over the dossier */
-@media (max-width:480px) and (min-height:601px) {
+/* under 481 wide two halves would be ~170px and cut every job title: the board stands over the dossier. At 481–580 and 861+
+   tall (540×900) the halves were ~250px: the posted titles ghosted out and YOURS printed its title over TRACKED, so it stacks too. */
+@media (max-width:480px) and (min-height:601px), (max-width:580px) and (min-height:861px) {
   ${D} .k-panel.sx-ct { grid-template-columns:minmax(0, 1fr) !important; grid-template-rows:minmax(0, 4fr) minmax(0, 5fr) !important; row-gap:10px !important; }
   ${D} .k-panel.sx-ct > * { grid-column:1 !important; grid-row:auto !important; min-height:0 !important; }
   /* each half scrolls once: the board and the dossier plate stop being second scrollers whose fades masked the only row in view */
@@ -360,6 +361,16 @@ ${T} .sx-ct-commit .k-word-sub, ${T} .sx-dossier__foot .k-word-sub { font-size: 
   ${D} .sx-dossier > .sx-dossier__title { order:-3 !important; margin-top:0 !important; }
   ${D} .sx-dossier > .k-caps { order:-1 !important; margin-top:8px !important; }
   ${D} .sx-dossier > .sx-dossier__foot { order:-2 !important; }
+}
+/* …481–580 wide the station head runs taller (540×900 leaves board and dossier ~195px): the board keeps its 66px FEATURED floor
+   and the dossier opens on the title with ACCEPT right under it, the kind stepping below, so the verb stays on the first screen */
+@media (min-width:481px) and (max-width:580px) and (min-height:861px) and (max-height:1000px) {
+  ${D} .k-panel.sx-ct { grid-template-rows:minmax(66px, 2fr) minmax(0, 3fr) !important; row-gap:8px !important; }
+  ${D} .sx-ct__dossier { padding-top:0 !important; -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 10px), transparent) !important; mask-image:linear-gradient(180deg, #000 calc(100% - 10px), transparent) !important; }
+  ${D} .sx-dossier { padding-top:2px !important; }
+  ${D} .sx-dossier > .sx-dossier__title { order:-3 !important; margin:0 0 6px !important; }
+  ${D} .sx-dossier > .sx-dossier__foot { order:-2 !important; }
+  ${D} .sx-dossier > .k-caps { order:-1 !important; margin-top:8px !important; }
 }
 /* below 700 the term value column would be under ~70px and split words ("contr/act"): the label stands over its value */
 @media (min-width:651px) and (max-width:699px) and (max-height:800px) {
@@ -1401,6 +1412,18 @@ ${T} .sx-ct__rows .sx-ct-row.sx-decision__opt--sub .k-row__sub { font-size: 12px
   ${D} .sx-dossier > .sx-dossier__foot { grid-column:2 !important; grid-row:1 / 3 !important; align-self:start !important; margin:0 0 4px !important; }
   ${D} .sx-dossier > .sx-dossier__risk { grid-column:2 !important; grid-row:3 / 5 !important; align-self:start !important; margin:0 0 4px !important; }
   ${D} .sx-dossier > .sx-dossier__terms { grid-column:2 !important; grid-row:5 / span 4 !important; align-self:start !important; }
+  /* 960×540: the ~120px dossier faded the reward out under its fold (the left column ran caps, a two-line title, client and
+     a 26px figure), and ACCEPT's two-line "hold to accept" note ended on the frame's right edge. The left column closes up so
+     the reward reads on first paint; the key and its note give back ~11px so the note stands inside the frame. */
+  ${D} .sx-dossier { padding-top:0 !important;
+    -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 10px), transparent) !important; mask-image:linear-gradient(180deg, #000 calc(100% - 10px), transparent) !important; }
+  ${D} .sx-dossier > .k-caps { margin:0 !important; line-height:1.2 !important; }
+  ${D} .sx-dossier__title { font-size:15px !important; line-height:1.12 !important; margin:0 0 1px !important; }
+  ${D} .sx-dossier__client { margin:0 !important; line-height:1.25 !important; }
+  ${D} .sx-dossier .k-hero--hero { margin:2px 0 0 !important; }
+  ${D} .sx-dossier .k-hero--hero .k-hero__n { font-size:22px !important; line-height:1 !important; }
+  ${D} .sx-dossier__foot .sx-ct-commit.orr-lampkey { padding:0 9px 0 8px !important; }
+  ${D} .sx-dossier__foot .sx-ct-commit.orr-lampkey .orr-lampkey__note { margin-left:14px !important; letter-spacing:.04em !important; }
 }
 @media (min-width:801px) and (max-width:900px) and (min-height:461px) and (max-height:800px) {
   ${D} .sx-dossier { grid-template-columns:minmax(0, 1fr) !important; padding-top:6px !important; }
@@ -2368,16 +2391,15 @@ html body #screens > .sx-berth.orr-station .sx-mkt.orr-market .sx-mkt__hero.sx-m
   ${T} .sx-bar__foot { margin-top: 8px !important; padding-top: 7px !important; padding-bottom: 4px !important;
     background: linear-gradient(0deg, rgb(${BONE} / .14), rgb(${BONE} / .14)) 0 0 / 100% 1px no-repeat !important; }
 }
-/* Ledger — the empty book used to leave ~70% of the panel void. An empty ledger page still
-   carries its rules: the empty state stretches and stands on ruled lines with the margin
-   column, so the void reads as a page waiting for its first entry, not dead glass. */
-${T} .sx-ledger:has(.st-ledger-empty:not([hidden])) { grid-template-rows: auto auto auto minmax(0, 1fr) auto !important; }
+/* Ledger — an empty book reads as one dashed well (the shared empty-state card: hairline dash,
+   radius 8, faint fill) instead of a half-drawn ruled page whose margin rule and stray rung
+   looked broken. The well sizes to its sentence; the panel keeps its rows. */
 ${T} .sx-ledger .st-ledger-empty:not([hidden]) {
-  align-self: stretch !important; min-height: 120px !important; padding-top: 12px !important; padding-left: 40px !important;
-  background:
-    linear-gradient(90deg, transparent 24px, rgb(${BONE} / .13) 24px, rgb(${BONE} / .13) 25px, transparent 25px) 0 0 / 100% 100% no-repeat,
-    repeating-linear-gradient(180deg, transparent 0 32px, rgb(${BONE} / .09) 32px 33px) !important;
+  align-self: start !important; min-height: 0 !important; max-width: min(100%, 440px); box-sizing: border-box;
+  margin-top: 24px !important; padding: 12px 16px !important;
+  border: 1px dashed rgb(${BONE} / .22) !important; border-radius: 8px !important; background: rgb(${BONE} / .025) !important;
 }
+${T} .sx-ledger .st-ledger-empty:not([hidden])::before { display: none !important; }
 /* F9 — the FIND A SERVICE trigger wore a bordered kbd pill; it stands as a bare caps word with
    a quiet field rule instead. The market search answers focus with a tick on its underline. */
 ${T} .so-command-trigger { border: 0 !important; border-radius: 0 !important; background: none !important; background-image: none !important; box-shadow: inset 0 -1px 0 rgb(${BONE} / .16) !important; clip-path: none !important; padding: 0 0 4px !important; min-height: 0 !important; }

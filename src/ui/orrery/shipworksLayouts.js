@@ -1010,14 +1010,15 @@ ${W} .sx-sw__explode .sx-sw__module-name { font-family:var(--dp-face-label, "Arc
     transform:none !important; width:auto !important; max-width:none !important; max-height:none !important; }
   ${W}.orr-sw--jig .sx-sw-verbs, ${W}:not(.orr-sw--jig) .sx-sw-verbs { position:static !important; width:auto !important; max-width:100% !important;
     flex-wrap:wrap !important; gap:6px 16px !important; justify-content:flex-start !important; padding:6px 0 12px !important; }
-  /* at phone height the stack keeps the smaller floor — equal specificity to the ≤899 jig
-     floor above and later in the sheet, so 240px still wins here */
-  ${W}.orr-sw--jig .sx-sw__main > .sx-sw__stage, ${W} .sx-sw__main > .sx-sw__stage { min-height:240px !important; }
-  /* the crest keeps its place on the hero, but the voice's full run cannot share a 240px stage
-     with the slot callouts: bound it where the markers stand clear and let the rest scroll */
-  ${W} .sx-sw__nameplate { padding-right:0 !important; max-width:min(64%, 300px) !important; }
-  ${W} .sx-sw__nameplate .sx-sw__blurb { max-height:72px !important; overflow:hidden auto !important; pointer-events:auto !important;
-    font-size:12px !important; line-height:1.45 !important; }
+  /* Give the nameplate its own top band. At phone widths a 240px stage puts its description in
+     the same space as the hull's system leaders; a taller scrollable stage keeps both readable. */
+  ${W}.orr-sw--jig .sx-sw__main > .sx-sw__stage, ${W} .sx-sw__main > .sx-sw__stage {
+    flex:0 0 420px !important; height:420px !important; min-height:420px !important; }
+  ${W} .sx-sw__stage > .sx-sw__nameplate { position:relative !important; inset:auto !important; z-index:5 !important;
+    width:100% !important; max-width:100% !important; margin:0 !important; padding:8px 10px 10px !important;
+    box-sizing:border-box; background:rgb(5 7 10 / .88) !important; }
+  ${W} .sx-sw__nameplate .sx-sw__blurb { max-height:44px !important; overflow:hidden auto !important; pointer-events:auto !important;
+    font-size:12px !important; line-height:1.28 !important; }
 }
 
 /* the seat bail's own fallback — NOT media-gated. seatVerbs/seatSaleStats measure the STAGE and
