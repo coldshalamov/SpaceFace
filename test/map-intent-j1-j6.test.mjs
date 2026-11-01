@@ -17,11 +17,14 @@ async function main() {
 
   const { galaxyMapScreen } = await import('../src/ui/galaxyMap.js');
   const { createUiInput } = await import('../src/ui/input.js');
+  const { SECTORS } = await import('../src/data/sectors.js');
+  const { sectorLocalToGlobalForSector } = await import('../src/data/sectorCoordinates.js');
 
+  const emitted = [];
   const ctx = {
     state: createStateFixture(),
     bus: {
-      emit() {},
+      emit(type, payload) { emitted.push({ type, payload }); },
       on() { return () => {}; },
     },
     screenManager: null,
@@ -100,6 +103,48 @@ async function main() {
     assert.equal(galaxyMapScreen._searchSelectedIdx, 0);
   } finally {
     galaxyMapScreen._selectSearchTarget = realSelect;
+  }
+
+  // A charted station remains searchable after leaving its live sector. Use the real search
+  // input/Enter route, then the real selection and course-commit owners; the catalog result must
+  // retain its destination sector and resolve its sector-local anchor into global course space.
+  {
+    const state = ctx.state;
+    state.world.currentSectorId = 'sector_dione_lane';
+    state.world.discovery = {};
+    state.entities = new Map([
+      ['player', { id: 'player', type: 'ship', alive: true, pos: { x: 0, z: 0 } }],
+    ]);
+    state.entityList = [...state.entities.values()];
+    type('Helios Station');
+    const hits = galaxyMapScreen._searchResultsList;
+    const stationHit = hits.find((hit) => hit.stationId === 'station_helios');
+    assert(stationHit, 'a charted station outside the current sector answers its canonical name');
+    assert.equal(stationHit.sectorId, 'sector_helios_prime');
+    assert.deepEqual(stationHit.drawPos, { x: 1280, z: -420 },
+      'the searchable point keeps the authored sector-local anchor for map framing');
+    const expectedGlobal = sectorLocalToGlobalForSector(stationHit.drawPos, stationHit.sectorId);
+    assert.deepEqual({ x: stationHit.x, z: stationHit.z }, expectedGlobal,
+      'the course frame is translated through the canonical sector origin');
+
+    key('Enter');
+    assert.equal(galaxyMapScreen._selectedTarget.stationId, 'station_helios',
+      'Enter selects the actual remote station result');
+    assert.equal(galaxyMapScreen._selectedTarget.sectorId, 'sector_helios_prime');
+    assert.equal(galaxyMapScreen._commitCourse(galaxyMapScreen._selectedTarget), true,
+      'the selected station uses the ordinary course commit path');
+    const course = emitted.filter((event) => event.type === 'ui:setCourse').at(-1)?.payload;
+    assert.equal(course.stationId, 'station_helios');
+    assert.deepEqual(course.pos, expectedGlobal,
+      'the emitted course carries the station’s anchored global world position');
+
+    // A name in an uncharted sector is not disclosed by the cross-sector catalog fallback.
+    state.content = {
+      sectors: SECTORS.map((sector) => ({ ...sector, charted: false })),
+    };
+    type('Helios Station');
+    assert.equal(galaxyMapScreen._searchResultsList.some((hit) => hit.stationId === 'station_helios'), false,
+      'the catalog fallback does not reveal stations in uncharted sectors');
   }
 
   // ── J6: first refusal on Escape, through the real document keydown route ──────────────────

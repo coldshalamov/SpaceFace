@@ -3857,6 +3857,7 @@ function getSearchTargets(state, level, curSecId, claimsSystem = null, isHostile
   }
   // 2. Stations / Gates / POIs
   const systemModel = buildSystemModel(state, curSecId, { claimsSystem });
+  const knownStationIds = new Set();
   for (const p of systemModel.points) {
     if (Number.isFinite(p.x) && Number.isFinite(p.z)) {
       targets.push({
@@ -3887,6 +3888,42 @@ function getSearchTargets(state, level, curSecId, claimsSystem = null, isHostile
         history: p.history,
         detail: `${p.kind.toUpperCase()} · ${factionNameOf(p.factionId)}${p.statusLine ? ` · ${p.statusLine}` : ''}`,
       });
+      if (p.kind === 'station' && (p.stationId || p.id)) {
+        knownStationIds.add(String(p.stationId || p.id));
+      }
+    }
+  }
+  // Galaxy search can name every charted sector, so let its known station catalog answer the
+  // same query after the player leaves the station's live sector. Static records are admitted
+  // only behind the charted-sector boundary; current-system points above retain their live
+  // position and order, and their station ids suppress the matching catalog fallback.
+  for (const sector of sectorRecords(state)) {
+    if (!sector?.id || !isSectorCharted(state, sector) || !Array.isArray(sector.stations)) continue;
+    for (const station of sector.stations) {
+      const stationId = String(station?.id || '');
+      if (!stationId || knownStationIds.has(stationId)) continue;
+      const anchor = station.pos || station.anchor || station.position || null;
+      if (!anchor) continue;
+      const localZ = Number(anchor.z != null ? anchor.z : anchor.y) || 0;
+      const frames = anchorFrames(anchor, sector.id, localZ);
+      if (!Number.isFinite(frames.x) || !Number.isFinite(frames.z)) continue;
+      const name = station.name || station.id;
+      const sectorName = sector.name || sector.id;
+      targets.push({
+        id: station.id,
+        name,
+        kind: 'station',
+        sectorId: sector.id,
+        x: frames.x,
+        z: frames.z,
+        drawPos: frames.drawPos,
+        stationId,
+        stationTypeId: station.stationTypeId || station.type || null,
+        factionId: station.factionId || null,
+        searchText: `${name} ${sectorName}`,
+        detail: `STATION · ${sectorName}`,
+      });
+      knownStationIds.add(stationId);
     }
   }
   for (const marker of systemModel.ownership) {
