@@ -91,6 +91,39 @@ function applySectorLighting(scene, sector, profile, palette) {
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// Count actual target draws during this preview's final synchronous scene render.
+// onAfterRender also fires when Three's selected-program guard deferred the draw.
+function observePreviewDraw(renderer, root, draw) {
+  const meshes = new Set();
+  root.traverse((object) => { if (object.isMesh) meshes.add(object); });
+  const result = { draws: 0 };
+  const gl = renderer.getContext();
+  const previousRender = renderer.renderBufferDirect;
+  const originals = new Map();
+  let target = false;
+  renderer.renderBufferDirect = function (...args) {
+    const previousTarget = target;
+    target = meshes.has(args[4]);
+    try { return previousRender.apply(this, args); } finally { target = previousTarget; }
+  };
+  try {
+    for (const name of ['drawArrays', 'drawElements', 'drawArraysInstanced', 'drawElementsInstanced']) {
+      if (typeof gl[name] !== 'function') continue;
+      const original = gl[name];
+      originals.set(name, original);
+      gl[name] = function (...args) {
+        if (target) result.draws++;
+        return original.apply(this, args);
+      };
+    }
+    draw();
+  } finally {
+    renderer.renderBufferDirect = previousRender;
+    for (const [name, original] of originals) gl[name] = original;
+  }
+  return result;
+}
+
 function blueprintToGroup(blueprint) {
   const group = new THREE.Group();
   // Split-file LOD siblings (kestrel_lod1/_lod2) carry only LOD1_/LOD2_ names; shoot the finest
@@ -300,14 +333,16 @@ export function installFleetLook(SF) {
     const pose = () => poseCamera(cam, opts.view || 'inspect', radius, opts.heading || 0, placeCenter);
     // Same task as the draw: without preserveDrawingBuffer the canvas clears after compositing.
     pose();
-    renderOnce(renderer, scene, cam);
+    scene.updateMatrixWorld(true);
+    const drawObservation = observePreviewDraw(renderer, built.root,
+      () => renderOnce(renderer, scene, cam));
     const url = renderer.domElement.toDataURL('image/png');
     lastPose = pose;
     lastCamera = cam;
     if (opts.ab?.noEnvironment) scene.environment = opts._env;
     if (opts.ab?.noBackground) scene.background = opts._bg;
     return {
-      url, ok, radius, diagNames: built.diagNames,
+      url, ok, radius, diagNames: built.diagNames, drawObservation,
       size: box.getSize(new THREE.Vector3()).toArray(),
       materials: collectMaterials(built.root),
     };

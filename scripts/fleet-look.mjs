@@ -215,13 +215,16 @@ try {
             if (shotState.expired) throw shotState.timeoutError;
             const lit = stats.channels.slice(0, 3).reduce((a, c) => a + c.max, 0);
             const spread = stats.channels.slice(0, 3).reduce((a, c) => a + c.stdev, 0);
-            if (lit > 300 && spread > 6) break;
+            if (res.drawObservation?.draws > 0 && lit > 300 && spread > 6) break;
             console.log('  blank frame, re-shooting', name, view);
             shotState.stage = `blank-frame-retry-wait-${attemptLabel}`;
             await page.waitForTimeout(4000);
             if (shotState.expired) throw shotState.timeoutError;
           }
           if (shotState.expired) throw shotState.timeoutError;
+          if (!(res?.drawObservation?.draws > 0)) {
+            throw new Error(`fleet-look produced no target draws after retries: ${name}/${view}`);
+          }
           const buf = Buffer.from(res.url.split(',')[1], 'base64');
           const file = `${OUT}${name}_${view}.png`;
           const crop = CROPS[view];
@@ -279,7 +282,7 @@ try {
           },
         });
         const { res, file } = shot;
-        report.push({ name, view, file, ok: res.ok, size: res.size, radius: res.radius, materials: view === views[0] ? res.materials : undefined, ms: Date.now() - t0 });
+        report.push({ name, view, file, ok: res.ok, size: res.size, radius: res.radius, drawObservation: res.drawObservation, materials: view === views[0] ? res.materials : undefined, ms: Date.now() - t0 });
         console.log('shot', name, view, `${Date.now() - t0}ms`, res.ok ? '' : '(authored swap not confirmed)');
       } catch (err) {
         report.push({ name, view, error: String(err).slice(0, 500), ...(err?.code === 'FLEET_LOOK_SHOT_TIMEOUT' ? { timedOut: true, stage: shotState.stage, timeoutMs: SHOT_TIMEOUT_MS } : {}) });
