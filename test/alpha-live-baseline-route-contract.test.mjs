@@ -5,6 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { countGateInvocations, resolveAggregateCommand } from '../scripts/lib/ciGateGraph.mjs';
+import { validateFinalStationFrameSuffix } from '../scripts/lib/alphaLiveBaselineContracts.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const CHECK_PATH = path.join(ROOT, 'scripts', 'check-alpha-live-baseline-browser.mjs');
@@ -457,7 +458,7 @@ async function testStationDomObserver(routeModule) {
 
   const changingContent = await observeStationFixture(routeModule, {
     maximumFrames: 3,
-    frameContentChanges: {
+    stationTextChanges: {
       1: 'Helios Station Market Shipyard Missions ⏏ UNDOCK · READY · credits 5,000',
       2: 'Helios Station Market Shipyard Missions ⏏ UNDOCK · READY · credits 5,001',
       3: 'Helios Station Market Shipyard Missions ⏏ UNDOCK · READY · credits 5,002',
@@ -483,6 +484,62 @@ async function testStationDomObserver(routeModule) {
     'diagnostic retains first-frame station geometry');
   assert.equal(settleDiagnostic.lastFrameSignature.undock.selector, 'button[data-act="undock"]',
     'diagnostic retains final-frame canonical control identity');
+
+  const captionTransition = await observeStationFixture(routeModule, {
+    maximumFrames: 30,
+    captionTextChanges: {
+      16: "HELIOS DIDN'T NEED IT. THEY TOOK IT ANYWAY.",
+    },
+  });
+  assert.equal(new Set(captionTransition.map((frame) => frame.contentFingerprint)).size, 1,
+    'the timed docked airlock caption does not destabilize the station content fingerprint');
+  assert.equal(captionTransition[0].stationNarrativeCaption.text, 'THEY KNEW THE MASS.',
+    'observer retains the visible starting story caption separately');
+  assert.equal(captionTransition.at(-1).stationNarrativeCaption.text,
+    "HELIOS DIDN'T NEED IT. THEY TOOK IT ANYWAY.",
+    'observer retains the visible successor story caption separately');
+  assert.equal(validateFinalStationFrameSuffix(captionTransition, { minFrames: 30 }).pass, true,
+    'caption-only authored transition still satisfies 30 stable station frames');
+
+  const unrelatedVisibleChange = await observeStationFixture(routeModule, {
+    maximumFrames: 30,
+    stationTextChanges: { 16: 'Mission board: new visible requirement' },
+  });
+  assert.equal(validateFinalStationFrameSuffix(unrelatedVisibleChange, { minFrames: 30 }).pass, false,
+    'unrelated visible station content changes still fail the stable-content contract');
+  assert(unrelatedVisibleChange.at(-1).settleDiagnostic.content.firstChange,
+    'unrelated visible content drift retains its bounded text delta');
+
+  const hiddenSiblingChange = await observeStationFixture(routeModule, {
+    maximumFrames: 30,
+    captionTextChanges: {},
+    siblingTextHidden: true,
+    siblingTextChanges: { 16: 'HIDDEN PANEL TEXT MUST NOT COUNT' },
+  });
+  assert.equal(new Set(hiddenSiblingChange.map((frame) => frame.contentFingerprint)).size, 1,
+    'hidden non-caption sibling changes do not destabilize rendered station text');
+  assert.doesNotMatch(hiddenSiblingChange.at(-1).contentPreview, /HIDDEN PANEL TEXT MUST NOT COUNT/,
+    'hidden non-caption sibling text is excluded from the fingerprint');
+
+  const visibleSiblingChange = await observeStationFixture(routeModule, {
+    maximumFrames: 30,
+    captionTextChanges: {},
+    siblingTextChanges: { 16: 'Visible station notice changed' },
+  });
+  assert.equal(validateFinalStationFrameSuffix(visibleSiblingChange, { minFrames: 30 }).pass, false,
+    'visible non-caption sibling changes still fail the stable-content contract');
+
+  const hiddenCaption = await observeStationFixture(routeModule, {
+    maximumFrames: 1,
+    stationCaptionHidden: true,
+    captionTextChanges: { 1: 'HIDDEN CAPTION MUST NOT LEAK' },
+  });
+  assert.equal(hiddenCaption[0].stationNarrativeCaption.visible, false,
+    'hidden timed captions are not represented as visible narrative text');
+  assert.equal(hiddenCaption[0].stationNarrativeCaption.text, '',
+    'hidden caption text is omitted from the separate visible-caption observation');
+  assert.doesNotMatch(hiddenCaption[0].contentPreview, /HIDDEN CAPTION MUST NOT LEAK/,
+    'hidden caption text is not introduced into the stable visible-content fingerprint');
 }
 
 async function observeStationFixture(routeModule, options = {}) {
@@ -510,7 +567,11 @@ function createStationDomFixture({
   buttonRect = { left: 1080, top: 24, width: 180, height: 44 },
   duplicateCanonical = false,
   disabledFieldset = false,
-  frameContentChanges = {},
+  stationTextChanges = {},
+  captionTextChanges = null,
+  stationCaptionHidden = false,
+  siblingTextChanges = null,
+  siblingTextHidden = false,
 } = {}) {
   const body = fakeElement({ tag: 'body', rect: { left: 0, top: 0, width: 1440, height: 900 } });
   const station = fakeElement({
@@ -542,6 +603,50 @@ function createStationDomFixture({
     rect: { left: 120, top: 140, width: 120, height: 36 },
     innerText: 'Market',
   });
+  let stationCaption = null;
+  let stationTape = null;
+  let stationTapeTail = null;
+  let siblingText = null;
+  if (captionTextChanges !== null || stationCaptionHidden) {
+    stationTape = fakeElement({
+      tag: 'div',
+      parent: station,
+      classes: ['sxb-tape'],
+      rect: { left: 100, top: 160, width: 700, height: 60 },
+      innerText: '',
+    });
+    stationCaption = fakeElement({
+      tag: 'div',
+      parent: stationTape,
+      attrs: { id: 'sf-airlock', 'aria-hidden': stationCaptionHidden ? 'true' : 'false' },
+      classes: ['sf-airlock', 'sf-airlock--station'],
+      style: stationCaptionHidden ? { display: 'none' } : {},
+      hidden: stationCaptionHidden,
+      rect: { left: 100, top: 160, width: 300, height: 28 },
+      innerText: 'THEY KNEW THE MASS.',
+    });
+    stationCaption.parentNode = stationTape;
+    stationTapeTail = { nodeType: 3, nodeValue: ' · Station wire · Local Wire notice' };
+    if (siblingTextChanges !== null || siblingTextHidden) {
+      siblingText = fakeElement({
+        tag: 'div',
+        parent: station,
+        classes: ['sx-hidden-panel'],
+        style: siblingTextHidden ? { display: 'none' } : {},
+        hidden: siblingTextHidden,
+        rect: { left: 0, top: 0, width: 400, height: 40 },
+        innerText: 'Stable sibling notice',
+      });
+      siblingText.childNodes = [{ nodeType: 3, nodeValue: siblingText.innerText }];
+    }
+    stationTape.childNodes = [stationCaption, stationTapeTail];
+    stationTape.contains = (candidate) => containsElement(stationTape, candidate);
+    const headerText = { nodeType: 3, nodeValue: 'Helios Station Mission board ' };
+    const footerText = { nodeType: 3, nodeValue: ' · Undock' };
+    station.childNodes = [headerText, stationTape, siblingText, footerText].filter(Boolean);
+    stationTape.innerText = `${stationCaption.innerText}${stationTapeTail.nodeValue}`;
+    station.innerText = `${headerText.nodeValue}${stationTape.innerText}${siblingText?.innerText || ''}${footerText.nodeValue}`;
+  }
   const outsideDuplicate = duplicateCanonical ? fakeElement({
     tag: 'button',
     parent: body,
@@ -562,7 +667,7 @@ function createStationDomFixture({
       return null;
     },
     querySelectorAll: (selector) => selector === 'button[data-act="undock"]' ? canonical : [],
-    getElementById: () => null,
+    getElementById: (id) => id === 'sf-airlock' ? stationCaption : null,
   };
   const windowRef = {
     innerWidth: 1440,
@@ -581,8 +686,18 @@ function createStationDomFixture({
       getComputedStyle: (element) => element._style,
       requestAnimationFrame: (callback) => queueMicrotask(() => {
         frame += 1;
-        if (Object.prototype.hasOwnProperty.call(frameContentChanges, frame)) {
-          station.innerText = frameContentChanges[frame];
+        if (Object.prototype.hasOwnProperty.call(stationTextChanges, frame)) {
+          station.innerText = stationTextChanges[frame];
+        }
+        if (stationCaption && Object.prototype.hasOwnProperty.call(captionTextChanges || {}, frame)) {
+          stationCaption.innerText = captionTextChanges[frame];
+          stationCaption.textContent = stationCaption.innerText;
+          stationTape.innerText = `${stationCaption.innerText}${stationTapeTail.nodeValue}`;
+        }
+        if (siblingText && Object.prototype.hasOwnProperty.call(siblingTextChanges || {}, frame)) {
+          siblingText.innerText = siblingTextChanges[frame];
+          siblingText.textContent = siblingText.innerText;
+          if (siblingText.childNodes?.[0]) siblingText.childNodes[0].nodeValue = siblingText.innerText;
         }
         callback(frame * 16.667);
       }),
@@ -603,6 +718,7 @@ function fakeElement({
 } = {}) {
   const attributes = new Map(Object.entries(attrs));
   const element = {
+    nodeType: 1,
     localName: tag,
     tagName: tag.toUpperCase(),
     parentElement: parent,

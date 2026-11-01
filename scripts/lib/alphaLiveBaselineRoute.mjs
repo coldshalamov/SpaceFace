@@ -1120,9 +1120,37 @@ export function observeStableStationFramesInPage({ maximumFrames }) {
     let lastChangedFrameIndex = null;
     let lastContentTransition = null;
     let lastContent = '';
+    let firstCaptionState = null;
+    let previousCaptionStateKey = null;
+    let captionStateChangeCount = 0;
+    let firstChangedCaptionState = null;
+    let lastCaptionTransition = null;
+    let previousCaptionState = null;
+    let lastCaptionState = null;
     const sample = (frameTimestampMs) => {
       const state = window.SF?.state;
       const screen = document.querySelector('[data-screen="station"]');
+      const captionCandidate = document.getElementById('sf-airlock');
+      const stationCaption = screen && captionCandidate && screen.contains(captionCandidate)
+        && hasClass(captionCandidate, 'sf-airlock--station')
+        && hasClass(captionCandidate.parentElement, 'sxb-tape')
+        ? captionCandidate : null;
+      const stationCaptionVisibility = visibilityOf(stationCaption);
+      const stationNarrativeCaption = stationCaption ? {
+        selector: '#sf-airlock.sf-airlock--station inside .sxb-tape',
+        present: true,
+        visible: stationCaptionVisibility.visible,
+        text: stationCaptionVisibility.visible ? normalizeDomText(stationCaption.innerText) : '',
+        ariaHidden: stationCaption.getAttribute('aria-hidden'),
+        rect: visibilityDiagnosticsOf(stationCaptionVisibility),
+      } : {
+        selector: '#sf-airlock.sf-airlock--station inside .sxb-tape',
+        present: false,
+        visible: false,
+        text: '',
+        ariaHidden: null,
+        rect: visibilityDiagnosticsOf(stationCaptionVisibility),
+      };
       const overlay = document.querySelector('#sf-dock-overlay');
       const screenVisibility = visibilityOf(screen);
       const visibleTabs = Array.from(screen?.querySelectorAll('[role="tab"][data-tab], [role="tab"][data-nav]') || [])
@@ -1134,9 +1162,10 @@ export function observeStableStationFramesInPage({ maximumFrames }) {
       const undockLabel = String(undock?.textContent || '').replace(/\s+/g, ' ').trim();
       const undockAccessibleName = accessibleNameOf(undock);
       const undockAncestry = inspectAccessibilityAncestry(undock);
-      const content = String(screen?.innerText || '').replace(/\s+/g, ' ').trim();
+      const content = stableStationText(screen, stationCaption);
       const contentFingerprint = fingerprint(content);
       const frameIndex = frames.length;
+      const captionStateKey = JSON.stringify(stationNarrativeCaption);
       const overlayStyle = overlay ? getComputedStyle(overlay) : null;
       const overlayRect = overlay?.getBoundingClientRect();
       frames.push({
@@ -1151,6 +1180,7 @@ export function observeStableStationFramesInPage({ maximumFrames }) {
         contentFingerprint,
         contentLength: content.length,
         contentPreview: content.slice(0, 240),
+        stationNarrativeCaption,
         undockVisible: undockVisibility.visible,
         undockAction: {
           selector: canonicalUndockSelector,
@@ -1204,6 +1234,21 @@ export function observeStableStationFramesInPage({ maximumFrames }) {
       previousContentFingerprint = contentFingerprint;
       previousContent = content;
       lastContent = content;
+      if (firstCaptionState === null) firstCaptionState = stationNarrativeCaption;
+      if (previousCaptionStateKey !== null && previousCaptionStateKey !== captionStateKey) {
+        captionStateChangeCount += 1;
+        lastCaptionTransition = {
+          frameIndex,
+          before: previousCaptionState,
+          after: stationNarrativeCaption,
+        };
+      }
+      if (firstChangedCaptionState === null && captionStateKey !== JSON.stringify(firstCaptionState)) {
+        firstChangedCaptionState = { frameIndex, state: stationNarrativeCaption };
+      }
+      previousCaptionStateKey = captionStateKey;
+      previousCaptionState = stationNarrativeCaption;
+      lastCaptionState = stationNarrativeCaption;
 
       if (frames.length >= maximumFrames) {
         const lastFrame = frames[frames.length - 1];
@@ -1220,6 +1265,20 @@ export function observeStableStationFramesInPage({ maximumFrames }) {
               ...textChangeSummary(lastContentTransition.before, lastContentTransition.after),
             } : null,
             lastChange: lastContent !== firstContent ? textChangeSummary(firstContent, lastContent) : null,
+          },
+          stationNarrativeCaption: {
+            stateChangeCount: captionStateChangeCount,
+            firstChangedFrameNumber: firstChangedCaptionState ? firstChangedCaptionState.frameIndex + 1 : null,
+            firstChange: firstChangedCaptionState
+              ? { before: firstCaptionState, after: firstChangedCaptionState.state }
+              : null,
+            lastTransition: lastCaptionTransition ? {
+              frameNumber: lastCaptionTransition.frameIndex + 1,
+              before: lastCaptionTransition.before,
+              after: lastCaptionTransition.after,
+            } : null,
+            firstFrame: firstCaptionState,
+            lastFrame: lastCaptionState,
           },
           firstFrameSignature: stationFrameSignature(frames[0]),
           lastFrameSignature: stationFrameSignature(lastFrame),
@@ -1434,6 +1493,39 @@ export function observeStableStationFramesInPage({ maximumFrames }) {
           pointerEvents: overlayState.pointerEvents ?? null,
         },
       };
+    }
+
+    function hasClass(element, className) {
+      if (!element || !element.classList) return false;
+      if (typeof element.classList.contains === 'function') return element.classList.contains(className);
+      return Array.isArray(element.classList) && element.classList.includes(className);
+    }
+
+    function stableStationText(screen, excludedCaption) {
+      if (!screen) return '';
+      if (!excludedCaption) return normalizeDomText(screen.innerText);
+
+      function containsCaption(node) {
+        return node === excludedCaption
+          || (node && node.nodeType === 1 && typeof node.contains === 'function' && node.contains(excludedCaption));
+      }
+
+      function collectRenderedText(node) {
+        if (!node || node === excludedCaption) return '';
+        if (node.nodeType === 3) return String(node.nodeValue || '');
+        if (node.nodeType !== 1) return '';
+        const visibility = visibilityOf(node);
+        if (visibility.hiddenByAncestor || visibility.effectiveOpacity <= 0.01) return '';
+        const children = Array.from(node.childNodes || []);
+        if (!children.some(containsCaption)) return String(node.innerText || '');
+        return children.map(collectRenderedText).join(' ');
+      }
+
+      return normalizeDomText(collectRenderedText(screen));
+    }
+
+    function normalizeDomText(value) {
+      return String(value || '').replace(/\s+/g, ' ').trim();
     }
   });
 }
