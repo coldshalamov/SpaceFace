@@ -1722,6 +1722,51 @@ async function writeHeapSampling(cdp, heapMarks) {
 }
 
 async function runLaunchProfile(page, cdp, profileNote) {
+  let workerProfiler = null;
+  let workerProfileTask = null;
+  let workerProfileStopping = false;
+  const workerProfileStatus = { requested: WORKER_PROFILE, captured: false, targetUrl: null,
+    startedWallMs: null, stoppedWallMs: null, error: null };
+  const startLaunchWorkerProfile = () => {
+    if (!WORKER_PROFILE) return;
+    workerProfileTask = (async () => {
+      while (!workerProfileStopping) {
+        try {
+          workerProfiler = await startSimulationWorkerProfile(cdp);
+          workerProfileStatus.targetUrl = workerProfiler.targetUrl;
+          workerProfileStatus.startedWallMs = Date.now();
+          return;
+        } catch (error) {
+          if (!String(error?.message || error).includes('Simulation worker CDP target unavailable')) {
+            workerProfileStatus.error = String(error?.message || error);
+            return;
+          }
+          await new Promise(resolve => setTimeout(resolve, 250));
+        }
+      }
+      workerProfileStatus.error = 'Simulation worker CDP target unavailable before profiling ended';
+    })();
+  };
+  const stopLaunchWorkerProfile = async () => {
+    workerProfileStopping = true;
+    if (workerProfileTask) await workerProfileTask;
+    if (!workerProfiler) return;
+    const owned = workerProfiler;
+    workerProfiler = null;
+    try {
+      const profile = await owned.stop();
+      workerProfileStatus.stoppedWallMs = Date.now();
+      fs.writeFileSync(path.join(OUT_DIR, 'worker.cpuprofile'), JSON.stringify(profile));
+      const summary = summarizeProfile(profile, profileIndex(profile));
+      fs.writeFileSync(path.join(OUT_DIR, 'worker-profile.md'), [
+        '# Simulation Worker profile', '', `Target: ${owned.targetUrl}`, '',
+        ...entryTable(summary, 20),
+      ].join('\n'));
+      workerProfileStatus.captured = true;
+    } catch (error) {
+      workerProfileStatus.error = String(error?.message || error);
+    }
+  };
   // window.SF and its bus exist only once boot finishes; the title screen's New Game button is the
   // public signal. Subscribing at domcontentloaded silently misses every loading stage.
   let warmup = null;
@@ -1757,6 +1802,9 @@ async function runLaunchProfile(page, cdp, profileNote) {
   const profileStartWallMs = Date.now();
   const hostStart = sampleHostResources();
 
+  // The worker may already exist, or may be minted by Launch. Observe either case in
+  // parallel: target discovery must never delay the trusted public click.
+  startLaunchWorkerProfile();
   const newGameWallMs = Date.now();
   await openNewGameWithSeed(page);
   if (warmup) warmup.context = await compareWarmRendererContext(page);
@@ -1782,6 +1830,11 @@ async function runLaunchProfile(page, cdp, profileNote) {
   if (!HOLD_STILL) await page.keyboard.up('KeyW').catch(() => {});
   const { profile } = await cdp.send('Profiler.stop');
   const endWallMs = Date.now();
+  await stopLaunchWorkerProfile();
+  workerProfileStatus.coversLaunch = workerProfileStatus.captured
+    && workerProfileStatus.startedWallMs <= launchWallMs;
+  workerProfileStatus.coversFlightTail = workerProfileStatus.captured
+    && workerProfileStatus.startedWallMs <= flightWallMs && workerProfileStatus.stoppedWallMs >= endWallMs;
   const hostEnd = sampleHostResources();
   if (HEAP_SAMPLING) {
     await markHeap('end of flight tail');
@@ -1808,6 +1861,7 @@ async function runLaunchProfile(page, cdp, profileNote) {
       servedSourceOverlayIdentity: baseline?.servedIdentity || null,
     },
     runtime: runtimeBinding,
+    workerProfile: workerProfileStatus,
     host: summarizeHostResources(hostStart, hostEnd),
     ...(warmup ? { launch: {
       mode: 'same-session-warm-second-public-adventure-launch',
@@ -1831,6 +1885,11 @@ async function runLaunchProfile(page, cdp, profileNote) {
   log(`stages: ${trace.stages.map((stage) => `${stage.id}@${((stage.wallMs - launchWallMs) / 1000).toFixed(1)}s`).join(' ')}`);
   log(`long tasks: ${trace.longTasks.length}; resources observed: ${trace.resources.length}`);
   } finally {
+    await stopLaunchWorkerProfile();
+    if (WORKER_PROFILE) {
+      fs.writeFileSync(path.join(OUT_DIR, 'worker-profile-status.json'), JSON.stringify(workerProfileStatus, null, 2));
+      if (workerProfileStatus.error) log(`worker-profile unavailable: ${workerProfileStatus.error}`);
+    }
     await disposeFlightFailureObserver(page);
   }
 }
