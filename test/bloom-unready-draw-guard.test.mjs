@@ -14,6 +14,58 @@ import {
 } from '../src/render/packageCpuDetach.js';
 import { revealSubjectForCompile } from '../src/render/compilePresentSlice.js';
 import { render } from '../src/render/renderer.js';
+import { touchSubjectOnExactTarget, retryPendingExactTouch, admitOpeningUnitsAcrossSlices } from '../src/render/openingGpuAdmission.js';
+
+test('exact touch waits for the actual already-current pending program and restores its guard', async () => {
+  let ready = false, uniforms = 0, submits = 0;
+  const program = { program: {}, isReady: () => ready, getUniforms() { uniforms++; } };
+  const material = new THREE.MeshStandardMaterial();
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(), material);
+  const scene = new THREE.Scene(); scene.add(mesh);
+  const oldDefer = () => false;
+  const renderer = { __sfUnreadyDrawGuardDepth: 0, __sfDeferSelectedProgram: oldDefer,
+    getRenderTarget: () => null, setRenderTarget() {}, render() {
+      submits++;
+      if (!spacefaceSelectedProgramDeferred(this, { currentProgram: program }, program, mesh, material, false)) program.getUniforms();
+    } };
+  const touch = () => touchSubjectOnExactTarget(renderer, null, mesh, new THREE.PerspectiveCamera(), scene);
+  const first = touch();
+  assert.equal(first.reason, 'pending-exact-program'); assert.equal(uniforms, 0);
+  assert.equal(renderer.__sfUnreadyDrawGuardDepth, 0); assert.equal(renderer.__sfDeferSelectedProgram, oldDefer);
+  assert.equal(Object.hasOwn(renderer, '__sfExactTargetTouch'), false);
+  setTimeout(() => { ready = true; }, 15);
+  const settled = await retryPendingExactTouch(touch, { renderer, timeoutMs: 1000 });
+  assert.equal(settled.skipped, false); assert.equal(uniforms, 1); assert.ok(submits >= 3);
+  ready = false;
+  const timedOut = await retryPendingExactTouch(touch, { renderer, timeoutMs: 0 });
+  assert.equal(timedOut.readinessTimedOut, true); assert.equal(uniforms, 1);
+  renderer.__sfExactProgramInvalid = () => true;
+  assert.equal(touch().contextLost, true);
+  delete renderer.__sfExactProgramInvalid;
+  let active = true;
+  setTimeout(() => { active = false; }, 5);
+  const cancelled = await retryPendingExactTouch(touch, { renderer, timeoutMs: 1000, isActive: () => active });
+  assert.equal(cancelled.cancelled, true); assert.equal(uniforms, 1);
+  await assert.rejects(admitOpeningUnitsAcrossSlices({ subjects: [mesh], renderer, strict: true,
+    deadlineMs: 1, beginReadinessBatch: () => ({ drain: async () => ({ programs: 0 }), close() {} }),
+    compileOne: async () => ({}), touchOne: touch,
+  }), error => error.code === 'SF_PIPELINE_READINESS_TIMEOUT');
+  assert.equal(uniforms, 1, 'strict admission rejects without drawing the pending wrapper');
+  renderer.render = () => { throw new Error('draw failed'); };
+  assert.throws(touch, /draw failed/);
+  assert.equal(renderer.__sfUnreadyDrawGuardDepth, 0); assert.equal(renderer.__sfDeferSelectedProgram, oldDefer);
+  assert.equal(Object.hasOwn(renderer, '__sfExactTargetTouch'), false);
+  mesh.geometry.dispose(); material.dispose();
+});
+
+test('exact-touch readiness wait stops when its context is lost', async () => {
+  const canvas = new EventTarget();
+  const program = { isReady: () => false };
+  const result = retryPendingExactTouch(() => ({ skipped: true, reason: 'pending-exact-program', pendingPrograms: [program] }),
+    { renderer: { domElement: canvas }, timeoutMs: 1000 });
+  setTimeout(() => canvas.dispatchEvent(new Event('webglcontextlost')), 5);
+  assert.equal((await result).contextLost, true);
+});
 
 // Draw-time safety net: while a hide→render→restore presented pass is active, a
 // stamped authored/shared material with no currentProgram must not link inside the

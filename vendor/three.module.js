@@ -93,7 +93,7 @@ function spacefaceShadowCastersIn( scene ) {
 function spacefaceSelectedProgramDeferred( renderer, properties, program, object, material, changed ) {
 
 	if ( renderer.__sfUnreadyDrawGuardDepth > 0 &&
-		( changed || properties.__sfDeferredProgram === program ) &&
+		( changed || properties.__sfDeferredProgram === program || renderer.__sfExactTargetTouch === true ) &&
 		typeof renderer.__sfDeferSelectedProgram === 'function' &&
 		renderer.__sfDeferSelectedProgram( program, object, material ) === true ) {
 

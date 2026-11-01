@@ -1466,6 +1466,8 @@ function installUnreadyDrawGuard(renderer) {
   renderer.__sfUnreadyDrawGuardDepth = 0;
   const inner = renderer.renderBufferDirect;
   const drawGuardGl = typeof renderer.getContext === 'function' ? renderer.getContext() : null;
+  // Exact-target admission uses the same context-generation ownership as presented draws.
+  renderer.__sfExactProgramInvalid = (program) => programWrapperDead(drawGuardGl, program);
   renderer.__sfDeferSelectedProgram = (program, object, material) => {
     let ready = !!program && !programWrapperDead(drawGuardGl, program);
     if (ready && typeof program.isReady === 'function') {
@@ -1503,7 +1505,7 @@ function installUnreadyDrawGuard(renderer) {
       queuePresentedDetachRehydrate(renderer);
       return undefined;
     }
-    if (renderer.__sfUnreadyDrawGuardDepth > 0 && material) {
+    if (renderer.__sfUnreadyDrawGuardDepth > 0 && !renderer.__sfExactTargetTouch && material) {
       const data = material.userData;
       const stamped = data && (data.spacefaceSharedMaterialRole != null || data.spacefaceProgramCanon != null);
       const props = renderer.properties;

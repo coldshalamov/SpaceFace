@@ -632,6 +632,7 @@ import {
   drawableHideSessionSteps,
   materialHasCompiledProgram,
   materialList,
+  retryPendingExactTouch,
   touchSubjectOnExactTarget,
   uniqueAdmissionUnits,
 } from './openingGpuAdmission.js';
@@ -11185,9 +11186,11 @@ export const render = {
         try { return touchExactTargetSubject(subject); }
         finally { restore(); }
       };
-      const pending = pace?.submit
+      const pending = retryPendingExactTouch(() => pace?.submit
         ? pace.submit(submit, { urgent: urgent === true, isActive: () => !isActive || isActive(subject) })
-        : Promise.resolve().then(submit);
+        : Promise.resolve().then(submit), {
+        renderer, isActive: () => !isRetiredRigidOpaqueBatch(subject) && (!isActive || isActive(subject)),
+      });
       return Promise.resolve(pending).then((result) => {
         // The serial queue can reject a stale owner before running submit. Convert its tagged
         // skip into the same cancellation used by the exact callback so awaited admission owners
@@ -11883,6 +11886,7 @@ export const render = {
       let subjectPipelineReady = false;
       let subjectResidencyReady = false;
       let exactTargetReady = true;
+      let exactTouchFailure = null;
       try {
         admission = compilation
         .then((result) => {
@@ -11897,9 +11901,6 @@ export const render = {
           // authored hull behind a background recompile was the whole-ship
           // hide flake).
           subjectPipelineReady = !!(result && result.contextLost !== true && result.skipped !== true);
-          if (subjectPipelineReady && subject && subject.userData) {
-            subject.userData.sfAdmittedOnce = true;
-          }
           // A linked program still stalls inside the presented frame while its
           // textures/geometry upload. Run the residency pass behind the same
           // pending latch; the mode check runs at settle time so entries queued
@@ -11981,9 +11982,15 @@ export const render = {
           // state — the same touch the opening plan runs — so any residual variant links here,
           // behind the pending latch, instead of inside a presented bloom frame.
           try {
-            await submitExactSubjectTouch(subject, admissionOptions.isActive, urgent);
+            const touchReceipt = await submitExactSubjectTouch(subject, admissionOptions.isActive, urgent);
+            if (touchReceipt?.skipped || touchReceipt?.incomplete || touchReceipt?.contextLost) {
+              exactTargetReady = false;
+              exactTouchFailure = touchReceipt;
+              if (admissionOptions.strict === true) assertCompleteAppearanceAdmission(touchReceipt);
+            }
           } catch (error) {
             if (isOwnerInactiveTouchError(error)) throw error;
+            if (error?.code === 'SF_PIPELINE_READINESS_TIMEOUT') throw error;
             exactTargetReady = false;
             laneWarn(this, 'admissionTouch', '[render] exact-target admission touch failed', error, emptyCompressedTextureIdentity(subject));
             // Identify which texture threw on upload and why: package-detach empties a
@@ -12039,13 +12046,14 @@ export const render = {
             }
           }
           if (subjectPipelineReady && subjectResidencyReady && exactTargetReady) {
+            if (subject && subject.userData) subject.userData.sfAdmittedOnce = true;
             markAuthoredGeologyFallbackAdmitted(subject);
             rememberOpeningPreparedLeaves(subject);
           }
           if (admissionOptions.strict === true && (!subjectPipelineReady || !subjectResidencyReady || !exactTargetReady)) {
             throw new Error('Required authored appearance admission did not complete');
           }
-          return result;
+          return exactTouchFailure || result;
         })
         .finally(() => {
           if (counters) counters.admissionSubject = priorSubject;
@@ -12188,7 +12196,7 @@ export const render = {
                 }
                 try {
                   const result = await submitExactSubjectTouch(subject, admissionOptions.isActive);
-                  rememberOpeningPreparedLeaves(subject);
+                  if (!result?.skipped && !result?.incomplete && !result?.contextLost) rememberOpeningPreparedLeaves(subject);
                   return result;
                 } catch (error) {
                   // The returned promise must never land an unhandled rejection
@@ -12211,7 +12219,7 @@ export const render = {
           }
           try {
             const result = await submitExactSubjectTouch(subject, admissionOptions.isActive);
-            rememberOpeningPreparedLeaves(subject);
+            if (!result?.skipped && !result?.incomplete && !result?.contextLost) rememberOpeningPreparedLeaves(subject);
             return result;
           } catch (error) {
             if (isOwnerInactiveTouchError(error)) {
