@@ -8,6 +8,7 @@
 // and mesh-backed for clearance, picking, ownership masks, and other semantic readers.
 
 import * as THREE from 'three';
+import { cloneMaterialPreservingShaderHooks } from './materialClone.js';
 import { assertPackageGeometryRefillReady, isPackageGeometryDetached,
   rehydrateDetachedGeometries, retainPackageGeometryCpu } from './packageCpuDetach.js';
 import { motionGroupIdFor } from '../contracts/motionBank.js';
@@ -165,7 +166,7 @@ function copyMaterialForBatch(source) {
   if (!source) return null;
   let material = source;
   if (typeof source.clone === 'function') {
-    material = source.clone();
+    material = cloneMaterialPreservingShaderHooks(source);
     // Material.clone() does not promise to copy own-property shader patches. Keep the exact
     // authored Look hook and cache-key identity on the retained program.
     material.onBeforeCompile = source.onBeforeCompile;

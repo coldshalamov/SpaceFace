@@ -50,6 +50,35 @@ function makeRoot() {
   return { root, a, b };
 }
 
+test('retained batch clones texture metadata without serializing it and preserves shader hooks', async () => {
+  const scene = new THREE.Scene();
+  const { root, a, b } = makeRoot();
+  const texture = new THREE.Texture();
+  texture.toJSON = () => { throw new Error('texture serialization must not run'); };
+  a.material.userData.retainedFixture = { texture, marker: 'authored' };
+  b.material.userData.retainedFixture = { texture, marker: 'authored' };
+  assert.throws(() => a.material.clone(), /texture serialization must not run/,
+    'the original Material.clone path invokes texture serialization');
+  scene.add(root); scene.updateMatrixWorld(true);
+  const controller = createRetainedRigidOpaqueBatchController({ scene, prepare: () => ({ ready: true }) });
+  try {
+    await controller.sync([root]);
+    assert.equal(controller.getDiagnostics().status, 'active');
+    const batch = scene.children.find(child => child.userData?.spacefaceRigidOpaqueBatch);
+    assert.ok(batch, 'the prepared candidate promotes');
+    assert.strictEqual(batch.material.userData.retainedFixture.texture, texture);
+    assert.equal(batch.material.userData.retainedFixture.marker, 'authored');
+    assert.strictEqual(batch.material.onBeforeCompile, a.material.onBeforeCompile);
+    assert.strictEqual(batch.material.customProgramCacheKey, a.material.customProgramCacheKey);
+    assert.equal(a.layers.mask, 0);
+    assert.equal(b.layers.mask, 0);
+  } finally {
+    controller.dispose();
+    for (const source of [a, b]) { source.geometry.dispose(); source.material.dispose(); }
+    texture.dispose();
+  }
+});
+
 test('retained batch copies marked package normals and UVs after CPU retirement', async () => {
   resetPackageDetachManifestsForTests();
   const scene = new THREE.Scene();
