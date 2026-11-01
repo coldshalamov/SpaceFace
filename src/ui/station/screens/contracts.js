@@ -51,6 +51,9 @@ import {
   syncKeys,
 } from './fhChrome.js';
 import { bindStationMarkup, stationControlAttrs } from '../stationBindingMap.js';
+// DUST P5: mission-type tag chips — a small type glyph plus the type's own label leads each
+// board row, so the board scans by verb instead of by reading every authored title.
+import { missionTypeChipHtml, missionTypeGlyphSvg } from '../../icons/index.js';
 import { createRouteOrrery, sectorOfStation } from '../../orrery/routeOrrery.js';
 import { injectOrreryStationContracts } from '../../orrery/station-contractsLayouts.js';
 import { arcGauge } from '../../orrery/instruments.js';
@@ -733,6 +736,9 @@ export function createContractsScreen(ctx) {
             // not inside the title: the title's overflow:hidden would clip it entirely.
             (badge ? `<span class="k-t-fine k-signal sx-ct-row__badge" aria-hidden="true">${escapeHtml(badge)}${destTag ? ` <span class="sx-ct-row__dest">${escapeHtml(destTag)}</span>` : ''}</span>` : '') +
             `<span class="k-row__name sx-ct-row__title">` +
+              // DUST P5: the type chip leads the title (glyph is decorative; the type word is
+              // real content, so the spoken row names its verb before its prose).
+              `${missionTypeChipHtml(m.type, { label: typeLabel(m.type) })}` +
               `${escapeHtml(m.title || typeLabel(m.type))}` +
             `</span>` +
             `<span class="k-row__num sx-ct-row__rew">${filing ? 'Review' : reward(m).toLocaleString('en-US')}</span>` +
@@ -1426,7 +1432,7 @@ export function createContractsScreen(ctx) {
           const sub = [objectiveText(m), status].filter(Boolean).join(' · ');
           return (
             `<li class="k-row k-row--static sx-job${tracked ? ' is-tracked' : ''}${needs ? ' is-attention' : ''}" data-active-mid="${escapeHtml(id)}">` +
-              `<span class="k-row__name sx-job__title">${escapeHtml(m.title || typeLabel(m.type))}</span>` +
+              `<span class="k-row__name sx-job__title">${missionTypeGlyphSvg(m.type)}${escapeHtml(m.title || typeLabel(m.type))}</span>` +
               `<span class="k-row__sub sx-job__meta${needs ? ' k-signal' : ''}">${escapeHtml(sub)}</span>` +
               `<button type="button" ${stationControlAttrs('track')} class="k-word k-word--fine sx-job__track" data-track="${escapeHtml(id)}" aria-pressed="${tracked}">${tracked ? 'Tracked' : 'Track'}</button>` +
             `</li>`

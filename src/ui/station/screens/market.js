@@ -56,6 +56,9 @@ import {
 } from './fhChrome.js';
 import { bindStationMarkup, stationControlAttrs, stationControlLabel } from '../stationBindingMap.js';
 import { laneCommandSink, laneRpc } from '../../../core/simLaneCommands.js';
+// DUST P5: the register's category glyphs (one distinct silhouette per catalogue category)
+// graft into the presentation layer's row HTML — the row's author stays marketPresentation.js.
+import { applyCommodityGlyph } from '../../icons/index.js';
 
 const CMDTY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
 const STATION_NAME = new Map();
@@ -1257,13 +1260,16 @@ export function createMarketScreen(ctx) {
     const demand = demandLevel(r.entry);
     const drivers = presentMarketDrivers({ state, stationId: sid, commodity: r.def, entry: r.entry });
     const held = heldQty(state, r.id);
-    return marketRowHtml({ id: r.id, name: r.def.name, category: r.def.category,
+    // DUST P5: swap the presentation layer's generic per-category pictogram for the DUST
+    // glyph set (distinct silhouette per category + a rare-grade keel bar). Class and
+    // data-commodity-glyph are preserved, so the row's CSS contract is unchanged.
+    return applyCommodityGlyph(marketRowHtml({ id: r.id, name: r.def.name, category: r.def.category,
       buy, sell, stock, held, hist, demandWord: demandWord(demand),
       ...marketStockStatus(state, sid, r.id),
       profitPct: heldProfitPct(state, r.id, sell, r.def),
       driversSummary: drivers.accessibleSummary, selected, tracked: r.id === tracked_,
       order,
-      presentation: commodityPresentationFor(r.def) });
+      presentation: commodityPresentationFor(r.def) }), r.def);
   }
 
   function emptyFilterLabel() {

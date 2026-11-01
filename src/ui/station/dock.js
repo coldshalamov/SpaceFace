@@ -1,6 +1,10 @@
 import { escapeMarkup } from '../views/identity.js';
 import { stationIcon } from './stationArt.js';
 import { stationControlAttrs } from './stationBindingMap.js';
+// DUST P5: destination glyphs ride inside the label so they show wherever the label shows.
+// The old artwork rail (.sx-tile__seat) is display:none in the Orrery station sheet, which is
+// why the rail read as micro-text with no icons; the seat span stays (checks query it).
+import { stationTabGlyphSvg } from '../icons/index.js';
 // Station destinations: an explicit facility rail, horizontal on narrow screens.
 // A real ARIA tablist of kit words: role=tab, roving tabindex, arrow keys, aria-current on the live
 // one. The pointer/keyboard distance field still writes --dock-scale / --dock-lift / --dock-near on
@@ -14,12 +18,18 @@ function tileHtml(item, kind) {
     ? `data-nav="${item.id}" role="tab" id="sx-tab-${item.id}" aria-controls="sx-panel" aria-selected="false" tabindex="-1"`
     : `data-act="${item.id}"`;
   const extra = isNav ? '' : ' sx-tile--act';
+  // DUST P5: nav tiles carry their glyph inside the label (the label word stays — the glyph
+  // augments it, and the spoken name is unchanged). The seat keeps the action tiles' artwork;
+  // for nav tiles it stays present but empty, so narrow layouts that un-hide it do not draw
+  // a second, different icon beside the label's.
+  const seat = isNav ? '' : stationIcon(item.id);
+  const labelGlyph = isNav ? stationTabGlyphSvg(item.id) : '';
   // Inside a role=tablist an <li> keeps no role of its own — the tab is the listitem's button.
   return (
     `<li${isNav ? ' role="presentation"' : ''}><button type="button" ${stationControlAttrs(item.id)} class="k-word k-word--body sx-tile${extra}" ${dataAttr} aria-label="${escapeMarkup(item.aria || item.label)}">` +
-      `<span class="sx-tile__seat" aria-hidden="true">${stationIcon(item.id)}</span>` +
+      `<span class="sx-tile__seat" aria-hidden="true">${seat}</span>` +
       `<span class="sx-tile__badge k-t-fine k-signal" data-badge="${item.id}" hidden></span>` +
-      `<span class="sx-tile__label">${escapeMarkup(item.label)}</span>` +
+      `<span class="sx-tile__label">${labelGlyph}${escapeMarkup(item.label)}</span>` +
       (kind === 'act' ? `<span class="sx-tile__cost k-t-fine k-38" data-cost="${item.id}">—</span>` : '') +
     `</button></li>`
   );
