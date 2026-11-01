@@ -1466,6 +1466,21 @@ function installUnreadyDrawGuard(renderer) {
   renderer.__sfUnreadyDrawGuardDepth = 0;
   const inner = renderer.renderBufferDirect;
   const drawGuardGl = typeof renderer.getContext === 'function' ? renderer.getContext() : null;
+  renderer.__sfDeferSelectedProgram = (program, object, material) => {
+    let ready = !!program && !programWrapperDead(drawGuardGl, program);
+    if (ready && typeof program.isReady === 'function') {
+      try { ready = program.isReady() === true; } catch (_) { ready = false; }
+    }
+    if (ready) return false;
+    const data = material.userData || (material.userData = {});
+    const queue = renderer.userData && renderer.userData.spacefaceQueuePipelineAdmission;
+    if (data.__sfPipelineAdmission !== true && typeof queue === 'function') {
+      data.__sfPipelineAdmission = true;
+      Promise.resolve(queue(object)).catch(() => null)
+        .finally(() => { data.__sfPipelineAdmission = false; });
+    }
+    return true;
+  };
   function unreadyDrawGuard(camera, scene, geometry, material, object, group) {
     // Three already ran object/material before-hooks. Its instance renderer skips
     // zero counts only after program/uniform/binding work; avoid that work here.

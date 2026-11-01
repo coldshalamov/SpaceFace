@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import * as THREE from 'three';
 import { WebGLPrograms } from 'three/src/renderers/webgl/WebGLPrograms.js';
+import { spacefaceSelectedProgramDeferred } from '../vendor/three.module.js';
 
 import { createUnreadyDrawableGuard, programWrapperDead } from '../src/render/bloom.js';
 import { bumpPackageDetachSerial, packageDetachSerialNow } from '../src/render/imageSourceDedupe.js';
@@ -251,6 +252,54 @@ test('ready current wrappers keep warm draws free of native readiness and livene
     assert.equal(draws.length, 8);
     assert.equal(admissions.length, 0);
   } finally { guard.restore(); }
+});
+
+test('a skinned draw checks its own pending Three program rather than a ready mesh sibling', () => {
+  const { renderer, draws, admissions } = rendererHarness();
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.toneMapping = THREE.NoToneMapping;
+  renderer.getRenderTarget = () => null;
+  const material = new THREE.MeshStandardMaterial();
+  material.userData.spacefaceProgramCanon = 1;
+  const vendorCache = new WebGLPrograms(
+    { outputColorSpace: renderer.outputColorSpace }, null, null,
+    { precision: 'highp', logarithmicDepthBuffer: false }, null, null,
+  );
+  const key = skinning => vendorCache.getProgramCacheKey({
+    shaderID: 'physical', isRawShaderMaterial: false, precision: 'highp',
+    outputColorSpace: renderer.outputColorSpace, toneMapping: THREE.NoToneMapping,
+    instancing: false, instancingColor: false, instancingMorph: false, skinning,
+    customProgramCacheKey: material.customProgramCacheKey(),
+  });
+  const ready = { cacheKey: key(false), program: {}, isReady: () => true };
+  let skinnedReady = false;
+  const pending = { cacheKey: key(true), program: {}, isReady: () => skinnedReady };
+  assert.notEqual(ready.cacheKey, pending.cacheKey);
+  const rec = { currentProgram: ready, programs: new Map([[ready.cacheKey, ready], [pending.cacheKey, pending]]),
+    instancing: false, instancingColor: false, instancingMorph: false, skinning: false,
+    toneMapping: THREE.NoToneMapping, outputColorSpace: renderer.outputColorSpace, __version: material.version };
+  renderer.properties.get = () => rec;
+  // Exercise the real vendored selection-boundary seam after Three's actual cache-key choice.
+  renderer.renderBufferDirect = (_camera, _scene, _geometry, drawMaterial, object) => {
+    const selected = rec.programs.get(key(object.isSkinnedMesh === true));
+    const changed = selected !== rec.currentProgram;
+    rec.currentProgram = selected;
+    rec.skinning = object.isSkinnedMesh === true;
+    if (spacefaceSelectedProgramDeferred(renderer, rec, selected, object, drawMaterial, changed)) return undefined;
+    draws.push(object);
+    return 'drawn';
+  };
+  const mesh = new THREE.SkinnedMesh(new THREE.BoxGeometry(), material);
+  const scene = new THREE.Scene(); scene.add(mesh);
+  const guard = createUnreadyDrawableGuard(renderer);
+  guard.hide(scene);
+  try {
+    assert.equal(renderer.renderBufferDirect(null, scene, mesh.geometry, material, mesh, null), undefined);
+    assert.deepEqual(admissions, [mesh]); assert.deepEqual(draws, []);
+    skinnedReady = true;
+    assert.equal(renderer.renderBufferDirect(null, scene, mesh.geometry, material, mesh, null), 'drawn');
+    assert.deepEqual(draws, [mesh]);
+  } finally { guard.restore(); mesh.geometry.dispose(); material.dispose(); }
 });
 
 test('transmission draw checks its pass-specific sibling without waiting unrelated variants', () => {
