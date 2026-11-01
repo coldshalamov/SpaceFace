@@ -66,6 +66,17 @@ ${GO} > .sf-go-tape .orr-tape__legend { fill:rgb(${BONE} / .88); }
 ${GO} > .sf-go-tape .orr-tape__legend--sub { fill:rgb(${BONE} / .72); }
 ${GO} > .sf-go-tape .orr-tape__empty { fill:rgb(${BONE} / .8); }
 
+/* ui-polish-283: the recovery dock, recovery cost and cargo consequence were loose type on the void,
+   wrapping two-and-one under the headline. On every frame past the phone they now sit in one row of
+   equal hairline cards, word over figure, the same card the Research and Codex readings use */
+@media (min-width:641px) {
+  ${GO} .sf-go-grid { flex-wrap:nowrap !important; align-items:stretch !important; gap:clamp(6px, .6vw, 10px) !important; max-width:min(100%, 640px); }
+  ${GO} .sf-go-grid .k-hero { flex:1 1 0; box-sizing:border-box; justify-content:space-between; gap:6px;
+    padding:clamp(7px, 1.1vh, 12px) clamp(9px, .8vw, 14px) !important; border:1px solid rgb(${BONE} / .16); border-radius:6px;
+    background:rgb(12 12 14 / .62); }
+  ${GO} .sf-go-grid .k-hero__w { letter-spacing:.12em !important; line-height:1.25; }
+  ${GO} .sf-go-grid .k-hero__n { overflow-wrap:break-word; }
+}
 /* 720p: keep the four actions on one rail */
 @media (max-width:1400px) {
   ${GO} .sf-go-foot > .k-words { column-gap:20px !important; }

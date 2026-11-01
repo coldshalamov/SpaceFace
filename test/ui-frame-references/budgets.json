@@ -11,7 +11,7 @@
   "measured": "synchronous registry.get(\"ui\").frame plus authored src/ui requestAnimationFrame callback CPU bucketed per presentation timestamp, 150 ms warm-up discarded; worst combined UI sample per surface over a 600 ms headed window",
   "excluded": "browser layout/paint deferred after the owner callback is outside this CPU window; unclassified non-game requestAnimationFrame callbacks are reported separately as auxiliaryRaf* diagnostics",
   "seed": 47,
-  "uiSourceDigest": "973e4f1758fb2c8489b4795383f10858d39f844fc74934c172dff948f2c9ee77",
+  "uiSourceDigest": "66d20cf93421bd6e2626803e929f4814e79daa7f4c13b3db3ef530aa030afb9f",
   "uiSourceFiles": {
     "index.html": "2796755b401af2cf4fc2f1dfe0cdb3835216f4f09e3c4d1d8365430aac5aad3b",
     "src/ui/accessibility.js": "43e22e22f3d37dedf859ed62c16b3a038e6144d3718a3d87716b6df52b448657",
@@ -186,7 +186,7 @@
     "src/ui/orrery/footprintDial.js": "ed7f0cc2f97e68942f478b1a28b3412cf6a0e7cd7e8b5ba9b4831e49d608bb65",
     "src/ui/orrery/footprintLayouts.js": "886569688ca7694c88364a0d0e8f7a6c106700821b541ecf0713f6bc4aed2116",
     "src/ui/orrery/game-overLayouts.js": "8581f52a84e3f2deb0e1eb5f59ae3fea192356c9a1786167877b76e5457d7b35",
-    "src/ui/orrery/gameOverLayouts.js": "fa376ee25d9f5139668fc59611531ad4b3a745fb2527c93878887a4ed942c5db",
+    "src/ui/orrery/gameOverLayouts.js": "8ece02846eea4346c398839444600e7fc07e1899568659d302fe16d10b7758a7",
     "src/ui/orrery/helpInstruments.js": "d22ee3301986a82711945817eb454ec84c34671ca92ac56980c18fa2cfba1318",
     "src/ui/orrery/helpLayouts.js": "1d18d5574f9e335b57083d8f21dbfc001bc698c7688c059df529356eceb3a8df",
     "src/ui/orrery/helpRig.js": "e938a001ef321760c1b0417d2be761909336e72a288965e950eaf1eef34b91eb",
