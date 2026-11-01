@@ -16,6 +16,7 @@ export const ENEMY_SILHOUETTE_ENGINE_GLOW = Object.freeze({
   kilnback: '#ff6a3d',
   mothlight: '#cfe8a0',
   pallet_jack: '#e8c46a',
+  iron_kraken: '#85d0da',       // siphon drive — cold machine teal, not a burn
 });
 
 export function engineGlowForSilhouette(id) {

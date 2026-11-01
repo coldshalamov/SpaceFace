@@ -21,7 +21,7 @@ import { CombatDoctrineRuntime } from '../src/ai/combatDoctrine.js';
 const TELEGRAPH_VFX_KINDS = Object.keys(ADDITIONAL_ACTION_VFX_RECIPES['ai:telegraph'].variants);
 
 test('FB-016: every roster row carries a telegraph block with bark, line and cue', () => {
-  assert.equal(ENEMY_TYPES.length, 26, 'roster size pin — extend this test when rows are added');
+  assert.equal(ENEMY_TYPES.length, 34, 'roster size pin — extend this test when rows are added');
   for (const def of ENEMY_TYPES) {
     const t = def.telegraph;
     assert.ok(t && typeof t === 'object', `${def.id} has no telegraph block`);

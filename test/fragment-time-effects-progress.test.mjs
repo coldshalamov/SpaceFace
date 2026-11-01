@@ -130,6 +130,29 @@ function spawnFragment(fx, { x = 40, z = 30 } = {}) {
   return ent;
 }
 
+// A whole dead hull — T4 on the throw-tier ladder (radius > 45): the only body class heavy
+// enough to earn the directed kick under the W-CAMERA row-545 ruling.
+function spawnHulk(fx, { x = 84, z = 46 } = {}) {
+  const id = fx.nextId++;
+  const ent = {
+    id,
+    type: 'wreck',
+    alive: true,
+    collides: true,
+    pos: { x, z },
+    vel: { x: 0, z: 0 },
+    radius: 60,
+    mass: 300,
+    hull: 0,
+    hullMax: 1,
+    flags: {},
+    data: {},
+  };
+  fx.state.entities.set(id, ent);
+  fx.state.entityList.push(ent);
+  return ent;
+}
+
 function spawnShip(fx, { x = 120, z = 60, mass = 20, radius = 10 } = {}) {
   const id = fx.nextId++;
   const ent = {
@@ -245,7 +268,9 @@ function fragmentStorm(fx, i) {
   if (i % 20 === 9) {
     const t = spawnFragment(fx, { x: 70, z: 40 });
     const o1 = spawnFragment(fx, { x: 74, z: 42 });
-    const o2 = spawnFragment(fx, { x: 78, z: 44 });
+    // Third body is a hulk-class hull — the directed kick answers only T4+ contact, so the
+    // chain's winner must involve a whole dead hull for the kick channel to fire at all.
+    const o2 = spawnHulk(fx, { x: 84, z: 46 });
     // The second consequence must carry the greater deltaV — same-frame pending records only
     // replace on a strictly larger presented strength, and the chainBeat flag rides the winner.
     emitConsequence(fx, t, o1, { rootId: `root-${i}`, rootTick: fx.state.tick, deltaV: 80 });

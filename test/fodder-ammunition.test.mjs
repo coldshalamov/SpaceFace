@@ -225,7 +225,9 @@ async function runResolveArm({ seed, mode }) {
     let wellDeployed = false;
     const settleTicks = 72;
     const engageTick = settleTicks;
-    const maxTicks = physicsPlay ? 480 : 2100;
+    // Guns window is sized for the ROW 482 starter bolt (dmg 5): the seventh light dies around
+    // ~40 s — the old 2100-tick cap let only ~6 die, leaving the median stranded at Infinity.
+    const maxTicks = physicsPlay ? 480 : 4800;
     let shoved = false;
     let lastPulseTick = -PULSE_INTERVAL_TICKS;
 

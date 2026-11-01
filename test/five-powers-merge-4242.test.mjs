@@ -258,6 +258,10 @@ test('retired arsenal leaves the adventure shop and tech tree; its job has a hom
   const RETIRED = {
     wpn_gravity_marker_s: 'pull', wpn_gravity_well_m: 'pull', wpn_momentum_sink_s: 'line',
     wpn_inertial_shunt_s: 'mod_ram_plate', wpn_sticky_detonator: 'bomb', tool_viscosity_field: 'bomb', wpn_conductive_primer: 'mod_relay_arc',
+    // Row 550 (2026-10-29): the six head-parked physics tools retire to their §7.1 Line homes.
+    tool_polarity_inverter: 'shove', tool_hardlight_prism: 'mod_line_head_weld',
+    tool_thruster_hijacker: 'mod_line_head_override', wpn_rcs_disruptor_m: 'mod_line_head_override',
+    tool_seismic_gong: 'mod_line_head_bell', tool_quantum_sympathy: 'mod_line_head_sympathy',
   };
   for (const [id, home] of Object.entries(RETIRED)) {
     const def = WEAPONS.find((w) => w.id === id);
@@ -272,7 +276,7 @@ test('retired arsenal leaves the adventure shop and tech tree; its job has a hom
   // The kept arsenal is untouched.
   // The approved table keeps the vector mine (a placed trap, the mine family) on sale and researchable.
   assert.ok(TECH_NODES.find((n) => n.id === 'tech_guided_ordnance').unlocks.modules.includes('wpn_vector_mine_m'));
-  for (const id of ['wpn_vector_mine_m', 'wpn_concussion_cannon_s', 'wpn_mass_driver', 'wpn_thermal_cooker', 'wpn_emp_disruptor_m', 'tool_grav_anchor', 'tool_polarity_inverter', 'tool_seismic_gong', 'tool_quantum_sympathy', 'tool_hardlight_prism', 'tool_thruster_hijacker']) {
+  for (const id of ['wpn_vector_mine_m', 'wpn_concussion_cannon_s', 'wpn_mass_driver', 'wpn_thermal_cooker', 'wpn_emp_disruptor_m', 'tool_grav_anchor']) {
     assert.equal(WEAPONS.find((w) => w.id === id)?.retiredInto, undefined, `${id} stays on sale`);
   }
 });

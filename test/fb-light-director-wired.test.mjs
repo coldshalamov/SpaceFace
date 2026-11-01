@@ -24,6 +24,9 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const VFX_SOURCE = [
   readFileSync(join(ROOT, 'src/render/vfx.js'), 'utf8'),
   readFileSync(join(ROOT, 'src/render/vfx/shipManeuverVfx.js'), 'utf8'),
+  readFileSync(join(ROOT, 'src/render/vfx/doctrineTellVfx.js'), 'utf8'),
+  readFileSync(join(ROOT, 'src/render/vfx/explosionPresentationVfx.js'), 'utf8'),
+  readFileSync(join(ROOT, 'src/render/vfx/weaponImpactVfx.js'), 'utf8'),
 ].join('\n');
 
 // --------------------------------------------------------------------------

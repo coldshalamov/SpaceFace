@@ -19,7 +19,12 @@ for(const mode of ['loading','flight'])for(const throws of [false,true])test(`se
  let target=null,draws=0,seen=new Set(),censuses=0;
  const renderer={getRenderTarget:()=>target,setRenderTarget:v=>target=v,render(){draws++;scene.traverseVisible(o=>{if(o.isMesh)seen.add(o);});}};
  const touch=group=>{if(throws)throw new Error('touch-failed');return touchSubjectOnExactTarget(renderer,null,group,new THREE.PerspectiveCamera(),scene);};
- const grouped=async(group,session)=>{assert.ok(session);if(throws)throw new Error('touch-failed');return touchSubjectOnExactTarget(renderer,null,group,new THREE.PerspectiveCamera(),scene,{drawableSession:session});};
+ // The real touchExactTargetSubjects reveals each subject around the synchronous draw
+ // (66a099286cf4) — a subject still hidden contributes no drawable and the touch skips it.
+ const grouped=async(group,session)=>{assert.ok(session);if(throws)throw new Error('touch-failed');
+  const restores=group.map(s=>revealSubjectWithAncestors(s));
+  try{return touchSubjectOnExactTarget(renderer,null,group,new THREE.PerspectiveCamera(),scene,{drawableSession:session});}
+  finally{for(let i=restores.length-1;i>=0;i--)restores[i]();}};
  const out=await run.call({_selectPostRoute:()=> 'bloom',_compilePostRoute:async()=>({ready:true})},
   admitOpeningUnitsAcrossSlices,uniqueAdmissionUnits,async()=>{censuses++;return drawableHideSession(scene);},()=>false,()=>6000,renderer,subjects,
   ()=>({drain:async()=>({}),close(){},restoreEntryTarget(){}}),async()=>{},revealSubjectWithAncestors,touch,grouped,{obj:new THREE.PerspectiveCamera()},scene,{mode},fn=>fn,async()=>{},()=>0,4,()=>{},{});

@@ -455,6 +455,7 @@ export const TELEGRAPH_FORCE_CHANNELS = Object.freeze({
   alphaStrike: 'impulses',
   furnace_preheat: 'repulsors',
   mothlight_iris: 'impulses',
+  lawful_interdict: 'impulses',
 });
 
 export function forceChannelForTelegraphKind(kind) {
