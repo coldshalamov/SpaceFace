@@ -13,6 +13,7 @@ import {
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import vm from 'node:vm';
 
 import {
   assessElectronProcessHealth,
@@ -26,6 +27,7 @@ import {
   evaluateElectronPublicationReadiness,
   evaluateElectronUrlAcceptance,
   forceCloseOwnedElectronTree,
+  installElectronQuitPreparedStdoutObserver,
   runGuardedElectronPublication,
   validateElectronEvidenceEnvelope,
 } from '../scripts/lib/alphaLiveBaselineElectronContracts.mjs';
@@ -1118,6 +1120,34 @@ async function testProcessMonitorAndCrashRejection() {
   assert.equal(earlyExit.pass, false, 'main process exit before owned close rejects acceptance');
   assert(earlyExit.failures.some((failure) => /unexpected/i.test(failure)));
   earlyMonitor.stop();
+
+  const quitChild = fakeChildProcess();
+  const quitMonitor = createElectronProcessMonitor({ electronApp: new EventEmitter(), childProcess: quitChild });
+  const ipcMain = new EventEmitter();
+  const ownedContents = {};
+  let timestampCalls = 0;
+  const observer = installElectronQuitPreparedStdoutObserver({
+    ipcMain,
+    webContents: [ownedContents],
+    stdout: { write: (line) => { quitChild.stdout.emit('data', Buffer.from(line)); return true; } },
+    now: () => { timestampCalls += 1; return '2026-10-31T18:00:00.000Z'; },
+  });
+  assert.equal(observer.installed, true, 'quit observation installs for the owned Electron window');
+  ipcMain.emit('spaceface:quit-prepared', { sender: {} }, 1, { ok: false, reason: 'unrelated' });
+  assert.equal(quitMonitor.snapshot().messages.length, 0, 'unowned window replies do not enter cleanup telemetry');
+  ipcMain.emit('spaceface:quit-prepared', { sender: ownedContents }, 2, { ok: false, reason: 'exit-save-failed', extra: 'discard' });
+  const quitRecordLine = quitMonitor.snapshot().messages.find((message) => message.text.startsWith('[spaceface.quit-prepared] '));
+  assert(quitRecordLine, 'the owned quit reply is written to the existing captured process stream');
+  assert.deepEqual(JSON.parse(quitRecordLine.text.slice('[spaceface.quit-prepared] '.length)), {
+    ok: false,
+    reason: 'exit-save-failed',
+    timestamp: '2026-10-31T18:00:00.000Z',
+  }, 'quit telemetry retains only the bounded reply verdict, reason, and timestamp');
+  assert.equal(timestampCalls, 1, 'the observer records only the first owned quit reply');
+  quitMonitor.markClosing();
+  assert.match(quitMonitor.snapshot().closingStartedAt, /^\d{4}-\d\d-\d\dT/,
+    'the existing closing marker records when the harness requested shutdown');
+  quitMonitor.stop();
 }
 
 async function testOwnedElectronCleanup() {
@@ -1135,6 +1165,17 @@ async function testOwnedElectronCleanup() {
   assert.equal(report.processExited, true);
   assert.equal(report.processCloseConfirmed, true, 'ChildProcess close proves stdio drain before monitor stop');
   assert.equal(report.listenerReleased, true);
+  assert.equal(report.quitPreparedObserver.installed, true,
+    'cleanup reports whether the next quit handshake can be distinguished from a missing reply');
+  assert.match(report.quitRequestedAt, /^\d{4}-\d\d-\d\dT/);
+  const observedQuitReply = report.processMonitor.messages.find((message) => message.text.startsWith('[spaceface.quit-prepared] '));
+  assert(observedQuitReply, 'the serialized Electron evaluate observer reaches the owned reply and process monitor');
+  const observedQuitRecord = JSON.parse(observedQuitReply.text.slice('[spaceface.quit-prepared] '.length));
+  assert.deepEqual({ ok: observedQuitRecord.ok, reason: observedQuitRecord.reason }, {
+    ok: false,
+    reason: 'exit-save-failed',
+  });
+  assert.match(observedQuitRecord.timestamp, /^\d{4}-\d\d-\d\dT/);
   assert.equal(report.urlTracker.pageClosedWhenStopped, true);
   assert(report.processMonitor.messages.some((message) => /meaningful residual diagnostic/.test(message.text)),
     'owned close flushes meaningful residual process text into durable telemetry');
@@ -1587,7 +1628,26 @@ function cleanupFixture({
   const childProcess = fakeChildProcess();
   const electronApp = new EventEmitter();
   electronApp.process = () => childProcess;
+  let observerInstalled = false;
+  const ipcMain = new EventEmitter();
+  const ownedContents = {};
+  electronApp.evaluate = async (callback, installerSource) => {
+    const result = vm.runInNewContext(`(${callback.toString()})(electron, installerSource)`, {
+      electron: { ipcMain, BrowserWindow: { getAllWindows: () => [{ webContents: ownedContents }] } },
+      installerSource,
+      process: { stdout: { write: (line) => { childProcess.stdout.emit('data', Buffer.from(line)); return true; } } },
+      Date,
+      Set,
+      Array,
+      JSON,
+      String,
+    });
+    observerInstalled = result?.installed === true;
+    return result;
+  };
   electronApp.close = async () => {
+    assert.equal(observerInstalled, true, 'quit reply observer installs before app.close starts');
+    ipcMain.emit('spaceface:quit-prepared', { sender: ownedContents }, 9, { ok: false, reason: 'exit-save-failed' });
     page.closed = true;
     electronApp.emit('close');
     if (closeProcess) {

@@ -456,9 +456,12 @@ function allowanceSource() {
   return 'availableParallelism';
 }
 
-// HALF of availableParallelism(), not all of it and not cpus-1. This is the ONE place the machine is
-// consulted; everything below this point divides what it says, so the number has to be the point
-// where adding a process stops paying. Measured 2026-07-27 on an 8-logical-core box:
+// HALF of availableParallelism(), capped at four. This is the ONE place the machine is consulted;
+// everything below divides what it says. The older 8-logical-core measurements favored a wider
+// ceiling, but a recent owner-machine run measured the automatic 7-job (3+4) split at 92.054s and
+// the explicit 4-job (2+2) split at 86.286s. Keep the automatic ceiling at the measured faster
+// configuration while leaving explicit --jobs and inherited SPACEFACE_CHECK_JOBS overrides intact.
+// Historical measurements from 2026-07-27 on an 8-logical-core box:
 //
 //   the 8 leaf links      serial 19.5s | x2 16.2s | x3 15.2s | x4 15.0s
 //   the massline aggregate serial 63.2s | x2 47.9s | x3 52.4s | x4 63.8s | x7 49.4s
@@ -466,12 +469,11 @@ function allowanceSource() {
 // Past about two concurrent heavy sims per lane, per-process time inflates faster than the pool
 // drains (check:sim goes 8.2s -> 14.9s), so the wall stops improving and starts getting NOISIER,
 // which is the failure mode this whole change exists to kill. availableParallelism() reports logical
-// CPUs; on an SMT machine half of that is the physical core count, which is where the knee sat here.
-// Floor of 2 so even a tiny box overlaps the long pole with something; ceiling of 8 because only six
-// of the aggregate's 23 children are non-trivial, so nothing wider has work to do.
+// CPUs; on an SMT machine half of that approximates physical cores. Floor of 2 so the long pole can
+// overlap other work; the automatic ceiling is 4 based on the more recent full-baseline comparison.
 function defaultAllowance() {
   const cpus = typeof availableParallelism === 'function' ? availableParallelism() : 4;
-  return Math.max(2, Math.min(8, Math.round(cpus / 2)));
+  return Math.max(2, Math.min(4, Math.round(cpus / 2)));
 }
 
 function readOption(name) {

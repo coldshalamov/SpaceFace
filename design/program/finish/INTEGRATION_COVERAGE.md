@@ -14,11 +14,12 @@ acceptance criteria. Source reads and focused checks do not establish ordinary-r
 | Swarm / Foundry | The corrected public Swarm run reaches round three with all functional route, control, spawn, transition and presentation checks passing. Its aggregate remains **INCOMPLETE** for performance and readability/LOD diagnostics. Foundry controls, round transitions, player visibility, LOD/pop behavior, VFX and 1,219 edge-marker samples passed. | The old Swarm wave-two death remains failed history, superseded for functional acceptance by the extended run below. Foundry's original route remains **FAIL** for a wave-six asteroid with missing causal identity. Its first-ten/boss route is still required; see [Swarm gaps](./SWARM_RENAISSANCE_GAPS.md). |
 | Hero Maneuvers | Public M02 bank, bomb commitment and phase return passed; target survival was an allowed miss. Pinball's ordinary Shift charge/release now ends in canonical `pinball_complete`, one admitted player-attributed physical contact and a live pilot. | The Pinball wrapper's prediction-gate failure is retained; the canonical impact counter establishes the actual-contact outcome independently of that prediction. Contact body identity is unknown, so no locked-target hit is claimed. See `physical-contact-reassessment.json` in the 23:13 Pinball run below. Earlier target-lost/zero-contact and false-zero-dash-speed attempts remain historical. |
 | Adventure / station | Borrowed Sun lease/save/Continue retains eight completed beats. The current ordinary Helios → Ceres starter haul delivers eight fuel cells for 760 credits, then F5 → title Continue preserves the exact settled identity. Both mounted-store and static-host quota → gzip persistence routes pass. The canonical durable-save repair includes stale-generation protection and restoration of the prior save after both writes fail. | Full M8 stability remains open. Shipworks, Market and Bar controls have scoped browser evidence; the docked airlock caption repair is awaiting its browser check. |
-| Startup / graphics recovery | Earlier short routes pass ordinary F5/F9 and authored-mesh context recovery. Current public drivers handle First Light, cinematic input release and F9 terminal failure without masking the original error. | Current diagnostic runs reproduce two production defects: F9 can stop at an incomplete opening submission plan, and the context-recovery tail can throw a Three.js buffer-size mismatch. The first plan snapshot confirms the first-playable shader set was complete, but lacks the predicates selecting the remaining cause; the existing diagnostic is being corrected. Neither defect is repaired or accepted. Full 30-minute M8 plus context loss and 120-second tail remains required. |
-| Resource lifetime / GPU timing | The historical 30-minute M8 completed 38 ordinary save/load/trade cycles over 31.1 minutes and retained the authored player mesh through forced context recovery plus the 120-second flight tail. It remains **FAIL**: post-GC heap rose 703,119,478→1,493,992,170 bytes (+754.2 MiB) before context loss; geometries rose 1925→2784, textures 178→226 and programs 234→268. Entity population remained bounded (124–135). Package and soft-residency caches stayed within their 64 MiB limits and do not account for the heap delta. | The strong-root heap trace reaches completed package admissions and stale callbacks retaining warm-up cohorts. The repair releases finished decode admissions and isolates exact-task stale callbacks; 43 focused lifetime/cancellation cases pass. The default-worker four-cycle check passes its memory/resource limit: heap 623,586,471→649,738,259 bytes (+26.2 MB), geometries 2377→2304, textures 186→189 and programs 223→223. This is not a causal comparison with the earlier main-lane capture, and 30-minute stability remains open. There were 63 warnings, two pre-loss buffer-resize failures, five post-restore disposed-batch touches, an undefined-width shadow upload and foreign-context deletes; the exact old-generation template disposal boundary is under repair. A generic 404 lacks URL provenance and remains unknown. Runtime source changed during capture (`rescueOpening.js`, `archiveLayouts.js` and a playthrough helper), so the historical receipt is not source-stable or performance-qualifying. Artifact: `m8-adventure-session-30m-post-context-2026-10-30T14-01-16-706Z-32280-5075cd19/` under the M8 artifact root. The old scale A/B remains inconclusive; the 130-sim-second profile is diagnostic only. |
+| Startup / graphics recovery | The latest captured failure identifies restored Wasp armor UV data whose old GPU residency stamp survived context loss. The context owner now invalidates that ledger before restoration and guards pending detached uploads before projection; 20 focused cases pass. | The current ordinary forced-loss recovery and full 30-minute outcome remain open. The a4 normal soak failed in cycle 14; its diagnostic completed 20 cycles then failed recovery. Focused repair checks do not supersede those failed receipts. |
+| Resource lifetime / GPU timing | Earlier completed-admission/stale-callback leaks have focused repairs. The current short diagnostic retains post-GC heap 596,709,572 → 679,713,242 bytes (+83.0 MB), geometries 1993 → 2358, textures 162 → 174 and programs 213 → 221, with entities 180 → 186. Package residency decreases; these counters do not select a retained owner. | Stability remains FAIL. The next soak captures scene-reachable geometry identities by current root plus available disposal queues at three checkpoints. Owned close also fails after 15 seconds and a worker-clock watchdog fires during teardown; a read-only observer now records the existing quit-preparation reply through the process monitor. No timing or resource thresholds are relaxed. Historical 30-minute growth failure remains superseded only when a current qualifying run passes. |
 | Caption / receipt placement | Production captions and receipts use the canonical HUD obstacle allocator and cached bounds. Airlock graffiti now occupies the station narrative tape through its fade and registers with that same allocator in flight. The docked/flight fixtures show clear controls, but ordinary M8 later exposed an active-receipt captionSlot scope error. That error is repaired; the actual receipt-placement function now passes the HUD suite (21/21), including visible/hidden captions with external quotes. Opening instructions retain their normal-caption suppression while the quote remains visible. | These are scoped fixture checks. Natural docking and full-game/real-phone acceptance are separate; no runtime speed gain or quiet-host performance result is claimed. The detached COMMS button in the late-mounted fixture is absent from the existing ordinary M8 image, where the HUD adopts it into the radio tape. |
-| Source / retail rendering | Source uses vendored Three r184; retail bundles npm Three 0.186.1. `775e5abccacd` fixes graph AO calls to vendor-only capture/replay methods by falling back to ordinary color and normal passes on stock Three. All 42 focused render-target cases pass, including error-state restoration. | The fresh retail public Adventure route passes functional context recovery with High/manual and GTAO graph On selected: no `window.SF`, W speed 0→6 before loss and increased to 29 after restoration, with the authored world visible in the inspected post-restore capture. There are zero HTTP 400+, console and page errors; one boot-video `ERR_ABORTED` is recorded and excluded by the existing collector. Artifact: `.devshots/finish/integration-2026-10-30/retail-manual-gtao-context-smoke/result.json`. The separate worker-construction-failure route also passed High/manual + GTAO, public flight, context recovery and continued thrust without request/console/page errors (receipt `3e3f57c3d8080de8e9d81e21411af123696232841d5c4724edcef35f25ea1171`); the opt-in batch diagnostic found no failure. Selected settings do not independently prove GPU graph activation or performance. Vendor shadow/matrix optimizations use stock fallback behavior in retail, with performance parity unmeasured. Earlier disposed-batch failure remains history; clean long-session renderer/performance and intermittent High-click attribution remain open. Conditional vendor guards for empty shadow textures and destroyed programs require relevant retail-route evidence before calling them reachable defects. The current buffer-error hook is temporary, opt-in diagnostic code and will be removed after the caller fix. |
-| M9 / eager JavaScript and authored sidecars | Batch-ten bundle validation passes: 2808 files and 414/414 plans, receipt `77ff49a0f7a2d9314830a4030594712b5c5ce3dadba8825521bddfd17f9f5795`. Its physical built main closure is 15,490,568 raw / 4,816,400 summed-gzip bytes across 182 outputs. Shared pure attack and claims readers remove eager construction/automation dependencies. | The raw 12 MB floor, 6 MB target and runtime loading bars remain open. These integrated build bytes do not isolate performance attribution. The current baseline passes 17/17 in 62,394 ms against the unchanged 90,000 ms limit; older failures remain history. |
+| Asteroid controls / equipment lifetime | The narrow desktop palette keeps its 46px machine keys in a right rail, clear of the guide and rig in the opened 390×844 fixture. Rover and terrain completions respect teardown/generation ownership; actual callback tests preserve active failures while rejecting stale writes, and the reset walk has no browser errors. | Rover and terrain appearance remain UNKNOWN because the fixture captured before equipment readiness. The public PQ-024 actor now waits on the existing readiness API and records the ready view; that ordinary route has not run. The latest palette walk attempted 13/15 actions, with two untried after Leave/reset; it is not a full action pass. |
+| Source / retail rendering | Retail now uses the same vendored Three core as the source import map. The fresh packaged default worker route shows the authored ship and ordinary W thrust (0 to 5 U/S), with zero hard errors or GL_INVALID_* warnings and clean shutdown. | Batch eighteen passes startup/movement, not long-session recovery or performance. A 1,910.6 ms bloom warning and an inactive compile-owner cancellation remain visible for follow-up. See the packaged result below. |
+| M9 / eager JavaScript and authored sidecars | The latest measured main static closure (batch fifteen) is 11,722,389 raw / 3,652,037 summed-gzip bytes across 132 outputs, below the 12 MB floor. The presentation registry is awaited before runtime initialization. Batch eighteen bundle gates pass 414 plans and 74 cases. | The 6 MB target, total preflight transfer and runtime loading bars remain open. The measured four-job baseline passes 17/17 in 86,286 ms; this is not a new startup or frame-time result. |
 | Source-development worker loading | The source worker bundle reaches the worker lane in all four public raw/bundle/bundle/raw blocks. That capture's digest remains unchanged, all 775 raw-only paths match the complete worker input graph, and the remaining 1,762 page inputs match byte-for-byte. Warm-server mean readiness is 36.90 seconds raw versus 29.81 seconds bundled, about 19.2% faster observed; host utilization is 76–83%. The post-change ordinary Electron route passes exact save/profile bytes, fresh-profile Continue and both normal quits with no page, HTTP or request errors. | Enabled for normal source launches after the direct route passed; `SPACEFACE_DEV_SIM_WORKER_BUNDLE=0` retains raw ESM. Packaged, pinned, overlay and evidence routes retain their existing loading paths. The measurement excludes prewarm and is neither cold Electron startup nor FPS evidence. Source-cohort reassessment preserves the original classifier failure. Earlier aborted auto/profile requests remain historical with their transport cause unknown; the profile recovery repair below does not relabel them. Current route: `electron-save-quit-public/run-2026-10-31T01-17-04-686Z-4492-9ccc405a/result.json` under the local 2026-10-30 integration artifact root. |
 | Racing finish / result | **PASS** on the ordinary worker route: Practice — Textile Belt, all 16 gates, one lap, canonical 257.46 seconds (4:17.46), P3. Visible result/lap text matches; Start and Back are enabled. Back → flight → Circuits reopens the result board; Start launches exactly one new instance of the selected event. Zero page errors. | Published `0628badf2f66` preserves the public launch marker and waits for the matching mirrored mission terminal state before opening results; 16 focused HUD cases pass. Artifact: `.devshots/finish/integration-2026-10-30/racing-terminal-handoff-0628bad/race-result.json`. Earlier missing-board and stale-disabled-Start failures remain historical. This does not establish performance targets. |
 | Special500 race memories | Three authored entries now match their actual outcomes: Coldburn Rey's unsabotaged player win uses his relief-contest settlement; the last-place memory requires terminal race standings; the second-finish memory counts successful completions. IDs, existing progress and the second-finish threshold are preserved. Nine focused cases pass. | These event-matching checks do not establish a new public story or race route. No new reward effects were added. |
@@ -111,6 +112,127 @@ result remains historical even where later builds supersede its size.
 - **Performance and finish:** use the completed headed UI-budget matrix's named gaps, produce the final bundle and current baseline, close the finish build-map, and conduct the requested last-300-commit review at the end. Product performance bars remain open until their direct measurements meet the Finish README targets.
 
 ## Integrated changes and measurement limits
+
+- **Packaged renderer parity (batch eighteen):** the exact bare `three` import now resolves to
+  `vendor/three.module.js`, preserving the existing GLTFLoader alias and other addon resolution.
+  The captured invalid draws used a color fallback with comparison disabled for a shadow sampler
+  under npm r186; the shared vendored core includes the comparison-depth fallback repair. The
+  focused resolution suite passes 3/3; the fresh bundle passes 414 plans and 74 cases. Its receipt
+  matches the packaged ASAR exactly: 2819 files / 657,765,312 bytes. The uninstrumented packaged
+  route observes the worker lane, COI/SAB, the world ship and a public W hold (1237 ms, visible speed
+  0 to 5 U/S). It has zero hard errors and GL_INVALID_* warnings, and cleanup passes. The opened
+  frames also show the repaired planet shader. Two other warnings remain: a 1910.6 ms bloom scene
+  and an inactive post-route compile owner. This is startup/input/visual evidence, not performance,
+  save/Continue or full recovery acceptance. Artifacts: `.devshots/electron-packaged-startup/report.json`
+  and its `flight-before-forward` / `flight-after-forward` PNGs.
+
+- **Scenario normalization:** the three private synchronous update phases now reuse their tick's
+  canonical normalized record instead of cloning it again. Activation refreshes the reference;
+  public save, load and branch normalization boundaries remain. Nine focused scenario cases and
+  all four physical branches pass. The earlier 92,054 ms baseline exceeded the 90,000 ms budget;
+  that result is retained as history and superseded by the measured four-job result below. This
+  cleanup alone does not establish a measured timing gain.
+
+- **Current loading boundary (batch fifteen):** the main static ESM closure is 11,722,389 raw /
+  3,652,037 summed-gzip bytes across 132 outputs, below the 12 MB raw floor. Main now awaits the
+  presentation registry before creating its worker runtime and initializing owners; public registry
+  contracts and its full graph remain intact. Source preloads are synchronized. The canonical
+  shared worker build remains, and both worker graphs have zero missing outputs. Bundle build and
+  gates pass, including 414 render plans and 74 cases; receipt
+  `0d9e6869e0f77a17a11d7c4ce43efa10b93f6a808a5338f252e53df8bd48a0a7` (2819 files).
+  The ordinary worker/save/context route is next. This establishes static closure size, with no
+  total-transfer or startup-time gain claimed; the 6 MB target and runtime bars remain open.
+
+- **Current integrated checks (batch thirteen):** bundle build and gates pass all 414 render plans,
+  74 focused bundle cases and the 1399-entry voice corpus; receipt
+  `18c3d6057cb23a4453bebe3e8a70fc304456e88e006b34cd4bbd9fb86ed47318` covers 2808 files.
+  This working-tree build includes concurrent work and is not an isolated published-release
+  identity. The prior default-pool baseline passed all 17 assertions but **exceeded its timing budget**
+  at 92,184 ms; the earlier 92,054 ms failure is also retained above. A subsequent explicit
+  `--jobs=4` run passes all 17 assertions in 86,286 ms against the unchanged 90,000 ms budget.
+  The runner's automatic ceiling is now four jobs, with its minimum of two and explicit
+  `--jobs`/`SPACEFACE_CHECK_JOBS` overrides preserved. This records the measured four-job result;
+  the default after the cap change was not rerun, and no general speedup is claimed. The batch logs
+  are `batch13-build.log`, `batch13-bundle-check.log` and `batch13-baseline.log` under the 2026-10-31
+  integration artifact tree; the four-job follow-up result was reported directly by the runner.
+- **Normal repaired-candidate soak — FAIL:** `a4f1fe14452c` stops in cycle 14 with a terminal
+  Three.js buffer-attribute size mismatch. Graphics interrupted freezes presentation before
+  redocking; the player is in range. Resize capture was disabled, so the attribute remains
+  unidentified in that receipt. The same-source `m8-resize-owner-a4` diagnostic completes 20
+  cycles then fails context recovery with a captured SCN Wasp armor UV: GPU size zero versus
+  44,984 restored bytes. Old residency stamps survived on the same renderer after context loss.
+  The context owner now drops that ledger and the pre-projection guard blocks pending detached
+  uploads while canonical refill completes. Twenty guard/package cases pass; integrated normal
+  recovery verification remains pending. The observer also now fails fast on canonical graphics
+  interruption during docking; its eleven focused cases pass. The full-duration result remains
+  open. Output:
+  `.devshots/finish/integration-2026-10-31/m8-character-shadow-repairs-full/`.
+
+- **Phone station layout:** the 390×844 station header now puts its compact credits reading below
+  the title, and Shipworks gives the nameplate a separate band above its diagram. Current-tree
+  phone and 960×540 fixture captures are inspected with zero browser errors and no geometry
+  overlap/clipping findings. The Shipworks body remains scrollable. This is visual acceptance;
+  reset/confirmation states leave the fixture control walk incomplete, and its impound seed does
+  not expose the canonical lot desk. Ordinary station-tab last-row and impound reachability remain
+  open. Captures: `.devshots/finish/integration-2026-10-31/station-phone-layout-fix-r3/`.
+  The merged PR749 Market layout also exposed a 960×540 trade-console overflow, now repaired
+  within that breakpoint. A scoped fixture filters 64 rows to 23, searches to one, scrolls to and
+  selects the last filtered row, and hit-tests Quantity/Fewer/More/Max/Buy/Sell inside the viewport.
+  Its disabled Buy and enabled Sell states remain canonical. This is fixture evidence, with the
+  ordinary trade route still pending. Artifact: `pr749-market-960-targeted-final` in the same tree.
+
+- **Confirmed Vesper retention repair:** saved heap graphs identify a detached `seated_fastener`
+  mesh/new geometry absent from the start snapshot and end scene. Both become unreachable when
+  the shadow-caster registry edge is excluded. Its baker now unregisters permanently retired
+  source casters before merging; the real-builder test fails before the fix and passes after it.
+  Model/registry suites pass 15/15 and live merged geometry retains shadows. This fixes one proven
+  family; the full heap/resource trend still needs the normal soak.
+  Matching permanent retirement helpers in Morrow, Ruud, Bracket, Ravel and Rubric are also
+  repaired; their five real-builder regressions fail before repair and pass after it. The focused
+  character batch passes 58/58, retaining shadows on merged live surfaces.
+- **Shadow-depth texture repair:** the actual driver now canonically refills CPU-detached texture
+  payloads and holds their lease through paced staging. The direct real-texture case reproduces
+  empty mip access before refill and passes normal drawing, generation cancellation and rejected
+  pacing after a partial 32-caster slice. Caster homes, renderer hooks and lease release survive
+  that error. Public recovery verification remains pending.
+
+- **Short heap diagnostic on `030aaf675118`:** nine measured save/load/trade cycles and same-mesh
+  context recovery complete. Normal quit is now graceful with no force kill; the snapshot-fence
+  warning does not recur. The aggregate fails for 69,376,132 bytes of retained heap growth,
+  169 geometries, eight programs and three warnings: one missing compressed-texture first mip
+  during shadow-depth staging and two foreign-context deletes. The existing shadow warning now
+  retains bounded primitive caster/sampler identity on failure; the original error and draw hook
+  restoration are covered by a passing focused case. Heap attribution remains active, and this
+  instrumented run supplies no performance qualification. Evidence is under
+  `.devshots/finish/integration-2026-10-31/m8-f9-heap-diagnostic/`.
+- **Drone composer exact-step restore:** all three existing physical seed-4242 MOVE, WAIT and
+  partial-transfer checkpoint cases pass through production serialize/deserialize and save-loaded
+  materialization, then continue for three cycles with matching counters, trajectories, freight
+  and receipts. This closes conditional owner review R-36df771; ordinary Automation UI remains
+  part of the queued public UI journey.
+- **Renderer organization:** 35 residency/admission queries plus their pooled band helper move
+  intact to a focused module, retaining scratch identity and public exports. Seventy-nine existing
+  focused cases pass; a stale source pin now tests actual composed-zoom residency behavior and
+  passes. The canonical first-flight collector also passes ordered/capped membership parity.
+  The integrated batch-twelve baseline passes 17/17 in 66,831 ms against 90,000 ms; this is a
+  working-tree check and supplies no isolated runtime speed claim. Log:
+  `.devshots/finish/integration-2026-10-31/batch12-baseline.log`.
+
+- **Latest full Adventure soak — FAIL:** `c6dc3ea137e4` completes 51 measured save/load/trade
+  cycles over 30.2 minutes, same-mesh context recovery and a 120-second flight tail with zero
+  page, console, GL and network errors. Earlier incomplete-plan and resize defects do not recur.
+  Heap grows 628,628,364 to 953,614,032 bytes; renderer geometries grow 2273 to 3076 while
+  scene-reachable unique geometries grow 1888 to 1912. The owner of the off-scene growth remains
+  unknown. Frame budgets fail. Three warnings identify competing snapshot-fence packers, now
+  serialized with five lifetime checks passing. Owned quit receives `achievements-mirror-failed`;
+  a reproduced local-only 404 case is repaired with 14 achievement checks passing, preserving
+  real-server-failure vetoes. Next is the existing short matched heap diagnostic and public close.
+  Evidence: `.devshots/finish/integration-2026-10-31/m8-full-soak-intro-r2/`.
+- **VFX family split:** 19 explosion/weapon picture methods move to two family modules with body
+  parity and scheduling/lifetime retained in VFX. The focused batch's Gyre intensity mismatch was
+  a stale assertion against authored units; the test now checks both authored and canonical
+  Three-light values. The two-case arsenal suite passes; production gain is unchanged. This is
+  source organization, with no startup or rendering performance gain claimed.
 
 - `57686d45cac` is the published 94-path connected implementation. `c7be545a6df` (published via
   `c1233cf7ad7`) fixes retained animated pivot freshness; 7 native cases and 29 guards pass, with

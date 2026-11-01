@@ -278,7 +278,7 @@ export async function dismissCinematicIntro(page, step = () => {}, { timeout = 1
       const firstLightVisible = !!(root?.classList.contains('sf-confirm--in') && firstLightDialogPresent && visible(title));
       const otherModal = [...document.querySelectorAll('[aria-modal="true"]')].find((node) => {
         if (node.id === 'cinematic-splash') return false;
-        if (node === dialog || node.contains(title)) return false;
+        if (firstLightDialogPresent && (node === dialog || node.contains(title))) return false;
         return visible(node);
       });
       return { splashVisible: visible(splash), firstLightVisible, firstLightDialogPresent,
@@ -328,7 +328,7 @@ export async function dismissCinematicIntro(page, step = () => {}, { timeout = 1
         const firstLightVisible = !!(root?.classList.contains('sf-confirm--in') && firstLightDialogPresent && visible(title));
         const otherModal = [...document.querySelectorAll('[aria-modal="true"]')].find((node) => {
           if (node.id === 'cinematic-splash') return false;
-          if (node === root?.querySelector('[role="dialog"]') || node.contains(title)) return false;
+          if (firstLightDialogPresent && (node === root?.querySelector('[role="dialog"]') || node.contains(title))) return false;
           return visible(node);
         });
         return !visible(splash) || firstLightVisible || firstLightDialogPresent || !!otherModal;
@@ -338,12 +338,38 @@ export async function dismissCinematicIntro(page, step = () => {}, { timeout = 1
     }
   }
 
-  last = await page.evaluate(() => ({
-    splashVisible: !!document.querySelector('#cinematic-splash'),
-    firstLightVisible: !!document.querySelector('#sf-confirm-root.sf-confirm--in #sf-confirm-title'),
-    otherModalActive: [...document.querySelectorAll('[aria-modal="true"]')]
-      .some((node) => node.id !== 'cinematic-splash' && node.getClientRects().length > 0),
-  }));
+  // Prompt answering and its input-fence cleanup can finish at the route deadline. The last loop
+  // sample may predate that cleanup, so use the same visibility test as the loop before reporting
+  // a timeout; an already-dismissed cinematic is complete even if its final animation crossed the
+  // deadline. A still-visible splash remains a real failure below.
+  last = await page.evaluate(() => {
+    const visible = (node) => {
+      if (!node || node.hidden) return false;
+      const style = getComputedStyle(node);
+      const rect = node.getBoundingClientRect();
+      return style.display !== 'none' && style.visibility !== 'hidden'
+        && rect.width > 0 && rect.height > 0;
+    };
+    const splash = document.getElementById('cinematic-splash');
+    const root = document.getElementById('sf-confirm-root');
+    const dialog = root?.querySelector('[role="dialog"]');
+    const title = dialog?.querySelector('#sf-confirm-title');
+    const firstLightDialogPresent = !!(title && String(title.textContent || '').replace(/\s+/g, ' ').trim() === 'First light');
+    const firstLightVisible = !!(root?.classList.contains('sf-confirm--in') && firstLightDialogPresent && visible(title));
+    const otherModal = [...document.querySelectorAll('[aria-modal="true"]')].find((node) => {
+      if (node.id === 'cinematic-splash') return false;
+      if (firstLightDialogPresent && (node === dialog || node.contains(title))) return false;
+      return visible(node);
+    });
+    return { splashVisible: visible(splash), firstLightVisible, firstLightDialogPresent,
+      otherModalActive: !!otherModal,
+      otherModalTitle: String(otherModal?.getAttribute('aria-label') || otherModal?.querySelector('h1,h2,[role="heading"]')?.textContent || '').replace(/\s+/g, ' ').trim() || null };
+  });
+  if (!last.splashVisible) {
+    if (shown) step('intro-dismissed', true, `visible cinematic dismissed with Space${promptAnswers ? ` after ${promptAnswers} First light interruption` : ''}`);
+    else step('intro-not-shown', true, 'fresh route reached the menu without a visible cinematic');
+    return { shown, spacePresses, promptAnswers };
+  }
   throw new Error(`cinematic did not dismiss within ${timeout}ms; ${JSON.stringify({ ...last, spacePresses, promptAnswers })}`);
 }
 

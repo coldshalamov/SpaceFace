@@ -237,6 +237,21 @@
 .aw-alert.warn { color: var(--orr-bone-hot); }
 .aw-alert.bad { color: var(--orr-danger); }
 .aw-alert.good { color: var(--orr-bone); }
+/* 601–1100px: with the claim, assay and site readings up, the crest leaves the alert about
+   110px. A one-line centred flex slot clipped "Loading mining equipment…" at both ends (an
+   anonymous flex line never ellipsizes). Let it set on two 13px lines — 30px inside the
+   40px crest — and end any longer banner on an ellipsis after the second. */
+@media (min-width: 601px) and (max-width: 1100px) {
+  .ast-screen .aw-alert.live {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    white-space: normal;
+    line-height: 1.15;
+    overflow-wrap: break-word;
+  }
+}
 
 .aw-crest-right {
   display: flex;
@@ -1136,6 +1151,26 @@ html:not([data-locale="en-US"]) .aw-alert {
   html:not([data-sf-mobile="1"]) .ast-screen .aw-crest-right { order: 1; margin-left: auto; gap: 10px; }
   html:not([data-sf-mobile="1"]) .ast-screen .aw-chip,
   html:not([data-sf-mobile="1"]) .ast-screen .aw-alert { order: 2; white-space: normal; max-width: 100%; }
+  /* The narrow desktop stage has room for the guide and palette side by side. Keep the authored
+     keys in a right-hand rail above the Arc Gauge, leaving the guide's existing left column clear.
+     The phone composition has its own layout. */
+  html:not([data-sf-mobile="1"]) .ast-screen .aw-palette {
+    left: auto;
+    right: 16px;
+    top: 16px;
+    bottom: auto;
+    display: grid;
+    grid-template-columns: repeat(2, 46px);
+    align-items: start;
+    gap: 6px;
+  }
+  html:not([data-sf-mobile="1"]) .ast-screen .aw-palette .aw-build-tip {
+    left: auto;
+    right: calc(100% + 8px);
+    top: 50%;
+    bottom: auto;
+    transform: translateY(-50%);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

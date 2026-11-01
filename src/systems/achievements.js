@@ -1251,7 +1251,7 @@ export function installAchievements({
       const pending = [...pendingMirrors];
       const outcomes = await Promise.all(pending);
       const localOnly = !sharedPlayerStoreAvailable() || sharedPlayerStoreCapability().status === 'absent';
-      if ((!localOnly && !result.mirror) || outcomes.some((ok) => !ok)) {
+      if (!localOnly && (!result.mirror || outcomes.some((ok) => !ok))) {
         return { ok: false, reason: 'achievements-mirror-failed', localSaved: true };
       }
       preparedForQuit = true;
