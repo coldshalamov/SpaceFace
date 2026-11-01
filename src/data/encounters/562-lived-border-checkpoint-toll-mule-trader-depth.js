@@ -1,6 +1,8 @@
 // MANIFEST ON THE BORDER CHECKPOINT — lived vignette. External-only: the day planner must not roll this.
+// DUST P1d voice pass: Customs Gate card (src/data/communityPersonality.js). Text only.
 import { deepFreeze, defineEncounter } from './catalog.js';
 import { compileVignette } from '../../systems/vignetteInterpreter.js';
+import { stationLine } from '../communityPersonality.js';
 
 const spec = {
   "id": "lived_border_checkpoint_toll_mule_trader_depth",
@@ -29,17 +31,17 @@ const spec = {
     {
       "id": "a",
       "label": "Pay the count",
-      "playerLine": "MOSS, I will pay for the manifest and take the marked lane."
+      "playerLine": "MOSS, I’ll pay the toll and take the marked lane."
     },
     {
       "id": "b",
       "label": "Ask for proof",
-      "playerLine": "Show me the manifest count before I enter border checkpoint."
+      "playerLine": "Show me the fee schedule before I cross. All of it."
     },
     {
       "id": "c",
       "label": "Leave the toll",
-      "playerLine": "I decline the manifest; clear my hull from border checkpoint."
+      "playerLine": "I decline the toll. Keep my hull off the ledger."
     }
   ],
   "timeoutChoice": "c",
@@ -52,7 +54,7 @@ const spec = {
     {
       "id": "hail",
       "verb": "say",
-      "line": "MOSS: The manifest is due at border checkpoint. Pay, dispute, or keep moving.",
+      "line": "MOSS: Toll at the checkpoint. One credit to pass. Processing the one is forty.",
       "channel": "info",
       "primary": true,
       "next": "move"
@@ -67,7 +69,7 @@ const spec = {
     {
       "id": "a0",
       "verb": "say",
-      "line": "The toll board has one number and three kinds of handwriting.",
+      "line": "The toll board has one number, three handwritings, and no typos, ever.",
       "channel": "info",
       "next": "p0"
     },
@@ -81,7 +83,7 @@ const spec = {
     {
       "id": "a1",
       "verb": "say",
-      "line": "MOSS counts the queue by hull, not by promise.",
+      "line": "MOSS counts the queue by hull, not by promise. The lamp approves neither.",
       "channel": "info",
       "next": "p1"
     },
@@ -95,7 +97,7 @@ const spec = {
     {
       "id": "a2",
       "verb": "say",
-      "line": "The manifest has a serial someone still loves.",
+      "line": "The manifest has been processed four times. Its fee has four children.",
       "channel": "info",
       "next": "p2"
     },
@@ -109,7 +111,7 @@ const spec = {
     {
       "id": "a3",
       "verb": "say",
-      "line": "The border checkpoint hums at one level. Your throttle is not it.",
+      "line": stationLine('station_customs', 0) || 'Every fee here is small. The total has opinions.',
       "channel": "info",
       "next": "p3"
     },
@@ -130,7 +132,7 @@ const spec = {
     {
       "id": "work_line",
       "verb": "say",
-      "line": "MOSS: We hold. Quiet engines, patient hands.",
+      "line": "MOSS: We hold. Quiet engines, patient hands, exact change.",
       "channel": "info",
       "next": "offer"
     },
@@ -259,17 +261,17 @@ export default defineEncounter(trigger, {
     {
       "id": "a",
       "label": "Pay the count",
-      "playerLine": "MOSS, I will pay for the manifest and take the marked lane."
+      "playerLine": "MOSS, I’ll pay the toll and take the marked lane."
     },
     {
       "id": "b",
       "label": "Ask for proof",
-      "playerLine": "Show me the manifest count before I enter border checkpoint."
+      "playerLine": "Show me the fee schedule before I cross. All of it."
     },
     {
       "id": "c",
       "label": "Leave the toll",
-      "playerLine": "I decline the manifest; clear my hull from border checkpoint."
+      "playerLine": "I decline the toll. Keep my hull off the ledger."
     }
   ],
   "timeoutChoice": "c",

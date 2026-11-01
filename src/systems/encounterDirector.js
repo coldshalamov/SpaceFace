@@ -98,6 +98,15 @@ import {
   regionalEcologyReadout,
   regionalEncounterWeight,
 } from './regionalEcology.js';
+import {
+  DUST_FIRE_GAP_S,
+  DUST_LANE_STREAM_LABEL,
+  DUST_LIVE_STREAM_LABEL,
+  DUST_MAX_PER_DAY,
+  DUST_SCAN_S,
+  DUST_UNSEEN_WEIGHT,
+  isDustLaneEncounter,
+} from '../data/dustLane.js'; // DUST P1b: additive widening lane (design/program/dust/)
 import { ecologyEncounterWeights } from '../data/alienEcology.js'; // AE-072 contamination→deck bias
 import {
   ActivityKind,
@@ -480,6 +489,10 @@ export const encounterDirector = {
     // earlyWindowGuaranteeDay items are themselves the first-minute content the rail teaches.
     if (!isDocked(state) && !raceLeaseActive(state)) {
       tickNestVisit(this);
+      // DUST P1b live scan (zone-anchored, own stream): queues a lane item when the player is
+      // standing in a vignette's kind of place. Items still rank below legacy in _pump and
+      // pass every pacing/gate valve; the scan only widens WHAT can be offered.
+      this._tickDustLaneLive(dir, state, now);
       this._pump(dir, state, now);
       // Row 497 cadence governor: after the pump so the verdict sees this tick's admission.
       this._tickCadence(dir, state, now, step);
@@ -899,7 +912,20 @@ export const encounterDirector = {
       }
       dir.pending.push({ ...s, sectorId, dueAt: now + s.delay, defers: 0 });
     }
-    dir.lastPlanned = { sectorId, dayIndex, count: schedule.length };
+    // DUST P1b: the additive widening lane. Planned AFTER the legacy schedule from its own
+    // stream (see planDustLaneDay) and appended behind it, so the legacy picks, delays, and
+    // push order above are bit-identical to a lane-less build. Dust items rank below every
+    // legacy due item in _pump and fire only through the same pacing/gates machinery.
+    const dustSchedule = planDustLaneDay(state.meta && state.meta.seed, sectorId, dayIndex, zones, {
+      started: dustSeenMap(dir),
+      rotation: dustRotationMap(dir),
+    });
+    for (const s of dustSchedule) {
+      const rotation = dustRotationMap(dir);
+      rotation[s.shapeId] = (rotation[s.shapeId] | 0) + 1;
+      dir.pending.push({ ...s, sectorId, dueAt: now + s.delay, defers: 0, dustLane: true });
+    }
+    dir.lastPlanned = { sectorId, dayIndex, count: schedule.length + dustSchedule.length };
   },
 
   // ═══ PRESSURE (deterministic accrual from existing state only) ════════════════════════════════
@@ -1264,6 +1290,11 @@ export const encounterDirector = {
 
     let dueIdx = -1;
     let dueBest = Infinity;
+    // DUST P1b: dust items rank strictly below legacy due items — the lane fills only pumps
+    // the legacy schedule leaves empty (audit §5.1). The legacy comparison below is unchanged:
+    // dust items never enter it, so legacy selection is bit-identical with or without the lane.
+    let dustIdx = -1;
+    let dustBest = Infinity;
     const tutorialActive = isTutorialActive(state);
     for (let i = 0; i < dir.pending.length; i++) {
       const it = dir.pending[i];
@@ -1274,9 +1305,12 @@ export const encounterDirector = {
         if (it.sectorId && it.sectorId !== this._currentSectorId()) continue;
         if (tutorialActive && !isAuthoredGuaranteeItem(it)) continue;
         const rank = tensionCandidateRank(state, it, ENCOUNTERS[it.shapeId], now);
-        if (rank < dueBest) { dueBest = rank; dueIdx = i; }
+        if (it.dustLane === true) {
+          if (rank < dustBest) { dustBest = rank; dustIdx = i; }
+        } else if (rank < dueBest) { dueBest = rank; dueIdx = i; }
       }
     }
+    if (dueIdx < 0) dueIdx = dustIdx;
     if (dueIdx < 0) return;
     const item = dir.pending[dueIdx];
     const shape = ENCOUNTERS[item.shapeId];
@@ -1288,6 +1322,13 @@ export const encounterDirector = {
       if (item.defers > MAX_GATE_DEFERS) { dir.pending.splice(dueIdx, 1); dir.stats.fizzled++; return; }
       defer();
     };
+
+    // DUST P1b rate cap: the lane keeps its own presentation spacing on top of the ordinary
+    // ambient valves below, so a legacy-idle stretch can never turn into a dust drumbeat.
+    if (item.dustLane === true
+      && now - (Number.isFinite(dir.stats && dir.stats.dustLastAt) ? dir.stats.dustLastAt : -Infinity) < DUST_FIRE_GAP_S) {
+      return defer();
+    }
 
     const ceresActivityAmbush = isCeresActivityAmbushItem(item);
     const preyInReach = ceresActivityAmbush && this._ceresAmbushPreyInReach();
@@ -1320,7 +1361,12 @@ export const encounterDirector = {
     // The R5 Ceres squad is a normal paced ambush_snare in a tier-1 authored pocket. Its authored
     // crossing is the eligibility proof for only the catalog's generic min-sector-tier rule. Every
     // other current/future authored gate remains enforced through the same fail-closed evaluator.
-    if (!this._gatesPass(shape, state, { ignoreMinSectorTier: ceresActivityAmbush })) return gateDefer();
+    // DUST P1b: `allowExternalOnly` re-admits exactly the lane's append-only cohort (the gate
+    // that darkened them); every other authored gate still applies fail-closed to dust items.
+    if (!this._gatesPass(shape, state, {
+      ignoreMinSectorTier: ceresActivityAmbush,
+      allowExternalOnly: item.dustLane === true,
+    })) return gateDefer();
     let relocatedToPlayer = false;
     if (shape.proximity && !this._playerNearItemZone(item)) {
       // The authored Ceres throughline ambush is anchored to its killbox, not to a spawnable
@@ -1328,13 +1374,21 @@ export const encounterDirector = {
       // the authored band, and the 300 s prey deadline would spend the one-shot crossing on a
       // fight that physically cannot happen. It waits (replan carries it) instead of fizzling.
       if (ceresActivityAmbush) return defer();
-      // Proximity-starved combat beats relocate to the player instead of dissolving: a hunter
-      // parked far from every authored zone (deep mining field, salvage pin, off-lane drift)
-      // must still be offered fights. Civilian/ambient props keep their zone anchoring.
-      if (shape.deck !== 'combat' || !this._relocateProximityStarvedItem(dir, state, item)) {
+      // DUST P1b: lane vignettes keep their authored presentation contract — the lived lane's
+      // "player actually standing in that vignette's kind of place" rule (livedWorldDirector).
+      // When the player is inside a zone of the shape's family, the scene anchors beside the
+      // player like livedScenePlacement does; otherwise it waits for its zone like any prop.
+      if (item.dustLane === true) {
+        if (!this._relocateDustItemIntoPlayerZone(dir, state, item, shape)) return gateDefer();
+        relocatedToPlayer = true;
+      } else if (shape.deck !== 'combat' || !this._relocateProximityStarvedItem(dir, state, item)) {
+        // Proximity-starved combat beats relocate to the player instead of dissolving: a hunter
+        // parked far from every authored zone (deep mining field, salvage pin, off-lane drift)
+        // must still be offered fights. Civilian/ambient props keep their zone anchoring.
         return gateDefer();
+      } else {
+        relocatedToPlayer = true;
       }
-      relocatedToPlayer = true;
     }
     if (shape.proximity && shape.deck === 'combat' && !relocatedToPlayer) {
       // The player reached an authored zone: the starvation clock resets. A relocation to the
@@ -1456,7 +1510,11 @@ export const encounterDirector = {
 
   _gatesPass(shape, state, options = {}) {
     const g = shape.gates || {};
-    if (g.externalOnly) return false;
+    // `externalOnly` means "an authored requester dispatches this" — EXCEPT for the DUST P1b
+    // lane, whose append-only cohort (src/data/dustLane.js) is exactly the dark vignette
+    // families that gate darkened. The option is passed by _pump for lane items only; every
+    // authored-request path is unchanged.
+    if (g.externalOnly && options.allowExternalOnly !== true) return false;
     const sectorId = this._currentSectorId();
     const sector = SECTORS.find((entry) => entry.id === sectorId);
     const completed = state.story && state.story.depthProgramEncounters
@@ -1542,6 +1600,90 @@ export const encounterDirector = {
     if (!Number.isFinite(item.zoneRadius) || item.zoneRadius < 80) item.zoneRadius = 400;
     item.relocated = true;   // telemetry only; zoneId/zoneName keep the authored fiction
     return true;
+  },
+
+  /** DUST P1b: re-anchor a lane vignette beside the player when — and only when — the player
+   * currently stands inside an authored zone of the shape's family. This is the lived lane's
+   * own presentation contract (livedWorldDirector's "actually standing in that vignette's
+   * kind of place" + livedScenePlacement's beside-the-player anchor), applied to the same
+   * modules the lived tick refuses (row 459). Deterministic: the offset is seeded by
+   * (meta.seed, encounterId). Returns false when the player is elsewhere — the item keeps
+   * waiting for its authored zone like any zone-anchored prop. */
+  _relocateDustItemIntoPlayerZone(dir, state, item, shape) {
+    const p = this.player();
+    if (!p || !p.pos) return false;
+    const sectorId = this._currentSectorId();
+    if (!sectorId) return false;
+    const zoneTypes = Array.isArray(shape.zoneTypes) ? shape.zoneTypes : [];
+    if (!zoneTypes.length) return false;
+    const local = globalToSectorLocalForSector(p.pos, sectorId);
+    if (!local) return false;
+    const zone = zoneAt(sectorId, local.x, local.z);
+    if (!zone || !zone.type || !zoneTypes.includes(zone.type)) return false;
+    const seed = (state.meta && state.meta.seed) || 0;
+    const rng = mulberry32(hash32(seed, String(item.encounterId || item.shapeId), 'dust-place'));
+    const ang = rng() * Math.PI * 2;
+    const dist = 260 + rng() * 300;
+    const oldCenter = item.zoneCenter && Number.isFinite(item.zoneCenter.x)
+      ? { x: item.zoneCenter.x, z: item.zoneCenter.z }
+      : { x: p.pos.x, z: p.pos.z };
+    const anchor = { x: p.pos.x + Math.cos(ang) * dist, z: p.pos.z + Math.sin(ang) * dist };
+    const dx = anchor.x - oldCenter.x, dz = anchor.z - oldCenter.z;
+    item.zoneCenter = anchor;
+    item.zoneRadius = Math.max(Number(item.zoneRadius) || 400, 400);
+    if (Array.isArray(item.ships)) {
+      for (const sh of item.ships) {
+        if (sh && sh.pos && Number.isFinite(sh.pos.x)) { sh.pos.x += dx; sh.pos.z += dz; }
+      }
+    }
+    // The vignette is now honestly IN the zone the player stands in.
+    item.zoneId = zone.id;
+    item.zoneName = zone.name || zone.id;
+    item.relocated = true;
+    return true;
+  },
+
+  /** DUST P1b live scan: every DUST_SCAN_S seconds of calm, undocked, non-tutorial flight,
+   * when the player stands inside an authored zone, offer ONE unseen lane vignette of that
+   * zone's family — the lived tick's presentation contract (livedWorldDirector: "asks when
+   * the player is actually standing in that vignette's kind of place") carried by the dust
+   * stream. The offered item is an ordinary pending row: it ranks below every legacy due
+   * item in _pump and passes the same pacing, cooldown, pressure, and gates machinery. The
+   * lane's presentation gap (DUST_FIRE_GAP_S) and one-live-item-at-a-time bound the rate. */
+  _tickDustLaneLive(dir, state, now) {
+    const scanAt = Number(dir.stats && dir.stats.dustNextScanAt);
+    if (Number.isFinite(scanAt) && now < scanAt) return;
+    if (!dir.stats || typeof dir.stats !== 'object') dir.stats = {};
+    dir.stats.dustNextScanAt = now + DUST_SCAN_S;
+    // A live offer is for the place the player is in NOW: if it could not present inside its
+    // short window (player left the family's zone), it expires instead of blocking the scan —
+    // the module stays once-ever-unconsumed and can be re-offered in a later zone.
+    for (let i = dir.pending.length - 1; i >= 0; i--) {
+      const it = dir.pending[i];
+      if (it && it.dustLive === true && now - it.dueAt > 120) dir.pending.splice(i, 1);
+    }
+    if (isTutorialActive(state)) return;
+    if (Number.isFinite(dir.stats.dustLastAt) && now - dir.stats.dustLastAt < DUST_FIRE_GAP_S) return;
+    // One live-scan offer at a time (day-planner items ride pending on their own budget).
+    for (const it of dir.pending) {
+      if (it && it.dustLive === true) return;
+    }
+    const p = this.player();
+    if (!p || !p.pos) return;
+    const sectorId = this._currentSectorId();
+    if (!sectorId) return;
+    const local = globalToSectorLocalForSector(p.pos, sectorId);
+    if (!local) return;
+    const zone = zoneAt(sectorId, local.x, local.z);
+    if (!zone || !zone.type || !zone.center) return;
+    const item = planDustLivePresentation(
+      (state.meta && state.meta.seed), sectorId, Math.floor(now / DAY_SECONDS), zone, now,
+      { started: dustSeenMap(dir), rotation: dustRotationMap(dir) },
+    );
+    if (!item) return;
+    const rotation = dustRotationMap(dir);
+    rotation[item.shapeId] = (rotation[item.shapeId] | 0) + 1;
+    dir.pending.push({ ...item, sectorId, dueAt: now + item.delay, defers: 0, dustLane: true, dustLive: true });
   },
 
   /** Authored "in view" reach: slide the formation so its victim anchor (the hauler when one is
@@ -1758,6 +1900,14 @@ export const encounterDirector = {
       if (shape.tier === 'ambient') dir.lastAmbientAt = now;
       else dir.lastMeaningfulAt = now;
       if (shape.tier === 'major') dir.lastMajorAt = now;
+    }
+    // DUST P1b: a lane item that reached _fire is consumed for the save (same once-ever
+    // semantics as the lived tick's startedMap — a fire that aborts still spent the scene)
+    // and stamps the lane's presentation spacing. Authored requests never carry the flag.
+    if (item.dustLane === true) {
+      if (!dir.stats || typeof dir.stats !== 'object') dir.stats = {};
+      dustSeenMap(dir)[shape.id] = now;
+      dir.stats.dustLastAt = now;
     }
 
     // A shape may author fireWithinWu (A1's "inside about two screen-depths"): when the gated
@@ -3897,6 +4047,120 @@ export function planEncounters(seed, sectorId, dayIndex, zones, ecologyState = n
 
 const SHAPE_BUCKET_DAYS = ENCOUNTER_SHAPE_HOUR_SECONDS / ENCOUNTER_REPETITION_DAY_SECONDS;
 
+// ── DUST P1b: the additive dust lane (design/program/dust/EXPOSURE_AUDIT.md §5) ──────────────────
+// A parallel ambient lane that lights the audit's dark vignette families (the `externalOnly`
+// cohort declared append-only in src/data/dustLane.js). It draws from its OWN
+// mulberry32(hash32(seed, sectorId, dayIndex, 'dust-lane-v1')) stream — the legacy
+// per-(seed, sector, day) stream in planEncountersDay is never read differently, so every
+// legacy pick sequence is bit-preserved. Rank-below-legacy, presentation spacing, and
+// once-ever consumption live at queue/fire time (_pump / _fire); this planner only decides
+// WHAT could happen here today, WHERE it anchors, and its composition — same contract as the
+// legacy planner. The legacy RARE_GATE deliberately does not apply: the lane's own caps
+// (≤DUST_MAX_PER_DAY offers/sector-day, once-ever per save, DUST_FIRE_GAP_S spacing) do the
+// throttling the rare gate does inside the far larger legacy pool.
+export function planDustLaneDay(seed, sectorId, dayIndex, zones, options = {}) {
+  const out = [];
+  if (!Array.isArray(zones) || !zones.length) return out;
+  const catalog = options.catalog || ENCOUNTERS;
+  const started = options.started || null;      // once-ever: ids already fired this save
+  const rotation = options.rotation || null;    // unseen-bias input: ids already offered this save
+  const rng = mulberry32(hash32(seed == null ? 0 : seed, String(sectorId), dayIndex | 0, DUST_LANE_STREAM_LABEL));
+
+  const zonesByType = new Map();
+  for (const z of zones) {
+    if (!z || !z.type || !z.center) continue;
+    if (!zonesByType.has(z.type)) zonesByType.set(z.type, []);
+    zonesByType.get(z.type).push(z);
+  }
+  if (!zonesByType.size) return out;
+  const presentTypes = new Set(zonesByType.keys());
+
+  const secDef = SECTORS.find((s) => s.id === sectorId);
+  const baselineSecurity = secDef && Number.isFinite(secDef.security) ? secDef.security : 0.5;
+  const sectorSecurity = options.ecologyState
+    ? effectiveRegionalSecurity(options.ecologyState, sectorId, baselineSecurity)
+    : baselineSecurity;
+
+  const candidates = Object.values(catalog).filter((e) => {
+    if (!isDustLaneEncounter(e)) return false;
+    if (started != null && started[e.id] != null) return false; // once-ever per save
+    if (!e.zoneTypes.some((zt) => presentTypes.has(zt))) return false;
+    // Ambient scenes keep their authored home sectors (body-level sectorIds — the same field
+    // pickLivedVignette's ambient bucket reads). The 4xx/5xx grid is sector-agnostic by
+    // design: its zone family binds it to exactly the sectors that host those zones.
+    if (e.ambientScene === true && Array.isArray(e.sectorIds) && !e.sectorIds.includes(sectorId)) return false;
+    const g = e.gates || {};
+    if (Array.isArray(g.sectorIds) && !g.sectorIds.includes(sectorId)) return false;
+    if (Number.isFinite(g.minSectorTier) && (!secDef || (secDef.tier | 0) < g.minSectorTier)) return false;
+    if (Number.isFinite(g.maxSecurity) && sectorSecurity > g.maxSecurity) return false;
+    if (Number.isFinite(g.minSecurity) && sectorSecurity < g.minSecurity) return false;
+    return true;
+  });
+  if (!candidates.length) return out;
+
+  const roll = rng();
+  // Offer the full lane budget every sector-day (fire-time valves, once-ever rotation, and
+  // the lane's presentation gap decide what actually presents; the audit's sizing puts this
+  // at ≤240 offers over a 20 h route against a 187-module cohort).
+  const count = roll < 0.1 ? 0 : DUST_MAX_PER_DAY;
+  for (let i = 0; i < count; i++) {
+    // Same variety floor as the legacy pool: a vignette not yet offered this save draws
+    // DUST_UNSEEN_WEIGHT× so the lane rotates through the cohort instead of repeating.
+    const weightOf = (candidate) => (
+      (candidate.weight || 1)
+      * (rotation && !(rotation[candidate.id] > 0) ? DUST_UNSEEN_WEIGHT : 1)
+    );
+    const enc = pickWeighted(candidates, rng, weightOf);
+    if (!enc) break;
+    const zone = pickZoneFor(enc, zonesByType, rng, sectorId);
+    if (!zone) break;
+    const item = resolveEncounter(enc, zone, sectorId, dayIndex, i, rng);
+    if (!item) break;
+    item.encounterId = `dust:${item.encounterId}`;
+    item.squadId = item.encounterId;
+    // Stagger the lane's onsets inside the day (each item ≥270 s after the last) so two dust
+    // offers never stack their due times; the runtime valves still own the real spacing law.
+    item.delay = 60 + i * 270 + rng() * 240;
+    out.push(item);
+  }
+  out.sort((a, b) => a.delay - b.delay || a.encounterId.localeCompare(b.encounterId));
+  return out;
+}
+
+/** DUST P1b live presentation: pick ONE unseen lane vignette whose zone family matches the
+ * zone the player stands in (the lived tick's placement rule, on the dust stream). Pure:
+ * everything derives from mulberry32(hash32(seed, sectorId, day, zoneKey, scan, 'live')). */
+export function planDustLivePresentation(seed, sectorId, dayIndex, zone, now, options = {}) {
+  if (!zone || !zone.type || !zone.center) return null;
+  const catalog = options.catalog || ENCOUNTERS;
+  const started = options.started || null;
+  const rotation = options.rotation || null;
+  const rng = mulberry32(hash32(
+    seed == null ? 0 : seed, String(sectorId), dayIndex | 0,
+    String(zone.id || zone.type), Math.floor(now / DUST_SCAN_S), DUST_LIVE_STREAM_LABEL,
+  ));
+  const candidates = Object.values(catalog).filter((e) => {
+    if (!isDustLaneEncounter(e)) return false;
+    if (started != null && started[e.id] != null) return false;
+    if (!e.zoneTypes.includes(zone.type)) return false;
+    if (e.ambientScene === true && Array.isArray(e.sectorIds) && !e.sectorIds.includes(sectorId)) return false;
+    return true;
+  });
+  if (!candidates.length) return null;
+  const weightOf = (candidate) => (
+    (candidate.weight || 1)
+    * (rotation && !(rotation[candidate.id] > 0) ? DUST_UNSEEN_WEIGHT : 1)
+  );
+  const enc = pickWeighted(candidates, rng, weightOf);
+  if (!enc) return null;
+  const item = resolveEncounter(enc, zone, sectorId, dayIndex, 0, rng);
+  if (!item) return null;
+  item.encounterId = `dust:${item.encounterId}`;
+  item.squadId = item.encounterId;
+  item.delay = 8 + rng() * 22;   // the scan noticed the place; the scene starts shortly
+  return item;
+}
+
 // Exported for the check harness: the seeded migration matrix proves the module-split migration
 // stayed lossless, so it must plan each sector-day at its F2-era scheduling semantics — no
 // cross-day shape-budget or variety carryover (SHAPE_BUCKET_DAYS / ENCOUNTER_SHAPE_BUDGET_PER_HOUR
@@ -5021,6 +5285,27 @@ function ensureDirectorState(state) {
   else delete d.stats.escalationLedger;
   ensureNamed(d);
   return d;
+}
+
+// ── DUST P1b lane ledgers (lazy maps on dir.stats; persisted with the durable stats bag) ────────
+// dustSeen mirrors livedSeen's once-ever semantics: a dust vignette that actually fired is out
+// of the lane's pool for good (presence, not truthiness — a stamp of 0 still counts). The
+// rotation map is the planner's unseen-bias input (ids already offered this save); dustLastAt
+// is the lane's own presentation spacing, so dust fills only legacy-idle pumps.
+function dustSeenMap(dir) {
+  if (!dir.stats || typeof dir.stats !== 'object') dir.stats = {};
+  if (!dir.stats.dustSeen || typeof dir.stats.dustSeen !== 'object' || Array.isArray(dir.stats.dustSeen)) {
+    dir.stats.dustSeen = {};
+  }
+  return dir.stats.dustSeen;
+}
+
+function dustRotationMap(dir) {
+  if (!dir.stats || typeof dir.stats !== 'object') dir.stats = {};
+  if (!dir.stats.dustRotation || typeof dir.stats.dustRotation !== 'object' || Array.isArray(dir.stats.dustRotation)) {
+    dir.stats.dustRotation = {};
+  }
+  return dir.stats.dustRotation;
 }
 
 // The loss ledger is an eviction queue, not a set serialization: application order is authority.

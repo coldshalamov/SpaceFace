@@ -1,4 +1,5 @@
 // DENT ON THE BORDER CHECKPOINT — lived vignette. External-only: the day planner must not roll this.
+// DUST P1d voice pass: Customs Gate card (src/data/communityPersonality.js). Text only.
 import { deepFreeze, defineEncounter } from './catalog.js';
 import { compileVignette } from '../../systems/vignetteInterpreter.js';
 
@@ -29,17 +30,17 @@ const spec = {
     {
       "id": "a",
       "label": "Read the name",
-      "playerLine": "I will read the dent plate exactly as it is cut."
+      "playerLine": "I’ll read the dent plate exactly as it is cut."
     },
     {
       "id": "b",
       "label": "Copy the record",
-      "playerLine": "Copy the shift mark too; names are not the whole record."
+      "playerLine": "Copy the shift mark too; the gate keeps the original."
     },
     {
       "id": "c",
       "label": "Leave the plate",
-      "playerLine": "I will not alter it. Leave the dent in the archive."
+      "playerLine": "I won’t alter it. The dent transits unread."
     }
   ],
   "timeoutChoice": "c",
@@ -52,7 +53,7 @@ const spec = {
     {
       "id": "hail",
       "verb": "say",
-      "line": "DESK: The dent carries a name at border checkpoint. Read it without adding one.",
+      "line": "DESK: The dent carries a name at the checkpoint. Read it; we read everything twice.",
       "channel": "info",
       "primary": true,
       "next": "move"
@@ -67,7 +68,7 @@ const spec = {
     {
       "id": "a0",
       "verb": "say",
-      "line": "The archive keeps a space where a crew count should be.",
+      "line": "The gate ledger keeps a space where a crew count should be, in triplicate.",
       "channel": "info",
       "next": "p0"
     },
@@ -81,7 +82,7 @@ const spec = {
     {
       "id": "a1",
       "verb": "say",
-      "line": "DESK reads the date before reading the name.",
+      "line": "DESK reads the date before the name, then reads both again.",
       "channel": "info",
       "next": "p1"
     },
@@ -95,7 +96,7 @@ const spec = {
     {
       "id": "a2",
       "verb": "say",
-      "line": "The dent has a serial someone still loves.",
+      "line": "The dent was weighed at entry. Nobody logged the exit count.",
       "channel": "info",
       "next": "p2"
     },
@@ -109,7 +110,7 @@ const spec = {
     {
       "id": "a3",
       "verb": "say",
-      "line": "Full burn changes the distance, not how border checkpoint sounds.",
+      "line": "The green lamp has meant go for eleven months, and the queue believes it.",
       "channel": "info",
       "next": "p3"
     },
@@ -130,7 +131,7 @@ const spec = {
     {
       "id": "work_line",
       "verb": "say",
-      "line": "DESK: Holding. The count finishes when it finishes.",
+      "line": "DESK: Holding. The count finishes when the lamp authorizes a number.",
       "channel": "info",
       "next": "offer"
     },
@@ -148,7 +149,7 @@ const spec = {
     {
       "id": "say_a",
       "verb": "say",
-      "line": "Name read once. The plate gives no second line.",
+      "line": "Name read once. The ledger wanted a second reading; you were gone.",
       "channel": "info",
       "next": "grant_a"
     },
@@ -175,7 +176,7 @@ const spec = {
     {
       "id": "say_b",
       "verb": "say",
-      "line": "Record copied. DESK left the blank field blank.",
+      "line": "Record copied. DESK left the blank field blank, in triplicate.",
       "channel": "info",
       "next": "rep_b"
     },
@@ -195,7 +196,7 @@ const spec = {
     {
       "id": "say_c",
       "verb": "say",
-      "line": "You left the plate. Its lettering stayed at border checkpoint.",
+      "line": "You left the plate. Its lettering stays on the gate’s unread shelf.",
       "channel": "info",
       "next": "rep_c"
     },
@@ -246,23 +247,23 @@ export default defineEncounter(trigger, {
   "motive": "lane_courtesy",
   "engagementTrigger": "hailed",
   "title": "DENT ON THE BORDER CHECKPOINT",
-  "primaryLine": "DESK: The dent carries a name at border checkpoint. Read it without adding one.",
+  "primaryLine": "DESK: The dent carries a name at the checkpoint. Read it; we read everything twice.",
   "factionId": "faction_mts",
   "choices": [
     {
       "id": "a",
       "label": "Read the name",
-      "playerLine": "I will read the dent plate exactly as it is cut."
+      "playerLine": "I’ll read the dent plate exactly as it is cut."
     },
     {
       "id": "b",
       "label": "Copy the record",
-      "playerLine": "Copy the shift mark too; names are not the whole record."
+      "playerLine": "Copy the shift mark too; the gate keeps the original."
     },
     {
       "id": "c",
       "label": "Leave the plate",
-      "playerLine": "I will not alter it. Leave the dent in the archive."
+      "playerLine": "I won’t alter it. The dent transits unread."
     }
   ],
   "timeoutChoice": "c",

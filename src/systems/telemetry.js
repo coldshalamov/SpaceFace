@@ -16,6 +16,11 @@
 //   - kills are filtered to `killerId === playerId` (most `entity:killed` are NPC-vs-NPC).
 //   - first-hour onboarding funnel (build_map.md §15.4 / PQ-167): first flight, first swing,
 //     first shove, first dock, first heat, plus difficulty-ramp and career progression milestones.
+//   - encounter exposure (DUST P1c): per-authored-module presentation counts keyed off the
+//     `encounter:telegraph` seam. `encounter:spawned` only fires when a cast spawns, so squadless
+//     authored vignettes would read dark; the telegraph fires once for EVERY encounter that goes
+//     live. The payload `encounterId` is a per-firing instance id — the module identity is `kind`
+//     (the authored shapeId), which is what gets counted.
 //
 // Entry point: createTelemetry(bus, state, options). No-op-safe singleton (a second call disposes
 // the prior instance). Mirrors to window.__SF_TELEMETRY__ for dev.
@@ -38,6 +43,7 @@ const RING_CAP = 2000;        // recent-event ring buffer cap (no unbounded grow
 const TELEGRAPH_LOG_CAP = 256; // recent ai:telegraph cues held for death pairing (PQ-161.01)
 const MAX_SESSIONS = 25;      // stored-session cap; oldest rotated out
 const MAX_DEATH_LOG = 200;    // per-session death/lifespan log cap
+export const EXPOSURE_ID_CAP = 512;  // distinct encounter module ids itemized per session (DUST P1c)
 const SAVE_DEBOUNCE_MS = 4000;
 
 // Module-level singleton handle (per the no-op-safe requirement).
@@ -88,6 +94,11 @@ function emptyAggregates() {
     missions: { accepted: 0, completed: 0, failed: 0, expired: 0, byType: {} },
     progression: { techResearched: 0, factionTierUps: 0, techNodes: [], tierUps: [] },
     navigation: { docks: 0, jumps: 0, sectorsVisited: [] },
+    // Encounter exposure (DUST P1c): which authored modules the player crossed, keyed by the
+    // encounter:telegraph `kind` (authored shapeId). Bounded: at most EXPOSURE_ID_CAP distinct
+    // ids are itemized; presentations of novel ids past the cap fold into `overflow` so the
+    // localStorage footprint stays compact. `byTier` carries the category split for the digest.
+    exposure: { presentations: 0, distinctCount: 0, byEncounter: {}, byTier: {}, overflow: 0 },
     verbs: {
       thrust: 0, brake: 0, boost: 0, latch: 0, reel: 0,
       release: 0, throw: 0, shove: 0, well: 0, stroke: 0,
@@ -207,6 +218,7 @@ export function createTelemetry(bus, state, options) {
       trades: s.trades, credits: s.credits, kills: s.kills, deaths: s.deaths,
       ore: s.ore, missions: s.missions, progression: s.progression,
       navigation: s.navigation, verbs: s.verbs || {}, funnel: s.funnel,
+      exposure: s.exposure,
       deathLog: s.deathLog,
     };
   }
@@ -715,6 +727,30 @@ export function createTelemetry(bus, state, options) {
       cause: p.cause, beat: p.beat, causeId: p.causeId,
       place: p.place ? { x: p.place.x, z: p.place.z, zoneId: p.place.zoneId } : null,
     });
+  });
+
+  // ENCOUNTER EXPOSURE (DUST P1c) — per-authored-module presentation counters. The hook is
+  // `encounter:telegraph` (encounterDirector._fire): it fires exactly once per encounter that
+  // goes live, unconditionally, and the player-facing presentation cascade (audio cue, authored
+  // motion rigs, entry bark) hangs off it — exposure = the player could see this module. Read-only
+  // counters; no state writes, no new events, existing names/semantics untouched.
+  sub('encounter:telegraph', (p) => {
+    if (!p) return;
+    const ex = session.exposure;
+    ex.presentations += 1;
+    bump(ex.byTier, p.tier || 'unknown');
+    const id = (typeof p.kind === 'string' && p.kind)
+      || (typeof p.shape === 'string' && p.shape)
+      || 'unknown';
+    if (ex.byEncounter[id] != null) {
+      ex.byEncounter[id] += 1;
+    } else if (ex.distinctCount < EXPOSURE_ID_CAP) {
+      ex.byEncounter[id] = 1;
+      ex.distinctCount += 1;
+    } else {
+      ex.overflow += 1;   // novel id beyond the itemization cap — counted, not itemized
+    }
+    scheduleSave();
   });
 
   // PQ-155.02 — session sink stories. Economy writes the debit; this ring only prints it.

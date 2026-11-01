@@ -1,6 +1,8 @@
 // CRADLE ON THE REFINERY APPROACH — lived vignette. External-only: the day planner must not roll this.
+// DUST P1d voice pass: Ceres Refinery card (src/data/communityPersonality.js). Text only.
 import { deepFreeze, defineEncounter } from './catalog.js';
 import { compileVignette } from '../../systems/vignetteInterpreter.js';
+import { stationLine } from '../communityPersonality.js';
 
 const spec = {
   "id": "lived_refinery_approach_wreck_dmc_depth",
@@ -29,17 +31,17 @@ const spec = {
     {
       "id": "a",
       "label": "Read the plate",
-      "playerLine": "I will read the cradle plate before anyone starts the tow."
+      "playerLine": "I’ll read the cradle plate before anyone quotes a grade."
     },
     {
       "id": "b",
       "label": "Hold the wreck",
-      "playerLine": "I can hold the wreck clear while you check the registry."
+      "playerLine": "I’ll hold it steady while the registry grades the cut."
     },
     {
       "id": "c",
       "label": "Leave it drifting",
-      "playerLine": "I am leaving it here. Keep the cradle out of my route."
+      "playerLine": "I’m leaving it. File the cradle as pre-owned, barely sank."
     }
   ],
   "timeoutChoice": "c",
@@ -52,7 +54,7 @@ const spec = {
     {
       "id": "hail",
       "verb": "say",
-      "line": "FOREMAN: The cradle is stamped on a wreck at refinery approach. Do not cut yet.",
+      "line": "FOREMAN: Wreck on the approach carries a cradle stamp. Registry grades before torches.",
       "channel": "info",
       "primary": true,
       "next": "move"
@@ -67,7 +69,7 @@ const spec = {
     {
       "id": "a0",
       "verb": "say",
-      "line": "The hull number stops halfway through the last digit.",
+      "line": "The hull number stops mid-digit, the way shift one stopped mid-shift.",
       "channel": "info",
       "next": "p0"
     },
@@ -81,7 +83,7 @@ const spec = {
     {
       "id": "a1",
       "verb": "say",
-      "line": "FOREMAN keeps the cutting torch pointed at the deck.",
+      "line": "FOREMAN keeps the torch pointed at the deck. A cut here is a moral act.",
       "channel": "info",
       "next": "p1"
     },
@@ -95,7 +97,7 @@ const spec = {
     {
       "id": "a2",
       "verb": "say",
-      "line": "The cradle has a serial someone still loves.",
+      "line": "The cradle has two prior owners. Both are listed; neither complained.",
       "channel": "info",
       "next": "p2"
     },
@@ -109,7 +111,7 @@ const spec = {
     {
       "id": "a3",
       "verb": "say",
-      "line": "Boost all you like; refinery approach keeps its own volume.",
+      "line": stationLine('station_ceres', 1) || 'Pre-owned, barely sank, the registry says, with a straight face.',
       "channel": "info",
       "next": "p3"
     },
@@ -130,7 +132,7 @@ const spec = {
     {
       "id": "work_line",
       "verb": "say",
-      "line": "FOREMAN: Holding. The lane keeps its own clock.",
+      "line": "FOREMAN: Holding. Tragedy keeps hours; the scale keeps tonnage.",
       "channel": "info",
       "next": "offer"
     },
@@ -148,7 +150,7 @@ const spec = {
     {
       "id": "say_a",
       "verb": "say",
-      "line": "Plate read. The registry lists a shift, not a final owner.",
+      "line": "Plate read. The registry lists a grade, a shift, and no final owner.",
       "channel": "info",
       "next": "grant_a"
     },
@@ -175,7 +177,7 @@ const spec = {
     {
       "id": "say_b",
       "verb": "say",
-      "line": "Wreck held. The next registry pass can happen without drift.",
+      "line": "Wreck held. The registry passed it twice; nothing drifted but its price.",
       "channel": "info",
       "next": "rep_b"
     },
@@ -195,7 +197,7 @@ const spec = {
     {
       "id": "say_c",
       "verb": "say",
-      "line": "You left it. The cradle keeps its slow turn at refinery approach.",
+      "line": "You left it. The cradle keeps its slow turn, third owner pending.",
       "channel": "info",
       "next": "rep_c"
     },
@@ -246,23 +248,23 @@ export default defineEncounter(trigger, {
   "motive": "lane_courtesy",
   "engagementTrigger": "hailed",
   "title": "CRADLE ON THE REFINERY APPROACH",
-  "primaryLine": "FOREMAN: The cradle is stamped on a wreck at refinery approach. Do not cut yet.",
+  "primaryLine": "FOREMAN: Wreck on the approach carries a cradle stamp. Registry grades before torches.",
   "factionId": "faction_dmc",
   "choices": [
     {
       "id": "a",
       "label": "Read the plate",
-      "playerLine": "I will read the cradle plate before anyone starts the tow."
+      "playerLine": "I’ll read the cradle plate before anyone quotes a grade."
     },
     {
       "id": "b",
       "label": "Hold the wreck",
-      "playerLine": "I can hold the wreck clear while you check the registry."
+      "playerLine": "I’ll hold it steady while the registry grades the cut."
     },
     {
       "id": "c",
       "label": "Leave it drifting",
-      "playerLine": "I am leaving it here. Keep the cradle out of my route."
+      "playerLine": "I’m leaving it. File the cradle as pre-owned, barely sank."
     }
   ],
   "timeoutChoice": "c",

@@ -1,4 +1,5 @@
 // WINCH ON THE TRADE LANE — lived vignette. External-only: the day planner must not roll this.
+// DUST P1d voice pass: Helios Station card (src/data/communityPersonality.js). Text only.
 import { deepFreeze, defineEncounter } from './catalog.js';
 import { compileVignette } from '../../systems/vignetteInterpreter.js';
 
@@ -29,17 +30,17 @@ const spec = {
     {
       "id": "a",
       "label": "Check the first mark",
-      "playerLine": "I will check the winch mark against the older count."
+      "playerLine": "I’ll check the winch mark against the older manifest."
     },
     {
       "id": "b",
       "label": "Compare both books",
-      "playerLine": "Put both ledgers side by side and read the gap aloud."
+      "playerLine": "Both ledgers, side by side. I’ll read the gap aloud."
     },
     {
       "id": "c",
       "label": "Leave it unsolved",
-      "playerLine": "I will not guess. Leave the winch count open."
+      "playerLine": "I won’t guess. The hub can keep its blank."
     }
   ],
   "timeoutChoice": "c",
@@ -52,7 +53,7 @@ const spec = {
     {
       "id": "hail",
       "verb": "say",
-      "line": "BUOY: The winch count fails at trade lane. Find which mark does not belong.",
+      "line": "BUOY: The winch count fails on the freight spine. Find the mark that never shipped.",
       "channel": "info",
       "primary": true,
       "next": "move"
@@ -67,7 +68,7 @@ const spec = {
     {
       "id": "a0",
       "verb": "say",
-      "line": "The answer is written in the part the clerk crossed out.",
+      "line": "The answer sits in the margin the clerk crossed out, twice, neatly.",
       "channel": "info",
       "next": "p0"
     },
@@ -81,7 +82,7 @@ const spec = {
     {
       "id": "a1",
       "verb": "say",
-      "line": "BUOY keeps the pencil beside the blank, not the sum.",
+      "line": "BUOY keeps the pencil beside the blank, the way the hub keeps Bay 7.",
       "channel": "info",
       "next": "p1"
     },
@@ -95,7 +96,7 @@ const spec = {
     {
       "id": "a2",
       "verb": "say",
-      "line": "The winch has a serial someone still loves.",
+      "line": "The winch was logged as lost, then found, then logged again.",
       "channel": "info",
       "next": "p2"
     },
@@ -109,7 +110,7 @@ const spec = {
     {
       "id": "a3",
       "verb": "say",
-      "line": "Full burn changes the distance, not how trade lane sounds.",
+      "line": "The spine’s tally still lists a berth for a fleet that never came home.",
       "channel": "info",
       "next": "p3"
     },
@@ -130,7 +131,7 @@ const spec = {
     {
       "id": "work_line",
       "verb": "say",
-      "line": "BUOY: Holding. The count finishes when it finishes.",
+      "line": "BUOY: Holding. The count finishes when the last ticket closes.",
       "channel": "info",
       "next": "offer"
     },
@@ -148,7 +149,7 @@ const spec = {
     {
       "id": "say_a",
       "verb": "say",
-      "line": "First mark checked. The mismatch begins one line below it.",
+      "line": "First mark checked. The mismatch starts one war back, one line down.",
       "channel": "info",
       "next": "grant_a"
     },
@@ -175,7 +176,7 @@ const spec = {
     {
       "id": "say_b",
       "verb": "say",
-      "line": "Books compared. BUOY found the same missing entry twice.",
+      "line": "Books compared. The same missing entry, filed in two handwritings.",
       "channel": "info",
       "next": "rep_b"
     },
@@ -195,7 +196,7 @@ const spec = {
     {
       "id": "say_c",
       "verb": "say",
-      "line": "You left it open. The count still waits at trade lane.",
+      "line": "You left it open. The count still holds a berth at the hub.",
       "channel": "info",
       "next": "rep_c"
     },
@@ -246,23 +247,23 @@ export default defineEncounter(trigger, {
   "motive": "lane_courtesy",
   "engagementTrigger": "hailed",
   "title": "WINCH ON THE TRADE LANE",
-  "primaryLine": "BUOY: The winch count fails at trade lane. Find which mark does not belong.",
+  "primaryLine": "BUOY: The winch count fails on the freight spine. Find the mark that never shipped.",
   "factionId": "faction_free",
   "choices": [
     {
       "id": "a",
       "label": "Check the first mark",
-      "playerLine": "I will check the winch mark against the older count."
+      "playerLine": "I’ll check the winch mark against the older manifest."
     },
     {
       "id": "b",
       "label": "Compare both books",
-      "playerLine": "Put both ledgers side by side and read the gap aloud."
+      "playerLine": "Both ledgers, side by side. I’ll read the gap aloud."
     },
     {
       "id": "c",
       "label": "Leave it unsolved",
-      "playerLine": "I will not guess. Leave the winch count open."
+      "playerLine": "I won’t guess. The hub can keep its blank."
     }
   ],
   "timeoutChoice": "c",
