@@ -1058,6 +1058,62 @@ function updateRanged(record, tick, self, target, distance) {
 }
 
 /**
+ * DUST P6 (BS-7): miniboss act variants for the shared `capital_broadside` line. The seven
+ * miniboss capitals all fly the same doctrine id (their encounters stamp it — see
+ * src/missions/capitalBossSpawn.js), so the seam that can differ PER BOSS is the authored
+ * turret-loss edge set (`subsystems.phaseAtTurretsLost` on the enemy row — the only per-enemy
+ * authored field on the doctrine's self view). Each variant row names its boss, matches that
+ * exact edge authoring, and carries its own acts: fire cadence, shift cadence, standoff and
+ * telegraph cue per stage. Bosses without a matching variant (including the Iron Maw, whose
+ * authored [4, 10] edges drive the base table) keep the base CAPITAL_BOSS_CHOREOGRAPHY acts.
+ */
+export const CAPITAL_BROADSIDE_ACT_VARIANTS = Object.freeze({
+  // NEST CARRIER — enemies.js authors phaseAtTurretsLost [1, 2] (her two gunwale mounts; "kill
+  // a mount and that flank of the launch wash goes quiet"). The nest is the lightest hull on
+  // the roster: she trades distance, not volume — long careful shifts while latched, shorter
+  // beats once a bay is bare, and everything at once when both flanks are quiet.
+  nest_carrier: Object.freeze({
+    matchTurretPhaseEdges: Object.freeze([1, 2]),
+    stages: Object.freeze([
+      Object.freeze({ turretsLost: 0, fireTicks: 48, shiftTicks: 120, preferredRange: 300, cue: 'broadside_charge' }),
+      Object.freeze({ turretsLost: 1, fireTicks: 60, shiftTicks: 84, preferredRange: 260, cue: 'wasp_wake' }),
+      Object.freeze({ turretsLost: 2, fireTicks: 90, shiftTicks: 48, preferredRange: 210, cue: 'belly_launch' }),
+    ]),
+  }),
+  // FURNACE MAW — enemies.js authors phaseAtTurretsLost [1, 3] (three jaw mounts; one cold jaw
+  // is radiator trouble, all three is a starving battery). The maw EATS: long committed gnaw
+  // windows with deliberate repositioning, tightening act by act as the jaws go quiet.
+  furnace_maw: Object.freeze({
+    matchTurretPhaseEdges: Object.freeze([1, 3]),
+    stages: Object.freeze([
+      Object.freeze({ turretsLost: 0, fireTicks: 84, shiftTicks: 96, preferredRange: 280, cue: 'heat_bloom' }),
+      Object.freeze({ turretsLost: 1, fireTicks: 72, shiftTicks: 66, preferredRange: 240, cue: 'radiator_vent' }),
+      Object.freeze({ turretsLost: 3, fireTicks: 108, shiftTicks: 36, preferredRange: 190, cue: 'feeding_frenzy' }),
+    ]),
+  }),
+});
+
+/** DUST P6: resolve a miniboss act variant by its authored turret-loss edge set, or null. */
+function capitalActVariantFor(turretPhaseEdges) {
+  if (!Array.isArray(turretPhaseEdges) || !turretPhaseEdges.length) return null;
+  const key = turretPhaseEdges.join(',');
+  for (const variant of Object.values(CAPITAL_BROADSIDE_ACT_VARIANTS)) {
+    if (variant.matchTurretPhaseEdges.join(',') === key) return variant;
+  }
+  return null;
+}
+
+/** The stage list actually driving this capital: a DUST act variant when its edges match, else the choreography table. */
+function resolveCapitalStages(record, self) {
+  const table = CAPITAL_BOSS_CHOREOGRAPHY[record.doctrineId];
+  if (record.doctrineId === CombatDoctrineId.CAPITAL_BROADSIDE) {
+    const variant = capitalActVariantFor(self && self.turretPhaseEdges);
+    if (variant) return variant.stages;
+  }
+  return (table && table.stages) || CAPITAL_BOSS_CHOREOGRAPHY.capital_broadside.stages;
+}
+
+/**
  * Capital broadside + the three boss choreographies. The boss tables (CAPITAL_BOSS_CHOREOGRAPHY
  * in src/data/combatDefs.js) stage the fight by hull fraction: each stage has its own telegraph
  * cue, fire cadence and standoff, so a boss kill reads as acts — not one loop until death. A
@@ -1069,12 +1125,14 @@ function updateRanged(record, tick, self, target, distance) {
  * crossed edge advances one stage (swarmer vent, then the desperation battery). A hull without
  * authored turret edges keeps stage 0 regardless of hull damage — the health bar never drives
  * the fight. The other capital choreographies keep their hull-fraction acts.
+ *
+ * DUST P6: on the shared capital_broadside line, a matching act variant (above) supplies the
+ * stages; the authored edges still drive stage advancement exactly as FB-020 describes.
  */
 function capitalStageFor(record, self) {
-  const table = CAPITAL_BOSS_CHOREOGRAPHY[record.doctrineId];
-  const stages = (table && table.stages) || CAPITAL_BOSS_CHOREOGRAPHY.capital_broadside.stages;
+  const edges = self && Array.isArray(self.turretPhaseEdges) ? self.turretPhaseEdges : [];
+  const stages = resolveCapitalStages(record, self);
   if (record.doctrineId === CombatDoctrineId.CAPITAL_BROADSIDE) {
-    const edges = self && Array.isArray(self.turretPhaseEdges) ? self.turretPhaseEdges : [];
     if (!edges.length) return stages[0];
     const lost = self && Number.isFinite(self.turretsLost) ? self.turretsLost : 0;
     let level = 0;
@@ -1092,9 +1150,9 @@ function capitalStageFor(record, self) {
 
 function updateCapitalBroadside(record, tick, self, distance) {
   const stage = capitalStageFor(record, self);
-  const stageIndex = CAPITAL_BOSS_CHOREOGRAPHY[record.doctrineId]
-    ? CAPITAL_BOSS_CHOREOGRAPHY[record.doctrineId].stages.indexOf(stage)
-    : 0;
+  // DUST P6: the index must come from the stages actually driving this hull (a matched act
+  // variant supplies its own list) — the base table's indexOf cannot see variant stage objects.
+  const stageIndex = resolveCapitalStages(record, self).indexOf(stage);
   if (stageIndex > (record.bossStage || 0)) {
     // A new act begins: announce it through the charge telegraph even mid-broadside.
     record.bossStage = stageIndex;

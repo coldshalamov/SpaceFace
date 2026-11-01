@@ -518,7 +518,14 @@ export const ENEMY_TYPES = [
     id: 'mirrorjaw_foreman', name: 'Mirrorjaw Foreman', shipId: 'ship_bastion',
     silhouette: 'bruiser_armor', factionId: 'faction_reach',
     aiArchetype: 'brawler', levelRange: [4, 4],
-    combatDoctrineId: 'brawler_commit',
+    // DUST P6 (BS-7): the Foreman is the roster's committed ram and KEEPS the committed-ram
+    // flight — at mass 420 (heavy band) interceptor_flyby flies the brawler_commit profile
+    // (combatDoctrine.flightProfileFor), so the passes, cues and gun windows are unchanged —
+    // but its DECLARED identity and its pilot mind no longer read "generic fourth brawler":
+    // the raider mind (cunning duelist hunting the stern) replaces the shared rookie/bulwark
+    // profile, and the row is data-distinct from every other heavyweight. Kilnback and Pallet
+    // Jack keep brawler_commit (their rows live in their own canonical files).
+    combatDoctrineId: 'interceptor_flyby',
     hull: 720, armor: 120, armorFlat: 2, shield: 160, shieldRegen: 0,
     cap: 240, capRegen: 26,
     maxSpeed: 96, accel: 52, turnRate: 0.55, collisionRadius: 32, mass: 420,
@@ -575,7 +582,12 @@ export const ENEMY_TYPES = [
     id: 'forge_regent', name: 'Forge Regent', shipId: 'ship_bastion',
     silhouette: 'bruiser_armor', factionId: 'faction_reach',
     aiArchetype: 'brawler', levelRange: [4, 4],
-    combatDoctrineId: 'brawler_commit',
+    // DUST P6 (BS-7): the Regent stops replaying the Foreman's doctrine. The light repeater is
+    // gone; the furnace BEAM is a telegraphed lance — close under the crown, cue, land one long
+    // burn, then PEEL while the crown hauls around. The peel beat IS the authored counterplay
+    // ("cross the pass and work the stern"): the slow turn away is the punish window. The
+    // wave-30 authored score still stamps its own doctrine (capital-boss/regent.js).
+    combatDoctrineId: 'shield_breaker',
     hull: 720, armor: 120, armorFlat: 2, shield: 160, shieldRegen: 0,
     cap: 240, capRegen: 26,
     maxSpeed: 96, accel: 52, turnRate: 0.55, collisionRadius: 32, mass: 420,
@@ -654,7 +666,12 @@ export const ENEMY_TYPES = [
     id: 'brood_tendril', name: 'The Tendril', shipId: 'ship_hornet',
     silhouette: 'drone_swarm', factionId: 'faction_reach',
     aiArchetype: 'brawler', levelRange: [4, 4],
-    combatDoctrineId: 'brawler_commit',
+    // DUST P6 (BS-7): the worm is not a fourth committed ram. Its fight is the brood's fight —
+    // the head strikes in SHORT pack passes (tight strike band, quick extend) while the trailing
+    // chain plays the swarm; swarm_pack gives the head the pack's synchronized pass rhythm and
+    // the brood mind's bait/flank bias. The authored weave score still stamps its own doctrine
+    // (capital-boss/tendril.js).
+    combatDoctrineId: 'swarm_pack',
     hull: 640, armor: 100, armorFlat: 1, shield: 0, shieldRegen: 0,
     cap: 260, capRegen: 26,
     maxSpeed: 95, accel: 60, turnRate: 1.4, collisionRadius: 26, mass: 300,
@@ -714,7 +731,12 @@ export const ENEMY_TYPES = [
       { id: 'wpn_autocannon_m', count: 2, turret: true },
     ],
     aiDoctrine: { defaultActivity: 'reposition', roe: 'weapons_free', preferredRange: 240, leashRadius: 2600 },
-    subsystems: { turretHp: 180 },
+    // DUST P6 (BS-7): the nest's fight now phases on the gunwale mounts themselves — one mount
+    // down is one flank of the launch wash quiet (edge 1), both down is the brood pouring out of
+    // a bare hull (edge 2). These edges are also the act key for the NEST CARRIER broadside
+    // variant — see CAPITAL_BROADSIDE_ACT_VARIANTS in src/ai/combatDoctrine.js, which matches
+    // this exact edge authoring.
+    subsystems: { turretHp: 180, phaseAtTurretsLost: [1, 2] },
     weakPoint: {
       label: 'BELLY DOORS', arcCenter: -Math.PI / 2, arcHalfWidth: 0.55,
       bonusMult: 1.45, hint: 'The nest is under the hull — work the doors off and the bays are open.',
@@ -738,7 +760,12 @@ export const ENEMY_TYPES = [
     id: 'casket_worm', name: 'Casket Worm', shipId: 'ship_ironback',
     silhouette: 'dreadnought_enemy', factionId: 'faction_reach',
     aiArchetype: 'brawler', levelRange: [4, 6],
-    combatDoctrineId: 'brawler_commit',
+    // DUST P6 (BS-7): the grave-worm does not trade passes — it GRINDS. pack_pursuit holds the
+    // press ring without breakaways and answers a wounded segment with the pack's bounded
+    // fallback toward cover ("cut the middle for the pain loop": the mid segment covers the
+    // drive, and a crippled hull fights hurt rather than kiting). The authored slither score
+    // still stamps its own doctrine (capital-boss/casket-worm.js).
+    combatDoctrineId: 'pack_pursuit',
     hull: 560, armor: 100, armorFlat: 1, shield: 0, shieldRegen: 0,
     cap: 280, capRegen: 26,
     maxSpeed: 88, accel: 55, turnRate: 1.1, collisionRadius: 28, mass: 380,
@@ -780,7 +807,12 @@ export const ENEMY_TYPES = [
       { id: 'wpn_flak_turret_s', defensiveOnly: true },
     ],
     aiDoctrine: { defaultActivity: 'attack_run', roe: 'weapons_free', preferredRange: 220, leashRadius: 2600 },
-    subsystems: { turretHp: 200 },
+    // DUST P6 (BS-7): the furnace phases on its JAWS — one chew mount cold is the radiator
+    // trouble starting (edge 1), all three dead is a starving desperation battery (edge 3). These
+    // edges are also the act key for the FURNACE MAW broadside variant — see
+    // CAPITAL_BROADSIDE_ACT_VARIANTS in src/ai/combatDoctrine.js, which matches this exact edge
+    // authoring.
+    subsystems: { turretHp: 200, phaseAtTurretsLost: [1, 3] },
     weakPoint: {
       label: 'FEEDING CAVITY', arcCenter: 0, arcHalfWidth: 0.5,
       bonusMult: 1.5, hint: 'The maw is the way in — a hot plate fed back to it is the best ammunition in the room.',
@@ -904,6 +936,85 @@ export const ENEMY_TYPES = [
 ];
 
 const ENEMY_BY_ID = new Map(ENEMY_TYPES.map((row) => [row.id, row]));
+
+// ── DUST P6 (BS-7): authored Enemy Mind archetypes ─────────────────────────────
+// The 9-verb utility mind (src/ai/enemyMind) reads a pilot's personality from this
+// doctrine-keyed table, authored next to the fiction it describes. Precedence per pilot:
+// per-entity trait overrides (fixtures) > this table > the constructor profile
+// (production default 'crew'). Traits are BASE values — the runtime still draws the same
+// seven seeded variations around them, so no RNG stream changes. `weights` are verb-weight
+// overrides on the shared mind tuning (validated against ENEMY_MIND_TUNING keys): they shape
+// WHICH verbs win, never hull points, damage, or aim. Unlisted doctrines keep the constructor
+// profile unchanged (interceptor_flyby stays 'raider', ranged_disengager stays 'veteran').
+export const ENEMY_MIND_ARCHETYPES = Object.freeze({
+  // THE BROOD — swarm_pack (wasp packs via ENEMY_DOCTRINE_OVERRIDES, brood wings, the Tendril's
+  // head). Many light hulls, one mind: they orbit the pack ring, offer chases, and never hold
+  // one lane long. Bait and flank lead; commitment is deliberately flickering.
+  swarm_pack: Object.freeze({
+    label: 'brood',
+    traits: Object.freeze({ courage: 0.58, discipline: 0.40, loyalty: 0.55, cunning: 0.80, aggression: 0.76, patience: 0.34 }),
+    weights: Object.freeze({
+      pressBase: 0.34,      // the ring works as a pack, not as duelists holding a lane
+      flankBase: 0.47,      // crossing lanes are the pack's whole geometry
+      baitBase: 0.40,       // a light hull offering a chase is brood tactics
+      withdrawBase: 0.20,   // a spent wasp cycles out without drama
+      switchMargin: 0.09,   // flick between verbs — the swarm reads as restless
+      minCommit: 0.70,      // short commitments, quick re-positioning
+      occupiedLanePenalty: 0.62, // scatter wide: lane-mates fan out instead of queueing
+    }),
+  }),
+  // THE GRINDER — pack_pursuit (brood queen, Casket Worm, swarm-mode pursuers). Heavy hulls
+  // that grind: press the ring, read a chase and punish it, commit slowly and for the long
+  // haul. No feints, few breaks — the grind IS the pressure.
+  pack_pursuit: Object.freeze({
+    label: 'grinder',
+    traits: Object.freeze({ courage: 0.74, discipline: 0.70, loyalty: 0.78, cunning: 0.52, aggression: 0.82, patience: 0.86 }),
+    weights: Object.freeze({
+      pressBase: 0.56,      // the press ring is home
+      punishBase: 0.92,     // a chased wingmate is a free kill — grinders read pursuit
+      withdrawBase: 0.18,   // stubborn: pressure does not easily buy distance
+      minCommit: 1.60,      // slow, long commitments
+      switchMargin: 0.21,   // and slow to abandon one
+      retentionBonus: 0.10,
+      withdrawFear: 0.72,   // fear must climb high before the grind relents
+    }),
+  }),
+  // THE SPECTER — ranged_stalker (Quiet Ghost). A skirmisher that works the flank, spends its
+  // one shot, and is gone before the answer arrives. Flank-and-withdraw replaces any press.
+  ranged_stalker: Object.freeze({
+    label: 'specter',
+    traits: Object.freeze({ courage: 0.48, discipline: 0.74, loyalty: 0.44, cunning: 0.86, aggression: 0.40, patience: 0.82 }),
+    weights: Object.freeze({
+      pressBase: 0.28,      // never the hull that holds attention
+      flankBase: 0.52,      // the next volley always arrives from a new bearing
+      withdrawBase: 0.32,   // disengaging after the shot is the identity, not cowardice
+      survivalWeight: 0.95, // a found ghost is a dead ghost
+      cunningWeight: 0.42,  // cunning drives the plan — it is all timing
+      switchMargin: 0.12,
+    }),
+  }),
+  // THE BULWARK — brawler_commit (Bruiser line, Mirrorjaw Foreman). No feints, no flight:
+  // hold the attention, commit the mass, punish the overshoot. Slow to commit and slower to
+  // let go — the readable heaviness IS the counterplay window.
+  brawler_commit: Object.freeze({
+    label: 'bulwark',
+    traits: Object.freeze({ courage: 0.82, discipline: 0.56, loyalty: 0.50, cunning: 0.34, aggression: 0.88, patience: 0.74 }),
+    weights: Object.freeze({
+      pressBase: 0.56,      // the whole point of the hull
+      punishBase: 0.86,     // an overshoot is prey
+      baitBase: 0.16,       // a bulwark does not pretend to run
+      withdrawBase: 0.16,   // or leave
+      minCommit: 1.50,      // committed means committed
+      switchMargin: 0.19,
+      retentionBonus: 0.09,
+    }),
+  }),
+});
+
+/** DUST P6: the authored mind archetype for a combat doctrine id, or null (constructor profile). */
+export function enemyMindArchetypeFor(combatDoctrineId) {
+  return ENEMY_MIND_ARCHETYPES[String(combatDoctrineId)] || null;
+}
 
 /**
  * Row 463 elite-intent vocabulary: the hulls a player must be able to read before they fire —
