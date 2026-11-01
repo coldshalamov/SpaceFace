@@ -11358,6 +11358,16 @@ export const render = {
       if (counters) {
         counters.admissionSubject = batch.map(admissionSubjectLabel).join(',');
       }
+      let issueLabelReleased = false;
+      const releaseIssueLabel = () => {
+        if (issueLabelReleased) return;
+        issueLabelReleased = true;
+        if (counters) counters.admissionSubject = priorSubject;
+      };
+      const acknowledgeIssue = () => {
+        releaseIssueLabel();
+        compileOptions?.onIssueComplete?.();
+      };
       const route = this._selectPostRoute();
       const admitFlightShadowDepth = () => {
         // Color-only compile leaves each new caster's shadow-depth variant unlinked; the next
@@ -11451,7 +11461,7 @@ export const render = {
           return result;
         })
         .finally(() => {
-          if (counters) counters.admissionSubject = priorSubject;
+          releaseIssueLabel();
         });
       // A loading admission can outlive the flight handoff. Keep the live player in
       // its scene while linking; the staging batch below reparents roots until ready.
@@ -11471,13 +11481,15 @@ export const render = {
           // program wait into one per-link readiness batch collapses the link wall to
           // the slowest drawable instead of the sum (the opening cook's
           // issue-all / drain-once pattern, compilePresentSlice comment).
-          const linkBatch = beginScenePipelineReadinessBatch(renderer);
+          const splitIssue = typeof compileOptions?.onIssueComplete === 'function';
+          const linkBatch = beginScenePipelineReadinessBatch(renderer, { independent: splitIssue });
           // Readiness batches can nest across renderer lifetimes. Submission ownership and
           // its drain must belong to this native renderer, never a global batch's creator.
           const paceQueue = makeGpuQueuePacer(renderer, { scheduleTask: postTaskAtBackgroundPriorityBounded });
           const submitSerial = paceQueue && typeof paceQueue.submit === 'function'
             ? paceQueue.submit : null;
           const issued = [];
+          const issueReceipts = [];
           try {
             await compileSubjectsAcrossPresents(
               sliced,
@@ -11486,8 +11498,12 @@ export const render = {
                   issued.push(Promise.resolve({ skipped: true, reason: 'owner-inactive' }));
                   return Promise.resolve({ skipped: true });
                 }
+                let acknowledgeIssue;
+                if (splitIssue) issueReceipts.push(new Promise((resolve) => { acknowledgeIssue = resolve; }));
                 const submit = () => compileSubjectColorAndDepth(entry.subject, route, {
                   ...compileOptions,
+                  ...(splitIssue ? { onIssueComplete: acknowledgeIssue, restoreTargetAfterIssue: true,
+                    readinessBatch: linkBatch } : {}),
                   // A serial reservation cannot wait on the enclosing batch it prevents
                   // from draining, even if capabilities change while environment stamping yields.
                   ...(submitSerial ? { skipSharedBatch: true } : {}),
@@ -11506,6 +11522,9 @@ export const render = {
                   admission = observePipelineAdmission(Promise.reject(error));
                 }
                 issued.push(admission);
+                // An unsupported asynchronous compiler never signals the synchronous issue
+                // boundary; keep the reservation until that work actually settles instead.
+                if (acknowledgeIssue) admission.then(acknowledgeIssue, acknowledgeIssue);
                 // Serial units reserve submission through drain across all enrolled producers.
                 // KHR still issues without awaiting its per-unit pooled readiness.
                 return submitSerial ? admission : Promise.resolve({ issued: true });
@@ -11520,13 +11539,18 @@ export const render = {
                 debit: notePacedFrameSpend, debitGate: () => state.mode === 'flight',
               },
             );
-            if (linkBatch) await linkBatch.drain({});
+            if (splitIssue) await Promise.all(issueReceipts);
+            if (linkBatch) {
+              const drain = linkBatch.drain({});
+              if (splitIssue && !submitSerial) acknowledgeIssue();
+              await drain;
+            }
             return Promise.all(issued);
           } finally {
             if (linkBatch) {
               linkBatch.close();
               await Promise.allSettled(issued);
-              linkBatch.restoreEntryTarget();
+              if (!splitIssue || submitSerial) linkBatch.restoreEntryTarget();
             } else {
               await Promise.allSettled(issued);
             }
@@ -11534,7 +11558,9 @@ export const render = {
         })());
       }
       if (batch.length === 1) {
-        return finish(compileSubjectColorAndDepth(batch[0], route, compileOptions));
+        const singleOptions = typeof compileOptions?.onIssueComplete === 'function'
+          ? { ...compileOptions, skipSharedBatch: true, onIssueComplete: acknowledgeIssue } : compileOptions;
+        return finish(compileSubjectColorAndDepth(batch[0], route, singleOptions));
       }
       // Compile together so Three can dedupe programs, but put every live root back on its
       // original parent. Group.add() steals children; a later clear() used to leave ships
@@ -11543,10 +11569,18 @@ export const render = {
       staging.name = 'SF_AuthoredPipelineAdmissionBatch';
       const homes = batch.map((root) => captureObjectHome(root));
       for (const root of batch) staging.add(root);
-      return finish(compileSubjectColorAndDepth(staging, route, compileOptions).finally(() => {
+      let restored = false;
+      const restoreHomes = () => {
+        if (restored) return;
+        restored = true;
         for (const home of homes) restoreObjectHome(home);
         staging.clear();
-      }));
+      };
+      const stagedOptions = typeof compileOptions?.onIssueComplete === 'function'
+        ? { ...compileOptions, skipSharedBatch: true,
+          onIssueComplete: () => { restoreHomes(); acknowledgeIssue(); } }
+        : compileOptions;
+      return finish(compileSubjectColorAndDepth(staging, route, stagedOptions).finally(restoreHomes));
     };
     const recordAuthoredAdmissionBlockingSlice = (slice) => {
       const durationMs = Number(slice && slice.durationMs);
@@ -11561,6 +11595,12 @@ export const render = {
       }
     };
     const pipelineAdmissions = createPipelineAdmissionTracker(compileForCurrentTarget, {
+      // Only KHR exposes nonblocking per-program completion. Other drivers retain the
+      // original fully serialized submit/drain route.
+      maxSettlingLinks: renderer.extensions?.get?.('KHR_parallel_shader_compile')
+        && typeof renderer.compile === 'function' && typeof renderer.properties?.get === 'function'
+        && typeof renderer.getContext === 'function' && typeof renderer.domElement?.addEventListener === 'function'
+        && typeof renderer.domElement?.removeEventListener === 'function' ? 4 : 1,
       // While the flight veil holds the sim after the first playable paint, nothing playable is
       // on screen and simTime is frozen (the first-flight hold below is sim-clocked): let queued
       // admissions flush now, so their per-object admission draws land under the veil.

@@ -117,10 +117,16 @@ test('TEACH-06: once per field kind — a cone still teaches after the well alre
     h.tick();
     h.state.fields.snapshot = [cone];
     h.tick();
+    // The deferred-hint queue serializes contextual voice: the well's lesson owns the HUD for
+    // its display window, so the cone lesson waits its turn rather than stacking or vanishing.
+    assert.equal(h.escapeHints().length, 1, 'one voice at a time — the cone lesson queues');
+    h.state.simTime += 8; // past FIRST_USE_HINT_DISPLAY_S (7s) — the queued lesson may speak
+    h.tick();
     const hints = h.escapeHints();
     assert.equal(hints.length, 2, 'each kind gets its own lesson');
     assert.equal(hints[1].payload.verbId, 'fieldEscape:cone');
     assert.match(hints[1].payload.text, new RegExp(FIELD_ESCAPES.cone.name, 'i'));
+    assert.equal(h.state.player.hints['fieldEscape:cone'], true, 'profile flag set on speak');
   } finally {
     h.restore();
   }

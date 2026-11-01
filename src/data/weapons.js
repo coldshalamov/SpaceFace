@@ -407,7 +407,7 @@ const SHIPPED_WEAPONS = [
     id: 'wpn_micro_barrage_m', name: 'Micro-missile Barrage', slotType: 'weapon', size: 'M', tier: 3, mass: 7, price: 36000,
     requiresTech: 'tech_guided_ordnance',
     dmg: 4, rof: 0.9, dps: 21.6, damageType: 'explosive', energyCost: 12,
-    projSpeed: 300, projSpeedMin: 160, range: 300, tracking: 'homing', turnRate: 2.2, lockTimeS: 0.8,
+    projSpeed: 300, projSpeedMin: 160, range: 280, tracking: 'homing', turnRate: 2.2, lockTimeS: 0.8,
     heatPerShot: 14, heatMax: 60, heatDissip: 14,
     impulsePerHit: 8, tumbleTorque: 3, impulseProvenance: 'micro_seeker_burst',
     volley: { count: 6, spreadDeg: 60 }, swarmSeekers: true,
@@ -451,7 +451,7 @@ const SHIPPED_WEAPONS = [
     // SEED-SW-23 — flies out, carves back through the thrower once, hits on each pass.
     id: 'wpn_glaive_s', name: 'Glaive', slotType: 'weapon', size: 'S', tier: 3, mass: 4, price: 33000,
     dmg: 12, rof: 1.1, dps: 13.2, damageType: 'kinetic', energyCost: 8,
-    projSpeed: 320, range: 300, tracking: 'fixed',
+    projSpeed: 320, range: 280, tracking: 'fixed',
     heatPerShot: 11, heatMax: 60, heatDissip: 14,
     impulsePerHit: 14, tumbleTorque: 8, impulseProvenance: 'glaive_return',
     returnArc: { legRange: 140 },

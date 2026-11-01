@@ -1199,10 +1199,8 @@ export const impulseCharges = {
     if (player.flags && player.flags.docked) return;
     if (state.ui && state.ui.screenStack && state.ui.screenStack.length > 0) return;
 
-    // A fitted Repulsion Trap adds a verb: a plain throw is still the aimed sticky plate, and
-    // throwing while braking lays the trap on the wake. Capacity, debit and arming are shared.
-    const plan = chargeThrowPlan(state, player);
-    const { trap, chargeId, def } = plan;
+    // The shortage answer needs nothing spatial — check the hold before planning the throw so a
+    // bare press can never die on the hull's motion shape.
     const have = Number(state.player && state.player.cargo && state.player.cargo.items
       && state.player.cargo.items[CHARGE_COMMODITY]) || 0;
     const alreadyPaid = rt.debitedThrowTick === state.tick;
@@ -1218,7 +1216,10 @@ export const impulseCharges = {
     }
     rt.debitedThrowTick = state.tick;
 
-    const { aftDrop, dir, cf, sf, spawnDistance, throwSpeed } = plan;
+    // A fitted Repulsion Trap adds a verb: a plain throw is still the aimed sticky plate, and
+    // throwing while braking lays the trap on the wake. Capacity, debit and arming are shared.
+    const plan = chargeThrowPlan(state, player);
+    const { trap, chargeId, def, aftDrop, dir, cf, sf, spawnDistance, throwSpeed } = plan;
 
     const active = activeCharges(state, player.id);
     const capacity = resolveImpulseChargeCapacity(state);

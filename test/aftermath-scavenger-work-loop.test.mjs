@@ -232,7 +232,9 @@ test('a laden scavenger killed in the black spills its stolen hold through the o
 });
 
 function openPosOut() {
-  return sectorLocalToGlobalForSector({ x: 52000, z: 47000 }, SECTOR_ID);
+  // Helios open space inside its own global membership — the old (52000, 47000) local lands in
+  // Triton Wake's global region, where physicalWreckSector correctly places the hull's residency.
+  return sectorLocalToGlobalForSector({ x: 3000, z: 2000 }, SECTOR_ID);
 }
 
 test('wave1 fix: the scavenger never strips or retires the player drifting hull', () => {

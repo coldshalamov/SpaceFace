@@ -418,7 +418,9 @@ test('the real instancing paths keep the hook: ship-local nav clones and the sha
 });
 
 test('lamps are signal-role only: no illustrated-surface hook, no ILLUSTRATED_SURFACE_KEY bump', () => {
-  assert.equal(ILLUSTRATED_SURFACE_KEY, 'spaceface-illustrated-surface-v13');
+  // The paint-shader key is versioned: legitimate shader work bumps it (NOCTURNE → v19-nocturne).
+  // The tripwire stands — a bump lands only by consciously updating this literal.
+  assert.equal(ILLUSTRATED_SURFACE_KEY, 'spaceface-illustrated-surface-v19-nocturne');
   const red = forgeLamp('Material_Emissive_NavRed', 'glow_red');
   applyAuthoredMaterialProfile(red, 'signal', { assetId: 'SF_TEST', slot: 'hull' });
   assert.equal(red.userData.spacefaceIllustratedSurface, undefined, 'a lamp never wears the paint shader');

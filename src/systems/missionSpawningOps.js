@@ -486,10 +486,12 @@ export const missionSpawningOps = {
 
   _spawnTargetsFor(m) {
     if (syncFurnaceWorksite(this, m)) return;
+    // Prefer live rematerialized hosts (Continue) over fresh spawns. Adoption is a pure-read
+    // repair: it must run even where the spawn seam is absent — a durable subject can be
+    // re-found without the ability to mint new bodies (NXI-146).
+    this._adoptLiveMissionTargets(m);
     const helpers = this.helpers;
     if (!helpers || !helpers.spawnEntity) return;
-    // Prefer live rematerialized hosts (Continue) over fresh spawns.
-    this._adoptLiveMissionTargets(m);
     // The adopt view never yields asteroids: re-attach the authored capital cast by durable key
     // BEFORE the finite-ledger spawn pass decides what is still owed.
     this._reattachCapitalBossCastTargets(m);

@@ -143,7 +143,9 @@ test('the carrier materializes on its berth and the visit row stays intact', () 
   assert.equal(c.data.stationId, C.stationId);
   assert.equal(c.data.persistenceOwner, C.owner);
   assert.equal(sys._row.visitId, 1);
-  assert.equal(sys._row.phase, 'arrive');
+  // 'arrive' is now the transit instant only — the visit clock advances on the sector calendar,
+  // not on native physics residency, so the same tick the berth body exists the row is 'deploy'.
+  assert.equal(sys._row.phase, 'deploy');
 });
 
 test('borrowedSunServiceStatus reads the owner; foreign stations pass through', () => {
