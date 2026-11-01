@@ -3526,7 +3526,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.anvil-storm-orchard",
-    "expectedContentHash": "27dbb055e6efc3666a5f33db0e7242143239fe87e621d3e0079487ece1327315",
+    "expectedContentHash": "4dfdf34ebe80527c14c1b4ef51b7a77208b445c57fb472ae4bfba92de9f6f65e",
     "key": "anvil-storm-orchard",
     "metadataUrl": "assets/ships/release/render-packages/anvil-storm-orchard/render-package.json",
     "runtimeAssetId": "SF_PLACE_ANVIL_STORM_ORCHARD",
@@ -3536,7 +3536,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.anvil-condensate-pod",
-    "expectedContentHash": "57ac80b100a696297d0296df64ebb208088d5ca4413c6dd41e890c7225d4549d",
+    "expectedContentHash": "f2d38ec2804882f2bf30af57b022013200df2d129347706eb5a11f6615800fde",
     "key": "anvil-condensate-pod",
     "metadataUrl": "assets/ships/release/render-packages/anvil-condensate-pod/render-package.json",
     "runtimeAssetId": "SF_PLACE_ANVIL_CONDENSATE_POD",

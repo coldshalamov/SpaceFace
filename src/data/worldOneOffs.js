@@ -130,7 +130,7 @@ export const WORLD_ONE_OFFS = Object.freeze([
     placeId: 'place_slurry_tank',
     sectorId: 'sector_vesta_forge',
     anchor: { type: 'station', id: 'station_forge' },
-    offsetLocal: Object.freeze({ x: -720, z: 380 }),
+    offsetLocal: Object.freeze({ x: -768, z: 412 }),
     rot: 1.9,
     spin: 0.1,
     radius: 20,

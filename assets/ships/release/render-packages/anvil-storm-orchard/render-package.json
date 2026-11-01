@@ -439,7 +439,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "27dbb055e6efc3666a5f33db0e7242143239fe87e621d3e0079487ece1327315",
+  "contentHash": "4dfdf34ebe80527c14c1b4ef51b7a77208b445c57fb472ae4bfba92de9f6f65e",
   "dynamicGroups": [
     {
       "id": "sf.render.anvil-storm-orchard.node.lod0-motion-orchard-s0-port-warning.dynamic",
@@ -6360,14 +6360,14 @@
       "uri": "place_anvil_storm_orchard.glb"
     },
     "sourceManifest": {
-      "bytes": 323116,
-      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
+      "bytes": 323169,
+      "sha256": "ca22c1a243dd61ba8d2042d939914d32834fee986e49560b31b18880d638de12",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 906160,
-    "sha256": "793c65e345c515ade5dcc4a816a7bd5fe04008392943a12a12ca61230ddad4f8",
+    "bytes": 906484,
+    "sha256": "43294e92cef7b06d2d4bf5cbfaec70783dd1cb72cd11716fdfeb92067cfcdfba",
     "uri": "render.glb"
   },
   "runtime": {
@@ -6495,6 +6495,117 @@
       },
       {
         "matrix": [
+          4.04928183555603,
+          0,
+          0,
+          0,
+          0,
+          4.04928183555603,
+          0,
+          0,
+          0,
+          0,
+          4.04928183555603,
+          0,
+          8.57928204536438,
+          0,
+          -42.669952392578125,
+          1
+        ],
+        "name": "LOD0_MOTION_ORCHARD_S0_PORT_Warning",
+        "planIndex": 52,
+        "tags": {
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_ORCHARD_S0_PORT_Warning",
+          "orchardCollisionPart": "s0-jaw-port",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_ORCHARD_S0_PORT_Warning",
+            "recordIds": [
+              "sf.render.anvil-storm-orchard.node.lod0-motion-orchard-s0-port-warning"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          4.047569274902344,
+          0,
+          0,
+          0,
+          0,
+          4.047569274902344,
+          0,
+          0,
+          0,
+          0,
+          4.047569274902344,
+          0,
+          8.580994606018066,
+          0,
+          -42.66824150085449,
+          1
+        ],
+        "name": "LOD1_MOTION_ORCHARD_S0_PORT_Warning",
+        "planIndex": 54,
+        "tags": {
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_ORCHARD_S0_PORT_Warning",
+          "orchardCollisionPart": "s0-jaw-port",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_ORCHARD_S0_PORT_Warning",
+            "recordIds": [
+              "sf.render.anvil-storm-orchard.node.lod1-motion-orchard-s0-port-warning"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          4.045962333679199,
+          0,
+          0,
+          0,
+          0,
+          4.045962333679199,
+          0,
+          0,
+          0,
+          0,
+          4.045962333679199,
+          0,
+          8.579387664794922,
+          -0.00005987286567687988,
+          -42.668006896972656,
+          1
+        ],
+        "name": "LOD2_MOTION_ORCHARD_S0_PORT_Warning",
+        "planIndex": 56,
+        "tags": {
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_ORCHARD_S0_PORT_Warning",
+          "orchardCollisionPart": "s0-jaw-port",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_ORCHARD_S0_PORT_Warning",
+            "recordIds": [
+              "sf.render.anvil-storm-orchard.node.lod2-motion-orchard-s0-port-warning"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
           1,
           0,
           0,
@@ -6513,7 +6624,7 @@
           1
         ],
         "name": "MOTION_ORCHARD_S0_STARBOARD",
-        "planIndex": 55,
+        "planIndex": 58,
         "tags": {
           "motionGroup": true
         },
@@ -6560,6 +6671,117 @@
       },
       {
         "matrix": [
+          4.04928183555603,
+          0,
+          0,
+          0,
+          0,
+          4.04928183555603,
+          0,
+          0,
+          0,
+          0,
+          4.04928183555603,
+          0,
+          8.57928204536438,
+          0,
+          -37.330047607421875,
+          1
+        ],
+        "name": "LOD0_MOTION_ORCHARD_S0_STARBOARD_Warning",
+        "planIndex": 59,
+        "tags": {
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_ORCHARD_S0_STARBOARD_Warning",
+          "orchardCollisionPart": "s0-jaw-starboard",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_ORCHARD_S0_STARBOARD_Warning",
+            "recordIds": [
+              "sf.render.anvil-storm-orchard.node.lod0-motion-orchard-s0-starboard-warning"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          4.047569036483765,
+          0,
+          0,
+          0,
+          0,
+          4.047569036483765,
+          0,
+          0,
+          0,
+          0,
+          4.047569036483765,
+          0,
+          8.580994844436646,
+          0,
+          -37.33175849914551,
+          1
+        ],
+        "name": "LOD1_MOTION_ORCHARD_S0_STARBOARD_Warning",
+        "planIndex": 61,
+        "tags": {
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_ORCHARD_S0_STARBOARD_Warning",
+          "orchardCollisionPart": "s0-jaw-starboard",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_ORCHARD_S0_STARBOARD_Warning",
+            "recordIds": [
+              "sf.render.anvil-storm-orchard.node.lod1-motion-orchard-s0-starboard-warning"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          4.041574716567993,
+          0,
+          0,
+          0,
+          0,
+          4.041574716567993,
+          0,
+          0,
+          0,
+          0,
+          4.041574716567993,
+          0,
+          8.575000524520874,
+          -0.00005263090133666992,
+          -37.33186912536621,
+          1
+        ],
+        "name": "LOD2_MOTION_ORCHARD_S0_STARBOARD_Warning",
+        "planIndex": 63,
+        "tags": {
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_ORCHARD_S0_STARBOARD_Warning",
+          "orchardCollisionPart": "s0-jaw-starboard",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_ORCHARD_S0_STARBOARD_Warning",
+            "recordIds": [
+              "sf.render.anvil-storm-orchard.node.lod2-motion-orchard-s0-starboard-warning"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
           1,
           0,
           0,
@@ -6578,7 +6800,7 @@
           1
         ],
         "name": "MOTION_ORCHARD_S1_PORT",
-        "planIndex": 59,
+        "planIndex": 65,
         "tags": {
           "motionGroup": true
         },
@@ -6625,6 +6847,117 @@
       },
       {
         "matrix": [
+          4.049281597137451,
+          0,
+          0,
+          0,
+          0,
+          4.049281597137451,
+          0,
+          0,
+          0,
+          0,
+          4.049281597137451,
+          0,
+          14.579281330108643,
+          0,
+          -2.669951394200325,
+          1
+        ],
+        "name": "LOD0_MOTION_ORCHARD_S1_PORT_Warning",
+        "planIndex": 66,
+        "tags": {
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_ORCHARD_S1_PORT_Warning",
+          "orchardCollisionPart": "s1-jaw-port",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_ORCHARD_S1_PORT_Warning",
+            "recordIds": [
+              "sf.render.anvil-storm-orchard.node.lod0-motion-orchard-s1-port-warning"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          4.0477519035339355,
+          0,
+          0,
+          0,
+          0,
+          4.0477519035339355,
+          0,
+          0,
+          0,
+          0,
+          4.0477519035339355,
+          0,
+          14.580811023712158,
+          0,
+          -2.6684219390153885,
+          1
+        ],
+        "name": "LOD1_MOTION_ORCHARD_S1_PORT_Warning",
+        "planIndex": 68,
+        "tags": {
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_ORCHARD_S1_PORT_Warning",
+          "orchardCollisionPart": "s1-jaw-port",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_ORCHARD_S1_PORT_Warning",
+            "recordIds": [
+              "sf.render.anvil-storm-orchard.node.lod1-motion-orchard-s1-port-warning"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          4.046173572540283,
+          0,
+          0,
+          0,
+          0,
+          4.046173572540283,
+          0,
+          0,
+          0,
+          0,
+          4.046173572540283,
+          0,
+          14.579232692718506,
+          0.0049232542514801025,
+          -2.670572057366371,
+          1
+        ],
+        "name": "LOD2_MOTION_ORCHARD_S1_PORT_Warning",
+        "planIndex": 70,
+        "tags": {
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_ORCHARD_S1_PORT_Warning",
+          "orchardCollisionPart": "s1-jaw-port",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_ORCHARD_S1_PORT_Warning",
+            "recordIds": [
+              "sf.render.anvil-storm-orchard.node.lod2-motion-orchard-s1-port-warning"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
           1,
           0,
           0,
@@ -6643,7 +6976,7 @@
           1
         ],
         "name": "MOTION_ORCHARD_S1_STARBOARD",
-        "planIndex": 63,
+        "planIndex": 72,
         "tags": {
           "motionGroup": true
         },
@@ -6690,6 +7023,117 @@
       },
       {
         "matrix": [
+          4.049281597137451,
+          0,
+          0,
+          0,
+          0,
+          4.049281597137451,
+          0,
+          0,
+          0,
+          0,
+          4.049281597137451,
+          0,
+          14.579281330108643,
+          0,
+          2.669951394200325,
+          1
+        ],
+        "name": "LOD0_MOTION_ORCHARD_S1_STARBOARD_Warning",
+        "planIndex": 73,
+        "tags": {
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_ORCHARD_S1_STARBOARD_Warning",
+          "orchardCollisionPart": "s1-jaw-starboard",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_ORCHARD_S1_STARBOARD_Warning",
+            "recordIds": [
+              "sf.render.anvil-storm-orchard.node.lod0-motion-orchard-s1-starboard-warning"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          4.0477519035339355,
+          0,
+          0,
+          0,
+          0,
+          4.0477519035339355,
+          0,
+          0,
+          0,
+          0,
+          4.0477519035339355,
+          0,
+          14.580811023712158,
+          0,
+          2.6684220135211945,
+          1
+        ],
+        "name": "LOD1_MOTION_ORCHARD_S1_STARBOARD_Warning",
+        "planIndex": 75,
+        "tags": {
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_ORCHARD_S1_STARBOARD_Warning",
+          "orchardCollisionPart": "s1-jaw-starboard",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_ORCHARD_S1_STARBOARD_Warning",
+            "recordIds": [
+              "sf.render.anvil-storm-orchard.node.lod1-motion-orchard-s1-starboard-warning"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          4.046173572540283,
+          0,
+          0,
+          0,
+          0,
+          4.046173572540283,
+          0,
+          0,
+          0,
+          0,
+          4.046173572540283,
+          0,
+          14.579232692718506,
+          -0.004970073699951172,
+          2.670572116971016,
+          1
+        ],
+        "name": "LOD2_MOTION_ORCHARD_S1_STARBOARD_Warning",
+        "planIndex": 77,
+        "tags": {
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_ORCHARD_S1_STARBOARD_Warning",
+          "orchardCollisionPart": "s1-jaw-starboard",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_ORCHARD_S1_STARBOARD_Warning",
+            "recordIds": [
+              "sf.render.anvil-storm-orchard.node.lod2-motion-orchard-s1-starboard-warning"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
           1,
           0,
           0,
@@ -6708,7 +7152,7 @@
           1
         ],
         "name": "MOTION_ORCHARD_S2_PORT",
-        "planIndex": 67,
+        "planIndex": 79,
         "tags": {
           "motionGroup": true
         },
@@ -6755,6 +7199,117 @@
       },
       {
         "matrix": [
+          4.04928183555603,
+          0,
+          0,
+          0,
+          0,
+          4.04928183555603,
+          0,
+          0,
+          0,
+          0,
+          4.04928183555603,
+          0,
+          8.57928204536438,
+          0,
+          37.330047607421875,
+          1
+        ],
+        "name": "LOD0_MOTION_ORCHARD_S2_PORT_Warning",
+        "planIndex": 80,
+        "tags": {
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_ORCHARD_S2_PORT_Warning",
+          "orchardCollisionPart": "s2-jaw-port",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_ORCHARD_S2_PORT_Warning",
+            "recordIds": [
+              "sf.render.anvil-storm-orchard.node.lod0-motion-orchard-s2-port-warning"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          4.047569036483765,
+          0,
+          0,
+          0,
+          0,
+          4.047569036483765,
+          0,
+          0,
+          0,
+          0,
+          4.047569036483765,
+          0,
+          8.580994844436646,
+          0,
+          37.33175849914551,
+          1
+        ],
+        "name": "LOD1_MOTION_ORCHARD_S2_PORT_Warning",
+        "planIndex": 82,
+        "tags": {
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_ORCHARD_S2_PORT_Warning",
+          "orchardCollisionPart": "s2-jaw-port",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_ORCHARD_S2_PORT_Warning",
+            "recordIds": [
+              "sf.render.anvil-storm-orchard.node.lod1-motion-orchard-s2-port-warning"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          4.041575193405151,
+          0,
+          0,
+          0,
+          0,
+          4.041575193405151,
+          0,
+          0,
+          0,
+          0,
+          4.041575193405151,
+          0,
+          8.575001001358032,
+          0.00005263090133666992,
+          37.33186912536621,
+          1
+        ],
+        "name": "LOD2_MOTION_ORCHARD_S2_PORT_Warning",
+        "planIndex": 84,
+        "tags": {
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_ORCHARD_S2_PORT_Warning",
+          "orchardCollisionPart": "s2-jaw-port",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_ORCHARD_S2_PORT_Warning",
+            "recordIds": [
+              "sf.render.anvil-storm-orchard.node.lod2-motion-orchard-s2-port-warning"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
           1,
           0,
           0,
@@ -6773,7 +7328,7 @@
           1
         ],
         "name": "MOTION_ORCHARD_S2_STARBOARD",
-        "planIndex": 71,
+        "planIndex": 86,
         "tags": {
           "motionGroup": true
         },
@@ -6820,6 +7375,117 @@
       },
       {
         "matrix": [
+          4.04928183555603,
+          0,
+          0,
+          0,
+          0,
+          4.04928183555603,
+          0,
+          0,
+          0,
+          0,
+          4.04928183555603,
+          0,
+          8.57928204536438,
+          0,
+          42.669952392578125,
+          1
+        ],
+        "name": "LOD0_MOTION_ORCHARD_S2_STARBOARD_Warning",
+        "planIndex": 87,
+        "tags": {
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_ORCHARD_S2_STARBOARD_Warning",
+          "orchardCollisionPart": "s2-jaw-starboard",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_ORCHARD_S2_STARBOARD_Warning",
+            "recordIds": [
+              "sf.render.anvil-storm-orchard.node.lod0-motion-orchard-s2-starboard-warning"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          4.047569274902344,
+          0,
+          0,
+          0,
+          0,
+          4.047569274902344,
+          0,
+          0,
+          0,
+          0,
+          4.047569274902344,
+          0,
+          8.580994606018066,
+          0,
+          42.66824150085449,
+          1
+        ],
+        "name": "LOD1_MOTION_ORCHARD_S2_STARBOARD_Warning",
+        "planIndex": 89,
+        "tags": {
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_ORCHARD_S2_STARBOARD_Warning",
+          "orchardCollisionPart": "s2-jaw-starboard",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_ORCHARD_S2_STARBOARD_Warning",
+            "recordIds": [
+              "sf.render.anvil-storm-orchard.node.lod1-motion-orchard-s2-starboard-warning"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          4.045962333679199,
+          0,
+          0,
+          0,
+          0,
+          4.045962333679199,
+          0,
+          0,
+          0,
+          0,
+          4.045962333679199,
+          0,
+          8.579387664794922,
+          0.00005987286567687988,
+          42.668006896972656,
+          1
+        ],
+        "name": "LOD2_MOTION_ORCHARD_S2_STARBOARD_Warning",
+        "planIndex": 91,
+        "tags": {
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_ORCHARD_S2_STARBOARD_Warning",
+          "orchardCollisionPart": "s2-jaw-starboard",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_ORCHARD_S2_STARBOARD_Warning",
+            "recordIds": [
+              "sf.render.anvil-storm-orchard.node.lod2-motion-orchard-s2-starboard-warning"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
           1,
           0,
           0,
@@ -6838,7 +7504,7 @@
           1
         ],
         "name": "SOCKET_Camera_Focus",
-        "planIndex": 75,
+        "planIndex": 93,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -6890,7 +7556,7 @@
           1
         ],
         "name": "SOCKET_Orchard_Pod_0",
-        "planIndex": 76,
+        "planIndex": 94,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -6942,7 +7608,7 @@
           1
         ],
         "name": "SOCKET_Orchard_Pod_1",
-        "planIndex": 77,
+        "planIndex": 95,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -6994,7 +7660,7 @@
           1
         ],
         "name": "SOCKET_Orchard_Pod_2",
-        "planIndex": 78,
+        "planIndex": 96,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -7046,7 +7712,7 @@
           1
         ],
         "name": "SOCKET_Safe_Holding",
-        "planIndex": 79,
+        "planIndex": 97,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -7098,7 +7764,7 @@
           1
         ],
         "name": "SOCKET_Structure_Core",
-        "planIndex": 80,
+        "planIndex": 98,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -7386,22 +8052,12 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 52,
-        "role": "warning"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 53,
         "role": "warning"
       },
       {
         "allowTextures": true,
-        "planIndex": 54,
-        "role": "warning"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 56,
+        "planIndex": 55,
         "role": "warning"
       },
       {
@@ -7411,17 +8067,7 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 58,
-        "role": "warning"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 60,
-        "role": "warning"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 61,
         "role": "warning"
       },
       {
@@ -7436,17 +8082,7 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 65,
-        "role": "warning"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 66,
-        "role": "warning"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 68,
+        "planIndex": 67,
         "role": "warning"
       },
       {
@@ -7456,22 +8092,52 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 70,
-        "role": "warning"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 72,
-        "role": "warning"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 73,
+        "planIndex": 71,
         "role": "warning"
       },
       {
         "allowTextures": true,
         "planIndex": 74,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 76,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 78,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 81,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 83,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 85,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 88,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 90,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 92,
         "role": "warning"
       }
     ],
@@ -7481,7 +8147,7 @@
       "sha256": "618a3e256d75664c5e13e3230e0c4ba6734be59602e1cd44c1ec1bd916e4db03",
       "uri": "assets/ships/motions/anvil-storm-orchard.motion.json"
     },
-    "nodeCount": 81,
+    "nodeCount": 99,
     "primitives": [
       {
         "canopy": false,
@@ -7989,8 +8655,8 @@
           -42.669952392578125,
           1
         ],
-        "name": "LOD0_MOTION_ORCHARD_S0_PORT_Warning",
-        "planIndex": 52,
+        "name": "LOD0_MOTION_ORCHARD_S0_PORT_Warning_1",
+        "planIndex": 53,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -8017,8 +8683,8 @@
           -42.66824150085449,
           1
         ],
-        "name": "LOD1_MOTION_ORCHARD_S0_PORT_Warning",
-        "planIndex": 53,
+        "name": "LOD1_MOTION_ORCHARD_S0_PORT_Warning_1",
+        "planIndex": 55,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -8045,8 +8711,8 @@
           -42.668006896972656,
           1
         ],
-        "name": "LOD2_MOTION_ORCHARD_S0_PORT_Warning",
-        "planIndex": 54,
+        "name": "LOD2_MOTION_ORCHARD_S0_PORT_Warning_1",
+        "planIndex": 57,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -8073,8 +8739,8 @@
           -37.330047607421875,
           1
         ],
-        "name": "LOD0_MOTION_ORCHARD_S0_STARBOARD_Warning",
-        "planIndex": 56,
+        "name": "LOD0_MOTION_ORCHARD_S0_STARBOARD_Warning_1",
+        "planIndex": 60,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -8101,8 +8767,8 @@
           -37.33175849914551,
           1
         ],
-        "name": "LOD1_MOTION_ORCHARD_S0_STARBOARD_Warning",
-        "planIndex": 57,
+        "name": "LOD1_MOTION_ORCHARD_S0_STARBOARD_Warning_1",
+        "planIndex": 62,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -8129,8 +8795,8 @@
           -37.33186912536621,
           1
         ],
-        "name": "LOD2_MOTION_ORCHARD_S0_STARBOARD_Warning",
-        "planIndex": 58,
+        "name": "LOD2_MOTION_ORCHARD_S0_STARBOARD_Warning_1",
+        "planIndex": 64,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -8157,8 +8823,8 @@
           -2.669951394200325,
           1
         ],
-        "name": "LOD0_MOTION_ORCHARD_S1_PORT_Warning",
-        "planIndex": 60,
+        "name": "LOD0_MOTION_ORCHARD_S1_PORT_Warning_1",
+        "planIndex": 67,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -8185,8 +8851,8 @@
           -2.6684219390153885,
           1
         ],
-        "name": "LOD1_MOTION_ORCHARD_S1_PORT_Warning",
-        "planIndex": 61,
+        "name": "LOD1_MOTION_ORCHARD_S1_PORT_Warning_1",
+        "planIndex": 69,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -8213,8 +8879,8 @@
           -2.670572057366371,
           1
         ],
-        "name": "LOD2_MOTION_ORCHARD_S1_PORT_Warning",
-        "planIndex": 62,
+        "name": "LOD2_MOTION_ORCHARD_S1_PORT_Warning_1",
+        "planIndex": 71,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -8241,8 +8907,8 @@
           2.669951394200325,
           1
         ],
-        "name": "LOD0_MOTION_ORCHARD_S1_STARBOARD_Warning",
-        "planIndex": 64,
+        "name": "LOD0_MOTION_ORCHARD_S1_STARBOARD_Warning_1",
+        "planIndex": 74,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -8269,8 +8935,8 @@
           2.6684220135211945,
           1
         ],
-        "name": "LOD1_MOTION_ORCHARD_S1_STARBOARD_Warning",
-        "planIndex": 65,
+        "name": "LOD1_MOTION_ORCHARD_S1_STARBOARD_Warning_1",
+        "planIndex": 76,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -8297,8 +8963,8 @@
           2.670572116971016,
           1
         ],
-        "name": "LOD2_MOTION_ORCHARD_S1_STARBOARD_Warning",
-        "planIndex": 66,
+        "name": "LOD2_MOTION_ORCHARD_S1_STARBOARD_Warning_1",
+        "planIndex": 78,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -8325,8 +8991,8 @@
           37.330047607421875,
           1
         ],
-        "name": "LOD0_MOTION_ORCHARD_S2_PORT_Warning",
-        "planIndex": 68,
+        "name": "LOD0_MOTION_ORCHARD_S2_PORT_Warning_1",
+        "planIndex": 81,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -8353,8 +9019,8 @@
           37.33175849914551,
           1
         ],
-        "name": "LOD1_MOTION_ORCHARD_S2_PORT_Warning",
-        "planIndex": 69,
+        "name": "LOD1_MOTION_ORCHARD_S2_PORT_Warning_1",
+        "planIndex": 83,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -8381,8 +9047,8 @@
           37.33186912536621,
           1
         ],
-        "name": "LOD2_MOTION_ORCHARD_S2_PORT_Warning",
-        "planIndex": 70,
+        "name": "LOD2_MOTION_ORCHARD_S2_PORT_Warning_1",
+        "planIndex": 85,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -8409,8 +9075,8 @@
           42.669952392578125,
           1
         ],
-        "name": "LOD0_MOTION_ORCHARD_S2_STARBOARD_Warning",
-        "planIndex": 72,
+        "name": "LOD0_MOTION_ORCHARD_S2_STARBOARD_Warning_1",
+        "planIndex": 88,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -8437,8 +9103,8 @@
           42.66824150085449,
           1
         ],
-        "name": "LOD1_MOTION_ORCHARD_S2_STARBOARD_Warning",
-        "planIndex": 73,
+        "name": "LOD1_MOTION_ORCHARD_S2_STARBOARD_Warning_1",
+        "planIndex": 90,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -8465,8 +9131,8 @@
           42.668006896972656,
           1
         ],
-        "name": "LOD2_MOTION_ORCHARD_S2_STARBOARD_Warning",
-        "planIndex": 74,
+        "name": "LOD2_MOTION_ORCHARD_S2_STARBOARD_Warning_1",
+        "planIndex": 92,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -8478,7 +9144,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_anvil_storm_orchard.glb"
   },
-  "runtimeHash": "1e7d869b49927e4e958804ca57c1cc3b6da5c78079d9b227088db923f5092005",
+  "runtimeHash": "f6506bd9009a28668d80ffe5ec406643df24d73742c1b33b19a673357fcb780d",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

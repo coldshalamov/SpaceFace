@@ -1571,8 +1571,9 @@ function refillLabPlayer(state, bus) {
   if (Number.isFinite(player.armorMax)) player.armorHp = player.armorMax;
   if (Number.isFinite(player.shieldMax)) player.shield = player.shieldMax;
   if (Number.isFinite(player.capMax)) player.cap = player.capMax;
-  // heat.js is the sole writer of player.heat — clear through its bus path, never directly.
-  if (Number.isFinite(player.heat) && bus) bus.emit('heat:clear', { reason: 'lab refill' });
+  // entity.heat is the ship's combat/propulsion pool — restored directly like hull/cap. The
+  // sole-writer law covers state.player.heat (WANTED); heat:clear would expunge a live record.
+  if (Number.isFinite(player.heat)) player.heat = 0;
 }
 
 function setLabInvulnerable(state, payload) {
