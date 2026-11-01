@@ -7622,8 +7622,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_swarm_warden",
       "sourceUrl": "assets/ships/release/parts/wholeships/swarm_warden.glb",
-      "releaseSha256": "2c08ac99a525d2495abc36ffdcca0fe6a2a124b9e2095f2ec0eec32a4b9cab55",
-      "releaseBytes": 503040,
+      "releaseSha256": "5e491d108ea3a2de03a7171185bbf7e559d14121f8f69660f516610d4a5f46e2",
+      "releaseBytes": 526532,
       "dynamicNameIncludes": [
         "MOTION_",
         "HOOK_DRIVE",
@@ -7641,8 +7641,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_swarm_jackal",
       "sourceUrl": "assets/ships/release/parts/wholeships/swarm_jackal.glb",
-      "releaseSha256": "2702057af23b32a347b6085214e743ba31243b6b5cf693249975c992b9ebd21d",
-      "releaseBytes": 533732,
+      "releaseSha256": "81ffb0b25fdb2548a402eebe2b445c87b15fcac22af5ae23cedc0b4869b533f7",
+      "releaseBytes": 558572,
       "dynamicNameIncludes": [
         "MOTION_",
         "HOOK_DRIVE",
@@ -7660,8 +7660,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_swarm_anchor",
       "sourceUrl": "assets/ships/release/parts/wholeships/swarm_anchor.glb",
-      "releaseSha256": "b4e847d43762a17dc19bf70558d7f974d96d9594896af04bf88f33d72f6dc434",
-      "releaseBytes": 575004,
+      "releaseSha256": "7fd55107ab68732e11cfd3377c714cd8fe90887f6406ae27f85487caf6de1ae1",
+      "releaseBytes": 600224,
       "dynamicNameIncludes": [
         "MOTION_",
         "HOOK_DRIVE",

@@ -4156,32 +4156,32 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.swarm-warden",
-    "expectedContentHash": "d3fbc1b79f538dcdf869e347a8319a97224e0c0c98ac7a230666b2ae4a892ef7",
+    "expectedContentHash": "aaf0ea9931bd013b8c8db76de4f36b452d989464daefda27c5c573991e4fa13c",
     "key": "swarm-warden",
     "metadataUrl": "assets/ships/release/render-packages/swarm-warden/render-package.json",
     "runtimeAssetId": "SF_SWARM_WARDEN",
     "slot": "hull",
-    "sourceSha256": "2c08ac99a525d2495abc36ffdcca0fe6a2a124b9e2095f2ec0eec32a4b9cab55",
+    "sourceSha256": "5e491d108ea3a2de03a7171185bbf7e559d14121f8f69660f516610d4a5f46e2",
     "sourceUrl": "assets/ships/release/parts/wholeships/swarm_warden.glb"
   },
   {
     "assetId": "sf.render.swarm-jackal",
-    "expectedContentHash": "ecfa2ab0a8b0089b2fff9c1b9298e8f611d57345365de4df8e01f1aaad10e108",
+    "expectedContentHash": "f622d318b419b12a9670b9f91425caa72f120967dce2c87a66b7ea4fbc391478",
     "key": "swarm-jackal",
     "metadataUrl": "assets/ships/release/render-packages/swarm-jackal/render-package.json",
     "runtimeAssetId": "SF_SWARM_JACKAL",
     "slot": "hull",
-    "sourceSha256": "2702057af23b32a347b6085214e743ba31243b6b5cf693249975c992b9ebd21d",
+    "sourceSha256": "81ffb0b25fdb2548a402eebe2b445c87b15fcac22af5ae23cedc0b4869b533f7",
     "sourceUrl": "assets/ships/release/parts/wholeships/swarm_jackal.glb"
   },
   {
     "assetId": "sf.render.swarm-anchor",
-    "expectedContentHash": "8591ec184de0689a1b08ad780f725f0d0ee881b0b2cee7eae9474bad65b62a98",
+    "expectedContentHash": "13146531edd31b0a5413b77f6fbfa20120f6133b2b98f35f718b33c309965f52",
     "key": "swarm-anchor",
     "metadataUrl": "assets/ships/release/render-packages/swarm-anchor/render-package.json",
     "runtimeAssetId": "SF_SWARM_ANCHOR",
     "slot": "hull",
-    "sourceSha256": "b4e847d43762a17dc19bf70558d7f974d96d9594896af04bf88f33d72f6dc434",
+    "sourceSha256": "7fd55107ab68732e11cfd3377c714cd8fe90887f6406ae27f85487caf6de1ae1",
     "sourceUrl": "assets/ships/release/parts/wholeships/swarm_anchor.glb"
   }
 ];

@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { authoredPreloadPlanForEntity } from '../src/render/partsLibrary.js';
 import { sealMotionBankRef } from '../scripts/lib/renderPackageRuntimeTable.mjs';
+import { inspectReleaseAssetPair } from '../src/contracts/assetReleaseValidation.js';
 
 const root = new URL('../', import.meta.url);
 const read = path => readFileSync(new URL(path, root));
@@ -21,10 +22,19 @@ for (const [kind, enemyId, defId] of cases) test(`${kind}: hostile admission sel
   assert.deepEqual(plan.hull, [path], 'ordinary hostile identity resolves its own body');
   const pilot = pilots.find(row => row.key === `swarm-${kind}`);
   const released = release.find(row => row.id === pilot.releaseAssetId);
+  const compression = inspectReleaseAssetPair(`assets/ships/parts/${path}`, pilot.sourceUrl, { root: root.pathname });
+  assert.equal(compression.ok, true, JSON.stringify(compression.issues));
   const bytes = read(pilot.sourceUrl);
   assert.equal(bytes.readUInt32LE(0), 0x46546c67);
   const gltf = JSON.parse(bytes.subarray(20, 20 + bytes.readUInt32LE(12)).toString());
   assert.equal(gltf.scenes[0].extras.spacefaceAsset.assetId, pilot.runtimeAssetId);
+  for (const name of ['SOCKET_Retro_Port', 'SOCKET_Retro_Starboard']) {
+    const index = gltf.nodes.findIndex(node => node.name === name);
+    assert.ok(index >= 0, `${name} owns the fixed authored brake port instead of a moving-wing skin fit`);
+    for (let child = index, parent; (parent = gltf.nodes.findIndex(node => node.children?.includes(child))) >= 0; child = parent) {
+      assert.ok(!gltf.nodes[parent].name?.startsWith('MOTION_'), `${name} stays on the fixed body`);
+    }
+  }
   assert.equal(hash(bytes), pilot.releaseSha256);
   assert.equal(bytes.length, pilot.releaseBytes);
   assert.equal(released.releaseSha256, pilot.releaseSha256);

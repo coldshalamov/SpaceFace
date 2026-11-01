@@ -2,7 +2,7 @@
  "schema": "spaceface.rigidMotionBank.v1",
  "rigId": "swarm_warden",
  "sourceAssetId": "SF_SWARM_WARDEN",
- "sourceGlbSha256": "d287730c5d27a083e06d9bfb1657ffd0c3d805523b2482703fecf824a7cf6c95",
+ "sourceGlbSha256": "da8b1335706628bc9c0265afd929ae1c7d683173caf30260d7dcde8e3ca221aa",
  "fps": 60,
  "bindings": [
   {

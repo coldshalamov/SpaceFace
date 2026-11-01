@@ -1925,7 +1925,7 @@ function packagedLiveWholeShipFile(file) {
 //   patrol_lawman, customs_cutter  Concord navy Hornet interdictor (was the player's yellow Hornet)
 //   quiet_ghost                    The Quiet's ink-violet Wasp (lancer_sniper and the pirate Wasp stay put)
 //   choir_zealot                   Ascendant Choir plum/magenta dart (the Reach dart keeps its sodium)
-//   warden_escort                  Vael teal lode (the Reach bruisers keep the oxide lode)
+// Swarm specialists below have distinct Forge bodies and rigs, not faction recolors.
 const WHOLE_SHIP_FILE_BY_HOSTILE_ID = Object.freeze({
   wasp_swarmer: 'wholeships/ashline_dart.glb',
   choir_zealot: 'wholeships/ashline_dart_choir.glb',

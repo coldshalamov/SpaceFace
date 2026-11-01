@@ -12508,8 +12508,8 @@
       "category": "wholeships",
       "priority": "P1",
       "file": "wholeships/swarm_warden.glb",
-      "tris": 7932,
-      "bytes": 720804,
+      "tris": 9526,
+      "bytes": 811816,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -12529,6 +12529,8 @@
         "SOCKET_Mining_Front",
         "SOCKET_RCS_Port",
         "SOCKET_RCS_Starboard",
+        "SOCKET_Retro_Port",
+        "SOCKET_Retro_Starboard",
         "SOCKET_Tether_Massline",
         "SOCKET_Trail_Main",
         "SOCKET_Trail_Port",
@@ -12545,12 +12547,12 @@
         ],
         "max": [
           8.00008487701416,
-          1.3890422582626343,
+          1.3887964487075806,
           6.294192314147949
         ],
         "dimensionsM": [
           16.000264167785645,
-          2.4765422344207764,
+          2.4762964248657227,
           12.588384628295898
         ]
       },
@@ -12561,8 +12563,8 @@
       "category": "wholeships",
       "priority": "P1",
       "file": "wholeships/swarm_jackal.glb",
-      "tris": 10064,
-      "bytes": 839188,
+      "tris": 11656,
+      "bytes": 929628,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -12582,6 +12584,8 @@
         "SOCKET_Mining_Front",
         "SOCKET_RCS_Port",
         "SOCKET_RCS_Starboard",
+        "SOCKET_Retro_Port",
+        "SOCKET_Retro_Starboard",
         "SOCKET_Tether_Massline",
         "SOCKET_Trail_Main",
         "SOCKET_Trail_Port",
@@ -12597,13 +12601,13 @@
           -4.449462890625
         ],
         "max": [
-          7.300014019012451,
-          1.1464173793792725,
+          7.300040245056152,
+          1.3162696361541748,
           4.449462890625
         ],
         "dimensionsM": [
-          14.92073392868042,
-          1.8221614956855774,
+          14.920760154724121,
+          1.9920137524604797,
           8.89892578125
         ]
       },
@@ -12614,8 +12618,8 @@
       "category": "wholeships",
       "priority": "P1",
       "file": "wholeships/swarm_anchor.glb",
-      "tris": 11512,
-      "bytes": 921000,
+      "tris": 13104,
+      "bytes": 1011580,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -12634,6 +12638,8 @@
         "SOCKET_Mining_Front",
         "SOCKET_RCS_Port",
         "SOCKET_RCS_Starboard",
+        "SOCKET_Retro_Port",
+        "SOCKET_Retro_Starboard",
         "SOCKET_Tether_Massline",
         "SOCKET_Trail_Main",
         "SOCKET_Trail_Port",
@@ -12650,13 +12656,13 @@
         ],
         "max": [
           7.600335121154785,
-          1.6502254009246826,
-          3.994556188583374
+          1.650254487991333,
+          3.994715690612793
         ],
         "dimensionsM": [
           15.621715545654297,
-          2.6864386796951294,
-          7.989112615585327
+          2.68646776676178,
+          7.989272117614746
         ]
       },
       "note": "Original Forge Swarm anchor; shared Forge finish, three LODs, phase-driven rigid mechanisms."

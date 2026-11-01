@@ -17,7 +17,7 @@
         1,
         0,
         1.0336002111434937,
-        0.23525002598762512,
+        0.320582777261734,
         0,
         1
       ],
@@ -41,7 +41,7 @@
         1,
         0,
         1.0336002111434937,
-        0.23525002598762512,
+        0.320582777261734,
         0,
         1
       ]
@@ -201,7 +201,7 @@
         1,
         0,
         6.800000190734863,
-        0.08525002747774124,
+        0.17058277130126953,
         0,
         1
       ],
@@ -225,7 +225,7 @@
         1,
         0,
         6.800000190734863,
-        0.08525002747774124,
+        0.17058277130126953,
         0,
         1
       ]
@@ -247,7 +247,7 @@
         1,
         0,
         -0.15999984741210938,
-        0.23525002598762512,
+        0.320582777261734,
         -2.669677734375,
         1
       ],
@@ -271,7 +271,7 @@
         1,
         0,
         -0.15999984741210938,
-        0.23525002598762512,
+        0.320582777261734,
         -2.669677734375,
         1
       ]
@@ -293,7 +293,7 @@
         1,
         0,
         -0.15999984741210938,
-        0.23525002598762512,
+        0.320582777261734,
         2.669677734375,
         1
       ],
@@ -317,8 +317,100 @@
         1,
         0,
         -0.15999984741210938,
-        0.23525002598762512,
+        0.320582777261734,
         2.669677734375,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.swarm-jackal.anchor.socket-retro-port",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        3.5899999141693115,
+        1.100000023841858,
+        3.049999952316284,
+        1
+      ],
+      "nodeName": "SOCKET_Retro_Port",
+      "nodePath": [
+        0,
+        37
+      ],
+      "parentNodeId": "sf.render.swarm-jackal.node.sf-swarm-jackal-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        3.5899999141693115,
+        1.100000023841858,
+        3.049999952316284,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.swarm-jackal.anchor.socket-retro-starboard",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        3.5899999141693115,
+        1.100000023841858,
+        -3.049999952316284,
+        1
+      ],
+      "nodeName": "SOCKET_Retro_Starboard",
+      "nodePath": [
+        0,
+        38
+      ],
+      "parentNodeId": "sf.render.swarm-jackal.node.sf-swarm-jackal-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        3.5899999141693115,
+        1.100000023841858,
+        -3.049999952316284,
         1
       ]
     },
@@ -339,14 +431,14 @@
         1,
         0,
         -3.4423999786376953,
-        0.5727500319480896,
+        0.6580827832221985,
         0,
         1
       ],
       "nodeName": "SOCKET_Tether_Massline",
       "nodePath": [
         0,
-        37
+        39
       ],
       "parentNodeId": "sf.render.swarm-jackal.node.sf-swarm-jackal-root",
       "worldTransform": [
@@ -363,7 +455,7 @@
         1,
         0,
         -3.4423999786376953,
-        0.5727500319480896,
+        0.6580827832221985,
         0,
         1
       ]
@@ -392,7 +484,7 @@
       "nodeName": "SOCKET_Trail_Main",
       "nodePath": [
         0,
-        38
+        40
       ],
       "parentNodeId": "sf.render.swarm-jackal.node.sf-swarm-jackal-root",
       "worldTransform": [
@@ -438,7 +530,7 @@
       "nodeName": "SOCKET_Trail_Port",
       "nodePath": [
         0,
-        39
+        41
       ],
       "parentNodeId": "sf.render.swarm-jackal.node.sf-swarm-jackal-root",
       "worldTransform": [
@@ -484,7 +576,7 @@
       "nodeName": "SOCKET_Trail_Starboard",
       "nodePath": [
         0,
-        40
+        42
       ],
       "parentNodeId": "sf.render.swarm-jackal.node.sf-swarm-jackal-root",
       "worldTransform": [
@@ -523,14 +615,14 @@
         1,
         0,
         -0.15999984741210938,
-        1.095500111579895,
+        1.2661656141281128,
         0,
         1
       ],
       "nodeName": "SOCKET_Utility_Dorsal",
       "nodePath": [
         0,
-        41
+        43
       ],
       "parentNodeId": "sf.render.swarm-jackal.node.sf-swarm-jackal-root",
       "worldTransform": [
@@ -547,7 +639,7 @@
         1,
         0,
         -0.15999984741210938,
-        1.095500111579895,
+        1.2661656141281128,
         0,
         1
       ]
@@ -569,14 +661,14 @@
         1,
         0,
         6.900000095367432,
-        0.23525002598762512,
+        0.320582777261734,
         0,
         1
       ],
       "nodeName": "SOCKET_Weapon_Front",
       "nodePath": [
         0,
-        42
+        44
       ],
       "parentNodeId": "sf.render.swarm-jackal.node.sf-swarm-jackal-root",
       "worldTransform": [
@@ -593,7 +685,7 @@
         1,
         0,
         6.900000095367432,
-        0.23525002598762512,
+        0.320582777261734,
         0,
         1
       ]
@@ -611,7 +703,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "ecfa2ab0a8b0089b2fff9c1b9298e8f611d57345365de4df8e01f1aaad10e108",
+  "contentHash": "f622d318b419b12a9670b9f91425caa72f120967dce2c87a66b7ea4fbc391478",
   "dynamicGroups": [
     {
       "id": "sf.render.swarm-jackal.node.lod0-hook-drive-core.dynamic",
@@ -733,18 +825,18 @@
     {
       "bounds": {
         "max": [
-          7.300014019012451,
-          1.1463830200728744,
-          4.4490995630264925
+          7.300040245056152,
+          1.315967368974813,
+          4.449107383537159
         ],
         "min": [
           -7.620018482208252,
-          -0.6749655930098861,
-          -4.449099086189334
+          -0.6747701643849692,
+          -4.449106906700001
         ]
       },
       "drawMode": 4,
-      "geometryHash": "45768a452adeeb03c7b98f5ab3d1aeb6bb7d2981efca18e79172f7a63aa6ee44",
+      "geometryHash": "0836a18618ff8203b8f18bf82087458728b1b02ad4e5f0fe4dae92f8d78e9286",
       "id": "sf.render.swarm-jackal.node.collision-hull.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -753,7 +845,7 @@
       "meshName": "COLLISION_HULL",
       "nodeId": "sf.render.swarm-jackal.node.collision-hull",
       "primitiveIndex": 0,
-      "vertexCount": 760
+      "vertexCount": 762
     },
     {
       "bounds": {
@@ -769,7 +861,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "51aca5b983ff2b5da1cadd934ae72bc88d0fd3d3016e24276d6e180f7eedcd08",
+      "geometryHash": "8e2b8cc6d4033f2db347f9565abf1e2b936c8305d5ef2f868c54f89e9c3e3993",
       "id": "sf.render.swarm-jackal.node.lod0-armor.primitive.0",
       "indexCount": 4026,
       "indexed": true,
@@ -909,51 +1001,51 @@
       "bounds": {
         "max": [
           6.088117599487305,
-          0.8747866263923878,
+          1.3162588732692324,
           4.449166217641784
         ],
         "min": [
           -7.619999885559082,
-          -0.6747866383133168,
+          -0.6750933783504093,
           -4.449166217641784
         ]
       },
       "drawMode": 4,
-      "geometryHash": "59960721f4cc277e1e1a8cf0329fc53f437d8aed176bfb5ebbffbf388ca2f040",
+      "geometryHash": "3e6a01751c719a5c37f5027f030389dcf0db8fecfc852342db2ad7b33602195c",
       "id": "sf.render.swarm-jackal.node.lod0-mechanical.primitive.0",
-      "indexCount": 4290,
+      "indexCount": 6138,
       "indexed": true,
       "materialHash": "4ea4310dead3ce4fbe747f3f71de0b7248b633dc60b1f3e88a6db391a616590c",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Mechanical",
       "nodeId": "sf.render.swarm-jackal.node.lod0-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 1392
+      "vertexCount": 2016
     },
     {
       "bounds": {
         "max": [
           7.2892608642578125,
-          0.9994752607587296,
+          1.314254033709044,
           3.5283627577884795
         ],
         "min": [
           -7.619999885559082,
-          -0.6494752369168717,
+          -0.6495622874741501,
           -3.5283627577884795
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b25d5599485da84e5599a898317225536836a732befc7b72c95940f35372aebb",
+      "geometryHash": "d03f1b28193a07db0234b0831f4e3e8b622cb489ff8b666056710a4f936a10dc",
       "id": "sf.render.swarm-jackal.node.lod0-mechanicaldark.primitive.0",
-      "indexCount": 7047,
+      "indexCount": 8223,
       "indexed": true,
       "materialHash": "0d934540ee4521472039024ad0fca61aa4ce38d9c0a24a66da0173cf0e87759a",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MechanicalDark",
       "nodeId": "sf.render.swarm-jackal.node.lod0-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 2251
+      "vertexCount": 2627
     },
     {
       "bounds": {
@@ -1094,16 +1186,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "24a5020ce1069a4ae717e22880dd42d975aa27a17cfaf2e3bfc6c18dd3543aa5",
+      "geometryHash": "6fa848a50067dcc7ba15b52969533d8446bfc98c34878a21c4a76d4cf5e48e0f",
       "id": "sf.render.swarm-jackal.node.lod1-armor.primitive.0",
-      "indexCount": 1284,
+      "indexCount": 1245,
       "indexed": true,
       "materialHash": "63c03d681df5d784666bcf2f524a7522fd89fa7cbea7e0ecc88742c968d1bc2c",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Armor",
       "nodeId": "sf.render.swarm-jackal.node.lod1-armor",
       "primitiveIndex": 0,
-      "vertexCount": 366
+      "vertexCount": 353
     },
     {
       "bounds": {
@@ -1210,75 +1302,75 @@
         "max": [
           5.684263229370117,
           0.8990413595858312,
-          4.165858818787871
+          4.1659368230428715
         ],
         "min": [
           -6.324710845947266,
           0.8858475039777064,
-          -4.1660609977429495
+          -4.170380945357325
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ae389f63e3342e61c249ab4c52fd5663d382520c78f03ad746d1485335da4632",
+      "geometryHash": "78d1e26a2d3d0ffaf54b672f0d6fd9e54fa34c3eee2a48fa28311238bbdaf486",
       "id": "sf.render.swarm-jackal.node.lod1-hull.primitive.0",
-      "indexCount": 99,
+      "indexCount": 93,
       "indexed": true,
       "materialHash": "4226c79d4c9ab5d6a57c0edc64587857b842a54c774a4313f4e1acbadd31ade1",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Hull",
       "nodeId": "sf.render.swarm-jackal.node.lod1-hull",
       "primitiveIndex": 0,
-      "vertexCount": 30
+      "vertexCount": 28
     },
     {
       "bounds": {
         "max": [
-          6.087728500366211,
-          0.8747989968873797,
-          4.4492947133520895
+          6.087644100189209,
+          1.3163207048879326,
+          4.449267320063647
         ],
         "min": [
           -7.620607852935791,
-          -0.6747990088083087,
-          -4.4491797955969625
+          -0.6750510806546867,
+          -4.44915240230852
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7bab912e946d5a9ad0176adb99e14d3c3919ac7cdd7f669b2b833832fe71c872",
+      "geometryHash": "bed59126c5782c4e87d353f5000be85dbd33e7a17fe7c1ab94679e85eff81497",
       "id": "sf.render.swarm-jackal.node.lod1-mechanical.primitive.0",
-      "indexCount": 2637,
+      "indexCount": 3435,
       "indexed": true,
       "materialHash": "4ea4310dead3ce4fbe747f3f71de0b7248b633dc60b1f3e88a6db391a616590c",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Mechanical",
       "nodeId": "sf.render.swarm-jackal.node.lod1-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 907
+      "vertexCount": 1201
     },
     {
       "bounds": {
         "max": [
           7.288052082061768,
-          0.9974456717590935,
+          1.315906517382933,
           3.528743836711432
         ],
         "min": [
           -7.620607852935791,
-          -0.6496184160332329,
+          -0.6496506260598434,
           -3.5295172665820376
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6b5365ea6c8443a1a79837eef893b6204433813c74861c07e5b22e43166d5eb4",
+      "geometryHash": "08d1b5b3681d5700fa5940505d313a0016c641c33c761c75916e27bf9944e156",
       "id": "sf.render.swarm-jackal.node.lod1-mechanicaldark.primitive.0",
-      "indexCount": 2181,
+      "indexCount": 2640,
       "indexed": true,
       "materialHash": "0d934540ee4521472039024ad0fca61aa4ce38d9c0a24a66da0173cf0e87759a",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_MechanicalDark",
       "nodeId": "sf.render.swarm-jackal.node.lod1-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 790
+      "vertexCount": 961
     },
     {
       "bounds": {
@@ -1333,18 +1425,18 @@
     {
       "bounds": {
         "max": [
-          -3.5053877873623094,
-          0.6579568339496333,
-          2.14943790435791
+          -3.505548821747426,
+          0.657960208670771,
+          2.1494765281677246
         ],
         "min": [
-          -4.799582715491084,
-          0.46147320140307363,
-          0.0005129418568685651
+          -4.799525870025034,
+          0.4614698266819359,
+          0.00047774758422747254
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ce3e9627655b467a65469607abd7ab0f1715e42f3ac782a71ab69276487d57b7",
+      "geometryHash": "cacbe3f48dc233791b08ac19b76cb3338b999bbca58898d3b02bda323f68e502",
       "id": "sf.render.swarm-jackal.node.lod1-motion-jackal-gate-starboard-hull.primitive.0",
       "indexCount": 198,
       "indexed": true,
@@ -1358,18 +1450,18 @@
     {
       "bounds": {
         "max": [
-          -3.5053877873623094,
-          0.5642116514731519,
-          2.14943790435791
+          -3.5045281179764123,
+          0.5642134176823455,
+          2.1494765281677246
         ],
         "min": [
-          -4.799582715491084,
-          0.46137909612168143,
-          0.0005129418568685651
+          -4.799554514088407,
+          0.4613773299124879,
+          0.00047774758422747254
         ]
       },
       "drawMode": 4,
-      "geometryHash": "80b963d48a602e9b7d7d61a0dc51aafab7c61d3e09a26c31b148ec9b043b67eb",
+      "geometryHash": "fe7dd56a51c3fc94304030cdb45eea1e3713da914e5cad1cc3189a213a00a494",
       "id": "sf.render.swarm-jackal.node.lod1-motion-jackal-gate-starboard-livery.primitive.0",
       "indexCount": 180,
       "indexed": true,
@@ -1378,32 +1470,32 @@
       "meshName": "LOD1_MOTION_JACKAL_GATE_STARBOARD_Livery",
       "nodeId": "sf.render.swarm-jackal.node.lod1-motion-jackal-gate-starboard-livery",
       "primitiveIndex": 0,
-      "vertexCount": 85
+      "vertexCount": 90
     },
     {
       "bounds": {
         "max": [
           7.2941412925720215,
-          0.8873357871073765,
+          0.8873832920092625,
           2.4263941536061178
         ],
         "min": [
           -6.310314178466797,
-          0.05529962987718162,
+          0.05534713477906761,
           -4.250239301692666
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8aac961aa0e1b4b913a3cb27f8d2b7ab3310813a4eec11a4fd8dac4b475ac635",
+      "geometryHash": "5ee304ebdfc23c8142b7bf99529a8d4a35b43d3fff08a338fb76be4f69fa13d5",
       "id": "sf.render.swarm-jackal.node.lod1-warning.primitive.0",
-      "indexCount": 36,
+      "indexCount": 30,
       "indexed": true,
       "materialHash": "9f541ad2a5025ca24d9141124b50dd38af66efa084bfa6a910117eadc4e6fbf9",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Warning",
       "nodeId": "sf.render.swarm-jackal.node.lod1-warning",
       "primitiveIndex": 0,
-      "vertexCount": 30
+      "vertexCount": 24
     },
     {
       "bounds": {
@@ -1419,7 +1511,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "37ddc8cb2c90cc948a627d0245758604cda69149229fc0d64dcb7287099ffb30",
+      "geometryHash": "ed4c603e20cfaf0ae456961b9a7e9db5790f54db9f36ab64a8921dc41ee89401",
       "id": "sf.render.swarm-jackal.node.lod2-armor.primitive.0",
       "indexCount": 534,
       "indexed": true,
@@ -1558,52 +1650,52 @@
     {
       "bounds": {
         "max": [
-          6.092044830322266,
-          0.8862072262446518,
-          4.446489857925895
+          6.091859817504883,
+          1.3149003085072661,
+          4.446429865824553
         ],
         "min": [
           -7.620719909667969,
-          -0.6756091746966476,
-          -4.446489381088737
+          -0.675426214593234,
+          -4.4464293889873945
         ]
       },
       "drawMode": 4,
-      "geometryHash": "643442c77eb38a099d93613dcc351d5d33bb4ca15e8fab3b422676635c9085bf",
+      "geometryHash": "2ab3f2fc8c53a4a69b6a70ba623462383375f36e3cc239b82f7b01347809dc9c",
       "id": "sf.render.swarm-jackal.node.lod2-mechanical.primitive.0",
-      "indexCount": 1020,
+      "indexCount": 1404,
       "indexed": true,
       "materialHash": "4ea4310dead3ce4fbe747f3f71de0b7248b633dc60b1f3e88a6db391a616590c",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Mechanical",
       "nodeId": "sf.render.swarm-jackal.node.lod2-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 395
+      "vertexCount": 554
     },
     {
       "bounds": {
         "max": [
           7.297773838043213,
-          0.9976147680635197,
+          1.3147443003874513,
           3.524472655399269
         ],
         "min": [
           -7.620719909667969,
-          -0.6487145691270573,
+          -0.6484670109968873,
           -3.5293383017615736
         ]
       },
       "drawMode": 4,
-      "geometryHash": "83de6e845d74441e8bca00211f42e758aa38de193473c16b3e90c9523c1ea8f8",
+      "geometryHash": "a70ad783166cb5642126b3cacb1d9de533680cd924ccd96c60a60e52ac27a3dd",
       "id": "sf.render.swarm-jackal.node.lod2-mechanicaldark.primitive.0",
-      "indexCount": 1176,
+      "indexCount": 1338,
       "indexed": true,
       "materialHash": "0d934540ee4521472039024ad0fca61aa4ce38d9c0a24a66da0173cf0e87759a",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_MechanicalDark",
       "nodeId": "sf.render.swarm-jackal.node.lod2-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 472
+      "vertexCount": 538
     },
     {
       "bounds": {
@@ -1658,18 +1750,18 @@
     {
       "bounds": {
         "max": [
-          -3.5048037221434036,
-          0.6546010675610681,
-          2.1462912559509277
+          -3.504778414161074,
+          0.6546044424730811,
+          2.1463377475738525
         ],
         "min": [
-          -4.798148805856474,
-          0.4621896443186621,
-          0.0018201316706836224
+          -4.798168868630064,
+          0.4621862694066491,
+          0.001791394897736609
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3fa81a2a168359b93c88016dfbdefdb73b8041b5473c05f2f778963b9aaa8b66",
+      "geometryHash": "0ede4d65a98a8660de20351bec5d677c0b3789fa000d06634ce1c73f1dd10e78",
       "id": "sf.render.swarm-jackal.node.lod2-motion-jackal-gate-starboard-hull.primitive.0",
       "indexCount": 87,
       "indexed": true,
@@ -1683,18 +1775,18 @@
     {
       "bounds": {
         "max": [
-          -3.50473647211023,
-          0.5492234024783886,
-          2.147817373275757
+          -3.504840443663751,
+          0.5491463945528589,
+          2.14786958694458
         ],
         "min": [
-          -4.7982160558896485,
-          0.462249180338689,
-          0.0018201316706836224
+          -4.798106839127387,
+          0.4621688916066566,
+          0.001791394897736609
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bca0179502689d67e515f46b0bd361b7b3017a18e78a21f22e5a23ce0e474473",
+      "geometryHash": "40335b807920fa4f853d8b335fbf74a8d8f74d0c8dc259b11aa53893eb90d164",
       "id": "sf.render.swarm-jackal.node.lod2-motion-jackal-gate-starboard-livery.primitive.0",
       "indexCount": 81,
       "indexed": true,
@@ -1719,7 +1811,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f148fe8f083f5d35bfd15585da3f65fde8b139faf5c6f72d2fa41047197e0339",
+      "geometryHash": "2f81ddfd3047f78b0cf5fee8c5848330008e7f43ba1dfcf0628239e3b44c991b",
       "id": "sf.render.swarm-jackal.node.lod2-warning.primitive.0",
       "indexCount": 12,
       "indexed": true,
@@ -1960,20 +2052,20 @@
     {
       "id": "sf.render.swarm-jackal.node.collision-hull",
       "localTransform": [
-        7.460016250610352,
+        7.460029363632202,
         0,
         0,
         0,
         0,
-        7.460016250610352,
+        7.460029363632202,
         0,
         0,
         0,
         0,
-        7.460016250610352,
+        7.460029363632202,
         0,
-        -0.1600022315979004,
-        0.23570871353149414,
+        -0.1599891185760498,
+        0.3205986022949219,
         2.384185791015625e-7,
         1
       ],
@@ -1988,20 +2080,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.swarm-jackal.body",
       "worldTransform": [
-        7.460016250610352,
+        7.460029363632202,
         0,
         0,
         0,
         0,
-        7.460016250610352,
+        7.460029363632202,
         0,
         0,
         0,
         0,
-        7.460016250610352,
+        7.460029363632202,
         0,
-        -0.1600022315979004,
-        0.23570871353149414,
+        -0.1599891185760498,
+        0.3205986022949219,
         2.384185791015625e-7,
         1
       ]
@@ -2316,7 +2408,7 @@
         6.854058742523193,
         0,
         -0.7659411430358887,
-        0.09999999403953552,
+        0.3205827474594116,
         0,
         1
       ],
@@ -2344,7 +2436,7 @@
         6.854058742523193,
         0,
         -0.7659411430358887,
-        0.09999999403953552,
+        0.3205827474594116,
         0,
         1
       ]
@@ -2365,7 +2457,7 @@
         7.454630374908447,
         0,
         -0.16536951065063477,
-        0.17500001192092896,
+        0.3323458731174469,
         0,
         1
       ],
@@ -2393,7 +2485,7 @@
         7.454630374908447,
         0,
         -0.16536951065063477,
-        0.17500001192092896,
+        0.3323458731174469,
         0,
         1
       ]
@@ -2909,7 +3001,7 @@
         0,
         -0.3202238082885742,
         0.8924444317817688,
-        -0.0001010894775390625,
+        -0.0022220611572265625,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2937,27 +3029,27 @@
         0,
         -0.3202238082885742,
         0.8924444317817688,
-        -0.0001010894775390625,
+        -0.0022220611572265625,
         1
       ]
     },
     {
       "id": "sf.render.swarm-jackal.node.lod1-mechanical",
       "localTransform": [
-        6.854168176651001,
+        6.8541259765625,
         0,
         0,
         0,
         0,
-        6.854168176651001,
+        6.8541259765625,
         0,
         0,
         0,
         0,
-        6.854168176651001,
+        6.8541259765625,
         0,
-        -0.76643967628479,
-        0.09999999403953552,
+        -0.766481876373291,
+        0.3206348121166229,
         0.00005745887756347656,
         1
       ],
@@ -2972,20 +3064,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.swarm-jackal.body",
       "worldTransform": [
-        6.854168176651001,
+        6.8541259765625,
         0,
         0,
         0,
         0,
-        6.854168176651001,
+        6.8541259765625,
         0,
         0,
         0,
         0,
-        6.854168176651001,
+        6.8541259765625,
         0,
-        -0.76643967628479,
-        0.09999999403953552,
+        -0.766481876373291,
+        0.3206348121166229,
         0.00005745887756347656,
         1
       ]
@@ -3006,7 +3098,7 @@
         7.454329967498779,
         0,
         -0.16627788543701172,
-        0.1739136278629303,
+        0.3331279456615448,
         -0.0003867149353027344,
         1
       ],
@@ -3034,7 +3126,7 @@
         7.454329967498779,
         0,
         -0.16627788543701172,
-        0.1739136278629303,
+        0.3331279456615448,
         -0.0003867149353027344,
         1
       ]
@@ -3142,21 +3234,21 @@
     {
       "id": "sf.render.swarm-jackal.node.lod1-motion-jackal-gate-starboard-hull",
       "localTransform": [
-        1.0744624812505208,
+        1.0744993902917486,
         0,
         0,
         0,
         0,
-        1.0744624812505208,
+        1.0744993902917486,
         0,
         0,
         0,
         0,
-        1.0744624812505208,
+        1.0744993902917486,
         0,
-        -0.05248534679412842,
+        -0.05253744125366211,
         0.09971500933170319,
-        1.0749754231073894,
+        1.074977137875976,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3171,42 +3263,42 @@
       "role": "dynamic",
       "spatialClusterId": "sf.render.swarm-jackal.body",
       "worldTransform": [
-        1.0744624812505208,
+        1.0744993902917486,
         0,
         0,
         0,
         0,
-        1.0744624812505208,
+        1.0744993902917486,
         0,
         0,
         0,
         0,
-        1.0744624812505208,
+        1.0744993902917486,
         0,
-        -4.152485251426697,
+        -4.1525373458862305,
         0.5597150176763535,
-        1.0749754231073894,
+        1.074977137875976,
         1
       ]
     },
     {
       "id": "sf.render.swarm-jackal.node.lod1-motion-jackal-gate-starboard-livery",
       "localTransform": [
-        1.0744624812505208,
+        1.0744993902917486,
         0,
         0,
         0,
         0,
-        1.0744624812505208,
+        1.0744993902917486,
         0,
         0,
         0,
         0,
-        1.0744624812505208,
+        1.0744993902917486,
         0,
-        -0.05248534679412842,
+        -0.05204141139984131,
         0.05279536545276642,
-        1.0749754231073894,
+        1.074977137875976,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3221,21 +3313,21 @@
       "role": "dynamic",
       "spatialClusterId": "sf.render.swarm-jackal.body",
       "worldTransform": [
-        1.0744624812505208,
+        1.0744993902917486,
         0,
         0,
         0,
         0,
-        1.0744624812505208,
+        1.0744993902917486,
         0,
         0,
         0,
         0,
-        1.0744624812505208,
+        1.0744993902917486,
         0,
-        -4.152485251426697,
+        -4.15204131603241,
         0.5127953737974167,
-        1.0749754231073894,
+        1.074977137875976,
         1
       ]
     },
@@ -3255,7 +3347,7 @@
         6.802227735519409,
         0,
         0.4919135570526123,
-        0.47131770849227905,
+        0.47136521339416504,
         -0.9119225740432739,
         1
       ],
@@ -3283,7 +3375,7 @@
         6.802227735519409,
         0,
         0.4919135570526123,
-        0.47131770849227905,
+        0.47136521339416504,
         -0.9119225740432739,
         1
       ]
@@ -3585,20 +3677,20 @@
     {
       "id": "sf.render.swarm-jackal.node.lod2-mechanical",
       "localTransform": [
-        6.856382369995117,
+        6.856289863586426,
         0,
         0,
         0,
         0,
-        6.856382369995117,
+        6.856289863586426,
         0,
         0,
         0,
         0,
-        6.856382369995117,
+        6.856289863586426,
         0,
-        -0.7643375396728516,
-        0.10529902577400208,
+        -0.764430046081543,
+        0.319737046957016,
         2.384185791015625e-7,
         1
       ],
@@ -3613,20 +3705,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.swarm-jackal.body",
       "worldTransform": [
-        6.856382369995117,
+        6.856289863586426,
         0,
         0,
         0,
         0,
-        6.856382369995117,
+        6.856289863586426,
         0,
         0,
         0,
         0,
-        6.856382369995117,
+        6.856289863586426,
         0,
-        -0.7643375396728516,
-        0.10529902577400208,
+        -0.764430046081543,
+        0.319737046957016,
         2.384185791015625e-7,
         1
       ]
@@ -3647,7 +3739,7 @@
         7.459246873855591,
         0,
         -0.16147303581237793,
-        0.1744500994682312,
+        0.333138644695282,
         -0.0024328231811523438,
         1
       ],
@@ -3675,7 +3767,7 @@
         7.459246873855591,
         0,
         -0.16147303581237793,
-        0.1744500994682312,
+        0.333138644695282,
         -0.0024328231811523438,
         1
       ]
@@ -3783,21 +3875,21 @@
     {
       "id": "sf.render.swarm-jackal.node.lod2-motion-jackal-gate-starboard-hull",
       "localTransform": [
-        1.072235562140122,
+        1.072273176338058,
         0,
         0,
         0,
         0,
-        1.072235562140122,
+        1.072273176338058,
         0,
         0,
         0,
         0,
-        1.072235562140122,
+        1.072273176338058,
         0,
-        -0.051476359367370605,
+        -0.05147373676300049,
         0.09839534759521484,
-        1.0740556938108057,
+        1.0740645712357946,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3812,42 +3904,42 @@
       "role": "dynamic",
       "spatialClusterId": "sf.render.swarm-jackal.body",
       "worldTransform": [
-        1.072235562140122,
+        1.072273176338058,
         0,
         0,
         0,
         0,
-        1.072235562140122,
+        1.072273176338058,
         0,
         0,
         0,
         0,
-        1.072235562140122,
+        1.072273176338058,
         0,
-        -4.151476263999939,
+        -4.151473641395569,
         0.5583953559398651,
-        1.0740556938108057,
+        1.0740645712357946,
         1
       ]
     },
     {
       "id": "sf.render.swarm-jackal.node.lod2-motion-jackal-gate-starboard-livery",
       "localTransform": [
-        1.0729986208025366,
+        1.0730390960234217,
         0,
         0,
         0,
         0,
-        1.0729986208025366,
+        1.0730390960234217,
         0,
         0,
         0,
         0,
-        1.0729986208025366,
+        1.0730390960234217,
         0,
-        -0.051476359367370605,
-        0.04573628306388855,
-        1.0748187524732202,
+        -0.05147373676300049,
+        0.04565763473510742,
+        1.0748304909211583,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3862,21 +3954,21 @@
       "role": "dynamic",
       "spatialClusterId": "sf.render.swarm-jackal.body",
       "worldTransform": [
-        1.0729986208025366,
+        1.0730390960234217,
         0,
         0,
         0,
         0,
-        1.0729986208025366,
+        1.0730390960234217,
         0,
         0,
         0,
         0,
-        1.0729986208025366,
+        1.0730390960234217,
         0,
-        -4.151476263999939,
-        0.5057362914085388,
-        1.0748187524732202,
+        -4.151473641395569,
+        0.5056576430797577,
+        1.0748304909211583,
         1
       ]
     },
@@ -4091,7 +4183,7 @@
         1,
         0,
         1.0336002111434937,
-        0.23525002598762512,
+        0.320582777261734,
         0,
         1
       ],
@@ -4119,7 +4211,7 @@
         1,
         0,
         1.0336002111434937,
-        0.23525002598762512,
+        0.320582777261734,
         0,
         1
       ]
@@ -4287,7 +4379,7 @@
         1,
         0,
         6.800000190734863,
-        0.08525002747774124,
+        0.17058277130126953,
         0,
         1
       ],
@@ -4315,7 +4407,7 @@
         1,
         0,
         6.800000190734863,
-        0.08525002747774124,
+        0.17058277130126953,
         0,
         1
       ]
@@ -4336,7 +4428,7 @@
         1,
         0,
         -0.15999984741210938,
-        0.23525002598762512,
+        0.320582777261734,
         -2.669677734375,
         1
       ],
@@ -4364,7 +4456,7 @@
         1,
         0,
         -0.15999984741210938,
-        0.23525002598762512,
+        0.320582777261734,
         -2.669677734375,
         1
       ]
@@ -4385,7 +4477,7 @@
         1,
         0,
         -0.15999984741210938,
-        0.23525002598762512,
+        0.320582777261734,
         2.669677734375,
         1
       ],
@@ -4413,13 +4505,13 @@
         1,
         0,
         -0.15999984741210938,
-        0.23525002598762512,
+        0.320582777261734,
         2.669677734375,
         1
       ]
     },
     {
-      "id": "sf.render.swarm-jackal.node.socket-tether-massline",
+      "id": "sf.render.swarm-jackal.node.socket-retro-port",
       "localTransform": [
         1,
         0,
@@ -4433,14 +4525,14 @@
         0,
         1,
         0,
-        -3.4423999786376953,
-        0.5727500319480896,
-        0,
+        3.5899999141693115,
+        1.100000023841858,
+        3.049999952316284,
         1
       ],
       "materialPipelineKey": "root",
-      "mergeBoundary": "SOCKET_Tether_Massline",
-      "nodeName": "SOCKET_Tether_Massline",
+      "mergeBoundary": "SOCKET_Retro_Port",
+      "nodeName": "SOCKET_Retro_Port",
       "nodePath": [
         0,
         37
@@ -4461,8 +4553,106 @@
         0,
         1,
         0,
+        3.5899999141693115,
+        1.100000023841858,
+        3.049999952316284,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.swarm-jackal.node.socket-retro-starboard",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        3.5899999141693115,
+        1.100000023841858,
+        -3.049999952316284,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Retro_Starboard",
+      "nodeName": "SOCKET_Retro_Starboard",
+      "nodePath": [
+        0,
+        38
+      ],
+      "parentId": "sf.render.swarm-jackal.node.sf-swarm-jackal-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.swarm-jackal.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        3.5899999141693115,
+        1.100000023841858,
+        -3.049999952316284,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.swarm-jackal.node.socket-tether-massline",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
         -3.4423999786376953,
-        0.5727500319480896,
+        0.6580827832221985,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Tether_Massline",
+      "nodeName": "SOCKET_Tether_Massline",
+      "nodePath": [
+        0,
+        39
+      ],
+      "parentId": "sf.render.swarm-jackal.node.sf-swarm-jackal-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.swarm-jackal.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -3.4423999786376953,
+        0.6580827832221985,
         0,
         1
       ]
@@ -4492,7 +4682,7 @@
       "nodeName": "SOCKET_Trail_Main",
       "nodePath": [
         0,
-        38
+        40
       ],
       "parentId": "sf.render.swarm-jackal.node.sf-swarm-jackal-root",
       "role": "immutable",
@@ -4541,7 +4731,7 @@
       "nodeName": "SOCKET_Trail_Port",
       "nodePath": [
         0,
-        39
+        41
       ],
       "parentId": "sf.render.swarm-jackal.node.sf-swarm-jackal-root",
       "role": "immutable",
@@ -4590,7 +4780,7 @@
       "nodeName": "SOCKET_Trail_Starboard",
       "nodePath": [
         0,
-        40
+        42
       ],
       "parentId": "sf.render.swarm-jackal.node.sf-swarm-jackal-root",
       "role": "immutable",
@@ -4630,7 +4820,7 @@
         1,
         0,
         -0.15999984741210938,
-        1.095500111579895,
+        1.2661656141281128,
         0,
         1
       ],
@@ -4639,7 +4829,7 @@
       "nodeName": "SOCKET_Utility_Dorsal",
       "nodePath": [
         0,
-        41
+        43
       ],
       "parentId": "sf.render.swarm-jackal.node.sf-swarm-jackal-root",
       "role": "immutable",
@@ -4658,7 +4848,7 @@
         1,
         0,
         -0.15999984741210938,
-        1.095500111579895,
+        1.2661656141281128,
         0,
         1
       ]
@@ -4679,7 +4869,7 @@
         1,
         0,
         6.900000095367432,
-        0.23525002598762512,
+        0.320582777261734,
         0,
         1
       ],
@@ -4688,7 +4878,7 @@
       "nodeName": "SOCKET_Weapon_Front",
       "nodePath": [
         0,
-        42
+        44
       ],
       "parentId": "sf.render.swarm-jackal.node.sf-swarm-jackal-root",
       "role": "immutable",
@@ -4707,7 +4897,7 @@
         1,
         0,
         6.900000095367432,
-        0.23525002598762512,
+        0.320582777261734,
         0,
         1
       ]
@@ -4715,44 +4905,44 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "b9d89a63243de5d1d401ddb84e1d80804b45fda3682d038e18fbb75898da7864"
+      "sha256": "14701aecd842a3ffe1a14296ee0bed609fe7e55c1781abf951d1431f22634958"
     },
     "sourceGlb": {
-      "bytes": 533732,
-      "sha256": "2702057af23b32a347b6085214e743ba31243b6b5cf693249975c992b9ebd21d",
+      "bytes": 558572,
+      "sha256": "81ffb0b25fdb2548a402eebe2b445c87b15fcac22af5ae23cedc0b4869b533f7",
       "uri": "swarm_jackal.glb"
     },
     "sourceManifest": {
       "bytes": 325299,
-      "sha256": "8e7373430f01506cc123dbfcb00d501af8af7419878432e6561b524452d5d712",
+      "sha256": "3091bd01391db3916893912846619f7a7f925d4851afea4f6827956f31d0911d",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 545796,
-    "sha256": "ecc286b4fba7b7c5311c1c87faf712bd868d346692f7cebf808c2012fa5ebae3",
+    "bytes": 571016,
+    "sha256": "e7395d02d2f8df137ab9c52e2fad8d733d8b31531c654570ef8db2ced8e10273",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
-        -0.1603529453277588,
-        0.2353869226881134,
+        -0.1603398323059082,
+        0.3204472451473493,
         0
       ],
       "max": [
-        7.300014019012451,
-        1.1463830200728744,
+        7.300040245056152,
+        1.3163207048879326,
         4.449491895296192
       ],
       "min": [
         -7.620719909667969,
-        -0.6756091746966476,
+        -0.675426214593234,
         -4.449491895296192
       ],
       "size": [
-        14.92073392868042,
-        1.8219921947695221,
+        14.920760154724121,
+        1.9917469194811668,
         8.898983790592384
       ]
     },
@@ -5514,21 +5704,21 @@
       },
       {
         "matrix": [
-          1.0744624812505208,
+          1.0744993902917486,
           0,
           0,
           0,
           0,
-          1.0744624812505208,
+          1.0744993902917486,
           0,
           0,
           0,
           0,
-          1.0744624812505208,
+          1.0744993902917486,
           0,
-          -4.152485251426697,
+          -4.1525373458862305,
           0.5597150176763535,
-          1.0749754231073894,
+          1.074977137875976,
           1
         ],
         "name": "LOD1_MOTION_JACKAL_GATE_STARBOARD_Hull",
@@ -5550,21 +5740,21 @@
       },
       {
         "matrix": [
-          1.0744624812505208,
+          1.0744993902917486,
           0,
           0,
           0,
           0,
-          1.0744624812505208,
+          1.0744993902917486,
           0,
           0,
           0,
           0,
-          1.0744624812505208,
+          1.0744993902917486,
           0,
-          -4.152485251426697,
+          -4.15204131603241,
           0.5127953737974167,
-          1.0749754231073894,
+          1.074977137875976,
           1
         ],
         "name": "LOD1_MOTION_JACKAL_GATE_STARBOARD_Livery",
@@ -5586,21 +5776,21 @@
       },
       {
         "matrix": [
-          1.072235562140122,
+          1.072273176338058,
           0,
           0,
           0,
           0,
-          1.072235562140122,
+          1.072273176338058,
           0,
           0,
           0,
           0,
-          1.072235562140122,
+          1.072273176338058,
           0,
-          -4.151476263999939,
+          -4.151473641395569,
           0.5583953559398651,
-          1.0740556938108057,
+          1.0740645712357946,
           1
         ],
         "name": "LOD2_MOTION_JACKAL_GATE_STARBOARD_Hull",
@@ -5622,21 +5812,21 @@
       },
       {
         "matrix": [
-          1.0729986208025366,
+          1.0730390960234217,
           0,
           0,
           0,
           0,
-          1.0729986208025366,
+          1.0730390960234217,
           0,
           0,
           0,
           0,
-          1.0729986208025366,
+          1.0730390960234217,
           0,
-          -4.151476263999939,
-          0.5057362914085388,
-          1.0748187524732202,
+          -4.151473641395569,
+          0.5056576430797577,
+          1.0748304909211583,
           1
         ],
         "name": "LOD2_MOTION_JACKAL_GATE_STARBOARD_Livery",
@@ -5671,7 +5861,7 @@
           1,
           0,
           1.0336002111434937,
-          0.23525002598762512,
+          0.320582777261734,
           0,
           1
         ],
@@ -5879,7 +6069,7 @@
           1,
           0,
           6.800000190734863,
-          0.08525002747774124,
+          0.17058277130126953,
           0,
           1
         ],
@@ -5931,7 +6121,7 @@
           1,
           0,
           -0.15999984741210938,
-          0.23525002598762512,
+          0.320582777261734,
           -2.669677734375,
           1
         ],
@@ -5983,7 +6173,7 @@
           1,
           0,
           -0.15999984741210938,
-          0.23525002598762512,
+          0.320582777261734,
           2.669677734375,
           1
         ],
@@ -6034,13 +6224,117 @@
           0,
           1,
           0,
+          3.5899999141693115,
+          1.100000023841858,
+          3.049999952316284,
+          1
+        ],
+        "name": "SOCKET_Retro_Port",
+        "planIndex": 72,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Retro_Port",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "attachment",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Retro_Port",
+            "recordIds": [
+              "sf.render.swarm-jackal.anchor.socket-retro-port",
+              "sf.render.swarm-jackal.node.socket-retro-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          3.5899999141693115,
+          1.100000023841858,
+          -3.049999952316284,
+          1
+        ],
+        "name": "SOCKET_Retro_Starboard",
+        "planIndex": 73,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Retro_Starboard",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "attachment",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Retro_Starboard",
+            "recordIds": [
+              "sf.render.swarm-jackal.anchor.socket-retro-starboard",
+              "sf.render.swarm-jackal.node.socket-retro-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
           -3.4423999786376953,
-          0.5727500319480896,
+          0.6580827832221985,
           0,
           1
         ],
         "name": "SOCKET_Tether_Massline",
-        "planIndex": 72,
+        "planIndex": 74,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -6092,7 +6386,7 @@
           1
         ],
         "name": "SOCKET_Trail_Main",
-        "planIndex": 73,
+        "planIndex": 75,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -6144,7 +6438,7 @@
           1
         ],
         "name": "SOCKET_Trail_Port",
-        "planIndex": 74,
+        "planIndex": 76,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -6196,7 +6490,7 @@
           1
         ],
         "name": "SOCKET_Trail_Starboard",
-        "planIndex": 75,
+        "planIndex": 77,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -6243,12 +6537,12 @@
           1,
           0,
           -0.15999984741210938,
-          1.095500111579895,
+          1.2661656141281128,
           0,
           1
         ],
         "name": "SOCKET_Utility_Dorsal",
-        "planIndex": 76,
+        "planIndex": 78,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -6295,12 +6589,12 @@
           1,
           0,
           6.900000095367432,
-          0.23525002598762512,
+          0.320582777261734,
           0,
           1
         ],
         "name": "SOCKET_Weapon_Front",
-        "planIndex": 77,
+        "planIndex": 79,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -6541,10 +6835,10 @@
     "motionBank": {
       "bytes": 1630,
       "rigId": "swarm_jackal",
-      "sha256": "e766685e7cfeba9a818a838bac78d1efd6ae264a1f4dd85bc7b0462ff812e5f9",
+      "sha256": "aa56b4a35a4c266fb7e57b138399aa3a23a6e23daf1d2dc10afc207b435781ab",
       "uri": "assets/ships/motions/swarm-jackal.motion.json"
     },
-    "nodeCount": 78,
+    "nodeCount": 80,
     "primitives": [
       {
         "canopy": false,
@@ -6745,7 +7039,7 @@
           6.854058742523193,
           0,
           -0.7659411430358887,
-          0.09999999403953552,
+          0.3205827474594116,
           0,
           1
         ],
@@ -6772,7 +7066,7 @@
           7.454630374908447,
           0,
           -0.16536951065063477,
-          0.17500001192092896,
+          0.3323458731174469,
           0,
           1
         ],
@@ -6983,7 +7277,7 @@
           0,
           -0.3202238082885742,
           0.8924444317817688,
-          -0.0001010894775390625,
+          -0.0022220611572265625,
           1
         ],
         "name": "LOD1_Hull",
@@ -6996,20 +7290,20 @@
       {
         "canopy": false,
         "matrix": [
-          6.854168176651001,
+          6.8541259765625,
           0,
           0,
           0,
           0,
-          6.854168176651001,
+          6.8541259765625,
           0,
           0,
           0,
           0,
-          6.854168176651001,
+          6.8541259765625,
           0,
-          -0.76643967628479,
-          0.09999999403953552,
+          -0.766481876373291,
+          0.3206348121166229,
           0.00005745887756347656,
           1
         ],
@@ -7036,7 +7330,7 @@
           7.454329967498779,
           0,
           -0.16627788543701172,
-          0.1739136278629303,
+          0.3331279456615448,
           -0.0003867149353027344,
           1
         ],
@@ -7063,7 +7357,7 @@
           6.802227735519409,
           0,
           0.4919135570526123,
-          0.47131770849227905,
+          0.47136521339416504,
           -0.9119225740432739,
           1
         ],
@@ -7260,20 +7554,20 @@
       {
         "canopy": false,
         "matrix": [
-          6.856382369995117,
+          6.856289863586426,
           0,
           0,
           0,
           0,
-          6.856382369995117,
+          6.856289863586426,
           0,
           0,
           0,
           0,
-          6.856382369995117,
+          6.856289863586426,
           0,
-          -0.7643375396728516,
-          0.10529902577400208,
+          -0.764430046081543,
+          0.319737046957016,
           2.384185791015625e-7,
           1
         ],
@@ -7300,7 +7594,7 @@
           7.459246873855591,
           0,
           -0.16147303581237793,
-          0.1744500994682312,
+          0.333138644695282,
           -0.0024328231811523438,
           1
         ],
@@ -7565,21 +7859,21 @@
       {
         "canopy": false,
         "matrix": [
-          1.0744624812505208,
+          1.0744993902917486,
           0,
           0,
           0,
           0,
-          1.0744624812505208,
+          1.0744993902917486,
           0,
           0,
           0,
           0,
-          1.0744624812505208,
+          1.0744993902917486,
           0,
-          -4.152485251426697,
+          -4.1525373458862305,
           0.5597150176763535,
-          1.0749754231073894,
+          1.074977137875976,
           1
         ],
         "name": "LOD1_MOTION_JACKAL_GATE_STARBOARD_Hull_1",
@@ -7593,21 +7887,21 @@
       {
         "canopy": false,
         "matrix": [
-          1.0744624812505208,
+          1.0744993902917486,
           0,
           0,
           0,
           0,
-          1.0744624812505208,
+          1.0744993902917486,
           0,
           0,
           0,
           0,
-          1.0744624812505208,
+          1.0744993902917486,
           0,
-          -4.152485251426697,
+          -4.15204131603241,
           0.5127953737974167,
-          1.0749754231073894,
+          1.074977137875976,
           1
         ],
         "name": "LOD1_MOTION_JACKAL_GATE_STARBOARD_Livery_1",
@@ -7621,21 +7915,21 @@
       {
         "canopy": false,
         "matrix": [
-          1.072235562140122,
+          1.072273176338058,
           0,
           0,
           0,
           0,
-          1.072235562140122,
+          1.072273176338058,
           0,
           0,
           0,
           0,
-          1.072235562140122,
+          1.072273176338058,
           0,
-          -4.151476263999939,
+          -4.151473641395569,
           0.5583953559398651,
-          1.0740556938108057,
+          1.0740645712357946,
           1
         ],
         "name": "LOD2_MOTION_JACKAL_GATE_STARBOARD_Hull_1",
@@ -7649,21 +7943,21 @@
       {
         "canopy": false,
         "matrix": [
-          1.0729986208025366,
+          1.0730390960234217,
           0,
           0,
           0,
           0,
-          1.0729986208025366,
+          1.0730390960234217,
           0,
           0,
           0,
           0,
-          1.0729986208025366,
+          1.0730390960234217,
           0,
-          -4.151476263999939,
-          0.5057362914085388,
-          1.0748187524732202,
+          -4.151473641395569,
+          0.5056576430797577,
+          1.0748304909211583,
           1
         ],
         "name": "LOD2_MOTION_JACKAL_GATE_STARBOARD_Livery_1",
@@ -7679,19 +7973,19 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/swarm_jackal.glb"
   },
-  "runtimeHash": "93855f84f5f4e7856cc9b09ea54a8a7974c306e61fb5cf664b1ef67764a3cd17",
+  "runtimeHash": "4c8c15946f18d9720a4e5a41f455cf1f6012e6686028334d335cca3ffda632bc",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
-          7.300014019012451,
-          1.1463830200728744,
+          7.300040245056152,
+          1.3163207048879326,
           4.449491895296192
         ],
         "min": [
           -7.620719909667969,
-          -0.6756091746966476,
+          -0.675426214593234,
           -4.449491895296192
         ]
       },
@@ -7747,6 +8041,8 @@
         "sf.render.swarm-jackal.node.socket-mining-front",
         "sf.render.swarm-jackal.node.socket-rcs-port",
         "sf.render.swarm-jackal.node.socket-rcs-starboard",
+        "sf.render.swarm-jackal.node.socket-retro-port",
+        "sf.render.swarm-jackal.node.socket-retro-starboard",
         "sf.render.swarm-jackal.node.socket-tether-massline",
         "sf.render.swarm-jackal.node.socket-trail-main",
         "sf.render.swarm-jackal.node.socket-trail-port",

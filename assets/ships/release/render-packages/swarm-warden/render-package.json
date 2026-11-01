@@ -323,6 +323,98 @@
       ]
     },
     {
+      "id": "sf.render.swarm-warden.anchor.socket-retro-port",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        3.2899999618530273,
+        1.1200000047683716,
+        1.5,
+        1
+      ],
+      "nodeName": "SOCKET_Retro_Port",
+      "nodePath": [
+        0,
+        34
+      ],
+      "parentNodeId": "sf.render.swarm-warden.node.sf-swarm-warden-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        3.2899999618530273,
+        1.1200000047683716,
+        1.5,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.swarm-warden.anchor.socket-retro-starboard",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        3.2899999618530273,
+        1.1200000047683716,
+        -1.5,
+        1
+      ],
+      "nodeName": "SOCKET_Retro_Starboard",
+      "nodePath": [
+        0,
+        35
+      ],
+      "parentNodeId": "sf.render.swarm-warden.node.sf-swarm-warden-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        3.2899999618530273,
+        1.1200000047683716,
+        -1.5,
+        1
+      ]
+    },
+    {
       "id": "sf.render.swarm-warden.anchor.socket-tether-massline",
       "kind": "socket",
       "localTransform": [
@@ -346,7 +438,7 @@
       "nodeName": "SOCKET_Tether_Massline",
       "nodePath": [
         0,
-        34
+        36
       ],
       "parentNodeId": "sf.render.swarm-warden.node.sf-swarm-warden-root",
       "worldTransform": [
@@ -392,7 +484,7 @@
       "nodeName": "SOCKET_Trail_Main",
       "nodePath": [
         0,
-        35
+        37
       ],
       "parentNodeId": "sf.render.swarm-warden.node.sf-swarm-warden-root",
       "worldTransform": [
@@ -438,7 +530,7 @@
       "nodeName": "SOCKET_Trail_Port",
       "nodePath": [
         0,
-        36
+        38
       ],
       "parentNodeId": "sf.render.swarm-warden.node.sf-swarm-warden-root",
       "worldTransform": [
@@ -484,7 +576,7 @@
       "nodeName": "SOCKET_Trail_Starboard",
       "nodePath": [
         0,
-        37
+        39
       ],
       "parentNodeId": "sf.render.swarm-warden.node.sf-swarm-warden-root",
       "worldTransform": [
@@ -530,7 +622,7 @@
       "nodeName": "SOCKET_Utility_Dorsal",
       "nodePath": [
         0,
-        38
+        40
       ],
       "parentNodeId": "sf.render.swarm-warden.node.sf-swarm-warden-root",
       "worldTransform": [
@@ -576,7 +668,7 @@
       "nodeName": "SOCKET_Weapon_Front",
       "nodePath": [
         0,
-        39
+        41
       ],
       "parentNodeId": "sf.render.swarm-warden.node.sf-swarm-warden-root",
       "worldTransform": [
@@ -611,7 +703,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "d3fbc1b79f538dcdf869e347a8319a97224e0c0c98ac7a230666b2ae4a892ef7",
+  "contentHash": "aaf0ea9931bd013b8c8db76de4f36b452d989464daefda27c5c573991e4fa13c",
   "dynamicGroups": [
     {
       "id": "sf.render.swarm-warden.node.lod0-hook-drive-core.dynamic",
@@ -759,17 +851,17 @@
       "bounds": {
         "max": [
           8.00008487701416,
-          1.3891106268002364,
+          1.3889877220227096,
           6.293996923075395
         ],
         "min": [
           -8.000179290771484,
-          -1.0875683446957443,
+          -1.0876912494732711,
           -6.293997399912553
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b2a844b90e5bcad6b5b3d2a29ef7da88b8faeb523c6603eeac5a9d9782d13e94",
+      "geometryHash": "c2d8e8581e6c0e72aa2a37240c129dd9973f7d26c579e97551c2ba61ae19bbc1",
       "id": "sf.render.swarm-warden.node.collision-hull.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -778,7 +870,7 @@
       "meshName": "COLLISION_HULL",
       "nodeId": "sf.render.swarm-warden.node.collision-hull",
       "primitiveIndex": 0,
-      "vertexCount": 851
+      "vertexCount": 847
     },
     {
       "bounds": {
@@ -934,51 +1026,51 @@
       "bounds": {
         "max": [
           5.7876200675964355,
-          1.287434449659209,
+          1.33617231301743,
           2.0502389226771944
         ],
         "min": [
           -8,
-          -1.0874344019754931,
+          -1.0875067418046613,
           -2.0502389226771944
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3832bef01fda4992fa16bc388de37a411c8f963abd2a4611471e33f0544cb783",
+      "geometryHash": "397783d2c0c2aa2dc20809dd9aa759ba6dbcd3907a4ae35d9aebda33cd7dc114",
       "id": "sf.render.swarm-warden.node.lod0-mechanical.primitive.0",
-      "indexCount": 2973,
+      "indexCount": 4821,
       "indexed": true,
       "materialHash": "0945ed3b3ca5f335918077b850102b6dc564bcc5f4d6932c2fb5c2eaafff0727",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Mechanical",
       "nodeId": "sf.render.swarm-warden.node.lod0-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 899
+      "vertexCount": 1539
     },
     {
       "bounds": {
         "max": [
           7.985993385314941,
-          1.2162003901606022,
+          1.334886999779939,
           2.634281747555876
         ],
         "min": [
           -7.985421180725098,
-          -1.016200461686176,
+          -1.0164452511608595,
           -2.634281747555876
         ]
       },
       "drawMode": 4,
-      "geometryHash": "152e406817883be8332f4934b1263e88a75cf23bfa2ba2a5ad5d6c8a820eb6fe",
+      "geometryHash": "5dba7cbe2d57c5e17d789a819df35fe01dffd84409fcf1f0f47eafc29b3425a2",
       "id": "sf.render.swarm-warden.node.lod0-mechanicaldark.primitive.0",
-      "indexCount": 1200,
+      "indexCount": 2376,
       "indexed": true,
       "materialHash": "da53396e3802ce2a87aac03c379458ab36c606a09b86a5025b90879b4318c459",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MechanicalDark",
       "nodeId": "sf.render.swarm-warden.node.lod0-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 362
+      "vertexCount": 738
     },
     {
       "bounds": {
@@ -1094,7 +1186,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d0f5bc078172a9c894e956be2d6d716704bc7f8f911c60bad54290d6729a754a",
+      "geometryHash": "a4a3ada3c64fd9579ffa73a405c403b5d443dc252b4a55967b91f1affc001da6",
       "id": "sf.render.swarm-warden.node.lod0-motion-warden-shield-starboard-armor.primitive.0",
       "indexCount": 1452,
       "indexed": true,
@@ -1183,27 +1275,27 @@
     {
       "bounds": {
         "max": [
-          7.999070644378662,
-          1.2498387952463108,
-          2.6996663447305647
+          7.999417781829834,
+          1.2498160455144323,
+          2.699575641715727
         ],
         "min": [
-          -7.995860576629639,
-          -0.10328933197421608,
-          -2.6996663447305647
+          -7.994976043701172,
+          -0.10326661949524052,
+          -2.699575641715727
         ]
       },
       "drawMode": 4,
-      "geometryHash": "95bec321d8bee303d5814981885545764a211443e1bae869eb15acb4696cad4d",
+      "geometryHash": "5ed845764dd2ada8f362b67b425767ca08f62a9f7a77d42ac9c8fccc70650d9c",
       "id": "sf.render.swarm-warden.node.lod1-armor.primitive.0",
-      "indexCount": 618,
+      "indexCount": 717,
       "indexed": true,
       "materialHash": "5558317b2f09fcd3bfd55cfd2e67910d88a41e092365cd0677f115e77783a374",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Armor",
       "nodeId": "sf.render.swarm-warden.node.lod1-armor",
       "primitiveIndex": 0,
-      "vertexCount": 170
+      "vertexCount": 193
     },
     {
       "bounds": {
@@ -1260,16 +1352,16 @@
         "max": [
           4.95884895324707,
           1.2300004959106445,
-          1.1954818092336381
+          1.1954806638538162
         ],
         "min": [
-          -4.497361183166504,
+          -4.497352123260498,
           1.2300004959106445,
-          -1.1954816900243486
+          -1.1954805446445267
         ]
       },
       "drawMode": 4,
-      "geometryHash": "781ac51cdc105830fa69a0f7e7b368ed0dd3fa59f64e85f656763cd46822d309",
+      "geometryHash": "0ceef4f6de49cbcbc34ace615181d42851698cfe1a28af215753bc91cd65e31c",
       "id": "sf.render.swarm-warden.node.lod1-hull.primitive.0",
       "indexCount": 15,
       "indexed": true,
@@ -1334,51 +1426,51 @@
       "bounds": {
         "max": [
           5.785429000854492,
-          1.2871721562756555,
+          1.3337729380849437,
           2.0436288334828774
         ],
         "min": [
           -7.9991455078125,
-          -1.0871721085919397,
+          -1.0876880095723704,
           -2.0441640831929604
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7676429c31d7ecce4e190707d72da1e946282f51541ad3a6b543b614b7da98f8",
+      "geometryHash": "9915caabe7ff6c0768257090ffcdb52ca6f2cac2bc1aafca4f8f584d200d0de3",
       "id": "sf.render.swarm-warden.node.lod1-mechanical.primitive.0",
-      "indexCount": 1407,
+      "indexCount": 2190,
       "indexed": true,
       "materialHash": "0945ed3b3ca5f335918077b850102b6dc564bcc5f4d6932c2fb5c2eaafff0727",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Mechanical",
       "nodeId": "sf.render.swarm-warden.node.lod1-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 479
+      "vertexCount": 786
     },
     {
       "bounds": {
         "max": [
           7.985647201538086,
-          1.2179883102598372,
+          1.3334839204467532,
           2.633849782888718
         ],
         "min": [
           -7.994976043701172,
-          -1.0156996826353255,
+          -1.015302405706763,
           -2.633849782888718
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4595e1f4ea413c294caee3d9f424bcaa9fd19492f0a51d95fce2da1dc623f50b",
+      "geometryHash": "49af4eb488a7ee760de2fa3c45f138fc44fe9f8d2a6dcb78871745ee37d874a9",
       "id": "sf.render.swarm-warden.node.lod1-mechanicaldark.primitive.0",
-      "indexCount": 519,
+      "indexCount": 849,
       "indexed": true,
       "materialHash": "da53396e3802ce2a87aac03c379458ab36c606a09b86a5025b90879b4318c459",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_MechanicalDark",
       "nodeId": "sf.render.swarm-warden.node.lod1-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 155
+      "vertexCount": 288
     },
     {
       "bounds": {
@@ -1494,7 +1586,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5773cffabf160f7c57e3319dbcef7670f05ecaaa5721c91eef236c4047bd9027",
+      "geometryHash": "29c6e5bd572caf54aea0abdaa8f67f63d4fae6b06f1ad9b27f9a0610150396ff",
       "id": "sf.render.swarm-warden.node.lod1-motion-warden-shield-starboard-armor.primitive.0",
       "indexCount": 711,
       "indexed": true,
@@ -1594,16 +1686,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4d7b48a4d7875c442b88bae1cd27295746a50926b9727069609173f69fb157a9",
+      "geometryHash": "bd6787f5cd6dfe768375416b25becf1d351026363b0ba3229bb1e0cf19bdf67d",
       "id": "sf.render.swarm-warden.node.lod2-armor.primitive.0",
-      "indexCount": 297,
+      "indexCount": 363,
       "indexed": true,
       "materialHash": "5558317b2f09fcd3bfd55cfd2e67910d88a41e092365cd0677f115e77783a374",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Armor",
       "nodeId": "sf.render.swarm-warden.node.lod2-armor",
       "primitiveIndex": 0,
-      "vertexCount": 92
+      "vertexCount": 107
     },
     {
       "bounds": {
@@ -1633,52 +1725,52 @@
     {
       "bounds": {
         "max": [
-          -7.33718095540411,
-          0.6710598384567833,
-          0.5714776068925858
+          -7.337339516485251,
+          0.6873899549245834,
+          0.5714840883922806
         ],
         "min": [
-          -7.3374644684850505,
-          -0.48648863188711167,
-          -0.5897565335035324
+          -7.3374828139896024,
+          -0.4864673763513565,
+          -0.5897630625006786
         ]
       },
       "drawMode": 4,
-      "geometryHash": "95b9c5549743b8120d934b00b1a6f987fc2e75093787d297532c86e3ad0b6bf7",
+      "geometryHash": "18acf8d442ba43dea6f363e76dbaaa1a261d87131c3636fa00af4716b6b6d54d",
       "id": "sf.render.swarm-warden.node.lod2-hook-drive-core.primitive.0",
-      "indexCount": 21,
+      "indexCount": 24,
       "indexed": true,
       "materialHash": "3b899207dbee13080e05ef03ca39f94e21e6b011ff52ddfe2f61ea37c4088e75",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_HOOK_DRIVE_CORE",
       "nodeId": "sf.render.swarm-warden.node.lod2-hook-drive-core",
       "primitiveIndex": 0,
-      "vertexCount": 9
+      "vertexCount": 10
     },
     {
       "bounds": {
         "max": [
-          4.960715293884277,
-          1.231208465450192,
-          1.1957177574769815
+          4.95884895324707,
+          1.2300004959106445,
+          1.1954806638538162
         ],
         "min": [
-          -4.497361183166504,
-          1.2300538798638339,
-          -1.195717638267692
+          -4.497352123260498,
+          1.2300004959106445,
+          -1.1954805446445267
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cf0a7f4f938f930dc4344772970a5cb020a41917bd6442b3750ae4594d90b309",
+      "geometryHash": "0ceef4f6de49cbcbc34ace615181d42851698cfe1a28af215753bc91cd65e31c",
       "id": "sf.render.swarm-warden.node.lod2-hull.primitive.0",
-      "indexCount": 12,
+      "indexCount": 15,
       "indexed": true,
       "materialHash": "c36b9e4e52aca2b42e27fa2a62a2e0e4a87d4e993bbed0dbef60725fbc7b067c",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Hull",
       "nodeId": "sf.render.swarm-warden.node.lod2-hull",
       "primitiveIndex": 0,
-      "vertexCount": 6
+      "vertexCount": 7
     },
     {
       "bounds": {
@@ -1709,17 +1801,17 @@
       "bounds": {
         "max": [
           5.786856174468994,
-          1.2312348091215233,
-          0.7461790975753434
+          1.2299998033365782,
+          0.7461967999634884
         ],
         "min": [
           4.796802520751953,
-          0.9209573662668129,
-          -0.015086865295863894
+          0.9209309589543763,
+          -0.00032426154311676614
         ]
       },
       "drawMode": 4,
-      "geometryHash": "96fabb6ef2934b3df3a79efe24358d95d12235da40f331d766e74f60f43d9e94",
+      "geometryHash": "b8910fea08927660cc0c235750afe9e6157a0f38d453786015a3a41cec97b070",
       "id": "sf.render.swarm-warden.node.lod2-livery.primitive.0",
       "indexCount": 3,
       "indexed": true,
@@ -1734,51 +1826,51 @@
       "bounds": {
         "max": [
           5.787031173706055,
-          1.2887386322188836,
+          1.3343554144976404,
           2.0395025160983007
         ],
         "min": [
           -7.996279716491699,
-          -1.082022809999035,
+          -1.081835806953695,
           -2.03950275451688
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1046398453365f82c7767837c5c351ab5a321db27945868d8465092b4d1e908c",
+      "geometryHash": "a7d831842edc1d300f0b6387d47795a53ed685b171f85c9db446f3e69a955306",
       "id": "sf.render.swarm-warden.node.lod2-mechanical.primitive.0",
-      "indexCount": 534,
+      "indexCount": 906,
       "indexed": true,
       "materialHash": "0945ed3b3ca5f335918077b850102b6dc564bcc5f4d6932c2fb5c2eaafff0727",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Mechanical",
       "nodeId": "sf.render.swarm-warden.node.lod2-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 209
+      "vertexCount": 365
     },
     {
       "bounds": {
         "max": [
-          7.996140956878662,
-          1.2233495434530304,
-          2.6128925164705534
+          7.996606826782227,
+          1.3345898586418659,
+          2.612968644904607
         ],
         "min": [
           -7.99507999420166,
-          -1.0293887575872467,
-          -2.6134017785555144
+          -1.0294877487328082,
+          -2.613477906989568
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8e6c4b0c4504149c537ae1f5f7d64780007aa44f1d8dd8a1408d25617e0bd287",
+      "geometryHash": "107bc791553e478e82d7b0095f0d654cd185fb1449f7e6dbe7f45611ba6cfacf",
       "id": "sf.render.swarm-warden.node.lod2-mechanicaldark.primitive.0",
-      "indexCount": 273,
+      "indexCount": 375,
       "indexed": true,
       "materialHash": "da53396e3802ce2a87aac03c379458ab36c606a09b86a5025b90879b4318c459",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_MechanicalDark",
       "nodeId": "sf.render.swarm-warden.node.lod2-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 90
+      "vertexCount": 131
     },
     {
       "bounds": {
@@ -1894,7 +1986,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c358a7caff5fbbd5f0a77c93835f989fcce8148648ceeed1e6592bc7e5f73658",
+      "geometryHash": "be233fe8188adcd2cd1128fda58bcf4c10cf39adb96d2762b3141cc3a3d25ab7",
       "id": "sf.render.swarm-warden.node.lod2-motion-warden-shield-starboard-armor.primitive.0",
       "indexCount": 342,
       "indexed": true,
@@ -2173,7 +2265,7 @@
         8.000132083892822,
         0,
         -0.000047206878662109375,
-        0.1507711410522461,
+        0.15064823627471924,
         -2.384185791015625e-7,
         1
       ],
@@ -2201,7 +2293,7 @@
         8.000132083892822,
         0,
         -0.000047206878662109375,
-        0.1507711410522461,
+        0.15064823627471924,
         -2.384185791015625e-7,
         1
       ]
@@ -2516,7 +2608,7 @@
         6.893810033798218,
         0,
         -1.1061899662017822,
-        0.10000002384185791,
+        0.12433278560638428,
         0,
         1
       ],
@@ -2544,7 +2636,7 @@
         6.893810033798218,
         0,
         -1.1061899662017822,
-        0.10000002384185791,
+        0.12433278560638428,
         0,
         1
       ]
@@ -2565,7 +2657,7 @@
         7.9857072830200195,
         0,
         0.000286102294921875,
-        0.09999996423721313,
+        0.1592208743095398,
         0,
         1
       ],
@@ -2593,7 +2685,7 @@
         7.9857072830200195,
         0,
         0.000286102294921875,
-        0.09999996423721313,
+        0.1592208743095398,
         0,
         1
       ]
@@ -3001,20 +3093,20 @@
     {
       "id": "sf.render.swarm-warden.node.lod1-armor",
       "localTransform": [
-        7.99746561050415,
+        7.997196912765503,
         0,
         0,
         0,
         0,
-        7.99746561050415,
+        7.997196912765503,
         0,
         0,
         0,
         0,
-        7.99746561050415,
+        7.997196912765503,
         0,
-        0.0016050338745117188,
-        0.5732747316360474,
+        0.0022208690643310547,
+        0.5732747130095959,
         0,
         1
       ],
@@ -3029,20 +3121,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.swarm-warden.body",
       "worldTransform": [
-        7.99746561050415,
+        7.997196912765503,
         0,
         0,
         0,
         0,
-        7.99746561050415,
+        7.997196912765503,
         0,
         0,
         0,
         0,
-        7.99746561050415,
+        7.997196912765503,
         0,
-        0.0016050338745117188,
-        0.5732747316360474,
+        0.0022208690643310547,
+        0.5732747130095959,
         0,
         1
       ]
@@ -3148,19 +3240,19 @@
     {
       "id": "sf.render.swarm-warden.node.lod1-hull",
       "localTransform": [
-        4.728105068206787,
+        4.728100538253784,
         0,
         0,
         0,
         0,
-        4.728105068206787,
+        4.728100538253784,
         0,
         0,
         0,
         0,
-        4.728105068206787,
+        4.728100538253784,
         0,
-        0.2307438850402832,
+        0.23074841499328613,
         1.2300004959106445,
         5.960464477539063e-8,
         1
@@ -3176,19 +3268,19 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.swarm-warden.body",
       "worldTransform": [
-        4.728105068206787,
+        4.728100538253784,
         0,
         0,
         0,
         0,
-        4.728105068206787,
+        4.728100538253784,
         0,
         0,
         0,
         0,
-        4.728105068206787,
+        4.728100538253784,
         0,
-        0.2307438850402832,
+        0.23074841499328613,
         1.2300004959106445,
         5.960464477539063e-8,
         1
@@ -3308,7 +3400,7 @@
         6.892287254333496,
         0,
         -1.106858253479004,
-        0.10000002384185791,
+        0.12304246425628662,
         -0.0002676248550415039,
         1
       ],
@@ -3336,7 +3428,7 @@
         6.892287254333496,
         0,
         -1.106858253479004,
-        0.10000002384185791,
+        0.12304246425628662,
         -0.0002676248550415039,
         1
       ]
@@ -3357,7 +3449,7 @@
         7.990311622619629,
         0,
         -0.004664421081542969,
-        0.10114431381225586,
+        0.15909075736999512,
         0,
         1
       ],
@@ -3385,7 +3477,7 @@
         7.990311622619629,
         0,
         -0.004664421081542969,
-        0.10114431381225586,
+        0.15909075736999512,
         0,
         1
       ]
@@ -3891,21 +3983,21 @@
     {
       "id": "sf.render.swarm-warden.node.lod2-hook-drive-core",
       "localTransform": [
-        0.5806170701980591,
+        0.58692866563797,
         0,
         0,
         0,
         0,
-        0.5806170701980591,
+        0.58692866563797,
         0,
         0,
         0,
         0,
-        0.5806170701980591,
+        0.58692866563797,
         0,
-        -7.33732271194458,
-        0.09228560328483582,
-        -0.009139463305473328,
+        -7.337411165237427,
+        0.10046128928661346,
+        -0.00913948705419898,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3919,41 +4011,41 @@
       "role": "dynamic",
       "spatialClusterId": "sf.render.swarm-warden.body",
       "worldTransform": [
-        0.5806170701980591,
+        0.58692866563797,
         0,
         0,
         0,
         0,
-        0.5806170701980591,
+        0.58692866563797,
         0,
         0,
         0,
         0,
-        0.5806170701980591,
+        0.58692866563797,
         0,
-        -7.33732271194458,
-        0.09228560328483582,
-        -0.009139463305473328,
+        -7.337411165237427,
+        0.10046128928661346,
+        -0.00913948705419898,
         1
       ]
     },
     {
       "id": "sf.render.swarm-warden.node.lod2-hull",
       "localTransform": [
-        4.729038238525391,
+        4.728100538253784,
         0,
         0,
         0,
         0,
-        4.729038238525391,
+        4.728100538253784,
         0,
         0,
         0,
         0,
-        4.729038238525391,
+        4.728100538253784,
         0,
-        0.23167705535888672,
-        1.230631172657013,
+        0.23074841499328613,
+        1.2300004959106445,
         5.960464477539063e-8,
         1
       ],
@@ -3968,20 +4060,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.swarm-warden.body",
       "worldTransform": [
-        4.729038238525391,
+        4.728100538253784,
         0,
         0,
         0,
         0,
-        4.729038238525391,
+        4.728100538253784,
         0,
         0,
         0,
         0,
-        4.729038238525391,
+        4.728100538253784,
         0,
-        0.23167705535888672,
-        1.230631172657013,
+        0.23074841499328613,
+        1.2300004959106445,
         5.960464477539063e-8,
         1
       ]
@@ -4051,8 +4143,8 @@
         0.4950268268585205,
         0,
         5.291829347610474,
-        1.076096087694168,
-        0.36554611613973975,
+        1.0754653811454773,
+        0.37293626921018586,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -4079,8 +4171,8 @@
         0.4950268268585205,
         0,
         5.291829347610474,
-        1.076096087694168,
-        0.36554611613973975,
+        1.0754653811454773,
+        0.37293626921018586,
         1
       ]
     },
@@ -4100,7 +4192,7 @@
         6.891655445098877,
         0,
         -1.1046242713928223,
-        0.10335791110992432,
+        0.12625980377197266,
         -1.1920928955078125e-7,
         1
       ],
@@ -4128,7 +4220,7 @@
         6.891655445098877,
         0,
         -1.1046242713928223,
-        0.10335791110992432,
+        0.12625980377197266,
         -1.1920928955078125e-7,
         1
       ]
@@ -4136,20 +4228,20 @@
     {
       "id": "sf.render.swarm-warden.node.lod2-mechanicaldark",
       "localTransform": [
-        7.995610475540161,
+        7.995843410491943,
         0,
         0,
         0,
         0,
-        7.995610475540161,
+        7.995843410491943,
         0,
         0,
         0,
         0,
-        7.995610475540161,
+        7.995843410491943,
         0,
-        0.0005304813385009766,
-        0.09698039293289185,
+        0.0007634162902832031,
+        0.1525510549545288,
         -0.00025463104248046875,
         1
       ],
@@ -4164,20 +4256,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.swarm-warden.body",
       "worldTransform": [
-        7.995610475540161,
+        7.995843410491943,
         0,
         0,
         0,
         0,
-        7.995610475540161,
+        7.995843410491943,
         0,
         0,
         0,
         0,
-        7.995610475540161,
+        7.995843410491943,
         0,
-        0.0005304813385009766,
-        0.09698039293289185,
+        0.0007634162902832031,
+        0.1525510549545288,
         -0.00025463104248046875,
         1
       ]
@@ -5022,6 +5114,104 @@
       ]
     },
     {
+      "id": "sf.render.swarm-warden.node.socket-retro-port",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        3.2899999618530273,
+        1.1200000047683716,
+        1.5,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Retro_Port",
+      "nodeName": "SOCKET_Retro_Port",
+      "nodePath": [
+        0,
+        34
+      ],
+      "parentId": "sf.render.swarm-warden.node.sf-swarm-warden-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.swarm-warden.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        3.2899999618530273,
+        1.1200000047683716,
+        1.5,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.swarm-warden.node.socket-retro-starboard",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        3.2899999618530273,
+        1.1200000047683716,
+        -1.5,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Retro_Starboard",
+      "nodeName": "SOCKET_Retro_Starboard",
+      "nodePath": [
+        0,
+        35
+      ],
+      "parentId": "sf.render.swarm-warden.node.sf-swarm-warden-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.swarm-warden.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        3.2899999618530273,
+        1.1200000047683716,
+        -1.5,
+        1
+      ]
+    },
+    {
       "id": "sf.render.swarm-warden.node.socket-tether-massline",
       "localTransform": [
         1,
@@ -5046,7 +5236,7 @@
       "nodeName": "SOCKET_Tether_Massline",
       "nodePath": [
         0,
-        34
+        36
       ],
       "parentId": "sf.render.swarm-warden.node.sf-swarm-warden-root",
       "role": "immutable",
@@ -5095,7 +5285,7 @@
       "nodeName": "SOCKET_Trail_Main",
       "nodePath": [
         0,
-        35
+        37
       ],
       "parentId": "sf.render.swarm-warden.node.sf-swarm-warden-root",
       "role": "immutable",
@@ -5144,7 +5334,7 @@
       "nodeName": "SOCKET_Trail_Port",
       "nodePath": [
         0,
-        36
+        38
       ],
       "parentId": "sf.render.swarm-warden.node.sf-swarm-warden-root",
       "role": "immutable",
@@ -5193,7 +5383,7 @@
       "nodeName": "SOCKET_Trail_Starboard",
       "nodePath": [
         0,
-        37
+        39
       ],
       "parentId": "sf.render.swarm-warden.node.sf-swarm-warden-root",
       "role": "immutable",
@@ -5242,7 +5432,7 @@
       "nodeName": "SOCKET_Utility_Dorsal",
       "nodePath": [
         0,
-        38
+        40
       ],
       "parentId": "sf.render.swarm-warden.node.sf-swarm-warden-root",
       "role": "immutable",
@@ -5291,7 +5481,7 @@
       "nodeName": "SOCKET_Weapon_Front",
       "nodePath": [
         0,
-        39
+        41
       ],
       "parentId": "sf.render.swarm-warden.node.sf-swarm-warden-root",
       "role": "immutable",
@@ -5318,39 +5508,39 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "0d504e9849d65c807236a62fd1733ea32f6a25f204f29d1b908981ba3a80a232"
+      "sha256": "d258d6734d9b0aff55cdbbf962057ed5176e7a2016dc3ceaebeb81769d3cf915"
     },
     "sourceGlb": {
-      "bytes": 503040,
-      "sha256": "2c08ac99a525d2495abc36ffdcca0fe6a2a124b9e2095f2ec0eec32a4b9cab55",
+      "bytes": 526532,
+      "sha256": "5e491d108ea3a2de03a7171185bbf7e559d14121f8f69660f516610d4a5f46e2",
       "uri": "swarm_warden.glb"
     },
     "sourceManifest": {
       "bytes": 325299,
-      "sha256": "8e7373430f01506cc123dbfcb00d501af8af7419878432e6561b524452d5d712",
+      "sha256": "3091bd01391db3916893912846619f7a7f925d4851afea4f6827956f31d0911d",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 517028,
-    "sha256": "fec23eabcca94be26d7b8c78bf991088c670fe61058ef2d1a99a650cd47e658c",
+    "bytes": 540880,
+    "sha256": "aa8532b2d76da75239e57944d1206369f53e9c0788e463f074a43d5398d48949",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
         -0.000047206878662109375,
-        0.1507711410522461,
+        0.15064823627471924,
         0
       ],
       "max": [
         8.00008487701416,
-        1.3891106268002364,
+        1.3889877220227096,
         6.2941307539025555
       ],
       "min": [
         -8.000179290771484,
-        -1.0875683446957443,
+        -1.0876912494732711,
         -6.2941307539025555
       ],
       "size": [
@@ -5444,21 +5634,21 @@
       },
       {
         "matrix": [
-          0.5806170701980591,
+          0.58692866563797,
           0,
           0,
           0,
           0,
-          0.5806170701980591,
+          0.58692866563797,
           0,
           0,
           0,
           0,
-          0.5806170701980591,
+          0.58692866563797,
           0,
-          -7.33732271194458,
-          0.09228560328483582,
-          -0.009139463305473328,
+          -7.337411165237427,
+          0.10046128928661346,
+          -0.00913948705419898,
           1
         ],
         "name": "LOD2_HOOK_DRIVE_CORE",
@@ -6823,13 +7013,117 @@
           0,
           1,
           0,
+          3.2899999618530273,
+          1.1200000047683716,
+          1.5,
+          1
+        ],
+        "name": "SOCKET_Retro_Port",
+        "planIndex": 85,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Retro_Port",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "attachment",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Retro_Port",
+            "recordIds": [
+              "sf.render.swarm-warden.anchor.socket-retro-port",
+              "sf.render.swarm-warden.node.socket-retro-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          3.2899999618530273,
+          1.1200000047683716,
+          -1.5,
+          1
+        ],
+        "name": "SOCKET_Retro_Starboard",
+        "planIndex": 86,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Retro_Starboard",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "attachment",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Retro_Starboard",
+            "recordIds": [
+              "sf.render.swarm-warden.anchor.socket-retro-starboard",
+              "sf.render.swarm-warden.node.socket-retro-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
           -3.5199999809265137,
           0.6942499876022339,
           0,
           1
         ],
         "name": "SOCKET_Tether_Massline",
-        "planIndex": 85,
+        "planIndex": 87,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -6881,7 +7175,7 @@
           1
         ],
         "name": "SOCKET_Trail_Main",
-        "planIndex": 86,
+        "planIndex": 88,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -6933,7 +7227,7 @@
           1
         ],
         "name": "SOCKET_Trail_Port",
-        "planIndex": 87,
+        "planIndex": 89,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -6985,7 +7279,7 @@
           1
         ],
         "name": "SOCKET_Trail_Starboard",
-        "planIndex": 88,
+        "planIndex": 90,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -7037,7 +7331,7 @@
           1
         ],
         "name": "SOCKET_Utility_Dorsal",
-        "planIndex": 89,
+        "planIndex": 91,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -7089,7 +7383,7 @@
           1
         ],
         "name": "SOCKET_Weapon_Front",
-        "planIndex": 90,
+        "planIndex": 92,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -7369,10 +7663,10 @@
     "motionBank": {
       "bytes": 1641,
       "rigId": "swarm_warden",
-      "sha256": "d2fdfb1968a4b64da2c659ad9cf1ecc956d6b08824698f9153d5c1ff6dd514c1",
+      "sha256": "6613a379837f06538493ac033d445dbef5b7964b39356a6172606ed6fa8f9083",
       "uri": "assets/ships/motions/swarm-warden.motion.json"
     },
-    "nodeCount": 91,
+    "nodeCount": 93,
     "primitives": [
       {
         "canopy": false,
@@ -7571,7 +7865,7 @@
           6.893810033798218,
           0,
           -1.1061899662017822,
-          0.10000002384185791,
+          0.12433278560638428,
           0,
           1
         ],
@@ -7598,7 +7892,7 @@
           7.9857072830200195,
           0,
           0.000286102294921875,
-          0.09999996423721313,
+          0.1592208743095398,
           0,
           1
         ],
@@ -7612,20 +7906,20 @@
       {
         "canopy": false,
         "matrix": [
-          7.99746561050415,
+          7.997196912765503,
           0,
           0,
           0,
           0,
-          7.99746561050415,
+          7.997196912765503,
           0,
           0,
           0,
           0,
-          7.99746561050415,
+          7.997196912765503,
           0,
-          0.0016050338745117188,
-          0.5732747316360474,
+          0.0022208690643310547,
+          0.5732747130095959,
           0,
           1
         ],
@@ -7712,19 +8006,19 @@
       {
         "canopy": false,
         "matrix": [
-          4.728105068206787,
+          4.728100538253784,
           0,
           0,
           0,
           0,
-          4.728105068206787,
+          4.728100538253784,
           0,
           0,
           0,
           0,
-          4.728105068206787,
+          4.728100538253784,
           0,
-          0.2307438850402832,
+          0.23074841499328613,
           1.2300004959106445,
           5.960464477539063e-8,
           1
@@ -7806,7 +8100,7 @@
           6.892287254333496,
           0,
           -1.106858253479004,
-          0.10000002384185791,
+          0.12304246425628662,
           -0.0002676248550415039,
           1
         ],
@@ -7833,7 +8127,7 @@
           7.990311622619629,
           0,
           -0.004664421081542969,
-          0.10114431381225586,
+          0.15909075736999512,
           0,
           1
         ],
@@ -7901,21 +8195,21 @@
       {
         "canopy": false,
         "matrix": [
-          0.5806170701980591,
+          0.58692866563797,
           0,
           0,
           0,
           0,
-          0.5806170701980591,
+          0.58692866563797,
           0,
           0,
           0,
           0,
-          0.5806170701980591,
+          0.58692866563797,
           0,
-          -7.33732271194458,
-          0.09228560328483582,
-          -0.009139463305473328,
+          -7.337411165237427,
+          0.10046128928661346,
+          -0.00913948705419898,
           1
         ],
         "name": "LOD2_HOOK_DRIVE_CORE_1",
@@ -7924,21 +8218,21 @@
           "canopy": false,
           "drive": "core",
           "driveAnchorMatrix": [
-            0.5806170701980591,
+            0.58692866563797,
             0,
             0,
             0,
             0,
-            0.5806170701980591,
+            0.58692866563797,
             0,
             0,
             0,
             0,
-            0.5806170701980591,
+            0.58692866563797,
             0,
-            -7.33732271194458,
-            0.09228560328483582,
-            -0.009139463305473328,
+            -7.337411165237427,
+            0.10046128928661346,
+            -0.00913948705419898,
             1
           ],
           "lod": "lod2"
@@ -7947,20 +8241,20 @@
       {
         "canopy": false,
         "matrix": [
-          4.729038238525391,
+          4.728100538253784,
           0,
           0,
           0,
           0,
-          4.729038238525391,
+          4.728100538253784,
           0,
           0,
           0,
           0,
-          4.729038238525391,
+          4.728100538253784,
           0,
-          0.23167705535888672,
-          1.230631172657013,
+          0.23074841499328613,
+          1.2300004959106445,
           5.960464477539063e-8,
           1
         ],
@@ -8014,8 +8308,8 @@
           0.4950268268585205,
           0,
           5.291829347610474,
-          1.076096087694168,
-          0.36554611613973975,
+          1.0754653811454773,
+          0.37293626921018586,
           1
         ],
         "name": "LOD2_Livery",
@@ -8041,7 +8335,7 @@
           6.891655445098877,
           0,
           -1.1046242713928223,
-          0.10335791110992432,
+          0.12625980377197266,
           -1.1920928955078125e-7,
           1
         ],
@@ -8055,20 +8349,20 @@
       {
         "canopy": false,
         "matrix": [
-          7.995610475540161,
+          7.995843410491943,
           0,
           0,
           0,
           0,
-          7.995610475540161,
+          7.995843410491943,
           0,
           0,
           0,
           0,
-          7.995610475540161,
+          7.995843410491943,
           0,
-          0.0005304813385009766,
-          0.09698039293289185,
+          0.0007634162902832031,
+          0.1525510549545288,
           -0.00025463104248046875,
           1
         ],
@@ -8734,19 +9028,19 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/swarm_warden.glb"
   },
-  "runtimeHash": "1141a60076b497efdb82482d72f345c7b0f445c0ee7068d59c1eafda34137e6b",
+  "runtimeHash": "00e918462ad9f1381acc06f77eb825fd36fed8c94e7c07f68c045012be7b6738",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
           8.00008487701416,
-          1.3891106268002364,
+          1.3889877220227096,
           6.2941307539025555
         ],
         "min": [
           -8.000179290771484,
-          -1.0875683446957443,
+          -1.0876912494732711,
           -6.2941307539025555
         ]
       },
@@ -8810,6 +9104,8 @@
         "sf.render.swarm-warden.node.socket-mining-front",
         "sf.render.swarm-warden.node.socket-rcs-port",
         "sf.render.swarm-warden.node.socket-rcs-starboard",
+        "sf.render.swarm-warden.node.socket-retro-port",
+        "sf.render.swarm-warden.node.socket-retro-starboard",
         "sf.render.swarm-warden.node.socket-tether-massline",
         "sf.render.swarm-warden.node.socket-trail-main",
         "sf.render.swarm-warden.node.socket-trail-port",

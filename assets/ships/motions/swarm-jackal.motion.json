@@ -2,7 +2,7 @@
  "schema": "spaceface.rigidMotionBank.v1",
  "rigId": "swarm_jackal",
  "sourceAssetId": "SF_SWARM_JACKAL",
- "sourceGlbSha256": "70f6134d9d704bc036cb8120744184f2f2320ed7733d867409f73f3a82445315",
+ "sourceGlbSha256": "8a8a18f9d02b99b71c15479e64453b376f724158662fb53381f0ab74084d377b",
  "fps": 60,
  "bindings": [
   {

@@ -323,6 +323,98 @@
       ]
     },
     {
+      "id": "sf.render.swarm-anchor.anchor.socket-retro-port",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -3.109999895095825,
+        1.2200000286102295,
+        1.4500000476837158,
+        1
+      ],
+      "nodeName": "SOCKET_Retro_Port",
+      "nodePath": [
+        0,
+        29
+      ],
+      "parentNodeId": "sf.render.swarm-anchor.node.sf-swarm-anchor-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -3.109999895095825,
+        1.2200000286102295,
+        1.4500000476837158,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.swarm-anchor.anchor.socket-retro-starboard",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -3.109999895095825,
+        1.2200000286102295,
+        -1.4500000476837158,
+        1
+      ],
+      "nodeName": "SOCKET_Retro_Starboard",
+      "nodePath": [
+        0,
+        30
+      ],
+      "parentNodeId": "sf.render.swarm-anchor.node.sf-swarm-anchor-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -3.109999895095825,
+        1.2200000286102295,
+        -1.4500000476837158,
+        1
+      ]
+    },
+    {
       "id": "sf.render.swarm-anchor.anchor.socket-tether-massline",
       "kind": "socket",
       "localTransform": [
@@ -346,7 +438,7 @@
       "nodeName": "SOCKET_Tether_Massline",
       "nodePath": [
         0,
-        29
+        31
       ],
       "parentNodeId": "sf.render.swarm-anchor.node.sf-swarm-anchor-root",
       "worldTransform": [
@@ -392,7 +484,7 @@
       "nodeName": "SOCKET_Trail_Main",
       "nodePath": [
         0,
-        30
+        32
       ],
       "parentNodeId": "sf.render.swarm-anchor.node.sf-swarm-anchor-root",
       "worldTransform": [
@@ -438,7 +530,7 @@
       "nodeName": "SOCKET_Trail_Port",
       "nodePath": [
         0,
-        31
+        33
       ],
       "parentNodeId": "sf.render.swarm-anchor.node.sf-swarm-anchor-root",
       "worldTransform": [
@@ -484,7 +576,7 @@
       "nodeName": "SOCKET_Trail_Starboard",
       "nodePath": [
         0,
-        32
+        34
       ],
       "parentNodeId": "sf.render.swarm-anchor.node.sf-swarm-anchor-root",
       "worldTransform": [
@@ -530,7 +622,7 @@
       "nodeName": "SOCKET_Utility_Dorsal",
       "nodePath": [
         0,
-        33
+        35
       ],
       "parentNodeId": "sf.render.swarm-anchor.node.sf-swarm-anchor-root",
       "worldTransform": [
@@ -576,7 +668,7 @@
       "nodeName": "SOCKET_Weapon_Front",
       "nodePath": [
         0,
-        34
+        36
       ],
       "parentNodeId": "sf.render.swarm-anchor.node.sf-swarm-anchor-root",
       "worldTransform": [
@@ -611,7 +703,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "8591ec184de0689a1b08ad780f725f0d0ee881b0b2cee7eae9474bad65b62a98",
+  "contentHash": "13146531edd31b0a5413b77f6fbfa20120f6133b2b98f35f718b33c309965f52",
   "dynamicGroups": [
     {
       "id": "sf.render.swarm-anchor.node.lod0-hook-drive-core.dynamic",
@@ -804,17 +896,17 @@
       "bounds": {
         "max": [
           7.600335121154785,
-          1.6503773481786117,
+          1.650391891711937,
           3.994700480694191
         ],
         "min": [
           -8.021380424499512,
-          -1.0251519234120712,
+          -1.025137379878746,
           -3.99470071911277
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5a55e27c7a21c1a27bbb4f2271cee30bf94b004dd656fbc385ff9072c49b9211",
+      "geometryHash": "41030c40e82063188dd6995fb693368278c626e06529a1672a3c8657e3cdf5b6",
       "id": "sf.render.swarm-anchor.node.collision-hull.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -823,7 +915,7 @@
       "meshName": "COLLISION_HULL",
       "nodeId": "sf.render.swarm-anchor.node.collision-hull",
       "primitiveIndex": 0,
-      "vertexCount": 838
+      "vertexCount": 836
     },
     {
       "bounds": {
@@ -929,26 +1021,26 @@
       "bounds": {
         "max": [
           2.6199357509613037,
-          1.2248127630924246,
+          1.4362526248251328,
           3.0201741592868125
         ],
         "min": [
           -8.020000457763672,
-          -1.0248127154087088,
+          -1.0250870297705064,
           -3.0201741592868125
         ]
       },
       "drawMode": 4,
-      "geometryHash": "54f55856cc8c1b32241eb66230d5e80ca948cdcac211b76841472112ce124e9c",
+      "geometryHash": "2c18eefa247a548ffc2facbe83336b5b6d5ad70b8fc14000d2b27bfb8c0d7525",
       "id": "sf.render.swarm-anchor.node.lod0-mechanical.primitive.0",
-      "indexCount": 6402,
+      "indexCount": 8250,
       "indexed": true,
       "materialHash": "c46fefb858d34cd4f16ba784c50d283861429d23569e47150ca35232d8010eaa",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Mechanical",
       "nodeId": "sf.render.swarm-anchor.node.lod0-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 1940
+      "vertexCount": 2579
     },
     {
       "bounds": {
@@ -964,16 +1056,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f21a1b2eadf87ba9ddd7479715bf8862cf978a9b306f615bf4949cc2d79ad300",
+      "geometryHash": "e79a014d452f1d8cb8ee67144d4e7dec262349a7b8281e754ada7084b3ba811f",
       "id": "sf.render.swarm-anchor.node.lod0-mechanicaldark.primitive.0",
-      "indexCount": 5592,
+      "indexCount": 6768,
       "indexed": true,
       "materialHash": "77374ad35d48cfe03589cee4c0908f89fac1463f35866947c1e59b5010d8a4c5",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MechanicalDark",
       "nodeId": "sf.render.swarm-anchor.node.lod0-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 1802
+      "vertexCount": 2178
     },
     {
       "bounds": {
@@ -1164,7 +1256,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0a0758697625f0514b56f01c99ee4468b04881b09600aee560c608dd992f016c",
+      "geometryHash": "4b875d3f3bde3cb9249dd0301646896e569b0b7affceca510255bee21c1f6a56",
       "id": "sf.render.swarm-anchor.node.lod0-motion-anchor-vane-starboard-armor.primitive.0",
       "indexCount": 513,
       "indexed": true,
@@ -1264,16 +1356,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "09c0418aa0932bb17c03b55f47446769276a0a6ea83fd7941fa96d11d14b568c",
+      "geometryHash": "d2b5d797c0cf4eb859afb1a7e5558cde2665c23226e99e7214b4534d4bf0656f",
       "id": "sf.render.swarm-anchor.node.lod1-armor.primitive.0",
-      "indexCount": 735,
+      "indexCount": 783,
       "indexed": true,
       "materialHash": "381cb56319448707463c3fa8f99cd9972c9db50776e625eaf95559f4f4304886",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Armor",
       "nodeId": "sf.render.swarm-anchor.node.lod1-armor",
       "primitiveIndex": 0,
-      "vertexCount": 181
+      "vertexCount": 189
     },
     {
       "bounds": {
@@ -1303,77 +1395,77 @@
     {
       "bounds": {
         "max": [
-          -7.4824769496917725,
+          -7.482483863830566,
           0.6568658798933029,
-          0.5566844428936152
+          0.5566844056407122
         ],
         "min": [
-          -7.4824769496917725,
+          -7.482483863830566,
           -0.4580000191926956,
-          -0.5566843981901316
+          -0.5566844354430346
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6be364ff54c922ab63be5ad643dfc6ed7f97a9db2c22da761b7844c21090b68f",
+      "geometryHash": "8e0728069a6b72db1bda25ba562c10693a88f2c833e290175dcc6e167c0fe253",
       "id": "sf.render.swarm-anchor.node.lod1-hook-drive-core.primitive.0",
-      "indexCount": 45,
+      "indexCount": 48,
       "indexed": true,
       "materialHash": "91e57c850053d467df070ae11e935d68269e7271144046fe562b2956d1cb3fb9",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_HOOK_DRIVE_CORE",
       "nodeId": "sf.render.swarm-anchor.node.lod1-hook-drive-core",
       "primitiveIndex": 0,
-      "vertexCount": 17
+      "vertexCount": 18
     },
     {
       "bounds": {
         "max": [
           1.9837325625352387,
-          1.1500022283358435,
+          1.1500028243822913,
           2.3816442489624023
         ],
         "min": [
           -2.785037260525656,
-          1.1313097604947229,
+          1.1313103565411706,
           -2.4034814834594727
         ]
       },
       "drawMode": 4,
-      "geometryHash": "af5817d6f1fe429bb0d34c40f8b5740f771f83f69dbb748a3425cb3d11c4f804",
+      "geometryHash": "1343fe1a3369b12f600084f1a504232da6c59795c5654bde434a680655c51905",
       "id": "sf.render.swarm-anchor.node.lod1-lights-cyan.primitive.0",
-      "indexCount": 291,
+      "indexCount": 333,
       "indexed": true,
       "materialHash": "ddb225c6ed0b7bce6e34958efc38f4bb19a84fa12a3e06d12b808e06190cea50",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Lights_Cyan",
       "nodeId": "sf.render.swarm-anchor.node.lod1-lights-cyan",
       "primitiveIndex": 0,
-      "vertexCount": 146
+      "vertexCount": 156
     },
     {
       "bounds": {
         "max": [
-          2.6166324615478516,
-          1.22484268009468,
-          3.0129330572175506
+          2.609790563583374,
+          1.4340744259760043,
+          3.012942106827762
         ],
         "min": [
           -8.020626068115234,
-          -1.0229181176404563,
-          -3.0116112646150115
+          -1.02506306199285,
+          -3.011620314225223
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8a4b32ede15dcbc9239a16c60c4db58191e7e9ce37ef88d6279d788e28b3f7e1",
+      "geometryHash": "72b7d420934310e8608820c3348b6b97d732631826225e1774852f2c1a6f43aa",
       "id": "sf.render.swarm-anchor.node.lod1-mechanical.primitive.0",
-      "indexCount": 2892,
+      "indexCount": 3630,
       "indexed": true,
       "materialHash": "c46fefb858d34cd4f16ba784c50d283861429d23569e47150ca35232d8010eaa",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Mechanical",
       "nodeId": "sf.render.swarm-anchor.node.lod1-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 1025
+      "vertexCount": 1291
     },
     {
       "bounds": {
@@ -1389,32 +1481,32 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9e754ab8c50b170fbdc70bad26d3eabd149e650716d82be1d0ac3904be5a3c50",
+      "geometryHash": "f63dc01f08f58f117802edf5a2f05bed4aa94d0464953780a15dc51da0b87636",
       "id": "sf.render.swarm-anchor.node.lod1-mechanicaldark.primitive.0",
-      "indexCount": 2469,
+      "indexCount": 2844,
       "indexed": true,
       "materialHash": "77374ad35d48cfe03589cee4c0908f89fac1463f35866947c1e59b5010d8a4c5",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_MechanicalDark",
       "nodeId": "sf.render.swarm-anchor.node.lod1-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 791
+      "vertexCount": 915
     },
     {
       "bounds": {
         "max": [
-          6.993913650512695,
-          0.4621599830709102,
-          1.7959251324934804
+          6.993833065032959,
+          0.46215860809851494,
+          1.7959075548332537
         ],
         "min": [
-          1.5006734132766724,
-          0.1811861179746983,
-          -1.7960474412245595
+          1.5006465911865234,
+          0.18118749294709355,
+          -1.7960298635643328
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9e0ee42302fffca54ae1a12a1e3394ef5191dd342998e7c7687270e74a2e2f8b",
+      "geometryHash": "1a454d1aa8957efa365789c3b28407f9e612a84b9adce7cb19d66901d9ac3433",
       "id": "sf.render.swarm-anchor.node.lod1-motion-anchor-vane-fore-armor.primitive.0",
       "indexCount": 345,
       "indexed": true,
@@ -1428,18 +1520,18 @@
     {
       "bounds": {
         "max": [
-          6.992049694061279,
-          0.7792697941964153,
-          1.795046347928854
+          6.992048740386963,
+          0.7792712057607181,
+          1.7950548038937573
         ],
         "min": [
-          1.5006734132766724,
-          0.17997289243288012,
-          -1.7950370496042691
+          1.5006465911865234,
+          0.17997148086857734,
+          -1.7950455055691723
         ]
       },
       "drawMode": 4,
-      "geometryHash": "61c7fe8f5c0a8021cec48c43c51cb5f74944c4ce726683e4ae3a1293e9dc86d4",
+      "geometryHash": "a382c733dd66cdeb7256d440b238b64cc7b67d486827313df324f109da2a7c99",
       "id": "sf.render.swarm-anchor.node.lod1-motion-anchor-vane-fore-hull.primitive.0",
       "indexCount": 354,
       "indexed": true,
@@ -1464,7 +1556,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3ef344bef902ad8d068c92a52fdd9052ac81a5f9fe473193ec64ccfd1a177f08",
+      "geometryHash": "a35c7ad8d89ae798401b00b2d631743e79c1fa723cc27c30d41a1f93d4e080e4",
       "id": "sf.render.swarm-anchor.node.lod1-motion-anchor-vane-fore-lights-cyan.primitive.0",
       "indexCount": 15,
       "indexed": true,
@@ -1479,17 +1571,17 @@
       "bounds": {
         "max": [
           -2.212529420852661,
-          0.37985424975258253,
-          -0.7071686462525151
+          0.37958524853175735,
+          -0.7068634501770905
         ],
         "min": [
-          -6.791323661804199,
-          0.12105951925414662,
-          -3.994085304343341
+          -6.7916951179504395,
+          0.12132852047497175,
+          -3.9940467604323455
         ]
       },
       "drawMode": 4,
-      "geometryHash": "47dc911ccee1172a4185b4c11a53e004a9cfd8f001e9e1aa6a9d4807b6ad4a63",
+      "geometryHash": "6e5ff63e2f35473c245bdc0491f6ba4d8476c1a5a592b92706cdea7d63658319",
       "id": "sf.render.swarm-anchor.node.lod1-motion-anchor-vane-port-armor.primitive.0",
       "indexCount": 231,
       "indexed": true,
@@ -1529,17 +1621,17 @@
       "bounds": {
         "max": [
           -2.2129037380218506,
-          0.6699182051615804,
-          -0.7087251815154647
+          0.6699177469368898,
+          -0.7087550381709051
         ],
         "min": [
-          -6.790211200714111,
-          0.12008812693785725,
-          -3.9923394647285844
+          -6.79020357131958,
+          0.12008858516254789,
+          -3.9923638482998896
         ]
       },
       "drawMode": 4,
-      "geometryHash": "190cde638d51797f1d0650c3f4e75f105dcf9c56c89f07e1425a53b46b06168e",
+      "geometryHash": "eaec0d1132dff6e313929cb9c623dd51131667ed30336c854925e6dfdeb85c76",
       "id": "sf.render.swarm-anchor.node.lod1-motion-anchor-vane-port-hull.primitive.0",
       "indexCount": 291,
       "indexed": true,
@@ -1578,18 +1670,18 @@
     {
       "bounds": {
         "max": [
-          -2.212883234024048,
-          0.3787466784531647,
-          3.9939618572985194
+          -2.2129006385803223,
+          0.37875536068178883,
+          3.99373344256694
         ],
         "min": [
-          -6.791323661804199,
-          0.12164867170504987,
-          0.7072991862500646
+          -6.791650295257568,
+          0.12163998947642574,
+          0.7074077360410003
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e14cf4d005fb0290eeb64de7e1133c5496d980fec37b407e3b8e4569ff33f558",
+      "geometryHash": "55772d5e33a16ab2dc3c289df69dcdf5db52764c9cac74d51a6db66c5026f695",
       "id": "sf.render.swarm-anchor.node.lod1-motion-anchor-vane-starboard-armor.primitive.0",
       "indexCount": 219,
       "indexed": true,
@@ -1598,7 +1690,7 @@
       "meshName": "LOD1_MOTION_ANCHOR_VANE_STARBOARD_Armor",
       "nodeId": "sf.render.swarm-anchor.node.lod1-motion-anchor-vane-starboard-armor",
       "primitiveIndex": 0,
-      "vertexCount": 95
+      "vertexCount": 94
     },
     {
       "bounds": {
@@ -1628,18 +1720,18 @@
     {
       "bounds": {
         "max": [
-          -2.212883234024048,
-          0.6698861740271234,
-          3.9923077320757505
+          -2.2129006385803223,
+          0.669883954501278,
+          3.9923016570541905
         ],
         "min": [
-          -6.789723873138428,
-          0.1201121710499145,
-          0.7084696197804814
+          -6.789704322814941,
+          0.12011439057575973,
+          0.7084900595214321
         ]
       },
       "drawMode": 4,
-      "geometryHash": "212cd6599f42e631248d3cba42665d9b231068dc64ba639b552b709c28eff33a",
+      "geometryHash": "5cb90d74593d45a5b561a550b78ec854ca8819d492019f1bdcf86ca0bdb98ca5",
       "id": "sf.render.swarm-anchor.node.lod1-motion-anchor-vane-starboard-hull.primitive.0",
       "indexCount": 309,
       "indexed": true,
@@ -1664,16 +1756,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "75b7f369d23ec46a0a8467b775ecbeeef047b3aa6a3a81963c0eec95ee0566c7",
+      "geometryHash": "96947ba46bee36b71f8f9ec9ec1b3a9e487304edca89692d409d9ea8026eb103",
       "id": "sf.render.swarm-anchor.node.lod2-armor.primitive.0",
-      "indexCount": 342,
+      "indexCount": 357,
       "indexed": true,
       "materialHash": "381cb56319448707463c3fa8f99cd9972c9db50776e625eaf95559f4f4304886",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Armor",
       "nodeId": "sf.render.swarm-anchor.node.lod2-armor",
       "primitiveIndex": 0,
-      "vertexCount": 98
+      "vertexCount": 103
     },
     {
       "bounds": {
@@ -1703,118 +1795,118 @@
     {
       "bounds": {
         "max": [
-          -7.4823113786336375,
-          0.6320870108902454,
-          0.541379627689108
+          -7.482337999595628,
+          0.6568659171462059,
+          0.5413550511004814
         ],
         "min": [
-          -7.482444156492095,
-          -0.4555960111320019,
-          -0.5413906135701981
+          -7.4824738023147725,
+          -0.4555960074067116,
+          -0.5413660779597649
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f0863d24d62e3659e32c4bc2d4953713b80906b606163ab8aba2d66a6ab52e4c",
+      "geometryHash": "0855557f68ab58bb47458ebc25774ecc8b25ef2aff4debf481f4cd09bef5ffe9",
       "id": "sf.render.swarm-anchor.node.lod2-hook-drive-core.primitive.0",
-      "indexCount": 21,
+      "indexCount": 24,
       "indexed": true,
       "materialHash": "91e57c850053d467df070ae11e935d68269e7271144046fe562b2956d1cb3fb9",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_HOOK_DRIVE_CORE",
       "nodeId": "sf.render.swarm-anchor.node.lod2-hook-drive-core",
       "primitiveIndex": 0,
-      "vertexCount": 9
+      "vertexCount": 10
     },
     {
       "bounds": {
         "max": [
           1.9849880307137004,
-          1.1492278023835276,
+          1.1492086018551024,
           2.391451120376587
         ],
         "min": [
           -2.795613345426225,
-          1.11297457970418,
+          1.114124837971863,
           -2.398505926132202
         ]
       },
       "drawMode": 4,
-      "geometryHash": "36de465124d4e275301b347a7f303f9438bbf58ce1bbf1b204800633a2dc8c19",
+      "geometryHash": "51c8124fe97d53c90e9b0a26b5d4425126873c182f7becdd920d2c5a099aea50",
       "id": "sf.render.swarm-anchor.node.lod2-lights-cyan.primitive.0",
-      "indexCount": 159,
+      "indexCount": 165,
       "indexed": true,
       "materialHash": "ddb225c6ed0b7bce6e34958efc38f4bb19a84fa12a3e06d12b808e06190cea50",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Lights_Cyan",
       "nodeId": "sf.render.swarm-anchor.node.lod2-lights-cyan",
       "primitiveIndex": 0,
-      "vertexCount": 63
+      "vertexCount": 65
     },
     {
       "bounds": {
         "max": [
           2.6354472637176514,
-          1.2210373318831644,
+          1.441692283460443,
           3.010817427501602
         ],
         "min": [
           -8.020734786987305,
-          -1.0359255707900248,
+          -1.0364139583795715,
           -3.034851212367935
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9a1a3066699a1eb9cc6365dabae62cf127f7445c987e367c5ef975030f427bea",
+      "geometryHash": "e3127385843525201664be342d5be949300a4e4abc5c12e88692325e0319c6bf",
       "id": "sf.render.swarm-anchor.node.lod2-mechanical.primitive.0",
-      "indexCount": 1248,
+      "indexCount": 1629,
       "indexed": true,
       "materialHash": "c46fefb858d34cd4f16ba784c50d283861429d23569e47150ca35232d8010eaa",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Mechanical",
       "nodeId": "sf.render.swarm-anchor.node.lod2-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 553
+      "vertexCount": 731
     },
     {
       "bounds": {
         "max": [
-          7.59466028213501,
-          1.6478720947381114,
-          3.044876926989487
+          7.595054626464844,
+          1.6479049852803394,
+          3.044953811316741
         ],
         "min": [
           -8.020734786987305,
-          -0.9522315307732676,
-          -3.044112080187729
+          -0.952264302106206,
+          -3.044188964514983
         ]
       },
       "drawMode": 4,
-      "geometryHash": "09ff81d8e95f8ab324a7f1a1647c4eba4a4bdcec3c238011f69279311ed09401",
+      "geometryHash": "2b5a7f23b2060e635960e307976fbf123e6da12b0c79a5a53c2698d583c6dcc2",
       "id": "sf.render.swarm-anchor.node.lod2-mechanicaldark.primitive.0",
-      "indexCount": 1107,
+      "indexCount": 1248,
       "indexed": true,
       "materialHash": "77374ad35d48cfe03589cee4c0908f89fac1463f35866947c1e59b5010d8a4c5",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_MechanicalDark",
       "nodeId": "sf.render.swarm-anchor.node.lod2-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 450
+      "vertexCount": 522
     },
     {
       "bounds": {
         "max": [
-          6.992767810821533,
-          0.4564052268427973,
-          1.79561241717488
+          6.992791175842285,
+          0.4564067005602267,
+          1.7956316743483638
         ],
         "min": [
-          1.5016965866088867,
-          0.18157515977200225,
-          -1.7956121787563009
+          1.5016610622406006,
+          0.18157368605457277,
+          -1.7956314359297847
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4048972ec80f43474baba6eaf838e2f38a4b07e64c958f237b9e679238329a1b",
+      "geometryHash": "d0172ee3d5daefd9cd2a83735e00b880b2c17c522b8f5cd1133181a34335aaac",
       "id": "sf.render.swarm-anchor.node.lod2-motion-anchor-vane-fore-armor.primitive.0",
       "indexCount": 120,
       "indexed": true,
@@ -1828,18 +1920,18 @@
     {
       "bounds": {
         "max": [
-          6.992767810821533,
-          0.7790601283021252,
-          1.79561241717488
+          6.992791175842285,
+          0.7790633309417097,
+          1.7956316743483638
         ],
         "min": [
-          1.5016965866088867,
-          0.18180747035071448,
-          -1.7956121787563009
+          1.5016610622406006,
+          0.18180426771113,
+          -1.7956314359297847
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7ae928a88a789b0fd251818005d81cd570b01d691ffc81366e751ccd09aaceae",
+      "geometryHash": "6713c330e45e5a74f8ef1f65d89e7eea4a51111308588f8e3982613f92454bea",
       "id": "sf.render.swarm-anchor.node.lod2-motion-anchor-vane-fore-hull.primitive.0",
       "indexCount": 189,
       "indexed": true,
@@ -1854,17 +1946,17 @@
       "bounds": {
         "max": [
           6.615261256762098,
-          0.768659553555809,
+          0.7686595684569701,
           1.7956883907318115
         ],
         "min": [
           5.537092029981066,
-          0.43502662417475135,
+          0.43502663907591255,
           -1.7956881523132324
         ]
       },
       "drawMode": 4,
-      "geometryHash": "db6e322d7705518d8cecd083412cfb5846bf07dc0e8544322d324d571145991e",
+      "geometryHash": "2b1902133bf25b0e2762fd591f0dfa7690763ce9e33346c8e77c035b72051e27",
       "id": "sf.render.swarm-anchor.node.lod2-motion-anchor-vane-fore-lights-cyan.primitive.0",
       "indexCount": 9,
       "indexed": true,
@@ -1879,17 +1971,17 @@
       "bounds": {
         "max": [
           -2.2134711742401123,
-          0.36692879190634076,
-          -0.7103195977575898
+          0.3669283191583955,
+          -0.7104609425354145
         ],
         "min": [
-          -6.790676593780518,
-          0.12163405278732001,
-          -3.994419436418283
+          -6.790658950805664,
+          0.12163452553526524,
+          -3.9939893667411663
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f66abac878abb33d06ed71586514b9f61dd88ed85c0c47c6b1f59fda5b8d5b57",
+      "geometryHash": "b8bb56994d7c83e46cb986203422a04a6f2b9f9f2ca8e41cae4a521f4756a8cb",
       "id": "sf.render.swarm-anchor.node.lod2-motion-anchor-vane-port-armor.primitive.0",
       "indexCount": 90,
       "indexed": true,
@@ -1929,17 +2021,17 @@
       "bounds": {
         "max": [
           -2.2134711742401123,
-          0.6685791075181667,
-          -0.7102998570310339
+          0.6685780532579426,
+          -0.7103095199140488
         ],
         "min": [
-          -6.790676593780518,
-          0.12155507654431419,
-          -3.99216466390021
+          -6.790658950805664,
+          0.12155613080453825,
+          -3.99216167673741
         ]
       },
       "drawMode": 4,
-      "geometryHash": "fdbd6336e582b1a4220423b2c06a3210e7d6a03196c03f844fd31cc0ecb2e999",
+      "geometryHash": "fdf14897e328088d8050b4aa0b211acdddfdf1e1f4968cbdf091a5a7dc7d7ae0",
       "id": "sf.render.swarm-anchor.node.lod2-motion-anchor-vane-port-hull.primitive.0",
       "indexCount": 123,
       "indexed": true,
@@ -1978,27 +2070,27 @@
     {
       "bounds": {
         "max": [
-          -2.21337628364563,
-          0.3668077848578824,
-          3.9924919898266884
+          -2.2133893966674805,
+          0.36680667964984826,
+          3.9946858254469513
         ],
         "min": [
-          -6.790242671966553,
-          0.12153121459232434,
-          0.7080766861681849
+          -6.790214538574219,
+          0.12153231980035847,
+          0.7080652746163729
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c09c9820524da06cbf0f89f63c8c1421a457b2f7d6c8e148d826ed7d9bb08a79",
+      "geometryHash": "43f0d58b9967bbb2a273bc2b626c88533b1b135dbfd98acd80f129f72a21513a",
       "id": "sf.render.swarm-anchor.node.lod2-motion-anchor-vane-starboard-armor.primitive.0",
-      "indexCount": 90,
+      "indexCount": 84,
       "indexed": true,
       "materialHash": "381cb56319448707463c3fa8f99cd9972c9db50776e625eaf95559f4f4304886",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_MOTION_ANCHOR_VANE_STARBOARD_Armor",
       "nodeId": "sf.render.swarm-anchor.node.lod2-motion-anchor-vane-starboard-armor",
       "primitiveIndex": 0,
-      "vertexCount": 48
+      "vertexCount": 46
     },
     {
       "bounds": {
@@ -2028,27 +2120,27 @@
     {
       "bounds": {
         "max": [
-          -2.21337628364563,
-          0.6690233687352316,
-          3.9920712803535165
+          -2.2133893966674805,
+          0.6690209015282307,
+          3.9922070137133883
         ],
         "min": [
-          -6.790242671966553,
-          0.12148113898523877,
-          0.7121257091827686
+          -6.790214538574219,
+          0.12148360619223975,
+          0.7083800205120754
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7d43726102a0b5cb3c7643063dc92dc18152c411483f318c3a8bdedc4c9c4f1f",
+      "geometryHash": "d2d2f0f7b178215ca17be01ab1e559cc93ca69ebc728c18557911abef0b86cc3",
       "id": "sf.render.swarm-anchor.node.lod2-motion-anchor-vane-starboard-hull.primitive.0",
-      "indexCount": 126,
+      "indexCount": 132,
       "indexed": true,
       "materialHash": "274b2a192dfbc8be851351eb79e059ce2cd4c5c0634f1a68af5ec82d17df8026",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_MOTION_ANCHOR_VANE_STARBOARD_Hull",
       "nodeId": "sf.render.swarm-anchor.node.lod2-motion-anchor-vane-starboard-hull",
       "primitiveIndex": 0,
-      "vertexCount": 51
+      "vertexCount": 53
     }
   ],
   "hlods": [],
@@ -2236,7 +2328,7 @@
         7.810857772827148,
         0,
         -0.21052265167236328,
-        0.31261271238327026,
+        0.31262725591659546,
         -1.1920928955078125e-7,
         1
       ],
@@ -2264,7 +2356,7 @@
         7.810857772827148,
         0,
         -0.21052265167236328,
-        0.31261271238327026,
+        0.31262725591659546,
         -1.1920928955078125e-7,
         1
       ]
@@ -2481,7 +2573,7 @@
         5.319968104362488,
         0,
         -2.700032353401184,
-        0.10000002384185791,
+        0.20558279752731323,
         0,
         1
       ],
@@ -2509,7 +2601,7 @@
         5.319968104362488,
         0,
         -2.700032353401184,
-        0.10000002384185791,
+        0.20558279752731323,
         0,
         1
       ]
@@ -3226,9 +3318,9 @@
         0,
         0.5574329495429993,
         0,
-        -7.4824769496917725,
+        -7.482483863830566,
         0.09943293035030365,
-        2.2351741790771484e-8,
+        -1.4901161193847656e-8,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3254,9 +3346,9 @@
         0,
         0.5574329495429993,
         0,
-        -7.4824769496917725,
+        -7.482483863830566,
         0.09943293035030365,
-        2.2351741790771484e-8,
+        -1.4901161193847656e-8,
         1
       ]
     },
@@ -3276,7 +3368,7 @@
         2.3925628662109375,
         0,
         -0.40065234899520874,
-        1.1406559944152832,
+        1.140656590461731,
         -0.010918617248535156,
         1
       ],
@@ -3304,7 +3396,7 @@
         2.3925628662109375,
         0,
         -0.40065234899520874,
-        1.1406559944152832,
+        1.140656590461731,
         -0.010918617248535156,
         1
       ]
@@ -3312,20 +3404,20 @@
     {
       "id": "sf.render.swarm-anchor.node.lod1-mechanical",
       "localTransform": [
-        5.318629264831543,
+        5.315208315849304,
         0,
         0,
         0,
         0,
-        5.318629264831543,
+        5.315208315849304,
         0,
         0,
         0,
         0,
-        5.318629264831543,
+        5.315208315849304,
         0,
-        -2.7019968032836914,
-        0.10096228122711182,
+        -2.70541775226593,
+        0.20450568199157715,
         0.0006608963012695312,
         1
       ],
@@ -3340,20 +3432,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.swarm-anchor.body",
       "worldTransform": [
-        5.318629264831543,
+        5.315208315849304,
         0,
         0,
         0,
         0,
-        5.318629264831543,
+        5.315208315849304,
         0,
         0,
         0,
         0,
-        5.318629264831543,
+        5.315208315849304,
         0,
-        -2.7019968032836914,
-        0.10096228122711182,
+        -2.70541775226593,
+        0.20450568199157715,
         0.0006608963012695312,
         1
       ]
@@ -3410,19 +3502,19 @@
     {
       "id": "sf.render.swarm-anchor.node.lod1-motion-anchor-vane-fore-armor",
       "localTransform": [
-        2.7466201186180115,
+        2.7465932369232178,
         0,
         0,
         0,
         0,
-        2.7466201186180115,
+        2.7465932369232178,
         0,
         0,
         0,
         0,
-        2.7466201186180115,
+        2.7465932369232178,
         0,
-        2.647293508052826,
+        2.6472398042678833,
         0.1416730433702469,
         -0.00006115436553955078,
         1
@@ -3439,19 +3531,19 @@
       "role": "dynamic",
       "spatialClusterId": "sf.render.swarm-anchor.body",
       "worldTransform": [
-        2.7466201186180115,
+        2.7465932369232178,
         0,
         0,
         0,
         0,
-        2.7466201186180115,
+        2.7465932369232178,
         0,
         0,
         0,
         0,
-        2.7466201186180115,
+        2.7465932369232178,
         0,
-        4.247293531894684,
+        4.247239828109741,
         0.32167305052280426,
         -0.00006115436553955078,
         1
@@ -3460,19 +3552,19 @@
     {
       "id": "sf.render.swarm-anchor.node.lod1-motion-anchor-vane-fore-hull",
       "localTransform": [
-        2.7456881403923035,
+        2.7457010746002197,
         0,
         0,
         0,
         0,
-        2.7456881403923035,
+        2.7457010746002197,
         0,
         0,
         0,
         0,
-        2.7456881403923035,
+        2.7457010746002197,
         0,
-        2.646361529827118,
+        2.6463476419448853,
         0.2996213361620903,
         0.000004649162292480469,
         1
@@ -3489,19 +3581,19 @@
       "role": "dynamic",
       "spatialClusterId": "sf.render.swarm-anchor.body",
       "worldTransform": [
-        2.7456881403923035,
+        2.7457010746002197,
         0,
         0,
         0,
         0,
-        2.7456881403923035,
+        2.7457010746002197,
         0,
         0,
         0,
         0,
-        2.7456881403923035,
+        2.7457010746002197,
         0,
-        4.246361553668976,
+        4.246347665786743,
         0.4796213433146477,
         0.000004649162292480469,
         1
@@ -3560,21 +3652,21 @@
     {
       "id": "sf.render.swarm-anchor.node.lod1-motion-anchor-vane-port-armor",
       "localTransform": [
-        2.289397120475769,
+        2.289582848548889,
         0,
         0,
         0,
         0,
-        2.289397120475769,
+        2.289582848548889,
         0,
         0,
         0,
         0,
-        2.289397120475769,
+        2.289582848548889,
         0,
-        -2.00192654132843,
+        -2.0021122694015503,
         0.13045688718557358,
-        -1.25062695145607,
+        -1.25045508146286,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3589,21 +3681,21 @@
       "role": "dynamic",
       "spatialClusterId": "sf.render.swarm-anchor.body",
       "worldTransform": [
-        2.289397120475769,
+        2.289582848548889,
         0,
         0,
         0,
         0,
-        2.289397120475769,
+        2.289582848548889,
         0,
         0,
         0,
         0,
-        2.289397120475769,
+        2.289582848548889,
         0,
-        -4.50192654132843,
+        -4.50211226940155,
         0.25045688450336456,
-        -2.350626975297928,
+        -2.350455105304718,
         1
       ]
     },
@@ -3660,21 +3752,21 @@
     {
       "id": "sf.render.swarm-anchor.node.lod1-motion-anchor-vane-port-hull",
       "localTransform": [
-        2.2886537313461304,
+        2.2886499166488647,
         0,
         0,
         0,
         0,
-        2.2886537313461304,
+        2.2886499166488647,
         0,
         0,
         0,
         0,
-        2.2886537313461304,
+        2.2886499166488647,
         0,
-        -2.001557469367981,
+        -2.0015536546707153,
         0.27500316873192787,
-        -1.2505322992801666,
+        -1.2505594193935394,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3689,21 +3781,21 @@
       "role": "dynamic",
       "spatialClusterId": "sf.render.swarm-anchor.body",
       "worldTransform": [
-        2.2886537313461304,
+        2.2886499166488647,
         0,
         0,
         0,
         0,
-        2.2886537313461304,
+        2.2886499166488647,
         0,
         0,
         0,
         0,
-        2.2886537313461304,
+        2.2886499166488647,
         0,
-        -4.501557469367981,
+        -4.501553654670715,
         0.39500316604971886,
-        -2.3505323231220245,
+        -2.3505594432353973,
         1
       ]
     },
@@ -3760,21 +3852,21 @@
     {
       "id": "sf.render.swarm-anchor.node.lod1-motion-anchor-vane-starboard-armor",
       "localTransform": [
-        2.2892202138900757,
+        2.289374828338623,
         0,
         0,
         0,
         0,
-        2.2892202138900757,
+        2.289374828338623,
         0,
         0,
         0,
         0,
-        2.2892202138900757,
+        2.289374828338623,
         0,
-        -2.0021034479141235,
+        -2.0022754669189453,
         0.1301976777613163,
-        1.250630497932434,
+        1.2505705654621124,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3789,21 +3881,21 @@
       "role": "dynamic",
       "spatialClusterId": "sf.render.swarm-anchor.body",
       "worldTransform": [
-        2.2892202138900757,
+        2.289374828338623,
         0,
         0,
         0,
         0,
-        2.2892202138900757,
+        2.289374828338623,
         0,
         0,
         0,
         0,
-        2.2892202138900757,
+        2.289374828338623,
         0,
-        -4.5021034479141235,
+        -4.502275466918945,
         0.2501976750791073,
-        2.350630521774292,
+        2.3505705893039703,
         1
       ]
     },
@@ -3860,21 +3952,21 @@
     {
       "id": "sf.render.swarm-anchor.node.lod1-motion-anchor-vane-starboard-hull",
       "localTransform": [
-        2.28842031955719,
+        2.2884018421173096,
         0,
         0,
         0,
         0,
-        2.28842031955719,
+        2.2884018421173096,
         0,
         0,
         0,
         0,
-        2.28842031955719,
+        2.2884018421173096,
         0,
-        -2.001303553581238,
+        -2.001302480697632,
         0.2749991752207279,
-        1.250388652086258,
+        1.2503958344459534,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3889,21 +3981,21 @@
       "role": "dynamic",
       "spatialClusterId": "sf.render.swarm-anchor.body",
       "worldTransform": [
-        2.28842031955719,
+        2.2884018421173096,
         0,
         0,
         0,
         0,
-        2.28842031955719,
+        2.2884018421173096,
         0,
         0,
         0,
         0,
-        2.28842031955719,
+        2.2884018421173096,
         0,
-        -4.501303553581238,
+        -4.501302480697632,
         0.3949991725385189,
-        2.350388675928116,
+        2.3503958582878113,
         1
       ]
     },
@@ -4008,21 +4100,21 @@
     {
       "id": "sf.render.swarm-anchor.node.lod2-hook-drive-core",
       "localTransform": [
-        0.5438415110111237,
+        0.5562309622764587,
         0,
         0,
         0,
         0,
-        0.5438415110111237,
+        0.5562309622764587,
         0,
         0,
         0,
         0,
-        0.5438415110111237,
+        0.5562309622764587,
         0,
-        -7.482377767562866,
-        0.08824549987912178,
-        -0.000005492940545082092,
+        -7.4824059009552,
+        0.10063495486974716,
+        -0.000005513429641723633,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -4036,21 +4128,21 @@
       "role": "dynamic",
       "spatialClusterId": "sf.render.swarm-anchor.body",
       "worldTransform": [
-        0.5438415110111237,
+        0.5562309622764587,
         0,
         0,
         0,
         0,
-        0.5438415110111237,
+        0.5562309622764587,
         0,
         0,
         0,
         0,
-        0.5438415110111237,
+        0.5562309622764587,
         0,
-        -7.482377767562866,
-        0.08824549987912178,
-        -0.000005492940545082092,
+        -7.4824059009552,
+        0.10063495486974716,
+        -0.000005513429641723633,
         1
       ]
     },
@@ -4070,7 +4162,7 @@
         2.3949785232543945,
         0,
         -0.4053126573562622,
-        1.1311011910438538,
+        1.1316667199134827,
         -0.003527402877807617,
         1
       ],
@@ -4098,7 +4190,7 @@
         2.3949785232543945,
         0,
         -0.4053126573562622,
-        1.1311011910438538,
+        1.1316667199134827,
         -0.003527402877807617,
         1
       ]
@@ -4119,7 +4211,7 @@
         5.328091025352478,
         0,
         -2.6926437616348267,
-        0.09255588054656982,
+        0.2026391625404358,
         -0.012016892433166504,
         1
       ],
@@ -4147,7 +4239,7 @@
         5.328091025352478,
         0,
         -2.6926437616348267,
-        0.09255588054656982,
+        0.2026391625404358,
         -0.012016892433166504,
         1
       ]
@@ -4155,20 +4247,20 @@
     {
       "id": "sf.render.swarm-anchor.node.lod2-mechanicaldark",
       "localTransform": [
-        7.807697534561157,
+        7.807894706726074,
         0,
         0,
         0,
         0,
-        7.807697534561157,
+        7.807894706726074,
         0,
         0,
         0,
         0,
-        7.807697534561157,
+        7.807894706726074,
         0,
-        -0.21303725242614746,
-        0.3478202819824219,
+        -0.21284008026123047,
+        0.34782034158706665,
         0.00038242340087890625,
         1
       ],
@@ -4183,20 +4275,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.swarm-anchor.body",
       "worldTransform": [
-        7.807697534561157,
+        7.807894706726074,
         0,
         0,
         0,
         0,
-        7.807697534561157,
+        7.807894706726074,
         0,
         0,
         0,
         0,
-        7.807697534561157,
+        7.807894706726074,
         0,
-        -0.21303725242614746,
-        0.3478202819824219,
+        -0.21284008026123047,
+        0.34782034158706665,
         0.00038242340087890625,
         1
       ]
@@ -4204,19 +4296,19 @@
     {
       "id": "sf.render.swarm-anchor.node.lod2-motion-anchor-vane-fore-armor",
       "localTransform": [
-        2.7455356121063232,
+        2.7455650568008423,
         0,
         0,
         0,
         0,
-        2.7455356121063232,
+        2.7455650568008423,
         0,
         0,
         0,
         0,
-        2.7455356121063232,
+        2.7455650568008423,
         0,
-        2.647232174873352,
+        2.647226095199585,
         0.13899018615484238,
         1.1920928955078125e-7,
         1
@@ -4233,19 +4325,19 @@
       "role": "dynamic",
       "spatialClusterId": "sf.render.swarm-anchor.body",
       "worldTransform": [
-        2.7455356121063232,
+        2.7455650568008423,
         0,
         0,
         0,
         0,
-        2.7455356121063232,
+        2.7455650568008423,
         0,
         0,
         0,
         0,
-        2.7455356121063232,
+        2.7455650568008423,
         0,
-        4.24723219871521,
+        4.247226119041443,
         0.31899019330739975,
         1.1920928955078125e-7,
         1
@@ -4254,19 +4346,19 @@
     {
       "id": "sf.render.swarm-anchor.node.lod2-motion-anchor-vane-fore-hull",
       "localTransform": [
-        2.7455356121063232,
+        2.7455650568008423,
         0,
         0,
         0,
         0,
-        2.7455356121063232,
+        2.7455650568008423,
         0,
         0,
         0,
         0,
-        2.7455356121063232,
+        2.7455650568008423,
         0,
-        2.647232174873352,
+        2.647226095199585,
         0.30043379217386246,
         1.1920928955078125e-7,
         1
@@ -4283,19 +4375,19 @@
       "role": "dynamic",
       "spatialClusterId": "sf.render.swarm-anchor.body",
       "worldTransform": [
-        2.7455356121063232,
+        2.7455650568008423,
         0,
         0,
         0,
         0,
-        2.7455356121063232,
+        2.7455650568008423,
         0,
         0,
         0,
         0,
-        2.7455356121063232,
+        2.7455650568008423,
         0,
-        4.24723219871521,
+        4.247226119041443,
         0.48043379932641983,
         1.1920928955078125e-7,
         1
@@ -4317,7 +4409,7 @@
         1.795688271522522,
         0,
         4.476176619529724,
-        0.4218430817127228,
+        0.42184309661388397,
         1.1920928955078125e-7,
         1
       ],
@@ -4346,7 +4438,7 @@
         1.795688271522522,
         0,
         6.076176643371582,
-        0.6018430888652802,
+        0.6018431037664413,
         1.1920928955078125e-7,
         1
       ]
@@ -4354,21 +4446,21 @@
     {
       "id": "sf.render.swarm-anchor.node.lod2-motion-anchor-vane-port-armor",
       "localTransform": [
-        2.2886027097702026,
+        2.288593888282776,
         0,
         0,
         0,
         0,
-        2.2886027097702026,
+        2.288593888282776,
         0,
         0,
         0,
         0,
-        2.2886027097702026,
+        2.288593888282776,
         0,
-        -2.002073884010315,
+        -2.002065062522888,
         0.12428142502903938,
-        -1.2523694932460785,
+        -1.2522251307964325,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -4383,21 +4475,21 @@
       "role": "dynamic",
       "spatialClusterId": "sf.render.swarm-anchor.body",
       "worldTransform": [
-        2.2886027097702026,
+        2.288593888282776,
         0,
         0,
         0,
         0,
-        2.2886027097702026,
+        2.288593888282776,
         0,
         0,
         0,
         0,
-        2.2886027097702026,
+        2.288593888282776,
         0,
-        -4.502073884010315,
+        -4.502065062522888,
         0.24428142234683037,
-        -2.3523695170879364,
+        -2.3522251546382904,
         1
       ]
     },
@@ -4454,21 +4546,21 @@
     {
       "id": "sf.render.swarm-anchor.node.lod2-motion-anchor-vane-port-hull",
       "localTransform": [
-        2.2886027097702026,
+        2.288593888282776,
         0,
         0,
         0,
         0,
-        2.2886027097702026,
+        2.288593888282776,
         0,
         0,
         0,
         0,
-        2.2886027097702026,
+        2.288593888282776,
         0,
-        -2.002073884010315,
+        -2.002065062522888,
         0.2750670947134495,
-        -1.251232236623764,
+        -1.2512355744838715,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -4483,21 +4575,21 @@
       "role": "dynamic",
       "spatialClusterId": "sf.render.swarm-anchor.body",
       "worldTransform": [
-        2.2886027097702026,
+        2.288593888282776,
         0,
         0,
         0,
         0,
-        2.2886027097702026,
+        2.288593888282776,
         0,
         0,
         0,
         0,
-        2.2886027097702026,
+        2.288593888282776,
         0,
-        -4.502073884010315,
+        -4.502065062522888,
         0.39506709203124046,
-        -2.351232260465622,
+        -2.3512355983257294,
         1
       ]
     },
@@ -4554,21 +4646,21 @@
     {
       "id": "sf.render.swarm-anchor.node.lod2-motion-anchor-vane-starboard-armor",
       "localTransform": [
-        2.2884331941604614,
+        2.288412570953369,
         0,
         0,
         0,
         0,
-        2.2884331941604614,
+        2.288412570953369,
         0,
         0,
         0,
         0,
-        2.2884331941604614,
+        2.288412570953369,
         0,
-        -2.0018094778060913,
+        -2.0018019676208496,
         0.1241695024073124,
-        1.2502843141555786,
+        1.251375526189804,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -4583,21 +4675,21 @@
       "role": "dynamic",
       "spatialClusterId": "sf.render.swarm-anchor.body",
       "worldTransform": [
-        2.2884331941604614,
+        2.288412570953369,
         0,
         0,
         0,
         0,
-        2.2884331941604614,
+        2.288412570953369,
         0,
         0,
         0,
         0,
-        2.2884331941604614,
+        2.288412570953369,
         0,
-        -4.501809477806091,
+        -4.50180196762085,
         0.24416949972510338,
-        2.3502843379974365,
+        2.351375550031662,
         1
       ]
     },
@@ -4654,21 +4746,21 @@
     {
       "id": "sf.render.swarm-anchor.node.lod2-motion-anchor-vane-starboard-hull",
       "localTransform": [
-        2.2884331941604614,
+        2.288412570953369,
         0,
         0,
         0,
         0,
-        2.2884331941604614,
+        2.288412570953369,
         0,
         0,
         0,
         0,
-        2.2884331941604614,
+        2.288412570953369,
         0,
-        -2.0018094778060913,
+        -2.0018019676208496,
         0.27525225654244423,
-        1.2520984709262848,
+        1.250293493270874,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -4683,21 +4775,21 @@
       "role": "dynamic",
       "spatialClusterId": "sf.render.swarm-anchor.body",
       "worldTransform": [
-        2.2884331941604614,
+        2.288412570953369,
         0,
         0,
         0,
         0,
-        2.2884331941604614,
+        2.288412570953369,
         0,
         0,
         0,
         0,
-        2.2884331941604614,
+        2.288412570953369,
         0,
-        -4.501809477806091,
+        -4.50180196762085,
         0.3952522538602352,
-        2.3520984947681427,
+        2.350293517112732,
         1
       ]
     },
@@ -5240,6 +5332,104 @@
       ]
     },
     {
+      "id": "sf.render.swarm-anchor.node.socket-retro-port",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -3.109999895095825,
+        1.2200000286102295,
+        1.4500000476837158,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Retro_Port",
+      "nodeName": "SOCKET_Retro_Port",
+      "nodePath": [
+        0,
+        29
+      ],
+      "parentId": "sf.render.swarm-anchor.node.sf-swarm-anchor-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.swarm-anchor.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -3.109999895095825,
+        1.2200000286102295,
+        1.4500000476837158,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.swarm-anchor.node.socket-retro-starboard",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -3.109999895095825,
+        1.2200000286102295,
+        -1.4500000476837158,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Retro_Starboard",
+      "nodeName": "SOCKET_Retro_Starboard",
+      "nodePath": [
+        0,
+        30
+      ],
+      "parentId": "sf.render.swarm-anchor.node.sf-swarm-anchor-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.swarm-anchor.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -3.109999895095825,
+        1.2200000286102295,
+        -1.4500000476837158,
+        1
+      ]
+    },
+    {
       "id": "sf.render.swarm-anchor.node.socket-tether-massline",
       "localTransform": [
         1,
@@ -5264,7 +5454,7 @@
       "nodeName": "SOCKET_Tether_Massline",
       "nodePath": [
         0,
-        29
+        31
       ],
       "parentId": "sf.render.swarm-anchor.node.sf-swarm-anchor-root",
       "role": "immutable",
@@ -5313,7 +5503,7 @@
       "nodeName": "SOCKET_Trail_Main",
       "nodePath": [
         0,
-        30
+        32
       ],
       "parentId": "sf.render.swarm-anchor.node.sf-swarm-anchor-root",
       "role": "immutable",
@@ -5362,7 +5552,7 @@
       "nodeName": "SOCKET_Trail_Port",
       "nodePath": [
         0,
-        31
+        33
       ],
       "parentId": "sf.render.swarm-anchor.node.sf-swarm-anchor-root",
       "role": "immutable",
@@ -5411,7 +5601,7 @@
       "nodeName": "SOCKET_Trail_Starboard",
       "nodePath": [
         0,
-        32
+        34
       ],
       "parentId": "sf.render.swarm-anchor.node.sf-swarm-anchor-root",
       "role": "immutable",
@@ -5460,7 +5650,7 @@
       "nodeName": "SOCKET_Utility_Dorsal",
       "nodePath": [
         0,
-        33
+        35
       ],
       "parentId": "sf.render.swarm-anchor.node.sf-swarm-anchor-root",
       "role": "immutable",
@@ -5509,7 +5699,7 @@
       "nodeName": "SOCKET_Weapon_Front",
       "nodePath": [
         0,
-        34
+        36
       ],
       "parentId": "sf.render.swarm-anchor.node.sf-swarm-anchor-root",
       "role": "immutable",
@@ -5536,44 +5726,44 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "637ffb15ed9f0937ca2ece35674bce54eb56b495e5600fa227b58520b912ae1f"
+      "sha256": "bae80c1fede99f57519d77974e17c2a1f3a3bcc520708cf6d690dfb79874a768"
     },
     "sourceGlb": {
-      "bytes": 575004,
-      "sha256": "b4e847d43762a17dc19bf70558d7f974d96d9594896af04bf88f33d72f6dc434",
+      "bytes": 600224,
+      "sha256": "7fd55107ab68732e11cfd3377c714cd8fe90887f6406ae27f85487caf6de1ae1",
       "uri": "swarm_anchor.glb"
     },
     "sourceManifest": {
       "bytes": 325299,
-      "sha256": "8e7373430f01506cc123dbfcb00d501af8af7419878432e6561b524452d5d712",
+      "sha256": "3091bd01391db3916893912846619f7a7f925d4851afea4f6827956f31d0911d",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 588212,
-    "sha256": "80196947a87e21f466fe0663e218a166bb847ba6907af771fffac340c65b64ec",
+    "bytes": 614044,
+    "sha256": "b5f30fa1f843e1124270738c57ed53a7cab3f28bb41ff59d6b3e03467f868dde",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
         -0.21052265167236328,
-        0.30722588869429346,
+        0.3069889666661827,
         -1.1920928955078125e-7
       ],
       "max": [
         7.600335121154785,
-        1.6503773481786117,
+        1.650391891711937,
         3.994700480694191
       ],
       "min": [
         -8.021380424499512,
-        -1.0359255707900248,
+        -1.0364139583795715,
         -3.99470071911277
       ],
       "size": [
         15.621715545654297,
-        2.6863029189686367,
+        2.6868058500915084,
         7.989401199806961
       ]
     },
@@ -5635,9 +5825,9 @@
           0,
           0.5574329495429993,
           0,
-          -7.4824769496917725,
+          -7.482483863830566,
           0.09943293035030365,
-          2.2351741790771484e-8,
+          -1.4901161193847656e-8,
           1
         ],
         "name": "LOD1_HOOK_DRIVE_CORE",
@@ -5662,21 +5852,21 @@
       },
       {
         "matrix": [
-          0.5438415110111237,
+          0.5562309622764587,
           0,
           0,
           0,
           0,
-          0.5438415110111237,
+          0.5562309622764587,
           0,
           0,
           0,
           0,
-          0.5438415110111237,
+          0.5562309622764587,
           0,
-          -7.482377767562866,
-          0.08824549987912178,
-          -0.000005492940545082092,
+          -7.4824059009552,
+          0.10063495486974716,
+          -0.000005513429641723633,
           1
         ],
         "name": "LOD2_HOOK_DRIVE_CORE",
@@ -5874,19 +6064,19 @@
       },
       {
         "matrix": [
-          2.7466201186180115,
+          2.7465932369232178,
           0,
           0,
           0,
           0,
-          2.7466201186180115,
+          2.7465932369232178,
           0,
           0,
           0,
           0,
-          2.7466201186180115,
+          2.7465932369232178,
           0,
-          4.247293531894684,
+          4.247239828109741,
           0.32167305052280426,
           -0.00006115436553955078,
           1
@@ -5910,19 +6100,19 @@
       },
       {
         "matrix": [
-          2.7456881403923035,
+          2.7457010746002197,
           0,
           0,
           0,
           0,
-          2.7456881403923035,
+          2.7457010746002197,
           0,
           0,
           0,
           0,
-          2.7456881403923035,
+          2.7457010746002197,
           0,
-          4.246361553668976,
+          4.246347665786743,
           0.4796213433146477,
           0.000004649162292480469,
           1
@@ -5982,19 +6172,19 @@
       },
       {
         "matrix": [
-          2.7455356121063232,
+          2.7455650568008423,
           0,
           0,
           0,
           0,
-          2.7455356121063232,
+          2.7455650568008423,
           0,
           0,
           0,
           0,
-          2.7455356121063232,
+          2.7455650568008423,
           0,
-          4.24723219871521,
+          4.247226119041443,
           0.31899019330739975,
           1.1920928955078125e-7,
           1
@@ -6018,19 +6208,19 @@
       },
       {
         "matrix": [
-          2.7455356121063232,
+          2.7455650568008423,
           0,
           0,
           0,
           0,
-          2.7455356121063232,
+          2.7455650568008423,
           0,
           0,
           0,
           0,
-          2.7455356121063232,
+          2.7455650568008423,
           0,
-          4.24723219871521,
+          4.247226119041443,
           0.48043379932641983,
           1.1920928955078125e-7,
           1
@@ -6067,7 +6257,7 @@
           1.795688271522522,
           0,
           6.076176643371582,
-          0.6018430888652802,
+          0.6018431037664413,
           1.1920928955078125e-7,
           1
         ],
@@ -6300,21 +6490,21 @@
       },
       {
         "matrix": [
-          2.289397120475769,
+          2.289582848548889,
           0,
           0,
           0,
           0,
-          2.289397120475769,
+          2.289582848548889,
           0,
           0,
           0,
           0,
-          2.289397120475769,
+          2.289582848548889,
           0,
-          -4.50192654132843,
+          -4.50211226940155,
           0.25045688450336456,
-          -2.350626975297928,
+          -2.350455105304718,
           1
         ],
         "name": "LOD1_MOTION_ANCHOR_VANE_PORT_Armor",
@@ -6373,21 +6563,21 @@
       },
       {
         "matrix": [
-          2.2886537313461304,
+          2.2886499166488647,
           0,
           0,
           0,
           0,
-          2.2886537313461304,
+          2.2886499166488647,
           0,
           0,
           0,
           0,
-          2.2886537313461304,
+          2.2886499166488647,
           0,
-          -4.501557469367981,
+          -4.501553654670715,
           0.39500316604971886,
-          -2.3505323231220245,
+          -2.3505594432353973,
           1
         ],
         "name": "LOD1_MOTION_ANCHOR_VANE_PORT_Hull",
@@ -6445,21 +6635,21 @@
       },
       {
         "matrix": [
-          2.2886027097702026,
+          2.288593888282776,
           0,
           0,
           0,
           0,
-          2.2886027097702026,
+          2.288593888282776,
           0,
           0,
           0,
           0,
-          2.2886027097702026,
+          2.288593888282776,
           0,
-          -4.502073884010315,
+          -4.502065062522888,
           0.24428142234683037,
-          -2.3523695170879364,
+          -2.3522251546382904,
           1
         ],
         "name": "LOD2_MOTION_ANCHOR_VANE_PORT_Armor",
@@ -6518,21 +6708,21 @@
       },
       {
         "matrix": [
-          2.2886027097702026,
+          2.288593888282776,
           0,
           0,
           0,
           0,
-          2.2886027097702026,
+          2.288593888282776,
           0,
           0,
           0,
           0,
-          2.2886027097702026,
+          2.288593888282776,
           0,
-          -4.502073884010315,
+          -4.502065062522888,
           0.39506709203124046,
-          -2.351232260465622,
+          -2.3512355983257294,
           1
         ],
         "name": "LOD2_MOTION_ANCHOR_VANE_PORT_Hull",
@@ -6800,21 +6990,21 @@
       },
       {
         "matrix": [
-          2.2892202138900757,
+          2.289374828338623,
           0,
           0,
           0,
           0,
-          2.2892202138900757,
+          2.289374828338623,
           0,
           0,
           0,
           0,
-          2.2892202138900757,
+          2.289374828338623,
           0,
-          -4.5021034479141235,
+          -4.502275466918945,
           0.2501976750791073,
-          2.350630521774292,
+          2.3505705893039703,
           1
         ],
         "name": "LOD1_MOTION_ANCHOR_VANE_STARBOARD_Armor",
@@ -6873,21 +7063,21 @@
       },
       {
         "matrix": [
-          2.28842031955719,
+          2.2884018421173096,
           0,
           0,
           0,
           0,
-          2.28842031955719,
+          2.2884018421173096,
           0,
           0,
           0,
           0,
-          2.28842031955719,
+          2.2884018421173096,
           0,
-          -4.501303553581238,
+          -4.501302480697632,
           0.3949991725385189,
-          2.350388675928116,
+          2.3503958582878113,
           1
         ],
         "name": "LOD1_MOTION_ANCHOR_VANE_STARBOARD_Hull",
@@ -6909,21 +7099,21 @@
       },
       {
         "matrix": [
-          2.2884331941604614,
+          2.288412570953369,
           0,
           0,
           0,
           0,
-          2.2884331941604614,
+          2.288412570953369,
           0,
           0,
           0,
           0,
-          2.2884331941604614,
+          2.288412570953369,
           0,
-          -4.501809477806091,
+          -4.50180196762085,
           0.24416949972510338,
-          2.3502843379974365,
+          2.351375550031662,
           1
         ],
         "name": "LOD2_MOTION_ANCHOR_VANE_STARBOARD_Armor",
@@ -6982,21 +7172,21 @@
       },
       {
         "matrix": [
-          2.2884331941604614,
+          2.288412570953369,
           0,
           0,
           0,
           0,
-          2.2884331941604614,
+          2.288412570953369,
           0,
           0,
           0,
           0,
-          2.2884331941604614,
+          2.288412570953369,
           0,
-          -4.501809477806091,
+          -4.50180196762085,
           0.3952522538602352,
-          2.3520984947681427,
+          2.350293517112732,
           1
         ],
         "name": "LOD2_MOTION_ANCHOR_VANE_STARBOARD_Hull",
@@ -7394,13 +7584,117 @@
           0,
           1,
           0,
+          -3.109999895095825,
+          1.2200000286102295,
+          1.4500000476837158,
+          1
+        ],
+        "name": "SOCKET_Retro_Port",
+        "planIndex": 96,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Retro_Port",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "attachment",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Retro_Port",
+            "recordIds": [
+              "sf.render.swarm-anchor.anchor.socket-retro-port",
+              "sf.render.swarm-anchor.node.socket-retro-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -3.109999895095825,
+          1.2200000286102295,
+          -1.4500000476837158,
+          1
+        ],
+        "name": "SOCKET_Retro_Starboard",
+        "planIndex": 97,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Retro_Starboard",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "attachment",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Retro_Starboard",
+            "recordIds": [
+              "sf.render.swarm-anchor.anchor.socket-retro-starboard",
+              "sf.render.swarm-anchor.node.socket-retro-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
           -3.6464004516601562,
           0.824999988079071,
           0,
           1
         ],
         "name": "SOCKET_Tether_Massline",
-        "planIndex": 96,
+        "planIndex": 98,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -7452,7 +7746,7 @@
           1
         ],
         "name": "SOCKET_Trail_Main",
-        "planIndex": 97,
+        "planIndex": 99,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -7504,7 +7798,7 @@
           1
         ],
         "name": "SOCKET_Trail_Port",
-        "planIndex": 98,
+        "planIndex": 100,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -7556,7 +7850,7 @@
           1
         ],
         "name": "SOCKET_Trail_Starboard",
-        "planIndex": 99,
+        "planIndex": 101,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -7608,7 +7902,7 @@
           1
         ],
         "name": "SOCKET_Utility_Dorsal",
-        "planIndex": 100,
+        "planIndex": 102,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -7660,7 +7954,7 @@
           1
         ],
         "name": "SOCKET_Weapon_Front",
-        "planIndex": 101,
+        "planIndex": 103,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -7949,10 +8243,10 @@
     "motionBank": {
       "bytes": 2247,
       "rigId": "swarm_anchor",
-      "sha256": "16631769479606fa3fd3cd2ce4713cc52d19bfdfdd6fb3abb8e4bfb6929d2f37",
+      "sha256": "d59121847744d4391777bece94ce8ba2c5f421f1a810b786db50343edc84a50f",
       "uri": "assets/ships/motions/swarm-anchor.motion.json"
     },
-    "nodeCount": 102,
+    "nodeCount": 104,
     "primitives": [
       {
         "canopy": false,
@@ -8097,7 +8391,7 @@
           5.319968104362488,
           0,
           -2.700032353401184,
-          0.10000002384185791,
+          0.20558279752731323,
           0,
           1
         ],
@@ -8204,9 +8498,9 @@
           0,
           0.5574329495429993,
           0,
-          -7.4824769496917725,
+          -7.482483863830566,
           0.09943293035030365,
-          2.2351741790771484e-8,
+          -1.4901161193847656e-8,
           1
         ],
         "name": "LOD1_HOOK_DRIVE_CORE_1",
@@ -8227,9 +8521,9 @@
             0,
             0.5574329495429993,
             0,
-            -7.4824769496917725,
+            -7.482483863830566,
             0.09943293035030365,
-            2.2351741790771484e-8,
+            -1.4901161193847656e-8,
             1
           ],
           "lod": "lod1"
@@ -8251,7 +8545,7 @@
           2.3925628662109375,
           0,
           -0.40065234899520874,
-          1.1406559944152832,
+          1.140656590461731,
           -0.010918617248535156,
           1
         ],
@@ -8265,20 +8559,20 @@
       {
         "canopy": false,
         "matrix": [
-          5.318629264831543,
+          5.315208315849304,
           0,
           0,
           0,
           0,
-          5.318629264831543,
+          5.315208315849304,
           0,
           0,
           0,
           0,
-          5.318629264831543,
+          5.315208315849304,
           0,
-          -2.7019968032836914,
-          0.10096228122711182,
+          -2.70541775226593,
+          0.20450568199157715,
           0.0006608963012695312,
           1
         ],
@@ -8373,21 +8667,21 @@
       {
         "canopy": false,
         "matrix": [
-          0.5438415110111237,
+          0.5562309622764587,
           0,
           0,
           0,
           0,
-          0.5438415110111237,
+          0.5562309622764587,
           0,
           0,
           0,
           0,
-          0.5438415110111237,
+          0.5562309622764587,
           0,
-          -7.482377767562866,
-          0.08824549987912178,
-          -0.000005492940545082092,
+          -7.4824059009552,
+          0.10063495486974716,
+          -0.000005513429641723633,
           1
         ],
         "name": "LOD2_HOOK_DRIVE_CORE_1",
@@ -8396,21 +8690,21 @@
           "canopy": false,
           "drive": "core",
           "driveAnchorMatrix": [
-            0.5438415110111237,
+            0.5562309622764587,
             0,
             0,
             0,
             0,
-            0.5438415110111237,
+            0.5562309622764587,
             0,
             0,
             0,
             0,
-            0.5438415110111237,
+            0.5562309622764587,
             0,
-            -7.482377767562866,
-            0.08824549987912178,
-            -0.000005492940545082092,
+            -7.4824059009552,
+            0.10063495486974716,
+            -0.000005513429641723633,
             1
           ],
           "lod": "lod2"
@@ -8432,7 +8726,7 @@
           2.3949785232543945,
           0,
           -0.4053126573562622,
-          1.1311011910438538,
+          1.1316667199134827,
           -0.003527402877807617,
           1
         ],
@@ -8459,7 +8753,7 @@
           5.328091025352478,
           0,
           -2.6926437616348267,
-          0.09255588054656982,
+          0.2026391625404358,
           -0.012016892433166504,
           1
         ],
@@ -8473,20 +8767,20 @@
       {
         "canopy": false,
         "matrix": [
-          7.807697534561157,
+          7.807894706726074,
           0,
           0,
           0,
           0,
-          7.807697534561157,
+          7.807894706726074,
           0,
           0,
           0,
           0,
-          7.807697534561157,
+          7.807894706726074,
           0,
-          -0.21303725242614746,
-          0.3478202819824219,
+          -0.21284008026123047,
+          0.34782034158706665,
           0.00038242340087890625,
           1
         ],
@@ -8584,19 +8878,19 @@
       {
         "canopy": false,
         "matrix": [
-          2.7466201186180115,
+          2.7465932369232178,
           0,
           0,
           0,
           0,
-          2.7466201186180115,
+          2.7465932369232178,
           0,
           0,
           0,
           0,
-          2.7466201186180115,
+          2.7465932369232178,
           0,
-          4.247293531894684,
+          4.247239828109741,
           0.32167305052280426,
           -0.00006115436553955078,
           1
@@ -8612,19 +8906,19 @@
       {
         "canopy": false,
         "matrix": [
-          2.7456881403923035,
+          2.7457010746002197,
           0,
           0,
           0,
           0,
-          2.7456881403923035,
+          2.7457010746002197,
           0,
           0,
           0,
           0,
-          2.7456881403923035,
+          2.7457010746002197,
           0,
-          4.246361553668976,
+          4.246347665786743,
           0.4796213433146477,
           0.000004649162292480469,
           1
@@ -8668,19 +8962,19 @@
       {
         "canopy": false,
         "matrix": [
-          2.7455356121063232,
+          2.7455650568008423,
           0,
           0,
           0,
           0,
-          2.7455356121063232,
+          2.7455650568008423,
           0,
           0,
           0,
           0,
-          2.7455356121063232,
+          2.7455650568008423,
           0,
-          4.24723219871521,
+          4.247226119041443,
           0.31899019330739975,
           1.1920928955078125e-7,
           1
@@ -8696,19 +8990,19 @@
       {
         "canopy": false,
         "matrix": [
-          2.7455356121063232,
+          2.7455650568008423,
           0,
           0,
           0,
           0,
-          2.7455356121063232,
+          2.7455650568008423,
           0,
           0,
           0,
           0,
-          2.7455356121063232,
+          2.7455650568008423,
           0,
-          4.24723219871521,
+          4.247226119041443,
           0.48043379932641983,
           1.1920928955078125e-7,
           1
@@ -8737,7 +9031,7 @@
           1.795688271522522,
           0,
           6.076176643371582,
-          0.6018430888652802,
+          0.6018431037664413,
           1.1920928955078125e-7,
           1
         ],
@@ -8865,21 +9159,21 @@
       {
         "canopy": false,
         "matrix": [
-          2.289397120475769,
+          2.289582848548889,
           0,
           0,
           0,
           0,
-          2.289397120475769,
+          2.289582848548889,
           0,
           0,
           0,
           0,
-          2.289397120475769,
+          2.289582848548889,
           0,
-          -4.50192654132843,
+          -4.50211226940155,
           0.25045688450336456,
-          -2.350626975297928,
+          -2.350455105304718,
           1
         ],
         "name": "LOD1_MOTION_ANCHOR_VANE_PORT_Armor_1",
@@ -8922,21 +9216,21 @@
       {
         "canopy": false,
         "matrix": [
-          2.2886537313461304,
+          2.2886499166488647,
           0,
           0,
           0,
           0,
-          2.2886537313461304,
+          2.2886499166488647,
           0,
           0,
           0,
           0,
-          2.2886537313461304,
+          2.2886499166488647,
           0,
-          -4.501557469367981,
+          -4.501553654670715,
           0.39500316604971886,
-          -2.3505323231220245,
+          -2.3505594432353973,
           1
         ],
         "name": "LOD1_MOTION_ANCHOR_VANE_PORT_Hull_1",
@@ -8978,21 +9272,21 @@
       {
         "canopy": false,
         "matrix": [
-          2.2886027097702026,
+          2.288593888282776,
           0,
           0,
           0,
           0,
-          2.2886027097702026,
+          2.288593888282776,
           0,
           0,
           0,
           0,
-          2.2886027097702026,
+          2.288593888282776,
           0,
-          -4.502073884010315,
+          -4.502065062522888,
           0.24428142234683037,
-          -2.3523695170879364,
+          -2.3522251546382904,
           1
         ],
         "name": "LOD2_MOTION_ANCHOR_VANE_PORT_Armor_1",
@@ -9035,21 +9329,21 @@
       {
         "canopy": false,
         "matrix": [
-          2.2886027097702026,
+          2.288593888282776,
           0,
           0,
           0,
           0,
-          2.2886027097702026,
+          2.288593888282776,
           0,
           0,
           0,
           0,
-          2.2886027097702026,
+          2.288593888282776,
           0,
-          -4.502073884010315,
+          -4.502065062522888,
           0.39506709203124046,
-          -2.351232260465622,
+          -2.3512355983257294,
           1
         ],
         "name": "LOD2_MOTION_ANCHOR_VANE_PORT_Hull_1",
@@ -9204,21 +9498,21 @@
       {
         "canopy": false,
         "matrix": [
-          2.2892202138900757,
+          2.289374828338623,
           0,
           0,
           0,
           0,
-          2.2892202138900757,
+          2.289374828338623,
           0,
           0,
           0,
           0,
-          2.2892202138900757,
+          2.289374828338623,
           0,
-          -4.5021034479141235,
+          -4.502275466918945,
           0.2501976750791073,
-          2.350630521774292,
+          2.3505705893039703,
           1
         ],
         "name": "LOD1_MOTION_ANCHOR_VANE_STARBOARD_Armor_1",
@@ -9261,21 +9555,21 @@
       {
         "canopy": false,
         "matrix": [
-          2.28842031955719,
+          2.2884018421173096,
           0,
           0,
           0,
           0,
-          2.28842031955719,
+          2.2884018421173096,
           0,
           0,
           0,
           0,
-          2.28842031955719,
+          2.2884018421173096,
           0,
-          -4.501303553581238,
+          -4.501302480697632,
           0.3949991725385189,
-          2.350388675928116,
+          2.3503958582878113,
           1
         ],
         "name": "LOD1_MOTION_ANCHOR_VANE_STARBOARD_Hull_1",
@@ -9289,21 +9583,21 @@
       {
         "canopy": false,
         "matrix": [
-          2.2884331941604614,
+          2.288412570953369,
           0,
           0,
           0,
           0,
-          2.2884331941604614,
+          2.288412570953369,
           0,
           0,
           0,
           0,
-          2.2884331941604614,
+          2.288412570953369,
           0,
-          -4.501809477806091,
+          -4.50180196762085,
           0.24416949972510338,
-          2.3502843379974365,
+          2.351375550031662,
           1
         ],
         "name": "LOD2_MOTION_ANCHOR_VANE_STARBOARD_Armor_1",
@@ -9346,21 +9640,21 @@
       {
         "canopy": false,
         "matrix": [
-          2.2884331941604614,
+          2.288412570953369,
           0,
           0,
           0,
           0,
-          2.2884331941604614,
+          2.288412570953369,
           0,
           0,
           0,
           0,
-          2.2884331941604614,
+          2.288412570953369,
           0,
-          -4.501809477806091,
+          -4.50180196762085,
           0.3952522538602352,
-          2.3520984947681427,
+          2.350293517112732,
           1
         ],
         "name": "LOD2_MOTION_ANCHOR_VANE_STARBOARD_Hull_1",
@@ -9376,19 +9670,19 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/swarm_anchor.glb"
   },
-  "runtimeHash": "bbe7288ccd4dbf91d765c39fff4eca1d3663a05d0df959243c55acccb7df4146",
+  "runtimeHash": "ad06e578c5a626fe84f68fa9c42dc3e96fbc6c687a70ca86547e7e319662bca3",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
           7.600335121154785,
-          1.6503773481786117,
+          1.650391891711937,
           3.994700480694191
         ],
         "min": [
           -8.021380424499512,
-          -1.0359255707900248,
+          -1.0364139583795715,
           -3.99470071911277
         ]
       },
@@ -9455,6 +9749,8 @@
         "sf.render.swarm-anchor.node.socket-mining-front",
         "sf.render.swarm-anchor.node.socket-rcs-port",
         "sf.render.swarm-anchor.node.socket-rcs-starboard",
+        "sf.render.swarm-anchor.node.socket-retro-port",
+        "sf.render.swarm-anchor.node.socket-retro-starboard",
         "sf.render.swarm-anchor.node.socket-tether-massline",
         "sf.render.swarm-anchor.node.socket-trail-main",
         "sf.render.swarm-anchor.node.socket-trail-port",

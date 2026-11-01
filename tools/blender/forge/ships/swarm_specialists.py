@@ -123,8 +123,23 @@ def build_anchor():
     return s
 
 
+def fixed_retro_ports(ship, kind):
+    # Whole-hull skin fitting cannot seat generic retros on moving vanes: they would remain
+    # behind when the mechanism deploys. These physical fixed-spine ports own their sockets.
+    x, span, z = {'warden': (3.0, 1.5, 1.12), 'jackal': (3.3, 3.05, 1.1),
+                  'anchor': (-3.4, 1.45, 1.22)}[kind]
+    for side, label in ((-1, 'Port'), (1, 'Starboard')):
+        y = side * span
+        F.box(ship, 'RetroSeat'+label, (x-.12,y,z-.13), (.72,.48,.25), 'gunmetal', bevel=.08)
+        F.cylinder(ship, 'RetroPort'+label, (x-.3,y,z), (x+.28,y,z), .13, .22,
+                   material='gunmetal', segments=20, cap_material='dark', bevel=.025)
+        ship.socket('SOCKET_Retro_'+label, (x+.29,y,z), forward=(1,0,0))
+
+
 def export(kind):
-    ship=globals()['build_'+kind]().finish()
+    ship=globals()['build_'+kind]()
+    fixed_retro_ports(ship, kind)
+    ship.finish()
     # The whole-hull census also reads this legacy-compatible, truthful texture declaration.
     for material in ship._mats.values():
         if material.use_nodes and any(n.type=='TEX_IMAGE' and n.image for n in material.node_tree.nodes):

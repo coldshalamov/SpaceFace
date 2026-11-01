@@ -2,7 +2,7 @@
  "schema": "spaceface.rigidMotionBank.v1",
  "rigId": "swarm_anchor",
  "sourceAssetId": "SF_SWARM_ANCHOR",
- "sourceGlbSha256": "0d6ea1ea2ae4b0562dfe6d33b0ff8da97fbd8757794464a32f6c173bfd28fc6a",
+ "sourceGlbSha256": "9c612770a56392cecfff074dcbcd0ce7afa537a0bbdcc6735bbd7fc5d9b54886",
  "fps": 60,
  "bindings": [
   {
