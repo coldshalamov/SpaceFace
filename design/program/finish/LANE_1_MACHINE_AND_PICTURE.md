@@ -240,12 +240,12 @@ as JS) to a binary asset; take `src/testing/**` out of the retail graph (static 
 `FlightReadySet` and stream the rest after first flight. D252: fix the WebKit menu stall. Done when
 the load rows of README §4 meet their floor.
 
-The latest working-tree bundle is batch 22. Its main static ESM closure is 11,776,177 raw /
-3,674,835 summed-gzip bytes across 132 outputs, below the 12 MB raw floor. Main and both module
+The latest completed working-tree bundle is batch 23. Its main static ESM closure is 11,544,487 raw /
+3,604,071 summed-gzip bytes across 134 outputs, below the 12 MB raw floor. Main and both module
 worker graphs have zero missing static edges; the classic digest worker is separately built and
-outside the main metafile. The bundle gate validates 414 render plans, 74 behavior cases and 2,819
-files. Receipt: `a170b09c63906fdc6d2e879f64db1548cfe780059784738cb79555015565539a`. The build includes
-concurrent working-tree changes recorded with batch 22, so these bytes do not isolate the effect of
+outside the main metafile. The bundle gate validates 414 render plans and 2,829 files.
+Receipt: `3bd4e89fb747bc0926a2f82adb6dc5cf6922b114a792109d3e9fd8c02cf77aff`. The build includes
+concurrent working-tree changes recorded with batch 23, so these bytes do not isolate the effect of
 any one change. Ruckus mesh payloads now use the completed four-GLB binary migration and remain in
 the authored preflight warm path.
 
@@ -254,10 +254,14 @@ frame-time improvement. The 6 MB target, total preflight bytes, runtime loading 
 worker/save/context route remain open. Prior M9 checkpoint sizes, receipts, and implementation
 history are consolidated in [the integration coverage archive](../../archive/finish-integration/INTEGRATION_COVERAGE_2026-10-31.md).
 
-**M10 — First sight never stalls.** Adventure first-sight program links (`pipelineReadiness.js`
-serializes every link behind one `linkActive` tail): issue links in parallel batches, use
-`programBinaryCache.js`, and rely on M3's smaller program count. **Do not** prewarm with dummy meshes
-(measured worse). Done when no first-sight link blocks > 16 ms in a fixed-seed Adventure route.
+**M10 — First sight never stalls.** KHR-capable pipeline admissions now issue under one serialized
+owner, restore the target and temporary root homes, then settle up to four independent actual-program
+sets outside that issue slot. Unsupported backends stay serial. Caller deadlines do not release live
+ownership; issue attribution restores before another batch starts. Focused target, context, cancellation,
+delayed-environment and deadline checks pass. This source change postdates batch 23; its new bundle and
+matched live first-sight measurement remain OPEN. Use `programBinaryCache.js` where valid and M3's smaller
+program count. **Do not** prewarm with dummy meshes (measured worse). Done when no first-sight link blocks
+> 16 ms in a fixed-seed Adventure route.
 
 **M11 — Electron and browser flags.** A/B `--disable-renderer-backgrounding`,
 `--force_high_performance_gpu`, `powerPreference: "high-performance"`, `--ignore-gpu-blocklist`,
