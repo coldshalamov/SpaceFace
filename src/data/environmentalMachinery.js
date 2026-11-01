@@ -1339,7 +1339,10 @@ export const APERTURE_MOUTH = Object.freeze({
   alongMax: 16,
   halfWidth: 34,
 });
-const APERTURE_HOLD_APEX_ALONG = 10;
+// The hold cone owns the bay interior: its apex sits at the mouth's inner lip so a
+// seated jam body stays OUT of the wedge. With the apex mid-band the cone caught the
+// wreck itself and walked it out through the interior edge — the jam evacuated itself.
+const APERTURE_HOLD_APEX_ALONG = 34;
 export const APERTURE_HOLD_FIELD = Object.freeze({
   id: 'environment_ceres_hangar_aperture_hold',
   kind: 'cone',
@@ -1351,7 +1354,9 @@ export const APERTURE_HOLD_FIELD = Object.freeze({
   radius: 92,
   strength: 720,
   falloff: 1.08,
-  halfAngleRad: 0.62,
+  // The wedge must own the whole return lane: at 0.62 rad an escapee returning
+  // off-axis slipped the soft edge and ran the mouth around the jam.
+  halfAngleRad: 1.05,
   edgeSoftRad: 0.12,
   sourceId: APERTURE_ID,
   team: null,

@@ -95,6 +95,14 @@ const APERTURE_MOUTH_QUERY = (() => {
   const radius = Math.hypot((APERTURE_MOUTH.alongMax - APERTURE_MOUTH.alongMin) * 0.5, APERTURE_MOUTH.halfWidth) + 4;
   return Object.freeze({ x: center.x, z: center.z, radius });
 })();
+// The plug disk is round and offset from the mouth rectangle — a body can sit inside the
+// disk without reading as a mouth occupant. The door holds off driving home into it.
+const APERTURE_PLUG_QUERY = Object.freeze({
+  x: APERTURE_PLUG.pos.x,
+  z: APERTURE_PLUG.pos.z,
+  radius: APERTURE_PLUG.radius + 96,
+});
+const APERTURE_PLUG_SCRATCH = [];
 const APERTURE_OCCUPANT_SCRATCH = [];
 const KILL_COLLATERAL_SCRATCH = [];
 const EMPTY_LIST = [];
@@ -924,8 +932,14 @@ export const environmentalMachinery = {
     if (phase.fieldActive) this._upsertApertureFields(phase);
     else this._removeApertureFields();
     const wantPlug = phase.fieldActive && phase.fieldStrengthScale > 0 && !occupied;
-    if (wantPlug) this._ensureAperturePlug();
-    else this._releaseAperturePlug();
+    // The door drives home only into an empty throat: spawning the plug mass into a
+    // live body made the solver eject it through the exit — the bite read as the door
+    // throwing the jam, or a transiting reinforcement, out the wrong side.
+    if (wantPlug) {
+      if (this._aperturePlugThroatClear(state)) this._ensureAperturePlug();
+    } else {
+      this._releaseAperturePlug();
+    }
     this._publishAperturePhase(phase);
     this._updateAperturePlayerBoundary(state, phase);
     this._publishApertureIndustry(state, phase);
@@ -1026,6 +1040,26 @@ export const environmentalMachinery = {
       }
       this._apertureFieldStrength.delete(field.id);
     }
+  },
+
+  _aperturePlugThroatClear(state) {
+    const nearby = queryNearbyEntities(
+      state,
+      APERTURE_PLUG_QUERY,
+      APERTURE_PLUG_QUERY.radius,
+      APERTURE_PLUG_SCRATCH,
+    );
+    for (let i = 0; i < nearby.length; i++) {
+      const entity = nearby[i];
+      if (!entity || entity.alive === false || entity.collides === false || !entity.pos) continue;
+      if (entity.data && entity.data.aperturePlugId) continue;
+      const radius = Number.isFinite(entity.radius) ? entity.radius : 0;
+      const reach = APERTURE_PLUG.radius + radius;
+      const dx = entity.pos.x - APERTURE_PLUG.pos.x;
+      const dz = entity.pos.z - APERTURE_PLUG.pos.z;
+      if (dx * dx + dz * dz < reach * reach) return false;
+    }
+    return true;
   },
 
   _ensureAperturePlug() {
