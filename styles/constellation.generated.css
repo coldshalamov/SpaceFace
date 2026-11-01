@@ -391,6 +391,8 @@ html body #screens > .k-screen.con-achievements .con-medal-read__dial[data-state
 html body #screens > .k-screen.con-achievements .con-medal-read__dial .orr-svg .con-medal__ticks { stroke:rgb(236 230 216 / .58); }
 html body #screens > .k-screen.con-achievements .con-medal-read__kicker { font-family:var(--dp-face-label, "Archivo"), "Archivo", system-ui, sans-serif; font-stretch:112%; font-weight:650; text-transform:uppercase; font-variation-settings:normal; font-size:clamp(12px, .62vw, 13px); letter-spacing:.24em; color:rgb(236 230 216 / .82); }
 html body #screens > .k-screen.con-achievements .con-medal-read__kicker span { margin:0 .3em; }
+/* the state words ("not yet earned", "under way") never split: a kicker too long for its column breaks after the dot */
+html body #screens > .k-screen.con-achievements .con-medal-read__kicker .con-medal-read__state { margin:0; white-space:nowrap; }
 html body #screens > .k-screen.con-achievements .con-medal-read__name { font-family:var(--dp-face-display, "Archivo"), "Archivo", system-ui, sans-serif; font-stretch:125%; font-weight:800; font-variation-settings:"wght" 800, "wdth" 125;
   text-transform:uppercase; font-size:clamp(22px, min(1.75vw, 3.3vh), 36px); line-height:1.02; letter-spacing:.02em; color:rgb(248 244 234); text-wrap:balance; text-shadow:0 0 2px rgb(4 6 9), 0 0 6px rgb(4 6 9 / .9), 0 0 14px rgb(4 6 9 / .7); }
 html body #screens > .k-screen.con-achievements .con-medal-read__line { font-family:var(--dp-face-read, "Instrument Sans"), "Instrument Sans", system-ui, sans-serif; font-stretch:100%; font-variation-settings:normal; text-transform:none; font-size:clamp(15px, .9vw, 19px); line-height:1.45; color:rgb(236 230 216 / .9); max-width:34ch; }
@@ -425,6 +427,13 @@ html body #screens > .k-screen.con-achievements > .k-foot .con-back.sf-back.k-wo
 }
 @media (max-width:1400px) {
   html body #screens > .k-screen.con-achievements { grid-template-columns:minmax(0, 1fr) clamp(260px, 26vw, 340px) !important; }
+}
+/* a 761–1100 window: the reading column is ~260px, so the kicker tightens its tracking to keep
+   "ADVENTURE · NOT YET EARNED" on one line instead of orphaning EARNED */
+@media (min-width:761px) and (max-width:1100px) {
+  html body #screens > .k-screen.con-achievements .con-medal-read__kicker { letter-spacing:.12em; }
+  html body #screens > .k-screen.con-achievements .con-medal-read__kicker span { margin:0 .2em; }
+  html body #screens > .k-screen.con-achievements .con-medal-read__kicker .con-medal-read__state { margin:0; }
 }
 /* an upright phone or a window under 560px wide: one column. Title, then the medal orrery at full width
    (it stands down under 320px wide), then the chosen medal's reading, then the categories on
