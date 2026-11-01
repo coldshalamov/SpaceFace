@@ -928,6 +928,21 @@ html body #screens #sf-automation.au-orrery .au-outpost-detail .au-detail-row {
   background: none; border: 0; border-radius: 0; padding: 6px 0; }
 html body #screens #sf-automation.au-orrery .au-program {
   border: 0; border-radius: 0; background: none; box-shadow: none; color: rgb(var(--au-bone)); }
+/* polish273: purchase rungs and the empty notice were loose rows hung on a 2px tick, so the
+   Drone Bay read as unframed text. Each rung is now its own hairline card (faint fill, radius 8)
+   with the tick dropped, and the empty notice is a dashed well — the same card language as the
+   Records Wall and Help keycaps. Spacing and the one-line rung layout are unchanged. */
+html body #screens #sf-automation.au-orrery .au-shop {
+  border: 1px solid rgb(var(--au-bone) / .16); border-radius: 8px;
+  background: rgb(var(--au-bone) / .025); padding: 6px 14px; margin-top: 4px; }
+html body #screens #sf-automation.au-orrery .au-shop:hover,
+html body #screens #sf-automation.au-orrery .au-shop:focus-within {
+  border: 1px solid rgb(var(--au-bone) / .34); background: rgb(var(--au-bone) / .05); }
+html body #screens #sf-automation.au-orrery .au-shop::before { display: none; }
+html body #screens #sf-automation.au-orrery .au-empty {
+  border: 1px dashed rgb(var(--au-bone) / .22); border-radius: 8px;
+  background: rgb(var(--au-bone) / .02); padding: 6px 14px; margin-top: 4px; }
+html body #screens #sf-automation.au-orrery .au-empty::before { display: none; }
 `;
 
 function injectStyle() {
