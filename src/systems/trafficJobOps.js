@@ -605,7 +605,9 @@ export const trafficJobOps = {
     const route = itinerary.state === 'DIVERTING'
       ? `${stationName(origin, itinerary.originStationId)} RETURN`
       : `${stationName(origin, itinerary.originStationId)} → ${stationName(destination, itinerary.destinationStationId)}`;
-    const status = this._passengerLinerStatusLabel(itinerary);
+    const status = rec && rec.towYielding === true
+      ? 'YIELDING FOR TOW'
+      : this._passengerLinerStatusLabel(itinerary);
     entity.data.passengerLinerService = PASSENGER_LINER_SERVICE.id;
     entity.data.passengerLinerState = itinerary.state;
     entity.data.hitchable = massline2Flag('hitchhiking') === true;
@@ -617,6 +619,88 @@ export const trafficJobOps = {
     if (!entity.data.callsign) entity.data.callsign = 'HELIOS-LINE';
     rec.passengerLinerService = PASSENGER_LINER_SERVICE.id;
     rec.itinerary = itinerary;
+  },
+
+  // A boarding Helios liner yields only to a live NPC tow whose attachment identity is still
+  // joined on both physical bodies. A job's intended target by itself is not a tow: the line has
+  // to be attached, and the tow segment has to cross this berth's actual approach envelope.
+  _passengerLinerTowAtBerth(station) {
+    if (!station || !station.pos || !this.state || !this.state.entities) return false;
+    const getJob = this.helpers && this.helpers.npcJobs && this.helpers.npcJobs.get;
+    if (typeof getJob !== 'function') return false;
+    const records = this.state.traffic && this.state.traffic.freighters;
+    if (!Array.isArray(records)) return false;
+    const stationRadius = Math.max(
+      Number(station.radius) || 0,
+      Number(station.data && station.data.dockRadius) || 0,
+    );
+    for (const rec of records) {
+      if (!rec || rec.role !== 'tug') continue;
+      const tug = liveEntity(this.state, rec.id);
+      const jobId = tug && tug.data && tug.data.jobId;
+      if (!tug || !tug.pos || typeof jobId !== 'string' || !jobId) continue;
+      const entry = getJob(jobId);
+      const job = entry && entry.job;
+      const payload = job && job.payload;
+      if (!entry || entry.entityId !== tug.id || entry.worldRecordId !== tug.data.worldRecordId
+        || job.id !== jobId || job.kind !== 'hauler' || !payload || payload.role !== 'tug'
+        || entry.towAttachmentId == null || entry.towTargetId == null
+        || payload.towTargetId !== entry.towTargetId) continue;
+      const attachmentId = entry.towAttachmentId;
+      const ownerJobId = `job:${entry.worldRecordId}`;
+      if (tug.data.npcTowAttachmentId !== attachmentId || tug.data.npcTowJobId !== ownerJobId) continue;
+      const target = liveEntity(this.state, entry.towTargetId);
+      if (!target || !target.pos || !target.data
+        || target.data.npcTowAttachmentId !== attachmentId
+        || target.data.npcTowedByJobId !== ownerJobId) continue;
+
+      // NPC job entries and entity markers survive saves, but neither proves that the
+      // constraint was restored into the current physics owner. Require the canonical combat
+      // attachment, its generation-fenced semantic contract, and a live physics telemetry read.
+      const combat = this._registry && this._registry.get && this._registry.get('combat');
+      const kernel = combat && combat.kernel;
+      const attachments = kernel && kernel.attachments;
+      const attachment = attachments && typeof attachments.get === 'function'
+        ? attachments.get(attachmentId) : null;
+      const describeAttachment = kernel && kernel.describeCombatPhysicsAttachment;
+      const physics = this.helpers && this.helpers.combatPhysics;
+      const getTelemetry = physics && physics.getAttachmentTelemetry;
+      if (!attachment || attachment.id !== attachmentId || attachment.state !== 'active'
+        || attachment.ownerId !== tug.id || attachment.targetId !== target.id
+        || attachment.defId !== 'tether_standard' || attachment.controlMode !== 'npc_tow'
+        || tug.occupantGeneration == null || target.occupantGeneration == null
+        || attachment.ownerGeneration !== tug.occupantGeneration
+        || attachment.targetGeneration !== target.occupantGeneration
+        || typeof describeAttachment !== 'function' || !describeAttachment.call(kernel, attachmentId)
+        || typeof getTelemetry !== 'function') continue;
+      let telemetry = null;
+      try {
+        telemetry = getTelemetry.call(physics, {
+          attachmentId,
+          physicsHandle: attachment.physicsHandle,
+          tick: this.state.tick,
+        });
+      } catch (_) {
+        telemetry = null;
+      }
+      if (!telemetry || telemetry.attachmentId !== attachmentId) continue;
+
+      const dx = target.pos.x - tug.pos.x;
+      const dz = target.pos.z - tug.pos.z;
+      const length2 = dx * dx + dz * dz;
+      const projection = length2 > 0
+        ? Math.max(0, Math.min(1,
+          ((station.pos.x - tug.pos.x) * dx + (station.pos.z - tug.pos.z) * dz) / length2))
+        : 0;
+      const closestX = tug.pos.x + dx * projection;
+      const closestZ = tug.pos.z + dz * projection;
+      const clearance = stationRadius + (Number(tug.radius) || 0)
+        + (Number(target.radius) || 0) + 80;
+      const sx = station.pos.x - closestX;
+      const sz = station.pos.z - closestZ;
+      if (sx * sx + sz * sz <= clearance * clearance) return true;
+    }
+    return false;
   },
 
   _syncPassengerLinerWorldRecord(entity) {
@@ -886,18 +970,38 @@ export const trafficJobOps = {
         itinerary.delayedBy = null;
       }
       this._advancePassengerLinerAssist(entity, rec, itinerary, dt);
+      const origin = this._stationForPriorityCourier(stations, itinerary.originStationId);
+      const towYielding = itinerary.state === 'BOARDING'
+        && now >= itinerary.departureAt
+        && this._passengerLinerTowAtBerth(origin);
+      if (towYielding) {
+        const nextDeparture = now + Math.max(0, Number(dt) || 0);
+        itinerary.departureAt = Math.max(itinerary.departureAt, nextDeparture);
+        itinerary.dwellUntil = Math.max(itinerary.dwellUntil, itinerary.departureAt);
+        const changed = rec.towYielding !== true;
+        rec.towYielding = true;
+        rec.targetId = origin ? origin.id : rec.targetId;
+        setIntent(entity, 0, 0, false, true, null, entity.rot || 0);
+        if (entity.data && entity.data.intent) entity.data.intent.brake = true;
+        this._refreshPassengerLinerPresentation(entity, rec, stations, itinerary);
+        if (changed) this._syncPassengerLinerWorldRecord(entity);
+        return true;
+      }
+      const endedTowYield = rec.towYielding === true;
+      rec.towYielding = false;
       if (itinerary.state === 'BOARDING' && now >= itinerary.departureAt) {
         itinerary.state = 'EN_ROUTE';
         itinerary.custody.state = 'ONBOARD';
         itinerary.departedAt = now;
       }
       if (itinerary.state !== 'EN_ROUTE') {
-        const origin = this._stationForPriorityCourier(stations, itinerary.originStationId);
         rec.targetId = origin ? origin.id : rec.targetId;
         setIntent(entity, 0, 0, false, false, null, entity.rot || 0);
         this._refreshPassengerLinerPresentation(entity, rec, stations, itinerary);
+        if (endedTowYield) this._syncPassengerLinerWorldRecord(entity);
         return true;
       }
+      if (endedTowYield) this._syncPassengerLinerWorldRecord(entity);
     }
     if (itinerary.state === 'EN_ROUTE' && incident
       && itinerary.originStationId === 'station_helios'
