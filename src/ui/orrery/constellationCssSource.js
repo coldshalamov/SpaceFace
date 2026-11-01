@@ -320,6 +320,26 @@ ${T} .con-cost dt { align-self:end; }
 @media (min-width:3400px) and (min-height:1900px) {
   ${T}.k-screen { zoom:1.85; --k-s:1; }
 }
+/* ui-polish-280: the three corner readings (credits, research points, unlocked) were loose type over the
+   dial's sky, and "RESEARCH POINTS" broke under its figure while its neighbours stood on one line. On
+   desktop frames each reading now sits in its own hairline card, the three sharing the reading column
+   in equal cells, figure over word, so the corner reads as one set (as the Codex unlock counts do) */
+@media (min-width:761px) {
+  ${T} > .k-corner.con-corner { display:grid !important; grid-template-columns:repeat(3, minmax(0, 1fr)); justify-content:stretch; align-items:stretch;
+    column-gap:clamp(6px, .6vw, 10px) !important; row-gap:0 !important; text-align:left; }
+  ${T} > .k-corner.con-corner .con-read { box-sizing:border-box; align-items:flex-start; justify-content:flex-start; gap:6px;
+    padding:clamp(7px, 1.1vh, 12px) clamp(8px, .7vw, 12px); border:1px solid rgb(${BONE} / .16); border-radius:6px;
+    background:rgb(12 12 14 / .62); }
+  ${T} > .k-corner.con-corner .con-read__n { font-size:clamp(22px, min(1.7vw, 3.6vh), 44px); text-shadow:none; }
+  ${T} > .k-corner.con-corner .con-read__w { max-width:none; white-space:normal; text-align:left; letter-spacing:.1em; line-height:1.25; text-shadow:none; }
+}
+/* the 270px reading of a ≤1100 frame: an 84px card holds RESEARCH and UNLOCKED only at the label's
+   normal width with the letters closed up */
+@media (min-width:761px) and (max-width:1100px) {
+  ${T} > .k-corner.con-corner .con-read { padding:6px 7px 7px; gap:5px; }
+  ${T} > .k-corner.con-corner .con-read__n { font-size:clamp(19px, 1.9vw, 21px); }
+  ${T} > .k-corner.con-corner .con-read__w { letter-spacing:.04em; font-stretch:100% !important; font-variation-settings:"wdth" 100, "wght" 650 !important; }
+}
 @media (forced-colors:active) {
   ${T} > .con-side::before, ${T} > .k-title::before { display:none; }
   ${T} .con-cost__fill { stroke:Highlight; }
