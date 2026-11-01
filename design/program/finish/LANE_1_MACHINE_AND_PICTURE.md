@@ -223,10 +223,12 @@ Earlier full `c6` and short `030aaf` receipts remain failed; their evidence is r
 misses are not closed by focused checks. The repaired full-duration and context-recovery outcome
 remains open.
 
-The latest baseline runs both pass all 17 assertions but exceed the unchanged 90,000 ms budget:
-the three-job run takes 91,511 ms and the phased run takes 91,929 ms. The phase experiment was
-reverted; the four-job automatic ceiling remains unchanged. The earlier 86,286 ms result is
-historical, not the current baseline verdict. Public scenario normalization boundaries and all four
+The latest default baseline passes all 17 assertions but takes 166,805 ms against the unchanged
+90,000 ms budget; an unrelated Stranger simulation was concurrent. Scenario normalization now
+reuses canonical records between ownership boundaries, with focused story and four physical
+branches passing, but no speedup is established. The earlier three-job/phased runs took
+91,511/91,929 ms; that phase experiment was reverted and the four-job automatic ceiling remains
+unchanged. The earlier 86,286 ms result is historical. Public scenario normalization boundaries and all four
 physical branches remain intact. M8 progress does not close its separate open work.
 
 **M9 — Load less, load later.** 28 MB of minified JS in the eager closure (`scripts/build-bundle.mjs`,
