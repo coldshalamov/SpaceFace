@@ -36,6 +36,7 @@ import { isAnchoredPhysicalBody, isPhysicalMissionBody } from '../core/physicalR
 import { queuePhysicsImpulse, queuePhysicsTorqueImpulse, resolvePhysicsBodySpec } from '../core/physicsAuthority.js';
 import { indexedTypeScan, entityIndexLaneVersion } from '../world/livingWorldViews.js';
 import { isDynamicPhysicsBodyEntity } from '../core/physicsAuthority.js';
+import { isSwarmSpecialistRun, SWARM_SPECIALIST_TUNING } from '../data/swarmSpecialists.js';
 import { Masks } from '../core/entity.js';
 import { getCombatKernel } from '../combat/kernel.js';
 import { ensureCombatant } from '../combat/runtime.js';
@@ -719,6 +720,7 @@ export const fields = {
     ensureRuntime(ctx.state);
     if (this.bus && typeof this.bus.on === 'function') {
       this._lifecycleUnsubs = [
+        this.bus.on('run:ended', () => this._clearSwarmAnchoredFields()),
         this.bus.on('sector:exit', () => this._clearAll(FIELD_END_REASONS.cleared, 'sector_exit')),
         this.bus.on('sector:enter', () => this._clearAll(FIELD_END_REASONS.cleared, 'sector_enter')),
         this.bus.on('game:new', () => this._clearAll(FIELD_END_REASONS.cleared, 'new_game')),
@@ -1273,16 +1275,19 @@ export const fields = {
     // used to refuse the anchor, so the kite plan survived the specialist.
     if (defKey !== 'anchorSnare' && playerOwnedFieldCount(this._kernel) >= FIELD_MAX_ACTIVE) return null;
     const now = nowOf(this.state);
-    const spinupTicks = Math.max(0, Math.floor(Number(anchor.spinupTicks ?? def.spinupTicks) || 0));
+    const swarmAnchor = isSwarmSpecialistRun(this.state) && entity.data?.runCohort === 'survival'
+      && (entity.data.lootTableId || entity.data.enemyTypeId) === 'field_anchor_controller';
+    const tuning = SWARM_SPECIALIST_TUNING.anchor;
+    const spinupTicks = swarmAnchor ? 0 : Math.max(0, Math.floor(Number(anchor.spinupTicks ?? def.spinupTicks) || 0));
     const fieldId = String(anchor.fieldId || `field_anchor_${entity.id}`);
-    const radius = positive(anchor.radius, def.radius);
-    const strength = positive(anchor.strength, def.strength);
+    const radius = swarmAnchor ? tuning.activeRadius : positive(anchor.radius, def.radius);
+    const strength = swarmAnchor ? tuning.activeStrength : positive(anchor.strength, def.strength);
     const record = this._kernel.register({
       id: fieldId,
       kind: def.kind,
       center: { x: entity.pos.x, z: entity.pos.z },
       radius,
-      strength: spinupTicks > 0 ? 0 : strength,
+      strength: swarmAnchor || spinupTicks > 0 ? 0 : strength,
       damping: positive(anchor.damping, def.damping || 0),
       falloff: positive(anchor.falloff, def.falloff),
       durationS: Infinity,
@@ -1306,11 +1311,16 @@ export const fields = {
       // doctrine cycle — driven through setAnchorArmed by the specialist verb — modulates
       // `armed` per engagement: disarmed on the approach/recovery legs, re-armed with a fresh
       // spinup only across the telegraphed commit.
-      armed: true,
+      armed: !swarmAnchor,
+      swarmSpecialist: swarmAnchor,
       spinupTicks,
       activateTick: (this.state.tick | 0) + spinupTicks,
       strength,
       radius,
+    };
+    if (swarmAnchor) entity.data.swarmSpecialist = {
+      kind: 'anchor', phase: 'idle', phaseStartedAt: this.state.tick | 0, phaseEndsAt: null,
+      anchorActive: false, anchorRadius: radius, anchorStrength: strength,
     };
     this.bus.emit('fields:anchorRegistered', {
       fieldId,
@@ -1342,6 +1352,17 @@ export const fields = {
         this.bus.emit('fields:ended', { fieldId, kind: rec.defKey, reason: FIELD_END_REASONS.destroyed });
         continue;
       }
+      if (rec.swarmSpecialist === true && (entity.data?.disabled === true
+        || entity.data?.stunned === true || entity.hull <= 0)) {
+        rec.armed = false;
+        const view = entity.data?.swarmSpecialist;
+        if (view && !view.interrupted) {
+          view.interrupted = true; view.interruptedAt = state.tick | 0;
+          view.phase = 'recovery'; view.phaseStartedAt = view.interruptedAt;
+          view.phaseEndsAt = view.interruptedAt + SWARM_SPECIALIST_TUNING.anchor.recoveryTicks;
+        }
+        if (view) view.anchorActive = false;
+      }
       this._kernel.update(fieldId, {
         center: { x: entity.pos.x, z: entity.pos.z },
         // SF-049: `armed` is the doctrine cycle's gate (default true for hull-record rebuilds).
@@ -1350,6 +1371,21 @@ export const fields = {
         strength: rec.armed !== false && (state.tick | 0) >= rec.activateTick ? rec.strength : 0,
       });
     }
+  },
+
+  _clearSwarmAnchoredFields() {
+    if (!this.state || !this._kernel) return 0;
+    const rt = ensureRuntime(this.state);
+    let removed = 0;
+    for (const [id, rec] of Object.entries(rt.anchored || {})) {
+      if (rec.swarmSpecialist !== true) continue;
+      this._kernel.unregister(id); delete rt.anchored[id];
+      const view = this.state.entities?.get?.(rec.sourceId)?.data?.swarmSpecialist;
+      if (view) { view.anchorActive = false; view.phase = 'idle'; view.phaseEndsAt = null; }
+      this.bus?.emit('fields:ended', { fieldId: id, kind: rec.defKey, reason: 'run_ended' });
+      removed++;
+    }
+    return removed;
   },
 
   /**

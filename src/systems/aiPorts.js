@@ -1,3 +1,5 @@
+import { isSwarmSpecialistRun, swarmSpecialistKind } from '../data/swarmSpecialists.js';
+import { swarmWardCandidateId } from '../ai/swarmSpecialistRuntime.js';
 import { PHYSICS_MATERIALS } from '../data/physicsMaterials.js';
 import { mothlightGunCadence } from '../data/mothlight.js';
 import {
@@ -1104,6 +1106,8 @@ function sensorSelf(state, entity, capabilities = capabilitiesFor(state, entity)
   const bands = operationalBandsFor(state, entity, runtime, attachmentIndex);
   const ramAuthorized = explicitRamAuthorization(entity, ai, activity, bands)
     || acePassAuthorization(state, entity, ai, activity);
+  const specialistKind = isSwarmSpecialistRun(state) && entity.data?.runCohort === 'survival'
+    ? swarmSpecialistKind(entity.data?.lootTableId || entity.data?.enemyTypeId) : null;
   const self = {
     id: entity.id,
     team: entity.team == null ? null : entity.team,
@@ -1115,6 +1119,8 @@ function sensorSelf(state, entity, capabilities = capabilitiesFor(state, entity)
     hullFraction: fraction(entity.hull, entity.hullMax, 1),
     moraleImmune: ai.moraleImmune === true,
     arenaPursuit: entity.data?.runCohort === 'survival' && ai.forcePlayerTarget === true,
+    swarmSpecialistKind: specialistKind,
+    swarmWardTargetId: specialistKind === 'warden' ? swarmWardCandidateId(state, entity) : null,
     energyFraction: fraction(entity.cap, entity.capMax, 1),
     heatFraction: clamp(finite(runtime && runtime.heat, 0) / heatMax, 0, 1),
     disabled: isDisabled(runtime, entity),

@@ -32,6 +32,8 @@ Targets and floors: README §4.
 
 ## Inbox (other lanes append one line: date, lane, path, what/why)
 
+- 2026-11-01, Swarm ecology PR: three Forge specialist bodies/rigs, bounded phase VFX, authored-boundary animation and worker tell transport; taxonomy and future asset briefs in `design/swarm/ENEMY_ECOLOGY.md`, exact fresh evidence/limits in `docs/validation/swarm-specialists/README.md`. No release or target-machine performance acceptance is implied.
+
 - 2026-10-31 integration: `check-vfx-frame-sleep.mjs` now gives its unchanged 420 seam-bearing bodies the canonical GameState/index/hash setup. Setup assertions and the unchanged 0.25 ms ceiling pass at 0.06493 ms; existing hash/fallback marker parity passes 3/3. This corrects the measurement fixture, not runtime VFX or fallback speed. Full UI performance matrix remains stale after style changes.
 
 - 2026-10-28, Lane 3: H0 razor commit a054f36530a touched `assets/**/measured-contract.json`, `assets/ui/kit/*`, `assets/incubator/*/INTEGRATION.md`, `assets/ships/m5_*/MATERIAL_TRUTH_PREFLIGHT.md`, `assets/ships/npc_work_fleet/PROVENANCE.json`, `tools/blender/forge/source_assets/pip_spanner/provenance.json` — mechanical ref rewrite only (provenance strings now point at `design/archive/…` after the doc moves). No asset content changed.

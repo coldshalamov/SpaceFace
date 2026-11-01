@@ -106,15 +106,15 @@ const BEARING_WORD = Object.freeze(Object.fromEntries(
  * An unknown token prints NOTHING rather than leaking a raw identifier at the player.
  */
 const HINT_PROSE = Object.freeze({
-  cut_tether_or_clear_wake: 'Salts your wake. Do not fly a straight line back through it.',
+  cut_tether_or_clear_wake: 'Its wake is mined. Shoot the mines, or sling an armed mine back into the pack.',
   hold_missiles_use_kinetics_peel_escort: 'Eats missiles. Guns only, and peel it off the pack first.',
   break_lock_close_under_cover: 'Shoots from long range. Break its lock and close under cover.',
   displace_break_anchor_or_outmass: 'Contests your Massline. Displace, break the anchor, or outmass it.',
-  kill_or_massline_displace_anchor_leave_radius: 'Holds you inside its field. Kill it, displace it, or leave the radius.',
+  kill_or_massline_displace_anchor_leave_radius: 'Stay outside its field, displace the hull, or attack while its field is down.',
   low_mass_shove_tether_or_kill_at_range_blast_hits_everyone: 'Light hull. Shove it with the line or stay outside the blast — it hits everyone.',
   cross_the_pass_shoot_the_stern_while_it_turns_back: 'Cross its pass and shoot the stern while it swings back.',
   bank_shots_off_room_plate_or_attack_the_flanks: 'Its face sheds shots. Bank one off the plate or take the flanks.',
-  outrange_or_ignore_until_pack_commits: 'Outrange it, or ignore it until the pack commits.',
+  outrange_or_ignore_until_pack_commits: 'Guards a packmate from direct fire. Flank the escort, pull the pair apart, or use explosions.',
   move_line_or_throw_cutter: 'Opens a fixed crossing. Move off the line, or throw the cutter off it.',
   finite_coolant_directional_heat: 'Charges a narrow heat lane. Cross its nose, break a cask, or tow it into its own heat.',
   physical_decoys_true_iris: 'Its lamps are decoys. Watch the six-petal iris — that is the real gun.',

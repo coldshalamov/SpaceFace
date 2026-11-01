@@ -31,6 +31,7 @@ import { CERES_SHIPBREAK_FILES, isCeresShipbreakSection, ceresShipbreakTransform
 // pieces are merged into ship-local batches; stateful pieces such as glass, thrusters, sockets,
 // damage lights, and LOD hooks stay as normal objects.
 import * as THREE from 'three';
+import { attachSwarmSpecialistVisual } from './swarmSpecialistVisuals.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { detachPackageTexture, isPackageGeometryDetached, rehydrateDetachedGeometries, retainPackageGeometryCpu } from './packageCpuDetach.js';
 import { textureGpuResident } from './startupGpuResidency.js';
@@ -1932,12 +1933,12 @@ const WHOLE_SHIP_FILE_BY_HOSTILE_ID = Object.freeze({
   quiet_ghost: 'wholeships/wasp_quiet_ghost.glb',
   patrol_lawman: 'wholeships/hornet_scn_interdictor.glb',
   customs_cutter: 'wholeships/hornet_scn_interdictor.glb',
-  warden_escort: 'wholeships/ashline_lode_vael.glb',
+  warden_escort: 'wholeships/swarm_warden.glb',
   bruiser_brawler: 'wholeships/ashline_lode.glb',
   pd_screen_escort: 'wholeships/ashline_lode.glb',
-  field_anchor_controller: 'wholeships/ashline_lode.glb',
+  field_anchor_controller: 'wholeships/swarm_anchor.glb',
   reaver_pirate: 'wholeships/ashline_rig.glb',
-  mine_layer_jackal: 'wholeships/ashline_rig.glb',
+  mine_layer_jackal: 'wholeships/swarm_jackal.glb',
   corsair_raider: 'wholeships/ashline_rig_corsair_blade.glb',
   tether_control_raider: 'wholeships/ashline_rig.glb',
   mule_trader: 'wholeships/helios_span.glb',
@@ -1949,12 +1950,12 @@ const WHOLE_SHIP_ASSET_ID_BY_HOSTILE_ID = Object.freeze({
   quiet_ghost: 'SF_WASP_QUIET_GHOST',
   patrol_lawman: 'SF_HORNET_SCN_INTERDICTOR',
   customs_cutter: 'SF_HORNET_SCN_INTERDICTOR',
-  warden_escort: 'SF_WHOLESHIP_ASHLINE_LODE_VAEL',
+  warden_escort: 'SF_SWARM_WARDEN',
   bruiser_brawler: 'SF_WHOLESHIP_ASHLINE_LODE',
   pd_screen_escort: 'SF_WHOLESHIP_ASHLINE_LODE',
-  field_anchor_controller: 'SF_WHOLESHIP_ASHLINE_LODE',
+  field_anchor_controller: 'SF_SWARM_ANCHOR',
   reaver_pirate: 'SF_WHOLESHIP_ASHLINE_RIG',
-  mine_layer_jackal: 'SF_WHOLESHIP_ASHLINE_RIG',
+  mine_layer_jackal: 'SF_SWARM_JACKAL',
   corsair_raider: 'SF_WHOLESHIP_ASHLINE_RIG_CORSAIR_BLADE',
   tether_control_raider: 'SF_WHOLESHIP_ASHLINE_RIG',
   mule_trader: 'SF_WHOLESHIP_HELIOS_SPAN',
@@ -3381,6 +3382,8 @@ export function wrapShipWithAuthoredParts(entity, fallbackRoot, options = {}) {
   };
 
   let active = fallbackRoot;
+  const initialFallbackRoot = fallbackRoot;
+  const fallbackRuntimeState = boundary.userData.updateRuntimeState;
   boundary.userData.updateDamageState = (liveEntity, now) => {
     const fn = active && active.userData && active.userData.updateDamageState;
     if (typeof fn === 'function') fn(liveEntity, now);
@@ -3404,6 +3407,20 @@ export function wrapShipWithAuthoredParts(entity, fallbackRoot, options = {}) {
       active?.userData?.updateCeresPhysicalState?.(liveEntity, a11y);
   }
   syncActiveSurface(boundary, active);
+  attachSwarmSpecialistVisual(boundary, entity);
+  if (boundary.userData.swarmSpecialistVisual) {
+    const updateSpecialist = boundary.userData.swarmSpecialistVisual.update;
+    const updateAuthored = boundary.userData.updateAuthoredMotion;
+    // Generic bank evaluation precedes the sim-owned pose. The closure belongs to this
+    // durable boundary so async authored admission cannot leave it on a disposed fallback.
+    boundary.userData.updateRuntimeState = (live, now) => {
+      if (active === initialFallbackRoot && typeof fallbackRuntimeState === 'function') fallbackRuntimeState(live, now);
+    };
+    boundary.userData.updateAuthoredMotion = (live, now, a11y, state) => {
+      updateAuthored(live, now, a11y, state);
+      updateSpecialist(live, now);
+    };
+  }
 
   let trigger = firstRenderable(fallbackRoot);
   let previousBeforeRender = trigger && trigger.onBeforeRender;
@@ -11218,6 +11235,7 @@ export function primeAuthoredState(authoredRoot, fallbackRoot, entity) {
 }
 
 function syncActiveSurface(boundary, active) {
+  boundary.userData.swarmVisualContentRoot = active || null;
   const data = active && active.userData ? active.userData : {};
   boundary.userData.hull = data.hull || active;
   boundary.userData.lod = data.lod || null;

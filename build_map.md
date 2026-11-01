@@ -3838,6 +3838,27 @@ the rope question) is SWARM_EXPANSION §10; its first fix — the opening lesson
 pack ~3 s after the lesson hull falls instead of holding 45 s — landed 2026-10-02 and is covered
 by `test/opening-lesson.test.mjs`.
 
+### 16.5 Enemy ecology and the three specialist upgrades — 2026-11-01
+
+The current roster audit and implementation handoffs are in
+[`design/swarm/ENEMY_ECOLOGY.md`](./design/swarm/ENEMY_ECOLOGY.md). The audited mode has 15 ordinary
+ship archetypes, 20 Brood families, and a 14-encounter boss rotation; the broader enemy catalog has
+32 definitions. These counts describe different layers and must not be added together as one
+ordinary roster.
+
+This PR deepens three existing IDs: Warden's finite, visible bodyguard interception; Jackal's
+telegraphed, bounded three-mine salvo with an open flank; and Anchor's finite snare with a latched
+displacement interrupt and recovery. Each has an authored model/rig, bounded presentation state,
+worker transport, counter prose, and a preview on its guaranteed debut. The validation receipt in
+[`docs/validation/swarm-specialists/README.md`](./docs/validation/swarm-specialists/README.md)
+separates owner checks, asset/renderer evidence, ordinary route reachability and remaining limits.
+A PR implementation is not a claim of release acceptance or target-machine performance.
+
+Eight future briefs specify states, counters, starting tuning, assets, owners, caps and cleanup:
+Foundry Sweeper, Salvage Assembler, Ricochet Sawblade, Magnet Sentry, conditional Shield Linker,
+Formation Diver composition, conditional Siege Crawler, and Rival Pilot boss. They remain planned;
+prefer a new physical decision to another pursuer or a health multiplier.
+
 ## 17. Adventure mode: interesting and mentally stimulating (`PQ-176`–`PQ-178`) — ADMITTED 2026-09-03
 
 **Source:** the owner, 2026-09-03: *"super interesting and mentally stimulating in adventure mode

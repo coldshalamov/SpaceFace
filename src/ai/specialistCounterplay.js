@@ -25,6 +25,8 @@
 // SF-049 (PB-TAC-B): the anchor's snare zone is gated on the doctrine cycle through the field
 // owner — it arms only across the telegraphed commit (field_spool -> anchor_hold) and dies on
 // the recovery, so every bite is preceded by a visible wind-up and a full re-approach.
+import { isSwarmSpecialistRun, SWARM_SPECIALIST_TUNING } from '../data/swarmSpecialists.js';
+import { breakSwarmGuard, updateSwarmWarden, updateSwarmAnchor } from './swarmSpecialistRuntime.js';
 import { specialistPlanByEnemyId } from './specialistPlans.js';
 import { wrapAngle } from './contracts.js';
 import { entityIndexLaneVersion, entityIndexVersion } from '../world/livingWorldViews.js';
@@ -158,7 +160,8 @@ export function pointSegmentDistance(point, a, b) {
 export function wardScreenTarget(state, attacker, target, origin) {
   const kind = origin && origin.kind;
   if (kind !== 'weapon' && kind !== 'action') return null;
-  if (!attacker || !target || attacker.id === target.id) return null;
+  if (origin?.swarmWardRedirected === true) return null;
+  if (!attacker || !target || target.alive === false || attacker.id === target.id) return null;
   if (!attacker.pos || !target.pos) return null;
   if (target.type !== 'ship') return null;
   if (enemyTypeId(target) === WARD_ID) return null;
@@ -168,6 +171,16 @@ export function wardScreenTarget(state, attacker, target, origin) {
     if (!ent || ent.alive === false || !ent.pos || ent.id === target.id) continue;
     if (specialistIncapacitated(state, ent, 'drive')) continue;
     if (target.team == null || ent.team !== target.team) continue;
+    if (isSwarmSpecialistRun(state) && (ent.data?.runCohort === 'survival' || target.data?.runCohort === 'survival')) {
+      const link = ent.data?.swarmSpecialist;
+      if (link?.kind !== 'warden' || link.phase !== 'active' || link.targetId !== target.id
+        || !(link.linkEnergy > 0) || ent.data?.runCohort !== 'survival'
+        || target.data?.runCohort !== 'survival' || ent.data.runWave !== target.data.runWave) continue;
+      if (Math.hypot(ent.pos.x - target.pos.x, ent.pos.z - target.pos.z) > SWARM_SPECIALIST_TUNING.warden.linkRange) {
+        breakSwarmGuard(ent, state.tick | 0);
+        continue;
+      }
+    }
     const radius = finite(ent.collisionRadius, 21) + 6;
     const dist = pointSegmentDistance(ent.pos, attacker.pos, target.pos);
     if (dist > radius || dist >= bestDist) continue;
@@ -532,6 +545,10 @@ export function applySpecialistCounterplay({
     // the player.
     if (!fields || typeof fields.setAnchorArmed !== 'function') return null;
     const incapacitated = specialistIncapacitated(state, specialist);
+    if (isSwarmSpecialistRun(state) && specialist.data?.runCohort === 'survival') {
+      return updateSwarmAnchor(state, specialist, doctrinePhase,
+        Number.isInteger(doctrine?.phaseStartedTick) ? doctrine.phaseStartedTick : tick, tick, incapacitated, fields);
+    }
     const armedWanted = !incapacitated && (doctrinePhase === 'field_spool' || doctrinePhase === 'anchor_hold');
     const result = fields.setAnchorArmed(state, specialist.id, armedWanted, tick);
     if (!result) return null;
@@ -549,6 +566,11 @@ export function applySpecialistCounterplay({
       ? state.entities.get(state.playerId)
       : null;
     if (!player) return null;
+    if (isSwarmSpecialistRun(state) && specialist.data?.runCohort === 'survival') {
+      return updateSwarmWarden(state, specialist, doctrinePhase,
+        Number.isInteger(doctrine?.phaseStartedTick) ? doctrine.phaseStartedTick : tick, tick,
+        specialistIncapacitated(state, specialist, 'drive'));
+    }
     // Screen targets resolve to hulls — wardScreenTarget gates on type==='ship', so the
     // stations lane is dead iteration: every member is rejected at the type check. The
     // shipLike lane alone answers identically; the unindexed pool keeps its full walk.

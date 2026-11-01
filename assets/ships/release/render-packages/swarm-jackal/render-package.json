@@ -1,0 +1,7759 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.swarm-jackal.anchor.socket-camera-focus",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.0336002111434937,
+        0.23525002598762512,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Camera_Focus",
+      "nodePath": [
+        0,
+        30
+      ],
+      "parentNodeId": "sf.render.swarm-jackal.node.sf-swarm-jackal-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.0336002111434937,
+        0.23525002598762512,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.swarm-jackal.anchor.socket-cargo-ventral",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.15999984741210938,
+        -0.625,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Cargo_Ventral",
+      "nodePath": [
+        0,
+        31
+      ],
+      "parentNodeId": "sf.render.swarm-jackal.node.sf-swarm-jackal-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.15999984741210938,
+        -0.625,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.swarm-jackal.anchor.socket-engine-main",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -7.300000190734863,
+        0.10000000149011612,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Engine_Main",
+      "nodePath": [
+        0,
+        32
+      ],
+      "parentNodeId": "sf.render.swarm-jackal.node.sf-swarm-jackal-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -7.300000190734863,
+        0.10000000149011612,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.swarm-jackal.anchor.socket-mine-ejector",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -6.199999809265137,
+        0.3499999940395355,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Mine_Ejector",
+      "nodePath": [
+        0,
+        33
+      ],
+      "parentNodeId": "sf.render.swarm-jackal.node.sf-swarm-jackal-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -6.199999809265137,
+        0.3499999940395355,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.swarm-jackal.anchor.socket-mining-front",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        6.800000190734863,
+        0.08525002747774124,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Mining_Front",
+      "nodePath": [
+        0,
+        34
+      ],
+      "parentNodeId": "sf.render.swarm-jackal.node.sf-swarm-jackal-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        6.800000190734863,
+        0.08525002747774124,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.swarm-jackal.anchor.socket-rcs-port",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.15999984741210938,
+        0.23525002598762512,
+        -2.669677734375,
+        1
+      ],
+      "nodeName": "SOCKET_RCS_Port",
+      "nodePath": [
+        0,
+        35
+      ],
+      "parentNodeId": "sf.render.swarm-jackal.node.sf-swarm-jackal-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.15999984741210938,
+        0.23525002598762512,
+        -2.669677734375,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.swarm-jackal.anchor.socket-rcs-starboard",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.15999984741210938,
+        0.23525002598762512,
+        2.669677734375,
+        1
+      ],
+      "nodeName": "SOCKET_RCS_Starboard",
+      "nodePath": [
+        0,
+        36
+      ],
+      "parentNodeId": "sf.render.swarm-jackal.node.sf-swarm-jackal-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.15999984741210938,
+        0.23525002598762512,
+        2.669677734375,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.swarm-jackal.anchor.socket-tether-massline",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -3.4423999786376953,
+        0.5727500319480896,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Tether_Massline",
+      "nodePath": [
+        0,
+        37
+      ],
+      "parentNodeId": "sf.render.swarm-jackal.node.sf-swarm-jackal-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -3.4423999786376953,
+        0.5727500319480896,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.swarm-jackal.anchor.socket-trail-main",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -7.71999979019165,
+        0.10000000149011612,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Trail_Main",
+      "nodePath": [
+        0,
+        38
+      ],
+      "parentNodeId": "sf.render.swarm-jackal.node.sf-swarm-jackal-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -7.71999979019165,
+        0.10000000149011612,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.swarm-jackal.anchor.socket-trail-port",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -7.71999979019165,
+        0.10000000149011612,
+        -1.11236572265625,
+        1
+      ],
+      "nodeName": "SOCKET_Trail_Port",
+      "nodePath": [
+        0,
+        39
+      ],
+      "parentNodeId": "sf.render.swarm-jackal.node.sf-swarm-jackal-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -7.71999979019165,
+        0.10000000149011612,
+        -1.11236572265625,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.swarm-jackal.anchor.socket-trail-starboard",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -7.71999979019165,
+        0.10000000149011612,
+        1.11236572265625,
+        1
+      ],
+      "nodeName": "SOCKET_Trail_Starboard",
+      "nodePath": [
+        0,
+        40
+      ],
+      "parentNodeId": "sf.render.swarm-jackal.node.sf-swarm-jackal-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -7.71999979019165,
+        0.10000000149011612,
+        1.11236572265625,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.swarm-jackal.anchor.socket-utility-dorsal",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.15999984741210938,
+        1.095500111579895,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Utility_Dorsal",
+      "nodePath": [
+        0,
+        41
+      ],
+      "parentNodeId": "sf.render.swarm-jackal.node.sf-swarm-jackal-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.15999984741210938,
+        1.095500111579895,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.swarm-jackal.anchor.socket-weapon-front",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        6.900000095367432,
+        0.23525002598762512,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Weapon_Front",
+      "nodePath": [
+        0,
+        42
+      ],
+      "parentNodeId": "sf.render.swarm-jackal.node.sf-swarm-jackal-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        6.900000095367432,
+        0.23525002598762512,
+        0,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.swarm-jackal",
+  "collisions": [
+    {
+      "id": "sf.render.swarm-jackal.collision",
+      "nodeId": "sf.render.swarm-jackal.node.collision-hull",
+      "reference": "COLLISION_HULL"
+    }
+  ],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "ecfa2ab0a8b0089b2fff9c1b9298e8f611d57345365de4df8e01f1aaad10e108",
+  "dynamicGroups": [
+    {
+      "id": "sf.render.swarm-jackal.node.lod0-hook-drive-core.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.swarm-jackal.node.lod0-hook-drive-core"
+    },
+    {
+      "id": "sf.render.swarm-jackal.node.lod0-hook-nav-port.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.swarm-jackal.node.lod0-hook-nav-port"
+    },
+    {
+      "id": "sf.render.swarm-jackal.node.lod0-hook-nav-starboard.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.swarm-jackal.node.lod0-hook-nav-starboard"
+    },
+    {
+      "id": "sf.render.swarm-jackal.node.lod0-motion-jackal-gate-port-hull.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.swarm-jackal.node.lod0-motion-jackal-gate-port-hull"
+    },
+    {
+      "id": "sf.render.swarm-jackal.node.lod0-motion-jackal-gate-port-livery.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.swarm-jackal.node.lod0-motion-jackal-gate-port-livery"
+    },
+    {
+      "id": "sf.render.swarm-jackal.node.lod0-motion-jackal-gate-starboard-hull.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.swarm-jackal.node.lod0-motion-jackal-gate-starboard-hull"
+    },
+    {
+      "id": "sf.render.swarm-jackal.node.lod0-motion-jackal-gate-starboard-livery.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.swarm-jackal.node.lod0-motion-jackal-gate-starboard-livery"
+    },
+    {
+      "id": "sf.render.swarm-jackal.node.lod1-hook-drive-core.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.swarm-jackal.node.lod1-hook-drive-core"
+    },
+    {
+      "id": "sf.render.swarm-jackal.node.lod1-hook-nav-port.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.swarm-jackal.node.lod1-hook-nav-port"
+    },
+    {
+      "id": "sf.render.swarm-jackal.node.lod1-hook-nav-starboard.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.swarm-jackal.node.lod1-hook-nav-starboard"
+    },
+    {
+      "id": "sf.render.swarm-jackal.node.lod1-motion-jackal-gate-port-hull.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.swarm-jackal.node.lod1-motion-jackal-gate-port-hull"
+    },
+    {
+      "id": "sf.render.swarm-jackal.node.lod1-motion-jackal-gate-port-livery.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.swarm-jackal.node.lod1-motion-jackal-gate-port-livery"
+    },
+    {
+      "id": "sf.render.swarm-jackal.node.lod1-motion-jackal-gate-starboard-hull.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.swarm-jackal.node.lod1-motion-jackal-gate-starboard-hull"
+    },
+    {
+      "id": "sf.render.swarm-jackal.node.lod1-motion-jackal-gate-starboard-livery.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.swarm-jackal.node.lod1-motion-jackal-gate-starboard-livery"
+    },
+    {
+      "id": "sf.render.swarm-jackal.node.lod2-hook-drive-core.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.swarm-jackal.node.lod2-hook-drive-core"
+    },
+    {
+      "id": "sf.render.swarm-jackal.node.lod2-hook-nav-port.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.swarm-jackal.node.lod2-hook-nav-port"
+    },
+    {
+      "id": "sf.render.swarm-jackal.node.lod2-hook-nav-starboard.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.swarm-jackal.node.lod2-hook-nav-starboard"
+    },
+    {
+      "id": "sf.render.swarm-jackal.node.lod2-motion-jackal-gate-port-hull.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.swarm-jackal.node.lod2-motion-jackal-gate-port-hull"
+    },
+    {
+      "id": "sf.render.swarm-jackal.node.lod2-motion-jackal-gate-port-livery.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.swarm-jackal.node.lod2-motion-jackal-gate-port-livery"
+    },
+    {
+      "id": "sf.render.swarm-jackal.node.lod2-motion-jackal-gate-starboard-hull.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.swarm-jackal.node.lod2-motion-jackal-gate-starboard-hull"
+    },
+    {
+      "id": "sf.render.swarm-jackal.node.lod2-motion-jackal-gate-starboard-livery.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.swarm-jackal.node.lod2-motion-jackal-gate-starboard-livery"
+    },
+    {
+      "id": "sf.render.swarm-jackal.node.motion-jackal-gate-port.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.swarm-jackal.node.motion-jackal-gate-port"
+    },
+    {
+      "id": "sf.render.swarm-jackal.node.motion-jackal-gate-starboard.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.swarm-jackal.node.motion-jackal-gate-starboard"
+    }
+  ],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          7.300014019012451,
+          1.1463830200728744,
+          4.4490995630264925
+        ],
+        "min": [
+          -7.620018482208252,
+          -0.6749655930098861,
+          -4.449099086189334
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "45768a452adeeb03c7b98f5ab3d1aeb6bb7d2981efca18e79172f7a63aa6ee44",
+      "id": "sf.render.swarm-jackal.node.collision-hull.primitive.0",
+      "indexCount": 900,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "non-render",
+      "meshName": "COLLISION_HULL",
+      "nodeId": "sf.render.swarm-jackal.node.collision-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 760
+    },
+    {
+      "bounds": {
+        "max": [
+          7.300000190734863,
+          0.8963003254073743,
+          4.449491895296192
+        ],
+        "min": [
+          -7.599999904632568,
+          -0.38784531713901793,
+          -4.449491895296192
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "51aca5b983ff2b5da1cadd934ae72bc88d0fd3d3016e24276d6e180f7eedcd08",
+      "id": "sf.render.swarm-jackal.node.lod0-armor.primitive.0",
+      "indexCount": 4026,
+      "indexed": true,
+      "materialHash": "63c03d681df5d784666bcf2f524a7522fd89fa7cbea7e0ecc88742c968d1bc2c",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Armor",
+      "nodeId": "sf.render.swarm-jackal.node.lod0-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 1252
+    },
+    {
+      "bounds": {
+        "max": [
+          1.7400000095367432,
+          1.14562933956565,
+          0.9199114995243297
+        ],
+        "min": [
+          -3.740000009536743,
+          1.0218706795078363,
+          -0.9199114995243297
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "12f126923abbc0524640505ee623a6dabbbe25bf638e010e4e6f5155ba9086c5",
+      "id": "sf.render.swarm-jackal.node.lod0-beacon-amber.primitive.0",
+      "indexCount": 252,
+      "indexed": true,
+      "materialHash": "bdfc61504c95237344df81b840bbffe3133ddd5556a6d1593d87cff5489eb91e",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Beacon_Amber",
+      "nodeId": "sf.render.swarm-jackal.node.lod0-beacon-amber",
+      "primitiveIndex": 0,
+      "vertexCount": 168
+    },
+    {
+      "bounds": {
+        "max": [
+          -7.127500057220459,
+          0.48445652686867813,
+          3.1843998432159424
+        ],
+        "min": [
+          -7.127500057220459,
+          -0.2844565089872847,
+          -3.1844003200531006
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "765b7d2157e1ec99a904676ec5240e5ecfad53ede6363ca91211c482640ec8e9",
+      "id": "sf.render.swarm-jackal.node.lod0-hook-drive-core.primitive.0",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": "6e9a34cdcc66ee2810ad5d59fa0e9dabc9f06abcf3d48bc8f256b65d21a2440d",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_HOOK_DRIVE_CORE",
+      "nodeId": "sf.render.swarm-jackal.node.lod0-hook-drive-core",
+      "primitiveIndex": 0,
+      "vertexCount": 64
+    },
+    {
+      "bounds": {
+        "max": [
+          5.460000038146973,
+          0.5420019741653832,
+          -3.940000057220459
+        ],
+        "min": [
+          5.340000152587891,
+          0.4579980258346168,
+          -4.059999942779541
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c71fdc4232df947e3ad8621d23e136b0734bdff0fc75de183dae59b251ff7ef4",
+      "id": "sf.render.swarm-jackal.node.lod0-hook-nav-port.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_HOOK_NAV_PORT",
+      "nodeId": "sf.render.swarm-jackal.node.lod0-hook-nav-port",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          5.460000038146973,
+          0.5420019741653832,
+          4.059999942779541
+        ],
+        "min": [
+          5.340000152587891,
+          0.4579980258346168,
+          3.940000057220459
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "54a878b1fab0e072ce4732f28823f80fd4b8d38c53938f2941b4e2e159ab5791",
+      "id": "sf.render.swarm-jackal.node.lod0-hook-nav-starboard.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "cec17a80b2afb25553594f506512c249d51bfee676f65952a1318365312b50f1",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_HOOK_NAV_STARBOARD",
+      "nodeId": "sf.render.swarm-jackal.node.lod0-hook-nav-starboard",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          5.68092679977417,
+          0.9002270082091232,
+          4.169117153787772
+        ],
+        "min": [
+          -6.322364807128906,
+          0.8885046860123734,
+          -4.169117153787772
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6a53aefe49aaac148696ff6f09fad4a505d6038a411a89459174a7e4816afaae",
+      "id": "sf.render.swarm-jackal.node.lod0-hull.primitive.0",
+      "indexCount": 357,
+      "indexed": true,
+      "materialHash": "4226c79d4c9ab5d6a57c0edc64587857b842a54c774a4313f4e1acbadd31ade1",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Hull",
+      "nodeId": "sf.render.swarm-jackal.node.lod0-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 123
+    },
+    {
+      "bounds": {
+        "max": [
+          6.088117599487305,
+          0.8747866263923878,
+          4.449166217641784
+        ],
+        "min": [
+          -7.619999885559082,
+          -0.6747866383133168,
+          -4.449166217641784
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "59960721f4cc277e1e1a8cf0329fc53f437d8aed176bfb5ebbffbf388ca2f040",
+      "id": "sf.render.swarm-jackal.node.lod0-mechanical.primitive.0",
+      "indexCount": 4290,
+      "indexed": true,
+      "materialHash": "4ea4310dead3ce4fbe747f3f71de0b7248b633dc60b1f3e88a6db391a616590c",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Mechanical",
+      "nodeId": "sf.render.swarm-jackal.node.lod0-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 1392
+    },
+    {
+      "bounds": {
+        "max": [
+          7.2892608642578125,
+          0.9994752607587296,
+          3.5283627577884795
+        ],
+        "min": [
+          -7.619999885559082,
+          -0.6494752369168717,
+          -3.5283627577884795
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b25d5599485da84e5599a898317225536836a732befc7b72c95940f35372aebb",
+      "id": "sf.render.swarm-jackal.node.lod0-mechanicaldark.primitive.0",
+      "indexCount": 7047,
+      "indexed": true,
+      "materialHash": "0d934540ee4521472039024ad0fca61aa4ce38d9c0a24a66da0173cf0e87759a",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MechanicalDark",
+      "nodeId": "sf.render.swarm-jackal.node.lod0-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 2251
+    },
+    {
+      "bounds": {
+        "max": [
+          -3.5080146495650464,
+          0.6599276305703159,
+          -0.0021533144172281027
+        ],
+        "min": [
+          -4.797905951326067,
+          0.4600724040003781,
+          -2.1478466987609863
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "aed101ac7d210fae46b8f7a1105a71a0c03ba8ed4f78fece16ed28a25dfa23f3",
+      "id": "sf.render.swarm-jackal.node.lod0-motion-jackal-gate-port-hull.primitive.0",
+      "indexCount": 576,
+      "indexed": true,
+      "materialHash": "4226c79d4c9ab5d6a57c0edc64587857b842a54c774a4313f4e1acbadd31ade1",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_JACKAL_GATE_PORT_Hull",
+      "nodeId": "sf.render.swarm-jackal.node.lod0-motion-jackal-gate-port-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 186
+    },
+    {
+      "bounds": {
+        "max": [
+          -3.5046027364716865,
+          0.557535323864715,
+          0
+        ],
+        "min": [
+          -4.799970084191766,
+          0.4633124735290837,
+          -2.1500000953674316
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7cd550564e5c28bbcc15d426b9a7da4cb125a735d19f5d6247cbc7622ab18927",
+      "id": "sf.render.swarm-jackal.node.lod0-motion-jackal-gate-port-livery.primitive.0",
+      "indexCount": 372,
+      "indexed": true,
+      "materialHash": "f7d82813bd98b49d04d48179c51f520b9babc3471bc33b8262286c52b70308cc",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_JACKAL_GATE_PORT_Livery",
+      "nodeId": "sf.render.swarm-jackal.node.lod0-motion-jackal-gate-port-livery",
+      "primitiveIndex": 0,
+      "vertexCount": 128
+    },
+    {
+      "bounds": {
+        "max": [
+          -3.5079992234606303,
+          0.6599276195536115,
+          2.1478464603424072
+        ],
+        "min": [
+          -4.7978903830152,
+          0.46007241501708257,
+          0.0021533125545829535
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "84b844a8c5401a675b6c47c3061026fbbb62f7e30313ff6f8182b749f3384335",
+      "id": "sf.render.swarm-jackal.node.lod0-motion-jackal-gate-starboard-hull.primitive.0",
+      "indexCount": 576,
+      "indexed": true,
+      "materialHash": "4226c79d4c9ab5d6a57c0edc64587857b842a54c774a4313f4e1acbadd31ade1",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_JACKAL_GATE_STARBOARD_Hull",
+      "nodeId": "sf.render.swarm-jackal.node.lod0-motion-jackal-gate-starboard-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 180
+    },
+    {
+      "bounds": {
+        "max": [
+          -3.5046027364716865,
+          0.5575352940623927,
+          2.1500000953674316
+        ],
+        "min": [
+          -4.799970084191766,
+          0.46331244372676134,
+          0
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b79e48a6c2e719f7f9f0ffa5ef29ab3dafc7fd92eef1360f47d21fb4c763c7ca",
+      "id": "sf.render.swarm-jackal.node.lod0-motion-jackal-gate-starboard-livery.primitive.0",
+      "indexCount": 372,
+      "indexed": true,
+      "materialHash": "f7d82813bd98b49d04d48179c51f520b9babc3471bc33b8262286c52b70308cc",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_JACKAL_GATE_STARBOARD_Livery",
+      "nodeId": "sf.render.swarm-jackal.node.lod0-motion-jackal-gate-starboard-livery",
+      "primitiveIndex": 0,
+      "vertexCount": 128
+    },
+    {
+      "bounds": {
+        "max": [
+          7.289283752441406,
+          0.8997297803770575,
+          4.288522152314672
+        ],
+        "min": [
+          -7.58864164352417,
+          0.046111818878742716,
+          -4.288522152314672
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "66c4d51eae616db470acc9068c39f6f94bd88f3304db1ac0667b955006c38de1",
+      "id": "sf.render.swarm-jackal.node.lod0-warning.primitive.0",
+      "indexCount": 426,
+      "indexed": true,
+      "materialHash": "9f541ad2a5025ca24d9141124b50dd38af66efa084bfa6a910117eadc4e6fbf9",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Warning",
+      "nodeId": "sf.render.swarm-jackal.node.lod0-warning",
+      "primitiveIndex": 0,
+      "vertexCount": 183
+    },
+    {
+      "bounds": {
+        "max": [
+          7.299412250518799,
+          0.8987813890626077,
+          4.446449279326757
+        ],
+        "min": [
+          -7.599534034729004,
+          -0.39072975522776887,
+          -4.4464488024895985
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "24a5020ce1069a4ae717e22880dd42d975aa27a17cfaf2e3bfc6c18dd3543aa5",
+      "id": "sf.render.swarm-jackal.node.lod1-armor.primitive.0",
+      "indexCount": 1284,
+      "indexed": true,
+      "materialHash": "63c03d681df5d784666bcf2f524a7522fd89fa7cbea7e0ecc88742c968d1bc2c",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Armor",
+      "nodeId": "sf.render.swarm-jackal.node.lod1-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 366
+    },
+    {
+      "bounds": {
+        "max": [
+          1.7400000095367432,
+          1.14562933956565,
+          0.9199114995243297
+        ],
+        "min": [
+          -3.740000009536743,
+          1.0218706795078363,
+          -0.9199114995243297
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1c20cb010a8c9a02244d4f62d49d98488436973677e5a0b6376616968071c2a6",
+      "id": "sf.render.swarm-jackal.node.lod1-beacon-amber.primitive.0",
+      "indexCount": 252,
+      "indexed": true,
+      "materialHash": "bdfc61504c95237344df81b840bbffe3133ddd5556a6d1593d87cff5489eb91e",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Beacon_Amber",
+      "nodeId": "sf.render.swarm-jackal.node.lod1-beacon-amber",
+      "primitiveIndex": 0,
+      "vertexCount": 168
+    },
+    {
+      "bounds": {
+        "max": [
+          -7.1274919509887695,
+          0.48342967441602647,
+          3.1844001188874245
+        ],
+        "min": [
+          -7.1274919509887695,
+          -0.2847058962874025,
+          -3.1844000443816185
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f8a0c27515f200d18b756ef9538e599562c78db7b177a58db7a7cc072c716aca",
+      "id": "sf.render.swarm-jackal.node.lod1-hook-drive-core.primitive.0",
+      "indexCount": 99,
+      "indexed": true,
+      "materialHash": "6e9a34cdcc66ee2810ad5d59fa0e9dabc9f06abcf3d48bc8f256b65d21a2440d",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_HOOK_DRIVE_CORE",
+      "nodeId": "sf.render.swarm-jackal.node.lod1-hook-drive-core",
+      "primitiveIndex": 0,
+      "vertexCount": 37
+    },
+    {
+      "bounds": {
+        "max": [
+          5.460000038146973,
+          0.5420019741653832,
+          -3.940000057220459
+        ],
+        "min": [
+          5.340000152587891,
+          0.4579980258346168,
+          -4.059999942779541
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "180ab52176d3eef82dde8ea1da1e0865523b6dad97f336a19225e2b0baf0dd35",
+      "id": "sf.render.swarm-jackal.node.lod1-hook-nav-port.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_HOOK_NAV_PORT",
+      "nodeId": "sf.render.swarm-jackal.node.lod1-hook-nav-port",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          5.460000038146973,
+          0.5420019741653832,
+          4.059999942779541
+        ],
+        "min": [
+          5.340000152587891,
+          0.4579980258346168,
+          3.940000057220459
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "09d7710707f3dc4e09cd1032596c1b9f78c096ee8abecccb862fb8184a8da98c",
+      "id": "sf.render.swarm-jackal.node.lod1-hook-nav-starboard.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "cec17a80b2afb25553594f506512c249d51bfee676f65952a1318365312b50f1",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_HOOK_NAV_STARBOARD",
+      "nodeId": "sf.render.swarm-jackal.node.lod1-hook-nav-starboard",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          5.684263229370117,
+          0.8990413595858312,
+          4.165858818787871
+        ],
+        "min": [
+          -6.324710845947266,
+          0.8858475039777064,
+          -4.1660609977429495
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ae389f63e3342e61c249ab4c52fd5663d382520c78f03ad746d1485335da4632",
+      "id": "sf.render.swarm-jackal.node.lod1-hull.primitive.0",
+      "indexCount": 99,
+      "indexed": true,
+      "materialHash": "4226c79d4c9ab5d6a57c0edc64587857b842a54c774a4313f4e1acbadd31ade1",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Hull",
+      "nodeId": "sf.render.swarm-jackal.node.lod1-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 30
+    },
+    {
+      "bounds": {
+        "max": [
+          6.087728500366211,
+          0.8747989968873797,
+          4.4492947133520895
+        ],
+        "min": [
+          -7.620607852935791,
+          -0.6747990088083087,
+          -4.4491797955969625
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7bab912e946d5a9ad0176adb99e14d3c3919ac7cdd7f669b2b833832fe71c872",
+      "id": "sf.render.swarm-jackal.node.lod1-mechanical.primitive.0",
+      "indexCount": 2637,
+      "indexed": true,
+      "materialHash": "4ea4310dead3ce4fbe747f3f71de0b7248b633dc60b1f3e88a6db391a616590c",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Mechanical",
+      "nodeId": "sf.render.swarm-jackal.node.lod1-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 907
+    },
+    {
+      "bounds": {
+        "max": [
+          7.288052082061768,
+          0.9974456717590935,
+          3.528743836711432
+        ],
+        "min": [
+          -7.620607852935791,
+          -0.6496184160332329,
+          -3.5295172665820376
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6b5365ea6c8443a1a79837eef893b6204433813c74861c07e5b22e43166d5eb4",
+      "id": "sf.render.swarm-jackal.node.lod1-mechanicaldark.primitive.0",
+      "indexCount": 2181,
+      "indexed": true,
+      "materialHash": "0d934540ee4521472039024ad0fca61aa4ce38d9c0a24a66da0173cf0e87759a",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MechanicalDark",
+      "nodeId": "sf.render.swarm-jackal.node.lod1-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 790
+    },
+    {
+      "bounds": {
+        "max": [
+          -3.5065772389875614,
+          0.6580628529817237,
+          -0.0006034544785507023
+        ],
+        "min": [
+          -4.799289479304675,
+          0.4613828285902367,
+          -2.148808240890503
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "533fee6ef6de812658fc9fad3f0f77c5723aca13067164ac38494bb0edf52cfe",
+      "id": "sf.render.swarm-jackal.node.lod1-motion-jackal-gate-port-hull.primitive.0",
+      "indexCount": 201,
+      "indexed": true,
+      "materialHash": "4226c79d4c9ab5d6a57c0edc64587857b842a54c774a4313f4e1acbadd31ade1",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_JACKAL_GATE_PORT_Hull",
+      "nodeId": "sf.render.swarm-jackal.node.lod1-motion-jackal-gate-port-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 98
+    },
+    {
+      "bounds": {
+        "max": [
+          -3.5045734239829405,
+          0.5655563494820287,
+          -0.0004859237524215132
+        ],
+        "min": [
+          -4.799584548352875,
+          0.46140980509331925,
+          -2.1494593620300293
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9ff17ec8cf2c2b15d54bc518530f7937ea4d0b6f0aba78555611244f08bebc6e",
+      "id": "sf.render.swarm-jackal.node.lod1-motion-jackal-gate-port-livery.primitive.0",
+      "indexCount": 177,
+      "indexed": true,
+      "materialHash": "f7d82813bd98b49d04d48179c51f520b9babc3471bc33b8262286c52b70308cc",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_JACKAL_GATE_PORT_Livery",
+      "nodeId": "sf.render.swarm-jackal.node.lod1-motion-jackal-gate-port-livery",
+      "primitiveIndex": 0,
+      "vertexCount": 79
+    },
+    {
+      "bounds": {
+        "max": [
+          -3.5053877873623094,
+          0.6579568339496333,
+          2.14943790435791
+        ],
+        "min": [
+          -4.799582715491084,
+          0.46147320140307363,
+          0.0005129418568685651
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ce3e9627655b467a65469607abd7ab0f1715e42f3ac782a71ab69276487d57b7",
+      "id": "sf.render.swarm-jackal.node.lod1-motion-jackal-gate-starboard-hull.primitive.0",
+      "indexCount": 198,
+      "indexed": true,
+      "materialHash": "4226c79d4c9ab5d6a57c0edc64587857b842a54c774a4313f4e1acbadd31ade1",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_JACKAL_GATE_STARBOARD_Hull",
+      "nodeId": "sf.render.swarm-jackal.node.lod1-motion-jackal-gate-starboard-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 79
+    },
+    {
+      "bounds": {
+        "max": [
+          -3.5053877873623094,
+          0.5642116514731519,
+          2.14943790435791
+        ],
+        "min": [
+          -4.799582715491084,
+          0.46137909612168143,
+          0.0005129418568685651
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "80b963d48a602e9b7d7d61a0dc51aafab7c61d3e09a26c31b148ec9b043b67eb",
+      "id": "sf.render.swarm-jackal.node.lod1-motion-jackal-gate-starboard-livery.primitive.0",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": "f7d82813bd98b49d04d48179c51f520b9babc3471bc33b8262286c52b70308cc",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_JACKAL_GATE_STARBOARD_Livery",
+      "nodeId": "sf.render.swarm-jackal.node.lod1-motion-jackal-gate-starboard-livery",
+      "primitiveIndex": 0,
+      "vertexCount": 85
+    },
+    {
+      "bounds": {
+        "max": [
+          7.2941412925720215,
+          0.8873357871073765,
+          2.4263941536061178
+        ],
+        "min": [
+          -6.310314178466797,
+          0.05529962987718162,
+          -4.250239301692666
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8aac961aa0e1b4b913a3cb27f8d2b7ab3310813a4eec11a4fd8dac4b475ac635",
+      "id": "sf.render.swarm-jackal.node.lod1-warning.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "9f541ad2a5025ca24d9141124b50dd38af66efa084bfa6a910117eadc4e6fbf9",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Warning",
+      "nodeId": "sf.render.swarm-jackal.node.lod1-warning",
+      "primitiveIndex": 0,
+      "vertexCount": 30
+    },
+    {
+      "bounds": {
+        "max": [
+          7.299244403839111,
+          0.8964766363299835,
+          4.446808962541537
+        ],
+        "min": [
+          -7.597860336303711,
+          -0.3874194721377838,
+          -4.446808485704379
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "37ddc8cb2c90cc948a627d0245758604cda69149229fc0d64dcb7287099ffb30",
+      "id": "sf.render.swarm-jackal.node.lod2-armor.primitive.0",
+      "indexCount": 534,
+      "indexed": true,
+      "materialHash": "63c03d681df5d784666bcf2f524a7522fd89fa7cbea7e0ecc88742c968d1bc2c",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Armor",
+      "nodeId": "sf.render.swarm-jackal.node.lod2-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 190
+    },
+    {
+      "bounds": {
+        "max": [
+          1.7400001287460327,
+          1.1455971948882282,
+          0.9199115595582691
+        ],
+        "min": [
+          -3.7400002479553223,
+          1.0405695684174359,
+          -0.9199115595582691
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d8063d265db54e2087252053a7204dd1b4ec5cdc6f3616e4467246def02b8e6a",
+      "id": "sf.render.swarm-jackal.node.lod2-beacon-amber.primitive.0",
+      "indexCount": 108,
+      "indexed": true,
+      "materialHash": "bdfc61504c95237344df81b840bbffe3133ddd5556a6d1593d87cff5489eb91e",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Beacon_Amber",
+      "nodeId": "sf.render.swarm-jackal.node.lod2-beacon-amber",
+      "primitiveIndex": 0,
+      "vertexCount": 72
+    },
+    {
+      "bounds": {
+        "max": [
+          -7.1274473667144775,
+          0.47951618882834823,
+          3.1833539723884314
+        ],
+        "min": [
+          -7.1274473667144775,
+          -0.29225307258784683,
+          -3.1833538294304162
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e0378f99aeeac836a877208321d7d95bc58c7bdb1ef3832b4180e586cef3c300",
+      "id": "sf.render.swarm-jackal.node.lod2-hook-drive-core.primitive.0",
+      "indexCount": 48,
+      "indexed": true,
+      "materialHash": "6e9a34cdcc66ee2810ad5d59fa0e9dabc9f06abcf3d48bc8f256b65d21a2440d",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_HOOK_DRIVE_CORE",
+      "nodeId": "sf.render.swarm-jackal.node.lod2-hook-drive-core",
+      "primitiveIndex": 0,
+      "vertexCount": 20
+    },
+    {
+      "bounds": {
+        "max": [
+          5.460000038146973,
+          0.5420019741653832,
+          -3.940000057220459
+        ],
+        "min": [
+          5.340000152587891,
+          0.4579980258346168,
+          -4.059999942779541
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "180ab52176d3eef82dde8ea1da1e0865523b6dad97f336a19225e2b0baf0dd35",
+      "id": "sf.render.swarm-jackal.node.lod2-hook-nav-port.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_HOOK_NAV_PORT",
+      "nodeId": "sf.render.swarm-jackal.node.lod2-hook-nav-port",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          5.460000038146973,
+          0.5420019741653832,
+          4.059999942779541
+        ],
+        "min": [
+          5.340000152587891,
+          0.4579980258346168,
+          3.940000057220459
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "09d7710707f3dc4e09cd1032596c1b9f78c096ee8abecccb862fb8184a8da98c",
+      "id": "sf.render.swarm-jackal.node.lod2-hook-nav-starboard.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "cec17a80b2afb25553594f506512c249d51bfee676f65952a1318365312b50f1",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_HOOK_NAV_STARBOARD",
+      "nodeId": "sf.render.swarm-jackal.node.lod2-hook-nav-starboard",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          5.681168556213379,
+          0.8967512211391937,
+          4.1665698037642445
+        ],
+        "min": [
+          -6.31600284576416,
+          0.8923575916697968,
+          -4.165948484947106
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "5ea4ea23872e950547a209cb964247fb44de2e8e529c89ac792066f7bbd78e60",
+      "id": "sf.render.swarm-jackal.node.lod2-hull.primitive.0",
+      "indexCount": 24,
+      "indexed": true,
+      "materialHash": "4226c79d4c9ab5d6a57c0edc64587857b842a54c774a4313f4e1acbadd31ade1",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Hull",
+      "nodeId": "sf.render.swarm-jackal.node.lod2-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 12
+    },
+    {
+      "bounds": {
+        "max": [
+          6.092044830322266,
+          0.8862072262446518,
+          4.446489857925895
+        ],
+        "min": [
+          -7.620719909667969,
+          -0.6756091746966476,
+          -4.446489381088737
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "643442c77eb38a099d93613dcc351d5d33bb4ca15e8fab3b422676635c9085bf",
+      "id": "sf.render.swarm-jackal.node.lod2-mechanical.primitive.0",
+      "indexCount": 1020,
+      "indexed": true,
+      "materialHash": "4ea4310dead3ce4fbe747f3f71de0b7248b633dc60b1f3e88a6db391a616590c",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Mechanical",
+      "nodeId": "sf.render.swarm-jackal.node.lod2-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 395
+    },
+    {
+      "bounds": {
+        "max": [
+          7.297773838043213,
+          0.9976147680635197,
+          3.524472655399269
+        ],
+        "min": [
+          -7.620719909667969,
+          -0.6487145691270573,
+          -3.5293383017615736
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "83de6e845d74441e8bca00211f42e758aa38de193473c16b3e90c9523c1ea8f8",
+      "id": "sf.render.swarm-jackal.node.lod2-mechanicaldark.primitive.0",
+      "indexCount": 1176,
+      "indexed": true,
+      "materialHash": "0d934540ee4521472039024ad0fca61aa4ce38d9c0a24a66da0173cf0e87759a",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MechanicalDark",
+      "nodeId": "sf.render.swarm-jackal.node.lod2-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 472
+    },
+    {
+      "bounds": {
+        "max": [
+          -3.504918736655512,
+          0.6545524743758262,
+          -0.001576094189658761
+        ],
+        "min": [
+          -4.797447043221196,
+          0.4622906895913064,
+          -2.147298812866211
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "dc8fae513d438a289abe4d756923d48749df742f32e6fee792c58e032a35caf3",
+      "id": "sf.render.swarm-jackal.node.lod2-motion-jackal-gate-port-hull.primitive.0",
+      "indexCount": 102,
+      "indexed": true,
+      "materialHash": "4226c79d4c9ab5d6a57c0edc64587857b842a54c774a4313f4e1acbadd31ade1",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_JACKAL_GATE_PORT_Hull",
+      "nodeId": "sf.render.swarm-jackal.node.lod2-motion-jackal-gate-port-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 56
+    },
+    {
+      "bounds": {
+        "max": [
+          -3.504918736655512,
+          0.5650013119556906,
+          -0.001576094189658761
+        ],
+        "min": [
+          -4.797447043221196,
+          0.46232199365115145,
+          -2.147298812866211
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9d608ab4733c78d4611a6f981d367f27ca4234c2a57626f2f5a5176a62594210",
+      "id": "sf.render.swarm-jackal.node.lod2-motion-jackal-gate-port-livery.primitive.0",
+      "indexCount": 66,
+      "indexed": true,
+      "materialHash": "f7d82813bd98b49d04d48179c51f520b9babc3471bc33b8262286c52b70308cc",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_JACKAL_GATE_PORT_Livery",
+      "nodeId": "sf.render.swarm-jackal.node.lod2-motion-jackal-gate-port-livery",
+      "primitiveIndex": 0,
+      "vertexCount": 34
+    },
+    {
+      "bounds": {
+        "max": [
+          -3.5048037221434036,
+          0.6546010675610681,
+          2.1462912559509277
+        ],
+        "min": [
+          -4.798148805856474,
+          0.4621896443186621,
+          0.0018201316706836224
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "3fa81a2a168359b93c88016dfbdefdb73b8041b5473c05f2f778963b9aaa8b66",
+      "id": "sf.render.swarm-jackal.node.lod2-motion-jackal-gate-starboard-hull.primitive.0",
+      "indexCount": 87,
+      "indexed": true,
+      "materialHash": "4226c79d4c9ab5d6a57c0edc64587857b842a54c774a4313f4e1acbadd31ade1",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_JACKAL_GATE_STARBOARD_Hull",
+      "nodeId": "sf.render.swarm-jackal.node.lod2-motion-jackal-gate-starboard-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 49
+    },
+    {
+      "bounds": {
+        "max": [
+          -3.50473647211023,
+          0.5492234024783886,
+          2.147817373275757
+        ],
+        "min": [
+          -4.7982160558896485,
+          0.462249180338689,
+          0.0018201316706836224
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "bca0179502689d67e515f46b0bd361b7b3017a18e78a21f22e5a23ce0e474473",
+      "id": "sf.render.swarm-jackal.node.lod2-motion-jackal-gate-starboard-livery.primitive.0",
+      "indexCount": 81,
+      "indexed": true,
+      "materialHash": "f7d82813bd98b49d04d48179c51f520b9babc3471bc33b8262286c52b70308cc",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_JACKAL_GATE_STARBOARD_Livery",
+      "nodeId": "sf.render.swarm-jackal.node.lod2-motion-jackal-gate-starboard-livery",
+      "primitiveIndex": 0,
+      "vertexCount": 38
+    },
+    {
+      "bounds": {
+        "max": [
+          7.287886619567871,
+          0.8963568892395758,
+          2.434869003709913
+        ],
+        "min": [
+          -6.313650608062744,
+          0.12261301911709077,
+          -4.2502946380940685
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f148fe8f083f5d35bfd15585da3f65fde8b139faf5c6f72d2fa41047197e0339",
+      "id": "sf.render.swarm-jackal.node.lod2-warning.primitive.0",
+      "indexCount": 12,
+      "indexed": true,
+      "materialHash": "9f541ad2a5025ca24d9141124b50dd38af66efa084bfa6a910117eadc4e6fbf9",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Warning",
+      "nodeId": "sf.render.swarm-jackal.node.lod2-warning",
+      "primitiveIndex": 0,
+      "vertexCount": 12
+    }
+  ],
+  "hlods": [],
+  "kind": "ship",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "0d934540ee4521472039024ad0fca61aa4ce38d9c0a24a66da0173cf0e87759a",
+      "id": "material:0d934540ee4521472039024a",
+      "name": "Material_MechanicalDark",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "4226c79d4c9ab5d6a57c0edc64587857b842a54c774a4313f4e1acbadd31ade1",
+      "id": "material:4226c79d4c9ab5d6a57c0edc",
+      "name": "Material_Hull",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "4ea4310dead3ce4fbe747f3f71de0b7248b633dc60b1f3e88a6db391a616590c",
+      "id": "material:4ea4310dead3ce4fbe747f3f",
+      "name": "Material_Mechanical",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "63c03d681df5d784666bcf2f524a7522fd89fa7cbea7e0ecc88742c968d1bc2c",
+      "id": "material:63c03d681df5d784666bcf2f",
+      "name": "Material_Armor",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
+      "id": "material:6a5417b004bdbc8e05e1f1ee",
+      "name": "Material_Emissive_NavRed",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "6e9a34cdcc66ee2810ad5d59fa0e9dabc9f06abcf3d48bc8f256b65d21a2440d",
+      "id": "material:6e9a34cdcc66ee2810ad5d59",
+      "name": "Material_Thruster",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "9f541ad2a5025ca24d9141124b50dd38af66efa084bfa6a910117eadc4e6fbf9",
+      "id": "material:9f541ad2a5025ca24d914112",
+      "name": "Material_Warning",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "bdfc61504c95237344df81b840bbffe3133ddd5556a6d1593d87cff5489eb91e",
+      "id": "material:bdfc61504c95237344df81b8",
+      "name": "Material_Emissive_Amber",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "cec17a80b2afb25553594f506512c249d51bfee676f65952a1318365312b50f1",
+      "id": "material:cec17a80b2afb25553594f50",
+      "name": "Material_Emissive_NavGreen",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "f7d82813bd98b49d04d48179c51f520b9babc3471bc33b8262286c52b70308cc",
+      "id": "material:f7d82813bd98b49d04d48179",
+      "name": "Material_Accent",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.swarm-jackal.node.collision-hull",
+      "localTransform": [
+        7.460016250610352,
+        0,
+        0,
+        0,
+        0,
+        7.460016250610352,
+        0,
+        0,
+        0,
+        0,
+        7.460016250610352,
+        0,
+        -0.1600022315979004,
+        0.23570871353149414,
+        2.384185791015625e-7,
+        1
+      ],
+      "materialPipelineKey": "non-render",
+      "mergeBoundary": "COLLISION_HULL",
+      "nodeName": "COLLISION_HULL",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.swarm-jackal.node.sf-swarm-jackal-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.swarm-jackal.body",
+      "worldTransform": [
+        7.460016250610352,
+        0,
+        0,
+        0,
+        0,
+        7.460016250610352,
+        0,
+        0,
+        0,
+        0,
+        7.460016250610352,
+        0,
+        -0.1600022315979004,
+        0.23570871353149414,
+        2.384185791015625e-7,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.swarm-jackal.node.lod0-armor",
+      "localTransform": [
+        7.450000047683716,
+        0,
+        0,
+        0,
+        0,
+        7.450000047683716,
+        0,
+        0,
+        0,
+        0,
+        7.450000047683716,
+        0,
+        -0.14999985694885254,
+        0.25422750413417816,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Armor",
+      "nodeName": "LOD0_Armor",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.swarm-jackal.node.sf-swarm-jackal-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.swarm-jackal.body",
+      "worldTransform": [
+        7.450000047683716,
+        0,
+        0,
+        0,
+        0,
+        7.450000047683716,
+        0,
+        0,
+        0,
+        0,
+        7.450000047683716,
+        0,
+        -0.14999985694885254,
+        0.25422750413417816,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.swarm-jackal.node.lod0-beacon-amber",
+      "localTransform": [
+        2.740000009536743,
+        0,
+        0,
+        0,
+        0,
+        2.740000009536743,
+        0,
+        0,
+        0,
+        0,
+        2.740000009536743,
+        0,
+        -1,
+        1.0837500095367432,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Beacon_Amber",
+      "nodeName": "LOD0_Beacon_Amber",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.swarm-jackal.node.sf-swarm-jackal-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.swarm-jackal.body",
+      "worldTransform": [
+        2.740000009536743,
+        0,
+        0,
+        0,
+        0,
+        2.740000009536743,
+        0,
+        0,
+        0,
+        0,
+        2.740000009536743,
+        0,
+        -1,
+        1.0837500095367432,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.swarm-jackal.node.lod0-hook-drive-core",
+      "localTransform": [
+        3.1844000816345215,
+        0,
+        0,
+        0,
+        0,
+        3.1844000816345215,
+        0,
+        0,
+        0,
+        0,
+        3.1844000816345215,
+        0,
+        -7.127500057220459,
+        0.10000000894069672,
+        -2.384185791015625e-7,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_HOOK_DRIVE_CORE",
+      "nodeName": "LOD0_HOOK_DRIVE_CORE",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.swarm-jackal.node.sf-swarm-jackal-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.swarm-jackal.body",
+      "worldTransform": [
+        3.1844000816345215,
+        0,
+        0,
+        0,
+        0,
+        3.1844000816345215,
+        0,
+        0,
+        0,
+        0,
+        3.1844000816345215,
+        0,
+        -7.127500057220459,
+        0.10000000894069672,
+        -2.384185791015625e-7,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.swarm-jackal.node.lod0-hook-nav-port",
+      "localTransform": [
+        0.059999942779541016,
+        0,
+        0,
+        0,
+        0,
+        0.059999942779541016,
+        0,
+        0,
+        0,
+        0,
+        0.059999942779541016,
+        0,
+        5.400000095367432,
+        0.5,
+        -4,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_HOOK_NAV_PORT",
+      "nodeName": "LOD0_HOOK_NAV_PORT",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.swarm-jackal.node.sf-swarm-jackal-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.swarm-jackal.body",
+      "worldTransform": [
+        0.059999942779541016,
+        0,
+        0,
+        0,
+        0,
+        0.059999942779541016,
+        0,
+        0,
+        0,
+        0,
+        0.059999942779541016,
+        0,
+        5.400000095367432,
+        0.5,
+        -4,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.swarm-jackal.node.lod0-hook-nav-starboard",
+      "localTransform": [
+        0.059999942779541016,
+        0,
+        0,
+        0,
+        0,
+        0.059999942779541016,
+        0,
+        0,
+        0,
+        0,
+        0.059999942779541016,
+        0,
+        5.400000095367432,
+        0.5,
+        4,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_HOOK_NAV_STARBOARD",
+      "nodeName": "LOD0_HOOK_NAV_STARBOARD",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.swarm-jackal.node.sf-swarm-jackal-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.swarm-jackal.body",
+      "worldTransform": [
+        0.059999942779541016,
+        0,
+        0,
+        0,
+        0,
+        0.059999942779541016,
+        0,
+        0,
+        0,
+        0,
+        0.059999942779541016,
+        0,
+        5.400000095367432,
+        0.5,
+        4,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.swarm-jackal.node.lod0-hull",
+      "localTransform": [
+        6.001645803451538,
+        0,
+        0,
+        0,
+        0,
+        6.001645803451538,
+        0,
+        0,
+        0,
+        0,
+        6.001645803451538,
+        0,
+        -0.32071900367736816,
+        0.8943658471107483,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Hull",
+      "nodeName": "LOD0_Hull",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.swarm-jackal.node.sf-swarm-jackal-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.swarm-jackal.body",
+      "worldTransform": [
+        6.001645803451538,
+        0,
+        0,
+        0,
+        0,
+        6.001645803451538,
+        0,
+        0,
+        0,
+        0,
+        6.001645803451538,
+        0,
+        -0.32071900367736816,
+        0.8943658471107483,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.swarm-jackal.node.lod0-mechanical",
+      "localTransform": [
+        6.854058742523193,
+        0,
+        0,
+        0,
+        0,
+        6.854058742523193,
+        0,
+        0,
+        0,
+        0,
+        6.854058742523193,
+        0,
+        -0.7659411430358887,
+        0.09999999403953552,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Mechanical",
+      "nodeName": "LOD0_Mechanical",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.swarm-jackal.node.sf-swarm-jackal-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.swarm-jackal.body",
+      "worldTransform": [
+        6.854058742523193,
+        0,
+        0,
+        0,
+        0,
+        6.854058742523193,
+        0,
+        0,
+        0,
+        0,
+        6.854058742523193,
+        0,
+        -0.7659411430358887,
+        0.09999999403953552,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.swarm-jackal.node.lod0-mechanicaldark",
+      "localTransform": [
+        7.454630374908447,
+        0,
+        0,
+        0,
+        0,
+        7.454630374908447,
+        0,
+        0,
+        0,
+        0,
+        7.454630374908447,
+        0,
+        -0.16536951065063477,
+        0.17500001192092896,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MechanicalDark",
+      "nodeName": "LOD0_MechanicalDark",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.swarm-jackal.node.sf-swarm-jackal-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.swarm-jackal.body",
+      "worldTransform": [
+        7.454630374908447,
+        0,
+        0,
+        0,
+        0,
+        7.454630374908447,
+        0,
+        0,
+        0,
+        0,
+        7.454630374908447,
+        0,
+        -0.16536951065063477,
+        0.17500001192092896,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.swarm-jackal.node.lod0-motion-jackal-gate-port-hull",
+      "localTransform": [
+        1.0728466921718791,
+        0,
+        0,
+        0,
+        0,
+        1.0728466921718791,
+        0,
+        0,
+        0,
+        0,
+        1.0728466921718791,
+        0,
+        -0.05296039581298828,
+        0.10000000894069672,
+        -1.0750000065891072,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_JACKAL_GATE_PORT_Hull",
+      "nodeName": "LOD0_MOTION_JACKAL_GATE_PORT_Hull",
+      "nodePath": [
+        0,
+        28,
+        0
+      ],
+      "parentId": "sf.render.swarm-jackal.node.motion-jackal-gate-port",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.swarm-jackal.body",
+      "worldTransform": [
+        1.0728466921718791,
+        0,
+        0,
+        0,
+        0,
+        1.0728466921718791,
+        0,
+        0,
+        0,
+        0,
+        1.0728466921718791,
+        0,
+        -4.152960300445557,
+        0.560000017285347,
+        -1.0750000065891072,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.swarm-jackal.node.lod0-motion-jackal-gate-port-livery",
+      "localTransform": [
+        1.0750000476837158,
+        0,
+        0,
+        0,
+        0,
+        1.0750000476837158,
+        0,
+        0,
+        0,
+        0,
+        1.0750000476837158,
+        0,
+        -0.052286505699157715,
+        0.050423890352249146,
+        -1.0750000476837158,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_JACKAL_GATE_PORT_Livery",
+      "nodeName": "LOD0_MOTION_JACKAL_GATE_PORT_Livery",
+      "nodePath": [
+        0,
+        28,
+        1
+      ],
+      "parentId": "sf.render.swarm-jackal.node.motion-jackal-gate-port",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.swarm-jackal.body",
+      "worldTransform": [
+        1.0750000476837158,
+        0,
+        0,
+        0,
+        0,
+        1.0750000476837158,
+        0,
+        0,
+        0,
+        0,
+        1.0750000476837158,
+        0,
+        -4.152286410331726,
+        0.5104238986968994,
+        -1.0750000476837158,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.swarm-jackal.node.lod0-motion-jackal-gate-starboard-hull",
+      "localTransform": [
+        1.0728465738939121,
+        0,
+        0,
+        0,
+        0,
+        1.0728465738939121,
+        0,
+        0,
+        0,
+        0,
+        1.0728465738939121,
+        0,
+        -0.05294489860534668,
+        0.10000000894069672,
+        1.074999886448495,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_JACKAL_GATE_STARBOARD_Hull",
+      "nodeName": "LOD0_MOTION_JACKAL_GATE_STARBOARD_Hull",
+      "nodePath": [
+        0,
+        29,
+        0
+      ],
+      "parentId": "sf.render.swarm-jackal.node.motion-jackal-gate-starboard",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.swarm-jackal.body",
+      "worldTransform": [
+        1.0728465738939121,
+        0,
+        0,
+        0,
+        0,
+        1.0728465738939121,
+        0,
+        0,
+        0,
+        0,
+        1.0728465738939121,
+        0,
+        -4.152944803237915,
+        0.560000017285347,
+        1.074999886448495,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.swarm-jackal.node.lod0-motion-jackal-gate-starboard-livery",
+      "localTransform": [
+        1.0750000476837158,
+        0,
+        0,
+        0,
+        0,
+        1.0750000476837158,
+        0,
+        0,
+        0,
+        0,
+        1.0750000476837158,
+        0,
+        -0.052286505699157715,
+        0.05042386054992676,
+        1.0750000476837158,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_JACKAL_GATE_STARBOARD_Livery",
+      "nodeName": "LOD0_MOTION_JACKAL_GATE_STARBOARD_Livery",
+      "nodePath": [
+        0,
+        29,
+        1
+      ],
+      "parentId": "sf.render.swarm-jackal.node.motion-jackal-gate-starboard",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.swarm-jackal.body",
+      "worldTransform": [
+        1.0750000476837158,
+        0,
+        0,
+        0,
+        0,
+        1.0750000476837158,
+        0,
+        0,
+        0,
+        0,
+        1.0750000476837158,
+        0,
+        -4.152286410331726,
+        0.510423868894577,
+        1.0750000476837158,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.swarm-jackal.node.lod0-warning",
+      "localTransform": [
+        7.438962697982788,
+        0,
+        0,
+        0,
+        0,
+        7.438962697982788,
+        0,
+        0,
+        0,
+        0,
+        7.438962697982788,
+        0,
+        -0.14967894554138184,
+        0.4729207996279001,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Warning",
+      "nodeName": "LOD0_Warning",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.swarm-jackal.node.sf-swarm-jackal-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.swarm-jackal.body",
+      "worldTransform": [
+        7.438962697982788,
+        0,
+        0,
+        0,
+        0,
+        7.438962697982788,
+        0,
+        0,
+        0,
+        0,
+        7.438962697982788,
+        0,
+        -0.14967894554138184,
+        0.4729207996279001,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.swarm-jackal.node.lod1-armor",
+      "localTransform": [
+        7.449473142623901,
+        0,
+        0,
+        0,
+        0,
+        7.449473142623901,
+        0,
+        0,
+        0,
+        0,
+        7.449473142623901,
+        0,
+        -0.15006089210510254,
+        0.25402581691741943,
+        2.384185791015625e-7,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Armor",
+      "nodeName": "LOD1_Armor",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.swarm-jackal.node.sf-swarm-jackal-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.swarm-jackal.body",
+      "worldTransform": [
+        7.449473142623901,
+        0,
+        0,
+        0,
+        0,
+        7.449473142623901,
+        0,
+        0,
+        0,
+        0,
+        7.449473142623901,
+        0,
+        -0.15006089210510254,
+        0.25402581691741943,
+        2.384185791015625e-7,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.swarm-jackal.node.lod1-beacon-amber",
+      "localTransform": [
+        2.740000009536743,
+        0,
+        0,
+        0,
+        0,
+        2.740000009536743,
+        0,
+        0,
+        0,
+        0,
+        2.740000009536743,
+        0,
+        -1,
+        1.0837500095367432,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Beacon_Amber",
+      "nodeName": "LOD1_Beacon_Amber",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentId": "sf.render.swarm-jackal.node.sf-swarm-jackal-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.swarm-jackal.body",
+      "worldTransform": [
+        2.740000009536743,
+        0,
+        0,
+        0,
+        0,
+        2.740000009536743,
+        0,
+        0,
+        0,
+        0,
+        2.740000009536743,
+        0,
+        -1,
+        1.0837500095367432,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.swarm-jackal.node.lod1-hook-drive-core",
+      "localTransform": [
+        3.1844000816345215,
+        0,
+        0,
+        0,
+        0,
+        3.1844000816345215,
+        0,
+        0,
+        0,
+        0,
+        3.1844000816345215,
+        0,
+        -7.1274919509887695,
+        0.09936188906431198,
+        3.725290298461914e-8,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_HOOK_DRIVE_CORE",
+      "nodeName": "LOD1_HOOK_DRIVE_CORE",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentId": "sf.render.swarm-jackal.node.sf-swarm-jackal-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.swarm-jackal.body",
+      "worldTransform": [
+        3.1844000816345215,
+        0,
+        0,
+        0,
+        0,
+        3.1844000816345215,
+        0,
+        0,
+        0,
+        0,
+        3.1844000816345215,
+        0,
+        -7.1274919509887695,
+        0.09936188906431198,
+        3.725290298461914e-8,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.swarm-jackal.node.lod1-hook-nav-port",
+      "localTransform": [
+        0.059999942779541016,
+        0,
+        0,
+        0,
+        0,
+        0.059999942779541016,
+        0,
+        0,
+        0,
+        0,
+        0.059999942779541016,
+        0,
+        5.400000095367432,
+        0.5,
+        -4,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_HOOK_NAV_PORT",
+      "nodeName": "LOD1_HOOK_NAV_PORT",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentId": "sf.render.swarm-jackal.node.sf-swarm-jackal-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.swarm-jackal.body",
+      "worldTransform": [
+        0.059999942779541016,
+        0,
+        0,
+        0,
+        0,
+        0.059999942779541016,
+        0,
+        0,
+        0,
+        0,
+        0.059999942779541016,
+        0,
+        5.400000095367432,
+        0.5,
+        -4,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.swarm-jackal.node.lod1-hook-nav-starboard",
+      "localTransform": [
+        0.059999942779541016,
+        0,
+        0,
+        0,
+        0,
+        0.059999942779541016,
+        0,
+        0,
+        0,
+        0,
+        0.059999942779541016,
+        0,
+        5.400000095367432,
+        0.5,
+        4,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_HOOK_NAV_STARBOARD",
+      "nodeName": "LOD1_HOOK_NAV_STARBOARD",
+      "nodePath": [
+        0,
+        14
+      ],
+      "parentId": "sf.render.swarm-jackal.node.sf-swarm-jackal-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.swarm-jackal.body",
+      "worldTransform": [
+        0.059999942779541016,
+        0,
+        0,
+        0,
+        0,
+        0.059999942779541016,
+        0,
+        0,
+        0,
+        0,
+        0.059999942779541016,
+        0,
+        5.400000095367432,
+        0.5,
+        4,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.swarm-jackal.node.lod1-hull",
+      "localTransform": [
+        6.004487037658691,
+        0,
+        0,
+        0,
+        0,
+        6.004487037658691,
+        0,
+        0,
+        0,
+        0,
+        6.004487037658691,
+        0,
+        -0.3202238082885742,
+        0.8924444317817688,
+        -0.0001010894775390625,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Hull",
+      "nodeName": "LOD1_Hull",
+      "nodePath": [
+        0,
+        15
+      ],
+      "parentId": "sf.render.swarm-jackal.node.sf-swarm-jackal-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.swarm-jackal.body",
+      "worldTransform": [
+        6.004487037658691,
+        0,
+        0,
+        0,
+        0,
+        6.004487037658691,
+        0,
+        0,
+        0,
+        0,
+        6.004487037658691,
+        0,
+        -0.3202238082885742,
+        0.8924444317817688,
+        -0.0001010894775390625,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.swarm-jackal.node.lod1-mechanical",
+      "localTransform": [
+        6.854168176651001,
+        0,
+        0,
+        0,
+        0,
+        6.854168176651001,
+        0,
+        0,
+        0,
+        0,
+        6.854168176651001,
+        0,
+        -0.76643967628479,
+        0.09999999403953552,
+        0.00005745887756347656,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Mechanical",
+      "nodeName": "LOD1_Mechanical",
+      "nodePath": [
+        0,
+        16
+      ],
+      "parentId": "sf.render.swarm-jackal.node.sf-swarm-jackal-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.swarm-jackal.body",
+      "worldTransform": [
+        6.854168176651001,
+        0,
+        0,
+        0,
+        0,
+        6.854168176651001,
+        0,
+        0,
+        0,
+        0,
+        6.854168176651001,
+        0,
+        -0.76643967628479,
+        0.09999999403953552,
+        0.00005745887756347656,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.swarm-jackal.node.lod1-mechanicaldark",
+      "localTransform": [
+        7.454329967498779,
+        0,
+        0,
+        0,
+        0,
+        7.454329967498779,
+        0,
+        0,
+        0,
+        0,
+        7.454329967498779,
+        0,
+        -0.16627788543701172,
+        0.1739136278629303,
+        -0.0003867149353027344,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MechanicalDark",
+      "nodeName": "LOD1_MechanicalDark",
+      "nodePath": [
+        0,
+        17
+      ],
+      "parentId": "sf.render.swarm-jackal.node.sf-swarm-jackal-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.swarm-jackal.body",
+      "worldTransform": [
+        7.454329967498779,
+        0,
+        0,
+        0,
+        0,
+        7.454329967498779,
+        0,
+        0,
+        0,
+        0,
+        7.454329967498779,
+        0,
+        -0.16627788543701172,
+        0.1739136278629303,
+        -0.0003867149353027344,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.swarm-jackal.node.lod1-motion-jackal-gate-port-hull",
+      "localTransform": [
+        1.0741023932059761,
+        0,
+        0,
+        0,
+        0,
+        1.0741023932059761,
+        0,
+        0,
+        0,
+        0,
+        1.0741023932059761,
+        0,
+        -0.052933454513549805,
+        0.09972283244132996,
+        -1.0747058476845268,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_JACKAL_GATE_PORT_Hull",
+      "nodeName": "LOD1_MOTION_JACKAL_GATE_PORT_Hull",
+      "nodePath": [
+        0,
+        28,
+        2
+      ],
+      "parentId": "sf.render.swarm-jackal.node.motion-jackal-gate-port",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.swarm-jackal.body",
+      "worldTransform": [
+        1.0741023932059761,
+        0,
+        0,
+        0,
+        0,
+        1.0741023932059761,
+        0,
+        0,
+        0,
+        0,
+        1.0741023932059761,
+        0,
+        -4.152933359146118,
+        0.5597228407859802,
+        -1.0747058476845268,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.swarm-jackal.node.lod1-motion-jackal-gate-port-livery",
+      "localTransform": [
+        1.074486719138804,
+        0,
+        0,
+        0,
+        0,
+        1.074486719138804,
+        0,
+        0,
+        0,
+        0,
+        1.074486719138804,
+        0,
+        -0.052079081535339355,
+        0.05348306894302368,
+        -1.0749726428912254,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_JACKAL_GATE_PORT_Livery",
+      "nodeName": "LOD1_MOTION_JACKAL_GATE_PORT_Livery",
+      "nodePath": [
+        0,
+        28,
+        3
+      ],
+      "parentId": "sf.render.swarm-jackal.node.motion-jackal-gate-port",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.swarm-jackal.body",
+      "worldTransform": [
+        1.074486719138804,
+        0,
+        0,
+        0,
+        0,
+        1.074486719138804,
+        0,
+        0,
+        0,
+        0,
+        1.074486719138804,
+        0,
+        -4.152078986167908,
+        0.513483077287674,
+        -1.0749726428912254,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.swarm-jackal.node.lod1-motion-jackal-gate-starboard-hull",
+      "localTransform": [
+        1.0744624812505208,
+        0,
+        0,
+        0,
+        0,
+        1.0744624812505208,
+        0,
+        0,
+        0,
+        0,
+        1.0744624812505208,
+        0,
+        -0.05248534679412842,
+        0.09971500933170319,
+        1.0749754231073894,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_JACKAL_GATE_STARBOARD_Hull",
+      "nodeName": "LOD1_MOTION_JACKAL_GATE_STARBOARD_Hull",
+      "nodePath": [
+        0,
+        29,
+        2
+      ],
+      "parentId": "sf.render.swarm-jackal.node.motion-jackal-gate-starboard",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.swarm-jackal.body",
+      "worldTransform": [
+        1.0744624812505208,
+        0,
+        0,
+        0,
+        0,
+        1.0744624812505208,
+        0,
+        0,
+        0,
+        0,
+        1.0744624812505208,
+        0,
+        -4.152485251426697,
+        0.5597150176763535,
+        1.0749754231073894,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.swarm-jackal.node.lod1-motion-jackal-gate-starboard-livery",
+      "localTransform": [
+        1.0744624812505208,
+        0,
+        0,
+        0,
+        0,
+        1.0744624812505208,
+        0,
+        0,
+        0,
+        0,
+        1.0744624812505208,
+        0,
+        -0.05248534679412842,
+        0.05279536545276642,
+        1.0749754231073894,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_JACKAL_GATE_STARBOARD_Livery",
+      "nodeName": "LOD1_MOTION_JACKAL_GATE_STARBOARD_Livery",
+      "nodePath": [
+        0,
+        29,
+        3
+      ],
+      "parentId": "sf.render.swarm-jackal.node.motion-jackal-gate-starboard",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.swarm-jackal.body",
+      "worldTransform": [
+        1.0744624812505208,
+        0,
+        0,
+        0,
+        0,
+        1.0744624812505208,
+        0,
+        0,
+        0,
+        0,
+        1.0744624812505208,
+        0,
+        -4.152485251426697,
+        0.5127953737974167,
+        1.0749754231073894,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.swarm-jackal.node.lod1-warning",
+      "localTransform": [
+        6.802227735519409,
+        0,
+        0,
+        0,
+        0,
+        6.802227735519409,
+        0,
+        0,
+        0,
+        0,
+        6.802227735519409,
+        0,
+        0.4919135570526123,
+        0.47131770849227905,
+        -0.9119225740432739,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Warning",
+      "nodeName": "LOD1_Warning",
+      "nodePath": [
+        0,
+        18
+      ],
+      "parentId": "sf.render.swarm-jackal.node.sf-swarm-jackal-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.swarm-jackal.body",
+      "worldTransform": [
+        6.802227735519409,
+        0,
+        0,
+        0,
+        0,
+        6.802227735519409,
+        0,
+        0,
+        0,
+        0,
+        6.802227735519409,
+        0,
+        0.4919135570526123,
+        0.47131770849227905,
+        -0.9119225740432739,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.swarm-jackal.node.lod2-armor",
+      "localTransform": [
+        7.448552370071411,
+        0,
+        0,
+        0,
+        0,
+        7.448552370071411,
+        0,
+        0,
+        0,
+        0,
+        7.448552370071411,
+        0,
+        -0.1493079662322998,
+        0.25452858209609985,
+        2.384185791015625e-7,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Armor",
+      "nodeName": "LOD2_Armor",
+      "nodePath": [
+        0,
+        19
+      ],
+      "parentId": "sf.render.swarm-jackal.node.sf-swarm-jackal-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.swarm-jackal.body",
+      "worldTransform": [
+        7.448552370071411,
+        0,
+        0,
+        0,
+        0,
+        7.448552370071411,
+        0,
+        0,
+        0,
+        0,
+        7.448552370071411,
+        0,
+        -0.1493079662322998,
+        0.25452858209609985,
+        2.384185791015625e-7,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.swarm-jackal.node.lod2-beacon-amber",
+      "localTransform": [
+        2.7400001883506775,
+        0,
+        0,
+        0,
+        0,
+        2.7400001883506775,
+        0,
+        0,
+        0,
+        0,
+        2.7400001883506775,
+        0,
+        -1.0000000596046448,
+        1.093083381652832,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Beacon_Amber",
+      "nodeName": "LOD2_Beacon_Amber",
+      "nodePath": [
+        0,
+        20
+      ],
+      "parentId": "sf.render.swarm-jackal.node.sf-swarm-jackal-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.swarm-jackal.body",
+      "worldTransform": [
+        2.7400001883506775,
+        0,
+        0,
+        0,
+        0,
+        2.7400001883506775,
+        0,
+        0,
+        0,
+        0,
+        2.7400001883506775,
+        0,
+        -1.0000000596046448,
+        1.093083381652832,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.swarm-jackal.node.lod2-hook-drive-core",
+      "localTransform": [
+        3.183353900909424,
+        0,
+        0,
+        0,
+        0,
+        3.183353900909424,
+        0,
+        0,
+        0,
+        0,
+        3.183353900909424,
+        0,
+        -7.1274473667144775,
+        0.0936315581202507,
+        7.147900760173798e-8,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_HOOK_DRIVE_CORE",
+      "nodeName": "LOD2_HOOK_DRIVE_CORE",
+      "nodePath": [
+        0,
+        21
+      ],
+      "parentId": "sf.render.swarm-jackal.node.sf-swarm-jackal-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.swarm-jackal.body",
+      "worldTransform": [
+        3.183353900909424,
+        0,
+        0,
+        0,
+        0,
+        3.183353900909424,
+        0,
+        0,
+        0,
+        0,
+        3.183353900909424,
+        0,
+        -7.1274473667144775,
+        0.0936315581202507,
+        7.147900760173798e-8,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.swarm-jackal.node.lod2-hook-nav-port",
+      "localTransform": [
+        0.059999942779541016,
+        0,
+        0,
+        0,
+        0,
+        0.059999942779541016,
+        0,
+        0,
+        0,
+        0,
+        0.059999942779541016,
+        0,
+        5.400000095367432,
+        0.5,
+        -4,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_HOOK_NAV_PORT",
+      "nodeName": "LOD2_HOOK_NAV_PORT",
+      "nodePath": [
+        0,
+        22
+      ],
+      "parentId": "sf.render.swarm-jackal.node.sf-swarm-jackal-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.swarm-jackal.body",
+      "worldTransform": [
+        0.059999942779541016,
+        0,
+        0,
+        0,
+        0,
+        0.059999942779541016,
+        0,
+        0,
+        0,
+        0,
+        0.059999942779541016,
+        0,
+        5.400000095367432,
+        0.5,
+        -4,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.swarm-jackal.node.lod2-hook-nav-starboard",
+      "localTransform": [
+        0.059999942779541016,
+        0,
+        0,
+        0,
+        0,
+        0.059999942779541016,
+        0,
+        0,
+        0,
+        0,
+        0.059999942779541016,
+        0,
+        5.400000095367432,
+        0.5,
+        4,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_HOOK_NAV_STARBOARD",
+      "nodeName": "LOD2_HOOK_NAV_STARBOARD",
+      "nodePath": [
+        0,
+        23
+      ],
+      "parentId": "sf.render.swarm-jackal.node.sf-swarm-jackal-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.swarm-jackal.body",
+      "worldTransform": [
+        0.059999942779541016,
+        0,
+        0,
+        0,
+        0,
+        0.059999942779541016,
+        0,
+        0,
+        0,
+        0,
+        0.059999942779541016,
+        0,
+        5.400000095367432,
+        0.5,
+        4,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.swarm-jackal.node.lod2-hull",
+      "localTransform": [
+        5.9985857009887695,
+        0,
+        0,
+        0,
+        0,
+        5.9985857009887695,
+        0,
+        0,
+        0,
+        0,
+        5.9985857009887695,
+        0,
+        -0.3174171447753906,
+        0.8945544064044952,
+        0.00031065940856933594,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Hull",
+      "nodeName": "LOD2_Hull",
+      "nodePath": [
+        0,
+        24
+      ],
+      "parentId": "sf.render.swarm-jackal.node.sf-swarm-jackal-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.swarm-jackal.body",
+      "worldTransform": [
+        5.9985857009887695,
+        0,
+        0,
+        0,
+        0,
+        5.9985857009887695,
+        0,
+        0,
+        0,
+        0,
+        5.9985857009887695,
+        0,
+        -0.3174171447753906,
+        0.8945544064044952,
+        0.00031065940856933594,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.swarm-jackal.node.lod2-mechanical",
+      "localTransform": [
+        6.856382369995117,
+        0,
+        0,
+        0,
+        0,
+        6.856382369995117,
+        0,
+        0,
+        0,
+        0,
+        6.856382369995117,
+        0,
+        -0.7643375396728516,
+        0.10529902577400208,
+        2.384185791015625e-7,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Mechanical",
+      "nodeName": "LOD2_Mechanical",
+      "nodePath": [
+        0,
+        25
+      ],
+      "parentId": "sf.render.swarm-jackal.node.sf-swarm-jackal-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.swarm-jackal.body",
+      "worldTransform": [
+        6.856382369995117,
+        0,
+        0,
+        0,
+        0,
+        6.856382369995117,
+        0,
+        0,
+        0,
+        0,
+        6.856382369995117,
+        0,
+        -0.7643375396728516,
+        0.10529902577400208,
+        2.384185791015625e-7,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.swarm-jackal.node.lod2-mechanicaldark",
+      "localTransform": [
+        7.459246873855591,
+        0,
+        0,
+        0,
+        0,
+        7.459246873855591,
+        0,
+        0,
+        0,
+        0,
+        7.459246873855591,
+        0,
+        -0.16147303581237793,
+        0.1744500994682312,
+        -0.0024328231811523438,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MechanicalDark",
+      "nodeName": "LOD2_MechanicalDark",
+      "nodePath": [
+        0,
+        26
+      ],
+      "parentId": "sf.render.swarm-jackal.node.sf-swarm-jackal-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.swarm-jackal.body",
+      "worldTransform": [
+        7.459246873855591,
+        0,
+        0,
+        0,
+        0,
+        7.459246873855591,
+        0,
+        0,
+        0,
+        0,
+        7.459246873855591,
+        0,
+        -0.16147303581237793,
+        0.1744500994682312,
+        -0.0024328231811523438,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.swarm-jackal.node.lod2-motion-jackal-gate-port-hull",
+      "localTransform": [
+        1.072861359338276,
+        0,
+        0,
+        0,
+        0,
+        1.072861359338276,
+        0,
+        0,
+        0,
+        0,
+        1.072861359338276,
+        0,
+        -0.05118298530578613,
+        0.09842157363891602,
+        -1.0744374535279348,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_JACKAL_GATE_PORT_Hull",
+      "nodeName": "LOD2_MOTION_JACKAL_GATE_PORT_Hull",
+      "nodePath": [
+        0,
+        28,
+        4
+      ],
+      "parentId": "sf.render.swarm-jackal.node.motion-jackal-gate-port",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.swarm-jackal.body",
+      "worldTransform": [
+        1.072861359338276,
+        0,
+        0,
+        0,
+        0,
+        1.072861359338276,
+        0,
+        0,
+        0,
+        0,
+        1.072861359338276,
+        0,
+        -4.1511828899383545,
+        0.5584215819835663,
+        -1.0744374535279348,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.swarm-jackal.node.lod2-motion-jackal-gate-port-livery",
+      "localTransform": [
+        1.072861359338276,
+        0,
+        0,
+        0,
+        0,
+        1.072861359338276,
+        0,
+        0,
+        0,
+        0,
+        1.072861359338276,
+        0,
+        -0.05118298530578613,
+        0.05366164445877075,
+        -1.0744374535279348,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_JACKAL_GATE_PORT_Livery",
+      "nodeName": "LOD2_MOTION_JACKAL_GATE_PORT_Livery",
+      "nodePath": [
+        0,
+        28,
+        5
+      ],
+      "parentId": "sf.render.swarm-jackal.node.motion-jackal-gate-port",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.swarm-jackal.body",
+      "worldTransform": [
+        1.072861359338276,
+        0,
+        0,
+        0,
+        0,
+        1.072861359338276,
+        0,
+        0,
+        0,
+        0,
+        1.072861359338276,
+        0,
+        -4.1511828899383545,
+        0.513661652803421,
+        -1.0744374535279348,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.swarm-jackal.node.lod2-motion-jackal-gate-starboard-hull",
+      "localTransform": [
+        1.072235562140122,
+        0,
+        0,
+        0,
+        0,
+        1.072235562140122,
+        0,
+        0,
+        0,
+        0,
+        1.072235562140122,
+        0,
+        -0.051476359367370605,
+        0.09839534759521484,
+        1.0740556938108057,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_JACKAL_GATE_STARBOARD_Hull",
+      "nodeName": "LOD2_MOTION_JACKAL_GATE_STARBOARD_Hull",
+      "nodePath": [
+        0,
+        29,
+        4
+      ],
+      "parentId": "sf.render.swarm-jackal.node.motion-jackal-gate-starboard",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.swarm-jackal.body",
+      "worldTransform": [
+        1.072235562140122,
+        0,
+        0,
+        0,
+        0,
+        1.072235562140122,
+        0,
+        0,
+        0,
+        0,
+        1.072235562140122,
+        0,
+        -4.151476263999939,
+        0.5583953559398651,
+        1.0740556938108057,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.swarm-jackal.node.lod2-motion-jackal-gate-starboard-livery",
+      "localTransform": [
+        1.0729986208025366,
+        0,
+        0,
+        0,
+        0,
+        1.0729986208025366,
+        0,
+        0,
+        0,
+        0,
+        1.0729986208025366,
+        0,
+        -0.051476359367370605,
+        0.04573628306388855,
+        1.0748187524732202,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_JACKAL_GATE_STARBOARD_Livery",
+      "nodeName": "LOD2_MOTION_JACKAL_GATE_STARBOARD_Livery",
+      "nodePath": [
+        0,
+        29,
+        5
+      ],
+      "parentId": "sf.render.swarm-jackal.node.motion-jackal-gate-starboard",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.swarm-jackal.body",
+      "worldTransform": [
+        1.0729986208025366,
+        0,
+        0,
+        0,
+        0,
+        1.0729986208025366,
+        0,
+        0,
+        0,
+        0,
+        1.0729986208025366,
+        0,
+        -4.151476263999939,
+        0.5057362914085388,
+        1.0748187524732202,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.swarm-jackal.node.lod2-warning",
+      "localTransform": [
+        6.800768613815308,
+        0,
+        0,
+        0,
+        0,
+        6.800768613815308,
+        0,
+        0,
+        0,
+        0,
+        6.800768613815308,
+        0,
+        0.4871180057525635,
+        0.5094849541783333,
+        -0.9077128171920776,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Warning",
+      "nodeName": "LOD2_Warning",
+      "nodePath": [
+        0,
+        27
+      ],
+      "parentId": "sf.render.swarm-jackal.node.sf-swarm-jackal-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.swarm-jackal.body",
+      "worldTransform": [
+        6.800768613815308,
+        0,
+        0,
+        0,
+        0,
+        6.800768613815308,
+        0,
+        0,
+        0,
+        0,
+        6.800768613815308,
+        0,
+        0.4871180057525635,
+        0.5094849541783333,
+        -0.9077128171920776,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.swarm-jackal.node.motion-jackal-gate-port",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -4.099999904632568,
+        0.46000000834465027,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "MOTION_JACKAL_GATE_PORT",
+      "nodeName": "MOTION_JACKAL_GATE_PORT",
+      "nodePath": [
+        0,
+        28
+      ],
+      "parentId": "sf.render.swarm-jackal.node.sf-swarm-jackal-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.swarm-jackal.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -4.099999904632568,
+        0.46000000834465027,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.swarm-jackal.node.motion-jackal-gate-starboard",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -4.099999904632568,
+        0.46000000834465027,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "MOTION_JACKAL_GATE_STARBOARD",
+      "nodeName": "MOTION_JACKAL_GATE_STARBOARD",
+      "nodePath": [
+        0,
+        29
+      ],
+      "parentId": "sf.render.swarm-jackal.node.sf-swarm-jackal-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.swarm-jackal.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -4.099999904632568,
+        0.46000000834465027,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.swarm-jackal.node.sf-swarm-jackal-root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SF_SWARM_JACKAL_ROOT",
+      "nodeName": "SF_SWARM_JACKAL_ROOT",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.swarm-jackal.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.swarm-jackal.node.socket-camera-focus",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.0336002111434937,
+        0.23525002598762512,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Camera_Focus",
+      "nodeName": "SOCKET_Camera_Focus",
+      "nodePath": [
+        0,
+        30
+      ],
+      "parentId": "sf.render.swarm-jackal.node.sf-swarm-jackal-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.swarm-jackal.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.0336002111434937,
+        0.23525002598762512,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.swarm-jackal.node.socket-cargo-ventral",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.15999984741210938,
+        -0.625,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Cargo_Ventral",
+      "nodeName": "SOCKET_Cargo_Ventral",
+      "nodePath": [
+        0,
+        31
+      ],
+      "parentId": "sf.render.swarm-jackal.node.sf-swarm-jackal-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.swarm-jackal.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.15999984741210938,
+        -0.625,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.swarm-jackal.node.socket-engine-main",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -7.300000190734863,
+        0.10000000149011612,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Engine_Main",
+      "nodeName": "SOCKET_Engine_Main",
+      "nodePath": [
+        0,
+        32
+      ],
+      "parentId": "sf.render.swarm-jackal.node.sf-swarm-jackal-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.swarm-jackal.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -7.300000190734863,
+        0.10000000149011612,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.swarm-jackal.node.socket-mine-ejector",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -6.199999809265137,
+        0.3499999940395355,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Mine_Ejector",
+      "nodeName": "SOCKET_Mine_Ejector",
+      "nodePath": [
+        0,
+        33
+      ],
+      "parentId": "sf.render.swarm-jackal.node.sf-swarm-jackal-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.swarm-jackal.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -6.199999809265137,
+        0.3499999940395355,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.swarm-jackal.node.socket-mining-front",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        6.800000190734863,
+        0.08525002747774124,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Mining_Front",
+      "nodeName": "SOCKET_Mining_Front",
+      "nodePath": [
+        0,
+        34
+      ],
+      "parentId": "sf.render.swarm-jackal.node.sf-swarm-jackal-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.swarm-jackal.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        6.800000190734863,
+        0.08525002747774124,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.swarm-jackal.node.socket-rcs-port",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.15999984741210938,
+        0.23525002598762512,
+        -2.669677734375,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_RCS_Port",
+      "nodeName": "SOCKET_RCS_Port",
+      "nodePath": [
+        0,
+        35
+      ],
+      "parentId": "sf.render.swarm-jackal.node.sf-swarm-jackal-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.swarm-jackal.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.15999984741210938,
+        0.23525002598762512,
+        -2.669677734375,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.swarm-jackal.node.socket-rcs-starboard",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.15999984741210938,
+        0.23525002598762512,
+        2.669677734375,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_RCS_Starboard",
+      "nodeName": "SOCKET_RCS_Starboard",
+      "nodePath": [
+        0,
+        36
+      ],
+      "parentId": "sf.render.swarm-jackal.node.sf-swarm-jackal-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.swarm-jackal.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.15999984741210938,
+        0.23525002598762512,
+        2.669677734375,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.swarm-jackal.node.socket-tether-massline",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -3.4423999786376953,
+        0.5727500319480896,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Tether_Massline",
+      "nodeName": "SOCKET_Tether_Massline",
+      "nodePath": [
+        0,
+        37
+      ],
+      "parentId": "sf.render.swarm-jackal.node.sf-swarm-jackal-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.swarm-jackal.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -3.4423999786376953,
+        0.5727500319480896,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.swarm-jackal.node.socket-trail-main",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -7.71999979019165,
+        0.10000000149011612,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Trail_Main",
+      "nodeName": "SOCKET_Trail_Main",
+      "nodePath": [
+        0,
+        38
+      ],
+      "parentId": "sf.render.swarm-jackal.node.sf-swarm-jackal-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.swarm-jackal.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -7.71999979019165,
+        0.10000000149011612,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.swarm-jackal.node.socket-trail-port",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -7.71999979019165,
+        0.10000000149011612,
+        -1.11236572265625,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Trail_Port",
+      "nodeName": "SOCKET_Trail_Port",
+      "nodePath": [
+        0,
+        39
+      ],
+      "parentId": "sf.render.swarm-jackal.node.sf-swarm-jackal-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.swarm-jackal.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -7.71999979019165,
+        0.10000000149011612,
+        -1.11236572265625,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.swarm-jackal.node.socket-trail-starboard",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -7.71999979019165,
+        0.10000000149011612,
+        1.11236572265625,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Trail_Starboard",
+      "nodeName": "SOCKET_Trail_Starboard",
+      "nodePath": [
+        0,
+        40
+      ],
+      "parentId": "sf.render.swarm-jackal.node.sf-swarm-jackal-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.swarm-jackal.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -7.71999979019165,
+        0.10000000149011612,
+        1.11236572265625,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.swarm-jackal.node.socket-utility-dorsal",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.15999984741210938,
+        1.095500111579895,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Utility_Dorsal",
+      "nodeName": "SOCKET_Utility_Dorsal",
+      "nodePath": [
+        0,
+        41
+      ],
+      "parentId": "sf.render.swarm-jackal.node.sf-swarm-jackal-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.swarm-jackal.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.15999984741210938,
+        1.095500111579895,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.swarm-jackal.node.socket-weapon-front",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        6.900000095367432,
+        0.23525002598762512,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Weapon_Front",
+      "nodeName": "SOCKET_Weapon_Front",
+      "nodePath": [
+        0,
+        42
+      ],
+      "parentId": "sf.render.swarm-jackal.node.sf-swarm-jackal-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.swarm-jackal.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        6.900000095367432,
+        0.23525002598762512,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "b9d89a63243de5d1d401ddb84e1d80804b45fda3682d038e18fbb75898da7864"
+    },
+    "sourceGlb": {
+      "bytes": 533732,
+      "sha256": "2702057af23b32a347b6085214e743ba31243b6b5cf693249975c992b9ebd21d",
+      "uri": "swarm_jackal.glb"
+    },
+    "sourceManifest": {
+      "bytes": 325299,
+      "sha256": "8e7373430f01506cc123dbfcb00d501af8af7419878432e6561b524452d5d712",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 545796,
+    "sha256": "ecc286b4fba7b7c5311c1c87faf712bd868d346692f7cebf808c2012fa5ebae3",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        -0.1603529453277588,
+        0.2353869226881134,
+        0
+      ],
+      "max": [
+        7.300014019012451,
+        1.1463830200728744,
+        4.449491895296192
+      ],
+      "min": [
+        -7.620719909667969,
+        -0.6756091746966476,
+        -4.449491895296192
+      ],
+      "size": [
+        14.92073392868042,
+        1.8219921947695221,
+        8.898983790592384
+      ]
+    },
+    "hidden": [
+      2
+    ],
+    "legacyPart": false,
+    "markers": [
+      {
+        "matrix": [
+          3.1844000816345215,
+          0,
+          0,
+          0,
+          0,
+          3.1844000816345215,
+          0,
+          0,
+          0,
+          0,
+          3.1844000816345215,
+          0,
+          -7.127500057220459,
+          0.10000000894069672,
+          -2.384185791015625e-7,
+          1
+        ],
+        "name": "LOD0_HOOK_DRIVE_CORE",
+        "planIndex": 5,
+        "tags": {
+          "drive": "core",
+          "lod": "lod0"
+        },
+        "userData": {
+          "name": "LOD0_HOOK_DRIVE_CORE",
+          "spaceface": {
+            "drive": "core"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_HOOK_DRIVE_CORE",
+            "recordIds": [
+              "sf.render.swarm-jackal.node.lod0-hook-drive-core"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.059999942779541016,
+          0,
+          0,
+          0,
+          0,
+          0.059999942779541016,
+          0,
+          0,
+          0,
+          0,
+          0.059999942779541016,
+          0,
+          5.400000095367432,
+          0.5,
+          -4,
+          1
+        ],
+        "name": "LOD0_HOOK_NAV_PORT",
+        "planIndex": 7,
+        "tags": {
+          "damageRole": "navLight",
+          "lod": "lod0"
+        },
+        "userData": {
+          "name": "LOD0_HOOK_NAV_PORT",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_HOOK_NAV_PORT",
+            "recordIds": [
+              "sf.render.swarm-jackal.node.lod0-hook-nav-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.059999942779541016,
+          0,
+          0,
+          0,
+          0,
+          0.059999942779541016,
+          0,
+          0,
+          0,
+          0,
+          0.059999942779541016,
+          0,
+          5.400000095367432,
+          0.5,
+          4,
+          1
+        ],
+        "name": "LOD0_HOOK_NAV_STARBOARD",
+        "planIndex": 9,
+        "tags": {
+          "damageRole": "navLight",
+          "lod": "lod0"
+        },
+        "userData": {
+          "name": "LOD0_HOOK_NAV_STARBOARD",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_HOOK_NAV_STARBOARD",
+            "recordIds": [
+              "sf.render.swarm-jackal.node.lod0-hook-nav-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          3.1844000816345215,
+          0,
+          0,
+          0,
+          0,
+          3.1844000816345215,
+          0,
+          0,
+          0,
+          0,
+          3.1844000816345215,
+          0,
+          -7.1274919509887695,
+          0.09936188906431198,
+          3.725290298461914e-8,
+          1
+        ],
+        "name": "LOD1_HOOK_DRIVE_CORE",
+        "planIndex": 17,
+        "tags": {
+          "drive": "core",
+          "lod": "lod1"
+        },
+        "userData": {
+          "name": "LOD1_HOOK_DRIVE_CORE",
+          "spaceface": {
+            "drive": "core"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_HOOK_DRIVE_CORE",
+            "recordIds": [
+              "sf.render.swarm-jackal.node.lod1-hook-drive-core"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.059999942779541016,
+          0,
+          0,
+          0,
+          0,
+          0.059999942779541016,
+          0,
+          0,
+          0,
+          0,
+          0.059999942779541016,
+          0,
+          5.400000095367432,
+          0.5,
+          -4,
+          1
+        ],
+        "name": "LOD1_HOOK_NAV_PORT",
+        "planIndex": 19,
+        "tags": {
+          "damageRole": "navLight",
+          "lod": "lod1"
+        },
+        "userData": {
+          "name": "LOD1_HOOK_NAV_PORT",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_HOOK_NAV_PORT",
+            "recordIds": [
+              "sf.render.swarm-jackal.node.lod1-hook-nav-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.059999942779541016,
+          0,
+          0,
+          0,
+          0,
+          0.059999942779541016,
+          0,
+          0,
+          0,
+          0,
+          0.059999942779541016,
+          0,
+          5.400000095367432,
+          0.5,
+          4,
+          1
+        ],
+        "name": "LOD1_HOOK_NAV_STARBOARD",
+        "planIndex": 21,
+        "tags": {
+          "damageRole": "navLight",
+          "lod": "lod1"
+        },
+        "userData": {
+          "name": "LOD1_HOOK_NAV_STARBOARD",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_HOOK_NAV_STARBOARD",
+            "recordIds": [
+              "sf.render.swarm-jackal.node.lod1-hook-nav-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          3.183353900909424,
+          0,
+          0,
+          0,
+          0,
+          3.183353900909424,
+          0,
+          0,
+          0,
+          0,
+          3.183353900909424,
+          0,
+          -7.1274473667144775,
+          0.0936315581202507,
+          7.147900760173798e-8,
+          1
+        ],
+        "name": "LOD2_HOOK_DRIVE_CORE",
+        "planIndex": 29,
+        "tags": {
+          "drive": "core",
+          "lod": "lod2"
+        },
+        "userData": {
+          "name": "LOD2_HOOK_DRIVE_CORE",
+          "spaceface": {
+            "drive": "core"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_HOOK_DRIVE_CORE",
+            "recordIds": [
+              "sf.render.swarm-jackal.node.lod2-hook-drive-core"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.059999942779541016,
+          0,
+          0,
+          0,
+          0,
+          0.059999942779541016,
+          0,
+          0,
+          0,
+          0,
+          0.059999942779541016,
+          0,
+          5.400000095367432,
+          0.5,
+          -4,
+          1
+        ],
+        "name": "LOD2_HOOK_NAV_PORT",
+        "planIndex": 31,
+        "tags": {
+          "damageRole": "navLight",
+          "lod": "lod2"
+        },
+        "userData": {
+          "name": "LOD2_HOOK_NAV_PORT",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_HOOK_NAV_PORT",
+            "recordIds": [
+              "sf.render.swarm-jackal.node.lod2-hook-nav-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.059999942779541016,
+          0,
+          0,
+          0,
+          0,
+          0.059999942779541016,
+          0,
+          0,
+          0,
+          0,
+          0.059999942779541016,
+          0,
+          5.400000095367432,
+          0.5,
+          4,
+          1
+        ],
+        "name": "LOD2_HOOK_NAV_STARBOARD",
+        "planIndex": 33,
+        "tags": {
+          "damageRole": "navLight",
+          "lod": "lod2"
+        },
+        "userData": {
+          "name": "LOD2_HOOK_NAV_STARBOARD",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_HOOK_NAV_STARBOARD",
+            "recordIds": [
+              "sf.render.swarm-jackal.node.lod2-hook-nav-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -4.099999904632568,
+          0.46000000834465027,
+          0,
+          1
+        ],
+        "name": "MOTION_JACKAL_GATE_PORT",
+        "planIndex": 39,
+        "tags": {
+          "motionGroup": true
+        },
+        "userData": {
+          "forge_motion_pivot": "jackal_gate_port",
+          "forge_motion_rest": [
+            [
+              1,
+              0,
+              0,
+              -4.099999904632568
+            ],
+            [
+              0,
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              1,
+              0.46000000834465027
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "name": "MOTION_JACKAL_GATE_PORT",
+          "spaceface": {
+            "motionGroup": "jackal_gate_port"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "MOTION_JACKAL_GATE_PORT",
+            "recordIds": [
+              "sf.render.swarm-jackal.node.motion-jackal-gate-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1.0728466921718791,
+          0,
+          0,
+          0,
+          0,
+          1.0728466921718791,
+          0,
+          0,
+          0,
+          0,
+          1.0728466921718791,
+          0,
+          -4.152960300445557,
+          0.560000017285347,
+          -1.0750000065891072,
+          1
+        ],
+        "name": "LOD0_MOTION_JACKAL_GATE_PORT_Hull",
+        "planIndex": 40,
+        "tags": {
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_JACKAL_GATE_PORT_Hull",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_JACKAL_GATE_PORT_Hull",
+            "recordIds": [
+              "sf.render.swarm-jackal.node.lod0-motion-jackal-gate-port-hull"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1.0750000476837158,
+          0,
+          0,
+          0,
+          0,
+          1.0750000476837158,
+          0,
+          0,
+          0,
+          0,
+          1.0750000476837158,
+          0,
+          -4.152286410331726,
+          0.5104238986968994,
+          -1.0750000476837158,
+          1
+        ],
+        "name": "LOD0_MOTION_JACKAL_GATE_PORT_Livery",
+        "planIndex": 42,
+        "tags": {
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_JACKAL_GATE_PORT_Livery",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_JACKAL_GATE_PORT_Livery",
+            "recordIds": [
+              "sf.render.swarm-jackal.node.lod0-motion-jackal-gate-port-livery"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1.0741023932059761,
+          0,
+          0,
+          0,
+          0,
+          1.0741023932059761,
+          0,
+          0,
+          0,
+          0,
+          1.0741023932059761,
+          0,
+          -4.152933359146118,
+          0.5597228407859802,
+          -1.0747058476845268,
+          1
+        ],
+        "name": "LOD1_MOTION_JACKAL_GATE_PORT_Hull",
+        "planIndex": 44,
+        "tags": {
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_JACKAL_GATE_PORT_Hull",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_JACKAL_GATE_PORT_Hull",
+            "recordIds": [
+              "sf.render.swarm-jackal.node.lod1-motion-jackal-gate-port-hull"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1.074486719138804,
+          0,
+          0,
+          0,
+          0,
+          1.074486719138804,
+          0,
+          0,
+          0,
+          0,
+          1.074486719138804,
+          0,
+          -4.152078986167908,
+          0.513483077287674,
+          -1.0749726428912254,
+          1
+        ],
+        "name": "LOD1_MOTION_JACKAL_GATE_PORT_Livery",
+        "planIndex": 46,
+        "tags": {
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_JACKAL_GATE_PORT_Livery",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_JACKAL_GATE_PORT_Livery",
+            "recordIds": [
+              "sf.render.swarm-jackal.node.lod1-motion-jackal-gate-port-livery"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1.072861359338276,
+          0,
+          0,
+          0,
+          0,
+          1.072861359338276,
+          0,
+          0,
+          0,
+          0,
+          1.072861359338276,
+          0,
+          -4.1511828899383545,
+          0.5584215819835663,
+          -1.0744374535279348,
+          1
+        ],
+        "name": "LOD2_MOTION_JACKAL_GATE_PORT_Hull",
+        "planIndex": 48,
+        "tags": {
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_JACKAL_GATE_PORT_Hull",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_JACKAL_GATE_PORT_Hull",
+            "recordIds": [
+              "sf.render.swarm-jackal.node.lod2-motion-jackal-gate-port-hull"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1.072861359338276,
+          0,
+          0,
+          0,
+          0,
+          1.072861359338276,
+          0,
+          0,
+          0,
+          0,
+          1.072861359338276,
+          0,
+          -4.1511828899383545,
+          0.513661652803421,
+          -1.0744374535279348,
+          1
+        ],
+        "name": "LOD2_MOTION_JACKAL_GATE_PORT_Livery",
+        "planIndex": 50,
+        "tags": {
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_JACKAL_GATE_PORT_Livery",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_JACKAL_GATE_PORT_Livery",
+            "recordIds": [
+              "sf.render.swarm-jackal.node.lod2-motion-jackal-gate-port-livery"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -4.099999904632568,
+          0.46000000834465027,
+          0,
+          1
+        ],
+        "name": "MOTION_JACKAL_GATE_STARBOARD",
+        "planIndex": 52,
+        "tags": {
+          "motionGroup": true
+        },
+        "userData": {
+          "forge_motion_pivot": "jackal_gate_starboard",
+          "forge_motion_rest": [
+            [
+              1,
+              0,
+              0,
+              -4.099999904632568
+            ],
+            [
+              0,
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              1,
+              0.46000000834465027
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "name": "MOTION_JACKAL_GATE_STARBOARD",
+          "spaceface": {
+            "motionGroup": "jackal_gate_starboard"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "MOTION_JACKAL_GATE_STARBOARD",
+            "recordIds": [
+              "sf.render.swarm-jackal.node.motion-jackal-gate-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1.0728465738939121,
+          0,
+          0,
+          0,
+          0,
+          1.0728465738939121,
+          0,
+          0,
+          0,
+          0,
+          1.0728465738939121,
+          0,
+          -4.152944803237915,
+          0.560000017285347,
+          1.074999886448495,
+          1
+        ],
+        "name": "LOD0_MOTION_JACKAL_GATE_STARBOARD_Hull",
+        "planIndex": 53,
+        "tags": {
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_JACKAL_GATE_STARBOARD_Hull",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_JACKAL_GATE_STARBOARD_Hull",
+            "recordIds": [
+              "sf.render.swarm-jackal.node.lod0-motion-jackal-gate-starboard-hull"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1.0750000476837158,
+          0,
+          0,
+          0,
+          0,
+          1.0750000476837158,
+          0,
+          0,
+          0,
+          0,
+          1.0750000476837158,
+          0,
+          -4.152286410331726,
+          0.510423868894577,
+          1.0750000476837158,
+          1
+        ],
+        "name": "LOD0_MOTION_JACKAL_GATE_STARBOARD_Livery",
+        "planIndex": 55,
+        "tags": {
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_JACKAL_GATE_STARBOARD_Livery",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_JACKAL_GATE_STARBOARD_Livery",
+            "recordIds": [
+              "sf.render.swarm-jackal.node.lod0-motion-jackal-gate-starboard-livery"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1.0744624812505208,
+          0,
+          0,
+          0,
+          0,
+          1.0744624812505208,
+          0,
+          0,
+          0,
+          0,
+          1.0744624812505208,
+          0,
+          -4.152485251426697,
+          0.5597150176763535,
+          1.0749754231073894,
+          1
+        ],
+        "name": "LOD1_MOTION_JACKAL_GATE_STARBOARD_Hull",
+        "planIndex": 57,
+        "tags": {
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_JACKAL_GATE_STARBOARD_Hull",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_JACKAL_GATE_STARBOARD_Hull",
+            "recordIds": [
+              "sf.render.swarm-jackal.node.lod1-motion-jackal-gate-starboard-hull"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1.0744624812505208,
+          0,
+          0,
+          0,
+          0,
+          1.0744624812505208,
+          0,
+          0,
+          0,
+          0,
+          1.0744624812505208,
+          0,
+          -4.152485251426697,
+          0.5127953737974167,
+          1.0749754231073894,
+          1
+        ],
+        "name": "LOD1_MOTION_JACKAL_GATE_STARBOARD_Livery",
+        "planIndex": 59,
+        "tags": {
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_JACKAL_GATE_STARBOARD_Livery",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_JACKAL_GATE_STARBOARD_Livery",
+            "recordIds": [
+              "sf.render.swarm-jackal.node.lod1-motion-jackal-gate-starboard-livery"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1.072235562140122,
+          0,
+          0,
+          0,
+          0,
+          1.072235562140122,
+          0,
+          0,
+          0,
+          0,
+          1.072235562140122,
+          0,
+          -4.151476263999939,
+          0.5583953559398651,
+          1.0740556938108057,
+          1
+        ],
+        "name": "LOD2_MOTION_JACKAL_GATE_STARBOARD_Hull",
+        "planIndex": 61,
+        "tags": {
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_JACKAL_GATE_STARBOARD_Hull",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_JACKAL_GATE_STARBOARD_Hull",
+            "recordIds": [
+              "sf.render.swarm-jackal.node.lod2-motion-jackal-gate-starboard-hull"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1.0729986208025366,
+          0,
+          0,
+          0,
+          0,
+          1.0729986208025366,
+          0,
+          0,
+          0,
+          0,
+          1.0729986208025366,
+          0,
+          -4.151476263999939,
+          0.5057362914085388,
+          1.0748187524732202,
+          1
+        ],
+        "name": "LOD2_MOTION_JACKAL_GATE_STARBOARD_Livery",
+        "planIndex": 63,
+        "tags": {
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_JACKAL_GATE_STARBOARD_Livery",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_JACKAL_GATE_STARBOARD_Livery",
+            "recordIds": [
+              "sf.render.swarm-jackal.node.lod2-motion-jackal-gate-starboard-livery"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          1.0336002111434937,
+          0.23525002598762512,
+          0,
+          1
+        ],
+        "name": "SOCKET_Camera_Focus",
+        "planIndex": 65,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "camera"
+        },
+        "userData": {
+          "name": "SOCKET_Camera_Focus",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "camera",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Camera_Focus",
+            "recordIds": [
+              "sf.render.swarm-jackal.anchor.socket-camera-focus",
+              "sf.render.swarm-jackal.node.socket-camera-focus"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -0.15999984741210938,
+          -0.625,
+          0,
+          1
+        ],
+        "name": "SOCKET_Cargo_Ventral",
+        "planIndex": 66,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            0,
+            -1,
+            0
+          ],
+          "socketRole": "cargo"
+        },
+        "userData": {
+          "name": "SOCKET_Cargo_Ventral",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              0,
+              -1,
+              0
+            ],
+            "role": "cargo",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Cargo_Ventral",
+            "recordIds": [
+              "sf.render.swarm-jackal.anchor.socket-cargo-ventral",
+              "sf.render.swarm-jackal.node.socket-cargo-ventral"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -7.300000190734863,
+          0.10000000149011612,
+          0,
+          1
+        ],
+        "name": "SOCKET_Engine_Main",
+        "planIndex": 67,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "engine"
+        },
+        "userData": {
+          "name": "SOCKET_Engine_Main",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "engine",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Engine_Main",
+            "recordIds": [
+              "sf.render.swarm-jackal.anchor.socket-engine-main",
+              "sf.render.swarm-jackal.node.socket-engine-main"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -6.199999809265137,
+          0.3499999940395355,
+          0,
+          1
+        ],
+        "name": "SOCKET_Mine_Ejector",
+        "planIndex": 68,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Mine_Ejector",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "attachment",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Mine_Ejector",
+            "recordIds": [
+              "sf.render.swarm-jackal.anchor.socket-mine-ejector",
+              "sf.render.swarm-jackal.node.socket-mine-ejector"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          6.800000190734863,
+          0.08525002747774124,
+          0,
+          1
+        ],
+        "name": "SOCKET_Mining_Front",
+        "planIndex": 69,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "mining"
+        },
+        "userData": {
+          "name": "SOCKET_Mining_Front",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "mining",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Mining_Front",
+            "recordIds": [
+              "sf.render.swarm-jackal.anchor.socket-mining-front",
+              "sf.render.swarm-jackal.node.socket-mining-front"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -0.15999984741210938,
+          0.23525002598762512,
+          -2.669677734375,
+          1
+        ],
+        "name": "SOCKET_RCS_Port",
+        "planIndex": 70,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            0,
+            0,
+            -1
+          ],
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "name": "SOCKET_RCS_Port",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              0,
+              0,
+              -1
+            ],
+            "role": "vfx",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_RCS_Port",
+            "recordIds": [
+              "sf.render.swarm-jackal.anchor.socket-rcs-port",
+              "sf.render.swarm-jackal.node.socket-rcs-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -0.15999984741210938,
+          0.23525002598762512,
+          2.669677734375,
+          1
+        ],
+        "name": "SOCKET_RCS_Starboard",
+        "planIndex": 71,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            0,
+            0,
+            1
+          ],
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "name": "SOCKET_RCS_Starboard",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              0,
+              0,
+              1
+            ],
+            "role": "vfx",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_RCS_Starboard",
+            "recordIds": [
+              "sf.render.swarm-jackal.anchor.socket-rcs-starboard",
+              "sf.render.swarm-jackal.node.socket-rcs-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -3.4423999786376953,
+          0.5727500319480896,
+          0,
+          1
+        ],
+        "name": "SOCKET_Tether_Massline",
+        "planIndex": 72,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Tether_Massline",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "attachment",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Tether_Massline",
+            "recordIds": [
+              "sf.render.swarm-jackal.anchor.socket-tether-massline",
+              "sf.render.swarm-jackal.node.socket-tether-massline"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -7.71999979019165,
+          0.10000000149011612,
+          0,
+          1
+        ],
+        "name": "SOCKET_Trail_Main",
+        "planIndex": 73,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "name": "SOCKET_Trail_Main",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "vfx",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Trail_Main",
+            "recordIds": [
+              "sf.render.swarm-jackal.anchor.socket-trail-main",
+              "sf.render.swarm-jackal.node.socket-trail-main"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -7.71999979019165,
+          0.10000000149011612,
+          -1.11236572265625,
+          1
+        ],
+        "name": "SOCKET_Trail_Port",
+        "planIndex": 74,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "name": "SOCKET_Trail_Port",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "vfx",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Trail_Port",
+            "recordIds": [
+              "sf.render.swarm-jackal.anchor.socket-trail-port",
+              "sf.render.swarm-jackal.node.socket-trail-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -7.71999979019165,
+          0.10000000149011612,
+          1.11236572265625,
+          1
+        ],
+        "name": "SOCKET_Trail_Starboard",
+        "planIndex": 75,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "name": "SOCKET_Trail_Starboard",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "vfx",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Trail_Starboard",
+            "recordIds": [
+              "sf.render.swarm-jackal.anchor.socket-trail-starboard",
+              "sf.render.swarm-jackal.node.socket-trail-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -0.15999984741210938,
+          1.095500111579895,
+          0,
+          1
+        ],
+        "name": "SOCKET_Utility_Dorsal",
+        "planIndex": 76,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            0,
+            1,
+            0
+          ],
+          "socketRole": "utility"
+        },
+        "userData": {
+          "name": "SOCKET_Utility_Dorsal",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              0,
+              1,
+              0
+            ],
+            "role": "utility",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Utility_Dorsal",
+            "recordIds": [
+              "sf.render.swarm-jackal.anchor.socket-utility-dorsal",
+              "sf.render.swarm-jackal.node.socket-utility-dorsal"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          6.900000095367432,
+          0.23525002598762512,
+          0,
+          1
+        ],
+        "name": "SOCKET_Weapon_Front",
+        "planIndex": 77,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "weapon"
+        },
+        "userData": {
+          "name": "SOCKET_Weapon_Front",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "weapon",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Weapon_Front",
+            "recordIds": [
+              "sf.render.swarm-jackal.anchor.socket-weapon-front",
+              "sf.render.swarm-jackal.node.socket-weapon-front"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "accent": 6,
+      "drive": 3,
+      "hull": 12,
+      "mechanical": 6,
+      "signal": 9,
+      "warning": 3
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 3,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "drive"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 8,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 10,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 11,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 12,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 13,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 14,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 15,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 16,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 18,
+        "role": "drive"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 20,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 22,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 23,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 24,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 25,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 26,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 27,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 28,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 30,
+        "role": "drive"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 32,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 34,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 35,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 36,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 37,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 38,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 41,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 43,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 45,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 47,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 49,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 51,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 54,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 56,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 58,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 60,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 62,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 64,
+        "role": "accent"
+      }
+    ],
+    "motionBank": {
+      "bytes": 1630,
+      "rigId": "swarm_jackal",
+      "sha256": "e766685e7cfeba9a818a838bac78d1efd6ae264a1f4dd85bc7b0462ff812e5f9",
+      "uri": "assets/ships/motions/swarm-jackal.motion.json"
+    },
+    "nodeCount": 78,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          7.450000047683716,
+          0,
+          0,
+          0,
+          0,
+          7.450000047683716,
+          0,
+          0,
+          0,
+          0,
+          7.450000047683716,
+          0,
+          -0.14999985694885254,
+          0.25422750413417816,
+          0,
+          1
+        ],
+        "name": "LOD0_Armor",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          2.740000009536743,
+          0,
+          0,
+          0,
+          0,
+          2.740000009536743,
+          0,
+          0,
+          0,
+          0,
+          2.740000009536743,
+          0,
+          -1,
+          1.0837500095367432,
+          0,
+          1
+        ],
+        "name": "LOD0_Beacon_Amber",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          3.1844000816345215,
+          0,
+          0,
+          0,
+          0,
+          3.1844000816345215,
+          0,
+          0,
+          0,
+          0,
+          3.1844000816345215,
+          0,
+          -7.127500057220459,
+          0.10000000894069672,
+          -2.384185791015625e-7,
+          1
+        ],
+        "name": "LOD0_HOOK_DRIVE_CORE_1",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "drive": "core",
+          "driveAnchorMatrix": [
+            3.1844000816345215,
+            0,
+            0,
+            0,
+            0,
+            3.1844000816345215,
+            0,
+            0,
+            0,
+            0,
+            3.1844000816345215,
+            0,
+            -7.127500057220459,
+            0.10000000894069672,
+            -2.384185791015625e-7,
+            1
+          ],
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.059999942779541016,
+          0,
+          0,
+          0,
+          0,
+          0.059999942779541016,
+          0,
+          0,
+          0,
+          0,
+          0.059999942779541016,
+          0,
+          5.400000095367432,
+          0.5,
+          -4,
+          1
+        ],
+        "name": "LOD0_HOOK_NAV_PORT_1",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "damageRole": "navLight",
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.059999942779541016,
+          0,
+          0,
+          0,
+          0,
+          0.059999942779541016,
+          0,
+          0,
+          0,
+          0,
+          0.059999942779541016,
+          0,
+          5.400000095367432,
+          0.5,
+          4,
+          1
+        ],
+        "name": "LOD0_HOOK_NAV_STARBOARD_1",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false,
+          "damageRole": "navLight",
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          6.001645803451538,
+          0,
+          0,
+          0,
+          0,
+          6.001645803451538,
+          0,
+          0,
+          0,
+          0,
+          6.001645803451538,
+          0,
+          -0.32071900367736816,
+          0.8943658471107483,
+          0,
+          1
+        ],
+        "name": "LOD0_Hull",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          6.854058742523193,
+          0,
+          0,
+          0,
+          0,
+          6.854058742523193,
+          0,
+          0,
+          0,
+          0,
+          6.854058742523193,
+          0,
+          -0.7659411430358887,
+          0.09999999403953552,
+          0,
+          1
+        ],
+        "name": "LOD0_Mechanical",
+        "planIndex": 12,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          7.454630374908447,
+          0,
+          0,
+          0,
+          0,
+          7.454630374908447,
+          0,
+          0,
+          0,
+          0,
+          7.454630374908447,
+          0,
+          -0.16536951065063477,
+          0.17500001192092896,
+          0,
+          1
+        ],
+        "name": "LOD0_MechanicalDark",
+        "planIndex": 13,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          7.438962697982788,
+          0,
+          0,
+          0,
+          0,
+          7.438962697982788,
+          0,
+          0,
+          0,
+          0,
+          7.438962697982788,
+          0,
+          -0.14967894554138184,
+          0.4729207996279001,
+          0,
+          1
+        ],
+        "name": "LOD0_Warning",
+        "planIndex": 14,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          7.449473142623901,
+          0,
+          0,
+          0,
+          0,
+          7.449473142623901,
+          0,
+          0,
+          0,
+          0,
+          7.449473142623901,
+          0,
+          -0.15006089210510254,
+          0.25402581691741943,
+          2.384185791015625e-7,
+          1
+        ],
+        "name": "LOD1_Armor",
+        "planIndex": 15,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          2.740000009536743,
+          0,
+          0,
+          0,
+          0,
+          2.740000009536743,
+          0,
+          0,
+          0,
+          0,
+          2.740000009536743,
+          0,
+          -1,
+          1.0837500095367432,
+          0,
+          1
+        ],
+        "name": "LOD1_Beacon_Amber",
+        "planIndex": 16,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          3.1844000816345215,
+          0,
+          0,
+          0,
+          0,
+          3.1844000816345215,
+          0,
+          0,
+          0,
+          0,
+          3.1844000816345215,
+          0,
+          -7.1274919509887695,
+          0.09936188906431198,
+          3.725290298461914e-8,
+          1
+        ],
+        "name": "LOD1_HOOK_DRIVE_CORE_1",
+        "planIndex": 18,
+        "tags": {
+          "canopy": false,
+          "drive": "core",
+          "driveAnchorMatrix": [
+            3.1844000816345215,
+            0,
+            0,
+            0,
+            0,
+            3.1844000816345215,
+            0,
+            0,
+            0,
+            0,
+            3.1844000816345215,
+            0,
+            -7.1274919509887695,
+            0.09936188906431198,
+            3.725290298461914e-8,
+            1
+          ],
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.059999942779541016,
+          0,
+          0,
+          0,
+          0,
+          0.059999942779541016,
+          0,
+          0,
+          0,
+          0,
+          0.059999942779541016,
+          0,
+          5.400000095367432,
+          0.5,
+          -4,
+          1
+        ],
+        "name": "LOD1_HOOK_NAV_PORT_1",
+        "planIndex": 20,
+        "tags": {
+          "canopy": false,
+          "damageRole": "navLight",
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.059999942779541016,
+          0,
+          0,
+          0,
+          0,
+          0.059999942779541016,
+          0,
+          0,
+          0,
+          0,
+          0.059999942779541016,
+          0,
+          5.400000095367432,
+          0.5,
+          4,
+          1
+        ],
+        "name": "LOD1_HOOK_NAV_STARBOARD_1",
+        "planIndex": 22,
+        "tags": {
+          "canopy": false,
+          "damageRole": "navLight",
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          6.004487037658691,
+          0,
+          0,
+          0,
+          0,
+          6.004487037658691,
+          0,
+          0,
+          0,
+          0,
+          6.004487037658691,
+          0,
+          -0.3202238082885742,
+          0.8924444317817688,
+          -0.0001010894775390625,
+          1
+        ],
+        "name": "LOD1_Hull",
+        "planIndex": 23,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          6.854168176651001,
+          0,
+          0,
+          0,
+          0,
+          6.854168176651001,
+          0,
+          0,
+          0,
+          0,
+          6.854168176651001,
+          0,
+          -0.76643967628479,
+          0.09999999403953552,
+          0.00005745887756347656,
+          1
+        ],
+        "name": "LOD1_Mechanical",
+        "planIndex": 24,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          7.454329967498779,
+          0,
+          0,
+          0,
+          0,
+          7.454329967498779,
+          0,
+          0,
+          0,
+          0,
+          7.454329967498779,
+          0,
+          -0.16627788543701172,
+          0.1739136278629303,
+          -0.0003867149353027344,
+          1
+        ],
+        "name": "LOD1_MechanicalDark",
+        "planIndex": 25,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          6.802227735519409,
+          0,
+          0,
+          0,
+          0,
+          6.802227735519409,
+          0,
+          0,
+          0,
+          0,
+          6.802227735519409,
+          0,
+          0.4919135570526123,
+          0.47131770849227905,
+          -0.9119225740432739,
+          1
+        ],
+        "name": "LOD1_Warning",
+        "planIndex": 26,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          7.448552370071411,
+          0,
+          0,
+          0,
+          0,
+          7.448552370071411,
+          0,
+          0,
+          0,
+          0,
+          7.448552370071411,
+          0,
+          -0.1493079662322998,
+          0.25452858209609985,
+          2.384185791015625e-7,
+          1
+        ],
+        "name": "LOD2_Armor",
+        "planIndex": 27,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          2.7400001883506775,
+          0,
+          0,
+          0,
+          0,
+          2.7400001883506775,
+          0,
+          0,
+          0,
+          0,
+          2.7400001883506775,
+          0,
+          -1.0000000596046448,
+          1.093083381652832,
+          0,
+          1
+        ],
+        "name": "LOD2_Beacon_Amber",
+        "planIndex": 28,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          3.183353900909424,
+          0,
+          0,
+          0,
+          0,
+          3.183353900909424,
+          0,
+          0,
+          0,
+          0,
+          3.183353900909424,
+          0,
+          -7.1274473667144775,
+          0.0936315581202507,
+          7.147900760173798e-8,
+          1
+        ],
+        "name": "LOD2_HOOK_DRIVE_CORE_1",
+        "planIndex": 30,
+        "tags": {
+          "canopy": false,
+          "drive": "core",
+          "driveAnchorMatrix": [
+            3.183353900909424,
+            0,
+            0,
+            0,
+            0,
+            3.183353900909424,
+            0,
+            0,
+            0,
+            0,
+            3.183353900909424,
+            0,
+            -7.1274473667144775,
+            0.0936315581202507,
+            7.147900760173798e-8,
+            1
+          ],
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.059999942779541016,
+          0,
+          0,
+          0,
+          0,
+          0.059999942779541016,
+          0,
+          0,
+          0,
+          0,
+          0.059999942779541016,
+          0,
+          5.400000095367432,
+          0.5,
+          -4,
+          1
+        ],
+        "name": "LOD2_HOOK_NAV_PORT_1",
+        "planIndex": 32,
+        "tags": {
+          "canopy": false,
+          "damageRole": "navLight",
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.059999942779541016,
+          0,
+          0,
+          0,
+          0,
+          0.059999942779541016,
+          0,
+          0,
+          0,
+          0,
+          0.059999942779541016,
+          0,
+          5.400000095367432,
+          0.5,
+          4,
+          1
+        ],
+        "name": "LOD2_HOOK_NAV_STARBOARD_1",
+        "planIndex": 34,
+        "tags": {
+          "canopy": false,
+          "damageRole": "navLight",
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          5.9985857009887695,
+          0,
+          0,
+          0,
+          0,
+          5.9985857009887695,
+          0,
+          0,
+          0,
+          0,
+          5.9985857009887695,
+          0,
+          -0.3174171447753906,
+          0.8945544064044952,
+          0.00031065940856933594,
+          1
+        ],
+        "name": "LOD2_Hull",
+        "planIndex": 35,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          6.856382369995117,
+          0,
+          0,
+          0,
+          0,
+          6.856382369995117,
+          0,
+          0,
+          0,
+          0,
+          6.856382369995117,
+          0,
+          -0.7643375396728516,
+          0.10529902577400208,
+          2.384185791015625e-7,
+          1
+        ],
+        "name": "LOD2_Mechanical",
+        "planIndex": 36,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          7.459246873855591,
+          0,
+          0,
+          0,
+          0,
+          7.459246873855591,
+          0,
+          0,
+          0,
+          0,
+          7.459246873855591,
+          0,
+          -0.16147303581237793,
+          0.1744500994682312,
+          -0.0024328231811523438,
+          1
+        ],
+        "name": "LOD2_MechanicalDark",
+        "planIndex": 37,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          6.800768613815308,
+          0,
+          0,
+          0,
+          0,
+          6.800768613815308,
+          0,
+          0,
+          0,
+          0,
+          6.800768613815308,
+          0,
+          0.4871180057525635,
+          0.5094849541783333,
+          -0.9077128171920776,
+          1
+        ],
+        "name": "LOD2_Warning",
+        "planIndex": 38,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.0728466921718791,
+          0,
+          0,
+          0,
+          0,
+          1.0728466921718791,
+          0,
+          0,
+          0,
+          0,
+          1.0728466921718791,
+          0,
+          -4.152960300445557,
+          0.560000017285347,
+          -1.0750000065891072,
+          1
+        ],
+        "name": "LOD0_MOTION_JACKAL_GATE_PORT_Hull_1",
+        "planIndex": 41,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.0750000476837158,
+          0,
+          0,
+          0,
+          0,
+          1.0750000476837158,
+          0,
+          0,
+          0,
+          0,
+          1.0750000476837158,
+          0,
+          -4.152286410331726,
+          0.5104238986968994,
+          -1.0750000476837158,
+          1
+        ],
+        "name": "LOD0_MOTION_JACKAL_GATE_PORT_Livery_1",
+        "planIndex": 43,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.0741023932059761,
+          0,
+          0,
+          0,
+          0,
+          1.0741023932059761,
+          0,
+          0,
+          0,
+          0,
+          1.0741023932059761,
+          0,
+          -4.152933359146118,
+          0.5597228407859802,
+          -1.0747058476845268,
+          1
+        ],
+        "name": "LOD1_MOTION_JACKAL_GATE_PORT_Hull_1",
+        "planIndex": 45,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.074486719138804,
+          0,
+          0,
+          0,
+          0,
+          1.074486719138804,
+          0,
+          0,
+          0,
+          0,
+          1.074486719138804,
+          0,
+          -4.152078986167908,
+          0.513483077287674,
+          -1.0749726428912254,
+          1
+        ],
+        "name": "LOD1_MOTION_JACKAL_GATE_PORT_Livery_1",
+        "planIndex": 47,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.072861359338276,
+          0,
+          0,
+          0,
+          0,
+          1.072861359338276,
+          0,
+          0,
+          0,
+          0,
+          1.072861359338276,
+          0,
+          -4.1511828899383545,
+          0.5584215819835663,
+          -1.0744374535279348,
+          1
+        ],
+        "name": "LOD2_MOTION_JACKAL_GATE_PORT_Hull_1",
+        "planIndex": 49,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.072861359338276,
+          0,
+          0,
+          0,
+          0,
+          1.072861359338276,
+          0,
+          0,
+          0,
+          0,
+          1.072861359338276,
+          0,
+          -4.1511828899383545,
+          0.513661652803421,
+          -1.0744374535279348,
+          1
+        ],
+        "name": "LOD2_MOTION_JACKAL_GATE_PORT_Livery_1",
+        "planIndex": 51,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.0728465738939121,
+          0,
+          0,
+          0,
+          0,
+          1.0728465738939121,
+          0,
+          0,
+          0,
+          0,
+          1.0728465738939121,
+          0,
+          -4.152944803237915,
+          0.560000017285347,
+          1.074999886448495,
+          1
+        ],
+        "name": "LOD0_MOTION_JACKAL_GATE_STARBOARD_Hull_1",
+        "planIndex": 54,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.0750000476837158,
+          0,
+          0,
+          0,
+          0,
+          1.0750000476837158,
+          0,
+          0,
+          0,
+          0,
+          1.0750000476837158,
+          0,
+          -4.152286410331726,
+          0.510423868894577,
+          1.0750000476837158,
+          1
+        ],
+        "name": "LOD0_MOTION_JACKAL_GATE_STARBOARD_Livery_1",
+        "planIndex": 56,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.0744624812505208,
+          0,
+          0,
+          0,
+          0,
+          1.0744624812505208,
+          0,
+          0,
+          0,
+          0,
+          1.0744624812505208,
+          0,
+          -4.152485251426697,
+          0.5597150176763535,
+          1.0749754231073894,
+          1
+        ],
+        "name": "LOD1_MOTION_JACKAL_GATE_STARBOARD_Hull_1",
+        "planIndex": 58,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.0744624812505208,
+          0,
+          0,
+          0,
+          0,
+          1.0744624812505208,
+          0,
+          0,
+          0,
+          0,
+          1.0744624812505208,
+          0,
+          -4.152485251426697,
+          0.5127953737974167,
+          1.0749754231073894,
+          1
+        ],
+        "name": "LOD1_MOTION_JACKAL_GATE_STARBOARD_Livery_1",
+        "planIndex": 60,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.072235562140122,
+          0,
+          0,
+          0,
+          0,
+          1.072235562140122,
+          0,
+          0,
+          0,
+          0,
+          1.072235562140122,
+          0,
+          -4.151476263999939,
+          0.5583953559398651,
+          1.0740556938108057,
+          1
+        ],
+        "name": "LOD2_MOTION_JACKAL_GATE_STARBOARD_Hull_1",
+        "planIndex": 62,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.0729986208025366,
+          0,
+          0,
+          0,
+          0,
+          1.0729986208025366,
+          0,
+          0,
+          0,
+          0,
+          1.0729986208025366,
+          0,
+          -4.151476263999939,
+          0.5057362914085388,
+          1.0748187524732202,
+          1
+        ],
+        "name": "LOD2_MOTION_JACKAL_GATE_STARBOARD_Livery_1",
+        "planIndex": 64,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "hull",
+    "url": "assets/ships/release/parts/wholeships/swarm_jackal.glb"
+  },
+  "runtimeHash": "93855f84f5f4e7856cc9b09ea54a8a7974c306e61fb5cf664b1ef67764a3cd17",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          7.300014019012451,
+          1.1463830200728744,
+          4.449491895296192
+        ],
+        "min": [
+          -7.620719909667969,
+          -0.6756091746966476,
+          -4.449491895296192
+        ]
+      },
+      "id": "sf.render.swarm-jackal.body",
+      "nodeIds": [
+        "sf.render.swarm-jackal.node.collision-hull",
+        "sf.render.swarm-jackal.node.lod0-armor",
+        "sf.render.swarm-jackal.node.lod0-beacon-amber",
+        "sf.render.swarm-jackal.node.lod0-hook-drive-core",
+        "sf.render.swarm-jackal.node.lod0-hook-nav-port",
+        "sf.render.swarm-jackal.node.lod0-hook-nav-starboard",
+        "sf.render.swarm-jackal.node.lod0-hull",
+        "sf.render.swarm-jackal.node.lod0-mechanical",
+        "sf.render.swarm-jackal.node.lod0-mechanicaldark",
+        "sf.render.swarm-jackal.node.lod0-motion-jackal-gate-port-hull",
+        "sf.render.swarm-jackal.node.lod0-motion-jackal-gate-port-livery",
+        "sf.render.swarm-jackal.node.lod0-motion-jackal-gate-starboard-hull",
+        "sf.render.swarm-jackal.node.lod0-motion-jackal-gate-starboard-livery",
+        "sf.render.swarm-jackal.node.lod0-warning",
+        "sf.render.swarm-jackal.node.lod1-armor",
+        "sf.render.swarm-jackal.node.lod1-beacon-amber",
+        "sf.render.swarm-jackal.node.lod1-hook-drive-core",
+        "sf.render.swarm-jackal.node.lod1-hook-nav-port",
+        "sf.render.swarm-jackal.node.lod1-hook-nav-starboard",
+        "sf.render.swarm-jackal.node.lod1-hull",
+        "sf.render.swarm-jackal.node.lod1-mechanical",
+        "sf.render.swarm-jackal.node.lod1-mechanicaldark",
+        "sf.render.swarm-jackal.node.lod1-motion-jackal-gate-port-hull",
+        "sf.render.swarm-jackal.node.lod1-motion-jackal-gate-port-livery",
+        "sf.render.swarm-jackal.node.lod1-motion-jackal-gate-starboard-hull",
+        "sf.render.swarm-jackal.node.lod1-motion-jackal-gate-starboard-livery",
+        "sf.render.swarm-jackal.node.lod1-warning",
+        "sf.render.swarm-jackal.node.lod2-armor",
+        "sf.render.swarm-jackal.node.lod2-beacon-amber",
+        "sf.render.swarm-jackal.node.lod2-hook-drive-core",
+        "sf.render.swarm-jackal.node.lod2-hook-nav-port",
+        "sf.render.swarm-jackal.node.lod2-hook-nav-starboard",
+        "sf.render.swarm-jackal.node.lod2-hull",
+        "sf.render.swarm-jackal.node.lod2-mechanical",
+        "sf.render.swarm-jackal.node.lod2-mechanicaldark",
+        "sf.render.swarm-jackal.node.lod2-motion-jackal-gate-port-hull",
+        "sf.render.swarm-jackal.node.lod2-motion-jackal-gate-port-livery",
+        "sf.render.swarm-jackal.node.lod2-motion-jackal-gate-starboard-hull",
+        "sf.render.swarm-jackal.node.lod2-motion-jackal-gate-starboard-livery",
+        "sf.render.swarm-jackal.node.lod2-warning",
+        "sf.render.swarm-jackal.node.motion-jackal-gate-port",
+        "sf.render.swarm-jackal.node.motion-jackal-gate-starboard",
+        "sf.render.swarm-jackal.node.sf-swarm-jackal-root",
+        "sf.render.swarm-jackal.node.socket-camera-focus",
+        "sf.render.swarm-jackal.node.socket-cargo-ventral",
+        "sf.render.swarm-jackal.node.socket-engine-main",
+        "sf.render.swarm-jackal.node.socket-mine-ejector",
+        "sf.render.swarm-jackal.node.socket-mining-front",
+        "sf.render.swarm-jackal.node.socket-rcs-port",
+        "sf.render.swarm-jackal.node.socket-rcs-starboard",
+        "sf.render.swarm-jackal.node.socket-tether-massline",
+        "sf.render.swarm-jackal.node.socket-trail-main",
+        "sf.render.swarm-jackal.node.socket-trail-port",
+        "sf.render.swarm-jackal.node.socket-trail-starboard",
+        "sf.render.swarm-jackal.node.socket-utility-dorsal",
+        "sf.render.swarm-jackal.node.socket-weapon-front"
+      ]
+    }
+  ]
+}

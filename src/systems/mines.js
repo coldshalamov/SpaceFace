@@ -56,6 +56,26 @@ export function mineCorridorLayout(fromPos, toPos, count = MINE_CORRIDOR_COUNT) 
   return out;
 }
 
+/** Frozen, one-sided mine fence behind the layer. The opposite flank stays physically open. */
+export function mineWakeSalvoLayout(entity, count = MINE_CORRIDOR_COUNT, spacingTicks = 18) {
+  if (!entity?.pos || !(count > 0)) return [];
+  const vx = Number.isFinite(entity.vel?.x) ? entity.vel.x : 0;
+  const vz = Number.isFinite(entity.vel?.z) ? entity.vel.z : 0;
+  const speed = Math.hypot(vx, vz);
+  const fx = speed > 1 ? vx / speed : Math.cos(entity.rot || 0);
+  const fz = speed > 1 ? vz / speed : Math.sin(entity.rot || 0);
+  const side = (Number(entity.id) || 0) % 2 === 0 ? 1 : -1;
+  const px = -fz * side, pz = fx * side;
+  const out = [];
+  for (let i = 0; i < count; i++) {
+    const along = speed * (i * spacingTicks / 60) - MINE_CORRIDOR_FLANK_WU - i * 70;
+    const flank = MINE_CORRIDOR_FLANK_WU + MINE_CORRIDOR_RISE_WU * i;
+    out.push({ x: entity.pos.x + fx * along + px * flank,
+      z: entity.pos.z + fz * along + pz * flank });
+  }
+  return out;
+}
+
 const TRIGGER_TYPES = new Set(['ship', 'drone']);
 
 export const mines = {
@@ -76,6 +96,8 @@ export const mines = {
       this.bus.on('sector:enter', () => this.releaseAll('sector_enter'));
       this.bus.on('game:new', () => this.releaseAll('new_game'));
       this.bus.on('save:loaded', () => this.releaseAll('save_loaded'));
+      this.bus.on('run:waveCleared', () => this.releaseSwarmSpecialistMines('wave_cleared'));
+      this.bus.on('run:ended', () => this.releaseSwarmSpecialistMines('run_ended'));
     }
   },
 
@@ -143,6 +165,8 @@ export const mines = {
         triggerRadius,
         blastDamage: Number.isFinite(opts.blastDamage) ? opts.blastDamage : MINE_BLAST_DAMAGE,
         placedAt: now,
+        ...(opts.swarmSpecialistMine === true ? { swarmSpecialistMine: true,
+          despawnAt: now + (Number.isFinite(opts.lifetimeS) ? Math.max(1, opts.lifetimeS) : 12) } : {}),
         sectorId: state.world && state.world.currentSectorId || null,
         triggered: false,
         masslineTetherable: true,
@@ -178,6 +202,11 @@ export const mines = {
     for (const mine of list) {
       if (!mine || !mine.alive || mine.type !== MINE_TYPE) continue;
       const data = mine.data || (mine.data = {});
+      if (data.swarmSpecialistMine === true && Number.isFinite(data.despawnAt) && now >= data.despawnAt) {
+        mine.alive = false;
+        if (this.bus) this.bus.emit('mines:released', { count: 1, reason: 'swarm_salvo_expired', mineId: mine.id });
+        continue;
+      }
       // Destroyed / hull-depleted mines never trigger (counterplay).
       if (!(mine.hull > 0)) {
         mine.alive = false;
@@ -186,7 +215,8 @@ export const mines = {
       if (!data.armed) {
         if (now >= (data.armedAt || 0)) {
           data.armed = true;
-          if (this.bus) this.bus.emit('mines:armed', { mineId: mine.id, ownerId: data.ownerId });
+          if (this.bus) this.bus.emit('mines:armed', { mineId: mine.id, ownerId: data.ownerId,
+            pos: { x: mine.pos.x, z: mine.pos.z } });
         } else {
           continue;
         }
@@ -219,7 +249,8 @@ export const mines = {
     if (!data.armed) {
       data.armed = true;
       data.armedAt = now;
-      if (this.bus) this.bus.emit('mines:armed', { mineId: mine.id, ownerId: data.ownerId, thrown: true });
+      if (this.bus) this.bus.emit('mines:armed', { mineId: mine.id, ownerId: data.ownerId, thrown: true,
+        pos: { x: mine.pos.x, z: mine.pos.z } });
     }
   },
 
@@ -321,6 +352,16 @@ export const mines = {
   },
 
   /** Release mines on sector exit / lifecycle (ownership lifecycle). */
+  releaseSwarmSpecialistMines(reason = 'run_ended') {
+    let n = 0;
+    for (const mine of liveMineList(this.state)) {
+      if (!mine?.alive || mine.type !== MINE_TYPE || mine.data?.swarmSpecialistMine !== true) continue;
+      mine.alive = false; n++;
+    }
+    if (n && this.bus) this.bus.emit('mines:released', { count: n, reason });
+    return n;
+  },
+
   releaseAll(reason = 'release') {
     const state = this.state;
     if (!state) return 0;

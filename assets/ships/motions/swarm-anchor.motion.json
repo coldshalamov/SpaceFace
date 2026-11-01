@@ -1,0 +1,154 @@
+{
+ "schema": "spaceface.rigidMotionBank.v1",
+ "rigId": "swarm_anchor",
+ "sourceAssetId": "SF_SWARM_ANCHOR",
+ "sourceGlbSha256": "0d6ea1ea2ae4b0562dfe6d33b0ff8da97fbd8757794464a32f6c173bfd28fc6a",
+ "fps": 60,
+ "bindings": [
+  {
+   "id": "anchor_vane_fore",
+   "node": "MOTION_ANCHOR_VANE_FORE",
+   "parent": null,
+   "restPose": {
+    "translation": [
+     1.600000023841858,
+     0.18000000715255737,
+     0
+    ],
+    "rotation": [
+     0,
+     0,
+     0,
+     1
+    ],
+    "scale": [
+     1,
+     1,
+     1
+    ]
+   },
+   "requiredAtLod": [
+    0
+   ]
+  },
+  {
+   "id": "anchor_vane_port",
+   "node": "MOTION_ANCHOR_VANE_PORT",
+   "parent": null,
+   "restPose": {
+    "translation": [
+     -2.5,
+     0.11999999731779099,
+     -1.100000023841858
+    ],
+    "rotation": [
+     0,
+     0,
+     0,
+     1
+    ],
+    "scale": [
+     1,
+     1,
+     1
+    ]
+   },
+   "requiredAtLod": [
+    0
+   ]
+  },
+  {
+   "id": "anchor_vane_starboard",
+   "node": "MOTION_ANCHOR_VANE_STARBOARD",
+   "parent": null,
+   "restPose": {
+    "translation": [
+     -2.5,
+     0.11999999731779099,
+     1.100000023841858
+    ],
+    "rotation": [
+     0,
+     0,
+     0,
+     1
+    ],
+    "scale": [
+     1,
+     1,
+     1
+    ]
+   },
+   "requiredAtLod": [
+    0
+   ]
+  }
+ ],
+ "clips": [
+  {
+   "name": "specialist_rest_contract",
+   "durationS": 0.016666666666666666,
+   "loop": false,
+   "endMode": "rest",
+   "channels": [
+    {
+     "group": "anchor_vane_fore",
+     "path": "rotation",
+     "times": [
+      0.0,
+      0.016666666666666666
+     ],
+     "values": [
+      0.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0,
+      0.0,
+      1.0
+     ],
+     "interpolation": "slerp"
+    },
+    {
+     "group": "anchor_vane_port",
+     "path": "rotation",
+     "times": [
+      0.0,
+      0.016666666666666666
+     ],
+     "values": [
+      0.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0,
+      0.0,
+      1.0
+     ],
+     "interpolation": "slerp"
+    },
+    {
+     "group": "anchor_vane_starboard",
+     "path": "rotation",
+     "times": [
+      0.0,
+      0.016666666666666666
+     ],
+     "values": [
+      0.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0,
+      0.0,
+      1.0
+     ],
+     "interpolation": "slerp"
+    }
+   ]
+  }
+ ]
+}

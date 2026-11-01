@@ -12502,6 +12502,164 @@
         ]
       },
       "sockets": []
+    },
+    {
+      "id": "wholeship_swarm_warden",
+      "category": "wholeships",
+      "priority": "P1",
+      "file": "wholeships/swarm_warden.glb",
+      "tris": 7932,
+      "bytes": 720804,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "accent": "Material_Accent",
+        "thruster": "Material_Thruster"
+      },
+      "hooks": [
+        "HOOK_DRIVE_CORE"
+      ],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Link_Emitter",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Tether_Massline",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -8.000179290771484,
+          -1.087499976158142,
+          -6.294192314147949
+        ],
+        "max": [
+          8.00008487701416,
+          1.3890422582626343,
+          6.294192314147949
+        ],
+        "dimensionsM": [
+          16.000264167785645,
+          2.4765422344207764,
+          12.588384628295898
+        ]
+      },
+      "note": "Original Forge Swarm warden; shared Forge finish, three LODs, phase-driven rigid mechanisms."
+    },
+    {
+      "id": "wholeship_swarm_jackal",
+      "category": "wholeships",
+      "priority": "P1",
+      "file": "wholeships/swarm_jackal.glb",
+      "tris": 10064,
+      "bytes": 839188,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "accent": "Material_Accent",
+        "thruster": "Material_Thruster"
+      },
+      "hooks": [
+        "HOOK_DRIVE_CORE"
+      ],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mine_Ejector",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Tether_Massline",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -7.620719909667969,
+          -0.6757441163063049,
+          -4.449462890625
+        ],
+        "max": [
+          7.300014019012451,
+          1.1464173793792725,
+          4.449462890625
+        ],
+        "dimensionsM": [
+          14.92073392868042,
+          1.8221614956855774,
+          8.89892578125
+        ]
+      },
+      "note": "Original Forge Swarm jackal; shared Forge finish, three LODs, phase-driven rigid mechanisms."
+    },
+    {
+      "id": "wholeship_swarm_anchor",
+      "category": "wholeships",
+      "priority": "P1",
+      "file": "wholeships/swarm_anchor.glb",
+      "tris": 11512,
+      "bytes": 921000,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "thruster": "Material_Thruster"
+      },
+      "hooks": [
+        "HOOK_DRIVE_CORE"
+      ],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Field_Core",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Tether_Massline",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -8.021380424499512,
+          -1.0362132787704468,
+          -3.994556427001953
+        ],
+        "max": [
+          7.600335121154785,
+          1.6502254009246826,
+          3.994556188583374
+        ],
+        "dimensionsM": [
+          15.621715545654297,
+          2.6864386796951294,
+          7.989112615585327
+        ]
+      },
+      "note": "Original Forge Swarm anchor; shared Forge finish, three LODs, phase-driven rigid mechanisms."
     }
   ],
   "runtimeSlots": {

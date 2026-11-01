@@ -226,6 +226,23 @@ export function installFleetLook(SF) {
       data: { defId: def.id, appearance: opts.appearance || defaultShipAppearance(def.id) },
       factionId: opts.factionId || undefined,
     };
+    // Render fixture only: exercise the real hostile resolver and stable authored boundary.
+    // A player preview would select the player hull before its hostile identity.
+    if (opts.specialist) {
+      const [kind, phase] = String(opts.specialist).split(':');
+      const ids = { warden: 'warden_escort', jackal: 'mine_layer_jackal', anchor: 'field_anchor_controller' };
+      if (!ids[kind] || !['idle', 'windup', 'active', 'recovery'].includes(phase)) throw new Error('invalid specialist preview');
+      ent.isPlayer = false; ent.team = 1; ent.alive = true;
+      ent.pos = { x: 0, z: 0 }; ent.vel = { x: 0, z: 0 };
+      ent.faction = 'enemy'; ent.radius = kind === 'anchor' ? 28 : 18;
+      delete ent.data.appearance;
+      ent.data.lootTableId = ids[kind];
+      ent.data.swarmSpecialist = { kind, phase, phaseStartedAt: 60, phaseEndsAt: 90,
+        ...(kind === 'warden' ? { targetId: 1, targetX: 62, targetZ: -28, linkHp: 92, linkMaxHp: 92 } : {}),
+        ...(kind === 'jackal' ? { salvoRemaining: 3, salvoPoints: [{ x: -42, z: -32 }, { x: -72, z: -46 }, { x: -102, z: -60 }] } : {}),
+        ...(kind === 'anchor' ? { anchorActive: phase === 'active', anchorRadius: 220, anchorStrength: 88 } : {}),
+      };
+    }
     let mesh = vf.build(ent);
     mesh = wrapShipWithAuthoredParts(ent, mesh, { releaseMode: true });
     holder.add(mesh);
@@ -270,7 +287,19 @@ export function installFleetLook(SF) {
     holder.updateMatrixWorld(true);
     let ok = true;
     if (opts.defId) ok = await waitForAuthored(renderer, scene, cam, built.root);
-    const box = new THREE.Box3().setFromObject(built.root);
+    if (opts.specialist) {
+      if (!ok || built.root.userData.authoredAssetState !== 'authored') {
+        const data = built.root.userData;
+        throw new Error('specialist authored admission incomplete: ' + JSON.stringify({
+          state: data.authoredAssetState, root: data.authoredVisualRoot,
+          reason: data.authoredFailureReason, message: data.authoredFailureMessage,
+        }));
+      }
+      built.root.userData.updateAuthoredMotion?.(built.entity, 1.25, undefined, state);
+    }
+    // Specialist links and 220 m fields are real effects but are not ship framing bounds.
+    const boundsRoot = opts.specialist ? built.root.userData.swarmVisualContentRoot || built.root : built.root;
+    const box = new THREE.Box3().setFromObject(boundsRoot);
     const sphere = box.getBoundingSphere(new THREE.Sphere());
     const radius = opts.radius || sphere.radius || built.radius || 6;
     built.root.position.sub(new THREE.Vector3(sphere.center.x, 0, sphere.center.z));
@@ -308,6 +337,8 @@ export function installFleetLook(SF) {
     if (opts.ab?.noBackground) scene.background = opts._bg;
     return {
       url, ok, radius, diagNames: built.diagNames,
+      ...(opts.specialist ? { authoredAssetState: built.root.userData.authoredAssetState,
+        specialist: opts.specialist } : {}),
       size: box.getSize(new THREE.Vector3()).toArray(),
       materials: collectMaterials(built.root),
     };

@@ -4153,6 +4153,36 @@ const PILOTS = [
     "slot": "place",
     "sourceSha256": "d380aecb39c89319cecfb886faf3b258851456ae3c3806087dc9990d967ec78c",
     "sourceUrl": "assets/ships/release/parts/places/place_last_shift_fairlead.glb"
+  },
+  {
+    "assetId": "sf.render.swarm-warden",
+    "expectedContentHash": "d3fbc1b79f538dcdf869e347a8319a97224e0c0c98ac7a230666b2ae4a892ef7",
+    "key": "swarm-warden",
+    "metadataUrl": "assets/ships/release/render-packages/swarm-warden/render-package.json",
+    "runtimeAssetId": "SF_SWARM_WARDEN",
+    "slot": "hull",
+    "sourceSha256": "2c08ac99a525d2495abc36ffdcca0fe6a2a124b9e2095f2ec0eec32a4b9cab55",
+    "sourceUrl": "assets/ships/release/parts/wholeships/swarm_warden.glb"
+  },
+  {
+    "assetId": "sf.render.swarm-jackal",
+    "expectedContentHash": "ecfa2ab0a8b0089b2fff9c1b9298e8f611d57345365de4df8e01f1aaad10e108",
+    "key": "swarm-jackal",
+    "metadataUrl": "assets/ships/release/render-packages/swarm-jackal/render-package.json",
+    "runtimeAssetId": "SF_SWARM_JACKAL",
+    "slot": "hull",
+    "sourceSha256": "2702057af23b32a347b6085214e743ba31243b6b5cf693249975c992b9ebd21d",
+    "sourceUrl": "assets/ships/release/parts/wholeships/swarm_jackal.glb"
+  },
+  {
+    "assetId": "sf.render.swarm-anchor",
+    "expectedContentHash": "8591ec184de0689a1b08ad780f725f0d0ee881b0b2cee7eae9474bad65b62a98",
+    "key": "swarm-anchor",
+    "metadataUrl": "assets/ships/release/render-packages/swarm-anchor/render-package.json",
+    "runtimeAssetId": "SF_SWARM_ANCHOR",
+    "slot": "hull",
+    "sourceSha256": "b4e847d43762a17dc19bf70558d7f974d96d9594896af04bf88f33d72f6dc434",
+    "sourceUrl": "assets/ships/release/parts/wholeships/swarm_anchor.glb"
   }
 ];
 

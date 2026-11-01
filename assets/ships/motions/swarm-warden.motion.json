@@ -1,0 +1,109 @@
+{
+ "schema": "spaceface.rigidMotionBank.v1",
+ "rigId": "swarm_warden",
+ "sourceAssetId": "SF_SWARM_WARDEN",
+ "sourceGlbSha256": "d287730c5d27a083e06d9bfb1657ffd0c3d805523b2482703fecf824a7cf6c95",
+ "fps": 60,
+ "bindings": [
+  {
+   "id": "warden_shield_port",
+   "node": "MOTION_WARDEN_SHIELD_PORT",
+   "parent": null,
+   "restPose": {
+    "translation": [
+     -3.0999999046325684,
+     0,
+     -1.899999976158142
+    ],
+    "rotation": [
+     0,
+     0,
+     0,
+     1
+    ],
+    "scale": [
+     1,
+     1,
+     1
+    ]
+   },
+   "requiredAtLod": [
+    0
+   ]
+  },
+  {
+   "id": "warden_shield_starboard",
+   "node": "MOTION_WARDEN_SHIELD_STARBOARD",
+   "parent": null,
+   "restPose": {
+    "translation": [
+     -3.0999999046325684,
+     0,
+     1.899999976158142
+    ],
+    "rotation": [
+     0,
+     0,
+     0,
+     1
+    ],
+    "scale": [
+     1,
+     1,
+     1
+    ]
+   },
+   "requiredAtLod": [
+    0
+   ]
+  }
+ ],
+ "clips": [
+  {
+   "name": "specialist_rest_contract",
+   "durationS": 0.016666666666666666,
+   "loop": false,
+   "endMode": "rest",
+   "channels": [
+    {
+     "group": "warden_shield_port",
+     "path": "rotation",
+     "times": [
+      0.0,
+      0.016666666666666666
+     ],
+     "values": [
+      0.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0,
+      0.0,
+      1.0
+     ],
+     "interpolation": "slerp"
+    },
+    {
+     "group": "warden_shield_starboard",
+     "path": "rotation",
+     "times": [
+      0.0,
+      0.016666666666666666
+     ],
+     "values": [
+      0.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0,
+      0.0,
+      1.0
+     ],
+     "interpolation": "slerp"
+    }
+   ]
+  }
+ ]
+}

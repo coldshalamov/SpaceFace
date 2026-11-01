@@ -731,7 +731,9 @@ function swarmNextLine(next) {
   if (next.newcomer) bits.push(`new: ${next.newcomer}`);
   if (next.event) bits.push(`${next.event.name} — ${next.event.telegraph}`);
   if (next.boss) bits.push(`boss: ${next.boss.label}`);
-  return `Next — ${bits.join(' · ')}`;
+  const intel = next.specialist
+    ? ` Prepare for ${next.specialist.name}: ${next.specialist.threat} ${next.specialist.counter}` : '';
+  return `Next — ${bits.join(' · ')}.${intel}`;
 }
 
 export const crucibleDraftScreen = {

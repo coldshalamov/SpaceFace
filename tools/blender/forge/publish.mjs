@@ -113,9 +113,10 @@ const flightStaticKeys = new Set(
 for (const key of pilotKeys) {
   const pilot = list.find((p) => p.key === key);
   if (!pilot) throw new Error(`no render-package pilot ${key}`);
-  pilot.dynamicNameIncludes = flightStaticKeys.has(key)
+  const entry = Object.values(FLEET.ships).find(row => row.file === pilot.sourceUrl.split('/').pop().replace('.glb', ''));
+  pilot.dynamicNameIncludes = entry?.dynamic_name_includes || (flightStaticKeys.has(key)
     ? []
-    : ['HOOK_DRIVE', 'HOOK_NAV', 'HOOK_SECONDARY', 'HOOK_SENSOR', 'HOOK_ARMOR'];
+    : ['HOOK_DRIVE', 'HOOK_NAV', 'HOOK_SECONDARY', 'HOOK_SENSOR', 'HOOK_ARMOR']);
 }
 writeFileSync(pilotsPath, `${JSON.stringify(pilots, null, 2)}\n`);
 run('node', ['scripts/refresh-render-package-pilots.mjs', `--only=${[...pilotKeys].join(',')}`], { quiet: true });

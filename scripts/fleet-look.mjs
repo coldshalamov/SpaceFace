@@ -6,7 +6,7 @@
 // Output: .devshots/fleet-look/<name>_<view>.png (+ report.json). Crops chase/close to the ship.
 import { spawn } from 'node:child_process';
 import { createServer as createNetServer } from 'node:net';
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { appendFileSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { loadPlaywright } from './lib/load-playwright.mjs';
 
@@ -98,11 +98,21 @@ const browser = await chromium.launch({
       '--disable-background-timer-throttling'],
 });
 const report = [];
+const logs = [];
+let page;
 try {
   mkdirSync(OUT, { recursive: true });
-  const page = await browser.newPage({ viewport: { width: 1600, height: 1000 }, deviceScaleFactor: 1 });
-  const logs = [];
-  page.on('console', (m) => { if (m.type() === 'error' || m.type() === 'warning') logs.push(m.text().slice(0, 300)); });
+  page = await browser.newPage({ viewport: { width: 1600, height: 1000 }, deviceScaleFactor: 1 });
+  if (args.assetlog) page.on('response', response => {
+    if (response.status() === 404) appendFileSync(String(args.assetlog), new URL(response.url()).pathname + '\n');
+  });
+  page.on('console', async (m) => {
+    if (m.type() !== 'error' && m.type() !== 'warning') return;
+    const values = await Promise.all(m.args().map(arg => arg.jsonValue().catch(() => null)));
+    const detail = values.length ? JSON.stringify(values) : m.text();
+    logs.push(detail.slice(0, 3000));
+    if (args.consolelog) appendFileSync(String(args.consolelog), detail + '\n');
+  });
   page.on('pageerror', (e) => logs.push('PAGEERROR ' + String(e).slice(0, 300)));
   if (args.illustrated === '0') await page.addInitScript(() => { globalThis.__SF_FORGE_ILLUSTRATED__ = false; });
   if (args.init) await page.addInitScript(String(args.init));
@@ -130,7 +140,9 @@ try {
   };
 
   let targets;
-  if (args.fleet) targets = LIVE_FLEET.filter(([n]) => !args.only || String(args.only).split(',').includes(n));
+  if (args.specialists) targets = ['warden', 'jackal', 'anchor'].flatMap(kind =>
+    ['windup', 'active', 'recovery'].map(phase => [kind + '_' + phase, { defId: kind === 'jackal' ? 'ship_drifter' : 'ship_bastion', specialist: kind + ':' + phase }]));
+  else if (args.fleet) targets = LIVE_FLEET.filter(([n]) => !args.only || String(args.only).split(',').includes(n));
   else if (args.files) targets = String(args.files).split(',').map((f) => [f.split('/').pop().replace('.glb', ''), { file: f }]);
   else if (args.file) targets = [[args.name || String(args.file).split('/').pop().replace('.glb', ''), { file: args.file }]];
   else if (args.def) targets = [[args.name || String(args.def).replace('ship_', ''), { defId: args.def }]];
@@ -146,7 +158,9 @@ try {
             // --appearance='{"decalId":"concord"}' poses the hull with that paint record;
             // --factionId=<id> poses it as that faction's NPC (palette + default stencils).
             ...(args.appearance ? { appearance: JSON.parse(String(args.appearance)) } : {}),
-            ...(args.factionId ? { factionId: String(args.factionId) } : {}) };
+            ...(args.factionId ? { factionId: String(args.factionId) } : {}),
+            ...(args.specialist ? { specialist: String(args.specialist) } : {}),
+            ...(args.radius ? { radius: Number(args.radius) } : {}) };
           if (args.mood || args.tune || args.post || args.lights) {
             // isolate() re-applies the sector rig and mood on the first shot; shoot once to settle
             // it, apply the switches over the settled state, then take the real frame.
@@ -189,12 +203,18 @@ try {
         const left = Math.round((1600 - crop[0]) / 2), top = Math.round((1000 - crop[1]) / 2);
         await sharp(buf).extract({ left, top, width: crop[0], height: crop[1] }).png().toFile(file);
       } else writeFileSync(file, buf);
-      report.push({ name, view, file, ok: res.ok, size: res.size, radius: res.radius, materials: view === views[0] ? res.materials : undefined, ms: Date.now() - t0 });
+      report.push({ name, view, file, ok: res.ok, size: res.size, radius: res.radius,
+        authoredAssetState: res.authoredAssetState, specialist: res.specialist,
+        materials: view === views[0] ? res.materials : undefined, ms: Date.now() - t0 });
       console.log('shot', name, view, `${Date.now() - t0}ms`, res.ok ? '' : '(authored swap not confirmed)');
     }
   }
   if (targets.length > 1) for (const v of views) await contactSheet(v, report);
   writeFileSync(OUT + 'report.json', JSON.stringify({ report, logs: logs.slice(0, 80) }, null, 2));
+  if (report.some(shot => shot.error)) process.exitCode = 1;
+} catch (error) {
+  writeFileSync(OUT + 'failure.json', JSON.stringify({ error: String(error), logs }, null, 2));
+  throw error;
 } finally {
   await browser.close();
   server.kill();

@@ -1,3 +1,6 @@
+import { isSwarmSpecialistRun, SWARM_SPECIALIST_TUNING } from '../data/swarmSpecialists.js';
+import { countOwnerMines, mineWakeSalvoLayout } from '../systems/mines.js';
+
 // The mine-layer's area-denial verb (combat-variety vertical). Policy only: the doctrine owns
 // WHEN (the `mine_drop` phase, after the `wake_mines` telegraph); this module owns the release
 // geometry and cadence, and goes through the mines system's `helpers.placeMine` — the same owner
@@ -35,6 +38,10 @@ export function mineLayerWakePoint(entity) {
 
 export function applyMineLayerVerb({ state, entity, doctrinePhase, tick, placeMine }) {
   if (!state || !entity || entity.alive === false) return null;
+  if (isSwarmSpecialistRun(state) && entity.data?.runCohort === 'survival'
+    && entity.data?.lootTableId === 'mine_layer_jackal') {
+    return applySwarmJackalSalvo({ state, entity, doctrinePhase, tick, placeMine });
+  }
   if (doctrinePhase !== 'mine_drop') return null;
   if (typeof placeMine !== 'function') return null;
   const data = entity.data || (entity.data = {});
@@ -50,5 +57,65 @@ export function applyMineLayerVerb({ state, entity, doctrinePhase, tick, placeMi
     telegraph: true,
   });
   if (mine) data._mineLayerLastDropTick = tick;
+  return mine;
+}
+
+function applySwarmJackalSalvo({ state, entity, doctrinePhase, tick, placeMine }) {
+  const tuning = SWARM_SPECIALIST_TUNING.jackal;
+  const data = entity.data;
+  let view = data.swarmSpecialist;
+  if (view?.kind !== 'jackal') {
+    view = data.swarmSpecialist = { kind: 'jackal', phase: 'idle', phaseStartedAt: tick,
+      phaseEndsAt: null, salvoRemaining: 0, nextSalvoTick: 0 };
+  }
+  if (data.disabled === true || data.stunned === true) {
+    if (view.phase === 'active' || view.phase === 'windup') {
+      view.phase = 'recovery'; view.phaseStartedAt = tick;
+      view.phaseEndsAt = tick + tuning.recoveryTicks;
+      view.nextSalvoTick = tick + tuning.cooldownTicks; view.salvoRemaining = 0;
+    }
+    return null;
+  }
+  if (doctrinePhase === 'wake_cue') {
+    if (tick < view.nextSalvoTick) return null;
+    if (view.phase !== 'windup') {
+      view.phase = 'windup'; view.phaseStartedAt = tick; view.phaseEndsAt = tick + tuning.windupTicks;
+      view.salvoRemaining = tuning.salvoCount;
+      // Freeze the forecast at the warning. Later motion cannot silently move the danger lane.
+      view.salvoPoints = mineWakeSalvoLayout(entity, tuning.salvoCount, tuning.salvoSpacingTicks);
+    }
+    return null;
+  }
+  if (doctrinePhase !== 'mine_drop') {
+    if (view.phase === 'windup' || view.phase === 'active') {
+      view.phase = 'recovery'; view.phaseStartedAt = tick;
+      view.phaseEndsAt = tick + tuning.recoveryTicks; view.salvoRemaining = 0;
+    } else if (view.phase === 'recovery' && tick >= view.phaseEndsAt) {
+      view.phase = 'idle'; view.phaseStartedAt = tick; view.phaseEndsAt = null;
+    }
+    return null;
+  }
+  if (typeof placeMine !== 'function' || tick < view.nextSalvoTick) return null;
+  if (view.phase !== 'active') {
+    // The production doctrine always supplies the tell; a skipped/canceled tell cannot fire.
+    if (view.phase !== 'windup' || tick < view.phaseEndsAt) return null;
+    view.phase = 'active'; view.phaseStartedAt = tick; view.phaseEndsAt = tick + tuning.activeTicks;
+  }
+  if (!(view.salvoRemaining > 0) || countOwnerMines(state, entity.id) >= tuning.mineCap) return null;
+  const point = view.salvoPoints?.[tuning.salvoCount - view.salvoRemaining];
+  if (!point) return null;
+  const mine = placeMine({ ownerId: entity.id, pos: point, vel: { x: 0, z: 0 },
+    team: entity.team, factionId: entity.factionId || null,
+    armDelayS: tuning.armDelayTicks / 60, triggerRadius: tuning.triggerRadius,
+    hull: tuning.mineHull, blastDamage: tuning.blastDamage, telegraph: true,
+    swarmSpecialistMine: true, lifetimeS: tuning.lifetimeTicks / 60 });
+  if (mine) {
+    view.salvoRemaining--;
+    view.nextSalvoTick = tick + tuning.salvoSpacingTicks;
+    if (view.salvoRemaining === 0) {
+      view.phase = 'recovery'; view.phaseStartedAt = tick; view.phaseEndsAt = tick + tuning.recoveryTicks;
+      view.nextSalvoTick = tick + tuning.cooldownTicks; data._mineLayerLastDropTick = tick;
+    }
+  }
   return mine;
 }

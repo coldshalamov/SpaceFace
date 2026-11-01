@@ -30,6 +30,7 @@ import {
   swarmRosterFor,
 } from './swarmMode.js';
 import { swarmEventFor } from './swarmEvents.js';
+import { SWARM_SPECIALIST_BRIEFS } from './swarmSpecialists.js';
 
 /** One zone is ten rounds, boss on the tenth — the same cadence the boss rotation ships. */
 export const SWARM_ZONE_LENGTH = 10;
@@ -329,6 +330,7 @@ export function swarmRoundPreview({ arenaId, wave, seed } = {}) {
     concurrent: block.concurrent,
     roster,
     newcomer: block.newcomer ? block.newcomer.name : null,
+    specialist: block.newcomer ? SWARM_SPECIALIST_BRIEFS[block.newcomer.enemyId] || null : null,
     boss: block.boss ? { label: block.bossLabel, line: block.bossLine } : null,
     event: event ? { name: event.name, telegraph: event.telegraph } : null,
   };
