@@ -53,9 +53,9 @@
 // is one 36s long pole plus about 26s of small change, so what actually buys the headroom is giving
 // the long pole an early start and not oversubscribing the machine around it.
 //
-// TIMEOUTS ARE NOT FAILURES. A link that blows LINK_TIMEOUT_MS is reported as TIMEOUT with its
-// budget, never as a plain FAIL, because a timeout is an environment/contention signal and a failed
-// assertion is a product signal. Note also that killing a `shell: true` child on Windows kills only
+// A link that exceeds LINK_TIMEOUT_MS is a deadline failure with unknown assertion status.
+// Keep TIMEOUT distinct from an observed assertion failure; its cause requires direct evidence.
+// Note also that killing a `shell: true` child on Windows kills only
 // cmd.exe — the node grandchild survives and holds the stdio pipes, so 'close' never fires. That is
 // how a 180s budget once reported 361820ms and exit null with "(no output captured)". killTree()
 // and the kill grace window below are what actually enforce the budget.
@@ -77,8 +77,8 @@ const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const BUDGET_MS = 90_000;
 const JOBS_ENV = 'SPACEFACE_CHECK_JOBS';
 
-// Roughly 4x the slowest link measured with the machine to itself (massline, ~40s). A breach at 4x
-// is contention or a hang, not a slow assertion. It sits above the aggregate's own 150s child
+// This bound was set above the historical quiet-host Massline measurement (~40s). Exceeding it
+// does not identify the cause. It sits above the aggregate's own 150s child
 // budget so a stuck massline child surfaces as that child's TIMEOUT and not as an opaque link one.
 const LINK_TIMEOUT_MS = 210_000;
 // A killed process can leave a grandchild holding the stdio pipes open, so 'close' may never fire.
@@ -268,17 +268,17 @@ if (asJson) {
   console.log('');
   console.log(`  ${results.length - failed.length}/${results.length} green in ${wallMs}ms wall (${serial ? 'serial' : mode}), budget ${BUDGET_MS}ms, headroom ${BUDGET_MS - wallMs}ms`);
   console.log(`  concurrency allowance ${allowance} from ${allowanceSource()} — split, not multiplied (see the header)`);
-  if (overBudget) console.log('  BUDGET EXCEEDED — make a link faster or drop one; do not raise the number quietly.');
+  if (overBudget) console.log('  BUDGET EXCEEDED — fix the cause without raising the budget or deleting required coverage.');
   if (timedOutResults.length) {
-    console.log('  A TIMEOUT is a contention/environment signal, not a product failure. Before you file a bug,');
-    console.log('  re-run the timed-out link on its own and see whether it is green with the machine to itself.');
+    console.log('  A TIMEOUT has unknown assertion status and an unclassified cause. Inspect progress and resource');
+    console.log('  ownership; isolate the link when needed to distinguish a regression, stalled work, or contention.');
   }
   for (const r of failed) {
     console.log('');
     if (r.timedOut) {
       console.log(`--- ${r.id} TIMED OUT after ${r.durationMs}ms (budget ${r.timeoutMs}ms) :: ${r.command}`);
       console.log('    Killed mid-run, so the output below is partial by construction and no assertion was');
-      console.log('    reported. Reproduce alone before treating this as a product defect.');
+      console.log('    reported. Preserve this deadline failure and diagnose its cause before classifying it.');
       console.log(tailOrNote(r.output, 40, '(killed before it wrote anything — no assertion was reported)'));
     } else {
       console.log(`--- ${r.id} (exit ${r.code}) :: ${r.command}`);

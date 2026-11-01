@@ -486,9 +486,9 @@ export const missionSpawningOps = {
 
   _spawnTargetsFor(m) {
     if (syncFurnaceWorksite(this, m)) return;
-    // Prefer live rematerialized hosts (Continue) over fresh spawns. Adoption is a pure-read
-    // repair: it must run even where the spawn seam is absent — a durable subject can be
-    // re-found without the ability to mint new bodies (NXI-146).
+    // Prefer live rematerialized hosts (Continue) over fresh spawns. Adoption repairs
+    // mission/actor links without spawning, so it must run even where the spawn seam is absent
+    // and a durable subject can be re-found without minting new bodies (NXI-146).
     this._adoptLiveMissionTargets(m);
     const helpers = this.helpers;
     if (!helpers || !helpers.spawnEntity) return;
