@@ -1,5 +1,6 @@
 // Isolated native rig inspection. Production builders, surface shaders, score progression and
-// warning painter are exercised; the main game, physics, post route and player input are not.
+// warning painter are exercised. Optional encounter mode also runs the canonical combat/AI/
+// Flight V3/Rapier owners with an input tape; neither mode is full-route or post-process acceptance.
 import * as THREE from 'three';
 import { createVisualFactory } from '../../src/render/visualFactory.js';
 import { installVisualOverrides } from '../../src/render/visualOverrides.js';
@@ -16,7 +17,7 @@ import { resolveSectorVisualProfile } from '../../src/data/sectorVisualProfiles.
 import { resolveLookLighting, resolveLookMoodId, resolveLookPost } from '../../src/data/lookMoods.js';
 import { beginLookMood } from '../../src/render/look.js';
 import { createBus } from '../../src/core/eventBus.js';
-import { makeEnemySpawnSpec } from '../../src/systems/combat.js';
+import { makeEnemySpawnSpec, combat } from '../../src/systems/combat.js';
 import { aftermathWrecks } from '../../src/systems/aftermathWrecks.js';
 import { zonesForSector } from '../../src/data/sectorZones.js';
 import { sectorLocalToGlobalForSector } from '../../src/data/sectorCoordinates.js';
@@ -171,6 +172,8 @@ function mount(run) {
 }
 
 function update(run, root, a11y = {}) {
+  const origin = run.state.render?.frameOrigin || { x: 0, z: 0 };
+  root.position.set(run.entity.pos.x - origin.x, 0, run.entity.pos.z - origin.z);
   root.rotation.y = -run.entity.rot;
   root.userData.updateAuthoredMotion(run.entity, run.state.simTime, a11y, run.state);
   root.updateMatrixWorld(true);
@@ -526,7 +529,7 @@ async function lodChecks() {
 
 async function checks() {
   setLighting();
-  const run = seek(makeRun(), { beatId: 'siphon_jet', phase: 'recovery', progress: 0.4 });
+  const run = seek(makeRun(), { beatId: 'ink_ring', phase: 'recovery', progress: 0.4 });
   const root = mount(run);
   // Resource identity is compared at one explicit close distance. The separate camera proof
   // above tests swaps; a colossus must not turn this ownership check into a mixed-detail census.
@@ -616,6 +619,7 @@ async function prepareMotion(spec = {}) {
     { beatId: 'arm_rake', phase: 'tell' }, { beatId: 'arm_rake', phase: 'active' },
     { beatId: 'siphon_jet', phase: 'tell' }, { beatId: 'siphon_jet', phase: 'active' },
     { beatId: 'siphon_jet', phase: 'recovery' }, { beatId: 'ink_ring', phase: 'active' },
+    { beatId: 'ink_ring', phase: 'recovery' },
   ];
   const box = new THREE.Box3();
   const fitPoints = [];
@@ -697,16 +701,190 @@ async function animate(seconds = 12, spec = {}) {
   return { seconds, ...warmup, ...motionFrame(0), timing: 'one fixed simulation tick per presented frame; playback speed depends on host' };
 }
 
+// Dynamic encounter diagnostic. Spawn setup and the pilot's input packet are the only writes
+// outside canonical owners. It never integrates velocity, rotates a body, or applies damage.
+let encounter = null;
+
+function finishEncounter() {
+  if (!encounter) return;
+  for (const off of encounter.listeners) off?.();
+  for (const root of encounter.projectileViews.values()) release(root, encounter.run.state);
+  release(encounter.grid);
+  encounter.host.dispose();
+  encounter = null;
+}
+
+function pilotTape(time) {
+  // A deliberately imperfect pilot: counterfire during the first recovery, absorb the first
+  // locked jet, then strafe out and return. No target coordinates or hidden AI state are read.
+  const outward = time >= 9.1 && time < 10.3;
+  const inward = time >= 17.8 && time < 18.6;
+  return { moveX: outward ? .65 : inward ? -.65 : 0, moveZ: 0,
+    turnIntent: 0, brake: !outward && !inward, boost: false,
+    fire: (time >= 4.7 && time < 6.1) || (time >= 11.5 && time < 12.5) };
+}
+
+async function prepareEncounter(spec = {}) {
+  finishMotion(); finishEncounter();
+  const [{ bootRealPath, OPEN_SPACE_BOUNDS, writeRealPathInput }, { createProductionCapitalBossEncounters }, { loadModelTruthCensus }] = await Promise.all([
+    import('../../scripts/lib/bench/realPath.mjs'), import('../../src/systems/capitalBossRuntime.js'), import('../../src/data/modelTruth.js'),
+  ]);
+  await loadModelTruthCensus();
+  const p = IRON_KRAKEN_PROFILES[spec.variant || 'heavy'];
+  const fightId = 'inspect:kraken_native', room = 'kraken_native_diagnostic';
+  const host = await bootRealPath({ seed: 74231, bounds: OPEN_SPACE_BOUNDS,
+    // Combat initializes the damage helpers used by capital. The flight/AI force-owner order
+    // matches the production manifest; this focused harness settles combat before physics.
+    systems: [combat, createProductionCapitalBossEncounters(), 'tacticalAI', 'actions', 'flightV3', 'aiPorts', 'weapons'],
+    hulls: [{ hullId: hitch.id, isPlayer: true, pos: { x: 0, z: 0 }, rot: Math.PI, team: 0,
+      fittings: ['wpn_pulse_laser_s'] }],
+    prepareState({ state }) {
+      // Browser builds publish body telemetry only on demand. This observation flag lets
+      // the shared harness assert that both actors really own native bodies.
+      state.physicsRuntime ||= {};
+      state.physicsRuntime.publishSg02Telemetry = true;
+      state.world.currentSectorId = room;
+      state.missions.active.push({ id: fightId, status: 'active', destSectorId: room });
+    } });
+  const spawn = makeEnemySpawnSpec(p.enemyId, 1, { x: -230 * p.scale, z: 0 });
+  spawn.rot = .65;
+  Object.assign(spawn.data.ai, { forcePlayerTarget: true, huntPlayer: true, spawnContext: 'encounter', moraleImmune: true });
+  const entity = host.runtime.spawn(spawn), target = host.player;
+  host.bus.emit('capitalBoss:start', { fightId, encounterId: p.scoreId, bossId: entity.id, targetId: target.id });
+  host.step(1); host.assertBodies([entity, target], 'native Kraken encounter');
+  expect(host.proof().backend === 'rapier-dynamic', 'Dynamic capture requires the real Rapier backend');
+  host.state.render = { scene, camera, renderer, frameOrigin: { x: 0, z: 0 } };
+  const run = { p, entity, target, state: host.state, fight: host.state.capitalBossEncounters.fights[fightId],
+    score: requireCapitalBossEncounter(p.scoreId).score, tick: host.state.tick, warning: null, recovery: null };
+  const root = mount(run);
+  const grid = new THREE.GridHelper(900 * p.scale, 18, 0x344659, 0x1c2a3a);
+  grid.position.set(-80 * p.scale, -75 * p.scale, 0); scene.add(grid);
+  addScaleReference(run, new THREE.Box3(new THREE.Vector3(-1,-1,-1), new THREE.Vector3(1,1,1)));
+  referenceLabel.textContent = 'Hitch pilot · collision glyph';
+  setLighting(spec.lighting || 'production');
+  camera.fov = 46; camera.up.set(0,1,0);
+  const center = new THREE.Vector3(-65 * p.scale, -8 * p.scale, 0);
+  camera.position.copy(center).addScaledVector(new THREE.Vector3(0,.866,-.5), 590 * p.scale);
+  camera.lookAt(center); camera.updateProjectionMatrix(); camera.updateMatrixWorld(true);
+  const events = [], listeners = [], locked = new Map(), projectileViews = new Map();
+  const initial = { boss: { x: entity.pos.x, z: entity.pos.z, rot: entity.rot, hull: entity.hull },
+    player: { x: target.pos.x, z: target.pos.z, hull: target.hull, shield: target.shield } };
+  encounter = { host, run, root, grid, spec, writeInput: writeRealPathInput, events, listeners, locked, projectileViews,
+    initial, frames: 0, samples: 0, distance: 0, playerDistance: 0, maxSpeed: 0, lockedShapesStable: true,
+    minimumPlayerShield: target.shield, minimumPlayerHull: target.hull, minimumBossHull: entity.hull,
+    eventCounts: { telegraph: 0, attack: 0, recovery: 0, damage: 0, fire: 0 }, lastPhase: null,
+    systems: host.runtime.manifest.systemIds || host.runtime.manifest.authoritativeSystemIds || null };
+  const seenWarnings = new Set();
+  for (const name of ['telegraph', 'attack', 'telegraphEnd', 'recovery']) listeners.push(host.bus.on(`capitalBoss:${name}`, fact => {
+    if (fact.fightId !== fightId) return;
+    if (name === 'telegraph' || name === 'attack') run.warning = clone(fact);
+    if (name === 'telegraphEnd') run.warning = null;
+    if (name === 'recovery') run.recovery = { beatId: fact.beatId, start: run.fight.clock - 1, duration: fact.durationTicks };
+    const key = `${fact.castId || fact.beatId}:${!!fact.locked}`;
+    if (name === 'telegraph' && seenWarnings.has(key)) return;
+    if (name === 'telegraph') seenWarnings.add(key);
+    if (name in encounter.eventCounts) encounter.eventCounts[name]++;
+    events.push({ kind: name, tick: host.state.tick, beatId: fact.beatId || null,
+      castId: fact.castId || null, locked: !!fact.locked });
+  }));
+  listeners.push(host.bus.on('capitalBoss:damage', fact => {
+    if (fact.fightId !== fightId) return;
+    encounter.eventCounts.damage++;
+    events.push({ kind: 'score-damage', tick: host.state.tick, targetId: fact.targetId,
+      packet: fact.packet ? clone(fact.packet) : null, origin: fact.origin ? clone(fact.origin) : null });
+  }));
+  listeners.push(host.bus.on('combat:fire', fact => {
+    encounter.eventCounts.fire++;
+    if (encounter.eventCounts.fire <= 20) events.push({ kind: 'weapon-fire', tick: host.state.tick,
+      entityId: fact.entityId ?? fact.shooterId ?? fact.ownerId, weaponId: fact.weaponId });
+  }));
+  listeners.push(host.bus.on('combat:damage', fact => {
+    events.push({ kind: 'combat-damage', tick: host.state.tick, targetId: fact.targetId ?? fact.id,
+      hull: target.hull, shield: target.shield, bossHull: entity.hull });
+  }));
+  title.textContent = 'Iron Kraken · canonical moving encounter';
+  footer.textContent = 'Real tactical AI / Flight V3 / Rapier / combat · scripted pilot input · collision glyph for Hitch · focused diagnostic, not full Swarm route';
+  update(run, root); syncEncounterViews();
+  await renderer.compileAsync(scene,camera); draw(run,{warnings:true}); await painted();
+  return { kind: 'canonical-focused-encounter', acceptance: 'not-a-public-route-playtest', seed:74231,
+    backend:host.proof(), pilot:'fixed input tape; no direct position, velocity, heading or health writes',
+    playerVisual:'labelled collision glyph, not authored Hitch model', initial,
+    updateOrder: ['combat', 'capitalBossEncounters', 'tacticalAI', 'actions', 'flightV3', 'aiPorts', 'weapons', 'physics'],
+    camera:{fov:camera.fov,position:camera.position.toArray(),up:camera.up.toArray()},
+    scope:'Production authoritative runtime with explicit focused systems; no Swarm progression, production renderer/post route or target-hardware FPS claim.' };
+}
+
+function syncEncounterViews() {
+  if (!encounter) return;
+  const {run,projectileViews}=encounter;
+  if (proxy) { proxy.position.set(run.target.pos.x,0,run.target.pos.z); proxy.rotation.y=-run.target.rot; }
+  for (const entity of run.state.entityList) {
+    if(entity.type!=='projectile'||entity.alive===false)continue;
+    let root=projectileViews.get(entity.id);
+    if(!root){root=factory.build(entity);if(!root)continue;projectileViews.set(entity.id,root);scene.add(root);}
+    root.position.set(entity.pos.x,0,entity.pos.z);root.rotation.y=-(entity.rot||0);
+  }
+  for(const [id,root] of projectileViews){const entity=run.state.entities.get(id);
+    if(!entity||entity.alive===false){release(root,run.state);projectileViews.delete(id);}}
+}
+
+function encounterFrame(ticks=2, { render = true } = {}) {
+  expect(encounter&&live?.root===encounter.root,'Call prepareEncounter before requesting encounter frames');
+  expect(Number.isInteger(ticks)&&ticks>=0&&ticks<=60,'Encounter tick count must be a bounded integer');
+  const e=encounter,{host,run,root}=e;
+  for(let i=0;i<ticks;i++) {
+    const x=run.entity.pos.x,z=run.entity.pos.z,px=run.target.pos.x,pz=run.target.pos.z;
+    e.writeInput(run.state,pilotTape(run.state.simTime));
+    run.state.input.aimAngle=Math.PI; // the tape's fixed cursor bearing, not a hidden target read
+    host.step(1);run.tick=run.state.tick;
+    e.distance+=Math.hypot(run.entity.pos.x-x,run.entity.pos.z-z);
+    e.playerDistance+=Math.hypot(run.target.pos.x-px,run.target.pos.z-pz);
+    e.maxSpeed=Math.max(e.maxSpeed,Math.hypot(run.entity.vel.x,run.entity.vel.z));
+    e.minimumPlayerShield=Math.min(e.minimumPlayerShield,run.target.shield);
+    e.minimumPlayerHull=Math.min(e.minimumPlayerHull,run.target.hull);
+    e.minimumBossHull=Math.min(e.minimumBossHull,run.entity.hull);
+    const cast=run.fight.cast;
+    if(cast?.locked){const shape=JSON.stringify(cast.shapes),previous=e.locked.get(cast.id);
+      if(previous!==undefined&&previous!==shape)e.lockedShapesStable=false;
+      else if(previous===undefined)e.locked.set(cast.id,shape);}
+    update(run,root);
+  }
+  syncEncounterViews();
+  const beat=run.fight.cast?.beatId||run.fight.recovery?.beatId||'approach';
+  caption.textContent=`${run.fight.phase} / ${beat} · ${Math.hypot(run.entity.vel.x,run.entity.vel.z).toFixed(1)} WU/s · `
+    +`Hitch hull ${Math.ceil(run.target.hull)} / shield ${Math.ceil(run.target.shield)} · Kraken ${Math.ceil(run.entity.hull)}`;
+  e.samples++;
+  if (render) { draw(run,{warnings:true}); e.frames++; }
+  return {frames:e.frames,samples:e.samples,tick:run.tick,simulationTime:run.state.simTime,phase:run.fight.phase,beatId:beat,
+    boss:{x:run.entity.pos.x,z:run.entity.pos.z,rot:run.entity.rot,hull:run.entity.hull,speed:Math.hypot(run.entity.vel.x,run.entity.vel.z)},
+    player:{x:run.target.pos.x,z:run.target.pos.z,hull:run.target.hull,shield:run.target.shield},
+    distance:e.distance,playerDistance:e.playerDistance,maxSpeed:e.maxSpeed,
+    minimumPlayerShield:e.minimumPlayerShield,minimumPlayerHull:e.minimumPlayerHull,minimumBossHull:e.minimumBossHull,
+    lockedShapesStable:e.lockedShapesStable,eventCounts:{...e.eventCounts},events:e.events.slice(),backend:host.proof()};
+}
+
+function encounterPixels(ticks=2){
+  const frame=encounterFrame(ticks);
+  movieCanvas ||= Object.assign(document.createElement('canvas'),{width,height});
+  const ctx=movieCanvas.getContext('2d');ctx.drawImage(stage,0,0);
+  if(!warningCanvas.hidden)ctx.drawImage(warningCanvas,0,0);
+  ctx.fillStyle='#e5eaf2';ctx.font='600 22px system-ui';ctx.fillText('Iron Kraken · canonical moving encounter',25,34);
+  ctx.font='14px system-ui';ctx.fillText(caption.textContent,25,60);
+  ctx.font='12px system-ui';ctx.fillText('AI + Flight V3 + Rapier + combat · scripted inputs · Hitch collision glyph · fixed ticks, not a hardware FPS result',25,height-20);
+  if(proxy){const p=project(proxy.position.x,proxy.position.z);ctx.fillStyle='#9ce3ee';ctx.fillText('Hitch pilot',p.x-25,p.y+28);}
+  return {frame,png:movieCanvas.toDataURL('image/png').split(',')[1]};
+}
+
 function runtime() {
   const gl = renderer.getContext();
   const debug = gl.getExtension('WEBGL_debug_renderer_info');
   return { webglVersion: gl.getParameter(gl.VERSION), vendor: debug ? gl.getParameter(debug.UNMASKED_VENDOR_WEBGL) : gl.getParameter(gl.VENDOR),
     renderer: debug ? gl.getParameter(debug.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER),
     threeRevision: THREE.REVISION, width, height, pixelRatio: renderer.getPixelRatio(),
-    scope: 'Isolated native character rig with production factory, materials, light profile and score clock. No full game route, physics or production post effects.',
+    scope: 'Reference mode: stationary production rig and score. Optional encounter mode: canonical focused AI/Flight V3/Rapier/combat with scripted input. Neither mode is full-route or production-post acceptance.',
     measurement: 'Renderer counters are workload diagnostics for this exact capture; no hardware FPS claim.' };
 }
 
-window.ironKrakenProbe = { capture, captureBreakup, captureWreck, lodChecks, checks, prepareMotion, finishMotion, motionFrame, motionPixels, animate, runtime,
-  dispose() { finishMotion(); if (live) release(live.root, live.run.state); removeProxy(); debris?.dispose(); renderer.dispose(); } };
+window.ironKrakenProbe = { capture, captureBreakup, captureWreck, lodChecks, checks, prepareMotion, finishMotion, motionFrame, motionPixels, animate, runtime, prepareEncounter, encounterFrame, encounterPixels, finishEncounter,
+  dispose() { finishMotion(); finishEncounter(); if (live) release(live.root, live.run.state); removeProxy(); debris?.dispose(); renderer.dispose(); } };
 window.ironKrakenReady = true;

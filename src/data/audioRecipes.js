@@ -21,8 +21,10 @@ import { BOLUS_AUDIO_RECIPES } from './bolusAudio.js';
 import { SECOND_RINSE_AUDIO_RECIPES } from './secondRinseAudio.js';
 import { DISCOVERY_AUDIO_RECIPES } from './discoveryAudio.js';
 import { STATION_LIFE_AUDIO_RECIPES } from './stationLifeAudio.js';
+import { IRON_KRAKEN_AUDIO_RECIPES } from './ironKrakenAudio.js';
 
 export const RECIPES = [
+  ...IRON_KRAKEN_AUDIO_RECIPES,
   ...STATION_LIFE_AUDIO_RECIPES,
   ...DISCOVERY_AUDIO_RECIPES,
   ...MORROW_AUDIO_RECIPES,

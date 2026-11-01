@@ -210,7 +210,16 @@ test('capital boss save round trip: act II fight, spent rock and a wing member s
   b.state.simTime = h.state.simTime;
   b.state.tick = h.state.tick;
   saveB._restoreMissions(JSON.parse(JSON.stringify(data.missions)));
-  saveB._spawnPersistentEntities(data.entities && data.entities.persistent, entityIdRemap);
+  // The native restore port is time-sliced even for this small roster. Drain its cursor
+  // exactly as the production restore driver does; a busy CI host may yield after one body.
+  const savedPersistent = data.entities && data.entities.persistent || [];
+  for (let cursor = 0; cursor < savedPersistent.length;) {
+    const next = saveB._spawnPersistentEntities(savedPersistent, entityIdRemap, {
+      startIndex: cursor, clearStale: cursor === 0,
+    });
+    assert.ok(next > cursor, 'persistent restore must make progress before resolving durable roles');
+    cursor = next;
+  }
   saveB._restoreCapitalBossFights(JSON.parse(JSON.stringify(data.capitalBoss)));
 
   const restored = fightRecord(b.state);

@@ -2,6 +2,7 @@
 
 import { requireCapitalBossEncounter } from '../data/encounters/capital-boss.js';
 import { resolveBossShapes, bodyIntersectsBossShapes } from './capitalBossGeometry.js';
+import { ironKrakenTransitMotion } from './ironKraken.js';
 
 const copy = value => JSON.parse(JSON.stringify(value));
 const key = id => `${typeof id}:${String(id)}`;
@@ -22,7 +23,7 @@ export function createCapitalBossFight({ encounterId, fightId, bossId, targetId,
   if(!validFightId(fightId) || bossId==null || targetId==null || bossId===targetId) throw new TypeError('Distinct boss/target and a fight id are required');
   return { version:2,encounterId,fightId:String(fightId),bossId,targetId,mirror:mirror<0?-1:1,
     lastTick:tick-1,clock:0,started:false,suspended:false,terminal:null,actIndex:-1,
-    phase:'intro',actStartedAt:0,nextAt:0,sequence:0,castOrdinal:0,cast:null,
+    phase:'intro',actStartedAt:0,nextAt:0,sequence:0,castOrdinal:0,cast:null,recovery:null,
     disarmedSpoken:false,
     // GOLD-COLOSSI: the plates are fight data until they tear — never per-tick pose state.
     // A saved record keeps each plate's attached flag; a plate that tore stays torn.
@@ -43,6 +44,14 @@ export function restoreCapitalBossFight(saved) {
     (saved.cast && (!getBeat(requireCapitalBossEncounter(saved.encounterId).score,saved.cast.beatId)||
       !Array.isArray(saved.cast.hitKeys)||!Array.isArray(saved.cast.shapes)))) throw new TypeError('Malformed capital fight save');
   const restored = copy(saved);
+  if(restored.recovery!=null) {
+    const p=restored.recovery;
+    if(!getBeat(requireCapitalBossEncounter(saved.encounterId).score,p.beatId)
+      || !Number.isSafeInteger(p.startedAt)||p.startedAt<0||p.startedAt>saved.clock
+      || !Number.isSafeInteger(p.durationTicks)||p.durationTicks<1
+      || !Number.isFinite(p.heading)||typeof p.cancelled!=='boolean')
+      throw new TypeError('Invalid capital recovery record');
+  } else restored.recovery=null;
   if(!Array.isArray(restored.plates)) {
     restored.plates = (requireCapitalBossEncounter(saved.encounterId).plates||[])
       .map(p=>({id:p.id,attached:true,strainTicks:0}));
@@ -89,13 +98,16 @@ export function stepCapitalBossFight(r,o) {
   };
   const cancel=reason=>{
     if(r.cast) {emit('telegraphEnd',{castId:r.cast.id,reason});r.telemetry.cancelled++;r.cast=null;}
+    r.recovery=null;
   };
   const order=(phase,beat=null,heading=null)=>{
-    const motion=phase==='active'&&beat ? beat.motion
+    let motion=phase==='active'&&beat ? beat.motion
       : s.transitMotion && ['intro','transition','recovery'].includes(phase)
         ? s.transitMotion : {forward:0,brake:true};
+    if(motion.kind==='kraken_reposition') motion=ironKrakenTransitMotion(r,o,motion);
     const value={entityId:r.bossId,phase,suppressStockFire:true,forward:motion.forward,
-      brake:motion.brake,heading:heading??null};
+      brake:motion.brake,heading:heading??motion.heading??null,
+      ...(motion.velocity?{velocity:motion.velocity}:{})};
     const signature=JSON.stringify(value);
     if(signature!==r.lastOrderSignature) {r.lastOrderSignature=signature;emit('order',value);}
   };
@@ -168,9 +180,10 @@ export function stepCapitalBossFight(r,o) {
     if(next!==r.actIndex) enterAct(next);
   }
   if(r.cast && !usable(getBeat(s,r.cast.beatId))) {
-    const beat=getBeat(s,r.cast.beatId);
+    const priorCast=r.cast,beat=getBeat(s,priorCast.beatId);
     const reason=blockReason(beat);
     cancel(reason);r.phase='recovery';r.nextAt=r.clock+150;
+    r.recovery={beatId:beat.id,startedAt:r.clock,durationTicks:150,heading:priorCast.heading,cancelled:true};
     emit('countered',{reason,beatId:beat.id,title:beat.title,counter:beat.counter});order('recovery');
   }
   if(r.cast) {
@@ -200,6 +213,7 @@ export function stepCapitalBossFight(r,o) {
       }
     } else {
       emit('telegraphEnd',{castId:c.id,reason:'spent'});r.cast=null;r.phase='recovery';r.nextAt=r.clock+b.recoverTicks;
+      r.recovery={beatId:b.id,startedAt:r.clock,durationTicks:b.recoverTicks,heading:c.heading,cancelled:false};
       if(b.expose) emit('damage',{attackerId:boss.id,targetId:boss.id,
         packet:{channels:{},statuses:[{id:b.expose.status,stacks:1,durationTicks:b.expose.durationTicks}],flags:{}},
         origin:{kind:'capital_exposure',id:c.id}});
@@ -220,7 +234,7 @@ export function stepCapitalBossFight(r,o) {
       const b=getBeat(s,id);if(usable(b)) {selected=b;break;}
     }
     if(selected) {
-      const b=selected;r.castOrdinal++;r.telemetry.casts++;r.phase='tell';
+      const b=selected;r.castOrdinal++;r.telemetry.casts++;r.phase='tell';r.recovery=null;
       r.cast={id:`${r.fightId}:${r.castOrdinal}`,beatId:b.id,startedAt:r.clock,locked:b.trackTicks===0,
         fired:false,hitKeys:[],heading:lockedHeading(boss,target,b,disabled,r.mirror),shapes:resolveBossShapes(b,boss,target,r.mirror)};
       emit('telegraph',telegraph(r,r.cast,b));order('tell',null,r.cast.heading);wingGate(false);

@@ -8,8 +8,14 @@ on:
       - 'src/data/encounters/capital-boss*'
       - 'src/data/encounters/capital-boss/**'
       - 'src/combat/capitalBoss*'
+      - 'src/ai/capitalBossOrders.js'
+      - 'scripts/lib/simReadModel.mjs'
       - 'src/combat/ironKraken.js'
       - 'src/combat/damage.js'
+      - 'src/audio/audioSystem.js'
+      - 'src/audio/ironKrakenAudio.js'
+      - 'src/data/ironKrakenAudio.js'
+      - 'src/data/audioRecipes.js'
       - 'src/render/ironKraken*'
       - 'src/render/visualFactory.js'
       - 'src/render/visualOverrides.js'
@@ -24,6 +30,7 @@ on:
       - 'src/render/vfx.js'
       - 'src/missions/capitalBossSpawn.js'
       - 'test/iron-kraken*'
+      - 'test/capital-boss*.test.mjs'
       - 'test/fixtures/iron-kraken*'
       - 'scripts/inspect-iron-kraken.mjs'
       - 'scripts/lib/gameServer.cjs'
@@ -40,7 +47,7 @@ concurrency:
 jobs:
   native-character:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
         with:
@@ -69,13 +76,14 @@ jobs:
           ln -s ../../../vendor/rapier3d-compat/rapier.mjs node_modules/@dimforge/rapier3d-compat/rapier.mjs
       - name: Install focused runtime dependencies
         run: |
-          npm install --prefix "$RUNNER_TEMP/iron-kraken-runtime" --ignore-scripts --legacy-peer-deps --no-audit --no-fund three.quarks@0.17.1 quarks.core@0.17.1 three-mesh-bvh@0.9.15
+          npm install --prefix "$RUNNER_TEMP/iron-kraken-runtime" --ignore-scripts --legacy-peer-deps --no-audit --no-fund three.quarks@0.17.1 quarks.core@0.17.1 three-mesh-bvh@0.9.15 @elemaudio/core@4.0.1 @elemaudio/web-renderer@4.0.3
           ln -s "$GITHUB_WORKSPACE/node_modules/three" "$RUNNER_TEMP/iron-kraken-runtime/node_modules/three"
           for dependency in three.quarks quarks.core three-mesh-bvh; do
             ln -s "$RUNNER_TEMP/iron-kraken-runtime/node_modules/$dependency" "node_modules/$dependency"
           done
+          ln -s "$RUNNER_TEMP/iron-kraken-runtime/node_modules/@elemaudio" node_modules/@elemaudio
       - name: Focused behavior and resource tests
-        run: node --test test/iron-kraken*.test.mjs test/fb-024-swarm-capital-champions.test.mjs test/capital-boss-score-contract.test.mjs test/capital-boss-save-roundtrip.test.mjs
+        run: node --test test/iron-kraken*.test.mjs test/fb-024-swarm-capital-champions.test.mjs test/capital-boss-score-contract.test.mjs test/capital-boss-save-roundtrip.test.mjs test/audio-recipe-integrity.test.mjs test/audio-lifecycle.test.mjs
       - name: Install the isolated browser
         run: |
           npm install --prefix "$RUNNER_TEMP/iron-kraken-browser" --ignore-scripts --no-audit --no-fund playwright@1.61.1
@@ -89,8 +97,8 @@ jobs:
           fi
           ffmpeg -version
           ffmpeg -hide_banner -loglevel error -f lavfi -i color=size=16x16:rate=1 -frames:v 1 -c:v libvpx-vp9 -f null -
-      - name: Render real character poses and score motion
-        run: node scripts/inspect-iron-kraken.mjs --motion-seconds=24
+      - name: Render reference motion and canonical moving encounter
+        run: node scripts/inspect-iron-kraken.mjs --motion-seconds=24 --motion-lighting=studio --motion-view=reference --encounter --encounter-seconds=24
       - name: Publish native screenshots and counters
         if: always()
         uses: actions/upload-artifact@v4

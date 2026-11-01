@@ -117,7 +117,8 @@ test('the paired suction cups face away from the barrel and dead proximal links 
   try {
     const armor=root.getObjectByName('broken_arm_armor'),cups=root.getObjectByName('dead_suction_cups');
     const joints=root.getObjectByName('broken_arm_joints');
-    const a=new THREE.Matrix4(),b=new THREE.Matrix4();
+    const a=new THREE.Matrix4(),b=new THREE.Matrix4(),previous=new THREE.Matrix4();
+    const bridgeEnd=new THREE.Vector3(),sleeveEnd=new THREE.Vector3();
     const dorsal=new THREE.Vector3(),outward=new THREE.Vector3(),offset=new THREE.Vector3();
     for(let i=0;i<armor.count;i++){
       armor.getMatrixAt(i,a);cups.getMatrixAt(i,b);
@@ -136,11 +137,16 @@ test('the paired suction cups face away from the barrel and dead proximal links 
         const point=link*3,next=point+3;
         const livePitch=Math.hypot(points[next]-points[point],points[next+1]-points[point+1],points[next+2]-points[point+2]);
         assert.ok(Math.abs(radius-ironKrakenArmRadius(link))<1e-6,'dead shoulder diameters retain the shared macro anatomy');
-        assert.ok(Math.abs(length-livePitch*.64)<1e-6,'shortening the fine tail never shrinks the four large shoulder barrels');
+        assert.ok(Math.abs(length-livePitch*.72)<1e-6,'shortening the fine tail never shrinks the four large shoulder barrels');
         assert.ok(length/(radius*2)>.75&&length/(radius*2)<1.3,'the shoulder remains a broad barrel rather than a pancake ring');
         joints.getMatrixAt(firstLink+link,b);
-        const jointLength=new THREE.Vector3().setFromMatrixColumn(b,1).length();
-        assert.ok(Math.abs(jointLength-livePitch*.4)<1e-6,'exposed hydraulic bays keep the same large shoulder pitch');
+        bridgeEnd.set(0,.5,0).applyMatrix4(b);sleeveEnd.set(0,-.5,0).applyMatrix4(a);
+        assert.ok(bridgeEnd.distanceTo(sleeveEnd)<.016,'the outgoing hydraulic rod remains seated in the actual barrel');
+        if(link>0) {
+          armor.getMatrixAt(firstLink+link-1,previous);
+          bridgeEnd.set(0,-.5,0).applyMatrix4(b);sleeveEnd.set(0,.5,0).applyMatrix4(previous);
+          assert.ok(bridgeEnd.distanceTo(sleeveEnd)<.016,'the bent hydraulic bay remains attached to its preceding sleeve');
+        }
       }
     }
   } finally { root.userData.disposeIronKrakenWreck(); }

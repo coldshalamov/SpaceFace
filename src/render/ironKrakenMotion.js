@@ -1,9 +1,6 @@
-// Presentation-only choreography for the eight-arm salvage machine. Coordinates are in mantle
-// radii: +Y runs up the mantle, +X is forward after the body pitches head-first. Caller-owned
-// typed arrays receive every pose; there is no clock, simulation mutation or per-call allocation.
-// The reference's long proximal barrels flow into a hanging middle and a near-complete terminal
-// spiral. The chain is deliberately much longer than its curled radial footprint.
-
+// Presentation-only articulation. Every arm is a fixed-length manufactured chain seated in its
+// hull socket; poses are sampled from simulation time into caller-owned buffers. +Y is mantle
+// up, +X is the optical/prow direction. No Three.js, ambient clock, RNG, or per-frame allocation.
 const TAU = Math.PI * 2;
 const EMPTY_POSE = Object.freeze({});
 const clamp01 = value => Math.max(0, Math.min(1, Number.isFinite(value) ? value : 0));
@@ -17,8 +14,7 @@ export const IRON_KRAKEN_ARM_MOTION = Object.freeze({
   links: 22,
   proximalLinks: 4,
 });
-
-const PROXIMAL_LENGTHS = new Float64Array([0.55, 0.53, 0.47, 0.41]);
+const PROXIMAL_LENGTHS = new Float64Array([.64, .61, .55, .49]);
 const PROXIMAL_RADII = new Float64Array([0.20, 0.19, 0.18, 0.16]);
 
 /** Shared manufactured sleeve radius for live and static-wreck articulation. */
@@ -32,42 +28,34 @@ export function ironKrakenArmRadius(link, links = IRON_KRAKEN_ARM_MOTION.links) 
   return 0.15 + (0.018 - 0.15) * (link - PROXIMAL_RADII.length) / (links - PROXIMAL_RADII.length - 1);
 }
 
-// Anatomical differences stay with each arm rather than rotating a common shape around a wheel.
-const CURL = new Float64Array([6.82, 7.36, 6.16, 7.62, 6.55, 7.12, 6.38, 7.48]);
-const PLANE = new Float64Array([0.34, -0.24, 0.58, -0.42, 0.18, -0.53, 0.43, -0.12]);
-const SHOULDER = new Float64Array([0.50, 0.40, 0.68, 0.48, 0.60, 0.72, 0.42, 0.58]);
-const DROOP = new Float64Array([0.58, 0.43, 0.66, 0.51, 0.71, 0.49, 0.62, 0.46]);
-const LENGTH = new Float64Array([1.015, 0.965, 1.025, 0.985, 1.01, 0.975, 1.02, 0.98]);
-const SWEEP = new Float64Array([-0.10, 0.07, -0.045, 0.12, -0.08, 0.035, 0.09, -0.065]);
-const PHASE = new Float64Array([0.13, 2.07, 4.82, 1.26, 5.51, 3.63, 0.94, 4.17]);
+// Four different anatomical duties, rather than eight copies of one hanging ring. The paired
+// forearms descend; lateral arms reach; dorsal arms arch above the mantle. Shoulder angles are
+// measured against each socket's radial axis. The unequal pair values preserve handedness.
+const SHOULDER_PITCH = new Float64Array([
+  .10, .05, -.45, -1.00,
+  .70, .70, .20, -.40,
+  .75, 1.12, 1.00, .80,
+  .90, 1.20, 1.35, .90,
+  .82, 1.18, 1.20, .72,
+  .75, 1.00, .85, .55,
+  .60, .60, .25, -.50,
+  .14, .00, -.45, -.95,
+]);
+const SHOULDER_SWING = new Float64Array([.08, .14, .20, .20]);
+const RAKE_PITCH = new Float64Array([.32, .64, .30, -.62]);
+const PLANE = new Float64Array([.09, -.11, .10, -.08, .11, -.08, .10, -.09]);
+const LENGTH = new Float64Array([1.015, .965, 1.025, .985, 1.01, .975, 1.02, .98]);
+const PHASE = new Float64Array([.13, 2.07, 4.82, 1.26, 5.51, 3.63, .94, 4.17]);
 const JET_CURL = new Float64Array([1.32, 1.78, 1.45, 1.64, 1.22, 1.56, 1.70, 1.37]);
-const JET_ROLL = new Float64Array([0.23, -0.34, 0.43, -0.17, 0.31, -0.41, 0.14, -0.27]);
-const JET_BOW = new Float64Array([0.06, 0.13, 0.10, 0.16, 0.08, 0.12, 0.18, 0.09]);
-
-function knot(index, seed) {
-  let value = Math.imul((index | 0) ^ seed, 0x45d9f3b);
-  value = Math.imul(value ^ (value >>> 16), 0x45d9f3b);
-  return ((value ^ (value >>> 16)) >>> 0) / 2147483647.5 - 1;
-}
-
-// Slow, eased posture changes have settled tangents at their endpoints. Independent channels
-// give each arm a different reach/coil/roll conversation without an ambient RNG or a pinwheel.
-function drift(time, seed) {
-  const index = Math.floor(time), fraction = time - index;
-  const eased = fraction * fraction * fraction * (fraction * (fraction * 6 - 15) + 10);
-  const a = knot(index, seed), b = knot(index + 1, seed);
-  return a + (b - a) * eased;
-}
+const JET_BOW = new Float64Array([.06, .13, .10, .16, .08, .12, .18, .09]);
 
 /**
- * Fill one articulated chain in mantle-local coordinates.
+ * Fill one chain. Optional normalized channels: jet, rake, rakeProgress, locomotion, mantle,
+ * inkCurl/inkLift; turn is signed normalized yaw velocity. Gameplay meaning remains with the
+ * score and physics owners. The renderer may ease these inputs but must not move the sockets.
  *
- * pose: {time, jet, rake, ink, inkActive, inkCurl, inkLift, mantle, reducedMotion}.
- * `jet`, `rake`, `inkCurl`, `inkLift` and `mantle` may be the render owner's eased values.
- * When inkCurl/inkLift are absent, the same values are derived from ink + inkActive.
- * points contains (links + 1) XYZ triples from pointOffset. Optional frames contains `links`
- * 3x3 column-major bases from frameOffset: X lateral, Y along the link, Z dorsal. Put suction
- * cups on -Z. The return value is the original points buffer.
+ * points: (links + 1) XYZ triples. frames: links column-major 3x3 bases (lateral, axial, dorsal).
+ * Suction cups lie on -dorsal. Every frame follows the actual segment, including partial folds.
  */
 export function sampleIronKrakenArm(arm, pose = EMPTY_POSE, points, pointOffset = 0,
   frames = null, frameOffset = 0, links = IRON_KRAKEN_ARM_MOTION.links) {
@@ -80,28 +68,26 @@ export function sampleIronKrakenArm(arm, pose = EMPTY_POSE, points, pointOffset 
   const angle = index * TAU / 8 + Math.PI / 8;
   const rootCos = Math.cos(angle), rootSin = Math.sin(angle);
   const time = finite(pose.time), quiet = pose.reducedMotion ? 0 : 1;
-  const jet = clamp01(pose.jet), rake = clamp01(pose.rake), mantle = clamp01(pose.mantle);
+  const travel = clamp01(pose.locomotion);
+  const jet = 1 - (1 - clamp01(pose.jet)) * (1 - travel * .30);
+  const rake = clamp01(pose.rake), mantle = clamp01(pose.mantle);
   const ink = clamp01(pose.ink);
-  const inkCurl = finite(pose.inkCurl, (pose.inkActive ? -0.64 : 0.36) * ink);
-  const inkLift = finite(pose.inkLift, (pose.inkActive ? -0.28 : 0.65) * ink);
-  const reachDrift = quiet ? drift(time * 0.13 + PHASE[index], 149 + index * 31) : 0;
-  const curlDrift = quiet ? drift(time * 0.18 + PHASE[index] * 0.71, 769 + index * 43) : 0;
-  const rollDrift = quiet ? drift(time * 0.11 + PHASE[index] * 1.31, 1543 + index * 61) : 0;
-  const flank = Math.abs(rootSin) > 0.45 ? 1 : 0.24;
+  const inkCurl = finite(pose.inkCurl, (pose.inkActive ? -.64 : .36) * ink);
+  const inkLift = finite(pose.inkLift, (pose.inkActive ? -.28 : .65) * ink);
+  const phase = PHASE[index];
+  // Independent slow recruitment, followed by a faster wave along the fine chain. The root
+  // moves least, the forearm leads, and the terminal curl follows: no synchronized pinwheel.
+  const reach = quiet ? Math.sin(time * 1.17 + phase) : 0;
+  const curl = quiet ? Math.sin(time * 1.53 + phase + .7) : 0;
+  const roll = quiet ? Math.sin(time * .71 + phase) : 0;
+  const flank = Math.abs(rootSin) > .45 ? 1 : .20;
   const rakeWeight = rake * flank;
-  // One near forearm folds back beside the collar instead of matching the seven broad reaches.
-  // Its slow, independent roll presents the cup rows side-on. Rake commitment removes the tuck;
-  // the normal jet fold below still carries every arm into the same trailing stream posture.
-  const forearmTuck = index === 1 ? 1 - rakeWeight : 0;
-  const tuckDrift = forearmTuck && quiet ? drift(time * 0.07 + 0.41, 2833) : 0;
-  const coilStart = 0.29 + (0.225 + tuckDrift * 0.025 - 0.29) * forearmTuck;
-  // Adjacent foreground chains pass at different depths during the rake. A small committed
-  // yaw separates their sleeve lips; an early roll clears the tiny tip during coil release.
-  // Both vanish in holding, and the jet's target pose removes them completely.
-  const rakeYawClearance = index === 2 ? rake * 0.05 : 0;
-  const rakeRollClearance = index === 1 ? 0.06 * smooth(rake / 0.12)
-    * (1 - smooth((rake - 0.40) / 0.30)) : 0;
-  const yaw = angle + (SWEEP[index] + reachDrift * 0.065 + rakeYawClearance) * (1 - jet);
+  const activeSweep = Number.isFinite(pose.rakeProgress) ? 2 * smooth(pose.rakeProgress) - 1 : -.5;
+  const yaw = angle + (quiet * .025 * Math.sin(time * .83 + phase)
+    + .20 * rake * activeSweep) * (1 - jet);
+  const coilTurns = 6.22 + .20 * Math.sin(index) + curl * .32 + inkCurl * .36;
+  const ventRelax = 1 - mantle * .72;
+  const forearmPitch = SHOULDER_PITCH[index * 4 + 3] * ventRelax - mantle * .08;
   const totalLength = IRON_KRAKEN_ARM_MOTION.chainLength * LENGTH[index];
   const proximalCount = Math.min(PROXIMAL_LENGTHS.length, links);
   let proximalLength = 0;
@@ -109,12 +95,7 @@ export function sampleIronKrakenArm(arm, pose = EMPTY_POSE, points, pointOffset 
   const fineCount = links - proximalCount;
   const proximalScale = fineCount ? 1 : IRON_KRAKEN_ARM_MOTION.chainLength / proximalLength;
   const fineScale = fineCount ? (IRON_KRAKEN_ARM_MOTION.chainLength - proximalLength)
-    / (fineCount * (0.245 + 0.060) * 0.5) : 0;
-  const coilTurns = (CURL[index] + curlDrift * 0.48) * (1 + inkCurl * 0.30);
-  const shoulder = SHOULDER[index] + reachDrift * 0.07 + forearmTuck * 0.12;
-  const droop = DROOP[index] + reachDrift * 0.10 + mantle * 0.04;
-  const planeBase = PLANE[index] + rollDrift * 0.18 - forearmTuck * (0.65 + tuckDrift * 0.08)
-    - rakeRollClearance;
+    / (fineCount * (.245 + .060) * .5) : 0;
   let x = rootCos * IRON_KRAKEN_ARM_MOTION.rootRadius;
   let y = IRON_KRAKEN_ARM_MOTION.rootHeight;
   let z = rootSin * IRON_KRAKEN_ARM_MOTION.rootRadius;
@@ -122,66 +103,51 @@ export function sampleIronKrakenArm(arm, pose = EMPTY_POSE, points, pointOffset 
   points[pointOffset] = x; points[pointOffset + 1] = y; points[pointOffset + 2] = z;
 
   for (let link = 0; link < links; link++) {
-    // Four broad proximal barrels carry 1.96 radii, followed by eighteen finer mechanisms.
-    // The fine chain is normalized independently so manufacturing the broad links never
-    // changes total reach. Alternate sampling counts retain the same normalized curve.
-    const fineFraction = fineCount > 1 ? (link - proximalCount) / (fineCount - 1) : 0.5;
+    const fineFraction = fineCount > 1 ? (link - proximalCount) / (fineCount - 1) : .5;
     const nominalLength = link < proximalCount ? PROXIMAL_LENGTHS[link] * proximalScale
-      : (0.245 + (0.060 - 0.245) * fineFraction) * fineScale;
+      : (.245 + (.060 - .245) * fineFraction) * fineScale;
     const length = nominalLength * LENGTH[index];
-    const arc = (traversed + length * 0.5) / totalLength;
+    const arc = (traversed + length * .5) / totalLength;
     traversed += length;
-    // Reparameterize the authored bend by distance, so changing the coarse/fine segment
-    // rhythm preserves the raised elbow and hanging loop. The inverse of the former smooth
-    // taper puts the coil onset just after coarse link four, with fine cells completing it.
-    const s = (1.75 - Math.sqrt(Math.max(0, 3.0625 - 3 * arc))) / 1.5;
-    const coil = clamp01((s - coilStart) / (1 - coilStart));
-    // The broad proximal barrels first rise into an elbow. Their different shoulder pitches
-    // expose underside hardware from the front and let high rear arms clear the lower collar.
-    // Only then does the hanging middle turn down into its tightly wound terminal loop.
-    const broad = shoulder * (1 - smooth(s / 0.30))
-      - droop * Math.sin(Math.PI * clamp01((s - 0.08) / 0.64));
-    const idleBend = broad - coilTurns * Math.pow(coil, 1.32) + inkLift * 0.32;
-    // A rake opens a broad arc within the authored reach rather than extending the whole
-    // 4.7-radius chain into a rigid spear. The flank curl plane turns toward the sweep plane.
-    const rakeBend = 0.20 - 2.90 * arc;
+    const tailWave = quiet ? .085 * Math.sin(time * 1.91 - arc * 3.8 + phase) : 0;
+    const idleBendRaw = link < proximalCount
+      ? SHOULDER_PITCH[index * 4 + link] * ventRelax - mantle * .08
+        + reach * SHOULDER_SWING[link] * (1 - mantle * .45) + inkLift * .19
+      : forearmPitch - .22 + reach * .16 - coilTurns * fineFraction + tailWave + inkLift * .19;
+    // The first barrel has a real shoulder stop: an over-raised root would bury its rear lip
+    // in the pressure housing. Later joints retain the tall dorsal arch.
+    const idleBend = link === 0 ? Math.min(.95, idleBendRaw) : idleBendRaw;
+    const rakeBend = link < proximalCount ? RAKE_PITCH[link] : -.84 - 6.15 * fineFraction;
     const bend = idleBend + (rakeBend - idleBend) * rakeWeight;
-    const twist = (0.26 + 0.14 * rollDrift) * smooth(coil) * Math.sin(coil * Math.PI + PHASE[index]);
-    const plane = Math.max(-1.05, Math.min(1.05,
-      planeBase + twist + Math.sign(planeBase || 1) * rakeWeight * 0.70));
-    // The root commits first; the finer chain trails as it uncoils. On braking, tips recover
-    // their curl before the whole arm regains its broad hanging posture. Both directions use
-    // the same eased, deterministic score input; no frame-rate-dependent state is hidden here.
-    const fold = smooth((jet - 0.12 * s) / (0.88 - 0.12 * s));
-    const streamSpread = 0.10 + 0.30 * Math.exp(-s * 5);
-    const tail = quiet ? Math.sin(time * 1.35 - s * 4.8 + PHASE[index]) * s * s * 0.035 : 0;
-    // Interpolate the unwrapped curl angle, not opposite unit vectors: a nearly closed tip
-    // must visibly unwind, and a half-fold must never collapse a tangent through zero.
-    // Streaming retains the reference's partially curled fine chain: the large mechanisms
-    // follow the head while each distal tip keeps its own hook and roll. This is a residual
-    // articulated pose, not a second travelling wave or a force applied to simulation.
-    const trailingCurl = smooth((arc - 0.70) / 0.30);
-    const middleBow = JET_BOW[index] * 4 * arc * (1 - arc);
-    const streamBend = Math.atan2(-1, Math.hypot(streamSpread, tail))
-      + middleBow - JET_CURL[index] * trailingCurl;
-    const streamPlane = JET_ROLL[index] * smooth((arc - 0.35) / 0.65);
+    // Narrow, distinct curl planes keep real sleeve/cup envelopes apart at all eight sockets.
+    // Avoiding intersections is an anatomical choice here, not an after-the-fact teleport.
+    const plane = PLANE[index] + roll * .045
+      + quiet * .012 * Math.sin(time * .91 - arc * 1.4 + phase);
+    // Unwrap angles during the fold. Interpolating opposed direction vectors collapses or
+    // flips a nearly closed terminal curl. The root commits before the finer hardware follows.
+    const fold = smooth((jet - .12 * arc) / (.88 - .12 * arc));
+    const trailingCurl = smooth((arc - .70) / .30);
+    const streamSpread = .10 + .30 * Math.exp(-arc * 5);
+    const streamBend = Math.atan2(-1, streamSpread)
+      + JET_BOW[index] * 4 * arc * (1 - arc) - JET_CURL[index] * trailingCurl;
+    const streamWave = quiet ? .022 * Math.sin(time * 1.8 - arc * 5 + phase) * arc * arc : 0;
     const linkBend = bend + (streamBend - bend) * fold;
-    const linkYaw = yaw + (angle + Math.atan2(tail, streamSpread) - yaw) * fold;
-    const linkPlane = plane + (streamPlane - plane) * fold;
+    const linkYaw = yaw + (angle + streamWave - yaw) * fold;
+    const linkPlane = plane * (1 - fold);
     const ca = Math.cos(linkYaw), sa = Math.sin(linkYaw);
-    const planeSin = Math.sin(linkPlane), planeCos = Math.cos(linkPlane);
-    const bendCos = Math.cos(linkBend), bendSin = Math.sin(linkBend);
-    const tx = ca * bendCos - sa * planeSin * bendSin;
-    const ty = planeCos * bendSin;
-    const tz = sa * bendCos + ca * planeSin * bendSin;
+    const ps = Math.sin(linkPlane), pc = Math.cos(linkPlane);
+    const cb = Math.cos(linkBend), sb = Math.sin(linkBend);
+    const tx = ca * cb - sa * ps * sb;
+    const ty = pc * sb;
+    const tz = sa * cb + ca * ps * sb;
     x += tx * length; y += ty * length; z += tz * length;
     const pointIndex = pointOffset + (link + 1) * 3;
     points[pointIndex] = x; points[pointIndex + 1] = y; points[pointIndex + 2] = z;
 
     if (frames) {
-      // The curl plane supplies a stable lateral direction even at a vertical root or tip.
-      // Orthogonalizing after the stream blend preserves circular hardware and avoids flips.
-      let bx = -sa * planeCos, by = -planeSin, bz = ca * planeCos;
+      // Analytic curl-plane frame remains stable at vertical shoulders and fully rolled tips.
+      // Orthogonalization absorbs floating-point roundoff; this is a right-handed rigid frame.
+      let bx = -sa * pc, by = -ps, bz = ca * pc;
       const projection = bx * tx + by * ty + bz * tz;
       bx -= tx * projection; by -= ty * projection; bz -= tz * projection;
       const inverseB = 1 / Math.hypot(bx, by, bz);
@@ -197,15 +163,20 @@ export function sampleIronKrakenArm(arm, pose = EMPTY_POSE, points, pointOffset 
   return points;
 }
 
-/** Body offsets in mantle radii/radians. The renderer retains all world heading/position ownership. */
+/** Local offsets only. Physics and the render root remain the sole world-position/heading owners. */
 export function ironKrakenBodyPose(pose = EMPTY_POSE, out) {
   if (!out) throw new TypeError('Iron Kraken body pose requires caller-owned output');
   const time = finite(pose.time), quiet = pose.reducedMotion ? 0 : 1;
-  const jet = smooth((clamp01(pose.jet) - 0.03) / 0.87);
-  const sway = quiet ? drift(time * 0.14, 601) : 0;
-  const heave = quiet ? drift(time * 0.19 + 0.7, 947) : 0;
-  out.pitchZ = -1.30 * jet + sway * 0.045 * (1 - jet);
-  out.rollX = quiet ? drift(time * 0.12 + 1.3, 1223) * (0.040 + jet * 0.025) : 0;
-  out.liftY = heave * 0.028 * (1 - jet * 0.6);
+  const jet = smooth((clamp01(pose.jet) - .03) / .87);
+  const travel = clamp01(pose.locomotion);
+  const turn = Math.max(-1, Math.min(1, finite(pose.turn)));
+  const rake = clamp01(pose.rake), recoil = clamp01(pose.recoil), mantle = clamp01(pose.mantle);
+  const breath = quiet ? Math.sin(time * 1.17) : 0;
+  const rock = quiet ? Math.sin(time * .71 + .8) : 0;
+  out.pitchZ = -1.30 * jet + (1 - jet) * (-.44 * travel * travel
+    + breath * .065 + mantle * .06 - rake * .045 + recoil * .13);
+  out.rollX = -turn * (.10 + travel * .16) + (1 - jet * .65) * rock * .065;
+  out.liftY = (breath * .035 + quiet * Math.sin(time * .53 + 1.7) * .018)
+    * (1 - jet * .65) + mantle * .028;
   return out;
 }

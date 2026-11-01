@@ -1,5 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import * as THREE from 'three';
+import { MeshBVH } from 'three-mesh-bvh';
 import { sampleIronKrakenArm, ironKrakenBodyPose, ironKrakenArmRadius } from '../src/render/ironKrakenMotion.js';
 import { createIronKrakenVisual } from '../src/render/ironKrakenVisuals.js';
 import { IRON_KRAKEN_PROFILES } from '../src/data/ironKraken.js';
@@ -73,6 +75,60 @@ test('live and wreck sleeves share four large barrels followed by a steadily tap
   assert.throws(() => ironKrakenArmRadius(22), RangeError);
 });
 
+test('fine suction cups clear the neighboring manufactured sleeve through the tight lateral contraction', () => {
+  const p = IRON_KRAKEN_PROFILES.heavy;
+  const entity = { id: 'cup-clearance', type: 'ship', alive: true, rot: 0, pos: { x: 0, z: 0 },
+    vel: { x: 0, z: 0 }, hull: p.hull, hullMax: p.hull,
+    data: { enemyTypeId: p.enemyId, ironKraken: { variant: p.variant, scale: p.scale } } };
+  const root = createIronKrakenVisual(entity), rig = root.userData.ironKrakenRig;
+  // These are the actual production buffers and instance dimensions. A radius-only capsule
+  // misses cups; an unchamfered cylinder falsely rejects the manufactured end clearance.
+  const armor = rig.armor.geometry.clone();
+  const cups = root.getObjectByName('dark_suction_cups').geometry.clone();
+  const armorTree = new MeshBVH(armor, { indirect: true });
+  cups.boundsTree = new MeshBVH(cups, { indirect: true });
+  const aMatrix = new THREE.Matrix4(), cMatrix = new THREE.Matrix4();
+  const side = new THREE.Vector3(), axis = new THREE.Vector3(), normal = new THREE.Vector3();
+  const center = new THREE.Vector3(), restNormal = new THREE.Vector3(), offset = new THREE.Vector3();
+  const dimensions = [];
+  for (let link = 0; link < links; link++) {
+    const index = links + link, point = pointCount + link * 3;
+    rig.armor.getMatrixAt(index, aMatrix); rig.suckers.getMatrixAt(index, cMatrix);
+    restNormal.fromArray(rig.frames, frameCount + link * 9 + 6);
+    center.set((rig.points[point] + rig.points[point + 3]) / 2,
+      (rig.points[point + 1] + rig.points[point + 4]) / 2,
+      (rig.points[point + 2] + rig.points[point + 5]) / 2);
+    offset.setFromMatrixPosition(cMatrix).sub(center);
+    dimensions.push({ armor: new THREE.Vector3().setFromMatrixScale(aMatrix),
+      cup: new THREE.Vector3().setFromMatrixScale(cMatrix), offset: offset.dot(restNormal) });
+  }
+  const points = new Float64Array(pointCount), frames = new Float64Array(frameCount);
+  const armorPoses = Array.from({ length: links }, () => new THREE.Matrix4());
+  const cupPoses = Array.from({ length: links }, () => new THREE.Matrix4());
+  const relative = new THREE.Matrix4();
+  try {
+    for (const time of [0, 15.7, 44.1]) for (const ink of [.25, .5, .75, 1]) {
+      sampleIronKrakenArm(1, { time, ink, inkActive: ink > .5 }, points, 0, frames);
+      for (let link = 0; link < links; link++) {
+        const point = link * 3, frame = link * 9, size = dimensions[link];
+        side.fromArray(frames, frame); axis.fromArray(frames, frame + 3); normal.fromArray(frames, frame + 6);
+        center.set((points[point] + points[point + 3]) / 2,
+          (points[point + 1] + points[point + 4]) / 2, (points[point + 2] + points[point + 5]) / 2);
+        armorPoses[link].makeBasis(side, axis, normal).scale(size.armor).setPosition(center);
+        center.addScaledVector(normal, size.offset);
+        side.negate(); normal.negate();
+        cupPoses[link].makeBasis(side, axis, normal).scale(size.cup).setPosition(center);
+      }
+      for (let cup = 4; cup < 11; cup++) for (let neighbor = cup - 2; neighbor <= cup + 2; neighbor++) {
+        if (neighbor === cup) continue; // Cup backs are deliberately seated in their own barrel.
+        relative.copy(armorPoses[neighbor]).invert().multiply(cupPoses[cup]);
+        assert.equal(armorTree.intersectsGeometry(cups, relative), false,
+          `cup ${cup} cuts neighboring sleeve ${neighbor} at t=${time}, ink=${ink}`);
+      }
+    }
+  } finally { armor.dispose(); cups.dispose(); root.userData.disposeIronKraken(); }
+});
+
 test('a full curled arm keeps its mechanical link lengths through the attack cycle', () => {
   const points = new Float64Array(pointCount), rest = new Float64Array(pointCount);
   for (let arm = 0; arm < 8; arm++) {
@@ -80,11 +136,11 @@ test('a full curled arm keeps its mechanical link lengths through the attack cyc
     let length = 0;
     for (let link = 0; link < links; link++) length += distance(rest, link * 3);
     assert.ok(length > 4.5 && length < 4.9, 'long folded chain must not regress to short radial beads');
-    assert.ok(distance(rest, 0) > 0.52 && distance(rest, 0) < 0.57,
+    assert.ok(distance(rest, 0) > 0.61 && distance(rest, 0) < 0.66,
       'first proximal barrel must retain the reference’s substantial axial length');
     const fourBarrels = distance(rest, 0) + distance(rest, 3) + distance(rest, 6) + distance(rest, 9);
-    assert.ok(fourBarrels > 1.88 && fourBarrels < 2.02,
-      'four broad barrels must carry approximately two mantle radii of chain');
+    assert.ok(fourBarrels > 2.20 && fourBarrels < 2.36,
+      'four broad barrels must carry the reference’s longer proximal machinery');
     assert.ok(distance(rest, 12) < distance(rest, 9) * 0.65,
       'the fifth link must begin the distinctly finer distal chain');
     assert.ok(distance(rest, (links - 1) * 3) < 0.07, 'fine terminal cells must complete the coil');
@@ -122,23 +178,24 @@ test('link frames stay right-handed and aligned to the actual chain through part
   }
 });
 
-test('idle shoulders rise into separate broad elbows before the lower terminal coils', () => {
+test('holding presents raised dorsal arches, lateral reaches, and low forward manipulators', () => {
   const points = new Float64Array(pointCount);
-  let highestElbow = -Infinity, lowestElbow = Infinity;
+  const extents = [];
   for (let arm = 0; arm < 8; arm++) {
     sampleIronKrakenArm(arm, { time: 59 / 60 }, points);
-    const rootY = points[1];
-    assert.ok(points[4] - rootY > 0.09, 'a proximal barrel must rise out of the collar');
     let minY = Infinity, maxY = -Infinity;
     for (let p = 1; p < pointCount; p += 3) {
       minY = Math.min(minY, points[p]); maxY = Math.max(maxY, points[p]);
     }
-    assert.ok(maxY > rootY + 0.22, 'several broad links must form the raised shoulder');
-    assert.ok(minY < -0.85 && minY > -1.8,
-      'the lower coil must hang beneath the collar without the former long downward spokes');
-    highestElbow = Math.max(highestElbow, maxY); lowestElbow = Math.min(lowestElbow, maxY);
+    extents.push({ minY, maxY });
+    assert.ok(points[4] > points[1], 'each first actuator emerges upward from its fixed socket');
   }
-  assert.ok(highestElbow - lowestElbow > 0.2, 'front and rear elbows must not share a uniform pitch');
+  for (const arm of [2, 3, 4]) assert.ok(extents[arm].maxY > 1.2,
+    'dorsal arms must visibly arch above the mantle instead of sharing a hanging bouquet');
+  for (const arm of [0, 7]) assert.ok(extents[arm].minY < -1.3 && extents[arm].minY > -2,
+    'the paired forearms must descend into distinct low manipulator coils');
+  for (const arm of [1, 6]) assert.ok(extents[arm].maxY > -.1 && extents[arm].maxY < .9,
+    'the lateral pair must reach beside the optical body');
 });
 
 test('idle and rake centerlines remain within the authored reach through a minute of posture drift', () => {
@@ -152,15 +209,15 @@ test('idle and rake centerlines remain within the authored reach through a minut
   }
 });
 
-test('one compact forearm folds beside the collar while its combat transitions clear the head', () => {
+test('one compact lateral arm folds beside the collar while its combat transitions clear the head', () => {
   const points = new Float64Array(pointCount);
   sampleIronKrakenArm(1, { time: 59 / 60 }, points);
   let reach = 0, low = Infinity;
   for (let p = 0; p < pointCount; p += 3) {
     reach = Math.max(reach, Math.hypot(points[p], points[p + 2])); low = Math.min(low, points[p + 1]);
   }
-  assert.ok(reach < 3.2 && low > -1.25, 'the forearm must present a compact rolled loop');
-  assert.ok(Math.hypot(points[pointCount - 3], points[pointCount - 1]) < 2.6,
+  assert.ok(reach < 3.2 && low > -1.25, 'the lateral arm must present a compact rolled loop');
+  assert.ok(Math.hypot(points[pointCount - 3], points[pointCount - 1]) < reach - .25,
     'the terminal coil must return inward from the broad elbow');
   for (let time = 0; time <= 60; time += 0.5) for (let step = 0; step <= 10; step++) {
     const progress = step / 10;
@@ -247,4 +304,84 @@ test('packed multi-arm outputs preserve adjacent buffers and independent anatomi
   const aLength = distance(points, 4), bLength = distance(points, 4 + pointCount);
   assert.ok(Math.abs(aLength - bLength) > 0.005, 'neighboring arms must retain anatomical differences');
   assert.throws(() => sampleIronKrakenArm(0, {}, new Float32Array(pointCount - 1)), RangeError);
+});
+
+test('all eight manufactured sleeve envelopes stay separated through holding and attack blends', () => {
+  const points = new Float64Array(pointCount * 8);
+  const radii = Array.from({ length: links }, (_, link) => ironKrakenArmRadius(link));
+  for (const time of [0, .7, 2.3, 4.9, 9.1, 15.7, 31.4, 44.1, 59.2]) {
+    for (const progress of [0, .1, .25, .5, .75, 1]) {
+      for (const pose of [
+        { time, jet: progress },
+        { time, rake: progress, rakeProgress: progress },
+        { time, ink: progress, inkActive: progress > .5 },
+        { time, mantle: progress },
+        { time, jet: progress * .5, rake: progress * .3, rakeProgress: progress,
+          mantle: (1 - progress) * .6, inkCurl: -.6 * progress, inkLift: .4, locomotion: progress },
+      ]) {
+        for (let arm = 0; arm < 8; arm++) sampleIronKrakenArm(arm, pose, points, arm * pointCount);
+        for (let arm = 0; arm < 8; arm++) for (let a = 0; a < links; a++) {
+          const ai = arm * pointCount + a * 3;
+          for (let other = arm; other < 8; other++) {
+            // Immediate neighbors share their manufactured hinge. Non-adjacent sleeves must
+            // remain separate, including the small terminal cells inside their own curl.
+            for (let b = other === arm ? a + 3 : 0; b < links; b++) {
+              const gap = segmentDistance(points, ai, other * pointCount + b * 3)
+                - 1.02 * (radii[a] + radii[b]);
+              assert.ok(gap > 0, `arm ${arm}/${other}, links ${a}/${b}, t=${time}: intersecting sleeve envelopes`);
+            }
+          }
+          if (a === 0) continue; // The first actuator seats inside the authored shoulder socket.
+          for (const u of [0, .5, 1]) {
+            const x = points[ai] + (points[ai + 3] - points[ai]) * u;
+            const y = points[ai + 1] + (points[ai + 4] - points[ai + 1]) * u;
+            const z = points[ai + 2] + (points[ai + 5] - points[ai + 2]) * u;
+            if (y > -.55 && y < .9) assert.ok(Math.hypot(x, z) - radii[a] > .97,
+              `arm ${arm}, link ${a}: sleeve entered the pressure-housing exclusion volume`);
+          }
+        }
+      }
+    }
+  }
+});
+
+test('independent idle movement is visible and continuous while every shoulder stays seated', () => {
+  const points = new Float64Array(pointCount), first = new Float64Array(pointCount);
+  const previous = new Float64Array(pointCount), ranges = [];
+  for (let arm = 0; arm < 8; arm++) {
+    sampleIronKrakenArm(arm, { time: 0 }, first);
+    let range = 0;
+    for (let tick = 0; tick < 360; tick++) {
+      sampleIronKrakenArm(arm, { time: tick / 60 }, points);
+      for (let axis = 0; axis < 3; axis++) close(points[axis], first[axis], 'fixed shoulder socket');
+      const tip = pointCount - 3;
+      range = Math.max(range, Math.hypot(points[tip] - first[tip],
+        points[tip + 1] - first[tip + 1], points[tip + 2] - first[tip + 2]));
+      if (tick) for (let p = 3; p < pointCount; p += 3) assert.ok(Math.hypot(
+        points[p] - previous[p], points[p + 1] - previous[p + 1], points[p + 2] - previous[p + 2]) < .025,
+      'the reach/coil cycle must not jump a link between fixed ticks');
+      previous.set(points);
+    }
+    assert.ok(range > .24, 'each holding arm must visibly recruit and release its fine curl');
+    ranges.push(range);
+  }
+  assert.ok(Math.max(...ranges) - Math.min(...ranges) > .25,
+    'the independent manipulators must not repeat a synchronized shared trajectory');
+});
+
+test('locomotion, turn, and committed rake progress move the character without writing world state', () => {
+  const holding = ironKrakenBodyPose({ reducedMotion: true }, {});
+  const travelling = ironKrakenBodyPose({ reducedMotion: true, locomotion: 1, turn: .8 }, {});
+  assert.ok(travelling.pitchZ < holding.pitchZ - .3, 'sustained travel banks the mantle head-first');
+  assert.ok(travelling.rollX < -.15, 'turning banks the body into the motion');
+  const points = new Float64Array(pointCount), start = new Float64Array(pointCount);
+  const locked = Object.freeze({ time: 1, rake: 1, rakeProgress: 0, reducedMotion: true });
+  sampleIronKrakenArm(1, locked, start);
+  sampleIronKrakenArm(1, { ...locked, rakeProgress: 1 }, points);
+  close(points[0], start[0], 'rake does not detach the shoulder');
+  close(points[1], start[1], 'rake does not detach the shoulder');
+  close(points[2], start[2], 'rake does not detach the shoulder');
+  const elbow = 4 * 3;
+  assert.ok(Math.hypot(points[elbow] - start[elbow], points[elbow + 2] - start[elbow + 2]) > .5,
+    'an active rake sweeps a real forearm rather than freezing at maximum charge');
 });

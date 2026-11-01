@@ -143,7 +143,8 @@ export function createCapitalBossEncounters({observe,spawnWing}={}) {
     const store=root();
     if(c.type==='order') {
       store.orders[capitalOrderKey(c.entityId)]={fightId:r.fightId,scoreOwnsAttacks:true,
-        suppressStockFire:c.suppressStockFire,heading:c.heading,forward:c.forward,brake:c.brake,phase:c.phase};
+        suppressStockFire:c.suppressStockFire,heading:c.heading,forward:c.forward,brake:c.brake,phase:c.phase,
+        ...(c.velocity?{velocity:c.velocity}:{})};
     } else if(c.type==='wingGate') {
       for(const order of c.orders) store.orders[capitalOrderKey(order.entityId)]={...order,fightId:r.fightId,scoreOwnsAttacks:false};
     } else if(c.type==='damage') {
@@ -447,7 +448,7 @@ export function createCapitalBossEncounters({observe,spawnWing}={}) {
       if(typeof r.fightId==='string'&&r.fightId.startsWith('swarm:')) return false;
       if(r.encounterId===LAST_ARGUMENT.scoreId) return false;
       if(r.cast) ctx.bus.emit('capitalBoss:telegraphEnd',{fightId:r.fightId,castId:r.cast.id,reason:'rewind'});
-      r.cast=null;r.terminal=null;r.targetKilled=false;
+      r.cast=null;r.recovery=null;r.terminal=null;r.targetKilled=false;
       r.sequence=0;r.actStartedAt=r.clock;r.phase='suspended';r.suspended=true;
       r.nextAt=r.clock;r.lastOrderSignature=null;r.lastWingGate=null;
       // The terminal order row must not stick: write the same suspended row step() would.
@@ -497,7 +498,7 @@ export function createCapitalBossEncounters({observe,spawnWing}={}) {
       // Rematerialization is not a same-position promise. Cancel the old world-space shot and
       // grant the normal resume warning; an in-place restore (no rebind) preserves exact timing.
       if(r.cast) ctx.bus.emit('capitalBoss:telegraphEnd',{fightId:r.fightId,castId:r.cast.id,reason:'rebound'});
-      r.cast=null;r.suspended=true;r.phase='suspended';
+      r.cast=null;r.recovery=null;r.suspended=true;r.phase='suspended';
       bindCharacter(r,false);
       rebindCapitalBossFight(r,roles);
       bindCharacter(r);

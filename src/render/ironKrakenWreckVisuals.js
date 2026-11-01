@@ -67,6 +67,7 @@ export function createIronKrakenWreckVisual(entity) {
   const shellDetail = instances(g.shellDetail,m.dark,5,'torn_mantle_inner_edges');
   const shellAccent = instances(g.shellAccent,m.red,5,'burnt_mantle_markings');
   const shellMetal = instances(g.shellMetal,m.metal,5,'broken_viewport_jambs_and_actuators');
+  const shellBlank = instances(g.shellBlank,m.shell,2,'scorched_solid_service_panels');
   const armor = instances(armGeometry.armor,m.shell,IRON_KRAKEN_WRECK_LINKS,'broken_arm_armor');
   const joints = instances(armGeometry.joint,m.dark,IRON_KRAKEN_WRECK_LINKS,'broken_arm_joints');
   const hardware = instances(armGeometry.hardware,m.dark,IRON_KRAKEN_WRECK_LINKS,'broken_arm_service_panels');
@@ -98,6 +99,9 @@ export function createIronKrakenWreckVisual(entity) {
     for (const part of [shell,shellDetail,shellAccent,shellMetal]) write(part,index,
       Math.cos(a)*IRON_KRAKEN_MANTLE_HINGE.radius,IRON_KRAKEN_MANTLE_HINGE.height,
       Math.sin(a)*IRON_KRAKEN_MANTLE_HINGE.radius,1,1,1);
+    if(petal===0||petal===4) write(shellBlank,petal===0?0:1,
+      Math.cos(a)*IRON_KRAKEN_MANTLE_HINGE.radius,IRON_KRAKEN_MANTLE_HINGE.height,
+      Math.sin(a)*IRON_KRAKEN_MANTLE_HINGE.radius,1,1,1);
   }
   // Sample the same manufactured chain once, then discard the buffers. Surviving chains retain
   // their terminal coil with 18 physical links at the live link pitch; four others end at the
@@ -127,14 +131,25 @@ export function createIronKrakenWreckVisual(entity) {
       binormal.fromArray(frames,frame);tangent.fromArray(frames,frame+3);normal.fromArray(frames,frame+6);
       q.setFromRotationMatrix(basis.makeBasis(binormal,tangent,normal));
       const length = Math.hypot(nx-x,ny-y,nz-z), radius = ironKrakenArmRadius(link,sampledLinks);
-      const cx = (x+nx)*.5, cy = (y+ny)*.5, cz = (z+nz)*.5, cup = radius*.8;
-      const proximal = link<proximalLinks, sleeveLength=length*(proximal?.64:.80);
-      const jointLength=proximal?length*.40:radius*.73;
+      const cx = (x+nx)*.5, cy = (y+ny)*.5, cz = (z+nz)*.5;
+      const cup = radius*(link<proximalLinks?.80:.55);
+      const proximal = link<proximalLinks, sleeveLength=length*(proximal?.72:.80);
       for (const part of armorMeshes) write(part,index,cx,cy,cz,radius,sleeveLength,radius);
-      for (const part of jointMeshes) write(part,index,x,y,z,radius*.73,jointLength,radius*.73);
       q.multiply(cupFlip);
       for (const part of cupMeshes) write(part,index,cx-normal.x*radius*.94,cy-normal.y*radius*.94,
         cz-normal.z*radius*.94,cup,cup,cup);
+      const gap=(length-sleeveLength)*.5;
+      let ax,ay,az;
+      if(link===0){const a=arm*TAU/8+Math.PI/8;ax=x-Math.cos(a)*.085;ay=y;az=z-Math.sin(a)*.085;}
+      else {
+        const prev=point-3,plen=Math.hypot(x-points[prev],y-points[prev+1],z-points[prev+2]);
+        const pgap=plen*(link-1<proximalLinks?.14:.10);
+        ax=x-(x-points[prev])/plen*pgap;ay=y-(y-points[prev+1])/plen*pgap;az=z-(z-points[prev+2])/plen*pgap;
+      }
+      const bx=x+tangent.x*gap,by=y+tangent.y*gap,bz=z+tangent.z*gap;
+      position.set(bx-ax,by-ay,bz-az);const jointLength=position.length();position.multiplyScalar(1/Math.max(1e-6,jointLength));
+      q.setFromUnitVectors(yAxis,position);
+      for (const part of jointMeshes) write(part,index,(ax+bx)*.5,(ay+by)*.5,(az+bz)*.5,radius*.73,jointLength+radius*.14,radius*.73);
     }
   }
   q.setFromAxisAngle(zAxis,-.18);

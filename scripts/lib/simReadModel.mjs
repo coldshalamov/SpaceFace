@@ -673,6 +673,9 @@ export const DOMAIN_MIRROR_KEYS = Object.freeze([
   // Keep the sector epoch after event replay's temporary emit-time shim ends.
   // Appending preserves existing domain slots and their staggered cadences.
   'world.enterSerial',
+  // Native character animation and capital warnings consume the SAME committed cast/clock
+  // as damage. Orders and wing/ballast ledgers stay worker-owned and are not presentation data.
+  'capitalBossEncounters.fights',
 ]);
 
 // Per-key canonical-serialization ship cap (report-only): any single mirrored
@@ -707,7 +710,10 @@ export function resolveDomainValue(state, key) {
 // last-signed digest per leaf path, so it stays consistent with the facade
 // state between cold/warm re-signs (facades trail live by the tier interval
 // at worst — the signed digest still describes the shipped content).
-export const DOMAIN_EXPAND = Object.freeze({ economy: 2, combat: 1, story: 1, input: 1, meta: 1, player: 1, run: 1, salvageOutfits: 2 });
+export const DOMAIN_EXPAND = Object.freeze({ economy: 2, combat: 1, story: 1, input: 1, meta: 1, player: 1, run: 1, salvageOutfits: 2,
+  // Each fight's scalar clock signs independently; a ticking boss never reships its unchanged
+  // plates, act history or other fights. The encounter owner bounds this table at 16 records.
+  'capitalBossEncounters.fights': 2 });
 // player: 1 — the wallet/cargo fields the UI reads hot (player.credits,
 // player.cargo) sign every pass instead of trailing the monolithic player
 // leaf's cold-tier 60-tick interval: a settled trade used to leave the facade
@@ -1519,6 +1525,7 @@ export function createDomainDiffer(options = {}) {
       ownerSnapshot: segs[0] === 'survivalDraftPublic' || segs[0] === 'survivalResultsPublic',
       isCombatTrace: isCombatTracePath(segs),
       isCombatAttachments: segs[0] === 'combat' && segs[1] === 'attachments',
+      isCapitalFights: segs[0] === 'capitalBossEncounters.fights',
       isNpcJobsById: isNpcJobsByIdPath(segs),
       isRunSpawnedThreat: segs[0] === 'run' && segs[1] === 'spawnedThreat',
       cadence: domainCadenceFor(segs[0] === 'run' && segs.length === 2 ? path : segs[0]),
@@ -1596,7 +1603,7 @@ export function createDomainDiffer(options = {}) {
       node.leaf = false;
       // Cable admission, cuts and history pruning must accompany this tick's bodies. Unlike
       // cold domain inventories, this bounded table cannot wait ten replies to enumerate.
-      const enumDue = metadata.isCombatAttachments || freshOwnerSnapshot || node.lastEnum == null
+      const enumDue = metadata.isCombatAttachments || metadata.isCapitalFights || freshOwnerSnapshot || node.lastEnum == null
         || tick % DOMAIN_ENUM_TICKS === node.slot % DOMAIN_ENUM_TICKS;
       if (enumDue) {
         const previousKids = node.kids;
@@ -1709,7 +1716,7 @@ export function createDomainDiffer(options = {}) {
     }
     // Active cable loads and cuts belong to the same reply as their moving bodies, at any table size.
     // The finite Orchard ledger (three sockets, at most twelve lots) also carries live motor progress.
-    if (node.lastSign >= 0 && path !== 'sites.anvilOrchard' && !metadata.isCombatAttachments && !node.urgentSign && !freshOwnerSnapshot && !npcJobsRevisionChanged
+    if (node.lastSign >= 0 && path !== 'sites.anvilOrchard' && !metadata.isCombatAttachments && !metadata.isCapitalFights && !node.urgentSign && !freshOwnerSnapshot && !npcJobsRevisionChanged
         && !runAdmissionBootstrap && !marketLiveSourceChanged && !combatTracePlayerChanged) {
       const tierTicks = node.bytes > DOMAIN_COLD_BYTES ? DOMAIN_COLD_TICKS
         : node.bytes > DOMAIN_WARM_BYTES ? DOMAIN_WARM_TICKS : 1;

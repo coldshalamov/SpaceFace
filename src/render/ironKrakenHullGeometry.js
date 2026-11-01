@@ -4,6 +4,10 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 export const IRON_KRAKEN_MANTLE_HINGE = Object.freeze({ radius: .972, height: .22 });
+// Lens front is seated in the white socket in the working pose. Service extension is
+// deliberate, bounded travel along a retained telescoping barrel, never an exploded eye.
+export const IRON_KRAKEN_OPTIC_RECESS = -.120;
+export const IRON_KRAKEN_OPTIC_SCALE = 1.12;
 const TAU = Math.PI * 2;
 const UP = new THREE.Vector3(0, 1, 0);
 
@@ -127,18 +131,18 @@ export function buildIronKrakenHullGeometry({ shared }) {
   // Fixed white eye socket. The black focusing assembly is a separate shared instance, animated
   // axially by the driver rather than stretching an eyeball or adding a glowing cartoon pupil.
   const eyeAngles=[-.59,.59];
-  const eyeWhite=lathe([[.18,-.16],[.27,-.16],[.325,-.09],[.346,-.025],[.346,.055],[.322,.105],[.281,.105],[.267,.04],[.18,.04]],48);
+  const eyeWhite=lathe([[.18,-.16],[.27,-.16],[.325,-.09],[.346,-.025],[.346,.085],[.322,.15],[.281,.15],[.267,.065],[.18,.065]],48).scale(IRON_KRAKEN_OPTIC_SCALE,1,IRON_KRAKEN_OPTIC_SCALE);
   const eyeParts=[];
   for(const a of eyeAngles) {
     const d=new THREE.Vector3(Math.cos(a),.075,Math.sin(a)).normalize();
     const c=new THREE.Vector3(Math.cos(a)*.88,.04,Math.sin(a)*.88);
     ivory.push(axis(eyeWhite.clone(),d,c));
-    dark.push(axis(lathe([[.20,-.03],[.237,-.03],[.241,.02],[.237,.20],[.20,.20]],32),d,c));
+    dark.push(axis(lathe([[.20,-.10],[.237,-.10],[.241,.02],[.237,.08],[.20,.08]],32).scale(IRON_KRAKEN_OPTIC_SCALE,1,IRON_KRAKEN_OPTIC_SCALE),d,c));
     const q=new THREE.Quaternion().setFromUnitVectors(UP,d);
-    const flange=ring(.319,.007,.089,48);flange.applyQuaternion(q);flange.translate(c.x,c.y,c.z);dark.push(flange);
+    const flange=ring(.319*IRON_KRAKEN_OPTIC_SCALE,.007,.139,48);flange.applyQuaternion(q);flange.translate(c.x,c.y,c.z);dark.push(flange);
     for(let k=0;k<10;k++) {
       const t=k*TAU/10;
-      const p=new THREE.Vector3(Math.cos(t)*.309,.093,Math.sin(t)*.309).applyQuaternion(q).add(c);
+      const p=new THREE.Vector3(Math.cos(t)*.309*IRON_KRAKEN_OPTIC_SCALE,.143,Math.sin(t)*.309*IRON_KRAKEN_OPTIC_SCALE).applyQuaternion(q).add(c);
       dark.push(screw(p,d,.0085));
     }
   }
@@ -168,6 +172,23 @@ export function buildIronKrakenHullGeometry({ shared }) {
   g.eyeLens=shared(lens,'convex_camera_glass');
   g.eyeGlints=merge(lensDetail,'optical_inner_elements',shared);
   g.eyeSignals=shared(moved(new THREE.CylinderGeometry(.008,.008,.006,8),.293,.10,-.08),'optical_status_lamp');
+
+  // A front heat exchanger has a real throat and seated sliding covers. This is the
+  // damage owner's frontal recovery aperture, distinct from the underbody beak and siphon.
+  const throatDirection=new THREE.Vector3(1,0,0),throatCenter=new THREE.Vector3(.915,-.275,0);
+  ivory.push(axis(lathe([[.09,-.10],[.16,-.10],[.185,-.035],[.182,.045],[.157,.075],[.125,.075],[.125,-.05]],32),throatDirection,throatCenter));
+  dark.push(axis(lathe([[0,-.04],[.12,-.04],[.133,.015],[.129,.06],[.11,.06],[.11,-.025],[0,-.025]],32),throatDirection,throatCenter));
+  orange.push(axis(ring(.151,.008,.068,32),throatDirection,throatCenter));
+  g.apertureShutter=shared(moved(new THREE.SphereGeometry(1,16,8,0,Math.PI).scale(.022,.147,.147),0,0,-.147),'recovery_throat_shutter');
+  for(const side of [-1,1]) {
+    metal.push(moved(new THREE.CylinderGeometry(.012,.012,.285,8),.994,-.275,side*.147));
+    for(const y of [-.36,-.19])dark.push(rod(new THREE.Vector3(.87,y,side*.147),new THREE.Vector3(.994,y,side*.147),.018));
+  }
+  // The small side-facing siphon is physically separate from the central two-jaw beak.
+  const siphonCenter=new THREE.Vector3(.46,-.66,0),siphonDirection=new THREE.Vector3(.92,-.39,0).normalize();
+  ivory.push(axis(lathe([[.07,-.15],[.12,-.15],[.13,-.08],[.11,.08],[.16,.16],[.16,.20],[.12,.20],[.08,.08]],32),siphonDirection,siphonCenter));
+  dark.push(axis(lathe([[.07,-.04],[.08,.08],[.12,.204],[.102,.204],[.065,.06]],24),siphonDirection,siphonCenter));
+  orange.push(axis(ring(.154,.009,.176,32),siphonDirection,siphonCenter));
 
   // Eight panels meet around a genuinely round dome; the rectangular tapered viewports are
   // holes through the enamel, with their own inner skins, jambs and dark glass pockets.
@@ -232,10 +253,16 @@ export function buildIronKrakenHullGeometry({ shared }) {
   g.shellMetal=finishPetal(steel,'viewport_actuators_and_window_jambs');
   g.shellAccent=finishPetal(red,'mantle_warning_markings');
   g.shellGlass=finishPetal(glass,'recessed_inspection_glazing');
+  // Alternating solid service panels and inspection windows match the reference's quieter
+  // pressure housing. Covers are seated in the same panel rebates, not floating decals.
+  g.shellBlank=finishPetal([patch(.501,1.037,-.209,.209,.003,false,16,5)],'solid_mantle_service_cover');
   g.crown=shared(lathe([[0,-.015],[.18,-.015],[.205,0],[.20,.026],[.16,.043],[0,.043]],40),'central_service_cap');
   const crownHardware=[ring(.165,.004,.044,32)];
   for(let k=0;k<8;k++)crownHardware.push(moved(new THREE.CylinderGeometry(.007,.007,.004,6),Math.cos(k*TAU/8)*.145,.044,Math.sin(k*TAU/8)*.145));
   g.crownMetal=merge(crownHardware,'service_cap_fasteners',shared);
+  g.capSpindle=shared(new THREE.CylinderGeometry(.047,.056,1,12),'retained_cap_spindle');
+  g.capSleeve=shared(new THREE.CylinderGeometry(.071,.075,.18,12),'cap_spindle_gland');
+  g.hingePin=shared(new THREE.CylinderGeometry(.022,.022,.16,12),'mantle_hinge_pin');
 
   // Split siphon valve with ribs and a small safety-orange lip.
   const jaw=[new THREE.SphereGeometry(1,24,12,0,Math.PI).scale(.30,.20,.30)];
@@ -248,10 +275,11 @@ export function buildIronKrakenHullGeometry({ shared }) {
   const staticLens=[],staticIris=[];
   for(const a of eyeAngles) {
     const d=new THREE.Vector3(Math.cos(a),.075,Math.sin(a)).normalize();
-    const c=new THREE.Vector3(Math.cos(a)*.88,.04,Math.sin(a)*.88);
-    dark.push(axis(g.eyeDark.clone(),d,c));metal.push(axis(g.eyeMetal.clone(),d,c));
-    orange.push(axis(g.eyeOrange.clone(),d,c));
-    staticLens.push(axis(g.eyeLens.clone(),d,c));staticIris.push(axis(g.eyeSignals.clone(),d,c));
+    const c=new THREE.Vector3(Math.cos(a)*.88,.04,Math.sin(a)*.88).addScaledVector(d,IRON_KRAKEN_OPTIC_RECESS);
+    const ocular=geometry=>geometry.clone().scale(IRON_KRAKEN_OPTIC_SCALE,1,IRON_KRAKEN_OPTIC_SCALE);
+    dark.push(axis(ocular(g.eyeDark),d,c));metal.push(axis(ocular(g.eyeMetal),d,c));
+    orange.push(axis(ocular(g.eyeOrange),d,c));
+    staticLens.push(axis(ocular(g.eyeLens),d,c));staticIris.push(axis(ocular(g.eyeSignals),d,c));
   }
   // Live geometry excludes the movable dark barrel; expose fixed and neutral assembled variants.
   g.hull=merge(ivory,'pressure_sphere_and_root_flanges',shared);
@@ -271,7 +299,7 @@ export function buildIronKrakenPumpGeometry({ shared }) {
   const dark=[],metal=[],orange=[],steel=[];
   // A narrow rotor leaves genuine negative space between the surrounding cylinders and cage.
   // A solid outer tank here would conceal the mechanisms the opening is meant to reveal.
-  dark.push(lathe([[0,.18],[.27,.18],[.29,.28],[.29,.74],[.20,1.05],[.12,1.13],[0,1.13]],32));
+  dark.push(lathe([[0,-.08],[.23,-.08],[.23,.18],[.27,.18],[.29,.28],[.29,.74],[.20,1.05],[.12,1.13],[0,1.13]],32));
   for(let tier=0;tier<9;tier++) {
     const y=.27+tier*.085,r=.29-Math.max(0,y-.68)*.20;
     dark.push(ring(r,.024,y,36));
@@ -325,8 +353,8 @@ export function buildIronKrakenPumpGeometry({ shared }) {
     orange.push(axis(ring(.092,.010,0,16),d,mid));
     steel.push(rod(new THREE.Vector3(ca*.57,.33,sa*.57),new THREE.Vector3(ca*.15,1.06,sa*.15),.010));
   }
-  // Central spindle supports the moving cap, rather than leaving a floating lid in the opening.
-  metal.push(moved(new THREE.CylinderGeometry(.055,.07,.56,12),0,1.12,0));
+  // The live rig fits the cap spindle to its actual two attachments; a fixed tall spindle
+  // inside this moving pump would pierce the cap when the pump rises during venting.
   orange.push(ring(.29,.020,.99,32),ring(.23,.012,1.06,28));
   return {dark:merge(dark,'reveal_pump_gears_cylinders_and_hoses',shared),
     metal:merge(metal,'reveal_pump_rods_and_clamps',shared),

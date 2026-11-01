@@ -130,7 +130,8 @@ test('the real fight clock drives jet, recovery and reduced-motion pose without 
   assert.equal(out.mantle, 0);
   ironKrakenAnimationPose(recovery.fight, 9999, { reducedMotion: true, reducedFlash: true }, out);
   assert.equal(out.jetActive, false);
-  assert.ok(out.mantle > 0, 'the recovery aperture must remain visible with reduced motion');
+  assert.ok(out.aperture > 0, 'the frontal recovery aperture must remain visible with reduced motion');
+  assert.equal(out.mantle, 0, 'a jet vents the front throat without arbitrarily disassembling its crown');
   assert.equal(out.reducedMotion, true);
   assert.equal(out.reducedFlash, true);
   assert.equal(JSON.stringify([jet.fight, recovery.fight]), before);
@@ -141,7 +142,7 @@ test('pause holds all articulated matrices and lazily reveals the shallow recove
   const root = createIronKrakenVisual(run.entity);
   try {
     assert.equal(root.userData.ironKrakenRig.interior, null, 'living idle model must not preload a hidden interior');
-    reach(run, 'siphon_jet', 'recovery', 0.4);
+    reach(run, 'ink_ring', 'recovery', 0.4);
     const simulation = JSON.stringify(run.fight);
     update(root, run);
     assert.ok(root.userData.ironKrakenRig.interior?.visible);
@@ -210,4 +211,79 @@ test('production direct authored mounting preserves the articulated rig and admi
     assert.equal(root.userData.requestAuthoredUpgrade, undefined);
     assert.equal(wrapShipWithAuthoredParts(run.entity, root), root, 'fleet/preview wrapping must preserve the same primary asset');
   } finally { root?.userData.disposeIronKraken?.(); }
+});
+
+test('restoring an earlier fight discards future attack blends and same-clock plate tears apply immediately', () => {
+  const run=reach(runFor(),'siphon_jet','active',.6),root=createIronKrakenVisual(run.entity);
+  let fresh;
+  try {
+    update(root,run);
+    assert.ok(root.userData.ironKrakenRig.body.rotation.z<-.9);
+    Object.assign(run.fight,{clock:0,phase:'intro',cast:null,recovery:null,nextAt:120});run.state.simTime=0;
+    update(root,run);
+    fresh=createIronKrakenVisual(run.entity);update(fresh,run);
+    assert.deepEqual(Array.from(root.userData.ironKrakenRig.armor.instanceMatrix.array),
+      Array.from(fresh.userData.ironKrakenRig.armor.instanceMatrix.array));
+    assert.equal(root.userData.ironKrakenRig.body.rotation.z,fresh.userData.ironKrakenRig.body.rotation.z);
+    run.fight.plates.find(p=>p.id==='mantle_port').attached=false;
+    update(root,run);
+    const matrix=new THREE.Matrix4();root.userData.ironKrakenRig.shell.getMatrixAt(6,matrix);
+    assert.ok(Math.abs(matrix.determinant())<1e-8,'same-clock receipt removes its attached panel');
+    assert.equal(root.userData.ironKrakenRig.attackVfx.inspect().activeCount,0);
+  } finally {root.userData.disposeIronKraken();fresh?.userData.disposeIronKraken();}
+});
+
+test('committed fields stay fixed while the presented body interpolates and the render origin changes', () => {
+  const run=reach(runFor(),'siphon_jet','active',.4),root=createIronKrakenVisual(run.entity);
+  const scene=new THREE.Scene();scene.add(root);
+  const origin={x:100000,z:-50000};run.state.render={scene};run.state.world={frameOrigin:origin};
+  run.entity.pos={x:35,z:12};run.entity.rot=.30;
+  const a=new THREE.Vector3(),b=new THREE.Vector3();
+  const shape=run.fight.cast.shapes[0];
+  try {
+    for(const [x,z,heading] of [[30,9,.20],[32,10,.24],[34,11,.28]]) {
+      root.position.set(x-origin.x,0,z-origin.z);root.rotation.y=-heading;
+      update(root,run);
+      const field=root.userData.ironKrakenRig.attackVfx.group.children.find(part=>part.visible);
+      assert.ok(field,'the actual live cast has a field');
+      a.set(0,0,0).applyMatrix4(field.matrixWorld);b.set(1,0,0).applyMatrix4(field.matrixWorld);
+      assert.ok(Math.hypot(a.x+origin.x-shape.a.x,a.z+origin.z-shape.a.z)<1e-7);
+      assert.ok(Math.hypot(b.x+origin.x-shape.b.x,b.z+origin.z-shape.b.z)<1e-7);
+    }
+    origin.x+=8192;origin.z-=4096;root.position.x-=8192;root.position.z+=4096;
+    update(root,run);
+    const field=root.userData.ironKrakenRig.attackVfx.group.children.find(part=>part.visible);
+    a.set(0,0,0).applyMatrix4(field.matrixWorld);
+    assert.ok(Math.hypot(a.x+origin.x-shape.a.x,a.z+origin.z-shape.a.z)<1e-7);
+  } finally {root.userData.disposeIronKraken();}
+});
+
+test('hydraulic bridges remain attached to both adjacent sleeve ends across bent and streaming poses', () => {
+  const run=runFor(),root=createIronKrakenVisual(run.entity),matrix=new THREE.Matrix4();
+  const a=new THREE.Vector3(),b=new THREE.Vector3(),expected=new THREE.Vector3();
+  try {
+    for(const [beat,phase] of [[null,'intro'],['arm_rake','active'],['siphon_jet','active'],['ink_ring','recovery']]) {
+      reach(run,beat,phase,.5);update(root,run);
+      const rig=root.userData.ironKrakenRig;
+      for(let arm=0;arm<8;arm++)for(let link=0;link<22;link++) {
+        const point=arm*23*3+link*3,frame=arm*22*9+link*9;
+        const p=rig.points,f=rig.frames;
+        const length=Math.hypot(p[point+3]-p[point],p[point+4]-p[point+1],p[point+5]-p[point+2]);
+        const gap=length*(link<4?.14:.10);
+        expected.set(p[point]+f[frame+3]*gap,p[point+1]+f[frame+4]*gap,p[point+2]+f[frame+5]*gap);
+        rig.joints.getMatrixAt(arm*22+link,matrix);
+        b.set(0,.5,0).applyMatrix4(matrix);
+        assert.ok(b.distanceTo(expected)<.016,'outgoing rod enters the sleeve instead of hanging beside it');
+        if(link>0) {
+          const prev=point-3,plen=Math.hypot(p[point]-p[prev],p[point+1]-p[prev+1],p[point+2]-p[prev+2]);
+          const proportion=link-1<4?.14:.10;
+          expected.set(p[point]-(p[point]-p[prev])*proportion,
+            p[point+1]-(p[point+1]-p[prev+1])*proportion,p[point+2]-(p[point+2]-p[prev+2])*proportion);
+          assert.ok(plen>0);a.set(0,-.5,0).applyMatrix4(matrix);
+          assert.ok(a.distanceTo(expected)<.016,'incoming rod remains seated as the elbow changes angle');
+        }
+      }
+      if(rig.capSpindle.visible)assert.ok(Math.abs(rig.capSpindle.position.y+rig.capSpindle.scale.y*.5-rig.crown.position.y)<1e-8);
+    }
+  } finally {root.userData.disposeIronKraken();}
 });

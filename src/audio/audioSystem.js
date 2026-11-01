@@ -74,6 +74,7 @@ import { cachedBarkBuffer, barkPlaybackRate } from './barkPcmCache.js';
 import { applyOutputMix, heatScoreLift, stationIdentNotes } from './outputMix.js';
 import { createThreatEar } from './threatEar.js';
 import { bindTrailerScore } from './trailerScore.js';
+import { bindIronKrakenAudio } from './ironKrakenAudio.js';
 import { noteToHz, AUTHORED_STEM_SAMPLES } from './themeCompose.js';
 import { resolveBarkVoice, resolveInstructorVoice, resolveBarkSampleBinding } from './barkVoice.js';
 
@@ -2580,6 +2581,7 @@ export const audio = {
 
     // Runtime container (transient, never serialized — ARCHITECTURE §3.14).
     const rt = this.state.audioRuntime = this.state.audioRuntime || {};
+    rt._ironKrakenAudioDispose?.();
     rt.ctx = null;
     rt.masterGain = null; rt.limiter = null; rt.sfxBus = null; rt.musicBus = null;
     rt.voices = [];               // active SFX voices (pooled, cap MAX_AUDIO_VOICES)
@@ -3123,6 +3125,7 @@ export const audio = {
     });
     bus.on('audio:cue', (p) => this._onCue(p));
     rt._trailerScoreDispose = bindTrailerScore(this);
+    rt._ironKrakenAudioDispose = bindIronKrakenAudio(this);
     bus.on('tether:reel', (p) => this._onMasslineInstrument('reel', p));
     bus.on('tether:releaseRated', (p) => this._onMasslineInstrument('release', p));
     bus.on('tether:broken', (p) => {
@@ -3411,6 +3414,8 @@ export const audio = {
     }
     this._gestureHandler = null;
     rt._trailerScoreDispose?.();
+    rt._ironKrakenAudioDispose?.();
+    rt._ironKrakenAudioDispose = null;
     this._unbindOutputDeviceFollow();
     this._teardownMine();
     if (rt.bandBed && typeof rt.bandBed.destroy === 'function') rt.bandBed.destroy();

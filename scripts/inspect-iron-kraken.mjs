@@ -3,6 +3,9 @@
 // Fast art loop: --no-video --skip-checks --shots=11-studio-reference,12-studio-fullbody,13-production-reference
 // Compare an unchanged supplied frame: --reference-image=/absolute/path/frame.png
 // Smooth fixed-tick movie (requires ffmpeg): --shots=none --skip-checks --motion-lighting=studio --motion-view=reference
+// Canonical encounter: --encounter-only --encounter-seconds=24 (real AI/Flight V3/Rapier, fixed pilot input).
+// Quick native integration: --encounter-only --no-video --encounter-seconds=24 (phase stills and combat receipts).
+// Short visual iteration: --motion-seconds=8 --motion-fps=30 --shots=none --skip-checks.
 // A standalone Chrome/Headless Shell can be supplied through --executable=/absolute/path/chrome.
 import { mkdir, writeFile, readFile, readdir } from 'node:fs/promises';
 import { resolve, dirname, join, relative } from 'node:path';
@@ -19,12 +22,16 @@ const args = process.argv.slice(2);
 const value = name => args.find(arg => arg.startsWith(`${name}=`))?.slice(name.length + 1);
 const output = resolve(ROOT, value('--out') || '.devshots/iron-kraken');
 if (!output.startsWith(`${resolve(ROOT, '.devshots')}/`)) throw new Error('Capture output must be inside .devshots/');
-const videoEnabled = !args.includes('--no-video');
+const encounterOnly = args.includes('--encounter-only');
+const encounterEnabled = encounterOnly || args.includes('--encounter');
+const videoEnabled = !args.includes('--no-video') && !encounterOnly;
 const checksEnabled = !args.includes('--skip-checks');
 const executablePath = value('--executable') || process.env.SF_CHROMIUM;
-const requestedShots = value('--shots')?.split(',').filter(Boolean);
+const requestedShots = value('--shots')?.split(',').filter(Boolean) || (encounterOnly ? ['none'] : null);
 const motionSeconds = Number(value('--motion-seconds') || 12);
 const motionFps = Number(value('--motion-fps') || 30);
+const encounterSeconds = Number(value('--encounter-seconds') || 24);
+if (!(encounterSeconds >= 1 && encounterSeconds <= 60)) throw new Error('--encounter-seconds must be in 1..60');
 if (!(motionSeconds >= 1 && motionSeconds <= 60)) throw new Error('--motion-seconds must be in 1..60');
 if (![15, 30, 60].includes(motionFps)) throw new Error('--motion-fps must be 15, 30 or 60');
 const motionSpec = { lighting: value('--motion-lighting') || 'production', view: value('--motion-view') || 'inspect' };
@@ -33,14 +40,15 @@ const allShots = [
   { name: '02-heavy-front', title: 'mantle and optical face', variant: 'heavy', view: 'front', inspection: true },
   { name: '03-heavy-top-rake', title: 'arm rake windup', variant: 'heavy', view: 'top', beatId: 'arm_rake', phase: 'tell', progress: 0.8 },
   { name: '04-heavy-jet', title: 'committed siphon jet', variant: 'heavy', view: 'gameplay', beatId: 'siphon_jet', phase: 'active', progress: 0.45, warnings: true },
-  { name: '05-heavy-recovery', title: 'open mantle recovery', variant: 'heavy', view: 'front', beatId: 'siphon_jet', phase: 'recovery', progress: 0.4 },
+  { name: '05-heavy-recovery', title: 'front aperture recovery', variant: 'heavy', view: 'front', beatId: 'siphon_jet', phase: 'recovery', progress: 0.4 },
   { name: '06-colossus-scale', title: 'colossus / player size comparison', variant: 'colossus', view: 'gameplay', scaleReference: true },
-  { name: '07-reduced-motion', title: 'recovery with reduced motion', variant: 'heavy', view: 'inspect', beatId: 'siphon_jet', phase: 'recovery', progress: 0.4, reducedMotion: true },
+  { name: '07-reduced-motion', title: 'mantle recovery with reduced motion', variant: 'heavy', view: 'inspect', beatId: 'ink_ring', phase: 'recovery', progress: 0.4, reducedMotion: true },
   { name: '08-heavy-ink-ring', title: 'broken ink ring / clear approach gaps', variant: 'heavy', view: 'gameplay', beatId: 'ink_ring', phase: 'active', progress: 0.45, warnings: true },
   { name: '11-studio-reference', title: 'reference three-quarter / fixed close camera', variant: 'heavy', view: 'reference', lighting: 'studio' },
   { name: '12-studio-fullbody', title: 'full body / neutral studio', variant: 'heavy', view: 'inspect', lighting: 'studio' },
   { name: '13-production-reference', title: 'same model and close camera / Helios', variant: 'heavy', view: 'reference', lighting: 'production' },
-  { name: '14-studio-recovery', title: 'open mantle / same reference camera', variant: 'heavy', view: 'reference', lighting: 'studio', beatId: 'siphon_jet', phase: 'recovery', progress: 0.4 },
+  { name: '14-studio-recovery', title: 'open mantle / same reference camera', variant: 'heavy', view: 'reference', lighting: 'studio', beatId: 'ink_ring', phase: 'recovery', progress: 0.4 },
+  { name: '16-studio-aperture', title: 'front aperture / jet recovery', variant: 'heavy', view: 'front', lighting: 'studio', beatId: 'siphon_jet', phase: 'recovery', progress: .32 },
   { name: '15-distant-detail', title: 'distant arm detail / 110 px head', variant: 'heavy', view: 'detail', lighting: 'studio', headDiameterPx: 110 },
 ];
 const allowedShots = [...allShots.map(shot => shot.name), '09-mechanical-breakup', '10-persistent-wreck', 'none'];
@@ -58,7 +66,10 @@ await mkdir(output, { recursive: true });
 async function sourceIdentity() {
   const paths = (await readdir(join(ROOT, 'src/render'))).filter(name => /^ironKraken.*\.js$/.test(name)).map(name => `src/render/${name}`);
   paths.push('scripts/inspect-iron-kraken.mjs', 'test/fixtures/iron-kraken-native.mjs', 'test/fixtures/iron-kraken.html',
-    'src/render/partsLibrary.js', 'src/render/visualFactory.js', 'src/render/visualOverrides.js');
+    'src/render/partsLibrary.js', 'src/render/visualFactory.js', 'src/render/visualOverrides.js',
+    'src/combat/capitalBossScore.js', 'src/ai/capitalBossOrders.js', 'src/systems/capitalBossRuntime.js',
+    'src/systems/capitalBossEncounters.js', 'src/data/encounters/capital-boss/iron-kraken.js',
+    'src/combat/ironKraken.js', 'scripts/lib/simReadModel.mjs', 'scripts/lib/bench/realPath.mjs');
   const files = {};
   for (const path of paths.sort()) files[path] = createHash('sha256').update(await readFile(join(ROOT, path))).digest('hex');
   return files;
@@ -130,9 +141,12 @@ async function compareReference(page, referencePath, captureBuffer) {
     native: `data:image/png;base64,${captureBuffer.toString('base64')}` });
 }
 
-async function captureFixedMovie(page) {
-  const warmup = await page.evaluate(spec => window.ironKrakenProbe.prepareMotion(spec), motionSpec);
-  const file = 'score-motion.webm';
+async function captureFixedMovie(page, mode = 'score') {
+  const dynamic = mode === 'encounter';
+  const warmup = dynamic
+    ? await page.evaluate(() => window.ironKrakenProbe.prepareEncounter({ lighting: 'production' }))
+    : await page.evaluate(spec => window.ironKrakenProbe.prepareMotion(spec), motionSpec);
+  const file = dynamic ? 'encounter-motion.webm' : 'score-motion.webm';
   const encoder = spawn(value('--ffmpeg') || 'ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y',
     '-f', 'image2pipe', '-vcodec', 'png', '-framerate', String(motionFps), '-i', 'pipe:0', '-an',
     '-c:v', 'libvpx-vp9', '-row-mt', '1', '-deadline', 'realtime', '-cpu-used', '4', '-crf', '24', '-b:v', '0',
@@ -146,23 +160,100 @@ async function captureFixedMovie(page) {
   });
   encoded.catch(() => {}); // Preserve the error while a browser frame/write is still in flight.
   let lastFrame = null;
-  const frames = Math.round(motionSeconds * motionFps);
+  let pendingStill = null, phaseKey = null;
+  const keyFrames = [];
+  const frames = Math.round((dynamic ? encounterSeconds : motionSeconds) * motionFps);
   try {
     for (let i = 0; i < frames; i++) {
-      const pixels = await page.evaluate(ticks => window.ironKrakenProbe.motionPixels(ticks), i === 0 ? 0 : 60 / motionFps);
+      const pixels = await page.evaluate(({ ticks, dynamic }) => dynamic
+        ? window.ironKrakenProbe.encounterPixels(ticks) : window.ironKrakenProbe.motionPixels(ticks),
+      { ticks: i === 0 ? 0 : 60 / motionFps, dynamic });
       lastFrame = pixels.frame;
       const buffer = Buffer.from(pixels.png, 'base64');
+      if (dynamic) {
+        const currentKey = `${lastFrame.phase}-${lastFrame.beatId}`;
+        if (currentKey !== phaseKey) {
+          phaseKey = currentKey;
+          pendingStill = { key: currentKey, frame: i + Math.round(.3 * motionFps) };
+        }
+        if (pendingStill && i === pendingStill.frame) {
+          const still = `encounter-${String(keyFrames.length).padStart(2, '0')}-${pendingStill.key}.png`;
+          await writeFile(join(output, still), buffer);
+          keyFrames.push({ file: still, tick: lastFrame.tick, simulationTime: lastFrame.simulationTime,
+            phase: lastFrame.phase, beatId: lastFrame.beatId, boss: lastFrame.boss, player: lastFrame.player });
+          console.log(`${still}: ${lastFrame.simulationTime.toFixed(2)} s; ${lastFrame.distance.toFixed(1)} WU travelled`);
+          pendingStill = null;
+        }
+      }
       await new Promise((resolve, reject) => encoder.stdin.write(buffer, error => error ? reject(error) : resolve()));
     }
     encoder.stdin.end();
     await encoded;
-    await page.evaluate(() => window.ironKrakenProbe.finishMotion());
+    if (dynamic) {
+      await page.screenshot({ path: join(output, 'encounter-final.png') });
+      await page.evaluate(() => window.ironKrakenProbe.finishEncounter());
+      verifyEncounter(lastFrame, warmup.initial);
+    } else await page.evaluate(() => window.ironKrakenProbe.finishMotion());
   } catch (error) {
     encoder.kill();
     throw error;
   }
   return { file, seconds: frames / motionFps, frames, fps: motionFps, ticksPerFrame: 60 / motionFps,
-    ...warmup, ...lastFrame, timing: 'offline native WebGL frames; fixed simulation ticks; constant-rate encoded playback; no hardware FPS claim' };
+    ...warmup, ...lastFrame, ...(dynamic ? { keyFrames } : {}),
+    timing: 'offline native WebGL frames; fixed simulation ticks; constant-rate encoded playback; no hardware FPS claim' };
+}
+
+function verifyEncounter(frame, initial) {
+  if (frame.backend?.backend !== 'rapier-dynamic' || frame.backend?.sg02Ready !== true)
+    throw new Error('Encounter capture did not retain real Rapier physics');
+  if (!frame.lockedShapesStable) throw new Error('A locked native attack region moved during its cast');
+  if (encounterSeconds >= 8 && !(frame.distance > 15 && frame.eventCounts.attack > 0))
+    throw new Error('Encounter capture did not demonstrate real travel and an attack');
+  if (encounterSeconds >= 24) {
+    const attacks = new Set(frame.events.filter(event => event.kind === 'attack').map(event => event.beatId));
+    if (!['arm_rake', 'siphon_jet', 'ink_ring'].every(beat => attacks.has(beat)))
+      throw new Error('Full encounter capture did not exercise every Kraken attack');
+    const playerHit = frame.minimumPlayerShield < initial.player.shield || frame.minimumPlayerHull < initial.player.hull;
+    if (!(frame.playerDistance > 10 && playerHit && frame.minimumBossHull < initial.boss.hull))
+      throw new Error('Full encounter capture did not demonstrate pilot travel and damage in both directions');
+  }
+}
+
+async function captureEncounterStills(page) {
+  const warmup = await page.evaluate(() => window.ironKrakenProbe.prepareEncounter({ lighting: 'production' }));
+  const keyFrames = [];
+  let pendingStill = null, phaseKey = null, frame = null;
+  try {
+    const totalTicks = Math.round(encounterSeconds * 60);
+    for (let elapsed = 0, stepTicks = 0; elapsed <= totalTicks;) {
+      frame = await page.evaluate(ticks => window.ironKrakenProbe.encounterFrame(ticks, { render: false }), stepTicks);
+      const currentKey = `${frame.phase}-${frame.beatId}`;
+      if (currentKey !== phaseKey) {
+        phaseKey = currentKey;
+        pendingStill = { key: currentKey, tick: frame.tick + 18 };
+      }
+      if (pendingStill && frame.tick >= pendingStill.tick) {
+        const pixels = await page.evaluate(() => window.ironKrakenProbe.encounterPixels(0));
+        const file = `encounter-${String(keyFrames.length).padStart(2, '0')}-${pendingStill.key}.png`;
+        await writeFile(join(output, file), Buffer.from(pixels.png, 'base64'));
+        keyFrames.push({ file, tick: frame.tick, simulationTime: frame.simulationTime,
+          phase: frame.phase, beatId: frame.beatId, boss: frame.boss, player: frame.player });
+        console.log(`${file}: ${frame.simulationTime.toFixed(2)} s; ${frame.distance.toFixed(1)} WU travelled`);
+        pendingStill = null;
+      }
+      if (elapsed === totalTicks) break;
+      stepTicks = Math.min(6, totalTicks - elapsed);
+      elapsed += stepTicks;
+    }
+    const final = await page.evaluate(() => window.ironKrakenProbe.encounterPixels(0));
+    await writeFile(join(output, 'encounter-final.png'), Buffer.from(final.png, 'base64'));
+    frame = final.frame;
+    verifyEncounter(frame, warmup.initial);
+  } finally {
+    await page.evaluate(() => window.ironKrakenProbe.finishEncounter());
+  }
+  return { ...warmup, ...frame, keyFrames, seconds: encounterSeconds, mode: 'phase-stills',
+    timing: 'Every fixed simulation tick executed by the native runtime; only phase stills rendered; no video or hardware FPS claim.' };
 }
 
 try {
@@ -227,6 +318,8 @@ try {
   if (videoEnabled) {
     report.motion = await captureFixedMovie(page);
   }
+  if (encounterEnabled) report.encounter = args.includes('--no-video')
+    ? await captureEncounterStills(page) : await captureFixedMovie(page, 'encounter');
   await page.evaluate(() => window.ironKrakenProbe.dispose());
   await context.close();
   if (errors.length) throw new Error(`${errors.length} browser error(s); see report.json`);

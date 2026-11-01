@@ -20,7 +20,7 @@ SpaceFace character design.
 
 | Feature | Preserve at the gameplay camera |
 |---|---|
-| Head | Broad rounded lower hull and a segmented dome. Wide recessed glazed ports, shallow machinery pockets, bolted seams, and substantial orange inspection plates establish the reference's panel pattern. |
+| Head | Broad rounded lower hull and a segmented dome. Alternating solid service panels and recessed glazed ports, shallow machinery pockets, bolted seams, and orange inspection plates establish the reference's panel pattern. |
 | Optics | Two dark convex camera lenses in flared white sockets on the forward hemisphere. The black focusing barrels telescope axially; thin orange pressure seals and restrained lens reflections remain recognizable when small. |
 | Arm roots | Eight substantial joints around the dark collar under the hull. Arms emerge below the head, not from its crown. |
 | Arm links | Four substantial proximal white barrels, separated by exposed black hydraulic bays with silver piston rods and orange axle caps, lead into a much finer coiled chain. Preserve axial length and exposed mechanism; broad compressed beads are the wrong construction. |
@@ -56,14 +56,18 @@ pair, quiet the others enough that the selected pair remains readable.
 
 The [motion provider](../src/render/ironKrakenMotion.js) integrates rigid segment lengths along
 distance-parameterized bends. Each of the eight arms has 22 links: four proximal pitches of
-0.55, 0.53, 0.47, and 0.41 head radii, followed by 18 fine links tapering from approximately
-0.245 to 0.060 radii. The nominal uncoiled chain is 4.7 radii long; individual arms have small
-fixed anatomical length differences. Large sleeves occupy 64% of their pitch, leaving a visible
+0.64, 0.61, 0.55, and 0.49 head radii, followed by 18 fine links whose lengths taper in a
+0.245:0.060 ratio and are normalized to the remaining chain length. The nominal uncoiled chain
+is 4.7 radii long; individual arms have small fixed anatomical length differences.
+Large sleeves occupy 72% of their pitch, leaving a visible
 hydraulic bay; fine sleeves occupy 80%. Do not compress these into short toroidal beads.
 
 Independent shoulder heights, bend planes, droop, and slowly eased posture changes produce
-raised elbows and terminal spirals. The [rig](../src/render/ironKrakenVisuals.js) aligns its nine
-shared arm geometry batches to caller-owned point and frame buffers. Jetting interpolates
+raised elbows and terminal spirals. The [rig](../src/render/ironKrakenVisuals.js) aligns its shared
+arm geometry batches to caller-owned point and frame buffers. Each hydraulic bridge joins the
+actual ends of the neighboring sleeves, with a small bearing at the articulated endpoint.
+Large paired cups remain circular; the fine-tail cup clusters are smaller to clear adjacent
+barrels during contraction. Jetting interpolates
 unwrapped bend angles, so a curled tip visibly unwinds without flipping through opposite
 tangents. Body pitch commits head-first and releases through a slower braking spread. A stable
 root, substantial elbow, closed coil, and independent forearm posture are the visual conditions;
@@ -73,6 +77,14 @@ Keep pose state render-owned. Combat state supplies a small presentation snapsho
 committed heading, attack sectors, and mantle exposure. Render interpolation must never become
 the authority for damage, attacks, or replay timing. Use existing simulation time and deterministic
 state conventions; do not add `Math.random()` or wall-clock attack timers.
+
+The existing tactical, maneuver, Flight V3 and physics owners move the body. During approach
+and recovery, a bounded velocity request brings the Kraken into reach, gives it a slow lateral
+swim, and then settles before the next tell. A bounded yaw servo turns the physical body toward
+the score's heading. The visual root never turns independently to conceal an unresponsive helm.
+Actual speed, turning and damage supply the swim lean, bank and brief recoil. The worker read
+model mirrors the committed fight clock and cast with the body's update so presentation does
+not silently lose the encounter in worker mode.
 
 ## 3. Heavy and colossus are different encounter jobs
 
@@ -118,8 +130,10 @@ targets cannot be hit retroactively for crossing the region while it was harmles
 telegraph commits, do not keep steering its lethal footprint onto the player.
 
 Each attack has 2.5 seconds of heavy recovery or 3 seconds of colossus recovery; the jet adds
-another 0.6 seconds. The mantle begins opening during the final 18 active ticks and remains a
-recovery cue before closing. The [core damage rule](../src/combat/ironKraken.js) grants 1.8× only
+another 0.6 seconds. The frontal shutters expose the core during each recovery. The full mantle
+petals open for the ink discharge and its venting recovery; the other moves keep the pressure
+housing assembled. A serializable recovery record retains the preceding move and its timing,
+including a cancelled discharge. The [core damage rule](../src/combat/ironKraken.js) grants 1.8× only
 for an actual direct weapon impact on the frontal aperture during a bound, active recovery phase.
 An attacker standing in front is insufficient: a side impact, splash, status damage, or an
 unbound/suspended score receives no aperture bonus. It uses the existing hit evidence and hull
@@ -133,6 +147,19 @@ For color-independent readability, pair color with motion and shape: gathered ar
 charge; spread flank arms mean rake; open shell means exposed machinery. Reduced-motion or
 reduced-flash modes must retain the footprint and commitment information. Strong silhouettes,
 brief sound cues, and a bounded pulse can carry the warning without full-screen strobing.
+
+The [attack effects](../src/render/ironKrakenAttackVfx.js) use the authoritative locked lane and
+sector shapes. Their entire harmful region is visible on the first active tick. Travelling
+crests add motion without implying that unreached portions are safe; cooling residue loses
+its active coverage immediately. Effects stay fixed through body interpolation and floating
+origin changes. Four reusable field slots and one front-aperture emission need no new geometry
+or scene nodes per frame.
+
+The [audio adapter](../src/audio/ironKrakenAudio.js) routes mechanical charge, rake, pressure jet,
+ink discharge and recovery vent recipes through the existing positional audio system. Each
+score stage sounds once, after audio is enabled by the normal gesture flow. Cancellation,
+suspension, pause, death and restore stop or reset those finite voices. Do not create another
+audio context or substitute wall-clock playback scheduling for score receipts.
 
 Use the existing encounter machinery:
 
@@ -154,8 +181,10 @@ The live shell does not carry a complete invisible engine or a second robot. Its
 reveal is created on the first mantle opening and is hidden while the shell is closed. It models
 the visible cross-braced frame, cylinders, gears, pressure manifolds, routed hoses, and cap spindle.
 The closed dome carries only the shallow mechanisms visible through its inspection windows.
-Sliding hinges lower and spread the eight shell petals while the cap rises; preserve a compact
-opening around the pump rather than an oversized radial flower.
+The eight shell petals rotate about fixed, visible hinges while the supported cap rises.
+The pump remains seated in the pressure housing and its spindle reaches the cap throughout
+the opening. The reference's exploded service demonstration belongs to destruction, not to
+ordinary live articulation.
 The separate death-only pump chunks are created by the VFX owner only when a valid kill first
 requires the shared debris pool; no corpse geometry is preloaded inside each living creature.
 
@@ -220,8 +249,8 @@ large jet/culling bounds. Below 128 pixels it selects shared distant arm geometr
 restores close detail. The hysteresis avoids repeated switches around one distance. Both levels
 retain all 176 articulated links, all four cups per link, the white barrel profile, and four
 hydraulic mechanisms per joint. Distant geometry omits subpixel fasteners and pinstripes and uses
-simpler circular surfaces. It changes 1,542 triangles per link to 718; those source geometry counts
-do not establish frame-time savings. No new mesh, material, or pose buffer is allocated per frame.
+simpler circular surfaces. Compare submitted triangles in the native capture report; those
+counts do not establish frame-time savings. No new mesh, material, or pose buffer is allocated per frame.
 Camera changes can switch detail while paused without advancing the score or pose.
 
 The model is divided by responsibility: [hull and lazy pump construction](../src/render/ironKrakenHullGeometry.js),

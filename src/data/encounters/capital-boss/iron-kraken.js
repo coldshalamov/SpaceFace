@@ -27,10 +27,15 @@ function makeIronKraken(p) {
     score: score({
       name: p.name.toUpperCase(), missionDefinitionId: 'capital_boss', identity: 'eight_arms_one_temper',
       introTicks: 120, transitionTicks: 60, resumeTicks: 120,
+      // The character swims between committed attacks. The score owns this velocity intent;
+      // the normal tactical/physics path supplies the force, steering and collision response.
+      transitMotion: { kind: 'kraken_reposition', preferredRange: reach * 0.86,
+        approachSpeed: colossus ? 42 : 52, orbitSpeed: colossus ? 14 : 20,
+        recoveryHoldTicks: 60, settleTicks: 30 },
       rangeResponse: { minRange: reach * 1.8, beatId: 'siphon_jet' },
       intro: 'IRON KRAKEN: Salvage claim accepted. Please stop being attached to your ship.',
-      lesson: 'Arms spread: leave the flanks. Arms gather: cross the locked jet. Mantle opens: shoot the red core.',
-      lossLesson: 'Leave the painted shape after it locks. The open mantle is the next clean shot.',
+      lesson: 'Arms spread: leave the flanks. Arms gather: cross the locked jet. Front core opens: shoot the red aperture.',
+      lossLesson: 'Leave the painted shape after it locks. The open front core is the next clean shot.',
       victory: 'IRON KRAKEN: Customer disassembly… cancelled.',
       escape: 'IRON KRAKEN: Your salvage appointment remains outstanding.',
       budget: { referenceEffectiveDps: 96 / 12.25,
@@ -67,7 +72,7 @@ function makeIronKraken(p) {
           recoverTicks: recovery + 36, motion: { forward: 1, brake: false },
           shapes: [lane(0, 0, p.jetLength, r * 2, 0, 'target')],
           packet: packet({ kinetic: colossus ? 30 : 24 }), expose: THROW_WINDOW,
-          counter: 'Its arms gather, then a pressure jet fills the locked lane as it lunges. Strafe clear; punish the open mantle after the burst.' }),
+          counter: 'Its arms gather, then a pressure jet fills the locked lane as it lunges. Strafe clear; punish the open front core after the burst.' }),
         beat({ id: 'ink_ring', title: 'BROKEN INK RING', cue: 'maw.stern',
           trackTicks: 0, tellTicks: 120, activeTicks: 36, recoverTicks: recovery,
           motion: { forward: 0, brake: true },
