@@ -434,7 +434,11 @@ ${A} > .k-foot .con-back.sf-back.k-word:focus-visible::after { color:rgb(255 253
   ${A} { zoom:1.85; --k-s:1; }
 }
 @media (max-width:1400px) {
-  ${A} { grid-template-columns:minmax(0, 1fr) clamp(260px, 26vw, 340px) !important; }
+  ${A} { grid-template-columns:minmax(0, 1fr) clamp(290px, 26vw, 340px) !important; }
+}
+/* a short desktop window keeps the kicker's "category · state" on one line in the narrow reading column */
+@media (min-width:761px) and (max-width:1100px) {
+  ${A} .con-medal-read__kicker { letter-spacing:.18em; }
 }
 /* an upright phone or a window under 560px wide: one column. Title, then the medal orrery at full width
    (it stands down under 320px wide), then the chosen medal's reading, then the categories on
