@@ -628,7 +628,10 @@ function createResidencyProxy(source, material, geometry = source.geometry) {
     const ownedColor = proxy.instanceColor;
     proxy.instanceMatrix = source.instanceMatrix;
     proxy.instanceColor = source.instanceColor;
-    proxy.count = Math.max(0, Number(source.count) || 0);
+    // Three skips count-0 InstancedMeshes before attribute upload. A scratch
+    // proxy may submit one existing-capacity instance without changing the live pool.
+    const capacity = Math.max(0, Number(source.instanceMatrix?.count) || 0);
+    proxy.count = capacity > 0 ? Math.max(1, Number(source.count) || 0) : 0;
     cleanup = () => {
       proxy.instanceMatrix = ownedMatrix;
       proxy.instanceColor = ownedColor;
@@ -650,7 +653,7 @@ function createResidencyProxy(source, material, geometry = source.geometry) {
   proxy.matrixAutoUpdate = false;
   proxy.matrix.identity();
   proxy.matrixWorld.identity();
-  return { proxy, cleanup };
+  return { proxy, cleanup, uploadable: !proxy.isInstancedMesh || proxy.count > 0 };
 }
 
 function rendererMemoryGeometries(renderer) {
@@ -935,7 +938,9 @@ export async function prepareStartupGeometryResidency(renderer, subjects, option
                 success,
               };
               if (success) {
-                for (const item of batch.work) {
+                for (let i = 0; i < batch.work.length; i++) {
+                  const item = batch.work[i];
+                  if (!proxyEntries[i].uploadable) continue;
                   const geometry = item.geometry;
                   if (geometry) {
                     const data = geometry.userData || (geometry.userData = {});
@@ -959,7 +964,9 @@ export async function prepareStartupGeometryResidency(renderer, subjects, option
         } finally {
           if (releaseCpu) releaseCpu();
           if (uploadSucceeded) {
-            for (const item of batch.work) detachPackageGeometry(item.geometry, renderer);
+            for (let i = 0; i < batch.work.length; i++) {
+              if (proxyEntries[i].uploadable) detachPackageGeometry(batch.work[i].geometry, renderer);
+            }
           }
           for (const entry of proxyEntries) {
             scene.remove(entry.proxy);

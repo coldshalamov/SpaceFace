@@ -4,6 +4,9 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 
 import * as THREE from 'three';
+import { GLTFLoader } from '../vendor/addons/loaders/GLTFLoader.js';
+import { MeshoptDecoder as RuntimeMeshoptDecoder } from '../vendor/addons/libs/meshopt_decoder.module.js';
+import { registerEmbeddedKtx2Textures } from '../src/render/embeddedKtx2Textures.js';
 
 import {
   RENDER_PACKAGE_SCHEMA,
@@ -425,6 +428,79 @@ test('startup residency proxy uses the geometry captured before a live LOD swap'
   assert.equal(decoded.geometry.userData.spacefaceGpuResident, undefined, 'the replacement is not falsely stamped');
   assert.equal(hasUnresidentGeometry(mesh), true, 'the live replacement remains eligible for its own admission');
   loader.dispose();
+});
+
+test('dormant instanced residency uploads a refilled attribute before sealing it', async () => {
+  const decoded = decodedFixture();
+  let decodes = 0;
+  const loader = freshLoader(async () => (++decodes === 1 ? decoded : decodedFixture()));
+  await loader.load(packageMetadata('fixture.dormant-residency'), { baseUrl: 'https://fixtures.test/' });
+  let target = null, gpuVersion = 0, uploaded = 0;
+  const renderer = { getRenderTarget: () => target, setRenderTarget: value => { target = value; },
+    render(scene) { scene.traverse(object => {
+      if (!object.geometry || (object.isInstancedMesh && object.count <= 0)) return;
+      const uv = object.geometry.getAttribute('uv');
+      const record = uv.isInterleavedBufferAttribute ? uv.data : uv;
+      assert.ok(record.array.byteLength > 0, 'the actual proxy upload has CPU bytes');
+      gpuVersion = record.version; uploaded++;
+    }); } };
+  assert.equal(detachPackageGeometry(decoded.geometry, renderer), true);
+  await rehydrateDetachedGeometries([decoded.geometry], { yieldToMain: async () => {} });
+  const buffer = decoded.geometry.getAttribute('uv').data;
+  assert.equal(buffer.version, 1, 'refill advances the real shared record');
+  const pool = new THREE.InstancedMesh(decoded.geometry, decoded.material, 4); pool.count = 0;
+  await prepareStartupGeometryResidency(renderer, pool, { includeEmpty: true,
+    yieldToMain: async () => {}, paceQueue: async () => {} });
+  assert.ok(uploaded > 0, 'the proxy reaches Three’s nonempty project branch');
+  assert.equal(gpuVersion, buffer.version, 'GPU records contain the refilled version before CPU retirement');
+  assert.equal(pool.count, 0, 'the live pool remains dormant');
+  loader.dispose();
+});
+
+test('real Wasp Armor survives a dormant pool refill and activation on the same renderer', async (t) => {
+  resetPackageDetachManifestsForTests();
+  t.after(() => resetPackageDetachManifestsForTests());
+  const bytes = readFileSync(new URL('../assets/ships/release/render-packages/wasp-scn-patrol/render.glb', import.meta.url));
+  const decode = async () => {
+    const loader = new GLTFLoader().setMeshoptDecoder(RuntimeMeshoptDecoder);
+    loader.setKTX2Loader({ parse(_bytes, onLoad) { onLoad(new THREE.CompressedTexture([], 4, 4)); } });
+    loader.register(registerEmbeddedKtx2Textures);
+    return loader.parseAsync(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength), '');
+  };
+  const resources = scene => {
+    const seen = new Set(), geometries = [];
+    scene.traverse(object => { if (object.geometry && !seen.has(object.geometry)) {
+      seen.add(object.geometry); geometries.push(object.geometry);
+    } });
+    return geometries;
+  };
+  const decoded = await decode(), geometries = resources(decoded.scene);
+  const armor = decoded.scene.getObjectByName('LOD0_Armor');
+  assert.equal(armor.geometry, geometries[1]);
+  assert.equal(armor.geometry.getAttribute('uv').count, 5623);
+  createPackageDetachManifest({ assetId: 'sf.render.wasp-scn-patrol', contentHash: 'f'.repeat(64), resources: geometries },
+    { redecode: decode, collectResources: resources });
+  let target = null, gpuVersion = 0, uploaded = 0;
+  const renderer = { getRenderTarget: () => target, setRenderTarget: value => { target = value; },
+    render(scene) { scene.traverse(object => {
+      if (!object.geometry || (object.isInstancedMesh && object.count <= 0)) return;
+      const uv = object.geometry.getAttribute('uv');
+      assert.equal(uv.array.byteLength, 44984);
+      gpuVersion = uv.version; uploaded++;
+    }); } };
+  assert.equal(detachPackageGeometry(armor.geometry, renderer), true);
+  await rehydrateDetachedGeometries([armor.geometry], { yieldToMain: async () => {} });
+  const uv = armor.geometry.getAttribute('uv');
+  assert.equal(uv.version, 1);
+  const pool = new THREE.InstancedMesh(armor.geometry, armor.material, 4); pool.count = 0;
+  await prepareStartupGeometryResidency(renderer, pool, { includeEmpty: true, yieldToMain: async () => {}, paceQueue: async () => {} });
+  assert.equal(uploaded, 1);
+  assert.equal(gpuVersion, uv.version);
+  assert.equal(detachedGeometryUploadPending(armor.geometry, renderer), false);
+  assert.equal(pool.count, 0);
+  assert.equal(uv.array.byteLength, 0, 'the normal post-upload CPU retirement occurred');
+  pool.count = 1;
+  assert.equal(gpuVersion, uv.version, 'activation reuses the uploaded version rather than re-uploading empty bytes');
 });
 
 test('an unrelated LOD donor mismatch remains evidence without blocking the requested geometry', async () => {
