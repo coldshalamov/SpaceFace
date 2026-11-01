@@ -134,6 +134,19 @@ ${P} .sxb-vital__acts .orr-act__cost { font-family:${NUM} !important; font-size:
   ${P} .sxb-crown .sxb-purse__label { width:auto !important; border:0 !important; padding:0 !important; }
   ${P} .sxb-crown .sxb-purse__value { font-size:20px !important; line-height:1.1 !important; }
 }
+/* Under 481 wide the 136px vitals wrapped two to a row at uneven offsets, so MUNITIONS fell to a third row past the
+   40% head and LEDGER's Draw sat under its fade: two even columns, the hull's two priced verbs beside fuel over hold. */
+@media (max-width:480px) and (min-height:601px) {
+  ${P} .sxb-crown .sxb-vitals { display:grid !important; grid-template-columns:repeat(2, minmax(0, 1fr)) !important;
+    grid-template-areas:"hull fuel" "hull hold" "note muni" !important; gap:2px 18px !important; align-items:start !important;
+    padding-block:5px 6px !important; }
+  ${P} .sxb-crown .sxb-vitals > .sxb-vital { width:auto !important; min-width:0 !important; grid-column:auto !important; grid-row:auto !important; }
+  ${P} .sxb-crown .sxb-vitals > .sxb-vital--hull { grid-area:hull !important; }
+  ${P} .sxb-crown .sxb-vitals > .sxb-vital--fuel { grid-area:fuel !important; }
+  ${P} .sxb-crown .sxb-vitals > .sxb-vital--hold { grid-area:hold !important; }
+  ${P} .sxb-crown .sxb-vitals > .sxb-vital--note { grid-area:note !important; }
+  ${P} .sxb-crown .sxb-vitals > .sxb-vital--muni { grid-area:muni !important; }
+}
 @media (min-width:901px) and (max-width:1100px) and (min-height:461px) and (max-height:640px) {
   ${P}:has(#sx-panel > .sx-sw:not([hidden])) { grid-template-rows:max-content minmax(0,1fr) max-content !important; }
   ${P}:has(#sx-panel > .sx-sw:not([hidden])) .sxb-berth.dp-frame__head {
