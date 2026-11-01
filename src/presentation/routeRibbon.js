@@ -1,7 +1,7 @@
 // §22 F16 — a faint world ribbon along the point the live autopilot already steers toward.
 // No force. Brightness stays under the authored engine-plume core.
 
-import { resolveAutopilotTarget } from '../systems/flightV3.js';
+import { resolveAutopilotTarget } from '../core/flight/flightPresentationReads.js';
 
 export const ENGINE_PLUME_CORE_INTENSITY = 6.5;
 export const ROUTE_RIBBON_BRIGHTNESS = 0.85;

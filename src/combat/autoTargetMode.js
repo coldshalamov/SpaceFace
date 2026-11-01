@@ -21,7 +21,7 @@ import { wrapAngle } from '../core/rng.js';
 import { massline2Flag } from '../data/featureFlags.js';
 import { solveTetherLeadSolution, orbitalConstraintState, masslineOwnsGuns } from './tetherFireControl.js';
 import { resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
-import { applyAutoTargetHelmProfile, applyAutoTargetPathProfile } from '../systems/flightV3.js';
+import { applyAutoTargetHelmProfile, applyAutoTargetPathProfile } from '../core/flight/flightPresentationReads.js';
 import { concealedFromPlayer, observeSelection, selectionIsRecycled } from './targetIdentity.js';
 
 export const AUTO_TARGET_REFRESH_S = 0.12;
