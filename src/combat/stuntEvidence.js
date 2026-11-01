@@ -217,7 +217,15 @@ export function observeContact(a, b, contact, state = activeState) {
     aPos: point(contact.positionA??a.pos), bPos: point(contact.positionB??b.pos), aRef: { ...la, entity: undefined }, bRef: { ...lb, entity: undefined }, paths: [] };
   // Both sides observe the same pre-contact ancestry. A transfer cannot bounce back in this loop.
   const ia=j.bodies.get(la.id),ib=j.bodies.get(lb.id);
-  for (const [source, target, sl, tl, sv, tv,influence] of [[a,b,la,lb,contact.beforeA,contact.beforeB,ia],[b,a,lb,la,contact.beforeB,contact.beforeA,ib]]) {
+  for (let direction = 0; direction < 2; direction++) {
+    const forward = direction === 0;
+    const source = forward ? a : b;
+    const target = forward ? b : a;
+    const sl = forward ? la : lb;
+    const tl = forward ? lb : la;
+    const sv = forward ? contact.beforeA : contact.beforeB;
+    const tv = forward ? contact.beforeB : contact.beforeA;
+    const influence = forward ? ia : ib;
     const root = influence && liveRoot(j, influence.rootId, tick);
     if (!root || tick < influence.lastTick || tick - influence.lastTick > EVIDENCE_LIMITS.gap || influence.edges >= EVIDENCE_LIMITS.edges) continue;
     const sourcePos=source===a?record.aPos:record.bPos,targetPos=target===a?record.aPos:record.bPos;

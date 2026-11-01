@@ -15,7 +15,7 @@
 // loud object, and cutting is one key — so this needs no hidden override, and the old failure
 // (orbiting your catch while the guns tracked a nearer third ship) cannot recur.
 import { followDrawFlightPath } from './drawFlightPath.js';
-import { solveLeadAngle } from '../systems/weapons.js';
+import { solveLeadAngle } from './leadAngle.js';
 import { isHostileToPlayer } from '../systems/scanner.js';
 import { wrapAngle } from '../core/rng.js';
 import { massline2Flag } from '../data/featureFlags.js';
