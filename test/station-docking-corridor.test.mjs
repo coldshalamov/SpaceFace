@@ -860,6 +860,12 @@ async function createAutopilotApproachRig({ startPos, startVel }) {
     boost: { energy: 200, max: 200 },
   };
   const bus = createBus();
+  const dockRangeEvents = [];
+  const dockRangeHost = {
+    _dockStationId: null,
+    _gateEntityId: null,
+    bus: { emit: (name, payload) => dockRangeEvents.push({ name, payload }) },
+  };
   const autopilot = {
     active: true, targetEntityId: station.id,
     target: { x: station.pos.x, z: station.pos.z },
@@ -884,10 +890,66 @@ async function createAutopilotApproachRig({ startPos, startVel }) {
     flightV3._stepCraft(player, state.input, dt, state, true);
     dockingCorridor.update(dt, state);
     owner.step(dt);
+    // Observe the same public owner the live physics tick uses after movement has settled.
+    physics.updateDockRange.call(dockRangeHost, state);
   };
   const dispose = () => { flightV3.bus = prevBus; owner.dispose(); };
-  return { owner, state, player, autopilot, station, berth, dt, stepCraft, dispose };
+  return { owner, state, player, autopilot, station, berth, dt, stepCraft, dockRangeEvents, dockRangeHost, dispose };
 }
+
+// The public Ceres route stopped near the authored Belt Outpost, but its contact and yaw were
+// not captured. Exercise several ordinary headings against the real compound and flight owner;
+// this is a deterministic candidate, not a reconstruction of that historical contact.
+test('real authority: autopilot clears Belt Outpost en route to Ceres', async () => {
+  const outpost = {
+    id: 'beltout', type: 'station', alive: true, collides: true,
+    pos: { x: -11508, z: 7252 }, rot: 0, radius: 26, mass: 1e6,
+    data: { stationId: 'station_beltout', stationTypeId: 'mining', dockRadius: 60,
+      collisionRadius: 26, placeScale: 60 / 14, collisionProxy: 'station_ring_hub',
+      corridorBearingDeg: Math.atan2(940, -780) * 180 / Math.PI },
+  };
+  const ceres = {
+    id: 'ceres', type: 'station', alive: true, collides: true,
+    pos: { x: -13388, z: 8812 }, rot: 0, radius: 34, mass: 1e6,
+    data: { stationId: 'station_ceres', stationTypeId: 'refinery', dockRadius: 72,
+      collisionRadius: 34, placeScale: 72 / 14, collisionProxy: 'station_ring_hub',
+      corridorBearingDeg: Math.atan2(-620, 1100) * 180 / Math.PI },
+  };
+  for (const heading of [0, Math.PI / 2, Math.PI]) {
+    const owner = await createSg02DynamicBodyOwner({ publishTelemetry: false });
+    const previousBus = flightV3.bus;
+    const player = { id: 'player', type: 'ship', alive: true, collides: true, flags: {},
+      pos: { x: -11459.598, z: 7265.295 }, vel: { x: -3.109, z: -1.504 },
+      rot: heading, angVel: 0, radius: 14, mass: 32, data: {},
+      propulsion: PROPULSION_PROFILES.drive_reaction_m, boost: { energy: 200, max: 200 } };
+    const autopilot = { active: true, targetEntityId: ceres.id, target: { ...ceres.pos },
+      label: 'Ceres Refinery', arrivalRadius: 90, status: '', distance: 0 };
+    const state = { mode: 'flight', playerId: player.id, tick: 0, simTime: 0,
+      entities: new Map([[player.id, player], [outpost.id, outpost], [ceres.id, ceres]]),
+      entityIndex: { stations: [outpost, ceres] }, entityList: [player, outpost, ceres],
+      input: {}, ui: {}, nav: { autopilot }, player };
+    const bus = createBus();
+    flightV3.bus = bus;
+    dockingCorridor.init({ bus });
+    owner.syncFromEntities([outpost, ceres, player]);
+    const initialDistance = Math.hypot(player.pos.x - ceres.pos.x, player.pos.z - ceres.pos.z);
+    try {
+      for (let tick = 0; tick < 60 * 60; tick++) {
+        state.tick = tick; state.simTime = tick / 60;
+        Object.assign(state.input, { moveX: 0, moveZ: 0, turnIntent: 0, boost: false, brake: false });
+        flightV3._stepCraft(player, state.input, 1 / 60, state, true);
+        dockingCorridor.update(1 / 60, state);
+        owner.step(1 / 60);
+      }
+      const finalDistance = Math.hypot(player.pos.x - ceres.pos.x, player.pos.z - ceres.pos.z);
+      assert.ok(finalDistance < initialDistance - 100,
+        `heading ${heading}: failed to make material progress toward Ceres (${initialDistance.toFixed(1)} → ${finalDistance.toFixed(1)}), status ${autopilot.status}`);
+    } finally {
+      flightV3.bus = previousBus;
+      owner.dispose();
+    }
+  }
+});
 
 async function flyAutopilotDockApproach({ startPos, startVel, secondsMax, onTick }) {
   const rig = await createAutopilotApproachRig({ startPos, startVel });
@@ -922,6 +984,36 @@ async function flyAutopilotDockApproach({ startPos, startVel, secondsMax, onTick
     rig.dispose();
   }
 }
+
+test('real authority: ordinary autopilot berthing raises the public dock-range prompt', async () => {
+  const rig = await createAutopilotApproachRig({
+    startPos: skinPos(1200),
+    startVel: skinVel(-300),
+  });
+  try {
+    for (let t = 0; t < 120 * 60; t++) {
+      rig.stepCraft(t);
+      if (rig.state.dockingCorridor && rig.state.dockingCorridor.phase === 'berthed') break;
+    }
+
+    assert.equal(rig.state.dockingCorridor.phase, 'berthed',
+      'the ordinary flight owner must reach the physical berth');
+    assert.ok(rig.dockRangeEvents.some(({ name, payload }) => name === 'dock:range'
+      && payload.stationId === 'station_helios'
+      && payload.shipId === 'player'
+      && payload.inRange === true),
+    'the canonical dock-range owner must expose the prompt for the same settled berth');
+
+    // Let the normal idle flight/corridor/physics owners continue after arrival. A brief
+    // contact displacement must not leave the player parked outside the prompt envelope.
+    const settledTick = rig.state.tick;
+    for (let t = settledTick + 1; t <= settledTick + 10 * 60; t++) rig.stepCraft(t);
+    assert.equal(rig.dockRangeHost._dockStationId, 'station_helios',
+      'the settled player remains inside the dock prompt range after arrival');
+  } finally {
+    rig.dispose();
+  }
+});
 
 // The failed soak run's own coordinates: 55,888 wu out, velocity perpendicular to the target
 // line — radial closing speed ≈ 0, so the closing-only planner saw nothing to stop.

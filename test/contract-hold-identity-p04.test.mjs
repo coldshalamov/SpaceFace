@@ -84,6 +84,10 @@ class CtNode {
   querySelectorAll() { return []; }
   closest() { return null; }
   focus() { this.ownerDocument.activeElement = this; }
+  contains(node) {
+    for (let current = node; current; current = current.parentNode) if (current === this) return true;
+    return false;
+  }
   getBoundingClientRect() { return { left: 0, right: 0, top: 0, bottom: 0, width: 0, height: 0 }; }
 }
 
@@ -111,6 +115,7 @@ function makeContractsDom() {
     activeElement: null,
     head: null,
     body: null,
+    visibilityState: 'visible',
     documentElement: {
       dataset: {},
       _classes: new Set(),
@@ -212,13 +217,19 @@ async function main() {
   globalThis.cancelAnimationFrame = () => {};
   const priorPerformance = globalThis.performance;
   globalThis.performance = { now: () => clockNow };
+  const windowListeners = {};
 
   const dom = makeContractsDom();
   const reduceMotion = { flag: false };
   const realContains = dom.doc.documentElement.classList.contains.bind(dom.doc.documentElement.classList);
   dom.doc.documentElement.classList.contains = (name) => (name === 'sf-reduce-motion' ? reduceMotion.flag : realContains(name));
   globalThis.document = dom.doc;
-  globalThis.window = { devicePixelRatio: 1, innerHeight: 900, addEventListener() {}, removeEventListener() {} };
+  globalThis.window = {
+    devicePixelRatio: 1, innerHeight: 900,
+    addEventListener(type, fn) { (windowListeners[type] ||= []).push(fn); },
+    removeEventListener(type, fn) { windowListeners[type] = (windowListeners[type] || []).filter((f) => f !== fn); },
+    fire(type, event = {}) { for (const fn of [...(windowListeners[type] || [])]) fn({ target: this, ...event }); },
+  };
 
   const { createContractsScreen } = await import('../src/ui/station/screens/contracts.js');
 
@@ -257,6 +268,141 @@ async function main() {
       advance(1000);
       await settleAsync();
       assert.deepEqual(acceptEmits(emitted), ['m_alpha'], `${source} never repeats the completed acceptance`);
+      screen.dispose();
+    }
+
+    // A continuous physical hold completes from monotonic elapsed time even if no RAF runs until
+    // after release (the measured GPU/compositor stall case). The release path can commit once,
+    // and later frames or duplicate release events cannot repeat it.
+    for (const source of ['pointer', 'key']) {
+      const { ctx, emitted } = makeCtx([offer('m_alpha', 'Alpha Run', 5000)]);
+      const screen = createContractsScreen(ctx), sc = dom.last();
+      screen.onShow(ctx);
+      const key = sc.dossier.currentAccept();
+      sc.root.fire(source === 'pointer' ? 'pointerdown' : 'keydown',
+        { target: key, button: 0, key: 'Enter' });
+      clockNow += 1_100; // deliberately do not service the queued animation frame
+      dom.doc.fire(source === 'pointer' ? 'pointerup' : 'keyup', { target: key, key: 'Enter' });
+      await settleAsync();
+      assert.deepEqual(acceptEmits(emitted), ['m_alpha'], `${source} accepts after a qualified RAF gap`);
+      dom.doc.fire(source === 'pointer' ? 'pointerup' : 'keyup', { target: key, key: 'Enter' });
+      advance(1000);
+      await settleAsync();
+      assert.deepEqual(acceptEmits(emitted), ['m_alpha'], `${source} qualified hold fires exactly once`);
+      screen.dispose();
+    }
+
+    {
+      const { ctx, emitted } = makeCtx([offer('m_alpha', 'Alpha Run', 5000)]);
+      const screen = createContractsScreen(ctx), sc = dom.last();
+      screen.onShow(ctx);
+      const key = sc.dossier.currentAccept();
+      const holdText = new CtNode('span', dom.doc);
+      const holdRing = new CtNode('span', dom.doc);
+      holdText.closest = () => key;
+      holdRing.closest = () => key;
+      key.appendChild(holdText);
+      key.appendChild(holdRing);
+      sc.root.fire('pointerdown', { target: holdText, button: 0 });
+      sc.root.fire('pointerleave', { target: holdText, relatedTarget: holdRing });
+      clockNow += 1_100; // a child-to-child move inside Accept must leave the physical hold armed
+      dom.doc.fire('pointerup', { target: holdRing });
+      await settleAsync();
+      assert.deepEqual(acceptEmits(emitted), ['m_alpha'], 'child pointerleave within Accept does not cancel its hold');
+      screen.dispose();
+    }
+
+    // A quick re-arm may continue the visible spring, but wall time after the first release is not
+    // counted as pressed time toward the second activation.
+    {
+      const { ctx, emitted } = makeCtx([offer('m_alpha', 'Alpha Run', 5000)]);
+      const screen = createContractsScreen(ctx), sc = dom.last();
+      screen.onShow(ctx);
+      let key = sc.dossier.currentAccept();
+      sc.root.fire('pointerdown', { target: key, button: 0 });
+      stepFrame(200);
+      dom.doc.fire('pointerup', { target: key });
+      clockNow += 5_000; // no frame paints the retract during this released interval
+      key = sc.dossier.currentAccept();
+      sc.root.fire('pointerdown', { target: key, button: 0 });
+      clockNow += 100;
+      dom.doc.fire('pointerup', { target: key });
+      advance(800);
+      await settleAsync();
+      assert.deepEqual(acceptEmits(emitted), [], 'released wall time cannot finish a re-armed hold');
+      screen.dispose();
+    }
+
+    // A duplicate pointerup after a short release cannot turn elapsed released time into a
+    // qualified hold; a deliberate re-arm still continues from the retained spring fraction.
+    {
+      const { ctx, emitted } = makeCtx([offer('m_alpha', 'Alpha Run', 5000)]);
+      const screen = createContractsScreen(ctx), sc = dom.last();
+      screen.onShow(ctx);
+      let key = sc.dossier.currentAccept();
+      sc.root.fire('pointerdown', { target: key, button: 0 });
+      stepFrame(200);
+      dom.doc.fire('pointerup', { target: key });
+      clockNow += 5_000; // the pointer is released throughout this RAF gap
+      dom.doc.fire('pointerup', { target: key }); // duplicate capture/bubble-style notification
+      await settleAsync();
+      assert.deepEqual(acceptEmits(emitted), [], 'duplicate release cannot finish an ended press');
+      key = sc.dossier.currentAccept();
+      sc.root.fire('pointerdown', { target: key, button: 0 });
+      clockNow += 260; // retained progress plus this fresh press exceeds the threshold
+      dom.doc.fire('pointerup', { target: key });
+      advance(400);
+      await settleAsync();
+      assert.deepEqual(acceptEmits(emitted), ['m_alpha'], 'a deliberate re-arm resumes the spring once');
+      screen.dispose();
+    }
+
+    // Cancellation still wins over elapsed time when the first frame is delayed: leaving the key,
+    // pointercancel, focus loss, Escape, and pagehide all retire the uncompleted physical hold.
+    for (const cancel of ['pointerleave', 'pointercancel', 'blur', 'escape', 'hidden', 'pagehide']) {
+      const { ctx, emitted } = makeCtx([offer('m_alpha', 'Alpha Run', 5000)]);
+      const screen = createContractsScreen(ctx), sc = dom.last();
+      screen.onShow(ctx);
+      const key = sc.dossier.currentAccept();
+      sc.root.fire('pointerdown', { target: key, button: 0 });
+      clockNow += 1_100; // exceed the threshold without letting the visual RAF run
+      if (cancel === 'pointerleave') sc.root.fire('pointerleave', { target: key });
+      else if (cancel === 'pointercancel') dom.doc.fire('pointercancel', { target: key });
+      else if (cancel === 'escape') dom.doc.fire('keydown', { key: 'Escape' });
+      else if (cancel === 'hidden') { dom.doc.visibilityState = 'hidden'; dom.doc.fire('visibilitychange'); }
+      else globalThis.window.fire(cancel);
+      advance(600);
+      await settleAsync();
+      assert.deepEqual(acceptEmits(emitted), [], `${cancel} cancels a stalled hold`);
+      screen.dispose();
+      dom.doc.visibilityState = 'visible';
+    }
+
+    {
+      const { ctx, emitted } = makeCtx([offer('m_alpha', 'Alpha Run', 5000)]);
+      const screen = createContractsScreen(ctx), sc = dom.last();
+      screen.onShow(ctx);
+      const key = sc.dossier.currentAccept();
+      sc.root.fire('pointerdown', { target: key, button: 0 });
+      globalThis.window.fire('blur', { target: key }); // bubbled descendant blur during focus transfer
+      clockNow += 1_100; // qualify without an animation frame
+      dom.doc.fire('pointerup', { target: key });
+      await settleAsync();
+      assert.deepEqual(acceptEmits(emitted), ['m_alpha'], 'descendant blur does not cancel a pointer hold');
+      screen.dispose();
+    }
+
+    {
+      const { ctx, emitted } = makeCtx([offer('m_alpha', 'Alpha Run', 5000)]);
+      const screen = createContractsScreen(ctx), sc = dom.last();
+      screen.onShow(ctx);
+      const key = sc.dossier.currentAccept();
+      sc.root.fire('keydown', { target: key, key: 'Enter' });
+      sc.root.fire('focusout', { target: key, relatedTarget: dom.doc.body });
+      clockNow += 1_100;
+      dom.doc.fire('keyup', { key: 'Enter' });
+      await settleAsync();
+      assert.deepEqual(acceptEmits(emitted), [], 'keyboard focus leaving Accept cancels its hold');
       screen.dispose();
     }
 

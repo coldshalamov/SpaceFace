@@ -110,6 +110,8 @@ function neutralInput(state) {
   input.boost = false; input.brake = false;
   input.fire = false; input.fireGroup = null; input.autoFire = false;
   input.deployCountermeasure = false;
+  input.aimIntentActive = false;
+  input.tetherMode = null;
   return input;
 }
 
@@ -915,10 +917,20 @@ export function createStrangerPilot({ state, bus, ledger, services }) {
   let traceWallMark = 0;         // wall-clock mark for the tick-rate heartbeat
   const decided = {};            // one decision log per choice point
 
-  bus.on('tether:attached', (e) => { lineAttached = true; if (e && e.targetId != null) latchedId = e.targetId; needWinch = true; winchUntil = (state.simTime || 0) + 5; });
+  // Canonical player-line events; keep the historical attached alias for older hosts.
+  const hook = (e) => {
+    if (!e || e.flail === true) return;
+    const owner = e.sourceId != null ? e.sourceId : e.actorId;
+    if (owner != null && state.playerId != null && owner !== state.playerId) return;
+    lineAttached = true;
+    if (e.targetId != null) latchedId = e.targetId;
+    needWinch = true; winchUntil = (state.simTime || 0) + 5;
+  };
+  bus.on('tether:latched', hook);
+  bus.on('tether:attached', hook);
   const unhook = () => { lineAttached = false; latchedId = null; };
   bus.on('tether:nearBreak', () => { nearBreakUntil = (state.simTime || 0) + 1.4; });
-  for (const ev of ['tether:broken', 'tether:cut', 'tether:cutPlayer', 'tether:released', 'tether:detached']) {
+  for (const ev of ['tether:broke', 'tether:broken', 'tether:cut', 'tether:cutPlayer', 'tether:released', 'tether:detached']) {
     bus.on(ev, unhook);
   }
 
@@ -955,6 +967,48 @@ export function createStrangerPilot({ state, bus, ledger, services }) {
   function dist(a, b) { return a && b ? Math.hypot(a.x - b.x, a.z - b.z) : Infinity; }
   function waypoint() { return state.nav && state.nav.waypoint ? state.nav.waypoint : null; }
   function heat() { return state.player && Number.isFinite(state.player.heat) ? state.player.heat : 0; }
+
+  // The choice beat (B5) completes on mission:accepted. The board lives at the
+  // berth: take the authored side-by-side offer that pays most, falling back to
+  // the tracked firstTradeContract when the three were never issued.
+  function pickWork() {
+    if (decided.tookChoice) return;
+    const boards = state.missions && state.missions.boards ? state.missions.boards : {};
+    const offers = [];
+    let firstTrade = null;
+    for (const board of Object.values(boards)) {
+      for (const offer of (board && board.offers) || []) {
+        if (!offer || !offer.id) continue;
+        if (offer.source === 'onboardingChoice') offers.push(offer);
+        else if (offer.source === 'firstTradeContract' && !firstTrade) firstTrade = offer;
+      }
+    }
+    const pool = offers.length ? offers : (firstTrade ? [firstTrade] : []);
+    if (!pool.length) return;
+    decided.tookChoice = true;
+    pool.sort((a, b) => (Number(b.rewardCr) || 0) - (Number(a.rewardCr) || 0));
+    const top = pool[0];
+    const second = pool[1];
+    ledger.recordDecision({
+      situation: 'three kinds of work side by side: haul, bounty, survey',
+      options: [
+        { id: `take:${top.id}`, tradeoff: 'highest pay on the board' },
+        second
+          ? { id: `take:${second.id}`, tradeoff: 'less pay, maybe safer work' }
+          : { id: 'skip', tradeoff: 'stay free-roam' },
+      ],
+      chosen: `take:${top.id}`,
+    });
+    bus.emit('ui:acceptMission', { missionId: top.id });
+  }
+
+  function nearestDockStation() {
+    const stations = (state.entityIndex && state.entityIndex.dockStations) || [];
+    const p = player();
+    if (!p) return null;
+    return stations.filter((s) => s && s.alive)
+      .sort((a, b) => dist(p.pos, a.pos) - dist(p.pos, b.pos))[0] || null;
+  }
 
   function decide(key, situation, options, chosen) {
     if (decided[key]) return chosen;
@@ -1049,6 +1103,7 @@ export function createStrangerPilot({ state, bus, ledger, services }) {
     input.aimWorld = input.aimWorld || {};
     input.aimWorld.x = target.pos.x;
     input.aimWorld.z = target.pos.z;
+    input.aimIntentActive = true;
     // Get close and stopped, then wait for the reticle to actually NAME the body before
     // pressing — exactly how a player lines up the diamond. At point-blank the cone holds
     // only the marked body, so the press cannot grab a stranger.
@@ -1058,11 +1113,10 @@ export function createStrangerPilot({ state, bus, ledger, services }) {
     // Pulse the latch (press ~2 ticks, release ~10) — a held press is consumed once and the
     // tether never sees the retry, exactly like a player mashing the key until it takes.
     const pulse = (state.tick % 12) < 2;
-    // Point-blank precision pick (the Ctrl+Massline binding): latch the NEAREST body. Inside
-    // 60 wu the marked body is the nearest by construction, so the press cannot grab the
-    // heavier wreck the preview keeps ranking above the target on a shared bearing.
-    if (d < 90 && speed < 60 && !lineAttached && pulse) {
-      input.tetherMode = 'nearest';
+    // Use the ready scored receipt for the offered body. Ctrl-nearest is a separate player
+    // override and can grab a closer incidental hull while the pilot is pursuing a named target.
+    if (d < 90 && speed < 60 && !lineAttached && pulse && aimed) {
+      input.tetherMode = null;
       cmd.latch = true;
       latchedTargetId = target.id;
       const key = `latch:${label}:${target.id}`;
@@ -1173,6 +1227,12 @@ export function createStrangerPilot({ state, bus, ledger, services }) {
         }
         services.sellEverythingAt(state.ui.dockedStationId);
         services.repair();
+        // The board is read at the berth: the choice beat completes on
+        // mission:accepted, so take the work BEFORE casting off. Run 40 undocked
+        // first and parked at the station for 260+ sim-s — the beat's marker had
+        // flipped to the mission's own (foreign) diamond, so the pick branch under
+        // the wp.onboarding gate never ran.
+        pickWork();
         services.undock();
         return;
       }
@@ -1466,9 +1526,15 @@ export function createStrangerPilot({ state, bus, ledger, services }) {
               chosen: 'boost_now',
             });
           }
+          // The beat completes on the boost VERB (input.boost held), not on arrival —
+          // and its waypoint is the beacon the pilot just delivered to, so flyTo parks
+          // at it with the verb never held (runs 33–34 sat at v=0 for 200+ sim-s).
+          // Aim a long heading away and hold boost like the wanted-outrun leg does.
           const wp = waypoint();
-          flyTo(input, wp ? wp.pos : { x: p.pos.x + Math.cos(p.rot || 0) * 400, z: p.pos.z + Math.sin(p.rot || 0) * 400 },
-            { boost: true, arrive: 500 });
+          const aimB = wp && wp.pos ? Math.atan2(wp.pos.z - p.pos.z, wp.pos.x - p.pos.x)
+            : (p.rot || 0);
+          const far = { x: p.pos.x + Math.cos(aimB) * 6000, z: p.pos.z + Math.sin(aimB) * 6000 };
+          flyTo(input, far, { boost: true, arrive: 500 });
           return;
         }
         if (t3.current === 'stroke') {
@@ -1532,9 +1598,25 @@ export function createStrangerPilot({ state, bus, ledger, services }) {
               chosen: 'cone_plow',
             });
           }
-          input.actions.toggleClearingCone = true; // edge
+          // toggleClearingCone is a level-consumed TOGGLE in fields._handleInput: every
+          // `true` write flips state. Writing it each tick strobes the wedge and leaves
+          // it running after the beat — in run 38 the live cone then shoved the seam
+          // rock ~4 000 wu off its mark. Edge-fire once, then release when the beat ends.
+          if (!decided.coneFired) {
+            decided.coneFired = true;
+            input.actions.toggleClearingCone = true; // single edge: cone ON
+          }
           return;
         }
+      }
+
+      // Once the cone lesson is past, a still-on wedge is a liability: it follows the
+      // nose and plows whatever the ship aims at — run 38's live cone shoved the seam
+      // rock ~4 000 wu off its mark before the mining beat even started.
+      if (decided.coneFired && !decided.coneOff
+        && state.fields && state.fields.coneActive) {
+        decided.coneOff = true;
+        input.actions.toggleClearingCone = true; // single edge: cone OFF
       }
 
       // ── The raid: latch the raider, swing, release into the big rock ───────────────────
@@ -1665,6 +1747,36 @@ export function createStrangerPilot({ state, bus, ledger, services }) {
         const pl = p;
         console.log(`    [wp] t=${Math.round(state.simTime)} beat=${o && o.currentBeat} v=${Math.round(speedOf(pl))} line='${line.slice(0, 36)}' wp=${wp ? `${wp.label}:${wp.onboarding ? 'ob' : 'foreign'}` : 'none'} moveZ=${input.moveZ} brake=${input.brake} cap=${pl.capMax ? Math.round((pl.cap / pl.capMax) * 100) : '?'}%`);
       }
+      // Economy beats run on the beat line even when the route marker is
+      // mission-owned: the dock beat's diamond flips to the real delivery's
+      // marker after acceptance, and the choice beat's is a foreign board
+      // marker — gating on wp.onboarding parked run 40's ship at the station,
+      // undocked, beat 11 open, for 260+ sim-s.
+      if (/dock when close|helios/i.test(line)) {
+        const st = nearestDockStation();
+        if (st) {
+          flyTo(input, st.pos, { arrive: DOCK_RANGE - 20, boost: true });
+          if (dist(p.pos, st.pos) <= DOCK_RANGE + (st.radius || 0)) {
+            services.dockAt(st);
+            pickWork();
+          }
+          return;
+        }
+        if (wp && wp.pos) { flyTo(input, wp.pos, { arrive: 400, boost: true }); return; }
+      }
+      if (/pick the work|board's holding/i.test(line)) {
+        // The board is read at the berth: re-dock if a station is in reach and the
+        // docked block takes the work there; with no station at all, accept what
+        // the board shows — the beat completes on mission:accepted, not the berth.
+        const st = nearestDockStation();
+        if (st && dist(p.pos, st.pos) > DOCK_RANGE + (st.radius || 0)) {
+          flyTo(input, st.pos, { arrive: DOCK_RANGE - 20, boost: true });
+          return;
+        }
+        if (st) services.dockAt(st);
+        pickWork();
+        return;
+      }
       if (wp && wp.onboarding) {
         if (/speed passes forty/i.test(line)) {
           input.aimAngle = p.rot || 0;
@@ -1757,9 +1869,21 @@ export function createStrangerPilot({ state, bus, ledger, services }) {
         }
         if (/scanner|seams/i.test(line) && wp.pos) {
           const d = flyTo(input, wp.pos, { arrive: 150 });
+          // The rock is small: at v≈62 the brake lead band starts at ~237 but the
+          // hull needs ~77wu to stop, so it overshoots and circles at ~310 forever
+          // (run 36-37 — the tangential orbit stabilized just under a (d-120)/4 cap
+          // at ~390wu). Kill tangential speed in the arrival band only — a bare
+          // `d > 240` cap made run 39 crawl at 15wu/s across 6.4km.
+          const vSeam = speedOf(p);
+          if (d > 240 && d < 560 && vSeam > 14) {
+            input.brake = true;
+            input.moveZ = 0;
+          }
           if (process.env.STRANGER_PILOT_TRACE && (state.tick % 120) === 0) {
-            const rock9 = wp.label === 'Training Seam' ? nearestEntityTo(wp.pos, 80) : null;
-            console.log(`    [seam] t=${Math.round(state.simTime)} d=${Math.round(d)} v=${Math.round(speedOf(p))} act='${(o.beatAction || '').slice(0, 30)}' scanHi=${rock9 && rock9.data ? (rock9.data.scanHighlightUntil > (state.simTime || 0)) : '?'} fire=${input.fire}`);
+            const errS = input.aimAngle != null && p.rot != null
+              ? Math.round(((input.aimAngle - p.rot) % (Math.PI * 2)) * 57.3)
+              : '?';
+            console.log(`    [seam] t=${Math.round(state.simTime)} d=${Math.round(d)} v=${Math.round(speedOf(p))} rot=${p.rot != null ? p.rot.toFixed(2) : '?'} err=${errS} cone=${state.fields ? state.fields.coneActive : '?'} act='${(o.beatAction || '').slice(0, 30)}' fire=${input.fire}`);
           }
           if (d <= 260 && !decided.scanPulse) {
             decided.scanPulse = true;
@@ -1777,66 +1901,6 @@ export function createStrangerPilot({ state, bus, ledger, services }) {
             input.aimAngle = Math.atan2(wp.pos.z - p.pos.z, wp.pos.x - p.pos.x);
             input.fire = d <= 220;
             input.fireGroup = 2;
-          }
-          return;
-        }
-        if (/dock when close|helios/i.test(line)) {
-          const stations = (state.entityIndex && state.entityIndex.dockStations) || [];
-          const st = stations.filter((s) => s && s.alive)
-            .sort((a, b) => dist(p.pos, a.pos) - dist(p.pos, b.pos))[0];
-          if (st) {
-            flyTo(input, st.pos, { arrive: DOCK_RANGE - 20, boost: true });
-            if (dist(p.pos, st.pos) <= DOCK_RANGE + (st.radius || 0)) {
-              services.dockAt(st);
-              // The board: accept the recommended first contract.
-              const boards = state.missions && state.missions.boards ? state.missions.boards : {};
-              for (const board of Object.values(boards)) {
-                for (const offer of (board && board.offers) || []) {
-                  if (!offer || !offer.id) continue;
-                  if (offer.source === 'firstTradeContract' && !decided.tookFirstTrade) {
-                    decided.tookFirstTrade = true;
-                    ledger.recordDecision({
-                      situation: 'the board has one tracked delivery for a new hull',
-                      options: [
-                        { id: `take:${offer.id}`, tradeoff: 'a complete loop: haul, deliver, get paid' },
-                        { id: 'decline', tradeoff: 'stay free-roam, no route marker' },
-                      ],
-                      chosen: `take:${offer.id}`,
-                    });
-                    bus.emit('ui:acceptMission', { missionId: offer.id });
-                  }
-                }
-              }
-            }
-            return;
-          }
-          if (wp.pos) { flyTo(input, wp.pos, { arrive: 400, boost: true }); return; }
-        }
-        if (/pick the work/i.test(line)) {
-          // Choice beat: the three offers read from the board; take one.
-          const boards = state.missions && state.missions.boards ? state.missions.boards : {};
-          const offers = [];
-          for (const board of Object.values(boards)) {
-            for (const offer of (board && board.offers) || []) {
-              if (offer && offer.source === 'onboardingChoice') offers.push(offer);
-            }
-          }
-          if (offers.length && !decided.tookChoice) {
-            decided.tookChoice = true;
-            offers.sort((a, b) => (Number(b.rewardCr) || 0) - (Number(a.rewardCr) || 0));
-            const top = offers[0];
-            const second = offers[1];
-            ledger.recordDecision({
-              situation: 'three kinds of work side by side: haul, bounty, survey',
-              options: [
-                { id: `take:${top.id}`, tradeoff: 'highest pay on the board' },
-                second
-                  ? { id: `take:${second.id}`, tradeoff: 'less pay, maybe safer work' }
-                  : { id: 'skip', tradeoff: 'stay free-roam' },
-              ],
-              chosen: `take:${top.id}`,
-            });
-            bus.emit('ui:acceptMission', { missionId: top.id });
           }
           return;
         }

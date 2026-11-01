@@ -40,7 +40,7 @@ import { commodityCatalogLegality, restrictedSalvageForWreck } from '../data/sal
 import { richSeamOpportunityForEntity } from '../systems/fieldDepletion.js';
 import { missionOwnsReward, runOwnsReward } from '../combat/rewardEligibility.js';
 import { createTargetTruth, projectTargetTruth } from '../combat/targetTruth.js';
-import { exploitableStatusChips } from '../combat/contactClassifier.js';
+import { exploitableStatusChips, isSurrenderedContact } from '../combat/contactClassifier.js';
 import { IDENTITY_WING_ROLE } from '../ai/squad.js';
 import { ANVIL_ORCHARD } from '../data/anvilOrchard.js';
 import { isOrchardFrame } from '../data/anvilOrchardIdentity.js';
@@ -51,7 +51,6 @@ import { BINDINGS } from './bindings.js';
 import { SECTORS, stationContactServices } from '../data/sectors.js';
 import { PASSENGER_LINER_ITINERARY_KIND } from '../data/laneContacts.js';
 import { SECTOR_ZONES } from '../data/sectorZones.js';
-import { isSurrenderedContact } from '../systems/surrenderRecovery.js';
 import { stationServiceLabel } from './station/stationHubModel.js';
 import { faunaPileFact, faunaSpeciesById, faunaTollFact } from '../data/alienFauna.js';
 import { fittedModuleDefs } from '../core/fittedModules.js';

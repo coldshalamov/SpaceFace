@@ -48,7 +48,7 @@ ${H} .orr-help__tabs { ${PLAIN} position:relative !important; display:flex !impo
 ${H} .orr-help__tabs > li { position:relative !important; width:100% !important; list-style:none !important; margin:0 !important; }
 ${H} .orr-help__tabs .sf-tab { all:unset !important; box-sizing:border-box !important; position:relative !important; display:flex !important; align-items:center !important;
   width:100% !important; min-height:clamp(38px, 4.8vh, 50px) !important; padding:0 6px 0 40px !important; cursor:pointer !important; ${LABEL} font-size:clamp(13px, .68vw, 17px) !important;
-  letter-spacing:.2em !important; color:rgb(${BONE} / .88) !important; white-space:nowrap !important; transition:color .16s linear; }
+  letter-spacing:.06em !important; color:rgb(${BONE} / .88) !important; white-space:nowrap !important; transition:color .16s linear; }
 ${H} .orr-help__tabs .sf-tab::before { content:"" !important; display:block !important; position:absolute !important; left:4px !important; top:50% !important; width:9px !important;
   height:2px !important; margin:-1px 0 0 !important; translate:none !important; scale:none !important; transform:none !important; background:rgb(${BONE} / .72) !important;
   box-shadow:none !important; border:0 !important; clip-path:none !important; border-radius:0 !important; opacity:1 !important; }
@@ -72,11 +72,11 @@ ${H} .orr-help__tabs .sf-tab[aria-selected="true"]:focus-visible { text-decorati
 ${H} > .k-foot { ${PLAIN} align-self:end; justify-content:flex-start; align-items:center !important; gap:0 !important; margin:0 !important; padding:0 !important; }
 ${H} .orr-help__close.sf-back.k-word { all:unset !important; box-sizing:border-box !important; display:inline-flex !important; align-items:baseline !important; gap:0 !important;
   cursor:pointer !important; padding:10px 0 12px !important; min-height:44px !important;
-  ${LABEL} font-size:13.5px !important; letter-spacing:.22em !important; color:rgb(255 253 248) !important;
+  ${LABEL} font-size:13.5px !important; letter-spacing:.1em !important; color:rgb(255 253 248) !important;
   background:linear-gradient(0deg, rgb(${BONE} / .28) 0 1.5px, transparent 1.5px) 0 100% / 120px 100% no-repeat !important; }
 ${H} .orr-help__close.sf-back.k-word::before { all:unset !important; content:"‹" !important; display:inline !important; margin-right:12px !important; font-size:15px !important; color:rgb(${BONE} / .6) !important; }
 ${H} .orr-help__close.sf-back.k-word::after { all:unset !important; content:"ESC" / "" !important; display:inline-block !important; margin-left:16px !important; padding:3px 7px 4px !important;
-  ${LABEL} font-size:12px !important; letter-spacing:.2em !important; line-height:1 !important;
+  ${LABEL} font-size:12px !important; letter-spacing:.06em !important; line-height:1 !important;
   color:rgb(${BONE} / .9) !important; background:rgb(${BONE} / .1) !important; border:1px solid rgb(${BONE} / .5) !important; border-radius:3px !important;
   box-shadow:inset 0 -1px 0 rgb(0 0 0 / .35) !important; vertical-align:baseline !important; }
 ${H} .orr-help__close-word { ${LABEL} font-size:13.5px !important; letter-spacing:.22em !important; font-stretch:112% !important; font-variation-settings:"wdth" 112, "wght" 650 !important; font-weight:650 !important;
@@ -92,9 +92,19 @@ ${H} .orr-help__close:focus-visible::after { color:rgb(255 253 248) !important; 
   letter-spacing:.02em; color:rgb(${HOT}); white-space:nowrap; text-transform:none; }
 .orr-hkey::before { content:""; position:absolute; left:-3px; right:-3px; bottom:0; height:8px; border-radius:4px; background:rgb(${HOT} / .13); }
 .orr-hkey::after { content:""; position:absolute; left:0; right:0; bottom:2.5px; height:2px; border-radius:2px; background:rgb(${HOT} / .74); transition:background .16s linear, left .2s, right .2s; }
-.orr-hkey--word { ${LABEL} font-size:clamp(12px, .62vw, 16px) !important; letter-spacing:.14em; }
+/* word bindings at small sizes are machine code, not underlined words: the dp-kbd chip voice
+   (consoleStandard §2). The big diagram keys keep their bar-of-light glyph. */
+.orr-hkey--word, .orr-hkey--small.orr-hkey--word {
+  ${LABEL} font-size:12px !important; letter-spacing:.04em;
+  align-items:center; padding:3px 7px 4px !important; bottom:auto;
+  color:rgb(${BONE} / .92);
+  background:linear-gradient(180deg, rgb(${BONE} / .09), rgb(${BONE} / .045)), rgb(6 8 11 / .72);
+  border:1px solid rgb(${BONE} / .42); border-radius:2px;
+  box-shadow:inset 0 -1px 0 rgb(0 0 0 / .4);
+}
+.orr-hkey--word::before, .orr-hkey--small.orr-hkey--word::before { content:none; }
+.orr-hkey--word::after, .orr-hkey--small.orr-hkey--word::after { content:none; }
 .orr-hkey--small { font-size:clamp(14px, .73vw, 18px); padding-bottom:7px; }
-.orr-hkey--small.orr-hkey--word { font-size:clamp(12px, .6vw, 15px) !important; }
 .orr-hkey__sep { color:rgb(${BONE} / .6); font-weight:400; }
 /* a binding that is a sentence, not a key, reads as a quiet line */
 .orr-hkey--text { padding:0; font-family:var(--dp-face-body, "Instrument Sans"), system-ui, sans-serif; font-variation-settings:normal; font-weight:500; font-size:clamp(13px, .68vw, 17px);
@@ -146,6 +156,16 @@ ${H} .orr-hreg__row.is-echo .orr-hreg__name { color:rgb(255 255 255); }
 ${H} .orr-hreg__row.is-echo .orr-hkey { color:rgb(255 255 255); text-shadow:0 0 12px rgb(143 203 255 / .9); }
 ${H} .orr-hreg__row.is-echo .orr-hkey::after { background:rgb(255 255 255); left:-4px; right:-4px; }
 ${H} .orr-hreg__row.is-echo .orr-hkey::before { background:rgb(143 203 255 / .34); }
+/* the register is a column of keycaps: letter bindings wear the same hairline chip as SHIFT and SPACE · F
+   (the dp-kbd voice) instead of half of them floating over a bar of light. The rig's big diagram keys keep the bar. */
+${H} .orr-hreg__row > .orr-hkey:not(.orr-hkey--text) { ${LABEL} font-size:12px !important; letter-spacing:.04em; line-height:1;
+  align-items:center; justify-content:center; gap:5px; min-width:24px; box-sizing:border-box; padding:4px 7px !important;
+  color:rgb(${BONE} / .92); background:linear-gradient(180deg, rgb(${BONE} / .09), rgb(${BONE} / .045)), rgb(6 8 11 / .72);
+  border:1px solid rgb(${BONE} / .42); border-radius:3px; box-shadow:inset 0 -1px 0 rgb(0 0 0 / .4); }
+${H} .orr-hreg__row > .orr-hkey:not(.orr-hkey--text)::before, ${H} .orr-hreg__row > .orr-hkey:not(.orr-hkey--text)::after { content:none; }
+${H} .orr-hreg__row > .orr-hkey--none:not(.orr-hkey--text) { color:rgb(${BONE} / .66); border-style:dashed; border-color:rgb(${BONE} / .3); background:transparent; }
+${H} .orr-hreg__row.is-echo > .orr-hkey:not(.orr-hkey--text) { color:rgb(255 255 255); text-shadow:none; border-color:rgb(255 255 255 / .85);
+  box-shadow:inset 0 -1px 0 rgb(0 0 0 / .4), 0 0 0 1px rgb(143 203 255 / .35), 0 0 10px rgb(143 203 255 / .45); }
 ${H} .orr-hreg__fine { margin:10px 0 0; padding-left:30px; font-family:var(--dp-face-body, "Instrument Sans"), system-ui, sans-serif; font-size:clamp(12px, .6vw, 15px); line-height:1.4; color:rgb(${BONE} / .84); }
 ${H} .orr-hreg .orr-extent::before { left:7px; width:2px; }
 

@@ -15,7 +15,7 @@
 // construction: the recorder only ever writes what the seeded sim produced.
 //
 // Staleness contract: test/title-attract.test.mjs re-records a fresh window and compares
-// the encoded bytes to src/sim/titleAttractTapeData.js. Any change to the fight (roster,
+// the encoded bytes to src/sim/titleAttractTapeData.json. Any change to the fight (roster,
 // systems, seed) must re-bake — same discipline as the expected.json goldens.
 //
 // Format (schema 'spaceface.titleAttractTape.v1'):
@@ -201,7 +201,7 @@ export function createTapeRecorder(options = {}) {
 
 /**
  * Pack the tape's streams into `bin` (base64 int16 LE) and return the final JSON-safe
- * object — the exact thing baked into titleAttractTapeData.js.
+ * object — the exact thing baked into titleAttractTapeData.json.
  */
 export function encodeTape(tape) {
   if (!tape || tape.schema !== TITLE_ATTRACT_TAPE_SCHEMA) {

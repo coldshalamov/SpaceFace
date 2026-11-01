@@ -916,6 +916,25 @@ export const MAIL_LETTERS = Object.freeze([
     body: 'Captain Vols wrote routes in the chart margins in pencil, so the ship could change its mind. If the Tessera still carries her charts, page sixty-one is hers.',
     triggers: [E('jump:arrive'), BEAT(4)],
   },
+  // ── The freighter you saved sends word — escorts end at a berth; these arrive after ──
+  {
+    id: 'mail_fan_17', kind: 'fan', from: 'Convoy lead, second berth',
+    subject: 'The manifests posted',
+    body: 'You walked us through the lane and filed nothing. The manifests posted yesterday, every line intact. The crew took a vote about what to call you. The polite version is on the berth wall.',
+    triggers: [E('mission:completed', { type: 'escort' }), DAY(2)],
+  },
+  {
+    id: 'mail_fan_18', kind: 'fan', from: 'A loadmaster',
+    subject: 'It is girders now',
+    body: 'The ore you shepherded got weighed, smelted, and sold twice. It is girders in a station that is still standing. I was told to write down where they came from. The column reads: one escort, unbooked.',
+    triggers: [E('mission:completed', { type: 'escort' }), DAY(5)],
+  },
+  {
+    id: 'mail_job_15', kind: 'job', from: 'Convoy Dispatch, Lido Line',
+    subject: 'Same lane, better terms',
+    body: 'The convoy captains talk. You flew flank and the count came home whole — we log that differently than the guns-for-hire. Standing escort terms are posted under your name. Repeat customers get the berth with the light.',
+    triggers: [E('mission:completed', { type: 'escort' }), STAT('missionsDone', 4)],
+  },
 ]);
 
 export default { MAIL_LETTERS, MAIL_KINDS, MAIL_EVENT_NAMES, MAIL_DAY_S };

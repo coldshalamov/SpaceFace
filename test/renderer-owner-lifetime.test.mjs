@@ -360,6 +360,46 @@ test('captured residency ports invoke the captured render and fail closed when i
   }
 });
 
+test('a held boundary residency upload cannot continue across context loss', async () => {
+  const fixture = liveRenderFixture();
+  let held = deferred();
+  let uploads = 0;
+  fixture.render.contextRecovery = { losses: 0, generation: 0 };
+  fixture.render.prepareAuthoredGpuResidency = async (_root, options) => {
+    await held.promise;
+    if (!options.isActive()) {
+      const error = new Error('owner became inactive');
+      error.name = 'AbortError';
+      throw error;
+    }
+    uploads++;
+    return 'resident';
+  };
+  try {
+    const entity = { id: 'context-owner', type: 'station', alive: true, data: {} };
+    const boundary = new THREE.Group();
+    const old = residencyOptionsForBoundary(entity, boundary, fixture.render.renderer);
+    const pending = old.prepareAuthoredGpuResidency(boundary);
+    fixture.render.contextRecovery.losses++;
+    held.resolve();
+    await assert.rejects(pending, (error) => error.name === 'AbortError');
+    assert.equal(uploads, 0, 'the old-context continuation cannot submit');
+    held = deferred();
+    const duringLoss = residencyOptionsForBoundary(entity, boundary, fixture.render.renderer);
+    const pendingRestore = duringLoss.prepareAuthoredGpuResidency(boundary);
+    fixture.render.contextRecovery.generation++;
+    held.resolve();
+    await assert.rejects(pendingRestore, (error) => error.name === 'AbortError');
+    assert.equal(uploads, 0, 'a lost-context admission cannot submit after restoration');
+    const current = residencyOptionsForBoundary(entity, boundary, fixture.render.renderer);
+    assert.equal(await current.prepareAuthoredGpuResidency(boundary), 'resident');
+    assert.equal(uploads, 1, 'a current-context admission can upload normally');
+  } finally {
+    held.resolve();
+    fixture.restore();
+  }
+});
+
 test('the opening publication gate refuses a foreign generation and settles for the live one', async () => {
   const fixture = liveRenderFixture();
   try {

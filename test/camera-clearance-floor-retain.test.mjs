@@ -14,7 +14,7 @@ import {
   getCameraClearanceFloorRetainPosQuantizeForBench,
   setCameraClearanceAsteroidSpanRejectForBench,
   setCameraClearanceAsteroidNeverRoofExcludeForBench,
-} from '../src/render/renderer.js';
+} from '../src/render/cameraClearanceGuard.js';
 
 function stationAt(x, z, span = 200, h = 60, kind = 'station') {
   const root = new THREE.Group();

@@ -19,7 +19,7 @@ import {
   createIsolatedElectronLaunch,
 } from './electronTestIsolation.mjs';
 import { loadPlaywright } from './load-playwright.mjs';
-import { installCspSafePlaywrightPolling, installFrameKeepalive } from './playwrightCspPolling.mjs';
+import { consumePageConditionValue, installCspSafePlaywrightPolling, installFrameKeepalive } from './playwrightCspPolling.mjs';
 import {
   RELEASE_SOAK_SCHEMA,
   PERFORMANCE_ATTRIBUTION_SCHEMA,
@@ -28,6 +28,7 @@ import {
   ATTRIBUTION_DIAGNOSTIC_VARIANTS,
   strictWorktreeFingerprint,
   normalizeFingerprintPath,
+  diffRuntimeInputFiles,
   summarizeSamples,
   validateArtifactFiles,
   validateCleanupEvidence,
@@ -309,8 +310,7 @@ export async function runReleaseSoakProbe({
   let sourceOverlayCoverage = null;
   let startRuntimeInputs = null;
   let endRuntimeInputs = null;
-  let startUncoveredFingerprint = null;
-  let endUncoveredFingerprint = null;
+  let runtimeInputChanges = null;
   let immutableSaveDiagnostic = null;
   let cleanupReport = null;
   let isolatedLaunch = null;
@@ -349,13 +349,19 @@ export async function runReleaseSoakProbe({
 
   try {
     const startFingerprint = await strictWorktreeFingerprint(root);
-    startRuntimeInputs = await strictRuntimeInputFingerprint(root);
     doLog(`worktree start ${startFingerprint.id}`);
     sourceOverlayCoverage = await readSourceOverlayCoverage(baselineSource);
-    if (sourceOverlayCoverage?.fullRuntime) {
-      startUncoveredFingerprint = await strictWorktreeFingerprint(root, {
-        excludePaths: sourceOverlayCoverage.pinnedPaths,
-      });
+    const strictOverlayIsolation = sourceOverlayCoverage?.fullRuntime === true
+      && baselineSource?.identity?.strictRuntimeIsolation === true;
+    const runtimeInputExclusions = sourceOverlayCoverage?.fullRuntime
+      ? sourceOverlayCoverage.pinnedPaths : [];
+    startRuntimeInputs = await strictRuntimeInputFingerprint(root, {
+      excludePaths: runtimeInputExclusions,
+      includeFileHashes: true,
+      strictOverlayIsolation,
+    });
+    if (baselineSource && !sourceOverlayCoverage?.valid) {
+      doLog('source overlay coverage is missing or unsupported; provenance will fail closed');
     }
 
     if (runtime === 'electron' && authority.primaryAcceptance) {
@@ -603,7 +609,7 @@ export async function runReleaseSoakProbe({
           if (attemptError?.stationScreenWaitDiagnostic) {
             doLog(`[cycle ${index}] station-screen-wait-diagnostic ${JSON.stringify(attemptError.stationScreenWaitDiagnostic)}`);
           }
-          if (attempt === 0) {
+          if (shouldRetrySoakCycle(attemptError, attempt)) {
             doLog(`[cycle ${index}] failed; retrying once (${String(attemptError && attemptError.message || attemptError).slice(0, 160)})`);
             await setSoakTransition(page, null).catch(() => {});
             continue;
@@ -647,7 +653,9 @@ export async function runReleaseSoakProbe({
       }
       cycleResults.push(cycle);
       const checkpoint = await withTimeout(
-        readPostGcMemorySnapshot(page, `docked-market-cycle-${index + 1}`),
+        readPostGcMemorySnapshot(page, `docked-market-cycle-${index + 1}`, {
+          includeGeometryCensus: index === Math.floor(Math.max(0, measuredCycleCount - 1) / 2),
+        }),
         30_000,
         `release-soak memory checkpoint ${index + 1}`,
       );
@@ -701,13 +709,21 @@ export async function runReleaseSoakProbe({
     assert.equal(await isDocked(page), true, 'release-soak cycles must finish docked for comparable retained-heap evidence');
     await page.waitForTimeout(1_500);
     const finalMemory = await withTimeout(
-      readPostGcMemorySnapshot(page, 'docked-market-end'),
+      readPostGcMemorySnapshot(page, 'docked-market-end', { includeGeometryCensus: true }),
       30_000,
       'release-soak final memory snapshot',
     );
     if (process.env.SF_SOAK_HEAP_SNAPSHOTS === '1' && outputDir) {
       await captureHeapSnapshot(page, path.join(outputDir, 'heap-end.heapsnapshot'));
     }
+    const bufferResizeFailure = bufferResizeDiagnostic
+      ? await page.evaluate(() => {
+        const render = window.SF?.state?.render;
+        return render?.bufferResizeDiagnostic?.lastFailure
+          || render?.renderer?.__sfBufferResizeFailure
+          || null;
+      }).catch(() => null)
+      : null;
 
     await setSoakTransition(page, 'undock');
     try {
@@ -758,6 +774,11 @@ export async function runReleaseSoakProbe({
       throw recoveryError;
     }
     const recoverySamples = recoveryWindow.samples;
+    // Preserve the pre-undock resize sample separately: either diagnostic can
+    // receive its first failure during the final flight or recovery tail.
+    const postRecoveryDiagnostics = bufferResizeDiagnostic
+      ? await page.evaluate(readPostRecoveryRenderDiagnostics).catch(() => null)
+      : null;
     const samples = [...flightSamples, ...recoverySamples];
     assert(samples.length > 0, 'steady-state rAF sampler produced no finite frame samples');
     const finalSettings = await readSettingsTruth(page);
@@ -775,7 +796,7 @@ export async function runReleaseSoakProbe({
     // calls, which the browser's own GL warning text cannot identify.
     const programQueryTrap = await readGlProgramQueryTrap(page);
     if (programQueryTrap.length > 0) {
-      doLog(`program-query trap captured ${programQueryTrap.length} invalid getProgramParameter caller(s): ${
+      doLog(`program-query trap captured ${programQueryTrap.length} getProgramParameter observation(s): ${
         programQueryTrap.slice(0, 4).map((entry) => `${entry.count}x ${String(entry.stack || '').split('\n')[2] || '?'}${entry.lost === true ? ' [context-lost]' : ''}`).join(' | ')
       }`);
     }
@@ -810,26 +831,28 @@ export async function runReleaseSoakProbe({
       }
     }
     const endFingerprint = await strictWorktreeFingerprint(root);
-    endRuntimeInputs = await strictRuntimeInputFingerprint(root);
-    if (sourceOverlayCoverage?.fullRuntime) {
-      endUncoveredFingerprint = await strictWorktreeFingerprint(root, {
-        excludePaths: sourceOverlayCoverage.pinnedPaths,
-      });
-    }
+    const endRuntimeInputExclusions = sourceOverlayCoverage?.fullRuntime
+      ? sourceOverlayCoverage.pinnedPaths : [];
+    endRuntimeInputs = await strictRuntimeInputFingerprint(root, {
+      excludePaths: endRuntimeInputExclusions,
+      includeFileHashes: true,
+      strictOverlayIsolation,
+    });
+    runtimeInputChanges = diffRuntimeInputFiles(startRuntimeInputs?.files, endRuntimeInputs?.files);
     const worktreeStable = endFingerprint.digest === startFingerprint.digest;
+    const runtimeInputsStable = startRuntimeInputs?.digest === endRuntimeInputs?.digest
+      && Array.isArray(runtimeInputChanges) && runtimeInputChanges.length === 0
+      && startRuntimeInputs?.files?.every((entry) => entry.missing !== true) === true
+      && endRuntimeInputs?.files?.every((entry) => entry.missing !== true) === true;
     const sourceStability = evaluateSourceStability({
       baselineSource,
       coverage: sourceOverlayCoverage,
       servedAtStart: servedSourceOverlay,
       servedAtEnd: servedSourceOverlayAtEnd,
       worktreeStable,
-      runtimeInputsStable: startRuntimeInputs?.digest === endRuntimeInputs?.digest,
-      uncoveredWorktreeStable: startUncoveredFingerprint && endUncoveredFingerprint
-        ? endUncoveredFingerprint.digest === startUncoveredFingerprint.digest
-        : null,
-      uncoveredHeadStable: startUncoveredFingerprint && endUncoveredFingerprint
-        ? endUncoveredFingerprint.head === startUncoveredFingerprint.head
-        : null,
+      runtimeInputsStable,
+      uncoveredRuntimeInputsStable: sourceOverlayCoverage?.fullRuntime ? runtimeInputsStable : null,
+      uncoveredHeadStable: endFingerprint.head === startFingerprint.head,
     });
     if (!worktreeStable) {
       if (sourceStability.mode === 'served-overlay' && sourceStability.pass) {
@@ -982,6 +1005,10 @@ export async function runReleaseSoakProbe({
         enabled: true,
         performanceEligible: false,
         reason: 'opt-in error-only attribute capture is diagnostic-only',
+        lastFailure: bufferResizeFailure,
+        lastFailureAfterRecovery: postRecoveryDiagnostics?.lastFailureAfterRecovery || null,
+        lastBatchedFailure: postRecoveryDiagnostics?.lastBatchedFailure || null,
+        lastTextureUploadFailure: postRecoveryDiagnostics?.lastTextureUploadFailure || null,
       } : null,
       hardware,
       soakWindow,
@@ -1000,7 +1027,12 @@ export async function runReleaseSoakProbe({
         coverage: compactSourceOverlayCoverage(sourceOverlayCoverage),
       } : null,
       sourceStability,
-      runtimeInputs: { start: startRuntimeInputs, end: endRuntimeInputs },
+      runtimeInputs: {
+        scope: sourceOverlayCoverage?.fullRuntime ? 'uncovered-runtime-inputs' : 'runtime-inputs',
+        start: summarizeRuntimeInputFingerprint(startRuntimeInputs),
+        end: summarizeRuntimeInputFingerprint(endRuntimeInputs),
+        changedPaths: runtimeInputChanges,
+      },
       consumedClaim: authority.consumedClaim,
       fixedSeed: authority.fixedSeed,
       inputSource: 'keyboard-mouse',
@@ -1043,70 +1075,7 @@ export async function runReleaseSoakProbe({
     // ordinary cleanup can publish the same caller snapshot; this never calls teardown.
     await armPostTeardownGlDeleteTrap().catch(() => {});
     if (page && !page.isClosed()) {
-      const runtimeFailure = await page.evaluate(() => {
-        const state = window.SF?.state || null;
-        const render = state?.render || null;
-        const overlay = document.getElementById('boot-overlay');
-        const admission = render?.requiredPackageAdmission || null;
-        const owner = render?.lastGpuResidencyOwnerInactive || null;
-        return {
-          document: {
-            visibilityState: document.visibilityState,
-            failurePresenterText: String(overlay?.innerText || overlay?.textContent || '').slice(0, 1_200),
-          },
-          state: state ? {
-            mode: state.mode || null,
-            tick: Number.isFinite(Number(state.tick)) ? Number(state.tick) : null,
-            simTime: Number.isFinite(Number(state.simTime)) ? Number(state.simTime) : null,
-            admissionRunGeneration: Number.isFinite(Number(render?.admissionRunGeneration))
-              ? Number(render.admissionRunGeneration) : null,
-            contextRestoreSeq: Number.isFinite(Number(state.contextRestoreSeq))
-              ? Number(state.contextRestoreSeq) : null,
-            world: {
-              enterSerial: state.world?.enterSerial ?? null,
-              currentSectorId: state.world?.currentSectorId ?? null,
-            },
-          } : null,
-          opening: render ? {
-            bufferResizeDiagnostic: render.renderer?.__sfBufferResizeFailure || null,
-            bufferResizeDiagnosticPerformanceEligible: render.bufferResizeDiagnostic?.performanceEligible ?? null,
-            firstPictureReady: render.openingFirstPictureReady === true,
-            firstPicturePhase: render.openingFirstPicturePhase ? {
-              stage: render.openingFirstPicturePhase.stage || null,
-              outcome: render.openingFirstPicturePhase.outcome || null,
-              ms: Number.isFinite(Number(render.openingFirstPicturePhase.ms))
-                ? Number(render.openingFirstPicturePhase.ms) : null,
-            } : null,
-            firstPictureOwner: render.openingFirstPictureOwner ? {
-              generation: render.openingFirstPictureOwner.generation ?? null,
-              serial: render.openingFirstPictureOwner.serial ?? null,
-              sector: render.openingFirstPictureOwner.sector ?? null,
-              context: render.openingFirstPictureOwner.context ?? null,
-            } : null,
-            liveSectorGpuAdmission: render.liveSectorGpuAdmission === true,
-            requiredPackageAdmission: admission ? {
-              status: admission.status || null,
-              packageId: admission.packageId || null,
-              reason: admission.reason || null,
-              generation: admission.generation ?? null,
-            } : null,
-            currentSectorFailure: render.openingCurrentSectorFailure || null,
-            gpuResidencyOwnerInactive: owner ? {
-              subjectName: owner.subjectName || null,
-              owner: owner.owner || null,
-            } : null,
-            cookLedgerTail: Array.isArray(render.openingCookLedger)
-              ? render.openingCookLedger.slice(-12).map((row) => ({
-                step: row?.step || null,
-                outcome: row?.outcome || null,
-                ms: Number.isFinite(Number(row?.ms)) ? Number(row.ms) : null,
-                reason: row?.reason || null,
-                fail: row?.fail || null,
-              }))
-              : [],
-          } : null,
-        };
-      }).catch((snapshotError) => ({ unavailable: String(snapshotError?.message || snapshotError).slice(0, 500) }));
+      const runtimeFailure = await page.evaluate(readFailureRuntimeSnapshot).catch((snapshotError) => ({ unavailable: String(snapshotError?.message || snapshotError).slice(0, 500) }));
       const issues = (pageIssueTracker?.issues || [])
         .filter((issue) => ['error', 'pageerror', 'warning'].includes(issue?.type))
         .slice(-24)
@@ -1203,6 +1172,7 @@ function compactSourceOverlayIdentity(identity) {
     sourceOverlayDigest: identity.sourceOverlayDigest || null,
     fileCount: Number.isSafeInteger(identity.fileCount) ? identity.fileCount : null,
     totalBytes: Number.isSafeInteger(identity.totalBytes) ? identity.totalBytes : null,
+    ...(identity.strictRuntimeIsolation === true ? { strictRuntimeIsolation: true } : {}),
   } : null;
 }
 
@@ -1210,11 +1180,15 @@ function isFullRuntimeCaptureScope(captureScope) {
   return /^all-runtime(?:-|$)/i.test(String(captureScope || '').trim());
 }
 
-async function readSourceOverlayCoverage(baselineSource) {
+const ALL_RUNTIME_PATH_POLICY = 'index.html + vendor/three.module.js + src/**/*.{js,json} + scripts/lib/**/*.{js,mjs,cjs} + styles/**/*';
+const PERFORMANCE_PATH_POLICY = 'explicit performance path set';
+
+export async function readSourceOverlayCoverage(baselineSource) {
   if (!baselineSource?.path) return null;
   try {
     const manifest = JSON.parse(await readFile(baselineSource.path, 'utf8'));
     const captureScope = String(manifest.captureScope || '').trim() || null;
+    const runtimePathPolicy = String(manifest.runtimePathPolicy || '').trim() || null;
     const rawPinnedPaths = Array.isArray(manifest.files)
       ? manifest.files.map((entry) => entry?.path)
       : [];
@@ -1222,11 +1196,16 @@ async function readSourceOverlayCoverage(baselineSource) {
     const validPinnedPaths = rawPinnedPaths.length > 0
       && pinnedPaths.every(Boolean)
       && new Set(pinnedPaths).size === pinnedPaths.length;
+    const hasNoOmissions = Array.isArray(manifest.omittedPaths) && manifest.omittedPaths.length === 0;
+    const knownScope = (captureScope === 'all-runtime' && runtimePathPolicy === ALL_RUNTIME_PATH_POLICY)
+      || (captureScope === 'performance-paths' && runtimePathPolicy === PERFORMANCE_PATH_POLICY);
+    const valid = knownScope && validPinnedPaths && hasNoOmissions;
     return {
       sourceMode: String(manifest.sourceMode || '').trim() || null,
       captureScope,
-      runtimePathPolicy: String(manifest.runtimePathPolicy || '').trim() || null,
-      fullRuntime: isFullRuntimeCaptureScope(captureScope) && validPinnedPaths,
+      runtimePathPolicy,
+      valid,
+      fullRuntime: valid && isFullRuntimeCaptureScope(captureScope),
       pinnedPaths: validPinnedPaths ? pinnedPaths : [],
       pinnedPathCount: validPinnedPaths ? pinnedPaths.length : 0,
     };
@@ -1235,6 +1214,7 @@ async function readSourceOverlayCoverage(baselineSource) {
       sourceMode: null,
       captureScope: null,
       runtimePathPolicy: null,
+      valid: false,
       fullRuntime: false,
       pinnedPaths: [],
       pinnedPathCount: 0,
@@ -1249,16 +1229,29 @@ function compactSourceOverlayCoverage(coverage) {
     sourceMode: coverage.sourceMode || null,
     captureScope: coverage.captureScope || null,
     runtimePathPolicy: coverage.runtimePathPolicy || null,
+    valid: coverage.valid === true,
     fullRuntime: coverage.fullRuntime === true,
     pinnedPathCount: Number.isSafeInteger(coverage.pinnedPathCount) ? coverage.pinnedPathCount : 0,
     ...(coverage.readError ? { readError: coverage.readError } : {}),
   };
 }
 
+function summarizeRuntimeInputFingerprint(fingerprint) {
+  return fingerprint ? {
+    schema: fingerprint.schema,
+    digest: fingerprint.digest,
+    fileCount: fingerprint.fileCount,
+    missingPaths: Array.isArray(fingerprint.files)
+      ? fingerprint.files.filter((entry) => entry.missing === true).map((entry) => entry.path)
+      : null,
+  } : null;
+}
+
 function sourceOverlayIdentityMatches(expected, observed) {
   if (!expected || !observed) return false;
-  return ['schema', 'sourceCommit', 'sourceOverlayDigest', 'fileCount', 'totalBytes']
-    .every((field) => expected[field] === observed[field]);
+  const fields = ['schema', 'sourceCommit', 'sourceOverlayDigest', 'fileCount', 'totalBytes'];
+  if (expected.strictRuntimeIsolation === true) fields.push('strictRuntimeIsolation');
+  return fields.every((field) => expected[field] === observed[field]);
 }
 
 export function evaluateSourceStability({
@@ -1268,7 +1261,7 @@ export function evaluateSourceStability({
   servedAtEnd = null,
   worktreeStable = false,
   runtimeInputsStable = null,
-  uncoveredWorktreeStable = null,
+  uncoveredRuntimeInputsStable = null,
   uncoveredHeadStable = null,
 } = {}) {
   if (!baselineSource) {
@@ -1278,16 +1271,32 @@ export function evaluateSourceStability({
       worktreeStable: worktreeStable === true,
       runtimeInputsStable: runtimeInputsStable === true,
       servedSourceStable: null,
-      uncoveredWorktreeStable: null,
+      uncoveredRuntimeInputsStable: null,
       uncoveredHeadStable: null,
       pass: runtimeInputsStable === true,
       runtimeInputsSchema: 'spaceface.releaseSoakRuntimeInputs.v1',
     };
   }
+  if (!coverage || coverage.valid !== true) {
+    return {
+      mode: 'invalid-overlay',
+      overlayCoversRuntime: false,
+      worktreeStable: worktreeStable === true,
+      runtimeInputsStable: runtimeInputsStable === true,
+      servedSourceStable: null,
+      uncoveredRuntimeInputsStable: null,
+      uncoveredHeadStable: uncoveredHeadStable === true,
+      pass: false,
+    };
+  }
   const overlayCoversRuntime = coverage?.fullRuntime === true;
+  const strictRuntimeIsolation = baselineSource.identity?.strictRuntimeIsolation === true
+    && servedAtStart?.strictRuntimeIsolation === true
+    && servedAtEnd?.strictRuntimeIsolation === true;
   const servedSourceStable = sourceOverlayIdentityMatches(baselineSource.identity, servedAtStart)
-    && sourceOverlayIdentityMatches(baselineSource.identity, servedAtEnd);
-  const uncoveredStable = uncoveredWorktreeStable === true;
+    && sourceOverlayIdentityMatches(baselineSource.identity, servedAtEnd)
+    && (!overlayCoversRuntime || strictRuntimeIsolation);
+  const uncoveredRuntimeStable = uncoveredRuntimeInputsStable === true;
   const headStable = uncoveredHeadStable === true;
   return {
     mode: overlayCoversRuntime ? 'served-overlay' : 'worktree',
@@ -1295,10 +1304,10 @@ export function evaluateSourceStability({
     worktreeStable: worktreeStable === true,
     runtimeInputsStable: runtimeInputsStable === true,
     servedSourceStable,
-    uncoveredWorktreeStable: overlayCoversRuntime ? uncoveredStable : null,
+    uncoveredRuntimeInputsStable: overlayCoversRuntime ? uncoveredRuntimeStable : null,
     uncoveredHeadStable: overlayCoversRuntime ? headStable : null,
     pass: overlayCoversRuntime
-      ? (servedSourceStable && uncoveredStable && headStable)
+      ? (servedSourceStable && uncoveredRuntimeStable)
       : (worktreeStable === true && servedSourceStable),
   };
 }
@@ -1312,6 +1321,7 @@ async function readServedSourceOverlayIdentity(page, expected) {
   });
   const compact = compactSourceOverlayIdentity(observed);
   const fields = ['schema', 'sourceCommit', 'sourceOverlayDigest', 'fileCount', 'totalBytes'];
+  if (expected.identity?.strictRuntimeIsolation === true) fields.push('strictRuntimeIsolation');
   const mismatch = fields.find((field) => compact?.[field] !== expected.identity?.[field]);
   if (mismatch) {
     throw new Error(`served source overlay identity mismatch at ${mismatch}: expected ${JSON.stringify(expected.identity)} got ${JSON.stringify(compact)}`);
@@ -1564,6 +1574,92 @@ export async function installTier1CountersInitScript(target) {
   });
 }
 
+/** Read the abort snapshot after runtime teardown, in the page realm. */
+export function readFailureRuntimeSnapshot() {
+  const state = window.SF?.state || null;
+  const render = state?.render || null;
+  const overlay = document.getElementById('boot-overlay');
+  const admission = render?.requiredPackageAdmission || null;
+  const owner = render?.lastGpuResidencyOwnerInactive || null;
+  return {
+    document: {
+      visibilityState: document.visibilityState,
+      failurePresenterText: String(overlay?.innerText || overlay?.textContent || '').slice(0, 1_200),
+    },
+    state: state ? {
+      mode: state.mode || null,
+      tick: Number.isFinite(Number(state.tick)) ? Number(state.tick) : null,
+      simTime: Number.isFinite(Number(state.simTime)) ? Number(state.simTime) : null,
+      admissionRunGeneration: Number.isFinite(Number(render?.admissionRunGeneration))
+        ? Number(render.admissionRunGeneration) : null,
+      contextRestoreSeq: Number.isFinite(Number(state.contextRestoreSeq))
+        ? Number(state.contextRestoreSeq) : null,
+      world: {
+        enterSerial: state.world?.enterSerial ?? null,
+        currentSectorId: state.world?.currentSectorId ?? null,
+      },
+    } : null,
+    opening: render ? {
+      bufferResizeDiagnostic: render.bufferResizeDiagnostic?.lastFailure
+        || render.renderer?.__sfBufferResizeFailure || null,
+      lastBatchedFailure: render.bufferResizeDiagnostic?.lastBatchedFailure
+        || render.renderer?.__sfBatchedMeshFailure
+        || null,
+      lastTextureUploadFailure: render.bufferResizeDiagnostic?.lastTextureUploadFailure
+        || render.renderer?.__sfTextureUploadFailure || null,
+      bufferResizeDiagnosticPerformanceEligible: render.bufferResizeDiagnostic?.performanceEligible ?? null,
+      firstPictureReady: render.openingFirstPictureReady === true,
+      firstPicturePhase: render.openingFirstPicturePhase ? {
+        stage: render.openingFirstPicturePhase.stage || null,
+        outcome: render.openingFirstPicturePhase.outcome || null,
+        ms: Number.isFinite(Number(render.openingFirstPicturePhase.ms))
+          ? Number(render.openingFirstPicturePhase.ms) : null,
+      } : null,
+      firstPictureOwner: render.openingFirstPictureOwner ? {
+        generation: render.openingFirstPictureOwner.generation ?? null,
+        serial: render.openingFirstPictureOwner.serial ?? null,
+        sector: render.openingFirstPictureOwner.sector ?? null,
+        context: render.openingFirstPictureOwner.context ?? null,
+      } : null,
+      liveSectorGpuAdmission: render.liveSectorGpuAdmission === true,
+      requiredPackageAdmission: admission ? {
+        status: admission.status || null,
+        packageId: admission.packageId || null,
+        reason: admission.reason || null,
+        generation: admission.generation ?? null,
+      } : null,
+      currentSectorFailure: render.openingCurrentSectorFailure || null,
+      planCaptureFailure: render.openingFirstPicturePlanFailure || null,
+      gpuResidencyOwnerInactive: owner ? {
+        subjectName: owner.subjectName || null,
+        owner: owner.owner || null,
+      } : null,
+      cookLedgerTail: Array.isArray(render.openingCookLedger)
+        ? render.openingCookLedger.slice(-12).map((row) => ({
+          step: row?.step || null,
+          outcome: row?.outcome || null,
+          ms: Number.isFinite(Number(row?.ms)) ? Number(row.ms) : null,
+          reason: row?.reason || null,
+          fail: row?.fail || null,
+        }))
+        : [],
+    } : null,
+  };
+}
+
+/** Read the existing error-only DTOs after the recovery tail, in the page realm. */
+export function readPostRecoveryRenderDiagnostics() {
+  const render = window.SF?.state?.render;
+  return {
+    lastFailureAfterRecovery: render?.bufferResizeDiagnostic?.lastFailure
+      || render?.renderer?.__sfBufferResizeFailure || null,
+    lastBatchedFailure: render?.bufferResizeDiagnostic?.lastBatchedFailure
+      || render?.renderer?.__sfBatchedMeshFailure || null,
+    lastTextureUploadFailure: render?.bufferResizeDiagnostic?.lastTextureUploadFailure
+      || render?.renderer?.__sfTextureUploadFailure || null,
+  };
+}
+
 export async function installBufferResizeDiagnosticInitScript(target) {
   assert(target && typeof target.addInitScript === 'function', 'buffer resize diagnostic requires an init-script seam');
   await target.addInitScript(() => {
@@ -1580,11 +1676,11 @@ export async function installBufferResizeDiagnosticInitScript(target) {
 // frame that issued the query. Dead-handle getProgramParameter calls are a known failure class here
 // (compileAsync's uncancellable 10 ms poll, retire polls on force-lost preview contexts), so the
 // soak arms a writer trap — same pattern as __M6_POS_TRAP_EVENTS__ — that records the stack of every
-// program-parameter query the driver answered with null — the same condition the decoder reports as
-// GL_INVALID_VALUE "Program object expected" (a JS-binding-level isProgram check is unsound: stale
-// post-restore wrappers still belong to the context object and can pass it). The trap is read-only:
-// it never filters, throws, or alters the return value, so product behaviour is untouched and the
-// captured stacks travel with the evidence when warnings fail validation.
+// program-parameter query the driver answered with null. During the existing error-only buffer
+// diagnostic, it also records false-return queries with read-only validity/loss metadata. Those
+// rows are observations, not proof of an invalid handle: pending compilation and stale wrappers
+// can make isProgram ambiguous. The trap never filters, throws, drains the GL error queue, or
+// alters the original return value.
 // The in-page bodies are exported so the same source arms the trap two ways: addInitScript
 // (browser contexts, and any Electron page created after installation) and a live-page evaluate
 // (Electron's first window, which exists before Playwright can install an init script at all).
@@ -1593,34 +1689,68 @@ export function armGlProgramQueryTrapInPage() {
   if (globalThis.__SF_PROGRAM_QUERY_TRAP__) return;
   const queries = [];
   const seen = new Map();
+  // Context identity is diagnostic-only and weakly keyed: no WebGL context or program wrapper is
+  // retained by the evidence collector after the page releases it.
+  const contextIds = new WeakMap();
+  let nextContextId = 1;
   const wrap = (proto, ctxKind) => {
     if (!proto || typeof proto.getProgramParameter !== 'function') return;
     const original = proto.getProgramParameter;
     if (original.__sfProgramQueryTrap === true) return;
     const wrapped = function (program, pname) {
       const result = original.call(this, program, pname);
-      // The driver-level verdict is the only version-proof predicate: the JS binding accepts
-      // stale wrappers that "belong" to this context object (post-restore pre-loss handles) and
-      // forwards them to the decoder, which answers GL_INVALID_VALUE "Program object expected"
-      // and returns null. isProgram() is unreliable here — it can still answer true for those
-      // wrappers, which is how the earlier isProgram-based trap observed a 256-warning storm as
-      // zero bad queries. A live same-context program never returns null for a valid pname.
-      if (result === null) {
+      const diagnosticEnabled = globalThis.__SF_BUFFER_RESIZE_DIAG__ === true;
+      let lost = null;
+      if (result === null || (result === false && diagnosticEnabled)) {
+        try {
+          lost = typeof this.isContextLost === 'function' ? this.isContextLost() === true : null;
+        } catch (_) { /* read-only diagnostic; preserve the native query result */ }
+      }
+      let programValid = null;
+      // Null remains captured by the existing trap. In the opt-in diagnostic, false-return
+      // observations are retained regardless of validity/loss metadata: pending compilation and
+      // restored wrappers make those fields ambiguous, so they must not filter an observation.
+      if (result === null || (result === false && diagnosticEnabled)) {
+        try {
+          programValid = typeof this.isProgram === 'function' ? this.isProgram(program) === true : null;
+        } catch (_) { /* an observer failure must not alter the native query result */ }
+      }
+      const recordQuery = result === null || (result === false && diagnosticEnabled);
+      if (recordQuery) {
         try {
           const stack = (new Error('sf-program-query-trap')).stack || '';
-          const key = stack.split('\n').slice(2, 8).join('|');
+          let contextId = null;
+          if (this && (typeof this === 'object' || typeof this === 'function')) {
+            contextId = contextIds.get(this);
+            if (contextId == null) {
+              contextId = nextContextId++;
+              contextIds.set(this, contextId);
+            }
+          }
+          const returnType = result === null ? 'null' : typeof result;
+          const returnValue = result === null || ['boolean', 'number', 'string'].includes(typeof result)
+            ? result
+            : null;
+          const at = Math.round(performance.now());
+          const key = [contextId, Number(pname), returnType, String(returnValue), programValid, lost,
+            stack.split('\n').slice(2, 8).join('|')].join('|');
           const existing = seen.get(key);
           if (existing != null) {
             queries[existing].count += 1;
+            queries[existing].lastAt = at;
           } else if (queries.length < 64) {
             seen.set(key, queries.length);
             queries.push({
               count: 1,
               ctx: ctxKind,
+              contextId,
               pname: Number(pname),
-              isProgram: typeof this.isProgram === 'function' ? this.isProgram(program) : null,
-              lost: typeof this.isContextLost === 'function' ? this.isContextLost() === true : null,
-              at: Math.round(performance.now()),
+              isProgram: programValid,
+              lost,
+              returnType,
+              returnValue,
+              firstAt: at,
+              lastAt: at,
               stack: stack.slice(0, 3000),
             });
           }
@@ -2478,6 +2608,65 @@ export function summarizeImmutableSavePopulation({
   };
 }
 
+// Executed in the page: only an actual failed-start menu ends the restore early.
+export function shouldRetrySoakCycle(error, attempt) {
+  return attempt === 0 && error?.code !== 'SOAK_LOAD_START_FAILED'
+    && error?.code !== 'SOAK_PRESENTATION_FAILURE';
+}
+
+/** Convert the canonical loop diagnostic into a terminal dock-wait error, if present. */
+export function createSoakPresentationFailureError(loopDiagnostics) {
+  const source = loopDiagnostics?.presentationFailure;
+  if (!source || typeof source !== 'object' || source.headline !== 'Graphics interrupted'
+      || typeof source.code !== 'string' || !source.code) return null;
+  const failure = {
+    code: source.code.slice(0, 120),
+    headline: source.headline,
+    message: String(source.message || '').slice(0, 1_000),
+    tick: Number.isFinite(Number(source.tick)) ? Number(source.tick) : null,
+    simTime: Number.isFinite(Number(source.simTime)) ? Number(source.simTime) : null,
+  };
+  const error = new Error(`dock wait stopped by presentation failure ${failure.code}: ${failure.message}`);
+  error.code = 'SOAK_PRESENTATION_FAILURE';
+  error.presentationFailure = failure;
+  return error;
+}
+
+export function readSoakLoadLanding() {
+  const state = window.SF?.state;
+  if (state?.mode === 'flight' && window.__M6_RELEASE_SOAK_EVENTS__?.loaded === true) return 'flight';
+  const requests = typeof window.SF?.timeEffects?.describeRequests === 'function'
+    ? window.SF.timeEffects.describeRequests() : {};
+  return state?.mode === 'menu' && requests?.['runtime:start-failed'] ? 'menu' : false;
+}
+
+export async function waitForSoakLoadLanding(page, { timeoutMs = 210_000, graceMs = 240_000 } = {}) {
+  let landed;
+  let late = false;
+  try {
+    landed = await page.waitForFunction(readSoakLoadLanding, null, { timeout: timeoutMs, polling: 1000 })
+      .then(consumePageConditionValue);
+  } catch (loadWaitError) {
+    // A still-loading session retains the existing grace period to land in flight or fail.
+    late = true;
+    landed = await page.waitForFunction(readSoakLoadLanding, null, { timeout: graceMs, polling: 1000 })
+      .then(consumePageConditionValue).catch(() => null);
+    if (!landed) throw loadWaitError;
+  }
+  if (landed === 'menu') {
+    const detail = await page.evaluate(() => ({
+      phase: window.SF?.state?.render?.openingFirstPicturePhase?.stage || null,
+      plan: window.SF?.state?.render?.openingFirstPicturePlanFailure || null,
+      message: (document.querySelector('[data-startup-stage]')?.textContent || '').trim().slice(0, 500),
+    })).catch(() => null);
+    const error = new Error(`F9 restore failed: runtime:start-failed menu${detail?.message ? `: ${detail.message}` : ''}`);
+    error.code = 'SOAK_LOAD_START_FAILED';
+    error.loadFailure = detail;
+    throw error;
+  }
+  return { late };
+}
+
 async function runSoakCycle(page, {
   index,
   outputDir,
@@ -2655,49 +2844,8 @@ async function runSoakCycle(page, {
   mark('pre-load-divergence', { divergenceInputMs, minRestoreDivergenceWu, quickSourceDivergenceWu, quickSource: quickSourceBeforeF9, diverged });
   await transition('load-restore');
   await page.keyboard.press('F9');
-  // The loaded-game visual gate legitimately owns up to ~180s of authored-visual staging on a
-  // contended host (the app's own bound); a restore that outlives a 90s wait is slow, not
-  // broken. A genuine wedge still surfaces early: a timed-out gate fails to mode 'menu' via
-  // failGameStart, which this predicate never satisfies either way.
-  const waitForLoadFlight = () => page.waitForFunction(() => window.__M6_RELEASE_SOAK_EVENTS__?.loaded === true && window.SF?.state?.mode === 'flight', null, { timeout: 210_000 });
-  try {
-    await waitForLoadFlight();
-  } catch (loadWaitError) {
-    // D31 + D35: a failed restore is designed to land in the retryable start-failed menu — but
-    // the app's own bounded gates can outlive the 210 s probe wait before that landing commits
-    // (the authored-visuals gate alone owns 180 s plus a 30 s retry, and the authored-library
-    // stage owns another pair of 180 s races). The one-shot sample this used to do could read
-    // mode:'loading' seconds before the recovery fired and report a bounded failure as a
-    // permanent freeze. So wait for the session to actually LAND: late flight means a slow but
-    // healthy load and the leg continues; the start-failed menu is the recoverable state a
-    // player would retry from; still 'loading' after the grace window is the real hang.
-    const landed = await page.waitForFunction(() => {
-      const s = window.SF?.state;
-      if (s?.mode === 'flight' && window.__M6_RELEASE_SOAK_EVENTS__?.loaded === true) return 'flight';
-      const reqs = typeof window.SF?.timeEffects?.describeRequests === 'function'
-        ? window.SF.timeEffects.describeRequests() : {};
-      return s?.mode === 'menu' && reqs && reqs['runtime:start-failed'] ? 'menu' : false;
-    }, null, { timeout: 240_000, polling: 1000 })
-      .then((handle) => handle.jsonValue())
-      .catch(() => null);
-    if (!landed) throw loadWaitError;
-    if (landed === 'flight') {
-      mark('load-late-flight', {});
-    } else {
-      const deadEnded = await page.evaluate(() => {
-        const s = window.SF?.state;
-        const reqs = typeof window.SF?.timeEffects?.describeRequests === 'function'
-          ? window.SF.timeEffects.describeRequests() : {};
-        return {
-          mode: s?.mode,
-          timeRequests: reqs,
-        };
-      }).catch(() => null);
-      mark('load-retry-start-failed', deadEnded);
-      await page.keyboard.press('F9');
-      await waitForLoadFlight();
-    }
-  }
+  const loadOutcome = await waitForSoakLoadLanding(page);
+  if (loadOutcome.late) mark('load-late-flight', {});
   const loaded = await readPlayerSnapshot(page);
   const loadedAtEvent = await page.evaluate(() => window.__M6_RELEASE_SOAK_EVENTS__?.loadedSnapshot || null);
   const loadedSlot = await page.evaluate(() => window.__M6_RELEASE_SOAK_EVENTS__?.loadedSlot || null);
@@ -2986,6 +3134,26 @@ async function runSoakCycle(page, {
     let brakePulsed = false;
     while (Date.now() < waitDeadline) {
       dockPromptVisible = await dockPrompt.isVisible().catch(() => false);
+      const loopDiagnostics = await page.evaluate(() => {
+        let diagnostics = null;
+        try { diagnostics = window.SF?.loop?.getDiagnostics?.() || null; } catch (_) { /* runtime may be closing */ }
+        const failure = diagnostics?.presentationFailure;
+        if (!failure || typeof failure !== 'object') return null;
+        return {
+          presentationFailure: {
+            code: typeof failure.code === 'string' ? failure.code : null,
+            headline: typeof failure.headline === 'string' ? failure.headline : null,
+            message: typeof failure.message === 'string' ? failure.message : '',
+            tick: failure.tick,
+            simTime: failure.simTime,
+          },
+        };
+      }).catch(() => null);
+      const presentationError = createSoakPresentationFailureError(loopDiagnostics);
+      if (presentationError) {
+        mark('dock-presentation-failure', presentationError.presentationFailure);
+        throw presentationError;
+      }
       if (dockPromptVisible) break;
       if (lawFlees < 2) {
         const law = await readLawFlag();
@@ -3287,7 +3455,14 @@ async function armSaveLoadObservers(page) {
         const ev = window.__M6_RELEASE_SOAK_EVENTS__;
         if (!ev) return;
         if (!Array.isArray(ev.dock)) ev.dock = [];
-        if (ev.dock.length < 32) ev.dock.push(entry);
+        const state = window.SF?.state;
+        if (ev.dock.length >= 32) ev.dock.splice(0, 16);
+        ev.dock.push({
+          t: Math.round(performance.now()),
+          tick: Number.isFinite(state?.tick) ? state.tick : null,
+          simTime: Number.isFinite(state?.simTime) ? state.simTime : null,
+          ...entry,
+        });
       };
       // Nav arm tap: _onSetCourse emits nav:autopilot {status:'armed'} synchronously when a
       // waypoint click lands. When the ship is already inside the arrival radius the whole
@@ -5945,7 +6120,72 @@ export function postGcOwnerEvaluateArgument(phaseTag, ownerRowLimit = POST_GC_OW
   return { phaseTag, ownerRowLimit };
 }
 
-async function readPostGcMemorySnapshot(page, phaseTag) {
+// Snapshot-only observer: geometry can be shared by several roots, so group counts
+// are individually unique and do not add up to the scene-wide unique count.
+export function readSceneGeometryCensus() {
+  const state = window.SF?.state;
+  const owner = window.SF?.registry?.get?.('render');
+  const scene = owner?.scene;
+  if (!scene) return { available: false, reason: 'scene-unavailable' };
+  const rootOwners = new Map();
+  if (owner?._meshes && typeof owner._meshes[Symbol.iterator] === 'function') {
+    for (const [id, root] of owner._meshes) {
+      if (!root) continue;
+      const entity = state?.entities?.get?.(id);
+      rootOwners.set(root, { id: String(id).slice(0, 100), type: String(entity?.type || '').slice(0, 80) || null,
+        defId: String(entity?.data?.defId || entity?.defId || '').slice(0, 120) || null });
+    }
+  }
+  const unique = new Set();
+  const groups = new Map();
+  const stack = [{ node: scene, owner: null }];
+  let visited = 0;
+  while (stack.length) {
+    const item = stack.pop();
+    const node = item.node;
+    if (!node) continue;
+    visited += 1;
+    const root = rootOwners.get(node) || item.owner;
+    const id = node.geometry?.uuid;
+    if (typeof id === 'string' && id) {
+      unique.add(id);
+      const key = root ? `entity:${root.id}` : 'scene-unowned';
+      let group = groups.get(key);
+      if (!group) { group = { key, ...root, ids: new Set() }; groups.set(key, group); }
+      group.ids.add(id);
+    }
+    const children = node.children || [];
+    for (let i = children.length - 1; i >= 0; i--) stack.push({ node: children[i], owner: root });
+  }
+  const idLimit = 10000, groupLimit = 512, groupIdLimit = 512;
+  const ids = [...unique].sort();
+  const rows = [...groups.values()].sort((a, b) => a.key.localeCompare(b.key));
+  const queue = (name, head, iter) => {
+    const list = owner?.[name];
+    return { pending: Array.isArray(list) ? Math.max(0, list.length - (Number(owner?.[head]) || 0)) : null,
+      activeIterator: !!owner?.[iter] };
+  };
+  return {
+    available: true, visitedNodes: visited,
+    rendererGeometries: Number.isFinite(owner?.renderer?.info?.memory?.geometries)
+      ? owner.renderer.info.memory.geometries : null,
+    uniqueGeometryCount: ids.length, geometryIds: ids.slice(0, idLimit), geometryIdsTruncated: ids.length > idLimit,
+    groups: rows.slice(0, groupLimit).map((row) => {
+      const groupIds = [...row.ids].sort();
+      return { key: row.key, entityId: row.id ?? null, type: row.type ?? null, defId: row.defId ?? null,
+        uniqueGeometryCount: groupIds.length, geometryIds: groupIds.slice(0, groupIdLimit),
+        geometryIdsTruncated: groupIds.length > groupIdLimit };
+    }),
+    groupCount: rows.length, groupsTruncated: rows.length > groupLimit,
+    disposal: {
+      despawn: queue('_despawnDisposeQueue', '_despawnDisposeHead', '_despawnDisposeIter'),
+      warm: queue('_warmDisposeQueue', '_warmDisposeHead', '_warmDisposeIter'),
+      retainedLod: { available: false, reason: 'no-existing-diagnostic-getter' },
+    },
+  };
+}
+
+async function readPostGcMemorySnapshot(page, phaseTag, { includeGeometryCensus = false } = {}) {
   // The forced GC is measurement apparatus: pause the soak-window hitch register so a
   // stop-the-world collect is not billed to the game as a gameplay hitch.
   await setSoakPaused(page, true);
@@ -6006,6 +6246,11 @@ async function readPostGcMemorySnapshot(page, phaseTag) {
   }, postGcOwnerEvaluateArgument(phaseTag));
   const ownerDiagnostics = snapshot.assetResidencyOwnerDiagnostics;
   delete snapshot.assetResidencyOwnerDiagnostics;
+  if (includeGeometryCensus) {
+    await setSoakPaused(page, true);
+    try { snapshot.sceneGeometryCensus = await page.evaluate(readSceneGeometryCensus); }
+    finally { await setSoakPaused(page, false); }
+  }
   return {
     ...snapshot,
     assetResidencyOwners: canonicalPostGcOwnerRows(ownerDiagnostics),
@@ -6064,7 +6309,7 @@ export async function readReleaseSoakBaselineMemory(page, { timeoutMs = 30_000 }
   return withTimeout(
     (async () => {
       await waitForKnownAssetRequests(page, { timeoutMs });
-      return readPostGcMemorySnapshot(page, 'docked-market-start');
+      return readPostGcMemorySnapshot(page, 'docked-market-start', { includeGeometryCensus: true });
     })(),
     timeoutMs,
     'release-soak baseline memory snapshot',
@@ -6453,9 +6698,13 @@ function boundedErrorNetworkProvenance(value) {
 
 export function buildErrorEvidence(runtime, tracker) {
   const raw = runtime === 'electron' ? tracker?.all?.() || [] : tracker?.issues || [];
-  const normalized = raw.map((issue) => {
+  const normalizeIssue = (issue) => {
     const networkProvenance = boundedErrorNetworkProvenance(issue.networkProvenance);
-    return {
+    const issueUrl = boundedIssueUrlPath(issue.url)
+      || boundedIssueUrlPath(issue.networkProvenance?.url)
+      || boundedIssueUrlPath(issue.requestProvenance?.url);
+    const location = boundedIssueLocation(issue.location);
+    const normalizedIssue = {
       type: issue.type || issue.level || 'unknown',
       source: issue.source || 'console',
       text: String(issue.text || ''),
@@ -6463,8 +6712,22 @@ export function buildErrorEvidence(runtime, tracker) {
       // Retain the tracker's exact requestId/method join so an optional GET, a failed PUT,
       // and a deferred observer duplicate remain distinguishable in the saved evidence.
       ...(networkProvenance ? { networkProvenance } : {}),
+      ...(issueUrl ? { url: issueUrl } : {}),
+      ...(location ? { location } : {}),
     };
-  });
+    for (const key of ['absentPlayerStore', 'absentPlayerStoreConsole', 'cancelledCinematicMedia']) {
+      if (issue[key] === true) normalizedIssue[key] = true;
+    }
+    if (Array.isArray(issue.expectedNavigation)) {
+      normalizedIssue.expectedNavigation = issue.expectedNavigation.slice(0, 8)
+        .map((label) => String(label || '').slice(0, 128));
+      if (issue.expectedNavigation.length > 8) normalizedIssue.expectedNavigationTruncated = true;
+    }
+    return normalizedIssue;
+  };
+  const normalized = raw.map(normalizeIssue);
+  const ignoredRaw = typeof tracker?.ignored === 'function' ? tracker.ignored() : null;
+  const trackerCoverage = typeof tracker?.coverage === 'function' ? tracker.coverage() : null;
   const expectedWarnings = normalized.filter((issue) => issue.type === 'warning' && /WebGL context (?:lost|restored)/i.test(issue.text));
   // These two ANGLE translator diagnostics are stable Chromium/vendor compiler noise on this
   // machine, not application shader or resource-lifecycle defects. Keep them visible in evidence,
@@ -6484,7 +6747,33 @@ export function buildErrorEvidence(runtime, tracker) {
     expectedWarnings: expectedWarnings.map((issue) => issue.text),
     vendorWarnings: vendorWarnings.map((issue) => issue.text),
     all: normalized,
+    ignored: Array.isArray(ignoredRaw) ? ignoredRaw.slice(0, 128).map(normalizeIssue) : null,
+    ignoredTruncated: Array.isArray(ignoredRaw) && ignoredRaw.length > 128,
+    trackerCoverage,
   };
+}
+
+function boundedIssueUrlPath(value) {
+  if (typeof value !== 'string' || !value) return null;
+  const bounded = value.slice(0, 4096);
+  try {
+    return new URL(bounded).pathname.slice(0, 1_024) || '/';
+  } catch {
+    return bounded.split(/[?#]/, 1)[0].slice(0, 1_024) || null;
+  }
+}
+
+function boundedIssueLocation(value) {
+  if (typeof value === 'string') {
+    const path = boundedIssueUrlPath(value);
+    return path ? { path } : null;
+  }
+  if (!value || typeof value !== 'object') return null;
+  const path = boundedIssueUrlPath(value.url || value.path);
+  const lineNumber = Number.isSafeInteger(value.lineNumber) ? value.lineNumber : null;
+  const columnNumber = Number.isSafeInteger(value.columnNumber) ? value.columnNumber : null;
+  if (!path && lineNumber === null && columnNumber === null) return null;
+  return { ...(path ? { path } : {}), lineNumber, columnNumber };
 }
 
 async function readPerformanceRouteFailureState(page) {

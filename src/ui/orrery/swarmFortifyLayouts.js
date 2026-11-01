@@ -44,8 +44,26 @@ html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-plan text { fill:
 .sf-fortify-state button { margin-left:12px; }
 .sf-fortify-balance { color:var(--dp-hand); font-variant-numeric:tabular-nums; }
 .sf-crucible-fortify .k-foot { display:flex; gap:10px 28px; flex-wrap:wrap; align-items:center; }
-html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-build { font-size:clamp(18px,2vw,26px) !important; font-weight:600 !important; color:var(--dp-hand) !important; min-height:44px; }
-html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-close { font-size:20px !important; min-height:44px; }
+/* the commit verbs are keys: the build is the one amber primary (the 45° cut), the close a
+   secondary (STATION_STANDARD §5) — not amber and bone words a player could miss. */
+html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-build {
+  font:600 15px var(--dp-face-read) !important; letter-spacing:.04em; text-transform:none;
+  color:var(--dp-metal-0, #0b0d10) !important; min-height:42px; padding:0 20px;
+  background:var(--dp-lamp, #f2b950); border:1px solid rgb(242 185 80 / .9); border-radius:2px;
+  clip-path:polygon(0 0, calc(100% - 9px) 0, 100% 9px, 100% 100%, 0 100%);
+  transition:background var(--dp-d-cut, 80ms) linear, box-shadow var(--dp-d-cut, 80ms) linear; }
+html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-build:not([disabled]):is(:hover, :focus-visible) {
+  background:var(--dp-lamp-hot, #ffd98c); box-shadow:0 0 14px rgb(242 185 80 / .24); }
+html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-build[disabled],
+html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-build[aria-disabled="true"] {
+  opacity:.45; cursor:not-allowed; }
+html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-close {
+  font:600 14px var(--dp-face-read) !important; letter-spacing:.03em; text-transform:none;
+  color:rgb(236 230 216 / .92) !important; min-height:42px; padding:0 16px;
+  background:rgb(236 230 216 / .05); border:1px solid rgb(236 230 216 / .38); border-radius:2px;
+  transition:background var(--dp-d-cut, 80ms) linear, border-color var(--dp-d-cut, 80ms) linear; }
+html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-close:is(:hover, :focus-visible) {
+  color:#fff; background:rgb(236 230 216 / .12); border-color:rgb(236 230 216 / .75); }
 .sf-fortify-receipt { flex:1 0 100%; margin:0; min-height:1.5em; }
 @media (max-width:760px) {
   html body #screens > .k-screen.sf-crucible-fortify { padding:20px !important; gap:12px !important; }
@@ -60,6 +78,49 @@ html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-close { font-size
   .sf-fortify-plan,.sf-fortify-shelf { min-height:360px; }
   .sf-fortify-plan svg { min-height:240px; }
   .sf-fortify-shelf { overflow:visible; }
+}
+/* polish277: the armory's choices read as controls, not loose type. Positions are hairline
+   chips, devices hairline cards, built structures framed rows with a hairline Repair/Rearm key,
+   and an empty field a dashed well. Radius 8 and faint fills, the same family as the other
+   console cards; selection stays amber. */
+html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-sockets { gap:8px; }
+html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-sockets button {
+  min-height:36px; padding:0 12px; border:1px solid rgb(236 230 216 / .16) !important; border-radius:8px;
+  background:rgb(236 230 216 / .035) !important; clip-path:none !important; box-shadow:none;
+  font:500 13px var(--dp-face-read) !important; letter-spacing:.01em !important; text-transform:none !important;
+  color:rgb(236 230 216 / .82); transition:background var(--dp-d-cut, 80ms) linear, border-color var(--dp-d-cut, 80ms) linear; }
+html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-sockets button:hover {
+  background:rgb(236 230 216 / .08) !important; border-color:rgb(236 230 216 / .32) !important; color:var(--dp-ink); }
+html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-sockets button[aria-pressed=true] {
+  color:var(--dp-hand); border-color:rgb(242 185 80 / .7) !important; background:rgb(242 185 80 / .1) !important; }
+html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-shelf { display:flex; flex-direction:column; gap:8px; }
+html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-device {
+  flex:0 0 auto; padding:12px 14px; border:1px solid rgb(236 230 216 / .14); border-radius:8px;
+  background:rgb(236 230 216 / .03); transition:background var(--dp-d-cut, 80ms) linear, border-color var(--dp-d-cut, 80ms) linear; }
+html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-device:hover {
+  background:rgb(236 230 216 / .06); border-color:rgb(236 230 216 / .3); }
+html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-device[aria-pressed=true] {
+  border-color:rgb(242 185 80 / .6); background:rgb(242 185 80 / .07); }
+html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-state { flex:0 0 auto; margin-top:12px; padding-top:14px; }
+html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-state h2 { margin:0; }
+html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-state ul { display:flex; flex-direction:column; gap:6px; margin:10px 0 0; }
+html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-state li {
+  display:flex; flex-wrap:wrap; align-items:center; gap:6px 10px; padding:8px 12px;
+  border:1px solid rgb(236 230 216 / .14); border-radius:8px; background:rgb(236 230 216 / .03); }
+html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-state li.sf-fortify-empty {
+  justify-content:center; padding:14px 12px; border-style:dashed; border-color:rgb(236 230 216 / .22);
+  background:none; color:var(--dp-ink-dim); }
+html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-state button {
+  margin-left:auto; min-height:30px; padding:0 10px; border:1px solid rgb(236 230 216 / .3) !important; border-radius:6px;
+  background:rgb(236 230 216 / .05) !important; clip-path:none !important;
+  font:600 12px var(--dp-face-read) !important; letter-spacing:.02em !important; text-transform:none !important; }
+html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-state button + button { margin-left:0; }
+html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-state button:not(:disabled):hover {
+  background:rgb(236 230 216 / .12) !important; border-color:rgb(236 230 216 / .6) !important; }
+html.sf-reduce-motion .k-screen.sf-crucible-fortify .sf-fortify-sockets button,
+html.sf-reduce-motion .k-screen.sf-crucible-fortify .sf-fortify-device { transition:none !important; }
+@media (max-width:760px) {
+  html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-sockets button { min-height:44px; }
 }
 `;
 

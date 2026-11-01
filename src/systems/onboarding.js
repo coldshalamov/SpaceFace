@@ -492,6 +492,11 @@ export function buildOnboardingObjectiveWaypoint(beat, target) {
   };
 }
 
+function hasPlayerSelectedNavWaypoint(state) {
+  const waypoint = state && state.nav && state.nav.waypoint;
+  return !!(waypoint && waypoint.onboarding !== true && waypoint.kind === 'nav');
+}
+
 export const onboarding = {
   name: 'onboarding',
 
@@ -2579,7 +2584,12 @@ export const onboarding = {
       mass: 180,
       hull: 60,
       hullMax: 60,
-      physicsBody: { radius: asteroidColliderRadius('ast_common_rock', 18) },
+      // The tutorial finish line must not be punt-able (same defect class as the rescue
+      // beacon's mass-1 body): a field-lesson shove into a dynamic rock makes it drift,
+      // and the shelved world record then advances it ballistically — the seam waypoint
+      // chases a body that rematerializes kilometres away forever (stranger run 39:
+      // rock exiled 129wu → 41 416wu while the ship trailed at 15wu/s).
+      physicsBody: { radius: asteroidColliderRadius('ast_common_rock', 18), dynamic: false },
       data: {
         typeId: 'ast_common_rock', oreHP: 60, oreHPMax: 60, yieldU: SEAM_ORE_TARGET,
         onboarding: true, onboardingTraining: true, trainingMining: true,
@@ -3041,12 +3051,15 @@ export const onboarding = {
     this._refreshBeatPanel();
   },
 
-  // The marker identity stays beat-stable and onboarding-owned so HUD/radar/map agree.
+  // The marker identity stays beat-stable while onboarding owns nav; active player courses win.
   _setRescueWaypoint(force) {
     const st = this.state;
     const ob = st.onboarding;
     const rescue = this._rescue();
     if (!rescue || !rescue.current || !st.nav) return false;
+    // Automatic lesson/recovery stamps yield to an explicit player course. The lesson actors and
+    // beat state remain live; the player can point the same course owner back at an objective.
+    if (hasPlayerSelectedNavWaypoint(st)) return true;
     const key = rescue.current;
     const line = rescueBeatLine(key);
     let target = null;
@@ -4417,6 +4430,8 @@ export const onboarding = {
     const ob = st.onboarding;
     const three = this._missingThree();
     if (!three || !three.current || !st.nav) return false;
+    // Keep an armed manual course authoritative across automatic lesson restaging.
+    if (hasPlayerSelectedNavWaypoint(st)) return true;
     const key = three.current;
     const line = missingThreeBeatLine(key);
     let target = null;
@@ -4702,6 +4717,9 @@ export const onboarding = {
     const st = this.state;
     const ob = st.onboarding;
     if (!ob || !ob.active || ob.finished || !st.nav) return;
+    // Entry/recovery stamps are automatic. Do not let them replace a player-selected local course
+    // while its own autopilot/ribbon is still active; explicit map course actions can retarget it.
+    if (hasPlayerSelectedNavWaypoint(st)) return;
     // A current rescue verb owns the marker: one verb, one diamond, same beat-stable identity.
     if (this._setRescueWaypoint(force)) return;
     if (this._setMissingThreeWaypoint(force)) return;
@@ -4772,7 +4790,8 @@ export const onboarding = {
       return;
     }
     // While teaching, reclaim mission/story claims so the opening marker stays onboarding-owned.
-    // Leave player-set local/trade/autopilot courses alone unless force-stamping a lesson target.
+    // Automatic stamps reach this point only when no manual nav course owns the waypoint. Mission
+    // and story claims still yield to the opening objective while the tutorial is active.
     if (existing && !existing.onboarding && !force) {
       const foreignKind = existing.kind;
       if (foreignKind !== 'mission' && foreignKind !== 'story') return;

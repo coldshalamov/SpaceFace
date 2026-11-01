@@ -6,6 +6,7 @@ import { createGameState } from '../src/core/gameState.js';
 import { TETHYS_BLACK_MARKET_DISCOVERY } from '../src/data/frontierRumors.js';
 import { DEFAULTS as INPUT_DEFAULTS } from '../src/systems/input.js';
 import { BINDINGS } from '../src/ui/bindings.js';
+import { requestCodexDiscovery as requestCodexDiscoveryFromMailbox } from '../src/ui/codexRequests.js';
 import {
   clearCodexDiscoveryRequest,
   codexScreen,
@@ -69,6 +70,7 @@ function restoredState(state) {
 }
 
 test('PQ-048.20 hands the exact Tethys completion to its persisted Codex plate once', async () => {
+  assert.equal(requestCodexDiscoveryFromMailbox, requestCodexDiscovery, 'the screen keeps its existing request export');
   clearCodexDiscoveryRequest();
   const state = contactedTethysState();
   const payload = {
@@ -84,7 +86,7 @@ test('PQ-048.20 hands the exact Tethys completion to its persisted Codex plate o
   assert.equal(plate.id, `${DISCOVERY.sectorId}:${DISCOVERY.poiId}`);
   assert.equal(plate.title, 'Black Market Contact', 'the handoff does not manufacture a Codex entry');
 
-  assert.equal(requestCodexDiscovery(target), true);
+  assert.equal(requestCodexDiscoveryFromMailbox(target), true);
   assert.equal(consumeCodexDiscoveryRequest(state)?.id, plate.id, 'the valid request resolves the stable plate');
   assert.equal(consumeCodexDiscoveryRequest(state), null, 'the request is one-shot');
 
@@ -99,7 +101,7 @@ test('PQ-048.20 hands the exact Tethys completion to its persisted Codex plate o
     codexScreen._body = null;
     codexScreen._activeTab = 'Story';
     codexScreen._query = 'stale search';
-    assert.equal(requestCodexDiscovery(target), true);
+    assert.equal(requestCodexDiscoveryFromMailbox(target), true);
     codexScreen.onShow({ state });
     assert.equal(codexScreen._activeTab, 'Discoveries', 'the one-shot target selects the real evidence tab');
     assert.equal(codexScreen._query, '', 'a prior search cannot hide the focused plate');

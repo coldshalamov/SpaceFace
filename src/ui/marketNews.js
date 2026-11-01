@@ -28,7 +28,7 @@ import {
   HEADLINE_TEMPLATES, REGIME_TEMPLATES, CARD_TEMPLATES, COMMODITY_FLAVOR,
   normalizeKind, fillTemplate,
 } from '../data/newsTemplates.js';
-import { isSurvivalRunLive } from '../systems/adventureMigration.js';
+import { isSurvivalRunLive } from '../combat/adventureAttackReaders.js';
 import { playerCallsign } from './playerIdentity.js';
 import { claimDeliveryNote, claimLegFirstSeen, ensureWorldNews, registerWorldBeats } from './worldNewsBeats.js';
 

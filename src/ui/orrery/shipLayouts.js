@@ -84,7 +84,7 @@ ${W} .sx-sw__gauges { ${PLAIN} isolation:isolate; gap:0 26px !important; justify
 ${W} .sx-sw__gauges::before { content:""; position:absolute; z-index:-1; inset:-4px 0 -8px; pointer-events:none;
   background:linear-gradient(180deg, rgb(${POOL} / 0), rgb(${POOL} / .62) 30% 72%, rgb(${POOL} / 0)); }
 ${W} .sx-sw-gauge { ${PLAIN} padding:0 !important; min-height:0 !important; gap:8px !important; }
-${W} .sx-sw-gauge .k-row__name { ${LABEL} font-size:12px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .86) !important; }
+${W} .sx-sw-gauge .k-row__name { ${LABEL} font-size:12px !important; letter-spacing:.06em !important; color:rgb(${BONE} / .86) !important; }
 ${W} .sx-sw-gauge .k-row__num { ${NUM} font-size:13px !important; color:${INK} !important; }
 /* the rack's count is its own line at every width — "0/2 ARMED · 0 STOWED" never breaks mid-count */
 ${W} .sx-sw-rack .sx-sw-band__label .k-38 { display:block; margin-top:2px; }
@@ -99,7 +99,7 @@ ${W} .sx-sw-hero { ${PLAIN} position:relative; padding:2px 0 8px !important; min
 ${W} .sx-sw-hero::before, ${W} .sx-sw-hero::after { display:none !important; }
 ${W} .sx-sw-hero .k-hero__n { ${NUM} font-weight:540 !important; font-size:clamp(17px, 2vh, 22px) !important; line-height:1.05 !important;
   letter-spacing:.01em !important; color:${INK} !important; text-shadow:none !important; }
-${W} .sx-sw-hero .k-hero__w { ${LABEL} font-size:12px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .62) !important; margin-top:6px; }
+${W} .sx-sw-hero .k-hero__w { ${LABEL} font-size:12px !important; letter-spacing:.06em !important; color:rgb(${BONE} / .62) !important; margin-top:6px; }
 /* the top speed is the screen's one dominant numeral */
 ${W} .sx-sw-hero[data-band='handling'] .k-hero__n { font-size:clamp(42px, 5.4vh, 64px) !important; font-weight:250 !important;
   font-variation-settings:"wdth" 100, "wght" 250 !important; letter-spacing:-.01em !important; white-space:nowrap; }
@@ -137,7 +137,7 @@ ${W} .sx-sw-chip::before { all:unset !important; content:"›  " !important; col
 ${W} .sx-sw-chip:is(:hover, :focus-visible) { color:var(--dp-hand, #f2b950) !important; outline:none !important; }
 
 /* ---- the builds band: chips as words; save fit is the screen's one Lamp Key -------------------- */
-${W} .sx-sw-band__label { ${LABEL} font-size:12px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .6) !important; }
+${W} .sx-sw-band__label { ${LABEL} font-size:12px !important; letter-spacing:.06em !important; color:rgb(${BONE} / .6) !important; }
 ${W} .sx-sw-preset { ${PLAIN} position:relative; ${LABEL} min-height:0 !important; height:auto !important; padding:4px 0 !important;
   font-size:12px !important; letter-spacing:.18em !important; color:rgb(${BONE} / .8) !important; }
 ${W} .sx-sw-preset::after { display:none !important; }
@@ -215,7 +215,7 @@ ${W} text.orr-power__syslabel.is-lit { fill:var(--dp-hand, #f2b950); }
 ${W} .sx-sw-circuit__core .k-hero__n { position:absolute; left:0; right:5.4%; top:69px; text-align:center; line-height:1 !important;
   ${NUM} font-weight:500 !important; font-size:34px !important; color:${INK} !important; text-shadow:none !important; }
 ${W} .sx-sw-circuit__core .k-hero__w { position:absolute; left:0; right:5.4%; top:118px; text-align:center;
-  ${LABEL} font-size:12px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .62) !important; }
+  ${LABEL} font-size:12px !important; letter-spacing:.06em !important; color:rgb(${BONE} / .62) !important; }
 ${W} .sx-sw-flow { ${PLAIN} display:grid !important; grid-template-columns:minmax(0, 1fr) auto; column-gap:10px; align-items:baseline;
   padding:5px 0 !important; min-height:0 !important; ${RULE} }
 ${W} .sx-sw-flow .sx-sw-flow__copy { grid-column:1 / 2; display:flex !important; flex-direction:row !important; justify-content:space-between;
@@ -241,7 +241,7 @@ ${W} .sx-sw-rack__cell::before { content:"" !important; display:block !important
   transform:none !important; clip-path:none !important; margin:0 !important; }
 ${W} .sx-sw-rack__cell:not(.is-empty)::before { border:5px solid rgb(248 244 234) !important; }
 ${W} .sx-sw-rack__cell::after { display:none !important; }
-${W} .sx-sw-rack__cell .k-row__num { ${LABEL} order:-1; font-size:12px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .55) !important; text-align:left; }
+${W} .sx-sw-rack__cell .k-row__num { ${LABEL} order:-1; font-size:12px !important; letter-spacing:.06em !important; color:rgb(${BONE} / .55) !important; text-align:left; }
 ${W} .sx-sw-rack__cell .k-row__name { display:flex !important; flex-direction:column; font-size:12px !important; color:rgb(${BONE} / .8) !important; }
 ${W} .sx-sw-rack__cell .k-row__sub { font-size:12px !important; color:rgb(${BONE} / .55) !important; }
 ${W} .sx-sw-rack__cell:is(:hover, :focus-visible) { outline:none !important; }
@@ -290,7 +290,7 @@ ${W} .sx-hardpoint:focus-visible { outline:none !important; }
 /* the camera words and the drag cue: the quietest instrument on the stage */
 ${W} .sx-sw__camera { gap:0 14px !important; }
 ${W} .sx-sw__camera .k-word { ${PLAIN} ${LABEL} min-height:0 !important; padding:3px 2px !important; font-size:12px !important;
-  letter-spacing:.2em !important; color:rgb(${BONE} / .55) !important; text-decoration:none !important; }
+  letter-spacing:.06em !important; color:rgb(${BONE} / .55) !important; text-decoration:none !important; }
 ${W} .sx-sw__camera .k-word:is(:hover, :focus-visible) { color:rgb(248 244 234) !important; outline:none !important; }
 ${W} .sx-sw__dragcue { color:rgb(${BONE} / .5) !important; }
 
@@ -303,13 +303,13 @@ ${W} .sx-sw__chooser::before { content:""; position:absolute; z-index:-1; inset:
 ${W} .sx-sw__chooser, ${W} .sx-chooser__panel { ${PLAIN} }
 ${W} .sx-chooser__head { margin:0 0 10px !important; padding:0 !important; }
 ${W} .sx-chooser__x { ${PLAIN} ${LABEL} min-height:0 !important; min-width:0 !important; height:auto !important; padding:3px 0 !important;
-  font-size:12px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .75) !important; }
+  font-size:12px !important; letter-spacing:.06em !important; color:rgb(${BONE} / .75) !important; }
 ${W} .sx-chooser__x::after { display:none !important; }
 ${W} .sx-chooser__x::before { all:unset !important; content:"‹  " !important; color:rgb(${BONE} / .55) !important; }
 ${W} .sx-chooser__x:is(:hover, :focus-visible) { color:rgb(248 244 234) !important; outline:none !important; }
 ${W} .sx-chooser__kicker { ${LABEL} font-size:12px !important; letter-spacing:.08em !important; line-height:1.5 !important;
   color:rgb(${BONE} / .66) !important; margin:10px 0 2px !important; white-space:normal !important; max-width:100%; text-wrap:balance; }
-${W} .sx-chooser__head h3 { ${LABEL} font-size:12px !important; letter-spacing:.2em !important; color:${INK} !important; }
+${W} .sx-chooser__head h3 { ${LABEL} font-size:12px !important; letter-spacing:.06em !important; color:${INK} !important; }
 ${W} .sx-chooser__head h3 .k-38 { display:block; color:rgb(${BONE} / .6) !important; }
 ${W} .sx-chooser__unfit { ${PLAIN} ${LABEL} font-size:12px !important; letter-spacing:.16em !important; color:rgb(248 244 234) !important;
   padding:3px 0 !important; min-height:0 !important; }

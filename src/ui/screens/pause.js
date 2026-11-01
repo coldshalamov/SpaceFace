@@ -33,7 +33,7 @@ import { injectOrreryScreens } from '../orrery/screenLayouts.js';
 import { injectPauseLayouts, PAUSE_COLUMN_QUERY } from '../orrery/pauseLayouts.js';
 import { openReplay, forceCloseReplay, REPLAY_LABEL } from './replay.js';
 import { openClips, forceCloseClips, CLIPS_LABEL } from './clips.js';
-import { requestCodexTab } from './codex.js';
+import { requestCodexTab } from '../codexRequests.js';
 import { writtenEndingArchive } from '../../story/endings/index.js';
 import { latestPlayerImpactFromTrace, pauseImpactCause } from '../../combat/presentationImpact.js';
 import {

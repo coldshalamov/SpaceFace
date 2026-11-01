@@ -19,7 +19,6 @@ import { createRadar } from './radar.js';
 import { mountIonStormHud } from './ionStormHud.js';
 import { mountTravelVectorHud } from './travelVectorHud.js';
 import { createTargetPanel, targetDisplayName } from './targetPanel.js';
-import { isSurrenderedContact } from '../systems/surrenderRecovery.js';
 import { createFloatingText } from './floatingText.js';
 import { createDamageIndicators } from './damageIndicators.js';
 import { buildReducedMotionContactCue } from './reducedMotionInformation.js';
@@ -54,7 +53,7 @@ import { verbAcceptsType } from '../data/interactionDescriptorCatalog.js';
 import { indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
 import { resolveWorldPresentationEntity } from '../world/presentationSources.js';
 import { presentationAllowsTargetLock } from '../core/presentationAdmission.js';
-import { objectiveText } from './screens/missionLog.js';
+import { objectiveText } from './sim/missionRecap.js';
 import { adventureDecisionHudLine } from './adventureDecisions.js';
 import { mountOrreryCluster } from './orrery/hudAdapter.js';
 import { createForkInstrument } from './forkInstrument.js';
@@ -79,7 +78,7 @@ import { computeLeadPipOverlay, leadSolution, primaryProjSpeed, hasBallisticWeap
 import {
   createTargetTruth, projectTargetTruth, lineLeadSolution, SELECTION_STATUS, TARGET_REASON,
 } from '../combat/targetTruth.js';
-import { classifyContact, contactMark, gunLineDenial } from '../combat/contactClassifier.js';
+import { classifyContact, contactMark, gunLineDenial, isSurrenderedContact } from '../combat/contactClassifier.js';
 import { confirm } from './confirm.js';
 import { bestKnownSellFor, applyTradeNavigation } from './market/tradeLogic.js';
 import { createFlickerGrid, createHexPattern, createRouteBeam, createCircularGauge, createSupplyTree } from './effects/index.js';
@@ -96,7 +95,7 @@ import {
 import { MOMENTUM_SINK_STATUS_ID } from '../data/combatDefs.js';
 import {
   buildCorridorOpeningWaypoint,
-} from '../systems/missions.js';
+} from '../missions/corridorOpeningReadModel.js';
 import {
   admitReceipt,
   contactRosterExpanded,
@@ -2069,7 +2068,7 @@ export function createHud(ctx, alerts) {
   // (a tracker appearing, the comms tape refilling), not only window resizes, so the box must
   // re-measure whenever the strip itself does.
   if (typeof ResizeObserver === 'function') {
-    leftContextSizeObserver = new ResizeObserver(invalidateObjectiveEdgeBoxes);
+    leftContextSizeObserver = new ResizeObserver(invalidateAndPlaceHudOverlays);
     leftContextSizeObserver.observe(leftContext);
   }
   // Sector law is created with comms before the HUD. Moving the same live node avoids a second card
@@ -2726,6 +2725,7 @@ export function createHud(ctx, alerts) {
     if (!p || !p.text) return;
     clearTimeout(captionHideTimer);
     clearTimeout(captionFadeTimer);
+    externalCaptionsStale = true;
     // Route to the appropriate live region so screen readers get the right politeness without
     // mutating aria-live on a single element (which confuses some ATs).
     const live = p.assertive ? liveAssertive : livePolite;
@@ -2737,6 +2737,7 @@ export function createHud(ctx, alerts) {
     if (openingInstructionSolo(state) || (p.physical === true && p.showVisible === false)) {
       caption.classList.remove('show');
       caption.hidden = true;
+      placeReceiptLane();
       return;
     }
     caption.textContent = p.text;
@@ -2761,6 +2762,8 @@ export function createHud(ctx, alerts) {
       caption.classList.remove('show');
       captionFadeTimer = setTimeout(() => {
         caption.hidden = true;
+          externalCaptionsStale = true;
+          placeReceiptLane();
       }, 220); // let the fade-out finish before hiding
     }, ttl);
   });
@@ -5578,7 +5581,8 @@ export function createHud(ctx, alerts) {
       }
       setClass(missionTracker, 'sf-mt--nobearing', bearingDeg == null);
       setDisplay(mtTitle, false);
-      setDisplay(mtTime, false);
+      // mtTime's display is owned by paintTutorialTrackerCaption below; pre-hiding it here
+      // flipped its inline display none -> block on every tick while a caption was up.
       if (dest.line) rememberObjective(objectiveRecall, dest.line);
       const showObjective = objectiveVisible(objectiveRecall, dest.show);
       // The muted-safe tutorial caption rides the tracker's secondary line. It is additive:
@@ -5877,6 +5881,11 @@ export function createHud(ctx, alerts) {
   }
   function invalidateObjectiveEdgeBoxes() {
     objectiveEdgeBoxes.stale = true;
+    externalCaptionsStale = true;
+  }
+  function invalidateAndPlaceHudOverlays() {
+    invalidateObjectiveEdgeBoxes();
+    placeReceiptLane();
   }
   if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
     window.addEventListener('resize', invalidateObjectiveEdgeBoxes);
@@ -5909,16 +5918,23 @@ export function createHud(ctx, alerts) {
     objectiveEdgeBoxes.rail = railEl === orreryEl ? objectiveEdgeBoxes.orrery : plateBox(railEl);
     return objectiveEdgeBoxes;
   }
+  // Other persistent UI owners may register a short-lived flight caption. Keep those captions in
+  // this HUD's existing safe-band allocator so they share the same measured layout and cache as
+  // receipts and presentation captions.
+  const externalFlightCaptions = new Set();
+  let externalCaptionsStale = true;
+  let lastReceiptObstacle = null;
+  let lastCaptionObstacleVisible = null;
   let overlayLayoutObserver = null;
   if (typeof ResizeObserver === 'function') {
-    overlayLayoutObserver = new ResizeObserver(invalidateObjectiveEdgeBoxes);
+    overlayLayoutObserver = new ResizeObserver(invalidateAndPlaceHudOverlays);
     const railEl = root.querySelector('.orr-hud-cluster .orr-cluster, .sf-prail');
     if (railEl) overlayLayoutObserver.observe(railEl);
     if (rightDock) overlayLayoutObserver.observe(rightDock);
     hudUnsubscribers.push(() => overlayLayoutObserver?.disconnect());
   }
-  on('hud:layoutChanged', invalidateObjectiveEdgeBoxes);
-  on('settings:changed', invalidateObjectiveEdgeBoxes);
+  on('hud:layoutChanged', invalidateAndPlaceHudOverlays);
+  on('settings:changed', invalidateAndPlaceHudOverlays);
 
   // Both roots are static index.html markup: resolve each once, retrying only while absent.
   let toastsLaneEl = null;
@@ -5960,13 +5976,17 @@ export function createHud(ctx, alerts) {
     const width = Math.max(160, (layout?.safe?.width || w) - 24);
     return { x, width: Math.min(width, w - x - 12), wide: false };
   }
-  function freeOverlayBands(slot, h, layout) {
+  function freeOverlayBands(slot, h, layout, excludedElement = null, includeLiveCaptionsAndToasts = false) {
     const measured = objectiveEdgeObstacles();
     const candidates = [
       ...root.querySelectorAll?.('.orr-hud-cluster .orr-cluster, .sf-prail, .sf-rightdock, .sf-command-deck, .sf-nav-readout, .sf-nav-label, .sf-mt-obj, .sf-vtape--on, .sf-commtape, .sf-dock-prompt, .sf-tell.is-on, #sf-prompt-deck, #sf-tutorial-flight-card') || [],
       ...document.querySelectorAll?.('#alerts > .sf-alert:not([hidden])') || [],
     ];
+    if (includeLiveCaptionsAndToasts) {
+      candidates.push(...root.querySelectorAll?.('.sf-caption.show, .sf-toast:not(.sf-toast--out)') || []);
+    }
     const blockers = candidates.map((el) => {
+      if (el === excludedElement) return null;
       const rect = el === measured.railEl ? measured.rail
         : el === measured.rightEl ? measured.right
           : el.getBoundingClientRect?.();
@@ -5977,6 +5997,15 @@ export function createHud(ctx, alerts) {
       };
     }).filter((r) => r && r.width > 0 && r.height > 0
       && r.left < slot.x + slot.width && r.right > slot.x);
+    for (const el of externalFlightCaptions) {
+      if (el === excludedElement || !el.isConnected || el.hidden || el.style?.display === 'none') continue;
+      const rect = el.getBoundingClientRect?.();
+      if (rect && rect.width > 0 && rect.height > 0
+        && rect.left < slot.x + slot.width && rect.right > slot.x) {
+        blockers.push({ left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom,
+          width: rect.width, height: rect.height });
+      }
+    }
     const viewportWidth = layout?.viewport?.width
       || (typeof window !== 'undefined' ? window.innerWidth : 1280);
     const canonical = viewportWidth > 1180
@@ -6014,67 +6043,136 @@ export function createHud(ctx, alerts) {
     }
     return bands.filter((band) => band.bottom - band.top >= 48).sort((a, b) => b.bottom - b.top - (a.bottom - a.top));
   }
-  function placeCaptionInSafeSlot(layout, slot, laneRoot, band = null) {
-    if (!caption || caption.hidden || !slot) return;
+  function placeCaptionInSafeSlot(target, layout, slot, laneRoot, band = null) {
+    if (!target || target.hidden || !slot) return;
     const h = typeof window !== 'undefined' ? window.innerHeight : 720;
     const available = band || freeOverlayBands(slot, h, layout)[0] || { top: 8, bottom: h - 8 };
     const laneRect = laneRoot?.querySelector?.('.sf-toast:not(.sf-toast--out)') ? laneRoot.getBoundingClientRect?.() : null;
     const top = laneRect ? Math.max(available.top, laneRect.bottom + 12) : available.top;
     const maxHeight = Math.max(48, Math.round(available.bottom - top));
-    caption.style.left = `${Math.round(slot.x)}px`;
-    caption.style.right = 'auto';
-    caption.style.top = `${Math.round(top)}px`;
-    caption.style.bottom = 'auto';
-    caption.style.width = 'fit-content';
-    caption.style.maxWidth = `${Math.round(slot.width)}px`;
-    caption.style.maxHeight = `${maxHeight}px`;
-    caption.style.overflowY = caption.scrollHeight > maxHeight ? 'auto' : 'visible';
-    caption.style.textAlign = 'center';
-    caption.style.transform = 'none';
-    caption.style.pointerEvents = caption.scrollHeight > maxHeight ? 'auto' : 'none';
+    target.style.position = 'absolute';
+    target.style.left = `${Math.round(slot.x)}px`;
+    target.style.right = 'auto';
+    target.style.top = `${Math.round(top)}px`;
+    target.style.bottom = 'auto';
+    target.style.width = 'fit-content';
+    target.style.maxWidth = `${Math.round(slot.width)}px`;
+    target.style.maxHeight = `${maxHeight}px`;
+    // One read: a second scrollHeight after the overflowY write forced another layout, and a
+    // scrollbar only makes overflowing text taller, so the pointer decision cannot change.
+    const overflows = target.scrollHeight > maxHeight;
+    target.style.overflowY = overflows ? 'auto' : 'visible';
+    target.style.textAlign = 'center';
+    target.style.transform = 'none';
+    target.style.pointerEvents = overflows ? 'auto' : 'none';
+  }
+  function placeExternalFlightCaptions(layout, w, h) {
+    if (!externalFlightCaptions.size || !externalCaptionsStale) return;
+    externalCaptionsStale = false;
+    const slot = overlaySafeSlot(layout, w, h);
+    for (const el of externalFlightCaptions) {
+      if (!el || !el.isConnected || el.hidden || el.style?.display === 'none') continue;
+      const bands = freeOverlayBands(slot, h, layout, el, true);
+      const height = Math.max(48, el.scrollHeight || el.getBoundingClientRect?.().height || 48);
+      const band = bands.find((candidate) => candidate.bottom - candidate.top >= height + 8)
+        || bands[0] || { top: 8, bottom: h - 8 };
+      placeCaptionInSafeSlot(el, layout, slot, null, band);
+    }
+  }
+  function clearExternalFlightCaptionPlacement(el) {
+    if (!el?.style) return;
+    for (const key of ['position', 'left', 'right', 'top', 'bottom', 'width', 'maxWidth', 'maxHeight',
+      'overflowY', 'textAlign', 'transform', 'pointerEvents']) el.style[key] = '';
+  }
+  function registerExternalFlightCaption(el) {
+    if (!el) return false;
+    if (externalFlightCaptions.has(el)) return true;
+    externalFlightCaptions.add(el);
+    externalCaptionsStale = true;
+    placeReceiptLane();
+    return true;
+  }
+  function refreshExternalFlightCaption(el) {
+    if (!el || !externalFlightCaptions.has(el)) return false;
+    externalCaptionsStale = true;
+    placeReceiptLane();
+    return true;
+  }
+  function releaseExternalFlightCaption(el) {
+    if (!el || !externalFlightCaptions.delete(el)) return false;
+    clearExternalFlightCaptionPlacement(el);
+    externalCaptionsStale = true;
+    placeReceiptLane();
+    return true;
+  }
+  function placeOrdinaryCaptionInSafeBands(layout, w, h) {
+    if (!caption || caption.hidden || !caption.classList.contains('show')) return;
+    const slot = overlaySafeSlot(layout, w, h);
+    let captionSlot = slot.captionSlot || slot;
+    let captionBands = slot.captionSlot ? freeOverlayBands(captionSlot, h, layout) : freeOverlayBands(slot, h, layout);
+    const captionMaxWidth = `${Math.round(captionSlot.width)}px`;
+    if (caption.style.overflowY !== 'visible' || caption.style.maxWidth !== captionMaxWidth
+      || caption.style.width !== 'fit-content') {
+      caption.style.width = 'fit-content';
+      caption.style.maxWidth = captionMaxWidth;
+      caption.style.maxHeight = 'none';
+      caption.style.overflowY = 'visible';
+    }
+    let captionHeight = Math.max(48, caption.scrollHeight || caption.getBoundingClientRect?.().height || 0);
+    let captionBand = captionBands.find((band) => band.bottom - band.top >= captionHeight + 8);
+    if (slot.captionSlot && !captionBand) {
+      captionSlot = slot;
+      captionBands = freeOverlayBands(slot, h, layout);
+      caption.style.maxWidth = `${Math.round(captionSlot.width)}px`;
+      captionHeight = Math.max(48, caption.scrollHeight || caption.getBoundingClientRect?.().height || 0);
+      captionBand = captionBands.find((band) => band.bottom - band.top >= captionHeight + 8);
+    }
+    placeCaptionInSafeSlot(caption, layout, captionSlot, null, captionBand || captionBands[0]);
   }
   function placeReceiptLane(resolvedLayout = null) {
     if (toastsLaneEl === null) toastsLaneEl = document.getElementById('toasts');
     const laneRoot = toastsLaneEl;
-    if (!laneRoot) return;
     const w = typeof window !== 'undefined' ? window.innerWidth : 1280;
     const h = typeof window !== 'undefined' ? window.innerHeight : 720;
     const layout = resolvedLayout || resolveObjectiveHudLayout(w, h);
+    if (!laneRoot || !layout.receipt) {
+      placeOrdinaryCaptionInSafeBands(layout, w, h);
+      placeExternalFlightCaptions(layout, w, h);
+      return;
+    }
     const lane = layout.receipt;
-    if (!lane) return;
     const activeReceipt = laneRoot.querySelector?.('.sf-toast:not(.sf-toast--out)');
     const captionVisible = caption && !caption.hidden && caption.classList.contains('show');
+    if (activeReceipt !== lastReceiptObstacle || captionVisible !== lastCaptionObstacleVisible) {
+      externalCaptionsStale = true;
+      lastReceiptObstacle = activeReceipt;
+      lastCaptionObstacleVisible = captionVisible;
+    }
     if (!activeReceipt && !captionVisible) {
+      placeExternalFlightCaptions(layout, w, h);
       placeFlightReadouts(w, h);
       return;
     }
     const slot = overlaySafeSlot(layout, w, h);
-    let captionSlot = slot.captionSlot || slot;
     const bands = freeOverlayBands(slot, h, layout);
+    let captionSlot = slot.captionSlot || slot;
     let captionBands = slot.captionSlot ? freeOverlayBands(captionSlot, h, layout) : bands;
     if (!activeReceipt) {
-      caption.style.width = 'fit-content';
-      caption.style.maxWidth = `${Math.round(captionSlot.width)}px`;
-      caption.style.maxHeight = 'none';
-      caption.style.overflowY = 'visible';
-      let captionHeight = Math.max(48, caption.scrollHeight || caption.getBoundingClientRect?.().height || 0);
-      let captionBand = captionBands.find((band) => band.bottom - band.top >= captionHeight + 8);
-      if (slot.captionSlot && !captionBand) {
-        captionSlot = slot;
-        captionBands = bands;
-        caption.style.maxWidth = `${Math.round(captionSlot.width)}px`;
-        captionHeight = Math.max(48, caption.scrollHeight || caption.getBoundingClientRect?.().height || 0);
-        captionBand = captionBands.find((band) => band.bottom - band.top >= captionHeight + 8);
-      }
-      placeCaptionInSafeSlot(layout, captionSlot, null, captionBand || captionBands[0]);
+      placeOrdinaryCaptionInSafeBands(layout, w, h);
+      placeExternalFlightCaptions(layout, w, h);
       placeFlightReadouts(w, h);
       return;
     }
     let laneWidth = Math.min(lane.width, slot.width);
     let laneLeft = slot.x + (slot.width - laneWidth) / 2;
     setStyle(laneRoot, 'width', `${Math.round(laneWidth)}px`);
-    setStyle(laneRoot, 'maxHeight', 'none');
-    setStyle(laneRoot, 'overflowY', 'visible');
+    // A card's own height does not depend on the lane's max-height, so clear it only when the
+    // lane is scrolling (a scrollbar narrows the cards). Clearing it every slow tick toggled it
+    // none -> px and made the card reads below force a layout each time.
+    if (laneRoot.style.overflowY !== 'visible') {
+      setStyle(laneRoot, 'maxHeight', 'none');
+      setStyle(laneRoot, 'overflowY', 'visible');
+    }
     setStyle(laneRoot, 'pointerEvents', 'none');
     const receiptCards = [...(laneRoot.querySelectorAll?.('.sf-toast:not(.sf-toast--out)') || [])];
     const receiptGap = typeof getComputedStyle === 'function'
@@ -6126,8 +6224,9 @@ export function createHud(ctx, alerts) {
     const captionBand = receiptBand ? splitBand : sharedBand;
     if (captionVisible) {
       if (!receiptBand) captionBand.top = laneTop + receiptMaxHeight + gap;
-      placeCaptionInSafeSlot(layout, captionSlot, receiptBand ? null : laneRoot, captionBand);
+      placeCaptionInSafeSlot(caption, layout, captionSlot, receiptBand ? null : laneRoot, captionBand);
     }
+    placeExternalFlightCaptions(layout, w, h);
     placeFlightReadouts(w, h);
   }
   if (typeof window !== 'undefined' && window.addEventListener) {
@@ -6135,6 +6234,10 @@ export function createHud(ctx, alerts) {
     window.addEventListener('resize', repositionHudOverlays);
     hudUnsubscribers.push(() => window.removeEventListener('resize', repositionHudOverlays));
   }
+  on('toast', () => {
+    externalCaptionsStale = true;
+    placeReceiptLane();
+  });
   if (typeof MutationObserver !== 'undefined') {
     const alertLaneOptions = {
       attributes: true, attributeFilter: ['class', 'hidden', 'style'],
@@ -6285,10 +6388,20 @@ export function createHud(ctx, alerts) {
     });
   }
 
+  // Comms is mounted just before the HUD. Adopt an already-visible flight caption once this
+  // allocator exists; subsequent dock/undock/visibility changes call these same idempotent APIs.
+  if (state.mode === 'flight' && !(state.ui && state.ui.docked)) {
+    for (const el of document.querySelectorAll?.('.sf-airlock--flight-safe') || []) {
+      externalFlightCaptions.add(el);
+    }
+    if (externalFlightCaptions.size) placeReceiptLane();
+  }
+
   refreshLeftContextClasses();
 
   return {
     frame, tickHidden, forceRefresh, setVisible, refreshObjectives, arrive,
+    registerExternalFlightCaption, refreshExternalFlightCaption, releaseExternalFlightCaption,
     getGLagOffset: () => ({ x: opticalGLag.x, y: opticalGLag.y }),
     getGLocVignetteOpacity: () => Number(glocVignette ? glocVignette.style.opacity || 0 : 0),
     triggerElectronicDisruption,
@@ -6306,6 +6419,8 @@ export function createHud(ctx, alerts) {
       for (const unsubscribe of hudUnsubscribers.splice(0)) {
         try { unsubscribe(); } catch (_) { /* bus teardown is best effort */ }
       }
+      for (const el of externalFlightCaptions) clearExternalFlightCaptionPlacement(el);
+      externalFlightCaptions.clear();
       clearCargoGaugeSettle(cargoGaugeSettle.used);
       clearCargoGaugeSettle(cargoGaugeSettle.risk);
       if (radar && typeof radar.destroy === 'function') radar.destroy();

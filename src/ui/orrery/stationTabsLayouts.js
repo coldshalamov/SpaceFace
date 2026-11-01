@@ -110,7 +110,7 @@ ${T} .sx-ct__active, ${T} .sx-ct__jobs, ${T} .sx-job { ${PLAIN} }
 ${T} .sx-job { padding:6px 0 !important; min-height:0 !important; }
 ${T} .sx-job__title { font-size:13px !important; color:rgb(248 244 234) !important; }
 ${T} .sx-job__meta { font-size: 12px !important; color:rgb(${BONE} / .6) !important; }
-${T} .sx-job__track { ${PLAIN} ${LABEL} min-height:0 !important; height:auto !important; padding:3px 0 !important; font-size: 12px !important; letter-spacing:.2em !important;
+${T} .sx-job__track { ${PLAIN} ${LABEL} min-height:0 !important; height:auto !important; padding:3px 0 !important; font-size: 12px !important; letter-spacing:.06em !important;
   color:rgb(${BONE} / .8) !important; }
 ${T} .sx-job__track::after { display:none !important; }
 ${T} .sx-job__track::before { all:unset !important; content:"●  " !important; font-size: 12px; vertical-align:2px; color:rgb(248 244 234) !important; }
@@ -322,8 +322,9 @@ ${T} .sx-ct-commit .k-word-sub, ${T} .sx-dossier__foot .k-word-sub { font-size: 
   ${D} .sx-bar__stage .sx-talk__choices > li .sx-choice { padding-top:4px !important; padding-bottom:4px !important; }
   ${D} .sx-bar__stage .sx-talk:has(.sx-talk__reply.is-said) .sx-talk__memory { display:none !important; }
 }
-/* under 481 wide two halves would be ~170px and cut every job title: the board stands over the dossier */
-@media (max-width:480px) and (min-height:601px) {
+/* under 481 wide two halves would be ~170px and cut every job title: the board stands over the dossier. At 481–580 and 861+
+   tall (540×900) the halves were ~250px: the posted titles ghosted out and YOURS printed its title over TRACKED, so it stacks too. */
+@media (max-width:480px) and (min-height:601px), (max-width:580px) and (min-height:861px) {
   ${D} .k-panel.sx-ct { grid-template-columns:minmax(0, 1fr) !important; grid-template-rows:minmax(0, 4fr) minmax(0, 5fr) !important; row-gap:10px !important; }
   ${D} .k-panel.sx-ct > * { grid-column:1 !important; grid-row:auto !important; min-height:0 !important; }
   /* each half scrolls once: the board and the dossier plate stop being second scrollers whose fades masked the only row in view */
@@ -360,6 +361,16 @@ ${T} .sx-ct-commit .k-word-sub, ${T} .sx-dossier__foot .k-word-sub { font-size: 
   ${D} .sx-dossier > .sx-dossier__title { order:-3 !important; margin-top:0 !important; }
   ${D} .sx-dossier > .k-caps { order:-1 !important; margin-top:8px !important; }
   ${D} .sx-dossier > .sx-dossier__foot { order:-2 !important; }
+}
+/* …481–580 wide the station head runs taller (540×900 leaves board and dossier ~195px): the board keeps its 66px FEATURED floor
+   and the dossier opens on the title with ACCEPT right under it, the kind stepping below, so the verb stays on the first screen */
+@media (min-width:481px) and (max-width:580px) and (min-height:861px) and (max-height:1000px) {
+  ${D} .k-panel.sx-ct { grid-template-rows:minmax(66px, 2fr) minmax(0, 3fr) !important; row-gap:8px !important; }
+  ${D} .sx-ct__dossier { padding-top:0 !important; -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 10px), transparent) !important; mask-image:linear-gradient(180deg, #000 calc(100% - 10px), transparent) !important; }
+  ${D} .sx-dossier { padding-top:2px !important; }
+  ${D} .sx-dossier > .sx-dossier__title { order:-3 !important; margin:0 0 6px !important; }
+  ${D} .sx-dossier > .sx-dossier__foot { order:-2 !important; }
+  ${D} .sx-dossier > .k-caps { order:-1 !important; margin-top:8px !important; }
 }
 /* below 700 the term value column would be under ~70px and split words ("contr/act"): the label stands over its value */
 @media (min-width:651px) and (max-width:699px) and (max-height:800px) {
@@ -635,7 +646,7 @@ ${T} .sx-fac-contracts .sx-ladder__step.is-next { position:relative; margin-top:
 ${T} .sx-fac-contracts .sx-ladder__step.is-next::before { content:"" !important; display:block !important; position:absolute !important; left:0 !important; right:0 !important; top:-5px !important;
   width:auto !important; height:1px !important; margin:0 !important; background:linear-gradient(90deg, rgb(248 244 234 / .7), rgb(248 244 234 / 0)) !important; clip-path:none !important; }
 ${T} .sx-fac-contracts .sx-ladder__step.is-next::after { content:"you are here" !important; display:block !important; position:absolute !important; left:0; top:-13px; width:auto !important; height:auto !important;
-  ${LABEL} font-size: 12px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .55) !important; background:none !important; }
+  ${LABEL} font-size: 12px !important; letter-spacing:.06em !important; color:rgb(${BONE} / .55) !important; background:none !important; }
 /* a short screen: the index folds into the ring (every crest is a button); the ring takes the width */
 @media (min-width:651px) and (max-height:800px), (max-height:600px) {
   ${T} .sx-fac { grid-template-columns:minmax(0, 1fr) !important; }
@@ -797,7 +808,9 @@ ${T} .sx-ct__rows .sx-ct-row.sx-decision__opt--sub::before { content:"" !importa
   width:8px !important; height:1.5px !important; margin:0 !important; background:rgb(${BONE} / .42) !important; clip-path:none !important; transform:none !important; }
 ${T} .sx-ct__rows .sx-ct-row.sx-decision__opt--sub { padding:2px 0 8px 26px !important; margin-top:-2px; flex-wrap:nowrap !important; align-items:baseline !important; gap:0 6px !important; min-width:0; }
 ${T} .sx-ct__rows .sx-ct-row.sx-decision__opt--sub .k-row__name { flex:none; }
-${T} .sx-ct__rows .sx-ct-row.sx-decision__opt--sub .k-row__sub { display:block !important; white-space:nowrap !important; overflow:hidden; text-overflow:ellipsis; min-width:0; }
+/* the tradeoff facts are a status, not a preview: they wrap to two lines (STATION_STANDARD §6 —
+   never clip a status with an ellipsis; the accessible name still carries the whole tradeoff) */
+${T} .sx-ct__rows .sx-ct-row.sx-decision__opt--sub .k-row__sub { display:-webkit-box !important; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; min-width:0; line-height:1.3; }
 ${T} .sx-ct__rows .sx-ct-row.sx-decision__opt--sub .k-row__sub::before { content:"· "; color:rgb(${BONE} / .4); }
 ${T} .sx-ct__rows .sx-ct-row.sx-decision__opt--sub:focus-visible::before { width:16px !important; height:2px !important; box-shadow:0 0 6px rgb(248 244 234 / .6) !important; background:rgb(248 244 234) !important; }
 /* the rail ends with its last row: each block carries its own length of scale, edge to edge */
@@ -1399,6 +1412,18 @@ ${T} .sx-ct__rows .sx-ct-row.sx-decision__opt--sub .k-row__sub { font-size: 12px
   ${D} .sx-dossier > .sx-dossier__foot { grid-column:2 !important; grid-row:1 / 3 !important; align-self:start !important; margin:0 0 4px !important; }
   ${D} .sx-dossier > .sx-dossier__risk { grid-column:2 !important; grid-row:3 / 5 !important; align-self:start !important; margin:0 0 4px !important; }
   ${D} .sx-dossier > .sx-dossier__terms { grid-column:2 !important; grid-row:5 / span 4 !important; align-self:start !important; }
+  /* 960×540: the ~120px dossier faded the reward out under its fold (the left column ran caps, a two-line title, client and
+     a 26px figure), and ACCEPT's two-line "hold to accept" note ended on the frame's right edge. The left column closes up so
+     the reward reads on first paint; the key and its note give back ~11px so the note stands inside the frame. */
+  ${D} .sx-dossier { padding-top:0 !important;
+    -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 10px), transparent) !important; mask-image:linear-gradient(180deg, #000 calc(100% - 10px), transparent) !important; }
+  ${D} .sx-dossier > .k-caps { margin:0 !important; line-height:1.2 !important; }
+  ${D} .sx-dossier__title { font-size:15px !important; line-height:1.12 !important; margin:0 0 1px !important; }
+  ${D} .sx-dossier__client { margin:0 !important; line-height:1.25 !important; }
+  ${D} .sx-dossier .k-hero--hero { margin:2px 0 0 !important; }
+  ${D} .sx-dossier .k-hero--hero .k-hero__n { font-size:22px !important; line-height:1 !important; }
+  ${D} .sx-dossier__foot .sx-ct-commit.orr-lampkey { padding:0 9px 0 8px !important; }
+  ${D} .sx-dossier__foot .sx-ct-commit.orr-lampkey .orr-lampkey__note { margin-left:14px !important; letter-spacing:.04em !important; }
 }
 @media (min-width:801px) and (max-width:900px) and (min-height:461px) and (max-height:800px) {
   ${D} .sx-dossier { grid-template-columns:minmax(0, 1fr) !important; padding-top:6px !important; }
@@ -1566,7 +1591,7 @@ ${T} .sx-fab-foot .orr-lampkey:disabled { color:rgb(${BONE} / .66) !important; }
 ${T} .sx-fab-foot .orr-lampkey:disabled::after { display:block !important; }
 ${T} .sx-fab-foot .orr-lampkey:disabled::before { background:rgb(${BONE} / .36) !important; }
 ${T} .orr-chain__label.is-below { z-index:2; }
-${T} .orr-chain__process.is-blocked { font-size:12px !important; letter-spacing:.2em !important; opacity:.6; }
+${T} .orr-chain__process.is-blocked { font-size:12px !important; letter-spacing:.06em !important; opacity:.6; }
 ${T} .orr-chain__blocknote { display:block; margin-top:6px; }
 
 /* ================================ ROUND 8: MISSIONS ========================================= */
@@ -1982,6 +2007,8 @@ ${T} .sx-ind-process__items .sx-ind-row::before, ${T} .sx-ind-process__items .sx
 ${T} .sx-ind-row__name .sx-ind-row__from { margin-left:12px; font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-variation-settings:"wght" 600, "wdth" 112;
   font-size: 12px; letter-spacing:.14em; text-transform:uppercase; color:rgb(${BONE} / .52) !important; }
 @media (min-width:651px) and (max-height:800px), (max-height:600px) { ${T} .sx-ind-row__name .sx-ind-row__from { display:block; margin-left:0; margin-top:2px; } ${T} .sx-ind-process__items .sx-ind-row { --ind-name-y:12.5px; } }
+/* phone: the consumed module keeps the rung's one line by drawing in its tracking, so the ladder head stays in view */
+@media (max-width:650px) and (min-height:601px) { ${T} .sx-ind-row__name .sx-ind-row__from { margin-left:8px; letter-spacing:.05em; font-stretch:100%; font-variation-settings:"wght" 600, "wdth" 100; } }
 
 /* ================================ WEIGHT: THE BAND LIFTS WHERE THE PLAYER IS ========================== */
 /* a ladder under the pointer or holding focus lifts its band (~.27 -> .38 bone) and its line */
@@ -2062,6 +2089,8 @@ ${T} .sx-bar__hang:is(:hover, :focus-within)::after { background:${SPINE(3, .62)
   ${D} .orr-ind-chain .orr-chain__reason { font-size:17px !important; letter-spacing:.12em !important; white-space:normal !important; overflow-wrap:anywhere !important; }
   ${D} .orr-ind-chain .orr-chain__label:has(> .orr-chain__reason) :is(.orr-chain__verb, .orr-chain__verb > *) { white-space:normal !important; overflow-wrap:anywhere !important; font-size:12px !important; line-height:14px !important; letter-spacing:.1em !important; }
   ${D} .orr-ind-chain .orr-chain__verb > .orr-chain__wayout { margin-top:2px !important; }
+  /* a way-out that wraps keeps both lines inside its outline, balanced and set right like the note above it */
+  ${D} .orr-ind-chain .orr-chain__label:has(> .orr-chain__reason) .orr-chain__verb > .orr-chain__wayout { max-width:15em !important; margin-left:auto !important; margin-top:0 !important; padding:0 10px !important; line-height:13px !important; text-align:right !important; text-wrap:balance; overflow-wrap:normal !important; word-break:keep-all !important; hyphens:none !important; }
   ${D} .orr-ind-chain .orr-chain__reason-leader { display:none !important; }
   ${D} .orr-ind-chain .orr-chain__label.is-below { transform:translate(136px, -50px) !important; width:auto !important; text-align:left !important; }
   ${D} .orr-ind-chain .orr-chain__label.is-below :is(.orr-chain__qty, .orr-chain__unit) { text-align:left !important; }
@@ -2167,6 +2196,9 @@ ${T} .sx-bar__hang:is(:hover, :focus-within)::after { background:${SPINE(3, .62)
   ${D} .sx-ledger__read > .sx-ledger__read-line { grid-column:2; grid-row:3; align-self:start; margin:0 !important; font-size:12.5px !important; line-height:1.3 !important; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   ${D} .sx-ledger__read-num { font-size:30px !important; line-height:1 !important; }
   ${D} .sx-ledger__read-hand { display:none !important; }
+  /* the ~42px ring here is narrower than NET · CR at the label's .14em tracking, so the key's ends
+     printed across the ring's lower bends; the key tightens and lifts into the ring's wider middle */
+  ${D} .sx-ledger .orr-ltape__purse text.orr-ltape__net-key { letter-spacing:.06em; font-stretch:100%; transform:translateY(-3px); }
 }
 
 /* Ledger at 1101–1440 wide × 461–720 tall (ui-polish-124): the purse sat under the tape, so at 1101×700 its
@@ -2179,6 +2211,19 @@ ${T} .sx-bar__hang:is(:hover, :focus-within)::after { background:${SPINE(3, .62)
   ${D} .sx-ledger__row > .orr-ledger-purse { grid-column:2; grid-row:1; align-self:stretch; width:auto !important; height:auto !important; min-height:180px; margin:0 !important; }
   ${D} .sx-ledger__row > .sx-ledger__read { grid-column:1 / -1; grid-row:2; min-width:0; }
 }
+
+/* Ledger at 1441+ wide × 721+ tall (ui-polish-240): the purse hung under the tape's lower edge at the panel's far
+   right, ~350px below its axis, so with no entry open the gauge stood alone in an empty field. It stands beside the
+   tape, centred on the tape's height, as 1101–1440 does; the reading keeps the full column under both. */
+@media (min-width:1441px) and (min-height:721px) {
+  ${D} .sx-ledger > .sx-ledger__right { display:grid !important; grid-template-columns:minmax(0, 1fr) 280px; grid-template-rows:auto minmax(0, 1fr); column-gap:24px; row-gap:6px !important; align-content:start; }
+  ${D} .sx-ledger__right > .orr-ledger-tape { grid-column:1; grid-row:1; }
+  ${D} .sx-ledger__right > .sx-ledger__row { display:contents !important; }
+  ${D} .sx-ledger__row > .orr-ledger-purse { grid-column:2; grid-row:1; align-self:center; margin:0 !important; }
+  ${D} .sx-ledger__row > .sx-ledger__read { grid-column:1 / -1; grid-row:2; min-width:0; }
+}
+/* the case-board head broke one word, TOGETHER, onto its own line at 960–1920; the two lines now split evenly */
+${T} .sx-ledger .st-ledger-board-head { text-wrap:balance; }
 
 /* Ledger at 800×600-class (651–900 wide, ≤640 tall): the prior 140px purse starved the ring so
    BOUGHT / SOLD / NET · CR clipped. Restore ~200px for the purse and narrow the list to ~34%
@@ -2209,6 +2254,10 @@ ${T} .sx-bar__hang:is(:hover, :focus-within)::after { background:${SPINE(3, .62)
   ${D} .sx-ledger .st-ledger-list .st-ledger-entry { padding-top:4px !important; padding-bottom:4px !important; }
   ${D} .sx-ledger .st-ledger-cycle { font-size:12px !important; letter-spacing:.1em !important; white-space:normal !important; overflow-wrap:anywhere !important; }
   ${D} .sx-ledger .st-ledger-line { font-size:12.5px !important; }
+  /* with no entry open the reading hides and the tape spans both rows, but the purse's min-height:0 above left the grid
+     nothing to stand on: tape and purse fell to ~40px, the axis figures printed on each other and BOUGHT / SOLD were cut.
+     The purse keeps the 150px the 960 class gives it, so the tape stands with it. */
+  ${D} .sx-ledger__right:has(> .sx-ledger__row > .sx-ledger__read[hidden]) > .sx-ledger__row > .orr-ledger-purse { min-height:150px !important; }
 }
 
 /* After a trade, the TRADE CLEARED line (~480px) stood over the comms words, ~340px from the right edge,
@@ -2342,16 +2391,15 @@ html body #screens > .sx-berth.orr-station .sx-mkt.orr-market .sx-mkt__hero.sx-m
   ${T} .sx-bar__foot { margin-top: 8px !important; padding-top: 7px !important; padding-bottom: 4px !important;
     background: linear-gradient(0deg, rgb(${BONE} / .14), rgb(${BONE} / .14)) 0 0 / 100% 1px no-repeat !important; }
 }
-/* Ledger — the empty book used to leave ~70% of the panel void. An empty ledger page still
-   carries its rules: the empty state stretches and stands on ruled lines with the margin
-   column, so the void reads as a page waiting for its first entry, not dead glass. */
-${T} .sx-ledger:has(.st-ledger-empty:not([hidden])) { grid-template-rows: auto auto auto minmax(0, 1fr) auto !important; }
+/* Ledger — an empty book reads as one dashed well (the shared empty-state card: hairline dash,
+   radius 8, faint fill) instead of a half-drawn ruled page whose margin rule and stray rung
+   looked broken. The well sizes to its sentence; the panel keeps its rows. */
 ${T} .sx-ledger .st-ledger-empty:not([hidden]) {
-  align-self: stretch !important; min-height: 120px !important; padding-top: 12px !important; padding-left: 40px !important;
-  background:
-    linear-gradient(90deg, transparent 24px, rgb(${BONE} / .13) 24px, rgb(${BONE} / .13) 25px, transparent 25px) 0 0 / 100% 100% no-repeat,
-    repeating-linear-gradient(180deg, transparent 0 32px, rgb(${BONE} / .09) 32px 33px) !important;
+  align-self: start !important; min-height: 0 !important; max-width: min(100%, 440px); box-sizing: border-box;
+  margin-top: 24px !important; padding: 12px 16px !important;
+  border: 1px dashed rgb(${BONE} / .22) !important; border-radius: 8px !important; background: rgb(${BONE} / .025) !important;
 }
+${T} .sx-ledger .st-ledger-empty:not([hidden])::before { display: none !important; }
 /* F9 — the FIND A SERVICE trigger wore a bordered kbd pill; it stands as a bare caps word with
    a quiet field rule instead. The market search answers focus with a tick on its underline. */
 ${T} .so-command-trigger { border: 0 !important; border-radius: 0 !important; background: none !important; background-image: none !important; box-shadow: inset 0 -1px 0 rgb(${BONE} / .16) !important; clip-path: none !important; padding: 0 0 4px !important; min-height: 0 !important; }

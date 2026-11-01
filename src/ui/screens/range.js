@@ -338,6 +338,10 @@ html body #screens #sf-range { padding-bottom: 24px; }
   html:root:not([data-sf-mobile="1"]) #sf-range .sf-range__dossier { padding: 5px 2px; font-size: 12px; gap: 12px; }
   html:root:not([data-sf-mobile="1"]) #sf-range .sf-range__run { font-size: 12px; gap: 6px; padding-left: 8px; }
   html:root:not([data-sf-mobile="1"]) #sf-range .sf-range__run svg { width: 32px; height: 32px; }
+  /* The licence line ("LICENCE — GOLD: CLEAR WITHIN 30S; SILVER: 60S") ran off the right edge
+     on one nowrap line; here it wraps in its own slot beside the gauge and keeps inside the frame. */
+  html:root:not([data-sf-mobile="1"]) #sf-range .sf-range__run { min-width: 0; max-width: 100%; }
+  html:root:not([data-sf-mobile="1"]) #sf-range .sf-range__run .sf-range__run-best { flex: 1 1 auto; min-width: 0; white-space: normal; line-height: 16px; }
 }
 /* Phone (data-sf-mobile): the 16 rules wrapped into a ten-row ladder (44px touch rows) and the
    four-line title took the whole frame, so the course was 0px. Here the ladder is one row that
@@ -373,6 +377,8 @@ html:root[data-sf-mobile="1"] #sf-range .sf-range__dossier { padding: 6px 2px; g
 html:root[data-sf-mobile="1"] #sf-range .sf-range__tabs { column-gap: 16px; row-gap: 0; }
 html:root[data-sf-mobile="1"] #sf-range .sf-range__run { gap: 8px; padding: 0; font-size: 12px; letter-spacing: .1em; }
 html:root[data-sf-mobile="1"] #sf-range .sf-range__run svg { width: 36px; height: 36px; }
+html:root[data-sf-mobile="1"] #sf-range .sf-range__run { min-width: 0; max-width: 100%; }
+html:root[data-sf-mobile="1"] #sf-range .sf-range__run .sf-range__run-best { flex: 1 1 auto; min-width: 0; white-space: normal; line-height: 16px; }
 html:root[data-sf-mobile="1"] #sf-range .sf-range__drawer { width: min(var(--k-hang), 100%); }
 /* Landscape phone (≤500px tall): one 390px column cannot hold title, course and foot, so the
    course takes the right half at full height and the title sits over the foot on the left. */

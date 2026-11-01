@@ -9,7 +9,7 @@ import { sectorDeg, createWheel } from '../src/systems/mobile/wheel.js';
 import { shipOnScreen, isPhoneLayout } from '../src/systems/mobile/model.js';
 import { enhanceMobileTouch } from '../src/systems/mobile/bridge.js';
 import { POWER_PAGES, icon } from '../src/systems/mobile/catalog.js';
-import { MOBILE_CSS } from '../src/systems/mobile/styles.js';
+import { MOBILE_CSS } from '../src/systems/mobile/mobileCssSource.js';
 
 class El {
   constructor(tag) {

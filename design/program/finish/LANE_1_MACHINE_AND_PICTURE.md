@@ -32,6 +32,8 @@ Targets and floors: README §4.
 
 ## Inbox (other lanes append one line: date, lane, path, what/why)
 
+- 2026-10-31 integration: `check-vfx-frame-sleep.mjs` now gives its unchanged 420 seam-bearing bodies the canonical GameState/index/hash setup. Setup assertions and the unchanged 0.25 ms ceiling pass at 0.06493 ms; existing hash/fallback marker parity passes 3/3. This corrects the measurement fixture, not runtime VFX or fallback speed. Full UI performance matrix remains stale after style changes.
+
 - 2026-10-28, Lane 3: H0 razor commit a054f36530a touched `assets/**/measured-contract.json`, `assets/ui/kit/*`, `assets/incubator/*/INTEGRATION.md`, `assets/ships/m5_*/MATERIAL_TRUTH_PREFLIGHT.md`, `assets/ships/npc_work_fleet/PROVENANCE.json`, `tools/blender/forge/source_assets/pip_spanner/provenance.json` — mechanical ref rewrite only (provenance strings now point at `design/archive/…` after the doc moves). No asset content changed.
 - 2026-10-28, Lane 3: foreign-dirty work seen in the tree, not mine — `electron/preload.cjs`, `scripts/lib/ui-layout-measure.mjs`, `src/ui/contactHailPrompt.js`, `src/ui/views/hudStyles.js`, `test/ceres-five-minute-acceptance.test.mjs` left unstaged and preserved.
 - 2026-10-28, Lane 3 (W1-473): title-interactive on the VM profile (headless SwiftShader, retail `build/web`) measured **16.5–17.4 s** clean, ~26–42 s under host load vs the 10 s budget — over entirely inside your boot/loading/render path, nothing UI-side (menu mounts+usable the same frame the shell drops). Tape: `bootEntry.js:33` media hold → `import('../main.js')` eval ~2.5 s longtask ~3–5.5 s → `main.js:141–216` "Preparing/Starting flight systems" ~4–5 s → `main.js:470` "Opening the command deck" → **~5 s tail** (first title-scene paint: serial shader compile on software GL in `src/render/**` admission) → `loadingPresenter.hide()` (`loadingPresenter.js:374–388`, hideDelayMs 600). Evidence script+tape: `.devshots/w1-473-title-timing.mjs` (`--bundle`), run on the hour-old bundle.
@@ -129,6 +131,26 @@ toggle `light.visible`, it recompiles); (d) per-hull-family `InstancedMesh` or t
 `BatchedMesh` path (`renderer.js` `_opaqueBatchEnabled`, PQ-129.12) — whichever wins the A/B. Done
 when programs per Crucible run and draws per frame are both down ≥ 40 % and `setProgram` < 2 %.
 
+Current integration checkpoint (2026-10-31): the retained rigid controller is already default-on;
+`_opaqueBatchEnabled` is a separate package-planning switch. A published-144e434 Swarm wave-one
+held-scene ABBA measures 742 retained versus 982 direct draws and 50.005 versus 66.645/66.555 ms p50
+intervals at the same scene/camera/settings. Its original aggregate rejected retained off-state
+census history; a separate source-backed reassessment accepts the live-mode and scene checks.
+No default changed, active-flight causal win or visual parity is claimed, and M3's targets remain
+open. See `INTEGRATION_COVERAGE.md` and `.devshots/main-thread-profile/opaque-retained-default-ab-144e/`.
+
+Seven packages are now configured: Helios, the cockpit pilot (31→9 primitives, 22 joins), and five
+shipbreaking-yard packages (169→43 primitives, 126 joins). Decoded same-winding/material triangles,
+semantic IDs, anchors and collision metadata match; the five-package maximum vertex delta is
+0.001608 WU. Live look/shadow and matched frame checks remain open. A separate compiler repair preserves dynamic
+semantic pivots through quantization (13 compiler cases); actual compiled pivots in all 196 existing
+dynamic packages match source, so that defect requires no package rebuild.
+
+The retained controller now refills retired package CPU attributes under a lease before copying
+batch geometry. A causal native case previously copied zero normals after retirement; the repaired
+normal/UV case and cancellation, failure, deduplication and stale-owner cases pass (5 focused tests).
+This establishes the copy contract; live batch appearance and performance remain open.
+
 **M4 — The composite pass.** One full-screen composite draw costs 7.1 ms of GPU per frame
 (`bloom.js:240-460`: 5-tap edge detect, extra edge taps, three bloom samples, contrast LUT, grade,
 grain on a half-float target). Gate the expensive taps by tier, fold grain/vignette/grade into one
@@ -150,6 +172,17 @@ the title (0.6 s, 1.6 s), the credits render, native pipeline compile, opening G
 load. Map every long task ≥ 100 ms from Launch to first flight onto the CPU profile and fix it or slice it.
 Done when the longest main-thread task from Launch click to first flight frame meets the floor, then the target.
 
+Current cold Electron profile (`adventure-required-retry-r1`, committed 118d016 source) reaches flight in 55.5 seconds on the worker lane, Intel/ANGLE D3D11 with KHR parallel compile, at 85.7% sampled host busy. Render-pipelines takes 41.17 seconds; 46 first-use shader waits total 26.4 seconds. This is functional Launch acceptance, not a warm-load or matched improvement measurement; startup targets remain open.
+
+The full preliminary authored cohort is restored, incomplete pipeline receipts no longer receive forced draws or readiness stamps, and required loading retries a typed pending-shader timeout under one tracked promise with the existing owner/cap/deadline guards. Focused owner checks pass. The earlier profile exposed a pass-specific readiness gap: bloom could inspect the last-bound program before Three selected a transmission variant. The guard now selects the target tone-mapping/output-color-space and instancing variant, with 18 focused cases passing against vendor-generated cache keys.
+
+The `023c6fac5ee6` same-session public route reaches first flight in 41.1 seconds and its second Launch in 25.4 seconds, retaining the same renderer, canvas and WebGL context. The measured second run has two driver-link waits totaling 47 ms (maximum 27 ms), but render-pipelines still takes 23.21 seconds. Its loading-stage animation p99 is 17.3 ms; host busy is 48.2%. These are diagnostic observations, not a matched code-speed comparison or completion of the startup bars. The first cook timed out before touch/buffer completion; existing identity/version residency caches already skip work, so wholesale cook reuse is not justified. The profiler now measures the trusted Launch click and distinguishes post-transition composition diagnostics from explicit readiness blockers. See `.devshots/main-thread-profile/adventure-warm-claims-r1/` and `INTEGRATION_COVERAGE.md`.
+
+Cook-stretch accounting now resets after a confirmed presented-frame advance across touch/buffer
+yields, so later census work does not charge prior frames' wait time to the current frame. A
+microtask yield retains its same-frame charge. The focused owner case passes; no startup-speed
+improvement is claimed without a matched measurement.
+
 **M7 — The loading screen is smooth and immersive.** The animation already draws in workers
 (`loadingTerminalArt.js:~1784`, `bootRingWorker.js:~150`) and boot pacing yields between slices
 (`bootShellPacing.js`), yet the owner sees it hitch. Measure with M0's gap probe *what* stalls it before
@@ -167,6 +200,37 @@ instead of terminating (`presentationRunner.js`). D250: cap concurrent asset fet
 backoff. Add a forced-context-loss test and a 30-minute Adventure soak to the M0 bench. Done when the
 soak + one forced context loss shows zero terminal panes.
 
+Current M8 integration status (2026-10-31): the completed public Ceres journey delivers the accepted
+cargo for 760 credits, then F5 → title Continue restores the settled credits, cargo, standing,
+receipt and log. Static-host and mounted-store persistence paths both pass functionally. This is not
+a stability or performance qualification.
+
+The full ordinary attempt on source `a4f1fe14452c` stops during cycle 14: a Three.js buffer-size
+mismatch freezes presentation behind Graphics interrupted before redocking finishes. The player
+is in range; this does not establish a docking defect. The opt-in resize capture was disabled, so
+the failing attribute was unidentified. The same-source 20-cycle diagnostic then reaches forced
+context recovery and captures a detached SCN Wasp armor UV: a zero-byte GPU record is updated
+with 44,984 restored bytes. It remains a failed, performance-ineligible receipt. The context-loss
+handler now invalidates the canonical geometry residency ledger; the pre-projection guard blocks
+pending detached uploads and queues canonical refill until ready. Twenty real guard/package cases
+pass; the integrated ordinary forced-context check is pending. Focused checks also pass for six model
+retirement repairs (15- and 58-case batches), shadow-depth CPU-texture rehydration and lease lifetime,
+and rejected pacing after partial staging, including closing parked generators while preserving the
+original error. A short public check accepts the repaired snapshot-fence publication and normal quit.
+
+Earlier full `c6` and short `030aaf` receipts remain failed; their evidence is retained in
+[`INTEGRATION_COVERAGE.md`](./INTEGRATION_COVERAGE.md). The earlier retention growth and performance
+misses are not closed by focused checks. The repaired full-duration and context-recovery outcome
+remains open.
+
+The latest default baseline passes all 17 assertions but takes 166,805 ms against the unchanged
+90,000 ms budget; an unrelated Stranger simulation was concurrent. Scenario normalization now
+reuses canonical records between ownership boundaries, with focused story and four physical
+branches passing, but no speedup is established. The earlier three-job/phased runs took
+91,511/91,929 ms; that phase experiment was reverted and the four-job automatic ceiling remains
+unchanged. The earlier 86,286 ms result is historical. Public scenario normalization boundaries and all four
+physical branches remain intact. M8 progress does not close its separate open work.
+
 **M9 — Load less, load later.** 28 MB of minified JS in the eager closure (`scripts/build-bundle.mjs`,
 esbuild splitting): lazy-load per mode and per screen; make `modelTruthCensus.generated.js` and
 `en-US.generated.js` fetched JSON instead of chunk payload; move `ruckusMeshData/*.js` (3.4 MB of mesh
@@ -175,6 +239,20 @@ as JS) to a binary asset; take `src/testing/**` out of the retail graph (static 
 `data/causalFoundry/presentation.js` → a hook registry or build alias). D251: ship a lean
 `FlightReadySet` and stream the rest after first flight. D252: fix the WebKit menu stall. Done when
 the load rows of README §4 meet their floor.
+
+The latest working-tree bundle is batch 22. Its main static ESM closure is 11,776,177 raw /
+3,674,835 summed-gzip bytes across 132 outputs, below the 12 MB raw floor. Main and both module
+worker graphs have zero missing static edges; the classic digest worker is separately built and
+outside the main metafile. The bundle gate validates 414 render plans, 74 behavior cases and 2,819
+files. Receipt: `a170b09c63906fdc6d2e879f64db1548cfe780059784738cb79555015565539a`. The build includes
+concurrent working-tree changes recorded with batch 22, so these bytes do not isolate the effect of
+any one change. Ruckus mesh payloads now use the completed four-GLB binary migration and remain in
+the authored preflight warm path.
+
+The static closure result does not establish lower total preflight transfer, faster startup or
+frame-time improvement. The 6 MB target, total preflight bytes, runtime loading bars, and ordinary
+worker/save/context route remain open. Prior M9 checkpoint sizes, receipts, and implementation
+history are consolidated in [the integration coverage archive](../../archive/finish-integration/INTEGRATION_COVERAGE_2026-10-31.md).
 
 **M10 — First sight never stalls.** Adventure first-sight program links (`pipelineReadiness.js`
 serializes every link behind one `linkActive` tail): issue links in parallel batches, use
@@ -201,6 +279,40 @@ object into per-concern modules (entity sync, shadows/LOD, residency/prewarm, po
 twin" pairs into one generator with a sync driver. Keep the moves bounded and use a suitable implementation tool; prove with
 byte-identical golden digests, the boot census, and `check:baseline`. Do these **after** M1–M5 land.
 
+Current extraction: `d309751297b3` moves the six shadow-depth staging methods into
+`render/runtime/shadowDepthStage.js`, preserving their bodies and renderer-owned queues/lifecycle.
+The focused setting-enable case, 28 admission cases, two retirement cases and 10 real-renderer
+import cases pass. This is a bounded M13 step; the size target and current ordinary-route checks
+remain open.
+
+Explosion presentation and weapon-impact pictures now have two additional family modules,
+moving 19 methods while VFX retains pools, subscriptions, scheduling and lifetime. The moved
+bodies match their originals after random-callback normalization. The focused explosion/weapon
+batch exposed one Gyre assertion in authored rather than converted Three-light units; it now
+checks both canonical values and the complete two-case arsenal suite passes. No production light
+gain changed. Source preloads include the new families; full bundle/baseline qualification is
+still the next integrated batch, not a claim supplied by this extraction alone.
+
+Runtime residency/admission queries now have one focused module, with all 35 moved function bodies
+and the pooled band-argument helper matching their originals. Shared scratch identity and public
+renderer exports are preserved, and imported leaf graphs do not cycle to the renderer. The query
+batch passes 79 cases; its one stale file-text pin is replaced by a passing actual composed-zoom
+eviction/prefetch behavior case. The last true first-flight collector twin also shares a canonical
+iterator, preserving the synchronous live walk and paced snapshot/tail handling. Its ordered
+membership, deduplication and 25-variant cap case passes. Size and performance targets remain open.
+The integrated batch-twelve baseline passes 17/17 in 66,831 ms within the unchanged 90,000 ms
+budget; the bundle qualification is pending the next build batch.
+
+The current phase makes template instantiation and detached-object/place teardown use their
+canonical stepped implementations for synchronous callers too. Synchronous abandonment cleanup
+finishes inline; paced composition retains its existing queue and resource-retain lifetime. AI
+doctrine tells and NPC Working Light signatures/contact/intercept methods now have family modules;
+VFX keeps pools, subscriptions and cadence. All 26 moved method bodies match the originals after
+normalizing the cosmetic random callback. The focused batch passes 70 cases, the baseline passes
+17/17 in 62,394 ms against 90,000 ms, and the batch-eleven bundle gate passes (2808 files, receipt
+`b6887a7a0427d120edfd878cc2f6f2655ca9e0cc166a582446e7b5bc1d136b36`). These working-tree checks
+include concurrent edits; they establish neither the monolith size target nor a runtime frame gain.
+
 ### Wave A — the picture (taste; interleave with Wave M once M0–M5 have landed)
 
 **A1 — Review every shipped asset.** 831 GLBs in `assets/ships/release` (`npm run perf:assets`,
@@ -211,6 +323,8 @@ that sit a few hundred pixels tall to 1024 (`place_works_derrick` 21 MB, `works_
 every hull has an LOD chain, dedupe the duplicate refinery GLB and ORM textures, write a triangle and
 texture budget per asset class into `check-asset-census.mjs`. Forge is the only way to build a body
 (`tools/blender/forge/FORGE.md`, skill `forge-graphics`).
+Current static-pilot appearance check: matched PLACE previews preserve the engine section, cargo module, corvette turret, weapon spar, pressure tank and cockpit section after material-group merging. Engine and cockpit INSPECT views also match. The repaired private-camera preview waits for strict authored admission before capture. These checks cover reconstructed preview meshes; gameplay placement, shadow parity and matched frame-cost savings remain open. The remaining-five capture is `.devshots/finish/integration-2026-10-31/shipbreaking-look/remaining-five-private-camera/`; Helios has no matched pair in this batch.
+
 **A2 — Hero hulls and landmarks.** Row 428 (the five hulls a player meets in the first two hours, incl.
 row 18 / D72 Pelican), row 17 / D54 (dark-freighter place model, Anvil well-edge, Wreck Cathedral draw
 scale), row 557 art half (stencils, wear, kill tallies on traffic variants).

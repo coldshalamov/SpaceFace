@@ -99,30 +99,30 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "973cafd460092c0047c8aa78d99e5bde2381cbb2d913cc875072e564c3031587",
+  "contentHash": "54b1cea50a3d168d7d6ac45b48d40be7168d4fb60b4b42bc0f1f299487397906",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
-          -1.4096620082855225,
-          10.500009916021305,
-          0.31313538551330566
+          -1.4099639039577032,
+          10.500009536743164,
+          0.31275943736661566
         ],
         "min": [
-          -2.035932779312134,
-          10.061599352167171,
-          -0.31313538551330566
+          -2.0354827786909344,
+          10.061633604040777,
+          -0.31275943736661566
         ]
       },
       "drawMode": 4,
-      "geometryHash": "abfe65acd1e9c7f44cd0af35bc4ea7964b67d9bdd3bc385612ebdd41c75400b0",
+      "geometryHash": "2a8f2c201ce0ddb0e3c2860e2370e4425193fa84e19b85c0e1e6c22cb9ccb433",
       "id": "sf.render.aftermath-aft-cockpit-section.node.beacon.primitive.0",
       "indexCount": 36,
       "indexed": true,
       "materialHash": "befa2158c9128240e6aaed8c0df2471a4737cc6c19b6caef0da53b7d66577446",
-      "materialPipelineKey": "opaque",
-      "meshName": "Beacon",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "meshName": "render:sf.render.aftermath-aft-cockpit-section.flight-static-lane.1",
       "nodeId": "sf.render.aftermath-aft-cockpit-section.node.beacon",
       "primitiveIndex": 0,
       "vertexCount": 24
@@ -130,751 +130,201 @@
     {
       "bounds": {
         "max": [
-          5.946172335726532,
-          5.739847346812429,
-          7.699642276830858
+          5.9456509785354275,
+          5.740362074441584,
+          7.699137543207282
         ],
         "min": [
-          -5.708093932227437,
-          1.6011389762997192,
-          -7.699642276830858
+          -5.708483466289447,
+          -5.51897767075658,
+          -7.699137543207282
         ]
       },
       "drawMode": 4,
-      "geometryHash": "931c09a5fe7a10fc49ed27a4738c1a0267c1bb85ab1356cbdf753c10c8224990",
-      "id": "sf.render.aftermath-aft-cockpit-section.node.bridge.primitive.0",
-      "indexCount": 2748,
+      "geometryHash": "afe73bc3bda926d745caf4f89a3502cbb6ab0d9c6719193b307229604b712499",
+      "id": "sf.render.aftermath-aft-cockpit-section.node.beacon.primitive.1",
+      "indexCount": 5832,
       "indexed": true,
       "materialHash": "b7b0be5052ab4f1138a547dbaf6e6c56dd50226bde0061c42d8958e0f9ff4ae0",
-      "materialPipelineKey": "opaque",
-      "meshName": "Bridge",
-      "nodeId": "sf.render.aftermath-aft-cockpit-section.node.bridge",
-      "primitiveIndex": 0,
-      "vertexCount": 837
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "meshName": "render:sf.render.aftermath-aft-cockpit-section.flight-static-lane.1",
+      "nodeId": "sf.render.aftermath-aft-cockpit-section.node.beacon",
+      "primitiveIndex": 1,
+      "vertexCount": 1685
     },
     {
       "bounds": {
         "max": [
-          5.945227101429281,
-          2.531485833368838,
-          7.497362137219182
+          5.9456509785354275,
+          2.531373339001739,
+          7.497894790475485
         ],
         "min": [
-          -5.693915417768675,
-          1.442339614361582,
-          -7.497362137219182
+          -5.694383655588493,
+          1.4418425121098402,
+          -7.497894790475485
         ]
       },
       "drawMode": 4,
-      "geometryHash": "69f8540c5797f7da140855486d3bafd95fca021a65375f271dc1bf1f691d57de",
-      "id": "sf.render.aftermath-aft-cockpit-section.node.bridge.primitive.1",
+      "geometryHash": "46e9db411bc3da136063b81a7317eefa678772bb4a52c82b7a647490db4b6cb5",
+      "id": "sf.render.aftermath-aft-cockpit-section.node.beacon.primitive.2",
       "indexCount": 1248,
       "indexed": true,
       "materialHash": "9e925530abc8aa063cee7e347eb47c4d67b6c1de375e4fa2da9a057c7b8de817",
-      "materialPipelineKey": "opaque",
-      "meshName": "Bridge",
-      "nodeId": "sf.render.aftermath-aft-cockpit-section.node.bridge",
-      "primitiveIndex": 1,
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "meshName": "render:sf.render.aftermath-aft-cockpit-section.flight-static-lane.1",
+      "nodeId": "sf.render.aftermath-aft-cockpit-section.node.beacon",
+      "primitiveIndex": 2,
       "vertexCount": 382
     },
     {
       "bounds": {
         "max": [
-          5.963186553077047,
-          5.721887895164664,
-          7.68073759088584
+          5.963596192154823,
+          5.722416860822189,
+          7.681192329587886
         ],
         "min": [
-          3.6478351419611665,
-          1.6020842105969701,
-          -7.68073759088584
+          3.6483431850095385,
+          1.6020676337115898,
+          -7.681192329587886
         ]
       },
       "drawMode": 4,
-      "geometryHash": "685d6016cdb93cb3bbcbdfb745db93be9cd21e143edf21aad34b9fbdc8f28db0",
-      "id": "sf.render.aftermath-aft-cockpit-section.node.bridge.primitive.2",
+      "geometryHash": "66ecb649bab5dc148a4692ee981521653fa0a45860293a14c58926b717e83e34",
+      "id": "sf.render.aftermath-aft-cockpit-section.node.beacon.primitive.3",
       "indexCount": 2760,
       "indexed": true,
       "materialHash": "4e85f4b12211dce9496ca638d96cd779448e7cedac9aab38dd65da2871c14a4d",
-      "materialPipelineKey": "opaque",
-      "meshName": "Bridge",
-      "nodeId": "sf.render.aftermath-aft-cockpit-section.node.bridge",
-      "primitiveIndex": 2,
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "meshName": "render:sf.render.aftermath-aft-cockpit-section.flight-static-lane.1",
+      "nodeId": "sf.render.aftermath-aft-cockpit-section.node.beacon",
+      "primitiveIndex": 3,
       "vertexCount": 813
     },
     {
       "bounds": {
         "max": [
-          -0.7354526029651928,
-          5.783328124485967,
-          7.7431230545043945
+          -0.73573659225754,
+          5.78394330751726,
+          7.742718776282958
         ],
         "min": [
-          -2.1658284032799946,
-          1.3988588366880443,
-          -7.7431230545043945
+          -2.166226477917962,
+          1.398261279034164,
+          -7.742718776282958
         ]
       },
       "drawMode": 4,
-      "geometryHash": "95fb756ab92ea7f58f9de9c244f8a7dda690e3219b5b9117ef899465e930ce9f",
-      "id": "sf.render.aftermath-aft-cockpit-section.node.bridge.primitive.3",
+      "geometryHash": "c9bfbeac179d4e090062b5d9ec56c320ebe0347bc661e57ef527ccd361ab8043",
+      "id": "sf.render.aftermath-aft-cockpit-section.node.beacon.primitive.4",
       "indexCount": 2880,
       "indexed": true,
       "materialHash": "15ed238ec68bfce5920f3de3318a46f7ec374c6e52a293abe76f742a2ee51e7e",
-      "materialPipelineKey": "opaque",
-      "meshName": "Bridge",
-      "nodeId": "sf.render.aftermath-aft-cockpit-section.node.bridge",
-      "primitiveIndex": 3,
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "meshName": "render:sf.render.aftermath-aft-cockpit-section.flight-static-lane.1",
+      "nodeId": "sf.render.aftermath-aft-cockpit-section.node.beacon",
+      "primitiveIndex": 4,
       "vertexCount": 852
     },
     {
       "bounds": {
         "max": [
-          -2.6123886108398438,
-          3.67648418364346,
-          7.814153697415239
+          6.077676478735269,
+          5.612181977160184,
+          7.814499630760542
         ],
         "min": [
-          -3.7510643005371094,
-          2.9363640982168917,
-          7.671814892367476
+          -3.750852930559268,
+          -1.3909376378090967,
+          -7.814499630760542
         ]
       },
       "drawMode": 4,
-      "geometryHash": "423bfd2291cec3c4d1bc97524613ddae68d6e7d44db7d1fb7b86baa686c6763c",
-      "id": "sf.render.aftermath-aft-cockpit-section.node.bridgewin-0-m.primitive.0",
-      "indexCount": 36,
+      "geometryHash": "119e4782a246df27e34f96a4103d72d91f65b1bcf935e0889c29e2dace38b304",
+      "id": "sf.render.aftermath-aft-cockpit-section.node.beacon.primitive.5",
+      "indexCount": 504,
       "indexed": true,
       "materialHash": "b7dd1f662234aa98804ecaf3adee5ac18e4dcc88b1083dd345637410c6a25558",
-      "materialPipelineKey": "opaque",
-      "meshName": "BridgeWin_0_M",
-      "nodeId": "sf.render.aftermath-aft-cockpit-section.node.bridgewin-0-m",
-      "primitiveIndex": 0,
-      "vertexCount": 24
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "meshName": "render:sf.render.aftermath-aft-cockpit-section.flight-static-lane.1",
+      "nodeId": "sf.render.aftermath-aft-cockpit-section.node.beacon",
+      "primitiveIndex": 5,
+      "vertexCount": 336
     },
     {
       "bounds": {
         "max": [
-          -2.6123886108398438,
-          3.67648418364346,
-          -7.671814892367476
+          5.749535429694886,
+          10.138541662409617,
+          3.41632004279251
         ],
         "min": [
-          -3.7510643005371094,
-          2.9363640982168917,
-          -7.814153697415239
+          -1.9508839144852104,
+          5.100422938764195,
+          -3.41632004279251
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0c6501cedeb2ceab4153bfd00c360cf95968330c73608a8903e0b9391c25746f",
-      "id": "sf.render.aftermath-aft-cockpit-section.node.bridgewin-0.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "b7dd1f662234aa98804ecaf3adee5ac18e4dcc88b1083dd345637410c6a25558",
-      "materialPipelineKey": "opaque",
-      "meshName": "BridgeWin_0",
-      "nodeId": "sf.render.aftermath-aft-cockpit-section.node.bridgewin-0",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          -0.9755439758300781,
-          3.676482943898864,
-          7.814153458989383
-        ],
-        "min": [
-          -2.114215850830078,
-          2.9363653379614876,
-          7.671815130793332
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "c5256b9e4b09255a73fcff25b36d477b5e3d09c25755679d34cf2872bb349c8d",
-      "id": "sf.render.aftermath-aft-cockpit-section.node.bridgewin-1-m.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "b7dd1f662234aa98804ecaf3adee5ac18e4dcc88b1083dd345637410c6a25558",
-      "materialPipelineKey": "opaque",
-      "meshName": "BridgeWin_1_M",
-      "nodeId": "sf.render.aftermath-aft-cockpit-section.node.bridgewin-1-m",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          -0.9755439758300781,
-          3.676482943898864,
-          -7.671815130793332
-        ],
-        "min": [
-          -2.114215850830078,
-          2.9363653379614876,
-          -7.814153458989383
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "e0e71190e6e4214d3c3b306d8e0d8fa76799a987ed1cf959705b65a299840bc4",
-      "id": "sf.render.aftermath-aft-cockpit-section.node.bridgewin-1.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "b7dd1f662234aa98804ecaf3adee5ac18e4dcc88b1083dd345637410c6a25558",
-      "materialPipelineKey": "opaque",
-      "meshName": "BridgeWin_1",
-      "nodeId": "sf.render.aftermath-aft-cockpit-section.node.bridgewin-1",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          0.6613006591796875,
-          3.676482943898864,
-          7.814153458989383
-        ],
-        "min": [
-          -0.4773712158203125,
-          2.9363653379614876,
-          7.671815130793332
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "c4f0c6af4ec3cb80cc5ec5d799924f80c35ca6635e7a95dc38c4d2d872ef312c",
-      "id": "sf.render.aftermath-aft-cockpit-section.node.bridgewin-2-m.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "b7dd1f662234aa98804ecaf3adee5ac18e4dcc88b1083dd345637410c6a25558",
-      "materialPipelineKey": "opaque",
-      "meshName": "BridgeWin_2_M",
-      "nodeId": "sf.render.aftermath-aft-cockpit-section.node.bridgewin-2-m",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          0.6613006591796875,
-          3.676482943898864,
-          -7.671815130793332
-        ],
-        "min": [
-          -0.4773712158203125,
-          2.9363653379614876,
-          -7.814153458989383
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "17fb3ab903e413e9b5209513e1da6e23e8d2c88373f1a205242dc0aee574d5d3",
-      "id": "sf.render.aftermath-aft-cockpit-section.node.bridgewin-2.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "b7dd1f662234aa98804ecaf3adee5ac18e4dcc88b1083dd345637410c6a25558",
-      "materialPipelineKey": "opaque",
-      "meshName": "BridgeWin_2",
-      "nodeId": "sf.render.aftermath-aft-cockpit-section.node.bridgewin-2",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          2.298145294189453,
-          3.676482943898864,
-          7.814153458989383
-        ],
-        "min": [
-          1.1594734191894531,
-          2.9363653379614876,
-          7.671815130793332
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "bb86f5c454d61e810cd415c6ee72cece0789c1fabf25bc00bf4fb97239c14741",
-      "id": "sf.render.aftermath-aft-cockpit-section.node.bridgewin-3-m.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "b7dd1f662234aa98804ecaf3adee5ac18e4dcc88b1083dd345637410c6a25558",
-      "materialPipelineKey": "opaque",
-      "meshName": "BridgeWin_3_M",
-      "nodeId": "sf.render.aftermath-aft-cockpit-section.node.bridgewin-3-m",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          2.298145294189453,
-          3.676482943898864,
-          -7.671815130793332
-        ],
-        "min": [
-          1.1594734191894531,
-          2.9363653379614876,
-          -7.814153458989383
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "7198bfae5e53909a7eb3a2fd9ffc860d29c8558ce8f3b5c381c71d6beaedb60f",
-      "id": "sf.render.aftermath-aft-cockpit-section.node.bridgewin-3.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "b7dd1f662234aa98804ecaf3adee5ac18e4dcc88b1083dd345637410c6a25558",
-      "materialPipelineKey": "opaque",
-      "meshName": "BridgeWin_3",
-      "nodeId": "sf.render.aftermath-aft-cockpit-section.node.bridgewin-3",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          6.077121734619141,
-          5.612250919995733,
-          2.5620181560516357
-        ],
-        "min": [
-          5.507781982421875,
-          5.213693980516962,
-          1.9926784038543701
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "25b859637726655cc38282762b7e4852a1933b7942224dec16ea2519c511ae4b",
-      "id": "sf.render.aftermath-aft-cockpit-section.node.flood-m.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "b7dd1f662234aa98804ecaf3adee5ac18e4dcc88b1083dd345637410c6a25558",
-      "materialPipelineKey": "opaque",
-      "meshName": "Flood_M",
-      "nodeId": "sf.render.aftermath-aft-cockpit-section.node.flood-m",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          6.077121734619141,
-          5.612250919995733,
-          -1.9926784038543701
-        ],
-        "min": [
-          5.507781982421875,
-          5.213693980516962,
-          -2.5620181560516357
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "cc347ed63031e72312e435fd2e7ac320b506656613af80555abd683e79182e30",
-      "id": "sf.render.aftermath-aft-cockpit-section.node.flood.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "b7dd1f662234aa98804ecaf3adee5ac18e4dcc88b1083dd345637410c6a25558",
-      "materialPipelineKey": "opaque",
-      "meshName": "Flood",
-      "nodeId": "sf.render.aftermath-aft-cockpit-section.node.flood",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          5.749622714571525,
-          5.61208127666721,
-          3.416022539138794
-        ],
-        "min": [
-          5.038207638211678,
-          5.099995864140896,
-          -3.416022539138794
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "5e9d423249f213879fbc0c1707933068a39cf1bca65872de083fc4ca36988320",
-      "id": "sf.render.aftermath-aft-cockpit-section.node.lampbar.primitive.0",
-      "indexCount": 564,
+      "geometryHash": "010d43593cd17fd9df11a6cca6c9ee23210df20dac1a2eb7b3ee07943fdcbf7c",
+      "id": "sf.render.aftermath-aft-cockpit-section.node.beacon.primitive.6",
+      "indexCount": 1236,
       "indexed": true,
       "materialHash": "1ebadaa97cbcbe08a1b9931ff2ff1db227b4c22b6a6a4ff6977fd8d9b23c97b1",
-      "materialPipelineKey": "opaque",
-      "meshName": "LampBar",
-      "nodeId": "sf.render.aftermath-aft-cockpit-section.node.lampbar",
-      "primitiveIndex": 0,
-      "vertexCount": 192
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "meshName": "render:sf.render.aftermath-aft-cockpit-section.flight-static-lane.1",
+      "nodeId": "sf.render.aftermath-aft-cockpit-section.node.beacon",
+      "primitiveIndex": 6,
+      "vertexCount": 432
     },
     {
       "bounds": {
         "max": [
-          -1.4950625598430634,
-          5.754582882983446,
-          0.22773483395576477
+          6.077676478735269,
+          -4.489371039343735,
+          6.381446143154492
         ],
         "min": [
-          -1.950532227754593,
-          5.58376264466548,
-          -0.22773483395576477
+          -6.24812167584414,
+          -6.840514473727811,
+          -5.778999685931913
         ]
       },
       "drawMode": 4,
-      "geometryHash": "93fb3c199ddafcfbb45c397d854bd573a9cf60472ca766fe41424941e1f179e4",
-      "id": "sf.render.aftermath-aft-cockpit-section.node.mast-foot.primitive.0",
-      "indexCount": 564,
-      "indexed": true,
-      "materialHash": "1ebadaa97cbcbe08a1b9931ff2ff1db227b4c22b6a6a4ff6977fd8d9b23c97b1",
-      "materialPipelineKey": "opaque",
-      "meshName": "Mast_Foot",
-      "nodeId": "sf.render.aftermath-aft-cockpit-section.node.mast-foot",
-      "primitiveIndex": 0,
-      "vertexCount": 192
-    },
-    {
-      "bounds": {
-        "max": [
-          -1.6279976446896989,
-          10.138470649719238,
-          0.09952583630811809
-        ],
-        "min": [
-          -1.8175971429079574,
-          5.583773612976074,
-          -0.09952583630811809
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "086c529b4ea110c4066aca15d274da9ce0efa0c182e8d81b696040667fc916c8",
-      "id": "sf.render.aftermath-aft-cockpit-section.node.mast-mast.primitive.0",
-      "indexCount": 108,
-      "indexed": true,
-      "materialHash": "1ebadaa97cbcbe08a1b9931ff2ff1db227b4c22b6a6a4ff6977fd8d9b23c97b1",
-      "materialPipelineKey": "opaque",
-      "meshName": "Mast_Mast",
-      "nodeId": "sf.render.aftermath-aft-cockpit-section.node.mast-mast",
-      "primitiveIndex": 0,
-      "vertexCount": 48
-    },
-    {
-      "bounds": {
-        "max": [
-          1.2909140559931163,
-          -4.48966121673584,
-          6.381850515420551
-        ],
-        "min": [
-          -0.4000029536981944,
-          -6.8403730392456055,
-          4.155105794851666
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "1a18ced7a12828564be687153ddb0e513defed1a473cf26c7faf3e1d871ed5e5",
-      "id": "sf.render.aftermath-aft-cockpit-section.node.towerbase-rib0.primitive.0",
-      "indexCount": 48,
+      "geometryHash": "1e34c62b88252c9ef331b5aa625ab7ebc7f95491988c15de175fed5b616a6a22",
+      "id": "sf.render.aftermath-aft-cockpit-section.node.beacon.primitive.7",
+      "indexCount": 336,
       "indexed": true,
       "materialHash": "cd333b2cda5928c0c354680090b7bd00921bcc04d8583b5cc997d28ae451e830",
-      "materialPipelineKey": "opaque",
-      "meshName": "towerBase_rib0",
-      "nodeId": "sf.render.aftermath-aft-cockpit-section.node.towerbase-rib0",
-      "primitiveIndex": 0,
-      "vertexCount": 30
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "meshName": "render:sf.render.aftermath-aft-cockpit-section.flight-static-lane.1",
+      "nodeId": "sf.render.aftermath-aft-cockpit-section.node.beacon",
+      "primitiveIndex": 7,
+      "vertexCount": 210
     },
     {
       "bounds": {
         "max": [
-          -2.8834578713313643,
-          -4.594234466552734,
-          4.338887784873016
+          6.248156008119531,
+          1.4559423228107942,
+          6.177639788477066
         ],
         "min": [
-          -4.511024026022762,
-          -6.4097394943237305,
-          2.724397565926544
+          -5.993043282254154,
+          -10.50037670135498,
+          5.778999685931913
         ]
       },
       "drawMode": 4,
-      "geometryHash": "fbf345785d8b0a7ca9918185783831fc6ad795db2a9fb082a4c7049744e19d52",
-      "id": "sf.render.aftermath-aft-cockpit-section.node.towerbase-rib1.primitive.0",
-      "indexCount": 48,
-      "indexed": true,
-      "materialHash": "cd333b2cda5928c0c354680090b7bd00921bcc04d8583b5cc997d28ae451e830",
-      "materialPipelineKey": "opaque",
-      "meshName": "towerBase_rib1",
-      "nodeId": "sf.render.aftermath-aft-cockpit-section.node.towerbase-rib1",
-      "primitiveIndex": 0,
-      "vertexCount": 30
-    },
-    {
-      "bounds": {
-        "max": [
-          -4.179263858198228,
-          -4.524518966674805,
-          0.10383007189155868
-        ],
-        "min": [
-          -6.247886868120132,
-          -6.696828365325928,
-          -1.4513331677568084
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "2cc4aec437deb8d940f4b0c02f76e95653a8f5fc3911e98658993e2b754622b1",
-      "id": "sf.render.aftermath-aft-cockpit-section.node.towerbase-rib2.primitive.0",
-      "indexCount": 48,
-      "indexed": true,
-      "materialHash": "cd333b2cda5928c0c354680090b7bd00921bcc04d8583b5cc997d28ae451e830",
-      "materialPipelineKey": "opaque",
-      "meshName": "towerBase_rib2",
-      "nodeId": "sf.render.aftermath-aft-cockpit-section.node.towerbase-rib2",
-      "primitiveIndex": 0,
-      "vertexCount": 30
-    },
-    {
-      "bounds": {
-        "max": [
-          -1.9660744150680942,
-          -4.629092216491699,
-          -3.5939658523482674
-        ],
-        "min": [
-          -3.316995076318319,
-          -6.266194820404053,
-          -5.089176571281493
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "fcb3e734e36ae7dae4d6fd3575170458cef64c54db021a984296d235b6a511a0",
-      "id": "sf.render.aftermath-aft-cockpit-section.node.towerbase-rib3.primitive.0",
-      "indexCount": 48,
-      "indexed": true,
-      "materialHash": "cd333b2cda5928c0c354680090b7bd00921bcc04d8583b5cc997d28ae451e830",
-      "materialPipelineKey": "opaque",
-      "meshName": "towerBase_rib3",
-      "nodeId": "sf.render.aftermath-aft-cockpit-section.node.towerbase-rib3",
-      "primitiveIndex": 0,
-      "vertexCount": 30
-    },
-    {
-      "bounds": {
-        "max": [
-          2.5611162757431143,
-          -4.559377670288086,
-          -3.884578766215836
-        ],
-        "min": [
-          1.0767163658584482,
-          -6.553283214569092,
-          -5.778932033192123
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "4932f0361078eff43f14ff01d92ac0e64d19817953008be4107237f6d53b781f",
-      "id": "sf.render.aftermath-aft-cockpit-section.node.towerbase-rib4.primitive.0",
-      "indexCount": 48,
-      "indexed": true,
-      "materialHash": "cd333b2cda5928c0c354680090b7bd00921bcc04d8583b5cc997d28ae451e830",
-      "materialPipelineKey": "opaque",
-      "meshName": "towerBase_rib4",
-      "nodeId": "sf.render.aftermath-aft-cockpit-section.node.towerbase-rib4",
-      "primitiveIndex": 0,
-      "vertexCount": 30
-    },
-    {
-      "bounds": {
-        "max": [
-          6.077794260496579,
-          -4.48966121673584,
-          -0.7663401712672254
-        ],
-        "min": [
-          3.834692769532718,
-          -6.8403730392456055,
-          -2.501162196229265
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "8fb7cdb56b136c66ce69a59d866042f89fa3c4a4d5831abc649281102f0943d3",
-      "id": "sf.render.aftermath-aft-cockpit-section.node.towerbase-rib5.primitive.0",
-      "indexCount": 48,
-      "indexed": true,
-      "materialHash": "cd333b2cda5928c0c354680090b7bd00921bcc04d8583b5cc997d28ae451e830",
-      "materialPipelineKey": "opaque",
-      "meshName": "towerBase_rib5",
-      "nodeId": "sf.render.aftermath-aft-cockpit-section.node.towerbase-rib5",
-      "primitiveIndex": 0,
-      "vertexCount": 30
-    },
-    {
-      "bounds": {
-        "max": [
-          5.054338720271421,
-          -4.594235420227051,
-          3.5865821140629657
-        ],
-        "min": [
-          3.4043900700117824,
-          -6.409738540649414,
-          2.060300658382713
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "4016d9fb4d5f9fda8376f7734cde4d3a1c01f90c0a6b6327528f4403cdfdb62a",
-      "id": "sf.render.aftermath-aft-cockpit-section.node.towerbase-rib6.primitive.0",
-      "indexCount": 48,
-      "indexed": true,
-      "materialHash": "cd333b2cda5928c0c354680090b7bd00921bcc04d8583b5cc997d28ae451e830",
-      "materialPipelineKey": "opaque",
-      "meshName": "towerBase_rib6",
-      "nodeId": "sf.render.aftermath-aft-cockpit-section.node.towerbase-rib6",
-      "primitiveIndex": 0,
-      "vertexCount": 30
-    },
-    {
-      "bounds": {
-        "max": [
-          4.255084314930445,
-          1.8833600057707782,
-          4.839365482330322
-        ],
-        "min": [
-          -4.284659662830836,
-          -5.518578506861782,
-          -4.839365482330322
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "b8f53f75127cf05e85e37bc105e70cf35d11ed1b71be12a8bf4d3d371b013785",
-      "id": "sf.render.aftermath-aft-cockpit-section.node.towerbase.primitive.0",
-      "indexCount": 3084,
-      "indexed": true,
-      "materialHash": "b7b0be5052ab4f1138a547dbaf6e6c56dd50226bde0061c42d8958e0f9ff4ae0",
-      "materialPipelineKey": "opaque",
-      "meshName": "TowerBase",
-      "nodeId": "sf.render.aftermath-aft-cockpit-section.node.towerbase",
-      "primitiveIndex": 0,
-      "vertexCount": 848
-    },
-    {
-      "bounds": {
-        "max": [
-          6.247920989990234,
-          1.45645611674966,
-          6.177525037208206
-        ],
-        "min": [
-          -5.992824554443359,
-          -10.500376752926723,
-          5.778553015312546
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "2ef0e66dbc637bd87a2f66dff8c1f8a76b360987275b9cdfd0feb81eb90357df",
-      "id": "sf.render.aftermath-aft-cockpit-section.node.towerskirt.primitive.0",
+      "geometryHash": "4ff60d1ca70fa568c2990472d9af2986323b8b0766f26ea7e1ed3ad538a826f6",
+      "id": "sf.render.aftermath-aft-cockpit-section.node.beacon.primitive.8",
       "indexCount": 36,
       "indexed": true,
       "materialHash": "e9f7bd582170738d03ca89c5cd88893b17d0cc9a530b5069ca26183315ab58f1",
-      "materialPipelineKey": "opaque",
-      "meshName": "TowerSkirt",
-      "nodeId": "sf.render.aftermath-aft-cockpit-section.node.towerskirt",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          -0.7264556884765625,
-          -0.5366220705116345,
-          4.96746828786934
-        ],
-        "min": [
-          -1.8651313781738281,
-          -1.390585399428551,
-          4.825129482821578
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "b3303f7f8fef8c6a4f23f3875094b6b73ea6f8fa9beb585e246d3cb6bf93789c",
-      "id": "sf.render.aftermath-aft-cockpit-section.node.towerwin-0-m.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "b7dd1f662234aa98804ecaf3adee5ac18e4dcc88b1083dd345637410c6a25558",
-      "materialPipelineKey": "opaque",
-      "meshName": "TowerWin_0_M",
-      "nodeId": "sf.render.aftermath-aft-cockpit-section.node.towerwin-0-m",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          -0.7264556884765625,
-          -0.5366220705116345,
-          -4.825129482821578
-        ],
-        "min": [
-          -1.8651313781738281,
-          -1.390585399428551,
-          -4.96746828786934
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "3cc4ae73fae5d8a8a5b637bdf2f3c2d99b50130eddbccdfe4d02b9c86eb54c01",
-      "id": "sf.render.aftermath-aft-cockpit-section.node.towerwin-0.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "b7dd1f662234aa98804ecaf3adee5ac18e4dcc88b1083dd345637410c6a25558",
-      "materialPipelineKey": "opaque",
-      "meshName": "TowerWin_0",
-      "nodeId": "sf.render.aftermath-aft-cockpit-section.node.towerwin-0",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          1.8355598449707031,
-          -0.5366220705116345,
-          4.96746828786934
-        ],
-        "min": [
-          0.6968841552734375,
-          -1.390585399428551,
-          4.825129482821578
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "feac37abb35576d97bb2cde280654aa5e39f05c82b4be1be22174255f0f8d8c9",
-      "id": "sf.render.aftermath-aft-cockpit-section.node.towerwin-1-m.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "b7dd1f662234aa98804ecaf3adee5ac18e4dcc88b1083dd345637410c6a25558",
-      "materialPipelineKey": "opaque",
-      "meshName": "TowerWin_1_M",
-      "nodeId": "sf.render.aftermath-aft-cockpit-section.node.towerwin-1-m",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          1.8355598449707031,
-          -0.5366220705116345,
-          -4.825129482821578
-        ],
-        "min": [
-          0.6968841552734375,
-          -1.390585399428551,
-          -4.96746828786934
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "dd7c49ad6ce8eb85891c4e8fe6059c442f8a9d9b93710b25d40224e1b8817930",
-      "id": "sf.render.aftermath-aft-cockpit-section.node.towerwin-1.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "b7dd1f662234aa98804ecaf3adee5ac18e4dcc88b1083dd345637410c6a25558",
-      "materialPipelineKey": "opaque",
-      "meshName": "TowerWin_1",
-      "nodeId": "sf.render.aftermath-aft-cockpit-section.node.towerwin-1",
-      "primitiveIndex": 0,
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "meshName": "render:sf.render.aftermath-aft-cockpit-section.flight-static-lane.1",
+      "nodeId": "sf.render.aftermath-aft-cockpit-section.node.beacon",
+      "primitiveIndex": 8,
       "vertexCount": 24
     }
   ],
@@ -1148,25 +598,25 @@
     {
       "id": "sf.render.aftermath-aft-cockpit-section.node.beacon",
       "localTransform": [
-        0.31313538551330566,
+        10.500193119049072,
         0,
         0,
         0,
         0,
-        0.31313538551330566,
+        10.500193119049072,
         0,
         0,
         0,
         0,
-        0.31313538551330566,
+        10.500193119049072,
         0,
-        -1.7227973937988281,
-        10.280804634094238,
+        0.0000171661376953125,
+        -0.00018358230590820312,
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "Beacon",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
       "nodeName": "Beacon",
       "nodePath": [
         0,
@@ -1176,20 +626,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-cockpit-section.body",
       "worldTransform": [
-        0.31313538551330566,
+        10.500193119049072,
         0,
         0,
         0,
         0,
-        0.31313538551330566,
+        10.500193119049072,
         0,
         0,
         0,
         0,
-        0.31313538551330566,
+        10.500193119049072,
         0,
-        -1.7227973937988281,
-        10.280804634094238,
+        0.0000171661376953125,
+        -0.00018358230590820312,
         0,
         1
       ]
@@ -1197,25 +647,25 @@
     {
       "id": "sf.render.aftermath-aft-cockpit-section.node.bridge",
       "localTransform": [
-        7.7431230545043945,
+        1,
         0,
         0,
         0,
         0,
-        7.7431230545043945,
+        1,
         0,
         0,
         0,
         0,
-        7.7431230545043945,
+        1,
         0,
-        0.1275463104248047,
-        3.5910934805870056,
+        0,
+        0,
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "Bridge",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
       "nodeName": "Bridge",
       "nodePath": [
         0,
@@ -1225,20 +675,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-cockpit-section.body",
       "worldTransform": [
-        7.7431230545043945,
+        1,
         0,
         0,
         0,
         0,
-        7.7431230545043945,
+        1,
         0,
         0,
         0,
         0,
-        7.7431230545043945,
+        1,
         0,
-        0.1275463104248047,
-        3.5910934805870056,
+        0,
+        0,
         0,
         1
       ]
@@ -1246,25 +696,25 @@
     {
       "id": "sf.render.aftermath-aft-cockpit-section.node.bridgewin-0",
       "localTransform": [
-        0.5693378448486328,
+        1,
         0,
         0,
         0,
         0,
-        0.5693378448486328,
+        1,
         0,
         0,
         0,
         0,
-        0.5693378448486328,
+        1,
         0,
-        -3.1817264556884766,
-        3.306424140930176,
-        -7.742984294891357,
+        0,
+        0,
+        0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "BridgeWin_0",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
       "nodeName": "BridgeWin_0",
       "nodePath": [
         0,
@@ -1274,46 +724,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-cockpit-section.body",
       "worldTransform": [
-        0.5693378448486328,
+        1,
         0,
         0,
         0,
         0,
-        0.5693378448486328,
+        1,
         0,
         0,
         0,
         0,
-        0.5693378448486328,
+        1,
         0,
-        -3.1817264556884766,
-        3.306424140930176,
-        -7.742984294891357,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-cockpit-section.node.bridgewin-0-m",
       "localTransform": [
-        0.5693378448486328,
+        1,
         0,
         0,
         0,
         0,
-        0.5693378448486328,
+        1,
         0,
         0,
         0,
         0,
-        0.5693378448486328,
+        1,
         0,
-        -3.1817264556884766,
-        3.306424140930176,
-        7.742984294891357,
+        0,
+        0,
+        0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "BridgeWin_0_M",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
       "nodeName": "BridgeWin_0_M",
       "nodePath": [
         0,
@@ -1323,46 +773,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-cockpit-section.body",
       "worldTransform": [
-        0.5693378448486328,
+        1,
         0,
         0,
         0,
         0,
-        0.5693378448486328,
+        1,
         0,
         0,
         0,
         0,
-        0.5693378448486328,
+        1,
         0,
-        -3.1817264556884766,
-        3.306424140930176,
-        7.742984294891357,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-cockpit-section.node.bridgewin-1",
       "localTransform": [
-        0.5693359375,
+        1,
         0,
         0,
         0,
         0,
-        0.5693359375,
+        1,
         0,
         0,
         0,
         0,
-        0.5693359375,
+        1,
         0,
-        -1.5448799133300781,
-        3.306424140930176,
-        -7.742984294891357,
+        0,
+        0,
+        0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "BridgeWin_1",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
       "nodeName": "BridgeWin_1",
       "nodePath": [
         0,
@@ -1372,46 +822,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-cockpit-section.body",
       "worldTransform": [
-        0.5693359375,
+        1,
         0,
         0,
         0,
         0,
-        0.5693359375,
+        1,
         0,
         0,
         0,
         0,
-        0.5693359375,
+        1,
         0,
-        -1.5448799133300781,
-        3.306424140930176,
-        -7.742984294891357,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-cockpit-section.node.bridgewin-1-m",
       "localTransform": [
-        0.5693359375,
+        1,
         0,
         0,
         0,
         0,
-        0.5693359375,
+        1,
         0,
         0,
         0,
         0,
-        0.5693359375,
+        1,
         0,
-        -1.5448799133300781,
-        3.306424140930176,
-        7.742984294891357,
+        0,
+        0,
+        0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "BridgeWin_1_M",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
       "nodeName": "BridgeWin_1_M",
       "nodePath": [
         0,
@@ -1421,46 +871,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-cockpit-section.body",
       "worldTransform": [
-        0.5693359375,
+        1,
         0,
         0,
         0,
         0,
-        0.5693359375,
+        1,
         0,
         0,
         0,
         0,
-        0.5693359375,
+        1,
         0,
-        -1.5448799133300781,
-        3.306424140930176,
-        7.742984294891357,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-cockpit-section.node.bridgewin-2",
       "localTransform": [
-        0.5693359375,
+        1,
         0,
         0,
         0,
         0,
-        0.5693359375,
+        1,
         0,
         0,
         0,
         0,
-        0.5693359375,
+        1,
         0,
-        0.0919647216796875,
-        3.306424140930176,
-        -7.742984294891357,
+        0,
+        0,
+        0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "BridgeWin_2",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
       "nodeName": "BridgeWin_2",
       "nodePath": [
         0,
@@ -1470,46 +920,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-cockpit-section.body",
       "worldTransform": [
-        0.5693359375,
+        1,
         0,
         0,
         0,
         0,
-        0.5693359375,
+        1,
         0,
         0,
         0,
         0,
-        0.5693359375,
+        1,
         0,
-        0.0919647216796875,
-        3.306424140930176,
-        -7.742984294891357,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-cockpit-section.node.bridgewin-2-m",
       "localTransform": [
-        0.5693359375,
+        1,
         0,
         0,
         0,
         0,
-        0.5693359375,
+        1,
         0,
         0,
         0,
         0,
-        0.5693359375,
+        1,
         0,
-        0.0919647216796875,
-        3.306424140930176,
-        7.742984294891357,
+        0,
+        0,
+        0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "BridgeWin_2_M",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
       "nodeName": "BridgeWin_2_M",
       "nodePath": [
         0,
@@ -1519,46 +969,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-cockpit-section.body",
       "worldTransform": [
-        0.5693359375,
+        1,
         0,
         0,
         0,
         0,
-        0.5693359375,
+        1,
         0,
         0,
         0,
         0,
-        0.5693359375,
+        1,
         0,
-        0.0919647216796875,
-        3.306424140930176,
-        7.742984294891357,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-cockpit-section.node.bridgewin-3",
       "localTransform": [
-        0.5693359375,
+        1,
         0,
         0,
         0,
         0,
-        0.5693359375,
+        1,
         0,
         0,
         0,
         0,
-        0.5693359375,
+        1,
         0,
-        1.7288093566894531,
-        3.306424140930176,
-        -7.742984294891357,
+        0,
+        0,
+        0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "BridgeWin_3",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
       "nodeName": "BridgeWin_3",
       "nodePath": [
         0,
@@ -1568,46 +1018,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-cockpit-section.body",
       "worldTransform": [
-        0.5693359375,
+        1,
         0,
         0,
         0,
         0,
-        0.5693359375,
+        1,
         0,
         0,
         0,
         0,
-        0.5693359375,
+        1,
         0,
-        1.7288093566894531,
-        3.306424140930176,
-        -7.742984294891357,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-cockpit-section.node.bridgewin-3-m",
       "localTransform": [
-        0.5693359375,
+        1,
         0,
         0,
         0,
         0,
-        0.5693359375,
+        1,
         0,
         0,
         0,
         0,
-        0.5693359375,
+        1,
         0,
-        1.7288093566894531,
-        3.306424140930176,
-        7.742984294891357,
+        0,
+        0,
+        0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "BridgeWin_3_M",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
       "nodeName": "BridgeWin_3_M",
       "nodePath": [
         0,
@@ -1617,46 +1067,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-cockpit-section.body",
       "worldTransform": [
-        0.5693359375,
+        1,
         0,
         0,
         0,
         0,
-        0.5693359375,
+        1,
         0,
         0,
         0,
         0,
-        0.5693359375,
+        1,
         0,
-        1.7288093566894531,
-        3.306424140930176,
-        7.742984294891357,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-cockpit-section.node.flood",
       "localTransform": [
-        0.2846698760986328,
+        1,
         0,
         0,
         0,
         0,
-        0.2846698760986328,
+        1,
         0,
         0,
         0,
         0,
-        0.2846698760986328,
+        1,
         0,
-        5.792451858520508,
-        5.412972450256348,
-        -2.277348279953003,
+        0,
+        0,
+        0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "Flood",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
       "nodeName": "Flood",
       "nodePath": [
         0,
@@ -1666,46 +1116,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-cockpit-section.body",
       "worldTransform": [
-        0.2846698760986328,
+        1,
         0,
         0,
         0,
         0,
-        0.2846698760986328,
+        1,
         0,
         0,
         0,
         0,
-        0.2846698760986328,
+        1,
         0,
-        5.792451858520508,
-        5.412972450256348,
-        -2.277348279953003,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-cockpit-section.node.flood-m",
       "localTransform": [
-        0.2846698760986328,
+        1,
         0,
         0,
         0,
         0,
-        0.2846698760986328,
+        1,
         0,
         0,
         0,
         0,
-        0.2846698760986328,
+        1,
         0,
-        5.792451858520508,
-        5.412972450256348,
-        2.277348279953003,
+        0,
+        0,
+        0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "Flood_M",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
       "nodeName": "Flood_M",
       "nodePath": [
         0,
@@ -1715,46 +1165,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-cockpit-section.body",
       "worldTransform": [
-        0.2846698760986328,
+        1,
         0,
         0,
         0,
         0,
-        0.2846698760986328,
+        1,
         0,
         0,
         0,
         0,
-        0.2846698760986328,
+        1,
         0,
-        5.792451858520508,
-        5.412972450256348,
-        2.277348279953003,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-cockpit-section.node.lampbar",
       "localTransform": [
-        3.416022539138794,
+        1,
         0,
         0,
         0,
         0,
-        3.416022539138794,
+        1,
         0,
         0,
         0,
         0,
-        3.416022539138794,
+        1,
         0,
-        5.393915176391602,
-        5.356038570404053,
+        0,
+        0,
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LampBar",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
       "nodeName": "LampBar",
       "nodePath": [
         0,
@@ -1764,20 +1214,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-cockpit-section.body",
       "worldTransform": [
-        3.416022539138794,
+        1,
         0,
         0,
         0,
         0,
-        3.416022539138794,
+        1,
         0,
         0,
         0,
         0,
-        3.416022539138794,
+        1,
         0,
-        5.393915176391602,
-        5.356038570404053,
+        0,
+        0,
         0,
         1
       ]
@@ -1785,25 +1235,25 @@
     {
       "id": "sf.render.aftermath-aft-cockpit-section.node.mast-foot",
       "localTransform": [
-        0.22773483395576477,
+        1,
         0,
         0,
         0,
         0,
-        0.22773483395576477,
+        1,
         0,
         0,
         0,
         0,
-        0.22773483395576477,
+        1,
         0,
-        -1.7227973937988281,
-        5.669172763824463,
+        0,
+        0,
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "Mast_Foot",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
       "nodeName": "Mast_Foot",
       "nodePath": [
         0,
@@ -1813,20 +1263,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-cockpit-section.body",
       "worldTransform": [
-        0.22773483395576477,
+        1,
         0,
         0,
         0,
         0,
-        0.22773483395576477,
+        1,
         0,
         0,
         0,
         0,
-        0.22773483395576477,
+        1,
         0,
-        -1.7227973937988281,
-        5.669172763824463,
+        0,
+        0,
         0,
         1
       ]
@@ -1834,25 +1284,25 @@
     {
       "id": "sf.render.aftermath-aft-cockpit-section.node.mast-mast",
       "localTransform": [
-        2.277348518371582,
+        1,
         0,
         0,
         0,
         0,
-        2.277348518371582,
+        1,
         0,
         0,
         0,
         0,
-        2.277348518371582,
+        1,
         0,
-        -1.7227973937988281,
-        7.861122131347656,
+        0,
+        0,
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "Mast_Mast",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
       "nodeName": "Mast_Mast",
       "nodePath": [
         0,
@@ -1862,20 +1312,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-cockpit-section.body",
       "worldTransform": [
-        2.277348518371582,
+        1,
         0,
         0,
         0,
         0,
-        2.277348518371582,
+        1,
         0,
         0,
         0,
         0,
-        2.277348518371582,
+        1,
         0,
-        -1.7227973937988281,
-        7.861122131347656,
+        0,
+        0,
         0,
         1
       ]
@@ -1981,25 +1431,25 @@
     {
       "id": "sf.render.aftermath-aft-cockpit-section.node.towerbase",
       "localTransform": [
-        4.839365482330322,
+        1,
         0,
         0,
         0,
         0,
-        4.839365482330322,
+        1,
         0,
         0,
         0,
         0,
-        4.839365482330322,
+        1,
         0,
-        -0.014787673950195312,
-        -1.8176092505455017,
+        0,
+        0,
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "TowerBase",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
       "nodeName": "TowerBase",
       "nodePath": [
         0,
@@ -2009,20 +1459,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-cockpit-section.body",
       "worldTransform": [
-        4.839365482330322,
+        1,
         0,
         0,
         0,
         0,
-        4.839365482330322,
+        1,
         0,
         0,
         0,
         0,
-        4.839365482330322,
+        1,
         0,
-        -0.014787673950195312,
-        -1.8176092505455017,
+        0,
+        0,
         0,
         1
       ]
@@ -2030,25 +1480,25 @@
     {
       "id": "sf.render.aftermath-aft-cockpit-section.node.towerbase-rib0",
       "localTransform": [
-        1.1753559112548828,
+        1,
         0,
         0,
         0,
         0,
-        1.1753559112548828,
+        1,
         0,
         0,
         0,
         0,
-        1.1753559112548828,
+        1,
         0,
-        0.44545555114746094,
-        -5.665017127990723,
-        5.268478155136108,
+        0,
+        0,
+        0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "towerBase_rib0",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
       "nodeName": "towerBase_rib0",
       "nodePath": [
         0,
@@ -2058,46 +1508,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-cockpit-section.body",
       "worldTransform": [
-        1.1753559112548828,
+        1,
         0,
         0,
         0,
         0,
-        1.1753559112548828,
+        1,
         0,
         0,
         0,
         0,
-        1.1753559112548828,
+        1,
         0,
-        0.44545555114746094,
-        -5.665017127990723,
-        5.268478155136108,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-cockpit-section.node.towerbase-rib1",
       "localTransform": [
-        0.907752513885498,
+        1,
         0,
         0,
         0,
         0,
-        0.907752513885498,
+        1,
         0,
         0,
         0,
         0,
-        0.907752513885498,
+        1,
         0,
-        -3.697240948677063,
-        -5.501986980438232,
-        3.5316426753997803,
+        0,
+        0,
+        0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "towerBase_rib1",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
       "nodeName": "towerBase_rib1",
       "nodePath": [
         0,
@@ -2107,46 +1557,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-cockpit-section.body",
       "worldTransform": [
-        0.907752513885498,
+        1,
         0,
         0,
         0,
         0,
-        0.907752513885498,
+        1,
         0,
         0,
         0,
         0,
-        0.907752513885498,
+        1,
         0,
-        -3.697240948677063,
-        -5.501986980438232,
-        3.5316426753997803,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-cockpit-section.node.towerbase-rib2",
       "localTransform": [
-        1.0861546993255615,
+        1,
         0,
         0,
         0,
         0,
-        1.0861546993255615,
+        1,
         0,
         0,
         0,
         0,
-        1.0861546993255615,
+        1,
         0,
-        -5.21357536315918,
-        -5.610673666000366,
-        -0.6737515479326248,
+        0,
+        0,
+        0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "towerBase_rib2",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
       "nodeName": "towerBase_rib2",
       "nodePath": [
         0,
@@ -2156,46 +1606,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-cockpit-section.body",
       "worldTransform": [
-        1.0861546993255615,
+        1,
         0,
         0,
         0,
         0,
-        1.0861546993255615,
+        1,
         0,
         0,
         0,
         0,
-        1.0861546993255615,
+        1,
         0,
-        -5.21357536315918,
-        -5.610673666000366,
-        -0.6737515479326248,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-cockpit-section.node.towerbase-rib3",
       "localTransform": [
-        0.8185513019561768,
+        1,
         0,
         0,
         0,
         0,
-        0.8185513019561768,
+        1,
         0,
         0,
         0,
         0,
-        0.8185513019561768,
+        1,
         0,
-        -2.641534745693207,
-        -5.447643518447876,
-        -4.34157121181488,
+        0,
+        0,
+        0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "towerBase_rib3",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
       "nodeName": "towerBase_rib3",
       "nodePath": [
         0,
@@ -2205,46 +1655,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-cockpit-section.body",
       "worldTransform": [
-        0.8185513019561768,
+        1,
         0,
         0,
         0,
         0,
-        0.8185513019561768,
+        1,
         0,
         0,
         0,
         0,
-        0.8185513019561768,
+        1,
         0,
-        -2.641534745693207,
-        -5.447643518447876,
-        -4.34157121181488,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-cockpit-section.node.towerbase-rib4",
       "localTransform": [
-        0.9969527721405029,
+        1,
         0,
         0,
         0,
         0,
-        0.9969527721405029,
+        1,
         0,
         0,
         0,
         0,
-        0.9969527721405029,
+        1,
         0,
-        1.8189163208007812,
-        -5.556330442428589,
-        -4.8317553997039795,
+        0,
+        0,
+        0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "towerBase_rib4",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
       "nodeName": "towerBase_rib4",
       "nodePath": [
         0,
@@ -2254,46 +1704,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-cockpit-section.body",
       "worldTransform": [
-        0.9969527721405029,
+        1,
         0,
         0,
         0,
         0,
-        0.9969527721405029,
+        1,
         0,
         0,
         0,
         0,
-        0.9969527721405029,
+        1,
         0,
-        1.8189163208007812,
-        -5.556330442428589,
-        -4.8317553997039795,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-cockpit-section.node.towerbase-rib5",
       "localTransform": [
-        1.1753559112548828,
+        1,
         0,
         0,
         0,
         0,
-        1.1753559112548828,
+        1,
         0,
         0,
         0,
         0,
-        1.1753559112548828,
+        1,
         0,
-        4.956243515014648,
-        -5.665017127990723,
-        -1.6337511837482452,
+        0,
+        0,
+        0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "towerBase_rib5",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
       "nodeName": "towerBase_rib5",
       "nodePath": [
         0,
@@ -2303,46 +1753,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-cockpit-section.body",
       "worldTransform": [
-        1.1753559112548828,
+        1,
         0,
         0,
         0,
         0,
-        1.1753559112548828,
+        1,
         0,
         0,
         0,
         0,
-        1.1753559112548828,
+        1,
         0,
-        4.956243515014648,
-        -5.665017127990723,
-        -1.6337511837482452,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-cockpit-section.node.towerbase-rib6",
       "localTransform": [
-        0.9077515602111816,
+        1,
         0,
         0,
         0,
         0,
-        0.9077515602111816,
+        1,
         0,
         0,
         0,
         0,
-        0.9077515602111816,
+        1,
         0,
-        4.229364395141602,
-        -5.501986980438232,
-        2.8234413862228394,
+        0,
+        0,
+        0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "towerBase_rib6",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
       "nodeName": "towerBase_rib6",
       "nodePath": [
         0,
@@ -2352,46 +1802,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-cockpit-section.body",
       "worldTransform": [
-        0.9077515602111816,
+        1,
         0,
         0,
         0,
         0,
-        0.9077515602111816,
+        1,
         0,
         0,
         0,
         0,
-        0.9077515602111816,
+        1,
         0,
-        4.229364395141602,
-        -5.501986980438232,
-        2.8234413862228394,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-cockpit-section.node.towerskirt",
       "localTransform": [
-        6.120372772216797,
+        1,
         0,
         0,
         0,
         0,
-        6.120372772216797,
+        1,
         0,
         0,
         0,
         0,
-        6.120372772216797,
+        1,
         0,
-        0.1275482177734375,
-        -4.5219603180885315,
-        5.978039026260376,
+        0,
+        0,
+        0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "TowerSkirt",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
       "nodeName": "TowerSkirt",
       "nodePath": [
         0,
@@ -2401,46 +1851,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-cockpit-section.body",
       "worldTransform": [
-        6.120372772216797,
+        1,
         0,
         0,
         0,
         0,
-        6.120372772216797,
+        1,
         0,
         0,
         0,
         0,
-        6.120372772216797,
+        1,
         0,
-        0.1275482177734375,
-        -4.5219603180885315,
-        5.978039026260376,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-cockpit-section.node.towerwin-0",
       "localTransform": [
-        0.5693378448486328,
+        1,
         0,
         0,
         0,
         0,
-        0.5693378448486328,
+        1,
         0,
         0,
         0,
         0,
-        0.5693378448486328,
+        1,
         0,
-        -1.2957935333251953,
-        -0.9636037349700928,
-        -4.896298885345459,
+        0,
+        0,
+        0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "TowerWin_0",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
       "nodeName": "TowerWin_0",
       "nodePath": [
         0,
@@ -2450,46 +1900,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-cockpit-section.body",
       "worldTransform": [
-        0.5693378448486328,
+        1,
         0,
         0,
         0,
         0,
-        0.5693378448486328,
+        1,
         0,
         0,
         0,
         0,
-        0.5693378448486328,
+        1,
         0,
-        -1.2957935333251953,
-        -0.9636037349700928,
-        -4.896298885345459,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-cockpit-section.node.towerwin-0-m",
       "localTransform": [
-        0.5693378448486328,
+        1,
         0,
         0,
         0,
         0,
-        0.5693378448486328,
+        1,
         0,
         0,
         0,
         0,
-        0.5693378448486328,
+        1,
         0,
-        -1.2957935333251953,
-        -0.9636037349700928,
-        4.896298885345459,
+        0,
+        0,
+        0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "TowerWin_0_M",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
       "nodeName": "TowerWin_0_M",
       "nodePath": [
         0,
@@ -2499,46 +1949,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-cockpit-section.body",
       "worldTransform": [
-        0.5693378448486328,
+        1,
         0,
         0,
         0,
         0,
-        0.5693378448486328,
+        1,
         0,
         0,
         0,
         0,
-        0.5693378448486328,
+        1,
         0,
-        -1.2957935333251953,
-        -0.9636037349700928,
-        4.896298885345459,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-cockpit-section.node.towerwin-1",
       "localTransform": [
-        0.5693378448486328,
+        1,
         0,
         0,
         0,
         0,
-        0.5693378448486328,
+        1,
         0,
         0,
         0,
         0,
-        0.5693378448486328,
+        1,
         0,
-        1.2662220001220703,
-        -0.9636037349700928,
-        -4.896298885345459,
+        0,
+        0,
+        0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "TowerWin_1",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
       "nodeName": "TowerWin_1",
       "nodePath": [
         0,
@@ -2548,46 +1998,46 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-cockpit-section.body",
       "worldTransform": [
-        0.5693378448486328,
+        1,
         0,
         0,
         0,
         0,
-        0.5693378448486328,
+        1,
         0,
         0,
         0,
         0,
-        0.5693378448486328,
+        1,
         0,
-        1.2662220001220703,
-        -0.9636037349700928,
-        -4.896298885345459,
+        0,
+        0,
+        0,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-cockpit-section.node.towerwin-1-m",
       "localTransform": [
-        0.5693378448486328,
+        1,
         0,
         0,
         0,
         0,
-        0.5693378448486328,
+        1,
         0,
         0,
         0,
         0,
-        0.5693378448486328,
+        1,
         0,
-        1.2662220001220703,
-        -0.9636037349700928,
-        4.896298885345459,
+        0,
+        0,
+        0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "TowerWin_1_M",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
       "nodeName": "TowerWin_1_M",
       "nodePath": [
         0,
@@ -2597,28 +2047,28 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-cockpit-section.body",
       "worldTransform": [
-        0.5693378448486328,
+        1,
         0,
         0,
         0,
         0,
-        0.5693378448486328,
+        1,
         0,
         0,
         0,
         0,
-        0.5693378448486328,
+        1,
         0,
-        1.2662220001220703,
-        -0.9636037349700928,
-        4.896298885345459,
+        0,
+        0,
+        0,
         1
       ]
     }
   ],
   "provenance": {
     "semantics": {
-      "sha256": "70352c6e5fba6fcbad9f713aa9a348906b329f41bce7939376274814b250f8f0"
+      "sha256": "51799f5695c3c32d4bd12f79fef790bd5883863073647ec53ac712d053957196"
     },
     "sourceGlb": {
       "bytes": 211860,
@@ -2626,37 +2076,37 @@
       "uri": "place_aftermath_aft_cockpit_section.glb"
     },
     "sourceManifest": {
-      "bytes": 323116,
-      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
+      "bytes": 323169,
+      "sha256": "ca22c1a243dd61ba8d2042d939914d32834fee986e49560b31b18880d638de12",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 217696,
-    "sha256": "d87103f28fe38e6c31c04fdd0983a7ff3adf2ea6935752804c265fe638456c40",
+    "bytes": 196572,
+    "sha256": "da1454febe42264ec2874c4d5c567ee5368cddd57ab202e4dcb4aa102937ebbd",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
-        0.000017060935051382842,
-        -0.00018341845270875012,
+        0.0000171661376953125,
+        -0.00018358230590820312,
         0
       ],
       "max": [
-        6.247920989990234,
-        10.500009916021305,
-        7.814153697415239
+        6.248156008119531,
+        10.500009536743164,
+        7.814499630760542
       ],
       "min": [
-        -6.247886868120132,
-        -10.500376752926723,
-        -7.814153697415239
+        -6.24812167584414,
+        -10.50037670135498,
+        -7.814499630760542
       ],
       "size": [
-        12.495807858110366,
-        21.00038666894803,
-        15.628307394830477
+        12.49627768396367,
+        21.000386238098145,
+        15.628999261521084
       ]
     },
     "hidden": [],
@@ -2682,7 +2132,7 @@
           1
         ],
         "name": "SOCKET_BlackBox",
-        "planIndex": 21,
+        "planIndex": 26,
         "tags": {
           "lod": "lod0",
           "socket": true,
@@ -2720,7 +2170,7 @@
           1
         ],
         "name": "SOCKET_Evidence_Registry",
-        "planIndex": 22,
+        "planIndex": 27,
         "tags": {
           "lod": "lod0",
           "socket": true,
@@ -2743,14 +2193,14 @@
       "accent": 1,
       "ceramic": 1,
       "glass": 1,
-      "hull": 3,
-      "mechanical": 10,
-      "signal": 15
+      "hull": 2,
+      "mechanical": 2,
+      "signal": 2
     },
     "materialProfiles": [
       {
         "allowTextures": true,
-        "planIndex": 2,
+        "planIndex": 3,
         "role": "signal"
       },
       {
@@ -2781,153 +2231,43 @@
       {
         "allowTextures": true,
         "planIndex": 9,
-        "role": "signal"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 10,
-        "role": "signal"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 11,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 12,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 13,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 14,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 15,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 16,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 17,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 18,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 19,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 20,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 23,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 24,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 25,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 26,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 27,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 28,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 29,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 30,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 31,
         "role": "ceramic"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 32,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 33,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 34,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 35,
-        "role": "signal"
       }
     ],
-    "nodeCount": 36,
+    "nodeCount": 41,
     "primitives": [
       {
         "canopy": false,
         "matrix": [
-          0.31313538551330566,
+          10.500193119049072,
           0,
           0,
           0,
           0,
-          0.31313538551330566,
+          10.500193119049072,
           0,
           0,
           0,
           0,
-          0.31313538551330566,
+          10.500193119049072,
           0,
-          -1.7227973937988281,
-          10.280804634094238,
+          0.0000171661376953125,
+          -0.00018358230590820312,
           0,
           1
         ],
-        "name": "Beacon",
-        "planIndex": 2,
+        "name": "rendersfrenderaftermath-aft-cockpit-sectionflight-static-lane1",
+        "planIndex": 3,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -2936,24 +2276,24 @@
       {
         "canopy": false,
         "matrix": [
-          7.7431230545043945,
+          10.500193119049072,
           0,
           0,
           0,
           0,
-          7.7431230545043945,
+          10.500193119049072,
           0,
           0,
           0,
           0,
-          7.7431230545043945,
+          10.500193119049072,
           0,
-          0.1275463104248047,
-          3.5910934805870056,
+          0.0000171661376953125,
+          -0.00018358230590820312,
           0,
           1
         ],
-        "name": "Bridge_1",
+        "name": "rendersfrenderaftermath-aft-cockpit-sectionflight-static-lane1_1",
         "planIndex": 4,
         "tags": {
           "canopy": false,
@@ -2963,24 +2303,24 @@
       {
         "canopy": false,
         "matrix": [
-          7.7431230545043945,
+          10.500193119049072,
           0,
           0,
           0,
           0,
-          7.7431230545043945,
+          10.500193119049072,
           0,
           0,
           0,
           0,
-          7.7431230545043945,
+          10.500193119049072,
           0,
-          0.1275463104248047,
-          3.5910934805870056,
+          0.0000171661376953125,
+          -0.00018358230590820312,
           0,
           1
         ],
-        "name": "Bridge_2",
+        "name": "rendersfrenderaftermath-aft-cockpit-sectionflight-static-lane1_2",
         "planIndex": 5,
         "tags": {
           "canopy": false,
@@ -2990,24 +2330,24 @@
       {
         "canopy": false,
         "matrix": [
-          7.7431230545043945,
+          10.500193119049072,
           0,
           0,
           0,
           0,
-          7.7431230545043945,
+          10.500193119049072,
           0,
           0,
           0,
           0,
-          7.7431230545043945,
+          10.500193119049072,
           0,
-          0.1275463104248047,
-          3.5910934805870056,
+          0.0000171661376953125,
+          -0.00018358230590820312,
           0,
           1
         ],
-        "name": "Bridge_3",
+        "name": "rendersfrenderaftermath-aft-cockpit-sectionflight-static-lane1_3",
         "planIndex": 6,
         "tags": {
           "canopy": false,
@@ -3017,24 +2357,24 @@
       {
         "canopy": false,
         "matrix": [
-          7.7431230545043945,
+          10.500193119049072,
           0,
           0,
           0,
           0,
-          7.7431230545043945,
+          10.500193119049072,
           0,
           0,
           0,
           0,
-          7.7431230545043945,
+          10.500193119049072,
           0,
-          0.1275463104248047,
-          3.5910934805870056,
+          0.0000171661376953125,
+          -0.00018358230590820312,
           0,
           1
         ],
-        "name": "Bridge_4",
+        "name": "rendersfrenderaftermath-aft-cockpit-sectionflight-static-lane1_4",
         "planIndex": 7,
         "tags": {
           "canopy": false,
@@ -3044,24 +2384,24 @@
       {
         "canopy": false,
         "matrix": [
-          0.5693378448486328,
+          10.500193119049072,
           0,
           0,
           0,
           0,
-          0.5693378448486328,
+          10.500193119049072,
           0,
           0,
           0,
           0,
-          0.5693378448486328,
+          10.500193119049072,
           0,
-          -3.1817264556884766,
-          3.306424140930176,
-          -7.742984294891357,
+          0.0000171661376953125,
+          -0.00018358230590820312,
+          0,
           1
         ],
-        "name": "BridgeWin_0",
+        "name": "rendersfrenderaftermath-aft-cockpit-sectionflight-static-lane1_5",
         "planIndex": 8,
         "tags": {
           "canopy": false,
@@ -3071,24 +2411,24 @@
       {
         "canopy": false,
         "matrix": [
-          0.5693378448486328,
+          10.500193119049072,
           0,
           0,
           0,
           0,
-          0.5693378448486328,
+          10.500193119049072,
           0,
           0,
           0,
           0,
-          0.5693378448486328,
+          10.500193119049072,
           0,
-          -3.1817264556884766,
-          3.306424140930176,
-          7.742984294891357,
+          0.0000171661376953125,
+          -0.00018358230590820312,
+          0,
           1
         ],
-        "name": "BridgeWin_0_M",
+        "name": "rendersfrenderaftermath-aft-cockpit-sectionflight-static-lane1_6",
         "planIndex": 9,
         "tags": {
           "canopy": false,
@@ -3098,24 +2438,24 @@
       {
         "canopy": false,
         "matrix": [
-          0.5693359375,
+          10.500193119049072,
           0,
           0,
           0,
           0,
-          0.5693359375,
+          10.500193119049072,
           0,
           0,
           0,
           0,
-          0.5693359375,
+          10.500193119049072,
           0,
-          -1.5448799133300781,
-          3.306424140930176,
-          -7.742984294891357,
+          0.0000171661376953125,
+          -0.00018358230590820312,
+          0,
           1
         ],
-        "name": "BridgeWin_1",
+        "name": "rendersfrenderaftermath-aft-cockpit-sectionflight-static-lane1_7",
         "planIndex": 10,
         "tags": {
           "canopy": false,
@@ -3125,619 +2465,25 @@
       {
         "canopy": false,
         "matrix": [
-          0.5693359375,
+          10.500193119049072,
           0,
           0,
           0,
           0,
-          0.5693359375,
+          10.500193119049072,
           0,
           0,
           0,
           0,
-          0.5693359375,
+          10.500193119049072,
           0,
-          -1.5448799133300781,
-          3.306424140930176,
-          7.742984294891357,
+          0.0000171661376953125,
+          -0.00018358230590820312,
+          0,
           1
         ],
-        "name": "BridgeWin_1_M",
+        "name": "rendersfrenderaftermath-aft-cockpit-sectionflight-static-lane1_8",
         "planIndex": 11,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.5693359375,
-          0,
-          0,
-          0,
-          0,
-          0.5693359375,
-          0,
-          0,
-          0,
-          0,
-          0.5693359375,
-          0,
-          0.0919647216796875,
-          3.306424140930176,
-          -7.742984294891357,
-          1
-        ],
-        "name": "BridgeWin_2",
-        "planIndex": 12,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.5693359375,
-          0,
-          0,
-          0,
-          0,
-          0.5693359375,
-          0,
-          0,
-          0,
-          0,
-          0.5693359375,
-          0,
-          0.0919647216796875,
-          3.306424140930176,
-          7.742984294891357,
-          1
-        ],
-        "name": "BridgeWin_2_M",
-        "planIndex": 13,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.5693359375,
-          0,
-          0,
-          0,
-          0,
-          0.5693359375,
-          0,
-          0,
-          0,
-          0,
-          0.5693359375,
-          0,
-          1.7288093566894531,
-          3.306424140930176,
-          -7.742984294891357,
-          1
-        ],
-        "name": "BridgeWin_3",
-        "planIndex": 14,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.5693359375,
-          0,
-          0,
-          0,
-          0,
-          0.5693359375,
-          0,
-          0,
-          0,
-          0,
-          0.5693359375,
-          0,
-          1.7288093566894531,
-          3.306424140930176,
-          7.742984294891357,
-          1
-        ],
-        "name": "BridgeWin_3_M",
-        "planIndex": 15,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.2846698760986328,
-          0,
-          0,
-          0,
-          0,
-          0.2846698760986328,
-          0,
-          0,
-          0,
-          0,
-          0.2846698760986328,
-          0,
-          5.792451858520508,
-          5.412972450256348,
-          -2.277348279953003,
-          1
-        ],
-        "name": "Flood",
-        "planIndex": 16,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.2846698760986328,
-          0,
-          0,
-          0,
-          0,
-          0.2846698760986328,
-          0,
-          0,
-          0,
-          0,
-          0.2846698760986328,
-          0,
-          5.792451858520508,
-          5.412972450256348,
-          2.277348279953003,
-          1
-        ],
-        "name": "Flood_M",
-        "planIndex": 17,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          3.416022539138794,
-          0,
-          0,
-          0,
-          0,
-          3.416022539138794,
-          0,
-          0,
-          0,
-          0,
-          3.416022539138794,
-          0,
-          5.393915176391602,
-          5.356038570404053,
-          0,
-          1
-        ],
-        "name": "LampBar",
-        "planIndex": 18,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.22773483395576477,
-          0,
-          0,
-          0,
-          0,
-          0.22773483395576477,
-          0,
-          0,
-          0,
-          0,
-          0.22773483395576477,
-          0,
-          -1.7227973937988281,
-          5.669172763824463,
-          0,
-          1
-        ],
-        "name": "Mast_Foot",
-        "planIndex": 19,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          2.277348518371582,
-          0,
-          0,
-          0,
-          0,
-          2.277348518371582,
-          0,
-          0,
-          0,
-          0,
-          2.277348518371582,
-          0,
-          -1.7227973937988281,
-          7.861122131347656,
-          0,
-          1
-        ],
-        "name": "Mast_Mast",
-        "planIndex": 20,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          4.839365482330322,
-          0,
-          0,
-          0,
-          0,
-          4.839365482330322,
-          0,
-          0,
-          0,
-          0,
-          4.839365482330322,
-          0,
-          -0.014787673950195312,
-          -1.8176092505455017,
-          0,
-          1
-        ],
-        "name": "TowerBase",
-        "planIndex": 23,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1.1753559112548828,
-          0,
-          0,
-          0,
-          0,
-          1.1753559112548828,
-          0,
-          0,
-          0,
-          0,
-          1.1753559112548828,
-          0,
-          0.44545555114746094,
-          -5.665017127990723,
-          5.268478155136108,
-          1
-        ],
-        "name": "towerBase_rib0",
-        "planIndex": 24,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.907752513885498,
-          0,
-          0,
-          0,
-          0,
-          0.907752513885498,
-          0,
-          0,
-          0,
-          0,
-          0.907752513885498,
-          0,
-          -3.697240948677063,
-          -5.501986980438232,
-          3.5316426753997803,
-          1
-        ],
-        "name": "towerBase_rib1",
-        "planIndex": 25,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1.0861546993255615,
-          0,
-          0,
-          0,
-          0,
-          1.0861546993255615,
-          0,
-          0,
-          0,
-          0,
-          1.0861546993255615,
-          0,
-          -5.21357536315918,
-          -5.610673666000366,
-          -0.6737515479326248,
-          1
-        ],
-        "name": "towerBase_rib2",
-        "planIndex": 26,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.8185513019561768,
-          0,
-          0,
-          0,
-          0,
-          0.8185513019561768,
-          0,
-          0,
-          0,
-          0,
-          0.8185513019561768,
-          0,
-          -2.641534745693207,
-          -5.447643518447876,
-          -4.34157121181488,
-          1
-        ],
-        "name": "towerBase_rib3",
-        "planIndex": 27,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.9969527721405029,
-          0,
-          0,
-          0,
-          0,
-          0.9969527721405029,
-          0,
-          0,
-          0,
-          0,
-          0.9969527721405029,
-          0,
-          1.8189163208007812,
-          -5.556330442428589,
-          -4.8317553997039795,
-          1
-        ],
-        "name": "towerBase_rib4",
-        "planIndex": 28,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1.1753559112548828,
-          0,
-          0,
-          0,
-          0,
-          1.1753559112548828,
-          0,
-          0,
-          0,
-          0,
-          1.1753559112548828,
-          0,
-          4.956243515014648,
-          -5.665017127990723,
-          -1.6337511837482452,
-          1
-        ],
-        "name": "towerBase_rib5",
-        "planIndex": 29,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.9077515602111816,
-          0,
-          0,
-          0,
-          0,
-          0.9077515602111816,
-          0,
-          0,
-          0,
-          0,
-          0.9077515602111816,
-          0,
-          4.229364395141602,
-          -5.501986980438232,
-          2.8234413862228394,
-          1
-        ],
-        "name": "towerBase_rib6",
-        "planIndex": 30,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          6.120372772216797,
-          0,
-          0,
-          0,
-          0,
-          6.120372772216797,
-          0,
-          0,
-          0,
-          0,
-          6.120372772216797,
-          0,
-          0.1275482177734375,
-          -4.5219603180885315,
-          5.978039026260376,
-          1
-        ],
-        "name": "TowerSkirt",
-        "planIndex": 31,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.5693378448486328,
-          0,
-          0,
-          0,
-          0,
-          0.5693378448486328,
-          0,
-          0,
-          0,
-          0,
-          0.5693378448486328,
-          0,
-          -1.2957935333251953,
-          -0.9636037349700928,
-          -4.896298885345459,
-          1
-        ],
-        "name": "TowerWin_0",
-        "planIndex": 32,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.5693378448486328,
-          0,
-          0,
-          0,
-          0,
-          0.5693378448486328,
-          0,
-          0,
-          0,
-          0,
-          0.5693378448486328,
-          0,
-          -1.2957935333251953,
-          -0.9636037349700928,
-          4.896298885345459,
-          1
-        ],
-        "name": "TowerWin_0_M",
-        "planIndex": 33,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.5693378448486328,
-          0,
-          0,
-          0,
-          0,
-          0.5693378448486328,
-          0,
-          0,
-          0,
-          0,
-          0.5693378448486328,
-          0,
-          1.2662220001220703,
-          -0.9636037349700928,
-          -4.896298885345459,
-          1
-        ],
-        "name": "TowerWin_1",
-        "planIndex": 34,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.5693378448486328,
-          0,
-          0,
-          0,
-          0,
-          0.5693378448486328,
-          0,
-          0,
-          0,
-          0,
-          0.5693378448486328,
-          0,
-          1.2662220001220703,
-          -0.9636037349700928,
-          4.896298885345459,
-          1
-        ],
-        "name": "TowerWin_1_M",
-        "planIndex": 35,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -3748,20 +2494,20 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_aft_cockpit_section.glb"
   },
-  "runtimeHash": "5fdaf58c71400e4b5de6aa61cf15e8f727f0fba42fc5ca1d7cbc6b78acc01820",
+  "runtimeHash": "3afbf1ab0f65963cbefd41e3d9c69afac65cb3ebbfc9bdc0773f700ec37f65cb",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
-          6.247920989990234,
-          10.500009916021305,
-          7.814153697415239
+          6.248156008119531,
+          10.500009536743164,
+          7.814499630760542
         ],
         "min": [
-          -6.247886868120132,
-          -10.500376752926723,
-          -7.814153697415239
+          -6.24812167584414,
+          -10.50037670135498,
+          -7.814499630760542
         ]
       },
       "id": "sf.render.aftermath-aft-cockpit-section.body",

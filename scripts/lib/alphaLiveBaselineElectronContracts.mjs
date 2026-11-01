@@ -264,6 +264,16 @@ export function createStrictElectronApplicationIssueTracker(electronApp, options
     const level = readMaybeFunction(message, 'type') || 'unknown';
     if (level === 'error' || level === 'warning') {
       const issue = { source: 'console', level, text: readMaybeFunction(message, 'text') || '' };
+      // Resource-load errors can carry their URL only in the ConsoleMessage location.
+      // Retain it for attribution without changing the strict response/method verdict.
+      try {
+        const location = readMaybeFunction(message, 'location');
+        if (location?.url) issue.location = {
+          url: String(location.url),
+          lineNumber: location.lineNumber,
+          columnNumber: location.columnNumber,
+        };
+      } catch (_) { /* Some Electron console events have no page location. */ }
       if (allowAbsentPlayerStore && level === 'error' && isGenericNotFoundConsole(issue.text)) {
         if (expectedAbsentStoreConsoleTokens > 0) {
           expectedAbsentStoreConsoleTokens -= 1;
@@ -1058,6 +1068,7 @@ export function createElectronProcessMonitor({
   let monitorErrorCount = 0;
   let truncatedCompletedLineCount = 0;
   let closingStarted = false;
+  let closingStartedAt = null;
   let stopped = false;
 
   const addListener = (emitter, event, handler) => {
@@ -1244,6 +1255,7 @@ export function createElectronProcessMonitor({
       schema: 'spaceface.electronProcessMonitor.v1',
       pid: capturedPid,
       closingStarted,
+      closingStartedAt,
       stopped,
       messages: messages.slice(),
       pendingLineFragments: [...sourceLines.entries()]
@@ -1274,6 +1286,7 @@ export function createElectronProcessMonitor({
     capturedPid,
     markClosing() {
       closingStarted = true;
+      closingStartedAt ||= new Date().toISOString();
     },
     async waitForClose(timeoutMs = 15_000) {
       if (processCloseEvents.length > 0) {
@@ -1366,6 +1379,47 @@ export function assessElectronProcessHealth(snapshot = {}) {
   return { pass: failures.length === 0, failures, snapshot };
 }
 
+// Serialized into Electron's main process immediately before the harness requests app.close().
+// This observes the existing quit-preparation IPC reply and writes only bounded primitive data
+// into the already-owned ChildProcess stdout stream.
+export function installElectronQuitPreparedStdoutObserver({ ipcMain, webContents, stdout, now = () => new Date().toISOString() } = {}) {
+  if (!ipcMain || typeof ipcMain.on !== 'function' || typeof ipcMain.removeListener !== 'function'
+    || !stdout || typeof stdout.write !== 'function') {
+    return { installed: false };
+  }
+  const ownedContents = new Set((Array.isArray(webContents) ? webContents : []).filter(Boolean));
+  if (ownedContents.size === 0) return { installed: false };
+
+  const channel = 'spaceface:quit-prepared';
+  const onReply = (event, _token, result) => {
+    if (!ownedContents.has(event?.sender)) return;
+    ipcMain.removeListener(channel, onReply);
+    const record = {
+      ok: result?.ok === true,
+      reason: typeof result?.reason === 'string' ? result.reason.slice(0, 160) : null,
+      timestamp: now(),
+    };
+    try { stdout.write(`[spaceface.quit-prepared] ${JSON.stringify(record)}\n`); } catch { /* process is already closing */ }
+  };
+  ipcMain.on(channel, onReply);
+  return { installed: true };
+}
+
+async function installElectronQuitPreparedObserver(electronApp) {
+  if (typeof electronApp?.evaluate !== 'function') return { installed: false, reason: 'electron-main-evaluate-unavailable' };
+  try {
+    const result = await electronApp.evaluate((electron, installerSource) => {
+      const install = new Function(`return (${installerSource})`)();
+      const { ipcMain, BrowserWindow } = electron;
+      const webContents = BrowserWindow.getAllWindows().map((window) => window.webContents);
+      return install({ ipcMain, webContents, stdout: process.stdout });
+    }, installElectronQuitPreparedStdoutObserver.toString());
+    return { installed: result?.installed === true, reason: result?.installed === true ? null : 'observer-install-returned-unavailable' };
+  } catch (error) {
+    return { installed: false, reason: String(error?.message || error).slice(0, 240) };
+  }
+}
+
 export async function closeOwnedElectronRuntime(resources, {
   fetchImpl = globalThis.fetch,
   timeoutSignalFactory = (milliseconds) => AbortSignal.timeout(milliseconds),
@@ -1403,6 +1457,8 @@ export async function closeOwnedElectronRuntime(resources, {
     urlTracker: null,
     processMonitor: null,
     processHealth: null,
+    quitPreparedObserver: { installed: false, reason: null },
+    quitRequestedAt: null,
   };
 
   if (resources.page && !resources.page.isClosed() && resources.canonicalUrlTracker) {
@@ -1414,6 +1470,8 @@ export async function closeOwnedElectronRuntime(resources, {
     report.failures.push('live Electron page or canonical URL tracker was unavailable immediately before close');
   }
 
+  report.quitPreparedObserver = await installElectronQuitPreparedObserver(resources.electronApp);
+  report.quitRequestedAt = new Date().toISOString();
   resources.processMonitor?.markClosing();
   if (!resources.electronApp || typeof resources.electronApp.close !== 'function') {
     report.failures.push('owned Electron application handle is missing');

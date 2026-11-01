@@ -50,9 +50,9 @@ ${C} { pointer-events:none; }
 ${C} .gm-viewport, ${C} .gm-viewport canvas { pointer-events:auto; }
 /* ============================ THE HEADER ============================================ */
 ${C} .gm-title { text-shadow:0 2px 28px rgb(5 7 10 / .7); }
-${C} .gm-stamp { ${LABEL} font-size:12px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .7) !important; }
+${C} .gm-stamp { ${LABEL} font-size:12px !important; letter-spacing:.06em !important; color:rgb(${BONE} / .7) !important; }
 /* CONTROLS and CLOSE are words; CLOSE keeps its ESC key glyph */
-${C} :is(.gm-hint-btn, .gm-close) { ${PLAIN} ${LABEL} min-height:32px !important; padding:4px 2px 4px 12px !important; font-size:12px !important; letter-spacing:.2em !important;
+${C} :is(.gm-hint-btn, .gm-close) { ${PLAIN} ${LABEL} min-height:32px !important; padding:4px 2px 4px 12px !important; font-size:12px !important; letter-spacing:.06em !important;
   color:rgb(${BONE} / .86) !important; text-shadow:none !important; cursor:pointer; }
 ${C} :is(.gm-hint-btn, .gm-close)::before { ${RESET_PSEUDO} }
 ${C} .gm-hint-btn::after { ${RESET_PSEUDO} }
@@ -79,7 +79,7 @@ ${C} :is(.gm-rail-track, .gm-rail-marker) { display:none !important; }
 /* the level reading is the lever's own word row now; its text stays for the checks and the reader */
 ${C} .gm-level { position:absolute !important; width:1px !important; height:1px !important; overflow:hidden !important; clip:rect(0 0 0 0) !important; white-space:nowrap !important; }
 ${C} .gm-scale-buttons.k-words { position:relative !important; gap:0 30px !important; background:none !important; padding:0 0 16px !important; isolation:isolate; }
-${C} .gm-scale-btn.k-word { ${PLAIN} ${LABEL} position:relative; z-index:1; min-height:28px !important; padding:0 2px 0 8px !important; font-size:12px !important; letter-spacing:.2em !important;
+${C} .gm-scale-btn.k-word { ${PLAIN} ${LABEL} position:relative; z-index:1; min-height:28px !important; padding:0 2px 0 8px !important; font-size:12px !important; letter-spacing:.06em !important;
   color:rgb(${BONE} / .66) !important; text-shadow:0 1px 8px rgb(5 7 10 / .9) !important; }
 ${C} .gm-scale-btn.k-word:is(:hover) { color:rgb(${BONE} / .95) !important; }
 ${C} .gm-scale-btn.k-word:focus-visible { outline:none !important; color:rgb(248 244 234) !important; ${SEG()} }
@@ -296,7 +296,7 @@ ${C} .gm-navfoot .gm-nav-row:not([data-tone="muted"])::before { background:rgb(2
 ${C} .gm-navfoot .gm-nav-row[data-tone="tracked"]::before { width:12px; height:12px; left:-1px; top:-21px; background:rgb(255 250 238); box-shadow:0 0 0 4px rgb(255 240 214 / .18), 0 0 16px 4px rgb(255 240 214 / .5); }
 ${C} .gm-navfoot .gm-nav-row[data-tone="tracked"]:not(:first-child)::after { content:""; position:absolute; top:-17px; height:3px; left:calc(-100% - var(--k-gap, 32px)); width:calc(100% + var(--k-gap, 32px));
   background:linear-gradient(90deg, rgb(248 244 234 / .2), rgb(248 244 234 / .95)); box-shadow:0 0 10px 1px rgb(255 240 214 / .3); pointer-events:none; }
-${C} .gm-navfoot .gm-nav-row-k { ${LABEL} font-size:12px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .7) !important; }
+${C} .gm-navfoot .gm-nav-row-k { ${LABEL} font-size:12px !important; letter-spacing:.06em !important; color:rgb(${BONE} / .7) !important; }
 ${C} .gm-navfoot .gm-nav-row-v { color:rgb(248 244 234) !important; }
 ${C} .gm-navfoot .gm-nav-row[data-tone="tracked"] .gm-nav-row-v { color:var(--dp-phos, #dfeeff) !important; }
 ${C} .gm-navfoot .gm-nav-row[data-tone="muted"] .gm-nav-row-v { color:rgb(${BONE} / .66) !important; }

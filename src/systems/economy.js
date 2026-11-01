@@ -6144,6 +6144,12 @@ export const economy = {
     delete econ.dockSlamLatch;
     econ.pulse = restoreEconomyPulse(data.pulse, this.state.simTime);
     econ.balanceVersion = BALANCE.version;
+    // Rebuilt histories and missing cycles must not depend on market activity in the session
+    // that happened to precede this load. Their draws start from the saved stream, which is
+    // restored again below so reconstruction does not consume the player's future RNG state.
+    econ.rngSeed = (Number.isFinite(data.rngSeed) && (data.rngSeed >>> 0) !== 0)
+      ? data.rngSeed >>> 0
+      : hash32(this.state.meta && this.state.meta.seed, 'economy');
     this._syntheticHistoryKeys = new Set();
     this._restoredQuoteKeys = new Set();
     // Restore formula state before pricing so mid includes the saved wave, not a fresh invent.

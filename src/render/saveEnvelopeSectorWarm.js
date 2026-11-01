@@ -44,10 +44,9 @@ import { sectorGlobalOrigin } from '../data/sectorCoordinates.js';
 import { zonesForSector } from '../data/sectorZones.js';
 import { hash32, mulberry32 } from '../core/rng.js';
 import { rockSubstanceForSlot } from '../data/rockSubstances.js';
-import { sectorEnterTrafficShipStubs, priorityCourierServiceForSector, TRAFFIC_ROLES } from '../systems/traffic.js';
-import { planFactionPresence } from '../data/factionPresence.js';
+import { sectorEnterTrafficShipStubs, priorityCourierServiceForSector, TRAFFIC_ROLES } from '../data/trafficPresentationReads.js';
+import { currentStoryInputs, planFactionPresence } from '../data/factionPresence.js';
 import { lossesFor } from '../systems/lossLedger.js';
-import { currentStoryInputs } from '../systems/factionPresence.js';
 import { UNIQUE_WRECKS, UNIQUE_WRECK_MATERIALIZE_PHASES } from '../data/uniqueWrecks.js';
 
 const SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s]));

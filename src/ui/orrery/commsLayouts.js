@@ -22,10 +22,14 @@ const BONE = '236 230 216';
 const LABEL = 'font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-variation-settings:"wdth" 112, "wght" 650; font-weight:650; text-transform:uppercase;';
 
 const CSS = `
-/* one pool of shade for the whole fan, feathered on every side */
+/* one pool of shade for the whole fan, feathered on every side — plus a deeper bed behind the
+   panel itself: when the fan opens over the flight verb ladder it must read as a deliberate
+   instrument covering the column, not as text sliced by a hard edge (bench comms-radial). */
 ${F} { isolation:isolate; width:min(392px, 42vw); }
 ${F}::before { content:""; position:absolute; inset:-40px -78px -34px -64px; z-index:-1; pointer-events:none;
-  background:radial-gradient(ellipse closest-side at 44% 50%, rgb(3 4 7 / .86), rgb(3 4 7 / .66) 56%, rgb(3 4 7 / 0)); }
+  background:
+    radial-gradient(ellipse closest-side at 44% 50%, rgb(3 4 7 / .9), rgb(3 4 7 / .72) 58%, rgb(3 4 7 / 0)),
+    linear-gradient(0deg, rgb(3 4 7 / .55) 0 100%) 50% 100% / 130% 130% no-repeat; }
 
 /* ---- the contact: a callsign, two label words, a lit trace ---- */
 ${F} .sf-commsfan__hub { position:relative; border:0 !important; border-image:none !important; border-radius:0; background:none !important; box-shadow:none !important;
@@ -36,7 +40,7 @@ ${F} .sf-commsfan__hub:is(:hover, :focus-visible)::before { background:rgb(255 2
 ${F} .sf-commsfan__crest { color:rgb(${BONE} / .9); }
 ${F} .sf-commsfan__pilot { font-family:var(--dp-face-display, "Archivo"); font-stretch:125%; font-variation-settings:"wdth" 125, "wght" 800; font-weight:800;
   font-size:20px; line-height:24px; letter-spacing:-.005em; text-transform:uppercase; color:rgb(250 246 236); text-shadow:none; }
-${F} :is(.sf-commsfan__class, .sf-commsfan__freq) { ${LABEL} font-size:12px; line-height:16px; letter-spacing:.16em; color:rgb(${BONE} / .72); }
+${F} :is(.sf-commsfan__class, .sf-commsfan__freq) { ${LABEL} font-size:13px; line-height:17px; letter-spacing:.05em; color:rgb(${BONE} / .72); }
 /* the trace: a phosphor line (core over its own wider bloom stroke) on a ruled baseline, no box */
 ${F} .sf-commsfan__ribbon { height:34px; padding:0; margin:6px 0 0; border-radius:0; box-shadow:none; filter:none !important; color:var(--dp-phos, #dfeeff);
   background:

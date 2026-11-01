@@ -5,7 +5,7 @@
 // exemption. A check may subtract a receipt only when the raw body id + occupant generation
 // resolve to the same reader life and the receipt is complete field provenance.
 
-export const IMPULSE_RECEIPT_SCHEMA_VERSION = 2;
+export const IMPULSE_RECEIPT_SCHEMA_VERSION = 3;
 // `maxReceipts` bounds distinct delivered impulse streams. Field streams are compacted into
 // exact per-tick samples, so a steady field does not overflow merely because it is applied to
 // the same body repeatedly. `maxSeriesPoints` keeps that compact representation bounded too.
@@ -13,6 +13,7 @@ export const IMPULSE_RECEIPT_LIMITS = Object.freeze({
   maxReceipts: 256,
   maxTicks: 120,
   maxSeriesPoints: 4096,
+  maxLineage: 512,
 });
 
 const finite = (value) => Number.isFinite(value) ? Number(value) : null;
@@ -36,7 +37,48 @@ function normalizeLimits(options = {}) {
     ? options.maxTicks : IMPULSE_RECEIPT_LIMITS.maxTicks;
   const maxSeriesPoints = Number.isSafeInteger(options.maxSeriesPoints) && options.maxSeriesPoints > 0
     ? options.maxSeriesPoints : IMPULSE_RECEIPT_LIMITS.maxSeriesPoints;
-  return { maxReceipts, maxTicks, maxSeriesPoints };
+  const maxLineage = Number.isSafeInteger(options.maxLineage) && options.maxLineage > 0
+    ? options.maxLineage : IMPULSE_RECEIPT_LIMITS.maxLineage;
+  return { maxReceipts, maxTicks, maxSeriesPoints, maxLineage };
+}
+
+const LINEAGE_FIELDS = Object.freeze([
+  'runCohort', 'runWave', 'swarmArenaDebris', 'arenaShardOf', 'arenaShardSectorId',
+  'collisionTearOff', 'collisionTearOffOf', 'physicalBreakup', 'persistenceOwner',
+  'parentType', 'parentId', 'sourceId', 'markerId', 'homeSectorId', 'victimId', 'killerId',
+]);
+
+function scalar(value) {
+  if (typeof value === 'string') return value.slice(0, 96);
+  if (typeof value === 'boolean') return value;
+  return Number.isFinite(value) ? Number(value) : null;
+}
+
+function entityLineage(entity, tick, phase, velocity = null) {
+  const rawEntityId = safeRawEntityId(entity?.id);
+  const occupantGeneration = safeGeneration(entity?.occupantGeneration);
+  if (rawEntityId == null || occupantGeneration == null) return null;
+  const data = entity?.data && typeof entity.data === 'object' ? entity.data : {};
+  const tags = {};
+  for (const key of LINEAGE_FIELDS) {
+    if (data[key] != null) tags[key] = scalar(data[key]);
+  }
+  if (data.aftermath?.victimId != null) tags.aftermathParentId = scalar(data.aftermath.victimId);
+  const type = typeof entity?.type === 'string' ? entity.type.slice(0, 48) : null;
+  if (phase === 'spawn' && !['wreck', 'asteroid'].includes(type)
+    && !Object.keys(tags).length) return null;
+  if (phase === 'first-seen' && !['wreck', 'asteroid'].includes(type)
+    && !Object.keys(tags).length) return null;
+  const entry = { rawEntityId, occupantGeneration, type, tags };
+  const pointVelocity = point(velocity || entity?.vel);
+  if (validPoint(pointVelocity)) entry.velocity = pointVelocity;
+  const safeTickValue = safeTick(tick);
+  if (safeTickValue != null) entry.tick = safeTickValue;
+  return entry;
+}
+
+function lineageKey(entry) {
+  return JSON.stringify([entry.rawEntityId, entry.occupantGeneration]);
 }
 
 function normalizeReceipt(observation) {
@@ -176,7 +218,7 @@ function compactFieldReceipt(receipt) {
  * authoritative first-flight tick. Only receipts in [tick, tick + maxTicks) are retained.
  */
 export function createBoundedImpulseReceiptCollector(options = {}) {
-  const { maxReceipts, maxTicks, maxSeriesPoints } = normalizeLimits(options);
+  const { maxReceipts, maxTicks, maxSeriesPoints, maxLineage } = normalizeLimits(options);
   let armed = false;
   let started = false;
   let flightStartTick = null;
@@ -186,6 +228,9 @@ export function createBoundedImpulseReceiptCollector(options = {}) {
   let ignoredUnownedFieldCount = 0;
   const receipts = [];
   const pending = [];
+  const lineage = [];
+  const lineageByLife = new Map();
+  let lineageOverflow = false;
   const fieldBuckets = new Map();
   let seriesPointCount = 0;
 
@@ -251,6 +296,40 @@ export function createBoundedImpulseReceiptCollector(options = {}) {
   const arm = () => {
     armed = true;
     return status();
+  };
+
+  const recordLineage = (entity, tick, phase, velocity = null) => {
+    if (!armed || (phase !== 'spawn' && phase !== 'first-seen')) return false;
+    const rawEntityId = safeRawEntityId(entity?.id);
+    const occupantGeneration = safeGeneration(entity?.occupantGeneration);
+    if (rawEntityId == null || occupantGeneration == null) return false;
+    const key = lineageKey({ rawEntityId, occupantGeneration });
+    let current = lineageByLife.get(key);
+    if (current?.[phase]) return false;
+    const incoming = entityLineage(entity, tick, phase, velocity);
+    if (!incoming) return false;
+    if (!current) {
+      if (lineage.length >= maxLineage) {
+        lineageOverflow = true;
+        return false;
+      }
+      current = { rawEntityId: incoming.rawEntityId, occupantGeneration: incoming.occupantGeneration };
+      lineage.push(current);
+      lineageByLife.set(key, current);
+    }
+    // Spawn-event and first-seen snapshots stay separate: tags may be attached between them,
+    // but later impulses cannot rewrite either observation.
+    current[phase] = phase === 'spawn'
+      ? { tick: incoming.tick, type: incoming.type, tags: incoming.tags,
+        velocityAtEvent: incoming.velocity }
+      : { tick: incoming.tick, type: incoming.type, tags: incoming.tags,
+        velocityAtFirstSeen: incoming.velocity };
+    return true;
+  };
+  const clearLineage = () => {
+    lineage.length = 0;
+    lineageByLife.clear();
+    lineageOverflow = false;
   };
 
   const begin = (tick) => {
@@ -337,6 +416,7 @@ export function createBoundedImpulseReceiptCollector(options = {}) {
       maxReceipts,
       maxTicks,
       maxSeriesPoints,
+      maxLineage,
       receiptCount: receipts.length,
       seriesPointCount,
       pendingReceiptCount: pending.length,
@@ -348,6 +428,14 @@ export function createBoundedImpulseReceiptCollector(options = {}) {
       ignoredUnownedFieldCount,
       unresolvedIdentityCount: 0,
       receipts: receipts.map(cloneReceipt),
+      lineageCount: lineage.length,
+      lineageOverflow,
+      lineage: lineage.map((entry) => ({ ...entry,
+        spawn: entry.spawn ? { ...entry.spawn, tags: { ...entry.spawn.tags },
+          velocityAtEvent: entry.spawn.velocityAtEvent ? { ...entry.spawn.velocityAtEvent } : undefined } : undefined,
+        'first-seen': entry['first-seen'] ? { ...entry['first-seen'], tags: { ...entry['first-seen'].tags },
+          velocityAtFirstSeen: entry['first-seen'].velocityAtFirstSeen
+            ? { ...entry['first-seen'].velocityAtFirstSeen } : undefined } : undefined })),
     };
   };
 
@@ -355,6 +443,8 @@ export function createBoundedImpulseReceiptCollector(options = {}) {
     arm,
     begin,
     record,
+    recordLineage,
+    clearLineage,
     status,
     snapshot,
   });
@@ -374,7 +464,19 @@ export function mapImpulseReceiptIdentities(capture, identityFor) {
     if (readerLifeId == null) unresolvedIdentityCount++;
     return { ...receipt, readerLifeId };
   });
-  return { ...source, receipts: mapped, unresolvedIdentityCount };
+  const lineage = Array.isArray(source.lineage) ? source.lineage : [];
+  let unresolvedLineageIdentityCount = 0;
+  const mappedLineage = lineage.map((entry) => {
+    let readerLifeId = null;
+    if (typeof identityFor === 'function'
+      && entry?.rawEntityId != null && Number.isSafeInteger(entry?.occupantGeneration)) {
+      readerLifeId = identityFor(entry.rawEntityId, entry.occupantGeneration) ?? null;
+    }
+    if (readerLifeId == null) unresolvedLineageIdentityCount++;
+    return { ...entry, readerLifeId };
+  });
+  return { ...source, receipts: mapped, unresolvedIdentityCount,
+    lineage: mappedLineage, unresolvedLineageIdentityCount };
 }
 
 function validFieldReceipt(receipt) {

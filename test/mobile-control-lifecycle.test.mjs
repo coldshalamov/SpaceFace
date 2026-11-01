@@ -445,6 +445,47 @@ test('the gyre verb latches on the touch deck and reaches acts.gyreSnare', () =>
   assert.equal(host._held(state, 'gyreSnare'), false, 'the second tap releases the latch');
 });
 
+test('a failed mobile stylesheet disables only its still-current mount without changing preference', async () => {
+  const state = { settings: { controls: { touch: { enabled: true } } } };
+  const doc = { body: {}, documentElement: { dataset: {} } };
+  const win = {};
+  let rejectCss;
+  let destroyed = 0;
+  const cssReady = new Promise((_resolve, reject) => { rejectCss = reject; });
+  const touch = { active: false, axes: {}, actions: {}, _btnHeld: {}, tick() {}, _clearTouchState() {} };
+  enhanceMobileTouch(touch, { state }, { doc, win, mountView: () => ({
+    root: {}, cssReady, destroy() { destroyed += 1; },
+  }) });
+
+  const enabled = touch.setEnabled(true);
+  assert.equal(enabled, undefined, 'setEnabled keeps its synchronous API');
+  assert.equal(touch.active, true);
+  const originalError = console.error;
+  console.error = () => {};
+  try {
+    rejectCss(new Error('sidecar and fallback unavailable'));
+    await new Promise((resolve) => setImmediate(resolve));
+  } finally { console.error = originalError; }
+  assert.equal(touch.active, false, 'failed styling cannot leave active invisible controls');
+  assert.equal(destroyed, 1);
+  assert.equal(state.settings.controls.touch.enabled, true,
+    'runtime asset failure does not rewrite the player preference');
+
+  let rejectStale;
+  const staleCss = new Promise((_resolve, reject) => { rejectStale = reject; });
+  const staleTouch = { active: false, axes: {}, actions: {}, _btnHeld: {}, tick() {}, _clearTouchState() {} };
+  let staleDestroyed = 0;
+  enhanceMobileTouch(staleTouch, { state }, { doc, win, mountView: () => ({
+    root: {}, cssReady: staleCss, destroy() { staleDestroyed += 1; },
+  }) });
+  staleTouch.setEnabled(true);
+  staleTouch.setEnabled(false);
+  rejectStale(new Error('late failed load'));
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(staleTouch.active, false, 'a stale rejection does not re-enable a deliberately disabled mount');
+  assert.equal(staleDestroyed, 1, 'manual disable remains the sole teardown');
+});
+
 
 for (const name of ['context', 'alerts']) {
   test(`overflowing ${name} text keeps its native scroll gesture without stealing flight thumbs`, () => {

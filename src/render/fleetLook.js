@@ -161,6 +161,7 @@ export function installFleetLook(SF) {
   let hidden = null;
   let savedSize = null;
   let lastPose = null;
+  let lastCamera = null;
 
   function handles() {
     const r = state.render || {};
@@ -236,7 +237,10 @@ export function installFleetLook(SF) {
   }
 
   async function shoot(opts = {}) {
-    const { renderer, scene, camera: cam } = handles();
+    const { renderer, scene, camera: liveCamera } = handles();
+    // The live loop owns its camera between awaits. A private camera keeps this shot's
+    // projection and pose stable while admissions and shader readiness complete.
+    const cam = liveCamera.clone();
     isolate(scene);
     const width = opts.width || 1600, height = opts.height || 1000;
     if (!savedSize) {
@@ -245,7 +249,6 @@ export function installFleetLook(SF) {
       try { renderSystem?._applySize(); } catch (_) {}
     }
     cam.aspect = width / height;
-    const savedCamPos = cam.position.clone();
     holder.clear();
     const built = await build(opts);
     if (!built.root.parent) holder.add(built.root);
@@ -282,19 +285,25 @@ export function installFleetLook(SF) {
         if (t && renderer.initTexture) { try { renderer.initTexture(t); } catch (_) {} }
       }
     });
-    // Link this body's programs up front: the post route's unready-drawable guard hides any mesh
-    // whose program is still linking, and a harness frame must never be a guard-hidden blank.
-    try { renderer.compile(holder, cam, scene); } catch (_) {}
-    // The live game loop keeps re-posing the shared camera between our awaits, so pose it again
-    // right before every draw, and keep drawing until the programs have linked.
+    // File previews can also expose authored boundaries; settle those before joining the
+    // strict renderer admission (compile, upload and exact-target touch).
+    if (opts.file) ok = await waitForAuthored(renderer, scene, cam, built.root);
+    if (!ok) throw new Error('fleet-look authored preview did not settle');
+    const admit = state.render.compileObjectPipelines;
+    if (typeof admit !== 'function') throw new Error('fleet-look pipeline admission unavailable');
+    const result = await admit(holder, { explicit: true, strict: true, joinOutstanding: true,
+      isActive: () => built.root.parent === holder });
+    if (!result || result.skipped === true || result.incomplete === true || result.contextLost === true) {
+      throw new Error(`fleet-look pipeline admission incomplete: ${result?.reason || (result ? 'incomplete receipt' : 'no receipt')}`);
+    }
+    // Draw through the normal route with the same private camera used for this view.
     const pose = () => poseCamera(cam, opts.view || 'inspect', radius, opts.heading || 0, placeCenter);
-    for (let i = 0; i < 10; i++) { pose(); renderOnce(renderer, scene, cam); await wait(i < 4 ? 50 : 250); }
     // Same task as the draw: without preserveDrawingBuffer the canvas clears after compositing.
     pose();
     renderOnce(renderer, scene, cam);
     const url = renderer.domElement.toDataURL('image/png');
     lastPose = pose;
-    cam.position.copy(savedCamPos);
+    lastCamera = cam;
     if (opts.ab?.noEnvironment) scene.environment = opts._env;
     if (opts.ab?.noBackground) scene.background = opts._bg;
     return {
@@ -308,7 +317,8 @@ export function installFleetLook(SF) {
   // post route with a hard flush after each, and report the median. Call after shoot(); used by
   // scripts/look-bench.mjs --cost to price a Look value on the machine it runs on.
   async function cost(opts = {}) {
-    const { renderer, scene, camera: cam } = handles();
+    const { renderer, scene, camera: liveCamera } = handles();
+    const cam = lastCamera || liveCamera;
     const gl = renderer.getContext();
     const frames = Math.max(8, opts.frames | 0 || 40);
     const samples = [];

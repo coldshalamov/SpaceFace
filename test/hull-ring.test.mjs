@@ -125,10 +125,12 @@ function referencePicture(stats, hb, ab) {
       Object.assign(num.attrs, { x: String(f(x)), y: String(f(y)), 'text-anchor': 'middle' });
       Object.assign(label.attrs, { x: String(f(x)), y: String(f(y - 30)), 'text-anchor': 'middle' });
     } else {
-      const [x, y] = pt(mid, 20);
+      // the reading column's live geometry: the source seats the side stats at 27 and gives
+      // num / label / gloss their own bands (the gloss never prints through the label).
+      const [x, y] = pt(mid, 27);
       const anchorSide = seg.side === 'left' ? 'end' : 'start';
       Object.assign(num.attrs, { x: String(f(x)), y: String(f(y + 6)), 'text-anchor': anchorSide });
-      Object.assign(label.attrs, { x: String(f(x)), y: String(f(y + 24)), 'text-anchor': anchorSide });
+      Object.assign(label.attrs, { x: String(f(x)), y: String(f(y + 32)), 'text-anchor': anchorSide });
     }
     out.push(num, label);
   });

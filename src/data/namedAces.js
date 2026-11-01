@@ -1,7 +1,7 @@
 // BP-13/B10 Named Crews & Aces.
 //
 // Pure roster + deterministic readers. Runtime memory lives in systems/aceMemory.js.
-import { FACTION_LABELS, NAMED_CAPTAINS } from './encounters.js';
+import { FACTION_LABELS, NAMED_CAPTAINS } from './encounterIdentity.js';
 import { hash32 } from '../core/rng.js';
 import { NEMESIS_RIVAL } from './nemesisRival.js';
 

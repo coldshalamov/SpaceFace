@@ -21,7 +21,10 @@ import { resolveVfxAccessibilityProfile } from '../src/render/vfxAccessibility.j
 import { vfx } from '../src/render/vfx.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const VFX_SOURCE = readFileSync(join(ROOT, 'src/render/vfx.js'), 'utf8');
+const VFX_SOURCE = [
+  readFileSync(join(ROOT, 'src/render/vfx.js'), 'utf8'),
+  readFileSync(join(ROOT, 'src/render/vfx/shipManeuverVfx.js'), 'utf8'),
+].join('\n');
 
 // --------------------------------------------------------------------------
 // Static seam: no inline literals, every routed kind resolves.
@@ -36,11 +39,13 @@ test('every event light in vfx.js routes through the director — zero raw _flas
 // Extract the full text of each `this._eventLight(` call (paren-balanced, calls may wrap lines).
 function eventLightCallTexts(source) {
   const texts = [];
-  let idx = -1;
-  while ((idx = source.indexOf('this._eventLight(', idx + 1)) !== -1) {
+  const callStarts = [...source.matchAll(/(?:this\._eventLight|helpers\.eventLight)\s*\(/g)]
+    .map((match) => match.index);
+  for (const idx of callStarts) {
     let depth = 0;
-    let end = idx;
-    for (let i = idx; i < source.length; i++) {
+    const open = source.indexOf('(', idx);
+    let end = open;
+    for (let i = open; i < source.length; i++) {
       const ch = source[i];
       if (ch === '(') depth++;
       else if (ch === ')') {

@@ -1670,6 +1670,19 @@ export const CONTACT_VOICE_REGISTERS = Object.freeze({
     contactChoice('yard', 'Ask about the yard', [1, 4]),
     contactChoice('message', 'Take the Quiet message', [3, 5]),
   ], true),
+  // G16 — the yard's reconciliation desk: the starter berth's reason to matter at hour ten.
+  contact_ledger_march: contactVoice('dry-ledger', [
+    'Back already. The yard filed three of your hulls while you were out.',
+    'Starter berths remember what the deep sectors make people forget.',
+    'Your salvage sums reconcile. That is rarer than you think.',
+    'I do not buy wrecks. I square what the yard paid for yours.',
+    'Every pilot who returns owes the first berth one honest ledger.',
+    'Walk the yard. The records walk with you now.',
+  ], [
+    contactChoice('yard', 'What does the yard say about me?', [0, 1]),
+    contactChoice('sums', 'Square my sums.', [2, 3]),
+    contactChoice('return', 'Why mind who comes back?', [4, 5]),
+  ]),
 });
 
 // ── Captain Maera Vols: in-flight commentary (build-map row 424) ─────────────────────────────

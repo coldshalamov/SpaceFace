@@ -9,7 +9,7 @@
 // cards fired (recovery:started, pirateParley:demand, law:distressRaised). The deck's ladder made
 // that cross-card hiding obsolete: coexisting surfaces stack instead of erasing each other.
 import { TETHYS_BLACK_MARKET_DISCOVERY } from '../data/frontierRumors.js';
-import { clearCodexDiscoveryRequest, requestCodexDiscovery } from './screens/codex.js';
+import { clearCodexDiscoveryRequest, requestCodexDiscovery } from './codexRequests.js';
 import { getPromptDeck } from './promptDeck.js';
 
 const RECEIPT_TTL_S = 4;

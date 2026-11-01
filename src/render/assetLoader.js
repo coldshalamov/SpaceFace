@@ -1379,6 +1379,16 @@ export function assembleRenderPackageRecord(renderPackage, url, assetLabel = nul
   });
 }
 
+// A package outlives the load request, and its stale listener can therefore outlive the creator's
+// residency predicate/warm object. Keep this closure at module scope so its context contains only
+// the cache owner tuple, rather than sharing `loadAuthoredRenderPackagePilot`'s request scope.
+function subscribeExactPackageTaskToStaleness(renderPackage, runtime, cacheKey, task) {
+  if (!renderPackage || typeof renderPackage.onStale !== 'function') return;
+  renderPackage.onStale(() => {
+    if (runtime.assets.get(cacheKey) === task) runtime.assets.delete(cacheKey);
+  });
+}
+
 export async function loadAuthoredRenderPackagePilot(runtime, pilot, url, options) {
   const slot = options.slot || null;
   const optional = options.optional === true;
@@ -1428,11 +1438,7 @@ export async function loadAuthoredRenderPackagePilot(runtime, pilot, url, option
       // the moment the package stops being mountable; the next request re-admits through the
       // loader, which reacquires a still-cached entry or decodes a fresh generation. The exact-
       // task guard keeps a stale listener from erasing a newer re-admission task.
-      if (renderPackage && typeof renderPackage.onStale === 'function') {
-        renderPackage.onStale(() => {
-          if (runtime.assets.get(cacheKey) === task) runtime.assets.delete(cacheKey);
-        });
-      }
+      subscribeExactPackageTaskToStaleness(renderPackage, runtime, cacheKey, task);
       // Owner departed mid-load (the tail's inactive-owner settle): a null is classified by
       // the caller's isResidencyOwnerActive predicate — it must not stamp a load failure.
       if (!renderPackage) return null;

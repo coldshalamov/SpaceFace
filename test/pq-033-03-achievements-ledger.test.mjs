@@ -387,3 +387,87 @@ test('before the first shared-store sync the ledger never pushes and never claim
     globalThis.fetch = previous.fetch;
   }
 });
+
+test('normal quit waits for the achievements mirror and suppresses duplicate unload writes', async () => {
+  const previous = { location: globalThis.location, fetch: globalThis.fetch, window: globalThis.window };
+  const listeners = new Map(), puts = [];
+  let release;
+  globalThis.location = { protocol: 'http:', origin: 'http://achievement-close' };
+  globalThis.window = {
+    addEventListener: (name, fn) => listeners.set(name, fn),
+    removeEventListener: (name) => listeners.delete(name),
+  };
+  globalThis.fetch = (_url, options) => {
+    puts.push(options);
+    return new Promise((resolve) => { release = resolve; });
+  };
+  let ledger;
+  try {
+    const h = harness(); ledger = h.ledger;
+    h.bus.emit('save:store-synced', { ok: true });
+    const quit = ledger.prepareForQuit();
+    let finished = false;
+    quit.then(() => { finished = true; });
+    await Promise.resolve();
+    assert.equal(finished, false);
+    assert.ok(h.storage.getItem(ACHIEVEMENTS_STORAGE_KEY), 'local bag lands before the mirror');
+    release({ ok: true });
+    assert.equal((await quit).ok, true);
+    listeners.get('beforeunload')?.();
+    listeners.get('pagehide')?.();
+    ledger.dispose();
+    assert.equal(puts.length, 1, 'successful close does not re-push the same bag');
+  } finally {
+    ledger?.dispose({ flush: false });
+    for (const [key, value] of Object.entries(previous)) {
+      if (value === undefined) delete globalThis[key]; else globalThis[key] = value;
+    }
+  }
+});
+
+test('failed achievement mirror preserves the local bag and keeps unload fallback armed', async () => {
+  const previous = { location: globalThis.location, fetch: globalThis.fetch, window: globalThis.window };
+  const listeners = new Map(), puts = [];
+  globalThis.location = { protocol: 'http:', origin: 'http://achievement-failure' };
+  globalThis.window = { addEventListener: (name, fn) => listeners.set(name, fn), removeEventListener: (name) => listeners.delete(name) };
+  globalThis.fetch = async (_url, options) => { puts.push(options); return { ok: false, status: 500 }; };
+  let ledger;
+  try {
+    const h = harness(); ledger = h.ledger;
+    h.bus.emit('save:store-synced', { ok: true });
+    assert.deepEqual(await ledger.prepareForQuit(), { ok: false, reason: 'achievements-mirror-failed', localSaved: true });
+    assert.ok(h.storage.getItem(ACHIEVEMENTS_STORAGE_KEY));
+    listeners.get('beforeunload')?.();
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(puts.length, 2);
+    assert.equal(puts[1].keepalive, true);
+  } finally {
+    ledger?.dispose({ flush: false });
+    for (const [key, value] of Object.entries(previous)) {
+      if (value === undefined) delete globalThis[key]; else globalThis[key] = value;
+    }
+  }
+});
+
+test('an absent shared store permits quit after the local achievement bag is saved', async () => {
+  const previous = { location: globalThis.location, fetch: globalThis.fetch, window: globalThis.window };
+  const listeners = new Map();
+  globalThis.location = { protocol: 'http:', origin: 'http://achievement-absent-store' };
+  globalThis.window = {
+    addEventListener: (name, fn) => listeners.set(name, fn),
+    removeEventListener: (name) => listeners.delete(name),
+  };
+  globalThis.fetch = async () => ({ ok: false, status: 404 });
+  let ledger;
+  try {
+    const h = harness(); ledger = h.ledger;
+    h.bus.emit('save:store-synced', { ok: true });
+    assert.deepEqual(await ledger.prepareForQuit(), { ok: true });
+    assert.ok(h.storage.getItem(ACHIEVEMENTS_STORAGE_KEY), 'the local achievement bag is durable');
+  } finally {
+    ledger?.dispose({ flush: false });
+    for (const [key, value] of Object.entries(previous)) {
+      if (value === undefined) delete globalThis[key]; else globalThis[key] = value;
+    }
+  }
+});

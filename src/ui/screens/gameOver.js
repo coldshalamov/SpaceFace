@@ -39,6 +39,8 @@ import { loadConfirmBody } from './saveLoad.js';
 import { rangeRungIndex } from './range.js';
 import { killcamStageRequestFor } from '../../sim/killcamTape.js';
 
+export { restoredDefeatIntent } from '../sim/restoredDefeatIntent.js';
+
 /** The career ring's stations: [label, bearing in dial degrees (0 = up, clockwise)]. Time flown reads
  *  at the hub; the lost hull's life sits by the red arc it names (top left). */
 const RING_STATIONS = Object.freeze({
@@ -238,20 +240,6 @@ export function sortieRecord(ctx = {}) {
 export function currentDefeat(ctx = {}) {
   const state = ctx.state || {};
   return state.combat && state.combat.lastPlayerDefeat || null;
-}
-
-/**
- * SF-285 — the save boundary consult for the after-action surface. A save written mid-defeat is
- * legal and restores the wreck with its durable defeated flag; that hull is owed this screen
- * again — the recovery offer (or, in Ironman, the final run-over summary) is the only reachable
- * resolution for a dead ship. Reads the entity flag, not the receipt: an older save may lack a
- * serialized receipt yet the wreck and its derived recovery berth are still truthful.
- */
-export function restoredDefeatIntent(state = {}) {
-  const player = state.entities && typeof state.entities.get === 'function'
-    ? state.entities.get(state.playerId)
-    : null;
-  return !!player && (player.alive === false || !!(player.flags && player.flags.defeated));
 }
 
 /** One offer line when the receipt names a real Range rung. Empty for every other death. */

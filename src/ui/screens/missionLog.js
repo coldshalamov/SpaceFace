@@ -52,6 +52,7 @@ import {
 import { el, rows, hero, settle, cue } from '../kit/index.js';
 import { injectDeckplate } from '../deckplate/index.js';
 import { injectArchiveLayouts } from '../orrery/archiveLayouts.js';
+import { deferScreenCssReady } from '../orrery/cssSidecar.js';
 import { injectMissionLogLayouts } from '../orrery/mission-logLayouts.js';
 import { missionDialSvg, missionDialGhostSvg, createLadderHand, archiveZoom } from '../orrery/archiveInstruments.js';
 import { hullPosterUrl } from '../hullPosters.js';
@@ -1978,7 +1979,7 @@ export const missionLogScreen = {
   mount(rootEl, ctx) {
 
     injectDeckplate();
-    injectArchiveLayouts();
+    this._markCssReady = deferScreenCssReady(rootEl, injectArchiveLayouts());
     injectMissionLogLayouts();
     this._ctx = ctx;
     this._rootEl = rootEl;
@@ -2480,7 +2481,7 @@ export const missionLogScreen = {
       if (this._compVisible) this._renderCompleted();
       if (this._corrVisible) this._renderCorridorLog();
       this._placeHand();
-      this._rootEl.dataset.kReady = '1';
+      if (this._markCssReady) this._markCssReady();
       return;
     }
 
@@ -2542,7 +2543,7 @@ export const missionLogScreen = {
     this._restoreFocusToken(focusToken);
     if (this._observeHangRows) this._observeHangRows();
     this._placeHand();
-    this._rootEl.dataset.kReady = '1';
+    if (this._markCssReady) this._markCssReady();
   },
 
   /** The Hand swings to the chosen contract's node on the beam; the beam's light cursor follows the scroll. */

@@ -51,6 +51,12 @@ import {
   makePlayerWarrantHunterSpec,
 } from '../data/bountyHunters.js';
 import {
+  CERES_AMBUSH_HAULER_SLOT,
+  isLawfulEntity as isLawful,
+  isLawProtectedBody,
+  isProtectedCivilian,
+} from '../law/protectedBodies.js';
+import {
   commodityLegality,
   isCivilianManifestPayload,
   isJettisonedCargoPod,
@@ -169,7 +175,6 @@ const LAW_JOB_RESPONSE_HOLDER = 'lawSecurity';
 // while the incident is live and hands it back at stand-down, so an authored immune hull keeps it.
 const SECURITY_RESPONSE_MORALE_RESTORE = '_lawSecurityMoraleRestore';
 const AMBIENT_SCAN_INTERVAL_TICKS = 30;
-const LAW_FACTIONS = new Set(['faction_scn', 'faction_mts', 'faction_dmc', 'faction_free']);
 const DANGEROUS_CONTEXTS = new Set([
   'zone_hostile', 'encounter', 'interdiction', 'bounty_hunter', 'named_hunter',
   'mission_hostile', 'story_hostile', 'sg06_reinforcement',
@@ -180,7 +185,6 @@ const CERES_LAW_JOB_SLOTS_BY_ID = new Map(CERES_ACTIVITY_ACTOR_SLOTS
   .filter((slot) => slot.lawful === true && slot.jobKind === 'patrol')
   .map((slot) => [slot.id, slot]));
 const CERES_ACTIVITY_SLOT_IDS = new Set(CERES_ACTIVITY_ACTOR_SLOTS.map((slot) => slot.id));
-const CERES_AMBUSH_HAULER_SLOT = 'ceres_ambush_loaded_hauler';
 const CERES_DISTRESS_STATION_ID = 'station_ceres';
 const CERES_POCKET_DISTRESS_RADIUS = 2200;
 const LAW_JOB_RESPONSE_CLAIM_CAP = CERES_LAW_JOB_SLOTS_BY_ID.size;
@@ -1044,6 +1048,9 @@ export const lawSecurity = {
     const attacker = entityById(state, payload.attackerId);
     const target = entityById(state, payload.targetId);
     if (!attacker || !target || attacker.id === target.id) return;
+    // Direct-contact physics can identify the rock itself as the impactor. A thrown rock
+    // carries its responsible actor's id instead; only that actor can be an aggressor.
+    if (payload.origin?.kind === 'collision' && attacker.type === 'asteroid') return;
     const player = entityById(state, state.playerId);
 
     this._observeInspectionCollateral(payload, attacker, target);
@@ -7160,28 +7167,10 @@ export function composedRemainingText(composed) {
   }).join('; ');
 }
 
-function isLawful(entity) {
-  if (!entity) return false;
-  const ai = entity.data && entity.data.ai || {};
-  return ai.lawful === true || (entity.type === 'station' && LAW_FACTIONS.has(entity.factionId));
-}
-
-function isProtectedCivilian(entity) {
-  if (!entity || entity.type !== 'ship') return false;
-  const data = entity.data || {};
-  if (data.activityActorSlotId === CERES_AMBUSH_HAULER_SLOT) return true;
-  const ai = data.ai || {};
-  const role = String(data.trafficRole || data.role || ai.role || ai.archetype || '').toLowerCase();
-  return entity.team === 2 || ai.spawnContext === 'convoy_civilian'
-    || ['hauler', 'courier', 'miner', 'trader', 'civilian', 'fleeing_trader'].some((word) => role.includes(word));
-}
-
 // The adjudication's own protected-body definition, shared read-only with advisory
 // presentation (INF-078): a lawful hull or a protected civilian. Advisory callers never
 // adjudicate — they only name what the law would recognize.
-export function isLawProtectedBody(entity) {
-  return isLawful(entity) || isProtectedCivilian(entity);
-}
+export { isLawProtectedBody };
 
 function isCivilianHauler(entity) {
   if (!entity || entity.type !== 'ship') return false;

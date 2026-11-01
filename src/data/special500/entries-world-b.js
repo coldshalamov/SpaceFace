@@ -162,15 +162,18 @@ export const ENTRIES_WORLD_B = [
     },
   },
 
-  // SP2-074 — The Rival's Round: Coldburn Rey buys the bar after the loss.
+  // SP2-074 — The Rival's Round: a clean player win in Coldburn Rey's relief contest.
   {
     id: 'SP2-074',
     kind: 'world-oneoff',
     title: 'The Rival\'s Round',
     sectors: [],
-    trigger: { type: 'receipt', event: 'race:ended' },
+    trigger: {
+      type: 'receipt', event: 'coldburnRey:raceSettled',
+      where: { winner: 'player', captainId: 'captain:coldburn-rey', sabotaged: false },
+    },
     channel: 'memory',
-    followup: 'barContacts canonical contact keyed to a race:ended win against the named rival (deed-memory gate on the race result): flag rey_tuition, free drinks at that bar for the session, and Rey becomes a recurring friendly rival — follow-up race offers with real stakes on the mission board.',
+    followup: 'Records a clean player win over Coldburn Rey in the supplied-load relief race, keyed by the canonical raceSettled receipt.',
     payload: {
       text: 'Coldburn Rey is at the rail, buying, for everyone, including you. "Cheapest lesson I ever bought. You flew the line I should have. First round is tuition." Nobody in the bar mentions the race again, which is how you know it mattered.',
     },

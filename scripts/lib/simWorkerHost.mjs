@@ -85,7 +85,7 @@ import {
 } from '../../src/core/timeEffects.js';
 import { canonicalClone, deepAssignInPlace } from './simReadModel.mjs';
 import { setLaneViewport, setLaneModalActive } from '../../src/systems/input.js';
-import { nowNs, realmMemoryUsage, installLaneStorage, stageLaneStorage } from './simRealm.mjs';
+import { nowNs, realmMemoryUsage, installLaneStorage, stageLaneStorage, settleLaneStorageCheck } from './simRealm.mjs';
 import { sabArenaTotalBytes } from './simSabEnvelope.mjs';
 import { insertAsteroidFieldRock, promoteAsteroidFieldRock } from '../../src/world/asteroidField.js';
 import { insertFarActor, promoteFarActor } from '../../src/world/farActorTable.js';
@@ -293,7 +293,7 @@ function pallasSeamStandbyTick(e) {
   return Number.isSafeInteger(e.data?.pallasSeamStandbyTick) ? e.data.pallasSeamStandbyTick : null;
 }
 
-export function entityVitalsOf(e) {
+export function entityVitalsOf(e, krakenFrame = VITAL_SHADOW_MISSING) {
   const fields = {};
   for (const k of VITAL_FIELDS) {
     if (e[k] !== undefined) fields[k] = e[k];
@@ -345,6 +345,7 @@ export function entityVitalsOf(e) {
     const value = authoredMotionFrameValue(e, key);
     if (value !== VITAL_SHADOW_MISSING) fields[key] = value;
   }
+  if (krakenFrame !== VITAL_SHADOW_MISSING) fields.ironKrakenMotionFrame = krakenFrame;
   return fields;
 }
 
@@ -373,7 +374,20 @@ function authoredMotionFrameValue(e, key) {
   return typeof value === 'string' && value.length <= 4096 ? value : null;
 }
 
-function vitalShadowMatches(e, shadow) {
+function krakenMotionFrame(state, e) {
+  const marker = e?.data?.ironKraken;
+  if (!marker) return VITAL_SHADOW_MISSING;
+  const fight = marker.fightId && state?.capitalBossEncounters?.fights?.[marker.fightId];
+  if (!fight || fight.bossId !== e.id) return null;
+  return JSON.stringify({ actorId: e.id, ownerLife: e.occupantGeneration ?? null,
+    fightId: marker.fightId, encounterId: fight.encounterId, clock: fight.clock,
+    phase: fight.phase, nextAt: fight.nextAt, suspended: !!fight.suspended, terminal: !!fight.terminal,
+    cast: fight.cast ? { beatId: fight.cast.beatId, startedAt: fight.cast.startedAt } : null,
+    plates: Array.isArray(fight.plates) ? fight.plates.filter(p => p.id === 'mantle_port' || p.id === 'mantle_starboard')
+      .map(p => ({ id: p.id, attached: p.attached !== false })) : [] });
+}
+
+function vitalShadowMatches(e, shadow, krakenFrame) {
   if (!Array.isArray(shadow)) return false;
   let i = 0;
   for (const key of VITAL_FIELDS) {
@@ -416,10 +430,11 @@ function vitalShadowMatches(e, shadow) {
   for (const key of AUTHORED_MOTION_FRAME_FIELDS) {
     if (authoredMotionFrameValue(e, key) !== shadow[i++]) return false;
   }
+  if (krakenFrame !== shadow[i++]) return false;
   return true;
 }
 
-function writeVitalShadow(e, shadow) {
+function writeVitalShadow(e, shadow, krakenFrame) {
   let i = 0;
   for (const key of VITAL_FIELDS) shadow[i++] = vitalShadowValue(e[key]);
   const vel = e.vel && typeof e.vel === 'object' ? e.vel : null;
@@ -458,6 +473,7 @@ function writeVitalShadow(e, shadow) {
   for (const key of AUTHORED_MOTION_FRAME_FIELDS) {
     shadow[i++] = authoredMotionFrameValue(e, key);
   }
+  shadow[i++] = krakenFrame;
   shadow.length = i;
   return shadow;
 }
@@ -503,7 +519,7 @@ function entityInfoBlock(state, entityId) {
     fieldResident: e.fieldResident === true,
     flags: flatFlags,
     ...(isOrchardFrame(e) ? { physicsBody: canonicalClone(e.physicsBody) } : {}),
-    vitals: entityVitalsOf(e),
+    vitals: entityVitalsOf(e, krakenMotionFrame(state, e)),
     data: canonicalClone(data),
   };
 }
@@ -553,11 +569,14 @@ export function collectEntityVitals(state, vitalShadow, seenScratch = null) {
     if (!e || !Number.isSafeInteger(e.id)) continue;
     seen.add(e.id);
     const previous = vitalShadow.get(e.id);
-    if (!vitalShadowMatches(e, previous)) {
+    const krakenFrame = krakenMotionFrame(state, e);
+    if (!vitalShadowMatches(e, previous, krakenFrame)) {
+      const retiredKrakenFrame = krakenFrame === VITAL_SHADOW_MISSING
+        && Array.isArray(previous) && previous[previous.length - 1] !== VITAL_SHADOW_MISSING;
       const shadow = Array.isArray(previous) ? previous : [];
-      writeVitalShadow(e, shadow);
+      writeVitalShadow(e, shadow, krakenFrame);
       vitalShadow.set(e.id, shadow);
-      const fields = entityVitalsOf(e);
+      const fields = entityVitalsOf(e, retiredKrakenFrame ? null : krakenFrame);
       out.push([e.id, fields]);
     }
   }
@@ -671,7 +690,10 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
   // worker-side writes relay back through the tick reply's storageOps so
   // durable persistence stays main-owned.
   const pendingStorageOps = [];
-  installLaneStorage(globalThis, { onWrite: (op, key, value) => pendingStorageOps.push({ op, key, value }) });
+  installLaneStorage(globalThis, { onWrite: (op, key, value) => {
+    pendingStorageOps.push({ op, key, value });
+    if (op === 'check') onAsyncSaveReady?.();
+  } });
   // Reply attachment for ANY reply kind — writes must not wait for the next
   // tickDone (init-ready/finalize/done/bye replies carry them too).
   const drainStorageOps = () => (pendingStorageOps.length ? pendingStorageOps.splice(0) : undefined);
@@ -1070,7 +1092,7 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
     });
     // Paused saves finish on later task turns, after the command's tick reply. Their real
     // bytes and terminal event need a transport wake even when no sim timer is running.
-    if (type === 'save:completed' || type === 'save:error') onAsyncSaveReady?.();
+    if (type === 'save:completed' || type === 'save:loaded' || type === 'save:error' || type === 'save:durabilitySettled') onAsyncSaveReady?.();
   }
 
   function installBridgeCapture(bus, captureAll) {
@@ -1082,7 +1104,17 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
       if (payload?.missionId == null) host.domainDiffer.invalidateLeaf('missions');
     });
     const offAccepted = bus.on('mission:accepted', () => host.domainDiffer.invalidateLeaf('missions'));
-    host.missionBoardMirrorUnsubscribe = () => { offBoardUpdate(); offAccepted(); };
+    // Terminal settlement mutates the receipt/history root before its canonical event;
+    // a paused worker may have no later tick on which the cold root could publish.
+    const offTerminal = ['mission:completed', 'mission:failed', 'mission:expired']
+      .map((event) => bus.on(event, () => host.domainDiffer.invalidateLeaf('missions')));
+    // The factions owner emits only after it actually changes standing (including spillover).
+    const offRep = bus.on('faction:repChanged', () => host.domainDiffer.invalidateLeaf('factions'));
+    host.missionBoardMirrorUnsubscribe = () => {
+      offBoardUpdate(); offAccepted();
+      for (const off of offTerminal) off();
+      offRep();
+    };
     if (captureAll === true) {
       const origEmit = bus.emit.bind(bus);
       const origQueue = typeof bus.queue === 'function' ? bus.queue.bind(bus) : null;
@@ -1270,10 +1302,44 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
       // Save persistence ops — the worker realm has no localStorage, so these
       // execute against in-memory state only (documented stage-8 gap: writes
       // do not persist to disk this stage).
+      ['saveStorageAck', (args) => ({ ok: settleLaneStorageCheck(args?.token, args?.result) })],
       ['saveWrite', (args) => {
         const s = registry.get('save');
         if (!s || typeof s.save !== 'function') return { ok: false, reason: 'save-system-unavailable' };
-        return { ok: true, result: s.save((args && args.name) || undefined) };
+        const accepted = s.save((args && args.slot) || undefined);
+        if (!accepted) return { ok: false, reason: 'save-not-accepted' };
+        Promise.resolve(s._lastSaveDurability).then((ok) => host.bus.emit('save:durabilitySettled', {
+          token: args?.token, ok: ok === true, localSaved: true,
+        }), (error) => host.bus.emit('save:durabilitySettled', {
+          token: args?.token, ok: false, localSaved: true, reason: String(error?.message || error),
+        }));
+        return { ok: true, pending: true };
+      }],
+      ['saveDrain', (args) => {
+        const s = registry.get('save');
+        if (!s?.drainSharedStoreWrites) return { ok: false, reason: 'save-system-unavailable' };
+        Promise.resolve(s.drainSharedStoreWrites()).then((result) => host.bus.emit('save:durabilitySettled', {
+          token: args?.token, ok: result?.ok === true,
+        }), (error) => host.bus.emit('save:durabilitySettled', {
+          token: args?.token, ok: false, reason: String(error?.message || error),
+        }));
+        return { ok: true, pending: true };
+      }],
+      ['savePrepareQuit', (args) => {
+        const s = registry.get('save');
+        if (!s?.prepareForQuit) return { ok: false, reason: 'save-system-unavailable' };
+        Promise.resolve(s.prepareForQuit()).then((result) => host.bus.emit('save:durabilitySettled', {
+          token: args?.token, ok: result?.ok === true, reason: result?.reason || null,
+        }), (error) => host.bus.emit('save:durabilitySettled', {
+          token: args?.token, ok: false, reason: String(error?.message || error),
+        }));
+        return { ok: true, pending: true };
+      }],
+      ['saveCancelPreparedQuit', () => {
+        const s = registry.get('save');
+        if (!s?.cancelPreparedQuit) return { ok: false, reason: 'save-system-unavailable' };
+        s.cancelPreparedQuit();
+        return { ok: true };
       }],
       ['saveLoad', (args) => {
         const s = registry.get('save');

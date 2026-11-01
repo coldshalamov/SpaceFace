@@ -9,10 +9,7 @@ import {
   combineOpeningProducerCensuses,
   stampOpeningSubmissionPackage,
 } from '../src/render/openingSubmissionPlan.js';
-import {
-  collectOpeningEntityRootCandidates,
-  collectOpeningShadowCasterRootCandidates,
-} from '../src/render/renderer.js';
+import { collectOpeningEntityRootCandidates, collectOpeningShadowCasterRootCandidates } from '../src/render/runtime/openingAdmissionPlanning.js';
 
 function stampedMesh(name) {
   const material = new THREE.MeshStandardMaterial({ name: `${name}-mat` });

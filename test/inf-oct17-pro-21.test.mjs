@@ -91,7 +91,7 @@ test('the shell shows the menu title, and a raw sector id is never the window ti
 async function mountUi(t) {
   const mounts = {
     './entityLinks.js': ['createEntityLinks'], './whyReveal.js': ['mountWhyReveal'],
-    './input.js': ['createUiInput'], './views/hudStyles.js': ['injectHudCss'],
+    './input.js': ['createUiInput'], './views/hudStylesheet.js': ['ensureHudStylesheet'],
     './racingHud.js': ['mountRacingHud'],
     './physicalJobsPrompt.js': ['createPhysicalJobsPrompt'],
     '../render/spectrum/overlay.js': ['mountSpectrumOverlay'],
@@ -126,6 +126,7 @@ async function mountUi(t) {
   const make = doc.createElement;
   doc.createElement = tag => {
     const node = make(tag);
+    if (tag === 'canvas') node.getContext = type => type === '2d' ? {} : null;
     node.removeEventListener = () => {};
     node.removeChild = child => { node.children = node.children.filter(item => item !== child); child.parentNode = null; };
     node.remove = () => node.parentNode?.removeChild(node);

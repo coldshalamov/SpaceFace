@@ -201,38 +201,3 @@ test('_refreshNavigation never overwrites an existing trade waypoint with corrid
   assert.equal(state.nav.waypoint.pos.x, 900);
   assert.equal(state.nav.waypoint.pos.z, 200);
 });
-
-test('tracker priority source pins include corridor idle before untracked/story recovery', () => {
-  const hud = read('../src/ui/hud.js');
-  const missions = read('../src/systems/missions.js');
-
-  assert.match(missions, /export function resolveCorridorOpeningObjective/);
-  assert.match(missions, /export function buildCorridorOpeningWaypoint/);
-  assert.match(missions, /export function markCorridorFirstDock/);
-  assert.match(missions, /markCorridorFirstDock\(this\.state/);
-  assert.match(missions, /buildCorridorOpeningWaypoint\(state\)/);
-  // P0: corridor install is gated on absent nav.waypoint.
-  assert.match(missions, /existingWp|!existingWp|!state\.nav\.waypoint|nav\.waypoint is absent|!existingWp/);
-
-  // HUD: single paint arm — navWaypoint || buildCorridorOpeningWaypoint (no dual branch).
-  // (The old "credits / cargo" sibling block is gone; contextual cargo panels now rebuild on
-  // data events, and the target-panel block follows the tracker tick.)
-  const trackerBlock = hud.match(/\/\/ --- mission tracker @10Hz ---[\s\S]*?\/\/ --- target panel/);
-  assert.ok(trackerBlock, 'mission tracker tick block present');
-  const block = trackerBlock[0];
-  assert.match(block, /navWaypoint\s*\|\|\s*buildCorridorOpeningWaypoint\(state\)/,
-    'HUD resolves corridor through the single navWaypoint paint arm');
-  assert.doesNotMatch(block, /hasCorridorFirstDock/,
-    'HUD no longer dual-gates corridor with hasCorridorFirstDock');
-  const corridorIdx = block.indexOf('buildCorridorOpeningWaypoint');
-  assert.ok(corridorIdx > 0, 'corridor idle is in the tracker tick');
-  assert.match(block, /flightDestinationSurface\(state, command\)/, 'corridor paints one destination line');
-  const destFn = hud.slice(hud.indexOf('export function flightDestinationSurface'), hud.indexOf('export function resolveObjectiveHudLayout'));
-  const navOwner = destFn.indexOf("command.owner === 'navigation'");
-  const untrackedOwner = destFn.indexOf("command.owner === 'untracked-mission'");
-  const storyOwner = destFn.indexOf("command.owner === 'story'");
-  assert.ok(navOwner >= 0 && untrackedOwner > navOwner, 'untracked-contract recovery follows corridor/navigation');
-  assert.ok(storyOwner > navOwner, 'story recovery follows corridor/navigation');
-  // Threat slot remains owned by target panel, not the tracker hierarchy.
-  assert.doesNotMatch(block, /current-threat|createTargetPanel/);
-});

@@ -1,6 +1,12 @@
 {
   "schema": "spaceface.flightRenderPackagePilots.v1",
   "packages": [
-    "helios-trade-hub"
+    "helios-trade-hub",
+    "aftermath-aft-cockpit-section",
+    "aftermath-aft-engine-section",
+    "aftermath-aft-cargo-module",
+    "aftermath-wreck-corvette-turret",
+    "aftermath-aft-weapon-spar",
+    "aftermath-aft-pressure-tank"
   ]
 }

@@ -23,6 +23,22 @@ const PORT = Number(process.argv[2] || process.env.PORT || 8123);
 const sourceOverlay = process.env.SPACEFACE_PROBE_SOURCE_OVERLAY === '1'
   ? String(process.env.SPACEFACE_BASELINE_SOURCE_MANIFEST || '').trim() || null
   : null;
+// Development source launches use the measured bundle. Production installs can omit its compiler.
+const devSimWorkerBundleEnabled = (process.env.SPACEFACE_DEV_SIM_WORKER_BUNDLE === '1'
+  || (process.env.SPACEFACE_DEV_SIM_WORKER_BUNDLE !== '0' && process.env.NODE_ENV !== 'production'))
+  && process.env.SPACEFACE_PROBE_SOURCE_OVERLAY !== '1'
+  && !String(process.env.SPACEFACE_BASELINE_SOURCE_MANIFEST || '').trim()
+  && process.env.SPACEFACE_ELECTRON_TEST_MODE !== 'isolated-evidence'
+  && process.env.SPACEFACE_EVIDENCE_ALLOW_BACKGROUND_EXECUTION !== '1'
+  && process.env.SPACEFACE_EVIDENCE_HIDE_WINDOW !== '1';
+let devSimWorkerBundleProvider = null;
+if (devSimWorkerBundleEnabled && !sourceOverlay) {
+  const { createDevSimWorkerBundleProvider } = await import('./scripts/lib/devSimWorkerBundle.mjs');
+  devSimWorkerBundleProvider = createDevSimWorkerBundleProvider({ root: ROOT });
+  devSimWorkerBundleProvider.prewarm().catch((error) => {
+    console.error('[dev-sim-worker] asynchronous prewarm failed; current requests will rebuild or return 503:', error && (error.stack || error.message) || String(error));
+  });
+}
 
 // Per-user mods home by platform (matching where Electron's userData lands).
 function defaultUserContentPlatformDir() {
@@ -80,6 +96,7 @@ const server = createGameServer({
     platformDir: defaultUserContentPlatformDir(),
   }) || undefined,
   ...(sourceOverlay ? { sourceOverlay } : {}),
+  ...(devSimWorkerBundleProvider ? { devSimWorkerBundleProvider } : {}),
   extraRoutes: [
     {
       test: (method, url) => method === 'POST' && url.startsWith('/__shot'),

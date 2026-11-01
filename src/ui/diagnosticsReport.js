@@ -14,7 +14,7 @@ import { CURRENT_VERSION as SAVE_VERSION } from '../data/saveVersion.js';
 import { detectGpu } from '../render/adaptiveQuality.js';
 import { recentRuntimeErrors, sanitizeErrorText } from '../core/errorBoundary.js';
 import { startupJournalSnapshot } from '../core/startupJournal.js';
-import { leftoverVersionLabel, loadLeftoverVersionPayload } from './screens/mainMenu.js';
+import { leftoverVersionLabel, loadLeftoverVersionPayload } from './releaseIdentity.js';
 
 // Video settings that decide how hard the renderer works (state.settings.video).
 const VIDEO_KEYS = [

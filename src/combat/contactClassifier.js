@@ -20,7 +20,7 @@ import { isHostileToPlayer, isWreckLike } from '../systems/scanner.js';
 import { LIFECYCLE, lifecycleOf } from './lifecycle.js';
 import { concealedFromPlayer } from './targetIdentity.js';
 import { compileAttackSpec, mergeWeaponView } from './attackSpec.js';
-import { collectAttackModifiers } from '../systems/adventureMigration.js';
+import { collectAttackModifiers } from './adventureAttackReaders.js';
 import { WEAPONS } from '../data/weapons.js';
 import { witnessLineOfSight } from './lineOfSight.js';
 import { hasBlockingPanels, interceptSegment } from './pylonShieldQuery.js';
@@ -28,6 +28,13 @@ import { PYLON_CONTACT } from './pylonShieldPolicy.js';
 import { occupantGenerationOf } from '../core/entity.js';
 
 const WPN = new Map(WEAPONS.map((w) => [w.id, w]));
+
+// Live surrender remains an AI-owned contact fact. Keep this small pure reader in the shared
+// contact-classification layer so presentation can inspect it without importing the recovery tick.
+export function isSurrenderedContact(entity) {
+  return !!entity && entity.alive !== false && (entity.type === 'ship' || entity.type === 'drone')
+    && entity.data?.ai?.fsm === 'surrender';
+}
 
 export const PHYSICAL = Object.freeze({
   SHIP: 'ship', DRONE: 'drone', FAUNA: 'fauna', STRUCTURE: 'structure', ROCK: 'rock',

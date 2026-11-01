@@ -119,6 +119,21 @@ test('evaluateJumpReceipts accepts a complete intentional gate chain', () => {
   ];
   const result = evaluateJumpReceipts(events);
   assert.equal(result.pass, true, result.failures.join('; '));
+  assert.equal(result.summary.jumpStart, true);
+});
+
+test('evaluateJumpReceipts recognizes the canonical departure receipt without a sampled JUMPING state', () => {
+  const result = evaluateJumpReceipts([
+    { event: 'jump:start', payload: { from: 'sector_helios_prime', to: 'sector_ceres_belt', via: 'gate' } },
+  ]);
+  assert.equal(result.summary.jumpStart, true);
+  assert.ok(result.failures.includes('missing jump:arrive for destination'));
+
+  const wrongDestination = evaluateJumpReceipts([
+    { event: 'jump:start', payload: { from: 'sector_helios_prime', to: 'sector_ashfall_reach', via: 'gate' } },
+  ]);
+  assert.equal(wrongDestination.summary.jumpStart, false);
+  assert.ok(wrongDestination.failures.includes('missing jump:start committed receipt'));
 });
 
 test('evaluateJumpReceipts fails closed on missing commit/arrive', () => {

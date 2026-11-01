@@ -375,6 +375,132 @@ test('station retry still waits for deferred registration after lifecycle restor
   }
 });
 
+test('a live dock request loads the station screen once and preserves its first open', async () => {
+  const clock = installFakeTimers();
+  try {
+    const { owner, pushes } = makeRetryOwner('station');
+    let loadCount = 0;
+    let finishLoad;
+    owner._registerScreenEntry = (entry) => {
+      loadCount++;
+      assert.equal(entry.name, 'stationScreen');
+      return new Promise((resolve) => {
+        finishLoad = () => {
+          owner._registeredScreens.add('station');
+          resolve(true);
+        };
+      });
+    };
+
+    assert.equal(loadCount, 0, 'the station module has not been requested before a dock open');
+    owner._pushScreenWhenRegistered('station');
+    await Promise.resolve();
+    assert.equal(loadCount, 1, 'the first live station request starts its module load');
+    assert.deepEqual(pushes, [], 'the request waits rather than dropping the first open');
+
+    owner._pushScreenWhenRegistered('station');
+    assert.equal(loadCount, 1, 'a repeated dock request shares the in-flight module load');
+    assert.deepEqual(pushes, []);
+
+    finishLoad();
+    await Promise.resolve();
+    assert.equal(clock.runNext(), true, 'the pending screen request retries after registration');
+    assert.deepEqual(pushes, ['station'], 'the first dock request opens the newly registered screen');
+    assert.equal(clock.pending(), 0);
+  } finally {
+    clock.restore();
+  }
+});
+
+test('a failed station load remains visible and a later dock intent retries successfully', async () => {
+  const clock = installFakeTimers();
+  try {
+    const { owner, pushes } = makeRetryOwner('station');
+    const loadError = new Error('station chunk failed to load');
+    let loadCount = 0;
+    owner._registerScreenEntry = (entry) => {
+      loadCount++;
+      assert.equal(entry.name, 'stationScreen');
+      if (loadCount === 1) return Promise.reject(loadError);
+      return Promise.resolve().then(() => {
+        owner._registeredScreens.add('station');
+        return true;
+      });
+    };
+
+    await assert.rejects(owner._ensureStationScreenRegistered(), (error) => error === loadError,
+      'the first load failure remains observable to its caller');
+    assert.equal(owner._stationScreenRegistration, null,
+      'a settled failure is not cached as a successful registration');
+
+    owner._pushScreenWhenRegistered('station');
+    await Promise.resolve();
+    await Promise.resolve();
+    assert.equal(loadCount, 2, 'the later live dock intent starts a fresh module load');
+    assert.equal(clock.runNext(), true, 'the dock request retries after the second registration');
+    assert.deepEqual(pushes, ['station'], 'the later dock intent reaches the loaded station screen');
+    assert.equal(owner._stationScreenRegistration.generation,
+      owner._screenRegistrationCycle.generation,
+      'successful registration remains reusable for this cycle');
+    assert.equal(clock.pending(), 0);
+  } finally {
+    clock.restore();
+  }
+});
+
+test('a pending lazy station load cannot open after the dock intent is invalidated', async () => {
+  const clock = installFakeTimers();
+  try {
+    const { owner, pushes } = makeRetryOwner('station');
+    let finishLoad;
+    owner._registerScreenEntry = () => new Promise((resolve) => {
+      finishLoad = () => {
+        owner._registeredScreens.add('station');
+        resolve(true);
+      };
+    });
+    owner._pushScreenWhenRegistered('station');
+    await Promise.resolve();
+    owner.state.ui.docked = false;
+    owner.state.ui.dockedStationId = null;
+    finishLoad();
+    assert.equal(clock.runNext(), true);
+    assert.deepEqual(pushes, [], 'a stale dock retry must not present station after undock');
+    assert.equal(clock.pending(), 0);
+  } finally {
+    clock.restore();
+  }
+});
+
+test('a Continue-docked game start requests station and opens it after lazy registration', async () => {
+  const clock = installFakeTimers();
+  try {
+    const { owner, pushes } = makeRetryOwner('station');
+    owner.state.mode = 'flight';
+    let finishLoad;
+    owner._registerScreenEntry = (entry) => {
+      assert.equal(entry.name, 'stationScreen');
+      return new Promise((resolve) => {
+        finishLoad = () => {
+          owner._registeredScreens.add('station');
+          resolve(true);
+        };
+      });
+    };
+
+    assert.equal(reconcileGameStartedScreens(owner), true,
+      'a loaded game already at a berth takes the existing dock restore path');
+    assert.deepEqual(pushes, [], 'Continue waits for the requested station module to register');
+    await Promise.resolve();
+    finishLoad();
+    assert.equal(clock.runNext(), true);
+    assert.deepEqual(pushes, ['station'], 'Continue-docked opens the station once registration completes');
+    assert.equal(clock.pending(), 0);
+  } finally {
+    clock.restore();
+  }
+});
+
 test('uiRoot replacement and destroy leave one then zero marketNews subscribers', () => {
   const bus = createBus();
   const voices = [];

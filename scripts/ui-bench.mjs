@@ -83,7 +83,10 @@ async function shoot(page, id, outDir, base) {
 async function settleAnimations(page) {
   await page.evaluate(async () => {
     for (let pass = 0; pass < 3; pass++) {
-      const running = document.getAnimations().filter(a => a.playState === 'running');
+      // Scroll- and view-driven animations show where the scroller sits; finishing one paints its
+      // end state (e.g. Help's section row faded on its left edge at scroll 0), so leave them.
+      const running = document.getAnimations()
+        .filter(a => a.playState === 'running' && (!a.timeline || a.timeline === document.timeline));
       for (const animation of running) {
         if (animation.effect?.getTiming?.().iterations === Infinity) animation.pause();
         else { try { animation.finish(); } catch { /* unresolved effect */ } }
@@ -173,7 +176,7 @@ async function walk(page, id, outDir) {
       await page.evaluate(shotId => window.BENCH.goto(shotId), id);
       await settleAnimations(page);
       const arrival = await page.evaluate(() => window.BENCH.signature());
-      const hoveredControl = await page.evaluate(key => window.BENCH.hover(key), identity);
+      const hoveredControl = await controlFromInventory(page, 'hover', inventory);
       if (!hoveredControl.found) {
         row.missingAt = 'arrival';
         const message = `inventory control "${inventoryLabel || '(unlabeled)'}" is absent after reset; left untried`;
@@ -196,7 +199,7 @@ async function walk(page, id, outDir) {
         await settleAnimations(page);
       }
       const beforeClick = await page.evaluate(() => window.BENCH.signature());
-      const clickedControl = await page.evaluate(key => window.BENCH.click(key), identity);
+      const clickedControl = await controlFromInventory(page, 'click', inventory);
       if (!clickedControl.found) {
         row.missingAt = 'click';
         const message = `inventory control "${label || '(unlabeled)'}" disappeared before click; click left untried`;
@@ -227,6 +230,19 @@ async function walk(page, id, outDir) {
   return { complete: limit === controls.length && errors.length === 0, total: controls.length, attempted,
     untried: controls.length - attempted, actions, errors };
 }
+
+async function controlFromInventory(page, action, { index, identity }) {
+  return page.evaluate(({ action, index, identity }) => {
+    const resolve = window.BENCH[action];
+    const semantic = resolve(identity);
+    if (semantic.found) return semantic;
+    // Duplicate identities are intentionally not resolved by the generic helper. Use their saved
+    // position only when a fresh inventory confirms the exact same identity still occupies it.
+    if (window.BENCH.controls()[index]?.identity === identity) return resolve(index);
+    return semantic;
+  }, { action, index, identity });
+}
+
 function describe(before, after) {
   if (after.disabled) return 'disabled';
   const notes = [];
