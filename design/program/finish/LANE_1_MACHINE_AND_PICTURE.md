@@ -244,43 +244,24 @@ instead of terminating (`presentationRunner.js`). D250: cap concurrent asset fet
 backoff. Add a forced-context-loss test and a 30-minute Adventure soak to the M0 bench. Done when the
 soak + one forced context loss shows zero terminal panes.
 
-Current M8 integration status (2026-11-01): the completed public Ceres journey delivers the accepted
-cargo for 760 credits, then F5 → title Continue restores the settled credits, cargo, standing,
-receipt and log. Static-host and mounted-store persistence paths both pass functionally. This is not
-a stability or performance qualification.
+Current M8 integration status (2026-11-01): the d5 run completed three warmups and measured
+cycles 0–25, then stopped in cycle 26 before the full 30-minute/context sequence. Its velocity
+check sampled an advancing worker mirror. `4d828f9bdd71` now reads an immutable motion receipt
+after native restore adoption; moving-native and actual-worker checks pass. The full route remains open.
 
-The full ordinary attempt on source `a4f1fe14452c` stops during cycle 14: a Three.js buffer-size
-mismatch freezes presentation behind Graphics interrupted before redocking finishes. The player
-is in range; this does not establish a docking defect. The opt-in resize capture was disabled, so
-the failing attribute was unidentified. The same-source 20-cycle diagnostic then reaches forced
-context recovery and captures a detached SCN Wasp armor UV: a zero-byte GPU record is updated
-with 44,984 restored bytes. It remains a failed, performance-ineligible receipt. The context-loss
-handler now invalidates the canonical geometry residency ledger; the pre-projection guard blocks
-pending detached uploads and queues canonical refill until ready. Twenty real guard/package cases
-pass. The later batch26c packaged public route passes F5/F9, forced context loss, the renderer's
-public recovery receipt, and input/world-render response after restoration and a 120-second tail.
-F9 takes 9,509 ms; this is bounded functional evidence, not a 30-minute or performance pass.
-Batch25's real loading deadlock was repaired by retaining required hull admission during loading
-and transferring the queue hold at flight. Earlier batch26/26b aggregate failures came from an
-observer expecting the wrong worker-load toast and sampling before renderer recovery; they remain
-recorded at their original layers. Focused checks also pass for six model
-retirement repairs (15- and 58-case batches), shadow-depth CPU-texture rehydration and lease lifetime,
-and rejected pacing after partial staging, including closing parked generators while preserving the
-original error. A short public check accepts the repaired snapshot-fence publication and normal quit.
+An armed ordinary flight identified detached salvage-cutter UV data in startup residency. `d47`
+leases geometry through startup upload and through secondary-preview texture waits/first draw.
+A later Physics transition identified a separate shadow-depth draw, repaired in `4f503d12f413`,
+and another startup-proxy failure. A focused real-package interleave reproduced a live LOD swap
+between the census and proxy creation; `6d371029db31` makes the proxy draw the exact geometry
+that is leased, checked and stamped, preserving the live replacement for its own admission.
+The focused shadow and package-owner suites pass. These repairs still require the new armed
+ordinary route and full soak; no stability or frame-target pass is claimed.
 
-Earlier full `c6` and short `030aaf` receipts remain failed; their evidence is retained in
-[`INTEGRATION_COVERAGE.md`](./INTEGRATION_COVERAGE.md). The earlier retention growth and performance
-misses are not closed by focused checks. The repaired full-duration and context-recovery outcome
-remains open.
-
-The latest default baseline (batch24) completes 16/17 links: Massline reaches its 210-second outer
-deadline without assertion output. Cause and assertion status remain UNKNOWN; total timing fails
-the unchanged 90,000 ms budget. A later isolated Massline aggregate passes all 27 checks in
-114,872 ms. One physical-branches CPU profile confirms the long prefix is shared and finds no
-demonstrated redundant pass to repair; instrumented timing is not a performance measurement.
-Earlier 166,805 ms (17/17 assertions) and 91,511/91,929 ms results remain historical timing failures;
-the phased experiment was reverted and the automatic four-job ceiling remains unchanged. Preserve
-scenario normalization and all four physical branches. M8 progress does not close baseline timing.
+The current default baseline completed 16/17 checks in 76,582 ms, inside the unchanged 90,000 ms
+budget. Massline passed. The only failure was the new HeroRig sprite missing from the VFX
+inventory; the factual inventory correction passes its focused check. Earlier batch24 timing
+failures remain historical, not the current Massline result.
 
 **M9 — Load less, load later.** 28 MB of minified JS in the eager closure (`scripts/build-bundle.mjs`,
 esbuild splitting): lazy-load per mode and per screen; make `modelTruthCensus.generated.js` and
@@ -291,21 +272,23 @@ as JS) to a binary asset; take `src/testing/**` out of the retail graph (static 
 `FlightReadySet` and stream the rest after first flight. D252: fix the WebKit menu stall. Done when
 the load rows of README §4 meet their floor.
 
-The latest completed working-tree bundle/package is batch 27. Its main static ESM closure is
-11,409,345 raw / 3,556,953 summed-gzip bytes across 135 outputs, with zero missing static edges,
-below the 12 MB raw floor. Both module-worker entries build; the classic digest worker is separately
-built and outside the main metafile. The bundle gate validates 414 render plans and 2,833 files;
-42 main and 1,045 source-closure preload entries pass their canonical check. Receipt:
-`86d45e157cd30d54ae8e8c759296c60af31e60ffdf06ced9c3d73434d77386c4`. Its packaged ASAR receipt
-matches the build byte-for-byte. The build includes concurrent working-tree changes, so these bytes
-do not isolate any change's effect and this package is distinct from B26c's recovery artifact.
-Ruckus mesh payloads use the completed four-GLB migration and remain in authored preflight warmup.
+The current source bundle gate passes with 417 render packages. `3be854aebcbd` moves unchanged
+read-only flight target/profile helpers out of the simulation adapter, so route-ribbon and target
+presentation no longer import `flightV3` and its native physics owners. The within-session main
+static closure changes from 11,435,492 to 11,173,243 raw bytes (262,249 bytes fewer), with no
+missing static edges; 60 focused flight/docking checks pass. This is a static graph reduction,
+not a measured startup-time improvement. The 6 MB target and total preflight transfer remain open.
 
-The static closure result does not establish lower total preflight transfer, faster startup or
-frame-time improvement. The 6 MB target, total preflight bytes and runtime loading bars remain open.
-The B26c bounded packaged worker/save/context pass does not close those targets or a long soak.
-Prior M9 checkpoint sizes, receipts, and implementation
-history are consolidated in [the integration coverage archive](../../archive/finish-integration/INTEGRATION_COVERAGE_2026-10-31.md).
+The gate exposed ten stale hull package sets from an earlier release-GLB rebuild.
+`d045ab3a0b69` regenerates only those ten packages, pilot rows and runtime bindings against the
+current authored release GLBs; the scoped compiler check and subsequent bundle gate pass.
+No source/release model was changed. Live visual acceptance remains separate.
+
+Batch27 remains the latest completed packaged ASAR checkpoint, with matching embedded receipt:
+`86d45e157cd30d54ae8e8c759296c60af31e60ffdf06ced9c3d73434d77386c4`.
+Its earlier static closure was 11,409,345 raw / 3,556,953 summed-gzip bytes. No new packaged
+acceptance is inferred from the later source bundle. Earlier M9 receipts are retained in the
+[integration coverage archive](../../archive/finish-integration/INTEGRATION_COVERAGE_2026-10-31.md).
 
 **M10 — First sight never stalls.** KHR-capable pipeline admissions now issue under one serialized
 owner, restore the target and temporary root homes, then settle up to four independent actual-program

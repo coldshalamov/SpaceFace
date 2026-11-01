@@ -70,6 +70,16 @@ within-session A/B shows the sim step ≤ 8 ms at the 150-body round.
 **F2 — Row 488 ROCK-BUDGET.** Wave 15 at sim p95 ≤ 20 ms (floor), ≤ 8 ms (target), measured on
 the laptop with a fixed-seed stress fixture. Commit the fixture so every later packet re-measures it.
 
+Current 2026-11-01 production wave-15 fixture (`sim-crowd-stress`, seed4242, 600 warmup +
+600 measured ticks) averages 157.2 entities: total sim mean27.257ms, p50 26.620, p95 39.208,
+p99 42.977. Physics averages11.022ms/tick; tactical AI6.227ms. These miss F1/F2 targets.
+The bounded CPU profile identifies activity classification/perception as material AI descendants;
+`8dc86e044cbe` reuses an identical presence-radius read during discovery-cell rebuilds, with
+31 focused owner checks passing. No matched speedup is claimed for that small change.
+The separate Ceres physics fixture covers98 entities, p50 6.357/p95 16.673ms; disabling authored
+far-static collision bodies is a diagnostic only and was not shipped. Neither fixture is ordinary
+wave-15 or public-Ceres acceptance. Artifacts live under `.devshots/finish/integration-2026-11-01/`.
+
 ### Wave C — the fight (the showcase)
 
 Build-map rows are the spec; read each row's prose in `build_map.md` (§31–§34) before briefing it.

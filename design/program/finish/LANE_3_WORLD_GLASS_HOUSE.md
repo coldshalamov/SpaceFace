@@ -599,10 +599,12 @@ Rows are the spec (`build_map.md` §31–§32; read each row's prose before brie
 - **Save writelane landed `1fc335672aa`** — D1/D2/D3/D4/D5/D7 fixed (mirror deltas, gzip recovery
   rotation, prepared-envelope cache, redundant worker validate removed, serialized player key
   order, superseded pending marker); 4 new tests; schema+fuzz green.
-- **D222 UI budget — CLOSED `d59a80207513`** — full headed `capture-ui-matrix --budgets-out`
-  landed: 38 surfaces measured, 2 named gaps, `check:ui:budgets` PASS. Frame costs are
-  contention-inflated (ran beside the stranger playthrough) — quiet recapture is the follow-up;
-  grammar debt stays named, not hidden.
+- **D222 UI budget — OPEN after current measurement.** The earlier `d59a80207513` pass is
+  historical. The current canonical matrix completed151/160 frames with named capture/route
+  failures and was not promoted. Chart-galaxy authored-UI callbacks average47.49ms in that
+  receipt; a bounded mounted-chart CPU profile identifies label collision placement as the
+  dominant work. Current label optimization and source metadata are pending direct measurement.
+  This is UI-owned callback time, not a whole-world performance proxy.
 
 ### Wave G — the glass (every 2D surface; use the current Finish workflow)
 Direction: `design/frontend/ORRERY.md`, `ORRERY_RUBRIC.md`; method: `docs/UI_VISUAL_ITERATION.md`
