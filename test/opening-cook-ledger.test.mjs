@@ -146,12 +146,13 @@ test('the live-sector cook flushes the admission lane while it waits', async () 
   const cook = renderer.slice(start, end);
   assert.match(cook, /const flushPipelinesBehindShell = \(\) =>/);
   assert.match(cook, /if \(cookStale\(\) \|\| recook \|\| liveSectorPipelineFlush/);
-  for (const timeout of ['12000', '8000']) {
-    assert.match(cook, new RegExp(`timeoutMs: Math\\.min\\(${timeout}, remainingMs\\(\\)\\),\\s*yieldToMain: yieldAndFlushLiveSectorGpu`));
-  }
+  // Both waits share the openingLoadPolicy ceiling (COMPOSITION_SETTLE_MS=12000 — PR #444's
+  // A/B kept the 12 s settle), still bounded by the cook's own remaining window.
+  const settleWaits = cook.match(/timeoutMs: Math\.min\(loadPolicy\.compositionSettleMs, remainingMs\(\)\),\s*yieldToMain: yieldAndFlushLiveSectorGpu/g);
+  assert.equal(settleWaits && settleWaits.length, 2, 'settle and upgrade-idle waits share the policy ceiling');
   // PR #218 moved the stale-material settle onto the sliced lane: its cap is a
   // deadlineMs argument and, in the loading shell, the yield is the createSlicedYield twin (it takes a frame
   // budget so stragglers share frames; the jump shell keeps the plain flush-per-item yield).
   assert.match(cook, /deadlineMs: Math\.min\(6000, remainingMs\(\)\)/);
-  assert.match(cook, /state\.mode === 'loading'\s*\?\s*createSlicedYield\(yieldAndFlushLiveSectorGpu, \{[\s\S]*?\}\)\s*:\s*yieldAndFlushLiveSectorGpu/);
+  assert.match(cook, /\(state\.mode === 'loading' \|\| state\.render\?\.flightVeilHoldsSim === true\)\s*\?\s*createSlicedYield\(yieldAndFlushLiveSectorGpu, \{[\s\S]*?\}\)\s*:\s*yieldAndFlushLiveSectorGpu/);
 });

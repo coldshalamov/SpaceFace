@@ -391,7 +391,7 @@ test('npcJobsRuntime batches eligible hostile queries and excludes controlled hu
   };
 
   const runtime = Object.create(npcJobsRuntime);
-  runtime.state = state;
+  runtime.init({ state, bus: { on() {}, emit() {} }, helpers: {}, registry: {} });
   runtime._sink = () => {};
   runtime._drive = () => {};
   runtime._threatQueries = createHostileService(state);
@@ -474,7 +474,7 @@ test('npcJobsRuntime senses threats at deterministic 15 Hz while advancing and d
   };
   let driveCalls = 0;
   const runtime = Object.create(npcJobsRuntime);
-  runtime.state = state;
+  runtime.init({ state, bus: { on() {}, emit() {} }, helpers: {}, registry: {} });
   runtime._sink = () => {};
   runtime._drive = () => { driveCalls++; };
   runtime._threatQueries = createHostileService(state);

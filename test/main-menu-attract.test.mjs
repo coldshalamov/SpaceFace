@@ -78,17 +78,17 @@ test('title attract uses elapsed idle time, resets on input, and tears down its 
   try {
     mainMenuScreen._startIdleAttract({ state: fixture.state, rootEl: fixture.rootEl });
     host.frame(1_000);
-    host.frame(12_999);
-    assert.equal(fixture.drifting(), false, '11.999 seconds must remain still');
-    host.frame(13_000);
-    assert.equal(fixture.drifting(), true, '12 elapsed seconds must start the attract drift');
+    host.frame(6_999);
+    assert.equal(fixture.drifting(), false, '5.999 idle seconds must remain still');
+    host.frame(7_000);
+    assert.equal(fixture.drifting(), true, '6 idle seconds must start the attract drift');
 
     host.emitWindow('keydown');
     assert.equal(fixture.drifting(), false, 'player input must stop the attract drift immediately');
-    host.frame(25_000);
-    host.frame(36_999);
+    host.frame(8_000);
+    host.frame(13_999);
     assert.equal(fixture.drifting(), false, 'the input reset starts a fresh idle window');
-    host.frame(37_000);
+    host.frame(14_000);
     assert.equal(fixture.drifting(), true);
 
     mainMenuScreen._stopIdleAttract();

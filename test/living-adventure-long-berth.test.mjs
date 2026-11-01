@@ -61,7 +61,7 @@ test('The Long Berth is a live, rendered wreck body the existing Massline can at
   assert.ok(resolvePlaceFileForEntity(tug), 'the existing packaged dead-hulk place art resolves');
   assert.equal(active.dressing.find((row) => row.id === tug.id).placeId, tugRecord.placeId);
 
-  assert.equal(active.dressing.length, 11, 'the six authored placements and cluster stay unchanged');
+  assert.equal(active.dressing.length, 12, 'the authored placements and cluster stay unchanged');
   assert.equal(entities.size, 1, 'only the tug joins the live entity population');
 });
 
@@ -94,6 +94,8 @@ test('the tug keeps its durable identity and moved pose through sector remateria
   assert.equal(restored.collides, true);
   assert.equal(restored.physicsBody.mass, 180);
   assert.ok(resolvePlaceFileForEntity(restored), 'the packaged tug art is restored with the body');
-  assert.equal(secondActive.dressing.filter((row) => row.placeId === 'place_dead_hulk').length, 1,
+  // The quarantined hauler one-off shares the dead-hulk skin, so the contract counts the
+  // tug's own row, not the placeId.
+  assert.equal(secondActive.dressing.filter((row) => row.id === restored.id).length, 1,
     'the authored body is registered exactly once in active sector dressing');
 });

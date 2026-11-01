@@ -421,6 +421,7 @@ function fakeDocument() {
       isConnected: true,
       textContent: '',
       attributes: {},
+      dataset: {},
       style: {
         display: '',
         transform: '',

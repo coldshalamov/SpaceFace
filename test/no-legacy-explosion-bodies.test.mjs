@@ -9,6 +9,9 @@ import {
 } from '../src/render/combat/phasedExplosions.js';
 
 const source = readFileSync(new URL('../src/render/vfx.js', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+// The per-phase picture methods live in the presentation recipe module (spread onto vfx);
+// pool-level pins stay on vfx.js, phase-structure pins read the recipe file.
+const phaseSource = readFileSync(new URL('../src/render/vfx/explosionPresentationVfx.js', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
 
 function spriteKind(name) {
   const match = source.match(new RegExp(`const ${name} = (\\d+);`));
@@ -50,7 +53,7 @@ test('the phased lifecycle is the only executable explosion implementation', () 
     'remove the unreachable legacy capital ring explosion body');
 
   const start = source.indexOf('  _explode(p, big) {');
-  const end = source.indexOf('  // ---- mining beam visual', start);
+  const end = source.indexOf('  _onStationSideEvent(p) {', start);
   assert.ok(start >= 0 && end > start, 'explosion routing seam must remain present');
   const body = source.slice(start, end);
   assert.doesNotMatch(body, /_spawnSprite\(SPR_(?:RING|FLASH)/,
@@ -58,10 +61,10 @@ test('the phased lifecycle is the only executable explosion implementation', () 
 });
 
 test('explosion residue uses the irregular smoke role instead of the circular additive glow card', () => {
-  const start = source.indexOf("    if (phase === 'residue') {");
-  const end = source.indexOf('\n    }\n  },\n\n  _explode', start);
+  const start = phaseSource.indexOf("    if (phase === 'residue') {");
+  const end = phaseSource.indexOf('\n  },\n\n  _spawnCauseFragment', start);
   assert.ok(start >= 0 && end > start, 'residue phase must remain inspectable');
-  const body = source.slice(start, end);
+  const body = phaseSource.slice(start, end);
   assert.match(body, /_spawnSprite\(SPR_PUFF/,
     'residue remains on the bounded pooled smoke lifecycle');
   assert.match(source, /if \(s\.kind === SPR_PUFF\) \{\s*smokeOrder\[smokeCount\+\+\] = i;/,
@@ -73,10 +76,10 @@ test('explosion residue uses the irregular smoke role instead of the circular ad
 });
 
 test('primary rupture and pressure remain non-ring while bright cores stay directional', () => {
-  const start = source.indexOf('  _emitExplosionPhase(');
-  const end = source.indexOf('  _explode(p, big)', start);
+  const start = phaseSource.indexOf('  _emitExplosionPhase(');
+  const end = phaseSource.indexOf('  _emitCausalExplosionPhase(', start);
   assert.ok(start >= 0 && end > start, 'phased destruction emitter must remain inspectable');
-  const body = source.slice(start, end);
+  const body = phaseSource.slice(start, end);
   const ruptureStart = body.indexOf("    if (phase === 'rupture') {");
   const debrisStart = body.indexOf("    if (phase === 'debris') {", ruptureStart);
   const pressureStart = body.indexOf("    if (phase === 'pressure') {", debrisStart);

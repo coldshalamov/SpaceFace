@@ -407,7 +407,7 @@ test('an off-screen objective seats the chevron on the true edge with the direct
     fx.step();
     fx.step();
     const travel = objectiveTravelReadout(fx.state, { pos: { x: 0, z: 600 } });
-    assert.equal(travel.distanceText, '600 WU');
+    assert.equal(travel.distanceText, '600 u');
     assert.equal(travel.etaText, 'ETA —');
     const view = edgePresentation(fx.arrow());
     assert.equal(view.edgeClass, true, 'an off-camera objective takes the edge state');
@@ -420,7 +420,7 @@ test('an off-screen objective seats the chevron on the true edge with the direct
       `the angle must name up-screen toward +Z, got ${view.angleRad}`);
     assert.equal(view.label, `GOAL · ORE SILO · ${travel.distanceText} · ${travel.etaText}`,
       'the arrow label is the tracker’s own distance wording');
-    assert.equal(view.aria, 'Current objective: ORE SILO, 600 WU, ETA —');
+    assert.equal(view.aria, 'Current objective: ORE SILO, 600 u, ETA —');
     assert.equal(fx.arrow().title, 'Ore Silo', 'the hover title names the goal');
   } finally {
     fx.restore();
@@ -441,7 +441,7 @@ test('D135 north-up: flying SOUTH toward the goal seats the chevron on the LOW e
     fx.step();
     fx.step();
     const travel = objectiveTravelReadout(fx.state, { pos: { x: 0, z: -800 } });
-    assert.equal(travel.distanceText, '800 WU');
+    assert.equal(travel.distanceText, '800 u');
     assert.equal(travel.etaText, 'ETA 16s', 'closing flight reports an honest ETA');
     const view = edgePresentation(fx.arrow());
     assert.equal(view.edge, 'bottom', 'a southern goal seats on the low edge');

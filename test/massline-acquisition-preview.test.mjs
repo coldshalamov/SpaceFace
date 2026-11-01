@@ -362,16 +362,19 @@ test('the acquisition preview marks the candidate itself and never draws a cable
     assert.equal(mark.style.display, 'block',
       'the mark must be drawn ON the candidate the Massline will grab');
     // PQ: the latch state moved ONTO the mark (3a97031a8 "Show the Massline latch as a shape on
-    // the target"): a valid target says CAN as the open-diamond shape plus the mark's accessible
-    // label, and the caption stays quiet — a sentence on the bracket is reserved for denied reads.
+    // the target"): a valid target says CAN as the open-diamond shape, and F4 gave the mark's
+    // accessible label the mass verdict — assistive tech hears what the swing will feel like,
+    // not a bare CAN. The caption stays quiet; a sentence on the bracket is for denied reads.
     assert.equal(mark.classList.contains('ml2-shape-can'), true,
       'a valid target shows the open-diamond CAN shape on the mark');
-    assert.equal(mark.attributes['aria-label'], 'CAN',
-      'the mark must still say CAN to assistive tech');
+    assert.equal(mark.attributes['aria-label'], "MASS 5200 · WON'T BUDGE",
+      'the mark must still speak an honest label to assistive tech');
     assert.equal(preview.attributes['data-bracket-state'], 'CAN',
       'the bracket state must be machine-readable before the press');
-    assert.equal(preview.style.display, 'none',
-      'a valid target carries no caption sentence — the word would repeat the shape');
+    assert.equal(preview.style.display, 'block',
+      'a latchable body with mass prints the swing verdict on the caption line');
+    assert.equal(preview.textContent, "MASS 5200 · WON'T BUDGE",
+      'the caption is the same mass verdict the mark speaks');
 
     assert.equal(line.parentNode.style.display, 'none',
       'only the real rendered Massline cable may connect the player to an object');

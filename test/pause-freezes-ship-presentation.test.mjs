@@ -44,7 +44,10 @@ test('syncEntityViews feeds simNow to the world-anchored closures', () => {
   assert.match(src, /updateRuntimeState\(entity, simNow\)/);
   assert.match(src, /updateDamageState\(entity, simNow\)/);
   assert.match(src, /updateDriveState\(entity, simNow\)/);
-  assert.match(src, /setShieldShellClock\(shieldBubble\.material, simNow/);
+  // The shield clock moved into the pooled helper; it still feeds state.simTime, so a pause
+  // holds the shell with the rest of the picture.
+  assert.match(src, /tickShieldShellClock\(this\._shipAuxPool, this\.state\)/);
+  assert.match(src, /setShieldShellClock\(material, state && state\.simTime, motionReduce\)/);
 });
 
 test('the per-entity motion block and flash decay ride the scaled presentation delta', () => {
