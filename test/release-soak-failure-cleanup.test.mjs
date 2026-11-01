@@ -82,7 +82,7 @@ test('F9 landing accepts raw CSP-safe flight and menu results without entering g
   }
 });
 
-test('dock wait stops retrying only for the canonical terminal presentation failure', () => {
+test('dock wait stops retrying for the canonical terminal presentation failure', () => {
   const failure = createSoakPresentationFailureError({ presentationFailure: {
     code: 'GRAPHICS_RECOVERY_FAILED',
     headline: 'Graphics interrupted',
@@ -109,6 +109,16 @@ test('dock wait stops retrying only for the canonical terminal presentation fail
   assert.equal(createSoakPresentationFailureError({ presentationFailure: {
     code: 'OTHER', headline: 'Loading', message: 'still loading',
   } }), null);
+});
+
+test('a restore invariant failure is preserved instead of retrying from mid-flight', () => {
+  let failure;
+  try { assert.equal(77, 2, 'load speed restore exceeded tolerance'); }
+  catch (error) { failure = error; }
+  assert.equal(failure.code, 'ERR_ASSERTION');
+  assert.equal(shouldRetrySoakCycle(failure, 0), false);
+  assert.equal(shouldRetrySoakCycle(new Error('transient market protocol wait'), 0), true);
+  assert.equal(shouldRetrySoakCycle(new Error('transient market protocol wait'), 1), false);
 });
 
 test('abort snapshot retains state diagnostic after renderer teardown and uses renderer fallback', () => {

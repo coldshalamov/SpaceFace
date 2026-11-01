@@ -2611,7 +2611,10 @@ export function summarizeImmutableSavePopulation({
 // Executed in the page: only an actual failed-start menu ends the restore early.
 export function shouldRetrySoakCycle(error, attempt) {
   return attempt === 0 && error?.code !== 'SOAK_LOAD_START_FAILED'
-    && error?.code !== 'SOAK_PRESENTATION_FAILURE';
+    && error?.code !== 'SOAK_PRESENTATION_FAILURE'
+    // A failed restore/ownership invariant is not a transient protocol stall. Retrying
+    // from its mid-flight state can replace the real failure with "must start docked".
+    && error?.code !== 'ERR_ASSERTION';
 }
 
 /** Convert the canonical loop diagnostic into a terminal dock-wait error, if present. */
