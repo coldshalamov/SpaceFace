@@ -19,7 +19,7 @@ import { pointContaminationAt } from '../data/alienEcology.js';
 import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 import { QUIET_PASSAGE, evaluatePassengerHeatProximity } from '../data/heatLure.js';
 import { ESCORT_TURN_DELAY_S, PHYSICAL_ROLE, PHYSICAL_TYPE_SET, SECTOR_BY_ID, authoredDefinitionOf, authoredEncounterOf, b2RescueActorCount, b2RescueActorForRole, b2RescueActorIdentity, b2RescueActorIndexFromEntity, completedMissionTargetSlots, contractClaimSiteMission, convoyWreckPocket, driveDisabledRuntime, ensureB2RescueActorOutcomes, isCampaign47aB2Rescue, isMutationRecovery, lowestVacantSlot, missionHostileSpawnPos, missionStoryTargetSpawnPos, mulberryLocal, physicalRoleOf, stableEntityId, wrapAngleLocal } from './missions.js';
-import { RECORD_KIND, missionIdentityOf, stableRecordId } from '../world/worldRecords.js';
+import { RECORD_KIND, ensureWorldRecords, missionIdentityOf, stableRecordId } from '../world/worldRecords.js';
 import { starterRamHail } from '../data/starterJobs.js';
 import { QUIET_BERTH_TYPE, SPLIT_MANIFEST_TYPE } from '../data/yardContracts.js';
 import { AUTHORED_SET_PIECE_TYPE, CAPITAL_BOSS_TYPE } from '../data/missions.js';
@@ -492,6 +492,17 @@ export const missionSpawningOps = {
       }
       if (now < data._cinderEscapeAt) continue;
       if (!observeCinderEscape(this, ent)) continue;
+      // world.records preserves prior mission identity when a recapture sees the live stamps
+      // cleared. Retire that mission-owned row at the escape handoff so the still-live escapee
+      // can be captured again as ordinary NPC traffic, without reappearing as a completed mark.
+      const recordId = data.worldRecordId;
+      if (recordId && state.world) {
+        const records = ensureWorldRecords(state.world);
+        const record = records.byId[recordId];
+        if (record && String(record.missionId || record.missionTag || '') === String(cinderTargetOwner(m))) {
+          delete records.byId[recordId];
+        }
+      }
       // Release the hull to the ambient egress bound — contract identity stripped, the next
       // scan stamps despawnAt on it like any other escapee.
       data.missionPinned = false;

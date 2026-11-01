@@ -12,6 +12,12 @@
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { createGameState } from '../src/core/gameState.js';
+import { createBus as createRuntimeBus } from '../src/core/eventBus.js';
+import { core } from '../src/core/coreSystem.js';
+import { world as worldSystem } from '../src/systems/world.js';
+import { RESIDENCY_TIER, sectorGlobalOrigin } from '../src/data/sectorCoordinates.js';
+import { RECORD_KIND, ensureWorldRecords } from '../src/world/worldRecords.js';
 
 import {
   observeCinderEscape, cinderAccounting, retainCinderRetry, initializeCinderRoute,
@@ -95,6 +101,81 @@ test('a fleeing mark past the bound resolves as a lane clearance after the fade'
   assert.equal(target.flags.missionPinned, false);
   assert.ok(owner.said.some((t) => t.includes('Cinder Three ran') && t.includes('1/3')), 'clearance line names the slot');
   assert.ok(owner.bus.emitted.some((e) => e.n === 'mission:updated'), 'nav refresh emitted');
+});
+
+test('partial Cinder escape offloads and returns as ordinary NPC while remaining marks stay active', () => {
+  const state = createGameState(47);
+  state.mode = 'flight';
+  state.meta.seed = 47;
+  const bus = createRuntimeBus();
+  const helpers = {};
+  const ctx = { state, bus, helpers, registry: null };
+  core.init(ctx);
+  const player = helpers.spawnEntity({ type: 'ship', pos: { x: 0, z: 0 }, hull: 100, hullMax: 100, collides: true });
+  state.playerId = player.id;
+  player.isPlayer = true;
+  const world = Object.assign(Object.create(worldSystem), {});
+  world.init(ctx);
+
+  const m = cinderMission({ targetEntityIds: [] });
+  state.missions.active = [m];
+  state.world.currentSectorId = 'sector_charon_expanse';
+  const origin = sectorGlobalOrigin(m.destSectorId);
+  const targets = [0, 1, 2].map((slot) => {
+    const target = helpers.spawnEntity({
+      type: 'ship', pos: slot === 0
+        ? { x: origin.x + 2000, z: origin.z }
+        : { x: origin.x + 100 + slot * 20, z: origin.z + 100 },
+      hull: 40, hullMax: 40, collides: true,
+      data: { enemyTypeId: 'wasp_swarmer', lootTableId: 'wasp_swarmer', ai: slot === 0 ? { forceFlee: true } : { fsm: 'attack' } },
+    });
+    target.homeSectorId = m.destSectorId;
+    target.data.homeSectorId = m.destSectorId;
+    missionSpawningOps._stampMissionTargetIdentity.call({ state }, target, m, slot);
+    m.targetEntityIds.push(target.id);
+    return target;
+  });
+  const owner = {
+    state, bus, helpers, _sayStoryLine: () => {}, _refreshTrackedMissionNav: () => {},
+    _completeMission: (mission) => { mission.status = 'completed'; },
+  };
+  const escaped = targets[0];
+  const recordId = escaped.data.worldRecordId;
+  world._captureSectorDurableRecords(m.destSectorId, { reason: 'test_before_escape' });
+  assert.equal(ensureWorldRecords(state.world).byId[recordId].kind, RECORD_KIND.MISSION_TARGET);
+
+  missionSpawningOps._resolveEscapedCinderTargets.call(owner, m, state);
+  state.simTime += EGRESS_FADE_S + 0.01;
+  assert.equal(missionSpawningOps._resolveEscapedCinderTargets.call(owner, m, state), 1);
+  assert.deepEqual(m.completedTargetSlots, [0]);
+
+  // This is the production offload capture boundary. A live escapee remains an ordinary actor,
+  // while the other two mission slots retain their exact mission-owned durable rows.
+  world._captureSectorDurableRecords(m.destSectorId, { reason: 'test_offload_after_escape' });
+  const bag = ensureWorldRecords(state.world);
+  const escapedRecord = bag.byId[recordId];
+  assert.ok(escapedRecord, 'the still-live escapee keeps a durable actor record');
+  assert.equal(escapedRecord.kind, RECORD_KIND.NPC);
+  assert.equal(escapedRecord.missionId, null);
+  assert.deepEqual([1, 2].map((slot) => targets[slot].data.worldRecordId)
+    .map((id) => bag.byId[id]?.missionId), ['m_5', 'm_5']);
+
+  world._despawnEntityIds(new Set(targets.map((target) => target.id)));
+  const active = world._emptySectorBag();
+  world._rematerializeSectorRecords(m.destSectorId, active, RESIDENCY_TIER.FULL, { restoreDurableRecords: true });
+  const restored = state.entityList.filter((entity) => entity?.alive && entity.data?.worldRecordId
+    && targets.some((target) => target.data.worldRecordId === entity.data.worldRecordId));
+  const restoredEscapee = restored.find((entity) => entity.data.worldRecordId === recordId);
+  assert.ok(restoredEscapee, 'escaped live traffic can persist across sector reentry');
+  assert.equal(restoredEscapee.data.missionId, undefined);
+  assert.equal(restoredEscapee.data.missionTag, undefined);
+  assert.equal(restoredEscapee.alive, true, 'reentry does not kill the escaped NPC as a completed mission target');
+  m.targetEntityIds = []; // Mission restore clears volatile live ids before Continue adoption.
+  const missionOwner = Object.assign(Object.create(missionSpawningOps), owner);
+  assert.equal(missionSpawningOps._adoptLiveMissionTargets.call(missionOwner, m), 2);
+  assert.deepEqual([...m.targetEntityIds].sort(), restored.filter((entity) => entity !== restoredEscapee)
+    .map((entity) => entity.id).sort());
+  assert.equal(restoredEscapee.alive, true);
 });
 
 test('re-closing inside the bound or the flee order ending cancels the escape', () => {
