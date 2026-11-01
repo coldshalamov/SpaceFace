@@ -86,13 +86,24 @@ test('packaged public recovery receipt requires visible save/load, restored cont
     save: { toast: 'Saved Quick', quick: { changed: true } },
     load: { toast: 'Loaded Quick', observationWindowMs: 300_000, flightSurface: surface },
     context: {
-      extensionAvailable: true, lostEvent: true, restoredEvent: true, lostAfterRestore: false,
+      extensionAvailable: true, lostEvent: true, restoredEvent: true, lostAfterRestore: false, recoveredToast: 'Graphics recovered.',
       flightSurface: surface,
     },
     movementAfterRestore: movement,
     tail: { durationMs: 120_000, flightSurface: surface, movement },
   };
   assert.deepEqual(assess(complete), { pass: true, failures: [] });
+
+  const restoring = structuredClone(complete);
+  restoring.load.toast = 'Restoring Quick';
+  restoring.load.loadingObserved = true;
+  assert.deepEqual(assess(restoring), { pass: true, failures: [] });
+  restoring.load.flightSurface.ready = false;
+  assert.match(assess(restoring).failures.join('\n'), /flight HUD\/canvas did not remain available after F9/,
+    'the pending receipt alone is not a completed restore');
+  restoring.load.flightSurface.ready = true;
+  restoring.load.loadingObserved = false;
+  assert.match(assess(restoring).failures.join('\n'), /loading transition was not observed/);
 
   const noDurableSave = structuredClone(complete);
   noDurableSave.save.quick.changed = false;
@@ -101,6 +112,10 @@ test('packaged public recovery receipt requires visible save/load, restored cont
   const noRestore = structuredClone(complete);
   noRestore.context.restoredEvent = false;
   assert.match(assess(noRestore).failures.join('\n'), /restore event was not observed/);
+
+  const browserEventOnly = structuredClone(complete);
+  delete browserEventOnly.context.recoveredToast;
+  assert.match(assess(browserEventOnly).failures.join('\n'), /renderer recovery receipt was not observed/);
 
   const shortLoadWindow = structuredClone(complete);
   shortLoadWindow.load.observationWindowMs = 60_000;

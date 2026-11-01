@@ -453,13 +453,15 @@ export function assessPackagedPublicRecovery(recovery) {
   if (recovery?.enabled !== true) failures.push('optional public recovery did not run');
   if (!String(recovery?.save?.toast || '').includes('Saved Quick')) failures.push('public F5 save toast was not observed');
   if (recovery?.save?.quick?.changed !== true) failures.push('isolated quick-save bytes did not change after F5');
-  if (!String(recovery?.load?.toast || '').includes('Loaded Quick')) failures.push('public F9 load toast was not observed');
+  if (!/^(Loaded|Restoring) Quick/.test(String(recovery?.load?.toast || ''))) failures.push('public F9 restore receipt was not observed');
+  if (String(recovery?.load?.toast || '').startsWith('Restoring Quick') && recovery?.load?.loadingObserved !== true) failures.push('public F9 loading transition was not observed');
   if (recovery?.load?.flightSurface?.ready !== true) failures.push('flight HUD/canvas did not remain available after F9');
   if (recovery?.load?.flightSurface?.sfDebugSurfaceAbsent !== true) failures.push('window.SF was exposed after F9');
   if (recovery?.context?.extensionAvailable !== true) failures.push('WEBGL_lose_context was unavailable');
   if (recovery?.context?.lostEvent !== true) failures.push('WebGL context-loss event was not observed');
   if (recovery?.context?.restoredEvent !== true) failures.push('WebGL context-restore event was not observed');
   if (recovery?.context?.lostAfterRestore !== false) failures.push('WebGL context remained lost after restore');
+  if (!String(recovery?.context?.recoveredToast || '').includes('Graphics recovered.')) failures.push('renderer recovery receipt was not observed');
   if (recovery?.context?.flightSurface?.ready !== true) failures.push('flight HUD/canvas was unavailable after context restore');
   if (recovery?.context?.flightSurface?.sfDebugSurfaceAbsent !== true) failures.push('window.SF was exposed after context restore');
   const tailDurationMs = Number(recovery?.tail?.durationMs);
@@ -507,6 +509,7 @@ async function runPackagedPublicRecovery(page, reportPath) {
   const startedAt = new Date().toISOString();
   let f9LongWaitTimer = null;
   let f9LongWaitSnapshot = Promise.resolve(null);
+  let loadObservation = null;
   const recovery = {
     enabled: true,
     startedAt,
@@ -579,13 +582,16 @@ async function runPackagedPublicRecovery(page, reportPath) {
           return null;
         });
     }, 25_000);
+    loadObservation = await armPackagedLoadObservation(page);
     await page.keyboard.press('F9');
-    const loadedToast = await waitForPackagedToast(page, /Loaded Quick/, Math.max(1, loadDeadlineAt - Date.now()));
-    recovery.load.toast = loadedToast;
+    const observed = await waitForPackagedLoadObservation(loadObservation, loadDeadlineAt);
+    await loadObservation.evaluate((observation) => observation.observer.disconnect());
+    recovery.load.toast = observed.toast;
+    recovery.load.loadingObserved = observed.loadingObserved;
     surface = await waitForPackagedFlightSurface(page, Math.max(1, loadDeadlineAt - Date.now()));
     recovery.load = {
       ...recovery.load,
-      toast: loadedToast,
+      toast: observed.toast,
       flightSurface: surface,
       storage: await readPackagedSaveStorage(page),
       elapsedMs: Date.now() - loadStartedAt,
@@ -622,6 +628,11 @@ async function runPackagedPublicRecovery(page, reportPath) {
     await page.waitForFunction(() => window.__SPACEFACE_PACKAGED_PUBLIC_RECOVERY__?.state.lostEvent === true,
       null, { timeout: 15_000 });
     await page.waitForTimeout(350);
+    // The browser's restored event precedes the renderer's asynchronous GPU rebuild.
+    // Observe the public completion receipt before requesting restoration so it cannot be missed.
+    const recoveryDeadline = Date.now() + 60_000;
+    const rendererRecovery = waitForPackagedToast(page, /Graphics recovered\./, 60_000)
+      .then((toast) => ({ toast }), (error) => ({ error }));
     await page.evaluate(() => window.__SPACEFACE_PACKAGED_PUBLIC_RECOVERY__.extension.restoreContext());
     await page.waitForFunction(() => {
       const observation = window.__SPACEFACE_PACKAGED_PUBLIC_RECOVERY__;
@@ -640,9 +651,12 @@ async function runPackagedPublicRecovery(page, reportPath) {
       return observation?.state.restoredEvent === true && observation.gl.isContextLost() === false
         && hudReady && screensClosed && canvasReady && loadingHidden
         && !document.body.classList.contains('ui-modal-open') && typeof window.SF === 'undefined';
-    }, null, { timeout: 60_000 });
+    }, null, { timeout: Math.max(1, recoveryDeadline - Date.now()) });
+    const rendererRecoveryResult = await rendererRecovery;
+    if (rendererRecoveryResult.error) throw rendererRecoveryResult.error;
     recovery.context = {
       ...recovery.context,
+      recoveredToast: rendererRecoveryResult.toast,
       ...await page.evaluate(() => ({
         lostEvent: window.__SPACEFACE_PACKAGED_PUBLIC_RECOVERY__.state.lostEvent,
         restoredEvent: window.__SPACEFACE_PACKAGED_PUBLIC_RECOVERY__.state.restoredEvent,
@@ -702,6 +716,10 @@ async function runPackagedPublicRecovery(page, reportPath) {
     try { error.publicRecovery = recovery; } catch (_) { /* preserve original error */ }
     throw error;
   } finally {
+    if (loadObservation) {
+      await loadObservation.evaluate((observation) => observation.observer.disconnect()).catch(() => {});
+      await loadObservation.dispose().catch(() => {});
+    }
     await page.evaluate(() => {
       const observation = window.__SPACEFACE_PACKAGED_PUBLIC_RECOVERY__;
       if (observation) {
@@ -711,6 +729,33 @@ async function runPackagedPublicRecovery(page, reportPath) {
       }
     }).catch(() => {});
   }
+}
+
+async function armPackagedLoadObservation(page) {
+  return page.evaluateHandle(() => {
+    const observation = { toast: null, loadingObserved: false, observer: null };
+    const sample = () => {
+      const overlay = document.querySelector('#boot-overlay');
+      if (overlay && !overlay.classList.contains('hidden') && getComputedStyle(overlay).display !== 'none'
+          && getComputedStyle(overlay).visibility !== 'hidden') observation.loadingObserved = true;
+      for (const element of document.querySelectorAll('#toasts .sf-toast__text')) {
+        const value = String(element.textContent || '').trim();
+        if (/^(Restoring|Loaded) Quick/.test(value)) observation.toast = value;
+      }
+    };
+    observation.observer = new MutationObserver(sample);
+    observation.observer.observe(document.documentElement, { subtree: true, childList: true, attributes: true, characterData: true });
+    return observation;
+  });
+}
+
+async function waitForPackagedLoadObservation(handle, deadline) {
+  while (Date.now() < deadline) {
+    const observed = await handle.evaluate(({ toast, loadingObserved }) => ({ toast, loadingObserved }));
+    if (observed.toast && (!observed.toast.startsWith('Restoring Quick') || observed.loadingObserved)) return observed;
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+  throw new Error('public F9 restore receipt and loading transition were not observed before the deadline');
 }
 
 async function readPackagedRetailLoadingSnapshot(page) {
