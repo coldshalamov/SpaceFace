@@ -785,6 +785,9 @@ const LOOT_MAGNET_DRAW_RANGE = TABLE_LOOT_MAGNET_CAP_WU;
 const _lootMagnetFocusScratch = { x: 0, z: 0 };
 const _lootMagnetMotePosScratch = { x: 0, z: 0 };
 const _tableLookAtScratch = { x: 0, z: 0 };
+// Weapon-scar identity scratch: parse the striking weapon's core color once per noted hit.
+const _weaponScarColor = new THREE.Color();
+const _weaponScarRgb = [0, 0, 0];
 // Wreck cryo-coolant wisps: dead hulks slowly vent split coolant lines. A cadence-gated scan of
 // the indexed wrecks bucket; per-wreck vent slots are deterministic (id-hashed phase against sim
 // time), so a hulk sighs every couple of seconds instead of shimmering every frame.
@@ -4742,6 +4745,47 @@ export const vfx = {
       tz: local.tz,
       severity,
       now: this._causeNow(),
+    });
+  },
+
+  // The wound remembers the weapon: an unshielded hull hit leaves a short scar that glows in the
+  // striking weapon's own colors for a moment (scarDrawColor cools it into the shared burn amber),
+  // so a crowd of sparks and scars reads as who is hitting whom with what. Presentation only:
+  // reads the live contact, writes nothing to the sim. Collisions stay unnamed — only weapons
+  // carry identity here.
+  _noteWeaponHitScar(pos, hull, approachX, approachZ, profile) {
+    if (!hull || !hull.pos || hull.alive === false) return;
+    if (hull.type !== 'ship' && hull.type !== 'drone' && hull.type !== 'station' && hull.type !== 'wreck') return;
+    const player = this.helpers && this.helpers.player ? this.helpers.player() : this._ent(this.state && this.state.playerId);
+    if (player && player.pos) {
+      const drawWu = this._tableVfxDrawWu || tableVfxDrawWuFromState(this.state);
+      const dx = hull.pos.x - player.pos.x;
+      const dz = hull.pos.z - player.pos.z;
+      if (dx * dx + dz * dz > drawWu * drawWu) return;
+    }
+    const layer = this._ensureCauseMarks();
+    if (!layer) return;
+    const nx = -approachZ;
+    const nz = approachX; // the scar runs across the approach, along the struck surface
+    const local = hullLocalHit(hull, pos.x, pos.z, nx, nz);
+    let weapon = null;
+    if (profile && profile.coreColor) {
+      _weaponScarColor.set(profile.coreColor);
+      _weaponScarRgb[0] = _weaponScarColor.r;
+      _weaponScarRgb[1] = _weaponScarColor.g;
+      _weaponScarRgb[2] = _weaponScarColor.b;
+      weapon = _weaponScarRgb;
+    }
+    const scale = (profile && profile.scale) || 1;
+    layer.noteScar({
+      hullId: hull.id,
+      lx: local.lx,
+      lz: local.lz,
+      tx: local.tx,
+      tz: local.tz,
+      severity: Math.min(0.9, 0.22 + 0.3 * scale),
+      now: this._causeNow(),
+      weapon,
     });
   },
 
