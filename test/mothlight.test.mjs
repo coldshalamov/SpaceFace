@@ -210,8 +210,10 @@ async function productionRoute(pursue) {
     };
     let count = 0;
     // Cold runtime pacing starts with a 65–85-second quiet chapter and 20-second reentry grace.
-    // Allow one capped two-minute window through those existing gates.
-    while (count++ < 7200 && !owner._introduced && s.mode === 'flight') flyTicks(1);
+    // Ambient combat can legitimately peak first, routing the chapter through peak→aftermath
+    // (~85 s) → quiet → opportunity before the combat deck opens again; allow one capped
+    // six-minute window through those existing gates.
+    while (count++ < 21600 && !owner._introduced && s.mode === 'flight') flyTicks(1);
     assert.equal(owner._introduced, true, `normal director admission: ${JSON.stringify({ requests,
       eligible: owner._eligible(), mode: s.mode, sectorId: s.world.currentSectorId,
       discovery: s.world.discovery[C.sectorId], storyBeat: s.story.beatIndex,
