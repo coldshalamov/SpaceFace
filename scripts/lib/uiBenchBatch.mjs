@@ -80,7 +80,7 @@ export async function runUiBenchBatch({ args, root, loadPlaywright, startServer,
   const summary = { schema: 'spaceface.uiBenchBatch.v1', nonPromoting: true, gameBoots: 0,
     sourceOverlayManifest: args['baseline-source'] || null,
     browserLaunches: 0, ok: false, cells: [], errors: [],
-    note: 'Real screen modules over fixture state. Inspect PNGs. Fixture actions do not prove live game transitions, asset loading or performance.' };
+    note: 'Real screen modules over fixture state. Walk activation uses HTMLElement.click() and is behavior-only; it does not prove pointer reachability. Inspect PNGs. Fixture actions do not prove live game transitions, asset loading or performance.' };
   let server, browser;
   const save = () => writeFileSync(path.join(out, 'report.json'), JSON.stringify(summary, null, 2) + '\n');
   try {
