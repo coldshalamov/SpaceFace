@@ -122,8 +122,7 @@ test('loaded opaque hull materials are front-sided', () => {
         continue;
       }
       hulls += 1;
-      if (enterable) continue;
-      if (doubleSided || material.transparent || material.depthWrite === false) {
+      if ((doubleSided && !enterable) || material.transparent || material.depthWrite === false) {
         failures.push(`${rel} ${material.name} sided=${doubleSided} transparent=${material.transparent} depth=${material.depthWrite}`);
       }
     }
