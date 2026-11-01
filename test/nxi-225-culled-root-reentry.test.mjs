@@ -79,6 +79,7 @@ test('a moving body that re-enters carries VISIBILITY|TRANSFORM dirty and its cu
 
 test('the renderer unfreezes a re-entered root and applies the pose before the submit', async () => {
   const source = await readFile(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
+  const lifecycleSource = await readFile(new URL('../src/render/runtime/hiddenSubtreeLifecycle.js', import.meta.url), 'utf8');
   // Order is the contract: unfreeze matrixAutoUpdate first, the dirty gate (which includes
   // VISIBILITY) re-applies _applyPresentationPose, and only then does the root submit.
   const unfreeze = source.indexOf('userData.sfHiddenFrozen === true');
@@ -93,10 +94,10 @@ test('the renderer unfreezes a re-entered root and applies the pose before the s
   const freezeQueue = source.indexOf('this._queueHiddenSubtreeFreeze(mesh);', hiddenApply);
   assert.ok(hiddenApply > 0 && freezeQueue > hiddenApply,
     'the hidden exit applies the current pose before queueing the root freeze');
-  const drain = source.indexOf('_drainHiddenFreezeQueue() {');
-  const drainFlag = source.indexOf('mesh.matrixAutoUpdate = false;', drain);
-  const drainCompose = source.indexOf('mesh.updateMatrix();', drain);
-  const drainFreeze = source.indexOf('freezeHiddenSubtreeMatrices(mesh);', drain);
+  const drain = lifecycleSource.indexOf('_drainHiddenFreezeQueue() {');
+  const drainFlag = lifecycleSource.indexOf('mesh.matrixAutoUpdate = false;', drain);
+  const drainCompose = lifecycleSource.indexOf('mesh.updateMatrix();', drain);
+  const drainFreeze = lifecycleSource.indexOf('freezeHiddenSubtreeMatricesSteps(mesh);', drain);
   assert.ok(drain > 0 && drainFlag > drain && drainCompose > drainFlag && drainFreeze > drainCompose,
     'the queued drain still composes the final pose before freezing');
   assert.ok(submitOrder > 0);

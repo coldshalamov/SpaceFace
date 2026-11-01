@@ -98,6 +98,9 @@ import { bestKnownSellAtStations, knownStationQuotes, AGE_HOLLOW_S } from './mar
 import { LocalSpaceIntel, projectTrack } from './navigation/localSpaceMapModel.js';
 import { buildTradeLanesModel as buildCargoDeckTradeLanesModel } from './navigation/cargoDeck.js';
 import { indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
+import { computePreviewRoute as computePreviewRouteFromSectors, formatRoutePlanCost } from './map/routePreview.js';
+
+export { formatRoutePlanCost } from './map/routePreview.js';
 
 export { buildCargoDeckTradeLanesModel as buildTradeLanesModel };
 // Wave 2 — the chart's camera and its always-present navigation readout, both pure modules.
@@ -3746,88 +3749,16 @@ function sectorCauseIntelHtml(cause) {
 }
 
 // ---------------------------------------------------------------------------------------------
-// Pure Dijkstra Hover preview path calculator
+// Pure route-preview facade. Sector ownership and charted-state policy stay in this screen.
 // ---------------------------------------------------------------------------------------------
 
 export function computePreviewRoute(state, startSectorId, targetSectorId) {
-  if (!startSectorId || !targetSectorId || startSectorId === targetSectorId) return null;
-  const sectors = sectorRecords(state);
-  const nodeById = new Map(sectors.map((s) => [s.id, s]));
-
-  const dist = new Map();
-  const prev = new Map();
-  const visited = new Set();
-  const pq = [startSectorId];
-
-  dist.set(startSectorId, 0);
-
-  while (pq.length) {
-    let bi = 0;
-    for (let i = 1; i < pq.length; i++) {
-      if ((dist.get(pq[i]) ?? Infinity) < (dist.get(pq[bi]) ?? Infinity)) bi = i;
-    }
-    const u = pq.splice(bi, 1)[0];
-    if (visited.has(u)) continue;
-    visited.add(u);
-    if (u === targetSectorId) break;
-
-    const su = nodeById.get(u);
-    if (!su) continue;
-
-    const neighbors = Array.isArray(su.neighbors) ? su.neighbors : [];
-    for (const v of neighbors) {
-      const sv = nodeById.get(v);
-      if (!sv) continue;
-      const isCharted = isSectorCharted(state, sv);
-      if (!isCharted && v !== targetSectorId) continue;
-
-      const alt = (dist.get(u) ?? 0) + 1;
-      if (alt < (dist.get(v) ?? Infinity)) {
-        dist.set(v, alt);
-        prev.set(v, u);
-        pq.push(v);
-      }
-    }
-  }
-
-  if (!prev.has(targetSectorId)) return null;
-
-  const path = [];
-  let curr = targetSectorId;
-  while (curr) {
-    path.push(curr);
-    curr = prev.get(curr);
-  }
-  return path.reverse();
-}
-
-/**
- * Format route cost without introducing a second fuel model in the map.
- *
- * A world-owned plan may report the total directly or through its authored legs. The local graph
- * fallback can establish reachability and hop count only, so it must refuse to guess at fuel.
- */
-export function formatRoutePlanCost(route, fallbackPath = null) {
-  if (route && typeof route === 'object') {
-    const legs = Array.isArray(route.legs) ? route.legs : [];
-    const reportedHops = Number(route.totalHops);
-    const hops = Number.isFinite(reportedHops) && reportedHops >= 0
-      ? Math.floor(reportedHops)
-      : legs.length;
-    let fuel = Number(route.totalFuel);
-    if (!Number.isFinite(fuel) && legs.length && legs.every((leg) => Number.isFinite(Number(leg && leg.fuel)))) {
-      fuel = legs.reduce((sum, leg) => sum + Number(leg.fuel), 0);
-    }
-    if (hops > 0 && Number.isFinite(fuel) && fuel >= 0) {
-      return `${hops} ${hops === 1 ? 'Jump' : 'Jumps'} (Fuel: ${Math.round(fuel)} Units)`;
-    }
-  }
-
-  if (Array.isArray(fallbackPath) && fallbackPath.length > 1) {
-    const hops = fallbackPath.length - 1;
-    return `${hops} ${hops === 1 ? 'Jump' : 'Jumps'} (Fuel unavailable)`;
-  }
-  return null;
+  return computePreviewRouteFromSectors(
+    sectorRecords(state),
+    startSectorId,
+    targetSectorId,
+    (sector) => isSectorCharted(state, sector),
+  );
 }
 
 // ---------------------------------------------------------------------------------------------

@@ -288,10 +288,10 @@ test('a field edge is the real radius, a shot keeps its body, and a ricochet nee
   assert.equal(room.has(7), false);
   assert.equal(room.has(0), true);
   assert.equal(room.has(1001), true);
-  const vfx = readFileSync(new URL('../src/render/vfx.js', import.meta.url), 'utf8');
-  const grazeAt = vfx.indexOf('_emitRicochetIfGrazing(pos, p, recipe, scale, hitShield) {');
-  const coneAt = vfx.indexOf('_impactParticleCone(x, z, base, spread', grazeAt);
-  const grazeBody = vfx.slice(grazeAt, coneAt);
+  const impactVfx = readFileSync(new URL('../src/render/vfx/weaponImpactVfx.js', import.meta.url), 'utf8');
+  const grazeAt = impactVfx.indexOf('_emitRicochetIfGrazing(pos, p, recipe, scale, hitShield) {');
+  const coneAt = impactVfx.indexOf('_impactParticleCone(x, z, base, spread', grazeAt);
+  const grazeBody = impactVfx.slice(grazeAt, coneAt);
   const asked = grazeBody.indexOf('ricochetSecondPath(');
   const streak = grazeBody.indexOf('_spawnProjectileTrailStreak');
   assert.ok(asked >= 0 && streak > asked);
@@ -434,8 +434,9 @@ test('release, machinery, undock, jettison and planet cues keep a shape', () => 
   assert.ok(cutLayer.colors[0] > 0.05);
   cutLayer.dispose();
   const vfx = readFileSync(new URL('../src/render/vfx.js', import.meta.url), 'utf8');
-  const releaseAt = vfx.indexOf('_onTetherRelease(p) {');
-  const releaseBody = vfx.slice(releaseAt, vfx.indexOf('_onTetherReleaseRated(p) {', releaseAt));
+  const tetherEvents = readFileSync(new URL('../src/render/vfx/tetherCableEventMethods.js', import.meta.url), 'utf8');
+  const releaseAt = tetherEvents.indexOf('_onTetherRelease(p) {');
+  const releaseBody = tetherEvents.slice(releaseAt, tetherEvents.indexOf('_onTetherReleaseRated(p) {', releaseAt));
   assert.match(releaseBody, /releaseCutMark\(/);
   // c11f89f8e restored the release's paired endpoint flashes: exactly two anisotropic SPR_FLASH
   // spawns rolled along the line (structure at the severed ends, never a radial blast card). The
