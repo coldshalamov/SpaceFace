@@ -427,9 +427,12 @@ function assertFrameWhitelist(frame) {
   assertExactKeys(frame.self, [
     'activity', 'aimProjectileSpeed', 'arenaPursuit', 'capabilities', 'cargoBand', 'combatDoctrineId', 'disabled', 'energyFraction',
     'factionBehavior', 'heatFraction', 'hullFraction', 'id', 'mobilityBand', 'moraleImmune', 'occupantGeneration', 'operationalMassBand', 'pos', 'radius',
-    'ramAuthorized', 'recovering', 'roe', 'rot', 'subsystemFractions', 'team', 'tetherabilityBand', 'tethered', 'tumbling', 'turretPhaseEdges', 'turretsLost', 'vel',
+    'ramAuthorized', 'recovering', 'roe', 'rot', 'subsystemFractions', 'swarmSpecialistKind', 'swarmWardTargetId', 'team', 'tetherabilityBand', 'tethered', 'tumbling', 'turretPhaseEdges', 'turretsLost', 'vel',
     'woundedFallbackSpent',
   ], 'SensorFrame.self');
+  // A bounded timing hint for three Swarm cohort specialists, never an entity/data reference.
+  assert.ok([null, 'warden', 'jackal', 'anchor'].includes(frame.self.swarmSpecialistKind));
+  assert.ok(frame.self.swarmWardTargetId === null || Number.isSafeInteger(frame.self.swarmWardTargetId));
   assertExactKeys(frame.self.pos, ['x', 'z'], 'SensorFrame.self.pos');
   assertExactKeys(frame.self.vel, ['x', 'z'], 'SensorFrame.self.vel');
   if (frame.self.activity) {

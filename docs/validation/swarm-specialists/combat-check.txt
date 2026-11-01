@@ -1,0 +1,30 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> spaceface@0.2.0-beta.1 check:combat
+> node scripts/check-combat-grammar.mjs && npm run check:sg03:save-reload && node --test test/combat-table-query-scratch.test.mjs
+
+ok   all authored combat definitions validate
+ok   dash→attach→reel→sling→cut→burst has the exact golden tick trace
+ok   player and AI invoke the same ActionDef path
+ok   drive/weapon/sensor/tether-spool disablement becomes functional on tick + 1
+ok   swept projectile contact enters the hull without accepting distant off-hull coordinates
+ok   legacy, action, and status damage converge on damage.routed
+ok   health, capacitor, heat, and cooldown invariants hold under generated inputs
+ok   combat is renderer/UI independent and source-neutral
+
+SG-03 combat grammar: 8 checks passed.
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> spaceface@0.2.0-beta.1 check:sg03:save-reload
+> node scripts/check-sg03-save-reload.mjs
+
+SG-03 save/reload combat persistence checks OK
+✔ test/combat-table-query-scratch.test.mjs (5157.221964ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 5197.447041

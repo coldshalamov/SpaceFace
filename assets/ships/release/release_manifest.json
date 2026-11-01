@@ -6839,6 +6839,48 @@
         "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
         "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
       }
+    },
+    {
+      "id": "wholeship_swarm_warden",
+      "kind": "part:wholeships",
+      "source": "assets/ships/parts/wholeships/swarm_warden.glb",
+      "release": "assets/ships/release/parts/wholeships/swarm_warden.glb",
+      "sourceSha256": "da8b1335706628bc9c0265afd929ae1c7d683173caf30260d7dcde8e3ca221aa",
+      "releaseSha256": "5e491d108ea3a2de03a7171185bbf7e559d14121f8f69660f516610d4a5f46e2",
+      "sourceBytes": 811816,
+      "releaseBytes": 526532,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 154,
+      "contractNodeCount": 62
+    },
+    {
+      "id": "wholeship_swarm_jackal",
+      "kind": "part:wholeships",
+      "source": "assets/ships/parts/wholeships/swarm_jackal.glb",
+      "release": "assets/ships/release/parts/wholeships/swarm_jackal.glb",
+      "sourceSha256": "8a8a18f9d02b99b71c15479e64453b376f724158662fb53381f0ab74084d377b",
+      "releaseSha256": "81ffb0b25fdb2548a402eebe2b445c87b15fcac22af5ae23cedc0b4869b533f7",
+      "sourceBytes": 929628,
+      "releaseBytes": 558572,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 141,
+      "contractNodeCount": 54
+    },
+    {
+      "id": "wholeship_swarm_anchor",
+      "kind": "part:wholeships",
+      "source": "assets/ships/parts/wholeships/swarm_anchor.glb",
+      "release": "assets/ships/release/parts/wholeships/swarm_anchor.glb",
+      "sourceSha256": "9c612770a56392cecfff074dcbcd0ce7afa537a0bbdcc6735bbd7fc5d9b54886",
+      "releaseSha256": "7fd55107ab68732e11cfd3377c714cd8fe90887f6406ae27f85487caf6de1ae1",
+      "sourceBytes": 1011580,
+      "releaseBytes": 600224,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 181,
+      "contractNodeCount": 64
     }
   ]
 }

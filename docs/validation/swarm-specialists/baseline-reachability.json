@@ -1,0 +1,36 @@
+{
+  "base": "35b99d8727a21c640e6dca93ef769802c1ed12cf",
+  "baseline": {
+    "ok": false,
+    "newOrphans": [
+      "src/ui/deckplate/components.js",
+      "src/ui/deckplate/css.js",
+      "src/ui/deckplate/hardware.js",
+      "src/ui/deckplate/layout.js",
+      "src/ui/deckplate/light.js",
+      "src/ui/deckplate/materials.js",
+      "src/ui/deckplate/screens.js",
+      "src/ui/deckplate/tokens.js",
+      "src/ui/orrery/mobileFlightLayouts.js",
+      "src/ui/views/hudStyles.js"
+    ],
+    "staleExceptions": []
+  },
+  "candidate": {
+    "ok": false,
+    "newOrphans": [
+      "src/ui/deckplate/components.js",
+      "src/ui/deckplate/css.js",
+      "src/ui/deckplate/hardware.js",
+      "src/ui/deckplate/layout.js",
+      "src/ui/deckplate/light.js",
+      "src/ui/deckplate/materials.js",
+      "src/ui/deckplate/screens.js",
+      "src/ui/deckplate/tokens.js",
+      "src/ui/orrery/mobileFlightLayouts.js",
+      "src/ui/views/hudStyles.js"
+    ],
+    "staleExceptions": []
+  },
+  "unchangedFailure": true
+}

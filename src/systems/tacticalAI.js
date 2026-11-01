@@ -1,3 +1,4 @@
+import { isSwarmSpecialistRun } from '../data/swarmSpecialists.js';
 import { createEnemyMindPort } from '../ai/enemyMind/port.js';
 import { enemyMindAllowsFire, SPECIALIST_DOCTRINES } from '../ai/enemyMind/adapter.js';
 import { shapeNemesisManeuverRequest, nemesisFireAllowed } from '../ai/nemesisTactics.js';
@@ -685,11 +686,9 @@ export function createTacticalAISystem({
           const bombsSys = ctxRef.registry && typeof ctxRef.registry.get === 'function'
             ? ctxRef.registry.get('bombs')
             : null;
-          applyNpcBombMirror({
-            state,
-            entity,
-            doctrinePhase: doctrine.phase,
-            bombs: bombsSys,
+          if (!(isSwarmSpecialistRun(state) && entity.data?.runCohort === 'survival'
+            && entity.data?.lootTableId === 'mine_layer_jackal')) applyNpcBombMirror({
+            state, entity, doctrinePhase: doctrine.phase, bombs: bombsSys,
           });
         }
         if (entity && fieldsSys && !capitalBossOrder(state, entity.id)?.suppressStockFire && nemesisFireAllowed(entity, state)) applyNpcFieldDeploy(entity, state, fieldsSys);

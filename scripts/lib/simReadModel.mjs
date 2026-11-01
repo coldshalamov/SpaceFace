@@ -1,4 +1,5 @@
 import { projectIlexGreenhouse } from '../../src/data/ilexGreenhouse.js';
+import { foldSwarmSpecialistPresentation } from '../../src/data/swarmSpecialistPresentation.js';
 // S1 Phase-B stage 3 — main-side read model v1.
 //
 // Reconstructs what the present lane reads from live sim state, fed entirely by
@@ -227,6 +228,7 @@ export function applySpawnInfos(readModel, spawnInfos) {
       foldBoostVitals(row, info.vitals);
       foldMachineVitals(row, info.vitals);
       foldMineVitals(row, info.vitals);
+      foldSwarmSpecialistPresentation(row, info.vitals);
       foldScanLabel(row, info.vitals);
       foldEcologyVitals(row, info.vitals);
       foldCountermeasureVitals(row, info.vitals);
@@ -309,6 +311,7 @@ export function applyEntityVitals(readModel, vitals) {
     foldBoostVitals(row, fields);
     foldMachineVitals(row, fields);
     foldMineVitals(row, fields);
+    foldSwarmSpecialistPresentation(row, fields);
     foldScanLabel(row, fields);
     foldEcologyVitals(row, fields);
     foldCountermeasureVitals(row, fields);

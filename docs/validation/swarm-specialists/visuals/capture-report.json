@@ -1,0 +1,1509 @@
+{
+  "capturedAt": "2026-11-01",
+  "renderer": "Chrome for Testing 156.0.8078.80 / ANGLE SwiftShader; production game renderer fixture",
+  "acceptedImages": 12,
+  "assertions": "Strict authored admission, canonical phase quaternions, overlay visibility, >=20% camera-scaled central hull pixels, visual inspection, lossless conversion; all three active close views repeated after upstream aa212937b with exact optimized-package content hash assertions",
+  "fixture": {
+    "simNow": 1.25,
+    "phaseStartedAt": 60,
+    "phaseEndsAt": 90,
+    "warden": {
+      "targetX": 62,
+      "targetZ": -28,
+      "linkHp": 92,
+      "linkMaxHp": 92
+    },
+    "jackal": {
+      "salvoRemaining": 3,
+      "salvoPoints": [
+        {
+          "x": -42,
+          "z": -32
+        },
+        {
+          "x": -72,
+          "z": -46
+        },
+        {
+          "x": -102,
+          "z": -60
+        }
+      ]
+    },
+    "anchor": {
+      "anchorRadius": 220,
+      "anchorStrength": 88,
+      "anchorActiveDuringActivePhase": true
+    }
+  },
+  "limitations": [
+    "Explicit hostile presentation fixture; not an ordinary Swarm playthrough.",
+    "Software rasterizer; no hardware performance or balance claim.",
+    "Wide field view intentionally leaves the Anchor hull small so all 220 WU are visible."
+  ],
+  "browserWarnings": [
+    {
+      "run": "final-captures",
+      "messages": [
+        "THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.",
+        "[lineHardware] authored hardware admission failed — [asyncAdmission] line-class-hardware exceeded the 120000ms admission deadline",
+        "[\"[GPU brick] bloomScene 8987.4ms {\\\"owners\\\":[{\\\"object\\\":\\\"Parallax_FarDust_Instances\\\",\\\"material\\\":\\\"MeshStandardMaterial\\\",\\\"mu\\\":\\\"308061cc\\\",\\\"ou\\\":\\\"9b12d343\\\",\\\"cloneOf\\\":\\\"\\\",\\\"parent\\\":\\\"Parallax_FarDust\\\",\\\"pos\\\":\\\"0,0,0\\\",\\\"root\\\":\\\"Parallax_FarDust\\\",\\\"key\\\":\\\"physical,STANDARD,,highp,srgb-linear,306,2048",
+        "[GPU brick] bloomScene 4377.9ms {\"programsAfter\":105,\"geometriesAfter\":396,\"suppressedBricks\":0}",
+        "[GPU brick] bloomScene 3141.9ms {\"programsAfter\":117,\"geometriesAfter\":445,\"suppressedBricks\":0}"
+      ]
+    },
+    {
+      "run": "corrected-captures",
+      "messages": [
+        "THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.",
+        "[lineHardware] authored hardware admission failed — [asyncAdmission] line-class-hardware exceeded the 120000ms admission deadline",
+        "[\"[GPU brick] bloomScene 8627.2ms {\\\"owners\\\":[{\\\"object\\\":\\\"Parallax_FarDust_Instances\\\",\\\"material\\\":\\\"MeshStandardMaterial\\\",\\\"mu\\\":\\\"398589e1\\\",\\\"ou\\\":\\\"c34ef500\\\",\\\"cloneOf\\\":\\\"\\\",\\\"parent\\\":\\\"Parallax_FarDust\\\",\\\"pos\\\":\\\"0,0,0\\\",\\\"root\\\":\\\"Parallax_FarDust\\\",\\\"key\\\":\\\"physical,STANDARD,,highp,srgb-linear,306,2048",
+        "[GPU brick] bloomScene 5152.7ms {\"programsAfter\":114,\"geometriesAfter\":397,\"suppressedBricks\":0}",
+        "[GPU brick] bloomScene 4636.5ms {\"programsAfter\":123,\"geometriesAfter\":446,\"suppressedBricks\":0}"
+      ]
+    },
+    {
+      "run": "post-merge-active",
+      "messages": [
+        "THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.",
+        "[lineHardware] authored hardware admission failed — [asyncAdmission] line-class-hardware exceeded the 120000ms admission deadline",
+        "[\"[GPU brick] bloomScene 4575.8ms {\\\"owners\\\":[{\\\"object\\\":\\\"LOD0_Armor\\\",\\\"material\\\":\\\"SF_Shared_hull_textured_hull\\\",\\\"mu\\\":\\\"73aecd14\\\",\\\"ou\\\":\\\"07238dd7\\\",\\\"cloneOf\\\":\\\"\\\",\\\"parent\\\":\\\"SF_SWARM_WARDEN_ROOT\\\",\\\"pos\\\":\\\"0,1,0\\\",\\\"root\\\":\\\"fleetLookHolder\\\",\\\"key\\\":\\\"physical,STANDARD,,highp,srgb-linear,306,2048,uv,f",
+        "[GPU brick] bloomScene 5910.1ms {\"programsAfter\":102,\"geometriesAfter\":396,\"suppressedBricks\":0}",
+        "[GPU brick] bloomScene 5698.9ms {\"programsAfter\":117,\"geometriesAfter\":445,\"suppressedBricks\":0}"
+      ]
+    }
+  ],
+  "captures": [
+    {
+      "name": "warden_windup",
+      "phase": "windup",
+      "kind": "warden",
+      "view": "close",
+      "file": "warden-windup-close.webp",
+      "sourceRun": "final-captures",
+      "width": 1000,
+      "height": 620,
+      "originalPngSha256": "178af217f6d68677b2d94751cad3ef927fa64cd49bddd8b4b5de382d930b28fd",
+      "sha256": "e063f4e79d10915e3a543355ef9fb9858f61cf8fb440325207b263a3f7b79a53",
+      "pixelSha256": "d05bfe12c7785068a38887d3dc351e1a0dd0bde62f73b6245fe2723f8f5821ad",
+      "losslessPixelsVerified": true,
+      "authoredAssetState": "authored",
+      "strictAdmissionPassed": true,
+      "hullPixelCheck": {
+        "region": {
+          "left": 350,
+          "top": 210,
+          "width": 300,
+          "height": 200
+        },
+        "centerHullCoverage": 0.85785,
+        "minimumCenterHullCoverage": 0.2
+      },
+      "pivotDegrees": [
+        17.5,
+        -17.5
+      ],
+      "captureDiagnostics": {
+        "meshes": 51,
+        "visibleMeshes": 17,
+        "pivots": [
+          {
+            "name": "MOTION_WARDEN_SHIELD_PORT",
+            "quaternion": [
+              0,
+              0.1521233861899167,
+              0,
+              0.9883615104677607
+            ]
+          },
+          {
+            "name": "MOTION_WARDEN_SHIELD_STARBOARD",
+            "quaternion": [
+              0,
+              -0.1521233861899167,
+              0,
+              0.9883615104677607
+            ]
+          }
+        ],
+        "effects": [
+          {
+            "name": "SF_SWARM_WARDEN_ROOT",
+            "visible": true
+          },
+          {
+            "name": "SF_SWARM_WARDEN_LINK",
+            "visible": true
+          }
+        ],
+        "pools": {
+          "pools": 0,
+          "chunks": 0,
+          "pooledInstanceSlots": 0,
+          "activeInstanceSlots": 0,
+          "submittedInstanceSlots": 0,
+          "visibleInstancePools": 0,
+          "offscreenInstancePools": 0,
+          "culledInstanceSlots": 0,
+          "hiddenInstanceSlots": 0,
+          "avgPoolOccupancy": 0,
+          "tinyPools": 0,
+          "dirtyChunks": 0,
+          "matrixUploads": 0,
+          "matrixReuses": 0,
+          "frameBounded": false,
+          "ownersVisited": 0,
+          "slotsVisited": 0,
+          "shadowCastingInstanceChunks": 0,
+          "opaqueBatches": 0,
+          "opaqueBatchInstances": 0,
+          "opaqueBatchHiddenChunks": 0
+        },
+        "rootPosition": [
+          0,
+          0,
+          0
+        ],
+        "rootVisible": true,
+        "contentVisible": true,
+        "cameraPosition": [
+          0,
+          50.22947341949744,
+          -29.000000000000007
+        ],
+        "boxMin": [
+          -17.629777908325195,
+          -17.629777908325195,
+          -17.629777908325195
+        ],
+        "boxMax": [
+          17.629777908325195,
+          17.629777908325195,
+          17.629777908325195
+        ]
+      },
+      "replacementOfRejectedColdFrame": false,
+      "afterUpstreamRendererMerge": false
+    },
+    {
+      "name": "warden_active",
+      "phase": "active",
+      "kind": "warden",
+      "view": "close",
+      "file": "warden-active-close.webp",
+      "sourceRun": "post-merge-active",
+      "width": 1000,
+      "height": 620,
+      "originalPngSha256": "7dc17f1a3962226120cfc87c4c9b84ed8d2712ca7be78c7cee82c85996e7e8c1",
+      "sha256": "edebaf2946a1fc1f5ba4def36200f17bc1f828f61688247c53b6da19fdbd42d3",
+      "pixelSha256": "26dece48c8ed10d0f7798fa7da4c59d52126f302612f5e1ea6882e183d6d50aa",
+      "losslessPixelsVerified": true,
+      "authoredAssetState": "authored",
+      "strictAdmissionPassed": true,
+      "hullPixelCheck": {
+        "region": {
+          "left": 350,
+          "top": 210,
+          "width": 300,
+          "height": 200
+        },
+        "centerHullCoverage": 0.84015,
+        "minimumCenterHullCoverage": 0.2
+      },
+      "pivotDegrees": [
+        35,
+        -35
+      ],
+      "captureDiagnostics": {
+        "meshes": 51,
+        "visibleMeshes": 17,
+        "pivots": [
+          {
+            "name": "MOTION_WARDEN_SHIELD_PORT",
+            "quaternion": [
+              0,
+              0.3007057995042731,
+              0,
+              0.9537169507482269
+            ]
+          },
+          {
+            "name": "MOTION_WARDEN_SHIELD_STARBOARD",
+            "quaternion": [
+              0,
+              -0.3007057995042731,
+              0,
+              0.9537169507482269
+            ]
+          }
+        ],
+        "effects": [
+          {
+            "name": "SF_SWARM_WARDEN_ROOT",
+            "visible": true
+          },
+          {
+            "name": "SF_SWARM_WARDEN_LINK",
+            "visible": true
+          }
+        ],
+        "pools": {
+          "pools": 0,
+          "chunks": 0,
+          "pooledInstanceSlots": 0,
+          "activeInstanceSlots": 0,
+          "submittedInstanceSlots": 0,
+          "visibleInstancePools": 0,
+          "offscreenInstancePools": 0,
+          "culledInstanceSlots": 0,
+          "hiddenInstanceSlots": 0,
+          "avgPoolOccupancy": 0,
+          "tinyPools": 0,
+          "dirtyChunks": 0,
+          "matrixUploads": 0,
+          "matrixReuses": 0,
+          "frameBounded": false,
+          "ownersVisited": 0,
+          "slotsVisited": 0,
+          "shadowCastingInstanceChunks": 0,
+          "opaqueBatches": 0,
+          "opaqueBatchInstances": 0,
+          "opaqueBatchHiddenChunks": 0
+        },
+        "renderedPackages": [
+          {
+            "assetId": "sf.render.swarm-warden",
+            "contentHash": "aaf0ea9931bd013b8c8db76de4f36b452d989464daefda27c5c573991e4fa13c"
+          }
+        ],
+        "phaseView": {
+          "kind": "warden",
+          "phase": "active",
+          "phaseStartedAt": 60,
+          "phaseEndsAt": 90,
+          "targetId": 1,
+          "targetX": 62,
+          "targetZ": -28,
+          "linkHp": 92,
+          "linkMaxHp": 92
+        },
+        "rootPosition": [
+          0,
+          0,
+          0
+        ],
+        "rootVisible": true,
+        "contentVisible": true,
+        "cameraPosition": [
+          0,
+          50.22947341949744,
+          -29.000000000000007
+        ],
+        "boxMin": [
+          -17.629777908325195,
+          -17.629777908325195,
+          -18.618952128971834
+        ],
+        "boxMax": [
+          17.629777908325195,
+          17.629777908325195,
+          18.618952128971834
+        ]
+      },
+      "replacementOfRejectedColdFrame": false,
+      "afterUpstreamRendererMerge": true
+    },
+    {
+      "name": "warden_recovery",
+      "phase": "recovery",
+      "kind": "warden",
+      "view": "close",
+      "file": "warden-recovery-close.webp",
+      "sourceRun": "final-captures",
+      "width": 1000,
+      "height": 620,
+      "originalPngSha256": "d29b08660ecfbc07922b00a23f663665a1b8dad147822eccb04b7d80ecec19c2",
+      "sha256": "ebe5999acc4004b7d0990f7b8b0774b89988ad303f7a58a290ad0015f7bb73ff",
+      "pixelSha256": "9d78e1bb520306ffb8e8b11cf63aa1ba704452fcaba89b129db9167fbc1af9e1",
+      "losslessPixelsVerified": true,
+      "authoredAssetState": "authored",
+      "strictAdmissionPassed": true,
+      "hullPixelCheck": {
+        "region": {
+          "left": 350,
+          "top": 210,
+          "width": 300,
+          "height": 200
+        },
+        "centerHullCoverage": 0.8578,
+        "minimumCenterHullCoverage": 0.2
+      },
+      "pivotDegrees": [
+        17.5,
+        -17.5
+      ],
+      "captureDiagnostics": {
+        "meshes": 51,
+        "visibleMeshes": 16,
+        "pivots": [
+          {
+            "name": "MOTION_WARDEN_SHIELD_PORT",
+            "quaternion": [
+              0,
+              0.1521233861899167,
+              0,
+              0.9883615104677607
+            ]
+          },
+          {
+            "name": "MOTION_WARDEN_SHIELD_STARBOARD",
+            "quaternion": [
+              0,
+              -0.1521233861899167,
+              0,
+              0.9883615104677607
+            ]
+          }
+        ],
+        "effects": [
+          {
+            "name": "SF_SWARM_WARDEN_ROOT",
+            "visible": true
+          },
+          {
+            "name": "SF_SWARM_WARDEN_LINK",
+            "visible": false
+          }
+        ],
+        "pools": {
+          "pools": 0,
+          "chunks": 0,
+          "pooledInstanceSlots": 0,
+          "activeInstanceSlots": 0,
+          "submittedInstanceSlots": 0,
+          "visibleInstancePools": 0,
+          "offscreenInstancePools": 0,
+          "culledInstanceSlots": 0,
+          "hiddenInstanceSlots": 0,
+          "avgPoolOccupancy": 0,
+          "tinyPools": 0,
+          "dirtyChunks": 0,
+          "matrixUploads": 0,
+          "matrixReuses": 0,
+          "frameBounded": false,
+          "ownersVisited": 0,
+          "slotsVisited": 0,
+          "shadowCastingInstanceChunks": 0,
+          "opaqueBatches": 0,
+          "opaqueBatchInstances": 0,
+          "opaqueBatchHiddenChunks": 0
+        },
+        "rootPosition": [
+          0,
+          0,
+          0
+        ],
+        "rootVisible": true,
+        "contentVisible": true,
+        "cameraPosition": [
+          0,
+          50.22947341949744,
+          -29.000000000000007
+        ],
+        "boxMin": [
+          -17.629777908325195,
+          -17.629777908325195,
+          -17.629777908325195
+        ],
+        "boxMax": [
+          17.629777908325195,
+          17.629777908325195,
+          17.629777908325195
+        ]
+      },
+      "replacementOfRejectedColdFrame": false,
+      "afterUpstreamRendererMerge": false
+    },
+    {
+      "name": "jackal_windup",
+      "phase": "windup",
+      "kind": "jackal",
+      "view": "close",
+      "file": "jackal-windup-close.webp",
+      "sourceRun": "corrected-captures",
+      "width": 1000,
+      "height": 620,
+      "originalPngSha256": "b1b92e77d2bffe438c9fba5e50edc31b97cc09b99be5eea32e510512238d2855",
+      "sha256": "5bb748b32e8b86eabe9212f4df4c99e40208fcf8e6a283aaad1a72aeeb9d86db",
+      "pixelSha256": "b3c6fe7d87e1fd22281e87442870ec39917121306727a0e72c6d279c954719ce",
+      "losslessPixelsVerified": true,
+      "authoredAssetState": "authored",
+      "strictAdmissionPassed": true,
+      "hullPixelCheck": {
+        "region": {
+          "left": 350,
+          "top": 210,
+          "width": 300,
+          "height": 200
+        },
+        "centerHullCoverage": 0.4003833333333333,
+        "minimumCenterHullCoverage": 0.2
+      },
+      "pivotDegrees": [
+        24,
+        -24
+      ],
+      "captureDiagnostics": {
+        "meshes": 43,
+        "visibleMeshes": 14,
+        "pivots": [
+          {
+            "name": "MOTION_JACKAL_GATE_PORT",
+            "quaternion": [
+              0,
+              0.20791169081775931,
+              0,
+              0.9781476007338057
+            ]
+          },
+          {
+            "name": "MOTION_JACKAL_GATE_STARBOARD",
+            "quaternion": [
+              0,
+              -0.20791169081775931,
+              0,
+              0.9781476007338057
+            ]
+          }
+        ],
+        "effects": [
+          {
+            "name": "SF_SWARM_JACKAL_ROOT",
+            "visible": true
+          },
+          {
+            "name": "SF_SWARM_JACKAL_MINE_WAKE",
+            "visible": true
+          }
+        ],
+        "pools": {
+          "pools": 0,
+          "chunks": 0,
+          "pooledInstanceSlots": 0,
+          "activeInstanceSlots": 0,
+          "submittedInstanceSlots": 0,
+          "visibleInstancePools": 0,
+          "offscreenInstancePools": 0,
+          "culledInstanceSlots": 0,
+          "hiddenInstanceSlots": 0,
+          "avgPoolOccupancy": 0,
+          "tinyPools": 0,
+          "dirtyChunks": 0,
+          "matrixUploads": 0,
+          "matrixReuses": 0,
+          "frameBounded": false,
+          "ownersVisited": 0,
+          "slotsVisited": 0,
+          "shadowCastingInstanceChunks": 0,
+          "opaqueBatches": 0,
+          "opaqueBatchInstances": 0,
+          "opaqueBatchHiddenChunks": 0
+        },
+        "rootPosition": [
+          0,
+          0,
+          0
+        ],
+        "rootVisible": true,
+        "contentVisible": true,
+        "cameraPosition": [
+          0,
+          50.22947341949744,
+          -29.000000000000007
+        ],
+        "boxMin": [
+          -17.629777908325195,
+          -17.629777908325195,
+          -17.629777908325195
+        ],
+        "boxMax": [
+          17.629777908325195,
+          17.629777908325195,
+          17.629777908325195
+        ]
+      },
+      "replacementOfRejectedColdFrame": true,
+      "afterUpstreamRendererMerge": false
+    },
+    {
+      "name": "jackal_active",
+      "phase": "active",
+      "kind": "jackal",
+      "view": "close",
+      "file": "jackal-active-close.webp",
+      "sourceRun": "post-merge-active",
+      "width": 1000,
+      "height": 620,
+      "originalPngSha256": "6b802122c7eed24b6fd054561b427c0834ebf22df3186e02a041829cc2a59ae3",
+      "sha256": "7ffe1a2c698498763156683ae8d05293eb06c6c565bb597278ba61b28e198b8a",
+      "pixelSha256": "a395303a0f0258f2b770575a6d24707ad4199d636e5df30421cecf72f9c5e213",
+      "losslessPixelsVerified": true,
+      "authoredAssetState": "authored",
+      "strictAdmissionPassed": true,
+      "hullPixelCheck": {
+        "region": {
+          "left": 350,
+          "top": 210,
+          "width": 300,
+          "height": 200
+        },
+        "centerHullCoverage": 0.4003,
+        "minimumCenterHullCoverage": 0.2
+      },
+      "pivotDegrees": [
+        48,
+        -48
+      ],
+      "captureDiagnostics": {
+        "meshes": 43,
+        "visibleMeshes": 14,
+        "pivots": [
+          {
+            "name": "MOTION_JACKAL_GATE_PORT",
+            "quaternion": [
+              0,
+              0.40673664307580015,
+              0,
+              0.9135454576426009
+            ]
+          },
+          {
+            "name": "MOTION_JACKAL_GATE_STARBOARD",
+            "quaternion": [
+              0,
+              -0.40673664307580015,
+              0,
+              0.9135454576426009
+            ]
+          }
+        ],
+        "effects": [
+          {
+            "name": "SF_SWARM_JACKAL_ROOT",
+            "visible": true
+          },
+          {
+            "name": "SF_SWARM_JACKAL_MINE_WAKE",
+            "visible": true
+          }
+        ],
+        "pools": {
+          "pools": 0,
+          "chunks": 0,
+          "pooledInstanceSlots": 0,
+          "activeInstanceSlots": 0,
+          "submittedInstanceSlots": 0,
+          "visibleInstancePools": 0,
+          "offscreenInstancePools": 0,
+          "culledInstanceSlots": 0,
+          "hiddenInstanceSlots": 0,
+          "avgPoolOccupancy": 0,
+          "tinyPools": 0,
+          "dirtyChunks": 0,
+          "matrixUploads": 0,
+          "matrixReuses": 0,
+          "frameBounded": false,
+          "ownersVisited": 0,
+          "slotsVisited": 0,
+          "shadowCastingInstanceChunks": 0,
+          "opaqueBatches": 0,
+          "opaqueBatchInstances": 0,
+          "opaqueBatchHiddenChunks": 0
+        },
+        "renderedPackages": [
+          {
+            "assetId": "sf.render.swarm-jackal",
+            "contentHash": "f622d318b419b12a9670b9f91425caa72f120967dce2c87a66b7ea4fbc391478"
+          }
+        ],
+        "phaseView": {
+          "kind": "jackal",
+          "phase": "active",
+          "phaseStartedAt": 60,
+          "phaseEndsAt": 90,
+          "salvoRemaining": 3,
+          "salvoPoints": [
+            {
+              "x": -42,
+              "z": -32
+            },
+            {
+              "x": -72,
+              "z": -46
+            },
+            {
+              "x": -102,
+              "z": -60
+            }
+          ]
+        },
+        "rootPosition": [
+          0,
+          0,
+          0
+        ],
+        "rootVisible": true,
+        "contentVisible": true,
+        "cameraPosition": [
+          0,
+          50.22947341949744,
+          -29.000000000000007
+        ],
+        "boxMin": [
+          -17.629777908325195,
+          -17.629777908325195,
+          -17.629777908325195
+        ],
+        "boxMax": [
+          17.629777908325195,
+          17.629777908325195,
+          17.629777908325195
+        ]
+      },
+      "replacementOfRejectedColdFrame": false,
+      "afterUpstreamRendererMerge": true
+    },
+    {
+      "name": "jackal_recovery",
+      "phase": "recovery",
+      "kind": "jackal",
+      "view": "close",
+      "file": "jackal-recovery-close.webp",
+      "sourceRun": "final-captures",
+      "width": 1000,
+      "height": 620,
+      "originalPngSha256": "2c595653f0c6587389b8b4239d26a685cd84c161e3c70721e5bf35645359c80b",
+      "sha256": "1016383bb5ea242763c34ee492bbb37dd2af226acb0422516c4c924324a7a355",
+      "pixelSha256": "b9b02c2c9acfff70b49be5002b5c323aab0e44c678765a3d43413c09715ca326",
+      "losslessPixelsVerified": true,
+      "authoredAssetState": "authored",
+      "strictAdmissionPassed": true,
+      "hullPixelCheck": {
+        "region": {
+          "left": 350,
+          "top": 210,
+          "width": 300,
+          "height": 200
+        },
+        "centerHullCoverage": 0.46576666666666666,
+        "minimumCenterHullCoverage": 0.2
+      },
+      "pivotDegrees": [
+        24,
+        -24
+      ],
+      "captureDiagnostics": {
+        "meshes": 43,
+        "visibleMeshes": 13,
+        "pivots": [
+          {
+            "name": "MOTION_JACKAL_GATE_PORT",
+            "quaternion": [
+              0,
+              0.20791169081775931,
+              0,
+              0.9781476007338057
+            ]
+          },
+          {
+            "name": "MOTION_JACKAL_GATE_STARBOARD",
+            "quaternion": [
+              0,
+              -0.20791169081775931,
+              0,
+              0.9781476007338057
+            ]
+          }
+        ],
+        "effects": [
+          {
+            "name": "SF_SWARM_JACKAL_ROOT",
+            "visible": true
+          },
+          {
+            "name": "SF_SWARM_JACKAL_MINE_WAKE",
+            "visible": false
+          }
+        ],
+        "pools": {
+          "pools": 0,
+          "chunks": 0,
+          "pooledInstanceSlots": 0,
+          "activeInstanceSlots": 0,
+          "submittedInstanceSlots": 0,
+          "visibleInstancePools": 0,
+          "offscreenInstancePools": 0,
+          "culledInstanceSlots": 0,
+          "hiddenInstanceSlots": 0,
+          "avgPoolOccupancy": 0,
+          "tinyPools": 0,
+          "dirtyChunks": 0,
+          "matrixUploads": 0,
+          "matrixReuses": 0,
+          "frameBounded": false,
+          "ownersVisited": 0,
+          "slotsVisited": 0,
+          "shadowCastingInstanceChunks": 0,
+          "opaqueBatches": 0,
+          "opaqueBatchInstances": 0,
+          "opaqueBatchHiddenChunks": 0
+        },
+        "rootPosition": [
+          0,
+          0,
+          0
+        ],
+        "rootVisible": true,
+        "contentVisible": true,
+        "cameraPosition": [
+          0,
+          50.22947341949744,
+          -29.000000000000007
+        ],
+        "boxMin": [
+          -17.629777908325195,
+          -17.629777908325195,
+          -17.629777908325195
+        ],
+        "boxMax": [
+          17.629777908325195,
+          17.629777908325195,
+          17.629777908325195
+        ]
+      },
+      "replacementOfRejectedColdFrame": false,
+      "afterUpstreamRendererMerge": false
+    },
+    {
+      "name": "anchor_windup",
+      "phase": "windup",
+      "kind": "anchor",
+      "view": "close",
+      "file": "anchor-windup-close.webp",
+      "sourceRun": "final-captures",
+      "width": 1000,
+      "height": 620,
+      "originalPngSha256": "bceb976304fed1c4e00346e2f600e7c8a3c519b8c42b29091295b47633d79f9f",
+      "sha256": "ba82dd13394b61ece18d6c2ec73cb832d87dc45bef5f02a50f75bd7302201a08",
+      "pixelSha256": "c1a785bc63f67e5c742814d761777ee9ce51222abeeb28d37fdd2e45402d20d7",
+      "losslessPixelsVerified": true,
+      "authoredAssetState": "authored",
+      "strictAdmissionPassed": true,
+      "hullPixelCheck": {
+        "region": {
+          "left": 350,
+          "top": 210,
+          "width": 300,
+          "height": 200
+        },
+        "centerHullCoverage": 0.9152,
+        "minimumCenterHullCoverage": 0.2
+      },
+      "pivotDegrees": [
+        -21,
+        21,
+        -21
+      ],
+      "captureDiagnostics": {
+        "meshes": 53,
+        "visibleMeshes": 18,
+        "pivots": [
+          {
+            "name": "MOTION_ANCHOR_VANE_FORE",
+            "quaternion": [
+              0,
+              -0.18223552549214747,
+              0,
+              0.9832549075639546
+            ]
+          },
+          {
+            "name": "MOTION_ANCHOR_VANE_PORT",
+            "quaternion": [
+              0,
+              0.18223552549214747,
+              0,
+              0.9832549075639546
+            ]
+          },
+          {
+            "name": "MOTION_ANCHOR_VANE_STARBOARD",
+            "quaternion": [
+              0,
+              -0.18223552549214747,
+              0,
+              0.9832549075639546
+            ]
+          }
+        ],
+        "effects": [
+          {
+            "name": "SF_SWARM_ANCHOR_ROOT",
+            "visible": true
+          },
+          {
+            "name": "SF_SWARM_ANCHOR_FIELD_EDGE",
+            "visible": true
+          }
+        ],
+        "pools": {
+          "pools": 0,
+          "chunks": 0,
+          "pooledInstanceSlots": 0,
+          "activeInstanceSlots": 0,
+          "submittedInstanceSlots": 0,
+          "visibleInstancePools": 0,
+          "offscreenInstancePools": 0,
+          "culledInstanceSlots": 0,
+          "hiddenInstanceSlots": 0,
+          "avgPoolOccupancy": 0,
+          "tinyPools": 0,
+          "dirtyChunks": 0,
+          "matrixUploads": 0,
+          "matrixReuses": 0,
+          "frameBounded": false,
+          "ownersVisited": 0,
+          "slotsVisited": 0,
+          "shadowCastingInstanceChunks": 0,
+          "opaqueBatches": 0,
+          "opaqueBatchInstances": 0,
+          "opaqueBatchHiddenChunks": 0
+        },
+        "rootPosition": [
+          0,
+          0,
+          0
+        ],
+        "rootVisible": true,
+        "contentVisible": true,
+        "cameraPosition": [
+          0,
+          50.22947341949744,
+          -29.000000000000007
+        ],
+        "boxMin": [
+          -27.42409896850586,
+          -27.42409896850586,
+          -27.42409896850586
+        ],
+        "boxMax": [
+          27.42409896850586,
+          27.42409896850586,
+          27.42409896850586
+        ]
+      },
+      "replacementOfRejectedColdFrame": false,
+      "afterUpstreamRendererMerge": false
+    },
+    {
+      "name": "anchor_active",
+      "phase": "active",
+      "kind": "anchor",
+      "view": "close",
+      "file": "anchor-active-close.webp",
+      "sourceRun": "post-merge-active",
+      "width": 1000,
+      "height": 620,
+      "originalPngSha256": "a5265a672698a54bc273aa55873c6217ab2628ea1ee0af9a144cdaad98c49fa6",
+      "sha256": "512b34d2dafa36faf33143177a75365a04c850ed9e6e6b210d3616ffd5f80b8d",
+      "pixelSha256": "f95fb3c9bcf63801f10a548f18ff33cdbf4afcf7758d24c1d3b6a1cb55c76d1d",
+      "losslessPixelsVerified": true,
+      "authoredAssetState": "authored",
+      "strictAdmissionPassed": true,
+      "hullPixelCheck": {
+        "region": {
+          "left": 350,
+          "top": 210,
+          "width": 300,
+          "height": 200
+        },
+        "centerHullCoverage": 0.9092333333333333,
+        "minimumCenterHullCoverage": 0.2
+      },
+      "pivotDegrees": [
+        -42,
+        42,
+        -42
+      ],
+      "captureDiagnostics": {
+        "meshes": 53,
+        "visibleMeshes": 18,
+        "pivots": [
+          {
+            "name": "MOTION_ANCHOR_VANE_FORE",
+            "quaternion": [
+              0,
+              -0.35836794954530027,
+              0,
+              0.9335804264972017
+            ]
+          },
+          {
+            "name": "MOTION_ANCHOR_VANE_PORT",
+            "quaternion": [
+              0,
+              0.35836794954530027,
+              0,
+              0.9335804264972017
+            ]
+          },
+          {
+            "name": "MOTION_ANCHOR_VANE_STARBOARD",
+            "quaternion": [
+              0,
+              -0.35836794954530027,
+              0,
+              0.9335804264972017
+            ]
+          }
+        ],
+        "effects": [
+          {
+            "name": "SF_SWARM_ANCHOR_ROOT",
+            "visible": true
+          },
+          {
+            "name": "SF_SWARM_ANCHOR_FIELD_EDGE",
+            "visible": true
+          }
+        ],
+        "pools": {
+          "pools": 0,
+          "chunks": 0,
+          "pooledInstanceSlots": 0,
+          "activeInstanceSlots": 0,
+          "submittedInstanceSlots": 0,
+          "visibleInstancePools": 0,
+          "offscreenInstancePools": 0,
+          "culledInstanceSlots": 0,
+          "hiddenInstanceSlots": 0,
+          "avgPoolOccupancy": 0,
+          "tinyPools": 0,
+          "dirtyChunks": 0,
+          "matrixUploads": 0,
+          "matrixReuses": 0,
+          "frameBounded": false,
+          "ownersVisited": 0,
+          "slotsVisited": 0,
+          "shadowCastingInstanceChunks": 0,
+          "opaqueBatches": 0,
+          "opaqueBatchInstances": 0,
+          "opaqueBatchHiddenChunks": 0
+        },
+        "renderedPackages": [
+          {
+            "assetId": "sf.render.swarm-anchor",
+            "contentHash": "13146531edd31b0a5413b77f6fbfa20120f6133b2b98f35f718b33c309965f52"
+          }
+        ],
+        "phaseView": {
+          "kind": "anchor",
+          "phase": "active",
+          "phaseStartedAt": 60,
+          "phaseEndsAt": 90,
+          "anchorActive": true,
+          "anchorRadius": 220,
+          "anchorStrength": 88
+        },
+        "rootPosition": [
+          0,
+          0,
+          0
+        ],
+        "rootVisible": true,
+        "contentVisible": true,
+        "cameraPosition": [
+          0,
+          50.22947341949744,
+          -29.000000000000007
+        ],
+        "boxMin": [
+          -27.42409896850586,
+          -27.42409896850586,
+          -27.42409896850586
+        ],
+        "boxMax": [
+          27.42409896850586,
+          27.42409896850586,
+          27.42409896850586
+        ]
+      },
+      "replacementOfRejectedColdFrame": false,
+      "afterUpstreamRendererMerge": true
+    },
+    {
+      "name": "anchor_recovery",
+      "phase": "recovery",
+      "kind": "anchor",
+      "view": "close",
+      "file": "anchor-recovery-close.webp",
+      "sourceRun": "final-captures",
+      "width": 1000,
+      "height": 620,
+      "originalPngSha256": "6e92229174e6c9979104eb2d886cf441c24456b36255b3292ae21d07736e5f4c",
+      "sha256": "d04b33ae0de46862f3bd97054c2577bcef5c0d74c03eaed646eca899c5e44c56",
+      "pixelSha256": "b60cc024be268cb1644175f43f47ce1e90f771cc01c7801538acc2e27e62f11e",
+      "losslessPixelsVerified": true,
+      "authoredAssetState": "authored",
+      "strictAdmissionPassed": true,
+      "hullPixelCheck": {
+        "region": {
+          "left": 350,
+          "top": 210,
+          "width": 300,
+          "height": 200
+        },
+        "centerHullCoverage": 0.9154166666666667,
+        "minimumCenterHullCoverage": 0.2
+      },
+      "pivotDegrees": [
+        -21,
+        21,
+        -21
+      ],
+      "captureDiagnostics": {
+        "meshes": 53,
+        "visibleMeshes": 17,
+        "pivots": [
+          {
+            "name": "MOTION_ANCHOR_VANE_FORE",
+            "quaternion": [
+              0,
+              -0.18223552549214747,
+              0,
+              0.9832549075639546
+            ]
+          },
+          {
+            "name": "MOTION_ANCHOR_VANE_PORT",
+            "quaternion": [
+              0,
+              0.18223552549214747,
+              0,
+              0.9832549075639546
+            ]
+          },
+          {
+            "name": "MOTION_ANCHOR_VANE_STARBOARD",
+            "quaternion": [
+              0,
+              -0.18223552549214747,
+              0,
+              0.9832549075639546
+            ]
+          }
+        ],
+        "effects": [
+          {
+            "name": "SF_SWARM_ANCHOR_ROOT",
+            "visible": true
+          },
+          {
+            "name": "SF_SWARM_ANCHOR_FIELD_EDGE",
+            "visible": false
+          }
+        ],
+        "pools": {
+          "pools": 0,
+          "chunks": 0,
+          "pooledInstanceSlots": 0,
+          "activeInstanceSlots": 0,
+          "submittedInstanceSlots": 0,
+          "visibleInstancePools": 0,
+          "offscreenInstancePools": 0,
+          "culledInstanceSlots": 0,
+          "hiddenInstanceSlots": 0,
+          "avgPoolOccupancy": 0,
+          "tinyPools": 0,
+          "dirtyChunks": 0,
+          "matrixUploads": 0,
+          "matrixReuses": 0,
+          "frameBounded": false,
+          "ownersVisited": 0,
+          "slotsVisited": 0,
+          "shadowCastingInstanceChunks": 0,
+          "opaqueBatches": 0,
+          "opaqueBatchInstances": 0,
+          "opaqueBatchHiddenChunks": 0
+        },
+        "rootPosition": [
+          0,
+          0,
+          0
+        ],
+        "rootVisible": true,
+        "contentVisible": true,
+        "cameraPosition": [
+          0,
+          50.22947341949744,
+          -29.000000000000007
+        ],
+        "boxMin": [
+          -27.42409896850586,
+          -27.42409896850586,
+          -27.42409896850586
+        ],
+        "boxMax": [
+          27.42409896850586,
+          27.42409896850586,
+          27.42409896850586
+        ]
+      },
+      "replacementOfRejectedColdFrame": false,
+      "afterUpstreamRendererMerge": false
+    },
+    {
+      "name": "warden_active_overview",
+      "phase": "active",
+      "kind": "warden",
+      "view": "inspect",
+      "file": "warden-active-overview-inspect.webp",
+      "sourceRun": "corrected-captures",
+      "width": 1600,
+      "height": 1000,
+      "originalPngSha256": "67fc815f42a6cf84617694363f138869d5dce3c698f93d159eded93cc0c860e0",
+      "sha256": "1b3ed0a7995d2b23ec4b467f4f66476454d58335115714276a04b0a89f83fd28",
+      "pixelSha256": "c9ab641f247abb009e0dd98b49a60dd77f0691187587d2c9fff670b9a46c5edc",
+      "losslessPixelsVerified": true,
+      "authoredAssetState": "authored",
+      "strictAdmissionPassed": true,
+      "hullPixelCheck": {
+        "region": {
+          "left": 758,
+          "top": 472,
+          "width": 84,
+          "height": 56
+        },
+        "centerHullCoverage": 0.7776360544217688,
+        "minimumCenterHullCoverage": 0.2
+      },
+      "pivotDegrees": [
+        35,
+        -35
+      ],
+      "captureDiagnostics": {
+        "meshes": 51,
+        "visibleMeshes": 17,
+        "pivots": [
+          {
+            "name": "MOTION_WARDEN_SHIELD_PORT",
+            "quaternion": [
+              0,
+              0.3007057995042731,
+              0,
+              0.9537169507482269
+            ]
+          },
+          {
+            "name": "MOTION_WARDEN_SHIELD_STARBOARD",
+            "quaternion": [
+              0,
+              -0.3007057995042731,
+              0,
+              0.9537169507482269
+            ]
+          }
+        ],
+        "effects": [
+          {
+            "name": "SF_SWARM_WARDEN_ROOT",
+            "visible": true
+          },
+          {
+            "name": "SF_SWARM_WARDEN_LINK",
+            "visible": true
+          }
+        ],
+        "pools": {
+          "pools": 0,
+          "chunks": 0,
+          "pooledInstanceSlots": 0,
+          "activeInstanceSlots": 0,
+          "submittedInstanceSlots": 0,
+          "visibleInstancePools": 0,
+          "offscreenInstancePools": 0,
+          "culledInstanceSlots": 0,
+          "hiddenInstanceSlots": 0,
+          "avgPoolOccupancy": 0,
+          "tinyPools": 0,
+          "dirtyChunks": 0,
+          "matrixUploads": 0,
+          "matrixReuses": 0,
+          "frameBounded": false,
+          "ownersVisited": 0,
+          "slotsVisited": 0,
+          "shadowCastingInstanceChunks": 0,
+          "opaqueBatches": 0,
+          "opaqueBatchInstances": 0,
+          "opaqueBatchHiddenChunks": 0
+        },
+        "rootPosition": [
+          0,
+          0,
+          0
+        ],
+        "rootVisible": true,
+        "contentVisible": true,
+        "cameraPosition": [
+          109.05749858509354,
+          120.85531339175945,
+          -129.47762442731923
+        ],
+        "boxMin": [
+          -17.629777908325195,
+          -17.629777908325195,
+          -18.618952128971834
+        ],
+        "boxMax": [
+          17.629777908325195,
+          17.629777908325195,
+          18.618952128971834
+        ]
+      },
+      "replacementOfRejectedColdFrame": true,
+      "afterUpstreamRendererMerge": false
+    },
+    {
+      "name": "jackal_active_overview",
+      "phase": "active",
+      "kind": "jackal",
+      "view": "inspect",
+      "file": "jackal-active-overview-inspect.webp",
+      "sourceRun": "final-captures",
+      "width": 1600,
+      "height": 1000,
+      "originalPngSha256": "1755b7d37c43deb114ce25a0b3e0bb9f5bc665348e730e3adb20f2d84076dbe9",
+      "sha256": "e8cb28d4666ce63a4d4965b4b0a86c4adea02dab03f3fd69ebce74bac8d6c3d1",
+      "pixelSha256": "79d74ef0b5b6548007bff3a407d5367b2d3fc39dec1137b2a30147143ea38f32",
+      "losslessPixelsVerified": true,
+      "authoredAssetState": "authored",
+      "strictAdmissionPassed": true,
+      "hullPixelCheck": {
+        "region": {
+          "left": 775,
+          "top": 483,
+          "width": 51,
+          "height": 34
+        },
+        "centerHullCoverage": 0.9630911188004614,
+        "minimumCenterHullCoverage": 0.2
+      },
+      "pivotDegrees": [
+        48,
+        -48
+      ],
+      "captureDiagnostics": {
+        "meshes": 43,
+        "visibleMeshes": 14,
+        "pivots": [
+          {
+            "name": "MOTION_JACKAL_GATE_PORT",
+            "quaternion": [
+              0,
+              0.40673664307580015,
+              0,
+              0.9135454576426009
+            ]
+          },
+          {
+            "name": "MOTION_JACKAL_GATE_STARBOARD",
+            "quaternion": [
+              0,
+              -0.40673664307580015,
+              0,
+              0.9135454576426009
+            ]
+          }
+        ],
+        "effects": [
+          {
+            "name": "SF_SWARM_JACKAL_ROOT",
+            "visible": true
+          },
+          {
+            "name": "SF_SWARM_JACKAL_MINE_WAKE",
+            "visible": true
+          }
+        ],
+        "pools": {
+          "pools": 0,
+          "chunks": 0,
+          "pooledInstanceSlots": 0,
+          "activeInstanceSlots": 0,
+          "submittedInstanceSlots": 0,
+          "visibleInstancePools": 0,
+          "offscreenInstancePools": 0,
+          "culledInstanceSlots": 0,
+          "hiddenInstanceSlots": 0,
+          "avgPoolOccupancy": 0,
+          "tinyPools": 0,
+          "dirtyChunks": 0,
+          "matrixUploads": 0,
+          "matrixReuses": 0,
+          "frameBounded": false,
+          "ownersVisited": 0,
+          "slotsVisited": 0,
+          "shadowCastingInstanceChunks": 0,
+          "opaqueBatches": 0,
+          "opaqueBatchInstances": 0,
+          "opaqueBatchHiddenChunks": 0
+        },
+        "rootPosition": [
+          0,
+          0,
+          0
+        ],
+        "rootVisible": true,
+        "contentVisible": true,
+        "cameraPosition": [
+          177.218435200777,
+          196.38988426160913,
+          -210.40113969439372
+        ],
+        "boxMin": [
+          -17.629777908325195,
+          -17.629777908325195,
+          -17.629777908325195
+        ],
+        "boxMax": [
+          17.629777908325195,
+          17.629777908325195,
+          17.629777908325195
+        ]
+      },
+      "replacementOfRejectedColdFrame": false,
+      "afterUpstreamRendererMerge": false
+    },
+    {
+      "name": "anchor_active_overview",
+      "phase": "active",
+      "kind": "anchor",
+      "view": "inspect",
+      "file": "anchor-active-overview-inspect.webp",
+      "sourceRun": "corrected-captures",
+      "width": 1600,
+      "height": 1000,
+      "originalPngSha256": "3ff9c35ee863e62c45c1f14158a0522d63abe3aadde0b266a2ae6fe5dc64308a",
+      "sha256": "ab986793cddd9179a1bd31c622f6022d5291d0649345faa94aa485787fa46617",
+      "pixelSha256": "971caec1b35c8704b05ad9b477ed6037895aa228785d2abdbded2b6179938117",
+      "losslessPixelsVerified": true,
+      "authoredAssetState": "authored",
+      "strictAdmissionPassed": true,
+      "hullPixelCheck": {
+        "region": {
+          "left": 787,
+          "top": 492,
+          "width": 26,
+          "height": 17
+        },
+        "centerHullCoverage": 0.9434389140271493,
+        "minimumCenterHullCoverage": 0.2
+      },
+      "pivotDegrees": [
+        -42,
+        42,
+        -42
+      ],
+      "captureDiagnostics": {
+        "meshes": 53,
+        "visibleMeshes": 18,
+        "pivots": [
+          {
+            "name": "MOTION_ANCHOR_VANE_FORE",
+            "quaternion": [
+              0,
+              -0.35836794954530027,
+              0,
+              0.9335804264972017
+            ]
+          },
+          {
+            "name": "MOTION_ANCHOR_VANE_PORT",
+            "quaternion": [
+              0,
+              0.35836794954530027,
+              0,
+              0.9335804264972017
+            ]
+          },
+          {
+            "name": "MOTION_ANCHOR_VANE_STARBOARD",
+            "quaternion": [
+              0,
+              -0.35836794954530027,
+              0,
+              0.9335804264972017
+            ]
+          }
+        ],
+        "effects": [
+          {
+            "name": "SF_SWARM_ANCHOR_ROOT",
+            "visible": true
+          },
+          {
+            "name": "SF_SWARM_ANCHOR_FIELD_EDGE",
+            "visible": true
+          }
+        ],
+        "pools": {
+          "pools": 0,
+          "chunks": 0,
+          "pooledInstanceSlots": 0,
+          "activeInstanceSlots": 0,
+          "submittedInstanceSlots": 0,
+          "visibleInstancePools": 0,
+          "offscreenInstancePools": 0,
+          "culledInstanceSlots": 0,
+          "hiddenInstanceSlots": 0,
+          "avgPoolOccupancy": 0,
+          "tinyPools": 0,
+          "dirtyChunks": 0,
+          "matrixUploads": 0,
+          "matrixReuses": 0,
+          "frameBounded": false,
+          "ownersVisited": 0,
+          "slotsVisited": 0,
+          "shadowCastingInstanceChunks": 0,
+          "opaqueBatches": 0,
+          "opaqueBatchInstances": 0,
+          "opaqueBatchHiddenChunks": 0
+        },
+        "rootPosition": [
+          0,
+          0,
+          0
+        ],
+        "rootVisible": true,
+        "contentVisible": true,
+        "cameraPosition": [
+          354.436870401554,
+          392.77976852321825,
+          -420.80227938878744
+        ],
+        "boxMin": [
+          -27.42409896850586,
+          -27.42409896850586,
+          -27.42409896850586
+        ],
+        "boxMax": [
+          27.42409896850586,
+          27.42409896850586,
+          27.42409896850586
+        ]
+      },
+      "replacementOfRejectedColdFrame": true,
+      "afterUpstreamRendererMerge": false
+    }
+  ]
+}

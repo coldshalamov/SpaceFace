@@ -32,6 +32,8 @@ import { story } from '../../src/systems/story.js';
 import { save } from '../../src/save/saveSystem.js';
 import { fittingsFromDefaultModules, makeShipEntitySpec } from '../../src/systems/ships.js';
 import { NEW_GAME } from '../../src/data/newGameDefaults.js';
+import { swarmSpecialistKind } from '../../src/data/swarmSpecialists.js';
+import { swarmSpecialistPresentationFrame } from '../../src/data/swarmSpecialistPresentation.js';
 import { isOrchardFrame } from '../../src/data/anvilOrchardIdentity.js';
 import { COMBAT_FLAGS, applyFeatureConfigToMaps } from '../../src/data/featureFlags.js';
 import {
@@ -312,6 +314,8 @@ export function entityVitalsOf(e, krakenFrame = VITAL_SHADOW_MISSING) {
     fields.machineWorking = Boolean(machine.working);
   }
   if (e.type === 'mine') fields.mineArmed = e.data?.armed === true;
+  const specialistFrame = swarmSpecialistFrameValue(e);
+  if (specialistFrame !== VITAL_SHADOW_MISSING) fields.swarmSpecialistFrame = specialistFrame;
   if (typeof e.data?.scanLabel === 'string') fields.dataScanLabel = e.data.scanLabel;
   // Wreck concealment reads data.scanned — it flips after spawn, so it rides vitals like scanLabel.
   if (e.data && e.data.scanned !== undefined) fields.dataScanned = e.data.scanned === true;
@@ -358,6 +362,14 @@ export function entityVitalsOf(e, krakenFrame = VITAL_SHADOW_MISSING) {
 const VITAL_SHADOW_MISSING = Symbol('vital-shadow-missing');
 const VITAL_SHADOW_JSON_NULL = Symbol('vital-shadow-json-null');
 
+function swarmSpecialistFrameValue(e) {
+  const data = e?.data;
+  if (!data?.swarmSpecialist && !swarmSpecialistKind(data?.lootTableId || data?.enemyTypeId)) {
+    return VITAL_SHADOW_MISSING;
+  }
+  return swarmSpecialistPresentationFrame(data?.swarmSpecialist);
+}
+
 function vitalShadowValue(value) {
   if (value === undefined) return VITAL_SHADOW_MISSING;
   if (value === null || (typeof value === 'number' && !Number.isFinite(value))) {
@@ -403,6 +415,7 @@ function vitalShadowMatches(e, shadow, krakenFrame) {
   if ((machine ? Boolean(machine.repairing) : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
   if ((machine ? Boolean(machine.working) : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
   if ((e.type === 'mine' ? e.data?.armed === true : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
+  if (swarmSpecialistFrameValue(e) !== shadow[i++]) return false;
   if ((typeof e.data?.scanLabel === 'string' ? e.data.scanLabel : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
   if ((e.data && e.data.scanned !== undefined ? e.data.scanned === true : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
   const ecology = e.data && e.data.ecology;
@@ -447,6 +460,7 @@ function writeVitalShadow(e, shadow, krakenFrame) {
   shadow[i++] = machine ? Boolean(machine.repairing) : VITAL_SHADOW_MISSING;
   shadow[i++] = machine ? Boolean(machine.working) : VITAL_SHADOW_MISSING;
   shadow[i++] = e.type === 'mine' ? e.data?.armed === true : VITAL_SHADOW_MISSING;
+  shadow[i++] = swarmSpecialistFrameValue(e);
   shadow[i++] = typeof e.data?.scanLabel === 'string' ? e.data.scanLabel : VITAL_SHADOW_MISSING;
   shadow[i++] = e.data && e.data.scanned !== undefined ? e.data.scanned === true : VITAL_SHADOW_MISSING;
   const ecology = e.data && e.data.ecology;

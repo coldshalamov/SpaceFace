@@ -18,6 +18,8 @@ import {
   writePlayerFirstHitTruth,
 } from './rewardEligibility.js';
 import { wardScreenTarget } from '../ai/specialistCounterplay.js';
+import { breakSwarmGuard } from '../ai/swarmSpecialistRuntime.js';
+import { isSwarmSpecialistRun, SWARM_SPECIALIST_TUNING } from '../data/swarmSpecialists.js';
 import { deliverPhysicalImpulseDetailed } from './physicalEffects.js';
 import { isEnvironmentalBody, isPhysicalMissionBody } from '../core/physicalResponse.js';
 import { resolvePhysicsBodySpec } from '../core/physicsAuthority.js';
@@ -166,7 +168,35 @@ export function createDamageRouter(context, statusService, options = {}) {
     const aimed = entity(input && input.targetId);
     const screen = wardScreenTarget(state, attacker, aimed, input && input.origin);
     if (screen && screen.id !== (input && input.targetId)) {
-      input = { ...input, targetId: screen.id, wardFromId: aimed && aimed.id };
+      const link = screen.data?.swarmSpecialist;
+      if (isSwarmSpecialistRun(state) && link?.kind === 'warden'
+        && link.phase === 'active' && link.targetId === aimed?.id) {
+        const normalized = normalizeDamagePacket(input?.packet, catalog.damageModel.channelOrder);
+        const total = sumChannels(normalized.channels);
+        const redirectedRaw = Math.min(Math.max(0, link.linkEnergy || 0),
+          total * SWARM_SPECIALIST_TUNING.warden.redirectFraction);
+        if (redirectedRaw > 0 && total > 0) {
+          const share = redirectedRaw / total;
+          link.linkEnergy = Math.max(0, link.linkEnergy - redirectedRaw);
+          link.linkHp = link.linkEnergy;
+          const scaled = (fraction, guard = false) => ({
+            ...normalized,
+            channels: Object.fromEntries(catalog.damageModel.channelOrder.map((channel) =>
+              [channel, (normalized.channels[channel] || 0) * fraction])),
+            flags: { ...normalized.flags }, statuses: guard ? [] : [...normalized.statuses],
+            heat: guard ? 0 : normalized.heat * fraction, impulse: guard ? null : normalized.impulse,
+          });
+          const guard = routeDamage({ ...input, targetId: screen.id, wardFromId: aimed.id,
+            packet: scaled(share, true),
+            origin: { ...(input.origin || {}), swarmWardRedirected: true, wardedId: aimed.id } });
+          const remainder = routeDamage({ ...input, packet: scaled(1 - share),
+            origin: { ...(input.origin || {}), swarmWardRedirected: true } });
+          if (link.linkEnergy <= 0) breakSwarmGuard(screen, state.tick | 0);
+          return { ...remainder, swarmGuardRedirected: guard?.totalApplied || 0,
+            warderId: screen.id, wardedId: aimed.id };
+        }
+        // A zero-damage status/impulse packet is not converted into an unbounded guard hit.
+      } else input = { ...input, targetId: screen.id, wardFromId: aimed && aimed.id };
     }
     const packet = normalizeDamagePacket(input && input.packet, catalog.damageModel.channelOrder);
     const target = entity(input && input.targetId);
@@ -359,6 +389,11 @@ export function createDamageRouter(context, statusService, options = {}) {
     // fields on entry. Nested fields stay fresh-per-emit or externally owned (channels, before,
     // after, pos/approach/normal, origin), so no one sees a rewritten sub-object.
     const totalApplied = shieldDamage + armorDamage + subsystemDamage + hullDamage;
+    if (totalApplied > 0 && isSwarmSpecialistRun(state)
+      && target.data?.runCohort === 'survival' && target.data?.swarmSpecialist?.kind === 'warden'
+      && input?.origin?.swarmWardRedirected !== true) {
+      breakSwarmGuard(target, state.tick | 0);
+    }
     const result = {
       ok: true,
       attackerId: input && input.attackerId == null ? null : input.attackerId,

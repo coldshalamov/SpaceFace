@@ -1,0 +1,1 @@
+[modulepreload] in sync — 43 main + 1086 source-closure imports covered.

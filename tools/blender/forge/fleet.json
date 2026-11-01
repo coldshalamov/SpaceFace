@@ -1566,6 +1566,45 @@
       "new_place": true,
       "contract_source": "place_conveyor_barge",
       "note": "Charon colony: intact evacuated habitat and attached service annex on the original conveyor hull."
+    },
+    "swarm_warden": {
+      "layout": "npc",
+      "file": "swarm_warden",
+      "asset_id": "SF_SWARM_WARDEN",
+      "part_id": "wholeship_swarm_warden",
+      "npc_root": "SF_SWARM_WARDEN_ROOT",
+      "dynamic_name_includes": [
+        "MOTION_",
+        "HOOK_DRIVE",
+        "HOOK_NAV"
+      ],
+      "note": "Original Forge Swarm warden; shared Forge finish, three LODs, phase-driven rigid mechanisms."
+    },
+    "swarm_jackal": {
+      "layout": "npc",
+      "file": "swarm_jackal",
+      "asset_id": "SF_SWARM_JACKAL",
+      "part_id": "wholeship_swarm_jackal",
+      "npc_root": "SF_SWARM_JACKAL_ROOT",
+      "dynamic_name_includes": [
+        "MOTION_",
+        "HOOK_DRIVE",
+        "HOOK_NAV"
+      ],
+      "note": "Original Forge Swarm jackal; shared Forge finish, three LODs, phase-driven rigid mechanisms."
+    },
+    "swarm_anchor": {
+      "layout": "npc",
+      "file": "swarm_anchor",
+      "asset_id": "SF_SWARM_ANCHOR",
+      "part_id": "wholeship_swarm_anchor",
+      "npc_root": "SF_SWARM_ANCHOR_ROOT",
+      "dynamic_name_includes": [
+        "MOTION_",
+        "HOOK_DRIVE",
+        "HOOK_NAV"
+      ],
+      "note": "Original Forge Swarm anchor; shared Forge finish, three LODs, phase-driven rigid mechanisms."
     }
   }
 }

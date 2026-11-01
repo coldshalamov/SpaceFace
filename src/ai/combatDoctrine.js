@@ -12,6 +12,7 @@ import {
   wrapAngle,
 } from './contracts.js';
 import { normalizeFactionBehaviorProfile } from './factionBehavior.js';
+import { SWARM_SPECIALIST_TUNING } from '../data/swarmSpecialists.js';
 import { CAPITAL_BOSS_CHOREOGRAPHY } from '../data/combatDefs.js';
 import { capitalOpeningAnnouncement, resolveCapitalOpening } from '../combat/subsystems.js';
 import { SCISSORWAKE } from '../data/scissorwake.js';
@@ -733,12 +734,14 @@ function updateScissorwake(record, tick, perception, self, target) {
 
 function updateFieldAnchor(record, tick, self, target, distance) {
   const age = tick - record.phaseStartedTick;
+  const swarm = self?.swarmSpecialistKind === 'anchor';
+  const tuning = SWARM_SPECIALIST_TUNING.anchor;
   if (record.phase === 'approach' && distance <= 540) enter(record, 'field_spool', tick, 'field_spool');
-  else if (record.phase === 'field_spool' && age >= DOCTRINE_TELEGRAPH_TICKS) enter(record, 'anchor_hold', tick, null);
-  else if (record.phase === 'anchor_hold' && (age >= FIELD_ANCHOR_HOLD_TICKS || distance < 220)) {
+  else if (record.phase === 'field_spool' && age >= (swarm ? tuning.windupTicks : DOCTRINE_TELEGRAPH_TICKS)) enter(record, 'anchor_hold', tick, null);
+  else if (record.phase === 'anchor_hold' && (age >= (swarm ? tuning.activeTicks : FIELD_ANCHOR_HOLD_TICKS) || (!swarm && distance < 220))) {
     beginEgress(record, 'recover', tick, self, target, 'field_cycle_complete');
-  } else if (record.phase === 'recover' && age >= FIELD_ANCHOR_RECOVER_TICKS &&
-    (distance >= 520 || age >= FIELD_ANCHOR_RECOVER_MAX_TICKS)) {
+  } else if (record.phase === 'recover' && age >= (swarm ? tuning.recoveryTicks : FIELD_ANCHOR_RECOVER_TICKS) &&
+    (distance >= 520 || age >= (swarm ? tuning.recoveryMaxTicks : FIELD_ANCHOR_RECOVER_MAX_TICKS))) {
     beginReform(record, tick);
   } else if (record.phase === 'reform' && age >= TETHER_REFORM_TICKS) {
     advanceCycle(record, tick, 'approach');
@@ -754,6 +757,16 @@ function updateFieldAnchor(record, tick, self, target, distance) {
  * ward (the pre-SF-048 behavior).
  */
 function escortCustody(record, perception, self) {
+  if (self?.swarmSpecialistKind === 'warden') {
+    // The bounded sensor hint comes from the same sticky candidate that owns the guard link.
+    // No second nearest-friendly choice: that could screen another Warden or the wrong wave.
+    const ward = self.swarmWardTargetId == null ? null : perception?.contacts?.find((contact) =>
+      contact && contact.kind === ContactKind.SHIP && contact.hostile !== true
+      && contact.alive === true && contact.visible === true && contact.pos
+      && stableId(contact.id) === stableId(self.swarmWardTargetId));
+    if (record) record.custodyTargetId = ward?.id ?? null;
+    return ward || null;
+  }
   if (!perception || !Array.isArray(perception.contacts)) return escortWard(perception, self);
   const selfPos = self && self.pos ? self.pos : perception.self && perception.self.pos;
   const candidates = [];
@@ -801,6 +814,8 @@ function compareKeys(a, b) {
 
 function updateEscort(record, tick, perception, self, target, distance) {
   const age = tick - record.phaseStartedTick;
+  const swarm = self?.swarmSpecialistKind === 'warden';
+  const tuning = SWARM_SPECIALIST_TUNING.warden;
   const ward = escortCustody(record, perception, self);
   // The screen point floats between ward and threat while a ward exists. Without one the warden
   // holds a defensive orbit of the threat itself (no flightPoint, guns live in the hold) — the
@@ -815,7 +830,7 @@ function updateEscort(record, tick, perception, self, target, distance) {
       ? pointWithin(self, record.flightPoint, ESCORT_APPROACH_RANGE_WU)
       : distance <= 420;
     if (inPosition || age >= ESCORT_APPROACH_TICKS) enter(record, 'screen_deploy', tick, 'engine_flare');
-  } else if (record.phase === 'screen_deploy' && age >= DOCTRINE_TELEGRAPH_TICKS) {
+  } else if (record.phase === 'screen_deploy' && age >= (swarm ? tuning.windupTicks : DOCTRINE_TELEGRAPH_TICKS)) {
     enter(record, 'screen_hold', tick, null);
   } else if (record.phase === 'screen_hold') {
     if (escortBreached(perception, ward)) {
@@ -823,7 +838,7 @@ function updateEscort(record, tick, perception, self, target, distance) {
       // The lunge closes on the breacher: drop the floating screen point so the planner honors
       // the dart's ORBIT-150 maneuver instead of committing to the spot we already hold.
       record.flightPoint = null;
-    } else if (age >= ESCORT_HOLD_TICKS) advanceCycle(record, tick, 'screen_approach');
+    } else if (age >= (swarm ? tuning.activeTicks : ESCORT_HOLD_TICKS)) advanceCycle(record, tick, 'screen_approach');
   } else if (record.phase === 'shield_dart') {
     record.closestDistance = Math.min(record.closestDistance, distance);
     // SF-048 leash: the load outranks the chase. A dart that would carry the screen beyond
@@ -1270,9 +1285,11 @@ function updateSwarmPack(record, tick, self, target, distance) {
  */
 function updateMineLayer(record, tick, self, target, distance) {
   const age = tick - record.phaseStartedTick;
+  const swarm = self?.swarmSpecialistKind === 'jackal';
+  const tuning = SWARM_SPECIALIST_TUNING.jackal;
   if (record.phase === 'flank' && distance <= MINE_FLANK_RANGE_WU) enter(record, 'wake_cue', tick, 'wake_mines');
-  else if (record.phase === 'wake_cue' && age >= DOCTRINE_TELEGRAPH_TICKS) enter(record, 'mine_drop', tick, null);
-  else if (record.phase === 'mine_drop' && age >= MINE_DROP_TICKS) {
+  else if (record.phase === 'wake_cue' && age >= (swarm ? tuning.windupTicks : DOCTRINE_TELEGRAPH_TICKS)) enter(record, 'mine_drop', tick, null);
+  else if (record.phase === 'mine_drop' && age >= (swarm ? tuning.activeTicks : MINE_DROP_TICKS)) {
     beginEgress(record, 'disengage', tick, self, target, 'wake_seeded');
   } else if (record.phase === 'disengage' && age >= MINE_DISENGAGE_TICKS &&
     (distance >= 520 || age >= MINE_DISENGAGE_MAX_TICKS)) {
