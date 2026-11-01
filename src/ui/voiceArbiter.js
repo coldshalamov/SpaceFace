@@ -1,4 +1,6 @@
 // Voice Arbiter (GDD pillar 3 — "one voice at a time").
+import { isOnboardingTeaching } from '../core/onboardingReadModel.js';
+export { isOnboardingTeaching } from '../core/onboardingReadModel.js';
 //
 // A single PRIORITY QUEUE that arbitrates every spoken/notified channel — toasts, enemy barks,
 // market news, story comms — so they never talk over each other. Callers speak through
@@ -117,12 +119,6 @@ export function canInterrupt(active, candidate, policy = {}) {
     return false;
   }
   return true;
-}
-
-/** Onboarding is actively teaching (not finished). Used by the system wrapper for policy. */
-export function isOnboardingTeaching(state) {
-  const ob = state && state.onboarding;
-  return !!(ob && ob.active && !ob.finished);
 }
 
 // Stable presentation key for a queue entry: its explicit id, else a seq-derived key. Used so a
