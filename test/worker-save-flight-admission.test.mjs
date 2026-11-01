@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { bootRealPath } from '../scripts/lib/bench/realPath.mjs';
+import { bootRealPath, writeRealPathInput } from '../scripts/lib/bench/realPath.mjs';
+import { projectBridgeEvent } from '../scripts/lib/simEventBridge.mjs';
 import { save } from '../src/save/saveSystem.js';
 import { applyLaneMode } from '../src/core/simLaneCommands.js';
 import { createTimeEffects } from '../src/core/timeEffects.js';
@@ -33,6 +34,10 @@ for (const deferred of [true, false]) {
       run.runtime.getHelpers().deferFlightAdmission = deferred;
       run.state.world.currentSectorId = 'sector_helios_prime';
       run.step(2);
+      writeRealPathInput(run.state, { moveX: 1 });
+      run.step(60);
+      writeRealPathInput(run.state);
+      assert(Math.hypot(run.player.vel.x, run.player.vel.z) > 10, 'real propulsion establishes a moving save');
       run.state.player.cargo.items.cmdty_ore_iron = 52;
       run.state.player.cargo.items.cmdty_silicate = 7;
       run.state.mode = 'paused';
@@ -50,11 +55,27 @@ for (const deferred of [true, false]) {
       run.state.mode = 'menu';
       const modes = [];
       const loaded = [];
+      const committed = [];
       run.bus.on('mode:changed', payload => modes.push(payload.mode));
       run.bus.on('save:loaded', payload => loaded.push(payload));
+      run.bus.on('save:restoreCommitted', payload => committed.push(payload));
       assert.equal(await owner.load('quick', { preferAsync: true }), true);
       assert.equal(loaded.length, 1);
       assert.equal(loaded[0].visualGatePending, deferred);
+      assert.equal(committed.length, 1);
+      const motion = committed[0].restoredMotion;
+      const savedPlayer = envelope.data.entities.player;
+      assert.deepEqual(motion?.pos, { x: savedPlayer.pos.x, z: savedPlayer.pos.z });
+      assert.deepEqual(motion?.vel, { x: savedPlayer.vel.x, z: savedPlayer.vel.z });
+      const restoredPlayer = run.state.entities.get(run.state.playerId);
+      assert.deepEqual(motion.pos, { x: restoredPlayer.pos.x, z: restoredPlayer.pos.z },
+        'the committed receipt captures the completed native restore before gameplay');
+      assert.deepEqual(motion.vel, { x: restoredPlayer.vel.x, z: restoredPlayer.vel.z },
+        'the committed receipt captures native velocity before any gameplay step');
+      assert(Object.isFrozen(motion) && Object.isFrozen(motion.pos) && Object.isFrozen(motion.vel));
+      const bridgedMotion = projectBridgeEvent('save:restoreCommitted', committed[0]).flat?.restoredMotion;
+      assert.deepEqual(bridgedMotion, motion, 'the actual event bridge keeps detached motion primitives');
+      const immutableMotion = structuredClone(motion);
       assert.deepEqual(loaded[0].restoredEconomy, {
         credits: envelope.data.player.credits,
         cargoItems: envelope.data.cargo.items,
@@ -79,6 +100,15 @@ for (const deferred of [true, false]) {
       const tick = run.state.tick;
       const simTime = run.state.simTime;
       run.step(2);
+      writeRealPathInput(run.state, { brake: true });
+      run.step(30);
+      assert(Math.abs(Math.hypot(run.player.vel.x, run.player.vel.z)
+        - Math.hypot(immutableMotion.vel.x, immutableMotion.vel.z)) > 2,
+      'later real braking changes live speed beyond the restoration tolerance');
+      assert.deepEqual(committed[0].restoredMotion, immutableMotion,
+        'subsequent physics cannot rewrite the restore-boundary receipt');
+      assert.deepEqual(bridgedMotion, immutableMotion,
+        'event replay can retain the restore speed while live physics advances');
       assert(run.state.tick > tick);
       assert(run.state.simTime > simTime);
       run.assertBodies(run.player, 'restored admitted flight');

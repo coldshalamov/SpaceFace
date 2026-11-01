@@ -7669,6 +7669,20 @@ export const save = {
       } else {
         physicsSystem?.completeRestore?.(completeRestoreContext);
       }
+      const restoredEntity = state.entities.get(state.playerId);
+      if (restoredEntity?.pos && restoredEntity?.vel) {
+        // Native adoption and restore listeners have finished, but gameplay is still frozen.
+        // The later main-side mirror can include collisions or braking before event replay.
+        this.bus.emit('save:restoreCommitted', {
+          slot,
+          restoredMotion: Object.freeze({
+            pos: Object.freeze({ x: restoredEntity.pos.x, z: restoredEntity.pos.z }),
+            vel: Object.freeze({ x: restoredEntity.vel.x, z: restoredEntity.vel.z }),
+            tick: state.tick,
+            simTime: state.simTime,
+          }),
+        });
+      }
       this.primeAutosaveCapture();
       if (finalizeLoadedGame) {
         let finalizerResult;

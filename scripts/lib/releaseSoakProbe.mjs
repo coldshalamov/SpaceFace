@@ -2687,6 +2687,7 @@ async function runSoakCycle(page, {
         selectedSourcePoseAtSaveLoaded: detail.selectedSourcePoseAtSaveLoaded,
         loadedPayloadSummary: detail.loadedPayloadSummary,
         loadedRestoredEconomy: detail.loadedRestoredEconomy,
+        loadedRestoredMotion: detail.loadedRestoredMotion,
         loadedAtEvent: detail.loadedAtEvent,
         loaded: detail.loaded,
         elapsedAfterSaveLoaded: detail.elapsedAfterSaveLoaded,
@@ -2849,13 +2850,20 @@ async function runSoakCycle(page, {
   if (loadOutcome.late) mark('load-late-flight', {});
   const loaded = await readPlayerSnapshot(page);
   const loadedAtEvent = await page.evaluate(() => window.__M6_RELEASE_SOAK_EVENTS__?.loadedSnapshot || null);
+  const loadedRestoredMotion = await page.evaluate(() => window.__M6_RELEASE_SOAK_EVENTS__?.loadedRestoredMotion || null);
   const loadedRestoredEconomy = await page.evaluate(() => window.__M6_RELEASE_SOAK_EVENTS__?.loadedRestoredEconomy || null);
   const loadedSlot = await page.evaluate(() => window.__M6_RELEASE_SOAK_EVENTS__?.loadedSlot || null);
+  const restoredMotionSlot = await page.evaluate(() => window.__M6_RELEASE_SOAK_EVENTS__?.restoredMotionSlot || null);
   const loadedPayloadSummary = await page.evaluate(() => window.__M6_RELEASE_SOAK_EVENTS__?.loadedPayloadSummary || null);
   const loadedEnvelopeAtEventRaw = await page.evaluate(() => window.__M6_RELEASE_SOAK_EVENTS__?.loadedEnvelopeRaw || null);
   const loadedEnvelopeAtEvent = summarizeSaveEnvelope(loadedEnvelopeAtEventRaw, { slot: loadedSlot || 'unknown' });
   const preLoadSelectedEnvelope = loadedSlot ? preLoadEnvelopes[loadedSlot] : null;
-  assert(loadedAtEvent?.pos, 'save:loaded observer must capture the exact restored player pose');
+  assert(loadedAtEvent?.pos, 'save:loaded observer must capture the later player mirror');
+  assert.equal(restoredMotionSlot, loadedSlot, 'native motion receipt must belong to the selected loaded slot');
+  assert(loadedRestoredMotion?.pos && loadedRestoredMotion?.vel
+    && [loadedRestoredMotion.pos.x, loadedRestoredMotion.pos.z,
+      loadedRestoredMotion.vel.x, loadedRestoredMotion.vel.z].every(Number.isFinite),
+  'save:restoreCommitted must include its immutable native restore motion receipt');
   // The public F9 load resolves a slot, then continued play/autosave can replace its current
   // localStorage bytes before this probe samples them. Compare against the selected slot's
   // immutable bytes captured immediately before F9; retain the event-time and post-load bytes
@@ -2918,7 +2926,8 @@ async function runSoakCycle(page, {
   });
   const loadedEconomy = await readEconomySnapshot(page);
   const divergedDistance = distance(restoreReference.pos, diverged.pos);
-  const restoredDistance = distance(restoreReference.pos, loadedAtEvent.pos);
+  const restoredDistance = distance(restoreReference.pos, loadedRestoredMotion.pos);
+  const restoredSpeed = Math.hypot(loadedRestoredMotion.vel.x, loadedRestoredMotion.vel.z);
   const postLoadAdvanceDistance = distance(loadedAtEvent.pos, loaded.pos);
   const restoreWitness = {
     saved,
@@ -2932,6 +2941,7 @@ async function runSoakCycle(page, {
     selectedSourcePoseAtSaveLoaded: loadedEnvelopeAtEvent.playerSnapshot || null,
     loadedPayloadSummary,
     loadedRestoredEconomy,
+    loadedRestoredMotion,
     loadedSlot,
     diverged,
     loadedAtEvent,
@@ -2954,8 +2964,10 @@ async function runSoakCycle(page, {
     restoredDistance <= (loadedSlot === 'quick' ? Math.max(1, divergedDistance * 0.25) : 1),
     `load position restore exceeded tolerance: ${JSON.stringify(restoreWitness)}`,
   );
-  assert(Math.abs(restoreReference.speed - loadedAtEvent.speed) <= 2, `load speed restore exceeded tolerance: ${restoreReference.speed} -> ${loadedAtEvent.speed}`);
-  mark('load-restored', { saved, loadedSlot, diverged, loadedAtEvent, loaded, postLoadAdvanceDistance, restorePopulation });
+  assert(Math.abs(restoreReference.speed - restoredSpeed) <= 2,
+    `load speed restore exceeded tolerance: ${restoreReference.speed} -> ${restoredSpeed}`);
+  mark('load-restored', { saved, loadedSlot, diverged, loadedRestoredMotion,
+    loadedAtEvent, loaded, postLoadAdvanceDistance, restorePopulation });
   // The worker's immutable restore receipt is the event-time payload. The ordinary state mirror
   // can already include later work from the same reply, so it remains a separate diagnostic.
   assert(loadedRestoredEconomy && Number.isFinite(loadedRestoredEconomy.credits)
@@ -3439,6 +3451,8 @@ async function armSaveLoadObservers(page) {
       loaded: false,
       saveStartedSnapshot: null,
       loadedSnapshot: null,
+      loadedRestoredMotion: null,
+      restoredMotionSlot: null,
       loadedSlot: null,
       loadedEnvelopeRaw: null,
       loadedPayloadSummary: null,
@@ -3606,6 +3620,18 @@ async function armSaveLoadObservers(page) {
       window.__M6_RELEASE_SOAK_EVENTS__.saved = true;
     };
     window.SF.bus.once('save:completed', onSaveCompleted);
+    window.SF.bus.once('save:restoreCommitted', (payload) => {
+      const motion = payload?.restoredMotion;
+      window.__M6_RELEASE_SOAK_EVENTS__.restoredMotionSlot = payload?.slot || null;
+      window.__M6_RELEASE_SOAK_EVENTS__.loadedRestoredMotion = motion
+        && [motion.pos?.x, motion.pos?.z, motion.vel?.x, motion.vel?.z,
+          motion.tick, motion.simTime].every(Number.isFinite) ? {
+          pos: { x: motion.pos.x, z: motion.pos.z },
+          vel: { x: motion.vel.x, z: motion.vel.z },
+          tick: motion.tick,
+          simTime: motion.simTime,
+        } : null;
+    });
     window.SF.bus.once('save:loaded', (payload) => {
       const state = window.SF?.state;
       const player = state?.entityList?.find((entity) => entity?.id === state.playerId);

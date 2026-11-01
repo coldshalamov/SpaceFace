@@ -535,6 +535,7 @@ for (const scenario of ['raw-retry', 'compressed-reject']) {
       const replies = [], receipts = [];
       let receive, lane;
       bus.on('save:loaded', payload => receipts.push({ type: 'save:loaded', payload }));
+      bus.on('save:restoreCommitted', payload => receipts.push({ type: 'save:restoreCommitted', payload }));
       bus.on('save:error', payload => receipts.push({ type: 'save:error', payload }));
       try {
         worker.on('message', message => {
@@ -550,11 +551,19 @@ for (const scenario of ['raw-retry', 'compressed-reject']) {
         });
         await lane.readyPromise;
         bus.emit('game:load', { slot: 'latest' });
-        await until(() => receipts.some(row => row.type === 'save:loaded' || row.type === 'save:error'),
+        await until(() => receipts.some(row => row.type === 'save:restoreCommitted' || row.type === 'save:error'),
           'fresh worker load from persisted host storage', 12000);
         assert.equal(receipts.some(row => row.type === 'save:error'), false,
           `the fresh owner restores from bytes that survived in main storage: ${JSON.stringify(receipts)}`);
         const loadedReceipt = receipts.find(row => row.type === 'save:loaded').payload;
+        const committedReceipt = receipts.find(row => row.type === 'save:restoreCommitted').payload;
+        const decodedMotion = await decodeSaveEnvelopeText(saved.primary);
+        assert.equal(decodedMotion.ok, true);
+        const savedPlayer = JSON.parse(decodedMotion.text).data.entities.player;
+        assert.equal(committedReceipt.slot, 'quick');
+        assert.deepEqual(committedReceipt.restoredMotion.pos, { x: savedPlayer.pos.x, z: savedPlayer.pos.z });
+        assert.deepEqual(committedReceipt.restoredMotion.vel, { x: savedPlayer.vel.x, z: savedPlayer.vel.z },
+          'the actual worker bridge carries native committed motion from the selected durable bytes');
         assert.equal(loadedReceipt.slot, 'quick');
         assert.deepEqual(loadedReceipt.restoredEconomy, await economyFromSavedBytes(saved.primary),
           'the actual worker bridge carries the economy from the exact selected durable bytes');
@@ -562,6 +571,12 @@ for (const scenario of ['raw-retry', 'compressed-reject']) {
         assert.equal(restored.result.gameplay.difficulty, saved.difficulty,
           'the fresh worker restores the accepted durable generation');
         const immutableLoadedEconomy = structuredClone(loadedReceipt.restoredEconomy);
+        const immutableMotion = structuredClone(committedReceipt.restoredMotion);
+        const livePlayer = state.entities.get(state.playerId);
+        assert(livePlayer?.vel);
+        livePlayer.vel.x += 10;
+        assert.deepEqual(committedReceipt.restoredMotion, immutableMotion,
+          'a later main-side motion mirror cannot rewrite the native restore receipt');
         const liveMirrorItems = state.player?.cargo?.items;
         assert.ok(liveMirrorItems && typeof liveMirrorItems === 'object',
           'the main-side player cargo mirror is available after the worker load');
