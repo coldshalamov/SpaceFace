@@ -618,7 +618,9 @@ ${W} .sx-modrow:focus-within .sx-modrow__metric:first-child i { ${LABEL} font-st
 ${W} .sx-modrow .sx-modrow__metric i { font-style:normal; }
 /* the chooser's list runs to the rail on a short screen; the fold sits on its last visible row */
 @media (max-height:800px) {
-  ${W} .sx-sw__chooser { height:100% !important; max-height:none !important; }
+  /* The outer wrapper's 48px fade pad consumes this short viewport's list allocation. The list
+     below is the real scroller and keeps its own fade/padding; reserve the full rail for it. */
+  ${W} .sx-sw__chooser { height:100% !important; max-height:none !important; padding-bottom:0 !important; }
   ${W} .sx-chooser__list { flex:1 1 auto !important; min-height:0 !important; max-height:none !important; overflow:hidden auto !important; }
   ${W} .sx-chooser__list[data-overflow="1"] { -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 36px), transparent) !important; mask-image:linear-gradient(180deg, #000 calc(100% - 36px), transparent) !important; }
   ${W} .sx-chooser__list[data-overflow="0"] { -webkit-mask-image:none !important; mask-image:none !important; }
