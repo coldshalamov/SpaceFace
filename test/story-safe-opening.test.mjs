@@ -51,10 +51,13 @@ function assertDormant(h, message) {
 const h = harness();
 scenarioRuntime.update();
 assertDormant(h, 'time-based beat entry cannot arm the starter scavengers');
+const canonicalScenario = h.state.scenario;
 
 h.bus.emit('tether:attached', { actorId: h.player.id, targetId: h.spindle.id, attachmentId: 'a1' });
 h.state.simTime = 1000;
 scenarioRuntime.update();
+assert.strictEqual(h.state.scenario, canonicalScenario,
+  'ordinary updates retain the scenario record after its canonical normalization');
 assertDormant(h, 'tether-only remains safe indefinitely while story progress is B0');
 assert.equal(h.demands.length, 0);
 
@@ -86,5 +89,23 @@ assert.equal(h.scavenger.data.ai.zoneId, 'zone_47a_wreck_field');
 assert.equal(h.scavenger.data.ai.combatDoctrineId, 'ranged_disengager');
 assert.equal(h.scavenger.data.ai.roe, 'weapons_free');
 assert.equal(h.scavenger.data.ai.activity.targetId, h.player.id);
+
+const untrustedScenario = {
+  schemaVersion: 99,
+  active: { id: 'external', nested: { retained: true } },
+  facts: { evidence: { value: 3 } },
+};
+h.state.scenario = untrustedScenario;
+const detachedSnapshot = scenarioRuntime.serialize();
+assert.notStrictEqual(h.state.scenario, untrustedScenario,
+  'externally supplied scenario data is normalized before it becomes canonical state');
+assert.equal(h.state.scenario.schemaVersion, 1);
+assert.equal(detachedSnapshot.active.nested.retained, true);
+assert.notStrictEqual(detachedSnapshot, h.state.scenario,
+  'serialization still returns a detached snapshot');
+const normalizedScenario = h.state.scenario;
+scenarioRuntime.serialize();
+assert.strictEqual(h.state.scenario, normalizedScenario,
+  'repeated canonical serialization does not re-normalize the same state');
 
 console.log('story-safe-opening: deterministic action/radius/response gate passed');
