@@ -470,7 +470,7 @@ import {
   shouldSliceFlightAdmission,
   yieldAfterPresent,
 } from './compilePresentSlice.js';
-import { canonicalizeObjectSurfaceProgramKeys } from './illustratedSurface.js';
+import { canonicalizeObjectSurfaceProgramKeys, installIllustratedSurface } from './illustratedSurface.js';
 import {
   bindEnvironmentToStandardMaterials,
   bindEnvironmentToStandardMaterialsSteps,
@@ -8591,6 +8591,14 @@ export function warmHullFilesForSpecs(specs) {
 // spawnable catalog is intentionally excluded here; it belongs to the explicit Crucible/Swarm
 // roster warm and the armory dwell, not an ordinary opening.
 function openingWarmHullFilesForState(state) {
+  return warmHullFilesForSpecs(openingWarmShipSpecsForState(state));
+}
+
+// The opening cast's ship specs (see openingWarmHullFilesForState). The opening warm also mints
+// one hulk exemplar per resolved hulk file from these: a lane freighter killed right after the
+// veil lifts otherwise composes its place-slot hulk (double-sided Forge barge / express-liner
+// surfaces and their shadow-depth twin) and links those programs in flight.
+function openingWarmShipSpecsForState(state) {
   const specs = [];
   try {
     specs.push(...collectFirstFlightCookEntities(state));
@@ -8626,7 +8634,7 @@ function openingWarmHullFilesForState(state) {
       data: { lootTableId: row.archetype },
     });
   }
-  return warmHullFilesForSpecs(specs);
+  return specs;
 }
 
 const PRESENTATION_TEXTURE_KEYS = Object.freeze([
@@ -21690,7 +21698,11 @@ export const render = {
         // program sweep never sees. One exemplar per roster ship runs the real attach → deaden →
         // fit → pipeline path so the first mid-round kill finds blueprint, programs and buffers
         // already resident instead of linking inside the fight (the +4 wreck_PackagedBody links).
-        for (const spec of hulkExemplarSpecsForShips(shipSpecs, `${specPrefix}hulk:`)) {
+        // Opening: no whole-hulk minting (it cost ~4.7 s of load and still missed keys when
+        // the freighter wasn't in the opening cast); _warmOpeningHulkProgramKeys compiles
+        // the exact double-sided hulk programs instead.
+        const hulkShipSpecs = profile === 'opening' ? [] : shipSpecs;
+        for (const spec of hulkExemplarSpecsForShips(hulkShipSpecs, `${specPrefix}hulk:`)) {
           await paceIfDue();
           try {
             const hulk = this.vf.build(spec);
@@ -21898,7 +21910,115 @@ export const render = {
     }
     if (profile === 'opening') this._touchOpeningBargeFamilyUnderShell(root, warm);
     if (profile === 'opening') this._touchOpeningEffectFamilyUnderShell();
+    if (profile === 'opening') this._warmOpeningHulkProgramKeys();
     return warm;
+  },
+
+  /**
+   * A lane freighter killed just after the veil lifts publishes its 'place'-slot hulk; its
+   * double-sided Forge hull surface (illustrated surface v19, layers 8388688/150531) is the one
+   * program that still linked in flight (lt12-lt14 master: 212-2114 ms, lift+1.6..9.8 s; the
+   * Forge_* label is just whichever hull material reached it first). The batched variants and
+   * the shadow-depth twin never linked post-lift in those runs, so only this key is warmed:
+   * one tiny mesh, compiled against the live scene, then its first use (the driver's deferred
+   * link) taken behind the loading shell on an idle frame. Program sharing is by cache key, so
+   * the real hulk material later finds the program resident and never links its own copy.
+   */
+  _warmOpeningHulkProgramKeys() {
+    const { renderer, scene, state } = this;
+    const render = state && state.render;
+    const camera = this.cam && this.cam.obj;
+    if (!renderer || !scene || !camera || !render) return null;
+    if (render.openingHulkKeyWarm && render.openingHulkKeyWarm.issued) return render.openingHulkKeyWarm;
+    const t0 = performance.now();
+    const receipt = { issued: true, issuedAt: Math.round(t0), ms: 0, linkMs: null, keys: [], error: null };
+    render.openingHulkKeyWarm = receipt;
+    const textures = [];
+    const texture = (srgb) => {
+      const t = new THREE.DataTexture(new Uint8Array([255, 255, 255, 255]), 1, 1);
+      if (srgb) t.colorSpace = THREE.SRGBColorSpace;
+      t.needsUpdate = true;
+      textures.push(t);
+      return t;
+    };
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute([0, 0, 0, 1, 0, 0, 0, 1, 0], 3));
+    geometry.setAttribute('normal', new THREE.Float32BufferAttribute([0, 0, 1, 0, 0, 1, 0, 0, 1], 3));
+    geometry.setAttribute('uv', new THREE.Float32BufferAttribute([0, 0, 1, 0, 0, 1], 2));
+    const group = new THREE.Group();
+    group.name = 'SF_OpeningHulkKeyWarm';
+    let material = null;
+    const release = () => {
+      const hold = this._openingHulkKeyWarmHold;
+      if (!hold) return;
+      this._openingHulkKeyWarmHold = null;
+      try {
+        for (const child of hold.group.children.slice()) hold.group.remove(child);
+        for (const t of hold.textures) t.dispose();
+        hold.geometry.dispose();
+        hold.textures.length = 0;
+        hold.material = null;
+        receipt.released = Math.round(performance.now());
+      } catch (error) { receipt.releaseError = String(error && error.message || error); }
+    };
+    // One program per idle frame (here: exactly one), never once the first playable frame is up.
+    const idle = (fn) => {
+      const ric = typeof requestIdleCallback === 'function' ? requestIdleCallback : null;
+      const raf = typeof requestAnimationFrame === 'function' ? requestAnimationFrame : null;
+      if (raf && ric) raf(() => ric(fn, { timeout: 250 }));
+      else setTimeout(fn, 0);
+    };
+    try {
+      // Forge hull surface: map, ao, normal, emissive, metalness, roughness; illustrated
+      // surface; dithered; double-sided as the hulk is.
+      material = new THREE.MeshStandardMaterial({
+        map: texture(true), aoMap: texture(false), normalMap: texture(false),
+        metalnessMap: texture(false), roughnessMap: texture(false), emissiveMap: texture(true),
+      });
+      material.name = 'SF_OpeningHulkKeyWarm';
+      material.side = THREE.DoubleSide;
+      material.dithering = true;
+      installIllustratedSurface(material);
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.frustumCulled = false;
+      group.add(mesh);
+      this._openingHulkKeyWarmHold = { group, material, textures, geometry };
+      const work = this._compilePostRoute(this._selectPostRoute(), group, camera, scene);
+      receipt.ms = Math.round((performance.now() - t0) * 10) / 10;
+      const programsOf = () => {
+        const out = [];
+        const progs = renderer.properties && renderer.properties.get(material).programs;
+        if (progs && typeof progs.values === 'function') for (const p of progs.values()) if (p && !out.includes(p)) out.push(p);
+        return out;
+      };
+      const firstUse = () => {
+        const programs = programsOf();
+        receipt.keys = programs.map((p) => p.cacheKey);
+        receipt.useMs = [];
+        let i = 0;
+        const step = () => {
+          if (i >= programs.length) { receipt.usedAt = Math.round(performance.now()); release(); return; }
+          if (Number.isFinite(render.firstPlayableFrameAt) || state.mode !== 'loading') {
+            receipt.useSkipped = programs.length - i; release(); return;
+          }
+          const program = programs[i++];
+          const u0 = performance.now();
+          try { program.getUniforms(); } catch (_) { /* reported through the link ledger */ }
+          receipt.useMs.push(Math.round(performance.now() - u0));
+          idle(step);
+        };
+        idle(step);
+      };
+      Promise.resolve(work).then(() => {
+        receipt.linkMs = Math.round(performance.now() - t0);
+        firstUse();
+      }, (error) => { receipt.error = String(error && error.message || error); release(); });
+    } catch (error) {
+      receipt.error = String(error && error.message || error);
+      receipt.ms = Math.round((performance.now() - t0) * 10) / 10;
+      release();
+    }
+    return receipt;
   },
 
   /**
@@ -23793,6 +23913,23 @@ export const render = {
       if (render) render.openingBargeWarm = { ...receipt };
       return true;
     };
+    // True when every barge-family material under the subject already has a linked program.
+    const bargeFamilyLinked = (subject) => {
+      const properties = nativeRenderer && nativeRenderer.properties;
+      if (!properties || typeof properties.get !== 'function') return false;
+      let linked = true;
+      subject.traverse((object) => {
+        if (!linked || !object.material) return;
+        const materials = Array.isArray(object.material) ? object.material : [object.material];
+        for (const material of materials) {
+          if (!material || !BARGE_FAMILY.test(material.name || '')) continue;
+          let program = null;
+          try { program = properties.get(material).currentProgram || null; } catch (_) { program = null; }
+          if (!program) { linked = false; return; }
+        }
+      });
+      return linked;
+    };
     const carriesBargeFamily = (subject) => {
       let hit = false;
       subject.traverse((object) => {
@@ -23813,14 +23950,22 @@ export const render = {
       if (!await waitForWarmAttachments(this, warm, owned)) return;
       if (!owned()) return;
       if (state.mode !== 'loading') return publish('shell-released');
-      if (liveCookCovers()) return publish('live-cook-covers');
+      // Pre-lift program warm (perf/prelift-program-warm): the live cook's post-opening pass
+      // does not reliably reach these sections before the veil's drain cap, and the first
+      // wreck that publishes after lift then links the double-sided barge-family program in
+      // flight (2.2-3.1 s on software GL). Keep the single pass under the live cook too, but
+      // only for sections whose barge materials still have no linked program, so a cook that
+      // already covered them costs a property read per material.
+      const covered = liveCookCovers();
+      receipt.liveCookCovered = covered;
+      receipt.skippedLinked = 0;
       const touch = render && render.touchSubjectExactTarget;
       if (typeof touch === 'function') {
         for (const child of [...root.children]) {
           if (!loading()) break;
           if (!child.userData || child.userData.authoredAssetState !== 'authored') continue;
           if (!carriesBargeFamily(child)) continue;
-          if (liveCookCovers()) return publish('live-cook-covers');
+          if (bargeFamilyLinked(child)) { receipt.skippedLinked += 1; continue; }
           try {
             await touch(child);
             // The touch may yield across teardown, a context restore, or a new admission run.
