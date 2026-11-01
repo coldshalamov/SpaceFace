@@ -118,9 +118,11 @@ test('SEED-HF-08 ships and drones do not block, and a station dock bubble is not
 
 test('SEED-HF-08 the collector returns live wrecks and stations, not ships, and the endpoint hull is excluded', () => {
   const wasp = hull(2, 'ship', { x: 120, z: 0 }, { radius: 10 });
-  const wreck = hull(8, 'wreck', { x: 60, z: 0 }, { radius: 12 });
+  // Mid-segment but clear of the endpoint: a hull disc containing the latch target reads
+  // as a mounted payload (deliberately latchable), so the wreck must not hold (70,0).
+  const wreck = hull(8, 'wreck', { x: 50, z: 0 }, { radius: 12 });
   const station = hull(9, 'station', { x: 70, z: 0 }, { radius: 10, data: { dockRadius: 300 } });
-  const ship = hull(11, 'ship', { x: 50, z: 0 }, { radius: 30 });
+  const ship = hull(11, 'ship', { x: 60, z: 0 }, { radius: 30 });
   const drone = hull(12, 'drone', { x: 55, z: 0 }, { radius: 30 });
   const state = lineState([wasp, wreck, station, ship, drone]);
   const found = collectMasslineObstructionRocks(state, { minX: 0, minZ: -5, maxX: 120, maxZ: 5 });

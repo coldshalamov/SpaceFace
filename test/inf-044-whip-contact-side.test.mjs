@@ -68,8 +68,11 @@ function emitRecord(mass, victim, relSpeed = 60) {
     Math.hypot(mass.vel.x, mass.vel.z),
     false,
   );
-  assert.equal(seen.length, 1);
   assert.equal(seen[0].event, 'tether:whipImpact');
+  // F5 ecology drumbeat: a solid-or-worse whip strike is physical vibration — the
+  // sectorsim:impulse stimulus rides the same emit, ordered after the receipt.
+  assert.deepEqual(seen.slice(1).map(({ event }) => event), ['sectorsim:impulse']);
+  assert.equal(seen[1].payload.kind, 'massline_slam');
   return runtime.impacts[0];
 }
 

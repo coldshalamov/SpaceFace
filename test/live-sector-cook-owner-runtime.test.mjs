@@ -5,10 +5,11 @@ import { createRequire } from 'node:module';
 import { setImmediate as nextTurn } from 'node:timers/promises';
 import * as THREE from 'three';
 import { revealSubjectWithAncestors } from '../src/render/compilePresentSlice.js';
-import { touchSubjectOnExactTarget } from '../src/render/openingGpuAdmission.js';
+import { touchSubjectOnExactTarget, retryPendingExactTouch } from '../src/render/openingGpuAdmission.js';
+import { isRetiredRigidOpaqueBatch, retireDisposedRigidOpaqueBatchBeforeSceneDraw } from '../src/render/rigidOpaqueBatch.js';
 import { createPhaseBlinkPresentation } from '../src/render/phaseBlinkPresentation.js';
 import { PersistentCombatBeamPool } from '../src/render/combat/persistentBeams.js';
-import { isInitialAuthoredCompositionEntity } from '../src/render/partsLibrary.js';
+import { isInitialAuthoredCompositionEntity, resumeAuthoredUpgradeQueueForLoadingHulls } from '../src/render/partsLibrary.js';
 import * as lifecycleHelpers from '../src/core/sectorEnterDefer.js';
 import { openingLoadPolicy } from '../src/render/openingLoadPolicy.js';
 import { createOpeningLoadingAdmission, observePipelineAdmission, prepareMobileOpeningFirstPicture, waitForOpeningFirstPicture } from '../src/render/pipelineReadiness.js';
@@ -217,6 +218,7 @@ function queuedTouchFixture({ detached = false, failTouch = false, serialPacer =
     admissionPaceYield: async () => {},
     refillPresentedCompressedUploads: async () => {}, collectStartupTextures: () => [],
     rememberOpeningPreparedLeaves() {}, laneWarn: (...args) => warnings.push(args), emptyCompressedTextureIdentity: () => null,
+    retryPendingExactTouch, isRetiredRigidOpaqueBatch,
   };
   values.ownerInactiveTouchError = evaluate(ownerInactiveTouchCode, owner, values);
   values.isOwnerInactiveTouchError = evaluate(ownerInactiveTouchCheckCode, owner, values);
@@ -355,7 +357,8 @@ for (const failDraw of [false, true]) {
       render() { draws.push(roots.filter(root => root.visible)); if (failDraw) throw new Error('injected grouped draw failure'); } };
     const owner = {};
     const values = { renderer, scene, cam: { obj: new THREE.PerspectiveCamera() }, revealSubjectWithAncestors,
-      stampSubjectEnvAsync: async () => stamp.promise, touchSubjectOnExactTarget, settleDrawableSession: null };
+      stampSubjectEnvAsync: async () => stamp.promise, touchSubjectOnExactTarget, settleDrawableSession: null,
+      state: { render: {} }, retireDisposedRigidOpaqueBatchBeforeSceneDraw };
     values.touchExactTargetSubjects = evaluate(groupTouchCode, owner, values);
     const touchMany = evaluate(settleTouchManyCode, owner, values);
     try {
@@ -406,6 +409,7 @@ function loadingFixture() {
   const begin = evaluate(loadingCode, owner, {
     state, THREE, createOpeningLoadingAdmission, observePipelineAdmission, isInitialAuthoredCompositionEntity,
     rendererGenerationIsActive: () => true, releaseOpeningGraphPublication() {},
+    scene: {}, resumeAuthoredUpgradeQueueForLoadingHulls,
     cam: {}, openingSubmissionCamera: () => null,
     enqueueMissingMeshBuildsSteps: function* () { yield; },
     performance: { now: () => 0 }, yieldToBrowser: async () => {},

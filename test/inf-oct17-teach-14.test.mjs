@@ -128,6 +128,10 @@ test('TEACH-14 seed 4242: the first crossing of the strain-glow danger band prod
     h.setTether(target.id, { strainGlow: 0.85, strain: 0.85, load: 0.85 });
     const before = h.shown.length;
     h.tickOnce();
+    // The cadence-pump lesson rides the same swing and claims the HUD window first;
+    // the release lesson queues behind it and speaks once the window closes.
+    h.state.simTime += 8;
+    h.tickOnce();
     const added = h.shown.slice(before);
 
     const release = h.releaseHints();
@@ -156,6 +160,9 @@ test('TEACH-14 seed 4242: a rebound tether key is the name the hint uses', () =>
     const target = h.spawnTarget();
     h.setTether(target.id, { strainGlow: 0.8 });
     h.tickOnce();
+    // The pump lesson claims the window on the same tick; the release lesson drains next.
+    h.state.simTime += 8;
+    h.tickOnce();
 
     const hint = h.releaseHints()[0];
     assert.ok(hint, 'hint was produced');
@@ -179,6 +186,9 @@ test('TEACH-14 seed 4242: swings below danger band stay quiet (TEACH-03 boundary
 
     // Now raise strain to cross the danger band (0.75)
     h.setTether(target.id, { strainGlow: 0.75, strain: 0.75, load: 0.75 });
+    h.tickOnce();
+    // The pump lesson's window still owns the HUD; the release lesson speaks after it.
+    h.state.simTime += 8;
     h.tickOnce();
 
     assert.equal(h.releaseHints().length, 1, 'crossing the danger threshold produces the hint');
@@ -244,16 +254,32 @@ test('TEACH-14 seed 4242: flags, tutorialHints, staged rail, and touch device bo
     assert.equal(quiet.releaseHints().length, 0, 'active staged rail keeps voice');
     assert.equal(quiet.state.player.hints && quiet.state.player.hints.masslineReleaseWindow, undefined);
 
-    // Touch device: empty binding label produces hint with plain phrasing and no undefined
+    // The rail defers rather than drops: once it releases the voice the muted
+    // lessons drain in order — the pump first, the release window behind it.
     quiet.state.onboarding = { active: false, finished: true };
-    setPromptDevice('touch');
     quiet.tickOnce();
-    assert.equal(quiet.releaseHints().length, 1, 'touch device produces hint');
-    const text = quiet.releaseHints()[0].text;
+    assert.equal(quiet.releaseHints().length, 0, 'the pump lesson drains first');
+    quiet.state.simTime += 8;
+    quiet.tickOnce();
+    assert.equal(quiet.releaseHints().length, 1, 'the muted release lesson still teaches');
+  } finally { quiet.restore(); }
+
+  // Touch device (empty binding label) on a profile that has not been taught yet:
+  // hint with plain phrasing and no undefined.
+  const touch = boot();
+  try {
+    const touchTarget = touch.spawnTarget();
+    touch.setTether(touchTarget.id, { strainGlow: 0.85 });
+    setPromptDevice('touch');
+    touch.tickOnce();
+    touch.state.simTime += 8;
+    touch.tickOnce();
+    assert.equal(touch.releaseHints().length, 1, 'touch device produces hint');
+    const text = touch.releaseHints()[0].text;
     assert.match(text, /release/i);
     assert.match(text, /early/i);
     assert.equal(text.includes('undefined'), false, 'no undefined in touch text');
-  } finally { quiet.restore(); }
+  } finally { touch.restore(); }
 });
 
 test('TEACH-14 seed 4242: nearBreak event during a swing produces the release hint immediately', () => {
