@@ -23,6 +23,11 @@ export const PLAYER_TRUTH_CLASSES = Object.freeze([
 const CLS = Object.fromEntries(PLAYER_TRUTH_CLASSES.map((c, i) => [c, i]));
 const SHIPLIKE = new Set(['ship', 'drone', 'reaver', 'fauna', 'freighter']);
 const PROJECTILE_LIKE = new Set(['projectile', 'charge', 'vectormine', 'missile', 'mine']);
+// Focused source-lifecycle follow-up for the four first-wave Foundry asteroid lives.
+const VISIBILITY_DIAGNOSTIC_ASTEROID_IDS = new Set([584, 587, 588, 605]);
+const VISIBILITY_DIAGNOSTIC_MAX_TRANSITIONS_PER_ID = 12;
+const VISIBILITY_DIAGNOSTIC_MAX_ANCESTORS = 12;
+const VISIBILITY_DIAGNOSTIC_MAX_RENDERABLES = 8;
 // The player-truth checks only grade world rows during flight. Keep this list explicit so a
 // future non-flight mode does not silently lose diagnostic rows until its reader contract is known.
 const PREPARATION_MODES = new Set(['loading', 'menu', 'paused']);
@@ -398,6 +403,8 @@ export function installPlayerTruthReader(win, opts = {}) {
   // recycled slot never reads as one body swapping model or popping.
   const lifeTracker = createPlayerTruthLifeTracker();
   const lifeId = lifeTracker.observe;
+  const priorDiagnosticVisibility = new Map();
+  const diagnosticTransitionsById = new Map();
   const unsubs = [];
   if (SF.bus && typeof SF.bus.on === 'function') {
     const milestoneUnsub = SF.bus.on('firsthour:milestone', (p) => events.push({
@@ -457,6 +464,110 @@ export function installPlayerTruthReader(win, opts = {}) {
     let o = m;
     for (; o; o = o.parent) { if (!o.visible) return false; if (o.isScene) return true; }
     return false;
+  }
+
+  function captureVisibilityTransition(entity, mesh, life, from, to) {
+    const ownerChain = [];
+    let visibilityOwner = null;
+    let ownerChainReachesScene = false;
+    let node = mesh;
+    for (let depth = 0; node && depth < VISIBILITY_DIAGNOSTIC_MAX_ANCESTORS; depth++, node = node.parent) {
+      const userData = node.userData || {};
+      const entry = {
+        name: String(node.name || '').slice(0, 72) || null,
+        uuid: typeof node.uuid === 'string' ? node.uuid.slice(0, 8) : null,
+        visible: node.visible !== false,
+        flags: {},
+      };
+      for (const key of [
+        'authoredAssetState', 'authoredGeologySkin', 'authoredFallbackActive',
+        'authoredFallbackAdmittedOnce', 'authoredPendingFallbackDrawn', 'authoredVisualRoot',
+        'sfAdmittedOnce', 'geometryPending', 'pipelinesPending',
+        'asteroidInstanceAdopted', 'poolLeafVisible', 'asteroidInstanceViewCulled',
+      ]) {
+        const value = userData[key];
+        if (typeof value === 'string' || typeof value === 'boolean' || Number.isFinite(value)) {
+          entry.flags[key] = typeof value === 'string' ? value.slice(0, 72) : value;
+        }
+      }
+      if (entry.visible === false && visibilityOwner == null) visibilityOwner = entry.name || entry.uuid;
+      ownerChain.push(entry);
+      if (node.isScene) { ownerChainReachesScene = true; node = null; break; }
+    }
+
+    const renderables = [];
+    let renderableCount = 0;
+    if (mesh && typeof mesh.traverse === 'function') {
+      mesh.traverse((object) => {
+        if (!(object.isMesh || object.isPoints || object.isLine || object.isSprite)) return;
+        renderableCount++;
+        if (renderables.length >= VISIBILITY_DIAGNOSTIC_MAX_RENDERABLES) return;
+        const userData = object.userData || {};
+        renderables.push({
+          type: object.type || null,
+          name: String(object.name || '').slice(0, 72) || null,
+          uuid: typeof object.uuid === 'string' ? object.uuid.slice(0, 8) : null,
+          visible: meshChainVisible(object),
+          adopted: userData.asteroidInstanceAdopted === true,
+          poolLeafVisible: typeof userData.poolLeafVisible === 'boolean' ? userData.poolLeafVisible : null,
+          geometry: object.geometry ? object.geometry.type || 'Geometry' : null,
+          geometryPending: userData.geometryPending === true,
+          pipelinesPending: userData.pipelinesPending === true,
+        });
+      });
+    }
+
+    let poolMembership = null;
+    const readMembership = SF.state.render?.asteroidInstanceMembershipForEntity;
+    if (typeof readMembership === 'function') {
+      try {
+        const membership = readMembership(entity.id);
+        if (membership) {
+          poolMembership = {
+            registered: membership.registered === true,
+            variant: Number.isInteger(membership.variant) ? membership.variant : null,
+            adopted: membership.adopted === true,
+            submitted: membership.submitted === true,
+            submittedIndex: Number.isInteger(membership.submittedIndex) ? membership.submittedIndex : -1,
+            sourceRootUuid: typeof membership.sourceRootUuid === 'string' ? membership.sourceRootUuid.slice(0, 8) : null,
+            sourceLeafUuid: typeof membership.sourceLeafUuid === 'string' ? membership.sourceLeafUuid.slice(0, 8) : null,
+            poolMeshUuid: typeof membership.poolMeshUuid === 'string' ? membership.poolMeshUuid.slice(0, 8) : null,
+          };
+          const poolMesh = (SF.state.render.scene?.children || []).find((candidate) => (
+            candidate && candidate.uuid === membership.poolMeshUuid
+          ));
+          if (poolMesh) {
+            poolMembership.draw = {
+              visible: poolMesh.visible !== false,
+              count: Number.isFinite(poolMesh.count) ? poolMesh.count : null,
+              pipelinesPending: poolMesh.userData?.pipelinesPending === true,
+            };
+          }
+        }
+      } catch (error) {
+        poolMembership = { readError: String(error && error.message || error).slice(0, 120) };
+      }
+    }
+    return {
+      id: entity.id,
+      rawId: entity.id,
+      generation: Number.isSafeInteger(entity.occupantGeneration) ? entity.occupantGeneration : null,
+      type: typeof entity.type === 'string' ? entity.type.slice(0, 40) : null,
+      descriptor: String(entity.typeId || entity.data?.asteroidKind || entity.data?.kind
+        || entity.data?.archetype || entity.data?.propRole || '').slice(0, 72) || null,
+      life,
+      from,
+      to,
+      tick: SF.state.tick,
+      sim: simNow(),
+      visibilityOwner,
+      ownerChain,
+      ownerChainReachesScene,
+      ownerChainTruncated: !!node,
+      renderableCount,
+      renderables,
+      poolMembership,
+    };
   }
 
   // Sky/backdrop layers (deep-field stars, nebula ribbons, planets painted behind the plane)
@@ -944,8 +1055,21 @@ export function installPlayerTruthReader(win, opts = {}) {
                 projectile: cls === 'projectile' });
             }
           }
+          const entityLife = lifeId(e);
+          if (e.type === 'asteroid' && VISIBILITY_DIAGNOSTIC_ASTEROID_IDS.has(e.id)) {
+            const prior = priorDiagnosticVisibility.get(e.id);
+            const sameLife = prior && prior.life === entityLife;
+            const from = sameLife ? prior.visCode : null;
+            const count = diagnosticTransitionsById.get(e.id) || 0;
+            if ((!sameLife || from !== visCode) && count < VISIBILITY_DIAGNOSTIC_MAX_TRANSITIONS_PER_ID) {
+              (s.visibilityTransitions || (s.visibilityTransitions = [])).push(
+                captureVisibilityTransition(e, m, entityLife, from, visCode));
+              diagnosticTransitionsById.set(e.id, count + 1);
+            }
+            priorDiagnosticVisibility.set(e.id, { life: entityLife, visCode });
+          }
           const ty = intern(`${e.type}:${e.typeId || (e.data && (e.data.asteroidKind || e.data.kind || e.data.archetype || e.data.roomKind || e.data.propRole)) || ''}`);
-          s.e.push([lifeId(e), CLS[cls], +e.pos.x.toFixed(1), +e.pos.z.toFixed(1), +(e.vel ? e.vel.x : 0).toFixed(2), +(e.vel ? e.vel.z : 0).toFixed(2), sx, sy, pr, visCode, key, ty]);
+          s.e.push([entityLife, CLS[cls], +e.pos.x.toFixed(1), +e.pos.z.toFixed(1), +(e.vel ? e.vel.x : 0).toFixed(2), +(e.vel ? e.vel.z : 0).toFixed(2), sx, sy, pr, visCode, key, ty]);
           if (['station', 'neutral', 'other'].includes(cls) && [3, 4].includes(visCode)) {
             bodies.push({ id: lifeId(e), cls, ty, mesh: m });
           }

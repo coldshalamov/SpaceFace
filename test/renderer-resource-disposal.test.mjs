@@ -91,6 +91,9 @@ function makeOwner(order, { contextLost = false } = {}) {
 test('renderer resource disposal is ordered, exact-once, and clears generation references', () => {
   const order = [];
   const { owner, camera, helpers, state } = makeOwner(order);
+  const membershipReader = () => ({ registered: false });
+  owner._playerTruthAsteroidInstanceMembership = membershipReader;
+  state.render.asteroidInstanceMembershipForEntity = membershipReader;
   const result = disposeRendererOwnedResources(owner, {
     parallaxLayers: disposable('parallax', order),
   });
@@ -133,6 +136,9 @@ test('renderer resource disposal is ordered, exact-once, and clears generation r
   assert.equal(owner.cam, null, 'camera reference is cleared');
   assert.equal(state.camera.obj, null, 'state does not retain the dead camera');
   assert.equal(state.render.renderer, null, 'state render references are cleared');
+  assert.equal(state.render.asteroidInstanceMembershipForEntity, null,
+    'renderer-owned player-truth pool reader is retired with its owner');
+  assert.equal(owner._playerTruthAsteroidInstanceMembership, null);
 });
 
 test('context-loss disposal abandons old-context GPU resources while still clearing ownership', () => {
@@ -175,6 +181,8 @@ test('hazards and Bolus roots retire before their renderer and abandon lost-cont
         removeFromParent() { order.push('bolus-detach'); },
         traverse(fn) { fn({ geometry: disposable('bolus-geometry', order) }); },
       },
+      lightGroup: { children: [], parent: null, removeFromParent() { order.push('bolus-light-detach'); } },
+      lights: [],
     };
     owner._marrowSpot = {
       removeFromParent() { order.push('spot-detach'); },

@@ -253,6 +253,7 @@ import {
   disposeAsteroidInstancePool,
   invalidateAsteroidInstancePool,
   isBorrowedAsteroidInstanceResource,
+  asteroidInstanceMembership,
   registerAsteroidBaseLeaf,
   rekeyAsteroidInstanceEntity,
   releaseAsteroidInstancesForEntity,
@@ -8256,6 +8257,15 @@ export function disposeRendererOwnedResources(owner, options = {}) {
   try { owner._disarmDrawHistogram?.(); } catch (_) { /* diagnostic cleanup only */ }
   owner._touchDrawableCensus = null;
   const contextLost = options.contextLost === true || owner._contextLost === true;
+  if (owner._playerTruthAsteroidInstanceMembership) {
+    const renderState = owner.state && owner.state.render;
+    if (renderState
+        && renderState.asteroidInstanceMembershipForEntity
+          === owner._playerTruthAsteroidInstanceMembership) {
+      renderState.asteroidInstanceMembershipForEntity = null;
+    }
+    owner._playerTruthAsteroidInstanceMembership = null;
+  }
   disableRigidOpaqueBatchProbe(owner, contextLost ? 'context-lost' : 'renderer-destroyed');
   owner._rigidOpaqueBatchScene = null;
   invalidateMachineryPresentation(owner.state);
@@ -11100,6 +11110,15 @@ export const render = {
     state.render.worldSubmittedFrames = 0;
     state.render.camera = cam.obj;
     state.render.meshes = this._meshes;
+    if (SF_DEBUG) {
+      // Player-truth transition diagnostics need the pool's canonical per-entity submission
+      // receipt. Keep the pool private; this read-only delegate returns only the bounded scalar
+      // membership DTO and is retired with this renderer owner.
+      const membershipReader = (entityId) => asteroidInstanceMembership(
+        this._asteroidInstancePool, entityId);
+      this._playerTruthAsteroidInstanceMembership = membershipReader;
+      state.render.asteroidInstanceMembershipForEntity = membershipReader;
+    }
     state.render.cameraCtrl = cam;   // controller (addTrauma/pushZoom) — exposed for feel.js / ui
     state.render.vf = vf;   // exposed for the dev-only ship turntable preview (shipPreview.js)
     state.render.warmPostProcess = () => {
