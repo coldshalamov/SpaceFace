@@ -5889,6 +5889,26 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     const moduleId = row.getAttribute('data-preview-module');
     const slotIndex = Number(row.getAttribute('data-preview-slot'));
     applyModuleGhost(moduleId, Number.isInteger(slotIndex) ? slotIndex : undefined);
+    // The row grows when focused to expose its metrics. Keep its name in the chooser's own
+    // scrollport after that layout change; nested Buy/lock controls keep their normal focus.
+    if (ev.target !== row) return;
+    requestAnimationFrame(() => {
+      if (!row.isConnected || chooserEl.hidden || document.activeElement !== row) return;
+      const list = row.closest('.sx-chooser__list');
+      const name = row.querySelector('.sx-modrow__name');
+      if (!list || !name || !list.isConnected) return;
+      const listRect = list.getBoundingClientRect();
+      const nameRect = name.getBoundingClientRect();
+      const visibleTop = listRect.top + list.clientTop + 4;
+      const visibleBottom = listRect.top + list.clientTop + list.clientHeight - 4;
+      let delta = 0;
+      if (nameRect.top < visibleTop) delta = nameRect.top - visibleTop;
+      else if (nameRect.bottom > visibleBottom) delta = nameRect.bottom - visibleBottom;
+      if (delta) {
+        const maxScroll = Math.max(0, list.scrollHeight - list.clientHeight);
+        list.scrollTop = Math.max(0, Math.min(maxScroll, list.scrollTop + delta));
+      }
+    });
   });
   chooserEl.addEventListener('focusout', (ev) => {
     const next = ev.relatedTarget;

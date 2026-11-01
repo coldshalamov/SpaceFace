@@ -1040,20 +1040,21 @@ function selectClassifyEntities(state, runtime, list, origin, reach, discoverWu)
       for (let i = 0; i < list.length; i++) {
         const entity = list[i];
         if (!entity || entity.alive === false || !entity.pos) continue;
+        let presence = null;
         // Partition 1/2 members ride the physics lanes the hash already sees — only
         // partition-0 members need a cell. Buckets key on pos at build time; the
         // per-candidate test below still reads the entity's live pos, so a member
         // moved inside a stale cell is envelope-tested wherever the query finds it.
         if (entity._physicsPartition !== 1 && entity._physicsPartition !== 2) {
-          const pres = entityPresenceRadius(entity);
-          if (pres > maxPresence) maxPresence = pres;
+          presence = entityPresenceRadius(entity);
+          if (presence > maxPresence) maxPresence = presence;
           const key = cellKey(finite(entity.pos.x), finite(entity.pos.z));
           let bucket = cells.get(key);
           if (!bucket) { bucket = new Set(); cells.set(key, bucket); }
           bucket.add(entity);
         }
         if (seen.has(entity.id)) continue;
-        const limit = discover + entityPresenceRadius(entity);
+        const limit = discover + (presence == null ? entityPresenceRadius(entity) : presence);
         const dx = finite(entity.pos.x) - origin.x;
         const dz = finite(entity.pos.z) - origin.z;
         if (dx * dx + dz * dz <= limit * limit) add(entity);
