@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { createBus } from '../src/core/eventBus.js';
 import { fakeDom, findAll } from './helpers/fake-dom.mjs';
 import { crucibleFortifyScreen, fortifyAvailable } from '../src/ui/swarmFortifyPanel.js';
+import { summarizeFortifyModel, summarizeTwoWaveFortify } from '../scripts/player-truth/fortify.mjs';
 
 function boot() {
   const previous = globalThis.document;
@@ -47,6 +48,35 @@ function model(requestId, extra = {}) {
     structures: [], ...extra,
   };
 }
+
+test('player-truth records two full waves of surviving devices without inferring combat effects', () => {
+  const ids = ['gravity_beacon', 'repulsor_pylon', 'tesla_pair', 'kinetic_turret'];
+  const snapshot = wave => summarizeFortifyModel({ runToken: 'run:1', wave, credits: 12,
+    structures: ids.map((deviceId, id) => ({ id, deviceId, operational: true, entityIds: [id] })) });
+  const visits = [1, 2, 3].map(wave => ({ before: snapshot(wave), end: snapshot(wave) }));
+  const evidence = summarizeTwoWaveFortify(visits);
+  assert.deepEqual(evidence.waves, [2, 3]);
+  assert.equal(evidence.allFourSurvived, true);
+  assert.equal(Object.hasOwn(evidence, 'effectsObserved'), false);
+  visits[2].before.structures.pop();
+  assert.equal(summarizeTwoWaveFortify(visits).allFourSurvived, false);
+  visits[2].before.wave = 5;
+  assert.equal(summarizeTwoWaveFortify(visits).observed, false);
+});
+
+test('occupied public position prevents purchase without spending the purse', () => {
+  const h = boot();
+  try {
+    const requestId = h.events.at(-1)[1].requestId;
+    h.bus.emit('swarm:fortifyState', model(requestId, {
+      sockets: [{ id: 'fore', label: 'Forward gate', x: 280, z: 0, occupied: true }],
+    }));
+    assert.equal(h.screen._build.disabled, true);
+    assert.match(h.screen._position.textContent, /occupied/i);
+    assert.equal(h.events.some(([type]) => type === 'build'), false);
+    assert.equal(h.screen._model.credits, 300);
+  } finally { h.cleanup(); }
+});
 
 test('construction screen waits for its own worker query and sends one serializable purchase', () => {
   const h = boot();

@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 import { runInNewContext } from 'node:vm';
+import { PNG } from 'pngjs';
 
 import { resolvePackagedStartupReportPath } from '../scripts/lib/electronPackagedStartup.mjs';
 
@@ -62,6 +63,170 @@ test('packaged-startup observation follows the source pin rather than a hard-cod
     assert.equal(observed, identity);
   }
 });
+
+test('public recovery CLI defaults off and accepts only the explicit packaged-route opt-in', () => {
+  const parse = actualScriptFunction('parsePackagedStartupArgs');
+  assert.deepEqual(parse([]), { publicRecovery: false, help: false });
+  assert.deepEqual(parse(['--public-recovery']), { publicRecovery: true, help: false });
+  assert.deepEqual(parse(['--help']), { publicRecovery: false, help: true });
+  assert.throws(() => parse(['--public-recovery', '--public-recovery']), /duplicate argument/);
+  assert.throws(() => parse(['--context-recovery']), /unknown argument/);
+});
+
+test('packaged public recovery receipt requires visible save/load, restored context, and full tail', () => {
+  const assess = actualScriptFunction('assessPackagedPublicRecovery', ['assessPackagedMovementWitness']);
+  const surface = { ready: true, sfDebugSurfaceAbsent: true, documentVisible: true };
+  const movement = {
+    inputDispatched: true,
+    hud: { visible: true, response: true },
+    canvas: { visible: true, minimumDistinctColors: 20, changed: true, changedPixels: 500 },
+  };
+  const complete = {
+    enabled: true,
+    save: { toast: 'Saved Quick', quick: { changed: true } },
+    load: { toast: 'Loaded Quick', flightSurface: surface },
+    context: {
+      extensionAvailable: true, lostEvent: true, restoredEvent: true, lostAfterRestore: false,
+      flightSurface: surface,
+    },
+    movementAfterRestore: movement,
+    tail: { durationMs: 120_000, flightSurface: surface, movement },
+  };
+  assert.deepEqual(assess(complete), { pass: true, failures: [] });
+
+  const noDurableSave = structuredClone(complete);
+  noDurableSave.save.quick.changed = false;
+  assert.match(assess(noDurableSave).failures.join('\n'), /quick-save bytes did not change/);
+
+  const noRestore = structuredClone(complete);
+  noRestore.context.restoredEvent = false;
+  assert.match(assess(noRestore).failures.join('\n'), /restore event was not observed/);
+
+  const shortTail = structuredClone(complete);
+  shortTail.tail.durationMs = 119_999;
+  assert.match(assess(shortTail).failures.join('\n'), /shorter than 120 seconds/);
+
+  const missingTailDuration = structuredClone(complete);
+  delete missingTailDuration.tail.durationMs;
+  assert.match(assess(missingTailDuration).failures.join('\n'), /duration was missing, invalid/);
+
+  const invalidTailDuration = structuredClone(complete);
+  invalidTailDuration.tail.durationMs = Number.NaN;
+  assert.match(assess(invalidTailDuration).failures.join('\n'), /duration was missing, invalid/);
+
+  const frozenCanvas = structuredClone(complete);
+  frozenCanvas.movementAfterRestore.canvas.changed = false;
+  frozenCanvas.movementAfterRestore.canvas.changedPixels = 0;
+  frozenCanvas.tail.movement.canvas.minimumDistinctColors = 1;
+  assert.match(assess(frozenCanvas).failures.join('\n'), /did not visibly change/);
+  assert.match(assess(frozenCanvas).failures.join('\n'), /blank or unavailable/);
+});
+
+test('canvas witness detects world-pixel motion and rejects a flat canvas', () => {
+  const summarize = actualScriptFunction('summarizePackagedCanvasChange', [], { PNG, assert });
+  const before = new PNG({ width: 16, height: 16 });
+  const after = new PNG({ width: 16, height: 16 });
+  for (let pixel = 0; pixel < 16 * 16; pixel += 1) {
+    const offset = pixel * 4;
+    const value = pixel % 2 ? 72 : 144;
+    before.data[offset] = value;
+    before.data[offset + 1] = value;
+    before.data[offset + 2] = value;
+    before.data[offset + 3] = 255;
+  }
+  after.data.set(before.data);
+  for (let pixel = 0; pixel < 64; pixel += 1) {
+    const offset = pixel * 4;
+    after.data[offset] = 220;
+    after.data[offset + 1] = 96;
+    after.data[offset + 2] = 48;
+  }
+  const moved = summarize(PNG.sync.write(before), PNG.sync.write(after));
+  assert.equal(moved.changed, true);
+  assert.ok(moved.changedPixels >= 32);
+  assert.ok(moved.minimumDistinctColors >= 2);
+
+  const flat = new PNG({ width: 16, height: 16 });
+  flat.data.fill(0);
+  const frozen = summarize(PNG.sync.write(flat), PNG.sync.write(flat));
+  assert.equal(frozen.changed, false);
+  assert.equal(frozen.minimumDistinctColors, 1);
+});
+
+test('canvas-only capture hides DOM overlays and restores their exact opacity on success or failure', async () => {
+  const original = { value: '0.82', priority: '' };
+  let current = { ...original };
+  const root = {
+    style: {
+      getPropertyValue: () => current.value,
+      getPropertyPriority: () => current.priority,
+      setProperty: (_name, value, priority) => { current = { value, priority }; },
+      removeProperty: () => { current = { value: '', priority: '' }; },
+    },
+  };
+  const document = { getElementById: (id) => id === 'ui-root' ? root : null };
+  const capture = actualScriptFunction('captureCanvasOnly', [], { document });
+  const makePage = (shouldFail) => ({
+    evaluate: async (callback, argument) => callback(argument),
+    locator: (selector) => {
+      assert.equal(selector, '#gl-canvas');
+      return { screenshot: async () => {
+        assert.deepEqual(current, { value: '0', priority: 'important' });
+        if (shouldFail) throw new Error('capture failed');
+        return Buffer.from('canvas screenshot');
+      } };
+    },
+  });
+
+  assert.deepEqual(await capture(makePage(false), 'unused.png'), Buffer.from('canvas screenshot'));
+  assert.deepEqual(current, original);
+  await assert.rejects(capture(makePage(true), 'unused.png'), /capture failed/);
+  assert.deepEqual(current, original);
+});
+
+test('bounded packaged movement input releases when keydown acknowledgement is delayed', async () => {
+  const pulse = actualScriptFunction('runBoundedPackagedKeyPulse', [], { setTimeout, clearTimeout });
+  let resolveDown;
+  let releases = 0;
+  const page = {
+    keyboard: {
+      down: () => new Promise((resolve) => { resolveDown = resolve; }),
+      up: async () => { releases += 1; },
+    },
+    waitForTimeout: async () => {},
+  };
+  await assert.rejects(pulse(page, 'w', { holdCeilingMs: 20 }), /held-key ceiling/);
+  assert.ok(releases >= 1, 'deadline dispatches a key release before keydown resolves');
+  resolveDown();
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.ok(releases >= 2, 'late keydown acknowledgement triggers a second release');
+});
+
+function actualScriptFunction(name, dependencies = [], globals = {}) {
+  const source = readFileSync(new URL('../scripts/check-electron-packaged-startup.mjs', import.meta.url), 'utf8');
+  const declarationFor = (functionName) => {
+    const exportedAsyncStart = source.indexOf(`export async function ${functionName}(`);
+    const exportedStart = source.indexOf(`export function ${functionName}(`);
+    const asyncStart = source.indexOf(`async function ${functionName}(`);
+    const plainStart = source.indexOf(`function ${functionName}(`);
+    const start = exportedAsyncStart >= 0 ? exportedAsyncStart
+      : exportedStart >= 0 ? exportedStart
+        : asyncStart >= 0 ? asyncStart : plainStart;
+    assert.ok(start >= 0, `packaged-startup must declare ${functionName}`);
+    const end = source.indexOf('\n}\n', start);
+    assert.ok(end > start, `packaged-startup ${functionName} declaration must be complete`);
+    return source.slice(start, end + 2).replace('export async function ', 'async function ')
+      .replace('export function ', 'function ');
+  };
+  const declarations = [...dependencies, name].map(declarationFor).join('\n');
+  const implementation = runInNewContext(`(() => { ${declarations}; return ${name}; })()`, globals);
+  return (...args) => {
+    const result = implementation(...args);
+    return result && typeof result.then === 'function'
+      ? Promise.resolve(result)
+      : JSON.parse(JSON.stringify(result));
+  };
+}
 
 async function observePackagedRuntime(identity, packageJson) {
   // Execute the actual observation/assertion boundary, not a duplicate validator.
