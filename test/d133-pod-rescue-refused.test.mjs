@@ -93,7 +93,10 @@ function initMissions(state, bus) {
 function podFixture(state) {
   const entity = {
     id: 7001, alive: true, type: 'wreck', pos: { x: 50, z: 50 },
-    data: {},
+    // entityForPoint verifies the occupant still carries this point's binding; a bare fixture
+    // body would unbind the pod (point.entityId dropped) and the tether check reports
+    // tow_required instead of reaching the accept path.
+    data: { salvagePointId: 'zone_derelict_01:sal9' },
   };
   state.entities.set(entity.id, entity);
   state.salvage.points.push({

@@ -283,9 +283,12 @@ test('every legal combat doctrine is exercised at least once in a block', () => 
       expectedBoss,
       `${arenaId} wave-ten elite drifted from AUTHORED_WAVE_TEN_BOSS`,
     );
+    // DUST P6 (BS-7) re-declared the Foreman's doctrine id to interceptor_flyby so its pilot
+    // mind is distinct — the committed-ram flight is preserved because flightProfileFor maps a
+    // heavy-band interceptor to the brawler_commit profile (mirrorjaw is mass 420 → heavy).
     assert.equal(
       DOCTRINE_BY_ENEMY.get(elite.enemyId),
-      expectedBoss === 'mirrorjaw_foreman' ? 'brawler_commit' : 'capital_broadside',
+      expectedBoss === 'mirrorjaw_foreman' ? 'interceptor_flyby' : 'capital_broadside',
       `${arenaId} wave-ten elite doctrine drifted from the authored boss map`,
     );
   }

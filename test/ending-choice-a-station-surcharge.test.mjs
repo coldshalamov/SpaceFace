@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
+import { marketDayMults } from '../src/data/worldCalendar.js';
 import { economy } from '../src/systems/economy.js';
 import { priceModForState } from '../src/systems/factions.js';
 import { stationSurchargeWaiverLabel, unitPrice } from '../src/ui/market/tradeLogic.js';
@@ -78,17 +79,23 @@ test('market quote, transaction-facing unit price, and visible waiver status sha
   const stationId = 'station_helios';
   const commodityId = 'cmdty_food';
 
+  // simTime 0 is Founders' Day on the market calendar: the quote's standingPriceMultiplier is the
+  // executable fold (reputation × ending terms × calendar tilt), while reputationBuyMult still
+  // names the pure standing component the Choice A waiver acts on.
+  const calendarBuy = marketDayMults(stationId, state.simTime).buy;
   const hostileBuy = econ.quote(stationId, commodityId, 'buy', 6);
   const hostileSell = econ.quote(stationId, commodityId, 'sell', 6);
   assert.equal(hostileBuy.ok, true);
-  assert.equal(hostileBuy.standingPriceMultiplier, 1.2);
+  assert.equal(hostileBuy.reputationBuyMult, 1.2);
+  assert.equal(hostileBuy.standingPriceMultiplier, 1.2 * calendarBuy);
   assert.equal(hostileBuy.stationSurchargeWaived, false);
 
   state.story.flags.surcharges_cleared = true;
   const waivedBuy = econ.quote(stationId, commodityId, 'buy', 6);
   const waivedSell = econ.quote(stationId, commodityId, 'sell', 6);
   assert.equal(waivedBuy.ok, true);
-  assert.equal(waivedBuy.standingPriceMultiplier, 1);
+  assert.equal(waivedBuy.reputationBuyMult, 1);
+  assert.equal(waivedBuy.standingPriceMultiplier, 1 * calendarBuy);
   assert.equal(waivedBuy.stationSurchargeWaived, true);
   assert.ok(waivedBuy.total < hostileBuy.total, 'Choice A lowers the actual executable buy total');
   assert.equal(waivedSell.total, hostileSell.total, 'Choice A leaves sell proceeds unchanged');
