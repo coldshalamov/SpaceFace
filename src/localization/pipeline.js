@@ -177,10 +177,12 @@ export function isEnglishCatalogReady() {
 }
 
 if (!IS_RETAIL_BUILD && IS_NODE_RUNTIME) readNodeEnglishCatalog();
-// Make the synchronous localization API safe as soon as import() resolves. If the first
-// request fails, leave the module usable so ensureLocalizationReady() can retry and surface the
-// failure through the ordinary boot error path.
-if (IS_BROWSER_RUNTIME) {
+// Make the synchronous localization API safe as soon as the document import resolves. If the
+// first request fails, leave the module usable so ensureLocalizationReady() can retry and surface
+// the failure through the ordinary boot error path. A worker must finish module evaluation before
+// it can install self.onmessage and receive its init directive, so worker readiness is awaited by
+// that directive rather than with module-level await here.
+if (IS_BROWSER_RUNTIME && typeof document !== 'undefined') {
   await Promise.all([
     ensureEnglishCatalogLoaded().catch(() => {}),
     ensureBarkTranslationsLoaded().catch(() => {}),

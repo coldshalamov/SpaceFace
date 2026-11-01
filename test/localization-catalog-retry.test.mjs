@@ -9,6 +9,7 @@ test('browser readiness retries failed bark translations before enabling non-Eng
     new URL('../src/localization/barks.generated.json', import.meta.url), 'utf8'));
   const previousProcess = globalThis.process;
   const previousFetch = globalThis.fetch;
+  const previousDocument = globalThis.document;
   let englishCalls = 0;
   let barkCalls = 0;
   let rejectInitialBarks;
@@ -16,6 +17,7 @@ test('browser readiness retries failed bark translations before enabling non-Eng
   globalThis.__SPACEFACE_PRODUCTION__ = false;
   globalThis.process = undefined;
   globalThis.window = { location: { search: '?locale=es-ES' } };
+  globalThis.document = { baseURI: 'https://game.example/' };
   globalThis.self = { location: { href: 'https://game.example/workers/wholeSimBrowserWorker.js' } };
   globalThis.fetch = (url) => {
     if (String(url).endsWith('/src/localization/barks.generated.json')) {
@@ -63,4 +65,6 @@ test('browser readiness retries failed bark translations before enabling non-Eng
     'Concord Patrol. Stand by for routine transponder verification. Ref 44-C.'), /Patrulla Concord/);
   globalThis.process = previousProcess;
   globalThis.fetch = previousFetch;
+  if (previousDocument === undefined) delete globalThis.document;
+  else globalThis.document = previousDocument;
 });
