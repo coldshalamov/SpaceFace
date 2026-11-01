@@ -6,6 +6,7 @@ import test from 'node:test';
 import {
   buildErrorEvidence,
   buildPostTeardownGlDeleteTrapDiagnostic,
+  createSoakPresentationFailureError,
   readFailureRuntimeSnapshot,
   readPostRecoveryRenderDiagnostics,
   readSceneGeometryCensus,
@@ -79,6 +80,35 @@ test('F9 landing accepts raw CSP-safe flight and menu results without entering g
     ));
     assert.equal(waits, 1, `${result} must not enter the grace wait`);
   }
+});
+
+test('dock wait stops retrying only for the canonical terminal presentation failure', () => {
+  const failure = createSoakPresentationFailureError({ presentationFailure: {
+    code: 'GRAPHICS_RECOVERY_FAILED',
+    headline: 'Graphics interrupted',
+    message: 'opening presentation could not recover',
+    tick: 84_120,
+    simTime: 1_402,
+  } });
+  assert(failure);
+  assert.equal(failure.code, 'SOAK_PRESENTATION_FAILURE');
+  assert.match(failure.message, /GRAPHICS_RECOVERY_FAILED.*opening presentation could not recover/);
+  assert.deepEqual(failure.presentationFailure, {
+    code: 'GRAPHICS_RECOVERY_FAILED',
+    headline: 'Graphics interrupted',
+    message: 'opening presentation could not recover',
+    tick: 84_120,
+    simTime: 1_402,
+  });
+  assert.equal(shouldRetrySoakCycle(failure, 0), false, 'terminal graphics failure must not spend a cycle retry');
+  assert.equal(shouldRetrySoakCycle(new Error('ordinary route failure'), 0), true,
+    'ordinary route failure retains its existing single retry');
+  assert.equal(createSoakPresentationFailureError({ presentationFailure: null }), null);
+  assert.equal(createSoakPresentationFailureError({ failurePresenterText: 'Graphics interrupted' }), null,
+    'visible-copy text alone is not treated as canonical failure state');
+  assert.equal(createSoakPresentationFailureError({ presentationFailure: {
+    code: 'OTHER', headline: 'Loading', message: 'still loading',
+  } }), null);
 });
 
 test('abort snapshot retains state diagnostic after renderer teardown and uses renderer fallback', () => {
