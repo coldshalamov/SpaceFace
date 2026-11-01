@@ -199,6 +199,11 @@ ${P} .sx-dock :is(button, a)[aria-selected="true"], ${P} .sx-dock :is(button, a)
 ${P} .sxb-help, ${P} .sx-comms__toggle { text-transform:none !important; letter-spacing:.02em !important; font-size:13px !important; font-family:${UI} !important;
   min-height:32px !important; padding:0 12px !important; border:${LINE} !important; border-radius:2px !important; background:${PANEL} !important; clip-path:none !important; }
 ${P} .sxb-launch__label { font-family:${TITLE} !important; letter-spacing:.04em !important; }
+/* Under 581 wide the orbital sheet hides Help's word and the Standard sheet hides its icon, so the ruled key beside
+   Comms painted as an empty box: put the word back so both foot keys read as labelled controls. */
+@media (max-width:580px) {
+  ${P} .sxb-ops .sxb-help > span { display:inline !important; }
+}
 ${P} .sxb-launch__state { font-family:${UI} !important; font-size:13px !important; letter-spacing:.02em !important; }
 
 /* ==== MARKET ================================================================================ */
