@@ -258,10 +258,12 @@ that is leased, checked and stamped, preserving the live replacement for its own
 The focused shadow and package-owner suites pass. These repairs still require the new armed
 ordinary route and full soak; no stability or frame-target pass is claimed.
 
-The current default baseline completed 16/17 checks in 76,582 ms, inside the unchanged 90,000 ms
-budget. Massline passed. The only failure was the new HeroRig sprite missing from the VFX
-inventory; the factual inventory correction passes its focused check. Earlier batch24 timing
-failures remain historical, not the current Massline result.
+Latest integrated update (2026-11-01): `d8dc3ee5df64` fixes a demonstrated dormant-instance false
+residency stamp: Three skipped count0 before upload. The scratch proxy now submits1 when existing
+production capacity is real; the live pool remains0 and zero-capacity geometry remains unstamped.
+The exact failed Wasp Armor asset is in the passing53-case owner suite. The fresh armed ordinary
+Physics launch and return pass; the full M8 soak remains open. The integrated batch28 baseline
+passes17/17 in59,171ms, including Massline, within the unchanged90,000ms budget. Earlier baseline failures remain historical; the current verdict is this integrated run.
 
 **M9 — Load less, load later.** 28 MB of minified JS in the eager closure (`scripts/build-bundle.mjs`,
 esbuild splitting): lazy-load per mode and per screen; make `modelTruthCensus.generated.js` and
@@ -272,17 +274,16 @@ as JS) to a binary asset; take `src/testing/**` out of the retail graph (static 
 `FlightReadySet` and stream the rest after first flight. D252: fix the WebKit menu stall. Done when
 the load rows of README §4 meet their floor.
 
-The current source bundle gate passes with 417 render packages. `3be854aebcbd` moves unchanged
-read-only flight target/profile helpers out of the simulation adapter, so route-ribbon and target
-presentation no longer import `flightV3` and its native physics owners. The within-session main
-static closure changes from 11,435,492 to 11,173,243 raw bytes (262,249 bytes fewer), with no
-missing static edges; 60 focused flight/docking checks pass. This is a static graph reduction,
-not a measured startup-time improvement. The 6 MB target and total preflight transfer remain open.
+The current source bundle gate passes with417 render packages. Its main static closure is
+10,331,137 raw bytes across141 outputs with zero missing static edges, down from11,435,492 at
+this batch start. Canonical flight, Orchard, lead, economy and beam readers remove their simulation
+owners from eager presentation imports. Legacy function identities remain shared; the final input
+redirect passes49 input/gesture checks. These are graph-size results, not startup-time improvements.
+The6MB eager target, total transfer, loading animation and runtime targets remain open.
 
-The gate exposed ten stale hull package sets from an earlier release-GLB rebuild.
-`d045ab3a0b69` regenerates only those ten packages, pilot rows and runtime bindings against the
-current authored release GLBs; the scoped compiler check and subsequent bundle gate pass.
-No source/release model was changed. Live visual acceptance remains separate.
+`d045ab3a0b69` regenerates ten stale hull packages, pilot rows and runtime bindings against current
+authored release models. The scoped compiler and subsequent bundle gates pass. Source/release GLBs
+are unchanged; live visual acceptance remains separate.
 
 Batch27 remains the latest completed packaged ASAR checkpoint, with matching embedded receipt:
 `86d45e157cd30d54ae8e8c759296c60af31e60ffdf06ced9c3d73434d77386c4`.

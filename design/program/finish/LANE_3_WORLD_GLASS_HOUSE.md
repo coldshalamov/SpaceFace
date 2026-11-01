@@ -603,7 +603,7 @@ Rows are the spec (`build_map.md` §31–§32; read each row's prose before brie
   historical. The current canonical matrix completed151/160 frames with named capture/route
   failures and was not promoted. Chart-galaxy authored-UI callbacks average47.49ms in that
   receipt; a bounded mounted-chart CPU profile identifies label collision placement as the
-  dominant work. Current label optimization and source metadata are pending direct measurement.
+  dominant work. The first clipping rewrite showed no matched benefit and was rejected; the original placer remains. Current budgets and source metadata remain open.
   This is UI-owned callback time, not a whole-world performance proxy.
 
 ### Wave G — the glass (every 2D surface; use the current Finish workflow)
