@@ -26,6 +26,16 @@ budget. Status words: `OPEN`, `ACTIVE`, `LANDED <sha>`, `SKIPPED (<one-line reas
 
 Targets and floors: README §4.
 
+2026-11-01 source diagnostics (`finish-8de-crucible-owner`, `finish-ccf2-worker-owner`):
+12.96 / 16.18 world-submit FPS, simulation/wall 0.421 / 0.657, host busy 84.2 / 72.2%.
+These CPU-profiled source captures are not retail qualification or a matched A/B; the first GPU
+timer receipt is invalid. Raw worker attribution puts the largest grouped cost in physics/SG-02,
+then tactical AI. Existing pose/velocity/CCD guards do not justify skipping their synchronization.
+The measured retained-batch material serialization path is repaired by the canonical texture-safe
+clone helper (47 focused checks pass); its live frame benefit is unmeasured. A controlled
+transmission-resolution A/B is in progress, with paired actual-world images required before any
+quality policy change. Full frame targets remain open.
+
 ## Claimed paths (beyond README §3)
 
 *(Lane 1 writes border files it has taken here.)*
