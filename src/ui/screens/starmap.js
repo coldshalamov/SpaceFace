@@ -184,17 +184,18 @@ const CSS = `
 #sf-starmap .sm-stats { font-family: var(--sf-body-face); font-size: 13px; color: var(--dp-ink-mute, var(--sf-calm)); display: flex; gap: var(--sp-4); flex-wrap: wrap; }
 #sf-starmap .sm-stats b { color: var(--dp-phos, var(--sf-paper)); }
 #sf-starmap .sm-close {
-  /* A ghost key at rest: the field carries it, no rectangle (glass never has a border). The lamp
-     border is the pinned hover/focus signal (INST kit contract), so the border track stays. */
-  background: var(--dp-field-ink, color-mix(in srgb, var(--sf-calm) 8%, transparent)); border: 1px solid transparent; color: var(--dp-ink, var(--sf-paper));
-  min-height: 40px; padding: var(--sp-2) var(--sp-3); border-radius: 0; cursor: pointer;
+  /* Demoted (2026-10-31 wayfinding audit): a ghost word, not a field — the course CTA is the
+     loud verb on this screen. Rest is dim ink on nothing; hover/focus raise ink and one hairline
+     underline. The key hint stays so the binding remains discoverable. */
+  background: transparent; border: 0; border-bottom: 1px solid transparent; color: var(--dp-ink-mute, var(--sf-calm));
+  min-height: 28px; padding: var(--sp-1) var(--sp-2); border-radius: 0; cursor: pointer;
   font-family: var(--dp-face-label, var(--sf-subhead-face)); font-stretch: 112%; font-weight: 650; font-size: 12px;
   letter-spacing: var(--sf-track-micro); text-transform: uppercase;
-  transition: color 160ms var(--dp-ease-out, ease-out), border-color 160ms var(--dp-ease-out, ease-out), background-color 160ms var(--dp-ease-out, ease-out);
+  transition: color 160ms var(--dp-ease-out, ease-out), border-color 160ms var(--dp-ease-out, ease-out);
 }
 #sf-starmap .sm-close:hover, #sf-starmap .sm-close:focus-visible {
-  border-color: var(--dp-lamp, var(--sf-you)); color: var(--dp-lamp-hot, var(--sf-you));
-  background: var(--dp-field-ink-hi, color-mix(in srgb, var(--sf-you) 12%, transparent));
+  color: var(--dp-ink, var(--sf-paper));
+  border-bottom-color: var(--dp-rule-hi, var(--sf-edge));
 }
 #sf-starmap .sm-close:active {
   translate: 0 1px;
@@ -231,6 +232,7 @@ const CSS = `
   font-family: var(--dp-face-display, var(--sf-display-face)); font-stretch: 118%; font-weight: 750; font-size: 19px; color: var(--dp-ink, var(--sf-paper));
   padding-bottom: var(--sp-2); margin-bottom: var(--sp-2); border-bottom: 1px solid var(--dp-rule, var(--sf-edge));
 }
+#sf-starmap .sm-sel-name > span { min-width: 0; overflow-wrap: anywhere; }
 #sf-starmap .sm-sel-fac {
   font-family: var(--sf-body-face); font-size: 13px; margin-top: var(--sp-1); color: var(--dp-ink-mute, var(--sf-calm));
 }
@@ -241,10 +243,12 @@ const CSS = `
   color: var(--dp-ink-dim, var(--sf-calm)); margin-bottom: var(--sp-1);
 }
 #sf-starmap .sm-kv {
-  display: flex; justify-content: space-between; gap: var(--sp-2);
+  display: flex; justify-content: space-between; align-items: baseline; gap: var(--sp-2);
   font-family: var(--sf-body-face); font-size: 13px; color: var(--dp-ink-mute, var(--sf-calm)); padding: 2px 0;
 }
-#sf-starmap .sm-kv b { color: var(--dp-ink, var(--sf-paper)); font-weight: 500; text-align: right; }
+/* Long values (hazard lists, security strings, entity names) wrap inside the column instead of
+   clipping past the rail's edge — a reading the pilot cannot read is not shown (2026-10-31 audit). */
+#sf-starmap .sm-kv b { color: var(--dp-ink, var(--sf-paper)); font-weight: 500; text-align: right; overflow-wrap: anywhere; }
 #sf-starmap .sm-driver { font-family: var(--sf-body-face); font-size: 13px; color: var(--dp-ink-mute, var(--sf-calm)); line-height: 1.35; margin: var(--sp-1) 0 var(--sp-2); }
 #sf-starmap .sm-hint { font-family: var(--sf-body-face); font-size: 13px; color: var(--dp-ink-mute, var(--sf-calm)); line-height: 1.5; }
 #sf-starmap .sm-objective {
@@ -306,6 +310,7 @@ const CSS = `
   display: grid; grid-template-columns: 1fr 42px; gap: var(--sp-2); align-items: center;
   font-family: var(--sf-body-face); font-size: 13px; color: var(--dp-ink-mute, var(--sf-calm)); margin: var(--sp-1) 0;
 }
+#sf-starmap .sm-influence-row > span { min-width: 0; overflow-wrap: anywhere; }
 #sf-starmap .sm-influence-row b { text-align: right; color: var(--dp-ink, var(--sf-paper)); }
 /* the rail separates by structure, not by washes: the transit-consequence rungs hang on a 2px
    left rule like every other block's hairline, never a filled slab (the no-box grammar) */
@@ -337,6 +342,7 @@ const CSS = `
   display: flex; justify-content: space-between; gap: var(--sp-2);
   font-family: var(--sf-body-face); font-size: 13px; color: var(--dp-ink-mute, var(--sf-calm));
 }
+#sf-starmap .sm-market-row > span { min-width: 0; overflow-wrap: anywhere; }
 #sf-starmap .sm-market-row.fresh { color: var(--dp-phos, var(--sf-you)); }
 #sf-starmap .sm-market-row.mid { color: var(--dp-ink, var(--sf-paper)); }
 #sf-starmap .sm-market-row.old { color: var(--dp-ink-mute, var(--sf-calm)); font-style: italic; }
@@ -356,6 +362,15 @@ const CSS = `
 #sf-starmap .sm-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; background: var(--dp-ink-dim, var(--sf-calm)); }
 #sf-starmap .sm-dot--foe { background: var(--dp-danger, var(--sf-foe)); }
 #sf-starmap .sm-dot--ice { background: var(--dp-ice, var(--sf-calm)); }
+#sf-starmap .sm-dot--you { background: var(--dp-ink, var(--sf-paper)); }
+/* Legend samples that decode the chart's own marks (2026-10-31 audit: the legend lists only what
+   the canvas actually draws): the amber course beam, the dashed one-jump range ring, the paper
+   you-are-here ring. Tokens only — no second colour system. */
+#sf-starmap .sm-line { width: 16px; height: 0; border-top: 2px solid var(--dp-lamp, var(--sf-goal)); display: inline-block; flex: none; }
+#sf-starmap .sm-ring {
+  width: 8px; height: 8px; box-sizing: border-box; border-radius: 50%; display: inline-block; flex: none;
+  border: 1.4px dashed var(--dp-phos, var(--sf-you)); background: transparent;
+}
 #sf-starmap .sm-legend .sm-legend-glyph { width: 12px; height: 12px; color: var(--dp-danger, var(--sf-foe)); flex: none; }
 @media (max-width: 820px) {
   #sf-starmap .sm-side { width: 288px; }
@@ -770,6 +785,9 @@ export const starmapScreen = {
   _sidebarSig: '',
   _layoutPad: 68,
   _commodityId: DEFAULT_MEMORY_COMMODITY,
+  _previewRoute: null,
+  _previewRouteKey: null,
+  _previewRouteStatus: 'unavailable',
 
   mount(rootEl, ctx) {
     injectStyle();
@@ -797,6 +815,9 @@ export const starmapScreen = {
         <div class="sm-canvas-wrap sf-stage" data-centerpiece="map-command-table"><canvas></canvas>
           <div class="sm-foot sf-apron orr-rise" style="--orr-delay:180ms">
             <div class="sm-legend">
+              <span><i class="sm-line"></i>course</span>
+              <span><i class="sm-ring"></i>one-jump range</span>
+              <span><i class="sm-dot sm-dot--you"></i>your sector</span>
               <span><i class="sm-dot sm-dot--foe"></i>danger field</span>
               <span><i class="sm-dot sm-dot--ice"></i>commodity flow</span>
               <span>${glyphSvg('err', 12, 'sm-legend-glyph')} contested</span>
@@ -813,6 +834,10 @@ export const starmapScreen = {
 
     this._canvas = rootEl.querySelector('canvas');
     this._g = this._canvas.getContext('2d');
+    // The chart is pointer-driven today; the label states that honestly instead of leaving a
+    // bare unlabeled canvas for assistive tech. Keyboard users reach Close and the sidebar CTAs.
+    this._canvas.setAttribute('aria-label',
+      'Sector chart. Click a sector to inspect it and set a course; drag to pan, scroll to zoom.');
     this._els = {
       fuel: rootEl.querySelector('[data-fuel]'),
       jumpState: rootEl.querySelector('[data-jstate]'),
@@ -923,6 +948,11 @@ export const starmapScreen = {
     this._selectedId = state.world && state.world.currentSectorId || null;
     this._hoverId = null;
     this._hoverInfo = null;
+    // The world moved while the chart was closed — a memoised preview from the previous open
+    // would describe a stale graph.
+    this._previewRouteKey = null;
+    this._previewRoute = null;
+    this._previewRouteStatus = 'unavailable';
     // INF-057: authored defaults first (singleton rule — never merge over a previous session's
     // camera), then the remembered camera from the screenMemory contract, written on hide.
     this._cam = { ...CAMERA_DEFAULT };
@@ -981,6 +1011,63 @@ export const starmapScreen = {
   _isNeighbor(a, b) {
     const sector = this._sectorById(a);
     return !!(sector && (sector.neighbors || []).includes(b));
+  },
+  // One jump = a lane neighbour, or the wormhole edge out of the origin sector. This is the same
+  // pair test world's jump validation accepts (`_onRequestJump`: neighbor, or wormholeTo) — the
+  // map only ever describes the rule the sim enforces, never a second opinion.
+  _isJumpableFrom(fromId, toId) {
+    if (!fromId || !toId || fromId === toId) return false;
+    if (this._isNeighbor(fromId, toId)) return true;
+    const sector = this._sectorById(fromId);
+    return !!(sector && sector.wormholeTo && sector.wormholeTo.sectorId === toId);
+  },
+  // The sector the chart should mark as the objective (the galaxy map's GOAL cue): the resolved
+  // starmap objective first, else the armed waypoint. Pure read of the same owners the sidebar
+  // already consults — no second waypoint writer.
+  _objectiveSectorId() {
+    const state = this._ctx && this._ctx.state;
+    if (!state) return null;
+    const objective = resolveStarmapObjective(state);
+    if (objective && objective.sectorId) return objective.sectorId;
+    const wp = state.nav && state.nav.waypoint;
+    return (wp && wp.sectorId) || null;
+  },
+  // Preview route to the SELECTED node, shown only while nothing is plotted — a laid course
+  // always outranks intent (the galaxy map's rule, mirrored). Deliberately `world.computeRoute`
+  // and nothing else: ADR D6 forbids new planning math in a map, and a second planner here could
+  // disagree with the one that actually flies the ship. Pure read, memoised per
+  // {origin, destination, charted count}; calling it cannot move the simulation.
+  _previewRouteTo(destSectorId) {
+    const state = this._ctx && this._ctx.state;
+    if (!state || !destSectorId) return null;
+    const here = this._currentId();
+    if (!here || here === destSectorId) return null;
+    if (!this._isDiscovered(destSectorId)) return null;
+    const discovery = state.world && state.world.discovery;
+    const charted = discovery ? Object.keys(discovery).length : 0;
+    const key = `${here}>${destSectorId}#${charted}`;
+    if (this._previewRouteKey === key) return this._previewRoute;
+    this._previewRouteKey = key;
+    this._previewRoute = null;
+    this._previewRouteStatus = 'unavailable';
+    const world = this._ctx.registry && typeof this._ctx.registry.get === 'function'
+      ? this._ctx.registry.get('world') : null;
+    if (world && typeof world.computeRoute === 'function') {
+      try {
+        this._previewRoute = world.computeRoute(destSectorId, 'fuel') || null;
+        this._previewRouteStatus = this._previewRoute ? 'ready' : 'unreachable';
+      } catch {
+        this._previewRoute = null;
+        this._previewRouteStatus = 'unavailable';
+      }
+    }
+    return this._previewRoute;
+  },
+  _selectionPreviewRoute() {
+    if (this._route()) return null; // a plotted course outranks selection intent
+    const dest = this._selectedId;
+    if (!dest || dest === this._currentId()) return null;
+    return this._previewRouteTo(dest);
   },
   _route() { const r = this._ctx.state.nav && this._ctx.state.nav.route; return r && r.legs ? r : null; },
   _signal(id) { return sectorSignalFor(this._ctx.state, id); },
@@ -1162,7 +1249,12 @@ export const starmapScreen = {
     const flows = this._drawEdges(g, nodes, byId, now, roles);
     this._drawWormholes(g, nodes, byId, roles);
     const route = this._route();
-    const routed = route ? this._drawRoute(g, route, byId, now, roles, reduced) : false;
+    // A plotted course always outranks intent; with nothing plotted, the selection previews its
+    // own route through the SAME shipped planner that flies the ship (world.computeRoute).
+    const preview = this._selectionPreviewRoute();
+    const routed = route
+      ? this._drawRoute(g, route, byId, now, roles, reduced)
+      : (preview ? this._drawRoute(g, preview, byId, now, roles, reduced, { preview: true }) : false);
     // The anim loop consults this: frames carrying live motion redraw every beat; static
     // frames repaint only when the signature changes.
     this._animates = !!(flows || routed);
@@ -1231,8 +1323,9 @@ export const starmapScreen = {
     }
   },
 
-  _drawRoute(g, route, byId, now, roles, reduced) {
+  _drawRoute(g, route, byId, now, roles, reduced, opts = {}) {
     if (!route.legs || !route.legs.length) return false;
+    const preview = !!(opts && opts.preview);
     const points = [];
     for (let i = 0; i < route.legs.length; i++) {
       const leg = route.legs[i];
@@ -1243,21 +1336,28 @@ export const starmapScreen = {
     const z = this._cam.zoom;
     g.save(); g.lineCap = 'round'; g.lineJoin = 'round';
     g.beginPath(); g.moveTo(points[0].x, points[0].y); for (let i = 1; i < points.length; i++) g.lineTo(points[i].x, points[i].y);
-    // The plotted route IS the course — the one amber beam, bloom as a second wider stroke.
-    g.lineWidth = 6 / z; g.strokeStyle = paint(roles.goal, 0.18); g.stroke();
-    g.lineWidth = 3 / z; g.strokeStyle = roles.goal;
-    g.setLineDash([8 / z, 6 / z]);
-    g.lineDashOffset = reduced ? 0 : -(now * 0.04);
+    // The plotted route IS the course — the one amber beam, bloom as a second wider stroke. A
+    // preview is the same beam at intent weight: thinner, dimmer, slower march — readable as
+    // "this is what Plot Route would lay", never as an armed course.
+    g.lineWidth = (preview ? 4.5 : 6) / z; g.strokeStyle = paint(roles.goal, preview ? 0.10 : 0.18); g.stroke();
+    g.lineWidth = (preview ? 1.8 : 3) / z;
+    g.strokeStyle = preview ? paint(roles.goal, 0.8) : roles.goal;
+    g.setLineDash([(preview ? 5 : 8) / z, 6 / z]);
+    g.lineDashOffset = reduced ? 0 : -(now * (preview ? 0.025 : 0.04));
     g.stroke();
     g.setLineDash([]);
     g.restore();
+    // The travelling pip is the direction affordance: it rides from the player's sector toward
+    // the destination. Preview's pip is amber (intent), the armed course's is paper (a reading).
     const p = pointOnPolyline(points, reduced ? 0 : (now % 3000) / 3000);
-    g.beginPath(); g.arc(p.x, p.y, 4 / z, 0, Math.PI * 2); g.fillStyle = roles.paper; g.fill();
+    g.beginPath(); g.arc(p.x, p.y, (preview ? 3 : 4) / z, 0, Math.PI * 2);
+    g.fillStyle = preview ? paint(roles.goal, 0.9) : roles.paper; g.fill();
     return !reduced;
   },
 
   _drawNodes(g, nodes, currentId, roles) {
     const z = this._cam.zoom;
+    const goalId = this._objectiveSectorId();
     // Price memory is keyed by STATION id (economy.recordMarketMemory), never by sector — so the
     // node tag reads the same station→sector overlay table the sidebar does, one best-sell
     // quote per sector (the overlay sort is sector, then sell descending).
@@ -1283,14 +1383,23 @@ export const starmapScreen = {
       const selected = s.id === this._selectedId;
       const hover = s.id === this._hoverId;
       const current = s.id === currentId;
-      const reachable = currentId && this._isNeighbor(currentId, s.id);
+      const reachable = !current && this._isJumpableFrom(currentId, s.id);
+      const goalHere = !current && goalId === s.id;
 
       if (selected || hover) {
         g.beginPath(); g.arc(n.x, n.y, n.r + 8 / z, 0, Math.PI * 2); g.fillStyle = paint(roles.paper, 0.12); g.fill();
       }
+      // Hover reads as "this node is a control": the soft fill plus a bone stroke ring — the
+      // promise the pointer cursor already makes (2026-10-31 audit: nodes did not look clickable).
+      if (hover && !selected) {
+        g.beginPath(); g.arc(n.x, n.y, n.r + 8 / z, 0, Math.PI * 2);
+        g.strokeStyle = paint(roles.paper, 0.5); g.lineWidth = 1.4 / z; g.stroke();
+      }
+      // One-jump range: a phosphor dashed ring — a READING (what the drive can reach this
+      // minute), bright enough to read as a class. The old calm ring read as texture.
       if (reachable) {
-        g.beginPath(); g.arc(n.x, n.y, n.r + 5 / z, 0, Math.PI * 2); g.strokeStyle = paint(roles.calm, 0.6);
-        g.lineWidth = 1.4 / z; g.setLineDash([3 / z, 3 / z]); g.stroke(); g.setLineDash([]);
+        g.beginPath(); g.arc(n.x, n.y, n.r + 5 / z, 0, Math.PI * 2); g.strokeStyle = paint(roles.you, 0.7);
+        g.lineWidth = 1.7 / z; g.setLineDash([3 / z, 3 / z]); g.stroke(); g.setLineDash([]);
       }
       if (signal && signal.contestMargin < 0.16) {
         g.beginPath(); g.arc(n.x, n.y, n.r + 9 / z, 0, Math.PI * 2); g.strokeStyle = paint(roles.foe, 0.78);
@@ -1318,6 +1427,31 @@ export const starmapScreen = {
         // Centre pip drawn as a filled arc, not a '●' font glyph — a drawn mark, zoom-stable.
         g.beginPath(); g.arc(n.x, n.y, 3.4 / z, 0, Math.PI * 2);
         g.fillStyle = roles.paper; g.fill();
+      }
+
+      // The course's endpoints carry the Hand: the selected node (the course candidate) gets
+      // amber corner brackets, and the objective's sector adds the GOAL word — the galaxy map's
+      // proven cue, in this chart's drawn-mark grammar. Amber stays the course's one family.
+      if ((selected && !current) || goalHere) {
+        const gr = n.r + 12 / z;
+        const tick = 5 / z;
+        g.save();
+        g.strokeStyle = roles.goal; g.lineWidth = 1.6 / z; g.lineCap = 'round';
+        for (const [qx, qy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
+          g.beginPath();
+          g.moveTo(n.x + qx * gr, n.y + qy * (gr - tick));
+          g.lineTo(n.x + qx * gr, n.y + qy * gr);
+          g.lineTo(n.x + qx * (gr - tick), n.y + qy * gr);
+          g.stroke();
+        }
+        if (goalHere) {
+          g.font = canvasFontScaled('700', 12, z, 'data');
+          g.textAlign = 'center'; g.textBaseline = 'alphabetic';
+          g.lineJoin = 'round'; g.lineWidth = 3; g.strokeStyle = paint(roles.surface, 0.8);
+          g.strokeText('GOAL', n.x, n.y - gr - 5 / z);
+          g.fillStyle = roles.goal; g.fillText('GOAL', n.x, n.y - gr - 5 / z);
+        }
+        g.restore();
       }
 
       const labelY = n.y + n.r + 5 / z;
@@ -1449,7 +1583,9 @@ export const starmapScreen = {
     }
     const currentId = this._currentId();
     const isCurrent = s.id === currentId;
-    const reachable = currentId && this._isNeighbor(currentId, s.id);
+    const reachable = this._isJumpableFrom(currentId, s.id);
+    const route = this._route();
+    const routeDest = route && route.legs && route.legs.length ? route.legs[route.legs.length - 1].to : null;
     const discovery = this._discovery(s.id);
     const topInfluence = Object.entries(signal.influence || {}).sort((a, b) => (b[1] - a[1]) || a[0].localeCompare(b[0])).slice(0, 3);
     const influenceHtml = topInfluence.map(([id, value]) => `
@@ -1465,6 +1601,12 @@ export const starmapScreen = {
     const priceTrend = signal.trend.pricePressure * 100;
     const hazards = s.hazards && s.hazards.length ? s.hazards.map((h) => HAZARD_LABEL[h.type] || h.type).join(', ') : 'None';
     const memoryHtml = this._marketMemoryHtml(s.id);
+    // Wayfinding answer for a far selection: the shipped planner's own numbers, shown as intent
+    // only (never assigned to nav.route). When the planner says no path exists, the hint says so.
+    const previewRoute = (!isCurrent && !reachable) ? this._previewRouteTo(s.id) : null;
+    const noPath = !previewRoute && this._previewRouteStatus === 'unreachable';
+    const hops = previewRoute ? (previewRoute.totalHops || previewRoute.legs.length) : 0;
+    const fuel = previewRoute ? Math.round(previewRoute.totalFuel || 0) : 0;
 
     selected.innerHTML = `
       <div class="sm-sel-head${isCurrent ? ' is-here' : ''}">
@@ -1521,10 +1663,16 @@ export const starmapScreen = {
 
       ${isCurrent ? '<div class="sm-route">▸ Current sector</div>'
         : reachable ? '<div class="sm-route">▸ Reachable in one jump</div>'
-          : '<div class="sm-hint">Not directly reachable — plot a multi-hop route.</div>'}
+          : previewRoute ? `<div class="sm-route">▸ ${hops} hop${hops === 1 ? '' : 's'} / ${fuel}F available path</div>`
+            : noPath ? '<div class="sm-hint">No charted route leads there yet.</div>'
+              : '<div class="sm-hint">Not directly reachable — plot a multi-hop route.</div>'}
       ${routeHtml}`;
 
+    // The verb ladder: an armed route to this sector ENGAGEs (the route follower's own trigger,
+    // the same intent the galaxy map emits); a neighbour SETS COURSE & JUMPS; anything else
+    // PLOTs. One primary verb at a time, and it is always the screen's Lamp Key.
     if (isCurrent) actions.innerHTML = '';
+    else if (routeDest === s.id) actions.innerHTML = '<button class="sm-course" data-act="engage">⟫ Engage Route</button>';
     else if (reachable) actions.innerHTML = '<button class="sm-course" data-act="jump">⟫ Set Course &amp; Jump</button>';
     else actions.innerHTML = '<button class="sm-course" data-act="route">⟫ Plot Route</button>';
     // The course is the screen's one primary verb, so it carries the one Lamp Key (ORRERY §3.6):
@@ -1652,6 +1800,12 @@ export const starmapScreen = {
       bus.emit('world:requestRoute', { targetSectorId: target, mode: 'fuel' });
       bus.emit('ui:setCourse', { sectorId: target, path: null });
       bus.emit('toast', { text: `Plotting route to ${this._nameOf(target)}…`, kind: 'info', ttl: 3000 });
+    } else if (action === 'engage') {
+      // ENGAGE hands the PLOTTED route to the route follower — the same `nav:engageRoute` intent
+      // the galaxy map emits. The follower owns every refusal receipt (no route, welded gate,
+      // drive out); this screen writes no navigation state of its own.
+      bus.emit('nav:engageRoute', {});
+      bus.emit('toast', { text: `Engaging route to ${this._nameOf(target)}`, kind: 'info', ttl: 3000 });
     }
     this._syncHeader();
   },
@@ -1661,8 +1815,16 @@ export const starmapScreen = {
     // A live tooltip follows the cursor — the signature must move with it or the gated anim
     // loop freezes the box at the hover-entry position.
     if (this._hoverInfo) parts.push((this._mouseX | 0) + ',' + (this._mouseY | 0));
+    parts.push('goal:' + (this._objectiveSectorId() || ''));
     const route = this._route();
     if (route) parts.push(route.legs.map((l) => `${l.from}>${l.to}`).join(','));
+    else {
+      // The preview beam is a derived draw input: it must move the signature, or the gated anim
+      // loop would keep the last frame's intent line after the selection or chart changes.
+      const preview = this._selectionPreviewRoute();
+      if (preview) parts.push('preview:' + preview.legs.map((l) => `${l.from}>${l.to}`).join(','));
+      else parts.push('preview:none');
+    }
     for (const s of this._sectors()) {
       const known = this._isDiscovered(s.id);
       parts.push(s.id, known ? 1 : 0);
@@ -1687,6 +1849,10 @@ export const starmapScreen = {
       signal && signal.dominantFactionId, signal && Math.round(signal.contestMargin * 10000),
       player && Math.round(player.maxSpeed || 0), player && Math.round((player.shield || 0) + (player.armorHp || 0) + (player.hull || 0)),
       this._route() && this._route().legs && this._route().legs.length || 0,
+      // The sidebar's verb depends on WHERE the plotted route ends (Engage vs Plot) — the
+      // destination moves the signature, not just the leg count.
+      (this._route() && this._route().legs && this._route().legs.length
+        ? this._route().legs[this._route().legs.length - 1].to : ''),
       objective && objective.kind || '', objective && objective.sectorId || '', objective && objective.title || '',
       guidance && guidance.state || '', guidance && guidance.summary || '',
       this._commodityId || '', marketMemoryStationOverlays(this._ctx.state, this._commodityId).length,
