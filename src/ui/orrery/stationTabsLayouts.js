@@ -2380,16 +2380,15 @@ html body #screens > .sx-berth.orr-station .sx-mkt.orr-market .sx-mkt__hero.sx-m
   ${T} .sx-bar__foot { margin-top: 8px !important; padding-top: 7px !important; padding-bottom: 4px !important;
     background: linear-gradient(0deg, rgb(${BONE} / .14), rgb(${BONE} / .14)) 0 0 / 100% 1px no-repeat !important; }
 }
-/* Ledger — the empty book used to leave ~70% of the panel void. An empty ledger page still
-   carries its rules: the empty state stretches and stands on ruled lines with the margin
-   column, so the void reads as a page waiting for its first entry, not dead glass. */
-${T} .sx-ledger:has(.st-ledger-empty:not([hidden])) { grid-template-rows: auto auto auto minmax(0, 1fr) auto !important; }
+/* Ledger — an empty book reads as one dashed well (the shared empty-state card: hairline dash,
+   radius 8, faint fill) instead of a half-drawn ruled page whose margin rule and stray rung
+   looked broken. The well sizes to its sentence; the panel keeps its rows. */
 ${T} .sx-ledger .st-ledger-empty:not([hidden]) {
-  align-self: stretch !important; min-height: 120px !important; padding-top: 12px !important; padding-left: 40px !important;
-  background:
-    linear-gradient(90deg, transparent 24px, rgb(${BONE} / .13) 24px, rgb(${BONE} / .13) 25px, transparent 25px) 0 0 / 100% 100% no-repeat,
-    repeating-linear-gradient(180deg, transparent 0 32px, rgb(${BONE} / .09) 32px 33px) !important;
+  align-self: start !important; min-height: 0 !important; max-width: min(100%, 440px); box-sizing: border-box;
+  margin-top: 24px !important; padding: 12px 16px !important;
+  border: 1px dashed rgb(${BONE} / .22) !important; border-radius: 8px !important; background: rgb(${BONE} / .025) !important;
 }
+${T} .sx-ledger .st-ledger-empty:not([hidden])::before { display: none !important; }
 /* F9 — the FIND A SERVICE trigger wore a bordered kbd pill; it stands as a bare caps word with
    a quiet field rule instead. The market search answers focus with a tick on its underline. */
 ${T} .so-command-trigger { border: 0 !important; border-radius: 0 !important; background: none !important; background-image: none !important; box-shadow: inset 0 -1px 0 rgb(${BONE} / .16) !important; clip-path: none !important; padding: 0 0 4px !important; min-height: 0 !important; }
