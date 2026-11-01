@@ -322,8 +322,9 @@ ${T} .sx-ct-commit .k-word-sub, ${T} .sx-dossier__foot .k-word-sub { font-size: 
   ${D} .sx-bar__stage .sx-talk__choices > li .sx-choice { padding-top:4px !important; padding-bottom:4px !important; }
   ${D} .sx-bar__stage .sx-talk:has(.sx-talk__reply.is-said) .sx-talk__memory { display:none !important; }
 }
-/* under 481 wide two halves would be ~170px and cut every job title: the board stands over the dossier */
-@media (max-width:480px) and (min-height:601px) {
+/* under 481 wide two halves would be ~170px and cut every job title: the board stands over the dossier. At 481–580 and 861+
+   tall (540×900) the halves were ~250px: the posted titles ghosted out and YOURS printed its title over TRACKED, so it stacks too. */
+@media (max-width:480px) and (min-height:601px), (max-width:580px) and (min-height:861px) {
   ${D} .k-panel.sx-ct { grid-template-columns:minmax(0, 1fr) !important; grid-template-rows:minmax(0, 4fr) minmax(0, 5fr) !important; row-gap:10px !important; }
   ${D} .k-panel.sx-ct > * { grid-column:1 !important; grid-row:auto !important; min-height:0 !important; }
   /* each half scrolls once: the board and the dossier plate stop being second scrollers whose fades masked the only row in view */
@@ -360,6 +361,16 @@ ${T} .sx-ct-commit .k-word-sub, ${T} .sx-dossier__foot .k-word-sub { font-size: 
   ${D} .sx-dossier > .sx-dossier__title { order:-3 !important; margin-top:0 !important; }
   ${D} .sx-dossier > .k-caps { order:-1 !important; margin-top:8px !important; }
   ${D} .sx-dossier > .sx-dossier__foot { order:-2 !important; }
+}
+/* …481–580 wide the station head runs taller (540×900 leaves board and dossier ~195px): the board keeps its 66px FEATURED floor
+   and the dossier opens on the title with ACCEPT right under it, the kind stepping below, so the verb stays on the first screen */
+@media (min-width:481px) and (max-width:580px) and (min-height:861px) and (max-height:1000px) {
+  ${D} .k-panel.sx-ct { grid-template-rows:minmax(66px, 2fr) minmax(0, 3fr) !important; row-gap:8px !important; }
+  ${D} .sx-ct__dossier { padding-top:0 !important; -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 10px), transparent) !important; mask-image:linear-gradient(180deg, #000 calc(100% - 10px), transparent) !important; }
+  ${D} .sx-dossier { padding-top:2px !important; }
+  ${D} .sx-dossier > .sx-dossier__title { order:-3 !important; margin:0 0 6px !important; }
+  ${D} .sx-dossier > .sx-dossier__foot { order:-2 !important; }
+  ${D} .sx-dossier > .k-caps { order:-1 !important; margin-top:8px !important; }
 }
 /* below 700 the term value column would be under ~70px and split words ("contr/act"): the label stands over its value */
 @media (min-width:651px) and (max-width:699px) and (max-height:800px) {
