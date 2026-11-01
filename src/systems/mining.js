@@ -18,7 +18,7 @@ import { isCeresWorkfleetHardware } from '../data/ceresWorkfleetIdentity.js';
 // Determinism (§0.5): all weighted ore rolls use state.rng() — never Math.random().
 // Single-writer (§0.6): cargo is owned by the cargo module; we route ore through its addCargo
 // helper / pickup:collected event and only fall back to a direct write while cargo is a stub.
-import { ORES, ASTEROIDS, BEAMS, deriveAsteroidSeams } from '../data/mining.js';
+import { ORES, ASTEROIDS, deriveAsteroidSeams } from '../data/mining.js';
 import { magnetMultiplier } from '../data/swarmHangar.js';
 import { asteroidColliderRadius } from '../data/asteroidColliders.js';
 import { WRECK_COLLIDER_PROPORTIONS } from '../data/wreckClasses.js';
@@ -76,7 +76,16 @@ import {
 } from '../data/killRewards.js';
 import { consumeLethalBlow, consumePendingSlam, consumePendingSlamIfFresh, overkillNoteForKill, peekPendingSlam, spawnFracturePieces } from './hullFracture.js';
 import { victimVisualFor } from './aftermathWrecks.js';
-import { JETTISONED_CARGO_PAYLOAD_TYPE } from './lootShards.js';
+import {
+  BEAM_BY_ID,
+  BULK_HAUL_MIN_U,
+  beamRangeFor,
+  isBeamSplittableCargoPod,
+  isBeamTargetEligible,
+  isOpticLatticeCellData,
+  weldableHullForBeam,
+} from './miningBeamTargetingRead.js';
+export { BULK_HAUL_MIN_U, beamRangeFor, isBeamTargetEligible } from './miningBeamTargetingRead.js';
 
 export const MAGNET_RANGE = 800; // wu pull radius for Super-Wide Vacuum Cargo Attractor
 export const MAGNET_ACCEL = 2400; // wu/s² snappy authority toward the seek velocity
@@ -87,7 +96,6 @@ export const RICH_CORE_CHANCE = 0.15;
 export const RICH_CORE_DURATION_S = 3.5;
 export const RICH_CORE_WINDOW_LO = 0.12;
 export const RICH_CORE_WINDOW_HI = 0.22;
-export const BULK_HAUL_MIN_U = 20;
 export const BULK_HAUL_PAY_MULT = 0.8;
 export const BULK_HAUL_REFINERY_FEE = 0.06;
 export const RICH_SEAM_HEAT_MULT = 1.35;
@@ -206,7 +214,6 @@ const BEAM_HEAT_EMIT_STEP = 0.02;
 
 const ORE_BY_ID = new Map(ORES.map((o) => [o.id, o]));
 const AST_BY_ID = new Map(ASTEROIDS.map((a) => [a.id, a]));
-const BEAM_BY_ID = new Map(BEAMS.map((b) => [b.id, b]));
 const COMMODITY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
 const MODULE_BY_ID = new Map(MODULES.map((m) => [m.id, m]));
 
@@ -3093,43 +3100,6 @@ const miningCombatScratch = [];
 const miningPodScratch = [];
 const miningMineableSeen = new Set();
 
-// Optic lattice cells are not ore — the lattice marker is opticStructureId (world.js stamps it
-// beside opticMaterial on lattice bodies; world/asteroidField.js isOpticRockData documents the
-// same split). Ordinary ore also carries an opticMaterial surface tag ('metal'/'diamond') from
-// environmentSurfaceData, so refusing on the tag made every metallic and crystalline field rock
-// unmineable (demo defect ledger D227).
-function isOpticLatticeCellData(data) {
-  return !!(data && typeof data.opticStructureId === 'string' && data.opticStructureId);
-}
-
-// F12: only jettisoned cargo pods split under the beam — cut panels, custody capsules, and other
-// payload types keep their own verbs. Kept out of `mine` catalog membership on purpose: a pod is
-// cracked open, never mined.
-function isBeamSplittableCargoPod(entity) {
-  return !!(entity && entity.type === 'payload' && entity.data
-    && entity.data.payloadType === JETTISONED_CARGO_PAYLOAD_TYPE);
-}
-
-export function beamRangeFor(player, state) {
-  const beam = (player && player.data && player.data.miningBeam)
-    || (state && state.player && state.player.miningBeam);
-  if (!beam) return null;
-  const tier = BEAM_BY_ID.get(beam.tierId) || BEAM_BY_ID.get('beam_mk1');
-  const range = beam.range || (tier && tier.range);
-  return Number.isFinite(range) ? range : null;
-}
-
-export function isBeamTargetEligible(entity, state) {
-  if (isCeresWorkfleetHardware(entity)) return false;
-  if (!entity || entity.alive === false) return false;
-  if (!verbAcceptsType('mine', entity.type) && !isBeamSplittableCargoPod(entity)
-    && !weldableHullForBeam(entity, state)) return false;
-  if (!presentationAllowsPlayerFacingAction(entity, state)) return false;
-  if (entity.type === 'asteroid' && entity.data && entity.data.respawnAt != null) return false;
-  if (entity.type === 'asteroid' && isOpticLatticeCellData(entity.data)) return false;
-  return true;
-}
-
 function isOrchardFrameClaim(entity) {
   const data = entity && entity.data || {};
   return entity && entity.type === 'wreck'
@@ -3148,20 +3118,6 @@ function isOrchardFrameClaim(entity) {
 export const BEAM_TENDER_DAMAGE_FRAC = 0.85; // hull at or below this fraction of max reads "limping"
 const BEAM_TENDER_THANKS_COOLDOWN_S = 120;   // one weld-out thanks per casualty per window
 const TENDER_THANKS_KEY_CAP = 4096;          // session-scoped, mirrors SETTLED_CHIP_KEY_CAP
-
-function weldableHullForBeam(entity, state) {
-  if (!entity || entity.alive === false) return false;
-  if (entity.type !== 'ship' && entity.type !== 'drone') return false;
-  if (entity.flags && entity.flags.docked) return false;
-  const hullMax = Number(entity.hullMax);
-  const hull = Number(entity.hull);
-  if (!Number.isFinite(hullMax) || hullMax <= 0 || !Number.isFinite(hull)) return false;
-  if (hull >= hullMax) return false;
-  if (!state || !state.entities) return false;
-  const player = state.entities.get(state.playerId);
-  if (!player || entity.id === player.id) return false;
-  return !isHostileToPlayer(entity, player.team, state);
-}
 
 // Acquisition bar (free cursor scan): the casualty has to read as limping before the beam steals
 // the lock. Hold bar (weldableHullForBeam, the resolver's own "damaged" truth): once the weld is

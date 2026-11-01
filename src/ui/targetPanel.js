@@ -29,7 +29,7 @@ import { contactThreatTier, contactStateWord, isHostileToPlayer, isWreckLike, wr
 import { LANE_GIMMICK_LABELS } from '../data/laneContacts.js';
 import { interactionClassLine, interactionDisplayName, interactionProfileForEntity, presentationStatusWord } from '../data/entityInteractionProfiles.js';
 import { resolveWorldPresentationEntity } from '../world/presentationSources.js';
-import { isBeamTargetEligible, beamRangeFor } from '../systems/mining.js';
+import { isBeamTargetEligible, beamRangeFor } from '../systems/miningBeamTargetingRead.js';
 import { initialMouseToolLane, resolveActionLabel } from '../systems/input.js';
 import { finiteWholePickupAmount } from '../core/pickupAcceptance.js';
 import { oreTableByWeight, oreTableForAsteroidType } from '../data/mining.js';

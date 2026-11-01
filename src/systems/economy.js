@@ -27,6 +27,8 @@ import { COMMODITIES } from '../data/commodities.js';
 import { TALLY_THREE, tallyThreeSource } from '../data/tallyThree.js';
 import { ILEX_ARK, validIlexOutcome } from '../data/ilexArk.js';
 import { ECONOMY_BALANCE as BALANCE } from '../data/economyDerived.js';
+import { stationInfo, toleratesContraband } from '../economy/stationMarketProfile.js';
+export { salvageBaySaleAllowsIllicit } from '../economy/stationMarketProfile.js';
 import { averageBoundedPrice, averageLivePrice, normalizedTradeQuantity, settleCredits, recoverStock, commodityStandingMultipliers } from '../economy/economyMath.js';
 import { resourceIntent, restoreResourceWork, serializeResourceWork } from '../economy/economyResources.js';
 import { createEconomyPulse, recordEconomyPulse, recordEconomyCash, restoreEconomyPulse, economyPulseReport } from '../economy/economyPulse.js';
@@ -491,40 +493,6 @@ function normalizeCredits(value) {
 // ---- static lookups (built once) ----------------------------------------------------------
 const CMDTY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
 
-// station id -> { type, size, factionId, sectorId, tier, neighbors:[sectorId] } from the SECTORS graph.
-// (world is the runtime owner of sectors, but dock:docked only hands us a stationId, so we resolve
-//  the station's profile straight from the data catalog — same pattern ships/cargo use.)
-const STATION_INFO = new Map();
-for (const sec of SECTORS) {
-  for (const st of sec.stations || []) {
-    STATION_INFO.set(st.id, {
-      type: st.type, size: st.size || 'M', factionId: st.factionId,
-      sectorId: sec.id, tier: sec.tier || 0, neighbors: sec.neighbors || [], security: sec.security,
-      services: Array.isArray(st.services) ? st.services.slice() : [],
-      marketEquilibriumFactors: st.marketEquilibriumFactors || null,
-    });
-  }
-}
-
-/** Resolve a station's info, preferring a runtime content.sectors registry if present. */
-function stationInfo(state, stationId) {
-  const reg = state && state.content && state.content.sectors;
-  if (reg) {
-    const list = Array.isArray(reg) ? reg : Object.values(reg);
-    for (const sec of list) {
-      for (const st of sec.stations || []) {
-        if (st.id === stationId) {
-          return { type: st.type, size: st.size || 'M', factionId: st.factionId,
-                   sectorId: sec.id, tier: sec.tier || 0, neighbors: sec.neighbors || [], security: sec.security,
-                   services: Array.isArray(st.services) ? st.services.slice() : [],
-                   marketEquilibriumFactors: st.marketEquilibriumFactors || null };
-        }
-      }
-    }
-  }
-  return STATION_INFO.get(stationId) || null;
-}
-
 /** A berth's authored display name, falling back to the id when the registry has none. */
 function stationDisplayNameFor(state, stationId) {
   const reg = state && state.content && state.content.sectors;
@@ -547,15 +515,6 @@ function commodityDef(state, id) {
     if (c) return c;
   }
   return CMDTY_BY_ID.get(id) || null;
-}
-
-/** A station tolerates contraband/illegal goods iff it is a blackmarket (smuggler/pirate den). */
-function toleratesContraband(info) {
-  return !!(info && info.type === 'blackmarket');
-}
-
-export function salvageBaySaleAllowsIllicit(state, stationId = state.ui?.dockedStationId) {
-  return toleratesContraband(stationInfo(state, stationId));
 }
 
 // A station with an authored regional produce recipe makes the good locally, so it lists and

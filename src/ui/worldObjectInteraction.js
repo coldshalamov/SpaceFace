@@ -2,7 +2,7 @@ import { createWorldObjectPicker } from '../render/worldObjectPicking.js';
 import { createWorldObjectHoverPresentation } from '../render/objectHoverFeedback.js';
 import { resolveWorldPresentationEntity } from '../world/presentationSources.js';
 import { occupantGenerationOf } from '../core/entity.js';
-import { isBeamTargetEligible, beamRangeFor } from '../systems/mining.js';
+import { isBeamTargetEligible, beamRangeFor } from '../systems/miningBeamTargetingRead.js';
 import { initialMouseToolLane } from '../systems/input.js';
 import { interactionClassLine, interactionDisplayName, presentationStatusWord } from '../data/entityInteractionProfiles.js';
 import { isHostileToPlayer } from '../systems/scanner.js';

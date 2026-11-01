@@ -14,7 +14,7 @@ import {
 import { spawnJettisonedCargoPod, volatileThrowSpeedScale } from './lootShards.js';
 import { getDerivedStats, shipworksStationAccess } from './ships.js';
 import { TALLY_THREE, tallyThreeBody, tallyThreeSource, tallyThreeFingerprint } from '../data/tallyThree.js';
-import { salvageBaySaleAllowsIllicit } from './economy.js';
+import { salvageBaySaleAllowsIllicit } from '../economy/stationMarketProfile.js';
 import { isBlackFlagAdventure } from '../shipjack/model.js';
 import {
   acceptDeadDropLoad,
