@@ -1,6 +1,6 @@
 import { PALLET_JACK as C } from '../data/palletJack.js';
 import { isPalletJackEntity } from '../data/palletJackBody.js';
-import { palletJackPresentation } from '../systems/palletJack.js';
+import { readPalletJackMotionFrame } from '../contracts/palletJackMotionFrame.js';
 
 export const PALLET_JACK_MOTION_NODE = 'MOTION_PALLET_JACK_CLAMP';
 function sourceMatches(root) {
@@ -33,7 +33,7 @@ export function createPalletJackVisualDriver(root, entity) {
       const valid = Number.isFinite(now) && live?.id === id && live.occupantGeneration === life
         && live.alive !== false && isPalletJackEntity(live) && state?.entities?.get(id) === live
         && sourceMatches(root) && !!state.render?.scene && inside(root, live.mesh) && inside(root, state.render.scene);
-      const frame = valid ? palletJackPresentation(state, live) : null;
+      const frame = valid ? readPalletJackMotionFrame(state, live) : null;
       if (!frame || !frame.nativeBodyReady || frame.ownerLife !== life || frame.tick !== state.tick
         || frame.sourceRevision !== live.physicsBody?.revision
         || !Number.isSafeInteger(frame.phaseStartTick) || frame.phaseStartTick > state.tick) { quiet(); return; }

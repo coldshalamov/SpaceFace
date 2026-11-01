@@ -72,7 +72,8 @@ test('current-native/source/life/scene fences and reduced motion do not imperson
     h.view({ reducedMotion: true }); near(h.clamp.position.x, 10); assert.equal(h.owner._line(), null);
     h.s.tick += 3; h.view(); near(h.clamp.position.x, 2);
     nativeFresh(h); h.root.userData.palletJackAuthoredSource.file = 'wrong.glb'; h.view(); near(h.clamp.position.x, 2);
-    h.root.userData.palletJackAuthoredSource.file = 'assets/ships/release/parts/wholeships/pallet_jack.glb'; h.view(); assert(h.clamp.position.x > 2);
+    h.root.userData.palletJackAuthoredSource.file = 'assets/ships/release/parts/wholeships/pallet_jack.glb';
+    h.tick(); assert(h.clamp.position.x > 2);
     h.s.entities.set(h.actor.id, { ...h.actor, occupantGeneration: h.actor.occupantGeneration + 1 }); h.view(); near(h.clamp.position.x, 2);
   } finally { h.close(); }
 });

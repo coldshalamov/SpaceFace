@@ -12,6 +12,7 @@ import { sweepCollisionProxyInto } from '../core/collisionProxySweep.js';
 import { resolveCollisionProxyManifest } from '../data/collisionProxyManifests.js';
 import { primitiveBlocksSegment } from '../combat/lineOfSight.js';
 import { syncEntitySectorMembership } from '../core/coreSystem.js';
+import { readPalletJackMotionFrame } from '../contracts/palletJackMotionFrame.js';
 
 const owners = new WeakMap(), terminal = new Set(['destroyed', 'collected']);
 const clone = value => structuredClone(value);
@@ -259,6 +260,9 @@ export const palletJack = {
     const receipt = { id: `${r.id}:release`, kind: 'release', reason: r.releasePending,
       targetCargoId: r.targetCargoId, atTick: this.state.tick };
     r.receipts.push(receipt); r.releasePending = null; this._phase(r.actorDestroyed ? 'lost' : 'drop');
+    // A renderer may draw before the next simulation tick. Publish the same-tick frame now so
+    // the main-thread read model observes the accepted release without consulting owner state.
+    this._view();
     this.bus.emit('palletJack:released', clone(receipt));
     this._cue(r.actorDestroyed ? 'THIEF LOST — the original load remains separate.'
       : 'CLAMP OPEN — cargo recovered. The thief can leave alive. No transfer or second payment.');
@@ -525,18 +529,4 @@ function encodePalletJackMotionFrame(frame) {
     grabStartTick: frame.grabStartTick ?? null, acceptedAttachmentId: frame.acceptedAttachmentId ?? null,
     loaded: frame.loaded === true, release: release ? { id: release.id, atTick: release.atTick,
       targetCargoId: release.targetCargoId ?? null } : null });
-}
-
-function readPalletJackMotionFrame(state, entity) {
-  if (state?.mode !== 'flight' || !entity || entity.alive === false) return null;
-  const raw = entity.palletJackMotionFrame;
-  if (typeof raw !== 'string') return null;
-  try {
-    const frame = JSON.parse(raw);
-    if (frame?.v !== 1 || frame.tick !== state.tick || frame.actorId !== entity.id
-      || frame.ownerLife !== entity.occupantGeneration
-      || !Number.isSafeInteger(frame.phaseStartTick) || frame.phaseStartTick > state.tick) return null;
-    return { ...frame, sourceRevision: entity.physicsBody?.revision,
-      lastRelease: frame.release ? { ...frame.release } : null };
-  } catch (_) { return null; }
 }
