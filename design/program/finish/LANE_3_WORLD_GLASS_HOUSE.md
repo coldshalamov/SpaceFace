@@ -31,7 +31,7 @@ Status words: `OPEN`, `ACTIVE`, `LANDED <sha>`, `SKIPPED (<reason>)`.
 | ~~D267~~ | Flight HUD projection-count + G-LOC vignette reds | `test/hud-contact-roster-visibility.test.mjs`, `test/inst-05-resting-flight-sheet.test.mjs` | **DONE** — roster tests green on current master; G-LOC red was a brittle pin vs the fade-out timer: `'block'` reordered ahead of the timer-cancel, zero behavior change (`e8a50c236d4`, 10/10 green) |
 | D-new | Shipworks Buy-mode left rail: the for-sale list prints over the current-hull spec block ("FLEET · FOR SALE" collides with "473 TOP SPEED") — **verified fixed in working tree 2026-10-30**: the foreign impound-desk wiring (+115 lines, still uncommitted) re-seated the rail; both `station-shipworks` and `station-shipworks-impound` measure clean and read correctly on the PNGs. Re-verify once their edit lands | `src/ui/station/screens/shipworks.js` | packet G2 |
 
-## Day-one reviews (from `LANDED_REVIEW.md`; hand them to Codex as one batch, fix what it finds, delete each row there)
+## Landed reviews (resolve material findings under Finish README §5.3)
 
 R-8962e68 (ORRERY sweep, 45 surfaces), R-d1a68ec (faction_understory), R-26f29b7 (physical Adventure
 encounters / Vesta carrier-loss recovery), R-710f1e1 (faction_verge), R-d0891f7 (Helios buoy / Vesta
@@ -304,7 +304,7 @@ Rows are the spec (`build_map.md` §31–§32; read each row's prose before brie
   contention-inflated (ran beside the stranger playthrough) — quiet recapture is the follow-up;
   grammar debt stays named, not hidden.
 
-### Wave G — the glass (every 2D surface; DeepSeek via OpenCode builds, Claude Sonnet reviews every ~5)
+### Wave G — the glass (every 2D surface; use the current Finish workflow)
 Direction: `design/frontend/ORRERY.md`, `ORRERY_RUBRIC.md`; method: `docs/UI_VISUAL_ITERATION.md`
 (`node scripts/ui-bench.mjs --shot=<id>`, open the PNG, fix, `--walk`).
 - **G1 — HUD defects** D261, D267, D222.

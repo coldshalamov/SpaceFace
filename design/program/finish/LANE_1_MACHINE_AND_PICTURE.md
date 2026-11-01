@@ -54,9 +54,14 @@ launches are not a matched causal A/B. Receipts are in
 `.devshots/finish/integration-2026-11-01/batch27-packaged-after-fleet-cleanup/`.
 
 The stalled fleet-look job is closed with its original 170 images preserved. Commit d2da0cc4564e
-bounds each view and records partial progress on timeout (one focused check passes). Capture of
-the missing Cradle close view and remaining 26 models is next; no ordinary placement verdict is
-inferred from this asset preview.
+bounds each view and records partial progress on timeout (one focused check passes). The software
+Cradle retry times out at `render-1` and cleans up normally. Native D3D11 completes in 11 seconds,
+but its ship-close camera shows only sky; the existing bounds-fitted place view then produces an
+inspected complete Cradle image in 10 seconds. Remaining entries are grouped as six place views
+and 20 ship-close views, queued after M8. No ordinary placement verdict is inferred from these
+asset previews. M8's pinned source-Electron run entered its measured window at 14:10:27 UTC,
+then exited 1 at 14:24:53 on the market helper's buyable-row assertion before 30 minutes. It is
+not a soak pass; the failed public trade state is being traced and the original evidence retained.
 
 ## Claimed paths (beyond README §3)
 
