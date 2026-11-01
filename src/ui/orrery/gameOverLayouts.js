@@ -141,7 +141,7 @@ ${GO} > .sf-go-tape .orr-tape__empty { fill:rgb(${BONE} / .8); }
    small dial over a two-up list of its figures (the rim stations need ~750px) */
 @media (max-width:640px) {
   ${GO} { --sv:1; --r:76px; padding:28px 22px 24px !important; row-gap:22px !important; }
-  ${GO} > .k-title .k-t-title { font-size:clamp(22px, 6.6vw, 34px) !important; line-height:1 !important; max-width:none; text-wrap:pretty; overflow-wrap:break-word; }
+  ${GO} > .k-title .k-t-title { font-size:clamp(22px, 6.6vw, 34px) !important; line-height:1 !important; max-width:100%; min-width:0; text-wrap:pretty; overflow-wrap:normal; word-break:normal; hyphens:none; }
   ${GO} .sf-go-grid { gap:14px 28px !important; }
   ${GO} .sf-go-foot, ${GO} .sf-go-foot > .k-words { width:100%; }
   ${GO} .sf-go-foot > .k-words { flex-wrap:wrap !important; column-gap:28px !important; row-gap:4px !important; }
