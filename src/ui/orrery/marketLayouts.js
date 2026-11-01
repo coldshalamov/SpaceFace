@@ -653,6 +653,11 @@ const CSS_TAIL = `
   ${MD} .sx-mkt-row .sx-mkt-row__name * { text-indent:0 !important; }
   ${MD} .sx-mkt-row :is(.sx-mkt-row__commodity, .sx-mkt-row__name > .of-commodity-icon) { margin-right:6px !important; }
 }
+/* The short desktop register needs the width of a five-digit Sell figure; the tall-phone band
+   keeps its own narrower columns and two-line commodity rows. */
+@media (max-width:1100px) and (max-height:800px) {
+  ${MD} .sx-mkt-table thead th:nth-child(3) { width:44px !important; }
+}
 /* 641–800px tall (e.g. 1024×768) has the height: the terms wrap instead of losing the armor reading */
 @media (max-width:1100px) and (min-height:641px) and (max-height:800px) {
   ${M} .sx-mkt__decision .sx-decision__opt .k-row__sub { white-space:normal !important; overflow:visible !important; text-overflow:clip !important; }
@@ -987,7 +992,7 @@ const CSS_TAIL = `
     grid-template-columns:minmax(0, 1.25fr) minmax(0, 1fr) !important; grid-template-rows:minmax(232px, 1fr) 0 !important; row-gap:0 !important; column-gap:16px !important; height:auto !important; min-height:100% !important; }
   /* the panel may run taller than a 60px phone-landscape body: the body scrolls it, as on master, so the register keeps
      room for whole rows (rework: at 568x320 a 33px rail under 81px rows left 50 goods unreachable) */
-  ${MD} > .sx-mkt__list { height:auto !important; max-height:none !important; padding-top:4px !important; }
+  ${MD} > .sx-mkt__list { height:auto !important; max-height:none !important; }
   /* the register: the 'Station exchange' heading with the find box beside it, then the families as one strip over the
      table (it scrolls sideways and fades at its end), so the rows get the whole column */
   ${MD} .sx-mkt-browser { grid-template-columns:minmax(0, 1fr) !important; grid-template-rows:auto auto minmax(150px, 1fr) !important; row-gap:2px !important; }

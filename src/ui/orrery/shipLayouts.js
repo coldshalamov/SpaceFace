@@ -92,6 +92,18 @@ ${W} .sx-sw-rack .sx-sw-band__label .k-38 { display:block; margin-top:2px; }
   ${W} .sx-sw__gauges { gap:0 14px !important; }
   ${W} .sx-sw-gauge .k-row__name { letter-spacing:.14em !important; }
 }
+/* 1101–1500 × ≤800 (1280×720, 1366×768): the three-column frame leaves the stage about 620px,
+   and the hull beads sit beneath the wide nameplate copy. Keep the complete description in a
+   column beside the hull; the callout solver already avoids the nameplate ink. */
+@media (min-width:1101px) and (max-width:1500px) and (max-height:800px) {
+  ${W} .sx-sw__nameplate .sx-sw__blurb { max-width:232px !important; font-size:13px !important; line-height:1.4 !important;
+    max-height:none !important; overflow:visible !important; }
+}
+/* The active fleet row has a 230px rail. This tracking keeps its hull name and tier on one line
+   without changing the row's inspection target or selected-state marker. */
+@media (min-width:1101px) {
+  ${W} .sx-sw-row .k-row__sub { letter-spacing:.08em !important; white-space:nowrap; }
+}
 
 /* ---- the bands: one dominant numeral, the rest readings; the chosen band lit by the Hand ------- */
 ${W} .sx-sw-bands { gap:10px 30px !important; align-items:flex-end; }
@@ -380,6 +392,12 @@ html.sf-reduce-motion ${W} * { transition:none !important; animation:none !impor
   ${W} text.orr-power__syslabel { display:none; }
   ${W} .sx-sw-hero[data-band='handling'] .k-hero__n { font-size:clamp(36px, 5.2vh, 52px) !important; }
   ${W} .sx-sw__stats .k-row { padding:3px 0 !important; }
+}
+/* ≤1100×≤640 (960×540, including short landscape): the hull sits beneath the nameplate on this
+   short stage. Keep the complete sentence clear of beads and leader lines instead of clipping it. */
+@media (max-width:1100px) and (max-height:640px) {
+  ${W} .sx-sw__nameplate .sx-sw__blurb { max-width:256px !important; font-size:13px !important; line-height:1.4 !important;
+    max-height:none !important; overflow:visible !important; }
 }
 `;
 

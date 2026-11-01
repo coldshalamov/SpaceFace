@@ -1576,6 +1576,12 @@ ${T} .sx-bar__leadkeys { margin-top:6px !important; }
 /* ================================ ROUND 5: INDUSTRY ========================================= */
 /* the chain has the height of a hero instrument at 1920 (ring r≈130) and drops toward the stage's centre */
 ${T} .orr-ind-chain { height:clamp(240px, 42vh, 420px) !important; margin-top:clamp(0px, 3vh, 36px); }
+/* In a short wide berth the reason above the ring and the Fabricate key below it share the
+   same narrow stage. Lift the chain and its key together so the reason, disabled explanation,
+   and action remain visible without changing the button's live/disabled semantics. */
+@media (min-width:1101px) and (min-height:641px) and (max-height:800px) {
+  ${T} .orr-ind-chain { margin-top:-8px !important; }
+}
 /* the block note under the reason; the disabled key's outline is enough */
 ${T} .orr-chain__blocknote { ${LABEL} font-size: 12px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .55) !important; }
 ${T} .orr-chain__verb > .orr-chain__blocknote::before { content:"" !important; }
@@ -1723,6 +1729,10 @@ ${T} .sx-ct-tether__caption > .orr-route__via { font-family:var(--dp-face-label,
 /* ================================ ROUND 7: INDUSTRY ========================================= */
 /* the key is centred on the product's axis at every size */
 ${T} .sx-fab-foot { transform:translateX(-50%) !important; }
+@media (min-width:1101px) and (min-height:641px) and (max-height:800px) {
+  /* Keep the authored centered alignment while lifting the action clear of the short stage edge. */
+  ${T} .sx-fab-foot { transform:translate(-50%, -4px) !important; }
+}
 @media (min-width:651px) and (max-height:800px), (max-height:600px) {
   ${T} .sx-fab-foot { left:var(--fab-foot-x, 0) !important; right:auto !important; top:var(--fab-foot-y, auto) !important; bottom:auto !important; }
 }

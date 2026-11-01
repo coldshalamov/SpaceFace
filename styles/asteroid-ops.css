@@ -821,6 +821,18 @@
   to { transform: translateY(0); opacity: 1; }
 }
 .aw-palette.settle { animation: aw-palette-settle 160ms var(--k-ease) both; }
+/* At phone widths the default right-hand placement runs over the Arc Gauge and Plan key. Keep
+   the earned build keys in a wrapped rail above the rig; desktop has its own higher-specificity
+   narrow-window rail and remains unchanged. */
+@media (max-width: 600px) {
+  .aw-palette {
+    left: 12px;
+    right: 12px;
+    bottom: 186px;
+    flex-wrap: wrap;
+    align-content: flex-end;
+  }
+}
 
 /* ---------------------------------------------------------------- §6.4 cursor lens
    "A little field-notebook tag next to their cursor — a colour, a number, two or three
