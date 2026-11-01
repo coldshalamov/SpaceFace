@@ -180,7 +180,10 @@ if (!IS_RETAIL_BUILD && IS_NODE_RUNTIME) readNodeEnglishCatalog();
 // Make the synchronous localization API safe as soon as import() resolves. If the first
 // request fails, leave the module usable so ensureLocalizationReady() can retry and surface the
 // failure through the ordinary boot error path.
-if (IS_BROWSER_RUNTIME) {
+// Only the document realm may block here: a module worker that is still evaluating a
+// top-level await has not installed self.onmessage, so its init directive is lost and the
+// sim lane times out (45 s) to the main thread. Workers await these in their init instead.
+if (IS_BROWSER_RUNTIME && typeof document !== 'undefined') {
   await Promise.all([
     ensureEnglishCatalogLoaded().catch(() => {}),
     ensureBarkTranslationsLoaded().catch(() => {}),

@@ -35,14 +35,22 @@ test('cold browser import waits for the sidecar before synchronous language and 
     });
   await new Promise((resolve) => setImmediate(resolve));
   assert.equal(calls, 2, 'English and bark data requests begin while the localization dependency graph evaluates');
-  assert.equal(importSettled, false, 'synchronous catalog consumers are not exposed before the fetch completes');
   assert.match(fetched[0], /src\/localization\/catalogs\/en-US\.generated\.json$/);
   assert.match(fetched[1], /src\/localization\/barks\.generated\.json$/);
+  // A worker realm must finish module evaluation without a top-level await (its onmessage
+  // handler would otherwise miss the init directive), so readiness is the gate, not import.
+  const localization = await modulePromise;
+  assert.equal(importSettled, true);
+  let ready = false;
+  const readiness = localization.ensureLocalizationReady().then((value) => { ready = true; return value; });
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(ready, false, 'synchronous catalog consumers are not ready before the fetch completes');
+  assert.equal(localization.localizeText('Continue'), 'Continue', 'copy keeps its source fallback until ready');
+  assert.equal(calls, 2, 'readiness reuses the in-flight requests');
 
   pendingFetches.get(fetched[0])({ ok: true, json: async () => payload });
   pendingFetches.get(fetched[1])({ ok: true, json: async () => barkPayload });
-  const localization = await modulePromise;
-  assert.equal(await localization.ensureLocalizationReady(), true);
+  assert.equal(await readiness, true);
   assert.equal(localization.LANGUAGE_OPTIONS[0].id, 'en-US');
   assert.equal(localization.currentGameLocale(), 'es-ES');
   assert.equal(localization.localizeText('Continue'), 'Continuar');
