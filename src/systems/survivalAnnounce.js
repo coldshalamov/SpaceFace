@@ -43,6 +43,7 @@ import {
 import { playerBearingName } from '../core/playerCompass.js';
 import { CRYO_ARENA_ID } from './cryoDriftArena.js';
 import { GATE_BEARINGS } from './waveMaterialization.js';
+import { isSwarmSpecialistRun, swarmSpecialistBriefForEnemy } from '../data/swarmSpecialists.js';
 
 /**
  * Hard ceiling on player-facing lines per wave. Counts voice:say AND alert, because alerts.js
@@ -332,10 +333,14 @@ export function waveOpeningLine(wave, plan) {
  * dreadnought_boss authored real prose; the other five authored snake_case tokens. Prose is
  * detected structurally (it contains a space) and used VERBATIM — authored copy is not paraphrased.
  */
-export function hintTextFor(enemyId) {
+export function hintTextFor(enemyId, state = null) {
   const def = ENEMY_BY_ID.get(enemyId);
   if (!def || typeof def.counterHint !== 'string' || def.counterHint.length === 0) return null;
   const name = def.name || 'Contact';
+  if (isSwarmSpecialistRun(state)) {
+    const brief = swarmSpecialistBriefForEnemy(enemyId);
+    if (brief) return `${name}: ${brief.counter}`;
+  }
   const authored = def.counterHint;
   if (authored.includes(' ')) return `${name}: ${authored}`;
   const prose = HINT_PROSE[authored];
@@ -741,7 +746,7 @@ export const survivalAnnounce = {
   _tryCounterHint(enemyId) {
     if (this._hintedEnemyIds.has(enemyId)) return;
     if (this._hintsThisWave >= MAX_HINTS_PER_WAVE) return;
-    const text = hintTextFor(enemyId);
+    const text = hintTextFor(enemyId, this.state);
     if (!text) return;
     // 'tutorial' (70) — voiceArbiter.js:40 calls this channel "first-hour teaching", which is
     // exactly what a counter-hint is. It preempts objective and chatter, yields to danger.

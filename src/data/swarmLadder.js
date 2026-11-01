@@ -30,6 +30,7 @@ import {
   swarmRosterFor,
 } from './swarmMode.js';
 import { swarmEventFor } from './swarmEvents.js';
+import { swarmSpecialistBriefForEnemy } from './swarmSpecialists.js';
 
 /** One zone is ten rounds, boss on the tenth — the same cadence the boss rotation ships. */
 export const SWARM_ZONE_LENGTH = 10;
@@ -321,6 +322,13 @@ export function swarmRoundPreview({ arenaId, wave, seed } = {}) {
   const roster = (block.roster || [])
     .map((entry) => names.get(entry.enemyId) || entry.enemyId)
     .filter(Boolean);
+  // The roster is the unlocked catalog, not the encounter manifest. Brief only the actual
+  // newcomer selected for this authored wave so the armory does not claim every prior threat returns.
+  const specialistEntry = block.newcomer && swarmSpecialistBriefForEnemy(block.newcomer.enemyId)
+    ? block.newcomer : null;
+  const specialistBrief = specialistEntry ? {
+    ...swarmSpecialistBriefForEnemy(specialistEntry.enemyId),
+  } : null;
   const event = swarmEventFor({ arenaId, wave: w, seed });
   return {
     wave: w,
@@ -329,6 +337,7 @@ export function swarmRoundPreview({ arenaId, wave, seed } = {}) {
     concurrent: block.concurrent,
     roster,
     newcomer: block.newcomer ? block.newcomer.name : null,
+    specialistBrief,
     boss: block.boss ? { label: block.bossLabel, line: block.bossLine } : null,
     event: event ? { name: event.name, telegraph: event.telegraph } : null,
   };

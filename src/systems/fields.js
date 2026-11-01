@@ -57,6 +57,7 @@ import { applyThermalFields, normalizeThermalRecipe, thermalPointCooled } from '
 import { createCollectorKnots } from '../matter/collectorKnot.js';
 import { COLLECTOR_KNOT } from '../data/collectorKnot.js';
 import { maxFittedModuleMod } from '../core/fittedModules.js';
+import { isSwarmSpecialistRun, swarmSpecialistKind, SWARM_SPECIALIST_TUNING } from '../data/swarmSpecialists.js';
 
 const EMITTER_TYPE = 'fieldEmitter';
 const EMITTER_MATERIAL = 'projectile'; // ghost collider: projectile sweeps can hit it, ships don't broadphase against it
@@ -722,6 +723,8 @@ export const fields = {
         this.bus.on('sector:exit', () => this._clearAll(FIELD_END_REASONS.cleared, 'sector_exit')),
         this.bus.on('sector:enter', () => this._clearAll(FIELD_END_REASONS.cleared, 'sector_enter')),
         this.bus.on('game:new', () => this._clearAll(FIELD_END_REASONS.cleared, 'new_game')),
+        this.bus.on('run:waveCleared', () => this._releaseSwarmSpecialistAnchors('wave_cleared')),
+        this.bus.on('run:ended', () => this._releaseSwarmSpecialistAnchors('run_ended')),
         this.bus.on('save:loaded', () => {
           if(!this._restoredOnLoad)this._clearAll(FIELD_END_REASONS.cleared, 'save_loaded');
           this._restoredOnLoad=false;
@@ -1273,16 +1276,20 @@ export const fields = {
     // used to refuse the anchor, so the kite plan survived the specialist.
     if (defKey !== 'anchorSnare' && playerOwnedFieldCount(this._kernel) >= FIELD_MAX_ACTIVE) return null;
     const now = nowOf(this.state);
-    const spinupTicks = Math.max(0, Math.floor(Number(anchor.spinupTicks ?? def.spinupTicks) || 0));
+    const swarmAnchor = isSwarmSpecialistRun(this.state) && data.runCohort === 'survival'
+      && swarmSpecialistKind(data.lootTableId || data.enemyTypeId) === 'anchor';
+    const swarmTuning = SWARM_SPECIALIST_TUNING.anchor;
+    const spinupTicks = swarmAnchor ? 0
+      : Math.max(0, Math.floor(Number(anchor.spinupTicks ?? def.spinupTicks) || 0));
     const fieldId = String(anchor.fieldId || `field_anchor_${entity.id}`);
-    const radius = positive(anchor.radius, def.radius);
-    const strength = positive(anchor.strength, def.strength);
+    const radius = swarmAnchor ? swarmTuning.activeRadius : positive(anchor.radius, def.radius);
+    const strength = swarmAnchor ? swarmTuning.activeStrength : positive(anchor.strength, def.strength);
     const record = this._kernel.register({
       id: fieldId,
       kind: def.kind,
       center: { x: entity.pos.x, z: entity.pos.z },
       radius,
-      strength: spinupTicks > 0 ? 0 : strength,
+      strength: swarmAnchor || spinupTicks > 0 ? 0 : strength,
       damping: positive(anchor.damping, def.damping || 0),
       falloff: positive(anchor.falloff, def.falloff),
       durationS: Infinity,
@@ -1291,7 +1298,7 @@ export const fields = {
       team: entity.team,
       createdAt: now,
       maxAffected: positive(anchor.maxAffected, def.maxAffected),
-      tag: anchor.presentationTag || 'environmental',
+      tag: swarmAnchor ? 'swarm_specialist' : anchor.presentationTag || 'environmental',
       filters: {
         ...(anchor.filters && typeof anchor.filters === 'object' ? anchor.filters : {}),
         excludeId: entity.id,
@@ -1306,11 +1313,12 @@ export const fields = {
       // doctrine cycle — driven through setAnchorArmed by the specialist verb — modulates
       // `armed` per engagement: disarmed on the approach/recovery legs, re-armed with a fresh
       // spinup only across the telegraphed commit.
-      armed: true,
+      armed: !swarmAnchor,
       spinupTicks,
       activateTick: (this.state.tick | 0) + spinupTicks,
       strength,
       radius,
+      swarmSpecialist: swarmAnchor,
     };
     this.bus.emit('fields:anchorRegistered', {
       fieldId,
@@ -1321,6 +1329,21 @@ export const fields = {
     });
     this._emitDeployCue('well', entity.pos.x, entity.pos.z, radius);
     return record.id;
+  },
+
+  _releaseSwarmSpecialistAnchors(reason = 'release') {
+    if (!this._kernel || !this.state) return 0;
+    const rt = ensureRuntime(this.state);
+    let count = 0;
+    for (const [fieldId, rec] of Object.entries(rt.anchored || {})) {
+      if (!rec?.swarmSpecialist) continue;
+      this._kernel.unregister(fieldId, reason);
+      delete rt.anchored[fieldId];
+      if (this.bus) this.bus.emit('fields:ended', { fieldId, sourceId: rec.sourceId,
+        kind: rec.defKey, reason });
+      count++;
+    }
+    return count;
   },
 
   /** Register a newly-created anchored body before its synchronous purchase transaction commits. */

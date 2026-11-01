@@ -7613,6 +7613,63 @@
       "dynamicNameIncludes": [],
       "outputDir": "assets/ships/release/render-packages/last-shift-fairlead",
       "metadataUrl": "assets/ships/release/render-packages/last-shift-fairlead/render-package.json"
+    },
+    {
+      "key": "swarm-warden",
+      "assetId": "sf.render.swarm-warden",
+      "runtimeAssetId": "SF_SWARM_WARDEN",
+      "kind": "ship",
+      "slot": "hull",
+      "releaseAssetId": "wholeship_swarm_warden",
+      "sourceUrl": "assets/ships/release/parts/wholeships/swarm_warden.glb",
+      "releaseSha256": "5e491d108ea3a2de03a7171185bbf7e559d14121f8f69660f516610d4a5f46e2",
+      "releaseBytes": 526532,
+      "dynamicNameIncludes": [
+        "MOTION_",
+        "HOOK_DRIVE",
+        "HOOK_NAV"
+      ],
+      "outputDir": "assets/ships/release/render-packages/swarm-warden",
+      "metadataUrl": "assets/ships/release/render-packages/swarm-warden/render-package.json",
+      "sceneRoot": true
+    },
+    {
+      "key": "swarm-jackal",
+      "assetId": "sf.render.swarm-jackal",
+      "runtimeAssetId": "SF_SWARM_JACKAL",
+      "kind": "ship",
+      "slot": "hull",
+      "releaseAssetId": "wholeship_swarm_jackal",
+      "sourceUrl": "assets/ships/release/parts/wholeships/swarm_jackal.glb",
+      "releaseSha256": "81ffb0b25fdb2548a402eebe2b445c87b15fcac22af5ae23cedc0b4869b533f7",
+      "releaseBytes": 558572,
+      "dynamicNameIncludes": [
+        "MOTION_",
+        "HOOK_DRIVE",
+        "HOOK_NAV"
+      ],
+      "outputDir": "assets/ships/release/render-packages/swarm-jackal",
+      "metadataUrl": "assets/ships/release/render-packages/swarm-jackal/render-package.json",
+      "sceneRoot": true
+    },
+    {
+      "key": "swarm-anchor",
+      "assetId": "sf.render.swarm-anchor",
+      "runtimeAssetId": "SF_SWARM_ANCHOR",
+      "kind": "ship",
+      "slot": "hull",
+      "releaseAssetId": "wholeship_swarm_anchor",
+      "sourceUrl": "assets/ships/release/parts/wholeships/swarm_anchor.glb",
+      "releaseSha256": "7fd55107ab68732e11cfd3377c714cd8fe90887f6406ae27f85487caf6de1ae1",
+      "releaseBytes": 600224,
+      "dynamicNameIncludes": [
+        "MOTION_",
+        "HOOK_DRIVE",
+        "HOOK_NAV"
+      ],
+      "outputDir": "assets/ships/release/render-packages/swarm-anchor",
+      "metadataUrl": "assets/ships/release/render-packages/swarm-anchor/render-package.json",
+      "sceneRoot": true
     }
   ]
 }

@@ -10,6 +10,7 @@
 // Determinism: arm/trigger timers use state.simTime only; no Math.random / wall clock.
 import { scalarHitToDamagePacket, npcCrossfireAdmits } from '../combat/damage.js';
 import { Masks } from '../core/entity.js';
+import { isSwarmSpecialistRun } from '../data/swarmSpecialists.js';
 
 export const MINE_OWNER_CAP = 6;
 export const MINE_ARM_DELAY_S = 2.0;
@@ -76,6 +77,8 @@ export const mines = {
       this.bus.on('sector:enter', () => this.releaseAll('sector_enter'));
       this.bus.on('game:new', () => this.releaseAll('new_game'));
       this.bus.on('save:loaded', () => this.releaseAll('save_loaded'));
+      this.bus.on('run:waveCleared', () => this.releaseSwarmSpecialistMines('wave_cleared'));
+      this.bus.on('run:ended', () => this.releaseSwarmSpecialistMines('run_ended'));
     }
   },
 
@@ -146,6 +149,11 @@ export const mines = {
         sectorId: state.world && state.world.currentSectorId || null,
         triggered: false,
         masslineTetherable: true,
+        ...(opts.swarmSpecialistMine === true && isSwarmSpecialistRun(state) ? {
+          swarmSpecialistMine: true,
+          swarmWave: Number.isInteger(opts.swarmWave) ? opts.swarmWave : state.run?.wave ?? null,
+          expiresAt: now + (Number.isFinite(opts.lifetimeS) ? Math.max(0, opts.lifetimeS) : 12),
+        } : {}),
       },
     });
     if (!ent) return null;
@@ -178,6 +186,11 @@ export const mines = {
     for (const mine of list) {
       if (!mine || !mine.alive || mine.type !== MINE_TYPE) continue;
       const data = mine.data || (mine.data = {});
+      if (data.swarmSpecialistMine === true && Number.isFinite(data.expiresAt) && now >= data.expiresAt) {
+        mine.alive = false;
+        if (this.bus) this.bus.emit('mines:expired', { mineId: mine.id, ownerId: data.ownerId, reason: 'specialist_lifetime' });
+        continue;
+      }
       // Destroyed / hull-depleted mines never trigger (counterplay).
       if (!(mine.hull > 0)) {
         mine.alive = false;
@@ -221,6 +234,20 @@ export const mines = {
       data.armedAt = now;
       if (this.bus) this.bus.emit('mines:armed', { mineId: mine.id, ownerId: data.ownerId, thrown: true });
     }
+  },
+
+  releaseSwarmSpecialistMines(reason = 'release') {
+    const state = this.state;
+    if (!state) return 0;
+    let count = 0;
+    for (const mine of liveMineList(state)) {
+      if (!mine || mine.alive !== true || mine.type !== MINE_TYPE
+        || mine.data?.swarmSpecialistMine !== true) continue;
+      mine.alive = false;
+      count++;
+    }
+    if (count && this.bus) this.bus.emit('mines:released', { count, reason, swarmSpecialist: true });
+    return count;
   },
 
   _findTriggerVictim(state, mine, data) {
@@ -277,7 +304,8 @@ export const mines = {
     });
     // allowAnyTarget not required for ships; mines themselves use hull via projectile:hit path.
     const request = {
-      attackerId: data.ownerId != null ? data.ownerId : mine.id,
+      attackerId: data.playerThrown === true ? state.playerId
+        : data.ownerId != null ? data.ownerId : mine.id,
       targetId: victim.id,
       packet,
       origin: { kind: 'mine', id: mine.id },

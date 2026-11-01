@@ -49,6 +49,7 @@ import { specialistPlanByEnemyId, BODY_LAUNCH, bodyLaunchStep, bodyLauncherWeapo
   isBodyLauncherEnemy } from '../ai/specialistPlans.js';
 import { applyMineLayerVerb } from '../ai/mineLayerVerb.js';
 import { applyNpcBombMirror } from '../ai/npcBombMirror.js';
+import { isSwarmSpecialistRun, swarmSpecialistKind } from '../data/swarmSpecialists.js';
 import {
   ENEMY_DOCTRINE_OVERRIDES,
   MISSION_TAG_BOSS_DOCTRINE,
@@ -679,18 +680,17 @@ export function createTacticalAISystem({
             state,
             entity,
             doctrinePhase: doctrine.phase,
+            doctrineStartedTick: doctrine.phaseStartedTick,
             tick,
             placeMine: ctxRef.helpers && ctxRef.helpers.placeMine,
           });
           const bombsSys = ctxRef.registry && typeof ctxRef.registry.get === 'function'
             ? ctxRef.registry.get('bombs')
             : null;
-          applyNpcBombMirror({
-            state,
-            entity,
-            doctrinePhase: doctrine.phase,
-            bombs: bombsSys,
-          });
+          if (!(isSwarmSpecialistRun(state) && entity.data?.runCohort === 'survival'
+            && swarmSpecialistKind(enemyId) === 'jackal')) {
+            applyNpcBombMirror({ state, entity, doctrinePhase: doctrine.phase, bombs: bombsSys });
+          }
         }
         if (entity && fieldsSys && !capitalBossOrder(state, entity.id)?.suppressStockFire && nemesisFireAllowed(entity, state)) applyNpcFieldDeploy(entity, state, fieldsSys);
       }

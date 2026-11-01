@@ -33,6 +33,7 @@ import { CERES_SHIPBREAK_FILES, isCeresShipbreakSection, ceresShipbreakTransform
 // pieces are merged into ship-local batches; stateful pieces such as glass, thrusters, sockets,
 // damage lights, and LOD hooks stay as normal objects.
 import * as THREE from 'three';
+import { attachSwarmSpecialistVisual } from './swarmSpecialistVisuals.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { detachPackageTexture, isPackageGeometryDetached, rehydrateDetachedGeometries, retainPackageGeometryCpu } from './packageCpuDetach.js';
 import { textureGpuResident } from './startupGpuResidency.js';
@@ -1934,12 +1935,12 @@ const WHOLE_SHIP_FILE_BY_HOSTILE_ID = Object.freeze({
   quiet_ghost: 'wholeships/wasp_quiet_ghost.glb',
   patrol_lawman: 'wholeships/hornet_scn_interdictor.glb',
   customs_cutter: 'wholeships/hornet_scn_interdictor.glb',
-  warden_escort: 'wholeships/ashline_lode_vael.glb',
+  warden_escort: 'wholeships/swarm_warden.glb',
   bruiser_brawler: 'wholeships/ashline_lode.glb',
   pd_screen_escort: 'wholeships/ashline_lode.glb',
-  field_anchor_controller: 'wholeships/ashline_lode.glb',
+  field_anchor_controller: 'wholeships/swarm_anchor.glb',
   reaver_pirate: 'wholeships/ashline_rig.glb',
-  mine_layer_jackal: 'wholeships/ashline_rig.glb',
+  mine_layer_jackal: 'wholeships/swarm_jackal.glb',
   corsair_raider: 'wholeships/ashline_rig_corsair_blade.glb',
   tether_control_raider: 'wholeships/ashline_rig.glb',
   mule_trader: 'wholeships/helios_span.glb',
@@ -1951,12 +1952,12 @@ const WHOLE_SHIP_ASSET_ID_BY_HOSTILE_ID = Object.freeze({
   quiet_ghost: 'SF_WASP_QUIET_GHOST',
   patrol_lawman: 'SF_HORNET_SCN_INTERDICTOR',
   customs_cutter: 'SF_HORNET_SCN_INTERDICTOR',
-  warden_escort: 'SF_WHOLESHIP_ASHLINE_LODE_VAEL',
+  warden_escort: 'SF_SWARM_WARDEN',
   bruiser_brawler: 'SF_WHOLESHIP_ASHLINE_LODE',
   pd_screen_escort: 'SF_WHOLESHIP_ASHLINE_LODE',
-  field_anchor_controller: 'SF_WHOLESHIP_ASHLINE_LODE',
+  field_anchor_controller: 'SF_SWARM_ANCHOR',
   reaver_pirate: 'SF_WHOLESHIP_ASHLINE_RIG',
-  mine_layer_jackal: 'SF_WHOLESHIP_ASHLINE_RIG',
+  mine_layer_jackal: 'SF_SWARM_JACKAL',
   corsair_raider: 'SF_WHOLESHIP_ASHLINE_RIG_CORSAIR_BLADE',
   tether_control_raider: 'SF_WHOLESHIP_ASHLINE_RIG',
   mule_trader: 'SF_WHOLESHIP_HELIOS_SPAN',
@@ -3408,12 +3409,24 @@ export function wrapShipWithAuthoredParts(entity, fallbackRoot, options = {}) {
   boundary.userData.updateAuthoredMotion = (liveEntity, simNow, a11y, state) => {
     const fn = active && active.userData && active.userData.updateAuthoredMotion;
     if (typeof fn === 'function') fn(liveEntity, simNow, a11y, state);
+    const specialist = boundary.userData.swarmSpecialistVisual;
+    if (specialist) {
+      const status = boundary.userData.authoredAssetState;
+      if ((status === 'authored' || status === 'authored-with-cleanup-error') && active?.parent === boundary) {
+        boundary.userData.swarmVisualContentRoot = active;
+        specialist.update(liveEntity, simNow);
+      } else {
+        boundary.userData.swarmVisualContentRoot = null;
+        specialist.clear();
+      }
+    }
   };
   if (ceresWorkfleetRole(entity)) {
     boundary.userData.updateCeresPhysicalState = (liveEntity, a11y) =>
       active?.userData?.updateCeresPhysicalState?.(liveEntity, a11y);
   }
   syncActiveSurface(boundary, active);
+  attachSwarmSpecialistVisual(boundary, entity);
 
   let trigger = firstRenderable(fallbackRoot);
   let previousBeforeRender = trigger && trigger.onBeforeRender;
