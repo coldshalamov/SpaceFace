@@ -33,6 +33,8 @@ for (const deferred of [true, false]) {
       run.runtime.getHelpers().deferFlightAdmission = deferred;
       run.state.world.currentSectorId = 'sector_helios_prime';
       run.step(2);
+      run.state.player.cargo.items.cmdty_ore_iron = 52;
+      run.state.player.cargo.items.cmdty_silicate = 7;
       run.state.mode = 'paused';
       createTimeEffects(run.state).set('ui:pausing-screen', { scale: 0 });
       const writes = [];
@@ -53,6 +55,15 @@ for (const deferred of [true, false]) {
       assert.equal(await owner.load('quick', { preferAsync: true }), true);
       assert.equal(loaded.length, 1);
       assert.equal(loaded[0].visualGatePending, deferred);
+      assert.deepEqual(loaded[0].restoredEconomy, {
+        credits: envelope.data.player.credits,
+        cargoItems: envelope.data.cargo.items,
+      }, 'the restore receipt reflects the selected save before resumed gameplay');
+      const restoredEconomy = structuredClone(loaded[0].restoredEconomy);
+      run.state.player.cargo.items.cmdty_ore_iron += 1;
+      run.state.player.credits += 1;
+      assert.deepEqual(loaded[0].restoredEconomy, restoredEconomy,
+        'later changes to the canonical player cannot mutate the restore receipt');
       assert.equal(run.state.mode, deferred ? 'loading' : 'flight');
       assert.equal(modes.includes('flight'), !deferred,
         'the worker must not announce a transient flight before main visual admission');

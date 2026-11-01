@@ -210,11 +210,23 @@ export const EVENT_BRIDGE_ADAPTERS = {
   // sim realm; the wire keeps the receipt fields (slot/flags/skip receipt).
   'save:loaded': (p) => {
     if (!p || typeof p !== 'object') return undefined;
+    const economy = p.restoredEconomy;
+    const sourceItems = economy?.cargoItems;
+    const restoredEconomy = economy && Number.isFinite(economy.credits)
+      && sourceItems && typeof sourceItems === 'object' && !Array.isArray(sourceItems)
+      ? {
+        credits: economy.credits,
+        cargoItems: Object.fromEntries(Object.entries(sourceItems)
+          .filter(([id, quantity]) => typeof id === 'string' && typeof quantity === 'number' && Number.isFinite(quantity))
+          .sort(([a], [b]) => a.localeCompare(b))),
+      }
+      : null;
     const flat = flattenEventPayload({
       slot: p.slot ?? null,
       visualGatePending: p.visualGatePending === true,
       recovered: p.recovered === true,
       skippedNewer: p.skippedNewer ?? null,
+      ...(restoredEconomy ? { restoredEconomy } : {}),
       tensionDirector: null,
     }, 0);
     return flat === REJECT ? undefined : flat;

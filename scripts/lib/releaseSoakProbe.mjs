@@ -2686,6 +2686,7 @@ async function runSoakCycle(page, {
         selectedSourceIdentityAtSaveLoaded: detail.selectedSourceIdentityAtSaveLoaded,
         selectedSourcePoseAtSaveLoaded: detail.selectedSourcePoseAtSaveLoaded,
         loadedPayloadSummary: detail.loadedPayloadSummary,
+        loadedRestoredEconomy: detail.loadedRestoredEconomy,
         loadedAtEvent: detail.loadedAtEvent,
         loaded: detail.loaded,
         elapsedAfterSaveLoaded: detail.elapsedAfterSaveLoaded,
@@ -2848,6 +2849,7 @@ async function runSoakCycle(page, {
   if (loadOutcome.late) mark('load-late-flight', {});
   const loaded = await readPlayerSnapshot(page);
   const loadedAtEvent = await page.evaluate(() => window.__M6_RELEASE_SOAK_EVENTS__?.loadedSnapshot || null);
+  const loadedRestoredEconomy = await page.evaluate(() => window.__M6_RELEASE_SOAK_EVENTS__?.loadedRestoredEconomy || null);
   const loadedSlot = await page.evaluate(() => window.__M6_RELEASE_SOAK_EVENTS__?.loadedSlot || null);
   const loadedPayloadSummary = await page.evaluate(() => window.__M6_RELEASE_SOAK_EVENTS__?.loadedPayloadSummary || null);
   const loadedEnvelopeAtEventRaw = await page.evaluate(() => window.__M6_RELEASE_SOAK_EVENTS__?.loadedEnvelopeRaw || null);
@@ -2929,6 +2931,7 @@ async function runSoakCycle(page, {
     selectedSourceIdentityAtSaveLoaded: loadedEnvelopeAtEvent.serializedIdentity || null,
     selectedSourcePoseAtSaveLoaded: loadedEnvelopeAtEvent.playerSnapshot || null,
     loadedPayloadSummary,
+    loadedRestoredEconomy,
     loadedSlot,
     diverged,
     loadedAtEvent,
@@ -2953,11 +2956,14 @@ async function runSoakCycle(page, {
   );
   assert(Math.abs(restoreReference.speed - loadedAtEvent.speed) <= 2, `load speed restore exceeded tolerance: ${restoreReference.speed} -> ${loadedAtEvent.speed}`);
   mark('load-restored', { saved, loadedSlot, diverged, loadedAtEvent, loaded, postLoadAdvanceDistance, restorePopulation });
-  // The honest roundtrip check: live economy at the save:loaded event instant must equal
-  // the envelope that was loaded. The later readEconomySnapshot stays diagnostic-only —
-  // gameplay keeps running after restore and can legitimately grant cargo before it.
-  assert.deepEqual(loadedAtEvent.economy, restoreReference.economy, `credits and cargo must round-trip exactly through save/load (slot ${loadedSlot || 'unknown'})`);
-  const postEventDrift = { credits: loadedEconomy.credits - loadedAtEvent.economy.credits, cargoDelta: Object.keys(loadedEconomy.cargoItems).filter((k) => loadedEconomy.cargoItems[k] !== loadedAtEvent.economy.cargoItems[k]).map((k) => `${k}:${loadedAtEvent.economy.cargoItems[k] || 0}->${loadedEconomy.cargoItems[k]}`) };
+  // The worker's immutable restore receipt is the event-time payload. The ordinary state mirror
+  // can already include later work from the same reply, so it remains a separate diagnostic.
+  assert(loadedRestoredEconomy && Number.isFinite(loadedRestoredEconomy.credits)
+    && loadedRestoredEconomy.cargoItems && typeof loadedRestoredEconomy.cargoItems === 'object',
+    `save:loaded must include its immutable restored economy receipt (slot ${loadedSlot || 'unknown'})`);
+  assert.deepEqual(loadedRestoredEconomy, restoreReference.economy,
+    `credits and cargo in the selected save bytes must match the canonical restore receipt (slot ${loadedSlot || 'unknown'})`);
+  const postEventDrift = { credits: loadedEconomy.credits - loadedRestoredEconomy.credits, cargoDelta: Object.keys(loadedEconomy.cargoItems).filter((k) => loadedEconomy.cargoItems[k] !== loadedRestoredEconomy.cargoItems[k]).map((k) => `${k}:${loadedRestoredEconomy.cargoItems[k] || 0}->${loadedEconomy.cargoItems[k]}`) };
   if (postEventDrift.credits !== 0 || postEventDrift.cargoDelta.length) mark('post-load-economy-drift', postEventDrift);
   mark('economy-restored', { credits: loadedEconomy.credits, cargoKinds: Object.keys(loadedEconomy.cargoItems).length });
   await page.waitForFunction(() => {
@@ -3611,14 +3617,25 @@ async function armSaveLoadObservers(page) {
         pos: { x: Number(player.pos.x), z: Number(player.pos.z) },
         speed: Math.hypot(Number(player.vel?.x || 0), Number(player.vel?.z || 0)),
         observedAtPerformanceNow: performance.now(),
-        // Economy at the event instant — grants that land after restore but before the
-        // next probe read (resuming salvage drains, pickups, restore settlements) are
-        // legitimate in-flight mutations, not envelope corruption.
-        economy: {
+        // This is the main-side mirror at event replay. Worker gameplay can advance
+        // before its events reach this lane; the immutable receipt below records restore.
+        mirrorEconomyAtEventReplay: {
           credits: Number(state?.player?.credits),
           cargoItems: Object.fromEntries(Object.entries(items).sort(([a], [b]) => a.localeCompare(b))),
         },
       } : null;
+      const restored = payload?.restoredEconomy;
+      const restoredItems = restored?.cargoItems;
+      window.__M6_RELEASE_SOAK_EVENTS__.loadedRestoredEconomy = restored
+        && Number.isFinite(restored.credits)
+        && restoredItems && typeof restoredItems === 'object' && !Array.isArray(restoredItems)
+        ? {
+          credits: restored.credits,
+          cargoItems: Object.fromEntries(Object.entries(restoredItems)
+            .filter(([id, quantity]) => typeof id === 'string' && Number.isFinite(quantity))
+            .sort(([a], [b]) => a.localeCompare(b))),
+        }
+        : null;
       window.__M6_RELEASE_SOAK_EVENTS__.loadedSlot = slot;
       window.__M6_RELEASE_SOAK_EVENTS__.loadedEnvelopeRaw = slot ? localStorage.getItem(`sf.save.${slot}`) : null;
       window.__M6_RELEASE_SOAK_EVENTS__.loadedPayloadSummary = payload ? {

@@ -7589,10 +7589,25 @@ export const save = {
       if (typeof this.bus.setEmitSliceBudget === 'function') {
         this.bus.setEmitSliceBudget('save:loaded', 8);
       }
+      const cargoItems = {};
+      const restoredItems = state.player?.cargo?.items;
+      if (restoredItems && typeof restoredItems === 'object' && !Array.isArray(restoredItems)) {
+        for (const [id, quantity] of Object.entries(restoredItems).sort(([a], [b]) => a.localeCompare(b))) {
+          if (typeof quantity === 'number' && Number.isFinite(quantity)) cargoItems[id] = quantity;
+        }
+      }
+      Object.freeze(cargoItems);
+      const restoredEconomy = Object.freeze({
+        credits: Number.isFinite(state.player?.credits) ? state.player.credits : 0,
+        cargoItems,
+      });
       this.bus.emit('save:loaded', {
         slot,
         visualGatePending: flightAdmissionPending,
         recovered: options.recovered === true,
+        // Detached primitives capture the applied restore boundary; later gameplay pickups or
+        // credit receipts cannot mutate this observation through the live player mirror.
+        restoredEconomy,
         // INF-091: Continue resolved past a dead newer slot — the receipt names it explicitly
         // instead of silently downgrading. Absent for named loads.
         ...(options.skippedNewer ? { skippedNewer: options.skippedNewer } : null),
