@@ -36,9 +36,12 @@ test('the void fires only for the unmet ordinary case', () => {
 });
 
 test('the wiring voids fairly on third-party kills and never respawns the mark', () => {
+  // The kill-dispatch seam moved to missionObjectiveOps.js in the missions split; the
+  // resolution and player-facing copy stayed in missions.js.
+  const opsSource = readFileSync(new URL('../src/systems/missionObjectiveOps.js', import.meta.url), 'utf8');
   const source = readFileSync(new URL('../src/systems/missions.js', import.meta.url), 'utf8');
   assert.match(
-    source,
+    opsSource,
     /if \(!byPlayer\) \{ this\._voidLostBountyTargets\(p\); return; \}/,
     'non-player kills take the void path, not the ignore path',
   );
@@ -62,7 +65,7 @@ test('the wiring voids fairly on third-party kills and never respawns the mark',
   );
   assert.match(
     source,
-    /reason === 'target_lost'\) return 'The mark was destroyed/,
+    /if \(reason === 'target_lost'\) \{[\s\S]*?return 'The mark was destroyed/,
     'the debrief states the visible resolution',
   );
 });
