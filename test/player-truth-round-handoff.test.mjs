@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { awaitRoundHandoff, roundHandoffSnapshot, screenshotHudOccluders } from '../scripts/player-truth/run.mjs';
+import { awaitRoundHandoff, parseArgs, roundHandoffSnapshot, screenshotHudOccluders } from '../scripts/player-truth/run.mjs';
 
 async function withPage({ phases, button = null, onClick = null }, run) {
   const previousWindow = globalThis.window; const previousDocument = globalThis.document;
@@ -66,6 +66,20 @@ test('a genuine public draft launch is clicked once and records its resulting ac
     const result = await awaitRoundHandoff(page, { previousWave: 5 });
     assert.deepEqual(clicks, ['Launch round 6 Esc']);
     assert.equal(result.kind, 'active'); assert.equal(result.wave, 6); assert.equal(result.sim, 310.2);
+  });
+});
+
+test('explicit duration preserves the full simulation budget across a wave handoff', async () => {
+  const args = parseArgs(['--mode=swarm', '--duration=2700', '--wall=45']);
+  assert.equal(args.duration, 2700);
+  assert.equal(args.wall, 45);
+  await withPage({ phases: [{ phase: 'draft', wave: 1, sim: 163 }],
+    button: { textContent: 'Launch round 2', offsetParent: {}, disabled: false },
+    onClick: (setPhase) => setPhase({ phase: 'active', wave: 2, sim: 164 }),
+  }, async ({ page, clicks }) => {
+    const result = await awaitRoundHandoff(page, { previousWave: 1, simLimit: 8.3 + args.duration });
+    assert.equal(result.kind, 'active');
+    assert.deepEqual(clicks, ['Launch round 2']);
   });
 });
 

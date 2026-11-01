@@ -323,6 +323,7 @@ export function parseArgs(argv) {
     else if (k === 'vfx-attribution') a.vfxAttribution = true;
     else if (k === 'gate') a.gate = v == null || v === '' || v === 'true' ? true : v;
     else if (k === 'shot-every') a.shotEvery = Number(v);
+    else if (k === 'duration' || k === 'wall') a[k] = Number(v);
     else if (k === 'baseline-source' || k === 'candidate-source') {
       if (v == null || !String(v).trim()) throw new Error(`--${k} requires a manifest path`);
       if (a.baselineSource) throw new Error('choose only one source overlay');
