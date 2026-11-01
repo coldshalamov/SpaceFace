@@ -4,6 +4,7 @@ import test from 'node:test';
 import { createSimulation } from '../src/core/sim.js';
 import { spawnBudget } from '../src/systems/spawnBudget.js';
 import { encounterDirector, planEncounters } from '../src/systems/encounterDirector.js';
+import { ENCOUNTERS } from '../src/data/encounters.js';
 import { zonesForSector } from '../src/data/sectorZones.js';
 import { authorizeAIEngagement, isHostileForAI } from '../src/ai/engagementAuthority.js';
 import { ActivityKind } from '../src/ai/doctrine.js';
@@ -40,6 +41,15 @@ function makeHarness(opts = {}) {
   bus.on('faction:repDelta', (p) => events.push({ name: 'repDelta', payload: p }));
 
   return { sim, state, bus, player, events };
+}
+
+// The raid's fireReady seam (344-opening-hauler-raid.js `openingRaidCarrierReady`) holds a due
+// beat up to FIRE_READY_HOLD_S for the loaded starter ore barge to be in the player's frame;
+// these harnesses carry no barge, so the hold has already elapsed by the time the item is
+// injected. Stamping fireReadyHoldSince far in the past makes the pump take its own expiry
+// branch — the same fallback a carrier-less world reaches after sixty seconds.
+function expiredHold(raidPlan, extra = {}) {
+  return { ...raidPlan, fireReadyHoldSince: -3600, defers: 0, ...extra };
 }
 
 test('Day 0 schedule in sector_helios_prime plans opening_hauler_raid within minutes', () => {
@@ -118,7 +128,17 @@ test('Opening hauler raid runtime lifecycle: choices, defense, and payout', () =
   dir.pending = [item];
   dir.pressure.combat = 30; // satisfies pressureCost 20
 
+  // First half of the readiness contract: with no loaded starter carrier in frame the due raid
+  // holds instead of firing — the pump keeps re-queueing it a second at a time.
   sim.runTicks(90); // the director pumps on a 1 Hz accum — 60 ticks lands just under 1.0 in float
+  assert.ok(dir.pending.includes(item), 'the readiness hold keeps the due raid queued');
+  assert.ok(!Object.values(dir.live).some((l) => l.shapeId === 'opening_hauler_raid'),
+    'the raid must wait out the readiness hold');
+
+  // Second half: the hold is bounded — once FIRE_READY_HOLD_S elapses the pump fires the raid
+  // on its planned synthetic hauler rather than starving the opening beat forever.
+  item.fireReadyHoldSince = state.simTime - 61;
+  sim.runTicks(150); // the deferred dueAt can miss the immediate pump on float epsilon; the next 1 Hz beat must land
 
   const live = Object.values(dir.live).find((l) => l.shapeId === 'opening_hauler_raid');
   assert.ok(live, 'encounter must be live');
@@ -157,7 +177,7 @@ test('VERB-02: the opening raid fires already happening — no choice offer, no 
   assert.ok(raidPlan);
 
   const dir = state.encounterDirector;
-  dir.pending = [{ ...raidPlan, dueAt: 0, defers: 0 }];
+  dir.pending = [expiredHold(raidPlan, { dueAt: 0 })];
   dir.pressure.combat = 30;
   sim.runTicks(120);
 
@@ -189,7 +209,7 @@ test('VERB-06: the opening hauler carries a volatile cargo lot that can cook on 
   assert.ok(raidPlan);
 
   const dir = state.encounterDirector;
-  dir.pending = [{ ...raidPlan, dueAt: 0, defers: 0 }];
+  dir.pending = [expiredHold(raidPlan, { dueAt: 0 })];
   dir.pressure.combat = 30;
   sim.runTicks(120);
 
@@ -225,7 +245,7 @@ test('Opening raid lands within three minutes inside ~two screen-depths on seeds
       `seed ${seed}: hauler must be under attack within three minutes (delay ${raidPlan.delay.toFixed(1)}s)`);
 
     const dir = state.encounterDirector;
-    dir.pending = [{ ...raidPlan, dueAt: raidPlan.delay, defers: 0 }];
+    dir.pending = [expiredHold(raidPlan, { dueAt: raidPlan.delay })];
     dir.pressure.combat = 30; // satisfies pressureCost 20
     state.simTime = raidPlan.delay + 1;
     sim.runTicks(120); // pump + fire + spawn ticks
@@ -282,11 +302,15 @@ test('the guaranteed raid fires during the onboarding rail and survives the day-
     const zones = zonesForSector('sector_helios_prime');
     const plan = planEncounters(seed, 'sector_helios_prime', 0, zones);
     const raidPlan = plan.find((it) => it.shapeId === 'opening_hauler_raid');
-    const otherPlan = plan.find((it) => it.shapeId !== 'opening_hauler_raid');
+    // The ordinary-row control must be genuinely ordinary: the day-0 plan now carries several
+    // authored early-window guarantees (pro_salvage_tender, candle_relighting, the raid itself),
+    // and every one of them survives the replan by design. Mirror isAuthoredGuaranteeItem.
+    const otherPlan = plan.find((it) => it.shapeId !== 'opening_hauler_raid'
+      && !Number.isFinite(Number(ENCOUNTERS[it.shapeId]?.earlyWindowGuaranteeDay)));
     assert.ok(raidPlan, `seed ${seed}: day-0 plan must include the opening hauler raid`);
 
     const dir = state.encounterDirector;
-    const raidItem = { ...raidPlan, sectorId: 'sector_helios_prime', dueAt: raidPlan.delay, defers: 0 };
+    const raidItem = expiredHold(raidPlan, { sectorId: 'sector_helios_prime', dueAt: raidPlan.delay });
     const otherItem = otherPlan
       ? { ...otherPlan, sectorId: 'sector_helios_prime', dueAt: 0, defers: 0 } : null;
     dir.pending = otherItem ? [raidItem, otherItem] : [raidItem];
