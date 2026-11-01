@@ -12,7 +12,7 @@ import { viewHalfExtents } from './entityViewSyncBand.js';
 import { PROJECTILE_DRAW_PAD_WU } from '../combat/projectileFlight.js';
 import { damp } from '../core/math.js';
 import { entityWeaponBlocked } from '../combat/runtime.js';
-import { isHostileToPlayer } from '../systems/scanner.js';
+import { isHostileToPlayer } from '../systems/scannerReadModel.js';
 import { resolveGovernedCombatSpeed } from '../core/flight/propulsionCatalog.js';
 import {
   readOwnedExceptionalSpeed,

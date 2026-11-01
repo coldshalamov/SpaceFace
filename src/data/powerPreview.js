@@ -27,7 +27,7 @@ import { bombRadialDirection, bombSurfaceFalloff, integrateBombDrift } from '../
 import {
   activeFieldSnapshot, fieldBodyProfile, fieldEntityIsPrimed, fieldLifecyclePhase, fieldVelocityTermApplies,
   isForceableFieldBody, playerFieldSpec, pullMarkTargetEligible,
-} from '../systems/fields.js';
+} from '../core/fields/fieldReadModel.js';
 import { massSeedLaunchPlan } from '../systems/massSeed.js';
 import { chargeThrowPlan } from '../systems/impulseCharges.js';
 import { bombDropPlan, proximityTriggerEligible } from '../systems/bombs.js';

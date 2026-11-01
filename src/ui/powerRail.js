@@ -63,7 +63,7 @@ injectPowerRailLayouts();
 import { armedOrdnanceCounts, readCloakState, resolveBombAction } from '../data/arsenalPresentation.js';
 import { LINE_BANK, lineWords, pinWords, pullWords, shoveWords, staticVerbSentence } from '../data/arsenalWords.js';
 import { collectorRailSlot } from '../data/collectorKnot.js';
-import { collectorFitted } from '../systems/fields.js';
+import { collectorFitted } from '../core/fields/fieldReadModel.js';
 
 export const BAND_DRIVE = 'DRIVE';
 export const BAND_PULL = 'PULL';

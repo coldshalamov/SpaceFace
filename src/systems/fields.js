@@ -1,4 +1,15 @@
-import { isPlayerSaucer } from '../data/saucer.js';
+import {
+  FIELD_EMITTER_TYPE as EMITTER_TYPE, FIELD_PHASE_ACTIVE, fieldLifecyclePhase,
+  collectorFitted, playerFieldSpec, isForceableFieldBody, pullMarkTargetEligible,
+  fieldBodyProfile, fieldVelocityTermApplies, fieldEntityIsPrimed, gooStatus,
+} from '../core/fields/fieldReadModel.js';
+export {
+  FIELD_VELOCITY_TERM_TYPES, FIELD_WINDUP_S, FIELD_DISSIPATE_S,
+  FIELD_PHASE_WINDING, FIELD_PHASE_ACTIVE, FIELD_PHASE_DISSIPATING,
+  fieldLifecyclePhase, collectorFitted, radialFieldDeployCenter, playerFieldSpec,
+  isForceableFieldBody, pullMarkTargetEligible, fieldBodyProfile,
+  fieldVelocityTermApplies, fieldEntityIsPrimed, activeFieldSnapshot,
+} from '../core/fields/fieldReadModel.js';
 // PQ-012 / SF-12 — Continuous field system (lifecycle / input / force application / presentation).
 //
 // Drives the ONE field kernel (src/core/fields/fieldKernel.js) and its three player-facing
@@ -25,23 +36,22 @@ import { isPlayerSaucer } from '../data/saucer.js';
 // Old saves without field data still normalize away; sector changes and new games clear fields.
 
 import { FIELD_DEFS, FIELD_KINDS, FIELD_MAX_ACTIVE, FIELD_END_REASONS, FIELD_PALETTE, FIELD_VOLUMES, FIELD_COUPLING, FIELD_FAMILY_READ, WELL_CLUSTER, WELL_GRIND, fieldsFlag, fieldVolumeOf } from '../data/fields.js';
-import { createFieldKernel, couplingScale, fieldAffectsBody, fieldContainsPoint, fieldRawAcceleration, sampleFieldAcceleration, wellUsesVelocityTerm } from '../core/fields/fieldKernel.js';
+import { createFieldKernel, couplingScale, fieldAffectsBody, fieldContainsPoint, fieldRawAcceleration, sampleFieldAcceleration } from '../core/fields/fieldKernel.js';
 import {
   classifyClusterReceipt,
   mergeClusterSecondaries,
   rateClusterMoment,
 } from '../core/fields/clusterDetonate.js';
 import { queryPhysicalBodies, deliverPhysicalImpulseDetailed } from '../combat/physicalEffects.js';
-import { isAnchoredPhysicalBody, isPhysicalMissionBody } from '../core/physicalResponse.js';
+import { isAnchoredPhysicalBody } from '../core/physicalResponse.js';
 import { queuePhysicsImpulse, queuePhysicsTorqueImpulse, resolvePhysicsBodySpec } from '../core/physicsAuthority.js';
-import { indexedTypeScan, entityIndexLaneVersion } from '../world/livingWorldViews.js';
+import { entityIndexLaneVersion } from '../world/livingWorldViews.js';
 import { isDynamicPhysicsBodyEntity } from '../core/physicsAuthority.js';
 import { Masks } from '../core/entity.js';
 import { getCombatKernel } from '../combat/kernel.js';
 import { ensureCombatant } from '../combat/runtime.js';
 import { publishHitstunImpulse, recordImpulseProvenance, signedHitSide } from '../combat/impulseKernel.js';
 import { GRAVITY_MARK_STATUS_ID, PINNED_STATUS_ID, STATUS_DEFS, UNMOORED_STATUS_ID } from '../data/combatDefs.js';
-import { isHostileToPlayer } from './scanner.js';
 import { bombDef } from '../data/bombs.js';
 import { bombFieldEnvelope, bombSurfaceFalloff, fillBombViscosityImpulse } from '../combat/bombDynamics.js';
 import { combatFlag } from '../data/featureFlags.js';
@@ -56,10 +66,8 @@ import { planNpcFieldDeploy, npcFieldRole, CIVILIAN_CLEARING_TYPES } from '../ai
 import { applyThermalFields, normalizeThermalRecipe, thermalPointCooled } from '../core/fields/thermalFields.js';
 import { createCollectorKnots } from '../matter/collectorKnot.js';
 import { COLLECTOR_KNOT } from '../data/collectorKnot.js';
-import { maxFittedModuleMod } from '../core/fittedModules.js';
 import { isSwarmSpecialistRun, swarmSpecialistKind, SWARM_SPECIALIST_TUNING } from '../data/swarmSpecialists.js';
 
-const EMITTER_TYPE = 'fieldEmitter';
 const EMITTER_MATERIAL = 'projectile'; // ghost collider: projectile sweeps can hit it, ships don't broadphase against it
 // PQ-147.01 — NPC tools share the kernel but not the player's four-slot cap.
 const FIELD_NPC_MAX_ACTIVE = 4;
@@ -71,15 +79,6 @@ const NPC_FIELD_PLAN_PERIOD_TICKS = 4;
 // trigger, or damage it; the mines owner keeps that law). Displaced mines keep their owner,
 // arm clock and trigger eligibility because those ride the entity's own data.
 const FIELD_LOOSE_TYPES = new Set(['asteroid', 'pickup', 'wreck', 'payload', 'mine', 'cargo_pod', 'debris']);
-// PQ-137.09 — the well's convergence term is velocity-dependent (see FIELD_DEFS.well.damping),
-// and the leaf that authored it says what it is for: "wells converge SHIPS to 30-60 WU/s
-// relative". Craft are the subject. The kernel applies the term only when a velocity sample is
-// handed to it, so handing it only for craft leaves every other body's pull exactly as authored —
-// a projectile still bends on a pure positional curve ("curve the shot"), loose cargo still
-// vacuums in ("vacuum the loot"), and debris, payloads and rocks still funnel the way the
-// Intake/Tideline reads and the release predictor were built around. It also matches the enemy
-// anchor snare's own words: "the source hull is excluded; escorts and the player are not."
-export const FIELD_VELOCITY_TERM_TYPES = Object.freeze(new Set(['ship', 'drone']));
 // THE WORLD ANSWERS C5 — a PLAYER well that drags a loaded route hauler off the line it was
 // flying is a fact the world reads (traffic bunches the escorts, the destination's trade dips).
 // The measure is how far the hull sits from its own dead-reckoned line since it entered the well
@@ -188,27 +187,6 @@ function nowOf(state) { return Number.isFinite(state.simTime) ? state.simTime : 
 // harmful-looking expired one. Spans are short against a 9s well; pause freezes them with
 // simTime; cancellation and sector exit remove the field outright (a killed field
 // dissipates nothing). Cone, sheet, seed, and NPC snares (no deploy clock) stay full-force.
-export const FIELD_WINDUP_S = 0.4;
-export const FIELD_DISSIPATE_S = 0.6;
-export const FIELD_PHASE_WINDING = 'winding';
-export const FIELD_PHASE_ACTIVE = 'active';
-export const FIELD_PHASE_DISSIPATING = 'dissipating';
-
-export function fieldLifecyclePhase(createdAt, expireAt, now) {
-  if (!Number.isFinite(createdAt) || !Number.isFinite(expireAt)) {
-    return { phase: FIELD_PHASE_ACTIVE, mult: 1 };
-  }
-  const age = now - createdAt;
-  if (age < FIELD_WINDUP_S) {
-    return { phase: FIELD_PHASE_WINDING, mult: Math.max(0, Math.min(1, age / FIELD_WINDUP_S)) };
-  }
-  const remaining = expireAt - now;
-  if (remaining < FIELD_DISSIPATE_S) {
-    return { phase: FIELD_PHASE_DISSIPATING, mult: Math.max(0, Math.min(1, remaining / FIELD_DISSIPATE_S)) };
-  }
-  return { phase: FIELD_PHASE_ACTIVE, mult: 1 };
-}
-
 /**
  * Enforce the lifecycle on kernel records in place: the sampler, the predictor, and the
  * published records all read this same strength afterwards, so one number is the hazard
@@ -361,167 +339,11 @@ function npcOwnedFieldCount(kernel) {
   return n;
 }
 
-/**
- * Is a Collector Maw fitted (any fitted module carrying `mods.pullCollector`)? Fitting is the role
- * choice that makes Pull drop a collector; the rail and the held-key preview read the same answer.
- */
-export function collectorFitted(state) {
-  return maxFittedModuleMod(state, 'pullCollector', 0) > 0;
-}
-
-/**
- * Where a Pull well or a Shove repulsor deploys right now: the Well at the aim point (clamped to
- * deployRange and kept clear of the hull), the Repulsor at the ship. The deploy and the held-key
- * preview (row 493, data/powerPreview.js) both read this, so the preview cannot drift from it.
- */
-export function radialFieldDeployCenter(kind, player, state) {
-  const def = FIELD_DEFS[kind];
-  let cx = player.pos.x, cz = player.pos.z;
-  if (kind === 'well') {
-    const dir = aimDirection(player, state);
-    const aw = state.input && state.input.aimWorld;
-    let dist = def.deployRange;
-    if (aw && Number.isFinite(aw.x) && Number.isFinite(aw.z)) {
-      dist = Math.min(def.deployRange, Math.hypot(aw.x - player.pos.x, aw.z - player.pos.z));
-    }
-    dist = Math.max(finite(player.radius, 6) + def.emitterRadius + def.spawnGap, dist);
-    cx = player.pos.x + dir.x * dist;
-    cz = player.pos.z + dir.z * dist;
-  }
-  return { x: cx, z: cz };
-}
-
-/**
- * The kernel record a player Pull well, Shove repulsor, Rig cone or Rig skim scoop registers when it
- * deploys right now (ids, source and clock left to the caller). The deploys spread this, and the
- * row-493 preview normalizes the same object, so the predicted paths run on the field the press
- * will make.
- */
-export function playerFieldSpec(kind, player, state) {
-  const def = FIELD_DEFS[kind];
-  if (kind === 'skim') {
-    const rot = finite(player.rot);
-    const dir = { x: Math.cos(rot), z: Math.sin(rot) };
-    return {
-      kind: def.kind,
-      volume: fieldVolumeOf(def),
-      center: { x: player.pos.x + dir.x * def.originGap, z: player.pos.z + dir.z * def.originGap },
-      dir,
-      radius: def.radius,
-      halfWidth: def.halfWidth,
-      strength: def.strength,
-      falloff: def.falloff,
-      durationS: Infinity,
-      ownerId: player.id,
-      team: player.team,
-      filters: { excludeId: player.id },
-    };
-  }
-  if (kind === 'cone') {
-    const rot = finite(player.rot);
-    const dir = { x: Math.cos(rot), z: Math.sin(rot) };
-    const center = { x: player.pos.x + dir.x * def.originGap, z: player.pos.z + dir.z * def.originGap };
-    return {
-      kind: def.kind, center, dir, radius: def.radius, strength: def.strength,
-      falloff: def.falloff, halfAngleRad: def.halfAngleRad, edgeSoftRad: def.edgeSoftRad,
-      volume: fieldVolumeOf(def),
-      durationS: Infinity, ownerId: player.id, team: player.team,
-      // Owner exclusion, same rule as the deployed tools: the rig never pushes its own hull.
-      // The wedge apex sits ahead of the nose so geometry already keeps the player out; this
-      // keeps that guarantee true regardless of future originGap/geometry tuning.
-      filters: { excludeId: player.id },
-    };
-  }
-  return {
-    kind: def.kind,
-    center: radialFieldDeployCenter(kind, player, state),
-    radius: def.radius,
-    strength: def.strength,
-    // PQ-137.09 — the deploy path never forwarded the authored damping, so the ONE field record
-    // the kernel built for a player-deployed Well or Repulsor always read damping 0 no matter
-    // what the data said. Every other register site (the anchor snare, external profiles) does
-    // forward it; this one silently dropped it. Without this line the well's convergence law
-    // does not exist on the default route and a body just falls faster and faster.
-    damping: def.damping,
-    falloff: def.falloff,
-    volume: fieldVolumeOf(def),
-    innerRadius: def.innerRadius || 0,
-    innerSoft: def.innerSoft || 0,
-    durationS: def.durationS,
-    ownerId: player.id,
-    team: player.team,
-  };
-}
-
-/** Bodies a player field can move: dynamic or anchored physical bodies, never emitters or seeds. */
-export function isForceableFieldBody(e) {
-  if (!e || e.alive === false || !e.pos) return false;
-  if (e.type === EMITTER_TYPE || e.type === 'massSeed' || (e.type === 'fx' && !isPhysicalMissionBody(e))) return false;
-  // Only dynamic Rapier bodies can be moved by an impulse; fixed bodies (stations, gates, static
-  // asteroids, the emitters/anchors themselves) ignore it.
-  return isDynamicPhysicsBodyEntity(e) || isAnchoredPhysicalBody(e);
-}
-
-/**
- * PULL marks the locked target a well lands on (see _pullMarkLockedTarget): the target must sit in
- * the footprint, and a hull must be hostile to the player; a rock, wreck, pod or crate always is.
- */
-export function pullMarkTargetEligible(state, player, target, cx, cz, radius) {
-  if (!target || !player || target.id === player.id || target.alive === false || !target.pos) return false;
-  const dx = finite(target.pos.x) - cx;
-  const dz = finite(target.pos.z) - cz;
-  if (dx * dx + dz * dz > radius * radius) return false;
-  const isShip = target.type === 'ship' || target.type === 'drone';
-  return !isShip || isHostileToPlayer(target, player.team, state);
-}
-
-// Aim convention shared with impulse charges / mass seed: direction toward the painted world point,
-// else the nose. Pure; no allocation beyond the returned vector.
-function aimDirection(player, state) {
-  const aw = state.input && state.input.aimWorld;
-  if (aw && Number.isFinite(aw.x) && Number.isFinite(aw.z)) {
-    const dx = aw.x - player.pos.x, dz = aw.z - player.pos.z;
-    const len = Math.hypot(dx, dz);
-    if (len > 1e-4) return { x: dx / len, z: dz / len };
-  }
-  const inp = state.input;
-  const angle = Number.isFinite(inp && inp.aimAngle) ? inp.aimAngle : finite(player.rot);
-  return { x: Math.cos(angle), z: Math.sin(angle) };
-}
-
-/**
- * Build the pure body profile consumed by the field kernel. The optional output record lets the
- * production force loop reuse one scratch object; tests/predictors may omit it for a fresh value.
- * Target selection is intentionally absent: only an earned combat-status multiplier changes field
- * response, so clicking another contact can neither grant nor transfer Gravity Mark.
- */
 // Materials a selective plane or boundary lets through. They take no force from
 // that field. The contact is a shape cue, stamped once per crossing.
 const INERT_PASS_MATERIALS = new Set(['token', 'precursor_composite', 'mineral']);
 const INERT_PASS_CAP = 8;
 const INERT_PASS_SPEED = 0.5;
-
-function commodityMaterialCategory(id) {
-  if (typeof id !== 'string' || !id) return null;
-  if (id === 'cmdty_gate_handshake') return 'token';
-  if (id === 'cmdty_unclassified_composite') return 'precursor_composite';
-  if (id.startsWith('cmdty_ore_') || id.startsWith('cmdty_gem_')
-    || id === 'cmdty_silicate' || id === 'cmdty_ice_water' || id === 'cmdty_volatiles') return 'mineral';
-  return null;
-}
-
-function readMaterialCategory(entity) {
-  if (!entity) return null;
-  if (typeof entity.materialCategory === 'string' && entity.materialCategory) return entity.materialCategory;
-  const data = entity.data;
-  if (data && typeof data.materialCategory === 'string' && data.materialCategory) return data.materialCategory;
-  if (data && data.machineToken) return 'token';
-  const commodity = (data && data.commodityId) || entity.commodityId;
-  const fromCommodity = commodityMaterialCategory(commodity);
-  if (fromCommodity) return fromCommodity;
-  if (entity.type === 'asteroid') return 'mineral';
-  return null;
-}
 
 function fieldExcludesMaterial(field, category) {
   if (!field || typeof category !== 'string' || !category) return false;
@@ -529,93 +351,6 @@ function fieldExcludesMaterial(field, category) {
   const list = field.filters && field.filters.excludeMaterials;
   if (Array.isArray(list)) return list.includes(category);
   return INERT_PASS_MATERIALS.has(category);
-}
-
-export function fieldBodyProfile(entity, state, out = null) {
-  const profile = out || {};
-  const runtime = entity && state && state.combat && state.combat.entities
-    ? state.combat.entities[String(entity.id)]
-    : null;
-  const fieldResponse = runtime && runtime.multipliers && runtime.multipliers.fieldCoupling;
-  const massScale = runtime && runtime.physicsResponse && runtime.physicsResponse.massScale;
-  const hullMass = positive(entity && entity.physicsBody && entity.physicsBody.mass, positive(entity && entity.mass, 1));
-  const hitchMass = entity && entity.data && Number.isFinite(entity.data.hitchMass) && entity.data.hitchMass > 0
-    ? entity.data.hitchMass
-    : 0;
-  profile.mass = hullMass + hitchMass;
-  profile.type = entity && entity.type;
-  profile.radius = entity?.radius;
-  profile.anchored = isAnchoredPhysicalBody(entity) && entity.physicsBody?.anchorRecoil !== false;
-  profile.team = entity && entity.team;
-  profile.id = entity && entity.id;
-  profile.occupantGeneration = entity && entity.occupantGeneration;
-  const cargoIdentity = entity?.data?.cargoIdentity;
-  const jettisonOrigin = entity?.data?.playerJettisonOrigin;
-  profile.ownerId = cargoIdentity?.ownerId ?? jettisonOrigin?.ownerId
-    ?? entity?.data?.ownerId ?? entity?.ownerId ?? null;
-  profile.coated = gooStatus(state, entity) != null;
-  const authoredResponse = entity && entity.physicsBody && Number.isFinite(entity.physicsBody.fieldResponseMult)
-    ? Math.max(0, entity.physicsBody.fieldResponseMult)
-    : 1;
-  // A player Saucer cancels field coupling; damage, contact and tether solvers stay live.
-  profile.fieldResponseMult = isPlayerSaucer(entity) ? 0
-    : (Number.isFinite(fieldResponse) ? Math.max(0, fieldResponse) : 1) * authoredResponse;
-  profile.boosting = !!(entity && entity.flags && entity.flags.boosting);
-  // Same dynamic-body predicate the impulse loop already uses. Kinematic proxies drop
-  // out in the kernel; a heavy dynamic hull stays coupled and only shrugs by mass.
-  const dynamic = entity ? isDynamicPhysicsBodyEntity(entity) : true;
-  profile.dynamic = dynamic;
-  profile.kinematic = dynamic === false;
-  profile.hitchedTo = null;
-  if (entity && entity.id != null && state && state.fields && state.fields.hitches) {
-    const hitch = state.fields.hitches[entity.id] || state.fields.hitches[String(entity.id)];
-    if (hitch && hitch.sourceId != null) profile.hitchedTo = hitch.sourceId;
-  }
-  // The transient mass/inertia scale the physics owner will solve this body at (Pinned = 6x,
-  // Unmoored = 0.3x). Coupling never reads it — it is not a mass CLASS, it is the effective solver
-  // mass the queued impulse has to be authored against. See _applyForces.
-  profile.physicsMassScale = positive(massScale, 1);
-  profile.materialCategory = readMaterialCategory(entity);
-  return profile;
-}
-
-/**
- * RELEASE-TRUTH C2 — the velocity-sampling gate production applies before
- * sampleFieldAcceleration. The well's damping/velocity term only reads ship+drone bodies,
- * and a primed light gets no convergence term at all (the inbound fall is the slam). Any
- * predictor that samples field acceleration must hand the kernel velocity through this same
- * gate or the preview damps bodies production never damps.
- */
-export function fieldVelocityTermApplies(entity, profile) {
-  return !!(entity && FIELD_VELOCITY_TERM_TYPES.has(entity.type) && wellUsesVelocityTerm(profile));
-}
-
-/**
- * RELEASE-TRUTH C2 — the shared "primed light" observation. Extracted from
- * fields._isPrimedLight so a preview can ask the same question the force loop asks without
- * owning the answer. Read-only: it observes impulseCharges (the single primed writer) plus
- * the armed-charge scan; it never writes primed state.
- */
-export function fieldEntityIsPrimed(registry, state, entity) {
-  if (!entity || entity.alive === false) return false;
-  if (entity.type !== 'ship' && entity.type !== 'drone') return false;
-  if (state && entity.id === state.playerId) return false;
-  const charges = registry && registry.get && registry.get('impulseCharges');
-  if (charges && typeof charges.isPrimed === 'function' && charges.isPrimed(entity, state)) {
-    return true;
-  }
-  if (charges && typeof charges._armedChargeOn === 'function') {
-    if (charges._armedChargeOn(state, entity.id)) return true;
-  }
-  const list = indexedTypeScan(state, 'charges');
-  if (!list.length) return false;
-  for (let i = 0; i < list.length; i++) {
-    const charge = list[i];
-    if (!charge || charge.alive === false || charge.type !== 'charge') continue;
-    const data = charge.data;
-    if (data && data.armed && data.hostId === entity.id) return true;
-  }
-  return false;
 }
 
 export const THERMAL_MARK_COLORS = Object.freeze({
@@ -2944,12 +2679,6 @@ export const fields = {
   },
 };
 
-// Test/consumer seam: pure read of the published field snapshot for a predictor or HUD.
-export function activeFieldSnapshot(state) {
-  return (state && state.fields && Array.isArray(state.fields.snapshot)) ? state.fields.snapshot : EMPTY_SNAPSHOT;
-}
-const EMPTY_SNAPSHOT = Object.freeze([]);
-
 function statusById(id) {
   for (let i = 0; i < STATUS_DEFS.length; i++) {
     if (STATUS_DEFS[i] && STATUS_DEFS[i].id === id) return STATUS_DEFS[i];
@@ -3051,15 +2780,6 @@ function playerEntity(state) {
   if (!state || !state.entities || typeof state.entities.get !== 'function' || state.playerId == null) return null;
   const player = state.entities.get(state.playerId);
   return player && player.alive !== false && player.pos ? player : null;
-}
-
-function gooStatus(state, entity) {
-  if (!entity || !state || !state.combat || !state.combat.entities) return null;
-  const runtime = state.combat.entities[String(entity.id)];
-  const status = runtime && runtime.statuses && runtime.statuses.status_goo;
-  if (!status || !(status.stacks > 0)) return null;
-  if (status.expiresTick != null && status.expiresTick <= (state.tick | 0)) return null;
-  return status;
 }
 
 function isPinField(field) {

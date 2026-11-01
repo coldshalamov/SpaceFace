@@ -12,7 +12,7 @@
 
 import { GYRE_SNARE as D } from './gyreSnare.js';
 import { fieldContainsPoint, sampleFieldAcceleration } from '../core/fields/fieldKernel.js';
-import { activeFieldSnapshot, fieldBodyProfile, fieldVelocityTermApplies } from '../systems/fields.js';
+import { activeFieldSnapshot, fieldBodyProfile, fieldVelocityTermApplies } from '../core/fields/fieldReadModel.js';
 import { queryPhysicalBodies } from '../combat/physicalEffects.js';
 import { launchPlan, burstPlan, springAccel } from '../matter/aggregateMass.js';
 import { predictTrajectory, createTrajectoryBuffer, TRAJECTORY_BUDGET } from '../matter/aggregateTrajectory.js';

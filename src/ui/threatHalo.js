@@ -1,6 +1,6 @@
 import { publishedWardTarget, refreshWardScreenPublication } from '../ai/specialistCounterplay.js';
 import { nameThreatFromVisibleRead, specialistPlanByDoctrine, specialistPlanById } from '../ai/specialistPlans.js';
-import { contactThreatTier, isHostileToPlayer, SCANNER_CONTACT_RANGE } from '../systems/scanner.js';
+import { contactThreatTier, isHostileToPlayer, SCANNER_CONTACT_RANGE } from '../systems/scannerReadModel.js';
 import { countermeasureReadiness } from '../systems/countermeasures.js';
 import { countArmedOwnerMines } from '../systems/mines.js';
 import { resolveWaypointPresentationPosition } from './navigationWaypoint.js';

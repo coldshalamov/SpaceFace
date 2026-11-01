@@ -1,6 +1,6 @@
 import { globalToFrame } from '../core/coordinates.js';
 import { entityWeaponBlocked } from '../combat/runtime.js';
-import { isHostileToPlayer } from '../systems/scanner.js';
+import { isHostileToPlayer } from '../systems/scannerReadModel.js';
 import { resolveEntitySelection } from '../ui/sim/stableSelection.js';
 import { readFrameOrigin } from './frameCoordinates.js';
 import { CAMERA_DIRECTOR_COMBAT_MAX_ZOOM } from './tabletopPolicy.js';

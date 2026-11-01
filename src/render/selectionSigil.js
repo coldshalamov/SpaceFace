@@ -37,7 +37,7 @@
 
 import * as THREE from 'three';
 
-import { isHostileToPlayer } from '../systems/scanner.js';
+import { isHostileToPlayer } from '../systems/scannerReadModel.js';
 // Pure, DOM-free, Three-free policy. The render layer borrowing it is deliberate: the three-way
 // classification already has one owner, and a second copy in src/render is how the HUD bracket and
 // the world marker slowly start telling the player different stories.

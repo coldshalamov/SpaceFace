@@ -13,7 +13,7 @@ import {
   sectorGlobalOrigin,
 } from '../data/sectorCoordinates.js';
 import { isPlayerWanted } from '../systems/heat.js';
-import { isHostileToPlayer } from '../systems/scanner.js';
+import { isHostileToPlayer } from '../systems/scannerReadModel.js';
 import { ObjectiveKind, distance2, stableId } from './contracts.js';
 import { resolveCapitalOpening } from '../combat/subsystems.js';
 

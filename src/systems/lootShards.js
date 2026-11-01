@@ -67,7 +67,7 @@ function catchNetsMembershipVersion(state) {
   // -1 (index unready) plays the old null role: the latch refuses to arm.
   return laneVersion === -1 ? entityIndexVersion(state) : laneVersion;
 }
-import { isHostileToPlayer } from './scanner.js';
+import { isHostileToPlayer } from './scannerReadModel.js';
 
 export { JETTISONED_CARGO_PAYLOAD_TYPE };
 

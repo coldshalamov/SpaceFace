@@ -11,7 +11,7 @@ import {
   signedHitSide,
 } from './impulseKernel.js';
 import { verbAcceptsType } from '../data/interactionDescriptorCatalog.js';
-import { isHostileToPlayer } from '../systems/scanner.js';
+import { isHostileToPlayer } from '../systems/scannerReadModel.js';
 import {
   currentPlayerRewardIdentity,
   readPlayerFirstHitTruth,

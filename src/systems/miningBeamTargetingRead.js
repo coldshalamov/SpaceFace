@@ -3,7 +3,7 @@ import { JETTISONED_CARGO_PAYLOAD_TYPE } from '../data/cargoPayloadTypes.js';
 import { isCeresWorkfleetHardware } from '../data/ceresWorkfleetIdentity.js';
 import { verbAcceptsType } from '../data/interactionDescriptorCatalog.js';
 import { presentationAllowsPlayerFacingAction } from '../core/presentationAdmission.js';
-import { isHostileToPlayer } from './scanner.js';
+import { isHostileToPlayer } from './scannerReadModel.js';
 
 // Synchronous beam-read projections shared by the mining owner and its UI readers. Keeping them
 // here prevents presentation code from importing the full mining system.

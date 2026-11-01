@@ -21,8 +21,9 @@ import { hasActiveSpatialHash, queryNearbyEntities } from '../core/spatialQuery.
 import { maxFittedModuleMod, sumFittedModuleMod } from '../core/fittedModules.js';
 import { hash32 } from '../core/rng.js';
 import { takeNearWorkSlice } from '../core/activityScheduler.js';
-import { isPlayerWanted } from './heat.js';
-import { authoritativeAssignmentTargetId } from '../ai/doctrine.js';
+import { isHostileToPlayer } from './scannerReadModel.js';
+export { isHostileToPlayer };
+export { contactMass, contactThreatTier, SCANNER_CONTACT_RANGE } from './scannerReadModel.js';
 import { combatFlag } from '../data/featureFlags.js';
 import { weakPointForEntity } from '../data/weakPoints.js';
 import { claimSensorPostActive } from '../data/claimableBodies.js';
@@ -77,8 +78,6 @@ import {
   liveEntityById,
   resolveEntitySelection,
 } from '../ui/sim/stableSelection.js';
-
-export const SCANNER_CONTACT_RANGE = CONTACT_HAIL_RANGE;
 
 /**
  * The live body a signal record still points at. A record written with `entityStable` resolves
@@ -148,10 +147,6 @@ const ANOMALY_TRIANGULATION_MIN_BEARING_DEG = 8;
 const CONTACT_HAIL_POLL_TICKS = 12; // 5 Hz at the fixed 60 Hz sim cadence.
 /** Ghost escape/decay is time-based; skipping rocks between checks is enough. */
 export const GHOST_CONTACT_CADENCE_TICKS = 8;
-const UNSAFE_PLAYER_SECURITY = 0.45;
-const LANE_CONTEXT_INNER_R = 900;
-const LANE_CONTEXT_OUTER_R = 2200;
-
 // W05 sensor-ghost — sim-truth on entity.data. Scanner owns uncertainty; HUD/map read only.
 export const GHOST_REVEAL_STAGE_MAX = 3;
 export const GHOST_ESCAPE_RANGE = 2400;
@@ -159,10 +154,6 @@ export const GHOST_ESCAPE_HOLD_S = 18;
 /** E1/H8 shattered-echo swarm: contacts drift out and despawn on their own clock. */
 const SENSOR_GHOST_SWARM_LIFETIME_S = 45;
 const GHOST_STAGE_CONFIDENCE = Object.freeze([0.12, 0.34, 0.58, 0.82]);
-const PLAYER_DANGER_CONTEXTS = new Set([
-  'interdiction', 'spawn_request', 'bounty_hunter', 'mission', 'encounter', 'tutorial_pirate',
-  'zone_hostile', // WORLD_OVERHAUL_2_1: pirates/raiders camping a named ambush/outlaw zone
-]);
 
 /** A nebula washes the hull scanner. The fitting multiplier is unchanged. */
 export const NEBULA_SCAN_MULT = 0.45;
@@ -2145,125 +2136,6 @@ function cloneContactHailPayload(payload) {
   };
 }
 
-// ── Contact classification (Radar & Contacts — on-demand threat list) ────────────────────────
-// Pure, allocation-free readers the HUD contacts strip (hud.js updateOverview) uses to turn a live
-// entity into an at-a-glance threat readout: a mass-based tier, a one-word state, and a
-// scanned/unscanned gate for derelicts. Kept next to the scan pulse that resolves them so the
-// "what is this contact" logic has a single home (goal: "Lives in radar.js and scanner.js").
-
-const THREAT_MASS_TIERS = [300, 1200, 4000]; // mass thresholds for tier 1 / 2 / 3
-
-export function contactMass(e) {
-  if (!e) return 0;
-  if (typeof e.mass === 'number') return e.mass;
-  return (e.data && typeof e.data.mass === 'number') ? e.data.mass : 0;
-}
-
-// 0..3 threat tier. Mass sets the base ("how much hull is pointed at you"); a hostile contact is
-// floored at tier 1 so even a light interceptor reads as a live threat (the "+ faction" term).
-export function contactThreatTier(e, hostile) {
-  const m = contactMass(e);
-  let tier = 0;
-  for (let i = 0; i < THREAT_MASS_TIERS.length; i++) if (m >= THREAT_MASS_TIERS[i]) tier = i + 1;
-  if (hostile && tier < 1) tier = 1;
-  return tier;
-}
-
-// Traffic roles that never join a faction grudge no matter how hated the flag is — an aggro
-// faction's haulers still haul. Combat roles (patrol/escort/pirate/raider/guard) are not listed:
-// they qualify, subject to the armed check.
-const NONCOMBAT_TRAFFIC_ROLES = new Set([
-  'hauler', 'courier', 'miner', 'mining_barge', 'surveyor', 'salvor', 'tender', 'ore_carrier',
-  'express', 'liner', 'rescue', 'tourist', 'tanker', 'arclight', 'civilian', 'trader',
-  'fleeing_trader', 'smuggler', 'barge',
-]);
-
-/** True when the entity's faction record is flagged aggro (rep <= the sole-writer threshold). */
-function factionAggroOnPlayer(e, state) {
-  const factions = state && state.factions;
-  if (!factions || e.factionId == null) return false;
-  const rec = factions[e.factionId];
-  return !!(rec && rec.aggro === true);
-}
-
-/** Combat-capable proof for attack-on-sight: ship/drone, non-civilian role, and actually armed —
- *  either a weapons fit on the hull data or the combat runtime's ranged capability. Fails closed:
- *  a hull that cannot fight is not turned hostile just because its faction hates you. */
-function aggroCombatCapable(e, ai, data, state) {
-  if (!e || (e.type !== 'ship' && e.type !== 'drone')) return false;
-  if (ai && ai.passive) return false;
-  const trafficRole = String(data.trafficRole || data.role || data.presentationRole || '').toLowerCase();
-  if (NONCOMBAT_TRAFFIC_ROLES.has(trafficRole)) return false;
-  if (Array.isArray(data.weapons) && data.weapons.length > 0) return true;
-  const runtime = state && state.combat && state.combat.entities
-    ? state.combat.entities[String(e.id)]
-    : null;
-  const caps = runtime && runtime.capabilities;
-  if (Array.isArray(caps)) return caps.includes('ranged');
-  return !!(caps && caps.ranged === true);
-}
-
-export function isHostileToPlayer(e, playerTeam, state) {
-  if (!e || e.team === playerTeam || e.team === 0) return false;
-  const playerId = state && state.playerId;
-  const data = e.data || {};
-  const ai = data.ai || null;
-  const combat = data.combat || null;
-  const intent = data.intent || null;
-  const targetsPlayer = !!(combat && playerId != null && (combat.targetId === playerId || combat.lockTarget === playerId));
-  if (ai && ai.passive) return false;
-  if (e.team === 2) return false;
-  // Declared faction hostility (rep <= aggro threshold): the sole-writer ledger flag is the
-  // oracle — a faction that hates you fields armed hulls that open fire without a warrant.
-  const factionAggro = factionAggroOnPlayer(e, state);
-  // A live incident response is narrower than global WANTED heat: a patrol may identify the
-  // specific ship that just attacked inside its jurisdiction, including before one hit crosses
-  // the WANTED threshold. No securityTargetId means the canonical heat gate remains authoritative;
-  // a lawful hull whose own faction is aggro on the player fires on sight like any other.
-  if (ai && ai.lawful) return ai.securityTargetId === playerId || isPlayerWanted(state) || factionAggro;
-  if (ai && ai.retaliationTargetId === playerId) return true;
-  if (ai && Array.isArray(ai.hostileTeams) && ai.hostileTeams.includes(playerTeam)) return true;
-  if (targetsPlayer) return true;
-  if (intent && intent.fire && targetsPlayer) return true;
-  if (ai && (ai.forcePlayerTarget || ai.huntPlayer)) return true;
-  // D93: an AUTHORITATIVE ASSIGNMENT that names the player (the PQ-195 heist pressure element's
-  // attack_run on the tug — doctrine.authoritativeAssignmentTargetId) is declared hostility,
-  // without waiting for a combat lock or a team flag. A swarmer archetype dispatched this way
-  // otherwise read the tug as neutral — threat 0, no attack action, the squad leader parked at
-  // speed 0 while its assignment said attack_run.
-  if (ai && playerId != null && authoritativeAssignmentTargetId(ai.activity) === playerId) return true;
-  if (data.encounter) return true;
-  // A few authored outlaw markets field armed local guards rather than unconditional encounter
-  // enemies. Explicit targeting/retaliation above still wins, while live standing decides whether
-  // an otherwise ambient guard treats the player as a customer or an intruder.
-  const standingHostileBelow = ai && ai.standingHostileBelow;
-  if (Number.isFinite(standingHostileBelow) && e.factionId) {
-    const standing = state && state.factions && state.factions[e.factionId];
-    const rep = standing && Number.isFinite(Number(standing.rep)) ? Number(standing.rep) : 0;
-    if (rep >= standingHostileBelow) return false;
-  }
-  const context = String((ai && (ai.spawnContext || ai.context)) || '');
-  if (PLAYER_DANGER_CONTEXTS.has(context)) return true;
-  // X-02 v4: the Claim Jumper's wing is a live-fire lesson, not an ambient contact — while the
-  // raid beat is current (and the wing isn't done) it reads as player-danger so its shots land.
-  if (data.onboardingRaidWing === true && state?.onboarding?.raid?.active && !state?.onboarding?.raid?.wingDone) return true;
-  const archetype = String((ai && (ai.archetype || ai.doctrine || ai.role)) || data.role || data.scenarioRole || '').toLowerCase();
-  if (archetype.includes('trad') || archetype.includes('miner') || archetype.includes('civilian')) return false;
-  if (context !== 'ambient' && archetype.includes('pirate')) return true;
-  // AGGRO faction combat hulls attack on sight. This is deliberately NOT a blanket faction rule:
-  // passive hulls and team-2 civilians returned above, noncombat traffic roles and unarmed hulls
-  // are filtered inside the check, and lawful hulls already answered through their own gate.
-  if (factionAggro && aggroCombatCapable(e, ai, data, state)) return true;
-  // The Unclosed is hostile only while it has classified the hull (combat.targetId,
-  // already returned above). A scar, a quiet body, or a shed plate must not inherit
-  // lane-danger hostility just because Ashfall is a high tier.
-  if (data.foldAberrant) return false;
-  const security = finiteNumber(ai && ai.sectorSecurity, currentSectorSecurity(state));
-  const tier = finiteNumber(ai && ai.sectorTier, currentSectorTier(state));
-  if ((security <= UNSAFE_PLAYER_SECURITY || tier >= 2) && playerIsInLaneDanger(state)) return true;
-  return false;
-}
-
 // One-word contact state for the strip. Derelicts read DERELICT; player-aligned ships WINGMAN/ALLY;
 // opposing ships resolve to HOSTILE / PATROL / HAULER / COURIER / MINER via trafficRole + AI signals,
 // with a plain team fallback so a contact never renders blank (respects the "one word" contract).
@@ -2326,51 +2198,6 @@ export function contactStateWord(e, playerTeam, state) {
   }
   if (isHostileToPlayer(e, playerTeam, state)) return 'HOSTILE';
   return 'NEUTRAL';
-}
-
-function currentSector(state) {
-  const world = state && state.world;
-  const id = world && world.currentSectorId;
-  return id && world && world.sectors ? world.sectors[id] : null;
-}
-
-function currentSectorSecurity(state) {
-  const sector = currentSector(state);
-  return Number.isFinite(sector && sector.security) ? sector.security : 1;
-}
-
-function currentSectorTier(state) {
-  const sector = currentSector(state);
-  return Number.isFinite(sector && sector.tier) ? sector.tier : 0;
-}
-
-function finiteNumber(value, fallback) {
-  return Number.isFinite(value) ? value : fallback;
-}
-
-function playerIsInLaneDanger(state) {
-  const player = state && state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
-  const active = state && state.world && state.world.activeSector;
-  const gates = active && Array.isArray(active.gates) ? active.gates : [];
-  const hazards = active && Array.isArray(active.hazards) ? active.hazards : [];
-  if (!player || !player.pos) return false;
-  const inner2 = LANE_CONTEXT_INNER_R * LANE_CONTEXT_INNER_R;
-  const outer2 = LANE_CONTEXT_OUTER_R * LANE_CONTEXT_OUTER_R;
-  for (const gate of gates) {
-    if (!gate || !gate.pos) continue;
-    const dx = player.pos.x - gate.pos.x;
-    const dz = player.pos.z - gate.pos.z;
-    const d2 = dx * dx + dz * dz;
-    if (d2 >= inner2 && d2 <= outer2) return true;
-  }
-  for (const hazard of hazards) {
-    if (!hazard || !hazard.center || !Number.isFinite(hazard.radius)) continue;
-    const dx = player.pos.x - hazard.center.x;
-    const dz = player.pos.z - hazard.center.z;
-    const radius = Math.max(0, hazard.radius);
-    if (dx * dx + dz * dz <= radius * radius) return true;
-  }
-  return false;
 }
 
 // Has a derelict/wreck been scan-resolved (manifest known)? Unscanned wrecks show only a ghost

@@ -16,7 +16,7 @@
 // (orbiting your catch while the guns tracked a nearer third ship) cannot recur.
 import { followDrawFlightPath } from './drawFlightPath.js';
 import { solveLeadAngle } from './leadAngle.js';
-import { isHostileToPlayer } from '../systems/scanner.js';
+import { isHostileToPlayer } from '../systems/scannerReadModel.js';
 import { wrapAngle } from '../core/rng.js';
 import { massline2Flag } from '../data/featureFlags.js';
 import { solveTetherLeadSolution, orbitalConstraintState, masslineOwnsGuns } from './tetherFireControl.js';

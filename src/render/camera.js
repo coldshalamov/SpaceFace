@@ -6,7 +6,7 @@ import * as THREE from 'three';
 import { createTrailerStaging } from './trailerStaging.js';
 import { damp } from '../core/math.js';
 import { globalToFrame } from '../core/coordinates.js';
-import { isHostileToPlayer } from '../systems/scanner.js';
+import { isHostileToPlayer } from '../systems/scannerReadModel.js';
 import { interpolateGlobalToFrame, readFrameOrigin } from './frameCoordinates.js';
 import { adoptFlybyHandoffDirector, CAMERA_DIRECTOR_COMBAT_MAX_ZOOM, CameraDirectorMode, createCameraDirector } from './cameraDirector.js';
 import { createCameraGlide, resetCameraGlide, stepCameraGlide } from './cameraGlide.js';
