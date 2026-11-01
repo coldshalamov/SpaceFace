@@ -8,6 +8,13 @@ references (a lane board names a build-map row; the row's prose in `build_map.md
 
 **Current integration direction (user, 2026-10-29).** For this integration campaign, the user requests broad game finishing with most coverage and implementation performed by GPT-6 Luna, with Codex as controller/integrator. This updates execution method for this campaign and supersedes the fixed Codex batch-review cadence in §2.3, provider quotas and review rituals in §§5–6, and conflicting instructions copied into lane prompts. The 2026-10-28 owner rulings about game quality, technical contracts, route outcomes and measurement targets remain in force.
 
+**Integration ownership (user, 2026-11-01).** The controller now owns all remaining working-tree
+changes, plans and open PRs, including unfinished work from earlier agents. Preserve and integrate
+that work rather than waiting on expired claims. Parallel workers receive disjoint path assignments
+from the controller. Review and expand useful PR outcomes against current owners and player routes;
+[`PR_INTEGRATION.md`](./PR_INTEGRATION.md) tracks the current reconciliation. Performance and bugs
+remain priorities. Keep the owner's Chrome and VLC open during host cleanup and performance runs.
+
 | File | What it is |
 |---|---|
 | this README | the diagnosis, the owner rulings, the path-ownership map, the shared protocol, the finish line |
