@@ -104,5 +104,10 @@ test('the menu route starts readiness polling at document commit while game modu
   await bootToMenu(page, 'http://127.0.0.1:8123/', (...step) => steps.push(step));
 
   assert.deepEqual(navigation, { waitUntil: 'commit' });
-  assert.deepEqual(steps, [['main menu', true, 'menu visible']]);
+  // Readiness reporting now settles the cinematic first: the dismissed/not-shown verdict is a
+  // real step before 'main menu' (2026-10-31 route work), not an unobserved gap in the report.
+  assert.deepEqual(steps, [
+    ['intro-not-shown', true, 'fresh route reached the menu without a visible cinematic'],
+    ['main menu', true, 'menu visible'],
+  ]);
 });

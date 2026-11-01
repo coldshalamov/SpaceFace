@@ -25,7 +25,8 @@ class FakeEl {
     this.tagName = String(tag).toUpperCase();
     this.children = [];
     this.dataset = {};
-    this.style = {};
+    // CSSStyleDeclaration-shaped enough for the scroll-extent cursor and inline writes
+    this.style = { setProperty() {}, getPropertyValue: () => '', removeProperty() {} };
     this.attributes = {};
     this.parentNode = null;
     this.hidden = true;
@@ -127,6 +128,8 @@ function installDom() {
   globalThis.document = {
     createElement: (tag) => new FakeEl(tag),
     getElementById: () => null,
+    // truthful no-match answer for the continue-veil probe in uiStageRequestFor
+    querySelector: () => null,
     head,
     body,
     activeElement: null,
