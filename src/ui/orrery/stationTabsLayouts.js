@@ -1576,6 +1576,12 @@ ${T} .sx-bar__leadkeys { margin-top:6px !important; }
 /* ================================ ROUND 5: INDUSTRY ========================================= */
 /* the chain has the height of a hero instrument at 1920 (ring r≈130) and drops toward the stage's centre */
 ${T} .orr-ind-chain { height:clamp(240px, 42vh, 420px) !important; margin-top:clamp(0px, 3vh, 36px); }
+/* a short wide window (1101+ by 641–800): the reason above the ring and the key under it span ~360px whatever the ring's size,
+   and the stage is barely that; the chain rises 12px so both stay inside it, and the key rides a little closer to its yield */
+@media (min-width:1101px) and (min-height:641px) and (max-height:800px) {
+  ${T} .orr-ind-chain { margin-top:-8px !important; }
+  ${T} .sx-fab-foot { transform:translate(-50%, -4px) !important; }
+}
 /* the block note under the reason; the disabled key's outline is enough */
 ${T} .orr-chain__blocknote { ${LABEL} font-size: 12px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .55) !important; }
 ${T} .orr-chain__verb > .orr-chain__blocknote::before { content:"" !important; }
