@@ -223,11 +223,10 @@ Earlier full `c6` and short `030aaf` receipts remain failed; their evidence is r
 misses are not closed by focused checks. The repaired full-duration and context-recovery outcome
 remains open.
 
-The baseline timing now passes under the measured four-job configuration: all 17 assertions pass
-in 86,286 ms against 90,000 ms. The automatic pool ceiling is capped at four (minimum two); explicit
-`--jobs` and inherited `SPACEFACE_CHECK_JOBS` overrides remain unchanged. The earlier 92,054 ms and
-92,184 ms runs remain historical over-budget results; the four-job outcome is not a general speedup
-claim or a separate post-cap default run. Public scenario normalization boundaries and all four
+The latest baseline runs both pass all 17 assertions but exceed the unchanged 90,000 ms budget:
+the three-job run takes 91,511 ms and the phased run takes 91,929 ms. The phase experiment was
+reverted; the four-job automatic ceiling remains unchanged. The earlier 86,286 ms result is
+historical, not the current baseline verdict. Public scenario normalization boundaries and all four
 physical branches remain intact. M8 progress does not close its separate open work.
 
 **M9 — Load less, load later.** 28 MB of minified JS in the eager closure (`scripts/build-bundle.mjs`,
@@ -239,37 +238,19 @@ as JS) to a binary asset; take `src/testing/**` out of the retail graph (static 
 `FlightReadySet` and stream the rest after first flight. D252: fix the WebKit menu stall. Done when
 the load rows of README §4 meet their floor.
 
-Current batch-fifteen working-tree build measures the physical main static ESM closure at
-11,722,389 raw / 3,652,037 summed-gzip bytes across 132 outputs, meeting the 12 MB raw floor.
-Main awaits the presentation registry in its existing asynchronous worker startup branch before
-creating the sim-lane runtime or initializing listeners. The registry and authored graph remain
-intact; source hints are synchronized at 1,083 closure imports. The canonical worker build is
-retained. All 414 render plans, bundle gates and 74 behavior cases pass, with zero missing worker
-graph outputs. Receipt: `0d9e6869e0f77a17a11d7c4ce43efa10b93f6a808a5338f252e53df8bd48a0a7`.
-This is a static evaluation boundary, not a claim of lower total preflight transfer or faster
-startup. The ordinary worker/save/context route is pending; the 6 MB target and runtime load
-bars remain open. Compared with batch fourteen's 15,474,929 raw bytes, the closure is smaller
-by 3,752,540 raw bytes; concurrent working-tree content prevents isolated timing attribution.
+The latest working-tree bundle is batch 22. Its main static ESM closure is 11,776,177 raw /
+3,674,835 summed-gzip bytes across 132 outputs, below the 12 MB raw floor. Main and both module
+worker graphs have zero missing static edges; the classic digest worker is separately built and
+outside the main metafile. The bundle gate validates 414 render plans, 74 behavior cases and 2,819
+files. Receipt: `a170b09c63906fdc6d2e879f64db1548cfe780059784738cb79555015565539a`. The build includes
+concurrent working-tree changes recorded with batch 22, so these bytes do not isolate the effect of
+any one change. Ruckus mesh payloads now use the completed four-GLB binary migration and remain in
+the authored preflight warm path.
 
-Earlier measured working-tree checkpoint (2026-10-31): physical main static ESM closure was
-15,490,568 raw / 4,816,400 summed-gzip bytes across 182 outputs, with batch-ten bundle receipt
-`77ff49a0f7a2d9314830a4030594712b5c5ce3dadba8825521bddfd17f9f5795` (2808 files, 414 plans).
-Batch nine is 200,318 raw / 62,355 summed-gzip bytes below batch eight. Pure attack readers now have
-one shared owner; six eager consumers no longer import arena construction through
-`adventureMigration.js`. Its legacy exports remain available. The emitted main closure excludes
-that migration module and `survivalArena.js`; four focused suites pass 59/59 and generated module
-preloads are synchronized. These working-tree builds include concurrent edits, so the exact delta
-is not isolated attribution. Batch ten removes another 191,537 raw / 57,556 summed-gzip bytes:
-the claims facade and renderer now use a shared read model without importing the claims simulation
-owner and automation branch. Canonical claims uses the same readers, preserves the mutating owner
-and legacy exports, and retains all four published facade reads. Its focused suites pass 50/50.
-The 12 MB raw floor and runtime load bars remain open. Codex callers also use its one-shot request
-mailbox without importing the lazy screen.
-
-Optional new-game menu speculation now warms the fixed opening cast, chosen starter and scripted
-onboarding roster without enumerating positionless distant-sector recipe stubs. Materialized launch,
-Continue and arrival retain their own membership logic. The real owner-method tests pass 10/10;
-source asset-byte estimates are not a measured network or startup improvement.
+The static closure result does not establish lower total preflight transfer, faster startup or
+frame-time improvement. The 6 MB target, total preflight bytes, runtime loading bars, and ordinary
+worker/save/context route remain open. Prior M9 checkpoint sizes, receipts, and implementation
+history are consolidated in [the integration coverage archive](../../archive/finish-integration/INTEGRATION_COVERAGE_2026-10-31.md).
 
 **M10 — First sight never stalls.** Adventure first-sight program links (`pipelineReadiness.js`
 serializes every link behind one `linkActive` tail): issue links in parallel batches, use
