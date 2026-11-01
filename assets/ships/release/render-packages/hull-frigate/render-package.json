@@ -99,7 +99,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "121cb9990f8cac87708577d52676ab8a72bd6d841f47adae1ce880bc14021311",
+  "contentHash": "3c85b843aa63a4d2a2c1ae716f64f93902ad57b399cbe93dfbf2e46ff765692b",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -116,16 +116,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "41fff99a3431ae479068261e7aa2a6c282e4622cfacd90a2e5e223841801ab7a",
+      "geometryHash": "a6d02074ecde7341d826289f93729dff1b1a003f0d74440baf54c8c05d53a54f",
       "id": "sf.render.hull-frigate.mesh.lod0-det-authority-stencil.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "ed9b8848b90c173d5711b63a15a37c2adc8926d7d717763bd5519497edf3760e",
+      "materialHash": "53da6e05b6ca0998ab3b6a9fc922bac21e149596a43b961e7ed34714085c88ca",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.002",
       "nodeId": "sf.render.hull-frigate.mesh.lod0-det-authority-stencil",
       "primitiveIndex": 0,
-      "vertexCount": 143
+      "vertexCount": 179
     },
     {
       "bounds": {
@@ -141,16 +141,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5c5d70e8c3f53b62dbd01d51a82897acefd6e122a4ec06093281a3ac5ce125b6",
+      "geometryHash": "2c90d35b8d2979475d3902d61177360b4a72808c7d206b4414a3b04e1b0ba831",
       "id": "sf.render.hull-frigate.mesh.lod0-det-bridge-super.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "a0a1d5e294c811e4e9bc26c98cefb75746d08d0f926dd55f63f959f595da35dd",
+      "materialHash": "b7477865c9412fc911165e727c306861e38ddd0a3e73815ad09f22bdf2e87528",
       "materialPipelineKey": "opaque",
       "meshName": "Cube",
       "nodeId": "sf.render.hull-frigate.mesh.lod0-det-bridge-super",
       "primitiveIndex": 0,
-      "vertexCount": 143
+      "vertexCount": 179
     },
     {
       "bounds": {
@@ -166,16 +166,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ebf1ea8a43ede81cb82420c15dffa9f085c09ac7fd238ea25f210f8f8fa8a6b7",
+      "geometryHash": "771499e6edc08b497360f31eb5918b728c8e03a883b817587d9f45793496a560",
       "id": "sf.render.hull-frigate.mesh.lod0-det-disciplined-wear.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "a0a1d5e294c811e4e9bc26c98cefb75746d08d0f926dd55f63f959f595da35dd",
+      "materialHash": "b7477865c9412fc911165e727c306861e38ddd0a3e73815ad09f22bdf2e87528",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.003",
       "nodeId": "sf.render.hull-frigate.mesh.lod0-det-disciplined-wear",
       "primitiveIndex": 0,
-      "vertexCount": 143
+      "vertexCount": 179
     },
     {
       "bounds": {
@@ -191,16 +191,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0c0529e92173d87c649b61daaa0bee2cfd4910a5e3c5cf3840a9da7f5a8548c9",
+      "geometryHash": "bc7c2dbe9c78103695deb5c86477be771671dc325f09022f6e247ab86f79b049",
       "id": "sf.render.hull-frigate.mesh.lod0-det-engine-vent.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "a03634ff614b440bfe3a73f82e43c6f1e910c2da35140cf12fee3edc9cc4ce05",
+      "materialHash": "4042de1f61bd5014c1f0a9774ff03d11e188345e59e4eb625b543bd8e806cef1",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.006",
       "nodeId": "sf.render.hull-frigate.mesh.lod0-det-engine-vent",
       "primitiveIndex": 0,
-      "vertexCount": 143
+      "vertexCount": 179
     },
     {
       "bounds": {
@@ -216,16 +216,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b3302f822819ac63b1f123ad00afb4dc34cfa9d60e4fb574166596ae13b45cd1",
+      "geometryHash": "78e2ade2dd7f1e07e9e5f56e908222ea8adba7b4db0a4c24fda97163e21ce141",
       "id": "sf.render.hull-frigate.mesh.lod0-det-field-insignia.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "ed9b8848b90c173d5711b63a15a37c2adc8926d7d717763bd5519497edf3760e",
+      "materialHash": "53da6e05b6ca0998ab3b6a9fc922bac21e149596a43b961e7ed34714085c88ca",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.007",
       "nodeId": "sf.render.hull-frigate.mesh.lod0-det-field-insignia",
       "primitiveIndex": 0,
-      "vertexCount": 135
+      "vertexCount": 178
     },
     {
       "bounds": {
@@ -241,16 +241,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "08162b4d83a104cbabe48ad6ae60a5d9083d5028210dbd5d95004a3a33c5620c",
+      "geometryHash": "0607f580fddb42a0fa1fd7db417161735efe139c4f2b09f85f830f051fee87ce",
       "id": "sf.render.hull-frigate.mesh.lod0-det-sensor-mast.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "a03634ff614b440bfe3a73f82e43c6f1e910c2da35140cf12fee3edc9cc4ce05",
+      "materialHash": "4042de1f61bd5014c1f0a9774ff03d11e188345e59e4eb625b543bd8e806cef1",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.005",
       "nodeId": "sf.render.hull-frigate.mesh.lod0-det-sensor-mast",
       "primitiveIndex": 0,
-      "vertexCount": 143
+      "vertexCount": 179
     },
     {
       "bounds": {
@@ -266,16 +266,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7a2ab25f42f61c2898d025e51f837555acafc9435816312377f4a7734d3a5162",
+      "geometryHash": "d5046241ed87326fc1cf52b6d5d47e3cce84d0fc28e5a68983fa77347c737d60",
       "id": "sf.render.hull-frigate.mesh.lod0-det-squadron-stripe.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "ed9b8848b90c173d5711b63a15a37c2adc8926d7d717763bd5519497edf3760e",
+      "materialHash": "53da6e05b6ca0998ab3b6a9fc922bac21e149596a43b961e7ed34714085c88ca",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.001",
       "nodeId": "sf.render.hull-frigate.mesh.lod0-det-squadron-stripe",
       "primitiveIndex": 0,
-      "vertexCount": 143
+      "vertexCount": 179
     },
     {
       "bounds": {
@@ -291,16 +291,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "98b148089331d9bdc8fe0c7fe6d6355436e032a55ff9c0a0dc312a3868d57066",
+      "geometryHash": "3ef317fc0064b4e12e629588794ec3f158ddf8b0952ebbb1970968063b4204de",
       "id": "sf.render.hull-frigate.mesh.lod0-det-turret-collar.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "a03634ff614b440bfe3a73f82e43c6f1e910c2da35140cf12fee3edc9cc4ce05",
+      "materialHash": "4042de1f61bd5014c1f0a9774ff03d11e188345e59e4eb625b543bd8e806cef1",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.004",
       "nodeId": "sf.render.hull-frigate.mesh.lod0-det-turret-collar",
       "primitiveIndex": 0,
-      "vertexCount": 143
+      "vertexCount": 179
     },
     {
       "bounds": {
@@ -316,16 +316,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6dc3bee5d0bf9cba8ddb8040c4429edd4d3422c61d55131bd38b105d9a01c7b7",
+      "geometryHash": "d33f93f708d9aed3df8979a64a32c52a387f3d7995dbc0894aeb137f7750e4bd",
       "id": "sf.render.hull-frigate.mesh.lod0-hull-frigate-main.primitive.0",
       "indexCount": 7308,
       "indexed": true,
-      "materialHash": "a0a1d5e294c811e4e9bc26c98cefb75746d08d0f926dd55f63f959f595da35dd",
+      "materialHash": "b7477865c9412fc911165e727c306861e38ddd0a3e73815ad09f22bdf2e87528",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_HULL_CORVETTE.003",
       "nodeId": "sf.render.hull-frigate.mesh.lod0-hull-frigate-main",
       "primitiveIndex": 0,
-      "vertexCount": 6316
+      "vertexCount": 6359
     },
     {
       "bounds": {
@@ -341,16 +341,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0ff5587662e53a1e9abcf673f3bb85297ef385bebe935ecf8b7fc8284d0d7914",
+      "geometryHash": "3af12b1e05180e01293dbef07851e5a3e6acf948f0fa9fec268c07d2f98e752b",
       "id": "sf.render.hull-frigate.mesh.lod1-hull-frigate-silhouette.primitive.0",
       "indexCount": 4017,
       "indexed": true,
-      "materialHash": "a0a1d5e294c811e4e9bc26c98cefb75746d08d0f926dd55f63f959f595da35dd",
+      "materialHash": "b7477865c9412fc911165e727c306861e38ddd0a3e73815ad09f22bdf2e87528",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_HULL_CORVETTE.001",
       "nodeId": "sf.render.hull-frigate.mesh.lod1-hull-frigate-silhouette",
       "primitiveIndex": 0,
-      "vertexCount": 3297
+      "vertexCount": 3306
     },
     {
       "bounds": {
@@ -366,16 +366,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "da877cd424521c5371faf25855aa0002649bd34500d37fea042fcd5d45b4d345",
+      "geometryHash": "25057390e3ab8cefd7d9ea1d7629cbefa34c57ff3dcc137cd8d57baa777e18e3",
       "id": "sf.render.hull-frigate.mesh.lod2-hull-frigate-silhouette.primitive.0",
       "indexCount": 138,
       "indexed": true,
-      "materialHash": "a0a1d5e294c811e4e9bc26c98cefb75746d08d0f926dd55f63f959f595da35dd",
+      "materialHash": "b7477865c9412fc911165e727c306861e38ddd0a3e73815ad09f22bdf2e87528",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_HULL_CORVETTE.002",
       "nodeId": "sf.render.hull-frigate.mesh.lod2-hull-frigate-silhouette",
       "primitiveIndex": 0,
-      "vertexCount": 107
+      "vertexCount": 138
     }
   ],
   "hlods": [],
@@ -383,8 +383,8 @@
   "lods": [],
   "materials": [
     {
-      "hash": "a03634ff614b440bfe3a73f82e43c6f1e910c2da35140cf12fee3edc9cc4ce05",
-      "id": "material:a03634ff614b440bfe3a73f8",
+      "hash": "4042de1f61bd5014c1f0a9774ff03d11e188345e59e4eb625b543bd8e806cef1",
+      "id": "material:4042de1f61bd5014c1f0a977",
       "name": "Material_Mechanical",
       "pipelineKey": "opaque:front",
       "textures": [
@@ -415,40 +415,8 @@
       ]
     },
     {
-      "hash": "a0a1d5e294c811e4e9bc26c98cefb75746d08d0f926dd55f63f959f595da35dd",
-      "id": "material:a0a1d5e294c811e4e9bc26c9",
-      "name": "Material_Hull",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "hull_frigate_baseColor_1k",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "hull_frigate_hull_orm_1k",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "hull_frigate_neutral_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "hull_frigate_hull_orm_1k",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "ed9b8848b90c173d5711b63a15a37c2adc8926d7d717763bd5519497edf3760e",
-      "id": "material:ed9b8848b90c173d5711b63a",
+      "hash": "53da6e05b6ca0998ab3b6a9fc922bac21e149596a43b961e7ed34714085c88ca",
+      "id": "material:53da6e05b6ca0998ab3b6a9f",
       "name": "Material_Accent",
       "pipelineKey": "opaque:front",
       "textures": [
@@ -473,6 +441,38 @@
         {
           "colorSpace": "linear",
           "name": "hull_frigate_accent_orm_1k",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "b7477865c9412fc911165e727c306861e38ddd0a3e73815ad09f22bdf2e87528",
+      "id": "material:b7477865c9412fc911165e72",
+      "name": "Material_Hull",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "hull_frigate_baseColor_1k",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "hull_frigate_hull_orm_1k",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "hull_frigate_neutral_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "hull_frigate_hull_orm_1k",
           "slot": "occlusion",
           "uri": null
         }
@@ -1073,19 +1073,19 @@
       "sha256": "7036d952d51ef1875dc2b85a232e21f7e5fc1d70e6d62078deb9eac8ded2c2c7"
     },
     "sourceGlb": {
-      "bytes": 3212160,
-      "sha256": "2b2d876250223b4a1598319a12c1579adb2575b3fe8b9dbc6bdd4b831242a952",
+      "bytes": 627192,
+      "sha256": "46aeea5cd6f885bbcdb536be5cb02de146d8cc1fe05b22b6d990bb071af84616",
       "uri": "hull_frigate.glb"
     },
     "sourceManifest": {
-      "bytes": 323116,
-      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
+      "bytes": 325289,
+      "sha256": "9f5292b1b9a6263909cdfdd958c90a32c5534bc20b67a117f25ec6aadd5b50b8",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 3218716,
-    "sha256": "e89dbe2651b6ffa20d524b3166e1fb63523d7f0970e5c303ebce349132c74ba8",
+    "bytes": 642976,
+    "sha256": "0fdc86fe7c4a933113c4189bdefd47693d6bb1d6f32176b7803e28e252ffe79f",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1734,7 +1734,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/hulls/hull_frigate.glb"
   },
-  "runtimeHash": "4bef782b2bb726c29a9b0e725084358c5bd6fbf3ab1caa0523cf981a61952298",
+  "runtimeHash": "7842e5fccabf7724618ec0df5e38bf8d1c3aa40c6264aaa7e8d421662a0608f9",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
