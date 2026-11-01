@@ -6,7 +6,7 @@
 // Output: .devshots/fleet-look/<name>_<view>.png (+ report.json). Crops chase/close to the ship.
 import { spawn } from 'node:child_process';
 import { createServer as createNetServer } from 'node:net';
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, renameSync, unlinkSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { loadPlaywright } from './lib/load-playwright.mjs';
 
@@ -17,6 +17,10 @@ const args = Object.fromEntries(process.argv.slice(2).map((a) => {
 }));
 const OUT = ROOT + (args.out || '.devshots/fleet-look') + '/';
 const views = String(args.views || 'chase,close,inspect').split(',');
+const SHOT_TIMEOUT_MS = Number(args.timeout || 600) * 1000;
+const RUN_STARTED_AT_UTC = new Date().toISOString();
+const RUN_ID = `${process.pid}-${RUN_STARTED_AT_UTC.replace(/[:.]/g, '-')}`;
+const PARTIAL_REPORT_PATH = `${OUT}report.partial-${RUN_ID}.json`;
 
 // Every forge body (tools/blender/forge/fleet.json), from its live release file.
 const FORGE_FLEET = JSON.parse((await import('node:fs')).readFileSync(new URL('../tools/blender/forge/fleet.json', import.meta.url), 'utf8')).ships;
@@ -98,6 +102,32 @@ const browser = await chromium.launch({
       '--disable-background-timer-throttling'],
 });
 const report = [];
+
+export function withFleetLookShotDeadline(operation, { timeoutMs, name, view, state, onTimeout } = {}) {
+  if (typeof operation !== 'function') throw new TypeError('fleet-look shot operation must be a function');
+  if (!Number.isFinite(timeoutMs) || timeoutMs < 1) throw new RangeError('fleet-look shot timeout must be a positive finite number');
+  let timer = null;
+  const work = Promise.resolve().then(operation);
+  const deadline = new Promise((_, reject) => {
+    timer = setTimeout(() => {
+      const stage = String(state?.stage || 'unknown');
+      const error = new Error(`fleet-look shot timed out after ${timeoutMs}ms: ${name}/${view} at ${stage}`);
+      error.code = 'FLEET_LOOK_SHOT_TIMEOUT';
+      error.shot = { name: String(name || ''), view: String(view || ''), stage };
+      if (state && typeof state === 'object') {
+        state.expired = true;
+        state.timeoutError = error;
+      }
+      try { onTimeout?.(error); }
+      catch (reportError) { error.partialReportError = String(reportError?.message || reportError).slice(0, 300); }
+      reject(error);
+    }, timeoutMs);
+  });
+  return Promise.race([work, deadline]).finally(() => {
+    if (timer != null) clearTimeout(timer);
+  });
+}
+
 try {
   mkdirSync(OUT, { recursive: true });
   const page = await browser.newPage({ viewport: { width: 1600, height: 1000 }, deviceScaleFactor: 1 });
@@ -109,7 +139,7 @@ try {
   // 'commit' not 'load': the game's asset preload can hold the load event for minutes under
   // SwiftShader; scripts run fine once navigation commits (same workaround as flight-look).
   await page.goto(server.url + '?dev=fleetlook', { waitUntil: 'commit', timeout: 180000 });
-  await page.waitForFunction(() => window.SF_fleetLookReady === true, null, { timeout: Number(args.timeout || 600) * 1000 });
+  await page.waitForFunction(() => window.SF_fleetLookReady === true, null, { timeout: SHOT_TIMEOUT_MS });
   // --sector=<id> applies that sector's authored light rig (sectorVisualProfiles) to the live
   // lights so bodies can be judged under e.g. Vesta's hot key or Pallas's cold one.
   if (args.sector) {
@@ -139,63 +169,129 @@ try {
   for (const [name, spec] of targets) {
     for (const view of views) {
       const t0 = Date.now();
-      let res;
+      const shotState = { stage: 'prepare', expired: false, timeoutError: null };
       try {
-        for (let attempt = 0; attempt < 4; attempt++) {
-          const shotSpec = { ...spec, view, heading: Number(args.heading || 0), yaw: Number(args.yaw || 0), ...(args.ab ? { ab: JSON.parse(String(args.ab)) } : {}),
-            // --appearance='{"decalId":"concord"}' poses the hull with that paint record;
-            // --factionId=<id> poses it as that faction's NPC (palette + default stencils).
-            ...(args.appearance ? { appearance: JSON.parse(String(args.appearance)) } : {}),
-            ...(args.factionId ? { factionId: String(args.factionId) } : {}) };
-          if (args.mood || args.tune || args.post || args.lights) {
-            // isolate() re-applies the sector rig and mood on the first shot; shoot once to settle
-            // it, apply the switches over the settled state, then take the real frame.
-            if (!lookSwitches.primed) {
-              await page.evaluate((o) => window.SF_fleetLook.shoot(o), shotSpec);
-              lookSwitches.primed = true;
+        const shot = await withFleetLookShotDeadline(async () => {
+          let res;
+          for (let attempt = 0; attempt < 4; attempt++) {
+            const attemptLabel = attempt + 1;
+            shotState.stage = `prepare-shot-${attemptLabel}`;
+            const shotSpec = { ...spec, view, heading: Number(args.heading || 0), yaw: Number(args.yaw || 0), ...(args.ab ? { ab: JSON.parse(String(args.ab)) } : {}),
+              // --appearance='{"decalId":"concord"}' poses the hull with that paint record;
+              // --factionId=<id> poses it as that faction's NPC (palette + default stencils).
+              ...(args.appearance ? { appearance: JSON.parse(String(args.appearance)) } : {}),
+              ...(args.factionId ? { factionId: String(args.factionId) } : {}) };
+            if (args.mood || args.tune || args.post || args.lights) {
+              // isolate() re-applies the sector rig and mood on the first shot; shoot once to settle
+              // it, apply the switches over the settled state, then take the real frame.
+              if (!lookSwitches.primed) {
+                shotState.stage = `prime-render-${attemptLabel}`;
+                await page.evaluate((o) => window.SF_fleetLook.shoot(o), shotSpec);
+                if (shotState.expired) throw shotState.timeoutError;
+                lookSwitches.primed = true;
+              }
+              shotState.stage = `apply-look-${attemptLabel}`;
+              await lookSwitches();
+              if (shotState.expired) throw shotState.timeoutError;
             }
-            await lookSwitches();
+            shotState.stage = `render-${attemptLabel}`;
+            res = await page.evaluate(async (o) => {
+              const r = await window.SF_fleetLook.shoot(o);
+              return r;
+            }, shotSpec);
+            if (shotState.expired) throw shotState.timeoutError;
+            // Under a busy CPU the first frames can present before shaders finish linking: a blank
+            // frame has almost no bright pixels. Re-shoot instead of reporting an empty ship.
+            // Measure the region the file actually keeps — chase/close crop the center, and a
+            // starfield passes any full-frame threshold, which is how the first cold body of a
+            // fleet run once shipped an empty chase frame (hornet, 2026-10-24: zero warm pixels).
+            shotState.stage = `inspect-render-${attemptLabel}`;
+            let frame = sharp(Buffer.from(res.url.split(',')[1], 'base64'));
+            if (CROPS[view]) {
+              const [cw, ch] = CROPS[view];
+              frame = frame.extract({ left: Math.round((1600 - cw) / 2), top: Math.round((1000 - ch) / 2), width: cw, height: ch });
+            }
+            const stats = await frame.stats();
+            if (shotState.expired) throw shotState.timeoutError;
+            const lit = stats.channels.slice(0, 3).reduce((a, c) => a + c.max, 0);
+            const spread = stats.channels.slice(0, 3).reduce((a, c) => a + c.stdev, 0);
+            if (lit > 300 && spread > 6) break;
+            console.log('  blank frame, re-shooting', name, view);
+            shotState.stage = `blank-frame-retry-wait-${attemptLabel}`;
+            await page.waitForTimeout(4000);
+            if (shotState.expired) throw shotState.timeoutError;
           }
-          res = await page.evaluate(async (o) => {
-            const r = await window.SF_fleetLook.shoot(o);
-            return r;
-          }, shotSpec);
-          // Under a busy CPU the first frames can present before shaders finish linking: a blank
-          // frame has almost no bright pixels. Re-shoot instead of reporting an empty ship.
-          // Measure the region the file actually keeps — chase/close crop the center, and a
-          // starfield passes any full-frame threshold, which is how the first cold body of a
-          // fleet run once shipped an empty chase frame (hornet, 2026-10-24: zero warm pixels).
-          let frame = sharp(Buffer.from(res.url.split(',')[1], 'base64'));
-          if (CROPS[view]) {
-            const [cw, ch] = CROPS[view];
-            frame = frame.extract({ left: Math.round((1600 - cw) / 2), top: Math.round((1000 - ch) / 2), width: cw, height: ch });
+          if (shotState.expired) throw shotState.timeoutError;
+          const buf = Buffer.from(res.url.split(',')[1], 'base64');
+          const file = `${OUT}${name}_${view}.png`;
+          const crop = CROPS[view];
+          if (crop) {
+            shotState.stage = 'write-cropped-image';
+            const left = Math.round((1600 - crop[0]) / 2), top = Math.round((1000 - crop[1]) / 2);
+            const pendingFile = `${file}.pending-${RUN_ID}`;
+            try {
+              await sharp(buf).extract({ left, top, width: crop[0], height: crop[1] }).png().toFile(pendingFile);
+              if (shotState.expired) throw shotState.timeoutError;
+              renameSync(pendingFile, file);
+            } catch (error) {
+              try { unlinkSync(pendingFile); } catch (_) { /* no temporary image was created */ }
+              throw error;
+            }
+          } else {
+            shotState.stage = 'write-image';
+            if (shotState.expired) throw shotState.timeoutError;
+            writeFileSync(file, buf);
           }
-          const stats = await frame.stats();
-          const lit = stats.channels.slice(0, 3).reduce((a, c) => a + c.max, 0);
-          const spread = stats.channels.slice(0, 3).reduce((a, c) => a + c.stdev, 0);
-          if (lit > 300 && spread > 6) break;
-          console.log('  blank frame, re-shooting', name, view);
-          await page.waitForTimeout(4000);
-        }
+          return { res, file };
+        }, {
+          timeoutMs: SHOT_TIMEOUT_MS,
+          name,
+          view,
+          state: shotState,
+          onTimeout(error) {
+            const failure = {
+              name,
+              view,
+              timeoutMs: SHOT_TIMEOUT_MS,
+              stage: shotState.stage,
+              error: String(error?.message || error).slice(0, 500),
+            };
+            const completed = new Set(report.filter((entry) => entry.file).map((entry) => `${entry.name}\0${entry.view}`));
+            const pendingShots = targets.flatMap(([targetName]) => views
+              .filter((targetView) => !completed.has(`${targetName}\0${targetView}`))
+              .map((targetView) => ({ name: targetName, view: targetView })));
+            const partial = {
+              schema: 'spaceface.fleetLookPartial.v1',
+              status: 'aborted',
+              runId: RUN_ID,
+              startedAtUtc: RUN_STARTED_AT_UTC,
+              abortedAtUtc: new Date().toISOString(),
+              outputRoot: OUT,
+              shotTimeoutMs: SHOT_TIMEOUT_MS,
+              currentFailure: failure,
+              completedShotCount: completed.size,
+              pendingShots,
+              report: [...report, failure],
+              logs: logs.slice(0, 80),
+            };
+            try { writeFileSync(PARTIAL_REPORT_PATH, `${JSON.stringify(partial, null, 2)}\n`); }
+            catch (writeError) { error.partialReportError = String(writeError?.message || writeError).slice(0, 300); }
+          },
+        });
+        const { res, file } = shot;
+        report.push({ name, view, file, ok: res.ok, size: res.size, radius: res.radius, materials: view === views[0] ? res.materials : undefined, ms: Date.now() - t0 });
+        console.log('shot', name, view, `${Date.now() - t0}ms`, res.ok ? '' : '(authored swap not confirmed)');
       } catch (err) {
-        report.push({ name, view, error: String(err).slice(0, 400) });
+        report.push({ name, view, error: String(err).slice(0, 500), ...(err?.code === 'FLEET_LOOK_SHOT_TIMEOUT' ? { timedOut: true, stage: shotState.stage, timeoutMs: SHOT_TIMEOUT_MS } : {}) });
         console.log('FAIL', name, view, String(err).slice(0, 200));
+        if (err?.code === 'FLEET_LOOK_SHOT_TIMEOUT') throw err;
         continue;
       }
-      const buf = Buffer.from(res.url.split(',')[1], 'base64');
-      const file = `${OUT}${name}_${view}.png`;
-      const crop = CROPS[view];
-      if (crop) {
-        const left = Math.round((1600 - crop[0]) / 2), top = Math.round((1000 - crop[1]) / 2);
-        await sharp(buf).extract({ left, top, width: crop[0], height: crop[1] }).png().toFile(file);
-      } else writeFileSync(file, buf);
-      report.push({ name, view, file, ok: res.ok, size: res.size, radius: res.radius, materials: view === views[0] ? res.materials : undefined, ms: Date.now() - t0 });
-      console.log('shot', name, view, `${Date.now() - t0}ms`, res.ok ? '' : '(authored swap not confirmed)');
     }
   }
   if (targets.length > 1) for (const v of views) await contactSheet(v, report);
   writeFileSync(OUT + 'report.json', JSON.stringify({ report, logs: logs.slice(0, 80) }, null, 2));
 } finally {
-  await browser.close();
-  server.kill();
+  try { await browser.close(); }
+  finally { server.kill(); }
 }
