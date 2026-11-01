@@ -17,6 +17,11 @@ import { createCatalogStationRestore } from '../src/save/catalogStationRestore.j
 import { createBus } from '../src/core/eventBus.js';
 import { createSimLaneRuntime } from '../src/core/simLaneMain.js';
 import { createDomainDiffer } from '../scripts/lib/simReadModel.mjs';
+import {
+  combineOpeningProducerCensuses,
+  createOpeningProducerCensus,
+  createOpeningSubmissionPlan,
+} from '../src/render/openingSubmissionPlan.js';
 const require = createRequire(import.meta.url);
 const { parse } = require(require.resolve('@babel/parser', { paths: [process.env.SPACEFACE_DEPS_ROOT || process.cwd()] }));
 const source = readFileSync(process.env.ENTRY_SOURCE_RENDERER || new URL('../src/render/renderer.js', import.meta.url), 'utf8');
@@ -505,6 +510,7 @@ test('opening capture retains bounded incomplete or stale identity diagnostics',
     const state = { world: { enterSerial: 4, currentSectorId: 'ceres' }, render: {},
       entities: new Map([[42, { type: 'ship', alive: true, data: { defId: 'ship_test' } }]]) };
     const owner = { state, _meshes: new Map([[42, root]]), _liveSectorCookGeneration: 7 };
+    let captureBecameStale = false;
     const plan = { complete: false, firstPlayablePipelineSet: { complete: false, reason: 'missing-opening-program-census' },
       roots: [{ id: `uuid:${root.uuid}`, name: 'Hull', role: 'opening-entity-root', blocking: true, drawLeafCount: 0 }],
       drawLeaves: [], resourceIdentityCensusMatches: false,
@@ -513,18 +519,24 @@ test('opening capture retains bounded incomplete or stale identity diagnostics',
       blockingReasons: [{ rootId: 'player', role: 'player', reason: 'no-leaves' },
         { role: 'productionBoundary', reason: 'missing-or-unverified-blocking-content-hash' }] };
     const capture = evaluate(openingCaptureCode, owner, {
-      state, captureLiveSectorCookStale: () => () => stale,
+      state, captureLiveSectorCookStale: () => () => captureBecameStale,
       *buildOpeningSubmissionPlanSteps(onCandidate) {
         onCandidate(root, { role: 'opening-entity-root', entityId: 42 },
           { layers: new THREE.Layers(), frustum: { intersectsObject: () => false, planes: [] } });
         if (scenario === 'replaced') owner._meshes.set(42, new THREE.Group());
-        if (stale) state.world.enterSerial = 5; return plan;
+        if (stale) {
+          state.world.enterSerial = 5;
+          captureBecameStale = true;
+        }
+        return plan;
       },
       scene, cam: { obj: { layers: new THREE.Layers() } }, isRetiredRigidOpaqueBatch: () => false,
       rendererGenerationIsActive: () => true, stampProducerReceipt: () => {},
       openingSubjectIdentity: () => null, openingCohort: { capture() {}, snapshot: () => ({}) },
     });
-    capture().next();
+    const captureSteps = capture();
+    let captureStep = captureSteps.next();
+    while (!captureStep.done) captureStep = captureSteps.next();
     const detail = state.render.openingPlanCaptureFailure;
     assert.equal(detail.reason, stale ? 'stale-capture' : 'incomplete-plan');
     if (stale) assert.deepEqual([detail.expected.enterSerial, detail.actual.enterSerial], [4, 5]);
@@ -544,6 +556,153 @@ test('opening capture retains bounded incomplete or stale identity diagnostics',
       assert.deepEqual(detail.resourceDifferences.geometryBufferIds.capturedOnly, ['new']);
     }
   }
+});
+
+function openingCapturePlanForRoot(root, scene, camera) {
+  const producer = createOpeningProducerCensus(root, { includeOffscreen: true });
+  const combined = combineOpeningProducerCensuses([producer]);
+  return createOpeningSubmissionPlan({
+    candidates: [{ root, role: 'opening-entity-root', entityId: 42, includeOffscreen: true }],
+    globalProgramKeys: combined.globalProgramKeys,
+    openingProgramKeys: combined.openingProgramKeys,
+    requiredContentHashes: combined.requiredContentHashes,
+    producerCensus: combined,
+    producerResourceIdentitySets: combined.resourceIdentitySets,
+    includeOffscreen: true,
+    scene,
+    camera,
+  });
+}
+
+function openingCaptureFixture(root) {
+  root.userData.flightRenderPackage = {
+    schema: 'spaceface.flightRenderPackage.v1',
+    assetId: 'test-opening-recaptured-wreck',
+    contentHash: 'c'.repeat(64),
+    contentHashVerified: true,
+  };
+  const scene = new THREE.Scene(); scene.add(root);
+  const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 10_000);
+  const state = {
+    world: { enterSerial: 4, currentSectorId: 'helios' }, render: {},
+    entities: new Map([[42, { id: 42, type: 'wreck', alive: true, data: { defId: 'wreck_fixture' } }]]),
+  };
+  const owner = { state, _meshes: new Map([[42, root]]), _liveSectorCookGeneration: 7 };
+  const stamped = [], cohortCaptures = [], selected = [], plans = [];
+  let captureStale = false;
+  const capture = evaluate(openingCaptureCode, owner, {
+    state,
+    scene,
+    cam: { obj: camera },
+    captureLiveSectorCookStale: () => () => captureStale,
+    rendererGenerationIsActive: () => true,
+    isRetiredRigidOpaqueBatch: () => false,
+    stampProducerReceipt: (plan) => stamped.push(plan),
+    openingSubjectIdentity: (subject) => subject.uuid,
+    openingCohort: {
+      capture: (identities) => cohortCaptures.push([...identities]),
+      snapshot: () => ({ identities: cohortCaptures.at(-1) || [] }),
+    },
+    *buildOpeningSubmissionPlanSteps(onCandidate) {
+      selected.push(root);
+      onCandidate(root, { role: 'opening-entity-root', entityId: 42, includeOffscreen: true }, camera);
+      yield;
+      const plan = openingCapturePlanForRoot(root, scene, camera);
+      plans.push(plan);
+      return plan;
+    },
+  });
+  state.render.captureOpeningSubmissionPlanSteps = capture;
+  return { state, root, selected, stamped, cohortCaptures, plans, capture,
+    setCaptureStale(value) { captureStale = value === true; } };
+}
+
+test('opening capture recenses the complete cohort when a selected root gains its first drawable leaf', () => {
+  const root = new THREE.Group(); root.name = 'restored-wreck-root';
+  const f = openingCaptureFixture(root);
+  const steps = f.capture();
+
+  assert.equal(steps.next().done, false, 'first candidate selection yields before producer census');
+  const firstPlanYield = steps.next();
+  assert.equal(firstPlanYield.done, false, 'an empty blocking candidate requests a fresh whole-cohort capture');
+  const firstPlan = f.plans[0];
+  assert.equal(f.selected.length, 1);
+  assert.equal(firstPlan.complete, false);
+  assert.equal(firstPlan.roots[0].drawLeafCount, 0);
+  assert.equal(f.stamped.length, 0, 'the incomplete snapshot is never sealed');
+
+  const restoredLeaf = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial());
+  restoredLeaf.name = 'restored-wreck-hull';
+  root.add(restoredLeaf);
+  assert.equal(steps.next().done, false, 'the retry selects candidates again after the leaf becomes available');
+  const sealedStep = steps.next();
+
+  assert.equal(sealedStep.done, true);
+  const plan = sealedStep.value;
+  assert.equal(f.selected.length, 2, 'whole candidate selection is repeated, not just the leaf walk');
+  assert.strictEqual(plan, f.state.render.openingSubmissionPlan);
+  assert.equal(plan.complete, true);
+  assert.equal(plan.roots[0].drawLeafCount, 1);
+  assert.equal(plan.drawLeaves.length, 1);
+  assert.deepEqual(plan.compileSubjects, [restoredLeaf]);
+  assert.equal(plan.producerCensus.drawLeafIds.length, 1);
+  assert.equal(plan.producerCensus.drawLeafIds[0], plan.drawLeaves[0].id);
+  assert.equal(plan.resourceIdentityCensusMatches, true, 'producer resources are recaptured with the new drawable');
+  assert.equal(f.state.render.openingPlanCaptureFailure, null);
+  assert.deepEqual(f.stamped, [plan], 'only the complete recaptured plan receives a producer receipt');
+  assert.deepEqual(f.cohortCaptures, [[restoredLeaf.uuid]], 'the opening cohort records the recaptured leaf identity');
+  assert.deepEqual(f.state.render.openingAdmissionCohort, { identities: [restoredLeaf.uuid] });
+  assert.notStrictEqual(firstPlan, plan, 'the stale incomplete plan is never published as the final plan');
+  assert.equal(f.plans.length, 2, 'the retry regenerates both plan and producer census');
+});
+
+test('opening capture remains failed when the selected blocking root stays empty through every bounded recapture', () => {
+  const root = new THREE.Group(); root.name = 'persistently-empty-wreck-root';
+  const f = openingCaptureFixture(root);
+  const steps = f.capture();
+  let step = steps.next();
+  let yields = 0;
+  while (!step.done) {
+    yields++;
+    step = steps.next();
+  }
+
+  const plan = step.value;
+  assert.equal(f.selected.length, 3, 'capture makes only the bounded initial attempt plus two retries');
+  assert.ok(yields > 0);
+  assert.equal(plan.complete, false);
+  assert.equal(plan.roots[0].drawLeafCount, 0);
+  assert.strictEqual(plan, f.state.render.openingSubmissionPlan);
+  assert.equal(f.state.render.openingPlanCaptureFailure.reason, 'incomplete-plan');
+  assert.equal(f.state.render.openingPlanCaptureFailure.emptyBlockingRootCount, 1);
+  assert.equal(f.state.render.openingPlanCaptureFailure.emptyBlockingRoots[0].entityId, 42);
+  assert.equal(f.state.render.openingPlanCaptureFailure.emptyBlockingRoots[0].selectedStillCurrent, true);
+  assert.deepEqual(f.stamped, [plan]);
+  assert.deepEqual(f.cohortCaptures, [[]], 'an empty persistent root cannot publish a drawable cohort');
+});
+
+test('opening recapture does not start another producer walk after the selected owner becomes stale at its retry yield', () => {
+  const root = new THREE.Group(); root.name = 'superseded-wreck-root';
+  const f = openingCaptureFixture(root);
+  const steps = f.capture();
+
+  assert.equal(steps.next().done, false, 'initial candidate census yields');
+  assert.equal(steps.next().done, false, 'empty blocking plan yields before bounded recapture');
+  assert.equal(f.selected.length, 1);
+
+  f.state.world.enterSerial = 5;
+  f.setCaptureStale(true);
+  const stale = steps.next();
+
+  assert.equal(stale.done, true);
+  assert.equal(stale.value, null, 'superseded capture cannot return an opening plan');
+  assert.equal(f.selected.length, 1, 'stale ownership is checked before the retry producer walk begins');
+  assert.equal(f.plans.length, 1);
+  assert.equal(f.stamped.length, 0);
+  assert.equal(f.cohortCaptures.length, 0);
+  assert.equal(f.state.render.openingPlanCaptureFailure.reason, 'stale-capture');
+  assert.deepEqual([f.state.render.openingPlanCaptureFailure.expected.enterSerial,
+    f.state.render.openingPlanCaptureFailure.actual.enterSerial], [4, 5]);
 });
 function fixture(providers = []) {
   const frames = [], marks = [];

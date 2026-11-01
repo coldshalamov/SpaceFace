@@ -13006,7 +13006,22 @@ export const render = {
         if (key) selectedRoots.set(key, { root, entityId, camera, cameraAtSelection: cameraState(),
           includeOffscreen: metadata.includeOffscreen === true });
       };
-      const plan = yield* buildOpeningSubmissionPlanSteps.call(this, captureCandidate);
+      let plan;
+      // The candidate census and final producer/leaf census are stepped across presents.
+      // A selected entity can change between them; rebuild the whole cohort and producer
+      // census rather than sealing a mixed picture or silently dropping its blocking root.
+      // The caller's existing first-picture deadline still bounds all attempts.
+      for (let attempt = 0; attempt < 3; attempt++) {
+        if (captureStale()) break;
+        selectedRoots.clear();
+        plan = yield* buildOpeningSubmissionPlanSteps.call(this, captureCandidate);
+        if (captureStale()) break;
+        const changedSelectedRoot = Array.isArray(plan?.roots) && plan.roots.some((root) => (
+          root?.blocking === true && root.drawLeafCount === 0 && selectedRoots.has(root.id)
+        ));
+        if (!changedSelectedRoot || attempt === 2) break;
+        yield;
+      }
       if (captureStale()) {
         captureRender.openingPlanCaptureFailure = {
           reason: 'stale-capture', expected,
