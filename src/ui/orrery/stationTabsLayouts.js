@@ -1401,6 +1401,18 @@ ${T} .sx-ct__rows .sx-ct-row.sx-decision__opt--sub .k-row__sub { font-size: 12px
   ${D} .sx-dossier > .sx-dossier__foot { grid-column:2 !important; grid-row:1 / 3 !important; align-self:start !important; margin:0 0 4px !important; }
   ${D} .sx-dossier > .sx-dossier__risk { grid-column:2 !important; grid-row:3 / 5 !important; align-self:start !important; margin:0 0 4px !important; }
   ${D} .sx-dossier > .sx-dossier__terms { grid-column:2 !important; grid-row:5 / span 4 !important; align-self:start !important; }
+  /* 960×540: the ~120px dossier faded the reward out under its fold (the left column ran caps, a two-line title, client and
+     a 26px figure), and ACCEPT's two-line "hold to accept" note ended on the frame's right edge. The left column closes up so
+     the reward reads on first paint; the key and its note give back ~11px so the note stands inside the frame. */
+  ${D} .sx-dossier { padding-top:0 !important;
+    -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 10px), transparent) !important; mask-image:linear-gradient(180deg, #000 calc(100% - 10px), transparent) !important; }
+  ${D} .sx-dossier > .k-caps { margin:0 !important; line-height:1.2 !important; }
+  ${D} .sx-dossier__title { font-size:15px !important; line-height:1.12 !important; margin:0 0 1px !important; }
+  ${D} .sx-dossier__client { margin:0 !important; line-height:1.25 !important; }
+  ${D} .sx-dossier .k-hero--hero { margin:2px 0 0 !important; }
+  ${D} .sx-dossier .k-hero--hero .k-hero__n { font-size:22px !important; line-height:1 !important; }
+  ${D} .sx-dossier__foot .sx-ct-commit.orr-lampkey { padding:0 9px 0 8px !important; }
+  ${D} .sx-dossier__foot .sx-ct-commit.orr-lampkey .orr-lampkey__note { margin-left:14px !important; letter-spacing:.04em !important; }
 }
 @media (min-width:801px) and (max-width:900px) and (min-height:461px) and (max-height:800px) {
   ${D} .sx-dossier { grid-template-columns:minmax(0, 1fr) !important; padding-top:6px !important; }
