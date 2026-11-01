@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import * as THREE from 'three';
+import { driveCompileShadowDepthPipelines } from '../src/render/renderer.js';
 
 import {
   armAdmissionShadows,
@@ -11,6 +12,7 @@ import {
   compileShadowDepthPipelinesSteps,
   createShadowDepthStagingSession,
   disposeAdmissionShadowResources,
+  prepareShadowDepthTextureLease,
   UNSTAGED_COLLECT_OVER_COVER,
   isUnstagedCollectOverCover,
   collectUnstagedShadowCastersFlag,
@@ -19,6 +21,11 @@ import {
 } from '../src/render/shadowDepthAdmission.js';
 import { scheduleRealtimeShadowRefresh } from '../src/render/shadowPresentCadence.js';
 import { createShadowDepthStageMethods } from '../src/render/runtime/shadowDepthStage.js';
+import {
+  createPackageDetachManifest,
+  detachPackageTexture,
+  resetPackageDetachManifestsForTests,
+} from '../src/render/packageCpuDetach.js';
 
 test('shadow-enable stages an invalidated census and sheds a detached root before its queued arm', () => {
   let callback = null, closed = 0;
@@ -264,6 +271,165 @@ test('shadow draw upload failures carry bounded compressed-sampler identity and 
   });
   assert.match(caught.stack, /\[shadow-depth-texture\] \{"caster":/,
     'the existing warning stack carries the bounded identity record');
+});
+
+test('shadow depth texture lease canonically refills a detached package mip chain and holds it through the drive', async (t) => {
+  resetPackageDetachManifestsForTests();
+  t.after(() => resetPackageDetachManifestsForTests());
+  const makeTexture = () => new THREE.CompressedTexture(
+    [{ data: new Uint8Array(16), width: 4, height: 4 }],
+    4, 4, THREE.RGBAFormat,
+  );
+  const texture = makeTexture();
+  const donor = makeTexture();
+  texture.name = 'detached-shadow-map';
+  donor.name = texture.name;
+  texture.needsUpdate = true;
+  createPackageDetachManifest({
+    assetId: 'fixture.shadow-depth',
+    contentHash: 'a'.repeat(64),
+    resources: [texture],
+  }, {
+    redecode: async () => ({ scene: new THREE.Scene(), resources: [donor] }),
+    collectResources: () => [donor],
+  });
+  assert.equal(detachPackageTexture(texture), true, 'the real package detach owner empties the payload');
+  assert.equal(texture.mipmaps.length, 0);
+
+  const hull = new THREE.Mesh(new THREE.BufferGeometry(),
+    new THREE.MeshBasicMaterial({ map: texture }));
+  hull.castShadow = true;
+  hull.name = 'package-caster';
+  const generatedDepth = { map: texture, properties: { currentProgram: { cacheKey: 'depth-key' } } };
+  const renderer = {
+    shadowMap: { enabled: true },
+    render() {
+      if (renderer.shadowMap.enabled === false) return;
+      renderer.renderBufferDirect({}, null, {}, generatedDepth, hull, null);
+    },
+    renderBufferDirect() {
+      // Mirrors Three's compressed-texture upload read at texStorage2D.
+      return texture.mipmaps[0].width;
+    },
+    properties: { get: (value) => value === texture ? null : value?.properties || {} },
+    getContext() { return { isContextLost: () => false }; },
+    getRenderTarget() { return null; },
+    setRenderTarget() {},
+  };
+  const compile = () => compileShadowDepthPipelines({
+    renderer,
+    light: { castShadow: true, shadow: {} },
+    camera: {},
+    subjects: [hull],
+    THREE: mockThree(),
+    captureObjectHome: (object) => ({ object }),
+    restoreObjectHome() {},
+  });
+
+  assert.throws(compile, /reading 'width'/,
+    'without the canonical package refill, context-local staging reaches the empty mip chain');
+  const lease = await prepareShadowDepthTextureLease({
+    renderer,
+    textures: [texture],
+    state: { render: { contextRecovery: { generation: 2 } } },
+    yieldToMain: async () => {},
+  });
+  assert.equal(lease.ready, true);
+  try {
+    assert.equal(texture.mipmaps[0]?.width, 4, 'canonical package re-decode restored the real mip chain');
+    assert.equal(detachPackageTexture(texture), false, 'the active shadow-drive lease prevents mid-drive release');
+    assert.equal(compile().skipped, false, 'the real detached texture fixture now completes shadow staging');
+  } finally {
+    lease.release();
+  }
+  assert.equal(detachPackageTexture(texture), true, 'the upload lease is released when the drive ends');
+
+  let detachBlockedDuringDrive = false;
+  renderer.render = () => {
+    detachBlockedDuringDrive = detachPackageTexture(texture) === false;
+    renderer.renderBufferDirect({}, null, {}, generatedDepth, hull, null);
+  };
+  const driven = await driveCompileShadowDepthPipelines({
+    renderer,
+    light: { castShadow: true, shadow: {} },
+    camera: {},
+    subjects: [hull],
+    state: { render: { contextRecovery: { generation: 2 } } },
+    THREE: mockThree(),
+    captureObjectHome: (object) => ({ object }),
+    restoreObjectHome() {},
+  }, async () => {});
+  assert.equal(driven.skipped, false, 'the paced owner driver refills before staging the depth draw');
+  assert.equal(detachBlockedDuringDrive, true, 'the paced driver holds package payload through its draw');
+  assert.equal(detachPackageTexture(texture), true, 'the paced driver releases its lease when settled');
+
+  const cancelledState = { render: { contextRecovery: { generation: 4 } } };
+  let cancelledDraws = 0;
+  const renderBeforeCancel = renderer.render;
+  renderer.render = (...args) => {
+    cancelledDraws += 1;
+    return renderBeforeCancel(...args);
+  };
+  const cancelled = await driveCompileShadowDepthPipelines({
+    renderer,
+    light: { castShadow: true, shadow: {} },
+    camera: {},
+    subjects: [hull],
+    state: cancelledState,
+    THREE: mockThree(),
+    captureObjectHome: (object) => ({ object }),
+    restoreObjectHome() {},
+  }, async () => { cancelledState.render.contextRecovery.generation += 1; });
+  assert.equal(cancelled.aborted, true, 'a context generation change during refill aborts staging');
+  assert.equal(cancelledDraws, 0, 'cancelled refill never enters the shadow draw');
+  assert.equal(detachPackageTexture(texture), true, 'the cancelled drive releases its payload lease');
+
+  const manyRoot = new THREE.Group();
+  const sharedMaterial = new THREE.MeshBasicMaterial({ map: texture });
+  const manyCasters = Array.from({ length: 33 }, (_, index) => {
+    const caster = new THREE.Mesh(new THREE.BufferGeometry(), sharedMaterial);
+    caster.castShadow = true;
+    caster.name = `pace-fault-caster-${index}`;
+    manyRoot.add(caster);
+    return caster;
+  });
+  let stagedDraws = 0;
+  renderer.render = () => {
+    if (renderer.shadowMap.enabled === false) return;
+    stagedDraws += 1;
+    renderer.renderBufferDirect({}, null, {}, generatedDepth, manyCasters[0], null);
+  };
+  const originalRenderBufferDirect = renderer.renderBufferDirect;
+  const capturedHomes = [];
+  const restoredHomes = [];
+  const paceFault = new Error('shadow pace rejected after partial staged draw');
+  await assert.rejects(driveCompileShadowDepthPipelines({
+    renderer,
+    light: { castShadow: true, shadow: {} },
+    camera: {},
+    subjects: [manyRoot],
+    state: { render: { contextRecovery: { generation: 9 } } },
+    THREE: mockThree(),
+    captureObjectHome(object) {
+      const home = { object, parent: object.parent };
+      capturedHomes.push(home);
+      return home;
+    },
+    restoreObjectHome(home) {
+      restoredHomes.push(home.object);
+      if (home.parent && home.object.parent !== home.parent) home.parent.add(home.object);
+    },
+  }, async () => {
+    if (stagedDraws > 0) throw paceFault;
+  }), (error) => error === paceFault);
+  assert.ok(stagedDraws > 0, 'the rejected yield follows a real staged depth draw');
+  assert.ok(capturedHomes.length > 0 && capturedHomes.length < manyCasters.length,
+    'the driver is interrupted after one partial caster slice');
+  assert.equal(restoredHomes.length, capturedHomes.length, 'all captured caster homes restore before rejection escapes');
+  assert.equal(manyRoot.children.length, manyCasters.length, 'no caster remains parked under the staging scene');
+  assert.equal(renderer.renderBufferDirect, originalRenderBufferDirect, 'the draw hook is restored on driver rejection');
+  assert.equal(renderer.shadowMap.enabled, true, 'the caller shadow flag is restored on driver rejection');
+  assert.equal(detachPackageTexture(texture), true, 'the driver releases the payload lease on pace rejection');
 });
 
 test('shadow depth admission fails closed when its actual depth draw has no program binding', () => {

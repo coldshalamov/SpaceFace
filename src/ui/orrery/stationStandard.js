@@ -121,6 +121,19 @@ ${P} .sxb-vital__acts .orr-act__cost { font-family:${NUM} !important; font-size:
 /* In the short desktop berth, the standard header's fourth track must not consume the station
    body as a flexible spacer. Keep the authored two-column areas and let the five bands size to
    their content; the crown readings share their available column without wrapping. */
+/* On a phone the station name and purse cannot share the same row: the older composition lifts
+   the crown to save head height, but the Standard purse has a 232px ledger width. Let it follow the
+   title as a compact two-column reading instead of painting across the name. */
+@media (max-width:480px) and (min-height:601px) {
+  ${P} .sxb-berth.dp-frame__head > .sxb-crown { margin-top:0 !important; }
+  ${P} .so-station-title > .sxb-berth__name { padding-right:0 !important; }
+  ${P} .sxb-crown .sxb-purse { min-width:0 !important; width:max-content !important; max-width:100% !important;
+    grid-template-columns:auto auto !important; grid-template-areas:"label value" "delta delta" !important;
+    justify-content:start !important; align-items:center !important; gap:0 10px !important;
+    margin:0 !important; padding:5px 9px !important; text-align:left !important; }
+  ${P} .sxb-crown .sxb-purse__label { width:auto !important; border:0 !important; padding:0 !important; }
+  ${P} .sxb-crown .sxb-purse__value { font-size:20px !important; line-height:1.1 !important; }
+}
 @media (min-width:901px) and (max-width:1100px) and (min-height:461px) and (max-height:640px) {
   ${P}:has(#sx-panel > .sx-sw:not([hidden])) { grid-template-rows:max-content minmax(0,1fr) max-content !important; }
   ${P}:has(#sx-panel > .sx-sw:not([hidden])) .sxb-berth.dp-frame__head {
@@ -144,6 +157,14 @@ ${P} .sxb-vital__acts .orr-act__cost { font-family:${NUM} !important; font-size:
   ${P} .sxb-ops > .of-facility-rail { flex:0 0 100% !important; max-width:none !important; width:100% !important; }
   ${P} .sxb-ops > .sx-comms { order:2 !important; margin:0 !important; }
   ${P} .sxb-ops > .sxb-launch-seat { order:3 !important; margin:0 0 0 auto !important; }
+}
+/* …and in that short 901–1100 berth the five readings took equal fifths (~105px), so LEDGER's Draw (+cost,
+   ~121px) and MUNITIONS' Rearm (~107px) ran past their cells and touched. The two verb-bearing cells take
+   their own width; HULL, FUEL and HOLD share what is left. Verbs close up 2px a side to make the room. */
+@media (min-width:901px) and (max-width:1100px) and (min-height:461px) and (max-height:640px) {
+  ${P} .sxb-crown .sxb-vitals { gap:6px !important; }
+  ${P} .sxb-crown .sxb-vitals > .sxb-vital:is(.sxb-vital--note, .sxb-vital--muni) { flex:0 0 auto !important; }
+  ${P} .sxb-crown .sxb-vital__acts > button { padding-left:7px !important; padding-right:7px !important; }
 }
 
 /* ---- the ad-boards: legible, never faint ----------------------------------------------------- */
@@ -299,6 +320,14 @@ ${P} .sx-mkt .sx-decision__opt .k-row__sub { display:block !important; margin:2p
   ${P} .sx-mkt .sx-mkt-table { table-layout:auto !important; }
   ${P} .sx-mkt .sx-mkt-table :is(th, td) { padding-left:6px !important; padding-right:6px !important; }
   ${P} .sx-mkt .sx-mkt-table :is(th, td):is(:nth-child(2), :nth-child(3), :nth-child(4)) { width:1% !important; }
+  /* The short berth gives the trade console a 244px column. Keep its quantity controls within
+     that column and flow the quote/actions vertically instead of letting the fixed desktop dial
+     track push BUY/SELL past the stage edge. The console remains the stage's own scroll surface. */
+  ${P} .sx-mkt__console { min-width:0 !important; max-width:100% !important; overflow-x:hidden !important; overflow-y:auto !important; }
+  ${P} .sx-mkt .sx-trade { grid-template-columns:minmax(0,1fr) !important; grid-template-rows:auto auto auto auto auto !important;
+    grid-template-areas:"dial" "total" "note" "verb" "breakdown" !important; column-gap:0 !important; row-gap:4px !important; }
+  ${P} .sx-mkt .sx-qty { width:100% !important; max-width:100% !important; box-sizing:border-box !important; }
+  ${P} .sx-mkt .sx-qty__words, ${P} .sx-mkt .sx-trade__words { flex-wrap:wrap !important; justify-content:flex-start !important; gap:6px !important; }
 }
 
 /* ==== BAR =================================================================================== */

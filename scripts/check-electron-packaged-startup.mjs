@@ -30,6 +30,7 @@ import {
 } from './lib/electronPackagedStartup.mjs';
 import { loadPlaywright } from './lib/load-playwright.mjs';
 import { installCspSafePlaywrightPolling } from './lib/playwrightCspPolling.mjs';
+import { answerFirstRunPrompt, installFirstLightPromptHandler } from './player-truth/routes.mjs';
 
 const { parseLaunchReceipts } = launchProtocol;
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
@@ -64,6 +65,9 @@ let assessment = null;
 let cleanup = null;
 let primaryError = null;
 let timing = null;
+let flightScreenshotPath = null;
+let flightInitialScreenshotPath = null;
+let keyboardMovementWitness = null;
 
 try {
   isolatedLaunch = createIsolatedElectronLaunch({ root: ROOT, taskId: 'packaged-startup', timeout: STARTUP_TIMEOUT_MS });
@@ -89,20 +93,21 @@ try {
 
   page = await app.firstWindow({ timeout: STARTUP_TIMEOUT_MS });
   installCspSafePlaywrightPolling(page);
-  pageIssues = collectPageIssues(page, { ignoreProbeWarnings: true });
+  await installFirstLightPromptHandler(page);
+  pageIssues = collectPageIssues(page, { ignoreProbeWarnings: true, includeWarnings: true });
   canonicalUrlTracker = createElectronCanonicalUrlTracker(page, {
     bootstrapTimeoutMs: 10_000,
     pollIntervalMs: 75,
     allowAnyLoopbackPort: true,
   });
   rootUrl = assertIsolatedElectronRootUrl(await canonicalUrlTracker.waitForCanonicalRoot(10_000));
-
   await page.waitForLoadState('domcontentloaded', { timeout: STARTUP_TIMEOUT_MS });
   const splash = page.locator('#cinematic-splash');
   if (await splash.isVisible().catch(() => false)) {
     await page.keyboard.press('Space');
     await splash.waitFor({ state: 'hidden', timeout: 5_000 });
   }
+  await answerFirstRunPrompt(page);
   const newGame = page.getByRole('button', { name: 'New Game', exact: true });
   await newGame.waitFor({ state: 'visible', timeout: STARTUP_TIMEOUT_MS });
   timing = { launchAt: new Date(launchAt).toISOString(), menuVisibleAt: new Date().toISOString(), bootToMenuMs: Date.now() - launchAt };
@@ -111,6 +116,7 @@ try {
   // line is stamped inside the spawned main process: that is the closest honest
   // anchor to a player double-clicking the executable.
   const menuVisibleMs = Date.parse(timing.menuVisibleAt);
+  const menuTitle = await page.title();
   const newGameVisibleBeforeLaunch = await newGame.isVisible();
   await newGame.click({ timeout: 30_000 });
   const launch = page.getByRole('button', { name: 'Launch', exact: true });
@@ -155,7 +161,7 @@ try {
     'packaged startup requires an exact Electron version in candidate package.json');
   assert.equal(mainIdentity.versions?.electron, expectedElectronVersion,
     'packaged Electron runtime must match the candidate package.json target');
-  pageSnapshot = await page.evaluate(({ expectedRoot, newGameWasVisible }) => {
+  pageSnapshot = await page.evaluate(({ expectedRoot, newGameWasVisible, menuTitle }) => {
     const storageKey = '__spaceface_packaged_startup_probe__';
     let storageRoundTrip = false;
     try {
@@ -181,17 +187,64 @@ try {
     const canvasReady = !!canvasRect && canvasRect.width > 100 && canvasRect.height > 100
       && getComputedStyle(canvas).visibility !== 'hidden';
     return {
-      title: document.title,
+      title: menuTitle,
+      flightTitle: document.title,
       rootUrl: location.href,
       newGameVisibleBeforeLaunch: newGameWasVisible,
       defaultRouteReady: hudReady && screensClosed && canvasReady && !document.body.classList.contains('ui-modal-open'),
       assetFailureVisible: /Game assets failed to load/i.test(visibleText),
       storageRoundTrip,
+      crossOriginIsolated: globalThis.crossOriginIsolated === true,
+      sharedArrayBufferAvailable: typeof SharedArrayBuffer === 'function',
+      ctxSimLane: typeof window.SF?.ctx?.simLane === 'string' ? window.SF.ctx.simLane : null,
+      sfDebugSurfaceAvailable: !!window.SF?.ctx,
       scriptPaths: Array.from(document.scripts).map((script) => script.src).filter(Boolean),
       userAgent: navigator.userAgent,
       expectedRoot,
     };
-  }, { expectedRoot: rootUrl, newGameWasVisible: newGameVisibleBeforeLaunch });
+  }, { expectedRoot: rootUrl, newGameWasVisible: newGameVisibleBeforeLaunch, menuTitle });
+
+  pageSnapshot.activeWorkerUrls = page.workers().map((worker) => worker.url());
+  const wholeSimWorkerActive = pageSnapshot.activeWorkerUrls.some((url) => /wholeSimBrowserWorker/i.test(url));
+  const simLaneWarnings = pageIssues.warningIssues()
+    .filter((issue) => /^\[simLane\]/i.test(issue.text || ''))
+    .map((issue) => String(issue.text).slice(0, 500));
+  pageSnapshot.simLane = pageSnapshot.ctxSimLane || (wholeSimWorkerActive ? 'worker' : null);
+  pageSnapshot.simLaneEvidence = pageSnapshot.ctxSimLane
+    ? 'SF.ctx.simLane'
+    : wholeSimWorkerActive ? 'active whole-simulation worker URL' : null;
+  pageSnapshot.simLaneFallbackReason = pageSnapshot.ctxSimLane === 'main'
+    ? simLaneWarnings.find((message) => /worker boot failed/i.test(message)) || 'SF.ctx reports main lane without a worker-boot warning'
+    : simLaneWarnings.find((message) => /worker boot failed/i.test(message)) || null;
+  pageSnapshot.simLaneWarnings = simLaneWarnings;
+
+  // Pair one real flight frame with an ordinary forward-key hold. The report
+  // keeps the input and screenshots distinct so visual inspection is not
+  // mistaken for an internal movement-state assertion.
+  flightInitialScreenshotPath = `${REPORT_PATH}.flight-before-forward.png`;
+  await page.screenshot({ path: flightInitialScreenshotPath });
+  const forwardStartedAt = Date.now();
+  await page.keyboard.down('w');
+  try {
+    await page.waitForTimeout(1_000);
+  } finally {
+    await page.keyboard.up('w');
+  }
+  const forwardEndedAt = Date.now();
+  keyboardMovementWitness = {
+    key: 'w',
+    binding: 'KeyW (default forward flight binding)',
+    heldMs: forwardEndedAt - forwardStartedAt,
+    inputDispatched: true,
+  };
+  flightScreenshotPath = `${REPORT_PATH}.flight-after-forward.png`;
+  await page.screenshot({ path: flightScreenshotPath });
+  pageSnapshot.flightScreenshotStage = {
+    capturedAt: new Date().toISOString(),
+    title: pageSnapshot.flightTitle,
+    simLane: pageSnapshot.simLane,
+    movementInput: keyboardMovementWitness,
+  };
 
   const parsed = parseLaunchReceipts(readFileSync(receiptPath, 'utf8'));
   assert.equal(parsed.malformedLineCount, 0, 'packaged launch receipt must be valid JSONL');
@@ -214,8 +267,23 @@ try {
     mainIdentity,
     page: pageSnapshot,
   });
+  if (pageSnapshot.simLane !== 'worker') {
+    assessment.failures.push(`packaged default worker lane was not observed: ${JSON.stringify({
+      crossOriginIsolated: pageSnapshot.crossOriginIsolated,
+      sharedArrayBufferAvailable: pageSnapshot.sharedArrayBufferAvailable,
+      ctxSimLane: pageSnapshot.ctxSimLane,
+      activeWorkerUrls: pageSnapshot.activeWorkerUrls,
+      fallbackReason: pageSnapshot.simLaneFallbackReason,
+      warnings: simLaneWarnings,
+    })}`);
+  }
   assessment.expectedCspBlockCount = expectedCspBlocks.length;
   if (hardErrors.length) assessment.failures.push(`page errors: ${JSON.stringify(summarizeIssues(hardErrors))}`);
+  const glWarnings = pageIssues.warningIssues()
+    .filter((issue) => /\bGL_INVALID_[A-Z0-9_]+\b/i.test(String(issue.text || '')));
+  if (glWarnings.length) {
+    assessment.failures.push(`WebGL invalid-operation warnings: ${JSON.stringify(summarizeIssues(glWarnings))}`);
+  }
   assessment.pass = assessment.failures.length === 0;
   assert.equal(assessment.pass, true, assessment.failures.join('; '));
 } catch (error) {
@@ -291,6 +359,9 @@ const report = {
   mainIdentity,
   timing,
   page: pageSnapshot,
+  flightInitialScreenshotPath: flightInitialScreenshotPath ? path.relative(ROOT, flightInitialScreenshotPath) : null,
+  flightScreenshotPath: flightScreenshotPath ? path.relative(ROOT, flightScreenshotPath) : null,
+  keyboardMovementWitness,
   failureSnapshot,
   assessment,
   pageIssues: summarizeIssues(pageIssues?.issues || []),

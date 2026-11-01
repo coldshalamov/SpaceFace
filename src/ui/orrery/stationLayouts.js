@@ -336,6 +336,10 @@ html.sf-reduce-motion ${S} :is(.orr-vdial__fill, .orr-vdial__hand) { transition:
   ${S} .sxb-crown .sxb-vitals:has(> .sxb-vital [data-vital-act][aria-disabled="true"]) { column-gap:2px !important; }
   ${S} .sxb-vital { min-width:max-content !important; width:auto !important; }
   ${S} .sxb-crown .sxb-vitals > .sxb-vital:last-child .sxb-vital__acts { position:static !important; width:auto !important; }
+  /* LEDGER's word reading (CREDIT LINE OPEN) ran ~70px past its cell over MUNITIONS' numerals: it sets on two
+     short lines inside its own cell, as it does at 651–699 */
+  ${S} .sxb-crown .sxb-vital--note .sxb-vital__value { white-space:normal !important; max-width:100% !important; box-sizing:border-box !important; }
+  ${S} .sxb-crown .sxb-vital--note .orr-vnum.is-word { white-space:normal !important; line-height:1.25 !important; letter-spacing:.12em !important; }
   ${S} .sxb-berth > :is(.sxb-tape, .sxb-handoff) { min-width:0 !important; max-width:100% !important; }
   ${S} .sxb-tape .sxb-event { width:auto !important; max-width:100% !important; min-width:0 !important; }
   /* the next-step card: its title on one line with its count, the sentence under it */

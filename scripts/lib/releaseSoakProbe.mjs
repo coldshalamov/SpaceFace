@@ -2610,7 +2610,26 @@ export function summarizeImmutableSavePopulation({
 
 // Executed in the page: only an actual failed-start menu ends the restore early.
 export function shouldRetrySoakCycle(error, attempt) {
-  return attempt === 0 && error?.code !== 'SOAK_LOAD_START_FAILED';
+  return attempt === 0 && error?.code !== 'SOAK_LOAD_START_FAILED'
+    && error?.code !== 'SOAK_PRESENTATION_FAILURE';
+}
+
+/** Convert the canonical loop diagnostic into a terminal dock-wait error, if present. */
+export function createSoakPresentationFailureError(loopDiagnostics) {
+  const source = loopDiagnostics?.presentationFailure;
+  if (!source || typeof source !== 'object' || source.headline !== 'Graphics interrupted'
+      || typeof source.code !== 'string' || !source.code) return null;
+  const failure = {
+    code: source.code.slice(0, 120),
+    headline: source.headline,
+    message: String(source.message || '').slice(0, 1_000),
+    tick: Number.isFinite(Number(source.tick)) ? Number(source.tick) : null,
+    simTime: Number.isFinite(Number(source.simTime)) ? Number(source.simTime) : null,
+  };
+  const error = new Error(`dock wait stopped by presentation failure ${failure.code}: ${failure.message}`);
+  error.code = 'SOAK_PRESENTATION_FAILURE';
+  error.presentationFailure = failure;
+  return error;
 }
 
 export function readSoakLoadLanding() {
@@ -3115,6 +3134,26 @@ async function runSoakCycle(page, {
     let brakePulsed = false;
     while (Date.now() < waitDeadline) {
       dockPromptVisible = await dockPrompt.isVisible().catch(() => false);
+      const loopDiagnostics = await page.evaluate(() => {
+        let diagnostics = null;
+        try { diagnostics = window.SF?.loop?.getDiagnostics?.() || null; } catch (_) { /* runtime may be closing */ }
+        const failure = diagnostics?.presentationFailure;
+        if (!failure || typeof failure !== 'object') return null;
+        return {
+          presentationFailure: {
+            code: typeof failure.code === 'string' ? failure.code : null,
+            headline: typeof failure.headline === 'string' ? failure.headline : null,
+            message: typeof failure.message === 'string' ? failure.message : '',
+            tick: failure.tick,
+            simTime: failure.simTime,
+          },
+        };
+      }).catch(() => null);
+      const presentationError = createSoakPresentationFailureError(loopDiagnostics);
+      if (presentationError) {
+        mark('dock-presentation-failure', presentationError.presentationFailure);
+        throw presentationError;
+      }
       if (dockPromptVisible) break;
       if (lawFlees < 2) {
         const law = await readLawFlag();
