@@ -12013,7 +12013,7 @@ export const render = {
         .then(async (result) => {
           if (state.mode === 'loading' && state.render.liveSectorGpuAdmission !== true
               && admissionOptions.openingRequired !== true) {
-            return result;
+            return { ...result, exactTargetDeferred: true };
           }
           const recovering = state.render
             && state.render.contextRecovery && state.render.contextRecovery.pending === true;

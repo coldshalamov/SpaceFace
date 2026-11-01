@@ -21,6 +21,50 @@ import {
 
 const factory = createVisualFactory();
 
+test('a lazy packaged wreck stays unpublished until its mounted exact-target touch succeeds', async () => {
+  for (const outcome of [{ incomplete: true }, { contextLost: true }, { skipped: true }, { ok: true }, { stale: true }, { covered: true }]) {
+    const root = factory.build(wreckEntity({}, { id: `wreck-touch-${Object.keys(outcome)[0]}` }));
+    const scene = new THREE.Scene(); scene.add(root);
+    const fallback = root.children.map(child => [child, child.visible]);
+    let release, reached, touchCalled = false;
+    const called = new Promise(resolve => { reached = resolve; });
+    const pending = root.userData.requestAuthoredUpgrade({}, scene, {
+      loadAuthoredPart: async () => ({ assetId: 'wreck-touch-fixture', primitives: [{
+        geometry: new THREE.BoxGeometry(), material: new THREE.MeshStandardMaterial(),
+      }] }),
+      prepareAuthoredPipelines: async () => ({ ok: true, exactTargetDeferred: !outcome.covered }),
+      prepareAuthoredGpuResidency: async () => ({ ok: true }),
+      touchAuthoredExactTarget: body => {
+        touchCalled = true;
+        assert.equal(body.parent, root);
+        assert.equal(body.visible, false);
+        reached();
+        return new Promise(resolve => { release = () => resolve(outcome); });
+      },
+    });
+    if (outcome.covered) {
+      assert.equal(await pending, true);
+      assert.equal(touchCalled, false, 'a completed admission is not touched twice');
+      continue;
+    }
+    await called;
+    assert.notEqual(root.userData.authoredAssetState, 'authored');
+    for (const [child, visible] of fallback) assert.equal(child.visible, visible, 'the previous picture remains unchanged');
+    if (outcome.stale) root.userData.admissionEpoch = (root.userData.admissionEpoch || 0) + 1;
+    release();
+    const result = await pending;
+    if (outcome.ok) {
+      assert.equal(result, true);
+      assert.equal(root.userData.authoredAssetState, 'authored');
+      assert.equal(root.userData.hull.visible, true);
+    } else {
+      assert.notEqual(result, true);
+      assert.notEqual(root.userData.authoredAssetState, 'authored');
+      assert.equal(root.children.some(child => child.userData.packagedAuthoredBody), false);
+    }
+  }
+});
+
 function wreckEntity(data, overrides = {}) {
   return {
     id: overrides.id || 'wreck_hulk_test_1',

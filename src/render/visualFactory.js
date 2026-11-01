@@ -5074,8 +5074,9 @@ function attachPackagedBody(root, relativeFile, entity, readyBodies = null) {
         return { status: 'orphaned-before-swap' };
       }
       root.userData.authoredAssetState = 'compiling-pipelines';
+      let prepared;
       try {
-        await prepareAuthoredVisualPipelines(packaged, mintedAdmissionOptions);
+        prepared = await prepareAuthoredVisualPipelines(packaged, mintedAdmissionOptions);
       } catch (error) {
         releaseBoundaryResidency(renderer, root, 'packaged-body-pipeline-failed', mintedAdmissionOptions.admissionEpoch);
         // The freeze/canonicalize/pipeline-prepared subtree is still detached here —
@@ -5131,9 +5132,11 @@ function attachPackagedBody(root, relativeFile, entity, readyBodies = null) {
       }
       // Re-hide in case a retained fallback (or a retry already in flight) re-showed the
       // procedural children while this admission was mid-flight.
-      hideProceduralChildren(root);
+      // Keep the old picture visible while the mounted body is touched against the
+      // final owner and shadow state. The exact-target owner temporarily reveals
+      // its subject for the touch; ordinary presentation must not see it yet.
+      packaged.visible = false;
       root.add(packaged);
-      carryAdmittedOnceStamp(packaged, root);
       // The committed subtree's meshes carry three.js castShadow=false until a policy
       // traverse covers them; re-syncing here applies the live caster policy in this
       // continuation instead of at the next unrelated band flip.
@@ -5141,6 +5144,35 @@ function attachPackagedBody(root, relativeFile, entity, readyBodies = null) {
       if (typeof packagedShadowSync === 'function') {
         try { packagedShadowSync(root, liveEntity || entity, packaged); } catch (_) { /* best effort */ }
       }
+      const touch = mintedAdmissionOptions.touchAuthoredExactTarget;
+      if (prepared?.pipelines?.exactTargetDeferred === true) {
+        try {
+          if (typeof touch !== 'function') throw new Error('Packaged body exact-target touch unavailable');
+          const receipt = await touch(packaged);
+          if (!receipt || receipt.skipped || receipt.incomplete || receipt.contextLost || receipt.readinessTimedOut || receipt.ok === false) {
+            throw new Error('Packaged body exact-target touch did not complete');
+          }
+        } catch (error) {
+          root.remove(packaged);
+          releaseBoundaryResidency(renderer, root, 'packaged-body-touch-failed', mintedAdmissionOptions.admissionEpoch);
+          disposeDetachedPackagedGroup(packaged);
+          detachedCommitGroup = null;
+          throw error;
+        }
+      }
+      if ((mintedAdmissionOptions.admissionEpoch != null && root.userData.admissionEpoch != null
+            && root.userData.admissionEpoch !== mintedAdmissionOptions.admissionEpoch)
+          || (typeof mintedAdmissionOptions.isAbortedStalledAdmission === 'function' && mintedAdmissionOptions.isAbortedStalledAdmission())
+          || !root.parent || admissionOwnerInactive(mintedAdmissionOptions, liveEntity)) {
+        root.remove(packaged);
+        releaseBoundaryResidency(renderer, root, 'packaged-body-touch-stale', mintedAdmissionOptions.admissionEpoch);
+        disposeDetachedPackagedGroup(packaged);
+        detachedCommitGroup = null;
+        return { status: 'stale-verdict-superseded' };
+      }
+      hideProceduralChildren(root);
+      packaged.visible = true;
+      carryAdmittedOnceStamp(packaged, root);
       root.userData.hull = packaged;
       root.userData.authoredReadableFallbackRetained = false;
       root.userData.authoredAssetState = 'authored';
