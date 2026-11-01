@@ -121,12 +121,29 @@ ${P} .sxb-vital__acts .orr-act__cost { font-family:${NUM} !important; font-size:
 /* In the short desktop berth, the standard header's fourth track must not consume the station
    body as a flexible spacer. Keep the authored two-column areas and let the five bands size to
    their content; the crown readings share their available column without wrapping. */
+/* On a phone the station name and purse cannot share the same row: the older composition lifts
+   the crown to save head height, but the Standard purse has a 232px ledger width. Let it follow the
+   title as a compact two-column reading instead of painting across the name. */
+@media (max-width:480px) and (min-height:601px) {
+  ${P} .sxb-berth.dp-frame__head > .sxb-crown { margin-top:0 !important; }
+  ${P} .so-station-title > .sxb-berth__name { padding-right:0 !important; }
+  ${P} .sxb-crown .sxb-purse { min-width:0 !important; width:max-content !important; max-width:100% !important;
+    grid-template-columns:auto auto !important; grid-template-areas:"label value" "delta delta" !important;
+    justify-content:start !important; align-items:center !important; gap:0 10px !important;
+    margin:0 !important; padding:5px 9px !important; text-align:left !important; }
+  ${P} .sxb-crown .sxb-purse__label { width:auto !important; border:0 !important; padding:0 !important; }
+  ${P} .sxb-crown .sxb-purse__value { font-size:20px !important; line-height:1.1 !important; }
+}
 @media (min-width:901px) and (max-width:1100px) and (min-height:461px) and (max-height:640px) {
   ${P}:has(#sx-panel > .sx-sw:not([hidden])) { grid-template-rows:max-content minmax(0,1fr) max-content !important; }
   ${P}:has(#sx-panel > .sx-sw:not([hidden])) .sxb-berth.dp-frame__head {
     min-height:0 !important; max-height:145px !important; overflow-y:auto !important; overflow-x:hidden !important;
   }
   ${P} .sxb-berth.dp-frame__head { grid-template-rows:auto auto auto auto auto !important; align-content:start !important; row-gap:4px !important; }
+  /* Market at 960x540: the exchange needs the body. Let it take the flexible row, and fold the
+     ambient bay/wire boards away here so the table and the Buy/Sell stage are not cut to a sliver. */
+  ${P}:has(#sx-panel > .sx-mkt) { grid-template-rows:max-content minmax(0,1fr) max-content !important; }
+  ${P}:has(#sx-panel > .sx-mkt) .sxb-berth > .sxb-signs { display:none !important; }
   ${P} .sxb-crown .sxb-purse { position:absolute !important; top:-44px !important; left:28px !important; right:auto !important; margin:0 !important; }
   ${P} .sxb-crown .sxb-vitals { min-width:0 !important; max-width:none !important; width:100% !important;
     flex-wrap:nowrap !important; justify-content:space-between !important; gap:8px !important; margin-top:32px !important; }
@@ -140,6 +157,14 @@ ${P} .sxb-vital__acts .orr-act__cost { font-family:${NUM} !important; font-size:
   ${P} .sxb-ops > .of-facility-rail { flex:0 0 100% !important; max-width:none !important; width:100% !important; }
   ${P} .sxb-ops > .sx-comms { order:2 !important; margin:0 !important; }
   ${P} .sxb-ops > .sxb-launch-seat { order:3 !important; margin:0 0 0 auto !important; }
+}
+/* …and in that short 901–1100 berth the five readings took equal fifths (~105px), so LEDGER's Draw (+cost,
+   ~121px) and MUNITIONS' Rearm (~107px) ran past their cells and touched. The two verb-bearing cells take
+   their own width; HULL, FUEL and HOLD share what is left. Verbs close up 2px a side to make the room. */
+@media (min-width:901px) and (max-width:1100px) and (min-height:461px) and (max-height:640px) {
+  ${P} .sxb-crown .sxb-vitals { gap:6px !important; }
+  ${P} .sxb-crown .sxb-vitals > .sxb-vital:is(.sxb-vital--note, .sxb-vital--muni) { flex:0 0 auto !important; }
+  ${P} .sxb-crown .sxb-vital__acts > button { padding-left:7px !important; padding-right:7px !important; }
 }
 
 /* ---- the ad-boards: legible, never faint ----------------------------------------------------- */
@@ -278,6 +303,32 @@ ${P} .sx-mkt .sx-decision__opt .k-row__name { display:block !important; font-fam
   text-transform:none !important; white-space:normal !important; overflow:visible !important; text-overflow:clip !important; color:rgb(${BONE}) !important; }
 ${P} .sx-mkt .sx-decision__opt .k-row__sub { display:block !important; margin:2px 0 0 !important; font-family:${UI} !important; font-size:13px !important; line-height:1.35 !important;
   white-space:normal !important; overflow:visible !important; text-overflow:clip !important; color:rgb(${BONE} / .78) !important; }
+
+/* Market in the short desktop berth (901–1100 x 461–640): after the rules above so it wins at equal weight. */
+@media (min-width:901px) and (max-width:1100px) and (min-height:461px) and (max-height:640px) {
+  /* the exchange reads as one column: title and finder on one line, the filters one scrolling row,
+     the table under them (the old side column of chips cannot hold the ruled chips); the price,
+     sell and stock columns size to their figures so the trend and STOCK read whole */
+  ${P} .sx-mkt .sx-mkt-browser { display:grid !important; grid-template-columns:minmax(0, 1fr) minmax(0, 200px) !important;
+    grid-template-rows:auto auto minmax(0, 1fr) !important; column-gap:12px !important; row-gap:6px !important; height:100%; }
+  ${P} .sx-mkt .sx-mkt-browser__mode { grid-column:1 !important; grid-row:1 !important; margin:0 !important; padding:6px 0 !important; align-self:center; }
+  ${P} .sx-mkt .orr-mkt-find { grid-column:2 !important; grid-row:1 !important; margin:0 !important; align-self:center; }
+  ${P} .sx-mkt .sx-mkt-browser__filters { grid-column:1 / -1 !important; grid-row:2 !important; flex-direction:row !important; flex-wrap:nowrap !important;
+    width:auto !important; min-width:0 !important; height:auto !important; margin:0 !important; overflow-x:auto !important; overflow-y:hidden !important; }
+  ${P} .sx-mkt .sx-mkt-browser__filters > li { flex:none !important; }
+  ${P} .sx-mkt .sx-mkt-browser__rail { grid-column:1 / -1 !important; grid-row:3 !important; min-height:0 !important; overflow-y:auto !important; }
+  ${P} .sx-mkt .sx-mkt-table { table-layout:auto !important; }
+  ${P} .sx-mkt .sx-mkt-table :is(th, td) { padding-left:6px !important; padding-right:6px !important; }
+  ${P} .sx-mkt .sx-mkt-table :is(th, td):is(:nth-child(2), :nth-child(3), :nth-child(4)) { width:1% !important; }
+  /* The short berth gives the trade console a 244px column. Keep its quantity controls within
+     that column and flow the quote/actions vertically instead of letting the fixed desktop dial
+     track push BUY/SELL past the stage edge. The console remains the stage's own scroll surface. */
+  ${P} .sx-mkt__console { min-width:0 !important; max-width:100% !important; overflow-x:hidden !important; overflow-y:auto !important; }
+  ${P} .sx-mkt .sx-trade { grid-template-columns:minmax(0,1fr) !important; grid-template-rows:auto auto auto auto auto !important;
+    grid-template-areas:"dial" "total" "note" "verb" "breakdown" !important; column-gap:0 !important; row-gap:4px !important; }
+  ${P} .sx-mkt .sx-qty { width:100% !important; max-width:100% !important; box-sizing:border-box !important; }
+  ${P} .sx-mkt .sx-qty__words, ${P} .sx-mkt .sx-trade__words { flex-wrap:wrap !important; justify-content:flex-start !important; gap:6px !important; }
+}
 
 /* ==== BAR =================================================================================== */
 ${P} .sx-bar__hang { box-sizing:border-box; border:${LINE} !important; border-radius:2px; background:${PANEL} !important; background-image:none !important; padding:9px 12px !important; }

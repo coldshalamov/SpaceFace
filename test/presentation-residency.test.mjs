@@ -144,17 +144,32 @@ test('nothing on the live screen loses its mesh, whatever tier the sim-side fram
 });
 
 test('mesh eviction never sits inside mesh prefetch while the player zooms out', async () => {
+  const { renderResidencyRadius } = await import('../src/render/runtime/residencyAdmissionQueries.js');
   const { residencyEvictRadius } = await import('../src/render/tabletopPolicy.js');
-  // Wheel-out in progress: requested 330, live zoom still damped at 144. Both radii must read the
-  // wider zoom, or the annulus between them is built and destroyed on every 0.25 s poll.
-  const speed = 160;
-  const prefetch = residencyPrefetchRadius(speed, 330, 50, 16 / 9, 60);
-  const evictAtWiderZoom = residencyEvictRadius(speed, 330, 50, 16 / 9, 60);
-  const evictAtLiveZoomOnly = residencyEvictRadius(speed, 144, 50, 16 / 9, 60);
-  assert.ok(evictAtWiderZoom >= prefetch, 'hysteresis exists only when evict >= prefetch');
-  assert.ok(evictAtLiveZoomOnly < prefetch,
-    'this is the inversion the renderer used to compute; renderResidencyRadius must not');
-  const source = (await import('node:fs')).readFileSync(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
-  assert.match(source, /residencyEvictRadius\(speed, cam\.prefetchZoom,/,
-    'evict and prefetch read the same zoom');
+  const player = {
+    id: 1, type: 'ship', alive: true, isPlayer: true, pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 },
+    maxSpeed: 160, data: {},
+  };
+  const state = makeState([player]);
+
+  // While wheel-out is still damping, residency uses the composed/requested frame for both
+  // radii. Cover ordinary and maximum zoom targets through the actual renderer query owner.
+  for (const [requestedZoom, composedZoom] of [[220, 220], [330, 330], [250, 290]]) {
+    state.camera.zoom = requestedZoom;
+    state.camera.liveZoom = 144;
+    state.camera.composedZoom = composedZoom;
+    const prefetch = renderResidencyRadius(state, 'prefetch');
+    const evict = renderResidencyRadius(state, 'evict');
+    const expectedEvict = residencyEvictRadius(160, composedZoom, 50, 16 / 9, 60);
+    assert.equal(evict, expectedEvict,
+      `eviction should follow the current composed zoom (${composedZoom}), not live zoom`);
+    assert.ok(evict >= prefetch,
+      `eviction must remain outside prefetch at requested zoom ${requestedZoom}`);
+  }
+
+  // The old live-only calculation demonstrates the annulus the real query must avoid.
+  const liveZoomOnly = residencyEvictRadius(160, 144, 50, 16 / 9, 60);
+  const requestedPrefetch = residencyPrefetchRadius(160, 330, 50, 16 / 9, 60);
+  assert.ok(liveZoomOnly < requestedPrefetch,
+    'live-only eviction would put the evict edge inside the requested prefetch edge');
 });

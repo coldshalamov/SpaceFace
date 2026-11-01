@@ -200,49 +200,35 @@ instead of terminating (`presentationRunner.js`). D250: cap concurrent asset fet
 backoff. Add a forced-context-loss test and a 30-minute Adventure soak to the M0 bench. Done when the
 soak + one forced context loss shows zero terminal panes.
 
-Integration checkpoint 2026-10-31: world-entry serial projection and paused settlement publication are repaired. The committed 7f0 static-host public journey completes physical Ceres delivery, one 760-credit mission payment and completion, then F5 and title Continue restore the exact settled credits, cargo, standing, receipt and log. With the shared endpoint absent, actual browser quota handling stores the 4.61 MB serialized save as 1.43 MB gzip. Native worker checks also preserve the prior save after rejected raw and gzip writes, and serialize a delayed quota-failure acknowledgment before a newer save. The normal mounted-store public journey also passes, restoring the same exact settled identity while its large Quick primary is absent from localStorage. Both storage paths are accepted functionally; this is not a performance claim.
+Current M8 integration status (2026-10-31): the completed public Ceres journey delivers the accepted
+cargo for 760 credits, then F5 → title Continue restores the settled credits, cargo, standing,
+receipt and log. Static-host and mounted-store persistence paths both pass functionally. This is not
+a stability or performance qualification.
 
-The earlier ae3e travel run exposed repeated real Three.js buffer-resize exceptions; they did not recur in the static journey. The existing error-only resize diagnostic remains enabled for functional route diagnosis. Full 30-minute Adventure/context-loss qualification remains open. The earlier baseline failed in 177,338 ms against the unchanged 90-second budget, with 26/27 Massline children passing and one physical-branch timeout. After the paired runner shares one identical 5,200-tick setup, the integrated batch-ten baseline passes 17/17 in 63,812 ms. This closes the current baseline check, not gameplay performance or the older resize cause. See `INTEGRATION_COVERAGE.md`.
+The full ordinary attempt on source `a4f1fe14452c` stops during cycle 14: a Three.js buffer-size
+mismatch freezes presentation behind Graphics interrupted before redocking finishes. The player
+is in range; this does not establish a docking defect. The opt-in resize capture was disabled, so
+the failing attribute was unidentified. The same-source 20-cycle diagnostic then reaches forced
+context recovery and captures a detached SCN Wasp armor UV: a zero-byte GPU record is updated
+with 44,984 restored bytes. It remains a failed, performance-ineligible receipt. The context-loss
+handler now invalidates the canonical geometry residency ledger; the pre-projection guard blocks
+pending detached uploads and queues canonical refill until ready. Twenty real guard/package cases
+pass; the integrated ordinary forced-context check is pending. Focused checks also pass for six model
+retirement repairs (15- and 58-case batches), shadow-depth CPU-texture rehydration and lease lifetime,
+and rejected pacing after partial staging, including closing parked generators while preserving the
+original error. A short public check accepts the repaired snapshot-fence publication and normal quit.
 
-The full-duration attempt on `99004b7cef7c` fails before context loss: after six warm-up
-cycles, cycle 8's F9 restore lands in the startup-failed menu at `gpu-resources` because the
-opening submission plan is incomplete. The strict capture phase fails after 142 ms; no frame
-errors or page issues are recorded in its failure snapshot. This is an open production restore
-defect. A subsequent targeted run on `1318a7ca4edb` reproduces it at cycle 2, with the first-playable
-shader set complete. The corrected `526589161e1e` capture reproduces the failure at cycle 1: one
-blocking entity root has zero drawable leaves, while hashes, first-playable programs and all three
-resource identity sets match. That root was drawable when selected, so its eligibility changed
-between paced walks. The existing failure diagnostic now retains its entity identity and compares
-the selected/current root and exact leaf-exclusion state; no gate or admission behavior changes.
-Another targeted run completes nine F9 cycles but fails the context-recovery tail with a real
-Three.js buffer-size mismatch. A real loading-frame regression separately reproduces visibility/LOD
-sync running after the picture graph freezes. Loading now holds its prepared scene until graph
-release, including F9 with an old paint timestamp; ordinary post-paint flight remains live. Thirty
-focused opening/lifetime cases pass. The original plan failure and buffer-size defect still need
-public-route verification. See `INTEGRATION_COVERAGE.md`.
+Earlier full `c6` and short `030aaf` receipts remain failed; their evidence is retained in
+[`INTEGRATION_COVERAGE.md`](./INTEGRATION_COVERAGE.md). The earlier retention growth and performance
+misses are not closed by focused checks. The repaired full-duration and context-recovery outcome
+remains open.
 
-The `b0847dac39af` short public diagnostic completes nine save/load/trade cycles, same-mesh
-context recovery and the 120-second flight tail without reproducing the plan or buffer-size
-failure. Its aggregate still fails: the new receipt branch throws `captionSlot is not defined`
-(now repaired with 21 HUD cases passing), retained heap grows 83.0 MB and geometries 365 while
-entities grow six, and owned Electron close times out with a worker-clock stall during teardown.
-Package residency decreases, so those totals do not identify a leak owner. The next required soak
-records scene geometry identities at three checkpoints and the existing quit IPC reply through
-the process monitor; no budgets, shutdown behavior or pass criteria change.
-
-The earlier identity probe stops before F9: public autopilot reports Helios arrival, but the physical
-dock prompt never appears within 360 seconds. Its saved nav distance is telemetry, not a current
-anchor measurement. A normal real-flight/corridor/SG-02 fixture emits the range prompt and remains
-berthed for ten seconds; it does not reproduce this route failure. The existing approach snapshot
-now records sampled main-read-model anchor geometry, prompt transitions and timestamped dock
-events so the next ordinary attempt can distinguish physical admission from UI/event delivery.
-
-The first full-duration retry on `d5c4a9de8de5` stops before gameplay: the intro actor times out
-after First Light cleanup even though its final screenshot is the ordinary main menu. Its final
-sample now uses the same visibility predicate as the polling loop before declaring a timeout.
-Unknown root confirmation dialogs also remain genuine blockers; only the recognized First Light
-dialog is exempted. Eighteen focused prompt cases pass without increasing the 15-second bound.
-This preflight failure supplies no soak, resource or recovery evidence.
+The baseline timing now passes under the measured four-job configuration: all 17 assertions pass
+in 86,286 ms against 90,000 ms. The automatic pool ceiling is capped at four (minimum two); explicit
+`--jobs` and inherited `SPACEFACE_CHECK_JOBS` overrides remain unchanged. The earlier 92,054 ms and
+92,184 ms runs remain historical over-budget results; the four-job outcome is not a general speedup
+claim or a separate post-cap default run. Public scenario normalization boundaries and all four
+physical branches remain intact. M8 progress does not close its separate open work.
 
 **M9 — Load less, load later.** 28 MB of minified JS in the eager closure (`scripts/build-bundle.mjs`,
 esbuild splitting): lazy-load per mode and per screen; make `modelTruthCensus.generated.js` and
@@ -253,7 +239,19 @@ as JS) to a binary asset; take `src/testing/**` out of the retail graph (static 
 `FlightReadySet` and stream the rest after first flight. D252: fix the WebKit menu stall. Done when
 the load rows of README §4 meet their floor.
 
-Current measured working-tree checkpoint (2026-10-31): physical main static ESM closure is
+Current batch-fifteen working-tree build measures the physical main static ESM closure at
+11,722,389 raw / 3,652,037 summed-gzip bytes across 132 outputs, meeting the 12 MB raw floor.
+Main awaits the presentation registry in its existing asynchronous worker startup branch before
+creating the sim-lane runtime or initializing listeners. The registry and authored graph remain
+intact; source hints are synchronized at 1,083 closure imports. The canonical worker build is
+retained. All 414 render plans, bundle gates and 74 behavior cases pass, with zero missing worker
+graph outputs. Receipt: `0d9e6869e0f77a17a11d7c4ce43efa10b93f6a808a5338f252e53df8bd48a0a7`.
+This is a static evaluation boundary, not a claim of lower total preflight transfer or faster
+startup. The ordinary worker/save/context route is pending; the 6 MB target and runtime load
+bars remain open. Compared with batch fourteen's 15,474,929 raw bytes, the closure is smaller
+by 3,752,540 raw bytes; concurrent working-tree content prevents isolated timing attribution.
+
+Earlier measured working-tree checkpoint (2026-10-31): physical main static ESM closure was
 15,490,568 raw / 4,816,400 summed-gzip bytes across 182 outputs, with batch-ten bundle receipt
 `77ff49a0f7a2d9314830a4030594712b5c5ce3dadba8825521bddfd17f9f5795` (2808 files, 414 plans).
 Batch nine is 200,318 raw / 62,355 summed-gzip bytes below batch eight. Pure attack readers now have
@@ -303,6 +301,24 @@ Current extraction: `d309751297b3` moves the six shadow-depth staging methods in
 The focused setting-enable case, 28 admission cases, two retirement cases and 10 real-renderer
 import cases pass. This is a bounded M13 step; the size target and current ordinary-route checks
 remain open.
+
+Explosion presentation and weapon-impact pictures now have two additional family modules,
+moving 19 methods while VFX retains pools, subscriptions, scheduling and lifetime. The moved
+bodies match their originals after random-callback normalization. The focused explosion/weapon
+batch exposed one Gyre assertion in authored rather than converted Three-light units; it now
+checks both canonical values and the complete two-case arsenal suite passes. No production light
+gain changed. Source preloads include the new families; full bundle/baseline qualification is
+still the next integrated batch, not a claim supplied by this extraction alone.
+
+Runtime residency/admission queries now have one focused module, with all 35 moved function bodies
+and the pooled band-argument helper matching their originals. Shared scratch identity and public
+renderer exports are preserved, and imported leaf graphs do not cycle to the renderer. The query
+batch passes 79 cases; its one stale file-text pin is replaced by a passing actual composed-zoom
+eviction/prefetch behavior case. The last true first-flight collector twin also shares a canonical
+iterator, preserving the synchronous live walk and paced snapshot/tail handling. Its ordered
+membership, deduplication and 25-variant cap case passes. Size and performance targets remain open.
+The integrated batch-twelve baseline passes 17/17 in 66,831 ms within the unchanged 90,000 ms
+budget; the bundle qualification is pending the next build batch.
 
 The current phase makes template instantiation and detached-object/place teardown use their
 canonical stepped implementations for synchronous callers too. Synchronous abandonment cleanup
