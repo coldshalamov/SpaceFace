@@ -1,10 +1,12 @@
 import { LAST_SHIFT_FAIRLEAD_PROXY } from '../data/lastShiftFairleadGeometry.js';
-import { LAST_SHIFT as C, LAST_SHIFT_POS, LAST_SHIFT_CLUES, lastShiftClue,
+import { LAST_SHIFT as C, LAST_SHIFT_POS, LAST_SHIFT_LEGACY_POS, LAST_SHIFT_CLUES, lastShiftClue,
   lastShiftBodyKey, lastShiftFactIds, lastShiftReport, freshLastShiftRecord } from '../data/lastShift.js';
 import { getCombatKernel } from '../combat/kernel.js';
 import { resolveCollisionProxyManifest, resolveDockAnchor } from '../data/collisionProxyManifests.js';
 import { resolveDockRange } from '../core/dockRange.js';
 import { attachmentBindsOccupant } from '../combat/attachments.js';
+import { refreshEntityPhysicsIndex } from '../core/coreSystem.js';
+import { refreshPhysicsPartition, requestActivityReclassify } from '../world/activityRuntime.js';
 
 
 const returnRefusal = Object.freeze({
@@ -30,6 +32,19 @@ const terminal = new Set(['destroyed', 'salvaged', 'returned']);
 const distance = (a, b) => a && b ? Math.hypot(a.x - b.x, a.z - b.z) : Infinity;
 const bearingTo = (from, to) => (Math.round(Math.atan2(to.x - from.x, -(to.z - from.z)) * 180 / Math.PI) + 360) % 360;
 const clone = value => JSON.parse(JSON.stringify(value));
+const LEGACY_POSE_EPSILON = 0.02;
+const nearPoint = (a, b) => a && b && Number.isFinite(a.x) && Number.isFinite(a.z)
+  && Math.hypot(a.x - b.x, a.z - b.z) <= LEGACY_POSE_EPSILON;
+const nearAngle = (a, b) => Number.isFinite(a) && Number.isFinite(b)
+  && Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b))) <= 0.0001;
+const stopped = value => value && Number.isFinite(value.x) && Number.isFinite(value.z)
+  && Math.abs(value.x) <= 0.0001 && Math.abs(value.z) <= 0.0001;
+function untouchedSalvagePool(pool, clue) {
+  return !!pool && Object.entries(clue.pool).every(([id, qty]) => Number(pool[id]) === qty);
+}
+function authoredCluePosition(base, clue) {
+  return { x: base.x + clue.offset.x, z: base.z + clue.offset.z };
+}
 function alignFairleadBody(entity) {
   if (entity?.type !== 'wreck' || entity.data?.persistenceOwner !== C.persistenceOwner
     || entity.data.lastShiftSiteId !== C.siteId || entity.data.lastShiftClueId !== 'fairlead'
@@ -126,7 +141,54 @@ export const lastShift = {
   },
   serialize() { this._capture(); return clone(this._row); },
   deserialize(row) { this._bindings.clear(); this._adopt(row); this._nextTick = 0; },
-  afterContinue() { this._find('fairlead'); this._restoring = false; this._bindings.clear(); this._nextTick = 0; this._lastReturnOffer = null; },
+  afterContinue() {
+    this._find('fairlead');
+    if (this._restoring) this._migrateUntouchedLegacyBodies();
+    this._restoring = false; this._bindings.clear(); this._nextTick = 0; this._lastReturnOffer = null;
+  },
+  _migrateUntouchedLegacyBodies() {
+    const attachments = getCombatKernel(this.ctx).attachments;
+    for (const clue of LAST_SHIFT_CLUES) {
+      const record = this._row.bodies[clue.id];
+      if (!record || record.status !== 'live' || terminal.has(record.status)
+        || this._row.destroyedClueIds.includes(clue.id)
+        || (clue.id === 'recorder' && (this._row.recoveryActive || this._row.recorderReturn))
+        || !untouchedSalvagePool(record.remainingPool, clue)
+        || !nearPoint(record.pos, authoredCluePosition(LAST_SHIFT_LEGACY_POS, clue))
+        || !stopped(record.vel)
+        || !nearAngle(record.rot, clue.id === 'fairlead' ? 0.61 : -0.25)) continue;
+
+      const entity = this._find(clue.id);
+      const destination = authoredCluePosition(LAST_SHIFT_POS, clue);
+      if (!entity) {
+        // LastShift's row is the durable pose owner. A body can be absent from an older save's
+        // persistent-entity envelope and materialize only when Ceres becomes resident again.
+        // Do not adopt a row while any live semantic body is present under a mismatched key.
+        const competingBody = [...this.state.entities.values()].some(candidate =>
+          candidate.data?.lastShiftSiteId === C.siteId && candidate.data?.lastShiftClueId === clue.id);
+        if (competingBody) continue;
+        record.pos = { ...destination };
+        continue;
+      }
+      if (entity.alive === false || this.state.entities.get(entity.id) !== entity
+        || !nearPoint(entity.pos, record.pos) || !stopped(entity.vel)
+        || !nearAngle(entity.rot, record.rot)
+        || !untouchedSalvagePool(entity.data?.salvagePool, clue)
+        || attachments.listForEntity(entity.id, false).length > 0) continue;
+
+      record.pos = { ...destination };
+      if (typeof entity.pos?.set === 'function') entity.pos.set(destination.x, entity.pos.y || 0, destination.z);
+      else entity.pos = { ...(entity.pos || {}), ...destination };
+      if (entity.prevPos) {
+        if (typeof entity.prevPos.set === 'function') entity.prevPos.set(destination.x, entity.prevPos.y || 0, destination.z);
+        else { entity.prevPos.x = destination.x; entity.prevPos.z = destination.z; }
+      }
+      if (entity.flags) entity.flags.noInterp = true;
+      refreshEntityPhysicsIndex(this.state, entity, entity.occupantGeneration);
+      refreshPhysicsPartition(entity);
+      requestActivityReclassify(this.state, entity, { physicsPublication: true });
+    }
+  },
   _find(clueId) {
     const expected = lastShiftBodyKey(clueId);
     const bound = this._bindings.get(clueId);

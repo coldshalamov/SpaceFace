@@ -1893,9 +1893,22 @@ export async function runCeresFiveMinutePublicRoute({
           deadlineTick: legDeadlineTick,
         });
       }
-      const arrival = await pq020FunctionalRouteDrivers.waitForAutopilotArrival(page, leg.target, {
+      let arrival = await pq020FunctionalRouteDrivers.waitForAutopilotArrival(page, leg.target, {
         deadlineTick: legDeadlineTick,
       });
+      if (leg.target.zoneId && arrival.currentZone?.id !== leg.target.zoneId) {
+        // Autopilot can report arrival between the world's two-tick zone-label scans. Give the
+        // existing observer one scan interval, then re-read the canonical label before judging
+        // the authored arrival zone; do not infer zone membership from the waypoint radius.
+        const zoneScanTick = await waitForCeresFixedTicks(page, 2, 20_000);
+        assert.ok(zoneScanTick < legDeadlineTick,
+          `${leg.target.name} exhausted its route horizon before the next zone-label scan`);
+        const currentZone = await page.evaluate(() => {
+          const zone = window.SF?.state?.world?.currentZone;
+          return zone ? { id: zone.id || null, name: zone.name || null } : null;
+        });
+        arrival = { ...arrival, currentZone };
+      }
       if (leg.target.zoneId) {
         assert.equal(arrival.currentZone?.id, leg.target.zoneId,
           `${leg.target.name} public arrival entered ${arrival.currentZone?.id || 'no zone'}`);
@@ -2088,6 +2101,7 @@ export async function runCeresFiveMinutePublicRoute({
         runtimeKind,
         fixedSeed,
         phase,
+        errorStack: String(error?.stack || '').split('\n').slice(0, 10),
         observerBounds,
         routeTail: routeLog.slice(-16),
         snapshot: error.ceresRouteFailureSnapshot,
@@ -6538,8 +6552,17 @@ async function readCeresRouteSnapshot(page, expectedHostileWorldRecordIds = []) 
         slotId: entity.data.activityObjectSlotId,
         entityId: entity.id,
         worldRecordId: entity.data.worldRecordId || null,
+        homeSectorId: entity.homeSectorId || entity.data?.homeSectorId || entity.data?.sectorId || null,
       })).sort((left, right) => left.slotId.localeCompare(right.slotId));
-    const objects = objectEntities.map((row) => row.slotId);
+    // A sector can retain structural activity objects while resident as a neighbor. The setup
+    // contract is the current sector's authored object cohort, not every live resident in the
+    // world; keep off-sector rows in the snapshot for diagnosis without counting them as extras.
+    const currentSectorId = state?.world?.currentSectorId || null;
+    const objects = objectEntities
+      .filter((row) => !row.homeSectorId || row.homeSectorId === currentSectorId)
+      .map((row) => row.slotId);
+    const offSectorObjects = objectEntities
+      .filter((row) => row.homeSectorId && row.homeSectorId !== currentSectorId);
     const anchors = entities.filter((entity) => entity.data?.activityCollisionAnchorSlotId).map((entity) => ({
       slotId: entity.data.activityCollisionAnchorSlotId,
       entityId: entity.id,
@@ -6614,7 +6637,7 @@ async function readCeresRouteSnapshot(page, expectedHostileWorldRecordIds = []) 
         phase: state?.encounterDirector?.stats?.ceresActivityAmbush?.phase || null,
         outcome: state?.encounterDirector?.stats?.ceresActivityAmbush?.outcome || null,
       },
-      census: { actors, objects, objectEntities, anchors, hostiles, hostileTombstones },
+      census: { actors, objects, objectEntities, offSectorObjects, anchors, hostiles, hostileTombstones },
     };
   }, expectedHostileWorldRecordIds);
 }

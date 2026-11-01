@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createSimulation } from '../src/core/sim.js';
 import { lastShift } from '../src/systems/lastShift.js';
-import { LAST_SHIFT as C, LAST_SHIFT_POS, LAST_SHIFT_CLUES, lastShiftReport } from '../src/data/lastShift.js';
+import { LAST_SHIFT as C, LAST_SHIFT_POS, LAST_SHIFT_LEGACY_POS, LAST_SHIFT_CLUES, lastShiftReport, freshLastShiftRecord } from '../src/data/lastShift.js';
 import { dossArchiveEvidence, dossArchiveComplete } from '../src/data/dossArchive.js';
 import { getCombatKernel } from '../src/combat/kernel.js';
 import { createSg02DynamicBodyOwner } from '../src/core/sg02DynamicBodyOwner.js';
@@ -13,6 +13,14 @@ import { save } from '../src/save/saveSystem.js';
 import { world } from '../src/systems/world.js';
 import { resolveCollisionProxyManifest, resolveDockAnchor } from '../src/data/collisionProxyManifests.js';
 import { resetFreshRunSystems } from '../src/core/runReset.js';
+import { resolveAutopilotTarget } from '../src/systems/flightV3.js';
+import { CERES_REFERENCE_ACCEPTANCE_ENTRY, CERES_ACTIVITY_POCKETS_BY_ID } from '../src/data/sectorActivityPockets.js';
+import { SECTOR_ANCHORS } from '../src/data/sectorAnchors.js';
+import { SECTOR_ZONES } from '../src/data/sectorZones.js';
+import { ASTEROIDS } from '../src/data/mining.js';
+import { asteroidColliderRadius } from '../src/data/asteroidColliders.js';
+import { globalToSectorLocalForSector, sectorLocalToGlobalForSector } from '../src/data/sectorCoordinates.js';
+import { bubblesFor } from '../src/data/stationBubbles.js';
 
 function fixture(native = null, cuePresenter = true) {
   const sim = createSimulation({ seed: 18, systems: [lastShift], helpers: {
@@ -282,6 +290,238 @@ test('ordinary approach surfaces an optional site once without inventing evidenc
     const snapshot = h.system.serialize(); h.system.deserialize(snapshot); h.system.afterContinue();
     h.state.simTime = 3; h.system.update(0.25, h.state);
     assert.equal(toasts.length, 1); assert.deepEqual(courses, []); assert.deepEqual(offers, []);
+  } finally { h.sim.dispose(); }
+});
+
+test('Last Shift stays inside its authored pocket and clear of the live Belt Outpost approach', () => {
+  const sim = createSimulation({ seed: CERES_REFERENCE_ACCEPTANCE_ENTRY.fixedSeed, systems: [world] });
+  try {
+    const { state, helpers } = sim;
+    state.mode = 'flight';
+    const entryPocket = CERES_ACTIVITY_POCKETS_BY_ID[CERES_REFERENCE_ACCEPTANCE_ENTRY.pocketId];
+    const entryZone = SECTOR_ZONES[C.sectorId].find(zone => zone.id === entryPocket.activityAnchor.zoneId);
+    assert.ok(entryZone, 'the public Ceres entry pocket must resolve its authored zone');
+    const entryLocal = {
+      x: entryZone.center.x + CERES_REFERENCE_ACCEPTANCE_ENTRY.entryOffset.x,
+      z: entryZone.center.z + CERES_REFERENCE_ACCEPTANCE_ENTRY.entryOffset.z,
+    };
+    const player = helpers.spawnEntity({
+      type: 'ship', isPlayer: true, team: 0, pos: sectorLocalToGlobalForSector(entryLocal, C.sectorId),
+      vel: { x: 0, z: 0 }, radius: 14, mass: 28, hull: 100, hullMax: 100,
+      data: { defId: CERES_REFERENCE_ACCEPTANCE_ENTRY.shipId },
+    });
+    state.playerId = player.id;
+    const worldOwner = sim.registry.get('world');
+    worldOwner.enterSector(C.sectorId, { noTeleport: true, placePlayer: false });
+
+    const station = [...state.entities.values()].find(entity => entity.data?.stationId === 'station_beltout');
+    assert.ok(station, 'the canonical Belt Outpost must be live for the approach geometry');
+    const target = resolveAutopilotTarget(state, { targetEntityId: station.id });
+    assert.ok(target?.approachPoint, 'Flight V3 must expose the station-owned corridor mouth');
+    const approachLocal = globalToSectorLocalForSector(target.approachPoint, C.sectorId);
+    const siteLocal = globalToSectorLocalForSector(LAST_SHIFT_POS, C.sectorId);
+    const zone = SECTOR_ZONES[C.sectorId].find(row => row.id === 'zone_ceres_belt');
+    const anchors = SECTOR_ANCHORS[C.sectorId];
+    const solidRockRadius = Math.max(...ASTEROIDS
+      .filter(row => row.id !== 'ast_gas_cloud')
+      .map(row => asteroidColliderRadius(row.id, row.sizeRange[1])));
+    const pointDistance = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
+    const segmentDistance = (point, a, b) => {
+      const dx = b.x - a.x, dz = b.z - a.z;
+      const t = Math.max(0, Math.min(1,
+        ((point.x - a.x) * dx + (point.z - a.z) * dz) / (dx * dx + dz * dz)));
+      return Math.hypot(point.x - a.x - t * dx, point.z - a.z - t * dz);
+    };
+
+    assert.equal(target.dockingStage, 'corridor-mouth');
+    for (const clue of LAST_SHIFT_CLUES) {
+      const body = { x: siteLocal.x + clue.offset.x, z: siteLocal.z + clue.offset.z };
+      const zoneMargin = zone.radius - pointDistance(body, zone.center) - clue.radius;
+      assert.ok(zoneMargin >= 50,
+        `${clue.id} remains within the complete Ceres Belt zone (margin ${zoneMargin.toFixed(1)} WU)`);
+
+      const fieldMargin = Math.min(...anchors.fields.map(field =>
+        pointDistance(body, field.center) - field.clusterRadius - solidRockRadius - clue.radius));
+      assert.ok(fieldMargin >= 100,
+        `${clue.id} clears every authored asteroid field and solid collider (margin ${fieldMargin.toFixed(1)} WU)`);
+
+      for (const authoredStation of [...state.entities.values()].filter(entity => entity.type === 'station'
+        && entity.data?.sectorId === C.sectorId)) {
+        const trafficRadius = bubblesFor(authoredStation).traffic.radius;
+        const stationMargin = pointDistance(body, globalToSectorLocalForSector(authoredStation.pos, C.sectorId))
+          - trafficRadius - clue.radius;
+        assert.ok(stationMargin >= 50,
+          `${clue.id} clears ${authoredStation.data.stationId}'s traffic ring (margin ${stationMargin.toFixed(1)} WU)`);
+      }
+
+      const routeMargin = segmentDistance(body, entryLocal, approachLocal) - player.radius - clue.radius;
+      assert.ok(routeMargin >= 150,
+        `${clue.id} clears the canonical refinery-to-Belt-Outpost approach (margin ${routeMargin.toFixed(1)} WU)`);
+
+      for (const poi of anchors.pois) {
+        const poiPos = poi.pos || poi.position;
+        const poiMargin = pointDistance(body, poiPos) - (poi.visualRadius || 50) - clue.radius;
+        assert.ok(poiMargin >= 75,
+          `${clue.id} clears authored ${poi.id} (margin ${poiMargin.toFixed(1)} WU)`);
+      }
+    }
+  } finally { sim.dispose(); }
+});
+
+test('Continue relocates the untouched legacy pocket and rebuilds its native fairlead at the safe pose', async () => {
+  const native = await createSg02DynamicBodyOwner({ ready: true });
+  const control = await createSg02DynamicBodyOwner({ ready: true });
+  const h = fixture(native);
+  try {
+    const oldSite = LAST_SHIFT_LEGACY_POS;
+    h.player.pos.set(oldSite.x - 100, 0, oldSite.z);
+    for (const clue of LAST_SHIFT_CLUES) {
+      const body = h.system._find(clue.id);
+      body.pos.set(oldSite.x + clue.offset.x, 0, oldSite.z + clue.offset.z);
+      body.prevPos.set(body.pos.x, body.pos.y, body.pos.z);
+      body.vel.set(0, 0, 0);
+    }
+    const saved = h.system.serialize();
+    native.syncFromEntities(h.state.entityList);
+    native.step(1 / 60); native.drainContactImpacts();
+    const legacySnapshot = JSON.parse(JSON.stringify(native.exportWorldSnapshot()));
+    assert.ok(legacySnapshot?.snapshot, 'the old cohort has a complete native snapshot');
+    assert.equal(control.adoptWorldSnapshot(legacySnapshot, h.state.entityList), true,
+      'the pre-migration old-save physics snapshot is internally adoptable');
+    const ids = new Map(LAST_SHIFT_CLUES.map(clue => [clue.id, h.system._find(clue.id).id]));
+    const indexVersion = h.state.entityIndex.physicsStaticVersion;
+    h.sim.bus.emit('save:restoring', { slot: 'quick' });
+    h.system.deserialize(saved);
+    h.system.afterContinue();
+
+    for (const clue of LAST_SHIFT_CLUES) {
+      const body = h.system._find(clue.id);
+      assert.ok(body, `${clue.id} remains the same live authored body`);
+      assert.equal(body.id, ids.get(clue.id), `${clue.id} keeps its entity identity during migration`);
+      assert.deepEqual(
+        { x: body.pos.x, z: body.pos.z },
+        { x: LAST_SHIFT_POS.x + clue.offset.x, z: LAST_SHIFT_POS.z + clue.offset.z },
+        `${clue.id} joins the relocated authored cohort`,
+      );
+    }
+    assert.equal([...h.state.entities.values()].filter(e => e.alive && e.data?.lastShiftSiteId === C.siteId).length, 3,
+      'Continue does not duplicate semantic clue bodies');
+    assert.ok(h.state.entityIndex.physicsStaticVersion > indexVersion,
+      'the restored static physics layer is invalidated before native-world reconciliation');
+    assert.deepEqual(h.system.serialize().knownClueIds, [], 'unread story progression remains unread');
+    assert.equal(control.adoptWorldSnapshot(legacySnapshot, h.state.entityList), false,
+      'the old native pose cannot overwrite the migrated entity pose');
+    control.rebuildWorldFromEntities(h.state.entityList);
+    const nativeFairlead = control.records.get(ids.get('fairlead'))?.body.translation();
+    assert.ok(nativeFairlead, 'the canonical native owner rebuilt the same fairlead entity');
+    assert.ok(Math.abs(nativeFairlead.x - (LAST_SHIFT_POS.x - control._frameOrigin.x)) < 0.02);
+    assert.ok(Math.abs(nativeFairlead.z - (LAST_SHIFT_POS.z - control._frameOrigin.z)) < 0.02);
+  } finally { h.sim.dispose(); native.dispose(); control.dispose(); }
+});
+
+test('off-sector legacy Last Shift rows migrate before later native Ceres materialization', async () => {
+  const native = await createSg02DynamicBodyOwner({ ready: true });
+  const h = fixture(native);
+  try {
+    const saved = freshLastShiftRecord();
+    saved.surfaced = true;
+    saved.knownClueIds = ['cargo']; saved.revision = 1;
+    for (const entity of [...h.state.entities.values()]) {
+      if (entity.data?.lastShiftSiteId === C.siteId) h.sim.helpers.removeEntity(entity.id, { immediate: true });
+    }
+    for (const clue of LAST_SHIFT_CLUES) {
+      saved.bodies[clue.id] = {
+        status: 'live',
+        pos: { x: LAST_SHIFT_LEGACY_POS.x + clue.offset.x, z: LAST_SHIFT_LEGACY_POS.z + clue.offset.z },
+        vel: { x: 0, z: 0 },
+        rot: clue.id === 'fairlead' ? 0.61 : -0.25,
+        remainingPool: { ...clue.pool },
+      };
+    }
+    h.state.world.currentSectorId = 'sector_helios';
+    h.sim.bus.emit('save:restoring', { slot: 'quick' });
+    h.system.deserialize(saved);
+    h.system.afterContinue();
+
+    assert.equal([...h.state.entities.values()].filter(e => e.data?.lastShiftSiteId === C.siteId).length, 0,
+      'the old save has only its durable Last Shift row while Ceres is off-sector');
+    for (const clue of LAST_SHIFT_CLUES) {
+      assert.deepEqual(h.system._row.bodies[clue.id].pos,
+        { x: LAST_SHIFT_POS.x + clue.offset.x, z: LAST_SHIFT_POS.z + clue.offset.z },
+        `${clue.id} durable position migrates even without a resident entity`);
+    }
+    assert.deepEqual(h.system.serialize().knownClueIds, ['cargo'], 'saved clue knowledge remains intact');
+
+    h.state.world.currentSectorId = C.sectorId;
+    h.player.pos.set(LAST_SHIFT_POS.x, 0, LAST_SHIFT_POS.z);
+    h.system.update(1 / 60, h.state);
+    for (const clue of LAST_SHIFT_CLUES) {
+      const body = h.system._find(clue.id);
+      assert.ok(body, `${clue.id} materializes when the authored Ceres pocket becomes resident`);
+      assert.deepEqual({ x: body.pos.x, z: body.pos.z },
+        { x: LAST_SHIFT_POS.x + clue.offset.x, z: LAST_SHIFT_POS.z + clue.offset.z },
+        `${clue.id} materializes at its migrated safe position`);
+    }
+    assert.equal([...h.state.entities.values()].filter(e => e.alive && e.data?.lastShiftSiteId === C.siteId).length, 3,
+      'the row-only restore creates one canonical cohort without duplicating clue bodies');
+    native.syncFromEntities(h.state.entityList);
+    native.step(1 / 60); native.drainContactImpacts();
+    const fairlead = h.system._find('fairlead');
+    const nativeFairlead = native.records.get(fairlead.id)?.body.translation();
+    assert.ok(nativeFairlead, 'the canonical physics owner created the row-only fairlead');
+    const nativeDelta = Math.hypot(
+      nativeFairlead.x + native._frameOrigin.x - fairlead.pos.x,
+      nativeFairlead.z + native._frameOrigin.z - fairlead.pos.z,
+    );
+    assert.ok(nativeDelta < 10,
+      `the native fairlead collider stays beside the migrated authored pose (proxy COM offset ${nativeDelta.toFixed(2)} WU)`);
+    assert.ok(Math.hypot(nativeFairlead.x + native._frameOrigin.x - LAST_SHIFT_LEGACY_POS.x,
+      nativeFairlead.z + native._frameOrigin.z - LAST_SHIFT_LEGACY_POS.z) > 100,
+    'the native fairlead no longer occupies the old approach obstruction');
+  } finally { h.sim.dispose(); native.dispose(); }
+});
+
+test('legacy Continue preserves moved and towed bodies while retaining read evidence', () => {
+  const h = fixture();
+  try {
+    const oldSite = LAST_SHIFT_LEGACY_POS;
+    const saved = freshLastShiftRecord();
+    saved.surfaced = true;
+    saved.knownClueIds = ['cargo']; saved.revision = 1;
+    for (const clue of LAST_SHIFT_CLUES) {
+      const moved = clue.id === 'fairlead' ? { x: 42, z: 0 } : { x: 0, z: 0 };
+      saved.bodies[clue.id] = {
+        status: 'live',
+        pos: { x: oldSite.x + clue.offset.x + moved.x, z: oldSite.z + clue.offset.z + moved.z },
+        vel: { x: 0, z: 0 },
+        rot: clue.id === 'fairlead' ? 0.61 : -0.25,
+        remainingPool: { ...clue.pool },
+      };
+    }
+    for (const entity of [...h.state.entities.values()]) {
+      if (entity.data?.lastShiftSiteId === C.siteId) h.sim.helpers.removeEntity(entity.id, { immediate: true });
+    }
+    h.player.pos.set(oldSite.x, 0, oldSite.z);
+    h.system.deserialize(saved);
+    h.system._materialize();
+    const fairlead = h.system._find('fairlead'), cargo = h.system._find('cargo'), recorder = h.system._find('recorder');
+    const ids = { fairlead: fairlead.id, cargo: cargo.id, recorder: recorder.id };
+    const line = h.tow(recorder);
+    h.sim.bus.emit('save:restoring', { slot: 'quick' });
+    h.system.afterContinue();
+
+    assert.deepEqual({ x: fairlead.pos.x, z: fairlead.pos.z }, saved.bodies.fairlead.pos,
+      'a player-moved fairlead is not overwritten by the legacy migration');
+    assert.deepEqual({ x: cargo.pos.x, z: cargo.pos.z },
+      { x: LAST_SHIFT_POS.x + LAST_SHIFT_CLUES[1].offset.x, z: LAST_SHIFT_POS.z + LAST_SHIFT_CLUES[1].offset.z },
+      'an unmoved read source relocates while its story fact stays filed as known');
+    assert.deepEqual({ x: recorder.pos.x, z: recorder.pos.z }, saved.bodies.recorder.pos,
+      'an actively towed recorder is not relocated');
+    assert.equal(line.state, 'active');
+    assert.equal(h.system._find('fairlead').id, ids.fairlead);
+    assert.equal(h.system._find('cargo').id, ids.cargo);
+    assert.equal(h.system._find('recorder').id, ids.recorder);
+    assert.deepEqual(h.system.serialize().knownClueIds, ['cargo']);
   } finally { h.sim.dispose(); }
 });
 

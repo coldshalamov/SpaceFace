@@ -6,9 +6,16 @@ export const LAST_SHIFT = Object.freeze({
   persistenceOwner: 'lastShift', scanRangeWu: 320, discoveryRangeWu: 1200,
 });
 const belt = SECTOR_ZONES[LAST_SHIFT.sectorId].find(z => z.id === 'zone_ceres_belt');
-// A separate pocket beside the working seam, outside its machinery and traffic marks.
-export const LAST_SHIFT_POS = Object.freeze(sectorLocalToGlobalForSector({
+// Previous authored pocket before the Belt Outpost approach was rerouted. The Last Shift owner
+// uses this only to migrate an untouched live legacy body during Continue; changed or progressed
+// bodies keep their saved positions.
+export const LAST_SHIFT_LEGACY_POS = Object.freeze(sectorLocalToGlobalForSector({
   x: belt.center.x + 380, z: belt.center.z - 260,
+}, LAST_SHIFT.sectorId));
+// Keep this evidence pocket in the Ceres Belt zone, north of the Ceres field and clear of the
+// refinery-to-Belt-Outpost approach. Legacy bodies are migrated only while still untouched.
+export const LAST_SHIFT_POS = Object.freeze(sectorLocalToGlobalForSector({
+  x: belt.center.x + 580, z: belt.center.z + 310,
 }, LAST_SHIFT.sectorId));
 
 export const LAST_SHIFT_CLUES = Object.freeze([
