@@ -60,8 +60,8 @@ Targets and floors: README §4.
 
 ## The ordered packets
 
-Work top to bottom. Two may run at once when their paths are disjoint. Re-measure the baseline
-after every three landed perf packets and add a dated row above.
+Work top to bottom. Two may run at once when their paths are disjoint. Re-measure the affected
+bars when a changed performance owner or a failed/conflicting result requires it; record the result above.
 
 ### Wave M — the machine (do these first; they are the owner's top complaint)
 
@@ -200,7 +200,7 @@ instead of terminating (`presentationRunner.js`). D250: cap concurrent asset fet
 backoff. Add a forced-context-loss test and a 30-minute Adventure soak to the M0 bench. Done when the
 soak + one forced context loss shows zero terminal panes.
 
-Current M8 integration status (2026-10-31): the completed public Ceres journey delivers the accepted
+Current M8 integration status (2026-11-01): the completed public Ceres journey delivers the accepted
 cargo for 760 credits, then F5 → title Continue restores the settled credits, cargo, standing,
 receipt and log. Static-host and mounted-store persistence paths both pass functionally. This is not
 a stability or performance qualification.
@@ -213,7 +213,13 @@ context recovery and captures a detached SCN Wasp armor UV: a zero-byte GPU reco
 with 44,984 restored bytes. It remains a failed, performance-ineligible receipt. The context-loss
 handler now invalidates the canonical geometry residency ledger; the pre-projection guard blocks
 pending detached uploads and queues canonical refill until ready. Twenty real guard/package cases
-pass; the integrated ordinary forced-context check is pending. Focused checks also pass for six model
+pass. The later batch26c packaged public route passes F5/F9, forced context loss, the renderer's
+public recovery receipt, and input/world-render response after restoration and a 120-second tail.
+F9 takes 9,509 ms; this is bounded functional evidence, not a 30-minute or performance pass.
+Batch25's real loading deadlock was repaired by retaining required hull admission during loading
+and transferring the queue hold at flight. Earlier batch26/26b aggregate failures came from an
+observer expecting the wrong worker-load toast and sampling before renderer recovery; they remain
+recorded at their original layers. Focused checks also pass for six model
 retirement repairs (15- and 58-case batches), shadow-depth CPU-texture rehydration and lease lifetime,
 and rejected pacing after partial staging, including closing parked generators while preserving the
 original error. A short public check accepts the repaired snapshot-fence publication and normal quit.
@@ -223,13 +229,14 @@ Earlier full `c6` and short `030aaf` receipts remain failed; their evidence is r
 misses are not closed by focused checks. The repaired full-duration and context-recovery outcome
 remains open.
 
-The latest default baseline passes all 17 assertions but takes 166,805 ms against the unchanged
-90,000 ms budget; an unrelated Stranger simulation was concurrent. Scenario normalization now
-reuses canonical records between ownership boundaries, with focused story and four physical
-branches passing, but no speedup is established. The earlier three-job/phased runs took
-91,511/91,929 ms; that phase experiment was reverted and the four-job automatic ceiling remains
-unchanged. The earlier 86,286 ms result is historical. Public scenario normalization boundaries and all four
-physical branches remain intact. M8 progress does not close its separate open work.
+The latest default baseline (batch24) completes 16/17 links: Massline reaches its 210-second outer
+deadline without assertion output. Cause and assertion status remain UNKNOWN; total timing fails
+the unchanged 90,000 ms budget. A later isolated Massline aggregate passes all 27 checks in
+114,872 ms. One physical-branches CPU profile confirms the long prefix is shared and finds no
+demonstrated redundant pass to repair; instrumented timing is not a performance measurement.
+Earlier 166,805 ms (17/17 assertions) and 91,511/91,929 ms results remain historical timing failures;
+the phased experiment was reverted and the automatic four-job ceiling remains unchanged. Preserve
+scenario normalization and all four physical branches. M8 progress does not close baseline timing.
 
 **M9 — Load less, load later.** 28 MB of minified JS in the eager closure (`scripts/build-bundle.mjs`,
 esbuild splitting): lazy-load per mode and per screen; make `modelTruthCensus.generated.js` and
@@ -240,26 +247,29 @@ as JS) to a binary asset; take `src/testing/**` out of the retail graph (static 
 `FlightReadySet` and stream the rest after first flight. D252: fix the WebKit menu stall. Done when
 the load rows of README §4 meet their floor.
 
-The latest completed working-tree bundle is batch 23. Its main static ESM closure is 11,544,487 raw /
-3,604,071 summed-gzip bytes across 134 outputs, below the 12 MB raw floor. Main and both module
-worker graphs have zero missing static edges; the classic digest worker is separately built and
-outside the main metafile. The bundle gate validates 414 render plans and 2,829 files.
-Receipt: `3bd4e89fb747bc0926a2f82adb6dc5cf6922b114a792109d3e9fd8c02cf77aff`. The build includes
-concurrent working-tree changes recorded with batch 23, so these bytes do not isolate the effect of
-any one change. Ruckus mesh payloads now use the completed four-GLB binary migration and remain in
-the authored preflight warm path.
+The latest completed working-tree bundle/package is batch 27. Its main static ESM closure is
+11,409,345 raw / 3,556,953 summed-gzip bytes across 135 outputs, with zero missing static edges,
+below the 12 MB raw floor. Both module-worker entries build; the classic digest worker is separately
+built and outside the main metafile. The bundle gate validates 414 render plans and 2,833 files;
+42 main and 1,045 source-closure preload entries pass their canonical check. Receipt:
+`86d45e157cd30d54ae8e8c759296c60af31e60ffdf06ced9c3d73434d77386c4`. Its packaged ASAR receipt
+matches the build byte-for-byte. The build includes concurrent working-tree changes, so these bytes
+do not isolate any change's effect and this package is distinct from B26c's recovery artifact.
+Ruckus mesh payloads use the completed four-GLB migration and remain in authored preflight warmup.
 
 The static closure result does not establish lower total preflight transfer, faster startup or
-frame-time improvement. The 6 MB target, total preflight bytes, runtime loading bars, and ordinary
-worker/save/context route remain open. Prior M9 checkpoint sizes, receipts, and implementation
+frame-time improvement. The 6 MB target, total preflight bytes and runtime loading bars remain open.
+The B26c bounded packaged worker/save/context pass does not close those targets or a long soak.
+Prior M9 checkpoint sizes, receipts, and implementation
 history are consolidated in [the integration coverage archive](../../archive/finish-integration/INTEGRATION_COVERAGE_2026-10-31.md).
 
 **M10 — First sight never stalls.** KHR-capable pipeline admissions now issue under one serialized
 owner, restore the target and temporary root homes, then settle up to four independent actual-program
 sets outside that issue slot. Unsupported backends stay serial. Caller deadlines do not release live
 ownership; issue attribution restores before another batch starts. Focused target, context, cancellation,
-delayed-environment and deadline checks pass. This source change postdates batch 23; its new bundle and
-matched live first-sight measurement remain OPEN. Use `programBinaryCache.js` where valid and M3's smaller
+delayed-environment and deadline checks pass. The subsequent bundle/package gates pass, and batch26c
+passes bounded packaged recovery. A matched live first-sight measurement remains OPEN. Use
+`programBinaryCache.js` where valid and M3's smaller
 program count. **Do not** prewarm with dummy meshes (measured worse). Done when no first-sight link blocks
 > 16 ms in a fixed-seed Adventure route.
 
