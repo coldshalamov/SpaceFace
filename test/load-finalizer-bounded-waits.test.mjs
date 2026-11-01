@@ -309,18 +309,24 @@ test('a failure listener starting a replacement route prevents stale recovery na
   assert.deepEqual(pushes, [], 'stale failure cannot open a menu over the replacement route');
 });
 
-test('the soak checker waits for the failed-restore landing before retrying F9', () => {
+test('the soak checker waits for the failed-restore landing before failing terminally', () => {
   const probe = readFileSync(SOAK_PROBE_PATH, 'utf8');
-  assert.match(probe, /waitForLoadFlight = \(\)/,
+  assert.match(probe, /waitForSoakLoadLanding/,
     'the load leg must keep its flight wait');
   // After the first wait fails the probe must watch the session land — late flight or the
-  // retryable start-failed menu — instead of sampling once and misreading a bounded failure
-  // as a permanent mode:loading freeze.
+  // start-failed menu — instead of sampling once and misreading a bounded failure as a
+  // permanent mode:loading freeze.
   const catchIdx = probe.indexOf('catch (loadWaitError)');
   assert(catchIdx > 0, 'the load wait must have a failure path');
   const tail = probe.slice(catchIdx, catchIdx + 3000);
-  assert.match(tail, /waitForFunction\(\(\) =>[\s\S]{0,400}runtime:start-failed[\s\S]{0,400}polling/,
+  assert.match(tail, /waitForFunction\(readSoakLoadLanding[\s\S]{0,200}polling/,
     'the failure path must poll for the recoverable landing signature, not sample once');
-  assert.match(tail, /load-retry-start-failed[\s\S]{0,200}press\('F9'\)/,
-    'a start-failed landing must still trigger the D31 F9 retry');
+  assert.match(probe, /readSoakLoadLanding[\s\S]{0,600}runtime:start-failed/,
+    'the landing signature must still recognize the start-failed menu');
+  // A start-failed landing is terminal evidence, not a recursive F9 input: the probe throws
+  // SOAK_LOAD_START_FAILED and the cycle retry deliberately excludes it.
+  assert.match(tail, /SOAK_LOAD_START_FAILED/,
+    'a start-failed landing must surface as a named terminal failure');
+  assert.match(probe, /code !== 'SOAK_LOAD_START_FAILED'/,
+    'the cycle retry must not recursively re-press F9 on a failed restore');
 });

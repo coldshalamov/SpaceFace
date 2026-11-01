@@ -7,8 +7,10 @@ import * as THREE from 'three';
 
 import { createBus } from '../src/core/eventBus.js';
 import { vfx } from '../src/render/vfx.js';
+import { entityIndexLaneVersion } from '../src/world/livingWorldViews.js';
 
 const PLAYER_ID = 1;
+const LANES = ['pickups', 'payloads'];
 
 function makeHarness() {
   const scene = new THREE.Scene();
@@ -30,6 +32,8 @@ function makeHarness() {
       __spacefaceEntityIndexV1: true,
       ready: true,
       version: 1,
+      laneVersions: { pickups: 1, payloads: 1 },
+      laneEpoch: 0,
       pickups: [],
       payloads: [],
       ships: [player],
@@ -60,17 +64,17 @@ test('loot-magnet quiet-latches on empty pickups+payloads buckets', () => {
   const { system, state } = makeHarness();
   assert.equal(system._lootMagnetRelevant(), false);
   assert.equal(system._lootMagnetQuietEmpty, true, 'empty buckets must latch');
-  assert.equal(system._lootMagnetQuietIndexVersion, 1);
+  assert.equal(system._lootMagnetQuietIndexVersion, entityIndexLaneVersion(state, LANES));
 
   // Latched ticks skip player + dual scan.
   for (let i = 0; i < 40; i++) {
     assert.equal(system._lootMagnetRelevant(), false);
   }
   assert.equal(system._lootMagnetQuietEmpty, true);
-  assert.equal(system._lootMagnetQuietIndexVersion, state.entityIndex.version);
+  assert.equal(system._lootMagnetQuietIndexVersion, entityIndexLaneVersion(state, LANES));
 });
 
-test('entityIndexVersion dirty-wake resumes then re-latches when empty', () => {
+test('lane-version dirty-wake resumes then re-latches when empty', () => {
   const { system, state, player } = makeHarness();
   assert.equal(system._lootMagnetRelevant(), false);
   assert.equal(system._lootMagnetQuietEmpty, true);
@@ -85,6 +89,7 @@ test('entityIndexVersion dirty-wake resumes then re-latches when empty', () => {
     data: { kind: 'ore', commodityId: 'ice' },
   };
   state.entityIndex.version = 2;
+  state.entityIndex.laneVersions.pickups = 2;
   state.entityIndex.pickups = [pickup];
   state.entityList = [player, pickup];
 
@@ -93,11 +98,12 @@ test('entityIndexVersion dirty-wake resumes then re-latches when empty', () => {
 
   // Drain buckets → re-latch.
   state.entityIndex.version = 3;
+  state.entityIndex.laneVersions.pickups = 3;
   state.entityIndex.pickups = [];
   state.entityList = [player];
   assert.equal(system._lootMagnetRelevant(), false);
   assert.equal(system._lootMagnetQuietEmpty, true);
-  assert.equal(system._lootMagnetQuietIndexVersion, 3);
+  assert.equal(system._lootMagnetQuietIndexVersion, entityIndexLaneVersion(state, LANES));
 
   for (let i = 0; i < 10; i++) assert.equal(system._lootMagnetRelevant(), false);
   assert.equal(system._lootMagnetQuietEmpty, true);

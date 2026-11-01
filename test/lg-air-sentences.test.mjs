@@ -122,7 +122,7 @@ test('seed 4242 the three field instruments say what the field actually shows', 
   tickAlienEcology(metered.world, 1);
   const note = metered.log.find((row) => row.type === 'comms:log' && row.payload && row.payload.from === 'Coherence meter');
   assert.ok(note, metered.log.map((row) => `${row.type}:${row.payload && row.payload.from}`).join(','));
-  assert.match(note.payload.text, /The Harvest Deep is still coherent/);
+  assert.match(note.payload.text, /The Harvest Deep: LIVING\. BIOMASS IS PRESENT\. ACTIVITY IS UP\./);
   const meterLine = airSentenceForId('mod_field_coherence_meter');
   assert.match(meterLine, /flight log/);
   assert.match(meterLine, /still coherent/);

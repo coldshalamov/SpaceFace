@@ -68,7 +68,9 @@ test('ordinary Vesta sector entry places the winnow at an existing seam, with sa
     host.state.simTime = 7;
     host.step(1);
     const active = host.state.world.activeSector;
-    const banks = () => active.dressing.filter((row) => row.environmentalMachineryId);
+    // A sibling kill machine (vesta_shear_jaws) shares the sector; count only the winnow's banks.
+    const bankIds = new Set(machine.furniture.map((bank) => bank.id));
+    const banks = () => active.dressing.filter((row) => bankIds.has(row.environmentalMachineryId));
     assert.equal(banks().length, 2);
     const anchors = host.state.entityList.filter((entity) => entity.data?.killMachineId === machine.id);
     assert.equal(anchors.length, 2, 'both banks have real Massline-compatible terrain bodies');

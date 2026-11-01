@@ -13,12 +13,12 @@ import { handlingBandModel } from '../src/ui/ship/shipBandModels.js';
 
 const HITCH = 'ship_kestrel';
 
-function yawOf(fittings) {
-  return getDerivedStats(HITCH, fittings, null).propulsion.yawAccel;
+function yawOf(fittings, player = null) {
+  return getDerivedStats(HITCH, fittings, player).propulsion.yawAccel;
 }
 
-function agilityWhy(fittings) {
-  const model = handlingBandModel({ shipId: HITCH, fittings, player: null });
+function agilityWhy(fittings, player = null) {
+  const model = handlingBandModel({ shipId: HITCH, fittings, player });
   const bar = model.bars.find((row) => row.id === 'agility');
   assert.ok(bar && bar.why);
   return bar.why;
@@ -49,15 +49,15 @@ function heaviestPack() {
   return fittings;
 }
 
-function rejectedMassPct(fittings) {
+function rejectedMassPct(fittings, player = null) {
   const hitch = SHIPS.find((row) => row.id === HITCH);
-  const feel = (fit) => {
-    const derived = getDerivedStats(HITCH, fit, null);
+  const feel = (fit, forPlayer) => {
+    const derived = getDerivedStats(HITCH, fit, forPlayer === undefined ? player : forPlayer);
     return derived.operationalFeelMass != null ? derived.operationalFeelMass : derived.operationalMass;
   };
   const factor = (mass) => 1.4 / (0.4 + Math.max(0.001, mass / hitch.mass));
   const loaded = factor(feel(fittings));
-  const bare = factor(feel([]));
+  const bare = factor(feel([], null));
   return Math.round(Math.abs((loaded / bare - 1) * 100));
 }
 
@@ -69,12 +69,16 @@ test('seed 4242 fitted mass takes the turn line only when the yaw moves', () => 
   assert.match(bumperWhy, /middle of the roster/);
   assert.doesNotMatch(bumperWhy, /fitted modules|slower than bare/);
 
+  // The heaviest legal module pack sits inside the hitch's 35 t drive rating, so it
+  // keeps ceiling accel — the hold is what pushes an ordinary fit over the rating.
   const packed = heaviestPack();
-  const packedYaw = yawOf(packed);
-  assert.ok(packedYaw < bare);
-  const live = Math.round(Math.abs((packedYaw / bare - 1) * 100));
-  const packedWhy = agilityWhy(packed);
-  assert.match(packedWhy, new RegExp(`turn ${live}% slower than bare`));
-  const rejected = rejectedMassPct(packed);
+  assert.equal(yawOf(packed), bare);
+  const laden = { cargo: { usedMass: 12 } };
+  const ladenYaw = yawOf(packed, laden);
+  assert.ok(ladenYaw < bare);
+  const live = Math.round(Math.abs((ladenYaw / bare - 1) * 100));
+  const ladenWhy = agilityWhy(packed, laden);
+  assert.match(ladenWhy, new RegExp(`turn ${live}% slower than empty`));
+  const rejected = rejectedMassPct(packed, laden);
   assert.ok(Math.abs(live - rejected) >= 15, `live ${live} rejected ${rejected}`);
 });

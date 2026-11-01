@@ -1070,6 +1070,12 @@ const MODULE_AIR_SENTENCE = Object.freeze({
   unique_double_entry_mask: 'You read quieter than a stock scrambler, and the scan reaches a little farther.',
   unique_first_notch_marker: 'Closes an anomaly fix in two scans instead of three, and the scan reaches farther.',
   unique_regular_mass_shifter: 'More room in the hold than the hull was built with.',
+  mod_claw_anchor_s: 'Holds a Masslined hull steadier on a close custody approach; the line can still break.',
+  mod_signature_reader_s: 'Reads a little farther, and flags a hull whose broadcast disagrees with its drive before you dock.',
+  mod_quiet_intrusion_s: 'Replays a scanned maintenance handshake once — one quiet attempt before the keys rotate.',
+  mod_proof_recorder_s: 'Records crew release and intact arrival; recoveries with testimony carry a stronger salvage claim.',
+  unique_blackbird_governor: 'An overbored Sprint bus: harder thrust, more mass, more draw — and an exhaust that names the prototype.',
+  mod_collector_maw_s: 'Pull drops a collector that binds loose rock and wreck into one knot you can aim and throw.',
 });
 
 function attachAirSentences(list) {
