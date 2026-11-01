@@ -1,6 +1,6 @@
 import { ORCHARD_GEOMETRY as G } from '../data/anvilOrchardBody.js';
 import { isOrchardFrame, ORCHARD_FRAME_FILE } from '../data/anvilOrchardIdentity.js';
-import { readOrchardNativePose } from '../core/anvilOrchardNative.js';
+import { readOrchardNativePose } from '../core/orchardPoseReader.js';
 
 const visualOwners = new WeakMap();
 

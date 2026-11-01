@@ -2,10 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import * as THREE from 'three';
-import { NodeIO } from '@gltf-transform/core';
-import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
-import { dequantize } from '@gltf-transform/functions';
-import { MeshoptDecoder } from 'meshoptimizer';
+import { GLTFLoader } from '../vendor/addons/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from '../vendor/addons/libs/meshopt_decoder.module.js';
+import { registerEmbeddedKtx2Textures } from '../src/render/embeddedKtx2Textures.js';
 import { prepareRenderPackageBlueprint, assembleRenderPackageRecord } from '../src/render/assetLoader.js';
 import { createRenderPackageLoader } from '../src/render/renderPackageLoader.js';
 import { loadMotionBank, authoredMotionControllersFor } from '../src/render/authoredMotion.js';
@@ -25,26 +24,12 @@ const read = path => JSON.parse(fs.readFileSync(path));
 async function packageFixture() {
   const pilot = read('assets/ships/render-packages/pilots.json').pilots.find(p=>p.key==='anvil-storm-orchard');
   const metadata = read(pilot.metadataUrl);
-  await MeshoptDecoder.ready;
-  const io = new NodeIO().registerExtensions(ALL_EXTENSIONS).registerDependencies({'meshopt.decoder':MeshoptDecoder});
-  const doc = await io.read(`${pilot.outputDir}/render.glb`); await doc.transform(dequantize());
-  const convert = node => {
-    const primitive=node.getMesh()?.listPrimitives()[0];
-    const object=primitive?new THREE.Mesh(new THREE.BufferGeometry(),new THREE.MeshStandardMaterial()):new THREE.Group();
-    object.name=node.getName();object.userData={...node.getExtras()};
-    if(primitive) {
-      const position=primitive.getAttribute('POSITION');
-      object.geometry.setAttribute('position',new THREE.BufferAttribute(position.getArray().slice(),position.getElementSize()));
-      if(primitive.getIndices())object.geometry.setIndex(new THREE.BufferAttribute(primitive.getIndices().getArray().slice(),1));
-      object.material.name=primitive.getMaterial()?.getName()||'';
-    }
-    object.position.fromArray(node.getTranslation());object.quaternion.fromArray(node.getRotation());object.scale.fromArray(node.getScale());
-    for(const child of node.listChildren())object.add(convert(child));
-    return object;
-  };
-  const scene=new THREE.Group();for(const node of doc.getRoot().listScenes()[0].listChildren())scene.add(convert(node));
-  scene.userData={...doc.getRoot().listScenes()[0].getExtras()};
-  const loader=createRenderPackageLoader({loadGlb:async()=>({scene,asset:doc.getRoot().getAsset()}),prepareDecoded:async(decoded,m,url,plan)=>{
+  const gltfLoader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
+  gltfLoader.setKTX2Loader({ parse(_bytes, onLoad) { onLoad(new THREE.CompressedTexture([], 4, 4)); } });
+  gltfLoader.register(registerEmbeddedKtx2Textures);
+  const bytes = fs.readFileSync(`${pilot.outputDir}/render.glb`);
+  const decoded = await gltfLoader.parseAsync(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength), '');
+  const loader=createRenderPackageLoader({loadGlb:async()=>decoded,prepareDecoded:async(decoded,m,url,plan)=>{
     const prepared=prepareRenderPackageBlueprint(pilot,decoded,m,{plan});
     const motionBank=await loadMotionBank(m.runtime.motionBank,async path=>{const b=fs.readFileSync(path);return {ok:true,arrayBuffer:async()=>b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength)};});
     return {...prepared,motionBank};
