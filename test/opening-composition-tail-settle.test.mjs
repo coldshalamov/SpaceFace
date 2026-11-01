@@ -70,7 +70,7 @@ function relayBoundary(scene, entity) {
   return boundary;
 }
 
-test('the tail settle kicks a waiting opening boundary, drains the serial lane, and re-arms the first-flight hold', async () => {
+test('the tail settle drains the opening lane and transfers its hold when flight begins', async () => {
   const scene = { name: 'scene' };
   const meshes = new Map();
   const { state, relay } = openingState({ scene, meshes });
@@ -78,7 +78,7 @@ test('the tail settle kicks a waiting opening boundary, drains the serial lane, 
   meshes.set('r1', boundary);
   // A second, already-queued compose gives the scene real queue state — the shape the shell
   // actually releases in (leftoverUpgradeIdle: pending=3, inFlight=2). The settle must lift the
-  // armed hold so this job too finishes behind the shell, then leave the hold armed again.
+  // armed hold so this job too finishes behind the shell, then retain the restricted loading lane.
   const slowBoundary = {
     name: 'slow_leftover_AuthoredAssetBoundary',
     parent: scene,
@@ -101,8 +101,7 @@ test('the tail settle kicks a waiting opening boundary, drains the serial lane, 
     },
   });
 
-  // The live-sector cook's finally always arms this hold before handing over; the tail must
-  // prove it can drain through an armed hold and leave it armed again.
+  // A previous flight may have armed the hold; the tail must drain through it.
   assert.equal(holdAuthoredUpgradeQueueForFirstFlight(scene), true);
   assert.equal(describeAuthoredUpgradeQueue(scene).firstFlightHeld, true);
 
@@ -120,8 +119,9 @@ test('the tail settle kicks a waiting opening boundary, drains the serial lane, 
   assert.equal(receipt.inFlight, 0);
   assert.equal(boundary.userData.authoredAssetState, 'authored');
   assert.equal(slowBoundary.userData.authoredAssetState, 'authored');
-  // The guard's purpose is the flight boundary; the settle leaves the queue exactly as the
-  // cook's finally left it.
+  // Late loading hulls must still run; flight then takes the normal first-flight hold.
+  assert.equal(describeAuthoredUpgradeQueue(scene).firstFlightHeld, false);
+  holdAuthoredUpgradeQueueForFirstFlight(scene, { onlyLoadingHulls: true });
   assert.equal(describeAuthoredUpgradeQueue(scene).firstFlightHeld, true);
 });
 
@@ -156,6 +156,8 @@ test('the tail settle fails open on budget expiry while work remains in flight',
   assert.equal(receipt.settled, false, 'a never-settling lane must not be reported settled');
   assert.ok(receipt.waitedMs >= 100, 'the settle must actually spend its budget waiting');
   assert.ok(receipt.waitedMs < 5000, 'the settle must fail open instead of hanging the shell');
+  assert.equal(describeAuthoredUpgradeQueue(scene).firstFlightHeld, false);
+  holdAuthoredUpgradeQueueForFirstFlight(scene, { onlyLoadingHulls: true });
   assert.equal(describeAuthoredUpgradeQueue(scene).firstFlightHeld, true);
 });
 

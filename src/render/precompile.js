@@ -597,8 +597,8 @@ export async function settleOpeningCompositionTail(state, options = {}) {
         };
       }
     } catch { /* a refused request leaves the live trigger armed */ }
-    // The cook's finally armed firstFlightHandoffHold. During loading nothing presents, so lift
-    // it for the drain and re-arm it below: held non-opening leftovers stay deferred, while the
+    // During loading nothing presents, so lift the hold for the drain and restore the restricted
+    // loading lane below: held non-opening leftovers stay deferred, while the
     // opening composition's own jobs may finish their decode/compile/upload behind the shell
     // instead of at the in-flight latch inside the first 20 s of flight.
     resumeAuthoredUpgradeQueueAfterOpening(scene);
@@ -621,7 +621,7 @@ export async function settleOpeningCompositionTail(state, options = {}) {
       ]);
     } catch { /* best effort */ }
   }
-  if (scene && state.mode === 'loading') holdAuthoredUpgradeQueueForFirstFlight(scene);
+  if (scene && state.mode === 'loading') holdAuthoredUpgradeQueueForFirstFlight(scene, { loading: true });
   const residency = residencyPending();
   return {
     skipped: false,

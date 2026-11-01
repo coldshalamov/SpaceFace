@@ -98,6 +98,29 @@ function makeHarness(runtimeState) {
 
 const ARRIVAL_BODY = { sectorArrivalBody: true };
 
+test('a new loading cohort drains required hulls after the previous first-flight hold', async () => {
+  const runtimeState = beltArrivalRuntimeState({ mode: 'flight' });
+  const harness = makeHarness(runtimeState);
+  try {
+    harness.enqueue({ id: 'ambient-filler', type: 'fx', pos: { x: -1000, z: 0 } });
+    partsLibrary.holdAuthoredUpgradeQueueForFirstFlight(harness.scene);
+    runtimeState.mode = 'loading';
+    // Retail need not expose window.SF. The loading owner supplies its actual mode.
+    delete globalThis.window.SF;
+    partsLibrary.holdAuthoredUpgradeQueueForFirstFlight(harness.scene, { loading: true });
+    harness.enqueue({ id: 'restored-player', type: 'ship', pos: { x: 0, z: 0 } });
+    // The first callback was invalidated when the previous flight was held.
+    await harness.runNextFrame();
+    await harness.runNextFrame();
+    assert.deepEqual(harness.starts, ['restored-player']);
+    assert.equal(runtimeState.render.firstPlayableFrameAt, undefined);
+    harness.releases.get('restored-player')();
+    await new Promise((resolve) => setImmediate(resolve));
+  } finally {
+    harness.cleanup();
+  }
+});
+
 test('the bodies the opening frame shows admit first during the post-bridge load', async () => {
   const runtimeState = beltArrivalRuntimeState({ mode: 'loading' });
   const harness = makeHarness(runtimeState);

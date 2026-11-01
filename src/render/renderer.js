@@ -11727,6 +11727,9 @@ export const render = {
         }) : promise
     );
     state.render.beginOpeningLoadingAdmission = () => {
+      // A same-session restore may inherit the previous flight's queue hold before
+      // the loading cohort discovers its player boundary.
+      if (state.mode === 'loading') resumeAuthoredUpgradeQueueForLoadingHulls(scene);
       const existing = this._openingLoadingAdmission;
       if (existing?.owns(state.entities?.get(state.playerId))) return this._openingLoadingMeshesReady;
       const world = state.world;
@@ -13382,7 +13385,7 @@ export const render = {
           mobileActive = false;
           if (!recookStale()) {
             state.render.liveSectorGpuAdmission = false;
-            holdAuthoredUpgradeQueueForFirstFlight(scene);
+            holdAuthoredUpgradeQueueForFirstFlight(scene, { loading: state.mode === 'loading' });
             freezeOpeningGraphPublication(this);
           }
         }
@@ -15581,7 +15584,7 @@ export const render = {
         if (!cookStale()) {
         state.render.liveSectorGpuAdmission = false;
         state.render.liveSectorFirstFlightIds = null;
-        holdAuthoredUpgradeQueueForFirstFlight(scene);
+        holdAuthoredUpgradeQueueForFirstFlight(scene, { loading: state.mode === 'loading' });
         // A survival cook mounts the whole arena as content, not a protected first picture:
         // freezing the publication gate here only parks finished boundary commits on the ~20 s
         // first-flight latch, which bursts them into the round. Leave the gate released so a
@@ -17819,7 +17822,7 @@ export const render = {
         if (!cookStale()) {
         state.render.liveSectorGpuAdmission = false;
         state.render.liveSectorFirstFlightIds = null;
-        holdAuthoredUpgradeQueueForFirstFlight(scene);
+        holdAuthoredUpgradeQueueForFirstFlight(scene, { loading: state.mode === 'loading' });
         freezeOpeningGraphPublication(this);
         try { console.info(formatOpeningCookLedger(jumpLedger)); } catch { /* diagnostics only */ }
         // Both guards above are the OPENING's, and the only thing that ever lifts them is the
@@ -20523,6 +20526,7 @@ export const render = {
         });
       }
       if (mode !== 'flight') return;
+      holdAuthoredUpgradeQueueForFirstFlight(this.scene, { onlyLoadingHulls: true });
       this._sessionRecookKeepGpu = false;
       // The first visible flight draw contains only the already-resident opening composition.
       // Bulk sector roots resume at the normal two-per-frame budget after that draw completes.
