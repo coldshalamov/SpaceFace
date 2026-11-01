@@ -360,6 +360,22 @@ ${H} .orr-hmix__lbl:focus-visible { outline:none; }
   ${HD} .orr-help-list--ores .orr-help-reading > .orr-help-reading__name { font-size:clamp(22px, 2.2vw, 28px); }
   ${HD} .orr-help-list--ores .orr-help-terms { margin:14px 0 0; grid-template-columns:auto minmax(0, 1fr); column-gap:18px; }
 }
+/* ui-polish-282: the readings beside the Ships, Commodities, Ores and Factions instruments were loose
+   label/value pairs floating on the glass (≥1201 wide), so the spec read unfinished next to the framed
+   section list. The ledger now sits in one hairline-framed sheet on a faint fill, a rule between rows,
+   and the Legality line under it wears the same frame; type, colours and the row data are unchanged. */
+@media (min-width:1201px) and (min-height:461px) {
+  ${HD} .orr-help-terms { margin:16px 0 0; padding:2px 12px; column-gap:0; border:1px solid rgb(${BONE} / .18); border-radius:6px; background:rgb(${BONE} / .025); }
+  ${HD} .orr-help-terms dt { padding:9px 18px 9px 0; border-top:1px solid rgb(${BONE} / .09); }
+  ${HD} .orr-help-terms dd { padding:7px 0; border-top:1px solid rgb(${BONE} / .09); }
+  ${HD} .orr-help-terms > .orr-help-terms__row:first-child > * { border-top:0; }
+  /* ORES lays two pairs to a line: the second pair opens the sheet too, and the first pair keeps its gutter */
+  ${HD} .orr-help-list--ores .orr-help-terms { margin:0; padding:2px 10px; }
+  ${HD} .orr-help-list--ores .orr-help-terms dt { padding-right:12px; }
+  ${HD} .orr-help-list--ores .orr-help-terms > .orr-help-terms__row:nth-child(2) > * { border-top:0; }
+  ${HD} .orr-help-list--ores .orr-help-terms > .orr-help-terms__row:nth-child(odd) > dd { padding-right:14px; }
+  ${HD} .orr-help-reading__legal { margin:8px 0 0; padding:8px 12px; gap:20px; border:1px solid rgb(${BONE} / .18); border-radius:6px; background:rgb(${BONE} / .025); }
+}
 /* UI polish 42: a short desktop (≤460 tall). The 761–1200 row of sections still sits beside the
    title, and the Controls stage still splits the ship rig beside EVERY KEY — but under ~460px of
    height the title row, the section ticks, the rig's "PRESS ANY KEY" echo and the register's rebound
