@@ -1,6 +1,6 @@
 import { decodeFootageFrameToBlob } from './footageVideoCodec.js';
 import { getReplayAudioTape, createReplayAudioPlayback } from '../../audio/replayAudioTape.js';
-import { getFlightFootage } from './flightFootageCapture.js';
+import { FLIGHT_FOOTAGE_LIMITS, getFlightFootage } from './flightFootageCapture.js';
 export {
   FLIGHT_FOOTAGE_LIMITS,
   createFootageEncoder,

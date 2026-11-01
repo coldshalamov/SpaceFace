@@ -86,6 +86,7 @@ test('ordinary-life rhythm: jobPhase and jobProgress reflect live work and waiti
     control: null,
   };
 
+  runtime.helpers = { traffic: {} };
   runtime.state = {
     mode: 'flight',
     simTime: 1.0,
@@ -300,7 +301,9 @@ test('ordinary-life rhythm: worker hull without cargo holds position when alarme
 
 test('ordinary-life rhythm: worker bolts from a materialized hostile even when it would hold for ambient violence', () => {
   const runtime = Object.create(npcJobsRuntime);
-  const miner = makeMockShip(94, { role: 'miner', kind: NPC_JOB_KIND.MINER, cargo: 0 });
+  // The escape model turns away before it burns: a nose still on the threat writes a turn, not
+  // throttle (burning through the turn launched workers into the danger they had noticed).
+  const miner = makeMockShip(94, { role: 'miner', kind: NPC_JOB_KIND.MINER, cargo: 0, rot: 0 });
   const hostile = {
     id: 904,
     type: 'ship',
@@ -329,6 +332,12 @@ test('ordinary-life rhythm: worker bolts from a materialized hostile even when i
   };
 
   runtime._drive(entry, miner);
+  assert.equal(miner.data.intent.moveZ, 0, 'nose on the hostile: turn first, no burn yet');
+  assert.equal(miner.data.intent.aimAngle, Math.PI, 'the turn points straight away from the hostile');
+
+  // Turned around, the hull builds the escape burn the old model assumed was instant.
+  miner.rot = Math.PI;
+  runtime._drive(entry, miner);
   assert.equal(miner.data.intent.moveZ, 1, 'worker leaves the real hostile');
   assert.equal(miner.data.intent.boost, true, 'empty worker boosts away from a real hostile');
   assert.equal(miner.data.intent.brake, false, 'worker releases brake while fleeing');
@@ -336,7 +345,7 @@ test('ordinary-life rhythm: worker bolts from a materialized hostile even when i
 
 test('ordinary-life rhythm: cargo-carrying hull keeps the load and leaves slowly', () => {
   const runtime = Object.create(npcJobsRuntime);
-  const loadedHauler = makeMockShip(92, { role: 'hauler', kind: NPC_JOB_KIND.HAULER, cargo: 24 });
+  const loadedHauler = makeMockShip(92, { role: 'hauler', kind: NPC_JOB_KIND.HAULER, cargo: 24, rot: Math.PI });
   const entry = {
     job: { phase: NPC_JOB_PHASE.FLEE, corrupt: false },
     kind: NPC_JOB_KIND.HAULER,
@@ -364,7 +373,7 @@ test('ordinary-life rhythm: cargo-carrying hull keeps the load and leaves slowly
 
 test('ordinary-life rhythm: empty hauler bolts with boost when alarmed by violence', () => {
   const runtime = Object.create(npcJobsRuntime);
-  const emptyHauler = makeMockShip(93, { role: 'hauler', kind: NPC_JOB_KIND.HAULER, cargo: 0 });
+  const emptyHauler = makeMockShip(93, { role: 'hauler', kind: NPC_JOB_KIND.HAULER, cargo: 0, rot: Math.PI });
   const entry = {
     job: { phase: NPC_JOB_PHASE.FLEE, corrupt: false },
     kind: NPC_JOB_KIND.HAULER,

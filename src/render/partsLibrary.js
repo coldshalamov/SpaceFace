@@ -6843,9 +6843,13 @@ export function resumeAuthoredUpgradeQueueForLoadingHulls(scene) {
 }
 
 /** Stop leftover FX upgrades from publishing during the first flight presents. */
-export function holdAuthoredUpgradeQueueForFirstFlight(scene) {
+export function holdAuthoredUpgradeQueueForFirstFlight(scene, options = {}) {
+  // A loading cohort can still discover required hulls after the cook has finished.
+  // Keep its restricted lane open until flight actually begins.
+  if (options.loading === true) return resumeAuthoredUpgradeQueueForLoadingHulls(scene);
   const state = scene && upgradeQueuesByScene.get(scene);
   if (!state) return false;
+  if (options.onlyLoadingHulls === true && state.loadingHullsOnly !== true) return false;
   // The opening cohort's broad hold is over at the first-flight boundary. Carrying it into
   // flight masks the selective ship lane below, even though firstFlightHandoffHold still fences
   // every non-ship job until the regular release latch.
@@ -17332,6 +17336,9 @@ export function runAuthoredInstanceRangeContractProbe() {
 // cloneMaterialPreservingShaderHooks lives in materialClone.js so runtime mutators
 // (shipMicroMotion's bell heat skin) can use it without importing this module.
 export { cloneMaterialPreservingShaderHooks };
+// The rearm scheduler is an internal helper consumed at the refusal call sites; the
+// parts-library refusal-rearm fixture verifies it directly through this seam.
+export { scheduleRefusalTriggerRearm };
 
 // Hull stencils land on structural deck surfaces; glass, signals and drives stay clean.
 const STENCIL_SURFACE_ROLES = new Set(['hull', 'accent', 'service', 'mechanical', 'docking', 'repair']);

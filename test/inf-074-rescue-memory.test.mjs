@@ -22,6 +22,12 @@ function boot() {
     on(event, handler) {
       (this._handlers[event] = this._handlers[event] || []).push(handler);
     },
+    off(event, handler) {
+      const list = this._handlers[event];
+      if (!list) return;
+      const i = list.indexOf(handler);
+      if (i >= 0) list.splice(i, 1);
+    },
     emit(event, payload) {
       traffic.push({ event, payload });
       for (const handler of this._handlers[event] || []) handler(payload);

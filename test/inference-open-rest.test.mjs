@@ -85,6 +85,7 @@ test('WORLD-20 seed 4242 can place a living tourist inside the Helios memorial',
     _active: [],
     _stampTrafficDurableIdentity: traffic._stampTrafficDurableIdentity,
     _ensureHeliosMemorialTourist: traffic._ensureHeliosMemorialTourist,
+    _indexWorldRecordId: traffic._indexWorldRecordId,
   }, 'sector_helios_prime', { factionId: 'faction_scn' }, [{ id: 'station_helios', pos: { x: 0, z: 0 } }], list);
   assert.equal(spawned.length, 1);
   assert.equal(spawned[0].data.trafficRole, 'tourist');

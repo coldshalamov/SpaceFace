@@ -121,6 +121,7 @@ test('the reel never starts for a different berth', () => {
 // Programme animation itself is exercised above; these doubles count owner handoffs.
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
+import { markStationControl } from '../src/ui/station/stationBindingMap.js';
 const stationSource = readFileSync(new URL('../src/ui/station/stationApp.js', import.meta.url), 'utf8');
 function stationMountHarness() {
   const calls = [], controls = [];
@@ -144,6 +145,7 @@ function stationMountHarness() {
     app: node(), rootEl: node(), dock: { setActive() {} }, stationOperationToSurface: id => id,
     applyDestinationRegister() {}, screenFor: dest => screens.get(dest.id), effects: { navigate() {}, syncPolicy() {} },
     isPhoneLayout: () => false, renderStatus() {}, applyDockAttention() {}, lastMissionAttention: null,
+    markStationControl,
   };
   const mount = stationSource.slice(stationSource.indexOf("  // Kite's Corner borrows"), stationSource.indexOf('  // The register per destination'));
   const refresh = stationSource.slice(stationSource.indexOf('  function refresh(_nextCtx'), stationSource.indexOf('  // Implicit exits'));
