@@ -50,11 +50,16 @@ export class PerceptionMemory {
       record.observedConfidence = contact.confidence;
     }
 
-    for (const [key, contact] of memory.contacts) {
-      if (seen.has(key)) continue;
-      const age = normalized.tick - contact.lastSeenTick;
-      const confidence = contact.observedConfidence * Math.max(0, 1 - age / this.memoryTicks);
-      if (age > this.memoryTicks || confidence < this.confidenceFloor) memory.contacts.delete(key);
+    // The current rows have all been inserted/updated above. If the map has no additional keys
+    // beyond this frame's unique keys, every remembered contact was seen and there is nothing to
+    // age out; avoid a second full contact walk on the common stable-frame path.
+    if (memory.contacts.size > seen.size) {
+      for (const [key, contact] of memory.contacts) {
+        if (seen.has(key)) continue;
+        const age = normalized.tick - contact.lastSeenTick;
+        const confidence = contact.observedConfidence * Math.max(0, 1 - age / this.memoryTicks);
+        if (age > this.memoryTicks || confidence < this.confidenceFloor) memory.contacts.delete(key);
+      }
     }
 
     memory.revision++;
