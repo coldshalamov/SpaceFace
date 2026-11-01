@@ -230,8 +230,14 @@ const LAYER_DEFS = [
 // DUST P3a — deep-space floor tone (see LAYER_COMPOSITE_FRAG). The palette haze is the hue;
 // brightness lifts it from "authored nebula tint" to a quiet full-frame floor that keeps the
 // dead band off pure void. Gain is the mix ceiling toward the frame's near half.
+// DUST P3 (2026-11-01 gate follow-up): raised and re-weighted. The first band was strong only
+// at the very bottom and fell to ~0.39 of gain at the ~35%-height line where the sector plates'
+// own structure ends (belt ochre shoal: art luminance collapses to a flat fill below plate-y
+// ~0.62), so the tone stepped DOWN exactly where the plate stepped down — the cut read as a
+// decal edge instead of thinning haze. The new band carries ~0.73 of the gain at that line and
+// eases smoothly to the frame top, so plate structure thins INTO the floor.
 const DUST_DEEP_TONE_GAIN = 0.85;
-const DUST_DEEP_TONE_BRIGHTNESS = 1.35;
+const DUST_DEEP_TONE_BRIGHTNESS = 2.2;
 // DUST P3a — deep star floor. Group-local drop of the second (deep) star plane below the
 // shipped STAR_DEPTH plane; see _createStars for why it exists.
 const DEEP_STAR_DROP = 460;
@@ -548,9 +554,10 @@ const LAYER_COMPOSITE_FRAG = /* glsl */`
     // without a floor the rest of the frame is flat dead void with a hard read where the art
     // stops. A closed-form screen gradient (no texture fetch, no noise) toward the palette's
     // deep haze keeps every frame off pure void and dissolves that cut. Additive only — it can
-    // never demote authored plate art — and weighted toward the near half of the frame, where
-    // the plate's own composition is thinnest and the dead band measured widest.
-    float sfDeepBand = 0.30 + 0.70 * (1.0 - smoothstep(-0.95, 0.55, vSkyClip.y / max(vSkyClip.w, 1e-4)));
+    // never demote authored plate art. Band re-weighted 2026-11-01: near-full gain at the
+    // plates' structure line (~+0.3 NDC y) so authored haze thins INTO the floor instead of
+    // cutting against it, easing to a quiet ceiling at the frame top.
+    float sfDeepBand = 0.36 + 0.64 * (1.0 - smoothstep(-0.30, 1.05, vSkyClip.y / max(vSkyClip.w, 1e-4)));
     color += uDeepTone * (uDeepGain * sfDeepBand);
     gl_FragColor = vec4(max(color, vec3(0.0)), 1.0);
     #include <tonemapping_fragment>
@@ -823,7 +830,16 @@ const STAR_VERT = /* glsl */`
     vec2 wrapped = mod(position.xz - off + uCellSize * 0.5, uCellSize) - uCellSize * 0.5 + uWindowBias;
     vec4 mvPosition = modelViewMatrix * vec4(wrapped.x, position.y, wrapped.y, 1.0);
     float sizePx = aSize * uPerspScale / max(1.0, -mvPosition.z);
-    float baseSize = clamp(sizePx, 1.0, 24.0);
+    // DUST P3 — nadir size gain for the deep star floor only (aPar <= 0.095: the shipped and
+    // haze tiers start at 0.10, so their pixels are byte-identical). Under the tilted chase
+    // camera the frame's near half compresses the deep plane the same 1/d^2 law as every other
+    // population; without compensation the floor's worst cells render as clamped 1px points
+    // that vanish into the tone-mapped haze. Stars low on the screen draw up to ~1.9x so the
+    // floor reads at even density down the frame. Closed-form, no new attributes or uniforms.
+    vec4 sfDeepClip = projectionMatrix * mvPosition;
+    float sfDeepNdcY = sfDeepClip.y / max(abs(sfDeepClip.w), 1e-4);
+    float deepNadirGain = aPar <= 0.095 ? 1.0 + 0.9 * clamp(-sfDeepNdcY, 0.0, 1.0) : 1.0;
+    float baseSize = clamp(sizePx * deepNadirGain, 1.0, 24.0);
 
     // Resolve the flow axis by TRANSFORMING the world direction into view space rather than
     // assuming a camera orientation. The chase camera's tilt and any future pose change are then
@@ -855,7 +871,13 @@ const STAR_VERT = /* glsl */`
     // velocityLanguage.js, which owns this factor and is pinned by check:speed-lines.)
     // NOTE: no backticks in this block — it lives inside a JS template literal, and one would
     // terminate the string and turn the whole shader into a syntax error.
-    vAlpha = aBase * (0.82 + 0.18 * tw) * uIntensity / effStretch;
+    // DUST P3 — the deep floor tier (same aPar gate as the nadir gain) holds a floor gain: the
+    // sector intensity dial (0.38-0.44 in flight) is a nebula/star MOOD control, and applying it
+    // in full to the floor halved the deep tier into sub-visibility (2026-11-01 captures: 4-6
+    // readable points in a 300px patch that should carry ~12). The floor is a look contract of
+    // its own; shipped/haze stars keep the exact authored response.
+    float deepFloorGain = aPar <= 0.095 ? 1.75 : 1.0;
+    vAlpha = aBase * (0.82 + 0.18 * tw) * uIntensity * deepFloorGain / effStretch;
     vColor = aColor * uTint;
     gl_Position = projectionMatrix * mvPosition;
   }
@@ -2213,9 +2235,19 @@ export class SpaceBackground {
     // wrap cell in the SAME Points draw (no new pass) and redensifies exactly where the shallow
     // plane thins, because the same screen pixel samples ~(deepDist/nearDist)^2 more world area
     // down there. Faint and low-parallax so it reads as depth, not a second starfield.
-    const deepCount = this.lowTier ? 1024 : this.tierName === 'mid' ? 2300 : 3000;
-    const total = count + faintCount + deepCount;
+    // DUST P3 (2026-11-01 gate follow-up): the count is now sized by the cell AREA, not fixed.
+    // The wrap cell tracks the zoom-headroom geometry (H*18 .. quadSize*0.75 — measured up to
+    // ~5900 wu in flight), and a fixed 2300-3000 over that area still left the nadir half of
+    // default frames at 0-1 deep stars per ~120x112 px screen cell (probe: bottom rows 0-1 vs
+    // top rows 3-8) — the banded starless floor the look gate rejected. ~4.8e-4/wu^2 puts 4-6
+    // faint points in the WORST bottom-row cell at the default chase zoom; tiers cap the
+    // vertex load (one Points draw either way).
     const cell = this.starCell;
+    const deepArea = cell * cell;
+    const deepCount = this.lowTier
+      ? Math.max(1024, Math.min(3584, Math.round(deepArea * 2.4e-4)))
+      : Math.min(this.tierName === 'mid' ? 11000 : 16000, Math.round(deepArea * 4.8e-4));
+    const total = count + faintCount + deepCount;
     const positions = new Float32Array(total * 3);
     const colors = new Float32Array(total * 3);
     const sizes = new Float32Array(total);
@@ -2377,8 +2409,10 @@ export class SpaceBackground {
         colors[i * 3] = tmp.r; colors[i * 3 + 1] = tmp.g; colors[i * 3 + 2] = tmp.b;
         pars[i] = 0.02 + deepRnd() * 0.07;
         const mag = deepRnd();
-        sizes[i] = (0.9 + mag * 1.6) * deepPxToWorld;
-        bases[i] = 0.3 + mag * 0.28;
+        sizes[i] = (1.0 + mag * 2.0) * deepPxToWorld;
+        // DUST P3: brighter with the denser floor — the deep tier must survive the composite's
+        // tone-mapped haze and the sector intensity dial as individual readable points.
+        bases[i] = 0.42 + mag * 0.34;
         twinklePhase[i] = deepRnd() * Math.PI * 2;
         twinkleSpeed[i] = 0;
       }
@@ -2715,7 +2749,8 @@ export class SpaceBackground {
       // cover the atlas views; _spawnPlanet retargets them for the resident hero.
       mat.userData.sfPlanetStyle = {
         uPLightDir: { value: new THREE.Vector2(1, 0) },
-        uPDiscR: { value: (tex.userData?.paintedPlanetDiameter || 0.42) * 0.5 },
+        uPDiscR: { value: (tex.userData?.paintedBodyDiameter
+          || tex.userData?.paintedPlanetDiameter || 0.42) * 0.5 },
       };
       stylePlanetMaterial(mat);
       this._spriteMatCache.set(tex, mat);
@@ -2734,11 +2769,15 @@ export class SpaceBackground {
     const diameter = spec.frac * this.H * Math.max(1.15, this.heroSizeK) * 0.58;
     const quad = diameter / (tex.userData?.paintedPlanetDiameter || 0.42);
     // DUST P3a: aim the painted impostor's terminator at this planet's authored light angle.
+    // DUST P3: the disc radius follows the BODY diameter (paintedBodyDiameter) — on the ringed
+    // images the quad-sizing fraction (paintedPlanetDiameter) describes the ring SYSTEM, and
+    // using it here shaded only the inner half of the body ("uniformly lit" ringed giant).
     const style = mat.userData && mat.userData.sfPlanetStyle;
     if (style) {
       const angle = Number.isFinite(spec.lightAngle) ? spec.lightAngle : 0;
       style.uPLightDir.value.set(Math.cos(angle), Math.sin(angle));
-      style.uPDiscR.value = Math.max(0.05, (tex.userData?.paintedPlanetDiameter || 0.42) * 0.5);
+      style.uPDiscR.value = Math.max(0.05, (tex.userData?.paintedBodyDiameter
+        || tex.userData?.paintedPlanetDiameter || 0.42) * 0.5);
     }
     // ...and the resident planet becomes a faint real light source (see the constructor note).
     if (this.planetLight) {

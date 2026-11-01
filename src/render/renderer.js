@@ -416,6 +416,7 @@ import {
 import { SECTOR_PALETTE_CLASSES } from '../data/sectors.js';
 import { syncMarrowCone, disposeMarrowCone } from './marrowCone.js';
 import { HeadlightPool } from './headlights.js';
+import { HeroRig } from './heroRig.js';
 import { NocturneRuntime } from './nocturne/runtime.js';
 import { prepareNocturneShadowCamera } from './nocturne/shadows.js';
 import { syncBolusView, disposeBolusView } from './bolusView.js';
@@ -8360,6 +8361,10 @@ export function disposeRendererOwnedResources(owner, options = {}) {
     owner._headlights.dispose({ disposeGpu });
     owner._headlights = null;
   }
+  if (owner._heroRig) {
+    owner._heroRig.dispose({ disposeGpu });
+    owner._heroRig = null;
+  }
   disposeContactShadowPool(owner._contactShadowPool, scene, disposeGpu);
   disposeShipAuxPool(owner._shipAuxPool, scene, disposeGpu);
   if (disposeGpu) {
@@ -9381,6 +9386,12 @@ export const render = {
     // below compiles every program against the final light count (src/render/headlights.js).
     this._headlights = new HeadlightPool(scene);
     state.render.headlights = this._headlights; // probes and look tuning read the live pool
+    // DUST P3b — hero rim rake for the player hull (src/render/heroRig.js). Mounted with the
+    // rig, before the shader warm-up, desktop contexts only (the phone census stays as
+    // authored); contribution is switched by intensity, never by visibility.
+    if (!isMobileRenderContext()) {
+      this._heroRig = new HeroRig(scene);
+    }
     // Rig mount + the fog write above both move census-signature terms; the
     // epoch bump keeps a cross-pass memo from serving the pre-mount signature.
     noteShadowCensusLightMutation();
@@ -11663,7 +11674,11 @@ export const render = {
             && ownerSnapshot.admissionGenerationMatches === true
             && ownerSnapshot.contextLossGenerationMatches === false
             && ownerSnapshot.portMatches === true;
-          if (retiredAuthoredBoundary) {
+          if (ownerSnapshot.ownerType === 'authored-boundary' && this._rendererResourcesDisposed === true) {
+            console.info(
+              `[render] authored GPU residency cancelled during renderer teardown for boundary ${String(ownerSnapshot.entityId ?? 'unknown')}`,
+            );
+          } else if (retiredAuthoredBoundary) {
             console.info(
               `[render] authored GPU residency cancelled for retired boundary ${String(ownerSnapshot.entityId ?? 'unknown')}`,
             );
@@ -30207,6 +30222,9 @@ export const render = {
     // The Bolus nose cone owns the player's bow light inside that sector; elsewhere it is ours.
     tryPresentedCall(this, 'nocturne', () => this._nocturne?.prepare(frameDt, this.cam.obj,
       this._frameMembrane, this._meshes, !(this._marrowSpot && this._marrowSpot.intensity > 0)));
+    // DUST P3b — hero rim rake follows the presented player hull (no-op until flight).
+    tryPresentedCall(this, 'hero-rig', () => this._heroRig
+      && this._heroRig.update(this.state, frameDt, this._frameMembrane, this._meshes));
     tryPresentedCall(this, 'bolus-view', () => syncBolusView(this));
     this._bgTime = (this._bgTime || 0) + frameDt * presentationTs;
     if (!holdOpeningPicture && !holdLoadingGpu) {

@@ -1014,6 +1014,13 @@ export class ContinuousPlumeSystem {
       const idn = this.recipe.identity.flowCharacter;
       const intensityScale = result.presentation.intensityScale;
       const softBoost = result.presentation.softEdgeBoost;
+      // DUST P3b — idle life. At rest the plume held a static floor and the hull read dead
+      // between burns. A slow presentation-only breathe (time-driven, never state.rng; held
+      // steady under reduced motion) gives the idle core a pulse the camera can see at chase
+      // zoom without touching the continuum's authored accel/cruise/boost response.
+      const idleBreathe = result.mode === 'idle' && !a11y.reducedMotion
+        ? 0.84 + 0.16 * Math.sin(this._time * 2.1)
+        : 1;
       for (let b = 0; b < this.layerBatches.length; b++) {
         const batch = this.layerBatches[b];
         if (batch.dynamicBufferOwner) {
@@ -1048,7 +1055,7 @@ export class ContinuousPlumeSystem {
         const reducedMotionGain = a11y.reducedMotion
           ? (this.recipe.accessibility?.reducedMotion?.roleIntensityGain?.[batch.role] ?? 1)
           : 1;
-        u.intensity = batch.baseIntensity * intensityScale * reducedFlashGain * reducedMotionGain;
+          u.intensity = batch.baseIntensity * intensityScale * reducedFlashGain * reducedMotionGain * idleBreathe;
         const opacityGain = a11y.reducedMotion
           ? (this.recipe.accessibility?.reducedMotion?.roleOpacityGain?.[batch.role] ?? 1)
           : 1;

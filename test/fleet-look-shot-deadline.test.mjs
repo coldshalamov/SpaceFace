@@ -4,6 +4,21 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { runInNewContext } from 'node:vm';
+import { inspectFleetLookAuthored } from '../src/render/fleetLook.js';
+
+test('preview only settles published authored or explicit readable fallback boundaries', () => {
+  const mesh = { isMesh: true, geometry: {}, material: {} };
+  const boundary = { userData: { authoredAssetState: 'authored-prepared' },
+    traverse(callback) { callback(this); callback(mesh); } };
+  assert.deepEqual(inspectFleetLookAuthored(boundary),
+    { ready: false, pending: ['authored-prepared'], failed: [], targetMeshes: 1 });
+  boundary.userData.authoredAssetState = 'unavailable';
+  assert.deepEqual(inspectFleetLookAuthored(boundary),
+    { ready: false, pending: [], failed: ['unavailable'], targetMeshes: 1 });
+  boundary.userData.authoredAssetState = 'authored';
+  assert.deepEqual(inspectFleetLookAuthored(boundary),
+    { ready: true, pending: [], failed: [], targetMeshes: 1 });
+});
 
 function actualFleetLookFunction(name) {
   const source = readFileSync(new URL('../scripts/fleet-look.mjs', import.meta.url), 'utf8');

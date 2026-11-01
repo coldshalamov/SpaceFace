@@ -40,7 +40,8 @@ assert.ok(guardNode, 'assertResidencyOwnerActive must remain in renderer.js');
 
 const guardCode = source.slice(guardNode.start, guardNode.end);
 const guardState = { render: {} };
-const assertResidencyOwnerActive = new Function('state', `return (${guardCode});`)(guardState);
+const guardOwner = { _rendererResourcesDisposed: false };
+const assertResidencyOwnerActive = new Function('state', `return (${guardCode});`).call(guardOwner, guardState);
 
 function inactiveError(isActive = () => false) {
   try {
@@ -112,6 +113,28 @@ test('a definitively retired authored boundary is an informational cancellation'
       entityStillRequired: false,
     },
   }, 'the existing last-owner diagnostic remains available for inspection');
+});
+
+test('renderer teardown cancels pending residency without disguising active failures', () => {
+  guardOwner._rendererResourcesDisposed = true;
+  try {
+    const result = captureGuardCall(() => false, { ownerType: 'authored-boundary', entityId: 530,
+      entityAlive: true, entityIsCurrent: true, entityStillRequired: false });
+    assert.equal(result.error.code, 'GPU_RESIDENCY_OWNER_INACTIVE');
+    assert.equal(result.error.name, 'AbortError');
+    assert.deepEqual(result.warnings, []);
+    assert.deepEqual(result.infos, [[
+      '[render] authored GPU residency cancelled during renderer teardown for boundary 530',
+    ]]);
+    assert.equal(result.diagnostic.owner.entityId, 530);
+    const unknown = captureGuardCall(() => false, { ownerType: 'other', entityId: 531 });
+    assert.equal(unknown.warnings.length, 1, 'unknown owners retain warning severity');
+  } finally {
+    guardOwner._rendererResourcesDisposed = false;
+  }
+  const active = captureGuardCall(() => false, { ownerType: 'authored-boundary', entityId: 530,
+    entityAlive: true, entityIsCurrent: true, entityStillRequired: false });
+  assert.equal(active.warnings.length, 1);
 });
 
 test('a live nonrequired boundary superseded only by context loss is informational', () => {

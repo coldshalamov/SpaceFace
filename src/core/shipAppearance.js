@@ -1,6 +1,9 @@
 export const SHIP_APPEARANCE_VERSION = 1;
 export const SHIP_FINISHES = Object.freeze(['worn', 'satin', 'polished']);
-export const SHIP_DECALS = Object.freeze(['none', 'borrowed_time', 'concord', 'industrial', 'frontier']);
+export const SHIP_DECALS = Object.freeze([
+  'none', 'borrowed_time', 'concord', 'industrial', 'frontier',
+  'probate', 'addendum', 'heavy_is_honest', 'dead_schedule', 'gate_law',
+]);
 
 const GENERIC_DEFAULT = Object.freeze({
   version: SHIP_APPEARANCE_VERSION,

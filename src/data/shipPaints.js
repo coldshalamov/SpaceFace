@@ -66,6 +66,11 @@ export const SHIP_DECAL_STOCK = Object.freeze([
   { id: 'concord', decalId: 'concord', name: 'Patrol registry', sentence: 'Crisp serials and the inspection roundel. Reads official at any dock.' },
   { id: 'industrial', decalId: 'industrial', name: 'Yard hazard', sentence: 'Lift points, hazard glyphs, the yard serial in safety yellow.' },
   { id: 'frontier', decalId: 'frontier', name: 'Frontier brand', sentence: 'A hand-painted star and route tallies, faded honest by the sun.' },
+  { id: 'probate', decalId: 'probate', name: 'Toll ledger', sentence: 'EVERY MAN PAYS TWICE, stamped and dated. First in flesh. Then in coin.' },
+  { id: 'addendum', decalId: 'addendum', name: 'Vael terms', sentence: 'Voluntary — standard terms. The addendum is now painted full scale. Read page 9.' },
+  { id: 'heavy_is_honest', decalId: 'heavy_is_honest', name: 'Yard chant', sentence: 'The Pitborn chant over a scale and a tally block. Nobody paints over the tally.' },
+  { id: 'dead_schedule', decalId: 'dead_schedule', name: 'Dead schedule', sentence: 'ON SCHEDULE, says the decal. The company that set these routes is a filing.' },
+  { id: 'gate_law', decalId: 'gate_law', name: 'Gate law', sentence: 'Three directives and a measure band, drawn to tolerance. Verge tags never lie.' },
 ]);
 
 /** The next appearance object the rack emits for one swatch selection: patch exactly one field of

@@ -34,6 +34,7 @@ import {
   stencilSheetFor,
   stencilFallbackTexture,
 } from '../src/render/illustratedStencils.js';
+import { ILLUSTRATED_SURFACE_KEY } from '../src/render/illustratedSurface.js';
 import { rigidOpaqueMaterialProgramKey } from '../src/render/rigidOpaqueBatchPolicy.js';
 import { ships as shipsPrototype } from '../src/systems/ships.js';
 
@@ -100,7 +101,7 @@ test('the stencil payload builder is null-safe and carries the hull-space anchor
 test('materials differing only in decal payload never share a retained batch key', () => {
   const make = (payload) => {
     const material = new THREE.MeshStandardMaterial({ color: 0x8899aa, roughness: 0.7, metalness: 0.2 });
-    material.userData.spacefaceIllustratedSurface = 'spaceface-illustrated-surface-v17';
+    material.userData.spacefaceIllustratedSurface = ILLUSTRATED_SURFACE_KEY;
     material.onBeforeCompile = () => {};
     if (payload) material.userData.spacefaceHullStencils = payload;
     return material;

@@ -112,7 +112,10 @@ export const KESTREL_MAIN_PLUME_RECIPE = deepFreeze({
     }
   ],
   "throttle": {
-    "idle": 0.06,
+    // DUST P3b: 0.06 -> 0.085. The idle floor is the player's only at-rest drive signature;
+    // at 0.06 the core was sub-pixel at the default chase zoom, so the ship read dead between
+    // burns (2026-10-31 capture audit). Still a restrained glow, far below accel.
+    "idle": 0.085,
     "length": { "at0": 0.34, "at1": 1.0, "exp": 0.85 },
     "width": { "at0": 0.42, "at1": 1.15, "exp": 0.9 },
     "turbulence": { "at0": 0.25, "at1": 1.15, "exp": 1.1 },

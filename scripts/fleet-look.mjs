@@ -223,7 +223,8 @@ try {
           }
           if (shotState.expired) throw shotState.timeoutError;
           if (!(res?.drawObservation?.draws > 0)) {
-            throw new Error(`fleet-look produced no target draws after retries: ${name}/${view}`);
+            throw new Error(`fleet-look produced no target draws after retries: ${name}/${view} `
+              + JSON.stringify({ authored: res?.authoredVerdict ?? null, draws: res?.drawObservation?.draws ?? null }));
           }
           const buf = Buffer.from(res.url.split(',')[1], 'base64');
           const file = `${OUT}${name}_${view}.png`;

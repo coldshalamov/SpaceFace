@@ -161,20 +161,20 @@ export const TEAM_FALLBACK_PALETTES = Object.freeze({
 // would touch. Concord/Meridian authority are pristine chrome. Pirates are the filthiest.
 export const PAINT_PROFILES = {
   lawful:      { grime: 0.05, chrome: 0.85, noseArt: 'insignia', killMarks: false, patches: 0.0, decal: 'concord' },       // Concord Navy — pristine chrome, clean insignia
-  corporate:   { grime: 0.10, chrome: 0.70, noseArt: 'insignia', killMarks: false, patches: 0.0, decal: 'concord' },       // Meridian — clean chrome, corporate logos
+  corporate:   { grime: 0.10, chrome: 0.70, noseArt: 'insignia', killMarks: false, patches: 0.0, decal: 'probate' },       // Meridian — the toll ledger instead of borrowed law
   independent: { grime: 0.55, chrome: 0.05, noseArt: 'bomber', killMarks: true, patches: 0.4, decal: 'borrowed_time' },    // Free Frontier (PLAYER) — haunted ex-gangster runner
   blue_collar: { grime: 0.35, chrome: 0.0, noseArt: null, killMarks: false, patches: 0.3, decal: 'industrial' },           // Drift Miners — workhorse, honest grime
   'blue-collar': { grime: 0.35, chrome: 0.0, noseArt: null, killMarks: false, patches: 0.3, decal: 'industrial' },         // Canonical faction-data spelling; keep blue_collar for legacy callers
   pirate:      { grime: 0.85, chrome: 0.0, noseArt: 'punk', killMarks: true, patches: 0.6, decal: 'borrowed_time' },       // Crimson Reach — filthy, tagged, scarred
   smuggler:    { grime: 0.50, chrome: 0.0, noseArt: 'punk', killMarks: false, patches: 0.35, decal: 'frontier' },          // The Quiet — stealthy grime, tags
-  xenophobic:  { grime: 0.15, chrome: 0.30, noseArt: 'insignia', killMarks: true, patches: 0.1, decal: 'concord' },        // The Vael — alien, austere
+  xenophobic:  { grime: 0.15, chrome: 0.30, noseArt: 'insignia', killMarks: true, patches: 0.1, decal: 'addendum' },       // The Vael — the terms painted full scale, page 9 included
   zealot:      { grime: 0.30, chrome: 0.10, noseArt: null, killMarks: false, patches: 0.2, decal: null },                  // Choir explicit row; preserves the shipped fallback appearance
   paper:       { grime: 0.30, chrome: 0.10, noseArt: null, killMarks: false, patches: 0.2, decal: null },                  // Helix is content-only today; explicit for schema completeness
   saprophyte:  { grime: 1.00, chrome: 0.00, noseArt: null, killMarks: true, patches: 1.0, decal: 'frontier' },             // Understory — every hull is a recovered loss-ledger carcass
-  clinical_automaton: { grime: 0.00, chrome: 0.90, noseArt: null, killMarks: false, patches: 0.0, decal: null },           // Fulfillment — sterile routing machinery
+  clinical_automaton: { grime: 0.00, chrome: 0.90, noseArt: null, killMarks: false, patches: 0.0, decal: 'dead_schedule' }, // Fulfillment — sterile routing, dead routes, filed company
   archivist:   { grime: 0.08, chrome: 0.25, noseArt: null, killMarks: false, patches: 0.0, decal: null },                  // Archive — dark, maintained, ceremonial
-  pitborn_patchwork: { grime: 0.90, chrome: 0.00, noseArt: 'punk', killMarks: true, patches: 1.0, decal: 'borrowed_time' },// Pitborn — repaired stolen hulls and loud orange patches
-  nacre_precursor: { grime: 0.00, chrome: 1.00, noseArt: null, killMarks: false, patches: 0.0, decal: null },              // Verge-Layers — immaculate nacre precursor surfaces
+  pitborn_patchwork: { grime: 0.90, chrome: 0.00, noseArt: 'punk', killMarks: true, patches: 1.0, decal: 'heavy_is_honest' },// Pitborn — the chant, the scale, a tally nobody paints over
+  nacre_precursor: { grime: 0.00, chrome: 1.00, noseArt: null, killMarks: false, patches: 0.0, decal: 'gate_law' },        // Verge-Layers — directives in measured frames; tags that never lie
   // default fallback for any faction lacking a personality match
   default:     { grime: 0.30, chrome: 0.10, noseArt: null, killMarks: false, patches: 0.2, decal: null },
 };

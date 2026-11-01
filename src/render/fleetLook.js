@@ -145,46 +145,71 @@ const ORIGIN = new THREE.Vector3();
 
 function poseCamera(cam, view, radius, heading, center) {
   const h = (heading || 0) * Math.PI / 180;
+  // The XZ-recentred bounding-sphere centre: aim there, not at the world origin — placed
+  // models (places, kits, rocks) carry a Y offset and unrecentred inspects clipped their tops.
+  const aim = center || ORIGIN;
   const orbit = (dist, elev, az) => cam.position.set(
-    dist * Math.cos(elev) * Math.sin(az), dist * Math.sin(elev), -dist * Math.cos(elev) * Math.cos(az));
-  if (view === 'chase' || view === 'close') {
-    const D = view === 'chase' ? 144 : 58;
-    cam.position.set(0, D * Math.sin(TILT), -D * Math.cos(TILT));
+    aim.x + dist * Math.cos(elev) * Math.sin(az),
+    aim.y + dist * Math.sin(elev),
+    aim.z - dist * Math.cos(elev) * Math.cos(az));
+  if (view === 'chase') {
+    // Gameplay framing: the real 144 WU chase distance, radius-independent by design —
+    // what a player at the default zoom actually sees, however big or small the body is.
+    cam.position.set(0, 144 * Math.sin(TILT), -144 * Math.cos(TILT));
+  } else if (view === 'close') {
+    // Close zoom: the gameplay tilt with the distance fitted to the bounding sphere so the
+    // model fills ~450 px (the documented contract). The old fixed 58 WU was tuned for
+    // standard hulls and made small props specks and big places fill the whole frame.
+    const D = Math.max(radius * 2.2, 6);
+    cam.position.set(aim.x, aim.y + D * Math.sin(TILT), aim.z - D * Math.cos(TILT));
   } else if (view === 'place') {
     // Whole-place framing: the in-game 60° chase tilt, distance fitted to the bounding sphere so
     // the entire station/place is in frame — the picture a player approaching it actually sees.
-    const c = center || ORIGIN;
     const D = radius * 2.7;
-    cam.position.set(c.x, c.y + D * Math.sin(TILT), c.z - D * Math.cos(TILT));
+    cam.position.set(aim.x, aim.y + D * Math.sin(TILT), aim.z - D * Math.cos(TILT));
     cam.far = Math.max(cam.far, radius * 20);
     cam.fov = 50;
     cam.near = 0.1;
-    cam.lookAt(c.x, c.y, c.z);
+    cam.lookAt(aim.x, aim.y, aim.z);
     cam.updateProjectionMatrix();
     return;
   } else if (view === 'side') orbit(radius * 3.2, 0.12, Math.PI / 2 + h);
-  else if (view === 'top') cam.position.set(0, radius * 3.4, -0.001);
+  else if (view === 'top') cam.position.set(aim.x, aim.y + radius * 3.4, aim.z - 0.001);
   else if (view === 'front') orbit(radius * 2.8, 0.35, Math.PI + 0.55 + h);
   else orbit(radius * 2.6, 0.62, 0.7 + h);
   cam.fov = 50;
   cam.near = 0.1;
-  cam.lookAt(0, 0, 0);
+  cam.lookAt(aim.x, aim.y, aim.z);
   cam.updateProjectionMatrix();
+}
+
+export function inspectFleetLookAuthored(root) {
+  const pending = [];
+  const failed = [];
+  let targetMeshes = 0;
+  root.traverse((o) => {
+    if (o.isMesh && o.geometry && o.material) targetMeshes++;
+    const status = o.userData?.authoredAssetState;
+    if (!status) return;
+    if (['awaiting-authored-admission', 'loading', 'compiling-pipelines', 'procedural-fallback',
+      'authored-prepared', 'same-semantic-fallback-prepared'].includes(status)) {
+      if (pending.length < 12) pending.push(status);
+    } else if (!['authored', 'authored-with-cleanup-error', 'procedural-settled',
+      'same-semantic-fallback'].includes(status)) {
+      if (failed.length < 12) failed.push(String(status).slice(0, 100));
+    }
+  });
+  return { ready: pending.length === 0 && failed.length === 0, pending, failed, targetMeshes };
 }
 
 async function waitForAuthored(renderer, scene, cam, root) {
   for (let i = 0; i < 150; i++) {
     renderOnce(renderer, scene, cam);
     await wait(60);
-    let pending = false;
-    root.traverse((o) => {
-      const st = o.userData && o.userData.authoredAssetState;
-      if (st === 'awaiting-authored-admission' || st === 'loading' || st === 'compiling-pipelines'
-        || st === 'procedural-fallback') pending = true;
-    });
-    if (!pending) return true;
+    const verdict = inspectFleetLookAuthored(root);
+    if (verdict.failed.length || verdict.ready) return verdict;
   }
-  return false;
+  return inspectFleetLookAuthored(root);
 }
 
 export function installFleetLook(SF) {
@@ -301,8 +326,13 @@ export function installFleetLook(SF) {
       if (ab.noBackground) { opts._bg = scene.background; scene.background = null; }
     }
     holder.updateMatrixWorld(true);
-    let ok = true;
-    if (opts.defId) ok = await waitForAuthored(renderer, scene, cam, built.root);
+    let verdict = { ready: true, pending: [], failed: [], targetMeshes: 0 };
+    // Yield one frame before either settle wait: the authored boundary stamps its pending
+    // state asynchronously, and checked too early waitForAuthored sees no pending flags —
+    // the pose below then measures an empty pre-upgrade marker and the frame ships blank.
+    await wait(120);
+    if (opts.defId || opts.file) verdict = await waitForAuthored(renderer, scene, cam, built.root);
+    if (!verdict.ready) throw new Error(`fleet-look authored preview not ready: ${JSON.stringify(verdict)}`);
     const box = new THREE.Box3().setFromObject(built.root);
     const sphere = box.getBoundingSphere(new THREE.Sphere());
     const radius = opts.radius || sphere.radius || built.radius || 6;
@@ -320,8 +350,8 @@ export function installFleetLook(SF) {
     });
     // File previews can also expose authored boundaries; settle those before joining the
     // strict renderer admission (compile, upload and exact-target touch).
-    if (opts.file) ok = await waitForAuthored(renderer, scene, cam, built.root);
-    if (!ok) throw new Error('fleet-look authored preview did not settle');
+    if (opts.file) verdict = await waitForAuthored(renderer, scene, cam, built.root);
+    if (!verdict.ready) throw new Error(`fleet-look authored preview not ready: ${JSON.stringify(verdict)}`);
     const admit = state.render.compileObjectPipelines;
     if (typeof admit !== 'function') throw new Error('fleet-look pipeline admission unavailable');
     const result = await admit(holder, { explicit: true, strict: true, joinOutstanding: true,
@@ -342,7 +372,7 @@ export function installFleetLook(SF) {
     if (opts.ab?.noEnvironment) scene.environment = opts._env;
     if (opts.ab?.noBackground) scene.background = opts._bg;
     return {
-      url, ok, radius, diagNames: built.diagNames, drawObservation,
+      url, ok: verdict.ready, radius, diagNames: built.diagNames, drawObservation, authoredVerdict: verdict,
       size: box.getSize(new THREE.Vector3()).toArray(),
       materials: collectMaterials(built.root),
     };
