@@ -18,7 +18,57 @@ const end = source.indexOf('\n    const recordAuthoredAdmissionBlockingSlice', b
 assert.ok(begin > 0 && end > begin);
 const body = source.slice(begin + 'const compileForCurrentTarget = '.length, end).trim().replace(/;$/, '');
 
-function fixture({ parallel = false, active = () => true, rejectIndex = -1, mode = 'flight', stampDelayMs = 0, urgent = true } = {}) {
+test('real batched owner restores staged roots before another pending link issues', async () => {
+  const homesBegin = source.indexOf('function captureObjectHome(');
+  const homesEnd = source.indexOf('export async function compileGraphNormalSubjects(', homesBegin);
+  const homeFns = new Function('isRetiredRigidOpaqueBatch', `${source.slice(homesBegin, homesEnd)}; return { captureObjectHome, restoreObjectHome };`)(() => false);
+  const scene = new THREE.Scene(), roots = [0, 1, 2].map(() => new THREE.Group());
+  const programs = roots.map(() => ({ program: {}, ready: false, isReady() { return this.ready; } }));
+  const materials = roots.map(() => new THREE.MeshStandardMaterial());
+  roots.forEach((root, index) => { root.name = `root-${index}`; root.add(new THREE.Mesh(new THREE.BoxGeometry(), materials[index])); scene.add(root); });
+  const records = new Map(materials.map(material => [material, {}]));
+  let target = 'home'; const seen = [];
+  const renderer = { domElement: { addEventListener() {}, removeEventListener() {} },
+    properties: { get: material => records.get(material) }, getContext: () => ({ isContextLost: () => false }),
+    extensions: { get: () => ({}) }, info: { programs: [] }, getRenderTarget: () => target,
+    setRenderTarget: value => { target = value; }, compileAsync() { throw new Error('unexpected fallback'); },
+    compile(subject) {
+      seen.push({ target, homes: roots.map(root => root.parent === scene), label: state.perfRuntime.tier1.admissionSubject });
+      const used = new Set();
+      subject.traverse(node => { if (!node.isMesh) return; const index = materials.indexOf(node.material);
+        renderer.properties.get(node.material).currentProgram = programs[index]; used.add(node.material); });
+      return used;
+    } };
+  const state = { mode: 'loading', render: {}, perfRuntime: { tier1: { admissionSubject: 'baseline' } } };
+  const deps = { state, renderer, THREE, ...homeFns, shouldSliceFlightAdmission, makeGpuQueuePacer,
+    admissionSubjectLabel: root => root.name,
+    compileSubjectColorAndDepth: (subject, _route, options) => compileScenePipelinesForRenderTarget(renderer, 'target', subject, null, scene, options) };
+  const compile = new Function(...Object.keys(deps), `return (${body});`).call(
+    { _shadowDepthEnabled: () => false, _selectPostRoute: () => 'fixture' }, ...Object.values(deps));
+  const tracker = createPipelineAdmissionTracker(compile, { maxSettlingLinks: 2 });
+  const ambient = tracker.compile(roots[1]);
+  const first = tracker.compileExplicit(roots[0]);
+  await new Promise(resolve => setTimeout(resolve, 10));
+  assert.equal(seen.length, 1);
+  assert.deepEqual(roots.map(root => root.parent === scene), [true, true, true]);
+  assert.equal(target, 'home');
+  assert.equal(state.perfRuntime.tier1.admissionSubject, 'baseline');
+  const second = tracker.compileExplicit(roots[2]);
+  await new Promise(resolve => setTimeout(resolve, 10));
+  assert.equal(seen.length, 2, 'second issue precedes first batch link completion');
+  assert.deepEqual(seen[1].homes, [true, true, true]);
+  assert.equal(seen[0].label, 'root-0,root-1'); assert.equal(seen[1].label, 'root-2');
+  assert.equal(target, 'home');
+  programs[2].ready = true;
+  await second;
+  assert.equal(state.perfRuntime.tier1.admissionSubject, 'baseline', 'early settlement cannot restore an older label');
+  programs[0].ready = true; programs[1].ready = true;
+  await Promise.all([ambient, first]);
+  assert.equal(state.perfRuntime.tier1.admissionSubject, 'baseline', 'late settlement cannot resurrect a prior issue label');
+  roots.forEach(root => root.children.forEach(mesh => { mesh.geometry.dispose(); mesh.material.dispose(); }));
+});
+
+function fixture({ parallel = false, active = () => true, rejectIndex = -1, mode = 'flight', stampDelayMs = 0, stampGate = null, urgent = true, split = false, pendingLinks = false } = {}) {
   const state = { mode, render: { firstPlayableFrameAt: 1 } };
   const root = new THREE.Group();
   root.visible = false;
@@ -38,7 +88,9 @@ function fixture({ parallel = false, active = () => true, rejectIndex = -1, mode
     getRenderTarget: () => target, setRenderTarget: (next) => { target = next; } };
   const fault = new Error('compile failed');
   renderer.domElement = { addEventListener() {}, removeEventListener() {} };
-  renderer.properties = { get: () => ({ currentProgram: { isReady: () => true } }) };
+  let linked = !pendingLinks;
+  const program = { program: {}, isReady: () => linked };
+  renderer.properties = { get: () => ({ currentProgram: program }) };
   renderer.compileAsync = () => { throw new Error('owned readiness must handle compilation'); };
   renderer.compile = (subject) => {
     const materials = new Set();
@@ -50,11 +102,12 @@ function fixture({ parallel = false, active = () => true, rejectIndex = -1, mode
     });
     return materials;
   };
-  const compileSubjectColorAndDepth = async (subject) => {
+  const compileSubjectColorAndDepth = async (subject, _route, options) => {
     // Production stamps environment asynchronously before calling WebGLRenderer.compile.
-    if (stampDelayMs) await new Promise((resolve) => setTimeout(resolve, stampDelayMs));
+    if (stampGate) await stampGate(subject);
+    else if (stampDelayMs) await new Promise((resolve) => setTimeout(resolve, stampDelayMs));
     else await Promise.resolve();
-    return compileScenePipelinesForRenderTarget(renderer, null, subject, null, root);
+    return compileScenePipelinesForRenderTarget(renderer, null, subject, null, root, options);
   };
   const deps = { state, renderer, compileSubjectColorAndDepth, collectUniqueCompileSubjects,
     openingCompileIssueKey, shouldSliceFlightAdmission, beginScenePipelineReadinessBatch,
@@ -63,10 +116,31 @@ function fixture({ parallel = false, active = () => true, rejectIndex = -1, mode
     PACED_FRAME_BUDGET_MS: 4, notePacedFrameSpend: () => {} };
   const compile = new Function(...Object.keys(deps), `return (${body});`).call(
     { _shadowSettingOn: false, _shadowDepthEnabled: () => false, _selectPostRoute: () => 'fixture' }, ...Object.values(deps));
-  const tracker = createPipelineAdmissionTracker(compile);
-  return { root, submissions, drains, fault, peak: () => peak,
+  const tracker = createPipelineAdmissionTracker(compile, { maxSettlingLinks: split ? 2 : 1 });
+  return { root, tracker, submissions, drains, fault, peak: () => peak, releaseLinks: () => { linked = true; },
     run: () => tracker.compile(root, { urgent, isActive: active }) };
 }
+
+test('sliced issue waits for delayed environment stamps before releasing its reservation', { timeout: 10_000 }, async () => {
+  const stamps = [];
+  const h = fixture({ parallel: true, stampGate: () => new Promise(resolve => stamps.push(resolve)),
+    urgent: false, split: true, pendingLinks: true });
+  const other = h.root.clone();
+  const first = h.tracker.compileExplicit(h.root);
+  const second = h.tracker.compileExplicit(other);
+  while (stamps.length < 8) await new Promise(resolve => setImmediate(resolve));
+  assert.equal(h.submissions.length, 0);
+  stamps.slice(0, 7).forEach(resolve => resolve());
+  while (h.submissions.length < 7) await new Promise(resolve => setImmediate(resolve));
+  assert.equal(stamps.length, 8, 'the next owner cannot stamp while one first-owner issue is pending');
+  stamps[7]();
+  while (stamps.length < 16) await new Promise(resolve => setImmediate(resolve));
+  assert.equal(h.submissions.length, 8, 'all first-owner compiles issued before the next owner');
+  stamps.slice(8).forEach(resolve => resolve());
+  while (h.submissions.length < 16) await new Promise(resolve => setImmediate(resolve));
+  h.releaseLinks();
+  await Promise.all([first, second]);
+});
 
 test('urgent serial-driver authored root drains each variant instead of queuing a whole root', async () => {
   const h = fixture();

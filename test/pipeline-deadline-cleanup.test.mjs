@@ -48,11 +48,13 @@ for (const kind of ['pipeline', 'residency']) {
   }
 }
 
-test('unsettled link still times out at fifty seconds and advances its queue', async () => {
+for (const maxSettlingLinks of [1, 2]) test(`timed-out owner keeps issue reservation until actual settlement (cap ${maxSettlingLinks})`, async () => {
   await withDeadlineProbe(async (pending) => {
-    let resolveOld;
-    const tracker = createPipelineAdmissionTracker(([subject]) => subject === 'stuck'
-      ? new Promise(resolve => { resolveOld = resolve; }) : 'next-ready');
+    let resolveOld, nextIssued = false;
+    const tracker = createPipelineAdmissionTracker(([subject]) => {
+      if (subject === 'stuck') return new Promise(resolve => { resolveOld = resolve; });
+      nextIssued = true; return 'next-ready';
+    }, { maxSettlingLinks });
     const stuck = tracker.compile('stuck', { urgent: true });
     const next = tracker.compile('next', { urgent: true });
     await Promise.resolve();
@@ -60,9 +62,10 @@ test('unsettled link still times out at fifty seconds and advances its queue', a
     assert.ok(deadline, 'original deadline is retained');
     deadline.fire();
     assert.deepEqual(await stuck, { tailTimeout: true });
-    assert.equal(await next, 'next-ready');
-    resolveOld('late');
     await Promise.resolve();
+    assert.equal(nextIssued, false, 'timeout does not release a still-owned target');
+    resolveOld('late');
+    assert.equal(await next, 'next-ready');
     assert.equal(pending.size, 0);
   });
 });

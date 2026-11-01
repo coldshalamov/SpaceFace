@@ -593,11 +593,23 @@ export async function compileScenePipelinesForRenderTarget(
   const previousTarget = typeof renderer.getRenderTarget === 'function'
     ? renderer.getRenderTarget()
     : null;
+  let targetRestored = false;
   try {
     renderer.setRenderTarget(renderTarget || null);
-    const admission = await compilePipelinesContextSafe(
+    const pending = compilePipelinesContextSafe(
       renderer, subject, camera, lightingScene || subject, options,
     );
+    // Owned compile() performs its complete GL issue synchronously; keep unsupported
+    // compileAsync implementations on the original serialized lifetime.
+    if ((options?.restoreTargetAfterIssue === true || typeof options?.onIssueComplete === 'function') && typeof renderer.compile === 'function'
+        && renderer.properties?.get && renderer.extensions?.get
+        && renderer.domElement?.addEventListener && renderer.domElement?.removeEventListener
+        && renderer.getContext && renderer.extensions.get('KHR_parallel_shader_compile')) {
+      renderer.setRenderTarget(previousTarget || null);
+      targetRestored = true;
+      options.onIssueComplete?.();
+    }
+    const admission = await pending;
     if (admission && admission.contextLost) {
       return {
         skipped: true,
@@ -615,7 +627,7 @@ export async function compileScenePipelinesForRenderTarget(
         : null,
     };
   } finally {
-    renderer.setRenderTarget(previousTarget || null);
+    if (!targetRestored) renderer.setRenderTarget(previousTarget || null);
   }
 }
 
@@ -754,8 +766,9 @@ function programReadiness(program) {
   return ready ? 'ready' : 'pending';
 }
 
-export function beginScenePipelineReadinessBatch(renderer = null) {
-  if (pipelineReadinessBatch) {
+export function beginScenePipelineReadinessBatch(renderer = null, options = {}) {
+  const independent = options.independent === true;
+  if (!independent && pipelineReadinessBatch) {
     pipelineReadinessBatch.depth += 1;
     return pipelineReadinessBatch.handle;
   }
@@ -862,7 +875,7 @@ export function beginScenePipelineReadinessBatch(renderer = null) {
       if (pipelineReadinessBatch === batch) pipelineReadinessBatch = null;
     },
   };
-  pipelineReadinessBatch = batch;
+  if (!independent) pipelineReadinessBatch = batch;
   return batch.handle;
 }
 
@@ -994,9 +1007,10 @@ export function compilePipelinesContextSafe(renderer, subject, camera, lightingS
     // Deadline compiles (e.g. a mesh already on the live glass) cannot pool their wait into
     // whoever's batch happens to be open — that owner's drain schedule is not this caller's.
     // skipSharedBatch keeps this wait on its own poll so it settles on link completion alone.
-    if (options.skipSharedBatch !== true
-      && pipelineReadinessBatch && pipelineReadinessBatch.accepting
-      && pipelineReadinessBatch.handle.join(gl, programs, finish)) {
+    const readinessBatch = options.readinessBatch
+      || (pipelineReadinessBatch && pipelineReadinessBatch.accepting ? pipelineReadinessBatch.handle : null);
+    if (options.skipSharedBatch !== true && readinessBatch
+      && readinessBatch.join(gl, programs, finish)) {
       return;
     }
 

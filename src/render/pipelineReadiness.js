@@ -837,20 +837,17 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
   const urgentRuns = new Map();
   let quietTimer = null;
   let maxTimer = null;
-  // Compile batches stay strictly serial — render-target selection is global renderer
-  // state. The tail is a pull-queue rather than an eager .then chain: link specs wait
-  // in linkSpecs until the in-flight link settles, so an urgent spec splices ahead of
-  // still-queued ambient links (behind earlier urgents) instead of chaining behind
-  // every link that happened to be queued first. tailSettle shadows the old
-  // compileTail for callers that only want "everything started so far" drained.
+  // GL issue is serialized because target selection and temporary scene ownership are global.
+  // Opted-in owners release the issue slot after restoring both, while their bounded link waits
+  // remain independently outstanding. Urgent specs keep FIFO ahead of queued ambient work.
   const linkSpecs = [];
   let linkActive = false;
+  let settlingLinks = 0;
+  const maxSettlingLinks = Math.max(1, Math.min(4, Math.floor(Number(options.maxSettlingLinks) || 1)));
   let tailSettle = Promise.resolve();
-  // Every bound in the admission system sits on a waiter — the link run itself had
-  // none: a compile/link that never settles would keep linkActive forever and wedge
-  // every later spec (ambient AND urgent). Race each run against a bound well above
-  // the 20s KHR drain; on timeout the entries resolve with a tagged outcome and the
-  // pump advances — refused subjects re-admit through the normal lanes.
+  // Bound each caller's wait without treating its timeout as cancellation of the
+  // underlying owner. Only actual settlement or an explicit issue acknowledgement
+  // can release renderer state for the next spec.
   const LINK_RUN_TAIL_TIMEOUT_MS = 50000;
   const LINK_TAIL_TIMEOUT_RESULT = Object.freeze({ tailTimeout: true });
   let nextAdmissionId = 0;
@@ -972,19 +969,33 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
   }
 
   function pumpLinks() {
-    if (linkActive) return;
+    if (linkActive || settlingLinks >= maxSettlingLinks) return;
     const spec = linkSpecs.shift();
     if (!spec) return;
     linkActive = true;
+    settlingLinks += 1;
+    let issued = false;
+    const releaseIssue = () => {
+      if (issued) return;
+      issued = true;
+      linkActive = false;
+      pumpLinks();
+    };
+    const compileOptions = maxSettlingLinks > 1
+      ? { ...(spec.compileOptions || {}), onIssueComplete: releaseIssue }
+      : spec.compileOptions;
     const run = Promise.resolve().then(() => invokeCompileBatch(
-      spec.subjects, spec.path, spec.compileOptions,
+      spec.subjects, spec.path, compileOptions,
     ));
     observePipelineAdmission(run, onRejected);
     const bounded = raceDeadline(run, LINK_RUN_TAIL_TIMEOUT_MS, LINK_TAIL_TIMEOUT_RESULT);
     spec.resolveRun(bounded);
     tailSettle = tailSettle.then(() => bounded.catch(() => null));
-    const next = () => { linkActive = false; pumpLinks(); };
-    bounded.then(next, next);
+    const next = () => { settlingLinks -= 1; releaseIssue(); pumpLinks(); };
+    // A timeout settles the caller but does not retire an issuing/linked owner.
+    // Actual work alone releases its outstanding-settlement cap; the issue slot
+    // is also released by its explicit post-restoration acknowledgement.
+    run.then(next, next);
   }
 
   function flushQueuedThrough(
