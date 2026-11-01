@@ -333,6 +333,19 @@ ${P} .sx-mkt .so-trade-breakdown > summary { border:0 !important; background:non
 ${P} .sx-mkt .orr-mkt-holdarc svg { display:none !important; }
 ${P} .sx-mkt .sx-trade__words { display:flex !important; align-items:center !important; gap:10px !important; list-style:none; margin:8px 0 0 !important; padding:0 !important; }
 ${P} .sx-mkt .sx-trade__words > li { display:block !important; }
+/* phone (≤480 wide, tall): the console column is ~150px, so the stepper sets Fewer + count on one row and More / Max on the
+   next, and Buy / Sell share the column width instead of running past the right edge */
+@media (max-width:480px) and (min-height:701px) {
+  ${P} .sx-mkt .sx-trade { grid-template-columns:minmax(0, 1fr) !important; column-gap:0 !important; }
+  ${P} .sx-mkt .sx-qty { width:100% !important; box-sizing:border-box !important; }
+  ${P} .sx-mkt .sx-qty__words > li:nth-child(1) > button { flex:0 0 auto !important; }
+  ${P} .sx-mkt .sx-qty__in { flex:1 1 40px !important; min-width:0 !important; width:auto !important; }
+  ${P} .sx-mkt .sx-qty__words > li:nth-child(n+2) > button { flex:1 1 40% !important; min-width:0 !important; padding:0 6px !important; }
+  ${P} .sx-mkt .sx-trade__words { width:100% !important; gap:6px !important; }
+  ${P} .sx-mkt .sx-trade__words > li { flex:1 1 0 !important; min-width:0 !important; }
+  ${P} .sx-mkt .sx-trade__words > li:is(:first-child, :not(:first-child)) > .sx-trade__go { width:100% !important; height:36px !important; min-height:36px !important;
+    box-sizing:border-box !important; padding:0 6px !important; justify-content:center !important; }
+}
 
 /* the decision options (repair / fly damaged): real buttons with the consequence underneath */
 ${P} .sx-mkt .sx-decision__opt { display:block !important; width:100%; box-sizing:border-box; text-align:left !important; margin:0 0 8px !important; padding:9px 12px !important;
