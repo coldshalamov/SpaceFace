@@ -456,31 +456,41 @@ test('Ceres reference launch disables onboarding through public Settings before 
   const actions = [];
   const page = {
     getByRole(role, options) {
+      if (role === 'list') {
+        assert.equal(options?.name, 'Tutorial hints');
+        assert.equal(options?.exact, true);
+        return {
+          getByRole(childRole, childOptions) {
+            assert.equal(childRole, 'button');
+            const choice = childOptions?.name;
+            assert.ok(choice === 'On' || choice === 'Off');
+            assert.equal(childOptions?.exact, true);
+            return {
+              async getAttribute(name) {
+                assert.equal(name, 'aria-pressed');
+                return String(choice === 'On' ? tutorialHints : !tutorialHints);
+              },
+              async click() {
+                assert.equal(choice, 'Off');
+                assert.equal(screen, 'settings');
+                assert.equal(activeTab, 'Gameplay');
+                actions.push('click:Tutorial hints:Off');
+                tutorialHints = false;
+              },
+            };
+          },
+        };
+      }
       assert.equal(role, options?.name === 'Gameplay' ? 'tab' : 'button');
       return {
         async click() {
-          const name = options?.name;
+          const name = options?.name instanceof RegExp ? 'Back' : options?.name;
+          if (options?.name instanceof RegExp) assert.equal(options.name.test('‹ Back ESC'), true);
           actions.push(`click:${name}`);
           if (name === 'Settings') screen = 'settings';
           else if (name === 'Gameplay') activeTab = 'Gameplay';
           else if (name === 'Back') screen = 'mainMenu';
           else assert.fail(`unexpected public setup control ${name}`);
-        },
-      };
-    },
-    getByLabel(label, options) {
-      assert.equal(label, 'Tutorial hints');
-      assert.equal(options?.exact, true);
-      return {
-        async getAttribute(name) {
-          assert.equal(name, 'aria-pressed');
-          return String(tutorialHints);
-        },
-        async click() {
-          assert.equal(screen, 'settings');
-          assert.equal(activeTab, 'Gameplay');
-          actions.push('click:Tutorial hints');
-          tutorialHints = false;
         },
       };
     },
@@ -504,7 +514,7 @@ test('Ceres reference launch disables onboarding through public Settings before 
   assert.deepEqual(actions, [
     'click:Settings',
     'click:Gameplay',
-    'click:Tutorial hints',
+    'click:Tutorial hints:Off',
     'click:Back',
   ]);
 
@@ -4972,7 +4982,7 @@ test('public pilot source uses menu/card and Playwright input while private shor
     'disableCeresTutorialThroughPublicSettings(page)', routeStart,
   );
   const sandboxIndex = validSources.routeSource.indexOf(
-    "getByRole('button', { name: 'Sandbox', exact: true })", routeStart,
+    "getByRole('button', { name: 'Free flight sandbox', exact: true })", routeStart,
   );
   const setupAssertionIndex = validSources.routeSource.indexOf(
     'assertCeresSetup(setup, fixedSeed)', sandboxIndex,

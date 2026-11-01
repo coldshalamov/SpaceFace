@@ -49,6 +49,7 @@ import {
 import { provisionElectronRuntime } from './electronRuntimeProvisioning.mjs';
 import { loadPlaywright } from './load-playwright.mjs';
 import { installCspSafePlaywrightPolling } from './playwrightCspPolling.mjs';
+import { dismissCinematicIntro, installFirstLightPromptHandler } from '../player-truth/routes.mjs';
 import {
   PQ020_ROUTE_TARGETS,
   pq020FunctionalRouteDrivers,
@@ -861,25 +862,29 @@ export function validateCeresPilotSources(sources = {}) {
 }
 
 export async function disableCeresTutorialThroughPublicSettings(page) {
-  if (!page || typeof page.getByRole !== 'function' || typeof page.getByLabel !== 'function') {
+  if (!page || typeof page.getByRole !== 'function') {
     throw new TypeError('Ceres tutorial setup requires a live public page');
   }
   await page.getByRole('button', { name: 'Settings', exact: true }).click({ timeout: 20_000 });
   await waitForVisibleScreen(page, 'settings', 20_000);
   await page.getByRole('tab', { name: 'Gameplay', exact: true }).click({ timeout: 20_000 });
-  const toggle = page.getByLabel('Tutorial hints', { exact: true });
-  const before = await toggle.getAttribute('aria-pressed');
+  const toggle = page.getByRole('list', { name: 'Tutorial hints', exact: true });
+  const on = toggle.getByRole('button', { name: 'On', exact: true });
+  const off = toggle.getByRole('button', { name: 'Off', exact: true });
+  const before = await on.getAttribute('aria-pressed');
   if (before !== 'true' && before !== 'false') {
-    throw new Error('public Tutorial hints control lacks exact pressed state');
+    throw new Error('public Tutorial hints On control lacks exact pressed state');
   }
-  if (before !== 'false') await toggle.click({ timeout: 20_000 });
+  if (before !== 'false') await off.click({ timeout: 20_000 });
   await page.waitForFunction(() => (
     window.SF?.state?.settings?.gameplay?.tutorialHints === false
   ), null, { timeout: 20_000 });
   const observed = await page.evaluate(() => ({
     tutorialHints: window.SF?.state?.settings?.gameplay?.tutorialHints ?? null,
   }));
-  await page.getByRole('button', { name: 'Back', exact: true }).click({ timeout: 20_000 });
+  // The screen styles add a visible arrow/ESC hint around the authored Back label; keep the
+  // semantic public control lookup tolerant of that generated accessible-name decoration.
+  await page.getByRole('button', { name: /Back/i }).click({ timeout: 20_000 });
   await waitForVisibleScreen(page, 'mainMenu', 20_000);
   if (observed.tutorialHints !== false) {
     throw new Error('public Settings did not disable onboarding before Ceres launch');
@@ -1811,13 +1816,13 @@ export async function runCeresFiveMinutePublicRoute({
 
   try {
     await page.bringToFront();
+    await installFirstLightPromptHandler(page, (name, _ok, detail) => mark(name, { note: detail }));
     await page.waitForFunction(() => !!(window.SF?.state && window.SF?.bus && window.SF?.registry),
       null, { timeout: 60_000 });
-    const splash = page.locator('#cinematic-splash');
-    if (await splash.isVisible().catch(() => false)) await page.keyboard.press('Space');
+    await dismissCinematicIntro(page, (name, _ok, detail) => mark(name, { note: detail }), { timeout: 15_000 });
     await waitForVisibleScreen(page, 'mainMenu', 30_000);
     const tutorialSetup = await disableCeresTutorialThroughPublicSettings(page);
-    await page.getByRole('button', { name: 'Sandbox', exact: true }).click({ timeout: 20_000 });
+    await page.getByRole('button', { name: 'Free flight sandbox', exact: true }).click({ timeout: 20_000 });
     await waitForVisibleScreen(page, 'sandbox', 20_000);
     await page.getByRole('button', { name: /^Ceres Reference Pocket\b/ }).click({ timeout: 20_000 });
     await waitForCeresFlight(page, fixedSeed, 180_000);
@@ -7120,6 +7125,8 @@ async function waitForCeresFlight(page, fixedSeed, timeout) {
 
 async function waitForVisibleScreen(page, id, timeout) {
   await page.waitForFunction((screenId) => {
+    const screenManager = window.SF?.ctx?.screenManager;
+    if (!screenManager || typeof screenManager.top !== 'function' || screenManager.top() !== screenId) return false;
     const element = document.querySelector(`[data-screen="${screenId}"]`);
     if (!element || element.hidden) return false;
     const style = getComputedStyle(element);

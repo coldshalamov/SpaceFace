@@ -1252,6 +1252,8 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
         // A fresh boot supersedes any earlier pending receipt (aborted or
         // never-consumed lifecycle) — stage only on a completed boot.
         host.pendingGameStarted = null;
+        const sandboxSetup = args?.opts?.sandboxSetup;
+        let sandboxSetupApplied = false;
         const result = await runNewGameSimBoot({
           state,
           helpers: sim.helpers,
@@ -1260,14 +1262,17 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
           opts: (args && args.opts) || {},
           newGamePlus: (args && args.newGamePlus) || null,
           awaitPhysicsPrep: true,
+          beforeScenePrepared: sandboxSetup ? () => {
+            applySandboxSetup({ state, helpers: sim.helpers, registry, bus: host.bus }, sandboxSetup);
+            const active = state.player?.ownedShips?.[state.player.activeShipIndex];
+            if (sandboxSetup.shipId && active?.defId !== sandboxSetup.shipId) {
+              throw new Error(`sandbox-hull-setup-incomplete:${sandboxSetup.shipId}`);
+            }
+            sandboxSetupApplied = true;
+            return true;
+          } : null,
         });
         if (result && result.ok === true) {
-          if (args?.opts?.sandboxSetup?.scenarioId === 'sling_practice') {
-            applySandboxSetup(
-              { state, helpers: sim.helpers, registry, bus: host.bus },
-              args.opts.sandboxSetup,
-            );
-          }
           // A completed boot must publish its seed before the loading acknowledgement,
           // even when meta's ordinary cold cadence has not reached its next slot.
           host.domainDiffer.invalidateLeaf('meta.seed');
@@ -1281,7 +1286,10 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
             if (!prepared.ok) throw new Error(prepared.reason || 'crucible-setup-incomplete');
             result.crucible = prepared;
           }
-          host.pendingGameStarted = { newGamePlus: (args && args.newGamePlus) || null };
+          host.pendingGameStarted = {
+            newGamePlus: (args && args.newGamePlus) || null,
+            ...(sandboxSetupApplied ? { sandboxSetupApplied: true } : {}),
+          };
           // A Crucible/Swarm launch: the receipt says so, so onboarding stands down even if
           // the main-side sandbox hook's run:beginRequested has not landed yet.
           if (args && args.opts && args.opts.crucibleLaunch === true) {
