@@ -107,6 +107,11 @@ test('loaded opaque hull materials are front-sided', () => {
     }
     const gltf = parseGlbJson(buffer);
     checked += 1;
+    // Wreck interiors are authored-visible: place_landmark_wreck_cathedral ships
+    // INTERACTION_HangarCavity, and the place_aftermath_* pack documents navigable corridors and
+    // drum bores (wreck_aftermath_pack/INTEGRATION.md §6-7). Their backfaces face the player, so
+    // the front-side pass does not reach them.
+    const enterable = /wreck_cathedral|place_aftermath_/.test(rel);
     for (const def of gltf.materials || []) {
       const material = loadMaterial(def);
       materials += 1;
@@ -117,6 +122,7 @@ test('loaded opaque hull materials are front-sided', () => {
         continue;
       }
       hulls += 1;
+      if (enterable) continue;
       if (doubleSided || material.transparent || material.depthWrite === false) {
         failures.push(`${rel} ${material.name} sided=${doubleSided} transparent=${material.transparent} depth=${material.depthWrite}`);
       }

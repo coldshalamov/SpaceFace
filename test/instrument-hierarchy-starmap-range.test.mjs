@@ -31,7 +31,9 @@ const DISPLAY = new Map([
   ['src/ui/screens/range.js', '.sf-range__rule'],
 ]);
 const PINNED_FORBIDDEN = /(?:\bpanel\b|sf-menu)/;
-const ALLOWED_PX = new Set([12, 13, 14, 15, 19, 20, 22, 28, 40, 64]);
+// 26 is the range's narrow-desktop hero compression (ui-polish-60, 2026-10-16): under ~1100×460 the
+// .k-hero__n numeral steps one rung below DISPLAY so RULES/BESTIARY/CLOSE stay on glass.
+const ALLOWED_PX = new Set([12, 13, 14, 15, 19, 20, 22, 26, 28, 40, 64]);
 const GRAMMAR_HEX = [...new Set(Object.values(STARMAP_ROLES).map((h) => h.toLowerCase()))].sort();
 
 function load(rel) {
@@ -73,10 +75,13 @@ test('type floor: nothing in the two screens is authored below 12px', () => {
 test('one DISPLAY-sized element per screen, and it is the named eye-winner', () => {
   for (const rel of FILES) {
     const code = load(rel);
+    // Media-query compression rungs (the range's narrow-desktop hero at 28→26px) are layout
+    // exceptions, not DISPLAY authorship — strip @media blocks before counting.
+    const body = code.replace(/@media[^{]*\{(?:[^{}]*\{[^}]*\})*[^{}]*\}/g, ' ');
     const selectors = [];
     const re = /([^{}]+)\{[^}]*font-size:\s*28px/g;
     let m;
-    while ((m = re.exec(code))) selectors.push(m[1].replace(/@media[^{]+/g, '').trim());
+    while ((m = re.exec(body))) selectors.push(m[1].trim());
     const unique = [...new Set(selectors.filter(Boolean))];
     assert.equal(unique.length, 1, rel + ' DISPLAY selectors: ' + unique.join(' | '));
     assert.ok(unique[0].includes(DISPLAY.get(rel)), rel + ' DISPLAY should be ' + DISPLAY.get(rel));

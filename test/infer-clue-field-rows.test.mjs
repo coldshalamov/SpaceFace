@@ -408,7 +408,7 @@ test('overlapping pull, push, and viscosity sum in id order without stealing mom
   const presentation = readFileSync(new URL('../src/render/forceLanguage/fieldForcePresentation.js', import.meta.url), 'utf8');
   assert.doesNotMatch(presentation, /sampleFieldAcceleration/);
   const fieldsSource = readFileSync(new URL('../src/systems/fields.js', import.meta.url), 'utf8');
-  assert.match(fieldsSource, /queuePhysicsImpulse\(/);
+  assert.match(fieldsSource, /deliverPhysicalImpulseDetailed\(/);
   assert.match(fieldsSource, /sampleFieldAcceleration\(/);
   assert.doesNotMatch(fieldsSource, /\.vel\s*=/);
 });

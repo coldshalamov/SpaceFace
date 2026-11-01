@@ -237,7 +237,10 @@ test('production order, reset, browser and Node lookup and docked keepalive seam
     assert.match(code, /\['latchNine', latchNine\]/);
   }
   const registry = readFileSync(new URL('../src/core/registry.js', import.meta.url), 'utf8');
-  assert.match(registry, /latch\.keepalive\(wallDt\)/);
+  assert.match(registry, /runHiddenKeepalive\(\{[^}]*wallDt/);
+  // The hidden-keepalive service table hands latchNine the wall delta while the sim is frozen.
+  const freeze = readFileSync(new URL('../src/core/presentationFreeze.js', import.meta.url), 'utf8');
+  assert.match(freeze, /name: 'latchNine', method: 'keepalive', clock: 'wall'/);
   const ui = readFileSync(new URL('../src/ui/uiRoot.js', import.meta.url), 'utf8');
   const commit = ui.indexOf('commitDockedUiState(this.state, payload, this.bus)');
   assert.ok(commit > 0 && commit < ui.indexOf('this.screenManager.syncVisibility()', commit));

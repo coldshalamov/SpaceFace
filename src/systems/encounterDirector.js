@@ -4897,6 +4897,9 @@ function stampLivePropsDespawn(state, live, now, afterS, overwrite) {
     if (!overwrite && e.data && e.data.despawnAt != null) continue;
     e.data = e.data || {};
     e.data.despawnAt = now + afterS + stagger * 0.5;
+    // Provenance: the releasing encounter's own cleanup stamp is revocable on re-adoption —
+    // a foreign-scheduled despawnAt is a kill order adopters must not touch.
+    e.data.despawnBy = live.id;
     stagger++;
   }
 }

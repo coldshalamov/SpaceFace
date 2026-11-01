@@ -147,6 +147,11 @@ function overdriveOpens(h) {
 }
 
 function tape(h) {
+  // The combat kernel claims the hull on first service and syncs cap to capMax —
+  // take that bound before the tape inflates the pool, not inside it.
+  h.weaponSystem.update(DT, h.state);
+  h.state.tick += 1;
+  h.state.simTime += DT;
   h.gun._cooldown = 0;
   h.gun._heat = 0;
   h.gun.heatMax = 1e6;

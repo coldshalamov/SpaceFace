@@ -107,8 +107,8 @@ test('dockArrival and galaxyMap report moored and displaced faction-berth status
   assert.ok(mooredView.lines.includes('The Pallas Stacks: Sealed Folio moored on the apron (×2).'));
   assert.equal(
     mooredView.paperwork,
-    'Fence open for restricted cargo at this berth.',
-    'an outlaw black-market berth advertises its fence instead of a customs scan',
+    'Papers service in Market: choose a hot pod within 200 units and review its cut before washing. Ownership stays unchanged.',
+    'an outlaw black-market berth advertises its papers service instead of a customs scan',
   );
 
   // Displaced folio reports open variance

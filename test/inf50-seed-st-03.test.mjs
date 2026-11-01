@@ -59,6 +59,10 @@ function firstFlight(seed = 4242) {
   state.mode = 'flight';
   state.ui = { docked: false };
   state.onboarding = { active: true, finished: false, pace: { flownBefore: false } };
+  // The opening one-instruction rule defers the card while the staged objective owns
+  // attention inside OPENING_INSTRUCTION_WINDOW_S; the card mounts for a rail that
+  // has run past its window.
+  state.simTime = 121;
   return state;
 }
 

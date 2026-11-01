@@ -217,7 +217,10 @@ function reusableH4Buoy(live, state) {
       || data.assetRef !== 'asset.slice.kessler_handoff_beacon'
       || data.loveLetterSectorId !== live.sectorId
       || typeof data.encounterId !== 'string' || !data.encounterId || active[data.encounterId]
-      || data.despawnAt != null || flags.persistent || flags.missionPinned
+      // A despawnAt the buoy's own releasing encounter stamped (despawnBy === encounterId) is
+      // revocable cleanup — the new live revokes it at adoption. Any other schedule stands.
+      || (data.despawnAt != null && data.despawnBy !== data.encounterId)
+      || flags.persistent || flags.missionPinned
       || data.persistent || data.missionPinned || data.missionId || data.missionTag
       || data.worldRecordId != null || data.persistenceOwner != null
       || data.trafficRole || data.convoyId != null || data.itinerary) continue;
@@ -242,7 +245,13 @@ const h4 = Object.freeze({
       // lack sector provenance and are deliberately not migrated or deleted here.
       buoy.data.loveLetterSectorId = live.sectorId;
       buoy.data.encounterId = live.id;
-      if (reused) live.anchor = { x: buoy.pos.x, z: buoy.pos.z };
+      // A resolve-time despawn stamp on the heard original is a pending cleanup order, not an
+      // executed one — re-adoption revokes it; this live's own resolve re-stamps it after.
+      if (reused) {
+        delete buoy.data.despawnAt;
+        delete buoy.data.despawnBy;
+        live.anchor = { x: buoy.pos.x, z: buoy.pos.z };
+      }
     }
     Object.defineProperty(live, '_loveLetterBuoy', { value: buoy, configurable: true });
     begin(d, live, state);

@@ -4,6 +4,7 @@
 // Loaded by chromiumHostPage.html via the zero-build ESM/importmap path.
 
 import { createAuthoritativeRuntime } from '../../runtime/createAuthoritativeRuntime.js';
+import { loadModelTruthCensus } from '../../data/modelTruth.js';
 import { SIM_DT } from '../../core/sim.js';
 import { actions } from '../../systems/actions.js';
 import { flightV3 } from '../../systems/flightV3.js';
@@ -260,6 +261,9 @@ export async function runBrowserLabScenarioInternal(canonical, options = {}) {
  * @returns {Promise<object>}
  */
 async function runBrowserLabScenarioInternalBody(canonical, options = {}) {
+  // Same entry-point duty as main.js and the sim worker: the census is a fetched asset, loaded
+  // before any synchronous consumer inside the runtime boot.
+  await loadModelTruthCensus();
   const scenarioDigest = options.scenarioDigest || null;
   let inputDigest = options.inputDigest || null;
 

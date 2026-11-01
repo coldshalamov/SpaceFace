@@ -150,6 +150,8 @@ export const PLAYER_ACTION_CUES = Object.freeze({
   'shieldPylon:strained': SILENT('Strain is a meter the pane\'s light carries, not a sting.'),
   'shieldPylon:denied': SILENT('The refusal already plays its ui_deny cue and the warn toast.'),
   'shieldPylon:retired': SILENT('A recall is bookkeeping; the refund rides credits:changed.'),
+  // The brood linker's wall eats the shot — the projectile's own impact voice already plays it.
+  'swarm:broodShielded': SILENT('The shielded hit is the linker wall eating the shot; the projectile\'s impact voice already speaks for it.'),
   // Hails speak as their own bark/comms line, never a second sting (npc:hailed's rule).
   'archive:courierHail': SILENT('The courier hails through its bark line.'),
   'vael:patrolHail': SILENT('The patrol hail speaks as its ledger bark line.'),

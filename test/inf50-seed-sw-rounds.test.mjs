@@ -141,8 +141,8 @@ test('seed 4242: a score toast fading does not take the arrow off the ring', () 
   const bus = { on() { return () => {}; } };
   try {
     survivalHud.init({ state, bus, helpers: {} });
-    survivalHud._onWavePlanned({ plan });
-    survivalHud._onWaveProgress({ completionKind: 'hold', durationTicks: 600, remainingTicks: 500, found: 0, total: 600 });
+    survivalHud._onWavePlanned({ wave: 7, plan });
+    survivalHud._onWaveProgress({ wave: 7, completionKind: 'hold', durationTicks: 600, remainingTicks: 500, found: 0, total: 600 });
     survivalHud._chain = 4;
     survivalHud._pushEarn('+10 SCORE');
     survivalHud.update(1 / 60, state);
