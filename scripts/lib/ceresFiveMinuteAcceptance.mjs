@@ -10,6 +10,7 @@ import assert from 'node:assert/strict';
 import { createHash, randomBytes } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { createConnection } from 'node:net';
+import { createRequire } from 'node:module';
 import {
   mkdir,
   readFile,
@@ -74,6 +75,8 @@ import {
   writeJsonAtomically,
 } from './validationAtomicWrite.mjs';
 import { acquireVisualProbeServer } from './visualProbeServer.mjs';
+
+const { loadSourceOverlayManifest } = createRequire(import.meta.url)('./gameServer.cjs');
 
 export const CERES_FIVE_MINUTE_RUNTIME_SCHEMA =
   'spaceface.ceresFiveMinuteRuntimeEvidence.v1';
@@ -2209,6 +2212,7 @@ export async function runCeresFiveMinuteAcceptance({
   outputRoot,
   brokerClaimToken = process.env.SF_BROKER_CLAIM || null,
   routeOptions = null,
+  baselineSourcePath = null,
   log = () => {},
 } = {}) {
   const repoRoot = path.resolve(String(root || ''));
@@ -2222,6 +2226,10 @@ export async function runCeresFiveMinuteAcceptance({
   }
   if (!['acceptance', 'diagnostic'].includes(mode)) {
     throw new TypeError('Ceres acceptance mode must be acceptance or diagnostic');
+  }
+  const baselineSource = resolveStrictRuntimeSourceOverlay(baselineSourcePath, repoRoot);
+  if (baselineSource && (runtimeKind !== 'browser' || mode !== 'diagnostic')) {
+    throw new TypeError('Ceres source overlays are limited to non-promoting Browser diagnostics');
   }
   if (manifest.fixedSeed !== CERES_FIVE_MINUTE_FIXED_SEED) {
     throw new Error('Ceres acceptance manifest must own fixed seed 47');
@@ -2250,9 +2258,9 @@ export async function runCeresFiveMinuteAcceptance({
   }
 
   const startFingerprint = await strictWorktreeFingerprint(repoRoot);
-  if (startFingerprint.changedFileCount !== 0
+  if (!baselineSource && (startFingerprint.changedFileCount !== 0
       || startFingerprint.digest !== digests.worktreeDigest
-      || startFingerprint.head !== digests.worktreeHead) {
+      || startFingerprint.head !== digests.worktreeHead)) {
     return blockedCeresResult('candidate-worktree-is-not-the-clean-claimed-source');
   }
 
@@ -2279,7 +2287,8 @@ export async function runCeresFiveMinuteAcceptance({
 
   const consumeDigests = await computeGateDigestsFromManifest({ root: repoRoot, manifest });
   const consumeFingerprint = await strictWorktreeFingerprint(repoRoot);
-  if (!sameCandidateAuthority(digests, consumeDigests, startFingerprint, consumeFingerprint)) {
+  if (!baselineSource
+      && !sameCandidateAuthority(digests, consumeDigests, startFingerprint, consumeFingerprint)) {
     return blockedCeresResult('candidate-changed-before-claim-consumption');
   }
 
@@ -2315,7 +2324,8 @@ export async function runCeresFiveMinuteAcceptance({
   await mkdir(runDir, { recursive: true });
   const launchDigests = await computeGateDigestsFromManifest({ root: repoRoot, manifest });
   const launchFingerprint = await strictWorktreeFingerprint(repoRoot);
-  if (!sameCandidateAuthority(digests, launchDigests, startFingerprint, launchFingerprint)) {
+  if (!baselineSource
+      && !sameCandidateAuthority(digests, launchDigests, startFingerprint, launchFingerprint)) {
     return {
       pass: false,
       blocked: false,
@@ -2336,6 +2346,7 @@ export async function runCeresFiveMinuteAcceptance({
         root: repoRoot,
         executablePath: browserExecutable,
         resources,
+        baselineSource,
       });
     } else {
       await launchCeresElectronRuntime({ root: repoRoot, runId, resources });
@@ -2387,6 +2398,18 @@ export async function runCeresFiveMinuteAcceptance({
   }
 
   const endFingerprint = await strictWorktreeFingerprint(repoRoot);
+  const sourceOverlayReceipt = baselineSource ? {
+    ...(resources.sourceOverlay || projectSourceOverlayReceipt(baselineSource, null)),
+    assetsOutsidePin: 'served from the live working tree',
+    localHarness: {
+      source: 'live working tree',
+      harnessDigest: digests.harnessDigest,
+    },
+    localWorktree: {
+      start: projectWorktreeIdentity(startFingerprint),
+      end: projectWorktreeIdentity(endFingerprint),
+    },
+  } : null;
   const portReceipts = await inspectOwnedPortClosures(resources);
   const cleanup = normalizeCeresCleanup(
     runtimeKind,
@@ -2398,10 +2421,10 @@ export async function runCeresFiveMinuteAcceptance({
   const lifecycleFailures = [];
   if (runError) lifecycleFailures.push(`${runError.routePhase || 'runtime'}: ${runError.message || runError}`);
   if (!routeResult?.pass) lifecycleFailures.push('public five-minute Ceres route did not pass');
-  if (routeFingerprint && !sameWorktreeFingerprint(startFingerprint, routeFingerprint)) {
+  if (!baselineSource && routeFingerprint && !sameWorktreeFingerprint(startFingerprint, routeFingerprint)) {
     lifecycleFailures.push('worktree changed during the public route');
   }
-  if (!sameWorktreeFingerprint(startFingerprint, endFingerprint)) {
+  if (!baselineSource && !sameWorktreeFingerprint(startFingerprint, endFingerprint)) {
     lifecycleFailures.push('worktree changed before owned cleanup completed');
   }
   if (!cleanup.pass) lifecycleFailures.push(...cleanup.failures.map((failure) => `cleanup: ${failure}`));
@@ -2424,6 +2447,7 @@ export async function runCeresFiveMinuteAcceptance({
       failureSnapshot: runError?.ceresRouteFailureSnapshot || null,
       observerBounds: runError?.ceresRouteObserverBounds || null,
       routeTail: runError?.ceresRouteTail || null,
+      ...(sourceOverlayReceipt ? { sourceOverlay: sourceOverlayReceipt } : {}),
       ...boundedRouteDiagnostics,
       cleanup,
     };
@@ -2497,6 +2521,7 @@ export async function runCeresFiveMinuteAcceptance({
     cleanup,
     consumedLedger,
     electronProvisioning,
+    ...(sourceOverlayReceipt ? { sourceOverlay: sourceOverlayReceipt } : {}),
     primaryAcceptance: mode === 'acceptance',
   });
   const machineCandidate = mode === 'acceptance'
@@ -7131,10 +7156,80 @@ async function releasePublicInput(page) {
   }
 }
 
-async function launchCeresBrowserRuntime({ root, executablePath, resources }) {
-  const ownedServer = await acquireVisualProbeServer({ root });
+function resolveStrictRuntimeSourceOverlay(value, root) {
+  if (!value) return null;
+  const resolved = path.resolve(root, String(value));
+  const relative = path.relative(root, resolved).replace(/\\/g, '/');
+  if (!relative.startsWith('.devshots/')) {
+    throw new TypeError('Ceres --baseline-source must point inside .devshots/');
+  }
+  const overlay = loadSourceOverlayManifest(resolved);
+  if (overlay.identity.strictRuntimeIsolation !== true) {
+    throw new TypeError('Ceres --baseline-source requires an all-runtime source manifest');
+  }
+  return Object.freeze({
+    path: resolved,
+    relative,
+    identity: projectSourceOverlayIdentity(overlay.identity),
+  });
+}
+
+function projectSourceOverlayIdentity(identity) {
+  return {
+    schema: identity?.schema || null,
+    sourceCommit: identity?.sourceCommit || null,
+    sourceOverlayDigest: identity?.sourceOverlayDigest || null,
+    fileCount: Number.isSafeInteger(identity?.fileCount) ? identity.fileCount : null,
+    totalBytes: Number.isSafeInteger(identity?.totalBytes) ? identity.totalBytes : null,
+    strictRuntimeIsolation: identity?.strictRuntimeIsolation === true,
+  };
+}
+
+function projectSourceOverlayReceipt(baselineSource, served) {
+  return {
+    manifest: baselineSource.relative,
+    requested: baselineSource.identity,
+    served: served ? projectSourceOverlayIdentity(served) : null,
+  };
+}
+
+function projectWorktreeIdentity(fingerprint) {
+  return fingerprint ? {
+    id: fingerprint.id || null,
+    head: fingerprint.head || null,
+    branch: fingerprint.branch || null,
+    digest: fingerprint.digest || null,
+    changedFileCount: Number.isSafeInteger(fingerprint.changedFileCount)
+      ? fingerprint.changedFileCount : null,
+  } : null;
+}
+
+async function readAndVerifySourceOverlayIdentity(baseUrl, baselineSource) {
+  const response = await fetch(new URL('/__source_overlay_identity', baseUrl));
+  if (!response.ok) throw new Error(`source overlay identity endpoint returned HTTP ${response.status}`);
+  const observed = projectSourceOverlayIdentity(await response.json());
+  const expected = baselineSource.identity;
+  for (const field of ['schema', 'sourceCommit', 'sourceOverlayDigest', 'fileCount', 'totalBytes', 'strictRuntimeIsolation']) {
+    if (observed[field] !== expected[field]) {
+      throw new Error(`served source overlay ${field} does not match requested baseline`);
+    }
+  }
+  return projectSourceOverlayReceipt(baselineSource, observed);
+}
+
+async function launchCeresBrowserRuntime({ root, executablePath, resources, baselineSource = null }) {
+  const ownedServer = await acquireVisualProbeServer({
+    root,
+    sourceOverlay: baselineSource?.path || null,
+  });
   resources.server = ownedServer;
   resources.rootUrl = ownedServer.baseUrl;
+  if (baselineSource) {
+    resources.sourceOverlay = await readAndVerifySourceOverlayIdentity(
+      ownedServer.baseUrl,
+      baselineSource,
+    );
+  }
   const { chromium } = await loadPlaywright();
   resources.browserServer = await chromium.launchServer({
     headless: false,
@@ -7380,6 +7475,7 @@ function createCeresRuntimeEvidence({
   cleanup,
   consumedLedger,
   electronProvisioning,
+  sourceOverlay = null,
   primaryAcceptance,
 }) {
   const observations = {
@@ -7406,6 +7502,7 @@ function createCeresRuntimeEvidence({
     primaryAcceptance: primaryAcceptance === true,
     generatedAt: new Date().toISOString(),
     runtimeKind,
+    ...(sourceOverlay ? { sourceOverlay } : {}),
     runtimeScope: runtimeKind === 'electron' ? 'source-native-electron' : 'source-browser',
     packagedElectronClaim: false,
     controllerParityClaim: false,
