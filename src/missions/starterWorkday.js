@@ -1,5 +1,6 @@
 import { occupantGenerationOf } from '../core/entity.js';
 import { activeOwnedShip, shipCarriesModule } from '../data/starterJobs.js';
+import { forEachFieldRock } from '../world/livingWorldViews.js';
 
 // Authored places, not another mission owner. Existing mission targets own custody,
 // destruction, delivery, payment and durable reattachment.
@@ -56,6 +57,34 @@ export function starterMiningFocus(m, entities, toGlobal, asteroidDefs = []) {
   return best ? { label: site.label, pos: { x: best.pos.x, z: best.pos.z }, targetEntityId: best.id,
     reason: site.brief } : null;
 }
+
+/** Existing field-owner view: nearest eligible live or dormant resource face, without materializing it. */
+export function nearestMiningResourceFace(state, { sectorId, center, commodityId }, asteroidDefs, accept = null) {
+  let face = null, distance = Infinity;
+  if (!Number.isFinite(center?.x) || !Number.isFinite(center?.z)) return { face, distance };
+  forEachFieldRock(state, (e) => {
+    const data = e?.data || {};
+    if (e?.alive !== true || e.type !== 'asteroid' || !Number.isFinite(e.pos?.x)
+      || !Number.isFinite(e.pos?.z) || data.missionTag || data.respawnAt != null
+      || !Number.isFinite(data.oreHP) || data.oreHP <= 0) return;
+    if (e.fieldResident && (state.world?.asteroidField?.schema !== 'spaceface.asteroidField.v1'
+      || e.liveEntityId != null || state.entities?.get(e.id))) return;
+    if (!e.fieldResident && state.entities?.get(e.id) !== e) return;
+    if (data.siteAnchored || (typeof data.opticStructureId === 'string' && data.opticStructureId)) return;
+    const chunkMass = Math.max(0, Number(data.bulkMassU ?? data.yieldU ?? e.mass) || 0);
+    if (data.isChunk && chunkMass > 20) return;
+    if ([e.sectorId, e.homeSectorId, data.sectorId, data.homeSectorId]
+      .some((id) => id && id !== sectorId)) return;
+    const def = asteroidDefs.find((row) => row.id === data.typeId);
+    if (!Number.isFinite(def?.oreTable?.[commodityId]) || def.oreTable[commodityId] <= 0) return;
+    const d = Math.hypot(e.pos.x - center.x, e.pos.z - center.z);
+    if (!(d < distance) || (accept && !accept(e))) return;
+    face = e;
+    distance = d;
+  });
+  return { face, distance };
+}
+
 export function starterBuoySpec(m, toGlobal) {
   const site = authoredStarterSite(m);
   if (!site || m.type !== 'tow_recovery' || m.params.starterJobId !== 'starter_pelican') return null;

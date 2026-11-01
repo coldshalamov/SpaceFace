@@ -1,11 +1,11 @@
 import { ASTEROIDS } from '../data/mining.js';
 import { starterMiningFocus } from '../missions/starterWorkday.js';
+import { compostRouteFocus } from '../missions/compostRoute.js';
 import { authoredCinderRoute, initializeCinderRoute, retainCinderRetry, observeCinderMarker, observeCinderRetirement, cinderRouteFocus, driveCinderRoute } from '../missions/cinderRoute.js';
 import { kesslerScalePending, kesslerScaleWaypoint } from './kesslerScaleWorksite.js';
 import { furnaceWorksiteFocus } from '../missions/furnaceWorksite.js';
-import { UNDERSTORY_RECEIVER, receiverApproach, receiverStatus, firstPlayerGardenGrowth } from '../data/understoryReceiver.js';
+import { UNDERSTORY_RECEIVER, firstPlayerGardenGrowth } from '../data/understoryReceiver.js';
 import { nestOutcomeReceipt, nestWaypoint } from '../data/nestVisit.js';
-import { UNDERSTORY_COMPOST_RUN, UNDERSTORY_GARDENS, UNDERSTORY_GARDEN_STAGES } from '../data/factions/understory.js';
 // Missions, contracts & story-spine system (ARCHITECTURE §2.3 step 15, §3.11 state, §4.4 event
 // table; design/specs/07-missions-contracts-story-spine.md).
 //
@@ -3786,35 +3786,8 @@ export const missions = {
           pos: station?.pos ? { ...station.pos } : null };
       }
       if (!done.has('compost')) {
-        const receiver = receiverStatus(state);
-        const garden = receiver.garden;
-        if (receiver.status === 'unavailable') {
-          return { ...base, label: 'Compost receiver — not receiving',
-            reason: 'The receiver is unavailable. No cargo or growth is credited; the Nest still waits for real player-fed growth.',
-            stationId: null, sectorId: UNDERSTORY_RECEIVER.sectorId, targetEntityId: null, pos: null };
-        }
-        const saved = garden?.data || state.understory?.authoredReceiver?.terminalGardenData || {};
-        const fed = Math.max(0, Number(saved.compostFedMass) || 0);
-        const biomass = receiver.status === 'destroyed' ? 0 : Number.isFinite(saved.gardenBiomass)
-          ? Math.max(0, saved.gardenBiomass) : UNDERSTORY_RECEIVER.initialBiomass;
-        const target = UNDERSTORY_COMPOST_RUN.targetMass;
-        const mass = n => Number(n.toFixed(1)).toString();
-        const nextStage = UNDERSTORY_GARDEN_STAGES.find(row => row.massFloor > biomass);
-        const growthFeed = nextStage ? Math.ceil((nextStage.massFloor - biomass) / UNDERSTORY_GARDENS.digestionYield * 10) / 10 : null;
-        const growth = growthFeed == null ? 'The garden is at its last stage; no further growth can show.'
-          : `Retained growth ${mass(biomass)} biomass; ${mass(growthFeed)}t feed reaches the next visible stage.`;
-        const run = saved.compostRunComplete === true
-          ? `Run paid once at ${mass(fed)}t; no repeat payment.`
-          : `Your run ${mass(fed)}/${target}t; ${mass(Math.max(0, target - fed))}t remain. No pay before ${target}t; then ${UNDERSTORY_COMPOST_RUN.creditPerTonne}cr/t of actual run mass, once.`;
-        const regrowth = receiver.status === 'destroyed'
-          ? 'The receiver was destroyed; it regrows only from new feed — 100t from zero to reach stage 2. ' : '';
-        return { ...base, label: `Compost Run — ${UNDERSTORY_RECEIVER.name} west outside-mouth approach`,
-          reason: `${regrowth}${growth} ${run} First visible growth opens the Nest. No feed is supplied: tow a Cinder hull in, or mine ordinary iron in Charon and jettison 17u near the receiver (13.6t of feed). Only what reaches the mouth counts. Approach and feed from Rook on the west side; keep the load close and steer around loose clutter before the final approach. Use the Line and keep your cockpit outside the mouth.`,
-          stationId: null, sectorId: UNDERSTORY_RECEIVER.sectorId,
-          sectorName: SECTOR_BY_ID.get(UNDERSTORY_RECEIVER.sectorId)?.name || null,
-          // The location is deliberately not bound to the hull's centre: selection and
-          // autopilot consumers must retain the safe outside-mouth staging point.
-          targetEntityId: null, pos: receiverApproach() };
+        return { ...base, ...compostRouteFocus(this),
+          sectorName: SECTOR_BY_ID.get(UNDERSTORY_RECEIVER.sectorId)?.name || null };
       }
       if (!done.has('nest')) {
         return { ...base, ...nestWaypoint(state),
