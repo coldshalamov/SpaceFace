@@ -92,6 +92,19 @@ ${W} .sx-sw-rack .sx-sw-band__label .k-38 { display:block; margin-top:2px; }
   ${W} .sx-sw__gauges { gap:0 14px !important; }
   ${W} .sx-sw-gauge .k-row__name { letter-spacing:.14em !important; }
 }
+/* 1101–1500 × ≤800 (1280×720, 1366×768): the three-column frame leaves the stage ~620px, and the
+   hull's beads sit mid-stage right under the 52ch blurb. Here the blurb keeps to a column left of the
+   hull and reads whole; the callout solver already steps around its ink, so the cards stack in the
+   clear column right of the hull instead of being shoved down onto the readings line. */
+@media (min-width:1101px) and (max-width:1500px) and (max-height:800px) {
+  ${W} .sx-sw__nameplate .sx-sw__blurb { max-width:232px !important; font-size:13px !important; line-height:1.4 !important;
+    max-height:none !important; overflow:visible !important; }
+}
+/* ≥1101 the fleet rail is a 230px column: the hull word drops its tracking a notch so
+   "STARTER SCOUT · T0" holds one line under ACTIVE instead of stranding the tier */
+@media (min-width:1101px) {
+  ${W} .sx-sw-row .k-row__sub { letter-spacing:.08em !important; white-space:nowrap; }
+}
 
 /* ---- the bands: one dominant numeral, the rest readings; the chosen band lit by the Hand ------- */
 ${W} .sx-sw-bands { gap:10px 30px !important; align-items:flex-end; }
