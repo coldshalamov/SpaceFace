@@ -1111,6 +1111,15 @@ export function observeStableStationFramesInPage({ maximumFrames }) {
   return new Promise((resolve) => {
     const frames = [];
     const canonicalUndockSelector = 'button[data-act="undock"]';
+    let firstContent = null;
+    let firstContentFingerprint = null;
+    let firstChangedContent = null;
+    let previousContentFingerprint = null;
+    let previousContent = null;
+    let contentFingerprintChangeCount = 0;
+    let lastChangedFrameIndex = null;
+    let lastContentTransition = null;
+    let lastContent = '';
     const sample = (frameTimestampMs) => {
       const state = window.SF?.state;
       const screen = document.querySelector('[data-screen="station"]');
@@ -1126,6 +1135,8 @@ export function observeStableStationFramesInPage({ maximumFrames }) {
       const undockAccessibleName = accessibleNameOf(undock);
       const undockAncestry = inspectAccessibilityAncestry(undock);
       const content = String(screen?.innerText || '').replace(/\s+/g, ' ').trim();
+      const contentFingerprint = fingerprint(content);
+      const frameIndex = frames.length;
       const overlayStyle = overlay ? getComputedStyle(overlay) : null;
       const overlayRect = overlay?.getBoundingClientRect();
       frames.push({
@@ -1137,7 +1148,7 @@ export function observeStableStationFramesInPage({ maximumFrames }) {
         screenVisible: screenVisibility.visible,
         screenRect: visibilityDiagnosticsOf(screenVisibility),
         visibleTabLabels: visibleTabs.map((tab) => String(tab.getAttribute('data-tab') || tab.getAttribute('data-nav') || tab.textContent || '').trim()),
-        contentFingerprint: fingerprint(content),
+        contentFingerprint,
         contentLength: content.length,
         contentPreview: content.slice(0, 240),
         undockVisible: undockVisibility.visible,
@@ -1178,7 +1189,43 @@ export function observeStableStationFramesInPage({ maximumFrames }) {
           pointerEvents: overlayStyle?.pointerEvents || '',
         } : { present: false },
       });
-      if (frames.length >= maximumFrames) resolve(frames);
+      if (firstContent === null) {
+        firstContent = content;
+        firstContentFingerprint = contentFingerprint;
+      }
+      if (previousContentFingerprint !== null && previousContentFingerprint !== contentFingerprint) {
+        contentFingerprintChangeCount += 1;
+        lastChangedFrameIndex = frameIndex;
+        lastContentTransition = { frameIndex, before: previousContent, after: content };
+      }
+      if (firstChangedContent === null && contentFingerprint !== firstContentFingerprint) {
+        firstChangedContent = { frameIndex, content };
+      }
+      previousContentFingerprint = contentFingerprint;
+      previousContent = content;
+      lastContent = content;
+
+      if (frames.length >= maximumFrames) {
+        const lastFrame = frames[frames.length - 1];
+        lastFrame.settleDiagnostic = {
+          content: {
+            fingerprintChangeCount: contentFingerprintChangeCount,
+            firstChangedFrameNumber: firstChangedContent ? firstChangedContent.frameIndex + 1 : null,
+            lastChangedFrameNumber: lastChangedFrameIndex == null ? null : lastChangedFrameIndex + 1,
+            firstChange: firstChangedContent
+              ? textChangeSummary(firstContent, firstChangedContent.content)
+              : null,
+            lastTransition: lastContentTransition ? {
+              frameNumber: lastContentTransition.frameIndex + 1,
+              ...textChangeSummary(lastContentTransition.before, lastContentTransition.after),
+            } : null,
+            lastChange: lastContent !== firstContent ? textChangeSummary(firstContent, lastContent) : null,
+          },
+          firstFrameSignature: stationFrameSignature(frames[0]),
+          lastFrameSignature: stationFrameSignature(lastFrame),
+        };
+        resolve(frames);
+      }
       else requestAnimationFrame(sample);
     };
     requestAnimationFrame(sample);
@@ -1309,6 +1356,85 @@ export function observeStableStationFramesInPage({ maximumFrames }) {
       }
       return `fnv1a-${(hash >>> 0).toString(16).padStart(8, '0')}`;
     }
+
+    function textChangeSummary(before, after) {
+      let commonPrefixLength = 0;
+      const sharedLength = Math.min(before.length, after.length);
+      while (commonPrefixLength < sharedLength
+        && before[commonPrefixLength] === after[commonPrefixLength]) commonPrefixLength += 1;
+
+      let commonSuffixLength = 0;
+      while (commonSuffixLength < before.length - commonPrefixLength
+        && commonSuffixLength < after.length - commonPrefixLength
+        && before[before.length - commonSuffixLength - 1] === after[after.length - commonSuffixLength - 1]) {
+        commonSuffixLength += 1;
+      }
+
+      const beforeChangedEnd = before.length - commonSuffixLength;
+      const afterChangedEnd = after.length - commonSuffixLength;
+      const maxSnippetLength = 512;
+      const contextLength = 128;
+      const snippet = (text, changedEnd) => {
+        const start = Math.max(0, commonPrefixLength - contextLength);
+        const naturalEnd = Math.min(text.length, changedEnd + contextLength);
+        const end = Math.min(text.length, Math.max(start, naturalEnd), start + maxSnippetLength);
+        return {
+          text: text.slice(start, end),
+          truncatedBefore: start > 0,
+          truncatedAfter: end < text.length,
+        };
+      };
+
+      return {
+        commonPrefixLength,
+        commonSuffixLength,
+        beforeChangedLength: Math.max(0, beforeChangedEnd - commonPrefixLength),
+        afterChangedLength: Math.max(0, afterChangedEnd - commonPrefixLength),
+        before: snippet(before, beforeChangedEnd),
+        after: snippet(after, afterChangedEnd),
+      };
+    }
+
+    function stationFrameSignature(frame) {
+      const rect = frame?.screenRect || {};
+      const action = frame?.undockAction || {};
+      const overlayState = frame?.overlay || {};
+      return {
+        docked: frame?.docked === true,
+        stationId: frame?.stationId || null,
+        screen: {
+          visible: frame?.screenVisible === true,
+          width: rect.width ?? null,
+          height: rect.height ?? null,
+          intersectionWidth: rect.intersectionWidth ?? null,
+          intersectionHeight: rect.intersectionHeight ?? null,
+          effectiveOpacity: rect.effectiveOpacity ?? null,
+          hiddenByAncestor: rect.hiddenByAncestor ?? null,
+        },
+        visibleTabLabels: Array.isArray(frame?.visibleTabLabels) ? frame.visibleTabLabels : [],
+        undock: {
+          selector: action.selector || null,
+          canonicalMatchCount: action.canonicalMatchCount ?? null,
+          visibleCanonicalMatchCount: action.visibleCanonicalMatchCount ?? null,
+          visible: action.visible === true,
+          containedByStationScreen: action.containedByStationScreen === true,
+          disabled: action.disabled === true,
+          ariaDisabled: action.ariaDisabled || null,
+          readiness: action.readiness || null,
+          normalizedLabel: action.normalizedLabel || null,
+        },
+        overlay: {
+          present: overlayState.present === true,
+          hidden: overlayState.hidden ?? null,
+          display: overlayState.display ?? null,
+          visibility: overlayState.visibility ?? null,
+          opacity: overlayState.opacity ?? null,
+          width: overlayState.width ?? null,
+          height: overlayState.height ?? null,
+          pointerEvents: overlayState.pointerEvents ?? null,
+        },
+      };
+    }
   });
 }
 
@@ -1321,8 +1447,12 @@ async function waitForStableStationHub(page, requiredObservations) {
   const finalSuffix = validateFinalStationFrameSuffix(observations, { minFrames: requiredObservations });
   const computedRoleAuthority = validateComputedUndockRoleProofs([computedRoleBefore, computedRoleAfter]);
   const settlementFailures = [...finalSuffix.failures, ...computedRoleAuthority.failures];
+  const settleDiagnostic = observations.at(-1)?.settleDiagnostic || null;
+  const diagnosticText = settlementFailures.length > 0 && settleDiagnostic
+    ? `; bounded station delta=${JSON.stringify(settleDiagnostic)}`
+    : '';
   assert.equal(settlementFailures.length, 0,
-    `station hub final ${requiredObservations}-frame suffix was not settled: ${JSON.stringify(settlementFailures)}`);
+    `station hub final ${requiredObservations}-frame suffix was not settled: ${JSON.stringify(settlementFailures)}${diagnosticText}`);
   return {
     ...finalSuffix,
     computedRoleAuthority,

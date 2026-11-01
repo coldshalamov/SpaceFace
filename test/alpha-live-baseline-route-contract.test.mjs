@@ -454,6 +454,35 @@ async function testStationDomObserver(routeModule) {
   const fieldsetDisabled = await observeStationFixture(routeModule, { disabledFieldset: true });
   assert.equal(fieldsetDisabled[0].undockAction.disabled, true,
     'DOM observer uses :disabled semantics for disabled fieldset ancestry');
+
+  const changingContent = await observeStationFixture(routeModule, {
+    maximumFrames: 3,
+    frameContentChanges: {
+      1: 'Helios Station Market Shipyard Missions ⏏ UNDOCK · READY · credits 5,000',
+      2: 'Helios Station Market Shipyard Missions ⏏ UNDOCK · READY · credits 5,001',
+      3: 'Helios Station Market Shipyard Missions ⏏ UNDOCK · READY · credits 5,002',
+    },
+  });
+  const settleDiagnostic = changingContent.at(-1)?.settleDiagnostic;
+  assert.equal(settleDiagnostic?.content?.firstChangedFrameNumber, 2,
+    'bounded station diagnostics name the first frame whose visible content differs');
+  assert.equal(settleDiagnostic?.content?.lastChangedFrameNumber, 3,
+    'bounded station diagnostics name the most recent changed frame');
+  assert.match(settleDiagnostic?.content?.firstChange?.before?.text || '', /credits 5,000/,
+    'text delta includes context from the previous visible content');
+  assert.match(settleDiagnostic?.content?.firstChange?.after?.text || '', /credits 5,001/,
+    'text delta includes context from the changed visible content');
+  assert.match(settleDiagnostic?.content?.lastTransition?.before?.text || '', /credits 5,001/,
+    'diagnostic retains the visible text immediately before the last fingerprint transition');
+  assert.match(settleDiagnostic?.content?.lastTransition?.after?.text || '', /credits 5,002/,
+    'diagnostic retains the visible text immediately after the last fingerprint transition');
+  assert(settleDiagnostic.content.firstChange.before.text.length <= 512
+    && settleDiagnostic.content.firstChange.after.text.length <= 512,
+  'text delta snippets stay bounded');
+  assert.equal(settleDiagnostic.firstFrameSignature.screen.width, 1280,
+    'diagnostic retains first-frame station geometry');
+  assert.equal(settleDiagnostic.lastFrameSignature.undock.selector, 'button[data-act="undock"]',
+    'diagnostic retains final-frame canonical control identity');
 }
 
 async function observeStationFixture(routeModule, options = {}) {
@@ -466,7 +495,7 @@ async function observeStationFixture(routeModule, options = {}) {
     globalThis[key] = value;
   }
   try {
-    return await routeModule.observeStableStationFramesInPage({ maximumFrames: 1 });
+    return await routeModule.observeStableStationFramesInPage({ maximumFrames: options.maximumFrames || 1 });
   } finally {
     for (const [key, previous] of prior) {
       if (previous.owned) globalThis[key] = previous.value;
@@ -481,6 +510,7 @@ function createStationDomFixture({
   buttonRect = { left: 1080, top: 24, width: 180, height: 44 },
   duplicateCanonical = false,
   disabledFieldset = false,
+  frameContentChanges = {},
 } = {}) {
   const body = fakeElement({ tag: 'body', rect: { left: 0, top: 0, width: 1440, height: 900 } });
   const station = fakeElement({
@@ -549,7 +579,13 @@ function createStationDomFixture({
       document: documentRef,
       window: windowRef,
       getComputedStyle: (element) => element._style,
-      requestAnimationFrame: (callback) => queueMicrotask(() => callback(++frame * 16.667)),
+      requestAnimationFrame: (callback) => queueMicrotask(() => {
+        frame += 1;
+        if (Object.prototype.hasOwnProperty.call(frameContentChanges, frame)) {
+          station.innerText = frameContentChanges[frame];
+        }
+        callback(frame * 16.667);
+      }),
     },
   };
 }
