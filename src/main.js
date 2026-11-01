@@ -13,7 +13,7 @@ import { entityIsJournaled } from './world/presentationSources.js';
 import { configureRacingCorridorSession } from './world/racingCorridor.js';
 import { createPresentationRuntimeCloser } from './core/presentationRunner.js';
 import { canonicalStringify } from './core/simSnapshot.js';
-import { installLiveClipDirector } from './ui/screens/clips.js';
+import { installLiveClipDirector } from './ui/clipCaptureRuntime.js';
 
 import { makeEnemySpawnSpec } from './systems/combat.js';
 

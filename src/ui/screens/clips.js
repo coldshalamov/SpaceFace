@@ -20,14 +20,29 @@ import { createSpring, reducedMotion } from '../orrery/motion.js';
 import { createCounter, decrypt } from '../orrery/text.js';
 import { dressLampKey } from '../orrery/lampKey.js';
 import { arcGauge } from '../orrery/instruments.js';
-import { attachClipDirectorToBus, createClipDirector } from '../../core/simSnapshot.js';
 import { openReplay, requestReplaySeek, resolveReplayRecording } from './replay.js';
 import { laneSetMode } from '../../core/simLaneCommands.js';
 import { analyzeMomentStream } from '../../presentation/momentMachine/index.js';
-import { installFlightFootage, getFlightFootage, createFootageViewer, resolveFlightClipFrames, encodeFlightVideo } from './flightFootage.js';
-import { installReplayAudioTape, getReplayAudioTape } from '../../audio/replayAudioTape.js';
+import { getFlightFootage, createFootageViewer, resolveFlightClipFrames, encodeFlightVideo } from './flightFootage.js';
 import { exportTheaterClip } from './theaterExport.js';
-import { createTrailerClipCollector } from '../../sim/trailerClipTape.js';
+import {
+  getClipDirector,
+  getClipState,
+  installLiveClipDirector,
+  recordedSetPieceClips,
+  removeRecordedSetPieceClip,
+  setClipDirector,
+  setClipUiLifecycleHooks,
+  uninstallLiveClipDirector,
+  withAmendedGrade,
+} from '../clipCaptureRuntime.js';
+export {
+  getClipDirector,
+  installLiveClipDirector,
+  recordedSetPieceClips,
+  setClipDirector,
+  uninstallLiveClipDirector,
+} from '../clipCaptureRuntime.js';
 import {
   CLIP_EXPORT_FORMATS,
   CLIP_EXPORT_UNAVAILABLE,
@@ -48,130 +63,20 @@ const REEL_HALF_WINDOW = 3;
 /** A trimmed window is never shorter than half a second. */
 const TRIM_MIN_SECONDS = 0.5;
 
-let clipDirector = null;
-let clipUnsub = null;
-let amendUnsub = null;
-let resetUnsub = null;
 let openState = null;
-let clipStateOf = () => null;
-let trailerCollector = null, trailerOff = null, trailerRaf = null;
-/** Read-only retained set-piece windows, also used by the clip review tool. */
-export function recordedSetPieceClips() { return trailerCollector?.list() || []; }
-// Amended grades keyed by the original moment tick and trick. Delete rebuilds clip ids,
-// and an amendment's own tick is later than the clip, so the reel must not key on either.
-const amendedGradeByKey = new Map();
-const GRADE_RANK = Object.freeze({ common: 1, uncommon: 2, rare: 3, legendary: 4 });
 /** clip+format pairs exported this sitting: exporting again holds to overwrite. */
 const exportedKeys = new Set();
-
-/** Publish the live clip director (from createClipDirector) to the Clips surface. */
-export function setClipDirector(director) {
-  const next = director || null;
-  if (next !== clipDirector) amendedGradeByKey.clear();
-  clipDirector = next;
-}
-
-export function getClipDirector() {
-  return clipDirector;
-}
-
-/**
- * Bind a clip director to the production bus so Pause → Clips lists rated moments.
- * Safe to call twice: the previous subscription is dropped first.
- */
-export function installLiveClipDirector(bus, options = {}) {
-  installFlightFootage(bus, options);
-  clipStateOf = options.stateOf || (() => null);
-  installReplayAudioTape(bus, options);
-  trailerOff?.();
-  if (trailerRaf != null && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(trailerRaf);
-  trailerCollector = createTrailerClipCollector({ audioWaitTicks: 12,
-    audioWindow: (from, to) => getReplayAudioTape()?.window(from, to) || null });
-  const poseRecording = () => clipStateOf()?.replay?.recording || getFlightFootage()?.recording();
-  trailerOff = bus?.on?.('setPiece:staged', (marker) => trailerCollector.mark(marker, poseRecording()));
-  let trailerPoseTick = -1;
-  const noteTrailer = () => {
-    if (trailerCollector?.pendingCount) {
-      const replay = clipStateOf()?.replay;
-      const tick = replay?.recording?.poseFrames?.at(-1)?.tick ?? replay?.latestPoseSample?.tick;
-      // The worker publishes one pose sample at 10 Hz. Do not clone/scan its
-      // thirty-second mirror again on every presentation frame.
-      if (tick !== trailerPoseTick) { trailerPoseTick = tick; trailerCollector.note(poseRecording()); }
-    }
-    if (typeof requestAnimationFrame === 'function') trailerRaf = requestAnimationFrame(noteTrailer);
-  };
-  if (typeof requestAnimationFrame === 'function') trailerRaf = requestAnimationFrame(noteTrailer);
-  if (!clipDirector) clipDirector = createClipDirector();
-  if (clipUnsub) {
-    try { clipUnsub(); } catch { /* best-effort */ }
-    clipUnsub = null;
-  }
-  if (amendUnsub) {
-    try { amendUnsub(); } catch { /* best-effort */ }
-    amendUnsub = null;
-  }
-  resetUnsub?.(); resetUnsub = null;
-  if (bus) {
-    clipUnsub = attachClipDirectorToBus(bus, clipDirector, options);
-    // Re-rate the clip already on the reel. Never mark another one from the amendment.
-    if (typeof bus.on === 'function') amendUnsub = bus.on('moment:amended', noteMomentAmendment);
-    const off = ['game:new', 'game:load', 'game:exitToMenu'].map((event) => bus.on(event, () => {
-      clipDirector.clear(); amendedGradeByKey.clear(); exportedKeys.clear();
-      trailerCollector?.clear();
-      releaseClipDownloadURLs();
-    }));
-    resetUnsub = () => off.forEach((fn) => fn?.());
-  }
-  return clipDirector;
-}
-
-/** Drop the live subscription. Does not clear recorded clips. */
-export function uninstallLiveClipDirector() {
-  trailerOff?.(); trailerOff = null;
-  if (trailerRaf != null && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(trailerRaf);
-  trailerRaf = null;
-  getReplayAudioTape()?.dispose();
-  clipStateOf = () => null;
-  releaseClipDownloadURLs();
-  resetUnsub?.(); resetUnsub = null;
-  getFlightFootage()?.dispose();
-  if (clipUnsub) {
-    try { clipUnsub(); } catch { /* best-effort */ }
-    clipUnsub = null;
-  }
-  if (amendUnsub) {
-    try { amendUnsub(); } catch { /* best-effort */ }
-    amendUnsub = null;
-  }
-}
+setClipUiLifecycleHooks({
+  reset() { exportedKeys.clear(); releaseClipDownloadURLs(); },
+  dispose() { releaseClipDownloadURLs(); },
+});
 
 /** Resolve the director from the in-memory store or a transient field on state. */
 export function resolveClipDirector(ctx) {
-  if (clipDirector) return clipDirector;
+  const live = getClipDirector();
+  if (live) return live;
   const state = ctx && ctx.state;
   return (state && state.clips && state.clips.director) || null;
-}
-
-function gradeRank(name) {
-  const rank = GRADE_RANK[String(name || '').toLowerCase()];
-  return rank || 0;
-}
-
-function reelMomentKey(entry) {
-  if (!entry || typeof entry !== 'object') return '';
-  const tickSource = Number.isFinite(Number(entry.momentTick)) ? Number(entry.momentTick) : Number(entry.tick);
-  if (!Number.isFinite(tickSource)) return '';
-  const trickId = entry.trickId == null ? '' : String(entry.trickId);
-  return Math.floor(tickSource) + '|' + trickId;
-}
-
-function withAmendedGrade(clip) {
-  if (!clip || typeof clip !== 'object') return clip;
-  const key = reelMomentKey(clip);
-  if (!key || !amendedGradeByKey.has(key)) return clip;
-  const grade = amendedGradeByKey.get(key);
-  if (gradeRank(grade) <= gradeRank(clip.rarity)) return clip;
-  return { ...clip, rarity: grade };
 }
 
 /** A Death clip stays on the reel when a voyage-log kill shares its tick. Other raw clips still yield. */
@@ -184,8 +89,8 @@ export function clipKeptBesideMoments(clip, moments) {
 
 function listedClips(director) {
   const list = director && typeof director.list === 'function' ? director.list() : [];
-  const raw = (Array.isArray(list) ? list.map(withAmendedGrade) : []).concat(trailerCollector?.list() || []);
-  const state = clipStateOf();
+  const raw = (Array.isArray(list) ? list.map(withAmendedGrade) : []).concat(recordedSetPieceClips());
+  const state = getClipState();
   const recording = state?.replay?.recording || getFlightFootage()?.recording();
   if (!recording) return raw;
   const analysis = analyzeMomentStream({ adventureTape: recording, chronicle: state?.chronicler, locale: state?.settings?.locale });
@@ -198,17 +103,6 @@ function listedClips(director) {
     .concat(raw.filter((clip) => clipKeptBesideMoments(clip, moments)));
 }
 
-function noteMomentAmendment(moment) {
-  if (!moment || typeof moment !== 'object' || !clipDirector) return;
-  const rank = gradeRank(moment.rarity);
-  if (!rank) return;
-  const key = reelMomentKey(moment);
-  if (!key || typeof clipDirector.list !== 'function') return;
-  const list = clipDirector.list();
-  if (!Array.isArray(list) || !list.some((clip) => reelMomentKey(clip) === key)) return;
-  const prev = amendedGradeByKey.get(key);
-  if (prev == null || rank > gradeRank(prev)) amendedGradeByKey.set(key, String(moment.rarity).toLowerCase());
-}
 
 /** Summary used by the surface and tests. An amended grade rides the same clip. */
 export function clipListSummary(director) {
@@ -343,7 +237,7 @@ export function theaterRefusalFallsThrough(theater) {
 /** Genuine captured pixels only. Browser video may use WebM when MP4 is unavailable. */
 export async function exportRecordedClip(clip, options = {}) {
   if (options.format === 'mp4' || options.format === 'webm') {
-    const theater = await exportTheaterClip(clip, { ...options, state: options.state || clipStateOf() });
+    const theater = await exportTheaterClip(clip, { ...options, state: options.state || getClipState() });
     if (!theaterRefusalFallsThrough(theater)) return theater;
   }
   let encoded;
@@ -1007,7 +901,7 @@ function doDelete(view) {
     if (view.readout) view.readout.textContent = 'NOTHING TO DELETE';
     return;
   }
-  if (clip.kind === 'set-piece') trailerCollector?.remove(clip.id);
+  if (clip.kind === 'set-piece') removeRecordedSetPieceClip(clip.id);
   else {
     const survivors = view.clips.filter((c) => c.id !== clip.id && c.kind !== 'set-piece').slice().reverse();
     director.clear();
