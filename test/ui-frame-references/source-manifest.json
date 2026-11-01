@@ -176,7 +176,7 @@
   "src/ui/orrery/game-overLayouts.js": "8581f52a84e3f2deb0e1eb5f59ae3fea192356c9a1786167877b76e5457d7b35",
   "src/ui/orrery/gameOverLayouts.js": "499590df4d4804fda1b958adb279d11b2a329323e23a8e00717fc1781d0fc541",
   "src/ui/orrery/helpInstruments.js": "d22ee3301986a82711945817eb454ec84c34671ca92ac56980c18fa2cfba1318",
-  "src/ui/orrery/helpLayouts.js": "1b332280e3e7b0fae3adec1d3b44e488e4bfe1882be6a20accff3fdb8f0b6532",
+  "src/ui/orrery/helpLayouts.js": "15eaa280bb0cf89df113b6bcbf3ea84931beee20a75e4e10d7068776b8bc38cf",
   "src/ui/orrery/helpRig.js": "ed16b200d8675e53c04758c7032e862757d798e496776c011e6b9f826c6bf525",
   "src/ui/orrery/hoverTag.js": "5a5170af1cf9559ad2c6859fb63fd550a88a8c23591c23f8317fb76d1abbc813",
   "src/ui/orrery/hudAdapter.js": "9c27aa1096dc4d452ebddd6fd86d529c42b40e5e62f4ee2c30d1cb4a8488593e",
