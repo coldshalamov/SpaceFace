@@ -19,7 +19,6 @@ import { syncScrollExtent } from '../../orrery/scrollExtent.js';
 import { injectStationMarketLayouts } from '../../orrery/station-marketLayouts.js';
 import { isPhoneLayout } from '../../../systems/mobile/model.js';
 import { dressLampKey } from '../../orrery/lampKey.js';
-import { rollTo } from '../../orrery/text.js';
 import { arcD, polar } from '../../orrery/svg.js';
 import { SECTORS } from '../../../data/sectors.js';
 import { isUnsellableCargo, releasableContractUnits, reservedCargoQuantity, sellableCargoQuantity } from '../../../systems/cargo.js';
@@ -1831,8 +1830,10 @@ export function createMarketScreen(ctx) {
       num.className = 'orr-mkt-totalnum';
       el.appendChild(num);
     }
-    rollTo(num, m[1]);
-    // The rolling columns spell every digit for layout; the strong keeps the true value as read.
+    // A live trade total must match the executable quote while Buy/Sell are enabled. Rolling
+    // these digits through intermediate amounts made the visible price disagree with the action.
+    num.classList.remove('orr-counter');
+    num.textContent = m[1];
     el.setAttribute('aria-label', `${m[1]}${m[2] || ''}`.trim());
     const sufText = m[2] || '';
     const suf = has('orr-mkt-totalsuf');

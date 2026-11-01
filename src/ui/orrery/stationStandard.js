@@ -135,18 +135,39 @@ ${P} .sxb-vital__acts .orr-act__cost { font-family:${NUM} !important; font-size:
   ${P} .sxb-crown .sxb-purse__label { width:auto !important; border:0 !important; padding:0 !important; }
   ${P} .sxb-crown .sxb-purse__value { font-size:20px !important; line-height:1.1 !important; }
 }
-/* Under 481 wide the 136px vitals wrapped two to a row at uneven offsets, so MUNITIONS fell to a third row past the
-   40% head and LEDGER's Draw sat under its fade: two even columns, the hull's two priced verbs beside fuel over hold. */
-@media (max-width:480px) and (min-height:601px) {
-  ${P} .sxb-crown .sxb-vitals { display:grid !important; grid-template-columns:repeat(2, minmax(0, 1fr)) !important;
-    grid-template-areas:"hull fuel" "hull hold" "note muni" !important; gap:2px 18px !important; align-items:start !important;
-    padding-block:5px 6px !important; }
+/* At phone and narrow-tablet widths, the authored 136px cards otherwise spill into a third row
+   and leave too little room for station work. Two compact rows keep readings above the body. */
+@media (max-width:650px) and (min-height:601px) {
+  /* Two rows keep every reading in the head: the hull and ledger get wide cells; fuel and hold
+     have room for their figures, and MUNITIONS keeps its label clear of its value. */
+  ${P} .sxb-crown { gap:0 !important; }
+  ${P} .sxb-crown .sxb-vitals { margin-top:-8px !important; }
+  ${P} .sxb-crown .sxb-vital__head { min-height:22px !important; }
+  ${P} .sxb-berth.dp-frame__head { grid-template-rows:max-content max-content max-content max-content max-content !important;
+    align-content:start !important; row-gap:2px !important; }
+  ${P} .sxb-crown .sxb-vitals { padding-top:0 !important; padding-bottom:0 !important; }
+  ${P} .sxb-crown .sxb-vitals > :is(.sxb-vital--fuel, .sxb-vital--hold) .sxb-vital__head {
+    min-height:0 !important; }
+  ${P} .sxb-crown .sxb-vitals > :is(.sxb-vital--fuel, .sxb-vital--hold) .sxb-vital__value {
+    position:static !important; display:inline-flex !important; }
+  ${P} .sxb-crown .sxb-vital--muni .sxb-vital__head::after { height:2px !important; margin-top:2px !important; }
+  ${P} .sxb-crown .sxb-vital__acts { margin:2px 0 0 !important; gap:2px !important; }
+  ${P} .sxb-crown .sxb-vital--hull .sxb-vital__acts { flex-wrap:nowrap !important; }
+  ${P} .sxb-crown .sxb-vital__acts > button { min-height:24px !important; padding:1px 2px !important; }
+  ${P} .sxb-crown .sxb-vitals { display:grid !important; grid-template-columns:repeat(10, minmax(0, 1fr)) !important;
+    grid-template-areas:"hull hull hull hull hull note note note note note" "fuel fuel fuel hold hold hold muni muni muni muni" !important; gap:0 !important; align-items:start !important;
+    padding-block:2px 3px !important; }
   ${P} .sxb-crown .sxb-vitals > .sxb-vital { width:auto !important; min-width:0 !important; grid-column:auto !important; grid-row:auto !important; }
   ${P} .sxb-crown .sxb-vitals > .sxb-vital--hull { grid-area:hull !important; }
   ${P} .sxb-crown .sxb-vitals > .sxb-vital--fuel { grid-area:fuel !important; }
   ${P} .sxb-crown .sxb-vitals > .sxb-vital--hold { grid-area:hold !important; }
   ${P} .sxb-crown .sxb-vitals > .sxb-vital--note { grid-area:note !important; }
   ${P} .sxb-crown .sxb-vitals > .sxb-vital--muni { grid-area:muni !important; }
+  ${P} .sxb-crown .sxb-vitals > .sxb-vital--note { padding-left:8px !important; box-sizing:border-box !important; }
+  ${P} .sxb-crown .sxb-vital--note .sxb-vital__value { white-space:nowrap !important; }
+  ${P} .sxb-crown .sxb-vital--note .sxb-vital__acts { flex-wrap:nowrap !important; }
+  ${P} .sxb-berth.dp-frame__head { -webkit-mask-image:linear-gradient(to bottom, #000 calc(100% - 2px), transparent) !important;
+    mask-image:linear-gradient(to bottom, #000 calc(100% - 2px), transparent) !important; padding-bottom:2px !important; }
 }
 @media (min-width:901px) and (max-width:1100px) and (min-height:461px) and (max-height:640px) {
   ${P}:has(#sx-panel > .sx-sw:not([hidden])) { grid-template-rows:max-content minmax(0,1fr) max-content !important; }
@@ -322,6 +343,83 @@ ${P} .sx-mkt .sx-decision__opt .k-row__name { display:block !important; font-fam
   text-transform:none !important; white-space:normal !important; overflow:visible !important; text-overflow:clip !important; color:rgb(${BONE}) !important; }
 ${P} .sx-mkt .sx-decision__opt .k-row__sub { display:block !important; margin:2px 0 0 !important; font-family:${UI} !important; font-size:13px !important; line-height:1.35 !important;
   white-space:normal !important; overflow:visible !important; text-overflow:clip !important; color:rgb(${BONE} / .78) !important; }
+
+/* Narrow portrait berths keep the register and selected trade side-by-side. Keep the stage as its
+   single scroll surface, and size the dial/action strip to the shallow body above the fixed tabs. */
+@media (max-width:650px) and (min-height:601px) {
+  ${P} .sx-mkt .sx-mkt-browser { grid-template-columns:minmax(0, 1fr) !important;
+    grid-template-rows:auto auto auto minmax(0, 1fr) !important; row-gap:2px !important; }
+  ${P} .sx-mkt .sx-mkt-browser__mode { grid-column:1 !important; grid-row:1 !important; min-height:16px !important;
+    margin:0 !important; padding:0 !important; line-height:16px !important; }
+  ${P} .sx-mkt .orr-mkt-find { grid-column:1 !important; grid-row:2 !important; width:100% !important; margin:0 !important; }
+  ${P} .sx-mkt .sx-mkt-browser__filters { grid-column:1 !important; grid-row:3 !important;
+    flex-direction:row !important; flex-wrap:nowrap !important; align-items:center !important;
+    width:100% !important; min-width:0 !important; max-width:100% !important; overflow-x:auto !important; overflow-y:hidden !important;
+    gap:0 10px !important; padding:0 0 2px !important; margin:0 !important; background:none !important; scrollbar-width:thin; }
+  ${P} .sx-mkt .sx-mkt-browser__filters > li { flex:none !important; max-width:100% !important; }
+  ${P} .sx-mkt .sx-mkt-filter { min-width:max-content !important; max-width:none !important; white-space:nowrap !important; }
+  ${P} .sx-mkt .sx-mkt-browser__rail, ${P} .sx-mkt .sx-mkt-browser__empty { grid-column:1 !important; grid-row:4 !important;
+    min-height:0 !important; overflow-x:hidden !important; overflow-y:auto !important; }
+  ${P} .sx-mkt__stage.dp-work__stage { grid-template-columns:minmax(0, 1fr) !important;
+    grid-template-rows:max-content max-content max-content !important; align-content:start !important;
+    row-gap:8px !important; padding:4px !important; overflow-x:hidden !important; overflow-y:auto !important; }
+  ${P} .sx-mkt__stage.dp-work__stage > .sx-mkt__console { grid-column:1 !important; grid-row:1 !important;
+    width:100% !important; min-width:0 !important; max-width:100% !important; max-height:none !important;
+    overflow:visible !important; }
+  ${P} .sx-mkt__stage.dp-work__stage > .sx-mkt__decision:not(:empty) { grid-column:1 !important; grid-row:2 !important;
+    min-width:0 !important; max-height:none !important; }
+  ${P} .sx-mkt__stage.dp-work__stage > .sx-mkt__analysis { grid-column:1 !important; grid-row:3 !important;
+    min-width:0 !important; overflow:visible !important; }
+  ${P} .sx-mkt .sx-trade { grid-template-columns:minmax(0, 1fr) !important;
+    grid-template-rows:100px auto auto auto auto !important;
+    grid-template-areas:"dial" "total" "verb" "note" "breakdown" !important;
+    justify-items:center !important; align-items:start !important; column-gap:0 !important; row-gap:0 !important; }
+  ${P} .sx-mkt .sx-trade > .sx-qty { width:108px !important; height:96px !important; max-width:100% !important; box-sizing:border-box !important; }
+  ${P} .sx-mkt .sx-qty .orr-qdial { left:12px !important; top:0 !important; width:84px !important; height:84px !important; }
+  ${P} .sx-mkt .sx-qty .sx-qty__in { left:33px !important; top:16px !important; width:42px !important; height:26px !important;
+    line-height:26px !important; font-size:20px !important; }
+  ${P} .sx-mkt .sx-qty { display:block !important; position:relative !important; height:96px !important; }
+  ${P} .sx-mkt .sx-qty .sx-qty__k { left:12px !important; top:0 !important; width:84px !important; line-height:13px !important;
+    position:absolute !important; text-align:center !important; }
+  ${P} .sx-mkt .sx-qty .sx-qty__in { position:absolute !important; left:33px !important; top:18px !important; z-index:2 !important; }
+  ${P} .sx-mkt .sx-qty .sx-qty__words { left:0 !important; right:0 !important; top:48px !important; height:30px !important; display:flex !important;
+    flex-wrap:nowrap !important; justify-content:space-between !important; gap:0 2px !important; }
+  ${P} .sx-mkt :is(.sx-qty__b, .sx-qty__max) { min-width:0 !important; min-height:30px !important; height:30px !important;
+    padding:0 1px !important; font-size:12px !important; letter-spacing:0 !important; white-space:nowrap !important; }
+  ${P} .sx-mkt .sx-qty :is(.sx-qty__b, .sx-qty__max)::before,
+  ${P} .sx-mkt .sx-qty :is(.sx-qty__b, .sx-qty__max)::after { content:none !important; display:none !important; }
+  ${P} .sx-mkt .so-trade-total { height:17px !important; min-height:17px !important; line-height:16px !important; }
+  ${P} .sx-mkt .sx-trade__words { width:100% !important; flex-wrap:nowrap !important; justify-content:space-between !important;
+    gap:0 6px !important; margin:0 !important; }
+}
+
+/* At phone widths, use two readable lines per commodity: full name first, then buy / sell / stock. */
+@media (max-width:480px) and (min-height:601px) {
+  ${P} .sx-mkt .sx-mkt-table, ${P} .sx-mkt .sx-mkt-table > :is(thead, tbody) {
+    display:block !important; width:100% !important; table-layout:auto !important; }
+  ${P} .sx-mkt .sx-mkt-table tr { display:grid !important; width:100% !important;
+    grid-template-columns:minmax(62px, 1fr) 44px 49px !important; column-gap:0 !important; row-gap:1px !important;
+    align-items:baseline !important; padding:0 !important; }
+  ${P} .sx-mkt .sx-mkt-table :is(th, td) { display:block !important; width:auto !important; min-width:0 !important;
+    height:auto !important; block-size:auto !important; box-sizing:border-box !important; padding:0 2px !important; }
+  ${P} .sx-mkt .sx-mkt-table thead th:first-child { display:none !important; }
+  ${P} .sx-mkt .sx-mkt-table :is(th, td):nth-child(2) { grid-column:1 !important; text-align:left !important; }
+  ${P} .sx-mkt .sx-mkt-table :is(th, td):nth-child(3) { grid-column:2 !important; text-align:right !important; }
+  ${P} .sx-mkt .sx-mkt-table :is(th, td):nth-child(4) { grid-column:3 !important; text-align:right !important; }
+  ${P} .sx-mkt .sx-mkt-table :is(th, td):nth-child(5) { display:none !important; }
+  ${P} .sx-mkt .sx-mkt-table thead th { font-size:12px !important; line-height:14px !important; letter-spacing:0 !important;
+    white-space:nowrap !important; }
+  ${P} .sx-mkt .sx-mkt-table .sx-mkt-row > .sx-mkt-row__name:first-child { grid-column:1 / -1 !important;
+    padding-left:4px !important; padding-right:4px !important; font-size:13px !important; line-height:15px !important;
+    white-space:normal !important; overflow:visible !important; text-overflow:clip !important; }
+  ${P} .sx-mkt .sx-mkt-table .sx-mkt-row { row-gap:1px !important; padding:0 !important; align-content:center !important; }
+  ${P} .sx-mkt .sx-mkt-table .sx-mkt-row td { line-height:15px !important; white-space:nowrap !important; }
+  ${P} .sx-mkt .sx-mkt-table .sx-mkt-row td:is(.sx-mkt-row__price, .sx-mkt-row__sell, .sx-mkt-row__stock) {
+    overflow:visible !important; text-overflow:clip !important; font-variant-numeric:tabular-nums !important; }
+  ${P} .sx-mkt .sx-mkt-table .sx-mkt-row__tr { margin-left:2px !important; }
+  ${P} .sx-mkt .sx-mkt-table .sx-mkt-row td.sx-mkt-row__name { white-space:normal !important; overflow:visible !important;
+    text-overflow:clip !important; }
+}
 
 /* Market in the short desktop berth (901–1100 x 461–640): after the rules above so it wins at equal weight. */
 @media (min-width:901px) and (max-width:1100px) and (min-height:461px) and (max-height:640px) {
