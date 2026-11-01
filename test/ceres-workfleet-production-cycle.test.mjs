@@ -45,7 +45,7 @@ test('complete production factory secures the original plate through the full am
   };
   writeFileSync(new URL('runtime-full-factory-start-v1.json',traceFolder),JSON.stringify({
     schema:'ceres.workfleet.full-production-cycle-start.v1',at:new Date().toISOString(),seed:48,observer,observerRoute,
-    maxTicks:85000,oldSpaceBudgetMiB:256,execArgv:process.execArgv,node:process.version,pid:process.pid,sourceClosure:sources,profile:runtime.config.profileId,
+    maxTicks:120000,oldSpaceBudgetMiB:256,execArgv:process.execArgv,node:process.version,pid:process.pid,sourceClosure:sources,profile:runtime.config.profileId,
     fingerprint:runtime.fingerprint,selectedSlots:runtime.manifest.selectedSlots,
     registry:runtime.manifest.authoritativeUpdateOrder.map(s=>s.name)},null,2)+'\n');
   const onUncaught=(error,origin)=>diagnostic('uncaught-error',{origin,message:error.message,stack:error.stack});
