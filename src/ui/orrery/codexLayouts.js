@@ -16,6 +16,11 @@
 // 4. POINTER FOCUS. The search field's lit underline answered :focus-visible only, so a click gave
 //    the field no visible response (ui-bench walk: "Search Codex — no visible change"). Pointer
 //    focus now lights the same rule and the lens glyph, keyboard and mouse alike.
+// 5. UNLOCK STATUS CARDS. The seven unlock counts were loose type over a bare bar, and at
+//    961–1400px the fixed 64–69px cells let GRAFFITI run into ENDGAME (1280×720, 960×540). Each
+//    count now sits in its own hairline card sized to its label, the bar drawn along the card's
+//    foot, so the readings never touch and the header reads as one set. Phones and the
+//    640–760px wrap keep their own compact layout.
 
 const STYLE_ID = 'sf-orrery-codex-layouts';
 const BONE = '236 230 216';
@@ -44,6 +49,21 @@ ${CX} .cx-search .sf-codex-search:focus { outline:none !important;
     repeating-linear-gradient(90deg, rgb(${BONE} / .4) 0 1px, transparent 1px 12px) 0 100% / 100% 5px no-repeat !important; }
 ${CX} .cx-search:focus-within::before { box-shadow:inset 0 0 0 2px rgb(252 250 244 / .95); }
 ${CX} .cx-search:focus-within::after { background:rgb(252 250 244 / .95); }
+/* 5 — each unlock count is a hairline card sized to its label; the bar runs along its foot */
+@media (min-width:761px) {
+  ${CX} .cx-index__list { gap:0 clamp(6px, .6vw, 10px) !important; }
+  ${CX} .cx-index__item { box-sizing:border-box; width:auto; min-width:clamp(60px, 4.6vw, 84px);
+    padding:7px clamp(8px, .7vw, 12px) 0; overflow:hidden; border:1px solid rgb(${BONE} / .16);
+    border-radius:6px; background:rgb(12 12 14 / .55); }
+  ${CX} .cx-index__w { white-space:nowrap; margin-bottom:6px !important; }
+  ${CX} .cx-index__bar { box-sizing:content-box; width:calc(100% + 2 * clamp(8px, .7vw, 12px)); margin:0;
+    border-radius:0; }
+}
+@media (min-width:761px) and (max-width:1100px) {
+  ${CX} .cx-index__item { min-width:52px; padding:3px 6px 0; }
+  ${CX} .cx-index__w { margin-bottom:3px !important; font-stretch:100% !important; font-variation-settings:"wdth" 100, "wght" 650 !important; }
+  ${CX} .cx-index__bar { width:calc(100% + 12px); }
+}
 `;
 
 /** Inject the Codex's own composition layer once (after the archive sheet). */
