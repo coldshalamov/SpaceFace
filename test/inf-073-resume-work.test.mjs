@@ -89,10 +89,15 @@ test('threat flicker cools the acknowledgment down', () => {
   const jobId = sim.helpers.npcJobs.assign(hull(sim, 'rec-miner-73b'), { kind: NPC_JOB_KIND.MINER, route: ROUTE, sectorId: 'sector_a', ...SHORT });
   stepSeconds(sim, 10);
   const jobs = jobsOf(sim);
+  // Flicker means the threat is gone between returns — a live hostile inside the
+  // resume ring correctly holds the flee (a lull is not a departed attacker).
   const hostile = hull(sim, 'rec-pirate-73b', { x: 620, z: 20 }, 1);
   jobs.interruptJob(jobId, { entityId: hostile.id });
+  sim.state.entities.delete(hostile.id);
   jobs.resumeJob(jobId);
-  jobs.interruptJob(jobId, { entityId: hostile.id });
+  const hostile2 = hull(sim, 'rec-pirate-73c', { x: 620, z: 20 }, 1);
+  jobs.interruptJob(jobId, { entityId: hostile2.id });
+  sim.state.entities.delete(hostile2.id);
   jobs.resumeJob(jobId);
   assert.equal(seen.resumed.length, 2, 'both returns are on the record');
   assert.equal(seen.toasts.length, 1, 'the pilot hears it once per minute per job');

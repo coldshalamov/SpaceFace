@@ -44,7 +44,9 @@ test('seed 4242: Veil rumors name Page Nine, and a known bearing stays quiet', (
   assert.notEqual(quiet.reply.text, 'OVERRIDE TENDER · ADDENDUM ATTACHED');
 });
 
-test('seed 4242: Ashfall names the Charon garden when Ballast is dark, and not when he is routing', () => {
+test('seed 4242: Ashfall names the Charon garden while it is unheard, route window or not', () => {
+  // The one-shot lead outranks a repeating ace sighting (fa30625d): the garden answers
+  // even inside Big Ballast's route window — a standing route must not starve a lead.
   const dark = bench('sector_ashfall_reach');
   dark.simTime = 2000;
   const garden = ask('station_ashcache', dark);
@@ -53,7 +55,15 @@ test('seed 4242: Ashfall names the Charon garden when Ballast is dark, and not w
 
   const routing = bench('sector_ashfall_reach');
   routing.simTime = 120;
-  const ballast = ask('station_ashcache', routing);
+  const duringRoute = ask('station_ashcache', routing);
+  assert.equal(duringRoute.reply.uniqueWreckRumor.wreckId, 'wreck_understory_what_the_wreck_became');
+
+  // Once the bearing is known the lead retires and the standing route rumor answers.
+  const heard = bench('sector_ashfall_reach', {
+    wreck_understory_what_the_wreck_became: { phase: 'rumored' },
+  });
+  heard.simTime = 120;
+  const ballast = ask('station_ashcache', heard);
   assert.equal(ballast.reply.uniqueWreckRumor, undefined);
   assert.match(ballast.reply.text, /Big Ballast/);
 });

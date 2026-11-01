@@ -2718,8 +2718,8 @@ export const save = {
       const mirrorPatch = profile == null ? write.mirrorPatch
         : { ...write.mirrorPatch, [PROFILE_SETTINGS_KEY]: profile };
       const localSerial = this._laneSaveCommitSerial = (this._laneSaveCommitSerial || 0) + 1;
-      const checkLocal = typeof localStorage?.checkSaveCommit === 'function'
-        ? (patch) => localStorage.checkSaveCommit(patch)
+      const checkLocal = typeof globalThis.localStorage?.checkSaveCommit === 'function'
+        ? (patch) => globalThis.localStorage.checkSaveCommit(patch)
         : null;
       const ownerCurrent = () => this.state === savedState && this.bus === savedBus
         && this._runEpoch === savedRunEpoch && this._restoreSequence === savedRestoreSequence

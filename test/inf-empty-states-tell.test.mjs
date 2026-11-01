@@ -167,7 +167,7 @@ test('the quiet bar rail says why it is quiet and offers the way out', () => {
     assert.ok(stateEl, 'the compact state mounts under the rail header');
     const text = deepText(stateEl);
     assert.match(text, /Nobody in tonight/, 'the quiet headline');
-    assert.match(text, /day shift at busier berths/, 'the why');
+    assert.match(text, /arrive with the day shift/, 'the why');
     assert.match(text, /Open the Chart/, 'the way out');
     screen.dispose();
   } finally { restore(); }
@@ -182,7 +182,7 @@ test('the empty bar stage keeps its story and its verb', () => {
     assert.ok(stateEl, 'the stage mounts the data state');
     const text = deepText(stateEl);
     assert.match(text, /The bar is empty tonight/, 'the headline');
-    assert.match(text, /larger station keeps its regulars later/, 'the why');
+    assert.match(text, /past second bell/, 'the why');
     assert.match(text, /Open the Chart/, 'the way out');
     screen.dispose();
   } finally { restore(); }

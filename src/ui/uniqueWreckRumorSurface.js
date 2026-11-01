@@ -15,7 +15,7 @@ const BAR_SOURCE_BY_STATION = Object.freeze({
 
 // Berths whose enter-path does not already chart this hull. Veil charts the Vigilant,
 // so Page Nine is only heard by asking. Ashfall charts the lighthouse, so the garden
-// is a neighbor lead spoken when Big Ballast's route window is dark.
+// is a neighbor lead heard by asking — it outranks Big Ballast's repeating route rumor.
 const EXPANSION_BAR_BY_STATION = Object.freeze({
   station_veil: 'wreck_vael_page_nine',
   station_ashcache: 'wreck_understory_what_the_wreck_became',

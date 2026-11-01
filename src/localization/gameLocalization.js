@@ -278,23 +278,27 @@ if (typeof window !== 'undefined') {
   };
   const isIdleWarmLocale = (locale) => locale !== startupLocale && locale !== DEFAULT_LOCALE;
   const scheduleIdleWarm = (step) => {
-    if (typeof window.requestIdleCallback !== 'function') {
+    // globalThis.window reads undefined where no host exists (pure Node, workers) — a bare
+    // `window` identifier would throw inside these deferred callbacks instead.
+    const host = globalThis.window;
+    if (!host || typeof host.requestIdleCallback !== 'function') {
       // No idle callback (Safari, older browsers, Node). Re-queueing the same step re-entered this
       // branch without ever taking a slice (warmIndex never moved), a permanent zero-delay timer spin.
       // Take one slice per spaced tick instead, and none while the loading shell animates.
       const timer = setTimeout(() => {
-        if (!loadingShellVisible(window.document)
+        const doc = host && host.document;
+        if (!loadingShellVisible(doc)
           && warmIndex < warmQueue.length && isIdleWarmLocale(warmQueue[warmIndex])
           && warmTranslatedCatalog(warmQueue[warmIndex], 120)) warmIndex += 1;
         if (warmIndex < warmQueue.length) step();
-      }, fallbackWarmDelayMs(window.document));
+      }, fallbackWarmDelayMs(host && host.document));
       // A background warm never holds a Node tool or test process open (a browser timer is a plain number).
       if (timer && typeof timer.unref === 'function') timer.unref();
       return;
     }
-    window.requestIdleCallback((deadline) => {
+    host.requestIdleCallback((deadline) => {
       // A main thread that never idles still converges: a timed-out callback takes one slice.
-      if (mayForceWarmSlice({ didTimeout: deadline.didTimeout, doc: window.document })
+      if (mayForceWarmSlice({ didTimeout: deadline.didTimeout, doc: host.document })
         && warmIndex < warmQueue.length && isIdleWarmLocale(warmQueue[warmIndex])) {
         if (warmTranslatedCatalog(warmQueue[warmIndex], 120)) warmIndex += 1;
       }
