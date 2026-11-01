@@ -617,8 +617,7 @@ function createResidencyMaterial() {
   });
 }
 
-function createResidencyProxy(source, material) {
-  const geometry = source.geometry;
+function createResidencyProxy(source, material, geometry = source.geometry) {
   let proxy;
   let cleanup = null;
   if (source.isInstancedMesh) {
@@ -841,7 +840,9 @@ export async function prepareStartupGeometryResidency(renderer, subjects, option
         await yieldToMain();
         const scene = new THREE.Scene();
         scene.name = `SF_StartupGeometryResidencyBatch:${index + 1}`;
-        const proxyEntries = batch.work.map(({ object }) => createResidencyProxy(object, material));
+        // The live owner can swap LOD geometry after the work census yields. Use the
+        // captured geometry so proxy submission, CPU lease and residency stamp agree.
+        const proxyEntries = batch.work.map(({ object, geometry }) => createResidencyProxy(object, material, geometry));
         for (const entry of proxyEntries) scene.add(entry.proxy);
         let releaseCpu = null;
         let uploadSucceeded = false;

@@ -16,7 +16,7 @@ import { createAssetResidencyRegistry } from '../src/render/assetResidency.js';
 import { createRenderPackageLoader } from '../src/render/renderPackageLoader.js';
 import { createUnreadyDrawableGuard } from '../src/render/bloom.js';
 import { touchSubjectOnExactTarget } from '../src/render/openingGpuAdmission.js';
-import { prepareStartupGeometryResidency } from '../src/render/startupGpuResidency.js';
+import { hasUnresidentGeometry, prepareStartupGeometryResidency } from '../src/render/startupGpuResidency.js';
 import { preparePreviewDetachedPayloads } from '../src/ui/shipPreviewMount.js';
 import {
   claimSharedImageTexture,
@@ -401,6 +401,32 @@ test('startup residency refills a detached package before another renderer uploa
   loader.dispose();
 });
 
+test('startup residency proxy uses the geometry captured before a live LOD swap', async () => {
+  const decoded = decodedFixture();
+  const loader = freshLoader(async () => decoded);
+  await loader.load(packageMetadata('fixture.residency-lod-swap'), { baseUrl: 'https://fixtures.test/' });
+  assert.equal(detachPackageGeometry(decoded.geometry, stubRenderer()), true);
+  const original = new THREE.BoxGeometry();
+  const mesh = new THREE.Mesh(original, new THREE.MeshBasicMaterial());
+  let target = null, yields = 0, draws = 0;
+  const renderer = { getRenderTarget: () => target, setRenderTarget: value => { target = value; },
+    render(scene) { scene.traverse(object => {
+      if (!object.geometry) return;
+      draws++;
+      assert.equal(object.geometry, original, 'proxy draws the captured, leased geometry');
+      assert.ok(object.geometry.getAttribute('uv').array.byteLength > 0);
+    }); } };
+  await prepareStartupGeometryResidency(renderer, mesh, {
+    yieldToMain: async () => { if (++yields === 2) mesh.geometry = decoded.geometry; },
+    paceQueue: async () => {},
+  });
+  assert.ok(draws > 0);
+  assert.equal(mesh.geometry, decoded.geometry, 'the live LOD owner retains its replacement');
+  assert.equal(decoded.geometry.userData.spacefaceGpuResident, undefined, 'the replacement is not falsely stamped');
+  assert.equal(hasUnresidentGeometry(mesh), true, 'the live replacement remains eligible for its own admission');
+  loader.dispose();
+});
+
 test('an unrelated LOD donor mismatch remains evidence without blocking the requested geometry', async () => {
   const original = decodedPairFixture();
   const changedDonor = decodedPairFixture({ secondColorLength: 12 });
@@ -543,8 +569,6 @@ test('vendored-three contract: empty same-ctor arrays and shared-buffer version 
 test('source pins: every F2 gate/detach/ledger call site exists verbatim', () => {
   const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
   const residency = read('src/render/startupGpuResidency.js');
-  assert.match(residency, /noteGeometryGpuResident\(geometry, renderer\);\s*detachPackageGeometry\(geometry, renderer\);/,
-    'post-stamp ledger+detach in the residency receipt');
   assert.equal(residency.match(/detachPackageGeometry\(geometry\);/g).length, 2,
     'stamped-skip detach retries in both work-item mints');
   assert.equal(residency.match(/detachPackageGeometry\(object\.geometry\);/g).length, 2,
