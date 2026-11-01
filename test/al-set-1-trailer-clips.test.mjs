@@ -135,15 +135,15 @@ test('worker pose mirror retains forces and scene metadata before a pixel encode
 });
 
 test('ordinary Kiln uses its measured Forge body and replay preserves authored prop scale', async () => {
-  const kiln = { type: 'beacon', radius: 23, data: { storyPropKind: 'runaway_kiln' } };
+  const kiln = { type: 'payload', radius: 23, data: { storyPropKind: 'runaway_kiln' } };
   assert.equal(resolvePlaceFileForEntity(kiln), 'wholeships/kilnback.glb');
   let admitted;
-  const factory = installVisualOverrides({ build() { throw new Error('Generic beacon must not be selected'); } }, {
+  const factory = installVisualOverrides({ build() { throw new Error('Generic payload must not be selected'); } }, {
     authoredPlaceBuilder(entity) { admitted = entity; return new THREE.Group(); },
   });
   factory.build(kiln);
-  assert.equal(admitted, kiln, 'the ordinary renderer routes the actual beacon through authored-place admission');
-  assert.equal(kiln.type, 'beacon'); assert.equal(kiln.radius, 23);
+  assert.equal(admitted, kiln, 'the ordinary renderer routes the actual payload through authored-place admission');
+  assert.equal(kiln.type, 'payload'); assert.equal(kiln.radius, 23);
   const bell = { type: 'beacon', radius: 12, data: { storyPropKind: 'eighth_bell' } };
   assert.equal(resolvePlaceFileForEntity(bell), 'places/place_aftermath_deb_ore_freighter_drive_bell.glb');
   factory.build(bell);

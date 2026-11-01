@@ -93,6 +93,10 @@ function isUnderstoryGardenPlace(entity) {
 function isWorldPlaceProp(entity) {
   if (!entity || !entity.data) return false;
   if (isOrchardFrame(entity) || isLatchActor(entity) || isTallyThreeAssessor(entity) || hasExplicitAuthoredGeologyPresentation(entity) || isCeresShipbreakSection(entity) || isCeresWorkfleetPlace(entity)) return true;
+  // These mission props have explicit authored bodies even though their simulation types are
+  // payload/beacon rather than fx. Keep their simulation identity and route only the known GLB
+  // identities through authored-place admission.
+  if (entity.data.storyPropKind === 'runaway_kiln' || entity.data.storyPropKind === 'eighth_bell') return true;
   if (isUnderstoryGardenPlace(entity)) return true;
   if (entity.type === 'prop' && entity.data.closedRefineryProp === true) return true;
   if (entity.type !== 'fx') return false;
