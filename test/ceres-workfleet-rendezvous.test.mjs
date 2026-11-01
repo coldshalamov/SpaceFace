@@ -97,6 +97,9 @@ test('seed49 production route secures its finite plate through the ordinary phys
     state.playerId=player.id;
     const world=runtime.getSystem('world');external(()=>world.enterSector(C.sectorId));
     external(()=>world.relocatePlayerInSector({x:C.sitePlacement.pos.x-600,z:C.sitePlacement.pos.z-160,heading:-Math.PI/2},{reason:'ceres-rendezvous'}));
+    // Site residency is a per-tick reconcile: distant-entered payloads reauthor on the first
+    // step after the player arrives inside the site's reservation.
+    runtime.step(1/60);
     const sites=runtime.getSystem('asteroidSites'),original=state.entityList.find(e=>e.alive&&e.data?.worldRecordId===C.identities.payload);
     assert.ok(original);const life=original.occupantGeneration;
     const prior=snapshotFeatureMaps();applyFeatureConfigToMaps(runtime.config.features);
@@ -105,7 +108,9 @@ test('seed49 production route secures its finite plate through the ordinary phys
       requestStreamId:'player-industrial-beam',requestSequence:state.tick})).ok,true);
     const route=[[-600,-950],[1600,-950],[2200,-950],[2200,-100],[1400,-100],[1400,-950]].map(([x,z])=>({x:x+C.sitePlacement.pos.x,z:z+C.sitePlacement.pos.z}));
     let routeIndex=-1,lastPhase=null;
-    for(let i=0;i<85000;i++){
+    // Same authored cycle pace as the full-factory proof: extract alone is a ~37k-tick tow
+    // and withdraw-to-secured lands past tick 85k. 120k covers the measured physical cycle.
+    for(let i=0;i<120000;i++){
       runtime.step(1/60);const job=state.npcJobs?.ceresWorkfleet,phase=job?.phase;
       if(phase!==lastPhase){phaseTicks.push([state.tick,phase]);lastPhase=phase;console.log('CERES_NATURAL_PHASE',state.tick,phase,job?.blockedReason||'');}
       if(job?.recovery?.schemaVersion===2){
