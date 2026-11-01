@@ -14,6 +14,8 @@ Status words: `OPEN`, `ACTIVE`, `LANDED <sha>`, `SKIPPED (<reason>)`.
 
 ## Inbox (other lanes append one line: date, lane, path, what/why)
 
+- 2026-11-01, Swarm ecology PR: `crucibleDraft.js` now teaches the next guaranteed specialist in draft/refit. Initial PR #776 UI-budget verification found 77 inherited stale files plus this newly changed owner; fresh focused preview captures are recorded in `docs/validation/swarm-specialists/README.md`, but the repository-wide measured baseline still needs its normal recapture. No digest or golden was substituted into old measurements.
+
 - 2026-10-31 integration: Asteroid narrow-desktop machine keys move into a 46px two-column right rail, clear of the guide and rig in the opened 390×844 fixture. Async Rover/terrain continuations now honor teardown and generation ownership before reporting failures or publishing readiness; production-callback tests and the reset walk report no cancellation errors. The public PQ-024 actor now waits on the existing renderer readiness API within its original bound and captures the ready view. That route has not run; Rover/terrain appearance remains unknown.
 
 - 2026-10-31 integration: the ordinary M8 run exposed an active-receipt `captionSlot` scope error in the new flight-caption allocator. Its shared slot/bands now exist in the receipt branch; the actual production-function test covers visible/hidden captions and external quotes, and the HUD suite passes 21/21. Public receipt/soak re-verification remains required; the earlier fixture pass did not cover this branch.

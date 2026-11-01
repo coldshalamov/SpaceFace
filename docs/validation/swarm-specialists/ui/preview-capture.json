@@ -1,0 +1,233 @@
+{
+  "scope": "Seeded UI-bench fixture with real Crucible screen modules; no ordinary-route or performance acceptance.",
+  "setup": "Existing Swarm bench state; the private fixture run wave, arena and seed are adjusted, its real preparation owner reopens the corresponding phase, then __benchRefresh is called.",
+  "viewport": {
+    "width": 1280,
+    "height": 720
+  },
+  "headed": false,
+  "captures": [
+    {
+      "surface": "crucible-draft",
+      "enemyId": "mine_layer_jackal",
+      "nextWave": 6,
+      "seeded": {
+        "wave": 5,
+        "ownerWave": 5,
+        "ruleset": "swarm",
+        "phase": "draft",
+        "screen": "crucibleDraft"
+      },
+      "text": "Next — Round 6 — The Pack · clear 32 · 16 in the room · Wasp Swarmer, Reaver Pirate, Choir Zealot, Detonator Dart, Mine-Layer Jackal · new: Mine-Layer Jackal. Prepare for Mine-Layer Jackal: After its wake flare, it lays three shootable mines along one side of the approach. Use the open flank, shoot the mines, or throw a mine back into the pack.",
+      "geometry": {
+        "x": 48,
+        "y": 109.59375,
+        "width": 554.109375,
+        "height": 75.375,
+        "scrollWidth": 554,
+        "clientWidth": 554,
+        "scrollHeight": 75,
+        "clientHeight": 75,
+        "overflowX": "visible",
+        "overflowY": "visible",
+        "horizontalOverflow": false,
+        "clippedVertically": false,
+        "withinViewport": true
+      },
+      "screenshot": "crucible-draft-next06-1280.webp",
+      "originalPng": "crucible-draft-next06-1280.png",
+      "originalPngSha256": "3c03f6bc0bac2d11566a436f516a640504282ecde7694062227e960741658a80",
+      "sha256": "200370d03075731aecd6b70b65913f3b1afc10b0fcb2340743166aced77556d3",
+      "pixelSha256": "5f31109fc566b0d1e304e24ba3f422b6cde47995f9ac0efdf841e37df522ec22",
+      "losslessPixelsVerified": true,
+      "visuallyInspected": true
+    },
+    {
+      "surface": "crucible-draft",
+      "enemyId": "warden_escort",
+      "nextWave": 9,
+      "seeded": {
+        "wave": 8,
+        "ownerWave": 8,
+        "ruleset": "swarm",
+        "phase": "draft",
+        "screen": "crucibleDraft"
+      },
+      "text": "Next — Round 9 — The Pack · clear 38 · 20 in the room · Wasp Swarmer, Reaver Pirate, Choir Zealot, Detonator Dart, Mine-Layer Jackal, Lancer Sniper, Warden Escort · new: Warden Escort. Prepare for Warden Escort: A nearby ally is marked by a finite guard link; the warden can screen shots when it crosses their line. Shoot the warden, shove it out of range, or circle wide enough to keep it off the shot line.",
+      "geometry": {
+        "x": 48,
+        "y": 109.59375,
+        "width": 554.109375,
+        "height": 94.21875,
+        "scrollWidth": 554,
+        "clientWidth": 554,
+        "scrollHeight": 94,
+        "clientHeight": 94,
+        "overflowX": "visible",
+        "overflowY": "visible",
+        "horizontalOverflow": false,
+        "clippedVertically": false,
+        "withinViewport": true
+      },
+      "screenshot": "crucible-draft-next09-1280.webp",
+      "originalPng": "crucible-draft-next09-1280.png",
+      "originalPngSha256": "9f5162a6bd5e6a9b4818052d89b3e6083de8ab1418b69bf3a1b1c7f9ca6e96ca",
+      "sha256": "0008f03bd5ad4cf1b613f96ca9c28513dbe38e51c9d7b5f6c7e3e9282ecbb3cd",
+      "pixelSha256": "6ac56372f86e042b652b2a2113fecf76701fb93429d0276c75652d322491b6a2",
+      "losslessPixelsVerified": true,
+      "visuallyInspected": true
+    },
+    {
+      "surface": "crucible-draft",
+      "enemyId": "field_anchor_controller",
+      "nextWave": 22,
+      "seeded": {
+        "wave": 21,
+        "ownerWave": 21,
+        "ruleset": "swarm",
+        "phase": "draft",
+        "screen": "crucibleDraft"
+      },
+      "text": "Next — Round 22 — The Anvil · clear 48 · 30 in the room · Wasp Swarmer, Reaver Pirate, Choir Zealot, Detonator Dart, Mine-Layer Jackal, Lancer Sniper, Warden Escort, Corsair Raider, Customs Cutter, Quiet Ghost, Point-Defense Screen, Patrol Lawman, Tether-Control Raider, Bruiser Brawler, Anchor Controller · new: Anchor Controller. Prepare for Anchor Controller: A field spool precedes one short snare cycle; its field drops while the hull recovers. Displace the hull during its spool or while the field is active, then fight while it is down or stay outside the ring.",
+      "geometry": {
+        "x": 48,
+        "y": 109.59375,
+        "width": 554.109375,
+        "height": 131.90625,
+        "scrollWidth": 554,
+        "clientWidth": 554,
+        "scrollHeight": 132,
+        "clientHeight": 132,
+        "overflowX": "visible",
+        "overflowY": "visible",
+        "horizontalOverflow": false,
+        "clippedVertically": false,
+        "withinViewport": true
+      },
+      "screenshot": "crucible-draft-next22-1280.webp",
+      "originalPng": "crucible-draft-next22-1280.png",
+      "originalPngSha256": "ff49d161fbd654853677fe7f160b0fb514cb1882d0912ae79f614230a0cc9820",
+      "sha256": "9542736ac04c9085408cba2507b4314bbb096a47094f49ac02867ae4974910cc",
+      "pixelSha256": "268133df4dfc5f3339eed22333bd913e48712e1a0b2c6ecccdaf62e5450d0187",
+      "losslessPixelsVerified": true,
+      "visuallyInspected": true
+    },
+    {
+      "surface": "crucible-refit-swarm",
+      "enemyId": "mine_layer_jackal",
+      "nextWave": 6,
+      "seeded": {
+        "wave": 5,
+        "ownerWave": 5,
+        "ruleset": "swarm",
+        "phase": "refit",
+        "screen": "crucibleRefit"
+      },
+      "text": "Next — Round 6 — The Pack · clear 32 · 16 in the room · Wasp Swarmer, Reaver Pirate, Choir Zealot, Detonator Dart, Mine-Layer Jackal · new: Mine-Layer Jackal. Prepare for Mine-Layer Jackal: After its wake flare, it lays three shootable mines along one side of the approach. Use the open flank, shoot the mines, or throw a mine back into the pack.",
+      "geometry": {
+        "x": 64,
+        "y": 141.296875,
+        "width": 554.109375,
+        "height": 75.375,
+        "scrollWidth": 554,
+        "clientWidth": 554,
+        "scrollHeight": 75,
+        "clientHeight": 75,
+        "overflowX": "visible",
+        "overflowY": "visible",
+        "horizontalOverflow": false,
+        "clippedVertically": false,
+        "withinViewport": true
+      },
+      "screenshot": "crucible-refit-swarm-next06-1280.webp",
+      "originalPng": "crucible-refit-swarm-next06-1280.png",
+      "originalPngSha256": "f206a0f29ccb106c6de1582cf0e073b9c008ec3203589618d7763c301536af21",
+      "sha256": "8bb3de0b7f0b225fb69b06d3adfbd2bce83186f0f05e9f2bbabe50559d783def",
+      "pixelSha256": "710a84add474791f01f107c8e4b97a35c8219afeeeb2844e172b05d3f6b40bec",
+      "losslessPixelsVerified": true,
+      "visuallyInspected": true
+    },
+    {
+      "surface": "crucible-refit-swarm",
+      "enemyId": "warden_escort",
+      "nextWave": 9,
+      "seeded": {
+        "wave": 8,
+        "ownerWave": 8,
+        "ruleset": "swarm",
+        "phase": "refit",
+        "screen": "crucibleRefit"
+      },
+      "text": "Next — Round 9 — The Pack · clear 38 · 20 in the room · Wasp Swarmer, Reaver Pirate, Choir Zealot, Detonator Dart, Mine-Layer Jackal, Lancer Sniper, Warden Escort · new: Warden Escort. Prepare for Warden Escort: A nearby ally is marked by a finite guard link; the warden can screen shots when it crosses their line. Shoot the warden, shove it out of range, or circle wide enough to keep it off the shot line.",
+      "geometry": {
+        "x": 64,
+        "y": 141.296875,
+        "width": 554.109375,
+        "height": 94.21875,
+        "scrollWidth": 554,
+        "clientWidth": 554,
+        "scrollHeight": 94,
+        "clientHeight": 94,
+        "overflowX": "visible",
+        "overflowY": "visible",
+        "horizontalOverflow": false,
+        "clippedVertically": false,
+        "withinViewport": true
+      },
+      "screenshot": "crucible-refit-swarm-next09-1280.webp",
+      "originalPng": "crucible-refit-swarm-next09-1280.png",
+      "originalPngSha256": "f1ba91f5ad477643eb1a34f6094881c5e881813a2b82fc88a8777abd150bc575",
+      "sha256": "70dd63396a46b030347439e422ca4d6977936666414c2ade2255c2e0ed10b639",
+      "pixelSha256": "cb83a49d67346d09a53c956596cc4ce672d24431ca18b3b53723adbc7abd3c78",
+      "losslessPixelsVerified": true,
+      "visuallyInspected": true
+    },
+    {
+      "surface": "crucible-refit-swarm",
+      "enemyId": "field_anchor_controller",
+      "nextWave": 22,
+      "seeded": {
+        "wave": 21,
+        "ownerWave": 21,
+        "ruleset": "swarm",
+        "phase": "refit",
+        "screen": "crucibleRefit"
+      },
+      "text": "Next — Round 22 — The Anvil · clear 48 · 30 in the room · Wasp Swarmer, Reaver Pirate, Choir Zealot, Detonator Dart, Mine-Layer Jackal, Lancer Sniper, Warden Escort, Corsair Raider, Customs Cutter, Quiet Ghost, Point-Defense Screen, Patrol Lawman, Tether-Control Raider, Bruiser Brawler, Anchor Controller · new: Anchor Controller. Prepare for Anchor Controller: A field spool precedes one short snare cycle; its field drops while the hull recovers. Displace the hull during its spool or while the field is active, then fight while it is down or stay outside the ring.",
+      "geometry": {
+        "x": 64,
+        "y": 141.296875,
+        "width": 554.109375,
+        "height": 131.90625,
+        "scrollWidth": 554,
+        "clientWidth": 554,
+        "scrollHeight": 132,
+        "clientHeight": 132,
+        "overflowX": "visible",
+        "overflowY": "visible",
+        "horizontalOverflow": false,
+        "clippedVertically": false,
+        "withinViewport": true
+      },
+      "screenshot": "crucible-refit-swarm-next22-1280.webp",
+      "originalPng": "crucible-refit-swarm-next22-1280.png",
+      "originalPngSha256": "db9e521617844db79baaf96455f9f0d846ae63bc27123c39a09ed5c63feb714f",
+      "sha256": "c0b33a3ff8e34effe4977e2806cc7511adea409f23d4aeabc5dfa9ea4be31d99",
+      "pixelSha256": "29823865d801b51ab382e1e80eaa6fd188a5abbdeb6933d222e5d042694ce72a",
+      "losslessPixelsVerified": true,
+      "visuallyInspected": true
+    }
+  ],
+  "pageErrors": [],
+  "captureComplete": true,
+  "capturedAt": "2026-11-01",
+  "sourceCommit": "59d594c81472fa408cae8748e65df255a08dae15",
+  "sourceSha256": {
+    "src/ui/screens/crucibleDraft.js": "9e600370fc98a00d977fd9817253239694274576d9dd8022ffa053488d20c840",
+    "src/data/swarmLadder.js": "4d1af7f8283ea326fc0c089c71c52a03f08418f72c9e3efa0f79d7f3ef932585",
+    "src/data/swarmSpecialists.js": "2ff3e72e4dea9a8592c8c5153398a65a3885e3de92fce4acb4cbdd007eb342c7",
+    "scripts/capture-swarm-specialist-previews.mjs": "e0e5566ea22c1ae84630026b02c48634e11c870247963bbdb95aac678b3f822c"
+  },
+  "review": "All six original screenshots opened and inspected. Threat/counter paragraphs are fully visible at 1280x720; no preview clipping or uncaught page errors. This does not certify the whole screen, mobile layouts, global UI budgets, or ordinary-route arrival.",
+  "fixtureCorrection": "The first attempt changed run.wave without reopening the preparation owner; it correctly failed the expected-next-wave assertion. The final driver reopens the actual owner before refresh, so its committed wave and offers agree. No production UI fix or golden change was needed."
+}

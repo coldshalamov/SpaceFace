@@ -1018,7 +1018,7 @@ ${W} .sx-sw__explode .sx-sw__module-name { font-family:var(--dp-face-label, "Arc
     width:100% !important; max-width:100% !important; margin:0 !important; padding:8px 10px 10px !important;
     box-sizing:border-box; background:rgb(5 7 10 / .88) !important; }
   ${W} .sx-sw__nameplate .sx-sw__blurb { max-height:44px !important; overflow:hidden auto !important; pointer-events:auto !important;
-    font-size:11.5px !important; line-height:1.28 !important; }
+    font-size:12px !important; line-height:1.28 !important; }
 }
 
 /* the seat bail's own fallback — NOT media-gated. seatVerbs/seatSaleStats measure the STAGE and

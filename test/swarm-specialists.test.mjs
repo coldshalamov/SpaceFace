@@ -8,7 +8,7 @@ import { applyMineLayerVerb } from '../src/ai/mineLayerVerb.js';
 import { CombatDoctrineRuntime, CombatDoctrineId } from '../src/ai/combatDoctrine.js';
 import { ObjectiveKind } from '../src/ai/contracts.js';
 import { aiPorts } from '../src/systems/aiPorts.js';
-import { mines, listMines } from '../src/systems/mines.js';
+import { mines, listMines, countOwnerMines, MINE_THROW_GRACE_S } from '../src/systems/mines.js';
 import { fields } from '../src/systems/fields.js';
 import { FIELD_FLAGS } from '../src/data/fields.js';
 import { noteSwarmPilotAction } from '../src/systems/swarmSafety.js';
@@ -164,6 +164,90 @@ test('wave clear releases only tagged Jackal hazards through the canonical mine 
   assert.deepEqual(receipts, [{ count: 1, reason: 'wave_cleared' }]);
   h.sim.bus.emit('run:waveCleared', { wave: 9 });
   assert.equal(receipts.length, 1, 'repeated lifecycle delivery is idempotent');
+});
+
+test('a player-thrown Jackal mine damages another Swarm hostile through the real router', (t) => {
+  const h = boot(t, [mines]); const owner = h.sim.registry.get('mines');
+  const jackal = specialist(h.sim, 'mine_layer_jackal', 1000);
+  const target = specialist(h.sim, 'wasp_swarmer', 500);
+  const nearby = specialist(h.sim, 'wasp_swarmer', 510);
+  const kernel = getCombatKernel({ state: h.s, bus: h.sim.bus, helpers: h.sim.helpers });
+  const routed = [];
+  h.sim.helpers.routeCombatDamage = request => {
+    const result = kernel.routeDamage(request);
+    routed.push({ request, result });
+    return result;
+  };
+  const mine = owner.placeMine({ ownerId: jackal.id, team: jackal.team,
+    pos: { x: 500, z: 0 }, vel: { x: 0, z: 0 }, armDelayS: 0,
+    blastDamage: 34, triggerRadius: 52, swarmSpecialistMine: true });
+  owner.update(1 / 60, h.s);
+  assert.equal(mine.alive, true, 'an unthrown hostile mine ignores its own Swarm cohort');
+  assert.equal(routed.length, 0);
+
+  h.sim.bus.emit('massline:throw', { payloadId: mine.id });
+  assert.equal(mine.ownerId, jackal.id);
+  assert.equal(mine.data.ownerId, jackal.id, 'deployment ownership is retained');
+  assert.equal(mine.team, jackal.team);
+  assert.equal(countOwnerMines(h.s, jackal.id), 1, 'throwing does not free a deployment slot');
+  assert.equal(countOwnerMines(h.s, h.player.id), 0, 'throwing does not consume a player mine slot');
+
+  h.player.pos.x = 500;
+  h.s.simTime = MINE_THROW_GRACE_S - 1 / 60;
+  owner.update(1 / 60, h.s);
+  assert.equal(routed.length, 1);
+  assert.equal(routed[0].request.attackerId, h.player.id);
+  assert.equal(routed[0].request.targetId, target.id, 'the victim differs from the deploying Jackal');
+  assert.equal(routed[0].result.ok, true, 'the real friendly-fire gate admits the player throw');
+  assert.equal(routed[0].result.rawTotal, 34);
+  assert.ok(routed[0].result.hullDamage > 0);
+  assert.equal(target.hull, 1000 - routed[0].result.hullDamage);
+  assert.equal(nearby.hull, 1000, 'the blast still damages only its one trigger victim');
+  assert.equal(h.player.hull, 1000, 'release grace still excludes the throwing player');
+  assert.equal(mine.alive, false);
+  assert.equal(countOwnerMines(h.s, jackal.id), 0);
+});
+
+test('mine throw attribution preserves unthrown hostility and the half-second release grace', (t) => {
+  const h = boot(t, [mines]); const owner = h.sim.registry.get('mines');
+  const jackal = specialist(h.sim, 'mine_layer_jackal', 1000);
+  const kernel = getCombatKernel({ state: h.s, bus: h.sim.bus, helpers: h.sim.helpers });
+  const routed = [];
+  h.sim.helpers.routeCombatDamage = request => {
+    const result = kernel.routeDamage(request);
+    routed.push({ request, result });
+    return result;
+  };
+  const place = () => owner.placeMine({ ownerId: jackal.id, team: jackal.team,
+    pos: { x: 5, z: 0 }, vel: { x: 0, z: 0 }, armDelayS: 0,
+    blastDamage: 34, triggerRadius: 52, swarmSpecialistMine: true });
+  const parked = place();
+  owner.update(1 / 60, h.s);
+  assert.equal(parked.alive, false);
+  assert.equal(routed[0].request.attackerId, jackal.id);
+  assert.equal(routed[0].request.targetId, h.player.id);
+  assert.equal(routed[0].result.ok, true);
+  assert.equal(routed[0].result.rawTotal, 34);
+  assert.ok(h.player.hull < 1000, 'an unthrown Jackal mine still hurts the player');
+  const hullBeforeThrow = h.player.hull;
+
+  const thrown = place();
+  h.sim.bus.emit('massline:throw', { payloadId: thrown.id });
+  assert.equal(MINE_THROW_GRACE_S, 0.5);
+  h.s.simTime = MINE_THROW_GRACE_S - 1 / 60;
+  owner.update(1 / 60, h.s);
+  assert.equal(thrown.alive, true);
+  assert.equal(routed.length, 1);
+  assert.equal(h.player.hull, hullBeforeThrow, 'release grace applies through its last tick');
+  h.s.simTime = MINE_THROW_GRACE_S;
+  owner.update(1 / 60, h.s);
+  assert.equal(thrown.alive, false);
+  assert.equal(routed.length, 2);
+  assert.equal(routed[1].request.attackerId, h.player.id);
+  assert.equal(routed[1].request.targetId, h.player.id);
+  assert.equal(routed[1].result.ok, true);
+  assert.equal(routed[1].result.rawTotal, 34);
+  assert.ok(h.player.hull < hullBeforeThrow, 'a thrown mine can hurt its thrower after the unchanged grace');
 });
 
 test('Jackal mines expire through the existing owner and Adventure keeps its 42-tick trail', (t) => {

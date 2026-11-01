@@ -1,0 +1,1 @@
+release-manifest-pins: 3 pilots consistent with on-disk release assets

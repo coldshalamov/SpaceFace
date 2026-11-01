@@ -14,7 +14,9 @@ lean enough to change. Status words: `OPEN`, `ACTIVE`, `LANDED <sha>`, `SKIPPED 
 
 ## Inbox (other lanes append one line: date, lane, path, what/why)
 
-- 2026-11-01, Swarm ecology PR: finite Warden interception, bounded Jackal mine salvo and interruptible Anchor field use existing canonical owners; the 15-ship/20-Brood/14-boss audit and eight future implementation briefs are in `design/swarm/ENEMY_ECOLOGY.md`. Focused checks and ordinary-route limits are recorded separately in `docs/validation/swarm-specialists/README.md`.
+- 2026-11-01, Swarm ecology PR: finite Warden interception, bounded Jackal mine salvo and interruptible Anchor field use existing canonical owners; the 15-ship/two-scheduled-Kraken/20-Brood/14-boss audit and eight future implementation briefs are in `design/swarm/ENEMY_ECOLOGY.md`. Focused checks and ordinary-route limits are recorded separately in `docs/validation/swarm-specialists/README.md`.
+
+- 2026-11-01, Swarm ecology CI follow-up: `.github/workflows/mobile-readiness.yml` omits required `assets/characters/ruckus` from its sparse checkout, so retail packaging fails before browser acceptance. Initial full-check CI also reports the Massline acquisition-preview mismatch and other groups still need triage. Exact run links and baseline evidence are in `docs/validation/swarm-specialists/ci-triage.md`; no gate was weakened.
 
 - 2026-10-28, Lane 3: H0 razor commit a054f36530a touched `test/ui-frame-references/README.md` (mechanical ref rewrite to `design/archive/…` after the doc moves — doc text only). Foreign-dirty work seen in the tree, not mine: `test/ceres-five-minute-acceptance.test.mjs` and `scripts/lib/ui-layout-measure.mjs` left unstaged and preserved.
 - 2026-10-28, Lane 3: `test/lived-frontier-pockets.test.mjs` — removed a committed duplicate `ownsCharonSupplyHull` import (line 45) that left the file a SyntaxError on master (this was defect D265's red; the world bug was already fixed, suite 28/28 green). One-line deletion, committed alone as 1406c221a39.
@@ -30,10 +32,9 @@ lean enough to change. Status words: `OPEN`, `ACTIVE`, `LANDED <sha>`, `SKIPPED 
 
 | # | What a stranger sees | Where | Next step |
 |---|---|---|---|
-| D191 | Ceres refinery pocket population churn and temporary arrays on re-entry | `test/ceres-table-authority-census.test.mjs`, `test/ceres-active-pockets.test.mjs` | packet F1 |
-| D241 | Residual sim-driven reds after the 2026-10-24 stale sweep | the suites named in the ledger row | packet F0 |
-| D224 | CI browser checks fail only by timeout on the software-GL runner | `check:assets:live`, `check:market-first-loop`, `probe-flight-visual` | packet T2 |
-| D175 | vm-drop `classify-*` patch jobs carry dead-location hunks (standing guard while importing vm-drop jobs) | `design/program/vm-drop/` (read-only) | guard only |
+| D191 | Ceres population-budget/re-entry churn is repaired; simulation performance remains OPEN | `test/ceres-table-authority-census.test.mjs`, `test/ceres-active-pockets.test.mjs` | F1: obtain a current uncontended Ceres attribution of the Rapier solve/guard cost; the 2026-10-17 profile is historical, not a current performance result |
+| D241 | Partial: stale-sweep fixes, the named Ceres Massline case, Ceres native ambush opportunity/lifecycle case, and RC-458 selective staged-pilot 180-second case pass; public Ceres toolkit route remains unverified | `test/ceres-five-minute-acceptance.test.mjs`, `test/rc-458-round1-budget.test.mjs` | F0: verify the Ceres public toolkit route; do not treat the native opportunity fixture as route acceptance |
+| D224 | OPEN verification: historical SwiftShader failures were timeouts and their budgets were widened; no current green affected SwiftShader shard is recorded here | `check:assets:live`, `check:market-first-loop`, `probe-flight-visual`, `probe-ship-visual-stability` | T2: rerun the affected software-GL shard; classify any non-timeout failure separately rather than treating the old timeout report as a current product defect |
 
 ## Day-one review (from `LANDED_REVIEW.md`; delete the row there when done)
 
@@ -45,9 +46,15 @@ lean enough to change. Status words: `OPEN`, `ACTIVE`, `LANDED <sha>`, `SKIPPED 
 ## The ordered packets
 
 ### F0 — Green the floor
-Run the sim reds in D241 one suite at a time (never `check:all` in one go), fix root causes, and
-record which reds are environment-only. Done when D241's suites are green or each has a one-line
-root cause in this board.
+The stale-sweep/eligibility fixes in `LANDED_REVIEW.md` remain verified. The exact current
+`test/ceres-five-minute-acceptance.test.mjs` Massline case passes: the Reaver dies at 913 combat
+ticks, with the off-frustum hit at tick 194. The Ceres native opportunity/lifecycle case also
+passes: it records the exact live cohort member at the first pointable-acquisition tick, then
+marks that actor dead as a controlled native fixture step. That is not evidence of a player-caused
+kill, and it does not verify the public Ceres toolkit route, which remains OPEN. The selective
+staged-pilot case in `test/rc-458-round1-budget.test.mjs` passes its 180-second check. Keep D241
+open only for direct verification of the public Ceres toolkit route; do not repeat the passing
+native cases or stale-sweep suites.
 
 ### Wave F — the simulation is cheap at a crowd (do first; Lane 1's frame bars depend on it)
 
@@ -169,3 +176,7 @@ that keeps momentum and becomes the next round's terrain.
 - The feel contract: hands-off assisted flight gradually comes to rest (owner 2026-09-15); do not restore the old 90 WU/s retention target.
 - `src/systems/input.js` edits need focused input/rebind/sim validation (`AGENTS.md` §6).
 - A naive "emitted but never heard" event grep is noise here — events go through wrapper helpers; read before calling a wire dead.
+- **D175 is a standing import guard, not a current game defect.** All 12 `classify-*` jobs were
+  verified DONE+IMPORT with zero live dead-location reads in the 2026-10-07 check. On a future
+  `design/program/vm-drop/` import, drop hunks using writerless `player.data.*` or `state.comms.*`
+  locations; the remote-authoritative drop remains read-only here.

@@ -2,7 +2,7 @@
 // (same renderer, lights, env map, tone mapping and runtime material profiles as flight), from the
 // real chase pose, so a model can be judged by the picture the player actually sees.
 //
-// window.SF_fleetLook.shoot({ file | defId, view, heading, width, height }) -> JPEG data URL
+// window.SF_fleetLook.shoot({ file | defId, view, heading, width, height }) -> PNG data URL
 //   file   release wholeship path, e.g. 'wholeships/hornet_production_v1.glb' (blueprint path)
 //   defId  ship def id, e.g. 'ship_kestrel' (full visual-factory + authored-boundary path, which
 //          includes every runtime attachment the player sees)
@@ -15,7 +15,7 @@ import { SECTORS } from '../data/sectors.js';
 import { resolveSectorVisualProfile } from '../data/sectorVisualProfiles.js';
 import { defaultShipAppearance } from '../core/shipAppearance.js';
 import { loadAuthoredPart } from './assetLoader.js';
-import { wrapShipWithAuthoredParts } from './partsLibrary.js';
+import { wrapShipWithAuthoredParts, syncAuthoredInstancePools } from './partsLibrary.js';
 import { beginLookMood, currentLookMoodId, tuneLook } from './look.js';
 import { resolveLookPost } from '../data/lookMoods.js';
 
@@ -36,8 +36,13 @@ function stablePreviewId(defId) {
 }
 
 let renderSystem = null;
+let lastPoolSync = null;
 function renderOnce(renderer, scene, cam) {
+  cam.updateMatrixWorld(true);
   if (scene && typeof scene.updateMatrixWorld === 'function') scene.updateMatrixWorld();
+  // The private preview actor is outside the production entity-frame roster. Submit its real
+  // pooled package matrices against this camera immediately before the same shipping draw route.
+  lastPoolSync = syncAuthoredInstancePools(scene, { camera: cam });
   // The shipping post route (bloom / crease ink / tone) when available, so the look matches flight.
   if (renderSystem && typeof renderSystem._renderPostRoute === 'function') {
     try { renderSystem._renderPostRoute(renderSystem._selectPostRoute(), scene, cam, 0); return; } catch (_) {}
@@ -139,9 +144,10 @@ function poseCamera(cam, view, radius, heading, center) {
   cam.updateProjectionMatrix();
 }
 
-async function waitForAuthored(renderer, scene, cam, root) {
-  for (let i = 0; i < 150; i++) {
-    renderOnce(renderer, scene, cam);
+async function waitForAuthored(renderer, scene, cam, root, driveFrames = true) {
+  const deadline = performance.now() + 120000;
+  while (performance.now() < deadline) {
+    if (driveFrames) renderOnce(renderer, scene, cam);
     await wait(60);
     let pending = false;
     root.traverse((o) => {
@@ -162,6 +168,7 @@ export function installFleetLook(SF) {
   let savedSize = null;
   let lastPose = null;
   let lastCamera = null;
+  let specialistPreview = null;
 
   function handles() {
     const r = state.render || {};
@@ -196,6 +203,18 @@ export function installFleetLook(SF) {
 
   async function build(opts) {
     const { renderer, scene } = handles();
+    if (opts.specialist && specialistPreview
+      && specialistPreview.kind === String(opts.specialist).split(':')[0]
+      && specialistPreview.root.parent === holder
+      && specialistPreview.root.userData.authoredAssetState === 'authored') {
+      const phase = String(opts.specialist).split(':')[1];
+      if (!['idle', 'windup', 'active', 'recovery'].includes(phase)) throw new Error('invalid specialist preview');
+      const view = specialistPreview.entity.data.swarmSpecialist;
+      view.phase = phase;
+      if (view.kind === 'anchor') view.anchorActive = phase === 'active';
+      specialistPreview.root.position.set(0, 0, 0);
+      return specialistPreview;
+    }
     if (opts.file) {
       const url = opts.file.startsWith('assets/') ? opts.file : RELEASE_ROOT + opts.file;
       const bp = await loadAuthoredPart(url, { renderer, slot: opts.slot || null });
@@ -244,13 +263,34 @@ export function installFleetLook(SF) {
       };
     }
     let mesh = vf.build(ent);
-    mesh = wrapShipWithAuthoredParts(ent, mesh, { releaseMode: true });
+    // The live factory's visualOverrides already supplies the durable boundary. Wrapping it
+    // twice copies its phase closures, then disposes their owner when the outer wrapper swaps.
+    if (typeof mesh.userData?.requestAuthoredUpgrade !== 'function') {
+      mesh = wrapShipWithAuthoredParts(ent, mesh, { releaseMode: true });
+    }
     holder.add(mesh);
     const req = mesh.userData && mesh.userData.requestAuthoredUpgrade;
-    if (typeof req === 'function') req(renderer, scene);
+    if (typeof req === 'function') req(renderer, scene, opts.specialist ? {
+      admissionVisible: true,
+      // An explicit off-loop preview has no live actor in the flight camera table. Join the
+      // same strict renderer compiler as the final capture instead of starving in its ambient lane.
+      prepareAuthoredPipelines: subject => state.render.compileObjectPipelines(subject, {
+        explicit: true, urgent: true, strict: true, joinOutstanding: true,
+        isActive: () => mesh.parent === holder,
+        onPreparationLeg: leg => { mesh.userData.fleetLookAdmissionLeg = leg; },
+      }),
+      prepareAuthoredGpuResidency: (subject, admission = {}) => state.render.prepareAuthoredGpuResidency(subject, {
+        unSliced: true,
+        isActive: () => mesh.parent === holder
+          && (typeof admission.isResidencyOwnerActive !== 'function' || admission.isResidencyOwnerActive()),
+      }),
+    } : {});
     const diagNames = [];
     mesh.traverse((o) => { if (diagNames.length < 12) diagNames.push(`${o.name || o.type}${o.visible ? '' : ':INVIS'}`); });
-    return { root: mesh, radius: ent.radius, entity: ent, diagNames };
+    const built = { root: mesh, radius: ent.radius, entity: ent, diagNames };
+    // The phase matrix exercises successive state changes on the same admitted actor.
+    if (opts.specialist) specialistPreview = { ...built, kind: String(opts.specialist).split(':')[0] };
+    return built;
   }
 
   async function shoot(opts = {}) {
@@ -266,7 +306,11 @@ export function installFleetLook(SF) {
       try { renderSystem?._applySize(); } catch (_) {}
     }
     cam.aspect = width / height;
-    holder.clear();
+    const reuseSpecialist = opts.specialist && specialistPreview?.kind === String(opts.specialist).split(':')[0]
+      && specialistPreview.root.parent === holder && specialistPreview.root.userData.authoredAssetState === 'authored';
+    // Detaching a boundary releases its pool residency. Keep a phase-matrix actor mounted
+    // throughout its consecutive frames instead of re-adding an already-released owner.
+    if (!reuseSpecialist) holder.clear();
     const built = await build(opts);
     if (!built.root.parent) holder.add(built.root);
     built.root.rotation.y = (opts.yaw || 0) * Math.PI / 180;
@@ -285,17 +329,42 @@ export function installFleetLook(SF) {
       if (ab.noBackground) { opts._bg = scene.background; scene.background = null; }
     }
     holder.updateMatrixWorld(true);
+    poseCamera(cam, opts.view || 'inspect', opts.radius || built.radius || 6, opts.heading || 0);
     let ok = true;
-    if (opts.defId) ok = await waitForAuthored(renderer, scene, cam, built.root);
+    // Explicit strict admission owns compile/upload/touch and has bounded pacing fallbacks.
+    // Ordinary file/ship previews still drive frames for their onBeforeRender admission hook.
+    if (opts.defId) ok = await waitForAuthored(renderer, scene, cam, built.root, !opts.specialist);
+    const renderedPackages = [];
     if (opts.specialist) {
       if (!ok || built.root.userData.authoredAssetState !== 'authored') {
         const data = built.root.userData;
         throw new Error('specialist authored admission incomplete: ' + JSON.stringify({
           state: data.authoredAssetState, root: data.authoredVisualRoot,
           reason: data.authoredFailureReason, message: data.authoredFailureMessage,
+          leg: data.fleetLookAdmissionLeg,
+          preparePhase: data.authoredPreparePhase,
         }));
       }
+      built.root.traverse(object => {
+        const binding = object.userData?.spacefaceRenderPackage;
+        if (binding) renderedPackages.push({ assetId: binding.assetId, contentHash: binding.contentHash });
+      });
+      const packageId = 'sf.render.swarm-' + String(opts.specialist).split(':')[0];
+      if (!renderedPackages.some(binding => binding.assetId === packageId && /^[a-f0-9]{64}$/.test(binding.contentHash))) {
+        throw new Error('specialist optimized package missing: ' + packageId);
+      }
       built.root.userData.updateAuthoredMotion?.(built.entity, 1.25, undefined, state);
+      const kind = String(opts.specialist).split(':')[0];
+      const effectName = { warden: 'SF_SWARM_WARDEN_LINK', jackal: 'SF_SWARM_JACKAL_MINE_WAKE', anchor: 'SF_SWARM_ANCHOR_FIELD_EDGE' }[kind];
+      const effect = built.root.getObjectByName(effectName);
+      if (!effect || (String(opts.specialist).endsWith(':active') && !effect.visible)) {
+        throw new Error('specialist phase presentation missing: ' + JSON.stringify({
+          specialist: opts.specialist, effect: !!effect, effectVisible: effect?.visible,
+          driver: built.root.userData.swarmSpecialistVisual?.kind,
+          updater: typeof built.root.userData.updateAuthoredMotion,
+          view: built.entity.data.swarmSpecialist,
+        }));
+      }
     }
     // Specialist links and 220 m fields are real effects but are not ship framing bounds.
     const boundsRoot = opts.specialist ? built.root.userData.swarmVisualContentRoot || built.root : built.root;
@@ -320,7 +389,7 @@ export function installFleetLook(SF) {
     if (!ok) throw new Error('fleet-look authored preview did not settle');
     const admit = state.render.compileObjectPipelines;
     if (typeof admit !== 'function') throw new Error('fleet-look pipeline admission unavailable');
-    const result = await admit(holder, { explicit: true, strict: true, joinOutstanding: true,
+    const result = await admit(holder, { explicit: true, urgent: !!opts.specialist, strict: true, joinOutstanding: true,
       isActive: () => built.root.parent === holder });
     if (!result || result.skipped === true || result.incomplete === true || result.contextLost === true) {
       throw new Error(`fleet-look pipeline admission incomplete: ${result?.reason || (result ? 'incomplete receipt' : 'no receipt')}`);
@@ -331,6 +400,26 @@ export function installFleetLook(SF) {
     pose();
     renderOnce(renderer, scene, cam);
     const url = renderer.domElement.toDataURL('image/png');
+    let captureDiagnostics;
+    if (opts.specialist) {
+      let meshes = 0, visibleMeshes = 0;
+      const pivots = [], effects = [];
+      built.root.traverse(object => {
+        if (object.isMesh) {
+          meshes++;
+          let shown = true;
+          for (let p = object; p; p = p.parent) if (!p.visible) shown = false;
+          if (shown) visibleMeshes++;
+        }
+        if (object.name.startsWith('MOTION_')) pivots.push({ name: object.name, quaternion: object.quaternion.toArray() });
+        if (/^SF_SWARM_/.test(object.name)) effects.push({ name: object.name, visible: object.visible });
+      });
+      captureDiagnostics = { meshes, visibleMeshes, pivots, effects, pools: lastPoolSync,
+        renderedPackages, phaseView: structuredClone(built.entity.data.swarmSpecialist),
+        rootPosition: built.root.position.toArray(), rootVisible: built.root.visible,
+        contentVisible: boundsRoot.visible, cameraPosition: cam.position.toArray(),
+        boxMin: box.min.toArray(), boxMax: box.max.toArray() };
+    }
     lastPose = pose;
     lastCamera = cam;
     if (opts.ab?.noEnvironment) scene.environment = opts._env;
@@ -338,7 +427,7 @@ export function installFleetLook(SF) {
     return {
       url, ok, radius, diagNames: built.diagNames,
       ...(opts.specialist ? { authoredAssetState: built.root.userData.authoredAssetState,
-        specialist: opts.specialist } : {}),
+        specialist: opts.specialist, captureDiagnostics } : {}),
       size: box.getSize(new THREE.Vector3()).toArray(),
       materials: collectMaterials(built.root),
     };

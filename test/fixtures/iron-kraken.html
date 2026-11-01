@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Iron Kraken · native render diagnostic</title>
+  <link rel="icon" href="data:,">
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: #080d16; color: #e5eaf2; font: 14px/1.5 system-ui, sans-serif; }
+    #stage, #warnings { position: absolute; inset: 0; width: 100%; height: 100%; }
+    #warnings { pointer-events: none; }
+    header { position: absolute; z-index: 2; inset: 0 0 auto; padding: 23px 30px 35px; background: linear-gradient(#080d16f2, #080d1600); pointer-events: none; }
+    h1 { margin: 0 0 4px; font-size: 25px; font-weight: 650; letter-spacing: .025em; }
+    #caption { color: #b7c3d4; }
+    #reference { position: absolute; z-index: 2; transform: translate(-50%,0); color: #9ce3ee; font-size: 13px; text-align: center; white-space: nowrap; text-shadow: 0 2px 5px #000; }
+    footer { position: absolute; z-index: 2; inset: auto 0 0; padding: 28px 30px 18px; background: linear-gradient(#080d1600, #080d16f2); color: #8898ae; font-size: 12px; pointer-events: none; }
+    body[data-lighting="studio"] { background: #f3f0e9; color: #252626; }
+    body[data-lighting="studio"] header { background: linear-gradient(#f3f0e9f2, #f3f0e900); }
+    body[data-lighting="studio"] #caption { color: #575c60; }
+    body[data-lighting="studio"] footer { background: linear-gradient(#f3f0e900, #f3f0e9f2); color: #62635f; }
+  </style>
+  <script type="importmap">
+    { "imports": {
+      "three": "/vendor/three.module.js",
+      "three/addons/": "/vendor/addons/",
+      "three.quarks": "/node_modules/three.quarks/dist/three.quarks.esm.js",
+      "quarks.core": "/node_modules/quarks.core/dist/quarks.core.esm.js",
+      "three-mesh-bvh": "/node_modules/three-mesh-bvh/build/index.module.js",
+      "@dimforge/rapier3d-compat": "/vendor/rapier3d-compat/rapier.mjs"
+    } }
+  </script>
+</head>
+<body>
+  <canvas id="stage"></canvas>
+  <canvas id="warnings"></canvas>
+  <header><h1 id="title">Iron Kraken</h1><div id="caption">Loading the production visual factory…</div></header>
+  <div id="reference" hidden></div>
+  <footer id="footer">Native THREE model diagnostic · stationary score observations · not a full Swarm playtest</footer>
+  <script type="module" src="./iron-kraken-native.mjs"></script>
+</body>
+</html>

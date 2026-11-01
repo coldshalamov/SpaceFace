@@ -73,7 +73,7 @@ async function contactSheet(view, entries) {
   if (!tiles.length) return;
   const meta = await sharp(tiles[0].file).metadata();
   const tw = Math.min(meta.width, 640), th = Math.round(meta.height * tw / meta.width);
-  const cols = Math.min(4, tiles.length), rows = Math.ceil(tiles.length / cols);
+  const cols = Math.min(args.specialists ? 3 : 4, tiles.length), rows = Math.ceil(tiles.length / cols);
   const composites = [];
   for (let i = 0; i < tiles.length; i++) {
     const x = (i % cols) * tw, y = Math.floor(i / cols) * th;
@@ -141,15 +141,23 @@ try {
 
   let targets;
   if (args.specialists) targets = ['warden', 'jackal', 'anchor'].flatMap(kind =>
-    ['windup', 'active', 'recovery'].map(phase => [kind + '_' + phase, { defId: kind === 'jackal' ? 'ship_drifter' : 'ship_bastion', specialist: kind + ':' + phase }]));
+    String(args.phases || 'windup,active,recovery').split(',').map(phase => [kind + '_' + phase, {
+      defId: kind === 'jackal' ? 'ship_drifter' : 'ship_bastion', specialist: kind + ':' + phase,
+      ...(args.overview ? { radius: { warden: 80, jackal: 130, anchor: 260 }[kind] } : {}),
+    }]));
   else if (args.fleet) targets = LIVE_FLEET.filter(([n]) => !args.only || String(args.only).split(',').includes(n));
   else if (args.files) targets = String(args.files).split(',').map((f) => [f.split('/').pop().replace('.glb', ''), { file: f }]);
   else if (args.file) targets = [[args.name || String(args.file).split('/').pop().replace('.glb', ''), { file: args.file }]];
   else if (args.def) targets = [[args.name || String(args.def).replace('ship_', ''), { defId: args.def }]];
   else throw new Error('pass --file, --def or --fleet');
+  if (args.specialists && args['with-overviews']) targets.push(...['warden', 'jackal', 'anchor'].map(kind =>
+    [kind + '_active_overview', { defId: kind === 'jackal' ? 'ship_drifter' : 'ship_bastion',
+      specialist: kind + ':active', views: ['inspect'], radius: { warden: 80, jackal: 130, anchor: 260 }[kind] }]));
+  if (args.specialists && args.only) targets = targets.filter(([name]) => String(args.only).split(',').includes(name));
+  if (!targets.length) throw new Error('no fleet-look targets selected');
 
   for (const [name, spec] of targets) {
-    for (const view of views) {
+    for (const view of spec.views || views) {
       const t0 = Date.now();
       let res;
       try {
@@ -187,13 +195,38 @@ try {
           const stats = await frame.stats();
           const lit = stats.channels.slice(0, 3).reduce((a, c) => a + c.max, 0);
           const spread = stats.channels.slice(0, 3).reduce((a, c) => a + c.stdev, 0);
-          if (lit > 300 && spread > 6) break;
+          // A specialist's bright tell can arrive before its cold authored hull on SwiftShader.
+          // Evidence must contain the centered hull as well as the link/wake/ring. Scale
+          // the region with camera distance so a full 220 WU field still tests its small hull.
+          let centeredHull = true;
+          if (shotSpec.specialist && ['close', 'inspect'].includes(view)) {
+            const hullScale = view === 'close' ? 1 : 58 / (res.radius * 2.6);
+            const width = Math.max(8, Math.round(300 * hullScale));
+            const height = Math.max(8, Math.round(200 * hullScale));
+            const region = { left: Math.round((1600 - width) / 2), top: Math.round((1000 - height) / 2), width, height };
+            const { data, info } = await sharp(Buffer.from(res.url.split(',')[1], 'base64'))
+              .extract(region)
+              .removeAlpha().raw().toBuffer({ resolveWithObject: true });
+            let hullPixels = 0;
+            for (let i = 0; i < data.length; i += info.channels) {
+              if (data[i] + data[i + 1] + data[i + 2] > 90) hullPixels++;
+            }
+            const centerHullCoverage = hullPixels / (info.width * info.height);
+            res.capturePixelChecks = { region, centerHullCoverage, minimumCenterHullCoverage: .2 };
+            centeredHull = centerHullCoverage >= .2;
+          }
+          if (lit > 300 && spread > 6 && centeredHull) break;
+          if (attempt === 3) {
+            writeFileSync(`${OUT}${name}_${view}_rejected.json`, JSON.stringify({ ...res, url: undefined }, null, 2));
+            throw new Error(`blank or hull-incomplete capture after strict admission: ${name}/${view}`);
+          }
           console.log('  blank frame, re-shooting', name, view);
           await page.waitForTimeout(4000);
         }
       } catch (err) {
         report.push({ name, view, error: String(err).slice(0, 400) });
         console.log('FAIL', name, view, String(err).slice(0, 200));
+        if (args.specialists) throw err;
         continue;
       }
       const buf = Buffer.from(res.url.split(',')[1], 'base64');
@@ -205,15 +238,17 @@ try {
       } else writeFileSync(file, buf);
       report.push({ name, view, file, ok: res.ok, size: res.size, radius: res.radius,
         authoredAssetState: res.authoredAssetState, specialist: res.specialist,
+        captureDiagnostics: res.captureDiagnostics,
+        capturePixelChecks: res.capturePixelChecks,
         materials: view === views[0] ? res.materials : undefined, ms: Date.now() - t0 });
       console.log('shot', name, view, `${Date.now() - t0}ms`, res.ok ? '' : '(authored swap not confirmed)');
     }
   }
-  if (targets.length > 1) for (const v of views) await contactSheet(v, report);
+  if (targets.length > 1) for (const v of new Set(report.map(shot => shot.view))) await contactSheet(v, report);
   writeFileSync(OUT + 'report.json', JSON.stringify({ report, logs: logs.slice(0, 80) }, null, 2));
   if (report.some(shot => shot.error)) process.exitCode = 1;
 } catch (error) {
-  writeFileSync(OUT + 'failure.json', JSON.stringify({ error: String(error), logs }, null, 2));
+  writeFileSync(OUT + 'failure.json', JSON.stringify({ error: String(error), report, logs }, null, 2));
   throw error;
 } finally {
   await browser.close();

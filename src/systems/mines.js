@@ -307,8 +307,13 @@ export const mines = {
       source: { kind: 'mine', id: mine.id, weaponId: 'mine_layer' },
     });
     // allowAnyTarget not required for ships; mines themselves use hull via projectile:hit path.
+    // A thrown mine spends the original layer's deployment slot, but its hit belongs to the
+    // player who redirected it. Keeping the layer as attacker makes the real friendly-fire
+    // gate reject impacts on that layer's pack even though the trigger admits those bodies.
+    const attackerId = data.playerThrown === true && data.thrownBy != null
+      ? data.thrownBy : data.ownerId != null ? data.ownerId : mine.id;
     const request = {
-      attackerId: data.ownerId != null ? data.ownerId : mine.id,
+      attackerId,
       targetId: victim.id,
       packet,
       origin: { kind: 'mine', id: mine.id },

@@ -3,6 +3,7 @@
 // Same input → same output. Never mutates the input.
 
 import { mulberry32 } from '../core/rng.js';
+import { ironKrakenForSwarmWave } from '../data/ironKraken.js';
 import {
   SPAWN_BUDGET_DEFAULT_MAX,
   SPAWN_BUDGET_HARD_MAX,
@@ -206,6 +207,7 @@ function expandSchedule(packages) {
       if (pkg.debut === true) entry.debut = true;
       if (pkg.wall === true) entry.wall = true;
       if (pkg.staged === true) entry.staged = true;
+      if (typeof pkg.characterScoreId === 'string') entry.characterScoreId = pkg.characterScoreId;
       if (Number.isFinite(pkg.distance)) entry.distance = pkg.distance;
       entries.push(entry);
       remaining -= n;
@@ -549,9 +551,31 @@ function planSwarmWave({ seed, wave, rng, mutators, buildSummary, swarmStake, sw
       if (trim > 0) { pkg.count -= trim; pkg.batchSize = pkg.count; burst -= trim; }
     }
   }
+  // Character heavies have their own finite seat. Weighted roster picks would turn a
+  // readable eight-arm arrival into a random three-Kraken reinforcement pack.
+  const character = !heaviesOnly && !circuitRound && !bossWave && !debuting && !act && !massGap
+    ? ironKrakenForSwarmWave(w) : null;
+  let characterLanded = false;
+  if (character) {
+    let donor = null;
+    for (const pkg of packages) {
+      if (pkg.champion || pkg.debut || pkg.wall || pkg.staged || !(pkg.count > 1)) continue;
+      if (!donor || pkg.count > donor.count) donor = pkg;
+    }
+    if (donor) {
+      donor.count -= 1;
+      donor.batchSize = Math.max(1, Math.min(donor.batchSize || donor.count, donor.count));
+      packages.push({ atTick: SWARM_DEBUT_TICKS, gateGroup: swarmFreeGateFor(w, packages.map(pkg => pkg.gateGroup)),
+        role: 'elite', enemyId: character.enemyId, count: 1, batchSize: 1, batchGapTicks: 0,
+        staged: true, distance: character.spawnDistance, characterScoreId: character.scoreId });
+      characterLanded = true;
+    }
+  }
   const schedule = expandSchedule(packages);
   const opening = swarmOpeningCount(packages);
   const swarm = swarmPlanBlock(w, bossOverride);
+  if (characterLanded) swarm.character = { enemyId: character.enemyId, scoreId: character.scoreId,
+    name: character.name, variant: character.variant };
   if (biasedRoster) {
     swarm.roster = biasedRoster.map((entry) => ({
       enemyId: entry.enemyId,

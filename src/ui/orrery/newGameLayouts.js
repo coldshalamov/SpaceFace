@@ -274,9 +274,11 @@ ${NG} > .sf-ng-footer .k-word.sf-back:focus-visible::after {
   ${NGD} .orr-ng-caption > .sf-slot-card-title { position:absolute !important; left:0 !important; top:0 !important; font-size:28px !important; }
   ${NGD} .orr-ng-caption > .k-sentence { position:absolute !important; left:0 !important; top:40px !important; margin:0 !important;
     max-width:min(340px, 86%) !important; font-size:13px !important; line-height:1.4 !important; }
-  /* the hero box (the ring and the yard both measure it) keeps 68px left of it for MASS and 113px right of it
-     for LINE and its gloss (which may run 14px into the margin), and centres once the stage is wide enough */
-  ${NGD} > .k-stage { --ng-hero-w:min(50%, 100% - 181px); --ng-hero-x:max(68px, min(25%, 100% - var(--ng-hero-w) - 113px)); }
+  /* the hero box (the ring and the yard both measure it) keeps 100px either side of it, so the 24px side
+     readings (reserved at 68px, not the 32px desktop 92) sit clear outside the ring's ticks instead of on them
+     (MASS's 35 t at 390), and centres once the stage is wide enough */
+  ${NGD} > .k-stage { --ng-hero-w:min(50%, 100% - 200px); --ng-hero-x:max(100px, min(25%, 100% - var(--ng-hero-w) - 100px)); }
+  ${NGD} .orr-hullring { --orr-hullring-num-reserve:68; }
   ${NGD} > .k-stage > :is(.k-world--stage, .k-stage__poster),
   ${NGD} > .k-stage > .orr-ng-hero-box { left:var(--ng-hero-x) !important; width:var(--ng-hero-w) !important; top:150px !important; height:92px !important; }
   ${NGD} > .k-stage::before { left:var(--ng-hero-x); width:var(--ng-hero-w); top:226px; height:30px; }
@@ -296,10 +298,11 @@ ${NG} > .sf-ng-footer .k-word.sf-back:focus-visible::after {
   ${NGD} .sf-ng-route .sf-ng-route__step { padding:0 0 0 20px !important; height:auto !important; }
   ${NGD} .sf-ng-route .sf-ng-route__step::before { left:0 !important; top:4px !important; }
   ${NGD} .sf-ng-route .sf-ng-route__step .k-row__sub { display:block !important; opacity:1 !important; }
-  /* BACK / LAUNCH stay at the window's foot over a dark band while the column scrolls under them */
+  /* BACK / LAUNCH stay at the window's foot on an opaque band under a hairline (the sections' own rule)
+     while the column scrolls under them: nothing of the route reads through behind BACK */
   ${NGD} > .sf-ng-footer { position:sticky !important; bottom:0 !important; z-index:40 !important;
     margin:0 !important; padding:16px 0 16px !important;
-    border-image:linear-gradient(180deg, rgb(4 6 9 / 0), rgb(4 6 9 / .9) 18px, rgb(4 6 9 / .95)) fill 0 / / 0 100vw !important; }
+    border-image:linear-gradient(180deg, rgb(${BONE} / .16) 0 1px, rgb(6 8 11) 1px) fill 0 / / 0 100vw !important; }
   /* the yard's rear names hang on the ring's floor ellipse, which is drawn over them: they drop just below it */
   ${NGD} .orr-yard > .orr-turntable__row > li:not(.is-front) { translate:0 20px !important; }
   /* and the front name drops a line further, below the rear names, with the stage band grown to match */

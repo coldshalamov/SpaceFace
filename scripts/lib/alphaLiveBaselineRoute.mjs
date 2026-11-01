@@ -31,6 +31,93 @@ const SCREENSHOTS = Object.freeze({
 // 150s budget expired (run 2026-09-25T22-12-38Z), so 150s bound the budget, not the
 // product. 240s is ~2x the best observed load and still bounds a wedged page.
 export const AUTHORED_FLIGHT_READY_BUDGET_MS = 240_000;
+const FLIGHT_INPUT_HOLD_CEILING_MS = 4_000;
+
+// Keep ordinary keyboard holds bounded even when a DevTools snapshot stalls. The deadline runs
+// on the host while readFlightSnapshot is pending, releases every requested/held key, and makes
+// the operation fail instead of resuming with a late boost press.
+export async function measureFlightInputWithBoundedHold({
+  keyboard,
+  waitForTimeout,
+  readSnapshot,
+  holdCeilingMs = FLIGHT_INPUT_HOLD_CEILING_MS,
+  scheduleDeadline = (callback, delayMs) => setTimeout(callback, delayMs),
+  cancelDeadline = (timer) => clearTimeout(timer),
+} = {}) {
+  assert(keyboard && typeof keyboard.down === 'function' && typeof keyboard.up === 'function',
+    'bounded flight-input probe requires a keyboard');
+  assert(typeof waitForTimeout === 'function' && typeof readSnapshot === 'function',
+    'bounded flight-input probe requires wait and snapshot functions');
+  assert(Number.isFinite(holdCeilingMs) && holdCeilingMs > 0,
+    'bounded flight-input probe requires a positive hold ceiling');
+
+  let releaseInFlight = null;
+  let expired = false;
+  let timeoutRelease = Promise.resolve();
+  let deadlineTimer = null;
+  let resolveDeadline;
+  const deadlineReached = new Promise((resolve) => { resolveDeadline = resolve; });
+
+  const releaseKeys = async () => {
+    if (releaseInFlight) await releaseInFlight;
+    // Preserve the route's existing idempotent cleanup of both probe keys, including the case
+    // where the deadline fires while W's snapshot is blocked and Shift has not gone down yet.
+    const releasing = Promise.all(['Shift', 'KeyW'].map((key) => keyboard.up(key).catch(() => {})));
+    releaseInFlight = releasing;
+    try {
+      await releasing;
+    } finally {
+      if (releaseInFlight === releasing) releaseInFlight = null;
+    }
+  };
+
+  const awaitBeforeDeadline = async (operation) => {
+    const pendingOperation = Promise.resolve().then(operation);
+    const result = await Promise.race([
+      pendingOperation.then(
+        (value) => ({ completed: true, value }),
+        (error) => ({ completed: true, error }),
+      ),
+      deadlineReached.then(() => ({ completed: false })),
+    ]);
+    if (!result.completed || expired) {
+      await timeoutRelease;
+      await releaseKeys();
+      throw new Error(`flight input exceeded the ${holdCeilingMs}ms held-key ceiling`);
+    }
+    if (result.error) throw result.error;
+    return result.value;
+  };
+
+  const press = async (key) => {
+    const down = Promise.resolve().then(() => keyboard.down(key));
+    // If the keydown acknowledgement arrives after the deadline released the keys, issue a
+    // second cleanup then. This prevents a late CDP acknowledgement from leaving a key held.
+    down.then(() => expired ? releaseKeys() : undefined, () => {});
+    await awaitBeforeDeadline(() => down);
+  };
+
+  try {
+    deadlineTimer = scheduleDeadline(() => {
+      expired = true;
+      resolveDeadline();
+      timeoutRelease = releaseKeys();
+      timeoutRelease.catch(() => {});
+    }, holdCeilingMs);
+
+    await press('KeyW');
+    await awaitBeforeDeadline(() => waitForTimeout(500));
+    const wHeld = await awaitBeforeDeadline(readSnapshot);
+
+    await press('Shift');
+    await awaitBeforeDeadline(() => waitForTimeout(400));
+    const boostHeld = await awaitBeforeDeadline(readSnapshot);
+    return { wHeld, boostHeld };
+  } finally {
+    if (deadlineTimer != null) cancelDeadline(deadlineTimer);
+    await releaseKeys();
+  }
+}
 
 export async function runBrowserPublicRoute({
   page,
@@ -204,19 +291,11 @@ export async function runBrowserPublicRoute({
       assert(baselineStart, 'released baseline never observed a settled hull');
       await page.waitForTimeout(500);
       const baselineEnd = await readFlightSnapshot(page);
-      let wHeld = null;
-      let boostHeld = null;
-      try {
-        await page.keyboard.down('KeyW');
-        await page.waitForTimeout(500);
-        wHeld = await readFlightSnapshot(page);
-        await page.keyboard.down('Shift');
-        await page.waitForTimeout(400);
-        boostHeld = await readFlightSnapshot(page);
-      } finally {
-        await page.keyboard.up('Shift').catch(() => {});
-        await page.keyboard.up('KeyW').catch(() => {});
-      }
+      const { wHeld, boostHeld } = await measureFlightInputWithBoundedHold({
+        keyboard: page.keyboard,
+        waitForTimeout: (ms) => page.waitForTimeout(ms),
+        readSnapshot: () => readFlightSnapshot(page),
+      });
       // Shader admission can briefly occupy the page immediately after launch. Wait for the public
       // keyup events to reach a later fixed tick instead of sampling the still-held fields in the
       // same blocked frame. This remains a player-input proof; it does not write input or sim state.
@@ -1111,9 +1190,46 @@ export function observeStableStationFramesInPage({ maximumFrames }) {
   return new Promise((resolve) => {
     const frames = [];
     const canonicalUndockSelector = 'button[data-act="undock"]';
+    let firstContent = null;
+    let firstContentFingerprint = null;
+    let firstChangedContent = null;
+    let previousContentFingerprint = null;
+    let previousContent = null;
+    let contentFingerprintChangeCount = 0;
+    let lastChangedFrameIndex = null;
+    let lastContentTransition = null;
+    let lastContent = '';
+    let firstCaptionState = null;
+    let previousCaptionStateKey = null;
+    let captionStateChangeCount = 0;
+    let firstChangedCaptionState = null;
+    let lastCaptionTransition = null;
+    let previousCaptionState = null;
+    let lastCaptionState = null;
     const sample = (frameTimestampMs) => {
       const state = window.SF?.state;
       const screen = document.querySelector('[data-screen="station"]');
+      const captionCandidate = document.getElementById('sf-airlock');
+      const stationCaption = screen && captionCandidate && screen.contains(captionCandidate)
+        && hasClass(captionCandidate, 'sf-airlock--station')
+        && hasClass(captionCandidate.parentElement, 'sxb-tape')
+        ? captionCandidate : null;
+      const stationCaptionVisibility = visibilityOf(stationCaption);
+      const stationNarrativeCaption = stationCaption ? {
+        selector: '#sf-airlock.sf-airlock--station inside .sxb-tape',
+        present: true,
+        visible: stationCaptionVisibility.visible,
+        text: stationCaptionVisibility.visible ? normalizeDomText(stationCaption.innerText) : '',
+        ariaHidden: stationCaption.getAttribute('aria-hidden'),
+        rect: visibilityDiagnosticsOf(stationCaptionVisibility),
+      } : {
+        selector: '#sf-airlock.sf-airlock--station inside .sxb-tape',
+        present: false,
+        visible: false,
+        text: '',
+        ariaHidden: null,
+        rect: visibilityDiagnosticsOf(stationCaptionVisibility),
+      };
       const overlay = document.querySelector('#sf-dock-overlay');
       const screenVisibility = visibilityOf(screen);
       const visibleTabs = Array.from(screen?.querySelectorAll('[role="tab"][data-tab], [role="tab"][data-nav]') || [])
@@ -1125,7 +1241,10 @@ export function observeStableStationFramesInPage({ maximumFrames }) {
       const undockLabel = String(undock?.textContent || '').replace(/\s+/g, ' ').trim();
       const undockAccessibleName = accessibleNameOf(undock);
       const undockAncestry = inspectAccessibilityAncestry(undock);
-      const content = String(screen?.innerText || '').replace(/\s+/g, ' ').trim();
+      const content = stableStationText(screen, stationCaption);
+      const contentFingerprint = fingerprint(content);
+      const frameIndex = frames.length;
+      const captionStateKey = JSON.stringify(stationNarrativeCaption);
       const overlayStyle = overlay ? getComputedStyle(overlay) : null;
       const overlayRect = overlay?.getBoundingClientRect();
       frames.push({
@@ -1137,9 +1256,10 @@ export function observeStableStationFramesInPage({ maximumFrames }) {
         screenVisible: screenVisibility.visible,
         screenRect: visibilityDiagnosticsOf(screenVisibility),
         visibleTabLabels: visibleTabs.map((tab) => String(tab.getAttribute('data-tab') || tab.getAttribute('data-nav') || tab.textContent || '').trim()),
-        contentFingerprint: fingerprint(content),
+        contentFingerprint,
         contentLength: content.length,
         contentPreview: content.slice(0, 240),
+        stationNarrativeCaption,
         undockVisible: undockVisibility.visible,
         undockAction: {
           selector: canonicalUndockSelector,
@@ -1178,7 +1298,72 @@ export function observeStableStationFramesInPage({ maximumFrames }) {
           pointerEvents: overlayStyle?.pointerEvents || '',
         } : { present: false },
       });
-      if (frames.length >= maximumFrames) resolve(frames);
+      if (firstContent === null) {
+        firstContent = content;
+        firstContentFingerprint = contentFingerprint;
+      }
+      if (previousContentFingerprint !== null && previousContentFingerprint !== contentFingerprint) {
+        contentFingerprintChangeCount += 1;
+        lastChangedFrameIndex = frameIndex;
+        lastContentTransition = { frameIndex, before: previousContent, after: content };
+      }
+      if (firstChangedContent === null && contentFingerprint !== firstContentFingerprint) {
+        firstChangedContent = { frameIndex, content };
+      }
+      previousContentFingerprint = contentFingerprint;
+      previousContent = content;
+      lastContent = content;
+      if (firstCaptionState === null) firstCaptionState = stationNarrativeCaption;
+      if (previousCaptionStateKey !== null && previousCaptionStateKey !== captionStateKey) {
+        captionStateChangeCount += 1;
+        lastCaptionTransition = {
+          frameIndex,
+          before: previousCaptionState,
+          after: stationNarrativeCaption,
+        };
+      }
+      if (firstChangedCaptionState === null && captionStateKey !== JSON.stringify(firstCaptionState)) {
+        firstChangedCaptionState = { frameIndex, state: stationNarrativeCaption };
+      }
+      previousCaptionStateKey = captionStateKey;
+      previousCaptionState = stationNarrativeCaption;
+      lastCaptionState = stationNarrativeCaption;
+
+      if (frames.length >= maximumFrames) {
+        const lastFrame = frames[frames.length - 1];
+        lastFrame.settleDiagnostic = {
+          content: {
+            fingerprintChangeCount: contentFingerprintChangeCount,
+            firstChangedFrameNumber: firstChangedContent ? firstChangedContent.frameIndex + 1 : null,
+            lastChangedFrameNumber: lastChangedFrameIndex == null ? null : lastChangedFrameIndex + 1,
+            firstChange: firstChangedContent
+              ? textChangeSummary(firstContent, firstChangedContent.content)
+              : null,
+            lastTransition: lastContentTransition ? {
+              frameNumber: lastContentTransition.frameIndex + 1,
+              ...textChangeSummary(lastContentTransition.before, lastContentTransition.after),
+            } : null,
+            lastChange: lastContent !== firstContent ? textChangeSummary(firstContent, lastContent) : null,
+          },
+          stationNarrativeCaption: {
+            stateChangeCount: captionStateChangeCount,
+            firstChangedFrameNumber: firstChangedCaptionState ? firstChangedCaptionState.frameIndex + 1 : null,
+            firstChange: firstChangedCaptionState
+              ? { before: firstCaptionState, after: firstChangedCaptionState.state }
+              : null,
+            lastTransition: lastCaptionTransition ? {
+              frameNumber: lastCaptionTransition.frameIndex + 1,
+              before: lastCaptionTransition.before,
+              after: lastCaptionTransition.after,
+            } : null,
+            firstFrame: firstCaptionState,
+            lastFrame: lastCaptionState,
+          },
+          firstFrameSignature: stationFrameSignature(frames[0]),
+          lastFrameSignature: stationFrameSignature(lastFrame),
+        };
+        resolve(frames);
+      }
       else requestAnimationFrame(sample);
     };
     requestAnimationFrame(sample);
@@ -1309,6 +1494,118 @@ export function observeStableStationFramesInPage({ maximumFrames }) {
       }
       return `fnv1a-${(hash >>> 0).toString(16).padStart(8, '0')}`;
     }
+
+    function textChangeSummary(before, after) {
+      let commonPrefixLength = 0;
+      const sharedLength = Math.min(before.length, after.length);
+      while (commonPrefixLength < sharedLength
+        && before[commonPrefixLength] === after[commonPrefixLength]) commonPrefixLength += 1;
+
+      let commonSuffixLength = 0;
+      while (commonSuffixLength < before.length - commonPrefixLength
+        && commonSuffixLength < after.length - commonPrefixLength
+        && before[before.length - commonSuffixLength - 1] === after[after.length - commonSuffixLength - 1]) {
+        commonSuffixLength += 1;
+      }
+
+      const beforeChangedEnd = before.length - commonSuffixLength;
+      const afterChangedEnd = after.length - commonSuffixLength;
+      const maxSnippetLength = 512;
+      const contextLength = 128;
+      const snippet = (text, changedEnd) => {
+        const start = Math.max(0, commonPrefixLength - contextLength);
+        const naturalEnd = Math.min(text.length, changedEnd + contextLength);
+        const end = Math.min(text.length, Math.max(start, naturalEnd), start + maxSnippetLength);
+        return {
+          text: text.slice(start, end),
+          truncatedBefore: start > 0,
+          truncatedAfter: end < text.length,
+        };
+      };
+
+      return {
+        commonPrefixLength,
+        commonSuffixLength,
+        beforeChangedLength: Math.max(0, beforeChangedEnd - commonPrefixLength),
+        afterChangedLength: Math.max(0, afterChangedEnd - commonPrefixLength),
+        before: snippet(before, beforeChangedEnd),
+        after: snippet(after, afterChangedEnd),
+      };
+    }
+
+    function stationFrameSignature(frame) {
+      const rect = frame?.screenRect || {};
+      const action = frame?.undockAction || {};
+      const overlayState = frame?.overlay || {};
+      return {
+        docked: frame?.docked === true,
+        stationId: frame?.stationId || null,
+        screen: {
+          visible: frame?.screenVisible === true,
+          width: rect.width ?? null,
+          height: rect.height ?? null,
+          intersectionWidth: rect.intersectionWidth ?? null,
+          intersectionHeight: rect.intersectionHeight ?? null,
+          effectiveOpacity: rect.effectiveOpacity ?? null,
+          hiddenByAncestor: rect.hiddenByAncestor ?? null,
+        },
+        visibleTabLabels: Array.isArray(frame?.visibleTabLabels) ? frame.visibleTabLabels : [],
+        undock: {
+          selector: action.selector || null,
+          canonicalMatchCount: action.canonicalMatchCount ?? null,
+          visibleCanonicalMatchCount: action.visibleCanonicalMatchCount ?? null,
+          visible: action.visible === true,
+          containedByStationScreen: action.containedByStationScreen === true,
+          disabled: action.disabled === true,
+          ariaDisabled: action.ariaDisabled || null,
+          readiness: action.readiness || null,
+          normalizedLabel: action.normalizedLabel || null,
+        },
+        overlay: {
+          present: overlayState.present === true,
+          hidden: overlayState.hidden ?? null,
+          display: overlayState.display ?? null,
+          visibility: overlayState.visibility ?? null,
+          opacity: overlayState.opacity ?? null,
+          width: overlayState.width ?? null,
+          height: overlayState.height ?? null,
+          pointerEvents: overlayState.pointerEvents ?? null,
+        },
+      };
+    }
+
+    function hasClass(element, className) {
+      if (!element || !element.classList) return false;
+      if (typeof element.classList.contains === 'function') return element.classList.contains(className);
+      return Array.isArray(element.classList) && element.classList.includes(className);
+    }
+
+    function stableStationText(screen, excludedCaption) {
+      if (!screen) return '';
+      if (!excludedCaption) return normalizeDomText(screen.innerText);
+
+      function containsCaption(node) {
+        return node === excludedCaption
+          || (node && node.nodeType === 1 && typeof node.contains === 'function' && node.contains(excludedCaption));
+      }
+
+      function collectRenderedText(node) {
+        if (!node || node === excludedCaption) return '';
+        if (node.nodeType === 3) return String(node.nodeValue || '');
+        if (node.nodeType !== 1) return '';
+        const visibility = visibilityOf(node);
+        if (visibility.hiddenByAncestor || visibility.effectiveOpacity <= 0.01) return '';
+        const children = Array.from(node.childNodes || []);
+        if (!children.some(containsCaption)) return String(node.innerText || '');
+        return children.map(collectRenderedText).join(' ');
+      }
+
+      return normalizeDomText(collectRenderedText(screen));
+    }
+
+    function normalizeDomText(value) {
+      return String(value || '').replace(/\s+/g, ' ').trim();
+    }
   });
 }
 
@@ -1321,8 +1618,12 @@ async function waitForStableStationHub(page, requiredObservations) {
   const finalSuffix = validateFinalStationFrameSuffix(observations, { minFrames: requiredObservations });
   const computedRoleAuthority = validateComputedUndockRoleProofs([computedRoleBefore, computedRoleAfter]);
   const settlementFailures = [...finalSuffix.failures, ...computedRoleAuthority.failures];
+  const settleDiagnostic = observations.at(-1)?.settleDiagnostic || null;
+  const diagnosticText = settlementFailures.length > 0 && settleDiagnostic
+    ? `; bounded station delta=${JSON.stringify(settleDiagnostic)}`
+    : '';
   assert.equal(settlementFailures.length, 0,
-    `station hub final ${requiredObservations}-frame suffix was not settled: ${JSON.stringify(settlementFailures)}`);
+    `station hub final ${requiredObservations}-frame suffix was not settled: ${JSON.stringify(settlementFailures)}${diagnosticText}`);
   return {
     ...finalSuffix,
     computedRoleAuthority,

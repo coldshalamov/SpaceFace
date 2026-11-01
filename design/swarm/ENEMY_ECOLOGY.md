@@ -1,12 +1,14 @@
 # Swarm enemy ecology
 
-**Audit:** 2026-11-01, against `35b99d872` and the specialist changes in this PR.  
-**Scope:** the ordinary Crucible Swarm ruleset, its finite ship cohort, its separate Brood population, and its boss rotation.  
+**Audit revision:** 2026-11-01. Initially checked against `35b99d872`; inventory refreshed after upstream `aa212937b` was integrated at `59d594c81`, including its Iron Kraken character variants and the specialist changes in this PR.
+
+**Scope:** the ordinary Crucible Swarm ruleset, its finite ship cohort and scheduled character heavies, its separate Brood population, and its boss rotation.
+
 **Selected implementation:** deepen the existing Warden Escort, Mine-Layer Jackal, and Anchor Controller IDs. The remaining eight briefs below are future work. Implementation on a PR branch does not imply that the branch is merged or that a live encounter has been accepted; use the [validation receipt](../../docs/validation/swarm-specialists/README.md) for the exact evidence.
 
 ## Judgment: enough breadth, insufficiently clear decisions
 
-Swarm already has enough enemy **roles** to support an interesting survival game: **15 ordinary ship archetypes, 20 Brood families, and 14 boss encounters**. The wider `ENEMY_TYPES` catalog contains 32 definitions; that is a different count, not another 32 Swarm enemies. The highest return comes from making the existing threats recognizable, consequential, and answerable. Adding ten more differently named pursuers would make identification harder without making the player's choices richer.
+Swarm already has enough enemy **roles** to support an interesting survival game: **15 ordinary roster ship archetypes, two scheduled Iron Kraken variants, 20 Brood families, and 14 boss-rotation encounters**. The wider `ENEMY_TYPES` catalog now contains **34 definitions**; that is a different count, not another 34 Swarm enemies. The two Kraken forms arrived through upstream integration and are separate from this PR's three specialist upgrades. The highest return comes from making the existing threats recognizable, consequential, and answerable. Adding ten more differently named pursuers would make identification harder without making the player's choices richer.
 
 The right unit of variety is a decision: change trajectory, change target, change timing, change weapon, or use a body in the room. A useful specialist changes one of those decisions while the fodder provides pressure and ammunition. The player's stock flight and gun must retain an answer; Massline, terrain, explosions, and enemy remains should provide a more expressive second answer. A special weakness is useful when the player can recognize and exploit it under pressure. It should not be a hidden resistance table that silently invalidates the loadout bought between rounds.
 
@@ -18,7 +20,7 @@ These are design judgments supported by the source audit, not a claim that a uni
 
 ### Ordinary ship cohort
 
-The unlock clock lives in [`SWARM_ROSTER`](../../src/data/swarmMode.js); baseline hull, weapon, mass, telegraph, and counter definitions live in [`enemies.js`](../../src/data/enemies.js).
+The unlock clock lives in [`SWARM_ROSTER`](../../src/data/swarmMode.js); baseline hull, weapon, mass, telegraph, and counter definitions live in [`enemies.js`](../../src/data/enemies.js). The latest upstream integration changes none of these 15 roster identities or debut waves.
 
 | Arrival | Role | Unit | Decision it creates | Counter or weakness |
 |---|---|---|---|---|
@@ -43,6 +45,19 @@ There are important distinctions inside the broad data roles. Choir's ordinary S
 The mode requests a concurrent ship target from 10 to 30, with an arena spawn cap of 38 under the shared hard maximum of 40. These are ship budgets. They do not justify creating extra full ship entities for a visual, a projectile, or a Brood family. A round resolves its finite cohort; a specialist may not prolong it with unaccounted reinforcements.
 
 First appearances are already authored more carefully than a weighted lottery. `swarmNewcomerFor()` identifies the exact debut, and [`survivalWavePlanner.js`](../../src/systems/survivalWavePlanner.js) reserves one of the wave's bodies and stages it at a longer-range bearing after four seconds. Deferred arrival remains owed. Later recurrence is weighted. The remaining question is whether the newcomer is visible and understandable through the actual camera, crowd, and effects—not whether another introduction scheduler is needed.
+
+### Scheduled character heavies
+
+Upstream's [`ironKraken.js`](../../src/data/ironKraken.js) adds two catalog IDs through one recurring character family. They use authored [capital encounter scores](../../src/data/encounters/capital-boss/iron-kraken.js) during eligible ordinary rounds, without joining `SWARM_ROSTER` or the tenth-wave boss rotation.
+
+| Form | Catalog identity / candidate timing | Decision and counter |
+|---|---|---|
+| Iron Kraken | `enemy_iron_kraken`; candidate waves `7 + 6n`, except the Colossus substitutions below | Read the flank arm rake, locked siphon-jet lane and broken ink ring. Cross the open nose/tail gaps or leave the committed lane, then put a direct shot into the exposed front mantle core during recovery for 1.8× damage. |
+| Iron Kraken Colossus | `enemy_iron_kraken_colossus`; substitutes at candidate waves `31 + 24n` | The same readable attack family at larger reach and mass, with longer recovery and an exposed-core answer; it is a distinct authored size/tuning variant, not a new weighted pack. |
+
+Candidate timing is not an unconditional debut promise. [`survivalWavePlanner.js`](../../src/systems/survivalWavePlanner.js) excludes `heavies_only`, Circuit rounds, boss rounds, roster-debut rounds, authored act rounds and mass-gap rooms, and needs a donor package with more than one body. An admitted character replaces one existing fodder slot, stages at tick 240, and receives one score-owned fight; the ordinary quota is preserved. A seed-4242 `helios_core` plan admits the Heavy at wave 7 and the Colossus at 31; candidate waves 13 and 25 are suppressed by existing room/lesson priorities. The wave owner tracks the character as required fight work and detaches its score during cleanup.
+
+This is additional ordinary-round variety that the audit must count separately: 15 roster IDs plus two scheduled character IDs can appear outside boss rounds. The eight animated arms are attack geometry on one physical body, and the score has no wing adds. This existing family already supplies committed shape attacks, gaps and a timed exposed-core payoff; future proposals should add a different decision rather than recreate its three moves.
 
 ### Brood population
 
@@ -75,9 +90,9 @@ Volatile, Plated, and Commander strains join from waves 83, 97, and 111. They mo
 
 ### Bosses and wider catalog
 
-Every tenth wave uses the rotation in [`SWARM_BOSS_ROTATION`](../../src/data/swarmMode.js). The 14 encounters are Iron Maw/Dreadnought, Mirrorjaw Foreman, Forge Regent, Corsair Wing, The Anvil, The Quiet Choir, Brood Queen, The Tendril, Nest Carrier, Casket Worm, Furnace Maw, The Yardmaster, Adjudicator 44-C, and Hive-Hulk. Some are authored capital scores; others are compositions of already known enemies. Bosses have their own choreography and are not 14 additional ordinary roster slots.
+Every tenth wave uses the rotation in [`SWARM_BOSS_ROTATION`](../../src/data/swarmMode.js). The 14 encounters are Iron Maw/Dreadnought, Mirrorjaw Foreman, Forge Regent, Corsair Wing, The Anvil, The Quiet Choir, Brood Queen, The Tendril, Nest Carrier, Casket Worm, Furnace Maw, The Yardmaster, Adjudicator 44-C, and Hive-Hulk. Some are authored capital scores; others are compositions of already known enemies. Bosses have their own choreography and are not 14 additional ordinary roster slots. The integrated capital-score catalog contains 16 entries, including the two Kraken scores; that wider score inventory does not make the Swarm boss rotation 16 encounters. After the first 14 bosses, the rotation repeats with escalation: wave 150 already belongs to Iron Maw II.
 
-The 32 wider enemy definitions also include mission/faction bodies and the fleeing Mule Trader. A catalog entry does not automatically belong in Swarm. It needs an arena role, lawful spawn and quota behavior, a readable debut, and at least one starter-loadout counter. Historical descriptions saying “one Dreadnought boss,” “19 enemies,” or “enemies have no abilities” do not describe the audited source.
+The 34 wider enemy definitions also include mission/faction bodies and the fleeing Mule Trader. A catalog entry does not automatically belong in Swarm. It needs an arena role, lawful spawn and quota behavior, a readable debut, and at least one starter-loadout counter. Historical descriptions saying “one Dreadnought boss,” “19 enemies,” or “enemies have no abilities” do not describe the audited source.
 
 ## 2. Which systems are being used well, and what holds them back?
 
@@ -222,7 +237,7 @@ Suggested files named below are **new proposed locations**, not existing APIs. E
 
 **Counter and asset.** Cover, ordinary flight and a starter gun can answer every pattern. Advanced play throws a room object into the exposed recovery. Reuse a high-quality fighter hull with one unmistakable authored silhouette detail—an asymmetric movable dorsal sail or paired countermeasure vane—rather than another enlarged Bastion. Add a named intro, one short music motif and a distinct commitment cue; reuse the boss HUD. The rig needs only the new named mechanism and existing weapon/drive sockets. Never add unlimited homing ordnance or clone the player's save state.
 
-**Integration and acceptance.** Proposed score `src/data/encounters/capital-boss/rival-pilot.js`, indexed through [`capital-boss.js`](../../src/data/encounters/capital-boss.js), using [`capitalBossScore`](../../src/combat/capitalBossScore.js) and [`capitalBossEncounters`](../../src/systems/capitalBossEncounters.js). One boss slot, no unbudgeted escorts. Suggested experimental encounter after the existing 14-encounter rotation, not a regular `SWARM_ROSTER` entry. Validate both weak and strong builds against the same counter windows, category fallback, saved score continuation and clear win/loss attribution. Existing bosses and the route to them deserve attention before expanding the rotation.
+**Integration and acceptance.** Proposed score `src/data/encounters/capital-boss/rival-pilot.js`, indexed through [`capital-boss.js`](../../src/data/encounters/capital-boss.js), using [`capitalBossScore`](../../src/combat/capitalBossScore.js) and [`capitalBossEncounters`](../../src/systems/capitalBossEncounters.js). One boss slot, no unbudgeted escorts. Start with an isolated experimental encounter; no production wave is reserved. The earlier wave-150 suggestion is withdrawn: the existing 14-entry rotation assigns that wave to Iron Maw II. Adding or replacing a rotation entry requires an explicit progression change and recurrence review, rather than silently displacing that boss. The scheduled Kraken forms do not occupy wave 150 and do not free it. Validate both weak and strong builds against the same counter windows, category fallback, saved score continuation and clear win/loss attribution. Existing bosses and the route to them deserve attention before expanding the rotation.
 
 ### Concrete starting configuration and asset handoff
 
@@ -237,7 +252,7 @@ All numerical values here are **proposed prototype baselines** before existing w
 | F5 | Conditional `shield_linker`; `swarmLinker.js` | 150/20/40; 76; 48; coupling node hull 32 | 35% reduction, total 60 energy; 300 WU link; 1/source, 2/room | Two booms + exposed coupling node; prototype only until distinct from Warden |
 | F6 | `formation_diver` recipe; `swarmFormations.js` | Inherit Corsair + two Wasp definitions | One 3-body group/wave; ordinary weapon budgets; safe corridor ≥70 WU | Existing hulls/drive rigs; suggested trial wave 24 |
 | F7 | Conditional `siege_crawler`; `swarmSiegeCrawler.js` | 240/35/60; 180; 28 | 38 damage/shot; 1 source, 1 shot; never select last safe cover | Four braces + breech; trial only after cover durability/exit proof |
-| F8 | `rival_pilot` boss; `capital-boss/rival-pilot.js` | 700/80/180; 88; 100 | Two frozen authored patterns; one boss slot; use existing projectile budgets | Distinct fighter mechanism + current boss presentation; experimental wave 150 slot |
+| F8 | `rival_pilot` boss; `capital-boss/rival-pilot.js` | 700/80/180; 88; 100 | Two frozen authored patterns; one boss slot; use existing projectile budgets | Distinct fighter mechanism + current boss presentation; isolated trial, production slot unassigned (wave 150 is Iron Maw II) |
 
 Asset files proposed for full hulls are `tools/blender/forge/ships/<id>.py` and their matching source/release packages. Each has complete near/mid/far silhouettes, collision truth, damage/drive hooks, required motion-bank bindings, and authored material roles. These are delivery requirements, not a demand for a particular triangle count independent of visibility. Review the gameplay-camera view and a close rig view before admitting a hull. The Sawblade and formation explicitly avoid unnecessary ship bodies.
 

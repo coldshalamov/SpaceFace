@@ -1,4 +1,7 @@
 import { buildSwarmFortifyVisual } from './swarmFortifyVisuals.js';
+import { ironKrakenProfileFor } from '../data/ironKraken.js';
+import { createIronKrakenVisual } from './ironKrakenVisuals.js';
+import { createIronKrakenWreckVisual, ironKrakenWreckProfileFor } from './ironKrakenWreckVisuals.js';
 import { lastShiftPackagedFile } from './lastShiftVisualIdentity.js';
 export { lastShiftPackagedFile };
 import { buildRigWorkshopBody, isRigWorkshopBody } from '../features/rigWorkshop/view.js';
@@ -4031,6 +4034,7 @@ function fractureFragmentFitRadius(entity) {
 // Files without a packaged-live pilot resolve null inside the selector and fall back to the
 // aftermath piece below.
 function hulkPackagedFileForEntity(e) {
+  if (ironKrakenWreckProfileFor(e)) return null;
   const data = e && e.data || {};
   const visual = data.hulkVisual && typeof data.hulkVisual === 'object'
     ? data.hulkVisual
@@ -4047,6 +4051,7 @@ function hulkPackagedFileForEntity(e) {
 // on Continue and must never choose which physical source the player is investigating.
 
 export function wreckPackagedFile(e) {
+  if (ironKrakenWreckProfileFor(e)) return null;
   const evidence = lastShiftPackagedFile(e);
   if (evidence) return evidence;
   if (isOrchardFrame(e)) return ORCHARD_FRAME_FILE;
@@ -4151,8 +4156,9 @@ export function hulkExemplarSpecsForShips(shipSpecs, idPrefix = 'crucible-warm:h
     };
     // Several roster ships resolve the same hulk file (wasp_swarmer/choir_zealot both draw
     // ashline_dart) — one exemplar per resolved file, not per ship, or the warm decodes and
-    // instantiates the same blueprint half a dozen times.
-    const file = hulkPackagedFileForEntity(spec);
+    // instantiates the same blueprint half a dozen times. The static character has its own
+    // shared geometry/palette key and must not alias its stat-only Bastion backing file.
+    const file = ironKrakenWreckProfileFor(spec) ? 'character:iron-kraken-static-wreck' : hulkPackagedFileForEntity(spec);
     if (!file || coveredFiles.has(file)) continue;
     coveredFiles.add(file);
     specs.push(spec);
@@ -6997,6 +7003,9 @@ export function createVisualFactory({ renderer = null, readyPackagedBodies = nul
       if (isRigWorkshopBody(e)) return stampBuiltVisual(buildRigWorkshopBody(e));
       try {
         if (!e) return null;
+        if (ironKrakenWreckProfileFor(e)) return stampBuiltVisual(createIronKrakenWreckVisual(e));
+        // An articulated character owns its graph; static ship batching would freeze its arms.
+        if (ironKrakenProfileFor(e)) return stampBuiltVisual(createIronKrakenVisual(e));
         if (isBorrowedVoiceRing(e)) {
           const root = new THREE.Group(); root.name = 'BorrowedVoiceRingAuthoredPending'; return root;
         }
