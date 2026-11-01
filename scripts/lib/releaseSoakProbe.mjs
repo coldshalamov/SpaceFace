@@ -3875,15 +3875,25 @@ async function exerciseMarketRoundtrip(page) {
   // HOLD_EMPTY state (no register, no mode row) — the public "Switch to Buy" verb is the
   // only way back, so every buy-mode ensure offers it alongside the segment click.
   const buyMode = activeTradeShell.locator('button[data-mode="buy"]').first();
+  const allStockFilter = page.locator('.sx-mkt-browser__filters [data-market-filter="all"]').first();
   await buyMode.waitFor({ state: 'visible', timeout: 20_000 });
   const ensureBuyMode = async () => {
-    for (let attempt = 0; attempt < 3 && !(await modeIsOn(buyMode)); attempt++) {
+    for (let attempt = 0; attempt < 3; attempt++) {
       if (await pBound(marketStateVerb.isVisible(), 1_500, false)) {
-        await pBound(marketStateVerb.click({ timeout: 2_000 }), 3_000, null);
+        await clickWithFallback(marketStateVerb, 2_000);
       }
-      await clickWithFallback(buyMode);
+      // A Sell-mode register can retain its hold filter after a vanished selected lot.
+      // Restore the public All stock filter explicitly, then select Buy and verify both
+      // rendered controls before treating any row as a buy candidate.
+      if (await pBound(allStockFilter.getAttribute('aria-pressed'), 2_000, null) !== 'true') {
+        await clickWithFallback(allStockFilter, 2_000);
+      }
+      if (!(await modeIsOn(buyMode))) await clickWithFallback(buyMode, 2_000);
+      const allStockOn = await pBound(allStockFilter.getAttribute('aria-pressed'), 2_000, null) === 'true';
+      const buyOn = await modeIsOn(buyMode);
+      if (allStockOn && buyOn) return true;
     }
-    return modeIsOn(buyMode);
+    throw new Error('public Market controls did not return to All stock / Buy');
   };
   await ensureBuyMode();
   const sellMode = activeTradeShell.locator('button[data-mode="sell"]').first();
@@ -3908,9 +3918,20 @@ async function exerciseMarketRoundtrip(page) {
   }), 8_000, null);
   const tradeConsoleDiag = () => page.evaluate(() => {
     const shell = document.querySelector('.sx-trade');
-    const liveMode = shell?.querySelector('.sx-trade__go.is-on')?.getAttribute('data-mode') || null;
+    const liveMode = shell?.querySelector('[data-mode].is-on')?.getAttribute('data-mode')
+      || shell?.querySelector('.sx-trade__go.is-on')?.getAttribute('data-go') || null;
+    const filter = document.querySelector('.sx-mkt-browser__filters [aria-pressed="true"]')
+      ?.getAttribute('data-market-filter') || null;
+    const state = window.SF?.state;
+    const cargo = state?.player?.cargo;
     return {
       mode: liveMode,
+      filter,
+      visibleRows: [...document.querySelectorAll('.sx-mkt-row[data-cmdty]')]
+        .slice(0, 8).map((row) => row.getAttribute('data-cmdty')),
+      credits: Number.isFinite(Number(state?.player?.credits)) ? Number(state.player.credits) : null,
+      holdFree: Number.isFinite(Number(cargo?.capVolume))
+        ? Number(cargo.capVolume) - (Number(cargo.usedVolume) || 0) : null,
       note: shell?.querySelector('.sx-trade__note')?.textContent?.trim() || null,
       noteHidden: shell?.querySelector('.sx-trade__note')?.hidden ?? null,
       qtyValue: shell?.querySelector('.sx-qty__in')?.value ?? null,
