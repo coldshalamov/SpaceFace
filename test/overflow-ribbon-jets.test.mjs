@@ -80,11 +80,16 @@ test('overflow drive and reverse do not stack sprites, and a full pool stays qui
     id: 9, type: 'ship', alive: true,
     pos: { x: 400, z: 0 }, vel: { x: 20, z: 0 }, rot: 0, radius: 6, flags: {},
   };
+  system._scene = {};
+  // Oct-21 ownership: a presented NPC hull is required before new propulsion may draw,
+  // so both fixture ships carry a mesh chain rooted in the live render scene.
+  npc.mesh = { parent: system._scene };
+  far.mesh = { parent: system._scene };
   system.state = {
     playerId: 1,
+    render: { scene: system._scene },
     entities: new Map([[1, { id: 1, type: 'ship', pos: { x: 0, z: 0 }, rot: 0 }], [npc.id, npc], [far.id, far]]),
   };
-  system._scene = {};
   system._spawnLocalXZ = { x: 0, z: 0 };
   system._factionRgbScratch = { r: 0.2, g: 0.6, b: 1 };
   system._trailSpawnScratch = { particles: 4, streaks: 4 };

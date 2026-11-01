@@ -30,8 +30,17 @@ test('soft-GPU opening.drainWait does not await concurrent submission', () => {
 });
 
 test('soft-GPU opening residency budget is tighter than hardware', () => {
-  const section = sectionAround('residencyBudgetMs');
-  assert.match(section, /softGpuOpening \? 750 : 5000/);
+  const section = sectionAround('residencyBudgetMs', 500, 3200);
+  assert.match(section, /deadlineMs:\s*options\.required !== true && softGpuOpening \? residencyBudgetMs/,
+    'non-required soft-GPU cook passes the policy residency budget as its deadline');
+  const policySrc = readFileSync(join(root, 'src/render/openingLoadPolicy.js'), 'utf8');
+  const serial = policySrc.match(/SERIAL_RESIDENCY_BUDGET_MS:\s*(\d+)/);
+  const parallel = policySrc.match(/PARALLEL_RESIDENCY_BUDGET_MS:\s*(\d+)/);
+  assert.ok(serial && parallel, 'openingLoadPolicy names both residency budgets');
+  assert.ok(Number(serial[1]) < Number(parallel[1]),
+    `serial-link budget ${serial[1]}ms must stay tighter than parallel ${parallel[1]}ms`);
+  assert.match(policySrc, /residencyBudgetMs:\s*serialLinkRoute/,
+    'the policy routes the tighter budget through serialLinkRoute');
 });
 
 test('self-build still follows a soft planWait miss', () => {

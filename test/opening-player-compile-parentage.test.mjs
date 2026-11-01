@@ -19,7 +19,12 @@ function fixture() {
   other.add(new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial()));
   scene.add(player, other);
   const state = { mode: 'loading', simTime: 0, playerId: 1, render: { firstPlayableFrameAt: null } };
-  const owner = { _meshes: new Map([[1, player], [2, other]]), _selectPostRoute: () => 'bloom', _shadowSettingOn: false };
+  const owner = {
+    _meshes: new Map([[1, player], [2, other]]),
+    _selectPostRoute: () => 'bloom',
+    _shadowSettingOn: false,
+    _shadowDepthEnabled: () => false,
+  };
   let resolve, reject;
   const admission = new Promise((yes, no) => { resolve = yes; reject = no; });
   const compiled = [];

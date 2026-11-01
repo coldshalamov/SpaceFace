@@ -115,6 +115,16 @@ export const kilnback = {
       && age >= 0 && age <= 2 && r.proxyId === e.physicsBody?.collisionProxyManifest?.id
       && r.revision === e.physicsBody?.revision;
   },
+  // Fresh record, wrong body: the hull was rebuilt (a severed cask) and the native side
+  // has not accepted the new revision yet. That is a handoff window, not staleness —
+  // the difference decides whether the renderer may keep drawing owner truth.
+  _nativePending(e) {
+    const native = this.ctx.registry?.get('physics')?._sg02, r = this._native(e);
+    const age = this.state.tick - native?._simTick;
+    return !!r && r._postStepReadTick === native.tick && Number.isInteger(native._simTick)
+      && age >= 0 && age <= 2
+      && (r.proxyId !== e.physicsBody?.collisionProxyManifest?.id || r.revision !== e.physicsBody?.revision);
+  },
   _ready(e) { return this.state.settings?.gameplay?.physicsBackend !== 'rapier-dynamic' || this._nativeSolved(e); },
   _attached(row) { return KILNBACK_CASK_IDS.filter(id => row.casks[id].status === 'attached'); },
   _syncBody(e, row) {
@@ -406,6 +416,7 @@ export function kilnbackPresentation(state, entity) {
     coolant: kilnbackCoolant(row),
     attachedCaskIds: owner._attached(row), casks: structuredClone(row.casks), aimAngle: row.aimAngle,
     attack: row.attack, pulse: row.pulse, nativeBodyReady: nativeReady,
+    nativePending: !nativeReady && owner._nativePending(entity),
     sourceRevision: row.bodyRevision, ownerLife: entity.occupantGeneration,
     activeHeatLanes: nativeReady ? (owner.ctx.registry?.get('fields')?.thermalFieldsForSource(row.key, entity.occupantGeneration) || [])
       .filter(f => f.kind === 'burn') : [] };
@@ -420,6 +431,7 @@ function encodeKilnbackMotionFrame(frame) {
     createdAt: lane.createdAt, expireAt: lane.expireAt }));
   return JSON.stringify({ v: 1, phase: frame.phase, phaseStartTick: frame.phaseStartTick,
     tick: frame.tick, actorId: frame.actorId, ownerLife: frame.ownerLife, nativeBodyReady: frame.nativeBodyReady === true,
+    nativePending: frame.nativePending === true,
     portStatus: port?.status ?? null, portCoolant: Number.isFinite(port?.coolant) ? port.coolant : 0,
     starboardStatus: starboard?.status ?? null,
     starboardCoolant: Number.isFinite(starboard?.coolant) ? starboard.coolant : 0, lanes });

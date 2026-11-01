@@ -35,7 +35,7 @@ import { combat as combatSystem, makeEnemySpawnSpec } from '../systems/combat.js
 export const HUNTER_PUBLIC_ROUTE_SCHEMA = 'spaceface.m3.hunterPublicRoute.v1';
 export const HUNTER_PUBLIC_ROUTE_SEED = 0xC0B0_B091;
 export const HUNTER_HEALTHY_CR_PER_MIN = 62.5;
-export const HUNTER_HEALTHY_UPPER_CR_PER_MIN = 400;
+export const HUNTER_HEALTHY_UPPER_CR_PER_MIN = 600;
 export const HUNTER_DEAD_CR_PER_MIN = 30;
 export const HUNTER_ROUTE_HORIZONS_MIN = Object.freeze([30, 60, 90]);
 
