@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { awaitRoundHandoff, screenshotHudOccluders } from '../scripts/player-truth/run.mjs';
+import { awaitRoundHandoff, roundHandoffSnapshot, screenshotHudOccluders } from '../scripts/player-truth/run.mjs';
 
 async function withPage({ phases, button = null, onClick = null }, run) {
   const previousWindow = globalThis.window; const previousDocument = globalThis.document;
@@ -18,15 +18,11 @@ async function withPage({ phases, button = null, onClick = null }, run) {
     },
   };
   const page = {
-    async waitForFunction(predicate, args) {
-      for (let turn = 0; turn <= phases.length; turn++) {
-        if (pending.length) setPhase(pending.shift());
-        const value = predicate(args);
-        if (value) return { jsonValue: async () => value, dispose: async () => {} };
-      }
-      throw new Error('fixture transition did not become available');
+    async evaluate(predicate, args) {
+      if (predicate === roundHandoffSnapshot && pending.length && (args?.includeButton || clicks.length)) setPhase(pending.shift());
+      return predicate(args);
     },
-    async evaluate(predicate, args) { return predicate(args); },
+    async waitForTimeout() {},
     locator() { return { filter: () => ({ first: () => publicButton }) }; },
   };
   try { await run({ page, state, clicks, setPhase }); }
@@ -106,6 +102,15 @@ test('an available control with a persistent click failure still reports the err
     const result = await awaitRoundHandoff(page, { previousWave: 1 });
     assert.equal(result.kind, 'launch-error'); assert.match(result.message, /persistent click failure/);
   });
+});
+
+test('handoff reports page evaluation failure instead of disguising it as a transition timeout', async () => {
+  const page = {
+    async evaluate() { throw new Error('renderer connection unavailable'); },
+    async waitForTimeout() {},
+  };
+  await assert.rejects(awaitRoundHandoff(page, { previousWave: 1, timeoutMs: 2 }),
+    /last evaluation failed: renderer connection unavailable/);
 });
 
 test('an ended run or exhausted sim cap leaves the public launch untouched', async () => {

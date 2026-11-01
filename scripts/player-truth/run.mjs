@@ -36,6 +36,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
 import { loadPlaywright } from '../lib/load-playwright.mjs';
+import { waitForPageCondition } from '../lib/playwrightCspPolling.mjs';
 import { BROWSER_LOSS_SETTLE_MS, chromeStderrNotes, classifyBrowserLoss, launchChromium, readRecentKernelOom, signalsSince, installSessionSignalGuard, keepHeadedWindowNormal } from './browser.mjs';
 import { startBenchServer } from '../lib/benchServer.mjs';
 import { fortifyBetweenRounds } from './fortify.mjs';
@@ -282,10 +283,8 @@ export async function awaitRoundHandoff(page, {
   const deadline = Date.now() + timeoutMs;
   const observe = async (includeButton) => {
     const remaining = deadline - Date.now(); if (remaining <= 0) return null;
-    const handle = await page.waitForFunction(roundHandoffSnapshot,
-      { previousWave, simLimit, includeButton }, { timeout: remaining }).catch(() => null);
-    if (!handle) return null;
-    try { return await handle.jsonValue(); } finally { await handle.dispose?.(); }
+    return waitForPageCondition(page, roundHandoffSnapshot,
+      { previousWave, simLimit, includeButton }, { timeout: remaining });
   };
   while (Date.now() < deadline) {
     const next = await observe(true); if (!next || next.kind !== 'launch') return next;
