@@ -75,6 +75,18 @@ export function stepEgressExits(state, shipLikeList = null, bus = null) {
       if (ours) { delete data.despawnAt; delete data._egressExitAt; }
       continue;
     }
+    // Mission-owned bodies (accepted bounty/patrol marks carry missionId/missionTag/
+    // missionPinned) are owned by the contract, not this ambient bound: a silent despawnAt
+    // expiry emits no entity:killed, so the slot stays issued-but-uncompletable and the
+    // contract parks forever (run 84: a fleeing Cinder Wasp stranded m_5 at 2/3). Their exit
+    // lands only after settlement — _handoffFleeingTarget strips these stamps on settle,
+    // which is what makes the hull takeable here. A stamp already placed releases the same
+    // way the wing's does.
+    if (data.missionPinned === true || (entity.flags && entity.flags.missionPinned === true)
+      || data.missionId != null || data.missionTag != null) {
+      if (ours) { delete data.despawnAt; delete data._egressExitAt; }
+      continue;
+    }
     if (ours || data.despawnAt != null) continue;
     if (ai.moraleImmune === true) continue;
     // Arena/survival cells are finite: a retreating cell must stay reachable or a round strands.

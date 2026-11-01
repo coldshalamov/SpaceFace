@@ -1807,7 +1807,14 @@ export const trafficRoleOps = {
   _deferOrdinaryCleanupClaim(target) {
     if (this._salvageSourceBinding(target)) return false; // authored source owner keeps its existing claim contract
     const state = this.state, player = state.entities?.get(state.playerId);
-    if (!player || player.alive !== true || !(player.hull > 0) || !target || target.alive !== true
+    if (!target || target.alive !== true) return false;
+    // A bound aftermath hull a live contract still retains is the contract's to lose:
+    // aftermathWrecks.gardenFeedMass refuses it to the Understory for the same reason —
+    // a cutter's claim here would fence the only deliverable and strand the pad sale.
+    const aftermath = this._registry?.get?.('aftermathWrecks');
+    if (aftermath && typeof aftermath.contractRetainedWreck === 'function'
+      && aftermath.contractRetainedWreck(target)) return true;
+    if (!player || player.alive !== true || !(player.hull > 0)
       || state.entities.get(target.id) !== target) return false;
     const physics = this._registry?.get?.('physics'), native = physics?._sg02;
     for (const a of Object.values(state.combat?.attachments?.byId || {})) {

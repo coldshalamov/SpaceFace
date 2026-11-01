@@ -225,6 +225,45 @@ Rows are the spec (`build_map.md` §31–§32; read each row's prose before brie
   **Run 5 evidence:** `flybyFocus:start` on the trainer `match=true` at t=308 while
   tethered — beat done, rail advanced to `burst`. The hour continues: burst → disengage →
   seam → dock → choice, with the rescue `shove` stage live alongside.
+  **Runs 16–37 — the "freeze" cracked, and it was never a freeze:** every prior stall at
+  t≈273 was the *player dying* during beat 2 (claimed salvage) — `pilot.step` early-returns
+  on `!alive`, so the trace went silent while the world kept simulating the full hour at
+  full CPU (heartbeat instrumentation proved ticks/simTime advancing, `alive=false hull=0`).
+  Real defects found and fixed in order: (a) the harness respawn binder listened on
+  `entity:killed`, which `beginPlayerDefeat` never emits for the player — now drives the
+  after-action `combat.recoverPendingPlayer()` contract on `player:death`
+  (`c7dbf4d3`); (b) the rescue beacon was a mass-1 dynamic body — any contact punted the
+  finish line off forever — pinned `dynamic:false` (`647d720a`); (c) the *fixed* beacon
+  then inherited `entity.radius=60` as solid collider, making pod-inside-60 physically
+  impossible — small solid core `radius:6` keeps it pinned while the ring stays open
+  space; grab completed in run 33 (`c3bdb432`); (d) the delivered pod's line anchored the
+  hull at v=0 through "Boost. Keep the speed." — boost stage cuts the tow first; (e) the
+  boost beat completes on the *verb* (`input.boost` held), not arrival — the pilot was
+  parking at the just-delivered beacon waypoint — it now holds boost on a long heading;
+  (f) `FIELD_FLAGS` was never set by the harness (defaults off for Tier-B goldens) — the
+  fields system was a strict no-op so well/repulsor/cone could never fire — production
+  profile now applied (`ce483d3e`); (g) the seam rock orbit: `flyTo` brake-lead at v≈62
+  needs ~77wu to stop vs a ~26-radius rock — early speed bleed lands the approach inside
+  scan range. Run 36 reached beat 9 `seam` at ~t=990, still flying.
+  **Runs 38–43 — field-strobe, runaway rock, and the choice-berth wall:** (h) the pilot
+  wrote `toggleClearingCone` every tick; the verb is a level-consumed *toggle* in
+  `fields._handleInput`, so the wedge strobed and stayed on — it shoved the seam rock
+  ~4 000 wu off its mark (run 38). Edge-fired once + released after the beat; (i) the
+  exiled rock then exposed a worse defect: a drifting tutorial body gets shelved to its
+  world record, which advances it *ballistically* — each offload cycle rematerialized it
+  kilometres further away (run 39: waypoint exiled 129 → 41 416 wu while the ship trailed
+  at 15 wu/s, an unbounded chase = a real first-hour wall). Pinned the spawned training
+  rock `dynamic:false` — same "finish line must not be punt-able" ruling as the rescue
+  beacon — and pinned the spec in the drill test (`812a5b21`, 7/7 + 23/23 green); (j) the
+  docked block sold, repaired and undocked without reading the board — the choice beat
+  completes on `mission:accepted` and its marker flips to the mission's foreign diamond,
+  so the pick branch under the `wp.onboarding` gate never ran (run 40: 260+ sim-s parked).
+  Work is now taken at the berth before casting off, the dock/choice beats run on the
+  beat line regardless of waypoint ownership, the `sold` followup line resolves to the
+  board, the board's offer list is read as `slots` (not `offers`), `services.acceptMission`
+  goes through the booted missions instance so a refusal retries the next offer, sealed
+  manifest freight is never sold mid-route, and after `_finish()` the pilot flies the
+  accepted contract's docked-delivery leg instead of re-docking the same station forever.
   **Run 5 named the rescue-wall defect (fixed, commit follows probe):** the run parked at
   `resc=shove` ("Put the scout into the asteroid") for ~800 sim-s. Live cast dump: the scout
   is a *fleeing* drone and the escape predicate measured only scout→pilot distance — a chased
@@ -260,6 +299,267 @@ Rows are the spec (`build_map.md` §31–§32; read each row's prose before brie
   dead via closing-rate detection then *ratchets*: park, let the winched pod glide
   ~line-length forward of the hull, bite closer, park again — the pod only needs to
   graze the 60-ring with the line held. Commits `0e883dec`→`35332cd5`, `647d720a`.
+  **Runs 44–83 — the Furnace Detail gauntlet (seed 4242, actual-game harness):** the
+  campaign's Book-1 worksite (mites + CR-FEED disposal pods) produced the deepest wedge
+  chain of the route, each layer exposing the next: (a) `furnaceIntake` and `bombs`
+  were missing from the harness registry — production-manifest systems, so the mouth
+  ring could never eat pods headless (parity gap, registered in manifest order);
+  (b) mites are `collides:false` fauna — projectile sweeps skip them; only blast
+  damage lands, so the waypoint's own "buy frag at Tethys" resupply line is real
+  gameplay, not flavor (mite-phase drop-and-veer: lead the drop by the 6 s fuze,
+  sprint 110+ out, 30 dmg/blast vs 60-hull mites — one blast caught the nested
+  cluster); (c) `payload` bodies are weapon-immune — the authored verb is towing
+  each pod through the CR-FEED lip (`furnaceIntake` eats any edible body inside 90);
+  (d) three pursuit walls in a row — `flyTo`'s turn-radius brake parked at a stable
+  d≈215/v≈43 equilibrium on a drifting pod, then a 320-wu two-branch limit cycle,
+  then a *saturating* intercept lead (`min(d/60,30)`) that aimed 3600 wu past the
+  pod forever — the lead is now intercept time `d/max(v,80)`; (e) the Furnace
+  ledger now owns navigation while any lot is unresolved — in run 77 a second
+  contract's route dragged a tethered pod through three gate jumps at 9000 wu/s;
+  no tethered body ever rides a gate now (`cmd.cut` before every jump request);
+  (f) pods blast-punted across the Voronoi cell line can't be fed or frag-killed
+  (220 hull vs 30-dmg frags) — the line crosses cell boundaries without a gate, so
+  the recovery is latching the stray in its own cell and hauling it home; checking
+  the tow before the hop check keeps the lead-crossing ship from cutting its own
+  line at every boundary; (g) broke/poor legs: a credits-refused charge parks a
+  gate route forever — `noGateFunds` walks the contiguous cell map instead, and a
+  `low_fuel` abort berths at the sector's refuel station; (h) aiming AT a
+  foreign-cell target parks at the arrive band on the near side of the cell line —
+  every fallback flight aims 400 wu past the mark; (i) multi-hop routing: the
+  cross-sector leg plots `world:requestRoute` and jumps the NEXT leg only —
+  requesting a two-hop destination directly aborts `not_a_neighbor` (run 75:
+  station_expanse, 21k parked aborts); (j) engage targeting: nearest-needed over
+  the waypoint pin (a contract's `targetEntityIds` lists every live mark — run 83
+  chased the pinned wasp's 16 km retreat while two sat at the site), and the
+  45–60 wu/s small-body band is close-pursuit only, past ~900 wu it runs down.
+  **Run 83 evidence:** mites 4/4 by frag blasts; pod #1645 fed in Ceres; pod #1690
+  hauled Vesta Forge→Ceres and fed; pod #1586 hauled Tethys Junction→Helios→Ceres
+  and fed at t=1346; `m_4` settled, story advanced to "Tethys board — Cinder
+  marks", m_5 (b2:cinder) accepted and the ship gate-hopped Tethys→Vesta→Charon
+  Expanse cleanly. Every Furnace lot resolved `received`, zero lost.
+  **Runs 85–93 — the Cinder Wasp delivery chain (seed 4242, actual-game harness):**
+  m_5's authored third act (3 wasps → marked evidence hull → Rook's pad) produced
+  a four-layer wedge chain, each layer one owned fix: (a) **egress lifecycle
+  defect** — `stepEgressExits` silently retired fleeing ships 960+ WU out with no
+  `entity:killed`, so wasp #5929 escaped the worksite, died invisibly, and the
+  contract parked at 2/3 forever (`cinderIssuedSlots` blocked respawn); mission-
+  owned bodies are now exempt from the egress bound — the mirror of
+  `_handoffFleeingTarget`, which strips pinning only on settlement — with 12/12
+  focused tests green; run 85 hunted the same wasp from d=7287 to kill and the
+  route reached 3/3; (b) **invulnerable marked hull** — the evidence wreck pins
+  at hull 1 under sustained fire by design; the authored path is tether→pad→
+  hold, not kill; (c) **harness production-parity gap** — `rookBooth` was
+  registered in `registry.js` (immediately before `kesslerScale`) but missing
+  from the harness system list, so the offer/dwell/`_closeSale` receipt chain
+  could never run headless; registered at production order and `coreSystem`
+  supplies `helpers.removeEntity` normally; (d) **tether-event contract drift**
+  — the pilot listened for historical `tether:attached`/`tether:broken` while
+  `tetherGameplay` emits `tether:latched`/`tether:broke`, leaving `lineAttached`/
+  `latchedId` dead; fixed to listen for the live names with owner (`sourceId`/
+  `actorId` vs `state.playerId`) and flail guards, plus the sticky
+  `tetherMode:'nearest'` from pod-phase pulses was cleared to the scored
+  `aimWorld`/`aimIntentActive` path so the receipt selects the marked hull by id
+  (`previewMatched:true`), not the nearest companion shard; (e) **target
+  re-selection instability** — `entityList.find(markedHull)` could rename the
+  target between ticks (three marked wrecks), so a "wrong body" guard cut the
+  correct line 300+ times; the leg now prefers the latched hull and otherwise
+  picks the nearest marked wreck deterministically.
+  **Run 93 evidence:** scored latch on marked hull #15827, towed hull→pad
+  2294→68 inside the ring at shipV≤6, booth offer/dwell/`_closeSale` consumed
+  the body (`entity_destroyed` + `rookWreck:delivered`), `m_5` settled
+  (`missions=none`), and the story advanced to "Compost Run — Rookside
+  Receiving" at t=1638 with the ship already en route.
+  **Runs 93–104 — the post-sale `world.step` `unreachable` trap (deterministic,
+  seed 4242):** every run that cleared the sale panicked ~2 s later inside
+  Rapier stepping (runs 93/94/98/100/103; tick ≈98058). Call-site probes named
+  `world.step` itself while joint/collider/parent/record validity sweeps stayed
+  clean — not a stale handle. The burst dump at the fatal step showed 3 074
+  records: **3 002 identical `ship_kestrel` wrecks, 2 938 at one exact point**
+  ((10652,29072) — the site anchor plus the coincident-spawn ladder's maximum
+  64×2.5 WU escape), all `collides:true` dynamic 12-collider measured skins.
+  Root cause: the M11 player-hull echo minted at `preserved_cockpit` (one
+  wreck bound to the player's recorded hull loss) shelved the moment the
+  player left the exit disc — the lean far row drops `hullEchoLossId`/`siteId`/
+  `scanLabel`/`salvagePool`, so `tickPlayerHullEcho` re-minted a missing echo
+  every tick and the shelve pass took each copy: ~1 anonymous durable twin row
+  per tick for thousands of ticks, all at the authored point. The accelerating
+  post-sale ship swept the unbounded promote disc over the point, minted the
+  whole coincident heap in one adoption pass, and the concentric-collider
+  contact set detonated the solver (the Package D class the coincident-spawn
+  ladder exists to prevent — its 64-nudge cap was long exhausted). Owned fix
+  in `farActorTable.js`, matching the D89/D141/D189 precedent: (a)
+  `shouldVirtualizeFarActor` exempts `data.hullEchoLossId` — the echo is one
+  resident owner-keyed body and never shelves, killing the mint/shelve
+  factory; (b) `restoreFarActorTable` drops `isStrippedHullEchoTwin` rows
+  (wreck + `persistenceOwner:'alienEcology'` + no `hullEchoLossId` — a
+  signature exclusive to this factory) so pre-fix polluted saves heal at load.
+  Focused regression `test/hull-echo-shelf.test.mjs` (4/4): residency
+  exemption, twin signature, restore eviction, and a 40-tick
+  `tickPlayerHullEcho`+`tickFarActors` loop asserting one live echo and zero
+  rows. **Run 104 evidence:** at the historic fatal tick `recs=59 /
+  worldBodies=192 / worldColliders=831` (pre-fix: 3 074 / 3 190 / 36 925) —
+  no burst, no churn, no trap; the route crossed the whole garden/ecology
+  region cleanly. Residual risk noted, not fixed: the coincident-spawn
+  ladder still stacks >64 same-point bodies onto one slot if some future
+  population authors them (no owned-path population approaches it now), and
+  `tickFarActors`' promote loop remains unbounded. Route tail (3rd wasp hunt
+  → sale → ending) continuing under the same run.
+  **Runs 104–106 — two more owner-side defects on the same leg:**
+  (a) the third Cinder Wasp fled at a sustained ~470 WU/s (reaction-drive
+  `travelCeiling`) versus the pilot's ~302 WU/s — a required mark the player
+  could never catch; the egress bound that would normally resolve the flee is
+  deliberately exempt for mission-owned bodies, so the contract parked at 2/3
+  forever. `observeCinderEscape` in `cinderRoute.js` now resolves a
+  sustained flee + ≥960 WU separation for the egress fade window as a lane
+  clearance, releases the hull to the ambient bound, and counts the escaped
+  slot as hull-lost for the exhausted settlement (8/8 focused tests; egress +
+  story suites green). Run 106: the third slot cleared by escape at t≈1509,
+  m_5 settled, Rook sale closed, story advanced to Compost Run. (b) a second
+  clone factory: aftermath wreck-field ecology re-minted its scavenger slot
+  ~1/tick (~14 000 ship mint→virtualize pairs over the wasp leg). The roster
+  owner binds `fieldId::slotId → entityId` and `_materializeRoster` re-mints
+  whenever the bound body is absent — a shelved scavenger read as vacant, and
+  the lean far row dropped `wreckFieldId`/`wreckEcologyRole`/`wreckEcology`/
+  `scavengerWork`, so a promoted shell would return a stranger and unbind.
+  Fixed owner-side: `leanIdentityData` preserves the ecology identity on the
+  row, `_resolveEcologySlot` counts a far row carrying the field's identity
+  as occupied (the body promotes back into the same slot), the scavenger
+  drive loop only steers live bodies, and `_decayField` drops the shelved
+  row with the slot; sector-exit keeps a shelved-backed bind so re-entry
+  cannot mint a twin either. Focused regression
+  `test/aftermath-ecology-shelve.test.mjs` (3/3): shelve → no twin for 30
+  ticks → promote restores the same id; sector exit/re-entry round-trips the
+  shelved occupant; decay leaves no tombstone row. Far-actor + ecology +
+  scavenger-work suites green (55/37/69); three remaining scavenger-loop
+  failures reproduce at plain HEAD — confirmed foreign, not this fix.
+  **Run 107 on-route proof: the whole historical churn window (ticks
+  ~96 000–150 000) minted exactly 3 scavengers, each shelved once and never
+  re-minted — vs ~14 000 mint→virtualize pairs pre-fix.**
+  **Runs 109–113 — the Compost leg itself needed three layers:**
+  (a) harness parity: `understoryGardens` (the receiver's registered owner)
+  was missing from the playthrough manifest — the b2 waypoint resolved but
+  no garden entity ever spawned (`garden=none`, ship parked at the
+  approach). Registered at its production position after `lootShards`;
+  the harness now runs 59 systems. (b) the authored receiver only eats
+  *player-fed* mass: `tether:released` stamps `lastThrowerId` on the freed
+  body (the understory's own release listener), jettisoned pods carry
+  `thrownBy` at spawn — so the pilot tows an edible body inside the mouth,
+  cuts, and backs the hull out of the receiver's 76 WU spawn-clearance core
+  until the swallow lands. Aftermath-owned wrecks are valid candidates;
+  the owner's `consumeByGarden` gate refuses claimed/durable/mission
+  freight on its own, and ecology inhabitants (`wreckFieldId`) stay
+  excluded so a feed can't re-vacate a roster slot. (c) the Scale 4
+  choreography: a wide entry crossed the pad 91 WU off-axis — `spawnD`
+  never entered the jettison window, the miss bail pushed deeper into the
+  rack cluster that pinned the hull, and the wedge recovery only existed
+  inside the run phase (run 110: 875 s parked at v≈0). Fixed: the run aim
+  now biases ~half the lateral error past the axis so the crossing lands
+  at the pad, a +across miss retreats over the open corridor instead of
+  deeper into the furniture side, and a sustained v<12 pin anywhere in
+  the worksite rocks the hull off the prop (strafe + alternating escape
+  sides) before re-staging. Route re-verification in flight as run 115.
+  **Runs 116–120 — heat ledger truth on the tutorial lane:** tutorial-era
+  shots on lawful, non-hostile bodies minted unprovoked-hit chips toward a
+  WANTED the authored lesson never intended; `heat.js` now exempts the
+  onboarding victim set (trainer, Claim-Jumper, wing) while haulers and
+  set dressing still price shots, and the pilot's fire gate refuses
+  lawful/non-hostile bodies outside that window (38/38 heat + 4/4 new
+  focused green; zero `[heat]` lines through onboarding and both gate
+  transits in run 120). Run 121 then proved the *designed* heat works: a
+  genuine smuggling bust at Ceres (+0.184, restricted salvage-bay stack)
+  minted WANTED — but the pilot jumping sectors froze the warrant in its
+  home zone, a real soft-lock (heat only cools inside the crime sector,
+  outside the search circle). Owned fix is a harness-side cooling leg:
+  wanted preempts every hop, returns to the crime sector, holds beyond the
+  circle until the escape clock clears (run 121: bust t=862, cleared 0 by
+  t=873, disposal leg resumed). A second authored conviction followed in
+  Charon — `faction hostile` +0.20 after the wasp kills dropped the faction
+  below its aggro threshold — same recovery, then Rook's sale settled at
+  the boundary.
+  **Runs 122–123 — Compost candidate truth:** the feed leg chased a
+  5 000-mass asteroid 19 000+ WU out — `asteroid` is a
+  `LARGE_BRIDLE_ENDPOINT_TYPE` (fixed anchor like stations/planets), never
+  towable, and `dynamic===false` bodies share the trap. Candidate
+  selection now excludes anchor-type and non-dynamic bodies; run 123 found
+  real wreck #5614 (mass 100), towed it in, and the garden ate it
+  (`target_lost`, waypoint rolled to The Nest at t=1890). One authored
+  subtlety confirmed, not changed: the receiver's site-clear core counts
+  the player ship, so cut-then-back-out is the required feed.
+  **Runs 124–125 — two wedges into the Nest leg:** (a) the garden's 109.6 WU
+  static hull is a solid bowl — after the eat the braking ship froze 34 WU
+  inside the back wall where every exit bearing deepens the contact
+  (generic fix: track last position outside all static-solid envelopes;
+  sustained v≈0 inside one flies back to that open point — the way in is
+  the way out; gated off while tethered so the compost tow-in never fires
+  it). (b) the generic waypoint handler's `arrive:200` parked 200 WU out —
+  outside the Nest's 140 WU admission radius forever. The dedicated nest
+  leg now stops at the approach, waits out `tickNestVisit` pacing
+  (`tension_recovery` is the earned post-fight arc — run 129 waited
+  t≈2100→2382 through recovery/aftermath/quiet, by design), and departs
+  >3 000 WU once live.
+  **Runs 126–128 — the live-encounter virtualization defect:** with
+  admission fixed, the departure leg exposed the real engine bug — at
+  ~2 000 WU out the far-actor table shelved and destroyed the *live* Nest
+  cast (carrier 5023, doors, wasps): `the_nest` tick saw no canonical
+  carrier, aborted `unresolved_nest_carrier`, deleted the live row, and
+  the generic abort reason isn't a Nest outcome so no receipt ever wrote —
+  the b2 visit orphaned `active` and Elroy could never post. Owned fix in
+  `shouldVirtualizeFarActor`: entities bound in
+  `encounterDirector.squadMembership` or stamped `data.nestEncounterId`
+  never virtualize while their live encounter owns them; ordinary far
+  actors still shelf (19/19 far-actors incl. the new live-cast residency
+  regression). Run 128 proved the cast stays resident — and exposed one
+  more authored-edge soft-lock upstream: an escaped furnace pod on a
+  ballistic track faster than cruise (~183 vs ~180 WU/s) is uncatchable
+  forever and nothing ever marks an escaped lot `lost`, so the worksite
+  ledger could never close (run 128 chased pod #813 out to 110 000 WU and
+  growing). The pilot's intercept now boosts when aligned and beyond
+  ~700 WU (converged d=703→115 in 14 s in run 129).
+  **Run 129 — the complete route lands, seed 4242:** clean onboarding, no
+  tutorial heat; Scale 4 settled; furnace 4/4 incl. the boosted pod catch;
+  Ceres smuggling bust recovered in-sector; Cinder 3/3 + marked hull →
+  Rook sale; compost feed credited (`understory:playerGrowth`); Nest
+  admission after the pacing hold, `the_nest` live, cast resident while
+  the ship departed past the 3 000 WU escape threshold → `carrier_escapes`
+  receipt (m_6 posting is the dependency proof); Elroy `6225` engaged and
+  killed t≈2480 → `force` outcome → `mission:completed` → `next: 3`;
+  Book 3 `campaign47a:b3:berth` tow mission live at t≈2529 — the whole
+  Book 2 chain through the ending on the ordinary route, zero wedge
+  fires, zero errors. Player-truth adventure + swarm gates attached as
+  `.devshots/player-truth/nov1-route-*/`.
+  **Player-truth gate investigation (nov1 → rerun):** the first
+  adventure gate failed the route at `Universe seed mismatch: requested
+  4242, launched 2444950233`, run under ~9 s p99 frames while run 129
+  itself held the box (~2 900 CPU-s). Isolated reproduction on a quiet
+  box proved the path correct end to end: bench probe
+  (`tools/ui-bench.html?screen=newGame`) emits `game:new {seed:4242}`;
+  real-page probe launches flight with `probeState` reporting
+  `seed:4242, runSeed:0` — `selectAuthoritativeRunSeed` reads
+  `meta.seed` for adventure (`run.seed` is the run-envelope seed, 0 on
+  this path). The quiet-host gate rerun cleared the seed boundary and
+  completed route PASS (intro → menu → first-run → mode select →
+  preparation → spawn → play). Its remaining `player_control` FAIL was
+  a trace-sampling artifact, not dead input: the KeyD window
+  (sim 16.35→17.35) contains exactly one pose sample at both ends so
+  `probeDead` measured 0 rad, while the trace's own samples show rot
+  0 → 0.243 at sim 16.62 → **3.13 rad** by sim 18.13 — a full ~180°
+  yaw answer; spawn thrust measured Δv=165. The host is diagnostic-only
+  (SwiftShader software GL, `contended: true`); Oct artifacts on this
+  box carry the same chronic UNKNOWNs (readability/frame_time/
+  offscreen_marker) with player_control passing when sampling is dense.
+  The swarm rerun on the freed box lands the product-side verdict:
+  `player_control PASS — 0/6 probes dead · 0 pinned spans`, route /
+  round_resolution / kills_before_input / round_transitions /
+  rounds_reached round 3 all PASS; only `readability` and `frame_time`
+  stay UNKNOWN ("software-renderer evidence only" — SwiftShader
+  ceiling, identical to the Oct artifacts). The swarm-idle pass failed
+  at startup admission (`GAME_START_FAILED: first world picture`),
+  the same marginal-host presentation race that pass had already
+  cleared in the contended first run. Product-side signal is clean;
+  the binding green belongs to the designated quiet host — this box is
+  diagnostic-only by the harness's own contract.
+  Binding verdict artifacts: `.devshots/gate-adventure-rerun.log` and
+  `.devshots/gate-swarm-rerun.log` (+ `scratch/player-truth/*/`).
 - **Audit-fix packets landed 2026-10-29/30:** encounter bookkeeping `37e1ebe0d24`, heat victim
   `d79feb41121`, mining/careers `bfa9ec3b6a9`, save restore `7b4cced23e8`, unique-wreck persistence
   `bd978111178`, special500 registered in production `6ca62459ba5`, c47a truth `97283ecd9c1`,

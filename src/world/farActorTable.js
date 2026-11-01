@@ -72,6 +72,19 @@ export function isAnonymousMorrowTwin(candidate) {
   return true;
 }
 
+// Same heal class for the player-hull echo: pre-fix echo wrecks shelved without
+// hullEchoLossId (the lean row drops it), so old saves carry one anonymous wreck row per
+// shelve tick — thousands of identical-position clones of the single bound echo.
+// materializePlayerHullEcho re-mints the real body deterministically, so the rows are
+// spent copies. The signature is exclusive: playerHullEcho.js is the only 'alienEcology'
+// wreck spawner, and post-fix echoes never reach the table.
+export function isStrippedHullEchoTwin(candidate) {
+  if (!candidate || typeof candidate !== 'object') return false;
+  if (candidate.type !== 'wreck') return false;
+  const data = candidate.data && typeof candidate.data === 'object' ? candidate.data : {};
+  return data.persistenceOwner === 'alienEcology' && data.hullEchoLossId == null;
+}
+
 /** Bench A/B: production default ON. Quiet latch skips shelve-candidate walk when far empty. */
 let FAR_EMPTY_QUIET_LATCH = true;
 export function setFarEmptyQuietLatchForBench(enabled) {
@@ -213,6 +226,7 @@ export function restoreFarActorTable(state, data) {
     version: Number.isSafeInteger(data.version) ? data.version : 0,
     rows: data.rows.filter((row) => row && row.alive !== false && Number.isSafeInteger(row.id)
       && !isWorldSiteStaticAnatomy(row) && !isAnonymousMorrowTwin(row)
+      && !isStrippedHullEchoTwin(row)
       // These transient parts re-derive from their owner's bounded book. A legacy lean row
       // has lost its sail/collector/glass identity and cannot rejoin that cohort on promotion.
       && row.data?.persistenceOwner !== BORROWED_SUN.owner),
@@ -340,6 +354,13 @@ export function shouldVirtualizeFarActor(entity, state) {
   // respawns the full hulk on sector entry. The lean far row drops markerId, so a shelved wreck
   // would promote as an unbindable shell duplicating the marker's own respawn (D89).
   if (data.markerId) return false;
+  // The player-hull echo (M11) is owner-keyed the same way: tickPlayerHullEcho re-mints a
+  // missing echo every tick, while the lean row drops hullEchoLossId/siteId/scanLabel — so a
+  // shelved echo minted one anonymous durable twin per tick, piling thousands of identical
+  // wreck rows on the site anchor. A single approach promotes the whole coincident heap
+  // inside the coincident-spawn ladder's cap and the solver detonates (Package D class).
+  // One small body in one sector; it stays resident.
+  if (data.hullEchoLossId != null) return false;
   // A physical world one-off's body belongs to the dressing materializer the same way:
   // _spawnWorldOneOffs re-mints/re-decorates by recordId on every sector materialize. The lean
   // row drops worldOneOff/oneOffId/name/masslineTetherable, so shelving both degrades the
@@ -364,6 +385,15 @@ export function shouldVirtualizeFarActor(entity, state) {
   if (data.activityActorSlotId || data.wingman || data.role === 'wingman') return false;
   if (flags.tethered || data.tethered) return false;
   if (state.player && state.player.tether && state.player.tether.targetId === entity.id) return false;
+  // A live encounter owns its cast: the lean far row drops the binding stamps
+  // (nestEncounterId/nestSlot/roles), the visit's own snapshot can never adopt a
+  // shelved hull back, and the encounter aborts 'unresolved_*' — orphaning the
+  // authored visit mid-conflict (run126: the nest carrier, both blast doors,
+  // and the wasps virtualized while the player was still in-sector, and the
+  // Book 2 visit sat in 'active' forever after).
+  const _farDir = state.encounterDirector;
+  if (_farDir && _farDir.squadMembership && _farDir.squadMembership[entity.id] != null) return false;
+  if (data.nestEncounterId != null) return false;
   const activity = entity.activity;
   if (!activity || !activity.simTier) return false;
   if (activity.pinnedExact || isExactTier(activity.simTier)) return false;
@@ -434,6 +464,16 @@ function leanIdentityData(entity) {
   if (d.jobId != null) out.jobId = d.jobId;
   if (d.trafficRole != null) out.trafficRole = d.trafficRole;
   if (d.wreckClass != null) out.wreckClass = d.wreckClass;
+  // Aftermath wreck-field ecology inhabitants (scavenger/squatter/trap) stay virtualizable by
+  // design, but the roster owner re-mints a missing body every tick — the row must carry the
+  // ecology identity, or the promoted shell reads as a stranger: the slot unbinds it and mints
+  // a twin at ~1/tick while the shelved rows accumulate (D-churn, run 104/106: ~14k ships).
+  if (d.wreckFieldId != null) {
+    out.wreckFieldId = d.wreckFieldId;
+    if (d.wreckEcologyRole != null) out.wreckEcologyRole = d.wreckEcologyRole;
+    if (d.wreckEcology && typeof d.wreckEcology === 'object') out.wreckEcology = { ...d.wreckEcology };
+    if (d.scavengerWork && typeof d.scavengerWork === 'object') out.scavengerWork = { ...d.scavengerWork };
+  }
   if (d.homeSectorId != null) out.homeSectorId = d.homeSectorId;
   if (d.sectorId != null) out.sectorId = d.sectorId;
   if (d.worldSiteId != null) out.worldSiteId = d.worldSiteId;
@@ -752,7 +792,7 @@ export function enforceFarRowBudget(state) {
   return evicted;
 }
 
-function removeFarRecord(table, rec) {
+export function removeFarRecord(table, rec) {
   if (!table || !rec) return false;
   const idx = table.rows.indexOf(rec);
   if (idx >= 0) table.rows.splice(idx, 1);

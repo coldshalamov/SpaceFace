@@ -1,6 +1,7 @@
 import { registerMassScaleTow } from './cargoCustody.js';
 import { authoredStarterSite, registerStarterBuoyTow } from '../missions/starterWorkday.js';
-import { authoredCinderRoute, cinderTargetOwner, cinderAvailableSlots, cinderWaspPosition, stampCinderWasp } from '../missions/cinderRoute.js';
+import { authoredCinderRoute, cinderTargetOwner, cinderAvailableSlots, cinderWaspPosition, stampCinderWasp, observeCinderEscape } from '../missions/cinderRoute.js';
+import { fleeOrderActive, EGRESS_DISTANCE_WU, EGRESS_FADE_S } from '../ai/egressExit.js';
 import { syncFurnaceWorksite } from '../missions/furnaceWorksiteRuntime.js';
 // Row 413 extraction — methods moved verbatim out of missions.js;
 // spread back onto the missions object, so `this` still binds to the system at call time.
@@ -454,6 +455,55 @@ export const missionSpawningOps = {
       armed++;
     }
     return armed;
+  },
+
+  /**
+   * Egress-exit parity for a contract-owned mark (PQ-206.02's bound deliberately cannot take
+   * mission hulls — their exit is the contract's to make). A fleeing Cinder Wasp drives at
+   * travel speed (~470 WU/s) while the player's ship tops out lower, so beyond the bound the
+   * chase is mathematically dead and the contract would park forever with the slot stuck
+   * issued-but-uncompletable. Same answer the bound gives: sustained flee + separation for the
+   * fade means the escape landed. A lane-clearance contract counts it as a lane clearance —
+   * observeCinderEscape records the slot, and this releases the hull to the ordinary bound,
+   * which stamps its own exit on the next pass. Re-closing inside the bound cancels the
+   * escape exactly like the ambient path's stamp release.
+   */
+  _resolveEscapedCinderTargets(m, state = this.state) {
+    if (!authoredCinderRoute(m) || m.status !== 'active') return 0;
+    const player = state && state.entities && state.entities.get(state.playerId);
+    if (!player || player.alive === false || !player.pos) return 0;
+    const bound2 = EGRESS_DISTANCE_WU * EGRESS_DISTANCE_WU;
+    const now = Number(state.simTime) || 0;
+    let resolved = 0;
+    for (const id of [...(m.targetEntityIds || [])]) {
+      const ent = state.entities.get(id);
+      const data = ent && ent.data;
+      if (!ent || ent.alive === false || !data || !ent.pos) continue;
+      const dx = ent.pos.x - player.pos.x;
+      const dz = ent.pos.z - player.pos.z;
+      const separated = dx * dx + dz * dz >= bound2;
+      if (!fleeOrderActive(data.ai) || !separated) {
+        if (Number.isFinite(data._cinderEscapeAt)) delete data._cinderEscapeAt;
+        continue;
+      }
+      if (!Number.isFinite(data._cinderEscapeAt)) {
+        data._cinderEscapeAt = now + EGRESS_FADE_S;
+        continue;
+      }
+      if (now < data._cinderEscapeAt) continue;
+      if (!observeCinderEscape(this, ent)) continue;
+      // Release the hull to the ambient egress bound — contract identity stripped, the next
+      // scan stamps despawnAt on it like any other escapee.
+      data.missionPinned = false;
+      data.missionId = null;
+      data.missionTag = null;
+      delete data.missionTargetSlot;
+      if (ent.flags) ent.flags.missionPinned = false;
+      if (data.flags) data.flags.missionPinned = false;
+      delete data._cinderEscapeAt;
+      resolved++;
+    }
+    return resolved;
   },
 
   /**

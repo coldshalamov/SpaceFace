@@ -107,6 +107,34 @@ test('protected hulls never egress: moraleImmune, arena survival, encounter-owne
   for (const e of cases) assert.equal(e.data.despawnAt, undefined, `entity ${e.id} must not egress`);
 });
 
+test('mission-owned bodies never egress: their exits belong to the contract', () => {
+  const cases = [
+    ship(30, { pos: { x: 2000, z: 0 }, ai: { forceFlee: true }, data: { missionPinned: true, missionId: 'm_5' } }),
+    ship(31, { pos: { x: 2000, z: 0 }, ai: { fsm: 'flee' }, data: { missionTag: 'm_5' } }),
+    ship(32, { pos: { x: 2000, z: 0 }, ai: { forceFlee: true }, data: { missionId: 'm_5' } }),
+  ];
+  cases[1].flags = { missionPinned: true };
+  const state = makeState({ entities: cases });
+  stepEgressExits(state, state.entityList, makeBus());
+  for (const e of cases) {
+    assert.equal(e.data.despawnAt, undefined,
+      `entity ${e.id}: a fleeing mission mark must stay reachable — the contract owns its exit`);
+  }
+});
+
+test('a stamp placed before pinning releases once the contract owns the body', () => {
+  const mark = ship(33, { pos: { x: 1500, z: 0 }, ai: { forceFlee: true } });
+  const state = makeState({ entities: [mark] });
+  stepEgressExits(state, state.entityList, makeBus());
+  assert.ok(mark.data.despawnAt != null);
+  mark.data.missionId = 'm_5';
+  mark.data.missionPinned = true; // contract stamped the hull after the bound saw it
+  state.tick += EGRESS_SCAN_TICKS;
+  stepEgressExits(state, state.entityList, makeBus());
+  assert.equal(mark.data.despawnAt, undefined);
+  assert.equal(mark.data._egressExitAt, undefined);
+});
+
 test('encounter roster membership is protected even without a data marker', () => {
   const scripted = ship(20, { pos: { x: 2000, z: 0 }, ai: { forceFlee: true } });
   const state = makeState({ entities: [scripted], live: { enc_1: { phase: 'conflict', ids: [20] } } });

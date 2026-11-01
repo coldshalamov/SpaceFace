@@ -980,6 +980,19 @@ function killClassMultiplier(victimClass) {
 
 function isWantedHeatVictim(state, payload, victimId) {
   if (victimId != null && state && victimId === state.playerId) return false;
+  // Onboarding's scripted target actors (the flight trainer, the gunnery buoy,
+  // the Claim Jumper and its wing) are the lesson's own target dummies — the
+  // tutorial literally orders shots at them ("Fire a short burst into the
+  // raider"), and their passive ai flags would bank permanent suspicion residue
+  // for obeying the teacher. A kill stays adjudicated by lawSecurity as ever;
+  // unprovoked-hit chips are the class that must never mint on the training
+  // hulls. Set dressing (the raid hauler, the throw rock) still prices shots —
+  // nothing in the script tells the player to fire on the bystander.
+  const victim = victimId != null && state && state.entities && typeof state.entities.get === 'function'
+    ? state.entities.get(victimId)
+    : null;
+  const vd = victim && victim.data;
+  if (vd && (vd.onboardingTraining === true || vd.onboardingRaid === true || vd.onboardingRaidWing === true)) return false;
   const type = wantedHeatVictimType(state, payload, victimId);
   if (type && !WANTED_HEAT_VICTIM_TYPES.has(type)) return false;
   return true;

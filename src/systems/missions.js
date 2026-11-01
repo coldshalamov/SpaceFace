@@ -1918,6 +1918,7 @@ export const missions = {
       }
       if (m.type === 'bounty_hunt' || m.type === 'patrol_clear') {
         this._armAcceptedCombatTargets(m, state);
+        this._resolveEscapedCinderTargets(m, state);
       }
       if (m.type === 'bounty_hunt' && m.storyTarget) {
         this._maybeMarkHail(m, state);

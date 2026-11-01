@@ -31,6 +31,7 @@ import {
   causeContractOffer,
   normalizeCausalAftermath,
 } from '../world/encounterCausality.js';
+import { getFarActor, removeFarRecord } from '../world/farActorTable.js';
 
 const STATE_VERSION = 3;
 const MAX_PER_SECTOR = 8;
@@ -1283,7 +1284,11 @@ export const aftermathWrecks = {
       for (const slot of field.roster || []) {
         if (!slot || slot.role !== 'scavenger' || slot.status !== 'live') continue;
         const entity = this._resolveEcologySlot(field, slot);
-        if (entity) this._driveScavenger(state, field, entity);
+        // A shelved occupant resolves to its far row — it owns the slot but has no live
+        // body to steer, so the work loop only drives entities that are actually live.
+        if (entity && entityFor(this.state, entity.id) === entity) {
+          this._driveScavenger(state, field, entity);
+        }
       }
     }
   },
@@ -2190,6 +2195,18 @@ export const aftermathWrecks = {
     // completion releases any unsold survivors; eating them early must not strand Rook.
     if (cinderRetentionIds(this.state, marker).has(markerId)) return null;
     return entity.mass;
+  },
+
+  /** Read only: is this bound wreck's marker still retained by a live contract — the
+   *  Cinder route's marked tow choices. The same ownership law gardenFeedMass enforces
+   *  on the Understory side (line above) applies to ambient salvor claims: a cutter
+   *  staking the contract's only deliverable hull strands the pad sale forever. */
+  contractRetainedWreck(entity) {
+    const data = entity && entity.data;
+    const markerId = data && data.markerId;
+    if (!markerId || !isBoundWreck(entity, markerId)) return false;
+    const marker = this._markerById(markerId);
+    return !!marker && cinderRetentionIds(this.state, marker).has(markerId);
   },
 
   /**
@@ -3137,11 +3154,16 @@ export const aftermathWrecks = {
     const entityId = this._ecologySpawned.get(ecologySlotKey(field.fieldId, slot.id));
     if (entityId == null) return null;
     const entity = entityFor(this.state, entityId);
-    if (!isWreckEcologyInhabitant(entity, field.fieldId)) {
-      this._unbindEcologyKey(ecologySlotKey(field.fieldId, slot.id));
-      return null;
+    if (isWreckEcologyInhabitant(entity, field.fieldId)) return entity;
+    // Virtualized is not gone: a shelved inhabitant still owns its slot. The lean far row
+    // carries the ecology identity (leanIdentityData preserves it), so the body promotes
+    // back intact on approach instead of being re-minted every materialize tick.
+    const shelved = entity == null ? getFarActor(this.state, entityId) : null;
+    if (shelved && shelved.alive !== false && isWreckEcologyInhabitant(shelved, field.fieldId)) {
+      return shelved;
     }
-    return entity;
+    this._unbindEcologyKey(ecologySlotKey(field.fieldId, slot.id));
+    return null;
   },
 
   _noteInhabitantGone(entityId) {
@@ -3174,7 +3196,15 @@ export const aftermathWrecks = {
     for (const field of Object.values(own.ecology || {})) {
       if (!field || (sectorId && field.sectorId !== sectorId)) continue;
       for (const slot of field.roster || []) {
-        this._unbindEcologyKey(ecologySlotKey(field.fieldId, slot.id));
+        const key = ecologySlotKey(field.fieldId, slot.id);
+        // A shelved occupant's far row survives the sector swap: keep the bind so re-entry
+        // promotes the same body back into the slot instead of minting a twin beside it.
+        const entityId = this._ecologySpawned.get(key);
+        if (entityId != null) {
+          const row = getFarActor(this.state, entityId);
+          if (row && row.alive !== false && isWreckEcologyInhabitant(row, field.fieldId)) continue;
+        }
+        this._unbindEcologyKey(key);
       }
     }
   },
@@ -3193,6 +3223,12 @@ export const aftermathWrecks = {
       slot.status = 'gone';
       if (entity) {
         entity.alive = false;
+        // A shelved occupant resolves to its far row — dropping it leaves no
+        // promote-blocked tombstone in the far table after decay.
+        const table = this.state && this.state.world && this.state.world.farActors;
+        if (table && table.byId && table.byId.get(entity.id) === entity) {
+          removeFarRecord(table, entity);
+        }
         removed += 1;
       }
       this._unbindEcologyKey(ecologySlotKey(field.fieldId, slot.id));

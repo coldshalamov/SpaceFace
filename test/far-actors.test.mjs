@@ -84,6 +84,32 @@ test('the carrier owns its transient parts instead of shelving anonymous far NPC
   assert.equal([...table.grid.values()].flat().includes(shell), false);
 });
 
+test('a live encounter keeps its cast resident beyond the far radius', () => {
+  const { state } = boot();
+  const nestId = 'campaign47a:charon:nest:v1';
+  // The nest's authored escape lane requires the player to clear 3000 WU from the
+  // carrier — past the far-actor exit radius. If the cast virtualizes first, the
+  // encounter aborts 'unresolved_nest_carrier' and the visit orphans 'active'.
+  const cast = [
+    { nestCarrier: true, nestEncounterId: nestId, nestSlot: 'carrier' },
+    { nestEncounterId: nestId, nestSlot: 'door:0' },
+    { nestEncounterId: nestId, nestSlot: 'wasp:0' },
+  ];
+  cast.forEach((data, i) => {
+    const body = { id: 5000 + i, alive: true, type: 'ship', pos: { x: 9000, z: 0 }, data,
+      activity: { simTier: SIM_TIER.S2_ABSTRACT, pinnedExact: false } };
+    assert.equal(shouldVirtualizeFarActor(body, state), false, data.nestSlot);
+  });
+  // Generic live-encounter membership — no nest stamp — is residency too: an
+  // encounter-bound actor must stay materialized while its row is live.
+  state.encounterDirector = { live: {}, squadMembership: { 6001: 'enc_1' } };
+  const bound = { id: 6001, alive: true, type: 'ship', pos: { x: 9000, z: 0 }, data: {},
+    activity: { simTier: SIM_TIER.S2_ABSTRACT, pinnedExact: false } };
+  assert.equal(shouldVirtualizeFarActor(bound, state), false, 'live-encounter squad member');
+  assert.equal(shouldVirtualizeFarActor({ ...bound, id: 6002 }, state), true,
+    'an unbound far actor still shelves');
+});
+
 test('far dormant ships leave the combat list and rematerialize on approach', () => {
   const { state, helpers, bus, player } = boot();
   const far = spawnShip(helpers, { pos: { x: 12000, z: 0 } });

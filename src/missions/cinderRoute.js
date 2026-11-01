@@ -12,6 +12,7 @@ const slotOk = n => Number.isInteger(n) && n >= 0 && n < 3;
 const clone = value => JSON.parse(JSON.stringify(value));
 export const cinderTargetOwner = m => authoredCinderRoute(m) ? m.params.cinderTargetOwnerId || m.id : m?.id;
 const completed = m => new Set((m.completedTargetSlots || []).filter(slotOk));
+const escaped = m => new Set((m.params?.cinderEscapedSlots || []).filter(slotOk));
 const marks = m => Array.isArray(m.params?.cinderMarkedWrecks) ? m.params.cinderMarkedWrecks : [];
 const rows = state => [...(state.missions?.active || []), ...(state.missions?._swarmParkedActive || []),
   ...(state.missions?.cinderRetry ? [state.missions.cinderRetry] : [])]
@@ -36,7 +37,9 @@ function validEvidence(m) {
     && refs.every(r => slotOk(r?.slot) && typeof r.markerId === 'string' && r.markerId
       && (r.disposition == null || ['destroyed', 'stripped', 'delivered'].includes(r.disposition)))
     && new Set(refs.map(r => r.slot)).size === refs.length
-    && new Set(refs.map(r => r.markerId)).size === refs.length;
+    && new Set(refs.map(r => r.markerId)).size === refs.length
+    && (p.cinderEscapedSlots === undefined
+      || (Array.isArray(p.cinderEscapedSlots) && p.cinderEscapedSlots.every(slotOk)));
 }
 
 export function initializeCinderRoute(owner, m) {
@@ -44,7 +47,7 @@ export function initializeCinderRoute(owner, m) {
   const retry = owner.state.missions.cinderRetry;
   if (retry) {
     if (!authoredCinderRoute(retry) || !validEvidence(retry)) { m.params.cinderEvidenceInvalid = true; return true; }
-    for (const key of ['cinderTargetOwnerId', 'cinderIssuedSlots', 'cinderMarkedWrecks', 'cinderDeliveredMarkerId']) {
+    for (const key of ['cinderTargetOwnerId', 'cinderIssuedSlots', 'cinderMarkedWrecks', 'cinderDeliveredMarkerId', 'cinderEscapedSlots']) {
       if (retry.params[key] !== undefined) m.params[key] = clone(retry.params[key]);
     }
     m.completedTargetSlots = [...completed(retry)];
@@ -72,6 +75,7 @@ export function retainCinderRetry(owner, m) {
     params: { cinderRouteVersion: 1, cinderTargetOwnerId: cinderTargetOwner(m),
       cinderIssuedSlots: [...(m.params.cinderIssuedSlots || [])],
       cinderMarkedWrecks: clone(marks(m)),
+      cinderEscapedSlots: [...(m.params.cinderEscapedSlots || [])],
       ...(m.params.cinderDeliveredMarkerId ? { cinderDeliveredMarkerId: m.params.cinderDeliveredMarkerId } : {}) },
   };
   m.targetEntityIds = [];
@@ -152,6 +156,33 @@ export function observeCinderKill(owner, payload) {
   return observed;
 }
 
+// A fleeing mark that keeps egress-level separation has answered the contract the only way a
+// lane clearance measures: it left the lane. Drive-off counts as a clearance — not a kill, so
+// no marker is minted; the slot's hull evidence resolves as lost through cinderAccounting's
+// escaped side. The caller strips the body's contract identity so the ordinary egress bound
+// retires it like any other escapee.
+export function observeCinderEscape(owner, body) {
+  if (!body || body.alive === false) return false;
+  let observed = false;
+  for (const m of rows(owner.state)) {
+    const slot = targetSlot(m, body);
+    if (slot === null || completed(m).has(slot) || escaped(m).has(slot)) continue;
+    if (!m.params.cinderEscapedSlots) m.params.cinderEscapedSlots = [];
+    m.params.cinderEscapedSlots.push(slot);
+    const done = completed(m); done.add(slot);
+    m.completedTargetSlots = [...done].sort((a, b) => a - b);
+    m.objectiveProgress = done.size;
+    m.targetEntityIds = (m.targetEntityIds || []).filter(id => id !== body.id);
+    observed = true;
+    if (m.status === 'active' && owner.state.missions.active.includes(m)) {
+      owner.bus.emit('mission:updated', { missionId: m.id });
+      owner._sayStoryLine(`${CINDER_WASPS[slot]} ran — lane clearances ${done.size}/3. Keep one marked hull intact for Rook.`, 5);
+      driveCinderRoute(owner, m);
+    }
+  }
+  return observed;
+}
+
 // These are observations of the existing owner's terminal events, not a wreck lifecycle ledger.
 // The marker has already retired when either event is delivered; a still-present marker makes
 // a synthetic/stale receipt fail closed. Budget eviction is NOT material loss.
@@ -178,7 +209,11 @@ export function cinderAccounting(m, state) {
   // Missing body OR marker is unknown, not loss (residency/load/cap pressure are not kills).
   // Only observed canonical terminal receipts, captured before save, exhaust a reference.
   const remaining = refs.filter(r => !['destroyed', 'stripped', 'delivered'].includes(r.disposition));
-  return { valid: true, delivered, remaining, exhausted: refs.length === 3 && remaining.length === 0 };
+  // An escaped mark leaves no hull to tow: its slot resolves as hull-lost evidence, so
+  // exhausted needs every slot accounted — delivered/stripped/destroyed or escaped.
+  const resolved = new Set(refs.filter(r => r.disposition).map(r => r.slot));
+  for (const slot of escaped(m)) resolved.add(slot);
+  return { valid: true, delivered, remaining, exhausted: resolved.size === 3 };
 }
 export function cinderExtrasSatisfied(m, state) {
   const a = cinderAccounting(m, state);
