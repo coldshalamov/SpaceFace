@@ -11,6 +11,50 @@ import { LINE_HEAD_MODULES } from './lineProgression.js';
 
 const SHIPPED_MODULES = [
   ...BLACK_FLAG_MODULES,
+  // ===================== FIRST-HAUL RACK (DUST P2a, 2026-10-31) =====================
+  // The honest early rung. Story beats pay 400-3,000 cr and the Foothold wage is 6,000 cr/h, but
+  // the cheapest existing fitting was 4,000 cr (Stripped RCS / Cargo Scanner S) — the first
+  // *earned* purchase landed hours out, not inside the first 30 minutes. These tier-0 parts are
+  // ungated (no requiresTech), so every yard rack stocks them, including the first-route stations
+  // (Helios, Ceres, Tycho) a 0-2h pilot actually berths at. Every mods key below is one the
+  // derived-stats fold in systems/ships.js (or the mining scoop floor in systems/mining.js)
+  // already reads — no new mechanics, no repriced ladder, no credit writer.
+  {
+    // The cheap hull patch: bolt-on plates over the old seams. hullFlat is additive on every hull.
+    id: 'mod_hull_patch_kit_s', name: 'Third-Owner Patch Kit', slotType: 'utility', size: 'S', tier: 0, mass: 1, price: 900,
+    energyDraw: 0, mods: { hullFlat: 30 },
+    description: 'Surplus plate, third owner, still mil-spec where it counts. Covers the seams the last war opened.',
+  },
+  {
+    // The parking brake: better stopping, nothing else. Replaces the stock neutral RCS set;
+    // turn and slide stay exactly 1.0, so the Vernier cluster above it keeps its whole job.
+    id: 'mod_harbor_brake_s', name: 'Harbor Brake Set S', slotType: 'thruster', size: 'S', tier: 0, mass: 2, price: 1400,
+    energyDraw: 0, mods: { turnMult: 1.0, strafeMult: 1.0, brakeMult: 1.25 },
+    description: 'Yard-issue docking brakes with the inspection stamps still on. Reverse thrust answers like it means it.',
+  },
+  {
+    // The first cargo module that fits the starter hull's S cargo bay — before this row the only
+    // S cargo fitting in the catalog was the 38,000 cr Smuggler Hold.
+    id: 'mod_cargo_net_s', name: 'Deck Cargo Net S', slotType: 'cargo', size: 'S', tier: 0, mass: 1, price: 1600,
+    energyDraw: 0, mods: { cargoFlat: 20 },
+    description: 'Kiln-back cask webbing, re-stretched and re-stamped. The hold carries more; the manifest does not care.',
+  },
+  {
+    // The miner's wide mouth: ore pickup radius 800 -> 900 wu (systems/mining.js resolves
+    // max(MAGNET_RANGE floor, derived.magnetRange)). Loot Magnet Ring S (lootShards) and the
+    // faction Deep-Scoop Array are different systems and keep their own tiers.
+    id: 'mod_scoop_ring_s', name: 'Wide-Mouth Scoop Ring S', slotType: 'utility', size: 'S', tier: 0, mass: 2, price: 1800,
+    energyDraw: 1, mods: { magnetRange: 900 },
+    description: 'A wider mouth on the ore scoop. Rocks you used to chase now drift in on their own.',
+  },
+  {
+    // The shield liner: thin, legal, felt. Strictly under the Shield Booster S (60/2 at 6,000 cr),
+    // which remains the clear upgrade.
+    id: 'mod_shield_liner_s', name: 'Shield Liner S', slotType: 'shield', size: 'S', tier: 0, mass: 1, price: 2400,
+    energyDraw: 1, mods: { shieldFlat: 15, shieldRegenFlat: 1 },
+    description: 'Emitter liner on a roll, surplus of a fleet that no longer files claims. Thin, but it holds.',
+  },
+
   // ===================== SHIELDS =====================
   {
     id: 'mod_shield_booster_s', name: 'Shield Booster S', slotType: 'shield', size: 'S', tier: 1, mass: 3, price: 6000,
@@ -941,6 +985,11 @@ function mergeUserModules(base) {
 // The fit screen already prints `sentence` on the row. Unwired promises are not claimed —
 // an afterburner and a market uplink do not move the ship or the prices the sim reads.
 const MODULE_AIR_SENTENCE = Object.freeze({
+  mod_hull_patch_kit_s: 'Bolt-on plates over the old seams. The hull takes one more knock before it opens.',
+  mod_harbor_brake_s: 'The hull stops on the mark. Turn and slide stay exactly as the yard built them.',
+  mod_cargo_net_s: 'A net over the deck plates. Twenty more units ride without sliding.',
+  mod_scoop_ring_s: 'Loose rock drifts to the hull from farther out. You stop chasing single stones.',
+  mod_shield_liner_s: 'A liner inside the emitter. The shield holds a little longer and comes back sooner.',
   mod_shield_booster_s: 'A thicker shield that keeps rebuilding while you fly.',
   mod_shield_capacitor_m: 'A much thicker shield, and it comes back faster.',
   mod_shield_aegis_l: 'The heavy shield. It soaks a fight and rebuilds afterward.',

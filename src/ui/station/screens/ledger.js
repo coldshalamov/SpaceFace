@@ -15,6 +15,7 @@ import { createShipLedgerPanel } from '../../shipLedgerPanel.js';
 import { createLedgerTape } from '../../orrery/ledgerTape.js';
 import { formatLedgerCycle } from '../../../systems/shipLedger.js';
 import { el } from '../../kit/index.js';
+import { createEndingMeter } from '../dust/endingMeter.js';
 import { rollTo } from '../../orrery/text.js';
 import { dressComms, watchComms } from './comms.js';
 import { dressEvents, watchEvents } from './events.js';
@@ -201,6 +202,7 @@ export function createLedgerScreen(ctx) {
   row.append(read, purseHost);
   const right = el('div', 'sx-ledger__right');
   right.append(tapeHost, row);
+  right.append(createEndingMeter(ctx.state));   // DUST P2b — read-only eligibility readout
   wrap.appendChild(right);
   // the keys that walk the ledger, said once at the ladder's foot
   const keys = el('p', 'k-caps sx-ledger__keys');
