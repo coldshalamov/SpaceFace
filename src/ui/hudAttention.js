@@ -303,7 +303,7 @@ function ensureTutorialFlightCardStyle(doc) {
   if (!style) return;
   style.id = 'sf-tutorial-flight-card-style';
   if (style.setAttribute) style.setAttribute('id', 'sf-tutorial-flight-card-style');
-  style.textContent = '.sf-tutorial-flight-card{position:absolute;left:50%;top:18%;transform:translateX(-50%);max-width:min(42rem,86vw);pointer-events:none;z-index:30;text-align:center;line-height:1.35;}';
+  style.textContent = '.sf-tutorial-flight-card{position:absolute;left:50%;top:18%;transform:translateX(-50%);box-sizing:border-box;max-width:min(42rem,86vw);padding:.45rem .7rem;background:var(--dp-glass-deep,rgb(6 8 12 / .82));color:var(--dp-ink,#e8e2d4);text-shadow:var(--dp-text-legible,0 1px 0 rgb(0 0 0 / .5));pointer-events:none;z-index:30;text-align:center;line-height:1.35;}';
   const parent = doc.head || doc.body || doc.documentElement;
   if (parent && parent.appendChild) parent.appendChild(style);
 }
