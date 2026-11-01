@@ -860,9 +860,18 @@ export async function driveCompileShadowDepthPipelines(depthOpts, yieldStep) {
     } else if (textureRoots) {
       shadowTextures = collectStartupTextures(textureRoots);
     }
+    const geometryIter = collectStartupGeometriesSteps(textureRoots, { includeEmpty: true });
+    let shadowGeometries = [];
+    for (;;) {
+      if (contextChanged()) { closeCookStepsIter(geometryIter); return abortedForContext(); }
+      const step = geometryIter.next();
+      if (step.done) { shadowGeometries = step.value; break; }
+      try { await pace(); } catch (error) { closeCookStepsIter(geometryIter); throw error; }
+    }
     textureLease = await prepareShadowDepthTextureLease({
       renderer: depthOpts && depthOpts.renderer,
       textures: shadowTextures,
+      geometries: shadowGeometries,
       state,
       expectedGeneration: startingGeneration,
       isActive: depthOpts && depthOpts.isActive,
@@ -18298,36 +18307,53 @@ export const render = {
           }
           if (precollected) depthOpts.precollectedCasting = precollected;
         }
-        for (let attempt = 0; attempt < 4; attempt += 1) {
-          const depthIter = compileShadowDepthPipelinesSteps(depthOpts);
+        const leaseSubjects = depthOpts.precollectedCasting || depthOpts.subjects;
+        const collectLeaseResources = async (iterator) => {
           for (;;) {
-            let depthStep;
-            try {
-              depthStep = depthIter.next();
-            } catch (driveError) {
-              // A throw is not light drift — a re-mint hits the same fault, so
-              // skip the pass (the next admission re-arm retries it wholesale)
-              // instead of burning the four drift attempts on the dead drive.
-              closeCookStepsIter(depthIter);
-              stormWarn('depth-compile-drive-failed-skipping-the-depth-pa', '[render] depth compile drive failed; skipping the depth pass', driveError);
-              return { skipped: true, reason: 'depth-compile-drive-failed', subjects: 0 };
-            }
-            if (depthStep.done) {
-              lastRetryResult = depthStep.value;
-              if (lastRetryResult && (lastRetryResult.stale === true
-                || lastRetryResult.reason === 'session-closed-mid-drive')) break;
-              return lastRetryResult;
-            }
-            if (await postPace()) {
-              return { skipped: true, reason: 'epoch-superseded', subjects: 0, aborted: true };
-            }
+            const step = iterator.next();
+            if (step.done) return step.value;
+            if (await postPace()) { closeCookStepsIter(iterator); return null; }
           }
-          depthOpts.lightSigOverride = freshDepthLightSig();
-          depthOpts.lightSigEpoch = shadowCensusEpoch();
-        }
-        return lastRetryResult && lastRetryResult.reason === 'session-closed-mid-drive'
-          ? lastRetryResult
-          : { skipped: true, reason: 'light-census-drifted-repeatedly', subjects: 0, aborted: true };
+        };
+        const leaseTextures = await collectLeaseResources(collectStartupTexturesSteps(leaseSubjects));
+        if (!leaseTextures) return { skipped: true, reason: 'epoch-superseded', subjects: 0, aborted: true };
+        const leaseGeometries = await collectLeaseResources(collectStartupGeometriesSteps(leaseSubjects, { includeEmpty: true }));
+        if (!leaseGeometries) return { skipped: true, reason: 'epoch-superseded', subjects: 0, aborted: true };
+        const shadowLease = await prepareShadowDepthTextureLease({ renderer, textures: leaseTextures,
+          geometries: leaseGeometries, state: this.state, isActive: () => !postSuperseded(), yieldToMain: postPace });
+        if (!shadowLease.ready) return { skipped: true, reason: shadowLease.reason, subjects: 0, aborted: true };
+        try {
+          for (let attempt = 0; attempt < 4; attempt += 1) {
+            const depthIter = compileShadowDepthPipelinesSteps(depthOpts);
+            for (;;) {
+              let depthStep;
+              try {
+                depthStep = depthIter.next();
+              } catch (driveError) {
+                // A throw is not light drift — a re-mint hits the same fault, so
+                // skip the pass (the next admission re-arm retries it wholesale)
+                // instead of burning the four drift attempts on the dead drive.
+                closeCookStepsIter(depthIter);
+                stormWarn('depth-compile-drive-failed-skipping-the-depth-pa', '[render] depth compile drive failed; skipping the depth pass', driveError);
+                return { skipped: true, reason: 'depth-compile-drive-failed', subjects: 0 };
+              }
+              if (depthStep.done) {
+                lastRetryResult = depthStep.value;
+                if (lastRetryResult && (lastRetryResult.stale === true
+                  || lastRetryResult.reason === 'session-closed-mid-drive')) break;
+                return lastRetryResult;
+              }
+              if (await postPace()) {
+                return { skipped: true, reason: 'epoch-superseded', subjects: 0, aborted: true };
+              }
+            }
+            depthOpts.lightSigOverride = freshDepthLightSig();
+            depthOpts.lightSigEpoch = shadowCensusEpoch();
+          }
+          return lastRetryResult && lastRetryResult.reason === 'session-closed-mid-drive'
+            ? lastRetryResult
+            : { skipped: true, reason: 'light-census-drifted-repeatedly', subjects: 0, aborted: true };
+        } finally { shadowLease.release(); }
       };
       const unstagedDepthSubjects = [];
       // One node wallet across the chunk loop: the paced 512-subject batches only

@@ -15,7 +15,7 @@ import {
 } from './packageCpuDetach.js';
 import { releaseSharedImageSource } from './imageSourceDedupe.js';
 import { pacedBootShellYield } from '../core/bootShellPacing.js';
-import { compileShadowDepthPipelines } from './shadowDepthAdmission.js';
+import { compileShadowDepthPipelines, prepareShadowDepthTextureLease } from './shadowDepthAdmission.js';
 
 const STARTUP_GEOMETRY_BATCH_DRAWABLES = 4;
 const STARTUP_GEOMETRY_BATCH_BYTES = 8 * 1024 * 1024;
@@ -1448,7 +1448,21 @@ export async function warmWorksOpeningPrograms(options = {}) {
   const camera = options.camera || null;
   const light = options.light || null;
   if (renderer && scene && camera && light) {
+    let shadowLease = null;
     try {
+      const collect = async (iterator) => {
+        for (;;) {
+          const step = iterator.next();
+          if (step.done) return step.value;
+          await yieldToMain();
+        }
+      };
+      const textures = await collect(collectStartupTexturesSteps(scene));
+      const geometries = await collect(collectStartupGeometriesSteps(scene, { includeEmpty: true }));
+      shadowLease = await prepareShadowDepthTextureLease({ renderer,
+        textures, geometries,
+        state: options.state, isActive: options.isActive, yieldToMain });
+      if (!shadowLease.ready) throw new Error(shadowLease.reason || 'shadow-depth-residency-unavailable');
       depth = compileShadowDepthPipelines({
         renderer,
         light,
@@ -1463,6 +1477,8 @@ export async function warmWorksOpeningPrograms(options = {}) {
       });
     } catch (_) {
       depth = { skipped: true, reason: 'depth-compile-failed', programCacheKeys: [] };
+    } finally {
+      shadowLease?.release();
     }
     if (depth && Array.isArray(depth.programCacheKeys)) absorbProgramKeys(keys, depth.programCacheKeys);
     if (!depth || depth.skipped === true) {

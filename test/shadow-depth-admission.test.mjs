@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import * as THREE from 'three';
 import { driveCompileShadowDepthPipelines } from '../src/render/renderer.js';
+import { warmWorksOpeningPrograms } from '../src/render/startupGpuResidency.js';
 
 import {
   armAdmissionShadows,
@@ -23,9 +24,46 @@ import { scheduleRealtimeShadowRefresh } from '../src/render/shadowPresentCadenc
 import { createShadowDepthStageMethods } from '../src/render/runtime/shadowDepthStage.js';
 import {
   createPackageDetachManifest,
+  detachPackageGeometry,
   detachPackageTexture,
   resetPackageDetachManifestsForTests,
 } from '../src/render/packageCpuDetach.js';
+
+test('paced shadow staging refills and leases a detached package caster before drawing', async (t) => {
+  resetPackageDetachManifestsForTests();
+  t.after(() => resetPackageDetachManifestsForTests());
+  const makeGeometry = () => {
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute([0, 0, 0, 1, 0, 0, 0, 1, 0], 3));
+    geometry.setAttribute('uv', new THREE.Float32BufferAttribute([0, 0, 1, 0, 0, 1], 2));
+    return geometry;
+  };
+  const geometry = makeGeometry();
+  createPackageDetachManifest({ assetId: 'fixture.shadow-geometry', contentHash: 'd'.repeat(64), resources: [geometry] }, {
+    redecode: async () => ({ resources: [makeGeometry()] }), collectResources: decoded => decoded.resources,
+  });
+  const hull = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial()); hull.castShadow = true;
+  const renderer = { shadowMap: { enabled: true }, properties: { get: () => ({ currentProgram: { cacheKey: 'depth' } }) },
+    getContext: () => ({ isContextLost: () => false }), getRenderTarget: () => null, setRenderTarget() {},
+    renderBufferDirect() {},
+    render() {
+      assert.equal(detachPackageGeometry(geometry, {}), false, 'CPU data stays leased through staging');
+      assert.ok(geometry.getAttribute('uv').array.byteLength > 0, 'shadow caster uploads real UV bytes');
+      this.renderBufferDirect({}, null, {}, {}, hull, null);
+    },
+  };
+  assert.equal(detachPackageGeometry(geometry, {}), true);
+  const result = await driveCompileShadowDepthPipelines({ renderer, light: { castShadow: true, shadow: {} }, camera: {},
+    subjects: [hull], state: { render: { contextRecovery: { generation: 2 } } }, THREE: mockThree(),
+    captureObjectHome: object => ({ object }), restoreObjectHome() {} }, async () => {});
+  assert.equal(result.skipped, false);
+  assert.equal(detachPackageGeometry(geometry, {}), true, 'lease releases after staging');
+  const scene = new THREE.Scene(); scene.add(hull);
+  const warm = await warmWorksOpeningPrograms({ renderer, scene, camera: {}, light: { castShadow: true, shadow: {} },
+    THREE: mockThree(), captureObjectHome: object => ({ object }), restoreObjectHome() {}, yieldToMain: async () => {} });
+  assert.equal(warm.depthSkipped, false, 'the Works caller uses the same protected shadow staging');
+  assert.equal(detachPackageGeometry(geometry, {}), true, 'the Works lease also releases');
+});
 
 test('shadow-enable stages an invalidated census and sheds a detached root before its queued arm', () => {
   let callback = null, closed = 0;

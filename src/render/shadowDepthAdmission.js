@@ -5,19 +5,24 @@ import { revealSubjectForCompile } from './compilePresentSlice.js';
 import { isRetiredRigidOpaqueBatch } from './rigidOpaqueBatch.js';
 import {
   assertPackageTextureRefillReady,
+  assertPackageGeometryRefillReady,
+  detachedGeometryUploadPending,
   detachedTextureUploadPending,
   rehydrateDetachedTextures,
+  rehydrateDetachedGeometries,
+  retainPackageGeometryCpu,
   retainPresentedTextureLeases,
 } from './packageCpuDetach.js';
 
 /**
- * Prepare texture payloads used by a paced shadow admission. The staged draw can
- * yield between caster slices, so a residency pass must not detach a compressed
- * chain between the preflight and its eventual bind.
+ * Prepare package payloads used by a paced shadow admission. The staged draw can
+ * yield between caster slices, so another owner must not detach textures or geometry
+ * between the preflight and their eventual bind.
  */
 export async function prepareShadowDepthTextureLease(options = {}) {
   const renderer = options.renderer;
   const textures = Array.isArray(options.textures) ? options.textures : [];
+  const geometries = Array.isArray(options.geometries) ? options.geometries : [];
   const state = options.state;
   const contextRecovery = state && state.render && state.render.contextRecovery;
   const startingGeneration = Number.isFinite(options.expectedGeneration)
@@ -42,13 +47,26 @@ export async function prepareShadowDepthTextureLease(options = {}) {
   const stale = (reason) => ({ ready: false, reason, release() {} });
   if (!renderer || !isCurrent()) return stale('shadow-depth-context-inactive');
   const release = retainPresentedTextureLeases(textures);
+  const releaseGeometry = retainPackageGeometryCpu(geometries);
   let released = false;
   const releaseOnce = () => {
     if (released) return;
     released = true;
     release();
+    releaseGeometry();
   };
   try {
+    const pendingGeometries = geometries.filter(geometry => detachedGeometryUploadPending(geometry, renderer));
+    if (pendingGeometries.length) {
+      const receipt = await rehydrateDetachedGeometries(pendingGeometries, {
+        yieldToMain: typeof options.yieldToMain === 'function' ? options.yieldToMain : undefined,
+      });
+      if (!isCurrent()) {
+        releaseOnce();
+        return stale('shadow-depth-context-changed-during-geometry-refill');
+      }
+      assertPackageGeometryRefillReady(pendingGeometries, receipt);
+    }
     const pending = textures.filter((texture) => detachedTextureUploadPending(
       texture, renderer.properties));
     if (pending.length > 0) {
