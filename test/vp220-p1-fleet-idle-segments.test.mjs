@@ -456,7 +456,9 @@ test('live route binds player + NPC different families at once via vfx system', 
     data: { defId: 'ship_wasp' },
     _flightFrame: { throttle: 1 },
   };
-  const { system } = makeVfxHarness([player, npc]);
+  const { scene, system } = makeVfxHarness([player, npc]);
+  // npcPropulsionVisible binds NPC propulsion only to a hull presented under the live scene.
+  npc.mesh = scene.add(new THREE.Object3D());
   for (let f = 0; f < 10; f++) system.update(1 / 60);
 
   const fleet = system._energy.fleet;
