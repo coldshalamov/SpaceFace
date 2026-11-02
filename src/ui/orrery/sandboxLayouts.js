@@ -465,6 +465,13 @@ const SANDBOX_LAYOUTS_CSS = `
   .sf-sandbox .sf-crest { padding-bottom: 4px; }
   .sf-sandbox-tiles { margin-top: 8px; }
 }
+/* polish295: at 1920×1080 the harness kept its 1280 sizes, so the ladder's 12px descriptions and
+   the Combat Lab rows read smaller than on 1280×720 beside a hero that fills the screen. Settings,
+   Save/Load, Crucible and the Records Wall already zoom in this band; the plate zooms with them
+   (zoom, not font tweaks, so the rail, dial and dock band keep their proportions). Desktop only. */
+@media (min-width: 1800px) and (max-width: 2199px) and (min-height: 1000px) {
+  html:root:not([data-sf-mobile="1"]) .screen.sf-sandbox { zoom: 1.14; }
+}
 /* Touch / phone deck (data-sf-mobile, any width): the global 44px touch floor crushed each
    title+desc tile and stacked them, so the tiles opt out of it and keep their own height. */
 html:root[data-sf-mobile="1"] .sf-sandbox-tile {
