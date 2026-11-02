@@ -242,6 +242,19 @@ test('two same-window starts rate-cap to one voice; the next beat after the gap 
   assert.notEqual(rates[0], rates[1], 'the variation stream moves between beats');
 });
 
+test('a restored sim clock clears the prior timeline rate limit', () => {
+  audio.state = beatState({ x: 100, z: 0 }, 200);
+  audio.rt = mockRt();
+  const plays = [];
+  audio.play = (recipeId) => { plays.push(recipeId); return null; };
+  try {
+    audio._onPocketChainBeat(startReceipt('sector_x', 'ev_before_restore', 0));
+    audio.state = beatState({ x: 100, z: 0 }, 40);
+    audio._onPocketChainBeat(startReceipt('sector_x', 'ev_after_restore', 0));
+  } finally { audio.play = REAL_PLAY; }
+  assert.deepEqual(plays, [WAKE, WAKE], 'the previous timeline cannot silence a restored run');
+});
+
 test('the real play path voices the wake through the live scheduler', () => {
   audio.state = beatState({ x: 200, z: 100 }, 300);
   audio.rt = mockRt();

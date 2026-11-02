@@ -875,10 +875,12 @@ export function stepShovePanicRestores(state, shipLikeList) {
     if (shovePanicLive(ai, now)) continue;
     const base = ai.shovePanicBase;
     delete ai.shovePanicBase;
-    if (!base) continue;
     const current = ai.activity;
     // Another writer already replaced the break with its own record: leave theirs.
-    if (current && String(current.reason || '') === 'shove_panic') ai.activity = base;
+    if (current && String(current.reason || '') === 'shove_panic') {
+      if (base) ai.activity = base;
+      else delete ai.activity; // no prior activity existed; do not leave the temporary break behind
+    }
   }
 }
 

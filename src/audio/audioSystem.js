@@ -6579,6 +6579,10 @@ export const audio = {
     if (!Number.isFinite(distance) || distance > POCKET_BEAT_HEARING_WU) return;
     const rt = this.rt || (this.rt = {});
     const now = Number(state.simTime) || 0;
+    // A restored save or new run can rewind sim time while the audio runtime survives. Treat
+    // that boundary as a fresh watch; otherwise a later old-timeline stamp silences beats until
+    // the new clock catches up to it.
+    if (Number.isFinite(rt._pocketBeatAt) && now < rt._pocketBeatAt) rt._pocketBeatAt = -Infinity;
     if (now - (rt._pocketBeatAt != null ? rt._pocketBeatAt : -Infinity) < POCKET_BEAT_MIN_GAP_S) return;
     rt._pocketBeatAt = now;
     const roll = (hash32(String(payload.sectorId || ''), String(payload.eventId || ''),

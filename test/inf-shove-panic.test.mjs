@@ -109,6 +109,26 @@ test('the rattle expires: guns come back, the authored activity is handed back o
   assert.equal(victim.data.intent.fire, true, 'guns return after the rattle');
 });
 
+test('the rattle removes its temporary break when the hull had no prior activity', () => {
+  const { state, bus } = boot();
+  const victim = makeHostile(state, 10);
+  const ai = victim.data.ai;
+  delete ai.activity;
+  createTacticalAISystem({ seed: 4242 }).init({ state, bus, helpers: {}, registry: null });
+
+  bus.emit('combat:tumbled', {
+    victimId: 10, attackerId: 'pilot', source: 'weapon_hitstun', cause: 'ram',
+    startedAt: state.simTime, until: state.simTime + 1.4, time: state.simTime, tick: state.tick,
+  });
+  assert.equal(ai.activity.reason, 'shove_panic', 'the temporary break still applies during panic');
+
+  state.simTime = ai.shovePanic.until;
+  stepShovePanicRestores(state, [victim]);
+  assert.equal(Object.hasOwn(ai, 'activity'), false, 'expiry does not make the synthetic break permanent');
+  assert.equal(Object.hasOwn(ai, 'shovePanicBase'), false, 'the empty handback is retired');
+  assert.equal(shovePanicLive(ai, state.simTime), false);
+});
+
 test('authored contracts are exempt: bosses, aces and crews already fleeing never rattle', () => {
   const { state, bus } = boot();
   const boss = makeHostile(state, 11, { data: { isBoss: true, ai: { roe: 'weapons_free' }, intent: {} } });
