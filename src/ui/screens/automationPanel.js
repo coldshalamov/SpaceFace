@@ -977,6 +977,18 @@ ${AU_NARROW} .au-summary > .au-metric .v { margin-top: 3px; }
   ${AU_NARROW} .au-summary > .au-metric .v { margin-top: 1px; line-height: 1.15; }
   ${AU_NARROW} .au-summary > .au-metric .s { line-height: 1.25; }
 }
+/* polish297: 521–760 wide (560×800) the five conduct nodes wrapped four-and-one, leaving CR/MIN
+   alone on a second row, and the ~120px summary cells broke "gross 0 - upkeep 0" and stacked
+   ASSETS three lines deep. As on phones, the cr/min total rides the caption row and the four
+   classes share one row; the cells inset 8px and their sub-lines balance. */
+@media (min-width: 521px) and (max-width: 760px) {
+  ${AU_NARROW} .au-flow { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px 14px; }
+  ${AU_NARROW} .au-flow__cap { grid-area: 1 / 1 / 2 / 4; align-self: center; }
+  ${AU_NARROW} .au-node--purse { grid-area: 1 / 4 / 2 / 5; justify-self: end; }
+  ${AU_NARROW} .au-summary > .au-metric,
+  ${AU_NARROW} .au-summary > .au-metric:hover { padding: 5px 8px 6px; }
+  ${AU_NARROW} .au-summary > .au-metric .s { text-wrap: balance; }
+}
 `;
 
 function injectStyle() {
