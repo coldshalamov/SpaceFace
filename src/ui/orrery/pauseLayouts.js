@@ -232,6 +232,14 @@ ${BOTH} > .sf-pause-foot [data-role="version"] {
   ${P} > .sf-pause-foot .sf-pause-foot__keys { padding:6px 0 7px !important; }
   ${P} > .sf-pause-foot [data-role="version"] { margin-block:0 !important; }
 }
+/* short desktop (521–640 tall, e.g. 960×540): the dial's outer rings reach y≈480, and the foot sat a
+   48px frame margin + a row gap above the bottom, so ESC / RESUME / P PHOTO printed on the rim. The foot
+   seats on the bottom edge as in the ≤520 rule, so the keycap strip lands below the dial's last ring. */
+@media (min-width:701px) and (min-height:521px) and (max-height:640px) {
+  ${P} { padding-bottom:16px !important; }
+  ${P} > .sf-pause-foot { row-gap:6px !important; min-height:0 !important; padding-top:0 !important; }
+  ${P} > .sf-pause-foot [data-role="version"] { margin-block:0 !important; }
+}
 /* narrow + very short (≤900 × ≤460, e.g. 844×390): the GAME bank's LOAD reaches x≈465 at y≈160, where
    the brief's Next line began (x 461). The brief climbs level with PAUSED and narrows so it starts right
    of LOAD (x≈485); Next still fits one line and ends above the SHIP bank. */
