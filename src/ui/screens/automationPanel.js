@@ -739,10 +739,7 @@ html body #screens #sf-automation.au-orrery .au-summary { gap: 14px; align-conte
 @media (min-width: 761px) and (max-width: 860px) and (max-height: 580px) {
   html body #screens #sf-automation.au-orrery .au-summary { grid-template-columns: repeat(4, auto); column-gap: 12px; }
 }
-/* polish292: at 1920×1080 the panel stopped at 1100px and printed 11–13px type in the middle of
-   the screen, the smallest screen in the set; Settings, Save/Load and the Crucible pages already
-   scale up in this band. The panel zooms with them (zoom, not font tweaks, so every track, rung
-   and beam keeps its proportions). Desktop windows only; the touch sheet keeps its own sizes. */
+/* Match the other desktop plates' readable scale at 1080p. Touch keeps its own sizing. */
 @media (min-width: 1800px) and (max-width: 2199px) and (min-height: 1000px) {
   ${AU_NARROW} { zoom: 1.14; }
 }
