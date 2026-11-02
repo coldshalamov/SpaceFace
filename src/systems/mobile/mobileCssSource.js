@@ -371,15 +371,15 @@ export const SCREEN_CSS = `
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] .ml-cadence { width:100%!important; padding:9px 12px 8px!important; }
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] .ml-cadence :is(.ml-cadence__stats,.ml-cadence__hint) { display:none!important; }
  :root[data-sf-mobile-wheel="1"] .ml2-cadence-slot { opacity:0!important; }
- /* Receipts occupy the reserved text lane, clear of the power handle. Informational arrivals
-     stay two thin rows instead of wrapping a zone paragraph upward across the ship; the full
-     text remains available in the receipt and its live announcement. */
- :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #toasts { right:auto!important; left:calc(14px + var(--sf-safe-left,0px))!important; top:auto!important; bottom:calc(max(224px,94px + var(--mf-cluster-w,196px) * .8) + var(--sf-safe-bottom,0px))!important; width:min(320px,calc(100vw - 26px - max(58px,var(--mf-cluster-w,196px) * .25) - var(--sf-safe-left,0px) - var(--sf-safe-right,0px)))!important; max-width:none!important; }
+ /* Fallback lane only: the HUD's measured allocator writes live positions inline after each
+     receipt and layout change. Keep these dimensions and readable two-row information receipts
+     when that owner has not measured a lane yet. */
+ :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #toasts { right:auto; left:calc(14px + var(--sf-safe-left,0px)); top:auto; bottom:calc(max(224px,94px + var(--mf-cluster-w,196px) * .8) + var(--sf-safe-bottom,0px)); width:min(320px,calc(100vw - 26px - max(58px,var(--mf-cluster-w,196px) * .25) - var(--sf-safe-left,0px) - var(--sf-safe-right,0px))); max-width:none; }
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #toasts .sf-toast--info { box-sizing:border-box; width:100%; max-width:100%; min-width:0; }
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #toasts .sf-toast--info .sf-toast__text { flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
  /* Receipts remain information, so a touch through their text still starts the flight stick. */
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] :is(#toasts,#toasts *) { pointer-events:none!important; }
- :root[data-sf-mobile="1"][data-sf-mobile-lefty="1"][data-sf-mobile-flight="1"] #toasts { left:auto!important; right:calc(14px + var(--sf-safe-right,0px))!important; }
+ :root[data-sf-mobile="1"][data-sf-mobile-lefty="1"][data-sf-mobile-flight="1"] #toasts { left:auto; right:calc(14px + var(--sf-safe-right,0px)); }
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #alerts { transform:translateY(calc(124px + var(--sf-safe-top,0px))); }
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud :is(.sf-contact-hail__button,.sf-comm-backlog-btn) { min-height:40px; min-width:60px; pointer-events:auto; }
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-vtape { left:14px!important; bottom:auto!important; top:calc(128px + var(--sf-safe-top,0px))!important; }
@@ -403,7 +403,7 @@ export const SCREEN_CSS = `
  :root[data-sf-mobile="1"] .dp-frame__head { flex:none; }
 }
 @media (max-height:500px) {
- :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #toasts { bottom:calc(max(182px,84px + var(--mf-cluster-w,196px) * .675) + var(--sf-safe-bottom,0px))!important; }
+ :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #toasts { bottom:calc(max(182px,84px + var(--mf-cluster-w,196px) * .675) + var(--sf-safe-bottom,0px)); }
  /* landscape has the width: alerts return to the top centre, the right dock sits left of the pause key */
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #alerts { transform:none!important; }
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #race-tape[data-compact="true"] .race-tape-actions { display:flex; }
@@ -427,9 +427,9 @@ export const SCREEN_CSS = `
 :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] .ml2-cadence-slot { top:calc(132px + var(--sf-safe-top,0px))!important; width:140px!important; }
 :root[data-sf-mobile="1"][data-sf-mobile-lefty="1"][data-sf-mobile-flight="1"] .ml2-cadence-slot { left:auto!important; right:calc(14px + var(--sf-safe-right,0px))!important; }
 @media (max-height:500px) and (orientation:landscape) {
- /* Short landscape HUD owns the first 118px; anchor the receipt stack below it so multiple rows
-    flow down toward, but remain clear of, the left stick. Portrait keeps its bottom-up placement. */
- :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #toasts { top:calc(118px + var(--sf-safe-top,0px))!important; bottom:auto!important; }
+ /* Fallback for short landscape; the HUD's measured inline lane takes over once its geometry is
+    available. */
+ :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #toasts { top:calc(118px + var(--sf-safe-top,0px)); bottom:auto; }
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] .ml2-cadence-slot { top:calc(158px + var(--sf-safe-top,0px))!important; width:min(280px,calc(50vw - 40px))!important; }
  :root[data-sf-mobile="1"][data-sf-mobile-lefty="1"][data-sf-mobile-flight="1"] .ml2-cadence-slot { left:calc(80px + var(--sf-safe-left,0px))!important; right:auto!important; width:min(280px,calc(50vw - 120px))!important; }
 }

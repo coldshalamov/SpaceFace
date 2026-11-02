@@ -3,6 +3,7 @@
 // tiny stand-in document: these pin what is WRITTEN (attributes, text, data flags), never what it looks like.
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { SPEED_RAMP } from '../src/ui/orrery/speedDial.js';
 import { rampRgb, pullToRamp, dialDeg, createStick, STICK_UNITS } from '../src/systems/mobile/instrument.js';
 import { sectorDeg, createWheel } from '../src/systems/mobile/wheel.js';
@@ -65,11 +66,19 @@ test('mobile stylesheet comments do not swallow or corrupt following rules', () 
 
 test('flight receipts occupy their own touch-through lane in both orientations', () => {
   const lanes = MOBILE_CSS.slice(MOBILE_CSS.indexOf('/* Mobile flight lanes:'));
-  assert.match(MOBILE_CSS, /#toasts \{[^}]*top:auto!important; bottom:calc\(max\(224px/,
-    'portrait receipts keep the bottom-up lane clear of the stick');
-  assert.match(lanes, /#toasts \{ top:calc\(118px \+ var\(--sf-safe-top,0px\)\)!important; bottom:auto!important/,
-    'short landscape anchors receipts below the HUD');
+  const portrait = MOBILE_CSS.match(/:root\[data-sf-mobile="1"\]\[data-sf-mobile-flight="1"\] #toasts \{([^}]+)\}/)?.[1];
+  const landscape = lanes.match(/#toasts \{([^}]+)\}/)?.[1];
+  assert.match(portrait || '', /left:calc\(14px \+ var\(--sf-safe-left,0px\)\); top:auto; bottom:calc\(max\(224px/,
+    'portrait keeps its authored bottom-up fallback lane');
+  assert.match(landscape || '', /top:calc\(118px \+ var\(--sf-safe-top,0px\)\); bottom:auto;/,
+    'short landscape keeps its authored below-HUD fallback lane');
+  for (const lane of [portrait || '', landscape || '']) {
+    assert.doesNotMatch(lane, /(?:left|right|top|bottom|width|max-width):[^;]*!important/,
+      'live inline placement by the HUD owner can override the fallback geometry');
+  }
   assert.match(MOBILE_CSS, /:is\(#toasts,#toasts \*\)\s*\{\s*pointer-events:none!important/);
+  assert.equal(readFileSync(new URL('../styles/mobile.generated.css', import.meta.url), 'utf8'), MOBILE_CSS,
+    'the generated mobile sidecar ships the same fallback CSS as its source');
   assert.doesNotMatch(lanes, /#toasts \{[^}]*overflow:hidden/,
     'critical receipts must not be clipped to make a layout test pass');
 });
@@ -220,7 +229,6 @@ test('the DOCK key follows dock:range, Pause > Help opens the guide, and both le
 });
 
 // Ordinary-flight collision contracts run in the existing mobile-readiness unit gate.
-import { readFileSync } from 'node:fs';
 import esbuild from 'esbuild';
 import { MOBILE_FLIGHT_LAYOUT_CSS as css } from '../src/ui/orrery/mobileFlightLayouts.js';
 
