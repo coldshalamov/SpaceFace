@@ -6992,11 +6992,21 @@ function pocketApproachTwoPhasePage({
       keyboard: {
         async down(key) { heldKeys.add(key); },
         async up(key) { heldKeys.delete(key); },
+        async press(key, { delay }) {
+          heldKeys.add(key);
+          try { await harness.page.waitForTimeout(delay); } finally { heldKeys.delete(key); }
+        },
       },
       async evaluate(callback, argument) {
         return runInPage(callback, argument);
       },
       async waitForFunction(callback, argument, options) {
+        if (Number.isSafeInteger(argument?.deltaTicks)) {
+          assert.equal(heldKeys.size, 0, 'the point pulse has released before observing a tick');
+          state.tick = argument.tick + argument.deltaTicks;
+          assert.equal(runInPage(callback, argument), true);
+          return;
+        }
         assert.equal(options.timeout, 10_000);
         assert.equal(argument.terminalTick, endTick);
         assert.equal(heldKeys.has('Digit0'), true);
@@ -7012,7 +7022,7 @@ function pocketApproachTwoPhasePage({
       async waitForTimeout(durationMs) {
         state.tick += tickPerPulse;
         if (heldKeys.has('KeyA') || heldKeys.has('KeyD')) {
-          assert.equal(durationMs, 80);
+          assert.ok(durationMs === 80 || durationMs === 160);
           sequence.push('turn');
           if (turnConverges) {
             player.rot = simulateTrajectory
@@ -7026,7 +7036,7 @@ function pocketApproachTwoPhasePage({
           player.vel.x = 40;
           player.vel.z = 0;
         } else if (heldKeys.has('KeyW')) {
-          assert.equal(durationMs, 160);
+          assert.ok(durationMs === 160 || durationMs === 480);
           sequence.push('thrust');
           if (simulateTrajectory) {
             const dx = targetPoint.x - player.pos.x;

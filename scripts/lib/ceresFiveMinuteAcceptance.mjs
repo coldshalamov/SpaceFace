@@ -4347,6 +4347,7 @@ export async function drivePublicToPocketAnchor(page, pocketId, endTick, {
   return drivePublicToCeresPoint(page, {
     ...target,
     minRemainingTicks,
+    controlClock: 'fixed-tick',
   }, endTick);
 }
 
