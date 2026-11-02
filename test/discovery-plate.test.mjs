@@ -231,3 +231,73 @@ test('destroy() unsubscribes and removes the element', () => {
     restore();
   }
 });
+
+test('flight discoveries use the existing HUD safe bands and release them after the original lifetime', () => {
+  const clock = makeClock(), { hud, restore } = installDom({ clock });
+  const calls = [];
+  const allocator = (name) => ({
+    registerExternalFlightCaption(el) {
+      calls.push(`${name}:register`);
+      assert.equal(el.style.display, 'block', 'the real title is measurable before layout admission');
+      assert.equal(el.style.minWidth, '0', 'the fixed plate floor cannot overflow a narrow safe band');
+      el.style.left = '500px'; el.style.top = '140px'; el.style.transform = 'none';
+    },
+    releaseExternalFlightCaption(el) {
+      calls.push(`${name}:release`);
+      el.style.left = ''; el.style.top = ''; el.style.transform = '';
+    },
+  });
+  const state = { ...stateWithSector(), mode: 'flight', ui: { docked: false } };
+  const ctx = { state, bus: createBus(), ui: { hud: allocator('first') } };
+  const plate = createDiscoveryPlate(ctx);
+  try {
+    ctx.bus.emit('discovery:plateUnlocked', { sectorId: 'sector_ceres_belt', poiId: 'poi_vault' });
+    plate.tick(); clock.flushRaf();
+    const el = findPlate(hud);
+    assert.deepEqual(calls, ['first:register']);
+    assert.equal(el.getAttribute('role'), 'status');
+    assert.equal(el.getAttribute('aria-live'), 'polite');
+    assert.equal(el.style.transform, 'none', 'layout position takes priority over the edge slide');
+    clock.advance(1500); plate.tick();
+    assert.deepEqual(calls, ['first:register'], 'steady frames do not remeasure the HUD');
+    ctx.ui.hud = allocator('replacement');
+    hud.removeChild(el);
+    plate.tick();
+    assert.equal(el.parentNode, hud, 'HUD rebuild reattaches the same active announcement');
+    assert.deepEqual(calls, ['first:register', 'first:release', 'replacement:register']);
+    clock.advance(1500); plate.tick();
+    assert.equal(el.classList.contains('sf-discovery-plate--out'), true,
+      'HUD replacement did not restart the three-second hold');
+    assert.equal(el.style.transform, 'none', 'the layout remains reserved through the opacity fade');
+    clock.advance(320); plate.tick();
+    assert.equal(el.style.display, 'none');
+    assert.equal(el.style.minWidth, '');
+    assert.equal(el.style.left, '');
+    assert.equal(calls.at(-1), 'replacement:release');
+  } finally { plate.destroy(); restore(); }
+});
+
+test('docking and destruction release discovery placement without changing dedupe or queue order', () => {
+  const clock = makeClock(), { hud, restore } = installDom({ clock });
+  const calls = [], state = { ...stateWithSector(), mode: 'flight', ui: {} };
+  const api = {
+    registerExternalFlightCaption() { calls.push('register'); },
+    releaseExternalFlightCaption() { calls.push('release'); },
+  };
+  const bus = createBus(), plate = createDiscoveryPlate({ bus, state,
+    registry: { get: name => name === 'ui' ? { hud: api } : null } });
+  try {
+    bus.emit('discovery:plateUnlocked', { sectorId: 'sector_ceres_belt', poiId: 'poi_vault' });
+    bus.emit('discovery:plateUnlocked', { sectorId: 'sector_ceres_belt', poiId: 'poi_vault' });
+    bus.emit('discovery:plateUnlocked', { sectorId: 'sector_ceres_belt', poiId: 'poi_other' });
+    plate.tick(); state.ui.docked = true; plate.tick();
+    assert.deepEqual(calls, ['register', 'release']);
+    state.ui.docked = false; plate.tick();
+    assert.deepEqual(calls, ['register', 'release', 'register']);
+    clock.advance(3320); plate.tick(); plate.tick();
+    assert.equal(findPlate(hud).querySelector('.sf-discovery-plate__title').textContent, 'Poi Other');
+    plate.destroy();
+    assert.equal(calls.at(-1), 'release');
+    assert.equal(findPlate(hud), null);
+  } finally { plate.destroy(); restore(); }
+});
