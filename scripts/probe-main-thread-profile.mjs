@@ -146,6 +146,7 @@ const safeName = (value, max) => String(value || '')
   .slice(0, max);
 
 const FROM_LAUNCH = process.argv.includes('--from-launch');
+const BUFFER_RESIZE_DIAG = process.argv.includes('--buffer-resize-diag');
 const WINDOW_MS = Number(argValue('--ms') || process.env.SPACEFACE_PROFILE_MS || 20_000);
 const FLIGHT_TAIL_MS = Number(argValue('--flight-ms') || 10_000);
 const LAUNCH_DWELL_MS = Math.max(0, Number(argValue('--launch-dwell-ms')) || 0);
@@ -1956,6 +1957,15 @@ try {
   // A cold native source boot can outlast Playwright's default 30-second apparatus timeout.
   // This does not change the measured flight window or the game's loading-time result.
   await page.waitForLoadState('domcontentloaded', { timeout: 180_000 });
+  if (BUFFER_RESIZE_DIAG) {
+    // Electron creates its first page before Playwright can install init scripts. Reload only
+    // for this explicit diagnostic mode so the existing renderer arm is present before startup;
+    // the ordinary cold profile stays unarmed and remains the performance measurement.
+    const { installBufferResizeDiagnosticInitScript } = await import('./lib/releaseSoakProbe.mjs');
+    await installBufferResizeDiagnosticInitScript(page);
+    log('buffer-resize diagnostics armed by one setup reload; this run is diagnostic, not a cold baseline');
+    await page.reload({ waitUntil: 'domcontentloaded', timeout: 180_000 });
+  }
   if (baselineSourceOverlay) {
     servedSourceOverlayIdentity = await page.evaluate(async () => {
       const response = await fetch('/__source_overlay_identity', { cache: 'no-store' });
@@ -2062,6 +2072,7 @@ try {
               })) : null,
           },
           pendingPipelineAdmissions,
+          bufferResizeDiagnosticLastFailure: render?.bufferResizeDiagnostic?.lastFailure || null,
         },
       };
     });
