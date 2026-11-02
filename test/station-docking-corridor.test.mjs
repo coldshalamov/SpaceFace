@@ -223,8 +223,9 @@ test('default station autopilot stages an outside-gap approach through the measu
   const mouth = skinPos(mouthRadius);
   const approachTarget = resolveAutopilotTarget(state, autopilot);
   assert.equal(approachTarget.dockingStage, 'corridor-mouth');
-  assert.deepEqual({ x: approachTarget.x, z: approachTarget.z }, mouth,
-    'an outside-gap ship must first target the manifest corridor mouth');
+  assert.deepEqual(approachTarget.approachPoint, mouth, 'the authored mouth remains the approach destination');
+  assert.ok(approachTarget.x * player.pos.x + approachTarget.z * player.pos.z > 0,
+    'an off-axis contact escapes on its current side of the station');
 
   // The switch threshold must beat the 38-WU autopilot arrival floor; otherwise the flight
   // computer can stop at the staging point and deactivate before it ever targets the berth.
@@ -251,13 +252,14 @@ test('corridor-mouth guidance steers around its target station from the far side
   };
   const autopilot = { targetEntityId: station.id, arrivalRadius: 90 };
   const mouthTarget = resolveAutopilotTarget(state, autopilot);
-  const mouthDistance = Math.hypot(
-    mouthTarget.x - player.pos.x, mouthTarget.z - player.pos.z,
-  );
-
   assert.equal(mouthTarget.dockingStage, 'corridor-mouth');
   assert.equal(mouthTarget.entity, station);
-  const approach = computeAutopilotGuidance(state, player, mouthTarget, mouthDistance, 20, {});
+  // Even if another caller supplies a direct mouth leg, obstacle guidance must retain the target
+  // station. The normal resolved target first escapes outward from this far-side contact.
+  assert.ok(mouthTarget.x * player.pos.x + mouthTarget.z * player.pos.z > 0);
+  const directMouth = { ...mouthTarget, ...mouthTarget.approachPoint };
+  const directDistance = Math.hypot(directMouth.x - player.pos.x, directMouth.z - player.pos.z);
+  const approach = computeAutopilotGuidance(state, player, directMouth, directDistance, 20, {});
   assert.equal(approach.avoiding, true,
     'the target station blocks a straight corridor-mouth course from the opposite bearing');
   assert.equal(approach.trafficHold, null,

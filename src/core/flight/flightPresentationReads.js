@@ -20,7 +20,8 @@ const AUTO_TARGET_PATH_OVERDRIVE_MULT = 1.6;
 // ~7000 contacts at up to 158 wu/s, never docked). A far-side approach now rounds the station on a
 // circle of DOCK_ORBIT_RADIUS_MULT x mouth radius, aiming a carrot DOCK_ORBIT_STEP_DEG ahead toward
 // the corridor axis, until the hull is within that angle of the axis — then the authored mouth aim
-// takes over unchanged. Starts already inside the circle keep the mouth aim (the exit path).
+// takes over unchanged. Off-axis starts inside the circle first escape radially before orbiting;
+// a straight segment to the mouth from the far side can cross the station itself.
 export const DOCK_ORBIT_RADIUS_MULT = 1.3;
 export const DOCK_ORBIT_STEP_DEG = 60;
 export function dockOrbitWaypoint(entity, axis, mouthRadius, player) {
@@ -32,7 +33,14 @@ export function dockOrbitWaypoint(entity, axis, mouthRadius, player) {
   const lateral = rx * -axis.z + rz * axis.x;
   const theta = Math.atan2(lateral, along);
   const step = DOCK_ORBIT_STEP_DEG * Math.PI / 180;
-  if (Math.abs(theta) <= step || Math.hypot(rx, rz) < R * 0.9) return null;
+  if (Math.abs(theta) <= step) return null;
+  const distance = Math.hypot(rx, rz);
+  if (distance < R * 0.9 && distance > 0.001) {
+    return {
+      x: finite(entity.pos.x) + rx / distance * R * 1.5,
+      z: finite(entity.pos.z) + rz / distance * R * 1.5,
+    };
+  }
   const tw = theta - Math.sign(theta) * step;
   const c = Math.cos(tw);
   const s = Math.sin(tw);
@@ -97,9 +105,8 @@ export function resolveAutopilotTarget(state, autopilot) {
         : 0;
       // The berth stage holds the authored lane with lateral avoidance suppressed — it must only
       // arm while the hull is geometrically in the lane, or just outside the mouth still aligned
-      // with the corridor wedge. A hull off the wedge — knocked into an inter-spar armpit by a
-      // traffic dodge or contact — keeps the mouth aim: the only path that exits back through the
-      // ring gap instead of grinding structure until the solver expels it.
+      // with the corridor wedge. A hull off the wedge stays in the approach stage, where the
+      // orbit waypoint can guide a far-side contact clear before aiming for the mouth.
       const shipRelX = player && player.pos ? finite(player.pos.x) - finite(entity.pos.x) : 0;
       const shipRelZ = player && player.pos ? finite(player.pos.z) - finite(entity.pos.z) : 0;
       const shipAlong = shipRelX * axis.x + shipRelZ * axis.z;

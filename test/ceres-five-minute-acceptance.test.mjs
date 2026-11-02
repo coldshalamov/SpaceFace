@@ -41,6 +41,7 @@ import {
   normalizeCeresTrace,
   planCeresThroughlineToolkitReposition,
   planCeresToolkitTransitHandoff,
+  planCeresWorkingSeamDeparture,
   planCeresWorkingSeamEgress,
   pointPublicAtCeresHostile,
   prepareCeresPublicTetherFireSurface,
@@ -453,6 +454,7 @@ test('Ceres reference launch disables onboarding through public Settings before 
   let screen = 'mainMenu';
   let activeTab = null;
   let tutorialHints = true;
+  let staleOffRead = false;
   const actions = [];
   const page = {
     getByRole(role, options) {
@@ -468,7 +470,7 @@ test('Ceres reference launch disables onboarding through public Settings before 
             return {
               async getAttribute(name) {
                 assert.equal(name, 'aria-pressed');
-                return String(choice === 'On' ? tutorialHints : !tutorialHints);
+                return String(choice === 'On' ? (staleOffRead ? false : tutorialHints) : !tutorialHints);
               },
               async click() {
                 assert.equal(choice, 'Off');
@@ -522,8 +524,15 @@ test('Ceres reference launch disables onboarding through public Settings before 
   activeTab = null;
   const unchanged = await disableCeresTutorialThroughPublicSettings(page);
   assert.equal(unchanged.changed, false);
-  assert.deepEqual(actions, ['click:Settings', 'click:Gameplay', 'click:Back'],
-    'an already-disabled public setting remains idempotent');
+  assert.deepEqual(actions, ['click:Settings', 'click:Gameplay', 'click:Tutorial hints:Off', 'click:Back'],
+    'selecting the explicit Off choice remains idempotent');
+  actions.length = 0;
+  tutorialHints = true;
+  staleOffRead = true;
+  await disableCeresTutorialThroughPublicSettings(page);
+  assert.equal(tutorialHints, false,
+    'a stale already-off DOM snapshot must not skip the current public Off intent');
+  assert.deepEqual(actions, ['click:Settings', 'click:Gameplay', 'click:Tutorial hints:Off', 'click:Back']);
 });
 
 test('zero-visible intervals are re-derived and deliberately carry no numeric pass threshold', () => {
@@ -4795,6 +4804,42 @@ test('public pocket driver trims outside the circle and holds full brake only af
       return /public controls did not enter Working Seam/.test(error.message);
     },
   );
+});
+
+test('Working Seam departure leaves the captured berth outward and routes around the station', () => {
+  const station = { x: -11508, z: 7252 };
+  const captured = { x: -11486.930419921875, z: 7239.681335449219 };
+  const segmentGap = (a, b) => {
+    const dx = b.x - a.x, dz = b.z - a.z;
+    const t = Math.max(0, Math.min(1, ((station.x - a.x) * dx + (station.z - a.z) * dz) / (dx * dx + dz * dz)));
+    return Math.hypot(a.x + dx * t - station.x, a.z + dz * t - station.z);
+  };
+  for (const source of [captured, { x: station.x - 21, z: station.z - 12 }]) {
+    const arrival = { sectorId: CERES_REFERENCE_ACCEPTANCE_ENTRY.sectorId,
+      player: { alive: true, pos: source },
+      autopilot: { label: 'Belt Outpost', target: station, arrivalRadius: 90 } };
+    const plan = planCeresWorkingSeamDeparture(arrival, { minRemainingTicks: 2400 });
+    if (source === captured) assert.ok(segmentGap(source, plan.targetPos) < 26 + 16,
+      'the captured straight seam approach intersects the station plus player envelope');
+    const first = plan.waypoints[0];
+    const outwardX = source.x - station.x, outwardZ = source.z - station.z;
+    assert.ok((first.targetPos.x - source.x) * outwardX + (first.targetPos.z - source.z) * outwardZ > 0,
+      'the first public thrust must leave the berth instead of crossing the station');
+    const points = [...plan.waypoints.map((row) => row.targetPos), plan.targetPos];
+    for (let index = 1; index < points.length; index++) assert.ok(segmentGap(points[index - 1], points[index]) - 45 > 90,
+      'departure chords and completion discs must stay outside the public station completion ring');
+    for (const waypoint of plan.waypoints) {
+      assert.equal(waypoint.allowBoost, false, 'no dash into a nearby station hull');
+      assert.equal(waypoint.minRemainingTicks, 2400, 'existing route reserve is retained');
+      assert.equal(waypoint.controlClock, 'fixed-tick');
+    }
+    assert.deepEqual(plan.targetPos, sectorLocalToGlobalForSector(
+      CERES_ACTIVITY_POCKETS_BY_ID.ceres_working_seam.activityAnchor.localPos,
+      CERES_REFERENCE_ACCEPTANCE_ENTRY.sectorId,
+    ), 'the accepted Working Seam target stays unchanged');
+    assert.deepEqual(arrival.player.pos, source, 'planning must not mutate the observed arrival');
+  }
+  assert.throws(() => planCeresWorkingSeamDeparture({ player: { pos: captured } }), /public Belt Outpost/);
 });
 
 test('Working Seam evidence publicly restages to the fixed Belt Outpost departure corridor', async () => {

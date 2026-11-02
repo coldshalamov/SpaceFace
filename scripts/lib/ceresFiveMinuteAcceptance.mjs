@@ -878,7 +878,9 @@ export async function disableCeresTutorialThroughPublicSettings(page) {
   if (before !== 'true' && before !== 'false') {
     throw new Error('public Tutorial hints On control lacks exact pressed state');
   }
-  if (before !== 'false') await off.click({ timeout: 20_000 });
+  // Select the explicit Off choice even if an earlier render showed it pressed;
+  // a stale DOM observation must not skip the current public setting intent.
+  await off.click({ timeout: 20_000 });
   await page.waitForFunction(() => (
     window.SF?.state?.settings?.gameplay?.tutorialHints === false
   ), null, { timeout: 20_000 });
@@ -1940,6 +1942,18 @@ export async function runCeresFiveMinutePublicRoute({
         await pq020FunctionalRouteDrivers.waitForShipSettled(page, {
           deadlineTick: legDeadlineTick,
         });
+      }
+      if (leg.pocketId === 'ceres_working_seam') {
+        // The public station waypoint may finish in its berth on either side of the
+        // hull. Leave outward and go around its visible navigation ring before aiming
+        // at the seam; a straight W/Shift line from the far berth crosses the station.
+        const departure = planCeresWorkingSeamDeparture(arrival, { minRemainingTicks: legReserveTicks });
+        const receipts = [];
+        await mark('clear-belt-outpost', { pocketId: leg.pocketId, waypoints: departure.waypoints.length });
+        for (const waypoint of departure.waypoints) {
+          receipts.push(await drivePublicToCeresPoint(page, waypoint, observerBounds.endTick));
+        }
+        routeLog.push({ phase: 'station-departure', pocketId: leg.pocketId, departure, receipts });
       }
       await drivePublicToPocketAnchor(page, leg.pocketId, observerBounds.endTick, {
         minRemainingTicks: legReserveTicks,
@@ -3481,6 +3495,44 @@ async function provePublicFlightInput(page) {
   const validation = validatePublicInputReceipt(receipt);
   assert.deepEqual(validation.failures, [], `public input receipt failed: ${validation.failures.join('; ')}`);
   return receipt;
+}
+
+export function planCeresWorkingSeamDeparture(arrival, { minRemainingTicks = 120 } = {}) {
+  // Only the player's accepted arrival and the public station navigation target are
+  // used here. No scan of hidden actors or collision bodies guides the input actor.
+  const source = arrival?.player?.pos;
+  const station = arrival?.autopilot?.target;
+  const ring = Number(arrival?.autopilot?.arrivalRadius);
+  if (arrival?.sectorId !== CERES_REFERENCE_ACCEPTANCE_ENTRY.sectorId
+      || arrival?.player?.alive !== true || arrival?.autopilot?.label !== 'Belt Outpost'
+      || ![source?.x, source?.z, station?.x, station?.z, ring].every(Number.isFinite)
+      || ring <= 0 || !Number.isSafeInteger(minRemainingTicks) || minRemainingTicks < 120) {
+    throw new Error('Working Seam departure requires the accepted public Belt Outpost navigation receipt');
+  }
+  const targetPos = CERES_POCKET_TARGETS.ceres_working_seam.targetPos;
+  const dx = source.x - station.x, dz = source.z - station.z;
+  if (Math.hypot(dx, dz) < 1e-6) throw new Error('Belt Outpost departure has no outward arrival bearing');
+  const startAngle = Math.atan2(dz, dx);
+  const targetAngle = Math.atan2(targetPos.z - station.z, targetPos.x - station.x);
+  const sweep = Math.atan2(Math.sin(targetAngle - startAngle), Math.cos(targetAngle - startAngle));
+  // The existing 90-WU station completion ring is public navigation geometry, not a
+  // replacement collision radius. At three rings, <=60-degree chords and their
+  // half-ring completion discs remain outside that ring, including their endpoints.
+  const radius = ring * 3;
+  const steps = Math.ceil(Math.abs(sweep) / (Math.PI / 3));
+  const waypoints = Array.from({ length: steps + 1 }, (_, index) => {
+    const angle = startAngle + (steps ? sweep * index / steps : 0);
+    return Object.freeze({
+      pocketId: 'ceres_working_seam', targetId: `belt-outpost-clearance-${index}`,
+      targetName: index ? 'Belt Outpost outer departure' : 'Belt Outpost outward clearance',
+      targetPos: Object.freeze({ x: station.x + Math.cos(angle) * radius, z: station.z + Math.sin(angle) * radius }),
+      arrivalRadiusWU: ring / 2, minRemainingTicks, allowBoost: false, controlClock: 'fixed-tick',
+    });
+  });
+  return Object.freeze({ source: 'public-player-and-navigation-receipt',
+    sourceArrivalPos: Object.freeze({ x: source.x, z: source.z }),
+    stationPos: Object.freeze({ x: station.x, z: station.z }),
+    stationCompletionRadiusWU: ring, targetPos, waypoints: Object.freeze(waypoints) });
 }
 
 export function planCeresWorkingSeamEgress(beltOutpostArrival, {
