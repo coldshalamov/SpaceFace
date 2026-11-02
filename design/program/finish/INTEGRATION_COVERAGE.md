@@ -62,6 +62,28 @@ and the enabled authored ship/world image is visible.
 
 ## Current outcome map
 
+The fresh-pin Pelican22 route confirms that the new worker preview names the correct buoy and
+native Space latches that same identity. It then records an owned `line_overclass_snap`: the
+first contract's40t buoy exceeded a fresh Class I Line's20t limit. The introductory chain is now
+calibrated to18/19/20t; global overload rules, positions, drift and520/760/960CR rewards remain
+unchanged. Four native checks cover sustained attachment and old40/65/90t accepted saves restoring
+the same bodies at the corrected masses. The narrowly identified persistent-entity restore path
+also applies that calibration without losing pose, health, credits or mission progress. Public
+tow delivery/payment now pass in Pelican25 on source569ceb918d10: the original line holds through
+physical tow-in, the canonical mission completes and pays520CR, and after undock the same mission's
+receiving event appears. The run has zero browser errors/warnings and complete cleanup. This closes
+the first44-C job; later jobs retain native/save coverage only. Pelican23 stopped before acceptance because its actor read
+the public reward counter during its roll from zero; it now waits for agreement with the posted
+row within the existing bound. Pelican24 exposed a separate null-equality error in the actor's
+selected-ID check; requiring the accepted ID corrected it before Pelican25. Neither observer error
+is presented as a product regression.
+
+Discovery notifications now share the existing HUD safe-band allocator instead of covering the
+target dock; six focused lifecycle checks pass, while the ordinary visual look remains pending.
+The production cabinet attract recording was regenerated for the deliberately changed physics
+with its original seed, quantization and frame bounds; all eleven cabinet checks pass. The absent
+Hitch V7 candidate-only evidence test was retired; current retail asset validation is retained.
+
 | Area | Current outcome | Open work / boundary |
 |---|---|---|
 | Ordinary gameplay routes | Racing, Gauntlet, Pinball, Swarm round-three functionality, and the Adventure Ceres delivery/save/Continue route have scoped passes. | These do not establish full-game completion, broad performance, or all public-story routes. Foundry first-ten/boss and Last Shift story routes remain open. |
@@ -83,11 +105,21 @@ and the enabled authored ship/world image is visible.
 | Hull physics | `48c2d6b09bb9` derives native yaw inertia from measured hull area and radius. The real Rapier low-speed scrape falls from3.98 to0.614rad/s. `9a7324ac5ab1` also gives ordinary weapon hits authored momentum instead of multiplying it by target mass: a126 impulse now produces126/m velocity change across2/16/180/800-tonne native bodies. Both contact/splash paths and real collision blocking pass focused checks. | Native checks do not establish ordinary collision feel across the fleet. Legacy replay hit/cue counts change with the corrected trajectories. Force, Massline and field policies are unchanged; no asset mass/material distribution was guessed. |
 | Asset processing | The catalog covers418 release assets/352 families; all418 actual GLB hashes match their release declarations. Triangle-surface contours keep the three flagged LOD families within4WU. Canonical activation `da05f99fdb4f` includes all417 fresh package bindings,13 shared KTX2 bodies,175 rebuilt semantic-pivot hierarchies and the Fin duplicate-texture fix. The same-source headed sidecar preserves authored Kestrel appearance and reduces measured asset responses25,659,595→20,668,078B; the separate Fin retail package saves1,174,532B. | The wreck/three payload readiness rows are offscreen runway contacts, correctly streamed on reveal; no opening blocker was found. These byte/hierarchy results and the deployed asset/control pass do not establish FPS or loading-time improvement, fleet-wide collision feel or complete hero/marking appearance. |
 | Deployed mobile | Public alias `spaceface-play-demo.vercel.app` serves tested deployment `dpl_C9eZXk9gbHTttTY7rittWTMhX2Yq` from7195. Native Chromium touch New Game and same-profile public save/reload/Continue movement pass. Zero JS/GL/critical HTTP errors;13 unique shared KTX2 bodies return200. Promotion preserved the tested build; the public receipt matches candidate SHA256 `82c03cbe386c7ccb760f26a4eca8d60dd6180eebdef6aaf9de16570fe821f0cc`. | Actual iPhone14 remains UNKNOWN. Continue inherited near-rest velocity, so this candidate did not exercise native braking. Its timed nonmodal recap is visible; dismissal has focused coverage but no native tap in this run. Windows WebKit landscape snapshot differences do not establish physical-phone success. |
-| Story guidance and worker boot | Compost guidance derives from real eligible material. The public Pelican route accepts the520CR job, reaches44-C, shows the payload HUD and latches the exact accepted buoy through native input. The return lost the tow; later instrumentation retains typed owned-line loss events. `c94cdbbb37cf` and `1058ea81f7a1` publish bounded Line, field, Gyre and travel views from the worker, with24 focused transport/HUD checks passing. | Physical tow delivery, payment and receiving remain open; no completion is inferred from latching. The new worker view awaits the fresh-pin ordinary route. Public earned Compost growth and later story routes remain open. This source boot is not current packaged acceptance. |
+| Story guidance and worker boot | Pelican25 on569ceb918d10 passes the first44-C contract through public accept, native aim/latch, sustained physical tow-in, canonical520CR payment and the same mission's receiving event after undock. Errors/warnings are empty and cleanup passes. The worker preview identifies the same latched buoy. All three introductory masses and old accepted-save restoration have native checks. | Later Pelican jobs retain focused native/save coverage only. Discovery placement's ordinary look, public earned Compost growth and later story routes remain open. This first-job route is not current packaged acceptance. |
 | Living traffic | `49b20a2b5f58` makes the existing Helios civic liner yield to an actual attached tug/load crossing its berth, then resume the same itinerary. Current endpoint identities, semantic attachment and live physics telemetry are required; seven focused owner checks pass. No actor or resource is added. | This is one bounded living-world slice, not completion of the whole Lantern Ward plan. Ordinary visible yield/resume remains unverified, and the tow is not a memorial-specific mission object. |
 | Pro creation | Correct Pro dispatch count: 0. The Browser connects to ChatGPT Chat with Pro selected; the model menu reports “Usage limit reached.” | Five briefs remain queued for ChatGPT Pro. Work and alternate models are not authorized. See the [Pro portfolio](./PRO_CREATION_PORTFOLIO_2026-10-30.md). |
 
 ## M9 measured checkpoint history
+
+The legacy opaque-pool path also has a completed held-scene ABBA on source `82693956a0a7`.
+Its eleven batches consolidate twelve visible pool instances, reducing median world draw calls
+from 185 to 173. All four arms retain about 16.67 ms median spacing and 33.34–33.37 ms p95;
+the first enabled arm has a 66.715 ms maximum. Host CPU busy spans 14.1–31.7%. The authored
+OFF/ON images were opened and inspected; simulation, entity transforms, settings and projection
+remain matched, with camera matrix differences bounded at 1e-8 rather than claiming exact floating
+equality during asymptotic smoothing. World submissions advance and defaults/cleanup restore.
+No frame-time win is established, so this path remains disabled. This closes the starter-dock
+experiment, not crowded-simulation or overall performance acceptance.
 
 The current measured point is the1ad main closure above. Earlier checkpoints, methodology, receipts, and non-comparable measurements remain in the [dated archive](../../archive/finish-integration/INTEGRATION_COVERAGE_2026-10-31.md). Do not infer total transfer or runtime smoothness from the static-closure number alone.
 

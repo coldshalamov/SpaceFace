@@ -15,11 +15,12 @@ export const STARTER_WORK_SITES = Object.freeze({
       brief: 'The yard needs 2u iron. Outer seam marked; your own Helios cut is equally good.' },
   ]),
   starter_pelican: Object.freeze([
-    { label: '44-C loose lane buoy', pos: { x: 310, z: -35 }, mass: 40, drift: { x: 0, z: 0 },
+    // All three introductory contracts are available to a fresh Class I Line (20 t ceiling).
+    { label: '44-C loose lane buoy', pos: { x: 310, z: -35 }, mass: 18, drift: { x: 0, z: 0 },
       brief: '44-C broke its mooring beside the first lane pin. Winch the lit buoy to Helios.' },
-    { label: 'Claim-rim loose lane buoy', pos: { x: 1000, z: 30 }, mass: 65, drift: { x: 0, z: 2 },
+    { label: 'Claim-rim loose lane buoy', pos: { x: 1000, z: 30 }, mass: 19, drift: { x: 0, z: 2 },
       brief: 'A heavier buoy is drifting off the claim rim. Catch it and winch it back to Helios.' },
-    { label: 'Outer-yard loose lane buoy', pos: { x: -1560, z: -1100 }, mass: 90, drift: { x: 1, z: -1 },
+    { label: 'Outer-yard loose lane buoy', pos: { x: -1560, z: -1100 }, mass: 20, drift: { x: 1, z: -1 },
       brief: 'The outer yard lost its approach light. Bring the heavy buoy back; keep the hulk clear.' },
   ]),
 });
@@ -116,6 +117,18 @@ export function isStarterBuoyRecord(rec) {
     && rec.identityKey === `mission:${rec.missionId}:0`
     && marker?.version === STARTER_WORKDAY_VERSION && marker.jobId === 'starter_pelican'
     && marker.role === 'slag_core' && Number.isInteger(marker.step) && marker.step >= 1 && marker.step <= 3;
+}
+
+// Persistent attached bodies may be restored directly from a save instead of the world-record
+// spawn path. Only reapply the current authored mass when both saved identities describe the
+// same versioned starter buoy; the saved pose, health and all other body fields remain intact.
+export function starterBuoySavedMass(spec, rec) {
+  if (!isStarterBuoyRecord(rec)) return null;
+  const marker = starterBuoyRecordMarker(spec), d = spec?.data, recorded = rec.extra.starterWorkdayBuoy;
+  if (!marker || marker.step !== recorded.step || d?.worldRecordId !== rec.recordId
+    || d.identityKey !== rec.identityKey || d.missionId !== rec.missionId || d.missionTag !== rec.missionId
+    || d.missionTargetSlot !== 0 || !spec.physicsBody || typeof spec.physicsBody !== 'object') return null;
+  return starterWorkSite(marker.jobId, marker.step)?.mass ?? null;
 }
 export function starterBuoyFromRecord(rec) {
   if (!isStarterBuoyRecord(rec)) return null;

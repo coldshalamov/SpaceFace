@@ -1,6 +1,15 @@
-# Open PR integration map
+# PR integration map
 
-As of 2026-11-01, GitHub reports 24 open PRs for `coldshalamov/SpaceFace`. This is an integration queue, not a merge queue: compare each head with the current working tree before porting anything. Current integration head is `master@d5acae4bf86b`. Source ports below are identified by commit; ordinary player looks remain separate where marked pending. Do not treat an open PR, its test count, or its mergeability label as evidence that its player outcome is missing or accepted.
+The 2026-11-01 GitHub snapshot contains 24 open PRs for `coldshalamov/SpaceFace`; it is not a live open-count claim. This is an integration queue, not a merge queue: compare each head with current code before porting anything. Source ports below are identified by commit; ordinary player looks remain separate where marked pending. Do not treat an open PR, its test count, or its mergeability label as evidence that its player outcome is missing or accepted.
+
+## Subsequent integrated PRs
+
+- **#784, Save layout:** merged through `1960ba9dc845`. The thirteen-line inset/hairline change and source fingerprints were reviewed; numerical UI budgets were unchanged. The current Save-screen look remains pending.
+- **#785, Ledger eligibility:** merged through `82693956a0a7`. At1101–1440×461–720, the eligibility card spans the tape and purse, and its panel scrolls. Source review is complete; an ordinary populated Ledger look remains pending.
+- **#788, Pause footer:** merged through `82693956a0a7`. At521–640px desktop height, the footer moves below the dial rim. Source review is complete; the corresponding ordinary Pause look remains pending.
+- **#786, Station footer:** merged through `b8878dcc7167`. At901–1199px width, tab hit areas stay clear of Comms/Help/Undock; tighter narrow-desktop spacing retains the Market controls above the footer. The source and focused browser test were reviewed; execution is queued behind the current GPU measurement.
+
+These merges preserve the existing UI cost thresholds; updated source fingerprints are not performance acceptance.
 
 The [current outcome map](./INTEGRATION_COVERAGE.md) and [lane boards](./LANE_1_MACHINE_AND_PICTURE.md) are authoritative for current route status. This ledger tracks only the GitHub PR backlog. Closed prerequisites #480 and #526 are already merged; open dependent branches still need retargeting/reconciliation where noted.
 

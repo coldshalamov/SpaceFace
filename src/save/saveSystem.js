@@ -37,6 +37,7 @@ import { normalizeWatchlist } from '../ui/watchlist.js';
 import { AI_CONTRACT_VERSION } from '../ai/contracts.js';
 import { mulberry32, mulberry32FromContinuation } from '../core/rng.js';
 import { NEW_GAME } from '../data/newGameDefaults.js';
+import { starterBuoySavedMass } from '../missions/starterWorkday.js';
 import { STORY_BEATS } from '../data/missions.js';
 import { restoreCombatState, restoreCombatStateSteps, serializeCombatState, resolveWorldJobCombatRef, hasPendingCeresWorkfleetAttachments,
   resumeCeresWorkfleetAttachments, cancelPendingCeresWorkfleetAttachments,
@@ -8480,6 +8481,13 @@ export const save = {
       }
       const spec = clonePlain(saved);
       delete spec._isPlayer;
+      const starterRecordId = spec.data?.worldRecordId;
+      const starterRecord = starterRecordId == null ? null : state.world?.records?.byId?.[starterRecordId];
+      const starterMass = starterBuoySavedMass(spec, starterRecord);
+      if (starterMass != null) {
+        spec.mass = starterMass;
+        spec.physicsBody.mass = starterMass;
+      }
       // One live hull per worldRecordId: an envelope written by a leaking build can hold
       // several saved copies for one durable record — later copies collapse onto the first
       // respawned carrier and their saved ids still remap for referents (combat targets,
