@@ -1,4 +1,5 @@
 import { fortifyAvailable } from '../swarmFortifyPanel.js';
+import { firstSwarmIntermission } from '../firstSwarmIntermission.js';
 // Crucible draft surface (PQ-133 / CRU-016) and refit surface (CRU-017).
 //
 // Both are pure DOM over receipts. They read the open offers, the re-roll price and the fittable
@@ -800,6 +801,7 @@ export function swarmNextLine(next) {
   ];
   if (next.roster.length) bits.push(next.roster.join(', '));
   if (next.newcomer) bits.push(`new: ${next.newcomer}`);
+  if (next.specialistBrief) bits.push(`prepare: ${next.specialistBrief.threat} ${next.specialistBrief.counter}`);
   if (next.event) bits.push(`${next.event.name} — ${next.event.telegraph}`);
   if (next.boss) bits.push(`boss: ${next.boss.label}`);
   return `Next — ${bits.join(' · ')}`;
@@ -1439,14 +1441,14 @@ export const crucibleDraftScreen = {
     const runStart = context.state?.run?.telemetry
       && Number.isInteger(context.state.run.telemetry.startWave)
       ? context.state.run.telemetry.startWave : 1;
-    this._sub.textContent = offers.length
+    this._sub.textContent = firstSwarmIntermission(context.state?.run, offers) ?? (offers.length
       ? (wave === 0
         ? 'Fit out before round 1 — the purse is already open. Each fitting bolts onto one hardpoint of the ship you chose; a full hardpoint swaps, and the old part waits in your spares.'
         : shop && runStart > 1 && wave === runStart - 1
           ? `Checkpoint start — the purse is stocked for Round ${runStart}.`
           : shop ? `Round ${wave} cleared. Buy a new toy, or save for something bigger.`
             : `Wave ${wave} cleared. Choose a new weapon.`)
-      : `Wave ${wave} cleared. Nothing new fits this hull.`;
+      : `Wave ${wave} cleared. Nothing new fits this hull.`);
 
     // SWARM-04 §6.5 — plan around the next fight. `wave` is the round just cleared (0 before
     // the opener), so the preview is always wave + 1. Zone/event remain authored ladder copy;
