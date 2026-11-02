@@ -1660,6 +1660,11 @@ const CAUSAL_PHASE_MEANS_OVERRIDE = Object.freeze({
   'ev_yard_break:huddle': 'TOOLS DOWN · SHIFT BREAK AT THE YARD',
   'ev_yard_break:back_to_it': 'BACK ON TOOLS · WORK RESUMING',
   'ev_scavengers_at_fresh_wreck:scatter': 'LAW CONTACT · SCATTERING OFF THE FACE',
+  // Dione convoy-day chain: the catalog pins the law-lock lamp on the escort's flank join and the
+  // tender-callout lamp on the spine-up ripple — no hull is locked and no tender is inbound; the
+  // convoy is forming and lighting in order.
+  'ev_convoy_forms_up:escort_arrives': 'ESCORT JOINING · PIN ON THE FLANK',
+  'ev_convoy_forms_up:spine_up': 'ENGINES LIT · ROLLING SOON',
 });
 
 function workerStatusText(target, state = null) {
