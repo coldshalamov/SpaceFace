@@ -58,8 +58,41 @@ export function contractSectorName(m, fallback) {
   return sector && sector.name ? sector.name : fallback;
 }
 
+// Read-only Registry Writ presentation. missionObjectiveOps owns identification and resolution.
+// No inferred delivery phase: the authenticated custody reel closes this writ immediately.
+export function registryContactReadout(m) {
+  if (!m || m.storyTag !== 'campaign47a:b2:elroy' || m.type !== 'bounty_hunt'
+    || m.destSectorId !== 'sector_charon_expanse'
+    || m.storyTarget?.id !== 'npc_elroy' || m.storyTarget?.role !== 'register_mark'
+    || (m.status !== 'active' && m.status !== 'completed')) return null;
+  const p = m.params || {};
+  const where = 'Ashfall approach · Charon Expanse';
+  if (p.investigationOutcome === 'custody' || p.investigationOutcome === 'force') {
+    const objective = p.investigationOutcome === 'custody'
+      ? 'Elroy taken into custody — writ resolved'
+      : 'Elroy destroyed — writ resolved';
+    return { objective, where, next: `${objective}. No station delivery is required.` };
+  }
+  if (m.status !== 'active') return null;
+  if (p.investigationStage === 'identified') {
+    return {
+      objective: 'Registry identified — choose custody or force',
+      where,
+      next: 'Civilian maintenance vessel. For custody, tether Elroy and reel to 60 WU or less; or destroy the vessel to resolve by force.',
+    };
+  }
+  if (p.investigationStage != null) return null;
+  return {
+    objective: 'Identify the marked vessel — scan before choosing a response',
+    where,
+    next: 'Find the marked vessel off Ashfall in Charon Expanse. Select it, move within 1,200 WU, and pulse scan to identify it before choosing a response.',
+  };
+}
+
 /** Build a human-readable objective description from the mission instance. */
 export function objectiveText(m) {
+  const registry = registryContactReadout(m);
+  if (registry) return registry.objective;
   const p = m.params || {};
   const prog = m.objectiveProgress || 0;
   const tgt = m.objectiveTarget || 1;

@@ -15,7 +15,7 @@
 
 import {
   STATION_INFO, SECTOR_BY_ID, fmtTime, titleCaseWords, prettyType, cmdtyName,
-  destStationName, contractSectorName, inSector, objectiveText,
+  destStationName, contractSectorName, inSector, objectiveText, registryContactReadout,
 } from '../sim/missionRecap.js';
 export { objectiveText, continueRecap } from '../sim/missionRecap.js';
 import { commodityDisplayName } from '../commodityNames.js';
@@ -354,6 +354,8 @@ export function storyIntroducesDisplayName(value) {
 }
 
 function nextStepText(m, state) {
+  const registry = registryContactReadout(m);
+  if (registry) return `Next: ${registry.next}`;
   const p = m.params || {};
   const dest = m.destStationId ? destStationName(m.destStationId) : 'the tracked marker';
   const wreckName = p.wreckName || 'the marked wreck';
@@ -454,6 +456,7 @@ function stripNextPrefix(text) {
 }
 
 function missionPurposeText(m) {
+  if (registryContactReadout(m)) return 'Check the named vessel’s registry and choose how to resolve the writ.';
   if (!m) return 'Complete the contract and secure its payout.';
   // Paperwork deep-read: authorization / admin field / full contract body (B0 mass story).
   if (m.description && String(m.description).includes('MASS ON ACCEPT')) {
@@ -825,7 +828,7 @@ export function missionCommandBrief(m, state) {
   const stake = terms.find((item) => item.label === 'Stake');
   return Object.freeze({
     what: objectiveText(m),
-    where: destLabel(m),
+    where: registryContactReadout(m)?.where || destLabel(m),
     how: stripNextPrefix(nextStepText(m, state)),
     why: missionPurposeText(m),
     reward: term('Pays', 'close cleanly'),
