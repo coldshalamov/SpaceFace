@@ -6,7 +6,11 @@ import { build, transform } from 'esbuild';
 
 import * as THREE from 'three';
 
-import { derivePilotSemanticManifest, parseRenderPackagePilotArgs } from '../scripts/build-render-package-pilots.mjs';
+import {
+  derivePilotSemanticManifest,
+  parseRenderPackagePilotArgs,
+  validateSharedKtx2Hashes,
+} from '../scripts/build-render-package-pilots.mjs';
 import { sceneFromGlbJson } from '../scripts/lib/renderPackageRuntimeTable.mjs';
 import {
   deriveAuthoredRuntimeTable,
@@ -44,6 +48,25 @@ test('render-package pilot builder keeps external KTX2 opt-in and scopes candida
   });
   assert.equal(parseRenderPackagePilotArgs([]).externalizeKtx2, false, 'normal compiler output remains embedded');
   assert.throws(() => parseRenderPackagePilotArgs(['--externalize-ktx2=no']), /Unknown render-package pilot option/);
+  assert.deepEqual(parseRenderPackagePilotArgs([
+    '--manifest=.devshots/pilots.json', '--only=kestrel', '--output-root=.devshots/candidate', '--check',
+  ]), {
+    check: true,
+    externalizeKtx2: false,
+    outputRoot: '.devshots/candidate',
+    manifestPath: '.devshots/pilots.json',
+    onlyKeys: ['kestrel'],
+  });
+});
+
+test('manifest KTX2 policy is optional, exact, lowercase, sorted, and unique', () => {
+  const a = 'a'.repeat(64), b = 'b'.repeat(64);
+  assert.equal(validateSharedKtx2Hashes({ key: 'plain' }), null, 'old pilots retain embedded output');
+  assert.deepEqual(validateSharedKtx2Hashes({ key: 'shared', sharedKtx2Hashes: [a, b] }), [a, b]);
+  assert.throws(() => validateSharedKtx2Hashes({ key: 'empty', sharedKtx2Hashes: [] }), /non-empty sorted array/);
+  assert.throws(() => validateSharedKtx2Hashes({ key: 'upper', sharedKtx2Hashes: ['A'.repeat(64)] }), /lowercase SHA-256/);
+  assert.throws(() => validateSharedKtx2Hashes({ key: 'unsorted', sharedKtx2Hashes: [b, a] }), /sorted and unique/);
+  assert.throws(() => validateSharedKtx2Hashes({ key: 'duplicate', sharedKtx2Hashes: [a, a] }), /sorted and unique/);
 });
 
 if (!globalThis.document) {
