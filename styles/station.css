@@ -1435,10 +1435,6 @@ html[data-k-temp="wanted"] #screens .sx-berth .sxb-event {
   #screens .sx-berth .sxb-purse__label { font-size: var(--k-fs-fine); }
   #screens .sx-berth .sx-dock__group--nav { width: auto; }
   #screens .sx-berth .sx-tile.k-word { font-size: var(--k-fs-fine); }
-  #screens .sx-berth .sxb-ops .sx-tile__label {
-    font-size: 12px;
-    letter-spacing: 0;
-  }
   #screens .sx-berth .sx-tile__seat { display: inline-flex; align-items: center; color: inherit; }
   #screens .sx-berth #sx-panel { padding: 8px 0; overflow: auto; }
   #screens .sx-berth .sxb-launch.k-word { min-height: 48px; font-size: var(--k-fs-data); padding: 0 12px; }
