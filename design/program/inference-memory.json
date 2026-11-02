@@ -1,6 +1,6 @@
 {
   "schema": "spaceface.inferenceMemory.v1",
-  "updated": "2026-10-30",
+  "updated": "2026-11-02",
   "runs": [
     {
       "date": "2026-08-12",
@@ -131,19 +131,6 @@
     }
   ],
   "units": [
-    {
-      "id": "seed-sw-01",
-      "date": "2026-10-23",
-      "wf": "WF-05",
-      "mode": "opportunity",
-      "verdict": "implemented",
-      "reason": "A bought smart-bomb charge empties the room on one Bomb press: throw + packet, player untouched",
-      "fingerprint": "verb=detonate,subject=smart-bomb,sector=crucible,domain=wf-05",
-      "references": [],
-      "integration": "live",
-      "commit": "0230cf78ad",
-      "verification": "focused_green"
-    },
     {
       "id": "seed-sw-03",
       "date": "2026-10-23",
@@ -1689,6 +1676,19 @@
       "references": [],
       "integration": "live",
       "commit": "e5ac485619fd",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inf-shove-panic",
+      "date": "2026-11-02",
+      "wf": "WF-02",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "A hull the pilot tosses rattles for a beat — guns cold, one mayday over the band — and a rattled reinforcement caller now calls its screen at full hull.",
+      "fingerprint": "verb=react,subject=shoved-enemy,sector=flight,domain=wf-02",
+      "references": [],
+      "integration": "live",
+      "commit": "40d7b14def70",
       "verification": "focused_green"
     }
   ],
