@@ -3869,8 +3869,8 @@ function getSearchTargets(state, level, curSecId, claimsSystem = null, isHostile
       detail: `Owned base · ${marker.statusLine}`,
     });
   }
-  // 3. Contacts
-  if (level === 'local') {
+  // 3. The active objective is searchable at every chart scale.
+  {
     // The active objective marker is a first-class searchable target. Its label can be more
     // specific than the underlying entity name (for example, the 47-A recovery rock), so merely
     // searching the ambient contact list can never resolve the exact marker the canvas exposes.
@@ -3888,6 +3888,8 @@ function getSearchTargets(state, level, curSecId, claimsSystem = null, isHostile
         // whatever body currently holds a recycled slot instead of the body the course armed.
         stable: waypoint && waypoint.stable ? waypoint.stable : null,
         missionId: goal.missionId,
+        sectorId: goal.sectorId,
+        courseArrivalRadius: waypoint && waypoint.arrivalRadius,
         objective: true,
         markerKind: goal.markerKind,
         detail: 'Active objective · Navigation fix',
@@ -3895,6 +3897,9 @@ function getSearchTargets(state, level, curSecId, claimsSystem = null, isHostile
       stampWaypointTarget(state, goalTarget);
       targets.push(goalTarget);
     }
+  }
+  // Ambient contacts remain local.
+  if (level === 'local') {
     // Search results must carry the same scanner classification as the painted LOCAL layer.
     // Falling back to data.hostile here made named accepted warrants inspect as `Hostile NO`
     // even while targeting and the canvas correctly treated the entity as hostile.
