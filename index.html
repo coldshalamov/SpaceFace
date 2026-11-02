@@ -144,9 +144,8 @@
   <!-- The deferred wave (SCREEN_MODULES minus BOOT_SCREEN_EXPORTS in uiRoot.js): registration
        still batches in menu idle and never gates interaction — these are fetch-only hints so a
        fast launch→undock never discovers a cold module inside the flight loop. Keep in sync
-       with the non-boot rows of SCREEN_MODULES. -->
+       with the non-boot rows of SCREEN_MODULES. Shipworks is requested on its first F2 intent. -->
   <link rel="modulepreload" fetchpriority="low" href="./src/ui/galaxyMap.js" />
-  <link rel="modulepreload" fetchpriority="low" href="./src/ui/ship/shipScreen.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/ui/screens/range.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/ui/screens/footprint.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/ui/screens/starmap.js" />
@@ -988,6 +987,7 @@
   <link rel="modulepreload" fetchpriority="low" href="./src/render/vfx/materialEnvironment.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/render/vfx/materialFlow.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/render/vfx/monofilamentBlade.js" />
+  <link rel="modulepreload" fetchpriority="low" href="./src/render/vfx/mortalBlowRead.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/render/vfx/npcJobSignatureMethods.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/render/vfx/quarksSystem.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/render/vfx/runtime/eventGeometry.js" />
@@ -1017,6 +1017,7 @@
   <link rel="modulepreload" fetchpriority="low" href="./src/render/weapons/projectileGeometries.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/render/weapons/recipes.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/render/weapons/ribbonPool.js" />
+  <link rel="modulepreload" fetchpriority="low" href="./src/render/weapons/scarHistory.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/render/weapons/shieldContacts.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/render/weapons/shieldShell.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/render/weapons/weaponLights.js" />

@@ -80,11 +80,11 @@ ${GO} > .sf-go-tape .orr-tape__empty { fill:rgb(${BONE} / .8); }
 @media (min-width:1101px) {
   ${GO} .sf-go-grid .k-hero { flex:1 1 auto; }
 }
-/* 720p-900p desktop (1101-1500w, 641h+): the 66px headline ran a long loss cause to four lines beside the
-   ring; one step down it holds three. The card labels close up a hair so the 538px column at 1280
-   holds all three on one line */
+/* Compact desktop: keep a long loss cause inside its report column, clear of the dial's labels.
+   Allow unusually long ship names to wrap instead of painting across the column boundary. */
 @media (min-width:1101px) and (max-width:1500px) and (min-height:641px) {
-  ${GO} > .k-title .k-t-title { font-size:calc(58px * var(--sv)) !important; }
+  ${GO} > .k-title { min-width:0; }
+  ${GO} > .k-title .k-t-title { font-size:calc(52px * var(--sv)) !important; max-width:min(17ch, 100%) !important; overflow-wrap:anywhere; }
   ${GO} .sf-go-grid .k-hero__w { letter-spacing:.1em !important; }
 }
 /* ...and with the headline a line shorter the one-line verb rail, already wider than the 538px column at

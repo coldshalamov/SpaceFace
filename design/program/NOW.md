@@ -11,6 +11,14 @@ restore superseded dispatch, worktree, provider, review or verification procedur
 
 | Task | Thread | State | Exact paths being changed now | Next terminal action |
 |---|---|---|---|---|
-| Swarm Machine faction units | devin-local | released | `src/data/swarmMachine.js` (new), `src/data/swarmBrood.js`, `src/systems/swarmBrood.js`, `src/systems/swarmJuice.js`, `src/render/broodPresentation.js`, `test/swarm-machine-families.test.mjs` (new) | committed — seven units + instruments green, Codex review fixes applied |
-| DUST program (owner-directed 2026-10-31) | zcode | active | `design/program/dust/**`, `src/data/communityPersonality.js`, named `src/data/encounters/5xx-*.js`, `src/systems/encounterDirector.js`, `src/systems/telemetry.js`, `src/observability/sessionReport.js`, `src/data/modules.js`, `src/data/dustLane.js`, `src/data/enemies.js`, `src/ai/enemyMind/**`, `src/ai/combatDoctrine.js`, `src/ui/station/dust/**`, `src/ui/station/screens/{market,contracts}.js`, `src/ui/station/dock.js`, `src/ui/icons/**`, `src/ui/screens/starmap.js`, `src/render/heroRig.js`, `src/render/thruster/**` (plume floor), `scripts/dust-*.mjs`, `test/dust-*.test.mjs` | P1/P2/P4/P5/P6/P7 landed (board in `design/program/dust/README.md`); P3 partial with punch list; uncommitted, awaiting owner landing decision |
+| Finish integration and publication | Codex controller | active | `design/program/finish/PR_INTEGRATION.md`, `design/program/NOW.md` | integrate current fixes and publish the coherent batch; native workers receive exact source paths from the controller |
+
+The former ZCode controller was stopped on 2026-11-02 after preserving its session state and
+working changes. Its subsequent source work has been claimed, reviewed and repaired by the Finish
+controller. Its former broad DUST path reservation is released; DUST product status remains in
+[`dust/README.md`](dust/README.md). The owner has authorized the Finish controller to integrate
+remaining work without a separate landing decision.
+
+The Swarm Machine unit assignment is released: its seven units and instruments were committed,
+with Codex review fixes applied. This historical assignment grants no current mutation lock.
 <!-- zcode-inf20c released 2026-10-29: INFERENCE 20 complete — 20/20 units landed and pushed (2e5bf4c5633 … e5ac485619fd), each recorded via inference-record; see design/program/inference-memory.json and the sitting's final report. -->

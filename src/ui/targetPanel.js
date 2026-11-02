@@ -24,6 +24,7 @@ import { commodityDisplayName } from './commodityNames.js';
 import { FACTION_META } from '../data/factions.js';
 import { SHIPS } from '../data/ships.js';
 import { DAMAGE_MODEL } from '../data/combatDefs.js';
+import { localizeText } from '../localization/sourceText.js';
 import { ceresDisabledHaulerTruth, livingWorkStatusText } from '../data/contactHail.js';
 import { contactThreatTier, contactStateWord, isHostileToPlayer, isWreckLike, wreckScanned, SCANNER_CONTACT_RANGE } from '../systems/scanner.js';
 import { LANE_GIMMICK_LABELS } from '../data/laneContacts.js';
@@ -737,6 +738,22 @@ export function objectInfoLine(t, state, p, dist) {
     // line once scanned, and an unscanned hulk stays anonymous.
     if (!record && t.type === 'wreck' && d.scanned && d.provenance && d.provenance.killerLabel) {
       facts.push(`Killer: ${d.provenance.killerLabel}`);
+    }
+    // The rest of the history the aftermath owner recorded at kill time, read through the
+    // same scan gate: how it died (the cause's black-box evidence), what shipment it was
+    // flying (freight identity), and how long it has been dead (the wreck's own kill stamp
+    // against the 10-sim-minute day the world clock shares). Unscanned hulls tell nothing.
+    if (!record && t.type === 'wreck' && d.scanned) {
+      const evidence = d.causeContract && typeof d.causeContract.evidence === 'string'
+        ? d.causeContract.evidence.trim() : '';
+      if (evidence) facts.push(localizeText('Black box: {how}', { how: evidence }));
+      const manifestId = d.provenance && d.provenance.freightIdentity
+        && typeof d.provenance.freightIdentity.manifestId === 'string'
+        ? d.provenance.freightIdentity.manifestId.trim() : '';
+      if (manifestId) facts.push(localizeText('Manifest {id}', { id: manifestId }));
+      const daysAgo = Number.isFinite(d.killedAt) && Number.isFinite(state && state.simTime)
+        ? Math.max(0, Math.floor((state.simTime - d.killedAt) / 600)) : 0;
+      if (daysAgo > 0) facts.push(localizeText('{days}d ago', { days: daysAgo }));
     }
   } else if (Number.isFinite(t.mass) && t.mass > 0) {
     facts.push(`Mass ${Number.isInteger(t.mass) ? t.mass : Math.round(t.mass * 100) / 100}`);

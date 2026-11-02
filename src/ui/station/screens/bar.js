@@ -26,6 +26,7 @@ import {
   surveyOfferLabel,
   missionBoardSlots,
   barContactIntelTags,
+  barRegularStoryLine,
 } from '../barContacts.js';
 import { stationContactMemoryFor, stationContactMemoryLine } from '../../../data/stationContacts.js';
 import { mountContactPortrait } from '../../portraitArt.js';
@@ -424,7 +425,12 @@ export function createBarScreen(ctx) {
     }
     const memory = stationContactMemoryFor(state, c.id);
     let memLine = '';
-    try { memLine = stationContactMemoryLine(memory, c.line) || c.line || ''; } catch (_) { memLine = c.line || ''; }
+    try {
+      // A regular you have met speaks their advanced line first — the visit ladder answers
+      // with what changed since last time; the flat memory sentence stays the fallback.
+      memLine = barRegularStoryLine(c, state, sid())
+        || stationContactMemoryLine(memory, c.line) || c.line || '';
+    } catch (_) { memLine = c.line || ''; }
     // A contact with something to say about the pilot says it first, even if you have met before.
     if (c.deedId || c.trackerId) memLine = c.line;
     memLine = `${stationRegularRecognition(state, c).reaction} ${memLine}`.trim();

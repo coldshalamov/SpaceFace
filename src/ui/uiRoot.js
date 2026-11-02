@@ -160,9 +160,6 @@ import { restoredDefeatIntent } from './sim/restoredDefeatIntent.js';
 const SCREEN_MODULES = [
   // REVAMP 2.1 — one zoomable galaxy map (supersedes starmap+localmap once BP-03 parity passes). Lives in src/ui/, not screens/.
   { path: './galaxyMap.js', load: () => import('./galaxyMap.js'), name: 'galaxyMapScreen' },
-  // THE SHIP (frontend program §11.3 / SCREENS_B): the promoted shipworks stage, one shared
-  // instance with the dock's shipworks destination (§0.5 — one WebGL mount, two hosts).
-  { path: './ship/shipScreen.js', load: () => import('./ship/shipScreen.js'), name: 'shipScreen' },
   { path: './screens/range.js', load: () => import('./screens/range.js'), name: 'rangeScreen' },
   // THE FOOTPRINT (frontend program §11.12 J10 / SCREENS_C §2): the board you trace (F3).
   { path: './screens/footprint.js', load: () => import('./screens/footprint.js'), name: 'footprintScreen' },
@@ -215,6 +212,14 @@ const DRILL_SCREEN_MODULE = {
   path: './asteroid/asteroidScreen.js',
   load: () => import('./asteroid/asteroidScreen.js'),
   name: 'asteroidScreen',
+};
+// THE SHIP keeps one shared screen instance for both F2 and the dock destination. Its large
+// screen-only closure is requested only by a live F2 intent; the literal import remains visible
+// to esbuild so packaged builds resolve the same chunk as the development server.
+const SHIP_SCREEN_MODULE = {
+  path: './ship/shipScreen.js',
+  load: () => import('./ship/shipScreen.js'),
+  name: 'shipScreen',
 };
 
 // Title / pause / death must win the first parse wave. Galaxy map and shipworks are huge modules;
@@ -626,6 +631,12 @@ export const ui = {
     this.proExperiences = null;
     invalidateDockedStationPresentation(this);
     this._cancelPendingScreenRetry();
+    this._cancelShipScreenOpenRequest({ cue: false });
+    this._shipModeOff?.();
+    this._shipModeOff = null;
+    this._shipScreenTopOff?.();
+    this._shipScreenTopOff = null;
+    this._shipScreenRegistration = null;
     if (this._destroyFlightCursor) this._destroyFlightCursor();
     this.windowTitle?.stop();
     this.windowTitle = null;
@@ -799,7 +810,12 @@ export const ui = {
     // Register the administrative-blackout capture fence before any interactive comms/HUD module.
     // Document capture listeners on the same target run in registration order, so constructing the
     // input router after a prompt would let that earlier prompt act before the fence could stop it.
-    this.input = createUiInput(ctx, this.screenManager);
+    this.input = createUiInput(ctx, this.screenManager, {
+      isShipScreenRequestPending: () => !!this._shipScreenOpenRequest,
+      toggleShipScreenRequest: () => this._toggleShipScreenOpenRequest(),
+      cancelShipScreenRequest: () => this._cancelShipScreenOpenRequest(),
+    });
+    this._bindShipScreenRequestInvalidation();
 
     // comms / graffiti / endgame narrative overlay (story system drives it via events)
     replaceCommsOwner(this, ctx);
@@ -1928,6 +1944,123 @@ export const ui = {
     return request.token;
   },
 
+  _cancelShipScreenOpenRequest({ cue = true } = {}) {
+    const request = this._shipScreenOpenRequest;
+    if (!request) return false;
+    request.cancelled = true;
+    this._shipScreenOpenRequest = null;
+    if (cue) this.bus?.emit?.('audio:cue', { id: 'ui_back' });
+    return true;
+  },
+
+  _bindShipScreenRequestInvalidation() {
+    this._shipModeOff?.();
+    this._shipModeOff = this.bus?.on?.('mode:changed', ({ mode } = {}) => {
+      if ((mode && mode !== 'flight') || this.state?.mode !== 'flight') {
+        this._cancelShipScreenOpenRequest({ cue: false });
+      }
+    }) || null;
+    this._shipScreenTopOff?.();
+    this._shipScreenTopOff = this.bus?.on?.('ui:screenTop', ({ id } = {}) => {
+      const request = this._shipScreenOpenRequest;
+      if (request && id !== 'ship' && id !== request.initiatingTop) {
+        this._cancelShipScreenOpenRequest({ cue: false });
+      }
+    }) || null;
+  },
+
+  _isCurrentShipScreenOpenRequest(request) {
+    const currentStack = Array.isArray(this.state?.ui?.screenStack) ? this.state.ui.screenStack : null;
+    const sameStack = request?.stackSnapshot == null || (currentStack != null
+      && currentStack.length === request.stackSnapshot.length
+      && currentStack.every((id, index) => id === request.stackSnapshot[index]));
+    const currentTop = this.screenManager?.top?.() ?? null;
+    return !!(request
+      && this._shipScreenOpenRequest === request
+      && !request.cancelled
+      && request.registrationCycle === this._screenRegistrationCycle
+      && request.screenManager === this.screenManager
+      && isScreenRegistrationCycleCurrent(request.registrationCycle)
+      && sameStack
+      && currentTop === request.initiatingTop
+      && this.state?.mode === 'flight');
+  },
+
+  _toggleShipScreenOpenRequest() {
+    if (this._shipScreenOpenRequest) {
+      this._cancelShipScreenOpenRequest();
+      return 'cancelled';
+    }
+    if (this.state?.mode !== 'flight' || !this.screenManager) return 'ignored';
+    if (this._registeredScreens?.has('ship')) {
+      try {
+        if (this.screenManager.top?.() !== 'ship') this.screenManager.pushScreen('ship');
+        if (this.screenManager.top?.() === 'ship') {
+          this.bus?.emit?.('audio:cue', { id: 'ui_open' });
+          return 'opened';
+        }
+      } catch (error) {
+        console.error('[ui] open ship', error);
+      }
+      this.bus?.emit?.('toast', { text: 'Shipworks could not open. Press F2 to retry.', kind: 'warn', ttl: 4200 });
+      return 'failed';
+    }
+
+    const request = {
+      registrationCycle: this._screenRegistrationCycle,
+      screenManager: this.screenManager,
+      initiatingTop: this.screenManager.top?.() ?? null,
+      stackSnapshot: Array.isArray(this.state?.ui?.screenStack) ? [...this.state.ui.screenStack] : null,
+      cancelled: false,
+    };
+    this._shipScreenOpenRequest = request;
+    this.bus?.emit?.('audio:cue', { id: 'ui_open' });
+    this._ensureShipScreenRegistered().then(() => {
+      if (!this._isCurrentShipScreenOpenRequest(request)) return;
+      if (!this._registeredScreens?.has('ship')) throw new Error('Shipworks module did not register');
+      this.screenManager.pushScreen('ship');
+      if (this.screenManager.top?.() !== 'ship') throw new Error('Shipworks screen did not open');
+      this._shipScreenOpenRequest = null;
+    }).catch((error) => {
+      if (!this._isCurrentShipScreenOpenRequest(request)) return;
+      this._shipScreenOpenRequest = null;
+      console.warn('[ui] Shipworks request failed', error);
+      this.bus?.emit?.('toast', { text: 'Shipworks could not open. Press F2 to retry.', kind: 'warn', ttl: 4200 });
+    });
+    return 'requested';
+  },
+
+  _ensureShipScreenRegistered() {
+    const registrationCycle = this._screenRegistrationCycle;
+    if (this._registeredScreens?.has('ship')) return Promise.resolve(true);
+    if (!isScreenRegistrationCycleCurrent(registrationCycle)
+      || typeof this._registerScreenEntry !== 'function') return Promise.resolve(false);
+    const generation = registrationCycle.generation;
+    const existing = this._shipScreenRegistration;
+    if (existing?.generation === generation) return existing.promise;
+    const record = { generation, promise: null };
+    const clearFailedRegistration = () => {
+      if (this._shipScreenRegistration === record && !this._registeredScreens?.has('ship')) {
+        this._shipScreenRegistration = null;
+      }
+    };
+    record.promise = Promise.resolve()
+      .then(() => this._registerScreenEntry(SHIP_SCREEN_MODULE))
+      .then((value) => {
+        if (!isScreenRegistrationCycleCurrent(registrationCycle)) return false;
+        if (!this._registeredScreens?.has('ship')) {
+          clearFailedRegistration();
+          throw new Error('Shipworks module failed to register');
+        }
+        return value;
+      }, (error) => {
+        clearFailedRegistration();
+        throw error;
+      });
+    this._shipScreenRegistration = record;
+    return record.promise;
+  },
+
   _ensureStationScreenRegistered() {
     const registrationCycle = this._screenRegistrationCycle;
     if (this._registeredScreens && this._registeredScreens.has('station')) return Promise.resolve(true);
@@ -2059,6 +2192,11 @@ export const ui = {
     this.blackFlagPrompt = null;
     this.logbookRecap?.dispose();
     this.logbookRecap = null;
+    this._cancelShipScreenOpenRequest({ cue: false });
+    this._shipModeOff?.();
+    this._shipModeOff = null;
+    this._shipScreenTopOff?.();
+    this._shipScreenTopOff = null;
     invalidateDockedStationPresentation(this);
     this._cancelPendingScreenRetry();
     if (this._destroyFlightCursor) this._destroyFlightCursor();
@@ -2073,6 +2211,7 @@ export const ui = {
     this._screenRegistrationSettledGeneration = null;
     this._stationScreenRegistration = null;
     this._drillScreenRegistration = null;
+    this._shipScreenRegistration = null;
     this._registerScreenEntry = null;
     if (this.input && typeof this.input.dispose === 'function') this.input.dispose();
     this.input = null;

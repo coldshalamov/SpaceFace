@@ -34,6 +34,7 @@ export const PIN_REASON = Object.freeze({
   IMMINENT_COLLISION: 'IMMINENT_COLLISION',
   VISIBLE_ON_GLASS: 'VISIBLE_ON_GLASS',
   FIELD_DRIVEN: 'FIELD_DRIVEN',
+  PHYSICAL_INTEREST: 'PHYSICAL_INTEREST',
 });
 
 const PIN_SET = new Set(Object.values(PIN_REASON));
@@ -151,6 +152,7 @@ export function resolvePins(entity, context = {}) {
   }
   if (context.tetherOrAttachment === true) pins.push(PIN_REASON.TETHER_OR_ATTACHMENT_COMPONENT);
   if (context.fieldDriven === true) pins.push(PIN_REASON.FIELD_DRIVEN);
+  if (context.physicalInterest === true) pins.push(PIN_REASON.PHYSICAL_INTEREST);
   if (context.dockingOrLanding === true) pins.push(PIN_REASON.DOCKING_OR_LANDING);
   if (context.missionCritical === true) pins.push(PIN_REASON.MISSION_CRITICAL);
   if (context.escortOrFollow === true) pins.push(PIN_REASON.ESCORT_OR_FOLLOW_RELATION);

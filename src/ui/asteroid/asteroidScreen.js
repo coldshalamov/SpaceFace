@@ -21,7 +21,7 @@ import { resolveDrillControlMap } from '../screens/drill.js';
 import { prefersReducedMotion } from '../effects/effectRuntime.js';
 import { machineName, createStrataCache } from './asteroidRenderer2d.js';
 import { rockName } from './rockNames.js';
-import { createAsteroidRenderer3d } from './asteroidRenderer3d.js';
+import { createAsteroidRenderer3d, readWorksDrillSession } from './asteroidRenderer3d.js';
 import {
   createAsteroidController,
   MODES,
@@ -88,6 +88,35 @@ export function createSessionMutationGate(isOpen = () => true) {
     current() { return epoch; },
     accepts,
     settle,
+  };
+}
+
+export function createPublishedDrillBoardGate({ readDrill, readEntity, isOpen, begin }) {
+  let expected = null, started = false;
+  const matches = () => {
+    if (!expected || !isOpen()) return null;
+    const entity = readEntity(expected.id);
+    if (entity !== expected.entity || entity?.alive === false
+      || (entity?.occupantGeneration ?? null) !== expected.generation) return null;
+    const drill = readWorksDrillSession(readDrill());
+    if (!drill || drill.asteroidId !== expected.id
+      || (drill.asteroidGeneration ?? null) !== expected.generation) return null;
+    return drill;
+  };
+  return {
+    request(id) {
+      const entity = readEntity(id);
+      expected = entity ? { id, entity, generation: entity.occupantGeneration ?? null } : null;
+      started = false;
+    },
+    poll() {
+      const drill = matches();
+      if (!drill) return false;
+      if (!started) { begin(drill); started = true; }
+      return true;
+    },
+    ready: () => started && !!matches(),
+    invalidate() { expected = null; started = false; },
   };
 }
 
@@ -642,7 +671,28 @@ export const asteroidScreen = {
 
     // ---------- session + render state ----------
     let renderer3d = null;         // created lazily on first session (owns the WebGL context)
-    const boardReady = () => !renderer3d?.readiness || renderer3d.readiness().ready;
+    const boardPublication = createPublishedDrillBoardGate({
+      readDrill: () => state.drill,
+      readEntity: id => state.entities?.get?.(id),
+      isOpen: () => screen._active,
+      begin() {
+        ensureRenderer3d();
+        renderer3d.begin({ motionReduce, flashReduce: !!state.settings?.accessibility?.flashReduce });
+        projDirty = true;
+        refreshProjection();
+        seedLedgerFromSite();
+        // begin() resets to work zoom; an existing factory opens at its site scale.
+        armSiteZoom();
+        const allowed = paletteSettleAllowed;
+        paletteSettleAllowed = false;
+        try { updateHud(); } finally { paletteSettleAllowed = allowed; }
+        if ((state.drill?.tilesCleared || 0) <= 1) {
+          announce('Rig tethered to the surface winch — hold a direction to drive, keep holding to bore through rock.');
+        }
+      },
+    });
+    const boardReady = () => boardPublication.ready()
+      && (!renderer3d?.readiness || renderer3d.readiness().ready);
     let rafId = 0;
     let last = 0;
     let hudElapsed = 0;
@@ -2475,6 +2525,11 @@ export const asteroidScreen = {
       rafId = requestAnimationFrame(frame);
       const dt = Math.min(0.1, (now - last) / 1000);
       last = now;
+      if (!boardPublication.poll()) {
+        controller.cancel();
+        showBanner('equipment', 'Loading mining equipment…', 'warn');
+        return;
+      }
       const d = state.drill;
       if (!d) return;
 
@@ -2574,16 +2629,11 @@ export const asteroidScreen = {
       transferQty = 5;
 
       drillSys.begin(pendingId);
-      const astId = asteroidId();
+      boardPublication.request(pendingId);
+      const astId = pendingId;
       hudEls.siteName = nameEl;
       nameEl.textContent = rockName(astId);
       projDirty = true;
-      refreshProjection();
-      seedLedgerFromSite();
-      // The guide teaches the visible next action; announce the basic verb once as well.
-      if ((state.drill.tilesCleared || 0) <= 1) {
-        announce('Rig tethered to the surface winch — hold a direction to drive, keep holding to bore through rock.');
-      }
       // INPUT FIRST, PIXELS SECOND. These used to be registered after the renderer was built, so
       // any throw inside scene construction left a screen with no keys at all — not even Escape,
       // which is the difference between "the mine looks wrong" and "the game is stuck". Every
@@ -2602,10 +2652,7 @@ export const asteroidScreen = {
       // One renderer (one WebGL context) per mounted screen; each session rebuilds its scene
       // from the live field.
       ensureRenderer3d();
-      renderer3d.begin({ motionReduce, flashReduce: !!state.settings?.accessibility?.flashReduce });
-      // Law §9, immediately after begin() (which resets the register to work): a site with
-      // machines opens pulled back so the first second reads lit / flowing / dark.
-      armSiteZoom();
+      boardPublication.poll();
       // Re-entering an already-built site must not replay the §9 first-Core settle: the palette is
       // simply there, the way it was when you left. Only a Core landing DURING a session animates.
       paletteSettleAllowed = false;
@@ -2629,6 +2676,7 @@ export const asteroidScreen = {
       // queued time as well: it belongs to the closed session and must never become a new-session
       // workbench RPC. The active check only gates the DOM/listener teardown below.
       sessionGate.invalidate();
+      boardPublication.invalidate();
       workbenchPending = false;
       workbenchQueuedDt = 0;
       workbenchSiteId = null;

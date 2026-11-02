@@ -65,6 +65,7 @@ import {
   CRUCIBLE_SLALOM_WELL_COUNT,
 } from '../data/survivalMutators.js';
 import { isSwarmRuleset } from './survivalSwarm.js';
+import { readRecentImpulseProvenance } from '../combat/impulseKernel.js';
 import { gateBearing } from './waveMaterialization.js';
 import { indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
 import { SURVIVAL_COHORT_TAG } from './waveMaterialization.js';
@@ -104,6 +105,22 @@ import {
 export const SWARM_DEBRIS_TAG = 'swarmArenaDebris';
 /** Optic lattices are a rigid stamp, not debris. Census must not release them as leftover cover. */
 export const SWARM_OPTIC_TAG = 'swarmArenaOptic';
+
+// ── The pilot's throw survives the buzzer ───────────────────────────────────
+// _settleRoom rests the room between rounds; a body the PILOT threw is the bounded exception
+// (see _settleRoom). These three numbers keep that exception rare, aimed and deterministic.
+
+/** Impulse tags whose motion the pilot aimed — the throw family, or their own hull pushing. */
+const THROW_CARRY_TAGS = new Set([
+  'massline_throw', 'massline', 'rope_throw', 'massline_whip',
+  'direct_contact', 'ram_plate', 'tow_flail',
+]);
+
+/** Provenance older than this reads stale at the boundary: 45 s of unclaimed flight. */
+const THROW_CARRY_PROVENANCE_TICKS = 2700;
+
+/** The carry stays rare: at most this many thrown bodies keep their speed into the next round. */
+export const SWARM_CARRY_MAX_BODIES = 3;
 
 const WELL_SOLID_TYPES = new Set(['asteroid', 'wreck', 'station']);
 
@@ -1024,6 +1041,14 @@ export const swarmArena = {
   // be flying through the next round's opening breath, before the pilot has touched anything.
   // The stop is a counter-impulse through the physics port, so Rapier stays the authority.
   //
+  // THE EXCEPTION IS THE PILOT'S OWN THROW. The settle exists because ANONYMOUS leftover drift
+  // killed four hulls in a next round's first second (player-truth m4-active, round 2) — drift
+  // nobody aimed is unfair. A body the pilot personally threw is aimed: they spent the round
+  // winding it up through the well, they know where it is, and the buzzer erasing it throws
+  // away the one thing they earned. The newest impulse provenance on the body (the kernel's
+  // own record — read-only here) names the thrower; a bounded few of those keep their speed
+  // into the next round and become its terrain. Everything else still settles.
+  //
   // A latched foundry rock whose center has collapsed onto the pilot is not furniture to park.
   // Seed 4242 head gate: from sim 60 the same asteroid shared the player's position through
   // the round-3 probe, and 1.2 s of thrust from rest made 2.6 u/s. Centers inside
@@ -1036,8 +1061,10 @@ export const swarmArena = {
     this._releaseEmbeddedDebris(entities);
     const SETTLE_SPEED = 6;
     const tick = Number.isInteger(this.state.tick) ? this.state.tick : 0;
+    const carriedIds = this._pickCarriedThrows(entities, tick, SETTLE_SPEED);
     for (const e of entities.values()) {
       if (!e || (e.type !== 'asteroid' && e.type !== 'wreck') || e.alive === false || !e.vel) continue;
+      if (carriedIds.has(e.id)) continue;
       if (typeof physics.settlePassiveBody === 'function') {
         // Field response can change solver mass without changing the authored spec. The native
         // owner samples that mass and velocity, then publishes its post-impulse mirror now:
@@ -1064,6 +1091,57 @@ export const swarmArena = {
         provenance: { actorId: null, tag: 'swarm_round_settle' },
       });
     }
+    if (carriedIds.size > 0) {
+      const run = liveSwarmRun(this.state);
+      const wave = this._pressureWave
+        || (run && Number.isInteger(run.wave) ? run.wave : 0);
+      this._emit('swarmArena:debrisCarried', {
+        count: carriedIds.size,
+        ids: [...carriedIds],
+        wave,
+        tick,
+      });
+      // One-voice floor, same arbiter as the pressure telegraph: the round opens with the
+      // room telling the pilot their throw is still live — the moment is named, not silent.
+      this._emit('alert', {
+        key: 'swarm-throw-carried',
+        sev: 'info',
+        text: 'YOUR THROW IS STILL IN HERE — it kept its speed',
+        ttl: 4,
+      });
+    }
+  },
+
+  /**
+   * Which thrown bodies keep their momentum across the round boundary.
+   *
+   * A body carries when its newest impulse provenance names the pilot with a throw-class tag
+   * (the massline throw family, or the pilot's own hull pushing it) and it is still moving
+   * faster than the settle floor. Bounded and deterministic: the fastest few wins, ties break
+   * on id — never insertion order, never a roll. Provenance older than one long round's worth
+   * of ticks reads stale: the room tidies what the pilot has not claimed in 45 s.
+   */
+  _pickCarriedThrows(entities, tick, settleSpeed) {
+    const playerId = this.state && this.state.playerId != null ? this.state.playerId : null;
+    const carried = new Set();
+    if (playerId == null) return carried;
+    const candidates = [];
+    for (const e of entities.values()) {
+      if (!e || (e.type !== 'asteroid' && e.type !== 'wreck') || e.alive === false || !e.vel) continue;
+      const vx = Number.isFinite(e.vel.x) ? e.vel.x : 0;
+      const vz = Number.isFinite(e.vel.z) ? e.vel.z : 0;
+      const speedSq = vx * vx + vz * vz;
+      if (speedSq < settleSpeed * settleSpeed) continue;
+      const record = readRecentImpulseProvenance(e, tick, THROW_CARRY_PROVENANCE_TICKS);
+      if (!record || record.actorId !== playerId) continue;
+      if (!THROW_CARRY_TAGS.has(record.tag)) continue;
+      candidates.push({ id: e.id, speedSq });
+    }
+    candidates.sort((a, b) => (b.speedSq - a.speedSq) || ((a.id < b.id) ? -1 : (a.id > b.id) ? 1 : 0));
+    for (let i = 0; i < candidates.length && carried.size < SWARM_CARRY_MAX_BODIES; i++) {
+      carried.add(candidates[i].id);
+    }
+    return carried;
   },
 
   // Centers this close are one body, not two hulls in contact. See _settleRoom.

@@ -36,13 +36,19 @@ judged against the player's ordinary route.
 - [ ] Finish the final build-map leftovers, requested last-300-commit review, remaining PR outcomes
   and documentation cleanup. The five additional Pro jobs remain blocked on the intended provider.
 
-The source baseline after the localization loader change passes17/17 checks in60,133ms within the
+The coherent `d7ed4aa450f1` source baseline passes17/17 checks in63,635ms within the
 unchanged90,000ms budget. Earlier focused worker transport/HUD checks pass24/24. All417 render-package
 plans were validated by the web build from `aba26d770eab`. Its2866 files total629,883,908 bytes;
 the local receipt SHA256 is `6f4e2a15e4414fd8b16ad83bf859151999af6bf0baded3ddefc20cf2a97609e8`.
 The matching Windows ASAR passes the actual default New Game/flight/worker startup smoke and cleanup.
 This closes packaged startup for that bundle, not Settings return, retention or final performance.
-Subsequent authority HUD, drill-demand, NPC and renderer repairs still need their changed bundle.
+The authority HUD, drill-demand, adopted salvage/Continue and scene-target repairs are now bundled
+from `d7ed4aa450f1`:2866 files /629,895,262 bytes, receipt SHA256
+`62b69123b02425c333f9bebb1ec5f00d7d159cf0123585ce47ebb321d6d949f9`.
+That newer bundle has no packaged ASAR result yet. Its local retail mobile route passes native
+touch, public save/F5/Continue and recap dismissal, but still loses the hull in landscape and
+records12 GL program-query warnings before reload. The short stationary diagnostic keeps the
+hull visible; a healthy capture does not dismiss the retained failure.
 Both earlier47-A failures were caused by the deliberate measured-hull inertia change: restoring
 only the former formula reproduced both prior hashes exactly. The envelopes retain those hashes
 and trajectory differences. Legacy reload@600 and V3 reload@60/600 each pass five repeats;
@@ -56,7 +62,7 @@ This candidate began Continue near rest, so its braking branch was not exercised
 hardware remains unverified; the visible Windows phone entries establish Bluetooth pairing,
 not a USB/debug channel.
 
-The last measured main static closure is9,959,415 raw bytes /144 JS outputs; the6MB target remains
+The last measured main static closure is9,959,652 raw bytes; the6MB target remains
 open. The shadow-disabled cold profile reaches flight in37.7s versus37.3s in the preceding run:
 there is no demonstrated wall-time improvement. Corrected shadow staging preserves the existing
 `forceEnable` contract. The actual late-Settings enable route passes after fixing pointer-focus
@@ -111,8 +117,8 @@ Hitch V7 candidate-only evidence test was retired; current retail asset validati
 | M5 rigid batching | A current held-scene ABBA preserves exact source, settings, camera/projection and entity poses; real world submissions advance. Both compositor captures are nonblank and inspected. Five cohort roots produce46 instances in five batches; median draw calls122→119. Defaults restore and cleanup passes. | Median intervals remain16.67ms in every arm; no timing improvement is established in this starter scene. Host CPU busy varies27.5–41.9%. The older blank-image742/982draw result is not accepted. This does not establish active crowded-flight performance. |
 | Runtime performance | B27's existing retail witness records **22.933 Hz / 0.9182 sim/wall** in the first tail. A separate launch after cleanup of a stalled fleet-capture job records 3,686 world draws over 120,027.765 ms: **30.7096 Hz / 0.99963 sim/wall**. Both tails follow actual public world/input recovery and finish with cleanup. A measured texture-serialization path now uses the canonical safe clone helper; 47 focused checks pass. | These launches are not a matched causal A/B. Retail averages do not establish scanout, frame percentiles or a 60 fps pass. The equal executed-frame/world-draw deltas in the later tail show no net active-loop cap skips; its effective cap/display calibration is unrecorded. Transmission's mismatched first-picture experiment is inconclusive; scale remains 1.0. The clone's live benefit and frame targets remain open. The earlier wave15 fixture averaged157.2entities and27.257ms per sim step (p95 39.208ms), so the simulation targets also remain open. |
 | Fleet asset capture | The original 170 images are preserved. Cradle and all remaining 26 entries have visible native captures, with first blank/inconsistent frames retained. Last Argument and Storm Orchard positive captures recorded target GL draws. The preview rejects zero-draw output and now distinguishes published, prepared and failed authored states. | A later Kestrel house-marking preview exhausted its retries with zero draws; no image was accepted. Decal readability and combined HeroRig/plume appearance remain open. Isolated previews do not establish ordinary in-world placement or complete visual parity. |
-| M9 loading | The ABA bundle validates417 render packages and measures9,959,415 raw main-static bytes across144 JS outputs. Retail English cold/reload requests no optional localization sidecars; selecting Spanish fetches the two inventories, and trusted es→en Settings controls relabel correctly. `3965cdfc54c8` also makes the drill screen demand-only and removes its preload, with21 focused lifecycle checks. | The6MB, loading and runtime targets remain open. Drill ordinary approach and request deferral need the changed-bundle route. ABA ASAR default startup passes; no full package/soak acceptance follows from that smoke. |
-| Baseline | The localization integration baseline passes17/17 in60,133ms within90,000ms. Measured-hull legacy reload@600 and V3 reload@60/600 also pass five repeats each. | Changed physical trajectories alter legacy hit/cue counts and are documented. Original acceptance budgets remain enforced. This timing is not an isolated speedup measurement. |
+| M9 loading | The d7 bundle validates417 render packages and measures9,959,652 raw main-static bytes. Retail English cold/reload requests no optional localization sidecars; selecting Spanish fetches the two inventories, and trusted es→en Settings controls relabel correctly. `3965cdfc54c8` also makes the drill screen demand-only and removes its preload, with21 focused lifecycle checks. | The6MB, loading and runtime targets remain open. Drill ordinary approach and request deferral need their normal-route check. ABA ASAR default startup passes; no full package/soak acceptance follows from that smoke. |
+| Baseline | The coherent d7 integration baseline passes17/17 in63,635ms within90,000ms. Measured-hull legacy reload@600 and V3 reload@60/600 also pass five repeats each. | Changed physical trajectories alter legacy hit/cue counts and are documented. Original acceptance budgets remain enforced. This timing is not an isolated speedup measurement. |
 | Responsive UI | The public8f5 route passes1280/960 F2 fitted-hull callouts, physical Helios docking,568x320 Market quantity and empty-Sell→Buy controls, and the actual Industry research lock. Errors and armed resize failure are empty. | These public F2 images use the authored plate. Existing backend policy may block the secondary WebGL context; the actor now distinguishes that policy from live-preview readiness. The canonical151/160 matrix and cost failures remain open. |
 | Settings pointer and shadows | `614a9dfbd48f` stops pointer-origin focus scrolling a control between down and up. The changed public route has stable pointer targets, a real setting event, observed guarded depth admission, drained queue, advancing flight and an inspected enabled ship/world image. | The success probe does not serialize its page-error list, so no zero-error audit is claimed. This Settings-specific fix does not establish the cause of an intermittent contract hold failure; that is being checked separately. |
 | Hull physics | `48c2d6b09bb9` derives native yaw inertia from measured hull area and radius. The real Rapier low-speed scrape falls from3.98 to0.614rad/s. `9a7324ac5ab1` also gives ordinary weapon hits authored momentum instead of multiplying it by target mass: a126 impulse now produces126/m velocity change across2/16/180/800-tonne native bodies. Both contact/splash paths and real collision blocking pass focused checks. | Native checks do not establish ordinary collision feel across the fleet. Legacy replay hit/cue counts change with the corrected trajectories. Force, Massline and field policies are unchanged; no asset mass/material distribution was guessed. |
@@ -149,7 +155,17 @@ equality during asymptotic smoothing. World submissions advance and defaults/cle
 No frame-time win is established, so this path remains disabled. This closes the starter-dock
 experiment, not crowded-simulation or overall performance acceptance.
 
-The current measured point is the1ad main closure above. Earlier checkpoints, methodology, receipts, and non-comparable measurements remain in the [dated archive](../../archive/finish-integration/INTEGRATION_COVERAGE_2026-10-31.md). Do not infer total transfer or runtime smoothness from the static-closure number alone.
+The current measured point is the d7 main closure above. Earlier checkpoints, methodology, receipts, and non-comparable measurements remain in the [dated archive](../../archive/finish-integration/INTEGRATION_COVERAGE_2026-10-31.md). Do not infer total transfer or runtime smoothness from the static-closure number alone.
+
+The d7 drill-demand graph reduces automatic UI closure19,010,057→18,555,629 raw bytes, leaving31
+automatically registered screens and3,863,462 bytes beyond boot. These are static graph measurements;
+the normal drill approach and actual request deferral are still being checked. The next measured
+Shipworks opportunity is828,070 exclusive bytes, held for actual F2/cancellation integration.
+
+A separate four-arm ABBA rejected a speculative fields priming shortcut: workloads matched, but
+candidate mean step time was0.663ms worse and p95 was1.672ms worse in paired averages. Neither field
+source nor its speculative test was retained. Keep that negative result; do not repeat it as an
+untried optimization or infer an overall simulation speedup from unrelated runs.
 
 The phone station fixture now keeps a live transaction receipt clear through Buy → Factions → Bar,
 including scroll and390→430px resize. All footer controls remain hit-testable. A follow-up in the

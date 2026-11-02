@@ -120,6 +120,7 @@ import {
   statusAttachedAccessibility,
 } from './statusAttachedVfx.js';
 import { addShieldContact } from './weapons/shieldContacts.js';
+import { isMortalBlowContact, resolveMortalBlowPlan } from './vfx/mortalBlowRead.js';
 import { collisionThrowRead, impactAxisAngle, impactRead } from './combat/impactRead.js';
 import {
   collisionDisplayDeltaV,
@@ -819,6 +820,11 @@ const _emptyImpactOpts = Object.freeze({
 });
 const _impactOpts = {
   vx: 0, vy: 0, vz: 0, serial: 0, targetId: null, eventClass: undefined, priority: 0.5, hero: false,
+};
+// Mortal-blow contact plan scratch (mortalBlowRead.js) — refilled per killing-blow receipt.
+const _mortalBlowPlan = {
+  mortal: false, measured: false, exitX: 0, exitZ: 0, exitRadius: 0,
+  flashSize: 0, flashLife: 0, pierceLife: 0, lightSeverity: 'mortal',
 };
 const _arcadeStructuralBurstReq = {
   x: 0,
@@ -3981,9 +3987,48 @@ export const vfx = {
           Math.max(3, Math.round(5 * (this._burst || 1))), 0.48, 0.78,
           '#ffb36a', '#3a1710', 1.2);
       }
+      // MORTAL BLOW — the strike that emptied the hull (before.hull > 0, after.hull <= 0) reads
+      // as its own event at the contact, before the kill receipt's overload flare opens: the
+      // round punches THROUGH and out the far side, a short white core marks the breach, and the
+      // contact light wears the `mortal` severity. The ordinary breach vent above still draws —
+      // this is the exclamation mark on it, not a replacement.
+      if (isMortalBlowContact(p)) {
+        const victimRadius = (tgt && tgt.radius) || 8;
+        resolveMortalBlowPlan({
+          targetRadius: victimRadius,
+          amount: Number(p.amount) || 0,
+          overkill: Math.max(0, (Number(p.amount) || 0) - (Number(p.before && p.before.hull) || 0)),
+          normalX: nx,
+          normalZ: nz,
+          approachX: p.approach && Number(p.approach.x),
+          approachZ: p.approach && Number(p.approach.z),
+        }, _mortalBlowPlan);
+        if (_mortalBlowPlan.measured) {
+          const ex = _mortalBlowPlan.exitX;
+          const ez = _mortalBlowPlan.exitZ;
+          const exitXw = pos.x + ex * _mortalBlowPlan.exitRadius;
+          const exitZw = pos.z + ez * _mortalBlowPlan.exitRadius;
+          // Blow-through: a bright pierce streak rides the exit axis out past the far side...
+          this._spawnProjectileTrailStreak(exitXw, 0.2, exitZw,
+            _mortalBlowPlan.pierceLife, 0.14, victimRadius * 1.15,
+            0.72, '#eaf6ff', ex * 30, ez * 30, ex, ez,
+            playerContact ? contactPriority : undefined);
+          // ...and the exit tears a small spall cone through the wound the round made.
+          this._impactParticleCone(exitXw, exitZw, Math.atan2(ez, ex), 0.6, 18, 44, 6,
+            0.2, 0.6, '#f6ead2', '#514c46', 1.6);
+        }
+        if (!this._isReduced()) {
+          // White core at the breach. Its life is authored to burn out as the overload flare
+          // window (0.4 s) opens, so the two reads hand off instead of stacking.
+          this._spawnSprite(SPR_FLASH, pos.x, 0.26, pos.z, _mortalBlowPlan.flashLife,
+            _mortalBlowPlan.flashSize, _mortalBlowPlan.flashSize * 0.72, 0.92, 0,
+            '#eaf6ff', 0, 0, 1.25, normalAngle);
+        }
+      }
       if (!this._isReduced()) {
         this._emitContactLight(
-          contact, { x: pos.x, z: pos.z }, 'impact', { severity: 'hull' },
+          contact, { x: pos.x, z: pos.z }, 'impact',
+          { severity: isMortalBlowContact(p) ? 'mortal' : 'hull' },
           playerContact ? contactPriority : undefined,
         );
       }

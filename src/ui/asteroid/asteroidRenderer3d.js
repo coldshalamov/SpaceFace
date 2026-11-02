@@ -80,6 +80,19 @@ import {
 const { COLS, ROWS, SCAN_RADIUS, SCAN_ACTIVE_S, CHARGE_FUSE_S } = DRILL_CONST;
 export const VIEW_ROWS = 18;
 
+// A worker's begin intent precedes its authoritative presentation. Never latch an
+// absent/partial field as a permanent empty board. Legacy hand-built sessions may
+// lack identity generations; the screen checks that explicit legacy case separately.
+export function readWorksDrillSession(drill) {
+  if (!drill || drill.active !== true || !Array.isArray(drill.field)
+    || drill.field.length !== DRILL_CONST.COLS
+    || !drill.field.every(column => Array.isArray(column) && column.length === DRILL_CONST.ROWS)
+    || !Number.isInteger(drill.avatar?.col) || !Number.isInteger(drill.avatar?.row)
+    || drill.avatar.col < 0 || drill.avatar.col >= DRILL_CONST.COLS
+    || drill.avatar.row < 0 || drill.avatar.row >= DRILL_CONST.ROWS) return null;
+  return drill;
+}
+
 const TILE = 40;              // px-space kept for parity with the shipped particle/shake helpers
 const S = 2.2;                // world units per cell — the astlab-proven scale for these builders
 // Same 8-cell contact ring as siteProduction.contactProfile (RING_OFFSETS is not exported).
@@ -8655,7 +8668,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   function begin(opts = {}) {
     motionReduce = !!opts.motionReduce;
     flashPresentation = worksFlashPresentation(opts);
-    const d = getDrill();
+    const d = readWorksDrillSession(getDrill());
     field = d ? d.field : null;
     buildDomOverlay();
     resize();
@@ -8816,8 +8829,14 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
 
   // ---------------------------------------------------------------- frame
   function render(dt, timeS, ui) {
-    const d = getDrill();
+    const d = readWorksDrillSession(getDrill());
     if (!d || !field) return;
+    if (d.field !== field) {
+      field = d.field;
+      // Domain application normally preserves array identity. A presentation rebind
+      // can replace it; refresh the same live board rather than drawing its old cells.
+      refreshCells(Array.from({ length: COLS * ROWS }, (_, index) => ({ col: index % COLS, row: Math.floor(index / COLS) })));
+    }
     timeSNow = timeS;
     const site = getSite ? getSite() : null;
     const projection = getProjection ? getProjection() : null;

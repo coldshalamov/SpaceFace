@@ -494,7 +494,11 @@ export function buildOnboardingObjectiveWaypoint(beat, target) {
 
 function hasPlayerSelectedNavWaypoint(state) {
   const waypoint = state && state.nav && state.nav.waypoint;
-  return !!(waypoint && waypoint.onboarding !== true && waypoint.kind === 'nav');
+  if (!waypoint || waypoint.onboarding === true) return false;
+  // Both `nav` and `local` are canonical course kinds written by ui:setCourse. The local
+  // waypoint is the durable player intent after flightV3 stops the autopilot and clears its
+  // transient target bind. Tutorial objectives have their own onboarding:true ownership mark.
+  return waypoint.kind === 'nav' || waypoint.kind === 'local';
 }
 
 export const onboarding = {

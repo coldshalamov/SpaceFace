@@ -280,7 +280,7 @@ function sharesRow(a, b) {
   return Math.min(ra.bottom, rb.bottom) - Math.max(ra.top, rb.top) > 0;
 }
 
-export function createUiInput(ctx, screenManager) {
+export function createUiInput(ctx, screenManager, shipScreenRequest = {}) {
   const { state, bus } = ctx;
   const gp = ctx.gamepad;
   let dockInRange = false;
@@ -455,6 +455,14 @@ export function createUiInput(ctx, screenManager) {
         closeActiveModal(def);
         return;
       }
+      if (def && def.id === 'ship' && key === 'F2') {
+        ev.preventDefault();
+        if (!ev.repeat) {
+          closeActiveModal(def);
+          bus.emit('audio:cue', { id: 'ui_back' });
+        }
+        return;
+      }
       // Map toggle (M/N) must still close the map when search (or any text field) is focused.
       // Without this, open → autofocus/search → second M types "m" instead of toggling closed.
       // Escape already bypasses textEntry above; treat map bindings the same on map surfaces.
@@ -584,6 +592,12 @@ export function createUiInput(ctx, screenManager) {
 
     switch (key) {
       case 'Escape':
+        if (shipScreenRequest.isShipScreenRequestPending?.()) {
+          ev.preventDefault();
+          if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
+          shipScreenRequest.cancelShipScreenRequest?.();
+          return;
+        }
         if (state.ui && state.ui.commsBacklogOpen) {
           ev.preventDefault();
           if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
@@ -660,11 +674,12 @@ export function createUiInput(ctx, screenManager) {
         }
         return;
       case 'F2':
-        // THE SHIP (grammar §10.5 canonical key table; build map §11.3). Pausing by owner ruling —
-        // full-depth strategic screen. F1 (help) and F7 (debug) are the adjacent literal precedents.
+        // THE SHIP (grammar §10.5 canonical key table; build map §11.3). uiRoot owns its
+        // demand-loaded registration so a repeated F2 can cancel a still-pending open.
+        if (ev.repeat) return;
         ev.preventDefault();
-        screenManager.pushScreen('ship');
-        bus.emit('audio:cue', { id: 'ui_open' });
+        if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
+        shipScreenRequest.toggleShipScreenRequest?.();
         return;
       case 'F3':
         // THE FOOTPRINT (grammar §10.5; build map §11.12 J10). Pausing instrument, same ruling.
