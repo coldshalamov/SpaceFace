@@ -11,6 +11,7 @@ import { WeaponRibbonPool } from './ribbonPool.js';
 import { DistortionField } from './distortionField.js';
 import { WeaponLightPool } from './weaponLights.js';
 import { HullScorchPool, heatForWeaponVariant, CONTACT_MARK_KINDS } from './contactMarks.js';
+import { createScarHistory, noteHullScorchStrike, resetScarHistory } from './scarHistory.js';
 import { weaponEffectSeed } from './energyBoltPool.js';
 import { planPlayerSurfaceSplash } from './playerSurfaceSplash.js';
 import { QuarksVfxSystem } from '../vfx/quarksSystem.js';
@@ -180,6 +181,8 @@ export class WeaponVfxPresenter {
     this.distortionProducers = [this.distortion, this.wellDistortion];
     this.lights = new WeaponLightPool(this.scene);
     this.scorches = new HullScorchPool(this.scene);
+    // Sustained-fire accounting: hulls under sustained fire keep their last marks (scarHistory.js).
+    this._scarHistory = createScarHistory();
     this.quarks = new QuarksVfxSystem({ scene: this.scene });
     this._quarksSimTime = Number.isFinite(this.state?.simTime) ? this.state.simTime : null;
     this._socketScratch = { x: 0, y: 0, z: 0, ax: 1, ay: 0, az: 0 };
@@ -387,7 +390,22 @@ export class WeaponVfxPresenter {
     if (!hitShield && recipe.hull.scorch && !splashPlan) {
       const captured = this._captureTargetLocal(payload.targetId, world.x, y, world.z, nx, 0.08, nz);
       const scorch = this._flashSpec(recipe.hull.scorchLife, 1.8, 1.15, 1);
-      this.scorches.spawn({
+      // SCAR HISTORY — a hull under sustained fire keeps its last marks: once the book counts
+      // SCAR_HISTORY_AFTER_HITS bare-hull strikes, this and later hits cool to charcoal and stay
+      // target-bound for the fight (the pool's persistent path: evict-transient-first, fade
+      // floor, retained across dispose), instead of every hull reading brand-new after ~5 s.
+      const history = noteHullScorchStrike(
+        this._scarHistory,
+        payload.targetId,
+        now,
+        (grant) => {
+          const s = this.scorches.slots[grant.slot];
+          return !!s && s.alive === 1 && s.targetId === payload.targetId
+            && s.boundKey === captured.boundKey;
+        },
+        captured.boundKey,
+      );
+      const spawned = this.scorches.spawn({
         targetId: payload.targetId,
         localX: captured.x,
         localY: captured.y,
@@ -399,13 +417,15 @@ export class WeaponVfxPresenter {
         boundKey: captured.boundKey,
         width: scorch.size0,
         height: scorch.size1,
-        life: scorch.life,
+        life: history.persistent ? history.life : scorch.life,
         opacity: scorch.opacity0,
         heat: heatForWeaponVariant(recipe.variant),
+        persistent: history.persistent === true,
         r: _color.r,
         g: _color.g,
         b: _color.b,
       });
+      if (spawned >= 0 && history.grantRef) history.grantRef.slot = spawned;
     }
     if (a11y.eventLightPeakScale > 0) {
       const hitLight = hitLightForVariant(recipe.variant);
@@ -1178,6 +1198,7 @@ export class WeaponVfxPresenter {
     this._presenterQuietFieldsLen = -1;
     this._detachGraph(this._graph);
     this._graph = null;
+    resetScarHistory(this._scarHistory);
     clearShieldContacts();
     this.bolts.dispose();
     this.discharges.dispose();

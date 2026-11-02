@@ -282,13 +282,15 @@ function syncMembers(frame, members, recipe, tick, pinnedOf = null) {
   // A socket that was never filled (a three-ship wing's empty rear) is the authored wing
   // size, not a casualty; a socket vacated by death and left unfilled folds the pose
   // (writeSlots) until a fresh hull claims it.
-  let casualties = 0;
+  const casualtySockets = new Set();
   for (const rec of frame.members.values()) {
     if (rec.alive) continue;
     const occupant = rec.socket != null ? frame.sockets[rec.socket] : null;
-    if (occupant == null) casualties++;
+    if (occupant == null && rec.socket != null) casualtySockets.add(rec.socket);
   }
-  frame.casualties = casualties;
+  // A socket can have more than one dead occupant over a long encounter. Count the vacant
+  // formation position once, not once per body that used to fly it.
+  frame.casualties = casualtySockets.size;
   if (frame.commandId == null || !memberAlive(frame, frame.commandId)) {
     const previous = frame.commandId;
     if (previous != null && frame.leaderLostTick == null) frame.leaderLostTick = tick;
