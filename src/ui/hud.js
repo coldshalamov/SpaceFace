@@ -853,6 +853,38 @@ export function resolveObjectiveHudLayout(width, height) {
   return layout;
 }
 
+const EMPTY_FLIGHT_TEXT_OBSTACLES = Object.freeze([]);
+
+/** Immutable geometry rows shared with world-anchored HUD labels. */
+export function freezeFlightTextObstacles(entries = []) {
+  const frozen = [];
+  for (const entry of entries || []) {
+    const rect = entry && entry.rect ? entry.rect : entry;
+    const owner = entry && typeof entry.owner === 'string' ? entry.owner : '';
+    if (!owner || !rect) continue;
+    const left = Number(rect.left ?? rect.x);
+    const top = Number(rect.top ?? rect.y);
+    const right = Number(rect.right ?? (left + Number(rect.width)));
+    const bottom = Number(rect.bottom ?? (top + Number(rect.height)));
+    const width = Number(rect.width ?? (right - left));
+    const height = Number(rect.height ?? (bottom - top));
+    if (![left, top, right, bottom, width, height].every(Number.isFinite) || width <= 0 || height <= 0) continue;
+    frozen.push(Object.freeze({ owner, left, top, right, bottom, width, height }));
+  }
+  return frozen.length ? Object.freeze(frozen) : EMPTY_FLIGHT_TEXT_OBSTACLES;
+}
+
+export function createFlightTextObstacleCache() {
+  let snapshot = EMPTY_FLIGHT_TEXT_OBSTACLES;
+  return Object.freeze({
+    read() { return snapshot; },
+    publish(entries) {
+      snapshot = freezeFlightTextObstacles(entries);
+      return snapshot;
+    },
+  });
+}
+
 /** Maximum persistent contact rows before truthful category overflow takes over. */
 export function contactDisplayLimit(width, height) {
   const w = Math.max(320, Number(width) || 1280);
@@ -1806,7 +1838,7 @@ export function createHud(ctx, alerts) {
   // FB-012 — mount the stunt callout layer from the flight HUD path. Adventure now names its
   // stunts; the Crucible-only score fields stay gated inside the layer itself. Idle-quiet: the
   // layer's update returns false and stops listening for frames when nothing is on screen.
-  ensureStuntCallout({ state, bus: ctx.bus });
+  ensureStuntCallout({ state, bus: ctx.bus, onFlightTextGeometryChange: invalidateAndPlaceHudOverlays });
 
   // Reserve the active Cluster's rendered height for the comms strip. A viewport scale
   // step can change that height, so both ResizeObserver and resize publish the same value.
@@ -2726,6 +2758,7 @@ export function createHud(ctx, alerts) {
     clearTimeout(captionHideTimer);
     clearTimeout(captionFadeTimer);
     externalCaptionsStale = true;
+    flightTextObstaclesStale = true;
     // Route to the appropriate live region so screen readers get the right politeness without
     // mutating aria-live on a single element (which confuses some ATs).
     const live = p.assertive ? liveAssertive : livePolite;
@@ -2737,6 +2770,7 @@ export function createHud(ctx, alerts) {
     if (openingInstructionSolo(state) || (p.physical === true && p.showVisible === false)) {
       caption.classList.remove('show');
       caption.hidden = true;
+      flightTextObstaclesStale = true;
       placeReceiptLane();
       return;
     }
@@ -2763,6 +2797,7 @@ export function createHud(ctx, alerts) {
       captionFadeTimer = setTimeout(() => {
         caption.hidden = true;
           externalCaptionsStale = true;
+          flightTextObstaclesStale = true;
           placeReceiptLane();
       }, 220); // let the fade-out finish before hiding
     }, ttl);
@@ -5882,6 +5917,7 @@ export function createHud(ctx, alerts) {
   function invalidateObjectiveEdgeBoxes() {
     objectiveEdgeBoxes.stale = true;
     externalCaptionsStale = true;
+    flightTextObstaclesStale = true;
   }
   function invalidateAndPlaceHudOverlays() {
     invalidateObjectiveEdgeBoxes();
@@ -5923,9 +5959,66 @@ export function createHud(ctx, alerts) {
   // receipts and presentation captions.
   const externalFlightCaptions = new Set();
   const externalCaptionOpacity = new Map();
+  const flightTextObstacleCache = createFlightTextObstacleCache();
   let externalCaptionsStale = true;
+  let flightTextObstaclesStale = true;
   let lastReceiptObstacle = null;
   let lastCaptionObstacleVisible = null;
+
+  function refreshFlightTextObstacleSnapshot() {
+    if (!flightTextObstaclesStale) return;
+    const measured = objectiveEdgeObstacles();
+    const entries = [];
+    const seen = new Set();
+    const add = (owner, el, cachedRect = null) => {
+      if (!el || seen.has(el) || el.isConnected === false || el.hidden || el.style?.display === 'none') return;
+      if (el.style?.visibility === 'hidden' || el.style?.visibility === 'collapse'
+        || Number.parseFloat(el.style?.opacity) === 0) return;
+      const getStyle = document.defaultView?.getComputedStyle || globalThis.getComputedStyle;
+      if (typeof getStyle === 'function') {
+        try {
+          const style = getStyle.call(document.defaultView || globalThis, el);
+          if (style?.display === 'none' || style?.visibility === 'hidden' || style?.visibility === 'collapse'
+            || Number.parseFloat(style?.opacity) === 0) return;
+        } catch (_) { /* geometry remains the visibility fallback for partial DOM hosts */ }
+      }
+      const rect = cachedRect || el.getBoundingClientRect?.();
+      if (!rect || !(rect.width > 0) || !(rect.height > 0)) return;
+      seen.add(el);
+      entries.push({ owner, rect });
+    };
+
+    // Reuse the objective/radar/rail geometry already cached by the HUD's layout owner.
+    add('objective', leftContext, measured.left);
+    add('radar', rightDock, measured.right);
+    add('hud-rail', measured.railEl, measured.rail);
+    add('orrery', measured.orreryEl, measured.orrery);
+    const rootGroups = [
+      ['objective-text', '.sf-mt-obj, .sf-nav-readout, .sf-nav-label, .sf-commtape'],
+      ['vitals', '.sf-vitals, .sf-status'],
+      ['flight-control', '.sf-command-deck, .sf-prail, .sf-dock-prompt, .sf-tell.is-on, #sf-prompt-deck, #sf-tutorial-flight-card'],
+      ['caption', '.sf-caption.show'],
+      ['receipt', '.sf-toast:not(.sf-toast--out)'],
+    ];
+    for (const [owner, selector] of rootGroups) {
+      for (const el of root.querySelectorAll?.(selector) || []) add(owner, el);
+    }
+    add('caption', caption);
+    for (const el of toastsLaneEl?.querySelectorAll?.('.sf-toast:not(.sf-toast--out)') || []) add('receipt', el);
+    for (const el of document.querySelectorAll?.('#alerts > .sf-alert:not([hidden])') || []) add('alert', el);
+    for (const el of document.querySelectorAll?.('.sf-stuntcall:not([hidden])') || []) add('stunt', el);
+    for (const el of externalFlightCaptions) add('flight-caption', el);
+    for (const el of responsiveOverlayObstacles()) {
+      add(el.closest?.('#sf-touch-overlay') ? 'touch-control' : 'responsive-overlay', el);
+    }
+
+    flightTextObstacleCache.publish(entries);
+    flightTextObstaclesStale = false;
+  }
+
+  function getFlightTextObstacles() {
+    return flightTextObstacleCache.read();
+  }
   let overlayLayoutObserver = null;
   const responsiveOverlayElements = new Set();
   let touchOverlayOwner = null;
@@ -5935,6 +6028,7 @@ export function createHud(ctx, alerts) {
     const railEl = root.querySelector('.orr-hud-cluster .orr-cluster, .sf-prail');
     if (railEl) overlayLayoutObserver.observe(railEl);
     if (rightDock) overlayLayoutObserver.observe(rightDock);
+    if (leftContext) overlayLayoutObserver.observe(leftContext);
     hudUnsubscribers.push(() => overlayLayoutObserver?.disconnect());
   }
   on('hud:layoutChanged', invalidateAndPlaceHudOverlays);
@@ -6036,6 +6130,7 @@ export function createHud(ctx, alerts) {
       && responsiveRects.get(el)?.width > 0 && responsiveRects.get(el)?.height > 0);
     const candidates = [
       ...root.querySelectorAll?.('.orr-hud-cluster .orr-cluster, .sf-prail, .sf-rightdock, .sf-command-deck, .sf-nav-readout, .sf-nav-label, .sf-mt-obj, .sf-vtape--on, .sf-commtape, .sf-dock-prompt, .sf-tell.is-on, #sf-prompt-deck, #sf-tutorial-flight-card') || [],
+      ...document.querySelectorAll?.('.sf-stuntcall:not([hidden])') || [],
       ...(hasTouchControls ? root.querySelectorAll?.('.sf-leftcontext') || [] : []),
       ...document.querySelectorAll?.('#alerts > .sf-alert:not([hidden])') || [],
       ...responsive,
@@ -6171,12 +6266,14 @@ export function createHud(ctx, alerts) {
     externalFlightCaptions.add(el);
     externalCaptionOpacity.set(el, el.style?.opacity || '');
     externalCaptionsStale = true;
+    flightTextObstaclesStale = true;
     placeReceiptLane();
     return true;
   }
   function refreshExternalFlightCaption(el) {
     if (!el || !externalFlightCaptions.has(el)) return false;
     externalCaptionsStale = true;
+    flightTextObstaclesStale = true;
     placeReceiptLane();
     return true;
   }
@@ -6184,6 +6281,7 @@ export function createHud(ctx, alerts) {
     if (!el || !externalFlightCaptions.delete(el)) return false;
     clearExternalFlightCaptionPlacement(el);
     externalCaptionsStale = true;
+    flightTextObstaclesStale = true;
     placeReceiptLane();
     return true;
   }
@@ -6220,6 +6318,7 @@ export function createHud(ctx, alerts) {
     if (!laneRoot || !layout.receipt) {
       placeOrdinaryCaptionInSafeBands(layout, w, h);
       placeExternalFlightCaptions(layout, w, h);
+      refreshFlightTextObstacleSnapshot();
       return;
     }
     const lane = layout.receipt;
@@ -6227,12 +6326,14 @@ export function createHud(ctx, alerts) {
     const captionVisible = caption && !caption.hidden && caption.classList.contains('show');
     if (activeReceipt !== lastReceiptObstacle || captionVisible !== lastCaptionObstacleVisible) {
       externalCaptionsStale = true;
+      flightTextObstaclesStale = true;
       lastReceiptObstacle = activeReceipt;
       lastCaptionObstacleVisible = captionVisible;
     }
     if (!activeReceipt && !captionVisible) {
       placeExternalFlightCaptions(layout, w, h);
       placeFlightReadouts(w, h);
+      refreshFlightTextObstacleSnapshot();
       return;
     }
     const slot = overlaySafeSlot(layout, w, h);
@@ -6243,6 +6344,7 @@ export function createHud(ctx, alerts) {
       placeOrdinaryCaptionInSafeBands(layout, w, h);
       placeExternalFlightCaptions(layout, w, h);
       placeFlightReadouts(w, h);
+      refreshFlightTextObstacleSnapshot();
       return;
     }
     let laneWidth = Math.min(lane.width, slot.width);
@@ -6310,6 +6412,7 @@ export function createHud(ctx, alerts) {
     }
     placeExternalFlightCaptions(layout, w, h);
     placeFlightReadouts(w, h);
+    refreshFlightTextObstacleSnapshot();
   }
   if (typeof window !== 'undefined' && window.addEventListener) {
     const repositionHudOverlays = () => placeReceiptLane();
@@ -6318,6 +6421,7 @@ export function createHud(ctx, alerts) {
   }
   on('toast', () => {
     externalCaptionsStale = true;
+    flightTextObstaclesStale = true;
     placeReceiptLane();
   });
   if (typeof MutationObserver !== 'undefined') {
@@ -6329,7 +6433,10 @@ export function createHud(ctx, alerts) {
     const observeAlertLane = () => {
       const alertLane = document.getElementById('alerts');
       if (!alertLane || alertLaneObserver) return false;
-      alertLaneObserver = new MutationObserver(() => placeReceiptLane());
+      alertLaneObserver = new MutationObserver(() => {
+        flightTextObstaclesStale = true;
+        placeReceiptLane();
+      });
       alertLaneObserver.observe(alertLane, alertLaneOptions);
       placeReceiptLane();
       return true;
@@ -6484,6 +6591,7 @@ export function createHud(ctx, alerts) {
   return {
     frame, tickHidden, forceRefresh, setVisible, refreshObjectives, arrive,
     registerExternalFlightCaption, refreshExternalFlightCaption, releaseExternalFlightCaption,
+    getFlightTextObstacles,
     getGLagOffset: () => ({ x: opticalGLag.x, y: opticalGLag.y }),
     getGLocVignetteOpacity: () => Number(glocVignette ? glocVignette.style.opacity || 0 : 0),
     triggerElectronicDisruption,

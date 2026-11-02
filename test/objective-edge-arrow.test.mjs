@@ -267,6 +267,8 @@ function mountArrowFixture({ worldToScreen } = {}) {
   globalThis.performance = { now: () => 1000 };
   globalThis.getComputedStyle = (element) => ({
     display: element?.style?.display === 'none' ? 'none' : (element?.style?.display || 'block'),
+    visibility: element?.style?.visibility || 'visible',
+    opacity: element?.style?.opacity || '1',
     getPropertyValue: () => '',
   });
 
@@ -365,6 +367,41 @@ function edgePresentation(arrow) {
     aria: arrow.getAttribute('aria-label'),
   };
 }
+
+test('flight text obstacles omit deferred captions and include visible captions', () => {
+  const fx = mountArrowFixture();
+  const deferred = fx.doc.createElement('div');
+  deferred.style.opacity = '0';
+  deferred.getBoundingClientRect = () => ({ left: 40, top: 90, right: 240, bottom: 120, width: 200, height: 30 });
+  fx.doc.body.appendChild(deferred);
+  try {
+    assert.equal(fx.hud.registerExternalFlightCaption(deferred), true);
+    assert.equal(fx.hud.getFlightTextObstacles().some((row) => row.owner === 'flight-caption'), false,
+      'a no-room deferred discovery does not claim world-label space while transparent');
+
+    let rectReads = 0;
+    const visibleCaption = fx.doc.createElement('div');
+    visibleCaption.getBoundingClientRect = () => {
+      rectReads += 1;
+      return { left: 240, top: 90, right: 440, bottom: 120, width: 200, height: 30 };
+    };
+    fx.doc.body.appendChild(visibleCaption);
+    assert.equal(fx.hud.registerExternalFlightCaption(visibleCaption), true);
+    const visible = fx.hud.getFlightTextObstacles().find((row) => row.owner === 'flight-caption');
+    assert.deepEqual(visible && [visible.left, visible.top, visible.right, visible.bottom], [240, 90, 440, 120],
+      'a live caption reserves its actual box');
+    const readsAfterRefresh = rectReads;
+    fx.hud.getFlightTextObstacles();
+    assert.equal(rectReads, readsAfterRefresh, 'reading the published snapshot does not touch the DOM');
+
+    visibleCaption.style.visibility = 'hidden';
+    fx.hud.refreshExternalFlightCaption(visibleCaption);
+    assert.equal(fx.hud.getFlightTextObstacles().some((row) => row.owner === 'flight-caption'), false,
+      'CSS-hidden captions are omitted on the next cached refresh');
+  } finally {
+    fx.restore();
+  }
+});
 
 test('an in-camera objective never arms the edge chevron (the diamond owns the mark)', () => {
   const fx = mountArrowFixture({

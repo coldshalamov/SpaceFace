@@ -344,7 +344,8 @@ test('law/contact cards retain natural flow above radar at their existing usable
 test('portrait receipts reserve the actual radar caption lane for both handedness settings', () => {
   const receiptCss = css.slice(css.indexOf('@media (orientation:portrait)')).split('#toasts,')[1];
   assert.match(receiptCss, /\[data-sf-mobile-lefty="1"\] #toasts/);
-  assert.match(receiptCss, /left:calc\(14px \+ var\(--sf-safe-left,0px\)\)!important; right:auto!important/);
+  assert.match(receiptCss, /left:calc\(14px \+ var\(--sf-safe-left,0px\)\); right:auto;/,
+    'the responsive lane remains the fallback while measured HUD placement can override it');
   assert.match(receiptCss, /max\(166px,var\(--mf-cluster-w,196px\) \* \.25\)/);
   assert.doesNotMatch(receiptCss, /overflow|white-space|text-overflow|display:none|opacity/);
   for (const width of [320,360,390]) for (const cluster of [196,240,320]) {

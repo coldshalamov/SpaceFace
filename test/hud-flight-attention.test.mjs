@@ -314,6 +314,24 @@ test('receipt placement handles visible and hidden captions with external flight
   visit(ast);
   assert.ok(declaration, 'the production receipt placement owner is present');
   const owner = HUD_SRC.slice(declaration.start, declaration.end);
+  let snapshotDeclaration = null;
+  const findSnapshot = (node) => {
+    if (!node || typeof node !== 'object' || snapshotDeclaration) return;
+    if (node.type === 'FunctionDeclaration' && node.id?.name === 'refreshFlightTextObstacleSnapshot') {
+      snapshotDeclaration = node;
+      return;
+    }
+    for (const value of Object.values(node)) {
+      if (Array.isArray(value)) value.forEach(findSnapshot);
+      else if (value && typeof value === 'object') findSnapshot(value);
+    }
+  };
+  findSnapshot(ast);
+  assert.ok(snapshotDeclaration, 'the production obstacle snapshot owner is present');
+  const refreshFlightTextObstacleSnapshot = runInNewContext(
+    `(${HUD_SRC.slice(snapshotDeclaration.start, snapshotDeclaration.end)})`,
+    { flightTextObstaclesStale: false },
+  );
 
   for (const { visible, external } of [
     { visible: true, external: true },
@@ -356,6 +374,7 @@ test('receipt placement handles visible and hidden captions with external flight
       placeCaptionInSafeSlot: (...args) => placed.push(args),
       placeExternalFlightCaptions: () => { externalPlacements++; },
       placeFlightReadouts: () => { readoutPlacements++; },
+      refreshFlightTextObstacleSnapshot,
     };
     const placeReceiptLane = runInNewContext(`(${owner})`, context);
     placeReceiptLane(layout);
