@@ -42,7 +42,7 @@ import { BINDINGS } from '../bindings.js';
 import { setGamepadCaptureHandler } from '../bindings.js';
 import { confirm } from '../confirm.js';
 import { ironmanChoiceChange } from '../../save/ironmanChoice.js';
-import { LANGUAGE_OPTIONS, gameLocalization, localizeText, setGameLocale } from '../../localization/gameLocalization.js';
+import { LANGUAGE_OPTIONS, currentGameLocale, ensureLocaleReady, localizeText, setGameLocale } from '../../localization/sourceText.js';
 import {
   ACCESSIBILITY_STATEMENT_ID,
   CHECKLIST_ITEMS,
@@ -211,7 +211,7 @@ export const STEAM_DECK_NOTE = 'Verified at 1280×800. Trackpad controls cursor 
 // The locale the picker shows: the player's choice when set, otherwise the live runtime locale.
 function chosenLocale(settings) {
   const chosen = settings && settings.locale;
-  return chosen || gameLocalization.locale || 'en-US';
+  return chosen || currentGameLocale() || 'en-US';
 }
 
 let refs = null;
@@ -1192,10 +1192,20 @@ export const settingsScreen = {
       // Language: the default route is English; choosing here switches the live locale and re-renders
       // every mounted screen through the shared document bridge (no reload).
       rowSelect('Language', () => chosenLocale(s), LANGUAGE_OPTIONS.map((option) => [option.id, option.label]),
-        (value) => {
-          setGameLocale(value);
-          this._set(ctx, null, 'locale', value);
-          this._render(ctx);
+        async (value) => {
+          const request = this._localeRequest = (this._localeRequest || 0) + 1;
+          const owner = refs;
+          try {
+            await ensureLocaleReady(value);
+            if (!refs || refs !== owner || this._localeRequest !== request) return;
+            setGameLocale(value);
+            this._set(ctx, null, 'locale', value);
+            this._render(ctx);
+          } catch (error) {
+            if (!refs || refs !== owner || this._localeRequest !== request) return;
+            ctx.bus?.emit?.('toast', { kind: 'warn', text: 'Language could not be loaded. Please try again.' });
+            this._render(ctx);
+          }
         });
       rowSelect('Colorblind palette', () => ac.colorblindMode || 'none',
         [['none', 'Off'], ['protanopia', 'Protanopia (red-weak)'], ['deuteranopia', 'Deuteranopia (green-weak)'], ['tritanopia', 'Tritanopia (blue-weak)']],
@@ -1675,6 +1685,7 @@ export const settingsScreen = {
   // If the screen closes mid key-capture, bail out so the global keydown/mousedown listeners
   // don't leak / swallow keys after the player navigates away.
   onHide() {
+    this._localeRequest = (this._localeRequest || 0) + 1;
     cue('close');
     if (this._capturing && this._activeCapture) this._activeCapture(false);
   },
@@ -1687,6 +1698,7 @@ export const settingsScreen = {
     syncActiveControlFamily(ctx, refs && refs.familyValue);
   },
   dispose() {
+    this._localeRequest = (this._localeRequest || 0) + 1;
     try { if (refs && refs.preview) refs.preview.dispose(); } catch (e) { /* cosmetic */ }
     try { if (refs && refs.spot) refs.spot.dispose(); } catch (e) { /* cosmetic */ }
     refs = null;

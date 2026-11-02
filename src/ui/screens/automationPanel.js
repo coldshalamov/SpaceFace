@@ -739,6 +739,10 @@ html body #screens #sf-automation.au-orrery .au-summary { gap: 14px; align-conte
 @media (min-width: 761px) and (max-width: 860px) and (max-height: 580px) {
   html body #screens #sf-automation.au-orrery .au-summary { grid-template-columns: repeat(4, auto); column-gap: 12px; }
 }
+/* Match the other desktop plates' readable scale at 1080p. Touch keeps its own sizing. */
+@media (min-width: 1800px) and (max-width: 2199px) and (min-height: 1000px) {
+  ${AU_NARROW} { zoom: 1.14; }
+}
 /* ≤760 wide desktop window: the 270px board column, the five-node strip beside the gauge and
    the one-line purchase rungs only fit from 761px, so below it the strip names ran into the next
    ring, the board's cost sat on its sentence and the rung stats printed under THROTTLE. The strip

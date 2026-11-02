@@ -189,9 +189,18 @@ test('Ceres salvage and its scavenger spawn at the authored field in global spac
     }
     const pools = new Map(points.map((point) => [point.id,
       structuredClone(state.entities.get(point.entityId).data.salvagePool)]));
+    const scavenger = [...state.entities.values()].find((entity) =>
+      roleOf(entity) === 'scavenger' && entity.data?.wreckFieldId?.startsWith('salvage:'));
+    assert.ok(scavenger && scavenger.data.jobId,
+      `salvage:placed must adopt the scavenger before stepping (sector=${state.world.currentSectorId})`);
+    const originalJobId = scavenger.data.jobId;
     runtime.step(SIM_DT);
-    assert.ok(sampleHeads(state).some((row) => row.headId === 'tractor'),
-      'the existing scavenger has its job before the first world tick can shelve it');
+    assert.equal(scavenger.data.jobId, originalJobId,
+      'the existing scavenger keeps its durable job through the first world tick');
+    runtime.bus.emit('salvage:placed', { sectorId: PROOF_SECTOR_ID });
+    runtime.bus.emit('salvage:placed', { sectorId: 'sector_unrelated' });
+    assert.equal(scavenger.data.jobId, originalJobId,
+      'repeated and foreign-sector salvage notices do not replace the existing scavenger job');
     for (const point of points) {
       if (!state.entities.has(point.entityId)) {
         const far = state.world.farActors.byId.get(point.entityId);

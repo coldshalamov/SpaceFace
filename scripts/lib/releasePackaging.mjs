@@ -204,8 +204,17 @@ export async function createReleaseCopyPlans({
       : [];
     if (mapping.exclude != null) {
       omissions.push(...await collectExcludedOmissions(projectRoot, mapping));
-      omissions.sort((a, b) => lexicalCompare(a.path, b.path));
     }
+    const sourceRoot = resolveContained(projectRoot, mapping.source, 'release copy source');
+    if ((await lstat(sourceRoot)).isDirectory()) {
+      const alreadyOmitted = new Set(omissions.map((entry) => entry.path));
+      for (const entry of await collectRuntimeToolCacheOmissions(projectRoot, mapping)) {
+        if (alreadyOmitted.has(entry.path)) continue;
+        omissions.push(entry);
+        alreadyOmitted.add(entry.path);
+      }
+    }
+    omissions.sort((a, b) => lexicalCompare(a.path, b.path));
     plans.push({ mapping, projection, omissions });
   }
   return plans;
@@ -419,6 +428,22 @@ async function collectExcludedOmissions(projectRoot, mapping) {
     }
   }
   for (const f of files) f.reason = 'exclude';
+  return files;
+}
+
+async function collectRuntimeToolCacheOmissions(projectRoot, mapping) {
+  const sourceRoot = resolveContained(projectRoot, mapping.source, 'release copy source');
+  if (basename(sourceRoot) === '__pycache__') {
+    // A mapping may itself point at a Python cache; its contents are never runtime assets.
+    const files = [];
+    await walk(sourceRoot, sourceRoot, files, new Set());
+    for (const file of files) file.reason = 'runtime-tool-cache';
+    return files;
+  }
+  const files = [];
+  const isRuntimeToolCacheFile = (rel) => rel.split('/').includes('__pycache__') || rel.endsWith('.pyc');
+  await walk(sourceRoot, sourceRoot, files, new Set(), isRuntimeToolCacheFile);
+  for (const file of files) file.reason = 'runtime-tool-cache';
   return files;
 }
 

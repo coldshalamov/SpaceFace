@@ -900,3 +900,49 @@ function findByClass(root, className) {
   }
   return null;
 }
+
+test('cached HUD geometry moves the mass words without moving the world mark or sampling DOM each frame', () => {
+  const previousEnabled = MASSLINE2_FLAGS.enabled, previousDocument = globalThis.document,
+    previousWindow = globalThis.window;
+  const document = fakeDocument();
+  document.documentElement = { dataset: { sfMobileFlight: '1' } };
+  globalThis.document = document;
+  globalThis.window = { innerWidth: 390, innerHeight: 664 };
+  MASSLINE2_FLAGS.enabled = true;
+  const p = player(), body = target(20, 'asteroid', 150, 90, { mass: 12 });
+  const state = { mode: 'flight', playerId: p.id, player: { tether: { active: false } },
+    entities: new Map([[p.id, p], [body.id, body]]), massline2: {},
+    settings: { video: { motionReduce: true } },
+    masslineAcquisition: { id: 'layout', selected: { targetId: body.id, status: 'ready' } } };
+  let obstacles = Object.freeze([]), measurements = 0;
+  const hud = Object.assign({}, masslineHud);
+  try {
+    hud.init({ state, registry: { get: () => ({ hud: { getFlightTextObstacles: () => obstacles } }) },
+      helpers: { worldToScreen: ({ x, z }) => ({ x: x + 150, y: z + 200, onScreen: true }) } });
+    hud.update(1 / 60, state);
+    const root = document.getElementById('sf-ml2'), mark = findByClass(root, 'ml2-preview-mark'),
+      words = findByClass(root, 'ml2-preview');
+    const anchored = mark.style.transform, oldPosition = words.style.transform;
+    words.getBoundingClientRect = () => { measurements++; return { width: 140, height: 30 }; };
+    const [x, y] = [...oldPosition.matchAll(/(-?\d+)px/g)].map(match => Number(match[1]));
+    obstacles = Object.freeze([{ owner: 'radar', left: x - 4, top: y - 4, width: 168, height: 46 }]);
+    hud.update(1 / 60, state);
+    assert.notEqual(words.style.transform, oldPosition, 'a changed HUD snapshot repaints even in a stationary world');
+    assert.equal(mark.style.transform, anchored);
+    assert.equal(words.style.display, 'block');
+    assert.match(words.textContent, /MASS 12/);
+    const measured = measurements;
+    hud.update(1 / 60, state);
+    assert.equal(measurements, measured, 'an unchanged frame does not measure the label again');
+    obstacles = Object.freeze([{ owner: 'panel', left: 0, top: 0, width: 390, height: 664 }]);
+    hud.update(1 / 60, state);
+    assert.equal(words.style.display, 'none');
+    assert.equal(mark.style.display, 'block');
+    assert.match(mark.attributes['aria-label'], /MASS 12/, 'the anchored mark retains its accessible mass read');
+    assert.equal(mark.style.transform, anchored);
+  } finally {
+    hud.destroy(); MASSLINE2_FLAGS.enabled = previousEnabled;
+    if (previousDocument === undefined) delete globalThis.document; else globalThis.document = previousDocument;
+    if (previousWindow === undefined) delete globalThis.window; else globalThis.window = previousWindow;
+  }
+});

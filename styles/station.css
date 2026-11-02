@@ -1441,6 +1441,38 @@ html[data-k-temp="wanted"] #screens .sx-berth .sxb-event {
   #screens .sx-berth .sxb-ops { gap: 8px; flex-wrap: wrap; background: none; }
   #screens .sx-berth .sx-comms { min-width: 120px; }
   #screens .sx-berth .sx-receipt { font-size: var(--k-fs-fine); }
+
+  /* A market transaction receipt is live feedback. Give it a real row before the wrapped
+     destination rail so it cannot cover a tab or escape the clipped station frame. */
+  #screens .sx-berth:has(.sx-mkt.orr-market)
+    .sxb-ops.dp-frame__foot:has(> .sx-comms > .sx-receipt:not([hidden])) {
+    flex-wrap: wrap !important;
+  }
+  #screens .sx-berth:has(.sx-mkt.orr-market)
+    .sxb-ops.dp-frame__foot:has(> .sx-comms > .sx-receipt:not([hidden])) > .sx-comms {
+    display: contents !important;
+  }
+  #screens .sx-berth:has(.sx-mkt.orr-market)
+    .sxb-ops.dp-frame__foot > .sx-comms > .sx-receipt:not([hidden]) {
+    box-sizing: border-box !important;
+    position: static !important;
+    order: -1 !important;
+    flex: 1 0 100% !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    padding: 2px 0 !important;
+    white-space: normal !important;
+    overflow-wrap: anywhere !important;
+    line-height: 1.2 !important;
+  }
+  #screens .sx-berth:has(.sx-mkt.orr-market)
+    .sxb-ops.dp-frame__foot > .sx-comms > .sx-receipt:not([hidden]) > * {
+    min-width: 0 !important;
+    max-width: 100% !important;
+    white-space: normal !important;
+    overflow-wrap: anywhere !important;
+  }
 }
 
 @media (forced-colors: active) {
