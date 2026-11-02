@@ -47,7 +47,7 @@ import { GYRE_SNARE } from '../data/gyreSnare.js';
 import { runOwnsReward } from '../combat/rewardEligibility.js';
 import { fhGlyph } from './views/fhGlyphs.js';
 import { arsenalIcon } from './orrery/arsenalGlyphs.js';
-import { repulsionTrapFitted, resolveImpulseChargeCapacity } from '../systems/impulseCharges.js';
+import { repulsionTrapFitted, resolveImpulseChargeCapacity } from '../data/impulseChargeReadModel.js';
 import { cruiseChargeProgress, isCharging, isCruising } from '../systems/cruise.js';
 import { isSwarmRuleset } from '../systems/survivalSwarm.js';
 import { indexedTypeScan } from '../world/livingWorldViews.js';

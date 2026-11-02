@@ -24,6 +24,7 @@ import { IMPULSE_CHARGES } from './impulseCharges.js';
 import { WEAPONS } from './weapons.js';
 import { MODULES } from './modules.js';
 import { massline2Flag } from './featureFlags.js';
+import { resolveImpulseChargeCapacity } from './impulseChargeReadModel.js';
 import { swarmCallinById, swarmCallinCount } from './swarmDraft.js';
 import { ATTACK_TRAIT_BY_ID } from './attackTraits.js';
 import {
@@ -34,7 +35,6 @@ import {
   bombUsesCharge, playerImpulseCharges, resolveRigTarget, swarmBombSelection, powersFireOnPress,
 } from '../systems/powerVerbs.js';
 import { cloakTimeS, fittedCloakModule } from '../systems/cloak.js';
-import { resolveImpulseChargeCapacity } from '../systems/impulseCharges.js';
 import { resolveActionCodes, formatBindingCode } from '../systems/input.js';
 import { collectAttackModifiers } from '../combat/adventureAttackReaders.js';
 import { compileAttackSpec, describeAttackMetrics } from '../combat/attackSpec.js';

@@ -1,6 +1,9 @@
 import { lastShiftPackagedFile } from './lastShiftVisualIdentity.js';
 import { LAST_SHIFT, lastShiftBodyKey } from '../data/lastShift.js';
-import { salvageTenderWholeShipVisual, salvageTenderRequiresAuthoredHull } from '../features/salvageTender/readModel.js';
+import {
+  salvageTenderWholeShipVisual,
+  salvageTenderRequiresAuthoredHull,
+} from '../features/salvageTender/visualIdentity.js';
 import { isOrchardFrame, isOrchardPod, orchardPlaceTransform, orchardCatalogRows, ORCHARD_FRAME_FILE, ORCHARD_POD_FILE } from '../data/anvilOrchardIdentity.js';
 import { recordOrchardAuthoredSource } from './anvilOrchardVisuals.js';
 // LAST_ARGUMENT_INTEGRATION_V1

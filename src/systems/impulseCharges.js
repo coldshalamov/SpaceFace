@@ -32,9 +32,18 @@ import {
 import { resolveGovernedCombatSpeed } from '../core/flight/propulsionCatalog.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
 import { indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
-import { massline2Flag } from '../data/featureFlags.js';
 import { MODULES } from '../data/modules.js';
 import { swarmPilotHasActed } from './swarmSafety.js';
+import {
+  activePlayerFittings, BOMB_PROPULSION_DIALS, bombPropulsionAvailable, chargeThrowPlan,
+  repulsionTrapFitted, resolveImpulseChargeCapacity,
+} from '../data/impulseChargeReadModel.js';
+
+// Compatibility exports retain the single canonical helper bindings for existing callers.
+export {
+  BOMB_PROPULSION_DIALS, bombPropulsionAvailable, chargeThrowPlan,
+  repulsionTrapFitted, resolveImpulseChargeCapacity,
+};
 
 const CHARGE_COMMODITY = 'cmdty_impulse_charge';
 
@@ -65,54 +74,6 @@ const MODULE_BY_ID = new Map(MODULES.map((m) => [m.id, m]));
 // only illustrate the strongest real directions, never one invented global axis.
 export const IMPULSE_CHARGE_SHOVE_CAP = 8;
 
-/**
- * Where a charge throw starts and how it flies right now: the throw's own branches (the aimed
- * sticky plate; the Repulsion Trap laid behind while braking; the aft drop when bomb propulsion is
- * fitted). The throw and the held-key preview (row 493) both read it.
- */
-export function chargeThrowPlan(state, player) {
-  const actions = state.input && state.input.actions;
-  const braking = !!((actions && actions.brake) || state.input.brake || Number(state.input.moveZ) < -0.5);
-  const trap = braking && repulsionTrapFitted(state);
-  const chargeId = trap ? 'charge_repulsion_trap' : 'charge_standard';
-  const def = chargeDef(chargeId);
-  const aftDrop = bombPropulsionAvailable(state) && braking;
-  // Escape traps go behind the actual flight path, even while the guns aim into the chase.
-  const heading = Math.hypot(player.vel.x, player.vel.z) > 12
-    ? Math.atan2(player.vel.z, player.vel.x) : (player.rot || 0);
-  const dir = trap ? heading + Math.PI : aftDrop ? (player.rot || 0) + Math.PI : aimDir(player, state);
-  const cf = Math.cos(dir), sf = Math.sin(dir);
-  const noseR = player.radius || 6;
-  const spawnDistance = trap ? noseR + 22 : aftDrop
-    ? Math.max(
-      BOMB_PROPULSION_DIALS.minStandoff,
-      noseR + Math.min(
-        noseR * (BOMB_PROPULSION_DIALS.standoffRadii - 1),
-        def.radius * BOMB_PROPULSION_DIALS.maxSurfaceGapRadiusFrac,
-      ),
-    )
-    : noseR;
-  const throwSpeed = aftDrop ? BOMB_PROPULSION_DIALS.relativeDropSpeed : def.throwSpeed;
-  return {
-    braking, trap, chargeId, def, aftDrop, dir, cf, sf, spawnDistance, throwSpeed,
-    pos: { x: player.pos.x + cf * spawnDistance, z: player.pos.z + sf * spawnDistance },
-    vel: { x: trap ? 0 : cf * throwSpeed + player.vel.x, z: trap ? 0 : sf * throwSpeed + player.vel.z },
-  };
-}
-
-// M3 bomb-propulsion dials. Brake/reverse + the existing throw verb drops an already-armed plate
-// aft at a safe but still damaging standoff; R remains the deliberate detonation verb.
-export const BOMB_PROPULSION_DIALS = Object.freeze({
-  standoffRadii: 2.25,
-  minStandoff: 13,
-  // A fixed-radius blast cannot reach the center of capital hulls. Preserve the authored 2.25R
-  // placement on small ships, but cap the clear gap behind the hull to half the blast radius.
-  maxSurfaceGapRadiusFrac: 0.5,
-  relativeDropSpeed: 0,
-  selfImpulseMult: 4.5,
-  referenceSelfImpulseMin: 2200,
-});
-
 function chargeDef(id) {
   return CHARGE_BY_ID.get(id) || CHARGE_BY_ID.get('charge_standard');
 }
@@ -134,17 +95,6 @@ function ensurePlayerRuntime(player) {
   const d = player.data || (player.data = {});
   if (!d.impulseCharges) d.impulseCharges = { throwCdT: 0 };
   return d.impulseCharges;
-}
-
-function aimDir(player, state) {
-  const aw = state.input && state.input.aimWorld;
-  if (aw) {
-    const dx = aw.x - player.pos.x, dz = aw.z - player.pos.z;
-    const len = Math.hypot(dx, dz);
-    if (len > 1e-4) return Math.atan2(dz, dx);
-  }
-  const inp = state.input;
-  return (inp && inp.aimAngle != null) ? inp.aimAngle : (player.rot || 0);
 }
 
 function linearFalloff(dist, radius) {
@@ -241,57 +191,10 @@ function activeCharges(state, ownerId) {
   return out;
 }
 
-function activePlayerFittings(state) {
-  const player = state && state.player;
-  const activeShipIndex = Number.isInteger(player && player.activeShipIndex) && player.activeShipIndex >= 0
-    ? player.activeShipIndex : 0;
-  const owned = player && Array.isArray(player.ownedShips) ? player.ownedShips[activeShipIndex] : null;
-  if (owned && Array.isArray(owned.fittings)) return owned.fittings;
-  const playerEntity = state && state.entities && typeof state.entities.get === 'function'
-    ? state.entities.get(state.playerId)
-    : null;
-  return Array.isArray(playerEntity?.data?.fittings) ? playerEntity.data.fittings : [];
-}
-
-export function repulsionTrapFitted(state) {
-  return activePlayerFittings(state).some(id => MODULE_BY_ID.get(id)?.mods?.repulsionTrap);
-}
-
 // AE-124 (G10) — a fitted Heat Lure Beacon turns the same charge throw into bait: the
 // ecology layer registers a burn-flag at the throw point that predators prefer.
 export function heatLureFitted(state) {
   return activePlayerFittings(state).some(id => MODULE_BY_ID.get(id)?.mods?.heatLure);
-}
-
-/** Maximum simultaneously deployed charges for the active player fit.
- *
- * The unfitted launcher keeps the authored four-charge limit. A fitted rack replaces that
- * limit with its declared capacity (currently eight); inventory modules and fittings on parked
- * hulls do not change the flown ship. This is intentionally a deployment limit, not free ammo:
- * every throw still consumes one cargo charge through cargo's writer above.
- */
-export function resolveImpulseChargeCapacity(state) {
-  const base = Math.max(1, Math.floor(Number(chargeDef('charge_standard').maxActive) || 1));
-  const fittings = activePlayerFittings(state);
-  let capacity = base;
-  for (const id of fittings) {
-    const declared = Number(MODULE_BY_ID.get(id)?.mods?.impulseChargeCapacity);
-    if (Number.isFinite(declared)) capacity = Math.max(capacity, Math.floor(declared));
-  }
-  return capacity;
-}
-
-/** True only for a researched, fitted vector rack. The original charge rack/system stays live. */
-export function bombPropulsionAvailable(state) {
-  if (!massline2Flag('bombPropulsion')) return false;
-  const p = state && state.player;
-  const fittings = activePlayerFittings(state);
-  const researched = new Set(p && p.researchedNodes || []);
-  return fittings.some((id) => {
-    const def = MODULE_BY_ID.get(id);
-    return !!(def && def.mods && def.mods.bombPropulsion
-      && (!def.requiresTech || researched.has(def.requiresTech)));
-  });
 }
 
 function stickCandidatesNear(state, pos, radius, out) {
