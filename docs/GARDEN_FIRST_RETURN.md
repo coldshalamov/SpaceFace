@@ -42,7 +42,7 @@ the optional paid run completed. No model or asset production is included.
 
 ## Verification and publication scope
 
-This is a standalone three-file candidate on exact master
+This is a standalone candidate on exact master
 `67c9e951081ff05117e7aabd37f706f60c500733`, separate from conflicted PR724. The target
 missionStoryOps file matched that upstream source before the small hook was added.
 Tests exercise actual garden spawning/digestion, ordered campaign acceptance and
@@ -74,3 +74,29 @@ candidate.
 
 Earlier Orchard/chime/recovery and PR724 conflicts remain distinct bounded handoff
 work. This small clean branch neither discards nor silently accepts those candidates.
+
+## Follow-through: the Nest leaves a truthful account
+
+The next accepted Book 2 step now carries the encounter's actual recorded outcome
+back through Rook before the Tethys Registry Writ. The carrier going down, launch
+couplings being breached, and the last Wasp launching with both blast baffles torn
+away are distinct results. Broken contact instead leaves a surviving Reach threat;
+it is not announced as a player victory, destroyed brood or proven player withdrawal.
+The character then names the existing Tethys board and reminds the player to scan
+the named ship before choosing force or custody.
+
+The source reads `nestOutcomeReceipt(state)` only after the ordered `nest` step is
+accepted. It does not derive a story fact from the raw resolved-event payload or
+make the outcome true by displaying it. The canonical encounter writer, campaign
+receipt and existing offer/navigation owners stay authoritative. Duplicate events,
+restored completed progress and unmatched raw events do not repeat or manufacture
+the contact. A retained earlier terminal receipt can be reconciled later; wording
+avoids claiming fresh combat at the player's present location.
+
+The focused tests prepare an owner-qualified terminal state and call the actual
+`recordNestOutcome` writer, then exercise real mission acceptance and existing
+Registry Writ waypoint. They cover all four outcomes, no extra credit/beat advance,
+duplicates, retained history, out-of-order completion and false/mismatched signals.
+This validates the receipt-to-character-to-route connection, not physical encounter
+completion or the rendered comms feed. Both messages share existing bounded session
+history and persistent-live-feed behavior; no new save transcript is introduced.
