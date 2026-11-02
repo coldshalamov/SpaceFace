@@ -132,19 +132,6 @@
   ],
   "units": [
     {
-      "id": "seed-sw-04",
-      "date": "2026-10-23",
-      "wf": "WF-05",
-      "mode": "opportunity",
-      "verdict": "implemented",
-      "reason": "An allied turret body fights beside you until the wave clears",
-      "fingerprint": "verb=callin,subject=turret,sector=crucible,domain=wf-05",
-      "references": [],
-      "integration": "live",
-      "commit": "5f7ce6693b",
-      "verification": "focused_green"
-    },
-    {
       "id": "seed-sw-05",
       "date": "2026-10-23",
       "wf": "WF-05",
@@ -1689,6 +1676,19 @@
       "references": [],
       "integration": "live",
       "commit": "50e97d88b139",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inf-crusher-bite",
+      "date": "2026-11-02",
+      "wf": "WF-15",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "The crusher jaws finally bite: a hull shoved into the anvil at crumple speed takes the collision law's own damage and the pilot who aimed the shove keeps the kill.",
+      "fingerprint": "verb=crush,subject=arena-hazard,sector=crucible,domain=wf-15",
+      "references": [],
+      "integration": "live",
+      "commit": "acf1f5ba2236",
       "verification": "focused_green"
     }
   ],
