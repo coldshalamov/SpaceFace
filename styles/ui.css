@@ -2354,6 +2354,19 @@ html.sf-reduce-motion .orr-replay__exit .dp-lit__item, html.sf-reduce-motion .or
 }
 .orr-clips__pos:empty { display:none; }
 html.sf-reduce-motion .orr-clip__plate { transition:none; }
+/* polish293: at 1920×1080 Replay and Clips printed the same 12px words and keys as at 960×540,
+   the smallest type of any 1080p screen; Settings, Save/Load, Automation and the Crucible pages
+   already scale up in this band. The fixed furniture (Exit key, the count, the legend, the
+   transport and action keys) zooms with them. The tape and the reel are laid out and dragged by
+   JS against their own boxes, so they keep their size and only their labels step up a size. */
+@media (min-width:1800px) and (max-width:2199px) and (min-height:1000px) {
+  .orr-replay__exit, .orr-replay__read, .orr-replay__transport,
+  .orr-clips__exit, .orr-clips__read, .orr-clips__readline, .orr-clips__actions { zoom:1.14; }
+  .orr-replay__readout, .orr-replay__ev, .orr-replay__sec { font-size:14px; }
+  .orr-clip__name { font-size:22px; }
+  .orr-clip__sub, .orr-clip__tickcode, .orr-clip__dial-opt { font-size:14px; }
+  .orr-clip__bounds { font-size:16px; }
+}
 @media (forced-colors:active) {
   .orr-clips__count, .orr-clips__runtime { color:CanvasText; text-shadow:none; }
   .orr-clips__count-label, .orr-clips__pos, .orr-clips__readout, .orr-clip__name,
