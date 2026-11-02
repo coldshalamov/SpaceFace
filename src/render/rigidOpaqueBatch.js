@@ -494,7 +494,10 @@ function rootsEqual(a, b) {
 function disposeBatch(batch, scene) {
   if (!batch) return;
   const mesh = batch.mesh;
-  if (mesh) retiredRigidOpaqueMeshes.add(mesh);
+  if (mesh) {
+    retiredRigidOpaqueMeshes.add(mesh);
+    mesh.castShadow = false;
+  }
   if (mesh && mesh.parent) {
     const notes = scene && scene.userData && scene.userData.shadowMeshNotes;
     if (notes && typeof notes.removed === 'function') {
