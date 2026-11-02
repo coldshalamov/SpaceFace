@@ -1,5 +1,7 @@
 import { kesslerWeightSlipChoice, kesslerWeightSlipReply } from './massSlipConversation.js';
+import { kesslerStarterWorkChoice, kesslerStarterWorkReply } from './starterWorkdayConversation.js';
 import { commodityDisplayName } from '../commodityNames.js';
+import { localizeText } from '../../localization/sourceText.js';
 // Shared station-contact data, choices, replies, and map actions.
 // DOM rendering belongs to src/ui/station/screens/bar.js.
 
@@ -778,7 +780,16 @@ export function generateContacts(stationId, state = {}, opts = {}) {
   for (const canonical of canonicalContactsForStation(stationId)) {
     if (canonical.canonicalKey === 'kessler') {
       const slipChoice = kesslerWeightSlipChoice(state, stationId);
-      if (slipChoice) canonical.choices = [...getChoices(canonical.role, canonical), slipChoice];
+      const workChoice = kesslerStarterWorkChoice(state, stationId);
+      if (slipChoice || workChoice) {
+        const choices = getChoices(canonical.role, canonical);
+        const dismissIndex = choices.findIndex((choice) => choice && choice.id === 'dismiss');
+        const dismissChoice = dismissIndex >= 0 ? choices.splice(dismissIndex, 1)[0] : null;
+        if (slipChoice) choices.push(slipChoice);
+        if (workChoice) choices.push(workChoice);
+        if (dismissChoice) choices.push(dismissChoice);
+        canonical.choices = choices;
+      }
     }
     if (canonical.role === 'barkeep') {
       contacts[0] = canonical;
@@ -1374,6 +1385,91 @@ export function barContactIntelTags(contact = {}, state = {}, stationId = '') {
   return tags.slice(0, 2);
 }
 
+// BAR-REGULAR: a seeded patron you have talked to before is a regular, and a regular's line
+// advances each visit instead of repeating one hashed bark forever. Pure function of the
+// persisted stationContacts memory (the stationContacts system stays the sole writer) and the
+// same live sector facts the intel tags read; DOM-free so checks can walk the ladder directly.
+const REGULAR_SUBJECT_WORDS = Object.freeze({
+  routes: 'trade routes', market: 'market prices', work: 'contract work',
+  outside: 'the lanes out there', black: 'quiet markets', contraband: 'papers',
+  tech: 'fitting advice', fix: 'yard repairs', bounties: 'posted bounties',
+  action: 'where the fights are', fields: 'the rich fields', ore_price: 'ore prices',
+  rumors: 'the rumors', word: 'the word on the docks', drink: 'the drink',
+});
+
+export function barRegularStoryLine(contact = {}, state = {}, stationId = '') {
+  const memory = stationContactMemoryFor(state, contact.id);
+  if (!memory || !memory.met || memory.talkCount < 1) return null;
+  const firstName = String(contact.name || '').trim().split(/\s+/)[0] || 'The regular';
+  const subject = REGULAR_SUBJECT_WORDS[memory.lastChoice]
+    || (memory.lastChoice ? memory.lastChoice.replace(/_/g, ' ') : 'local work');
+
+  if (memory.talkCount === 1) {
+    return localizeText('Met once before. Back already — last time it was {subject}.', { subject });
+  }
+
+  // The middle visits are the trouble beat: the regular tells you what changed while you
+  // were out, grounded in the same live facts their intel tags carry. Two variants per role
+  // alternate by visit, so consecutive visits never repeat even when the world has not moved.
+  const trouble = barRegularTroubleLine(contact, state, stationId, memory.talkCount);
+  if (trouble) return trouble;
+
+  // Past the story, the relationship settles — warmer once the contact's standing earned it.
+  if (memory.standing >= 2) {
+    return localizeText('{name} keeps your usual on the ledger now. Whatever the lanes do, this stool is yours.', { name: firstName });
+  }
+  return localizeText('{name} nods without turning around. Regulars long enough — friends not yet.', { name: firstName });
+}
+
+function barRegularTroubleLine(contact, state, stationId, talkCount) {
+  if (talkCount < 2 || talkCount > 3) return null;
+  const variant = (hash32(String(contact.id || ''), 'bar-regular', talkCount) % 2) === 0;
+  const role = String(contact.role || '').toLowerCase();
+  const danger = role === 'pilot' || role === 'bounty_hunter' || role === 'miner'
+    ? dangerousSector(stationId, state) : null;
+  const event = localEconEvent(state, stationId);
+  const sec = currentSector(stationId, state);
+
+  if (role === 'barkeep') {
+    if (event) {
+      return localizeText('Since your last drink, the shelf ran thin on {commodity}. The regulars count everything here.',
+        { commodity: commodityName(event.commodityId) });
+    }
+    return variant
+      ? localizeText('The board has stayed quiet since you last sat down. Even the tollmen are bored.')
+      : localizeText('Same bar since you left. Quieter, if anything — and that worries the regulars.');
+  }
+  if (danger) {
+    return variant
+      ? localizeText('{sector} has turned into a {security} this week. Every stool here has a story about it.',
+        { sector: danger.name, security: securityLabel(danger) })
+      : localizeText('You were gone one bell and {sector} got louder. It is a {security} out there now.',
+        { sector: danger.name, security: securityLabel(danger) });
+  }
+  if (role === 'smuggler') {
+    return localizeText('Customs doubled its counts this week. The quiet ledger did not.');
+  }
+  if (role === 'merchant') {
+    if (event) {
+      return localizeText('Prices on {commodity} moved while you were out. Someone always pays for that.',
+        { commodity: commodityName(event.commodityId) });
+    }
+    const slots = missionBoardSlots(state, stationId).length;
+    return localizeText('{count} live contracts on the board since you were last in. Someone is always a day late on one.',
+      { count: slots });
+  }
+  if (role === 'engineer') {
+    if (sec && sec.hazards && sec.hazards.length) {
+      return localizeText('The rocks outside have been chewing armor since you left. My bench has not cooled.');
+    }
+    return localizeText('The yard list grew while you were gone: {services}. It always grows.',
+      { services: serviceSummary(stationId, state) });
+  }
+  const slots = missionBoardSlots(state, stationId).length;
+  return localizeText('{count} live contracts on the board since you were last in.',
+    { count: slots });
+}
+
 /** Find best trade spread from marketIntel */
 function bestTradeRoute(state, currentStationId) {
   const intel = getMarketIntel(state);
@@ -1854,6 +1950,8 @@ function buildCanonicalReply(contact, choiceId, ctx, stationId) {
     case 'kessler': {
       const slipReply = kesslerWeightSlipReply(state, stationId, choiceId);
       if (slipReply) return slipReply;
+      const workReply = kesslerStarterWorkReply(state, stationId, choiceId);
+      if (workReply) return workReply;
       if (choiceId === 'routes') {
         const route = bestTradeRoute(state, stationId);
         if (route) {
