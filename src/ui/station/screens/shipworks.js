@@ -497,12 +497,20 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   const railProgressEl = el.querySelector('.sx-sw__railtrack i');
   const canvas = el.querySelector('.sx-sw__canvas');
   const nameplateEl = el.querySelector('.sx-sw__nameplate');
-  if (isPhoneLayout() && nameplateEl) {
-    // The portrait hull and its projected system callouts need the whole phone-width stage.
-    // The same name/rename/description nodes read above it, keeping all their live handlers.
+  const nameplateHome = document.createComment('shipworks nameplate');
+  nameplateEl?.before(nameplateHome);
+  const compactFlightNameplate = window.matchMedia('(max-width:1500px) and (max-height:800px)');
+  const syncNameplatePlacement = () => {
     const main = el.querySelector('.sx-sw__main');
-    if (main) main.insertBefore(nameplateEl, main.firstChild);
-  }
+    if (!nameplateEl || !main) return;
+    // Keep the same editable nameplate and description, but give compact flight callouts
+    // the entire stage instead of forcing both columns to share space with the prose.
+    if (isPhoneLayout() || (host === 'flight' && compactFlightNameplate.matches)) {
+      if (main.firstChild !== nameplateEl) main.insertBefore(nameplateEl, main.firstChild);
+    } else if (nameplateHome.parentNode && nameplateHome.nextSibling !== nameplateEl) nameplateHome.after(nameplateEl);
+  };
+  syncNameplatePlacement();
+  compactFlightNameplate.addEventListener('change', syncNameplatePlacement);
   const statsEl = el.querySelector('.sx-sw__stats');
   const sideEl = el.querySelector('.sx-sw__side');
   const compactInstrument = window.matchMedia('(min-width:901px) and (max-width:1100px) and (max-height:640px)');
@@ -926,6 +934,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     host = next;
     // Flight entry: inspect-only. Buy mode and MAKE ACTIVE belong to a station berth.
     el.classList.toggle('sx-sw--flight', host === 'flight');
+    syncNameplatePlacement();
     syncCompactInstrument();
     if (!chooserEl.hidden) closeChooser({ silent: true });
     if (host === 'flight') {
@@ -3744,7 +3753,10 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       }
       poster.place(fit.imgRect);
       drawSaleRing(ringG);
-      const keepPad = shortStage || narrowStage ? 18 : 6;
+      // Compact flight labels need enough air around the poster's actual ink, not just its
+      // projected beads: a narrow left column otherwise prints across the hull silhouette.
+      const keepPad = host === 'flight' && compactFlightNameplate.matches
+        ? 36 : (shortStage || narrowStage ? 18 : 6);
       keepOut = { left: fit.inkRect.left - keepPad, top: fit.inkRect.top, right: fit.inkRect.right + keepPad, bottom: fit.inkRect.bottom };
       heart = { x: (fit.inkRect.left + fit.inkRect.right) / 2, y: (fit.inkRect.top + fit.inkRect.bottom) / 2 };
     } else if (narrowStage && nodes.length) {
@@ -5666,7 +5678,10 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     };
     seatWatchFrame = requestAnimationFrame(tick);
   }
-  const onWindowResize = () => { if (stageShown) { scheduleSpatialProjection(); watchStageSeat(); } };
+  const onWindowResize = () => {
+    syncNameplatePlacement();
+    if (stageShown) { scheduleSpatialProjection(); watchStageSeat(); }
+  };
   if (typeof window !== 'undefined') window.addEventListener('resize', onWindowResize);
 
   let buyConfirmBusy = false;
@@ -5978,6 +5993,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       window.removeEventListener('keydown', interceptLotKeys, true);
       compactLotMedia.removeEventListener('change', onLotMediaChange);
       compactInstrument.removeEventListener('change', syncCompactInstrument);
+      compactFlightNameplate.removeEventListener('change', syncNameplatePlacement);
       blackFlagRegistry.dispose();
       clearSableDemo(); for (const off of sableLifecycleUnsubs) off();
       if (chooserCloseTimer) clearTimeout(chooserCloseTimer);

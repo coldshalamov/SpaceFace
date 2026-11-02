@@ -92,12 +92,19 @@ ${W} .sx-sw-rack .sx-sw-band__label .k-38 { display:block; margin-top:2px; }
   ${W} .sx-sw__gauges { gap:0 14px !important; }
   ${W} .sx-sw-gauge .k-row__name { letter-spacing:.14em !important; }
 }
-/* 1101–1500 × ≤800 (1280×720, 1366×768): the three-column frame leaves the stage about 620px,
-   and the hull beads sit beneath the wide nameplate copy. Keep the complete description in a
-   column beside the hull; the callout solver already avoids the nameplate ink. */
-@media (min-width:1101px) and (max-width:1500px) and (max-height:800px) {
-  ${W} .sx-sw__nameplate .sx-sw__blurb { max-width:232px !important; font-size:13px !important; line-height:1.4 !important;
-    max-height:none !important; overflow:visible !important; }
+/* Compact flight: the nameplate is in the main flow above a full-width projection stage.
+   The stage keeps real room for hull and labels; the main column scrolls to its lower readings. */
+@media (max-width:1500px) and (max-height:800px) {
+  ${W} .sx-sw__main { display:flex !important; flex-direction:column !important; gap:8px !important;
+    min-height:0 !important; overflow-y:auto !important; overflow-x:hidden !important; }
+  ${W} .sx-sw__main > .sx-sw__nameplate { position:relative !important; inset:auto !important; flex:none !important;
+    width:100% !important; max-width:none !important; padding:0 !important; }
+  ${W} .sx-sw__main > .sx-sw__nameplate .sx-sw__blurb { max-width:100% !important; font-size:14px !important;
+    line-height:1.4 !important; max-height:none !important; overflow:visible !important; }
+  ${W} .sx-sw__main > .sx-sw__stage { flex:0 0 320px !important; height:320px !important;
+    min-height:320px !important; max-height:none !important; }
+  ${W} .sx-sw__main > .sx-sw__stats { flex:0 0 auto !important; height:auto !important;
+    min-height:0 !important; max-height:none !important; overflow:visible !important; }
 }
 /* The active fleet row has a 230px rail. This tracking keeps its hull name and tier on one line
    without changing the row's inspection target or selected-state marker. */
@@ -392,12 +399,6 @@ html.sf-reduce-motion ${W} * { transition:none !important; animation:none !impor
   ${W} text.orr-power__syslabel { display:none; }
   ${W} .sx-sw-hero[data-band='handling'] .k-hero__n { font-size:clamp(36px, 5.2vh, 52px) !important; }
   ${W} .sx-sw__stats .k-row { padding:3px 0 !important; }
-}
-/* ≤1100×≤640 (960×540, including short landscape): the hull sits beneath the nameplate on this
-   short stage. Keep the complete sentence clear of beads and leader lines instead of clipping it. */
-@media (max-width:1100px) and (max-height:640px) {
-  ${W} .sx-sw__nameplate .sx-sw__blurb { max-width:256px !important; font-size:13px !important; line-height:1.4 !important;
-    max-height:none !important; overflow:visible !important; }
 }
 `;
 
