@@ -145,6 +145,36 @@ test('eligibility is identical across spatial, fallback, spawn, shadow, and stab
     'eligibility changes selection, not default candidate-visit diagnostics or scratch shape');
 });
 
+test('per-request eligibility filters before nearest selection and leaves legacy queries unchanged', () => {
+  const observer = entity(100, 0, 0, { team: 1 });
+  const sameTeamNear = entity(1, 2, 0, { team: 1 });
+  const authorizedThreat = entity(2, 8, 0, { team: 1 });
+  const state = stateFor([observer, sameTeamNear, authorizedThreat]);
+  const perRequest = createNearestEntityQueryService(state, {
+    entityType: 'ship',
+    fallbackIndex: 'ships',
+    eligibleForRequest: (candidate, request, liveState) => {
+      const source = liveState.entities.get(request.sourceEntityId);
+      return candidate.id !== source.id && candidate.id !== sameTeamNear.id;
+    },
+    shadow: true,
+  });
+  perRequest.begin();
+  const filtered = perRequest.request('observer', observer.id, 0, 0, 20);
+  perRequest.execute();
+  assert.equal(filtered.resultId, authorizedThreat.id,
+    'a nearer candidate rejected for this observer cannot mask the farther eligible candidate');
+  assert.equal(perRequest.getDiagnostics().shadowMismatches, 0,
+    'the full-scan shadow oracle applies request-specific eligibility');
+
+  const legacy = createNearestEntityQueryService(state, { entityType: 'ship', fallbackIndex: 'ships' });
+  legacy.begin();
+  const unchanged = legacy.request('legacy', observer.id, 0, 0, 20);
+  legacy.execute();
+  assert.equal(unchanged.resultId, sameTeamNear.id,
+    'queries without the optional predicate retain their previous nearest-entity behavior');
+});
+
 test('nearest hostile batch preserves strict radius, live identity, and stable-id ties', () => {
   const owner = entity(100, 0, 0);
   const highTie = entity(9, 5, 0, { team: 1 });
@@ -448,6 +478,108 @@ test('npcJobsRuntime ignores nearer passive and hold-fire team-1 hulls for flee'
   assert.equal(state.npcJobs.byId['job:owner'].job.phase, NPC_JOB_PHASE.FLEE);
   assert.equal(state.npcJobs.byId['job:owner'].threatId, activeFar.id,
     'the farther active hostile remains visible behind nearer ineligible hulls');
+});
+
+test('npcJobsRuntime uses observer hostility before nearest selection and preserves civilian flee rules', () => {
+  const owner = entity(100, 0, 0, { team: 1 });
+  owner.factionId = 'faction_reach';
+  owner.data.jobId = 'job:owner';
+  const sameFactionAlly = entity(1, 20, 0, { team: 1 });
+  sameFactionAlly.factionId = 'faction_reach';
+  sameFactionAlly.data.ai = { passive: false, roe: 'weapons_free' };
+  const fartherIncidentHostile = entity(5, 80, 0, { team: 1 });
+  fartherIncidentHostile.factionId = 'faction_reach';
+  fartherIncidentHostile.data.ai = {
+    passive: false,
+    roe: 'weapons_free',
+    lawful: true,
+    securityTargetId: owner.id,
+  };
+  const state = stateFor([owner, sameFactionAlly, fartherIncidentHostile]);
+  state.npcJobs.byId = {
+    'job:owner': { job: transitJob('job:owner'), entityId: owner.id, lastAdvanceSimT: 0, threatId: null },
+  };
+  const runtime = Object.create(npcJobsRuntime);
+  runtime.init({ state, bus: { on() {}, emit() {} }, helpers: {}, registry: {} });
+  runtime._sink = () => {};
+  runtime._drive = () => {};
+  runtime.update(0, state);
+  assert.equal(state.npcJobs.byId['job:owner'].job.phase, NPC_JOB_PHASE.FLEE);
+  assert.equal(state.npcJobs.byId['job:owner'].threatId, fartherIncidentHostile.id,
+    'canonical same-team incident hostility survives a nearer armed ally');
+
+  const crossTeamOwner = entity(300, 0, 0, { team: 1 });
+  crossTeamOwner.data.jobId = 'job:cross-team';
+  const crossTeamHostile = entity(301, 70, 0, { team: 0 });
+  const crossTeamState = stateFor([crossTeamOwner, crossTeamHostile]);
+  crossTeamState.npcJobs.byId = {
+    'job:cross-team': {
+      job: transitJob('job:cross-team'), entityId: crossTeamOwner.id, lastAdvanceSimT: 0, threatId: null,
+    },
+  };
+  const crossTeamRuntime = Object.create(npcJobsRuntime);
+  crossTeamRuntime.init({ state: crossTeamState, bus: { on() {}, emit() {} }, helpers: {}, registry: {} });
+  crossTeamRuntime._sink = () => {};
+  crossTeamRuntime._drive = () => {};
+  crossTeamRuntime.update(0, crossTeamState);
+  assert.equal(crossTeamState.npcJobs.byId['job:cross-team'].job.phase, NPC_JOB_PHASE.FLEE);
+  assert.equal(crossTeamState.npcJobs.byId['job:cross-team'].threatId, crossTeamHostile.id,
+    'observer hostility can select a canonical threat outside the former team-1 prefilter');
+
+  const neutralOwner = entity(200, 0, 0, { team: 2 });
+  neutralOwner.data.jobId = 'job:neutral';
+  const hostileReach = entity(201, 80, 0, { team: 1 });
+  hostileReach.data.ai = { passive: false, roe: 'weapons_free' };
+  const neutralState = stateFor([neutralOwner, hostileReach]);
+  neutralState.npcJobs.byId = {
+    'job:neutral': { job: transitJob('job:neutral'), entityId: neutralOwner.id, lastAdvanceSimT: 0, threatId: null },
+  };
+  const neutralRuntime = Object.create(npcJobsRuntime);
+  neutralRuntime.init({ state: neutralState, bus: { on() {}, emit() {} }, helpers: {}, registry: {} });
+  neutralRuntime._sink = () => {};
+  neutralRuntime._drive = () => {};
+  neutralRuntime.update(0, neutralState);
+  assert.equal(neutralState.npcJobs.byId['job:neutral'].job.phase, NPC_JOB_PHASE.FLEE,
+    'neutral civilian traffic still flees an active team-1 threat');
+});
+
+test('npcJobsRuntime does not flee from a same-faction armed ally and still recognizes wanted player', () => {
+  const owner = entity(100, 0, 0, { team: 1 });
+  owner.factionId = 'faction_reach';
+  owner.data.jobId = 'job:owner';
+  const ally = entity(1, 30, 0, { team: 1 });
+  ally.factionId = 'faction_reach';
+  ally.data.ai = { passive: false, roe: 'weapons_free' };
+  const state = stateFor([owner, ally]);
+  state.npcJobs.byId = {
+    'job:owner': { job: transitJob('job:owner'), entityId: owner.id, lastAdvanceSimT: 0, threatId: null },
+  };
+  const runtime = Object.create(npcJobsRuntime);
+  runtime.init({ state, bus: { on() {}, emit() {} }, helpers: {}, registry: {} });
+  runtime._sink = () => {};
+  runtime._drive = () => {};
+  runtime.update(0, state);
+  assert.equal(state.npcJobs.byId['job:owner'].job.phase, NPC_JOB_PHASE.TRANSIT);
+  assert.equal(state.npcJobs.byId['job:owner'].threatId, null,
+    'team and faction allies remain non-hostile even with weapons-free ROE');
+
+  const civilian = entity(200, 0, 0, { team: 2 });
+  civilian.data.jobId = 'job:civilian';
+  const player = entity(201, 40, 0, { team: 0 });
+  const wantedState = stateFor([civilian, player]);
+  wantedState.playerId = player.id;
+  wantedState.player = { heat: 0.2 };
+  wantedState.npcJobs.byId = {
+    'job:civilian': { job: transitJob('job:civilian'), entityId: civilian.id, lastAdvanceSimT: 0, threatId: null },
+  };
+  const wantedRuntime = Object.create(npcJobsRuntime);
+  wantedRuntime.init({ state: wantedState, bus: { on() {}, emit() {} }, helpers: {}, registry: {} });
+  wantedRuntime._sink = () => {};
+  wantedRuntime._drive = () => {};
+  wantedRuntime.update(0, wantedState);
+  assert.equal(wantedState.npcJobs.byId['job:civilian'].job.phase, NPC_JOB_PHASE.FLEE);
+  assert.equal(wantedState.npcJobs.byId['job:civilian'].threatId, player.id,
+    'the explicit wanted-player proximity rule remains intact');
 });
 
 test('npcJobsRuntime senses threats at deterministic 15 Hz while advancing and driving every fixed tick', () => {
