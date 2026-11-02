@@ -3,7 +3,7 @@
 // Trigger layer only: detects lawful patrol pressure, bad robbery economics, critical damage, and
 // wing collapse, waits a short nerve beat, then supplies existing AI-facing surrender/flee fields
 // and one readable bark. Authored bosses, aces, fanatics, and named hunters remain exempt.
-import { barkFor } from '../data/barks.js';
+import { barkFor, FRONTIER_FIRST_NAMES, FRONTIER_LAST_NAMES } from '../data/barks.js';
 import { pirateDoctrineForEntity } from '../data/pirateDoctrines.js';
 import { hash32 } from '../core/rng.js';
 import { ActivityKind, RulesOfEngagement, normalizeActivity } from '../ai/doctrine.js';
@@ -213,6 +213,7 @@ export const pirateDisengage = {
     rec.until = now + FLEE_DURATION_S;
     for (const entity of members) markFleeing(entity, threat, rec, state);
     this._speak(rec, members[0] || null);
+    rememberFledWing(state, rec, members, threat, now);
     this._emit('pirateDisengage:triggered', {
       squadId: rec.squadId,
       patrolId: rec.patrolId,
@@ -628,6 +629,31 @@ function squadTumbledRecently(members, state) {
     if (Number.isFinite(at) && now - at <= TUMBLE_MORALE_WINDOW_S) return true;
   }
   return false;
+}
+
+// The wing that ran from the pilot keeps its face: the leader is remembered on the moral
+// ledger as a spared escape, so the return encounter can bring that named crew back —
+// grateful or armed, the seed's own roll — and the band's hails and news desk can say the
+// name. Only a flight FROM the pilot records (a patrol that merely scared them off is not
+// the pilot's mercy). Deterministic id per squad: a wing that breaks off twice is still
+// one account, and rememberMoralDebt's dedupe never double-counts the mercy.
+function rememberFledWing(state, rec, members, threat, now) {
+  if (!threat || threat.id !== state.playerId || !members.length) return null;
+  const leader = members[0];
+  const seed = state.meta && state.meta.seed;
+  const roll = hash32(seed == null ? 0 : seed, rec.squadId, 'fled-wing-name');
+  const name = `${FRONTIER_FIRST_NAMES[roll % FRONTIER_FIRST_NAMES.length]} `
+    + `${FRONTIER_LAST_NAMES[(roll >>> 9) % FRONTIER_LAST_NAMES.length]}`;
+  return rememberMoralDebt(state, {
+    id: `wing:${rec.squadId}`,
+    name,
+    cause: 'spared_escape',
+    factionId: leader.factionId || 'faction_reach',
+    archetype: 'pirate_squad',
+    t: now,
+    source: 'pirateDisengage:fled',
+    witness: { kind: 'crew', source: 'pirateDisengage:fled' },
+  });
 }
 
 function markFleeing(entity, patrol, rec, state) {
