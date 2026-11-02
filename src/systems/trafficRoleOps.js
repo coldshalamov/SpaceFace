@@ -1965,7 +1965,32 @@ export const trafficRoleOps = {
     const payload = entry.job.payload;
     const targetId = payload.targetId;
     const entities = this.state?.entities;
-    const identity = payload.targetIdentity;
+    let identity = payload.targetIdentity;
+    if (!identity) {
+      // An early FLEE can begin before the first traffic work probe has persisted the booked
+      // wreck's stable key. Preserve that key from the exact retained booking object even after
+      // the residency owner shelves it; the world owner still verifies the matching live row and
+      // durable record before exposing a pose or promoting a physical target.
+      const booked = entry._salvorBookedTarget;
+      const target = booked?.entity;
+      if (booked?.id === targetId && target?.id === targetId
+        && target.type === payload.targetType) {
+        const data = target.data || {};
+        if (data.markerId) identity = { kind: 'marker', markerId: data.markerId };
+        else {
+          const source = this._salvageSourceBinding(target);
+          if (source?.sourceKey && source.salvagePointId) {
+            identity = { kind: 'salvagePoint', sourceKey: source.sourceKey,
+              salvagePointId: source.salvagePointId };
+          } else if (data.worldRecordId) {
+            identity = { kind: 'worldRecord', worldRecordId: data.worldRecordId };
+          } else if (typeof data.salvorTargetKey === 'string') {
+            identity = { kind: 'salvorTarget', key: data.salvorTargetKey };
+          }
+        }
+        if (identity) payload.targetIdentity = identity;
+      }
+    }
     if (identity) {
       const matchesIdentity = (target) => {
         const data = target?.data || {};
@@ -2344,9 +2369,40 @@ export const trafficRoleOps = {
       if (!entry._salvorBookedTarget && !entry.towTargetRef && !job.payload?.targetIdentity) return null;
       const target = this._retainedAdoptedSalvageTarget(entry);
       const claimant = target && this._salvorClaimantOf(target);
-      if (!target || !this._isSalvageableBody(target)
-        || (claimant && claimant !== context.worldRecordId)) return { blocked: true };
-      return this._salvorTargetDescriptor(entity, target, this._salvorReach(entity, target));
+      if (target && this._isSalvageableBody(target)
+        && (!claimant || claimant === context.worldRecordId)) {
+        return this._salvorTargetDescriptor(entity, target, this._salvorReach(entity, target));
+      }
+      if (target) return { blocked: true };
+
+      // A shelved booked hulk still supplies a route pose, never a work body. The world owner
+      // advances that exact far record and requests promotion only when this live worker reaches
+      // the physical-work band. ready:false keeps the job clock stopped until a real native body
+      // is restored; the extraction path continues resolving only active salvageable entities.
+      const world = this._registry?.get?.('world');
+      const workPose = this._salvorBodyState(entity);
+      const targetPose = world?.requestAdoptedSalvorTargetMaterialization?.({
+        jobId: job.id,
+        workerWorldRecordId: context.worldRecordId,
+        targetIdentity: job.payload?.targetIdentity,
+        targetType: job.payload?.targetType,
+        sectorId: entry.sectorId || entity.homeSectorId || entity.data?.homeSectorId
+          || entity.data?.sectorId || this.state.world?.currentSectorId,
+        approachBandWU: this._salvorReach(entity, entry._salvorBookedTarget?.entity
+          || { radius: 0, type: job.payload?.targetType }),
+      });
+      if (!targetPose || !workPose) return { blocked: true };
+      if (targetPose.claimant && targetPose.claimant !== context.worldRecordId) return { blocked: true };
+      const poseTarget = { type: targetPose.type, radius: targetPose.radius, mass: targetPose.mass };
+      return {
+        pos: targetPose.pos,
+        vel: targetPose.vel,
+        workPose,
+        reach: this._salvorReach(entity, poseTarget),
+        salvorPhysical: true,
+        settled: false,
+        ready: false,
+      };
     }
     const stationId = job.route[0].id.slice(5);
     const home = this._sectorStations().find(station => stationIdentity(station) === stationId);
