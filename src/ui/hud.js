@@ -5972,14 +5972,18 @@ export function createHud(ctx, alerts) {
     const seen = new Set();
     const add = (owner, el, cachedRect = null) => {
       if (!el || seen.has(el) || el.isConnected === false || el.hidden || el.style?.display === 'none') return;
+      const enteringOverlay = (owner === 'receipt' && el.classList?.contains('sf-toast')
+        && !el.classList.contains('sf-toast--out'))
+        || (owner === 'caption' && el.classList?.contains('sf-caption')
+          && el.classList.contains('show'));
       if (el.style?.visibility === 'hidden' || el.style?.visibility === 'collapse'
-        || Number.parseFloat(el.style?.opacity) === 0) return;
+        || (!enteringOverlay && Number.parseFloat(el.style?.opacity) === 0)) return;
       const getStyle = document.defaultView?.getComputedStyle || globalThis.getComputedStyle;
       if (typeof getStyle === 'function') {
         try {
           const style = getStyle.call(document.defaultView || globalThis, el);
           if (style?.display === 'none' || style?.visibility === 'hidden' || style?.visibility === 'collapse'
-            || Number.parseFloat(style?.opacity) === 0) return;
+            || (!enteringOverlay && Number.parseFloat(style?.opacity) === 0)) return;
         } catch (_) { /* geometry remains the visibility fallback for partial DOM hosts */ }
       }
       const rect = cachedRect || el.getBoundingClientRect?.();

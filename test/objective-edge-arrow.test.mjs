@@ -254,6 +254,9 @@ function mountArrowFixture({ worldToScreen } = {}) {
   const hudRoot = doc.createElement('div');
   hudRoot.id = 'hud';
   doc.body.appendChild(hudRoot);
+  const toastsLane = doc.createElement('div');
+  toastsLane.id = 'toasts';
+  doc.body.appendChild(toastsLane);
 
   globalThis.document = doc;
   globalThis.window = {
@@ -327,13 +330,16 @@ function mountArrowFixture({ worldToScreen } = {}) {
     }),
   };
 
-  const hud = createHud({ bus: createBus(), state, helpers });
+  const bus = createBus();
+  const hud = createHud({ bus, state, helpers });
 
   return {
     doc,
     player,
     state,
     hud,
+    bus,
+    toastsLane,
     arrow: () => hudRoot.querySelector('.sf-objarrow'),
     step(dt = 1 / 60) {
       state.simTime += dt;
@@ -400,6 +406,61 @@ test('flight text obstacles omit deferred captions and include visible captions'
       'CSS-hidden captions are omitted on the next cached refresh');
   } finally {
     fx.restore();
+  }
+});
+
+test('active entering receipt reserves its measured box while transparent', () => {
+  const fx = mountArrowFixture();
+  const receipt = fx.doc.createElement('div');
+  receipt.className = 'sf-toast sf-toast--info';
+  receipt.style.opacity = '0';
+  receipt.getBoundingClientRect = () => ({
+    left: 40, top: 90, right: 240, bottom: 130, width: 200, height: 40,
+  });
+  fx.toastsLane.appendChild(receipt);
+  // This fixture's small selector shim does not parse :not(), so model the production active-card
+  // queries explicitly while keeping createHud and its toast listener real.
+  fx.toastsLane.querySelector = (selector) => selector.includes('.sf-toast')
+    && !receipt.classList.contains('sf-toast--out') ? receipt : null;
+  fx.toastsLane.querySelectorAll = (selector) => selector.includes('.sf-toast')
+    && !receipt.classList.contains('sf-toast--out') ? [receipt] : [];
+  try {
+    fx.bus.emit('toast', { text: 'New delivery receipt', kind: 'info' });
+    const active = fx.hud.getFlightTextObstacles().find((row) => row.owner === 'receipt');
+    assert.deepEqual(active && [active.left, active.top, active.right, active.bottom], [40, 90, 240, 130],
+      'an entering active receipt reserves its actual box before the opacity transition starts');
+
+    receipt.classList.add('sf-toast--out');
+    fx.bus.emit('toast', { text: 'Receipt dismissed', kind: 'info' });
+    assert.equal(fx.hud.getFlightTextObstacles().some((row) => row.owner === 'receipt'), false,
+      'a retired receipt releases its box');
+  } finally {
+    fx.restore();
+  }
+});
+
+test('an entering visible presentation caption reserves its measured box while transparent', () => {
+  const fx = mountArrowFixture();
+  const prevSetTimeout = globalThis.setTimeout;
+  const prevClearTimeout = globalThis.clearTimeout;
+  globalThis.setTimeout = () => 1; // Keep the real caption TTL/fade timers from outliving this DOM fixture.
+  globalThis.clearTimeout = () => {};
+  const caption = fx.doc.querySelector('.sf-caption');
+  caption.style.opacity = '0'; // Models the computed opacity at the first frame of the production fade-in.
+  caption.getBoundingClientRect = () => ({
+    left: 700, top: 720, right: 1220, bottom: 780, width: 520, height: 60,
+  });
+  try {
+    fx.bus.emit('presentation:caption', { text: 'Impact registered', assertive: false });
+    assert.equal(caption.hidden, false);
+    assert.equal(caption.classList.contains('show'), true);
+    const active = fx.hud.getFlightTextObstacles().find((row) => row.owner === 'caption');
+    assert.deepEqual(active && [active.left, active.top, active.right, active.bottom], [700, 720, 1220, 780],
+      'a visible entering caption reserves its actual box before the opacity transition starts');
+  } finally {
+    fx.restore();
+    globalThis.setTimeout = prevSetTimeout;
+    globalThis.clearTimeout = prevClearTimeout;
   }
 });
 
