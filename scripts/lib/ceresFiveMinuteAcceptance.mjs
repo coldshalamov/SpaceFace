@@ -3900,6 +3900,13 @@ export async function pressCeresPublicPointAction(page, action) {
   }
 }
 
+export function ceresTurnPulseDuration(action, previousTurn, headingError) {
+  if (action.kind !== 'turn') return { durationMs: action.durationMs, misses: 0 };
+  const unchanged = previousTurn && Math.abs(headingError - previousTurn.headingError) < 0.001;
+  const misses = unchanged ? previousTurn.misses + 1 : 0;
+  return { durationMs: Math.min(160, action.durationMs * 2 ** Math.min(misses, 3)), misses };
+}
+
 async function readCeresLiveCohortCameraSnapshot(page, authorityRows) {
   return page.evaluate((rows) => {
     const state = window.SF?.state;
@@ -4095,6 +4102,7 @@ export async function drivePublicToCeresPoint(page, target, endTick) {
     throw new Error('Ceres public point approach requires a valid fixed-tick reserve');
   }
   let approachPulses = 0;
+  let previousTurn = null;
   let preferredCohortEntityId = target.exactCohortEntityId ?? null;
   const holdPulse = async (durationMs) => {
     await page.waitForTimeout(durationMs);
@@ -4165,7 +4173,10 @@ export async function drivePublicToCeresPoint(page, target, endTick) {
         else if (action.kind === 'decelerate') diagnostic.counts.deceleratePulses += 1;
         else diagnostic.counts.thrustPulses += 1;
         if (action.boost) diagnostic.counts.boostPulses += 1;
-        await pressCeresPublicPointAction(page, action);
+        const pulse = ceresTurnPulseDuration(action, previousTurn, status.headingError);
+        previousTurn = action.kind === 'turn'
+          ? { headingError: status.headingError, misses: pulse.misses } : null;
+        await pressCeresPublicPointAction(page, { ...action, durationMs: pulse.durationMs });
         await waitForCeresFixedTicks(page, 1, 20_000);
         continue;
       }

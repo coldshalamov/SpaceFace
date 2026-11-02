@@ -18,6 +18,7 @@ import {
   accessibilityCheckpointIdentity,
   canonicalGapProjection,
   ceresPreContinueLegReserveTicks,
+  ceresTurnPulseDuration,
   ceresHostileOpportunityPass,
   ceresLawfulServiceClassificationPass,
   ceresToolkitConflictAuthorityPass,
@@ -3229,6 +3230,17 @@ test('fixed-clock public point pulses release before any state observation', asy
   await pressCeresPublicPointAction(page, { key: 'KeyD', durationMs: 20, boost: false });
   await pressCeresPublicPointAction(page, { key: 'KeyW', durationMs: 160, boost: true });
   assert.deepEqual(events, ['press:KeyD:20', 'down:Shift', 'press:KeyW:160', 'up:Shift']);
+});
+
+test('short public turns lengthen only when the observed heading does not respond', () => {
+  const action = { kind: 'turn', durationMs: 20 };
+  let previous = null;
+  for (const expected of [20, 40, 80, 160, 160]) {
+    const result = ceresTurnPulseDuration(action, previous, 0.108475613412371);
+    assert.equal(result.durationMs, expected);
+    previous = { headingError: 0.108475613412371, misses: result.misses };
+  }
+  assert.equal(ceresTurnPulseDuration(action, previous, 0.05).durationMs, 20);
 });
 
 test('public pocket approach completes only after the hull is settled inside the anchor', () => {
