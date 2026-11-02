@@ -5,7 +5,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { galaxyMapScreen, galaxyPresenceInspectorHtml } from '../src/ui/galaxyMap.js';
+import { buildLocalModel, commitCoursePayload, galaxyMapScreen, galaxyPresenceInspectorHtml,
+  mapSearchTargetPriority } from '../src/ui/galaxyMap.js';
 import { SECTORS } from '../src/data/sectors.js';
 import { REGIONAL_ECONOMY_PROFILES } from '../src/data/regionalEconomyProfiles.js';
 
@@ -63,6 +64,36 @@ test('double-click / released line on a neighbour emits world:requestJump with t
   const course = bus.find('ui:setCourse');
   assert.ok(course && course.payload.sectorId === neighbourId, 'the course is armed toward the same sector');
   assert.ok(bus.names().includes('ui:popScreen'), 'a jump is a commitment the pilot leaves the chart with');
+});
+
+test('chart contact model exposes only explicitly targetable payloads and binds the course to that body', () => {
+  const player = { id: 1, type: 'ship', alive: true, pos: { x: 0, z: 0 }, data: {} };
+  const buoy = { id: 44, type: 'payload', alive: true, pos: { x: 310, z: -35 },
+    data: { name: '44-C loose lane buoy', worldSiteTargetable: true, missionTag: 'm_44c' } };
+  const ordinaryCargo = { id: 45, type: 'payload', alive: true, pos: { x: 320, z: -35 },
+    data: { name: 'Unclaimed cargo' } };
+  const sector = { id: 'sector_glyph_test', name: 'Local Test', position: { x: 0, z: 0 }, stations: [] };
+  const state = {
+    mode: 'flight', playerId: player.id, player: { targetId: null },
+    world: { currentSectorId: sector.id }, content: { sectors: [sector] },
+    ui: { trackedMissionId: 'm_44c' },
+    missions: { active: [{ id: 'm_44c', status: 'active', targetEntityIds: [buoy.id] }] },
+    entities: new Map([[player.id, player], [buoy.id, buoy], [ordinaryCargo.id, ordinaryCargo]]),
+    entityList: [player, buoy, ordinaryCargo], nav: { route: null, waypoint: null, autopilot: null },
+    entityIndex: { __spacefaceEntityIndexV1: true, ready: true, shipLike: [], stations: [],
+      asteroids: [], payloads: [buoy, ordinaryCargo] },
+  };
+  const model = buildLocalModel(state, () => false);
+  const objective = model.contacts.find((contact) => contact.id === buoy.id);
+  assert.ok(objective, 'the explicitly targetable authored mission payload is a local chart contact');
+  assert.equal(model.contacts.some((contact) => contact.id === ordinaryCargo.id), false,
+    'ordinary cargo remains outside the public target/search list');
+  assert.equal(mapSearchTargetPriority(state, objective), 950,
+    'the tracked contract target is promoted above a coincidental static map-name match');
+  const course = commitCoursePayload(state, objective);
+  assert.equal(course.type, 'payload');
+  assert.equal(course.label, buoy.data.name);
+  assert.equal(course.targetEntityId, buoy.id, 'chart course keeps the exact live payload binding');
 });
 
 test('a multi-hop commit plots (route + course), never jumps, and keeps the chart open for Engage', () => {

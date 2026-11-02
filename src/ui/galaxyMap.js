@@ -1286,7 +1286,7 @@ function visitClaimMarkerEntities(state, fn) {
 function visitLocalChartContacts(state, fn) {
   const index = state && state.entityIndex;
   if (index && index.__spacefaceEntityIndexV1 && index.ready === true) {
-    visitIndexedLists([index.shipLike, index.stations, index.asteroids], fn);
+    visitIndexedLists([index.shipLike, index.stations, index.asteroids, index.payloads], fn);
     return;
   }
   visitIndexedLists([entityIterator(state)], fn);
@@ -2285,7 +2285,7 @@ export function buildSystemModel(state, sectorId, options = {}) {
 }
 
 // ---------------------------------------------------------------------------------------------
-// LEVEL 3 — LOCAL: live contacts (ships/drones/stations/asteroids) around the player in the sector.
+// LEVEL 3 — LOCAL: live ships/drones/stations/asteroids plus explicitly targetable world payloads.
 // ---------------------------------------------------------------------------------------------
 
 /**
@@ -2305,7 +2305,9 @@ export function buildLocalModel(state, isHostile, options = {}) {
     if (!e || e.alive === false || !e.pos) return;
     if (player && e.id === player.id) return;
     let kind = e.type;
-    if (kind !== 'ship' && kind !== 'drone' && kind !== 'station' && kind !== 'asteroid') return;
+    const explicitWorldSite = e.data && e.data.worldSiteTargetable === true;
+    if (kind !== 'ship' && kind !== 'drone' && kind !== 'station' && kind !== 'asteroid'
+      && !(kind === 'payload' && explicitWorldSite)) return;
     let hostile = false;
     if (kind === 'ship' || kind === 'drone') {
       hostile = hostileFn ? !!hostileFn(e, playerTeam, state) : !!(e.data && e.data.hostile);
@@ -2336,6 +2338,7 @@ export function buildLocalModel(state, isHostile, options = {}) {
       stable: captureEntitySelection(e),
       stationId: (e.type === 'station' && e.data && e.data.stationId) || null,
       named: !!(e.data && (e.data.namedLaneContactId || e.data.callsign || e.data.name)),
+      worldSiteTargetable: explicitWorldSite,
       scanHighlightUntil: kind === 'asteroid' ? (Number(e.data && e.data.scanHighlightUntil) || 0) : 0,
       scanOre: kind === 'asteroid'
         ? String((e.data && e.data.scanOreGlyph) || asteroidScanGlyph(e.data && e.data.typeId))

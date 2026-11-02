@@ -7,6 +7,7 @@ import { domKeyEvent } from '../src/systems/input.js';
 import { starterBuoySpec, registerStarterBuoyTow, isOriginalStarterBuoyTow } from '../src/missions/starterWorkday.js';
 import { packagedPropSpec } from '../src/render/visualOverrides.js';
 import { authoredPrewarmRequestsForEntities } from '../src/render/partsLibrary.js';
+import { cycleTarget } from '../src/ui/uiRoot.js';
 
 for (const starterStep of [1,2,3]) test(`Pelican starter ${starterStep} sustains native winching and recovers its original buoy after a broken line`, async () => {
   const flags=snapshotFeatureMaps();
@@ -31,10 +32,13 @@ for (const starterStep of [1,2,3]) test(`Pelican starter ${starterStep} sustains
     assert.ok(mission);missions._ensureMissionTargets(mission);
     const buoy=s.entities.get(mission.targetEntityIds[0]);
     assert.ok(buoy?.alive);assert.equal(buoy.type,'payload');assert.equal(buoy.data.physicalRole,'slag_core');
+    assert.equal(buoy.data.worldSiteTargetable,true,'the authored neutral mission payload must be available to the ordinary target-lock control');
     assert.equal(buoy.data.packagedPropFile,'places/place_lane_beacon.glb');const expectedMass=[40,65,90][starterStep-1];assert.equal(buoy.mass,expectedMass);
     const visual=packagedPropSpec(buoy);assert.ok(visual,'actual packaged-prop owner admits the mission payload');
     const prewarm=authoredPrewarmRequestsForEntities([buoy],{assetMode:'release',sectorId:'sector_helios_prime'});
     assert.ok(prewarm.some(p=>String(p.url).endsWith('/places/place_lane_beacon.glb')),'actual visible-body prewarm admits the same beacon');
+    for(let i=0;i<40&&s.player.targetId!==buoy.id;i++)cycleTarget(s,1,runtime.bus);
+    assert.equal(s.player.targetId,buoy.id,'ordinary target cycling must expose the accepted authored buoy');
     const station=s.entityList.find(e=>e.alive&&e.data?.stationId==='station_helios');
     const distance=Math.hypot(buoy.pos.x-station.pos.x,buoy.pos.z-station.pos.z);
     const outward={x:(buoy.pos.x-station.pos.x)/distance,z:(buoy.pos.z-station.pos.z)/distance};

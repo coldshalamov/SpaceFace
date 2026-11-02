@@ -95,7 +95,8 @@ export function starterBuoySpec(m, toGlobal) {
     data: { missionTag: m.id, name: site.label, scanLabel: site.label.toUpperCase(),
       tetherable: true, tetherPayload: true, placeId: 'place_lane_beacon',
       packagedPropFile: 'places/place_lane_beacon.glb', packagedPropSlot: 'place',
-      packagedPropRadius: 10, starterJobId: m.params.starterJobId, starterStep: m.params.starterStep, starterWorkdayVersion: STARTER_WORKDAY_VERSION },
+      packagedPropRadius: 10, worldSiteTargetable: true,
+      starterJobId: m.params.starterJobId, starterStep: m.params.starterStep, starterWorkdayVersion: STARTER_WORKDAY_VERSION },
   };
 }
 
