@@ -11715,7 +11715,13 @@ export const render = {
               `[render] authored GPU residency cancelled after transition for boundary ${String(ownerSnapshot.entityId ?? 'unknown')}`,
             );
           } else {
-            console.warn('[render] authored GPU residency owner became inactive', ownerSnapshot);
+            // DevTools' preview truncates nested owner gates. Keep their primitive snapshot
+            // in captured console text so a withdrawn job can be distinguished from a live
+            // owner's failed upload without relaxing the guard or warning severity.
+            let ownerDiagnostic;
+            try { ownerDiagnostic = JSON.stringify(ownerSnapshot); }
+            catch { ownerDiagnostic = '[owner snapshot could not be serialized]'; }
+            console.warn('[render] authored GPU residency owner became inactive', ownerDiagnostic);
           }
         }
         const error = new Error('Authored GPU residency owner became inactive before texture upload');

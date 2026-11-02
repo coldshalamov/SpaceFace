@@ -216,6 +216,28 @@ test('required, same-generation, mismatched, and unknown authored owners retain 
   }
 });
 
+test('warning text preserves nested cancellation gates without changing the rejection', () => {
+  const owner = {
+    ownerType: 'authored-boundary', entityId: 526, entityAlive: true,
+    entityIsCurrent: true, entityStillRequired: false,
+    admissionGenerationMatches: true, contextLossGenerationMatches: true,
+    nestedAdmissionOwnerActive: false,
+    nestedAdmissionOwner: { boundaryCurrent: true, jobStillNeeded: false, abortedStalled: false },
+  };
+  const result = captureGuardCall(() => false, owner);
+  assert.equal(result.error.code, 'GPU_RESIDENCY_OWNER_INACTIVE');
+  assert.equal(result.warnings.length, 1);
+  assert.deepEqual(JSON.parse(result.warnings[0][1]), owner,
+    'captured console text includes the gates omitted by DevTools object previews');
+  assert.equal(result.diagnostic.owner, owner, 'the original structured snapshot stays inspectable');
+
+  owner.circular = owner;
+  const unserializable = captureGuardCall(() => false, owner);
+  assert.equal(unserializable.error.code, 'GPU_RESIDENCY_OWNER_INACTIVE',
+    'diagnostic serialization must not replace the owner cancellation with another error');
+  assert.equal(unserializable.warnings.length, 1);
+});
+
 test('observer channel: cancelled owner is skipped, real GPU failure still warns', async () => {
   const warnings = [];
   const onRejected = (error) => warnings.push(error);
