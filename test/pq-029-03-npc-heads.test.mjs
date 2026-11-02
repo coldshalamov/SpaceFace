@@ -191,7 +191,7 @@ test('Ceres salvage and its scavenger spawn at the authored field in global spac
     }
     const pools = new Map(points.map((point) => [point.id,
       structuredClone(state.entities.get(point.entityId).data.salvagePool)]));
-    const scavenger = [...state.entities.values()].find((entity) =>
+    let scavenger = [...state.entities.values()].find((entity) =>
       roleOf(entity) === 'scavenger' && entity.data?.wreckFieldId?.startsWith('salvage:'));
     assert.ok(scavenger && scavenger.data.jobId,
       `salvage:placed must adopt the scavenger before stepping (sector=${state.world.currentSectorId})`);
@@ -233,6 +233,108 @@ test('Ceres salvage and its scavenger spawn at the authored field in global spac
       assert.equal(wreck.data.salvagePointId, point.id);
       assert.deepEqual(wreck.data.salvagePool, pools.get(point.id), 'the same salvage remains playable');
     }
+  } finally {
+    runtime.dispose();
+  }
+});
+
+test('adopted Ceres scavenger resumes its booked wreck after a real flee excursion', async () => {
+  const { runtime, state } = await bootCeres(SEED);
+  try {
+    let scavenger = [...state.entities.values()].find((entity) =>
+      roleOf(entity) === 'scavenger' && entity.data?.wreckFieldId?.startsWith('salvage:'));
+    assert.ok(scavenger?.data?.jobId, 'the authored field scavenger is adopted');
+    const jobId = scavenger.data.jobId;
+    const entry = state.npcJobs.byId[jobId];
+    const targetId = entry.job.payload.targetId;
+    const target = state.entities.get(targetId);
+    assert.ok(target && target.data?.salvagePool, 'the booked job points at its live wreck');
+    const initialWorkerId = scavenger.id;
+    const worldRecordId = entry.worldRecordId;
+    const currentWorker = () => {
+      const active = [...state.entities.values()].filter((entity) =>
+        entity.alive !== false && entity.data?.worldRecordId === worldRecordId
+        && entity.data?.jobId === jobId && entity.data?.wreckFieldId?.startsWith('salvage:'));
+      assert.ok(active.length <= 1, `one active generation for ${worldRecordId}`);
+      if (active.length === 1) return { entity: active[0], pos: active[0].pos, generation: active[0].occupantGeneration };
+      const far = (state.world.farActors?.rows || []).filter((row) =>
+        row.alive !== false && row.data?.worldRecordId === worldRecordId && row.jobId === jobId);
+      assert.ok(far.length <= 1, `one far row for ${worldRecordId}`);
+      if (far.length === 1) return { row: far[0], pos: far[0].pos };
+      // Ceres may hold an ecological body only in the durable world-record bag between
+      // residency passes. Join by stable record ID; never inspect the recycled entity slot.
+      const record = state.world.records?.byId?.[worldRecordId];
+      if (record?.recordId === worldRecordId && record.alive !== false) {
+        return { record, pos: record.pos };
+      }
+      return null;
+    };
+    const extractions = [];
+    runtime.bus.on('salvage:npcExtraction', (event) => extractions.push(event));
+    const originalRoute = structuredClone(entry.job.route);
+    const originalPool = structuredClone(target.data.salvagePool);
+
+    runtime.step(SIM_DT);
+    assert.ok(sampleHeads(state).some((row) => row.jobId === jobId && row.headId === 'tractor'),
+      `the real adopted job latches its original wreck (phase=${entry.job.phase}, target=${targetId}, booked=${entry._salvorBookedTarget?.id ?? 'none'}, tow=${entry.towTargetId ?? 'none'})`);
+
+    // The regular damage listener owns interruption. The player stays at the authored pocket,
+    // letting the worker's own FlightV3 FLEE and sim-clock threat expiry drive the excursion.
+    runtime.bus.emit('combat:damage', {
+      targetId: initialWorkerId, attackerId: state.playerId,
+      amount: 5, rawTotal: 5, applied: 5,
+    });
+    assert.equal(entry.job.phase, NPC_JOB_PHASE.FLEE);
+    let resumedAt = null;
+    for (let i = 0; i < 900; i += 1) {
+      runtime.step(SIM_DT);
+      const worker = currentWorker();
+      if (worker?.entity) scavenger = worker.entity;
+      if (entry.job.phase !== NPC_JOB_PHASE.FLEE) { resumedAt = i; break; }
+    }
+    assert.notEqual(resumedAt, null, 'threat clears and the canonical job runtime resumes the scavenger');
+
+    let worker = currentWorker();
+    assert.ok(worker, `the same world record remains materialized or shelved (${worldRecordId})`);
+    const resumedDistance = Math.hypot(worker.pos.x - target.pos.x, worker.pos.z - target.pos.z);
+    assert.ok(resumedDistance > 180, `the flee excursion leaves the wreck work radius (distance ${resumedDistance.toFixed(1)})`);
+    if (worker.entity) assert.equal(worker.entity.data.jobId, jobId, 'the same live generation remains booked');
+    if (worker.row) assert.equal(worker.row.jobId, jobId, 'the same shelved world record retains its job binding');
+    if (worker.record) {
+      assert.equal(worker.record.recordId, worldRecordId, 'the durable record remains the same actor');
+      assert.equal(state.npcJobs.byId[jobId], entry, 'the canonical job remains bound to that durable identity');
+      assert.equal(worker.record.jobId, jobId, 'the durable record retains its live job anchor');
+    }
+    assert.equal(entry.job.payload.targetId, targetId, 'the same wreck remains the booked target');
+    assert.deepEqual(entry.job.route, originalRoute, 'the authored route is preserved through flee/resume');
+    assert.deepEqual(target.data.salvagePool, originalPool, 'the wreck pool is untouched while the scavenger is away');
+    for (let i = 0; i < 1200; i += 1) {
+      runtime.step(SIM_DT);
+      worker = currentWorker();
+      assert.ok(worker, `the same durable worker remains observed at ${state.simTime.toFixed(2)}s`);
+      assert.equal(state.npcJobs.byId[jobId], entry, 'egress cannot release the interrupted job');
+      if (worker.entity) assert.equal(worker.entity.data._egressExitAt, undefined,
+        'ambient combat egress cannot schedule this working crew for retirement');
+      if (worker.record) {
+        assert.equal(worker.record.jobId, jobId, 'a virtual worker retains the booked job');
+      }
+      const distance = Math.hypot(worker.pos.x - target.pos.x, worker.pos.z - target.pos.z);
+      if (worker.record || distance > 180) {
+        assert.notEqual(entry.job.phase, NPC_JOB_PHASE.WORK,
+          `the same job must not enter WORK while virtual/far at ${distance.toFixed(1)} WU`);
+        assert.notEqual(entry.job.phase, NPC_JOB_PHASE.LOAD,
+          'the same job must not load salvage while virtual/far from its physical workface');
+      }
+    }
+    if (worker.record || Math.hypot(worker.pos.x - target.pos.x, worker.pos.z - target.pos.z) > 180) {
+      assert.notEqual(entry.job.phase, NPC_JOB_PHASE.WORK,
+        'the far-distance resume window cannot advance into WORK');
+      assert.notEqual(entry.job.phase, NPC_JOB_PHASE.LOAD,
+        'the far-distance resume window cannot advance into LOAD');
+    }
+    assert.equal(extractions.length, 0, 'no salvage extraction completes during the displaced window');
+    assert.deepEqual(target.data.salvagePool, originalPool,
+      'distance cannot drain or replace the booked wreck pool');
   } finally {
     runtime.dispose();
   }

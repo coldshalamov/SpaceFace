@@ -13,6 +13,7 @@ import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 import { DRIVE_FAMILIES, resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
 import { isMasslineLatchedPickup } from './mining.js';
 import { deferredEnterNow, deferredEnterTick } from '../core/sectorEnterDefer.js';
+import { RECORD_KIND } from '../world/worldRecords.js';
 import { shouldRunOnTick } from '../core/activityScheduler.js';
 import { FREIGHT_MARKET_KEYS_FALLBACK, buildCargoManifest } from '../economy/freightCausality.js';
 import { makeShipEntitySpec } from './ships.js';
@@ -1947,7 +1948,154 @@ export const trafficRoleOps = {
     };
   },
 
-  _resolveSalvorTargetFromWaypoint(waypointId, payload = null) {
+  _isAdoptedScavengerJob(entry, entity = null) {
+    const job = entry?.job;
+    const payload = job?.payload;
+    const targetId = payload?.targetId;
+    return job?.kind === 'salvor'
+      && payload?.role === 'scavenger'
+      && targetId != null
+      && job.route?.[0]?.id === 'cut:hold'
+      && job.route?.[1]?.id === `hulk:${targetId}`
+      && (!entity || entry.entityId === entity.id);
+  },
+
+  _retainedAdoptedSalvageTarget(entry) {
+    if (!this._isAdoptedScavengerJob(entry)) return undefined;
+    const payload = entry.job.payload;
+    const targetId = payload.targetId;
+    const entities = this.state?.entities;
+    const identity = payload.targetIdentity;
+    if (identity) {
+      const matchesIdentity = (target) => {
+        const data = target?.data || {};
+        if (identity.kind === 'marker') return data.markerId === identity.markerId;
+        if (identity.kind === 'worldRecord') return data.worldRecordId === identity.worldRecordId;
+        if (identity.kind === 'salvorTarget') return data.salvorTargetKey === identity.key;
+        if (identity.kind === 'salvagePoint') {
+          return data.salvagePointId === identity.salvagePointId
+            && data.salvageSourceKey === identity.sourceKey;
+        }
+        return false;
+      };
+      const cached = [entry._salvorBookedTarget?.entity, entry.towTargetRef].find((target) =>
+        target && target.alive !== false && target.type === payload.targetType
+        && entities?.get(target.id) === target && matchesIdentity(target));
+      if (cached && cached.id === targetId && entry.job.route[1]?.id === `hulk:${targetId}`) {
+        // Stable keys are immutable for the lifetime of a live body. The normal work/FLEE path
+        // keeps its route pose and retained refs without rescanning all interactables each tick.
+        return cached;
+      }
+      let found = null, matches = 0;
+      if (identity.kind === 'salvagePoint') {
+        const source = this._salvageSourceBindingFromPayload({
+          salvageSource: identity.sourceKey,
+          salvagePointId: identity.salvagePointId,
+        });
+        found = source && this.helpers?.salvage?.entityForPoint?.(source.salvagePointId, source.sourceKey);
+        matches = found ? 1 : 0;
+      } else {
+        forEachJobInteractable(this.state, (entity) => {
+          if (!entity || entity.alive === false || entity.type !== payload.targetType) return;
+          const data = entity.data || {};
+          const matchesIdentity = identity.kind === 'marker'
+            ? data.markerId === identity.markerId
+            : identity.kind === 'worldRecord'
+              ? data.worldRecordId === identity.worldRecordId
+              : identity.kind === 'salvorTarget'
+                ? data.salvorTargetKey === identity.key
+                : false;
+          if (!matchesIdentity) return;
+          found = entity;
+          matches++;
+        });
+      }
+      if (matches !== 1 || !found || !entities || entities.get(found.id) !== found) return null;
+      const previous = entry._salvorBookedTarget?.entity || entry.towTargetRef || null;
+      const rebound = found !== previous || payload.targetId !== found.id
+        || entry.job.route[1]?.id !== `hulk:${found.id}`;
+      if (rebound) {
+        // Numeric ids are runtime slots. Only a restored/replaced body or stale slot triggers
+        // route repair; ordinary physics drift must not rewrite its authored waypoint pose.
+        payload.targetId = found.id;
+        entry.job.route[1].id = `hulk:${found.id}`;
+        entry.job.route[1].pos = { x: found.pos.x, z: found.pos.z };
+        entry._salvorBookedTarget = { id: found.id, entity: found };
+        entry.towTargetRef = found;
+      }
+      return found.type === payload.targetType ? found : null;
+    }
+
+    const candidates = [entry._salvorBookedTarget?.entity, entry.towTargetRef];
+    for (const target of candidates) {
+      if (!target || target.id !== targetId || target.alive === false
+        || !entities || entities.get(targetId) !== target
+        || target.type !== entry.job.payload.targetType) continue;
+      const data = target.data || {};
+      const source = this._salvageSourceBinding(target);
+      let targetIdentity = null;
+      if (data.markerId) targetIdentity = { kind: 'marker', markerId: data.markerId };
+      else if (source?.sourceKey && source.salvagePointId) {
+        targetIdentity = { kind: 'salvagePoint', sourceKey: source.sourceKey,
+          salvagePointId: source.salvagePointId };
+      } else if (data.worldRecordId) targetIdentity = { kind: 'worldRecord', worldRecordId: data.worldRecordId };
+      else if (typeof data.salvorTargetKey === 'string') {
+        targetIdentity = { kind: 'salvorTarget', key: data.salvorTargetKey };
+      } else {
+        const authoredWorldSite = data.worldSiteStructural || data.worldSiteId || data.worldSitePayloadId
+          || data.worldObjectId || data.siteId || data.poiId || data.authored === true
+          || data.authoredWreckId || data.uniqueWreckId;
+        if ((data.persistenceOwner != null && data.persistenceOwner !== 'worldRecords')
+          || authoredWorldSite) return null;
+        // Truly ownerless targets need the existing world owner's durable stamp so a saved job
+        // can rejoin the same workpiece. Authored marker and salvage-point targets never receive
+        // a second persistence identity here.
+        const sectorId = target.homeSectorId || data.homeSectorId || data.sectorId
+          || entry.sectorId || this.state.world?.currentSectorId;
+        const world = this._registry?.get?.('world');
+        const active = this.state.world?.sectorContents?.[sectorId]
+          || (this.state.world?.currentSectorId === sectorId ? this.state.world?.activeSector : null);
+        const worldRecordId = sectorId && active && typeof world?._assignDurableRecordId === 'function'
+          ? world._assignDurableRecordId(target, sectorId, RECORD_KIND.WRECK,
+            `npc-salvor-target:${entry.job.id}`, active)
+          : null;
+        if (worldRecordId) targetIdentity = { kind: 'worldRecord', worldRecordId };
+      }
+      if (!targetIdentity) return null;
+      entry.job.payload.targetIdentity = targetIdentity;
+      entry._salvorBookedTarget = { id: target.id, entity: target };
+      return target;
+    }
+    return null;
+  },
+
+  _salvorRoleContext(entry, entity, job) {
+    if (this._isAdoptedScavengerJob(entry, entity)) {
+      const worldRecordId = entry.worldRecordId;
+      return worldRecordId != null && entity.data?.worldRecordId === worldRecordId
+        && entity.data?.jobId === job.id && this.state.entities?.get(entity.id) === entity
+        ? { jobId: job.id, worldRecordId, entity, rec: null } : null;
+    }
+    return this._jobTrafficContext({ jobId: job.id, kind: 'salvor' }, 'salvor');
+  },
+
+  _salvorJobContext(intent) {
+    const jobId = typeof intent?.jobId === 'string' ? intent.jobId : '';
+    const entry = jobId && this.helpers?.npcJobs?.get(jobId);
+    const entity = entry?.entityId != null ? this.state.entities?.get(entry.entityId) : null;
+    if (!entry?.job || !entity || entity.alive === false) return null;
+    const context = this._salvorRoleContext(entry, entity, entry.job);
+    return context ? { ...context, entry } : null;
+  },
+
+  _resolveSalvorTargetFromWaypoint(waypointId, payload = null, entry = null) {
+    // An adopted scavenger's target is a transient exact-object booking, not an ordinary
+    // re-resolvable numeric-id commission. Its sidecar is established by the first real tractor
+    // probe and remains the identity guard across an attachment clear or FLEE excursion.
+    if (payload?.role === 'scavenger') {
+      const target = this._retainedAdoptedSalvageTarget(entry);
+      return target && waypointId === `hulk:${target.id}` ? target : null;
+    }
     // An unavailable authored source is authoritative absence. It must not fall through
     // to the numeric id formerly occupied by that wreck, even in a legacy save.
     if (payload?.salvageSource) {
@@ -2029,7 +2177,7 @@ export const trafficRoleOps = {
     const entry = this.helpers?.npcJobs?.get(context.jobId);
     const job = entry?.job;
     if (!job || entry.control || entry.entityId !== context.entity.id
-      || this._resolveSalvorTargetFromWaypoint(job.route?.[1]?.id, job.payload) !== target
+      || this._resolveSalvorTargetFromWaypoint(job.route?.[1]?.id, job.payload, entry) !== target
       || !this._isSalvageableBody(target) || !this._salvorAtTarget(context.entity, target)) return false;
     const claimant = this._salvorClaimantOf(target);
     if (claimant && claimant !== context.worldRecordId) return false;
@@ -2177,9 +2325,10 @@ export const trafficRoleOps = {
 
   _salvorWorkTarget(entry, entity) {
     const job = entry?.job;
+    const adoptedScavenger = this._isAdoptedScavengerJob(entry, entity);
     if (job?.kind !== 'salvor' || entity?.data?.ceresActivityCast || entity?.data?.activityActorSlotId
-      || !job.route?.[0]?.id?.startsWith('yard:')) return null;
-    const context = this._jobTrafficContext({ jobId: job.id, kind: 'salvor' }, 'salvor');
+      || (!adoptedScavenger && !job.route?.[0]?.id?.startsWith('yard:'))) return null;
+    const context = this._salvorRoleContext(entry, entity, job);
     if (!context || context.entity !== entity || entry.entityId !== entity.id
       || this.helpers.npcJobs?.get(job.id) !== entry) return { blocked: true };
     // Commission is the yard's dispatch paperwork, not a delivery manoeuvre. The cutter
@@ -2187,6 +2336,18 @@ export const trafficRoleOps = {
     // Source work and the loaded return still require the native arrival gates below.
     if (job.phase === NPC_JOB_PHASE.COMMISSION) return null;
     if (job.phase === NPC_JOB_PHASE.FLEE || job.phase === NPC_JOB_PHASE.COMPLETE) return null;
+    if (adoptedScavenger) {
+      // The first native attachment probe establishes the retained object sidecar. Until then,
+      // let the existing explicit booking resolver perform its one normal initial bind. A
+      // persisted identity also authorizes rebinding after Continue; never fall back to the old
+      // numeric slot once that identity exists.
+      if (!entry._salvorBookedTarget && !entry.towTargetRef && !job.payload?.targetIdentity) return null;
+      const target = this._retainedAdoptedSalvageTarget(entry);
+      const claimant = target && this._salvorClaimantOf(target);
+      if (!target || !this._isSalvageableBody(target)
+        || (claimant && claimant !== context.worldRecordId)) return { blocked: true };
+      return this._salvorTargetDescriptor(entity, target, this._salvorReach(entity, target));
+    }
     const stationId = job.route[0].id.slice(5);
     const home = this._sectorStations().find(station => stationIdentity(station) === stationId);
     const manifest = entity.data.cargoManifest || context.rec.manifest;
@@ -2214,11 +2375,22 @@ export const trafficRoleOps = {
 
   _salvorSourceTarget(entry, entity) {
     const job = entry?.job;
+    const adoptedScavenger = this._isAdoptedScavengerJob(entry, entity);
     if (job?.kind !== 'salvor' || entity?.data?.ceresActivityCast || entity?.data?.activityActorSlotId
-      || !job.route?.[0]?.id?.startsWith('yard:')) return undefined;
-    const context = this._jobTrafficContext({ jobId: job.id, kind: 'salvor' }, 'salvor');
+      || (!adoptedScavenger && !job.route?.[0]?.id?.startsWith('yard:'))) return undefined;
+    const context = this._salvorRoleContext(entry, entity, job);
     if (!context || context.entity !== entity || entry.entityId !== entity.id
       || this.helpers.npcJobs?.get(job.id) !== entry) return null;
+    if (adoptedScavenger) {
+      // Undefined is the existing opt-in sentinel for the first exact booking lookup. Once the
+      // tractor probe retains the object, null means that exact object is unavailable. A saved
+      // stable identity may rebind after Continue; otherwise do not search for a replacement.
+      if (!entry._salvorBookedTarget && !entry.towTargetRef && !job.payload?.targetIdentity) return undefined;
+      const target = this._retainedAdoptedSalvageTarget(entry);
+      const claimant = target && this._salvorClaimantOf(target);
+      return target && this._isSalvageableBody(target)
+        && (!claimant || claimant === context.worldRecordId) ? target : null;
+    }
     const target = this._resolveSalvorTargetFromWaypoint(job.route[1]?.id, job.payload);
     const claimant = target && this._salvorClaimantOf(target);
     return target && (!claimant || claimant === context.worldRecordId) ? target : null;
