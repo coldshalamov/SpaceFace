@@ -11,6 +11,11 @@ import {
   compileDriveRates,
   integrateModeWeights,
   resolveDriveMode,
+  blendDriveModeHeat,
+  DRIVE_HEAT_ROLE_WHITE,
+  DRIVE_HEAT_ROLE_COOL,
+  DRIVE_HEAT_DEFAULT_ROLE_WHITE,
+  DRIVE_HEAT_DEFAULT_ROLE_COOL,
 } from './throttleResponse.js';
 import {
   compileAccessibilityTables,
@@ -44,6 +49,8 @@ import {
 } from '../../dynamicBufferRanges.js';
 
 const ROLE_ORDER = ['core', 'inner', 'sheath', 'vapor', 'distortion'];
+// Module-owned drive-mode-heat scratch: written once per writeEntity, read per slot. No allocation.
+const DRIVE_HEAT_SCRATCH = { whitePush: 0, cool: 0 };
 const QUALITY_TIERS = ['high', 'medium', 'low'];
 const PLUME_INSTANCE_STRIDE = 20;
 const PLUME_OFFSET_OFFSET = 0;
@@ -398,6 +405,9 @@ export class PlumeSlotPool {
     const dynDiss = sample.dissipation;
     const dynBoost = boostBlend;
     const dynMode = sample.mode || tf.mode || 'accel';
+    // Steady-state heat of the drive mode, blended with the same mode weights that crossfade the
+    // structure. Applied per slot below: boost burns white-hot, idle/brake/reverse cool.
+    const heat = blendDriveModeHeat(tf.modeWeights, dynMode, DRIVE_HEAT_SCRATCH);
     // One-shot overpressure from integrateDriveState. Bounded here as well as there, because a
     // caller supplying its own driveState object is not obliged to have run through that path.
     const ignition = Math.max(0, Math.min(1, state.ignition || 0));
@@ -469,6 +479,22 @@ export class PlumeSlotPool {
         slot.color[0] = br * ib + fr * factionBlend;
         slot.color[1] = bg * ib + fg * factionBlend;
         slot.color[2] = bb * ib + fb * factionBlend;
+        // Drive-mode heat, per role: the core carries the maneuver's state (white-hot on boost,
+        // cooled on idle/brake/reverse) while sheath/vapor keep faction identity readable.
+        const roleWhite = heat.whitePush
+          * (DRIVE_HEAT_ROLE_WHITE[role] ?? DRIVE_HEAT_DEFAULT_ROLE_WHITE);
+        const roleCool = heat.cool * (DRIVE_HEAT_ROLE_COOL[role] ?? DRIVE_HEAT_DEFAULT_ROLE_COOL);
+        if (roleWhite > 0) {
+          slot.color[0] += (1 - slot.color[0]) * roleWhite;
+          slot.color[1] += (1 - slot.color[1]) * roleWhite;
+          slot.color[2] += (1 - slot.color[2]) * roleWhite;
+        }
+        if (roleCool > 0) {
+          const keep = 1 - roleCool;
+          slot.color[0] *= keep;
+          slot.color[1] *= keep;
+          slot.color[2] *= keep;
+        }
         // Per-instance continuum dynamics (not shared material uniforms).
         slot.flowSpeed = dynFlow * (this._layerScroll[li] / 2.4);
         slot.turbulence = dynTurb;
