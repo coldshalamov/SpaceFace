@@ -30,6 +30,10 @@ function makeHarness() {
       __spacefaceEntityIndexV1: true,
       ready: true,
       version: 1,
+      // Current index schema: latches trust per-lane counters (laneVersions + laneEpoch),
+      // not the whole-index `version`.
+      laneVersions: { wrecks: 1 },
+      laneEpoch: 0,
       wrecks: [],
       ships: [player],
     },
@@ -81,6 +85,7 @@ test('entityIndexVersion dirty-wake resumes then re-latches when empty', () => {
     radius: 8,
   };
   state.entityIndex.version = 2;
+  state.entityIndex.laneVersions.wrecks = 2; // membership change bumps the wreck lane counter
   state.entityIndex.wrecks = [wreck];
   state.entityList = [player, wreck];
 
@@ -88,6 +93,7 @@ test('entityIndexVersion dirty-wake resumes then re-latches when empty', () => {
   assert.equal(system._wreckWispsQuietIdle, false);
 
   state.entityIndex.version = 3;
+  state.entityIndex.laneVersions.wrecks = 3;
   state.entityIndex.wrecks = [];
   state.entityList = [player];
   assert.equal(system._wreckWispsRelevant(), false);
