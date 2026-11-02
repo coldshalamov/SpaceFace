@@ -1995,11 +1995,21 @@ export async function runCeresFiveMinutePublicRoute({
           targetId: egressTarget.targetId,
           guaranteedPublicEgressWU: egressTarget.guaranteedPublicEgressWU,
         });
-        const egress = await drivePublicToCeresPoint(page, egressTarget, observerBounds.endTick);
+        // The public map course owns obstacle avoidance on the return through the dense field.
+        // A straight manual burn to the same station center can grind against intervening rocks.
+        await pq020FunctionalRouteDrivers.selectMapTarget(page, {
+          ...PQ020_ROUTE_TARGETS.beltOutpost, method: 'pointer', activate: true, screenshot,
+          screenshotName: `${String(routeCycle).padStart(2, '0')}-working-seam-egress-map.png`,
+        });
+        const egress = await pq020FunctionalRouteDrivers.waitForAutopilotArrival(
+          page, PQ020_ROUTE_TARGETS.beltOutpost,
+          { deadlineTick: observerBounds.endTick - egressTarget.minRemainingTicks },
+        );
+        validateCeresWorkingSeamEgressArrival(egress, egressTarget);
         routeLog.push({
           phase: 'egress',
           pocketId: leg.pocketId,
-          source: 'public-flight-controls',
+          source: 'public-map-autopilot',
           target: egressTarget,
           receipt: egress,
         });
@@ -3600,6 +3610,17 @@ export function planCeresWorkingSeamEgress(beltOutpostArrival, {
     guaranteedPublicEgressWU,
     guaranteedThroughlineProgressWU,
   });
+}
+
+export function validateCeresWorkingSeamEgressArrival(arrival, target) {
+  const pos = arrival?.player?.pos;
+  if (arrival?.player?.alive !== true || arrival?.autopilot?.active !== false
+      || arrival?.autopilot?.status !== 'arrived' || arrival?.autopilot?.label !== 'Belt Outpost'
+      || ![pos?.x, pos?.z, target?.targetPos?.x, target?.targetPos?.z,
+        target?.arrivalRadiusWU].every(Number.isFinite)
+      || Math.hypot(pos.x - target.targetPos.x, pos.z - target.targetPos.z) > target.arrivalRadiusWU) {
+    throw new Error('Working Seam egress requires a live public arrival inside the authored station gate');
+  }
 }
 
 export function planCeresThroughlineToolkitReposition({

@@ -58,6 +58,7 @@ import {
   triggerCeresPublicFlightAction,
   validateCeresPilotSources,
   validatePublicInputReceipt,
+  validateCeresWorkingSeamEgressArrival,
   waitForCeresExactActiveTetherAuthority,
   waitForCeresHostileMasslineAcquisition,
   waitForCeresToolkitConflictAuthority,
@@ -4893,6 +4894,17 @@ test('Working Seam departure leaves the captured berth outward and routes around
   assert.throws(() => planCeresWorkingSeamDeparture({ player: { pos: captured } }), /public Belt Outpost/);
 });
 
+test('public Working Seam egress must arrive alive inside the unchanged station gate', () => {
+  const target = { targetPos: { x: -11508, z: 7252 }, arrivalRadiusWU: 90 };
+  const arrival = { player: { alive: true, pos: { x: -11473.48, z: 7206.99 } },
+    autopilot: { active: false, status: 'arrived', label: 'Belt Outpost' } };
+  assert.doesNotThrow(() => validateCeresWorkingSeamEgressArrival(arrival, target));
+  assert.throws(() => validateCeresWorkingSeamEgressArrival({ ...arrival,
+    player: { alive: true, pos: { x: -11695.82, z: 7382.53 } } }, target), /station gate/);
+  assert.throws(() => validateCeresWorkingSeamEgressArrival({ ...arrival,
+    autopilot: { ...arrival.autopilot, status: 'manual' } }, target), /station gate/);
+});
+
 test('Working Seam evidence publicly restages to the fixed Belt Outpost departure corridor', async () => {
   const sectorId = CERES_REFERENCE_ACCEPTANCE_ENTRY.sectorId;
   const liveAcceptedArrival = Object.freeze({
@@ -5054,7 +5066,7 @@ test('Working Seam evidence publicly restages to the fixed Belt Outpost departur
   const routeEnd = routeSource.indexOf('/**\n * Perform every known no-launch prerequisite', routeStart);
   const route = routeSource.slice(routeStart, routeEnd);
   assert.match(route,
-    /await screenshot\([^;]+;[\s\S]*leg\.pocketId === 'ceres_working_seam'[\s\S]*planCeresWorkingSeamEgress\(arrival, \{[\s\S]*continueProof[\s\S]*CERES_WORKING_SEAM_EGRESS_MIN_REMAINING_TICKS[\s\S]*drivePublicToCeresPoint\(page, egressTarget, observerBounds\.endTick\)/,
+    /await screenshot\([^;]+;[\s\S]*leg\.pocketId === 'ceres_working_seam'[\s\S]*planCeresWorkingSeamEgress\(arrival, \{[\s\S]*continueProof[\s\S]*CERES_WORKING_SEAM_EGRESS_MIN_REMAINING_TICKS[\s\S]*selectMapTarget\(page, \{[\s\S]*PQ020_ROUTE_TARGETS\.beltOutpost[\s\S]*waitForAutopilotArrival\([\s\S]*validateCeresWorkingSeamEgressArrival\(egress, egressTarget\)/,
     'seam arrival evidence must be recorded before the public departure restage');
   assert.match(route,
     /const legs = \[[\s\S]*PQ020_ROUTE_TARGETS\.beltOutpost[\s\S]*PQ020_ROUTE_TARGETS\.beacon, method: 'keyboard'[\s\S]*\];/,
