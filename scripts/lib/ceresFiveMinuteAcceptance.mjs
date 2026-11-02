@@ -2972,6 +2972,8 @@ async function installCeresRouteObserver(page, bounds, initialPocketId, {
           killerId: payload.killerId ?? null,
           aId: payload.aId ?? null,
           bId: payload.bId ?? null,
+          aGeneration: Number.isSafeInteger(payload.aGeneration) ? payload.aGeneration : null,
+          bGeneration: Number.isSafeInteger(payload.bGeneration) ? payload.bGeneration : null,
           aType: impactA?.type ?? null,
           aWorldRecordId: impactA?.data?.worldRecordId ?? null,
           aAnchorSlotId: impactA?.data?.activityCollisionAnchorSlotId ?? null,
@@ -5157,12 +5159,20 @@ export async function drivePublicAnchorCollision(page, endTick, {
     return player && anchor ? {
       playerId: player.id,
       anchorEntityId: anchor.id,
+      playerGeneration: player.occupantGeneration ?? null,
+      anchorGeneration: anchor.occupantGeneration ?? null,
+      playerType: player.type ?? null,
+      anchorType: anchor.type ?? null,
+      anchorWorldRecordId: anchor.data?.worldRecordId ?? null,
       collides: anchor.collides !== false && Number(anchor.mass) > 0,
       startTick: Number(state?.tick),
       startSeq: Number(trace?.nextEventSeq),
     } : null;
   }, slotId);
-  if (!setup || setup.collides !== true || !Number.isSafeInteger(setup.startTick)
+  if (!setup || setup.collides !== true
+      || !Number.isSafeInteger(setup.playerGeneration) || !Number.isSafeInteger(setup.anchorGeneration)
+      || setup.playerType !== 'ship' || setup.anchorType !== 'asteroid'
+      || setup.anchorWorldRecordId != null || !Number.isSafeInteger(setup.startTick)
       || !Number.isSafeInteger(setup.startSeq) || setup.startSeq < 1) {
     throw new Error('Throughline collision anchor lacks a live collider and fresh event cursor');
   }
@@ -5238,6 +5248,11 @@ export async function drivePublicAnchorCollision(page, endTick, {
         targetSlotId,
         playerId,
         anchorEntityId,
+        playerGeneration,
+        anchorGeneration,
+        playerType,
+        anchorType,
+        anchorWorldRecordId,
         startTick,
         startSeq,
       }) => {
@@ -5261,20 +5276,49 @@ export async function drivePublicAnchorCollision(page, endTick, {
           aAnchorSlotId: event.aAnchorSlotId, bAnchorSlotId: event.bAnchorSlotId,
           aWorldRecordId: event.aWorldRecordId, bWorldRecordId: event.bWorldRecordId,
         }));
-        const impact = events.find((event) => {
-          const playerIsA = event.aId === playerId && event.bId === anchorEntityId;
-          const playerIsB = event.bId === playerId && event.aId === anchorEntityId;
-          if (event.event !== 'physics:impact'
-              || Number(event.seq) < startSeq || Number(event.tick) < startTick
-              || playerIsA === playerIsB) return false;
+        let impact = null;
+        for (const raw of events) {
+          const playerIsA = raw.aId === playerId && raw.bId === anchorEntityId;
+          const playerIsB = raw.bId === playerId && raw.aId === anchorEntityId;
+          if (raw.event !== 'physics:impact'
+              || Number(raw.seq) < startSeq || Number(raw.tick) < startTick
+              || playerIsA === playerIsB) continue;
           const playerSide = playerIsA ? 'a' : 'b';
           const anchorSide = playerIsA ? 'b' : 'a';
-          return event[`${playerSide}Type`] === 'ship'
+          if (Number.isSafeInteger(playerGeneration) && Number.isSafeInteger(anchorGeneration)
+              && (raw[`${playerSide}Generation`] !== playerGeneration
+                || raw[`${anchorSide}Generation`] !== anchorGeneration)) continue;
+          const event = { ...raw };
+          // Worker impacts can arrive after the main mirror removed the body.
+          // Recover only the pre-impact snapshot bound to the exact native lives.
+          if (Number.isSafeInteger(playerGeneration) && Number.isSafeInteger(anchorGeneration)
+              && event[`${playerSide}Generation`] === playerGeneration
+              && event[`${anchorSide}Generation`] === anchorGeneration
+              && playerType === 'ship' && anchorType === 'asteroid'
+              && anchorWorldRecordId == null) {
+            if (event[`${playerSide}Type`] == null || event[`${anchorSide}Type`] == null
+                || event[`${anchorSide}AnchorSlotId`] == null) {
+              event.rawParticipantMetadata = {
+                aType: raw.aType ?? null, aAnchorSlotId: raw.aAnchorSlotId ?? null,
+                aWorldRecordId: raw.aWorldRecordId ?? null,
+                bType: raw.bType ?? null, bAnchorSlotId: raw.bAnchorSlotId ?? null,
+                bWorldRecordId: raw.bWorldRecordId ?? null,
+              };
+              event.metadataProvenance = 'pre-impact-id-and-generation-snapshot';
+              event[`${playerSide}Type`] ??= playerType;
+              event[`${anchorSide}Type`] ??= anchorType;
+              event[`${anchorSide}AnchorSlotId`] ??= targetSlotId;
+            }
+          }
+          if (event[`${playerSide}Type`] === 'ship'
             && event[`${playerSide}AnchorSlotId`] == null
             && event[`${anchorSide}Type`] === 'asteroid'
             && event[`${anchorSide}WorldRecordId`] == null
-            && event[`${anchorSide}AnchorSlotId`] === targetSlotId;
-        });
+            && event[`${anchorSide}AnchorSlotId`] === targetSlotId) {
+            impact = event;
+            break;
+          }
+        }
         const telemetry = {
           playerX: Number(player?.pos?.x),
           playerZ: Number(player?.pos?.z),
@@ -5373,6 +5417,11 @@ export async function drivePublicAnchorCollision(page, endTick, {
           anchorEntityId: setup.anchorEntityId,
           startTick: setup.startTick,
           startSeq: setup.startSeq,
+          playerGeneration: setup.playerGeneration,
+          anchorGeneration: setup.anchorGeneration,
+          playerType: setup.playerType,
+          anchorType: setup.anchorType,
+          anchorWorldRecordId: setup.anchorWorldRecordId,
           completionTick: status.tick,
           pulses,
           boostPulses,
@@ -7053,15 +7102,26 @@ function summarizeCeresRouteObservations({
     .filter((entityId) => entityId != null))]
     .sort((left, right) => String(left).localeCompare(String(right)));
   const playerEntityIdSet = new Set(playerEntityIds);
+  const selectedImpact = collisionProof?.impact;
+  const projectSelectedImpact = (event) => (
+    selectedImpact?.metadataProvenance === 'pre-impact-id-and-generation-snapshot'
+      && event.seq === selectedImpact.seq && event.tick === selectedImpact.tick
+      && event.aId === selectedImpact.aId && event.bId === selectedImpact.bId
+      && event.aGeneration === selectedImpact.aGeneration
+      && event.bGeneration === selectedImpact.bGeneration
+      ? { ...selectedImpact } : event
+  );
   const playerImpacts = trace.events.filter((event) => event.event === 'physics:impact'
     && Number.isSafeInteger(event.tick)
     && event.tick >= trace.bounds.startTick && event.tick <= trace.bounds.endTick
-    && (playerEntityIdSet.has(event.aId) || playerEntityIdSet.has(event.bId)));
+    && (playerEntityIdSet.has(event.aId) || playerEntityIdSet.has(event.bId)))
+    .map(projectSelectedImpact);
   const selectedCollisionIdentity = collisionProof?.impact
     ? ceresImpactIdentity(collisionProof.impact) : null;
   const anchorImpacts = trace.events.filter((event) => event.event === 'physics:impact'
     && (event.aId === targetAnchorId || event.bId === targetAnchorId)
-    && (event.aId === setup.playerId || event.bId === setup.playerId));
+    && (event.aId === setup.playerId || event.bId === setup.playerId))
+    .map(projectSelectedImpact);
   const selectedAnchorImpactCount = selectedCollisionIdentity == null ? 0
     : anchorImpacts.filter((event) => (
       ceresImpactIdentity(event) === selectedCollisionIdentity

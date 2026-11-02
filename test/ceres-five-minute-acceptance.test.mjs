@@ -3435,6 +3435,7 @@ test('anchor approach brakes captured high tangential motion before contact', ()
 test('anchor collision ignores stale impacts and owns fixed-tick public input', async () => {
   const player = {
     id: PLAYER_ENTITY_ID,
+    occupantGeneration: 4,
     alive: true,
     type: 'ship',
     radius: 16,
@@ -3445,6 +3446,7 @@ test('anchor collision ignores stale impacts and owns fixed-tick public input', 
   };
   const anchor = {
     id: 9,
+    occupantGeneration: 8,
     alive: true,
     type: 'asteroid',
     radius: 15,
@@ -3548,10 +3550,18 @@ test('anchor collision ignores stale impacts and owns fixed-tick public input', 
         });
         thrustHolds += 1;
       } else if (deferredImpact && argument.deltaTicks === 2) {
+        // The main-thread mirror has already recycled the endpoint when native
+        // receipts arrive. A mismatched life must not inherit the old slot.
+        state.entities.set(anchor.id, { id: anchor.id, type: 'asteroid', occupantGeneration: 9, data: {} });
+        state.entityList = [player, state.entities.get(anchor.id)];
         trace.events.push({ seq: trace.nextEventSeq++, event: 'physics:impact', tick: state.tick,
-          aId: player.id, bId: anchor.id, aType: 'ship', aAnchorSlotId: null,
-          bType: 'asteroid', bWorldRecordId: null,
-          bAnchorSlotId: 'ceres_throughline_collision_anchor' });
+          aId: player.id, bId: anchor.id, aGeneration: 4, bGeneration: 9,
+          aType: 'ship', bType: 'asteroid', bAnchorSlotId: 'ceres_throughline_collision_anchor' });
+        trace.events.push({ seq: trace.nextEventSeq++, event: 'physics:impact', tick: state.tick,
+          aId: player.id, bId: anchor.id,
+          aType: 'ship', bType: 'asteroid', bAnchorSlotId: 'ceres_throughline_collision_anchor' });
+        trace.events.push({ seq: trace.nextEventSeq++, event: 'physics:impact', tick: state.tick,
+          aId: player.id, bId: anchor.id, aGeneration: 4, bGeneration: 8 });
         deferredImpact = false;
       }
       assert.equal(runInPage(callback, argument), true);
@@ -3566,10 +3576,16 @@ test('anchor collision ignores stale impacts and owns fixed-tick public input', 
   assert.equal(receipt.controlClock, 'fixed-tick');
   assert.equal(receipt.startTick, 1_000);
   assert.equal(receipt.startSeq, 10);
-  assert.equal(receipt.selectedImpactSeq, 11);
+  assert.equal(receipt.selectedImpactSeq, 13);
   assert.equal(receipt.selectedImpactTick, receipt.impact.tick);
-  assert.equal(receipt.impact.seq, 11,
+  assert.equal(receipt.impact.seq, 13,
     'the collision proof must reject old/same-tick cursors and wrong event-time anchor metadata');
+  assert.equal(receipt.impact.metadataProvenance, 'pre-impact-id-and-generation-snapshot');
+  assert.equal(receipt.impact.rawParticipantMetadata.bType, null);
+  assert.equal(receipt.impact.rawParticipantMetadata.bAnchorSlotId, null);
+  const rawImpact = trace.events.find((event) => event.seq === 13);
+  assert.equal(rawImpact.bType ?? null, null, 'raw observed metadata must remain untouched');
+  assert.equal(rawImpact.bAnchorSlotId ?? null, null);
   assert.equal(receipt.impact.tick >= receipt.startTick, true);
   assert.equal(receipt.pulses, 2);
   assert.equal(receipt.boostPulses, 2);
@@ -3589,6 +3605,7 @@ test('anchor collision ignores stale impacts and owns fixed-tick public input', 
 test('anchor collision brakes the captured close opening orbit before exact impact', async () => {
   const player = {
     id: PLAYER_ENTITY_ID,
+    occupantGeneration: 4,
     alive: true,
     type: 'ship',
     radius: 16,
@@ -3600,6 +3617,7 @@ test('anchor collision brakes the captured close opening orbit before exact impa
   };
   const anchor = {
     id: 101,
+    occupantGeneration: 8,
     alive: true,
     type: 'asteroid',
     radius: 15.773138405007874,
@@ -3659,6 +3677,7 @@ test('anchor collision brakes the captured close opening orbit before exact impa
           tick: state.tick,
           aId: player.id,
           bId: anchor.id,
+          aGeneration: 4, bGeneration: 8,
           aType: 'ship',
           aAnchorSlotId: null,
           bType: 'asteroid',
@@ -3707,6 +3726,7 @@ test('anchor collision diagnostics count only accepted public keydown edges', as
   }) => {
     const player = {
       id: PLAYER_ENTITY_ID,
+      occupantGeneration: 4,
       alive: true,
       type: 'ship',
       radius: 16,
@@ -3717,6 +3737,7 @@ test('anchor collision diagnostics count only accepted public keydown edges', as
     };
     const anchor = {
       id: 9,
+      occupantGeneration: 8,
       alive: true,
       type: 'asteroid',
       radius: 15,
@@ -3861,6 +3882,7 @@ test('anchor collision preflights every fixed pulse and rejects deadline-edge im
   }) => {
     const player = {
       id: PLAYER_ENTITY_ID,
+      occupantGeneration: 4,
       alive: true,
       type: 'ship',
       radius: 16,
@@ -3871,6 +3893,7 @@ test('anchor collision preflights every fixed pulse and rejects deadline-edge im
     };
     const anchor = {
       id: 9,
+      occupantGeneration: 8,
       alive: true,
       type: 'asteroid',
       radius: 15,
@@ -3926,6 +3949,7 @@ test('anchor collision preflights every fixed pulse and rejects deadline-edge im
               tick: lateImpactTick,
               aId: player.id,
               bId: anchor.id,
+              aGeneration: 4, bGeneration: 8,
               aType: 'ship',
               aAnchorSlotId: null,
               bType: 'asteroid',
