@@ -402,6 +402,10 @@ html:root:not([data-sf-mobile="1"]) ${SLD} .sf-ledger-line { grid-template-colum
   html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .k-row:not(.empty) .k-row__sub.sf-slot-sub { display:none !important; }
   html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .k-row__name.sf-slot-name { letter-spacing:.04em !important; }
   html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .sf-slot-badge { letter-spacing:.02em; }
+  /* ui-polish-302: at 860×500 a long filed name still broke inside a word ("RECOVE / RY") over five lines;
+     it breaks between words with closer tracking, as it does from 941 (ui-polish-264) and under 640 */
+  html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list > .k-row.sf-slot:not(.empty) > div { overflow-wrap:normal; margin:0 -6px; }
+  html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .k-row:not(.empty) .k-row__name.sf-slot-name { letter-spacing:0 !important; }
 }
 /* ui-polish-95: 941–1199 wide above 460 tall, the ~100px stations still ran a filed save's line to four or five
    ragged lines ("Adventure· / Hitch·Helios / Prime·1h / 12m played"), and at ~1000 the context line broke
