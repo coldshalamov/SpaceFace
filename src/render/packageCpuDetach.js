@@ -58,6 +58,7 @@ const PRESENTED_DETACH_TEXTURE_KEYS = Object.freeze([
 // refills them before the next upload. Steady-state draws do not take the hold.
 let orientationHolds = new WeakSet();
 let presentedDetachRehydrate = null;
+let presentedDetachRequestedManifests = null;
 let presentedDetachHeldRenderers = null;
 
 // Whether a manifest still has any released payload — DERIVED, not ledgered: the F3 shared
@@ -1051,29 +1052,68 @@ export function presentedDetachDrawsArmed(renderer) {
 }
 
 /**
- * One in-flight refill for every detached package. The draw guard and the orientation hold
- * share it so a rotation cannot decode the fleet twice. The hold drops only after the refill
- * finishes: clearing it earlier lets the next frame upload the still-empty mirror.
+ * One in-flight presented refill. The draw guard and the orientation hold share it so a
+ * package cannot be decoded twice. A supplied resource cohort excludes unrelated cached
+ * packages; unscoped guard callers retain the complete-registry fallback. The hold drops only
+ * after the requested refill finishes, so the next frame cannot upload an empty mirror.
  */
-export function queuePresentedDetachRehydrate(renderer) {
+function presentedResourceManifests(resources) {
+  if (!resources) return detachedManifestList();
+  const wanted = new Set();
+  for (const list of [resources.geometries, resources.textures]) {
+    for (const resource of list || []) {
+      // Texture clones can carry the package mark while sharing its canonical Source. Refill
+      // that live generation too; the manifest's exact resource pairing still owns all writes.
+      const mark = resource?.userData?.spacefaceCpuDetach;
+      const manifest = mark && manifestForMark(mark);
+      if (manifest && !manifest.evicted && manifestHasDetachedEntries(manifest)) wanted.add(manifest);
+    }
+  }
+  return wanted;
+}
+
+export function queuePresentedDetachRehydrate(renderer, resources = null) {
+  const wanted = presentedResourceManifests(resources);
   if (presentedDetachRehydrate) {
+    for (const manifest of wanted) presentedDetachRequestedManifests.add(manifest);
     if (renderer) presentedDetachHeldRenderers.add(renderer);
     return presentedDetachRehydrate;
   }
+  // Cohorts joining during an awaited decode stay on this one serial runway. Offscreen
+  // cached packages are not a dependency of a scoped orientation request.
+  const requested = new Set(wanted);
+  presentedDetachRequestedManifests = requested;
   const held = new Set(renderer ? [renderer] : []);
   presentedDetachHeldRenderers = held;
   let flight = null;
   flight = Promise.resolve()
-    .then(() => rehydrateDetachedPackages())
-    .finally(() => {
-      if (presentedDetachRehydrate === flight) {
-        presentedDetachRehydrate = null;
-        presentedDetachHeldRenderers = null;
+    .then(async () => {
+      try {
+        const completed = new Set();
+        let result = null;
+        do {
+          const batch = [...requested].filter(manifest => !completed.has(manifest));
+          const receipt = await rehydrateManifestList(batch);
+          for (const manifest of batch) completed.add(manifest);
+          if (!result) result = receipt;
+          else {
+            result.skipped &&= receipt.skipped;
+            for (const key of ['packages', 'textures', 'geometries', 'bytes']) result[key] += receipt[key];
+            for (const key of ['errors', 'geometryMismatches', 'textureMismatches']) result[key].push(...receipt[key]);
+          }
+        } while (completed.size < requested.size);
+        return result;
+      } finally {
+        // Close registration synchronously with the final drain, before resolving its promise:
+        // a late caller must join a still-draining flight or start its own, never miss both.
+        if (presentedDetachRehydrate === flight) {
+          presentedDetachRehydrate = null;
+          presentedDetachRequestedManifests = null;
+          presentedDetachHeldRenderers = null;
+        }
+        for (const target of held) orientationHolds.delete(target);
+        held.clear();
       }
-      // Preview and flight renderers share this refill. Every renderer that joined
-      // must resume; clearing only its initiator strands later views behind the hold.
-      for (const target of held) orientationHolds.delete(target);
-      held.clear();
     });
   presentedDetachRehydrate = flight;
   return flight;
@@ -1089,11 +1129,11 @@ export function presentedDetachRehydrateInFlight() {
  * for a refill. Used when the drawing buffer flips aspect (phone rotation): that is the
  * window that re-entered upload without a context-loss event.
  */
-export function noteOrientationDetachedHold(renderer) {
+export function noteOrientationDetachedHold(renderer, resources = null) {
   if (!renderer) return false;
   orientationHolds.add(renderer);
   bumpPackageDetachSerial();
-  queuePresentedDetachRehydrate(renderer);
+  queuePresentedDetachRehydrate(renderer, resources);
   return true;
 }
 
@@ -1657,10 +1697,15 @@ export async function rehydrateDetachedGeometries(geometries, options = {}) {
  * textures upload real bytes again.
  */
 export async function rehydrateDetachedPackages(options = {}) {
-  const yieldToMain = typeof options.yieldToMain === 'function' ? options.yieldToMain : null;
   const detached = detachedManifestList();
+  return rehydrateManifestList(detached, options);
+}
+
+async function rehydrateManifestList(detached, options = {}) {
+  const yieldToMain = typeof options.yieldToMain === 'function' ? options.yieldToMain : null;
+  const count = detached.size ?? detached.length;
   const result = {
-    skipped: detached.length === 0,
+    skipped: count === 0,
     packages: 0,
     textures: 0,
     geometries: 0,
@@ -1669,7 +1714,7 @@ export async function rehydrateDetachedPackages(options = {}) {
     geometryMismatches: [],
     textureMismatches: [],
   };
-  if (detached.length === 0) return result;
+  if (count === 0) return result;
   for (const manifest of detached) {
     if (manifest.evicted) continue;
     try {
@@ -1724,5 +1769,6 @@ export function resetPackageDetachManifestsForTests() {
   manifestSequence = 0;
   orientationHolds = new WeakSet();
   presentedDetachRehydrate = null;
+  presentedDetachRequestedManifests = null;
   presentedDetachHeldRenderers = null;
 }

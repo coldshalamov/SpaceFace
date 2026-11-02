@@ -1202,7 +1202,12 @@ export const input = {
         const drill = laneCtx && laneCtx.registry && typeof laneCtx.registry.get === 'function'
           ? laneCtx.registry.get('drill') : null;
         if (!drill) break;
-        if (d.op === 'begin' && typeof drill.begin === 'function') drill.begin(d.asteroidId);
+        if (d.op === 'begin' && typeof drill.begin === 'function') {
+          const result = drill.begin(d.asteroidId, d.options);
+          if (result === false && d.options?.requestId != null) {
+            laneCtx.bus?.emit('drill:beginRejected', { requestId: d.options.requestId, asteroidId: d.asteroidId });
+          }
+        }
         else if (d.op === 'pulseScan' && typeof drill.pulseScan === 'function') drill.pulseScan();
         else if (d.op === 'end' && typeof drill.end === 'function') drill.end(d.opts);
         else if (d.op === 'armCharge' && typeof drill.armCharge === 'function') drill.armCharge();

@@ -394,8 +394,16 @@ export function createLaneSystemFacade(ctx) {
           name: 'drill',
           bus: ctx.bus,
           state: st,
-          tickInput: (held, dt, opts) => laneDomEvent({ type: 'drillTick', held, dt, opts }),
-          begin: (asteroidId) => { if (asteroidId) drillCall('begin', { asteroidId }); return !!asteroidId; },
+          // The command ring retains its payload until the next worker flush. Snapshot these
+          // frame inputs now: the UI controller reuses and clears `held` during keyup, which
+          // can otherwise rewrite an already queued press before it reaches the drill owner.
+          tickInput: (held, dt, opts) => laneDomEvent({
+            type: 'drillTick',
+            held: held && typeof held === 'object' ? { ...held } : held,
+            dt,
+            opts: opts && typeof opts === 'object' ? { ...opts } : opts,
+          }),
+          begin: (asteroidId, options) => { drillCall('begin', { asteroidId, options }); },
           pulseScan: () => {
             // Synchronous answer off the mirror (≤1-tick stale): a stale
             // cooldown edge ships a refused pulse the worker drops silently.

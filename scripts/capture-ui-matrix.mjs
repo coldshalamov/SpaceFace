@@ -7,7 +7,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { loadPlaywright } from './lib/load-playwright.mjs';
-import { CAPTURE_SURFACES, IMPLEMENTED_ENTRY_KINDS, orderForOneBoot } from './ui-grammar-surfaces.mjs';
+import { CAPTURE_SURFACES, IMPLEMENTED_ENTRY_KINDS, mapAliasProvenance, matchesMapAliasProvenance, orderForOneBoot } from './ui-grammar-surfaces.mjs';
 import { RESPONSIVE_WIDTHS } from './ui-grammar-thresholds.mjs';
 import {
   UI_AUXILIARY_RAF_SCOPE,
@@ -290,10 +290,11 @@ export function readReferenceProvenance(file = UI_FRAME_PROVENANCE_FILE) {
  * A frame that fails either is reported MISSING, never diffed, and re-shot even under
  * `--fill-missing`.
  */
-export function isFrameCurrent(record, { seed = UI_MATRIX_SEED, ground = UI_MATRIX_GROUND } = {}) {
+export function isFrameCurrent(record, { seed = UI_MATRIX_SEED, ground = UI_MATRIX_GROUND, alias = null } = {}) {
   if (!record) return false;
   if (seed != null && record.seed !== seed) return false;
   if (ground != null && record.ground !== ground) return false;
+  if (!matchesMapAliasProvenance(record.alias, alias)) return false;
   return true;
 }
 
@@ -302,11 +303,12 @@ export function isFrameCurrent(record, { seed = UI_MATRIX_SEED, ground = UI_MATR
  * written only after the last frame would turn any interruption into a baseline whose provenance is
  * unknown — which is the same lie in a different place.
  */
-function recordReferenceProvenance(name, provenance) {
+function recordReferenceProvenance(name, provenance, alias = null) {
   provenance.frames[name] = {
     seed: UI_MATRIX_SEED,
     ground: UI_MATRIX_GROUND,
     capturedAt: new Date().toISOString(),
+    ...(alias ? { alias } : {}),
   };
   provenance.seed = UI_MATRIX_SEED;
   provenance.ground = UI_MATRIX_GROUND;
@@ -397,6 +399,13 @@ export function buildFramePlan(filter = null) {
 
 export function frameFileName({ surface, mode, width, height }) {
   return `${surface}-${mode}-${width}x${height}.png`;
+}
+
+// Keep per-cell failures independently of whether any mode produced a surface budget row.
+export function buildCaptureSummary({ plan, captures, failures, hullAbsent = [] }) {
+  return { planned: plan.length, produced: captures.length, failures: failures.map((failure) => ({ ...failure })),
+    hullAbsent: [...hullAbsent], aliases: captures.filter((capture) => capture.alias)
+      .map(({ name, alias }) => ({ name, ...alias })) };
 }
 
 export async function captureUiMatrix(options = {}) {
@@ -642,7 +651,7 @@ export async function captureUiMatrix(options = {}) {
                   : null;
                 const opened = await openSurface(isolated.page, surface);
                 if (!opened.ok) {
-                  failures.push({ surface: surface.id, mode: mode.id, viewport, reason: opened.reason });
+                  failures.push({ ...opened, surface: surface.id, mode: mode.id, viewport, stage: opened.stage || 'open', route: opened.route || surface.entry.kind });
                   continue;
                 }
                 await isolated.page.waitForTimeout(surface.settleMs);
@@ -652,7 +661,7 @@ export async function captureUiMatrix(options = {}) {
                   worldSubmissionBaseline,
                 });
               } catch (error) {
-                failures.push({ surface: surface.id, mode: mode.id, viewport, reason: error.message });
+                failures.push({ surface: surface.id, mode: mode.id, viewport, stage: 'capture', route: surface.entry.kind, reason: error.message });
               }
               // Re-open for the next mode from a KNOWN state. Verified, like everywhere else: a
               // screen left open would be photographed again under the next mode's name.
@@ -829,6 +838,7 @@ export async function captureUiMatrix(options = {}) {
       ...(sourceOverlay ? { sourceOverlay: result.sourceOverlay } : {}),
       surfaces,
       missing,
+      captureSummary: buildCaptureSummary({ plan, captures: enriched, failures, hullAbsent: HULL_ABSENT }),
     };
     mkdirSync(path.dirname(budgetsOut), { recursive: true });
     writeFileSync(budgetsOut, `${JSON.stringify(baseline, null, 2)}\n`);
@@ -854,7 +864,7 @@ function printCaptureFailures(failures, planned, produced) {
   }
   for (const [surface, reasons] of bySurface) {
     console.log(`  ${surface} (${reasons.length})`);
-    console.log(`    ${reasons[0]}`);
+    for (const reason of reasons) console.log(`    ${reason}`);
   }
 }
 
@@ -916,7 +926,7 @@ async function captureModeSet({
         : null;
       const opened = await openSurface(page, surface);
       if (!opened.ok) {
-        failures.push({ surface: surface.id, mode: mode.id, viewport, reason: opened.reason });
+        failures.push({ ...opened, surface: surface.id, mode: mode.id, viewport, stage: opened.stage || 'open', route: opened.route || surface.entry.kind });
       } else {
         await page.waitForTimeout(surface.settleMs);
         await stabilizeSurfaceForCapture(page, surface.id);
@@ -934,14 +944,14 @@ async function captureModeSet({
         });
       }
     } catch (error) {
-      failures.push({ surface: surface.id, mode: mode.id, viewport, reason: error.message });
+      failures.push({ surface: surface.id, mode: mode.id, viewport, stage: 'capture', route: surface.entry.kind, reason: error.message });
     }
     // Recovery is mandatory and VERIFIED, not best-effort: a radial or drawer left open would be
     // photographed on top of the next surface — and it would eat the Escape that opens pause — so
     // every later frame in this mode would show a defect that is really this one.
     const closed = await closeSurface(page, surface).catch((error) => ({ ok: false, reason: error.message }));
     if (!closed.ok) {
-      failures.push({ surface: surface.id, mode: mode.id, viewport, reason: closed.reason });
+      failures.push({ ...closed, surface: surface.id, mode: mode.id, viewport, stage: 'close', route: surface.entry.kind });
       recordSkippedRest({ surfaces, index, mode, viewport, failures, cause: `${surface.id} did not close` });
       return;
     }
@@ -950,6 +960,7 @@ async function captureModeSet({
     } catch (error) {
       failures.push({
         surface: surface.id, mode: mode.id, viewport,
+        stage: 'return-to-flight', route: surface.entry.kind,
         reason: `could not return to idle flight after this surface: ${error.message}`,
       });
       recordSkippedRest({ surfaces, index, mode, viewport, failures, cause: `flight never came back after ${surface.id}` });
@@ -976,6 +987,7 @@ function recordBootFailure({ failures, surfaces, modes, viewport, reason }) {
         surface: surface.id,
         mode: mode.id,
         viewport,
+        stage: 'boot', route: surface.entry.kind,
         skipped: true,
         reason: `skipped: ${reason}, so this surface was never opened at this width`,
       });
@@ -989,6 +1001,7 @@ function recordSkippedRest({ surfaces, index, mode, viewport, failures, cause })
       surface: surfaces[i].id,
       mode: mode.id,
       viewport,
+      stage: 'skipped', route: surfaces[i].entry.kind,
       skipped: true,
       reason: `skipped: ${cause}, so this surface was never opened in this pass`,
     });
@@ -1038,6 +1051,10 @@ export async function openSurface(page, surface, context = {}) {
           await page.keyboard.press(normalizeKey(entry.key));
         }
         break;
+      }
+      case 'map-alias': {
+        await ensureFlightIdle(page);
+        return await openMapAlias(page, entry);
       }
       case 'nested': {
         const parent = SURFACE_BY_ID.get(entry.parent) || null;
@@ -1089,8 +1106,32 @@ export async function openSurface(page, surface, context = {}) {
     await waitForAnyVisible(page, selectors, visibleMs, `${surface.id} visible`);
     return { ok: true, route: entry.kind };
   } catch (error) {
-    return { ok: false, reason: error && error.message ? error.message : String(error) };
+    return { ok: false, stage: 'open', route: entry.kind, reason: error && error.message ? error.message : String(error) };
   }
+}
+
+// The legacy ID is sent through the real UI event bridge, not pushed directly onto ScreenManager.
+// This is a fixture-level redirect check; it does not claim a public input route was exercised.
+export async function openMapAlias(page, entry) {
+  const alias = mapAliasProvenance(entry);
+  await page.evaluate((id) => {
+    const bus = window.SF && window.SF.bus;
+    if (!bus || typeof bus.emit !== 'function') throw new Error('map alias: ui:pushScreen bus unavailable');
+    bus.emit('ui:pushScreen', { id });
+  }, alias.legacyId);
+  await page.waitForFunction(({ destination, focus }) => {
+    const sf = window.SF;
+    const ui = sf && sf.registry && sf.registry.get('ui');
+    const manager = ui && ui.screenManager;
+    const root = document.querySelector('#sf-galaxymap');
+    const selected = root && root.querySelector(`.gm-scale-btn[data-focus="${focus}"][aria-pressed="true"]`);
+    if (!manager || typeof manager.top !== 'function' || manager.top() !== destination || !root || !selected) return false;
+    const style = getComputedStyle(root);
+    const rect = root.getBoundingClientRect();
+    return !root.hidden && style.display !== 'none' && style.visibility !== 'hidden'
+      && parseFloat(style.opacity || '1') > 0.01 && rect.width > 4 && rect.height > 4;
+  }, { destination: alias.destination, focus: alias.focus }, { timeout: 20_000 });
+  return { ok: true, route: 'map-alias', alias };
 }
 
 /**
@@ -1695,7 +1736,7 @@ function makeMenuPhaseCapture({ modes, outputDir, captures, failures, viewport, 
           if (surface !== stage) {
             const opened = await openSurface(page, surface, { stage: stageId });
             if (!opened.ok) {
-              failures.push({ surface: surface.id, mode: mode.id, viewport, reason: opened.reason });
+              failures.push({ ...opened, surface: surface.id, mode: mode.id, viewport, stage: opened.stage || 'open', route: opened.route || surface.entry.kind });
               continue;
             }
           }
@@ -1708,7 +1749,7 @@ function makeMenuPhaseCapture({ modes, outputDir, captures, failures, viewport, 
           await page.waitForTimeout(surface.settleMs);
           await captureSurfaceScreenshot({ page, outputDir, captures, surface, modeId: mode.id, viewport, restTwinDir, promoteReference, provenance });
         } catch (error) {
-          failures.push({ surface: surface.id, mode: mode.id, viewport, reason: error.message });
+          failures.push({ surface: surface.id, mode: mode.id, viewport, stage: `menu:${stageId}`, route: surface.entry.kind, reason: error.message });
         } finally {
           if (surface !== stage && stage) await returnToStage(page, stage).catch(() => {});
         }
@@ -1805,6 +1846,7 @@ async function captureSurfaceScreenshot({
   provenance = null,
   worldSubmissionBaseline = null,
 }) {
+  const alias = mapAliasProvenance(surface.entry);
   const entry = {
     surface: surface.id,
     mode: modeId,
@@ -1890,12 +1932,12 @@ async function captureSurfaceScreenshot({
     // — or shot over the live 3D picture rather than the neutral ground — has to be re-shot even
     // under --fill-missing, or the gap it represents stays invisible.
     const current = existsSync(target)
-      && !!provenance && isFrameCurrent(provenance.frames[name]);
+      && !!provenance && isFrameCurrent(provenance.frames[name], { alias });
     if (promoteReference === 'fill-missing' && current) {
       reference = 'kept';
     } else {
       copyFileSync(dest, target);
-      if (provenance) recordReferenceProvenance(name, provenance);
+      if (provenance) recordReferenceProvenance(name, provenance, alias);
       reference = 'written';
     }
   }
@@ -1906,7 +1948,7 @@ async function captureSurfaceScreenshot({
     await page.waitForTimeout(REST_TWIN_BEAT_MS);
     await shoot(path.join(restTwinDir, name));
   }
-  captures.push({ name, path: dest, reference, surface: surface.id, budget });
+  captures.push({ name, path: dest, reference, surface: surface.id, budget, ...(alias ? { alias } : {}) });
 }
 
 async function firstVisibleHandle(page, selectors) {
@@ -2442,7 +2484,8 @@ async function stabilizeSurfaceForCapture(page, surfaceId) {
   }
   // Both chart focuses are the same animated screen; both need the scan/iris animation parked or
   // the 0.5% repeatability floor flakes on paint timing.
-  if (surfaceId === 'chart' || surfaceId === 'chart-galaxy') {
+  if (surfaceId === 'chart' || surfaceId === 'chart-galaxy'
+    || surfaceId === 'localmap-legacy' || surfaceId === 'starmap-legacy') {
     await stabilizeChartScreen(page);
   }
 }

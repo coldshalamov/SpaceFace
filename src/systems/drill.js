@@ -1275,6 +1275,24 @@ function sessionResult(d, reason) {
   });
 }
 
+// Session targets are transient and deliberately excluded from save and worker DTOs. In legacy
+// worlds without occupant generations, retaining the actual entity reference is the only available
+// identity fence; an in-place recycle without a generation cannot be distinguished.
+const drillSessionTargets = new WeakMap();
+const drillEndSessions = new WeakMap();
+
+// The site owner consumes live drill events and the end receipt after state.drill is cleared.
+// Undefined means an untracked session/receipt, not a supported restored authoritative visit;
+// null means a tracked target was lost. Drill persistence deliberately accepts neither.
+export function drillSessionTarget(state, sessionOrReceipt) {
+  const d = drillEndSessions.get(sessionOrReceipt) || sessionOrReceipt;
+  if (!d || !drillSessionTargets.has(d)) return undefined;
+  const target = drillSessionTargets.get(d);
+  const current = state?.entities?.get?.(d?.asteroidId);
+  if (!target || current !== target) return null;
+  return (current.occupantGeneration ?? null) === (d.asteroidGeneration ?? null) ? current : null;
+}
+
 export const drill = {
   name: 'drill',
   init(ctx) {
@@ -1346,11 +1364,16 @@ export const drill = {
   // Begin a drilling session on an asteroid. Seeds the field from the asteroid's stable id so the
   // same rock has the same *undrilled* layout (V2 §32), then re-applies any previously cleared
   // cells so exit→re-enter resumes the bore instead of handing back a pristine rock.
-  begin(asteroidId) {
+  begin(asteroidId, options = {}) {
     if (!asteroidId) return false;
     const ent = this.state.entities && typeof this.state.entities.get === 'function'
       ? this.state.entities.get(asteroidId)
       : null;
+    if (Object.hasOwn(options, 'asteroidGeneration')
+      && (!ent || ent.alive === false
+        || (ent.occupantGeneration ?? null) !== options.asteroidGeneration)) return false;
+    // Replacing an active visit must settle it before the new field reads the rock's saved state.
+    if (this.state.drill) this.end({ reason: 'replaced' });
     const data = ensureAsteroidDeepCore(ent && ent.data);
 
     // Time away heals budget (in _computeRockBudget) and slowly settles tunnels (here).
@@ -1401,6 +1424,7 @@ export const drill = {
     this.state.drill = {
       asteroidId,
       asteroidGeneration: Number.isSafeInteger(ent?.occupantGeneration) ? ent.occupantGeneration : null,
+      _requestId: options.requestId ?? null,
       field,
       fieldId: rock.fieldId,
       _sectorId: rock.sectorId,
@@ -1445,8 +1469,10 @@ export const drill = {
       chargesSet: 0,          // session count — the receipt knows how loud this visit got
       active: true,
     };
+    drillSessionTargets.set(this.state.drill, ent || null);
     this.bus.emit('drill:start', {
       asteroidId,
+      ...(options.requestId != null ? { requestId: options.requestId } : {}),
       rockBudget: rock.budget,
       rockBudgetMax: rock.max,
       resumedCleared: cleared.length,
@@ -1474,15 +1500,16 @@ export const drill = {
 
   // End the session (player exits the screen). Keeps the yieldLog so a summary can show on exit.
   // Flushes budget remaining + avatar pose onto the asteroid so the next begin() resumes cleanly.
-  end({ reason = 'retracted' } = {}) {
+  end({ reason = 'retracted', requestId } = {}) {
     const d = this.state.drill;
-    if (!d) return null;
+    if (!d || (requestId !== undefined && requestId !== d._requestId)) return null;
     // A paid charge is never lost to a retract: it cooks off as the rig comes home, against the
     // field exactly as it stands. The blast owns the cells; the receipt still names the exit.
     if (d.charge) this._detonateCharge(d);
     d.active = false;
     this._persistSessionProgress(d);
     const result = sessionResult(d, reason);
+    drillEndSessions.set(result, d);
     // Share extraction with the field-depletion ledger so drill + flight mining accumulate against
     // one field richness/recovery curve (a single receipt per session, by total units extracted).
     if (d.fieldId && Number(result.yieldUnits) > 0) {
@@ -1497,9 +1524,7 @@ export const drill = {
   /** Write budget remaining, avatar pose, and cleared-tile memory back onto the asteroid entity. */
   _persistSessionProgress(d) {
     if (!d || d.asteroidId == null) return;
-    const ent = this.state.entities && typeof this.state.entities.get === 'function'
-      ? this.state.entities.get(d.asteroidId)
-      : null;
+    const ent = drillSessionTarget(this.state, d);
     const data = ensureAsteroidDeepCore(ent && ent.data);
     if (!data) return;
 
@@ -1928,7 +1953,7 @@ export const drill = {
     const payload = CHARGE_PAYLOADS[charge.payload] ? charge.payload : 'blast';
     const def = CHARGE_PAYLOADS[payload];
     const anchor = { col: charge.col, row: charge.row };
-    const rockEnt = this.state.entities && this.state.entities.get && this.state.entities.get(d.asteroidId);
+    const rockEnt = drillSessionTarget(this.state, d);
     const player = this.state.entities && this.state.entities.get && this.state.entities.get(this.state.playerId);
     const tier = this.getDrillTier();
     // Resolve the cells the pilot was quoted — never a pattern re-derived from where the rig has
@@ -2086,7 +2111,7 @@ export const drill = {
       if (beamRow >= 0) beams.push({ col: c, row: beamRow });
     }
     if (beams.length < CAVE_HEADROOM_MIN) return;
-    const rockEnt = this.state.entities && this.state.entities.get && this.state.entities.get(d.asteroidId);
+    const rockEnt = drillSessionTarget(this.state, d);
     const fresh = [];
     let stoodCracked = 0; // beams already cracked BEFORE this check — the escalation witness
     for (const b of beams) {
@@ -2433,7 +2458,7 @@ export const drill = {
         const wasType = target.type;
         const ore = target.ore;
         const yieldU = target.yieldU || 0;
-        const rockEnt = this.state.entities && this.state.entities.get && this.state.entities.get(d.asteroidId);
+        const rockEnt = drillSessionTarget(this.state, d);
         // Cargo answers before the hole is committed. Unaccepted ore stays on this vein.
         if (wasVein && ore && settleVeinYield(this, d, rockEnt, target, nc, nr, ore, yieldU) === 'preserve') {
           return;

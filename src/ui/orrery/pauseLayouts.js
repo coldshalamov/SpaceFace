@@ -86,6 +86,12 @@ ${P} .orr-arcrail-host .dp-lit__item:not([data-awake]) {
   color:rgb(${BONE} / .86) !important; }
 ${P} .orr-arcrail-host .dp-lit__item--danger:not([data-awake]) {
   color:rgb(255 140 110 / .78) !important; }
+/* ArcRail's active-word !important color outranks the shared dp-lit forced-colors rule.
+   Restore a system text color for every Pause verb so the primary Resume word stays readable. */
+@media (forced-colors:active) {
+  ${P} .orr-arcrail-host .dp-lit__item {
+    color:CanvasText !important; text-shadow:none !important; }
+}
 ${P} .orr-svg text.orr-arcrail__legend { fill:rgb(${BONE} / .92) !important; }
 ${P} .orr-svg .orr-arcrail__head.is-lit text.orr-arcrail__legend { fill:rgb(255 253 248) !important; }
 ${P} .orr-svg .orr-arcrail__lettering, ${P} .orr-svg .orr-arcrail__lettering text {

@@ -4395,6 +4395,39 @@ test('Ceres toolkit stage selects a current exact cohort intercept inside the fi
   assert.equal(alreadyPointable.liveIntercept.travelWU, 0);
 });
 
+test('Ceres cohort camera intercept is invariant under a nonzero canonical frame origin', () => {
+  const playerPos = { x: 20, z: 30 };
+  const candidate = { entityId: 'live-exact', worldRecordId: 'wr_live', alive: true,
+    radiusWU: 18, pos: { x: 240, y: 0, z: 800 } };
+  const snapshot = {
+    playerPos, playerRadiusWU: 16,
+    camera: fixedSettledChaseCameraMatrices(playerPos), candidates: [candidate],
+  };
+  const baseline = planCeresThroughlineToolkitReposition({ liveIntercept: snapshot }).liveIntercept;
+  const frameOrigin = { x: -12288, z: 8192 };
+  const globalPlayer = { x: playerPos.x + frameOrigin.x, z: playerPos.z + frameOrigin.z };
+  const shifted = {
+    ...snapshot, playerPos: globalPlayer,
+    camera: fixedSettledChaseCameraMatrices(globalPlayer, frameOrigin),
+    candidates: [{ ...candidate, pos: {
+      x: candidate.pos.x + frameOrigin.x, y: candidate.pos.y, z: candidate.pos.z + frameOrigin.z,
+    } }],
+  };
+  const actual = planCeresThroughlineToolkitReposition({ liveIntercept: shifted }).liveIntercept;
+  assert.equal(actual.entityId, baseline.entityId);
+  assert.equal(actual.worldRecordId, baseline.worldRecordId);
+  assert.deepEqual(actual.targetPos, {
+    x: baseline.targetPos.x + frameOrigin.x, z: baseline.targetPos.z + frameOrigin.z,
+  }, 'public navigation targets retain global coordinates');
+  assert.equal(actual.travelWU, baseline.travelWU);
+  assert.equal(actual.separationWU, baseline.separationWU);
+  assert.ok(Math.abs(actual.ndc.x - baseline.ndc.x) < 1e-12);
+  assert.ok(Math.abs(actual.ndc.y - baseline.ndc.y) < 1e-12);
+  assert.throws(() => planCeresThroughlineToolkitReposition({
+    liveIntercept: { ...shifted, camera: { ...shifted.camera, frameOrigin: undefined } },
+  }), /requires current player, camera, and cohort poses/, 'missing origin is not silently treated as zero');
+});
+
 test('seed-47 authored ambush pack traverses the toolkit camera corridor with production Flight V3 and Rapier', async (t) => {
   const fieldFlagBeforeFixture = FIELD_FLAGS.enabled;
   const result = await runSeed47ToolkitCameraReposition();
@@ -8742,7 +8775,7 @@ function projectThroughSettledChaseCamera(focus, worldPoint) {
   };
 }
 
-function fixedSettledChaseCameraMatrices(focus) {
+function fixedSettledChaseCameraMatrices(focus, frameOrigin = { x: 0, z: 0 }) {
   const zoomWU = 144 * 0.88;
   const tilt = 60 * Math.PI / 180;
   const fov = 50 * Math.PI / 180;
@@ -8754,9 +8787,9 @@ function fixedSettledChaseCameraMatrices(focus) {
   view[5] = 1;
   view[9] = Math.sin(tilt);
   view[10] = -Math.cos(tilt);
-  view[12] = Number(focus.x);
-  view[13] = -Math.sin(tilt) * Number(focus.z);
-  view[14] = Math.cos(tilt) * Number(focus.z) - zoomWU;
+  view[12] = Number(focus.x) - frameOrigin.x;
+  view[13] = -Math.sin(tilt) * (Number(focus.z) - frameOrigin.z);
+  view[14] = Math.cos(tilt) * (Number(focus.z) - frameOrigin.z) - zoomWU;
   view[15] = 1;
   const f = 1 / Math.tan(fov / 2);
   const projection = [
@@ -8765,7 +8798,7 @@ function fixedSettledChaseCameraMatrices(focus) {
     0, 0, -(far + near) / (far - near), -1,
     0, 0, -(2 * far * near) / (far - near), 0,
   ];
-  return { view, projection };
+  return { view, projection, frameOrigin: { ...frameOrigin } };
 }
 
 function actualPilotSources() {

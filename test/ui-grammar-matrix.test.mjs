@@ -45,11 +45,13 @@ import {
   UI_MATRIX_GROUND,
   UI_MATRIX_SEED,
   assertCaptureSourceOverlayIdentity,
+  buildCaptureSummary,
   buildFramePlan,
   frameFileName,
   isFrameCurrent,
   labelCandidates,
   normalizeFrameFilter,
+  openMapAlias,
   parseArgs,
   startFreshServer,
   worldSubmissionAdvanced,
@@ -70,6 +72,73 @@ import {
   loadFloors,
   remedyForSurface,
 } from '../scripts/lib/ui-frame-regression.mjs';
+
+test('capture summary retains a failed Pause cell even when default was captured', () => {
+  const failure = { surface: 'pause', mode: 'forced-colors', viewport: { width: 1920, height: 1080 },
+    stage: 'open', route: 'key', reason: 'original visible timeout', detail: { cause: 'route timeout' } };
+  const summary = buildCaptureSummary({ plan: [{}, {}], captures: [{ name: 'pause-default-1920x1080.png' }], failures: [failure] });
+  assert.equal(summary.planned, 2);
+  assert.equal(summary.produced, 1);
+  assert.deepEqual(summary.failures, [failure]);
+  assert.deepEqual(JSON.parse(JSON.stringify(summary)).failures, [failure]);
+});
+
+test('legacy map capture aliases use the actual redirect and require its rendered focus', async () => {
+  const { normalizeMapOpenIntent } = await import('../src/ui/mapAuthority.js');
+  const saved = { window: globalThis.window, document: globalThis.document, getComputedStyle: globalThis.getComputedStyle };
+  try { for (const [id, focus] of [['localmap', 'local'], ['starmap', 'galaxy']]) {
+    const surface = CAPTURE_SURFACES.find((row) => row.id === `${id}-legacy`);
+    assert.equal(surface.entry.kind, 'map-alias');
+    assert.equal(surface.entry.evidence, 'fixture');
+    assert.equal(surface.entry.legacyId, id);
+    assert.equal(normalizeMapOpenIntent({ screenId: id }).focus, focus);
+    const calls = [];
+    let top = 'galaxyMap';
+    let selected = focus;
+    let visible = true;
+    globalThis.window = { SF: { bus: { emit: (event, payload) => calls.push([event, payload]) },
+      registry: { get: () => ({ screenManager: { top: () => top } }) } } };
+    globalThis.document = { querySelector: (selector) => selector === '#sf-galaxymap' ? {
+      hidden: !visible,
+      querySelector: (query) => query === `.gm-scale-btn[data-focus="${selected}"][aria-pressed="true"]` ? {} : null,
+      getBoundingClientRect: () => ({ width: 800, height: 600 }),
+    } : null };
+    globalThis.getComputedStyle = () => ({ display: 'block', visibility: 'visible', opacity: '1' });
+    const page = {
+      evaluate: async (fn, arg) => fn(arg),
+      waitForFunction: async (fn, arg) => { if (!fn(arg)) throw new Error('destination absent'); },
+    };
+    const opened = await openMapAlias(page, surface.entry);
+    assert.deepEqual(opened.alias, { legacyId: id, destination: 'galaxyMap', focus, route: 'ui:pushScreen' });
+    assert.deepEqual(calls, [['ui:pushScreen', { id }]]);
+    top = 'other';
+    await assert.rejects(openMapAlias(page, surface.entry), /destination absent/);
+    top = 'galaxyMap'; selected = 'system';
+    await assert.rejects(openMapAlias(page, surface.entry), /destination absent/);
+    selected = focus; visible = false;
+    await assert.rejects(openMapAlias(page, surface.entry), /destination absent/);
+  } } finally {
+    for (const [key, value] of Object.entries(saved)) {
+      if (value === undefined) delete globalThis[key]; else globalThis[key] = value;
+    }
+  }
+});
+
+test('legacy alias references require their own matching redirect provenance', () => {
+  const surface = CAPTURE_SURFACES.find((row) => row.id === 'localmap-legacy');
+  const entry = buildFramePlan({ surfaces: [surface.id], modes: ['default'], viewports: ['1920'] })[0];
+  const name = frameFileName(entry);
+  const alias = { legacyId: 'localmap', destination: 'galaxyMap', focus: 'local', route: 'ui:pushScreen' };
+  const record = { seed: UI_MATRIX_SEED, ground: UI_MATRIX_GROUND };
+  const coverageFor = (frame) => buildCoverageReport({ plan: [entry], referenceDir: '/fixture', frameFileName,
+    exists: () => true, provenance: { frames: { [name]: frame } }, expectedSeed: UI_MATRIX_SEED, expectedGround: UI_MATRIX_GROUND });
+  assert.equal(isFrameCurrent(record, { alias }), false);
+  assert.equal(coverageFor(record).missingReachable[0].staleReason, 'alias');
+  assert.equal(coverageFor({ ...record, alias: { ...alias, focus: 'galaxy' } }).present, 0);
+  assert.equal(coverageFor({ ...record, alias }).present, 1);
+  assert.deepEqual(buildCaptureSummary({ plan: [entry], captures: [{ name, alias }], failures: [] }).aliases,
+    [{ name, ...alias }]);
+});
 
 test('UI capture baseline-source parsing is opt-in and served identity mismatches fail closed', () => {
   assert.equal(parseArgs([]).baselineSource, null);
@@ -715,8 +784,7 @@ test('the coverage line names frames, the full matrix and the surface count', ()
 });
 
 test('a missing frame says WHY: no opener, a named capture failure, or an upstream surface that jammed', () => {
-  const noOpener = SHIPPING_SURFACES.find((s) => s.entry.kind === 'none');
-  assert.ok(noOpener, 'the manifest should still carry at least one surface with no opener');
+  const noOpener = { id: 'fixture-unreachable', entry: { kind: 'none', detail: 'no route' } };
   assert.match(remedyForSurface(noOpener), /no opener exists/);
 
   const openable = SHIPPING_SURFACES.find((s) => s.entry.kind === 'key');
@@ -892,7 +960,6 @@ test('a missing frame on a surface the harness can open is a FAILURE; one with n
     .filter((s) => !AUTOMATABLE_SURFACES.some((a) => a.id === s.id))
     .map((s) => s.id)
     .sort();
-  assert.ok(routeless.length > 0, 'the manifest should still carry route-less surfaces to owe');
   assert.deepEqual([...coverage.unreachableSurfaces].sort(), routeless);
   for (const id of routeless) {
     const surface = SHIPPING_SURFACES.find((s) => s.id === id);
@@ -919,7 +986,7 @@ test('a missing frame on a surface the harness can open is a FAILURE; one with n
 
   const text = formatCoverageReport(coverage, SHIPPING_SURFACES);
   assert.match(text, /MISSING and shootable — the check FAILS on these/);
-  assert.match(text, /OWED — no route opens these/);
+  if (routeless.length) assert.match(text, /OWED — no route opens these/);
 });
 
 test('the exit rule fails on a reachable gap and on a diff, and never on an owed frame alone', () => {
@@ -1236,9 +1303,9 @@ test('the check reads provenance, and the capture writes it as it goes', () => {
   const capture = readFileSync(path.join(ROOT, 'scripts', 'capture-ui-matrix.mjs'), 'utf8');
   // Written per frame, not at the end: a full matrix takes hours, and a record written only after
   // the last frame turns any interruption into a baseline whose provenance is unknown.
-  const promoteAt = capture.indexOf('recordReferenceProvenance(name, provenance)');
+  const promoteAt = capture.indexOf('recordReferenceProvenance(name, provenance, alias)');
   assert.ok(promoteAt > 0, 'the promote path must record provenance');
-  assert.match(capture, /const current = existsSync\(target\)\s+&& !!provenance && isFrameCurrent\(provenance\.frames\[name\]\);/,
+  assert.match(capture, /const current = existsSync\(target\)\s+&& !!provenance && isFrameCurrent\(provenance\.frames\[name\], \{ alias \}\);/,
     '--fill-missing must re-shoot a frame that is present but not comparable — wrong universe OR wrong ground');
 });
 

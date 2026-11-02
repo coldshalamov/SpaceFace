@@ -23,7 +23,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 
-import { AUTOMATABLE_SURFACES, SHIPPING_SURFACES } from '../ui-grammar-surfaces.mjs';
+import { AUTOMATABLE_SURFACES, SHIPPING_SURFACES, mapAliasProvenance, matchesMapAliasProvenance } from '../ui-grammar-surfaces.mjs';
 
 /**
  * A surface is REACHABLE for capture when the manifest gives it a module AND an entry kind the
@@ -191,11 +191,12 @@ export function buildCoverageReport({
     const shotGround = record ? (record.ground ?? null) : null;
     const seedOk = expectedSeed == null || shotSeed === expectedSeed;
     const groundOk = expectedGround == null || shotGround === expectedGround;
-    const current = onDisk && seedOk && groundOk;
+    const surface = surfaceById.get(entry.surface) || null;
+    const aliasOk = matchesMapAliasProvenance(record?.alias, mapAliasProvenance(surface?.entry));
+    const current = onDisk && seedOk && groundOk && aliasOk;
     if (current) {
       bucket.present += 1;
     } else {
-      const surface = surfaceById.get(entry.surface) || null;
       const failure = failureByFrame.get(file) || failureBySurface.get(entry.surface) || null;
       const stale = onDisk;
       if (stale) bucket.stale = (bucket.stale || 0) + 1;
@@ -208,7 +209,7 @@ export function buildCoverageReport({
         stale,
         shotSeed,
         shotGround,
-        staleReason: stale ? (!seedOk ? 'seed' : 'ground') : null,
+        staleReason: stale ? (!seedOk ? 'seed' : !groundOk ? 'ground' : 'alias') : null,
         owner: (surface && surface.owner) || 'PQ-180',
         ownerLeaf: (surface && surface.ownerLeaf) || '.03',
         remedy: stale
@@ -217,11 +218,12 @@ export function buildCoverageReport({
               + `(seed ${shotSeed == null ? 'unrecorded' : shotSeed}; the harness now shoots seed ${expectedSeed}), `
               + 'so it is not comparable with anything and is never diffed — re-shoot it: '
               + `npm run capture:ui-matrix -- --update --only=${entry.surface}`
-            : 'on disk, but photographed over a different ground '
+            : !groundOk ? 'on disk, but photographed over a different ground '
               + `(${shotGround == null ? 'unrecorded — the live 3D picture' : shotGround}; the harness now `
               + `shoots over ${expectedGround}), so its diff would measure the world behind the interface `
               + 'rather than the interface — re-shoot it: '
-              + `npm run capture:ui-matrix -- --update --only=${entry.surface}`)
+              + `npm run capture:ui-matrix -- --update --only=${entry.surface}`
+              : `on disk, but missing the current canonical alias provenance — re-shoot it: npm run capture:ui-matrix -- --update --only=${entry.surface}`)
           : remedyForSurface(surface || { id: entry.surface, entry: { kind: 'none' } }, failure),
       };
       missing.push(row);

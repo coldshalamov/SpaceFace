@@ -20,7 +20,8 @@ export const NPC_FIELD_ROLES = Object.freeze({
 
 // Ordinary-traffic wreck workers share the player's clearing cone. Combat scavenger
 // doctrine stays on the same tool. Sweeper / salvor already exist in TRAFFIC_ROLES.
-const CONE_TRAFFIC_ROLES = new Set(['scavenger', 'scavengers', 'sweeper', 'salvor']);
+const CONE_TRAFFIC_ROLES = new Set(['scavenger', 'scavengers', 'sweeper', 'sweepers', 'salvor', 'salvors']);
+const CIVILIAN_TRAFFIC_ROLES = new Set(['sweeper', 'sweepers', 'salvor', 'salvors']);
 
 const LOOSE_MASS_TYPES = new Set(['pickup', 'wreck', 'payload']);
 
@@ -90,26 +91,57 @@ export function nearbyLooseMass(entity, state, radius = 260) {
 
 // A civilian worker clears one loose workpiece. Combat scavengers keep the full physical
 // cone; an ordinary salvage shift must not turn the whole asteroid belt into ammunition.
+function currentSalvorJob(entity, state) {
+  const data = entity?.data;
+  const entry = data?.jobId && state?.npcJobs?.byId?.[data.jobId];
+  const job = entry?.job;
+  const sectorId = state?.world?.currentSectorId;
+  // The job owner pins the exact materialized actor. A copied jobId or recycled allocator
+  // slot is not a civilian assignment, even when its locomotion still says scavenger.
+  if (!entry || !sectorId || entity.alive === false || state.entities?.get(entity.id) !== entity
+    || entry.entityId !== entity.id || entry.entityRef !== entity
+    || !entry.worldRecordId || entry.worldRecordId !== data.worldRecordId
+    || data.jobId !== `job:${entry.worldRecordId}` || job?.id !== data.jobId
+    || job.kind !== 'salvor' || job.materialized !== true || job.corrupt === true
+    || job.phase === 'complete' || entry.sectorId !== sectorId || data.sectorId !== sectorId) return null;
+  return entry;
+}
+
 export function isCivilianClearingWorker(entity) {
   const data = entity?.data || EMPTY_AI, ai = data.ai || EMPTY_AI;
   const role = String(data.trafficRole || data.role || '').toLowerCase();
-  return (role === 'salvor' || role === 'sweeper')
-    && ai.passive !== false && ai.doctrine !== 'scavenger';
+  if (ai.passive === false) return false;
+  // Losing a civilian assignment is not a promotion to combat doctrine. jobKind is the
+  // adoption owner's existing mark and survives a temporarily absent reciprocal jobId.
+  if (data.jobId != null || data.jobKind === 'salvor') return true;
+  return CIVILIAN_TRAFFIC_ROLES.has(role) && ai.doctrine !== 'scavenger';
 }
 
-function civilianWorkTarget(entity, state, opts) {
+function civilianWorkTarget(entity, state, opts, jobEntry) {
   const tuning = CIVILIAN_CLEARING_TUNING, def = FIELD_DEFS.cone;
   const dirX = Math.cos(finite(entity.rot)), dirZ = Math.sin(finite(entity.rot));
   const x = finite(entity.pos?.x) + dirX * def.originGap;
   const z = finite(entity.pos?.z) + dirZ * def.originGap;
   const radius = Math.min(tuning.radius, Number.isFinite(opts.radius) && opts.radius > 0 ? opts.radius : tuning.radius);
   let best = null, bestDistance = Infinity;
+  const payload = jobEntry?.job.payload;
+  const bookedId = payload?.targetId ?? payload?.towTargetId;
+  const booked = jobEntry?._salvorBookedTarget;
+  const retainedTarget = booked?.entity || jobEntry?.towTargetRef;
+  const jobTarget = jobEntry && bookedId != null ? state.entities?.get(bookedId) : null;
+  if (jobEntry && (!jobTarget || (retainedTarget && retainedTarget !== jobTarget)
+    || (booked && booked.id !== bookedId)
+    || (payload.targetType && payload.targetType !== jobTarget.type)
+    || (jobTarget.data?.sectorId != null && jobTarget.data.sectorId !== jobEntry.sectorId)
+    || (opts.targetId === bookedId && Number.isSafeInteger(opts.targetGeneration)
+      && opts.targetGeneration !== jobTarget.occupantGeneration))) return null;
   const lists = looseMassLists(state);
   for (let i = 0; i < lists.length; i++) {
     const list = lists[i];
     if (!list) continue;
     for (let j = 0; j < list.length; j++) {
       const candidate = list[j];
+      if (jobEntry && candidate !== jobTarget) continue;
       if (!candidate || candidate === entity || candidate.alive === false || !candidate.pos
         || !CIVILIAN_CLEARING_TYPES.includes(candidate.type) || candidate.physicsBody?.dynamic === false) continue;
       const dx = finite(candidate.pos.x) - x, dz = finite(candidate.pos.z) - z;
@@ -147,7 +179,9 @@ export function planNpcFieldDeploy(entity, state, opts = {}) {
     return { action: 'off', kind: 'cone', role, reason: 'docked', ...(industrial ? { industrial: true } : {}) };
   }
   if (industrial) {
-    const work = civilianWorkTarget(entity, state, opts);
+    const jobEntry = currentSalvorJob(entity, state);
+    const assignmentRequired = entity.data?.jobId != null || entity.data?.jobKind === 'salvor';
+    const work = assignmentRequired && !jobEntry ? null : civilianWorkTarget(entity, state, opts, jobEntry);
     if (!work) return { action: 'off', kind: 'cone', role, reason: 'no_workpiece', industrial: true };
     const tuning = CIVILIAN_CLEARING_TUNING;
     return { action: 'on', kind: 'cone', role, reason: 'clearing_workpiece', industrial: true,
