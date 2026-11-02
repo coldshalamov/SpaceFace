@@ -2321,12 +2321,13 @@ html.sf-reduce-motion .orr-replay__exit .dp-lit__item, html.sf-reduce-motion .or
 @media (max-height:640px) and (min-width:641px) {
   .orr-clips__rail { top:20%; }
 }
-/* Short desktop frame, empty reel: the wrapped legend crossed the rail's arc (it dips lower the
-   wider the frame), so it sits in the clear band above the ghost plates instead. ≤460 tall keeps
-   its own bottom placement below. */
+/* Short desktop frame, empty reel: the default bottom:92px legend crossed the rail's arc (it dips
+   lower the wider the frame). It drops into the band just above FLY TO MAKE ONE instead, under the
+   arc's crown, as at 720p, so the how-to reads with the key it explains. ≤460 tall keeps its own
+   bottom placement below. */
 @media (min-width:641px) and (min-height:461px) and (max-height:640px) {
-  .orr-clips:has(.orr-clip__plate.is-ghost) .orr-clips__readline { top:76px; bottom:auto; }
-  .orr-clips:has(.orr-clip__plate.is-ghost) .orr-clips__readout { max-width:66ch; }
+  .orr-clips:has(.orr-clip__plate.is-ghost) .orr-clips__readline { bottom:72px; }
+  .orr-clips:has(.orr-clip__plate.is-ghost) .orr-clips__readout { max-width:58ch; }
 }
 @media (max-width:640px) and (min-height:700px) {
   .orr-clips__rail { top:33%; }
