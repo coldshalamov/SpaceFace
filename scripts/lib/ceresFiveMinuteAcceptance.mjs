@@ -5080,6 +5080,13 @@ function physicalArrivalReceipt({
   };
 }
 
+export function shouldBrakeCeresAnchorApproach(status) {
+  const openingOrOrbiting = status.radialClosingSpeedWUPerS <= 0
+    || status.tangentialSpeedWUPerS >= Math.max(1, status.radialClosingSpeedWUPerS);
+  return openingOrOrbiting && (status.speed > 45
+    || (status.hullGapWU <= status.recoveryMarginWU && status.speed > 1));
+}
+
 export async function drivePublicAnchorCollision(page, endTick, {
   minRemainingTicks = 120,
 } = {}) {
@@ -5312,10 +5319,7 @@ export async function drivePublicAnchorCollision(page, endTick, {
         };
       }
       if (status.missing) throw new Error('Throughline collision target disappeared before impact');
-      const nearContact = status.hullGapWU <= status.recoveryMarginWU;
-      const openingOrOrbiting = status.radialClosingSpeedWUPerS <= 0
-        || status.tangentialSpeedWUPerS >= Math.max(1, status.radialClosingSpeedWUPerS);
-      if (nearContact && openingOrOrbiting && status.speed > 1) {
+      if (shouldBrakeCeresAnchorApproach(status)) {
         const ticks = fixedPulseTicks(100);
         await preflightFixedPulse(ticks);
         await page.keyboard.down('Digit0');

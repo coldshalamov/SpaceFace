@@ -54,6 +54,7 @@ import {
   runCeresToolkitTransitHandoff,
   selectCeresHostilePointingStatus,
   selectCeresTetherCombatStatus,
+  shouldBrakeCeresAnchorApproach,
   settleCeresPocketApproach,
   triggerCeresPublicFlightAction,
   validateCeresPilotSources,
@@ -3413,6 +3414,13 @@ test('fixed-tick boosted public approach samples a neutral release edge', async 
   ], 'the dash pulse must be followed by a public neutral fixed tick after both key-up edges');
   assert.equal(receipt.completionTick, fixedTickSamples.at(-1).tick,
     'completion must be sampled only after the neutral release edge');
+});
+
+test('anchor approach brakes captured high tangential motion before contact', () => {
+  assert.equal(shouldBrakeCeresAnchorApproach({ speed: 233.704, hullGapWU: 732.316,
+    recoveryMarginWU: 7.886, radialClosingSpeedWUPerS: 10.443, tangentialSpeedWUPerS: 233.47 }), true);
+  assert.equal(shouldBrakeCeresAnchorApproach({ speed: 80, hullGapWU: 500,
+    recoveryMarginWU: 8, radialClosingSpeedWUPerS: 79, tangentialSpeedWUPerS: 5 }), false);
 });
 
 test('anchor collision ignores stale impacts and owns fixed-tick public input', async () => {
