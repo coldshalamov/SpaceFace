@@ -644,8 +644,7 @@ export const DOMAIN_MIRROR_KEYS = Object.freeze([
   // The site map, machinery HUD and cargo transfer UI read these authoritative
   // records; presentation-owned siblings remain local to the main realm.
   'sites.byId', 'sites.order', 'sites.worldById', 'sites.worldOrder', 'sites.anvilOrchard', 'automation.drones',
-  'drill.scan', 'drill.active', 'drill.tilesCleared', 'drill.field',
-  'drill.asteroidId',
+  'drill',
   'save.slots', 'save.currentSlot',
   // Stage-E facade coverage: the claims facade's read view needs the whole root
   // (galaxyMap reads state.claims.stationGrowth directly, not just bodies), and
@@ -882,6 +881,7 @@ export function configureDomainMirroring(config = {}) {
 // the full segment count (rule prefix + path suffix) so a rule can't reach
 // deeper into a subtree than it declared.
 function domainLeafViewFor(segs) {
+  if (segs.length === 1 && segs[0] === 'drill') return { project: 'drillPresentation', hotPresentation: true };
   if (segs.length === 1 && segs[0] === 'masslineAcquisition') return { project: 'masslineAcquisition' };
   if (segs.length === 1 && ['massline2', 'fields', 'gyreSnare', 'travelLanes'].includes(segs[0])) {
     return { project: segs[0], hotPresentation: true };
@@ -1002,7 +1002,49 @@ const GYRE_PRESENTATION_FIELDS = ['phase','nose','maw','coneLen','halfAngleRad',
   'balls','tornId','tornPos','tornDir','tornGentle','deflectCount','deflectLane','ballOverflow','suckRadius',
   'swirlBlend','orbitSeed','ballTtlS','full','refusals','refusal','towCount','tooHeavyCount'];
 
+// The canonical drill owner has a 28 x 45 board. Keep its presentation atomic:
+// an avatar from a new session must never be paired with an old field or target life.
+function projectDrillPresentation(source) {
+  if (!source || typeof source !== 'object') return null;
+  const fields = (value, names) => {
+    if (!value || typeof value !== 'object') return null;
+    const out = {};
+    for (const key of names) {
+      const entry = value[key];
+      if (entry === null || typeof entry === 'boolean' || (typeof entry === 'number' && Number.isFinite(entry))) out[key] = entry;
+      else if (typeof entry === 'string') out[key] = entry.slice(0, 128);
+    }
+    return out;
+  };
+  const point = value => fields(value, ['col', 'row']);
+  const out = fields(source, ['active','asteroidId','asteroidGeneration','fieldId','rockBudget','rockBudgetMax',
+    'drillDir','moveCooldown','drillTemp','overheated','drillEnergy','energyDepleted','gasHits',
+    'tilesCleared','maxDepth','sessionElapsed','chargeArmed','chargePayload','chargeStock','chargeCooldown','chargesSet']);
+  out.avatar = fields(source.avatar, ['col','row','fromCol','fromRow','moveDuration','moveElapsed','faceDir','isDrilling','drillBlocked']);
+  if (out.avatar) out.avatar.drillTarget = point(source.avatar.drillTarget);
+  out.scan = fields(source.scan, ['cooldown','active','serial','contacts']);
+  out.chargeAim = point(source.chargeAim);
+  out.charge = fields(source.charge, ['col','row','fuse','fuseS','payload']);
+  if (out.charge && Array.isArray(source.charge.pattern)) out.charge.pattern = source.charge.pattern.slice(0, 1260).map(point);
+  out.cableTrail = Array.isArray(source.cableTrail) ? source.cableTrail.slice(0, 1260).map(point) : [];
+  out.yieldLog = {};
+  for (const key of Object.keys(source.yieldLog || {}).slice(0, 128)) {
+    if (key.length <= 128 && Number.isFinite(source.yieldLog[key])) {
+      Object.defineProperty(out.yieldLog, key, { value: source.yieldLog[key], enumerable: true, writable: true, configurable: true });
+    }
+  }
+  out.field = Array.isArray(source.field) ? source.field.slice(0, 28).map(column => Array.isArray(column)
+    ? column.slice(0, 45).map(tile => {
+      const shown = fields(tile, ['type','hp','maxHp','ore','yieldU','hazard','tierReq','hardness','risk',
+        'stratum','rich','cave','fault','cracked','rubble','vented','structure']);
+      if (shown && tile.structure && typeof tile.structure === 'object') shown.structure = fields(tile.structure, ['id','defId']);
+      return shown;
+    }) : null) : null;
+  return out;
+}
+
 function projectDomainLeaf(rule, v, state) {
+  if (rule?.project === 'drillPresentation') return projectDrillPresentation(v);
   if (rule?.project === 'massline2') {
     if (!v || typeof v !== 'object') return null;
     const line = v.throw;
@@ -1084,7 +1126,7 @@ function expandDepthFor(segs) {
   // These roots are bounded presentation projections, even when a diagnostic
   // profile expands every root. Expanding their raw sources would bypass the
   // projector, and the facade must retain the same atomic projected path.
-  if (segs[0] === 'planet.ships' || segs[0] === 'planet.orchardForecast' || segs[0] === 'ilexGreenhousePublic') return 0;
+  if (segs[0] === 'drill' || segs[0] === 'planet.ships' || segs[0] === 'planet.orchardForecast' || segs[0] === 'ilexGreenhousePublic') return 0;
   // One live cable changes every tick, while the bounded broken-line history is mostly static.
   // Keep the complete facade, but diff individual attachment records so that live tension does
   // not clone and transport every old cable on every pose reply.

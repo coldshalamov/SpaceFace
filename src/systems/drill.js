@@ -1400,6 +1400,7 @@ export const drill = {
 
     this.state.drill = {
       asteroidId,
+      asteroidGeneration: Number.isSafeInteger(ent?.occupantGeneration) ? ent.occupantGeneration : null,
       field,
       fieldId: rock.fieldId,
       _sectorId: rock.sectorId,
