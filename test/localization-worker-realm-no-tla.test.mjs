@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-test('real worker entry receives init before census and localization sidecars finish', async () => {
+test('real worker entry receives init without fetching presentation localization inventories', async () => {
   const previousProcess = globalThis.process;
   const previousFetch = globalThis.fetch;
   const previousSelf = globalThis.self;
@@ -28,9 +28,7 @@ test('real worker entry receives init before census and localization sidecars fi
     assert.equal(typeof globalThis.self.onmessage, 'function',
       'the complete worker import graph settles and installs its message handler');
     assert.deepEqual(posted.map((message) => message.kind), ['boot']);
-    assert.equal(requests.length, 2, 'localization may start its sidecar requests without blocking module evaluation');
-    assert.ok(requests.some((url) => url.endsWith('/src/localization/catalogs/en-US.generated.json')));
-    assert.ok(requests.some((url) => url.endsWith('/src/localization/barks.generated.json')));
+    assert.equal(requests.length, 0, 'source-text dependencies do not fetch optional inventories at module evaluation');
 
     globalThis.self.onmessage({ data: {
       kind: 'init',
@@ -38,10 +36,8 @@ test('real worker entry receives init before census and localization sidecars fi
     } });
     await new Promise((resolve) => setImmediate(resolve));
 
-    assert.equal(requests.length, 3, 'init adds census loading while reusing the in-flight sidecars');
+    assert.equal(requests.length, 1, 'init waits only for the required census');
     assert.ok(requests.some((url) => url.endsWith('/src/data/modelTruthCensus.json')));
-    assert.ok(requests.some((url) => url.endsWith('/src/localization/catalogs/en-US.generated.json')));
-    assert.ok(requests.some((url) => url.endsWith('/src/localization/barks.generated.json')));
     assert.deepEqual(posted.map((message) => message.kind), ['boot'],
       'the worker does not announce ready until all init prerequisites resolve');
   } finally {

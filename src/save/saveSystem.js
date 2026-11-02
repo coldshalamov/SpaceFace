@@ -6787,6 +6787,19 @@ export const save = {
   // instead of freezing behind it. load() drives the same generator with no yields — same
   // code, same order, only the scheduling differs.
   async _restoreAsync(data, slot, options = {}) {
+    if (options.rollback !== true && typeof this.helpers?.prepareLocale === 'function') {
+      const sequence = this._restoreSequence;
+      if (options.acceptSeq != null && options.acceptSeq !== sequence) {
+        return { restored: false, superseded: true, stale: true, slot };
+      }
+      const profile = this._readProfileSettings?.();
+      // Match the existing settings restore precedence: the profile wins over the slot.
+      const locale = profile?.locale || data?.settings?.locale || this.state.settings?.locale || 'en-US';
+      await this.helpers.prepareLocale(locale);
+      if (sequence !== this._restoreSequence) {
+        return { restored: false, superseded: true, stale: true, slot };
+      }
+    }
     if (this._restoring) {
       const marker = { queued: true, stale: true, slot };
       this.deferRunTransition(() => {

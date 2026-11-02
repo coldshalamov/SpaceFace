@@ -20,7 +20,7 @@
 //     This is genuinely NEW — grep confirms nothing reads a flash flag today — so it is our net-new
 //     field (settings.accessibility.flashReduce), surfaced via getFlashReduced() for vfx to honor.
 
-import { currentGameLocale, setGameLocale } from '../localization/gameLocalization.js';
+import { currentGameLocale, isLocaleReady, setGameLocale } from '../localization/sourceText.js';
 import { applyHudPresentationFromSettings } from './hudLayout.js';
 
 // ---------------------------------------------------------------------------------------------------
@@ -411,7 +411,7 @@ export function applyAccessibility(settings, target) {
 
 function applyLocaleFromSettings(settings) {
   const next = settings && typeof settings.locale === 'string' ? settings.locale.trim() : '';
-  if (!next || next === currentGameLocale()) return;
+  if (!next || next === currentGameLocale() || !isLocaleReady(next)) return;
   setGameLocale(next);
 }
 

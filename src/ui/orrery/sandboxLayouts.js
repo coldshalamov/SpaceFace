@@ -465,15 +465,11 @@ const SANDBOX_LAYOUTS_CSS = `
   .sf-sandbox .sf-crest { padding-bottom: 4px; }
   .sf-sandbox-tiles { margin-top: 8px; }
 }
-/* polish295: at 1920×1080 the harness kept its 1280 sizes, so the ladder's 12px descriptions and
-   the Combat Lab rows read smaller than on 1280×720 beside a hero that fills the screen. Settings,
-   Save/Load, Crucible and the Records Wall already zoom in this band; the plate zooms with them
-   (zoom, not font tweaks, so the rail, dial and dock band keep their proportions). Desktop only. */
+/* Match the other desktop plates' readable scale while retaining the dial and rail proportions. */
 @media (min-width: 1800px) and (max-width: 2199px) and (min-height: 1000px) {
   html:root:not([data-sf-mobile="1"]) .screen.sf-sandbox { zoom: 1.14; }
-  /* At 1.14 the 160px ladder floor pushed COMBAT LAB's second row (STARTER LOADOUT) half under
-     the stage fade, a ghost strip above Launch. The ladder also gives back the fade and one row,
-     so the panel shows HULL and STARTER LOADOUT whole. */
+  /* At 1.14 the 160px ladder floor left COMBAT LAB's STARTER LOADOUT row half under the stage
+     fade, a ghost strip above Launch; the ladder gives back the fade and one row. */
   html:root:not([data-sf-mobile="1"]) .sf-sandbox-tiles {
     max-height: max(150px, calc(100% - var(--sf-sandbox-peek) - var(--sf-sandbox-fade) - 40px));
   }
@@ -497,6 +493,11 @@ html:root[data-sf-mobile="1"] .screen.sf-sandbox.dp-frame--screen {
   .sf-sandbox-tiles { margin-top: 8px; }
   .sf-sandbox-dial { width: 84px; height: 84px; }
   .sf-sandbox .sf-sandbox-name { font-size: calc(var(--dp-fs-title) * .6); }
+}
+/* Leave the first Combat Lab row above the stage fade in short desktop windows. */
+@media (max-height: 640px) and (min-height: 501px) {
+  .sf-sandbox-tiles { max-height: max(150px, calc(100% - var(--sf-sandbox-peek) - var(--sf-sandbox-fade))); }
+  .sf-sandbox .sf-section-h { margin-top: calc(var(--dp-u) * 3); }
 }
 @media (max-height: 500px) {
   .sf-sandbox-tiles {

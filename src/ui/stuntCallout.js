@@ -50,6 +50,15 @@ export const STABLE_LOAD_CLEARANCE_PX = 12;
 /** Under 901 wide (or 621 tall) the prompt deck is a bottom sheet across the same left edge. */
 export const PROMPT_DECK_SELECTOR = '#sf-prompt-deck:not([hidden])';
 export const PROMPT_DECK_CLEARANCE_PX = 12;
+export const OBJECTIVE_SELECTOR = '#hud > .sf-leftcontext';
+export const VITALS_SELECTOR = '#hud .orr-hud-cluster .orr-cluster';
+export const RADAR_SELECTOR = '#hud .sf-rightdock';
+export const TOUCH_STATUS_SELECTOR = '#sf-touch-overlay .mf-status';
+export const TOUCH_BUTTONS_SELECTOR = '#sf-touch-overlay .mf-buttons';
+export const TOUCH_PAUSE_SELECTOR = '#sf-touch-overlay .mf-pause';
+export const TOUCH_EDGE_SELECTOR = '#sf-touch-overlay .mf-edge';
+export const TOUCH_DOCK_SELECTOR = '#sf-touch-overlay .mf-dock';
+export const HUD_PRIORITY_CLEARANCE_PX = 12;
 
 const BONE = '236 230 216';
 
@@ -393,14 +402,29 @@ function collectText(node, acc) {
  * Returns { root, update, destroy, active } — `update(nowMs)` is the whole render step, also
  * called by the shared frame listener, so tests drive it deterministically without rAF.
  */
-export function createStuntCallout({ state = null, bus = null, host = null, doc = globalThis.document } = {}) {
-  const inert = { root: null, update() {}, destroy() {}, active: () => false };
+export function createStuntCallout({ state = null, bus = null, host = null, doc = globalThis.document,
+  onFlightTextGeometryChange = null } = {}) {
+  const inert = { root: null, update() {}, destroy() {}, active: () => false, setFlightTextGeometryChangeListener() {} };
   if (!usable(doc)) return inert;
   injectOrrery(doc);
   injectStyle(doc);
 
   const root = mk(doc, 'div', 'sf-stuntcall');
   root.hidden = true;
+  let flightTextGeometryChangeListener = typeof onFlightTextGeometryChange === 'function'
+    ? onFlightTextGeometryChange : null;
+  let lastFlightTextGeometryKey = 'hidden';
+  function notifyFlightTextGeometryIfChanged(rect = null) {
+    const width = Number(rect?.width ?? (rect?.right - rect?.left));
+    const height = Number(rect?.height ?? (rect?.bottom - rect?.top));
+    const visible = !root.hidden && root.style.opacity !== '0' && rect && width > 0 && height > 0;
+    const key = visible
+      ? `${rect.left}|${rect.top}|${rect.right}|${rect.bottom}|${width}|${height}`
+      : 'hidden';
+    if (key === lastFlightTextGeometryKey) return;
+    lastFlightTextGeometryKey = key;
+    if (flightTextGeometryChangeListener) flightTextGeometryChangeListener();
+  }
   const lines = mk(doc, 'div', 'sf-stuntcall__lines');
   lines.setAttribute('aria-hidden', 'true');
   root.appendChild(lines);
@@ -670,7 +694,10 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
     const st = getState();
     const scope = calloutScope(st);
     if (!scope) {
-      root.hidden = true;
+      if (!root.hidden) {
+        root.hidden = true;
+        notifyFlightTextGeometryIfChanged();
+      }
       return false;
     }
     // FB-012 — the chain meter is Crucible-only; adventure speaks through the callout lines.
@@ -681,17 +708,19 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
     const hasLines = lineNodes.size > 0;
     const wasHidden = root.hidden;
     root.hidden = !hasLines && !readout;
-    if (root.hidden) return false;
+    if (root.hidden) {
+      if (!wasHidden) notifyFlightTextGeometryIfChanged();
+      return false;
+    }
     if (wasHidden) seatClearOfSpeedDial();
     renderMeter(readout);
     return true;
   }
 
-  // getBoundingClientRect forces a synchronous layout of the whole HUD. A worker reply can deliver
-  // several callout events in one burst, so line handlers request one shared pre-paint seat instead
-  // of repeating these reads. The three obstacles only move when the HUD re-lays out: re-measure
-  // when one appears or disappears (a decision card rising under the column must lift it on the next
-  // seat) or SEAT_MIN_INTERVAL_MS has passed (a window resize, a dial that moved).
+  // getBoundingClientRect forces layout. A worker reply can deliver several callout events in one
+  // burst, so line handlers request one shared pre-paint seat instead of repeating these reads.
+  // Obstacles are converted into vertical blocked bands only when they overlap the callout column;
+  // this keeps a phone status strip at the top from pushing the callout off the top edge.
   const SEAT_MIN_INTERVAL_MS = 250;
   let lastSeatAt = -Infinity;
   let lastSeatNodes = null;
@@ -699,41 +728,110 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
   let seatFrameHandle = null;
   let seatFrameCancel = null;
 
-  function seatClearOfSpeedDial() {
+  function seatClearOfSpeedDial(force = false) {
     const view = doc.defaultView;
     if (!view || typeof doc.querySelector !== 'function' || typeof root.getBoundingClientRect !== 'function') return;
     const obstacles = [
       [SPEED_DIAL_SELECTOR, SPEED_DIAL_CLEARANCE_PX],
       [STABLE_LOAD_SELECTOR, STABLE_LOAD_CLEARANCE_PX],
       [PROMPT_DECK_SELECTOR, PROMPT_DECK_CLEARANCE_PX],
+      [OBJECTIVE_SELECTOR, HUD_PRIORITY_CLEARANCE_PX],
+      [VITALS_SELECTOR, HUD_PRIORITY_CLEARANCE_PX],
+      [RADAR_SELECTOR, HUD_PRIORITY_CLEARANCE_PX],
+      [TOUCH_STATUS_SELECTOR, HUD_PRIORITY_CLEARANCE_PX],
+      [TOUCH_BUTTONS_SELECTOR, HUD_PRIORITY_CLEARANCE_PX],
+      [TOUCH_PAUSE_SELECTOR, HUD_PRIORITY_CLEARANCE_PX],
+      [TOUCH_EDGE_SELECTOR, HUD_PRIORITY_CLEARANCE_PX],
+      [TOUCH_DOCK_SELECTOR, HUD_PRIORITY_CLEARANCE_PX],
     ];
     const nodes = obstacles.map(([selector]) => doc.querySelector(selector) || null);
     const seatNow = calloutNow();
     const unchanged = lastSeatNodes !== null && nodes.every((node, i) => node === lastSeatNodes[i]);
-    if (unchanged && seatNow - lastSeatAt < SEAT_MIN_INTERVAL_MS) return;
+    if (!force && unchanged && seatNow - lastSeatAt < SEAT_MIN_INTERVAL_MS) {
+      notifyFlightTextGeometryIfChanged(root.getBoundingClientRect());
+      return;
+    }
     lastSeatNodes = nodes;
     lastSeatAt = seatNow;
     const ownRect = root.getBoundingClientRect();
-    let top = Infinity;
+    const viewportHeight = Number(view.innerHeight);
+    const ownWidth = Number(ownRect.width ?? (ownRect.right - ownRect.left));
+    const ownHeight = Number(ownRect.height ?? (ownRect.bottom - ownRect.top));
+    if (!(ownWidth > 0) || !(ownHeight > 0) || !(viewportHeight > 0)) return;
+    const viewportTop = Math.min(8, viewportHeight / 2);
+    const viewportBottom = Math.max(viewportTop, viewportHeight - viewportTop);
+    const blocked = [];
+    let hasOverlappingObstacle = false;
     for (let i = 0; i < obstacles.length; i++) {
       const node = nodes[i];
       if (!node || typeof node.getBoundingClientRect !== 'function') continue;
       const rect = node.getBoundingClientRect();
-      if (!(rect.height > 0) || rect.left >= ownRect.right || rect.right <= ownRect.left) continue;
-      top = Math.min(top, rect.top - obstacles[i][1]);
+      const rectWidth = Number(rect.width ?? (rect.right - rect.left));
+      const rectHeight = Number(rect.height ?? (rect.bottom - rect.top));
+      if (!(rectWidth > 0) || !(rectHeight > 0)
+        || rect.left >= ownRect.right || rect.right <= ownRect.left
+        || rect.bottom <= viewportTop || rect.top >= viewportBottom) continue;
+      hasOverlappingObstacle = true;
+      const clearance = obstacles[i][1];
+      blocked.push({
+        top: Math.max(viewportTop, rect.top - clearance),
+        bottom: Math.min(viewportBottom, rect.bottom + clearance),
+      });
     }
-    root.style.bottom = Number.isFinite(top) ? `max(32vh, ${Math.round(view.innerHeight - top)}px)` : '';
+    blocked.sort((a, b) => a.top - b.top || a.bottom - b.bottom);
+    const bands = [];
+    let cursor = viewportTop;
+    for (const band of blocked) {
+      if (band.top > cursor) bands.push({ top: cursor, bottom: band.top });
+      cursor = Math.max(cursor, band.bottom);
+      if (cursor >= viewportBottom) break;
+    }
+    if (cursor < viewportBottom) bands.push({ top: cursor, bottom: viewportBottom });
+
+    const authoredTop = viewportHeight - viewportHeight * 0.32 - ownHeight;
+    let selectedTop = null;
+    let selectedDistance = Infinity;
+    for (const band of bands) {
+      if (band.bottom - band.top < ownHeight) continue;
+      const top = Math.max(band.top, Math.min(authoredTop, band.bottom - ownHeight));
+      const distance = Math.abs(top - authoredTop);
+      if (distance < selectedDistance) {
+        selectedTop = top;
+        selectedDistance = distance;
+      }
+    }
+
+    if (selectedTop == null) {
+      if (root.style.bottom) root.style.bottom = '';
+      if (root.style.opacity !== '0') root.style.opacity = '0';
+      const postSeatRect = root.getBoundingClientRect();
+      notifyFlightTextGeometryIfChanged(postSeatRect);
+      return;
+    }
+
+    if (root.style.opacity === '0') root.style.opacity = '';
+    let nextBottom = '';
+    if (hasOverlappingObstacle && Math.abs(selectedTop - authoredTop) >= 1) {
+      const bottom = Math.round(viewportHeight - selectedTop - ownHeight);
+      nextBottom = selectedTop < authoredTop
+        ? `max(32vh, ${bottom}px)`
+        : `min(32vh, ${bottom}px)`;
+    }
+    if (root.style.bottom !== nextBottom) root.style.bottom = nextBottom;
+    // Publish the actual post-placement box so HUD readers never chase the stale pre-seat rect.
+    const postSeatRect = root.getBoundingClientRect();
+    notifyFlightTextGeometryIfChanged(postSeatRect);
   }
 
   // Worker replies can deliver several presentation events in one burst. Keep their text and
   // live-region receipts synchronous, but coalesce the shared HUD layout read to one pre-paint
   // callback so each event does not independently query and measure the same obstacles.
-  function scheduleSeatClearOfSpeedDial() {
+  function scheduleSeatClearOfSpeedDial(force = false) {
     if (destroyed || seatFramePending) return;
     const view = doc.defaultView;
     const raf = (view && view.requestAnimationFrame) || globalThis.requestAnimationFrame;
     if (typeof raf !== 'function') {
-      seatClearOfSpeedDial();
+      seatClearOfSpeedDial(force);
       return;
     }
     seatFramePending = true;
@@ -745,8 +843,14 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
       seatFramePending = false;
       seatFrameHandle = null;
       seatFrameCancel = null;
-      if (!destroyed && !root.hidden) seatClearOfSpeedDial();
+      if (!destroyed && !root.hidden) seatClearOfSpeedDial(force);
     });
+  }
+
+  const layoutResizeView = doc.defaultView;
+  const onLayoutResize = () => scheduleSeatClearOfSpeedDial(true);
+  if (layoutResizeView && typeof layoutResizeView.addEventListener === 'function') {
+    layoutResizeView.addEventListener('resize', onLayoutResize);
   }
 
   function wake() {
@@ -793,6 +897,9 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
     wake();
   }
   if (bus && typeof bus.on === 'function') {
+    unsubs.push(bus.on('hud:layoutChanged', () => {
+      if (!root.hidden) scheduleSeatClearOfSpeedDial(true);
+    }));
     unsubs.push(bus.on('stunt:trickDetected', (t) => onTrick(t)));
     unsubs.push(bus.on('stunt:trickAmended', (t) => onTrick(t)));
     unsubs.push(bus.on('stunt:styleBanked', (b) => onBank(b)));
@@ -920,7 +1027,10 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
       for (const entry of lineNodes.values()) if (entry.node.parentNode) entry.node.parentNode.removeChild(entry.node);
       lineNodes.clear();
       sr.textContent = '';
-      root.hidden = true;
+      if (!root.hidden) {
+        root.hidden = true;
+        notifyFlightTextGeometryIfChanged();
+      }
     }));
     unsubs.push(bus.on('bombs:primed', (payload) => {
       if (destroyed) return;
@@ -936,6 +1046,10 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
     root,
     update,
     active: () => !destroyed && !root.hidden,
+    setFlightTextGeometryChangeListener(listener) {
+      flightTextGeometryChangeListener = typeof listener === 'function' ? listener : null;
+      lastFlightTextGeometryKey = '';
+    },
     announceStroke(stroke) {
       if (destroyed) return false;
       if (!calloutScope(getState())) return false;
@@ -953,6 +1067,14 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
     },
     destroy() {
       destroyed = true;
+      if (layoutResizeView && typeof layoutResizeView.removeEventListener === 'function') {
+        layoutResizeView.removeEventListener('resize', onLayoutResize);
+      }
+      if (!root.hidden) {
+        root.hidden = true;
+        notifyFlightTextGeometryIfChanged();
+      }
+      flightTextGeometryChangeListener = null;
       if (seatFramePending && seatFrameCancel && seatFrameHandle != null) {
         try { seatFrameCancel(seatFrameHandle); } catch (_) { /* frame already retired */ }
       }
@@ -979,12 +1101,16 @@ let liveCallout = null;
 
 /** Idempotent mount used by the Crucible door and results screens. */
 export function ensureStuntCallout(ctx) {
-  if (liveCallout) return liveCallout;
+  if (liveCallout) {
+    liveCallout.setFlightTextGeometryChangeListener?.(ctx && ctx.onFlightTextGeometryChange);
+    return liveCallout;
+  }
   liveCallout = createStuntCallout({
     state: ctx && ctx.state,
     bus: ctx && ctx.bus,
     host: ctx && ctx.host,
     doc: ctx && ctx.doc,
+    onFlightTextGeometryChange: ctx && ctx.onFlightTextGeometryChange,
   });
   return liveCallout;
 }
