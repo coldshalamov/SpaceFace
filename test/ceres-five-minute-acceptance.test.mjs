@@ -18,6 +18,7 @@ import {
   accessibilityCheckpointIdentity,
   canonicalGapProjection,
   ceresPreContinueLegReserveTicks,
+  ceresPointPulseDuration,
   ceresTurnPulseDuration,
   ceresHostileOpportunityPass,
   ceresLawfulServiceClassificationPass,
@@ -53,10 +54,12 @@ import {
   runCeresToolkitTransitHandoff,
   selectCeresHostilePointingStatus,
   selectCeresTetherCombatStatus,
+  shouldBrakeCeresAnchorApproach,
   settleCeresPocketApproach,
   triggerCeresPublicFlightAction,
   validateCeresPilotSources,
   validatePublicInputReceipt,
+  validateCeresWorkingSeamEgressArrival,
   waitForCeresExactActiveTetherAuthority,
   waitForCeresHostileMasslineAcquisition,
   waitForCeresToolkitConflictAuthority,
@@ -3243,6 +3246,14 @@ test('short public turns lengthen only when the observed heading does not respon
   assert.equal(ceresTurnPulseDuration(action, previous, 0.05).durationMs, 20);
 });
 
+test('public point thrust uses longer pulses outside the approach margin', () => {
+  const thrust = { kind: 'thrust', durationMs: 160 };
+  const pulse = { durationMs: 160 };
+  assert.equal(ceresPointPulseDuration(thrust, pulse, 108.62, 45), 480);
+  assert.equal(ceresPointPulseDuration(thrust, pulse, 90, 45), 160);
+  assert.equal(ceresPointPulseDuration({ kind: 'turn' }, { durationMs: 40 }, 200, 45), 40);
+});
+
 test('public pocket approach completes only after the hull is settled inside the anchor', () => {
   assert.equal(chooseCeresPocketApproachAction({
     distanceWU: 80,
@@ -3403,6 +3414,13 @@ test('fixed-tick boosted public approach samples a neutral release edge', async 
   ], 'the dash pulse must be followed by a public neutral fixed tick after both key-up edges');
   assert.equal(receipt.completionTick, fixedTickSamples.at(-1).tick,
     'completion must be sampled only after the neutral release edge');
+});
+
+test('anchor approach brakes captured high tangential motion before contact', () => {
+  assert.equal(shouldBrakeCeresAnchorApproach({ speed: 233.704, hullGapWU: 732.316,
+    recoveryMarginWU: 7.886, radialClosingSpeedWUPerS: 10.443, tangentialSpeedWUPerS: 233.47 }), true);
+  assert.equal(shouldBrakeCeresAnchorApproach({ speed: 80, hullGapWU: 500,
+    recoveryMarginWU: 8, radialClosingSpeedWUPerS: 79, tangentialSpeedWUPerS: 5 }), false);
 });
 
 test('anchor collision ignores stale impacts and owns fixed-tick public input', async () => {
@@ -4884,6 +4902,17 @@ test('Working Seam departure leaves the captured berth outward and routes around
   assert.throws(() => planCeresWorkingSeamDeparture({ player: { pos: captured } }), /public Belt Outpost/);
 });
 
+test('public Working Seam egress must arrive alive inside the unchanged station gate', () => {
+  const target = { targetPos: { x: -11508, z: 7252 }, arrivalRadiusWU: 90 };
+  const arrival = { player: { alive: true, pos: { x: -11473.48, z: 7206.99 } },
+    autopilot: { active: false, status: 'arrived', label: 'Belt Outpost' } };
+  assert.doesNotThrow(() => validateCeresWorkingSeamEgressArrival(arrival, target));
+  assert.throws(() => validateCeresWorkingSeamEgressArrival({ ...arrival,
+    player: { alive: true, pos: { x: -11695.82, z: 7382.53 } } }, target), /station gate/);
+  assert.throws(() => validateCeresWorkingSeamEgressArrival({ ...arrival,
+    autopilot: { ...arrival.autopilot, status: 'manual' } }, target), /station gate/);
+});
+
 test('Working Seam evidence publicly restages to the fixed Belt Outpost departure corridor', async () => {
   const sectorId = CERES_REFERENCE_ACCEPTANCE_ENTRY.sectorId;
   const liveAcceptedArrival = Object.freeze({
@@ -5045,7 +5074,7 @@ test('Working Seam evidence publicly restages to the fixed Belt Outpost departur
   const routeEnd = routeSource.indexOf('/**\n * Perform every known no-launch prerequisite', routeStart);
   const route = routeSource.slice(routeStart, routeEnd);
   assert.match(route,
-    /await screenshot\([^;]+;[\s\S]*leg\.pocketId === 'ceres_working_seam'[\s\S]*planCeresWorkingSeamEgress\(arrival, \{[\s\S]*continueProof[\s\S]*CERES_WORKING_SEAM_EGRESS_MIN_REMAINING_TICKS[\s\S]*drivePublicToCeresPoint\(page, egressTarget, observerBounds\.endTick\)/,
+    /await screenshot\([^;]+;[\s\S]*leg\.pocketId === 'ceres_working_seam'[\s\S]*planCeresWorkingSeamEgress\(arrival, \{[\s\S]*continueProof[\s\S]*CERES_WORKING_SEAM_EGRESS_MIN_REMAINING_TICKS[\s\S]*selectMapTarget\(page, \{[\s\S]*PQ020_ROUTE_TARGETS\.beltOutpost[\s\S]*waitForAutopilotArrival\([\s\S]*validateCeresWorkingSeamEgressArrival\(egress, egressTarget\)/,
     'seam arrival evidence must be recorded before the public departure restage');
   assert.match(route,
     /const legs = \[[\s\S]*PQ020_ROUTE_TARGETS\.beltOutpost[\s\S]*PQ020_ROUTE_TARGETS\.beacon, method: 'keyboard'[\s\S]*\];/,

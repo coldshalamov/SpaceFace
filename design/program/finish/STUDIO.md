@@ -82,4 +82,4 @@ Every returned packet records its actual source/input identity, changed paths, d
 artifacts and material remaining work. Keep context compact enough for another worker to act on it.
 Blocked provider/device access is recorded honestly while independent game work continues. The
 five additional ChatGPT Pro creation jobs retain their original provider requirement and remain
-unsent while the intended Pro account is usage-locked.
+unsent while the intended Pro account is usage-locked until November 4; do not substitute Work.

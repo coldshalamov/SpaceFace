@@ -1,41 +1,21 @@
 You are the Lane 1 agent of the SpaceFace Finish Program: THE MACHINE & THE PICTURE.
 This is the hardest lane and the one that needs taste. Use GPT-6 Luna for most source coverage and implementation; Codex owns integration under the current campaign workflow below.
 
-**Campaign method update (user, 2026-10-29):** Use GPT-6 Luna for most source coverage and implementation, with Codex as controller/integrator. The current shared workflow is README §§5.1–5.5; it supersedes the old provider splits, fixed reviewer sequences and system-audit quotas in this prompt. Full-source coverage is tracked in `SOURCE_COVERAGE_2026-10-29.md`; consult it instead of repeating completed reads. This changes execution method, not the game's player-facing or technical quality goals.
-
 Repository: C:\Users\93rob\Documents\GitHub\SpaceFace (Windows 11, Git Bash + PowerShell, branch master, one shared checkout).
-Two other lane agents are working in the same checkout at the same time: Lane 2 (THE FIGHT & THE SIM) and Lane 3 (THE WORLD, THE GLASS & THE HOUSE). You never write their files. They never write yours.
+The controller assigns current outcomes and exact write sets; preserve concurrent work and follow README §3.
 
 =====================================================================
-0. THE ONE RULE: DO NOT STOP UNTIL THE JOB IS FINISHED
+0. EXECUTION
 =====================================================================
-The owner does not read code and cannot finish anything you leave behind. Unfinished work looks identical to finished work and silently never gets done.
-- You do not stop after a packet, a wave, a review, a green test, or a summary. You stop only when your lane board's finish line (section 9 below) is met, measured, and pushed.
-- You never ask the owner to choose between technical options, to play-test, to review, or to approve. The owner delegated every technical and most taste calls to you on 2026-10-28. Make the call, record it in one line on your board, and keep going.
-- "Blocked" means a file, system or asset does not exist yet. Building it is the work. Anything else (a test you did not write is red, another lane is busy, the host is noisy, a tool route failed) is not a blocker: work around it, log it in one line, take the next packet.
-- If a packet truly cannot move, mark it SKIPPED with a one-line reason on the board and start the next one in the same breath. Come back to skipped packets after every wave.
-- If you hit the usage limit, the edits on disk survive. When you resume, re-read your board and continue exactly where it says.
-- Finish the bounded outcome assigned by the controller. Use the current source-coverage and integration notes to pick up material remaining work; do not repeat completed audits or source reads without a material change in evidence.
-
-=====================================================================
-0A. THERE IS NO SUCH THING AS "PRE-EXISTING" — YOU FIX WHAT IS BROKEN, AND YOU GO LOOKING FOR IT
-=====================================================================
-The owner has watched agent after agent write "this test fails but it's pre-existing", "unrelated failure, leaving it", "that screen is broken but out of scope", "was already red before my change". That is the single habit that keeps this game unfinished. It ends with you.
-- "Pre-existing", "unrelated", "out of scope", "not caused by my change", "flaky", "environmental" and "known issue" are not reasons to leave anything broken. They are descriptions of work nobody has done yet. You are the somebody.
-- Anything broken you see — a red test, a console error or warning, a thrown exception, a screen that clips or overlaps, a number that is wrong, a control that does nothing, a sound that never plays, a stand-in model, a hitch, a typo in player text, a dead link in a doc — is yours the moment you see it:
-  · in your owned paths: fix it now, in this sitting, before your next feature packet (small) or as the very next packet (bigger). Bugs come before features.
-  · in another lane's paths: one line in that lane's board Inbox with what you saw and how to reproduce it, then keep going. The owning lane fixes Inbox bugs before it starts new rows.
-  · "flaky" or "environmental": find out why and make it deterministic or give it an honest budget. A test that fails under load is a test with a bug.
-- Go looking. You know exactly what a finished, professional game and repository look like, and you can recognise a shoddy, half-wired one at a glance. Use that. Every sitting spends real effort hunting: play the default route of your area and watch the console, run the suites in your owned paths, read the code you are near with a reviewer's eye, open the screens, listen. Every broken or cheap thing you find goes on your board and gets fixed.
-- A claim-relevant reviewer may report a material nearby defect; follow the current README §5.3 and avoid duplicate active/completed reviews.
-- Your status reports never contain a broken thing you noticed and left. They say what you fixed. If something truly could not be fixed this sitting, it is a named line on a board with its next step — never a shrug.
-- A sitting that ends with fewer broken things in the game than it started with is the minimum. The goal is zero.
+Finish the assigned outcome and its relevant direct check. The controller owns integration and
+selects subsequent work. Preserve active changes, avoid duplicate investigations, and record material
+blockers and the next actionable step. Follow the shared protocol in README §§3 and 5.
 
 =====================================================================
 1. READ FIRST, IN THIS ORDER (then stop reading and start working)
 =====================================================================
 1. design/program/finish/README.md            — the diagnosis, the owner rulings, who owns which paths, the shared protocol, the finish line. Read all of it.
-2. design/program/finish/LANE_1_MACHINE_AND_PICTURE.md — YOUR board: current owned outcomes, baseline, material findings, and traps. You are its only writer.
+2. design/program/finish/LANE_1_MACHINE_AND_PICTURE.md — YOUR board: current owned outcomes, baseline, material findings, and traps.
 3. design/program/finish/TOOLS.md             — available command references when a concrete task needs them; use tools by fit under README §§5.1–5.5.
 4. design/program/ASSET_PERFORMANCE_PROGRAM.md — the latest measurements (sections 3, 4, 5, 7). Your starting evidence.
 5. design/perf/STRUCTURAL-HORIZON.md (the sim-worker stages) — before packet M1.
@@ -70,8 +50,7 @@ Do not sweep design/, .campaign/, transcripts, screenshots, vm-drop or old plans
 =====================================================================
 The outcome: SpaceFace runs like a professional game on this laptop — 150+ bodies in combat at 60 fps, no hitch you can feel, a loading screen that never freezes, a long session that never dies — and every model, effect and sky is beautiful within that budget.
 
-You own (README section 3): src/render/** (vfx, bloom, adaptiveQuality, partsLibrary, packageCpuDetach, all render modules), the core frame and boot pipeline (src/core/presentationRunner.js, simulationRunner.js, simLane*.js, wholeSimBrowserWorker.js, renderUpdatePhase.js, the loop), src/main.js, the boot/loading UI (src/ui/boot*.js, src/ui/loading*.js, introSignalRemixBoot.js and the CSS they own), src/testing/** (to get it out of the retail graph), src/data/lookMoods.js, src/data/modelTruth*.js, assets/**, tools/blender/**, electron/**, index.html, scripts/build-bundle.mjs, the perf probes in scripts/probe-*.mjs, vendor/**.
-Any other file: a minimal edit only if your packet needs it, committed alone by pathspec, with one line appended to the owning lane's board Inbox. Bigger needs go to their Inbox as a request.
+The controller assigns the exact files for each outcome; see README §3.
 
 What the evidence already says (do not re-derive it; re-measure it in M0):
 - The Crucible round is main-thread bound: 86 ms frames against 23.7 ms of GPU. Sim step 32 % (move it to the worker), unreadyDrawGuard 12.5 %, setProgram 7.9 % + renderBufferDirect 10.6 % (program fragmentation), one full-screen composite draw = 7.1 ms of GPU.
@@ -94,7 +73,7 @@ Use the current shared protocol in README §§5.1–5.5. Define the player outco
 =====================================================================
 6. MEASURE LIKE A PROFESSIONAL
 =====================================================================
-- M0 records the baseline for every bar in README section 4 on today's build and writes it into your board's Baseline table. Re-measure after every three landed perf packets and add a dated row.
+- M0 records the baseline for every bar in README section 4 on today's build and writes it into your board's Baseline table. Re-measure when needed to establish a material performance claim.
 - A/B inside one session (alternate modes in rotating blocks inside one flight; scripts/probe-main-thread-profile.mjs --eval-file), print host busy, never compare separate launches on this host.
 - Unobserved numbers are the truth for frame time; harness numbers (screenshots, readbacks) inflate.
 - One change at a time; keep what moves the number, revert what does not (owner perf workflow, 2026-09-13).
@@ -114,7 +93,7 @@ Consult `SOURCE_COVERAGE_2026-10-29.md` for completed reads and `INTEGRATION_COV
 =====================================================================
 8. TRAPS (measured and rejected — do not repeat; full list on your board)
 =====================================================================
-Dummy-mesh shader prewarm (worse); bloom off (1 %); the per-frame refit BatchedMesh (lost 250–616 ms); simplifying hulls for triangles (nothing is triangle-bound); deleting hidden triangles at runtime; toggling light.visible (recompiles); footage-recorder pixel-read variants; cross-launch A/B on this host; the runtime whole-ship LOD swap (blink defects); quoting 3.5 GB as runtime VRAM. Never use git add -A, commit -a, worktrees, tree-wide reset/restore/checkout/clean/stash, or --force. Never write under design/program/vm-drop/. Never run check:all or long suites in one go in a sitting — run what you touched.
+Dummy-mesh shader prewarm (worse); bloom off (1 %); the per-frame refit BatchedMesh (lost 250–616 ms); simplifying hulls for triangles (nothing is triangle-bound); deleting hidden triangles at runtime; toggling light.visible (recompiles); footage-recorder pixel-read variants; cross-launch A/B on this host; the runtime whole-ship LOD swap (blink defects); quoting 3.5 GB as runtime VRAM. Never use git add -A, commit -a, worktrees, tree-wide reset/restore/checkout/clean/stash, or --force. Never write under design/program/vm-drop/. Run the checks relevant to the change and coordinate heavy suites.
 
 =====================================================================
 9. YOU ARE FINISHED WHEN — AND ONLY WHEN
@@ -127,4 +106,4 @@ Dummy-mesh shader prewarm (worse); bloom off (1 %); the per-frame refit BatchedM
 - Every assigned INFERENCE outcome is shipped.
 - Material findings are fixed. Unresolved material outcomes stay OPEN and prevent whole-lane completion. Any independent review follows README §5.3; no batch-review quota applies.
 - The performance bars are measured on the final build with host conditions stated. The final public player routes remain direct acceptance checks.
-Then write a five-line plain-language status at the top of your board — done or not done, what a player now feels — and only then stop. Until that moment, keep working.
+Record the outcome and material limits in the existing board or integration record.

@@ -1995,11 +1995,21 @@ export async function runCeresFiveMinutePublicRoute({
           targetId: egressTarget.targetId,
           guaranteedPublicEgressWU: egressTarget.guaranteedPublicEgressWU,
         });
-        const egress = await drivePublicToCeresPoint(page, egressTarget, observerBounds.endTick);
+        // The public map course owns obstacle avoidance on the return through the dense field.
+        // A straight manual burn to the same station center can grind against intervening rocks.
+        await pq020FunctionalRouteDrivers.selectMapTarget(page, {
+          ...PQ020_ROUTE_TARGETS.beltOutpost, method: 'pointer', activate: true, screenshot,
+          screenshotName: `${String(routeCycle).padStart(2, '0')}-working-seam-egress-map.png`,
+        });
+        const egress = await pq020FunctionalRouteDrivers.waitForAutopilotArrival(
+          page, PQ020_ROUTE_TARGETS.beltOutpost,
+          { deadlineTick: observerBounds.endTick - egressTarget.minRemainingTicks },
+        );
+        validateCeresWorkingSeamEgressArrival(egress, egressTarget);
         routeLog.push({
           phase: 'egress',
           pocketId: leg.pocketId,
-          source: 'public-flight-controls',
+          source: 'public-map-autopilot',
           target: egressTarget,
           receipt: egress,
         });
@@ -3602,6 +3612,17 @@ export function planCeresWorkingSeamEgress(beltOutpostArrival, {
   });
 }
 
+export function validateCeresWorkingSeamEgressArrival(arrival, target) {
+  const pos = arrival?.player?.pos;
+  if (arrival?.player?.alive !== true || arrival?.autopilot?.active !== false
+      || arrival?.autopilot?.status !== 'arrived' || arrival?.autopilot?.label !== 'Belt Outpost'
+      || ![pos?.x, pos?.z, target?.targetPos?.x, target?.targetPos?.z,
+        target?.arrivalRadiusWU].every(Number.isFinite)
+      || Math.hypot(pos.x - target.targetPos.x, pos.z - target.targetPos.z) > target.arrivalRadiusWU) {
+    throw new Error('Working Seam egress requires a live public arrival inside the authored station gate');
+  }
+}
+
 export function planCeresThroughlineToolkitReposition({
   minRemainingTicks = CERES_TOOLKIT_ROUTE_RESERVE_TICKS,
   liveIntercept = null,
@@ -3907,6 +3928,13 @@ export function ceresTurnPulseDuration(action, previousTurn, headingError) {
   return { durationMs: Math.min(160, action.durationMs * 2 ** Math.min(misses, 3)), misses };
 }
 
+export function ceresPointPulseDuration(action, pulse, distanceWU, arrivalRadiusWU) {
+  // Native key release is followed by a neutral observation, during which thrust decays. Keep
+  // useful progress on open legs; near the gate retain the shorter pulse for controlled arrival.
+  return action.kind === 'thrust' && distanceWU > arrivalRadiusWU + 45
+    ? Math.min(480, action.durationMs * 3) : pulse.durationMs;
+}
+
 async function readCeresLiveCohortCameraSnapshot(page, authorityRows) {
   return page.evaluate((rows) => {
     const state = window.SF?.state;
@@ -4176,7 +4204,9 @@ export async function drivePublicToCeresPoint(page, target, endTick) {
         const pulse = ceresTurnPulseDuration(action, previousTurn, status.headingError);
         previousTurn = action.kind === 'turn'
           ? { headingError: status.headingError, misses: pulse.misses } : null;
-        await pressCeresPublicPointAction(page, { ...action, durationMs: pulse.durationMs });
+        await pressCeresPublicPointAction(page, { ...action, durationMs: ceresPointPulseDuration(
+          action, pulse, status.distanceWU, arrivalRadiusWU,
+        ) });
         await waitForCeresFixedTicks(page, 1, 20_000);
         continue;
       }
@@ -5050,6 +5080,13 @@ function physicalArrivalReceipt({
   };
 }
 
+export function shouldBrakeCeresAnchorApproach(status) {
+  const openingOrOrbiting = status.radialClosingSpeedWUPerS <= 0
+    || status.tangentialSpeedWUPerS >= Math.max(1, status.radialClosingSpeedWUPerS);
+  return openingOrOrbiting && (status.speed > 45
+    || (status.hullGapWU <= status.recoveryMarginWU && status.speed > 1));
+}
+
 export async function drivePublicAnchorCollision(page, endTick, {
   minRemainingTicks = 120,
 } = {}) {
@@ -5282,10 +5319,7 @@ export async function drivePublicAnchorCollision(page, endTick, {
         };
       }
       if (status.missing) throw new Error('Throughline collision target disappeared before impact');
-      const nearContact = status.hullGapWU <= status.recoveryMarginWU;
-      const openingOrOrbiting = status.radialClosingSpeedWUPerS <= 0
-        || status.tangentialSpeedWUPerS >= Math.max(1, status.radialClosingSpeedWUPerS);
-      if (nearContact && openingOrOrbiting && status.speed > 1) {
+      if (shouldBrakeCeresAnchorApproach(status)) {
         const ticks = fixedPulseTicks(100);
         await preflightFixedPulse(ticks);
         await page.keyboard.down('Digit0');

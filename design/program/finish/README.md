@@ -6,15 +6,7 @@
 an agent gets its job** until every lane board below reads finished. Those files stay as detail
 references (a lane board names a build-map row; the row's prose in `build_map.md` is the spec).
 
-**Current integration direction (user, 2026-10-29).** For this integration campaign, the user requests broad game finishing with most coverage and implementation performed by GPT-6 Luna, with Codex as controller/integrator. This updates execution method for this campaign and supersedes the fixed Codex batch-review cadence in §2.3, provider quotas and review rituals in §§5–6, and conflicting instructions copied into lane prompts. The 2026-10-28 owner rulings about game quality, technical contracts, route outcomes and measurement targets remain in force.
-
-**Integration ownership (user, 2026-11-01).** The controller now owns all remaining working-tree
-changes, plans and open PRs, including unfinished work from earlier agents. Preserve and integrate
-that work rather than waiting on expired claims. Parallel workers receive disjoint path assignments
-from the controller. Review and expand useful PR outcomes against current owners and player routes;
-[`PR_INTEGRATION.md`](./PR_INTEGRATION.md) tracks the current reconciliation. Performance and bugs
-remain priorities. The owner's latest unattended-session direction permits closing Chrome and VLC
-and stopping competing tasks for performance work; it supersedes the earlier keep-open request.
+**Current execution.** The controller owns integration of the working tree, plans and open PRs. Use GPT-6 Luna for most bounded coverage and implementation, with up to three native workers on disjoint current assignments. Preserve active work and use the shared protocol in §5. The owner permits unattended local work and stopping competing tasks, including Chrome and VLC, when needed for performance work. ChatGPT Pro creation jobs remain on hold while the intended Pro account is usage-locked; do not substitute Work.
 
 | File | What it is |
 |---|---|
@@ -27,8 +19,7 @@ and stopping competing tasks for performance work; it supersedes the earlier kee
 | [`LANE_3_WORLD_GLASS_HOUSE.md`](./LANE_3_WORLD_GLASS_HOUSE.md) | medium lane: Adventure world, economy, story, every 2D screen and the HUD, audio, and the document razor |
 | [`PROMPT_LANE_1.md`](./PROMPT_LANE_1.md), [`PROMPT_LANE_2.md`](./PROMPT_LANE_2.md), [`PROMPT_LANE_3.md`](./PROMPT_LANE_3.md) | the copy-paste prompt that starts each lane's agent |
 
-Each lane board is written by **its own lane only**. That is what lets three agents share one
-checkout: no two lanes write the same file.
+Lane boards organize outcomes. Current assignments and exact path ownership are coordinated by the controller; preserve concurrent work in the shared checkout.
 
 ---
 
@@ -86,12 +77,8 @@ first in `AGENTS.md` §4). `AGENTS.md` and `CLAUDE.md` carry pointers to this se
    can change a fix, acceptance or significant risk. Do not schedule reviews by packet count or
    duplicate an active/completed review. Preserve any open `LANDED_REVIEW.md` item that still has a
    distinct current claim; the controller owns deciding whether its evidence remains material.
-4. **The lane board is the job.** Lanes do not run `program-dispatch --next`; it would hand all three
-   lanes the same review. The board's ordered list is the job, then the lane's own audit findings,
-   then its INFERENCE lines.
-5. **Frontend ownership.** The ORRERY lane's 2026-09-26 claim has lapsed (its handoff is dated
-   2026-09-28). `src/ui/**` and `styles/**` belong to Lane 3, except the loading/boot files Lane 1
-   owns (§3). `design/frontend/ORRERY.md` remains the design direction.
+4. **The boards record the work.** The controller selects the next material outcome using the lane boards and current integration records.
+5. **Frontend direction.** `design/frontend/ORRERY.md` remains the design direction. Current UI write sets are assigned by the controller (§3).
 6. **Rewrites are allowed.** Porting, refactoring or rewriting a subsystem is allowed when it is
    measured better and the default route stays playable. Compatibility paths (`flight.js`, `ai.js`,
    the legacy physics backend) may be deleted once nothing on the default route imports them and their
@@ -109,33 +96,12 @@ first in `AGENTS.md` §4). `AGENTS.md` and `CLAUDE.md` carry pointers to this se
     each player-facing claim at the smallest relevant route and layer; there is no fixed batch or
     per-commit player-truth cadence.
 
-## 3. Path ownership — who may write what
+## 3. Path ownership
 
-Three agents share one checkout and never use worktrees (`AGENTS.md` §3). Ownership is by path:
-
-| Lane | Owns (writes freely) |
-|---|---|
-| **1 MACHINE & PICTURE** | `src/render/**` (incl. `vfx*.js`, `render/vfx/**`, `adaptiveQuality.js`, `bloom.js`, `partsLibrary.js`, `packageCpuDetach.js`), `src/core/` frame and boot pipeline (`presentationRunner.js`, `simulationRunner.js`, `simLane*.js`, `wholeSimBrowserWorker.js`, `renderUpdatePhase.js`, the loop), `src/main.js`, the loading/boot UI (`src/ui/boot*.js`, `src/ui/loading*.js`, `src/ui/introSignalRemixBoot.js`, the loading CSS they own), `src/testing/**` (removal from the retail graph), `src/data/lookMoods.js`, `src/data/modelTruth*.js`, `assets/**`, `tools/blender/**`, `electron/**`, `index.html`, `scripts/build-bundle.mjs`, `scripts/probe-*.mjs` perf probes, `vendor/**` |
-| **2 FIGHT & SIM** | `src/systems/**` combat, flight, swarm, crucible, physics, tether/Massline, weapons, enemies, spawn and AI files (everything in `src/systems/` not listed for Lane 3), `src/ai/**`, `src/combat/**`, `src/core/physics*.js`, `src/core/flight/**`, `src/core/registry.js` and `src/runtime/authoritativeSystemManifest.js`, `src/sim/**`, `src/balance/**`, `src/matter/**`, `src/sports/**`, combat/enemy/weapon data in `src/data/`, `test/` infrastructure and `package.json` **scripts block**, CI workflows |
-| **3 WORLD, GLASS & HOUSE** | `src/ui/**` and `styles/**` (except Lane 1's boot/loading files), `src/systems/` world/economy/story files (`world.js`, `economy.js`, `missions.js`, `npcJobsRuntime.js`, `lawSecurity.js`, `encounterDirector.js`, `traffic.js`, `onboarding.js`, `automation.js`, story/faction/career/market/trade/station systems), `src/world/**`, `src/story/**`, `src/careers/**`, `src/economy/**`, `src/missions/**`, `src/contracts/**`, `src/characters/**`, `src/localization/**`, `src/audio/**`, `src/save/**`, `src/presentation/**`, `src/response/**`, world/story/economy data in `src/data/`, all of `design/`, `docs/`, `build_map.md`, `AGENTS.md`, `CLAUDE.md`, nested `AGENTS.md` files |
-
-Rules:
-
-- **A file you do not own:** if your packet needs a small edit there (an import, a hook, one call
-  site), make it minimal, commit it alone by pathspec, and append one line to the owning lane's board
-  **Inbox** saying what you changed and why. A larger change goes to the owner's Inbox as a request.
-- **A file on the border** (a `src/systems/` file nobody named, a data file used by two lanes):
-  the first lane that needs it takes it and writes the path into its board's *Claimed paths* list.
-- **Tests follow the code.** Each lane edits the tests of the code it owns. Lane 2 owns the runner,
-  `package.json` scripts and CI.
-- **Shared ledgers.** `INFERENCE_IDEAS.md` is frozen as history (802 SHIPPED). New INFERENCE lines
-  live in each lane board. The demo defect ledger (`DEMO_READINESS_2026-09-20.md` §6) is split into
-  the three boards' **Defects** sections for the duration of the program; a defect you see in another
-  lane's paths is one line in that lane's Inbox. A defect neither fixed nor logged is still the one
-  unacceptable outcome (`AGENTS.md` §7).
-- **External CLIs edit inside your owned paths only.** Every packet you hand Codex, Grok, Gemini or
-  OpenCode lists the paths it may touch and forbids everything else, forbids commits, and forbids
-  `git add -A`, stash, reset, checkout and clean.
+The controller assigns exact, non-overlapping write sets for current work; lane names organize the
+backlog, not permanent subsystem locks. Inspect status and the relevant diff before editing, preserve
+concurrent changes, and coordinate any actual overlap. Tests follow the affected owner. The controller
+integrates and publishes exact paths under the shared-checkout rules in `AGENTS.md`.
 
 ## 4. The finish line (measured on this laptop, seed 4242, within-session A/B, host busy printed)
 
@@ -173,7 +139,7 @@ The current controller owns scope, integration, conflict handling, exact-path pu
 1. **Select.** Take the next ordered item on the owning lane board. Use the smallest scope that can close a player-visible outcome; a separate packet brief is optional when the board already makes scope and acceptance clear.
 2. **Build and integrate.** Use GPT-6 Luna for the bulk of investigation and implementation. The controller owns integration into the shared checkout, preserves concurrent work, and reconciles the result with the live source owner and active contracts.
 3. **Verify directly.** Run the smallest check that establishes the claimed result at its relevant layer: a focused behavior check for an invariant, the normal player route for player-facing behavior, and a matched measurement for a performance claim. Run `npm run check:baseline` when the change could plausibly break what it touches. Gameplay batches still follow §2.11. After a failure, change the relevant cause before repeating the same check.
-5. **Land.** Commit exact owned paths and push `origin master` under §3. Preserve the shared-tree, fetch/merge, and exact-path rules there. Update the owning board in the same push.
+4. **Land.** Commit exact owned paths and push `origin master` under §3. Preserve the shared-tree, fetch/merge, and exact-path rules there. Update the owning board in the same push.
 
 ### 5.3 Review when it adds value
 Use one independent, claim-relevant review when an unresolved question could materially change the fix, acceptance, or significant risk, or when a governing requirement calls for it. The controller checks the integrated result and its direct evidence. Do not run review sequences, repeat completed reviews, duplicate active investigations, add reviewer quotas, or require agreement across models. Incorporate material findings before landing; record unrelated defects in the owning lane Inbox.
@@ -192,15 +158,9 @@ repeat a completed source read, audit or review unless a new material delta coul
 acceptance, authority or significant risk. A lane is finished only when §4's product outcomes and
 remaining risks are honestly closed.
 
-### 5.6a There is no such thing as "pre-existing"
-"Pre-existing", "unrelated", "out of scope", "not my change", "flaky" and "known issue" are not reasons
-to leave anything broken; they describe work nobody has done yet. Every broken thing an agent sees — red
-test, console error, clipped screen, wrong number, dead control, silent sound, stand-in model, hitch, bad
-player text — is fixed in that sitting when it is in the agent's paths (bugs before features), or becomes
-one line in the owning lane's Inbox, which that lane clears before new rows. Every sitting also *hunts*:
-play the area's default route with the console open, run the owned suites, read nearby code with a
-reviewer's eye. Reviewers and Codex report broken things near the diff, not only ones the diff caused.
-No status report lists a broken thing that was noticed and left.
+### 5.6a Discovered defects
+A concrete material defect encountered in the assigned work is fixed or recorded with its owner and
+next step. Do not dismiss a failure as pre-existing, or expand an assignment into an unrelated audit.
 
 ### 5.7 Source coverage and system quality
 The 2026-10-29 source coverage index records full reads, explicit reuse and known coverage gaps in
