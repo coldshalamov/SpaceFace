@@ -657,7 +657,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "e33fdded0efdce20b44619af7f4c5e0e240188d7b64a3513932c569c8c57353b",
+  "contentHash": "f077eab00a88058890d3d2ddb1935ee97a14a47f84dd16c4f582d4fa31e828ed",
   "dynamicGroups": [
     {
       "id": "sf.render.saucer-production-v1-lod1.node.lod0-motion-hull-core-hook-drive-core-mesh-lights-cyan.dynamic",
@@ -2900,14 +2900,14 @@
       "uri": "saucer_production_v1_lod1.glb"
     },
     "sourceManifest": {
-      "bytes": 323116,
-      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
+      "bytes": 340541,
+      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 736900,
-    "sha256": "d4f947b593eeb2c1d17c7e5ead42791f007b431c9de8952f6d0c9b695a9ac7eb",
+    "bytes": 737008,
+    "sha256": "0f843ad30916138a870df3ef2ce43a9afbba6124aeab50538e9114da609d259f",
     "uri": "render.glb"
   },
   "runtime": {
@@ -3005,6 +3005,228 @@
       },
       {
         "matrix": [
+          1.1521481275558472,
+          0,
+          0,
+          0,
+          0,
+          1.1521481275558472,
+          0,
+          0,
+          0,
+          0,
+          1.1521481275558472,
+          0,
+          0,
+          -2.4532123804092407,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_DRIVE_CORE_MESH_Lights_Cyan",
+        "planIndex": 7,
+        "tags": {
+          "drive": "core",
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_HULL_CORE_HOOK_DRIVE_CORE_MESH_Lights_Cyan",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_HULL_CORE_HOOK_DRIVE_CORE_MESH_Lights_Cyan",
+            "recordIds": [
+              "sf.render.saucer-production-v1-lod1.node.lod0-motion-hull-core-hook-drive-core-mesh-lights-cyan"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.07500000298023224,
+          0,
+          0,
+          0,
+          0,
+          0.07500000298023224,
+          0,
+          0,
+          0,
+          0,
+          0.07500000298023224,
+          0,
+          0,
+          0.05000000074505806,
+          -9.5,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_NAV_PORT",
+        "planIndex": 9,
+        "tags": {
+          "damageRole": "navLight",
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_HULL_CORE_HOOK_NAV_PORT",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_HULL_CORE_HOOK_NAV_PORT",
+            "recordIds": [
+              "sf.render.saucer-production-v1-lod1.node.lod0-motion-hull-core-hook-nav-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.07500000298023224,
+          0,
+          0,
+          0,
+          0,
+          0.07500000298023224,
+          0,
+          0,
+          0,
+          0,
+          0.07500000298023224,
+          0,
+          0,
+          0.05000000074505806,
+          9.5,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+        "planIndex": 11,
+        "tags": {
+          "damageRole": "navLight",
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+            "recordIds": [
+              "sf.render.saucer-production-v1-lod1.node.lod0-motion-hull-core-hook-nav-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          6.122349739074707,
+          0,
+          0,
+          0,
+          0,
+          6.122349739074707,
+          0,
+          0,
+          0,
+          0,
+          6.122349739074707,
+          0,
+          0,
+          -0.8800072968006134,
+          -0.00000858306884765625,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_VANE_Mechanical",
+        "planIndex": 13,
+        "tags": {
+          "damageRole": "secondary",
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_VANE_Mechanical",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_VANE_Mechanical",
+            "recordIds": [
+              "sf.render.saucer-production-v1-lod1.node.lod0-motion-hull-core-hook-secondary-vane-mechanical"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.09933340176939964,
+          0,
+          0,
+          0,
+          0,
+          0.09933340176939964,
+          0,
+          0,
+          0,
+          0,
+          0.09933340176939964,
+          0,
+          -3.725290298461914e-9,
+          3.5151376724243164,
+          -0.00008225813508033752,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_DOME_Beacon_Amber_beacon",
+        "planIndex": 15,
+        "tags": {
+          "damageRole": "sensor",
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_DOME_Beacon_Amber_beacon",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_DOME_Beacon_Amber_beacon",
+            "recordIds": [
+              "sf.render.saucer-production-v1-lod1.node.lod0-motion-hull-core-hook-sensor-dome-beacon-amber-beacon"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.12423661723732948,
+          0,
+          0,
+          0,
+          0,
+          0.12423661723732948,
+          0,
+          0,
+          0,
+          0,
+          0.12423661723732948,
+          0,
+          -0.00005606561899185181,
+          3.448113203048706,
+          -0.00035673007369041443,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_DOME_Mechanical",
+        "planIndex": 17,
+        "tags": {
+          "damageRole": "sensor",
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_DOME_Mechanical",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_DOME_Mechanical",
+            "recordIds": [
+              "sf.render.saucer-production-v1-lod1.node.lod0-motion-hull-core-hook-sensor-dome-mechanical"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
           1,
           0,
           0,
@@ -3023,7 +3245,7 @@
           1
         ],
         "name": "SOCKET_Camera_Focus",
-        "planIndex": 19,
+        "planIndex": 25,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3075,7 +3297,7 @@
           1
         ],
         "name": "SOCKET_Cargo_Ventral",
-        "planIndex": 20,
+        "planIndex": 26,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3127,7 +3349,7 @@
           1
         ],
         "name": "SOCKET_Engine_Main",
-        "planIndex": 21,
+        "planIndex": 27,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3179,7 +3401,7 @@
           1
         ],
         "name": "SOCKET_Mining_Front",
-        "planIndex": 22,
+        "planIndex": 28,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3231,7 +3453,7 @@
           1
         ],
         "name": "SOCKET_RCS_Port",
-        "planIndex": 23,
+        "planIndex": 29,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3283,7 +3505,7 @@
           1
         ],
         "name": "SOCKET_RCS_Starboard",
-        "planIndex": 24,
+        "planIndex": 30,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3335,7 +3557,7 @@
           1
         ],
         "name": "SOCKET_Tether_Massline",
-        "planIndex": 25,
+        "planIndex": 31,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3387,7 +3609,7 @@
           1
         ],
         "name": "SOCKET_Trail_Main",
-        "planIndex": 26,
+        "planIndex": 32,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3439,7 +3661,7 @@
           1
         ],
         "name": "SOCKET_Trail_Port",
-        "planIndex": 27,
+        "planIndex": 33,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3491,7 +3713,7 @@
           1
         ],
         "name": "SOCKET_Trail_Starboard",
-        "planIndex": 28,
+        "planIndex": 34,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3543,7 +3765,7 @@
           1
         ],
         "name": "SOCKET_Utility_Dorsal",
-        "planIndex": 29,
+        "planIndex": 35,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3595,7 +3817,7 @@
           1
         ],
         "name": "SOCKET_Weapon_Front",
-        "planIndex": 30,
+        "planIndex": 36,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3647,7 +3869,7 @@
           1
         ],
         "name": "SOCKET_Weapon_Port",
-        "planIndex": 31,
+        "planIndex": 37,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3699,7 +3921,7 @@
           1
         ],
         "name": "SOCKET_Weapon_Starboard",
-        "planIndex": 32,
+        "planIndex": 38,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -3757,62 +3979,62 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 7,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 8,
         "role": "signal"
       },
       {
         "allowTextures": true,
-        "planIndex": 9,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 10,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 11,
         "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 12,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 13,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 14,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 15,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 16,
-        "role": "accent"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 17,
         "role": "mechanical"
       },
       {
         "allowTextures": true,
+        "planIndex": 16,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
         "planIndex": 18,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 19,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 20,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 21,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 22,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 23,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 24,
         "role": "mechanical"
       }
     ],
@@ -3822,7 +4044,7 @@
       "sha256": "89a3afbd8cd828c56f26775eeed24fb7472a278fb0937b39397184d01d10ece4",
       "uri": "assets/ships/motions/saucer-production-v1.motion.json"
     },
-    "nodeCount": 33,
+    "nodeCount": 39,
     "primitives": [
       {
         "canopy": false,
@@ -3928,8 +4150,8 @@
           0,
           1
         ],
-        "name": "LOD0_MOTION_HULL_CORE_HOOK_DRIVE_CORE_MESH_Lights_Cyan",
-        "planIndex": 7,
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_DRIVE_CORE_MESH_Lights_Cyan001",
+        "planIndex": 8,
         "tags": {
           "canopy": false,
           "drive": "core",
@@ -3975,8 +4197,8 @@
           -9.5,
           1
         ],
-        "name": "LOD0_MOTION_HULL_CORE_HOOK_NAV_PORT",
-        "planIndex": 8,
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_NAV_PORT001",
+        "planIndex": 10,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
@@ -4004,8 +4226,8 @@
           9.5,
           1
         ],
-        "name": "LOD0_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
-        "planIndex": 9,
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_NAV_STARBOARD001",
+        "planIndex": 12,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
@@ -4033,8 +4255,8 @@
           -0.00000858306884765625,
           1
         ],
-        "name": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_VANE_Mechanical",
-        "planIndex": 10,
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_VANE_Mechanical001",
+        "planIndex": 14,
         "tags": {
           "canopy": false,
           "damageRole": "secondary",
@@ -4062,8 +4284,8 @@
           -0.00008225813508033752,
           1
         ],
-        "name": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_DOME_Beacon_Amber_beacon",
-        "planIndex": 11,
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_DOME_Beacon_Amber_beacon001",
+        "planIndex": 16,
         "tags": {
           "canopy": false,
           "damageRole": "sensor",
@@ -4091,8 +4313,8 @@
           -0.00035673007369041443,
           1
         ],
-        "name": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_DOME_Mechanical",
-        "planIndex": 12,
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_DOME_Mechanical001",
+        "planIndex": 18,
         "tags": {
           "canopy": false,
           "damageRole": "sensor",
@@ -4121,7 +4343,7 @@
           1
         ],
         "name": "LOD0_MOTION_HULL_CORE_Hull",
-        "planIndex": 13,
+        "planIndex": 19,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -4149,7 +4371,7 @@
           1
         ],
         "name": "LOD0_MOTION_HULL_CORE_Lights_Cyan",
-        "planIndex": 14,
+        "planIndex": 20,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -4177,7 +4399,7 @@
           1
         ],
         "name": "LOD0_MOTION_HULL_CORE_Lights_Warm",
-        "planIndex": 15,
+        "planIndex": 21,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -4205,7 +4427,7 @@
           1
         ],
         "name": "LOD0_MOTION_HULL_CORE_Livery",
-        "planIndex": 16,
+        "planIndex": 22,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -4233,7 +4455,7 @@
           1
         ],
         "name": "LOD0_MOTION_HULL_CORE_Mechanical",
-        "planIndex": 17,
+        "planIndex": 23,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -4261,7 +4483,7 @@
           1
         ],
         "name": "LOD0_MOTION_HULL_CORE_MechanicalDark",
-        "planIndex": 18,
+        "planIndex": 24,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -4273,7 +4495,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/saucer_production_v1_lod1.glb"
   },
-  "runtimeHash": "d55819cef182e2b1ff9cfeb440b84b17ba7fcee306e16e3fea531b75a975baa4",
+  "runtimeHash": "3935c8601742c99bfcae8bea7ebd8f870aad2d2b04dc5f0a8e525b5b49549f7f",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

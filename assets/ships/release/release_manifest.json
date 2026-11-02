@@ -120,20 +120,6 @@
       "contractNodeCount": 1
     },
     {
-      "id": "fin_wedge",
-      "kind": "part:fins",
-      "source": "assets/ships/parts/fins/fin_wedge.glb",
-      "release": "assets/ships/release/parts/fins/fin_wedge.glb",
-      "sourceSha256": "b2003ec52eb6c853a661d0ee889e292b9fb8d12e336c12b663bd0d7c401c123c",
-      "releaseSha256": "e5ab066bab0bfaa675ce217e62817c4110b3a47a34a966076ac9ca5a47eeef7e",
-      "sourceBytes": 2989344,
-      "releaseBytes": 4882636,
-      "textures": 5,
-      "ktx2Textures": 5,
-      "meshoptBufferViews": 22,
-      "contractNodeCount": 1
-    },
-    {
       "id": "greeble_armor_plates",
       "kind": "part:greebles",
       "source": "assets/ships/parts/greebles/greeble_armor_plates.glb",
@@ -6931,6 +6917,20 @@
       "ktx2Textures": 6,
       "meshoptBufferViews": 181,
       "contractNodeCount": 64
+    },
+    {
+      "id": "fin_wedge",
+      "kind": "part:fins",
+      "source": "assets/ships/parts/fins/fin_wedge.glb",
+      "release": "assets/ships/release/parts/fins/fin_wedge.glb",
+      "sourceSha256": "b2003ec52eb6c853a661d0ee889e292b9fb8d12e336c12b663bd0d7c401c123c",
+      "releaseSha256": "03850896561ef6e23b5bcffdaf50f17581a26df42b3d2a39ab537bc619e83992",
+      "sourceBytes": 2989344,
+      "releaseBytes": 3707428,
+      "textures": 4,
+      "ktx2Textures": 4,
+      "meshoptBufferViews": 22,
+      "contractNodeCount": 1
     }
   ]
 }

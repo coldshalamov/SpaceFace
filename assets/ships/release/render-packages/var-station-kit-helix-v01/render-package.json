@@ -559,7 +559,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "b962a641abf441fb4e6edceee4c6d05a90ab2bdcb30362ba7cd5a9797cd43405",
+  "contentHash": "5fc9645a80cd8e5947ab3cc74d6ea751036f19691091113dfd3fbdf10d90cd85",
   "dynamicGroups": [
     {
       "id": "sf.render.var-station-kit-helix-v01.mesh.lod0-hook-nav-port-helix.dynamic",
@@ -2194,14 +2194,14 @@
       "uri": "var_station_kit_helix_v01.glb"
     },
     "sourceManifest": {
-      "bytes": 323116,
-      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
+      "bytes": 340541,
+      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 584196,
-    "sha256": "cb8e0f28ae018d1cc4f23f3a9c0ed1ac8fad13215f5a48e4e3cb34b5b1274ead",
+    "bytes": 584232,
+    "sha256": "a4aec2b776fa1d9307c224391138916506364e0a05e6d6634becfb6846dc98db",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2232,6 +2232,78 @@
     "markers": [
       {
         "matrix": [
+          55.55000305175781,
+          0,
+          0,
+          0,
+          0,
+          55.55000305175781,
+          0,
+          0,
+          0,
+          0,
+          55.55000305175781,
+          0,
+          0,
+          12.600000381469727,
+          0,
+          1
+        ],
+        "name": "LOD0_HOOK_NAV_PORT_helix",
+        "planIndex": 4,
+        "tags": {
+          "damageRole": "navLight",
+          "lod": "lod0"
+        },
+        "userData": {
+          "name": "LOD0_HOOK_NAV_PORT_helix",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_HOOK_NAV_PORT_helix",
+            "recordIds": [
+              "sf.render.var-station-kit-helix-v01.mesh.lod0-hook-nav-port-helix"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          55.403202056884766,
+          0,
+          0,
+          0,
+          0,
+          55.403202056884766,
+          0,
+          0,
+          0,
+          0,
+          55.403202056884766,
+          0,
+          0,
+          12.599999904632568,
+          0,
+          1
+        ],
+        "name": "LOD1_HOOK_NAV_PORT_helix",
+        "planIndex": 12,
+        "tags": {
+          "damageRole": "navLight",
+          "lod": "lod1"
+        },
+        "userData": {
+          "name": "LOD1_HOOK_NAV_PORT_helix",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_HOOK_NAV_PORT_helix",
+            "recordIds": [
+              "sf.render.var-station-kit-helix-v01.mesh.lod1-hook-nav-port-helix"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
           1,
           0,
           0,
@@ -2250,7 +2322,7 @@
           1
         ],
         "name": "SOCKET_Camera_Focus",
-        "planIndex": 21,
+        "planIndex": 23,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -2301,7 +2373,7 @@
           1
         ],
         "name": "SOCKET_Cargo_Ventral",
-        "planIndex": 22,
+        "planIndex": 24,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -2352,7 +2424,7 @@
           1
         ],
         "name": "SOCKET_Engine_Main",
-        "planIndex": 23,
+        "planIndex": 25,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -2403,7 +2475,7 @@
           1
         ],
         "name": "SOCKET_Mining_Front",
-        "planIndex": 24,
+        "planIndex": 26,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -2454,7 +2526,7 @@
           1
         ],
         "name": "SOCKET_RCS_Port",
-        "planIndex": 25,
+        "planIndex": 27,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -2505,7 +2577,7 @@
           1
         ],
         "name": "SOCKET_RCS_Starboard",
-        "planIndex": 26,
+        "planIndex": 28,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -2556,7 +2628,7 @@
           1
         ],
         "name": "SOCKET_Tether_Massline",
-        "planIndex": 27,
+        "planIndex": 29,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -2607,7 +2679,7 @@
           1
         ],
         "name": "SOCKET_Trail_Main",
-        "planIndex": 28,
+        "planIndex": 30,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -2658,7 +2730,7 @@
           1
         ],
         "name": "SOCKET_Trail_Port",
-        "planIndex": 29,
+        "planIndex": 31,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -2709,7 +2781,7 @@
           1
         ],
         "name": "SOCKET_Trail_Starboard",
-        "planIndex": 30,
+        "planIndex": 32,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -2760,7 +2832,7 @@
           1
         ],
         "name": "SOCKET_Utility_Dorsal",
-        "planIndex": 31,
+        "planIndex": 33,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -2811,7 +2883,7 @@
           1
         ],
         "name": "SOCKET_Weapon_Front",
-        "planIndex": 32,
+        "planIndex": 34,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -2863,48 +2935,38 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 4,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 5,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 6,
-        "role": "signal"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 7,
-        "role": "accent"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 8,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 9,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 10,
-        "role": "glass"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 11,
         "role": "signal"
       },
       {
         "allowTextures": true,
-        "planIndex": 12,
+        "planIndex": 8,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 10,
         "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 11,
+        "role": "glass"
       },
       {
         "allowTextures": true,
@@ -2914,22 +2976,22 @@
       {
         "allowTextures": true,
         "planIndex": 14,
-        "role": "accent"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 15,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 16,
         "role": "hull"
       },
       {
         "allowTextures": true,
+        "planIndex": 15,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 16,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
         "planIndex": 17,
-        "role": "glass"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
@@ -2939,15 +3001,25 @@
       {
         "allowTextures": true,
         "planIndex": 19,
-        "role": "accent"
+        "role": "glass"
       },
       {
         "allowTextures": true,
         "planIndex": 20,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 21,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 22,
         "role": "mechanical"
       }
     ],
-    "nodeCount": 33,
+    "nodeCount": 35,
     "primitives": [
       {
         "canopy": false,
@@ -3023,8 +3095,8 @@
           0,
           1
         ],
-        "name": "LOD0_HOOK_NAV_PORT_helix",
-        "planIndex": 4,
+        "name": "LOD0_HOOK_NAV_PORT_helix_1",
+        "planIndex": 5,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
@@ -3052,7 +3124,7 @@
           1
         ],
         "name": "LOD0_Hull",
-        "planIndex": 5,
+        "planIndex": 6,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -3079,7 +3151,7 @@
           1
         ],
         "name": "LOD0_Lights_Cyan_helix",
-        "planIndex": 6,
+        "planIndex": 7,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -3106,7 +3178,7 @@
           1
         ],
         "name": "LOD0_Livery",
-        "planIndex": 7,
+        "planIndex": 8,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -3133,7 +3205,7 @@
           1
         ],
         "name": "LOD0_Mechanical",
-        "planIndex": 8,
+        "planIndex": 9,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -3160,7 +3232,7 @@
           1
         ],
         "name": "LOD1_Armor",
-        "planIndex": 9,
+        "planIndex": 10,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -3187,7 +3259,7 @@
           1
         ],
         "name": "LOD1_CANOPY",
-        "planIndex": 10,
+        "planIndex": 11,
         "tags": {
           "canopy": true,
           "lod": "lod1"
@@ -3213,8 +3285,8 @@
           0,
           1
         ],
-        "name": "LOD1_HOOK_NAV_PORT_helix",
-        "planIndex": 11,
+        "name": "LOD1_HOOK_NAV_PORT_helix_1",
+        "planIndex": 13,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
@@ -3242,7 +3314,7 @@
           1
         ],
         "name": "LOD1_Hull",
-        "planIndex": 12,
+        "planIndex": 14,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -3269,7 +3341,7 @@
           1
         ],
         "name": "LOD1_Lights_Cyan_helix",
-        "planIndex": 13,
+        "planIndex": 15,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -3296,7 +3368,7 @@
           1
         ],
         "name": "LOD1_Livery",
-        "planIndex": 14,
+        "planIndex": 16,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -3323,7 +3395,7 @@
           1
         ],
         "name": "LOD1_Mechanical",
-        "planIndex": 15,
+        "planIndex": 17,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -3350,7 +3422,7 @@
           1
         ],
         "name": "LOD2_Armor",
-        "planIndex": 16,
+        "planIndex": 18,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -3377,7 +3449,7 @@
           1
         ],
         "name": "LOD2_CANOPY",
-        "planIndex": 17,
+        "planIndex": 19,
         "tags": {
           "canopy": true,
           "lod": "lod2"
@@ -3404,7 +3476,7 @@
           1
         ],
         "name": "LOD2_Hull",
-        "planIndex": 18,
+        "planIndex": 20,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -3431,7 +3503,7 @@
           1
         ],
         "name": "LOD2_Livery",
-        "planIndex": 19,
+        "planIndex": 21,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -3458,7 +3530,7 @@
           1
         ],
         "name": "LOD2_Mechanical",
-        "planIndex": 20,
+        "planIndex": 22,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -3469,7 +3541,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/var_station_kit_helix_v01.glb"
   },
-  "runtimeHash": "fb57e003132f868b6400345f97b464a442e08e9b6911b2f5fb459926b6b1cf9d",
+  "runtimeHash": "92990c01f33bea31dcd24ea5d1614cb36d097f8c99ed8843ddcf898f09b51ac2",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

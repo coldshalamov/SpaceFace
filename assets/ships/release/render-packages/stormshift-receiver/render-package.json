@@ -703,7 +703,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "666dea965dcb3a82cf6a4713b2b29cc0ad0bbb10534d843dc048112a91e916ee",
+  "contentHash": "b21e7764bd433a86c5d4c768e713b49f68cef04ad3dbdc61fb9a74bae9437e95",
   "dynamicGroups": [
     {
       "id": "sf.render.stormshift-receiver.mesh.lod0-motion-stormshift-receiver-status-warning.dynamic",
@@ -4517,14 +4517,14 @@
       "uri": "ship_stormshift_receiver_v01.glb"
     },
     "sourceManifest": {
-      "bytes": 323116,
-      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
+      "bytes": 340541,
+      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 1063512,
-    "sha256": "28e358fdec532fad622c357f53a846b90e2339ef83aac61ae457545d099a85bb",
+    "bytes": 1063564,
+    "sha256": "cdb1643837ec201971b250ad7b32ccdc9905c642c340531e4015b06d3dfd43e4",
     "uri": "render.glb"
   },
   "runtime": {
@@ -4622,6 +4622,114 @@
       },
       {
         "matrix": [
+          0.5,
+          0,
+          0,
+          0,
+          0,
+          0.5,
+          0,
+          0,
+          0,
+          0,
+          0.5,
+          0,
+          -5.199999809265137,
+          2.309999942779541,
+          3.200000047683716,
+          1
+        ],
+        "name": "LOD0_MOTION_STORMSHIFT_RECEIVER_STATUS_Warning",
+        "planIndex": 46,
+        "tags": {
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_STORMSHIFT_RECEIVER_STATUS_Warning",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_STORMSHIFT_RECEIVER_STATUS_Warning",
+            "recordIds": [
+              "sf.render.stormshift-receiver.mesh.lod0-motion-stormshift-receiver-status-warning"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.49860239028930664,
+          0,
+          0,
+          0,
+          0,
+          0.49860239028930664,
+          0,
+          0,
+          0,
+          0,
+          0.49860239028930664,
+          0,
+          -5.199968338012695,
+          2.3100000619888306,
+          3.1999391317367554,
+          1
+        ],
+        "name": "LOD1_MOTION_STORMSHIFT_RECEIVER_STATUS_Warning",
+        "planIndex": 48,
+        "tags": {
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_STORMSHIFT_RECEIVER_STATUS_Warning",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_STORMSHIFT_RECEIVER_STATUS_Warning",
+            "recordIds": [
+              "sf.render.stormshift-receiver.mesh.lod1-motion-stormshift-receiver-status-warning"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.49860239028930664,
+          0,
+          0,
+          0,
+          0,
+          0.49860239028930664,
+          0,
+          0,
+          0,
+          0,
+          0.49860239028930664,
+          0,
+          -5.199968338012695,
+          2.3100401163101196,
+          3.1999391317367554,
+          1
+        ],
+        "name": "LOD2_MOTION_STORMSHIFT_RECEIVER_STATUS_Warning",
+        "planIndex": 50,
+        "tags": {
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_STORMSHIFT_RECEIVER_STATUS_Warning",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_STORMSHIFT_RECEIVER_STATUS_Warning",
+            "recordIds": [
+              "sf.render.stormshift-receiver.mesh.lod2-motion-stormshift-receiver-status-warning"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
           1,
           0,
           0,
@@ -4640,7 +4748,7 @@
           1
         ],
         "name": "SOCKET_Camera_Focus",
-        "planIndex": 49,
+        "planIndex": 52,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -4691,7 +4799,7 @@
           1
         ],
         "name": "SOCKET_Cargo_Ventral",
-        "planIndex": 50,
+        "planIndex": 53,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -4742,7 +4850,7 @@
           1
         ],
         "name": "SOCKET_Engine_Main",
-        "planIndex": 51,
+        "planIndex": 54,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -4793,7 +4901,7 @@
           1
         ],
         "name": "SOCKET_Mining_Front",
-        "planIndex": 52,
+        "planIndex": 55,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -4844,7 +4952,7 @@
           1
         ],
         "name": "SOCKET_RCS_Port",
-        "planIndex": 53,
+        "planIndex": 56,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -4895,7 +5003,7 @@
           1
         ],
         "name": "SOCKET_RCS_Starboard",
-        "planIndex": 54,
+        "planIndex": 57,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -4946,7 +5054,7 @@
           1
         ],
         "name": "SOCKET_Receive",
-        "planIndex": 55,
+        "planIndex": 58,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -4997,7 +5105,7 @@
           1
         ],
         "name": "SOCKET_Service",
-        "planIndex": 56,
+        "planIndex": 59,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -5048,7 +5156,7 @@
           1
         ],
         "name": "SOCKET_Storage",
-        "planIndex": 57,
+        "planIndex": 60,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -5099,7 +5207,7 @@
           1
         ],
         "name": "SOCKET_Tether_Massline",
-        "planIndex": 58,
+        "planIndex": 61,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -5150,7 +5258,7 @@
           1
         ],
         "name": "SOCKET_Trail_Main",
-        "planIndex": 59,
+        "planIndex": 62,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -5201,7 +5309,7 @@
           1
         ],
         "name": "SOCKET_Trail_Port",
-        "planIndex": 60,
+        "planIndex": 63,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -5252,7 +5360,7 @@
           1
         ],
         "name": "SOCKET_Trail_Starboard",
-        "planIndex": 61,
+        "planIndex": 64,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -5303,7 +5411,7 @@
           1
         ],
         "name": "SOCKET_Utility_Dorsal",
-        "planIndex": 62,
+        "planIndex": 65,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -5354,7 +5462,7 @@
           1
         ],
         "name": "SOCKET_Weapon_Front",
-        "planIndex": 63,
+        "planIndex": 66,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -5608,17 +5716,17 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 46,
-        "role": "warning"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 47,
         "role": "warning"
       },
       {
         "allowTextures": true,
-        "planIndex": 48,
+        "planIndex": 49,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 51,
         "role": "warning"
       }
     ],
@@ -5628,7 +5736,7 @@
       "sha256": "447d7c7a44358831d7453f3eaef43f90ece1623cab2efeeb1c0ad173c90b22fa",
       "uri": "assets/ships/motions/stormshift-receiver.motion.json"
     },
-    "nodeCount": 64,
+    "nodeCount": 67,
     "primitives": [
       {
         "canopy": false,
@@ -6847,8 +6955,8 @@
           3.200000047683716,
           1
         ],
-        "name": "LOD0_MOTION_STORMSHIFT_RECEIVER_STATUS_Warning",
-        "planIndex": 46,
+        "name": "LOD0_MOTION_STORMSHIFT_RECEIVER_STATUS_Warning_1",
+        "planIndex": 47,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -6875,8 +6983,8 @@
           3.1999391317367554,
           1
         ],
-        "name": "LOD1_MOTION_STORMSHIFT_RECEIVER_STATUS_Warning",
-        "planIndex": 47,
+        "name": "LOD1_MOTION_STORMSHIFT_RECEIVER_STATUS_Warning_1",
+        "planIndex": 49,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -6903,8 +7011,8 @@
           3.1999391317367554,
           1
         ],
-        "name": "LOD2_MOTION_STORMSHIFT_RECEIVER_STATUS_Warning",
-        "planIndex": 48,
+        "name": "LOD2_MOTION_STORMSHIFT_RECEIVER_STATUS_Warning_1",
+        "planIndex": 51,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -6916,7 +7024,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/ship_stormshift_receiver_v01.glb"
   },
-  "runtimeHash": "4d84071ffa43ee8dd32609e2d0988007e77b19c5ef8a6e028a9138de88ab1f1a",
+  "runtimeHash": "159407f6869cf98e234bd5b5ca84ee2ed8076d6301a796db76ac72b1991e38cc",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

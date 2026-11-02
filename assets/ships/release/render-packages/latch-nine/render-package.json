@@ -375,7 +375,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "b422b67ac0f80c222cdadb5bd23d80e8b54faa6aca25e495455266e1e506582f",
+  "contentHash": "c670f937197e52aece102308b0a71e346eb6c0fe8027b481479fa5ddbf63cda7",
   "dynamicGroups": [
     {
       "id": "sf.render.latch-nine.node.lod0-hook-latch-thruster-main-port-glow-drive.dynamic",
@@ -8534,14 +8534,14 @@
       "uri": "place_latch_nine.glb"
     },
     "sourceManifest": {
-      "bytes": 323116,
-      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
+      "bytes": 340541,
+      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 884352,
-    "sha256": "82a3f58fc9723c19c3d8553d6f2ce6fc62eec8a21f30ddda8de2d03a251adc6d",
+    "bytes": 885604,
+    "sha256": "aa19441abb9f67312cb1beb6319d816d786085fcf04dd1d9d07bb052cf616f59",
     "uri": "render.glb"
   },
   "runtime": {
@@ -8590,7 +8590,7 @@
           1
         ],
         "name": "MOTION_LATCH_PADDLE_A",
-        "planIndex": 53,
+        "planIndex": 77,
         "tags": {
           "motionGroup": true
         },
@@ -8637,6 +8637,438 @@
       },
       {
         "matrix": [
+          0.3600001335144043,
+          0,
+          0,
+          0,
+          0,
+          0.3600001335144043,
+          0,
+          0,
+          0,
+          0,
+          0.3600001335144043,
+          0,
+          -3.4000000953674316,
+          1.5400000214576721,
+          4.349999904632568,
+          1
+        ],
+        "name": "LOD0_MOTION_LATCH_PADDLE_A_BrushedMetal",
+        "planIndex": 78,
+        "tags": {
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_LATCH_PADDLE_A_BrushedMetal",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_LATCH_PADDLE_A_BrushedMetal",
+            "recordIds": [
+              "sf.render.latch-nine.node.lod0-motion-latch-paddle-a-brushedmetal"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.36500000953674316,
+          0,
+          0,
+          0,
+          0,
+          0.36500000953674316,
+          0,
+          0,
+          0,
+          0,
+          0.36500000953674316,
+          0,
+          -3.4000000953674316,
+          1.850000023841858,
+          7.619999885559082,
+          1
+        ],
+        "name": "LOD0_MOTION_LATCH_PADDLE_A_Lights_Warm",
+        "planIndex": 80,
+        "tags": {
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_LATCH_PADDLE_A_Lights_Warm",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_LATCH_PADDLE_A_Lights_Warm",
+            "recordIds": [
+              "sf.render.latch-nine.node.lod0-motion-latch-paddle-a-lights-warm"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1.999999761581421,
+          0,
+          0,
+          0,
+          0,
+          1.999999761581421,
+          0,
+          0,
+          0,
+          0,
+          1.999999761581421,
+          0,
+          -3.399999976158142,
+          1.711849868297577,
+          6.1499998569488525,
+          1
+        ],
+        "name": "LOD0_MOTION_LATCH_PADDLE_A_Mechanical",
+        "planIndex": 82,
+        "tags": {
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_LATCH_PADDLE_A_Mechanical",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_LATCH_PADDLE_A_Mechanical",
+            "recordIds": [
+              "sf.render.latch-nine.node.lod0-motion-latch-paddle-a-mechanical"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1.999999761581421,
+          0,
+          0,
+          0,
+          0,
+          1.999999761581421,
+          0,
+          0,
+          0,
+          0,
+          1.999999761581421,
+          0,
+          -3.399999976158142,
+          1.6850000023841858,
+          6.1499998569488525,
+          1
+        ],
+        "name": "LOD0_MOTION_LATCH_PADDLE_A_Warning",
+        "planIndex": 84,
+        "tags": {
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_LATCH_PADDLE_A_Warning",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_LATCH_PADDLE_A_Warning",
+            "recordIds": [
+              "sf.render.latch-nine.node.lod0-motion-latch-paddle-a-warning"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.35913872718811035,
+          0,
+          0,
+          0,
+          0,
+          0.35913872718811035,
+          0,
+          0,
+          0,
+          0,
+          0.35913872718811035,
+          0,
+          -3.4000000953674316,
+          1.5399922728538513,
+          4.349999904632568,
+          1
+        ],
+        "name": "LOD1_MOTION_LATCH_PADDLE_A_BrushedMetal",
+        "planIndex": 86,
+        "tags": {
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_LATCH_PADDLE_A_BrushedMetal",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_LATCH_PADDLE_A_BrushedMetal",
+            "recordIds": [
+              "sf.render.latch-nine.node.lod1-motion-latch-paddle-a-brushedmetal"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.3638345003128052,
+          0,
+          0,
+          0,
+          0,
+          0.3638345003128052,
+          0,
+          0,
+          0,
+          0,
+          0.3638345003128052,
+          0,
+          -3.400000214576721,
+          1.8499481081962585,
+          7.619932413101196,
+          1
+        ],
+        "name": "LOD1_MOTION_LATCH_PADDLE_A_Lights_Warm",
+        "planIndex": 88,
+        "tags": {
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_LATCH_PADDLE_A_Lights_Warm",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_LATCH_PADDLE_A_Lights_Warm",
+            "recordIds": [
+              "sf.render.latch-nine.node.lod1-motion-latch-paddle-a-lights-warm"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1.9990355968475342,
+          0,
+          0,
+          0,
+          0,
+          1.9990355968475342,
+          0,
+          0,
+          0,
+          0,
+          1.9990355968475342,
+          0,
+          -3.4000149965286255,
+          1.710022509098053,
+          6.15024209022522,
+          1
+        ],
+        "name": "LOD1_MOTION_LATCH_PADDLE_A_Mechanical",
+        "planIndex": 90,
+        "tags": {
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_LATCH_PADDLE_A_Mechanical",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_LATCH_PADDLE_A_Mechanical",
+            "recordIds": [
+              "sf.render.latch-nine.node.lod1-motion-latch-paddle-a-mechanical"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1.9990355968475342,
+          0,
+          0,
+          0,
+          0,
+          1.9990355968475342,
+          0,
+          0,
+          0,
+          0,
+          1.9990355968475342,
+          0,
+          -3.3999534845352173,
+          1.6840676069259644,
+          6.15024209022522,
+          1
+        ],
+        "name": "LOD1_MOTION_LATCH_PADDLE_A_Warning",
+        "planIndex": 92,
+        "tags": {
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_LATCH_PADDLE_A_Warning",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_LATCH_PADDLE_A_Warning",
+            "recordIds": [
+              "sf.render.latch-nine.node.lod1-motion-latch-paddle-a-warning"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.35723233222961426,
+          0,
+          0,
+          0,
+          0,
+          0.35723233222961426,
+          0,
+          0,
+          0,
+          0,
+          0.35723233222961426,
+          0,
+          -3.4000000953674316,
+          1.5400592684745789,
+          4.349999904632568,
+          1
+        ],
+        "name": "LOD2_MOTION_LATCH_PADDLE_A_BrushedMetal",
+        "planIndex": 94,
+        "tags": {
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_LATCH_PADDLE_A_BrushedMetal",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_LATCH_PADDLE_A_BrushedMetal",
+            "recordIds": [
+              "sf.render.latch-nine.node.lod2-motion-latch-paddle-a-brushedmetal"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.3637198209762573,
+          0,
+          0,
+          0,
+          0,
+          0.3637198209762573,
+          0,
+          0,
+          0,
+          0,
+          0.3637198209762573,
+          0,
+          -3.4012807607650757,
+          1.8496137857437134,
+          7.618090629577637,
+          1
+        ],
+        "name": "LOD2_MOTION_LATCH_PADDLE_A_Lights_Warm",
+        "planIndex": 96,
+        "tags": {
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_LATCH_PADDLE_A_Lights_Warm",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_LATCH_PADDLE_A_Lights_Warm",
+            "recordIds": [
+              "sf.render.latch-nine.node.lod2-motion-latch-paddle-a-lights-warm"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1.9968526363372803,
+          0,
+          0,
+          0,
+          0,
+          1.9968526363372803,
+          0,
+          0,
+          0,
+          0,
+          1.9968526363372803,
+          0,
+          -3.399960160255432,
+          1.7087808847427368,
+          6.149829149246216,
+          1
+        ],
+        "name": "LOD2_MOTION_LATCH_PADDLE_A_Mechanical",
+        "planIndex": 98,
+        "tags": {
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_LATCH_PADDLE_A_Mechanical",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_LATCH_PADDLE_A_Mechanical",
+            "recordIds": [
+              "sf.render.latch-nine.node.lod2-motion-latch-paddle-a-mechanical"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1.9959156513214111,
+          0,
+          0,
+          0,
+          0,
+          1.9959156513214111,
+          0,
+          0,
+          0,
+          0,
+          1.9959156513214111,
+          0,
+          -3.399960160255432,
+          1.6841611862182617,
+          6.150766134262085,
+          1
+        ],
+        "name": "LOD2_MOTION_LATCH_PADDLE_A_Warning",
+        "planIndex": 100,
+        "tags": {
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_LATCH_PADDLE_A_Warning",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_LATCH_PADDLE_A_Warning",
+            "recordIds": [
+              "sf.render.latch-nine.node.lod2-motion-latch-paddle-a-warning"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
           1,
           0,
           0,
@@ -8655,7 +9087,7 @@
           1
         ],
         "name": "MOTION_LATCH_PADDLE_B",
-        "planIndex": 66,
+        "planIndex": 102,
         "tags": {
           "motionGroup": true
         },
@@ -8702,6 +9134,438 @@
       },
       {
         "matrix": [
+          0.3600001335144043,
+          0,
+          0,
+          0,
+          0,
+          0.3600001335144043,
+          0,
+          0,
+          0,
+          0,
+          0.3600001335144043,
+          0,
+          -0.5,
+          1.5400000214576721,
+          4.349999904632568,
+          1
+        ],
+        "name": "LOD0_MOTION_LATCH_PADDLE_B_BrushedMetal",
+        "planIndex": 103,
+        "tags": {
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_LATCH_PADDLE_B_BrushedMetal",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_LATCH_PADDLE_B_BrushedMetal",
+            "recordIds": [
+              "sf.render.latch-nine.node.lod0-motion-latch-paddle-b-brushedmetal"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.36500000953674316,
+          0,
+          0,
+          0,
+          0,
+          0.36500000953674316,
+          0,
+          0,
+          0,
+          0,
+          0.36500000953674316,
+          0,
+          -0.5,
+          1.850000023841858,
+          7.619999885559082,
+          1
+        ],
+        "name": "LOD0_MOTION_LATCH_PADDLE_B_Lights_Warm",
+        "planIndex": 105,
+        "tags": {
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_LATCH_PADDLE_B_Lights_Warm",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_LATCH_PADDLE_B_Lights_Warm",
+            "recordIds": [
+              "sf.render.latch-nine.node.lod0-motion-latch-paddle-b-lights-warm"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1.999999761581421,
+          0,
+          0,
+          0,
+          0,
+          1.999999761581421,
+          0,
+          0,
+          0,
+          0,
+          1.999999761581421,
+          0,
+          -0.49999998789280653,
+          1.711849868297577,
+          6.1499998569488525,
+          1
+        ],
+        "name": "LOD0_MOTION_LATCH_PADDLE_B_Mechanical",
+        "planIndex": 107,
+        "tags": {
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_LATCH_PADDLE_B_Mechanical",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_LATCH_PADDLE_B_Mechanical",
+            "recordIds": [
+              "sf.render.latch-nine.node.lod0-motion-latch-paddle-b-mechanical"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1.999999761581421,
+          0,
+          0,
+          0,
+          0,
+          1.999999761581421,
+          0,
+          0,
+          0,
+          0,
+          1.999999761581421,
+          0,
+          -0.49999998789280653,
+          1.6850000023841858,
+          6.1499998569488525,
+          1
+        ],
+        "name": "LOD0_MOTION_LATCH_PADDLE_B_Warning",
+        "planIndex": 109,
+        "tags": {
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_LATCH_PADDLE_B_Warning",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_LATCH_PADDLE_B_Warning",
+            "recordIds": [
+              "sf.render.latch-nine.node.lod0-motion-latch-paddle-b-warning"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.3591420650482178,
+          0,
+          0,
+          0,
+          0,
+          0.3591420650482178,
+          0,
+          0,
+          0,
+          0,
+          0.3591420650482178,
+          0,
+          -0.4999621883034706,
+          1.540029227733612,
+          4.349920988082886,
+          1
+        ],
+        "name": "LOD1_MOTION_LATCH_PADDLE_B_BrushedMetal",
+        "planIndex": 111,
+        "tags": {
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_LATCH_PADDLE_B_BrushedMetal",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_LATCH_PADDLE_B_BrushedMetal",
+            "recordIds": [
+              "sf.render.latch-nine.node.lod1-motion-latch-paddle-b-brushedmetal"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.36370065063238144,
+          0,
+          0,
+          0,
+          0,
+          0.36370065063238144,
+          0,
+          0,
+          0,
+          0,
+          0.36370065063238144,
+          0,
+          -0.5000040903687477,
+          1.8500691056251526,
+          7.619999885559082,
+          1
+        ],
+        "name": "LOD1_MOTION_LATCH_PADDLE_B_Lights_Warm",
+        "planIndex": 113,
+        "tags": {
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_LATCH_PADDLE_B_Lights_Warm",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_LATCH_PADDLE_B_Lights_Warm",
+            "recordIds": [
+              "sf.render.latch-nine.node.lod1-motion-latch-paddle-b-lights-warm"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1.9990355968475342,
+          0,
+          0,
+          0,
+          0,
+          1.9990355968475342,
+          0,
+          0,
+          0,
+          0,
+          1.9990355968475342,
+          0,
+          -0.5000150697305799,
+          1.7103098630905151,
+          6.15024209022522,
+          1
+        ],
+        "name": "LOD1_MOTION_LATCH_PADDLE_B_Mechanical",
+        "planIndex": 115,
+        "tags": {
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_LATCH_PADDLE_B_Mechanical",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_LATCH_PADDLE_B_Mechanical",
+            "recordIds": [
+              "sf.render.latch-nine.node.lod1-motion-latch-paddle-b-mechanical"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1.9990355968475342,
+          0,
+          0,
+          0,
+          0,
+          1.9990355968475342,
+          0,
+          0,
+          0,
+          0,
+          1.9990355968475342,
+          0,
+          -0.4999887514859438,
+          1.6840676069259644,
+          6.15024209022522,
+          1
+        ],
+        "name": "LOD1_MOTION_LATCH_PADDLE_B_Warning",
+        "planIndex": 117,
+        "tags": {
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_LATCH_PADDLE_B_Warning",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_LATCH_PADDLE_B_Warning",
+            "recordIds": [
+              "sf.render.latch-nine.node.lod1-motion-latch-paddle-b-warning"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.3572320267558098,
+          0,
+          0,
+          0,
+          0,
+          0.3572320267558098,
+          0,
+          0,
+          0,
+          0,
+          0.3572320267558098,
+          0,
+          -0.5000000074505806,
+          1.5400593280792236,
+          4.350244760513306,
+          1
+        ],
+        "name": "LOD2_MOTION_LATCH_PADDLE_B_BrushedMetal",
+        "planIndex": 119,
+        "tags": {
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_LATCH_PADDLE_B_BrushedMetal",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_LATCH_PADDLE_B_BrushedMetal",
+            "recordIds": [
+              "sf.render.latch-nine.node.lod2-motion-latch-paddle-b-brushedmetal"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.363088920712471,
+          0,
+          0,
+          0,
+          0,
+          0.363088920712471,
+          0,
+          0,
+          0,
+          0,
+          0.363088920712471,
+          0,
+          -0.4993504732847214,
+          1.8507453203201294,
+          7.618115663528442,
+          1
+        ],
+        "name": "LOD2_MOTION_LATCH_PADDLE_B_Lights_Warm",
+        "planIndex": 121,
+        "tags": {
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_LATCH_PADDLE_B_Lights_Warm",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_LATCH_PADDLE_B_Lights_Warm",
+            "recordIds": [
+              "sf.render.latch-nine.node.lod2-motion-latch-paddle-b-lights-warm"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1.9968523979187012,
+          0,
+          0,
+          0,
+          0,
+          1.9968523979187012,
+          0,
+          0,
+          0,
+          0,
+          1.9968523979187012,
+          0,
+          -0.4999600574374199,
+          1.708780825138092,
+          6.149829387664795,
+          1
+        ],
+        "name": "LOD2_MOTION_LATCH_PADDLE_B_Mechanical",
+        "planIndex": 123,
+        "tags": {
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_LATCH_PADDLE_B_Mechanical",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_LATCH_PADDLE_B_Mechanical",
+            "recordIds": [
+              "sf.render.latch-nine.node.lod2-motion-latch-paddle-b-mechanical"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1.9959156513214111,
+          0,
+          0,
+          0,
+          0,
+          1.9959156513214111,
+          0,
+          0,
+          0,
+          0,
+          1.9959156513214111,
+          0,
+          -0.4999600574374199,
+          1.684161126613617,
+          6.150766134262085,
+          1
+        ],
+        "name": "LOD2_MOTION_LATCH_PADDLE_B_Warning",
+        "planIndex": 125,
+        "tags": {
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_LATCH_PADDLE_B_Warning",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_LATCH_PADDLE_B_Warning",
+            "recordIds": [
+              "sf.render.latch-nine.node.lod2-motion-latch-paddle-b-warning"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
           1,
           0,
           0,
@@ -8720,7 +9584,7 @@
           1
         ],
         "name": "MOTION_LATCH_PADDLE_C",
-        "planIndex": 79,
+        "planIndex": 127,
         "tags": {
           "motionGroup": true
         },
@@ -8767,6 +9631,438 @@
       },
       {
         "matrix": [
+          0.3600001335144043,
+          0,
+          0,
+          0,
+          0,
+          0.3600001335144043,
+          0,
+          0,
+          0,
+          0,
+          0.3600001335144043,
+          0,
+          2.4000000953674316,
+          1.5400000214576721,
+          4.349999904632568,
+          1
+        ],
+        "name": "LOD0_MOTION_LATCH_PADDLE_C_BrushedMetal",
+        "planIndex": 128,
+        "tags": {
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_LATCH_PADDLE_C_BrushedMetal",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_LATCH_PADDLE_C_BrushedMetal",
+            "recordIds": [
+              "sf.render.latch-nine.node.lod0-motion-latch-paddle-c-brushedmetal"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.36500000953674316,
+          0,
+          0,
+          0,
+          0,
+          0.36500000953674316,
+          0,
+          0,
+          0,
+          0,
+          0.36500000953674316,
+          0,
+          2.4000000953674316,
+          1.850000023841858,
+          7.619999885559082,
+          1
+        ],
+        "name": "LOD0_MOTION_LATCH_PADDLE_C_Lights_Warm",
+        "planIndex": 130,
+        "tags": {
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_LATCH_PADDLE_C_Lights_Warm",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_LATCH_PADDLE_C_Lights_Warm",
+            "recordIds": [
+              "sf.render.latch-nine.node.lod0-motion-latch-paddle-c-lights-warm"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1.999999761581421,
+          0,
+          0,
+          0,
+          0,
+          1.999999761581421,
+          0,
+          0,
+          0,
+          0,
+          1.999999761581421,
+          0,
+          2.399999976158142,
+          1.711849868297577,
+          6.1499998569488525,
+          1
+        ],
+        "name": "LOD0_MOTION_LATCH_PADDLE_C_Mechanical",
+        "planIndex": 132,
+        "tags": {
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_LATCH_PADDLE_C_Mechanical",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_LATCH_PADDLE_C_Mechanical",
+            "recordIds": [
+              "sf.render.latch-nine.node.lod0-motion-latch-paddle-c-mechanical"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1.999999761581421,
+          0,
+          0,
+          0,
+          0,
+          1.999999761581421,
+          0,
+          0,
+          0,
+          0,
+          1.999999761581421,
+          0,
+          2.399999976158142,
+          1.6850000023841858,
+          6.1499998569488525,
+          1
+        ],
+        "name": "LOD0_MOTION_LATCH_PADDLE_C_Warning",
+        "planIndex": 134,
+        "tags": {
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_LATCH_PADDLE_C_Warning",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_LATCH_PADDLE_C_Warning",
+            "recordIds": [
+              "sf.render.latch-nine.node.lod0-motion-latch-paddle-c-warning"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.35913872718811035,
+          0,
+          0,
+          0,
+          0,
+          0.35913872718811035,
+          0,
+          0,
+          0,
+          0,
+          0.35913872718811035,
+          0,
+          2.4000000953674316,
+          1.5400039553642273,
+          4.349999904632568,
+          1
+        ],
+        "name": "LOD1_MOTION_LATCH_PADDLE_C_BrushedMetal",
+        "planIndex": 136,
+        "tags": {
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_LATCH_PADDLE_C_BrushedMetal",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_LATCH_PADDLE_C_BrushedMetal",
+            "recordIds": [
+              "sf.render.latch-nine.node.lod1-motion-latch-paddle-c-brushedmetal"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.36382532119750977,
+          0,
+          0,
+          0,
+          0,
+          0.36382532119750977,
+          0,
+          0,
+          0,
+          0,
+          0.36382532119750977,
+          0,
+          2.4000093936920166,
+          1.8500519394874573,
+          7.619990825653076,
+          1
+        ],
+        "name": "LOD1_MOTION_LATCH_PADDLE_C_Lights_Warm",
+        "planIndex": 138,
+        "tags": {
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_LATCH_PADDLE_C_Lights_Warm",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_LATCH_PADDLE_C_Lights_Warm",
+            "recordIds": [
+              "sf.render.latch-nine.node.lod1-motion-latch-paddle-c-lights-warm"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1.998978614807129,
+          0,
+          0,
+          0,
+          0,
+          1.998978614807129,
+          0,
+          0,
+          0,
+          0,
+          1.998978614807129,
+          0,
+          2.4000001549720764,
+          1.710024654865265,
+          6.150293350219727,
+          1
+        ],
+        "name": "LOD1_MOTION_LATCH_PADDLE_C_Mechanical",
+        "planIndex": 140,
+        "tags": {
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_LATCH_PADDLE_C_Mechanical",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_LATCH_PADDLE_C_Mechanical",
+            "recordIds": [
+              "sf.render.latch-nine.node.lod1-motion-latch-paddle-c-mechanical"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1.998978614807129,
+          0,
+          0,
+          0,
+          0,
+          1.998978614807129,
+          0,
+          0,
+          0,
+          0,
+          1.998978614807129,
+          0,
+          2.400000035762787,
+          1.6840529441833496,
+          6.150293350219727,
+          1
+        ],
+        "name": "LOD1_MOTION_LATCH_PADDLE_C_Warning",
+        "planIndex": 142,
+        "tags": {
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_LATCH_PADDLE_C_Warning",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_LATCH_PADDLE_C_Warning",
+            "recordIds": [
+              "sf.render.latch-nine.node.lod1-motion-latch-paddle-c-warning"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.3572322130203247,
+          0,
+          0,
+          0,
+          0,
+          0.3572322130203247,
+          0,
+          0,
+          0,
+          0,
+          0.3572322130203247,
+          0,
+          2.400000214576721,
+          1.5400592684745789,
+          4.350000023841858,
+          1
+        ],
+        "name": "LOD2_MOTION_LATCH_PADDLE_C_BrushedMetal",
+        "planIndex": 144,
+        "tags": {
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_LATCH_PADDLE_C_BrushedMetal",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_LATCH_PADDLE_C_BrushedMetal",
+            "recordIds": [
+              "sf.render.latch-nine.node.lod2-motion-latch-paddle-c-brushedmetal"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.3637198209762573,
+          0,
+          0,
+          0,
+          0,
+          0.3637198209762573,
+          0,
+          0,
+          0,
+          0,
+          0.3637198209762573,
+          0,
+          2.4012807607650757,
+          1.8493515253067017,
+          7.621279954910278,
+          1
+        ],
+        "name": "LOD2_MOTION_LATCH_PADDLE_C_Lights_Warm",
+        "planIndex": 146,
+        "tags": {
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_LATCH_PADDLE_C_Lights_Warm",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_LATCH_PADDLE_C_Lights_Warm",
+            "recordIds": [
+              "sf.render.latch-nine.node.lod2-motion-latch-paddle-c-lights-warm"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1.9966256618499756,
+          0,
+          0,
+          0,
+          0,
+          1.9966256618499756,
+          0,
+          0,
+          0,
+          0,
+          1.9966256618499756,
+          0,
+          2.399999976158142,
+          1.7087808847427368,
+          6.150137186050415,
+          1
+        ],
+        "name": "LOD2_MOTION_LATCH_PADDLE_C_Mechanical",
+        "planIndex": 148,
+        "tags": {
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_LATCH_PADDLE_C_Mechanical",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_LATCH_PADDLE_C_Mechanical",
+            "recordIds": [
+              "sf.render.latch-nine.node.lod2-motion-latch-paddle-c-mechanical"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1.995906114578247,
+          0,
+          0,
+          0,
+          0,
+          1.995906114578247,
+          0,
+          0,
+          0,
+          0,
+          1.995906114578247,
+          0,
+          2.399999976158142,
+          1.684410274028778,
+          6.1508567333221436,
+          1
+        ],
+        "name": "LOD2_MOTION_LATCH_PADDLE_C_Warning",
+        "planIndex": 150,
+        "tags": {
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_LATCH_PADDLE_C_Warning",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_LATCH_PADDLE_C_Warning",
+            "recordIds": [
+              "sf.render.latch-nine.node.lod2-motion-latch-paddle-c-warning"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
           1,
           0,
           0,
@@ -8785,7 +10081,7 @@
           1
         ],
         "name": "MOTION_LATCH_SHUTTER",
-        "planIndex": 92,
+        "planIndex": 152,
         "tags": {
           "motionGroup": true
         },
@@ -8832,6 +10128,222 @@
       },
       {
         "matrix": [
+          0.5800000429153442,
+          0,
+          0,
+          0,
+          0,
+          0.5800000429153442,
+          0,
+          0,
+          0,
+          0,
+          0.5800000429153442,
+          0,
+          1.649999976158142,
+          1.399999976158142,
+          -1.850000023841858,
+          1
+        ],
+        "name": "LOD0_MOTION_LATCH_SHUTTER_Armor",
+        "planIndex": 153,
+        "tags": {
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_LATCH_SHUTTER_Armor",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_LATCH_SHUTTER_Armor",
+            "recordIds": [
+              "sf.render.latch-nine.node.lod0-motion-latch-shutter-armor"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.5099999308586121,
+          0,
+          0,
+          0,
+          0,
+          0.5099999308586121,
+          0,
+          0,
+          0,
+          0,
+          0.5099999308586121,
+          0,
+          1.6499999165534973,
+          1.3700000047683716,
+          -0.27000001817941666,
+          1
+        ],
+        "name": "LOD0_MOTION_LATCH_SHUTTER_Beacon_Amber",
+        "planIndex": 155,
+        "tags": {
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_LATCH_SHUTTER_Beacon_Amber",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_LATCH_SHUTTER_Beacon_Amber",
+            "recordIds": [
+              "sf.render.latch-nine.node.lod0-motion-latch-shutter-beacon-amber"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.5780168175697327,
+          0,
+          0,
+          0,
+          0,
+          0.5780168175697327,
+          0,
+          0,
+          0,
+          0,
+          0.5780168175697327,
+          0,
+          1.6499108672142029,
+          1.4000000953674316,
+          -1.849896252155304,
+          1
+        ],
+        "name": "LOD1_MOTION_LATCH_SHUTTER_Armor",
+        "planIndex": 157,
+        "tags": {
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_LATCH_SHUTTER_Armor",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_LATCH_SHUTTER_Armor",
+            "recordIds": [
+              "sf.render.latch-nine.node.lod1-motion-latch-shutter-armor"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.508553147315979,
+          0,
+          0,
+          0,
+          0,
+          0.508553147315979,
+          0,
+          0,
+          0,
+          0,
+          0.508553147315979,
+          0,
+          1.6499027013778687,
+          1.370109498500824,
+          -0.26990392059087753,
+          1
+        ],
+        "name": "LOD1_MOTION_LATCH_SHUTTER_Beacon_Amber",
+        "planIndex": 159,
+        "tags": {
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_LATCH_SHUTTER_Beacon_Amber",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_LATCH_SHUTTER_Beacon_Amber",
+            "recordIds": [
+              "sf.render.latch-nine.node.lod1-motion-latch-shutter-beacon-amber"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.5761489272117615,
+          0,
+          0,
+          0,
+          0,
+          0.5761489272117615,
+          0,
+          0,
+          0,
+          0,
+          0.5761489272117615,
+          0,
+          1.6502459645271301,
+          1.4002492427825928,
+          -1.851012408733368,
+          1
+        ],
+        "name": "LOD2_MOTION_LATCH_SHUTTER_Armor",
+        "planIndex": 161,
+        "tags": {
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_LATCH_SHUTTER_Armor",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_LATCH_SHUTTER_Armor",
+            "recordIds": [
+              "sf.render.latch-nine.node.lod2-motion-latch-shutter-armor"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.5058054327964783,
+          0,
+          0,
+          0,
+          0,
+          0.5058054327964783,
+          0,
+          0,
+          0,
+          0,
+          0.5058054327964783,
+          0,
+          1.6500247120857239,
+          1.3695290088653564,
+          -0.27070657163858414,
+          1
+        ],
+        "name": "LOD2_MOTION_LATCH_SHUTTER_Beacon_Amber",
+        "planIndex": 163,
+        "tags": {
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_LATCH_SHUTTER_Beacon_Amber",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_LATCH_SHUTTER_Beacon_Amber",
+            "recordIds": [
+              "sf.render.latch-nine.node.lod2-motion-latch-shutter-beacon-amber"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
           1,
           0,
           0,
@@ -8850,7 +10362,7 @@
           1
         ],
         "name": "SOCKET_LATCH_MAIN_PORT",
-        "planIndex": 99,
+        "planIndex": 165,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -8902,7 +10414,7 @@
           1
         ],
         "name": "SOCKET_LATCH_MAIN_STBD",
-        "planIndex": 100,
+        "planIndex": 166,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -8954,7 +10466,7 @@
           1
         ],
         "name": "SOCKET_LATCH_PORT_AFT",
-        "planIndex": 101,
+        "planIndex": 167,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -9006,7 +10518,7 @@
           1
         ],
         "name": "SOCKET_LATCH_PORT_FORE",
-        "planIndex": 102,
+        "planIndex": 168,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -9058,7 +10570,7 @@
           1
         ],
         "name": "SOCKET_LATCH_REVERSE_PORT",
-        "planIndex": 103,
+        "planIndex": 169,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -9110,7 +10622,7 @@
           1
         ],
         "name": "SOCKET_LATCH_REVERSE_STBD",
-        "planIndex": 104,
+        "planIndex": 170,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -9162,7 +10674,7 @@
           1
         ],
         "name": "SOCKET_LATCH_STBD_AFT",
-        "planIndex": 105,
+        "planIndex": 171,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -9214,7 +10726,7 @@
           1
         ],
         "name": "SOCKET_LATCH_STBD_FORE",
-        "planIndex": 106,
+        "planIndex": 172,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -9272,17 +10784,7 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 5,
-        "role": "drive"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 6,
-        "role": "drive"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 7,
         "role": "drive"
       },
       {
@@ -9292,17 +10794,7 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 9,
-        "role": "drive"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 10,
-        "role": "drive"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 11,
         "role": "drive"
       },
       {
@@ -9312,142 +10804,92 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 13,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 14,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 15,
-        "role": "hull"
+        "role": "drive"
       },
       {
         "allowTextures": true,
         "planIndex": 16,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 17,
-        "role": "mechanical"
+        "role": "drive"
       },
       {
         "allowTextures": true,
         "planIndex": 18,
-        "role": "warning"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 19,
-        "role": "hull"
+        "role": "drive"
       },
       {
         "allowTextures": true,
         "planIndex": 20,
-        "role": "signal"
+        "role": "drive"
       },
       {
         "allowTextures": true,
         "planIndex": 21,
-        "role": "mechanical"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 22,
-        "role": "drive"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 23,
-        "role": "drive"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 24,
-        "role": "drive"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 25,
-        "role": "drive"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 26,
-        "role": "drive"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 27,
-        "role": "drive"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 28,
-        "role": "drive"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 29,
-        "role": "drive"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 30,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 31,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 32,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 33,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 34,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 35,
         "role": "warning"
       },
       {
         "allowTextures": true,
-        "planIndex": 36,
+        "planIndex": 27,
         "role": "hull"
       },
       {
         "allowTextures": true,
-        "planIndex": 37,
+        "planIndex": 28,
         "role": "signal"
       },
       {
         "allowTextures": true,
-        "planIndex": 38,
+        "planIndex": 29,
         "role": "mechanical"
       },
       {
         "allowTextures": true,
-        "planIndex": 39,
+        "planIndex": 31,
         "role": "drive"
       },
       {
         "allowTextures": true,
-        "planIndex": 40,
+        "planIndex": 33,
+        "role": "drive"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 35,
+        "role": "drive"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 37,
+        "role": "drive"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 39,
         "role": "drive"
       },
       {
@@ -9457,17 +10899,7 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 42,
-        "role": "drive"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 43,
-        "role": "drive"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 44,
         "role": "drive"
       },
       {
@@ -9478,7 +10910,7 @@
       {
         "allowTextures": true,
         "planIndex": 46,
-        "role": "drive"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -9488,12 +10920,12 @@
       {
         "allowTextures": true,
         "planIndex": 48,
-        "role": "signal"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 49,
-        "role": "hull"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
@@ -9503,12 +10935,17 @@
       {
         "allowTextures": true,
         "planIndex": 51,
-        "role": "mechanical"
+        "role": "warning"
       },
       {
         "allowTextures": true,
         "planIndex": 52,
-        "role": "warning"
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 53,
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -9517,83 +10954,48 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 55,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 56,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 57,
-        "role": "warning"
+        "role": "drive"
       },
       {
         "allowTextures": true,
         "planIndex": 58,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 59,
-        "role": "signal"
+        "role": "drive"
       },
       {
         "allowTextures": true,
         "planIndex": 60,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 61,
-        "role": "warning"
+        "role": "drive"
       },
       {
         "allowTextures": true,
         "planIndex": 62,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 63,
-        "role": "signal"
+        "role": "drive"
       },
       {
         "allowTextures": true,
         "planIndex": 64,
-        "role": "mechanical"
+        "role": "drive"
       },
       {
         "allowTextures": true,
-        "planIndex": 65,
-        "role": "warning"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 67,
-        "role": "mechanical"
+        "planIndex": 66,
+        "role": "drive"
       },
       {
         "allowTextures": true,
         "planIndex": 68,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 69,
-        "role": "mechanical"
+        "role": "drive"
       },
       {
         "allowTextures": true,
         "planIndex": 70,
-        "role": "warning"
+        "role": "drive"
       },
       {
         "allowTextures": true,
         "planIndex": 71,
-        "role": "mechanical"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -9603,12 +11005,12 @@
       {
         "allowTextures": true,
         "planIndex": 73,
-        "role": "mechanical"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 74,
-        "role": "warning"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
@@ -9618,21 +11020,11 @@
       {
         "allowTextures": true,
         "planIndex": 76,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 77,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 78,
         "role": "warning"
       },
       {
         "allowTextures": true,
-        "planIndex": 80,
+        "planIndex": 79,
         "role": "mechanical"
       },
       {
@@ -9642,37 +11034,17 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 82,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 83,
-        "role": "warning"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 84,
         "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 85,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 86,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 87,
         "role": "warning"
       },
       {
         "allowTextures": true,
-        "planIndex": 88,
+        "planIndex": 87,
         "role": "mechanical"
       },
       {
@@ -9682,42 +11054,182 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 90,
+        "planIndex": 91,
         "role": "mechanical"
       },
       {
         "allowTextures": true,
-        "planIndex": 91,
+        "planIndex": 93,
         "role": "warning"
       },
       {
         "allowTextures": true,
-        "planIndex": 93,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 94,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 95,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 96,
-        "role": "signal"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 97,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 99,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 101,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 104,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 106,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 108,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 110,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 112,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 114,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 116,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 118,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 120,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 122,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 124,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 126,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 129,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 131,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 133,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 135,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 137,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 139,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 141,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 143,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 145,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 147,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 149,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 151,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 154,
         "role": "hull"
       },
       {
         "allowTextures": true,
-        "planIndex": 98,
+        "planIndex": 156,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 158,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 160,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 162,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 164,
         "role": "signal"
       }
     ],
@@ -9727,7 +11239,7 @@
       "sha256": "8ba58c6625848f7e5fba6c2700b41300c0d83c4152ee9a87ab8c8e7e9745e261",
       "uri": "assets/ships/motions/latch-nine.motion.json"
     },
-    "nodeCount": 107,
+    "nodeCount": 173,
     "primitives": [
       {
         "canopy": false,
@@ -9830,8 +11342,8 @@
           -2.349999964237213,
           1
         ],
-        "name": "LOD0_HOOK_LATCH_THRUSTER_MAIN_PORT_glow_drive",
-        "planIndex": 5,
+        "name": "LOD0_HOOK_LATCH_THRUSTER_MAIN_PORT_glow_drive_1",
+        "planIndex": 6,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -9858,8 +11370,8 @@
           2.349999964237213,
           1
         ],
-        "name": "LOD0_HOOK_LATCH_THRUSTER_MAIN_STBD_glow_drive",
-        "planIndex": 6,
+        "name": "LOD0_HOOK_LATCH_THRUSTER_MAIN_STBD_glow_drive_1",
+        "planIndex": 8,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -9886,8 +11398,8 @@
           -5.45799994468689,
           1
         ],
-        "name": "LOD0_HOOK_LATCH_THRUSTER_PORT_AFT_glow_drive",
-        "planIndex": 7,
+        "name": "LOD0_HOOK_LATCH_THRUSTER_PORT_AFT_glow_drive_1",
+        "planIndex": 10,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -9914,8 +11426,8 @@
           -5.45799994468689,
           1
         ],
-        "name": "LOD0_HOOK_LATCH_THRUSTER_PORT_FORE_glow_drive",
-        "planIndex": 8,
+        "name": "LOD0_HOOK_LATCH_THRUSTER_PORT_FORE_glow_drive_1",
+        "planIndex": 12,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -9942,8 +11454,8 @@
           -1.2300000190734863,
           1
         ],
-        "name": "LOD0_HOOK_LATCH_THRUSTER_REVERSE_PORT_glow_drive",
-        "planIndex": 9,
+        "name": "LOD0_HOOK_LATCH_THRUSTER_REVERSE_PORT_glow_drive_1",
+        "planIndex": 14,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -9970,8 +11482,8 @@
           1.2300000190734863,
           1
         ],
-        "name": "LOD0_HOOK_LATCH_THRUSTER_REVERSE_STBD_glow_drive",
-        "planIndex": 10,
+        "name": "LOD0_HOOK_LATCH_THRUSTER_REVERSE_STBD_glow_drive_1",
+        "planIndex": 16,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -9998,8 +11510,8 @@
           4.528000116348267,
           1
         ],
-        "name": "LOD0_HOOK_LATCH_THRUSTER_STBD_AFT_glow_drive",
-        "planIndex": 11,
+        "name": "LOD0_HOOK_LATCH_THRUSTER_STBD_AFT_glow_drive_1",
+        "planIndex": 18,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -10026,8 +11538,8 @@
           4.528000116348267,
           1
         ],
-        "name": "LOD0_HOOK_LATCH_THRUSTER_STBD_FORE_glow_drive",
-        "planIndex": 12,
+        "name": "LOD0_HOOK_LATCH_THRUSTER_STBD_FORE_glow_drive_1",
+        "planIndex": 20,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -10055,7 +11567,7 @@
           1
         ],
         "name": "LOD0_HOOK_NAV_PORT",
-        "planIndex": 13,
+        "planIndex": 21,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
@@ -10083,7 +11595,7 @@
           1
         ],
         "name": "LOD0_HOOK_NAV_STARBOARD",
-        "planIndex": 14,
+        "planIndex": 22,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
@@ -10111,7 +11623,7 @@
           1
         ],
         "name": "LOD0_Hull",
-        "planIndex": 15,
+        "planIndex": 23,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -10138,7 +11650,7 @@
           1
         ],
         "name": "LOD0_Mechanical",
-        "planIndex": 16,
+        "planIndex": 24,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -10165,7 +11677,7 @@
           1
         ],
         "name": "LOD0_MechanicalDark",
-        "planIndex": 17,
+        "planIndex": 25,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -10192,7 +11704,7 @@
           1
         ],
         "name": "LOD0_Warning",
-        "planIndex": 18,
+        "planIndex": 26,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -10219,7 +11731,7 @@
           1
         ],
         "name": "LOD1_Armor",
-        "planIndex": 19,
+        "planIndex": 27,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -10246,7 +11758,7 @@
           1
         ],
         "name": "LOD1_Beacon_Amber",
-        "planIndex": 20,
+        "planIndex": 28,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -10273,7 +11785,7 @@
           1
         ],
         "name": "LOD1_BrushedMetal",
-        "planIndex": 21,
+        "planIndex": 29,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -10299,8 +11811,8 @@
           -2.3522886633872986,
           1
         ],
-        "name": "LOD1_HOOK_LATCH_THRUSTER_MAIN_PORT_glow_drive",
-        "planIndex": 22,
+        "name": "LOD1_HOOK_LATCH_THRUSTER_MAIN_PORT_glow_drive_1",
+        "planIndex": 31,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -10327,8 +11839,8 @@
           2.3522886633872986,
           1
         ],
-        "name": "LOD1_HOOK_LATCH_THRUSTER_MAIN_STBD_glow_drive",
-        "planIndex": 23,
+        "name": "LOD1_HOOK_LATCH_THRUSTER_MAIN_STBD_glow_drive_1",
+        "planIndex": 33,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -10355,8 +11867,8 @@
           -5.458000183105469,
           1
         ],
-        "name": "LOD1_HOOK_LATCH_THRUSTER_PORT_AFT_glow_drive",
-        "planIndex": 24,
+        "name": "LOD1_HOOK_LATCH_THRUSTER_PORT_AFT_glow_drive_1",
+        "planIndex": 35,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -10383,8 +11895,8 @@
           -5.458037853240967,
           1
         ],
-        "name": "LOD1_HOOK_LATCH_THRUSTER_PORT_FORE_glow_drive",
-        "planIndex": 25,
+        "name": "LOD1_HOOK_LATCH_THRUSTER_PORT_FORE_glow_drive_1",
+        "planIndex": 37,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -10411,8 +11923,8 @@
           -1.2300000190734863,
           1
         ],
-        "name": "LOD1_HOOK_LATCH_THRUSTER_REVERSE_PORT_glow_drive",
-        "planIndex": 26,
+        "name": "LOD1_HOOK_LATCH_THRUSTER_REVERSE_PORT_glow_drive_1",
+        "planIndex": 39,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -10439,8 +11951,8 @@
           1.2300000190734863,
           1
         ],
-        "name": "LOD1_HOOK_LATCH_THRUSTER_REVERSE_STBD_glow_drive",
-        "planIndex": 27,
+        "name": "LOD1_HOOK_LATCH_THRUSTER_REVERSE_STBD_glow_drive_1",
+        "planIndex": 41,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -10467,8 +11979,8 @@
           4.527969121932983,
           1
         ],
-        "name": "LOD1_HOOK_LATCH_THRUSTER_STBD_AFT_glow_drive",
-        "planIndex": 28,
+        "name": "LOD1_HOOK_LATCH_THRUSTER_STBD_AFT_glow_drive_1",
+        "planIndex": 43,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -10495,8 +12007,8 @@
           4.528000354766846,
           1
         ],
-        "name": "LOD1_HOOK_LATCH_THRUSTER_STBD_FORE_glow_drive",
-        "planIndex": 29,
+        "name": "LOD1_HOOK_LATCH_THRUSTER_STBD_FORE_glow_drive_1",
+        "planIndex": 45,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -10524,7 +12036,7 @@
           1
         ],
         "name": "LOD1_HOOK_NAV_PORT",
-        "planIndex": 30,
+        "planIndex": 46,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
@@ -10552,7 +12064,7 @@
           1
         ],
         "name": "LOD1_HOOK_NAV_STARBOARD",
-        "planIndex": 31,
+        "planIndex": 47,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
@@ -10580,7 +12092,7 @@
           1
         ],
         "name": "LOD1_Hull",
-        "planIndex": 32,
+        "planIndex": 48,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -10607,7 +12119,7 @@
           1
         ],
         "name": "LOD1_Mechanical",
-        "planIndex": 33,
+        "planIndex": 49,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -10634,7 +12146,7 @@
           1
         ],
         "name": "LOD1_MechanicalDark",
-        "planIndex": 34,
+        "planIndex": 50,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -10661,7 +12173,7 @@
           1
         ],
         "name": "LOD1_Warning",
-        "planIndex": 35,
+        "planIndex": 51,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -10688,7 +12200,7 @@
           1
         ],
         "name": "LOD2_Armor",
-        "planIndex": 36,
+        "planIndex": 52,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -10715,7 +12227,7 @@
           1
         ],
         "name": "LOD2_Beacon_Amber",
-        "planIndex": 37,
+        "planIndex": 53,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -10742,7 +12254,7 @@
           1
         ],
         "name": "LOD2_BrushedMetal",
-        "planIndex": 38,
+        "planIndex": 54,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -10768,8 +12280,8 @@
           -2.3657463788986206,
           1
         ],
-        "name": "LOD2_HOOK_LATCH_THRUSTER_MAIN_PORT_glow_drive",
-        "planIndex": 39,
+        "name": "LOD2_HOOK_LATCH_THRUSTER_MAIN_PORT_glow_drive_1",
+        "planIndex": 56,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -10796,8 +12308,8 @@
           2.3657463788986206,
           1
         ],
-        "name": "LOD2_HOOK_LATCH_THRUSTER_MAIN_STBD_glow_drive",
-        "planIndex": 40,
+        "name": "LOD2_HOOK_LATCH_THRUSTER_MAIN_STBD_glow_drive_1",
+        "planIndex": 58,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -10824,8 +12336,8 @@
           -5.457998275756836,
           1
         ],
-        "name": "LOD2_HOOK_LATCH_THRUSTER_PORT_AFT_glow_drive",
-        "planIndex": 41,
+        "name": "LOD2_HOOK_LATCH_THRUSTER_PORT_AFT_glow_drive_1",
+        "planIndex": 60,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -10852,8 +12364,8 @@
           -5.457998275756836,
           1
         ],
-        "name": "LOD2_HOOK_LATCH_THRUSTER_PORT_FORE_glow_drive",
-        "planIndex": 42,
+        "name": "LOD2_HOOK_LATCH_THRUSTER_PORT_FORE_glow_drive_1",
+        "planIndex": 62,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -10880,8 +12392,8 @@
           -1.2300000190734863,
           1
         ],
-        "name": "LOD2_HOOK_LATCH_THRUSTER_REVERSE_PORT_glow_drive",
-        "planIndex": 43,
+        "name": "LOD2_HOOK_LATCH_THRUSTER_REVERSE_PORT_glow_drive_1",
+        "planIndex": 64,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -10908,8 +12420,8 @@
           1.2300000190734863,
           1
         ],
-        "name": "LOD2_HOOK_LATCH_THRUSTER_REVERSE_STBD_glow_drive",
-        "planIndex": 44,
+        "name": "LOD2_HOOK_LATCH_THRUSTER_REVERSE_STBD_glow_drive_1",
+        "planIndex": 66,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -10936,8 +12448,8 @@
           4.528002023696899,
           1
         ],
-        "name": "LOD2_HOOK_LATCH_THRUSTER_STBD_AFT_glow_drive",
-        "planIndex": 45,
+        "name": "LOD2_HOOK_LATCH_THRUSTER_STBD_AFT_glow_drive_1",
+        "planIndex": 68,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -10964,8 +12476,8 @@
           4.5280022621154785,
           1
         ],
-        "name": "LOD2_HOOK_LATCH_THRUSTER_STBD_FORE_glow_drive",
-        "planIndex": 46,
+        "name": "LOD2_HOOK_LATCH_THRUSTER_STBD_FORE_glow_drive_1",
+        "planIndex": 70,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -10993,7 +12505,7 @@
           1
         ],
         "name": "LOD2_HOOK_NAV_PORT",
-        "planIndex": 47,
+        "planIndex": 71,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
@@ -11021,7 +12533,7 @@
           1
         ],
         "name": "LOD2_HOOK_NAV_STARBOARD",
-        "planIndex": 48,
+        "planIndex": 72,
         "tags": {
           "canopy": false,
           "damageRole": "navLight",
@@ -11049,7 +12561,7 @@
           1
         ],
         "name": "LOD2_Hull",
-        "planIndex": 49,
+        "planIndex": 73,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -11076,7 +12588,7 @@
           1
         ],
         "name": "LOD2_Mechanical",
-        "planIndex": 50,
+        "planIndex": 74,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -11103,7 +12615,7 @@
           1
         ],
         "name": "LOD2_MechanicalDark",
-        "planIndex": 51,
+        "planIndex": 75,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -11130,7 +12642,7 @@
           1
         ],
         "name": "LOD2_Warning",
-        "planIndex": 52,
+        "planIndex": 76,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -11156,8 +12668,8 @@
           4.349999904632568,
           1
         ],
-        "name": "LOD0_MOTION_LATCH_PADDLE_A_BrushedMetal",
-        "planIndex": 54,
+        "name": "LOD0_MOTION_LATCH_PADDLE_A_BrushedMetal_1",
+        "planIndex": 79,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -11184,8 +12696,8 @@
           7.619999885559082,
           1
         ],
-        "name": "LOD0_MOTION_LATCH_PADDLE_A_Lights_Warm",
-        "planIndex": 55,
+        "name": "LOD0_MOTION_LATCH_PADDLE_A_Lights_Warm_1",
+        "planIndex": 81,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -11212,8 +12724,8 @@
           6.1499998569488525,
           1
         ],
-        "name": "LOD0_MOTION_LATCH_PADDLE_A_Mechanical",
-        "planIndex": 56,
+        "name": "LOD0_MOTION_LATCH_PADDLE_A_Mechanical_1",
+        "planIndex": 83,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -11240,8 +12752,8 @@
           6.1499998569488525,
           1
         ],
-        "name": "LOD0_MOTION_LATCH_PADDLE_A_Warning",
-        "planIndex": 57,
+        "name": "LOD0_MOTION_LATCH_PADDLE_A_Warning_1",
+        "planIndex": 85,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -11268,8 +12780,8 @@
           4.349999904632568,
           1
         ],
-        "name": "LOD1_MOTION_LATCH_PADDLE_A_BrushedMetal",
-        "planIndex": 58,
+        "name": "LOD1_MOTION_LATCH_PADDLE_A_BrushedMetal_1",
+        "planIndex": 87,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -11296,8 +12808,8 @@
           7.619932413101196,
           1
         ],
-        "name": "LOD1_MOTION_LATCH_PADDLE_A_Lights_Warm",
-        "planIndex": 59,
+        "name": "LOD1_MOTION_LATCH_PADDLE_A_Lights_Warm_1",
+        "planIndex": 89,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -11324,8 +12836,8 @@
           6.15024209022522,
           1
         ],
-        "name": "LOD1_MOTION_LATCH_PADDLE_A_Mechanical",
-        "planIndex": 60,
+        "name": "LOD1_MOTION_LATCH_PADDLE_A_Mechanical_1",
+        "planIndex": 91,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -11352,8 +12864,8 @@
           6.15024209022522,
           1
         ],
-        "name": "LOD1_MOTION_LATCH_PADDLE_A_Warning",
-        "planIndex": 61,
+        "name": "LOD1_MOTION_LATCH_PADDLE_A_Warning_1",
+        "planIndex": 93,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -11380,8 +12892,8 @@
           4.349999904632568,
           1
         ],
-        "name": "LOD2_MOTION_LATCH_PADDLE_A_BrushedMetal",
-        "planIndex": 62,
+        "name": "LOD2_MOTION_LATCH_PADDLE_A_BrushedMetal_1",
+        "planIndex": 95,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -11408,8 +12920,8 @@
           7.618090629577637,
           1
         ],
-        "name": "LOD2_MOTION_LATCH_PADDLE_A_Lights_Warm",
-        "planIndex": 63,
+        "name": "LOD2_MOTION_LATCH_PADDLE_A_Lights_Warm_1",
+        "planIndex": 97,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -11436,8 +12948,8 @@
           6.149829149246216,
           1
         ],
-        "name": "LOD2_MOTION_LATCH_PADDLE_A_Mechanical",
-        "planIndex": 64,
+        "name": "LOD2_MOTION_LATCH_PADDLE_A_Mechanical_1",
+        "planIndex": 99,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -11464,8 +12976,8 @@
           6.150766134262085,
           1
         ],
-        "name": "LOD2_MOTION_LATCH_PADDLE_A_Warning",
-        "planIndex": 65,
+        "name": "LOD2_MOTION_LATCH_PADDLE_A_Warning_1",
+        "planIndex": 101,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -11492,8 +13004,8 @@
           4.349999904632568,
           1
         ],
-        "name": "LOD0_MOTION_LATCH_PADDLE_B_BrushedMetal",
-        "planIndex": 67,
+        "name": "LOD0_MOTION_LATCH_PADDLE_B_BrushedMetal_1",
+        "planIndex": 104,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -11520,8 +13032,8 @@
           7.619999885559082,
           1
         ],
-        "name": "LOD0_MOTION_LATCH_PADDLE_B_Lights_Warm",
-        "planIndex": 68,
+        "name": "LOD0_MOTION_LATCH_PADDLE_B_Lights_Warm_1",
+        "planIndex": 106,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -11548,8 +13060,8 @@
           6.1499998569488525,
           1
         ],
-        "name": "LOD0_MOTION_LATCH_PADDLE_B_Mechanical",
-        "planIndex": 69,
+        "name": "LOD0_MOTION_LATCH_PADDLE_B_Mechanical_1",
+        "planIndex": 108,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -11576,8 +13088,8 @@
           6.1499998569488525,
           1
         ],
-        "name": "LOD0_MOTION_LATCH_PADDLE_B_Warning",
-        "planIndex": 70,
+        "name": "LOD0_MOTION_LATCH_PADDLE_B_Warning_1",
+        "planIndex": 110,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -11604,8 +13116,8 @@
           4.349920988082886,
           1
         ],
-        "name": "LOD1_MOTION_LATCH_PADDLE_B_BrushedMetal",
-        "planIndex": 71,
+        "name": "LOD1_MOTION_LATCH_PADDLE_B_BrushedMetal_1",
+        "planIndex": 112,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -11632,8 +13144,8 @@
           7.619999885559082,
           1
         ],
-        "name": "LOD1_MOTION_LATCH_PADDLE_B_Lights_Warm",
-        "planIndex": 72,
+        "name": "LOD1_MOTION_LATCH_PADDLE_B_Lights_Warm_1",
+        "planIndex": 114,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -11660,8 +13172,8 @@
           6.15024209022522,
           1
         ],
-        "name": "LOD1_MOTION_LATCH_PADDLE_B_Mechanical",
-        "planIndex": 73,
+        "name": "LOD1_MOTION_LATCH_PADDLE_B_Mechanical_1",
+        "planIndex": 116,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -11688,8 +13200,8 @@
           6.15024209022522,
           1
         ],
-        "name": "LOD1_MOTION_LATCH_PADDLE_B_Warning",
-        "planIndex": 74,
+        "name": "LOD1_MOTION_LATCH_PADDLE_B_Warning_1",
+        "planIndex": 118,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -11716,8 +13228,8 @@
           4.350244760513306,
           1
         ],
-        "name": "LOD2_MOTION_LATCH_PADDLE_B_BrushedMetal",
-        "planIndex": 75,
+        "name": "LOD2_MOTION_LATCH_PADDLE_B_BrushedMetal_1",
+        "planIndex": 120,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -11744,8 +13256,8 @@
           7.618115663528442,
           1
         ],
-        "name": "LOD2_MOTION_LATCH_PADDLE_B_Lights_Warm",
-        "planIndex": 76,
+        "name": "LOD2_MOTION_LATCH_PADDLE_B_Lights_Warm_1",
+        "planIndex": 122,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -11772,8 +13284,8 @@
           6.149829387664795,
           1
         ],
-        "name": "LOD2_MOTION_LATCH_PADDLE_B_Mechanical",
-        "planIndex": 77,
+        "name": "LOD2_MOTION_LATCH_PADDLE_B_Mechanical_1",
+        "planIndex": 124,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -11800,8 +13312,8 @@
           6.150766134262085,
           1
         ],
-        "name": "LOD2_MOTION_LATCH_PADDLE_B_Warning",
-        "planIndex": 78,
+        "name": "LOD2_MOTION_LATCH_PADDLE_B_Warning_1",
+        "planIndex": 126,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -11828,8 +13340,8 @@
           4.349999904632568,
           1
         ],
-        "name": "LOD0_MOTION_LATCH_PADDLE_C_BrushedMetal",
-        "planIndex": 80,
+        "name": "LOD0_MOTION_LATCH_PADDLE_C_BrushedMetal_1",
+        "planIndex": 129,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -11856,8 +13368,8 @@
           7.619999885559082,
           1
         ],
-        "name": "LOD0_MOTION_LATCH_PADDLE_C_Lights_Warm",
-        "planIndex": 81,
+        "name": "LOD0_MOTION_LATCH_PADDLE_C_Lights_Warm_1",
+        "planIndex": 131,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -11884,8 +13396,8 @@
           6.1499998569488525,
           1
         ],
-        "name": "LOD0_MOTION_LATCH_PADDLE_C_Mechanical",
-        "planIndex": 82,
+        "name": "LOD0_MOTION_LATCH_PADDLE_C_Mechanical_1",
+        "planIndex": 133,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -11912,8 +13424,8 @@
           6.1499998569488525,
           1
         ],
-        "name": "LOD0_MOTION_LATCH_PADDLE_C_Warning",
-        "planIndex": 83,
+        "name": "LOD0_MOTION_LATCH_PADDLE_C_Warning_1",
+        "planIndex": 135,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -11940,8 +13452,8 @@
           4.349999904632568,
           1
         ],
-        "name": "LOD1_MOTION_LATCH_PADDLE_C_BrushedMetal",
-        "planIndex": 84,
+        "name": "LOD1_MOTION_LATCH_PADDLE_C_BrushedMetal_1",
+        "planIndex": 137,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -11968,8 +13480,8 @@
           7.619990825653076,
           1
         ],
-        "name": "LOD1_MOTION_LATCH_PADDLE_C_Lights_Warm",
-        "planIndex": 85,
+        "name": "LOD1_MOTION_LATCH_PADDLE_C_Lights_Warm_1",
+        "planIndex": 139,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -11996,8 +13508,8 @@
           6.150293350219727,
           1
         ],
-        "name": "LOD1_MOTION_LATCH_PADDLE_C_Mechanical",
-        "planIndex": 86,
+        "name": "LOD1_MOTION_LATCH_PADDLE_C_Mechanical_1",
+        "planIndex": 141,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -12024,8 +13536,8 @@
           6.150293350219727,
           1
         ],
-        "name": "LOD1_MOTION_LATCH_PADDLE_C_Warning",
-        "planIndex": 87,
+        "name": "LOD1_MOTION_LATCH_PADDLE_C_Warning_1",
+        "planIndex": 143,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -12052,8 +13564,8 @@
           4.350000023841858,
           1
         ],
-        "name": "LOD2_MOTION_LATCH_PADDLE_C_BrushedMetal",
-        "planIndex": 88,
+        "name": "LOD2_MOTION_LATCH_PADDLE_C_BrushedMetal_1",
+        "planIndex": 145,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -12080,8 +13592,8 @@
           7.621279954910278,
           1
         ],
-        "name": "LOD2_MOTION_LATCH_PADDLE_C_Lights_Warm",
-        "planIndex": 89,
+        "name": "LOD2_MOTION_LATCH_PADDLE_C_Lights_Warm_1",
+        "planIndex": 147,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -12108,8 +13620,8 @@
           6.150137186050415,
           1
         ],
-        "name": "LOD2_MOTION_LATCH_PADDLE_C_Mechanical",
-        "planIndex": 90,
+        "name": "LOD2_MOTION_LATCH_PADDLE_C_Mechanical_1",
+        "planIndex": 149,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -12136,8 +13648,8 @@
           6.1508567333221436,
           1
         ],
-        "name": "LOD2_MOTION_LATCH_PADDLE_C_Warning",
-        "planIndex": 91,
+        "name": "LOD2_MOTION_LATCH_PADDLE_C_Warning_1",
+        "planIndex": 151,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -12164,8 +13676,8 @@
           -1.850000023841858,
           1
         ],
-        "name": "LOD0_MOTION_LATCH_SHUTTER_Armor",
-        "planIndex": 93,
+        "name": "LOD0_MOTION_LATCH_SHUTTER_Armor_1",
+        "planIndex": 154,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -12192,8 +13704,8 @@
           -0.27000001817941666,
           1
         ],
-        "name": "LOD0_MOTION_LATCH_SHUTTER_Beacon_Amber",
-        "planIndex": 94,
+        "name": "LOD0_MOTION_LATCH_SHUTTER_Beacon_Amber_1",
+        "planIndex": 156,
         "tags": {
           "canopy": false,
           "lod": "lod0",
@@ -12220,8 +13732,8 @@
           -1.849896252155304,
           1
         ],
-        "name": "LOD1_MOTION_LATCH_SHUTTER_Armor",
-        "planIndex": 95,
+        "name": "LOD1_MOTION_LATCH_SHUTTER_Armor_1",
+        "planIndex": 158,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -12248,8 +13760,8 @@
           -0.26990392059087753,
           1
         ],
-        "name": "LOD1_MOTION_LATCH_SHUTTER_Beacon_Amber",
-        "planIndex": 96,
+        "name": "LOD1_MOTION_LATCH_SHUTTER_Beacon_Amber_1",
+        "planIndex": 160,
         "tags": {
           "canopy": false,
           "lod": "lod1",
@@ -12276,8 +13788,8 @@
           -1.851012408733368,
           1
         ],
-        "name": "LOD2_MOTION_LATCH_SHUTTER_Armor",
-        "planIndex": 97,
+        "name": "LOD2_MOTION_LATCH_SHUTTER_Armor_1",
+        "planIndex": 162,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -12304,8 +13816,8 @@
           -0.27070657163858414,
           1
         ],
-        "name": "LOD2_MOTION_LATCH_SHUTTER_Beacon_Amber",
-        "planIndex": 98,
+        "name": "LOD2_MOTION_LATCH_SHUTTER_Beacon_Amber_1",
+        "planIndex": 164,
         "tags": {
           "canopy": false,
           "lod": "lod2",
@@ -12317,7 +13829,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_latch_nine.glb"
   },
-  "runtimeHash": "10ea5644099aa76ac7a67936cbe8bfb44e0f68b6bd8027016cbe42793ebcc8d4",
+  "runtimeHash": "11a84a6d67e6fe7814105106c85f41ed10470f41767aae7ae69840cd183e924a",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
