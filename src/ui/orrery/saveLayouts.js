@@ -334,6 +334,12 @@ html:root:not([data-sf-mobile="1"]) ${SLD} .sf-ledger-line { grid-template-colum
      line (GRUDGE) takes the whole row instead of wrapping in half of it, and the top padding gives back 6px (16 -> 10). */
   html:root:not([data-sf-mobile="1"]) ${SLD} .sf-save-portrait > .sf-ledger-line:nth-of-type(odd):nth-last-of-type(1) > :not(.sf-ledger-k) { grid-column:2 / -1; }
 }
+/* ui-polish-301: 461–560 tall from 791 wide (960×540) the band above gave LOAD a 10px top margin, so the
+   title hugged the frame edge while the left column kept ~150px spare under the reading. It takes back a real
+   margin there; the ≤460 band keeps its 10px. */
+@media (min-width:791px) and (min-height:461px) and (max-height:560px) {
+  html:root:not([data-sf-mobile="1"]) ${SLD} { padding-top:clamp(20px, 4.4vh, 26px) !important; row-gap:8px !important; }
+}
 /* ui-polish-97: 791–860 in the short band, QUICK's CURRENT badge (~64px) ran past its ~62px station into SLOT 1
    and its credits (closing its tracking was not enough). The badge steps aside there: the reading's context line
    carries it ("QUICK SAVE · CURRENT · …"). */
