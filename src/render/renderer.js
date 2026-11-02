@@ -600,6 +600,7 @@ import {
   isPackageGeometryDetached,
   noteOrientationDetachedHold,
   packageGeometryUploadDiagnostics,
+  queuePresentedDetachRehydrate,
   rehydrateDetachedGeometries,
   rehydrateDetachedPackages,
   rehydrateDetachedTextures,
@@ -8268,6 +8269,10 @@ export function retireAppearanceGpuGeneration(owner, reason = 'renderer-destroye
 export function disposeRendererOwnedResources(owner, options = {}) {
   if (!owner || owner._rendererResourcesDisposed === true) return false;
   owner._rendererResourcesDisposed = true;
+  owner._orientationResizeRelease?.();
+  owner._orientationResizeRelease = null;
+  owner._orientationResizePending = null;
+  owner._orientationResizeReady = false;
   try { owner._disarmDrawHistogram?.(); } catch (_) { /* diagnostic cleanup only */ }
   owner._touchDrawableCensus = null;
   const contextLost = options.contextLost === true || owner._contextLost === true;
@@ -9144,6 +9149,11 @@ export const render = {
       }
     }
     this._rendererResourcesDisposed = false;
+    this._orientationResizeRelease?.();
+    this._orientationResizeRelease = null;
+    this._orientationResizePending = null;
+    this._orientationResizeReady = false;
+    this._orientationResizeApplying = false;
     this._rendererGeneration = (this._rendererGeneration || 0) + 1;
     const rendererGeneration = this._rendererGeneration;
     const rendererGenerationIsActive = () => (
@@ -30129,6 +30139,7 @@ export const render = {
 
   drawPreparedFrame() {
     if (isWebGlContextUnavailable(this._contextLost, this.renderer)) return false;
+    if (this._orientationResizePending && !this._orientationResizeReady) return false;
     // The DOM loading shell completely covers the canvas. Drawing the hidden world here used to
     // trigger the entire first texture/shader upload during a progress yield, freezing that shell
     // for 5-8 seconds on SwiftShader and low-end drivers.
@@ -32604,6 +32615,20 @@ export const render = {
   },
 
   _renderPostRoute(route, scene, camera, time = 0) {
+    if (this._orientationResizePending) {
+      if (!this._orientationResizeReady || scene !== this.scene) return false;
+      // Commit only at a real draw boundary: setSize clears the canvas and post targets.
+      // The same task must replace them with a complete scene, after the refill hold ends.
+      this._orientationResizeApplying = true;
+      try { this.onResize(); }
+      finally {
+        this._orientationResizeRelease?.();
+        this._orientationResizeRelease = null;
+        this._orientationResizeApplying = false;
+        this._orientationResizePending = null;
+        this._orientationResizeReady = false;
+      }
+    }
     // Event VFX publish after prepareFrame. Resolve them before the one scene matrix walk.
     if (scene === this.scene) this._nocturne?.flush(camera);
     // All transform writes for the frame are complete before this dispatch. One explicit walk
@@ -32822,18 +32847,57 @@ export const render = {
   // window size, the base video settings, AND the live dynamic-resolution scale (state.render.dynResScale).
   // Shared by onResize (window/setting change) and the dynamic-resolution controller (per-frame load).
   _applySize() {
-    // Arm before setSize. Construction already recorded the class, so the phone's
-    // first rotation is a real flip. setSize can redraw before this function returns.
     const cssAspect = (typeof window !== 'undefined' && (window.innerWidth || 0) >= (window.innerHeight || 0))
       ? 'land' : 'port';
-    if (this._drawBufferAspectClass && this._drawBufferAspectClass !== cssAspect) {
-      noteOrientationDetachedHold(this.renderer);
+    if (!this._orientationResizeApplying && (this._orientationResizePending
+        || (this._drawBufferAspectClass && this._drawBufferAspectClass !== cssAspect))) {
+      // Preserve the last complete picture while the guard protects released hulls. Resizing
+      // now clears that picture, then presents a scene with those hulls deliberately hidden.
+      const canvas = this.renderer.domElement;
+      if (canvas?.style && typeof window !== 'undefined') {
+        canvas.style.width = `${window.innerWidth}px`;
+        canvas.style.height = `${window.innerHeight}px`;
+      }
+      if (!this._orientationResizePending) {
+        const renderer = this.renderer, generation = this._rendererGeneration;
+        const contextGeneration = this._contextRecovery?.generation || 0;
+        // Admissions can finish while the global refill walks other packages. Keep restored
+        // scene bytes alive until resize and draw run in the same task.
+        const releaseGeometry = retainPackageGeometryCpu(collectStartupGeometries(this.scene));
+        const releaseTextures = retainPresentedTextureLeases(collectStartupTextures(this.scene));
+        const release = () => { releaseGeometry(); releaseTextures(); };
+        this._orientationResizeRelease = release;
+        noteOrientationDetachedHold(this.renderer);
+        const active = () => this.renderer === renderer && this._rendererGeneration === generation
+          && (this._contextRecovery?.generation || 0) === contextGeneration
+          && this._rendererResourcesDisposed !== true && this._contextLost !== true;
+        const retire = () => {
+          release();
+          if (this._orientationResizePending !== pending) return false;
+          this._orientationResizeRelease = null;
+          this._orientationResizePending = null;
+          this._orientationResizeReady = false;
+          return true;
+        };
+        const pending = queuePresentedDetachRehydrate(renderer).then((receipt) => {
+          if (!active() || this._orientationResizePending !== pending) { retire(); return; }
+          if (receipt.errors?.length || receipt.geometryMismatches?.length || receipt.textureMismatches?.length) {
+            throw new Error(`Orientation package refill incomplete: ${JSON.stringify(receipt)}`);
+          }
+          this._orientationResizeReady = true;
+        }).catch((error) => {
+          if (!retire() || !active()) return;
+          laneWarn(this, 'orientationResize', '[render] orientation resize refill failed', error);
+        });
+        this._orientationResizePending = pending;
+      }
+      return this.renderer.getDrawingBufferSize(_drawSize);
     }
     const drawSize = applyRendererSize(this.renderer, this.state);
     // setSize can land a different class than the CSS viewport. Hold that flip
     // too. A same-aspect resize does not.
     const nextAspect = aspectClassFromSize(drawSize);
-    if (this._drawBufferAspectClass && this._drawBufferAspectClass !== nextAspect) {
+    if (!this._orientationResizeApplying && this._drawBufferAspectClass && this._drawBufferAspectClass !== nextAspect) {
       noteOrientationDetachedHold(this.renderer);
     }
     this._drawBufferAspectClass = nextAspect;
