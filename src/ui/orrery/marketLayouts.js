@@ -808,13 +808,26 @@ const CSS_TAIL = `
   html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station:has(.sx-mkt.orr-market) .sxb-ops .sx-receipt > * { white-space:nowrap; }
 }
 /* …and past ~900 wide at 461–800 tall, the strip "under the register" that the line was meant to
-   read in is the market table's own last row — the receipt printed over live cells (D248). It takes
-   the same dead lane the destination captions use: pinned to the frame's bottom strip, aligned to
-   the rail's left edge, where the only thing under it is the row's tick rule — decoration. Fixed
-   coordinates keep it on-glass however tall the sentence wraps. */
+   read in turned out to be the foot itself: a bottom-strip receipt is 24–38px tall over a 14px
+   gap, so it rode up onto the dock rail, the collision resolver answered with the
+   above-the-rail anchor, and — the receipt being fixed there — that anchor resolved against the
+   viewport, painting the line off the top of the glass (measured 1280×720: receipt y −48..−10).
+   The honest lane is the one the narrow band already proved (stationLayouts "a live receipt needs
+   its own measured row"): flow. The comms aside dissolves while a receipt is live, the line takes
+   its own full-width row at the foot's head, and the controls keep their row below — nothing
+   covered, nothing off-glass, whatever the sentence wraps to. */
 @media (min-width:901px) and (min-height:461px) and (max-height:800px) {
-  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station:has(.sx-mkt.orr-market) .sxb-ops .sx-receipt { position:fixed !important; left:32px !important; right:auto !important; top:auto !important; bottom:4px !important;
-    max-width:min(58vw, calc(100vw - 414px), 720px) !important; z-index:4 !important; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station:has(.sx-mkt.orr-market) .sxb-ops .sx-receipt { position:static !important; left:auto !important; right:auto !important; top:auto !important; bottom:auto !important;
+    max-width:100% !important; z-index:4 !important; }
+  /* The resting rail never wraps (the sheet's nowrap is the composition). While a receipt is
+     live the dissolved comms words join the row, so the foot must be allowed to break — the
+     receipt's own row takes the break and the dock keeps every tile on-glass. */
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station:has(.sx-mkt.orr-market) .sxb-ops:has(> .sx-comms > .sx-receipt:not([hidden])) { flex-wrap:wrap !important; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station:has(.sx-mkt.orr-market) .sxb-ops:has(> .sx-comms > .sx-receipt:not([hidden])) > .sx-comms { display:contents !important; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station:has(.sx-mkt.orr-market) .sxb-ops > .sx-comms > .sx-receipt:not([hidden]) { order:-1 !important;
+    flex:1 0 100% !important; width:100% !important; box-sizing:border-box;
+    flex-wrap:wrap !important; white-space:normal !important; gap:2px 10px !important; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station:has(.sx-mkt.orr-market) .sxb-ops > .sx-comms > .sx-receipt:not([hidden]) > * { min-width:0; overflow-wrap:anywhere; }
 }
 /* ---- 651–760 × ≤800: the analysis column is ~120–150px, so the kind line ("RAW ORE · LEGA"), the
    readings ("SECTOR NO CONF", with SPREAD and TREND in a second column past the edge) and ROUTE
