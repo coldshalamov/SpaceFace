@@ -1,5 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 
 import { createBus } from '../src/core/eventBus.js';
 import {
@@ -17,6 +19,15 @@ import {
   scheduleDockedStationPresentation,
   ui,
 } from '../src/ui/uiRoot.js';
+
+test('Shipworks stays out of startup preloads and keeps its F2-time literal import', () => {
+  const root = fileURLToPath(new URL('../', import.meta.url));
+  const html = readFileSync(`${root}/index.html`, 'utf8');
+  const uiRoot = readFileSync(`${root}/src/ui/uiRoot.js`, 'utf8');
+
+  assert.doesNotMatch(html, /<link\s+rel="modulepreload"[^>]*href="\.\/src\/ui\/ship\/shipScreen\.js"/);
+  assert.match(uiRoot, /load:\s*\(\)\s*=>\s*import\('\.\/ship\/shipScreen\.js'\)/);
+});
 
 function installFakeTimers() {
   const realSetTimeout = globalThis.setTimeout;
