@@ -367,6 +367,93 @@ test('receipt placement handles visible and hidden captions with external flight
   }
 });
 
+test('caption bands reserve sibling touch controls and refresh only their layout changes', () => {
+  const ast = parse(HUD_SRC, { sourceType: 'module' });
+  const names = new Set(['responsiveOverlayObstacles', 'freeOverlayBands',
+    'invalidateObjectiveEdgeBoxes', 'invalidateAndPlaceHudOverlays']);
+  const owners = [];
+  const visit = (node) => {
+    if (!node || typeof node !== 'object') return;
+    if (node.type === 'FunctionDeclaration' && names.has(node.id?.name)) {
+      owners.push(HUD_SRC.slice(node.start, node.end));
+      return;
+    }
+    for (const value of Object.values(node)) {
+      if (Array.isArray(value)) value.forEach(visit);
+      else if (value && typeof value === 'object') visit(value);
+    }
+  };
+  visit(ast);
+  assert.equal(owners.length, names.size);
+  const obstacle = (left, top, width, height) => ({
+    getBoundingClientRect: () => ({ left, top, width, height, right: left + width, bottom: top + height }),
+  });
+  const status = obstacle(14, 14, 176, 124);
+  const pause = obstacle(326, 14, 52, 52);
+  const powers = obstacle(250, 14, 68, 44);
+  const buttons = obstacle(254, 640, 124, 190);
+  const hiddenDock = obstacle(0, 0, 0, 0);
+  const tape = obstacle(250, 64, 128, 62);
+  const touchElements = [status, pause, powers, buttons, hiddenDock];
+  const touch = { querySelectorAll: () => touchElements };
+  const observed = new Set();
+  let observeCalls = 0;
+  let placements = 0;
+  let configObserver;
+  const context = {
+    root: { querySelectorAll: () => [], querySelector: () => true },
+    document: { getElementById: () => touch, querySelectorAll: () => [] },
+    window: { innerWidth: 390 },
+    objectiveEdgeObstacles: () => ({}),
+    externalFlightCaptions: new Set(),
+    responsiveOverlayElements: new Set(),
+    overlayLayoutObserver: {
+      observe: (el) => { observed.add(el); observeCalls++; },
+      unobserve: (el) => { observed.delete(el); },
+    },
+    touchOverlayOwner: null,
+    touchOverlayObserver: null,
+    objectiveEdgeBoxes: { stale: false },
+    externalCaptionsStale: false,
+    placeReceiptLane: () => { placements++; },
+    MutationObserver: class {
+      constructor(callback) { this.callback = callback; configObserver = this; }
+      observe(el, options) { this.element = el; this.options = options; }
+      disconnect() { this.disconnected = true; }
+    },
+  };
+  // The ordinary selector returns no touch controls: they are outside #hud. Only the
+  // production responsive owner can find and reserve these sibling rectangles.
+  context.root.querySelectorAll = (selector) => selector === '#race-tape' ? [tape] : [];
+  const { freeOverlayBands } = runInNewContext(`${owners.join('\n')}; ({ freeOverlayBands })`, context);
+  const layout = { viewport: { width: 390 } };
+  const slot = { x: 12, width: 366 };
+  const bands = freeOverlayBands(slot, 844, layout);
+  assert.ok(bands.length > 0, 'visible discovery space remains');
+  assert.ok(bands.every((band) => band.top >= 146 && band.bottom <= 632),
+    'all available bands clear ship status, top keys, race tape and lower thumb controls');
+  assert.equal(observed.size, 6, 'each actual instrument is watched, including hidden dock appearance');
+  freeOverlayBands(slot, 844, layout);
+  assert.equal(observeCalls, 6, 'settled captions do not repeatedly register geometry observers');
+  assert.equal(placements, 0, 'reading live controls does not invalidate placement');
+  assert.equal(configObserver.element, touch);
+  assert.deepEqual(Array.from(configObserver.options.attributeFilter), ['data-layout', 'data-lefty', 'style']);
+  assert.equal(configObserver.options.subtree, undefined, 'live speed and meter updates are not observed');
+  configObserver.callback();
+  assert.equal(context.objectiveEdgeBoxes.stale, true);
+  assert.equal(context.externalCaptionsStale, true);
+  assert.equal(placements, 1, 'handedness/scale changes immediately refresh the caption reservation');
+
+  touchElements.splice(touchElements.indexOf(powers), 1);
+  freeOverlayBands(slot, 844, layout);
+  assert.equal(observed.has(powers), false, 'replaced controls release their geometry observer');
+
+  // In landscape the tape sits to the left of the radar, beyond the status strip.
+  const railBands = freeOverlayBands({ x: 250, width: 128 }, 390,
+    { viewport: { width: 844 } });
+  assert.ok(railBands.every((band) => band.top >= 134), 'the compact tape is itself a caption obstacle');
+});
+
 test('first-flight instruction yields space to the right target dock on narrow viewports', () => {
   const wide = tutorialFlightCardLayout(resolveObjectiveHudLayout(1440, 900));
   assert.equal(wide.maxWidth, 672, 'the existing wide-screen card size is preserved');

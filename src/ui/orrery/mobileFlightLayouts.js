@@ -50,15 +50,15 @@ export const MOBILE_FLIGHT_LAYOUT_CSS = `
   /* The 44px touch keys take the lane below the alert line and the tutorial card and left
      of the radar — the only clear horizontal strip on a short phone (the alert band y22-45
      and card y70-102 own the top, the ghost ring owns the left bottom). absolute against the
-     dock: dock top 80 + 28 = viewport 108, right edge 595 ends before the radar's 601. */
+     dock: dock top 80 + 28 = viewport 108. Leave a 12px gutter before the 153px dial. */
   ${FLIGHT} #race-tape[data-compact="true"] {
     position:absolute!important;
     top:28px;
     bottom:auto!important; left:auto!important;
-    right:calc(159px + var(--sf-safe-right,0px));
+    right:calc(165px + var(--sf-safe-right,0px));
     /* On the shortest phones (568x320) 180px can't clear both the status lane and
        the radar; the tape compacts its keys 2x2 and yields before it collides. */
-    width:min(180px,calc(100vw - 453px - var(--sf-safe-left,0px) - var(--sf-safe-right,0px)));
+    width:min(180px,calc(100vw - 459px - var(--sf-safe-left,0px) - var(--sf-safe-right,0px)));
     min-width:100px;
     transform:none;
   }

@@ -5926,6 +5926,9 @@ export function createHud(ctx, alerts) {
   let lastReceiptObstacle = null;
   let lastCaptionObstacleVisible = null;
   let overlayLayoutObserver = null;
+  const responsiveOverlayElements = new Set();
+  let touchOverlayOwner = null;
+  let touchOverlayObserver = null;
   if (typeof ResizeObserver === 'function') {
     overlayLayoutObserver = new ResizeObserver(invalidateAndPlaceHudOverlays);
     const railEl = root.querySelector('.orr-hud-cluster .orr-cluster, .sf-prail');
@@ -5935,6 +5938,45 @@ export function createHud(ctx, alerts) {
   }
   on('hud:layoutChanged', invalidateAndPlaceHudOverlays);
   on('settings:changed', invalidateAndPlaceHudOverlays);
+  hudUnsubscribers.push(() => {
+    touchOverlayObserver?.disconnect();
+    responsiveOverlayElements.clear();
+  });
+
+  function responsiveOverlayObstacles() {
+    // The touch HUD is a body sibling, not a child of #hud. Reserve its actual rendered
+    // instruments rather than the desktop vitals rectangle that mobile flight replaces.
+    const touch = document.getElementById('sf-touch-overlay');
+    if (touch !== touchOverlayOwner) {
+      touchOverlayObserver?.disconnect();
+      touchOverlayOwner = touch;
+      if (touch && typeof MutationObserver === 'function') {
+        touchOverlayObserver = new MutationObserver(invalidateAndPlaceHudOverlays);
+        // Handedness/scale can move controls without resizing them. Only configuration
+        // attributes change placement; observing live readings would invalidate every frame.
+        touchOverlayObserver.observe(touch, {
+          attributes: true, attributeFilter: ['data-layout', 'data-lefty', 'style'],
+        });
+      }
+    }
+    const elements = [
+      ...root.querySelectorAll?.('#race-tape') || [],
+      ...touch?.querySelectorAll?.('.mf-status, .mf-pause, .mf-edge, .mf-buttons, .mf-dock') || [],
+    ];
+    for (const el of responsiveOverlayElements) {
+      if (!elements.includes(el)) {
+        overlayLayoutObserver?.unobserve(el);
+        responsiveOverlayElements.delete(el);
+      }
+    }
+    for (const el of elements) {
+      if (!responsiveOverlayElements.has(el)) {
+        responsiveOverlayElements.add(el);
+        overlayLayoutObserver?.observe(el);
+      }
+    }
+    return elements;
+  }
 
   // Both roots are static index.html markup: resolve each once, retrying only while absent.
   let toastsLaneEl = null;
@@ -5981,6 +6023,7 @@ export function createHud(ctx, alerts) {
     const candidates = [
       ...root.querySelectorAll?.('.orr-hud-cluster .orr-cluster, .sf-prail, .sf-rightdock, .sf-command-deck, .sf-nav-readout, .sf-nav-label, .sf-mt-obj, .sf-vtape--on, .sf-commtape, .sf-dock-prompt, .sf-tell.is-on, #sf-prompt-deck, #sf-tutorial-flight-card') || [],
       ...document.querySelectorAll?.('#alerts > .sf-alert:not([hidden])') || [],
+      ...responsiveOverlayObstacles(),
     ];
     if (includeLiveCaptionsAndToasts) {
       candidates.push(...root.querySelectorAll?.('.sf-caption.show, .sf-toast:not(.sf-toast--out)') || []);

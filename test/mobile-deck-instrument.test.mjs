@@ -287,7 +287,7 @@ for (const [width,height,safeLeft,safeRight] of [[844,390,0,0],[667,375,0,0],[56
     // The radar is a right-aligned .75 dial inside the dock; the rail must finish before it.
     const radarLeft = width - dockRight - safeRight - radarWidth * radarScale;
     const right = width - dockRight - safeRight - Number(rail.match(/right:calc\((\d+)px/)?.[1]);
-    // The rail's authored width is min(180px, 100vw - 453px - safes): it yields before it
+    // The rail's authored width yields before it
     // can collide with the status lane on the shortest phones.
     const railW = Math.min(
       Number(rail.match(/width:min\((\d+)px/)?.[1]),
@@ -296,7 +296,7 @@ for (const [width,height,safeLeft,safeRight] of [[844,390,0,0],[667,375,0,0],[56
     const top = dockTop + Number(rail.match(/top:(-?\d+)px/)?.[1]);
     const radarTop = dockTop;
     assert.ok(left >= 14 + safeLeft + 176 + 12, 'status strip remains separate');
-    assert.ok(right <= radarLeft, 'rail finishes before the radar column begins');
+    assert.ok(radarLeft - right >= 12, 'rail keeps a 12px gutter before the radar column');
     assert.ok(right <= width - 12 - safeRight - 52 - 12, 'Pause remains separate');
     // Full phones carry two labeled keys side by side; the 568-wide class compacts to the
     // authored 2x2 grid (styles.js compact row) — the rail keeps its 100px label floor.
