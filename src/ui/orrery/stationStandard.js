@@ -141,7 +141,12 @@ ${P} .sxb-vital__acts .orr-act__cost { font-family:${NUM} !important; font-size:
   /* Two rows keep every reading in the head: the hull and ledger get wide cells; fuel and hold
      have room for their figures, and MUNITIONS keeps its label clear of its value. */
   ${P} .sxb-crown { gap:0 !important; }
-  ${P} .sxb-crown .sxb-vitals { margin-top:-8px !important; }
+  /* ui-polish-296: the stacked purse sat over the vitals strip's top rule (-8px tuck) and cost the head a
+     34px row of its own, so the HULL MECHANIC tape was cut by the head's bottom edge. The purse takes the
+     empty left of the Ctrl K row instead, and the strip starts on its own rule. */
+  ${P} .sxb-berth.dp-frame__head > .sxb-crown { display:contents !important; }
+  ${P} .sxb-berth.dp-frame__head > .sxb-crown .sxb-purse { grid-area:trigger !important; justify-self:start !important; align-self:center !important; }
+  ${P} .sxb-berth.dp-frame__head > .sxb-crown .sxb-vitals { grid-area:crown !important; margin-top:0 !important; }
   ${P} .sxb-crown .sxb-vital__head { min-height:22px !important; }
   ${P} .sxb-berth.dp-frame__head { grid-template-rows:max-content max-content max-content max-content max-content !important;
     align-content:start !important; row-gap:2px !important; }
