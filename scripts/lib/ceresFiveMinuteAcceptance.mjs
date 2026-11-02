@@ -3907,6 +3907,13 @@ export function ceresTurnPulseDuration(action, previousTurn, headingError) {
   return { durationMs: Math.min(160, action.durationMs * 2 ** Math.min(misses, 3)), misses };
 }
 
+export function ceresPointPulseDuration(action, pulse, distanceWU, arrivalRadiusWU) {
+  // Native key release is followed by a neutral observation, during which thrust decays. Keep
+  // useful progress on open legs; near the gate retain the shorter pulse for controlled arrival.
+  return action.kind === 'thrust' && distanceWU > arrivalRadiusWU + 45
+    ? Math.min(480, action.durationMs * 3) : pulse.durationMs;
+}
+
 async function readCeresLiveCohortCameraSnapshot(page, authorityRows) {
   return page.evaluate((rows) => {
     const state = window.SF?.state;
@@ -4176,7 +4183,9 @@ export async function drivePublicToCeresPoint(page, target, endTick) {
         const pulse = ceresTurnPulseDuration(action, previousTurn, status.headingError);
         previousTurn = action.kind === 'turn'
           ? { headingError: status.headingError, misses: pulse.misses } : null;
-        await pressCeresPublicPointAction(page, { ...action, durationMs: pulse.durationMs });
+        await pressCeresPublicPointAction(page, { ...action, durationMs: ceresPointPulseDuration(
+          action, pulse, status.distanceWU, arrivalRadiusWU,
+        ) });
         await waitForCeresFixedTicks(page, 1, 20_000);
         continue;
       }

@@ -18,6 +18,7 @@ import {
   accessibilityCheckpointIdentity,
   canonicalGapProjection,
   ceresPreContinueLegReserveTicks,
+  ceresPointPulseDuration,
   ceresTurnPulseDuration,
   ceresHostileOpportunityPass,
   ceresLawfulServiceClassificationPass,
@@ -3241,6 +3242,14 @@ test('short public turns lengthen only when the observed heading does not respon
     previous = { headingError: 0.108475613412371, misses: result.misses };
   }
   assert.equal(ceresTurnPulseDuration(action, previous, 0.05).durationMs, 20);
+});
+
+test('public point thrust uses longer pulses outside the approach margin', () => {
+  const thrust = { kind: 'thrust', durationMs: 160 };
+  const pulse = { durationMs: 160 };
+  assert.equal(ceresPointPulseDuration(thrust, pulse, 108.62, 45), 480);
+  assert.equal(ceresPointPulseDuration(thrust, pulse, 90, 45), 160);
+  assert.equal(ceresPointPulseDuration({ kind: 'turn' }, { durationMs: 40 }, 200, 45), 40);
 });
 
 test('public pocket approach completes only after the hull is settled inside the anchor', () => {
