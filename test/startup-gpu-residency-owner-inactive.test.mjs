@@ -159,6 +159,28 @@ test('a live nonrequired boundary superseded only by context loss is information
   ]]);
 });
 
+test('a live boundary superseded only by a newer admission transition is informational', () => {
+  const result = captureGuardCall(() => false, {
+    ownerType: 'authored-boundary',
+    entityId: 150,
+    entityAlive: true,
+    entityIsCurrent: true,
+    entityStillRequired: true,
+    boundaryAttached: true,
+    renderMatches: true,
+    rendererMatches: true,
+    admissionGenerationMatches: false,
+    contextLossGenerationMatches: true,
+    portMatches: true,
+  });
+  assert.equal(result.error.name, 'AbortError');
+  assert.equal(result.error.code, 'GPU_RESIDENCY_OWNER_INACTIVE');
+  assert.deepEqual(result.warnings, [], 'a superseded owner does not look like failed GPU work');
+  assert.deepEqual(result.infos, [[
+    '[render] authored GPU residency cancelled after transition for boundary 150',
+  ]]);
+});
+
 test('required, same-generation, mismatched, and unknown authored owners retain warning severity', () => {
   for (const ownerSnapshot of [
     { ownerType: 'authored-boundary', entityAlive: true, entityIsCurrent: true, entityStillRequired: true },

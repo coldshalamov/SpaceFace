@@ -604,6 +604,7 @@ import {
   rehydrateDetachedPackages,
   rehydrateDetachedTextures,
   refillPresentedCompressedUploads,
+  retainPackageGeometryCpu,
 } from './packageCpuDetach.js';
 import { sharedImageSourceUsers } from './imageSourceDedupe.js';
 import {
@@ -11368,6 +11369,18 @@ export const render = {
       const receipt = await rehydrateDetachedGeometries(pending, { yieldToMain: admissionPaceYield });
       return assertPackageGeometryRefillReady(pending, receipt);
     };
+    const withSubjectGeometryCpuLease = (subjects, work) => {
+      // The residency lane already holds this lease from its refill through upload. Exact-target
+      // admission has a longer async suffix (compressed texture refill + paced draw), so keep the
+      // same detached package bytes attached until that actual draw has finished too.
+      const releaseCpu = retainPackageGeometryCpu(collectStartupGeometries(subjects));
+      try {
+        return Promise.resolve(work()).finally(releaseCpu);
+      } catch (error) {
+        releaseCpu();
+        throw error;
+      }
+    };
     const compileForCurrentTarget = (subjects, compileOptions) => {
       const optionActive = compileOptions && compileOptions.isActive;
       const isRootActive = typeof optionActive === 'function'
@@ -11666,6 +11679,15 @@ export const render = {
             && ownerSnapshot.admissionGenerationMatches === true
             && ownerSnapshot.contextLossGenerationMatches === false
             && ownerSnapshot.portMatches === true;
+          const supersededAuthoredBoundaryAfterTransition = ownerSnapshot.ownerType === 'authored-boundary'
+            && ownerSnapshot.entityAlive === true
+            && ownerSnapshot.entityIsCurrent === true
+            && ownerSnapshot.boundaryAttached === true
+            && ownerSnapshot.renderMatches === true
+            && ownerSnapshot.rendererMatches === true
+            && ownerSnapshot.admissionGenerationMatches === false
+            && ownerSnapshot.contextLossGenerationMatches === true
+            && ownerSnapshot.portMatches === true;
           if (ownerSnapshot.ownerType === 'authored-boundary' && this._rendererResourcesDisposed === true) {
             console.info(
               `[render] authored GPU residency cancelled during renderer teardown for boundary ${String(ownerSnapshot.entityId ?? 'unknown')}`,
@@ -11677,6 +11699,10 @@ export const render = {
           } else if (supersededAuthoredBoundaryAfterContextLoss) {
             console.info(
               `[render] authored GPU residency cancelled after context loss for boundary ${String(ownerSnapshot.entityId ?? 'unknown')}`,
+            );
+          } else if (supersededAuthoredBoundaryAfterTransition) {
+            console.info(
+              `[render] authored GPU residency cancelled after transition for boundary ${String(ownerSnapshot.entityId ?? 'unknown')}`,
             );
           } else {
             console.warn('[render] authored GPU residency owner became inactive', ownerSnapshot);
@@ -12019,111 +12045,113 @@ export const render = {
             throw ownerInactiveTouchError();
           }
           if (isRetiredRigidOpaqueBatch(subject)) throw ownerInactiveTouchError();
-          admissionOptions.onPreparationLeg?.('exact-target');
-          // A cpu-detached package texture this draw would force-upload reads an emptied mip
-          // chain inside uploadTexture and throws — the touch exists to keep exactly that work
-          // out of the presented pass, so re-attach those payloads first (D150).
-          try {
-            await reattachDetachedSubjectTextures(subject);
-          } catch (error) {
-            exactTargetReady = false;
-            laneWarn(this, 'admissionTouch', '[render] admission touch texture reattach failed', error);
-          }
-          try {
-            await reattachDetachedSubjectGeometries(subject);
-          } catch (error) {
-            exactTargetReady = false;
-            laneWarn(this, 'admissionTouch', '[render] admission touch geometry reattach failed', error,
-              error?.geometryRefill || null);
-            // Do not render this newly admitted subject against a detached or incompatible CPU
-            // geometry buffer. The caller must keep its previous authored body/fallback and
-            // surface the typed package/ordinal/attribute-shape receipt instead.
-            throw error;
-          }
-          try {
-            await refillPresentedCompressedUploads(collectStartupTextures(subject), renderer);
-          } catch (error) {
-            exactTargetReady = false;
-            laneWarn(this, 'admissionTouch', '[render] admission touch compressed refill failed', error);
-          }
-          // compile() resolves under the armed admission state; the presented pass can still
-          // ask the driver for a different program key (shadow-gate drift, env binding, target
-          // color space). Draw the admitted subject once on the exact post target under live
-          // state — the same touch the opening plan runs — so any residual variant links here,
-          // behind the pending latch, instead of inside a presented bloom frame.
-          try {
-            const touchReceipt = await submitExactSubjectTouch(subject, admissionOptions.isActive, urgent);
-            if (touchReceipt?.skipped || touchReceipt?.incomplete || touchReceipt?.contextLost) {
-              exactTargetReady = false;
-              exactTouchFailure = touchReceipt;
-              if (admissionOptions.strict === true) assertCompleteAppearanceAdmission(touchReceipt);
-            }
-          } catch (error) {
-            if (isOwnerInactiveTouchError(error)) throw error;
-            if (error?.code === 'SF_PIPELINE_READINESS_TIMEOUT') throw error;
-            exactTargetReady = false;
-            laneWarn(this, 'admissionTouch', '[render] exact-target admission touch failed', error, emptyCompressedTextureIdentity(subject));
-            // Identify which texture threw on upload and why: package-detach empties a
-            // resident texture's mipmaps, and a fresh upload against a dedupe-shared Source
-            // under a different upload-cache key (colorSpace/sampler/flipY) reads mipmaps[0]
-            // on the empty array. Fires only on failure; walks the subject once — so a
-            // persistently-faulting subject would pay the walk + stringify per retry.
-            // Sampled: first 4 per service epoch carry the full diag; later ones warn bare.
+          return withSubjectGeometryCpuLease(subject, async () => {
+            admissionOptions.onPreparationLeg?.('exact-target');
+            // A cpu-detached package texture this draw would force-upload reads an emptied mip
+            // chain inside uploadTexture and throws — the touch exists to keep exactly that work
+            // out of the presented pass, so re-attach those payloads first (D150).
             try {
-              const diagEpoch = serviceFaultEpoch(this.state);
-              const diagRollup = this.state && this.state.render
-                && (this.state.render.touchFailDiag
-                  || (this.state.render.touchFailDiag = { epoch: -1, runs: 0 }));
-              if (diagRollup && diagRollup.epoch !== diagEpoch) {
-                diagRollup.epoch = diagEpoch; diagRollup.runs = 0;
+              await reattachDetachedSubjectTextures(subject);
+            } catch (error) {
+              exactTargetReady = false;
+              laneWarn(this, 'admissionTouch', '[render] admission touch texture reattach failed', error);
+            }
+            try {
+              await reattachDetachedSubjectGeometries(subject);
+            } catch (error) {
+              exactTargetReady = false;
+              laneWarn(this, 'admissionTouch', '[render] admission touch geometry reattach failed', error,
+                error?.geometryRefill || null);
+              // Do not render this newly admitted subject against a detached or incompatible CPU
+              // geometry buffer. The caller must keep its previous authored body/fallback and
+              // surface the typed package/ordinal/attribute-shape receipt instead.
+              throw error;
+            }
+            try {
+              await refillPresentedCompressedUploads(collectStartupTextures(subject), renderer);
+            } catch (error) {
+              exactTargetReady = false;
+              laneWarn(this, 'admissionTouch', '[render] admission touch compressed refill failed', error);
+            }
+            // compile() resolves under the armed admission state; the presented pass can still
+            // ask the driver for a different program key (shadow-gate drift, env binding, target
+            // color space). Draw the admitted subject once on the exact post target under live
+            // state — the same touch the opening plan runs — so any residual variant links here,
+            // behind the pending latch, instead of inside a presented bloom frame.
+            try {
+              const touchReceipt = await submitExactSubjectTouch(subject, admissionOptions.isActive, urgent);
+              if (touchReceipt?.skipped || touchReceipt?.incomplete || touchReceipt?.contextLost) {
+                exactTargetReady = false;
+                exactTouchFailure = touchReceipt;
+                if (admissionOptions.strict === true) assertCompleteAppearanceAdmission(touchReceipt);
               }
-              const diagSampled = !diagRollup || (diagRollup.runs += 1) <= 4;
-              if (!diagSampled) {
-                laneWarn(this, 'admissionTouch',
-                  '[render] touch-fail texture diag skipped (epoch budget spent)');
-                throw new Error('diag-skipped');
-              }
-              const rows = [];
-              subject.traverse?.((o) => {
-                const mats = Array.isArray(o.material) ? o.material : (o.material ? [o.material] : []);
-                for (const m of mats) for (const k of Object.keys(m)) {
-                  const t = m[k];
-                  if (!t || !t.isTexture || !t.isCompressedTexture) continue;
-                  const empty = !(t.mipmaps && t.mipmaps.length > 0);
-                  let threw = null;
-                  try { renderer.initTexture(t); } catch (e) { threw = String(e && e.message || e); }
-                  if (empty || threw) rows.push({
-                    slot: k, name: t.name || '', src: t.source && t.source.uuid.slice(0, 8),
-                    mips: t.mipmaps ? t.mipmaps.length : -1,
-                    shared: !!(t.userData && t.userData.spacefaceSharedImageSourceKey),
-                    detachMark: t.userData && t.userData.spacefaceCpuDetach || null,
-                    colorSpace: t.colorSpace, flipY: t.flipY, wrapS: t.wrapS, wrapT: t.wrapT,
-                    magFilter: t.magFilter, minFilter: t.minFilter, version: t.version,
-                    users: sharedImageSourceUsers(t) || undefined,
-                    threw,
-                  });
+            } catch (error) {
+              if (isOwnerInactiveTouchError(error)) throw error;
+              if (error?.code === 'SF_PIPELINE_READINESS_TIMEOUT') throw error;
+              exactTargetReady = false;
+              laneWarn(this, 'admissionTouch', '[render] exact-target admission touch failed', error, emptyCompressedTextureIdentity(subject));
+              // Identify which texture threw on upload and why: package-detach empties a
+              // resident texture's mipmaps, and a fresh upload against a dedupe-shared Source
+              // under a different upload-cache key (colorSpace/sampler/flipY) reads mipmaps[0]
+              // on the empty array. Fires only on failure; walks the subject once — so a
+              // persistently-faulting subject would pay the walk + stringify per retry.
+              // Sampled: first 4 per service epoch carry the full diag; later ones warn bare.
+              try {
+                const diagEpoch = serviceFaultEpoch(this.state);
+                const diagRollup = this.state && this.state.render
+                  && (this.state.render.touchFailDiag
+                    || (this.state.render.touchFailDiag = { epoch: -1, runs: 0 }));
+                if (diagRollup && diagRollup.epoch !== diagEpoch) {
+                  diagRollup.epoch = diagEpoch; diagRollup.runs = 0;
                 }
-              });
-              laneWarn(this, 'admissionTouchDiag', '[render] touch-fail texture diag', JSON.stringify(rows));
-              laneWarn(this, 'admissionTouchDiag', '[render] touch-fail geometry diag', JSON.stringify(
-                packageGeometryUploadDiagnostics(collectStartupGeometries(subject), { limit: 16 }),
-              ));
-            } catch (diagError) {
-              if (diagError && diagError.message !== 'diag-skipped') {
-                laneWarn(this, 'admissionTouchDiag', '[render] touch-fail diag errored',
-                  String(diagError && diagError.message || diagError));
+                const diagSampled = !diagRollup || (diagRollup.runs += 1) <= 4;
+                if (!diagSampled) {
+                  laneWarn(this, 'admissionTouch',
+                    '[render] touch-fail texture diag skipped (epoch budget spent)');
+                  throw new Error('diag-skipped');
+                }
+                const rows = [];
+                subject.traverse?.((o) => {
+                  const mats = Array.isArray(o.material) ? o.material : (o.material ? [o.material] : []);
+                  for (const m of mats) for (const k of Object.keys(m)) {
+                    const t = m[k];
+                    if (!t || !t.isTexture || !t.isCompressedTexture) continue;
+                    const empty = !(t.mipmaps && t.mipmaps.length > 0);
+                    let threw = null;
+                    try { renderer.initTexture(t); } catch (e) { threw = String(e && e.message || e); }
+                    if (empty || threw) rows.push({
+                      slot: k, name: t.name || '', src: t.source && t.source.uuid.slice(0, 8),
+                      mips: t.mipmaps ? t.mipmaps.length : -1,
+                      shared: !!(t.userData && t.userData.spacefaceSharedImageSourceKey),
+                      detachMark: t.userData && t.userData.spacefaceCpuDetach || null,
+                      colorSpace: t.colorSpace, flipY: t.flipY, wrapS: t.wrapS, wrapT: t.wrapT,
+                      magFilter: t.magFilter, minFilter: t.minFilter, version: t.version,
+                      users: sharedImageSourceUsers(t) || undefined,
+                      threw,
+                    });
+                  }
+                });
+                laneWarn(this, 'admissionTouchDiag', '[render] touch-fail texture diag', JSON.stringify(rows));
+                laneWarn(this, 'admissionTouchDiag', '[render] touch-fail geometry diag', JSON.stringify(
+                  packageGeometryUploadDiagnostics(collectStartupGeometries(subject), { limit: 16 }),
+                ));
+              } catch (diagError) {
+                if (diagError && diagError.message !== 'diag-skipped') {
+                  laneWarn(this, 'admissionTouchDiag', '[render] touch-fail diag errored',
+                    String(diagError && diagError.message || diagError));
+                }
               }
             }
-          }
-          if (subjectPipelineReady && subjectResidencyReady && exactTargetReady) {
-            if (subject && subject.userData) subject.userData.sfAdmittedOnce = true;
-            markAuthoredGeologyFallbackAdmitted(subject);
-            rememberOpeningPreparedLeaves(subject);
-          }
-          if (admissionOptions.strict === true && (!subjectPipelineReady || !subjectResidencyReady || !exactTargetReady)) {
-            throw new Error('Required authored appearance admission did not complete');
-          }
-          return exactTouchFailure || result;
+            if (subjectPipelineReady && subjectResidencyReady && exactTargetReady) {
+              if (subject && subject.userData) subject.userData.sfAdmittedOnce = true;
+              markAuthoredGeologyFallbackAdmitted(subject);
+              rememberOpeningPreparedLeaves(subject);
+            }
+            if (admissionOptions.strict === true && (!subjectPipelineReady || !subjectResidencyReady || !exactTargetReady)) {
+              throw new Error('Required authored appearance admission did not complete');
+            }
+            return exactTouchFailure || result;
+          });
         })
         .finally(() => {
           if (counters) counters.admissionSubject = priorSubject;
@@ -12230,7 +12258,7 @@ export const render = {
       // draw would force-upload reads emptied mipmaps inside the draw and throws
       // (D150) — for that subject only, re-attach the payloads first and run the
       // identical reveal+touch in the continuation.
-      return detachedSubjectUploadsPendingAsync(subject)
+      return withSubjectGeometryCpuLease(subject, () => detachedSubjectUploadsPendingAsync(subject)
         .catch((error) => {
           laneWarn(this, 'admissionTouch', '[render] exact-target pending-texture scan failed', error);
           return null;
@@ -12300,7 +12328,7 @@ export const render = {
             laneWarn(this, 'admissionTouch', '[render] exact-target admission touch failed', error, emptyCompressedTextureIdentity(subject));
             return { skipped: true, reason: 'touch-failed' };
           }
-        });
+        }));
     };
     // The restore drain re-enters the public touch so the queued subject gets the same
     // reveal/park/cull treatment — and re-queues itself if a second loss lands mid-drain.
