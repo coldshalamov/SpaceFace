@@ -4752,15 +4752,31 @@ test('public pocket settle holds the brake to the speed condition outside the st
   });
   assert.equal(receipt.speed, 0.8);
   assert.equal(receipt.distanceWU, 80);
-  assert.deepEqual(settled.events, [
+  const firstWaitMs = Number(settled.events[1].split(':').at(-1));
+  assert.ok(firstWaitMs > 0 && firstWaitMs <= 10_000, 'the wait uses the remaining original deadline');
+  assert.deepEqual([settled.events[0], ...settled.events.slice(2)], [
     'down:Digit0',
-    'wait:speed-or-horizon:10000',
     'poll:78:false',
     'poll:35:false',
     'poll:0.8:true',
     'read:settled-status',
     'up:Digit0',
   ]);
+
+  const rebound = pocketSettlePage({
+    tick: 1_000, endTick: 2_000, distanceWU: 80,
+    pollSpeeds: [0.8, 0.7], postReadSpeeds: [1.03, 0.7],
+  });
+  const stable = await settleCeresPocketApproach(rebound.page, {
+    point: { x: 0, z: 0 }, endTick: 2_000, targetName: 'Working Seam',
+  });
+  assert.equal(stable.speed, 0.7);
+  const waits = rebound.events.filter(event => event.startsWith('wait:speed-or-horizon:'))
+    .map(event => Number(event.split(':').at(-1)));
+  assert.equal(waits.length, 2);
+  assert.ok(waits[1] <= waits[0] && waits[0] <= 10_000, 'retry shares the original deadline');
+  assert.equal(rebound.events.filter(event => event === 'down:Digit0').length, 1);
+  assert.equal(rebound.events.at(-1), 'up:Digit0');
 
   const horizon = pocketSettlePage({
     tick: 1_880,
@@ -6889,7 +6905,7 @@ function hostileMasslineAcquisitionPage({
   };
 }
 
-function pocketSettlePage({ tick, endTick, distanceWU, pollSpeeds }) {
+function pocketSettlePage({ tick, endTick, distanceWU, pollSpeeds, postReadSpeeds = [] }) {
   const events = [];
   const heldKeys = new Set();
   const speeds = [...pollSpeeds];
@@ -6932,7 +6948,8 @@ function pocketSettlePage({ tick, endTick, distanceWU, pollSpeeds }) {
         assert.equal(argument.terminalTick, endTick);
         assert.equal(heldKeys.has('Digit0'), true, 'the public brake stays held while polling');
         let terminal = false;
-        for (const speed of speeds) {
+        while (speeds.length) {
+          const speed = speeds.shift();
           state.entities.get(state.playerId).vel.x = speed;
           terminal = runInPage(callback, argument);
           events.push(`poll:${speed}:${terminal}`);
@@ -6944,6 +6961,7 @@ function pocketSettlePage({ tick, endTick, distanceWU, pollSpeeds }) {
       async evaluate(callback, argument) {
         assert.equal(heldKeys.has('Digit0'), true, 'the final status is read while braking remains held');
         events.push('read:settled-status');
+        if (postReadSpeeds.length) state.entities.get(state.playerId).vel.x = postReadSpeeds.shift();
         return runInPage(callback, argument);
       },
     },

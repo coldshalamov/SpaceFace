@@ -4041,37 +4041,45 @@ export async function settleCeresPocketApproach(page, {
     throw new Error('Ceres public settle requires a valid fixed-tick reserve');
   }
   await page.keyboard.down('Digit0');
+  const deadlineMs = Date.now() + 10_000;
   try {
-    await page.waitForFunction(({ terminalTick, reserveTicks }) => {
-      const state = window.SF?.state;
-      const player = state?.entities?.get(state.playerId);
-      if (!player?.pos) return true;
-      const tick = Number(state.tick);
-      const invalidGeometry = typeof player.pos.x !== 'number' || !Number.isFinite(player.pos.x)
-        || typeof player.pos.z !== 'number' || !Number.isFinite(player.pos.z)
-        || typeof player.rot !== 'number' || !Number.isFinite(player.rot);
-      const velocityX = player.vel?.x;
-      const velocityZ = player.vel?.z;
-      const invalidMotion = typeof velocityX !== 'number' || !Number.isFinite(velocityX)
-        || typeof velocityZ !== 'number' || !Number.isFinite(velocityZ);
-      const speed = invalidMotion ? null : Math.hypot(velocityX, velocityZ);
-      return invalidGeometry || invalidMotion || speed <= 1 || !Number.isSafeInteger(tick)
-        || tick >= terminalTick - reserveTicks;
-    }, { terminalTick: endTick, reserveTicks: minRemainingTicks }, { timeout: 10_000 });
-    const status = await readCeresPocketApproachStatus(page, point, endTick);
-    if (status.missing) throw new Error(`${targetName} settle lost the player`);
-    if (!Number.isSafeInteger(status.tick) || status.tick >= endTick - minRemainingTicks) {
-      throw new Error(`${targetName} settle exhausted the exact route horizon`);
+    for (;;) {
+      const remainingMs = deadlineMs - Date.now();
+      if (remainingMs <= 0) throw new Error(`${targetName} public brake did not settle the player`);
+      await page.waitForFunction(({ terminalTick, reserveTicks }) => {
+        const state = window.SF?.state;
+        const player = state?.entities?.get(state.playerId);
+        if (!player?.pos) return true;
+        const tick = Number(state.tick);
+        const invalidGeometry = typeof player.pos.x !== 'number' || !Number.isFinite(player.pos.x)
+          || typeof player.pos.z !== 'number' || !Number.isFinite(player.pos.z)
+          || typeof player.rot !== 'number' || !Number.isFinite(player.rot);
+        const velocityX = player.vel?.x;
+        const velocityZ = player.vel?.z;
+        const invalidMotion = typeof velocityX !== 'number' || !Number.isFinite(velocityX)
+          || typeof velocityZ !== 'number' || !Number.isFinite(velocityZ);
+        const speed = invalidMotion ? null : Math.hypot(velocityX, velocityZ);
+        return invalidGeometry || invalidMotion || speed <= 1 || !Number.isSafeInteger(tick)
+          || tick >= terminalTick - reserveTicks;
+      }, { terminalTick: endTick, reserveTicks: minRemainingTicks }, { timeout: remainingMs });
+      const status = await readCeresPocketApproachStatus(page, point, endTick);
+      if (status.missing) throw new Error(`${targetName} settle lost the player`);
+      if (!Number.isSafeInteger(status.tick) || status.tick >= endTick - minRemainingTicks) {
+        throw new Error(`${targetName} settle exhausted the exact route horizon`);
+      }
+      if (!Number.isFinite(status.distanceWU) || !Number.isFinite(status.headingError)
+          || !Number.isFinite(status.radialSpeed)
+          || !Number.isFinite(status.playerPos?.x) || !Number.isFinite(status.playerPos?.z)) {
+        throw new Error(`${targetName} settle observed invalid navigation telemetry`);
+      }
+      if (!Number.isFinite(status.speed)) {
+        throw new Error(`${targetName} public brake did not settle the player`);
+      }
+      // The simulation can advance between the predicate and this authoritative sample.
+      // Keep the same brake held and deadline if the speed rose again in that interval.
+      if (status.speed > 1) continue;
+      return status;
     }
-    if (!Number.isFinite(status.distanceWU) || !Number.isFinite(status.headingError)
-        || !Number.isFinite(status.radialSpeed)
-        || !Number.isFinite(status.playerPos?.x) || !Number.isFinite(status.playerPos?.z)) {
-      throw new Error(`${targetName} settle observed invalid navigation telemetry`);
-    }
-    if (!Number.isFinite(status.speed) || status.speed > 1) {
-      throw new Error(`${targetName} public brake did not settle the player`);
-    }
-    return status;
   } finally {
     await page.keyboard.up('Digit0').catch(() => {});
   }
