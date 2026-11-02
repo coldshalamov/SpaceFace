@@ -1602,7 +1602,26 @@ export function createUnreadyDrawableGuard(renderer, options = {}) {
   // for call sites that never asked for the swap.
   const disarmOnSettle = options.disarmOnSettle === true;
   const unreadySceneScratch = new Array(UNREADY_SCENE_CAP);
+  const unreadySceneLayerMasks = new Array(UNREADY_SCENE_CAP);
   let unreadySceneCount = 0;
+  function hideDrawableForPass(object) {
+    if (!object || object.visible !== true) return;
+    const layers = object.layers;
+    if (layers && typeof layers.mask === 'number') {
+      if (layers.mask === 0) return;
+      unreadySceneScratch[unreadySceneCount] = object;
+      unreadySceneLayerMasks[unreadySceneCount++] = layers.mask;
+      layers.mask = 0;
+    } else {
+      unreadySceneScratch[unreadySceneCount] = object;
+      unreadySceneLayerMasks[unreadySceneCount++] = null;
+      object.visible = false;
+    }
+  }
+  function hidePendingDrawable(object) {
+    if (object && (object.isMesh || object.isSkinnedMesh || object.isPoints
+        || object.isLine || object.isSprite || object.isInstancedMesh)) hideDrawableForPass(object);
+  }
   // Pending-programs latch: the ONLY producers of hideable drawables are still-linking programs.
   // Poll the program set instead of the scene: while a link is pending the traverse runs (and
   // keeps running until it drains, so a mesh that binds to a mid-link program is still caught);
@@ -1704,9 +1723,8 @@ export function createUnreadyDrawableGuard(renderer, options = {}) {
         && renderer.__sfDrawGuardDetachPending !== true;
     }
     // Roots whose pipeline compile is still queued have no currentProgram at all on non-KHR
-    // drivers, so the program-readiness scan below can never see them — drawing one would link
-    // its variants synchronously inside this presented frame. Hide the root (subtree included)
-    // until its admission resolves; restoreUnreadySceneDrawables re-shows it after the pass.
+    // drivers. Gate their drawables until admission resolves, but leave their descendant lights
+    // visible: hiding a root changes the scene light census and links different program keys.
     // An sfAdmittedOnce root already has linked content worth drawing — a re-admission on it
     // (a late-mounted drawable discovered under it, a live-geometry re-link) must not blank
     // the whole ship for the admission window: the per-material scan below and the
@@ -1716,12 +1734,10 @@ export function createUnreadyDrawableGuard(renderer, options = {}) {
       : null;
     if (pendingSubjects && pendingSubjects.size > 0) {
       for (const subject of pendingSubjects) {
-        if (unreadySceneCount >= UNREADY_SCENE_CAP) break;
         if (subject && subject.visible === true
             && !(subject.userData && subject.userData.sfAdmittedOnce === true)) {
-          unreadySceneScratch[unreadySceneCount] = subject;
-          unreadySceneCount += 1;
-          subject.visible = false;
+          if (typeof subject.traverseVisible === 'function') subject.traverseVisible(hidePendingDrawable);
+          else hidePendingDrawable(subject);
         }
       }
     }
@@ -1813,7 +1829,7 @@ export function createUnreadyDrawableGuard(renderer, options = {}) {
       unreadyPendingSweep = 0;
       scanPresentedDrawables(scene);
     } else if (scopedPendingWindow) {
-      // The pending latch already hides those roots; the scoped scan still catches
+      // The pending latch already gates those roots' drawables; the scoped scan still catches
       // interior mounts inside them and inside the instrumented drain, and the
       // periodic sweep below keeps the uninstrumented-mount failsafe bounded.
       unreadyPendingSweep = (unreadyPendingSweep + 1) % UNREADY_PENDING_SWEEP_FRAMES;
@@ -1847,6 +1863,7 @@ export function createUnreadyDrawableGuard(renderer, options = {}) {
 
   function hideOneUnreadySceneDrawable(object) {
     if (!object || object.visible !== true) return;
+    if (object.layers && object.layers.mask === 0) return;
     if (!(object.isMesh || object.isSkinnedMesh || object.isPoints
         || object.isLine || object.isSprite || object.isInstancedMesh)) {
       return;
@@ -1855,9 +1872,7 @@ export function createUnreadyDrawableGuard(renderer, options = {}) {
     const pendingGeometry = detachedGeometryUploadPending(object.geometry, renderer);
     if (orientationHoldHidesDrawable(renderer, object) || pendingGeometry) {
       if (pendingGeometry) queuePresentedDetachRehydrate(renderer);
-      unreadySceneScratch[unreadySceneCount] = object;
-      unreadySceneCount += 1;
-      object.visible = false;
+      hideDrawableForPass(object);
       return;
     }
     // Keep the ordinary readiness walk bounded. Orientation holds must journal every released
@@ -1880,9 +1895,7 @@ export function createUnreadyDrawableGuard(renderer, options = {}) {
     const wanted = instancingFlags(object);
     if (unreadyCheckedMaterials.get(material) === wanted) return false;
     if (unreadyHiddenMaterials.get(material) === wanted) {
-      unreadySceneScratch[unreadySceneCount] = object;
-      unreadySceneCount += 1;
-      object.visible = false;
+      hideDrawableForPass(object);
       return true;
     }
     let rec = null;
@@ -1924,9 +1937,7 @@ export function createUnreadyDrawableGuard(renderer, options = {}) {
         }
       }
       unreadyHiddenMaterials.set(material, wanted);
-      unreadySceneScratch[unreadySceneCount] = object;
-      unreadySceneCount += 1;
-      object.visible = false;
+      hideDrawableForPass(object);
       return true;
     }
     if (typeof variant.isReady !== 'function' || programWrapperDead(admissionGl, variant)) {
@@ -1940,9 +1951,7 @@ export function createUnreadyDrawableGuard(renderer, options = {}) {
       return false;
     }
     unreadyHiddenMaterials.set(material, wanted);
-    unreadySceneScratch[unreadySceneCount] = object;
-    unreadySceneCount += 1;
-    object.visible = false;
+    hideDrawableForPass(object);
     return true;
   }
 
@@ -1954,12 +1963,15 @@ export function createUnreadyDrawableGuard(renderer, options = {}) {
     let hiddenLog = recordHiddenDrawables ? renderer.__sfLastHiddenDrawables : null;
     for (let i = 0; i < unreadySceneCount; i++) {
       const object = unreadySceneScratch[i];
-      if (object) object.visible = true;
+      if (object && unreadySceneLayerMasks[i] !== null && object.layers) {
+        object.layers.mask = unreadySceneLayerMasks[i];
+      } else if (object) object.visible = true;
       if (object && recordHiddenDrawables) {
         hiddenLog ||= (renderer.__sfLastHiddenDrawables = new Set());
         if (hiddenLog.size < 4096) hiddenLog.add(object);
       }
       unreadySceneScratch[i] = null;
+      unreadySceneLayerMasks[i] = null;
     }
     if (!recordHiddenDrawables && renderer) {
       renderer.__sfLastHiddenDrawables?.clear?.();
