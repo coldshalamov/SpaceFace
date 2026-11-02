@@ -4,7 +4,7 @@ import { createAuthoritativeRuntime } from '../src/runtime/createAuthoritativeRu
 import { makeShipEntitySpec } from '../src/systems/ships.js';
 import { snapshotFeatureMaps, restoreFeatureMaps, applyFeatureConfigToMaps } from '../src/data/featureFlags.js';
 import { domKeyEvent } from '../src/systems/input.js';
-import { starterBuoySpec, registerStarterBuoyTow, isOriginalStarterBuoyTow } from '../src/missions/starterWorkday.js';
+import { starterBuoySpec, starterBuoySavedMass, registerStarterBuoyTow, isOriginalStarterBuoyTow } from '../src/missions/starterWorkday.js';
 import { packagedPropSpec } from '../src/render/visualOverrides.js';
 import { authoredPrewarmRequestsForEntities } from '../src/render/partsLibrary.js';
 import { cycleTarget } from '../src/ui/uiRoot.js';
@@ -27,14 +27,14 @@ for (const starterStep of [1,2,3]) test(`Pelican starter ${starterStep} sustains
     const board=missions.ensureBoard('station_helios');
     const offer=board.slots.find(m=>m.params?.starterJobId==='starter_pelican'&&m.params.starterStep===starterStep);
     assert.ok(offer,'ordinary board posts the next Pelican job');assert.equal(offer.params.starterWorkdayVersion,1);
-    if(starterStep===1)assert.equal(offer.reward_cr,520,'the first public offer retains its 520 CR terms');
+    assert.equal(offer.reward_cr,[520,760,960][starterStep-1],'public offer retains its original CR terms');
     assert.equal(missions.acceptMission(offer.id),true);
     const mission=s.missions.active.find(m=>m.params?.starterJobId==='starter_pelican'&&m.params.starterStep===starterStep);
     assert.ok(mission);missions._ensureMissionTargets(mission);
     const buoy=s.entities.get(mission.targetEntityIds[0]);
     assert.ok(buoy?.alive);assert.equal(buoy.type,'payload');assert.equal(buoy.data.physicalRole,'slag_core');
     assert.equal(buoy.data.worldSiteTargetable,true,'the authored neutral mission payload must be available to the ordinary target-lock control');
-    assert.equal(buoy.data.packagedPropFile,'places/place_lane_beacon.glb');const expectedMass=[18,65,90][starterStep-1];assert.equal(buoy.mass,expectedMass);
+    assert.equal(buoy.data.packagedPropFile,'places/place_lane_beacon.glb');const expectedMass=[18,19,20][starterStep-1];assert.equal(buoy.mass,expectedMass);
     const visual=packagedPropSpec(buoy);assert.ok(visual,'actual packaged-prop owner admits the mission payload');
     const prewarm=authoredPrewarmRequestsForEntities([buoy],{assetMode:'release',sectorId:'sector_helios_prime'});
     assert.ok(prewarm.some(p=>String(p.url).endsWith('/places/place_lane_beacon.glb')),'actual visible-body prewarm admits the same beacon');
@@ -56,13 +56,13 @@ for (const starterStep of [1,2,3]) test(`Pelican starter ${starterStep} sustains
     assert.equal(s.player.tether.active,true,'ordinary F admits the native mission payload');assert.equal(s.player.tether.targetId,buoy.id);
     const start={x:buoy.pos.x,z:buoy.pos.z},beforeVelocity={x:buoy.vel.x,z:buoy.vel.z};key('BracketLeft',true);step(60);key('BracketLeft',false);
     assert.equal(s.player.tether.targetId,buoy.id);assert.ok(Math.hypot(buoy.pos.x-start.x,buoy.pos.z-start.z)>0.05,'real native motion occurs while attached');
-    if(starterStep===1){
+    {
       assert.equal(s.lineProgression.classIndex,1,'fresh pilot retains the starting Line class');
       assert.equal(s.lineProgression.classFullControlMassT,20);
-      assert.equal(s.lineProgression.overClass,false,'the real spawned buoy fits the fresh Line');
+      assert.equal(s.lineProgression.overClass,false,'the real spawned starter buoy fits the fresh Line');
       step(600);
       assert.equal(s.lineProgression.overClass,false);
-      assert.equal(s.player.tether.active,true,'the held first buoy survives beyond the overload snap window');
+      assert.equal(s.player.tether.active,true,'the held starter buoy survives beyond the overload snap window');
       assert.equal(s.player.tether.targetId,buoy.id);
     }
     const towDelta=(buoy.vel.x-beforeVelocity.x)*outward.x+(buoy.vel.z-beforeVelocity.z)*outward.z;
@@ -78,13 +78,10 @@ for (const starterStep of [1,2,3]) test(`Pelican starter ${starterStep} sustains
     key('KeyF',true);step(1);key('KeyF',false);step(18);
     assert.equal(s.player.tether.active,true);assert.equal(s.player.tether.targetId,buoy.id,'same original body can be caught again');
     console.log('NATIVE_STARTER_FORCE',JSON.stringify({step:starterStep,mass:expectedMass,towDelta,attachmentId,recoveredAttachmentId:s.player.tether.attachmentId}));
-    if(starterStep!==1&&starterStep!==3)return;
-
     assert.equal(runtime.getSystem('combat').onHit({targetId:buoy.id,ownerId:s.playerId,damage:17,damageType:'kinetic',pos:{...buoy.pos}}).ok,true);
     assert.ok(buoy.hull>0&&buoy.hull<buoy.hullMax);
-    // Exercise a pre-fix accepted 44-C save whose live body was authored at 40 t.
-    // The normal durable record/rematerialization owner must restore this specific job at 18 t.
-    if(starterStep===1){buoy.mass=40;buoy.physicsBody.mass=40;}
+    // Exercise the pre-calibration accepted-save masses through the ordinary durable owner.
+    buoy.mass=[40,65,90][starterStep-1];buoy.physicsBody.mass=buoy.mass;
     const credits=s.player.credits,priorClass=s.lineProgression.classIndex,priorStep=s.missions.starterJobStep.starter_pelican,awards=[];runtime.bus.on('economy:grantCredits',p=>awards.push(p));
     const envelope=save.serialize('starter-buoy-native');assert.ok(envelope);
     const remembered={recordId:buoy.data.worldRecordId,identity:buoy.data.identityKey,pos:{...buoy.pos},vel:{...buoy.vel},rot:buoy.rot,angVel:buoy.angVel,hull:buoy.hull,hullMax:buoy.hullMax};
@@ -114,6 +111,11 @@ test('starter recovery exception refuses generic, failed, foreign and recycled o
   const mission={id:'known-starter',status:'active',type:'tow_recovery',destSectorId:'sector_helios_prime',targetEntityIds:[1],params:{starterJobId:'starter_pelican',starterStep:1,starterWorkdayVersion:1,requiredModule:'mod_winch_hd'}};
   const entity={...starterBuoySpec(mission,p=>({...p})),id:1,alive:true,occupantGeneration:7,homeSectorId:'sector_helios_prime'};
   Object.assign(entity.data,{physicalRole:'slag_core',missionId:mission.id,missionTargetSlot:0,worldRecordId:'known-record',identityKey:`mission:${mission.id}:0`});
+  const record={kind:'mission_target',type:'payload',sectorId:'sector_helios_prime',missionId:mission.id,recordId:'known-record',identityKey:`mission:${mission.id}:0`,extra:{starterWorkdayBuoy:{version:1,jobId:'starter_pelican',step:1,role:'slag_core'}}};
+  assert.equal(starterBuoySavedMass(entity,record),18);
+  assert.equal(starterBuoySavedMass(entity,{...record,recordId:'foreign'}),null);
+  assert.equal(starterBuoySavedMass(entity,{...record,extra:{starterWorkdayBuoy:{...record.extra.starterWorkdayBuoy,step:2}}}),null);
+  assert.equal(starterBuoySavedMass({...entity,data:{...entity.data,missionTag:'other'}},record),null);
   const state={entities:new Map([[1,entity]]),world:{currentSectorId:'sector_helios_prime'},missions:{active:[mission]},player:{ownedShips:[{defId:'ship_pelican',fittings:['mod_winch_hd']}],activeShipIndex:0}};
   assert.equal(registerStarterBuoyTow(state,entity,mission),true);assert.equal(isOriginalStarterBuoyTow(state,entity),true);
   mission.status='failed';assert.equal(isOriginalStarterBuoyTow(state,entity),false);mission.status='active';
