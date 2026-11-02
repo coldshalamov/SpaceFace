@@ -700,6 +700,20 @@ wrecks with readable histories; a reason to come back to the first sector at hou
 teaches by situation; tooltips that explain *why* in one line; every screen's last row visible
 (open catalog line RC-49 carries over: station tabs hide their last row).
 
+Implemented and focused-tested 2026-11-02 (INFERENCE 100 program, wave 1 — one commit each,
+`test/inf-*.test.mjs`, recorded in `design/program/inference-memory.json`; ordinary public
+route outcomes remain distinct from these owner and layout checks):
+- inf-pocket-beat (WF-13): a living-world beat starting near you — the surveyor laying its probe
+  line, a patrol pulling a hauler over — answers with one low positioned work-bell wake instead
+  of total silence; 900 wu earshot, 6 s cap, authored caption "Work wakes nearby." (8cf4aa810117).
+- inf-dione-convoy (WF-01 integration): the convoy Dione's charts always promised now forms at
+  the relay manifest pod with its toll escort and rolls out south, and a lost escort reads the
+  honest empty-slot line; microevent catalog 25/58 wired through the proven chain seam
+  (8944ff923251).
+- inf-market-receipt-lane (WF-14 repair): the station's receipt line — sales, tolls, services,
+  the PA — is readable on the market at 1280×720 instead of painting off the top of the glass;
+  layout probe 17 findings → 0 (d9f10637f688).
+
 ## Traps
 
 Integration 2026-10-31: phone station title/credits and Shipworks diagram/nameplate overlaps are

@@ -4,6 +4,19 @@ As of 2026-11-01, GitHub reports 24 open PRs for `coldshalamov/SpaceFace`. This 
 
 The [current outcome map](./INTEGRATION_COVERAGE.md) and [lane boards](./LANE_1_MACHINE_AND_PICTURE.md) are authoritative for current route status. This ledger tracks only the GitHub PR backlog. Closed prerequisites #480 and #526 are already merged; open dependent branches still need retargeting/reconciliation where noted.
 
+**Screenshot review, 2026-11-02:** the latest armed ordinary-route captures
+(`remote-ui-public/run-2026-11-01T22-48-07-253Z-19132`) expose a remaining My Ship defect:
+at 1280×720, Cargo/Pulse Laser/Mining Laser callouts overlap the full hull description; the
+960×540 stage is cramped as well. The #736/#733 ordinary-route looks are rejected pending a new
+route check. Commit `0d3b1496bd82` moves the same live nameplate above a full compact-flight stage,
+keeps callouts clear of the hull, and lets the main readings and controls scroll. The inspected
+1280×720 and960×540 fixture images are clear, including the scrolled Save Fit/Range/Record controls;
+the synthetic walk left three reset-dependent controls untried and is not a full-walk pass.
+The Achievements category capture at 960×540 shows the medal name and status on separate readable
+lines, supporting the narrow #723/#711 layout result. The 568×320 Market capture still has
+overprinted header readings and little usable trade height, so #695 remains visually incomplete.
+Opening a screen alone did not establish these visual outcomes.
+
 ## Current open PRs
 
 | PR / head | Player outcome | Integration status and next action |

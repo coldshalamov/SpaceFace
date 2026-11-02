@@ -63,6 +63,24 @@ asset previews. M8's pinned source-Electron run entered its measured window at 1
 then exited 1 at 14:24:53 on the market helper's buyable-row assertion before 30 minutes. It is
 not a soak pass; the failed public trade state is being traced and the original evidence retained.
 
+**Current integration status, 2026-11-02:** the full source41c M8 run completed 52 save/restore
+cycles across 30.1 measured minutes, forced context recovery and the 120-second tail, with normal
+cleanup and no terminal pane. It still fails: heap grew 193.71 MiB, geometry count grew 1,874,
+36 empty-mip warnings followed context recovery, and frame budgets were missed. The source35c
+short route has zero empty-mip warnings, but bloom stalls and retention remain. Offline heap
+analysis identified a visibility memo retaining retired entities; its scalar-only replacement
+passes 15 focused checks. The separate 32 MiB template cap is a budget, not a proven cure for
+the soak growth. Neither the memory fix nor the light-census guard has a live speedup verdict.
+The detailed evidence and current GPU ownership are in the integration checkpoint; M8 remains open.
+
+The subsequent committed-c65 check completed ten cycles, context recovery and the 120-second tail
+without heap-snapshot pauses. Route and cleanup pass; the overall result still fails: heap
++64.63 MiB, geometries+446, programs+2, ten warnings, flight p95/p99 33.395/49.95ms and post-context
+p95/p99 50.015/116.655ms. The template cache held only0.95→1.08MB, with no retired entries; that
+budget does not explain the growth. Entity count changed165→179 and live-scene geometry1555→1700,
+so those resource deltas are not all established leaks. Remaining warnings and retention are active
+work, with no speedup or 30-minute acceptance claimed from this shorter, different-cohort run.
+
 The Market helper recovery now passes its focused production-module control check. The next
 EDF source attempt exposed an actual F9 incomplete-plan failure: a selected wreck lost eligible
 leaves before sealing. Commit 92e515f955bb rebuilds the full candidate and producer census, capped
@@ -274,11 +292,14 @@ as JS) to a binary asset; take `src/testing/**` out of the retail graph (static 
 `FlightReadySet` and stream the rest after first flight. D252: fix the WebKit menu stall. Done when
 the load rows of README §4 meet their floor.
 
-The current source bundle gate passes with417 render packages. Its main static closure is
-10,331,137 raw bytes across141 outputs with zero missing static edges, down from11,435,492 at
-this batch start. Canonical flight, Orchard, lead, economy and beam readers remove their simulation
-owners from eager presentation imports. Legacy function identities remain shared; the final input
-redirect passes49 input/gesture checks. These are graph-size results, not startup-time improvements.
+The current source bundle gate passes with417 render packages. The 2026-11-02 integrated main
+static closure is10,109,179 raw bytes across144 outputs (3,154,513 separately gzipped), down from
+11,435,492 at this batch start. Canonical flight, Orchard, lead, economy, beam, fields and scanner
+readers remove their simulation owners from eager presentation imports. A shared pure traffic-event
+constant also removes an accidental audio→traffic→simulation source-preload edge; only two current
+closure hints were needed instead of68 simulation imports. Legacy function identities remain shared;
+focused audio/event checks and the generated preload check pass. These are graph-size results,
+not startup-time improvements, and the integrated delta is not isolated attribution to one change.
 The6MB eager target, total transfer, loading animation and runtime targets remain open.
 
 `d045ab3a0b69` regenerates ten stale hull packages, pilot rows and runtime bindings against current
@@ -416,6 +437,27 @@ station lights that work at night-side; asteroids with readable mass and materia
 telling a tiny story of the ship powering up; the kill you can see; muzzle flashes and tracers that
 carry weapon identity; shield and Massline feedback on contact; tiny life in the background (traffic
 lights, docking beacons, maintenance drones).
+
+Implemented and focused-tested 2026-11-02 (INFERENCE 100 program, wave 1 — one commit each,
+`test/inf-*.test.mjs`, recorded in `design/program/inference-memory.json`; these entries alone
+do not establish ordinary-route appearance or performance acceptance):
+- inf-scar-identity (WF-12 repair): a fresh hull wound glows in the striking weapon's own colors
+  before cooling to burn amber, so a furball reads who hit whom with what (a22326943315).
+- inf-drive-heat (WF-12): the exhaust glow names the maneuver — boost burns white-hot, cruise
+  leans cooler, idle/brake/reverse are a cooling chamber; faction identity kept in the sheath
+  (ec99612a07c4).
+- inf-wreck-burn (WF-11): a sim-stamped fresh kill burns and smokes at its breach and cools over
+  minutes while unstamped set dressing stays cold (7678ce595ea5; zero-kill stamp boundary
+  hardened 9e6371f415d8).
+- inf-far-strobes (WF-11): far traffic carries an anti-collision double-flash plus a running
+  light on its own phase; reduced motion slows the blink, never silences it (9c24822bffbf).
+Support repairs, not units: harness NPCs carry a presented hull for the propulsion ownership
+gate (856c4d37e019); wreck-wisp latch suite drives the current laneVersions schema
+(4971bf6e91ab); the unready-draw guard gates by layer mask so the visible light census holds
+(2693dbdedf91); flight root templates retire within a 32 MB geometry budget (c88f10e5b443).
+Verified already deep, no unit taken: sector sky (per-sector palettes + deep-sky plates +
+landmark layer), loading screen (five authored worker-rendered tableaux), asteroid geology
+family, station side events (7 authored profiles).
 
 ## Traps — measured and rejected; do not repeat
 

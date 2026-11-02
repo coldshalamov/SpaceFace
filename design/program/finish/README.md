@@ -13,7 +13,8 @@ changes, plans and open PRs, including unfinished work from earlier agents. Pres
 that work rather than waiting on expired claims. Parallel workers receive disjoint path assignments
 from the controller. Review and expand useful PR outcomes against current owners and player routes;
 [`PR_INTEGRATION.md`](./PR_INTEGRATION.md) tracks the current reconciliation. Performance and bugs
-remain priorities. Keep the owner's Chrome and VLC open during host cleanup and performance runs.
+remain priorities. The owner's latest unattended-session direction permits closing Chrome and VLC
+and stopping competing tasks for performance work; it supersedes the earlier keep-open request.
 
 | File | What it is |
 |---|---|

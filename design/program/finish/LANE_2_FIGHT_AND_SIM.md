@@ -175,6 +175,22 @@ environment rarely and memorably; the near miss rewarded; streaks and grudges th
 the champion who adapts to how you killed them; creatures that react to Massline vibration; debris
 that keeps momentum and becomes the next round's terrain.
 
+Implemented and focused-tested 2026-11-02 (INFERENCE 100 program, wave 1 — one commit each,
+`test/inf-*.test.mjs`, recorded in `design/program/inference-memory.json`; ordinary public
+encounter progression remains distinct from these owner checks):
+- inf-shove-panic (WF-02): a hull the pilot tosses rattles for a beat — guns cold, one mayday
+  over the band — and a rattled reinforcement caller now calls its swarm at full hull, so the
+  massline play reaches the encounter beat the counterHint promises (40d7b14def70).
+- inf-fled-wing-grudge (WF-02): a wing the pilot broke and let run keeps its name on the moral
+  ledger as a spared escape with a crew witness, so the return encounter can bring that named
+  crew back grateful or armed, and the band's hails say the name (50e97d88b139).
+- inf-crusher-bite (WF-15 repair): the crusher jaws bite — a hull shoved into the anvil at
+  crumple speed takes the collision law's own damage through the combat kernel on a half-second
+  grind cadence, and the pilot who aimed the shove keeps the kill (acf1f5ba2236).
+Verified already deep, no unit taken: formations break when their leader is pinned
+(squadFrame.js pinned-commander succession), the near miss rewarded (stunt closeShave → witness
+barks → rep/salvage pay), creatures react to Massline vibration (alienEcology AE-051/F5).
+
 ## Traps
 
 - Never edit `test/*.expected.json` to pass. A sim change that moves the golden is a real change: explain it or undo it.

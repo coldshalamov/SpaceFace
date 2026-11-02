@@ -1690,6 +1690,45 @@
       "integration": "live",
       "commit": "9c24822bffbf",
       "verification": "focused_green"
+    },
+    {
+      "id": "inf-pocket-beat",
+      "date": "2026-11-02",
+      "wf": "WF-13",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "When a living-world beat starts near you — the surveyor laying its probe line, a patrol pulling a hauler over — the pocket answers with one low positioned work-bell wake instead of total silence",
+      "fingerprint": "verb=hear,subject=staged-world-beat,sector=ceres,domain=wf-13",
+      "references": [],
+      "integration": "live",
+      "commit": "8cf4aa810117",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inf-dione-convoy",
+      "date": "2026-11-02",
+      "wf": "WF-01",
+      "mode": "integration",
+      "verdict": "implemented",
+      "reason": "The convoy Dione's charts always promised now forms at the relay manifest pod with its toll escort and rolls out south, and a lost escort reads the honest empty-slot line",
+      "fingerprint": "verb=see,subject=npc-convoy-cast,sector=dione,domain=wf-01",
+      "references": [],
+      "integration": "live",
+      "commit": "8944ff923251",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inf-market-receipt-lane",
+      "date": "2026-11-02",
+      "wf": "WF-14",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "The station's receipt line — sales, tolls, services, the PA — is readable on the market at 1280x720 instead of painting off the top of the glass",
+      "fingerprint": "verb=read,subject=station-receipt-lane,sector=station,domain=wf-14",
+      "references": [],
+      "integration": "live",
+      "commit": "d9f10637f688",
+      "verification": "focused_green"
     }
   ],
   "knownDefects": [
