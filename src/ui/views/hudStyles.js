@@ -992,6 +992,7 @@ export const HUD_CSS = `
   /* ===== HUD mission tracker — chromeless, with an edge marker; relocated into the bottom-left column ===== */
   .sf-mission-tracker { position:relative; width:290px; max-width:calc(100vw - 32px);
     padding:10px 12px; border-left:1px solid var(--k-hair); pointer-events:none; contain:layout paint style; }
+  .sf-mt-compact, .sf-mt-details-button, .sf-mt-details { display:none; }
   .sf-mt-title { font-family:var(--hud-data); font-size:var(--k-fs-data); color:var(--hud-amber);
     margin-bottom:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .sf-mt-obj { font-family:var(--hud-data); font-size:var(--k-fs-data); line-height:1.35; color:var(--hud-paper); margin-bottom:5px; }

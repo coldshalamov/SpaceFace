@@ -667,3 +667,50 @@ function canvasContext() {
     set(obj, key, value) { obj[key] = value; return true; },
   });
 }
+
+
+test('mobile objective details retain long urgent text and remain actionable with Ctrl held', () => {
+  const fx = mountHudFixture(390, 664);
+  try {
+    const instruction = 'Recover the marked cargo and keep the pressure seal intact '.repeat(24).trim();
+    fx.state.ui.trackedMissionId = 'long-objective';
+    fx.state.missions.active = [{ id: 'long-objective', status: 'active', deadline_s: 90 }];
+    fx.state.nav.waypoint = { kind: 'mission', missionId: 'long-objective', reason: instruction,
+      label: 'Recovery site', pos: { x: 630, z: 0 } };
+    fx.step(20);
+    const tracker = fx.document.querySelector('.sf-mission-tracker');
+    const trigger = tracker.querySelector('.sf-mt-details-button');
+    const panel = tracker.querySelector('.sf-mt-details');
+    const text = panel.querySelector('.sf-mt-details-text');
+    const close = panel.querySelector('.sf-mt-details-close');
+    assert.ok(text.textContent.includes(instruction), 'the complete long action reaches the details copy');
+    assert.match(text.textContent, /1m 29s|1m 30s/, 'the urgent deadline remains in the full copy');
+    assert.equal(panel.hidden, true);
+    assert.equal(panel.children[0], close, 'Close precedes the scrollable copy');
+    assert.equal(text.getAttribute('tabindex'), '0', 'keyboard users can scroll the full copy');
+    const ctrlPress = (target) => {
+      const ev = { button: 0, ctrlKey: true, clientX: 20, clientY: 20, pointerId: 3,
+        stopped: false, stopPropagation() { this.stopped = true; }, preventDefault() {} };
+      for (const fn of target._listeners.get('pointerdown') || []) fn(ev);
+      if (!ev.stopped) for (const fn of tracker._listeners.get('pointerdown') || []) fn(ev);
+      return ev;
+    };
+    assert.equal(ctrlPress(trigger).stopped, true);
+    assert.equal(fx.state.settings.ui?.hudLayout?.objective, undefined);
+    trigger.click(0);
+    assert.equal(panel.hidden, false);
+    assert.equal(trigger.getAttribute('aria-expanded'), 'true');
+    assert.equal(fx.document.activeElement, close);
+    assert.equal(ctrlPress(panel).stopped, true, 'modified presses in the scroll surface cannot start a tracker drag');
+    let prevented = false;
+    for (const fn of panel._listeners.get('keydown') || []) fn({ key:'Escape',
+      preventDefault() { prevented = true; }, stopPropagation() {} });
+    assert.equal(prevented, true);
+    assert.equal(panel.hidden, true);
+    assert.equal(trigger.getAttribute('aria-expanded'), 'false');
+    assert.equal(fx.document.activeElement, trigger);
+    trigger.click(0); close.click(0);
+    assert.equal(panel.hidden, true);
+    assert.equal(fx.document.activeElement, trigger);
+  } finally { fx.hud.destroy(); fx.restore(); }
+});

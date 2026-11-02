@@ -1953,6 +1953,43 @@ export function createHud(ctx, alerts) {
   const mtTitle = missionTracker.querySelector('.sf-mt-title');
   const mtObj = missionTracker.querySelector('.sf-mt-obj');
   const mtTime = missionTracker.querySelector('.sf-mt-time');
+  const mtCompact = document.createElement('div');
+  mtCompact.className = 'sf-mt-compact';
+  const mtAction = document.createElement('div'); mtAction.className = 'sf-mt-compact-action';
+  const mtReadings = document.createElement('div'); mtReadings.className = 'sf-mt-compact-readings';
+  mtCompact.append(mtAction, mtReadings);
+  const mtDetailsButton = document.createElement('button');
+  mtDetailsButton.type = 'button'; mtDetailsButton.className = 'sf-mt-details-button';
+  mtDetailsButton.textContent = 'Details';
+  mtDetailsButton.setAttribute('aria-controls', 'sf-objective-details');
+  mtDetailsButton.setAttribute('aria-expanded', 'false');
+  const mtDetails = document.createElement('section');
+  mtDetails.id = 'sf-objective-details'; mtDetails.className = 'sf-mt-details'; mtDetails.hidden = true;
+  mtDetails.setAttribute('aria-label', 'Objective details');
+  const mtDetailsText = document.createElement('div'); mtDetailsText.className = 'sf-mt-details-text';
+  mtDetailsText.setAttribute('tabindex', '0');
+  const mtDetailsClose = document.createElement('button'); mtDetailsClose.type = 'button';
+  mtDetailsClose.textContent = 'Close'; mtDetailsClose.className = 'sf-mt-details-close';
+  mtDetails.append(mtDetailsClose, mtDetailsText);
+  missionTracker.insertBefore(mtCompact, mtTime);
+  missionTracker.append(mtDetailsButton, mtDetails);
+  const setMissionDetails = (open, returnFocus = false) => {
+    mtDetails.hidden = !open;
+    mtDetailsButton.setAttribute('aria-expanded', String(open));
+    if (open) mtDetailsClose.focus?.();
+    else if (returnFocus) mtDetailsButton.focus?.();
+    flightTextObstaclesStale = true;
+    placeReceiptLane();
+  };
+  // Ctrl-drag belongs to the tracker, not its interactive disclosure or scroll surface.
+  const protectMissionDetailsPointer = (event) => { if (event.ctrlKey) event.stopPropagation(); };
+  mtDetailsButton.addEventListener('pointerdown', protectMissionDetailsPointer);
+  mtDetails.addEventListener('pointerdown', protectMissionDetailsPointer);
+  mtDetailsButton.addEventListener('click', () => setMissionDetails(mtDetails.hidden));
+  mtDetailsClose.addEventListener('click', () => setMissionDetails(false, true));
+  mtDetails.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); setMissionDetails(false, true); }
+  });
   // The secondary tracker line carries tutorial captions; it is a labelled line inside the
   // tracker's existing region, not a second live region.
   if (mtTime) mtTime.setAttribute('aria-label', 'Tutorial caption');
@@ -5625,11 +5662,17 @@ export function createHud(ctx, alerts) {
       const showCaption = paintTutorialTrackerCaption(mtTime, state);
       if (!showCaption) setClass(mtTime, 'sf-mt-urgent', dest.urgent);
       if (!showObjective && !showCaption) {
+        if (!mtDetails.hidden) setMissionDetails(false);
         setDisplay(missionTracker, false);
       } else {
         // A caption may be the only reason the tracker is up; never leave a stale objective
         // line sitting above it.
-        setText(mtObj, showObjective ? (objectiveRecall.text || dest.line) : '');
+        const objective = showObjective ? (objectiveRecall.text || dest.line) : '';
+        setText(mtObj, objective);
+        const [action, ...readings] = objective.split('\n');
+        setText(mtAction, action);
+        setText(mtReadings, readings.join('\n'));
+        setText(mtDetailsText, [objective, showCaption ? mtTime.textContent : ''].filter(Boolean).join('\n\n'));
         setDisplay(missionTracker, true);
       }
     }
@@ -6070,6 +6113,7 @@ export function createHud(ctx, alerts) {
     }
     const elements = [
       ...root.querySelectorAll?.('#race-tape') || [],
+      ...root.querySelectorAll?.('#race-tape[data-options-open="true"] .race-tape-actions, .sf-mt-details:not([hidden]), .sf-radar-wrap--expanded') || [],
       ...touch?.querySelectorAll?.('.mf-status, .mf-pause, .mf-edge, .mf-buttons, .mf-dock, .mf-ghost:not([hidden]) svg, .mf-ghost:not([hidden]) .mf-ghost-label') || [],
     ];
     for (const el of responsiveOverlayElements) {

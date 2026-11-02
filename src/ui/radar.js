@@ -46,6 +46,7 @@ import { orbitRing, ring as orrRing, hand as orrHand } from './orrery/instrument
 import { injectOrrery } from './orrery/tokens.js';
 import GLYPHS from '../../assets/ui/kit/assets/radar/radar-glyph-paths.json' with { type: 'json' };
 
+export const MOBILE_RADAR_METRICS = Object.freeze({ size: 116, center: 58, radius: 54 });
 const COMPACT_SIZE = 208;
 const COMPACT_C = COMPACT_SIZE / 2;
 const COMPACT_R = 100;
@@ -1594,6 +1595,12 @@ export function createRadar(ctx) {
     else if (frame) { frame.dispose(); frame = null; }
   }
 
+  function restingMetrics() {
+    const root = document.documentElement;
+    return root?.dataset?.sfMobile === '1' && root?.dataset?.sfMobileFlight === '1'
+      ? MOBILE_RADAR_METRICS : tacticalRadarMetrics(false);
+  }
+
   function configureCanvas(size, center, radius) {
     if (configuredSize === size) return;
     configuredSize = size;
@@ -1683,10 +1690,11 @@ export function createRadar(ctx) {
       expandedHome = null;
     }
     if (expanded) configureCanvas(EXPAND_SIZE, EXPAND_C, EXPAND_R);
-    else configureCanvas(COMPACT_SIZE, COMPACT_C, COMPACT_R);
+    else { const m = restingMetrics(); configureCanvas(m.size, m.center, m.radius); }
     wrap.style.cssText = expanded
       ? 'position:fixed;bottom:18px;right:18px;z-index:200;display:flex;flex-direction:column;align-items:center;gap:6px;'
       : '';
+    bus?.emit?.('hud:layoutChanged', { key: 'radar' });
     // Resizing a canvas clears its bitmap, and the background plate only blits inside draw() —
     // without a repaint here the scope sits blank until the next HUD frame (a visible flash on
     // the live route, a permanent blank on a still page). One draw settles the new size.
@@ -1703,7 +1711,7 @@ export function createRadar(ctx) {
       const y = ((ev.clientY - rect.top) / rect.height) * configuredSize;
       const baseRange = (state.ui && state.ui.radarRange) || 4000;
       const range = expanded ? baseRange * 2 : baseRange;
-      const course = radarDialCourse(state, player.pos, range, tacticalRadarMetrics(expanded), x, y);
+      const course = radarDialCourse(state, player.pos, range, (expanded ? tacticalRadarMetrics(true) : restingMetrics()), x, y);
       if (course) {
         bus.emit('ui:setCourse', course);
         bus.emit('toast', { text: 'Autopilot set: ' + course.label, kind: 'info', ttl: 3 });
@@ -2002,9 +2010,9 @@ export function createRadar(ctx) {
     stanceMemo.clear();
     if (state.mode !== 'flight') clearHostileCourse();
     if (expanded) configureCanvas(EXPAND_SIZE, EXPAND_C, EXPAND_R);
-    else configureCanvas(COMPACT_SIZE, COMPACT_C, COMPACT_R);
+    else { const m = restingMetrics(); configureCanvas(m.size, m.center, m.radius); }
 
-    const metrics = tacticalRadarMetrics(expanded);
+    const metrics = expanded ? tacticalRadarMetrics(true) : restingMetrics();
     const size = configuredSize;
     const center = configuredCenter;
     const radius = configuredRadius;
