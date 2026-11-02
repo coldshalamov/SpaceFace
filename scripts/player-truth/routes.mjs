@@ -241,6 +241,22 @@ async function waitForFirstLightInputRelease(page) {
   return true;
 }
 
+// Cinematic-loop only: resolves when a present First light either becomes visible (opening) or
+// releases its input fence (closing). Other callers keep the strict release wait above.
+async function waitForFirstLightOpenOrRelease(page, timeout) {
+  try {
+    await page.waitForFunction(() => {
+      const root = document.getElementById('sf-confirm-root');
+      const dialog = root?.querySelector('[role="dialog"]');
+      const title = String(dialog?.querySelector('#sf-confirm-title')?.textContent || '').replace(/\s+/g, ' ').trim();
+      if (!dialog || title !== 'First light') return !(root && (root._sfConfirmToken != null || root.innerHTML.trim())) || !!dialog;
+      return root.classList.contains('sf-confirm--in');
+    }, null, { timeout });
+  } catch (error) {
+    if (error?.name !== 'TimeoutError') throw error;
+  }
+}
+
 async function isActiveFirstLightPrompt(page) {
   return page.evaluate(() => {
     const root = document.getElementById('sf-confirm-root');
@@ -304,7 +320,11 @@ export async function dismissCinematicIntro(page, step = () => {}, { timeout = 1
     }
 
     if (last.firstLightDialogPresent) {
-      await waitForFirstLightInputRelease(page);
+      // perf-lane: a present-but-hidden First light is either closing (160 ms fade) or opening
+      // (confirm.js mounts the dialog, then adds sf-confirm--in on the next frame; a busy software-GL
+      // boot can hold that frame for seconds). Waiting only for release timed out on the opening
+      // case, so wait for either outcome and let the loop answer or continue.
+      await waitForFirstLightOpenOrRelease(page, Math.max(1, deadline - Date.now()));
       continue;
     }
 
