@@ -759,6 +759,14 @@ async function collectCompileSubjectsPaced(root, pace) {
 }
 
 export async function driveCompileShadowDepthPipelines(depthOpts, yieldStep) {
+  // The renderer keeps its shadow-map bit and the Nocturne spot caster structural so lit
+  // materials retain one stable color-program census while the optional depth pass is off.
+  // Do not mistake those structural flags for an active shadow request: opening/cook callers
+  // pass forceEnable from the user's actual shadow settings, and a false value must not stage
+  // depth variants that no presented pass can consume.
+  if (depthOpts && depthOpts.forceEnable === false) {
+    return { skipped: true, reason: 'shadow depth disabled by active settings', subjects: 0, aborted: false };
+  }
   const pace = typeof yieldStep === 'function' ? yieldStep : async () => {};
   const state = depthOpts && depthOpts.state;
   const contextRecovery = state && state.render && state.render.contextRecovery;
@@ -19106,6 +19114,19 @@ export const render = {
         this._syncShadowMapEnabled();
         if (shadowSettingWasOff && this._shadowSettingOn === true) this._stageShadowDepthOnSettingEnable();
       }
+      if (p.key === 'nocturneShadows' || p.key === 'nocturne' || p.key == null) {
+        const nocturne = this._nocturne;
+        const nocturneShadowsWereOn = nocturne?.shadowsEnabled === true;
+        if (nocturne) {
+          // Align admission with this settings transaction before deciding whether the first
+          // enabled Nocturne depth pass needs the existing guarded stage.
+          nocturne.setEnabled(vd.nocturne !== false);
+          if (!nocturneShadowsWereOn && nocturne.shadowConfigured === true
+              && nocturne.shadowsEnabled === true && this._shadowSettingOn !== true) {
+            this._stageShadowDepthOnSettingEnable();
+          }
+        }
+      }
       // Auto can flip the graph-route gate just like dynamicResolution; re-derive buffer scale
       // whenever either policy changes, not just the adaptive controller's enabled flag.
       if (p.key === 'renderScale' || p.key === 'pixelRatioCap' || p.key === 'dynamicResolution'
@@ -32101,7 +32122,8 @@ export const render = {
   },
 
   _shadowDepthEnabled() {
-    return this._shadowSettingOn === true || this._nocturne?.shadowConfigured === true;
+    return this._shadowSettingOn === true
+      || (this._nocturne?.shadowConfigured === true && this._nocturne?.shadowsEnabled === true);
   },
 
   _shadowDepthLight() {

@@ -73,6 +73,30 @@ test('normalized existing event priorities retain their gameplay meaning', () =>
   h.system.destroy(); h.runtime.dispose(); h.headlights.dispose();
 });
 
+test('Nocturne shadow admission starts from settings and follows later toggle changes', () => {
+  const scene = new THREE.Scene();
+  const renderer = { shadowMap: { enabled: false } };
+  const state = { settings: { video: { nocturne: true, nocturneShadows: false } } };
+  const headlights = new HeadlightPool(scene);
+  const runtime = new NocturneRuntime({ scene, renderer, state, headlights });
+  assert.equal(runtime.shadowConfigured, true, 'the structural spot-light census remains mounted');
+  assert.equal(renderer.shadowMap.enabled, true, 'the structural shader key remains pinned');
+  assert.equal(runtime.shadowsEnabled, false, 'default-off settings do not request a depth pass');
+  assert.equal(runtime._directorOptions.shadowEnabled, false);
+
+  state.settings.video.nocturneShadows = true;
+  runtime.setEnabled(true);
+  assert.equal(runtime.shadowsEnabled, true, 'the local-shadow option can be enabled live');
+  assert.equal(runtime._directorOptions.shadowEnabled, true);
+
+  state.settings.video.nocturne = false;
+  runtime.setEnabled(false);
+  assert.equal(runtime.shadowsEnabled, false, 'disabling Nocturne disables its shadow contribution');
+  assert.equal(runtime._directorOptions.enabled, false);
+  runtime.dispose();
+  headlights.dispose();
+});
+
 test('material contact stays secondary while a gyre payload uses the normalized major-event priority', () => {
   const h = harness();
   const materialRoot = new THREE.Group(); h.scene.add(materialRoot);

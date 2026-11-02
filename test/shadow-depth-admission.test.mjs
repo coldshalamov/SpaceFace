@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import * as THREE from 'three';
-import { driveCompileShadowDepthPipelines } from '../src/render/renderer.js';
+import { driveCompileShadowDepthPipelines, render } from '../src/render/renderer.js';
 import { warmWorksOpeningPrograms } from '../src/render/startupGpuResidency.js';
 
 import {
@@ -28,6 +28,31 @@ import {
   detachPackageTexture,
   resetPackageDetachManifestsForTests,
 } from '../src/render/packageCpuDetach.js';
+
+test('configured but disabled Nocturne keeps the color census while skipping depth admission', async () => {
+  const owner = {
+    _shadowSettingOn: false,
+    _nocturne: { shadowConfigured: true, shadowsEnabled: false },
+  };
+  assert.equal(render._shadowDepthEnabled.call(owner), false);
+  owner._nocturne.shadowsEnabled = true;
+  assert.equal(render._shadowDepthEnabled.call(owner), true);
+  owner._shadowSettingOn = true;
+  owner._nocturne.shadowsEnabled = false;
+  assert.equal(render._shadowDepthEnabled.call(owner), true, 'solar shadows remain independently active');
+
+  let traversals = 0, renders = 0;
+  const result = await driveCompileShadowDepthPipelines({
+    forceEnable: false,
+    subjects: [{ traverse() { traversals++; } }],
+    renderer: { render() { renders++; } },
+  });
+  assert.equal(result.skipped, true);
+  assert.equal(result.reason, 'shadow depth disabled by active settings');
+  assert.equal(result.aborted, false, 'a valid settings opt-out is not a superseded drive');
+  assert.equal(traversals, 0, 'disabled depth work exits before census');
+  assert.equal(renders, 0, 'disabled depth work issues no staging render');
+});
 
 test('paced shadow staging refills and leases a detached package caster before drawing', async (t) => {
   resetPackageDetachManifestsForTests();

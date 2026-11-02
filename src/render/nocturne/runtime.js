@@ -52,20 +52,26 @@ export class NocturneRuntime {
     this.atmosphere = null;
     this.bloom = null;
     this.graph = null;
-    this.enabled = true;
-    this.shadowsEnabled = true;
     this.exposure = 1;
     this.exposureBase = 1;
     this._exposureOptions = { exposure: 1 };
     this._options = { meshes: null, camera: null, playerLamp: true, reducedFlash: false };
-    this._directorOptions = { enabled: true, shadowEnabled: true, casterEpoch: 0, renderer };
     this._lightInputs = [this.shadowLight, ...headlights.slots.map(s => s.light).filter(l => l !== this.shadowLight), ...this.pointLights];
     this._subscriptions = [];
     this._proxies = new Map();
     this._lastOrigin = { x: NaN, z: NaN };
     this._originScratch = { x: 0, z: 0 };
     this._originGlobal = { x: 0, z: 0 };
-    this._diagnostics = { version: 1, enabled: true, quality: this.quality,
+    const video = state?.settings?.video || EMPTY;
+    this.enabled = video.nocturne !== false;
+    this.shadowsEnabled = this.enabled && video.nocturneShadows !== false;
+    this._directorOptions = {
+      enabled: this.enabled,
+      shadowEnabled: this.shadowsEnabled,
+      casterEpoch: 0,
+      renderer,
+    };
+    this._diagnostics = { version: 1, enabled: this.enabled, quality: this.quality,
       backend: 'bounded-forward', composition: 'vacuum', exposure: 1,
       direct: this.director.getDiagnostics(), content: this.content.diagnostics,
       atmosphere: null, hardwareAcceptance: 'not-measured' };
