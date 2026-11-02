@@ -221,6 +221,17 @@ ${P} .sxb-vital__acts .orr-act__cost { font-family:${NUM} !important; font-size:
 @media (min-width:901px) and (max-width:1100px) and (min-height:461px) and (max-height:640px) {
   ${P} .sxb-crown .sxb-vitals { gap:4px 6px !important; }
 }
+/* 960–1100 wide × 461–640 tall: the seven tabs (glyphs folded, 6px keys) are ~560px, so tabs, COMMS · HELP and UNDOCK
+   (~860px with gaps) stand on ONE row of the 896px+ foot instead of the tab rail taking a row of its own. The row it
+   gave back (~70px) goes to the body, so the Market's Buy/Sell stage and table are no longer cut to a sliver at 960x540.
+   901–959 keeps the two-row foot above, where the single row does not fit. */
+@media (min-width:960px) and (max-width:1100px) and (min-height:461px) and (max-height:640px) {
+  ${P} .sxb-ops { flex-wrap:nowrap !important; column-gap:10px !important; }
+  ${P} .sxb-ops > .of-facility-rail { flex:0 1 auto !important; min-width:0 !important; width:auto !important; max-width:none !important; }
+  ${P} .sxb-ops .sx-dock__group--nav { gap:0 6px !important; }
+  ${P} .sxb-ops .sx-dock :is(button, a) { padding-left:6px !important; padding-right:6px !important; }
+  ${P} .sxb-ops .sx-tile .dust-tab-glyph { display:none !important; }
+}
 
 /* ---- the ad-boards: legible, never faint ----------------------------------------------------- */
 ${P} .sx-adboard, ${P} .sx-adboard * { font-family:${UI} !important; font-size:13px !important; letter-spacing:0 !important;
