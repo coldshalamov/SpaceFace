@@ -45,10 +45,17 @@ ${SL} > .k-title .k-t-title { ${DISPLAY} margin:0; font-size:calc(72px * var(--s
   color:rgb(${BONE}) !important; -webkit-text-fill-color:currentColor; background:none !important; text-shadow:0 2px 18px rgb(0 0 0 / .5); }
 ${SL} > .k-title .k-t-emph { ${BODY} margin:calc(12px * var(--sv)) 0 0; font-size:max(13px, calc(16.5px * var(--sv))); line-height:1.35; font-weight:500; color:rgb(${BONE} / .94); }
 
-/* ---- the reading: free type on a pool of shade, no panel ---- */
+/* ---- the reading: a lit face (consoleStandard paints it) with its own inset and hairline ---- */
 ${SL} > .k-stage__foot.sf-save-ledger { grid-area:page; position:relative !important; inset:auto !important; left:auto !important; bottom:auto !important; top:auto !important;
   width:auto !important; max-width:none !important; height:auto; min-height:0; align-self:start; box-sizing:border-box; display:flex; flex-direction:column;
-  gap:calc(12px * var(--sv)); margin:0; padding:calc(10px * var(--sv)) 0 0 !important; overflow:visible !important; ${PLAIN} z-index:2; }
+  gap:calc(12px * var(--sv)); margin:0; overflow:visible !important; ${PLAIN} z-index:2;
+  /* ui-polish-286: consoleStandard paints this reading as a lit face (its ::after) but PLAIN zeroed the
+     padding and hairline it asked for, so every line sat flush on the face's left, top and bottom edges
+     and LOAD hung on its corner. The face keeps its own inset and edge here, and grows outward by its
+     side inset so the reading keeps the title's left edge and its measure (nothing rewraps). */
+  --sv-face-x:clamp(12px, 1.05vw, 20px); margin:0 calc(-1 * var(--sv-face-x));
+  padding:calc(16px * var(--sv)) var(--sv-face-x) calc(18px * var(--sv)) !important;
+  border:1px solid rgb(${BONE} / .12) !important; border-radius:2px; }
 ${SL} > .sf-save-ledger::before { content:""; position:absolute; inset:-40px -64px -30px -56px; z-index:-1; pointer-events:none;
   background:radial-gradient(closest-side, rgb(4 6 9 / .72), rgb(4 6 9 / .5) 58%, transparent); }
 ${SL} .sf-save-ledger .sf-slot-context { ${LABEL} margin:0; font-size:max(13px, calc(12.5px * var(--sv))); letter-spacing:.06em; line-height:1.35; color:rgb(${BONE} / .86); }
@@ -208,7 +215,7 @@ ${SL} > .k-foot .k-word.sf-back:is(:hover, :focus-visible) { color:var(--dp-hand
   ${SL} .sf-ledger-k { letter-spacing:.12em; white-space:nowrap; }
   ${SL} .sf-ledger-line { padding:calc(2px * var(--sv)) 0; }
   ${SL} .sf-ledger-line .k-sentence { font-size:max(12.5px, calc(13.5px * var(--sv))); line-height:1.3; }
-  ${SL} > .k-stage__foot.sf-save-ledger { gap:5px; padding-top:0 !important; }
+  ${SL} > .k-stage__foot.sf-save-ledger { gap:5px; padding-top:calc(10px * var(--sv)) !important; padding-bottom:calc(12px * var(--sv)) !important; }
   ${SL} > .k-hang { height:calc(226px * var(--sv)); }
   ${SL} .sf-save-ledger .sf-save-actions { margin-top:4px; }
   ${SL} { row-gap:clamp(8px, 1.4vh, 30px) !important; padding-bottom:clamp(16px, 2.6vh, 84px) !important; }
