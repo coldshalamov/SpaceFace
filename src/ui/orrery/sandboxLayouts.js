@@ -485,6 +485,14 @@ html:root[data-sf-mobile="1"] .screen.sf-sandbox.dp-frame--screen {
   .sf-sandbox-dial { width: 84px; height: 84px; }
   .sf-sandbox .sf-sandbox-name { font-size: calc(var(--dp-fs-title) * .6); }
 }
+/* 501–640 tall (desktop 960x540): the ladder's 160px floor left the COMBAT LAB panel's first row
+   under the stage's bottom fade and the foot scrim, a ghost strip above Launch. Here the peek also
+   counts that fade and the section heads give back their lead-in air, so the rail foot, the tick
+   and the HULL row read whole on first paint; the ladder keeps one whole row and the next title. */
+@media (max-height: 640px) and (min-height: 501px) {
+  .sf-sandbox-tiles { max-height: max(150px, calc(100% - var(--sf-sandbox-peek) - var(--sf-sandbox-fade))); }
+  .sf-sandbox .sf-section-h { margin-top: calc(var(--dp-u) * 3); }
+}
 @media (max-height: 500px) {
   .sf-sandbox-tiles {
     margin-top: 8px; max-height: none; overflow-y: visible;
