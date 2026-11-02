@@ -62,6 +62,23 @@ and the enabled authored ship/world image is visible.
 
 ## Current outcome map
 
+The fresh-pin Pelican22 route confirms that the new worker preview names the correct buoy and
+native Space latches that same identity. It then records an owned `line_overclass_snap`: the
+first contract's40t buoy exceeded a fresh Class I Line's20t limit. The introductory chain is now
+calibrated to18/19/20t; global overload rules, positions, drift and520/760/960CR rewards remain
+unchanged. Four native checks cover sustained attachment and old40/65/90t accepted saves restoring
+the same bodies at the corrected masses. The narrowly identified persistent-entity restore path
+also applies that calibration without losing pose, health, credits or mission progress. Public
+tow delivery/payment remains pending. Pelican23 stopped before acceptance because its actor read
+the public reward counter during its roll from zero; it now waits for agreement with the posted
+row within the existing bound. Pelican24 is running with that observer correction.
+
+Discovery notifications now share the existing HUD safe-band allocator instead of covering the
+target dock; six focused lifecycle checks pass, while the ordinary visual look remains pending.
+The production cabinet attract recording was regenerated for the deliberately changed physics
+with its original seed, quantization and frame bounds; all eleven cabinet checks pass. The absent
+Hitch V7 candidate-only evidence test was retired; current retail asset validation is retained.
+
 | Area | Current outcome | Open work / boundary |
 |---|---|---|
 | Ordinary gameplay routes | Racing, Gauntlet, Pinball, Swarm round-three functionality, and the Adventure Ceres delivery/save/Continue route have scoped passes. | These do not establish full-game completion, broad performance, or all public-story routes. Foundry first-ten/boss and Last Shift story routes remain open. |
