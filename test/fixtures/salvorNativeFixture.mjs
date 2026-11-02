@@ -27,7 +27,7 @@ export const SALVOR_POOL = Object.freeze({ cmdty_scrap_metal: 5, cmdty_salvage_e
 // are unchanged.
 // The world is registered for its station producer but not ticked: unrelated sector contents
 // and encounters are outside this bounded haul. No worker phase, position or speed is forced.
-export async function salvorNativeFixture({ drifting = false, withSave = false } = {}) {
+export async function salvorNativeFixture({ drifting = false, withSave = false, adoptedScavenger = false } = {}) {
   const priorFlags = snapshotFeatureMaps();
   applyFeatureConfigToMaps(PRODUCTION_FEATURES);
   const bus = createBus();
@@ -83,10 +83,30 @@ export async function salvorNativeFixture({ drifting = false, withSave = false }
         sectorId: sector.id, homeSectorId: sector.id,
       },
     });
+    const scavenger = adoptedScavenger ? sim.spawn({
+      type: 'ship', team: 1, factionId: 'faction_reach',
+      pos: { x: wreck.pos.x - 90, z: wreck.pos.z },
+      radius: 8, mass: 14, hull: 48, hullMax: 48, collides: true,
+      data: {
+        defId: 'ship_wasp', shipClass: 'fighter', role: 'scavenger',
+        cargo: { items: {} },
+        scavengerWork: { state: 'approach', holdQty: 0, nextWorkAt: 0, announcedWreckId: null, approachSince: null },
+        wreckFieldId: `salvage:${sector.id}:native-fixture`,
+        wreckEcologyRole: 'scavenger',
+        wreckEcology: { fieldId: `salvage:${sector.id}:native-fixture`, role: 'scavenger', sectorId: sector.id },
+        sectorId: sector.id, homeSectorId: sector.id,
+        ai: { doctrine: 'scavenger', archetype: 'reaver', passive: true },
+      },
+    }) : null;
+    if (scavenger) wreck.data.salvorNoticeAt = 1e9;
     const econ = sim.registry.get('economy');
     econ.ensureMarket(FORGE_ID);
     const physicsOwner = sim.registry.get('physics');
     assert.equal(await physicsOwner.prepareBackend(state), true);
+    if (scavenger) {
+      sim.bus.emit('salvage:placed', { sectorId: sector.id });
+      sim.bus.flush();
+    }
     const sourceStart = { ...wreck.pos };
     const events = { extraction: [], unload: [], work: [], load: [] };
     for (const [key, name] of [
@@ -107,6 +127,12 @@ export async function salvorNativeFixture({ drifting = false, withSave = false }
     }
     return {
       sim, state, yard, wreck, player, econ, physics: physicsOwner, events, sourceStart,
+      scavenger() {
+        const recordId = scavenger?.data?.worldRecordId;
+        return recordId == null ? scavenger
+          : state.entityList.find(entity => entity.alive !== false
+            && entity.data?.worldRecordId === recordId) || null;
+      },
       cutter() {
         return state.entityList.find(entity => entity.alive !== false
           && entity.data?.generalSalvor && entity.data?.trafficRole === 'salvor');

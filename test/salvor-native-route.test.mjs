@@ -2,6 +2,200 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { FORGE_ID, SALVOR_POOL, salvorNativeFixture } from './fixtures/salvorNativeFixture.mjs';
 
+test('an adopted scavenger resumes its exact native salvage job after FLEE and completes custody at the wreck',
+  { timeout: 120_000 }, async () => {
+    const h = await salvorNativeFixture({ adoptedScavenger: true });
+    try {
+      let cutter = h.scavenger();
+      assert.ok(cutter?.data?.jobId,
+        `the real salvage:placed event adopts the field scavenger (role=${cutter?.data?.role}, traffic=${cutter?.data?.trafficRole}, sector=${cutter?.data?.sectorId}/${h.state.world.currentSectorId}, target=${h.wreck.type}/${h.wreck.data?.salvagePool && 'pool'})`);
+      const jobId = cutter.data.jobId;
+      const entry = h.sim.helpers.npcJobs.get(jobId);
+      const target = h.wreck;
+      const targetId = target.id;
+      const worldRecordId = cutter.data.worldRecordId;
+      const generation = cutter.occupantGeneration;
+      const route = structuredClone(entry.job.route);
+      const pool = structuredClone(target.data.salvagePool);
+      const quantity = Object.values(pool).reduce((sum, qty) => sum + qty, 0);
+      const traffic = h.sim.registry.get('traffic');
+      const activeLine = () => Object.values(h.state.combat.attachments.byId || {}).find((line) =>
+        line?.state === 'active' && line.controlMode === 'npc_tow'
+        && line.ownerId === cutter.id && line.targetId === targetId);
+      const reach = () => traffic._salvorReach(cutter, target);
+
+      for (let tick = 0; tick < 180 && !activeLine(); tick += 1) h.step();
+      assert.ok(activeLine(), 'the adopted production job first latches its booked wreck');
+      assert.equal(entry._salvorBookedTarget?.entity, target,
+        'the job retains the exact object generation it originally booked');
+
+      h.sim.bus.emit('combat:damage', {
+        targetId: cutter.id, attackerId: h.player.id,
+        amount: 5, rawTotal: 5, applied: 5,
+      });
+      assert.equal(entry.job.phase, 'flee', 'the canonical damage listener interrupts the booked job');
+      let resumed = false;
+      for (let tick = 0; tick < 900; tick += 1) {
+        h.step();
+        cutter = h.scavenger();
+        if (entry.job.phase !== 'flee') { resumed = true; break; }
+      }
+      assert.ok(resumed, 'sim-clock threat expiry resumes the original job');
+      assert.equal(cutter.data.worldRecordId, worldRecordId);
+      assert.equal(cutter.occupantGeneration, generation,
+        'this native fixture keeps the same live body generation during the bounded return');
+      let distance = Math.hypot(cutter.pos.x - target.pos.x, cutter.pos.z - target.pos.z);
+      assert.ok(distance > reach(), `FLEE leaves the actual work radius (distance=${distance.toFixed(1)}, reach=${reach().toFixed(1)})`);
+      assert.equal(entry.job.payload.targetId, targetId);
+      assert.deepEqual(entry.job.route, route);
+      assert.deepEqual(target.data.salvagePool, pool);
+      assert.equal(cutter.data.cargoManifest?.totalQty || 0, 0);
+      assert.equal(activeLine(), undefined, 'the work line clears during FLEE');
+
+      // Work and loading cannot advance while the real hull is outside the booked workface.
+      for (let tick = 0; tick < 120 * 60; tick += 1) {
+        h.step();
+        cutter = h.scavenger();
+        distance = Math.hypot(cutter.pos.x - target.pos.x, cutter.pos.z - target.pos.z);
+        if (distance > reach()) {
+          assert.notEqual(entry.job.phase, 'work', `no cut while ${distance.toFixed(1)} WU away`);
+          assert.notEqual(entry.job.phase, 'load', 'no cargo load while the booked source is out of reach');
+        }
+        assert.equal(cutter.data.cargoManifest?.totalQty || 0, 0,
+          'the far worker has no premature cargo');
+        assert.deepEqual(target.data.salvagePool, pool,
+          'the same booked wreck pool remains untouched until physical arrival');
+        if (activeLine() && distance <= reach()) break;
+      }
+      assert.ok(activeLine() && distance <= reach(),
+        `FlightV3 returns the same worker to the same wreck (phase=${entry.job.phase}, routeIndex=${entry.job.routeIndex}, distance=${distance.toFixed(1)}, intent=${JSON.stringify(cutter.data.intent)}, target=${targetId}, booked=${entry._salvorBookedTarget?.id ?? 'none'}, context=${!!traffic._salvorRoleContext(entry, cutter, entry.job)}, physicalTarget=${traffic._salvorWorkTarget(entry, cutter)?.blocked ? 'blocked' : 'present'})`);
+      assert.equal(cutter.data.worldRecordId, worldRecordId);
+      assert.equal(cutter.occupantGeneration, generation);
+      assert.equal(activeLine().targetId, targetId);
+
+      for (let tick = 0; tick < 3600 && h.events.extraction.length === 0; tick += 1) {
+        h.step();
+        cutter = h.scavenger();
+        distance = Math.hypot(cutter.pos.x - target.pos.x, cutter.pos.z - target.pos.z);
+        if (distance > reach()) {
+          assert.notEqual(entry.job.phase, 'work', `the cut remains arrival-gated at ${distance.toFixed(1)} WU`);
+          assert.notEqual(entry.job.phase, 'load', 'cargo custody cannot finish away from the wreck');
+          assert.deepEqual(target.data.salvagePool, pool);
+        }
+      }
+      assert.equal(h.events.extraction.length, 1,
+        `the settled native workface completes one real salvage cut (phase=${entry.job.phase}, progress=${entry.job.progress}, distance=${distance.toFixed(1)}, pool=${JSON.stringify(target.data.salvagePool)})`);
+      const extraction = h.events.extraction[0];
+      assert.equal(extraction.jobId, jobId);
+      assert.equal(extraction.salvorId, cutter.id);
+      assert.equal(extraction.targetId, targetId);
+      assert.equal(extraction.totalQty, quantity);
+      assert.deepEqual(target.data.salvagePool, {});
+      assert.equal(target.data.salvorClaimedBy, worldRecordId,
+        'the exact source stays claimed by the worker carrying its salvage');
+      const manifest = cutter.data.cargoManifest;
+      assert.equal(manifest.totalQty, quantity);
+      assert.equal(manifest.role, 'salvor');
+      assert.equal(manifest.lotId, manifest.manifestId);
+      assert.equal(manifest.lines.reduce((sum, line) => sum + line.qty, 0), quantity);
+      assert.equal(entry.job.payload.targetId, targetId);
+      assert.deepEqual(entry.job.route, route);
+    } finally {
+      h.close();
+    }
+  });
+
+test('Continue rebinds an adopted scavenger to its saved wreck identity', async () => {
+  const h = await salvorNativeFixture({ adoptedScavenger: true, withSave: true });
+  try {
+    const cutter = h.scavenger();
+    assert.ok(cutter?.data?.jobId);
+    const jobId = cutter.data.jobId;
+    const entry = h.sim.helpers.npcJobs.get(jobId);
+    const target = h.wreck;
+    const targetPosition = { ...target.pos };
+    for (let tick = 0; tick < 120
+      && (!entry._salvorBookedTarget || !entry.job.payload.targetIdentity); tick += 1) h.step();
+    assert.equal(entry._salvorBookedTarget?.entity, target,
+      'the live job first retains the exact target object');
+    assert.equal(entry.job.payload.targetIdentity?.kind, 'worldRecord',
+      'the ownerless wreck receives its durable identity from the world owner');
+
+    const saveOwner = h.sim.registry.get('save');
+    const envelope = JSON.parse(JSON.stringify(saveOwner.serialize('adopted-salvor-target-identity')));
+    const savedTargetRecords = Object.values(envelope.data?.world?.records?.byId || {}).filter((record) =>
+      record.type === 'wreck' && record.pos?.x === targetPosition.x && record.pos?.z === targetPosition.z);
+    assert.equal(savedTargetRecords.length, 1, 'Continue captures one durable record at the booked wreck pose');
+    const targetRecordId = savedTargetRecords[0].recordId;
+    assert.equal(saveOwner.loadEnvelope(envelope, 'adopted-salvor-target-identity'), true);
+
+    const restoredEntry = h.sim.helpers.npcJobs.get(jobId);
+    const restoredCutter = h.scavenger();
+    assert.ok(restoredEntry && restoredCutter, 'the same job and worker rematerialize');
+    const restoredTarget = h.state.entityList.find((entity) =>
+      entity.alive !== false && entity.data?.worldRecordId === targetRecordId);
+    assert.ok(restoredTarget, `the original wreck record rematerializes (${targetRecordId})`);
+
+    // Reuse the stale numeric waypoint for a different live wreck. The saved stable identity
+    // must select the original body and repair both runtime route references before work begins.
+    const decoy = h.sim.spawn({
+      type: 'wreck', pos: { x: restoredTarget.pos.x + 35, z: restoredTarget.pos.z },
+      radius: 4, mass: 160, hull: 100, hullMax: 100, collides: true,
+      flags: { persistent: true },
+      data: { salvagePool: { cmdty_scrap_metal: 99 }, sectorId: h.state.world.currentSectorId,
+        homeSectorId: h.state.world.currentSectorId },
+    });
+    restoredEntry.job.payload.targetId = decoy.id;
+    restoredEntry.job.route[1].id = `hulk:${decoy.id}`;
+    restoredEntry.job.route[1].pos = { x: decoy.pos.x, z: decoy.pos.z };
+
+    const jobs = h.sim.registry.get('npcJobsRuntime');
+    const rebound = jobs._findSalvorTractorTarget(restoredEntry, restoredCutter);
+    assert.equal(rebound, restoredTarget,
+      'the first post-Continue booking resolves the saved durable wreck identity');
+    assert.equal(restoredEntry.job.payload.targetId, restoredTarget.id);
+    assert.equal(restoredEntry.job.route[1].id, `hulk:${restoredTarget.id}`);
+    assert.deepEqual(decoy.data.salvagePool, { cmdty_scrap_metal: 99 },
+      'a replacement numeric occupant receives no salvage work or custody');
+    assert.equal(restoredEntry._salvorBookedTarget?.entity, restoredTarget,
+      'the exact restored object generation becomes the new in-memory sidecar');
+
+    const traffic = h.sim.registry.get('traffic');
+    const routePose = { ...restoredEntry.job.route[1].pos };
+    restoredTarget.pos.x += 30;
+    assert.equal(traffic._retainedAdoptedSalvageTarget(restoredEntry), restoredTarget);
+    assert.deepEqual(restoredEntry.job.route[1].pos, routePose,
+      'a live physics pose change does not rewrite the saved route waypoint');
+
+    for (const data of [
+      { persistenceOwner: 'authoredRecovery', salvagePool: { cmdty_scrap_metal: 2 } },
+      { worldSiteId: 'world_site_authored_wreck', salvagePool: { cmdty_scrap_metal: 2 } },
+    ]) {
+      const protectedTarget = h.sim.spawn({
+        type: 'wreck', pos: { x: restoredTarget.pos.x + 80, z: restoredTarget.pos.z },
+        radius: 4, mass: 160, hull: 100, hullMax: 100, collides: true,
+        flags: { persistent: true },
+        data: { ...data, sectorId: h.state.world.currentSectorId, homeSectorId: h.state.world.currentSectorId },
+      });
+      const protectedEntry = {
+        entityId: restoredEntry.entityId,
+        job: {
+          ...restoredEntry.job,
+          route: [{ id: 'cut:hold', pos: { x: 0, z: 0 } },
+            { id: `hulk:${protectedTarget.id}`, pos: { x: protectedTarget.pos.x, z: protectedTarget.pos.z } }],
+          payload: { role: 'scavenger', targetId: protectedTarget.id, targetType: 'wreck' },
+        },
+        _salvorBookedTarget: { id: protectedTarget.id, entity: protectedTarget },
+      };
+      assert.equal(traffic._retainedAdoptedSalvageTarget(protectedEntry), null);
+      assert.equal(protectedTarget.data.worldRecordId, undefined,
+        'traffic leaves another persistence owner or authored site identity untouched');
+    }
+  } finally {
+    h.close();
+  }
+});
+
 for (const drifting of [false, true]) {
   test(`public salvor physically completes the ${drifting ? 'drifting' : 'stationary'} finite haul to Forge`,
     { timeout: 120_000 }, async () => {

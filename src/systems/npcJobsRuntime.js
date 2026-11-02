@@ -74,6 +74,7 @@ import { syncEntityActivitySlotMembership, syncEntitySectorMembership } from '..
 import { takeNearWorkSlice, NEAR_WORK_TOKEN_BUDGET } from '../core/activityScheduler.js';
 import { createNearestEntityQueryService } from '../core/spatialQuery.js';
 import { normalizeRoe, RulesOfEngagement } from '../ai/doctrine.js';
+import { isHostileForAI } from '../ai/engagementAuthority.js';
 import { isPlayerWanted } from './heat.js';
 import { hullEnvelopeWu } from '../data/collisionProxyManifests.js';
 import { DRIVE_FAMILIES, resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
@@ -1019,6 +1020,20 @@ export const npcJobsRuntime = {
   // We serialize our own already-plain records; the save owner keeps its defensive clone off.
   saveSnapshotOwned: true,
 
+  _createThreatQueryService() {
+    return createNearestEntityQueryService(this.state, {
+      entityType: 'ship',
+      fallbackIndex: 'ships',
+      eligibleForRequest: (candidate, request, state) => {
+        // Wanted-player proximity remains on the existing explicit merge path below, which
+        // preserves its established distance/tie behavior independently of ordinary AI threats.
+        if (candidate.id === state?.playerId) return false;
+        const observer = request && state.entities && state.entities.get(request.sourceEntityId);
+        return this._isJobThreat(candidate, observer);
+      },
+    });
+  },
+
   init(ctx) {
     this.state = ctx.state;
     this.bus = ctx.bus;
@@ -1030,12 +1045,7 @@ export const npcJobsRuntime = {
     this._pendingMinerFieldRetargets = new Map();
     this._heaveToLease = null;
     this._fieldRetargetScanAccum = 0;
-    this._threatQueries = createNearestEntityQueryService(this.state, {
-      entityType: 'ship',
-      team: 1,
-      fallbackIndex: 'ships',
-      eligible: eligibleActiveHostile,
-    });
+    this._threatQueries = this._createThreatQueryService();
     this._threatQueryState = this.state;
     this._lastThreatQueryTick = null;
     this._threatQueryDirty = true;
@@ -4254,12 +4264,7 @@ export const npcJobsRuntime = {
   update(dt, state) {
     if (state) this.state = state;
     const threatQueries = this._threatQueries
-      || (this._threatQueries = createNearestEntityQueryService(this.state, {
-        entityType: 'ship',
-        team: 1,
-        fallbackIndex: 'ships',
-        eligible: eligibleActiveHostile,
-      }));
+      || (this._threatQueries = this._createThreatQueryService());
     if (this._threatQueryState !== this.state) {
       this._threatQueryState = this.state;
       this._lastThreatQueryTick = null;
@@ -4333,7 +4338,9 @@ export const npcJobsRuntime = {
         const entry = byId[ids[index]];
         if (!entry || entry.job?.phase !== NPC_JOB_PHASE.FLEE || entry.threatId == null) continue;
         const remembered = this.state.entities && this.state.entities.get(entry.threatId);
-        if (!this._isJobThreat(remembered)) {
+        const observer = entry.entityId != null && this.state.entities
+          ? this.state.entities.get(entry.entityId) : null;
+        if (!this._isJobThreat(remembered, observer)) {
           this._threatQueryDirty = true;
           break;
         }
@@ -5477,7 +5484,7 @@ export const npcJobsRuntime = {
       if (hull && hull.pos) {
         const radiusSq = RESUME_RADIUS * RESUME_RADIUS;
         for (const candidate of this.state.entities.values()) {
-          if (!this._isJobThreat(candidate) || !candidate.pos || candidate.id === hull.id) continue;
+          if (!this._isJobThreat(candidate, hull) || !candidate.pos || candidate.id === hull.id) continue;
           const dx = candidate.pos.x - hull.pos.x;
           const dz = candidate.pos.z - hull.pos.z;
           if (dx * dx + dz * dz <= radiusSq) {
@@ -6546,7 +6553,9 @@ export const npcJobsRuntime = {
     const nearest = resultId != null && this.state.entities
       ? this.state.entities.get(resultId)
       : null;
-    const liveHostile = this._isJobThreat(nearest)
+    const observer = entry.entityId != null && this.state.entities
+      ? this.state.entities.get(entry.entityId) : null;
+    const liveHostile = this._isJobThreat(nearest, observer)
       ? nearest
       : null;
     const now = finite(this.state && this.state.simTime, 0);
@@ -6581,10 +6590,14 @@ export const npcJobsRuntime = {
     }
   },
 
-  _isJobThreat(entity) {
+  _isJobThreat(entity, observer = null) {
     if (!entity || entity.alive === false || entity.type !== 'ship') return false;
-    if (entity.team === 1) return eligibleActiveHostile(entity);
-    return entity.id === this.state?.playerId && isPlayerWanted(this.state);
+    if (entity.id === this.state?.playerId) return isPlayerWanted(this.state);
+    if (!observer) return entity.team === 1 && eligibleActiveHostile(entity);
+    if (isHostileForAI(this.state, observer, entity)) return true;
+    // Neutral team-2 civilians still evade active team-1 threats even though the AI
+    // engagement oracle correctly forbids them from engaging one another.
+    return !!(observer && observer.team === 2 && entity.team === 1 && eligibleActiveHostile(entity));
   },
 
   /**
@@ -6601,15 +6614,15 @@ export const npcJobsRuntime = {
     if (prior === NPC_JOB_PHASE.TRANSIT || prior === NPC_JOB_PHASE.RETURN) idx += 1;
     const wp = Array.isArray(job.route) ? job.route[idx] : null;
     if (!wp || !wp.pos) return null;
-    const docked = this._stopContestedBy(wp.pos);
+    const hull = entry.entityId != null && this.state.entities
+      ? this.state.entities.get(entry.entityId)
+      : null;
+    const docked = this._stopContestedBy(wp.pos, hull);
     if (docked) return docked;
     // The dock is clear but the lane to it may not be: a hostile sitting on the leg this
     // hull must transit is the same ambush with a longer fuse. Resuming anyway is sailing
     // straight into the corridor the pirates already hold — the prior stop is the fallback.
-    const hull = entry.entityId != null && this.state.entities
-      ? this.state.entities.get(entry.entityId)
-      : null;
-    if (hull && hull.pos) return this._legContestedBy(hull.pos, wp.pos);
+    if (hull && hull.pos) return this._legContestedBy(hull.pos, wp.pos, hull);
     return null;
   },
 
@@ -6618,7 +6631,7 @@ export const npcJobsRuntime = {
    * resume along, or null when the corridor is clear. Guard-ring semantics match the dock
    * check: a pirate within the ring of the transit line IS the trap, wherever on it it sits.
    */
-  _legContestedBy(from, to) {
+  _legContestedBy(from, to, observer = null) {
     if (!from || !to || !this.state.entities) return null;
     const lx = to.x - from.x;
     const lz = to.z - from.z;
@@ -6626,7 +6639,7 @@ export const npcJobsRuntime = {
     let best = null;
     let bestD2 = ROUTE_GUARD_WU * ROUTE_GUARD_WU;
     for (const entity of this.state.entities.values()) {
-      if (!this._isJobThreat(entity) || !entity.pos) continue;
+      if (!this._isJobThreat(entity, observer) || !entity.pos) continue;
       const t = len2 > 1e-9
         ? Math.max(0, Math.min(1,
             ((entity.pos.x - from.x) * lx + (entity.pos.z - from.z) * lz) / len2))
@@ -6642,12 +6655,12 @@ export const npcJobsRuntime = {
   },
 
   /** The nearest live job threat within the route-guard ring of a stop, or null when clear. */
-  _stopContestedBy(pos) {
+  _stopContestedBy(pos, observer = null) {
     if (!pos || !this.state.entities) return null;
     let best = null;
     let bestD2 = ROUTE_GUARD_WU * ROUTE_GUARD_WU;
     for (const entity of this.state.entities.values()) {
-      if (!this._isJobThreat(entity) || !entity.pos) continue;
+      if (!this._isJobThreat(entity, observer) || !entity.pos) continue;
       const dx = entity.pos.x - pos.x;
       const dz = entity.pos.z - pos.z;
       const d2 = dx * dx + dz * dz;
@@ -6677,7 +6690,7 @@ export const npcJobsRuntime = {
       for (let i = lastIdx; i >= 0; i--) {
         const wp = job.route[i];
         if (!wp || !wp.pos) continue;
-        if (this._stopContestedBy(wp.pos)) continue; // contested by ANY hostile, not just this one
+        if (this._stopContestedBy(wp.pos, hull)) continue; // contested by any hostile to this worker
         const hd2 = (wp.pos.x - px) * (wp.pos.x - px) + (wp.pos.z - pz) * (wp.pos.z - pz);
         if (hd2 < bestD2) { bestD2 = hd2; best = wp; }
       }

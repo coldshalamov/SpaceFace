@@ -142,6 +142,27 @@ test('encounter roster membership is protected even without a data marker', () =
   assert.equal(scripted.data.despawnAt, undefined);
 });
 
+test('a live job owns its fleeing worker and releases only a prior egress stamp', () => {
+  const worker = ship(21, { pos: { x: 2000, z: 0 }, ai: { forceFlee: true },
+    data: { jobId: 'job:worker', worldRecordId: 'worker' } });
+  const state = makeState({ entities: [worker] });
+  const entry = { job: { id: 'job:worker' }, entityId: worker.id, entityRef: worker, worldRecordId: 'worker' };
+  state.npcJobs = { byId: { 'job:worker': entry } };
+  stepEgressExits(state, state.entityList, makeBus());
+  assert.equal(worker.data.despawnAt, undefined);
+  worker.data.despawnAt = worker.data._egressExitAt = 105;
+  stepEgressExits(state, state.entityList, makeBus());
+  assert.equal(worker.data.despawnAt, undefined, 'adoption revokes a prior ambient egress');
+  worker.data.despawnAt = 500;
+  stepEgressExits(state, state.entityList, makeBus());
+  assert.equal(worker.data.despawnAt, 500, 'a foreign deadline stays with its owner');
+  delete worker.data.despawnAt;
+  entry.entityRef = { ...worker };
+  stepEgressExits(state, state.entityList, makeBus());
+  assert.equal(worker.data.despawnAt, state.simTime + EGRESS_FADE_S,
+    'a recycled occupant cannot borrow the former worker job');
+});
+
 test('the scan is cadence-gated: off-tick calls do not stamp or release', () => {
   const hostile = ship(2, { pos: { x: 1200, z: 0 }, ai: { forceFlee: true } });
   const state = makeState({ entities: [hostile], tick: 31 }); // 31 % 15 !== 0
