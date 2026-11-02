@@ -1,3 +1,4 @@
+import { CERES_CAUSAL_CHAIN_EVENT } from '../contracts/trafficEvents.js';
 import { MAX_PER_SECTOR, CORE_MIN_TRAFFIC, priorityCourierServiceForSector,
   FLEET_BY_FACTION, TRAFFIC_ROLES, CERES_TENDER_SLOT_ID, CERES_ACTIVITY_CAST,
   CERES_ACTIVITY_CAST_BY_SLOT_ID, sectorHasAuthoredRock, trafficRoleMixForSector,
@@ -592,7 +593,6 @@ const AMBIENT_NEAR_PERIOD = 2;
 // cooldown/draw policy. Ledger lives on the traffic instance only (transient; out of the save
 // envelope), identity keys are worldRecordSlotId / jobId, and movement stays with npcJobsRuntime.
 const CERES_CAUSAL_CHAIN_SCHEMA = 'spaceface.ceresCausalChain.v1';
-const CERES_CAUSAL_CHAIN_EVENT = 'traffic:ceresCausalChain';
 const CERES_CAUSAL_CHAIN_MAX_CONCURRENT = 2;
 const CERES_CAUSAL_CHAIN_CYCLE_GAP_S = 45;
 export const CERES_MINER_HAULER_HANDOFF_SCHEMA = 'spaceface.ceresMinerHaulerHandoff.v1';

@@ -206,6 +206,7 @@ const GPU_TIMERS = process.argv.includes('--gpu-timers');
 // --eval-file=PATH runs a script in the page once the flight has settled (instead of the profile window): the file is
 // one expression that evaluates to a Promise, and its resolved value is saved as eval-result.json. This is how a
 // within-session A/B (alternating blocks in the same flight) controls for this machine's noisy background load.
+// Eval scripts can await __sfProfileScreenshot(label) to save a compositor screenshot in the output directory.
 const EVAL_FILE = argValue('--eval-file');
 // --heap-sampling starts the V8 sampling heap profiler before New Game and, at the end of the held-thrust tail, writes
 // which allocation sites still hold live memory (heap-sampling.json / heap-sampling.md), with the JS heap at each milestone.
@@ -1424,10 +1425,22 @@ async function runSteadyFlightProfile(page, cdp) {
     log(`running ${EVAL_FILE} in the page`);
     const heldKey = process.argv.includes('--eval-brake') ? 'Digit0'
       : process.argv.includes('--eval-thrust') ? 'KeyW' : null;
+    let screenshotSequence = 0;
+    await page.exposeBinding('__sfProfileScreenshot', async (_source, label) => {
+      if (typeof label !== 'string' || !/^[a-z0-9][a-z0-9_-]{0,47}$/i.test(label)) {
+        throw new Error('Screenshot label must be 1–48 letters, digits, underscores or hyphens');
+      }
+      const filename = `eval-${String(++screenshotSequence).padStart(3, '0')}-${label}.png`;
+      await page.screenshot({ path: path.join(OUT_DIR, filename), timeout: 15_000 });
+      return { path: path.relative(ROOT, path.join(OUT_DIR, filename)).replace(/\\/g, '/') };
+    });
     if (heldKey) await page.keyboard.down(heldKey);
     let result;
     try { result = await page.evaluate(source); }
-    finally { if (heldKey) await page.keyboard.up(heldKey).catch(() => {}); }
+    finally {
+      if (heldKey) await page.keyboard.up(heldKey).catch(() => {});
+      await page.evaluate(() => { delete window.__sfProfileScreenshot; }).catch(() => {});
+    }
     fs.writeFileSync(path.join(OUT_DIR, 'eval-result.json'), JSON.stringify(result, null, 1), 'utf8');
     const sourceDigestAfter = await digestServedSourcePaths();
     const evalIdentity = await page.evaluate(() => {

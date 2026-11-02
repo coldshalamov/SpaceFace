@@ -129,7 +129,7 @@ import { TABLE_HEARING_FAR_WU, TABLE_HEARING_PAN_WU } from '../render/tabletopPo
 import { entityNeedsExactAudio } from './audioActiveSet.js';
 import { bindOutputDeviceFollow, planDeviceChange, planSinkRebind } from './outputDeviceFollow.js';
 import { heatLevelFor } from '../systems/heat.js';
-import { CERES_CAUSAL_CHAIN_EVENT } from '../systems/traffic.js';
+import { CERES_CAUSAL_CHAIN_EVENT } from '../contracts/trafficEvents.js';
 import { hash32 } from '../core/rng.js';
 import { dyingFuseS } from '../combat/lifecycle.js';
 import {
