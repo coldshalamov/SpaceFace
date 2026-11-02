@@ -57,9 +57,12 @@ The stalled fleet-look job is closed with its original 170 images preserved. Com
 bounds each view and records partial progress on timeout (one focused check passes). The software
 Cradle retry times out at `render-1` and cleans up normally. Native D3D11 completes in 11 seconds,
 but its ship-close camera shows only sky; the existing bounds-fitted place view then produces an
-inspected complete Cradle image in 10 seconds. Remaining entries are grouped as six place views
-and 20 ship-close views, queued after M8. No ordinary placement verdict is inferred from these
-asset previews. M8's pinned source-Electron run entered its measured window at 14:10:27 UTC,
+inspected complete Cradle image in 10 seconds. The six place views and 20 ship-close views now
+have visible native captures in the November 1 fleet-look recovery artifacts; the earlier blank
+frames remain preserved. These entries are no longer a capture backlog. House-marking readability
+and combined HeroRig/plume appearance remain open, including the later zero-draw Kestrel preview
+recorded in `INTEGRATION_COVERAGE.md`. No ordinary placement verdict is inferred from these asset
+previews. M8's pinned source-Electron run entered its measured window at 14:10:27 UTC,
 then exited 1 at 14:24:53 on the market helper's buyable-row assertion before 30 minutes. It is
 not a soak pass; the failed public trade state is being traced and the original evidence retained.
 
