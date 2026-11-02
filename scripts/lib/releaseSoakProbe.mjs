@@ -6288,6 +6288,8 @@ async function readPostGcMemorySnapshot(page, phaseTag, { includeGeometryCensus 
       geometries: finiteOrNull(report?.memory?.geometries),
       textures: finiteOrNull(report?.memory?.textures),
       programs: finiteOrNull(report?.memory?.programs),
+      flightRootTemplateCache: renderSystem && typeof renderSystem.getFlightRootTemplateCacheDiagnostics === 'function'
+        ? renderSystem.getFlightRootTemplateCacheDiagnostics() : null,
       // Identity detail so a nonzero programs delta names the exact variants that linked
       // mid-cycle instead of only counting them.
       programIdentities: Array.isArray(state?.render?.renderer?.info?.programs)

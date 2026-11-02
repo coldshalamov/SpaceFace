@@ -203,6 +203,7 @@ import {
   prepareFirstQueuedAuthoredBoundaryForOpening,
   prepareAuthoredInstancePoolsForContextLoss,
   collectFlightRootTemplateContextLossRoots,
+  getFlightRootTemplateCacheDiagnostics,
   publishPreparedAuthoredBoundary,
   resumeAuthoredUpgradeQueueAfterOpening,
   resumeAuthoredUpgradeQueueForLoadingHulls,
@@ -9102,6 +9103,10 @@ function createRigidOpaqueBatchProbe(owner, scene, options = {}) {
 }
 
 export const render = {
+  getFlightRootTemplateCacheDiagnostics() {
+    return getFlightRootTemplateCacheDiagnostics();
+  },
+
   name: 'render',
   init(ctx) {
     if (this._rendererLifecycle) {

@@ -127,7 +127,15 @@ function fakeResidencyPage({ pendingRequests = 0, settleOnPoll = false, waitErro
         render: { renderer: { info: { programs: [] } } },
       },
       registry: {
-        get: (name) => name === 'render' ? { _assetResidency: residency } : null,
+      get: (name) => name === 'render' ? {
+        _assetResidency: residency,
+        getFlightRootTemplateCacheDiagnostics: () => ({
+          size: 1,
+          geometryBytes: 123,
+          geometryBudgetBytes: 32 * 1024 * 1024,
+          keys: ['template-fixture'],
+        }),
+      } : null,
       },
     },
   };
@@ -202,10 +210,17 @@ test('baseline readiness and snapshot share the existing 30-second bound and ord
   const { fakeWindow, page } = fakeResidencyPage({ pendingRequests: 1, settleOnPoll: true });
   const baseline = await withFakeWindow(fakeWindow, () => readReleaseSoakBaselineMemory(page));
   assert.equal(baseline.phaseTag, 'docked-market-start');
+  assert.deepEqual(baseline.flightRootTemplateCache, {
+    size: 1,
+    geometryBytes: 123,
+    geometryBudgetBytes: 32 * 1024 * 1024,
+    keys: ['template-fixture'],
+  });
   assert.equal(page.calls[0].kind, 'wait');
   assert.equal(page.calls[0].timeout, 30_000);
   assert.equal(page.calls.findIndex((call) => call.kind === 'context') > 0, true);
-  assert.equal(page.calls.at(-1).argument.phaseTag, 'docked-market-start');
+  assert.equal(page.calls.find((call) => call.kind === 'evaluate'
+    && call.argument?.phaseTag === 'docked-market-start')?.argument.phaseTag, 'docked-market-start');
 });
 
 test('baseline bound covers an unresolved readiness wait before snapshot work begins', async () => {

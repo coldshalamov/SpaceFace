@@ -7,8 +7,11 @@ import {
   detachPackageTexture,
   detachedGeometryUploadPending,
   rehydrateDetachedGeometries,
+  rehydrateDetachedTextures,
   retainPackageGeometryCpu,
+  retainPresentedTextureLeases,
   assertPackageGeometryRefillReady,
+  assertPackageTextureRefillReady,
   isPackageTextureDetached,
   noteGeometryGpuResident,
   packageTextureDetachCovers,
@@ -98,7 +101,12 @@ function textureUploadVersionMap(renderer) {
  */
 export function textureGpuResident(texture, renderer) {
   const map = textureUploadVersions.get(renderer);
-  return !!map && map.get(texture) === texture.version;
+  if (!map || map.get(texture) !== texture.version) return false;
+  if (!isPackageTextureDetached(texture)) return true;
+  const properties = renderer && renderer.properties;
+  if (!properties || typeof properties.get !== 'function') return true;
+  const current = properties.get(texture);
+  return !!current && current.__version === texture.version && !!current.__webglTexture;
 }
 
 function enqueueGeometryResidencyBatches(renderer, work, options = {}) {
@@ -1057,6 +1065,10 @@ export async function prepareStartupGpuResidency(renderer, subjects, options = {
   for (const texture of Array.isArray(options.textures) ? options.textures : []) {
     if (texture && texture.isTexture === true && !textures.includes(texture)) textures.push(texture);
   }
+  // This pass yields before queued uploads execute. Keep each selected CPU payload alive
+  // until the pass finishes, including while other residency owners run between slices.
+  const releaseTextureLeases = retainPresentedTextureLeases(textures);
+  try {
   // Context restore rebuilt every GL object, so stamps recorded against the dead context lie:
   // that call site passes ignoreResidentStamps, and clearing the map makes the pass re-upload
   // everything (matching the geometry spacefaceGpuResident handling) then stamp fresh.
@@ -1113,7 +1125,7 @@ export async function prepareStartupGpuResidency(renderer, subjects, options = {
     if (typeof texture.version === 'number'
       && texture.isVideoTexture !== true
       && texture.isExternalTexture !== true
-      && uploadVersions.get(texture) === texture.version) {
+        && textureGpuResident(texture, renderer)) {
       // A stamped package texture may still carry its CPU mirror: detach is deferred while
       // dedupe siblings share its payload records, so retry the release — once this texture is
       // the entry's last live user the bytes can actually leave. F3 also attempts the shared
@@ -1134,20 +1146,10 @@ export async function prepareStartupGpuResidency(renderer, subjects, options = {
       continue;
     }
     if (isPackageTextureDetached(texture)) {
-      // The CPU mirror was released after its proven upload. There is nothing to upload until a
-      // context-restore rehydrate refills it — uploading now would push empty mips over the live
-      // copy, so count it resident and skip. Its dedupe siblings may still share an unreleased
-      // canonical source — this stamp may be the one that completes the release.
-      releaseSharedImageSource(texture, (user) => textureGpuResident(user, renderer), packageTextureDetachCovers);
-      residentTextures += 1;
-      textureProgress.update(index + 1);
-      if ((index & 255) === 255 || now() - scanStrideAt >= 2) {
-        await yieldToMain();
-        // Stamp AFTER the wait: the wait is a whole frame, so a stamp before it leaves the next row 16 ms over
-        // the 2 ms stride and every resident row after the first yields its own frame.
-        scanStrideAt = now();
-      }
-      continue;
+      // A released mirror is only resident in the context that proved its upload. A fresh
+      // context or invalidated version must refill the canonical package before submission.
+      const receipt = await rehydrateDetachedTextures([texture], { yieldToMain });
+      assertPackageTextureRefillReady([texture], receipt);
     }
     if (!pendingUploads.length) {
       await yieldToMain();
@@ -1164,7 +1166,7 @@ export async function prepareStartupGpuResidency(renderer, subjects, options = {
       }
       // A sibling root can finish this shared texture while this unit waits for its turn.
       if (typeof texture.version === 'number' && texture.isVideoTexture !== true
-          && texture.isExternalTexture !== true && uploadVersions.get(texture) === texture.version) {
+          && texture.isExternalTexture !== true && textureGpuResident(texture, renderer)) {
         residentTextures += 1;
         textureProgress.update(index + 1);
         return;
@@ -1252,6 +1254,15 @@ export async function prepareStartupGpuResidency(renderer, subjects, options = {
     residentTextures,
     geometryResidency,
   };
+  } finally {
+    releaseTextureLeases();
+    // Detachment attempted while the lease was held is intentionally deferred until now.
+    for (const texture of textures) {
+      if (!textureGpuResident(texture, renderer)) continue;
+      detachPackageTexture(texture);
+      releaseSharedImageSource(texture, (user) => textureGpuResident(user, renderer), packageTextureDetachCovers);
+    }
+  }
 }
 
 export function yieldToBrowser() {
