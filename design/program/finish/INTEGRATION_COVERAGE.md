@@ -148,9 +148,14 @@ experiment, not crowded-simulation or overall performance acceptance.
 
 The current measured point is the1ad main closure above. Earlier checkpoints, methodology, receipts, and non-comparable measurements remain in the [dated archive](../../archive/finish-integration/INTEGRATION_COVERAGE_2026-10-31.md). Do not infer total transfer or runtime smoothness from the static-closure number alone.
 
+The phone station fixture now keeps a live transaction receipt clear through Buy → Factions → Bar,
+including scroll and390→430px resize. All footer controls remain hit-testable. A follow-up in the
+canonical mobile layout keeps all seven navigation labels whole at12px; decorative glyphs give the
+words room at narrow portrait sizes. The actual images were inspected. This closes the demonstrated
+fixture defects, not ordinary docking or every station destination's gameplay.
+
 ## Active failures and next acceptance work
 
-- Verify the phone station transaction receipt after `12219eabedf9`; the earlier mounted Repair Hull/Buy walk showed it covering the Factions tab. Focused checks pass; the same-action visual recheck is running.
 - Recheck ordinary Ceres tractor use after `4f7eed8bbd4c`. The completed600-second test observed whip and coupler but no tractor. The scavenger now receives its job after salvage targets materialize, before the first tick can shelve it; focused assignment/idempotence passes. The long post-fix census remains open.
 - The latest Ceres public route recorded an impact and destruction but lacked participant metadata after mirror removal. Its original receipt cannot prove the authored impact retrospectively. Preserve native occupant generations and raw trace data in the corrected observer, then exercise the route again.
 - Complete a qualifying M8 30-minute run with the required post-context observation. The bounded packaged recovery pass does not establish soak acceptance.
