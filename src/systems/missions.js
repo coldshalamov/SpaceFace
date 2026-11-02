@@ -3440,7 +3440,11 @@ export const missions = {
               : m.type === 'demolition'
                 ? 'Knock the tower down — swing mass, or cut it'
                 : 'Pull a pod out, or open a corridor and reel';
-        return { ...base, targetEntityId: target.id, pos: { x: target.pos.x, z: target.pos.z }, reason };
+        // This phase points at the live physical body, not the receiving station. Keeping
+        // stationId here makes the HUD resolve the station before this target's position.
+        return { ...base, stationId: null,
+          label: target.data?.name || target.data?.scanLabel || target.name || title,
+          targetEntityId: target.id, pos: { x: target.pos.x, z: target.pos.z }, reason };
       }
       return base;
     }

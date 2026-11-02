@@ -17,6 +17,7 @@ import {
 import { missions } from '../src/systems/missions.js';
 import { fittingsFromDefaultModules, getDerivedStats } from '../src/systems/ships.js';
 import { missionCommandBrief, objectiveText } from '../src/ui/screens/missionLog.js';
+import { resolveWaypointPresentationPosition } from '../src/ui/navigationWaypoint.js';
 
 const SEED = 4242;
 
@@ -60,6 +61,26 @@ function starterOffer(offers, jobId, step) {
 function stillActive(h, mission) {
   return h.state.missions.active.some((row) => row.id === mission.id);
 }
+
+test('Pelican recovery waypoint names and follows the original buoy before delivery', () => {
+  const h = boot(NEW_GAME_STARTERS.find((starter) => starter.id === 'starter_pelican'));
+  try {
+    const offer = starterOffer(h.missionsSys.ensureBoard(h.info.id).slots, 'starter_pelican', 1);
+    assert.ok(offer);
+    assert.equal(h.missionsSys.acceptMission(offer.id), true);
+    const mission = h.state.missions.active.find((row) => row.params?.starterJobId === 'starter_pelican');
+    const buoy = h.state.entities.get(mission.targetEntityIds[0]);
+    assert.ok(buoy?.pos);
+    const waypoint = h.missionsSys._missionWaypoint(mission);
+    assert.equal(waypoint.targetEntityId, buoy.id);
+    assert.equal(waypoint.stationId, null, 'the HUD must not replace the physical target with the delivery station');
+    assert.equal(waypoint.label, '44-C loose lane buoy');
+    assert.deepEqual(resolveWaypointPresentationPosition(h.state, waypoint), { x: buoy.pos.x, z: buoy.pos.z });
+    buoy.alive = false;
+    const destination = h.missionsSys._missionWaypoint(mission);
+    assert.equal(destination.stationId, mission.destStationId, 'delivery destination remains available without a live target');
+  } finally { h.sim.dispose(); }
+});
 
 function finish(h, mission) {
   if (mission.type === 'mining_quota') {
