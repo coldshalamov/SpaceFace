@@ -52,6 +52,7 @@ import { createNpcJobSignatureMethods } from './vfx/npcJobSignatureMethods.js';
 import { StatusMatterVfx, collectHeatedMaterialBodies } from './vfx/statusMatterVfx.js';
 import { CombatContactVfx } from './vfx/combatContactVfx.js';
 import { DamagedPortVfxPlanner } from './vfx/damagedPortVfx.js';
+import { resolveWreckAgeS, wreckBurnPicture } from './vfx/wreckAftermathState.js';
 import { createToolConduitGeometry, installToolConduitShader } from './toolConduit.js';
 import { FieldForcePresentation } from './forceLanguage/fieldForcePresentation.js';
 import { GyreSnarePresentation } from './forceLanguage/gyreSnarePresentation.js';
@@ -794,6 +795,8 @@ const _weaponScarRgb = [0, 0, 0];
 const VFX_WRECK_WISP_HZ = 4;
 const WRECK_WISP_INTERVAL_S = 2.4;
 const WRECK_WISP_MAX_TRACKED = 64;
+// Wreck aftermath scratch: one picture per emitted wisp (wreckAftermathState writes it).
+const _wreckBurnScratch = { burn: 0, smoke: 0, vent: 1 };
 const _funnelMoteScratch = { cycle: 0, angle: 0 };
 const _veinPatternScratch = {
   axisAngle: 0,
@@ -10158,14 +10161,51 @@ export const vfx = {
       const slot = Math.floor((simTime + phase) / WRECK_WISP_INTERVAL_S);
       if (slots.get(e.id) === slot) continue;
       slots.set(e.id, slot);
-      // Vent from a fixed hull breach point (id-hashed azimuth), drifting outward as it cools.
+      // A wreck the sim stamped as freshly killed burns and smokes at the breach, then cools
+      // into the cold husk that only vents (wreckAftermathState shapes the envelopes; killedAt
+      // is the sim's own kill-time truth). Unstamped set dressing stays cold, as before.
+      const ageS = resolveWreckAgeS(e.data, simTime);
+      const pic = wreckBurnPicture(ageS, _wreckBurnScratch);
       const a = (((h >>> 16) & 0xff) / 255) * Math.PI * 2;
+      const ca = Math.cos(a);
+      const sa = Math.sin(a);
       const breach = (e.radius || 6) * 0.5;
+      const rs = Math.min(2.2, Math.max(0.7, (e.radius || 6) / 8));
+      const bx = e.pos.x + ca * breach;
+      const bz = e.pos.z + sa * breach;
+      const wobble = () => (Math.random() - 0.5) * 1.2;
+      // The pressure vent was always here: pale gas drifting outward as the hull cools.
       this._spawnSprite(SPR_PUFF,
-        e.pos.x + Math.cos(a) * breach, 0.5, e.pos.z + Math.sin(a) * breach,
+        bx, 0.5, bz,
         1.6, 0.9, 3.6, 0.20, 0.0, '#cfe8ff',
-        Math.cos(a) * 1.6 + (Math.random() - 0.5) * 1.2,
-        Math.sin(a) * 1.6 + (Math.random() - 0.5) * 1.2);
+        ca * 1.6 + wobble(), sa * 1.6 + wobble());
+      if (pic.burn > 0.02) {
+        // Open flame: a combustion body licking out along the breach azimuth. SPR_COMBUSTION
+        // carries its own accessibility scaling inside _spawnSprite — no extra dimming here.
+        this._spawnSprite(SPR_COMBUSTION,
+          bx, 0.5, bz,
+          0.7 + Math.random() * 0.7, (0.9 + 0.5 * pic.burn) * rs, 3.2 * rs,
+          0.55 * pic.burn, 0, '#ff8a3c',
+          ca * 2.2, sa * 2.2, 1.3, a);
+        // Dark smoke — normal-blended so it reads against the void while the metal is hot.
+        if (pic.smoke > 0.05) {
+          this._spawnSprite(SPR_PUFF,
+            bx, 0.9, bz,
+            2.0 + Math.random(), 1.1 * rs, 4.6 * rs,
+            0.34 * pic.smoke, 0, '#17110d',
+            ca * 1.1 + wobble() * 0.5, sa * 1.1 + wobble() * 0.5);
+        }
+        // Embers: hot flecks thrown off the breach while the fire is live.
+        if (pic.burn > 0.4) {
+          const ea = a + (Math.random() - 0.5) * 0.9;
+          this._spawnSprite(SPR_COMBUSTION,
+            bx, 0.4, bz,
+            0.45 + Math.random() * 0.4, 0.3 * rs, 1.1 * rs,
+            0.62 * pic.burn, 0, '#ffd9a0',
+            Math.cos(ea) * (7 + Math.random() * 6), Math.sin(ea) * (7 + Math.random() * 6),
+            2.2, ea);
+        }
+      }
       emitted++;
     }
     if (slots.size > WRECK_WISP_MAX_TRACKED) {
