@@ -58,14 +58,14 @@ const BUDGET_SAMPLE_MS = 600;
 const BUDGET_SAMPLE_ATTEMPTS = 4;
 let BUDGET_PROBE_ACTIVE = false;
 // Frontend Task A (design/frontend/direction/KIT_SPEC.md §11.7, §13): a `--world` run photographs
-// the live 3D picture instead of the neutral ground. Chromium gets real GL flags, the neutral
-// ground is skipped, and every kit screen (`.k-screen[data-screen]`) is waited on until its
-// `data-k-ready="1"` — the attribute a kit screen sets when its 3D mount has drawn a first frame.
-// Without `--world` nothing here changes, so the committed regression baseline stays valid.
+// the live 3D picture instead of the neutral ground. Readiness follows the visible surface's
+// declared world contract: a screen-owned stage uses its stage marker; overlays and intentional
+// empty stages use a fresh submission from the live renderer. Without `--world` nothing here
+// changes, so the committed regression baseline stays valid.
 let WORLD_CAPTURE = false;
 const WORLD_GL_ARGS = Object.freeze(['--use-gl=angle', '--ignore-gpu-blocklist', '--mute-audio']);
 const WORLD_READY_TIMEOUT_MS = 15_000;
-/** Surfaces whose kit root never reported `data-k-ready="1"` in this run (review defect list). */
+/** Surfaces that did not meet their declared world-readiness contract in this run. */
 const HULL_ABSENT = [];
 export const UI_FRAME_REFERENCE_DIR = path.join(ROOT, 'test', 'ui-frame-references');
 /**
@@ -82,6 +82,11 @@ export const UI_FRAME_REFERENCE_DIR = path.join(ROOT, 'test', 'ui-frame-referenc
  * exactly which frames are current.
  */
 export const UI_FRAME_PROVENANCE_FILE = path.join(UI_FRAME_REFERENCE_DIR, 'provenance.json');
+
+/** A live-world capture needs an actual renderer submission after its surface opens. */
+export function worldSubmissionAdvanced(before, after) {
+  return Number.isFinite(before) && Number.isFinite(after) && after > before;
+}
 
 /**
  * THE UNIVERSE SEED, pinned.
@@ -632,6 +637,9 @@ export async function captureUiMatrix(options = {}) {
             for (const mode of needed) {
               try {
                 await isolated.page.emulateMedia(mode.emulate);
+                const worldSubmissionBaseline = WORLD_CAPTURE && surface.worldReadiness
+                  ? await readWorldSubmissionCount(isolated.page)
+                  : null;
                 const opened = await openSurface(isolated.page, surface);
                 if (!opened.ok) {
                   failures.push({ surface: surface.id, mode: mode.id, viewport, reason: opened.reason });
@@ -641,6 +649,7 @@ export async function captureUiMatrix(options = {}) {
                 await stabilizeSurfaceForCapture(isolated.page, surface.id);
                 await captureSurfaceScreenshot({
                   page: isolated.page, outputDir, captures, surface, modeId: mode.id, viewport, restTwinDir, promoteReference, provenance,
+                  worldSubmissionBaseline,
                 });
               } catch (error) {
                 failures.push({ surface: surface.id, mode: mode.id, viewport, reason: error.message });
@@ -729,10 +738,10 @@ export async function captureUiMatrix(options = {}) {
   }
   if (WORLD_CAPTURE && !quiet) {
     if (HULL_ABSENT.length) {
-      console.warn(`\n--world: ${HULL_ABSENT.length} surface(s) never reported data-k-ready="1" (capture defect, not a frame verdict):`);
+      console.warn(`\n--world: ${HULL_ABSENT.length} surface(s) did not meet their world-readiness contract (capture defect, not a frame verdict):`);
       for (const label of HULL_ABSENT) console.warn(`  hull absent: ${label}`);
     } else {
-      console.log('\n--world: every kit screen reported data-k-ready="1" before its frame.');
+      console.log('\n--world: every planned surface met its declared readiness contract before capture.');
     }
   }
 
@@ -902,6 +911,9 @@ async function captureModeSet({
   for (let index = 0; index < surfaces.length; index += 1) {
     const surface = surfaces[index];
     try {
+      const worldSubmissionBaseline = WORLD_CAPTURE && surface.worldReadiness
+        ? await readWorldSubmissionCount(page)
+        : null;
       const opened = await openSurface(page, surface);
       if (!opened.ok) {
         failures.push({ surface: surface.id, mode: mode.id, viewport, reason: opened.reason });
@@ -918,6 +930,7 @@ async function captureModeSet({
           restTwinDir,
           promoteReference,
           provenance,
+          worldSubmissionBaseline,
         });
       }
     } catch (error) {
@@ -1708,13 +1721,66 @@ function makeMenuPhaseCapture({ modes, outputDir, captures, failures, viewport, 
 /** How long the surface is left alone between the frame and its rest twin. */
 const REST_TWIN_BEAT_MS = 400;
 
+/** Read the renderer's existing completed-world counter; this never walks the scene. */
+async function readWorldSubmissionCount(page) {
+  return page.evaluate(() => {
+    const frames = window.SF?.state?.render?.worldSubmittedFrames;
+    return Number.isFinite(frames) ? frames : null;
+  });
+}
+
 /**
- * `--world` only: wait for the visible kit screen's 3D mount to draw its first frame
- * (`data-k-ready="1"`). A screen with no kit root resolves at once. A timeout never aborts the
- * matrix — it is recorded as `hull absent: <surface>` for the receipt and the run continues.
+ * `--world` only: wait for the readiness signal named by the surface's visible-world contract.
+ * Stage-owned screens use their own `data-k-ready`; overlays and vacant stages wait for a fresh
+ * renderer submission instead. A timeout remains a named capture defect and never changes a frame
+ * verdict or silently promotes a missing world.
  */
-async function waitForWorldReady(page, label) {
+async function waitForWorldReady(page, label, surface, worldSubmissionBaseline) {
   try {
+    const contract = surface && surface.worldReadiness;
+    if (contract) {
+      const ready = await page.waitForFunction(({ mode, screenId, before }) => {
+        const screen = screenId ? document.querySelector(`[data-screen="${screenId}"]`) : null;
+        if (!screen || screen.getAttribute('aria-hidden') === 'true'
+          || screen.getClientRects().length === 0) return false;
+        const frames = window.SF?.state?.render?.worldSubmittedFrames;
+        const advanced = Number.isFinite(before) && Number.isFinite(frames) && frames > before;
+        if (mode === 'live-world') {
+          return advanced ? { kind: 'live-world', worldSubmittedFrames: frames } : false;
+        }
+        if (mode === 'preview-or-live-world') {
+          if (screen.dataset.slotState === 'filed') {
+            return screen.dataset.kReady === '1'
+              ? { kind: 'screen-preview', worldSubmittedFrames: frames } : false;
+          }
+          if (screen.dataset.slotState === 'open' || screen.dataset.slotState === 'empty') {
+            return advanced ? { kind: 'live-world', worldSubmittedFrames: frames } : false;
+          }
+          return false;
+        }
+        if (mode === 'stage-or-live-world') {
+          if (Object.prototype.hasOwnProperty.call(screen.dataset, 'kStage')) {
+            return screen.dataset.kReady === '1'
+              ? { kind: 'screen-stage', worldSubmittedFrames: frames } : false;
+          }
+          return advanced ? { kind: 'live-world', worldSubmittedFrames: frames } : false;
+        }
+        return false;
+      }, { mode: contract, screenId: surface.screenId, before: worldSubmissionBaseline }, {
+        timeout: WORLD_READY_TIMEOUT_MS,
+      });
+      try {
+        const observation = await ready.jsonValue();
+        if (observation?.kind === 'live-world'
+          && !worldSubmissionAdvanced(worldSubmissionBaseline, observation.worldSubmittedFrames)) {
+          throw new Error('live world submission did not advance');
+        }
+      } finally {
+        await ready.dispose().catch(() => {});
+      }
+      return;
+    }
+
     await page.waitForFunction(() => {
       const roots = [...document.querySelectorAll('.k-screen[data-screen]')]
         .filter((el) => el.style.display !== 'none' && el.getAttribute('aria-hidden') !== 'true');
@@ -1723,7 +1789,7 @@ async function waitForWorldReady(page, label) {
     }, null, { timeout: WORLD_READY_TIMEOUT_MS });
   } catch (_) {
     HULL_ABSENT.push(label);
-    console.warn(`hull absent: ${label}`);
+    console.warn(`world readiness not observed: ${label}`);
   }
 }
 
@@ -1737,6 +1803,7 @@ async function captureSurfaceScreenshot({
   restTwinDir = null,
   promoteReference = null,
   provenance = null,
+  worldSubmissionBaseline = null,
 }) {
   const entry = {
     surface: surface.id,
@@ -1746,7 +1813,12 @@ async function captureSurfaceScreenshot({
   };
   const name = frameFileName(entry);
   const dest = path.join(outputDir, name);
-  if (WORLD_CAPTURE) await waitForWorldReady(page, `${surface.id} (${modeId}, ${viewport.width}x${viewport.height})`);
+  if (WORLD_CAPTURE) await waitForWorldReady(
+    page,
+    `${surface.id} (${modeId}, ${viewport.width}x${viewport.height})`,
+    surface,
+    worldSubmissionBaseline,
+  );
   const shoot = async (target) => {
     if (surface.captureMode === 'element') {
       // Crop to the overlay's own box. Playwright's element screenshot is the honest frame for a

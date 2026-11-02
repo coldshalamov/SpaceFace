@@ -52,6 +52,7 @@ import {
   normalizeFrameFilter,
   parseArgs,
   startFreshServer,
+  worldSubmissionAdvanced,
 } from '../scripts/capture-ui-matrix.mjs';
 import { PSEUDO_LOCALE, pseudoLocalize } from '../src/localization/runtime.js';
 import {
@@ -185,6 +186,23 @@ function judge(surfaceOverrides = {}, passOverrides = {}, frames = FULL_FRAMES) 
 
 const MEASURED_RULES = ['reachable', 'type-floor', 'tabular-numerals', 'dom-budget', 'safe-frame', 'pseudo-loc', 'reference-frames'];
 const isPass = (status) => PASS_STATUSES.includes(status);
+
+test('world capture requires a fresh finite submission when a surface is an overlay or vacant stage', () => {
+  assert.equal(worldSubmissionAdvanced(14, 15), true);
+  assert.equal(worldSubmissionAdvanced(14, 14), false);
+  assert.equal(worldSubmissionAdvanced(14, 13), false);
+  assert.equal(worldSubmissionAdvanced(null, 15), false);
+  assert.equal(worldSubmissionAdvanced(14, null), false);
+
+  const contracts = Object.fromEntries(CAPTURE_SURFACES
+    .filter((surface) => ['save-load', 'statistics', 'game-over'].includes(surface.id))
+    .map((surface) => [surface.id, surface.worldReadiness]));
+  assert.deepEqual(contracts, {
+    'save-load': 'preview-or-live-world',
+    statistics: 'live-world',
+    'game-over': 'stage-or-live-world',
+  });
+});
 
 // --------------------------------------------------------------------------------- the pass rule
 

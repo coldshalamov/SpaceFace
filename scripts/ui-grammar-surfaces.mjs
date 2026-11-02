@@ -283,6 +283,9 @@ const RAW_SURFACES = Object.freeze([
     ownerFile: 'src/ui/screens/saveLoad.js',
     screenId: 'saveLoad',
     root: ['[data-screen="saveLoad"]'],
+    // The empty SaveLoad stage is a deliberate vacant berth, not a missing hull. A filed slot
+    // needs its authored preview; otherwise the live flight world underneath is the capture target.
+    worldReadiness: 'preview-or-live-world',
     // The pause menu's Save button opens saveLoad directly; its Load button routes through a
     // destructive confirm, so Save is the non-destructive public route to the same surface.
     entry: nested('pause', '[data-screen="pause"] button', 'Save', 'pause → Save'),
@@ -353,6 +356,9 @@ const RAW_SURFACES = Object.freeze([
     ownerFile: 'src/ui/screens/gameOver.js',
     screenId: 'gameOver',
     root: ['[data-screen="gameOver"]'],
+    // A sealed replay owns a stage-ready marker. Without a replay tape the live world behind the
+    // after-action surface remains the world-capture contract.
+    worldReadiness: 'stage-or-live-world',
     // Destructive: it ends the run. Measured last, in its own boot.
     entry: fixture('player-death', 'the run must end; the harness cannot yet die on the public route'),
     owner: 'PQ-181',
@@ -369,6 +375,8 @@ const RAW_SURFACES = Object.freeze([
     ownerFile: 'src/ui/screens/statistics.js',
     screenId: 'statistics',
     root: ['[data-screen="statistics"]'],
+    // Records Wall is an overlay over flight, not a screen-owned stage; use the actual world draw.
+    worldReadiness: 'live-world',
     // A REAL public route: the pause sheet's "Records Wall" word (pause.js, Reference group).
     entry: nested('pause', '[data-screen="pause"] [data-action]', 'Records Wall', 'pause → Records Wall'),
     owner: 'PQ-181',
