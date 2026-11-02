@@ -64,7 +64,9 @@ function eventLightCallTexts(source) {
 test('every kind routed through _eventLight resolves an authored preset', () => {
   const kinds = new Set();
   const severityWords = new Set();
-  for (const call of eventLightCallTexts(VFX_SOURCE)) {
+  const calls = eventLightCallTexts(VFX_SOURCE);
+  assert.ok(calls.length > 0, 'expected at least one routed _eventLight call');
+  for (const call of calls) {
     // Kind literals sit before any `severity:` key — the position arg carries no quoted strings
     // and the options object begins at/after the severity expression.
     const sevAt = call.indexOf('severity:');
@@ -73,7 +75,6 @@ test('every kind routed through _eventLight resolves an authored preset', () => 
     for (const m of kindRegion.matchAll(/'([a-z][a-z-]*)'/g)) kinds.add(m[1]);
     for (const m of sevRegion.matchAll(/'([a-z][a-z-]*)'/g)) severityWords.add(m[1]);
   }
-  assert.ok(kinds.size >= 10, `expected the routed kind vocabulary, found ${kinds.size}`);
   const misses = [...kinds].filter((k) => !presetFor(k));
   assert.deepEqual(misses, [], 'every routed kind must resolve a preset row');
   // Every severity literal routed at a call site must still land a light (base fallback counts

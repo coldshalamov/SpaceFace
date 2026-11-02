@@ -58,13 +58,13 @@ function measuredImpact() {
   const events = [];
   const bus = { emit: (name, payload) => events.push({ name, payload }) };
   const thrown = makeBody({ id: 3, type: 'ship', x: 0, z: 0, vx: 90, radius: 10, mass: 20 });
-  const rock = makeBody({ id: 2, type: 'asteroid', x: 18, z: 0, radius: 10, mass: 220 });
+  const rock = makeBody({ id: 2, type: 'asteroid', x: 54, z: 0, radius: 46, mass: 220 });
   const host = Object.create(physics);
   host._pairMaterialScratch = {};
   host._impactOptionsScratch = {
     backend: 'custom', tick: 0, normal: { x: 0, z: 0 }, causalActorId: 1, preSolveClosingSpeed: 0,
   };
-  host.resolvePair(thrown, rock, 18, 18, 0, bus, state);
+  host.resolvePair(thrown, rock, 54, 54, 0, bus, state);
   const impact = events.find((entry) => entry.name === 'physics:impact');
   assert.ok(impact, 'the seeded head-on contact must emit physics:impact');
   assert.ok(impact.payload.dp > 0, 'the seeded exchange must carry real exchanged momentum');
@@ -202,10 +202,10 @@ test('the resolved record carries a directed kick beside the scalar beat', () =>
 
 test('fixed seed: a real physics exchange kicks the live chase camera in player units', () => {
   // resolvePair mutates its bodies (pushApart/impulse), so the live fixture keeps its OWN
-  // thrown hull (id 3 at x=0) and rock (id 2 at x=18) — matching the receipt's aId/bId —
+  // thrown hull (id 3 at x=0) and T4 rock (id 2 at x=54) — matching the receipt's aId/bId —
   // and the measured payload supplies the physics truth. Stationary player = exact focus control.
   const { impact, consequence } = measuredImpact();
-  const rock = makeBody({ id: 2, type: 'asteroid', x: 18, z: 0, radius: 10, mass: 220 });
+  const rock = makeBody({ id: 2, type: 'asteroid', x: 54, z: 0, radius: 46, mass: 220 });
   const thrown = makeBody({ id: 3, type: 'ship', x: 0, z: 0, radius: 10, mass: 20 });
   const { state, bus, camera, frame } = liveFixture({ entities: [rock, thrown] });
 
@@ -239,7 +239,7 @@ test('fixed seed: a real physics exchange kicks the live chase camera in player 
 
 test('the kick is rate-limited by the shared collision cooldown', () => {
   const { bus, calls, frame } = feelFixture({
-    extraEntities: [makeBody({ id: 4, type: 'ship', x: 14, z: 0, mass: 20 })],
+    extraEntities: [makeBody({ id: 4, type: 'ship', x: 14, z: 0, radius: 46, mass: 20 })],
   });
   const hit = (dp, tick) => bus.emit('combat:collisionConsequence', {
     tick, targetId: 4, otherId: 2, exchangedMomentum: dp, deltaV: dp / 20,
@@ -268,9 +268,25 @@ test('the kick is rate-limited by the shared collision cooldown', () => {
   assert.equal(calls.kick.length, 3);
 });
 
+test('small remote impacts and direct player contacts do not direct-kick the camera', () => {
+  for (const directContact of [false, true]) {
+    const { bus, calls, frame } = feelFixture({
+      extraEntities: [makeBody({ id: 4, type: 'ship', x: 14, z: 0,
+        radius: directContact ? 46 : 10, mass: 20 })],
+    });
+    bus.emit('combat:collisionConsequence', {
+      tick: 10, targetId: directContact ? 1 : 4, otherId: directContact ? 4 : 2,
+      exchangedMomentum: 4000, deltaV: 200, pos: { x: 14, z: 0 },
+      normal: { x: 1, z: 0 }, provenance: { actorId: 1, tag: 'massline' },
+    });
+    frame(DT);
+    assert.equal(calls.kick.length, 0, directContact ? 'direct player contact' : 'small remote contact');
+  }
+});
+
 test('reduce-motion capture shows none: no kick, no trauma, no beat', () => {
   const { consequence } = measuredImpact();
-  const rock = makeBody({ id: 2, type: 'asteroid', x: 18, z: 0, radius: 10, mass: 220 });
+  const rock = makeBody({ id: 2, type: 'asteroid', x: 54, z: 0, radius: 46, mass: 220 });
   const thrown = makeBody({ id: 3, type: 'ship', x: 0, z: 0, radius: 10, mass: 20 });
   const { state, bus, camera, frame } = liveFixture({ motionReduce: true, entities: [rock, thrown] });
 

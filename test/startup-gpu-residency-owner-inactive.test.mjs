@@ -17,7 +17,7 @@ import { createRequire } from 'node:module';
 import { setImmediate as nextTurn } from 'node:timers/promises';
 
 import { observePipelineAdmission } from '../src/render/pipelineReadiness.js';
-import { assertCompleteAppearanceAdmission } from '../src/render/renderer.js';
+import { assertCompleteAppearanceAdmission, isRetiredPackagePoolResidencyOwner } from '../src/render/renderer.js';
 
 const require = createRequire(import.meta.url);
 const { parse } = require(require.resolve('@babel/parser', { paths: [process.env.SPACEFACE_DEPS_ROOT || process.cwd()] }));
@@ -41,7 +41,8 @@ assert.ok(guardNode, 'assertResidencyOwnerActive must remain in renderer.js');
 const guardCode = source.slice(guardNode.start, guardNode.end);
 const guardState = { render: {} };
 const guardOwner = { _rendererResourcesDisposed: false };
-const assertResidencyOwnerActive = new Function('state', `return (${guardCode});`).call(guardOwner, guardState);
+const assertResidencyOwnerActive = new Function('state', 'isRetiredPackagePoolResidencyOwner',
+  `return (${guardCode});`).call(guardOwner, guardState, isRetiredPackagePoolResidencyOwner);
 
 function inactiveError(isActive = () => false) {
   try {
@@ -213,6 +214,40 @@ test('required, same-generation, mismatched, and unknown authored owners retain 
     assert.equal(result.warnings.length, 1);
     assert.match(result.warnings[0][0], /authored GPU residency owner became inactive/);
     assert.deepEqual(result.infos, []);
+  }
+});
+
+test('typed empty retired pool cancellation logs info and retains the guard error and snapshot', () => {
+  const owner = {
+    ownerType: 'authored-boundary', entityId: 538, entityAlive: true, entityIsCurrent: true,
+    entityStillRequired: false, boundaryAttached: true, renderMatches: true, rendererMatches: true,
+    admissionGenerationMatches: true, contextLossGenerationMatches: true, portMatches: true,
+    nestedAdmissionOwnerActive: false,
+    nestedAdmissionOwner: { ownerType: 'render-package-pool-admission', cancelled: true,
+      chunkRetired: false, poolRetiring: true, liveSlotCount: 0, liveOwnerCount: 0,
+      requestedOwnerActive: true, requestedOwner: null },
+  };
+  const result = captureGuardCall(() => false, owner);
+  assert.equal(result.error.name, 'AbortError');
+  assert.equal(result.error.code, 'GPU_RESIDENCY_OWNER_INACTIVE');
+  assert.deepEqual(result.warnings, []);
+  assert.deepEqual(result.infos, [[
+    '[render] authored GPU residency cancelled for retired package pool at boundary 538',
+  ]]);
+  assert.equal(result.diagnostic.subjectName, 'subject');
+  assert.equal(result.diagnostic.owner, owner, 'the complete original typed snapshot remains inspectable');
+
+  for (const nested of [null,
+    { ...owner.nestedAdmissionOwner, liveSlotCount: 2, liveOwnerCount: 2 },
+    { ...owner.nestedAdmissionOwner, requestedOwnerActive: false }]) {
+    const uncertain = { ...owner, nestedAdmissionOwner: nested };
+    const warning = captureGuardCall(() => false, uncertain);
+    assert.equal(warning.error.name, 'AbortError');
+    assert.equal(warning.error.code, 'GPU_RESIDENCY_OWNER_INACTIVE');
+    assert.deepEqual(warning.infos, []);
+    assert.equal(warning.warnings.length, 1, 'unknown, live or upstream-withdrawn pool owners still warn');
+    assert.deepEqual(JSON.parse(warning.warnings[0][1]), uncertain);
+    assert.equal(warning.diagnostic.owner, uncertain);
   }
 });
 

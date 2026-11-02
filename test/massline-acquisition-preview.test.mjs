@@ -6,6 +6,7 @@ import { isAttachable, tetherGameplay } from '../src/systems/tetherGameplay.js';
 import { createBus } from '../src/core/eventBus.js';
 import { masslineHud } from '../src/ui/masslineHud.js';
 import { MASSLINE2_FLAGS } from '../src/data/featureFlags.js';
+import { createDomainDiffer, applyDomainPathUpdate } from '../scripts/lib/simReadModel.mjs';
 
 const player = () => ({
   id: 1,
@@ -310,6 +311,73 @@ test('no Massline acquisition receipt survives a save-load or new-game boundary'
 // therefore (grammar rule 2) a state that does not exist. Showing a world-anchored MARK on the
 // candidate plus a caption beside it is the intended change; it needs no connector precisely
 // because the mark sits on the target.
+test('worker acquisition reaches the main HUD and clears when its owner resets', () => {
+  const h = createRuntimeHarness();
+  h.system.update(1 / 60, h.state);
+  assert.equal(h.state.masslineAcquisition.selected.targetId, h.anchor.id);
+  h.state.masslineAcquisition.privateScratch = { huge: 'unused'.repeat(5000) };
+  const differ = createDomainDiffer(), domains = new Map();
+  const sync = (tick) => {
+    const updates = differ.diff(h.state, tick).updates;
+    for (const update of updates) applyDomainPathUpdate(domains, structuredClone(update), new Set());
+    return updates.find(update => update.segs.join('.') === 'masslineAcquisition');
+  };
+  const initial = sync(1);
+  assert.ok(initial && initial.bytes < 2048, 'the wire contains a bounded preview, not acquisition scratch');
+  const mirrored = domains.get('masslineAcquisition');
+  assert.notEqual(mirrored, h.state.masslineAcquisition);
+  assert.equal(mirrored.selected.targetId, h.anchor.id);
+  assert.equal(mirrored.selected.status, h.state.masslineAcquisition.selected.status);
+  assert.equal(mirrored.alternatives, undefined);
+  assert.equal(mirrored.privateScratch, undefined);
+
+  const previousEnabled = MASSLINE2_FLAGS.enabled, previousDocument = globalThis.document, previousWindow = globalThis.window;
+  const document = fakeDocument();
+  globalThis.document = document;
+  globalThis.window = { innerWidth: 1440, innerHeight: 900 };
+  MASSLINE2_FLAGS.enabled = true;
+  let hud;
+  try {
+    const main = { ...h.state, massline2: {}, masslineAcquisition: mirrored,
+      settings: { video: { motionReduce: true }, accessibility: { motionPreference: 'reduce' } } };
+    hud = Object.assign({}, masslineHud);
+    hud.init({ state: main, helpers: { worldToScreen: ({ x, z }) => ({ x: x + 300, y: z + 200, onScreen: true }) } });
+    hud.update(1 / 60, main);
+    const mark = findByClass(document.getElementById('sf-ml2'), 'ml2-preview-mark');
+    assert.equal(mark.style.display, 'block', 'the projected owner receipt drives the actual HUD mark');
+    h.anchor.alive = false;
+    h.state.tick += 8;
+    h.state.simTime += 0.2;
+    h.system.update(1 / 60, h.state);
+    sync(2);
+    assert.notEqual(domains.get('masslineAcquisition')?.selected?.targetId, h.anchor.id,
+      'target loss replaces the old candidate');
+    h.bus.emit('save:loaded', {});
+    sync(3);
+    main.masslineAcquisition = domains.get('masslineAcquisition');
+    assert.equal(main.masslineAcquisition, null, 'owner reset clears the mirrored receipt');
+    hud.update(1 / 60, main);
+    assert.equal(mark.style.display, 'none', 'reset removes the stale mark');
+    h.anchor.alive = true;
+    h.system.update(1 / 60, h.state);
+    sync(4);
+    assert.equal(domains.get('masslineAcquisition').selected.targetId, h.anchor.id);
+    h.bus.emit('game:new', {});
+    sync(5);
+    assert.equal(domains.get('masslineAcquisition'), null, 'new game clears the prior owner preview');
+    h.system.update(1 / 60, h.state);
+    sync(6);
+    delete h.state.masslineAcquisition;
+    sync(7);
+    assert.equal(domains.get('masslineAcquisition'), null, 'a replaced owner without the root clears the old mirror');
+  } finally {
+    hud?.destroy();
+    MASSLINE2_FLAGS.enabled = previousEnabled;
+    if (previousDocument === undefined) delete globalThis.document; else globalThis.document = previousDocument;
+    if (previousWindow === undefined) delete globalThis.window; else globalThis.window = previousWindow;
+  }
+});
+
 test('the acquisition preview marks the candidate itself and never draws a cable-like line', () => {
   const previousEnabled = MASSLINE2_FLAGS.enabled;
   const previousDocument = globalThis.document;

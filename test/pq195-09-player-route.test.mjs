@@ -823,49 +823,57 @@ test('(c) a destroyed assembly leaves a reduced recovery the player strips with 
   const t = await scene();
   t.accept();
   assert.ok(t.stepToLaunch());
+  const loadId = t.load().id;
+  let killReceipt = null;
+  const offKilled = t.bus.on('entity:killed', (receipt) => {
+    if (receipt.id === loadId) killReceipt = receipt;
+  });
 
-  // No tow needed for the kill: a tethered capsule orbits the tug faster than the
-  // guns can track. The crew runs the body down instead — the freed capsule coasts
-  // ballistically on the lane, so they pull alongside at matched velocity and hold
-  // the guns on it at knife range until it breaks.
+  // Meet the free assembly on its lane, then match its velocity at gun range. A
+  // heavy tug must stop closing before knife range: ramming the lighter capsule
+  // sends it out of the sector instead of completing the shootdown. The fitted
+  // coupler holds the target against the gun's real recoil while the crew fires.
   t.until(() => t.state.heistFacilities.carrierReleased === true, () => {
     const c = t.carrier();
     if (c) steerTo(t.state, laneNearPoint(c.pos, c.vel, t.mouth), { arrive: 160 });
   }, 12000, 'the carrier release');
 
-  t.until(() => !t.load(), () => {
+  t.until(() => killReceipt !== null, () => {
     const l = t.load();
-    if (!l) return;
+    assert.ok(l, 'the assembly must be killed, not disappear through a sector-boundary suspension');
+    const tethered = t.latchActive();
     const d = dist(t.player.pos, l.pos);
-    const rel = Math.hypot(l.vel.x - t.player.vel.x, l.vel.z - t.player.vel.z);
-    // Guns have travel time: hold the cursor on the lead point, the way a player
-    // aims ahead of a runner. Projectile-relative speed ≈ muzzle velocity once the
-    // pair is matched, and the fixed point stays honest while it closes.
+    const dx = l.pos.x - t.player.pos.x, dz = l.pos.z - t.player.pos.z;
+    const ux = dx / Math.max(1, d), uz = dz / Math.max(1, d);
+    // Public forward/reverse and lateral thrust match the runner while keeping a
+    // 180-WU firing gap. Closing is capped so the ship can arrest its own approach.
+    const closing = Math.max(-40, Math.min(60, (d - 180) * 0.18));
+    const wx = l.vel.x + ux * closing, wz = l.vel.z + uz * closing;
+    const vx = wx - t.player.vel.x, vz = wz - t.player.vel.z;
+    const cf = Math.cos(t.player.rot), sf = Math.sin(t.player.rot);
+    t.input.moveZ = Math.max(-0.5, Math.min(1, (vx * cf + vz * sf) / 25));
+    t.input.moveX = Math.max(-1, Math.min(1, (-vx * sf + vz * cf) / 25));
+    // Aim along the future world collision line. Pulse bolts compensate lateral
+    // shooter motion; along the nose, their speed includes the ship's own motion.
     let ax = l.pos.x, az = l.pos.z;
-    for (let i = 0; i < 3; i++) {
-      const ft = Math.hypot(ax - t.player.pos.x, az - t.player.pos.z) / 340;
+    for (let i = 0; tethered && i < 4; i++) {
+      const angle = Math.atan2(az - t.player.pos.z, ax - t.player.pos.x);
+      const along = t.player.vel.x * Math.cos(angle) + t.player.vel.z * Math.sin(angle);
+      const lateral2 = Math.max(0, speedOf(t.player) ** 2 - along ** 2);
+      const roundSpeed = along + Math.sqrt(Math.max(1, 340 ** 2 - lateral2));
+      const ft = Math.hypot(ax - t.player.pos.x, az - t.player.pos.z) / Math.max(1, roundSpeed);
       ax = l.pos.x + l.vel.x * ft;
       az = l.pos.z + l.vel.z * ft;
     }
     const aimErr = aimAt(t.state, { x: ax, z: az });
-    if (d < 600 && rel < 30) {
-      // Kill range: the turret only bears ±90° off the nose, so the nose itself tracks
-      // the body while the guns work. Small thrust corrections hold the spacing.
-      t.input.turnIntent = Math.max(-1, Math.min(1, aimErr / 0.6));
-      if (d < 300 && Math.abs(aimErr) < 0.4) t.input.fire = true;
-      if (d > 250 && Math.abs(aimErr) < 0.4) t.input.moveZ = 1;
-      else if (d < 60) t.input.brake = true;
-    } else {
-      // Velocity-matching rendezvous: want = load velocity + a closing term toward it,
-      // so the pair converges to zero relative speed and every shot lands.
-      const wx = l.vel.x + (l.pos.x - t.player.pos.x) * 0.05;
-      const wz = l.vel.z + (l.pos.z - t.player.pos.z) * 0.05;
-      const err = wrapAngle(Math.atan2(wz, wx) - (t.player.rot || 0));
-      t.input.turnIntent = Math.max(-1, Math.min(1, err / 0.6));
-      if (Math.abs(err) < 0.5 && speedOf(t.player) < Math.hypot(wx, wz) + 5) t.input.moveZ = 1;
-      if (Math.abs(err) < 0.5 && d > 800) t.input.boost = true;
-    }
+    t.input.turnIntent = Math.max(-1, Math.min(1, aimErr / 0.6));
+    if (!tethered && d < 240 && t.state.tick % 8 === 0) t.input.actions.tetherFire = true;
+    // The bolt keeps a physical flight budget beyond its nominal engagement
+    // range. Keep shooting the visible aligned runner as recoil opens the gap.
+    t.input.fire = tethered && d < 600 && Math.abs(aimErr) < 0.12;
   }, 20000, 'the assembly to be destroyed');
+  offKilled();
+  assert.equal(killReceipt.killerId, t.player.id, 'the player genuinely shot down the current assembly');
 
   // The bounded wreck materializes where the assembly actually died.
   const wreck = () => (t.state.entityList || []).find((e) => e?.alive !== false
