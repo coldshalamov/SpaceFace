@@ -129,6 +129,8 @@ import { TABLE_HEARING_FAR_WU, TABLE_HEARING_PAN_WU } from '../render/tabletopPo
 import { entityNeedsExactAudio } from './audioActiveSet.js';
 import { bindOutputDeviceFollow, planDeviceChange, planSinkRebind } from './outputDeviceFollow.js';
 import { heatLevelFor } from '../systems/heat.js';
+import { CERES_CAUSAL_CHAIN_EVENT } from '../systems/traffic.js';
+import { hash32 } from '../core/rng.js';
 import { dyingFuseS } from '../combat/lifecycle.js';
 import {
   createSampleRuntime,
@@ -171,6 +173,17 @@ const APPROACH_HUM_FACTION_RATE = Object.freeze({
   faction_reach: 0.94,
   faction_choir: 1.06,
 });
+// Pocket beat wake (WF-13): a staged causal-chain beat is heard from its actor out to this
+// radius — inside the tabletop distance model's own far cull, so position carries the rest.
+// One wake per POCKET_BEAT_MIN_GAP_S keeps two same-tick starts (the chain cap allows two live
+// links) from stacking, and the rate varies inside authored bounds so a repeated watch never
+// loops the same chirp. The stream is derived from stable identities, never the shared state
+// rng — a cosmetic voice must not move the replay hash (stationBroadcast's law).
+const POCKET_BEAT_HEARING_WU = 900;
+const POCKET_BEAT_MIN_GAP_S = 6;
+const POCKET_BEAT_GAIN = 0.45;
+const POCKET_BEAT_RATE_LO = 0.92;
+const POCKET_BEAT_RATE_HI = 1.08;
 const PAN_SPAN = TABLE_HEARING_PAN_WU;  // wu — half-pan distance
 
 // --- music ---
@@ -3238,6 +3251,10 @@ export const audio = {
       const id = combatVerbRecipe('tether:cut');
       if (id) this.play(id, { gain: 0.6 });
     });
+    // WF-13 pocket beat: the living-world chain receipts are the one staged "someone's day"
+    // emitter that stayed silent. A beat STARTING within earshot gets one wake voice, positioned
+    // on its primary hull. Phase ticks and cycle bookkeeping stay silent — one wake per beat.
+    bus.on(CERES_CAUSAL_CHAIN_EVENT, (p) => this._onPocketChainBeat(p));
     bus.on('barkDirector:voice', (p) => this._onBarkVoice(p));
     // The arbiter is the floor authority: an arbiter-bound bark (payload.voiceId) holds its
     // resolved voice until the line actually surfaces, so a queued bark never plays early and a
@@ -6529,6 +6546,49 @@ export const audio = {
   _onClaimRaidWarning(payload) {
     if (!payload) return;
     this.play('sfx_wanted_alert', { gain: CLAIM_RAID_WARNING_GAIN });
+  },
+
+  // WF-13 pocket beat: the living world's staged beats were the one family of world moments
+  // with no voice — the surveyor could lay a probe line beside you in total silence. A beat
+  // STARTING within earshot gets one low work-bell wake positioned on its primary hull; phase
+  // ticks and cycle bookkeeping stay silent. Reads as "the pocket's work just woke over there",
+  // never as an alarm and never as chatter.
+  _onPocketChainBeat(payload) {
+    if (!payload || payload.kind !== 'event_start') return;
+    const slotIds = payload.actorSlotIds;
+    if (!Array.isArray(slotIds) || !slotIds.length) return;
+    const state = this.state;
+    if (!state || state.mode !== 'flight') return;
+    const player = state.entities && state.playerId != null && state.entities.get
+      ? state.entities.get(state.playerId)
+      : null;
+    if (!player || !player.pos) return;
+    let actor = null;
+    const entities = state.entityList;
+    if (Array.isArray(entities)) {
+      for (let i = 0; i < entities.length; i++) {
+        const e = entities[i];
+        if (e && e.alive !== false && e.pos && e.data
+          && e.data.activityActorSlotId === slotIds[0]) { actor = e; break; }
+      }
+    }
+    if (!actor) return;
+    const dx = actor.pos.x - player.pos.x;
+    const dz = actor.pos.z - player.pos.z;
+    const distance = Math.hypot(dx, dz);
+    if (!Number.isFinite(distance) || distance > POCKET_BEAT_HEARING_WU) return;
+    const rt = this.rt || (this.rt = {});
+    const now = Number(state.simTime) || 0;
+    if (now - (rt._pocketBeatAt != null ? rt._pocketBeatAt : -Infinity) < POCKET_BEAT_MIN_GAP_S) return;
+    rt._pocketBeatAt = now;
+    const roll = (hash32(String(payload.sectorId || ''), String(payload.eventId || ''),
+      payload.cycle | 0) >>> 0) / 4294967296;
+    const rate = POCKET_BEAT_RATE_LO + roll * (POCKET_BEAT_RATE_HI - POCKET_BEAT_RATE_LO);
+    this.play('sfx_pocket_beat_wake', {
+      gain: POCKET_BEAT_GAIN,
+      rate,
+      position: { x: actor.pos.x, z: actor.pos.z },
+    });
   },
 
   _stepWantedSearchAudio() {

@@ -3025,6 +3025,38 @@ export const RECIPES = [
     layers: ['sfx_massseed_chord_low', 'sfx_massseed_chord_high'],
     gainMult: 0.95,
   },
+  // Pocket beat wake (WF-13): the staged world answers audibly. When a causal-chain beat starts
+  // within earshot — the surveyor laying its line, the convoy forming at the pod — the pocket's
+  // work lights come on as sound: one low work-bell falling a third (work, not alarm) over a
+  // soft hull-vent breath. Positioned on the beat's primary hull, so the tabletop distance model
+  // carries the "somewhere over there" read; rate varies inside authored bounds per (sector,
+  // event, cycle) so a repeated watch never loops the same chirp.
+  {
+    id: 'sfx_pocket_beat_bell',
+    category: 'ambient',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 392,
+    freqSweep: [392, 311],
+    sweepTimeS: 0.2,
+    gainEnvelope: { attack: 0.005, sustain: 0.0, release: 0.55 },
+    filterType: 'lowpass', filterFreq: 900, filterQ: 1.1,
+  },
+  {
+    id: 'sfx_pocket_beat_breath',
+    category: 'ambient',
+    type: 'noise_burst',
+    noiseColor: 'pink',
+    gainEnvelope: { attack: 0.07, sustain: 0.0, release: 0.7 },
+    filterType: 'lowpass', filterFreq: 420, filterQ: 0.9,
+  },
+  {
+    id: 'sfx_pocket_beat_wake',
+    category: 'ambient',
+    type: 'layered',
+    layers: ['sfx_pocket_beat_bell', 'sfx_pocket_beat_breath'],
+    gainMult: 1.0,
+  },
   {
     // Seed warning pulse that quickens: a narrow alarm tone under a fast tremolo with a rising
     // figure — reads as a countdown the ear can follow, never a menu beep.

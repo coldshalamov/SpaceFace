@@ -271,6 +271,7 @@ const EXPLICIT_RECIPE_CAPTIONS = Object.freeze({
   sfx_undock_release: Object.freeze({ text: 'Leaving the dock.', urgency: 'normal', event: 'dock.undock' }),
   sfx_dock_capture: Object.freeze({ text: 'The capture lane holds.', urgency: 'normal', event: 'dock.capture' }),
   sfx_station_hum: Object.freeze({ text: 'The station hums.', urgency: 'normal', event: 'dock.hum' }),
+  sfx_pocket_beat_wake: Object.freeze({ text: 'Work wakes nearby.', urgency: 'normal', event: 'world.beat' }),
   sfx_field_deploy_well: Object.freeze({ text: 'Gravity well deploys.', urgency: 'normal', event: 'field.well' }),
   sfx_field_deploy_repulsor: Object.freeze({ text: 'Repulsor deploys.', urgency: 'normal', event: 'field.repulsor' }),
   sfx_field_deploy_cone: Object.freeze({ text: 'Cone deploys.', urgency: 'normal', event: 'field.cone' }),
