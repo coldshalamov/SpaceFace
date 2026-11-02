@@ -26,7 +26,7 @@ function step(state, owner, count = 1, before) {
     before?.(); owner.syncFromEntities(state.entityList); owner.step(DT); }
 }
 
-test('concussion launches production-mass arena rocks without making them weapon HP targets', async () => {
+test('concussion transfers fixed momentum to production-mass rocks without making them weapon HP targets', async () => {
   COMBAT_FLAGS.weaponImpulseConsequences = true;
   for (const radius of [16, 30, 44]) {
     const state = world(); const rock = spawn(state, { radius });
@@ -41,7 +41,12 @@ test('concussion launches production-mass arena rocks without making them weapon
     assert.equal(result.reason, 'target_not_damageable'); assert.equal(result.impulseApplied, true);
     assert.equal(rock.hull, 100);
     const owner = await createSg02DynamicBodyOwner({ fixedDt: DT, publishTelemetry: false });
-    try { step(state, owner); assert.ok(speed(rock) >= 35 && speed(rock) <= 65, `radius ${radius}: ${speed(rock)}`); }
+    try {
+      step(state, owner);
+      const expectedSpeed = def.environmentImpulsePerHit / resolvePhysicsBodySpec(rock).mass;
+      assert.ok(Math.abs(speed(rock) - expectedSpeed) < 1e-5,
+        `radius ${radius}: native speed ${speed(rock)} follows fixed momentum / mass (${expectedSpeed})`);
+    }
     finally { owner.dispose(); kernel.dispose(); }
   }
 });
@@ -82,9 +87,15 @@ test('missile splash physically reaches scenery and delivers once at a direct im
   const payload = { projectileId: projectile.id, targetId: direct.id, pos: { x: -16, z: 0 }, damagePacket: projectile.data.damagePacket };
   applyProjectilePhysicalContact(host, payload); applyProjectilePhysicalContact(host, { ...payload });
   projectile.alive = false;
+  const directSpeed = def.impulsePerHit / resolvePhysicsBodySpec(direct).mass;
+  const falloff = 1 - (36 + 16 - nearby.radius) / def.splashRadius;
+  const splashSpeed = def.impulsePerHit * falloff / resolvePhysicsBodySpec(nearby).mass;
   const owner = await createSg02DynamicBodyOwner({ fixedDt: DT, publishTelemetry: false });
-  try { step(state, owner); assert.ok(speed(nearby) > 0.5, `splash speed ${speed(nearby)}`);
-    assert.ok(speed(direct) < 15, 'direct contact is not doubled by splash'); }
+  try {
+    step(state, owner);
+    assert.ok(Math.abs(speed(nearby) - splashSpeed) < 1e-5, `one radial authored impulse reaches scenery (${speed(nearby)} versus ${splashSpeed})`);
+    assert.ok(Math.abs(speed(direct) - directSpeed) < 1e-5, 'direct contact is delivered once and excluded from splash');
+  }
   finally { owner.dispose(); }
 });
 

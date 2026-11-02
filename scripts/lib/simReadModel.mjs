@@ -678,6 +678,9 @@ export const DOMAIN_MIRROR_KEYS = Object.freeze([
   // Keep the sector epoch after event replay's temporary emit-time shim ends.
   // Appending preserves existing domain slots and their staggered cadences.
   'world.enterSerial',
+  // The simulation owns Line acquisition; the main HUD needs its current bounded preview.
+  'masslineAcquisition',
+  'massline2', 'fields', 'gyreSnare', 'travelLanes',
 ]);
 
 // Per-key canonical-serialization ship cap (report-only): any single mirrored
@@ -879,6 +882,10 @@ export function configureDomainMirroring(config = {}) {
 // the full segment count (rule prefix + path suffix) so a rule can't reach
 // deeper into a subtree than it declared.
 function domainLeafViewFor(segs) {
+  if (segs.length === 1 && segs[0] === 'masslineAcquisition') return { project: 'masslineAcquisition' };
+  if (segs.length === 1 && ['massline2', 'fields', 'gyreSnare', 'travelLanes'].includes(segs[0])) {
+    return { project: segs[0], hotPresentation: true };
+  }
   if (segs.length === 1 && segs[0] === 'capitalBossEncounters') return { project: 'capitalBossPresentation' };
   if (segs.length === 1 && segs[0] === 'ilexGreenhousePublic') return ILEX_GREENHOUSE_MIRROR_RULE;
   if (segs.length === 1 && segs[0] === 'planet.orchardForecast') return ORCHARD_FORECAST_MIRROR_RULE;
@@ -971,7 +978,72 @@ function projectOrchardExposure(state, records) {
   return out;
 }
 
+function selectPresentationFields(source, keys) {
+  if (!source || typeof source !== 'object') return null;
+  const out = {};
+  for (const key of keys) if (Object.prototype.hasOwnProperty.call(source, key)) out[key] = source[key];
+  return out;
+}
+
+const LINE_SOLUTION_FIELDS = ['valid','onSolution','errorRad','tolRad','interceptAngle','payloadSpeed',
+  'clearance','decisionStale','fieldAware','degraded','turnRate','sampleTick','sampleAgeTicks',
+  'sampleIntervalTicks','sampleSequence','sampled','timeToSolution','timeOfFlight','predicted',
+  'projectedPath','window','relativeSpeed','missDistance','impactTime','model','decisionTick','reachable',
+  'targetId','targetPos','targetKind'];
+const FIELD_PRESENTATION_FIELDS = ['id','kind','sourceId','ownerId','tag','center','dir','radius','strength',
+  'falloff','phase','lifecyclePhase','halfAngleRad','halfWidth','volume','palette','expireAt','engaged',
+  'distortionRadius','distortionStrength','hitchedCount','edgeSoftRad','innerRadius','innerSoft','damping',
+  'thermal','filters','frame','lockStrength'];
+const GYRE_PRESENTATION_FIELDS = ['phase','nose','maw','coneLen','halfAngleRad','endRadius','coreId',
+  'coreMaterial','coreTypeId','clumpMass','clumpRadius','absorbs','maxClumpMass','strain01','corePos',
+  'coreAngVel','launchDir','members','launchedId','ballPos','ballVx','ballVz','ballAngVel','ballMass',
+  'ballTtl01','ballTtlLeftS','basinCount','ballClumpRadius','launchWindup01','launchBurst01','ballGrave',
+  'graves','thrownBeat','thrownTick','basinSpots','dropReason','fuseS','liveBalls','absorbDir','absorbR',
+  'balls','tornId','tornPos','tornDir','tornGentle','deflectCount','deflectLane','ballOverflow','suckRadius',
+  'swirlBlend','orbitSeed','ballTtlS','full','refusals','refusal','towCount','tooHeavyCount'];
+
 function projectDomainLeaf(rule, v, state) {
+  if (rule?.project === 'massline2') {
+    if (!v || typeof v !== 'object') return null;
+    const line = v.throw;
+    const shown = selectPresentationFields(line, ['armed','payloadId','aimTargetId','aimSynthetic']);
+    if (shown) {
+      shown.releaseTarget = selectPresentationFields(line.releaseTarget, ['kind','source','targetId','pos','radius','stable']);
+      shown.lastThrow = selectPresentationFields(line.lastThrow, ['tick','releaseId','payloadId']);
+      shown.solution = selectPresentationFields(line.solution, LINE_SOLUTION_FIELDS);
+      shown.selfSolution = selectPresentationFields(line.selfSolution, LINE_SOLUTION_FIELDS);
+    }
+    return { throw: shown, cloak: selectPresentationFields(v.cloak, ['active','available','energy','radius','baseRadius']),
+      bulletTime: selectPresentationFields(v.bulletTime, ['active','energy']) };
+  }
+  if (rule?.project === 'fields') {
+    if (!v || typeof v !== 'object') return null;
+    const deployed = {};
+    for (const [id, item] of Object.entries(v.deployed || {})) deployed[id] = selectPresentationFields(item, ['fieldId','kind','emitterId','deployedAt','expireAt']);
+    return { coneActive: v.coneActive, cooldowns: selectPresentationFields(v.cooldowns, ['well','repulsor']),
+      lastDenial: selectPresentationFields(v.lastDenial, ['kind','reason','at','readyAt']), deployed,
+      active: Array.isArray(v.active) ? v.active.map(item => selectPresentationFields(item, FIELD_PRESENTATION_FIELDS)) : [],
+      snapshot: Array.isArray(v.snapshot) ? v.snapshot.map(item => selectPresentationFields(item, FIELD_PRESENTATION_FIELDS)) : [],
+      familyRead: selectPresentationFields(v.familyRead, ['edge','pin','bend','breakout']),
+      telemetry: selectPresentationFields(v.telemetry, ['orbitNodes']) };
+  }
+  if (rule?.project === 'gyreSnare') return selectPresentationFields(v, GYRE_PRESENTATION_FIELDS);
+  if (rule?.project === 'travelLanes') return selectPresentationFields(v, ['manufactured','inLane','infrastructureStage','infrastructureOperational','ceilingMult']);
+  if (rule?.project === 'masslineAcquisition') {
+    if (!v || typeof v !== 'object') return null;
+    const selected = v.selected;
+    return {
+      schemaVersion: v.schemaVersion, id: v.id, publishedTick: v.publishedTick,
+      publishedAt: v.publishedAt, validUntil: v.validUntil, reason: v.reason,
+      selected: selected ? {
+        targetId: selected.targetId, occupantGeneration: selected.occupantGeneration,
+        targetType: selected.targetType, targetLabel: selected.targetLabel,
+        context: selected.context, intentLabel: selected.intentLabel, confidence: selected.confidence,
+        status: selected.status, reason: selected.reason,
+        isMassSeedTetherEligible: selected.isMassSeedTetherEligible, seedStateWord: selected.seedStateWord,
+      } : null,
+    };
+  }
   // npcJobs.byId is authoritative in the worker but a presentation mirror on the main side.
   // Project before canonicalization so the expensive planner/cargo/sidecar fields do not enter
   // the signed string or structured-clone update.  The worker state itself is never modified.
@@ -1730,7 +1802,7 @@ export function createDomainDiffer(options = {}) {
     }
     // Active cable loads and cuts belong to the same reply as their moving bodies, at any table size.
     // The finite Orchard ledger (three sockets, at most twelve lots) also carries live motor progress.
-    if (node.lastSign >= 0 && path !== 'sites.anvilOrchard' && !metadata.isCombatAttachments && !node.urgentSign && !freshOwnerSnapshot && !npcJobsRevisionChanged
+    if (node.lastSign >= 0 && path !== 'sites.anvilOrchard' && !leafRule?.hotPresentation && !metadata.isCombatAttachments && !node.urgentSign && !freshOwnerSnapshot && !npcJobsRevisionChanged
         && !runAdmissionBootstrap && !marketLiveSourceChanged && !combatTracePlayerChanged) {
       const tierTicks = leafRule?.project === 'capitalBossPresentation' ? 1 : node.bytes > DOMAIN_COLD_BYTES ? DOMAIN_COLD_TICKS
         : node.bytes > DOMAIN_WARM_BYTES ? DOMAIN_WARM_TICKS : 1;

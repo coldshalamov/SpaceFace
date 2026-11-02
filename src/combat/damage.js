@@ -615,10 +615,17 @@ export function createDamageRouter(context, statusService, options = {}) {
         ? packet.tumbleTorque
         : (input && input.packet && Number.isFinite(input.packet.tumbleTorque) ? input.packet.tumbleTorque : undefined);
       const environmentImpulse = packet.source && packet.source.environmentImpulse;
+      // Weapon packets carry momentum, unlike authored Force/field response. Keep
+      // explicit nonweapon sources authoritative; older weapon packets may name
+      // their origin or provenance without a source kind.
+      const sourceKind = packet.source && packet.source.kind;
+      const weaponImpact = sourceKind === 'weapon' || (!sourceKind
+        && (origin?.kind === 'weapon' || (!origin?.kind && tag && weaponId != null)));
       const delivery = deliverPhysicalImpulseDetailed(state, target, vector, {
         ...provenance, provenance: provenance || { tag: reason }, reason, maxTorque,
         point: input && input.packet && input.packet.hit && input.packet.hit.pos || null,
-      }, { port: combatPhysics(), referenceImpulse: isEnvironmentalBody(target) && Number.isFinite(environmentImpulse) ? environmentImpulse : undefined });
+      }, { port: combatPhysics(), scaleEnvironment: weaponImpact ? false : undefined,
+        referenceImpulse: isEnvironmentalBody(target) && Number.isFinite(environmentImpulse) ? environmentImpulse : undefined });
       if (!delivery.accepted) return { applied: false, reason: 'physics_rejected' };
       const magnitude = Math.hypot(delivery.impulse.x, delivery.impulse.z);
       const victimMass = Math.max(0.1, Number(resolvePhysicsBodySpec(target)?.mass) || Number(target.mass) || 1);

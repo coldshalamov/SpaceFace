@@ -261,7 +261,7 @@ test('snapshot reads are pure detached projections and stale getter cannot read 
 });
 
 
-test('inactive Save/Continue adds no continuity key or unrelated stats serialization drift',async t=>{
+test('inactive Kiln save is pure and Continue preserves existing durable stats without a continuity key',async t=>{
  const {state,bus,saver}=fixture(t);
  bus.emit('game:new',{});
  const before=JSON.stringify(state.encounterDirector.stats);
@@ -270,8 +270,11 @@ test('inactive Save/Continue adds no continuity key or unrelated stats serializa
  assert.equal(JSON.stringify(state.encounterDirector.stats),before);
  assert.equal(await saver.load('quick'),true);
  assert.equal(Object.hasOwn(state.encounterDirector.stats,'openRunawayKiln'),false);
- // Existing load normalization owns these two empty recency lists.
- assert.deepEqual(state.encounterDirector.stats,{...JSON.parse(before),recentFingerprints:[],recentVarietyKeys:[]});
+ // Continue also replans the current sector, whose ambient lanes own their new bookkeeping.
+ // The inactive Kiln must preserve every existing durable value and must not add its envelope.
+ for(const [key,value] of Object.entries(JSON.parse(before))) {
+  assert.deepEqual(state.encounterDirector.stats[key],value,`Continue changed existing durable stat ${key}`);
+ }
 });
 
 

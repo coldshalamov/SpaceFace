@@ -2877,7 +2877,9 @@ export function applyProjectilePhysicalContact(host, payload) {
     const provenance = { actorId: payload.ownerId ?? projectile.ownerId, weaponId: data.weaponId, tag: source.impulseProvenance || 'weapon_hit', appliedTick: state.tick };
     const delivery = deliverPhysicalImpulseDetailed(state, target, { x: ix || 0, z: iz || 0 },
       { ...provenance, provenance, point: payload.pos, maxTorque: packet?.tumbleTorque },
-      { port: host.helpers?.combatPhysics, referenceImpulse: isEnvironmentalBody(target) ? source.environmentImpulse : undefined });
+      // Scenery contacts obey the same authored momentum as the damage route.
+      { port: host.helpers?.combatPhysics, scaleEnvironment: false,
+        referenceImpulse: isEnvironmentalBody(target) ? source.environmentImpulse : undefined });
     if (delivery.accepted) {
       recordImpulseProvenance(target, { ...provenance, magnitude: Math.hypot(delivery.impulse.x, delivery.impulse.z) });
       if (combatFlag('weaponImpulseConsequences') && target.id !== state.playerId) {
@@ -2912,7 +2914,8 @@ export function applyProjectilePhysicalContact(host, payload) {
       const fall = Math.max(0, 1 - Math.max(0, dist - (body.radius || 0)) / radius);
       const nx = dist > 1e-4 ? dx / dist : 0, nz = dist > 1e-4 ? dz / dist : 1;
       deliverPhysicalImpulse(state, body, { x: nx * baseImpulse * fall, z: nz * baseImpulse * fall },
-        { actorId: payload.ownerId ?? projectile.ownerId, weaponId: data.weaponId, tag: 'weapon_splash', appliedTick: state.tick });
+        { actorId: payload.ownerId ?? projectile.ownerId, weaponId: data.weaponId, tag: 'weapon_splash', appliedTick: state.tick },
+        { scaleEnvironment: false });
       host.helpers?.routeCombatDamage?.({ attackerId: payload.ownerId ?? projectile.ownerId, targetId: body.id,
         packet: scalarHitToDamagePacket({ damage: damage * fall, damageType: data.damageType || 'explosive', pos: center, source: { kind: 'weapon_splash', weaponId: data.weaponId } }),
         origin: { kind: 'weapon', id: data.weaponId } });
@@ -2945,7 +2948,8 @@ function detonateInterceptedSplash(host, payload) {
       const fall = Math.max(0, 1 - Math.max(0, dist - (body.radius || 0)) / radius);
       const nx = dist > 1e-4 ? dx / dist : 0, nz = dist > 1e-4 ? dz / dist : 1;
       deliverPhysicalImpulse(state, body, { x: nx * baseImpulse * fall, z: nz * baseImpulse * fall },
-        { actorId: ownerId, weaponId: data.weaponId, tag: 'weapon_splash', appliedTick: state.tick });
+        { actorId: ownerId, weaponId: data.weaponId, tag: 'weapon_splash', appliedTick: state.tick },
+        { scaleEnvironment: false });
       host.helpers?.routeCombatDamage?.({ attackerId: ownerId, targetId: body.id,
         packet: scalarHitToDamagePacket({ damage: damage * fall, damageType: data.damageType || 'explosive', pos: center, source: { kind: 'weapon_splash', weaponId: data.weaponId } }),
         origin: { kind: 'weapon', id: data.weaponId } });

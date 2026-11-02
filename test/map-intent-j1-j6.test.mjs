@@ -105,6 +105,37 @@ async function main() {
     galaxyMapScreen._selectSearchTarget = realSelect;
   }
 
+  // The active local objective remains searchable from every chart scale, and choosing it
+  // frames the real global position and commits the ordinary local autopilot course.
+  {
+    const state = ctx.state;
+    state.entities.set('buoy47', { id: 'buoy47', type: 'payload', alive: true, pos: { x: 712, z: -144 }, data: { worldSiteTargetable: true } });
+    state.nav = { waypoint: { label: '47-A recovery site', pos: { x: 712, z: -144 },
+      sectorId: 'sector_helios_prime', arrivalRadius: 75, missionId: 'm47', targetEntityId: 'buoy47' } };
+    for (const zoom of [1, 2, 3]) {
+      galaxyMapScreen._zoom = zoom;
+      type('47-A recovery site');
+      const matches = galaxyMapScreen._searchResultsList.filter((hit) => hit.id === 'active-map-goal');
+      assert.equal(matches.length, 1, `one active objective at zoom ${zoom}`);
+      assert.equal(matches[0].sectorId, 'sector_helios_prime');
+      key('Enter');
+      const target = galaxyMapScreen._selectedTarget;
+      assert.equal(target.name, '47-A recovery site');
+      assert.deepEqual({ x: target.x, z: target.z }, { x: 712, z: -144 });
+      assert.equal(galaxyMapScreen._zoom >= 2.8, true, 'selection focuses the local frame');
+      assert.deepEqual(galaxyMapScreen._camera.focusGlobal, { x: 712, z: -144 });
+      assert.equal(galaxyMapScreen._commitCourse(target), true);
+      const course = emitted.filter((event) => event.type === 'ui:setCourse').at(-1)?.payload;
+      assert.deepEqual(course.pos, { x: 712, z: -144 });
+      assert.equal(course.label, '47-A recovery site');
+      assert.equal(course.targetEntityId, 'buoy47');
+      assert.equal(course.arrivalRadius, 75);
+      assert.equal(course.autopilot, true);
+    }
+    delete state.nav;
+    state.entities.delete('buoy47');
+  }
+
   // A charted station remains searchable after leaving its live sector. Use the real search
   // input/Enter route, then the real selection and course-commit owners; the catalog result must
   // retain its destination sector and resolve its sector-local anchor into global course space.
