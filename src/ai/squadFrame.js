@@ -51,6 +51,14 @@ const KICK_AUTHORITY_MARGIN = 2.5;
 // the first unpinned socket. Recovery hands the old commander back their wing spot.
 const LEADER_PINNED_SUCCESSION_TICKS = 120;
 const LEADER_PINNED_SPACING_MULT = 1.25;
+// A socket nobody could refill is the wing's dead. The pose folds toward its spine — each
+// vacancy narrows the surviving members' lateral amplitude (writeSlots) — so a three-ship
+// wing reads as a tightened wedge instead of a full-width one flying a phantom slot. Forward
+// stagger and hull-clearance spacing stay authored; the fold narrows the pose, never stacks
+// hulls (separateSlots still enforces clearance). A pinned-commander sag widens AROUND a live
+// hole; this closes OVER a dead one.
+const CASUALTY_FOLD_PER_SLOT = 0.18;
+const CASUALTY_FOLD_MIN = 0.35;
 const SOCKET_ORDER = Object.freeze([
   SQUAD_SOCKET.LEAD,
   SQUAD_SOCKET.LEFT,
@@ -214,6 +222,7 @@ function seedFrame(id, recipeId, recipe, members, tick, seed) {
     leaderLostTick: null,
     leaderPinnedTick: null,
     hasPinnedMember: false,
+    casualties: 0,
     railDirX: Math.cos(heading),
     railDirZ: Math.sin(heading),
     railLocked: false,
@@ -269,6 +278,17 @@ function syncMembers(frame, members, recipe, tick, pinnedOf = null) {
       claimed.add(socket);
     }
   }
+  // The wing's dead, counted where the refill already ran: a member whose spot nobody flies.
+  // A socket that was never filled (a three-ship wing's empty rear) is the authored wing
+  // size, not a casualty; a socket vacated by death and left unfilled folds the pose
+  // (writeSlots) until a fresh hull claims it.
+  let casualties = 0;
+  for (const rec of frame.members.values()) {
+    if (rec.alive) continue;
+    const occupant = rec.socket != null ? frame.sockets[rec.socket] : null;
+    if (occupant == null) casualties++;
+  }
+  frame.casualties = casualties;
   if (frame.commandId == null || !memberAlive(frame, frame.commandId)) {
     const previous = frame.commandId;
     if (previous != null && frame.leaderLostTick == null) frame.leaderLostTick = tick;
@@ -976,6 +996,11 @@ function writeSlots(frame, recipe, target, tick) {
   const strikeHold = frame.phase === PHASE.STRIKE && recipe.strikeMode === 'hold' && target;
   const volleyTokens = Array.isArray(recipe.volleyTokens) && recipe.volleyTokens.length
     ? recipe.volleyTokens : null;
+  // Casualty fold (see CASUALTY_FOLD_PER_SLOT): a wing with unrefilled dead sockets narrows
+  // its lateral amplitude. Zero casualties keeps the math bit-identical to the unfolded pose.
+  const foldScale = frame.casualties > 0
+    ? Math.max(CASUALTY_FOLD_MIN, 1 - frame.casualties * CASUALTY_FOLD_PER_SLOT)
+    : 1;
 
   for (const rec of frame.members.values()) {
     const local = blendedLocal(shapeA, shapeB, rec.socket, u);
@@ -1014,6 +1039,7 @@ function writeSlots(frame, recipe, target, tick) {
       right = 0;
       forward = -2.15;
     }
+    if (foldScale !== 1) right *= foldScale;
     const ox = fwdX * (forward * spacing) + rightX * (right * spacing);
     const oz = fwdZ * (forward * spacing) + rightZ * (right * spacing);
     rec.slot.x = frame.position.x + ox;
@@ -1025,7 +1051,7 @@ function writeSlots(frame, recipe, target, tick) {
       const dU = 1 / Math.max(dur, 0.05);
       const a = (shapeA.slots && shapeA.slots[rec.socket]) || { right: 0, forward: 0 };
       const b = (shapeB.slots && shapeB.slots[rec.socket]) || a;
-      const dRight = (b.right - a.right) * dU * spacing;
+      const dRight = (b.right - a.right) * dU * spacing * foldScale;
       const dForward = (b.forward - a.forward) * dU * spacing;
       const scaleRate = frame.phase === PHASE.TELEGRAPH ? 0.85 * dU : 0;
       const base = spacing / Math.max(frame.spacingScale, 0.05);
@@ -1035,7 +1061,7 @@ function writeSlots(frame, recipe, target, tick) {
     } else if (attacking && rec.token === SQUAD_TOKEN.CLOSE_ATTACK && rec.laneSide !== 0) {
       const passRate = frame.velocity.x * frame.railDirX + frame.velocity.z * frame.railDirZ;
       const dCross = (1 / 240) * passRate;
-      const dRight = (-rec.laneSide * 1.18 - rec.laneSide * 1.22) * dCross * spacing;
+      const dRight = (-rec.laneSide * 1.18 - rec.laneSide * 1.22) * dCross * spacing * foldScale;
       morphVx = rightX * dRight;
       morphVz = rightZ * dRight;
     }
@@ -1206,6 +1232,7 @@ function snapshotFrame(frame) {
     committedPeak: frame.committedPeak,
     commandId: frame.commandId,
     leaderPinned: frame.hasPinnedMember === true,
+    casualties: frame.casualties || 0,
     heading: frame.heading,
     shapeId: frame.shapeId,
     members,
