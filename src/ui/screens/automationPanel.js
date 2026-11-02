@@ -943,6 +943,25 @@ html body #screens #sf-automation.au-orrery .au-empty {
   border: 1px dashed rgb(var(--au-bone) / .22); border-radius: 8px;
   background: rgb(var(--au-bone) / .02); padding: 6px 14px; margin-top: 4px; }
 html body #screens #sf-automation.au-orrery .au-empty::before { display: none; }
+/* polish289: the four summary readings (ASSETS / NET FLOW / CAP LOAD / LIFETIME) floated as loose
+   text beside the board while every rung under them sat in a hairline card, so the board's numbers
+   read as unframed. They now share one hairline strip in the rungs' card language (radius 8, bone
+   .16 edge, faint fill), each reading in its own cell split by 1px rules. The rules are inset
+   shadows clipped by the strip, so 4-across and 2×2 both draw clean edges. Desktop and narrow
+   windows only; the touch sheet (data-sf-mobile) keeps its own stack. */
+${AU_NARROW} .au-summary {
+  align-self: start; gap: 0; column-gap: 0; padding: 0; overflow: hidden;
+  border: 1px solid rgb(var(--au-bone) / .16); border-radius: 8px; background: rgb(var(--au-bone) / .025); }
+${AU_NARROW} .au-summary > .au-metric,
+${AU_NARROW} .au-summary > .au-metric:hover {
+  padding: 9px 14px 10px; background: none;
+  box-shadow: -1px 0 0 rgb(var(--au-bone) / .14), 0 -1px 0 rgb(var(--au-bone) / .14); }
+${AU_NARROW} .au-summary > .au-metric .v { margin-top: 3px; }
+/* 761–1100 wide (960×540) the cells are ~120px: a 10px inset keeps "gross 0 - upkeep 0" on one line */
+@media (min-width: 761px) and (max-width: 1100px) {
+  ${AU_NARROW} .au-summary > .au-metric,
+  ${AU_NARROW} .au-summary > .au-metric:hover { padding: 8px 10px 9px; }
+}
 `;
 
 function injectStyle() {
