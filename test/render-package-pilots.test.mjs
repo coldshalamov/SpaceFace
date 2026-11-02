@@ -1750,6 +1750,61 @@ test('removing one owner during package pool admission restores the live direct 
   }
 });
 
+test('pool residency names explicit empty-chunk retirement while its requesting boundary stays live', async () => {
+  const renderer = {}, scene = new THREE.Scene();
+  const fixture = await packageShipFixture();
+  const gate = deferred();
+  let poolOwner, snapshot;
+  const options = {
+    releaseMode: true, libraryScope: 'package-pool-retired-owner-snapshot', bootstrapPlan: {},
+    loadAuthoredPart: async () => fixture.record,
+    prepareAuthoredPipelines: async () => ({ skipped: false }),
+    prepareAuthoredGpuResidency: async (subject, admissionOptions) => {
+      if (subject.isInstancedMesh) {
+        poolOwner = admissionOptions.isActive;
+        await gate.promise;
+        snapshot = poolOwner.ownerSnapshot().nestedAdmissionOwner;
+        assert.equal(poolOwner(), false);
+        const error = new Error('Authored GPU residency owner became inactive before texture upload');
+        error.name = 'AbortError';
+        error.code = 'GPU_RESIDENCY_OWNER_INACTIVE';
+        throw error;
+      }
+      return { skipped: false };
+    },
+  };
+  const restoreRuntime = installAuthoredAdmissionRuntime(scene, options);
+  await preloadAuthoredPartLibrary(renderer, options);
+  let pending;
+  try {
+    const first = await admitPackageShip('pool-retired-first', 0, renderer, scene, options);
+    pending = startPackageShip('pool-retired-requester', 40, renderer, scene, options);
+    for (let turn = 0; turn < 80 && !poolOwner; turn++) await new Promise(resolve => setTimeout(resolve, 0));
+    assert.equal(typeof poolOwner, 'function');
+    assert.equal(poolOwner(), true);
+    assert.equal(poolOwner.ownerSnapshot().nestedAdmissionOwner.liveOwnerCount, 2);
+    scene.remove(first);
+    assert.equal(pending.parent, scene, 'the requesting boundary is still mounted');
+    gate.resolve();
+    await pending.userData.authoredUpgradePromise;
+    assert.equal(snapshot.ownerType, 'render-package-pool-admission');
+    assert.equal(snapshot.cancelled, true);
+    assert.equal(snapshot.poolRetiring, true);
+    assert.equal(snapshot.liveSlotCount, 0);
+    assert.equal(snapshot.liveOwnerCount, 0);
+    assert.equal(snapshot.requestedOwnerActive, true, 'the pool retired independently of its live caller');
+    assert.equal(pending.userData.authoredAssetState, 'authored');
+    assert.equal(authoredPackageInstance(pending).nodes.get('eligible').isMesh, true,
+      'the surviving caller publishes its ordinary direct authored surface');
+  } finally {
+    gate.resolve();
+    if (pending) await pending.userData.authoredUpgradePromise;
+    for (const child of [...scene.children]) scene.remove(child);
+    invalidatePartsLibraryCaches(renderer);
+    restoreRuntime();
+  }
+});
+
 test('deferred pool retirement drains clean after object cleanup refusal', async () => {
   const renderer = {};
   const scene = new THREE.Scene();

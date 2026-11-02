@@ -14,7 +14,7 @@ import {
   resumeAuthoredUpgradeQueueAfterOpening,
   waitForOpeningGraphPublicationRelease,
 } from '../src/render/partsLibrary.js';
-import { POST_PROCESS_ROUTE, render as renderSystem } from '../src/render/renderer.js';
+import { POST_PROCESS_ROUTE, isRetiredPackagePoolResidencyOwner, render as renderSystem } from '../src/render/renderer.js';
 import { PRESENTATION_TIER } from '../src/world/activityClassification.js';
 import {
   createPipelineAdmissionTracker,
@@ -582,6 +582,26 @@ test('captured residency owner snapshot distinguishes a retired same-id entity f
   } finally {
     fixture.restore();
   }
+});
+
+test('only proven retired empty-pool cancellation gets the expected owner disposition', () => {
+  const snapshot = {
+    ownerType: 'authored-boundary', entityStillRequired: false, nestedAdmissionOwnerActive: false,
+    entityAlive: true, entityIsCurrent: true, boundaryAttached: true, renderMatches: true,
+    rendererMatches: true, admissionGenerationMatches: true, contextLossGenerationMatches: true, portMatches: true,
+    nestedAdmissionOwner: { ownerType: 'render-package-pool-admission', cancelled: true,
+      requestedOwnerActive: true, liveSlotCount: 0, liveOwnerCount: 0, poolRetiring: true, chunkRetired: false },
+  };
+  assert.equal(isRetiredPackagePoolResidencyOwner(snapshot), true);
+  for (const change of [null, { ownerType: 'unknown' }, { cancelled: false },
+    { liveSlotCount: 2, liveOwnerCount: 2 }, { requestedOwnerActive: false },
+    { requestedOwnerActive: null }, { poolRetiring: false }]) {
+    const nestedAdmissionOwner = change === null ? null : { ...snapshot.nestedAdmissionOwner, ...change };
+    assert.equal(isRetiredPackagePoolResidencyOwner({ ...snapshot, nestedAdmissionOwner }), false,
+      `uncertain, live or upstream-withdrawn owner stays unexpected: ${JSON.stringify(change)}`);
+  }
+  assert.equal(isRetiredPackagePoolResidencyOwner({ ...snapshot, entityStillRequired: true }), false);
+  assert.equal(isRetiredPackagePoolResidencyOwner({ ...snapshot, admissionGenerationMatches: false }), false);
 });
 
 test('GPU residency snapshot names nested authored-job cancellation while outer boundary stays live', async () => {

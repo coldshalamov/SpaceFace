@@ -39,6 +39,26 @@ test('technical wing identities resolve names or stable unit codes without losin
   assert.equal(wingLineFor(member, 1), null);
 });
 
+test('a selected physical work-site remains named and ranged during its active waypoint', () => {
+  const fx = mountHudFixture();
+  try {
+    const buoy = fx.add({ id: 'buoy44c', type: 'payload', alive: true, team: 2,
+      pos: { x: 135, z: 0 }, vel: { x: 0, z: 0 }, radius: 10,
+      data: { name: '44-C loose lane buoy', scanLabel: '44-C LOOSE LANE BUOY', worldSiteTargetable: true } });
+    fx.state.nav.waypoint = { label: '44-C loose lane buoy', targetEntityId: buoy.id, pos: { ...buoy.pos } };
+    fx.state.player.targetId = buoy.id;
+    fx.step(60);
+    const panel = fx.document.querySelector('.sf-target');
+    assert.notEqual(panel.style.display, 'none');
+    assert.match(panel.querySelector('.sf-target__name').textContent, /44-C LOOSE LANE BUOY/i);
+    assert.equal(panel.querySelector('.sf-target__dist').textContent, '135');
+
+    buoy.data.worldSiteTargetable = false;
+    fx.step(60);
+    assert.equal(panel.style.display, 'none', 'unrelated neutral payloads keep the quiet route policy');
+  } finally { fx.hud.destroy(); fx.restore(); }
+});
+
 test('readable contact facts preserve authored names, quantities, legality and unresolved wreck privacy', () => {
   const fx = mountHudFixture();
   try {

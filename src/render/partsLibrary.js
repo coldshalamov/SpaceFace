@@ -15856,14 +15856,42 @@ function prepareRenderPackagePoolAdmission(admission, options) {
   if (admission.prepared) return Promise.resolve(admission.result);
   if (!admission.preparation) {
     const ownerIsActive = options && options.isResidencyOwnerActive;
+    const isResidencyOwnerActive = () => admission.cancelled !== true
+      && (typeof ownerIsActive !== 'function' || ownerIsActive() === true);
+    isResidencyOwnerActive.ownerSnapshot = () => {
+      let requestedOwnerActive = true;
+      let requestedOwner = null;
+      if (typeof ownerIsActive === 'function') {
+        try { requestedOwnerActive = ownerIsActive() === true; } catch { requestedOwnerActive = false; }
+        try { requestedOwner = ownerIsActive.ownerSnapshot?.() || null; } catch (error) {
+          requestedOwner = { snapshotError: String(error?.message || error) };
+        }
+      }
+      let liveSlotCount = 0;
+      const owners = new Set();
+      for (const slot of admission.chunk.slots.values()) {
+        if (slot.released) continue;
+        liveSlotCount++;
+        owners.add(slot.owner);
+      }
+      return {
+        ownerType: 'render-package-pool-admission',
+        cancelled: admission.cancelled === true,
+        chunkRetired: admission.chunk.retired === true,
+        poolRetiring: admission.chunk.pool.retirementPending === true,
+        liveSlotCount,
+        liveOwnerCount: owners.size,
+        requestedOwnerActive,
+        requestedOwner,
+      };
+    };
     admission.preparation = prepareAuthoredVisualPipelines(admission.target, {
       ...options,
       // A cancelled admission is a dead owner for this exact target: let an in-flight compile
       // settle, but never let it start a residency upload the retired chunk can never use. The
       // between-stage assert in prepareAuthoredVisualPipelines is the same abort the boundary's
       // entity-level predicate already drives.
-      isResidencyOwnerActive: () => admission.cancelled !== true
-        && (typeof ownerIsActive !== 'function' || ownerIsActive() === true),
+      isResidencyOwnerActive,
     }).then((result) => {
       admission.result = result;
       admission.prepared = !admission.cancelled;
