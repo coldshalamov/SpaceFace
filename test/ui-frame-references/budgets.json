@@ -11,7 +11,7 @@
   "measured": "synchronous registry.get(\"ui\").frame plus authored src/ui requestAnimationFrame callback CPU bucketed per presentation timestamp, 150 ms warm-up discarded; worst combined UI sample per surface over a 600 ms headed window",
   "excluded": "browser layout/paint deferred after the owner callback is outside this CPU window; unclassified non-game requestAnimationFrame callbacks are reported separately as auxiliaryRaf* diagnostics",
   "seed": 47,
-  "uiSourceDigest": "74b867508490777a4f3e4da50ed1c7af5c8a66ed44fada3771a56516f50a88f3",
+  "uiSourceDigest": "97ef44579e755e7ef1a2b4b10d7be1cf4f44bd47ceb5a9a969cefd076ba23266",
   "uiSourceFiles": {
     "index.html": "7377b808981a2344fe02326e970623b50925112616584589e2d6dddf7a51a294",
     "src/ui/accessibility.js": "56b7068f9460e7175a6d2f8d66537e67949d07db79994b918165b1d7dd7dc1a8",
@@ -225,7 +225,7 @@
     "src/ui/orrery/ringLegend.js": "370e949fbf4a126ccc982fe6927e0b4ce0d55276a07a3358732abf8d8da46b18",
     "src/ui/orrery/routeOrrery.js": "0d6fae9c6a1bf10e49629ed449740709ef12cf148c25f95515321df0cbc7da54",
     "src/ui/orrery/sableDemo.js": "c737e2e766cf3c64640bbb3660f3cfd5f93596f9e11d3eab9f64ddc9e6504630",
-    "src/ui/orrery/sandboxLayouts.js": "29bf8145562bce1fca623b441f12fe25ca0fc2424f8097978cd3c11533da6104",
+    "src/ui/orrery/sandboxLayouts.js": "80509cd20f842bad30bc94c0d86edbac3b7c552f9c3b447c76ac3d6f8292cd55",
     "src/ui/orrery/save-loadLayouts.js": "d95f63936a1954a0a28d4b7e6646eff88c5d647b2f9de50e4f8e121e466303db",
     "src/ui/orrery/saveBerth.js": "3277b73ea17573dd3b42ad2b683b7f49889537b3d0baa7170427d7822b549fd6",
     "src/ui/orrery/saveFilmstrip.js": "22523decdcfc3832c70a9b2ae1ebf62fb477972f4e414b143610f834267e813b",
