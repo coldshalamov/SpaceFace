@@ -66,6 +66,8 @@ import { Masks } from '../core/entity.js';
 import { readPhysicsTelemetry, writePhysicsControl, queuePhysicsImpulse, resolvePhysicsBodySpec } from '../core/physicsAuthority.js';
 import { ensureCombatant } from '../combat/runtime.js';
 import { getCombatKernel } from '../combat/kernel.js';
+import { terrainCrumpleDamage, readRecentImpulseProvenance } from '../combat/impulseKernel.js';
+import { scalarHitToDamagePacket } from '../combat/damage.js';
 import { CRYO_LOCK_DURATION_TICKS, CRYO_LOCK_STATUS_ID } from '../combat/cryoLock.js';
 import { BURNING_STATUS_ID } from '../combat/thermalShock.js';
 import { makeEnemySpawnSpec } from './combat.js';
@@ -126,6 +128,13 @@ import { swarmEventFor } from '../data/swarmEvents.js';
 
 const CRYO_LOCK_REFRESH_LEAD_TICKS = 30;
 const BURNING_STATUS_DURATION_TICKS = 120;
+// One crush receipt per body per half second: the jaws GRIND a hull held at crumple speed,
+// they do not stack a full contact receipt every tick. Matches the tumble-rake receipt cadence.
+const CRUSH_RECEIPT_COOLDOWN_TICKS = 30;
+
+function finiteOf(value, fallback = 0) {
+  return Number.isFinite(value) ? value : fallback;
+}
 
 export { CINDER_ARENA_ID, CRYO_ARENA_ID, LAGRANGE_ARENA_ID, STORM_ARENA_ID, MILL_ARENA_ID, HIVE_ARENA_ID };
 export const LAW_ARENA_IDS = Object.freeze([
@@ -1841,6 +1850,10 @@ export const survivalArena = {
           const entity = bodies[b];
           const next = stepCrusher(toy, toyBodyOf(entity), elapsed, step);
           writeVel(entity, next.vel.x, next.vel.z);
+          // The verdict the room used to throw away: surge-phase jaws meeting a body at
+          // crumple speed. The bite is the terrain-crumple law's own reading, credited to
+          // whoever set the body moving — the hazard is a weapon the physics aims.
+          if (next.crushed) this._crushBody(entity, toy, next, state);
         }
       } else if (toy.kind === 'current' && !coneFieldBacksCurrent(fields, toy)) {
         for (let b = 0; b < bodies.length; b++) {
@@ -1878,6 +1891,70 @@ export const survivalArena = {
       // whose bank acceptance lives in the combat kernel (resolveLiveAttackHit -> resolveRicochet
       // over a physics-issued receipt); the room neither reflects shots nor emits bank feedback.
     }
+  },
+
+  /**
+   * The crusher's bite. `crush` is stepCrusher's verdict: surge phase, inside the anvil's
+   * reach, closing at crumple speed. The damage is terrainCrumpleDamage — the SAME reading
+   * the collision law gives a hull meeting terrain at that speed — routed through the combat
+   * kernel with the last shover's impulse provenance as the attacker, so a hull the pilot
+   * threw into the jaws is the pilot's kill, and one the room itself closed is nobody's
+   * bounty. The player is exempt, exactly as collisionConsequences exempts the player from
+   * the terrain-crumple path: the jaws still shove the pilot around, they never crumple them.
+   */
+  _crushBody(entity, toy, crush, state) {
+    if (!entity || entity.alive === false || entity.id === state.playerId) return;
+    if (entity.type !== 'ship' && entity.type !== 'drone') return;
+    const tick = state.tick | 0;
+    const data = entity.data || (entity.data = {});
+    const last = Number(data.crusherCrushAt);
+    if (Number.isFinite(last) && tick - last < CRUSH_RECEIPT_COOLDOWN_TICKS) return;
+    const bodySpec = resolvePhysicsBodySpec(entity);
+    const mass = bodySpec && Number.isFinite(bodySpec.mass) ? bodySpec.mass
+      : (Number.isFinite(entity.mass) ? entity.mass : 1);
+    const damage = terrainCrumpleDamage(crush.speed, mass);
+    if (!(damage > 0)) return;
+    const kernel = this.ctx ? getCombatKernel(this.ctx) : null;
+    const routeDamage = kernel && typeof kernel.routeDamage === 'function' ? kernel.routeDamage
+      : (this.ctx && this.ctx.helpers && typeof this.ctx.helpers.routeCombatDamage === 'function'
+        ? this.ctx.helpers.routeCombatDamage : null);
+    if (!routeDamage) return;
+    data.crusherCrushAt = tick;
+    // Kill credit follows the shove: the freshest impulse record on the body IS the law's
+    // "who set this hull moving" answer (the same provenance the collision path reads).
+    const provenance = readRecentImpulseProvenance(entity, tick);
+    const attackerId = provenance && provenance.actorId != null ? provenance.actorId
+      : (state.run && state.run.arenaId) || 'survival_arena';
+    const anvilX = finiteOf(toy && toy.anvil && toy.anvil.x, 0);
+    const anvilZ = finiteOf(toy && toy.anvil && toy.anvil.z, 0);
+    const dx = anvilX - finiteOf(entity.pos && entity.pos.x, 0);
+    const dz = anvilZ - finiteOf(entity.pos && entity.pos.z, 0);
+    const len = Math.hypot(dx, dz);
+    const approach = len > 1e-6
+      ? { x: dx / len, z: dz / len }
+      : { x: finiteOf(crush.vel && crush.vel.x, 1), z: finiteOf(crush.vel && crush.vel.z, 0) };
+    const packet = scalarHitToDamagePacket({
+      damage,
+      damageType: 'kinetic',
+      pos: { x: finiteOf(entity.pos && entity.pos.x, 0), z: finiteOf(entity.pos && entity.pos.z, 0) },
+      approach,
+      source: { kind: 'crusher_jaws', hullId: toy && toy.id != null ? String(toy.id) : 'crusher' },
+    });
+    routeDamage({
+      attackerId,
+      targetId: entity.id,
+      packet,
+      origin: { kind: 'crusher_jaws', id: toy && toy.id != null ? String(toy.id) : 'crusher' },
+    });
+    this._emit('combat:crushed', {
+      entityId: entity.id,
+      toyId: toy && toy.id != null ? toy.id : null,
+      damage,
+      speed: crush.speed,
+      attackerId,
+      t: simTimeOf(state),
+      tick,
+    });
   },
 
   /**

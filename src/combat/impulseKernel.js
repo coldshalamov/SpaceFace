@@ -274,6 +274,23 @@ const SURFACE_DAMAGE_MULTIPLIER = Object.freeze({
   other: 0,
 });
 
+/**
+ * The crumple law's own reading for one authored terrain-class contact: what a body of `mass`
+ * meeting terrain at `speed` loses. The kernel's contact path is the only other writer of this
+ * formula — an authored room hazard that shoves a hull into a fixed surface (the crusher's
+ * anvil) routes the SAME reading instead of deriving a second damage rule. Terrain multiplier,
+ * no craft contact, no per-body impact scale.
+ */
+export function terrainCrumpleDamage(speed, mass) {
+  if (!Number.isFinite(speed) || !Number.isFinite(mass)) return 0;
+  const crumple = Math.max(0, speed - TERRAIN_CRUMPLE_LAW.threshold);
+  if (!(crumple > 0) || !(mass > 0)) return 0;
+  const massScale = TERRAIN_CRUMPLE_LAW.refMass / mass;
+  const uncapped = 0.5 * crumple * crumple * massScale * SURFACE_DAMAGE_MULTIPLIER.terrain;
+  const cap = TERRAIN_CRUMPLE_LAW.maxDamage * clamp(massScale, TERRAIN_CRUMPLE_LAW.massFloor, 1);
+  return Math.min(uncapped, cap);
+}
+
 export function resolveWeaponImpulseForHit(weapon, damage) {
   if (!weapon || typeof weapon !== 'object') return null;
   const authoredDamage = positive(weapon.dmg, 0);
