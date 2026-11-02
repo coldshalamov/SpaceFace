@@ -7,6 +7,8 @@
 // getDerivedStats() and makeShipEntitySpec() are exported as pure-ish builders so other systems
 // (save/newGame, render previews, UI stat readouts) can call them without going through the bus.
 import { SHIPS } from '../data/ships.js';
+import { resolveCollisionProxyManifest } from '../data/collisionProxyManifests.js';
+import { isModelTruthCensusLoaded } from '../data/modelTruth.js';
 import { SAUCER_ID, SAUCER_WEAPON_SLOTS, saucerFittingRefusal } from '../data/saucer.js';
 import { FLIGHT_TUNING } from '../data/flightTuning.js';
 import { HARDPOINT_ACCEPTS, TURRET_RING_OUTPUT, WEAPONS, WEAPON_MOUNT_CLASSES } from '../data/weapons.js';
@@ -591,6 +593,43 @@ const THRUST_SCALE = 0.99; // engine.topSpeed -> thrust accel scale
 const BASE_RADAR_RANGE = 4000;
 const PLAYER_TURN_RATE_MULT = 0.78;
 const PLAYER_TURN_RATE_CAP = 3.8;
+
+const HULL_YAW_INERTIA_PER_MASS = new WeakMap();
+
+function hullYawInertiaPerMass(shipDef) {
+  if (!isModelTruthCensusLoaded() || !shipDef || typeof shipDef !== 'object') return null;
+  const cached = HULL_YAW_INERTIA_PER_MASS.get(shipDef);
+  if (cached !== undefined) return cached;
+
+  const radius = Math.max(0.1, Number(shipDef.collisionRadius) || 1);
+  const entity = { type: 'ship', radius, data: { defId: shipDef.id } };
+  const manifest = resolveCollisionProxyManifest(entity);
+  const vertices = manifest?.compactHull || manifest?.planarPolygon;
+  let ratio = 0;
+  if (Array.isArray(vertices) && vertices.length >= 3) {
+    let twiceArea = 0;
+    let polarMomentTimes12 = 0;
+    for (let i = 0; i < vertices.length; i += 1) {
+      const a = vertices[i];
+      const b = vertices[(i + 1) % vertices.length];
+      const cross = a.x * b.z - b.x * a.z;
+      twiceArea += cross;
+      polarMomentTimes12 += cross * (
+        a.x * a.x + a.x * b.x + b.x * b.x
+        + a.z * a.z + a.z * b.z + b.z * b.z
+      );
+    }
+    if (Number.isFinite(twiceArea) && Math.abs(twiceArea) > 1e-9
+      && Number.isFinite(polarMomentTimes12)) {
+      ratio = (polarMomentTimes12 / (6 * twiceArea)) * radius * radius;
+    }
+  }
+  // Measured skins use the polygon's uniform-area polar moment. Unmeasured legacy hulls use a
+  // disk estimate at the same collision radius, so their inertia remains dimensionally scaled.
+  if (!(ratio > 0) || !Number.isFinite(ratio)) ratio = 0.5 * radius * radius;
+  HULL_YAW_INERTIA_PER_MASS.set(shipDef, ratio);
+  return ratio;
+}
 
 const FLIGHT_CLASS_TUNING = {
   scout: { accel: 1.05, strafe: 0.58, turn: 1.08, brake: 1.1, assist: 1.15, inertia: 0.92 },
@@ -1229,7 +1268,13 @@ function flightClassForShip(shipDef) {
 
 function buildFlightModel({ shipDef, flightClass, totalMass, massRatio, handling, thrust, turnRate, maxSpeed, drag, bankFactor }) {
   const t = FLIGHT_CLASS_TUNING[flightClass] || FLIGHT_CLASS_TUNING.scout;
-  const inertia = Math.max(1, (totalMass / Math.max(0.3, handling)) * t.inertia);
+  const hullInertiaPerMass = hullYawInertiaPerMass(shipDef);
+  // Handling still shapes commanded angular acceleration above. Passive contact/impulse inertia
+  // comes from the hull's measured planar mass footprint; flightV3 and AI scale their requested
+  // angular acceleration by this value before the native body divides torque by its inertia.
+  const inertia = Math.max(1, hullInertiaPerMass == null
+    ? (totalMass / Math.max(0.3, handling)) * t.inertia
+    : totalMass * hullInertiaPerMass * t.inertia);
   const maxYawRate = Math.min(turnRate * PLAYER_TURN_RATE_MULT * t.turn, PLAYER_TURN_RATE_CAP);
   return {
     flightClass,
@@ -1339,6 +1384,7 @@ function derivedStatsKey(defId, fittings, player) {
   const eff = (player && player.efficiencyMods) || {};
   return JSON.stringify([
     defId || 'ship_kestrel',
+    isModelTruthCensusLoaded(),
     Array.isArray(fittings) ? fittings : [],
     player ? {
       s: eff.shieldRegenMult, e: eff.energyRegenMult, c: eff.cargoCapMult,
