@@ -179,6 +179,11 @@ ${RESULTS_PLATE(R)}
      caption already carries who and from where), and THE RUN's lines run on under the fade. */
   ${R} .sf-crres__band[data-band="build"] { order:2; }
   ${R} .sf-crres__band[data-band="story"] { order:3; }
+  /* The scroll column ran straight into the ways-out: its fade left a half-line ("Converged on…")
+     ghosting 20px above RUN IT AGAIN with nothing to say the column ends there. The foot now opens on
+     a hairline across the column with room above it, so the fade reads as the column's lower edge. */
+  ${R} .sf-crres__stage { padding-bottom:2px !important; -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 14px), transparent); mask-image:linear-gradient(180deg, #000 calc(100% - 14px), transparent); }
+  ${R} > .k-foot { border-top:1px solid rgb(${BONE} / .16) !important; padding-top:10px !important; margin-top:0 !important; }
 }
 @media (min-width:701px) and (max-width:880px) and (max-height:600px) {
   ${R} > .k-foot .k-word.k-word--primary { font-size:13px !important; }
