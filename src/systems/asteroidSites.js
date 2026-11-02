@@ -22,7 +22,7 @@ const CERES_NPC_AUTHORITY=Symbol('ceres-site-operation');
 // Excavation stays owned by systems/drill.js. This system reads the same field math
 // (generateDrillField + cleared list) to recompute machine contact rings with no live session —
 // the contact ring (brief §1) is sacred: hollowing a neighbor permanently costs that contact.
-import { generateDrillField, applyClearedTiles, applyFlaggedTiles, applyRubbleTiles, normalizeClearedTiles, tileIndex, DRILL_CONST, EMPTY_TILE } from './drill.js';
+import { generateDrillField, applyClearedTiles, applyFlaggedTiles, applyRubbleTiles, normalizeClearedTiles, tileIndex, drillSessionTarget, DRILL_CONST, EMPTY_TILE } from './drill.js';
 import { applySealedDeadDropCap, sealedDeadDropCapMissing } from './boreDeadDrop.js';
 import { addCargo, removeCargo } from './cargo.js';
 import {
@@ -650,6 +650,17 @@ export const asteroidSites = {
     if (this._wiredBus === this.bus) return;
     this._wiredBus = this.bus;
 
+    // Producer sessions carry a captured entity reference and generation. This site's historical
+    // numeric-id fallback is only for untracked generation-less event/session fixtures; it does
+    // not restore an authoritative drill session or authorize drill's rock-persistence writes.
+    // Tracked sessions whose target disappeared or was recycled never take the fallback.
+    const drillTarget = (session) => {
+      const target = drillSessionTarget(state, session);
+      if (target !== undefined) return target;
+      if (!session || Object.hasOwn(session, 'asteroidGeneration')) return null;
+      return state.entities?.get?.(session.asteroidId) || null;
+    };
+
     // Site evidence uses the existing decision deck and the real world's coordinate
     // conversion. Keep these operations on the sim side in worker and main modes.
     this.bus.on('siteEvidence:action', (request = {}) => {
@@ -675,6 +686,7 @@ export const asteroidSites = {
     // is blocked by them and the screen can draw them. tile.structure is the ONE documented write
     // this system makes into state.drill (co-ownership noted in drill.js).
     this.bus.on('drill:start', ({ asteroidId }) => {
+      if (state.drill?.asteroidId !== asteroidId || !drillTarget(state.drill)) return;
       const site = this.siteForAsteroid(asteroidId);
       if (site) this._stampStructures(site);
     });
@@ -684,7 +696,8 @@ export const asteroidSites = {
     this.bus.on('drill:break', ({ col, row }) => {
       this._accessCache = null;
       const d = state.drill;
-      if (!d) return;
+      const rockEnt = d && drillTarget(d);
+      if (!rockEnt) return;
       const site = this.siteForAsteroid(d.asteroidId);
       if (!site) return;
       const idx = tileIndex(col, row);
@@ -694,7 +707,6 @@ export const asteroidSites = {
       this._releaseFallenSlab(site, col, row);
       // Blast scars + friends are recorded on the rock's data mid-session; keep the
       // claim's mirror current so an abandoned session never strands them on the entity.
-      const rockEnt = state.entities && state.entities.get ? state.entities.get(d.asteroidId) : null;
       if (rockEnt && rockEnt.data) copyDrillSessionAccounting(site, rockEnt.data);
       this._markDirty(site.id, { field: true });
     });
@@ -704,12 +716,12 @@ export const asteroidSites = {
     this.bus.on('drill:caveIn', ({ dropped }) => {
       this._accessCache = null;
       const d = state.drill;
-      if (!d) return;
+      const rockEnt = d && drillTarget(d);
+      if (!rockEnt) return;
       const site = this.siteForAsteroid(d.asteroidId);
       if (!site || !Array.isArray(dropped)) return;
       const idxs = new Set(dropped.map((c) => tileIndex(c.col, c.row)));
       site.cleared = site.cleared.filter((i) => !idxs.has(i));
-      const rockEnt = state.entities && state.entities.get ? state.entities.get(d.asteroidId) : null;
       if (rockEnt && rockEnt.data) copyDrillSessionAccounting(site, rockEnt.data);
       this._markDirty(site.id, { field: true });
     });
@@ -719,10 +731,10 @@ export const asteroidSites = {
     this.bus.on('drill:gasVent', () => {
       this._accessCache = null;
       const d = state.drill;
-      if (!d) return;
+      const rockEnt = d && drillTarget(d);
+      if (!rockEnt) return;
       const site = this.siteForAsteroid(d.asteroidId);
       if (!site) return;
-      const rockEnt = state.entities && state.entities.get ? state.entities.get(d.asteroidId) : null;
       if (rockEnt && rockEnt.data) copyDrillSessionAccounting(site, rockEnt.data);
       this._markDirty(site.id, { field: true });
     });
@@ -733,24 +745,26 @@ export const asteroidSites = {
     // (the spent puck returns on rematerialize, the fracture field is forgotten).
     const syncChargeMirror = () => {
       const d = state.drill;
-      if (!d) return;
+      const rockEnt = d && drillTarget(d);
+      if (!rockEnt) return;
       const site = this.siteForAsteroid(d.asteroidId);
       if (!site) return;
-      const rockEnt = state.entities && state.entities.get ? state.entities.get(d.asteroidId) : null;
       if (rockEnt && rockEnt.data) copyDrillSessionAccounting(site, rockEnt.data);
       this._markDirty(site.id, { field: true });
     };
     this.bus.on('drill:chargePlanted', syncChargeMirror);
     this.bus.on('drill:chargeBlast', syncChargeMirror);
 
-    this.bus.on('drill:end', ({ asteroidId }) => {
+    this.bus.on('drill:end', (result) => {
+      const { asteroidId } = result;
       // The volatile claim survey is session-bound, exactly like the pulse's tile.surveyed marks:
       // leaving the bore discards uncommitted assay knowledge (the UI warns before the player
       // commits). Committed records live on the site and are untouched here.
       this._surveyByAsteroid.delete(asteroidId);
+      const ent = drillTarget(result);
+      if (!ent) return;
       const site = this.siteForAsteroid(asteroidId);
       if (!site) return;
-      const ent = state.entities && state.entities.get ? state.entities.get(asteroidId) : null;
       if (ent && ent.data) {
         if (Array.isArray(ent.data.drillCleared)) {
           site.cleared = normalizeClearedTiles(ent.data.drillCleared);
@@ -768,6 +782,7 @@ export const asteroidSites = {
     this.bus.on('drill:scanPulse', () => {
       const d = state.drill;
       if (!d || !d.active || !d.field || d.asteroidId == null) return;
+      if (!drillTarget(d)) return;
       const site = this.siteForAsteroid(d.asteroidId);
       if (site && site.anchored) return;
       this._advanceClaimSurvey(d);

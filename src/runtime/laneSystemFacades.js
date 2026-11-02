@@ -395,7 +395,7 @@ export function createLaneSystemFacade(ctx) {
           bus: ctx.bus,
           state: st,
           tickInput: (held, dt, opts) => laneDomEvent({ type: 'drillTick', held, dt, opts }),
-          begin: (asteroidId) => { if (asteroidId) drillCall('begin', { asteroidId }); return !!asteroidId; },
+          begin: (asteroidId, options) => { drillCall('begin', { asteroidId, options }); },
           pulseScan: () => {
             // Synchronous answer off the mirror (≤1-tick stale): a stale
             // cooldown edge ships a refused pulse the worker drops silently.
