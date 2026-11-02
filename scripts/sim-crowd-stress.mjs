@@ -561,7 +561,7 @@ async function runCell({ seed }) {
       listener: name,
       calls: m.calls,
       totalMs: round3(m.ms),
-      meanUs: Math.round((m.ms / (m.calls || 1)) * 1e6 * 10) / 10,
+      meanUs: Math.round((m.ms / (m.calls || 1)) * 1e3 * 10) / 10,
       maxMs: round3(m.max),
       ...(m.admits ? { admits: m.admits } : {}),
     }))

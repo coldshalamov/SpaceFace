@@ -62,6 +62,15 @@ import { createStationRow } from '../orrery/stopDial.js';
 import { AMMO_BATCH as MUNITIONS_LOAD } from './serviceQuotes.js';
 import { tradeClearedReceipt, TRADE_EXPECTATION_KEY } from './tradeReceipt.js';
 
+export function stationReceiptOverlapsControls(receiptRect, controls) {
+  return [...(controls || [])].some((el) => {
+    if (!el || typeof el.getBoundingClientRect !== 'function') return false;
+    const rect = el.getBoundingClientRect();
+    return receiptRect.left < rect.right && receiptRect.right > rect.left
+      && receiptRect.top < rect.bottom && receiptRect.bottom > rect.top;
+  });
+}
+
 const STATION_REC = new Map();
 for (const sec of SECTORS) for (const s of (sec.stations || [])) STATION_REC.set(s.id, { station: s, sector: sec });
 const FACTION_REC = new Map(FACTION_META.map((f) => [f.id, f]));
@@ -975,32 +984,47 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     showReceipt('BERTH SERVICE', serviceResult, `${p.delta < 0 ? '−' : '+'}${fmtCr(Math.abs(p.delta))} cr`);
   });
 
-  // A live receipt must never stand on a control. The ORRERY sheet anchors it right of the comms
-  // word (left: calc(100% + 40px)), which on wide windows is ON the Undock key — the bench walk
-  // measured UNDOCK unreachable for the receipt's 3.6 s life ("centre hit reaches
-  // span.sx-receipt__delta"). The sheet already owns the resolution of this exact collision at
-  // narrower widths — under 1500 px it moves the receipt below the comms line, and the 651–800
-  // rules say it outright: "on its old anchor the receipt landed over UNDOCK". Same resolution
-  // here, applied only when the wide anchor would cover a control: the line moves above the rail,
-  // right-aligned, touching no control's centre. The sheet keeps the resting look; this only
-  // steps the live line out of the click path. (Inline !important is required to out-rank the
-  // sheet's own !important anchor.)
+  // A live receipt must never stand on a control. Anchored lanes move above the comms/command row
+  // only when their measured box covers an actual action. The narrow Market lane is static flow
+  // and is handled by its footer layout instead.
   function keepReceiptOffControls() {
     if (!receiptEl || receiptEl.hidden) return;
+    const styleReader = receiptEl.ownerDocument?.defaultView?.getComputedStyle || globalThis.getComputedStyle;
+    if (typeof styleReader === 'function') {
+      try {
+        const position = styleReader.call(receiptEl.ownerDocument?.defaultView || globalThis, receiptEl)?.position;
+        // The narrow market lane is in normal flow; its stylesheet owns placement and naturally
+        // reflows it when the viewport or scrollable panel changes. Anchoring it here would put it
+        // back over the wrapped destination rail.
+        if (position === 'static') return;
+      } catch (_) { /* continue with measured collision handling in partial DOM hosts */ }
+    }
     const r = receiptEl.getBoundingClientRect();
     if (!r.width || !r.height) return;
-    const guards = [launchEl, commsToggle, helpEl, dock.el];
-    const hits = guards.some((el) => {
-      if (!el || !el.getBoundingClientRect) return false;
-      const c = el.getBoundingClientRect();
-      return r.left < c.right && r.right > c.left && r.top < c.bottom && r.bottom > c.top;
-    });
+    // The dock can be a one-row scroller while its children wrap or overflow on a narrow berth.
+    // Check the actual actionable boxes, not just that clipping wrapper's smaller rectangle.
+    const dockControls = [...(dock.el?.querySelectorAll?.('[data-nav], [data-act]') || [])];
+    const guards = [launchEl, commsToggle, helpEl, ...dockControls];
+    const hits = stationReceiptOverlapsControls(r, guards);
     if (!hits) return;
     receiptEl.style.setProperty('left', 'auto', 'important');
     receiptEl.style.setProperty('right', '0', 'important');
     receiptEl.style.setProperty('top', 'auto', 'important');
     receiptEl.style.setProperty('bottom', 'calc(100% + 10px)', 'important');
   }
+  let receiptPlacementFrame = 0;
+  const refreshReceiptPlacement = () => {
+    if (receiptPlacementFrame) return;
+    if (typeof requestAnimationFrame !== 'function') { keepReceiptOffControls(); return; }
+    receiptPlacementFrame = requestAnimationFrame(() => {
+      receiptPlacementFrame = 0;
+      keepReceiptOffControls();
+    });
+  };
+  window.addEventListener('resize', refreshReceiptPlacement);
+  // A station panel can scroll without scrolling the window. Capture its scroll changes so an
+  // anchored receipt is rechecked against the controls currently visible to the player.
+  rootEl.addEventListener('scroll', refreshReceiptPlacement, true);
 
   // ---------- dock actions ----------
   function actionCosts() {
@@ -1665,6 +1689,12 @@ export function createStationApp(rootEl, ctx, opts = {}) {
       stopFloating();
       if (popCloseTimer) clearTimeout(popCloseTimer);
       if (receiptTimer) clearTimeout(receiptTimer);
+      if (receiptPlacementFrame && typeof cancelAnimationFrame === 'function') {
+        cancelAnimationFrame(receiptPlacementFrame);
+        receiptPlacementFrame = 0;
+      }
+      window.removeEventListener('resize', refreshReceiptPlacement);
+      rootEl.removeEventListener('scroll', refreshReceiptPlacement, true);
       window.removeEventListener('keydown', onEscCapture, true);
       if (offExit) offExit();
       subscriptions.splice(0).forEach((off) => off());

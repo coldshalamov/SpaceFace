@@ -19,7 +19,7 @@
 // the whole difference between an ornament and an instrument.
 
 import { el } from '../kit/dom.js';
-import { localizeText } from '../../localization/gameLocalization.js';
+import { localizeText } from '../../localization/sourceText.js';
 
 /**
  * The title's authored backdrop plate: the approved "Field at dusk" shot

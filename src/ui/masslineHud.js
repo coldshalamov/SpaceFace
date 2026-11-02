@@ -239,11 +239,13 @@ function setBracketShape(mark, shape) {
 }
 
 function rectsOverlap(a, b) {
-  return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+  const x = Number(b?.x ?? b?.left), y = Number(b?.y ?? b?.top);
+  const w = Number(b?.w ?? b?.width), h = Number(b?.h ?? b?.height);
+  return a.x < x + w && a.x + a.w > x && a.y < y + h && a.y + a.h > y;
 }
 
-// Words sit on the bracket. If that box would cover the player hull, push them off it.
-export function placeBracketWords(mark, hull, label, viewport) {
+// The bracket stays on its body; its words can move around the hull and the live HUD.
+export function placeBracketWords(mark, hull, label, viewport, hudObstacles = []) {
   const w = Math.max(1, Number(label && label.w) || 1);
   const h = Math.max(1, Number(label && label.h) || 1);
   const gap = 16;
@@ -261,9 +263,36 @@ export function placeBracketWords(mark, hull, label, viewport) {
     { x: mark.x + gap, y: mark.y - h / 2 },
     { x: mark.x - w - gap, y: mark.y - h / 2 },
   ];
+  const extra = Array.isArray(hudObstacles) ? hudObstacles : [];
+  const blockers = hull ? [hull, ...extra] : extra;
+  const bounds = (box) => ({ x: Number(box?.x ?? box?.left), y: Number(box?.y ?? box?.top),
+    w: Number(box?.w ?? box?.width), h: Number(box?.h ?? box?.height) });
+  const clear = (rect) => blockers.every((box) => !rectsOverlap(rect, box));
   for (const candidate of candidates) {
     const rect = clamp(candidate);
-    if (!hull || !rectsOverlap(rect, hull)) return rect;
+    if (clear(rect)) return rect;
+  }
+  if (extra.length) {
+    let best = null, bestDistance = Infinity;
+    const consider = (x, y) => {
+      const rect = clamp({ x, y });
+      if (rect.x + w > vw - 8 || rect.y + h > vh - 8 || !clear(rect)) return;
+      const distance = (rect.x + w / 2 - mark.x) ** 2 + (rect.y + h / 2 - mark.y) ** 2;
+      if (distance < bestDistance) { best = rect; bestDistance = distance; }
+    };
+    // Try the nearest edges of the actual obstacles rather than pushing text through a dial.
+    for (const item of blockers) {
+      const box = bounds(item);
+      if (![box.x, box.y, box.w, box.h].every(Number.isFinite)) continue;
+      consider(mark.x - w / 2, box.y - h - 8);
+      consider(mark.x - w / 2, box.y + box.h + 8);
+      consider(box.x - w - 8, mark.y - h / 2);
+      consider(box.x + box.w + 8, mark.y - h / 2);
+    }
+    consider(8, 8); consider(vw - w - 8, 8);
+    consider(8, vh - h - 8); consider(vw - w - 8, vh - h - 8);
+    // Keep the mark and its accessible mass/denial read when a full-screen panel leaves no room.
+    return best || { ...clamp(candidates[0]), hidden: true };
   }
   const hx = hull.x + hull.w / 2;
   const hy = hull.y + hull.h / 2;
@@ -280,12 +309,46 @@ export function placeBracketWords(mark, hull, label, viewport) {
   });
 }
 
+const EMPTY_FLIGHT_OBSTACLES = Object.freeze([]);
+const BRACKET_WORD_MEASUREMENTS = new WeakMap();
+
+function bracketWordSize(element, text, viewport) {
+  const portraitTouch = typeof document !== 'undefined'
+    && document.documentElement?.dataset?.sfMobileFlight === '1' && viewport.h > viewport.w;
+  const limit = Math.max(94, Math.min(viewport.w - 16, portraitTouch ? 160 : Infinity));
+  const key = `${text}\u0000${limit}\u0000${element?.className || ''}`;
+  const previous = element && BRACKET_WORD_MEASUREMENTS.get(element);
+  if (previous?.key === key) return previous.size;
+  const estimated = estimateCaptionWidth(text);
+  if (element) {
+    if (element.textContent !== text) element.textContent = text;
+    setStyle(element, 'display', 'block');
+    setStyle(element, 'boxSizing', 'border-box');
+    setStyle(element, 'maxWidth', `${limit}px`);
+    setStyle(element, 'whiteSpace', 'normal');
+    setStyle(element, 'overflowWrap', 'anywhere');
+  }
+  // A new string/orientation is measured once; moving the world mark never forces a DOM read.
+  const rect = element?.getBoundingClientRect?.();
+  const size = {
+    w: rect?.width > 0 ? Math.min(limit, rect.width + 2) : Math.min(limit, estimated),
+    h: rect?.height > 0 ? rect.height + 2 : Math.max(30, Math.ceil(estimated / limit) * 16 + 14),
+  };
+  if (element) BRACKET_WORD_MEASUREMENTS.set(element, { key, size });
+  return size;
+}
+
 function playerHullScreenRect(player, w2s) {
   if (!player || !player.pos || typeof w2s !== 'function') return null;
   const screen = projectWorld(w2s, player.pos.x, player.pos.z);
   if (!screen || !Number.isFinite(screen.x) || !Number.isFinite(screen.y)) return null;
   const size = 64;
   return { x: screen.x - size / 2, y: screen.y - size / 2, w: size, h: size };
+}
+
+function placeHudBracketWords(owner, element, text, mark, player, w2s, viewport) {
+  return placeBracketWords(mark, playerHullScreenRect(player, w2s),
+    bracketWordSize(element, text, viewport), viewport, owner._flightTextObstacles);
 }
 
 // INF-013 — compact relative-mass interpretation for the acquisition readout: which body is
@@ -1108,6 +1171,8 @@ export const masslineHud = {
   init(ctx) {
     this.state = ctx.state;
     this.helpers = ctx.helpers;
+    this.registry = ctx.registry;
+    this._flightTextObstacles = EMPTY_FLIGHT_OBSTACLES;
     this._dom = null;
     this._cadenceReadout = null;
     this._lineLoad = null;
@@ -1222,6 +1287,8 @@ export const masslineHud = {
       this._dom.root.parentNode.removeChild(this._dom.root);
     }
     this._dom = null;
+    this.registry = null;
+    this._flightTextObstacles = EMPTY_FLIGHT_OBSTACLES;
     if (this.state) {
       this.state.masslineDenial = null;
       this.state.masslineReleaseVerdict = null;
@@ -1243,7 +1310,15 @@ export const masslineHud = {
     const ml2 = state.massline2 || EMPTY_HUD_OBJECT;
     // Winch heat can change while the other HUD mirrors remain byte-for-byte quiet.
     this._lineStrainReadout?.update(state, player, w2s);
-    if (masslineHudInputsUnchanged(state, player)) return;
+    let obstacles = EMPTY_FLIGHT_OBSTACLES;
+    try { obstacles = this.registry?.get?.('ui')?.hud?.getFlightTextObstacles?.() || obstacles; }
+    catch (_) { /* The optional presentation owner may be rebuilding. */ }
+    const layoutChanged = obstacles !== this._flightTextObstacles;
+    this._flightTextObstacles = obstacles;
+    if (masslineHudInputsUnchanged(state, player)) {
+      if (layoutChanged) this._updateAcquisitionPreview(dom, state, player, w2s);
+      return;
+    }
     const reducedMotion = !!(state.settings && state.settings.video && state.settings.video.motionReduce)
       || !!(state.settings && state.settings.accessibility
         && state.settings.accessibility.motionPreference === 'reduce');
@@ -1343,13 +1418,8 @@ export const masslineHud = {
     const massText = !seedPreview && ready ? massPreviewWord(target, playerMass) : '';
     const text = seedText || massText || bracketReadText(read);
     const paint = seedText || massText || bracketPaintText(read);
-    const captionWidth = estimateCaptionWidth(paint || text);
-    const placed = placeBracketWords(
-      { x: cueX, y: cueY },
-      playerHullScreenRect(player, w2s),
-      { w: captionWidth, h: 18 },
-      { w: viewportWidth, h: viewportHeight },
-    );
+    const placed = placeHudBracketWords(this, dom.previewEl, paint || text,
+      { x: cueX, y: cueY }, player, w2s, { w: viewportWidth, h: viewportHeight });
     const labelX = placed.x;
     const labelY = placed.y;
 
@@ -1366,7 +1436,7 @@ export const masslineHud = {
     setAttr(dom.previewMark, 'role', 'img');
     setAttr(dom.previewMark, 'aria-label', offscreen ? `${text}, offscreen` : text);
 
-    setStyle(dom.previewEl, 'display', paint ? 'block' : 'none');
+    setStyle(dom.previewEl, 'display', paint && !placed.hidden ? 'block' : 'none');
     setClass(dom.previewEl, 'ml2-preview-snare', false);
     setClass(dom.previewSvg, 'ml2-snare-preview', false);
     setClass(dom.previewSvg, 'ml2-bridle-preview', false);
@@ -1397,13 +1467,8 @@ export const masslineHud = {
     const cueX = pinned ? pinned.x : screen.x;
     const cueY = pinned ? pinned.y : screen.y;
     const text = masslineSeedPreviewText(preview);
-    const captionWidth = estimateCaptionWidth(text);
-    const placed = placeBracketWords(
-      { x: cueX, y: cueY },
-      playerHullScreenRect(player, w2s),
-      { w: captionWidth, h: 18 },
-      { w: viewportWidth, h: viewportHeight },
-    );
+    const placed = placeHudBracketWords(this, dom.previewEl, text,
+      { x: cueX, y: cueY }, player, w2s, { w: viewportWidth, h: viewportHeight });
     const holds = preview.isMassSeedTetherEligible === true;
     setStyle(dom.previewMark, 'display', 'block');
     setStyle(dom.previewSourceMark, 'display', 'none');
@@ -1420,7 +1485,7 @@ export const masslineHud = {
     setStyle(dom.previewSvg, 'display', 'none');
     setClass(dom.previewSvg, 'ml2-snare-preview', false);
     setClass(dom.previewSvg, 'ml2-bridle-preview', false);
-    setStyle(dom.previewEl, 'display', 'block');
+    setStyle(dom.previewEl, 'display', placed.hidden ? 'none' : 'block');
     setClass(dom.previewEl, 'ml2-preview-snare', false);
     setStyle(dom.previewEl, 'transform', `translate3d(${Math.round(placed.x)}px, ${Math.round(placed.y)}px, 0)`);
     if (dom.previewEl.textContent !== text) dom.previewEl.textContent = text;
@@ -1455,13 +1520,8 @@ export const masslineHud = {
     const read = resolveMasslineBracketRead('invalid', denial.reason);
     const text = bracketReadText(read);
     const paint = bracketPaintText(read);
-    const captionWidth = estimateCaptionWidth(paint || text);
-    const placed = placeBracketWords(
-      { x: cueX, y: cueY },
-      playerHullScreenRect(player, w2s),
-      { w: captionWidth, h: 18 },
-      { w: viewportWidth, h: viewportHeight },
-    );
+    const placed = placeHudBracketWords(this, dom.previewEl, paint || text,
+      { x: cueX, y: cueY }, player, w2s, { w: viewportWidth, h: viewportHeight });
     const labelX = placed.x;
     const labelY = placed.y;
     setStyle(dom.previewMark, 'display', denied ? 'block' : 'none');
@@ -1478,7 +1538,7 @@ export const masslineHud = {
     }
     setStyle(dom.previewSourceMark, 'display', 'none');
     setStyle(dom.previewSvg, 'display', 'none');
-    setStyle(dom.previewEl, 'display', 'block');
+    setStyle(dom.previewEl, 'display', placed.hidden ? 'none' : 'block');
     setClass(dom.previewEl, 'ml2-preview-snare', false);
     clearVerdictClasses(dom);
     setStyle(dom.previewEl, 'transform', `translate3d(${Math.round(labelX)}px, ${Math.round(labelY)}px, 0)`);
@@ -1519,13 +1579,8 @@ export const masslineHud = {
       : (VERDICT_GRADE_COPY[verdict.classification] ? verdict.classification : 'messy');
     const earned = !failed && (grade === 'razor' || grade === 'clean');
     const text = releaseVerdictCopy(verdict);
-    const captionWidth = estimateCaptionWidth(text);
-    const placed = placeBracketWords(
-      { x: cueX, y: cueY },
-      playerHullScreenRect(player, w2s),
-      { w: captionWidth, h: 18 },
-      { w: viewportWidth, h: viewportHeight },
-    );
+    const placed = placeHudBracketWords(this, dom.previewEl, text,
+      { x: cueX, y: cueY }, player, w2s, { w: viewportWidth, h: viewportHeight });
     setStyle(dom.previewMark, 'display', 'block');
     setStyle(dom.previewMark, 'transform', `translate3d(${Math.round(cueX)}px, ${Math.round(cueY)}px, 0)`);
     setClass(dom.previewMark, 'ml2-bridle-target', false);
@@ -1539,7 +1594,7 @@ export const masslineHud = {
     setAttr(dom.previewMark, 'aria-label', text);
     setStyle(dom.previewSourceMark, 'display', 'none');
     setStyle(dom.previewSvg, 'display', 'none');
-    setStyle(dom.previewEl, 'display', 'block');
+    setStyle(dom.previewEl, 'display', placed.hidden ? 'none' : 'block');
     setClass(dom.previewEl, 'ml2-preview-snare', false);
     setStyle(dom.previewEl, 'transform', `translate3d(${Math.round(placed.x)}px, ${Math.round(placed.y)}px, 0)`);
     if (dom.previewEl.textContent !== text) dom.previewEl.textContent = text;

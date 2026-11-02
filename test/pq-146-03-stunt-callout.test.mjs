@@ -16,6 +16,11 @@ import {
 import { stuntRoundRows, trickCountRows } from '../src/systems/survivalResults.js';
 import {
   CALLOUT_TTL_MS,
+  HUD_PRIORITY_CLEARANCE_PX,
+  OBJECTIVE_SELECTOR,
+  VITALS_SELECTOR,
+  TOUCH_STATUS_SELECTOR,
+  TOUCH_BUTTONS_SELECTOR,
   bankCalloutText,
   calloutNow,
   calloutTextFor,
@@ -365,7 +370,7 @@ test('the mount is node-inert and the singleton release is safe without a docume
   assert.doesNotThrow(() => releaseStuntCallout(), 'release is idempotent');
 });
 
-test('the callout column seats itself above the HUD speed dial it shares the left edge with', () => {
+test('the callout column chooses the nearest vertical band clear of the HUD speed dial', () => {
   const seat = (dialRect, stableLoadRect = null) => {
     const doc = fakeDocument();
     doc.defaultView = { innerHeight: 1080 };
@@ -385,13 +390,13 @@ test('the callout column seats itself above the HUD speed dial it shares the lef
     return bottom;
   };
   assert.equal(seat({ left: 18, right: 225, top: 607, bottom: 815, height: 208 }),
-    `max(32vh, ${1080 - 607 + SPEED_DIAL_CLEARANCE_PX}px)`,
-    'a dial under the column lifts it clear of the dial top');
+    `min(32vh, ${1080 - 815 - SPEED_DIAL_CLEARANCE_PX - 14}px)`,
+    'the nearest full-height band below the dial stays inside the viewport');
   assert.equal(seat({ left: 760, right: 960, top: 860, bottom: 1060, height: 200 }), '',
     'a dial elsewhere leaves the authored seat alone');
   assert.equal(seat({ left: 18, right: 225, top: 607, bottom: 815, height: 208 }, { left: 22, right: 160, top: 540, bottom: 556, height: 16 }),
-    `max(32vh, ${1080 - (540 - STABLE_LOAD_CLEARANCE_PX)}px)`,
-    'a showing STABLE LOAD line above the dial stacks the column above it too');
+    `min(32vh, ${1080 - 815 - SPEED_DIAL_CLEARANCE_PX - 14}px)`,
+    'stable-load and dial bands are both considered without forcing the callout offscreen');
 });
 
 test('a bottom-sheet decision card that rises under a showing column lifts it on the next line', () => {
@@ -411,6 +416,116 @@ test('a bottom-sheet decision card that rises under a showing column lifts it on
   assert.equal(owner.root.style.bottom, `max(32vh, ${844 - 420 + PROMPT_DECK_CLEARANCE_PX}px)`,
     'the column sits above the card instead of printing over its choices');
   owner.destroy();
+});
+
+test('the impact callout clears mission, vitals and touch controls and publishes geometry changes only', () => {
+  const doc = fakeDocument();
+  let onResize = null;
+  doc.defaultView = {
+    innerHeight: 844,
+    addEventListener(type, listener) { if (type === 'resize') onResize = listener; },
+    removeEventListener() {},
+  };
+  const rect = (top, left = 12, right = 180) => ({ left, right, top, bottom: top + 40, width: right - left, height: 40 });
+  let objectiveTop = 310;
+  const objective = { getBoundingClientRect: () => rect(objectiveTop) };
+  const vitals = { getBoundingClientRect: () => rect(460) };
+  const touchButtons = { getBoundingClientRect: () => rect(520) };
+  doc.querySelector = (selector) => ({
+    [OBJECTIVE_SELECTOR]: objective,
+    [VITALS_SELECTOR]: vitals,
+    [TOUCH_BUTTONS_SELECTOR]: touchButtons,
+  })[selector] || null;
+  const bus = fakeBus();
+  const geometryChanges = [];
+  const owner = createStuntCallout({
+    state: calloutState(createComboState()), bus, doc,
+    onFlightTextGeometryChange: () => geometryChanges.push(owner.root.style.bottom),
+  });
+  owner.root.getBoundingClientRect = () => {
+    const bottomPx = Number(owner.root.style.bottom?.match(/(\d+)px/)?.[1] || (844 * 0.32));
+    const top = 844 - bottomPx - 40;
+    return rect(top, 16, 134);
+  };
+  bus.emit('stunt:trickDetected', trickFor());
+  owner.update(0);
+  assert.equal(owner.root.style.bottom, `min(32vh, ${844 - (560 + HUD_PRIORITY_CLEARANCE_PX) - 40}px)`,
+    'the callout uses the nearest full-height band below the vertically overlapping controls');
+  assert.equal(geometryChanges.length, 1, 'the newly visible callout publishes one geometry change');
+
+  objectiveTop = 550;
+  onResize();
+  assert.equal(owner.root.style.bottom, `min(32vh, ${844 - (550 + 40 + HUD_PRIORITY_CLEARANCE_PX) - 40}px)`,
+    'a viewport resize recomputes the nearest band even inside the ordinary seat throttle window');
+  assert.equal(geometryChanges.length, 2, 'the changed placement publishes one coalesced geometry notification');
+
+  bus.emit('stunt:trickDetected', trickFor({ episodeId: 'ep2' }));
+  owner.update(1);
+  assert.equal(geometryChanges.length, 2, 'a new receipt with unchanged bounds does not notify layout consumers');
+  owner.destroy();
+  assert.equal(geometryChanges.length, 3, 'hiding the callout publishes the removal once');
+});
+
+test('portrait stunt placement stays in the nearest clear band and defers when none fits', () => {
+  const doc = fakeDocument();
+  let onResize = null;
+  const view = {
+    innerHeight: 664,
+    addEventListener(type, listener) { if (type === 'resize') onResize = listener; },
+    removeEventListener() {},
+  };
+  doc.defaultView = view;
+  const status = { left: 12, right: 220, top: 14, bottom: 138, width: 208, height: 124 };
+  const objective = { left: 12, right: 280, top: 244, bottom: 301, width: 268, height: 57 };
+  const buttons = { left: 250, right: 380, top: 490, bottom: 646, width: 130, height: 156 };
+  const bySelector = {
+    [TOUCH_STATUS_SELECTOR]: status,
+    [OBJECTIVE_SELECTOR]: objective,
+    [TOUCH_BUTTONS_SELECTOR]: buttons,
+  };
+  doc.querySelector = (selector) => {
+    const box = bySelector[selector];
+    return box ? { getBoundingClientRect: () => box } : null;
+  };
+  const bus = fakeBus();
+  const mounted = createStuntCallout({ state: calloutState(createComboState()), bus, doc });
+  mounted.root.getBoundingClientRect = () => {
+    const rawBottom = mounted.root.style.bottom?.match(/(\d+)px/)?.[1];
+    const bottom = rawBottom == null ? view.innerHeight * 0.32 : Number(rawBottom);
+    const top = view.innerHeight - bottom - 70;
+    return { left: 16, right: 300, top, bottom: top + 70, width: 284, height: 70 };
+  };
+  try {
+    bus.emit('stunt:trickDetected', trickFor());
+    mounted.update(0);
+    let box = mounted.root.getBoundingClientRect();
+    assert.ok(box.top >= status.bottom, `callout starts below touch status: ${JSON.stringify(box)}`);
+    assert.ok(box.top >= objective.bottom, `callout starts below objective: ${JSON.stringify(box)}`);
+    assert.ok(box.bottom <= buttons.top, `callout ends above touch buttons: ${JSON.stringify(box)}`);
+    assert.ok(box.top >= 0 && box.bottom <= view.innerHeight, 'the whole callout remains onscreen');
+    assert.notEqual(mounted.root.style.opacity, '0', 'the full-height free band keeps the callout visible');
+
+    view.innerHeight = 220;
+    objective.top = 145; objective.bottom = 175; objective.height = 30;
+    buttons.top = 180; buttons.bottom = 220; buttons.height = 40;
+    onResize();
+    assert.equal(mounted.root.hidden, false, 'the timed callout remains live while its visual seat is full');
+    assert.equal(mounted.root.style.opacity, '0', 'no full-height band defers only the visual callout');
+    assert.match(calloutTextFor(mounted.root), /Wrecking Ball/, 'the existing receipt and live text remain intact');
+
+    view.innerHeight = 664;
+    objective.top = 244; objective.bottom = 301; objective.height = 57;
+    buttons.top = 490; buttons.bottom = 646; buttons.height = 156;
+    bus.emit('hud:layoutChanged', { key: 'objective' });
+    box = mounted.root.getBoundingClientRect();
+    assert.notEqual(mounted.root.style.opacity, '0', 'the callout reappears when a band opens before expiry');
+    assert.ok(box.top >= objective.bottom && box.bottom <= buttons.top,
+      `recovered callout remains between objective and controls: ${JSON.stringify(box)}`);
+    mounted.update(calloutNow() + CALLOUT_TTL_MS + 1);
+    assert.equal(mounted.root.hidden, true, 'deferral did not restart the original expiry');
+  } finally {
+    mounted.destroy();
+  }
 });
 
 test('worker event bursts coalesce callout layout reads to one pre-paint seat', () => {
@@ -447,8 +562,8 @@ test('worker event bursts coalesce callout layout reads to one pre-paint seat', 
   assert.equal(selectorReads, 0, 'receipt handling writes feedback without forcing layout reads');
   assert.equal(pending.length, 1, 'multiple receipts schedule only one seat for the upcoming paint');
   pending.shift()(calloutNow());
-  assert.equal(selectorReads, 3, 'the coalesced callback reads the obstacle set once');
-  assert.equal(rectReads, 2, 'only the column and newly-present card are measured');
+  assert.equal(selectorReads, 11, 'the coalesced callback reads the HUD and touch obstacle set once');
+  assert.equal(rectReads, 3, 'the column is measured before and after placement plus the new card');
   assert.equal(owner.root.style.bottom, `max(32vh, ${844 - 420 + PROMPT_DECK_CLEARANCE_PX}px)`,
     'the latest card position still protects the callout from covering choices');
 

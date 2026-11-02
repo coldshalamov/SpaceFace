@@ -7,7 +7,7 @@
 import { hash32 } from '../core/rng.js';
 import { weatherForecast } from '../data/seasonalWeather.js';
 import { WEATHER_SECTOR_IDS } from '../data/environmentalMachinery.js';
-import { localizeText } from '../localization/gameLocalization.js';
+import { localizeText } from '../localization/sourceText.js';
 import { entityIndexLaneVersion } from '../world/livingWorldViews.js';
 import { conflictPressureForSector } from '../data/conflictZones.js';
 import {

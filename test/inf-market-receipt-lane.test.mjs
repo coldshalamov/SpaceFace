@@ -54,6 +54,6 @@ test('the collision resolver stays anchored to the receipt, not the viewport, fo
   // anchor stays correct for every lane that resolves against the foot.
   assert.ok(STATION_APP.includes("receiptEl.style.setProperty('bottom', 'calc(100% + 10px)', 'important')"),
     'the above-the-rail anchor is unchanged for anchored lanes');
-  assert.ok(STATION_APP.includes('const guards = [launchEl, commsToggle, helpEl, dock.el];'),
-    'the resolver still guards the dock words and UNDOCK');
+  assert.ok(STATION_APP.includes('stationReceiptOverlapsControls(r, guards)'),
+    'the resolver checks the measured receipt against individual dock words and actions');
 });

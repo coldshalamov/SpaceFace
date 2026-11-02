@@ -1,5 +1,5 @@
 import { captionForGameplayRecipe, formatCaptionText, isUiBlipRecipe } from '../ui/captions.js';
-import { gameLocalization, localizeText } from '../localization/gameLocalization.js';
+import { currentGameLocale, localizeText } from '../localization/sourceText.js';
 
 // These sounds already have a receipt/voice-owned caption. Their semantic owner also
 // works when the sound is muted, and keeps physical flashes out of the visible floor.
@@ -16,7 +16,7 @@ export function localizedCaptionText(text, clock) {
   // English stays on the cheap literal path; other languages use the same reviewed
   // phrase/catalog pipeline as the rest of the interface, including its preview rules.
   const bearing = Number.isInteger(clock) && clock >= 1 && clock <= 12 ? clock : undefined;
-  return formatCaptionText(text, bearing, gameLocalization.locale === 'en-US' ? undefined : localizeText);
+  return formatCaptionText(text, bearing, currentGameLocale() === 'en-US' ? undefined : localizeText);
 }
 
 export function emitAdmittedRecipeCaption(owner, recipeId, recipe, opts, busName) {
