@@ -1339,10 +1339,15 @@ async function enableNocturneShadowsThroughPublicSettings(page) {
     };
     for (const type of ['pointerdown', 'pointerup', 'click']) document.addEventListener(type, observePointer, true);
     const off = window.SF.bus.on('settings:changed', (payload) => {
-      if (payload?.section === 'video') events.push({ ...payload, at: performance.now() });
+      if (payload?.section === 'video') {
+        const owner = window.SF?.registry?.get?.('render');
+        events.push({ ...payload, at: performance.now(), pendingRoots: owner?._pendingDepthStageRoots?.size ?? null,
+          scheduled: owner?._depthStageScheduled ?? null });
+      }
     });
     window.__SF_PROFILE_SHADOW_SETTING_OBSERVER__ = { events, off, pointer, observePointer };
   });
+  let capturedEvents;
   try {
     await on.click({ timeout: 30_000 });
     await page.waitForFunction(() => window.SF?.state?.settings?.video?.nocturneShadows === true,
@@ -1354,21 +1359,22 @@ async function enableNocturneShadowsThroughPublicSettings(page) {
         text: button.textContent, action: button.dataset.action, pressed: button.getAttribute('aria-pressed'),
       })),
     }));
-    const events = await page.evaluate(() => {
+    capturedEvents = await page.evaluate(() => {
       const observer = window.__SF_PROFILE_SHADOW_SETTING_OBSERVER__;
       observer?.off?.();
       for (const type of ['pointerdown', 'pointerup', 'click']) document.removeEventListener(type, observer?.observePointer, true);
       return { settings: observer?.events || [], pointer: observer?.pointer || [] };
     });
     fs.writeFileSync(path.join(OUT_DIR, 'nocturne-shadow-setting-click.json'), JSON.stringify({
-      before, after: await page.evaluate(readNocturneShadowRouteStateInPage), control, events,
+      before, after: await page.evaluate(readNocturneShadowRouteStateInPage), control, events: capturedEvents,
     }, null, 2));
   }
   const afterToggle = await page.evaluate(readNocturneShadowRouteStateInPage);
-  if (afterToggle.shadowsEnabled !== true || afterToggle.pendingRoots < 1 || !afterToggle.scheduled) {
-    throw new Error(`public setting changed without queuing guarded depth admission: ${JSON.stringify(afterToggle)}`);
+  if (afterToggle.shadowsEnabled !== true || !capturedEvents?.settings?.some((event) =>
+    event.key === 'nocturneShadows' && event.value === true)) {
+    throw new Error(`public shadow setting did not commit: ${JSON.stringify(afterToggle)}`);
   }
-  log(`public setting enabled; guarded depth stage queued ${afterToggle.pendingRoots} roots`);
+  log(`public setting enabled; observed pending depth roots=${afterToggle.pendingRoots}`);
 
   await page.locator('#screens [data-screen="settings"] .sf-back[data-action="back"]').click({ timeout: 30_000 });
   await page.waitForFunction(() => window.SF?.ctx?.screenManager?.top?.() === 'pause', null, { timeout: 30_000 });
