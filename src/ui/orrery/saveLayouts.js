@@ -340,6 +340,11 @@ html:root:not([data-sf-mobile="1"]) ${SLD} .sf-ledger-line { grid-template-colum
 @media (min-width:791px) and (min-height:461px) and (max-height:560px) {
   html:root:not([data-sf-mobile="1"]) ${SLD} { padding-top:clamp(20px, 4.4vh, 26px) !important; row-gap:8px !important; }
 }
+/* ui-polish-303: 1200–1279 wide up to 560 tall (1200×560) the reading column is ~365px and the actions' 30px
+   tracked gap pushed DELETE onto its own line under LOAD. The three keys close up to a 16px gap and hold one row. */
+@media (min-width:1200px) and (max-width:1279px) and (max-height:560px) {
+  html:root:not([data-sf-mobile="1"]) ${SLD} .sf-save-actions > .k-words { column-gap:16px !important; }
+}
 /* ui-polish-97: 791–860 in the short band, QUICK's CURRENT badge (~64px) ran past its ~62px station into SLOT 1
    and its credits (closing its tracking was not enough). The badge steps aside there: the reading's context line
    carries it ("QUICK SAVE · CURRENT · …"). */
