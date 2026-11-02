@@ -7632,6 +7632,21 @@ export function compilePipelineSubject(tracker, subject, options = {}, urgent = 
   return tracker.compile(subject, options);
 }
 
+/** Only a typed, empty retired pool with a still-live caller proves an expected cancellation. */
+export function isRetiredPackagePoolResidencyOwner(snapshot) {
+  if (snapshot?.ownerType !== 'authored-boundary' || snapshot.entityStillRequired !== false
+    || snapshot.nestedAdmissionOwnerActive !== false) return false;
+  for (const gate of ['entityAlive', 'entityIsCurrent', 'boundaryAttached', 'renderMatches',
+    'rendererMatches', 'admissionGenerationMatches', 'contextLossGenerationMatches', 'portMatches']) {
+    if (snapshot[gate] !== true) return false;
+  }
+  const nested = snapshot.nestedAdmissionOwner;
+  return nested?.ownerType === 'render-package-pool-admission'
+    && nested.cancelled === true && nested.requestedOwnerActive === true
+    && nested.liveSlotCount === 0 && nested.liveOwnerCount === 0
+    && (nested.poolRetiring === true || nested.chunkRetired === true);
+}
+
 export function preparePipelineSubjectResidency(tracker, subject, admissionOptions = {}, urgent = false) {
   const ownerKey = admissionOptions.ownerKey
     ?? admissionOptions.isActive?.ownerKey
@@ -11725,6 +11740,10 @@ export const render = {
           } else if (supersededAuthoredBoundaryAfterTransition) {
             console.info(
               `[render] authored GPU residency cancelled after transition for boundary ${String(ownerSnapshot.entityId ?? 'unknown')}`,
+            );
+          } else if (isRetiredPackagePoolResidencyOwner(ownerSnapshot)) {
+            console.info(
+              `[render] authored GPU residency cancelled for retired package pool at boundary ${String(ownerSnapshot.entityId ?? 'unknown')}`,
             );
           } else {
             // DevTools' preview truncates nested owner gates. Keep their primitive snapshot
