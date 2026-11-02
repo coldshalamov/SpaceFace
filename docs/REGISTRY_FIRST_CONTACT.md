@@ -65,3 +65,27 @@ the marked vessel, scan, and separately verify custody and force routes without
 an erroneous delivery instruction. Asset review stays with SF-ASSET-QUALITY;
 local agents retain model production. Prior PR724/Ceres and legacy handoffs remain
 separate, with their acceptance gaps intact.
+
+## Scanner contact repair found during integration
+
+The exact candidate CI exposed a real Hail interaction crash, not merely a stale
+visual baseline. `scanner._chooseContactHail` calls `isPlayerWanted` when constructing
+lawful contact choices, but the refactored scanner no longer imported that helper.
+`scannerReadModel` had its own module-local import, which cannot bind the caller in
+scanner. The one-line repair restores scanner's import from the existing heat owner.
+No wanted threshold, incident-specific authority, custody rule or contact choice is
+changed. The player can receive the already-authored response instead of a
+ReferenceError interrupting the interaction.
+
+With exact current scanner, scannerReadModel and heat substituted, the unmodified
+public contact-Hail test suite reproduces eight missing-binding failures before the
+repair (13/21 pass) and passes 21/21 afterward. Root independently repeated the patched
+run. Cases cover clean HOLD FIRE, wanted and incident-specific WEAPONS AUTHORIZED,
+civilian contact and authority immutability. Other dependencies remain the materialized
+local versions. The wider native Anvil subprocess fixtures were unavailable locally;
+its CI Hail routes remain a separate required verification, not a claimed local pass.
+
+The old shared scanner already had the import and is preserved. Publication uses
+the exact current remote scanner plus only this missing import; no obsolete shared
+scanner implementation is substituted. No new regression fixture or golden change
+was needed because the existing tests already cover the public request/choice/reply.
