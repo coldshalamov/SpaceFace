@@ -170,10 +170,6 @@ const SCREEN_MODULES = [
   { path: './screens/localmap.js', load: () => import('./screens/localmap.js'), name: 'localmapScreen' },
   { path: './screens/techTree.js', load: () => import('./screens/techTree.js'), name: 'techTreeScreen' },
   { path: './screens/automationPanel.js', load: () => import('./screens/automationPanel.js'), name: 'automationScreen' },
-  // Asteroid works: the drill lens grown into the site-engineering surface (screen id stays
-  // 'drill'; src/ui/asteroid/ supersedes screens/drill.js as the live module — that file remains
-  // for its exported input-controller/particle helpers and checks, like stationHub before it).
-  { path: './asteroid/asteroidScreen.js', load: () => import('./asteroid/asteroidScreen.js'), name: 'asteroidScreen' },
   { path: './screens/base.js', load: () => import('./screens/base.js'), name: 'baseScreen' },
   { path: './screens/mainMenu.js', load: () => import('./screens/mainMenu.js'), name: 'mainMenuScreen' },
   { path: './screens/motionAsk.js', load: () => import('./screens/motionAsk.js'), name: 'motionAskScreen' },
@@ -214,6 +210,11 @@ const STATION_SCREEN_MODULE = {
   path: './station/stationScreen.js',
   load: () => import('./station/stationScreen.js'),
   name: 'stationScreen',
+};
+const DRILL_SCREEN_MODULE = {
+  path: './asteroid/asteroidScreen.js',
+  load: () => import('./asteroid/asteroidScreen.js'),
+  name: 'asteroidScreen',
 };
 
 // Title / pause / death must win the first parse wave. Galaxy map and shipworks are huge modules;
@@ -732,6 +733,7 @@ export const ui = {
     this._screenRegistrationCycle = beginScreenRegistrationCycle(this, this.screenManager);
     this._screenPrewarmQueue = [];
     this._stationScreenRegistration = null;
+    this._drillScreenRegistration = null;
 
     // J5 "everything is a link": ONE delegated handler on #screens turns every [data-entity] into a
     // door onto that entity's dossier. Mounted after the screen manager because it reads which
@@ -1604,9 +1606,11 @@ export const ui = {
 
     this.bus.on('drill:approachStarted', ({ asteroidId, attachmentId }) => {
       if (asteroidId == null || attachmentId == null) return;
+      if (this._pendingScreenRetry?.id === 'drill') this._cancelPendingScreenRetry();
       activeDrillApproach = { asteroidId, attachmentId };
       laneInputWrite(this.state, 'input.blocked', true);
       showDockFade('drill');
+      this._ensureDrillScreenRegistered().catch(() => {});
 
       const camCtrl = this.state.render && this.state.render.cameraCtrl;
       if (camCtrl && typeof camCtrl.pushZoom === 'function') camCtrl.pushZoom(-0.45, 1.2);
@@ -1616,11 +1620,17 @@ export const ui = {
     this.bus.on('drill:approachCompleted', (payload) => {
       if (!sameDrillApproach(payload)) return;
       activeDrillApproach = null;
-      laneInputWrite(this.state, 'input.blocked', false);
       if (!this.state.ui) this.state.ui = {};
       this.state.ui.pendingDrillAsteroidId = payload.asteroidId;
-      this._pushScreenWhenRegistered('drill', 200);
-      setTimeout(() => hideDockFade('drill'), 50);
+      const settle = (opened) => {
+        if (!opened && this.state.ui?.pendingDrillAsteroidId === payload.asteroidId) {
+          this.state.ui.pendingDrillAsteroidId = null;
+          this.bus.emit('toast', { text: 'Drill controls unavailable. Try again.', kind: 'warn', ttl: 4 });
+        }
+        laneInputWrite(this.state, 'input.blocked', false);
+        hideDockFade('drill');
+      };
+      this._pushScreenWhenRegistered('drill', 200, { onSettled: settle });
     });
 
     this.bus.on('drill:approachCancelled', (payload) => {
@@ -1865,10 +1875,11 @@ export const ui = {
     if (pending.timerId != null) clearTimeout(pending.timerId);
     pending.timerId = null;
     if (this._pendingScreenRetry === pending) this._pendingScreenRetry = null;
+    pending.onSettled?.(false);
     return true;
   },
 
-  _pushScreenWhenRegistered(id, maxAttempts = 60) {
+  _pushScreenWhenRegistered(id, maxAttempts = 60, options = {}) {
     this._cancelPendingScreenRetry();
     const registrationCycle = this._screenRegistrationCycle;
     const screenManager = this.screenManager;
@@ -1881,29 +1892,33 @@ export const ui = {
       isLive: (owner) => screenPushRequestIsLive(owner, id),
       timerId: null,
       cancelled: false,
+      onSettled: options.onSettled,
     };
     this._screenRetryToken = request.token;
     this._pendingScreenRetry = request;
-    const finish = () => {
+    const finish = (opened) => {
       request.timerId = null;
       if (this._pendingScreenRetry === request) this._pendingScreenRetry = null;
+      request.onSettled?.(opened);
     };
     const tryOpen = (attempts) => {
       if (!isCurrentScreenPushRequest(this, request)) {
         request.cancelled = true;
         if (this._pendingScreenRetry === request) this._pendingScreenRetry = null;
+        request.onSettled?.(false);
         return;
       }
       if (this._registeredScreens && this._registeredScreens.has(id)) {
-        finish();
-        if (screenManager && typeof screenManager.top === 'function' && screenManager.top() === id) return;
-        try { screenManager.pushScreen(id); } catch (e) { console.error(`[ui] open ${id}`, e); }
+        try {
+          if (!(screenManager && typeof screenManager.top === 'function' && screenManager.top() === id)) screenManager.pushScreen(id);
+          finish(typeof screenManager.top !== 'function' || screenManager.top() === id);
+        } catch (e) { console.error(`[ui] open ${id}`, e); finish(false); }
         return;
       }
       if (id === 'station' && typeof this._ensureStationScreenRegistered === 'function') {
         this._ensureStationScreenRegistered();
       }
-      if (attempts > maxAttempts) { finish(); console.warn(`[ui] ${id} screen never registered`); return; }
+      if (attempts > maxAttempts) { finish(false); console.warn(`[ui] ${id} screen never registered`); return; }
       request.timerId = setTimeout(() => {
         request.timerId = null;
         tryOpen(attempts + 1);
@@ -1940,6 +1955,27 @@ export const ui = {
         throw error;
       });
     this._stationScreenRegistration = record;
+    return record.promise;
+  },
+
+  _ensureDrillScreenRegistered() {
+    const registrationCycle = this._screenRegistrationCycle;
+    if (this._registeredScreens?.has('drill')) return Promise.resolve(true);
+    if (!isScreenRegistrationCycleCurrent(registrationCycle)
+      || typeof this._registerScreenEntry !== 'function') return Promise.resolve(false);
+    const generation = registrationCycle.generation;
+    const existing = this._drillScreenRegistration;
+    if (existing?.generation === generation) return existing.promise;
+    const record = { generation, promise: null };
+    const clearFailedRegistration = () => {
+      if (this._drillScreenRegistration === record && this._screenRegistrationCycle === registrationCycle
+        && isScreenRegistrationCycleCurrent(registrationCycle) && !this._registeredScreens?.has('drill')) {
+        this._drillScreenRegistration = null;
+      }
+    };
+    record.promise = Promise.resolve().then(() => this._registerScreenEntry(DRILL_SCREEN_MODULE))
+      .then(value => { clearFailedRegistration(); return value; }, error => { clearFailedRegistration(); throw error; });
+    this._drillScreenRegistration = record;
     return record.promise;
   },
 
@@ -2036,6 +2072,7 @@ export const ui = {
     this._screenRegistrationCycle = null;
     this._screenRegistrationSettledGeneration = null;
     this._stationScreenRegistration = null;
+    this._drillScreenRegistration = null;
     this._registerScreenEntry = null;
     if (this.input && typeof this.input.dispose === 'function') this.input.dispose();
     this.input = null;
