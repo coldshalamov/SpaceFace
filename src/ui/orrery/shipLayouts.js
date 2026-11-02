@@ -95,6 +95,9 @@ ${W} .sx-sw-rack .sx-sw-band__label .k-38 { display:block; margin-top:2px; }
 /* Compact flight: the nameplate is in the main flow above a full-width projection stage.
    The stage keeps real room for hull and labels; the main column scrolls to its lower readings. */
 @media (max-width:1500px) and (max-height:800px) {
+  /* A left callout translates by its own width; an inline box around block text has zero width. */
+  ${W} .sx-sw__slotfield:not(.is-board) .sx-hardpoint__copy { display:block !important; width:max-content !important; }
+  ${W} .sx-sw__stage > .sx-sw__camera { top:4px !important; bottom:auto !important; display:flex !important; flex-direction:row !important; }
   ${W} .sx-sw__main { display:flex !important; flex-direction:column !important; gap:8px !important;
     min-height:0 !important; overflow-y:auto !important; overflow-x:hidden !important; }
   ${W} .sx-sw__main > .sx-sw__nameplate { position:relative !important; inset:auto !important; flex:none !important;

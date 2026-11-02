@@ -111,6 +111,8 @@ export const MOBILE_FLIGHT_LAYOUT_CSS = `
   ${FLIGHT} .sf-tutorial-flight-card { top:calc(178px + var(--sf-safe-top,0px))!important; }
   ${FLIGHT} #hud > .sf-leftcontext { top:calc(236px + var(--sf-safe-top,0px))!important; }
   ${FLIGHT} #sf-touch-overlay .mf-speed { flex-wrap:wrap; row-gap:2px; }
+  /* The two-line flight hint must clear the bottom safe edge on short portrait screens. */
+  ${FLIGHT} #sf-touch-overlay .mf-ghost-label { top:82px; }
   ${FLIGHT} #toasts,
   ${FLIGHT}[data-sf-mobile-lefty="1"] #toasts {
     left:calc(14px + var(--sf-safe-left,0px))!important; right:auto!important;

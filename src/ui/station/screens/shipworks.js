@@ -1360,7 +1360,9 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       // Shipworks is direct manipulation: the settled ship does not burn a render loop merely to
       // prove it is alive. Drag, zoom, selection and authored-asset upgrades render on demand.
       mount.show(defId, { fittings: fittings || [], isPlayer: !!isPlayer, rotating: false, preserveView, appearance: appearance || null });
-      if (!preserveView) mount.setZoom(1.68);
+      // Keep room for both columns after the authored 3D hull replaces its poster on a compact
+      // flight stage. The normal preview keeps its existing closer framing.
+      if (!preserveView) mount.setZoom(host === 'flight' && compactFlightNameplate.matches ? 1 : 1.68);
       mount.setActive(true);
       mount.resize();
       const state = mount.getAssetState ? mount.getAssetState() : 'rendered';
