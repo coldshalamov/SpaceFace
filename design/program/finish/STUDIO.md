@@ -9,11 +9,11 @@ boards remain the product backlog; this document describes how the team executes
 | Department | Responsibility | Current concrete work |
 |---|---|---|
 | Direction and integration | Select the next material outcome, resolve contradictory intent, integrate and publish coherent changes | Whole-game checklist, PR reconciliation, startup and recovery, final build-map/history review |
-| Gameplay and physics | Movement, collision, combat, tools, progression and their single writers | Hull-footprint inertia; public recovery buoy targeting, winching and paid delivery |
+| Gameplay and physics | Movement, collision, combat, tools, progression and their single writers | Ordinary mining usability; Ceres tow collision and return completion |
 | Technical art and assets | Source/release identity, physical envelopes, materials, LOD, authored appearance and runtime cost | Deterministic asset-physics inventory, then ranked asset batches and inspected fixes |
-| Interface and game feel | Screen composition, input, feedback, accessibility and visual iteration | Fitted ship callouts, compact trading, mobile HUD, prompt coordination |
-| Platforms and release | Deployed browser, iPhone/WebKit, desktop packaging, performance and recovery | Sol owns the deployed iPhone blocker through diagnosis, staged deployment and relevant recheck |
-| Tools and production support | Compact context packets, ownership, asset sharding, repeatable local iteration and useful failure reports | Existing agent runner/loop plus Finish factory packets and operational leases |
+| Interface and game feel | Screen composition, input, feedback, accessibility and visual iteration | Chart-label placement, mining entry feedback, responsive capture and mobile world visibility |
+| Platforms and release | Deployed browser, iPhone/WebKit, desktop packaging, performance and recovery | D6 render-owner diagnostic candidate; public alias remains C9 while changed-WebKit diagnosis continues |
+| Tools and production support | Compact context packets, ownership, asset sharding, repeatable local iteration and useful failure reports | Repaired `agent-run` shim resolution and five scoped Finish factory packets |
 
 These are responsibilities, not permanent locks on every file in a department. Exact current
 write sets and actual work determine ownership.
@@ -71,15 +71,17 @@ Readonly asset analysis may share inputs. Mutation workers must have disjoint wr
 live GPU experiments have one current owner. Workers return candidates; the controller decides
 integration and acceptance.
 
-The native tool currently permits three workers alongside the controller. Keep those slots useful
-across mobile, interface, gameplay/assets and successive waves. Large data jobs can be sharded
-independently of model concurrency. Additional LLM capacity must be verified before dispatch:
-the November 2 standalone CLI canary rejected `gpt-6-luna` for its ChatGPT-account backend despite
-the desktop model catalog listing it. That route is blocked; no alternate model/account is silently
-substituted and no additional worker is claimed to be running.
+The native tool's three-worker cap applies to that tool, not to every factory channel. Five scoped
+Codex CLI workers have also been launched through the existing `agent-run` path for chart labels,
+mining entry UX, responsive capture, changed-WebKit world visibility and retention. Their packets
+and logs are under `.devshots/finish/integration-2026-11-02/terminal-factory/`; a launch or focused
+check does not establish player-route acceptance. The `agent-run` Windows npm-shim fallback was
+fixed in `6a51a4aaf563`. Use `followup_task` for actionable assignments; `send_message` is for FYI
+handoffs.
 
 Every returned packet records its actual source/input identity, changed paths, direct checks,
 artifacts and material remaining work. Keep context compact enough for another worker to act on it.
 Blocked provider/device access is recorded honestly while independent game work continues. The
-five additional ChatGPT Pro creation jobs retain their original provider requirement and remain
-unsent while the intended Pro account is usage-locked until November 4; do not substitute Work.
+Five separate ChatGPT Pro creation briefs retain their original provider requirement and remain
+unsent while the intended Pro account is usage-locked until November 4. The factory CLI workers do
+not replace those briefs; do not substitute Work or another provider for them.
