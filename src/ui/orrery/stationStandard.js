@@ -243,6 +243,32 @@ ${P} .sxb-launch__label { font-family:${TITLE} !important; letter-spacing:.04em 
 @media (max-width:580px) {
   ${P} .sxb-ops .sxb-help > span { display:inline !important; }
 }
+/* 901–1199 wide (641+ tall under 1101): the seven tabs (~850px at this sheet's 14px key padding) were capped at 58–64vw and shrunk
+   further by flex, so LEDGER (and at 901–1100 BAR, at 901–960 even FACTIONS) ran on under COMMS · HELP and UNDOCK, which
+   took their clicks: a click on LEDGER at 1101×720 opened Help. The keys close up (6px padding, 6px gaps), COMMS drops its
+   48px lead, and the rail keeps its words' width: rail, COMMS · HELP and UNDOCK stand on one row, and
+   where they cannot, the keys step down a row instead of standing on the tabs. (901–1100 × 461–640 already gives the
+   rail its own row, above.) */
+@media (min-width:901px) and (max-width:1100px) and (min-height:641px), (min-width:1101px) and (max-width:1199px) and (min-height:461px) {
+  ${P} .sxb-ops { flex-wrap:wrap !important; column-gap:12px !important; row-gap:4px !important; }
+  ${P} .sxb-ops > .of-facility-rail { flex:0 0 auto !important; min-width:max-content !important; max-width:none !important; }
+  ${P} .sxb-ops .sx-dock__group--nav { gap:0 6px !important; }
+  ${P} .sxb-ops .sx-dock :is(button, a) { padding-left:6px !important; padding-right:6px !important; }
+  ${P} .sxb-ops > .sx-comms { margin-left:0 !important; }
+}
+/* …and under 1080 the tab glyphs step aside (the words still name each tab), so the foot keeps one row down to ~960 and
+   the Market's Buy key keeps its place above it */
+@media (min-width:901px) and (max-width:1079px) and (min-height:641px) {
+  ${P} .sxb-ops .sx-tile .dust-tab-glyph { display:none !important; }
+}
+/* …and at 901–959 the row is still ~45px over (rail 559 + COMMS · HELP 137 + UNDOCK 161 + gaps against an 837px foot), so the
+   foot wrapped to two rows and the Market panel lost a row: its Buy key and price dial fell under the foot. The keys close
+   up again (3px padding, 4px gaps) and the foot keeps one row to 901 and down to the band's 641px-tall edge. */
+@media (min-width:901px) and (max-width:959px) and (min-height:641px) {
+  ${P} .sxb-ops { column-gap:6px !important; }
+  ${P} .sxb-ops .sx-dock__group--nav { gap:0 4px !important; }
+  ${P} .sxb-ops .sx-dock :is(button, a) { padding-left:3px !important; padding-right:3px !important; }
+}
 ${P} .sxb-launch__state { font-family:${UI} !important; font-size:13px !important; letter-spacing:.02em !important; }
 
 /* ==== MARKET ================================================================================ */
