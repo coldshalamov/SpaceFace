@@ -3830,6 +3830,8 @@ test('anchor collision diagnostics count only accepted public keydown edges', as
         assert.equal(error.ceresAnchorCollisionDiagnostic?.brakePulses, 0);
         assert.equal(error.ceresAnchorCollisionDiagnostic?.boostPulses, 0);
         assert.equal(error.ceresAnchorCollisionDiagnostic?.lastAction, null);
+        assert.equal(error.ceresAnchorCollisionDiagnostic?.decisionTail.at(-1)?.reason, label);
+        assert.equal(error.ceresAnchorCollisionDiagnostic?.decisionTail.at(-1)?.tick, 1_000);
         return true;
       },
       `${label} rejected-keydown diagnostic`,

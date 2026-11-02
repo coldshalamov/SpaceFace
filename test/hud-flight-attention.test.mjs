@@ -141,6 +141,7 @@ function installSectorLawDom() {
     }
     setAttribute(k, v) { this.attributes.set(k, String(v)); }
     getAttribute(k) { return this.attributes.has(k) ? this.attributes.get(k) : null; }
+    removeAttribute(k) { this.attributes.delete(k); }
     appendChild(child) {
       if (child.parentNode) child.parentNode.removeChild(child);
       child.parentNode = this;
@@ -169,6 +170,7 @@ function installSectorLawDom() {
     getElementById: (id) => byId.get(id) || null,
     createElement: (tag) => new FakeElement(tag),
     querySelector: () => null,
+    documentElement: { dataset: {} },
     head,
     body: { dataset: {} },
     activeElement: null,
@@ -425,6 +427,7 @@ test('caption bands reserve sibling touch controls and refresh only their layout
     window: { innerWidth: 390 },
     objectiveEdgeObstacles: () => ({}),
     externalFlightCaptions: new Set(),
+    yieldedFlightVisuals: new Map(),
     responsiveOverlayElements: new Set(),
     overlayLayoutObserver: {
       observe: (el) => { observed.add(el); observeCalls++; },
@@ -543,6 +546,8 @@ test('natural mobile discovery geometry chooses the opposite thumb lane and wait
       responsiveOverlayObstacles: () => { geometryReads++; return [thumb, status, pause, powers, tape]; },
       externalFlightCaptions: new Set([discovery]),
       externalCaptionOpacity: new Map([[discovery, '']]),
+      yieldedFlightVisuals: new Map(),
+      restoreYieldedFlightVisuals() {},
       externalCaptionsStale: true,
     };
     const { placeExternalFlightCaptions, clearExternalFlightCaptionPlacement,
@@ -594,6 +599,43 @@ test('natural mobile discovery geometry chooses the opposite thumb lane and wait
     assert.equal(discovery.style.opacity, '', 'unregistering a waiting discovery restores paint ownership');
     assert.equal(context.externalCaptionOpacity.has(discovery), false);
   }
+});
+
+test('critical notice borrows the objective only when crowded and restores it on reflow', () => {
+  const names = new Set(['placeExternalFlightCaptions', 'restoreYieldedFlightVisuals', 'yieldFlightVisual']);
+  const owners = [];
+  const visit = node => {
+    if (!node || typeof node !== 'object') return;
+    if (node.type === 'FunctionDeclaration' && names.has(node.id?.name)) {
+      owners.push(HUD_SRC.slice(node.start, node.end)); return;
+    }
+    for (const value of Object.values(node)) Array.isArray(value) ? value.forEach(visit) : visit(value);
+  };
+  visit(parse(HUD_SRC, { sourceType: 'module' }));
+  const objective = { style: { visibility: '' } };
+  const notice = { isConnected: true, hidden: false, dataset: { flightCritical: 'true' },
+    style: {}, scrollHeight: 80, getBoundingClientRect: () => ({ height: 80 }) };
+  const classes = new Set();
+  const touch = { querySelector: () => ({}), classList: { add: v => classes.add(v), remove: v => classes.delete(v) } };
+  let free = false;
+  const context = {
+    root: { querySelectorAll: selector => selector.includes('sf-leftcontext') ? [objective] : [] },
+    document: { getElementById: () => touch },
+    externalFlightCaptions: new Set([notice]), externalCaptionOpacity: new Map([[notice, '']]),
+    yieldedFlightVisuals: new Map(), externalCaptionsStale: true,
+    plateBox: () => ({}), overlaySafeSlot: () => ({ x: 10, width: 200 }),
+    freeOverlayBands: () => free || objective.style.visibility === 'hidden' ? [{ top: 20, bottom: 120 }] : [],
+    placeCaptionInSafeSlot: (el, layout, slot, unused, band) => { el.style.top = String(band.top); },
+  };
+  const { placeExternalFlightCaptions } = runInNewContext(`${owners.join('\n')}; ({ placeExternalFlightCaptions })`, context);
+  placeExternalFlightCaptions({}, 390, 320);
+  assert.equal(objective.style.visibility, 'hidden');
+  assert.equal(notice.style.opacity, '');
+  assert.equal(notice.style.top, '20');
+  free = true; context.externalCaptionsStale = true;
+  placeExternalFlightCaptions({}, 390, 320);
+  assert.equal(objective.style.visibility, '', 'objective returns when a free slot opens');
+  assert.equal(classes.has('mf-notice-priority'), false);
 });
 
 test('first-flight instruction yields space to the right target dock on narrow viewports', () => {
@@ -812,6 +854,46 @@ test('the opening window anchors to the sim clock at game start, never wall time
     onboarding: { active: false, finished: false, startedAt: 50 },
     nav: { waypoint: { reason: 'x' } },
   }), false);
+});
+
+test('mobile authority notices register and release their existing flight overlay', () => {
+  const dom = installSectorLawDom();
+  try {
+    document.documentElement.dataset.sfMobile = '1';
+    const calls = [];
+    const hud = {
+      registerExternalFlightCaption: (el) => calls.push(['register', el]),
+      refreshExternalFlightCaption: (el) => calls.push(['refresh', el]),
+      releaseExternalFlightCaption: (el) => calls.push(['release', el]),
+    };
+    const state = { mode: 'flight', ui: {}, simTime: 0, world: {}, playerId: 1 };
+    const presenter = createSectorLawPresenter({ state, bus: createBus(), ui: { hud } });
+    assert.equal(presenter.showDirectReceipt({ outcome: 'protected_withdrawal' }), true);
+    assert.equal(presenter.el.parentNode, dom.uiRoot);
+    assert.equal(presenter.el.dataset.flightCritical, 'true');
+    assert.deepEqual(calls.map(([kind]) => kind), ['register']);
+    assert.match(presenter.el.getAttribute('aria-label'), /CONTACT WITHDREW/);
+    state.simTime = 5;
+    presenter.tick();
+    assert.equal(presenter.el.hidden, true, 'receipt retains its existing expiry');
+    assert.deepEqual(calls.map(([kind]) => kind), ['register', 'release']);
+    assert.equal(presenter.renderIncident({ id: 'inc', attackerId: 2, status: 'distress',
+      cause: 'npc_piracy', factionId: 'faction_scn' }), true);
+    assert.deepEqual(calls.map(([kind]) => kind), ['register', 'release', 'register']);
+    presenter.hide();
+    assert.equal(presenter.el.hidden, true);
+    assert.deepEqual(calls.map(([kind]) => kind), ['register', 'release', 'register', 'release']);
+    state.simTime = 30;
+    assert.equal(presenter.showSector('sector_helios'), true);
+    assert.equal(presenter.el.dataset.flightCritical, 'true', 'timed law line retains notice priority');
+    state.simTime += 5;
+    presenter.tick();
+    assert.equal(presenter.el.dataset.lawMode, 'badge');
+    assert.equal(presenter.el.dataset.flightCritical, undefined, 'steady badge does not evict other flight visuals');
+    assert.deepEqual(calls.slice(-3).map(([kind]) => kind), ['register', 'release', 'register'],
+      'the old critical registration is released before normal-priority registration');
+    presenter.destroy();
+  } finally { dom.restore(); }
 });
 
 test('the law paragraph retires during the opening while live incidents still surface', () => {

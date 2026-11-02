@@ -10,7 +10,7 @@ import { arcD } from '../../ui/orrery/svg.js';
 // A thumb starting on one of these is using the page, not flying. Everything else in the flight field,
 // including HUD text and receipts that are not controls, starts the stick.
 const UI_SELECTOR = 'button,a,input,textarea,select,label,[role="button"],[role="dialog"],[role="slider"],[contenteditable="true"],[data-sf-touch-ignore]';
-const NO_FLY_SELECTOR = '.screen,[aria-modal="true"],.sf-radar-wrap';
+const NO_FLY_SELECTOR = '.screen,[aria-modal="true"],.sf-radar-wrap,#sf-sector-law';
 /** The strip along the handle's screen edge that opens the wheel even when the thumb misses the handle. */
 const EDGE_ZONE_PX = 34;
 const STATUS_MS = 100;

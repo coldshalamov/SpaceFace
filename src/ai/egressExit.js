@@ -87,6 +87,16 @@ export function stepEgressExits(state, shipLikeList = null, bus = null) {
       if (ours) { delete data.despawnAt; delete data._egressExitAt; }
       continue;
     }
+    // A working crew's FLEE is an interruption of its job, not a combatant's permanent
+    // escape. The job owner brings this same actor back to its booked workface. Retiring it
+    // here silently abandons that work and clears its durable anchor without a kill.
+    const jobEntry = data.jobId != null ? state.npcJobs?.byId?.[data.jobId] : null;
+    if (jobEntry?.job && jobEntry.job.id === data.jobId && jobEntry.entityId === entity.id
+      && (!jobEntry.entityRef || jobEntry.entityRef === entity)
+      && jobEntry.worldRecordId === data.worldRecordId) {
+      if (ours) { delete data.despawnAt; delete data._egressExitAt; }
+      continue;
+    }
     if (ours || data.despawnAt != null) continue;
     if (ai.moraleImmune === true) continue;
     // Arena/survival cells are finite: a retreating cell must stay reachable or a round strands.

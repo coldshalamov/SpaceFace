@@ -2106,7 +2106,7 @@ export function createHud(ctx, alerts) {
   // Sector law is created with comms before the HUD. Moving the same live node avoids a second card
   // competing with toasts in the upper-right corner while preserving all presenter state/listeners.
   const existingSectorLaw = document.getElementById('sf-sector-law');
-  if (existingSectorLaw) rightDock.prepend(existingSectorLaw);
+  if (existingSectorLaw && document.documentElement?.dataset?.sfMobile !== '1') rightDock.prepend(existingSectorLaw);
 
   // Target Arcs Overlay (§3)
   const targetArcs = document.createElement('div');
@@ -5959,6 +5959,16 @@ export function createHud(ctx, alerts) {
   // receipts and presentation captions.
   const externalFlightCaptions = new Set();
   const externalCaptionOpacity = new Map();
+  const yieldedFlightVisuals = new Map();
+  function restoreYieldedFlightVisuals() {
+    for (const [el, visibility] of yieldedFlightVisuals) el.style.visibility = visibility;
+    yieldedFlightVisuals.clear();
+  }
+  function yieldFlightVisual(el) {
+    if (!el?.style || yieldedFlightVisuals.has(el)) return;
+    yieldedFlightVisuals.set(el, el.style.visibility || '');
+    el.style.visibility = 'hidden';
+  }
   const flightTextObstacleCache = createFlightTextObstacleCache();
   let externalCaptionsStale = true;
   let flightTextObstaclesStale = true;
@@ -6060,7 +6070,7 @@ export function createHud(ctx, alerts) {
     }
     const elements = [
       ...root.querySelectorAll?.('#race-tape') || [],
-      ...touch?.querySelectorAll?.('.mf-status, .mf-pause, .mf-edge, .mf-buttons, .mf-dock') || [],
+      ...touch?.querySelectorAll?.('.mf-status, .mf-pause, .mf-edge, .mf-buttons, .mf-dock, .mf-ghost:not([hidden]) svg, .mf-ghost:not([hidden]) .mf-ghost-label') || [],
     ];
     for (const el of responsiveOverlayElements) {
       if (!elements.includes(el)) {
@@ -6126,24 +6136,27 @@ export function createHud(ctx, alerts) {
     }
     return slot;
   }
-  function freeOverlayBands(slot, h, layout, excludedElement = null, includeLiveCaptionsAndToasts = false) {
+  function freeOverlayBands(slot, h, layout, excludedElement = null, includeLiveCaptionsAndToasts = false, ignoreFlightGhost = false) {
     const measured = objectiveEdgeObstacles();
     const responsive = responsiveOverlayObstacles();
     const responsiveRects = new Map(responsive.map(el => [el, el.getBoundingClientRect?.()]));
     const hasTouchControls = responsive.some(el => el.closest?.('#sf-touch-overlay')
       && responsiveRects.get(el)?.width > 0 && responsiveRects.get(el)?.height > 0);
+    const radarYielded = [...yieldedFlightVisuals.keys()].some(el => el.matches?.('.sf-radar-wrap'));
     const candidates = [
       ...root.querySelectorAll?.('.orr-hud-cluster .orr-cluster, .sf-prail, .sf-rightdock, .sf-command-deck, .sf-nav-readout, .sf-nav-label, .sf-mt-obj, .sf-vtape--on, .sf-commtape, .sf-dock-prompt, .sf-tell.is-on, #sf-prompt-deck, #sf-tutorial-flight-card') || [],
       ...document.querySelectorAll?.('.sf-stuntcall:not([hidden])') || [],
       ...(hasTouchControls ? root.querySelectorAll?.('.sf-leftcontext') || [] : []),
       ...document.querySelectorAll?.('#alerts > .sf-alert:not([hidden])') || [],
-      ...responsive,
+      ...responsive.filter(el => !ignoreFlightGhost || !el.closest?.('.mf-ghost')),
+      ...(radarYielded ? root.querySelectorAll?.('.sf-rightdock > *') || [] : []),
     ];
     if (includeLiveCaptionsAndToasts) {
       candidates.push(...root.querySelectorAll?.('.sf-caption.show, .sf-toast:not(.sf-toast--out)') || []);
     }
     const blockers = candidates.map((el) => {
-      if (el === excludedElement) return null;
+      if ((radarYielded && el === measured.rightEl) || el === excludedElement || yieldedFlightVisuals.has(el)
+          || Array.from(yieldedFlightVisuals.keys()).some(parent => parent.contains?.(el))) return null;
       const rect = el === measured.railEl ? measured.rail
         : el === measured.rightEl ? measured.right
           : responsiveRects.get(el) || el.getBoundingClientRect?.();
@@ -6155,7 +6168,7 @@ export function createHud(ctx, alerts) {
     }).filter((r) => r && r.width > 0 && r.height > 0
       && r.left < slot.x + slot.width && r.right > slot.x);
     for (const el of externalFlightCaptions) {
-      if (el === excludedElement || !el.isConnected || el.hidden || el.style?.display === 'none') continue;
+      if (el === excludedElement || yieldedFlightVisuals.has(el) || !el.isConnected || el.hidden || el.style?.display === 'none') continue;
       const rect = el.getBoundingClientRect?.();
       if (rect && rect.width > 0 && rect.height > 0
         && rect.left < slot.x + slot.width && rect.right > slot.x) {
@@ -6228,11 +6241,18 @@ export function createHud(ctx, alerts) {
   function placeExternalFlightCaptions(layout, w, h) {
     if (!externalFlightCaptions.size || !externalCaptionsStale) return;
     externalCaptionsStale = false;
+    restoreYieldedFlightVisuals();
     const slot = overlaySafeSlot(layout, w, h);
     const mobile = plateBox(document.getElementById('sf-touch-overlay')?.querySelector('.mf-buttons'));
     for (const el of externalFlightCaptions) {
       if (!el || !el.isConnected || el.hidden || el.style?.display === 'none') continue;
+      const touchOwner = document.getElementById('sf-touch-overlay');
+      if (el.dataset?.flightCritical === 'true') touchOwner?.classList.remove('mf-notice-priority');
       const slots = mobile && slot.captionSlot ? [slot.captionSlot, slot] : [slot];
+      if (mobile && el.dataset?.flightCritical === 'true') {
+        const width = Math.min(240, Math.max(0, w - 24));
+        slots.push({ x: 12, width, wide: false }, { x: Math.round(w * .33), width: Math.min(width, Math.round(w * .27)), wide: false }, { x: Math.round((w - width) / 2), width, wide: false }, { x: w - width - 12, width, wide: false });
+      }
       let placement = null;
       for (const candidate of slots) {
         // Wrapping changes height: measure only after applying this lane's actual width.
@@ -6243,10 +6263,53 @@ export function createHud(ctx, alerts) {
         const height = Math.max(48, el.scrollHeight || el.getBoundingClientRect?.().height || 48);
         const band = bands.find((available) => available.bottom - available.top >= height + 8);
         if (band) { placement = { slot: candidate, band }; break; }
-        if (!mobile && !placement && bands[0]) placement = { slot: candidate, band: bands[0] };
+        if ((!mobile || el.dataset?.flightCritical === 'true') && bands[0]
+            && (!placement || (el.dataset?.flightCritical === 'true'
+              && bands[0].bottom - bands[0].top > placement.band.bottom - placement.band.top))) {
+          placement = { slot: candidate, band: bands[0] };
+        }
+      }
+      if (!placement && mobile && el.dataset?.flightCritical === 'true') {
+        // The teaching ghost is decorative; a time-limited authority notice takes
+        // priority when a small screen cannot fit both alongside the controls.
+        for (const candidate of slots) {
+          el.style.width = 'fit-content';
+          el.style.maxWidth = `${Math.round(candidate.width)}px`;
+          el.style.maxHeight = 'none';
+          const bands = freeOverlayBands(candidate, h, layout, el, true, true);
+          if (bands[0] && (!placement || bands[0].bottom - bands[0].top > placement.band.bottom - placement.band.top)) {
+            placement = { slot: candidate, band: bands[0] };
+          }
+        }
+        if (placement) touchOwner?.classList.add('mf-notice-priority');
+      }
+      if (!placement && mobile && el.dataset?.flightCritical === 'true') {
+        // Yield only informational visuals, in priority order. Input controls remain
+        // blockers, and their owners/state continue running while visually covered.
+        const tiers = [
+          [...root.querySelectorAll('.sf-caption.show, .sf-toast:not(.sf-toast--out)'),
+            ...Array.from(externalFlightCaptions).filter(other => other !== el && other.dataset?.flightCritical !== 'true')],
+          [...root.querySelectorAll('.sf-leftcontext, .sf-mt-obj')],
+          [...root.querySelectorAll('.sf-radar-wrap')],
+        ];
+        for (const tier of tiers) {
+          for (const visual of tier) yieldFlightVisual(visual);
+          for (const candidate of slots) {
+            const bands = freeOverlayBands(candidate, h, layout, el, true, true);
+            if (bands[0] && (!placement || bands[0].bottom - bands[0].top > placement.band.bottom - placement.band.top)) {
+              placement = { slot: candidate, band: bands[0] };
+            }
+          }
+          if (placement) break;
+        }
+        if (placement) touchOwner?.classList.add('mf-notice-priority');
       }
       if (!placement && !mobile) placement = { slot, band: { top: 8, bottom: h - 8 } };
       if (!placement) {
+        if (el.dataset?.flightCritical === 'true') {
+          restoreYieldedFlightVisuals();
+          touchOwner?.classList.remove('mf-notice-priority');
+        }
         // A low-priority visual waits within its existing lifetime, never over the controls.
         // Opacity leaves its live announcement intact; no queue or expiry clock is restarted.
         el.style.opacity = '0';
@@ -6268,6 +6331,7 @@ export function createHud(ctx, alerts) {
     if (!el) return false;
     if (externalFlightCaptions.has(el)) return true;
     externalFlightCaptions.add(el);
+    if (el.dataset?.flightCritical === 'true') overlayLayoutObserver?.observe(el);
     externalCaptionOpacity.set(el, el.style?.opacity || '');
     externalCaptionsStale = true;
     flightTextObstaclesStale = true;
@@ -6283,6 +6347,9 @@ export function createHud(ctx, alerts) {
   }
   function releaseExternalFlightCaption(el) {
     if (!el || !externalFlightCaptions.delete(el)) return false;
+    overlayLayoutObserver?.unobserve(el);
+    if (el.dataset?.flightCritical === 'true') document.getElementById('sf-touch-overlay')?.classList.remove('mf-notice-priority');
+    if (el.dataset?.flightCritical === 'true') restoreYieldedFlightVisuals();
     clearExternalFlightCaptionPlacement(el);
     externalCaptionsStale = true;
     flightTextObstaclesStale = true;
@@ -6584,7 +6651,7 @@ export function createHud(ctx, alerts) {
   // Comms is mounted just before the HUD. Adopt an already-visible flight caption once this
   // allocator exists; subsequent dock/undock/visibility changes call these same idempotent APIs.
   if (state.mode === 'flight' && !(state.ui && state.ui.docked)) {
-    for (const el of document.querySelectorAll?.('.sf-airlock--flight-safe') || []) {
+    for (const el of document.querySelectorAll?.('.sf-airlock--flight-safe, #sf-sector-law[data-flight-critical="true"]:not([hidden])') || []) {
       externalFlightCaptions.add(el);
     }
     if (externalFlightCaptions.size) placeReceiptLane();
@@ -6614,6 +6681,7 @@ export function createHud(ctx, alerts) {
         try { unsubscribe(); } catch (_) { /* bus teardown is best effort */ }
       }
       for (const el of externalFlightCaptions) clearExternalFlightCaptionPlacement(el);
+      restoreYieldedFlightVisuals();
       externalFlightCaptions.clear();
       clearCargoGaugeSettle(cargoGaugeSettle.used);
       clearCargoGaugeSettle(cargoGaugeSettle.risk);

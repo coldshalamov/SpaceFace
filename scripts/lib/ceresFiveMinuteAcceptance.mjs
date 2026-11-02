@@ -5187,6 +5187,7 @@ export async function drivePublicAnchorCollision(page, endTick, {
   let missingAnchorWaits = 0;
   let lastStatus = null;
   let lastAction = null;
+  const decisionTail = [];
   const fixedPulseTicks = (durationMs) => Math.max(1, Math.round(
     Number(durationMs) * CERES_FIVE_MINUTE_TICK_RATE_HZ / 1_000,
   ));
@@ -5214,6 +5215,7 @@ export async function drivePublicAnchorCollision(page, endTick, {
     brakePulses,
     lastStatus,
     lastAction,
+    decisionTail,
   });
   const projectCollisionStatus = (status) => boundCeresRouteFailureDiagnosticValue({
     tick: status?.tick,
@@ -5231,11 +5233,15 @@ export async function drivePublicAnchorCollision(page, endTick, {
     anchorX: status?.anchorX,
     anchorZ: status?.anchorZ,
     anchorRadiusWU: status?.anchorRadiusWU,
+    anchorVelocityX: status?.anchorVelocityX,
+    anchorVelocityZ: status?.anchorVelocityZ,
+    input: status?.input,
     distanceWU: status?.distanceWU,
     contactDistanceWU: status?.contactDistanceWU,
     hullGapWU: status?.hullGapWU,
     recoveryMarginWU: status?.recoveryMarginWU,
     radialClosingSpeedWUPerS: status?.radialClosingSpeedWUPerS,
+    relativeClosingSpeedWUPerS: status?.relativeClosingSpeedWUPerS,
     tangentialSpeedWUPerS: status?.tangentialSpeedWUPerS,
     headingError: status?.headingError,
     speed: status?.speed,
@@ -5329,6 +5335,8 @@ export async function drivePublicAnchorCollision(page, endTick, {
           anchorX: Number(anchor?.pos?.x),
           anchorZ: Number(anchor?.pos?.z),
           anchorRadiusWU: Number(anchor?.radius),
+          anchorVelocityX: Number.isFinite(anchor?.vel?.x) ? anchor.vel.x : null,
+          anchorVelocityZ: Number.isFinite(anchor?.vel?.z) ? anchor.vel.z : null,
         };
         const statusIdentity = {
           tick: Number(state?.tick),
@@ -5338,12 +5346,16 @@ export async function drivePublicAnchorCollision(page, endTick, {
           playerEntityId: player?.id ?? playerId,
           anchorEntityId: anchor?.id ?? anchorEntityId,
           anchorSlotId: anchor?.data?.activityCollisionAnchorSlotId ?? targetSlotId,
+          input: { moveZ: state?.input?.moveZ ?? null, brake: state?.input?.brake === true,
+            actionBrake: state?.input?.actions?.brake === true },
           ...telemetry,
         };
         if (!player || !anchor) {
           return { ...statusIdentity, missing: true, invalidTelemetry: false };
         }
-        if (Object.values(telemetry).some((value) => !Number.isFinite(value))) {
+        if (Object.entries(telemetry).some(([key, value]) => (
+          key !== 'anchorVelocityX' && key !== 'anchorVelocityZ' && !Number.isFinite(value)
+        ))) {
           return { ...statusIdentity, missing: false, invalidTelemetry: true };
         }
         const {
@@ -5366,6 +5378,10 @@ export async function drivePublicAnchorCollision(page, endTick, {
         const radialClosingSpeedWUPerS = distanceWU > 0
           ? (velocityX * dx + velocityZ * dz) / distanceWU
           : 0;
+        const relativeClosingSpeedWUPerS = distanceWU > 0
+          && telemetry.anchorVelocityX != null && telemetry.anchorVelocityZ != null
+          ? ((velocityX - telemetry.anchorVelocityX) * dx
+            + (velocityZ - telemetry.anchorVelocityZ) * dz) / distanceWU : null;
         const tangentialSpeedWUPerS = distanceWU > 0
           ? Math.abs((-velocityX * dz + velocityZ * dx) / distanceWU)
           : 0;
@@ -5383,12 +5399,25 @@ export async function drivePublicAnchorCollision(page, endTick, {
           hullGapWU: distanceWU - playerRadiusWU - anchorRadiusWU,
           recoveryMarginWU,
           radialClosingSpeedWUPerS,
+          relativeClosingSpeedWUPerS,
           tangentialSpeedWUPerS,
           headingError,
           speed: Math.hypot(velocityX, velocityZ),
         };
       }, { targetSlotId: slotId, ...setup });
       lastStatus = projectCollisionStatus(status);
+      const reason = status?.missing ? 'missing' : status?.invalidTelemetry ? 'invalid'
+        : status?.impact ? 'impact' : shouldBrakeCeresAnchorApproach(status) ? 'brake'
+          : Math.abs(status.headingError) > 0.09 ? 'turn' : 'thrust';
+      const { relatedEvents: _relatedEvents, ...decisionStatus } = lastStatus;
+      const reasonDetail = reason === 'brake'
+        ? (status.radialClosingSpeedWUPerS <= 0 ? 'opening' : 'tangential') : null;
+      const intendedAction = reason === 'brake' ? { key: 'Digit0' }
+        : reason === 'turn' ? { key: status.headingError > 0 ? 'KeyD' : 'KeyA' }
+          : reason === 'thrust' ? { key: 'KeyW', boost: status.distanceWU > 45 && status.speed < 90 }
+            : null;
+      decisionTail.push({ ...decisionStatus, reason, reasonDetail, intendedAction, previousAction: lastAction });
+      if (decisionTail.length > 24) decisionTail.shift();
       if (!Number.isSafeInteger(status?.tick) || status.tick >= collisionDeadlineTick) {
         throw new Error('Throughline collision attempt exhausted the five-minute horizon');
       }

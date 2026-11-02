@@ -75,6 +75,25 @@ ${GO} > .sf-go-tape .orr-tape__empty { fill:rgb(${BONE} / .8); }
   ${GO} .sf-go-grid .k-hero__w { letter-spacing:.12em !important; line-height:1.25; }
   ${GO} .sf-go-grid .k-hero__n { overflow-wrap:break-word; }
 }
+/* desktop cards size to their label, so Cargo consequence keeps one line while the row still fits;
+   a row too long for the column shrinks and wraps as before */
+@media (min-width:1101px) {
+  ${GO} .sf-go-grid .k-hero { flex:1 1 auto; }
+}
+/* 720p-900p desktop (1101-1500w, 641h+): the 66px headline ran a long loss cause to four lines beside the
+   ring; one step down it holds three. The card labels close up a hair so the 538px column at 1280
+   holds all three on one line */
+@media (min-width:1101px) and (max-width:1500px) and (min-height:641px) {
+  ${GO} > .k-title .k-t-title { font-size:calc(58px * var(--sv)) !important; }
+  ${GO} .sf-go-grid .k-hero__w { letter-spacing:.1em !important; }
+}
+/* ...and with the headline a line shorter the one-line verb rail, already wider than the 538px column at
+   1280, rose into Lifetime profit at the ring's lower left. Up to 1400w the primary keeps its own line
+   and the two loads sit beneath it, inside the column, as in the short band */
+@media (min-width:1101px) and (max-width:1400px) and (min-height:641px) {
+  ${GO} .sf-go-foot > .k-words { flex-wrap:wrap !important; row-gap:calc(4px * var(--sv)) !important; }
+  ${GO} .sf-go-foot > .k-words > li:first-child { flex-basis:100%; }
+}
 /* 720p: keep the four actions on one rail */
 @media (max-width:1400px) {
   ${GO} .sf-go-foot > .k-words { column-gap:20px !important; }

@@ -4,6 +4,17 @@
 const FLIGHT = ':root[data-sf-mobile="1"][data-sf-mobile-flight="1"]';
 
 export const MOBILE_FLIGHT_LAYOUT_CSS = `
+/* The law presenter shares the HUD's measured caption bands on mobile, outside the
+   radar dock's flow. Long notices scroll inside the allocated band. */
+${FLIGHT} #ui-root > #sf-sector-law {
+  position:fixed !important;
+  box-sizing:border-box;
+  overscroll-behavior:contain;
+  backdrop-filter:none !important;
+  -webkit-backdrop-filter:none !important;
+}
+/* A critical notice may temporarily occupy the decorative teaching ghost's space. */
+${FLIGHT} #sf-touch-overlay.mf-notice-priority .mf-ghost { visibility:hidden; }
 @media (max-width:959px), (max-height:599px) {
   ${FLIGHT} #hud .sf-rightdock {
     top:calc(196px + var(--sf-safe-top,0px))!important;

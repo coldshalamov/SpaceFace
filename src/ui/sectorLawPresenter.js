@@ -250,7 +250,47 @@ export function createSectorLawPresenter(ctx) {
   let active = null;
   let lastEtaText = '';
   let destroyed = false;
+  let registeredHud = null;
+  let registeredCritical = false;
+  let resizeFrame = 0;
   const unsubscribers = [];
+
+  function syncFlightPlacement() {
+    const mobile = document.documentElement?.dataset?.sfMobile === '1';
+    const hud = ctx.registry?.get?.('ui')?.hud || ctx.ui?.hud || null;
+    const critical = !!active && active.mode !== 'badge';
+    if ((!mobile || root.hidden || registeredCritical !== critical) && registeredHud) {
+      registeredHud.releaseExternalFlightCaption?.(root);
+      registeredHud = null;
+      registeredCritical = false;
+    }
+    if (mobile) {
+      const host = document.getElementById('ui-root');
+      if (host && root.parentNode !== host) host.appendChild(root);
+      if (critical) root.dataset.flightCritical = 'true';
+      else delete root.dataset.flightCritical;
+      root.setAttribute('tabindex', '0');
+      if (!root.hidden && hud?.registerExternalFlightCaption) {
+        if (registeredHud !== hud) {
+          registeredHud?.releaseExternalFlightCaption?.(root);
+          hud.registerExternalFlightCaption(root);
+          registeredHud = hud;
+          registeredCritical = critical;
+        } else hud.refreshExternalFlightCaption?.(root);
+      }
+    } else {
+      delete root.dataset.flightCritical;
+      root.removeAttribute('tabindex');
+      const dock = document.querySelector('.sf-rightdock');
+      if (dock && root.parentNode !== dock) dock.prepend(root);
+    }
+  }
+  const onResize = () => {
+    if (resizeFrame) return;
+    if (typeof requestAnimationFrame !== 'function') { syncFlightPlacement(); return; }
+    resizeFrame = requestAnimationFrame(() => { resizeFrame = 0; if (!destroyed) syncFlightPlacement(); });
+  };
+  if (typeof window !== 'undefined') window.addEventListener?.('resize', onResize);
 
   function text(el, value) {
     const next = String(value == null ? '' : value);
@@ -259,6 +299,7 @@ export function createSectorLawPresenter(ctx) {
 
   function hide() {
     root.hidden = true;
+    syncFlightPlacement();
     root.className = '';
     active = null;
     lastEtaText = '';
@@ -284,6 +325,7 @@ export function createSectorLawPresenter(ctx) {
     if (els.flag) els.flag.hidden = view.mode !== 'badge';
     root.setAttribute('aria-label', view.mode === 'line' ? view.line : (view.badge || profile.level));
     root.hidden = false;
+    syncFlightPlacement();
   }
 
   function showSector(sectorId) {
@@ -309,6 +351,7 @@ export function createSectorLawPresenter(ctx) {
     if (!view) return false;
     active = { mode: view.mode, incident: { ...payload }, hideAt: view.mode === 'receipt' ? Number(state.simTime || 0) + RECEIPT_TTL_S : Infinity };
     root.className = view.danger ? 'sf-law--incident sf-law--danger' : 'sf-law--receipt';
+    for (const el of Object.values(els)) if (el) el.hidden = false;
     text(els.flag, view.flag);
     text(els.status, view.statusText);
     text(els.headline, view.headline);
@@ -318,6 +361,7 @@ export function createSectorLawPresenter(ctx) {
     root.setAttribute('aria-label', `${view.flag}. ${view.headline}. Authority ${view.authority}. ${aggressor}. ${view.detail}. ${view.statusText}.`);
     lastEtaText = view.statusText;
     root.hidden = false;
+    syncFlightPlacement();
     return true;
   }
 
@@ -327,6 +371,7 @@ export function createSectorLawPresenter(ctx) {
     if (!receiptText) return false;
     active = { mode: 'receipt', hideAt: Number(state.simTime || 0) + RECEIPT_TTL_S };
     root.className = receipt.outcome === 'retaliation_authorized' || receipt.danger ? 'sf-law--receipt sf-law--danger' : 'sf-law--receipt';
+    for (const el of Object.values(els)) if (el) el.hidden = false;
     text(els.flag, 'AUTHORITY RECEIPT');
     text(els.status, receipt.statusText || (receipt.outcome === 'retaliation_authorized' ? 'SELF-DEFENSE'
       : receipt.outcome === 'customs_complied' ? 'COMPLIANCE LOGGED' : 'STAND DOWN'));
@@ -339,6 +384,7 @@ export function createSectorLawPresenter(ctx) {
       : 'Incident closed.');
     root.setAttribute('aria-label', `${receiptText}. ${els.detail.textContent}`);
     root.hidden = false;
+    syncFlightPlacement();
     return true;
   }
 
@@ -375,6 +421,10 @@ export function createSectorLawPresenter(ctx) {
   function destroy() {
     if (destroyed) return;
     destroyed = true;
+    if (resizeFrame && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(resizeFrame);
+    if (typeof window !== 'undefined') window.removeEventListener?.('resize', onResize);
+    registeredHud?.releaseExternalFlightCaption?.(root);
+    registeredHud = null;
     for (const unsubscribe of unsubscribers.splice(0)) {
       try { unsubscribe(); } catch (_) {}
     }

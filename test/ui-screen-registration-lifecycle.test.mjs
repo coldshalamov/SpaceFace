@@ -375,6 +375,56 @@ test('station retry still waits for deferred registration after lifecycle restor
   }
 });
 
+test('drill demand load coalesces and opens only after registration', async () => {
+  const clock = installFakeTimers();
+  try {
+    const { owner, pushes } = makeRetryOwner('drill');
+    let loads = 0, finishLoad;
+    owner._registerScreenEntry = entry => {
+      assert.equal(entry.name, 'asteroidScreen'); loads++;
+      return new Promise(resolve => { finishLoad = () => { owner._registeredScreens.add('drill'); resolve(); }; });
+    };
+    const first = owner._ensureDrillScreenRegistered();
+    assert.equal(owner._ensureDrillScreenRegistered(), first);
+    await Promise.resolve();
+    assert.equal(loads, 1);
+    const outcomes = [];
+    owner._pushScreenWhenRegistered('drill', 200, { onSettled: value => outcomes.push(value) });
+    assert.deepEqual(outcomes, [], 'the approach veil remains while registration is pending');
+    finishLoad(); await first;
+    clock.runNext();
+    assert.deepEqual(pushes, ['drill']);
+    assert.deepEqual(outcomes, [true], 'the veil can clear only after the screen opens');
+  } finally { clock.restore(); }
+});
+
+test('failed or cancelled drill registration releases its request and permits a later intent', async () => {
+  const clock = installFakeTimers();
+  try {
+    const { owner, pushes } = makeRetryOwner('drill');
+    let loads = 0;
+    owner._registerScreenEntry = () => {
+      loads++;
+      if (loads === 1) return Promise.reject(new Error('chunk unavailable'));
+      owner._registeredScreens.add('drill'); return Promise.resolve();
+    };
+    await assert.rejects(owner._ensureDrillScreenRegistered(), /chunk unavailable/);
+    assert.equal(owner._drillScreenRegistration, null);
+    const outcomes = [];
+    owner._pushScreenWhenRegistered('drill', 1, { onSettled: value => outcomes.push(value) });
+    while (clock.runNext()) {}
+    assert.deepEqual(outcomes, [false], 'timeout signals failure rather than leaving the veil active');
+    await owner._ensureDrillScreenRegistered();
+    owner._pushScreenWhenRegistered('drill', 1, { onSettled: value => outcomes.push(value) });
+    assert.deepEqual(pushes, ['drill']);
+    assert.deepEqual(outcomes, [false, true]);
+    owner._registeredScreens.delete('drill');
+    owner._pushScreenWhenRegistered('drill', 1, { onSettled: value => outcomes.push(value) });
+    owner._cancelPendingScreenRetry();
+    assert.deepEqual(outcomes, [false, true, false], 'cancellation releases the waiting presentation');
+  } finally { clock.restore(); }
+});
+
 test('a live dock request loads the station screen once and preserves its first open', async () => {
   const clock = installFakeTimers();
   try {
