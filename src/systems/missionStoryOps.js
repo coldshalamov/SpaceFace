@@ -1762,6 +1762,14 @@ export const missionStoryOps = {
     if (res.stepId) {
       this._refreshEmbodiedStoryBoards();
       this._refreshNavigation({ forceStory: true, silent: true });
+      // The accepted ordered step, not a raw growth event or proximity, owns this
+      // handback. Stored growth may be reconciled away from the garden on Continue.
+      if (beat.beat === 2 && res.stepId === 'compost') {
+        this.bus.emit('comms:popup', {
+          id: 'b2_compost_nest_handoff', sender: 'ROOK', category: 'story', ttl: 10, persist: true,
+          text: 'Your garden growth is on the books. The paid 240t run is optional. Next: the Nest in the south radiation lane. Approach from the east; fight or withdraw alive.',
+        });
+      }
     }
     return true;
   },
