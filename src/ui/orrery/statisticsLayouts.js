@@ -93,7 +93,8 @@ ${ST} > .k-foot .k-word.sf-back:focus-visible::after {
 
 /* short frames: keep LAW Status on first paint without crushing 1080 */
 @media (max-height:820px) {
-  ${ST} { row-gap:6px !important; padding-top:clamp(14px, 2.4vh, 28px) !important; padding-bottom:10px !important; }
+  /* the title keeps the same top margin as Credits/Achievements instead of hugging the frame edge (14–17px read as cropped) */
+  ${ST} { row-gap:6px !important; padding-top:clamp(24px, 5vh, 40px) !important; padding-bottom:10px !important; }
   ${ST} > .k-title .k-t-title, ${ST} > .k-title .fh-title { font-size:clamp(28px, 5.2vh, 48px) !important; }
   ${ST} > .k-title .k-sentence, ${ST} > .k-title > p { margin-top:4px !important; font-size:13.5px !important; }
   ${ST} > .sf-statistics.k-stage { padding-bottom:20px !important; max-width:min(640px, 100%) !important; }
