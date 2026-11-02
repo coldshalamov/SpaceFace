@@ -4,6 +4,36 @@
 // in this module writes sim state or collides — the clean-flight-plane law holds by construction.
 import * as THREE from 'three';
 import { wrapParallaxCoordinate } from './parallaxLayers.js';
+import { resolveVfxAccessibilityProfile } from './vfxAccessibility.js';
+
+// ── Nav strobes: the streams are traffic, so the hulls answer like traffic ─────────────────
+// A far silhouette used to glide past as a dead cutout. Each one now carries an anti-collision
+// double-flash plus a faint running light on its own phase, so the high and deep streams
+// twinkle like a live shipping lane at night. Pure presentation: phase comes from the same
+// spawn rng as the silhouette, the clock is cosmetic, and reduced-motion slows the blink
+// instead of silencing it.
+export const STROBE_PERIOD_S = 1.9;
+export const STROBE_PERIOD_REDUCED_S = 5.7;
+/** Running-light floor: a hull never goes fully dark between flashes. */
+export const STROBE_FLOOR = 0.14;
+// Two short flashes inside one period, as [start01, end01] pairs — the anti-collision
+// double-flash, not a metronome blink.
+const STROBE_PULSES = Object.freeze([[0.05, 0.13], [0.24, 0.32]]);
+
+/** 0..1 brightness of one strobe at normalized period position `u01`. Deterministic. */
+export function strobeEnvelope(u01) {
+  const u = ((Number.isFinite(u01) ? u01 : 0) % 1 + 1) % 1;
+  let peak = 0;
+  for (let p = 0; p < STROBE_PULSES.length; p++) {
+    const a0 = STROBE_PULSES[p][0];
+    const a1 = STROBE_PULSES[p][1];
+    if (u >= a0 && u <= a1) {
+      const t = (u - a0) / (a1 - a0);
+      peak = Math.max(peak, Math.sin(t * Math.PI));
+    }
+  }
+  return STROBE_FLOOR + (1 - STROBE_FLOOR) * peak;
+}
 
 // Two moving sheets: a high stream overhead and a deep stream far below. Counts stay small —
 // these are instanced draws, one mesh per sheet.
@@ -96,9 +126,39 @@ class FarPlaneLife {
         scale: spec.scale[0] + rnd() * (spec.scale[1] - spec.scale[0]),
         yieldOff: 0,
         phase: rnd() * Math.PI * 2,
+        // nav-light identity: mostly warm white running lights, some amber freight, a few red
+        strobeTint: rnd() < 0.76 ? 0xfff3e0 : (rnd() < 0.5 ? 0xffb066 : 0xff6a55),
       });
     }
-    this.sheets.push({ name, spec, group, mesh, ships });
+    const sheet = { name, spec, group, mesh, ships };
+    this.sheets.push(sheet);
+    this._spawnStrobes(sheet, ships, rnd);
+  }
+
+  // One instanced additive quad per silhouette: the anti-collision light riding a wingtip.
+  _spawnStrobes(sheet, ships, rnd) {
+    const geometry = farPlaneStrobeGeometry();
+    const material = new THREE.MeshBasicMaterial({
+      transparent: true, opacity: 0.9, depthWrite: false,
+      blending: THREE.AdditiveBlending, side: THREE.DoubleSide, fog: true,
+    });
+    const strobeMesh = new THREE.InstancedMesh(geometry, material, ships.length);
+    strobeMesh.name = `${sheet.name}_NavStrobes`;
+    strobeMesh.frustumCulled = false;
+    strobeMesh.renderOrder = -3; // just above its sheet, far behind the play plane
+    const color = new THREE.Color();
+    for (let i = 0; i < ships.length; i++) {
+      strobeMesh.setColorAt(i, color.setHex(ships[i].strobeTint));
+      // Park off-screen until the first update writes a real matrix.
+      this._pos.set(0, -9999, 0);
+      this._quat.identity();
+      this._scale.set(0.001, 0.001, 0.001);
+      this._matrix.compose(this._pos, this._quat, this._scale);
+      strobeMesh.setMatrixAt(i, this._matrix);
+    }
+    if (strobeMesh.instanceColor) strobeMesh.instanceColor.needsUpdate = true;
+    sheet.group.add(strobeMesh);
+    sheet.strobeMesh = strobeMesh;
   }
 
   _createBeams() {
@@ -172,6 +232,11 @@ class FarPlaneLife {
     const origin = (this.state.world && this.state.world.frameOrigin) || {};
     const worldX = localX + (Number.isFinite(origin.x) ? origin.x : 0);
     const worldZ = localZ + (Number.isFinite(origin.z) ? origin.z : 0);
+    // Reduced motion slows the anti-collision blink to a calm pulse; it never silences it —
+    // a dark lane reads as dead traffic, not calm traffic.
+    const a11y = resolveVfxAccessibilityProfile(this.state && this.state.settings);
+    const strobePeriod = a11y.id === 'full' ? STROBE_PERIOD_S : STROBE_PERIOD_REDUCED_S;
+    const strobeSize = a11y.flashSizeScale;
 
     for (const sheet of this.sheets) {
       const { spec, mesh, ships, group } = sheet;
@@ -199,8 +264,23 @@ class FarPlaneLife {
         this._scale.set(s.scale * pulse, s.scale * 0.45, s.scale * 0.32);
         this._matrix.compose(this._pos, this._quat, this._scale);
         mesh.setMatrixAt(i, this._matrix);
+
+        // Nav strobe on the wingtip (perpendicular off the heading, sides alternate), riding
+        // the same yield-corrected hull position the silhouette draws.
+        if (sheet.strobeMesh) {
+          const env = strobeEnvelope((this._time || 0) / strobePeriod + s.phase * 0.618);
+          const side = (i % 2 === 0) ? 1 : -1;
+          const ss = Math.max(0.05, s.scale * 0.24 * env * strobeSize);
+          this._pos.set(px - Math.sin(s.heading) * side * s.scale * 0.55, spec.y + 0.6,
+            pz + Math.cos(s.heading) * side * s.scale * 0.55);
+          this._quat.identity();
+          this._scale.set(ss, ss, ss);
+          this._matrix.compose(this._pos, this._quat, this._scale);
+          sheet.strobeMesh.setMatrixAt(i, this._matrix);
+        }
       }
       mesh.instanceMatrix.needsUpdate = true;
+      if (sheet.strobeMesh) sheet.strobeMesh.instanceMatrix.needsUpdate = true;
     }
     this._time = (this._time || 0) + frameDt;
 
@@ -279,6 +359,10 @@ class FarPlaneLife {
       if (this.scene) this.scene.remove(sheet.group);
       sheet.mesh.dispose();
       sheet.mesh.material.dispose();
+      if (sheet.strobeMesh) {
+        sheet.strobeMesh.dispose();
+        sheet.strobeMesh.material.dispose();
+      }
     }
     this.sheets.length = 0;
     for (const group of [this._beamGroup, this._flashGroup]) {
@@ -308,6 +392,19 @@ function hullSilhouetteGeometry() {
   geo.setAttribute('position', new THREE.BufferAttribute(verts, 3));
   geo.computeVertexNormals();
   return geo;
+}
+
+// Shared flat 1x1 quad in the play plane for the instanced nav strobes (top-down camera sees it).
+let _strobeGeometry = null;
+function farPlaneStrobeGeometry() {
+  if (_strobeGeometry) return _strobeGeometry;
+  const geo = new THREE.BufferGeometry();
+  const verts = new Float32Array([
+    -0.5, 0, -0.5, 0.5, 0, -0.5, 0.5, 0, 0.5,
+    -0.5, 0, -0.5, 0.5, 0, 0.5, -0.5, 0, 0.5,
+  ]);
+  geo.setAttribute('position', new THREE.BufferAttribute(verts, 3));
+  return (_strobeGeometry = geo);
 }
 
 function mulberry(seed) {
