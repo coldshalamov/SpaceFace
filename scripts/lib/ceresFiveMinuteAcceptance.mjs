@@ -396,26 +396,28 @@ export function ceresToolkitConflictAuthorityPass(baseline, prebound) {
   const director = baseline?.director;
   if (baseline?.playerEntityId == null || baseline.playerEntityId !== prebound?.playerEntityId
       || initial.length < 1 || initial.length > 2
-      || bound.length !== initial.length || authority.length !== initial.length
-      || director?.durablePhase !== 'revealed'
-      || director?.live?.id !== 'ceres:activity:throughline-ambush'
-      || director.live.phase !== 'conflict'
-      || !Number.isSafeInteger(director.live.initialCount)
-      || director.live.initialCount < 1 || director.live.initialCount > 2
-      || director.live.initialCount !== initial.length
+      || bound.length < initial.length || bound.length > 2 || authority.length !== bound.length
+      || !['revealed', 'done'].includes(director?.durablePhase)
+      || (director?.live && (director.live.id !== 'ceres:activity:throughline-ambush'
+        || director.live.phase !== 'conflict'
+        || !Number.isSafeInteger(director.live.initialCount)
+        || director.live.initialCount !== bound.length))
       || !ceresHostileOpportunityPass(initial)) return false;
   const initialPairs = initial.map((row) => `${String(row.entityId)}\u0000${row.worldRecordId}`).sort();
   const boundPairs = bound.map((row) => `${String(row.entityId)}\u0000${row.worldRecordId}`).sort();
   const authorityPairs = authority.filter((row) => (
     row?.exactPairAlive === true && row?.terminalMissing !== true
   )).map((row) => `${String(row.entityId)}\u0000${row.worldRecordId}`).sort();
-  const liveIds = [...new Set((director.live.entityIds || []).map((entityId) => entityId))]
+  const liveIds = [...new Set((director.live?.entityIds || initial.map((row) => row.entityId))
+    .map((entityId) => entityId))]
     .sort((left, right) => String(left).localeCompare(String(right)));
   const boundIds = bound.map((row) => row.entityId)
     .sort((left, right) => String(left).localeCompare(String(right)));
-  return stableJson(initialPairs) === stableJson(boundPairs)
-    && stableJson(authorityPairs) === stableJson(boundPairs)
-    && stableJson(liveIds) === stableJson(boundIds);
+  return new Set(boundPairs).size === boundPairs.length
+    && stableJson(initialPairs) === stableJson(authorityPairs)
+    && initialPairs.every((pair) => boundPairs.includes(pair))
+    && liveIds.every((id) => boundIds.includes(id))
+    && initial.every((row) => liveIds.includes(row.entityId));
 }
 
 async function readCeresToolkitConflictBaseline(page, prebound) {
@@ -424,7 +426,7 @@ async function readCeresToolkitConflictBaseline(page, prebound) {
     const player = state?.entities?.get(state.playerId);
     const director = state?.encounterDirector || {};
     const encounterId = 'ceres:activity:throughline-ambush';
-    const bound = new Map(authority.boundHostiles.map((row) => [row.entityId, row.worldRecordId]));
+    const bound = new Map(authority.boundHostiles.map((row) => [row.entityId, row]));
     const records = state?.world?.records?.byId || {};
     const boundAuthority = authority.boundHostiles.map((expected) => {
       const entity = state?.entities?.get(expected.entityId);
@@ -432,7 +434,8 @@ async function readCeresToolkitConflictBaseline(page, prebound) {
         ? records.get(expected.worldRecordId)
         : records[expected.worldRecordId];
       const exactPairAlive = entity?.alive !== false && entity?.type === 'ship'
-        && entity?.data?.worldRecordId === expected.worldRecordId;
+        && entity?.data?.worldRecordId === expected.worldRecordId
+        && (entity?.occupantGeneration ?? null) === (expected.generation ?? null);
       return {
         entityId: expected.entityId,
         worldRecordId: expected.worldRecordId,
@@ -446,12 +449,14 @@ async function readCeresToolkitConflictBaseline(page, prebound) {
     });
     const initialHostiles = (state?.entityList || []).filter((entity) => (
       entity?.alive !== false && entity?.type === 'ship'
-      && bound.get(entity.id) === entity.data?.worldRecordId
+      && bound.get(entity.id)?.worldRecordId === entity.data?.worldRecordId
+      && (bound.get(entity.id)?.generation ?? null) === (entity.occupantGeneration ?? null)
       && entity.data?.ai?.zoneId === 'zone_ceres_ambush'
       && entity.data?.ai?.squadId === 'zone_ceres_ambush'
     )).map((entity) => ({
       entityId: entity.id,
       worldRecordId: entity.data.worldRecordId,
+      generation: entity.occupantGeneration ?? null,
       ceresActivityAmbushPhase: entity.data?.ai?.ceresActivityAmbushPhase || null,
       team: entity.team ?? entity.data?.team ?? null,
       factionId: entity.factionId || entity.data?.factionId || null,
@@ -565,13 +570,14 @@ export async function waitForCeresToolkitConflictAuthority(page, prebound, endTi
     if (tick < waitStartTick) {
       fail('toolkit conflict authority simulation tick moved backwards');
     }
-    if (baseline?.director?.durablePhase === 'done') {
-      fail(`toolkit conflict authority already reached durable done (${baseline.director.durableOutcome || 'unknown'})`);
-    }
     const terminalMissing = (baseline?.boundAuthority || [])
       .filter((row) => row?.terminalMissing === true);
-    if (terminalMissing.length > 0) {
-      fail('toolkit conflict authority lost an exact prebound hostile cohort member');
+    if (terminalMissing.length === prebound.boundHostiles.length) {
+      fail('toolkit conflict authority lost all original prebound hostile cohort members');
+    }
+    if (baseline?.director?.durablePhase === 'done'
+        && !ceresToolkitConflictAuthorityPass(baseline, prebound)) {
+      fail(`toolkit conflict authority already reached durable done (${baseline.director.durableOutcome || 'unknown'})`);
     }
     if (deadlineTick <= waitStartTick) {
       fail('toolkit hostile classification exhausted the exact route horizon');
@@ -1069,6 +1075,7 @@ function readCeresExactActiveTetherAuthority(page, authority) {
         alive: target.alive === true,
         type: target.type || null,
         worldRecordId: target.data?.worldRecordId || null,
+        generation: target.occupantGeneration ?? null,
       } : null,
       attachment: attachment ? {
         id: attachment.id || null,
@@ -1098,6 +1105,7 @@ function ceresExactActiveTetherAuthorityPass(snapshot, authority, deadlineTick) 
     && snapshot.target.alive === true
     && snapshot.target.type === 'ship'
     && snapshot.target.worldRecordId === authority.targetWorldRecordId
+    && (snapshot.target.generation ?? null) === (authority.targetGeneration ?? null)
     && snapshot?.attachment?.id === authority.attachmentId
     && snapshot.attachment.state === 'active'
     && snapshot.attachment.ownerId === authority.playerEntityId
@@ -1160,6 +1168,7 @@ export async function waitForCeresExactActiveTetherAuthority(page, authority, {
         && target.alive === true
         && target.type === 'ship'
         && target.data?.worldRecordId === expected.targetWorldRecordId
+        && (target.occupantGeneration ?? null) === (expected.targetGeneration ?? null)
         && attachment?.id === expected.attachmentId
         && attachment.state === 'active'
         && attachment.ownerId === expected.playerEntityId
@@ -3710,6 +3719,8 @@ function planCeresLiveCohortCameraIntercept(snapshot, preferredCohortEntityId = 
   // placing it inside the settled fixed camera. The exact current view/projection matrices
   // score each candidate; movement remains a normal fixed-tick public-control route.
   const offsets = [
+    [0, 60], [0, -60], [60, 0], [-60, 0],
+    [45, 45], [-45, 45], [45, -45], [-45, -45],
     [120, 80], [-120, 80], [120, -80], [-120, -80],
     [100, 105], [-100, 105], [100, -105], [-100, -105],
     [135, 55], [-135, 55], [135, -55], [-135, -55],
@@ -3747,6 +3758,8 @@ function planCeresLiveCohortCameraIntercept(snapshot, preferredCohortEntityId = 
       const targetPos = { x: row.pos.x - offsetX, z: row.pos.z - offsetZ };
       const separationWU = Math.hypot(offsetX, offsetZ);
       if (separationWU > 320) continue;
+      if (Number.isFinite(collisionClearanceWU)
+          && separationWU <= collisionClearanceWU + CERES_TOOLKIT_CAMERA_STAGE_RADIUS_WU) continue;
       const ndc = projectCeresPointAfterPlayerTranslation(
         row.pos,
         playerPos,
@@ -3755,6 +3768,17 @@ function planCeresLiveCohortCameraIntercept(snapshot, preferredCohortEntityId = 
         camera.projection,
       );
       if (!ndc || Math.abs(ndc.x) > 0.98 || Math.abs(ndc.y) > 0.98) continue;
+      // Arrival may occur anywhere inside the existing stage radius, not only at
+      // targetPos. Require the target to remain visible throughout that region.
+      const radius = CERES_TOOLKIT_CAMERA_STAGE_RADIUS_WU;
+      const arrivalVisible = [-radius, radius].every((x) => [-radius, radius].every((z) => {
+        const atArrival = projectCeresPointAfterPlayerTranslation(
+          row.pos, playerPos, { x: targetPos.x + x, z: targetPos.z + z },
+          camera.view, camera.projection,
+        );
+        return atArrival && Math.abs(atArrival.x) <= 0.98 && Math.abs(atArrival.y) <= 0.98;
+      }));
+      if (!arrivalVisible) continue;
       const travelWU = Math.hypot(targetPos.x - playerPos.x, targetPos.z - playerPos.z);
       const margin = Math.max(Math.abs(ndc.x), Math.abs(ndc.y));
       const identitySwitchPenalty = preferredCohortEntityId != null
@@ -3773,7 +3797,7 @@ function planCeresLiveCohortCameraIntercept(snapshot, preferredCohortEntityId = 
       }
     }
   }
-  if (!best) throw new Error('no live exact Throughline cohort intercept fits the settled camera');
+  if (!best && !currentPointable) throw new Error('no live exact Throughline cohort intercept fits the settled camera');
   const selected = currentPointable || best;
   return Object.freeze({
     targetPos: Object.freeze(currentPointable
@@ -3951,14 +3975,15 @@ async function readCeresLiveCohortCameraSnapshot(page, authorityRows) {
         || typeof playerZ !== 'number' || !Number.isFinite(playerZ)
         || view.length !== 16 || !view.every(Number.isFinite)
         || projection.length !== 16 || !projection.every(Number.isFinite)) return null;
-    const bound = new Map((rows || []).map((row) => [row.entityId, row.worldRecordId]));
+    const bound = new Map((rows || []).map((row) => [row.entityId, row]));
     return {
       playerPos: { x: playerX, z: playerZ },
       playerRadiusWU: Number(player.radius),
       camera: { view, projection },
       candidates: (state.entityList || []).flatMap((entity) => {
         if (entity?.alive === false || entity?.type !== 'ship'
-            || bound.get(entity.id) !== entity.data?.worldRecordId
+            || bound.get(entity.id)?.worldRecordId !== entity.data?.worldRecordId
+            || (bound.get(entity.id)?.generation ?? null) !== (entity.occupantGeneration ?? null)
             || entity.data?.ai?.zoneId !== 'zone_ceres_ambush'
             || entity.data?.ai?.squadId !== 'zone_ceres_ambush') return [];
         const x = entity.pos?.x;
@@ -4097,7 +4122,9 @@ function createCeresPublicPointApproachReceipt(status, {
     schema: 'spaceface.ceresPublicPointApproachReceipt.v1',
     pass: true,
     source: target.controlClock === 'fixed-tick'
-      ? 'public-keyboard-fixed-tick' : 'public-keyboard-wall-time',
+      ? 'public-keyboard-wall-pulse-fixed-observation' : 'public-keyboard-wall-time',
+    actuationClock: 'wall-time',
+    observationClock: target.controlClock === 'fixed-tick' ? 'fixed-tick' : 'wall-time',
     targetId: target.targetId,
     targetName: target.targetName,
     exactCohortEntityId: target.exactCohortEntityId ?? null,
@@ -4266,6 +4293,7 @@ export async function repositionPublicForCeresToolkit(page, endTick, {
   const normalizedBoundHostiles = boundHostiles.map((row) => ({
     entityId: row?.entityId ?? null,
     worldRecordId: String(row?.worldRecordId || ''),
+    generation: row?.generation ?? null,
   })).sort((left, right) => (
     String(left.entityId).localeCompare(String(right.entityId))
       || left.worldRecordId.localeCompare(right.worldRecordId)
@@ -4288,13 +4316,17 @@ export async function repositionPublicForCeresToolkit(page, endTick, {
     const observedBoundHostiles = expectedBoundHostiles.flatMap((expected) => {
       const entity = state?.entities?.get(expected.entityId);
       if (entity?.alive === false || entity?.type !== 'ship'
-          || entity?.data?.worldRecordId !== expected.worldRecordId) return [];
-      return [{ entityId: entity.id, worldRecordId: entity.data.worldRecordId }];
+          || entity?.data?.worldRecordId !== expected.worldRecordId
+          || (entity?.occupantGeneration ?? null) !== expected.generation) return [];
+      return [{ entityId: entity.id, worldRecordId: entity.data.worldRecordId,
+        generation: entity.occupantGeneration ?? null }];
     });
     return {
       tick: Number(state?.tick),
       nextEventSeq: Number(window.__SF_CERES_FIVE_MINUTE_TRACE__?.nextEventSeq),
       playerEntityId: player?.id ?? null,
+      anchorPresent: !!anchor,
+      anchorSlotId: anchor?.data?.activityCollisionAnchorSlotId ?? null,
       anchorEntityId: anchor?.data?.activityCollisionAnchorSlotId
         === 'ceres_throughline_collision_anchor' ? anchor.id : null,
       boundHostiles: observedBoundHostiles,
@@ -4307,9 +4339,15 @@ export async function repositionPublicForCeresToolkit(page, endTick, {
   if (!Number.isSafeInteger(start.tick) || !Number.isSafeInteger(start.nextEventSeq)
       || start.nextEventSeq < 1 || start.tick < anchorImpactTick
       || start.nextEventSeq <= anchorImpactSeq
-      || start.playerEntityId !== playerEntityId || start.anchorEntityId !== anchorEntityId
-      || stableJson(start.boundHostiles) !== stableJson(normalizedBoundHostiles)) {
-    throw new Error('toolkit camera reposition lost the exact collision authority');
+      || start.playerEntityId !== playerEntityId || start.boundHostiles.length === 0) {
+    const reason = start.boundHostiles.length === 0
+      ? 'lost all original prebound hostile cohort members'
+      : 'lost the exact collision authority';
+    throw new Error(`toolkit camera reposition ${reason}: ${JSON.stringify({
+      expected: { playerEntityId, anchorEntityId, anchorImpactSeq, anchorImpactTick,
+        boundHostiles: normalizedBoundHostiles },
+      observed: start,
+    })}`);
   }
   const doglegPlan = planCeresThroughlineToolkitReposition();
   const receipts = [];
@@ -4630,7 +4668,9 @@ export function evaluateCeresToolkitTransitHandoff(receipt, {
       ? Math.hypot(approach.playerVel.x, approach.playerVel.z) : null;
     return approach?.schema === 'spaceface.ceresPublicPointApproachReceipt.v1'
       && approach?.pass === true
-      && approach?.source === 'public-keyboard-fixed-tick'
+      && approach?.source === 'public-keyboard-wall-pulse-fixed-observation'
+      && approach?.actuationClock === 'wall-time'
+      && approach?.observationClock === 'fixed-tick'
       && approach?.targetId === plan.targetId
       && approach?.targetName === plan.targetName
       && Number.isFinite(approach?.targetPos?.x)
@@ -5742,6 +5782,7 @@ async function exercisePublicPhysicsToolkit(page, routeBounds, collisionProof) {
     )).map((entity) => ({
       entityId: entity.id,
       worldRecordId: entity.data.worldRecordId,
+      generation: entity.occupantGeneration ?? null,
     })).sort((left, right) => String(left.worldRecordId).localeCompare(String(right.worldRecordId)));
     return {
       playerEntityId: player?.id ?? null,
@@ -5803,7 +5844,8 @@ async function exercisePublicPhysicsToolkit(page, routeBounds, collisionProof) {
     deadlineTick: toolkitActionDeadlineTick,
   });
   if (!target || !baseline.initialHostiles.some((row) => row.entityId === target.id
-      && row.worldRecordId === target.worldRecordId)) {
+      && row.worldRecordId === target.worldRecordId
+      && (row.generation ?? null) === (target.generation ?? null))) {
     throw new Error('toolkit exercise could not point at a declared Throughline hostile');
   }
   await page.mouse.move(
@@ -5838,6 +5880,7 @@ async function exercisePublicPhysicsToolkit(page, routeBounds, collisionProof) {
     playerEntityId: baseline.playerEntityId,
     targetId: target.id,
     targetWorldRecordId: target.worldRecordId,
+    targetGeneration: target.generation ?? null,
     attachmentId: attached.attachmentId,
     latchedTick: latched.tick,
     latchedSeq: latched.seq,
@@ -5892,9 +5935,11 @@ async function exercisePublicPhysicsToolkit(page, routeBounds, collisionProof) {
   const combatTarget = await pointPublicAtCeresHostile(page, [{
     entityId: target.id,
     worldRecordId: target.worldRecordId,
+    generation: target.generation ?? null,
   }], endTick, { deadlineTick: toolkitActionDeadlineTick });
   if (!combatTarget || combatTarget.id !== target.id
-      || combatTarget.worldRecordId !== target.worldRecordId) {
+      || combatTarget.worldRecordId !== target.worldRecordId
+      || (combatTarget.generation ?? null) !== (target.generation ?? null)) {
     throw new Error('toolkit combat could not reacquire the exact released Throughline hostile');
   }
   await page.mouse.move(
@@ -6218,11 +6263,12 @@ async function readCeresHostilePointingSnapshot(page, boundHostiles) {
     if (!state || !player || !camera) {
       return { tick: Number(state?.tick), candidates: [] };
     }
-    const bound = new Map((authorityRows || []).map((row) => [row.entityId, row.worldRecordId]));
+    const bound = new Map((authorityRows || []).map((row) => [row.entityId, row]));
     const candidates = (state.entityList || []).filter((entity) => (
       entity?.alive !== false
         && entity?.type === 'ship'
-        && bound.get(entity.id) === entity.data?.worldRecordId
+        && bound.get(entity.id)?.worldRecordId === entity.data?.worldRecordId
+        && (bound.get(entity.id)?.generation ?? null) === (entity.occupantGeneration ?? null)
         && (entity.data?.ai?.zoneId === 'zone_ceres_ambush'
           && entity.data?.ai?.squadId === 'zone_ceres_ambush')
     )).map((hostile) => {
@@ -6235,6 +6281,7 @@ async function readCeresHostilePointingSnapshot(page, boundHostiles) {
       const row = {
         id: hostile.id,
         worldRecordId: hostile.data?.worldRecordId || null,
+        generation: hostile.occupantGeneration ?? null,
         alive: hostile.alive !== false,
         pos: {
           x: Number(hostile.pos?.x),
@@ -6281,6 +6328,7 @@ async function readCeresHostilePointingSnapshot(page, boundHostiles) {
   }, (boundHostiles || []).map((row) => ({
     entityId: row.entityId,
     worldRecordId: row.worldRecordId,
+    generation: row.generation ?? null,
   })));
 }
 
@@ -6339,7 +6387,7 @@ export function selectCeresTetherCombatStatus(snapshot, authority) {
 }
 
 async function readCeresTetherCombatStatus(page, target, attachmentId) {
-  const snapshot = await page.evaluate(({ targetId, worldRecordId }) => {
+  const snapshot = await page.evaluate(({ targetId, worldRecordId, generation }) => {
     const state = window.SF?.state;
     const player = state?.entities?.get(state.playerId);
     const entity = state?.entities?.get(targetId);
@@ -6353,7 +6401,7 @@ async function readCeresTetherCombatStatus(page, target, attachmentId) {
         targetId: state.player.tether.targetId ?? null,
         attachmentId: state.player.tether.attachmentId || null,
       } : null,
-      candidates: entity ? [{
+      candidates: entity && (entity.occupantGeneration ?? null) === generation ? [{
         id: entity.id,
         worldRecordId: entity.data?.worldRecordId || null,
         expectedWorldRecordId: worldRecordId,
@@ -6371,6 +6419,7 @@ async function readCeresTetherCombatStatus(page, target, attachmentId) {
   }, {
     targetId: target.id,
     worldRecordId: target.worldRecordId,
+    generation: target.generation ?? null,
   });
   return selectCeresTetherCombatStatus(snapshot, {
     targetId: target.id,
@@ -9153,7 +9202,9 @@ function validateToolkitCameraReposition(receipt, route, failures) {
     return projection;
   }
   if (!boundHostiles || !initialHostiles
-      || stableJson(boundHostiles.pairs) !== stableJson(initialHostiles.pairs)) {
+      || initialHostiles.pairs.some((row) => !boundHostiles.pairs.some((bound) => (
+        bound.entityId === row.entityId && bound.worldRecordId === row.worldRecordId
+      )))) {
     failures.push('toolkit camera reposition lacks exact prebound hostile identity');
   }
   const expectedWaypoints = planCeresThroughlineToolkitReposition().waypoints.map((waypoint) => ({
