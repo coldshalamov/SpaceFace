@@ -155,6 +155,11 @@ const flightRootTemplates = new Map();
 // their lifetime. Older environments without WeakRef use the same reference-counted lifetime.
 const retiredFlightTemplateRefs = new Set();
 const FLIGHT_ROOT_TEMPLATE_CACHE_LIMIT = 32;
+// A count limit alone does not bound geometry memory: a handful of large ship compositions can
+// retain far more than the same number of small templates. Keep the reusable set within a byte
+// budget as well; active instances remain protected by the existing reference fence.
+const FLIGHT_ROOT_TEMPLATE_GEOMETRY_BUDGET_BYTES = 32 * 1024 * 1024;
+let flightRootTemplateGeometryBytes = 0;
 let flightTemplateProbeSequence = 0;
 
 export function getFlightRenderPackageCache() {
@@ -162,8 +167,29 @@ export function getFlightRenderPackageCache() {
 }
 
 export function getFlightRootTemplateCacheDiagnostics() {
+  let retiredLiveEntries = 0;
+  let retiredInstanceRefs = 0;
+  let retiredGeometryBytes = 0;
+  let retiredUnreachableRefs = 0;
+  for (const ref of retiredFlightTemplateRefs) {
+    const entry = ref && typeof ref.deref === 'function' ? ref.deref() : null;
+    if (!entry || entry.disposed === true) {
+      retiredUnreachableRefs++;
+      continue;
+    }
+    retiredLiveEntries++;
+    retiredInstanceRefs += Math.max(0, Number(entry.instanceRefs) || 0);
+    retiredGeometryBytes += Math.max(0, Number(entry.retainedGeometryBytes) || 0);
+  }
   return Object.freeze({
     size: flightRootTemplates.size,
+    geometryBytes: flightRootTemplateGeometryBytes,
+    geometryBudgetBytes: FLIGHT_ROOT_TEMPLATE_GEOMETRY_BUDGET_BYTES,
+    retiredReferenceCount: retiredFlightTemplateRefs.size,
+    retiredLiveEntries,
+    retiredInstanceRefs,
+    retiredGeometryBytes,
+    retiredUnreachableRefs,
     keys: Object.freeze([...flightRootTemplates.keys()]),
   });
 }
@@ -12624,6 +12650,7 @@ function* createFlightRootTemplateEntrySteps({
     renderContract: cloneFlightTemplateMetadata(root.userData?.renderContract || {}),
     producerManifest: cloneFlightTemplateMetadata(root.userData?.openingSubmissionPackage?.manifest || null),
     packageRecipes,
+    retainedGeometryBytes: estimateFlightTemplateGeometryBytes(templateRoot),
     wholeShip: wholeShip === true,
     loadoutFingerprint,
     cacheHeld: true,
@@ -13361,12 +13388,27 @@ function cloneFlightTemplateMetadata(value, seen = new Map()) {
 function storeFlightRootTemplate(key, entry) {
   if (!key || !entry) return false;
   if (flightRootTemplates.has(key)) removeFlightRootTemplate(key);
-  while (flightRootTemplates.size >= FLIGHT_ROOT_TEMPLATE_CACHE_LIMIT) {
+  const entryBytes = Number.isFinite(entry.retainedGeometryBytes)
+    ? Math.max(0, entry.retainedGeometryBytes) : estimateFlightTemplateGeometryBytes(entry.root);
+  if (entryBytes > FLIGHT_ROOT_TEMPLATE_GEOMETRY_BUDGET_BYTES) {
+    entry.cacheHeld = false;
+    finalizeFlightRootTemplateIfUnused(entry);
+    return false;
+  }
+  while (flightRootTemplates.size >= FLIGHT_ROOT_TEMPLATE_CACHE_LIMIT
+      || flightRootTemplateGeometryBytes + entryBytes > FLIGHT_ROOT_TEMPLATE_GEOMETRY_BUDGET_BYTES) {
     const oldest = flightRootTemplates.keys().next().value;
     if (oldest == null) break;
     removeFlightRootTemplate(oldest);
   }
+  if (flightRootTemplateGeometryBytes + entryBytes > FLIGHT_ROOT_TEMPLATE_GEOMETRY_BUDGET_BYTES) {
+    entry.cacheHeld = false;
+    finalizeFlightRootTemplateIfUnused(entry);
+    return false;
+  }
+  entry.retainedGeometryBytes = entryBytes;
   flightRootTemplates.set(key, entry);
+  flightRootTemplateGeometryBytes += entryBytes;
   return true;
 }
 
@@ -13374,6 +13416,8 @@ function removeFlightRootTemplate(key) {
   const entry = flightRootTemplates.get(key);
   if (!entry) return false;
   flightRootTemplates.delete(key);
+  flightRootTemplateGeometryBytes = Math.max(
+    0, flightRootTemplateGeometryBytes - (entry.retainedGeometryBytes || 0));
   entry.cacheHeld = false;
   if ((entry.instanceRefs || 0) > 0 && !entry.retiredContextRef) {
     const ref = typeof WeakRef === 'function' ? new WeakRef(entry) : { deref: () => entry };
@@ -13382,6 +13426,31 @@ function removeFlightRootTemplate(key) {
   }
   finalizeFlightRootTemplateIfUnused(entry);
   return true;
+}
+
+function estimateFlightTemplateGeometryBytes(root) {
+  const buffers = new Set();
+  let bytes = 0;
+  const addAttribute = (attribute) => {
+    const source = attribute && (attribute.data?.isInterleavedBuffer ? attribute.data : attribute);
+    const array = source && source.array;
+    if (!array) return;
+    const buffer = array.buffer || array;
+    if (buffers.has(buffer)) return;
+    buffers.add(buffer);
+    const size = Number(buffer.byteLength || array.byteLength || 0);
+    if (Number.isFinite(size) && size > 0) bytes += size;
+  };
+  root?.traverse?.((object) => {
+    const geometry = object && object.geometry;
+    if (!geometry) return;
+    addAttribute(geometry.index);
+    for (const attribute of Object.values(geometry.attributes || {})) addAttribute(attribute);
+    for (const attributes of Object.values(geometry.morphAttributes || {})) {
+      for (const attribute of attributes || EMPTY_ARRAY) addAttribute(attribute);
+    }
+  });
+  return bytes;
 }
 
 function retainFlightRootTemplate(entry) {
@@ -13508,6 +13577,66 @@ export function runFlightRootTemplateCacheProbe(onPhase = null) {
   for (const material of materials) material.dispose?.();
   mesh.geometry?.dispose?.();
   result.geometryDisposedOnce = geometryDisposeCount === 1;
+  result.geometryBytesEstimated = entry.retainedGeometryBytes > 0;
+
+  const budgetProbeEntry = (name) => {
+    const budgetRoot = new THREE.Group();
+    budgetRoot.name = name;
+    const budgetGeometry = new THREE.BoxGeometry(1, 1, 1);
+    let disposeCount = 0;
+    const dispose = budgetGeometry.dispose.bind(budgetGeometry);
+    budgetGeometry.dispose = () => { disposeCount += 1; return dispose(); };
+    budgetRoot.add(new THREE.Mesh(budgetGeometry, new THREE.MeshBasicMaterial()));
+    return {
+      root: budgetRoot,
+      cacheHeld: true,
+      instanceRefs: 0,
+      disposed: false,
+      // Exercise the production byte-admission branch without allocating a large test buffer.
+      retainedGeometryBytes: Math.floor(FLIGHT_ROOT_TEMPLATE_GEOMETRY_BUDGET_BYTES * 0.6),
+      get disposeCount() { return disposeCount; },
+    };
+  };
+  const budgetFirst = budgetProbeEntry('__flight-template-budget-first__');
+  const budgetSecond = budgetProbeEntry('__flight-template-budget-second__');
+  const budgetFirstKey = '__spaceface-flight-template-budget-first__';
+  const budgetSecondKey = '__spaceface-flight-template-budget-second__';
+  storeFlightRootTemplate(budgetFirstKey, budgetFirst);
+  const releaseBudgetFirst = retainFlightRootTemplate(budgetFirst);
+  storeFlightRootTemplate(budgetSecondKey, budgetSecond);
+  const budgetEvictedOldest = !flightRootTemplates.has(budgetFirstKey)
+    && flightRootTemplates.has(budgetSecondKey);
+  const heldUntilRelease = budgetFirst.disposeCount === 0;
+  releaseBudgetFirst('flight-template-budget-probe-release');
+  const disposedAfterRelease = budgetFirst.disposeCount === 1;
+  removeFlightRootTemplate(budgetSecondKey);
+  result.weightedBudgetEvictsOldest = budgetEvictedOldest;
+  result.weightedBudgetRetainsLiveInstance = heldUntilRelease && disposedAfterRelease;
+  result.cacheBudgetRespected = flightRootTemplateGeometryBytes <= FLIGHT_ROOT_TEMPLATE_GEOMETRY_BUDGET_BYTES;
+
+  // `composedShipSteps` caches a clone only after building the live root returned to the renderer.
+  // A template too large for the cache must dispose only that rejected clone, not the live root.
+  const oversizeSource = new THREE.Group();
+  const oversizeSourceGeometry = new THREE.BoxGeometry(1, 1, 1);
+  let oversizeSourceDisposed = 0;
+  const disposeOversizeSource = oversizeSourceGeometry.dispose.bind(oversizeSourceGeometry);
+  oversizeSourceGeometry.dispose = () => { oversizeSourceDisposed += 1; return disposeOversizeSource(); };
+  oversizeSource.add(new THREE.Mesh(oversizeSourceGeometry, new THREE.MeshBasicMaterial()));
+  const oversizeTemplateRoot = createFlightTemplateRoot(oversizeSource);
+  const oversizeTemplateKey = '__spaceface-flight-template-budget-oversize__';
+  const oversizeCandidateStored = storeFlightRootTemplate(oversizeTemplateKey, {
+    root: oversizeTemplateRoot,
+    cacheHeld: true,
+    instanceRefs: 0,
+    disposed: false,
+    retainedGeometryBytes: FLIGHT_ROOT_TEMPLATE_GEOMETRY_BUDGET_BYTES + 1,
+  });
+  result.oversizeCandidateRejectedSafely = !oversizeCandidateStored
+    && !flightRootTemplates.has(oversizeTemplateKey)
+    && oversizeSourceDisposed === 0
+    && oversizeSourceGeometry.attributes.position.count > 0;
+  oversizeSourceGeometry.dispose();
+  oversizeSource.clear();
   return result;
 }
 

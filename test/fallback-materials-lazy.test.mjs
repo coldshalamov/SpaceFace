@@ -67,6 +67,11 @@ test('an authored whole-ship composition paints no procedural hull textures', ()
     sharedBakeAliased: true,
     reboundHooks: true,
     geometryDisposedOnce: true,
+    geometryBytesEstimated: true,
+    weightedBudgetEvictsOldest: true,
+    weightedBudgetRetainsLiveInstance: true,
+    cacheBudgetRespected: true,
+    oversizeCandidateRejectedSafely: true,
   }, 'the composition itself must still build, instance and dispose correctly');
   assert.equal(hullSizedCanvases() - before, 0,
     'three authored compositions must not generate the 1024px fallback hull maps they never draw');
