@@ -49,10 +49,13 @@ function installFakeTimers() {
 
 function makeRetryOwner(id) {
   const pushes = [];
+  let top = null;
   const manager = {
     pushScreen(screenId) {
       pushes.push(screenId);
+      top = screenId;
     },
+    top() { return top; },
     destroy() {},
   };
   const owner = Object.create(ui);
@@ -62,6 +65,7 @@ function makeRetryOwner(id) {
   owner._crucibleResultsShown = id === 'crucibleResults';
   owner._survivalRunLive = () => false;
   owner.state = {
+    mode: 'flight',
     ui: {
       docked: id === 'station',
       dockedStationId: id === 'station' ? 'station-test' : null,
@@ -460,6 +464,115 @@ test('a live dock request loads the station screen once and preserves its first 
   } finally {
     clock.restore();
   }
+});
+
+test('Ship F2 registration coalesces, opens once, and a pending F2 cancellation cannot open later', async () => {
+  const bus = createBus();
+  const cues = [];
+  bus.on('audio:cue', ({ id }) => cues.push(id));
+  const pushes = [];
+  let top = null;
+  const manager = {
+    pushScreen(id) { pushes.push(id); top = id; },
+    top() { return top; },
+    destroy() {},
+  };
+  const owner = Object.create(ui);
+  owner.screenManager = manager;
+  owner._registeredScreens = new Set();
+  owner.state = { mode: 'flight', ui: {} };
+  owner.bus = bus;
+  owner._screenRegistrationCycle = beginScreenRegistrationCycle(owner, manager);
+  let loads = 0;
+  let finishLoad;
+  owner._registerScreenEntry = (entry) => {
+    loads++;
+    assert.equal(entry.name, 'shipScreen');
+    assert.equal(entry.path, './ship/shipScreen.js');
+    return new Promise((resolve) => {
+      finishLoad = () => { owner._registeredScreens.add('ship'); resolve(true); };
+    });
+  };
+
+  assert.equal(owner._toggleShipScreenOpenRequest(), 'requested');
+  assert.equal(owner._shipScreenOpenRequest != null, true);
+  await Promise.resolve();
+  assert.equal(loads, 1, 'the screen module is requested only after the first live F2 intent');
+  assert.equal(owner._toggleShipScreenOpenRequest(), 'cancelled');
+  finishLoad();
+  await Promise.resolve();
+  await Promise.resolve();
+  assert.deepEqual(pushes, [], 'a completed import cannot honor a canceled F2 request');
+
+  assert.equal(owner._toggleShipScreenOpenRequest(), 'opened');
+  assert.deepEqual(pushes, ['ship'], 'the registered screen opens through the existing shared manager');
+  assert.deepEqual(cues, ['ui_open', 'ui_back', 'ui_open']);
+});
+
+test('failed Shipworks registration clears the request so a later F2 can retry', async () => {
+  const { owner, pushes } = makeRetryOwner('ship');
+  owner.bus = createBus();
+  let attempts = 0;
+  owner._registerScreenEntry = (entry) => {
+    attempts++;
+    assert.equal(entry.name, 'shipScreen');
+    if (attempts === 1) return Promise.resolve(false);
+    owner._registeredScreens.add('ship');
+    return Promise.resolve(true);
+  };
+
+  assert.equal(owner._toggleShipScreenOpenRequest(), 'requested');
+  await assert.rejects(owner._shipScreenRegistration.promise, /failed to register/);
+  await Promise.resolve();
+  await Promise.resolve();
+  assert.equal(owner._shipScreenOpenRequest, null,
+    'the settled failed registration releases its pending intent');
+  assert.equal(owner._shipScreenRegistration, null,
+    'a failed registration is not cached as a successful screen');
+  assert.equal(owner._toggleShipScreenOpenRequest(), 'requested');
+  await owner._shipScreenRegistration.promise;
+  await Promise.resolve();
+  assert.equal(attempts, 2, 'a later F2 intent performs a fresh module registration attempt');
+  assert.deepEqual(pushes, ['ship']);
+});
+
+test('Shipworks request is canceled when the registration cycle is torn down', async () => {
+  const { owner, pushes, manager } = makeRetryOwner('ship');
+  let finishLoad;
+  owner._registerScreenEntry = () => new Promise((resolve) => {
+    finishLoad = () => { owner._registeredScreens.add('ship'); resolve(true); };
+  });
+  assert.equal(owner._toggleShipScreenOpenRequest(), 'requested');
+  await Promise.resolve();
+  owner._cancelShipScreenOpenRequest({ cue: false });
+  invalidateScreenRegistrationCycle(owner);
+  owner.screenManager = null;
+  finishLoad();
+  await Promise.resolve();
+  await Promise.resolve();
+  assert.deepEqual(pushes, []);
+  assert.equal(owner._shipScreenOpenRequest, null);
+  assert.equal(isScreenRegistrationCycleCurrent(owner._screenRegistrationCycle), false);
+  manager.destroy();
+});
+
+test('a mode change cancels the pending Shipworks intent and removes its listener on teardown', () => {
+  const bus = createBus();
+  const owner = Object.create(ui);
+  owner.state = { mode: 'flight', ui: {} };
+  owner.bus = bus;
+  owner._shipScreenOpenRequest = { cancelled: false };
+  owner._bindShipScreenModeCancellation();
+
+  owner.state.mode = 'pause';
+  bus.emit('mode:changed', { mode: 'pause' });
+  assert.equal(owner._shipScreenOpenRequest, null,
+    'a transition out of flight invalidates an import before it can present');
+  assert.equal(bus._listeners.get('mode:changed')?.size, 1);
+  owner._shipModeOff();
+  owner._shipModeOff = null;
+  assert.equal(bus._listeners.get('mode:changed')?.size || 0, 0,
+    'the owner removes its only mode listener on teardown');
 });
 
 test('a failed station load remains visible and a later dock intent retries successfully', async () => {
