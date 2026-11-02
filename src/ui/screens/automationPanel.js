@@ -962,6 +962,17 @@ ${AU_NARROW} .au-summary > .au-metric .v { margin-top: 3px; }
   ${AU_NARROW} .au-summary > .au-metric,
   ${AU_NARROW} .au-summary > .au-metric:hover { padding: 8px 10px 9px; }
 }
+/* polish289b: ≤760 wide (390×844, 560×800) the 2×2 strip stood ~30px taller than the loose
+   readings, so DEPLOYED DRONES was cut at the panel's bottom fold and the strip's corners ran into
+   the corner brackets. Cells tighten (padding, value gap, sub-line leading) and the strip insets
+   8px from the body edge, so it sits clear of the brackets and the heading stays whole. */
+@media (max-width: 760px) {
+  ${AU_NARROW} .au-summary { margin: 0 8px; }
+  ${AU_NARROW} .au-summary > .au-metric,
+  ${AU_NARROW} .au-summary > .au-metric:hover { padding: 5px 10px 6px; }
+  ${AU_NARROW} .au-summary > .au-metric .v { margin-top: 1px; line-height: 1.15; }
+  ${AU_NARROW} .au-summary > .au-metric .s { line-height: 1.25; }
+}
 `;
 
 function injectStyle() {
