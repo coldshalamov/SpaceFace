@@ -76,6 +76,14 @@ ${S} .orr-statistics__promise-counts { ${READ} font-size:clamp(13.5px, min(.9vw,
   ${S} .orr-statistics__promise-word::after { content:"Not yet"; align-self:center; ${LABEL} font-size:12px; letter-spacing:.12em;
     color:rgb(${BONE} / .6); padding:2px 8px; border:1px solid rgb(${BONE} / .16); border-radius:999px; background:rgb(${BONE} / .03); white-space:nowrap; }
 }
+/* Phones keep the same state tag: the name and "Not yet" share the top line, and what the reading
+   counts runs the full card width under them instead of squeezing into a second column. */
+@media (max-width:640px) {
+  ${S} .orr-statistics__promise-word { grid-template-columns:minmax(0, 1fr) auto; row-gap:6px; align-items:center; }
+  ${S} .orr-statistics__promise-counts { grid-column:1 / -1; grid-row:2; }
+  ${S} .orr-statistics__promise-word::after { content:"Not yet"; grid-column:2; grid-row:1; ${LABEL} font-size:12px; letter-spacing:.12em;
+    color:rgb(${BONE} / .6); padding:2px 8px; border:1px solid rgb(${BONE} / .16); border-radius:999px; background:rgb(${BONE} / .03); white-space:nowrap; }
+}
 @media (max-height:460px) {
   ${S} .orr-statistics__promise-scale { margin-top:8px; }
   ${S} .orr-statistics__promise-word { padding:4px clamp(12px, 1.6vw, 18px); }
