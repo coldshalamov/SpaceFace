@@ -11,7 +11,7 @@
   "measured": "synchronous registry.get(\"ui\").frame plus authored src/ui requestAnimationFrame callback CPU bucketed per presentation timestamp, 150 ms warm-up discarded; worst combined UI sample per surface over a 600 ms headed window",
   "excluded": "browser layout/paint deferred after the owner callback is outside this CPU window; unclassified non-game requestAnimationFrame callbacks are reported separately as auxiliaryRaf* diagnostics",
   "seed": 47,
-  "uiSourceDigest": "bc736f6e7e42d42bbfae348e24bef4dea71bed7b87002537c956b77f6cb5c064",
+  "uiSourceDigest": "451b885d8e7cc07d8bbd1743fd4bc7dcb0791ad85d1191babdf9b5963bf327aa",
   "uiSourceFiles": {
     "index.html": "510782f0d7484e63370cf8b70133c9f61601dced1b57d7d5b539609b4ee1a062",
     "src/ui/accessibility.js": "56b7068f9460e7175a6d2f8d66537e67949d07db79994b918165b1d7dd7dc1a8",
@@ -229,7 +229,7 @@
     "src/ui/orrery/save-loadLayouts.js": "d95f63936a1954a0a28d4b7e6646eff88c5d647b2f9de50e4f8e121e466303db",
     "src/ui/orrery/saveBerth.js": "3277b73ea17573dd3b42ad2b683b7f49889537b3d0baa7170427d7822b549fd6",
     "src/ui/orrery/saveFilmstrip.js": "22523decdcfc3832c70a9b2ae1ebf62fb477972f4e414b143610f834267e813b",
-    "src/ui/orrery/saveLayouts.js": "95ceb51ad929dae64378031762280a8a3127b1755c452e25e300c08cfaa8485f",
+    "src/ui/orrery/saveLayouts.js": "6cbaf646526d2a928aa6803b5698b507d0095eabf8e4f7d015c8d69c178fe4a9",
     "src/ui/orrery/saveSortieTape.js": "334f1cc08383490e735950ae2a5df115c2537194455298d50b2790e2ecf4aca7",
     "src/ui/orrery/screenLayouts.js": "9d15b7df5c8d64b47871a71c61506a4a127211fda9f411013401f53939fbff8c",
     "src/ui/orrery/scrollExtent.js": "3ce8cfd26641228da0258bdf2ae77f324316a40ce9640a46f5b68a64e83ac126",
