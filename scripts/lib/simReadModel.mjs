@@ -1126,7 +1126,8 @@ function expandDepthFor(segs) {
   // These roots are bounded presentation projections, even when a diagnostic
   // profile expands every root. Expanding their raw sources would bypass the
   // projector, and the facade must retain the same atomic projected path.
-  if (segs[0] === 'drill' || segs[0] === 'planet.ships' || segs[0] === 'planet.orchardForecast' || segs[0] === 'ilexGreenhousePublic') return 0;
+  if (segs[0] === 'drill' || segs[0] === 'capitalBossEncounters' || segs[0] === 'planet.ships'
+    || segs[0] === 'planet.orchardForecast' || segs[0] === 'ilexGreenhousePublic') return 0;
   // One live cable changes every tick, while the bounded broken-line history is mostly static.
   // Keep the complete facade, but diff individual attachment records so that live tension does
   // not clone and transport every old cable on every pose reply.
