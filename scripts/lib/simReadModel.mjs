@@ -678,6 +678,8 @@ export const DOMAIN_MIRROR_KEYS = Object.freeze([
   // Keep the sector epoch after event replay's temporary emit-time shim ends.
   // Appending preserves existing domain slots and their staggered cadences.
   'world.enterSerial',
+  // The simulation owns Line acquisition; the main HUD needs its current bounded preview.
+  'masslineAcquisition',
 ]);
 
 // Per-key canonical-serialization ship cap (report-only): any single mirrored
@@ -879,6 +881,7 @@ export function configureDomainMirroring(config = {}) {
 // the full segment count (rule prefix + path suffix) so a rule can't reach
 // deeper into a subtree than it declared.
 function domainLeafViewFor(segs) {
+  if (segs.length === 1 && segs[0] === 'masslineAcquisition') return { project: 'masslineAcquisition' };
   if (segs.length === 1 && segs[0] === 'capitalBossEncounters') return { project: 'capitalBossPresentation' };
   if (segs.length === 1 && segs[0] === 'ilexGreenhousePublic') return ILEX_GREENHOUSE_MIRROR_RULE;
   if (segs.length === 1 && segs[0] === 'planet.orchardForecast') return ORCHARD_FORECAST_MIRROR_RULE;
@@ -972,6 +975,21 @@ function projectOrchardExposure(state, records) {
 }
 
 function projectDomainLeaf(rule, v, state) {
+  if (rule?.project === 'masslineAcquisition') {
+    if (!v || typeof v !== 'object') return null;
+    const selected = v.selected;
+    return {
+      schemaVersion: v.schemaVersion, id: v.id, publishedTick: v.publishedTick,
+      publishedAt: v.publishedAt, validUntil: v.validUntil, reason: v.reason,
+      selected: selected ? {
+        targetId: selected.targetId, occupantGeneration: selected.occupantGeneration,
+        targetType: selected.targetType, targetLabel: selected.targetLabel,
+        context: selected.context, intentLabel: selected.intentLabel, confidence: selected.confidence,
+        status: selected.status, reason: selected.reason,
+        isMassSeedTetherEligible: selected.isMassSeedTetherEligible, seedStateWord: selected.seedStateWord,
+      } : null,
+    };
+  }
   // npcJobs.byId is authoritative in the worker but a presentation mirror on the main side.
   // Project before canonicalization so the expensive planner/cargo/sidecar fields do not enter
   // the signed string or structured-clone update.  The worker state itself is never modified.
