@@ -1947,7 +1947,19 @@ export async function runCeresFiveMinutePublicRoute({
         // The public station waypoint may finish in its berth on either side of the
         // hull. Leave outward and go around its visible navigation ring before aiming
         // at the seam; a straight W/Shift line from the far berth crosses the station.
-        const departure = planCeresWorkingSeamDeparture(arrival, { minRemainingTicks: legReserveTicks });
+        // The functional arrival receipt deliberately omits the navigation target coordinates.
+        // Read the still-retained public autopilot target separately and bind it to that receipt.
+        const navigation = await page.evaluate(() => {
+          const autopilot = window.SF?.state?.nav?.autopilot;
+          return autopilot ? {
+            label: autopilot.label, status: autopilot.status, active: autopilot.active,
+            arrivalRadius: autopilot.arrivalRadius,
+            target: autopilot.target && { x: autopilot.target.x, z: autopilot.target.z },
+          } : null;
+        });
+        const departure = planCeresWorkingSeamDeparture(arrival, {
+          minRemainingTicks: legReserveTicks, navigation,
+        });
         const receipts = [];
         await mark('clear-belt-outpost', { pocketId: leg.pocketId, waypoints: departure.waypoints.length });
         for (const waypoint of departure.waypoints) {
@@ -3497,14 +3509,17 @@ async function provePublicFlightInput(page) {
   return receipt;
 }
 
-export function planCeresWorkingSeamDeparture(arrival, { minRemainingTicks = 120 } = {}) {
+export function planCeresWorkingSeamDeparture(arrival, { minRemainingTicks = 120, navigation } = {}) {
   // Only the player's accepted arrival and the public station navigation target are
   // used here. No scan of hidden actors or collision bodies guides the input actor.
   const source = arrival?.player?.pos;
-  const station = arrival?.autopilot?.target;
+  const station = navigation?.target;
   const ring = Number(arrival?.autopilot?.arrivalRadius);
   if (arrival?.sectorId !== CERES_REFERENCE_ACCEPTANCE_ENTRY.sectorId
       || arrival?.player?.alive !== true || arrival?.autopilot?.label !== 'Belt Outpost'
+      || arrival?.autopilot?.active !== false || arrival?.autopilot?.status !== 'arrived'
+      || navigation?.label !== arrival.autopilot.label || navigation?.status !== 'arrived'
+      || navigation?.active !== false || navigation?.arrivalRadius !== arrival.autopilot.arrivalRadius
       || ![source?.x, source?.z, station?.x, station?.z, ring].every(Number.isFinite)
       || ring <= 0 || !Number.isSafeInteger(minRemainingTicks) || minRemainingTicks < 120) {
     throw new Error('Working Seam departure requires the accepted public Belt Outpost navigation receipt');

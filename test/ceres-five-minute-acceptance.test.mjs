@@ -4814,11 +4814,16 @@ test('Working Seam departure leaves the captured berth outward and routes around
     const t = Math.max(0, Math.min(1, ((station.x - a.x) * dx + (station.z - a.z) * dz) / (dx * dx + dz * dz)));
     return Math.hypot(a.x + dx * t - station.x, a.z + dz * t - station.z);
   };
-  for (const source of [captured, { x: station.x - 21, z: station.z - 12 }]) {
-    const arrival = { sectorId: CERES_REFERENCE_ACCEPTANCE_ENTRY.sectorId,
+  for (const source of [captured, { x: station.x - 21, z: station.z - 12 },
+    // dbda public route: arrival at tick 2012, before the old receipt-shape failure.
+    { x: -11473.480041503906, z: 7206.995910644531 }]) {
+    // waitForAutopilotArrival returns this shape; the retained target is a separate public read.
+    const arrival = { terminal: true, ok: true, reason: 'arrived',
+      sectorId: CERES_REFERENCE_ACCEPTANCE_ENTRY.sectorId,
       player: { alive: true, pos: source },
-      autopilot: { label: 'Belt Outpost', target: station, arrivalRadius: 90 } };
-    const plan = planCeresWorkingSeamDeparture(arrival, { minRemainingTicks: 2400 });
+      autopilot: { active: false, status: 'arrived', label: 'Belt Outpost', arrivalRadius: 90 } };
+    const navigation = { ...arrival.autopilot, target: station };
+    const plan = planCeresWorkingSeamDeparture(arrival, { minRemainingTicks: 2400, navigation });
     if (source === captured) assert.ok(segmentGap(source, plan.targetPos) < 26 + 16,
       'the captured straight seam approach intersects the station plus player envelope');
     const first = plan.waypoints[0];
@@ -4838,6 +4843,9 @@ test('Working Seam departure leaves the captured berth outward and routes around
       CERES_REFERENCE_ACCEPTANCE_ENTRY.sectorId,
     ), 'the accepted Working Seam target stays unchanged');
     assert.deepEqual(arrival.player.pos, source, 'planning must not mutate the observed arrival');
+    assert.throws(() => planCeresWorkingSeamDeparture(arrival, {
+      minRemainingTicks: 2400, navigation: { ...navigation, status: 'cruising' },
+    }), /public Belt Outpost/, 'a different live navigation state cannot be paired with the receipt');
   }
   assert.throws(() => planCeresWorkingSeamDeparture({ player: { pos: captured } }), /public Belt Outpost/);
 });
