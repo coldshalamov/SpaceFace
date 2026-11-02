@@ -556,13 +556,13 @@ test('Shipworks request is canceled when the registration cycle is torn down', a
   manager.destroy();
 });
 
-test('a mode change cancels the pending Shipworks intent and removes its listener on teardown', () => {
+test('mode and screen-stack invalidation listeners cancel pending Shipworks intent and teardown cleanly', () => {
   const bus = createBus();
   const owner = Object.create(ui);
   owner.state = { mode: 'flight', ui: {} };
   owner.bus = bus;
   owner._shipScreenOpenRequest = { cancelled: false };
-  owner._bindShipScreenModeCancellation();
+  owner._bindShipScreenRequestInvalidation();
 
   owner.state.mode = 'pause';
   bus.emit('mode:changed', { mode: 'pause' });
@@ -573,6 +573,52 @@ test('a mode change cancels the pending Shipworks intent and removes its listene
   owner._shipModeOff = null;
   assert.equal(bus._listeners.get('mode:changed')?.size || 0, 0,
     'the owner removes its only mode listener on teardown');
+  owner._shipScreenTopOff();
+  owner._shipScreenTopOff = null;
+  assert.equal(bus._listeners.get('ui:screenTop')?.size || 0, 0,
+    'the owner removes its screen-stack listener on teardown');
+});
+
+test('a newer Map or Pause screen prevents a pending F2 import from taking the top of the stack', async () => {
+  for (const newerScreen of ['galaxyMap', 'pause']) {
+    const bus = createBus();
+    const state = { mode: 'flight', ui: { screenStack: [] } };
+    const pushes = [];
+    let top = null;
+    const manager = {
+      top() { return top; },
+      pushScreen(id) {
+        pushes.push(id);
+        top = id;
+        state.ui.screenStack.push(id);
+        bus.emit('ui:screenTop', { id });
+      },
+    };
+    const owner = Object.create(ui);
+    owner.state = state;
+    owner.bus = bus;
+    owner.screenManager = manager;
+    owner._registeredScreens = new Set();
+    owner._screenRegistrationCycle = beginScreenRegistrationCycle(owner, manager);
+    owner._bindShipScreenRequestInvalidation();
+    let finishLoad;
+    owner._registerScreenEntry = () => new Promise((resolve) => {
+      finishLoad = () => { owner._registeredScreens.add('ship'); resolve(true); };
+    });
+
+    assert.equal(owner._toggleShipScreenOpenRequest(), 'requested');
+    await Promise.resolve();
+    manager.pushScreen(newerScreen);
+    assert.equal(owner._shipScreenOpenRequest, null,
+      `opening ${newerScreen} cancels the older F2 intent while the import is pending`);
+    finishLoad();
+    await owner._shipScreenRegistration.promise;
+    await Promise.resolve();
+    await Promise.resolve();
+    assert.deepEqual(pushes, [newerScreen], `Shipworks cannot open over the newer ${newerScreen} choice`);
+    owner._shipModeOff?.();
+    owner._shipScreenTopOff?.();
+  }
 });
 
 test('a failed station load remains visible and a later dock intent retries successfully', async () => {

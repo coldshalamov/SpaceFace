@@ -634,6 +634,8 @@ export const ui = {
     this._cancelShipScreenOpenRequest({ cue: false });
     this._shipModeOff?.();
     this._shipModeOff = null;
+    this._shipScreenTopOff?.();
+    this._shipScreenTopOff = null;
     this._shipScreenRegistration = null;
     if (this._destroyFlightCursor) this._destroyFlightCursor();
     this.windowTitle?.stop();
@@ -813,7 +815,7 @@ export const ui = {
       toggleShipScreenRequest: () => this._toggleShipScreenOpenRequest(),
       cancelShipScreenRequest: () => this._cancelShipScreenOpenRequest(),
     });
-    this._bindShipScreenModeCancellation();
+    this._bindShipScreenRequestInvalidation();
 
     // comms / graffiti / endgame narrative overlay (story system drives it via events)
     replaceCommsOwner(this, ctx);
@@ -1951,22 +1953,36 @@ export const ui = {
     return true;
   },
 
-  _bindShipScreenModeCancellation() {
+  _bindShipScreenRequestInvalidation() {
     this._shipModeOff?.();
     this._shipModeOff = this.bus?.on?.('mode:changed', ({ mode } = {}) => {
       if ((mode && mode !== 'flight') || this.state?.mode !== 'flight') {
         this._cancelShipScreenOpenRequest({ cue: false });
       }
     }) || null;
+    this._shipScreenTopOff?.();
+    this._shipScreenTopOff = this.bus?.on?.('ui:screenTop', ({ id } = {}) => {
+      const request = this._shipScreenOpenRequest;
+      if (request && id !== 'ship' && id !== request.initiatingTop) {
+        this._cancelShipScreenOpenRequest({ cue: false });
+      }
+    }) || null;
   },
 
   _isCurrentShipScreenOpenRequest(request) {
+    const currentStack = Array.isArray(this.state?.ui?.screenStack) ? this.state.ui.screenStack : null;
+    const sameStack = request?.stackSnapshot == null || (currentStack != null
+      && currentStack.length === request.stackSnapshot.length
+      && currentStack.every((id, index) => id === request.stackSnapshot[index]));
+    const currentTop = this.screenManager?.top?.() ?? null;
     return !!(request
       && this._shipScreenOpenRequest === request
       && !request.cancelled
       && request.registrationCycle === this._screenRegistrationCycle
       && request.screenManager === this.screenManager
       && isScreenRegistrationCycleCurrent(request.registrationCycle)
+      && sameStack
+      && currentTop === request.initiatingTop
       && this.state?.mode === 'flight');
   },
 
@@ -1993,6 +2009,8 @@ export const ui = {
     const request = {
       registrationCycle: this._screenRegistrationCycle,
       screenManager: this.screenManager,
+      initiatingTop: this.screenManager.top?.() ?? null,
+      stackSnapshot: Array.isArray(this.state?.ui?.screenStack) ? [...this.state.ui.screenStack] : null,
       cancelled: false,
     };
     this._shipScreenOpenRequest = request;
@@ -2177,6 +2195,8 @@ export const ui = {
     this._cancelShipScreenOpenRequest({ cue: false });
     this._shipModeOff?.();
     this._shipModeOff = null;
+    this._shipScreenTopOff?.();
+    this._shipScreenTopOff = null;
     invalidateDockedStationPresentation(this);
     this._cancelPendingScreenRetry();
     if (this._destroyFlightCursor) this._destroyFlightCursor();
