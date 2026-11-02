@@ -278,6 +278,8 @@ export async function dismissCinematicIntro(page, step = () => {}, { timeout = 1
       const firstLightVisible = !!(root?.classList.contains('sf-confirm--in') && firstLightDialogPresent && visible(title));
       const otherModal = [...document.querySelectorAll('[aria-modal="true"]')].find((node) => {
         if (node.id === 'cinematic-splash') return false;
+        // perf-lane: the main menu is the screen the cinematic plays over (bootToMenu waits for it), not an unrelated modal.
+        if (node.closest?.('[data-screen="mainMenu"]')) return false;
         if (firstLightDialogPresent && (node === dialog || node.contains(title))) return false;
         return visible(node);
       });
@@ -328,6 +330,8 @@ export async function dismissCinematicIntro(page, step = () => {}, { timeout = 1
         const firstLightVisible = !!(root?.classList.contains('sf-confirm--in') && firstLightDialogPresent && visible(title));
         const otherModal = [...document.querySelectorAll('[aria-modal="true"]')].find((node) => {
           if (node.id === 'cinematic-splash') return false;
+          // perf-lane: the main menu is the screen the cinematic plays over (bootToMenu waits for it), not an unrelated modal.
+          if (node.closest?.('[data-screen="mainMenu"]')) return false;
           if (firstLightDialogPresent && (node === root?.querySelector('[role="dialog"]') || node.contains(title))) return false;
           return visible(node);
         });
@@ -358,6 +362,8 @@ export async function dismissCinematicIntro(page, step = () => {}, { timeout = 1
     const firstLightVisible = !!(root?.classList.contains('sf-confirm--in') && firstLightDialogPresent && visible(title));
     const otherModal = [...document.querySelectorAll('[aria-modal="true"]')].find((node) => {
       if (node.id === 'cinematic-splash') return false;
+      // perf-lane: the main menu is the screen the cinematic plays over (bootToMenu waits for it), not an unrelated modal.
+      if (node.closest?.('[data-screen="mainMenu"]')) return false;
       if (firstLightDialogPresent && (node === dialog || node.contains(title))) return false;
       return visible(node);
     });
