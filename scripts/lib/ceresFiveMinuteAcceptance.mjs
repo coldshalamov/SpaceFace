@@ -26,8 +26,11 @@ import {
   CERES_REFERENCE_ACCEPTANCE_ENTRY,
 } from '../../src/data/sectorActivityPockets.js';
 import { SECTOR_ANCHORS } from '../../src/data/sectorAnchors.js';
-import { sectorLocalToGlobalForSector } from '../../src/data/sectorCoordinates.js';
-import { SECTOR_ZONES } from '../../src/data/sectorZones.js';
+import {
+  globalToSectorLocalForSector,
+  sectorLocalToGlobalForSector,
+} from '../../src/data/sectorCoordinates.js';
+import { SECTOR_ZONES, zoneAt } from '../../src/data/sectorZones.js';
 
 import {
   closeOwnedResources,
@@ -848,7 +851,7 @@ export function validateCeresPilotSources(sources = {}) {
     [/\b(?:window\.)?SF\s*\.\s*bus\s*\.\s*emit\s*\(/, 'direct event-bus emission'],
     [/\brequestSandboxGame\s*\(/, 'direct Sandbox launch invocation'],
     [/\b(?:lab|labBridge)\s*\.\s*(?:step|stepTicks|load)\s*\(/, 'lab stepping or loading'],
-    [/\btimeScale\s*=|\.timeScale\s*=/, 'time-scale mutation'],
+    [/\btimeScale\s*=(?!=)|\.timeScale\s*=(?!=)/, 'time-scale mutation'],
     [/\b(?:teleport|enterSector|relocatePlayerInSector)\s*\(/, 'direct position or sector mutation'],
     [/\bdispatchEvent\s*\(/, 'synthetic DOM/event injection'],
     [/\bstate\s*\.\s*player\s*\.\s*(?:pos|targetId)\b[^\n;]*=/, 'direct player-state assignment'],
@@ -1880,6 +1883,9 @@ export async function runCeresFiveMinutePublicRoute({
       const remaining = observerBounds.endTick - await readTick(page);
       if (remaining <= legReserveTicks) break;
       routeCycle += 1;
+      const firstZoneEventSeq = leg.target.zoneId
+        ? await page.evaluate(() => window.__SF_CERES_FIVE_MINUTE_TRACE__?.nextEventSeq ?? 1)
+        : null;
       await mark(`select-${leg.slug}`, { pocketId: leg.pocketId, cycle: routeCycle });
       await pq020FunctionalRouteDrivers.selectMapTarget(page, {
         ...leg.target,
@@ -1896,22 +1902,39 @@ export async function runCeresFiveMinutePublicRoute({
       let arrival = await pq020FunctionalRouteDrivers.waitForAutopilotArrival(page, leg.target, {
         deadlineTick: legDeadlineTick,
       });
-      if (leg.target.zoneId && arrival.currentZone?.id !== leg.target.zoneId) {
-        // Autopilot can report arrival between the world's two-tick zone-label scans. Give the
-        // existing observer one scan interval, then re-read the canonical label before judging
-        // the authored arrival zone; do not infer zone membership from the waypoint radius.
+      if (leg.target.zoneId) {
+        // The worker owns currentZone; this bounded main-side world mirror intentionally omits
+        // that object. Keep the two-tick zone-label scan, then require the worker's canonical
+        // zone-entry event for this leg instead of inferring membership from waypoint radius.
         const zoneScanTick = await waitForCeresFixedTicks(page, 2, 20_000);
         assert.ok(zoneScanTick < legDeadlineTick,
           `${leg.target.name} exhausted its route horizon before the next zone-label scan`);
-        const currentZone = await page.evaluate(() => {
-          const zone = window.SF?.state?.world?.currentZone;
-          return zone ? { id: zone.id || null, name: zone.name || null } : null;
-        });
-        arrival = { ...arrival, currentZone };
-      }
-      if (leg.target.zoneId) {
-        assert.equal(arrival.currentZone?.id, leg.target.zoneId,
-          `${leg.target.name} public arrival entered ${arrival.currentZone?.id || 'no zone'}`);
+        const zoneReceipt = await page.evaluate(({ zoneId, firstSeq }) => {
+          const events = window.__SF_CERES_FIVE_MINUTE_TRACE__?.events || [];
+          const row = events.find((event) => event.event === 'world:zoneEntered'
+            && event.zoneId === zoneId && event.seq >= firstSeq);
+          const known = row || [...events].reverse().find((event) => (
+            event.event === 'world:zoneEntered' && event.zoneId === zoneId
+          ));
+          return known ? { seq: known.seq, zoneId: known.zoneId, zoneName: known.zoneName,
+            enteredThisLeg: known.seq >= firstSeq } : null;
+        }, { zoneId: leg.target.zoneId, firstSeq: firstZoneEventSeq });
+        const arrivalLocal = globalToSectorLocalForSector(arrival.player?.pos, arrival.sectorId);
+        const geometricZone = zoneAt(arrival.sectorId, arrivalLocal.x, arrivalLocal.z);
+        assert.equal(geometricZone?.id, leg.target.zoneId,
+          `${leg.target.name} arrival coordinates fall in ${geometricZone?.id || 'no zone'}`);
+        assert.equal(zoneReceipt?.zoneId, leg.target.zoneId,
+          `${leg.target.name} has no canonical zone-entry receipt in this run`);
+        arrival = { ...arrival, currentZone: {
+          id: geometricZone.id,
+          name: geometricZone.name,
+          source: zoneReceipt.enteredThisLeg
+            ? 'worker-world:zoneEntered'
+            : 'worker-zone-entry+arrival-coordinates',
+          eventSeq: zoneReceipt.seq,
+          globalPos: { ...arrival.player.pos },
+          sectorLocalPos: arrivalLocal,
+        } };
       }
       if (leg.target === PQ020_ROUTE_TARGETS.cathedral) {
         await pq020FunctionalRouteDrivers.waitForShipSettled(page, {
@@ -2861,7 +2884,7 @@ async function installCeresRouteObserver(page, bounds, initialPocketId, {
       'massSeed:deployed', 'massSeed:deployDenied', 'massSeed:locked',
       'fields:deployed', 'fields:deployDenied',
       'combat:fire', 'projectile:hit', 'combat:damage', 'combat:statusApplied',
-      'save:completed', 'save:loaded',
+      'save:completed', 'save:loaded', 'world:zoneEntered',
       'mining:npcExtraction', 'aiTrader:requestTrade',
       'freight:arrival', 'freight:loss', 'traffic:jobActionReceipt',
       'npcjobs:commission', 'npcjobs:depart', 'npcjobs:transit', 'npcjobs:approach',
@@ -2938,6 +2961,8 @@ async function installCeresRouteObserver(page, bounds, initialPocketId, {
           asteroidId: payload.asteroidId ?? null,
           fieldId: payload.fieldId ?? null,
           sectorId: payload.sectorId ?? null,
+          zoneId: payload.zoneId ?? null,
+          zoneName: payload.name ?? null,
           stationId,
           commodityId,
           side: payload.side ?? null,
@@ -7074,11 +7099,19 @@ async function waitForCeresFlight(page, fixedSeed, timeout) {
       const state = window.SF?.state;
       const player = state?.entities?.get(state.playerId);
       const active = state?.player?.ownedShips?.[state.player.activeShipIndex];
+      const overlay = document.getElementById('boot-overlay');
+      const bootReady = !overlay || (overlay.classList.contains('hidden')
+        && overlay.getAttribute('aria-busy') !== 'true'
+        && getComputedStyle(overlay).display === 'none');
+      const runtimeScale = state?.timeScale;
       return state?.mode === 'flight'
         && state.world?.currentSectorId === 'sector_ceres_belt'
         && state.meta?.seed === seed
         && active?.defId === 'ship_hornet'
         && player && player.alive !== false && Number(player.hull) > 0
+        // Flight mode and an allocated player appear before loading/first-frame handoff finishes.
+        // Require the same live condition that assertCeresSetup depends on, not just ownership.
+        && runtimeScale === 1 && Number.isFinite(state.tick) && state.tick > 0 && bootReady
         && !document.body.classList.contains('ui-modal-open');
     }, fixedSeed, { timeout });
   } catch (error) {
@@ -7087,6 +7120,12 @@ async function waitForCeresFlight(page, fixedSeed, timeout) {
       const player = state?.entities?.get?.(state?.playerId) || null;
       const activeShipIndex = state?.player?.activeShipIndex;
       const active = state?.player?.ownedShips?.[activeShipIndex] || null;
+      const overlay = document.getElementById('boot-overlay');
+      const loadingOverlay = overlay ? {
+        hiddenClass: overlay.classList.contains('hidden'),
+        ariaBusy: overlay.getAttribute('aria-busy'),
+        display: getComputedStyle(overlay).display,
+      } : null;
       const visibleScreens = [...document.querySelectorAll('[data-screen]')]
         .filter((element) => {
           if (element.hidden) return false;
@@ -7105,6 +7144,10 @@ async function waitForCeresFlight(page, fixedSeed, timeout) {
         mode: state?.mode ?? null,
         sectorId: state?.world?.currentSectorId ?? null,
         seed: state?.meta?.seed ?? null,
+        tick: Number.isFinite(state?.tick) ? state.tick : null,
+        simTime: Number.isFinite(state?.simTime) ? state.simTime : null,
+        timeScale: Number.isFinite(state?.timeScale) ? state.timeScale : null,
+        loadingOverlay,
         playerId: state?.playerId ?? null,
         playerFound: !!player,
         playerAlive: player ? player.alive !== false : null,
@@ -7123,6 +7166,9 @@ async function waitForCeresFlight(page, fixedSeed, timeout) {
           mode: 'flight',
           sectorId: 'sector_ceres_belt',
           seed,
+          minTick: 1,
+          timeScale: 1,
+          loadingOverlayHidden: true,
           activeShipDefId: 'ship_hornet',
           playerAlive: true,
           playerHullPositive: true,
@@ -7133,6 +7179,12 @@ async function waitForCeresFlight(page, fixedSeed, timeout) {
           mode: actual.mode === 'flight',
           sectorId: actual.sectorId === 'sector_ceres_belt',
           seed: actual.seed === seed,
+          tickAdvanced: Number.isFinite(actual.tick) && actual.tick > 0,
+          running: actual.timeScale === 1,
+          loadingOverlayHidden: actual.loadingOverlay === null
+            || (actual.loadingOverlay.hiddenClass
+              && actual.loadingOverlay.ariaBusy !== 'true'
+              && actual.loadingOverlay.display === 'none'),
           activeShipDefId: actual.activeShipDefId === 'ship_hornet',
           playerAlive: actual.playerFound && actual.playerAlive === true,
           playerHullPositive: Number.isFinite(actual.playerHull) && actual.playerHull > 0,

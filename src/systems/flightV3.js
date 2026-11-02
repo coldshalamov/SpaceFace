@@ -1913,7 +1913,13 @@ function autopilotObstacles(state, player, target, baseX, baseZ, maxProjection) 
     AUTOPILOT_OBSTACLE_QUERY_SCRATCH,
   );
   for (const e of list) {
-    if (!e || e === player || e === target.entity || e.alive === false || e.collides === false || !e.pos) continue;
+    // A public station course resolves to its authored corridor mouth. From the far bearing,
+    // the straight path to that point can cross the station itself, so keep the target station
+    // in obstacle guidance until the ship is aligned for the final berth lane.
+    const targetStationBlocksMouthApproach = e === target.entity
+      && !!target.dockingProxyId && target.dockingStage === 'corridor-mouth';
+    if (!e || e === player || (e === target.entity && !targetStationBlocksMouthApproach)
+        || e.alive === false || e.collides === false || !e.pos) continue;
     if (e.type === 'projectile' || e.type === 'fx' || e.type === 'pickup') continue;
     const radius = Number.isFinite(e.radius) ? e.radius : 0;
     if (radius <= 0 && e.type !== 'station' && e.type !== 'asteroid' && e.type !== 'wreck' && e.type !== 'ship') continue;

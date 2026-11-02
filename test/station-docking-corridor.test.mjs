@@ -238,6 +238,43 @@ test('default station autopilot stages an outside-gap approach through the measu
   );
 });
 
+test('corridor-mouth guidance steers around its target station from the far side', () => {
+  const station = heliosStation();
+  const player = {
+    id: 'player', type: 'ship', alive: true, radius: 14,
+    pos: skinPos(-130), vel: { x: 0, z: 0 },
+  };
+  const state = {
+    playerId: player.id,
+    entities: new Map([[player.id, player], [station.id, station]]),
+    entityList: [player, station],
+  };
+  const autopilot = { targetEntityId: station.id, arrivalRadius: 90 };
+  const mouthTarget = resolveAutopilotTarget(state, autopilot);
+  const mouthDistance = Math.hypot(
+    mouthTarget.x - player.pos.x, mouthTarget.z - player.pos.z,
+  );
+
+  assert.equal(mouthTarget.dockingStage, 'corridor-mouth');
+  assert.equal(mouthTarget.entity, station);
+  const approach = computeAutopilotGuidance(state, player, mouthTarget, mouthDistance, 20, {});
+  assert.equal(approach.avoiding, true,
+    'the target station blocks a straight corridor-mouth course from the opposite bearing');
+  assert.equal(approach.trafficHold, null,
+    'the station is routed around during approach, not treated as a berth-lane convoy hold');
+
+  player.pos = skinPos(100);
+  const laneTarget = resolveAutopilotTarget(state, autopilot);
+  const berthDistance = Math.hypot(
+    laneTarget.x - player.pos.x, laneTarget.z - player.pos.z,
+  );
+  assert.equal(laneTarget.dockingStage, 'berth');
+  assert.equal(laneTarget.corridorInLane, true);
+  const berth = computeAutopilotGuidance(state, player, laneTarget, berthDistance, 20, {});
+  assert.equal(berth.avoiding, false,
+    'the authored clear lane still owns the final berth approach');
+});
+
 test('a hull knocked off the lane keeps the mouth aim, and lane lock only arms inside the lane', () => {
   const station = heliosStation();
   const berth = skinBerth(station);
