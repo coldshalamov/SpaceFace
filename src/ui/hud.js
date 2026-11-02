@@ -5922,6 +5922,7 @@ export function createHud(ctx, alerts) {
   // this HUD's existing safe-band allocator so they share the same measured layout and cache as
   // receipts and presentation captions.
   const externalFlightCaptions = new Set();
+  const externalCaptionOpacity = new Map();
   let externalCaptionsStale = true;
   let lastReceiptObstacle = null;
   let lastCaptionObstacleVisible = null;
@@ -6016,14 +6017,28 @@ export function createHud(ctx, alerts) {
     // remain clear even when long copy wraps or several receipts are present.
     const x = (layout?.safe?.left || 0) + 12;
     const width = Math.max(160, (layout?.safe?.width || w) - 24);
-    return { x, width: Math.min(width, w - x - 12), wide: false };
+    const slot = { x, width: Math.min(width, w - x - 12), wide: false };
+    const thumb = plateBox(document.getElementById('sf-touch-overlay')?.querySelector('.mf-buttons'));
+    if (w <= 760 && h > w && thumb) {
+      // Use the lane opposite the actual thumb cluster, including left-handed layouts.
+      // Full-width bands cannot fit a discovery between the portrait radar and touch keys.
+      const left = thumb.left + thumb.width / 2 > w / 2 ? x : thumb.right + 8;
+      const right = thumb.left + thumb.width / 2 > w / 2 ? thumb.left - 8 : x + slot.width;
+      if (right - left >= 80) slot.captionSlot = { x: left, width: right - left, wide: false };
+    }
+    return slot;
   }
   function freeOverlayBands(slot, h, layout, excludedElement = null, includeLiveCaptionsAndToasts = false) {
     const measured = objectiveEdgeObstacles();
+    const responsive = responsiveOverlayObstacles();
+    const responsiveRects = new Map(responsive.map(el => [el, el.getBoundingClientRect?.()]));
+    const hasTouchControls = responsive.some(el => el.closest?.('#sf-touch-overlay')
+      && responsiveRects.get(el)?.width > 0 && responsiveRects.get(el)?.height > 0);
     const candidates = [
       ...root.querySelectorAll?.('.orr-hud-cluster .orr-cluster, .sf-prail, .sf-rightdock, .sf-command-deck, .sf-nav-readout, .sf-nav-label, .sf-mt-obj, .sf-vtape--on, .sf-commtape, .sf-dock-prompt, .sf-tell.is-on, #sf-prompt-deck, #sf-tutorial-flight-card') || [],
+      ...(hasTouchControls ? root.querySelectorAll?.('.sf-leftcontext') || [] : []),
       ...document.querySelectorAll?.('#alerts > .sf-alert:not([hidden])') || [],
-      ...responsiveOverlayObstacles(),
+      ...responsive,
     ];
     if (includeLiveCaptionsAndToasts) {
       candidates.push(...root.querySelectorAll?.('.sf-caption.show, .sf-toast:not(.sf-toast--out)') || []);
@@ -6032,7 +6047,7 @@ export function createHud(ctx, alerts) {
       if (el === excludedElement) return null;
       const rect = el === measured.railEl ? measured.rail
         : el === measured.rightEl ? measured.right
-          : el.getBoundingClientRect?.();
+          : responsiveRects.get(el) || el.getBoundingClientRect?.();
       return rect && {
         left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom,
         width: rect.width, height: rect.height,
@@ -6051,7 +6066,9 @@ export function createHud(ctx, alerts) {
     }
     const viewportWidth = layout?.viewport?.width
       || (typeof window !== 'undefined' ? window.innerWidth : 1280);
-    const canonical = viewportWidth > 1180
+    // Real mobile instruments replace these desktop corner estimates. Combining both
+    // erased the remaining portrait band and sent discoveries into the top-of-screen fallback.
+    const canonical = hasTouchControls ? [] : viewportWidth > 1180
       ? [layout.commandDeck, layout.action]
       : viewportWidth <= 760
         ? [layout.objective, layout.vitals, layout.rightDock, layout.action]
@@ -6072,7 +6089,7 @@ export function createHud(ctx, alerts) {
     }
     if (cursor < h - 8) bands.push({ top: cursor, bottom: h - 8 });
     // The canonical lower corner bounds remain reserved when the DOM has not mounted them yet.
-    if (!root.querySelector?.('.orr-hud-cluster .orr-cluster')) {
+    if (!hasTouchControls && !root.querySelector?.('.orr-hud-cluster .orr-cluster')) {
       for (const anchor of [layout.objective, layout.vitals, layout.rightDock, layout.action]) {
         if (anchor && anchor.x < slot.x + slot.width && anchor.x + anchor.width > slot.x) {
           const next = [];
@@ -6113,17 +6130,38 @@ export function createHud(ctx, alerts) {
     if (!externalFlightCaptions.size || !externalCaptionsStale) return;
     externalCaptionsStale = false;
     const slot = overlaySafeSlot(layout, w, h);
+    const mobile = plateBox(document.getElementById('sf-touch-overlay')?.querySelector('.mf-buttons'));
     for (const el of externalFlightCaptions) {
       if (!el || !el.isConnected || el.hidden || el.style?.display === 'none') continue;
-      const bands = freeOverlayBands(slot, h, layout, el, true);
-      const height = Math.max(48, el.scrollHeight || el.getBoundingClientRect?.().height || 48);
-      const band = bands.find((candidate) => candidate.bottom - candidate.top >= height + 8)
-        || bands[0] || { top: 8, bottom: h - 8 };
-      placeCaptionInSafeSlot(el, layout, slot, null, band);
+      const slots = mobile && slot.captionSlot ? [slot.captionSlot, slot] : [slot];
+      let placement = null;
+      for (const candidate of slots) {
+        // Wrapping changes height: measure only after applying this lane's actual width.
+        el.style.width = 'fit-content';
+        el.style.maxWidth = `${Math.round(candidate.width)}px`;
+        el.style.maxHeight = 'none';
+        const bands = freeOverlayBands(candidate, h, layout, el, true);
+        const height = Math.max(48, el.scrollHeight || el.getBoundingClientRect?.().height || 48);
+        const band = bands.find((available) => available.bottom - available.top >= height + 8);
+        if (band) { placement = { slot: candidate, band }; break; }
+        if (!mobile && !placement && bands[0]) placement = { slot: candidate, band: bands[0] };
+      }
+      if (!placement && !mobile) placement = { slot, band: { top: 8, bottom: h - 8 } };
+      if (!placement) {
+        // A low-priority visual waits within its existing lifetime, never over the controls.
+        // Opacity leaves its live announcement intact; no queue or expiry clock is restarted.
+        el.style.opacity = '0';
+        el.style.pointerEvents = 'none';
+        continue;
+      }
+      el.style.opacity = externalCaptionOpacity.get(el) || '';
+      placeCaptionInSafeSlot(el, layout, placement.slot, null, placement.band);
     }
   }
   function clearExternalFlightCaptionPlacement(el) {
     if (!el?.style) return;
+    el.style.opacity = externalCaptionOpacity.get(el) || '';
+    externalCaptionOpacity.delete(el);
     for (const key of ['position', 'left', 'right', 'top', 'bottom', 'width', 'maxWidth', 'maxHeight',
       'overflowY', 'textAlign', 'transform', 'pointerEvents']) el.style[key] = '';
   }
@@ -6131,6 +6169,7 @@ export function createHud(ctx, alerts) {
     if (!el) return false;
     if (externalFlightCaptions.has(el)) return true;
     externalFlightCaptions.add(el);
+    externalCaptionOpacity.set(el, el.style?.opacity || '');
     externalCaptionsStale = true;
     placeReceiptLane();
     return true;

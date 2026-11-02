@@ -454,6 +454,129 @@ test('caption bands reserve sibling touch controls and refresh only their layout
   assert.ok(railBands.every((band) => band.top >= 134), 'the compact tape is itself a caption obstacle');
 });
 
+test('natural mobile discovery geometry chooses the opposite thumb lane and waits safely when full', () => {
+  const names = new Set(['overlaySafeSlot', 'freeOverlayBands', 'placeExternalFlightCaptions',
+    'placeCaptionInSafeSlot', 'clearExternalFlightCaptionPlacement', 'plateBox']);
+  const owners = [];
+  const visit = (node) => {
+    if (!node || typeof node !== 'object') return;
+    if (node.type === 'FunctionDeclaration' && names.has(node.id?.name)) {
+      owners.push(HUD_SRC.slice(node.start, node.end));
+      return;
+    }
+    for (const value of Object.values(node)) {
+      if (Array.isArray(value)) value.forEach(visit);
+      else if (value && typeof value === 'object') visit(value);
+    }
+  };
+  visit(parse(HUD_SRC, { sourceType: 'module' }));
+  assert.equal(owners.length, names.size);
+  const rect = (x, y, width, height) => ({ x, y, left: x, top: y, width, height,
+    right: x + width, bottom: y + height });
+  const node = (name, box, touch = false) => ({
+    name, isConnected: true, hidden: false, style: {},
+    getBoundingClientRect: () => box,
+    closest: () => touch ? {} : null,
+    matches: () => false,
+  });
+  for (const { lefty, portrait } of [
+    { lefty: false, portrait: true }, { lefty: true, portrait: true },
+    { lefty: false, portrait: false },
+  ]) {
+    // These values came from the natural a473 discovery capture, not estimated corner
+    // anchors. The stale desktop reservations plus these actual instruments returned no band.
+    const w = portrait ? 390 : 844, h = portrait ? 664 : 390;
+    const dock = node('dock', portrait ? rect(151.8125, 196, 226.1875, 229) : rect(518, 80, 236, 229));
+    const objective = node('objective', rect(portrait ? 16 : 91.328125, portrait ? 236 : 110,
+      176.84765625, 82.03125));
+    const thumb = node('thumb', portrait ? rect(lefty ? 12 : 182, 490, 196, 156)
+      : rect(658, 248, 170, 132), true);
+    const status = node('status', rect(14, 10, 124, portrait ? 107.390625 : 92.515625), true);
+    const pause = node('pause', rect(portrait ? 326 : 780, 10, 52, 52), true);
+    const powers = node('powers', portrait ? rect(250, 14, 68, 44) : rect(796, 82, 48, 88), true);
+    const tape = node('tape', portrait ? rect(250, 64, 128, 56) : rect(409, 108, 180, 56));
+    const alert = node('alert', portrait ? rect(10, 146, 370, 38) : rect(232.328125, 22, 379.328125, 23));
+    const receipts = [node('receipt', rect(14, portrait ? 359.203125 : 118, portrait ? 306 : 320, 24.890625)),
+      node('receipt', rect(14, portrait ? 388.09375 : 146.890625, portrait ? 306 : 320, 24.890625))];
+    let blocked = false;
+    const full = node('blocking-decision', rect(0, 0, w, h));
+    full.getBoundingClientRect = () => rect(0, 0, w, blocked === 'short-band' ? h - 64 : h);
+    const discovery = node('discovery', rect(12, 8, 336.53125, 74));
+    discovery.style.opacity = '';
+    discovery.getAttribute = (key) => key === 'aria-live' ? 'polite' : null;
+    const measuredWidths = [];
+    let geometryReads = 0;
+    Object.defineProperty(discovery, 'scrollHeight', { get() {
+      const width = Number.parseFloat(discovery.style.maxWidth);
+      measuredWidths.push(width);
+      return width < 200 ? 148 : 74;
+    } });
+    const touch = { querySelector: () => thumb };
+    const context = {
+      root: {
+        querySelectorAll: selector => selector.includes('sf-caption.show') ? receipts
+          : selector === '.sf-leftcontext' ? [objective] : [dock],
+        querySelector: () => true,
+      },
+      document: { getElementById: () => touch, querySelectorAll: () => blocked ? [alert, full] : [alert] },
+      window: { innerWidth: w, innerHeight: h },
+      objectiveEdgeObstacles: () => ({ right: dock.getBoundingClientRect(), rightEl: dock }),
+      responsiveOverlayObstacles: () => { geometryReads++; return [thumb, status, pause, powers, tape]; },
+      externalFlightCaptions: new Set([discovery]),
+      externalCaptionOpacity: new Map([[discovery, '']]),
+      externalCaptionsStale: true,
+    };
+    const { placeExternalFlightCaptions, clearExternalFlightCaptionPlacement,
+      freeOverlayBands, overlaySafeSlot } = runInNewContext(
+      `${owners.join('\n')}; ({ placeExternalFlightCaptions, clearExternalFlightCaptionPlacement, freeOverlayBands, overlaySafeSlot })`, context);
+    const layout = resolveObjectiveHudLayout(w, h);
+    placeExternalFlightCaptions(layout, w, h);
+    assert.equal(discovery.style.left, lefty ? '216px' : '12px');
+    assert.equal(discovery.style.top, portrait ? '433px' : '200px');
+    assert.equal(discovery.style.maxWidth, portrait ? '162px' : '320px');
+    assert.equal(discovery.style.maxHeight, portrait ? '223px' : '182px');
+    assert.equal(discovery.style.overflowY, 'visible', 'wrapped discovery fits without clipping or scrolling');
+    assert.equal(measuredWidths[0], portrait ? 162 : 320, 'the candidate width is applied before height measurement');
+    assert.equal(discovery.style.opacity, '', 'authored class fade owns a placed discovery');
+    assert.equal(context.externalCaptionsStale, false, 'settled placement does not keep scanning geometry');
+
+    for (const obstruction of ['short-band', 'no-band']) {
+      blocked = obstruction;
+      context.externalCaptionsStale = true;
+      if (obstruction === 'short-band') {
+        const candidate = overlaySafeSlot(layout, w, h).captionSlot;
+        const bands = freeOverlayBands(candidate, h, layout, discovery, true);
+        assert.equal(bands.length, 1, 'this regression has a nonempty band, not just an exhausted allocator');
+        assert.equal(bands[0].bottom - bands[0].top, 48, 'the band is shorter than the whole wrapped caption');
+      }
+      placeExternalFlightCaptions(layout, w, h);
+      assert.equal(discovery.style.opacity, '0', `${obstruction}: the whole wrapped caption must fit`);
+      assert.equal(discovery.style.pointerEvents, 'none');
+      assert.equal(discovery.hidden, false);
+      assert.equal(discovery.style.display, undefined);
+      assert.equal(discovery.getAttribute('aria-live'), 'polite');
+      assert.equal(context.externalCaptionsStale, false, 'deferred placement waits for an actual layout invalidation');
+      const measured = measuredWidths.length, reads = geometryReads;
+      placeExternalFlightCaptions(layout, w, h);
+      assert.equal(measuredWidths.length, measured, 'a blocked steady frame does not measure wrapped text again');
+      assert.equal(geometryReads, reads, 'a blocked steady frame does not query obstacle geometry again');
+      blocked = false;
+      placeExternalFlightCaptions(layout, w, h);
+      assert.equal(discovery.style.opacity, '0', 'space alone does not bypass the cached placement');
+      context.externalCaptionsStale = true; // the real resize/config/receipt/objective invalidation seam
+      placeExternalFlightCaptions(layout, w, h);
+      assert.equal(discovery.style.opacity, '', 'an invalidated freed band restores the existing class opacity/fade');
+      assert.equal(discovery.style.top, portrait ? '433px' : '200px');
+    }
+    blocked = true;
+    context.externalCaptionsStale = true;
+    placeExternalFlightCaptions(layout, w, h);
+    clearExternalFlightCaptionPlacement(discovery);
+    assert.equal(discovery.style.opacity, '', 'unregistering a waiting discovery restores paint ownership');
+    assert.equal(context.externalCaptionOpacity.has(discovery), false);
+  }
+});
+
 test('first-flight instruction yields space to the right target dock on narrow viewports', () => {
   const wide = tutorialFlightCardLayout(resolveObjectiveHudLayout(1440, 900));
   assert.equal(wide.maxWidth, 672, 'the existing wide-screen card size is preserved');
