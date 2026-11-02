@@ -427,7 +427,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "57febebdc0a04c4940de516c8d9d3f20ee6f4ad7e0497f15595f4a6caa66a2b4",
+  "contentHash": "a15a18907302fbf774aac4f1d78f24797d6d525470dcfcadbe333b33e13307e8",
   "dynamicGroups": [
     {
       "id": "sf.render.mothlight-lod2.node.lod2-motion-mothlight-hatch-1-hull.dynamic",
@@ -4471,14 +4471,14 @@
       "uri": "mothlight_lod2.glb"
     },
     "sourceManifest": {
-      "bytes": 323116,
-      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
+      "bytes": 340541,
+      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 456664,
-    "sha256": "d71fa78e4452258d418164bd2a1d1cf418dc2672b33b560eb2983af78ebb334b",
+    "bytes": 457132,
+    "sha256": "9d424d979c71e6c6e9b5dd34c6f72d8201c6a08617dd42658ad27d694e463696",
     "uri": "render.glb"
   },
   "runtime": {
@@ -4580,6 +4580,80 @@
       },
       {
         "matrix": [
+          3.9977004528045654,
+          0,
+          0,
+          0,
+          0,
+          3.9977004528045654,
+          0,
+          0,
+          0,
+          0,
+          3.9977004528045654,
+          0,
+          -5.500002145767212,
+          1.220522165298462,
+          -11.450279712677002,
+          1
+        ],
+        "name": "LOD2_MOTION_MOTHLIGHT_HATCH_1_Hull",
+        "planIndex": 11,
+        "tags": {
+          "instance": false,
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_MOTHLIGHT_HATCH_1_Hull",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_MOTHLIGHT_HATCH_1_Hull",
+            "recordIds": [
+              "sf.render.mothlight-lod2.node.lod2-motion-mothlight-hatch-1-hull"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          3.6139055490493774,
+          0,
+          0,
+          0,
+          0,
+          3.6139055490493774,
+          0,
+          0,
+          0,
+          0,
+          3.6139055490493774,
+          0,
+          -5.499319434165955,
+          1.339256227016449,
+          -12.950087070465088,
+          1
+        ],
+        "name": "LOD2_MOTION_MOTHLIGHT_HATCH_1_Livery",
+        "planIndex": 13,
+        "tags": {
+          "instance": false,
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_MOTHLIGHT_HATCH_1_Livery",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_MOTHLIGHT_HATCH_1_Livery",
+            "recordIds": [
+              "sf.render.mothlight-lod2.node.lod2-motion-mothlight-hatch-1-livery"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
           1,
           0,
           0,
@@ -4598,7 +4672,7 @@
           1
         ],
         "name": "MOTION_MOTHLIGHT_HATCH_2",
-        "planIndex": 13,
+        "planIndex": 15,
         "tags": {
           "instance": false,
           "motionGroup": true,
@@ -4649,6 +4723,80 @@
       },
       {
         "matrix": [
+          3.9977917671203613,
+          0,
+          0,
+          0,
+          0,
+          3.9977917671203613,
+          0,
+          0,
+          0,
+          0,
+          3.9977917671203613,
+          0,
+          -5.49997091293335,
+          1.220521867275238,
+          11.450454235076904,
+          1
+        ],
+        "name": "LOD2_MOTION_MOTHLIGHT_HATCH_2_Hull",
+        "planIndex": 16,
+        "tags": {
+          "instance": false,
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_MOTHLIGHT_HATCH_2_Hull",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_MOTHLIGHT_HATCH_2_Hull",
+            "recordIds": [
+              "sf.render.mothlight-lod2.node.lod2-motion-mothlight-hatch-2-hull"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          3.614024579524994,
+          0,
+          0,
+          0,
+          0,
+          3.614024579524994,
+          0,
+          0,
+          0,
+          0,
+          3.614024579524994,
+          0,
+          -5.499200403690338,
+          1.340102732181549,
+          12.95015287399292,
+          1
+        ],
+        "name": "LOD2_MOTION_MOTHLIGHT_HATCH_2_Livery",
+        "planIndex": 18,
+        "tags": {
+          "instance": false,
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_MOTHLIGHT_HATCH_2_Livery",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_MOTHLIGHT_HATCH_2_Livery",
+            "recordIds": [
+              "sf.render.mothlight-lod2.node.lod2-motion-mothlight-hatch-2-livery"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
           1,
           0,
           0,
@@ -4667,7 +4815,7 @@
           1
         ],
         "name": "MOTION_MOTHLIGHT_IRIS_1",
-        "planIndex": 16,
+        "planIndex": 20,
         "tags": {
           "instance": false,
           "motionGroup": true,
@@ -4718,6 +4866,43 @@
       },
       {
         "matrix": [
+          0.8076157867908478,
+          0,
+          0,
+          0,
+          0,
+          0.8076157867908478,
+          0,
+          0,
+          0,
+          0,
+          0.8076157867908478,
+          0,
+          8.829092979431152,
+          1.564042329788208,
+          0.00006970763206481934,
+          1
+        ],
+        "name": "LOD2_MOTION_MOTHLIGHT_IRIS_1_Livery",
+        "planIndex": 21,
+        "tags": {
+          "instance": false,
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_MOTHLIGHT_IRIS_1_Livery",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_MOTHLIGHT_IRIS_1_Livery",
+            "recordIds": [
+              "sf.render.mothlight-lod2.node.lod2-motion-mothlight-iris-1-livery"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
           1,
           0,
           0,
@@ -4736,7 +4921,7 @@
           1
         ],
         "name": "MOTION_MOTHLIGHT_IRIS_2",
-        "planIndex": 18,
+        "planIndex": 23,
         "tags": {
           "instance": false,
           "motionGroup": true,
@@ -4787,6 +4972,43 @@
       },
       {
         "matrix": [
+          0.7497272230684757,
+          0,
+          0,
+          0,
+          0,
+          0.7497272230684757,
+          0,
+          0,
+          0,
+          0,
+          0.7497272230684757,
+          0,
+          8.675469398498535,
+          1.5640455484390259,
+          -0.8255783580243587,
+          1
+        ],
+        "name": "LOD2_MOTION_MOTHLIGHT_IRIS_2_Livery",
+        "planIndex": 24,
+        "tags": {
+          "instance": false,
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_MOTHLIGHT_IRIS_2_Livery",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_MOTHLIGHT_IRIS_2_Livery",
+            "recordIds": [
+              "sf.render.mothlight-lod2.node.lod2-motion-mothlight-iris-2-livery"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
           1,
           0,
           0,
@@ -4805,7 +5027,7 @@
           1
         ],
         "name": "MOTION_MOTHLIGHT_IRIS_3",
-        "planIndex": 20,
+        "planIndex": 26,
         "tags": {
           "instance": false,
           "motionGroup": true,
@@ -4856,6 +5078,43 @@
       },
       {
         "matrix": [
+          0.7497518286108971,
+          0,
+          0,
+          0,
+          0,
+          0.7497518286108971,
+          0,
+          0,
+          0,
+          0,
+          0.7497518286108971,
+          0,
+          7.323598861694336,
+          1.5640456676483154,
+          -0.8254662528634071,
+          1
+        ],
+        "name": "LOD2_MOTION_MOTHLIGHT_IRIS_3_Livery",
+        "planIndex": 27,
+        "tags": {
+          "instance": false,
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_MOTHLIGHT_IRIS_3_Livery",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_MOTHLIGHT_IRIS_3_Livery",
+            "recordIds": [
+              "sf.render.mothlight-lod2.node.lod2-motion-mothlight-iris-3-livery"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
           1,
           0,
           0,
@@ -4874,7 +5133,7 @@
           1
         ],
         "name": "MOTION_MOTHLIGHT_IRIS_4",
-        "planIndex": 22,
+        "planIndex": 29,
         "tags": {
           "instance": false,
           "motionGroup": true,
@@ -4925,6 +5184,43 @@
       },
       {
         "matrix": [
+          0.8076863288879395,
+          0,
+          0,
+          0,
+          0,
+          0.8076863288879395,
+          0,
+          0,
+          0,
+          0,
+          0.8076863288879395,
+          0,
+          7.170828104019165,
+          1.5640421509742737,
+          5.960464477539062e-7,
+          1
+        ],
+        "name": "LOD2_MOTION_MOTHLIGHT_IRIS_4_Livery",
+        "planIndex": 30,
+        "tags": {
+          "instance": false,
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_MOTHLIGHT_IRIS_4_Livery",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_MOTHLIGHT_IRIS_4_Livery",
+            "recordIds": [
+              "sf.render.mothlight-lod2.node.lod2-motion-mothlight-iris-4-livery"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
           1,
           0,
           0,
@@ -4943,7 +5239,7 @@
           1
         ],
         "name": "MOTION_MOTHLIGHT_IRIS_5",
-        "planIndex": 24,
+        "planIndex": 32,
         "tags": {
           "instance": false,
           "motionGroup": true,
@@ -4994,6 +5290,43 @@
       },
       {
         "matrix": [
+          0.7497956864535809,
+          0,
+          0,
+          0,
+          0,
+          0.7497956864535809,
+          0,
+          0,
+          0,
+          0,
+          0.7497956864535809,
+          0,
+          7.324598789215088,
+          1.5640456676483154,
+          0.8255101330578327,
+          1
+        ],
+        "name": "LOD2_MOTION_MOTHLIGHT_IRIS_5_Livery",
+        "planIndex": 33,
+        "tags": {
+          "instance": false,
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_MOTHLIGHT_IRIS_5_Livery",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_MOTHLIGHT_IRIS_5_Livery",
+            "recordIds": [
+              "sf.render.mothlight-lod2.node.lod2-motion-mothlight-iris-5-livery"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
           1,
           0,
           0,
@@ -5012,7 +5345,7 @@
           1
         ],
         "name": "MOTION_MOTHLIGHT_IRIS_6",
-        "planIndex": 26,
+        "planIndex": 35,
         "tags": {
           "instance": false,
           "motionGroup": true,
@@ -5063,6 +5396,43 @@
       },
       {
         "matrix": [
+          0.7497300058603287,
+          0,
+          0,
+          0,
+          0,
+          0.7497300058603287,
+          0,
+          0,
+          0,
+          0,
+          0.7497300058603287,
+          0,
+          8.676346778869629,
+          1.564045488834381,
+          0.8255812972784042,
+          1
+        ],
+        "name": "LOD2_MOTION_MOTHLIGHT_IRIS_6_Livery",
+        "planIndex": 36,
+        "tags": {
+          "instance": false,
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_MOTHLIGHT_IRIS_6_Livery",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_MOTHLIGHT_IRIS_6_Livery",
+            "recordIds": [
+              "sf.render.mothlight-lod2.node.lod2-motion-mothlight-iris-6-livery"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
           1,
           0,
           0,
@@ -5081,7 +5451,7 @@
           1
         ],
         "name": "MOTION_MOTHLIGHT_STOCK_1",
-        "planIndex": 28,
+        "planIndex": 38,
         "tags": {
           "instance": false,
           "motionGroup": true,
@@ -5132,6 +5502,154 @@
       },
       {
         "matrix": [
+          1.399702787399292,
+          0,
+          0,
+          0,
+          0,
+          1.399702787399292,
+          0,
+          0,
+          0,
+          0,
+          1.399702787399292,
+          0,
+          -8,
+          0.10000000149011612,
+          -13,
+          1
+        ],
+        "name": "LOD2_MOTION_MOTHLIGHT_STOCK_1_Armor",
+        "planIndex": 39,
+        "tags": {
+          "instance": false,
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_MOTHLIGHT_STOCK_1_Armor",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_MOTHLIGHT_STOCK_1_Armor",
+            "recordIds": [
+              "sf.render.mothlight-lod2.node.lod2-motion-mothlight-stock-1-armor"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.2289867401123047,
+          0,
+          0,
+          0,
+          0,
+          0.2289867401123047,
+          0,
+          0,
+          0,
+          0,
+          0.2289867401123047,
+          0,
+          -6.550992250442505,
+          0.10008243471384048,
+          -13,
+          1
+        ],
+        "name": "LOD2_MOTION_MOTHLIGHT_STOCK_1_Beacon_Amber",
+        "planIndex": 41,
+        "tags": {
+          "instance": false,
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_MOTHLIGHT_STOCK_1_Beacon_Amber",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_MOTHLIGHT_STOCK_1_Beacon_Amber",
+            "recordIds": [
+              "sf.render.mothlight-lod2.node.lod2-motion-mothlight-stock-1-beacon-amber"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.8488321304321289,
+          0,
+          0,
+          0,
+          0,
+          0.8488321304321289,
+          0,
+          0,
+          0,
+          0,
+          0.8488321304321289,
+          0,
+          -8.000216245651245,
+          0.10001099109649658,
+          -12.999984741210938,
+          1
+        ],
+        "name": "LOD2_MOTION_MOTHLIGHT_STOCK_1_Ceramic",
+        "planIndex": 43,
+        "tags": {
+          "instance": false,
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_MOTHLIGHT_STOCK_1_Ceramic",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_MOTHLIGHT_STOCK_1_Ceramic",
+            "recordIds": [
+              "sf.render.mothlight-lod2.node.lod2-motion-mothlight-stock-1-ceramic"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1.4269144535064697,
+          0,
+          0,
+          0,
+          0,
+          1.4269144535064697,
+          0,
+          0,
+          0,
+          0,
+          1.4269144535064697,
+          0,
+          -7.977545499801636,
+          0.09999997913837433,
+          -13,
+          1
+        ],
+        "name": "LOD2_MOTION_MOTHLIGHT_STOCK_1_MechanicalDark",
+        "planIndex": 45,
+        "tags": {
+          "instance": false,
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_MOTHLIGHT_STOCK_1_MechanicalDark",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_MOTHLIGHT_STOCK_1_MechanicalDark",
+            "recordIds": [
+              "sf.render.mothlight-lod2.node.lod2-motion-mothlight-stock-1-mechanicaldark"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
           1,
           0,
           0,
@@ -5150,7 +5668,7 @@
           1
         ],
         "name": "MOTION_MOTHLIGHT_STOCK_2",
-        "planIndex": 33,
+        "planIndex": 47,
         "tags": {
           "instance": false,
           "motionGroup": true,
@@ -5201,6 +5719,154 @@
       },
       {
         "matrix": [
+          1.39971923828125,
+          0,
+          0,
+          0,
+          0,
+          1.39971923828125,
+          0,
+          0,
+          0,
+          0,
+          1.39971923828125,
+          0,
+          -7.999983787536621,
+          0.09999997913837433,
+          13.000000476837158,
+          1
+        ],
+        "name": "LOD2_MOTION_MOTHLIGHT_STOCK_2_Armor",
+        "planIndex": 48,
+        "tags": {
+          "instance": false,
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_MOTHLIGHT_STOCK_2_Armor",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_MOTHLIGHT_STOCK_2_Armor",
+            "recordIds": [
+              "sf.render.mothlight-lod2.node.lod2-motion-mothlight-stock-2-armor"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.2289867401123047,
+          0,
+          0,
+          0,
+          0,
+          0.2289867401123047,
+          0,
+          0,
+          0,
+          0,
+          0.2289867401123047,
+          0,
+          -6.550992250442505,
+          0.10008242726325989,
+          13,
+          1
+        ],
+        "name": "LOD2_MOTION_MOTHLIGHT_STOCK_2_Beacon_Amber",
+        "planIndex": 50,
+        "tags": {
+          "instance": false,
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_MOTHLIGHT_STOCK_2_Beacon_Amber",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_MOTHLIGHT_STOCK_2_Beacon_Amber",
+            "recordIds": [
+              "sf.render.mothlight-lod2.node.lod2-motion-mothlight-stock-2-beacon-amber"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.8488249778747559,
+          0,
+          0,
+          0,
+          0,
+          0.8488249778747559,
+          0,
+          0,
+          0,
+          0,
+          0.8488249778747559,
+          0,
+          -8.000205993652344,
+          0.10001099109649658,
+          13.000009059906006,
+          1
+        ],
+        "name": "LOD2_MOTION_MOTHLIGHT_STOCK_2_Ceramic",
+        "planIndex": 52,
+        "tags": {
+          "instance": false,
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_MOTHLIGHT_STOCK_2_Ceramic",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_MOTHLIGHT_STOCK_2_Ceramic",
+            "recordIds": [
+              "sf.render.mothlight-lod2.node.lod2-motion-mothlight-stock-2-ceramic"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1.4269144535064697,
+          0,
+          0,
+          0,
+          0,
+          1.4269144535064697,
+          0,
+          0,
+          0,
+          0,
+          1.4269144535064697,
+          0,
+          -7.977545499801636,
+          0.09999999403953552,
+          13,
+          1
+        ],
+        "name": "LOD2_MOTION_MOTHLIGHT_STOCK_2_MechanicalDark",
+        "planIndex": 54,
+        "tags": {
+          "instance": false,
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_MOTHLIGHT_STOCK_2_MechanicalDark",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_MOTHLIGHT_STOCK_2_MechanicalDark",
+            "recordIds": [
+              "sf.render.mothlight-lod2.node.lod2-motion-mothlight-stock-2-mechanicaldark"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
           1,
           0,
           0,
@@ -5219,7 +5885,7 @@
           1
         ],
         "name": "MOTION_MOTHLIGHT_STOCK_3",
-        "planIndex": 38,
+        "planIndex": 56,
         "tags": {
           "instance": false,
           "motionGroup": true,
@@ -5270,6 +5936,154 @@
       },
       {
         "matrix": [
+          1.3996765613555908,
+          0,
+          0,
+          0,
+          0,
+          1.3996765613555908,
+          0,
+          0,
+          0,
+          0,
+          1.3996765613555908,
+          0,
+          -3.000073194503784,
+          0.09999998658895493,
+          -10.40000057220459,
+          1
+        ],
+        "name": "LOD2_MOTION_MOTHLIGHT_STOCK_3_Armor",
+        "planIndex": 57,
+        "tags": {
+          "instance": false,
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_MOTHLIGHT_STOCK_3_Armor",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_MOTHLIGHT_STOCK_3_Armor",
+            "recordIds": [
+              "sf.render.mothlight-lod2.node.lod2-motion-mothlight-stock-3-armor"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.2289872169494629,
+          0,
+          0,
+          0,
+          0,
+          0.2289872169494629,
+          0,
+          0,
+          0,
+          0,
+          0.2289872169494629,
+          0,
+          -1.5509918332099915,
+          0.10008244216442108,
+          -10.400000095367432,
+          1
+        ],
+        "name": "LOD2_MOTION_MOTHLIGHT_STOCK_3_Beacon_Amber",
+        "planIndex": 59,
+        "tags": {
+          "instance": false,
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_MOTHLIGHT_STOCK_3_Beacon_Amber",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_MOTHLIGHT_STOCK_3_Beacon_Amber",
+            "recordIds": [
+              "sf.render.mothlight-lod2.node.lod2-motion-mothlight-stock-3-beacon-amber"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.8487801551818848,
+          0,
+          0,
+          0,
+          0,
+          0.8487801551818848,
+          0,
+          0,
+          0,
+          0,
+          0.8487801551818848,
+          0,
+          -3.000213384628296,
+          0.09999966621398926,
+          -10.400035381317139,
+          1
+        ],
+        "name": "LOD2_MOTION_MOTHLIGHT_STOCK_3_Ceramic",
+        "planIndex": 61,
+        "tags": {
+          "instance": false,
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_MOTHLIGHT_STOCK_3_Ceramic",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_MOTHLIGHT_STOCK_3_Ceramic",
+            "recordIds": [
+              "sf.render.mothlight-lod2.node.lod2-motion-mothlight-stock-3-ceramic"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1.4269145131111145,
+          0,
+          0,
+          0,
+          0,
+          1.4269145131111145,
+          0,
+          0,
+          0,
+          0,
+          1.4269145131111145,
+          0,
+          -2.9775449633598328,
+          0.10000000149011612,
+          -10.400000095367432,
+          1
+        ],
+        "name": "LOD2_MOTION_MOTHLIGHT_STOCK_3_MechanicalDark",
+        "planIndex": 63,
+        "tags": {
+          "instance": false,
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_MOTHLIGHT_STOCK_3_MechanicalDark",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_MOTHLIGHT_STOCK_3_MechanicalDark",
+            "recordIds": [
+              "sf.render.mothlight-lod2.node.lod2-motion-mothlight-stock-3-mechanicaldark"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
           1,
           0,
           0,
@@ -5288,7 +6102,7 @@
           1
         ],
         "name": "MOTION_MOTHLIGHT_STOCK_4",
-        "planIndex": 43,
+        "planIndex": 65,
         "tags": {
           "instance": false,
           "motionGroup": true,
@@ -5339,6 +6153,154 @@
       },
       {
         "matrix": [
+          1.3996928930282593,
+          0,
+          0,
+          0,
+          0,
+          1.3996928930282593,
+          0,
+          0,
+          0,
+          0,
+          1.3996928930282593,
+          0,
+          -3.000010132789612,
+          0.09999998658895493,
+          10.40000057220459,
+          1
+        ],
+        "name": "LOD2_MOTION_MOTHLIGHT_STOCK_4_Armor",
+        "planIndex": 66,
+        "tags": {
+          "instance": false,
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_MOTHLIGHT_STOCK_4_Armor",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_MOTHLIGHT_STOCK_4_Armor",
+            "recordIds": [
+              "sf.render.mothlight-lod2.node.lod2-motion-mothlight-stock-4-armor"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.2289872169494629,
+          0,
+          0,
+          0,
+          0,
+          0.2289872169494629,
+          0,
+          0,
+          0,
+          0,
+          0.2289872169494629,
+          0,
+          -1.5509918332099915,
+          0.10008245706558228,
+          10.400000095367432,
+          1
+        ],
+        "name": "LOD2_MOTION_MOTHLIGHT_STOCK_4_Beacon_Amber",
+        "planIndex": 68,
+        "tags": {
+          "instance": false,
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_MOTHLIGHT_STOCK_4_Beacon_Amber",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_MOTHLIGHT_STOCK_4_Beacon_Amber",
+            "recordIds": [
+              "sf.render.mothlight-lod2.node.lod2-motion-mothlight-stock-4-beacon-amber"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.8487868309020996,
+          0,
+          0,
+          0,
+          0,
+          0.8487868309020996,
+          0,
+          0,
+          0,
+          0,
+          0.8487868309020996,
+          0,
+          -3.000234007835388,
+          0.09999966621398926,
+          10.400026798248291,
+          1
+        ],
+        "name": "LOD2_MOTION_MOTHLIGHT_STOCK_4_Ceramic",
+        "planIndex": 70,
+        "tags": {
+          "instance": false,
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_MOTHLIGHT_STOCK_4_Ceramic",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_MOTHLIGHT_STOCK_4_Ceramic",
+            "recordIds": [
+              "sf.render.mothlight-lod2.node.lod2-motion-mothlight-stock-4-ceramic"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1.4269145131111145,
+          0,
+          0,
+          0,
+          0,
+          1.4269145131111145,
+          0,
+          0,
+          0,
+          0,
+          1.4269145131111145,
+          0,
+          -2.9775449633598328,
+          0.10000000894069672,
+          10.400000095367432,
+          1
+        ],
+        "name": "LOD2_MOTION_MOTHLIGHT_STOCK_4_MechanicalDark",
+        "planIndex": 72,
+        "tags": {
+          "instance": false,
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_MOTHLIGHT_STOCK_4_MechanicalDark",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_MOTHLIGHT_STOCK_4_MechanicalDark",
+            "recordIds": [
+              "sf.render.mothlight-lod2.node.lod2-motion-mothlight-stock-4-mechanicaldark"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
           1,
           0,
           0,
@@ -5357,7 +6319,7 @@
           1
         ],
         "name": "SOCKET_Camera_Focus",
-        "planIndex": 48,
+        "planIndex": 74,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -5409,7 +6371,7 @@
           1
         ],
         "name": "SOCKET_Engine_Main",
-        "planIndex": 49,
+        "planIndex": 75,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -5461,7 +6423,7 @@
           1
         ],
         "name": "SOCKET_Engine_Port",
-        "planIndex": 50,
+        "planIndex": 76,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -5513,7 +6475,7 @@
           1
         ],
         "name": "SOCKET_Engine_Starboard",
-        "planIndex": 51,
+        "planIndex": 77,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -5565,7 +6527,7 @@
           1
         ],
         "name": "SOCKET_Lamp_Release_1",
-        "planIndex": 52,
+        "planIndex": 78,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -5617,7 +6579,7 @@
           1
         ],
         "name": "SOCKET_Lamp_Release_2",
-        "planIndex": 53,
+        "planIndex": 79,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -5669,7 +6631,7 @@
           1
         ],
         "name": "SOCKET_Lamp_Release_3",
-        "planIndex": 54,
+        "planIndex": 80,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -5721,7 +6683,7 @@
           1
         ],
         "name": "SOCKET_Lamp_Release_4",
-        "planIndex": 55,
+        "planIndex": 81,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -5773,7 +6735,7 @@
           1
         ],
         "name": "SOCKET_Weapon_Main",
-        "planIndex": 56,
+        "planIndex": 82,
         "tags": {
           "socket": true,
           "socketForward": [
@@ -5858,28 +6820,18 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 11,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 12,
-        "role": "accent"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 14,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 15,
         "role": "accent"
       },
       {
         "allowTextures": true,
         "planIndex": 17,
-        "role": "accent"
+        "role": "hull"
       },
       {
         "allowTextures": true,
@@ -5888,12 +6840,7 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 21,
-        "role": "accent"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 23,
+        "planIndex": 22,
         "role": "accent"
       },
       {
@@ -5903,87 +6850,102 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 27,
+        "planIndex": 28,
         "role": "accent"
       },
       {
         "allowTextures": true,
-        "planIndex": 29,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 30,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
         "planIndex": 31,
-        "role": "ceramic"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 32,
-        "role": "mechanical"
+        "role": "accent"
       },
       {
         "allowTextures": true,
         "planIndex": 34,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 35,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 36,
-        "role": "ceramic"
+        "role": "accent"
       },
       {
         "allowTextures": true,
         "planIndex": 37,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 39,
-        "role": "hull"
+        "role": "accent"
       },
       {
         "allowTextures": true,
         "planIndex": 40,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 41,
-        "role": "ceramic"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 42,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 44,
         "role": "hull"
       },
       {
         "allowTextures": true,
-        "planIndex": 45,
+        "planIndex": 42,
         "role": "signal"
       },
       {
         "allowTextures": true,
-        "planIndex": 46,
+        "planIndex": 44,
         "role": "ceramic"
       },
       {
         "allowTextures": true,
-        "planIndex": 47,
+        "planIndex": 46,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 49,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 51,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 53,
+        "role": "ceramic"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 55,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 58,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 60,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 62,
+        "role": "ceramic"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 64,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 67,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 69,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 71,
+        "role": "ceramic"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 73,
         "role": "mechanical"
       }
     ],
@@ -5993,7 +6955,7 @@
       "sha256": "8df95f7e401c96bfcd6bcd780256bcf86baa7898e94574bfaba7ca1da334ff72",
       "uri": "assets/ships/motions/mothlight.motion.json"
     },
-    "nodeCount": 57,
+    "nodeCount": 83,
     "primitives": [
       {
         "canopy": false,
@@ -6223,8 +7185,8 @@
           -11.450279712677002,
           1
         ],
-        "name": "LOD2_MOTION_MOTHLIGHT_HATCH_1_Hull",
-        "planIndex": 11,
+        "name": "LOD2_MOTION_MOTHLIGHT_HATCH_1_Hull_1",
+        "planIndex": 12,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -6252,8 +7214,8 @@
           -12.950087070465088,
           1
         ],
-        "name": "LOD2_MOTION_MOTHLIGHT_HATCH_1_Livery",
-        "planIndex": 12,
+        "name": "LOD2_MOTION_MOTHLIGHT_HATCH_1_Livery_1",
+        "planIndex": 14,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -6281,8 +7243,8 @@
           11.450454235076904,
           1
         ],
-        "name": "LOD2_MOTION_MOTHLIGHT_HATCH_2_Hull",
-        "planIndex": 14,
+        "name": "LOD2_MOTION_MOTHLIGHT_HATCH_2_Hull_1",
+        "planIndex": 17,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -6310,8 +7272,8 @@
           12.95015287399292,
           1
         ],
-        "name": "LOD2_MOTION_MOTHLIGHT_HATCH_2_Livery",
-        "planIndex": 15,
+        "name": "LOD2_MOTION_MOTHLIGHT_HATCH_2_Livery_1",
+        "planIndex": 19,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -6339,8 +7301,8 @@
           0.00006970763206481934,
           1
         ],
-        "name": "LOD2_MOTION_MOTHLIGHT_IRIS_1_Livery",
-        "planIndex": 17,
+        "name": "LOD2_MOTION_MOTHLIGHT_IRIS_1_Livery_1",
+        "planIndex": 22,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -6368,8 +7330,8 @@
           -0.8255783580243587,
           1
         ],
-        "name": "LOD2_MOTION_MOTHLIGHT_IRIS_2_Livery",
-        "planIndex": 19,
+        "name": "LOD2_MOTION_MOTHLIGHT_IRIS_2_Livery_1",
+        "planIndex": 25,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -6397,8 +7359,8 @@
           -0.8254662528634071,
           1
         ],
-        "name": "LOD2_MOTION_MOTHLIGHT_IRIS_3_Livery",
-        "planIndex": 21,
+        "name": "LOD2_MOTION_MOTHLIGHT_IRIS_3_Livery_1",
+        "planIndex": 28,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -6426,8 +7388,8 @@
           5.960464477539062e-7,
           1
         ],
-        "name": "LOD2_MOTION_MOTHLIGHT_IRIS_4_Livery",
-        "planIndex": 23,
+        "name": "LOD2_MOTION_MOTHLIGHT_IRIS_4_Livery_1",
+        "planIndex": 31,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -6455,8 +7417,8 @@
           0.8255101330578327,
           1
         ],
-        "name": "LOD2_MOTION_MOTHLIGHT_IRIS_5_Livery",
-        "planIndex": 25,
+        "name": "LOD2_MOTION_MOTHLIGHT_IRIS_5_Livery_1",
+        "planIndex": 34,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -6484,8 +7446,8 @@
           0.8255812972784042,
           1
         ],
-        "name": "LOD2_MOTION_MOTHLIGHT_IRIS_6_Livery",
-        "planIndex": 27,
+        "name": "LOD2_MOTION_MOTHLIGHT_IRIS_6_Livery_1",
+        "planIndex": 37,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -6513,8 +7475,8 @@
           -13,
           1
         ],
-        "name": "LOD2_MOTION_MOTHLIGHT_STOCK_1_Armor",
-        "planIndex": 29,
+        "name": "LOD2_MOTION_MOTHLIGHT_STOCK_1_Armor_1",
+        "planIndex": 40,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -6542,8 +7504,8 @@
           -13,
           1
         ],
-        "name": "LOD2_MOTION_MOTHLIGHT_STOCK_1_Beacon_Amber",
-        "planIndex": 30,
+        "name": "LOD2_MOTION_MOTHLIGHT_STOCK_1_Beacon_Amber_1",
+        "planIndex": 42,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -6571,8 +7533,8 @@
           -12.999984741210938,
           1
         ],
-        "name": "LOD2_MOTION_MOTHLIGHT_STOCK_1_Ceramic",
-        "planIndex": 31,
+        "name": "LOD2_MOTION_MOTHLIGHT_STOCK_1_Ceramic_1",
+        "planIndex": 44,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -6600,8 +7562,8 @@
           -13,
           1
         ],
-        "name": "LOD2_MOTION_MOTHLIGHT_STOCK_1_MechanicalDark",
-        "planIndex": 32,
+        "name": "LOD2_MOTION_MOTHLIGHT_STOCK_1_MechanicalDark_1",
+        "planIndex": 46,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -6629,8 +7591,8 @@
           13.000000476837158,
           1
         ],
-        "name": "LOD2_MOTION_MOTHLIGHT_STOCK_2_Armor",
-        "planIndex": 34,
+        "name": "LOD2_MOTION_MOTHLIGHT_STOCK_2_Armor_1",
+        "planIndex": 49,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -6658,8 +7620,8 @@
           13,
           1
         ],
-        "name": "LOD2_MOTION_MOTHLIGHT_STOCK_2_Beacon_Amber",
-        "planIndex": 35,
+        "name": "LOD2_MOTION_MOTHLIGHT_STOCK_2_Beacon_Amber_1",
+        "planIndex": 51,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -6687,8 +7649,8 @@
           13.000009059906006,
           1
         ],
-        "name": "LOD2_MOTION_MOTHLIGHT_STOCK_2_Ceramic",
-        "planIndex": 36,
+        "name": "LOD2_MOTION_MOTHLIGHT_STOCK_2_Ceramic_1",
+        "planIndex": 53,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -6716,8 +7678,8 @@
           13,
           1
         ],
-        "name": "LOD2_MOTION_MOTHLIGHT_STOCK_2_MechanicalDark",
-        "planIndex": 37,
+        "name": "LOD2_MOTION_MOTHLIGHT_STOCK_2_MechanicalDark_1",
+        "planIndex": 55,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -6745,8 +7707,8 @@
           -10.40000057220459,
           1
         ],
-        "name": "LOD2_MOTION_MOTHLIGHT_STOCK_3_Armor",
-        "planIndex": 39,
+        "name": "LOD2_MOTION_MOTHLIGHT_STOCK_3_Armor_1",
+        "planIndex": 58,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -6774,8 +7736,8 @@
           -10.400000095367432,
           1
         ],
-        "name": "LOD2_MOTION_MOTHLIGHT_STOCK_3_Beacon_Amber",
-        "planIndex": 40,
+        "name": "LOD2_MOTION_MOTHLIGHT_STOCK_3_Beacon_Amber_1",
+        "planIndex": 60,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -6803,8 +7765,8 @@
           -10.400035381317139,
           1
         ],
-        "name": "LOD2_MOTION_MOTHLIGHT_STOCK_3_Ceramic",
-        "planIndex": 41,
+        "name": "LOD2_MOTION_MOTHLIGHT_STOCK_3_Ceramic_1",
+        "planIndex": 62,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -6832,8 +7794,8 @@
           -10.400000095367432,
           1
         ],
-        "name": "LOD2_MOTION_MOTHLIGHT_STOCK_3_MechanicalDark",
-        "planIndex": 42,
+        "name": "LOD2_MOTION_MOTHLIGHT_STOCK_3_MechanicalDark_1",
+        "planIndex": 64,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -6861,8 +7823,8 @@
           10.40000057220459,
           1
         ],
-        "name": "LOD2_MOTION_MOTHLIGHT_STOCK_4_Armor",
-        "planIndex": 44,
+        "name": "LOD2_MOTION_MOTHLIGHT_STOCK_4_Armor_1",
+        "planIndex": 67,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -6890,8 +7852,8 @@
           10.400000095367432,
           1
         ],
-        "name": "LOD2_MOTION_MOTHLIGHT_STOCK_4_Beacon_Amber",
-        "planIndex": 45,
+        "name": "LOD2_MOTION_MOTHLIGHT_STOCK_4_Beacon_Amber_1",
+        "planIndex": 69,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -6919,8 +7881,8 @@
           10.400026798248291,
           1
         ],
-        "name": "LOD2_MOTION_MOTHLIGHT_STOCK_4_Ceramic",
-        "planIndex": 46,
+        "name": "LOD2_MOTION_MOTHLIGHT_STOCK_4_Ceramic_1",
+        "planIndex": 71,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -6948,8 +7910,8 @@
           10.400000095367432,
           1
         ],
-        "name": "LOD2_MOTION_MOTHLIGHT_STOCK_4_MechanicalDark",
-        "planIndex": 47,
+        "name": "LOD2_MOTION_MOTHLIGHT_STOCK_4_MechanicalDark_1",
+        "planIndex": 73,
         "tags": {
           "canopy": false,
           "instance": false,
@@ -6962,7 +7924,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/mothlight_lod2.glb"
   },
-  "runtimeHash": "e89ffd6d58f62b367c76476dfcf2bb31ae4452f787b88f7e93d832186346921a",
+  "runtimeHash": "6a0a084c43db4b502d53ff01b910e3a32cd5464d20a5552c36693015b2f43920",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
