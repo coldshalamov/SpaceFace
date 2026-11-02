@@ -260,8 +260,15 @@ import { removeCargo } from './cargo.js';
 import { Masks } from '../core/entity.js';
 import { successfulPickupAmount } from '../core/pickupAcceptance.js';
 import {
+  releaseActivityPhysicsInterest,
+  requestActivityPhysicsInterest,
+} from '../world/activityRuntime.js';
+import {
+  catchUpFarRecord,
   dropFarActorSector,
   farActorHoldsWorldRecord,
+  findFarActorForTargetIdentity,
+  promoteFarActorForTargetIdentity,
   resetFarActors,
   restoreFarActorTable,
   serializeFarActorTable,
@@ -326,11 +333,27 @@ const CACHE_PAYOFF_OFFSET = Object.freeze({ x: 26, z: -18 });
 const STUCK_OFFER_S = 8;
 const STUCK_DISPLACEMENT_WU = 3;
 const STUCK_SPEED_EPS_WU_S = 4;
+const ADOPTED_SALVOR_LATCH_HANDOFF_S = 3;
+const ADOPTED_SALVOR_LATCH_HANDOFF_RADIUS_WU = 200;
 const TOW_BERTH_CLEARANCE_WU = 140;
 // A wedge rescue is a berth tow, not a hull loss — a small fraction of the recovery quote,
 // floored so a starter hull still owes a real service call-out.
 const TOW_FEE_MIN_CR = 120;
 const TOW_FEE_RECOVERY_FRAC = 0.125;
+
+function sameAdoptedSalvorTargetIdentity(a, b) {
+  if (!a || !b || a.kind !== b.kind) return false;
+  if (a.kind === 'worldRecord') return typeof a.worldRecordId === 'string'
+    && a.worldRecordId.length > 0 && a.worldRecordId === b.worldRecordId;
+  if (a.kind === 'marker') return typeof a.markerId === 'string'
+    && a.markerId.length > 0 && a.markerId === b.markerId;
+  if (a.kind === 'salvagePoint') return typeof a.salvagePointId === 'string'
+    && a.salvagePointId.length > 0 && a.salvagePointId === b.salvagePointId
+    && typeof a.sourceKey === 'string' && a.sourceKey.length > 0 && a.sourceKey === b.sourceKey;
+  if (a.kind === 'salvorTarget') return typeof a.key === 'string'
+    && a.key.length > 0 && a.key === b.key;
+  return false;
+}
 
 // Same XZ write combat.js applies at a recovery berth — entity vectors are vec3-capable.
 function setVecXZTow(vec, x, z) {
@@ -623,6 +646,7 @@ export const world = {
   saveSnapshotOwned: true,
 
   init(ctx) {
+    if (this.state) this._clearAdoptedSalvorApproachState(this.state);
     this.state = ctx.state;
     this.bus = ctx.bus;
     this.helpers = ctx.helpers;
@@ -682,6 +706,9 @@ export const world = {
     this._fieldInteractQuiet = null;  // still-player asteroid-field ram latch
     this._burnVentToastAtS = -Infinity; // scanBlocked vent-toast throttle (one per surge beat)
     this._wireReportAt = new Map();     // sectorId → simTime; bounds offscreen wire reports
+    this._adoptedSalvorMaterializationRequests = new Map(); // jobId → one bounded, exact-target approach request
+    this._adoptedSalvorApproachHolds = new Map(); // jobId → bounded native-latch residency handoff
+    this._adoptedSalvorLeaseClock = Number.isFinite(ctx.state.simTime) ? ctx.state.simTime : 0;
     // Floating-origin scratch (allocation-free no-shift path).
     this._frameOriginScratch = { x: 0, z: 0 };
     // Ensure coordinate membrane defaults exist even if state was hand-built.
@@ -724,6 +751,7 @@ export const world = {
     bus.on('entity:destroyed', (p) => handleMachineTokenDestroyed(this, p || {}));
     bus.on('pickup:collected', (p) => noteFoldSplinterCollected(this, p || {}));
     bus.on('save:restoring', () => {
+      this._clearAdoptedSalvorApproachState(this.state);
       this._vestaDecisionSignature = null;
       this._pallasDecisionSignature = null;
       // The loaded save carries its own simTime; stamps taken against the pre-load clock are
@@ -1128,6 +1156,7 @@ export const world = {
 
     const prevSectorId = state.world.currentSectorId || null;
     if (prevSectorId && prevSectorId !== sectorId) {
+      this._clearAdoptedSalvorApproachState(state);
       // Bump before cleanup and exit: the deferred-enter FIFO holds entries minted under the
       // outgoing epoch, and the residency collect below yields (enter-pre-emit) — a
       // hold beat inside that gap would still see the old epoch as live and mint into
@@ -4964,6 +4993,7 @@ export const world = {
   // per-tick update: jump state machine, fuel, hazards, POI scan, cooldown
   // =========================================================================================
   update(dt, state) {
+    this._resetAdoptedSalvorApproachOnClockRewind(state);
     if (state.mode !== 'flight') return;
     this._drainResidencyQueue(ARRIVAL_RESIDENCY_BUDGET);
     if (state.run?.kind === 'survival' && state.run.phase !== 'inactive') {
@@ -5013,7 +5043,13 @@ export const world = {
     tickBolus(this, dt);
     tickMachineLayer(this, dt);
     tickFoldAberrant(this, dt);
-    tickFarActors(state, this.helpers, this.bus);
+    tickFarActors(state, this.helpers, this.bus,
+      entity => this._retainAdoptedSalvorApproachBody(entity, state));
+    this._pruneAdoptedSalvorApproachHolds(state);
+    // Adopted salvage requests are resolved after the player-centered residency sweep. A newly
+    // promoted hulk therefore remains live through the next physics step, where the existing
+    // Massline/latch owner can claim it before a later far-actor sweep considers shelving it.
+    this._processAdoptedSalvorMaterializationRequests(state);
     // Optic lattices: field-resident until decode-disc approach, then shelve past exit.
     tickOpticFieldRocks(state, this.helpers);
     // Lane C: ask Lane A helpers to rematerialize anything already inside the authored
@@ -5021,6 +5057,257 @@ export const world = {
     // same disc for restore; this call also stamps renderRunwayIds so a just-promoted
     // hull cannot be omitted by a stale activity frame on the present beat.
     if (observeTick) requestDecodeRunwayPromote(state, this.helpers);
+  },
+
+  _adoptedSalvorMaterializationContext(request) {
+    const state = this.state;
+    const jobId = request?.jobId;
+    const jobs = state?.npcJobs?.byId;
+    const entry = typeof jobId === 'string' ? jobs?.[jobId] : null;
+    const job = entry?.job;
+    const payload = job?.payload;
+    if (!entry || job?.kind !== 'salvor' || payload?.role !== 'scavenger'
+      || payload.targetIdentity?.kind == null
+      || job.route?.[0]?.id !== 'cut:hold' || job.route?.[1]?.id !== `hulk:${payload.targetId}`
+      || [ 'flee', 'complete' ].includes(job.phase)
+      || entry.worldRecordId !== request.workerWorldRecordId) return null;
+    const worker = state.entities?.get?.(entry.entityId);
+    if (!worker || worker.alive === false || worker.data?.jobId !== jobId
+      || worker.data?.worldRecordId !== entry.worldRecordId || !worker.pos) return null;
+    const identity = payload.targetIdentity;
+    const targetType = payload.targetType;
+    const sectorId = entry.sectorId || worker.homeSectorId || worker.data?.homeSectorId
+      || worker.data?.sectorId || state.world?.currentSectorId;
+    if (!sectorId || request.sectorId !== sectorId || request.targetType !== targetType
+      || request.targetIdentity?.kind !== identity.kind) return null;
+    for (const key of ['worldRecordId', 'markerId', 'salvagePointId', 'sourceKey', 'key']) {
+      if ((request.targetIdentity?.[key] ?? null) !== (identity[key] ?? null)) return null;
+    }
+    const target = findFarActorForTargetIdentity(state, identity, { type: targetType, sectorId });
+    if (!target) return null;
+    const claimant = target.data?.salvorClaimedBy;
+    if (claimant != null && claimant !== entry.worldRecordId) return null;
+    const worldRecordId = target.data?.worldRecordId;
+    if (worldRecordId != null) {
+      const durable = state.world?.records?.byId?.[worldRecordId];
+      if (durable && (durable.recordId !== worldRecordId
+        || durable.sectorId !== sectorId || !recordShouldRematerialize(durable, 'FULL'))) return null;
+    }
+    catchUpFarRecord(target, Number.isFinite(state.simTime) ? state.simTime : 0, state.world?.farActors);
+    const approachBandWU = Number(request.approachBandWU);
+    if (!Number.isFinite(approachBandWU) || approachBandWU <= 0 || approachBandWU > 1000) return null;
+    const distance = Math.hypot(worker.pos.x - target.pos.x, worker.pos.z - target.pos.z);
+    return { entry, job, worker, target, identity, targetType, sectorId, worldRecordId,
+      approachBandWU, distance };
+  },
+
+  _releaseAdoptedSalvorApproachHold(state, jobId, hold) {
+    if (this._adoptedSalvorApproachHolds?.get(jobId) === hold) {
+      this._adoptedSalvorApproachHolds.delete(jobId);
+    }
+    if (hold?.activityLease && hold.activityOwner) {
+      releaseActivityPhysicsInterest(state, hold.activityOwner, hold.activityLease);
+      hold.activityLease = null;
+    }
+  },
+
+  _clearAdoptedSalvorApproachState(state = this.state) {
+    this._adoptedSalvorMaterializationRequests?.clear?.();
+    const holds = this._adoptedSalvorApproachHolds;
+    if (holds instanceof Map) {
+      for (const [jobId, hold] of holds) this._releaseAdoptedSalvorApproachHold(state, jobId, hold);
+      holds.clear();
+    }
+    this._adoptedSalvorLeaseClock = Number.isFinite(state?.simTime) ? state.simTime : 0;
+  },
+
+  _resetAdoptedSalvorApproachOnClockRewind(state = this.state) {
+    const now = Number.isFinite(state?.simTime) ? state.simTime : 0;
+    if (Number.isFinite(this._adoptedSalvorLeaseClock) && now < this._adoptedSalvorLeaseClock) {
+      this._clearAdoptedSalvorApproachState(state);
+    }
+    this._adoptedSalvorLeaseClock = now;
+  },
+
+  /** Resolve a booked far target's current owner pose and enqueue only near physical approach. */
+  requestAdoptedSalvorTargetMaterialization(request = {}) {
+    const context = this._adoptedSalvorMaterializationContext(request);
+    if (!context) return null;
+    if (context.distance <= context.approachBandWU) {
+      const requests = this._adoptedSalvorMaterializationRequests
+        || (this._adoptedSalvorMaterializationRequests = new Map());
+      const previous = requests.get(request.jobId);
+      requests.set(request.jobId, {
+        jobId: request.jobId,
+        workerWorldRecordId: request.workerWorldRecordId,
+        targetIdentity: { ...context.identity },
+        targetType: context.targetType,
+        sectorId: context.sectorId,
+        approachBandWU: context.approachBandWU,
+        nextAttemptAt: previous?.nextAttemptAt || 0,
+      });
+    }
+    return {
+      worldRecordId: context.worldRecordId,
+      pos: { x: context.target.pos.x, z: context.target.pos.z },
+      vel: { x: Number(context.target.vel?.x) || 0, z: Number(context.target.vel?.z) || 0 },
+      radius: context.target.radius,
+      mass: context.target.mass,
+      type: context.target.type,
+      sectorId: context.sectorId,
+      claimant: context.target.data?.salvorClaimedBy || null,
+    };
+  },
+
+  _processAdoptedSalvorMaterializationRequests(state) {
+    const requests = this._adoptedSalvorMaterializationRequests;
+    if (!(requests instanceof Map) || requests.size === 0) return;
+    const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+    for (const [jobId, request] of requests) {
+      if (request.nextAttemptAt > now) continue;
+      const context = this._adoptedSalvorMaterializationContext(request);
+      if (!context || context.distance > context.approachBandWU) {
+        requests.delete(jobId);
+        continue;
+      }
+      const entity = promoteFarActorForTargetIdentity(state, request.targetIdentity,
+        { type: request.targetType, sectorId: request.sectorId }, this.helpers);
+      if (entity) {
+        const expiresAt = now + ADOPTED_SALVOR_LATCH_HANDOFF_S;
+        const activityLease = requestActivityPhysicsInterest(state, context.worker, entity, {
+          expiresAt,
+          sectorId: context.sectorId,
+        });
+        if (!activityLease) {
+          request.nextAttemptAt = now + 0.5;
+          continue;
+        }
+        requests.delete(jobId);
+        const holds = this._adoptedSalvorApproachHolds
+          || (this._adoptedSalvorApproachHolds = new Map());
+        holds.set(jobId, {
+          jobId,
+          workerWorldRecordId: request.workerWorldRecordId,
+          workerEntityId: context.worker.id,
+          activityOwner: context.worker,
+          activityLease,
+          targetIdentity: { ...request.targetIdentity },
+          targetEntity: entity,
+          targetGeneration: entity.occupantGeneration ?? null,
+          sectorId: request.sectorId,
+          approachBandWU: request.approachBandWU,
+          expiresAt: now + ADOPTED_SALVOR_LATCH_HANDOFF_S,
+        });
+        this.bus?.emit?.('world:farActorRestored', {
+          id: entity.id, type: entity.type, jobId: entity.data?.jobId ?? null, causeJobId: jobId,
+          trafficRole: entity.data?.trafficRole || null,
+          entity, reason: 'adopted-salvor-approach',
+        });
+        continue;
+      }
+      // A spawn-budget denial leaves the same far record intact; retry at a bounded cadence while
+      // the exact live worker continues approaching. This is a request, never a residency pin.
+      request.nextAttemptAt = now + 0.5;
+    }
+  },
+
+  _retainAdoptedSalvorApproachBody(entity, state = this.state) {
+    const holds = this._adoptedSalvorApproachHolds;
+    if (!(holds instanceof Map) || !entity) return false;
+    const now = Number.isFinite(state?.simTime) ? state.simTime : 0;
+    for (const [jobId, hold] of holds) {
+      if (hold.expiresAt <= now) {
+        this._releaseAdoptedSalvorApproachHold(state, jobId, hold);
+        continue;
+      }
+      if (hold.targetEntity !== entity || entity.alive === false
+        || (hold.targetGeneration != null && entity.occupantGeneration !== hold.targetGeneration)) continue;
+      const entry = state.npcJobs?.byId?.[jobId];
+      const job = entry?.job;
+      const worker = entry && state.entities?.get?.(entry.entityId);
+      const payload = job?.payload;
+      const identity = hold.targetIdentity;
+      const currentIdentity = payload?.targetIdentity;
+      const matches = identity?.kind === 'worldRecord'
+        ? entity.data?.worldRecordId === identity.worldRecordId
+        : identity?.kind === 'marker' ? entity.data?.markerId === identity.markerId
+          : identity?.kind === 'salvagePoint'
+            ? entity.data?.salvagePointId === identity.salvagePointId
+              && entity.data?.salvageSourceKey === identity.sourceKey
+            : identity?.kind === 'salvorTarget' && entity.data?.salvorTargetKey === identity.key;
+      const sectorId = entry?.sectorId || worker?.homeSectorId || worker?.data?.homeSectorId
+        || worker?.data?.sectorId || state.world?.currentSectorId;
+      if (!entry || job?.kind !== 'salvor' || payload?.role !== 'scavenger'
+        || job.phase === 'flee' || job.phase === 'complete'
+        || entry.worldRecordId !== hold.workerWorldRecordId
+        || entry.entityId !== hold.workerEntityId
+        || worker?.alive === false || worker?.data?.jobId !== jobId
+        || worker?.data?.worldRecordId !== hold.workerWorldRecordId
+        || !sameAdoptedSalvorTargetIdentity(currentIdentity, identity) || !matches
+        || sectorId !== hold.sectorId || !worker.pos || !entity.pos) {
+        this._releaseAdoptedSalvorApproachHold(state, jobId, hold);
+        continue;
+      }
+      const distance = Math.hypot(worker.pos.x - entity.pos.x, worker.pos.z - entity.pos.z);
+      if (!Number.isFinite(distance) || distance > Math.max(hold.approachBandWU,
+        ADOPTED_SALVOR_LATCH_HANDOFF_RADIUS_WU)) {
+        this._releaseAdoptedSalvorApproachHold(state, jobId, hold);
+        continue;
+      }
+      const attachments = this.registry?.get?.('combat')?.kernel?.attachments;
+      const line = entry.towAttachmentId != null ? attachments?.get?.(entry.towAttachmentId) : null;
+      const attached = line?.state === 'active' && line.controlMode === 'npc_tow'
+        && line.ownerId === worker.id && line.targetId === entity.id
+        && entry.towTargetId === entity.id && entry.towTargetRef === entity;
+      if (attached) this._releaseAdoptedSalvorApproachHold(state, jobId, hold);
+      return true;
+    }
+    return false;
+  },
+
+  _pruneAdoptedSalvorApproachHolds(state = this.state) {
+    const holds = this._adoptedSalvorApproachHolds;
+    if (!(holds instanceof Map) || holds.size === 0) return;
+    const now = Number.isFinite(state?.simTime) ? state.simTime : 0;
+    for (const [jobId, hold] of holds) {
+      const entry = state.npcJobs?.byId?.[jobId];
+      const job = entry?.job;
+      const worker = entry && state.entities?.get?.(entry.entityId);
+      const payload = job?.payload;
+      const entity = hold.targetEntity;
+      const identity = hold.targetIdentity;
+      const currentIdentity = payload?.targetIdentity;
+      const matches = identity?.kind === 'worldRecord'
+        ? entity?.data?.worldRecordId === identity.worldRecordId
+        : identity?.kind === 'marker' ? entity?.data?.markerId === identity.markerId
+          : identity?.kind === 'salvagePoint'
+            ? entity?.data?.salvagePointId === identity.salvagePointId
+              && entity?.data?.salvageSourceKey === identity.sourceKey
+            : identity?.kind === 'salvorTarget' && entity?.data?.salvorTargetKey === identity.key;
+      const sectorId = entry?.sectorId || worker?.homeSectorId || worker?.data?.homeSectorId
+        || worker?.data?.sectorId || state.world?.currentSectorId;
+      const valid = entry && job?.kind === 'salvor' && payload?.role === 'scavenger'
+        && !['flee', 'complete'].includes(job.phase)
+        && entry.worldRecordId === hold.workerWorldRecordId
+        && entry.entityId === hold.workerEntityId
+        && worker?.alive !== false && worker?.data?.jobId === jobId
+        && worker?.data?.worldRecordId === hold.workerWorldRecordId
+        && entity && entity.alive !== false && state.entities?.get?.(entity.id) === entity
+        && (hold.targetGeneration == null || entity.occupantGeneration === hold.targetGeneration)
+        && sameAdoptedSalvorTargetIdentity(currentIdentity, identity) && matches
+        && sectorId === hold.sectorId && worker.pos && entity.pos;
+      const distance = valid ? Math.hypot(worker.pos.x - entity.pos.x, worker.pos.z - entity.pos.z) : Infinity;
+      const attachments = this.registry?.get?.('combat')?.kernel?.attachments;
+      const line = valid && entry.towAttachmentId != null ? attachments?.get?.(entry.towAttachmentId) : null;
+      const attached = line?.state === 'active' && line.controlMode === 'npc_tow'
+        && line.ownerId === worker.id && line.targetId === entity.id
+        && entry.towTargetId === entity.id && entry.towTargetRef === entity;
+      if (!valid || !Number.isFinite(distance)
+        || distance > Math.max(hold.approachBandWU, ADOPTED_SALVOR_LATCH_HANDOFF_RADIUS_WU)
+        || attached || hold.expiresAt <= now) {
+        this._releaseAdoptedSalvorApproachHold(state, jobId, hold);
+      }
+    }
   },
 
   _tickAsteroidFieldInteractions(state) {
@@ -7832,6 +8119,7 @@ export const world = {
   // inside a section — the async lane paints between them while every call keeps sync order.
   *deserializeChunked(data) {
     if (!data) return;
+    this._clearAdoptedSalvorApproachState(this.state);
     // Reject unknown future layouts BEFORE any state mutation. Missing means legacy geometry.
     const arrangementVersion = readArrangementVersion(data.arrangementVersion);
     const state = this.state;
@@ -7909,6 +8197,7 @@ export const world = {
 
   newGame() {
     const state = this.state;
+    this._clearAdoptedSalvorApproachState(state);
     // reset overlay + jump/fuel to defaults; the home sector is entered by main.js post-boot.
     // main.startNewGame replaces state.world with a fresh record after system init, so rebuild the
     // mutable ownership/map table here instead of relying on init's now-discarded copy.

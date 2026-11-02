@@ -24,6 +24,7 @@ import { advanceWorldRecordInto, itineraryPositionInto, normalizeIntent } from '
 import { normalizeRecord, recordShouldRematerialize, RECORD_KIND } from './worldRecords.js';
 import { resolveFarEncounters } from './farEncounterOutcomes.js';
 import { markAuxRowDirty, markAuxRowRemoved } from './auxRowJournal.js';
+import { resolvePhysicsBodySpec } from '../core/physicsAuthority.js';
 
 export const FAR_ACTOR_SCHEMA = 'spaceface.farActors.v1';
 export const FAR_ACTOR_CELL = 400;
@@ -171,6 +172,22 @@ function cloneTree(value) {
   return out;
 }
 
+function snapshotPhysicsBodyDescriptor(entity) {
+  const authored = entity?.physicsBody;
+  if (!authored || typeof authored !== 'object' || Array.isArray(authored)) return null;
+  const resolved = resolvePhysicsBodySpec(entity);
+  if (!resolved) return null;
+  const descriptor = cloneTree(resolved);
+  const normalized = entity.physicsBody;
+  if (Array.isArray(normalized.thrusters)) descriptor.thrusters = cloneTree(normalized.thrusters);
+  // The physics resolver returns only its collision-facing projection. Keep the two authored
+  // metadata fields that affect measured collision geometry and skin selection alongside it.
+  for (const key of ['collisionProxyManifest', 'useMeasuredSkin']) {
+    if (Object.hasOwn(normalized, key)) descriptor[key] = cloneTree(normalized[key]);
+  }
+  return descriptor;
+}
+
 // Shelved actors are part of the save. Without the rows, a save taken while an actor is
 // virtualized loses the shelve marker: on load the durable record rematerializes a live entity,
 // and the next serialize captures a fat record where the pre-save snapshot held a thin one
@@ -307,6 +324,60 @@ export function getFarActor(state, id) {
   const table = state && state.world && state.world.farActors;
   if (!table || !table.byId) return null;
   return table.byId.get(id) || null;
+}
+
+function matchesFarActorTargetIdentity(holder, identity) {
+  const data = holder?.data || {};
+  if (!holder || !identity) return false;
+  if (identity.kind === 'worldRecord') return typeof identity.worldRecordId === 'string'
+    && identity.worldRecordId.length > 0 && data.worldRecordId === identity.worldRecordId;
+  if (identity.kind === 'marker') return typeof identity.markerId === 'string'
+    && identity.markerId.length > 0 && data.markerId === identity.markerId;
+  if (identity.kind === 'salvagePoint') return data.salvagePointId === identity.salvagePointId
+    && typeof identity.salvagePointId === 'string' && identity.salvagePointId.length > 0
+    && typeof identity.sourceKey === 'string' && identity.sourceKey.length > 0
+    && data.salvageSourceKey === identity.sourceKey;
+  if (identity.kind === 'salvorTarget') return typeof identity.key === 'string'
+    && identity.key.length > 0 && data.salvorTargetKey === identity.key;
+  return false;
+}
+
+/** Exact live shelf lookup for a job-owned physical target; ambiguous identities fail closed. */
+export function findFarActorForTargetIdentity(state, identity, { type = null, sectorId = null } = {}) {
+  const rows = state?.world?.farActors?.rows;
+  if (!Array.isArray(rows) || !identity) return null;
+  let found = null;
+  for (const row of rows) {
+    if (!row || row.alive === false || !matchesFarActorTargetIdentity(row, identity)) continue;
+    if (type && row.type !== type) continue;
+    const rowSector = row.homeSectorId || row.data?.homeSectorId || row.data?.sectorId || null;
+    if (sectorId && rowSector && rowSector !== sectorId) continue;
+    if (found) return null;
+    found = row;
+  }
+  return found;
+}
+
+/** Promote one exact stable target identity; never trust a recycled numeric far-row slot. */
+export function promoteFarActorForTargetIdentity(state, identity, { type = null, sectorId = null } = {}, helpers = null) {
+  const row = findFarActorForTargetIdentity(state, identity, { type, sectorId });
+  if (!row) return null;
+  const worldRecordId = row.data?.worldRecordId;
+  const durable = worldRecordId != null ? state.world?.records?.byId?.[worldRecordId] : null;
+  if (durable && !recordShouldRematerialize(durable, 'FULL')) return null;
+
+  let live = null;
+  for (const entity of state.entities?.values?.() || []) {
+    if (!entity || entity.alive === false || entity.type !== row.type
+      || !matchesFarActorTargetIdentity(entity, identity)) continue;
+    if (live) return null;
+    live = entity;
+  }
+  if (live) {
+    if (getFarActor(state, row.id) === row) removeFarRecord(state.world.farActors, row);
+    return live;
+  }
+  return promoteFarActor(state, row.id, helpers, identity);
 }
 
 function survivalHold(state) {
@@ -552,7 +623,7 @@ function snapshotActor(entity, simTime) {
     : (Number.isFinite(data.nextEventAtT) ? data.nextEventAtT : -1);
   const intent = normalizeIntent(data.intent || entity.intent);
   const route = data.route && typeof data.route === 'object' ? data.route : (data.itinerary || null);
-  return {
+  const rec = {
     id: entity.id,
     type: entity.type,
     alive: true,
@@ -581,6 +652,10 @@ function snapshotActor(entity, simTime) {
     trafficRole: data.trafficRole || null,
     virtualizedAt: simTime,
   };
+  const physicsBody = isAnvilWorker(entity) || claimsTallyAssessor(entity)
+    ? null : snapshotPhysicsBodyDescriptor(entity);
+  if (physicsBody) rec.physicsBody = physicsBody;
+  return rec;
 }
 
 export function catchUpFarRecord(rec, simTime, table = null) {
@@ -882,12 +957,12 @@ export function queryFarActors(state, pos, radius, out = []) {
   return out;
 }
 
-export function promoteFarActor(state, id, helpers) {
+export function promoteFarActor(state, id, helpers, expectedIdentity = null) {
   if (!state || id == null) return null;
   const live = state.entities && typeof state.entities.get === 'function'
     ? state.entities.get(id)
     : null;
-  if (live && live.alive !== false) {
+  if (live && live.alive !== false && !expectedIdentity) {
     // Core no longer recycles a shelved id, but an explicit-id spawn can still land on one. The
     // live entity wins; evict the stale row now so it cannot remain an alias in the world ledger.
     const table = state.world && state.world.farActors;
@@ -895,8 +970,16 @@ export function promoteFarActor(state, id, helpers) {
     if (stale) removeFarRecord(table, stale);
     return live;
   }
+  if (live && live.alive !== false && expectedIdentity
+    && matchesFarActorTargetIdentity(live, expectedIdentity)) {
+    const table = state.world && state.world.farActors;
+    const stale = table && table.byId && table.byId.get(id);
+    if (stale && matchesFarActorTargetIdentity(stale, expectedIdentity)) removeFarRecord(table, stale);
+    return live;
+  }
   const rec = getFarActor(state, id);
   if (!rec || rec.alive === false) return live;
+  if (expectedIdentity && !matchesFarActorTargetIdentity(rec, expectedIdentity)) return null;
   // A legacy shelf row can arrive before the site owner's restore/sync. Do not admit even
   // one native frame of generic geometry; that owner will discard the row and reauthor it.
   if (isWorldSiteStaticAnatomy(rec)) return null;
@@ -954,6 +1037,7 @@ export function promoteFarActor(state, id, helpers) {
     collides: rec.collides,
     data,
   };
+  if (rec.physicsBody != null) spec.physicsBody = cloneTree(rec.physicsBody);
   if (isAnvilWorker({ ...rec, data })) {
     const hardware = makeShipEntitySpec('ship_mule', {
       team: spec.team, factionId: spec.factionId, pos: spec.pos, rot: spec.rot,
@@ -1040,7 +1124,7 @@ function collectFarActorCandidateIds(state, out) {
   return out;
 }
 
-export function tickFarActors(state, helpers, bus) {
+export function tickFarActors(state, helpers, bus, shouldRetain = null) {
   if (!state || state.mode !== 'flight' || survivalHold(state)) return { shelved: 0, restored: 0 };
   const player = state.entities && state.entities.get && state.entities.get(state.playerId);
   if (!player || !player.pos) return { shelved: 0, restored: 0 };
@@ -1088,6 +1172,7 @@ export function tickFarActors(state, helpers, bus) {
     const entity = entities && typeof entities.get === 'function'
       ? entities.get(farIds[i])
       : null;
+    if (entity && typeof shouldRetain === 'function' && shouldRetain(entity, state)) continue;
     if (!shouldVirtualizeFarActor(entity, state)) continue;
     virtSeen++;
     if (dist2(entity.pos, player.pos) <= exit2) continue;
@@ -1153,7 +1238,7 @@ export function tickFarActors(state, helpers, bus) {
       bus.emit('world:farActorRestored', {
         id: ent.id,
         type: ent.type,
-        jobId,
+        jobId: ent.data?.jobId ?? rec.jobId ?? null,
         trafficRole,
         entity: ent,
       });

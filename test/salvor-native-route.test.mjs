@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { FORGE_ID, SALVOR_POOL, salvorNativeFixture } from './fixtures/salvorNativeFixture.mjs';
+import { getFarActor, insertFarActor, promoteFarActorForTargetIdentity,
+  restoreFarActorTable, serializeFarActorTable } from '../src/world/farActorTable.js';
 
 test('an adopted scavenger resumes its exact native salvage job after FLEE and completes custody at the wreck',
   { timeout: 120_000 }, async () => {
@@ -191,6 +193,64 @@ test('Continue rebinds an adopted scavenger to its saved wreck identity', async 
       assert.equal(protectedTarget.data.worldRecordId, undefined,
         'traffic leaves another persistence owner or authored site identity untouched');
     }
+  } finally {
+    h.close();
+  }
+});
+
+test('an identity-less early-FLEE booking follows its exact shelved wreck by retained stable key', async () => {
+  const h = await salvorNativeFixture({ adoptedScavenger: true });
+  try {
+    const cutter = h.scavenger();
+    const entry = h.sim.helpers.npcJobs.get(cutter.data.jobId);
+    const target = h.wreck;
+    const traffic = h.sim.registry.get('traffic');
+    const world = h.sim.registry.get('world');
+    target.data.salvorTargetKey = `salvor:test:${entry.job.id}`;
+
+    // Model the first explicit booking, followed by damage/FLEE before the normal traffic
+    // work-target callback could save its key. The target's existing world owner supplies its
+    // durable identity before ordinary far-actor shelving.
+    assert.equal(h.sim.registry.get('npcJobsRuntime')._findSalvorTractorTarget(entry, cutter), target);
+    assert.equal(entry._salvorBookedTarget?.entity, target);
+    const sectorId = h.state.world.currentSectorId;
+    const active = h.state.world.sectorContents?.[sectorId] || h.state.world.activeSector;
+    const recordId = world._assignDurableRecordId(target, sectorId, 'wreck',
+      `npc-salvor-target:${entry.job.id}`, active);
+    assert.ok(recordId);
+    delete entry.job.payload.targetIdentity;
+    entry.job.phase = 'flee';
+    assert.equal(traffic._salvorWorkTarget(entry, cutter), null,
+      'FLEE leaves target recovery to the next ordinary work probe');
+    assert.equal(entry.job.payload.targetIdentity, undefined,
+      'the interrupted commission path has not yet saved a key');
+
+    insertFarActor(h.state, target, h.state.simTime, h.sim.helpers);
+    h.sim.helpers.removeEntity(target.id, { immediate: true, reason: 'virtualize' });
+    assert.equal(getFarActor(h.state, target.id)?.data?.worldRecordId, recordId);
+    restoreFarActorTable(h.state, JSON.parse(JSON.stringify(serializeFarActorTable(h.state.world.farActors))));
+    assert.equal(getFarActor(h.state, target.id)?.physicsBody?.dynamic, true,
+      'the save-safe far row retains the target physical-body descriptor');
+    h.step(); // Refresh the surviving worker's native pose without updating world residency.
+    entry.job.phase = 'transit';
+
+    const descriptor = traffic._salvorWorkTarget(entry, cutter);
+    assert.equal(entry.job.payload.targetIdentity?.kind, 'worldRecord',
+      'the exact retained booking contributes its stable key after shelving');
+    assert.equal(entry.job.payload.targetIdentity?.worldRecordId, recordId);
+    assert.deepEqual(descriptor?.pos, { x: target.pos.x, z: target.pos.z },
+      'the world owner returns the same shelved wreck pose');
+    assert.equal(descriptor.ready, false, 'a pose cannot advance work before physical promotion');
+    assert.equal(h.state.entities.has(target.id), false, 'pose following does not revive or replace the wreck');
+    assert.equal(getFarActor(h.state, target.id)?.data?.worldRecordId, recordId,
+      'the durable far row remains authoritative until the worker reaches the promotion band');
+
+    const promoted = promoteFarActorForTargetIdentity(h.state, entry.job.payload.targetIdentity,
+      { type: 'wreck', sectorId }, h.sim.helpers);
+    assert.equal(promoted?.physicsBody?.dynamic, true,
+      'the ordinary stable-identity promotion restores a dynamic physics body');
+    assert.equal(h.sim.registry.get('npcJobsRuntime')._findSalvorTractorTarget(entry, cutter), promoted,
+      'the existing attachment admission recognizes the restored exact wreck');
   } finally {
     h.close();
   }
