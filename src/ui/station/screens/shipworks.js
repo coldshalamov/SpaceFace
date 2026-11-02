@@ -3664,6 +3664,16 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     const cards = nodes.map((node) => {
       const copyEl = node.querySelector('.sx-hardpoint__copy');
       const r = copyEl ? copyEl.getBoundingClientRect() : null;
+      // An inline copy containing block lines can have a zero-width element box even while
+      // its text paints normally. Measure the painted lines rather than reserving 200px per
+      // column and reducing the actual ship to a thumbnail.
+      if (host === 'flight' && compactFlightNameplate.matches && copyEl && (!r || r.width <= 4)) {
+        const range = document.createRange();
+        range.selectNodeContents(copyEl);
+        const lines = [...range.getClientRects()].filter((line) => line.width > 0 && line.height > 0);
+        if (lines.length) return { w: Math.max(...lines.map((line) => line.width)),
+          h: Math.max(...lines.map((line) => line.bottom)) - Math.min(...lines.map((line) => line.top)) };
+      }
       return { w: r && r.width > 4 ? r.width : 200, h: r && r.height > 4 ? r.height : 36 };
     });
 
@@ -3717,7 +3727,8 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       // sit in clear columns beside the hull, not on its silhouette. Narrow phone stages need
       // the same extra reserve even when the stage is tall.
       const reserveX = nodes.length
-        ? Math.max(...cards.map((c) => c.w)) + (shortStage || narrowStage ? 52 : 32)
+        ? Math.max(...cards.map((c) => c.w)) + (host === 'flight' && compactFlightNameplate.matches
+          ? 80 : (shortStage || narrowStage ? 52 : 32))
         : 0;
       const fitArgs = { ink: poster.ink(), imageAspect: poster.aspect(), reserveX, reserveY: 8 };
       let fit = fitHullInk({ region, ...fitArgs });
