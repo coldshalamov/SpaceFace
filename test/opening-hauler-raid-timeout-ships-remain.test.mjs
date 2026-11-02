@@ -35,9 +35,12 @@ test('opening raid timeout: raid_over leaves the hauler and raiders as ordinary 
   assert.ok(raidPlan, 'day-0 plan must include the opening hauler raid');
 
   const dir = state.encounterDirector;
-  dir.pending = [{ ...raidPlan, dueAt: raidPlan.delay, defers: 0 }];
-  dir.pressure.combat = 30; // satisfies pressureCost 20
+  // This harness has no loaded starter carrier, so use the director's established
+  // carrierless 60s readiness expiry before pumping. This test covers post-raid cleanup,
+  // while the proximity, pressure, sector, and fire gates remain the ordinary ones.
   state.simTime = raidPlan.delay + 1;
+  dir.pending = [{ ...raidPlan, dueAt: raidPlan.delay, defers: 0, fireReadyHoldSince: state.simTime - 61 }];
+  dir.pressure.combat = 30; // satisfies pressureCost 20
   sim.runTicks(120); // pump + fire + spawn ticks
 
   const live = Object.values(dir.live).find((l) => l.shapeId === 'opening_hauler_raid');

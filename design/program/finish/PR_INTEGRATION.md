@@ -4,10 +4,12 @@ The 2026-11-01 GitHub snapshot contains 24 open PRs for `coldshalamov/SpaceFace`
 
 ## Subsequent integrated PRs
 
+- **#787, Automation summary; #789, Crucible results; #791, Replay/Clips:** merged from `origin/master` through `149a9b407f75` after reviewing the five changed paths. The summary strip, result-column separator and1080p type scaling are CSS changes; numerical UI budgets are unchanged. Relevant mounted-screen looks are in progress.
+- **#790, Automation1080p; #792/#794, Sandbox; #795, phone Station head:** the small CSS changes were ported to current owners in `91a0ae2ae973`, preserving the newer source and avoiding stale branch merges. The phone purse shares the palette-trigger row, and the vitals keep their own row. Actual screen looks and control clearance are being checked; this is not ordinary-route acceptance yet.
 - **#784, Save layout:** merged through `1960ba9dc845`. The thirteen-line inset/hairline change and source fingerprints were reviewed; numerical UI budgets were unchanged. The current Save-screen look remains pending.
 - **#785, Ledger eligibility:** merged through `82693956a0a7`. At1101–1440×461–720, the eligibility card spans the tape and purse, and its panel scrolls. Source review is complete; an ordinary populated Ledger look remains pending.
 - **#788, Pause footer:** merged through `82693956a0a7`. At521–640px desktop height, the footer moves below the dial rim. Source review is complete; the corresponding ordinary Pause look remains pending.
-- **#786, Station footer:** merged through `b8878dcc7167`. At901–1199px width, tab hit areas stay clear of Comms/Help/Undock; tighter narrow-desktop spacing retains the Market controls above the footer. The source and focused browser test were reviewed; execution is queued behind the current GPU measurement.
+- **#786, Station footer:** merged through `b8878dcc7167`. At901–1199px width, tab hit areas stay clear of Comms/Help/Undock; tighter narrow-desktop spacing retains the Market controls above the footer. The focused browser test passes across eleven viewports. This is mounted-screen coverage, not completion of every station journey.
 
 These merges preserve the existing UI cost thresholds; updated source fingerprints are not performance acceptance.
 

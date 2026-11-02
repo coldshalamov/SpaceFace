@@ -1123,6 +1123,16 @@ export const npcJobsRuntime = {
           this._adoptScavengerTractors();
         }
       });
+      // Authored-field ecology can materialize during residency, before world.currentSectorId
+      // switches to the incoming sector. Its spawned event is therefore too early to adopt.
+      // Salvage publishes only after its wreck targets are materialized; adopt that sector's
+      // resident scavenger now, before the first world tick can shelve the jobless hull.
+      this.bus.on('salvage:placed', (p) => {
+        if (p && p.sectorId
+          && p.sectorId === (this.state.world && this.state.world.currentSectorId)) {
+          this._adoptScavengerTractors();
+        }
+      });
       // A job whose hull is destroyed (never demoted) ends with the entity (ruling 5).
       this.bus.on('entity:killed', (p) => {
         const payload = p || {};

@@ -82,11 +82,11 @@ console.log(JSON.stringify(report, null, 2));
 if (!ok) process.exit(1);
 
 async function runtimeAdoption(rootDir, surfaceConfig) {
-  const gameLocalizationPath = path.join(rootDir, 'src/localization/gameLocalization.js');
+  const gameLocalizationPath = path.join(rootDir, 'src/localization/sourceText.js');
   let gameLocalizationSource = '';
   try { gameLocalizationSource = await readFile(gameLocalizationPath, 'utf8'); } catch { /* reported as not installed */ }
   const documentBridgeInstalled = /installLocalizedDocumentBridge/.test(gameLocalizationSource)
-    && /startupLocale\s*!==\s*DEFAULT_LOCALE/.test(gameLocalizationSource);
+    && /locale\s*!==\s*DEFAULT_LOCALE\s*\|\|\s*bridgeActive/.test(gameLocalizationSource);
   const files = [];
   for (const row of surfaceConfig.roots || []) {
     const rel = typeof row === 'string' ? row : row.path;
@@ -99,7 +99,7 @@ async function runtimeAdoption(rootDir, surfaceConfig) {
   for (const file of files.sort()) {
     if (!/\.(?:js|mjs|html)$/.test(file)) continue;
     const source = await readFile(file, 'utf8');
-    if (/localization\/(?:runtime|gameLocalization)\.js/.test(source)) filesWithRuntimeImports++;
+    if (/localization\/(?:runtime|gameLocalization|sourceText)\.js/.test(source)) filesWithRuntimeImports++;
     callSites += (source.match(/\b(?:i18n|localization|locale)\.t\s*\(/g) || []).length;
     callSites += (source.match(/\blocalizeText\s*\(/g) || []).length;
   }

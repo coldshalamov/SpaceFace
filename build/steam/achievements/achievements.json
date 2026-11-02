@@ -77,7 +77,7 @@
         "target": 1
       },
       "ruleText": "contracts >= 1 (mission:completed: a contract settles as completed)",
-      "icon": "icon-missions",
+      "icon": "icon-check",
       "iconFiles": {
         "achieved": "build/store/steam/achievements/SF_SIGNED_AND_DELIVERED_achieved.jpg",
         "unachieved": "build/store/steam/achievements/SF_SIGNED_AND_DELIVERED_unachieved.jpg"
@@ -367,7 +367,7 @@
       "order": 19,
       "id": "the_hundred_thousand",
       "apiName": "SF_THE_HUNDRED_THOUSAND",
-      "name": "The Hundred Thousand",
+      "name": "Seven Figures",
       "description": "Earn a million credits over your career.",
       "hidden": false,
       "category": "career",
@@ -377,7 +377,7 @@
         "target": 1000000
       },
       "ruleText": "creditsEarned >= 1000000 (credits:changed: credits granted to the player (sum of positive deltas))",
-      "icon": "icon-credits",
+      "icon": "icon-buy",
       "iconFiles": {
         "achieved": "build/store/steam/achievements/SF_THE_HUNDRED_THOUSAND_achieved.jpg",
         "unachieved": "build/store/steam/achievements/SF_THE_HUNDRED_THOUSAND_unachieved.jpg"

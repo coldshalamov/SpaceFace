@@ -36,10 +36,11 @@ judged against the player's ordinary route.
 - [ ] Finish the final build-map leftovers, requested last-300-commit review, remaining PR outcomes
   and documentation cleanup. The five additional Pro jobs remain blocked on the intended provider.
 
-The current worker-presentation source baseline passes17/17 checks in61,208ms within the unchanged
-90,000ms budget. Its focused transport/HUD checks pass24/24. All417 render-package plans were validated by the last web build,
-which predates these runtime repairs. Web-build receipt:
-`0ef4e906fe70b6719a2bc30c93c2b301ae7783df0c3f34d13d3cb4a90ac46aa3`.
+The source baseline after the localization loader change passes17/17 checks in60,133ms within the
+unchanged90,000ms budget. Earlier focused worker transport/HUD checks pass24/24. All417 render-package
+plans were validated by the last web build from `1c0f0af98d60`; the newer UI and loading changes have
+not yet been bundled. Local web-build receipt:
+`3b2e027e98737b4a07591d4691425bad375af685a0f5cb769eb04ea0cb71ae99`.
 Both earlier47-A failures were caused by the deliberate measured-hull inertia change: restoring
 only the former formula reproduced both prior hashes exactly. The envelopes retain those hashes
 and trajectory differences. Legacy reload@600 and V3 reload@60/600 each pass five repeats;
@@ -53,7 +54,7 @@ This candidate began Continue near rest, so its braking branch was not exercised
 hardware remains unverified; the visible Windows phone entries establish Bluetooth pairing,
 not a USB/debug channel.
 
-The last measured main static closure is9,955,136 raw bytes /144 JS outputs; the6MB target remains
+The last measured main static closure is9,959,756 raw bytes /144 JS outputs; the6MB target remains
 open. The shadow-disabled cold profile reaches flight in37.7s versus37.3s in the preceding run:
 there is no demonstrated wall-time improvement. Corrected shadow staging preserves the existing
 `forceEnable` contract. The actual late-Settings enable route passes after fixing pointer-focus
@@ -78,8 +79,18 @@ row within the existing bound. Pelican24 exposed a separate null-equality error 
 selected-ID check; requiring the accepted ID corrected it before Pelican25. Neither observer error
 is presented as a product regression.
 
-Discovery notifications now share the existing HUD safe-band allocator instead of covering the
-target dock; six focused lifecycle checks pass, while the ordinary visual look remains pending.
+Discovery notifications now use actual mobile instrument boxes and full-height free lanes rather
+than obsolete desktop reservations. The native portrait view clears flight controls and fits the
+wrapped discovery text. Shared cached HUD obstacles also seat Massline words and stunt callouts
+without moving the world marker. A later mobile run exposed receipt CSS overriding measured inline
+positions; `fa8e1bef2cce` removes that override from the second mobile sidecar, with40 focused checks
+passing. The next ordinary mobile run on `91a0ae2ae973` clears the measured Massline/receipt collisions
+in both orientations and moves14.286WU under native touch; the images were opened. Discovery and
+stunt captions were absent in those samples, so their current visible interaction is unknown.
+The earlier overlapping images remain retained. The authored player hull is difficult to judge in
+the dark mobile world images and needs a visibility check. Twelve GL program-query warnings from
+an earlier run have not reproduced in subsequent routes, but their cause remains unknown. The existing bounded query
+trap remains armed in required route work; zero error-level logs do not dismiss those warnings.
 The production cabinet attract recording was regenerated for the deliberately changed physics
 with its original seed, quantization and frame bounds; all eleven cabinet checks pass. The absent
 Hitch V7 candidate-only evidence test was retired; current retail asset validation is retained.
@@ -96,10 +107,10 @@ Hitch V7 candidate-only evidence test was retired; current retail asset validati
 | Renderer / recovery | Startup, shadow, preview, count-zero instance and census/proxy identity repairs are integrated. `532621b8f848` holds package geometry across the live exact-target async suffix; the real detach interleaving case and related owner suites pass73/73. The armed1ad public F2/Helios route recorded no resize failure. | This scoped route does not establish every transition or long-session resource safety. A startup-upload resize in c65 lacks per-object identity and requires the existing armed diagnostic if reproduced. Final packaged acceptance remains pending. |
 | M10 shader ownership | GL issue and render-state restoration remain serialized; capable backends can settle four independent actual-program readiness sets outside that reservation. Timeout receipts retain ownership of unfinished work. Focused owner, cancellation, delayed-stamp and fallback checks pass. | No matched live speedup has been established. This repair and the loading-queue handoff do not establish loading or runtime performance acceptance. |
 | M5 rigid batching | A current held-scene ABBA preserves exact source, settings, camera/projection and entity poses; real world submissions advance. Both compositor captures are nonblank and inspected. Five cohort roots produce46 instances in five batches; median draw calls122→119. Defaults restore and cleanup passes. | Median intervals remain16.67ms in every arm; no timing improvement is established in this starter scene. Host CPU busy varies27.5–41.9%. The older blank-image742/982draw result is not accepted. This does not establish active crowded-flight performance. |
-| Runtime performance | B27's existing retail witness records **22.933 Hz / 0.9182 sim/wall** in the first tail. A separate launch after cleanup of a stalled fleet-capture job records 3,686 world draws over 120,027.765 ms: **30.7096 Hz / 0.99963 sim/wall**. Both tails follow actual public world/input recovery and finish with cleanup. A measured texture-serialization path now uses the canonical safe clone helper; 47 focused checks pass. | These launches are not a matched causal A/B. Retail averages do not establish scanout, frame percentiles or a 60 fps pass. The equal executed-frame/world-draw deltas in the later tail show no net active-loop cap skips; its effective cap/display calibration is unrecorded. Transmission's mismatched first-picture experiment is inconclusive; scale remains 1.0. The clone's live benefit and frame targets remain open. Current wave15 fixture averages157.2entities and27.257ms per sim step (p95 39.208ms), so the simulation targets also remain open. |
+| Runtime performance | B27's existing retail witness records **22.933 Hz / 0.9182 sim/wall** in the first tail. A separate launch after cleanup of a stalled fleet-capture job records 3,686 world draws over 120,027.765 ms: **30.7096 Hz / 0.99963 sim/wall**. Both tails follow actual public world/input recovery and finish with cleanup. A measured texture-serialization path now uses the canonical safe clone helper; 47 focused checks pass. | These launches are not a matched causal A/B. Retail averages do not establish scanout, frame percentiles or a 60 fps pass. The equal executed-frame/world-draw deltas in the later tail show no net active-loop cap skips; its effective cap/display calibration is unrecorded. Transmission's mismatched first-picture experiment is inconclusive; scale remains 1.0. The clone's live benefit and frame targets remain open. The earlier wave15 fixture averaged157.2entities and27.257ms per sim step (p95 39.208ms), so the simulation targets also remain open. |
 | Fleet asset capture | The original 170 images are preserved. Cradle and all remaining 26 entries have visible native captures, with first blank/inconsistent frames retained. Last Argument and Storm Orchard positive captures recorded target GL draws. The preview rejects zero-draw output and now distinguishes published, prepared and failed authored states. | A later Kestrel house-marking preview exhausted its retries with zero draws; no image was accepted. Decal readability and combined HeroRig/plume appearance remain open. Isolated previews do not establish ordinary in-world placement or complete visual parity. |
-| M9 loading | The activated source bundle validates417 render packages. Its measured main static closure is9,955,136 raw bytes across144 JS outputs, down from11,435,492 at the batch start. Pure tender identity and charge preview imports remove their simulation-owner edges. Ten stale hull packages were rebuilt against current release models. | The6MB target, transfer, loading and runtime targets remain open. These are graph-size measurements, not load/FPS improvements. Batch27 remains the latest completed packaged ASAR receipt. |
-| Baseline | The current live-power presentation source passes17/17 in61,208ms within90,000ms. Measured-hull legacy reload@600 and V3 reload@60/600 also pass five repeats each. | Changed physical trajectories alter legacy hit/cue counts and are documented. Original acceptance budgets remain enforced. This timing is not an isolated speedup measurement. |
+| M9 loading | The activated source bundle validates417 render packages. Its measured main static closure is9,959,756 raw bytes across144 JS outputs, down from11,435,492 at the batch start. Pure tender identity and charge preview imports remove their simulation-owner edges. Ten stale hull packages were rebuilt against current release models. | The6MB target, transfer, loading and runtime targets remain open. These are graph-size measurements, not load/FPS improvements. Batch27 remains the latest completed packaged ASAR receipt. |
+| Baseline | The localization integration baseline passes17/17 in60,133ms within90,000ms. Measured-hull legacy reload@600 and V3 reload@60/600 also pass five repeats each. | Changed physical trajectories alter legacy hit/cue counts and are documented. Original acceptance budgets remain enforced. This timing is not an isolated speedup measurement. |
 | Responsive UI | The public8f5 route passes1280/960 F2 fitted-hull callouts, physical Helios docking,568x320 Market quantity and empty-Sell→Buy controls, and the actual Industry research lock. Errors and armed resize failure are empty. | These public F2 images use the authored plate. Existing backend policy may block the secondary WebGL context; the actor now distinguishes that policy from live-preview readiness. The canonical151/160 matrix and cost failures remain open. |
 | Settings pointer and shadows | `614a9dfbd48f` stops pointer-origin focus scrolling a control between down and up. The changed public route has stable pointer targets, a real setting event, observed guarded depth admission, drained queue, advancing flight and an inspected enabled ship/world image. | The success probe does not serialize its page-error list, so no zero-error audit is claimed. This Settings-specific fix does not establish the cause of an intermittent contract hold failure; that is being checked separately. |
 | Hull physics | `48c2d6b09bb9` derives native yaw inertia from measured hull area and radius. The real Rapier low-speed scrape falls from3.98 to0.614rad/s. `9a7324ac5ab1` also gives ordinary weapon hits authored momentum instead of multiplying it by target mass: a126 impulse now produces126/m velocity change across2/16/180/800-tonne native bodies. Both contact/splash paths and real collision blocking pass focused checks. | Native checks do not establish ordinary collision feel across the fleet. Legacy replay hit/cue counts change with the corrected trajectories. Force, Massline and field policies are unchanged; no asset mass/material distribution was guessed. |
@@ -110,6 +121,20 @@ Hitch V7 candidate-only evidence test was retired; current retail asset validati
 | Pro creation | Correct Pro dispatch count: 0. The Browser connects to ChatGPT Chat with Pro selected; the model menu reports “Usage limit reached.” | Five briefs remain queued for ChatGPT Pro. Work and alternate models are not authorized. See the [Pro portfolio](./PRO_CREATION_PORTFOLIO_2026-10-30.md). |
 
 ## M9 measured checkpoint history
+
+`e934dd13aafb` separates English source copy from the full keyed localization entry. Cold source
+and worker-entry checks request no localization sidecars, while the compatibility entry retains
+all15,599 generated key results. Selected non-English locales are prepared before boot, Settings
+commit and accepted Continue presentation; cancelled preparation cannot change the document locale.
+The generated picker metadata uses the canonical inventory digest. The avoidable sidecars total
+2,270,821 raw bytes, but actual retail HTTP and loading benefit remain unmeasured until the new build.
+
+The fresh wave15 CPU profile measures600 ticks after600 warmup ticks, with seed4242 and an average
+165.3 entities /35.2 hostiles. Total step mean is19.262ms, p95 33.050ms and p99 41.560ms. Physics
+averages8.062ms (native Rapier step2.982ms nested within owner step5.621ms), tactical AI4.091ms and
+fields1.502ms. Impact callbacks are profiled separately; listener microsecond reporting was corrected
+from an erroneous1e6 conversion to1e3 without changing the underlying millisecond samples. This is
+a current attribution point, not a matched before/after speedup, frame-rate result or8ms target pass.
 
 The legacy opaque-pool path also has a completed held-scene ABBA on source `82693956a0a7`.
 Its eleven batches consolidate twelve visible pool instances, reducing median world draw calls
@@ -125,6 +150,9 @@ The current measured point is the1ad main closure above. Earlier checkpoints, me
 
 ## Active failures and next acceptance work
 
+- Verify the phone station transaction receipt after `12219eabedf9`; the earlier mounted Repair Hull/Buy walk showed it covering the Factions tab. Focused checks pass; the same-action visual recheck is running.
+- Recheck ordinary Ceres tractor use after `4f7eed8bbd4c`. The completed600-second test observed whip and coupler but no tractor. The scavenger now receives its job after salvage targets materialize, before the first tick can shelve it; focused assignment/idempotence passes. The long post-fix census remains open.
+- The latest Ceres public route recorded an impact and destruction but lacked participant metadata after mirror removal. Its original receipt cannot prove the authored impact retrospectively. Preserve native occupant generations and raw trace data in the corrected observer, then exercise the route again.
 - Complete a qualifying M8 30-minute run with the required post-context observation. The bounded packaged recovery pass does not establish soak acceptance.
 - Run the public Ceres toolkit route after the ready map/actor changes, preserving the native Ceres and RC458 passes as separate evidence.
 - Run the public Foundry first-ten/boss route and verify Kraken wave-seven-plus progression through ordinary play.

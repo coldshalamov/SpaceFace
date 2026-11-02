@@ -141,7 +141,10 @@ ${P} .sxb-vital__acts .orr-act__cost { font-family:${NUM} !important; font-size:
   /* Two rows keep every reading in the head: the hull and ledger get wide cells; fuel and hold
      have room for their figures, and MUNITIONS keeps its label clear of its value. */
   ${P} .sxb-crown { gap:0 !important; }
-  ${P} .sxb-crown .sxb-vitals { margin-top:-8px !important; }
+  /* Put the purse beside the palette trigger so the full vitals strip retains its own row. */
+  ${P} .sxb-berth.dp-frame__head > .sxb-crown { display:contents !important; }
+  ${P} .sxb-berth.dp-frame__head > .sxb-crown .sxb-purse { grid-area:trigger !important; justify-self:start !important; align-self:center !important; }
+  ${P} .sxb-berth.dp-frame__head > .sxb-crown .sxb-vitals { grid-area:crown !important; margin-top:0 !important; }
   ${P} .sxb-crown .sxb-vital__head { min-height:22px !important; }
   ${P} .sxb-berth.dp-frame__head { grid-template-rows:max-content max-content max-content max-content max-content !important;
     align-content:start !important; row-gap:2px !important; }
