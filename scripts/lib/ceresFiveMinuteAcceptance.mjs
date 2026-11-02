@@ -5126,6 +5126,7 @@ export async function drivePublicAnchorCollision(page, endTick, {
   let pulses = 0;
   let boostPulses = 0;
   let brakePulses = 0;
+  let missingAnchorWaits = 0;
   let lastStatus = null;
   let lastAction = null;
   const fixedPulseTicks = (durationMs) => Math.max(1, Math.round(
@@ -5180,6 +5181,7 @@ export async function drivePublicAnchorCollision(page, endTick, {
     tangentialSpeedWUPerS: status?.tangentialSpeedWUPerS,
     headingError: status?.headingError,
     speed: status?.speed,
+    relatedEvents: status?.relatedEvents,
   });
 
   try {
@@ -5198,7 +5200,20 @@ export async function drivePublicAnchorCollision(page, endTick, {
             && entity.id === anchorEntityId
             && entity.data?.activityCollisionAnchorSlotId === targetSlotId
         ));
-        const impact = (window.__SF_CERES_FIVE_MINUTE_TRACE__?.events || []).find((event) => {
+        const events = window.__SF_CERES_FIVE_MINUTE_TRACE__?.events || [];
+        const relatedEvents = events.filter((event) => Number(event.seq) >= startSeq && (
+          (event.event === 'physics:impact'
+            && (event.aId === anchorEntityId || event.bId === anchorEntityId))
+          || (['entity:killed', 'entity:destroyed'].includes(event.event)
+            && (event.entityId === anchorEntityId || event.targetId === anchorEntityId))
+        )).slice(-8).map((event) => ({
+          seq: event.seq, tick: event.tick, event: event.event, reason: event.reason,
+          entityId: event.entityId, targetId: event.targetId,
+          aId: event.aId, bId: event.bId, aType: event.aType, bType: event.bType,
+          aAnchorSlotId: event.aAnchorSlotId, bAnchorSlotId: event.bAnchorSlotId,
+          aWorldRecordId: event.aWorldRecordId, bWorldRecordId: event.bWorldRecordId,
+        }));
+        const impact = events.find((event) => {
           const playerIsA = event.aId === playerId && event.bId === anchorEntityId;
           const playerIsB = event.bId === playerId && event.aId === anchorEntityId;
           if (event.event !== 'physics:impact'
@@ -5226,6 +5241,8 @@ export async function drivePublicAnchorCollision(page, endTick, {
         const statusIdentity = {
           tick: Number(state?.tick),
           impact,
+          relatedEvents,
+          playerMissing: !player,
           playerEntityId: player?.id ?? playerId,
           anchorEntityId: anchor?.id ?? anchorEntityId,
           anchorSlotId: anchor?.data?.activityCollisionAnchorSlotId ?? targetSlotId,
@@ -5319,7 +5336,16 @@ export async function drivePublicAnchorCollision(page, endTick, {
           impact: status.impact,
         };
       }
-      if (status.missing) throw new Error('Throughline collision target disappeared before impact');
+      if (status.missing) {
+        // The main-side entity mirror and worker events can arrive on different frames. Allow
+        // a short neutral handoff, but still require the same exact post-cursor impact receipt.
+        if (!status.playerMissing && missingAnchorWaits++ < 3) {
+          await holdFixedPulse(2);
+          continue;
+        }
+        throw new Error('Throughline collision target disappeared before impact');
+      }
+      missingAnchorWaits = 0;
       if (shouldBrakeCeresAnchorApproach(status)) {
         const ticks = fixedPulseTicks(100);
         await preflightFixedPulse(ticks);

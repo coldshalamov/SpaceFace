@@ -3482,6 +3482,7 @@ test('anchor collision ignores stale impacts and owns fixed-tick public input', 
   const heldKeys = new Set();
   const fixedTickSamples = [];
   let thrustHolds = 0;
+  let deferredImpact = false;
   let wallWaits = 0;
   const runInPage = (callback, argument) => {
     const hadWindow = Object.hasOwn(globalThis, 'window');
@@ -3515,6 +3516,13 @@ test('anchor collision ignores stale impacts and owns fixed-tick public input', 
       fixedTickSamples.push({ tick: state.tick, held: [...heldKeys].sort() });
       if (heldKeys.has('KeyW')) {
         const exactEventTimeIdentity = thrustHolds > 0;
+        if (exactEventTimeIdentity) {
+          anchor.alive = false;
+          deferredImpact = true;
+          thrustHolds += 1;
+          assert.equal(runInPage(callback, argument), true);
+          return;
+        }
         trace.events.push({
           seq: trace.nextEventSeq++,
           event: 'physics:impact',
@@ -3530,6 +3538,12 @@ test('anchor collision ignores stale impacts and owns fixed-tick public input', 
             : 'ceres_ambush_collision_anchor',
         });
         thrustHolds += 1;
+      } else if (deferredImpact && argument.deltaTicks === 2) {
+        trace.events.push({ seq: trace.nextEventSeq++, event: 'physics:impact', tick: state.tick,
+          aId: player.id, bId: anchor.id, aType: 'ship', aAnchorSlotId: null,
+          bType: 'asteroid', bWorldRecordId: null,
+          bAnchorSlotId: 'ceres_throughline_collision_anchor' });
+        deferredImpact = false;
       }
       assert.equal(runInPage(callback, argument), true);
     },
@@ -3550,13 +3564,14 @@ test('anchor collision ignores stale impacts and owns fixed-tick public input', 
   assert.equal(receipt.impact.tick >= receipt.startTick, true);
   assert.equal(receipt.pulses, 2);
   assert.equal(receipt.boostPulses, 2);
-  assert.ok(receipt.completionTick > receipt.selectedImpactTick,
-    'the boosted collision receipt completes only after its public neutral release tick');
+  assert.ok(receipt.completionTick >= receipt.selectedImpactTick,
+    'the delayed exact impact is observed after the public neutral release tick');
   assert.equal(wallWaits, 0, 'collision steering cannot translate wall time into route distance');
   assert.deepEqual(fixedTickSamples.map((sample) => sample.held), [
     ['KeyW', 'Shift'],
     [],
     ['KeyW', 'Shift'],
+    [],
     [],
   ]);
   assert.equal(heldKeys.size, 0);
@@ -4056,7 +4071,7 @@ test('anchor collision preflights every fixed pulse and rejects deadline-edge im
       assert.match(error.message, /target disappeared before impact/);
       const diagnostic = error.ceresAnchorCollisionDiagnostic;
       assert.equal(diagnostic?.pulses, 0);
-      assert.equal(diagnostic?.lastStatus?.tick, 1_000);
+      assert.equal(diagnostic?.lastStatus?.tick, 1_006);
       assert.equal(diagnostic?.lastStatus?.anchorEntityId, 9);
       assert.equal(diagnostic?.lastStatus?.anchorSlotId,
         'ceres_throughline_collision_anchor');
@@ -4069,7 +4084,7 @@ test('anchor collision preflights every fixed pulse and rejects deadline-edge im
     'target-loss diagnostic',
   );
   assert.equal(targetLoss.keydowns, 0);
-  assert.equal(targetLoss.fixedWaits, 0);
+  assert.equal(targetLoss.fixedWaits, 3, 'target loss waits only for the bounded event handoff');
 
   const attemptExhaustion = makeHarness({
     tick: 1_000,
