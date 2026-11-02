@@ -1,5 +1,6 @@
 import { AI_CONTRACT_VERSION, wrapAngle } from '../ai/contracts.js';
 import { ActivityKind, RulesOfEngagement, normalizeActivity } from '../ai/doctrine.js';
+import { shovePanicLive } from '../ai/shovePanic.js';
 import { hash32 } from '../core/rng.js';
 import { makeEnemySpawnSpec } from './combat.js';
 import { indexedShipLikeScan, entityIndexVersion, entityIndexLaneVersion } from '../world/livingWorldViews.js';
@@ -309,7 +310,13 @@ export const aiEncounter = {
       // the vent/readable beat — in addition to the hull-fraction trigger. Either admits it.
       const turretEdge = finite(authored.turretsLostAtLeast, 0) > 0
         && turretLossCount(state.combat && state.combat.entities && state.combat.entities[String(entity.id)]) >= authored.turretsLostAtLeast;
-      if (!turretEdge
+      // Shove panic (src/ai/shovePanic.js): a caller the PILOT tossed calls the screen too —
+      // the mayday beat the authored threshold alone could never reach from physical play.
+      // The once-ever latch above still holds: one package per caller, whichever beat fires it.
+      const nowS = Number.isFinite(state.simTime) ? state.simTime
+        : (Number.isInteger(state.tick) ? state.tick / 60 : 0);
+      const panicCall = shovePanicLive(ai, nowS);
+      if (!turretEdge && !panicCall
         && (!(entity.hullMax > 0) || entity.hull / entity.hullMax >= finite(authored.hullThreshold, 0.3))) continue;
       // SF-053: never announce a call whose squad cannot be reserved — the caller holds its
       // latch and retries when a slot frees, so the banner only runs when help can actually come.

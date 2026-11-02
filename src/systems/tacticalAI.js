@@ -49,6 +49,11 @@ import { specialistPlanByEnemyId, BODY_LAUNCH, bodyLaunchStep, bodyLauncherWeapo
   isBodyLauncherEnemy } from '../ai/specialistPlans.js';
 import { applyMineLayerVerb } from '../ai/mineLayerVerb.js';
 import { applyNpcBombMirror } from '../ai/npcBombMirror.js';
+import {
+  noteShoveTumble,
+  shovePanicBreakActivity,
+  shovePanicLive,
+} from '../ai/shovePanic.js';
 import { isSwarmSpecialistRun, swarmSpecialistKind } from '../data/swarmSpecialists.js';
 import {
   ENEMY_DOCTRINE_OVERRIDES,
@@ -474,6 +479,33 @@ export function createTacticalAISystem({
     invalidateEntity(entityId);
   }
 
+  /**
+   * Shove panic (src/ai/shovePanic.js): a hull the PILOT tossed loses its helm to the tumble
+   * and then keeps flying its authored attack_run like nothing happened — the shove bought no
+   * tempo. The combat:tumbled announcement is the one physical receipt; the stamp + break are
+   * data on the victim; the fire gate and the aiEncounter mayday call read the same stamp.
+   */
+  function handleShoveTumble(payload) {
+    const state = ctxRef && ctxRef.state;
+    if (!state || !payload || payload.victimId == null) return;
+    const victim = state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(payload.victimId)
+      : null;
+    if (!victim || isCounterplayOwned(victim, state)) return;
+    if (!noteShoveTumble(state, payload, { bus: ctxRef.bus, helpers: ctxRef.helpers })) return;
+    const ai = victim.data && victim.data.ai;
+    if (!ai) return;
+    const next = shovePanicBreakActivity(victim);
+    if (!next) return;
+    ai.shovePanicBase = ai.activity || null;
+    ai.activity = next;
+  }
+
+  /** Expired panics hand the authored activity record back exactly once (stash/handback). */
+  function restoreShovePanics(state, shipLikeList) {
+    stepShovePanicRestores(state, shipLikeList);
+  }
+
   function replayLastManeuvers(liveStack, tick, state) {
     const maneuverPort = liveStack && liveStack.ports && liveStack.ports.maneuver;
     if (!maneuverPort || typeof maneuverPort.request !== 'function') return;
@@ -513,6 +545,7 @@ export function createTacticalAISystem({
         listenLifecycle(ctx.bus, 'game:new', () => clearCounterplayAdventure(ctxRef));
         listenLifecycle(ctx.bus, 'entity:spawned', invalidateLifecycleEntity);
         listenLifecycle(ctx.bus, 'entity:destroyed', invalidateDestroyedLifecycleEntity);
+        listenLifecycle(ctx.bus, 'combat:tumbled', handleShoveTumble);
       }
     },
 
@@ -567,6 +600,7 @@ export function createTacticalAISystem({
       }
       markCheapCohortMembers(state, shipLikeList);
       stampManeuverIdentities(state, shipLikeList);
+      restoreShovePanics(state, shipLikeList);
       const liveStack = ensureStack(state);
       bindHullResolver(liveStack);
       const tick = Number.isInteger(state && state.tick) ? state.tick : liveStack.lastTick + 1;
@@ -653,6 +687,7 @@ export function createTacticalAISystem({
         applyTurretEdgeEffects(entity, doctrine, state);
         applyMindAwareFiringIntent(decision, state);
         applyNemesisFireGate(entity, state);
+        applyShovePanicFireGate(entity, state);
         applyEliteChargeTell(entity, decision, state, tick, ctxRef && ctxRef.bus);
         const enemyId = entity && entity.data && (entity.data.lootTableId || entity.data.enemyTypeId);
         const fieldsSys = ctxRef && ctxRef.registry && typeof ctxRef.registry.get === 'function'
@@ -751,6 +786,7 @@ export function revalidateCachedAIFiringIntents(liveStack, state, entityRefs = n
     const effective = palletJackDecision(kilnbackDecision(decision, state), state);
     applyMindAwareFiringIntent(effective, state);
     applyNemesisFireGate(entity, state);
+    applyShovePanicFireGate(entity, state);
     applyEliteChargeTell(entity, effective, state, state && state.tick, bus);
   }
   return decisions.length;
@@ -824,6 +860,47 @@ export function applyEliteChargeTell(entity, decision, state, tick, bus) {
 }
 
 /**
+ * Expired panics hand the authored activity record back exactly once (stash/handback, the
+ * applyEngagementPosture shape). Module-level so inspection and focused checks read the same
+ * pass the update loop runs.
+ */
+export function stepShovePanicRestores(state, shipLikeList) {
+  if (!state || !shipLikeList || !shipLikeList.length) return;
+  const now = Number.isFinite(state.simTime) ? state.simTime
+    : (Number.isFinite(state.tick) ? state.tick / 60 : 0);
+  for (let i = 0; i < shipLikeList.length; i++) {
+    const entity = shipLikeList[i];
+    const ai = entity && entity.data && entity.data.ai;
+    if (!ai || (!ai.shovePanic && !ai.shovePanicBase)) continue;
+    if (shovePanicLive(ai, now)) continue;
+    const base = ai.shovePanicBase;
+    delete ai.shovePanicBase;
+    if (!base) continue;
+    const current = ai.activity;
+    // Another writer already replaced the break with its own record: leave theirs.
+    if (current && String(current.reason || '') === 'shove_panic') ai.activity = base;
+  }
+}
+
+/**
+ * Shove panic fire veto — the same denial-only shape as the Nemesis gate: while a hull's panic
+ * window is live it may not open fire (the crew is still gathering its wits), and it can never
+ * open a gate the ROE, mind veto or engagement authority has closed. Runs on fresh decisions
+ * and on cached ones so a skipped decision frame cannot shoot through the rattle.
+ */
+export function applyShovePanicFireGate(entity, state) {
+  const data = entity && entity.data;
+  const ai = data && data.ai;
+  if (!ai || !ai.shovePanic) return;
+  const now = Number.isFinite(state && state.simTime) ? state.simTime
+    : (Number.isFinite(state && state.tick) ? state.tick / 60 : 0);
+  if (!shovePanicLive(ai, now)) return;
+  let intent = data.intent;
+  if (intent && Object.isFrozen(intent)) intent = data.intent = { ...intent };
+  if (intent) clearAIFiringIntent(intent, 'shove_panic');
+}
+
+/**
  * Doctrine egress/lull phases during which a weapons-free combatant's live activity reads as
  * REPOSITION instead of the authored ATTACK_RUN. This is what consumes the reposition cell of the
  * activity/ROE vocabulary mid-fight: the enemy is factually breaking off, so the behavior gate
@@ -883,6 +960,9 @@ export function applyEngagementPosture(entity, doctrine, state) {
   const ai = entity.data.ai;
   if (!ai || ai.passive === true || ai.roe !== 'weapons_free') return;
   const tick = Number.isInteger(state && state.tick) ? state.tick : 0;
+  // A live shove panic owns the hull's posture while it lasts (its own break-off record is
+  // already written and the restore pass hands the authored activity back on expiry).
+  if (shovePanicLive(ai, Number.isFinite(state && state.simTime) ? state.simTime : tick / 60)) return;
   const current = ai.activity && typeof ai.activity === 'object' ? ai.activity : null;
   if (!doctrine || !POSTURE_EGRESS_PHASES.has(doctrine.phase)) {
     // Re-commit (or doctrine dropped): hand the authored activity back exactly once.
