@@ -41,6 +41,9 @@
 //   --drop-profile=NAME   delete that kept profile and exit
 //   --baseline-source=PATH serve the validated ignored source manifest for an immutable
 //                         historical comparison; assets and unlisted files remain canonical.
+//   --late-enable-nocturne-shadows, with --from-launch, use the public Pause → Settings → Video
+//                         control to enable local shadows after the default-off opening, then wait
+//                         for the guarded depth-stage queue and first-use drain before a look capture.
 //
 // Writes .devshots/main-thread-profile/[NAME/]{profile.cpuprofile,report.md,canvas-census.json}.
 // The .cpuprofile opens directly in Chrome DevTools' Performance panel (Load profile...).
@@ -147,6 +150,7 @@ const safeName = (value, max) => String(value || '')
 
 const FROM_LAUNCH = process.argv.includes('--from-launch');
 const BUFFER_RESIZE_DIAG = process.argv.includes('--buffer-resize-diag');
+const LATE_ENABLE_NOCTURNE_SHADOWS = process.argv.includes('--late-enable-nocturne-shadows');
 const WINDOW_MS = Number(argValue('--ms') || process.env.SPACEFACE_PROFILE_MS || 20_000);
 const FLIGHT_TAIL_MS = Number(argValue('--flight-ms') || 10_000);
 const LAUNCH_DWELL_MS = Math.max(0, Number(argValue('--launch-dwell-ms')) || 0);
@@ -209,6 +213,9 @@ const GPU_TIMERS = process.argv.includes('--gpu-timers');
 // within-session A/B (alternating blocks in the same flight) controls for this machine's noisy background load.
 // Eval scripts can await __sfProfileScreenshot(label) to save a compositor screenshot in the output directory.
 const EVAL_FILE = argValue('--eval-file');
+if (LATE_ENABLE_NOCTURNE_SHADOWS && (!FROM_LAUNCH || CRUCIBLE || GAUNTLET || RACING || WARM_SECOND_LAUNCH || EVAL_FILE)) {
+  throw new Error('--late-enable-nocturne-shadows requires a single public Adventure --from-launch route without --eval-file');
+}
 // --heap-sampling starts the V8 sampling heap profiler before New Game and, at the end of the held-thrust tail, writes
 // which allocation sites still hold live memory (heap-sampling.json / heap-sampling.md), with the JS heap at each milestone.
 const HEAP_SAMPLING = process.argv.includes('--heap-sampling');
@@ -1264,6 +1271,87 @@ async function waitForFlight(page, timeoutMs, pollMs, { signal = null } = {}) {
   throw new Error(`never entered flight (mode=${mode})`);
 }
 
+function readNocturneShadowRouteStateInPage() {
+  const state = window.SF?.state;
+  const owner = window.SF?.registry?.get?.('render');
+  const renderer = owner?.renderer;
+  const pending = owner?._pendingDepthStageRoots;
+  const ledger = renderer?.userData?.spacefaceLinkBlocks;
+  return {
+    mode: state?.mode ?? null,
+    tick: Number(state?.tick) || 0,
+    nocturne: state?.settings?.video?.nocturne ?? null,
+    nocturneShadows: state?.settings?.video?.nocturneShadows ?? null,
+    solarShadows: state?.settings?.video?.shadows ?? null,
+    shadowConfigured: owner?._nocturne?.shadowConfigured === true,
+    shadowsEnabled: owner?._nocturne?.shadowsEnabled === true,
+    unusedTracker: !!renderer?.userData?.spacefaceUnusedPrograms,
+    scheduled: owner?._depthStageScheduled === true,
+    pendingRoots: Number(pending?.size) || 0,
+    programs: Array.isArray(renderer?.info?.programs) ? renderer.info.programs.length : null,
+    unusedPrograms: Number(renderer?.userData?.spacefaceUnusedPrograms?.size) || 0,
+    linkBlocks: Number(ledger?.count) || 0,
+    linkWaits: Number(ledger?.waits) || 0,
+    linkWaitMs: Number(ledger?.totalMs) || 0,
+  };
+}
+
+async function enableNocturneShadowsThroughPublicSettings(page) {
+  const before = await page.evaluate(readNocturneShadowRouteStateInPage);
+  if (before.mode !== 'flight' || before.nocturne !== true || before.nocturneShadows !== false
+      || before.solarShadows !== false || !before.shadowConfigured || before.shadowsEnabled) {
+    throw new Error(`late shadow route requires default-off local shadows in ordinary flight: ${JSON.stringify(before)}`);
+  }
+
+  log('opening public Pause → Settings → Video to enable Local light shadows');
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(() => window.SF?.ctx?.screenManager?.top?.() === 'pause', null, { timeout: 30_000 });
+  await page.getByRole('button', { name: 'Settings', exact: true }).click({ timeout: 30_000 });
+  await page.waitForFunction(() => window.SF?.ctx?.screenManager?.top?.() === 'settings', null, { timeout: 30_000 });
+  await page.getByRole('tab', { name: 'Video', exact: true }).click({ timeout: 30_000 });
+  const row = page.locator('#screens [data-screen="settings"] .k-row').filter({ hasText: 'Local light shadows' });
+  const on = row.locator('.k-word[data-action="on"]');
+  await on.waitFor({ state: 'visible', timeout: 30_000 });
+  if (await on.getAttribute('aria-pressed') === 'true') {
+    throw new Error('Local light shadows was already on before the public enable click');
+  }
+  const toggleWallMs = Date.now();
+  await on.click({ timeout: 30_000 });
+  await page.waitForFunction(() => window.SF?.state?.settings?.video?.nocturneShadows === true,
+    null, { timeout: 30_000 });
+  const afterToggle = await page.evaluate(readNocturneShadowRouteStateInPage);
+  if (afterToggle.shadowsEnabled !== true || afterToggle.pendingRoots < 1 || !afterToggle.scheduled) {
+    throw new Error(`public setting changed without queuing guarded depth admission: ${JSON.stringify(afterToggle)}`);
+  }
+  log(`public setting enabled; guarded depth stage queued ${afterToggle.pendingRoots} roots`);
+
+  await page.locator('#screens [data-screen="settings"] .sf-back[data-action="back"]').click({ timeout: 30_000 });
+  await page.waitForFunction(() => window.SF?.ctx?.screenManager?.top?.() === 'pause', null, { timeout: 30_000 });
+  await page.keyboard.press('Escape');
+  await waitForFlight(page, 30_000, 100);
+  await page.waitForFunction((startTick) => {
+    const owner = window.SF?.registry?.get?.('render');
+    const pending = owner?._pendingDepthStageRoots;
+    return window.SF?.state?.mode === 'flight'
+      && Number(window.SF?.state?.tick) > startTick
+      && owner?._depthStageScheduled !== true
+      && (!pending || pending.size === 0);
+  }, before.tick, { timeout: 180_000, polling: 100 });
+  const completionObservedWallMs = Date.now();
+  await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  const afterStage = await page.evaluate(readNocturneShadowRouteStateInPage);
+  if (afterStage.mode !== 'flight' || afterStage.shadowsEnabled !== true
+      || afterStage.pendingRoots !== 0 || afterStage.scheduled) {
+    throw new Error(`enabled shadow stage did not settle before look capture: ${JSON.stringify(afterStage)}`);
+  }
+  const screenshot = path.join(OUT_DIR, 'nocturne-shadows-enabled-flight.png');
+  await page.screenshot({ path: screenshot, timeout: 15_000 });
+  const result = { before, afterToggle, afterStage, toggleWallMs, completionObservedWallMs,
+    screenshot: path.relative(ROOT, screenshot).replace(/\\/g, '/') };
+  log(`guarded depth stage settled; unused programs=${afterStage.unusedPrograms}; enabled look ${result.screenshot}`);
+  return result;
+}
+
 /** The Crucible button's own route (default kit, fixed seed); every armory draft is answered with 'keep'. */
 async function launchCrucible(page) {
   await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus, null, { timeout: 150_000 });
@@ -1839,6 +1927,10 @@ async function runLaunchProfile(page, cdp, profileNote) {
   const atFlight = await page.evaluate(readGpuAndOpeningInPage).catch(() => null);
   log(`entered flight ${((flightWallMs - launchWallMs) / 1000).toFixed(1)} s after Launch; ${HOLD_STILL ? 'holding still' : 'holding thrust'} ${FLIGHT_TAIL_MS} ms`);
 
+  const lateShadowEnable = LATE_ENABLE_NOCTURNE_SHADOWS
+    ? await enableNocturneShadowsThroughPublicSettings(page)
+    : null;
+
   if (!HOLD_STILL) await page.keyboard.down('KeyW');
   await page.waitForTimeout(FLIGHT_TAIL_MS);
   if (!HOLD_STILL) await page.keyboard.up('KeyW').catch(() => {});
@@ -1877,6 +1969,7 @@ async function runLaunchProfile(page, cdp, profileNote) {
     runtime: runtimeBinding,
     workerProfile: workerProfileStatus,
     host: summarizeHostResources(hostStart, hostEnd),
+    ...(lateShadowEnable ? { lateShadowEnable } : {}),
     ...(warmup ? { launch: {
       mode: 'same-session-warm-second-public-adventure-launch',
       warmup: {

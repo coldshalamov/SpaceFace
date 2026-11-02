@@ -762,9 +762,9 @@ export async function driveCompileShadowDepthPipelines(depthOpts, yieldStep) {
   // The renderer keeps its shadow-map bit and the Nocturne spot caster structural so lit
   // materials retain one stable color-program census while the optional depth pass is off.
   // Do not mistake those structural flags for an active shadow request: opening/cook callers
-  // pass forceEnable from the user's actual shadow settings, and a false value must not stage
-  // depth variants that no presented pass can consume.
-  if (depthOpts && depthOpts.forceEnable === false) {
+  // pass a separate active-settings policy. forceEnable:false means use an already-enabled
+  // shadow map; live promotion callers must retain that existing meaning.
+  if (depthOpts && depthOpts.shadowsActive === false) {
     return { skipped: true, reason: 'shadow depth disabled by active settings', subjects: 0, aborted: false };
   }
   const pace = typeof yieldStep === 'function' ? yieldStep : async () => {};
@@ -9910,6 +9910,7 @@ export const render = {
                 camera: cam.obj,
                 subjects: [scene],
                 forceEnable: this._shadowDepthEnabled(),
+                shadowsActive: this._shadowDepthEnabled(),
                 THREE,
                 captureObjectHome,
                 restoreObjectHome,
@@ -10180,6 +10181,7 @@ export const render = {
                 camera: this.cam && this.cam.obj,
                 subjects: depthSubjects,
                 forceEnable: this._shadowDepthEnabled(),
+                shadowsActive: this._shadowDepthEnabled(),
                 THREE,
                 captureObjectHome,
                 restoreObjectHome,
@@ -12834,6 +12836,7 @@ export const render = {
       camera: cam.obj,
       subjects,
       forceEnable: this._shadowDepthEnabled(),
+      shadowsActive: this._shadowDepthEnabled(),
       THREE,
       captureObjectHome,
       restoreObjectHome,
@@ -15009,6 +15012,7 @@ export const render = {
                 camera: this.cam && this.cam.obj,
                 subjects: latePoolRoots,
                 forceEnable: this._shadowDepthEnabled(),
+                shadowsActive: this._shadowDepthEnabled(),
                 THREE,
                 captureObjectHome,
                 restoreObjectHome,
@@ -17180,6 +17184,7 @@ export const render = {
                 ? cookCompileRoots.concat([scene])
                 : cookCompileRoots,
               forceEnable: this._shadowDepthEnabled(),
+              shadowsActive: this._shadowDepthEnabled(),
               THREE,
               captureObjectHome,
               restoreObjectHome,
@@ -18279,12 +18284,16 @@ export const render = {
       // next(), so a presented frame only ever pays the two bounded GL submits
       // plus the row loops.
       const driveDepthCompile = async (compileSubjects, stagingName) => {
+        if (!this._shadowDepthEnabled()) {
+          return { skipped: true, reason: 'shadow depth disabled by active settings', subjects: 0, aborted: false };
+        }
         const depthOpts = {
           renderer,
           light: this._shadowDepthLight(),
           camera: cam.obj,
           subjects: compileSubjects,
           forceEnable: this._shadowDepthEnabled(),
+          shadowsActive: this._shadowDepthEnabled(),
           THREE,
           captureObjectHome,
           restoreObjectHome,
@@ -28605,6 +28614,7 @@ export const render = {
           camera: this.cam && this.cam.obj,
           subjects: [warmRoot].concat(poolCompileRoots || []),
           forceEnable: this._shadowDepthEnabled(),
+          shadowsActive: this._shadowDepthEnabled(),
           THREE,
           captureObjectHome,
           restoreObjectHome,
@@ -28690,6 +28700,7 @@ export const render = {
           camera: this.cam && this.cam.obj,
           subjects: [warmRoot],
           forceEnable: this._shadowDepthEnabled(),
+          shadowsActive: this._shadowDepthEnabled(),
           THREE,
           captureObjectHome,
           restoreObjectHome,

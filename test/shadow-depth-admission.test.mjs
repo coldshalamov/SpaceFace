@@ -43,7 +43,8 @@ test('configured but disabled Nocturne keeps the color census while skipping dep
 
   let traversals = 0, renders = 0;
   const result = await driveCompileShadowDepthPipelines({
-    forceEnable: false,
+    forceEnable: true,
+    shadowsActive: false,
     subjects: [{ traverse() { traversals++; } }],
     renderer: { render() { renders++; } },
   });
@@ -78,7 +79,7 @@ test('paced shadow staging refills and leases a detached package caster before d
     },
   };
   assert.equal(detachPackageGeometry(geometry, {}), true);
-  const result = await driveCompileShadowDepthPipelines({ renderer, light: { castShadow: true, shadow: {} }, camera: {},
+  const result = await driveCompileShadowDepthPipelines({ renderer, light: { castShadow: true, shadow: {} }, camera: {}, forceEnable: false,
     subjects: [hull], state: { render: { contextRecovery: { generation: 2 } } }, THREE: mockThree(),
     captureObjectHome: object => ({ object }), restoreObjectHome() {} }, async () => {});
   assert.equal(result.skipped, false);
