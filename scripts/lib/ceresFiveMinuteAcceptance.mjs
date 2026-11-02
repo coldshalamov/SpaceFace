@@ -3707,6 +3707,7 @@ function planCeresLiveCohortCameraIntercept(snapshot, preferredCohortEntityId = 
       || !camera.view.every(finiteNumber)
       || !Array.isArray(camera?.projection) || camera.projection.length !== 16
       || !camera.projection.every(finiteNumber)
+      || ![camera?.frameOrigin?.x, camera?.frameOrigin?.z].every(finiteNumber)
       || !candidates.length) {
     throw new Error('live Throughline intercept requires current player, camera, and cohort poses');
   }
@@ -3743,6 +3744,7 @@ function planCeresLiveCohortCameraIntercept(snapshot, preferredCohortEntityId = 
         playerPos,
         camera.view,
         camera.projection,
+        camera.frameOrigin,
       );
       if (currentNdc && Math.abs(currentNdc.x) <= 0.98 && Math.abs(currentNdc.y) <= 0.98) {
         const pointable = {
@@ -3768,6 +3770,7 @@ function planCeresLiveCohortCameraIntercept(snapshot, preferredCohortEntityId = 
         targetPos,
         camera.view,
         camera.projection,
+        camera.frameOrigin,
       );
       if (!ndc || Math.abs(ndc.x) > 0.98 || Math.abs(ndc.y) > 0.98) continue;
       // Arrival may occur anywhere inside the existing stage radius, not only at
@@ -3776,7 +3779,7 @@ function planCeresLiveCohortCameraIntercept(snapshot, preferredCohortEntityId = 
       const arrivalVisible = [-radius, radius].every((x) => [-radius, radius].every((z) => {
         const atArrival = projectCeresPointAfterPlayerTranslation(
           row.pos, playerPos, { x: targetPos.x + x, z: targetPos.z + z },
-          camera.view, camera.projection,
+          camera.view, camera.projection, camera.frameOrigin,
         );
         return atArrival && Math.abs(atArrival.x) <= 0.98 && Math.abs(atArrival.y) <= 0.98;
       }));
@@ -3814,12 +3817,14 @@ function planCeresLiveCohortCameraIntercept(snapshot, preferredCohortEntityId = 
   });
 }
 
-function projectCeresPointAfterPlayerTranslation(point, playerPos, targetPlayerPos, view, projection) {
+function projectCeresPointAfterPlayerTranslation(point, playerPos, targetPlayerPos, view, projection, frameOrigin) {
   const dx = targetPlayerPos.x - playerPos.x;
   const dz = targetPlayerPos.z - playerPos.z;
-  const worldX = point.x;
+  // Simulation/navigation poses stay global; the existing render camera matrices are local
+  // to the canonical frame origin. Translation deltas are origin-independent.
+  const worldX = point.x - frameOrigin.x;
   const worldY = point.y;
-  const worldZ = point.z;
+  const worldZ = point.z - frameOrigin.z;
   const vx = view[0] * worldX + view[4] * worldY + view[8] * worldZ + view[12]
     - view[0] * dx - view[8] * dz;
   const vy = view[1] * worldX + view[5] * worldY + view[9] * worldZ + view[13]
@@ -3973,15 +3978,18 @@ async function readCeresLiveCohortCameraSnapshot(page, authorityRows) {
     const playerZ = player.pos?.z;
     const view = Array.from(camera.matrixWorldInverse.elements);
     const projection = Array.from(camera.projectionMatrix.elements);
+    const originX = state.world?.frameOrigin?.x;
+    const originZ = state.world?.frameOrigin?.z;
     if (typeof playerX !== 'number' || !Number.isFinite(playerX)
         || typeof playerZ !== 'number' || !Number.isFinite(playerZ)
         || view.length !== 16 || !view.every(Number.isFinite)
-        || projection.length !== 16 || !projection.every(Number.isFinite)) return null;
+        || projection.length !== 16 || !projection.every(Number.isFinite)
+        || ![originX, originZ].every(value => typeof value === 'number' && Number.isFinite(value))) return null;
     const bound = new Map((rows || []).map((row) => [row.entityId, row]));
     return {
       playerPos: { x: playerX, z: playerZ },
       playerRadiusWU: Number(player.radius),
-      camera: { view, projection },
+      camera: { view, projection, frameOrigin: { x: originX, z: originZ } },
       candidates: (state.entityList || []).flatMap((entity) => {
         if (entity?.alive === false || entity?.type !== 'ship'
             || bound.get(entity.id)?.worldRecordId !== entity.data?.worldRecordId
