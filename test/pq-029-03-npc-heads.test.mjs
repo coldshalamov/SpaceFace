@@ -10,6 +10,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { SIM_DT } from '../src/core/sim.js';
+import { NPC_JOB_PHASE } from '../src/systems/npcJobs.js';
+import { isHostileForAI } from '../src/ai/engagementAuthority.js';
 import { MODULES } from '../src/data/modules.js';
 import { SHIPS } from '../src/data/ships.js';
 import {
@@ -194,9 +196,25 @@ test('Ceres salvage and its scavenger spawn at the authored field in global spac
     assert.ok(scavenger && scavenger.data.jobId,
       `salvage:placed must adopt the scavenger before stepping (sector=${state.world.currentSectorId})`);
     const originalJobId = scavenger.data.jobId;
+    const sameFactionArmedNeighbor = [...state.entities.values()]
+      .filter((entity) => entity !== scavenger && entity.type === 'ship'
+        && entity.team === scavenger.team && entity.factionId === scavenger.factionId
+        && entity.data?.ai?.roe === 'weapons_free' && entity.data.ai.passive !== true
+        && Math.hypot(entity.pos.x - scavenger.pos.x, entity.pos.z - scavenger.pos.z) <= 520)
+      .sort((a, b) => Math.hypot(a.pos.x - scavenger.pos.x, a.pos.z - scavenger.pos.z)
+        - Math.hypot(b.pos.x - scavenger.pos.x, b.pos.z - scavenger.pos.z))[0];
+    assert.ok(sameFactionArmedNeighbor,
+      'the field reproduces the nearby same-faction weapons-free Reach traffic');
+    assert.equal(isHostileForAI(state, scavenger, sameFactionArmedNeighbor), false);
+    assert.equal(isHostileForAI(state, sameFactionArmedNeighbor, scavenger), false);
     runtime.step(SIM_DT);
     assert.equal(scavenger.data.jobId, originalJobId,
       'the existing scavenger keeps its durable job through the first world tick');
+    const adoptedEntry = state.npcJobs.byId[originalJobId];
+    assert.notEqual(adoptedEntry.job.phase, NPC_JOB_PHASE.FLEE,
+      'a same-faction Reach weapons-free patrol does not scatter the Reach scavenger');
+    assert.ok(sampleHeads(state).some((row) => row.headId === 'tractor' && row.jobId === originalJobId),
+      'the booked scavenger creates a live tractor line to its nearby salvage on the first ordinary tick');
     runtime.bus.emit('salvage:placed', { sectorId: PROOF_SECTOR_ID });
     runtime.bus.emit('salvage:placed', { sectorId: 'sector_unrelated' });
     assert.equal(scavenger.data.jobId, originalJobId,
