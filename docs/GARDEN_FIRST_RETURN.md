@@ -32,8 +32,11 @@ another sector. The wording says the growth is on the books rather than claiming
 fresh local delivery. Existing board/navigation refresh remains unchanged.
 
 The popup follows the existing `comms:popup` contract (`sender: ROOK`, story category,
-10-second lifetime, `persist: true`) so the existing comms owner controls presentation
-and retention. There is no new credit grant, health change, growth write, encounter
+`persist: true`) so the existing comms owner controls presentation and retention.
+Persistence here keeps the live feed entry until dismissal or its normal cap; the
+requested TTL does not auto-expire it. The bounded backlog is session history, not a
+new saved transcript. The campaign receipt, rather than the UI log, prevents replay
+after Continue. There is no new credit grant, health change, growth write, encounter
 admission, save schema or navigation owner. First visible growth does not imply that
 the optional paid run completed. No model or asset production is included.
 
