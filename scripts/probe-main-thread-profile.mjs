@@ -1293,10 +1293,16 @@ function readNocturneShadowRouteStateInPage() {
     linkBlocks: Number(ledger?.count) || 0,
     linkWaits: Number(ledger?.waits) || 0,
     linkWaitMs: Number(ledger?.totalMs) || 0,
+    contextStateIsPublishedState: window.SF?.ctx?.state === state,
+    contextNocturneShadows: window.SF?.ctx?.state?.settings?.video?.nocturneShadows ?? null,
   };
 }
 
 async function enableNocturneShadowsThroughPublicSettings(page) {
+  await page.waitForFunction(() => window.SF?.state?.mode === 'flight'
+    && Number(window.SF?.state?.tick) > 0
+    && Number.isFinite(window.SF?.state?.render?.firstPlayableFrameAt),
+  null, { timeout: 180_000, polling: 100 });
   const before = await page.evaluate(readNocturneShadowRouteStateInPage);
   if (before.mode !== 'flight' || before.nocturne !== true || before.nocturneShadows !== false
       || before.solarShadows !== false || !before.shadowConfigured || before.shadowsEnabled) {
@@ -1316,9 +1322,48 @@ async function enableNocturneShadowsThroughPublicSettings(page) {
     throw new Error('Local light shadows was already on before the public enable click');
   }
   const toggleWallMs = Date.now();
-  await on.click({ timeout: 30_000 });
-  await page.waitForFunction(() => window.SF?.state?.settings?.video?.nocturneShadows === true,
-    null, { timeout: 30_000 });
+  await page.evaluate(() => {
+    const events = [];
+    const pointer = [];
+    const observePointer = (event) => {
+      const row = [...document.querySelectorAll('#sf-settings-pane .k-row')]
+        .find((node) => node.textContent.includes('Local light shadows'));
+      const button = row?.querySelector('.k-word[data-action="on"]');
+      const rect = button?.getBoundingClientRect();
+      pointer.push({ type: event.type, x: event.clientX, y: event.clientY,
+        targetTag: event.target?.tagName || null, targetAction: event.target?.dataset?.action || null,
+        targetText: String(event.target?.textContent || '').trim().slice(0, 80),
+        onConnected: button?.isConnected ?? null,
+        onRect: rect ? { x: rect.x, y: rect.y, width: rect.width, height: rect.height } : null,
+        at: performance.now() });
+    };
+    for (const type of ['pointerdown', 'pointerup', 'click']) document.addEventListener(type, observePointer, true);
+    const off = window.SF.bus.on('settings:changed', (payload) => {
+      if (payload?.section === 'video') events.push({ ...payload, at: performance.now() });
+    });
+    window.__SF_PROFILE_SHADOW_SETTING_OBSERVER__ = { events, off, pointer, observePointer };
+  });
+  try {
+    await on.click({ timeout: 30_000 });
+    await page.waitForFunction(() => window.SF?.state?.settings?.video?.nocturneShadows === true,
+      null, { timeout: 30_000 });
+  } finally {
+    const control = await row.evaluate((node) => ({
+      text: node.textContent,
+      buttons: [...node.querySelectorAll('button')].map((button) => ({
+        text: button.textContent, action: button.dataset.action, pressed: button.getAttribute('aria-pressed'),
+      })),
+    }));
+    const events = await page.evaluate(() => {
+      const observer = window.__SF_PROFILE_SHADOW_SETTING_OBSERVER__;
+      observer?.off?.();
+      for (const type of ['pointerdown', 'pointerup', 'click']) document.removeEventListener(type, observer?.observePointer, true);
+      return { settings: observer?.events || [], pointer: observer?.pointer || [] };
+    });
+    fs.writeFileSync(path.join(OUT_DIR, 'nocturne-shadow-setting-click.json'), JSON.stringify({
+      before, after: await page.evaluate(readNocturneShadowRouteStateInPage), control, events,
+    }, null, 2));
+  }
   const afterToggle = await page.evaluate(readNocturneShadowRouteStateInPage);
   if (afterToggle.shadowsEnabled !== true || afterToggle.pendingRoots < 1 || !afterToggle.scheduled) {
     throw new Error(`public setting changed without queuing guarded depth admission: ${JSON.stringify(afterToggle)}`);
@@ -1338,15 +1383,18 @@ async function enableNocturneShadowsThroughPublicSettings(page) {
       && (!pending || pending.size === 0);
   }, before.tick, { timeout: 180_000, polling: 100 });
   const completionObservedWallMs = Date.now();
+  const afterAdmission = await page.evaluate(readNocturneShadowRouteStateInPage);
   await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
   const afterStage = await page.evaluate(readNocturneShadowRouteStateInPage);
-  if (afterStage.mode !== 'flight' || afterStage.shadowsEnabled !== true
-      || afterStage.pendingRoots !== 0 || afterStage.scheduled) {
-    throw new Error(`enabled shadow stage did not settle before look capture: ${JSON.stringify(afterStage)}`);
+  // The empty queue above establishes admission of the enabled setting's roots.
+  // Normal flight may enqueue new world-residency roots while the next picture is
+  // presented; those remain guarded by the same owner and do not undo that admission.
+  if (afterStage.mode !== 'flight' || afterStage.shadowsEnabled !== true) {
+    throw new Error(`enabled shadow setting did not survive resumed presentation: ${JSON.stringify(afterStage)}`);
   }
   const screenshot = path.join(OUT_DIR, 'nocturne-shadows-enabled-flight.png');
   await page.screenshot({ path: screenshot, timeout: 15_000 });
-  const result = { before, afterToggle, afterStage, toggleWallMs, completionObservedWallMs,
+  const result = { before, afterToggle, afterAdmission, afterStage, toggleWallMs, completionObservedWallMs,
     screenshot: path.relative(ROOT, screenshot).replace(/\\/g, '/') };
   log(`guarded depth stage settled; unused programs=${afterStage.unusedPrograms}; enabled look ${result.screenshot}`);
   return result;

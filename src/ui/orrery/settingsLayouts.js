@@ -1016,10 +1016,27 @@ export function dressSettingsPane(pane, { arrive = false } = {}) {
     pane.dataset.orrScroll = '1';
     const edge = () => pane.classList.toggle('is-scrolled', (pane.scrollTop || 0) > 4);
     pane.addEventListener('scroll', edge, { passive: true });
+    // A pointer focuses its button between down and up. Scrolling at that point can move the
+    // button out from under the pointer, so let the pointer complete without moving the pane.
+    let pointerFocus = false;
+    pane.addEventListener('pointerdown', () => { pointerFocus = true; }, true);
+    pane.addEventListener('pointerup', () => { pointerFocus = false; }, true);
+    pane.addEventListener('pointercancel', () => { pointerFocus = false; }, true);
+    pane.addEventListener('keydown', () => { pointerFocus = false; }, true);
     pane.addEventListener('focusin', (ev) => {
+      const fromPointer = pointerFocus;
+      pointerFocus = false;
+      if (fromPointer) return;
       const row = ev.target && typeof ev.target.closest === 'function' ? ev.target.closest('.k-row') : null;
-      if (row && typeof row.scrollIntoView === 'function') {
-        try { row.scrollIntoView({ block: 'nearest', behavior: reducedMotion() ? 'auto' : 'smooth' }); } catch (e) { /* layout-less */ }
+      if (row && typeof row.getBoundingClientRect === 'function' && typeof pane.getBoundingClientRect === 'function') {
+        // Scroll only this pane vertically. scrollIntoView also scrolls horizontal ancestors and
+        // can move a whole segmented control while focus is being assigned.
+        const box = row.getBoundingClientRect();
+        const viewport = pane.getBoundingClientRect();
+        const above = box.top - (viewport.top + 40);
+        const below = box.bottom - (viewport.bottom - 80);
+        const delta = above < 0 ? above : below > 0 ? below : 0;
+        if (delta) pane.scrollTop += delta;
       }
     });
     edge();
