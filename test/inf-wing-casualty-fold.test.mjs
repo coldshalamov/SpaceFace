@@ -110,6 +110,21 @@ test('a replacement takes the vacant socket and the fold releases to the healthy
     `refill releases the fold (${refilledLateral.toFixed(1)} > folded ${woundedLateral.toFixed(1)})`);
 });
 
+test('repeated deaths in one socket count one vacancy, not each former occupant', () => {
+  const director = new SquadFrameDirector({ seed: 4242 });
+  const sq = squad();
+  const firstWingman = sq.members.find((m) => m.id === 'm-left');
+  const replacement = member('m-replacement', 'left', [90, 100]);
+  for (let t = 0; t <= 40; t++) {
+    if (t === 11) firstWingman.alive = false;
+    if (t === 12) sq.members.push(replacement);
+    if (t === 15) replacement.alive = false;
+    director.stepAll(t, 1 / 60, [sq], () => null);
+  }
+  assert.equal(director.inspect('sq-fold').casualties, 1,
+    'one empty left socket produces one fold after both assigned hulls are lost');
+});
+
 test('no casualties means no change: the full-wing pose matches the authored wedge math', () => {
   const healthy = run();
   // wedge_4 in INGRESS, heading 0, spacing = hull clearance of three radius-8 hulls (34):
