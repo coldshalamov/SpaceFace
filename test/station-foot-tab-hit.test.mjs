@@ -7,7 +7,10 @@ import { existsSync } from 'node:fs';
 import { startBenchServer } from '../scripts/lib/benchServer.mjs';
 import { loadPlaywright } from '../scripts/lib/load-playwright.mjs';
 
-const SIZES = ['1101x720', '1100x720', '1102x720', '1101x700', '1101x760', '1280x720', '1000x720', '901x720'];
+const SIZES = ['1101x720', '1100x720', '1102x720', '1101x700', '1101x760', '1280x720', '1000x720', '960x720', '940x720', '901x720', '901x641'];
+// Where the foot used to wrap (901–959 wide), the Market keeps its Buy key and price dial in view above it.
+const MARKET_SIZES = new Set(['901x720', '940x720', '960x720']);
+const ONE_ROW_SIZES = new Set(['901x720', '940x720', '960x720', '901x641']);
 const TABS = ['market', 'shipworks', 'industry', 'contracts', 'factions', 'bar', 'ledger'];
 
 test('station foot: each tab centre hits its own tab, and LEDGER\'s centre opens the Ledger', { timeout: 300000 }, async () => {
@@ -35,6 +38,26 @@ test('station foot: each tab centre hits its own tab, and LEDGER\'s centre opens
         for (const h of hits) {
           assert.ok(!h.missing, `${size}: no visible ${h.id} tab`);
           assert.ok(h.ok, `${size}: ${h.id} tab centre (${h.x},${h.y}) hits ${h.hit} (${h.owner})`);
+        }
+        const mkt = await page.evaluate(() => {
+          const vis = e => e && e.getClientRects().length;
+          const box = e => { const r = e.getBoundingClientRect(); return { l: r.left, t: r.top, r: r.right, b: r.bottom }; };
+          const panel = document.querySelector('.sx-mkt.orr-market'), dial = document.querySelector('.sx-mkt .sx-mkt__hero');
+          const buy = [...document.querySelectorAll('.sx-mkt button')].filter(vis).find(b => /buy\s*1\b/i.test(b.textContent));
+          let hit = null;
+          if (buy) { const r = buy.getBoundingClientRect(); const el = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2); hit = el ? `${el.tagName.toLowerCase()}.${[...el.classList].join('.')}` : 'null'; if (el && (el === buy || buy.contains(el))) hit = true; }
+          const tops = [...document.querySelector('.sxb-ops').children].filter(vis).map(c => Math.round(c.getBoundingClientRect().top));
+          const rail = document.querySelector('.sxb-ops > .of-facility-rail'), keys = document.querySelector('.sxb-ops > .sx-comms');
+          return { panel: panel && box(panel), dial: vis(dial) ? box(dial) : null, buy: !!buy, hit,
+            oneRow: !!rail && !!keys && Math.abs(rail.getBoundingClientRect().top - keys.getBoundingClientRect().top) < 24, tops };
+        });
+        if (ONE_ROW_SIZES.has(size)) assert.ok(mkt.oneRow, `${size}: the station foot wrapped to two rows (${mkt.tops})`);
+        if (MARKET_SIZES.has(size)) {
+          assert.ok(mkt.buy, `${size}: no visible Market Buy 1 key`);
+          assert.equal(mkt.hit, true, `${size}: Buy 1 key centre hits ${mkt.hit}`);
+          assert.ok(mkt.dial && mkt.panel, `${size}: no visible price dial`);
+          assert.ok(mkt.dial.t >= mkt.panel.t - 1 && mkt.dial.b <= mkt.panel.b + 1 && mkt.dial.l >= mkt.panel.l - 1 && mkt.dial.r <= mkt.panel.r + 1,
+            `${size}: price dial ${JSON.stringify(mkt.dial)} runs out of the Market panel ${JSON.stringify(mkt.panel)}`);
         }
         const ledger = hits.find(h => h.id === 'ledger');
         await page.mouse.click(ledger.x, ledger.y);

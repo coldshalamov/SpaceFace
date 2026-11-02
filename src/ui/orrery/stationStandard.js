@@ -261,6 +261,14 @@ ${P} .sxb-launch__label { font-family:${TITLE} !important; letter-spacing:.04em 
 @media (min-width:901px) and (max-width:1079px) and (min-height:641px) {
   ${P} .sxb-ops .sx-tile .dust-tab-glyph { display:none !important; }
 }
+/* …and at 901–959 the row is still ~45px over (rail 559 + COMMS · HELP 137 + UNDOCK 161 + gaps against an 837px foot), so the
+   foot wrapped to two rows and the Market panel lost a row: its Buy key and price dial fell under the foot. The keys close
+   up again (3px padding, 4px gaps) and the foot keeps one row to 901 and down to the band's 641px-tall edge. */
+@media (min-width:901px) and (max-width:959px) and (min-height:641px) {
+  ${P} .sxb-ops { column-gap:6px !important; }
+  ${P} .sxb-ops .sx-dock__group--nav { gap:0 4px !important; }
+  ${P} .sxb-ops .sx-dock :is(button, a) { padding-left:3px !important; padding-right:3px !important; }
+}
 ${P} .sxb-launch__state { font-family:${UI} !important; font-size:13px !important; letter-spacing:.02em !important; }
 
 /* ==== MARKET ================================================================================ */
