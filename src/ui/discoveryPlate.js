@@ -50,6 +50,37 @@ export function createDiscoveryPlate(ctx) {
   const seen = new Set();
   let active = null; // { born, ttl, leaving }
   let unsubs = null;
+  let registeredHud = null;
+  const originalMinWidth = el.style.minWidth || '';
+
+  function syncFlightPlacement() {
+    const state = getState();
+    let hud = null;
+    try { hud = ctx.registry?.get?.('ui')?.hud || ctx.ui?.hud || null; }
+    catch (_) { /* a rebuilding UI has no live layout owner yet */ }
+    const visible = !!active && el.style.display !== 'none' && state?.mode === 'flight'
+      && state.ui?.docked !== true;
+    if (registeredHud && (!visible || registeredHud !== hud)) {
+      registeredHud.releaseExternalFlightCaption(el);
+      registeredHud = null;
+      el.style.minWidth = originalMinWidth;
+    }
+    if (!visible || !hud || typeof hud.registerExternalFlightCaption !== 'function'
+      || typeof hud.releaseExternalFlightCaption !== 'function') return;
+    if (registeredHud !== hud) {
+      // Discovery is lower priority than the target dock and live captions. Let their existing
+      // measured safe bands own position; a narrow band must also override this plate's 230px floor.
+      el.style.minWidth = '0';
+      hud.registerExternalFlightCaption(el);
+      registeredHud = hud;
+    }
+  }
+
+  function releaseFlightPlacement() {
+    if (registeredHud) registeredHud.releaseExternalFlightCaption(el);
+    registeredHud = null;
+    el.style.minWidth = originalMinWidth;
+  }
 
   function ensureConnected() {
     if (el.isConnected) return;
@@ -67,6 +98,7 @@ export function createDiscoveryPlate(ctx) {
     // Next frame so the slide-in transition actually plays from the parked transform.
     requestAnimationFrame(() => el.classList.add('sf-discovery-plate--in'));
     active = { born: now, ttl: PLATE_TTL_MS, leaving: false, key: rec.key };
+    syncFlightPlacement();
   }
 
   function push(rec) {
@@ -146,6 +178,10 @@ export function createDiscoveryPlate(ctx) {
       if (!active && !queue.length) return;
       const now = performance.now();
       if (!active) { show(queue.shift(), now); return; }
+      // createHud can replace the host/API during the same discovery. Rebind the existing
+      // announcement without re-queueing it or restarting its three-second lifetime.
+      ensureConnected();
+      syncFlightPlacement();
       const age = now - active.born;
       if (!active.leaving && age >= active.ttl) {
         active.leaving = true;
@@ -156,6 +192,7 @@ export function createDiscoveryPlate(ctx) {
         el.style.display = 'none';
         el.classList.remove('sf-discovery-plate--in', 'sf-discovery-plate--out');
         active = null;
+        releaseFlightPlacement();
       }
     },
     destroy() {
@@ -163,6 +200,7 @@ export function createDiscoveryPlate(ctx) {
       unsubs = null;
       queue.length = 0;
       active = null;
+      releaseFlightPlacement();
       if (el.parentNode) el.parentNode.removeChild(el);
     },
   };
