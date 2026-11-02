@@ -3889,6 +3889,17 @@ export function chooseCeresPocketApproachAction(status, {
   });
 }
 
+// Use the native keyboard transport to release before observing simulation state. Waiting for
+// a browser tick while a key is down can extend a short correction by many simulation ticks.
+export async function pressCeresPublicPointAction(page, action) {
+  try {
+    if (action.boost) await page.keyboard.down('Shift');
+    await page.keyboard.press(action.key, { delay: action.durationMs });
+  } finally {
+    if (action.boost) await page.keyboard.up('Shift').catch(() => {});
+  }
+}
+
 async function readCeresLiveCohortCameraSnapshot(page, authorityRows) {
   return page.evaluate((rows) => {
     const state = window.SF?.state;
@@ -4086,13 +4097,6 @@ export async function drivePublicToCeresPoint(page, target, endTick) {
   let approachPulses = 0;
   let preferredCohortEntityId = target.exactCohortEntityId ?? null;
   const holdPulse = async (durationMs) => {
-    if (target.controlClock === 'fixed-tick') {
-      const ticks = Math.max(1, Math.round(
-        Number(durationMs) * CERES_FIVE_MINUTE_TICK_RATE_HZ / 1_000,
-      ));
-      await waitForCeresFixedTicks(page, ticks, 20_000);
-      return;
-    }
     await page.waitForTimeout(durationMs);
   };
   try {
@@ -4156,6 +4160,15 @@ export async function drivePublicToCeresPoint(page, target, endTick) {
       }
       approachPulses += 1;
       diagnostic.counts.totalPulses += 1;
+      if (target.controlClock === 'fixed-tick') {
+        if (action.kind === 'turn') diagnostic.counts.turnPulses += 1;
+        else if (action.kind === 'decelerate') diagnostic.counts.deceleratePulses += 1;
+        else diagnostic.counts.thrustPulses += 1;
+        if (action.boost) diagnostic.counts.boostPulses += 1;
+        await pressCeresPublicPointAction(page, action);
+        await waitForCeresFixedTicks(page, 1, 20_000);
+        continue;
+      }
       if (action.kind === 'turn') {
         diagnostic.counts.turnPulses += 1;
         await page.keyboard.down(action.key);
@@ -4175,12 +4188,6 @@ export async function drivePublicToCeresPoint(page, target, endTick) {
         } finally {
           await page.keyboard.up('Shift').catch(() => {});
           await page.keyboard.up(action.key).catch(() => {});
-        }
-        // A fixed-tick dash is edge-triggered on public Shift release. Sample one wholly neutral
-        // simulation tick after both key-up edges so completion cannot be credited to the held
-        // frame. Non-boost steering retains its existing cadence.
-        if (action.boost && target.controlClock === 'fixed-tick') {
-          await waitForCeresFixedTicks(page, 1, 20_000);
         }
       }
     }

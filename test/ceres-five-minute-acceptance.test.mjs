@@ -43,6 +43,7 @@ import {
   planCeresToolkitTransitHandoff,
   planCeresWorkingSeamDeparture,
   planCeresWorkingSeamEgress,
+  pressCeresPublicPointAction,
   pointPublicAtCeresHostile,
   prepareCeresPublicTetherFireSurface,
   projectCeresRouteFailureDiagnostics,
@@ -3214,6 +3215,22 @@ test('public hostile acquisition waits for a fresh exact ready Massline receipt'
   }
 });
 
+test('fixed-clock public point pulses release before any state observation', async () => {
+  const events = [];
+  const page = {
+    keyboard: {
+      async down(key) { events.push(`down:${key}`); },
+      async press(key, options) { events.push(`press:${key}:${options.delay}`); },
+      async up(key) { events.push(`up:${key}`); },
+    },
+    async evaluate() { throw new Error('cannot observe while the pulse is held'); },
+    async waitForFunction() { throw new Error('cannot poll while the pulse is held'); },
+  };
+  await pressCeresPublicPointAction(page, { key: 'KeyD', durationMs: 20, boost: false });
+  await pressCeresPublicPointAction(page, { key: 'KeyW', durationMs: 160, boost: true });
+  assert.deepEqual(events, ['press:KeyD:20', 'down:Shift', 'press:KeyW:160', 'up:Shift']);
+});
+
 test('public pocket approach completes only after the hull is settled inside the anchor', () => {
   assert.equal(chooseCeresPocketApproachAction({
     distanceWU: 80,
@@ -3343,6 +3360,12 @@ test('fixed-tick boosted public approach samples a neutral release edge', async 
     keyboard: {
       async down(key) { heldKeys.add(key); },
       async up(key) { heldKeys.delete(key); },
+      async press(key) {
+        assert.equal(heldKeys.has('Shift'), true);
+        assert.equal(key, 'KeyW');
+        player.pos.x = target.targetPos.x - 10;
+        player.vel.x = 0.8;
+      },
     },
     mouse: { async up() {} },
     async evaluate(callback, argument) {
@@ -3364,9 +3387,8 @@ test('fixed-tick boosted public approach samples a neutral release edge', async 
   const receipt = await drivePublicToCeresPoint(page, target, 18_000);
   assert.equal(receipt.pass, true);
   assert.deepEqual(fixedTickSamples.map((sample) => sample.held), [
-    ['KeyW', 'Shift'],
     [],
-  ], 'the dash hold must be followed by one public neutral fixed tick after both key-up edges');
+  ], 'the dash pulse must be followed by a public neutral fixed tick after both key-up edges');
   assert.equal(receipt.completionTick, fixedTickSamples.at(-1).tick,
     'completion must be sampled only after the neutral release edge');
 });
@@ -7193,6 +7215,11 @@ function toolkitTransitHandoffPage(toolkitReceipt) {
     },
     keyboard: {
       async down(key) { heldKeys.add(key); },
+      async press(key, { delay }) {
+        heldKeys.add(key);
+        for (let tick = 0; tick < Math.max(1, Math.round(delay * TICK_RATE_HZ / 1000)); tick++) step();
+        heldKeys.delete(key);
+      },
       async up(key) {
         const wasHeld = heldKeys.delete(key);
         if (key === 'Space' && wasHeld && state.player.tether.active) {
