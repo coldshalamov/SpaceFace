@@ -5625,7 +5625,7 @@ export function createHud(ctx, alerts) {
         else if (wp) revealedWeakPoints.delete(tgtId);
       }
       if (routeOwnsAttention && target && !combatRelevant && !miningRelevant && !stationRelevant
-        && !targetSurrendered && !objectSelected) {
+        && !targetSurrendered && !objectSelected && target.data?.worldSiteTargetable !== true) {
         setDisplay(targetPanel.el, false);
       } else {
         targetPanelUpdateOptions.slow = slow || surrenderChanged;
