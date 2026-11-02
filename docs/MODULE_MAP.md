@@ -48,6 +48,23 @@
 
 ---
 
+## Shared presentation reads
+
+These libraries expose the same reads used by their simulation owners, without importing the full
+owner into the window's startup graph. They do not register simulation ticks. Existing owner exports
+remain available for callers that already use them.
+
+| Library | Shared read / owner |
+|---|---|
+| `src/core/flight/flightPresentationReads.js` | Autopilot target and docking approach, plus target-assist profile transforms; used by `flightV3.js`, route ribbons and combat targeting. |
+| `src/combat/leadAngle.js` | Ballistic lead solver shared by weapons, targeting and the gunnery HUD. |
+| `src/core/orchardPoseReader.js` | Current Orchard native-pose reader registration; physics registers, presentation reads. |
+| `src/core/fields/fieldReadModel.js` | Field lifecycle, deployment/body prediction, collector fitting and published field snapshots; shared with `systems/fields.js`. |
+| `src/systems/scannerReadModel.js` | Hostility, contact mass/threat tier and scanner range; shared with the scanner owner and its UI/render consumers. |
+| `src/systems/miningBeamTargetingRead.js` | Beam eligibility/range and haul threshold; shared by mining, input and target UI. |
+| `src/economy/stationMarketProfile.js` | Catalog/runtime station profiles and salvage contraband policy; shared by economy and cargo. |
+| `src/ui/map/routePreview.js` | Pure charted-route preview and world-owned cost formatting; `galaxyMap.js` retains screen state and charting policy. |
+
 ## Flight (two implementations — V3 is live)
 
 | File | Role | Live? |
