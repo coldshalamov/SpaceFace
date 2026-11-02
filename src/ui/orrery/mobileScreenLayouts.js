@@ -304,7 +304,11 @@ export const MOBILE_SCREEN_CSS = `
   ${B} .sxb-ops .sx-dock__group > li { margin:0 !important; min-width:0 !important; }
   ${B} .sxb-ops .sx-tile { display:inline-flex !important; align-items:center !important; justify-content:flex-start !important;
     min-height:34px !important; padding:0 !important; gap:0 !important; }
-  ${B} .sxb-ops .sx-tile__label { order:1; letter-spacing:.1em !important; font-size:12px !important; }
+  ${B} .sxb-ops .sx-tile__label { order:1; letter-spacing:0 !important; font-size:12px !important; }
+  /* At phone portrait widths the word owns the narrow column; the glyph is decorative. */
+  @media (min-height:561px) and (max-width:430px) {
+    ${B} .sxb-ops .sx-tile .dust-tab-glyph { display:none !important; }
+  }
   /* A count is a badge on its own tab: a small pill after the word, never a loose numeral before it. */
   ${B} .sxb-ops .sx-tile__badge:not([hidden]) { order:2; display:inline-flex !important; align-items:center !important; justify-content:center !important;
     min-width:15px !important; height:15px !important; margin:0 0 0 4px !important; padding:0 4px !important; border-radius:8px !important;
@@ -331,7 +335,7 @@ export const MOBILE_SCREEN_CSS = `
     ${B} .sxb-next__w { flex:1 1 100% !important; padding-left:14px !important; white-space:normal !important;
       display:-webkit-box !important; -webkit-box-orient:vertical; -webkit-line-clamp:2; text-overflow:clip !important; }
     ${B} .sxb-ops .sx-dock__group--nav, ${B} .sxb-ops .sx-dock > .sx-dock__group { gap:0 12px !important; }
-    ${B} .sxb-ops .sx-tile__label { letter-spacing:.05em !important; }
+    ${B} .sxb-ops .sx-tile__label { letter-spacing:0 !important; }
     /* Each dial column is ~66px wide here, so the dial grows to fill it and its reading drops a line: at 60x40
        the "/ 100" and "/ 40 u" lines ran into the ends of the arc. The crown gives back its bottom margin so the
        Market trade keeps its keys above the foot at 360x780. */
@@ -346,7 +350,7 @@ export const MOBILE_SCREEN_CSS = `
      MISSIONS badge cut by the foot's edge. */
   @media (min-height:561px) and (max-width:389px) {
     ${B} .sxb-ops .sx-dock__group--nav, ${B} .sxb-ops .sx-dock > .sx-dock__group { gap:0 6px !important; }
-    ${B} .sxb-ops .sx-tile__label { letter-spacing:.02em !important; }
+    ${B} .sxb-ops .sx-tile__label { letter-spacing:0 !important; }
     ${B} .sxb-vital__label { letter-spacing:.02em !important; }
     /* The tape's title tracks tighter so the hull reading ends on its second line instead of "close…". */
     ${B} .sxb-tape :is(.sxb-event__badge, .sxb-event__title) { letter-spacing:.06em !important; }
