@@ -739,6 +739,13 @@ html body #screens #sf-automation.au-orrery .au-summary { gap: 14px; align-conte
 @media (min-width: 761px) and (max-width: 860px) and (max-height: 580px) {
   html body #screens #sf-automation.au-orrery .au-summary { grid-template-columns: repeat(4, auto); column-gap: 12px; }
 }
+/* polish292: at 1920×1080 the panel stopped at 1100px and printed 11–13px type in the middle of
+   the screen, the smallest screen in the set; Settings, Save/Load and the Crucible pages already
+   scale up in this band. The panel zooms with them (zoom, not font tweaks, so every track, rung
+   and beam keeps its proportions). Desktop windows only; the touch sheet keeps its own sizes. */
+@media (min-width: 1800px) and (max-width: 2199px) and (min-height: 1000px) {
+  ${AU_NARROW} { zoom: 1.14; }
+}
 /* ≤760 wide desktop window: the 270px board column, the five-node strip beside the gauge and
    the one-line purchase rungs only fit from 761px, so below it the strip names ran into the next
    ring, the board's cost sat on its sentence and the rung stats printed under THROTTLE. The strip
