@@ -617,8 +617,20 @@ export function checkPlayerControl(trace) {
   const T = THRESHOLDS; const probes = trace.probes || [];
   if (!probes.length) return result('player_control', 'Ship answers input', 'UNKNOWN', null, `thrust Δv≥${T.thrustDeltaSpeed} u/s · yaw Δ≥${T.yawDeltaRad} rad`, 'no control probe ran');
   const offenders = []; let worst = null;
-  for (const pr of probes) {
-    const d = probeDead(trace, pr);
+  // A software-GL retry (retryOf) stands in for its first attempt: the probe is dead only when
+  // the last attempt is dead. Both attempts are judged with the same thresholds and kept in trace.probes.
+  const primaries = probes.filter((pr) => !pr.retryOf);
+  let excused = 0;
+  for (const pr of primaries) {
+    let d = probeDead(trace, pr);
+    pr.dead = d.dead;
+    const retry = pr.retried ? probes.find((x) => x.retryOf === pr.label) : null;
+    if (retry) {
+      const r = probeDead(trace, retry); retry.dead = r.dead;
+      if (d.dead && !r.dead) excused++;
+      if (d.dead && r.dead) d = { ...r, why: `${d.why}; retry ${r.why}` };
+      else d = r.dead ? { dead: false } : r;
+    }
     if (d.dead) offenders.push({ line: `${pr.label}: ${d.why}`, t: d.b ? d.b.t : pr.startT, sim: d.b ? d.b.sim : pr.startSim, box: d.b ? d.b.p.box : null, bad: true });
     worst = worst || pr;
   }
@@ -626,7 +638,8 @@ export function checkPlayerControl(trace) {
     offenders.push({ line: `pinned ${fmt(sp.start, 1)}–${fmt(sp.end, 1)} s: velocity says ${fmt(sp.expect, 0)} u of travel, ship moved ${fmt(sp.path, 0)} u${heldBy(trace, sp.s)}`, t: sp.s.t, sim: sp.s.sim, box: sp.s.p.box, bad: true, pinned: true });
   }
   const bad = offenders.filter((o) => o.bad).length; const pins = offenders.filter((o) => o.pinned).length;
-  return result('player_control', 'Ship answers input', bad ? 'FAIL' : 'PASS', `${bad - pins}/${probes.length} probes dead · ${pins} pinned spans`, `thrust Δv≥${T.thrustDeltaSpeed} u/s and moves ≥${Math.round(T.pinnedMoveFrac * 100)}% of its velocity · yaw Δ≥${T.yawDeltaRad} rad`,
+  const retries = probes.length - primaries.length;
+  return result('player_control', 'Ship answers input', bad ? 'FAIL' : 'PASS', `${bad - pins}/${primaries.length} probes dead · ${pins} pinned spans${retries ? ` · ${retries} software-GL retr${retries === 1 ? 'y' : 'ies'} (${excused} recovered)` : ''}`, `thrust Δv≥${T.thrustDeltaSpeed} u/s and moves ≥${Math.round(T.pinnedMoveFrac * 100)}% of its velocity · yaw Δ≥${T.yawDeltaRad} rad`,
     probes.map((p) => `${p.label} ${fmt(p.value, 2)}`).join(' · '), offenders, offenders.slice(0, 2));
 }
 
@@ -1208,16 +1221,17 @@ export function checkRoundTransitions(trace) {
     const bad = win.filter((s) => playerBadReasons(s.p).length);
     const tumble = win.filter((s) => Math.abs(s.p.pitch) > T.tumblePitch || Math.abs(s.p.bank) > T.tumbleBank || Math.abs(s.p.y) > T.tumbleY);
     const probes = (trace.probes || []).filter((pr) => pr.label && pr.label.startsWith(`round ${r.wave} `));
-    const dead = probes.filter((pr) => probeDead(trace, pr).dead);
+    const retryFor = (pr) => (pr.retried ? probes.find((x) => x.retryOf === pr.label) : null);
+    const dead = probes.filter((pr) => !pr.retryOf && probeDead(trace, pr).dead && !(retryFor(pr) && !probeDead(trace, retryFor(pr)).dead));
     const pins = pinnedSpans(trace, win.filter((x) => x.p.alive));
     const hull = win[0] && win[0].p.hullMax ? Math.round(100 * win[0].p.hull / win[0].p.hullMax) : null;
-    parts.push(`round ${r.wave}: ${win.length} frames, hull ${hull == null ? '?' : hull + '%'}, ${bad.length} bad ship, ${tumble.length} out of plane, ${dead.length}/${probes.length} dead probes, ${pins.length} pinned`);
+    parts.push(`round ${r.wave}: ${win.length} frames, hull ${hull == null ? '?' : hull + '%'}, ${bad.length} bad ship, ${tumble.length} out of plane, ${dead.length}/${probes.filter((pr) => !pr.retryOf).length} dead probes, ${pins.length} pinned`);
     const why = [];
     if (!win.length) why.push('no player frames in the first 8 s');
     if (bad.length / Math.max(1, win.length) > T.playerBadFrac) why.push(`ship bad in ${bad.length}/${win.length} frames (${playerBadReasons(bad[0].p).join(', ')})`);
     if (tumble.length >= 3) why.push(`out of plane in ${tumble.length} frames`);
     if (!probes.length) why.push('no control probe ran');
-    else if (dead.length) why.push(`${dead.length}/${probes.length} control probes dead (${dead.map((pr) => probeDead(trace, pr).why).join('; ')})`);
+    else if (dead.length) why.push(`${dead.length}/${probes.filter((pr) => !pr.retryOf).length} control probes dead (${dead.map((pr) => probeDead(trace, pr).why).join('; ')})`);
     if (pins.length) why.push(`pinned ${fmt(pins[0].start, 1)}–${fmt(pins[0].end, 1)} s (velocity ${fmt(pins[0].expect, 0)} u, moved ${fmt(pins[0].path, 0)} u${heldBy(trace, pins[0].s)})`);
     if (why.length) { const s0 = bad[0] || tumble[0] || win[0]; offenders.push({ line: `round ${r.wave} start (hull ${hull == null ? '?' : hull + '%'}): ${why.join('; ')}`, t: s0 ? s0.t : r.startT, sim: s0 ? s0.sim : r.startSim, box: s0 && s0.p ? s0.p.box : null }); }
   }
