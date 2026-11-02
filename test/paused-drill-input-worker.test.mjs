@@ -8,6 +8,7 @@ import { installSimCommandSink, uninstallSimCommandSink } from '../src/core/simL
 import { createSimHost } from '../scripts/lib/simWorkerHost.mjs';
 import { createSimCommandRing, pushLaneCommand } from '../scripts/lib/simCommandChannel.mjs';
 import { applyDomainPathUpdate, DOMAIN_MIRROR_KEYS } from '../scripts/lib/simReadModel.mjs';
+import { createDrillInputController } from '../src/ui/screens/drill.js';
 
 function applyHostReplyToMainReadModel(main, reply) {
   for (const key of DOMAIN_MIRROR_KEYS) {
@@ -121,6 +122,96 @@ test('paused worker drains a zero-step public drill-down input into the live dri
     assert.ok(lastElapsed > 0);
     assert.equal(state.tick, pausedTick);
     assert.equal(main.tick, pausedTick);
+  } finally {
+    host.shutdown();
+  }
+});
+
+test('drill input keeps a held eligible bore intent until the deferred worker mirror settles it', async () => {
+  const host = createSimHost();
+  try {
+    const main = {};
+    const initReply = await host.init({
+      profile: 'production',
+      seed: 4242,
+      scenarioContract: JSON.parse(readFileSync(
+        new URL('../src/data/scenarios/47a.scenario.json', import.meta.url), 'utf8',
+      )),
+    });
+    applyHostReplyToMainReadModel(main, initReply);
+
+    const ring = createSimCommandRing();
+    const sendQueued = async () => {
+      const reply = await host.tick({ steps: 0, commands: ring.drain() });
+      applyHostReplyToMainReadModel(main, reply);
+      return reply;
+    };
+    pushLaneCommand(ring, {
+      kind: 'domEvent',
+      d: { type: 'drillCall', op: 'begin', asteroidId: 545 },
+    });
+    const beginReply = await sendQueued();
+    assert.ok(beginReply.domainUpdates.some((update) => update.segs[0] === 'drill'));
+    const authoritative = host.host.state;
+    const avatar = main.drill.avatar;
+    const startRow = avatar.row;
+    const target = main.drill.field[avatar.col]?.[avatar.row + 1];
+    assert.equal(target?.type, 'dirt');
+    assert.equal(target?.tierReq, 1, 'the generated first bore face is eligible for the fitted head');
+
+    const facadeRegistry = createRegistry({
+      simLane: 'worker', state: main, bus: createBus(), helpers: {},
+    });
+    const facade = facadeRegistry.get('drill');
+    const controls = createDrillInputController({ drillSys: facade, getState: () => main.drill });
+    installSimCommandSink((descriptor) => pushLaneCommand(ring, descriptor));
+    let duringDelay;
+    try {
+      assert.equal(controls.press('down'), true);
+      duringDelay = {
+        activeIntent: controls.hasActiveIntent(),
+        target: controls.target(),
+        held: { ...controls.held },
+      };
+      // Keyup arrives before the delayed worker batch is published. The facade must snapshot the
+      // reused held object before simLaneMain's command ring retains the payload by reference.
+      controls.release('down');
+    } finally {
+      uninstallSimCommandSink();
+    }
+
+    const inputReply = await sendQueued();
+    const liveDrill = authoritative.drill;
+    assert.ok(inputReply.domainUpdates.some((update) => update.segs[0] === 'drill'));
+    assert.equal(liveDrill.avatar.row, startRow + 1,
+      'the deferred press reaches the real drill owner despite rapid keyup');
+    assert.equal(main.drill.avatar.row, liveDrill.avatar.row,
+      'the deferred host reply publishes the actual seat to the main mirror');
+    assert.equal(duringDelay.activeIntent, true,
+      'the controller must not reject eligible solid terrain from the pre-reply mirror');
+    assert.deepEqual(duringDelay.target, { direction: 'down', col: avatar.col, row: startRow + 1 });
+    assert.equal(duringDelay.held.down, true);
+
+    // Start a held bore on the next cell. The next public mirror carries drilling/target/tile
+    // changes, which must settle the async receipt without mistaking unchanged world ticks or
+    // elapsed UI time for acknowledgement.
+    const heldControls = createDrillInputController({ drillSys: facade, getState: () => main.drill });
+    installSimCommandSink((descriptor) => pushLaneCommand(ring, descriptor));
+    try {
+      assert.equal(heldControls.press('down'), true);
+      assert.equal(heldControls.hasActiveIntent(), true);
+      const boreReply = await sendQueued();
+      assert.ok(boreReply.domainUpdates.some((update) => update.segs[0] === 'drill'));
+      assert.equal(main.drill.avatar.isDrilling, true,
+        'the real owner begins boring the eligible dirt after its reply is mirrored');
+      assert.equal(heldControls.tick(1 / 60), true,
+        'a relevant published drill change settles the pending receipt and keeps held control live');
+      assert.equal(heldControls.hasActiveIntent(), true);
+      assert.equal(heldControls.held.down, true);
+    } finally {
+      heldControls.release('down');
+      uninstallSimCommandSink();
+    }
   } finally {
     host.shutdown();
   }
