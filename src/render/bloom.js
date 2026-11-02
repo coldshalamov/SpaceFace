@@ -2803,7 +2803,6 @@ export function createBloom(renderer, width, height, instrumentation = null) {
       // color attachment as a framebuffer feedback loop — the bind is on
       // compositeMat, not a game-scene mesh, so a scene walk cannot see it.
       releaseBloomSceneSamplers();
-      hideUnreadySceneDrawables(scene);
       // Content sub-rect lives on the render target itself (device px, copied into GL state by
       // setRenderTarget). renderer.setViewport would write the canvas's persistent logical-pixel
       // viewport: it double-scaled this device-pixel rect under dpr>1 and leaked into the final
@@ -2812,6 +2811,9 @@ export function createBloom(renderer, width, height, instrumentation = null) {
       rtScene.scissor.set(0, 0, contentW, contentH);
       rtScene.scissorTest = true;
       renderer.setRenderTarget(rtScene);
+      // Readiness selects tone mapping and output encoding from the bound target.
+      // Check the scene's HDR variants, not the previous screen/composite pass.
+      hideUnreadySceneDrawables(scene);
       // rtScene has stencilBuffer:false and the context is stencil-free — clearing the stencil
       // bit is a spec no-op that still pays a stencil.setMask GL state write.
       renderer.clear(true, true, false);
@@ -2885,11 +2887,11 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     renderer.autoClear = false;
     try {
       releaseBloomSceneSamplers();
-      hideUnreadySceneDrawables(scene);
       rtScene.viewport.set(0, 0, contentW, contentH);
       rtScene.scissor.set(0, 0, contentW, contentH);
       rtScene.scissorTest = true;
       renderer.setRenderTarget(rtScene);
+      hideUnreadySceneDrawables(scene);
       renderer.clear(true, true, false);
       renderer.render(scene, camera);
       drainBloomGeometryWalk(scene);
