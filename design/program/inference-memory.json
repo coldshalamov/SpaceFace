@@ -132,19 +132,6 @@
   ],
   "units": [
     {
-      "id": "seed-sw-03",
-      "date": "2026-10-23",
-      "wf": "WF-05",
-      "mode": "opportunity",
-      "verdict": "implemented",
-      "reason": "The Orbital Lance call-in: telegraphed column strike on the aim point or the latched hull",
-      "fingerprint": "verb=strike,subject=orbital-lance,sector=crucible,domain=wf-05",
-      "references": [],
-      "integration": "live",
-      "commit": "7ddd874c4b",
-      "verification": "focused_green"
-    },
-    {
       "id": "seed-sw-04",
       "date": "2026-10-23",
       "wf": "WF-05",
@@ -1689,6 +1676,19 @@
       "references": [],
       "integration": "live",
       "commit": "40d7b14def70",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inf-fled-wing-grudge",
+      "date": "2026-11-02",
+      "wf": "WF-02",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "A wing the pilot broke and let run keeps its name on the ledger — the return encounter can bring that crew back, and the band says the name.",
+      "fingerprint": "verb=remember,subject=fled-wing,sector=piracy-flight,domain=wf-02",
+      "references": [],
+      "integration": "live",
+      "commit": "50e97d88b139",
       "verification": "focused_green"
     }
   ],
