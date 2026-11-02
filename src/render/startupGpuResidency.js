@@ -8,6 +8,7 @@ import {
   detachedGeometryUploadPending,
   rehydrateDetachedGeometries,
   rehydrateDetachedTextures,
+  refillPresentedCompressedUploads,
   retainPackageGeometryCpu,
   retainPresentedTextureLeases,
   assertPackageGeometryRefillReady,
@@ -1069,6 +1070,9 @@ export async function prepareStartupGpuResidency(renderer, subjects, options = {
   // until the pass finishes, including while other residency owners run between slices.
   const releaseTextureLeases = retainPresentedTextureLeases(textures);
   try {
+  // Clones retain a copied package mark but are not canonical manifest entries. Rehydrating
+  // that manifest alone leaves their own mip arrays empty; refill the exact upload subjects too.
+  await refillPresentedCompressedUploads(textures, renderer);
   // Context restore rebuilt every GL object, so stamps recorded against the dead context lie:
   // that call site passes ignoreResidentStamps, and clearing the map makes the pass re-upload
   // everything (matching the geometry spacefaceGpuResident handling) then stamp fresh.

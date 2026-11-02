@@ -12,7 +12,7 @@ import {
   stableJsonStringify,
 } from '../src/contracts/renderPackage.js';
 import { createAssetResidencyRegistry } from '../src/render/assetResidency.js';
-import { createRenderPackageLoader } from '../src/render/renderPackageLoader.js';
+import { createRenderPackageLoader, fetchVerifiedRenderResources } from '../src/render/renderPackageLoader.js';
 import {
   createPackageDetachManifest,
   assertPackageTextureRefillReady,
@@ -168,9 +168,22 @@ test('cockpit package texture survives competing detach while startup residency 
   const metadata = JSON.parse(await readFile(new URL('render-package.json', dir), 'utf8'));
   const gltfLoader = new GLTFLoader();
   gltfLoader.setMeshoptDecoder(MeshoptDecoder);
+  // Match the browser decoder's verified sidecar registration before the KTX2 plugin.
+  // Native Node reads the same published bytes locally instead of fetching file: URLs.
+  const verifiedResources = await fetchVerifiedRenderResources(
+    async (url) => new Response(await readFile(new URL(url))), new URL('render.glb', dir).href, metadata,
+  );
+  gltfLoader.register((parser) => {
+    parser.verifiedExternalKtx2Resources = verifiedResources;
+    return { name: 'SpaceFaceVerifiedExternalKtx2Resources' };
+  });
   gltfLoader.register(registerEmbeddedKtx2Textures);
   // Node has no GPU transcoder; decode the real package and model the transcoder's mip output.
-  gltfLoader.setKTX2Loader({ parse(_bytes, onLoad) {
+  let transcodes = 0;
+  gltfLoader.setKTX2Loader({ parse(ktxBytes, onLoad) {
+    assert.deepEqual([...new Uint8Array(ktxBytes).subarray(0, 12)],
+      [0xab, 0x4b, 0x54, 0x58, 0x20, 0x32, 0x30, 0xbb, 0x0d, 0x0a, 0x1a, 0x0a]);
+    transcodes++;
     const texture = new THREE.CompressedTexture(compressedBytes(2048), 4, 4, THREE.RGBAFormat);
     texture.needsUpdate = true;
     onLoad(texture);
@@ -178,6 +191,7 @@ test('cockpit package texture survives competing detach while startup residency 
   const decode = () => gltfLoader.parseAsync(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength), '');
   const loader = freshLoader(decode);
   const loaded = await loader.load(metadata, { baseUrl: 'https://fixtures.test/' });
+  assert.ok(transcodes > 0, 'the real verified shared KTX2 bytes reached the transcoder');
   const texture = loaded.resources.find(value => value.isCompressedTexture && value.name === 'forge_machinery_albedo');
   assert.ok(texture, 'the actual cockpit package exposes its machinery albedo');
   let retired = false, uploads = 0;
@@ -745,6 +759,34 @@ test('a copied detach mark refills from the manifest before texStorage reads mip
   assert.equal(clone.mipmaps[0].width, 4);
   assert.ok(decodes.n >= 2, 'the manifest re-decoded so the clone had a donor chain');
   loader.dispose();
+});
+
+test('restored-context residency refills a copied empty mip chain after canonical package rehydrate', async () => {
+  let live;
+  const loader = freshLoader(async () => { const decoded = decodedFixture(); live ||= decoded; return decoded; });
+  const loaded = await loader.load(packageMetadata('fixture.restore-copy'), { baseUrl: 'https://fixtures.test/' });
+  try {
+    await prepareStartupGpuResidency(stubRenderer(), loaded.createInstance().root, {
+      includeGeometry: false, yieldToMain: async () => {},
+    });
+    const clone = live.compressed.clone();
+    clone.needsUpdate = true;
+    assert.equal(clone.mipmaps.length, 0);
+    const receipt = await rehydrateDetachedPackages();
+    assertPackageTextureRefillReady([clone], receipt);
+    assert.equal(clone.mipmaps.length, 0, 'canonical refill and identity gate leave the copied chain empty');
+    let uploads = 0;
+    const renderer = { initTexture(texture) {
+      // This is the first native texStorage2D argument read for compressed textures.
+      assert.equal(texture.mipmaps[0].width, 4);
+      assert.ok(texture.mipmaps[0].data.byteLength > 0);
+      uploads++;
+    } };
+    await prepareStartupGpuResidency(renderer, clone, {
+      ignoreResidentStamps: true, includeGeometry: false, yieldToMain: async () => {},
+    });
+    assert.equal(uploads, 1);
+  } finally { loader.dispose(); }
 });
 
 test('an upload lease keeps a refilled chain through a later release', async () => {

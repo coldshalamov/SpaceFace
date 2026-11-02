@@ -604,6 +604,7 @@ import {
   rehydrateDetachedPackages,
   rehydrateDetachedTextures,
   refillPresentedCompressedUploads,
+  retainPresentedTextureLeases,
   retainPackageGeometryCpu,
 } from './packageCpuDetach.js';
 import { sharedImageSourceUsers } from './imageSourceDedupe.js';
@@ -9851,132 +9852,143 @@ export const render = {
             // (env bake, link-force warm pass, residency re-upload) can re-upload them empty.
             // Re-fetch is a force-cache disk hit on the content-hash-immutable render.glb; the
             // serial per-package decode is deliberately sequential, not a decode storm.
+            const restoreTextures = collectStartupTextures(scene);
+            // Keep both canonical and cloned payloads alive through the shadow/transmission
+            // draws and residency yields. Other admission owners may otherwise release them.
+            const releaseRestoreTextureLeases = retainPresentedTextureLeases(restoreTextures);
             try {
-              const packageRehydrate = await rehydrateDetachedPackages({ yieldToMain: yieldToBrowser });
-              const remainingDetachedGeometry = [];
-              assertPackageTextureRefillReady(collectStartupTextures(scene), packageRehydrate);
-              scene.traverse((object) => {
-                if (!isPackageGeometryDetached(object && object.geometry)) return;
-                const mark = object.geometry.userData && object.geometry.userData.spacefaceCpuDetach;
-                remainingDetachedGeometry.push({
-                  contentHash: mark && mark.contentHash || null,
-                  geometryOrdinal: Number.isInteger(mark?.ordinal) ? mark.ordinal : null,
-                  objectName: object.name || null,
+              try {
+                const packageRehydrate = await rehydrateDetachedPackages({ yieldToMain: yieldToBrowser });
+                await refillPresentedCompressedUploads(restoreTextures, renderer);
+                const remainingDetachedGeometry = [];
+                assertPackageTextureRefillReady(restoreTextures, packageRehydrate);
+                scene.traverse((object) => {
+                  if (!isPackageGeometryDetached(object && object.geometry)) return;
+                  const mark = object.geometry.userData && object.geometry.userData.spacefaceCpuDetach;
+                  remainingDetachedGeometry.push({
+                    contentHash: mark && mark.contentHash || null,
+                    geometryOrdinal: Number.isInteger(mark?.ordinal) ? mark.ordinal : null,
+                    objectName: object.name || null,
+                  });
                 });
-              });
-              if (remainingDetachedGeometry.length > 0) {
-                const geometryMismatches = packageRehydrate.geometryMismatches || [];
-                const packageErrors = packageRehydrate.errors || [];
-                const failure = {
-                  remainingDetachedGeometryCount: remainingDetachedGeometry.length,
-                  remainingDetachedGeometry: remainingDetachedGeometry.slice(0, 8),
-                  geometryMismatchCount: geometryMismatches.length,
-                  geometryMismatches: geometryMismatches.slice(0, 8),
-                  packageErrors: packageErrors.slice(0, 8),
-                };
-                throw new Error(`context restore left authored package geometry detached: ${JSON.stringify(failure)}`);
+                if (remainingDetachedGeometry.length > 0) {
+                  const geometryMismatches = packageRehydrate.geometryMismatches || [];
+                  const packageErrors = packageRehydrate.errors || [];
+                  const failure = {
+                    remainingDetachedGeometryCount: remainingDetachedGeometry.length,
+                    remainingDetachedGeometry: remainingDetachedGeometry.slice(0, 8),
+                    geometryMismatchCount: geometryMismatches.length,
+                    geometryMismatches: geometryMismatches.slice(0, 8),
+                    packageErrors: packageErrors.slice(0, 8),
+                  };
+                  throw new Error(`context restore left authored package geometry detached: ${JSON.stringify(failure)}`);
+                }
+                // A retained BatchedMesh whose owner textures are already null has been disposed
+                // while still referenced by the active cohort. Restore the canonical source layers
+                // and remove that dead batch before any forced scene render can call its hooks; the
+                // normal cohort sync rebuilds it through the ordinary admission owner after resume.
+                retireDisposedRigidOpaqueBatchBeforeSceneDraw(this._rigidOpaqueBatchController, state.render);
+              } catch (rehydrateError) {
+                if (typeof console !== 'undefined') {
+                  console.warn('[render] context-restore package rehydrate failed', rehydrateError);
+                }
+                throw rehydrateError;
               }
-              // A retained BatchedMesh whose owner textures are already null has been disposed
-              // while still referenced by the active cohort. Restore the canonical source layers
-              // and remove that dead batch before any forced scene render can call its hooks; the
-              // normal cohort sync rebuilds it through the ordinary admission owner after resume.
-              retireDisposedRigidOpaqueBatchBeforeSceneDraw(this._rigidOpaqueBatchController, state.render);
-            } catch (rehydrateError) {
-              if (typeof console !== 'undefined') {
-                console.warn('[render] context-restore package rehydrate failed', rehydrateError);
-              }
-              throw rehydrateError;
-            }
-            const restoredPostRoute = this._selectPostRoute({ allowContextRecovery: true });
-            // Dummy catalog precompile is illegal mid-flight, including restore.
-            // Compile the live scene that already owns the table, then yield so
-            // Intel can finish links without a second TDR.
-            // Shadows must be armed for the compile: line above disables shadowMap.enabled and
-            // _syncShadowMapEnabled re-gates it on the next frame, so a shadowless compile leaves
-            // every lit material one numDirLightShadows variant short at the first post-restore
-            // draw (~12 s of synchronous links inside bloomScene).
-            const restoreAdmissionShadows = armAdmissionShadows({
-              renderer,
-              light: this._shadowDepthLight(),
-              enabled: this._shadowDepthEnabled(),
-            });
-            try {
-              // Prime the shadow map and the casters' depth programs first: the color program key
-              // carries numDirLightShadows, which stays 0 until the light owns a map again.
-              await driveCompileShadowDepthPipelines({
-                state: this.state,
+              const restoredPostRoute = this._selectPostRoute({ allowContextRecovery: true });
+              // Dummy catalog precompile is illegal mid-flight, including restore.
+              // Compile the live scene that already owns the table, then yield so
+              // Intel can finish links without a second TDR.
+              // Shadows must be armed for the compile: line above disables shadowMap.enabled and
+              // _syncShadowMapEnabled re-gates it on the next frame, so a shadowless compile leaves
+              // every lit material one numDirLightShadows variant short at the first post-restore
+              // draw (~12 s of synchronous links inside bloomScene).
+              const restoreAdmissionShadows = armAdmissionShadows({
                 renderer,
                 light: this._shadowDepthLight(),
-                camera: cam.obj,
-                subjects: [scene],
-                forceEnable: this._shadowDepthEnabled(),
-                shadowsActive: this._shadowDepthEnabled(),
-                THREE,
-                captureObjectHome,
-                restoreObjectHome,
-                lightingScene: scene,
-                lightSigFor: () => this._depthCollectLightSig(scene),
-                stagingName: 'SF_ContextRestoreShadowDepth',
-              }, yieldToBrowser);
-              await this._compilePostRoute(restoredPostRoute, scene, cam.obj, scene);
-              await yieldToBrowser();
-              // compile() only STARTS the KHR links. One forced scene render onto the exact post
-              // target finishes every link (and uploads every visible buffer/texture) while
-              // recovery.pending still gates presented frames.
+                enabled: this._shadowDepthEnabled(),
+              });
               try {
-                if (restoredPostRoute === POST_PROCESS_ROUTE.BLOOM
-                    && this.bloom && typeof this.bloom.warmScenePipelines === 'function') {
-                  await this.bloom.warmScenePipelines(scene, cam.obj, scene);
-                } else {
-                  await warmScenePipelinesForRenderTarget(
-                    renderer,
-                    restoredPostRoute === POST_PROCESS_ROUTE.GRAPH && this._renderGraph
-                      ? this._renderGraph.sceneTarget
-                      : null,
-                    scene,
-                    cam.obj,
-                    scene,
-                  );
+                // Prime the shadow map and the casters' depth programs first: the color program key
+                // carries numDirLightShadows, which stays 0 until the light owns a map again.
+                await driveCompileShadowDepthPipelines({
+                  state: this.state,
+                  renderer,
+                  light: this._shadowDepthLight(),
+                  camera: cam.obj,
+                  subjects: [scene],
+                  forceEnable: this._shadowDepthEnabled(),
+                  shadowsActive: this._shadowDepthEnabled(),
+                  THREE,
+                  captureObjectHome,
+                  restoreObjectHome,
+                  lightingScene: scene,
+                  lightSigFor: () => this._depthCollectLightSig(scene),
+                  stagingName: 'SF_ContextRestoreShadowDepth',
+                }, yieldToBrowser);
+                await this._compilePostRoute(restoredPostRoute, scene, cam.obj, scene);
+                await yieldToBrowser();
+                // compile() only STARTS the KHR links. One forced scene render onto the exact post
+                // target finishes every link (and uploads every visible buffer/texture) while
+                // recovery.pending still gates presented frames.
+                try {
+                  if (restoredPostRoute === POST_PROCESS_ROUTE.BLOOM
+                      && this.bloom && typeof this.bloom.warmScenePipelines === 'function') {
+                    await this.bloom.warmScenePipelines(scene, cam.obj, scene);
+                  } else {
+                    await warmScenePipelinesForRenderTarget(
+                      renderer,
+                      restoredPostRoute === POST_PROCESS_ROUTE.GRAPH && this._renderGraph
+                        ? this._renderGraph.sceneTarget
+                        : null,
+                      scene,
+                      cam.obj,
+                      scene,
+                    );
+                  }
+                } catch (warmError) {
+                  if (typeof console !== 'undefined') {
+                    console.warn('[render] context-restore link force failed', warmError);
+                  }
+                  throw warmError;
                 }
-              } catch (warmError) {
-                if (typeof console !== 'undefined') {
-                  console.warn('[render] context-restore link force failed', warmError);
+                await yieldToBrowser();
+                // Compile only relinks programs — vertex/index buffers and textures all died with the
+                // old context and WebGLObjects.update() only runs inside render(), so the first
+                // post-restore bloomScene used to pay a single ~13 s upload brick. Re-admit the live
+                // scene through the bounded residency pass now, while recovery.pending still gates
+                // every draw; the stamps are stale, so re-upload everything.
+                try {
+                  await prepareStartupGpuResidency(renderer, scene, {
+                    yieldToMain: yieldToBrowser,
+                    ignoreResidentStamps: true,
+                    includeEmpty: true,
+                    onBlockingSlice: recordAuthoredAdmissionBlockingSlice,
+                  });
+                } catch (error) {
+                  if (typeof console !== 'undefined') console.warn('[render] context-restore residency failed', error);
+                  throw error;
                 }
+                await yieldToBrowser();
+              } finally {
+                restoreAdmissionShadows();
               }
-              await yieldToBrowser();
-              // Compile only relinks programs — vertex/index buffers and textures all died with the
-              // old context and WebGLObjects.update() only runs inside render(), so the first
-              // post-restore bloomScene used to pay a single ~13 s upload brick. Re-admit the live
-              // scene through the bounded residency pass now, while recovery.pending still gates
-              // every draw; the stamps are stale, so re-upload everything.
-              try {
-                await prepareStartupGpuResidency(renderer, scene, {
-                  yieldToMain: yieldToBrowser,
-                  ignoreResidentStamps: true,
-                  includeEmpty: true,
-                  onBlockingSlice: recordAuthoredAdmissionBlockingSlice,
-                });
-              } catch (error) {
-                if (typeof console !== 'undefined') console.warn('[render] context-restore residency failed', error);
+              const restoredPipelines = {
+                skipped: false,
+                method: 'live-scene-restore',
+                route: restoredPostRoute,
+              };
+              // Only this restore's own world may be stamped ready: an enter during the
+              // awaits swapped the scene this pass linked, and a second context loss
+              // voids it entirely — the newest enter/restore owns the stamp then.
+              const restoreSuperseded = (state.world && state.world.enterSerial !== restoreEnterSerial)
+                || this._contextLost === true;
+              if (!restoreSuperseded) {
+                state.render.pipelinePrecompileReady = Promise.resolve(restoredPipelines);
               }
-              await yieldToBrowser();
+              return restoredPipelines;
             } finally {
-              restoreAdmissionShadows();
+              releaseRestoreTextureLeases();
             }
-            const restoredPipelines = {
-              skipped: false,
-              method: 'live-scene-restore',
-              route: restoredPostRoute,
-            };
-            // Only this restore's own world may be stamped ready: an enter during the
-            // awaits swapped the scene this pass linked, and a second context loss
-            // voids it entirely — the newest enter/restore owns the stamp then.
-            const restoreSuperseded = (state.world && state.world.enterSerial !== restoreEnterSerial)
-              || this._contextLost === true;
-            if (!restoreSuperseded) {
-              state.render.pipelinePrecompileReady = Promise.resolve(restoredPipelines);
-            }
-            return restoredPipelines;
           };
           void runWebGlContextRestoreRebuild(this, this._contextRecovery, this._rebuildRestoredGpuResources)
             .then(lifecycle.guard((restored) => {
