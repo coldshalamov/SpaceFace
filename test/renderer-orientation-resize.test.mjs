@@ -119,6 +119,28 @@ test('rotation keeps the last complete world until detached resources can draw a
   });
 });
 
+test('the actual resize owner requests its scene cohort rather than an offscreen package', async () => {
+  await withPendingRefill(async ({ owner, scene, sizes, release }) => {
+    const cached = new THREE.BoxGeometry(), fresh = cached.clone();
+    let releaseCached, cachedDecodes = 0;
+    const wait = new Promise(resolve => { releaseCached = resolve; });
+    createPackageDetachManifest({ contentHash: 'offscreen-resize-fixture', resources: [cached] }, {
+      redecode: async () => { cachedDecodes++; await wait; return { resources: [fresh] }; },
+      collectResources: value => value.resources,
+    });
+    assert.equal(detachPackageGeometry(cached), true);
+    try {
+      owner.onResize();
+      release();
+      await new Promise(setImmediate);
+      assert.equal(owner._orientationResizeReady, true, 'the real canonical scene collectors exclude cached geometry');
+      assert.equal(cachedDecodes, 0);
+      owner._renderPostRoute('bloom', scene, new THREE.PerspectiveCamera());
+      assert.deepEqual(sizes, [[844, 390]]);
+    } finally { releaseCached(); }
+  });
+});
+
 for (const retire of ['disposed', 'replaced']) {
   test(`a ${retire} renderer cannot resize from an old refill completion`, async () => {
     await withPendingRefill(async ({ owner, sizes, release }) => {

@@ -32861,13 +32861,15 @@ export const render = {
       if (!this._orientationResizePending) {
         const renderer = this.renderer, generation = this._rendererGeneration;
         const contextGeneration = this._contextRecovery?.generation || 0;
-        // Admissions can finish while the global refill walks other packages. Keep restored
-        // scene bytes alive until resize and draw run in the same task.
-        const releaseGeometry = retainPackageGeometryCpu(collectStartupGeometries(this.scene));
-        const releaseTextures = retainPresentedTextureLeases(collectStartupTextures(this.scene));
+        // Admissions can finish while this scene's refill walks its packages. Keep restored
+        // bytes alive until resize and draw run in the same task; cached offscreen packages
+        // are not a prerequisite for replacing the current picture.
+        const resources = { geometries: collectStartupGeometries(this.scene), textures: collectStartupTextures(this.scene) };
+        const releaseGeometry = retainPackageGeometryCpu(resources.geometries);
+        const releaseTextures = retainPresentedTextureLeases(resources.textures);
         const release = () => { releaseGeometry(); releaseTextures(); };
         this._orientationResizeRelease = release;
-        noteOrientationDetachedHold(this.renderer);
+        noteOrientationDetachedHold(this.renderer, resources);
         const active = () => this.renderer === renderer && this._rendererGeneration === generation
           && (this._contextRecovery?.generation || 0) === contextGeneration
           && this._rendererResourcesDisposed !== true && this._contextLost !== true;
@@ -32879,7 +32881,7 @@ export const render = {
           this._orientationResizeReady = false;
           return true;
         };
-        const pending = queuePresentedDetachRehydrate(renderer).then((receipt) => {
+        const pending = queuePresentedDetachRehydrate(renderer, resources).then((receipt) => {
           if (!active() || this._orientationResizePending !== pending) { retire(); return; }
           if (receipt.errors?.length || receipt.geometryMismatches?.length || receipt.textureMismatches?.length) {
             throw new Error(`Orientation package refill incomplete: ${JSON.stringify(receipt)}`);
