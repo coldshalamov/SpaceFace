@@ -27,13 +27,14 @@ for (const starterStep of [1,2,3]) test(`Pelican starter ${starterStep} sustains
     const board=missions.ensureBoard('station_helios');
     const offer=board.slots.find(m=>m.params?.starterJobId==='starter_pelican'&&m.params.starterStep===starterStep);
     assert.ok(offer,'ordinary board posts the next Pelican job');assert.equal(offer.params.starterWorkdayVersion,1);
+    if(starterStep===1)assert.equal(offer.reward_cr,520,'the first public offer retains its 520 CR terms');
     assert.equal(missions.acceptMission(offer.id),true);
     const mission=s.missions.active.find(m=>m.params?.starterJobId==='starter_pelican'&&m.params.starterStep===starterStep);
     assert.ok(mission);missions._ensureMissionTargets(mission);
     const buoy=s.entities.get(mission.targetEntityIds[0]);
     assert.ok(buoy?.alive);assert.equal(buoy.type,'payload');assert.equal(buoy.data.physicalRole,'slag_core');
     assert.equal(buoy.data.worldSiteTargetable,true,'the authored neutral mission payload must be available to the ordinary target-lock control');
-    assert.equal(buoy.data.packagedPropFile,'places/place_lane_beacon.glb');const expectedMass=[40,65,90][starterStep-1];assert.equal(buoy.mass,expectedMass);
+    assert.equal(buoy.data.packagedPropFile,'places/place_lane_beacon.glb');const expectedMass=[18,65,90][starterStep-1];assert.equal(buoy.mass,expectedMass);
     const visual=packagedPropSpec(buoy);assert.ok(visual,'actual packaged-prop owner admits the mission payload');
     const prewarm=authoredPrewarmRequestsForEntities([buoy],{assetMode:'release',sectorId:'sector_helios_prime'});
     assert.ok(prewarm.some(p=>String(p.url).endsWith('/places/place_lane_beacon.glb')),'actual visible-body prewarm admits the same beacon');
@@ -55,6 +56,15 @@ for (const starterStep of [1,2,3]) test(`Pelican starter ${starterStep} sustains
     assert.equal(s.player.tether.active,true,'ordinary F admits the native mission payload');assert.equal(s.player.tether.targetId,buoy.id);
     const start={x:buoy.pos.x,z:buoy.pos.z},beforeVelocity={x:buoy.vel.x,z:buoy.vel.z};key('BracketLeft',true);step(60);key('BracketLeft',false);
     assert.equal(s.player.tether.targetId,buoy.id);assert.ok(Math.hypot(buoy.pos.x-start.x,buoy.pos.z-start.z)>0.05,'real native motion occurs while attached');
+    if(starterStep===1){
+      assert.equal(s.lineProgression.classIndex,1,'fresh pilot retains the starting Line class');
+      assert.equal(s.lineProgression.classFullControlMassT,20);
+      assert.equal(s.lineProgression.overClass,false,'the real spawned buoy fits the fresh Line');
+      step(600);
+      assert.equal(s.lineProgression.overClass,false);
+      assert.equal(s.player.tether.active,true,'the held first buoy survives beyond the overload snap window');
+      assert.equal(s.player.tether.targetId,buoy.id);
+    }
     const towDelta=(buoy.vel.x-beforeVelocity.x)*outward.x+(buoy.vel.z-beforeVelocity.z)*outward.z;
     assert.ok(towDelta>0.05,`native winch must accelerate authored mass toward the player, measured ${towDelta}`);
     const attachmentId=s.player.tether.attachmentId;
@@ -68,21 +78,24 @@ for (const starterStep of [1,2,3]) test(`Pelican starter ${starterStep} sustains
     key('KeyF',true);step(1);key('KeyF',false);step(18);
     assert.equal(s.player.tether.active,true);assert.equal(s.player.tether.targetId,buoy.id,'same original body can be caught again');
     console.log('NATIVE_STARTER_FORCE',JSON.stringify({step:starterStep,mass:expectedMass,towDelta,attachmentId,recoveredAttachmentId:s.player.tether.attachmentId}));
-    if(starterStep!==3)return;
+    if(starterStep!==1&&starterStep!==3)return;
 
     assert.equal(runtime.getSystem('combat').onHit({targetId:buoy.id,ownerId:s.playerId,damage:17,damageType:'kinetic',pos:{...buoy.pos}}).ok,true);
     assert.ok(buoy.hull>0&&buoy.hull<buoy.hullMax);
-    const credits=s.player.credits,awards=[];runtime.bus.on('economy:grantCredits',p=>awards.push(p));
+    // Exercise a pre-fix accepted 44-C save whose live body was authored at 40 t.
+    // The normal durable record/rematerialization owner must restore this specific job at 18 t.
+    if(starterStep===1){buoy.mass=40;buoy.physicsBody.mass=40;}
+    const credits=s.player.credits,priorClass=s.lineProgression.classIndex,priorStep=s.missions.starterJobStep.starter_pelican,awards=[];runtime.bus.on('economy:grantCredits',p=>awards.push(p));
     const envelope=save.serialize('starter-buoy-native');assert.ok(envelope);
     const remembered={recordId:buoy.data.worldRecordId,identity:buoy.data.identityKey,pos:{...buoy.pos},vel:{...buoy.vel},rot:buoy.rot,angVel:buoy.angVel,hull:buoy.hull,hullMax:buoy.hullMax};
     assert.ok(remembered.recordId);
     assert.equal(save.loadEnvelope(envelope),true);
     const restoredMission=s.missions.active.find(m=>m.id===mission.id);assert.ok(restoredMission);missions._ensureMissionTargets(restoredMission);
     const copies=s.entityList.filter(e=>e.alive&&e.data?.worldRecordId===remembered.recordId);assert.equal(copies.length,1);
-    const restored=copies[0];assert.equal(restored.type,'payload');assert.equal(restored.data.identityKey,remembered.identity);assert.equal(restored.hull,remembered.hull);assert.equal(restored.hullMax,remembered.hullMax);
+    const restored=copies[0];assert.equal(restored.type,'payload');assert.equal(restored.mass,expectedMass);assert.equal(restored.physicsBody.mass,expectedMass);assert.equal(restored.data.identityKey,remembered.identity);assert.equal(restored.hull,remembered.hull);assert.equal(restored.hullMax,remembered.hullMax);
     assert.ok(Math.hypot(restored.pos.x-remembered.pos.x,restored.pos.z-remembered.pos.z)<0.001);assert.deepEqual({...restored.vel},remembered.vel);assert.equal(restored.rot,remembered.rot);assert.equal(restored.angVel,remembered.angVel);
     assert.equal(await physics.prepareBackend(s),true);
-    assert.ok(Math.abs(physics._sg02.records.get(restored.id).body.mass()-90)<0.001);
+    assert.ok(Math.abs(physics._sg02.records.get(restored.id).body.mass()-expectedMass)<0.001);
     missions._adoptLiveMissionTargets(restoredMission);missions._ensureMissionTargets(restoredMission);
     if(!s.player.tether?.active){
       input.ingestLaneDomEvent({type:'mousemove',clientX:320,clientY:240,movementX:1,movementY:0});
@@ -90,8 +103,9 @@ for (const starterStep of [1,2,3]) test(`Pelican starter ${starterStep} sustains
     }
     assert.equal(s.player.tether.active,true);assert.equal(s.player.tether.targetId,restored.id,'real line reacquires the same durable body');
     assert.deepEqual(restoredMission.targetEntityIds,[restored.id]);assert.equal(s.player.credits,credits);assert.equal(awards.length,0);
+    assert.equal(s.lineProgression.classIndex,priorClass);assert.equal(s.missions.starterJobStep.starter_pelican,priorStep);
     assert.equal(s.entityList.filter(e=>e.alive&&(e.data?.missionTag===mission.id||e.data?.missionId===mission.id)&&e.data?.physicalRole==='slag_core').length,1);
-    console.log('NATIVE_STARTER_CONTINUE',JSON.stringify({mass:90,moved:Math.hypot(remembered.pos.x-start.x,remembered.pos.z-start.z),hull:remembered.hull,recordId:remembered.recordId,bodyCopies:copies.length,rewardEvents:awards.length}));
+    console.log('NATIVE_STARTER_CONTINUE',JSON.stringify({mass:expectedMass,moved:Math.hypot(remembered.pos.x-start.x,remembered.pos.z-start.z),hull:remembered.hull,recordId:remembered.recordId,bodyCopies:copies.length,rewardEvents:awards.length}));
   } finally {runtime.dispose();restoreFeatureMaps(flags);}
 });
 

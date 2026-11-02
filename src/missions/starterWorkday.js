@@ -15,7 +15,8 @@ export const STARTER_WORK_SITES = Object.freeze({
       brief: 'The yard needs 2u iron. Outer seam marked; your own Helios cut is equally good.' },
   ]),
   starter_pelican: Object.freeze([
-    { label: '44-C loose lane buoy', pos: { x: 310, z: -35 }, mass: 40, drift: { x: 0, z: 0 },
+    // The first Pelican contract is available to a fresh Class I Line (20 t control ceiling).
+    { label: '44-C loose lane buoy', pos: { x: 310, z: -35 }, mass: 18, drift: { x: 0, z: 0 },
       brief: '44-C broke its mooring beside the first lane pin. Winch the lit buoy to Helios.' },
     { label: 'Claim-rim loose lane buoy', pos: { x: 1000, z: 30 }, mass: 65, drift: { x: 0, z: 2 },
       brief: 'A heavier buoy is drifting off the claim rim. Catch it and winch it back to Helios.' },
