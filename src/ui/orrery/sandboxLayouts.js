@@ -471,6 +471,12 @@ const SANDBOX_LAYOUTS_CSS = `
    (zoom, not font tweaks, so the rail, dial and dock band keep their proportions). Desktop only. */
 @media (min-width: 1800px) and (max-width: 2199px) and (min-height: 1000px) {
   html:root:not([data-sf-mobile="1"]) .screen.sf-sandbox { zoom: 1.14; }
+  /* At 1.14 the 160px ladder floor pushed COMBAT LAB's second row (STARTER LOADOUT) half under
+     the stage fade, a ghost strip above Launch. The ladder also gives back the fade and one row,
+     so the panel shows HULL and STARTER LOADOUT whole. */
+  html:root:not([data-sf-mobile="1"]) .sf-sandbox-tiles {
+    max-height: max(150px, calc(100% - var(--sf-sandbox-peek) - var(--sf-sandbox-fade) - 40px));
+  }
 }
 /* Touch / phone deck (data-sf-mobile, any width): the global 44px touch floor crushed each
    title+desc tile and stacked them, so the tiles opt out of it and keep their own height. */

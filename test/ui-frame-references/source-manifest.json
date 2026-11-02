@@ -211,7 +211,7 @@
   "src/ui/orrery/ringLegend.js": "370e949fbf4a126ccc982fe6927e0b4ce0d55276a07a3358732abf8d8da46b18",
   "src/ui/orrery/routeOrrery.js": "0d6fae9c6a1bf10e49629ed449740709ef12cf148c25f95515321df0cbc7da54",
   "src/ui/orrery/sableDemo.js": "c737e2e766cf3c64640bbb3660f3cfd5f93596f9e11d3eab9f64ddc9e6504630",
-  "src/ui/orrery/sandboxLayouts.js": "cb443f14472aa3eba9cc8d92d1fc0de3fdfa8aa0cdb06b765f1c598f8668d13e",
+  "src/ui/orrery/sandboxLayouts.js": "060d69ac3f10a47e0991adb4b431be2c31f6e629f704c6fd5b0bd78ba73cd65b",
   "src/ui/orrery/save-loadLayouts.js": "d95f63936a1954a0a28d4b7e6646eff88c5d647b2f9de50e4f8e121e466303db",
   "src/ui/orrery/saveBerth.js": "3277b73ea17573dd3b42ad2b683b7f49889537b3d0baa7170427d7822b549fd6",
   "src/ui/orrery/saveFilmstrip.js": "22523decdcfc3832c70a9b2ae1ebf62fb477972f4e414b143610f834267e813b",
