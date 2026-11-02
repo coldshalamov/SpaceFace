@@ -1386,6 +1386,57 @@ export async function fetchVerifiedRenderBytes(
   return bytes;
 }
 
+export async function fetchVerifiedRenderResources(fetchImpl, renderUrl, metadata, onProgress = null) {
+  const resources = Array.isArray(metadata?.render?.resources) ? metadata.render.resources : [];
+  const verified = new Map();
+  for (const resource of resources) {
+    const url = resolveRenderUrl(resource.uri, renderUrl);
+    let bytes = await fetchWithStallBound(fetchImpl, url, 'force-cache', onProgress);
+    let digest = bytes.byteLength === resource.bytes ? await sha256Hex(bytes) : null;
+    if (digest !== resource.sha256) {
+      bytes = await fetchWithStallBound(fetchImpl, url, 'reload', onProgress);
+      digest = bytes.byteLength === resource.bytes ? await sha256Hex(bytes) : null;
+    }
+    if (bytes.byteLength !== resource.bytes) {
+      throw new Error(`Render package resource byte length mismatch for ${metadata.assetId} ${resource.uri}: ${bytes.byteLength} != ${resource.bytes}.`);
+    }
+    if (digest !== resource.sha256) {
+      throw new Error(`Render package resource SHA-256 mismatch for ${metadata.assetId} ${resource.uri}.`);
+    }
+    verified.set(resource.uri, bytes);
+  }
+  return verified;
+}
+
+export function assertRenderResourceBindings(renderBytes, metadata) {
+  const bytes = renderBytes instanceof Uint8Array ? renderBytes : new Uint8Array(renderBytes);
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  if (bytes.byteLength < 20 || view.getUint32(0, true) !== 0x46546c67) {
+    throw new Error(`Render package GLB is invalid for ${metadata.assetId}.`);
+  }
+  const jsonLength = view.getUint32(12, true);
+  if (view.getUint32(16, true) !== 0x4e4f534a || 20 + jsonLength > bytes.byteLength) {
+    throw new Error(`Render package GLB JSON chunk is invalid for ${metadata.assetId}.`);
+  }
+  const json = JSON.parse(new TextDecoder().decode(bytes.subarray(20, 20 + jsonLength)));
+  const imageUris = new Set();
+  for (const [index, image] of (json.images || []).entries()) {
+    if (typeof image?.uri !== 'string' || /^data:/i.test(image.uri)) continue;
+    if (image.mimeType !== 'image/ktx2') {
+      throw new Error(`Render package ${metadata.assetId} image ${index} has an unsupported external URI; only declared KTX2 resources are supported.`);
+    }
+    imageUris.add(image.uri);
+  }
+  const resourceUris = new Set((metadata.render.resources || []).map((resource) => resource.uri));
+  for (const uri of imageUris) {
+    if (!resourceUris.has(uri)) throw new Error(`Render package ${metadata.assetId} references an undeclared external KTX2 image: ${uri}`);
+  }
+  for (const uri of resourceUris) {
+    if (!imageUris.has(uri)) throw new Error(`Render package ${metadata.assetId} declares an unreferenced external KTX2 image: ${uri}`);
+  }
+  return true;
+}
+
 // Meshopt decode runs on the decoder's own blob-URL WASM worker pool rather than the present
 // thread: decode is the dominant synchronous stage inside an authored admission job, so every
 // meshopt buffer decoded on the glass thread is a frame hitch while a model arrives. The vendored
@@ -1437,6 +1488,7 @@ function createDefaultGlbDecoder({ fetchImpl, configureGltfLoader }) {
   return async (url, metadata, onProgress = null) => {
     if (typeof fetchImpl !== 'function') throw new Error('Render package loader requires fetch to load render.glb.');
     let bytes = await fetchVerifiedRenderBytes(fetchImpl, url, metadata, onProgress);
+    assertRenderResourceBindings(bytes, metadata);
 
     // Structural pre-pass (glbPrepass.js): the verified GLB goes to a worker by transfer, which
     // batch-decodes every meshopt bufferView and slices embedded image bytes, then transfers it all
@@ -1473,7 +1525,16 @@ function createDefaultGlbDecoder({ fetchImpl, configureGltfLoader }) {
         return { name: 'SpaceFaceGlbPrepass' };
       });
     }
-    if (typeof configureGltfLoader === 'function') await configureGltfLoader(loader, metadata);
+    const verifiedResources = await fetchVerifiedRenderResources(fetchImpl, url, metadata, onProgress);
+    if (verifiedResources.size) {
+      loader.register((parser) => {
+        parser.verifiedExternalKtx2Resources = verifiedResources;
+        return { name: 'SpaceFaceVerifiedExternalKtx2Resources' };
+      });
+    }
+    if (typeof configureGltfLoader === 'function') {
+      await configureGltfLoader(loader, metadata, { resources: verifiedResources, baseUrl: url });
+    }
     const gltf = await scheduleGltfParse(() => loader.parseAsync(buffer, resourceBaseUrl(url)), metadata);
     // Cross-package image-source dedupe: embedded PNG/JPEG copies collapse onto one THREE.Source
     // per distinct byte payload; embedded KTX2 sources already dedupe inside the texture plugin.

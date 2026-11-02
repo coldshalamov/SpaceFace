@@ -15,7 +15,7 @@ import {
   weld,
 } from '@gltf-transform/functions';
 import { MeshoptDecoder, MeshoptEncoder } from 'meshoptimizer';
-import { encodeRenderPackageGlb } from './renderPackageStorage.mjs';
+import { encodeRenderPackageGlb, externalizeRenderPackageKtx2 } from './renderPackageStorage.mjs';
 import { RELEASE_MESHOPT_OPTIONS } from './releaseMeshoptProfile.mjs';
 import { releasePlaceGeometryCompression } from './releaseStrictClearancePrecision.mjs';
 import { SINGLE_SIDE_REPORT_SCHEMA, singleSideWatertightOpaque } from './singleSideWatertightOpaque.mjs';
@@ -144,7 +144,12 @@ export async function compileRenderPackage(options = {}) {
   }
   stampSemanticLocators(semanticManifest, resolvedNodes);
 
-  const renderBytes = await encodeRenderPackageGlb(io, document);
+  const encodedRenderBytes = await encodeRenderPackageGlb(io, document);
+  const externalized = options.externalizeKtx2 === true
+    ? externalizeRenderPackageKtx2(encodedRenderBytes, options.externalizeKtx2Hashes || null)
+    : { bytes: encodedRenderBytes, resources: [] };
+  const renderResources = externalized.resources;
+  const renderBytes = externalized.bytes;
   const renderHash = sha256(renderBytes);
   const sourceHash = sha256(sourceBytes);
   const semanticsHash = sha256(Buffer.from(stableJsonStringify(semanticManifest)));
@@ -163,6 +168,14 @@ export async function compileRenderPackage(options = {}) {
       uri: RENDER_FILE_NAME,
       sha256: renderHash,
       bytes: renderBytes.length,
+      ...(renderResources.length ? {
+        resources: renderResources.map(({ uri, mimeType, sha256, bytes }) => ({
+          uri,
+          mimeType,
+          sha256,
+          bytes: bytes.length,
+        })),
+      } : {}),
     },
     provenance: {
       sourceGlb: {
@@ -190,6 +203,14 @@ export async function compileRenderPackage(options = {}) {
 
   const metadataBytes = Buffer.from(`${stableJsonStringify(metadata, 2)}\n`);
   await mkdir(outputDir, { recursive: true });
+  if (renderResources.length) {
+    const sharedImageDir = resolve(outputDir, '..', '_shared', 'images');
+    await mkdir(sharedImageDir, { recursive: true });
+    await Promise.all(renderResources.map((resource) => writeFileWithRetry(
+      resolve(sharedImageDir, `${resource.sha256}.ktx2`),
+      resource.bytes,
+    )));
+  }
   await Promise.all([
     writeFileWithRetry(renderPath, renderBytes),
     writeFileWithRetry(metadataPath, metadataBytes),
@@ -201,6 +222,8 @@ export async function compileRenderPackage(options = {}) {
     metadataPath,
     renderBytes: renderBytes.length,
     metadataBytes: metadataBytes.length,
+    renderResourceBytes: renderResources.reduce((sum, resource) => sum + resource.bytes.length, 0),
+    renderResources: renderResources.length,
   });
 }
 

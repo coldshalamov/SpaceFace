@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
-import { mkdtemp, readFile, rename, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { dirname, join, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { NodeIO } from '@gltf-transform/core';
@@ -15,6 +15,7 @@ import {
   stableJsonStringify,
 } from '../src/contracts/renderPackage.js';
 import { compileRenderPackage, writeFileWithRetry } from './lib/renderPackageCompiler.mjs';
+import { collectRepeatedKtx2PayloadHashes } from './lib/renderPackageStorage.mjs';
 import {
   buildRuntimeTableForRenderGlb,
   sealMotionBankRef,
@@ -31,6 +32,14 @@ export async function buildRenderPackagePilots(options = {}) {
   const check = options.check === true;
   const onlyKeys = options.onlyKeys ? new Set(options.onlyKeys) : null;
   const repoRoot = resolve(options.repoRoot || REPO_ROOT);
+  const outputRoot = options.outputRoot ? resolve(repoRoot, options.outputRoot) : repoRoot;
+  const externalizeKtx2 = options.externalizeKtx2 === true;
+  if (externalizeKtx2) {
+    const ignoredRoot = resolve(repoRoot, '.devshots') + sep;
+    if (options.check || !options.outputRoot || !outputRoot.startsWith(ignoredRoot)) {
+      throw new Error('External KTX2 pilot builds require an explicit ignored --output-root under .devshots and cannot run with --check.');
+    }
+  }
   const manifestPath = resolve(repoRoot, options.manifestPath || DEFAULT_MANIFEST);
   const manifestBytes = await readFile(manifestPath);
   const manifest = JSON.parse(manifestBytes.toString('utf8'));
@@ -52,6 +61,10 @@ export async function buildRenderPackagePilots(options = {}) {
       if (!available.has(key)) throw new Error(`Unknown render-package pilot key ${key}.`);
     }
   }
+  const selectedPilots = manifest.pilots.filter((pilot) => !onlyKeys || onlyKeys.has(pilot.key));
+  const repeatedKtx2Hashes = externalizeKtx2
+    ? await collectRepeatedKtx2PayloadHashes(selectedPilots.map((pilot) => resolve(repoRoot, pilot.outputDir, 'render.glb')))
+    : null;
   let bindings = [];
 
   try {
@@ -75,7 +88,7 @@ export async function buildRenderPackagePilots(options = {}) {
       const semanticManifest = await derivePilotSemanticManifest(pilot, sourcePath);
       const outputDir = check
         ? join(scratch, pilot.key)
-        : resolve(repoRoot, pilot.outputDir);
+        : resolve(outputRoot, pilot.outputDir);
       const result = await compileRenderPackage({
         assetId: pilot.assetId,
         sourceGlbPath: sourcePath,
@@ -83,6 +96,7 @@ export async function buildRenderPackagePilots(options = {}) {
         semanticManifest,
         sourceAssetId: pilot.releaseAssetId,
         positionPrecisionPolicy: pilot.positionPrecisionPolicy || 'standard',
+        ...(externalizeKtx2 ? { externalizeKtx2: true, externalizeKtx2Hashes: repeatedKtx2Hashes } : {}),
         outputDir,
       });
       await attachRuntimeTable(outputDir, pilot, result.package, repoRoot);
@@ -95,7 +109,8 @@ export async function buildRenderPackagePilots(options = {}) {
     // increases antivirus/file-indexer lock exposure. Unselected bindings come from their already
     // content-addressed metadata; the selected package was just rebuilt above.
     bindings = await Promise.all(manifest.pilots.map(async (pilot) => {
-      const metadata = JSON.parse(await readFile(resolve(repoRoot, pilot.metadataUrl), 'utf8'));
+      const metadataRoot = selectedPilots.some((selected) => selected.key === pilot.key) ? outputRoot : repoRoot;
+      const metadata = JSON.parse(await readFile(resolve(metadataRoot, pilot.metadataUrl), 'utf8'));
       if (metadata.assetId !== pilot.assetId) {
         throw new Error(`${pilot.key}: compiled package assetId ${metadata.assetId} does not match ${pilot.assetId}.`);
       }
@@ -130,7 +145,7 @@ export async function buildRenderPackagePilots(options = {}) {
       };
     }));
 
-    const runtimeManifestPath = resolve(repoRoot, manifest.runtimeManifest);
+    const runtimeManifestPath = resolve(outputRoot, manifest.runtimeManifest);
     const runtimeSource = renderRuntimeManifest(bindings);
     if (check) {
       const current = await readFile(runtimeManifestPath, 'utf8');
@@ -138,6 +153,7 @@ export async function buildRenderPackagePilots(options = {}) {
     } else {
       // The dev server may be serving this module while packages publish. Replace a complete
       // sibling file instead of truncating the live module (also avoids Windows reader locks).
+      await mkdir(dirname(runtimeManifestPath), { recursive: true });
       const temporary = `${runtimeManifestPath}.${process.pid}.tmp`;
       try {
         await writeFile(temporary, runtimeSource, { flag: 'wx' });
@@ -676,16 +692,23 @@ function unionGeometryBounds(geometry) {
   };
 }
 
-function parseArgs(argv) {
+export function parseRenderPackagePilotArgs(argv) {
   const onlyArgs = argv.filter((arg) => arg.startsWith('--only='));
   const onlyKeys = onlyArgs.flatMap((arg) => arg.slice('--only='.length).split(',')).filter(Boolean);
-  const unknown = argv.filter((arg) => arg !== '--check' && !arg.startsWith('--only='));
+  const outputRootArg = argv.find((arg) => arg.startsWith('--output-root='));
+  const unknown = argv.filter((arg) => arg !== '--check' && arg !== '--externalize-ktx2'
+    && !arg.startsWith('--only=') && !arg.startsWith('--output-root='));
   if (unknown.length) throw new Error(`Unknown render-package pilot option: ${unknown.join(', ')}`);
-  return { check: argv.includes('--check'), ...(onlyKeys.length ? { onlyKeys } : {}) };
+  return {
+    check: argv.includes('--check'),
+    externalizeKtx2: argv.includes('--externalize-ktx2'),
+    ...(outputRootArg ? { outputRoot: outputRootArg.slice('--output-root='.length) } : {}),
+    ...(onlyKeys.length ? { onlyKeys } : {}),
+  };
 }
 
 async function main() {
-  const options = parseArgs(process.argv.slice(2));
+  const options = parseRenderPackagePilotArgs(process.argv.slice(2));
   const bindings = await buildRenderPackagePilots(options);
   console.log(`render-package-pilots: ${options.check ? 'fresh' : 'built'} ${bindings.length} production packages`);
 }

@@ -6,7 +6,7 @@ import { build, transform } from 'esbuild';
 
 import * as THREE from 'three';
 
-import { derivePilotSemanticManifest } from '../scripts/build-render-package-pilots.mjs';
+import { derivePilotSemanticManifest, parseRenderPackagePilotArgs } from '../scripts/build-render-package-pilots.mjs';
 import { sceneFromGlbJson } from '../scripts/lib/renderPackageRuntimeTable.mjs';
 import {
   deriveAuthoredRuntimeTable,
@@ -34,6 +34,17 @@ import {
   renderPackagePilotForAssetId,
   renderPackagePilotForSourceUrl,
 } from '../src/render/renderPackageManifest.js';
+
+test('render-package pilot builder keeps external KTX2 opt-in and scopes candidate outputs', () => {
+  assert.deepEqual(parseRenderPackagePilotArgs(['--externalize-ktx2', '--only=kestrel,atlas-production-v1', '--output-root=.devshots/candidate']), {
+    check: false,
+    externalizeKtx2: true,
+    outputRoot: '.devshots/candidate',
+    onlyKeys: ['kestrel', 'atlas-production-v1'],
+  });
+  assert.equal(parseRenderPackagePilotArgs([]).externalizeKtx2, false, 'normal compiler output remains embedded');
+  assert.throws(() => parseRenderPackagePilotArgs(['--externalize-ktx2=no']), /Unknown render-package pilot option/);
+});
 
 if (!globalThis.document) {
   globalThis.document = {

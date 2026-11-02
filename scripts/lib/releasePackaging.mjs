@@ -488,6 +488,42 @@ async function renderPackageSourceOmissions(projectRoot, mapping, pilots) {
     if (metadata.render?.bytes !== renderRecord.bytes || metadata.render?.sha256 !== renderRecord.sha256) {
       throw new Error(`${metadataUrl} render payload does not match its bytes and SHA-256`);
     }
+    const renderBytes = await readFile(renderPath);
+    const renderJsonLength = renderBytes.length >= 20 ? renderBytes.readUInt32LE(12) : 0;
+    if (renderBytes.length < 20 || renderBytes.readUInt32LE(0) !== 0x46546c67
+        || renderBytes.readUInt32LE(16) !== 0x4e4f534a || 20 + renderJsonLength > renderBytes.length) {
+      throw new Error(`${metadataUrl} render GLB has an invalid JSON chunk`);
+    }
+    const renderJson = JSON.parse(renderBytes.toString('utf8', 20, 20 + renderJsonLength));
+    const glbResourceUris = new Set();
+    for (const [index, image] of (renderJson.images || []).entries()) {
+      if (typeof image?.uri !== 'string' || /^data:/i.test(image.uri)) continue;
+      if (image.mimeType !== 'image/ktx2') {
+        throw new Error(`${metadataUrl} image ${index} has an unsupported external URI; only declared KTX2 resources are supported`);
+      }
+      glbResourceUris.add(image.uri);
+    }
+    const declaredResourceUris = new Set((metadata.render.resources || []).map((resource) => resource.uri));
+    if (glbResourceUris.size !== declaredResourceUris.size
+        || [...glbResourceUris].some((uri) => !declaredResourceUris.has(uri))) {
+      throw new Error(`${metadataUrl} GLB external KTX2 image URIs do not match render.resources`);
+    }
+    for (const resource of metadata.render.resources || []) {
+      const resourcePath = resolve(dirname(metadataPath), ...resource.uri.split('/'));
+      const resourceRel = normalizeRel(relative(mappingRoot, resourcePath));
+      if (!resourceRel || resourceRel === '..' || resourceRel.startsWith('../')) {
+        throw new Error(`${metadataUrl} resource ${resource.uri} escapes ${mapping.source}`);
+      }
+      await assertNoSymlinkPath(
+        projectRoot,
+        normalizeRel(relative(projectRoot, resourcePath)),
+        'render-package resource',
+      );
+      const resourceRecord = await readFileRecord(resourcePath, resourceRel);
+      if (resourceRecord.bytes !== resource.bytes || resourceRecord.sha256 !== resource.sha256) {
+        throw new Error(`${metadataUrl} shared render resource ${resource.uri} does not match its declared bytes and SHA-256`);
+      }
+    }
     const expectedRuntime = await buildRuntimeTableForRenderGlb(renderPath, {
       url: pilot.sourceUrl,
       slot: pilot.slot,

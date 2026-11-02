@@ -73,7 +73,11 @@ export class EmbeddedKtx2TexturePlugin {
     }
 
     const sourceDef = json.images[extension.source];
-    if (!sourceDef || sourceDef.bufferView === undefined || typeof loader.parse !== 'function') {
+    const verifiedExternalBytes = sourceDef?.uri
+      ? parser.verifiedExternalKtx2Resources?.get(sourceDef.uri)
+      : null;
+    if (!sourceDef || (sourceDef.bufferView === undefined && !verifiedExternalBytes)
+        || typeof loader.parse !== 'function') {
       return parser.loadTextureImage(textureIndex, extension.source, loader);
     }
 
@@ -124,7 +128,13 @@ function loadEmbeddedSource(parser, sourceIndex, sourceDef, loader) {
 }
 
 function decodeEmbeddedSource(parser, sourceDef, loader) {
-  return transferableSourceBytes(parser, sourceDef.bufferView)
+  const verifiedExternalBytes = sourceDef.uri
+    ? parser.verifiedExternalKtx2Resources?.get(sourceDef.uri)
+    : null;
+  const sourceBytes = verifiedExternalBytes
+    ? Promise.resolve(verifiedExternalBytes.slice().buffer)
+    : transferableSourceBytes(parser, sourceDef.bufferView);
+  return sourceBytes
     .then(async (bytes) => {
       // GFX-10 cross-GLB dedupe: Forge bodies embed byte-identical finish/detail atlases, so key on
       // the image bufferView's content (SHA-256 via crypto.subtle + byteLength + mimeType; the

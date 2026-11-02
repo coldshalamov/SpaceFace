@@ -15,13 +15,75 @@ import {
 } from '../src/contracts/renderPackage.js';
 import { createAssetResidencyRegistry, getAssetResidency } from '../src/render/assetResidency.js';
 import { loadAuthoredRenderPackagePilot } from '../src/render/assetLoader.js';
-import { createRenderPackageLoader } from '../src/render/renderPackageLoader.js';
+import {
+  assertRenderResourceBindings,
+  createRenderPackageLoader,
+  fetchVerifiedRenderResources,
+} from '../src/render/renderPackageLoader.js';
 import { installVisualOverrides } from '../src/render/visualOverrides.js';
 
 Object.defineProperty(THREE.Object3D.prototype, 'castShadow',
   Object.getOwnPropertyDescriptor(VendoredObject3D.prototype, 'castShadow'));
 
 const HASH = '1'.repeat(64);
+
+function glbJson(json) {
+  const jsonBytes = Buffer.from(JSON.stringify(json));
+  const padded = Buffer.concat([jsonBytes, Buffer.alloc((4 - jsonBytes.length % 4) % 4, 0x20)]);
+  const bytes = Buffer.alloc(20 + padded.length);
+  bytes.writeUInt32LE(0x46546c67, 0); bytes.writeUInt32LE(2, 4); bytes.writeUInt32LE(bytes.length, 8);
+  bytes.writeUInt32LE(padded.length, 12); bytes.writeUInt32LE(0x4e4f534a, 16); padded.copy(bytes, 20);
+  return bytes;
+}
+
+test('shared KTX2 fetch resolves package-relative URLs and fails closed on missing or stale bytes', async () => {
+  const payload = Buffer.from([0xab, 0x4b, 0x54, 0x58, 4, 5, 6]);
+  const sha = createHash('sha256').update(payload).digest('hex');
+  const resource = { uri: `../_shared/images/${sha}.ktx2`, mimeType: 'image/ktx2', sha256: sha, bytes: payload.length };
+  const metadata = { assetId: 'fixture.ship', render: { resources: [resource] } };
+  const urls = [];
+  const fetchGood = async (url, options) => {
+    urls.push([url, options.cache]);
+    return { ok: true, arrayBuffer: async () => payload.buffer.slice(payload.byteOffset, payload.byteOffset + payload.byteLength) };
+  };
+  const verified = await fetchVerifiedRenderResources(
+    fetchGood,
+    'file:///app/assets/ships/release/render-packages/fixture/render.glb',
+    metadata,
+  );
+  assert.deepEqual([...verified.get(resource.uri)], [...payload]);
+  assert.equal(urls[0][0], `file:///app/assets/ships/release/render-packages/_shared/images/${sha}.ktx2`);
+  assert.equal(urls[0][1], 'force-cache');
+  await fetchVerifiedRenderResources(fetchGood, 'https://assets.example/packages/fixture/render.glb', metadata);
+  assert.equal(urls[1][0], `https://assets.example/packages/_shared/images/${sha}.ktx2`);
+  await assert.rejects(fetchVerifiedRenderResources(async () => ({ ok: false, status: 404 }), 'https://game.test/packages/fixture/render.glb', metadata), /HTTP 404/);
+  await assert.rejects(fetchVerifiedRenderResources(async () => ({
+    ok: true, arrayBuffer: async () => Buffer.from('stale').buffer,
+  }), 'https://game.test/packages/fixture/render.glb', metadata), /byte length mismatch|SHA-256 mismatch/);
+});
+
+test('render GLB external KTX2 URI set must match the hash-bound resource descriptors', () => {
+  const sha = 'a'.repeat(64), uri = `../_shared/images/${sha}.ktx2`;
+  const bytes = glbJson({ asset: { version: '2.0' }, images: [{ uri, mimeType: 'image/ktx2' }] });
+  const resource = { uri, mimeType: 'image/ktx2', sha256: sha, bytes: 12 };
+  assert.equal(assertRenderResourceBindings(bytes, { assetId: 'fixture.ship', render: { resources: [resource] } }), true);
+  assert.throws(() => assertRenderResourceBindings(bytes, { assetId: 'fixture.ship', render: {} }), /undeclared external/);
+  assert.throws(() => assertRenderResourceBindings(glbJson({ asset: { version: '2.0' }, images: [] }), {
+    assetId: 'fixture.ship', render: { resources: [resource] },
+  }), /unreferenced external/);
+  assert.equal(assertRenderResourceBindings(glbJson({ asset: { version: '2.0' }, images: [{ bufferView: 0, mimeType: 'image/ktx2' }] }), {
+    assetId: 'legacy.ship', render: {},
+  }), true, 'legacy embedded packages remain readable');
+  assert.equal(assertRenderResourceBindings(glbJson({ asset: { version: '2.0' }, images: [{ uri: 'data:image/png;base64,AA==', mimeType: 'image/png' }] }), {
+    assetId: 'legacy.data-uri.ship', render: {},
+  }), true, 'legacy self-contained data URIs remain readable');
+  assert.throws(() => assertRenderResourceBindings(glbJson({ asset: { version: '2.0' }, images: [{ uri: 'textures/escape.png' }] }), {
+    assetId: 'untyped.external.ship', render: {},
+  }), /unsupported external URI/);
+  assert.throws(() => assertRenderResourceBindings(glbJson({ asset: { version: '2.0' }, images: [{ uri, mimeType: 'image/png' }] }), {
+    assetId: 'wrong-mime.external.ship', render: { resources: [resource] },
+  }), /unsupported external URI/);
+});
 
 test('verified URL cache rejects changed metadata that reuses declared trust anchors', async () => {
   let current = packageMetadata();
