@@ -74,6 +74,10 @@ const PRESETS = {
   // Surface-contact identities.
   impact: { color: '#ff9a5a', peak: 2.6, decay: 12, distance: 90, priority: 0.6 },
   impactHull: { color: '#ff7040', peak: 2.2, decay: 11, distance: 90, priority: 0.55 },
+  // The strike that empties the hull (mortalBlowRead.js): white-hot core punch, hotter and
+  // tighter than any ordinary hull hit, but below the break/detonation band — the death's own
+  // explosion light still owns the aftermath.
+  impactMortal: { color: '#eaf6ff', peak: 4.4, decay: 7, distance: 150, priority: 0.72 },
   impactDetonation: { color: '#39d0ff', peak: 4.2, decay: 8, distance: 180, priority: 0.7 },
   graze: { color: '#d8c39e', peak: 1.6, decay: 13, distance: 72, priority: 0.35 },
   collision: { color: '#bcd8ff', peak: 3.5, decay: 9, distance: 120, priority: 0.75 },
