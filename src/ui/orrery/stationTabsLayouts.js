@@ -2222,6 +2222,25 @@ ${T} .sx-bar__hang:is(:hover, :focus-within)::after { background:${SPINE(3, .62)
   ${D} .sx-ledger__row > .sx-ledger__read { grid-column:1 / -1; grid-row:2; min-width:0; }
 }
 
+/* Ledger eligibility card at 1101–1440 × 461–720 (ui-polish-287): the card stacked eight lines in a 34ch column
+   under the tape, so at 1280×720 everything past Net worth fell below the panel. The tape gives up what the frame
+   lacks (172px at 720 tall, 140px floor), and the card spans the tape and purse as one hairline strip: the head beside its note, the three gates side by side, the footnote under them. The panel
+   scrolls (as its 651–1100 frames do) so an open reading never buries the card. */
+@media (min-width:1101px) and (max-width:1440px) and (min-height:461px) and (max-height:720px) {
+  ${D} .sx-ledger { overflow:hidden auto !important; scrollbar-width:thin !important; overscroll-behavior:contain !important; }
+  ${D} .sx-ledger > .sx-ledger__right { bottom:auto !important; overflow:visible; }
+  ${D} .sx-ledger__right > .orr-ledger-tape { height:clamp(140px, calc(100vh - 550px), 172px) !important; }
+  ${D} .sx-ledger__row > .orr-ledger-purse { min-height:clamp(140px, calc(100vh - 550px), 172px); }
+  ${D} .sx-ledger__right > .dust-em { grid-column:1 / -1; align-self:start; max-width:none; margin:0; padding:8px 14px;
+    display:grid; grid-template-columns:auto minmax(0, 1fr); column-gap:14px; align-items:baseline; }
+  ${D} .sx-ledger__right > .dust-em .dust-em__note { margin:0; }
+  ${D} .sx-ledger__right > .dust-em .dust-em__rows { grid-column:1 / -1; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:0 18px;
+    margin-top:6px; padding-top:6px; border-top:1px solid color-mix(in srgb, var(--dp-ink, #e8e4d8) 12%, transparent); }
+  ${D} .sx-ledger__right > .dust-em .dust-em__row { grid-template-columns:minmax(0, 1fr); row-gap:2px; }
+  ${D} .sx-ledger__right > .dust-em .dust-em__fig { text-align:left; }
+  ${D} .sx-ledger__right > .dust-em .dust-em__foot { grid-column:1 / -1; margin-top:5px; font-size:12px; }
+}
+
 /* Ledger at 1441+ wide × 721+ tall (ui-polish-240): the purse hung under the tape's lower edge at the panel's far
    right, ~350px below its axis, so with no entry open the gauge stood alone in an empty field. It stands beside the
    tape, centred on the tape's height, as 1101–1440 does; the reading keeps the full column under both. */
