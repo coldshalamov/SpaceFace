@@ -47,3 +47,26 @@ test('chart label segment clipping rejects corner-near misses and retains touche
     assert.equal(placed.side, 'left', 'a corner or point touch retains segment collision cost');
   }
 });
+
+test('chart label scoring skips an early rejected seat without changing clean-seat selection', () => {
+  const [placed] = placeChartLabels(candidate, {
+    bounds,
+    reserved: [{ x: 106, y: 94, width: 20, height: 12 }],
+  });
+  assert.deepEqual(
+    { side: placed.side, x: placed.x, y: placed.y, visible: placed.visible },
+    { side: 'left', x: 74, y: 94, visible: true },
+  );
+});
+
+test('collision fallback remains available only for objective, selected, and forced labels', () => {
+  for (const policy of ['objective', 'selected', 'force']) {
+    const [placed] = placeChartLabels([{ ...candidate[0], [policy]: true }], {
+      bounds: { x: 0, y: 0, width: 1, height: 1 },
+    });
+    assert.equal(placed.visible, true, `${policy} label keeps its least-bad collision fallback`);
+  }
+
+  const [ordinary] = placeChartLabels(candidate, { bounds: { x: 0, y: 0, width: 1, height: 1 } });
+  assert.equal(ordinary.visible, false, 'an ordinary label is still suppressed when every seat collides');
+});
