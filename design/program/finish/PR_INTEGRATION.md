@@ -7,6 +7,7 @@ The 2026-11-01 GitHub snapshot contains 24 open PRs for `coldshalamov/SpaceFace`
 - **#784, Save layout:** merged through `1960ba9dc845`. The thirteen-line inset/hairline change and source fingerprints were reviewed; numerical UI budgets were unchanged. The current Save-screen look remains pending.
 - **#785, Ledger eligibility:** merged through `82693956a0a7`. At1101–1440×461–720, the eligibility card spans the tape and purse, and its panel scrolls. Source review is complete; an ordinary populated Ledger look remains pending.
 - **#788, Pause footer:** merged through `82693956a0a7`. At521–640px desktop height, the footer moves below the dial rim. Source review is complete; the corresponding ordinary Pause look remains pending.
+- **#786, Station footer:** merged through `b8878dcc7167`. At901–1199px width, tab hit areas stay clear of Comms/Help/Undock; tighter narrow-desktop spacing retains the Market controls above the footer. The source and focused browser test were reviewed; execution is queued behind the current GPU measurement.
 
 These merges preserve the existing UI cost thresholds; updated source fingerprints are not performance acceptance.
 
