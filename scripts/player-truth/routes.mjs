@@ -245,13 +245,22 @@ async function waitForFirstLightInputRelease(page) {
 // releases its input fence (closing). Other callers keep the strict release wait above.
 async function waitForFirstLightOpenOrRelease(page, timeout) {
   try {
-    await page.waitForFunction(() => {
+    const outcomeHandle = await page.waitForFunction(() => {
       const root = document.getElementById('sf-confirm-root');
       const dialog = root?.querySelector('[role="dialog"]');
       const title = String(dialog?.querySelector('#sf-confirm-title')?.textContent || '').replace(/\s+/g, ' ').trim();
-      if (!dialog || title !== 'First light') return !(root && (root._sfConfirmToken != null || root.innerHTML.trim())) || !!dialog;
-      return root.classList.contains('sf-confirm--in');
+      if (dialog && title !== 'First light') return { superseded: true, title: title || 'another confirmation' };
+      if (dialog) return root.classList.contains('sf-confirm--in') ? { opened: true } : false;
+      if (root && (root._sfConfirmToken != null || root.innerHTML.trim())) return false;
+      return { released: true };
     }, null, { timeout });
+    const outcome = await consumePageConditionValue(outcomeHandle);
+    if (outcome?.superseded) {
+      throw new Error(`First light was superseded before input release; preserving ${outcome.title}`);
+    }
+    if (outcome?.opened !== true && outcome?.released !== true) {
+      throw new Error('First light did not open or release its modal input fence');
+    }
   } catch (error) {
     if (error?.name !== 'TimeoutError') throw error;
   }
