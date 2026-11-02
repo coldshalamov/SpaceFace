@@ -16,13 +16,19 @@ import {
   wreckBurnPicture,
 } from '../src/render/vfx/wreckAftermathState.js';
 
-test('the kill stamp gives the wreck an age; an unstamped wreck stays cold', () => {
+test('explicit kill time zero is valid while default birth time zero stays cold', () => {
   assert.equal(resolveWreckAgeS({ killedAt: 1000 }, 1005), 5);
   assert.equal(resolveWreckAgeS({ bornAt: 1000, killedAt: 990 }, 1005), 5, 'latest stamp wins');
   assert.equal(resolveWreckAgeS({ debrisHotT0: 1002, killedAt: 990 }, 1005), 3);
+  assert.equal(resolveWreckAgeS({ killedAt: 0 }, 5), 5, 'a real kill can happen at sim time zero');
+  assert.equal(resolveWreckAgeS({ killedAt: 0 }, 0), 0);
+  assert.equal(resolveWreckAgeS({ bornAt: 0 }, 5), -1, 'default authored birth time is not a kill');
+  assert.equal(resolveWreckAgeS({ debrisHotT0: 0, capitalDebris: true }, 5), 5,
+    'an explicitly capital-hot stamp may also begin at zero');
+  assert.equal(resolveWreckAgeS({ debrisHotT0: 0 }, 5), -1,
+    'a default hot-time zero without its hot-debris marker is absent');
   assert.equal(resolveWreckAgeS({}, 1005), -1, 'no stamp: authored set dressing');
   assert.equal(resolveWreckAgeS(null, 1005), -1);
-  assert.equal(resolveWreckAgeS({ killedAt: 0 }, 1005), -1, 'a zero stamp is no stamp');
   // A stamp from the "future" (clock skew, save/load) never yields a negative age.
   assert.equal(resolveWreckAgeS({ killedAt: 2000 }, 1005), 0);
 });

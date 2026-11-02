@@ -24,11 +24,18 @@ export function resolveWreckAgeS(data, nowS) {
   const now = num(nowS);
   const d = data || null;
   if (!d) return -1;
-  let birth = 0;
-  if (num(d.killedAt) > birth) birth = num(d.killedAt);
-  if (num(d.bornAt) > birth) birth = num(d.bornAt);
-  if (num(d.debrisHotT0) > birth) birth = num(d.debrisHotT0);
-  if (birth <= 0) return -1;
+  let birth = -Infinity;
+  // A kill at sim-time zero is valid. By contrast, bornAt: 0 is the default on authored
+  // set dressing, so only a positive bornAt can stand alone as a wreck-age stamp.
+  if (Number.isFinite(d.killedAt)) birth = Math.max(birth, d.killedAt);
+  if (Number.isFinite(d.bornAt) && d.bornAt > 0) birth = Math.max(birth, d.bornAt);
+  // Zero is meaningful for the explicit capital-hot stamp, whose producer supplies the flag
+  // and timestamp together. A default zero without that ownership marker is not a hot stamp.
+  if (Number.isFinite(d.debrisHotT0)
+    && (d.debrisHotT0 > 0 || (d.debrisHotT0 === 0 && d.capitalDebris === true))) {
+    birth = Math.max(birth, d.debrisHotT0);
+  }
+  if (birth === -Infinity) return -1;
   return Math.max(0, now - birth);
 }
 
