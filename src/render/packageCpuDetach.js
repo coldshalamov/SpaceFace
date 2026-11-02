@@ -1054,8 +1054,8 @@ export function presentedDetachDrawsArmed(renderer) {
 /**
  * One in-flight presented refill. The draw guard and the orientation hold share it so a
  * package cannot be decoded twice. A supplied resource cohort excludes unrelated cached
- * packages; unscoped guard callers retain the complete-registry fallback. The hold drops after
- * finishes: clearing it earlier lets the next frame upload the still-empty mirror.
+ * packages; unscoped guard callers retain the complete-registry fallback. The hold drops only
+ * after the requested refill finishes, so the next frame cannot upload an empty mirror.
  */
 function presentedResourceManifests(resources) {
   if (!resources) return detachedManifestList();
