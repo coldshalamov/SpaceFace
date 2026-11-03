@@ -102,6 +102,20 @@ test('an adopted scavenger resumes its exact native salvage job after FLEE and c
       assert.equal(manifest.lines.reduce((sum, line) => sum + line.qty, 0), quantity);
       assert.equal(entry.job.payload.targetId, targetId);
       assert.deepEqual(entry.job.route, route);
+
+      // The exact extracted hold completes the separate wrangle phase even though WORK drained
+      // and marked its booked wreck. It then starts the ordinary return leg without minting or
+      // replacing the cargo lot.
+      assert.equal(entry.job.phase, 'load');
+      const loadBoundTicks = Math.ceil(entry.job.loadS / (1 / 60)) + 2;
+      for (let tick = 0; tick < loadBoundTicks && entry.job.phase === 'load'; tick += 1) h.step();
+      assert.equal(h.events.load.length, 1,
+        'the native load completion fires once after the real finite extraction');
+      assert.equal(h.events.load[0].completed, true);
+      assert.equal(entry.job.phase, 'return', 'the canonical job kernel advances into RETURN');
+      assert.deepEqual(cutter.data.cargoManifest, manifest,
+        'the same extracted manifest remains aboard across the phase transition');
+      assert.deepEqual(target.data.salvagePool, {}, 'return does not refill the consumed source');
     } finally {
       h.close();
     }

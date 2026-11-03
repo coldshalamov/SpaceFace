@@ -2362,6 +2362,20 @@ export const trafficRoleOps = {
     if (job.phase === NPC_JOB_PHASE.COMMISSION) return null;
     if (job.phase === NPC_JOB_PHASE.FLEE || job.phase === NPC_JOB_PHASE.COMPLETE) return null;
     if (adoptedScavenger) {
+      // WORK still requires the exact live, eligible wreck below. After a successful cut,
+      // however, that same body is deliberately drained and marked salvaged. Let only the
+      // extraction recorded on this exact job and its matching finite salvor hold finish LOAD;
+      // otherwise the consumed wreck would block the cutter forever before the RETURN leg.
+      const heldManifest = entity.data?.cargoManifest;
+      const extractedQty = job.payload?.totalQty;
+      const hasExtractedSalvorHold = job.phase === NPC_JOB_PHASE.LOAD
+        && job.payload?.extracted === true
+        && Number.isSafeInteger(extractedQty) && extractedQty > 0
+        && heldManifest?.role === 'salvor'
+        && validCausalManifest(heldManifest)
+        && heldManifest.totalQty === extractedQty;
+      if (hasExtractedSalvorHold) return this._salvorTargetDescriptor(entity, entity, 1);
+
       // The first native attachment probe establishes the retained object sidecar. Until then,
       // let the existing explicit booking resolver perform its one normal initial bind. A
       // persisted identity also authorizes rebinding after Continue; never fall back to the old
