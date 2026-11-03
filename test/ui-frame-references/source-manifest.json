@@ -305,7 +305,7 @@
   "src/ui/screens/pause.js": "1b1995a43364670a376da2e42c5b0b008fcfbcbdbc637fdb93a4bca16acd25b9",
   "src/ui/screens/physicsVenues.js": "c618a414d43d51fd6232e33aa6d782ef1de68f7ede4bf435d4da5ea9d7dc8724",
   "src/ui/screens/raceBoard.js": "1ba95426bb3c03e2ff97adb5f337b525a3516391728d9e4ebb8b8f373fa072b1",
-  "src/ui/screens/range.js": "9dd00dc8ff9b05c2300cf8bf6d4d12abd305d30582e052fa28de539aa52a6673",
+  "src/ui/screens/range.js": "8ca1acc4861e2af42d298e5696f1990985875cc4cccdf258c7a5835cd3acf25b",
   "src/ui/screens/replay.js": "4cdf7e4af11fcb8d2380c493cf1d9e070b269f68319fe26df99f69ea105547c3",
   "src/ui/screens/resultsSheet.js": "7650d44ed2f6e8a0b93ef2888fd02f7e89e9473e24e20dd26091c2dbe915d6d4",
   "src/ui/screens/sandbox.js": "b825ea93500a10a099cc63f5806263f16a93cbc3c92329c5cb8393de7915cf89",

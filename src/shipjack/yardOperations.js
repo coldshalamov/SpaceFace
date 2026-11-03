@@ -20,6 +20,9 @@ function factorsFor(state, payload) {
   const station = STATIONS.get(stationId);
   if (!station) return bad('Dock at a receiving yard first');
   if (!vessel || !owned || vessel.custodian !== 'player') return bad('This vessel is no longer in your custody');
+  if (owned.fleetAssignmentId != null && (state.automation?.fleet || []).some(row => row?.id === owned.fleetAssignmentId)) {
+    return bad('Return this wingman to the hangar before requesting yard work');
+  }
   if (!ACTIONS.has(payload.action)) return bad('Unknown yard service');
   const active = state.player.ownedShips[state.player.activeShipIndex] === owned;
   const atBerth = vessel.location?.kind === 'berth' && vessel.location.stationId === stationId;

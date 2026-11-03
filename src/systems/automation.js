@@ -2881,7 +2881,8 @@ export const automation = {
       redeployTimer: 0, hp: hullPct, hullPct, status: 'escort',
     };
     a.fleet.push(fs);
-    this.bus.emit('automation:fleetChanged', { id, action: 'assigned', name: fs.name });
+    this.bus.emit('automation:fleetChanged', { id, action: 'assigned', name: fs.name,
+      ...(ship.vesselId ? { vesselId: ship.vesselId } : {}) });
     return true;
   },
 
@@ -2896,6 +2897,11 @@ export const automation = {
       this.bus.emit('automation:fleetChanged', { id, action: 'releaseRejected', reason: 'player_body' });
       return false;
     }
+    const owned = fs && ships?.fleetOwnedHull?.(id);
+    if (owned?.vesselId && !this._registry?.get('shipjack')?.returnFleetVessel?.(fs, entity)) {
+      this.bus.emit('automation:fleetChanged', { id, action: 'releaseRejected', reason: 'tracked_not_berthed' });
+      return false;
+    }
     if (!fs || !ships?.releaseFleetHull?.(id, entity, fs)) {
       this.bus.emit('automation:fleetChanged', { id, action: 'releaseRejected' });
       return false;
@@ -2905,7 +2911,8 @@ export const automation = {
     if (entity) entity.alive = false;
     fs._liveId = null;
     fleet.splice(index, 1);
-    this.bus.emit('automation:fleetChanged', { id, action: 'released', name: fs.name });
+    this.bus.emit('automation:fleetChanged', { id, action: 'released', name: fs.name,
+      ...(owned?.vesselId ? { vesselId: owned.vesselId } : {}) });
     return true;
   },
 

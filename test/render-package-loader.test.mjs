@@ -13,7 +13,7 @@ import {
   renderPackageContentIdentity,
   stableJsonStringify,
 } from '../src/contracts/renderPackage.js';
-import { createAssetResidencyRegistry, getAssetResidency } from '../src/render/assetResidency.js';
+import { createAssetResidencyRegistry, getAssetResidency, disposeAssetResidency } from '../src/render/assetResidency.js';
 import { loadAuthoredRenderPackagePilot } from '../src/render/assetLoader.js';
 import {
   assertRenderResourceBindings,
@@ -1384,6 +1384,209 @@ function pilotRuntimeFixture(loader) {
     renderPackages: loader,
   };
 }
+
+async function settledPilotHandoffFixture() {
+  let clock = 0, decodes = 0, eventHook = null;
+  const renderer = {}, events = [];
+  const residency = getAssetResidency(renderer, { now: () => clock, maxEvents: 512,
+    onEvent(event) { events.push(event); eventHook?.(event); } });
+  residency.rotateSector('sector_ceres_belt');
+  const metadata = packageMetadata();
+  const loader = createRenderPackageLoader({ residency,
+    loadGlb() { decodes++; return { scene: decodedFixture().scene }; },
+    prepareDecoded: () => Object.freeze({ url: PILOT_SOURCE_URL }),
+  });
+  const runtime = pilotRuntimeFixture(loader);
+  runtime.defaultResidencyOwner = { type: 'authored-runtime-cache' };
+  const pilot = { metadataUrl: metadata, expectedContentHash: metadata.contentHash, assetId: metadata.assetId };
+  const load = options => loadAuthoredRenderPackagePilot(runtime, pilot, PILOT_SOURCE_URL, {
+    renderer, slot: 'hull', optional: true, sectorId: 'sector_ceres_belt',
+    isResidencyOwnerActive: () => true, ...options,
+  });
+  const initial = new THREE.Group();
+  const first = await load({ residencyOwner: initial, residencyRole: 'current-sector' });
+  const key = first.residency.key;
+  const bytes = residency.diagnostics().assets.find(asset => asset.key === key).bytes;
+  clock = 10;
+  residency.releaseOwner(initial, 'initial-boundary-departed');
+  clock = 20;
+  residency.registerAsset('served-soft-pressure', [{ userData: {},
+    byteSize: 64 * 1024 * 1024 - Math.floor(bytes / 2), dispose() {} }]);
+  const pressure = () => residency.retain('served-soft-pressure', {}, {
+    role: 'runtime-cache', decodeServed: true, sectorId: 'sector_ceres_belt',
+  });
+  pressure();
+  clock = 30;
+  return { renderer, residency, runtime, loader, first, key, events, load, pressure,
+    decodes: () => decodes,
+    onEvent(hook) { eventHook = hook; },
+    close() { eventHook = null; loader.dispose(); disposeAssetResidency(renderer); },
+  };
+}
+
+function assertNoHandoffPin(f, renderPackage = f.first.renderPackage) {
+  assert.equal(f.residency.diagnostics().pendingRequests, 0);
+  const row = f.residency.diagnostics().assets.find(asset => asset.key === f.key);
+  assert.equal(row?.roles.includes('current-sector') || false, false, 'no cancelled or departed boundary retain remains');
+  // A legitimate cache residue may outlive the boundary; end those actual leases instead of
+  // assuming the budget must choose this particular victim over an older pressure asset.
+  f.residency.releaseOwner(f.runtime.defaultResidencyOwner, 'warm-expired');
+  renderPackage.release('cache-released');
+  assert.equal(f.residency.has(f.key), false, 'only the normal cache/warm leases kept the resources resident');
+}
+
+test('settled pilot handoff protects a requested live joiner before a warm cache hit can evict it', async () => {
+  const f = await settledPilotHandoffFixture();
+  const owner = new THREE.Group();
+  try {
+    const warm = f.load({ residencyRole: 'decode-runway' });
+    const live = f.load({ residencyOwner: owner, residencyRole: 'current-sector' });
+    assert.equal(f.residency.diagnostics().pendingRequests, 1, 'handoff is protected synchronously, before await');
+    const [warmRecord, record] = await Promise.all([warm, live]);
+    assert.strictEqual(record.renderPackage, f.first.renderPackage);
+    assert.strictEqual(warmRecord.renderPackage, record.renderPackage);
+    assert.equal(f.decodes(), 1, 'warm-first/live-join must not decode a replacement generation');
+    const row = f.residency.diagnostics().assets.find(asset => asset.key === f.key);
+    assert.equal(row.refCount, 3, 'one cache owner, one warm owner and the normal boundary owner');
+    assert.equal(f.residency.diagnostics().pendingRequests, 0);
+    f.residency.releaseOwner(owner, 'boundary-departed');
+    assertNoHandoffPin(f);
+  } finally { f.close(); }
+});
+
+test('settled pilot handoff leaves warm-only eviction and live-first generation reuse intact', async () => {
+  for (const liveFirst of [false, true]) {
+    const f = await settledPilotHandoffFixture();
+    const owner = new THREE.Group();
+    try {
+      if (liveFirst) {
+        const live = f.load({ residencyOwner: owner, residencyRole: 'current-sector' });
+        const warm = f.load({ residencyRole: 'decode-runway' });
+        assert.strictEqual((await live).renderPackage, f.first.renderPackage);
+        await warm;
+        assert.equal(f.first.renderPackage.evicted, false);
+      } else {
+        await f.load({ residencyRole: 'decode-runway' });
+        assert.equal(f.first.renderPackage.evicted, true, 'an unneeded warm-only package remains a legitimate victim');
+        assert.ok(f.events.some(e => e.type === 'asset-evicted' && e.key === f.key && e.reason === 'soft-residency-budget'));
+      }
+      assert.equal(f.decodes(), 1);
+      assert.equal(f.residency.diagnostics().pendingRequests, 0);
+    } finally { f.close(); }
+  }
+});
+
+test('settled pilot handoff cancels aborted or departed live consumers without an extra hard owner', async () => {
+  for (const departure of ['abort', 'release', 'inactive']) {
+    const f = await settledPilotHandoffFixture();
+    const owner = new THREE.Group(), controller = new AbortController();
+    let active = true;
+    try {
+      const warm = f.load({ residencyRole: 'decode-runway' });
+      const live = f.load({ residencyOwner: owner, residencyRole: 'current-sector',
+        signal: controller.signal, isResidencyOwnerActive: () => active });
+      assert.equal(f.residency.diagnostics().pendingRequests, 1);
+      if (departure === 'abort') controller.abort();
+      else if (departure === 'release') f.residency.releaseOwner(owner, 'boundary-departed');
+      else active = false;
+      assert.equal(await live, null);
+      await warm;
+      assert.equal(f.residency.diagnostics().pendingRequests, 0);
+      f.pressure();
+      assert.equal(f.residency.has(f.key), false, 'cancelled demand cannot leave an eviction-blocking owner');
+      assert.equal(f.decodes(), 1, 'a departed consumer cannot request a replacement decode');
+    } finally { f.close(); }
+  }
+});
+
+test('settled pilot handoff cancels failed waits without removing an existing boundary claim', async () => {
+  const f = await settledPilotHandoffFixture(), owner = new THREE.Group();
+  try {
+    f.residency.retain(f.key, owner, { role: 'current-sector', sectorId: 'sector_ceres_belt' });
+    const record = await f.load({ residencyOwner: owner, residencyRole: 'current-sector',
+      asyncAdmission: { wait: () => Promise.reject(new Error('consumer wait failed')) } });
+    assert.equal(record, null);
+    assert.equal(f.residency.diagnostics().pendingRequests, 0);
+    assert.equal(f.residency.has(f.key), true, 'another existing boundary claim must survive this failed request');
+    f.residency.releaseOwner(owner, 'existing-boundary-left');
+    assertNoHandoffPin(f);
+    assert.equal(f.decodes(), 1);
+  } finally { f.close(); }
+});
+
+test('settled pilot handoff ends its exact request without cancelling a same-owner sibling', async () => {
+  const f = await settledPilotHandoffFixture(), owner = new THREE.Group(), controller = new AbortController();
+  try {
+    const warm = f.load({ residencyRole: 'decode-runway' });
+    const cancelled = f.load({ residencyOwner: owner, residencyRole: 'current-sector', signal: controller.signal });
+    const live = f.load({ residencyOwner: owner, residencyRole: 'current-sector' });
+    assert.equal(f.residency.diagnostics().pendingRequests, 2);
+    controller.abort();
+    assert.equal(await cancelled, null);
+    assert.strictEqual((await live).renderPackage, f.first.renderPackage);
+    await warm;
+    assert.equal(f.residency.diagnostics().pendingRequests, 0);
+    assert.equal(f.residency.diagnostics().assets.find(a => a.key === f.key).refCount, 3);
+    assert.equal(f.decodes(), 1);
+    f.residency.releaseOwner(owner, 'sibling-boundary-left');
+    assertNoHandoffPin(f);
+  } finally { f.close(); }
+});
+
+test('settled pilot handoff rolls back only its new claim if cancellation lands during retain', async () => {
+  const f = await settledPilotHandoffFixture(), owner = new THREE.Group(), controller = new AbortController();
+  try {
+    f.onEvent(event => {
+      if (event.type === 'asset-retained' && event.key === f.key && event.role === 'current-sector') controller.abort();
+    });
+    assert.equal(await f.load({ residencyOwner: owner, residencyRole: 'current-sector', signal: controller.signal }), null);
+    assert.equal(f.residency.diagnostics().pendingRequests, 0);
+    assertNoHandoffPin(f);
+    assert.equal(f.decodes(), 1);
+  } finally { f.close(); }
+});
+
+test('settled pilot handoff rejects retired renderer, sector and generation scopes before committing', async () => {
+  for (const departure of ['renderer', 'runtime', 'sector', 'context-loss', 'context-generation']) {
+    const f = await settledPilotHandoffFixture(), owner = new THREE.Group();
+    const scope = f.residency.diagnostics();
+    try {
+      const live = f.load({ residencyOwner: owner, residencyRole: 'current-sector',
+        isResidencyOwnerActive: () => {
+          const now = f.residency.diagnostics();
+          return !now.contextLost && now.currentSectorId === scope.currentSectorId && now.contextGeneration === scope.contextGeneration;
+        } });
+      assert.equal(f.residency.diagnostics().pendingRequests, 1);
+      if (departure === 'renderer') disposeAssetResidency(f.renderer, 'renderer-disposed');
+      else if (departure === 'runtime') f.runtime.retiring = true;
+      else if (departure === 'sector') f.residency.rotateSector('sector_next');
+      else {
+        f.residency.handleContextLost();
+        if (departure === 'context-generation') f.residency.handleContextRestored({ sectorId: 'sector_ceres_belt' });
+      }
+      assert.equal(await live, null, departure);
+      assert.equal(f.residency.diagnostics().pendingRequests, 0, departure);
+      assert.equal(f.decodes(), 1, 'an invalid scope must not re-admit its old generation');
+      assert.equal(f.residency.diagnostics().assets.some(a => a.roles.includes('current-sector')), false);
+    } finally { f.close(); }
+  }
+});
+
+test('settled pilot handoff closes a stale request before a fresh generation retry', async () => {
+  const f = await settledPilotHandoffFixture(), owner = new THREE.Group();
+  try {
+    const live = f.load({ residencyOwner: owner, residencyRole: 'current-sector' });
+    assert.equal(f.residency.diagnostics().pendingRequests, 1);
+    f.first.renderPackage.release('old-cache-generation-released');
+    const record = await live;
+    assert.ok(record && !record.renderPackage.evicted && !record.renderPackage.released);
+    assert.notStrictEqual(record.renderPackage, f.first.renderPackage);
+    assert.equal(f.decodes(), 2, 'only an explicitly retired generation needs its legitimate replacement');
+    assert.equal(f.residency.diagnostics().pendingRequests, 0);
+    f.residency.releaseOwner(owner, 'new-boundary-left');
+    assertNoHandoffPin(f, record.renderPackage);
+  } finally { f.close(); }
+});
 
 test('packaged scenario props retain their production package through pressure until boundary release', async () => {
   const renderer = {};

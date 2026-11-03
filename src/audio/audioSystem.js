@@ -4163,6 +4163,7 @@ export const audio = {
     silence(rt.brakeGain);
     silence(rt.tetherHum);
     silence(rt.tetherOverloadGain);
+    silence(rt._tetherSpoolGain);
     if (rt._breachBed) {
       silence(rt._breachBed.noiseGain);
       silence(rt._breachBed.subGain);

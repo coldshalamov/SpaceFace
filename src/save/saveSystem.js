@@ -7142,7 +7142,9 @@ export const save = {
       this._callDeserialize('faction_concord', data.concord);
       this._callDeserialize('fulfillmentRoutes', data.fulfillment);
       yield 'deserialized-factions';
-      yield* this._callDeserializeChunked('world', data.world); // sets currentSectorId; does NOT spawn entities
+      // World resource compaction precedes npcJobs deserialization. Give it the incoming
+      // saved jobs so it does not protect the outgoing run's sources during sector rebuild.
+      yield* this._callDeserializeChunked('world', data.world, { npcJobs: data.npcJobs });
       yield 'deserialized-world';
       this._callDeserialize('reactiveMatter', data.reactiveMatter);
       this._callDeserialize('spectrum', data.spectrum);
@@ -7416,6 +7418,7 @@ export const save = {
       // and re-links to its rematerialized hull by worldRecordId on the next sector enter. Absent in
       // pre-v12 saves → migration seeds an empty bag → the runtime starts with no jobs.
       yield* this._callDeserializeChunked('npcJobsRuntime', data.npcJobs);
+      this.registry?.get?.('world')?.finishResourceBodyRestore?.();
       yield 'jobs-restored';
       // Replace outgoing-run traffic causality after world/job restore; absent or malformed input
       // clears the compact record instead of retaining a same-process handoff.
@@ -7739,6 +7742,7 @@ export const save = {
 
   _closeRestoreSession(s, restoreError) {
     const { state, timeEffects, restoreSource, slot } = s;
+    this.registry?.get?.('world')?.finishResourceBodyRestore?.();
     let drainedRunTransition = null;
     let hadPendingRunTransition = false;
     if (restoreError == null && s.chunkError != null) restoreError = s.chunkError;
@@ -8349,11 +8353,11 @@ export const save = {
     return error;
   },
 
-  _callDeserialize(name, data) {
+  _callDeserialize(name, data, context) {
     const sys = this.registry && this.registry.get && this.registry.get(name);
     if (sys && typeof sys.deserialize === 'function') {
       try {
-        sys.deserialize(data);
+        sys.deserialize(data, context);
       } catch (err) {
         const error = (err instanceof Error) ? err : new Error(String(err));
         error.region = name;
@@ -8364,11 +8368,11 @@ export const save = {
 
   // Async-lane twin: a system exposing deserializeChunked gets sliced at its own section
   // boundaries; everyone else runs the same synchronous deserialize the sync lane uses.
-  *_callDeserializeChunked(name, data) {
+  *_callDeserializeChunked(name, data, context) {
     const sys = this.registry && this.registry.get && this.registry.get(name);
     if (sys && typeof sys.deserializeChunked === 'function') {
       try {
-        yield* sys.deserializeChunked.call(sys, data);
+        yield* sys.deserializeChunked.call(sys, data, context);
       } catch (err) {
         const error = (err instanceof Error) ? err : new Error(String(err));
         error.region = name;
@@ -8376,7 +8380,7 @@ export const save = {
       }
       return;
     }
-    this._callDeserialize(name, data);
+    this._callDeserialize(name, data, context);
   },
 
   // Despawn every live entity, disposing meshes (synchronous, outside the sim sweep), and reset the

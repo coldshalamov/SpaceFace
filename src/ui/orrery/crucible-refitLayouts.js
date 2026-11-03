@@ -65,6 +65,31 @@ ${RF} > .sf-cru-stage.orr-hull--on .orr-hp__line { flex-wrap:wrap !important; }
 ${RF} > .sf-cru-stage.orr-hull--on .orr-hp__spares { white-space:nowrap; }
 ${RF} > .sf-cru-stage.orr-hull--on .orr-hp__spare-stat { white-space:nowrap; }
 
+/* Lighting a fitted hardpoint must not move its verbs underneath the pointer.
+   The selected description and keyboard hint are visual annotations, not part
+   of the measured callout. The schematic can therefore keep its placement. */
+${RF} > .sf-cru-stage.orr-hull--on .orr-hp__description,
+${RF} > .sf-cru-stage.orr-hull--on .orr-hp__contrast:not(.orr-hp__contrast--drawn) {
+  position:absolute !important; top:100%; left:0; right:0;
+}
+${RF} > .sf-cru-stage.orr-hull--on .sf-cru-act { position:relative; }
+${RF} > .sf-cru-stage.orr-hull--on .sf-cru-row.is-lit .sf-cru-act:not(:disabled)::after {
+  position:absolute !important; left:100%; top:0; white-space:nowrap;
+}
+${RF} > .sf-cru-stage.orr-hull--on .sf-cru-row.is-lit .sf-cru-act:not(:focus-visible)::after { display:none !important; }
+${RF} > .sf-cru-stage.orr-hull--on .is-left.sf-cru-row.is-lit .sf-cru-act:not(:disabled)::after {
+  left:auto; right:100%;
+}
+/* Spare choices and their comparison stay in the same places when the Hand
+   lights a row. Large lists retain the schematic's ordinary scroll fallback. */
+${RF} > .sf-cru-stage.orr-hull--on .is-open .orr-hp__line { flex-direction:column; align-items:flex-start; }
+${RF} > .sf-cru-stage.orr-hull--on .is-left.is-open .orr-hp__line { align-items:flex-end; }
+${RF} > .sf-cru-stage.orr-hull--on .is-open .orr-hp__spares { flex-direction:column; gap:1px; align-items:flex-start; }
+${RF} > .sf-cru-stage.orr-hull--on .is-left.is-open .orr-hp__spares { align-items:flex-end; }
+${RF} > .sf-cru-stage.orr-hull--on .is-open .orr-hp__spare { display:inline-flex !important; }
+${RF} > .sf-cru-stage.orr-hull--on .is-open .orr-hp__scales { display:block !important; }
+${RF} > .sf-cru-stage.orr-hull--on .is-open .sf-cru-act { margin-top:4px !important; align-self:auto; }
+
 /* 3 — keycaps are bare glyphs here, the library's own voice (pause foot, lit act's Enter) */
 ${RF} .k-foot .sf-cru-kbd,
 ${RF} > .sf-cru-stage.orr-hull--on .sf-cru-row.is-lit .sf-cru-act:not(:disabled)::after {

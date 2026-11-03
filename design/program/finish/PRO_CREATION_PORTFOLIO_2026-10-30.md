@@ -2,9 +2,11 @@
 
 ## Current status: Pro queued; usage limit observed
 
-The integrated Browser now connects in Codex. The regular ChatGPT page shows **Chat** selected,
-**Pro** effort and the GPT-6 family. The model menu still reports **“Usage limit reached”** on the
-2026-11-01 recheck. Correct Pro dispatches remain **zero**; all five briefs below remain unsent.
+The integrated Browser connects in Codex. On the 2026-11-03 recheck, the actual regular ChatGPT
+page had **Chat** selected, **Work** unselected, and the GPT-6 family. The model/effort menu
+showed **Medium**, a disabled power control and **“Usage limit reached”**. Pro was not available
+in that observed menu. No prompt was submitted and the menu was closed. Correct Pro dispatches
+remain **zero**; all five briefs below remain unsent. Refresh their base/interface packet before dispatch.
 Use the integrated Browser for these new Pro conversations. Work, alternate models and native
 thread creation are not substitutes for this request. Keep the main game integration moving
 while the Pro jobs are blocked by the observed limit.

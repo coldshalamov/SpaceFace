@@ -22,7 +22,7 @@
 
 import { drawSeeded, hash32 } from '../core/rng.js';
 import { isFullHoldRefusal, successfulPickupAmount } from '../core/pickupAcceptance.js';
-import { Masks } from '../core/entity.js';
+import { Masks, occupantGenerationOf } from '../core/entity.js';
 import { firstUseLine, resolveFirstUseEntityId, RANGE_POINTER_LINE, shelfVerbLine } from '../ui/hudAttention.js';
 import { bindFirstHourFelt } from '../ui/firstHourFelt.js';
 import { deboxCss, INK_SHADOW } from '../ui/hudBrackets.js';
@@ -538,6 +538,8 @@ export const onboarding = {
     this._dockControlInRange = false;
     this._gateControlInRange = false;
     this._derelictId = null;
+    this._derelictBody = null;
+    this._derelictGeneration = null;
     this._miningRockId = null;
     this._trainerId = null;
     this._firstRunSplashPending = false;
@@ -1750,6 +1752,7 @@ export const onboarding = {
     if (ob && ob.raid) ob.raid.active = false;
     if (ob && ob.claimed) ob.claimed.active = false;
     this._trainerId = this._derelictId = this._miningRockId = null;
+    this._derelictBody = this._derelictGeneration = null;
     this._latchDenialStreak = 0;
     if (this._panel) { this._panel.remove(); this._panel = null; }
     this._bodyEl = null;
@@ -1942,6 +1945,7 @@ export const onboarding = {
   // winched-enough teach-cut threshold (spec2/03 B1: reel <= 60 wu).
   _onTetherReel(payload) {
     if (!payload || payload.targetId !== this._derelictId) return;
+    if (!this._liveTrainingDerelict()) return;
     const after = Number(payload && payload.after);
     if (!Number.isFinite(after) || after > TETHER_REEL_MAX_WU) return;
     if (this.state.onboarding) this.state.onboarding.tetherReeled = true;
@@ -2106,6 +2110,7 @@ export const onboarding = {
     if (!beat) return;
     if (beat.key === 'tether' && eventName !== 'target:acquired') {
       if (!payload || payload.targetId !== this._derelictId) return;
+      if (!this._liveTrainingDerelict()) return;
     }
     // Followup barks (fire once per beat).
     for (const fu of (beat.followups || [])) {
@@ -2402,13 +2407,10 @@ export const onboarding = {
       this._spawnMiningRock();
       this._setObjectiveWaypoint(true);
     }
-    const derelict = this._derelictId != null && this.state.entities.get(this._derelictId);
-    if (beat.key === 'tether' && (!derelict || derelict.alive === false
-      || derelict.data?.onboarding !== true || derelict.data?.kind !== 'derelict')) {
+    if (beat.key === 'tether' && !this._liveTrainingDerelict()) {
       const oldId = this._derelictId;
       this._spawnDerelict();
-      const replacement = this.state.entities.get(this._derelictId);
-      if (replacement && replacement !== derelict) {
+      if (this._liveTrainingDerelict()) {
         ob.tetherReeled = false;
         for (const key of Object.keys(ob.firedFollowups || {})) {
           if (key.startsWith('tether:')) delete ob.firedFollowups[key];
@@ -2490,22 +2492,36 @@ export const onboarding = {
       physicsBody: { shape: 'capsule', mass: 900 },
       data: { parentType: 'ship', proportions: WRECK_COLLIDER_PROPORTIONS, loot: [], salvagePool: {}, salvageTimeLeft: 0, onboarding: true, kind: 'derelict' },
     });
-    if (wreck) this._derelictId = wreck.id;
+    if (wreck) {
+      this._derelictId = wreck.id;
+      this._derelictBody = wreck;
+      this._derelictGeneration = occupantGenerationOf(wreck);
+    }
+  },
+
+  _liveTrainingDerelict() {
+    const wreck = this._derelictId != null && this.state.entities?.get(this._derelictId);
+    return wreck && wreck === this._derelictBody && wreck.alive !== false
+      && occupantGenerationOf(wreck) === this._derelictGeneration
+      && wreck.data?.onboarding === true && wreck.data?.kind === 'derelict' ? wreck : null;
   },
 
   // B1 DONE: the vacuum shows itself — drop 2 salvage pickups, no line.
   _dropDerelictSalvage() {
     const st = this.state;
     if (this._derelictId == null || !this.helpers || !this.helpers.spawnEntity) return;
-    const wreck = st.entities && st.entities.get(this._derelictId);
-    if (!wreck || !wreck.pos) return;
+    const wreck = this._liveTrainingDerelict();
+    if (!wreck || !wreck.pos || !wreck.vel
+      || !Number.isFinite(wreck.pos.x) || !Number.isFinite(wreck.pos.z)
+      || !Number.isFinite(wreck.vel.x) || !Number.isFinite(wreck.vel.z)) return;
+    const angle = onboardingRandom(st) * TAU;
     for (let i = 0; i < 2; i++) {
-      const ang = onboardingRandom(st) * TAU;
-      const sp = 12;
+      const ang = angle + i * Math.PI;
+      const sp = 3;
       this.helpers.spawnEntity({
         type: 'pickup',
-        pos: { x: wreck.pos.x + Math.cos(ang) * 10, z: wreck.pos.z + Math.sin(ang) * 10 },
-        vel: { x: Math.cos(ang) * sp, z: Math.sin(ang) * sp },
+        pos: { x: wreck.pos.x + Math.cos(ang) * 17, z: wreck.pos.z + Math.sin(ang) * 17 },
+        vel: { x: wreck.vel.x + Math.cos(ang) * sp, z: wreck.vel.z + Math.sin(ang) * sp },
         radius: 2.2,
         data: { kind: 'cargo', commodityId: 'cmdty_salvage_electronics', amount: 1, despawnAt: (st.simTime || 0) + 60 },
       });
@@ -2635,10 +2651,11 @@ export const onboarding = {
     const player = this.state && this.state.player;
     if (player && player.targetId === this._trainerId) player.targetId = null;
     this._trainerId = null;
-    for (const id of [this._derelictId, this._miningRockId]) {
+    for (const id of [this._liveTrainingDerelict() ? this._derelictId : null, this._miningRockId]) {
       if (id != null && this.helpers && typeof this.helpers.removeEntity === 'function') this.helpers.removeEntity(id);
     }
     this._derelictId = null;
+    this._derelictBody = this._derelictGeneration = null;
     this._miningRockId = null;
     if (this.state && this.state.onboarding) {
       this.state.onboarding._trainerId = null;

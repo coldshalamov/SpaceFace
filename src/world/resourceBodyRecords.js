@@ -99,6 +99,7 @@ export function isFullyRecoveredResourceBody(record) {
 /** Only a fully recovered, untouched, untracked/untethered body may be compacted. */
 export function isReclaimableResourceBody(record, opts = {}) {
   if (!record || !isFullyRecoveredResourceBody(record)) return false;
+  if (opts.activeResourceBodyIds?.has(record.recordId)) return false;
   if (record.playerModified === true || record.missionOwned === true || record.tracked === true) return false;
   if (record.tethered === true || record.displaced === true) return false;
   if (record.retentionClass === RESOURCE_BODY_RETENTION_CLASS.PROTECTED) return false;
@@ -199,8 +200,8 @@ export function normalizeResourceBodyRecord(raw, fallbackId) {
   };
 }
 
-export function normalizeResourceBodyBag(input) {
-  const it = normalizeResourceBodyBagChunked(input);
+export function normalizeResourceBodyBag(input, opts = {}) {
+  const it = normalizeResourceBodyBagChunked(input, opts);
   let step = it.next();
   while (!step.done) step = it.next();
   return step.value;
@@ -208,7 +209,7 @@ export function normalizeResourceBodyBag(input) {
 
 /** Generator twin of the resource-body normalize: the async restore lane paints between
  * batches while the sorted iteration and output stay identical. */
-export function* normalizeResourceBodyBagChunked(input) {
+export function* normalizeResourceBodyBagChunked(input, opts = {}) {
   const bag = createEmptyResourceBodyBag();
   if (!input || typeof input !== 'object' || Array.isArray(input)) return bag;
   if (Array.isArray(input.retirementReceipts)) {
@@ -237,13 +238,13 @@ export function* normalizeResourceBodyBagChunked(input) {
     if (rec) bag.byId[rec.recordId] = rec;
     if (++normalized % 32 === 0) yield 'world-resource-body';
   }
-  enforceBound(bag, { source: 'normalize', authoritativeRetirement: true });
+  enforceBound(bag, { ...opts, source: 'normalize', authoritativeRetirement: true });
   yield 'world-resource-body-bound';
   return bag;
 }
 
-export function serializeResourceBodyBag(bag) {
-  const normalized = normalizeResourceBodyBag(bag);
+export function serializeResourceBodyBag(bag, opts = {}) {
+  const normalized = normalizeResourceBodyBag(bag, opts);
   const byId = {};
   for (const id of Object.keys(normalized.byId).sort()) byId[id] = normalized.byId[id];
   const serialized = {
@@ -262,8 +263,30 @@ export function serializeResourceBodyBag(bag) {
   return serialized;
 }
 
-export function deserializeResourceBodyBag(data) {
-  return normalizeResourceBodyBag(data);
+export function deserializeResourceBodyBag(data, opts = {}) {
+  return normalizeResourceBodyBag(data, opts);
+}
+
+// Derive protection at the compaction boundary from the actual live or saved job bag.
+// This is not written onto the resource and disappears as soon as the job is released.
+function resourceRetentionOptions(bag, opts) {
+  if (opts.activeResourceBodyIds instanceof Set) return opts;
+  const jobs = opts.npcJobs?.byId;
+  if (!jobs || typeof jobs !== 'object' || Array.isArray(jobs)) return opts;
+  const ids = new Set();
+  for (const [id, entry] of Object.entries(jobs)) {
+    const job = entry?.job, source = job?.payload?.prospectorField;
+    if (!source || job.kind !== 'surveyor' || job.corrupt || job.id !== id
+        || !['commission', 'transit', 'approach', 'work', 'flee'].includes(job.phase)
+        || !entry.worldRecordId || id !== `job:${entry.worldRecordId}`
+        || entry.sectorId !== source.sectorId || typeof source.sourceRecordId !== 'string') continue;
+    const record = bag.byId?.[source.sourceRecordId];
+    if (record && record.recordId === source.sourceRecordId && record.sectorId === source.sectorId
+        && record.fieldId === source.fieldId && record.slotId === source.sourceSlotId
+        && record.identityKey === source.sourceIdentityKey
+        && (record.sourceSeed ?? null) === (source.sourceSeed ?? null)) ids.add(record.recordId);
+  }
+  return { ...opts, activeResourceBodyIds: ids };
 }
 
 export function captureResourceBodyRecord(entity, opts = {}) {
@@ -440,10 +463,12 @@ function enforceBound(bag, opts = {}) {
   let liveCount = 0;
   for (const id of Object.keys(bag.byId)) if (bag.byId[id]) liveCount++;
   if (liveCount <= MAX_RESOURCE_BODIES) return;
+  opts = resourceRetentionOptions(bag, opts);
   const ids = Object.keys(bag.byId);
   const before = ids.map((id) => bag.byId[id]).filter(Boolean);
   const ranked = before.filter((record) => isReclaimableResourceBody(record, {
     fieldMayRegenerate: opts.fieldMayRegenerate !== false,
+    activeResourceBodyIds: opts.activeResourceBodyIds,
   })).sort((a, b) => {
     const ta = Number(a.lastObservedT) || 0;
     const tb = Number(b.lastObservedT) || 0;
@@ -466,6 +491,7 @@ function enforceBound(bag, opts = {}) {
   const after = Object.values(bag.byId).filter(Boolean);
   const protectedCount = after.filter((record) => !isReclaimableResourceBody(record, {
     fieldMayRegenerate: true,
+    activeResourceBodyIds: opts.activeResourceBodyIds,
   })).length;
   const reclaimableCount = after.length - protectedCount;
   const report = ensureResourceRetentionReport(bag);
@@ -581,11 +607,13 @@ function foldRetirementIntoFieldDepletion(fieldDepletion, record, receipt, opts 
 export function retireResourceBody(bag, recordId, opts = {}) {
   if (!bag || !bag.byId || !recordId) return { retired: false, reason: 'missing' };
   if (opts.authoritativeRetirement !== true) return { retired: false, reason: 'authority-required' };
+  opts = resourceRetentionOptions(bag, opts);
   const record = bag.byId[recordId];
   const blocked = retirementBlockReason(record);
   if (blocked) return { retired: false, reason: blocked, record };
   if (!isReclaimableResourceBody(record, {
     fieldMayRegenerate: opts.fieldMayRegenerate !== false,
+    activeResourceBodyIds: opts.activeResourceBodyIds,
   })) {
     return { retired: false, reason: 'protected', record };
   }
@@ -621,8 +649,10 @@ export function retireResourceBody(bag, recordId, opts = {}) {
 /** Compact deterministic reclaimable bodies; protected identities are reported, never evicted. */
 export function compactResourceBodyRecords(bag, opts = {}) {
   if (!bag || !bag.byId) return { retired: 0, protected: 0, receipts: [] };
+  opts = resourceRetentionOptions(bag, opts);
   const candidates = Object.values(bag.byId).filter((record) => isReclaimableResourceBody(record, {
     fieldMayRegenerate: opts.fieldMayRegenerate !== false,
+    activeResourceBodyIds: opts.activeResourceBodyIds,
   })).sort((a, b) => {
     const ta = Number(a.lastObservedT) || 0;
     const tb = Number(b.lastObservedT) || 0;
@@ -648,6 +678,7 @@ export function compactResourceBodyRecords(bag, opts = {}) {
   report.limit = MAX_RESOURCE_BODIES;
   report.reclaimable = remaining.filter((record) => isReclaimableResourceBody(record, {
     fieldMayRegenerate: true,
+    activeResourceBodyIds: opts.activeResourceBodyIds,
   })).length;
   report.protected = remaining.length - report.reclaimable;
   report.retiredRecent = retired;
@@ -774,12 +805,12 @@ export function applyResourceBodyToEntity(entity, record) {
   return entity;
 }
 
-export function ensureResourceBodies(world) {
+export function ensureResourceBodies(world, opts = {}) {
   if (!world || typeof world !== 'object') return createEmptyResourceBodyBag();
   if (!world.resourceBodies || typeof world.resourceBodies !== 'object' || Array.isArray(world.resourceBodies)) {
     world.resourceBodies = createEmptyResourceBodyBag();
   } else {
-    world.resourceBodies = normalizeResourceBodyBag(world.resourceBodies);
+    world.resourceBodies = normalizeResourceBodyBag(world.resourceBodies, opts);
   }
   return world.resourceBodies;
 }

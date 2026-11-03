@@ -1,6 +1,7 @@
 import { kesslerWeightSlipChoice, kesslerWeightSlipReply } from './massSlipConversation.js';
 import { kesslerStarterWorkChoice, kesslerStarterWorkReply } from './starterWorkdayConversation.js';
 import { kesslerFreightChoice, kesslerFreightReply } from './heliosFreightConversation.js';
+import { kesslerCeresShiftChoice, kesslerCeresShiftReply } from './ceresShiftConversation.js';
 import { commodityDisplayName } from '../commodityNames.js';
 import { localizeText } from '../../localization/sourceText.js';
 // Shared station-contact data, choices, replies, and map actions.
@@ -783,13 +784,15 @@ export function generateContacts(stationId, state = {}, opts = {}) {
       const slipChoice = kesslerWeightSlipChoice(state, stationId);
       const workChoice = kesslerStarterWorkChoice(state, stationId);
       const freightChoice = kesslerFreightChoice(state, stationId);
-      if (slipChoice || workChoice || freightChoice) {
+      const ceresChoice = kesslerCeresShiftChoice(state, stationId);
+      if (slipChoice || workChoice || freightChoice || ceresChoice) {
         const choices = getChoices(canonical.role, canonical);
         const dismissIndex = choices.findIndex((choice) => choice && choice.id === 'dismiss');
         const dismissChoice = dismissIndex >= 0 ? choices.splice(dismissIndex, 1)[0] : null;
         if (slipChoice) choices.push(slipChoice);
         if (workChoice) choices.push(workChoice);
         if (freightChoice) choices.push(freightChoice);
+        if (ceresChoice) choices.push(ceresChoice);
         if (dismissChoice) choices.push(dismissChoice);
         canonical.choices = choices;
       }
@@ -1957,6 +1960,8 @@ function buildCanonicalReply(contact, choiceId, ctx, stationId) {
       if (workReply) return workReply;
       const freightReply = kesslerFreightReply(state, stationId, choiceId);
       if (freightReply) return freightReply;
+      const ceresReply = kesslerCeresShiftReply(state, stationId, choiceId);
+      if (ceresReply) return ceresReply;
       if (choiceId === 'routes') {
         const route = bestTradeRoute(state, stationId);
         if (route) {

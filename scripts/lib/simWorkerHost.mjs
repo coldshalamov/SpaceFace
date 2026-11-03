@@ -1243,6 +1243,7 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
       host.domainDiffer.invalidateLeaf('automation.fleet');
       if (payload?.action === 'assigned' || payload?.action === 'released') {
         host.domainDiffer.invalidateLeaf('player.ownedShips');
+        if (payload.vesselId) host.domainDiffer.invalidateLeaf('player.shipjack');
       }
     });
     // The paid lot desk repaints only after its answer. Publish the book in that same reply,
@@ -1253,6 +1254,20 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
         host.domainDiffer.invalidateLeaf('player.ownedShips');
       }
     });
+    // Registry operations publish their existing authoritative record before the UI
+    // handles the receipt, even when the Registry is on its cold cadence at a berth.
+    const offRegistryChanges = ['shipjack:yardReceipt', 'shipjack:yardStarted',
+      'shipjack:fleetReceipt', 'shipjack:fleetStarted', 'shipjack:fleetArrived']
+      .map(type => bus.on(type, (payload) => {
+        host.domainDiffer.invalidateLeaf('player.shipjack');
+        if (type === 'shipjack:yardReceipt' && payload?.ok) {
+          if (['extract', 'repair_module', 'sell', 'return', 'repaint'].includes(payload.action)) {
+            host.domainDiffer.invalidateLeaf('player.ownedShips');
+          }
+          if (payload.action === 'forge_broadcast') host.domainDiffer.invalidateLeaf('player.moduleInventory');
+        }
+      }));
+    const offModuleSold = bus.on('module:sold', () => host.domainDiffer.invalidateLeaf('player.moduleInventory'));
     host.missionBoardMirrorUnsubscribe = () => {
       offBoardUpdate(); offAccepted();
       for (const off of offTerminal) off();
@@ -1263,6 +1278,8 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
       offOutpostsChanged();
       offFleetChanged();
       offLotDeskAnswered();
+      for (const off of offRegistryChanges) off();
+      offModuleSold();
     };
     if (captureAll === true) {
       const origEmit = bus.emit.bind(bus);

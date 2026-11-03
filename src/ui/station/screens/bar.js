@@ -671,7 +671,18 @@ export function createBarScreen(ctx) {
   // reply's own id and words; the dial leans her standing tick with it.
   const COLD_REPLY_RE = /(bye|farewell|safe flying|not interested|dismiss|clean\b|leave|never mind|no thanks|enough|threat|pay up|\blie\b)/i;
   const leanForChoice = (btn) => (COLD_REPLY_RE.test(`${btn.getAttribute('data-choice') || ''} ${(btn.textContent || '')}`) ? -1 : 1);
+  // A newly rendered choice can appear under a stationary pointer after the
+  // answer is revealed. Do not move focus back to it until the pointer moves.
+  let awaitingPointerMove = false;
+  stageEl.addEventListener('pointermove', (ev) => {
+    if (!awaitingPointerMove) return;
+    awaitingPointerMove = false;
+    const b = ev.target && ev.target.closest && ev.target.closest('.sx-choice');
+    const i = b ? choiceBtns().indexOf(b) : -1;
+    if (i >= 0) previewChoice(i);
+  });
   stageEl.addEventListener('pointerover', (ev) => {
+    if (awaitingPointerMove) return;
     const b = ev.target && ev.target.closest && ev.target.closest('.sx-choice');
     if (!b) return;
     const i = choiceBtns().indexOf(b);
@@ -828,8 +839,20 @@ export function createBarScreen(ctx) {
     pendingMissionOffer = result && result.missionOffer || null;
     pendingFrontierRumorOffer = result && result.frontierRumorOffer || null;
     acceptedMissionId = null;
+    awaitingPointerMove = true;
     renderStage(ctx.state || {});
     renderLeads(ctx.state || {});
+    // A short viewport may be scrolled down to the selected choice. The new
+    // answer is above it, so reveal and focus it only after an explicit choice,
+    // never during a passive refresh or when the cached screen is reopened.
+    const reply = stageEl.querySelector('.sx-talk__reply');
+    if (reply) {
+      reply.setAttribute('tabindex', '-1');
+      if (typeof reply.focus === 'function') {
+        try { reply.focus({ preventScroll: true }); } catch (_) { reply.focus(); }
+      }
+      if (typeof reply.scrollIntoView === 'function') reply.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    }
   });
 
   leadsEl.addEventListener('click', (ev) => {

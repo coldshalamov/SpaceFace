@@ -200,7 +200,7 @@ test('panel keeps one owned hull in one fleet assignment through save, index shi
     assert.doesNotMatch(html(), /data-act="assignFleet" data-ref="2"/, 'the panel does not offer an independently tracked vessel');
     click('assignFleet', 2); await drain();
     assert.equal(state.automation.fleet.length, 1, 'a stale tracked-vessel request cannot create a second physical hull');
-    assert.ok(receipts.some((text) => /tracked vessel remains under Registry custody/i.test(text)));
+    assert.ok(receipts.some((text) => /tracked hull to this berth.*yard or recovery/i.test(text)));
     state.player.ownedShips[2].fleetAssignmentId = 'tracked_wing';
     state.automation.fleet.push({ id: 'tracked_wing', defId: 'ship_kestrel', order: 'escort' });
     await asWorker(() => host.host.registry.get('wingmen')._spawnWingmen());
