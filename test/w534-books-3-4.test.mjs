@@ -17,6 +17,9 @@ import { createBus } from '../src/core/eventBus.js';
 import { createGameState } from '../src/core/gameState.js';
 import { hash32, mulberry32 } from '../src/core/rng.js';
 import { missions as missionsProto, STATION_INFO, campaign47aRouteKind } from '../src/systems/missions.js';
+import { frontierHomesteads as frontierProto } from '../src/systems/faction_frontier.js';
+import { FRONTIER_MODULES } from '../src/data/factions/free.js';
+import { SECTORS } from '../src/data/sectors.js';
 import { story as storyProto } from '../src/systems/story.js';
 import { addCargo } from '../src/systems/cargo.js';
 import { isBeatStepsComplete, getBeatStepStatus } from '../src/story/campaign47a/index.js';
@@ -100,12 +103,14 @@ function makeHarness(seed = 47) {
   });
 
   state.run = { ...(state.run || {}), kind: 'adventure' };
+  let nextOccupantGeneration = 1;
   const helpers = {
     hash32, mulberry32,
     voice: { say: () => true },
     spawnEntity: (spec) => {
       const id = state.entities.size ? Math.max(...state.entities.keys()) + 1 : 1;
-      const entity = { id, alive: true, ...spec, data: structuredClone(spec.data || {}) };
+      const entity = { id, alive: true, occupantGeneration: nextOccupantGeneration++,
+        vel: { x: 0, z: 0 }, ...spec, data: structuredClone(spec.data || {}) };
       state.entities.set(id, entity);
       state.entityList.push(entity);
       return entity;
@@ -118,18 +123,20 @@ function makeHarness(seed = 47) {
     },
   };
   const missions = Object.assign({}, missionsProto);
+  const frontier = Object.assign({}, frontierProto);
   const story = Object.assign({}, storyProto);
   const aftermath = Object.assign({}, aftermathProto);
   const understory = Object.assign({}, understoryProto);
   const rook = createRookBooth();
   const furnace = createFurnaceIntake();
   const systems = {
-    missions, story,
+    missions, story, frontierHomesteads: frontier,
     aftermathWrecks: aftermath, rookBooth: rook, furnaceIntake: furnace,
     understoryGardens: understory,
   };
   const registry = { get: (n) => systems[n] || null };
   const ctx = { state, bus, helpers, registry };
+  frontier.init(ctx);
   missions.init(ctx);
   story.init(ctx);
   aftermath.init(ctx);
@@ -143,7 +150,7 @@ function makeHarness(seed = 47) {
   const ecologyWorld = { state, bus, helpers, registry, active: { dressing: [], pois: [] },
     _toGlobal: sectorLocalToGlobalForSector };
   bus.on('entity:killed', (p) => handleAlienEcologyEvent(ecologyWorld, 'entity:killed', p));
-  return { state, bus, missions, story, helpers, popups, graffiti, seamFailed, beatAdvances,
+  return { state, bus, missions, frontier, story, helpers, popups, graffiti, seamFailed, beatAdvances,
     repDeltas, aftermath, rook, furnace, understory, ecologyWorld, systems, registry };
 }
 
@@ -781,14 +788,80 @@ check('B4: Free Captain door — Barn Raising', () => {
   assert.equal(state.story.branch, 'free');
   assert.equal(state.story.beatIndex, 4);
 
+  // A homestead completed before this offer is an existing world receipt, not credit for a new
+  // operation. Preserve it and let the owner seed a separate mission attempt after acceptance.
+  state.world.currentSectorId = 'sector_io_reach';
+  h.frontier.update(0, state);
+  const earlierFrame = state.entityList.find((e) => e.alive !== false && e.data?.homesteadFrame === true);
+  const earlierModules = FRONTIER_MODULES.map((module) => state.entityList.find((e) => e.alive !== false
+    && e.data?.frontierSite === earlierFrame.data.frontierSite && e.data?.homesteadModule === module.id));
+  for (const body of earlierModules) body.pos = { x: earlierFrame.pos.x + 10, z: earlierFrame.pos.z };
+  h.frontier.update(0, state);
+  h.frontier.update(12, state);
+  assert.equal(earlierFrame.data.homesteadRaised, true, 'the pre-existing owner site raised for real');
+  const earlierData = structuredClone(earlierFrame.data);
+  state.world.currentSectorId = 'sector_helios_prime';
+
   const op = acceptOffer(h, 'station_helios', 'campaign47a:b4:operation');
   assert.equal(op.type, 'tow_recovery');
   assert.equal(op.params.bookScene, 'barn_raising', 'the Free Captains raise the barn');
   assert.equal(op.storyBranch, 'free');
-  enterDest(h, op);
-  dockTow(h, op);
+  assert.equal(op.destSectorId, 'sector_io_reach');
+  assert.equal(op.destStationId, 'station_reach');
+  const sectors = new Map(SECTORS.map((row) => [row.id, row]));
+  assert.ok(sectors.get('sector_helios_prime').neighbors.includes('sector_tethys_junction'));
+  assert.ok(sectors.get('sector_tethys_junction').neighbors.includes('sector_io_reach'));
+  assert.ok(sectors.get('sector_io_reach').neighbors.includes('sector_tethys_junction'));
+  assert.ok(sectors.get('sector_io_reach').stations.find((row) => row.id === 'station_reach')
+    ?.services.includes('missions'), 'the operation target is the real Io mission board');
+  assert.equal(op.objectiveTarget, FRONTIER_MODULES.length);
+  assert.equal(op.params.frontierBarnRaisingVersion, 1);
+  assert.equal(op.needsTargets, false, 'the generic mission target path is not armed');
+  assert.deepEqual(op.targetEntityIds, []);
+  const creditsBefore = state.player.credits;
+  const opIndex = state.missions.active.indexOf(op);
+  h.missions._completeMission(op, opIndex);
+  assert.equal(op.status, 'active', 'generic mission settlement cannot bypass the Frontier receipt');
+  assert.equal(state.player.credits, creditsBefore, 'no payment before an owner receipt');
+
+  // The player flies to the existing Io Reach board/worksite sector. Frontier materializes its
+  // ordinary unfinished site once, then binds the accepted mission to those exact six pods.
+  state.world.currentSectorId = op.destSectorId;
+  h.frontier.update(0, state);
+  const attempt = state.frontier.barnAttempt;
+  assert.equal(attempt.missionId, op.id);
+  const frame = state.entities.get(attempt.frameId);
+  assert.ok(frame && frame.data.frontierMissionId === op.id, 'mission is tied to the actual Frontier frame');
+  assert.notEqual(frame.id, earlierFrame.id, 'the offer never adopts the already-raised site');
+  for (const [key, value] of Object.entries(earlierData)) assert.deepEqual(earlierFrame.data[key], value,
+    `the previously raised homestead keeps ${key}`);
+  const modules = FRONTIER_MODULES.map((module) => state.entities.get(attempt.moduleIds[module.id]));
+  assert.ok(modules.every((body) => body && body.alive !== false), 'six live owner-created module pods are staged');
+  assert.equal(state.entityList.filter((e) => e.alive !== false && e.data?.homesteadFrame === true).length, 2,
+    'the owner preserves the old frame and plants one bounded mission frame');
+  assert.equal(state.entityList.filter((e) => e.alive !== false && e.data?.homesteadModule).length,
+    FRONTIER_MODULES.length * 2, 'one old set remains and the mission owns one fresh six-piece set');
+  const worksiteWaypoint = h.missions._missionWaypoint(op);
+  assert.equal(worksiteWaypoint.targetEntityId, frame.id, 'live course hands off from station to the exact frame');
+  assert.deepEqual(worksiteWaypoint.pos, frame.pos);
+
+  for (const body of modules) body.pos = { x: frame.pos.x + 10, z: frame.pos.z };
+  h.frontier.update(0, state);
+  assert.equal(op.objectiveProgress, FRONTIER_MODULES.length, 'six distinct live snaps drive mission progress');
+  h.missions._completeMission(op, state.missions.active.indexOf(op));
+  assert.equal(op.status, 'active', 'six snaps alone do not settle before owner weld completion');
+  assert.equal(state.player.credits, creditsBefore);
+
+  h.frontier.update(12, state);
   assert.equal(op.status, 'completed');
   assert.equal(state.story.flags.barn_raised, true);
+  assert.equal(attempt.status, 'completed', 'the canonical completion receipt closes the Frontier attempt');
+  assert.deepEqual(Object.keys(op.params.frontierReceipt.moduleIds), FRONTIER_MODULES.map((module) => module.id));
+  assert.equal(state.player.credits, creditsBefore + op.reward_cr, 'the owner-bound mission pays once');
+  h.bus.emit('frontier:homesteadRaised', { missionId: op.id, siteId: attempt.siteId, homesteadId: frame.id });
+  assert.equal(state.player.credits, creditsBefore + op.reward_cr, 'duplicate raise cannot pay again');
+  h.frontier.update(0, state);
+  assert.equal(attempt.status, 'completed', 'later Frontier ticks preserve the completed homestead');
   assert.equal(state.story.beatIndex, 5);
 });
 

@@ -1728,11 +1728,22 @@ export const missionStoryOps = {
         text: 'IFF RESOLVES: HELIX PROVISIONING — NOT REACH. The pack was flawless; flawless is a signature too.',
       });
     } else if (bookScene === 'barn_raising') {
-      story.flags.barn_raised = true;
-      this.bus.emit('comms:popup', {
-        id: `b4_barn_${m.id}`, sender: 'IO HOMESTEAD', category: 'story', ttl: 7, persist: true,
-        text: 'The frame holds six modules and a name. Before the weld cooled the gate was already behind you. Weld Head rating posted.',
-      });
+      if (m.params?.frontierBarnRaisingVersion === 1 && m.params?.frontierReceipt?.version === 1) {
+        story.flags.barn_raised = true;
+        this.bus.emit('comms:popup', {
+          id: `b4_barn_${m.id}`, sender: 'IO HOMESTEAD', category: 'story', ttl: 7, persist: true,
+          text: 'The six marked modules are welded to the Io frame. The Nereid gate audit keeps its separate place on the board; this receipt belongs to the homestead crew.',
+        });
+      } else {
+        // Existing saves may carry an accepted one-body tow from before the B4 versioned
+        // worksite existed. Let that already accepted contract close the book, but never
+        // fabricate a six-module Frontier receipt from its generic tow completion.
+        story.flags.barn_raising_legacy_complete = true;
+        this.bus.emit('comms:popup', {
+          id: `b4_barn_legacy_${m.id}`, sender: 'IO HOMESTEAD', category: 'story', ttl: 7, persist: true,
+          text: 'The earlier tow record is settled. No new six-module worksite receipt was filed; existing homesteads remain on the chart.',
+        });
+      }
     }
     if (!isBeatStepsComplete(this.state, beat.beat)) {
       // A mid-list contract settled — the beat stays open and the board may post the next
@@ -2537,7 +2548,7 @@ export const missionStoryOps = {
       return true;
     }
     if (scene === 'barn_raising') {
-      popup('IO HOMESTEAD', 'Six modules and a frame before the Nereid gate welds. Whatever you tow becomes the wall.', 7);
+      popup('IO HOMESTEAD', 'Io Reach has six marked modules around a fresh frame. The first snap starts the 240-second E-21 window; the crew can restock a lost module or reset a missed window. Nereid’s audit runs on its own clock.', 7);
       return true;
     }
     if (scene === 'doubled_interdiction') {

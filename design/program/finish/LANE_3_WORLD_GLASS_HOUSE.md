@@ -1,7 +1,7 @@
 <!-- LIFETIME: STABLE -->
 # Lane 3 — THE WORLD, THE GLASS & THE HOUSE (medium complexity)
 
-**Written only by Lane 3.** Other lanes append one line to *Inbox* and nothing else.
+The controller coordinates current writers under README §3; lane labels do not create permanent path locks.
 Program law: [`README.md`](./README.md). Commands: [`TOOLS.md`](./TOOLS.md). Prompt: [`PROMPT_LANE_3.md`](./PROMPT_LANE_3.md).
 
 **The outcome:** Adventure is mentally stimulating — a first hour a stranger finishes, an economy
@@ -13,6 +13,26 @@ Status words: `OPEN`, `ACTIVE`, `LANDED <sha>`, `SKIPPED (<reason>)`.
 ## Claimed paths (beyond README §3)
 
 ## Inbox (other lanes append one line: date, lane, path, what/why)
+
+- 2026-11-03 first fabrication: Forge now admits its advertised refining recipes. Starter iron and silicate can become an existing Deck Cargo Net S through the material-consuming, timed queue and Shipworks handoff, adding20 capacity to the Hitch. Focused actual pickup/consumption/queue restoration/fitting checks pass. The main-to-worker Industry click and full ordinary trade/craft route remain separate integration work.
+
+- 2026-11-03 mobile: deployed `befca12c4c8b` candidate64d59 reached headless WebKit flight, actual thrust movement and Pause/Resume; root opened both rendered world/page captures. Rotation stalled the old target beyond10 seconds while simulation advanced. `8084c8925704` scopes rotation admission to visible, nonempty drawables;22 focused resize/lifetime cases pass, corrected deployment still pending. The new cohort baseline passes17/17 in71,396ms under90,000ms. Headed launch was rejected by automatic approval review with only “blocked by policy”; narrower headless execution was accepted. Visible native window and physical iPhone remain unverified; alias remains unchanged.
+
+- 2026-11-03 batch verification: the coherent creative source passes17/17 baseline groups in67,580ms under the unchanged90,000ms limit using the normal bounded allowance4. The earlier allowance2 run passed functional groups but failed timing at112,518ms because its nested Massline lane was serial; both logs are retained under `.devshots/finish/integration-2026-11-03/`. English extraction/readiness is current with zero unresolved surfaces; production translations are not claimed. This is integration evidence, not game-frame, public-route or physical-iPhone acceptance.
+
+- 2026-11-03 creative integration: fresh ordinary Ceres Continue retains the selected clamp, shows its real brace/1,800 T facts, and holding the beam records an actual brace. The three workfleet packages now load their authored geometry; native force, accepted cut work and cradle layout reach the default-worker presentation. The camera frames pilot and workpoint; the wider yard remains cropped. Actual play exposed and fixed a quiet auto-target refresh clearing an unacknowledged player choice. These results do not accept the full autonomous recovery cycle.
+
+- 2026-11-03 Anvil: finite player skim can feed a selected native socket, then a fresh beam gesture after closing Scoop releases its real pod. The original worker's residency and recycled-record recovery are repaired. The attempted ordinary route exposed gravity drift after autopilot arrival and a course on the wrong side of the planet; `c9e9f4a1e89e` now rounds the hazard toward the actual frame and holds with normal propulsion. The native reproduction changes 876 WU drift into a 28 WU hold after30 simulated seconds. Ordinary skim → pod → release → recovery remains open.
+
+- 2026-11-03 world and flight: Helios physical escape preserves its actual freight and Kessler reads the real aftermath/recovery posting; Sweeper earns finite front-mouth scrap and settles actual intake. Independent integration findings repaired borrowed-job deadlock, idle-Sweeper pickup consumption and the delayed partial-trade receipt. Detached Meridian freight no longer reattaches to a headless train. Focused owner/worker/save checks pass; these do not substitute for remaining ordinary encounter, delivery and trade routes.
+
+- 2026-11-03 attention/performance: a fresh Ceres view exposed stale tutorial, remote lien and stacked aftermath/recovery overlays. The deck now uses one relevant primary card, the real deadline and a death-time selected-life receipt across worker removal. The initial reminder yields after learned controls or travel. An eight-second actual Ceres profile attributed2.565 seconds to synchronous toast placement; `eadf3e78b129` coalesces accepted geometry changes once before paint and skips refused notices. Mounted behavior/geometry checks pass; a matched faster-frame result is pending.
+
+- 2026-11-03 integration: Flight controls gain F10 keyboard entry with rebind-aware fallback; the Line reader matches its class verdict to the live attachment; the chart keeps foreign objectives in their own sector and routes Anvil search to a safe outer approach. Focused input, Line and map checks passed. The Line worker projection lands with central integration; refreshed ordinary Anvil arrival and the full player work route remain open.
+
+- 2026-11-03 integration: rescue lifters retain the same survivor in durable custody after boarding; only verified station arrival settles rescue credit. Disable, destruction, sector exit and Continue retain or rematerialize that person. Recycled victim slots now mint separate person identities, preventing one person's expiry from deleting another passenger. Focused real-physics/save-envelope/identity checks pass; the uninterrupted ordinary rescue-to-cleanup view and visible passenger presentation remain open.
+
+- 2026-11-03 integration: `special500` atmospheric messages now retain their full sender/text in the existing Comms backlog with its unread cue, instead of becoming stacked flight receipts. Ordinary cargo/encounter receipts keep their behavior. Fourteen focused/real-DOM checks passed, including the opening attention gate and open-history refresh; this is not a whole-game or device acceptance claim. Current creative departments and player outcomes are in `STUDIO.md`.
 
 - 2026-10-31 integration: Asteroid narrow-desktop machine keys move into a 46px two-column right rail, clear of the guide and rig in the opened 390×844 fixture. Async Rover/terrain continuations now honor teardown and generation ownership before reporting failures or publishing readiness; production-callback tests and the reset walk report no cancellation errors. The public PQ-024 actor now waits on the existing renderer readiness API within its original bound and captures the ready view. That route has not run; Rover/terrain appearance remains unknown.
 
@@ -710,6 +730,20 @@ INFERENCE law (fold `INFERENCE_LANES.md` + `design/inference-workflows/` + `INFE
 Write the new front door so the next agent after this program knows where the game stands.
 
 
+### 2026-11-03 — Barn Raising uses the real six-module worksite
+
+The Free Book 4 operation previously promised six modules and a frame but settled one generic tow core. New versioned offers now route from Helios to the actual Frontier worksite at Io Reach, using the existing frame, habitat, tank, solar, dock, garden and mast definitions. The implemented graph supports Helios → Tethys → Io; Reach Station has the mission service. The optional Io–Nereid audit is real through the Frontier-sector aggregation and remains separate from the physical E-21 clock. No new model or second construction owner is added.
+
+The existing [Frontier owner](../../../src/systems/faction_frontier.js) adopts an unfinished local site and its six real pods. If the prior site is terminal or already raised, it preserves that homestead and plants one bounded tagged attempt nearby. The first snap starts the existing 240-second window; a complete set must finish the existing 12-second weld pass. A missed window damages the tagged frame but allows another pass, including when all six slots were already filled. Missing material waits for the 90-second restock cadence rather than appearing every tick. Progress and the mission waypoint refer to the live frame and slots.
+
+The mission binds an accepted attempt to exact site/frame/module IDs and occupant generations. Matching text labels, a stale event, a different homestead, generic docking/towing, or a saved objective counter cannot earn completion. The [mission owner](../../../src/systems/missions.js) requires the actual non-partial raised ledger after acceptance and planting, then uses canonical settlement once. A completed site's next tick and Continue neither pay again nor restock. An aborted new mission-only frame is retired. An adopted unfinished open-world site instead loses only its mission binding: its same frame, modules and snapped progress survive cancellation and can be reused on reaccept.
+
+Unversioned previously accepted jobs preserve their old tow behavior and story progression, but no longer claim a proven six-module raise. The [offer](../../../src/story/campaign47a/embodiedMissions.js), [physical objective guard](../../../src/systems/missionObjectiveOps.js) and [story receipt](../../../src/systems/missionStoryOps.js) distinguish these paths. The published live Book 4 operation-board and manual-chart safeguards are retained; their absence from current master is not treated as an instruction to delete them. The upstream Lane 3 controller wording and current integration Inbox are preserved here as well.
+
+Root repeated 28 passing Node entries across the original unchanged [Frontier regression](../../../test/weight-frontier-532.test.mjs) (6), new [Barn owner suite](../../../test/frontier-barn-mission.test.mjs) (10), the [Books 3–4 wrapper](../../../test/w534-books-3-4.test.mjs) (17 internal checks), and independent identity/Continue checks (11). These nested scopes are not additive whole-game totals. Tests drive actual frame/module/weld and mission owners, including Continue elsewhere then Io, stale generations, invalid slot bodies, bounded restock, partial initial spawn, preserved preaccept work, and exactly-once payout through a second completed Continue. Exact changed owners and pinned support use disclosed sparse transitive dependencies.
+
+This is source/owner verification, not native input, solver steering, rendered geometry/skin, full storage UI or performance acceptance. Existing Frontier deserialize takes ownership of its supplied parsed object and rebinds generations in place; serialize returns a deep clone. All current acceptance gaps and broader game/world goals remain open. No merge, deployment, workflow or model-production completion is implied.
+
 ### 2026-11-03 — Book 4 selected-operation handoff
 
 The existing Foreman cast, encounter score and settlement already connect the Maw job to the next Book 4 choice; this increment does not duplicate them. The next live-route defect was navigation after an intro settled: the generic Helios story marker persisted even when the selected operation was offered at Tethys (traders) or Coalition HQ (patrol). The free operation remains at Helios. [missions.js](../../../src/systems/missions.js) now asks the existing authored contract builder for the pending selected operation, using that board's station, sector and title rather than a second branch mapping. Before selection, the existing clearing desk remains. Active missions keep their navigation priority, and an explicit local chart course is not overwritten by this live B4 fallback. Pinned/legacy routes keep their prior outcome-shaped stake waypoint.
@@ -787,3 +821,4 @@ and trade controls inside the viewport; ordinary station/trade acceptance remain
 - Localization: four of five locales are machine-filled; new player text goes through the localization pipeline, never hard-coded.
 - `design/program/vm-drop/` is remote-authoritative; never write under it locally.
 - Git-bash `sed` strips CRLF; check `git diff --numstat` after scripted edits of mixed-ending files.
+
