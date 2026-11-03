@@ -306,7 +306,7 @@ export function rememberedSpareChoice(options, remembered) {
 }
 
 /**
- * How many of the drawn shop cards the wallet can still buy: available (the owner already folds
+ * How many of the current shop offers the wallet can still buy: available (the owner already folds
  * affordability and slot legality into it), not yet fitted, not the hull being flown, and not a
  * hull already on the manifest (a free switch, not a sale). Pure so a check can pin the count
  * the Escape guard reads without a DOM.
@@ -1271,7 +1271,7 @@ export const crucibleDraftScreen = {
 
   /**
    * The armory's Escape guard. Esc (and a pad's B) used to launch the next round on the spot,
-   * with whatever the player had not spent. In the swarm shop, while at least one drawn card is
+   * with whatever the player had not spent. In the swarm shop, while at least one current offer is
    * still buyable, the first Esc only moves focus to Launch and says what is left to buy; the
    * second Esc — or a click or Enter on Launch, which never comes through here — goes. Nothing
    * buyable, or the Gauntlet's Rearm, behaves exactly as before. Returns true when this press
@@ -1383,7 +1383,9 @@ export const crucibleDraftScreen = {
       this._launchWarned = false;
       return false;
     }
-    const count = affordableOfferCount(this._drawnOffers);
+    // Search and category filters only change the view. An empty shelf must not turn Cancel
+    // into an unannounced launch, and an old card must not warn about already-spent credits.
+    const count = affordableOfferCount(draftOwner(ctx)?.currentOffers?.());
     if (count < 1) return false;
     this._launchWarned = true;
     const text = launchGuardLine(count);
@@ -1591,8 +1593,6 @@ export const crucibleDraftScreen = {
     }
     this._note.textContent = notice || lines.notice || '';
     this._offersById = new Map([...visibleOffers, ...recommended].map((offer) => [offer.id, offer]));
-    // What the shelf shows right now, for the Escape guard (the Gauntlet never reads it).
-    this._drawnOffers = shop ? [...recommended, ...visibleOffers] : [];
     rootEl.classList.toggle('orr-armory', shop && !!this._reading);
     if (this._reading) {
       this._reading.el.hidden = !shop || !(visibleOffers.length || recommended.length);
