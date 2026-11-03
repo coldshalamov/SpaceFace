@@ -1,6 +1,7 @@
 // NXI-098 — a sealed held lot stays on the sell list, and Sell does not take it.
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 
 import { isUnsellableCargo } from '../src/systems/cargo.js';
 import { economy } from '../src/systems/economy.js';
@@ -10,6 +11,12 @@ import {
   marketPriceHistorySeries,
 } from '../src/ui/station/screens/market.js';
 import { installSimCommandSink, uninstallSimCommandSink } from '../src/core/simLaneCommands.js';
+import {
+  clearTradeExpectation,
+  consumeStationTradeReceipt,
+  tradeClearedReceipt,
+  TRADE_EXPECTATION_KEY,
+} from '../src/ui/station/tradeReceipt.js';
 
 const CHIPS = 'cmdty_microchips';
 const FOOD = 'cmdty_food';
@@ -973,78 +980,840 @@ test('market history backfill is lifecycle-scoped, bounded on failure, and never
 });
 
 
-test('Market holds the exact worker order until its own terminal response', async () => {
-  const dom = installDom();
-  let screen;
-  const calls = [];
-  try {
-    const state = holdState(0, 1);
-    installSimCommandSink(request => {
-      if (request.kind === 'rpc' && request.op === 'economyTrade') {
-        calls.push(request);
-        return new Promise(() => {});
+// Narrow worker-lane boundary proof: the actual Market screen is mounted above a bus that
+// applies the real generated main→sim event allowlist, queues forwarded trade intents, and
+// delivers authoritative worker events later. It intentionally does not claim a real Worker.
+function openMarketWithDeferredWorker(state, quoteState, tradeMode = 'buy', createScreen = createMarketScreen) {
+  const emitted = [];
+  const forwarded = [];
+  const rpcCalls = [];
+  const receipts = [];
+  const handlers = new Map();
+  const retiredIntentIds = new Set();
+  const shownIntentIds = new Set();
+  let suppressWorkerEvents = false;
+  const deliverWorkerEvent = (name, payload) => {
+    if (suppressWorkerEvents && (name === 'economy:tradeCompleted' || name === 'economy:tradeFailed')) return null;
+    if (name === 'game:new' || name === 'game:newGame' || name === 'save:loaded') {
+      const expectation = state.ui && state.ui[TRADE_EXPECTATION_KEY];
+      if (expectation && typeof expectation.intentId === 'string' && expectation.intentId.startsWith('market:')) {
+        retiredIntentIds.add(expectation.intentId);
       }
-      return Promise.resolve({ok: true, result: {histories: {}}});
+      if (expectation) clearTradeExpectation(state, { intentId: expectation.intentId });
+    }
+    if (name === 'station:marketTradeIntentRetired' && payload && typeof payload.intentId === 'string') {
+      retiredIntentIds.add(payload.intentId);
+    }
+    if (name === 'economy:tradeCompleted') {
+      const ledger = state.player.tradeLedger || (state.player.tradeLedger = []);
+      if (payload && payload.receiptId != null
+        && !ledger.some((entry) => String(entry.receiptId) === String(payload.receiptId))) ledger.unshift({
+        receiptId: String(payload.receiptId),
+        tradeSequence: payload.tradeSequence,
+        stationId: payload.stationId,
+        commodityId: payload.commodityId,
+        side: payload.side,
+        qty: payload.qty,
+        unit: payload.qty ? Math.round(payload.total / payload.qty) : 0,
+        buyUnit: payload.side === 'buy' && payload.qty ? Math.round(payload.total / payload.qty) : 0,
+        marginPerUnit: 0,
+        profit: 0,
+        seenAt: state.simTime,
+        total: payload.total,
+      });
+      const receipt = consumeStationTradeReceipt(state, payload, { retiredIntentIds, shownIntentIds });
+      if (receipt) receipts.push(receipt);
+    } else if (name === 'economy:tradeFailed') {
+      const expectation = state.ui && state.ui[TRADE_EXPECTATION_KEY];
+      const recoveryContextRefusal = expectation && expectation.intentId === payload?.intentId
+        && expectation.status === 'recovering' && ['not_docked', 'station_changed'].includes(payload.reason);
+      if (payload && !['intent_pending', 'trade_pending'].includes(payload.reason) && !recoveryContextRefusal) {
+        clearTradeExpectation(state, payload);
+      }
+    } else if (name === 'station:marketTradeReceiptRecovered') {
+      const receipt = consumeStationTradeReceipt(state, payload, { retiredIntentIds, shownIntentIds });
+      if (receipt) receipts.push(receipt);
+    }
+    for (const handler of [...(handlers.get(name) || [])]) handler(payload);
+    return receipts[receipts.length - 1] || null;
+  };
+  const bus = {
+    emit(name, payload) {
+      emitted.push({ name, payload, at: Date.now() });
+      if (name === 'ui:buy' || name === 'ui:sell') {
+        // A real worker-lane Market action must use its economyTrade RPC only, never both routes.
+        forwarded.push({ name, payload, at: Date.now() });
+        return;
+      }
+      deliverWorkerEvent(name, payload);
+    },
+    on(name, handler) {
+      const list = handlers.get(name) || [];
+      list.push(handler);
+      handlers.set(name, list);
+      return () => handlers.set(name, (handlers.get(name) || []).filter((entry) => entry !== handler));
+    },
+    off(name, handler) {
+      handlers.set(name, (handlers.get(name) || []).filter((entry) => entry !== handler));
+    },
+  };
+  installSimCommandSink((request) => {
+    if (!request || request.kind !== 'rpc') return undefined;
+    if (request.op === 'economyTrade') {
+      let resolve;
+      let reject;
+      const promise = new Promise((yes, no) => { resolve = yes; reject = no; });
+      const call = { id: request.id, op: request.op, payload: request.args, resolve, reject };
+      rpcCalls.push(call);
+      forwarded.push({ name: 'economyTrade', payload: request.args, at: Date.now() });
+      return promise;
+    }
+    if (request.op === 'marketHistory') return Promise.resolve({ ok: true, result: { histories: {} } });
+    return Promise.resolve({ ok: false, reason: 'unhandled-rpc-op' });
+  });
+  const resolveWorkerRpc = (index, value) => rpcCalls[index] && rpcCalls[index].resolve(value);
+  const rejectWorkerRpc = (index, error) => rpcCalls[index] && rpcCalls[index].reject(error);
+  const executeWorkerTrade = (index) => {
+    const call = rpcCalls[index];
+    if (!call) throw new Error(`missing economyTrade RPC ${index}`);
+    const payload = call.payload;
+    const owner = {
+      ...economy,
+      state,
+      bus: { emit: (name, value) => { emitted.push({ name, payload: value, at: Date.now() }); deliverWorkerEvent(name, value); } },
+      dockedStationId: () => (state.ui && state.ui.dockedStationId) || null,
+      quote(_stationId, commodityId, side, qty) {
+        return { ok: true, side, qty, commodityId, total: payload.expectedTotal, priceImpactPct: 0 };
+      },
+      registryGet: () => null,
+      recomputeLivePrices() {},
+      recordLivePriceHistory() {},
+      snapshotIntel() {},
+    };
+    return owner.handleTrade(payload.commodityId, payload.side, payload.qty, {
+      expectedTotal: payload.expectedTotal,
+      sourceStationId: payload.sourceStationId,
+      intentId: payload.intentId,
     });
-    const opened = openSellWithEventBus(state, { total: 30 });
-    screen = opened.screen;
+  };
+  const setWorkerEventsSuppressed = (value) => { suppressWorkerEvents = !!value; };
+  const screen = createScreen({
+    state,
+    bus,
+    registry: {
+      get(name) {
+        if (name !== 'economy') return null;
+        return {
+          quote(_stationId, commodityId, side, qty) {
+            return { ok: true, side, qty, total: quoteState.total, commodityId, partial: false, priceImpactPct: 0 };
+          },
+        };
+      },
+    },
+  });
+  document.body.appendChild(screen.el);
+  screen.onShow({ tradeMode, state });
+  return {
+    screen, bus, emitted, forwarded, rpcCalls, receipts, deliverWorkerEvent,
+    resolveWorkerRpc, rejectWorkerRpc, executeWorkerTrade, setWorkerEventsSuppressed,
+  };
+}
+
+const waitForWorkerDelay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// Control run for the exact parent Market screen. Invoke with MARKET_SOURCE_CONTROL=1 and the
+// parent-overlay loader; all other owner dependencies and the async bridge stay identical.
+if (process.env.MARKET_SOURCE_CONTROL === '1') {
+  test('parent Market control forwards a second worker intent after the 80 ms unlock', async () => {
+    const parentMarket = await import('../originals/parent-aaa56d/src/ui/station/screens/market.js');
+    const dom = installDom();
+    let screen = null;
+    try {
+      const state = holdState(0, 0);
+      const opened = openMarketWithDeferredWorker(state, { total: 30 }, 'buy', parentMarket.createMarketScreen);
+      screen = opened.screen;
+      row(screen, FOOD).click();
+      screen.el.querySelector('[data-go]').click();
+      assert.equal(opened.forwarded.length, 1);
+      await waitForWorkerDelay(115);
+      screen.el.querySelector('[data-go]').click();
+      assert.equal(opened.forwarded.length, 2, 'the pre-repair screen unlocks while the worker trade is still pending');
+      assert.equal(opened.forwarded[0].name, 'ui:buy');
+      assert.equal(opened.forwarded[1].name, 'ui:buy');
+      assert.equal(opened.forwarded[0].payload.intentId, undefined);
+      assert.equal(opened.forwarded[1].payload.intentId, undefined);
+    } finally {
+      if (screen) screen.dispose();
+      uninstallSimCommandSink();
+      dom.restore();
+    }
+  });
+}
+
+test('delayed worker trade blocks repeats, preserves its receipt terms, and permits a later intentional buy', async () => {
+  const dom = installDom();
+  try {
+    const state = holdState(0, 0);
+    const { screen, forwarded, rpcCalls, receipts, deliverWorkerEvent, resolveWorkerRpc } = openMarketWithDeferredWorker(state, { total: 30 }, 'buy');
     row(screen, FOOD).click();
     screen.el.querySelector('[data-go]').click();
-    assert.equal(calls.length, 1);
-    const id = calls[0].args.intentId;
-    assert.ok(id);
-    assert.equal(state.ui.marketTradeExpectation.intentId, id);
-    await new Promise(resolve => setTimeout(resolve, 110));
-    assert.equal(screen.el.querySelector('[data-go]').disabled, true);
-    opened.bus.emit('economy:tradeFailed', {intentId:'market:older', stationId:STATION,
-      commodityId:FOOD, side:'sell', qty:1, reason:'price_changed', liveTotal:25, expectedTotal:30});
-    assert.equal(state.ui.marketTradeExpectation.intentId, id);
-    assert.equal(screen.el.querySelector('[data-go]').disabled, true);
-    opened.bus.emit('economy:tradeFailed', {intentId:id, stationId:STATION,
-      commodityId:FOOD, side:'sell', qty:1, reason:'price_changed', liveTotal:29, expectedTotal:30});
-    assert.equal(state.ui.marketTradeExpectation, null);
-    assert.match(screen.el.querySelector('[data-trade-total]').getAttribute('aria-label'), /29/);
-    assert.equal(state.player.credits, 5000, 'the UI never mutates the wallet');
-    assert.equal(state.player.cargo.items[FOOD], 1, 'a refusal moves no cargo');
+    assert.equal(forwarded.length, 1);
+    assert.equal(forwarded[0].name, 'economyTrade', 'worker mode uses its existing idempotent RPC as the only execution transport');
+    const firstId = forwarded[0].payload.intentId;
+    assert.equal(typeof firstId, 'string');
+    assert.equal(state.ui[TRADE_EXPECTATION_KEY].intentId, firstId);
+
+    await waitForWorkerDelay(115);
+    assert.ok(Date.now() - forwarded[0].at > 80);
+    const retry = screen.el.querySelector('[data-go]');
+    assert.equal(retry.disabled, true, 'the confirmed trade remains locked after the old 80 ms window');
+    retry.click();
+    assert.equal(forwarded.length, 1, 'repeating the confirmation cannot send another intent');
+
+    const settled = rpcCalls[0].payload;
+    const actualResult = {
+      stationId: STATION, commodityId: FOOD, side: 'buy', qty: 1, total: 30,
+      receiptId: 'actual-market-receipt', tradeSequence: 1, intentId: firstId,
+    };
+    deliverWorkerEvent('economy:tradeCompleted', actualResult);
+    assert.match(receipts[0].detail, /settled as confirmed/);
+    assert.equal(state.ui[TRADE_EXPECTATION_KEY], null, 'station receipt ownership consumes the matching expectation');
+    resolveWorkerRpc(0, { ok: true, result: { ok: true, result: { ok: true, qty: 1, total: 30 } } });
+    await Promise.resolve();
+
+    state.economy.committedIntents = { [firstId]: { result: { ok: true }, receipt: { stationId: STATION } } };
+    screen.el.querySelector('[data-go]').click();
+    assert.equal(forwarded.length, 2, 'a deliberate purchase after terminal settlement is still available');
+    assert.notEqual(forwarded[1].payload.intentId, firstId, 'a distinct purchase gets a new durable intent key');
+    assert.equal(Object.hasOwn(state.economy.committedIntents, forwarded[1].payload.intentId), false,
+      'a committed key present from a prior session is never reused');
+    assert.equal(forwarded[1].payload.commodityId, settled.commodityId);
+    deliverWorkerEvent('economy:tradeFailed', {
+      intentId: forwarded[1].payload.intentId, stationId: STATION, commodityId: FOOD,
+      side: 'buy', qty: 1, reason: 'no_stock',
+    });
+    screen.dispose();
   } finally {
-    screen?.dispose();
+    uninstallSimCommandSink();
+    dom.restore();
+  }
+});
+
+test('delayed partial settlement still reports the two confirmed units against the actual receipt', async () => {
+  const dom = installDom();
+  try {
+    const state = holdState(0, 3);
+    const { screen, forwarded, receipts, deliverWorkerEvent } = openMarketWithDeferredWorker(state, { total: 20 }, 'sell');
+    row(screen, FOOD).click();
+    const quantity = screen.el.querySelector('.sx-qty__in');
+    quantity.value = '2';
+    dispatch(quantity, 'input');
+    screen.el.querySelector('[data-go]').click();
+    assert.equal(forwarded[0].payload.qty, 2);
+    const partial = {
+      stationId: STATION, commodityId: FOOD, side: 'sell', qty: 1, total: 10,
+      receiptId: 'deferred-partial', tradeSequence: 1, intentId: forwarded[0].payload.intentId,
+    };
+    await waitForWorkerDelay(100);
+    deliverWorkerEvent('economy:tradeCompleted', partial);
+    assert.match(receipts[0].line, /SOLD 1 OF THE 2 CONFIRMED/);
+    screen.dispose();
+  } finally {
+    uninstallSimCommandSink();
+    dom.restore();
+  }
+});
+
+test('hide and reopen keeps one pending worker intent until its terminal event', async () => {
+  const dom = installDom();
+  try {
+    const state = holdState(0, 0);
+    const { screen, forwarded, deliverWorkerEvent } = openMarketWithDeferredWorker(state, { total: 30 }, 'buy');
+    row(screen, FOOD).click();
+    screen.el.querySelector('[data-go]').click();
+    const id = forwarded[0].payload.intentId;
+    screen.onHide();
+    screen.onShow({ state, tradeMode: 'buy' });
+    assert.equal(screen.el.querySelector('[data-go]').disabled, true);
+    screen.el.querySelector('[data-go]').click();
+    assert.equal(forwarded.length, 1, 'reopening does not issue a second RPC');
+    deliverWorkerEvent('economy:tradeCompleted', {
+      intentId: id, stationId: STATION, commodityId: FOOD, side: 'buy', qty: 1, total: 30,
+      receiptId: 'hidden-settle', tradeSequence: 1,
+    });
+    assert.equal(screen.el.querySelector('[data-go]').disabled, true, 'a fast receipt retains the short click guard');
+    await waitForWorkerDelay(100);
+    assert.equal(screen.el.querySelector('[data-go]').disabled, false);
+    screen.dispose();
+  } finally {
+    uninstallSimCommandSink();
+    dom.restore();
+  }
+});
+
+test('unknown retry reopens on the original lot even when the caller requests another mode', async () => {
+  const dom = installDom();
+  const originalSetTimeout = globalThis.setTimeout;
+  globalThis.setTimeout = (fn, ms, ...args) => originalSetTimeout(fn, ms === 5000 ? 10 : ms, ...args);
+  try {
+    const state = holdState(0, 0);
+    const { screen, forwarded, deliverWorkerEvent } = openMarketWithDeferredWorker(state, { total: 30 }, 'buy');
+    row(screen, FOOD).click();
+    screen.el.querySelector('[data-go]').click();
+    const id = forwarded[0].payload.intentId;
+    await waitForWorkerDelay(25);
+    assert.match(screen.el.querySelector('.sx-trade__note').textContent, /result is unknown/i);
+    screen.onHide();
+    screen.onShow({ state, tradeMode: 'sell' });
+    assert.equal(screen.el.querySelector('[data-mode="buy"]').getAttribute('aria-pressed'), 'true');
+    assert.equal(screen.el.querySelector('[data-mode="sell"]').getAttribute('aria-pressed'), 'false');
+    assert.equal(screen.el.querySelector('[data-go]').disabled, false);
+    assert.match(screen.el.querySelector('.sx-trade__note').textContent, /retry the original confirmed order with the same terms and ID/i);
+    const retryButton = screen.el.querySelector('[data-go]');
+    assert.equal(retryButton.querySelector('.orr-lampkey__word').textContent, 'Retry order');
+    assert.equal(retryButton.getAttribute('aria-label'), 'Retry order');
+    // Clicking the visibly labeled recovery control reuses the original intent ID.
+    retryButton.click();
+    assert.equal(forwarded.length, 2);
+    assert.equal(forwarded[1].payload.intentId, id);
+    deliverWorkerEvent('economy:tradeFailed', {
+      intentId: id, stationId: STATION, commodityId: FOOD, side: 'buy', qty: 1, reason: 'not_docked',
+    });
+    screen.dispose();
+  } finally {
+    globalThis.setTimeout = originalSetTimeout;
+    uninstallSimCommandSink();
+    dom.restore();
+  }
+});
+
+test('price refusal ends only the matching intent and requotes before a fresh confirmation', async () => {
+  const dom = installDom();
+  try {
+    const state = holdState(0, 1);
+    const { screen, emitted, forwarded, deliverWorkerEvent } = openMarketWithDeferredWorker(state, { total: 30 }, 'sell');
+    row(screen, FOOD).click();
+    screen.el.querySelector('[data-go]').click();
+    const firstId = forwarded[0].payload.intentId;
+    deliverWorkerEvent('economy:tradeFailed', {
+      intentId: firstId, stationId: STATION, commodityId: FOOD, side: 'sell', qty: 1,
+      reason: 'price_changed', expectedTotal: 30, liveTotal: 29,
+    });
+    assert.equal(state.ui[TRADE_EXPECTATION_KEY], null);
+    assert.match(screen.el.querySelector('[data-trade-total]').getAttribute('aria-label'), /29/);
+    assert.equal(emitted.some((entry) => entry.name === 'economy:tradeCompleted'), false);
+    await waitForWorkerDelay(100);
+    screen.el.querySelector('[data-go]').click();
+    assert.equal(forwarded.length, 2);
+    assert.equal(forwarded[1].payload.expectedTotal, 29);
+    assert.notEqual(forwarded[1].payload.intentId, firstId);
+    deliverWorkerEvent('economy:tradeFailed', {
+      intentId: forwarded[1].payload.intentId, stationId: STATION, commodityId: FOOD,
+      side: 'sell', qty: 1, reason: 'no_stock',
+    });
+    screen.dispose();
+  } finally {
+    uninstallSimCommandSink();
+    dom.restore();
+  }
+});
+
+test('in-flight intent_pending coordination does not clear the Market expectation', () => {
+  const dom = installDom();
+  try {
+    const state = holdState(0, 0);
+    const { screen, forwarded, deliverWorkerEvent } = openMarketWithDeferredWorker(state, { total: 30 }, 'buy');
+    row(screen, FOOD).click();
+    screen.el.querySelector('[data-go]').click();
+    const id = forwarded[0].payload.intentId;
+    deliverWorkerEvent('economy:tradeFailed', {
+      intentId: id, stationId: STATION, commodityId: FOOD, side: 'buy', qty: 1, reason: 'intent_pending',
+    });
+    assert.equal(state.ui[TRADE_EXPECTATION_KEY].intentId, id,
+      'coordination pressure does not retire a potentially committed intent');
+    assert.equal(screen.el.querySelector('[data-go]').disabled, false,
+      'the UI stays recoverable with this same ID');
+    deliverWorkerEvent('economy:tradeFailed', {
+      intentId: id, stationId: STATION, commodityId: FOOD, side: 'buy', qty: 1, reason: 'not_docked',
+    });
+    assert.equal(state.ui[TRADE_EXPECTATION_KEY], null, 'a matching terminal refusal clears it');
+    screen.dispose();
+  } finally {
+    uninstallSimCommandSink();
+    dom.restore();
+  }
+});
+
+test('reset retires old intent and late success or refusal cannot consume the new expectation', () => {
+  const dom = installDom();
+  try {
+    const state = holdState(0, 0);
+    const { screen, bus, forwarded, deliverWorkerEvent } = openMarketWithDeferredWorker(state, { total: 30 }, 'buy');
+    row(screen, FOOD).click();
+    screen.el.querySelector('[data-go]').click();
+    const oldId = forwarded[0].payload.intentId;
+    bus.emit('game:new', {});
+    assert.equal(state.ui[TRADE_EXPECTATION_KEY], null, 'reset retires the old expectation');
+
+    screen.el.querySelector('[data-go]').click();
+    assert.equal(forwarded.length, 2);
+    const currentId = forwarded[1].payload.intentId;
+    assert.notEqual(currentId, oldId);
+    deliverWorkerEvent('economy:tradeCompleted', {
+      intentId: oldId, stationId: STATION, commodityId: FOOD, side: 'buy', qty: 1, total: 30,
+      receiptId: 'late-old-success', tradeSequence: 1,
+    });
+    deliverWorkerEvent('economy:tradeFailed', {
+      intentId: oldId, stationId: STATION, commodityId: FOOD, side: 'buy', qty: 1,
+      reason: 'not_docked',
+    });
+    assert.equal(state.ui[TRADE_EXPECTATION_KEY].intentId, currentId);
+    assert.equal(screen.el.querySelector('[data-go]').disabled, true);
+    deliverWorkerEvent('economy:tradeFailed', {
+      intentId: currentId, stationId: STATION, commodityId: FOOD, side: 'buy', qty: 1,
+      reason: 'not_docked',
+    });
+    assert.equal(state.ui[TRADE_EXPECTATION_KEY], null);
+    screen.dispose();
+  } finally {
+    uninstallSimCommandSink();
+    dom.restore();
+  }
+});
+
+test('timeout stays unknown, then same-ID RPC replay recovers the committed result without a second mutation', async () => {
+  const dom = installDom();
+  const originalSetTimeout = globalThis.setTimeout;
+  globalThis.setTimeout = (fn, ms, ...args) => originalSetTimeout(fn, ms === 5000 ? 110 : ms, ...args);
+  try {
+    const state = holdState(0, 0);
+    const { screen, forwarded, receipts, rpcCalls, executeWorkerTrade, resolveWorkerRpc, setWorkerEventsSuppressed, deliverWorkerEvent } = openMarketWithDeferredWorker(state, { total: 30 }, 'buy');
+    row(screen, FOOD).click();
+    screen.el.querySelector('[data-go]').click();
+    const id = forwarded[0].payload.intentId;
+    await waitForWorkerDelay(125);
+    assert.equal(screen.el.querySelector('[data-go]').disabled, false, 'timed-out outcome is recoverable, not treated as settled or refused');
+    assert.match(screen.el.querySelector('.sx-trade__note').textContent, /result is unknown/i);
+
+    // Execute the first request using the real economy handleTrade/execute owner, but drop its
+    // terminal event and RPC ACK to model a disconnect after commit.
+    const beforeCredits = state.player.credits;
+    const beforeStock = state.economy.markets[STATION][FOOD].stock;
+    const beforeCargo = state.player.cargo.items[FOOD] || 0;
+    // Suppress only the bridge's event delivery; the authoritative economy still records its ledger.
+    setWorkerEventsSuppressed(true);
+    const actual = executeWorkerTrade(0);
+    assert.equal(actual.ok, true, 'the real economy owner committed the original worker RPC');
+    const committedCredits = state.player.credits;
+    const committedStock = state.economy.markets[STATION][FOOD].stock;
+    const committedCargo = state.player.cargo.items[FOOD];
+    assert.equal(committedCredits, beforeCredits - 30);
+    assert.equal(committedStock, beforeStock - 1);
+    assert.equal(committedCargo, beforeCargo + 1);
+
+    const retry = screen.el.querySelector('[data-go]');
+    assert.equal(retry.disabled, false);
+    retry.click();
+    assert.equal(forwarded.length, 2);
+    assert.equal(forwarded[1].payload.intentId, id);
+    const duplicate = executeWorkerTrade(1);
+    assert.equal(duplicate.ok, true);
+    assert.equal(duplicate.duplicate, true);
+    assert.equal(state.player.credits, committedCredits);
+    assert.equal(state.economy.markets[STATION][FOOD].stock, committedStock);
+    assert.equal(state.player.cargo.items[FOOD], committedCargo);
+    resolveWorkerRpc(1, { ok: true, result: { ok: true, result: duplicate } });
+    await Promise.resolve();
+    assert.equal(receipts.length, 1, 'ACK-only duplicate recovery uses the presentation-only receipt owner once');
+    assert.match(receipts[0].detail, /settled as confirmed/);
+    assert.equal(state.ui[TRADE_EXPECTATION_KEY], null);
+    setWorkerEventsSuppressed(false);
+    deliverWorkerEvent('economy:tradeCompleted', {
+      intentId: id, stationId: STATION, commodityId: FOOD, side: 'buy', qty: 1, total: 30,
+      receiptId: state.player.tradeLedger[0].receiptId,
+      tradeSequence: state.player.tradeLedger[0].tradeSequence,
+    });
+    assert.equal(receipts.length, 1, 'a delayed ordinary receipt cannot display the recovered trade twice');
+    screen.dispose();
+  } finally {
+    globalThis.setTimeout = originalSetTimeout;
+    uninstallSimCommandSink();
+    dom.restore();
+  }
+});
+
+test('same-ID retry stays unknown after a no-dock refusal and recovers at the original station', async () => {
+  const dom = installDom();
+  const originalSetTimeout = globalThis.setTimeout;
+  globalThis.setTimeout = (fn, ms, ...args) => originalSetTimeout(fn, ms === 5000 ? 10 : ms, ...args);
+  try {
+    const state = holdState(0, 0);
+    const other = 'station_other';
+    state.economy.markets[other] = {
+      [CHIPS]: listing(40, 30),
+      [FOOD]: listing(12, 8),
+    };
+    const { screen, forwarded, receipts, executeWorkerTrade, resolveWorkerRpc, setWorkerEventsSuppressed } =
+      openMarketWithDeferredWorker(state, { total: 30 }, 'buy');
+    row(screen, FOOD).click();
+    screen.el.querySelector('[data-go]').click();
+    const id = forwarded[0].payload.intentId;
+    const initialCredits = state.player.credits;
+    const initialStock = state.economy.markets[STATION][FOOD].stock;
+    setWorkerEventsSuppressed(true);
+    const original = executeWorkerTrade(0);
+    assert.equal(original.ok, true);
+    await waitForWorkerDelay(25);
+    assert.equal(state.ui[TRADE_EXPECTATION_KEY].status, 'unknown');
+    const committedCredits = state.player.credits;
+    const committedCargo = state.player.cargo.items[FOOD];
+    const committedStock = state.economy.markets[STATION][FOOD].stock;
+    assert.equal(committedCredits, initialCredits - 30);
+    assert.equal(committedStock, initialStock - 1);
+    setWorkerEventsSuppressed(false);
+
+    screen.onHide();
+    state.ui.dockedStationId = other;
+    screen.onShow({ state, tradeMode: 'sell' });
+    const wrongStationButton = screen.el.querySelector('[data-go]');
+    assert.equal(wrongStationButton.disabled, true);
+    assert.equal(wrongStationButton.getAttribute('aria-label'), 'Return to original station');
+    assert.match(screen.el.querySelector('.sx-trade__note').textContent, /return to the original station/i);
+    wrongStationButton.click();
+    assert.equal(forwarded.length, 1, 'a different station cannot submit a new order or retry in the wrong context');
+
+    state.ui.dockedStationId = STATION;
+    screen.onShow({ state, tradeMode: 'sell' });
+    const retry = screen.el.querySelector('[data-go]');
+    assert.equal(retry.disabled, false);
+    assert.equal(retry.getAttribute('aria-label'), 'Retry order');
+    retry.click();
+    assert.equal(forwarded.length, 2);
+    assert.equal(forwarded[1].payload.intentId, id);
+    assert.equal(state.ui[TRADE_EXPECTATION_KEY].status, 'recovering');
+
+    // The actual economy execute path rejects sourceStationId mismatch before consulting
+    // its committed-ID journal. A stale retry delivered at another station remains UNKNOWN.
+    state.ui.dockedStationId = other;
+    const changedStation = executeWorkerTrade(1);
+    assert.deepEqual(changedStation, { ok: false, reason: 'station_changed' });
+    resolveWorkerRpc(1, { ok: true, result: changedStation });
+    await Promise.resolve();
+    await Promise.resolve();
+    assert.equal(state.ui[TRADE_EXPECTATION_KEY].intentId, id);
+    assert.equal(state.ui[TRADE_EXPECTATION_KEY].status, 'unknown');
+    assert.equal(receipts.length, 0);
+    assert.equal(state.player.credits, committedCredits);
+    assert.equal(state.player.cargo.items[FOOD], committedCargo);
+    assert.equal(state.economy.markets[STATION][FOOD].stock, committedStock);
+
+    // Then prove handleTrade's no-dock refusal also runs before committed-ID lookup.
+    state.ui.dockedStationId = STATION;
+    screen.onShow({ state, tradeMode: 'buy' });
+    screen.el.querySelector('[data-go]').click();
+    assert.equal(forwarded.length, 3);
+    assert.equal(forwarded[2].payload.intentId, id);
+    state.ui.dockedStationId = null;
+    const noDock = executeWorkerTrade(2);
+    assert.deepEqual(noDock, { ok: false, reason: 'not_docked' });
+    resolveWorkerRpc(2, { ok: true, result: noDock });
+    await Promise.resolve();
+    await Promise.resolve();
+    assert.equal(state.ui[TRADE_EXPECTATION_KEY].intentId, id);
+    assert.equal(state.ui[TRADE_EXPECTATION_KEY].status, 'unknown');
+    assert.equal(receipts.length, 0, 'contextual refusals cannot pretend to settle or refuse the original order');
+    assert.equal(state.player.credits, committedCredits);
+    assert.equal(state.player.cargo.items[FOOD], committedCargo);
+    assert.equal(state.economy.markets[STATION][FOOD].stock, committedStock);
+
+    state.ui.dockedStationId = STATION;
+    screen.onShow({ state, tradeMode: 'buy' });
+    screen.el.querySelector('[data-go]').click();
+    assert.equal(forwarded.length, 4);
+    assert.equal(forwarded[3].payload.intentId, id);
+    const duplicate = executeWorkerTrade(3);
+    assert.equal(duplicate.ok, true);
+    assert.equal(duplicate.duplicate, true);
+    resolveWorkerRpc(3, { ok: true, result: { ok: true, result: duplicate } });
+    await Promise.resolve();
+    assert.equal(receipts.length, 1, 'same-ID replay returns the original canonical result once');
+    assert.equal(state.player.credits, committedCredits);
+    assert.equal(state.player.cargo.items[FOOD], committedCargo);
+    assert.equal(state.economy.markets[STATION][FOOD].stock, committedStock);
+    screen.dispose();
+  } finally {
+    globalThis.setTimeout = originalSetTimeout;
+    uninstallSimCommandSink();
+    dom.restore();
+  }
+});
+
+test('ID-aware receipt matching leaves a newer confirmation intact after an old event', async () => {
+  const state = holdState(0, 0);
+  state.ui[TRADE_EXPECTATION_KEY] = {
+    intentId: 'market:new-session:2', commodityId: FOOD, side: 'buy', qty: 1,
+    total: 30, stationId: STATION, afterSequence: 0, atSimTime: 0,
+  };
+  const staleOldWorldReceipt = {
+    intentId: 'market:old-session:1', stationId: STATION,
+    commodityId: FOOD, side: 'buy', qty: 1, total: 30,
+  };
+  tradeClearedReceipt(state, staleOldWorldReceipt);
+  assert.equal(state.ui[TRADE_EXPECTATION_KEY].intentId, 'market:new-session:2');
+  state.simTime = 60;
+  const delayedMatchingReceipt = {
+    ...staleOldWorldReceipt, intentId: 'market:new-session:2', receiptId: 'late-matching', tradeSequence: 1,
+  };
+  state.player.tradeLedger.unshift({
+    receiptId: 'late-matching', tradeSequence: 1, stationId: STATION,
+    commodityId: FOOD, side: 'buy', qty: 1, unit: 30, buyUnit: 30,
+    marginPerUnit: 0, profit: 0, seenAt: 0, total: 30,
+  });
+  const receipt = tradeClearedReceipt(state, delayedMatchingReceipt);
+  assert.match(receipt.detail, /settled as confirmed/, 'ID correlation preserves confirmed terms beyond the legacy TTL');
+  assert.equal(state.ui[TRADE_EXPECTATION_KEY], null);
+
+  const newIntent = 'market:new-session:3';
+  state.ui[TRADE_EXPECTATION_KEY] = {
+    intentId: newIntent, commodityId: FOOD, side: 'buy', qty: 1,
+    total: 30, stationId: STATION, afterSequence: 1, atSimTime: state.simTime,
+  };
+  const retired = new Set(['market:retired-session:4']);
+  const lateOldWorldReceipt = {
+    intentId: 'market:retired-session:4', stationId: STATION,
+    commodityId: FOOD, side: 'buy', qty: 1, total: 30,
+  };
+  assert.equal(consumeStationTradeReceipt(state, lateOldWorldReceipt, { retiredIntentIds: retired }), null,
+    'the station receipt owner suppresses a known retired ID instead of displaying a generic new-world receipt');
+  assert.equal(state.ui[TRADE_EXPECTATION_KEY].intentId, newIntent);
+});
+
+test('receipt presentation de-duplicates Market IDs without suppressing deterministic non-Market IDs across worlds', () => {
+  const shownIntentIds = new Set();
+  const retiredIntentIds = new Set();
+  const payload = {
+    intentId: 'adventure:seed-7:trade-1', stationId: STATION,
+    commodityId: FOOD, side: 'buy', qty: 1, total: 30,
+  };
+  assert.ok(consumeStationTradeReceipt(holdState(0, 0), payload, { retiredIntentIds, shownIntentIds }));
+  const nextWorldReceipt = consumeStationTradeReceipt(holdState(0, 0), payload, { retiredIntentIds, shownIntentIds });
+  assert.ok(nextWorldReceipt, 'a deterministic Adventure ID may repeat after New Game and still show its receipt');
+
+  const marketPayload = { ...payload, intentId: 'market:session-7:trade-1' };
+  assert.ok(consumeStationTradeReceipt(holdState(0, 0), marketPayload, { retiredIntentIds, shownIntentIds }));
+  assert.equal(consumeStationTradeReceipt(holdState(0, 0), marketPayload, { retiredIntentIds, shownIntentIds }), null,
+    'a repeated Market recovery receipt remains once-only');
+});
+
+test('main-lane Market keeps the existing synchronous ui:buy path and settles immediately', async () => {
+  const dom = installDom();
+  uninstallSimCommandSink();
+  try {
+    const state = holdState(0, 0);
+    const { screen, emitted, bus } = openSellWithEventBus(state, { total: 30 }, 'buy');
+    bus.on('ui:buy', (payload) => {
+      const ownerBus = {
+        emit(name, value) {
+          if (name === 'economy:tradeCompleted') tradeClearedReceipt(state, value);
+          bus.emit(name, value);
+        },
+      };
+      const owner = {
+        ...economy,
+        state,
+        bus: ownerBus,
+        dockedStationId: () => STATION,
+        quote(_stationId, commodityId, side, qty) {
+          return { ok: true, side, qty, commodityId, total: 30, priceImpactPct: 0 };
+        },
+        registryGet: () => null,
+        recomputeLivePrices() {},
+        recordLivePriceHistory() {},
+        snapshotIntel() {},
+      };
+      owner.handleTrade(payload.commodityId, 'buy', payload.qty, {
+        expectedTotal: payload.expectedTotal,
+        sourceStationId: payload.sourceStationId,
+        intentId: payload.intentId,
+      });
+    });
+    row(screen, FOOD).click();
+    screen.el.querySelector('[data-go]').click();
+    const buy = emitted.find((entry) => entry.name === 'ui:buy');
+    assert.equal(typeof buy.payload.intentId, 'string');
+    assert.equal(state.player.credits, 4970);
+    assert.equal(state.player.cargo.items[FOOD], 1);
+    assert.equal(state.economy.markets[STATION][FOOD].stock, 19);
+    assert.equal(state.ui[TRADE_EXPECTATION_KEY], null, 'the synchronous terminal event consumes its exact expectation');
+    assert.equal(screen.el.querySelector('[data-go]').disabled, true, 'the settled main-lane action keeps the existing brief click debounce');
+    const firstId = buy.payload.intentId;
+    screen.el.querySelector('[data-go]').click();
+    assert.equal(emitted.filter((entry) => entry.name === 'ui:buy').length, 1, 'a repeated immediate confirmation is ignored');
+    await waitForWorkerDelay(100);
+    assert.equal(screen.el.querySelector('[data-go]').disabled, false, 'the short debounce releases after settlement');
+    screen.el.querySelector('[data-go]').click();
+    const laterBuys = emitted.filter((entry) => entry.name === 'ui:buy');
+    assert.equal(laterBuys.length, 2, 'a later deliberate purchase is still allowed');
+    assert.notEqual(laterBuys[1].payload.intentId, firstId, 'a later purchase gets a fresh intent ID');
+    assert.equal(state.player.credits, 4940);
+    assert.equal(state.player.cargo.items[FOOD], 2);
+    assert.equal(state.economy.markets[STATION][FOOD].stock, 18);
+    screen.dispose();
+  } finally {
+    uninstallSimCommandSink();
+    dom.restore();
+  }
+});
+
+test('main UNKNOWN recovery succeeds with the same ID, then permits a later new order after the guard', async () => {
+  const dom = installDom();
+  uninstallSimCommandSink();
+  try {
+    const state = holdState(0, 0);
+    const { screen, emitted, bus } = openSellWithEventBus(state, { total: 30 }, 'buy');
+    row(screen, FOOD).click();
+    screen.el.querySelector('[data-go]').click();
+    const first = emitted.find((entry) => entry.name === 'ui:buy');
+    const id = first.payload.intentId;
+    assert.equal(state.ui[TRADE_EXPECTATION_KEY].status, 'unknown');
+    await waitForWorkerDelay(100);
+
+    const recoveryResults = [];
+    bus.on('ui:buy', (payload) => {
+      const ownerBus = {
+        emit(name, value) {
+          if (name === 'economy:tradeCompleted') tradeClearedReceipt(state, value);
+          bus.emit(name, value);
+        },
+      };
+      const owner = {
+        ...economy,
+        state,
+        bus: ownerBus,
+        dockedStationId: () => STATION,
+        quote(_stationId, commodityId, side, qty) {
+          return { ok: true, side, qty, commodityId, total: payload.expectedTotal, priceImpactPct: 0 };
+        },
+        registryGet: () => null,
+        recomputeLivePrices() {},
+        recordLivePriceHistory() {},
+        snapshotIntel() {},
+      };
+      recoveryResults.push(owner.handleTrade(payload.commodityId, 'buy', payload.qty, {
+        expectedTotal: payload.expectedTotal,
+        sourceStationId: payload.sourceStationId,
+        intentId: payload.intentId,
+      }));
+    });
+    screen.el.querySelector('[data-go]').click();
+    const sendsAfterRecovery = emitted.filter((entry) => entry.name === 'ui:buy');
+    assert.equal(sendsAfterRecovery.length, 2);
+    assert.equal(sendsAfterRecovery[1].payload.intentId, id, 'UNKNOWN retries the original confirmed transaction');
+    assert.equal(state.player.credits, 4970, JSON.stringify({recoveryResults, events: emitted.filter((entry) => ['economy:tradeFailed','economy:tradeCompleted'].includes(entry.name)), ui: state.ui[TRADE_EXPECTATION_KEY]}));
+    assert.equal(state.player.cargo.items[FOOD], 1);
+    assert.equal(screen.el.querySelector('[data-go]').disabled, true, 'synchronous recovery keeps the 80 ms guard');
+    screen.el.querySelector('[data-go]').click();
+    assert.equal(emitted.filter((entry) => entry.name === 'ui:buy').length, 2);
+    await waitForWorkerDelay(100);
+    assert.equal(screen.el.querySelector('[data-go]').disabled, false);
+    screen.el.querySelector('[data-go]').click();
+    const finalSends = emitted.filter((entry) => entry.name === 'ui:buy');
+    assert.equal(finalSends.length, 3, 'a later deliberate confirmation is allowed');
+    assert.notEqual(finalSends[2].payload.intentId, id, 'a later purchase gets a fresh intent ID');
+    assert.equal(state.player.credits, 4940);
+    assert.equal(state.player.cargo.items[FOOD], 2);
+    assert.equal(state.economy.markets[STATION][FOOD].stock, 18);
+    screen.dispose();
+  } finally {
+    uninstallSimCommandSink();
+    dom.restore();
+  }
+});
+
+test('fast worker receipt keeps the 80 ms guard but never releases an outstanding RPC', async () => {
+  const dom = installDom();
+  try {
+    const state = holdState(0, 0);
+    const { screen, forwarded, executeWorkerTrade, resolveWorkerRpc } =
+      openMarketWithDeferredWorker(state, { total: 30 }, 'buy');
+    row(screen, FOOD).click();
+    screen.el.querySelector('[data-go]').click();
+    const firstId = forwarded[0].payload.intentId;
+    const first = executeWorkerTrade(0);
+    assert.equal(first.ok, true);
+    resolveWorkerRpc(0, { ok: true, result: { ok: true, result: first } });
+    await Promise.resolve();
+    assert.equal(screen.el.querySelector('[data-go]').disabled, true,
+      'a fast worker terminal result cannot bypass the same brief post-confirm guard');
+    screen.el.querySelector('[data-go]').click();
+    assert.equal(forwarded.length, 1);
+    await waitForWorkerDelay(100);
+    assert.equal(screen.el.querySelector('[data-go]').disabled, false);
+    screen.el.querySelector('[data-go]').click();
+    assert.equal(forwarded.length, 2);
+    assert.notEqual(forwarded[1].payload.intentId, firstId);
+    const second = executeWorkerTrade(1);
+    assert.equal(second.ok, true);
+    resolveWorkerRpc(1, { ok: true, result: { ok: true, result: second } });
+    await Promise.resolve();
+    assert.equal(state.player.credits, 4940);
+    assert.equal(state.player.cargo.items[FOOD], 2);
+    screen.dispose();
+  } finally {
+    uninstallSimCommandSink();
+    dom.restore();
+  }
+});
+
+test('main-lane silent outcome stays unknown and retries only the original ID', () => {
+  const dom = installDom();
+  uninstallSimCommandSink();
+  try {
+    const state = holdState(0, 0);
+    const { screen, emitted } = openSellWithEventBus(state, { total: 30 }, 'buy');
+    row(screen, FOOD).click();
+    screen.el.querySelector('[data-go]').click();
+    const first = emitted.find((entry) => entry.name === 'ui:buy');
+    assert.equal(typeof first.payload.intentId, 'string');
+    assert.equal(screen.el.querySelector('[data-go]').disabled, false,
+      'a missing synchronous event does not hold the control busy forever');
+    assert.match(screen.el.querySelector('.sx-trade__note').textContent, /result is unknown/i);
+    screen.el.querySelector('[data-go]').click();
+    const sends = emitted.filter((entry) => entry.name === 'ui:buy');
+    assert.equal(sends.length, 2);
+    assert.equal(sends[1].payload.intentId, first.payload.intentId,
+      'an unknown outcome cannot create a fresh-ID transaction');
+    screen.dispose();
+  } finally {
     uninstallSimCommandSink();
     dom.restore();
   }
 });
 
 
-test('unknown Market outcome retries the same worker intent without a second UI trade', async () => {
-  const dom = installDom();
-  let screen;
-  const calls = [];
-  try {
-    const state = holdState(0, 1);
-    installSimCommandSink(request => {
-      if (request.kind !== 'rpc' || request.op !== 'economyTrade') return Promise.resolve({ok:true, result:{histories:{}}});
-      calls.push(request);
-      if (calls.length === 1) return Promise.reject(new Error('reply lost'));
-      return Promise.resolve({ok:true, result:{ok:true, result:{ok:true, duplicate:true, qty:1, total:30}}});
-    });
-    const opened = openSellWithEventBus(state, {total:30});
-    screen = opened.screen;
-    row(screen, FOOD).click();
-    screen.el.querySelector('[data-go]').click();
-    await Promise.resolve(); await Promise.resolve();
-    assert.match(screen.el.querySelector('.sx-trade__note').textContent, /result is unknown/i);
-    const retry = screen.el.querySelector('[data-go]');
-    assert.equal(retry.disabled, false);
-    retry.click();
-    await Promise.resolve(); await Promise.resolve();
-    assert.equal(calls.length, 2);
-    assert.equal(calls[0].args.intentId, calls[1].args.intentId);
-    assert.deepEqual(calls[0].args, calls[1].args);
-    const receipt = opened.emitted.find(e => e.name === 'station:marketTradeReceiptRecovered');
-    assert.equal(receipt?.payload.intentId, calls[0].args.intentId);
-    assert.equal(receipt?.payload.qty, 1);
-    assert.equal(state.player.credits, 5000);
-    assert.equal(state.player.cargo.items[FOOD], 1);
-  } finally {
-    screen?.dispose(); uninstallSimCommandSink(); dom.restore();
-  }
+test('stationApp reset callback uses the real receipt key and suppresses its late old intent', () => {
+  const source = readFileSync(new URL('../src/ui/station/stationApp.js', import.meta.url), 'utf8');
+  assert.match(source, /import\s*\{[^}]*\bTRADE_EXPECTATION_KEY\b[^}]*\}\s*from '\.\/tradeReceipt\.js';/s);
+  assert.match(source, /for \(const event of \['game:new', 'game:newGame', 'save:loaded'\]\) \{\s*subscribe\(event, retireMarketExpectation\);\s*\}/);
+  const callbackMatch = source.match(/const retireMarketExpectation = \(\) => \{([\s\S]*?)\n  \};/);
+  const rememberMatch = source.match(/function rememberTradeIntent\(set, intentId\) \{([\s\S]*?)\n\}/);
+  assert.ok(callbackMatch, 'extracts the actual reset callback body');
+  assert.ok(rememberMatch, 'extracts the actual bounded retirement-set helper');
+
+  const intentId = 'market:reset-proof:intent:1';
+  const state = { ui: { [TRADE_EXPECTATION_KEY]: { intentId, commodityId: FOOD, side: 'buy', qty: 1, total: 30, stationId: STATION } } };
+  const retiredMarketTradeIntentIds = new Set();
+  const rememberTradeIntent = new Function('set', 'intentId', rememberMatch[1]);
+  const retireMarketExpectation = new Function(
+    'state', 'retiredMarketTradeIntentIds', 'rememberTradeIntent',
+    'clearTradeExpectation', 'TRADE_EXPECTATION_KEY',
+    `return () => {${callbackMatch[1]}\n};`,
+  )(() => state, retiredMarketTradeIntentIds, rememberTradeIntent, clearTradeExpectation, TRADE_EXPECTATION_KEY);
+  retireMarketExpectation();
+  assert.equal(state.ui[TRADE_EXPECTATION_KEY], null);
+  assert.ok(retiredMarketTradeIntentIds.has(intentId));
+  assert.equal(consumeStationTradeReceipt(state, {
+    intentId, stationId: STATION, commodityId: FOOD, side: 'buy', qty: 1, total: 30, receiptId: 'late-after-reset', tradeSequence: 1,
+  }, { retiredIntentIds: retiredMarketTradeIntentIds, shownIntentIds: new Set() }), null,
+  'the actual presenter suppresses the late receipt retired by the station reset callback');
 });

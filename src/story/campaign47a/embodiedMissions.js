@@ -374,17 +374,15 @@ export const EMBODIED_MISSIONS = Object.freeze([
         stepId: 'operation', branch: 'free',
         type: 'tow_recovery', storyTag: 'campaign47a:b4:operation',
         title: 'Barn Raising — homestead frame',
-        brief: 'Six modules, one frame, and the Nereid gate welding on the road behind you. Tow the homestead together before the line strands it.',
+        brief: 'In Io Reach, six distinct modules wait around a fresh homestead frame. Tow or push each marked piece into its matching slot; the first snap starts the 240-second E-21 window. The crew restocks a lost piece after 90 seconds, and a missed window damages the frame but can be retried. Hold the full set while the welders finish. The Nereid gate audit runs on its own clock.',
         factionId: 'faction_free',
-        stationId: 'station_helios', destStationId: 'station_tethys', destSectorId: 'sector_tethys_junction',
+        stationId: 'station_helios', destStationId: 'station_reach', destSectorId: 'sector_io_reach',
         reward_cr: 1400, collateral_cr: 0, riskTier: 2, minRep: -149, time_limit_s: 0,
         params: B({
           physicalVerb: 'tow',
-          completionMethods: B(['tow_in', 'sling_in']),
-          authoredSetPieceId: 'long_tow',
           bookScene: 'barn_raising',
-          scanLabel: 'HOMESTEAD MODULE',
-          massU: 24, bodyRadius: 14, cargoValue: 0, fValue: 1.2, taskTime: 50,
+          frontierBarnRaisingVersion: 1,
+          fValue: 1.2, taskTime: 50,
         }),
       }),
     ]),
@@ -885,3 +883,4 @@ export function validateEmbodiedMissions() {
   if (!b6.empireSeedPrograms || !b6.empireSeedPrograms.custody || !b6.empireSeedPrograms.force) errors.push('B6: empire seed programs missing');
   return { ok: errors.length === 0, errors };
 }
+

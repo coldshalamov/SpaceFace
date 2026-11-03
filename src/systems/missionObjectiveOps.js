@@ -1643,7 +1643,8 @@ export const missionObjectiveOps = {
       ? rescueEncounter.actors.find((actor) => actor.role === PHYSICAL_ROLE.ESCORT) : null;
     const rescueActorOutcomes = b2Rescue ? ensureB2RescueActorOutcomes(m) : null;
     const have = this._countPhysicalRoles(m);
-    const wantCore = m.type === 'tow_recovery' ? 1 : 0;
+    const wantCore = m.type === 'tow_recovery'
+      && m.params?.frontierBarnRaisingVersion !== 1 ? 1 : 0;
     const wantTower = m.type === 'demolition' ? 1 : 0;
     const configuredPodCount = Math.max(1, Number(m.params && m.params.podCount) || 2);
     // B2 actor outcomes are a per-cast durable ledger; the counters remain as compact HUD/save
@@ -2300,6 +2301,9 @@ export const missionObjectiveOps = {
 
   _completePhysical(m, index, method) {
     if (!m || m.status !== 'active') return false;
+    // B4 v1 is settled only by the Frontier owner's live six-slot weld receipt. The inherited
+    // tow-recovery paths remain intact for old accepted jobs without this version marker.
+    if (m.params?.frontierBarnRaisingVersion === 1) return false;
     // W-BOOKS-3-4: a book contract whose authored extra is still owed refuses the settle —
     // the maw stays on the lane until the slag has knocked it stupid. Only contracts that
     // carry an extras param are affected; every other physical completion path is unchanged.
@@ -2893,3 +2897,5 @@ export const missionObjectiveOps = {
     }
   },
 };
+
+
