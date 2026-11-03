@@ -60,7 +60,7 @@ import { injectOrreryStationTabs } from '../orrery/stationTabsLayouts.js';
 import { injectStationStandard } from '../orrery/stationStandard.js';
 import { createStationRow } from '../orrery/stopDial.js';
 import { AMMO_BATCH as MUNITIONS_LOAD } from './serviceQuotes.js';
-import { tradeClearedReceipt, TRADE_EXPECTATION_KEY } from './tradeReceipt.js';
+import { clearTradeExpectation, consumeStationTradeReceipt, TRADE_EXPECTATION_KEY } from './tradeReceipt.js';
 
 export function stationReceiptOverlapsControls(receiptRect, controls) {
   return [...(controls || [])].some((el) => {
@@ -280,6 +280,12 @@ function departureChipIntent(chip) {
   return explicitNav ? { navigate: explicitNav } : null;
 }
 
+function rememberTradeIntent(set, intentId) {
+  if (!(set instanceof Set) || typeof intentId !== 'string' || !intentId) return;
+  set.add(intentId);
+  while (set.size > 128) set.delete(set.values().next().value);
+}
+
 export function createStationApp(rootEl, ctx, opts = {}) {
   bindReturningPilotSummary(ctx && ctx.bus, ctx && ctx.state);
   ensureStylesheet();
@@ -406,6 +412,8 @@ export function createStationApp(rootEl, ctx, opts = {}) {
   const receiptHistory = [];
   const pendingReceipts = [];
   const subscriptions = [];
+  const retiredMarketTradeIntentIds = new Set();
+  const shownTradeIntentIds = new Set();
 
   // ---------- popover ----------
   function stopFloating() {
@@ -936,21 +944,56 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     navigate(destination, request.options && typeof request.options === 'object' ? request.options : {});
   });
 
-  subscribe('economy:tradeFailed', () => {
+  const retireMarketExpectation = () => {
+    const expectation = state().ui && state().ui[TRADE_EXPECTATION_KEY];
+    if (!expectation || typeof expectation.intentId !== 'string') return;
+    if (expectation.intentId.startsWith('market:')) {
+      rememberTradeIntent(retiredMarketTradeIntentIds, expectation.intentId);
+    }
+    clearTradeExpectation(state(), { intentId: expectation.intentId });
+  };
+  for (const event of ['game:new', 'game:newGame', 'save:loaded']) {
+    subscribe(event, retireMarketExpectation);
+  }
+  subscribe('station:marketTradeIntentRetired', (p = {}) => {
+    if (typeof p.intentId === 'string' && p.intentId.startsWith('market:')) {
+      rememberTradeIntent(retiredMarketTradeIntentIds, p.intentId);
+    }
+  });
+
+  subscribe('economy:tradeFailed', (p = {}) => {
+    // These are in-flight coordination replies, not terminal refusals. Keep the
+    // exact Market confirmation available for the authoritative success/failure.
+    if (p.reason === 'intent_pending' || p.reason === 'trade_pending') return;
+    const expectation = state().ui && state().ui[TRADE_EXPECTATION_KEY];
+    if (expectation && expectation.intentId === p.intentId && expectation.status === 'recovering'
+      && ['not_docked', 'station_changed'].includes(p.reason)) return;
     // A refused execute emits no tradeCompleted, so the market's confirmed-terms stamp would
     // outlive its trade — and simTime is frozen while docked, so the stamp's TTL never ages it
     // out. A later unstamped settle (an adventure decision on the same screen) must not borrow
     // confirmation it never made; the slot dies with the refusal.
-    const s = state();
-    if (s && s.ui) s.ui[TRADE_EXPECTATION_KEY] = null;
+    clearTradeExpectation(state(), p);
   });
   subscribe('economy:tradeCompleted', (p = {}) => {
+    const receipt = consumeStationTradeReceipt(state(), p, {
+      retiredIntentIds: retiredMarketTradeIntentIds,
+      shownIntentIds: shownTradeIntentIds,
+    });
+    if (!receipt) return;
     // SF-241: the receipt reads what settled through tradeTruth against the terms the market
     // confirmed — a partial fill says "6 of the 10 confirmed", a full fill reports agreement.
-    const receipt = tradeClearedReceipt(state(), p);
     showReceipt(receipt.title, receipt.line, receipt.detail);
     // The cargo handoff is a live task shortcut, not static onboarding copy. A completed trade
     // changes hold contents, credits, and whether the shortcut must open owned-only Sell mode.
+    refresh();
+  });
+  subscribe('station:marketTradeReceiptRecovered', (p = {}) => {
+    const receipt = consumeStationTradeReceipt(state(), p, {
+      retiredIntentIds: retiredMarketTradeIntentIds,
+      shownIntentIds: shownTradeIntentIds,
+    });
+    if (!receipt) return;
+    showReceipt(receipt.title, receipt.line, receipt.detail);
     refresh();
   });
   subscribe('module:purchased', (p = {}) => showReceipt('SHIPWORKS', 'MODULE ACQUIRED', `−${fmtCr(p.price)} cr`));

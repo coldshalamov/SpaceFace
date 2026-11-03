@@ -1,6 +1,7 @@
 import { authoredCinderRoute, retainCinderRetry } from '../missions/cinderRoute.js';
 import { snapshotFurnaceWorksite, retireFurnaceWorksite, syncFurnaceWorksite, snapshotFurnaceAftermath, restoreFurnaceAftermath, normalizeFurnaceAftermath, materializeFurnaceAftermath } from '../missions/furnaceWorksiteRuntime.js';
 import { authoredFurnaceWorksite } from '../missions/furnaceWorksite.js';
+import { furnaceSettlementFromMission } from '../story/campaign47a/campaignReceipts.js';
 // Row 413 extraction — methods moved verbatim out of missions.js;
 // spread back onto the missions object, so `this` still binds to the system at call time.
 import { CIVILIAN_MANIFEST_PAYLOAD_TYPE } from './lootShards.js';
@@ -26,7 +27,7 @@ import { counterweightRuntime, heistMissionRuntime } from '../missions/heistMiss
 import { snapshotWorkingBattlefield } from './workingBattlefieldRuntime.js';
 import { snapshotReckoning } from '../missions/reckoningRuntime.js';
 import { CAMPAIGN_BEATS } from '../story/campaign47a/campaignData.js';
-import { buildMissionBoardContract, completeBeatStepsForLegacy, getDeepReachOperation, getEmbodiedLocation, getPickSideStake, isBeatStepsComplete, recordBeatStep, recoveryCommsForBeat } from '../story/campaign47a/index.js';
+import { buildMissionBoardContract, completeBeatStepsForLegacy, commsForBeat, getDeepReachOperation, getEmbodiedLocation, getPickSideStake, isBeatStepsComplete, recordBeatStep, recoveryCommsForBeat } from '../story/campaign47a/index.js';
 import { CAMPAIGN_INTERLUDES, CAMPAIGN_INTERLUDE_ENCOUNTER_PREFIX, interludeByEncounterId, interludeEligible, interludeSeen } from '../story/campaign47a/interludes.js';
 import { pushCampaignHistory, pushChoiceLog } from '../story/campaign47a/index.js';
 import { CONTRACT_47A_B0_BODY, THREAD_B_FRAGMENT_ID, GRAFFITI } from '../data/narrative.js';
@@ -1668,12 +1669,14 @@ export const missionStoryOps = {
       this._advanceStory(beat, { skipCredits: true });
       return true;
     }
+    const furnaceSettlement = furnaceSettlementFromMission(m, beat.beat, 'infested', 'mission:completed');
     const observed = recordBeatStep(this.state, 'mission:completed', {
       missionId: m.id,
       storyTag: m.storyTag,
       storyTargetId: m.storyTarget && m.storyTarget.id || null,
       physicalVerb: m.params && m.params.physicalVerb || beat.headlineVerb || null,
       completionMethod: m.params && m.params.completionMethod || null,
+      ...(furnaceSettlement || {}),
     }, this.state.simTime || 0);
     if (!observed || !observed.ok) return false;
     // §34.7 B1: the sealed manifest re-categorizes silent — the HUD does not notify, but
@@ -1687,15 +1690,15 @@ export const missionStoryOps = {
       m.params.silentRecatDone = true;
     }
     // W-BOOKS-3-4: the book scenes land their canon consequences on completion —
-    // VARIANCE ADJUSTMENT's delivery arms the seam counter; the maw and the Foreman
-    // close their legs; the B4 door operations file their receipts.
+    // the slag-core delivery arms the live-tether counter; maw and Foreman close their
+    // legs; the B4 door operations file their receipts.
     const bookScene = m.params && m.params.bookScene;
     if (bookScene === 'variance_delivery') {
       story.flags.variance_delivered = true;
       story.flags.variance_seam_spikes = story.flags.variance_seam_spikes | 0;
       this.bus.emit('comms:popup', {
         id: `b3_variance_berth_${m.id}`, sender: 'SLATE', category: 'story', ttl: 9, persist: true,
-        text: 'VARIANCE ADJUSTMENT, Hawser class. Double-pass seam, mine, hand-set. The line reads honest: three spikes she holds — the fourth, she lets go.',
+        text: 'Core received at Ceres. The Furnace maw still blocks the reactor approach; land three hot-slag stuns, then drag it off the lane.',
       });
     } else if (bookScene === 'feed_the_maw') {
       story.flags.maw_fed = true;
@@ -1765,7 +1768,14 @@ export const missionStoryOps = {
       this._refreshNavigation({ forceStory: true, silent: true });
       // The accepted ordered step, not a raw growth event or proximity, owns this
       // handback. Stored growth may be reconciled away from the garden on Continue.
-      if (beat.beat === 2 && res.stepId === 'compost') {
+      if (beat.beat === 1 && res.stepId === 'scale_4') {
+        // Only the ordered Scale 4 variance receipt points Book 1 to its existing Ceres job.
+        const handoff = commsForBeat(1, { variant: 'step_handoff' })[0];
+        if (handoff) this.bus.emit('comms:popup', {
+          id: handoff.id, sender: handoff.sender, category: 'story', ttl: 10, persist: true,
+          text: handoff.text,
+        });
+      } else if (beat.beat === 2 && res.stepId === 'compost') {
         this.bus.emit('comms:popup', {
           id: 'b2_compost_nest_handoff', sender: 'ROOK', category: 'story', ttl: 10, persist: true,
           text: 'Your garden growth is on the books. The paid 240t run is optional. Next: the Nest in the south radiation lane. Approach from the east; fight or withdraw alive.',
@@ -2393,10 +2403,9 @@ export const missionStoryOps = {
   // =========================================================================================
   // W-BOOKS-3-4 — VARIANCE ADJUSTMENT, the doubled contract, the wall line (§34.7).
   //
-  // The Hawser-class tug Slate delivers in Book 3 reads honest: her double-pass seam
-  // holds three strain spikes and lets go at the fourth. The counter runs on the live
-  // tether:strain envelope — a player-actionable physical signal, not a script timer —
-  // armed by variance_delivered and laid to rest when Slate welds the column entry.
+  // The slag-core delivery arms a live-tether counter; the fourth spike files a
+  // failure in Slate's column. The counter runs on the live tether:strain envelope —
+  // a player-actionable signal, not a script timer — and closes with the column record.
   // =========================================================================================
   _onBookVarianceStrain(p) {
     const story = this.state && this.state.story;
@@ -2414,14 +2423,14 @@ export const missionStoryOps = {
     flags.variance_seam_spikes = spikes;
     const lines = [
       null,
-      'STRAIN SPIKE 1 — the Hawser seam holds. Slate\u2019s double pass reads true.',
-      'STRAIN SPIKE 2 — the seam groans. The gauge still reads true.',
-      'STRAIN SPIKE 3 — the seam sings. One more and the weld is a rumor.',
+      'STRAIN SPIKE 1 — Slate logs the live-line reading.',
+      'STRAIN SPIKE 2 — the line groans. The gauge still reads true.',
+      'STRAIN SPIKE 3 — the line sings. One more high reading marks a failure.',
     ];
     if (spikes < VARIANCE_SEAM_FAIL_AT) {
       this.bus.emit('comms:popup', {
         id: `b3_seam_${spikes}`, sender: 'LINE STRAIN', category: 'story', ttl: 6, persist: true,
-        text: lines[spikes] || `STRAIN SPIKE ${spikes} — the seam holds.`,
+        text: lines[spikes] || `STRAIN SPIKE ${spikes} — the live line holds.`,
       });
       return true;
     }
@@ -2430,14 +2439,14 @@ export const missionStoryOps = {
     this._varianceStrainArmed = false;
     this.bus.emit('comms:popup', {
       id: 'b3_seam_fail', sender: 'LINE STRAIN', category: 'story', ttl: 10, persist: true,
-      text: 'FOURTH SPIKE — VARIANCE ADJUSTMENT\u2019S SEAM LETS GO. The weld opens like a mouth. Slate welds it at the yard — second pass, narrower.',
+      text: 'FOURTH SPIKE — your tether hit Slate\u2019s limit. She files the strain failure; dock at Tethys or Forge to close the column entry.',
     });
     this.bus.emit('story:varianceSeamFailed', { spikes: VARIANCE_SEAM_FAIL_AT });
     return true;
   },
 
-  /** Slate's column entry: dock at the yard with the blown seam and the weld fixes it —
-   *  the second pass is narrower, and the column keeps its mark. */
+  /** Slate's column entry: after a live-line failure, docking at Tethys or Forge closes
+   *  the failure record and keeps the mark; this prose does not describe hull repair. */
   _resolveVarianceSeamWeld(stationId) {
     const story = this.state && this.state.story;
     const flags = story && story.flags;
@@ -2448,7 +2457,7 @@ export const missionStoryOps = {
     flags.slate_column_entry = true;
     this.bus.emit('comms:popup', {
       id: 'b3_seam_weld', sender: 'SLATE', category: 'story', ttl: 9, persist: true,
-      text: 'Second pass, narrower — it holds because it has to. Your mark goes in the column with the rest of them.',
+      text: 'Failure filed. Your strain mark stays in Slate\u2019s column.',
     });
     return true;
   },
@@ -2505,7 +2514,7 @@ export const missionStoryOps = {
       return true;
     }
     if (scene === 'variance_delivery') {
-      popup('SLATE', 'She is called VARIANCE ADJUSTMENT. Hawser class, mine — two passes on the seam, hand-set. Tow the core in and fly her like you mean it.', 8);
+      popup('SLATE', 'Ceres yard needs that slag core. Keep it on the line or sling it clean. After the drop, I\u2019ll tally each strain spike on your tether.', 8);
       return true;
     }
     if (scene === 'feed_the_maw') {

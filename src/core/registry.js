@@ -214,6 +214,7 @@ import { kesslerScale } from '../systems/kesslerScale.js';
 import { furnaceIntake } from '../systems/furnaceIntake.js';
 import { gateThreeWeir } from '../systems/gateThreeWeir.js';
 import { slateColumn } from '../systems/slateColumn.js';
+import { varianceAdjustmentBerth } from '../systems/varianceAdjustmentBerth.js';
 import { bouncer } from '../systems/bouncer.js';
 import { receipt } from '../systems/receipt.js';
 import { mop } from '../systems/mop.js';
@@ -553,6 +554,7 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['deedRecord', deedRecord],   // THE WORLD REMEMBERS: listener-only ledger of player deeds under state.story.record
     ['historyWear', historyWear], // PULSE-HISTORY: deeds → trinkets/decal/graffiti; loss ledger → memorial arrays
     ['traffic', traffic],
+    ['varianceAdjustmentBerth', varianceAdjustmentBerth],
     ['drill', drill],
     ['claims', claims],
     ['longBerth', longBerth], // GOLD-HOME: tow/restore/yard persistence on the abandoned tug

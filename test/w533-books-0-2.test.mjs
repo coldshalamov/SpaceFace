@@ -30,6 +30,9 @@ import { rookPadPosition } from '../src/characters/rookRules.js';
 import { ROOK_BOOTH } from '../src/data/rook.js';
 import { createFurnaceIntake } from '../src/systems/furnaceIntake.js';
 import { furnaceMouthGlobal } from '../src/missions/furnaceWorksite.js';
+import { createKesslerScale, kesslerScaleSpec } from '../src/systems/kesslerScale.js';
+import { KESSLER_SCALE } from '../src/data/kessler.js';
+import { spawnJettisonedCargoPod } from '../src/systems/lootShards.js';
 import { materializeAlienEcology, handleAlienEcologyEvent } from '../src/systems/alienEcology.js';
 import { ALIEN_SITES } from '../src/data/alienEcology.js';
 import { sectorLocalToGlobalForSector } from '../src/data/sectorCoordinates.js';
@@ -272,6 +275,22 @@ function reachB1(h) {
   assert.equal(state.story.beatIndex, 1);
 }
 
+function weighOwnCargoAtScale4(h) {
+  const { state, bus, helpers } = h;
+  state.world.currentSectorId = KESSLER_SCALE.sectorId;
+  const scale = createKesslerScale();
+  scale.init({ state, bus, helpers });
+  const weighed = [];
+  bus.on('kesslerPod:weighed', (payload) => weighed.push(payload || {}));
+  const pod = spawnJettisonedCargoPod(state, {
+    pos: kesslerScaleSpec().pos, vel: { x: 0, z: 0 },
+    commodityId: 'cmdty_ore_iron', amount: 3, unitMass: 12,
+  }, helpers);
+  assert.ok(pod, 'Scale 4 gets a real player-owned jettison pod');
+  scale.update(0.5, state);
+  return { scale, pod, weighed };
+}
+
 check('B1: board posts the alloy run first, Scale 4 is world work, furnace detail last', () => {
   const h = makeHarness(49);
   const { state, bus } = h;
@@ -286,6 +305,9 @@ check('B1: board posts the alloy run first, Scale 4 is world work, furnace detai
   bus.emit('kesslerPod:weighed', { variance: true, massT: 6 });
   let status = getBeatStepStatus(state, 1);
   assert.deepEqual(status.completed, [], 'ordered list rejects out-of-order weigh');
+  const scale4HandoffId = 'comms.47a.b1.scale4_handoff';
+  assert.equal(h.popups.filter((p) => p.id === scale4HandoffId).length, 0,
+    'a raw early variance cannot trigger Kessler’s handoff');
 
   // Deliver the crate at Tycho: the manifest re-categorizes silent, flatly logged.
   addCargo(state, 'cmdty_alloys', Math.max(1, alloy.params.qty || 6));
@@ -300,14 +322,44 @@ check('B1: board posts the alloy run first, Scale 4 is world work, furnace detai
   bus.emit('kesslerPod:weighed', { variance: false, massT: 6 });
   status = getBeatStepStatus(state, 1);
   assert.deepEqual(status.completed, ['alloy_run'], 'an honest read is not a variance');
-  bus.emit('kesslerPod:weighed', { variance: true, massT: 6 });
+  assert.equal(h.popups.filter((p) => p.id === scale4HandoffId).length, 0,
+    'an honest read does not produce the handoff');
+  const cargoBeforeScale = structuredClone(state.player.cargo);
+  const creditsBeforeScale = state.player.credits;
+  const { scale, pod, weighed } = weighOwnCargoAtScale4(h);
   status = getBeatStepStatus(state, 1);
   assert.deepEqual(status.completed, ['alloy_run', 'scale_4']);
+  assert.equal(weighed.length, 1, 'the production Scale 4 owner emitted the receipt');
+  assert.equal(weighed[0].entityId, pod.id);
+  assert.ok(weighed[0].variance && weighed[0].plateRead < weighed[0].trueRead,
+    'the actual plate/stamp pair records the discrepancy');
+  assert.equal(pod.alive, true, 'weighing leaves the player’s freight in hand');
+  assert.deepEqual(state.player.cargo, cargoBeforeScale, 'weighing does not alter cargo ownership');
+  assert.equal(state.player.credits, creditsBeforeScale, 'weighing does not grant payment');
+  const handoffs = () => h.popups.filter((p) => p.id === scale4HandoffId);
+  assert.equal(handoffs().length, 1, 'the accepted ordered receipt returns one Kessler reply');
+  assert.equal(handoffs()[0].sender, 'KESSLER DESK');
+  assert.equal(handoffs()[0].persist, true);
+  assert.match(handoffs()[0].text, /Variance filed.*Ceres furnace detail.*Feed ore intact.*losses stay recorded/);
+
+  // Reinitializing the scale against the retained state does not reread a saved pod. A
+  // duplicate replay of its real receipt also cannot emit a second story handoff.
+  scale.destroy();
+  const restoredScale = createKesslerScale();
+  restoredScale.init({ state, bus, helpers: h.helpers });
+  restoredScale.update(0.5, state);
+  assert.equal(weighed.length, 1, 'the already-read pod does not replay through the scale');
+  bus.emit('kesslerPod:weighed', weighed[0]);
+  assert.equal(handoffs().length, 1, 'duplicate receipt replay is once-only');
+  restoredScale.destroy();
 
   // Now the furnace detail posts at Tethys.
   const infested = acceptOffer(h, 'station_tethys', 'campaign47a:b1:infested');
   assert.equal(infested.type, 'patrol_clear');
+  assert.equal(infested.destStationId, 'station_ceres');
+  assert.equal(infested.destSectorId, 'sector_ceres_belt');
   assert.equal(infested.params.furnaceFeedsNeeded, 3);
+  assert.match(infested.brief, /four repair-mite sites.*three marked ore pods.*CR-FEED/i);
 
   // Clear the mites — kills alone leave the disposal leg owed.
   completePatrol(h, infested);

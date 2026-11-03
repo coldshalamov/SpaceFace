@@ -8,6 +8,7 @@
 // was on a body, a second sentence for that session. No second writer.
 
 import { beatDefAt, endingDef, outpostSpecDef } from './campaign47a/campaignData.js';
+import { normalizeFurnaceSettlement } from './campaign47a/campaignReceipts.js';
 
 export const LEDGER_KIND = 'story-ledger';
 export const LEDGER_BADGE = 'LEDGER';
@@ -43,7 +44,7 @@ const STEP_SPEECH = Object.freeze({
   }),
   '1:infested': Object.freeze({
     id: 'b1', rank: 30,
-    doing: 'feeding the infested hauler to the furnace', so: 'fed the hauler to the furnace', then: 'the furnace took it',
+    doing: 'clearing four marked mites and feeding three ore pods to CR-FEED', so: 'completed the refinery detail', then: 'the contract closed',
   }),
   '2:pull': Object.freeze({
     id: 'b2', rank: 40,
@@ -73,7 +74,7 @@ const STEP_SPEECH = Object.freeze({
   // delivery, and the feud is not a tow).
   '3:delivery': Object.freeze({
     id: 'b3-delivery', rank: 50,
-    doing: 'delivering VARIANCE ADJUSTMENT', so: 'delivered the Hawser to the yard', then: 'the berth took the tug',
+    doing: 'towing the slag core to Ceres', so: 'delivered the slag core to Ceres', then: 'the Ceres yard took the load',
   }),
   '3:feed_the_maw': Object.freeze({
     id: 'b3-maw', rank: 51,
@@ -338,11 +339,31 @@ function assetSpeech(kind) {
   };
 }
 
-function stepSpeech(beatIndex, stepId, signal) {
+function stepSpeech(beatIndex, stepId, signal, source = null) {
   if (beatIndex === 4 && stepId === 'branch_intro_accept') return null;
   if (beatIndex === 5 && stepId === 'chain_complete') return null;
   const row = STEP_SPEECH[`${beatIndex}:${stepId}`];
   if (!row) return null;
+  if (beatIndex === 1 && stepId === 'infested') {
+    const settlement = normalizeFurnaceSettlement(source);
+    if (settlement) {
+      const feeds = settlement.furnaceFeeds;
+      const losses = settlement.furnaceLosses;
+      const feedPhrase = feeds === 1 ? 'fed one ore pod to CR-FEED'
+        : feeds === 2 ? 'fed two ore pods to CR-FEED'
+          : 'fed all three ore pods to CR-FEED';
+      const lossPhrase = losses === 1 ? 'one was lost' : 'two were lost';
+      return {
+        ...row,
+        so: feeds === 0
+          ? 'cleared four marked mites; all three ore pods were lost'
+          : `${feedPhrase}${losses ? `; ${lossPhrase}` : ''}`,
+        then: feeds === 3 ? 'CR-FEED received all three ore pods'
+          : feeds === 0 ? 'the four marked mites cleared; all three ore pods were lost'
+            : `CR-FEED received ${feeds === 1 ? 'one ore pod' : 'two ore pods'}; ${lossPhrase}`,
+      };
+    }
+  }
   const then = SIGNAL_THEN[signal] || row.then;
   return { ...row, then };
 }
@@ -449,7 +470,7 @@ function readCampaignReceipts(map, state) {
       // legacy whole-beat fill names the beat through a note instead of the step's
       // accept signal, so the method or verb the receipt carried still does the
       // telling below — and stays the generic clause when neither is known.
-      const authored = stepSpeech(beatIndex, stepId, clean(raw.signal));
+      const authored = stepSpeech(beatIndex, stepId, clean(raw.signal), raw);
       if (authored) {
         put(map, speakAct(authored, at, { timed: true, then: authored.then }));
         const def = beatDefAt(beatIndex);

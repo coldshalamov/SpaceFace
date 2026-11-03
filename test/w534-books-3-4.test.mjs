@@ -2,8 +2,8 @@
 // design/expansion/06_CAMPAIGN_SCRIPT.md §34.7 — live boards, physical signals,
 // and the missions-owned cursor, never sidecar-only metadata.
 //
-// Drives: B3 berth contract → VARIANCE ADJUSTMENT (Hawser seam holds three strain
-// spikes, lets go at the fourth, Slate welds the column entry at the yard) →
+// Drives: B3 slag-core tow → live-tether strain marks (the fourth files a failure
+// in Slate's yard column) →
 // Feed the Maw (three hot-slag stuns, then the tow leaves the lane) → the
 // Mirrorjaw Foreman (capital-boss yard feud) → the first Gate Audit weld recorded
 // as optional world evidence. B4: three doors — Meridian intro → Spine Break,
@@ -20,6 +20,9 @@ import { missions as missionsProto } from '../src/systems/missions.js';
 import { story as storyProto } from '../src/systems/story.js';
 import { addCargo } from '../src/systems/cargo.js';
 import { isBeatStepsComplete, getBeatStepStatus } from '../src/story/campaign47a/index.js';
+import { CAMPAIGN_BEATS } from '../src/story/campaign47a/campaignData.js';
+import { EMBODIED_MISSIONS } from '../src/story/campaign47a/embodiedMissions.js';
+import { leftoverLedgerLine } from '../src/story/storyLedger.js';
 import { PHYSICAL_ROLE } from '../src/systems/missions.js';
 import { physicalRoleOf } from '../src/systems/missions.js';
 // Books 1–2 are replayed physically to stand Books 3–4 up: the refinery mites are
@@ -437,11 +440,18 @@ function completeEscort(h, m) {
 
 console.log('w534-books-3-4');
 
-// ── BOOK THREE: Bigger Boat — berth, seam, maw, Foreman, the first audit. ────
-check('B3: board posts the berth first — VARIANCE ADJUSTMENT, Hawser class', () => {
+// ── BOOK THREE: Bigger Boat — core tow, live-line strain, maw, Foreman, first audit. ────
+check('B3: board posts the Ceres slag-core tow first', () => {
   const h = makeHarness(60);
   const { state } = h;
   reachB3(h);
+  const campaignBeat = CAMPAIGN_BEATS.find((row) => row.id === 'bigger_boat');
+  assert.ok(campaignBeat.objective.includes('Tow a slag core to Ceres'));
+  assert.ok(campaignBeat.steps.find((row) => row.id === 'delivery').label.includes('Tow the slag core to Ceres'));
+  const embodiedBeat = EMBODIED_MISSIONS.find((row) => row.id === 'bigger_boat');
+  const deliverySpec = embodiedBeat.bookContracts[0];
+  assert.ok(deliverySpec.brief.includes('Tow one slag core from Tethys to Ceres'));
+  assert.ok(deliverySpec.brief.includes('after delivery') && deliverySpec.brief.includes('tally of strain spikes'));
   // Wrong-shape world signals must not satisfy the ordered list.
   h.bus.emit('worldPressure:auditAnnounced', { key: 'x|y', book: 6 });
   h.bus.emit('furnace:fed', { entityId: 7777 });
@@ -452,12 +462,14 @@ check('B3: board posts the berth first — VARIANCE ADJUSTMENT, Hawser class', (
   assert.equal(berth.type, 'tow_recovery');
   assert.equal(berth.params.bookScene, 'variance_delivery');
   assert.equal(berth.params.authoredSetPieceId, 'long_tow');
-  const handover = h.popups.map((p) => p.text || '').join(' ');
-  assert.ok(handover.includes('VARIANCE ADJUSTMENT'), 'Slate names the tug on accept');
-  assert.ok(handover.includes('Hawser'), 'the Hawser class is spoken');
+  const handover = h.popups.find((p) => p.id === `b34_accept_variance_delivery_${berth.id}`)?.text || '';
+  assert.ok(handover.includes('Ceres yard needs that slag core'), 'Slate states the actual delivery');
+  assert.ok(handover.includes('After the drop'), 'Slate says when she will log the strain');
+  assert.ok(handover.includes('tally each strain spike'), 'Slate explains the live-line tally');
+  assert.ok(!/VARIANCE ADJUSTMENT|Hawser/.test(handover), 'the mission makes no named-hull handoff');
 });
 
-check('B3: the seam holds three strain spikes and lets go at the fourth', () => {
+check('B3: the Ceres tow arms the live-line strain record; the fourth spike files failure', () => {
   const h = makeHarness(61);
   const { state, bus } = h;
   reachB3(h);
@@ -470,7 +482,13 @@ check('B3: the seam holds three strain spikes and lets go at the fourth', () => 
   enterDest(h, berth);
   dockTow(h, berth);
   assert.equal(berth.status, 'completed');
-  assert.equal(state.story.flags.variance_delivered, true, 'delivery arms the seam counter');
+  assert.equal(state.story.flags.variance_delivered, true, 'core delivery arms the live-line record');
+  const arrival = h.popups.find((p) => p.id === `b3_variance_berth_${berth.id}`)?.text || '';
+  assert.ok(arrival.includes('Core received at Ceres'), 'Slate confirms the actual delivery');
+  assert.ok(arrival.includes('Furnace maw still blocks the reactor approach'), 'Slate identifies the logged consequence');
+  const ledgerLine = leftoverLedgerLine(state) || '';
+  assert.ok(ledgerLine.includes('delivered the slag core to Ceres'), 'the ledger records the core delivery');
+  assert.ok(!/VARIANCE ADJUSTMENT|Hawser/.test(ledgerLine), 'the ledger does not invent a hull transfer');
   let status = getBeatStepStatus(state, 3);
   assert.deepEqual(status.completed, ['delivery']);
   assert.equal(state.story.beatIndex, 3, 'delivery alone cannot close the book');
@@ -492,14 +510,17 @@ check('B3: the seam holds three strain spikes and lets go at the fourth', () => 
   assert.equal(h.seamFailed.length, 1, 'story:varianceSeamFailed fired once');
   const strain = h.popups.map((p) => p.text || '').join(' ');
   assert.ok(strain.includes('FOURTH SPIKE'), 'the fourth-spike line lands');
+  const failedLine = [...h.popups].reverse().find((p) => p.id === 'b3_seam_fail')?.text || '';
+  assert.ok(failedLine.includes('your tether hit Slate'), "failure describes the player's actual line");
+  assert.ok(!/VARIANCE ADJUSTMENT|Hawser/.test(failedLine), 'failure does not claim ownership of a named tug');
 
-  // Slate welds it at the yard — the column keeps its entry.
+  // Slate closes the yard column — no ship or hull is transferred.
   bus.emit('dock:docked', { stationId: 'station_tethys' });
   assert.equal(state.story.flags.slate_column_entry, true, 'the column entry is filed');
-  assert.equal(state.story.flags.variance_seam_failed, false, 'the weld lays the failure down');
-  const weld = h.popups.map((p) => p.text || '').join(' ');
-  assert.ok(weld.includes('Second pass'), 'Slate speaks the second pass');
-  // Once welded, the seam story is done — further spikes stay silent.
+  assert.equal(state.story.flags.variance_seam_failed, false, 'the failure record closes after docking');
+  const columnClose = [...h.popups].reverse().find((p) => p.id === 'b3_seam_weld')?.text || '';
+  assert.ok(columnClose.includes('strain mark stays in Slate'), 'Slate closes the recorded failure');
+  // Once the failure is filed, further live-line spikes stay silent.
   bus.emit('tether:strain', { ratio: 0.05 });
   bus.emit('tether:strain', { ratio: 0.95 });
   assert.equal(h.seamFailed.length, 1, 'the welded seam does not re-fail');

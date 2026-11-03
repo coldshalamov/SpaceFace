@@ -337,6 +337,38 @@ Rows are the spec (`build_map.md` §31–§32; read each row's prose before brie
   and fed at t=1346; `m_4` settled, story advanced to "Tethys board — Cinder
   marks", m_5 (b2:cinder) accepted and the ship gate-hopped Tethys→Vesta→Charon
   Expanse cleanly. Every Furnace lot resolved `received`, zero lost.
+  **2026-11-03 Ceres first-job consequence / return seam (owner-scoped follow-up):** the authored B1 `campaign47a:b1:infested`
+  detail is a *four marked suture-mite sites + three finite ore pods* job. The fixed hauler
+  dressing remains owned by `worldOneOffs`; the player physically tows the three mission lots
+  through the 90-WU CR-FEED intake. The ecology owns every mite and its drive: only the four
+  authored site keys count toward clearance, and the neighboring refinery fauna are not a
+  blanket combat or safety flag (`src/data/alienFauna.js`, `src/systems/alienEcology.js`,
+  `src/missions/furnaceWorksite.js`, `src/world/worldOneOffs.js`). The receipt owner already
+  settles all four real pod-feed counts from its retained `furnaceLots`, requires complementary
+  verified losses for a cargo-short settlement, and prorates only the disposal payment
+  (`src/missions/furnaceWorksiteRuntime.js`; `scripts/test-furnace-worksite.mjs`).
+  Run 83 only proved the 3/0 path. Before this pass, both the B1 solved-spine memory and the
+  Mechanic berth ledger always narrated that the *whole hauler* was fed, so a legitimate 0/3
+  clearance-only close could return with a false story even though the mission paid zero.
+  The bounded repair carries the already-settled 0/3, 1/2, 2/1, or 3/0 result through the
+  accepted ordered receipt into Maera's existing greeting and the existing Mechanic ledger.
+  Restored/legacy records without a valid settlement remain neutral. No new mission, cargo
+  writer, reward, hostile-mite rule, or ambient-fauna clearance was introduced.
+  **2026-11-03 scoped consequence check (owner tests, not another actual-game route):** the
+  candidate owner tests pass 25/25 against the untouched-parent prose control at 22/22. The
+  fixture uses actual `prepareFurnaceSettlement` results and the extracted cleanup → story
+  callback seam, then checks accepted receipt and Maera/Mechanic readers. Campaign-sidecar
+  serialize/apply and duplicate behavior are covered; this is not full game/world Save/Continue.
+  Test imports still use sparse-source fallback for unresolved unrelated dependencies. No
+  rendered route, ordinary-input, or performance acceptance was obtained.
+  **2026-11-03 B3 Ceres tow correction (bounded follow-up):** the live book contract is a `tow_recovery` for one slag core from Tethys to Ceres ([`embodiedMissions.js`](../../../src/story/campaign47a/embodiedMissions.js)); it does not grant the player the named Hawser tug. The authored fourth-spike path counts the player's live tether and closes a Slate column record at Tethys or Forge, while the actual Vesta Forge beacon/pillar and hull-weld service count remain in [`slateColumn.js`](../../../src/systems/slateColumn.js) and are unchanged. Corrected only B3 objective, brief, accept/strain/closeout copy, ledger and spine retelling, with focused checks in [`w534-books-3-4.test.mjs`](../../../test/w534-books-3-4.test.mjs), [`pq-178-03-ledger.test.mjs`](../../../test/pq-178-03-ledger.test.mjs), and [`story-spine-memory.test.mjs`](../../../test/story-spine-memory.test.mjs). The latest B3 berth run (Run 129, t≈2529) ended at acceptance only, not delivery or settlement. Candidate and exact e415 controls pass the Ceres pair 25/25 each, SlateColumn 10/10 each, and all 11 internal w534 checks each, using exact owner snapshots with older sparse read-only fallbacks for unrelated dependencies. This is not ordinary-input, Save/Continue, full browser/world-route, rendered-scene, or physical-placement proof. The named VARIANCE ADJUSTMENT berth/tug and any physical strain-weld scene remain open; no actor, custody writer, hull grant, or purchase gate is added.
+
+  **2026-11-03 ambient berth scene follow-up (after the 21086 B3 baseline above):** that correction deliberately left the named tug unimplemented. This candidate now adds an ambient VARIANCE ADJUSTMENT inspection hull at the live Vesta Forge Outlying Yard station; Forge is an explicit adaptation because the Pit workshop is not a reachable sector. The event-only owner uses the exact station anchor and collision manifest, seeks a deterministic slot clear of the docking mouth, traffic bodies, and Slate's pillar, and defers when no slot or ship budget is available. Its persistent identity is a protected static/moored inspection actor, never a purchased, granted, movable, tetherable, destructible or reward ship; the only rendered body it can resolve is the existing generic `ship_hawser` → [`yard_tug.glb`](../../../src/render/partsLibrary.js) route. No bespoke Tessera shell, seam animation, weld motion, strain simulation, or four-spike failure is implemented or implied.
+
+  The primary berth-geometry check builds the Yard from the merged authored Vesta sector/anchor plus production `_spawnStations` fields (`placeScale`, `collisionRadius`, `stationTypeId`, `size`, `archetypeGlb`), and resolves the station proxy through `collisionProxyIdForStation`. With the exact model-truth census it observes body normalization from the declared ring fallback to `skin:place_station_fab`, then proves a deterministic berth clears that measured envelope and Slate's pillar. This is a source/component geometry proof, not a full production-world boot. Other lifecycle checks keep their simplified ring-hub stations explicitly labeled as fixtures.
+
+  Arrival uses the normal comms popup and the existing target HAIL/IDENTIFY UI. Responses validate the exact live VA actor, remain read-only, and point the player to Slate's separate physical pillar. STATUS reads the real [`slate_spikes` flag](../../../src/data/slate.js), so a real repair of at least 8 hull recorded by the Slate owner changes the contact's count; smaller patches/refuel do not. The four-spike passage is described only as workshop record, not a live tug capability. Focused checks are in [`variance-adjustment-berth.test.mjs`](../../../test/variance-adjustment-berth.test.mjs) and [`variance-adjustment-contact.test.mjs`](../../../test/variance-adjustment-contact.test.mjs): deterministic clearance, deferred cook/provider and queue teardown, blocked-slot and actual destruction/budget-release retry, new-game and visit lifecycle, duplicate/stale identity handling, static custody, renderer selector/package route, HAIL before/after an actual Slate service receipt, and the actual scanner request → offer → STATUS/IDENTIFY choice → response path, including expiry and same-ID body replacement rejection. A queued outgoing-world destroy receipt after `save:loaded` is also tested against a different-ID restored actor. Read-only source checks at 21086 confirm the save owner serializes `flags.persistent` actors and clones ordinary actor data/flags, while the far-actor owner excludes persistent actors; those source contracts are not a full storage Save/Continue proof. The focused Node pair passes 12/12 and the corrected Slate owner suite passes 17/17. No ordinary-input, browser-render, screenshot, custom model, mission, grant, hull purchase, or gate change is claimed.
+
   **Runs 85–93 — the Cinder Wasp delivery chain (seed 4242, actual-game harness):**
   m_5's authored third act (3 wasps → marked evidence hull → Rook's pad) produced
   a four-layer wedge chain, each layer one owned fix: (a) **egress lifecycle
