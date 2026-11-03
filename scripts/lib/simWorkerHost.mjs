@@ -1201,10 +1201,20 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
       .map((event) => bus.on(event, () => host.domainDiffer.invalidateLeaf('missions')));
     // The factions owner emits only after it actually changes standing (including spillover).
     const offRep = bus.on('faction:repChanged', () => host.domainDiffer.invalidateLeaf('factions'));
+    // A fabricated fitting is immediately usable at the berth, including while the
+    // worker clock is paused. Publish only the changed owned-inventory leaf in the
+    // same reply; large inventories otherwise wait for their ordinary cold slot.
+    const offCraftFitting = bus.on('craft:complete', (payload) => {
+      if (payload?.kind === 'module' || payload?.kind === 'weapon') {
+        host.domainDiffer.invalidateLeaf('player.moduleInventory');
+      }
+    });
+    const offFitFitting = bus.on('module:equipped', () => host.domainDiffer.invalidateLeaf('player.moduleInventory'));
     host.missionBoardMirrorUnsubscribe = () => {
       offBoardUpdate(); offAccepted();
       for (const off of offTerminal) off();
       offRep();
+      offCraftFitting(); offFitFitting();
     };
     if (captureAll === true) {
       const origEmit = bus.emit.bind(bus);

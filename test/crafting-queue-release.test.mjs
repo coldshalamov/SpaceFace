@@ -273,6 +273,25 @@ test('Industry offers a Shipworks handoff for an owned fabricated fitting', (t) 
   assert.doesNotMatch(h.stageHtml, /Fit owned in Shipworks/);
 });
 
+test('Industry explains when timed work advances, before and after commitment', (t) => {
+  const ctx = screenCtx(TIMED_INPUTS, null);
+  const h = screenHarness(t, ctx);
+  h.pickRow(TIMED);
+  assert.match(h.stageHtml, /Work pauses at berth and advances in flight/);
+  ctx.state.crafting.queues[STATION] = { bpId: TIMED, stationId: STATION, elapsed: 5, total: 20 };
+  h.pickRow(TIMED);
+  assert.match(h.stageHtml, /25%.*15 s remaining.*Work pauses at berth and advances in flight/);
+});
+
+test('Industry names finished goods waiting for hold space instead of a zero-second countdown', (t) => {
+  const ctx = screenCtx({}, { bpId: 'bp_refine_metals', stationId: STATION,
+    elapsed: 1, total: 1, waitingForHold: true });
+  const h = screenHarness(t, ctx);
+  assert.match(h.stageHtml, /Finished goods are waiting for cargo space/);
+  assert.match(h.stageHtml, /undock to complete delivery/);
+  assert.doesNotMatch(h.stageHtml, /0 s remaining/);
+});
+
 test('attemptIndustryScrap resolves the worker ack shape and survives a rejecting lane', async () => {
   assert.equal(await attemptIndustryScrap({ crafting: { cancel: (sid) => Promise.resolve(sid === STATION) }, stationId: STATION }), true);
   assert.equal(await attemptIndustryScrap({ crafting: { cancel: () => Promise.reject(new Error('worker retired')) }, stationId: STATION }), false);
