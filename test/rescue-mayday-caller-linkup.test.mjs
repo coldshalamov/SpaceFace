@@ -285,7 +285,8 @@ test('rescue craft tracks the live caller, links up once, and hands off cleanly'
     pos: { x: caller.pos.x + 10, z: caller.pos.z },
     vel: { x: 0, z: 0 },
     radius: 6,
-    data: { payloadType: 'survivor_pod', tetherRole: 'survivor_pod' },
+    data: { payloadType: 'survivor_pod', tetherRole: 'survivor_pod',
+      survivorPodCausal: { victimId: caller.id, memoryId: 'mayday:caller', expireAt: 500 } },
     flags: {},
   });
   caller.alive = false;

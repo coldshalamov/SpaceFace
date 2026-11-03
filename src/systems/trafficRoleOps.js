@@ -21,6 +21,13 @@ import { AMBUSH_LOADED_HAULER_COMMODITY_ID, AMBUSH_LOADED_HAULER_QTY, CERES_AMBU
 
 const SALVOR_INTAKE_QUOTE_INTERVAL_S = 1;
 
+function isTrafficRescuePod(entity) {
+  const data = entity && entity.data;
+  return !!(entity && entity.alive !== false && entity.type === 'payload' && entity.pos && data
+    && !data.playerWreck && data.payloadType === 'survivor_pod'
+    && data.survivorPodCausal && !data.survivorPodCausal.resolved);
+}
+
 export const trafficRoleOps = {
   // ── Role behaviors (spec §12.1) ────────────────────────────────────────────────────────────
   _ensureCivilianViolenceRing() {
@@ -1141,11 +1148,19 @@ export const trafficRoleOps = {
     if (rescuerId == null) return;
     const rec = this.state.traffic && this.state.traffic.freighters &&
       this.state.traffic.freighters.find((f) => f && f.id === rescuerId);
-    if (!rec) return;
+    const rescuer = this.state.entities && this.state.entities.get(rescuerId);
+    if (!rec || rec.role !== 'rescue' || rec.carryingSurvivor || !rescuer
+      || rescuer.alive === false || rescuer.type !== 'ship'
+      || (rescuer.data?.trafficRole || rescuer.data?.role) !== 'rescue'
+      || (p.rescueHullGeneration != null && p.rescueHullGeneration !== rescuer.occupantGeneration)
+      || p.entityId == null || typeof p.custodyId !== 'string' || !p.custodyId) return;
     rec.carryingSurvivor = true;
-    rec.rescueTargetId = null;
+    rec.rescueCustodyId = p.custodyId;
+    rec.rescueTargetId = p.entityId;
     rec.rescueTargetType = null;
     rec.civilianReaction = 'transporting_survivor';
+    rescuer.data.carryingSurvivor = true;
+    rescuer.data.rescueCustodyId = p.custodyId;
     const stations = this._sectorStations();
     const nearest = this._pickStation(stations);
     if (nearest) rec.targetId = nearest.id;
@@ -1159,11 +1174,7 @@ export const trafficRoleOps = {
     let bestPod = null;
     let bestPodD2 = maxR2;
     const checkPod = (candidate) => {
-      if (!candidate || candidate.alive === false || candidate.id === rescuer.id) return;
-      if (!candidate.pos) return;
-      const data = candidate.data || {};
-      const isPod = candidate.type === 'payload' && (data.payloadType === 'survivor_pod' || data.tetherRole === 'survivor_pod');
-      if (!isPod) return;
+      if (!isTrafficRescuePod(candidate) || candidate.id === rescuer.id) return;
       const dx = candidate.pos.x - rescuer.pos.x;
       const dz = candidate.pos.z - rescuer.pos.z;
       const d2 = dx * dx + dz * dz;
@@ -1220,22 +1231,29 @@ export const trafficRoleOps = {
       const aimAngle = Math.atan2(dz, dx);
 
       if (dist < DOCK_RANGE) {
-        // Arrived at station — survivor delivered
+        // The survivor owner must recognize this exact passenger and the physical berth.
+        if (!rec.rescueCustodyId || !this.helpers?.survivorPod?.canDeliver?.(e, rec.rescueCustodyId, target)) {
+          setIntent(e, 0, 0, false, true, null, aimAngle);
+          return true;
+        }
         const podEntityId = rec.rescueTargetId;
+        const receipt = { rescueHullId: e.id, rescueHullGeneration: e.occupantGeneration,
+          custodyId: rec.rescueCustodyId, podEntityId, stationId: target.id, simTime: state.simTime || 0 };
+        this.bus?.emit('survivorPod:delivered', receipt);
+        if (!receipt.custodyAccepted) return true;
+        // The synchronous receipt may retire or recycle this hull. Never write its former
+        // steering or passenger flags onto a new occupant of the same numeric slot.
+        if (state.entities?.get(e.id) !== e || e.occupantGeneration !== receipt.rescueHullGeneration) return true;
         rec.carryingSurvivor = false;
+        rec.rescueCustodyId = null;
         rec.rescueTargetId = null;
         rec.rescueTargetType = null;
         rec.civilianReaction = null;
         rec.waitT = 3.0;
         setIntent(e, 0, 0, false, true, null, aimAngle);
         if (e.data && e.data.intent) e.data.intent.brake = true;
+        if (e.data) { e.data.carryingSurvivor = false; delete e.data.rescueCustodyId; }
         if (this.bus && typeof this.bus.emit === 'function') {
-          this.bus.emit('survivorPod:delivered', {
-            rescueHullId: e.id,
-            podEntityId,
-            stationId: target.id,
-            simTime: state.simTime || 0,
-          });
           this.bus.emit('comms:message', {
             sender: (e.data && e.data.trafficLabel) || 'Rescue Craft',
             channel: 'emergency',
@@ -1256,7 +1274,7 @@ export const trafficRoleOps = {
     let targetObj = null;
     if (rec.rescueTargetType === 'pod' && rec.rescueTargetId != null) {
       const candidate = state.entities && state.entities.get ? state.entities.get(rec.rescueTargetId) : null;
-      if (candidate && candidate.alive !== false && candidate.pos) {
+      if (isTrafficRescuePod(candidate)) {
         targetObj = { kind: 'pod', entity: candidate, pos: candidate.pos };
       } else {
         rec.rescueTargetId = null;

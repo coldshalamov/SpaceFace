@@ -1796,7 +1796,7 @@ export const traffic = {
     this.bus.on('freight:cargoSpilled', (p) => this._onFreightCargoSpilled(p || {}));
     this.bus.on('well:haulerDragged', (p) => this._onWellHaulerDragged(p || {}));
     this.bus.on('uniqueWreck:resolved', (p) => this._onCeresTenderWreckResolved(p || {}));
-    this.bus.on('survivorPod:rescued', (p) => this._onSurvivorPodRescued(p || {}));
+    this.bus.on('survivorPod:boarded', (p) => this._onSurvivorPodRescued(p || {}));
     // Nearby violence: production hits, aimed ship-to-ship combat:fire (Ambush first shots often
     // apply 0), and opened incidents. Bare/mining fire without a live ship victim is ignored.
     this.bus.on('combat:damage', (p) => this._onCombatDamage(p || {}));
@@ -4031,6 +4031,9 @@ export const traffic = {
         continue;
       }
       if (hasLivePlayer && entityNeedsAiThink(e, state) === false) continue;
+      // Retire only this exact rescue hull's old unleased generic tender assignment. Until
+      // that owner releases it, the normal job and violence branches remain authoritative.
+      if (rec.role === 'rescue' && e.data?.jobId) this._releaseLegacyRescueJob(e, rec);
       // Nearby gunfire: civilians change course before ordinary / world-site / job branches.
       // Job hulls are interrupted through npcJobsRuntime; traffic never writes their intent.
       if (this._reactCivilianViolence(e, rec, stations, state)) {
