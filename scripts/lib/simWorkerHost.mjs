@@ -31,6 +31,7 @@ import { missions } from '../../src/systems/missions.js';
 import { story } from '../../src/systems/story.js';
 import { save } from '../../src/save/saveSystem.js';
 import { fittingsFromDefaultModules, makeShipEntitySpec } from '../../src/systems/ships.js';
+import { pinEvidence, unpinEvidence, linkEvidence, unlinkEvidence } from '../../src/systems/shipLedger.js';
 import { NEW_GAME } from '../../src/data/newGameDefaults.js';
 import { swarmSpecialistKind } from '../../src/data/swarmSpecialists.js';
 import { swarmSpecialistPresentationFrame } from '../../src/data/swarmSpecialistPresentation.js';
@@ -1210,11 +1211,13 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
       }
     });
     const offFitFitting = bus.on('module:equipped', () => host.domainDiffer.invalidateLeaf('player.moduleInventory'));
+    const offLedgerLoad = bus.on('save:loaded', () => host.domainDiffer.invalidateLeaf('shipLedger.board'));
     host.missionBoardMirrorUnsubscribe = () => {
       offBoardUpdate(); offAccepted();
       for (const off of offTerminal) off();
       offRep();
       offCraftFitting(); offFitFitting();
+      offLedgerLoad();
     };
     if (captureAll === true) {
       const origEmit = bus.emit.bind(bus);
@@ -1558,6 +1561,21 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
       // Generic method passthroughs for facade coverage — the main side's
       // capability checks see the method names; the lane's folded ops (like
       // racingArm) call the same methods inside one directive window.
+      ['shipLedgerBoard', (args) => {
+        const actions = { pin: pinEvidence, unpin: unpinEvidence, link: linkEvidence, unlink: unlinkEvidence };
+        const action = args?.action;
+        if (!Object.hasOwn(actions, action)) return { ok: false, reason: 'Unknown ledger action.' };
+        const result = actions[action](state, args?.a, args?.b);
+        if (result.ok) {
+          host.domainDiffer.invalidateLeaf('shipLedger.board');
+          if (action === 'link') {
+            const before = state.story?.verge?.valeGatesRevoked;
+            host.bus.emit('ledger:evidenceLinked', { a: args.a, b: args.b });
+            if (before !== state.story?.verge?.valeGatesRevoked) host.domainDiffer.invalidateLeaf('story.verge');
+          }
+        }
+        return result;
+      }],
       ['missionsCall', (args) => {
         const m = registry.get('missions');
         if (!m) return { ok: false, reason: 'missions-system-unavailable' };

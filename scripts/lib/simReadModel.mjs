@@ -744,6 +744,8 @@ export const DOMAIN_MIRROR_KEYS = Object.freeze([
   'planet.active', 'planet.siteId', 'planet.player',
   'factionPresence.servicesByStation', 'economyContracts.massScale.slips',
   'stationServices', 'planet.center',
+  // The case board is authored by the simulation and shared by station and Codex readers.
+  'shipLedger.board',
 ]);
 
 // Per-key canonical-serialization ship cap (report-only): any single mirrored
