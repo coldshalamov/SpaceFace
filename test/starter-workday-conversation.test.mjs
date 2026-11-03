@@ -281,3 +281,92 @@ test('missing or malformed conversation state is read-only and fails without thr
   }
   assert.equal(kesslerStarterWorkReply({}, STATION, 'market'), null);
 });
+
+
+// Exercise the actual receipt builder, not a hand-authored success flag. The production
+// board supplies the authored workday identity; settlement supplies the accepted method.
+const buoyReceiptFields = (await import('../src/missions/starterBuoyAftermath.js')).firstBuoyReceiptFields;
+const missionsSource = read('src/systems/missions.js');
+const receiptStart = missionsSource.indexOf('export function missionReceiptFor(');
+const receiptEnd = missionsSource.indexOf('export const CLEAN_PHYSICAL_RELEASE', receiptStart);
+assert.ok(receiptStart >= 0 && receiptEnd > receiptStart);
+const receiptFor = Function('firstBuoyReceiptFields', 'receiptTitle', 'missionRepDeltaFor',
+  'SET_PIECE_MISSION_SOURCE', missionsSource.slice(receiptStart, receiptEnd)
+    .replace('export function', 'function') + '; return missionReceiptFor;')(
+  buoyReceiptFields, (mission) => mission.title, () => 0, 'setPiece');
+
+function buoyReturn(step = 1, completionMethod = 'tow_in', outcome = 'completed') {
+  const job = STARTER_JOBS.find((entry) => entry.id === 'starter_pelican');
+  const original = postedState(job, step - 1).offer;
+  original.params.completionMethod = completionMethod;
+  const receipt = receiptFor(original, outcome, null, { at_s: 100, repDelta: 0 });
+  const { state, offer } = postedState(job, step);
+  state.simTime = 110;
+  state.world = { currentSectorId: SECTOR };
+  state.missions.receipts = [receipt];
+  return { state, offer, receipt };
+}
+
+for (const method of ['tow_in', 'sling_in']) {
+  for (const step of [1, 2, 3]) {
+    test(`accepted buoy ${step} ${method} returns through Kessler without another settlement`, () => {
+      const { state, offer, receipt } = buoyReturn(step, method);
+      assert.equal(receipt.starterBuoyRecovery.step, step);
+      const before = JSON.stringify(state);
+      const reply = kesslerStarterWorkReply(state, STATION, CHOICE);
+      assert.match(reply.text, /Kessler turns the receiving slip toward you/);
+      assert.ok(reply.text.includes(['44-C', 'Claim-rim', 'Outer-yard'][step - 1] + ' buoy.'));
+      assert.ok(reply.text.includes(method === 'tow_in' ? 'Tow-in accepted.' : 'Sling-in accepted.'));
+      assert.ok(reply.text.includes(`ticket ${step} is settled`));
+      assert.equal(reply.missionOffer, offer || undefined, 'next ticket remains the exact board object');
+      assert.deepEqual(kesslerStarterWorkReply(state, STATION, CHOICE), reply, 'repeat is read-only');
+      const continued = JSON.parse(JSON.stringify(state));
+      assert.equal(kesslerStarterWorkReply(continued, STATION, CHOICE).text, reply.text);
+      assert.equal(JSON.stringify(state), before);
+    });
+  }
+}
+
+test('receiving dialogue rejects failed, unpaid, old, future, foreign and malformed receipts', () => {
+  const mutations = [
+    (state) => { state.missions.receipts = []; },
+    (state) => { state.missions.receipts[0].outcome = 'failed'; },
+    (state) => { state.missions.receipts[0].rewardCr = 0; },
+    (state) => { state.missions.receipts[0].source = 'other'; },
+    (state) => { state.missions.receipts[0].destStationId = 'station_tethys'; },
+    (state) => { state.missions.receipts[0].starterBuoyRecovery.version = 2; },
+    (state) => { state.missions.receipts[0].starterBuoyRecovery.completionMethod = 'cut_down'; },
+    (state) => { state.missions.receipts[0].starterBuoyRecovery.step = 2; },
+    (state) => { state.simTime = 280; },
+    (state) => { state.simTime = 99; },
+    (state) => { delete state.simTime; },
+    (state) => { state.world.currentSectorId = 'sector_ceres_belt'; },
+    (state) => { state.run = { kind: 'survival' }; },
+  ];
+  for (const mutate of mutations) {
+    const { state, offer } = buoyReturn();
+    mutate(state);
+    const before = JSON.stringify(state);
+    const result = kesslerStarterWorkReply(state, STATION, CHOICE);
+    assert.doesNotMatch(result.text, /receiving slip|Tow-in accepted|Sling-in accepted/);
+    assert.equal(result.missionOffer, offer);
+    assert.equal(JSON.stringify(state), before);
+  }
+  const failed = buoyReturn(1, 'tow_in', 'failed');
+  assert.equal(failed.receipt.starterBuoyRecovery, undefined);
+  assert.doesNotMatch(kesslerStarterWorkReply(failed.state, STATION, CHOICE).text, /receiving slip/);
+});
+
+test('the current settled book and active hull constrain reordered receiving history', () => {
+  const { state, receipt: second } = buoyReturn(2, 'sling_in');
+  const first = buoyReturn(1).receipt;
+  second.at_s = 105;
+  for (const receipts of [[first, second], [second, first, second]]) {
+    state.missions.receipts = receipts;
+    const reply = kesslerStarterWorkReply(state, STATION, CHOICE);
+    assert.match(reply.text, /Claim-rim buoy\. Sling-in accepted/);
+    assert.doesNotMatch(reply.text, /44-C buoy/);
+  }
+  state.player.ownedShips = [{ defId: 'ship_kestrel', fittings: ['mod_drill_amp'] }];
+  assert.doesNotMatch(kesslerStarterWorkReply(state, STATION, CHOICE).text, /receiving slip/);
+});

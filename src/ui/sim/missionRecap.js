@@ -7,6 +7,7 @@ import { SECTORS } from '../../data/sectors.js';
 import { commodityDisplayName } from '../commodityNames.js';
 import { starterRamSentence } from '../../data/starterJobs.js';
 import { unsatisfiedRequiredConditions } from '../../data/contractClauses.js';
+import { CONTRACT_47A_B0_BODY } from '../../data/narrative.js';
 
 // Build a station lookup from the static SECTORS graph.
 export const STATION_INFO = new Map();
@@ -89,10 +90,33 @@ export function registryContactReadout(m) {
   };
 }
 
+// B0's first objective is phaseful salvage, not a generic delivery. Read only the
+// canonical installed contract identity and its owner-written sample flag; the mission
+// system remains the only writer of recovery, cargo, destination, payment, and progression.
+const CONTRACT_47A_B0_TAG = 'campaign47a:b0:recovery';
+export function contract47aReadout(m) {
+  const p = (m && m.params) || {};
+  if (!m || m.storyTag !== CONTRACT_47A_B0_TAG || m.type !== 'salvage_retrieval'
+    || p.contractId !== CONTRACT_47A_B0_BODY.contractId || !m.destStationId) return null;
+  const destination = destStationName(m.destStationId);
+  if (!destination || destination === 'destination') return null;
+  const sector = contractSectorName(m, '');
+  const recovered = p.sampleRecovered === true;
+  const where = recovered
+    ? destination + (sector ? ` (${sector})` : '')
+    : `47-A Recovery Site${sector ? ` · ${sector}` : ''} → ${destination}`;
+  const objective = recovered
+    ? `Deliver the recovered 47-A assay sample to ${destination}`
+    : `Recover the 47-A assay sample at the marked recovery site${sector ? ` in ${sector}` : ''}, then return it to ${destination}.`;
+  return { objective, where };
+}
+
 /** Build a human-readable objective description from the mission instance. */
 export function objectiveText(m) {
   const registry = registryContactReadout(m);
   if (registry) return registry.objective;
+  const firstSample = contract47aReadout(m);
+  if (firstSample) return firstSample.objective;
   const p = m.params || {};
   const prog = m.objectiveProgress || 0;
   const tgt = m.objectiveTarget || 1;
@@ -217,7 +241,7 @@ export function continueRecap(state) {
       const first = blocked[0] || {};
       risk = `Held: ${first.pendingText || first.label || 'a contract term'} — settle it before turn-in.`;
     } else {
-      const deadline = Number(mission.deadline_s);
+      const deadline = mission.deadline_s == null ? null : Number(mission.deadline_s);
       const remaining = Number.isFinite(deadline) ? deadline - (Number(state.simTime) || 0) : null;
       if (remaining != null && remaining < 120) {
         risk = `Clock: ${fmtTime(Math.max(0, remaining))} left on ${mission.title || 'the contract'}.`;

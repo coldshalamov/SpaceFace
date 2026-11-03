@@ -15,7 +15,7 @@
 
 import {
   STATION_INFO, SECTOR_BY_ID, fmtTime, titleCaseWords, prettyType, cmdtyName,
-  destStationName, contractSectorName, inSector, objectiveText, registryContactReadout,
+  destStationName, contractSectorName, inSector, objectiveText, registryContactReadout, contract47aReadout,
 } from '../sim/missionRecap.js';
 export { objectiveText, continueRecap } from '../sim/missionRecap.js';
 import { commodityDisplayName } from '../commodityNames.js';
@@ -826,9 +826,11 @@ export function missionCommandBrief(m, state) {
   const terms = activeMissionContractTerms(m, state);
   const term = (label, fallback) => terms.find((item) => item.label === label)?.text || fallback;
   const stake = terms.find((item) => item.label === 'Stake');
+  const registry = registryContactReadout(m);
+  const firstSample = contract47aReadout(m);
   return Object.freeze({
     what: objectiveText(m),
-    where: registryContactReadout(m)?.where || destLabel(m),
+    where: registry?.where || firstSample?.where || destLabel(m),
     how: stripNextPrefix(nextStepText(m, state)),
     why: missionPurposeText(m),
     reward: term('Pays', 'close cleanly'),

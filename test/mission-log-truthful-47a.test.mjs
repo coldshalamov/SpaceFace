@@ -36,6 +36,24 @@ function fixture() {
   return { state, bus, owner };
 }
 
+function fixtureWithSampleRock() {
+  const state = createGameState(4242);
+  // Isolate mission-owner navigation from the staged opening tutorial's temporary pin.
+  state.settings.gameplay.tutorialHints = false;
+  state.onboarding = { active: false, finished: true };
+  state.world.currentSectorId = 'sector_helios_prime';
+  const player = { id: state.playerId, pos: { x: 0, z: 0 }, hull: 100, hullMax: 100 };
+  state.entities.set(state.playerId, player);
+  const rock = { id: 901, type: 'asteroid', alive: true, pos: { x: 120, z: 80 } };
+  state.entities.set(rock.id, rock);
+  state.entityList.push(rock);
+  const bus = createBus();
+  const owner = Object.create(missions);
+  owner.init({ state, bus, helpers: {}, registry: { get: () => null } });
+  owner._installContract47aColdStart();
+  return { state, bus, owner, rock, mission: mission47a(state) };
+}
+
 function mission47a(state) {
   return (state.missions.active || []).find((m) => m && m.storyTag === TAG) || null;
 }
@@ -139,4 +157,57 @@ test('recommended actions put the tracked contract first with truthful brief fie
     assert.ok(String(tracked[field] || '').length > 0, `${field} must not render empty`);
     assert.doesNotMatch(String(tracked[field]), /undefined|null|NaN/);
   }
+});
+
+test('B0 brief follows the actual sample site, then the real recovery owner handoff', () => {
+  const { state, owner, rock, mission } = fixtureWithSampleRock();
+  assert.ok(mission, 'the actual cold-start installer supplies B0');
+  assert.equal(mission.storyTag, TAG);
+  assert.equal(mission.type, 'salvage_retrieval');
+  assert.equal(mission.params.contractId, CONTRACT_47A_B0_BODY.contractId);
+  assert.equal(mission.params.sampleRecovered, false);
+  const source = owner._resolveContract47aSampleSource(mission);
+  assert.ok(source, 'the owner resolves the installed recovery source');
+  assert.equal(source.id, rock.id, 'the authored source is the actual marked rock');
+
+  const before = missionCommandBrief(mission, state);
+  assert.match(before.what, /recover the 47-A assay sample/i);
+  assert.match(before.where, /^47-A Recovery Site/);
+  assert.match(before.where, /Helios Prime/);
+  assert.match(before.how, /recover the assay sample at the marked wreck/i);
+  assert.equal(state.nav.waypoint.missionId, mission.id);
+  assert.deepEqual(state.nav.waypoint.pos, source.pos, 'owner waypoint is the real marked source fix');
+  const beforeMap = missionMapAction(state, mission, true);
+  assert.equal(beforeMap.pos.x, source.pos.x, 'Map handoff keeps the owner waypoint position');
+  assert.equal(beforeMap.pos.z, source.pos.z);
+  assert.equal(beforeMap.sectorId, mission.destSectorId);
+
+  // Use the real mining-yield mission owner at the marked rock; do not stamp recovery by hand.
+  const creditsBefore = state.player.credits;
+  const beatBefore = state.story.beatIndex;
+  const completedStepsBefore = [ ...(state.story.campaign47a?.stepProgress?.['0']?.completed || []) ];
+  owner._onMiningYield({
+    commodityId: 'cmdty_ore_iron',
+    qty: 1,
+    minerId: state.playerId,
+    pos: { x: source.pos.x, z: source.pos.z },
+  });
+
+  assert.equal(mission.params.sampleRecovered, true);
+  assert.equal(state.player.cargo.items[mission.params.cmdtyId], 1);
+  assert.equal(mission.status, 'active', 'sample recovery is not mission delivery');
+  assert.equal(state.player.credits, creditsBefore, 'sample recovery issues no additional credit');
+  assert.equal(state.story.beatIndex, beatBefore, 'sample recovery alone does not advance the campaign beat');
+  const completedStepsAfter = state.story.campaign47a?.stepProgress?.['0']?.completed || [];
+  assert.deepEqual(completedStepsAfter, [...completedStepsBefore, 'mine'],
+    'recovery records the mining step but not the separate dock/delivery step');
+  assert.equal(state.nav.waypoint.stationId, mission.destStationId, 'the owner now routes to its actual destination');
+
+  const after = missionCommandBrief(mission, state);
+  assert.match(after.what, /deliver the recovered 47-A assay sample/i);
+  assert.equal(after.where, 'Helios Station (Helios Prime)');
+  assert.match(after.how, /carry the recovered assay sample to Helios Station/i);
+  const afterMap = missionMapAction(state, mission, true);
+  assert.equal(afterMap.stationId, mission.destStationId);
+  assert.equal(afterMap.pos, null);
 });

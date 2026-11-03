@@ -1,3 +1,4 @@
+import { firstBuoyReceivingReceipt } from '../../missions/starterBuoyAftermath.js';
 import {
   activeOwnedShip,
   shipCarriesModule,
@@ -82,9 +83,18 @@ export function kesslerStarterWorkReply(state, stationId, choiceId) {
   if (done > job.steps.length) {
     return { text: 'That work record does not match my ticket book. Check the Mission Log before signing another.' };
   }
-  const memory = done
+  const receiving = job.id === 'starter_pelican'
+    ? firstBuoyReceivingReceipt(state, state.simTime) : null;
+  const buoy = receiving?.starterBuoyRecovery;
+  // Read the same accepted, time-bounded receipt as the station's receiving scene. A legacy
+  // step counter alone cannot invent a physical handback, nor can an older ticket speak for
+  // the current book. This is dialogue only: no new receipt, scene, payment or progress.
+  const handback = buoy?.step === done
+    ? `Kessler turns the receiving slip toward you. “${['44-C', 'Claim-rim', 'Outer-yard'][done - 1]} buoy. ${buoy.completionMethod === 'sling_in' ? 'Sling-in' : 'Tow-in'} accepted. The berth has it now.” `
+    : '';
+  const memory = handback + (done
     ? `Your ${voice.name} ticket ${done} is settled. I kept the entry.`
-    : `No settled ${voice.name} ticket beside your name yet.`;
+    : `No settled ${voice.name} ticket beside your name yet.`);
 
   if (active) {
     return { text: `${memory} You already have a local ticket open. Track it in the Mission Log and follow that ticket’s instructions. An open ticket is not a settlement.` };
@@ -107,3 +117,4 @@ export function kesslerStarterWorkReply(state, stationId, choiceId) {
     missionOffer: offer,
   };
 }
+
