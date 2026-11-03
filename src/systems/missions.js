@@ -8,6 +8,8 @@ import { kesslerScalePending, kesslerScaleWaypoint } from './kesslerScaleWorksit
 import { furnaceWorksiteFocus } from '../missions/furnaceWorksite.js';
 import { UNDERSTORY_RECEIVER, firstPlayerGardenGrowth } from '../data/understoryReceiver.js';
 import { nestOutcomeReceipt, nestWaypoint } from '../data/nestVisit.js';
+import { ensureSpineBreakWorksite, isSpineBreakOperation, spineBreakOutcome, SPINE_BREAK_CONFIG,
+  SPINE_BREAK_MAX_RETRIES, spineBreakContainers, spineBreakTugIdentity } from '../missions/spineBreakWorksite.js';
 // Missions, contracts & story-spine system (ARCHITECTURE §2.3 step 15, §3.11 state, §4.4 event
 // table; design/specs/07-missions-contracts-story-spine.md).
 //
@@ -1326,6 +1328,13 @@ function missionNavReason(m, station, sector) {
       ? `Tow or push ${remainingModules} marked E-21 module${remainingModules === 1 ? '' : 's'} into the matching Io frame slots`
       : 'Hold the six snapped modules while the frame welders finish';
   }
+  if (isSpineBreakOperation(m)) {
+    const goal = SPINE_BREAK_CONFIG.recoupleGoal;
+    const progress = Math.max(0, Math.min(goal, Number(m.objectiveProgress) || 0));
+    return progress >= goal
+      ? `Escort the re-coupled train to ${stationName}`
+      : `Re-couple ${goal} loose containers (${progress}/${goal}), then escort the train to ${stationName}`;
+  }
   if (p.setPieceObjective === 'long_read_rumor_survey') {
     if (p.rumorAlreadyKnown) return `Fix the known ${wreckName} bearing in ${sectorName}`;
     return p.rumorPurchased
@@ -1677,11 +1686,13 @@ export const missions = {
     this._nextMissionSpawnRetryTick = 0;
     this._lastWaypointRouteKey = null;
     this._lastWaypointRouteAt = 0;
+    this._spineBreakSaveRestorePending = false;
 
     // New game → seed config + reset boards/active (idempotent: a load may already have populated).
     bus.on('game:started', () => this.newGame());
     bus.on('tutorial:finished', () => this._releaseStoryNavigationAfterTutorial());
     bus.on('save:loaded', () => {
+      this._spineBreakSaveRestorePending = false;
       this._reconcileCompostGrowth();
       this._reconcileNestOutcome();
       this._reconcileFrontierBarnAttempt();
@@ -1694,7 +1705,10 @@ export const missions = {
     bus.on('frontier:homesteadRaised', (p) => this._onFrontierBarnRaised(p || {}));
     bus.on('frontier:missionAttemptLost', (p) => this._onFrontierBarnAttemptLost(p || {}));
     bus.on('frontier:missionAttemptUnavailable', (p) => this._onFrontierBarnAttemptLost(p || {}));
-    bus.on('save:restoring', () => this._missionBudgetDeferrals.clear());
+    bus.on('save:restoring', () => {
+      this._spineBreakSaveRestorePending = true;
+      this._missionBudgetDeferrals.clear();
+    });
     // A Crucible launch (Swarm / Gauntlet / scored) boots the shared NEW_GAME world, whose
     // newGame() installs and tracks the 47-A cold-start contract. The Crucible is not the
     // campaign: withdraw that contract before the run so its objective, nav marker and HUD
@@ -1790,7 +1804,10 @@ export const missions = {
     bus.on('worldPressure:auditAnnounced', (p) => this._recordCampaignBookSignal('worldPressure:auditAnnounced', p));
     bus.on('worldPressure:gateClosed', (p) => this._recordCampaignBookSignal('worldPressure:gateClosed', p));
     bus.on('tether:strain', (p) => this._onBookVarianceStrain(p));
-    bus.on('pickup:collected', (payload) => onWakePickupCollected(this, payload));
+    bus.on('pickup:collected', (payload) => {
+      onWakePickupCollected(this, payload);
+      this._onSpineBreakCargoCollected(payload);
+    });
 
     // ── Objective tracking listeners ─────────────────────────────────────────────────────────
     // bulk_trade quota: sell qty of the target commodity (trade.sold alias → economy:tradeCompleted).
@@ -4758,6 +4775,45 @@ export const missions = {
       if (this._refuseTurnInIfBlocked(m)) continue;
 
       if (t === 'escort') {
+        if (isSpineBreakOperation(m)) {
+          const outcome = this._refreshSpineBreakProgress(m) || spineBreakOutcome(this.state, m);
+          if (!this._escorteeArrivedOk(m)) {
+            this.bus.emit('toast', { text: 'Spine Break: wait for the Meridian tug to dock', kind: 'warn', ttl: 3 });
+            continue;
+          }
+          if (outcome.status !== 'spine_recoupled') {
+            if (outcome.status === 'unrecoverable') {
+              if (this._retrySpineBreakAttempt(m, { reason: 'manifest_unrecoverable' })) {
+                this.bus.emit('toast', {
+                  text: 'Manifest unrecoverable. Meridian has sent one fresh train and six new boxes.',
+                  kind: 'warn', ttl: 5,
+                });
+              } else {
+                const worksite = ensureSpineBreakWorksite(m);
+                if (worksite) worksite.status = 'failed';
+                this._failMission(m, i, 'spine_break_unrecoverable');
+              }
+            } else {
+              this.bus.emit('toast', {
+                text: `Spine Break: re-couple ${outcome.remaining} more loose container${outcome.remaining === 1 ? '' : 's'} before docking`,
+                kind: 'warn', ttl: 4,
+              });
+            }
+            continue;
+          }
+          const worksite = ensureSpineBreakWorksite(m);
+          if (worksite) {
+            worksite.status = 'completed';
+            worksite.completedAt = Number(this.state.simTime) || 0;
+            worksite.recoupledIndices = spineBreakContainers(this.state, m)
+              .filter((entity) => entity.data?.authoredLoose === true
+                && entity.data?.spineLoose === false && entity.data?.spineId === worksite.spineId)
+              .map((entity) => entity.data.spineBreakIndex).sort((a, b) => a - b);
+          }
+          this._settleEscortConvoyPay(m);
+          this._completeMission(m, i);
+          continue;
+        }
         // Player reached the destination — complete only if the convoy survived AND arrived too.
         const ok = this._escorteeArrivedOk(m);
         if (ok) { this._settleEscortConvoyPay(m); this._completeMission(m, i); }
@@ -4959,6 +5015,17 @@ export const missions = {
     }
     const e = this.state.entities.get(m._escorteeId);
     if (!e || !e.alive) return false;       // dead → _onEntityDestroyed will fail it anyway
+    if (isSpineBreakOperation(m)) {
+      const worksite = ensureSpineBreakWorksite(m);
+      const identity = spineBreakTugIdentity(m, worksite?.attempt);
+      if (!worksite || e.id !== worksite.tugId
+          || (e.occupantGeneration ?? null) !== worksite.tugGeneration
+          || e.data?.spineBreakTug !== true
+          || e.data?.spineBreakTugIdentity !== identity
+          || String(e.data?.spineBreakMissionId) !== String(m.id)
+          || e.data?.spineBreakAttempt !== worksite.attempt
+          || e.data?.spineId !== worksite.spineId) return false;
+    }
     return !!m._escorteeArrived;
   },
 
@@ -5467,6 +5534,25 @@ export const missions = {
       }
       m.params.frontierReceipt = receipt;
       m.objectiveProgress = FRONTIER_MODULES.length;
+    }
+    if (isSpineBreakOperation(m)) {
+      const outcome = spineBreakOutcome(state, m);
+      const worksite = ensureSpineBreakWorksite(m);
+      if (outcome.status !== 'spine_recoupled' || !this._escorteeArrivedOk(m)) {
+        if (worksite && worksite.status !== 'completed') worksite.status = outcome.status;
+        m._settlePending = true;
+        return;
+      }
+      m.objectiveTarget = outcome.goal;
+      m.objectiveProgress = outcome.recoupled;
+      if (worksite) {
+        worksite.status = 'completed';
+        worksite.completedAt = Number(state.simTime) || 0;
+        worksite.recoupledIndices = spineBreakContainers(state, m)
+          .filter((entity) => entity.data?.authoredLoose === true
+            && entity.data?.spineLoose === false && entity.data?.spineId === worksite.spineId)
+          .map((entity) => entity.data.spineBreakIndex).sort((a, b) => a - b);
+      }
     }
     if (m._settlePending) delete m._settlePending;
     const setPieceTransition = this._compileSetPieceTransition(m, 'completed');

@@ -17,6 +17,8 @@ import { createBus } from '../src/core/eventBus.js';
 import { createGameState } from '../src/core/gameState.js';
 import { hash32, mulberry32 } from '../src/core/rng.js';
 import { missions as missionsProto, STATION_INFO, campaign47aRouteKind } from '../src/systems/missions.js';
+import { factionMeridian as meridianProto } from '../src/systems/faction_meridian.js';
+import { spineBreakOutcome, spineBreakContainers } from '../src/missions/spineBreakWorksite.js';
 import { frontierHomesteads as frontierProto } from '../src/systems/faction_frontier.js';
 import { FRONTIER_MODULES } from '../src/data/factions/free.js';
 import { SECTORS } from '../src/data/sectors.js';
@@ -124,18 +126,20 @@ function makeHarness(seed = 47) {
   };
   const missions = Object.assign({}, missionsProto);
   const frontier = Object.assign({}, frontierProto);
+  const meridian = Object.assign({}, meridianProto);
   const story = Object.assign({}, storyProto);
   const aftermath = Object.assign({}, aftermathProto);
   const understory = Object.assign({}, understoryProto);
   const rook = createRookBooth();
   const furnace = createFurnaceIntake();
   const systems = {
-    missions, story, frontierHomesteads: frontier,
+    missions, story, frontierHomesteads: frontier, faction_meridian: meridian,
     aftermathWrecks: aftermath, rookBooth: rook, furnaceIntake: furnace,
     understoryGardens: understory,
   };
   const registry = { get: (n) => systems[n] || null };
   const ctx = { state, bus, helpers, registry };
+  meridian.init(ctx);
   frontier.init(ctx);
   missions.init(ctx);
   story.init(ctx);
@@ -151,7 +155,7 @@ function makeHarness(seed = 47) {
     _toGlobal: sectorLocalToGlobalForSector };
   bus.on('entity:killed', (p) => handleAlienEcologyEvent(ecologyWorld, 'entity:killed', p));
   return { state, bus, missions, frontier, story, helpers, popups, graffiti, seamFailed, beatAdvances,
-    repDeltas, aftermath, rook, furnace, understory, ecologyWorld, systems, registry };
+    repDeltas, aftermath, rook, furnace, understory, ecologyWorld, systems, registry, meridian };
 }
 
 function acceptOffer(h, stationId, expectedTag) {
@@ -443,15 +447,45 @@ function completeIntro(h, m) {
  *  `escorteeArrived`, then dock the player at the destination. */
 function completeEscort(h, m) {
   enterDest(h, m);
-  const station = h.helpers.spawnEntity({
-    type: 'station', pos: { x: 0, z: 0 },
-    data: { stationId: m.destStationId, dockRadius: 140 },
-  });
   const lead = h.state.entities.get(m._escorteeId);
   assert.ok(lead, 'escort convoy lead must spawn');
+  // Put the test dock ring beside the tug; do not teleport the tug away from its cargo.
+  const station = h.helpers.spawnEntity({
+    type: 'station', pos: { x: lead.pos.x - 20, z: lead.pos.z },
+    data: { stationId: m.destStationId, dockRadius: 140 },
+  });
   lead.pos = { x: station.pos.x + 20, z: station.pos.z };
   h.missions.update(0.016, h.state);
   assert.equal(m._escorteeArrived, true, 'convoy lead reaches the dock ring');
+  if (m.params?.bookScene === 'spine_break') {
+    // Use the real Meridian owner to break and close each authored cargo coupler.
+    const worksite = m.params.spineBreakWorksite;
+    const tug = h.state.entities.get(m._escorteeId);
+    const linked = spineBreakContainers(h.state, m).filter((e) => e.data?.authoredLoose !== true);
+    assert.equal(linked.length, 2, 'the mission train has two linked lead boxes');
+    linked[0].pos.x += 8;
+    tug.vel = { x: 12, z: 0 }; tug.rot = 0;
+    h.meridian.update(1 / 60, h.state);
+    let outcome = spineBreakOutcome(h.state, m);
+    let rounds = 0;
+    while (outcome.recoupled < outcome.goal && rounds++ < 6) {
+      const containers = spineBreakContainers(h.state, m);
+      const train = containers.filter((e) => e.data?.spineLoose !== true
+        && e.data?.spineId === worksite.spineId)
+        .sort((a, b) => a.data.spineIndex - b.data.spineIndex);
+      const tail = train[train.length - 1];
+      const loose = containers.find((e) => e.data?.authoredLoose === true && e.data?.spineLoose === true);
+      assert.ok(tail && loose, 'a physical tail and loose mission box are available to recouple');
+      // The pilot recovers the free box to the train tail; Meridian's owner decides the latch.
+      loose.pos.x = tail.pos.x - 20; loose.pos.z = tail.pos.z; loose.vel = { x: 0, z: 0 };
+      h.meridian.update(1 / 60, h.state);
+      assert.equal(loose.data.spineLoose, false, 'Meridian physically closes the cargo coupler');
+      outcome = spineBreakOutcome(h.state, m);
+    }
+    assert.equal(outcome.goal, 3, 'the authored worksite requires three recouplings');
+    assert.equal(outcome.recoupled, 3, 'all three required physical couplers settled');
+    assert.equal(outcome.status, 'spine_recoupled');
+  }
   h.bus.emit('dock:docked', { stationId: m.destStationId });
 }
 
