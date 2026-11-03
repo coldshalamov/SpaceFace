@@ -250,8 +250,11 @@ const SCENARIO_DIALOGUE_TTL = 18; // authored mission comms need to survive cold
 
 export function discoveryCommsPayload(payload) {
   const category = payload?.kind || payload?.channel;
-  if (!['machine', 'ecology'].includes(category) || typeof payload.text !== 'string' || !payload.text.trim()) return null;
-  return { sender: payload.from || payload.sender || 'FIELD NOTES', text: payload.text, category };
+  if (!['machine', 'ecology', 'special500'].includes(category) || typeof payload.text !== 'string' || !payload.text.trim()) return null;
+  const sender = payload.from || payload.sender || payload.speaker || 'FIELD NOTES';
+  return category === 'special500'
+    ? { sender, text: payload.text, category: 'ambient', logOnly: true }
+    : { sender, text: payload.text, category };
 }
 
 export function branchLifecycleCommsPayload(payload) {
@@ -369,11 +372,13 @@ export function createComms(ctx) {
     const bypassAttentionGate = !!(delivery && delivery.bypassAttentionGate) && !openingInstructionSolo(state);
     // One-voice (spec2/06): a player-addressed line already surfaced by the arbiter as the top-center
     // floor pill is logged to the BACKLOG only — re-stacking it on the live left-edge feed would show
-    // the same voice twice. Ambient chatter (unmarked) still fills the feed as the channel texture.
-    if (p._viaVoice) {
+    // the same voice twice. Explicit log-only atmosphere also lands immediately in that same history.
+    // Ambient chatter (unmarked) still fills the feed as the channel texture.
+    if (p._viaVoice || p.logOnly === true) {
       backlog.unshift({ sender: p.sender || 'UNKNOWN', text: p.text, category: p.category || 'ambient', note: p.note || null, at: Date.now() });
       while (backlog.length > MAX_BACKLOG) backlog.pop();
       if (!backlogOpen) backlogBtn.classList.add('sf-comm-backlog-btn--pulse');
+      else rebuildBacklog();
       return;
     }
     if (!fromQueue && !bypassAttentionGate && attentionGateActive() && !GATE_BYPASS.test(p.category || '')) {
