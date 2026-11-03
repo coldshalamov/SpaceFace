@@ -739,7 +739,21 @@ export function createHullDial(host, { maxima = {} } = {}) {
       R = Math.min(R, (W / 2 - 8 - w) / sn - bandW / 2 - 30);
     });
     // a tight dial's crown figure must still clear the top of its host: the ring shrinks to fit rather than the figure climbing out
-    R = Math.max(tight ? Math.max(48, Math.min(68, H / 2 - 98)) : 96, R);
+    const floorR = tight ? Math.max(48, Math.min(68, H / 2 - 98)) : 96;
+    const clamped = R < floorR;
+    R = Math.max(floorR, R);
+    // a host too narrow for a side figure even at the smallest ring stays off (as master does under 300px) rather than letting
+    // Handling run past the stage's gutter into the reading's Energy row (880–980 wide at 540–620 tall)
+    const nextEl = host.nextElementSibling;
+    const room = nextEl ? Math.max(0, nextEl.getBoundingClientRect().left - host.getBoundingClientRect().right) : 0;
+    const overrun = clamped && GAUGES.some((_, i) => {
+      const mid = startOf(i) + span / 2;
+      const sn = Math.abs(Math.sin((mid * Math.PI) / 180));
+      if (sn < 0.3) return false;
+      const w = labels[i].g.offsetWidth || (small ? 90 : 130);
+      return W / 2 + (R + bandW / 2 + 30) * sn + w > W + room - 6;
+    });
+    if (overrun) { host.classList.add('is-off'); geo = null; return; }
     const cx = W / 2;
     const cy = H / 2;
     geo = { W, H, R, cx, cy, bandW, small };
