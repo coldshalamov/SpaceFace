@@ -369,6 +369,7 @@ test('receipt placement handles visible and hidden captions with external flight
       lastCaptionObstacleVisible: false,
       externalCaptionsStale: false,
       externalFlightCaptions: new Set(external ? [{}] : []),
+      placeAlertLaneInSafeBands: () => {},
       overlaySafeSlot: () => slot,
       freeOverlayBands: () => [{ top: 0, bottom: 160 }],
       setStyle: (el, key, value) => { el.style[key] = value; },
@@ -474,6 +475,124 @@ test('caption bands reserve sibling touch controls and refresh only their layout
   const railBands = freeOverlayBands({ x: 250, width: 128 }, 390,
     { viewport: { width: 844 } });
   assert.ok(railBands.every((band) => band.top >= 134), 'the compact tape is itself a caption obstacle');
+});
+
+test('the mobile voice lane moves below open Details and View controls, then re-seats after they close', () => {
+  const ast = parse(HUD_SRC, { sourceType: 'module' });
+  const wanted = new Set(['freeOverlayBands', 'placeAlertLaneInSafeBands',
+    'restoreAlertLanePlacement', 'invalidateObjectiveEdgeBoxes']);
+  const functions = new Map();
+  let alertStyleDeclaration = '';
+  let setMissionDetailsExpression = '';
+  const visit = (node) => {
+    if (!node || typeof node !== 'object') return;
+    if (node.type === 'VariableDeclarator' && node.id?.name === 'setMissionDetails') {
+      setMissionDetailsExpression = HUD_SRC.slice(node.init.start, node.init.end);
+    }
+    if (node.type === 'FunctionDeclaration' && wanted.has(node.id?.name)) {
+      functions.set(node.id.name, HUD_SRC.slice(node.start, node.end));
+      return;
+    }
+    if (node.type === 'VariableDeclaration' && node.declarations?.some((item) => item.id?.name === 'ALERT_LANE_STYLE_KEYS')) {
+      alertStyleDeclaration = HUD_SRC.slice(node.start, node.end);
+    }
+    for (const value of Object.values(node)) {
+      if (Array.isArray(value)) value.forEach(visit);
+      else if (value && typeof value === 'object') visit(value);
+    }
+  };
+  visit(ast);
+  assert.equal(functions.size, wanted.size);
+  assert.ok(alertStyleDeclaration);
+  assert.ok(setMissionDetailsExpression, 'Details has a concrete open/close owner');
+
+  const box = (name, left, top, width, height, touch = false) => ({
+    name, isConnected: true, hidden: false, style: {},
+    getBoundingClientRect: () => ({ left, top, width, height, right: left + width, bottom: top + height }),
+    closest: (selector) => touch && selector === '#sf-touch-overlay' ? {} : null,
+    matches: () => false,
+  });
+  const status = box('status', 14, 10, 124, 100, true);
+  const pause = box('pause', 326, 10, 52, 52, true);
+  const powers = box('powers', 250, 14, 68, 44, true);
+  const objective = box('objective', 16, 122, 188, 76);
+  const radar = box('radar', 250, 124, 128, 130);
+  const details = box('details-panel', 8, 112, 280, 172);
+  const view = box('view-options', 192, 109, 186, 141);
+  const touchButtons = box('touch-buttons', 182, 490, 196, 156, true);
+  const card = box('voice-floor', 0, 146, 390, 48);
+  card.className = 'sf-alert sf-alert--floor';
+  card.getAttribute = (key) => key === 'aria-live' ? 'off' : null;
+  const lane = { id: 'alerts', style: {}, scrollHeight: 48,
+    querySelectorAll: () => [card] };
+  const touchRoot = { querySelector: () => touchButtons };
+  let mobileFlight = true;
+  let obstacles = [status, pause, powers, objective, radar, details, view, touchButtons];
+  const context = {
+    alertLanePlacementStale: true, alertLanePlacementActive: false, alertLaneOriginalStyle: null,
+    ALERT_LANE_STYLE_KEYS: undefined,
+    alertsEl: lane,
+    document: { documentElement: { getAttribute: (key) => key === 'data-sf-mobile-flight' ? (mobileFlight ? '1' : '0') : null },
+      defaultView: { getComputedStyle: () => ({ display: 'block', visibility: 'visible' }) },
+      getElementById: (id) => id === 'alerts' ? lane : id === 'sf-touch-overlay' ? touchRoot : null,
+      querySelectorAll: (selector) => selector === '#alerts > .sf-alert:not([hidden])' ? [card] : [] },
+    globalThis: { getComputedStyle: () => ({ display: 'block', visibility: 'visible' }) },
+    window: { innerWidth: 390, innerHeight: 682 },
+    root: { querySelectorAll: (selector) => selector === '.sf-leftcontext' ? [objective] : [],
+      querySelector: () => null },
+    objectiveEdgeBoxes: { stale: false }, externalCaptionsStale: false,
+    flightTextObstaclesStale: false, yieldedFlightVisuals: new Map(), externalFlightCaptions: new Set(),
+    responsiveOverlayObstacles: () => obstacles,
+    objectiveEdgeObstacles: () => ({}),
+    overlaySafeSlot: () => ({ x: 12, width: 366 }),
+    setStyle: (el, key, value) => { if (el.style[key] !== value) el.style[key] = value; },
+  };
+  const { freeOverlayBands, placeAlertLaneInSafeBands, invalidateObjectiveEdgeBoxes } = runInNewContext(
+    `${alertStyleDeclaration}\n${[...functions.values()].join('\n')}; ({ freeOverlayBands, placeAlertLaneInSafeBands, invalidateObjectiveEdgeBoxes })`, context);
+  // Bind the production allocator into the placement closure after extracting both owners.
+  context.freeOverlayBands = freeOverlayBands;
+  const detailsState = { hidden: true };
+  const detailsButton = { attributes: {}, setAttribute(key, value) { this.attributes[key] = value; } };
+  let detailPlacementSawStale = false;
+  const detailsContext = {
+    mtDetails: detailsState,
+    mtDetailsButton: detailsButton,
+    mtDetailsClose: { focus() {} },
+    flightTextObstaclesStale: false,
+    alertLanePlacementStale: false,
+    placeReceiptLane() { detailPlacementSawStale = detailsContext.alertLanePlacementStale; },
+  };
+  const setMissionDetails = runInNewContext(`(${setMissionDetailsExpression})`, detailsContext);
+  setMissionDetails(true);
+  assert.equal(detailsState.hidden, false);
+  assert.equal(detailsButton.attributes['aria-expanded'], 'true');
+  assert.equal(detailPlacementSawStale, true, 'opening Details re-seats the voice lane immediately');
+  setMissionDetails(false);
+  assert.equal(detailsState.hidden, true);
+  assert.equal(detailsButton.attributes['aria-expanded'], 'false');
+  const layout = { viewport: { width: 390 }, safe: { left: 12, width: 366 } };
+  placeAlertLaneInSafeBands(layout, 390, 682);
+  const openedTop = Number.parseFloat(lane.style.top);
+  const openedHeight = Number.parseFloat(lane.style.maxHeight);
+  assert.ok(openedTop >= 288, `voice lane starts below both open panels (${openedTop}px)`);
+  assert.ok(openedTop + openedHeight < 482, 'voice lane clears the lower touch-control band');
+  assert.equal(lane.style.position, 'fixed');
+  assert.equal(lane.style.transform, 'none');
+  assert.equal(card.name, 'voice-floor', 'the existing voice node and full text remain mounted');
+  assert.equal(card.getAttribute('aria-live'), 'off', 'the voice owner retains its live-region contract');
+
+  obstacles = [status, pause, powers, objective, radar, touchButtons];
+  context.alertLanePlacementStale = false;
+  invalidateObjectiveEdgeBoxes();
+  assert.equal(context.alertLanePlacementStale, true, 'layout changes invalidate the cached alert seat');
+  placeAlertLaneInSafeBands(layout, 390, 682);
+  assert.ok(Number.parseFloat(lane.style.top) < openedTop, 'closing Details and View returns the voice to an earlier free band');
+  assert.equal(card.hidden, false, 'the tutorial voice is never discarded to clear the controls');
+  mobileFlight = false;
+  context.alertLanePlacementStale = true;
+  placeAlertLaneInSafeBands(layout, 390, 682);
+  assert.equal(lane.style.position, '', 'the mobile seat is removed when returning to desktop flight');
+  assert.equal(lane.style.transform, '', 'desktop transform policy remains owned by its existing stylesheet');
 });
 
 test('natural mobile discovery geometry chooses the opposite thumb lane and waits safely when full', () => {
