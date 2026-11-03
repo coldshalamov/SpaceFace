@@ -18,6 +18,25 @@ import { describeComponent } from '../systems/interactionDescriptors.js';
 
 let _sink = null;
 let _tokenSeq = 0;
+const pendingTargetWrites = new WeakMap();
+
+// A quiet refresh must not replace an explicit choice while the worker's
+// already-ordered input fold is still on its way back to this facade.
+export function laneTargetWritePending(state) {
+  const pending = state && pendingTargetWrites.get(state);
+  if (!pending) return false;
+  if (pending.id != null) {
+    const entity = state.entities?.get?.(pending.id);
+    if (!entity || entity.alive === false || occupantGenerationOf(entity) !== pending.life) {
+      pendingTargetWrites.delete(state); return false;
+    }
+  }
+  if (state.player?.targetId === pending.id) { pendingTargetWrites.delete(state); return false; }
+  return true;
+}
+export function clearLanePendingTarget(state) {
+  if (state) pendingTargetWrites.delete(state);
+}
 
 /** Install the lane sink. sink(descriptor) may return a value (rpc → pending Promise). */
 export function installSimCommandSink(sink) {
@@ -45,7 +64,14 @@ export const LANE_INPUT_FOLD_WRITERS = {
   // state), so a recycled id cannot inherit the bracket and a deliberate re-pick re-binds.
   'player.targetId': (state, v) => {
     if (state.player) {
-      const id = v == null ? null : v;
+      let id = v == null ? null : v;
+      // Worker-target writes name the selected occupant as well as the id.
+      // A recycled numeric slot cannot inherit a choice made for its predecessor.
+      if (v && typeof v === 'object' && Object.hasOwn(v, 'targetId')) {
+        id = v.targetId;
+        const target = state.entities?.get?.(id);
+        if (!target || target.alive === false || occupantGenerationOf(target) !== v.occupantGeneration) return;
+      }
       if (state.ui?.componentSelection && state.ui.componentSelection.targetId !== id) state.ui.componentSelection = null;
       state.player.targetId = id;
       bindSelection(state);
@@ -100,7 +126,20 @@ export function laneInputWrite(state, path, value) {
     && state.ui.componentSelection.targetId !== (value == null ? null : value)) {
     state.ui.componentSelection = null;
   }
-  if (_sink) { _sink({ kind: 'inputFold', path, value }); return true; }
+  if (_sink) {
+    let wireValue = value;
+    if (path === 'player.targetId' && state) {
+      const id = value == null ? null : value;
+      const target = id == null ? null : state.entities?.get?.(id);
+      const life = occupantGenerationOf(target);
+      pendingTargetWrites.set(state, { id, life });
+      if (target && life != null) wireValue = { targetId: id, occupantGeneration: life };
+    }
+    // Explicit free aim must disable the local quiet refresh immediately, while
+    // the same value is still folded into the authoritative worker in order.
+    if (path === 'input.targetAssistDisabled' && state?.input) state.input.targetAssistDisabled = !!value;
+    _sink({ kind: 'inputFold', path, value: wireValue }); return true;
+  }
   const fn = LANE_INPUT_FOLD_WRITERS[path];
   if (!fn || !state) return false;
   fn(state, value);

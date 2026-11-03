@@ -69,6 +69,7 @@ import {
   laneViewport,
   laneBusEmit,
   laneCameraFramePayload,
+  clearLanePendingTarget,
 } from './simLaneCommands.js';
 import {
   modalInputActive,
@@ -1935,6 +1936,7 @@ export function createSimLaneRuntime({
       const nextGeneration = Number.isSafeInteger(value) && value >= 0 ? value : lifecycleGeneration;
       if (nextGeneration !== lifecycleGeneration) {
         revokeCeresCradleReceipts(readModel, state);
+        clearLanePendingTarget(state);
         ceresActuationTick = -1;
       }
       lifecycleGeneration = nextGeneration;
@@ -2092,6 +2094,7 @@ export function createSimLaneRuntime({
     workerPumpRequested = false;
     stopWorkerPump();
     laneClosed = true;
+    clearLanePendingTarget(state);
     if (stallWatchdogTimer !== null) {
       clearTimeout(stallWatchdogTimer);
       stallWatchdogTimer = null;

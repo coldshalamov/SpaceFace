@@ -46,7 +46,7 @@ import { mountProExperiencesBrowser } from '../features/proExperiencesBrowser.js
 import { bindSound, bindTemperature } from './kit/index.js';
 import { indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
 import { resolveWorldPresentationEntity } from '../world/presentationSources.js';
-import { laneInputWrite, laneSetComponentSelection } from '../core/simLaneCommands.js';
+import { laneInputWrite, laneSetComponentSelection, laneTargetWritePending } from '../core/simLaneCommands.js';
 import { occupantGenerationOf } from '../core/entity.js';
 import { targetIdentityGeneration } from '../ai/perception.js';
 import { concealedFromPlayer, selectionIsRecycled, selectionRetired } from '../combat/targetIdentity.js';
@@ -2502,6 +2502,7 @@ function collectAcquisitionCandidates(state, player) {
 
 function targetNearestHostileToPlayer(state, bus, options = {}) {
   if (state.input?.targetAssistDisabled === true) return;
+  if (options.quiet && laneTargetWritePending(state)) return;
   const player = state.entities.get(state.playerId);
   if (!player) return;
   const quiet = !!options.quiet;
