@@ -317,12 +317,21 @@ export function liveProbeLooksDead(kind, a, b) {
   return !(Math.abs(d) >= 0.2);
 }
 
-async function probeOnce(page, code, seconds, label, probes, softwareGl) {
+import { probeNeedsRetry } from './checks.mjs';
+
+async function probeOnce(page, code, seconds, label, probes, softwareGl, trace, drain) {
   const a = softwareGl ? await readPlayerMotion(page) : null;
   const rec = await holdKey(page, code, seconds, label, probes);
   if (!softwareGl || !rec || rec.watch) return rec;
   const b = await readPlayerMotion(page);
-  if (!liveProbeLooksDead(rec.kind, a, b)) return rec;
+  if (trace) {
+    // Judge with the checker's evidence (trace samples), not a live endpoint read: a stalled
+    // sampler can leave the window too sparse for probeDead even when the ship visibly moved.
+    if (drain) await drain().catch(() => {});
+    const need = probeNeedsRetry(trace, rec);
+    rec.retryCheck = need.why;
+    if (!need.retry) return rec;
+  } else if (!liveProbeLooksDead(rec.kind, a, b)) return rec;
   // Software GL (SwiftShader) stalls can swallow a whole ~1 s probe window. Retry once after a
   // short settle with a doubled window; checks.mjs judges both attempts with unchanged thresholds.
   rec.retried = true;
@@ -334,10 +343,10 @@ async function probeOnce(page, code, seconds, label, probes, softwareGl) {
 
 /** Thrust and yaw probes: the "can I move at all" question, asked at every spawn/round start.
  * With { softwareGl: true }, a probe that looks dead live is retried once (see probeOnce). */
-export async function controlProbes(page, tag, probes, { softwareGl = false } = {}) {
-  const thrust = await probeOnce(page, 'KeyW', 1.2, `${tag} thrust`, probes, softwareGl);
+export async function controlProbes(page, tag, probes, { softwareGl = false, trace = null, drain = null } = {}) {
+  const thrust = await probeOnce(page, 'KeyW', 1.2, `${tag} thrust`, probes, softwareGl, trace, drain);
   if (thrust && thrust.watch) return thrust.watch;
-  const yaw = await probeOnce(page, 'KeyD', 0.8, `${tag} yaw`, probes, softwareGl);
+  const yaw = await probeOnce(page, 'KeyD', 0.8, `${tag} yaw`, probes, softwareGl, trace, drain);
   return yaw && yaw.watch ? yaw.watch : null;
 }
 

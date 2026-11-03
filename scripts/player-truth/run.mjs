@@ -904,7 +904,7 @@ async function runOne(args, arena, extra = {}) {
               if ((await phaseNow()).ph !== 'active') continue;
             }
             if (round !== trace.rounds[0]) await shoot(`round ${round.wave} start`, true);
-            await controlProbes(page, `round ${round.wave}`, trace.probes, { softwareGl: /swiftshader|llvmpipe|software|softpipe/i.test(renderer) });
+            await controlProbes(page, `round ${round.wave}`, trace.probes, { softwareGl: /swiftshader|llvmpipe|software|softpipe/i.test(renderer), trace, drain });
             if (await haltIfInterrupted()) break;
             if (round !== trace.rounds[0]) await shoot(`round ${round.wave} after probes`, true);
             continue;
@@ -958,7 +958,7 @@ async function runOne(args, arena, extra = {}) {
       log(`idle ${args.idle} sim s (no input)`);
       await waitSim(page, args.idle, { maxWallMs: 600000 });
       if (!(await haltIfInterrupted())) {
-        await controlProbes(page, 'spawn', trace.probes, { softwareGl: /swiftshader|llvmpipe|software|softpipe/i.test(renderer) });
+        await controlProbes(page, 'spawn', trace.probes, { softwareGl: /swiftshader|llvmpipe|software|softpipe/i.test(renderer), trace, drain });
         if (!(await haltIfInterrupted())) {
           let beat = 0;
           while (!(stopReason = overBudget(st0.sim, await simNow(page)))) {

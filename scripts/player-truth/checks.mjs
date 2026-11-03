@@ -643,6 +643,18 @@ export function checkPlayerControl(trace) {
     probes.map((p) => `${p.label} ${fmt(p.value, 2)}`).join(' · '), offenders, offenders.slice(0, 2));
 }
 
+/** Fewest trace samples inside a probe window for the checker's verdict on it to count as evidence. */
+export const PROBE_MIN_SAMPLES = 4;
+
+/** Should a software-GL probe be retried? Uses the checker's own evidence: retry when the trace
+ * window is too sparse to judge, or when probeDead on the trace drained so far says dead. */
+export function probeNeedsRetry(trace, pr) {
+  const n = ((trace && trace.samples) || []).filter((s) => s.p && s.sim >= pr.startSim && s.sim <= pr.endSim).length;
+  if (n < PROBE_MIN_SAMPLES) return { retry: true, why: `sparse trace: ${n} sample(s) in window` };
+  const d = probeDead(trace, { ...pr });
+  return d.dead ? { retry: true, why: d.why } : { retry: false, why: null };
+}
+
 /** A thrust/yaw probe is dead when the ship does not answer it on screen. A thrust probe needs real
  * displacement, not just a velocity number: a body whose velocity reads 140 u/s while its position
  * stays put is pinned, and the player sees a ship that cannot move. */
