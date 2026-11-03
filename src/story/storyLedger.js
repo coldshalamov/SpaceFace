@@ -74,7 +74,7 @@ const STEP_SPEECH = Object.freeze({
   // delivery, and the feud is not a tow).
   '3:delivery': Object.freeze({
     id: 'b3-delivery', rank: 50,
-    doing: 'delivering VARIANCE ADJUSTMENT', so: 'delivered the Hawser to the yard', then: 'the berth took the tug',
+    doing: 'towing the slag core to Ceres', so: 'delivered the slag core to Ceres', then: 'the Ceres yard took the load',
   }),
   '3:feed_the_maw': Object.freeze({
     id: 'b3-maw', rank: 51,

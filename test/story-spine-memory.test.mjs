@@ -713,6 +713,10 @@ test('a headline verb is not spoken as one of the two solutions', () => {
   }, 2);
   assert.equal(spineGreeting('contact_coldburn_rey', core), 'You brought the core in. I saw the hull.');
   assert.doesNotMatch(spineGreeting('contact_coldburn_rey', core), /line/);
+  const road = spineRoadFrom(core);
+  assert.ok(road);
+  assert.match(road.cite, /the Ceres yard took the core/);
+  assert.doesNotMatch(road.cite, /Hawser/);
 });
 
 test('the finale cites the retained road and does not change which ending is offered', () => {

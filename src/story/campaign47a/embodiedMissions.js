@@ -256,7 +256,7 @@ export const EMBODIED_MISSIONS = Object.freeze([
         stepId: 'delivery',
         type: 'tow_recovery', storyTag: 'campaign47a:b3:berth',
         title: 'Tow the slag core',
-        brief: 'Delivery run for Slate\u2019s yard. Keep the core on the line into the yard, or sling it in — the Hawser seam reads honest: it holds three spikes and lets go at the fourth.',
+        brief: 'Tow one slag core from Tethys to Ceres for Slate\u2019s yard. Keep it on the line or sling it in cleanly; after delivery, Slate keeps a tally of strain spikes on your tether.',
         factionId: 'faction_dmc',
         stationId: 'station_tethys', destStationId: 'station_ceres', destSectorId: 'sector_ceres_belt',
         reward_cr: 1000, collateral_cr: 0, riskTier: 1, minRep: -149, time_limit_s: 0,

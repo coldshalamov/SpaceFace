@@ -349,7 +349,7 @@ function solvedPhrase(row) {
   if (row.stepId === 'skim') return 'the lane skim survived';
   // W-BOOKS-3-4 (§34.7): the B3 yard list and the B4 door operations file their own
   // verbs too — the beat's solved row keeps the last recorded step.
-  if (row.stepId === 'delivery') return 'the Hawser berthed';
+  if (row.stepId === 'delivery') return 'the Ceres yard took the core';
   if (row.stepId === 'feed_the_maw') return 'the maw fed';
   if (row.stepId === 'foreman') return 'the yard feud settled';
   if (row.beat === 4 && row.stepId === 'operation') {
