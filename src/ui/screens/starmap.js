@@ -376,6 +376,20 @@ const CSS = `
   #sf-starmap .sm-side { width: 288px; }
   #sf-starmap .sm-stats { gap: var(--sp-2); }
 }
+/* Narrow window: the 288px inspector left the chart a ~100px sliver and the legend and key hint
+   printed over the dossier text. Stack instead: chart on top, inspector below, legend only. */
+@media (max-width: 560px) {
+  #sf-starmap .sm-body { flex-direction: column; }
+  #sf-starmap .sm-canvas-wrap { flex: 0 0 38%; min-height: 200px; }
+  #sf-starmap .sm-side {
+    width: auto; flex: 1 1 0; min-height: 0;
+    -webkit-mask-image: linear-gradient(180deg, transparent 0, rgb(0 0 0) 14px); mask-image: linear-gradient(180deg, transparent 0, rgb(0 0 0) 14px);
+    padding: var(--sp-3) var(--sp-4);
+  }
+  #sf-starmap .sm-foot { padding: var(--sp-1) var(--sp-3); }
+  #sf-starmap .sm-foot > :not(.sm-legend) { display: none; }
+  #sf-starmap .sm-legend { gap: var(--sp-1) var(--sp-3); }
+}
 @media (prefers-reduced-motion: reduce) {
   #sf-starmap, #sf-starmap * { animation: none; transition: none; }
 }
