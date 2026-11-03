@@ -429,7 +429,7 @@ function pushQuad(pos, nrm, uv, a, b, c, d, uvs, col = null, ao = null, facet = 
 }
 
 // 3 block variants: identical silhouette, different bevel depth / pad relief. Deterministic per cell.
-export function makeCellBlockGeos() {
+export function makeCellBlockGeos({ jointOcclusion = 0.14, wallTopOcclusion = 0.17, grooveDepthScale = 1 } = {}) {
   // JOINT GEOMETRY IS THE GRID. Narrower bevels with a much steeper drop turn the seam between two
   // cells from a wide lit channel (which reads as a painted outline) into a deep V-groove that
   // shadows itself. The lift spread is widened so the cut face is uneven stone rather than a plane
@@ -445,12 +445,12 @@ export function makeCellBlockGeos() {
   // outline again. So occlusion is baked per vertex: 1.0 on the pad, falling into the joint and
   // down the cavity wall. It rides the standard vertexColors path, multiplying with the
   // per-instance tint, and costs nothing at runtime.
-  const AO = { pad: 1.0, padEdge: 0.90, groove: 0.14, wallTop: 0.17, wallBottom: 0.46, back: 0.10 };
+  const AO = { pad: 1.0, padEdge: 0.90, groove: jointOcclusion, wallTop: wallTopOcclusion, wallBottom: 0.46, back: 0.10 };
   return variants.map((v) => {
     const pos = [], nrm = [], uv = [], col = [], facet = [];
     const p = 0.5 - v.bev;                    // pad half-extent
     const zF = v.lift;                        // pad plane (proud of z=0)
-    const zB = -v.bev * (v.drop || 1.7);      // full footprint resumes here
+    const zB = -v.bev * (v.drop || 1.7) * grooveDepthScale; // full footprint resumes here
     const pad = {
       pp: [p, p, zF], pn: [p, -p, zF], np: [-p, p, zF], nn: [-p, -p, zF], cc: [0, 0, zF + v.bulge],
     };

@@ -4,6 +4,8 @@
 const FLIGHT = ':root[data-sf-mobile="1"][data-sf-mobile-flight="1"]';
 
 export const MOBILE_FLIGHT_LAYOUT_CSS = `
+/* Fallback only until the HUD measures a safe band for the live voice/status lane. */
+${FLIGHT} #alerts { transform:translateY(calc(124px + var(--sf-safe-top,0px))); }
 /* The law presenter shares the HUD's measured caption bands on mobile, outside the
    radar dock's flow. Long notices scroll inside the allocated band. */
 ${FLIGHT} #ui-root > #sf-sector-law {
@@ -144,6 +146,7 @@ ${FLIGHT} #sf-touch-overlay.mf-notice-priority .mf-ghost { visibility:hidden; }
   ${FLIGHT} #race-tape[data-compact="false"] :is(.race-tape-options-trigger,.race-tape-options-close) { display:none!important; }
 }
 @media (max-height:500px) and (orientation:landscape) {
+  ${FLIGHT} #alerts { transform:none; }
   ${FLIGHT} #hud .sf-radar-wrap--expanded { top:calc(8px + var(--sf-safe-top,0px))!important; max-height:calc(100dvh - 16px - var(--sf-safe-top,0px) - var(--sf-safe-bottom,0px)); }
   ${FLIGHT} #hud .sf-rightdock { top:calc(95px + var(--sf-safe-top,0px))!important; right:calc(70px + var(--sf-safe-right,0px))!important; }
   ${FLIGHT} #hud > .sf-leftcontext { top:calc(100px + var(--sf-safe-top,0px))!important; width:230px!important; }

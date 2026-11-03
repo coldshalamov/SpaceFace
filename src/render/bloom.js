@@ -1516,7 +1516,7 @@ function installUnreadyDrawGuard(renderer) {
     // slot pass. Released payloads keep drawing from stamp-matched GPU copies; a
     // fresh upload or orientation hold waits for real bytes before three binds them.
     if (preparePresentedDraw(renderer, geometry, material)) {
-      queuePresentedDetachRehydrate(renderer);
+      queuePresentedDetachRehydrate(renderer, { geometry, material });
       return undefined;
     }
     if (renderer.__sfUnreadyDrawGuardDepth > 0 && !renderer.__sfExactTargetTouch && material) {
@@ -1871,7 +1871,7 @@ export function createUnreadyDrawableGuard(renderer, options = {}) {
     if (object.isInstancedMesh && !(Number(object.count) > 0)) return;
     const pendingGeometry = detachedGeometryUploadPending(object.geometry, renderer);
     if (orientationHoldHidesDrawable(renderer, object) || pendingGeometry) {
-      if (pendingGeometry) queuePresentedDetachRehydrate(renderer);
+      if (pendingGeometry) queuePresentedDetachRehydrate(renderer, { geometry: object.geometry, material: object.material });
       hideDrawableForPass(object);
       return;
     }

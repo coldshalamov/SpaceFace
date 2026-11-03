@@ -1979,6 +1979,7 @@ export function createHud(ctx, alerts) {
     if (open) mtDetailsClose.focus?.();
     else if (returnFocus) mtDetailsButton.focus?.();
     flightTextObstaclesStale = true;
+    alertLanePlacementStale = true;
     placeReceiptLane();
   };
   // Ctrl-drag belongs to the tracker, not its interactive disclosure or scroll surface.
@@ -5961,6 +5962,7 @@ export function createHud(ctx, alerts) {
     objectiveEdgeBoxes.stale = true;
     externalCaptionsStale = true;
     flightTextObstaclesStale = true;
+    alertLanePlacementStale = true;
   }
   function invalidateAndPlaceHudOverlays() {
     invalidateObjectiveEdgeBoxes();
@@ -6015,6 +6017,9 @@ export function createHud(ctx, alerts) {
   const flightTextObstacleCache = createFlightTextObstacleCache();
   let externalCaptionsStale = true;
   let flightTextObstaclesStale = true;
+  let alertLanePlacementStale = true;
+  let alertLanePlacementActive = false;
+  let alertLaneOriginalStyle = null;
   let lastReceiptObstacle = null;
   let lastCaptionObstacleVisible = null;
 
@@ -6134,6 +6139,12 @@ export function createHud(ctx, alerts) {
   // Both roots are static index.html markup: resolve each once, retrying only while absent.
   let toastsLaneEl = null;
   let alertsEl = null;
+  let alertLaneObserver = null;
+  function cleanupAlertLanePlacement() {
+    alertLaneObserver?.disconnect();
+    if (alertLanePlacementActive) restoreAlertLanePlacement(alertsEl);
+  }
+  hudUnsubscribers.push(cleanupAlertLanePlacement);
   function overlaySafeSlot(layout, w, h) {
     const safe = layout && layout.centerSafe;
     const measured = objectiveEdgeObstacles();
@@ -6187,6 +6198,7 @@ export function createHud(ctx, alerts) {
     const hasTouchControls = responsive.some(el => el.closest?.('#sf-touch-overlay')
       && responsiveRects.get(el)?.width > 0 && responsiveRects.get(el)?.height > 0);
     const radarYielded = [...yieldedFlightVisuals.keys()].some(el => el.matches?.('.sf-radar-wrap'));
+    const isExcluded = (el) => excludedElement instanceof Set ? excludedElement.has(el) : el === excludedElement;
     const candidates = [
       ...root.querySelectorAll?.('.orr-hud-cluster .orr-cluster, .sf-prail, .sf-rightdock, .sf-command-deck, .sf-nav-readout, .sf-nav-label, .sf-mt-obj, .sf-vtape--on, .sf-commtape, .sf-dock-prompt, .sf-tell.is-on, #sf-prompt-deck, #sf-tutorial-flight-card') || [],
       ...document.querySelectorAll?.('.sf-stuntcall:not([hidden])') || [],
@@ -6199,7 +6211,7 @@ export function createHud(ctx, alerts) {
       candidates.push(...root.querySelectorAll?.('.sf-caption.show, .sf-toast:not(.sf-toast--out)') || []);
     }
     const blockers = candidates.map((el) => {
-      if ((radarYielded && el === measured.rightEl) || el === excludedElement || yieldedFlightVisuals.has(el)
+      if ((radarYielded && el === measured.rightEl) || isExcluded(el) || yieldedFlightVisuals.has(el)
           || Array.from(yieldedFlightVisuals.keys()).some(parent => parent.contains?.(el))) return null;
       const rect = el === measured.railEl ? measured.rail
         : el === measured.rightEl ? measured.right
@@ -6212,7 +6224,7 @@ export function createHud(ctx, alerts) {
     }).filter((r) => r && r.width > 0 && r.height > 0
       && r.left < slot.x + slot.width && r.right > slot.x);
     for (const el of externalFlightCaptions) {
-      if (el === excludedElement || yieldedFlightVisuals.has(el) || !el.isConnected || el.hidden || el.style?.display === 'none') continue;
+      if (isExcluded(el) || yieldedFlightVisuals.has(el) || !el.isConnected || el.hidden || el.style?.display === 'none') continue;
       const rect = el.getBoundingClientRect?.();
       if (rect && rect.width > 0 && rect.height > 0
         && rect.left < slot.x + slot.width && rect.right > slot.x) {
@@ -6258,6 +6270,76 @@ export function createHud(ctx, alerts) {
       }
     }
     return bands.filter((band) => band.bottom - band.top >= 48).sort((a, b) => b.bottom - b.top - (a.bottom - a.top));
+  }
+  const ALERT_LANE_STYLE_KEYS = ['position', 'left', 'right', 'top', 'bottom', 'width', 'maxHeight',
+    'overflowY', 'transform', 'pointerEvents', 'boxSizing'];
+  const ALERT_LANE_OWNED_CSS_PROPERTIES = new Set([
+    // CSSOM serializes our four inset longhand writes back to the `inset` shorthand. Treat that
+    // canonical form as owned too, or MutationObserver mistakes its own write batch for outside
+    // geometry and repeatedly runs the synchronous layout allocator.
+    'position', 'left', 'right', 'top', 'bottom', 'inset', 'width', 'max-height', 'overflow-y',
+    'transform', 'pointer-events', 'box-sizing',
+  ]);
+  function alertLaneStyleMutationIsOwned(record, lane) {
+    if (!record || record.type !== 'attributes' || record.target !== lane
+      || record.attributeName !== 'style' || !('oldValue' in record)) return false;
+    const externalStyle = (styleText) => String(styleText || '').split(';').map((declaration) => {
+      const colon = declaration.indexOf(':');
+      if (colon < 0) return '';
+      const property = declaration.slice(0, colon).trim().toLowerCase();
+      return ALERT_LANE_OWNED_CSS_PROPERTIES.has(property) ? '' : `${property}:${declaration.slice(colon + 1).trim()}`;
+    }).filter(Boolean).sort().join(';');
+    return externalStyle(record.oldValue) === externalStyle(lane.getAttribute?.('style'));
+  }
+  function restoreAlertLanePlacement(lane) {
+    if (!lane || !alertLanePlacementActive) return;
+    for (const key of ALERT_LANE_STYLE_KEYS) setStyle(lane, key, alertLaneOriginalStyle?.[key] || '');
+    alertLanePlacementActive = false;
+    alertLaneOriginalStyle = null;
+  }
+  function placeAlertLaneInSafeBands(layout, w, h) {
+    if (!alertLanePlacementStale) return;
+    alertLanePlacementStale = false;
+    if (alertsEl === null) alertsEl = document.getElementById('alerts');
+    const lane = alertsEl;
+    if (!lane) { alertLanePlacementStale = true; return; }
+    const mobileFlight = document.documentElement?.getAttribute?.('data-sf-mobile-flight') === '1';
+    if (!mobileFlight) { restoreAlertLanePlacement(lane); return; }
+    const alertCards = [...(lane.querySelectorAll?.(':scope > .sf-alert:not([hidden])') || [])];
+    const getStyle = document.defaultView?.getComputedStyle || globalThis.getComputedStyle;
+    const visibleCards = alertCards.filter((el) => {
+      if (!el || el.hidden || el.style?.display === 'none' || el.style?.visibility === 'hidden') return false;
+      if (typeof getStyle === 'function') {
+        try {
+          const style = getStyle.call(document.defaultView || globalThis, el);
+          if (style?.display === 'none' || style?.visibility === 'hidden' || style?.visibility === 'collapse') return false;
+        } catch (_) { /* partial DOM hosts use the element rectangle below */ }
+      }
+      const rect = el.getBoundingClientRect?.();
+      return !rect || (rect.width > 0 && rect.height > 0);
+    });
+    if (!visibleCards.length) { restoreAlertLanePlacement(lane); return; }
+    if (!alertLaneOriginalStyle) {
+      alertLaneOriginalStyle = Object.fromEntries(ALERT_LANE_STYLE_KEYS.map((key) => [key, lane.style?.[key] || '']));
+    }
+    alertLanePlacementActive = true;
+    const slot = overlaySafeSlot(layout, w, h);
+    if (!slot || !(slot.width > 0)) { restoreAlertLanePlacement(lane); return; }
+    for (const [key, value] of Object.entries({ position: 'fixed', left: `${Math.round(slot.x)}px`,
+      right: 'auto', top: '0px', bottom: 'auto', width: `${Math.round(slot.width)}px`, maxHeight: 'none',
+      overflowY: 'visible', transform: 'none', pointerEvents: 'none', boxSizing: 'border-box' })) {
+      setStyle(lane, key, value);
+    }
+    const contentHeight = Math.max(48, lane.scrollHeight || visibleCards.reduce((sum, el) =>
+      sum + (el.getBoundingClientRect?.().height || 0), 0));
+    const bands = freeOverlayBands(slot, h, layout, new Set(alertCards));
+    const band = bands.find((candidate) => candidate.bottom - candidate.top >= contentHeight + 8) || bands[0];
+    if (!band) { restoreAlertLanePlacement(lane); return; }
+    const bandHeight = Math.max(48, Math.round(band.bottom - band.top - 8));
+    setStyle(lane, 'top', `${Math.round(band.top + 4)}px`);
+    setStyle(lane, 'maxHeight', `${bandHeight}px`);
+    setStyle(lane, 'overflowY', contentHeight > bandHeight ? 'auto' : 'visible');
+    setStyle(lane, 'pointerEvents', contentHeight > bandHeight ? 'auto' : 'none');
   }
   function placeCaptionInSafeSlot(target, layout, slot, laneRoot, band = null) {
     if (!target || target.hidden || !slot) return;
@@ -6430,6 +6512,7 @@ export function createHud(ctx, alerts) {
     const w = typeof window !== 'undefined' ? window.innerWidth : 1280;
     const h = typeof window !== 'undefined' ? window.innerHeight : 720;
     const layout = resolvedLayout || resolveObjectiveHudLayout(w, h);
+    placeAlertLaneInSafeBands(layout, w, h);
     if (!laneRoot || !layout.receipt) {
       placeOrdinaryCaptionInSafeBands(layout, w, h);
       placeExternalFlightCaptions(layout, w, h);
@@ -6541,18 +6624,23 @@ export function createHud(ctx, alerts) {
   });
   if (typeof MutationObserver !== 'undefined') {
     const alertLaneOptions = {
-      attributes: true, attributeFilter: ['class', 'hidden', 'style'],
+      attributes: true, attributeFilter: ['class', 'hidden', 'style'], attributeOldValue: true,
       childList: true, subtree: true, characterData: true,
     };
-    let alertLaneObserver = null;
     const observeAlertLane = () => {
       const alertLane = document.getElementById('alerts');
       if (!alertLane || alertLaneObserver) return false;
-      alertLaneObserver = new MutationObserver(() => {
+      alertLaneObserver = new MutationObserver((records) => {
+        if (records?.length && records.every((record) => alertLaneStyleMutationIsOwned(record, alertLane))) return;
+        alertLanePlacementStale = true;
         flightTextObstaclesStale = true;
         placeReceiptLane();
       });
       alertLaneObserver.observe(alertLane, alertLaneOptions);
+      if (document.documentElement) alertLaneObserver.observe(document.documentElement, {
+        attributes: true, attributeFilter: ['data-sf-mobile-flight'],
+      });
+      alertLanePlacementStale = true;
       placeReceiptLane();
       return true;
     };
@@ -6563,7 +6651,6 @@ export function createHud(ctx, alerts) {
       waitForAlertLane.observe(document.documentElement, { childList: true, subtree: true });
       hudUnsubscribers.push(() => waitForAlertLane.disconnect());
     }
-    hudUnsubscribers.push(() => alertLaneObserver?.disconnect());
   }
 
   function placeFlightBox(el, rect) {

@@ -1060,14 +1060,24 @@ export function presentedDetachDrawsArmed(renderer) {
 function presentedResourceManifests(resources) {
   if (!resources) return detachedManifestList();
   const wanted = new Set();
+  const add = (resource) => {
+    // Texture clones can carry the package mark while sharing its canonical Source. Refill
+    // that live generation too; the manifest's exact resource pairing still owns all writes.
+    const mark = resource?.userData?.spacefaceCpuDetach;
+    const manifest = mark && manifestForMark(mark);
+    if (manifest && !manifest.evicted && manifestHasDetachedEntries(manifest)) wanted.add(manifest);
+  };
   for (const list of [resources.geometries, resources.textures]) {
-    for (const resource of list || []) {
-      // Texture clones can carry the package mark while sharing its canonical Source. Refill
-      // that live generation too; the manifest's exact resource pairing still owns all writes.
-      const mark = resource?.userData?.spacefaceCpuDetach;
-      const manifest = mark && manifestForMark(mark);
-      if (manifest && !manifest.evicted && manifestHasDetachedEntries(manifest)) wanted.add(manifest);
-    }
+    for (const resource of list || []) add(resource);
+  }
+  // A blocked native draw already owns its exact geometry and material array. Use the same
+  // binding-slot vocabulary as preparePresentedDraw; no scene walk or fleet fallback.
+  add(resources.geometry);
+  const material = resources.material;
+  const array = Array.isArray(material);
+  for (let i = 0; i < (array ? material.length : material ? 1 : 0); i++) {
+    const item = array ? material[i] : material;
+    for (const key of PRESENTED_DETACH_TEXTURE_KEYS) add(item?.[key]);
   }
   return wanted;
 }
