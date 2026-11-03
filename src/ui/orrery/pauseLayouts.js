@@ -286,6 +286,10 @@ ${BOTH} > .sf-pause-foot [data-role="version"] {
     position:relative !important; inset:auto !important; width:100% !important; min-width:0 !important;
     max-height:none !important; flex:none !important; align-self:stretch !important; }
   ${PN} > .dp-frame__body { grid-template-columns:minmax(0, 1fr) !important; }
+  /* the column sits straight on the held frame, so the verb lists lose their edge over a bright hull:
+     a soft ink panel behind the body (never behind the dial layout, which has its own halo) */
+  ${PN} > .dp-frame__body { background:linear-gradient(180deg, rgb(4 6 9 / .72), rgb(4 6 9 / .62) 70%, rgb(4 6 9 / .5)) !important;
+    border-radius:4px; box-shadow:0 0 0 10px rgb(4 6 9 / .5) !important; }
   ${PN} > .dp-frame__body > .dp-frame__col { min-width:0 !important; max-width:100% !important; }
   ${PN} .dp-title__name { font-size:clamp(28px, 8vw, 42px) !important; }
   ${PN} .sf-pause-brief { max-width:100% !important; }
