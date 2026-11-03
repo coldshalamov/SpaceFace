@@ -200,7 +200,7 @@
   "src/ui/orrery/mobileScreenLayouts.js": "f932672107c256eb4abc88c02aaf7b18678c8473d9657c3205936526fc0ae347",
   "src/ui/orrery/motion.js": "d6b91527f27e6cf6eef7f514a17105d37975d3f936596d987f72f20e15eb0878",
   "src/ui/orrery/new-gameLayouts.js": "6386197d948ea0821c1bb6880bcc4d6eed634789c0160aac7e6003014e382988",
-  "src/ui/orrery/newGameLayouts.js": "d60268120b30e53621bd601d2e550927e1d3a2dfcb19ff328b033d317669ccce",
+  "src/ui/orrery/newGameLayouts.js": "28ed3cf8f0158cd95f37886dea6c970754d67271cd7d65fd5bca8c0caa470919",
   "src/ui/orrery/nextDecision.js": "abeecce9c2bb94fe37d834bf2be7a139bafb95aa588e81a640d352c46197e547",
   "src/ui/orrery/pauseLayouts.js": "11f938eeed4c0e9c509695097588792e38e529b82e5c1de0b17a8d35119e5fdb",
   "src/ui/orrery/physics-raceLayouts.js": "de2ab6132adc9c4b8475fa9545734e90309a208f9da63652a80615a3e8afacd6",
