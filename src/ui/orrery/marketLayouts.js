@@ -376,7 +376,7 @@ ${M} .orr-mkt-holdarc svg { width:104px; height:60px; overflow:visible; display:
 ${M} .orr-mkt-holdarc__t { ${LABEL} font-size:12px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .6) !important; }
 ${M} .orr-mkt-holdarc__t b { display:block; ${NUMERAL} font-size:15px !important; font-weight:520 !important; letter-spacing:0 !important;
   text-transform:none !important; color:rgb(248 244 234) !important; margin-top:3px; }
-${M} .sx-trade__note { grid-area:note; margin:0 !important; font-size:12.5px !important; color:rgb(${BONE} / .8) !important; }
+${M} .sx-trade__note { grid-area:note; min-width:0; max-width:240px; margin:0 !important; white-space:normal !important; overflow-wrap:anywhere; font-size:12.5px !important; color:rgb(${BONE} / .8) !important; }
 ${M} .so-trade-breakdown { grid-area:breakdown; ${PLAIN} padding:0 !important; }
 ${M} .so-trade-breakdown > summary { ${LABEL} font-size:12px !important; letter-spacing:.18em !important; color:rgb(${BONE} / .62) !important; cursor:pointer; list-style:none; }
 ${M} .so-trade-breakdown > summary::-webkit-details-marker { display:none; }
@@ -561,7 +561,7 @@ const compactBerth = (M, MQ) => `
   ${M} .orr-mkt-subkey__bit { font-size:12px !important; letter-spacing:.08em !important; }
   /* console: dial, the three dial words under it, the total, the quote breakdown, the verbs */
   ${M} .sx-trade { grid-template-columns:minmax(0, 1fr) !important; grid-template-rows:none !important;
-    grid-template-areas:"dial" "total" "breakdown" "verb" !important; justify-items:center; row-gap:3px !important; }
+    grid-template-areas:"dial" "total" "note" "breakdown" "verb" !important; justify-items:center; row-gap:3px !important; }
   ${M} .sx-trade > .sx-qty { width:138px; height:106px; }
   ${M} .sx-qty .orr-qdial { left:21px; top:0; width:96px; height:96px; }
   ${M} .orr-qdial__end { font-size:18.75px; }
@@ -571,7 +571,8 @@ const compactBerth = (M, MQ) => `
   ${M} .sx-qty :is(.sx-qty__b, .sx-qty__max) { font-size:12px !important; letter-spacing:.1em !important; padding:1px 0 !important; }
   ${M} .so-trade-total > span { display:none !important; }
   ${M} .so-trade-total > strong { font-size:16px !important; }
-  ${M} .orr-mkt-holdarc, ${M} .sx-trade__note { display:none !important; }
+  ${M} .orr-mkt-holdarc { display:none !important; }
+  ${M} .sx-trade__note:not([hidden]) { display:block !important; width:138px; text-align:left; line-height:1.3 !important; }
   ${M} .so-trade-breakdown { display:block !important; justify-self:stretch; text-align:center; }
   ${M} .so-trade-breakdown > summary { font-size:12px !important; letter-spacing:.08em !important; line-height:1.2 !important; white-space:normal !important; overflow-wrap:anywhere; }
   ${M} .so-trade-breakdown[open] { text-align:left; }
