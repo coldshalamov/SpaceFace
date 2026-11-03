@@ -29,6 +29,12 @@ function isTrafficRescuePod(entity) {
     && data.survivorPodCausal && !data.survivorPodCausal.resolved);
 }
 
+function isPlayerTowingRescuePod(state, pod) {
+  const tether = state.player?.tether;
+  // Treat even a stale active player line conservatively: the survivor owner decides custody.
+  return tether?.active === true && tether.targetId === pod.id;
+}
+
 export const trafficRoleOps = {
   // ── Role behaviors (spec §12.1) ────────────────────────────────────────────────────────────
   _ensureCivilianViolenceRing() {
@@ -1167,29 +1173,49 @@ export const trafficRoleOps = {
     if (nearest) rec.targetId = nearest.id;
   },
 
-  _findNearbyRescueTarget(state, rescuer, maxRadius = 2500) {
+  _findNearbyRescuePod(state, rescuer, maxRadius = 2500) {
     if (!state || !rescuer || !rescuer.pos) return null;
     const maxR2 = maxRadius * maxRadius;
 
-    // 1. Scan for unattended survivor pods
+    // Survivor pods are payloads; never sweep unrelated living-world buckets on standby.
     let bestPod = null;
     let bestPodD2 = maxR2;
     const checkPod = (candidate) => {
-      if (!isTrafficRescuePod(candidate) || candidate.id === rescuer.id) return;
+      if (!isTrafficRescuePod(candidate) || candidate.id === rescuer.id
+        || isPlayerTowingRescuePod(state, candidate)) return;
+      // Let another working lifter finish the approach it already chose. This is a steering
+      // preference, not a custody claim; the survivor owner still controls actual boarding.
+      const assigned = state.traffic?.freighters?.some((other) => {
+        if (!other || other.id === rescuer.id || other.role !== 'rescue'
+          || other.carryingSurvivor || other.violenceAlarmed || other.rescueTargetType !== 'pod'
+          || other.rescueTargetId !== candidate.id) return false;
+        const hull = state.entities?.get(other.id);
+        return !!(hull && hull.alive !== false && !hull.data?.jobId
+          && !hull.data?.violenceAlarmed && !isShipDisabled(hull, state));
+      });
+      if (assigned) return;
       const dx = candidate.pos.x - rescuer.pos.x;
       const dz = candidate.pos.z - rescuer.pos.z;
       const d2 = dx * dx + dz * dz;
-      if (d2 <= maxR2 && d2 < bestPodD2) {
+      if (d2 <= maxR2 && (!bestPod || d2 < bestPodD2
+        || (d2 === bestPodD2 && String(candidate.id) < String(bestPod.id)))) {
         bestPodD2 = d2;
         bestPod = candidate;
       }
     };
-    if (state.entities && typeof state.entities.forEach === 'function') {
-      forEachJobInteractable(state, checkPod);
-    }
-    if (bestPod) {
-      return { kind: 'pod', entity: bestPod, pos: { x: bestPod.pos.x, z: bestPod.pos.z } };
-    }
+    const payloads = Array.isArray(state.entityIndex?.payloads)
+      ? state.entityIndex.payloads : (state.entityList || []);
+    for (let i = 0; i < payloads.length; i++) checkPod(payloads[i]);
+    return bestPod
+      ? { kind: 'pod', entity: bestPod, pos: { x: bestPod.pos.x, z: bestPod.pos.z } }
+      : null;
+  },
+
+  _findNearbyRescueTarget(state, rescuer, maxRadius = 2500) {
+    if (!state || !rescuer || !rescuer.pos) return null;
+    const maxR2 = maxRadius * maxRadius;
+    const pod = this._findNearbyRescuePod(state, rescuer, maxRadius);
+    if (pod) return pod;
 
     // 2. Scan for recent distress call
     const call = state.traffic && state.traffic.lastDistressCall;
@@ -1273,9 +1299,10 @@ export const trafficRoleOps = {
 
     // Phase 2: Active target tracking
     let targetObj = null;
+    let podSearchDone = false;
     if (rec.rescueTargetType === 'pod' && rec.rescueTargetId != null) {
       const candidate = state.entities && state.entities.get ? state.entities.get(rec.rescueTargetId) : null;
-      if (isTrafficRescuePod(candidate)) {
+      if (isTrafficRescuePod(candidate) && !isPlayerTowingRescuePod(state, candidate)) {
         targetObj = { kind: 'pod', entity: candidate, pos: candidate.pos };
       } else {
         rec.rescueTargetId = null;
@@ -1321,9 +1348,26 @@ export const trafficRoleOps = {
       }
     }
 
+    // A live caller or disabled hull can hold a lifter indefinitely. A newly ejected survivor
+    // takes priority over that standby, but never interrupts an existing pod approach or custody.
+    if (targetObj && (targetObj.kind === 'disabled' || targetObj.kind === 'distress')
+      && !e.data?.carryingSurvivor) {
+      const found = this._findNearbyRescuePod(state, e, 2500);
+      podSearchDone = true;
+      if (found) {
+        targetObj = found;
+        rec.rescueTargetType = 'pod';
+        rec.rescueTargetId = found.entity.id;
+        rec.rescueTargetPos = null;
+        rec.rescueCallerId = null;
+        rec.rescueOnSceneSimT = null;
+      }
+    }
+
     // Phase 3: Find target if none active
     if (!targetObj) {
       const found = this._findNearbyRescueTarget(state, e, 2500);
+      podSearchDone = true;
       if (found) {
         targetObj = found;
         rec.rescueTargetType = found.kind;
@@ -1398,8 +1442,8 @@ export const trafficRoleOps = {
         rec.civilianReaction = 'responding_distress';
         if (dist < 80) {
           // Reached distress scene — check if any pods appeared
-          const nearbyPod = this._findNearbyRescueTarget(state, e, 400);
-          if (nearbyPod && nearbyPod.kind === 'pod') {
+          const nearbyPod = podSearchDone ? null : this._findNearbyRescuePod(state, e, 400);
+          if (nearbyPod) {
             rec.rescueTargetType = 'pod';
             rec.rescueTargetId = nearbyPod.entity.id;
             rec.rescueTargetPos = null;

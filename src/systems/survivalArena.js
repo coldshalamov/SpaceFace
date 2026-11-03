@@ -98,6 +98,7 @@ import { SURVIVAL_ARENA_PHASES as CANONICAL_ARENA_PHASES } from '../data/surviva
 import { gateBearing } from './waveMaterialization.js';
 import { FOUNDRY_ARENA_ID } from './swarmArena.js';
 import { foundryPlateShape, foundryPlateProxy } from '../data/foundryPlate.js';
+import { foundryFurnitureProxy } from '../data/foundryFurniture.js';
 import { CINDER_ARENA_ID, planCinderInstall, stepCinderMachinery } from './cinderSluiceArena.js';
 import {
   CRYO_ARENA_ID,
@@ -2028,6 +2029,7 @@ export const survivalArena = {
       const dynamic = toy.dynamic === true;
       const plate = toy.kind === 'plate' ? foundryPlateShape(toy) : null;
       const radius = plate ? plate.radius : Math.max(4, Number.isFinite(toy.radius) ? toy.radius : 16);
+      const furnitureProxy = plate ? null : foundryFurnitureProxy({ kind: toy.kind, radius });
       const lawRadius = plate ? plate.referenceRadius : radius;
       // FB-022: a toy may author its own mass (prop class); shutters keep SHUTTER_MASS.
       const mass = dynamic
@@ -2059,6 +2061,7 @@ export const survivalArena = {
           material: 'station',
           revision: 0,
           ...(plate ? { collisionProxyManifest: foundryPlateProxy(plate) } : {}),
+          ...(furnitureProxy ? { collisionProxyManifest: furnitureProxy } : {}),
         },
         data: {
           roomOwner: ARENA_ROOM_OWNER,

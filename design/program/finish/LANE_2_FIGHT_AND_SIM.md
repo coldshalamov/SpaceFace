@@ -14,6 +14,12 @@ lean enough to change. Status words: `OPEN`, `ACTIVE`, `LANDED <sha>`, `SKIPPED 
 
 ## Inbox (other lanes append one line: date, lane, path, what/why)
 
+- 2026-11-03 ordinary Intel Swarm8ea: actual fitted fire and a six-ton shard latch/move clear round1 to the Armory,15/15 resolved, score1385/cr946/hull260. Shard impact is not established. Headed Chrome reports Intel Graphics/D3D11, driver32.0.101.8860; no valid active-window FPS was retained. Wave7/first boss remain open. Next operator uses interruptible30-second public-input combat segments rather than long wall time between tiny simulation pulses.
+
+- 2026-11-03 Foundry collision repair: a production native probe fully outside the visible gate previously contacts its radius-ball and moves8→8.1603; corrected hex contact gives0 contacts/stays8. Furnace main body/mouth and moving shutter now use their visible planar shapes through a shared datum, preserving mass/phase/transform and plate geometry. Legacy unproxied rooms resolve the corrected footprints; incompatible ball caches are refused. Native/sweep/open-gap/save checks pass; ordinary contact feel remains to be played.
+
+- 2026-11-03 combat feedback: one counted physical cause replaces duplicate `ARENA: PRESSED`/`PRESSED`; routine wreck/loss accounting stays in its owners while quiet in Swarm's flight register. Desktop chain/announcer retain the upper center and existing voice/receipt lanes move right. The pictured overlap reproduces before and clears after in the real2D presenter bench;24 checks retain danger preemption, actionable receipts and player-owned loss. Smaller/mobile and actual combat look remain open.
+
 - 2026-11-03 ordinary Swarm: runtime confirms `kind: survival`, `ruleset: swarm` under the public Crucible entry. Two rounds were reached, a real Autocannon S purchased and fired in round2. Hovering Strip moved Sell underneath the pointer; the changed Refit layout keeps measured controls stable and passes actual in-place candidate input plus geometry checks. The initial round's largely environmental kills do not accept combat feel; the next active play targets Bank/wave7 and the first boss without wave skips.
 
 - 2026-11-03 ordinary Anvil: DDE Continue→Tethys→Storm Orchard→Scoop feed→release→physical pickup completed with the same player lot/pod. Reserve44→43, release revision2/tetherable, then H hold13→14 at pickup; no grants or teleports. Root inspected the recovery scene. This closes that specific ordinary skim/release/recovery loop, not all Tethys content or performance.

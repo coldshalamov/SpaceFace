@@ -1739,6 +1739,9 @@ export const economy = {
 
     // ---- SOLE credits writer (§0.6) -------------------------------------------------------
     bus.on('economy:grantCredits', (p) => this.grantCredits((p && p.amount) || 0, p && p.reason));
+    // The site emits this only after committing the completed physical brace. Economy
+    // authenticates that receipt and owns the one-time wage, including save/replay.
+    bus.on('worldSite:operationReceipt', (p) => this.settleCeresBraceWage(p));
     bus.on('economy:chargeCredits', (p) => this._onChargeCreditsRequest(p));
     bus.on('economy:releaseDebt', (p) => this._releaseDebt(p && p.amount));
     bus.on('freight:cargoSpilled', (p) => this.levyRestitutionSink(p));
@@ -4198,6 +4201,38 @@ export const economy = {
       : 'Ceres greenhouse — no seed lines arrived. No planting or Provisions were created.', kind: 'info', ttl: 6 });
     return { ok: true, duplicate: false, ...result };
   },
+  settleCeresBraceWage(event) {
+    const siteId = 'world_site_ceres_second_measure';
+    const receipt = event?.receipt;
+    const site = this.state.sites?.worldById?.[siteId];
+    const completed = site?.completedOperations?.brace_long_plate;
+    if (event?.siteId !== siteId || event.componentId !== 'long_plate_clamp'
+      || event.operationId !== 'brace_long_plate' || receipt?.complete !== true
+      || !Array.isArray(site?.receipts) || site.receipts.at(-1) !== receipt
+      || receipt.operationId !== 'brace_long_plate' || receipt.componentId !== 'long_plate_clamp'
+      || receipt.requestStreamId !== 'player-industrial-beam'
+      || receipt.workThreshold !== 24 || receipt.appliedTotal !== 24
+      || !(receipt.amountApplied > 0 && receipt.amountApplied <= 24)
+      || receipt.tick !== this.state.tick || receipt.requestSequence !== this.state.tick
+      || !completed || completed.receiptId !== receipt.receiptId
+      || completed.requestStreamId !== receipt.requestStreamId
+      || completed.requestSequence !== receipt.requestSequence || completed.tick !== receipt.tick
+      || completed.cycle !== receipt.cycle || completed.stateFrom !== 'unbraced' || completed.stateTo !== 'braced') {
+      return { ok: false, reason: 'brace-receipt-invalid' };
+    }
+    // One wage for this authored shift, even if a later component cycle is repaired.
+    const intents = ensureCommittedIntents(this.state), key = 'ceres:second-measure:brace-wage';
+    if (intents[key]) return { ok: true, duplicate: true, ...intents[key].result };
+    const before = normalizeCredits(this.state.player.credits);
+    const creditedCr = normalizeCredits(before + 400) - before;
+    const result = { receiptId: receipt.receiptId, creditedCr };
+    intents[key] = { receipt: { ...receipt }, result };
+    this.grantCredits(400, 'work:ceres-long-plate-brace');
+    this.bus.emit('comms:message', { sender: 'SECOND MEASURE YARD', channel: 'machine',
+      text: `Brace accepted. ${creditedCr} credits transferred for the shift. Clear the head; we'll take the plate.` });
+    return { ok: true, duplicate: false, ...result };
+  },
+
   settleTallyThreeDelivery(receipt) {
     const source=tallyThreeSource(this.state),canonical=source?.delivery;
     if(!canonical||JSON.stringify(canonical)!==JSON.stringify(receipt)
