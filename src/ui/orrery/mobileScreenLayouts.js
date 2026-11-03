@@ -85,11 +85,11 @@ export const MOBILE_SCREEN_CSS = `
   ${N} > .sf-ng-launch-error { order:4; margin:0 !important; width:100%; }
   ${N} .orr-stopscale .k-word { min-height:44px !important; }
 
-  /* Settings: scroll the category rail sideways; give explanatory labels their whole line. */
+  /* Settings: the five categories wrap onto a second row so CONTROLS is never scrolled out of sight; give explanatory labels their whole line. */
   ${S} { display:flex !important; flex-direction:column; gap:14px !important; overflow-y:auto !important; }
   ${S} > :is(.k-title, .k-hang, #sf-settings-pane, .orr-set-preview, .k-foot) { flex:none; width:100% !important; min-width:0 !important; }
-  ${S} .sf-tabbar { flex-direction:row !important; width:100% !important; gap:8px !important;
-    overflow-x:auto !important; overflow-y:hidden !important; background:none !important; padding:0 0 6px !important; }
+  ${S} .sf-tabbar { flex-direction:row !important; flex-wrap:wrap !important; width:100% !important; gap:0 8px !important;
+    overflow:visible !important; background:none !important; padding:0 0 6px !important; }
   ${S} .sf-tabbar > li { width:auto !important; flex:0 0 auto; }
   ${S} .sf-tabbar > li::before { display:none !important; }
   ${S} .sf-tabbar .sf-tab { width:auto !important; min-height:44px !important; padding:8px 12px !important;
