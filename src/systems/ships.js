@@ -1947,6 +1947,7 @@ export const ships = {
     this.state = ctx.state;
     this.bus = ctx.bus;
     this.helpers = ctx.helpers;
+    this._registry = ctx.registry || null;
     this._cargoMassRefreshPending = false;
     this._lastScarByCause = { weapon: null, slam: null };
     const bus = this.bus;
@@ -2911,10 +2912,20 @@ export const ships = {
     if (!Number.isInteger(index) || index < 0 || !owned[index]) return { ok: false, reason: 'missing' };
     if (index === p.activeShipIndex) return { ok: false, reason: 'active' };
     const ship = owned[index];
-    // Tracked physical vessels remain under Shipjack's location/condition owner. The wingman
-    // spawner cannot take custody of that body, so do not materialize a second copy.
-    if (ship.vesselId) return { ok: false, reason: 'tracked_vessel' };
-    if (Number.isFinite(ship.parkedBody?.hull) && ship.parkedBody.hull <= 0) {
+    if (ship.vesselId) {
+      const sj = this.state.player?.shipjack || this.state.shipjack;
+      const vessel = sj?.vesselsById?.[ship.vesselId];
+      const stationId = this.state.ui?.docked === true ? this.state.ui.dockedStationId : null;
+      const shipjack = this._registry?.get('shipjack');
+      const body = vessel?.location?.entityId != null ? this.state.entities?.get(vessel.location.entityId) : null;
+      const anyLive = (this.state.entityList || []).some(e => e?.alive && e.data?.vesselId === ship.vesselId);
+      if (!vessel || vessel.defId !== ship.defId || vessel.custodian !== 'player'
+        || !stationId || vessel.location?.kind !== 'berth' || vessel.location.stationId !== stationId
+        || !shipjack?.stationEntity?.(stationId) || anyLive || (body?.alive && body.data?.vesselId === ship.vesselId)
+        || sj.yards?.[ship.vesselId] || sj.fleetOperations?.[ship.vesselId]
+        || !(vessel.condition?.hull > 0)) return { ok: false, reason: 'tracked_vessel' };
+    }
+    if (!ship.vesselId && Number.isFinite(ship.parkedBody?.hull) && ship.parkedBody.hull <= 0) {
       return { ok: false, reason: 'destroyed' };
     }
     const prior = ship.fleetAssignmentId;
@@ -2938,6 +2949,8 @@ export const ships = {
   fleetHullCondition(entity) { return parkedHullCondition(entity); },
 
   fleetHullFraction(owned) {
+    const vessel = owned?.vesselId && (this.state.player?.shipjack || this.state.shipjack)?.vesselsById?.[owned.vesselId];
+    if (vessel && Number.isFinite(vessel.condition?.hull)) return clamp01(vessel.condition.hull);
     if (!Number.isFinite(owned?.parkedBody?.hull)) return 1;
     const max = derivedForOwned(owned.defId, owned.fittings || [], null, owned).hullMax;
     return max > 0 ? clamp01(owned.parkedBody.hull / max) : 1;
@@ -3093,6 +3106,7 @@ export const ships = {
         // The ordinary berth adapter keeps its player body, but the incoming hull brings its
         // own damage. Outgoing hull integrity cannot repair a captured ship for free.
         const parked = vessel.parkedBody || {};
+        if (Number.isFinite(parked.armorMax)) e.armorMax = Math.max(0, parked.armorMax);
         e.hull = Math.min(e.hullMax, Number.isFinite(parked.hull) ? parked.hull
           : e.hullMax * Math.max(0, Math.min(1, Number(vessel.condition?.hull) || 0)));
         for (const [key, max] of [['armorHp','armorMax'], ['shield','shieldMax'], ['cap','capMax']]) {

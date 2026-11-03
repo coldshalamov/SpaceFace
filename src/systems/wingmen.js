@@ -155,7 +155,8 @@ export const wingmen = {
     // FLT-02: a stunt the braced wingman witnesses spikes morale + earns a callsign.
     this.bus.on('story:stuntIncidentRecorded', (p) => { if (p) this._onBraceSharedStunt(p); });
     this.bus.on('story:stuntIncidentUpdated', (p) => { if (p) this._onBraceSharedStunt(p); });
-    this.bus.on('save:loaded', () => { this._wingmenQuiet = null; });
+    this.bus.on('save:loaded', () => { this._wingmenQuiet = null; this._trackedDeploymentPending = true; });
+    this.bus.on('dock:undocked', () => { this._trackedDeploymentPending = true; });
     this.bus.on('game:started', () => { this._wingmenQuiet = null; });
   },
 
@@ -172,6 +173,10 @@ export const wingmen = {
 
   update(dt, state) {
     if (state.mode !== 'flight') return;
+    if (this._trackedDeploymentPending && !state.ui?.docked && state.entities?.get(state.playerId)?.alive) {
+      this._trackedDeploymentPending = false;
+      this._spawnWingmen();
+    }
     const fleet = state.automation && state.automation.fleet;
     if (!fleet || !fleet.length) {
       if (this._wingmenQuiet) { this._wingmenQuiet = null; }
@@ -254,16 +259,18 @@ export const wingmen = {
     for (const fs of fleet.slice()) {
       yield;
       if (fs._liveId) continue; // already live (continuous handoff or same-sector re-enter)
-      // Older saves can contain a tracked vessel linked before the custody guard existed.
-      // Retain its row, but do not spawn a second body outside Shipjack's physical owner.
-      if (this.registry?.get('ships')?.fleetOwnedHull?.(fs.id)?.vesselId) continue;
       const spec = this._buildWingmanSpec(fs, player);
       if (!spec) continue;
-      const e = this.helpers.spawnEntity(spec);
+      const owned = this.registry?.get('ships')?.fleetOwnedHull?.(fs.id);
+      if (owned?.vesselId && state.ui?.docked) continue;
+      const e = owned?.vesselId
+        ? this.registry?.get('shipjack')?.spawnFleetVessel?.(fs, spec)
+        : this.helpers.spawnEntity(spec);
+      if (!e) continue;
       fs._liveId = e.id;
       e.data.wingmanOf = fs.id; // link live entity → fleet ledger entry
       e.data.isWingman = true;  // flag for render/AI (friend marker, no bounty, no loot)
-      this.registry?.get('ships')?.configureFleetHull?.(e, fs);
+      if (!owned?.vesselId) this.registry?.get('ships')?.configureFleetHull?.(e, fs);
       this._applyWingOrder(fs, e, player, ordered.indexOf(fs), ordered.length);
       spawned++;
     }
@@ -281,6 +288,7 @@ export const wingmen = {
       if (fs._liveId && state.entities) {
         this._clearBrace(fs, state.entities.get(fs._liveId));
         const e = state.entities.get(fs._liveId);
+        if (e?.data?.vesselId) this.registry?.get('shipjack')?.parkFleetVessel?.(fs, e);
         const ships = this.registry?.get('ships');
         if (ships?.fleetOwnedHull?.(fs.id) && e?.data?.wingmanOf === fs.id) {
           fs.parkedBody = ships.fleetHullCondition(e) || fs.parkedBody;

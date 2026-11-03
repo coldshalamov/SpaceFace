@@ -354,7 +354,9 @@ ${H} .orr-hmix__lbl:focus-visible { outline:none; }
   ${HD} .orr-help-list--ores .orr-hmix__rock-name { letter-spacing:.1em; }
   /* the ring is at its 80px floor here: its words keep inside the band (the rock's name and share; its tier-cap line drops) */
   ${HD} .orr-help-list--ores .orr-hmix.is-small .orr-hmix__centre { translate:0 -14px; }
-  ${HD} .orr-help-list--ores .orr-hmix.is-small .orr-hmix__centre > b { font-size:13px; letter-spacing:.03em; }
+  ${HD} .orr-help-list--ores .orr-hmix.is-small .orr-hmix__centre > b { font-size:12px; letter-spacing:0; }
+  /* the 140px COMMON ROCK / 45% OF ROCKS pair ran onto the ring's inner arc at both ends; trimmed so it stands clear inside it */
+  ${HD} .orr-help-list--ores .orr-hmix.is-small .orr-hmix__centre > span { letter-spacing:.08em; }
   ${HD} .orr-help-list--ores .orr-hmix.is-small .orr-hmix__centre > span ~ span { display:none; }
   ${HD} .orr-help-list--ores .orr-help-reading { display:block; padding:0 0 22px; }
   ${HD} .orr-help-list--ores .orr-help-reading > .orr-help-reading__name { font-size:clamp(22px, 2.2vw, 28px); }

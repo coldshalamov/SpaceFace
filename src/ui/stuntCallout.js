@@ -34,6 +34,7 @@ import { bombPrimeLine, statusPayoffLine } from '../data/statusPayoffs.js';
 import { injectOrrery } from './orrery/tokens.js';
 import { physicsLogLine, physicsLogSilent, PHYSICS_LOG_EVENTS } from '../data/physicsLog.js';
 import { onFrame } from './orrery/motion.js';
+import { isSwarmRuleset } from '../systems/survivalSwarm.js';
 
 /** How long one callout line stays up, in wall ms (presentation clock, like a toast ttl). */
 export const CALLOUT_TTL_MS = 2600;
@@ -868,10 +869,6 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
   // word -> { count, until } — the physics-cause counters that ride the same TTL the
   // line does, so "SLAMMED ×4" is four kills inside one beat, not a lifetime total.
   const causeRuns = new Map();
-  // word -> { count, until } — the ARENA register's own run, same TTL law. The LOG lane
-  // keeps its one slot per desk (a filing supersedes, never stacks), so the storm roll
-  // rides the pts cell instead of spending a line per word: "ARENA: SWALLOWED ×4".
-  const arenaRuns = new Map();
   function onSwarmKill(p) {
     if (destroyed) return;
     const st = getState();
@@ -891,7 +888,8 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
     rec.count += 1;
     rec.until = now + CALLOUT_TTL_MS;
     causeRuns.set(word, rec);
-    addLine(`kc:${word}`, word, rec.count > 1 ? `×${rec.count}` : '', now, CALLOUT_TTL_MS, false);
+    addLine('log:swarm:killPopup', `ARENA: ${word.toUpperCase()}`,
+      rec.count > 1 ? `×${rec.count}` : '', now, CALLOUT_TTL_MS, false);
     spoken = rec.count > 1 ? `${word.toLowerCase()}, ${rec.count} in a row` : word.toLowerCase();
     sr.textContent = spoken;
     wake();
@@ -953,34 +951,14 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
         && payload?.hostId !== st.playerId) return;
       if ((eventName === 'helix:lienFiled' || eventName === 'helix:lienStuck')
         && payload?.shipId !== st.playerId) return;
-      // SWARM-03 — the ARENA word is gated by the same contract onSwarmKill keeps: a live
-      // run only, teaching causes only, friendly fire already speaks as COLLATERAL.
-      if (eventName === 'swarm:killPopup'
-        && (scope.adventure || !payload || payload.friendlyFire === true
-          || !SWARM_TEACHING_CAUSES.has(payload.cause))) return;
+      // Swarm's cause lane already files this same kill word, including its run count.
+      // The two durable world records need no additional flight-register receipt during
+      // this fast arena: their owners still record them normally.
+      if (eventName === 'swarm:killPopup') return;
+      if (!scope.adventure && isSwarmRuleset(scope.run.ruleset)
+        && (eventName === 'lossLedger:recorded' || eventName === 'aftermathWreck:recorded')) return;
       const line = physicsLogLine(eventName, payload || {});
       if (!line) return;
-      // A kill storm used to rewrite the register's one slot per kill — the ARENA line
-      // flashed through words. Same run law as the kc lane's pinball: the word's own
-      // count rolls inside the beat, a different word files fresh with its own count,
-      // and one register slot still supersedes instead of stacking.
-      if (eventName === 'swarm:killPopup') {
-        const word = String(payload.word || '').toUpperCase();
-        const now = calloutNow();
-        let rec = arenaRuns.get(word);
-        if (!rec || rec.until <= now) rec = { count: 0 };
-        rec.count += 1;
-        rec.until = now + CALLOUT_TTL_MS;
-        arenaRuns.set(word, rec);
-        addLine(`log:${eventName}`, line, rec.count > 1 ? `×${rec.count}` : '',
-          now, CALLOUT_TTL_MS, false);
-        spoken = rec.count > 1
-          ? `${line.toLowerCase()}, ${rec.count} in a row`
-          : line.toLowerCase();
-        sr.textContent = spoken;
-        wake();
-        return;
-      }
       speak({ key: `log:${eventName}`, name: line, detail: '' });
     };
     for (const ev of PHYSICS_LOG_EVENTS) unsubs.push(bus.on(ev, onLogEvent(ev)));
@@ -1029,7 +1007,6 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
       heardStatuses.clear();
       // The run maps ride the same session — a leftover count must not greet the next run.
       causeRuns.clear();
-      arenaRuns.clear();
       for (const entry of lineNodes.values()) if (entry.node.parentNode) entry.node.parentNode.removeChild(entry.node);
       lineNodes.clear();
       sr.textContent = '';

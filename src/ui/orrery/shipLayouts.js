@@ -346,16 +346,15 @@ ${W} .sx-modrow:is(:focus-within, :hover)::before { left:2px !important; top:15p
   background:var(--dp-hand, #f2b950) !important; }
 ${W} .sx-modrow:focus-visible { outline:none !important; }
 ${W} .sx-modrow .sx-modrow__body { display:flex !important; flex-direction:column; gap:3px; width:auto !important; min-width:0 !important; }
+${W} .sx-modrow :is(.sx-modrow__body, .sx-modrow__name, .sx-modrow__buy) { white-space:normal !important; overflow-wrap:anywhere; }
 ${W} .sx-modrow .sx-modrow__name { font-size:13.5px !important; font-weight:600 !important; color:${INK} !important; }
 ${W} .sx-modrow .sx-modrow__name .sf-entity-link { text-decoration:none !important; background-image:none !important; color:inherit !important; }
 ${W} .sx-modrow :is(.k-good, .is-gain, .sx-modrow__chip.is-up) { color:var(--dp-ice, #8fcbff) !important; }
 ${W} .sx-modrow :is(.k-bad, .is-loss, .sx-modrow__chip.is-down) { color:rgb(${BONE} / .62) !important; }
 ${W} .sx-modrow .sx-modrow__role { font-size:12px !important; color:rgb(${BONE} / .62) !important; }
 ${W} .sx-modrow .sx-modrow__metrics { font-size:12px !important; color:rgb(${BONE} / .78) !important; }
-${W} .sx-modrow .sx-modrow__meta { display:none !important; }
-${W} .sx-modrow:focus-within .sx-modrow__meta { display:block !important; font-size:12px !important; color:rgb(${BONE} / .7) !important; }
-${W} .sx-modrow .sx-modrow__act { display:none !important; margin-top:5px; width:auto !important; }
-${W} .sx-modrow:is(:focus-within, :hover) .sx-modrow__act { display:block !important; }
+${W} .sx-modrow .sx-modrow__meta { display:block !important; font-size:12px !important; color:rgb(${BONE} / .7) !important; }
+${W} .sx-modrow .sx-modrow__act { display:block !important; margin-top:5px; width:auto !important; }
 ${W} .sx-modrow .sx-modrow__buy { ${PLAIN} ${LABEL} display:inline-flex !important; align-items:baseline; gap:8px; min-height:0 !important;
   min-width:0 !important; height:auto !important; padding:2px 0 !important; font-size:12px !important; letter-spacing:.16em !important; color:rgb(248 244 234) !important;
   text-decoration:none !important; }

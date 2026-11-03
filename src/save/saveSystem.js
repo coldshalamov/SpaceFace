@@ -373,6 +373,8 @@ export const save = {
     this.helpers = ctx.helpers;
     this.registry = ctx.registry;
     this._ephemeralRacing = false;     // lifetime-owned, never serialized into a campaign
+    this._temporaryCampaignState = null;
+    this._retainTemporaryCampaignState();
     this._restoring = false;           // guards autosave re-entrancy during load / boot enterSector
     this._pendingRunTransition = null; // latest load/new-game request queued by restore event re-entry
     this._lastAutosaveAt = -Infinity;  // wall-clock ms of last successful autosave (first is eligible)
@@ -568,14 +570,26 @@ export const save = {
     const clearPlayerDeathGate = () => { this._playerDead = false; this._lastPlayerCombatSimTime = -Infinity; };
     bus.on('save:loaded', clearPlayerDeathGate);
     bus.on('game:started', clearPlayerDeathGate);
+    // runSession clears its envelope before the Exit save listener runs. Keep the live
+    // temporary state's protection independently of that envelope, including in the menu.
+    bus.on('run:started', () => this._retainTemporaryCampaignState());
     // Registered during system init, before main installs its new-game bootstrap listener, so old
     // run work is invalidated synchronously at the route boundary.
     bus.on('game:new', (opts) => {
+      this._retainTemporaryCampaignState();
       this._ephemeralRacing = opts?.racingSession === true || opts?.physicsVenueSession === true;
+      this._retainTemporaryCampaignState();
       this._epochOpenedByNew = true;
       this._beginRunEpoch('game:new');
     });
     bus.on('game:newGame', (opts) => {
+      const held = this._temporaryCampaignState;
+      // The public request can be canceled before resetRunState runs. Only its post-reset
+      // alias, with all campaign bags replaced, may release the discarded arcade state.
+      if (held && this.state.player !== held.player && this.state.economy !== held.economy
+        && this.state.world !== held.world) this._temporaryCampaignState = null;
+      this._ephemeralRacing = opts?.racingSession === true || opts?.physicsVenueSession === true;
+      this._retainTemporaryCampaignState(opts?.crucibleLaunch === true);
       // Public New Game already opened the epoch on `game:new`. The live route now also emits
       // the legacy `game:newGame` alias so VFX/title listeners reset; a second bump would
       // orphan the autosave generation started by `game:new`.
@@ -585,7 +599,6 @@ export const save = {
         this._publishSharedStoreStatus();
         return;
       }
-      this._ephemeralRacing = opts?.racingSession === true || opts?.physicsVenueSession === true;
       this._beginRunEpoch('game:newGame');
       this._publishSharedStoreStatus();
     });
@@ -3874,10 +3887,22 @@ export const save = {
    * `lab` counts too: a Combat Lab session is the same ephemeral state by another name.
    */
   _campaignSaveSuppressed() {
+    if (this._temporaryCampaignState) return true;
     if (this._ephemeralRacing === true || this.state?.physicsVenue?.active === true) return true;
     const run = this.state && this.state.run;
     if (!run || run.phase === 'inactive') return false;
     return run.kind === 'survival' || run.kind === 'lab';
+  },
+
+  _retainTemporaryCampaignState(force = false) {
+    const state = this.state;
+    const run = state?.run;
+    const temporaryRun = run && run.phase !== 'inactive' && (run.kind === 'survival' || run.kind === 'lab');
+    // Dedicated circuit/venue launches replace the campaign. An in-Adventure court
+    // keeps its dynamic physicsVenue.active guard and becomes saveable on normal leave.
+    if (!state || (!force && !temporaryRun && this._ephemeralRacing !== true
+      && state.physicsVenueSession !== true)) return;
+    this._temporaryCampaignState = { player: state.player, economy: state.economy, world: state.world };
   },
 
   _campaignAutosaveSuppressed() {
@@ -6931,6 +6956,8 @@ export const save = {
 
   _openRestoreSession(data, slot, options) {
     const state = this.state;
+    // save:restoring resets state.run even when this attempt later fails or rolls back.
+    this._retainTemporaryCampaignState();
     this._restoring = true;
     let timeEffects = null;
     let restoreSource = null;
@@ -7142,7 +7169,9 @@ export const save = {
       this._callDeserialize('faction_concord', data.concord);
       this._callDeserialize('fulfillmentRoutes', data.fulfillment);
       yield 'deserialized-factions';
-      yield* this._callDeserializeChunked('world', data.world); // sets currentSectorId; does NOT spawn entities
+      // World resource compaction precedes npcJobs deserialization. Give it the incoming
+      // saved jobs so it does not protect the outgoing run's sources during sector rebuild.
+      yield* this._callDeserializeChunked('world', data.world, { npcJobs: data.npcJobs });
       yield 'deserialized-world';
       this._callDeserialize('reactiveMatter', data.reactiveMatter);
       this._callDeserialize('spectrum', data.spectrum);
@@ -7416,6 +7445,7 @@ export const save = {
       // and re-links to its rematerialized hull by worldRecordId on the next sector enter. Absent in
       // pre-v12 saves → migration seeds an empty bag → the runtime starts with no jobs.
       yield* this._callDeserializeChunked('npcJobsRuntime', data.npcJobs);
+      this.registry?.get?.('world')?.finishResourceBodyRestore?.();
       yield 'jobs-restored';
       // Replace outgoing-run traffic causality after world/job restore; absent or malformed input
       // clears the compact record instead of retaining a same-process handoff.
@@ -7739,6 +7769,7 @@ export const save = {
 
   _closeRestoreSession(s, restoreError) {
     const { state, timeEffects, restoreSource, slot } = s;
+    this.registry?.get?.('world')?.finishResourceBodyRestore?.();
     let drainedRunTransition = null;
     let hadPendingRunTransition = false;
     if (restoreError == null && s.chunkError != null) restoreError = s.chunkError;
@@ -7753,6 +7784,10 @@ export const save = {
     const pendingRunTransition = this._pendingRunTransition;
     hadPendingRunTransition = !!pendingRunTransition;
     this._pendingRunTransition = null;
+    // save:loaded is mid-restore: native reconciliation can still fail after it. A
+    // rollback restores the temporary world, not campaign ownership. Release only on
+    // successful campaign replacement, before a newer queued route can claim state.
+    if (restoreError == null && s.options?.rollback !== true) this._temporaryCampaignState = null;
     this._restoring = false;
     // sector:exit slicing was armed in _openRestoreSession for this session's
     // world leg only — a live-tick exit emit must never slice (listener order).
@@ -8349,11 +8384,11 @@ export const save = {
     return error;
   },
 
-  _callDeserialize(name, data) {
+  _callDeserialize(name, data, context) {
     const sys = this.registry && this.registry.get && this.registry.get(name);
     if (sys && typeof sys.deserialize === 'function') {
       try {
-        sys.deserialize(data);
+        sys.deserialize(data, context);
       } catch (err) {
         const error = (err instanceof Error) ? err : new Error(String(err));
         error.region = name;
@@ -8364,11 +8399,11 @@ export const save = {
 
   // Async-lane twin: a system exposing deserializeChunked gets sliced at its own section
   // boundaries; everyone else runs the same synchronous deserialize the sync lane uses.
-  *_callDeserializeChunked(name, data) {
+  *_callDeserializeChunked(name, data, context) {
     const sys = this.registry && this.registry.get && this.registry.get(name);
     if (sys && typeof sys.deserializeChunked === 'function') {
       try {
-        yield* sys.deserializeChunked.call(sys, data);
+        yield* sys.deserializeChunked.call(sys, data, context);
       } catch (err) {
         const error = (err instanceof Error) ? err : new Error(String(err));
         error.region = name;
@@ -8376,7 +8411,7 @@ export const save = {
       }
       return;
     }
-    this._callDeserialize(name, data);
+    this._callDeserialize(name, data, context);
   },
 
   // Despawn every live entity, disposing meshes (synchronous, outside the sim sweep), and reset the
