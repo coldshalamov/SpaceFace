@@ -30498,8 +30498,12 @@ export const render = {
           }
         }
         const receipt = this.state.render && this.state.render.openingSubmissionReceipt;
+        // Census the leaves through the camera this frame submits with, not the plan's frozen
+        // cook-time frustum (see validateOpeningSubmissionReceipt).
+        const liveSubmissionCamera = openingSubmissionCamera(this.cam && this.cam.obj) || undefined;
         const preSubmitValidation = receipt
-          ? validateOpeningSubmissionReceipt(receipt, this.renderer)
+          ? validateOpeningSubmissionReceipt(receipt, this.renderer, null, null,
+            { camera: liveSubmissionCamera })
           : {
             ok: false,
             reason: 'missing-opening-submission-receipt',
@@ -30635,6 +30639,9 @@ export const render = {
                   const refreshed = validateOpeningSubmissionReceipt(
                     this.state.render.openingSubmissionReceipt,
                     this.renderer,
+                    null,
+                    null,
+                    { camera: liveSubmissionCamera },
                   );
                   stamped = refreshed.ok
                     ? refreshed
