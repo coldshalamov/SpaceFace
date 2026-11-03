@@ -1250,6 +1250,9 @@ export const vfx = {
   name: 'vfx',
 
   init(ctx) {
+    invokeVfxDisposer(this._openingPlayerPlasma, 'opening player plasma');
+    this._openingPlayerPlasma = null;
+    this._openingPlayerPlasmaWarmOwner = null;
     this._ironKrakenDebris?.dispose();
     this._ironKrakenDebris = null;
     this._ironKrakenDebrisOptions = { frameOrigin: null, reducedMotion: false, reducedFlash: false };
@@ -2114,6 +2117,7 @@ export const vfx = {
     );
     for (const root of presenterRoots || []) add(root);
     add(this._overflowJets && this._overflowJets.group);
+    add(this._openingPlayerPlasma && this._openingPlayerPlasma.group);
     if (this._energy) {
       add(this._energy.ribbon);
       add(this._energy.plasmaStream && this._energy.plasmaStream.group);
@@ -2167,6 +2171,7 @@ export const vfx = {
     addProvider(this._gas);
     addProvider(this._arcadeStructural);
     addProvider(this._weaponPresenter);
+    addProvider(this._openingPlayerPlasma);
     if (this._energy) {
       addProvider(this._energy.ceresWorkfleet?.plume);
       addProvider(this._energy.latchNine?.plume);
@@ -11282,13 +11287,29 @@ export const vfx = {
   // each of those queued its own pipeline admission on the opening critical path.
   warmupOpeningEffectSubsetForLoading(options = {}) {
     if (!this._scene) return { skipped: true, reason: 'no-scene' };
+    const playerPlasmaOnly = options.playerPlasmaOnly === true;
+    if (playerPlasmaOnly && (this.state?.mode !== 'loading' || !this._productionThrusterEnabled())) {
+      return { skipped: true, reason: 'player-plasma-not-required' };
+    }
     const clock = (typeof performance !== 'undefined' && typeof performance.now === 'function')
       ? () => performance.now() : () => Date.now();
     const startedAt = clock();
-    if (!this._energy) this._initEnergy();
+    // The finite opening owes the player's first thrust, not the fleet/retro/Massline graph.
+    // Keep this real owner until _initEnergy adopts it; do not warm a disposable stand-in.
+    if (playerPlasmaOnly && this._openingPlayerPlasma
+        && this._openingPlayerPlasma.group?.parent !== this._scene) {
+      invokeVfxDisposer(this._openingPlayerPlasma, 'superseded opening player plasma');
+      this._openingPlayerPlasma = null;
+    }
+    if (playerPlasmaOnly && !this._energy?.plasmaStream && !this._openingPlayerPlasma) {
+      this._openingPlayerPlasma = new PlasmaStreamSystem(THREE, PLAYER_PLASMA_STREAM_RECIPE);
+      this._openingPlayerPlasma.attach(this._scene);
+    }
+    if (!playerPlasmaOnly && !this._energy) this._initEnergy();
     const initMs = clock() - startedAt;
     const energy = this._energy;
-    if (!energy) return { skipped: true, reason: 'no-energy' };
+    const plasmaStream = energy?.plasmaStream || this._openingPlayerPlasma;
+    if (!energy && !playerPlasmaOnly) return { skipped: true, reason: 'no-energy' };
     const player = this.state.entities && this.state.entities.get(this.state.playerId);
     const dt = 1 / 60;
     const video = this.state.settings && this.state.settings.video || {};
@@ -11307,8 +11328,32 @@ export const vfx = {
     const sockets = socketCount > 0
       ? this._productionPlumeSocketView
       : [{ x: 0, y: 0, z: 0, ax: 1, ay: 0, az: 0 }];
+    let isActive, releaseWarmSamples;
+    if (playerPlasmaOnly) {
+      const state = this.state, scene = this._scene, render = state.render, world = state.world;
+      const context = state.contextRestoreSeq, generation = render?.admissionRunGeneration;
+      const sector = world?.currentSectorId, serial = world?.enterSerial;
+      const owner = { plasmaStream, state, scene, render, world, context, generation };
+      this._openingPlayerPlasmaWarmOwner = owner;
+      isActive = () => this._openingPlayerPlasmaWarmOwner === owner
+        && this._destroyed !== true && this.state === state && this._scene === scene
+        && state.mode === 'loading' && state.render === render
+        && state.world === world && world?.currentSectorId === sector && world?.enterSerial === serial
+        && state.contextRestoreSeq === context && render?.admissionRunGeneration === generation
+        && (this._openingPlayerPlasma === plasmaStream || this._energy?.plasmaStream === plasmaStream);
+      releaseWarmSamples = () => {
+        if (this._openingPlayerPlasmaWarmOwner !== owner) return false;
+        const resetOwnedSamples = isActive();
+        this._openingPlayerPlasmaWarmOwner = null;
+        // A successor warm or real flight now owns its drive history. An old finally must
+        // never clear it, even when the native VFX system itself was retained across runs.
+        if (!resetOwnedSamples) return false;
+        plasmaStream.reset();
+        return true;
+      };
+    }
     let plasma = false;
-    if (energy.plasmaStream && typeof energy.plasmaStream.update === 'function') {
+    if (plasmaStream && typeof plasmaStream.update === 'function') {
       const driveInfo = {
         drive: 1, throttle: 1, speed: 0.45, speedDrive: 0.45, boost: 0.4,
         cruise: 0, reverse: 0, retroOnly: false, brake: 0,
@@ -11322,11 +11367,21 @@ export const vfx = {
         });
       }
       // Same nozzle walk as the full warmup: one parked sample leaves drawRange 0.
-      for (let step = 0; step < 8; step++) {
-        for (let i = 0; i < warmSockets.length; i++) warmSockets[i].x -= 0.75;
-        energy.plasmaStream.update(dt, warmSockets, driveInfo, a11y, player || null);
+      try {
+        if (playerPlasmaOnly) plasmaStream.reset();
+        for (let step = 0; step < 8; step++) {
+          for (let i = 0; i < warmSockets.length; i++) warmSockets[i].x -= 0.75;
+          plasmaStream.update(dt, warmSockets, driveInfo, a11y, player || null);
+        }
+      } catch (error) {
+        releaseWarmSamples?.();
+        throw error;
       }
       plasma = true;
+    }
+    if (playerPlasmaOnly) {
+      return { skipped: false, plasma, plasmaRoot: plasmaStream.group, isActive, releaseWarmSamples,
+        initMs, ms: clock() - startedAt };
     }
     let plumes = 0;
     const plumeRe = options.plumeMaterialRe instanceof RegExp ? options.plumeMaterialRe : null;
@@ -11430,7 +11485,9 @@ export const vfx = {
 
     // Unified plasma stream: player hero thruster (soft particles for root + history wake).
     // Solid ribbon + continuous card plume remain for NPCs / fallback; player hero uses plasma.
-    const plasmaStream = new PlasmaStreamSystem(THREE, PLAYER_PLASMA_STREAM_RECIPE);
+    const plasmaStream = this._openingPlayerPlasma
+      || new PlasmaStreamSystem(THREE, PLAYER_PLASMA_STREAM_RECIPE);
+    this._openingPlayerPlasma = null;
     plasmaStream.attach(this._scene);
 
     // Bow retro jets: the same swept-ribbon + forge family as the main drive, driven continuously
@@ -12208,6 +12265,9 @@ export const vfx = {
 
   _disposeEnergy() {
     this._releasePlayerPlumeEventLight();
+    this._openingPlayerPlasmaWarmOwner = null;
+    invokeVfxDisposer(this._openingPlayerPlasma, 'opening player plasma');
+    this._openingPlayerPlasma = null;
     if (!this._energy) return;
     this._energy.ceresWorkfleet?.dispose();
     this._energy.latchNine?.dispose();

@@ -494,7 +494,17 @@ export const runtime = Object.freeze({
       };
     }
     live.phase = 'conflict';
-    d.say(live, 'alert', 'curtain_convoy_alert', null, { primary: true });
+    if (hauler && live.data.adoptedCarrier?.entityId === hauler.id
+        && live.data.adoptedCarrier.generation === hauler.occupantGeneration
+        && live.data.adoptedCarrier.worldRecordId === hauler.data.worldRecordId
+        && live.data.adoptedCarrier.manifestId === hauler.data.cargoManifest?.manifestId) {
+      const data = hauler.data;
+      const name = String(data.callsign || data.trafficLabel || data.scanLabel || data.name || 'ORE BARGE')
+        .replace(/\s+/g, ' ').trim().toUpperCase();
+      d.say(live, 'alert', `${name}: Keep them off this load.`, null, { primary: true, literal: true });
+    } else {
+      d.say(live, 'alert', 'curtain_convoy_alert', null, { primary: true });
+    }
   },
 
   event(d, live, state, name, payload) {

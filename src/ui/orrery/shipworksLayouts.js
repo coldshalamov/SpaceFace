@@ -274,18 +274,17 @@ ${W} .sx-modrow:is(:focus-within, :hover)::before { left:2px !important; top:11p
 ${W} .sx-modrow:is(:focus-within, :hover)::before { background:var(--dp-hand, #f2b950) !important; }
 ${W} .sx-modrow:focus-visible { outline:none !important; }
 ${W} .sx-modrow .sx-modrow__body { display:flex !important; flex-direction:column; gap:3px; width:auto !important; min-width:0 !important; }
+${W} .sx-modrow :is(.sx-modrow__body, .sx-modrow__name, .sx-modrow__buy) { white-space:normal !important; overflow-wrap:anywhere; }
 ${W} .sx-modrow .sx-modrow__name { font-size:13.5px !important; font-weight:600; color:rgb(248 244 234) !important; }
 ${W} .sx-modrow .sx-modrow__name .sf-entity-link { text-decoration:none !important; background-image:none !important; color:inherit !important; }
 ${W} .sx-modrow :is(.k-good, .is-gain, .sx-modrow__chip.is-up) { color:var(--dp-ice, #8fcbff) !important; }
 ${W} .sx-modrow :is(.k-bad, .is-loss, .sx-modrow__chip.is-down) { color:rgb(143 203 255 / .7) !important; }
 ${W} .sx-modrow .sx-modrow__role { font-size: 12px !important; color:rgb(${BONE} / .62) !important; }
 ${W} .sx-modrow .sx-modrow__metrics { font-size: 12px !important; color:rgb(${BONE} / .78) !important; }
-${W} .sx-modrow .sx-modrow__meta { display:none !important; }
-${W} .sx-modrow:focus-within .sx-modrow__meta { display:block !important; font-size: 12px !important; color:rgb(${BONE} / .7) !important; }
+${W} .sx-modrow .sx-modrow__meta { display:block !important; font-size: 12px !important; color:rgb(${BONE} / .7) !important; }
 ${W} .sx-modrow .sx-modrow__meta .sx-modrow__chip:first-of-type::before { content:"\\A"; white-space:pre; }
 ${W} .sx-modrow .k-38.sx-modrow__role { display:none !important; }
-${W} .sx-modrow .sx-modrow__act { display:none !important; margin-top:5px; width:auto !important; }
-${W} .sx-modrow:is(:focus-within, :hover) .sx-modrow__act { display:block !important; }
+${W} .sx-modrow .sx-modrow__act { display:block !important; margin-top:5px; width:auto !important; }
 ${W} .sx-modrow .sx-modrow__buy { ${PLAIN} ${LABEL} display:inline-flex !important; align-items:baseline; gap:8px; min-height:0 !important; min-width:0 !important; height:auto !important;
   padding:2px 0 !important; font-size: 12px !important; letter-spacing:.16em !important; color:rgb(248 244 234) !important; }
 ${W} .sx-modrow .sx-modrow__buy::after { display:none !important; }
@@ -363,11 +362,10 @@ ${W}.orr-sw--jig .sx-sw-bar { grid-template-columns:62px minmax(0, 1fr) auto; }
 ${W} .sx-sw-bar__track { height:9px !important; background:linear-gradient(rgb(${BONE} / .26), rgb(${BONE} / .26)) 0 50% / 100% 1px no-repeat,
   repeating-linear-gradient(90deg, rgb(${BONE} / .36) 0 1px, transparent 1px 10%) 0 50% / 100% 9px no-repeat !important; }
 ${W} .sx-sw-bar__track > .k-bar__fill { height:3px !important; margin-top:-1.5px; }
-/* the chooser: one line per module at rest; the one in hand unfolds; the Hand is on the hull */
+/* Keep the chooser's actions and description seated while the Hand moves between rows. */
 ${W} .sx-modrow { padding:7px 0 7px 26px !important; }
 ${W} .sx-modrow .sx-modrow__body { gap:2px; }
-${W} .sx-modrow .sx-modrow__role:not(.k-38) { display:none !important; }
-${W} .sx-modrow:is(:focus-within, :hover) .sx-modrow__role:not(.k-38) { display:block !important; }
+${W} .sx-modrow .sx-modrow__role:not(.k-38) { display:block !important; }
 ${W} .sx-modrow:is(:focus-within, :hover)::before { background:rgb(248 244 234) !important; }
 ${W} .sx-modrow .sx-modrow__meta .sx-modrow__chip:first-of-type::before { content:none !important; display:none !important; }
 ${W} .sx-modrow .sx-modrow__meta .sx-modrow__chips { display:block; margin-top:4px; }
@@ -609,12 +607,8 @@ ${W} .sx-sw-rack__cell.is-empty .k-row__name { display:none !important; }
 ${W} .sx-sw-rack__cell.is-empty { flex-direction:row !important; align-items:center !important; gap:8px; }
 /* a loss is dim bone with its sign; ice is the moving figure that gains */
 ${W} .sx-modrow :is(.k-bad, .is-loss, .sx-modrow__chip.is-down) { color:rgb(${BONE} / .62) !important; }
-/* the chosen module reads as a hero: its lead figure at reading size, the rest at label size */
-${W} .sx-modrow:focus-within .sx-modrow__metrics { display:flex !important; flex-wrap:wrap; align-items:baseline; gap:2px 14px; margin-top:4px; }
-${W} .sx-modrow:focus-within .sx-modrow__metric:first-child { display:flex; flex-direction:column-reverse; flex-basis:100%; gap:0; margin-bottom:2px; }
-${W} .sx-modrow:focus-within .sx-modrow__metric:first-child b { font-family:var(--dp-face-display, "Archivo") !important; font-stretch:100%; font-variation-settings:"wdth" 100, "wght" 250 !important; font-weight:250 !important;
-  font-size:46px !important; line-height:1 !important; letter-spacing:-.01em; color:rgb(248 244 234) !important; }
-${W} .sx-modrow:focus-within .sx-modrow__metric:first-child i { ${LABEL} font-style:normal; font-size: 12px !important; letter-spacing:.18em !important; color:rgb(${BONE} / .6) !important; }
+/* Focus highlights the value without changing the dimensions of adjacent controls. */
+${W} .sx-modrow:focus-within .sx-modrow__metric:first-child b { color:rgb(248 244 234) !important; }
 ${W} .sx-modrow .sx-modrow__metric i { font-style:normal; }
 /* the chooser's list runs to the rail on a short screen; the fold sits on its last visible row */
 @media (max-height:800px) {
@@ -655,7 +649,6 @@ ${W} .sx-sw-bar { display:grid !important; grid-template-columns:62px minmax(0, 
 /* the side column takes the width the dial's words need on a tall screen; the dial sits near its axis */
 @media (min-height:801px) { ${W} .sx-sw-circuit__core { margin-left:0 !important; } }
 /* a short screen: the chosen module's sentence folds so its key stays above the fold */
-@media (max-height:800px) { ${W} .sx-modrow:focus-within .sx-modrow__meta { display:none !important; } }
 
 /* ================================ ROUND 11 =================================================== */
 /* the mode words carry no underline: weight says which is open */
@@ -720,11 +713,6 @@ ${W} .sx-sw__stage.has-salering .sx-sw__camera [data-camera].is-current::before 
 ${W} .sx-sw-verbs { white-space:nowrap; }
 /* the For Sale ladder folds its last rung when more hang below */
 ${W}.sx-sw--buying .sx-sw__list[data-overflow="1"] { -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 40px), transparent) !important; mask-image:linear-gradient(180deg, #000 calc(100% - 40px), transparent) !important; }
-/* a short screen's chooser keeps the two delta lines and folds the sentence */
-@media (max-height:800px) {
-  ${W} .sx-modrow:focus-within .sx-modrow__meta { display:block !important; }
-  ${W} .sx-modrow:focus-within .sx-modrow__meta .sx-modrow__sentence { display:none !important; }
-}
 
 /* a ghost for the worse is dim bone; ice is the gain's colour alone */
 ${W} .sx-sw-ghost.is-loss, ${W} .sx-sw-gauge .sx-sw-ghost.is-loss { color:rgb(146 143 135) !important; }

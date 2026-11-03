@@ -1,7 +1,7 @@
 {
   "schema": "spaceface.localizationCatalog.v1",
   "locale": "en-US",
-  "inventoryDigest": "8ca471d7754073fb0baab83b550869e82b1b3c038a5be439456f7421f703d39d",
+  "inventoryDigest": "50207e77151f725e17086c8ecbd81c9fbe1eaa5ed1a6ae2ceabf37db590fbf47",
   "messages": {
     "loc.index.template.text.12f9c963d733": "SpaceFace",
     "loc.index.template.text.4eb12ed308ef": "SPACEFACE",
@@ -13381,7 +13381,6 @@
     "loc.src.ui.screens.automationpanel.template.text.6d1646e8f29a": "Last sale",
     "loc.src.ui.screens.automationpanel.template.text.72a2243d98a5": "{o_autoSell_autosell_every_minute_manual_logistics}",
     "loc.src.ui.screens.automationpanel.template.text.73214103c49a": "buffer {def_bufferCap}",
-    "loc.src.ui.screens.automationpanel.template.text.73a95e7bcee8": "{escapeHtml_deployment_detail} {fs_order_mine_links_length_1_hasMiningBeam_No_mining_beam_fitted_return_to_hangar_to_refit_Mines_nearby_rock_scoop_the_ore_it_drops_Escort_guards_you_Regroup_returns_to_formation} {links_length_1_links_0_vesselId_Tracked_vessel_remains_under_Registry_custody_return_this_assignment_before_using_it_Owned_hull_assigned_to_wing_with_its_fitted_equipment_Return_it_before_flying_selling_or_refitting_it_its_stored_cargo_remains_aboard_Legacy_wingman_owned_hull_link_unavailable_retained_in_fleet}",
     "loc.src.ui.screens.automationpanel.template.text.74143f2fd4b3": "storage {def_storageCap}",
     "loc.src.ui.screens.automationpanel.template.text.743d0b29123b": "Regroup",
     "loc.src.ui.screens.automationpanel.template.text.74f8c7685fe0": "Throttle",
@@ -13431,6 +13430,7 @@
     "loc.src.ui.screens.automationpanel.template.text.c6a85be463b5": "{escapeHtml_operation_statusLabel}",
     "loc.src.ui.screens.automationpanel.template.text.c72a46bdc538": "out {def_outRate}/s",
     "loc.src.ui.screens.automationpanel.template.text.ce02168852a3": "Assigned ships remain in the automation ledger and spawn as live wingmen in-sector.",
+    "loc.src.ui.screens.automationpanel.template.text.d38b6022efb3": "{escapeHtml_deployment_detail} {fs_order_mine_links_length_1_hasMiningBeam_No_mining_beam_fitted_return_to_hangar_to_refit_Mines_nearby_rock_scoop_the_ore_it_drops_Escort_guards_you_Regroup_returns_to_formation} {links_length_1_links_0_vesselId_Registry_vessel_on_fleet_duty_Bring_it_to_a_receiving_berth_and_stop_before_returning_it_to_the_hangar_Owned_hull_assigned_to_wing_with_its_fitted_equipment_Return_it_before_flying_selling_or_refitting_it_its_stored_cargo_remains_aboard_Legacy_wingman_owned_hull_link_unavailable_retained_in_fleet}",
     "loc.src.ui.screens.automationpanel.template.text.d5939e0f838e": "{escapeHtml_part}",
     "loc.src.ui.screens.automationpanel.template.text.d8acf365de01": "starts on escort",
     "loc.src.ui.screens.automationpanel.template.text.df456b57229c": "upkeep {escapeHtml_def_upkeepPerMin}/min",

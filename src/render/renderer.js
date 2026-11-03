@@ -13525,21 +13525,25 @@ export const render = {
               }
             } finally { steps.return?.(); }
           };
-          if (firstFlightActors.length > 0 || immediatePoolRoots.length > 0) {
+          const warmPlayerPlasma = state.render.warmupOpeningEffectSubset;
+          if (firstFlightActors.length > 0 || immediatePoolRoots.length > 0
+              || typeof warmPlayerPlasma === 'function') {
             assertExactActive();
-            // The authored runway uses this same finite cook membership while loading.
-            const firstFlightIds = state.render.liveSectorFirstFlightIds || new Set();
-            for (const id of actorIds) firstFlightIds.add(id);
-            state.render.liveSectorFirstFlightIds = firstFlightIds;
-            await driveActors(enqueueMissingMeshBuildsSteps(firstFlightActors,
-              this._meshes, this._meshBuildQueuedIds, this._meshBuildQueue));
-            assertExactActive();
-            const tail = this._meshBuildQueue.slice(this._meshBuildQueueHead);
-            this._meshBuildQueue.splice(this._meshBuildQueueHead, tail.length,
-              ...tail.filter(id => actorIds.has(id)), ...tail.filter(id => !actorIds.has(id)));
-            while (this._meshBuildQueueHead < this._meshBuildQueue.length
-                && actorIds.has(this._meshBuildQueue[this._meshBuildQueueHead])) {
-              await driveActors(this._drainMeshBuildQueueSteps(1));
+            if (firstFlightActors.length > 0) {
+              // The authored runway uses this same finite cook membership while loading.
+              const firstFlightIds = state.render.liveSectorFirstFlightIds || new Set();
+              for (const id of actorIds) firstFlightIds.add(id);
+              state.render.liveSectorFirstFlightIds = firstFlightIds;
+              await driveActors(enqueueMissingMeshBuildsSteps(firstFlightActors,
+                this._meshes, this._meshBuildQueuedIds, this._meshBuildQueue));
+              assertExactActive();
+              const tail = this._meshBuildQueue.slice(this._meshBuildQueueHead);
+              this._meshBuildQueue.splice(this._meshBuildQueueHead, tail.length,
+                ...tail.filter(id => actorIds.has(id)), ...tail.filter(id => !actorIds.has(id)));
+              while (this._meshBuildQueueHead < this._meshBuildQueue.length
+                  && actorIds.has(this._meshBuildQueue[this._meshBuildQueueHead])) {
+                await driveActors(this._drainMeshBuildQueueSteps(1));
+              }
             }
             let actorTimer;
             const actorDeadline = new Promise((_, reject) => {
@@ -13548,6 +13552,7 @@ export const render = {
                 reject(new Error('opening first-flight actor admission timed out'));
               }, Math.max(1, openingGateBudgetMs() - (performance.now() - exactStarted)));
             });
+            let playerPlasmaWarm = null;
             try {
               for (const entity of firstFlightActors) {
                 assertExactActive();
@@ -13576,7 +13581,28 @@ export const render = {
                 }), actorDeadline]);
                 assertExactActive();
               }
-            } finally { clearTimeout(actorTimer); }
+              if (typeof warmPlayerPlasma === 'function') {
+                assertExactActive();
+                playerPlasmaWarm = warmPlayerPlasma({ playerPlasmaOnly: true });
+                if (playerPlasmaWarm?.skipped !== true) {
+                  const root = playerPlasmaWarm?.plasmaRoot;
+                  if (!root || playerPlasmaWarm.plasma !== true) {
+                    throw new Error('opening player plasma owner is unavailable');
+                  }
+                  // Prepare the same player ribbon/forge/throat that first thrust will draw,
+                  // including the forge's two face programs, before sealing the first picture.
+                  await Promise.race([admitSubjectPipelines(root, {
+                    openingRequired: true, strict: true, urgent: true,
+                    isActive: () => exactActive && !recookStale() && root.parent === scene
+                      && playerPlasmaWarm.isActive(),
+                  }), actorDeadline]);
+                  assertExactActive();
+                }
+              }
+            } finally {
+              try { playerPlasmaWarm?.releaseWarmSamples?.(); }
+              finally { clearTimeout(actorTimer); }
+            }
           }
           const admitted = await prepareMobileOpeningFirstPicture(state.render, {
             timeoutMs: Math.max(1, openingGateBudgetMs() - (performance.now() - exactStarted)),
