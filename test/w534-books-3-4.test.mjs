@@ -16,7 +16,7 @@ import assert from 'node:assert/strict';
 import { createBus } from '../src/core/eventBus.js';
 import { createGameState } from '../src/core/gameState.js';
 import { hash32, mulberry32 } from '../src/core/rng.js';
-import { missions as missionsProto } from '../src/systems/missions.js';
+import { missions as missionsProto, STATION_INFO, campaign47aRouteKind } from '../src/systems/missions.js';
 import { story as storyProto } from '../src/systems/story.js';
 import { addCargo } from '../src/systems/cargo.js';
 import { isBeatStepsComplete, getBeatStepStatus } from '../src/story/campaign47a/index.js';
@@ -859,6 +859,78 @@ check('B4: the door operation does not post for another door\u2019s board', () =
   const helios = h.missions.ensureBoard('station_helios');
   const op = helios.slots.find((row) => row && row.storyTag === 'campaign47a:b4:operation');
   assert.ok(op && op.storyBranch === 'free', 'the free door\u2019s operation posts at Helios');
+});
+
+check('B4: the settled door routes to its authored operation board and survives Continue', () => {
+  const routes = [
+    { branch: 'patrol', introStation: 'station_helios', operationStation: 'station_coalition' },
+    { branch: 'traders', introStation: 'station_tethys', operationStation: 'station_tethys' },
+    { branch: 'free', introStation: 'station_reach', operationStation: 'station_helios' },
+  ];
+  for (const [index, route] of routes.entries()) {
+    const h = makeHarness(710 + index);
+    reachB4(h, 'unpinned');
+    assert.equal(h.state.nav.waypoint.stationId, 'station_helios', 'before choosing, B4 points at the clearing desk');
+
+    const intro = acceptIntro(h, route.introStation);
+    assert.equal(h.state.nav.waypoint.kind, 'mission', 'the accepted intro keeps active-mission nav priority');
+    assert.equal(h.state.nav.waypoint.missionId, intro.id);
+    completeIntro(h, intro);
+    assert.equal(h.state.story.branch, route.branch);
+
+    const board = h.missions.ensureBoard(route.operationStation);
+    const operation = board.slots.find((row) => row && row.storyTag === 'campaign47a:b4:operation');
+    assert.ok(operation && operation.storyBranch === route.branch, `${route.branch} operation is posted on its authored board`);
+    assert.equal(h.state.nav.waypoint.kind, 'story');
+    assert.equal(h.state.nav.waypoint.stationId, route.operationStation, `${route.branch} route points to the operation board`);
+    assert.equal(h.state.nav.waypoint.label, operation.title);
+    assert.ok(h.state.nav.waypoint.reason.includes(STATION_INFO.get(route.operationStation).name));
+
+    // Mission save data owns the chosen door; Continue re-derives its route from that same state.
+    const savedMissions = structuredClone(h.missions.serialize());
+    const savedNav = structuredClone(h.state.nav);
+    const continued = makeHarness(810 + index);
+    continued.state.world.currentSectorId = h.state.world.currentSectorId;
+    continued.state.nav = savedNav;
+    continued.missions.deserialize(savedMissions);
+    assert.equal(continued.state.story.branch, route.branch);
+    assert.equal(continued.state.nav.waypoint.stationId, route.operationStation);
+    assert.equal(continued.state.nav.waypoint.label, operation.title);
+  }
+});
+
+check('B4: an explicit chart course survives the branch handoff', () => {
+  const h = makeHarness(719);
+  reachB4(h, 'unpinned');
+  const intro = acceptIntro(h, 'station_helios');
+  completeIntro(h, intro);
+  assert.equal(h.state.story.branch, 'patrol');
+  const chartCourse = {
+    kind: 'local', label: 'My chart course', sectorId: 'sector_tethys_junction',
+    pos: { x: 184, z: -63 },
+  };
+  h.state.nav.waypoint = structuredClone(chartCourse);
+  h.missions._refreshNavigation({ forceStory: true, silent: true });
+  assert.deepEqual(h.state.nav.waypoint, chartCourse, 'the player Map course remains in control');
+});
+
+check('B4: a pinned outcome keeps its original stake waypoint', () => {
+  const h = makeHarness(720);
+  reachB4(h, 'custody');
+  // An old save has the outcome token but lacks the live register's durable `elroy` receipt.
+  const b2 = h.state.story.campaign47a.stepProgress['2'];
+  assert.ok(b2 && b2.completed.includes('elroy'));
+  b2.completed = b2.completed.filter((stepId) => stepId !== 'elroy');
+  assert.equal(campaign47aRouteKind(h.state), 'pinned');
+  h.missions._refreshNavigation({ forceStory: true, silent: true });
+  assert.equal(h.state.nav.waypoint.stationId, 'station_coalition');
+  assert.equal(h.state.nav.waypoint.label, 'Coalition Evidence Patrol');
+  const intro = acceptIntro(h, 'station_coalition');
+  completeIntro(h, intro);
+  assert.equal(h.state.story.branch, 'patrol');
+  assert.equal(h.state.nav.waypoint.stationId, 'station_coalition');
+  assert.equal(h.state.nav.waypoint.label, 'Coalition Evidence Patrol');
+  assert.equal(h.state.nav.waypoint.reason, 'Accept and complete the Coalition evidence patrol');
 });
 
 console.log(failures === 0 ? 'w534-books-3-4: all checks passed' : `w534-books-3-4: ${failures} FAILURES`);

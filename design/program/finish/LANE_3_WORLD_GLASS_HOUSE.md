@@ -710,6 +710,14 @@ INFERENCE law (fold `INFERENCE_LANES.md` + `design/inference-workflows/` + `INFE
 Write the new front door so the next agent after this program knows where the game stands.
 
 
+### 2026-11-03 — Book 4 selected-operation handoff
+
+The existing Foreman cast, encounter score and settlement already connect the Maw job to the next Book 4 choice; this increment does not duplicate them. The next live-route defect was navigation after an intro settled: the generic Helios story marker persisted even when the selected operation was offered at Tethys (traders) or Coalition HQ (patrol). The free operation remains at Helios. [missions.js](../../../src/systems/missions.js) now asks the existing authored contract builder for the pending selected operation, using that board's station, sector and title rather than a second branch mapping. Before selection, the existing clearing desk remains. Active missions keep their navigation priority, and an explicit local chart course is not overwritten by this live B4 fallback. Pinned/legacy routes keep their prior outcome-shaped stake waypoint.
+
+The [Books 3–4 regression](../../../test/w534-books-3-4.test.mjs) now covers the reachable Helios/Concord intro to Coalition operation handoff, all three branch origins, active-intro priority, Continue recomputation, manual chart course and pinned-route preservation. Root repeated all 17 in-file checks through exact changed owners with disclosed sparse transitive support. The exact parent fails only the two intended new handoff assertions; syntax and byte-exact patch restoration pass. This is owner-layer evidence, not native input/rendered or full storage UI acceptance. Broader CI remains separately reported on the PR.
+
+An older Book Four campaign script places all three doors at Tethys; current data places the clearing desk at Helios and derives intros from faction boards. This discrepancy remains open design reconciliation, not a proven reason to move stations or rewrite the board owner. No new model, reward, dialogue commitment or generic navigation system was introduced. Larger world/game goals remain open.
+
 ### 2026-11-03 — Feed the Maw: assemble the actual Ceres job
 
 The next Book 3 job is a Ceres refinery obstruction, not the Vesta capital boss. Its old promise of three hot-slag stuns had no supplied slag and used an ordinary rock with an unread visual marker. New offers now stage a finite mission-owned cast: the existing Furnace Maw vent-bowl visual on the original massline-compatible asteroid body, plus three marked physical hot-slag canisters. No new model or ecology AI is created. The Maw breathes quietly but does not autonomously hunt.

@@ -3828,17 +3828,31 @@ export const missions = {
       const stake = getPickSideStake(flags.elroy_outcome);
       const authored = embodiedMissionAt(4) || {};
       const loc = authored.location || {};
-      // PQ-032.02: the live route posts all three doors — none is "the" stake until the
-      // player picks, so point at the clearing administrator's authored desk instead of a
-      // flavour branch. Legacy/pinned saves keep their outcome-shaped stake pointer.
-      const target = campaign47aRouteKind(state) === 'live'
+      const routeKind = campaign47aRouteKind(state);
+      // PQ-032.02: before the player chooses, the live route points at the clearing
+      // administrator's desk. Once an intro settles, use the same authored operation row
+      // the board posts so the story marker hands off to that door's actual station.
+      const operation = routeKind === 'live' && state.story && state.story.branch
+        ? buildMissionBoardContract(4, { state, branch: state.story.branch })
+        : null;
+      const operationInfo = operation && operation.storyTag === 'campaign47a:b4:operation'
+        ? STATION_INFO.get(operation.stationId)
+        : null;
+      const target = operationInfo
         ? {
-          stationId: loc.stationId || stake.stationId,
-          sectorId: loc.sectorId || stake.sectorId,
-          label: storyBeatTitle(beat),
-          instruction: authored.recovery || stake.instruction,
+          stationId: operation.stationId,
+          sectorId: operationInfo.sectorId,
+          label: operation.title || storyBeatTitle(beat),
+          instruction: `${operation.title || 'The operation'} is on the board at ${operationInfo.name}.`,
         }
-        : stake;
+        : routeKind === 'live'
+          ? {
+            stationId: loc.stationId || stake.stationId,
+            sectorId: loc.sectorId || stake.sectorId,
+            label: storyBeatTitle(beat),
+            instruction: authored.recovery || stake.instruction,
+          }
+          : stake;
       const info = STATION_INFO.get(target.stationId);
       const station = currentSectorId === target.sectorId ? this._liveStation(target.stationId) : null;
       return {
@@ -3934,6 +3948,10 @@ export const missions = {
     const existing = state.nav && state.nav.waypoint;
     const force = !!(options.forceStory || options.force);
     const allowReplaceTrade = force || !!options.preferStory;
+    // After a B4 door is selected, keep an explicit local chart course under player control;
+    // the intro mission still has priority while it is active, above this story fallback.
+    if (beat.beat === 4 && campaign47aRouteKind(state) === 'live' && state.story && state.story.branch
+        && existing && existing.kind === 'local') return false;
     // The optional physical weigh follows delivery; never hijack a pilot's own
     // course (even the completion path's forceStory refresh) to perform it.
     if (kesslerScalePending(state) && existing
