@@ -10,7 +10,7 @@ import { createBus } from '../src/core/eventBus.js';
 import { createIndustryScreen, attemptIndustryScrap } from '../src/ui/station/screens/industry.js';
 import { fakeDom } from './helpers/fake-dom.mjs';
 
-const STATION = 'station_ceres';
+const STATION = 'station_forge';
 
 function sellableQty(state, id) {
   const items = (state && state.player && state.player.cargo && state.player.cargo.items) || {};
@@ -220,8 +220,9 @@ test('Industry: a running line offers Scrap run, and instant rungs stay fabricab
     { bpId: 'bp_ship_pelican', elapsed: 30, total: 120, done: false, stationId: STATION },
   );
   const h = screenHarness(t, ctx);
-  // First-open selection lands on the first ready/materials rung — Etch Microchips is an
-  // instant fab refine, so the hold key stays live even though the line is occupied.
+  // Select the instant microchip process explicitly; this Foundry now also offers the
+  // earlier refinery rungs, so first-open selection need not choose microchips.
+  h.pickRow('bp_refine_microchips');
   assert.match(h.stageHtml, /data-ind-scrap="1"/, 'the scrap verb stands while the line runs');
   assert.match(h.stageHtml, /data-station-control="scrap-run"/);
   assert.match(h.stageHtml, /Scrap run/);
@@ -253,6 +254,23 @@ test('Industry: an idle line draws no scrap verb', (t) => {
   const h = screenHarness(t, ctx);
   assert.ok(!/data-ind-scrap/.test(h.stageHtml));
   assert.ok(!/Line occupied/.test(h.stageHtml));
+});
+
+test('Industry offers a Shipworks handoff for an owned fabricated fitting', (t) => {
+  const ctx = screenCtx({}, null);
+  ctx.state.player.moduleInventory.push({ instanceId: 'mi_net', defId: 'mod_cargo_net_s' });
+  const navigation = [];
+  ctx.bus.on('station:navigate', event => navigation.push(event.destination));
+  const h = screenHarness(t, ctx);
+  h.pickRow('bp_build_cargo_net_s');
+  assert.match(h.stageHtml, /Fit owned in Shipworks/);
+  for (const listener of h.stage.listeners.click || []) {
+    listener({ target: { closest: selector => selector === '[data-ind-shipworks]' ? {} : null } });
+  }
+  assert.deepEqual(navigation, ['shipworks']);
+  ctx.state.player.moduleInventory.length = 0;
+  h.pickRow('bp_build_cargo_net_s');
+  assert.doesNotMatch(h.stageHtml, /Fit owned in Shipworks/);
 });
 
 test('attemptIndustryScrap resolves the worker ack shape and survives a rejecting lane', async () => {

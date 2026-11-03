@@ -45,8 +45,8 @@ const CMDTY_CAT = new Map(COMMODITIES.map((c) => [c.id, c.category]));
 function glyphFor(id, kind) {
   return industryPictogram(CMDTY_CAT.get(id), kind === 'material' ? 'commodity' : kind);
 }
-const STATION_TYPE = new Map();
-for (const sec of SECTORS) for (const s of (sec.stations || [])) STATION_TYPE.set(s.id, s.type);
+const STATIONS = new Map();
+for (const sec of SECTORS) for (const s of (sec.stations || [])) STATIONS.set(s.id, s);
 
 const CAT_LABEL = { refine: 'Refine', assemble: 'Assemble', augment: 'Augment', ship: 'Shipyard' };
 const CAT_ORDER = ['refine', 'assemble', 'augment', 'ship'];
@@ -67,17 +67,35 @@ function researched(state) { const r = state && state.player && (state.player.re
 // materials gate below count only the units the player may actually spend.
 function freeQty(state, id) { return sellableCargoQuantity(state, id); }
 function stationType(ctx) {
-  if (ctx.station && ctx.station.type) return ctx.station.type;
   const id = ctx.state && ctx.state.ui && ctx.state.ui.dockedStationId;
-  return (id && STATION_TYPE.get(id)) || null;
+  // A named berth's services, not its visual station class, define its actual benches.
+  // Runtime stations can provide the same shape through the station context.
+  return (id && STATIONS.get(id)) || ctx.station || null;
 }
 function facilityName(type) { return FACILITY_LABEL[type] || `${String(type || 'specialist')} station`; }
+function facilityForBlueprint(bp) { return bp.category === 'refine' ? 'refinery' : bp.stationType; }
+
+function supportsBlueprint(bp, station) {
+  if (!station) return true;
+  if (typeof station === 'string') return !bp.stationType || station === bp.stationType;
+  if (Array.isArray(station.services)) {
+    return station.services.includes(bp.category === 'refine' ? 'refine' : 'module_craft');
+  }
+  return !bp.stationType || !station.type || station.type === bp.stationType;
+}
+
+export function industryOwnedFitting(bp, state, station) {
+  if (!bp || !['module', 'weapon'].includes(bp.outputs?.kind)) return false;
+  if (!(state?.player?.moduleInventory || []).some(item => item?.defId === bp.outputs.id && item.instanceId)) return false;
+  return !!(station && typeof station === 'object' && Array.isArray(station.services)
+    && (station.services.includes('shipyard') || station.services.includes('module_craft')));
+}
 
 // Short, single-line readiness reason for the row sub-line and the disabled verb. The full
 // sentence — the industryReadiness label — is the status sentence and the accessible names, so a
 // blocked requirement is stated once per surface.
 function shortBlockLabel(bp, r) {
-  if (r.state === 'station') return 'Needs ' + (bp.stationType === 'fab' ? 'fabricator' : 'refinery');
+  if (r.state === 'station') return 'Needs ' + (facilityForBlueprint(bp) === 'fab' ? 'fabricator' : 'refinery');
   if (r.state === 'materials') return 'Needs materials';
   return r.label;
 }
@@ -96,7 +114,7 @@ function ownsModule(state, defId) {
 
 export function industryReadiness(bp, state, stnType) {
   if (bp.requiresTech && !researched(state).has(bp.requiresTech)) return { state: 'tech', label: 'Tech locked' };
-  if (bp.stationType && stnType && bp.stationType !== stnType) return { state: 'station', label: `Requires ${facilityName(bp.stationType)}` };
+  if (!supportsBlueprint(bp, stnType)) return { state: 'station', label: `Requires ${facilityName(facilityForBlueprint(bp))}` };
   if (bp.category === 'augment' && bp.fromModule && !ownsModule(state, bp.fromModule)) {
     return { state: 'source', label: `Needs ${niceName(bp.fromModule, 'module')}` };
   }
@@ -116,7 +134,7 @@ export function industryBlocker(bp, r) {
       reason,
       note: 'Not at this station',
       verb: 'chart',
-      verbLabel: 'Find a ' + (bp.stationType === 'fab' ? 'fabricator' : 'refinery') + ' on the chart',
+      verbLabel: 'Find a ' + (facilityForBlueprint(bp) === 'fab' ? 'fabricator' : 'refinery') + ' on the chart',
       controlId: 'find-facility',
     };
   }
@@ -201,13 +219,13 @@ export function createIndustryScreen(ctx) {
           const allStation = readiness.length > 0 && stationBlocked * 2 >= readiness.length;
           // the header names the facility most of the group's blocked rungs lack; a rung that lacks a different one says so itself
           const typeCount = {};
-          blueprints.forEach((bp, k) => { if (readiness[k].state === 'station') typeCount[bp.stationType] = (typeCount[bp.stationType] || 0) + 1; });
+          blueprints.forEach((bp, k) => { const type = facilityForBlueprint(bp); if (readiness[k].state === 'station') typeCount[type] = (typeCount[type] || 0) + 1; });
           const headType = Object.keys(typeCount).sort((a, b) => typeCount[b] - typeCount[a])[0] || '';
           const facility = allStation ? (headType === 'fab' ? 'fabricator' : 'refinery') : '';
           const compactHead = typeof window !== 'undefined' && window.innerWidth > 0 && window.innerWidth <= 1280;
           const shortfall = (bp) => { for (const id in (bp.inputs || {})) { const have = Math.floor(freeQty(state, id)); if (have < bp.inputs[id]) return `Short ${bp.inputs[id] - have} ${matName(id)}`; } return 'Needs materials'; };
           // a rung's own word: the shortfall when short; the tech or the module when locked; nothing when the header said why
-          const whys = blueprints.map((bp, bi) => { const r = readiness[bi]; return r.state === 'ready' ? '' : r.state === 'materials' ? shortfall(bp) : r.state === 'station' ? (allStation && bp.stationType === headType ? '' : shortBlockLabel(bp, r)) : shortBlockLabel(bp, r); });
+          const whys = blueprints.map((bp, bi) => { const r = readiness[bi]; return r.state === 'ready' ? '' : r.state === 'materials' ? shortfall(bp) : r.state === 'station' ? (allStation && facilityForBlueprint(bp) === headType ? '' : shortBlockLabel(bp, r)) : shortBlockLabel(bp, r); });
           // what the whole group shares is said once on its header: one tier, and one reason when every rung not ready gives the same one
           const tiers = new Set(blueprints.map((bp) => bp.tier));
           const groupTier = tiers.size === 1 ? [...tiers][0] : null;
@@ -266,7 +284,7 @@ export function createIndustryScreen(ctx) {
     // Notes CONFIRM a satisfied requirement (matching facility, owned source, researched tech) —
     // a lack is the chain's blocked plate's job, which names it once with its own remedy.
     if (bp.requiresTech && researched(state).has(bp.requiresTech)) notes.push({ ok: true, text: 'Tech: ' + String(bp.requiresTech).replace(/^tech_/, '').replace(/_/g, ' ') });
-    if (bp.stationType && (!stn || bp.stationType === stn)) notes.push({ ok: true, text: `${facilityName(bp.stationType)} online` });
+    if (bp.stationType && supportsBlueprint(bp, stn)) notes.push({ ok: true, text: `${facilityForBlueprint(bp) === 'fab' ? 'Fabrication' : 'Refining'} service online` });
     if (bp.category === 'augment' && bp.fromModule && ownsModule(state, bp.fromModule)) {
       notes.push({ ok: true, text: `${niceName(bp.fromModule, 'module')} ready to augment` });
     }
@@ -304,6 +322,7 @@ export function createIndustryScreen(ctx) {
             `${lineHolds && r.state === 'ready' ? 'Line occupied' : 'Fabricate'}${canBuild ? '<span class="dp-holdring" aria-hidden="true"></span>' : ''}` +
           `</button>` +
         `</li>` +
+        (industryOwnedFitting(bp, state, stn) ? `<li><button type="button" ${stationControlAttrs('shipworks')} class="k-word k-word--fine" data-ind-shipworks="1">Fit owned in Shipworks</button></li>` : '') +
         (queue ? `<li><button type="button" ${stationControlAttrs('scrap-run')} class="k-word k-word--fine k-bad sx-fab-scrap" data-ind-scrap="1" aria-label="Scrap the running fabrication — its committed materials are not returned">${stationControlLabel('scrap-run')}</button></li>` : '') +
         `</ul>` +
       `</div>`;
