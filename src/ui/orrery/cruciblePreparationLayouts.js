@@ -311,8 +311,8 @@ ${D} .k-foot .orr-prep-continue:active, ${D} .k-foot .orr-key--hazard:active { t
  /* UI polish: at 720p the stake mark gives its 30px back so purse, pressure and yield all fit the tile unclipped */
  ${D} .sf-crd-stake .fh-tile-art { display:none !important; }
  ${D} .orr-prep-stake-yield { font-size:12px !important; letter-spacing:0 !important; }
- ${D} .orr-prep-stake-pressure { letter-spacing:.04em !important; font-size:12px !important; }
- ${D} :is(.orr-prep-stake-pressure,.orr-prep-stake-yield) { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
+ ${D} .orr-prep-stake-pressure { letter-spacing:.02em !important; font-size:12px !important; }
+ ${D} :is(.orr-prep-stake-pressure,.orr-prep-stake-yield) { white-space:normal; text-wrap:balance; overflow-wrap:anywhere; max-width:100%; }
  /* Arena above the fold: hero carries the rooms — drop strip thumbs so both rows fit */
  ${D} .sf-crd-arenas .fh-tile-art { display:none !important; }
  ${D} .sf-crd-arenas .orr-tile { min-height:34px !important; padding:6px 2px !important; }
