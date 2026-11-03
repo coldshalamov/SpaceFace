@@ -73,6 +73,16 @@ const PHYSICAL_BERTH_WU = 700;
 // Mirrored so a silent change there fails loudly here instead of quietly never spawning the sector.
 const MEMBERSHIP_DWELL_S = 8;
 
+
+// Feed the Maw receipts name the actual finite supplied mass. The focused worksite test
+// drives the production massline observer; this campaign fixture tests its mission consumer.
+function hitSuppliedMawPod(h, mission, maw, rating = 'solid') {
+  const pod = (mission.targetEntityIds || []).map(id => h.state.entities.get(id))
+    .find(e => e && e.alive !== false && e.data?.physicalRole === 'maw_slag');
+  assert.ok(pod, 'an actual unspent Ceres hot-slag pod is required');
+  (h.bus || h.sim.bus).emit('tether:whipImpact', { targetId: pod.id, victimId: maw.id, rating });
+}
+
 function printSpine() {
   for (const row of listPq032SpineSetPieces()) {
     console.log(`PQ-032.00 ${row.id} ${row.headlineVerb} (${row.setPiece})`);
@@ -553,7 +563,7 @@ function playTheSpine(b3Settle) {
   const mawBody = targetsByRole(h.state, maw, 'slag_core')[0];
   assert.ok(mawBody, 'the maw materializes as a slag core');
   for (let i = 0; i < 3; i++) {
-    h.sim.bus.emit('tether:whipImpact', { victimId: mawBody.id, rating: 'solid' });
+    hitSuppliedMawPod(h, maw, mawBody);
   }
   towToTheDock(h, maw, 'slag_core', 'tow_in');
   assert.equal(maw.status, 'completed');
@@ -592,3 +602,4 @@ test('PQ-032.00 seed 3200 plays the book spine with the long-tow set piece live'
   const run2 = playTheSpine('tow_in');
   assert.equal(run2.berthMethod, 'tow_in');
 });
+

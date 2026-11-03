@@ -272,7 +272,7 @@ export const EMBODIED_MISSIONS = Object.freeze([
         stepId: 'feed_the_maw',
         type: 'tow_recovery', storyTag: 'campaign47a:b3:maw',
         title: 'Feed the maw',
-        brief: 'A Furnace maw hunts the Ceres reactor approach. Stun it with hot slag — three solid hits — then tow it out of the lane to the yard, or sling it in.',
+        brief: 'A Furnace maw blocks the old refinery approach at Ceres. Three marked hot-slag pods wait beside it. Swing or sling each into the maw for a solid hit, then tow its stunned body to Ceres yard or sling it into the berth. A lost pod voids this detail.',
         factionId: 'faction_dmc',
         stationId: 'station_tethys', destStationId: 'station_ceres', destSectorId: 'sector_ceres_belt',
         reward_cr: 900, collateral_cr: 0, riskTier: 2, minRep: -149, time_limit_s: 0,
@@ -282,6 +282,7 @@ export const EMBODIED_MISSIONS = Object.freeze([
           authoredSetPieceId: 'long_tow',
           bookScene: 'feed_the_maw',
           furnaceMaw: true,
+          mawWorksiteVersion: 1,
           scanLabel: 'FURNACE MAW',
           mawStunsNeeded: 3,
           massU: 120, bodyRadius: 24, cargoValue: 0, fValue: 1.4, taskTime: 60,
@@ -884,3 +885,4 @@ export function validateEmbodiedMissions() {
   if (!b6.empireSeedPrograms || !b6.empireSeedPrograms.custody || !b6.empireSeedPrograms.force) errors.push('B6: empire seed programs missing');
   return { ok: errors.length === 0, errors };
 }
+

@@ -709,6 +709,23 @@ INFERENCE law (fold `INFERENCE_LANES.md` + `design/inference-workflows/` + `INFE
 `NOW.md`/`FINISH_LANES.md`/`FINISH_THE_GAME.md` folded or archived, every nested `AGENTS.md` still true.
 Write the new front door so the next agent after this program knows where the game stands.
 
+
+### 2026-11-03 — Feed the Maw: assemble the actual Ceres job
+
+The next Book 3 job is a Ceres refinery obstruction, not the Vesta capital boss. Its old promise of three hot-slag stuns had no supplied slag and used an ordinary rock with an unread visual marker. New offers now stage a finite mission-owned cast: the existing Furnace Maw vent-bowl visual on the original massline-compatible asteroid body, plus three marked physical hot-slag canisters. No new model or ecology AI is created. The Maw breathes quietly but does not autonomously hunt.
+
+The worksite continues the existing Ceres infested-hauler pocket: Maw local (1880,2140), three pods at x1710 and z2090/2140/2190. It is beyond the old refinery growth ring and CR-FEED lip. Existing mission navigation leads to the bank, then to the Maw while a pod is held, then to Ceres yard while the stunned Maw is held. The player uses actual massline impacts: each supplied pod earns at most one solid/crushing stun, and three stuns still gate tow/sling settlement. Generic rocks, a targetless event and another mission's pod cannot stand in for these receipts.
+
+The four-slot ledger lives in existing mission params. Save/Continue keeps pose, damage, spent/lost state; hard exit retires exact actors without treating travel as destruction. Dead/missing issued pods cannot reappear during deferred destruction or after saving. A lost pod voids the attempt without payment; the actual campaign board reoffers a fresh detail after cleanup. Invalid material records fail readably rather than silently minting supply. No inventory, commodity, reward or parallel world-record owner is added.
+
+Legacy accepted jobs keep their real core and earned count, with live impact-mass validation, but retain their old generic route. Their old world-record rematerialization makes automatic migration unsafe; they do not acquire the finite scene, new appearance or hot-slag provenance guarantees. This limitation is explicit, not a claim that all saves now match the new route.
+
+Implementation: [mawWorksite.js](../../../src/missions/mawWorksite.js), [missionObjectiveOps.js](../../../src/systems/missionObjectiveOps.js), [missionSpawningOps.js](../../../src/systems/missionSpawningOps.js), [missionStoryOps.js](../../../src/systems/missionStoryOps.js), [missions.js](../../../src/systems/missions.js), [embodiedMissions.js](../../../src/story/campaign47a/embodiedMissions.js), [visualFactory.js](../../../src/render/visualFactory.js), and the narrow [beam exclusion](../../../src/systems/miningBeamTargetingRead.js). Existing fauna geometry is wrapped once at the collision footprint, preserving motion-owned child scale. No generic fauna, ordinary asteroid, mining, capital-boss or tow-job behavior is intentionally replaced.
+
+Root repeated 19 Node test entries across five focused/campaign files using changed exact owners, pinned support and disclosed older sparse transitive dependencies. The focused file covers 12 cases; w534 includes 13 internal groups, including actual no-payment failure/cleanup/board retry and legacy receipt rejection. Those nested counts are not additive whole-game totals. Actual massline observer and actual Three visual factory are exercised; 121 quiet-motion samples stay within 5% of the collision radius. PQ032 still fails at its pre-existing anonymous B1 furnace fixture before B3, also reproduced on its pinned baseline; its changed B3 fixture is not a passing full-route claim. Tests: [maw-worksite](../../../test/maw-worksite.test.mjs), [Books 3–4](../../../test/w534-books-3-4.test.mjs), plus the existing spine/full-campaign adapter suites.
+
+Published/source-tested is not accepted: ordinary input, native solver steering, rendered skins/PBR, full storage UI Continue, target-device performance and whole-game CI remain open. No new screenshots or model-production completion is claimed. SF-WORLD-DIRECTION, SF-SECTOR-COHERENCE, SF-LIVING-WORLD and SF-GAME remain open alongside the original larger scope.
+
 ## Source coverage and material defects
 
 Completed reads and their explicit coverage gaps are recorded in

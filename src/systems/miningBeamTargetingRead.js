@@ -1,3 +1,4 @@
+import { isMawWorksiteBody } from '../missions/mawWorksite.js';
 import { BEAMS } from '../data/mining.js';
 import { JETTISONED_CARGO_PAYLOAD_TYPE } from '../data/cargoPayloadTypes.js';
 import { isCeresWorkfleetHardware } from '../data/ceresWorkfleetIdentity.js';
@@ -32,7 +33,7 @@ export function beamRangeFor(player, state) {
 }
 
 export function isBeamTargetEligible(entity, state) {
-  if (isCeresWorkfleetHardware(entity)) return false;
+  if (isCeresWorkfleetHardware(entity) || isMawWorksiteBody(entity)) return false;
   if (!entity || entity.alive === false) return false;
   if (!verbAcceptsType('mine', entity.type) && !isBeamSplittableCargoPod(entity)
     && !weldableHullForBeam(entity, state)) return false;
@@ -56,3 +57,4 @@ export function weldableHullForBeam(entity, state) {
   if (!player || entity.id === player.id) return false;
   return !isHostileToPlayer(entity, player.team, state);
 }
+

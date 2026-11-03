@@ -1,3 +1,4 @@
+import { mawWorksiteFocus } from '../missions/mawWorksite.js';
 import { ASTEROIDS } from '../data/mining.js';
 import { starterMiningFocus } from '../missions/starterWorkday.js';
 import { firstBuoyReceiptFields } from '../missions/starterBuoyAftermath.js';
@@ -3191,6 +3192,8 @@ export const missions = {
     };
     const cinderFocus = cinderRouteFocus(m, this.state);
     if (cinderFocus) return { ...base, ...cinderFocus, stationId: null };
+    const mawFocus = mawWorksiteFocus(m, this.state, sectorLocalToGlobalForSector);
+    if (mawFocus) return { ...base, ...mawFocus };
     const furnaceFocus = furnaceWorksiteFocus(m, this.state);
     if (furnaceFocus) return { ...base, ...furnaceFocus, stationId: null };
 
@@ -6617,4 +6620,5 @@ export function mulberryLocal(a) {
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 }
+
 

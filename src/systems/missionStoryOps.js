@@ -1,3 +1,4 @@
+import { isMawWorksite, snapshotMawWorksite, restoreMawWorksite, parkMawWorksite } from '../missions/mawWorksite.js';
 import { authoredCinderRoute, retainCinderRetry } from '../missions/cinderRoute.js';
 import { snapshotFurnaceWorksite, retireFurnaceWorksite, syncFurnaceWorksite, snapshotFurnaceAftermath, restoreFurnaceAftermath, normalizeFurnaceAftermath, materializeFurnaceAftermath } from '../missions/furnaceWorksiteRuntime.js';
 import { authoredFurnaceWorksite } from '../missions/furnaceWorksite.js';
@@ -1471,6 +1472,7 @@ export const missionStoryOps = {
     for (const m of this.state.missions.active || []) {
       if (m.destSectorId !== sectorId) continue;
       snapshotFurnaceWorksite(this, m);
+      snapshotMawWorksite(this, m);
       // Borrowed fauna stay ecology-owned. Held/gyre/stunt/custody pods remain live under
       // their current owner on every exit; reentry adopts them rather than cloning.
       if (authoredFurnaceWorksite(m)) m.targetEntityIds = [];
@@ -1501,6 +1503,7 @@ export const missionStoryOps = {
       // Cinder is a finite cast, not a respawn quota. Existing mission-pinned/world-record
       // ownership retains the real survivors; a hard exit is not their destruction.
       if (authoredCinderRoute(m)) continue;
+      if (m.destSectorId === sectorId && parkMawWorksite(this, m)) continue;
       if (m.needsTargets && m.destSectorId === sectorId) {
         if (m.params?.workingBattlefield) snapshotWorkingBattlefield(this, m);
         snapshotReckoning(this, m);
@@ -2518,7 +2521,7 @@ export const missionStoryOps = {
       return true;
     }
     if (scene === 'feed_the_maw') {
-      popup('CERES TRAFFIC', 'A Furnace maw is working the reactor approach. Hot slag knocks it stupid — three solid hits — then drag it off the lane.', 7);
+      popup('CERES TRAFFIC', 'A Furnace maw blocks the old refinery approach. Three marked hot-slag pods are staged beside it. Latch and swing or sling each pod into the maw hard enough for a solid hit, then tow the stunned body to Ceres yard. Lost pods void the detail.', 7);
       return true;
     }
     if (scene === 'foreman_feud') {
@@ -2736,11 +2739,23 @@ export const missionStoryOps = {
     // Strip transient runtime fields (entity ids) from active missions.
     const active = source.map((a) => {
       snapshotFurnaceWorksite(this, a);
+      snapshotMawWorksite(this, a);
       if (a.params?.cleanCylinder) this._snapshotCleanCylinder(a);
       if (a.params?.workingBattlefield) snapshotWorkingBattlefield(this, a);
       snapshotReckoning(this, a);
       const { targetEntityIds, _escorteeId, _escorteeSectorId, _escorteeArrived, _crewEntityIds, _swarmClockParkedAt, _swarmClockDeadline, ...rest } = a;
       const row = { ...rest, targetEntityIds: [], needsTargets: a.needsTargets };
+      if (isMawWorksite(a)) {
+        row.params = { ...a.params };
+        // Four authored slots; a fifth preserves invalid-length detection without
+        // copying an unbounded malformed ledger. Runtime entity IDs are not save state.
+        if (Array.isArray(a.params.mawBodies)) row.params.mawBodies = a.params.mawBodies.slice(0, 5)
+          .map(body => {
+            if (!body || typeof body !== 'object') return body;
+            const { entityId, ...savedBody } = body;
+            return { ...savedBody, pos: { ...body.pos }, vel: { ...body.vel } };
+          });
+      }
       // PQ-019C: canonical, order-stable snapshot of the heist subrecord. It rides INSIDE the active
       // entry this owner already serializes, so there is no new top-level save key and no schema
       // bump. Live entity ids inside it are transient and are dropped on restore, not here.
@@ -2886,6 +2901,7 @@ export const missionStoryOps = {
         ...a, targetEntityIds: [], _escorteeId: null, _escorteeArrived: false,
         status: a.status || 'active',
       };
+      restoreMawWorksite(row);
       if (authoredFurnaceWorksite(row) && Array.isArray(row.params?.furnaceLots)) {
         const ledger = normalizeFurnaceAftermath({ version: 1, missionId: row.id, lots: row.params.furnaceLots });
         row.params = ledger ? { ...row.params, furnaceLots: ledger.lots,
@@ -2928,3 +2944,4 @@ export const missionStoryOps = {
     this._refreshNavigation({ forceStory: true, silent: true });
   },
 };
+

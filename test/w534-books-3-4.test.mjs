@@ -46,6 +46,16 @@ import { tickNestVisit } from '../src/systems/nestVisit.js';
 import { NEST_VISIT, nestApproach } from '../src/data/nestVisit.js';
 
 let failures = 0;
+
+// Feed the Maw receipts name the actual finite supplied mass. The focused worksite test
+// drives the production massline observer; this campaign fixture tests its mission consumer.
+function hitSuppliedMawPod(h, mission, maw, rating = 'solid') {
+  const pod = (mission.targetEntityIds || []).map(id => h.state.entities.get(id))
+    .find(e => e && e.alive !== false && e.data?.physicalRole === 'maw_slag');
+  assert.ok(pod, 'an actual unspent Ceres hot-slag pod is required');
+  (h.bus || h.sim.bus).emit('tether:whipImpact', { targetId: pod.id, victimId: maw.id, rating });
+}
+
 function check(name, fn) {
   try { fn(); console.log(`  PASS  ${name}`); }
   catch (err) {
@@ -377,7 +387,7 @@ function reachB4(h, elroyOutcome = 'force') {
   const maw = acceptOffer(h, 'station_tethys', 'campaign47a:b3:maw');
   enterDest(h, maw);
   const mawBody = slagCoreOf(h, maw);
-  for (let i = 0; i < 3; i++) bus.emit('tether:whipImpact', { victimId: mawBody.id, rating: 'solid' });
+  for (let i = 0; i < 3; i++) hitSuppliedMawPod(h, maw, mawBody);
   dockTow(h, maw);
   assert.equal(maw.status, 'completed', 'stunned maw tows off the lane');
   const foreman = acceptOffer(h, 'station_tethys', 'campaign47a:b3:foreman');
@@ -558,18 +568,100 @@ check('B3: Feed the Maw needs the slag stuns before the tow settles', () => {
   assert.equal(mawBody.data.furnaceMaw, true, 'the core is stamped as a living maw');
 
   // Two stuns short — the thrashing maw does not ride a line out.
-  bus.emit('tether:whipImpact', { victimId: mawBody.id, rating: 'solid' });
-  bus.emit('tether:whipImpact', { victimId: mawBody.id, rating: 'crushing' });
+  hitSuppliedMawPod(h, maw, mawBody);
+  hitSuppliedMawPod(h, maw, mawBody, 'crushing');
   assert.equal(maw.params.mawStuns, 2);
   dockTow(h, maw);
   assert.equal(maw.status, 'active', 'the tow refuses while the maw still hunts');
 
-  bus.emit('tether:whipImpact', { victimId: mawBody.id, rating: 'solid' });
+  hitSuppliedMawPod(h, maw, mawBody);
   dockTow(h, maw);
   assert.equal(maw.status, 'completed', 'three stuns and the maw leaves the lane');
   assert.equal(state.story.flags.maw_fed, true);
   let status = getBeatStepStatus(state, 3);
   assert.deepEqual(status.completed, ['delivery', 'feed_the_maw']);
+});
+
+check('B3: actual save restore owns its Maw params without mutating the saved payload', () => {
+  const h = makeHarness(530); reachB3(h);
+  const berth = acceptOffer(h, 'station_tethys', 'campaign47a:b3:berth');
+  enterDest(h, berth); dockTow(h, berth);
+  const maw = acceptOffer(h, 'station_tethys', 'campaign47a:b3:maw');
+  enterDest(h, maw); hitSuppliedMawPod(h, maw, slagCoreOf(h, maw));
+  const live = h.state.entities.get(maw.params.mawBodies[2].entityId);
+  live.pos.x += 113; live.vel.z = 17; live.hull = 83;
+  const expectedPos = { ...live.pos };
+  const snapshot = h.missions.serialize();
+  const snapshotRow = snapshot.active.find(row => row.id === maw.id);
+  const snapshotBefore = JSON.stringify(snapshotRow.params);
+  assert.ok(snapshotRow.params.mawBodies.every(row => row.entityId == null));
+  maw.params.mawBodies[2].pos.x += 7;
+  maw.params.mawStuns = 2;
+  assert.equal(JSON.stringify(snapshotRow.params), snapshotBefore, 'live ledger edits do not mutate the returned save');
+  const saved = JSON.parse(JSON.stringify(snapshot));
+  const savedRow = saved.active.find(row => row.id === maw.id);
+  const before = JSON.stringify(savedRow.params);
+  const other = makeHarness(531); other.missions.deserialize(saved);
+  const restored = other.state.missions.active.find(row => row.id === maw.id);
+  assert.notEqual(restored.params, savedRow.params);
+  assert.equal(JSON.stringify(savedRow.params), before, 'restore does not normalize the saved input in place');
+  enterDest(other, restored); enterDest(other, restored);
+  assert.equal(restored.params.mawStuns, 1);
+  assert.equal(restored.targetEntityIds.length, 3);
+  const pod = other.state.entities.get(restored.params.mawBodies[2].entityId);
+  assert.deepEqual(pod.pos, expectedPos); assert.equal(pod.vel.z, 17); assert.equal(pod.hull, 83);
+  assert.equal(JSON.stringify(savedRow.params), before, 'spawn does not write live IDs into the saved input');
+  const invalid = JSON.parse(JSON.stringify(saved));
+  const invalidRow = invalid.active.find(row => row.id === maw.id);
+  invalidRow.params.mawBodies = [];
+  const invalidBefore = JSON.stringify(invalidRow.params);
+  const third = makeHarness(533); third.missions.deserialize(invalid);
+  assert.equal(JSON.stringify(invalidRow.params), invalidBefore, 'invalid-ledger classification also owns its params');
+  assert.equal(third.state.missions.active.find(row => row.id === maw.id).params.mawLedgerInvalid, true);
+});
+
+check('B3: an old active Maw preserves earned stuns but rejects targetless synthetic hits', () => {
+  const h = makeHarness(532); reachB3(h);
+  const berth = acceptOffer(h, 'station_tethys', 'campaign47a:b3:berth');
+  enterDest(h, berth); dockTow(h, berth);
+  h.state.world.currentSectorId = 'sector_tethys_junction';
+  const maw = acceptOffer(h, 'station_tethys', 'campaign47a:b3:maw');
+  // Model an accepted pre-worksite save: keep its previous real core and earned count.
+  delete maw.params.mawWorksiteVersion;
+  maw.params.mawStuns = 1;
+  enterDest(h, maw);
+  const core = slagCoreOf(h, maw);
+  h.bus.emit('tether:whipImpact', { victimId: core.id, rating: 'solid' });
+  assert.equal(maw.params.mawStuns, 1);
+  const mass = h.helpers.spawnEntity({ type: 'asteroid', pos: { ...core.pos }, radius: 12,
+    mass: 40, vel: { x: 60, z: 0 }, data: { tetherable: true } });
+  h.bus.emit('tether:whipImpact', { targetId: mass.id, victimId: core.id, rating: 'solid' });
+  assert.equal(maw.params.mawStuns, 2);
+  assert.equal(maw.params.mawBodies, undefined, 'legacy progress does not mint a second worksite');
+});
+
+check('B3: a lost supplied pod voids the detail without payment and the authored board reoffers it', () => {
+  const h = makeHarness(531);
+  reachB3(h);
+  const berth = acceptOffer(h, 'station_tethys', 'campaign47a:b3:berth');
+  enterDest(h, berth); dockTow(h, berth);
+  const maw = acceptOffer(h, 'station_tethys', 'campaign47a:b3:maw');
+  enterDest(h, maw);
+  const pod = h.state.entities.get(maw.params.mawBodies[1].entityId);
+  const credits = h.state.player.credits;
+  pod.alive = false;
+  // Snapshot can precede the deferred destroyed event; the current session must still settle.
+  h.missions.serialize();
+  h.bus.emit('entity:destroyed', { id: pod.id, entity: pod });
+  assert.equal(maw.status, 'failed');
+  assert.equal(h.state.player.credits, credits, 'loss grants no completion reward');
+  assert.equal(h.state.story.flags.maw_fed, undefined);
+  const retry = acceptOffer(h, 'station_tethys', 'campaign47a:b3:maw');
+  assert.notEqual(retry.id, maw.id);
+  enterDest(h, retry);
+  assert.equal(retry.params.mawStuns, 0);
+  assert.equal(retry.targetEntityIds.length, 4, 'new finite detail, not replenishment of the old one');
+  assert.equal(h.state.entityList.filter(e => e.alive !== false && e.data?.mawMissionId === maw.id).length, 0);
 });
 
 check('B3: the Foreman yard feud closes the book; the audit never gates it', () => {
@@ -584,7 +676,7 @@ check('B3: the Foreman yard feud closes the book; the audit never gates it', () 
   const maw = acceptOffer(h, 'station_tethys', 'campaign47a:b3:maw');
   enterDest(h, maw);
   const mawBody = slagCoreOf(h, maw);
-  for (let i = 0; i < 3; i++) bus.emit('tether:whipImpact', { victimId: mawBody.id, rating: 'solid' });
+  for (let i = 0; i < 3; i++) hitSuppliedMawPod(h, maw, mawBody);
   dockTow(h, maw);
 
   const foreman = acceptOffer(h, 'station_tethys', 'campaign47a:b3:foreman');
@@ -771,3 +863,4 @@ check('B4: the door operation does not post for another door\u2019s board', () =
 
 console.log(failures === 0 ? 'w534-books-3-4: all checks passed' : `w534-books-3-4: ${failures} FAILURES`);
 if (failures > 0) process.exit(1);
+

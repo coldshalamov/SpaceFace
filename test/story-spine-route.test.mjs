@@ -47,6 +47,16 @@ import { readLifeLedger } from '../src/story/endings/lifeLedger.js';
 
 const SEED = 4242;
 
+
+// Feed the Maw receipts name the actual finite supplied mass. The focused worksite test
+// drives the production massline observer; this campaign fixture tests its mission consumer.
+function hitSuppliedMawPod(h, mission, maw, rating = 'solid') {
+  const pod = (mission.targetEntityIds || []).map(id => h.state.entities.get(id))
+    .find(e => e && e.alive !== false && e.data?.physicalRole === 'maw_slag');
+  assert.ok(pod, 'an actual unspent Ceres hot-slag pod is required');
+  (h.bus || h.sim.bus).emit('tether:whipImpact', { targetId: pod.id, victimId: maw.id, rating });
+}
+
 function cloneSystem(proto) {
   return Object.assign({}, proto);
 }
@@ -422,7 +432,7 @@ function playBookBeat3(h) {
     .find((e) => e && e.data && e.data.furnaceMaw === true);
   assert.ok(mawBody, 'the maw materializes as a furnace-marked body');
   for (let i = 0; i < (maw.params.mawStunsNeeded || 3); i++) {
-    h.bus.emit('tether:whipImpact', { victimId: mawBody.id, rating: 'solid' });
+    hitSuppliedMawPod(h, maw, mawBody);
   }
   completeSpineSetPiece(h, maw);
   assert.equal(maw.status, 'completed', 'three slag stuns and the maw tows off the lane');
@@ -592,3 +602,4 @@ test('the played road survives save and Continue and is cited at the ending', ()
   assert.match(archive.text, /The road retained: the grain door taken/);
   assert.equal(finale.basis.spineRoad.cite, facts.spineRoad.cite);
 });
+

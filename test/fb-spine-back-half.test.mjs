@@ -50,6 +50,16 @@ import {
 
 const SEED = 4242;
 
+
+// Feed the Maw receipts name the actual finite supplied mass. The focused worksite test
+// drives the production massline observer; this campaign fixture tests its mission consumer.
+function hitSuppliedMawPod(h, mission, maw, rating = 'solid') {
+  const pod = (mission.targetEntityIds || []).map(id => h.state.entities.get(id))
+    .find(e => e && e.alive !== false && e.data?.physicalRole === 'maw_slag');
+  assert.ok(pod, 'an actual unspent Ceres hot-slag pod is required');
+  (h.bus || h.sim.bus).emit('tether:whipImpact', { targetId: pod.id, victimId: maw.id, rating });
+}
+
 function cloneSystem(proto) {
   return Object.assign({}, proto);
 }
@@ -209,7 +219,7 @@ function completeSpineSetPiece(h, mission) {
     // The living maw refuses the line until the slag stuns land.
     const stuns = mission.params && mission.params.mawStunsNeeded;
     for (let i = 0; i < (stuns || 0); i++) {
-      h.bus.emit('tether:whipImpact', { victimId: target.id, rating: 'solid' });
+      hitSuppliedMawPod(h, mission, target);
     }
     h.bus.emit('tether:latched', { targetId: target.id });
     target.pos = { x: berth.pos.x, z: berth.pos.z };
@@ -570,3 +580,4 @@ test('FB-063: a scripted beat-5 failure speaks the authored recovery line once, 
   completeB7(h);
   assert.equal(h.state.story.beatIndex, 7);
 });
+
