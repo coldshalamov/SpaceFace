@@ -45,6 +45,7 @@ function fixture(extra = {}) {
 const SLOT_OF = { Pull: '1', Shove: '2', Pin: '3', Bomb: '4', Rig: '5', Line: '6', Gyre: '7', Cloak: '8' };
 const socketOf = (root, name) => findAll(root, (n) => n.getAttribute && (n.getAttribute('data-group') === name || n.getAttribute('data-slot') === SLOT_OF[name]))[0];
 const wordsOf = (node) => findAll(node, (n) => n.className === 'orr-cluster__keyword')[0]?.textContent;
+const shortWordsOf = (node) => findAll(node, (n) => n.className === 'orr-cluster__keyshort')[0]?.textContent;
 const iconOf = (node) => findAll(node, (n) => /\borr-cluster__icon\b/.test(n.className))[0];
 
 function mount(state, t) {
@@ -69,6 +70,9 @@ test('collapsed nodes speak the effective verb: words, authored mark, state and 
     assert.match(pull.className, /\bis-cooldown\b/, 'and it carries the live state, not just the unfolded key');
     assert.match(pull.getAttribute('data-why'), /^Pull · Draws in — Place a gravity well at your aim point/);
     assert.match(wordsOf(socketOf(view.root, 'Shove')), /^Shove · Pushes away \+ 2 blasts$/);
+    assert.equal(shortWordsOf(socketOf(view.root, 'Shove')), 'Shove · Push away', 'narrow label retains the action');
+    assert.match(socketOf(view.root, 'Shove').getAttribute('data-why'), /2 charges will go off/, 'the full state stays in the shared tip');
+    assert.equal(shortWordsOf(socketOf(view.root, 'Line')), 'Line · Haul');
     assert.equal(wordsOf(socketOf(view.root, 'Gyre')), 'Gyre · Release', 'the Gyre is holding a ball in the fixture');
     assert.equal(wordsOf(socketOf(view.root, 'Cloak')), 'Cloak · Ready');
     // the rig follows the planet band — words, mark and tip together, before any press

@@ -13478,43 +13478,134 @@ export const render = {
           reason: 'session-recook-keep-gpu',
         };
       }
-      if (isMobileRenderContext() && !survivalRunHoldsArena(state)) {
-        // WebKit exposes parallel compile on phones too. That does not make desktop-scale hidden
-        // catalog/effect rehearsals affordable: they consumed the cook budget before touching any
-        // of the opening picture and held New Game until required-package admission failed.
-        const mobileStarted = performance.now();
-        let mobileActive = true;
+      if (!survivalRunHoldsArena(state)) {
+        // Adventure needs the exact authored first picture, not the future roster's hidden
+        // exemplars. On the laptop the broad cook + post-opening sweep held this barrier for
+        // 29–32 s. Reuse the finite admission already used on phones: capture/compile/depth,
+        // geometry/texture residency and the first-picture seal remain required. Desktop keeps
+        // its complete declared first-use pool set; only the existing phone policy filters it.
+        // Later assets still enter through compileObjectPipelines / the bounded authored upgrade
+        // queue, which compile, upload and touch each live owner before publication. Do not queue
+        // a whole-sector cook after first paint or move this loading pause into live flight.
+        const mobileFirstPicture = isMobileRenderContext();
+        const exactStarted = performance.now();
+        let exactActive = true;
         releaseOpeningGraphPublication(this);
         state.render.liveSectorGpuAdmission = true;
         resumeAuthoredUpgradeQueueAfterOpening(scene);
         this._discardEarlyCrucibleWarm();
         try {
+          // The on-table 47-A spindle is deliberately excluded from initial composition:
+          // its old owner was the first-flight cook. Preserve that finite exception before
+          // freezing the picture, including when its pivot is just outside the camera.
+          // This does not promote field rocks or admit the future sector/roster.
+          const firstFlightActors = (state.entityList || []).filter((entity) => (
+            isFirstFlightCookEntity(entity, state) && !isInitialAuthoredCompositionEntity(entity, state)
+          ));
+          // Structural contacts emit synchronously from real input/events; these four live
+          // pools have no async first-use owner. Desktop's declared-pool pass already covers
+          // them. The phone's dormant-pool filter must not leave their first impact cold.
+          const immediatePoolRoots = mobileFirstPicture
+            ? collectFirstFlightEffectRoots(scene).filter(root => root.name === 'SF_ArcadeStructuralFx')
+            : [];
+          const actorIds = new Set(firstFlightActors.map((entity) => entity.id));
+          const assertExactActive = () => {
+            if (!exactActive || recookStale()) throw new Error('opening first-flight actor admission superseded');
+            if (performance.now() - exactStarted >= openingGateBudgetMs()) {
+              throw new Error('opening first-flight actor admission timed out');
+            }
+          };
+          const driveActors = async (steps) => {
+            try {
+              for (;;) {
+                assertExactActive();
+                if (steps.next().done) break;
+                await yieldToBrowser();
+              }
+            } finally { steps.return?.(); }
+          };
+          if (firstFlightActors.length > 0 || immediatePoolRoots.length > 0) {
+            assertExactActive();
+            // The authored runway uses this same finite cook membership while loading.
+            const firstFlightIds = state.render.liveSectorFirstFlightIds || new Set();
+            for (const id of actorIds) firstFlightIds.add(id);
+            state.render.liveSectorFirstFlightIds = firstFlightIds;
+            await driveActors(enqueueMissingMeshBuildsSteps(firstFlightActors,
+              this._meshes, this._meshBuildQueuedIds, this._meshBuildQueue));
+            assertExactActive();
+            const tail = this._meshBuildQueue.slice(this._meshBuildQueueHead);
+            this._meshBuildQueue.splice(this._meshBuildQueueHead, tail.length,
+              ...tail.filter(id => actorIds.has(id)), ...tail.filter(id => !actorIds.has(id)));
+            while (this._meshBuildQueueHead < this._meshBuildQueue.length
+                && actorIds.has(this._meshBuildQueue[this._meshBuildQueueHead])) {
+              await driveActors(this._drainMeshBuildQueueSteps(1));
+            }
+            let actorTimer;
+            const actorDeadline = new Promise((_, reject) => {
+              actorTimer = setTimeout(() => {
+                exactActive = false;
+                reject(new Error('opening first-flight actor admission timed out'));
+              }, Math.max(1, openingGateBudgetMs() - (performance.now() - exactStarted)));
+            });
+            try {
+              for (const entity of firstFlightActors) {
+                assertExactActive();
+                if (entity.alive === false || state.entities.get(entity.id) !== entity) continue;
+                const root = this._meshes.get(entity.id);
+                await Promise.race([requestAuthoredUpgrade(root, renderer, scene, { admissionVisible: true }), actorDeadline]);
+                assertExactActive();
+                if (entity.alive === false || state.entities.get(entity.id) !== entity) continue;
+                if (this._meshes.get(entity.id) !== root
+                    || !['authored', 'authored-prepared', 'authored-with-cleanup-error'].includes(root?.userData?.authoredAssetState)) {
+                  throw new Error(`opening first-flight authored actor ${entity.id} is unavailable`);
+                }
+                await Promise.race([admitSubjectPipelines(root, {
+                  openingRequired: true, strict: true, urgent: true,
+                  isActive: () => exactActive && !recookStale()
+                    && entity.alive !== false && state.entities.get(entity.id) === entity
+                    && this._meshes.get(entity.id) === root,
+                }), actorDeadline]);
+                assertExactActive();
+              }
+              for (const root of immediatePoolRoots) {
+                assertExactActive();
+                await Promise.race([admitSubjectPipelines(root, {
+                  openingRequired: true, strict: true, urgent: true,
+                  isActive: () => exactActive && !recookStale() && root.parent === scene,
+                }), actorDeadline]);
+                assertExactActive();
+              }
+            } finally { clearTimeout(actorTimer); }
+          }
           const admitted = await prepareMobileOpeningFirstPicture(state.render, {
-            timeoutMs: openingGateBudgetMs(),
+            timeoutMs: Math.max(1, openingGateBudgetMs() - (performance.now() - exactStarted)),
             yieldToMain: yieldToBrowser,
-            isActive: () => mobileActive && !recookStale(),
+            isActive: () => exactActive && !recookStale(),
           });
           if (recookStale()) return { skipped: true, reason: 'sector-superseded' };
           // Register the promise observers while loading owns the canvas. Registering already
           // awaited handles on the first flight draw temporarily counts them as pending until
           // their microtasks run, refusing that picture for a whole frame on slow WebKit.
           this._openingAdmissionPendingCount();
+          // Release per-subject streaming admission; this is not a claim that a future catalog
+          // was warmed. No speculative ordinary roster is mounted, and the exact plan above
+          // owns every initial leaf/material/depth/texture/receiver requirement.
           this._postOpeningPipelineAdmissionReleased = true;
           this._sessionLiveSectorCookedId = recookSectorId;
           state.render.sessionLiveSectorCookedId = recookSectorId;
-          recordOpeningCookStep(state.render, 'live.mobileFirstPicture', mobileStarted, 'resolved', {
+          recordOpeningCookStep(state.render, mobileFirstPicture ? 'live.mobileFirstPicture' : 'live.requiredFirstPicture', exactStarted, 'resolved', {
             drawLeaves: admitted.plan.drawLeaves.length,
             materials: admitted.submission.materials,
           });
-          return { skipped: false, mobileFirstPicture: true, ...admitted };
+          return { skipped: false, exactFirstPicture: true, mobileFirstPicture, ...admitted };
         } catch (error) {
           if (recookStale()) return { skipped: true, reason: 'sector-superseded' };
-          recordOpeningCookStep(state.render, 'live.mobileFirstPicture', mobileStarted, 'error', {
+          recordOpeningCookStep(state.render, mobileFirstPicture ? 'live.mobileFirstPicture' : 'live.requiredFirstPicture', exactStarted, 'error', {
             error: String(error && error.message || error),
           });
           throw error;
         } finally {
-          mobileActive = false;
+          exactActive = false;
           if (!recookStale()) {
             state.render.liveSectorGpuAdmission = false;
             holdAuthoredUpgradeQueueForFirstFlight(scene, { loading: state.mode === 'loading' });
@@ -22164,8 +22255,7 @@ export const render = {
       // the ordinary cook's censuses.
       if (!survivalRunHoldsArena(state)) {
         // A door-staged crucible warm belongs to no launch the player took —
-        // discard it, then let the ordinary New Game claim the same slot for
-        // its opening-species cohort below instead of returning empty.
+        // discard it; ordinary Adventure admits its required picture without a roster warm.
         this._discardEarlyCrucibleWarm();
       } else if (state.run.ruleset !== SWARM_RULESET) {
         // The door staged this warm before a run existed, so it scoped to the default ruleset
@@ -22191,21 +22281,13 @@ export const render = {
     }
     if (state.mode !== 'loading') return;
     try {
-      const openingProfile = !survivalRunHoldsArena(state);
-      if (openingProfile && isMobileRenderContext()) return;
+      // Ordinary Adventure uses the required first-picture plan and per-object streaming.
+      // Starting the optional opening roster here shares decode/compile capacity with those
+      // required bodies and later widens the cook/post-opening census with hidden exemplars.
+      if (!survivalRunHoldsArena(state)) return;
       const warm = this._beginCrucibleBoundedRosterWarm({
         yieldToMain: yieldToBrowser,
-        // The opening profile is deterministic at scenePrepared — the scripted-intro species
-        // manifest needs no run. Beginning here starts the packaged-body attaches during the
-        // library/visuals/GPU waits; the cook used to begin the warm mid-cook, so the roster
-        // settle still found ten decodes and the drone attach in flight at the shell-release
-        // boundary (the 8 s open-route timeout). The heavy fleet decodes stay deferred to the
-        // cook claim (deferFleetDecodes) — starting ~100 MB of meshopt work at scenePrepared
-        // measured as pure contention on the authored-library/visuals gates (+8 s) because
-        // decode shares the one main thread, and it tripled the finish() cohort's compile
-        // sweep inside the shell (+10 s on live.postOpeningPipelines).
-        profile: openingProfile ? 'opening' : 'crucible',
-        deferFleetDecodes: openingProfile,
+        profile: 'crucible',
       });
       if (!warm || !warm.root) return;
       if (warm.root.parent !== scene) {

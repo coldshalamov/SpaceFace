@@ -730,6 +730,7 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
   let _stuntHushTick = -1;
   const _stuntHushLog = [];
   let _directorFrame = cameraDirector.output;
+  let _industrialZoomRevision = 0;
   const _directorView = {
     followX: 0,
     followZ: 0,
@@ -845,7 +846,11 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
       _kick.envX = Math.max(-IMPACT_KICK_WU_MAX, Math.min(IMPACT_KICK_WU_MAX, _kick.envX + (dx / len) * mag));
       _kick.envZ = Math.max(-IMPACT_KICK_WU_MAX, Math.min(IMPACT_KICK_WU_MAX, _kick.envZ + (dz / len) * mag));
     },
-    setZoom(z) { c.zoom = Math.max(CAMERA_ZOOM_MIN, Math.min(CAMERA_ZOOM_MAX, finiteOr(z, c.zoom || DEFAULT_ZOOM))); },
+    setZoom(z) {
+      const next = Math.max(CAMERA_ZOOM_MIN, Math.min(CAMERA_ZOOM_MAX, finiteOr(z, c.zoom || DEFAULT_ZOOM)));
+      if (next !== c.zoom) _industrialZoomRevision++;
+      c.zoom = next;
+    },
     snapToPlayer() {
       return snapToEntity(readPlayerEntity(state));
     },
@@ -1122,9 +1127,8 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
         );
         // Cheap combat-framing gate for look-ahead attenuation: sticky active hold, live lease, or
         // any hostile currently targeting the player. Avoids a full composition pass before lead.
-        const combatLookaheadScale = playerHasActiveAttackerFraming(state, p, _compositionSticky)
-          ? ACTIVE_ATTACKER_LOOKAHEAD_SCALE
-          : 1;
+        const activeAttacker = playerHasActiveAttackerFraming(state, p, _compositionSticky);
+        const combatLookaheadScale = activeAttacker ? ACTIVE_ATTACKER_LOOKAHEAD_SCALE : 1;
 
         let velocityLeadTargetX = 0;
         let velocityLeadTargetZ = 0;
@@ -1173,6 +1177,9 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
         _directorView.tiltDeg = c.tilt || 60;
         _directorView.dt = frameDt;
         _directorView.maxZoom = resolveCombatCompositionZoomCap(p, _directorView);
+        _directorView.manualZoomRevision = _industrialZoomRevision;
+        _directorView.industrialBlocked = activeAttacker || _deathCam
+          || resolveSteeringView(state, { death: _deathCam }) === 'racing';
         // Seed pair entry from the pose the player actually saw last frame, not the director's
         // undamped FOLLOW request. Functional pair framing is identical under reduced motion.
         if (_directorFrame.mode === CameraDirectorMode.FOLLOW) {
@@ -1475,7 +1482,9 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
       c.composedZoom = directorOwnsComposition
         ? (recoverEase
           ? _dynamicZoom
-          : finiteOr(_directorFrame && _directorFrame.zoom, _dynamicZoom))
+          : _directorFrame?.mode === CameraDirectorMode.INDUSTRIAL
+            ? Math.max(_dynamicZoom, finiteOr(_directorFrame.requiredZoom, _dynamicZoom))
+            : finiteOr(_directorFrame && _directorFrame.zoom, _dynamicZoom))
         : targetZoom;
       // Oversized authored gates can physically surround the chase camera even while the aperture
       // is correctly composed. The director derives a conservative near plane from the mounted

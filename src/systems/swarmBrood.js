@@ -59,6 +59,7 @@ import { dominoDeltaVelocity } from './swarmLegendaries.js';
 import { playerTowedLure } from '../ai/towedLure.js';
 import { gateBearing } from './waveMaterialization.js';
 import { findSwarmArrival } from './swarmSafety.js';
+import { planSwarmBank, swarmBankEligible } from './swarmBank.js';
 import {
   BROOD_CHARGER_DASH_MAX_S,
   BROOD_CHARGER_DASH_SPEED,
@@ -403,6 +404,10 @@ export function createBroodEngine(deps = {}) {
   let rng = mulberry32(1);
   let pendingPlan = null;     // [{ id, count }] composed at prepare, spawned at wave start
   let liveWave = 0;
+  // Transient, once per run; the ordinary plan remains the population authority.
+  let bankPlayed = false;
+  let bank = null;
+  let spawnRequestedBankAttempted = false;
 
   // --- B4: the Hive's reserve (see src/systems/theHiveArena.js) ------------------------
   //
@@ -607,6 +612,9 @@ export function createBroodEngine(deps = {}) {
   // --- lifecycle --------------------------------------------------------------------------
 
   function clear(reason = 'clear') {
+    if (reason === 'new_game' || reason === 'run_ended') bankPlayed = false;
+    bank = null;
+    spawnRequestedBankAttempted = false;
     if (aliveCount > 0) { alive.fill(0); affix.fill(0); }
     aliveCount = 0;
     creditUntil.fill(0);
@@ -796,6 +804,28 @@ export function createBroodEngine(deps = {}) {
     const familyIndex = buildFamilyIndex();
     const deferred = [];
     let spawned = 0, groupIndex = 0;
+    // Admit the whole vignette atomically before the usual gate arrivals. It spends the
+    // existing plan and never moves the chosen rock or an already-live brood body.
+    if (!bankPlayed && !spawnRequestedBankAttempted) {
+      spawnRequestedBankAttempted = true;
+      const layout = planSwarmBank(state, state?.run, liveWave, pendingPlan);
+      const charger = familyIndex.get('charger'), spitter = familyIndex.get('spitter');
+      const free = [];
+      for (let i = 0; i < CAP && free.length < 3; i++) if (!alive[i]) free.push(i);
+      if (layout && charger != null && spitter != null && free.length === 3) {
+        spawnAt(free[0], charger, layout.first.x, layout.first.z);
+        spawnAt(free[1], spitter, layout.spitter.x, layout.spitter.z);
+        spawnAt(free[2], charger, layout.second.x, layout.second.z);
+        pendingPlan.find(part => part.id === 'charger').count -= 2;
+        pendingPlan.find(part => part.id === 'spitter').count -= 1;
+        bank = { first: free[0], spit: free[1], second: free[2],
+          firstLife: serial[free[0]], spitLife: serial[free[1]], secondLife: serial[free[2]],
+          phase: 'first', until: now + 8, flankX: layout.flankX, flankZ: layout.flankZ,
+          rockId: layout.rockId };
+        bankPlayed = true;
+        spawned += 3;
+      }
+    }
     for (const part of pendingPlan) {
       const famIdx = familyIndex.get(part.id);
       if (famIdx == null) continue;
@@ -1135,6 +1165,7 @@ export function createBroodEngine(deps = {}) {
       cmdSpeed = finite(strainDef.commandSpeed, 1);
     }
     const simTime = finite(state.simTime);
+    advanceBank(simTime);
     // The Machine's link pass: rebuild the shield flags off the live links the same
     // way the commander's aura rebuilds off the live marks — a broken beam drops its
     // partner's protection this same tick. A thrown body crossing the beam is the
@@ -1625,14 +1656,56 @@ export function createBroodEngine(deps = {}) {
     return true;
   }
 
+  function bankLife(slot, life) { return alive[slot] && serial[slot] === life; }
+
+  function advanceBank(now) {
+    if (!bank) return;
+    if (now >= bank.until) { bank = null; return; }
+    const firstAlive = bankLife(bank.first, bank.firstLife);
+    if (bank.phase === 'first' && (!firstAlive
+        || phase[bank.first] === BROOD_PHASE_DASH || phase[bank.first] === BROOD_PHASE_RECOVER)) {
+      bank.phase = 'spit';
+    }
+    if (bank.phase === 'spit' && (!bankLife(bank.spit, bank.spitLife)
+        || phase[bank.spit] === BROOD_PHASE_WINDUP)) bank.phase = 'second';
+    if (bank.phase === 'second' && (!bankLife(bank.second, bank.secondLife)
+        || phase[bank.second] === BROOD_PHASE_WINDUP)) bank = null;
+    if (!bank) return;
+    // A pilot can fly away from any staged approach. Do not keep the sequence armed while its
+    // next actor is chasing beyond a useful attack window; ordinary AI takes over immediately.
+    const next = bank.phase === 'first' ? bank.first : bank.phase === 'spit' ? bank.spit : bank.second;
+    const reach = (bank.phase === 'spit' ? BROOD_SPITTER_LOB_RANGE : BROOD_CHARGER_RANGE) + 40;
+    const dx = px[next] - playerX, dz = pz[next] - playerZ;
+    if (phase[next] === BROOD_PHASE_FLOCK && dx * dx + dz * dz > reach * reach) bank = null;
+  }
+
+  function bankAttackAllowed(i) {
+    if (!bank) return true;
+    // The composition sequences its three own bodies, not the rest of the wave. Other
+    // attackers still contend for the ordinary shared attack slots and inter-attack gap.
+    const staged = (i === bank.first && serial[i] === bank.firstLife)
+      || (i === bank.spit && serial[i] === bank.spitLife)
+      || (i === bank.second && serial[i] === bank.secondLife);
+    if (!staged) return true;
+    if (bank.phase === 'first') return i === bank.first && serial[i] === bank.firstLife;
+    if (bank.phase === 'spit') return i === bank.spit && serial[i] === bank.spitLife;
+    return i === bank.second && serial[i] === bank.secondLife
+      && (!bankLife(bank.first, bank.firstLife) || phase[bank.first] === BROOD_PHASE_RECOVER
+        || phase[bank.first] === BROOD_PHASE_FLOCK);
+  }
+
   function stepSpitter(i, def, dp, dt) {
     if (phase[i] !== BROOD_PHASE_FLOCK) return;
     timer[i] -= dt;
-    if (attackClock < attackAfter[i] || timer[i] > 0 || dp > BROOD_SPITTER_LOB_RANGE || dp < 1e-4 || !takeAttackSlot()) return;
+    if (!bankAttackAllowed(i) || attackClock < attackAfter[i] || timer[i] > 0 || dp > BROOD_SPITTER_LOB_RANGE || dp < 1e-4 || !takeAttackSlot()) return;
     // Lead the marker by the flight time so a moving pilot must actually move to dodge.
     const flightS = dp / BROOD_SPITTER_LOB_SPEED;
     teleX[i] = playerX + playerVX * flightS;
     teleZ[i] = playerZ + playerVZ * flightS;
+    if (bank && bank.phase === 'spit' && i === bank.spit && serial[i] === bank.spitLife) {
+      teleX[i] += bank.flankX * 38;
+      teleZ[i] += bank.flankZ * 38;
+    }
     phase[i] = BROOD_PHASE_WINDUP;
     timer[i] = BROOD_SPITTER_WINDUP_S;
     emitTelegraph(i, def);
@@ -1769,7 +1842,7 @@ export function createBroodEngine(deps = {}) {
       if (timer[i] <= 0) phase[i] = BROOD_PHASE_FLOCK;
       return;
     }
-    if (attackClock < attackAfter[i] || phase[i] !== BROOD_PHASE_FLOCK || dp > BROOD_CHARGER_RANGE || dp < 1e-4 || !takeAttackSlot()) return;
+    if (!bankAttackAllowed(i) || attackClock < attackAfter[i] || phase[i] !== BROOD_PHASE_FLOCK || dp > BROOD_CHARGER_RANGE || dp < 1e-4 || !takeAttackSlot()) return;
     // The tell: the line draws toward where the pass will go, for the whole windup.
     const lead = dp / BROOD_CHARGER_DASH_SPEED;
     teleX[i] = playerX + playerVX * lead;
@@ -3631,6 +3704,13 @@ export function createBroodEngine(deps = {}) {
     view,
     prepareWave,
     spawnWave,
+    canPrepareBank(state) {
+      return !bankPlayed && !spawnRequestedBankAttempted
+        && swarmBankEligible(state?.run, liveWave, pendingPlan);
+    },
+    planBank(state, candidate = null) {
+      return this.canPrepareBank(state) ? planSwarmBank(state, state?.run, liveWave, pendingPlan, candidate) : null;
+    },
     step,
     clear,
     onExplosion,

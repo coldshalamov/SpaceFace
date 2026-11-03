@@ -12,6 +12,7 @@ import { MeshoptDecoder } from 'meshoptimizer';
 import * as THREE from 'three';
 import { CERES_WORKFLEET_CONTRACT as contract } from '../src/data/ceresWorkfleet.js';
 import { createCeresWorkfleetPropulsionDriver } from '../src/render/ceresWorkfleetVisuals.js';
+import { normalizeCeresWorkfleetPackageNodes } from '../src/render/ceresWorkfleetPackageNodes.js';
 import { inspectReleaseAssetPair } from '../src/contracts/assetReleaseValidation.js';
 import { validateMotionBank } from '../src/contracts/motionBank.js';
 import { readGlbJson, sceneFromGlbJson, sealMotionBankRef } from '../scripts/lib/renderPackageRuntimeTable.mjs';
@@ -39,6 +40,18 @@ const near = (actual, expected, label) => {
 const parents = doc => new Map(doc.nodes.flatMap(node => (node.children || []).map(index => [doc.nodes[index].name, node.name])));
 const triangles = (doc, node) => (doc.meshes[node.mesh]?.primitives || [])
   .reduce((sum, primitive) => sum + doc.accessors[primitive.indices ?? primitive.attributes.POSITION].count / 3, 0);
+// The compiler may keep a semantic carrier and put its drawable in an
+// identity-transform child. Require exactly that shape; never count a random descendant.
+function drawable(graph, node, label) {
+  if (node.mesh !== undefined) return node;
+  assert.equal(node.children?.length, 1, `${label}: exactly one drawable child`);
+  const child=graph.nodes[node.children[0]];
+  assert.ok(child && child.mesh !== undefined && !child.children?.length, `${label}: direct mesh child`);
+  near(child.translation || [0,0,0], [0,0,0], `${label}: child translation`);
+  near(child.rotation || [0,0,0,1], [0,0,0,1], `${label}: child rotation`);
+  near(child.scale || [1,1,1], [1,1,1], `${label}: child scale`);
+  return child;
+}
 
 for (const [part, key] of parts) {
   test(`${key}: registered source, compressed release and compiled graph keep exact identity and anatomy`, () => {
@@ -81,14 +94,14 @@ for (const [part, key] of parts) {
         const target = targetNodes.get(name);
         assert.ok(target, `${path}: ${name} survives`);
         assert.equal(targetParents.get(name), sourceParents.get(name), `${name}: parent survives`);
-        if (node.mesh !== undefined) assert.equal(triangles(graph, target), triangles(source, node), `${name}: no downstream simplification`);
+        if (node.mesh !== undefined) assert.equal(triangles(graph, drawable(graph,target,name)), triangles(source, node), `${name}: no downstream simplification`);
         if (/^(MOTION_|SOCKET_|SF_)/.test(name)) {
           near(target.translation || [0, 0, 0], node.translation || [0, 0, 0], `${name}: translation`);
           near(target.rotation || [0, 0, 0, 1], node.rotation || [0, 0, 0, 1], `${name}: rotation`);
           near(target.scale || [1, 1, 1], node.scale || [1, 1, 1], `${name}: scale`);
         }
       }
-      assert.equal(graph.nodes.filter(node => node.name.startsWith('COLLISION_')).length, certificate.collision.boxes.length);
+      assert.equal(graph.nodes.filter(node => node.name?.startsWith('COLLISION_')).length, certificate.collision.boxes.length);
       if (part === 'breaker') assert.ok(targetNodes.has('SOCKET_Engine_Main'));
     }
 
@@ -112,7 +125,7 @@ const vector = value => [value.x, value.y, value.z];
 function assertPropulsionGraph(graph, asset, label) {
   const channels = asset.propulsion.channels;
   const nodes = new Map(graph.nodes.map(node => [node.name, node]));
-  const meshes = new Set();
+  const drawables = new Set();
   assert.deepEqual(graph.asset.extras.ceresWorkfleet.propulsion, asset.propulsion, `${label}: exact channel certificate`);
   for (const channel of channels) {
     const socket = nodes.get(channel.socket);
@@ -122,13 +135,15 @@ function assertPropulsionGraph(graph, asset, label) {
     for (const [lod, name] of channel.coreMeshes.entries()) {
       assert.equal(name, `LOD${lod}_${channel.coreHook}_glow_drive`);
       const node = nodes.get(name);
-      assert.ok(node && graph.meshes[node.mesh]?.primitives.length === 1, `${label}: independently mutable ${name}`);
-      assert.ok(!meshes.has(node.mesh), `${label}: channel/LOD core never shares geometry identity`);
-      meshes.add(node.mesh);
+      assert.ok(node, `${label}: core ${name}`);
+      const mesh=drawable(graph,node,`${label}: ${name}`);
+      assert.equal(graph.meshes[mesh.mesh]?.primitives.length,1, `${label}: independently mutable ${name}`);
+      assert.ok(!drawables.has(mesh), `${label}: channel/LOD has its own drawable node`);
+      drawables.add(mesh);
       assert.equal(node.extras.ceresThruster.channel, channel.id);
       assert.deepEqual(node.extras.ceresThruster.exhaustNormal, vector(channel.exhaustDirection));
       assert.deepEqual(node.extras.ceresThruster.mouthWU, vector(channel.mouth));
-      assert.ok(triangles(graph, node) > 0, `${label}: core has real geometry`);
+      assert.ok(triangles(graph, mesh) > 0, `${label}: core has real geometry`);
     }
   }
 }
@@ -166,6 +181,9 @@ for (const [part, key] of parts.filter(([part]) => part !== 'cradle')) {
     // Admission must clone it per channel and owner while retaining LOD continuity.
     const drivers = [0, 1].map(occupantGeneration => {
       const scene = sceneFromGlbJson(graph);
+      const plan=[];scene.traverse(node=>plan.push(node));
+      const metadata=readJson(pilot.metadataUrl);
+      normalizeCeresWorkfleetPackageNodes(asset.assetId,plan,new Map(metadata.runtime.primitives.map(p=>[p.name,p.tags])));
       for (const channel of asset.propulsion.channels) for (const name of channel.coreMeshes) {
         const core = scene.getObjectByName(name);
         assert.ok(core?.isMesh, `${name}: compiled decode topology`);

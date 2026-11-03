@@ -534,6 +534,19 @@ export const mining = {
   },
 
   _runOrchardBeam(player, target, _beam, _dt, state) {
+    // A feed gesture stays a feed for its entire hold, even after the first pod appears.
+    const planet = this.registry?.get?.('planetRuntime');
+    if (planet?.isOrchardFeedGesture?.(state, target)) {
+      if (!this._beaming || this._lockTargetId !== target.id || this._activeVerb !== 'orchard-feed') {
+        this._setLockTargetId(target.id);
+        this._activeVerb = 'orchard-feed';
+        this.bus.emit('mining:start', { minerId: player.id, targetId: target.id, verb: 'transfer', position: { x: target.pos.x, z: target.pos.z } });
+      }
+      this._beaming = true;
+      this._activeBeamLine = beamLineFor(player, target);
+      if (this._activeBeamLine) this._activeBeamLine.verb = 'transfer';
+      return { ok: true, duplicate: false, pending: true, moved: 0 };
+    }
     const deny = (reason) => {
       if (this._beaming && this._lockTargetId === target.id) this._stopBeam();
       this.bus.emit('beam:denied', { minerId: player.id, targetId: target.id, verb: 'cut', reason });

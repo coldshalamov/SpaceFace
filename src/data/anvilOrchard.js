@@ -45,8 +45,10 @@ export function normalizeOrchardRecord(value) {
   for (const row of value.lots) {
     if (!object(row) || !integer(row.socket, 0, 2) || !integer(row.cycle, 1, 4)
       || row.id !== orchardLotId(row.socket, row.cycle) || byId.has(row.id)
-      || !integer(row.units, 1, 4) || !['retained', 'delivered', 'lost'].includes(row.outcome)) return null;
+      || !integer(row.units, 1, 4) || !['retained', 'delivered', 'lost'].includes(row.outcome)
+      || (own(row, 'contributor') && row.contributor !== 'player')) return null;
     const lot = { id: row.id, socket: row.socket, cycle: row.cycle, units: row.units, outcome: row.outcome };
+    if (row.contributor === 'player') lot.contributor = 'player';
     lots.push(lot); byId.set(lot.id, lot); allocated += lot.units;
   }
   if (allocated + value.sourceRemaining !== 48) return null;

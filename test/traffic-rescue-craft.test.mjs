@@ -76,8 +76,9 @@ function bootHarness() {
     flags: {},
   });
 
-  traffic.init({ state, bus });
-  survivorPod.init({ state, bus });
+  const helpers = {};
+  traffic.init({ state, bus, helpers });
+  survivorPod.init({ state, bus, helpers });
 
   return { state, bus, station, player, addEntity };
 }
@@ -97,6 +98,7 @@ test('rescue craft detects unattended survivor pod, secures survivor, and delive
     rot: 0,
     data: {
       trafficRole: 'rescue',
+      worldRecordId: 'test:rescue:201',
       role: 'rescue',
       trafficLabel: 'Helios Medevac',
     },
@@ -148,14 +150,15 @@ test('rescue craft detects unattended survivor pod, secures survivor, and delive
   rescueEnt.pos.x = 95;
   rescueEnt.pos.z = 60;
 
-  const rescuedEvents = [];
+  const boardedEvents = [], rescuedEvents = [];
+  bus.on('survivorPod:boarded', (p) => boardedEvents.push(p));
   bus.on('survivorPod:rescued', (p) => rescuedEvents.push(p));
 
   // survivorPod.update performs proximity claim by rescue hull
   survivorPod.update(0.1, state);
-  assert.equal(rescuedEvents.length, 1, 'survivorPod:rescued fired');
-  assert.equal(rescuedEvents[0].reason, 'rescue_hull');
-  assert.equal(rescuedEvents[0].rescueHullId, rescueEnt.id);
+  assert.equal(boardedEvents.length, 1, 'the lifter actually takes custody');
+  assert.equal(rescuedEvents.length, 0, 'pickup is not yet delivery');
+  assert.equal(boardedEvents[0].rescueHullId, rescueEnt.id);
 
   // Traffic sync updates carryingSurvivor and destination to station
   assert.equal(rescueRec.carryingSurvivor, true);
@@ -180,6 +183,8 @@ test('rescue craft detects unattended survivor pod, secures survivor, and delive
   assert.equal(deliveredEvents.length, 1, 'survivorPod:delivered fired');
   assert.equal(deliveredEvents[0].rescueHullId, rescueEnt.id);
   assert.equal(deliveredEvents[0].stationId, station.id);
+  assert.equal(deliveredEvents[0].podEntityId, podEnt.id);
+  assert.equal(rescuedEvents.length, 1, 'the passenger is rescued at arrival');
   assert.equal(rescueRec.carryingSurvivor, false);
   assert.ok(rescueRec.waitT > 0, 'Rescue craft waiting at medical berth');
   assert.ok(commsMessages.some((m) => m.channel === 'emergency'));

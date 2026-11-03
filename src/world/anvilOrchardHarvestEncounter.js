@@ -72,7 +72,7 @@ export function createOrchardHarvestEncounter(ctx) {
         || !row || row.frameStatus !== 'intact' || phase?.phase !== 'calm' || phase.remainingTicks < 360
         || Math.hypot(player.pos.x - frame.pos.x, player.pos.z - frame.pos.z) > 300) return;
       const m = memory(state);
-      let kind, text, lot, pod, selected, physics, taughtBeam;
+      let kind, text, lot, pod, selected, physics, taughtBeam, taughtCollector;
       const receipt = m.collected;
       if (!m.heard.collected && receipt && row.lots.some(l => l.id === receipt.lotId && l.units === receipt.units && l.outcome === 'delivered')) {
         kind = 'collected'; text = `${receipt.units} units of hydrogen accepted into your hold. Dock at Tethys to check the market buy price.`;
@@ -89,8 +89,11 @@ export function createOrchardHarvestEncounter(ctx) {
         if (lot && !m.heard[selected ? 'release' : 'select']) {
           kind = selected ? 'release' : 'select';
           const beam = taughtBeam = resolveActionLabel(state, 'siteBeam');
+          taughtCollector = state.planet?.player?.collectorOn === true;
           text = selected
-            ? `Socket ${socket.socket + 1}: ${lot.units} units. Hold ${beam ? `${beam} (World Site beam)` : 'the World Site beam'} during calm until the collar opens. Stay clear.`
+            ? taughtCollector
+              ? `Socket ${socket.socket + 1}: ${lot.units} units. Close the Scoop, release ${beam || 'the World Site beam'}, then hold it again during calm to open the collar. Stay clear.`
+              : `Socket ${socket.socket + 1}: ${lot.units} units. Hold ${beam ? `${beam} (World Site beam)` : 'the World Site beam'} during calm until the collar opens. Stay clear.`
             : `Socket ${socket.socket + 1} holds ${lot.units} units of hydrogen. Target the Orchard, then use its component readout to select that socket.`;
         } else if (!m.heard.pickup) {
           lot = row.lots.find(l => l.outcome === 'retained' && row.sockets[l.socket].lotId === l.id
@@ -144,7 +147,8 @@ export function createOrchardHarvestEncounter(ctx) {
         const nowSelected = state.player.targetId === frame.id && selection?.targetId === frame.id
           && selection.stableKey === stableEntityKey(frame) && selection.componentId === `orchard_socket_${lot.socket}`;
         return ['stowed', 'releasing'].includes(slot.status) && selected === nowSelected
-          && (kind !== 'release' || resolveActionLabel(state, 'siteBeam') === taughtBeam);
+          && (kind !== 'release' || (resolveActionLabel(state, 'siteBeam') === taughtBeam
+            && (state.planet?.player?.collectorOn === true) === taughtCollector));
       };
       const id = `alin:harvest:${kind}:${lot?.id || receipt.lotId}`;
       pending = { id, kind, valid, until: state.simTime + 7 };

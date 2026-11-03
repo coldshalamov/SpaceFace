@@ -2,6 +2,7 @@ const BONE = '236 230 216';
 const WARM = '248 244 234';
 
 const LABEL = `font-family:var(--dp-face-label, "Archivo"), "Archivo", system-ui, sans-serif; font-stretch:112%; font-weight:650; text-transform:uppercase; font-variation-settings:normal;`;
+const LABEL_IMPORTANT = `font-family:var(--dp-face-label, "Archivo"), "Archivo", system-ui, sans-serif !important; font-stretch:112% !important; font-weight:650 !important; text-transform:uppercase !important; font-variation-settings:"wght" 650, "wdth" 112 !important;`;
 const READ = `font-family:var(--dp-face-read, "Instrument Sans"), "Instrument Sans", system-ui, sans-serif; font-stretch:100%; font-variation-settings:normal; text-transform:none;`;
 const NUMERAL = `font-family:var(--dp-face-numeral, "Archivo"), "Archivo", system-ui, sans-serif; font-stretch:100%; font-weight:250; font-variation-settings:"wght" 250, "wdth" 100;
   font-variant-numeric:tabular-nums lining-nums; letter-spacing:-.01em;`;
@@ -113,11 +114,11 @@ ${T} .con-dossier .sf-entity-link:is(:hover, :focus-visible) { outline:none !imp
 /* the foot: ‹ BACK + ESC keycap (matches settings/save-load/help/credits/codex/mission-log/achievements) */
 ${T} > .k-foot.con-foot { grid-area:foot; display:flex; align-items:center; gap:clamp(18px, 2.8vw, 64px); min-height:0; margin:0; padding:0; border:0; background:none; position:relative; z-index:3; }
 ${T} > .k-foot .con-back.sf-back.k-word { all:unset !important; box-sizing:border-box !important; cursor:pointer !important; display:inline-flex !important; align-items:baseline !important; gap:0 !important;
-  padding:10px 0 12px !important; min-height:44px !important; ${LABEL} font-size:13.5px !important; letter-spacing:.1em !important; color:rgb(255 253 248) !important;
+  padding:10px 0 12px !important; min-height:44px !important; ${LABEL_IMPORTANT} font-size:13.5px !important; letter-spacing:.1em !important; color:rgb(255 253 248) !important;
   background:linear-gradient(0deg, rgb(${BONE} / .28) 0 1.5px, transparent 1.5px) 0 100% / 120px 100% no-repeat !important; text-shadow:none !important; }
 ${T} > .k-foot .con-back.sf-back.k-word::before { all:unset !important; content:"‹" !important; display:inline !important; margin-right:12px !important; font-size:15px !important; color:rgb(${BONE} / .6) !important; }
 ${T} > .k-foot .con-back.sf-back.k-word::after { all:unset !important; content:"ESC" / "" !important; display:inline-block !important; margin-left:16px !important; padding:3px 7px 4px !important;
-  ${LABEL} font-size:12px !important; letter-spacing:.06em !important; line-height:1 !important;
+  ${LABEL_IMPORTANT} font-size:12px !important; letter-spacing:.06em !important; line-height:1 !important;
   color:rgb(${BONE} / .9) !important; background:rgb(${BONE} / .1) !important; border:1px solid rgb(${BONE} / .5) !important; border-radius:3px !important;
   box-shadow:inset 0 -1px 0 rgb(0 0 0 / .35) !important; vertical-align:baseline !important; }
 ${T} > .k-foot .con-back.sf-back.k-word:is(:hover, :focus-visible) { color:var(--dp-hand-hot, #ffd98c) !important; outline:none !important; text-decoration:none !important; }
@@ -437,11 +438,11 @@ ${A} .con-medal-read__status { ${LABEL} font-size:clamp(12px, .6vw, 12.5px); let
 ${A} > .k-foot.con-foot { grid-area:foot; display:flex; align-items:center; min-height:0; margin:0; padding:0; border:0; background:none; }
 ${A} > .k-foot .k-words { display:flex; margin:0; padding:0; list-style:none; }
 ${A} > .k-foot .con-back.sf-back.k-word { all:unset !important; box-sizing:border-box !important; cursor:pointer !important; display:inline-flex !important; align-items:baseline !important; gap:0 !important;
-  padding:10px 0 12px !important; min-height:44px !important; ${LABEL} font-size:13.5px !important; letter-spacing:.1em !important; color:rgb(255 253 248) !important;
+  padding:10px 0 12px !important; min-height:44px !important; ${LABEL_IMPORTANT} font-size:13.5px !important; letter-spacing:.1em !important; color:rgb(255 253 248) !important;
   background:linear-gradient(0deg, rgb(${BONE} / .28) 0 1.5px, transparent 1.5px) 0 100% / 120px 100% no-repeat !important; text-shadow:none !important; }
 ${A} > .k-foot .con-back.sf-back.k-word::before { all:unset !important; content:"‹" !important; display:inline !important; margin-right:12px !important; font-size:15px !important; color:rgb(${BONE} / .6) !important; }
 ${A} > .k-foot .con-back.sf-back.k-word::after { all:unset !important; content:"ESC" / "" !important; display:inline-block !important; margin-left:16px !important; padding:3px 7px 4px !important;
-  ${LABEL} font-size:12px !important; letter-spacing:.06em !important; line-height:1 !important;
+  ${LABEL_IMPORTANT} font-size:12px !important; letter-spacing:.06em !important; line-height:1 !important;
   color:rgb(${BONE} / .9) !important; background:rgb(${BONE} / .1) !important; border:1px solid rgb(${BONE} / .5) !important; border-radius:3px !important;
   box-shadow:inset 0 -1px 0 rgb(0 0 0 / .35) !important; vertical-align:baseline !important; }
 ${A} > .k-foot .con-back.sf-back.k-word:is(:hover, :focus-visible) { color:var(--dp-hand-hot, #ffd98c) !important; outline:none !important; text-decoration:none !important; }

@@ -11,7 +11,7 @@ import { DENIAL, denialText, intentDenial } from '../combat/contactClassifier.js
 import { isConfirmOpen } from './confirm.js';
 import { targetDisplayName } from './targetPanel.js';
 import { createHoverTag, placeHoverTag, paintHoverTagVitals } from './orrery/hoverTag.js';
-import { laneInputWrite } from '../core/simLaneCommands.js';
+import { laneInputWrite, laneSetComponentSelection, reconcileLaneComponentSelection } from '../core/simLaneCommands.js';
 import { formatDistance } from './units.js';
 
 function hasOwn(o, k) {
@@ -53,7 +53,7 @@ export function applyWorldObjectSelection(state, entity, source) {
   if (!state || !entity || entity.id == null) return false;
   if (!state.player) state.player = {};
   const prevId = state.player.targetId;
-  if (prevId !== entity.id && state.ui) state.ui.componentSelection = null;
+  if (prevId !== entity.id) laneSetComponentSelection(state, null, null);
   laneInputWrite(state, 'player.targetId', entity.id);
   laneInputWrite(state, 'ui.objectSelection', {
     targetId: entity.id,
@@ -70,7 +70,7 @@ export function applyWorldObjectSelection(state, entity, source) {
 export function clearWorldObjectSelection(state) {
   if (!state || !state.player) return;
   laneInputWrite(state, 'player.targetId', null);
-  if (state.ui) state.ui.componentSelection = null;
+  laneSetComponentSelection(state, null, null);
   laneInputWrite(state, 'ui.objectSelection', null);
   laneInputWrite(state, 'input.targetAssistDisabled', true);
 }
@@ -205,6 +205,7 @@ export function createWorldObjectInteraction(ctx, screenManager) {
   }
 
   function clearSelectionMeta() {
+    laneSetComponentSelection(state, null, null);
     const sel = state.ui && state.ui.objectSelection;
     if (sel && state.player && state.player.targetId === sel.targetId) {
       laneInputWrite(state, 'player.targetId', null);
@@ -429,6 +430,11 @@ export function createWorldObjectInteraction(ctx, screenManager) {
   }
 
   function sweepDeadSubjects() {
+    const component = state.ui?.componentSelection;
+    if (component) {
+      reconcileLaneComponentSelection(state);
+      if (!state.ui.componentSelection) laneSetComponentSelection(state, null, null);
+    }
     const sel = state.ui && state.ui.objectSelection;
     if (sel && sel.targetId != null) {
       const subject = presentableSubject(state, sel.targetId);
@@ -439,6 +445,7 @@ export function createWorldObjectInteraction(ctx, screenManager) {
       const recycled = !!(subject && sel.occupantGeneration != null && generation != null
         && generation !== sel.occupantGeneration);
       if (!subject || recycled) {
+        laneSetComponentSelection(state, null, null);
         laneInputWrite(state, 'ui.objectSelection', null);
         if (state.player && state.player.targetId === sel.targetId) laneInputWrite(state, 'player.targetId', null);
       }
@@ -586,6 +593,7 @@ export function createWorldObjectInteraction(ctx, screenManager) {
   function destroy() {
     if (destroyed) return;
     destroyed = true;
+    laneSetComponentSelection(state, null, null);
     cancelGesture('destroy');
     if (viewportObserver) {
       try { viewportObserver.disconnect(); } catch (_) {}
