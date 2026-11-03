@@ -14,6 +14,8 @@ Status words: `OPEN`, `ACTIVE`, `LANDED <sha>`, `SKIPPED (<reason>)`.
 
 ## Inbox (other lanes append one line: date, lane, path, what/why)
 
+- 2026-11-03 integration: `special500` atmospheric messages now retain their full sender/text in the existing Comms backlog with its unread cue, instead of becoming stacked flight receipts. Ordinary cargo/encounter receipts keep their behavior. Fourteen focused/real-DOM checks passed, including the opening attention gate and open-history refresh; this is not a whole-game or device acceptance claim. Current creative departments and player outcomes are in `STUDIO.md`.
+
 - 2026-10-31 integration: Asteroid narrow-desktop machine keys move into a 46px two-column right rail, clear of the guide and rig in the opened 390×844 fixture. Async Rover/terrain continuations now honor teardown and generation ownership before reporting failures or publishing readiness; production-callback tests and the reset walk report no cancellation errors. The public PQ-024 actor now waits on the existing renderer readiness API within its original bound and captures the ready view. That route has not run; Rover/terrain appearance remains unknown.
 
 - 2026-10-31 integration: the ordinary M8 run exposed an active-receipt `captionSlot` scope error in the new flight-caption allocator. Its shared slot/bands now exist in the receipt branch; the actual production-function test covers visible/hidden captions and external quotes, and the HUD suite passes 21/21. Public receipt/soak re-verification remains required; the earlier fixture pass did not cover this branch.
