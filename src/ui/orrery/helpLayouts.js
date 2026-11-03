@@ -362,6 +362,15 @@ ${H} .orr-hmix__lbl:focus-visible { outline:none; }
   ${HD} .orr-help-list--ores .orr-help-reading > .orr-help-reading__name { font-size:clamp(22px, 2.2vw, 28px); }
   ${HD} .orr-help-list--ores .orr-help-terms { margin:14px 0 0; grid-template-columns:auto minmax(0, 1fr); column-gap:18px; }
 }
+/* ui-polish-324: at 801-1200 wide and up to 540 tall the Ores reading stands beside the stage (the ring needs more room than
+   this and sleeps), and its FOUND IN row wrapped onto a second line that ran into the stage's fading foot -- "70%" read
+   half-cut. The ledger's rows and the name's gap tighten so every term stands whole above the fade; type is unchanged. */
+@media (min-width:761px) and (max-width:1200px) and (max-height:540px) {
+  ${HD} .orr-help-list--ores .orr-help-reading > .orr-help-reading__name { margin-bottom:2px; }
+  ${HD} .orr-help-list--ores .orr-help-terms { margin-top:8px; }
+  ${HD} .orr-help-list--ores .orr-help-terms dt { padding-block:4px; }
+  ${HD} .orr-help-list--ores .orr-help-terms dd { padding-block:2px; line-height:1.3; }
+}
 /* ui-polish-282: the readings beside the Ships, Commodities, Ores and Factions instruments were loose
    label/value pairs floating on the glass (≥1201 wide), so the spec read unfinished next to the framed
    section list. The ledger now sits in one hairline-framed sheet on a faint fill, a rule between rows,
