@@ -1,4 +1,5 @@
 import { NPC_JOB_PHASE } from './npcJobs.js';
+import { validCausalManifest } from './traffic.js';
 import { isTallyPassageJob, tallyPassageTarget } from './tethysTallyPassage.js';
 import { normalizeWinnowRecovery } from '../world/vestaWinnowRecovery.js';
 import { normalizeCharonSupply, releaseCharonSupply } from '../world/charonSalvageSupply.js';
@@ -2404,13 +2405,21 @@ export const trafficCausalChainOps = {
     // market; it clears custody only after the synchronous intake acknowledgement says the exact
     // lot was accepted (including an idempotent duplicate acknowledgement).
     if (intent.kind === 'salvor') {
-      const context = this._jobTrafficContext(intent, 'salvor');
+      const context = this._salvorJobContext(intent);
       if (!context || this.helpers?.npcJobs?.get(context.jobId)?.control) return false;
+      const adoptedScavenger = this._isAdoptedScavengerJob(context.entry, context.entity);
+      if (!context.rec && !adoptedScavenger) return false;
       const destination = typeof intent.destination === 'string' ? intent.destination : '';
       if (!destination.startsWith('yard:') || destination.length <= 5) return false;
+      if (adoptedScavenger && (context.entry.sectorId !== this.state.world?.currentSectorId
+        || context.entry.job.phase !== NPC_JOB_PHASE.UNLOAD || context.entry.job.routeIndex !== 0
+        || destination !== context.entry.job.route?.[0]?.id)) return false;
       const manifest = context.entity.data && context.entity.data.cargoManifest
-        || context.rec.manifest;
+        || context.rec?.manifest;
       if (!manifest || !Array.isArray(manifest.lines)) return false;
+      if (adoptedScavenger && (context.entry.job.payload?.extracted !== true
+        || !validCausalManifest(manifest) || manifest.role !== 'salvor'
+        || manifest.totalQty !== context.entry.job.payload.totalQty)) return false;
       const yard = this._sectorStations().find(station => stationIdentity(station) === destination.slice(5));
       if (!yard || !this._salvorAtTarget(context.entity, yard,
         Math.max(this._salvorReach(context.entity, yard), yard.data?.dockRadius || 0))) return false;
@@ -2466,10 +2475,12 @@ export const trafficCausalChainOps = {
       Object.defineProperty(payload, 'commitCustody', { value: (result) => {
         // A listener may Continue, replace the job/hull, or settle this exact lot recursively.
         // Never clear a newer owner or newer load using a stale acknowledgement.
-        const current = this._jobTrafficContext(intent, 'salvor');
-        if (this.state.traffic !== run || !current || current.entity !== context.entity
+        const current = this._salvorJobContext(intent);
+        const currentManifest = current && (current.entity.data?.cargoManifest || current.rec?.manifest);
+        if (this.state.traffic !== run || !current || current.entry !== context.entry
+          || current.entry.job !== context.entry.job || current.entity !== context.entity
           || current.rec !== context.rec || context.entity.alive === false
-          || context.entity.data.cargoManifest !== manifest || context.rec.manifest !== manifest
+          || currentManifest !== manifest || (context.rec && context.rec.manifest !== manifest)
           || manifest.totalQty !== copiedQty || JSON.stringify(manifest.lines) !== offered) return false;
         if (!result || result.ok !== true) return false;
         if (result.intakeId !== payload.intakeId || result.yardId !== yardId
@@ -2497,6 +2508,11 @@ export const trafficCausalChainOps = {
       if (!committed && this.state.traffic === run && context.entity.data.cargoManifest === manifest
         && ['unsupported_salvage_yard', 'salvage_listing_unavailable'].includes(payload.intakeResult?.reason)) {
         manifest.salvageIntakeHeld = true;
+      }
+      if (committed && adoptedScavenger && !(context.entity.data.cargoManifest?.totalQty > 0)) {
+        // Legacy scavenger ecology may resume only after the canonical yard accepts the finite
+        // hold. A refusal or partial receipt keeps the job and remaining manifest in custody.
+        this.helpers.npcJobs.release(context.jobId);
       }
       return committed;
     }
