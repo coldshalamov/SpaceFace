@@ -8,6 +8,7 @@
 // Owns only objects it creates. Never spawns or kills ambient OS processes.
 
 import { createSimulation, SIM_DT } from '../../src/core/sim.js';
+import { worldLedgerHoldsId } from '../../src/core/entity.js';
 import { createTimeEffects } from '../../src/core/timeEffects.js';
 import { snapshotSimState, canonicalStringify } from '../../src/core/simSnapshot.js';
 import { spawnBudget } from '../../src/systems/spawnBudget.js';
@@ -257,9 +258,19 @@ export function runReleaseSoakSession(opts = {}) {
     state.playerId = player.id;
     state.player.team = 0;
     state.player.credits = 12_000;
-    state.player.cargo.items = { cmdty_refined_metals: 16, cmdty_ore_iron: 10 };
-    state.player.cargo.usedVolume = 10;
-    state.player.cargo.usedMass = 10;
+    // Keep the durable personal effects installed by the canonical new-game owner. Replacing
+    // the whole hold here used to leave state.story.persistentCargo claiming the Thread-B item
+    // while the cargo table omitted it; cargo's save:loaded reconciliation correctly restored
+    // that item, making this synthetic soak setup appear to mint cargo during Continue.
+    const persistentItems = Object.fromEntries((state.story?.persistentCargo || [])
+      .filter((id) => typeof id === 'string' && Number(state.player.cargo.items?.[id]) > 0)
+      .map((id) => [id, Number(state.player.cargo.items[id]) || 0]));
+    state.player.cargo.items = {
+      ...persistentItems,
+      cmdty_refined_metals: 16,
+      cmdty_ore_iron: 10,
+    };
+    registry.get('cargo')?.recompute?.(state);
     phasesCompleted.push('new_game');
     ticks += advance(sim, cfg.phaseTicks.new_game, () => {
       sample(state, bus, eventLog.length, highWaterSamples, memorySamples, (hw) => { highWater = mergeHighWater(highWater, hw); }, cfg.sampleEveryTicks);
@@ -925,13 +936,16 @@ function runSaveReload(sim, errors, failInject) {
     const readDataHash = () => sha256Hex(readDataPayload());
 
     const beforePayload = readDataPayload();
-    const beforeHash = sha256Hex(beforePayload);
+    const beforeRawHash = sha256Hex(beforePayload);
+    const beforeHash = sha256Hex(canonicalStringify(saveReloadSemanticPayload(beforePayload)));
     result.performed = true;
     result.beforeHash = beforeHash;
+    result.rawBeforeHash = beforeRawHash;
 
     // Back-to-back stability.
-    const again = readDataHash();
-    if (again !== beforeHash) {
+    const againPayload = readDataPayload();
+    const again = sha256Hex(againPayload);
+    if (again !== beforeRawHash) {
       errors.push({ message: 'serializeData non-deterministic across back-to-back calls', phase: 'save_reload' });
       result.afterHash = again;
       result.equivalence = false;
@@ -977,19 +991,20 @@ function runSaveReload(sim, errors, failInject) {
     }
 
     const afterPayload = readDataPayload();
-    const afterLive = sha256Hex(afterPayload);
+    const comparison = compareSaveReloadPayloads(beforePayload, afterPayload, sim.state);
     const afterAgain = readDataHash();
-    result.observedAfterHash = afterLive;
-    result.divergentPaths = diffPayloadPaths(beforePayload, afterPayload);
-    result.stableSerialize = result.beforeHash === again && afterLive === afterAgain;
+    Object.assign(result, comparison);
+    result.observedAfterHash = comparison.afterHash;
+    result.stableSerialize = beforeRawHash === again && comparison.rawAfterHash === afterAgain;
 
-    // Equivalence is observed, never normalized: the stable durable payload after load must be
-    // byte-for-byte hash-equal to the payload before save, in addition to restoring credits.
-    result.afterHash = afterLive;
+    // Durable gameplay data remains byte-identical. Numeric entity allocator state is checked
+    // against its canonical restoration contract below: materialized occupants reserve IDs from
+    // the old free list, and lifetime generations may advance to keep stale references fenced.
+    result.afterHash = comparison.afterHash;
     result.equivalence = result.creditsRestored === true
       && result.stableSerialize === true
-      && result.beforeHash === result.observedAfterHash;
-    result.reloadProof = result.equivalence ? 'stable_durable_payload_hash' : null;
+      && comparison.equivalence === true;
+    result.reloadProof = result.equivalence ? 'stable_durable_state_allocator_reconciliation' : null;
 
     if (failInject === 'save_divergence') {
       result.equivalence = false;
@@ -1064,6 +1079,95 @@ function diffPayloadPaths(before, after, limit = 24) {
     }
   }
   return out;
+}
+
+function saveReloadSemanticPayload(data) {
+  const payload = stableSavePayload(data);
+  if (payload && payload.entities && typeof payload.entities === 'object') {
+    // Numeric allocator state is validated as an identity transition below, not compared as
+    // durable gameplay. Restore may legitimately consume free ids now held by rematerialized
+    // world records/entities and must never rewind the occupant-generation fence.
+    delete payload.entities.freeIds;
+    delete payload.entities.nextOccupantGeneration;
+  }
+  return payload;
+}
+
+export function compareSaveReloadPayloads(beforePayload, afterPayload, state) {
+  const beforeSemantic = saveReloadSemanticPayload(beforePayload);
+  const afterSemantic = saveReloadSemanticPayload(afterPayload);
+  const beforeHash = sha256Hex(canonicalStringify(beforeSemantic));
+  const afterHash = sha256Hex(canonicalStringify(afterSemantic));
+  const allocatorReconciliation = validateAllocatorReconciliation(beforePayload, afterPayload, state);
+  const divergentPaths = diffPayloadPaths(beforeSemantic, afterSemantic, 64);
+  return {
+    beforeHash,
+    afterHash,
+    rawBeforeHash: sha256Hex(beforePayload),
+    rawAfterHash: sha256Hex(afterPayload),
+    rawDivergentPaths: diffPayloadPaths(beforePayload, afterPayload, 64),
+    divergentPaths,
+    allocatorReconciliation,
+    comparison: 'durable_state_and_allocator_reconciliation',
+    equivalence: beforeHash === afterHash
+      && divergentPaths.length === 0
+      && allocatorReconciliation.pass === true,
+  };
+}
+
+function validateAllocatorReconciliation(beforePayload, afterPayload, state) {
+  const before = beforePayload?.entities || {};
+  const after = afterPayload?.entities || {};
+  const freeListsPresent = Array.isArray(before.freeIds) && Array.isArray(after.freeIds);
+  const savedFreeIds = Array.isArray(before.freeIds) ? before.freeIds : [];
+  const expectedFreeIds = savedFreeIds.filter((id) => (
+    !(state.entities instanceof Map && state.entities.has(id))
+    && !worldLedgerHoldsId(state.world, id)
+  ));
+  const actualFreeIds = Array.isArray(after.freeIds) ? after.freeIds : [];
+  const expectedNextGeneration = Number(before.nextOccupantGeneration);
+  const actualNextGeneration = Number(after.nextOccupantGeneration);
+  const beforeNextEntityIdValid = Number.isSafeInteger(before.nextEntityId) && before.nextEntityId >= 1;
+  const afterNextEntityIdValid = Number.isSafeInteger(after.nextEntityId) && after.nextEntityId >= 1;
+  const beforeGenerationValid = Number.isSafeInteger(expectedNextGeneration) && expectedNextGeneration >= 1;
+  const afterGenerationValid = Number.isSafeInteger(actualNextGeneration) && actualNextGeneration >= 1;
+  let maxLiveGeneration = 0;
+  for (const entity of state.entityList || []) {
+    if (Number.isSafeInteger(entity?.occupantGeneration)) {
+      maxLiveGeneration = Math.max(maxLiveGeneration, entity.occupantGeneration);
+    }
+  }
+  const freeIdsMatch = JSON.stringify(actualFreeIds) === JSON.stringify(expectedFreeIds);
+  const freeListValid = (ids, nextEntityId, nextEntityIdValid) => nextEntityIdValid
+    && ids.every((id) => Number.isSafeInteger(id) && id >= 1 && id < nextEntityId)
+    && new Set(ids).size === ids.length;
+  const beforeFreeIdsValid = freeListValid(savedFreeIds, before.nextEntityId, beforeNextEntityIdValid);
+  const afterFreeIdsValid = freeListValid(actualFreeIds, after.nextEntityId, afterNextEntityIdValid);
+  const freeIdsValid = beforeFreeIdsValid && afterFreeIdsValid;
+  const nextEntityIdStable = before.nextEntityId === after.nextEntityId;
+  const generationValid = beforeGenerationValid && afterGenerationValid
+    && actualNextGeneration >= expectedNextGeneration
+    && actualNextGeneration > maxLiveGeneration;
+  return {
+    pass: freeListsPresent && freeIdsMatch && freeIdsValid && nextEntityIdStable
+      && beforeNextEntityIdValid && afterNextEntityIdValid && generationValid,
+    freeListsPresent,
+    freeIdsMatch,
+    beforeFreeIdsValid,
+    afterFreeIdsValid,
+    freeIdsValid,
+    beforeNextEntityIdValid,
+    afterNextEntityIdValid,
+    beforeGenerationValid,
+    afterGenerationValid,
+    beforeFreeCount: savedFreeIds.length,
+    filteredFreeCount: expectedFreeIds.length,
+    afterFreeCount: actualFreeIds.length,
+    nextEntityIdStable,
+    beforeNextOccupantGeneration: Number.isSafeInteger(expectedNextGeneration) ? expectedNextGeneration : null,
+    afterNextOccupantGeneration: Number.isSafeInteger(actualNextGeneration) ? actualNextGeneration : null,
+    maxLiveOccupantGeneration: maxLiveGeneration,
+  };
 }
 
 function runDeathRecovery(sim, timeEffects, recordMode, tickCount, onStep, errors) {

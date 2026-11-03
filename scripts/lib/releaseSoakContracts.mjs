@@ -353,18 +353,35 @@ function validateErrors(errors, failures) {
   }
 }
 
-function validateContextLoss(contextLoss, failures) {
+export function validateContextLoss(contextLoss, failures) {
   if (!contextLoss || typeof contextLoss !== 'object') {
     failures.push('context-loss evidence is required');
     return;
   }
-  for (const key of ['available', 'lostEvent', 'restoredEvent', 'meshResourceReady', 'pixelProof', 'frameAdvanced', 'recovered']) {
+  for (const key of ['available', 'lostEvent', 'restoredEvent', 'meshResourceReady', 'pixelProof', 'frameAdvanced', 'worldSubmissionAdvanced', 'recovered']) {
     if (contextLoss[key] !== true) failures.push(`contextLoss.${key} must be true`);
   }
   if (contextLoss.meshRebuilt !== true && contextLoss.meshRetained !== true) {
     failures.push('contextLoss must prove either rebuilt or retained mesh identity');
   }
   if (contextLoss.before !== false || contextLoss.after !== false) failures.push('context must be live before and after the controlled loss');
+  const pixels = contextLoss.pixelAdvancement;
+  if (pixels?.pass !== true || pixels.firstNonblank !== true || pixels.secondNonblank !== true
+      || !Number.isSafeInteger(pixels.width) || pixels.width <= 0 || !Number.isSafeInteger(pixels.height) || pixels.height <= 0
+      || !Number.isSafeInteger(pixels.sampleWidth) || pixels.sampleWidth <= 0 || !Number.isSafeInteger(pixels.sampleHeight) || pixels.sampleHeight <= 0
+      || !Number.isSafeInteger(pixels.changedPixels) || pixels.changedPixels <= 0
+      || pixels.changedPixels > pixels.sampleWidth * pixels.sampleHeight
+      || !Number.isSafeInteger(pixels.firstWorldSubmittedFrames) || pixels.firstWorldSubmittedFrames < 0
+      || !Number.isSafeInteger(pixels.secondWorldSubmittedFrames)
+      || pixels.worldFrameDelta !== pixels.secondWorldSubmittedFrames - pixels.firstWorldSubmittedFrames
+      || pixels.worldFrameDelta <= 0) failures.push('context loss requires changing nonblank pixels and advancing world submissions in matching captures');
+  const tail = contextLoss.tailAdvancement;
+  if (tail?.pass !== true || !Number.isSafeInteger(tail.start?.tick) || !Number.isSafeInteger(tail.end?.tick)
+      || !Number.isSafeInteger(tail.start?.worldSubmittedFrames) || !Number.isSafeInteger(tail.end?.worldSubmittedFrames)
+      || tail.tickDelta !== tail.end.tick - tail.start.tick || tail.tickDelta <= 0
+      || tail.worldFrameDelta !== tail.end.worldSubmittedFrames - tail.start.worldSubmittedFrames || tail.worldFrameDelta <= 0) {
+    failures.push('context recovery tail requires advancing simulation and world submissions');
+  }
 }
 
 export function validateCleanupEvidence(cleanup, { runtimeKind = 'browser' } = {}) {
