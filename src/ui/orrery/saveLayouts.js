@@ -443,6 +443,19 @@ html:root:not([data-sf-mobile="1"]) ${SLD} .sf-ledger-line { grid-template-colum
   html:root:not([data-sf-mobile="1"]) ${SLD} .sf-save-portrait > .sf-ledger-line { display:grid; }
   html:root:not([data-sf-mobile="1"]) ${SLD} .sf-save-portrait > .sf-ledger-line:nth-of-type(even) > .sf-ledger-k { padding-left:0; }
 }
+/* ui-polish-310: a phone-width page from 821 to 899 tall (390×844, 393×852, 412×890) kept the roomy reading: the
+   short-screen tightening above stops at 820, so the stacked page ran ~895px and scrolled ~50px before EXPORT /
+   IMPORT / BACK showed (the bench cut them in half at the fold). The same tightening reads the whole page, foot
+   included, on one screen; 900 and taller keep the roomy page, 820 and shorter already had this. */
+@media (max-width:520px) and (min-height:821px) and (max-height:899px) {
+  ${SL} .sf-save-ledger .sf-slot-card-title { font-size:calc(38px * var(--sv)); }
+  ${SL} .sf-ledger-facts { row-gap:calc(8px * var(--sv)); margin-top:0 !important; }
+  ${SL} .sf-save-ledger .sf-save-portrait { margin-top:0; }
+  ${SL} .sf-ledger-line { padding:calc(2px * var(--sv)) 0; }
+  ${SL} .sf-ledger-line .k-sentence { font-size:max(12.5px, calc(13.5px * var(--sv))); line-height:1.3; }
+  ${SL} > .k-stage__foot.sf-save-ledger { gap:5px; padding-top:calc(10px * var(--sv)) !important; padding-bottom:calc(12px * var(--sv)) !important; }
+  ${SL} .sf-save-ledger .sf-save-actions { margin-top:4px; }
+}
 /* UI polish: at ~1080p the empty-state type reads larger without per-rule bumps; 720p unchanged */
 @media (min-width:1800px) and (min-height:1000px) and (max-width:2199px) { ${SL} { zoom:1.12; } }
 @media (forced-colors: active) {

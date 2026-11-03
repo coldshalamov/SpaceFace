@@ -74,6 +74,13 @@ export const MOBILE_SCREEN_CSS = `
   ${N} .sf-ng-route .sf-ng-route__step .k-row__sub { opacity:1 !important; }
   ${N} > .sf-ng-footer { order:4; position:relative !important; bottom:auto !important; z-index:8;
     margin-top:4px !important; padding:10px 0 !important; }
+  /* ≤380px: BACK ESC and LAUNCH are 331px side by side in a 288–324px foot, so LAUNCH ran past the right edge
+     (cut off at 320). Tighter gap, ESC margin and key padding/tracking bring them to ~280px. */
+  @media (max-width:380px) {
+    ${N} > .sf-ng-footer { gap:12px !important; }
+    ${N} > .sf-ng-footer .k-word.sf-back::after { margin-left:12px !important; }
+    ${N} > .sf-ng-footer .sf-ng-launch:has(> .orr-lampkey__word) { padding:0 22px 0 16px !important; letter-spacing:.1em !important; margin-left:auto !important; }
+  }
   ${N} .sf-ng-scroll > .k-fine { order:5; }
   ${N} > .sf-ng-launch-error { order:4; margin:0 !important; width:100%; }
   ${N} .orr-stopscale .k-word { min-height:44px !important; }
