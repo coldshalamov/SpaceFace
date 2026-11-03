@@ -312,7 +312,9 @@ ${D} .k-foot .orr-prep-continue:active, ${D} .k-foot .orr-key--hazard:active { t
  ${D} .sf-crd-stake .fh-tile-art { display:none !important; }
  ${D} .orr-prep-stake-yield { font-size:12px !important; letter-spacing:0 !important; }
  ${D} .orr-prep-stake-pressure { letter-spacing:.02em !important; font-size:12px !important; }
- ${D} :is(.orr-prep-stake-pressure,.orr-prep-stake-yield) { white-space:normal; text-wrap:balance; overflow-wrap:anywhere; max-width:100%; }
+ /* the payout line is the stake's whole trade (what it pays, what it scores): when a 1280-wide tile cannot hold it on one line
+    it breaks at the dot, balanced, instead of ending in an ellipsis that eats the SCORES figure (the pressure line likewise at 1024) */
+ ${D} :is(.orr-prep-stake-pressure, .orr-prep-stake-yield) { white-space:normal; text-wrap:balance; overflow-wrap:anywhere; max-width:100%; }
  /* Arena above the fold: hero carries the rooms — drop strip thumbs so both rows fit */
  ${D} .sf-crd-arenas .fh-tile-art { display:none !important; }
  ${D} .sf-crd-arenas .orr-tile { min-height:34px !important; padding:6px 2px !important; }
