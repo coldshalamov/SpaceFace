@@ -1143,7 +1143,10 @@ export function runImpoundDeskIntent(state, ctx, p) {
   } else if (out && out.ok && verb === 'watch') {
     toastLot(state, ctx, out.watched ? 'The wire will warn you before anyone redeems this hull.' : 'You stopped watching the book.');
   }
-  emitLot(state, ctx, 'impoundLot:deskAnswered', { verb, ok: !!(out && out.ok), reason: out && out.reason || null });
+  const operationId = typeof p?.operationId === 'string' && /^[A-Za-z0-9_:.\-]{1,128}$/.test(p.operationId)
+    ? p.operationId : null;
+  emitLot(state, ctx, 'impoundLot:deskAnswered', { verb, ok: !!(out && out.ok), reason: out && out.reason || null,
+    ...(operationId ? { operationId } : {}) });
   return out;
 }
 

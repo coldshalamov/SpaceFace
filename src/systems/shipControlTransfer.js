@@ -2,7 +2,7 @@
 // Custody/title eligibility belongs to shipjack; this seam protects body and inventory truth.
 import { SHIPS } from '../data/ships.js';
 import { writePhysicsControl } from '../core/physicsAuthority.js';
-import { isBlackFlagAdventure, SHIPJACK_HANDOFF_RANGE_WU } from '../shipjack/model.js';
+import { isAssignedFleetBody, isBlackFlagAdventure, SHIPJACK_HANDOFF_RANGE_WU } from '../shipjack/model.js';
 import { MODULES } from '../data/modules.js';
 import { WEAPONS } from '../data/weapons.js';
 
@@ -76,6 +76,7 @@ export function admitCapturedVessel(owner, request = {}) {
   if (!p || !isBlackFlagAdventure(state) || (state.run?.kind && state.run.kind !== 'adventure')) return fail('adventure_only');
   const to = state.entities?.get(request.targetId);
   if (!to || to.alive === false || !(to.hull > 0) || to.type !== 'ship') return fail('body_unavailable');
+  if (isAssignedFleetBody(state, to)) return fail('fleet_assigned');
   if (!SAFE_ID.test(request.vesselId || '') || to.data?.vesselId !== request.vesselId || request.targetGeneration == null
     || request.targetGeneration !== (to.data?.shipjackGeneration ?? to.occupantGeneration)) return fail('stale_target');
   const plan = planAdmission(owner, to, request.vesselId);
@@ -113,6 +114,7 @@ export function captureAndTransfer(owner, request = {}) {
   const from = state.entities?.get(state.playerId);
   const to = state.entities?.get(targetId);
   if (!from || !to || from === to || from.type !== 'ship' || to.type !== 'ship') return fail('missing_body');
+  if (isAssignedFleetBody(state, to)) return fail('fleet_assigned');
   if (from.alive === false || to.alive === false || !(from.hull > 0) || !(to.hull > 0)
     || from.flags?.defeated || to.flags?.defeated || from.flags?.docked || to.flags?.docked) return fail('body_unavailable');
   const generation = to.data?.shipjackGeneration ?? to.occupantGeneration;

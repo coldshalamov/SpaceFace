@@ -1921,6 +1921,23 @@ export function makeShipEntitySpec(defId, { team = 0, factionId = null, fittings
   };
 }
 
+// Same physical hull/armor values used by a parked Shipjack body. The owned hull record carries
+// these while it has no live entity; repair remains on the live hull and is captured on departure.
+function parkedHullCondition(entity) {
+  if (!entity || !Number.isFinite(entity.hull)) return null;
+  const out = { hull: entity.hull };
+  if (Number.isFinite(entity.armorHp)) out.armorHp = entity.armorHp;
+  if (Number.isFinite(entity.armorMax)) out.armorMax = entity.armorMax;
+  return out;
+}
+
+function restoreParkedHullCondition(entity, condition) {
+  if (!entity || !condition) return;
+  if (Number.isFinite(condition.hull)) entity.hull = Math.max(0, Math.min(entity.hullMax, condition.hull));
+  if (Number.isFinite(condition.armorMax)) entity.armorMax = condition.armorMax;
+  if (Number.isFinite(condition.armorHp)) entity.armorHp = Math.max(0, Math.min(entity.armorMax, condition.armorHp));
+}
+
 // ---- the system singleton ------------------------------------------------------------------
 
 export const ships = {
@@ -2440,7 +2457,7 @@ export const ships = {
 
   /** Recompute derived stats for an entity from its def + fittings, copy onto the entity, and
    *  emit ship:statsChanged + ship:cargoCapChanged (§4.4). Returns the derived block. */
-  recomputeEntity(shipId, fittings) {
+  recomputeEntity(shipId, fittings, options = {}) {
     const e = this.state.entities.get(shipId);
     if (!e || !e.data) return null;
     const defId = e.data.defId;
@@ -2453,7 +2470,7 @@ export const ships = {
     }
     const player = isPlayer ? this.state.player : null;
     const prev = e.data.derived || {};
-    const ownedForQuirk = isPlayer ? this.ownedShip() : null;
+    const ownedForQuirk = isPlayer ? this.ownedShip() : (options.owned || null);
     const derived = derivedForOwned(defId, fit, player, ownedForQuirk);
 
     // preserve current hull/shield/cap fractions so a refit doesn't fully heal a damaged ship,
@@ -2461,11 +2478,18 @@ export const ships = {
     const hullFrac = prev.hullMax ? clamp01(e.hull / prev.hullMax) : 1;
     const shieldFrac = prev.shieldMax ? clamp01(e.shield / prev.shieldMax) : 1;
     const capFrac = prev.capMax ? clamp01(e.cap / prev.capMax) : 1;
+    const armorHp = e.armorHp;
+    const armorMax = e.armorMax;
 
     copyDerivedOntoEntity(e, derived);
     e.hull = derived.hullMax * hullFrac;
     e.shield = derived.shieldMax * shieldFrac;
     e.cap = derived.capMax * capFrac;
+    // The fitting derivation does not own physical armor; preserve its existing condition.
+    if (Number.isFinite(armorMax) && Number.isFinite(armorHp)) {
+      e.armorMax = armorMax;
+      e.armorHp = Math.max(0, Math.min(armorMax, armorHp));
+    }
 
     // refresh boost config (Phase 3) — preserve current energy fraction + cooldown timer so a
     // refit doesn't silently refill or reset boost.
@@ -2526,12 +2550,14 @@ export const ships = {
     e.data.fittings = newViewFittings;
     e.data._appearance = newAppearance;
 
-    this.bus.emit('ship:statsChanged', { shipId: e.id, derived });
-    this.bus.emit('ship:cargoCapChanged', { shipId: e.id, cargoCap: derived.cargoCap });
+    if (!options.quiet) {
+      this.bus.emit('ship:statsChanged', { shipId: e.id, derived });
+      this.bus.emit('ship:cargoCapChanged', { shipId: e.id, cargoCap: derived.cargoCap });
+    }
     // Appearance changed (hull swap or loadout change) → render track rebuilds the mesh so visible
     // weapons/engines/tier reflect the current ship. Emitted only on an actual change to avoid
     // rebuilding the mesh on every pure-stat recompute (e.g. research efficiency ticks).
-    if (newAppearance !== prevAppearance) {
+    if (!options.quiet && newAppearance !== prevAppearance) {
       this.bus.emit('ship:appearanceChanged', { id: e.id });
     }
     return derived;
@@ -2878,6 +2904,64 @@ export const ships = {
     return true;
   },
 
+  // The owned record holds the custody link; the automation fleet row remains the job owner.
+  claimFleetHull(index, fleetId) {
+    const p = this.state.player;
+    const owned = p && Array.isArray(p.ownedShips) ? p.ownedShips : [];
+    if (!Number.isInteger(index) || index < 0 || !owned[index]) return { ok: false, reason: 'missing' };
+    if (index === p.activeShipIndex) return { ok: false, reason: 'active' };
+    const ship = owned[index];
+    // Tracked physical vessels remain under Shipjack's location/condition owner. The wingman
+    // spawner cannot take custody of that body, so do not materialize a second copy.
+    if (ship.vesselId) return { ok: false, reason: 'tracked_vessel' };
+    if (Number.isFinite(ship.parkedBody?.hull) && ship.parkedBody.hull <= 0) {
+      return { ok: false, reason: 'destroyed' };
+    }
+    const prior = ship.fleetAssignmentId;
+    if (prior != null) {
+      // An ambiguous or still-live link is never silently stolen. A unique orphaned link
+      // can be replaced, for example after the existing fleet-loss path removed its row.
+      if (owned.filter((row) => row && row.fleetAssignmentId === prior).length !== 1
+        || (this.state.automation?.fleet || []).some((row) => row && row.id === prior)) {
+        return { ok: false, reason: 'assigned' };
+      }
+    }
+    ship.fleetAssignmentId = fleetId;
+    return { ok: true, ship };
+  },
+
+  fleetOwnedHull(fleetId) {
+    const matches = (this.state.player?.ownedShips || []).filter((ship) => ship && ship.fleetAssignmentId === fleetId);
+    return matches.length === 1 ? matches[0] : null;
+  },
+
+  fleetHullCondition(entity) { return parkedHullCondition(entity); },
+
+  fleetHullFraction(owned) {
+    if (!Number.isFinite(owned?.parkedBody?.hull)) return 1;
+    const max = derivedForOwned(owned.defId, owned.fittings || [], null, owned).hullMax;
+    return max > 0 ? clamp01(owned.parkedBody.hull / max) : 1;
+  },
+
+  configureFleetHull(entity, fleet) {
+    const owned = this.fleetOwnedHull(fleet.id);
+    if (!owned || !entity?.data) return false;
+    entity.data.appearance = normalizeShipAppearance(owned.appearance, owned.defId);
+    this.recomputeEntity(entity.id, owned.fittings || [], { owned, quiet: true });
+    restoreParkedHullCondition(entity, fleet.parkedBody || owned.parkedBody);
+    return true;
+  },
+
+  releaseFleetHull(fleetId, entity, fleet) {
+    const owned = this.state.player?.ownedShips || [];
+    const matches = owned.filter((ship) => ship && ship.fleetAssignmentId === fleetId);
+    if (matches.length !== 1) return false;
+    const condition = parkedHullCondition(entity) || fleet?.parkedBody;
+    if (condition) matches[0].parkedBody = { ...condition };
+    delete matches[0].fleetAssignmentId;
+    return true;
+  },
+
   sellShip(index, { confirmedCargoUnits = null } = {}) {
     const p = this.state.player;
     if (index === p.activeShipIndex) {
@@ -2886,6 +2970,11 @@ export const ships = {
     }
     const owned = p.ownedShips[index];
     if (!owned) return false;
+    if (owned.fleetAssignmentId != null && (this.state.automation?.fleet || []).some((row) => row && row.id === owned.fleetAssignmentId)) {
+      this.bus.emit('toast', { text: 'Return this wingman to the hangar before selling its hull.', kind: 'warn', ttl: 4 });
+      this.bus.emit('automation:fleetChanged', { id: owned.fleetAssignmentId, action: 'hullSaleRejected' });
+      return false;
+    }
     if (owned.vesselId) {
       // Tracked vessels require the same physical-inventory appraisal and terminal custody
       // receipt as the Registry. Legacy half-price sale also refunds every fitted module,
@@ -2934,6 +3023,12 @@ export const ships = {
     const p = this.state.player;
     const owned = p.ownedShips[index];
     if (!owned) return false;
+    if (index !== p.activeShipIndex && owned.fleetAssignmentId != null
+      && (this.state.automation?.fleet || []).some((row) => row && row.id === owned.fleetAssignmentId)) {
+      this.bus.emit('toast', { text: 'Return this wingman to the hangar before flying its hull.', kind: 'warn', ttl: 4 });
+      this.bus.emit('automation:fleetChanged', { id: owned.fleetAssignmentId, action: 'hullSwitchRejected' });
+      return false;
+    }
     const vessel = owned.vesselId && this.state.shipjack?.vesselsById?.[owned.vesselId];
     if (index !== p.activeShipIndex && vessel
       && (vessel.location?.kind !== 'berth' || vessel.location.stationId !== this.state.ui?.dockedStationId)) {
@@ -2974,6 +3069,10 @@ export const ships = {
     if (isTransition) this.bus.emit('ship:berthSwitching', {
       fromId: this.state.playerId, fromVesselId: previousOwned?.vesselId || null, toVesselId: owned.vesselId || null,
     });
+    if (isTransition && previousOwned && !previousOwned.vesselId) {
+      const condition = parkedHullCondition(this.activeShipEntity());
+      if (condition) previousOwned.parkedBody = condition;
+    }
     p.activeShipIndex = index;
     // re-derive the player entity onto the new hull if it exists
     const e = this.state.entities.get(this.state.playerId);
@@ -3000,6 +3099,8 @@ export const ships = {
           e[key] = Math.max(0, Math.min(e[max] || 0, Number.isFinite(parked[key]) ? parked[key] : 0));
         }
         if (parked.subsystems) this.helpers?.restoreShipjackSubsystems?.({ entityId: e.id, subsystems: parked.subsystems });
+      } else if (isTransition && owned.parkedBody) {
+        restoreParkedHullCondition(e, owned.parkedBody);
       }
     }
     if (isTransition) {
@@ -3037,6 +3138,9 @@ export const ships = {
   },
 
   ownedVesselLocationBlocker(owned, shipIndex) {
+    if (owned?.fleetAssignmentId != null && (this.state.automation?.fleet || []).some((row) => row?.id === owned.fleetAssignmentId)) {
+      return { reason: 'fleet_assigned', text: 'Return this wingman to the hangar before changing its fittings.' };
+    }
     if (!owned?.vesselId || shipIndex == null || shipIndex === this.state.player.activeShipIndex) return null;
     const vessel = this.state.shipjack?.vesselsById?.[owned.vesselId];
     if (!vessel || (vessel.location?.kind === 'berth' && vessel.location.stationId === this.state.ui?.dockedStationId)) return null;
@@ -3248,7 +3352,10 @@ export const ships = {
     const owned = this.ownedShip(shipIndex);
     if (!owned) return refuse('missing_ship');
     const locationBlocker = this.ownedVesselLocationBlocker(owned, shipIndex);
-    if (locationBlocker) return refuse(locationBlocker.reason);
+    if (locationBlocker) {
+      this.bus.emit('toast', { text: locationBlocker.text, kind: 'warn', ttl: 4 });
+      return refuse(locationBlocker.reason);
+    }
     const defId = owned.fittings[slotIndex];
     if (!defId) return refuse('empty_slot');
 
@@ -3394,6 +3501,12 @@ export const ships = {
     const p = this.state.player;
     const owned = this.ownedShip(shipIndex);
     if (!owned) return false;
+    const locationBlocker = this.ownedVesselLocationBlocker(owned, shipIndex);
+    if (locationBlocker) {
+      this.bus.emit('ship:loadoutPresetApplyRejected', { presetId, hullDefId: owned.defId, reason: locationBlocker.reason });
+      this.bus.emit('toast', { text: locationBlocker.text, kind: 'warn', ttl: 4 });
+      return false;
+    }
     const shipDef = SHIP_BY_ID.get(owned.defId);
     if (!shipDef) return false;
     const preset = this.loadoutPresets().find((row) => row && row.id === presetId);

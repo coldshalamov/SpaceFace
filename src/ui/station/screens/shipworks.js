@@ -764,8 +764,8 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         : `${board.redeem.claimant} may come to buy it back.`);
     }
     const key = (verb, label, cost, enabled, why) => {
-      const can = enabled && (!(cost > 0) || cost <= credits);
-      const reason = !enabled ? why : (cost > 0 && cost > credits ? `${fmt(cost - credits)} cr short` : '');
+      const can = !lotDeskPending && enabled && (!(cost > 0) || cost <= credits);
+      const reason = lotDeskPending ? 'waiting for the lot desk' : !enabled ? why : (cost > 0 && cost > credits ? `${fmt(cost - credits)} cr short` : '');
       const aria = can ? label : `${label}, ${reason}`;
       return `<li><button type="button" ${stationControlAttrs('choice')} class="k-word k-word--fine" data-lot-verb="${verb}" ${can ? '' : 'disabled'} aria-label="${escapeHtml(aria)}" data-why="${escapeHtml(can ? label : reason)}">${escapeHtml(label)}${cost > 0 ? ` <small>${fmt(cost)} cr</small>` : ''}</button></li>`;
     };
@@ -779,13 +779,13 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     if (board.dispute && board.dispute.outcome === 'pending') {
       verbs.push(key('quiet', 'Quiet the claim', board.quietFeeCr, true, ''));
     }
-    verbs.push(`<li><button type="button" ${stationControlAttrs('choice')} class="k-word k-word--fine" data-lot-verb="watch" data-lot-on="${board.watched ? 'false' : 'true'}" aria-pressed="${board.watched ? 'true' : 'false'}">${board.watched ? 'Stop watching' : 'Watch the book'}</button></li>`);
+    verbs.push(`<li><button type="button" ${stationControlAttrs('choice')} class="k-word k-word--fine" data-lot-verb="watch" data-lot-on="${board.watched ? 'false' : 'true'}" aria-pressed="${board.watched ? 'true' : 'false'}" ${lotDeskPending ? 'disabled aria-label="Waiting for the lot desk"' : ''}>${board.watched ? 'Stop watching' : 'Watch the book'}</button></li>`);
     let bidRow = '';
     if (board.auction.open && !board.hold) {
       const suggest = board.tip && board.auction.strike ? board.auction.strike : board.price;
       const initialBid = Math.max(1, Math.round(suggest));
-      const canBid = initialBid <= credits;
-      const reason = `${fmt(initialBid - credits)} cr short`;
+      const canBid = !lotDeskPending && initialBid <= credits;
+      const reason = lotDeskPending ? 'waiting for the lot desk' : `${fmt(initialBid - credits)} cr short`;
       const bidLabel = canBid ? 'Place bid' : `Place bid, ${reason}`;
       bidRow = `<p class="k-sentence sx-sw-lotdesk__bid"><label>Sealed bid <input class="k-input k-input--num" type="number" inputmode="numeric" min="1" step="1" value="${initialBid}" data-lot-bid aria-label="Sealed bid in credits"></label> ` +
         `<button type="button" ${stationControlAttrs('choice')} class="k-word k-word--fine" data-lot-verb="bid" ${canBid ? '' : 'disabled'} aria-label="${escapeHtml(bidLabel)}" data-why="${escapeHtml(canBid ? 'Place bid' : reason)}">Place bid</button></p>`;
@@ -812,8 +812,8 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       `<p class="k-t-fine k-38 sx-sw-lotdesk__who">Lot attendant · papers offer</p>` +
       `<p class="k-sentence sx-muted">${escapeHtml(`${claimant} will pay ${fmt(r.amount)} cr for the dead owner's papers on this hull. Sell them and the debt riding it ends. Keep them and their collector stays on schedule.${left != null ? ` The offer stands ${left === 0 ? 'until tomorrow' : `${left + 1} more days`}.` : ''}`)}</p>` +
       `<ul class="k-words k-words--row sx-sw-lotdesk__verbs">` +
-        `<li><button type="button" ${stationControlAttrs('choice')} class="k-word k-word--fine" data-lot-verb="acceptRansom">Sell the papers <small>+${fmt(r.amount)} cr</small></button></li>` +
-        `<li><button type="button" ${stationControlAttrs('choice')} class="k-word k-word--fine" data-lot-verb="declineRansom">Keep the papers</button></li>` +
+        `<li><button type="button" ${stationControlAttrs('choice')} class="k-word k-word--fine" data-lot-verb="acceptRansom" ${lotDeskPending ? 'disabled aria-label="Waiting for the lot desk"' : ''}>Sell the papers <small>+${fmt(r.amount)} cr</small></button></li>` +
+        `<li><button type="button" ${stationControlAttrs('choice')} class="k-word k-word--fine" data-lot-verb="declineRansom" ${lotDeskPending ? 'disabled aria-label="Waiting for the lot desk"' : ''}>Keep the papers</button></li>` +
       `</ul>` +
     `</div>`;
   }
@@ -824,8 +824,8 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     if (!input || !button) return;
     const amount = Math.round(Number(input.value) || 0);
     const credits = Math.max(0, Number(ctx.state.player?.credits) || 0);
-    const canBid = amount > 0 && amount <= credits;
-    const reason = amount <= 0 ? 'enter a positive bid' : `${fmt(amount - credits)} cr short`;
+    const canBid = !lotDeskPending && amount > 0 && amount <= credits;
+    const reason = lotDeskPending ? 'waiting for the lot desk' : amount <= 0 ? 'enter a positive bid' : `${fmt(amount - credits)} cr short`;
     button.disabled = !canBid;
     button.setAttribute('aria-label', canBid ? 'Place bid' : `Place bid, ${reason}`);
     button.setAttribute('data-why', canBid ? 'Place bid' : reason);
@@ -5382,21 +5382,43 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     selectRailButton(ev.target.closest('[data-fleet], [data-buy]'));
   });
 
+  let lotDeskPending = null;
+  function finishLotDeskPending(result, announceTimeout = false) {
+    const pending = lotDeskPending;
+    if (!pending) return;
+    lotDeskPending = null;
+    pending.off?.();
+    if (pending.timer != null) clearTimeout(pending.timer);
+    if (announceTimeout) ctx.bus?.emit('toast', {
+      text: 'The lot desk has not answered yet. Check the book before trying again.', kind: 'warn', ttl: 5,
+    });
+    if (result && stageShown) ctx.bus?.emit('audio:cue', { id: result.ok ? 'ui_accept' : 'ui_deny' });
+    if (stageShown) refresh();
+  }
   function handleLotClick(ev, scope) {
     const lotVerb = ev.target.closest('[data-lot-verb]');
     if (lotVerb) {
-      if (!lotVerb.disabled && ctx.bus) {
+      if (!lotVerb.disabled && !lotDeskPending && ctx.bus && typeof ctx.bus.on === 'function') {
         const verb = lotVerb.getAttribute('data-lot-verb');
-        const intent = { verb };
+        const operationId = nextLaneToken('lot');
+        const intent = { verb, operationId };
         if (verb === 'bid') {
           const input = scope.querySelector('input[data-lot-bid]');
           intent.amount = Math.round(Number(input && input.value) || 0);
         }
         if (verb === 'watch') intent.on = lotVerb.getAttribute('data-lot-on') !== 'false';
+        const pending = { operationId, off: null, timer: null };
+        lotDeskPending = pending;
+        pending.off = ctx.bus.on('impoundLot:deskAnswered', (answer) => {
+          if (answer?.operationId === operationId) finishLotDeskPending(answer);
+        });
+        pending.timer = setTimeout(() => finishLotDeskPending(null, true), 5000);
+        for (const button of scope.querySelectorAll('[data-lot-verb]')) button.disabled = true;
         lotVerb.disabled = true;
-        ctx.bus.emit('impoundLot:deskIntent', intent);
-        ctx.bus.emit('audio:cue', { id: 'ui_accept' });
-        setTimeout(refresh, 60);
+        lotVerb.setAttribute('aria-label', 'Waiting for the lot desk');
+        lotVerb.textContent = 'Waiting for the lot desk…';
+        try { ctx.bus.emit('impoundLot:deskIntent', intent); }
+        catch (_) { finishLotDeskPending(null, true); }
       }
       return true;
     }
@@ -6072,6 +6094,8 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     refresh,
     dispose() {
       closeLotDesk(false);
+      stageShown = false;
+      finishLotDeskPending(null);
       window.removeEventListener('keydown', interceptLotKeys, true);
       compactLotMedia.removeEventListener('change', onLotMediaChange);
       compactInstrument.removeEventListener('change', syncCompactInstrument);
