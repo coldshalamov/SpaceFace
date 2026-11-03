@@ -180,6 +180,7 @@ test('an adopted scavenger keeps its finite hold and job when the canonical yard
       // Make the real economy owner refuse this yard lot because none of its offered lines are
       // listed. This changes only fixture service state; no cargo, credits, or job state is granted.
       const market = h.state.economy.markets[FORGE_ID];
+      const offeredListings = Object.fromEntries(manifest.lines.map(line => [line.commodityId, market[line.commodityId]]));
       for (const line of manifest.lines) delete market[line.commodityId];
       for (let tick = 0; tick < 240 * 60
         && !h.events.unload.some(event => event.intakeResult?.reason === 'salvage_listing_unavailable'
@@ -197,9 +198,92 @@ test('an adopted scavenger keeps its finite hold and job when the canonical yard
       assert.equal((h.state.economy.appliedSalvageIntakeReceipts || []).some(row => row.manifestId === manifest.manifestId), false,
         'a refusal creates no accepted economy receipt');
       assert.equal(h.events.unload.some(event => event.intakeResult?.ok === true), false);
+      const hull = cutter.hull, offeredCount = h.events.unload.length;
+      h.step(60 * 60);
+      assert.equal(cutter.alive, true);
+      assert.equal(cutter.hull, hull, 'a refused intake cannot drive the waiting hull into its yard');
+      assert.equal(h.events.unload.length, offeredCount, 'unchanged unavailable listings do not cause resubmissions');
+      assert.equal(entry.job.payload.salvageIntakeWait.status, 'awaiting-intake');
+      assert.ok(Math.hypot(cutter.vel.x, cutter.vel.z) < 1, 'native braking settles the waiting hull');
+      // A real fixture service change restores the same original listings. Cargo and job phase
+      // remain untouched: canonical quotes, physical arrival and intake must finish the work.
+      Object.assign(market, offeredListings);
+      for (let tick = 0; tick < 90 * 60 && cutter.data.jobId; tick++) h.step();
+      assert.equal(cutter.data.cargoManifest.totalQty, 0);
+      assert.equal(cutter.data.jobId, undefined);
+      const accepted = h.events.unload.filter(event => event.intakeResult?.ok);
+      assert.equal(accepted.length, 1);
+      assert.equal(accepted[0].intakeResult.qty, manifest.totalQty);
     } finally {
       h.close();
     }
+  });
+
+test('partial intake holds restricted salvage safely and preserves its exact remainder across Continue',
+  { timeout: 120_000 }, async () => {
+    const h = await salvorNativeFixture({ adoptedScavenger: true, withSave: true,
+      salvagePool: { cmdty_scrap_metal: 1, cmdty_classified_salvage: 1 } });
+    try {
+      let cutter = h.scavenger();
+      const jobId = cutter.data.jobId, recordId = cutter.data.worldRecordId;
+      for (let tick = 0; tick < 360 * 60 && !h.events.unload.some(event => event.intakeResult?.ok); tick++) h.step();
+      const accepted = h.events.unload.find(event => event.intakeResult?.ok);
+      assert.ok(accepted, 'the actual finite cut physically reaches its canonical intake');
+      assert.deepEqual(accepted.intakeResult.acceptedLines, [{ commodityId: 'cmdty_scrap_metal', qty: 1 }]);
+      assert.deepEqual(accepted.intakeResult.ignoredCommodityIds, ['cmdty_classified_salvage']);
+      const remainder = structuredClone(cutter.data.cargoManifest);
+      assert.equal(remainder.totalQty, 1);
+      assert.deepEqual(remainder.lines.map(line => ({ commodityId: line.commodityId, qty: line.qty })),
+        [{ commodityId: 'cmdty_classified_salvage', qty: 1 }]);
+      let entry = h.sim.helpers.npcJobs.get(jobId);
+      assert.equal(entry.job.payload.totalQty, 2, 'original extraction receipt remains two units');
+      assert.equal(entry.job.payload.salvageIntakeWait.status, 'awaiting-intake');
+      const hull = cutter.hull, offers = h.events.unload.length;
+      const quote = h.econ.quoteNpcSalvageIntake;
+      let quotes = 0;
+      h.econ.quoteNpcSalvageIntake = function (...args) { quotes++; return quote.apply(this, args); };
+      try { h.step(120 * 60); } finally { h.econ.quoteNpcSalvageIntake = quote; }
+      assert.equal(cutter.alive, true);
+      assert.equal(cutter.hull, hull);
+      assert.ok(Math.hypot(cutter.vel.x, cutter.vel.z) < 1);
+      assert.equal(h.events.unload.length, offers, 'no repeated same-lot sale attempts during unchanged refusal');
+      assert.ok(quotes < 600, `eligibility polling is bounded, not per native step (${quotes})`);
+      assert.deepEqual(cutter.data.cargoManifest, remainder);
+      for (const station of h.sim.registry.get('traffic')._sectorStations()) {
+        assert.equal(h.econ.quoteNpcSalvageIntake(station.data.stationId, remainder.lines).ok, false,
+          'an existing industrial yard cannot waive classified-cargo legality');
+      }
+      const runtime = h.sim.registry.get('npcJobsRuntime');
+      const virtualJobs = runtime.serialize();
+      const heldPhase = entry.job.phase, heldProgress = entry.job.progress;
+      h.step(2 * 60); // Real native elapsed time, with the cargo still waiting aboard.
+      runtime.deserialize(virtualJobs);
+      h.step(2);
+      entry = h.sim.helpers.npcJobs.get(jobId);
+      assert.equal(entry.job.phase, heldPhase);
+      assert.equal(entry.job.progress, heldProgress,
+        'virtual relink cannot advance an awaiting-intake clock through the elapsed native interval');
+      const savedPhase = entry.job.phase, progress = entry.job.progress;
+      const save = h.sim.registry.get('save');
+      const envelope = JSON.parse(JSON.stringify(save.serialize('native-salvor-partial-hold')));
+      assert.equal(save.loadEnvelope(envelope, 'native-salvor-partial-hold'), true);
+      h.physics._finishNativeRestore(); h.state.mode = 'flight';
+      assert.equal(await h.physics.prepareBackend(h.state), true);
+      h.step(2);
+      cutter = h.state.entityList.find(entity => entity.alive !== false && entity.data?.worldRecordId === recordId);
+      entry = h.sim.helpers.npcJobs.get(jobId);
+      assert.ok(cutter && entry);
+      assert.deepEqual(cutter.data.cargoManifest, remainder, 'Continue retains exactly the refused commodity and intake generation');
+      assert.equal(entry.job.phase, savedPhase);
+      assert.equal(entry.job.progress, progress, 'virtual catch-up cannot finish another unpaid cargo cycle');
+      h.step(10 * 60);
+      assert.equal(cutter.alive, true);
+      assert.equal(cutter.hull, hull);
+      assert.deepEqual(cutter.data.cargoManifest, remainder);
+      assert.equal(cutter.data.jobId, jobId);
+      assert.equal(h.events.unload.length, offers);
+      assert.equal((h.state.economy.appliedSalvageIntakeReceipts || []).filter(row => row.manifestId === remainder.manifestId).length, 1);
+    } finally { h.close(); }
   });
 
 test('Continue rebinds an adopted scavenger to its saved wreck identity', async () => {
