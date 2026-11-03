@@ -71,6 +71,7 @@ import { impoundLotBoard } from '../../../systems/impoundLot.js';
 import { historyWearDead } from '../../../systems/historyWear.js';
 import { livingHullTrinkets } from '../../../core/livingHull.js';
 import { laneCommandSink, nextLaneToken } from '../../../core/simLaneCommands.js';
+import { reservedCargoQuantity } from '../../../systems/cargo.js';
 import { sableVennServiceAvailable } from '../../../data/sableVenn.js';
 import { mountSableDemo, sablePreviewStamp, sablePreviewMatches } from '../../orrery/sableDemo.js';
 import { instanceIdentityText } from '../../../systems/shipLedger.js';
@@ -210,6 +211,32 @@ const UI_DRAWER_LATCH_CUE = 'sfx_ui_drawer_latch';
 function finite(value, fallback = 0) {
   const number = Number(value);
   return Number.isFinite(number) ? number : fallback;
+}
+
+/** Read the cargo owner's actual per-hull and reserved-freight rules for the activation choice. */
+export function hullSwitchCargoGuidance(state, targetIndex) {
+  const player = state?.player;
+  const ships = Array.isArray(player?.ownedShips) ? player.ownedShips : [];
+  const activeIndex = player?.activeShipIndex;
+  if (!Number.isInteger(targetIndex) || targetIndex === activeIndex || !ships[activeIndex] || !ships[targetIndex]) return '';
+  const name = (owned) => hullNameForOwnedShip(owned, ships.indexOf(owned), state?.meta?.seed)
+    || SHIP_BY_ID.get(owned.defId)?.name || 'the hull';
+  let stays = 0, protectedUnits = 0, incoming = 0;
+  for (const [id, amount] of Object.entries(player.cargo?.items || {})) {
+    const held = Math.max(0, Math.floor(Number(amount) || 0));
+    const reserved = Math.min(held, Math.max(0, reservedCargoQuantity(state, id)));
+    stays += held - reserved;
+    protectedUnits += reserved;
+  }
+  for (const amount of Object.values(ships[targetIndex].cargo?.items || {})) {
+    incoming += Math.max(0, Math.floor(Number(amount) || 0));
+  }
+  const outgoing = stays ? `${stays} unreserved unit${stays === 1 ? '' : 's'} stay on ${name(ships[activeIndex])}.`
+    : `No unreserved cargo stays on ${name(ships[activeIndex])}.`;
+  const protectedText = protectedUnits ? ` ${protectedUnits} sealed or protected unit${protectedUnits === 1 ? '' : 's'} must fit in ${name(ships[targetIndex])} to travel with you.` : '';
+  const incomingText = incoming ? ` ${name(ships[targetIndex])} has ${incoming} stored unit${incoming === 1 ? '' : 's'}; it loads what fits and keeps the rest aboard.`
+    : ` ${name(ships[targetIndex])} has no stored cargo.`;
+  return outgoing + protectedText + incomingText;
 }
 
 function withCargoMass(player, usedMass) {
@@ -1970,6 +1997,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     const makeActiveLabel = makeActiveEnabled
       ? 'Make active'
       : (model.availability && model.availability.hullLabel ? model.availability.hullLabel : 'Make active');
+    const switchCargo = makeActiveVisible ? hullSwitchCargoGuidance(ctx.state, viewIdx) : '';
     // The paint rack is a berth verb like Make active: dock-side fleet hulls only, gated by the
     // same hull-service access (the yard mixes and cures while you are berthed).
     const paintVisible = host === 'dock' && mode === 'fleet';
@@ -2011,7 +2039,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
           `<li><button type="button" ${stationControlAttrs('record')} class="k-word k-word--body sx-sw-verb${recordOpen ? ' is-active' : ''}" data-verb="record" aria-pressed="${recordOpen ? 'true' : 'false'}">${stationControlLabel('record')}</button></li>` +
           `<li><button type="button" ${stationControlAttrs('fit')} class="k-word k-word--body sx-sw-verb" data-verb="fit" data-fit-action="${escapeHtml(fitAction)}"${selectedPreset ? ` data-loadout-preset-id="${escapeHtml(selectedPreset.id)}"` : ''}${fitEnabled ? '' : ` disabled aria-label="${escapeHtml(fitBlockedText)}"`}>${escapeHtml(fitLabel)}</button></li>` +
           (makeActiveVisible
-            ? `<li><button type="button" ${stationControlAttrs('activate')} class="k-word k-word--body sx-sw-verb" data-verb="activate"${makeActiveEnabled ? '' : ` disabled aria-label="${escapeHtml(makeActiveLabel)}"`}>${escapeHtml(makeActiveLabel)}</button></li>`
+            ? `<li><button type="button" ${stationControlAttrs('activate')} class="k-word k-word--body sx-sw-verb" data-verb="activate"${makeActiveEnabled ? ` aria-label="${escapeHtml('Make active. ' + switchCargo)}"` : ` disabled aria-label="${escapeHtml(makeActiveLabel)}"`}>${escapeHtml(makeActiveLabel)}</button></li>`
             : '') +
           (paintVisible
             ? `<li><button type="button" ${stationControlAttrs('paint')} class="k-word k-word--body sx-sw-verb${paintOpen ? ' is-active' : ''}" data-verb="paint" aria-pressed="${paintOpen ? 'true' : 'false'}"${paintEnabled ? '' : ` disabled aria-label="${escapeHtml((model.availability && model.availability.hullLabel) || 'Dock at a shipyard to paint')}"`}>${stationControlLabel('paint')}</button></li>`
@@ -4230,8 +4258,10 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       `</div>`;
     // MAKE ACTIVE is a berth verb — it never renders on the flight host (SCREENS_B §1.2). While
     // docked it stays gated by hull service availability with the reason printed on the verb.
+    const switchCargo = host === 'dock' && inspectedIndex !== activeIndex
+      ? hullSwitchCargoGuidance(ctx.state, inspectedIndex) : '';
     const activeControl = host === 'flight' ? '' : inspectedIndex !== activeIndex
-      ? `<li><button type="button" ${stationControlAttrs('make-active')} class="k-word k-word--emph sx-sw-circuit__activate" data-activate-ship="${inspectedIndex}" ${availability.hullEnabled ? '' : 'disabled'} aria-label="${escapeHtml(availability.hullEnabled ? 'Make active ship' : availability.hullLabel)}">${availability.hullEnabled ? 'Make active' : escapeHtml(availability.hullLabel)}</button></li>`
+      ? `<li><button type="button" ${stationControlAttrs('make-active')} class="k-word k-word--emph sx-sw-circuit__activate" data-activate-ship="${inspectedIndex}" ${availability.hullEnabled ? '' : 'disabled'} aria-label="${escapeHtml(availability.hullEnabled ? 'Make active. ' + switchCargo : availability.hullLabel)}">${availability.hullEnabled ? 'Make active' : escapeHtml(availability.hullLabel)}</button></li>`
       : `<li><span class="k-word k-word--emph k-38 sx-sw-circuit__active">Active flight hull</span></li>`;
     // The stage-right column: the build's identity, the core as a hero number, each system's
     // draw as a row, and one sentence telling the player where to click.
@@ -4255,6 +4285,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
           `</li>`;
         }).join('')}</ul>` +
         `<p class="k-sentence sx-sw-circuit__instruction">Choose a system on the hull to preview compatible hardware.</p>` +
+        (switchCargo ? `<p class="k-sentence sx-sw-circuit__hold-note">${escapeHtml(switchCargo)}</p>` : '') +
         (activeControl ? `<ul class="k-words k-words--row sx-sw-circuit__acts">${activeControl}</ul>` : '') +
         (inspectedIndex === activeIndex ? ransomDeskHtml() : '') +
         rackBlock +
