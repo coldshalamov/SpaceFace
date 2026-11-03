@@ -46,6 +46,13 @@ physical Prospector work, rescue priority, matching Foundry fixture contacts and
 feedback. The ordinary paid Ceres shift and changed combat appearance are being played; source
 and component checks do not close those player outcomes.
 
+**Open critical save defect:** production ordering lets `runSession` clear the arcade run before
+the save owner's Exit listener, allowing temporary arena state to overwrite the Adventure
+autosave. The actual owners reproduce this against disposable storage; the save owner is being
+fixed. Public8ea and the unaliased1347 candidate predate that fix. Hold promotion of1347; a DDE
+rollback would not address the same exposure. Combat and the paid Ceres route remain valid
+observations, while arcade Exit/Continue persistence fails this contract.
+
 The public demo now serves validated `8ea6ff577ff2` at
 [`spaceface-play-demo.vercel.app`](https://spaceface-play-demo.vercel.app/), with DDE rollback
 retained. Public-origin worker flight/native touch pass; candidate rotation and Pause/Resume
@@ -73,7 +80,7 @@ original seed, input, tick, event-family and acceptance budgets remain enforced.
 
 The public8f5 route passes compact F2 at1280/960, physical Helios docking,568x320 Market controls
 and the real Industry research-lock state, with no JS/GL/critical HTTP errors or resize failure.
-The public Vercel alias now serves7195 with the activated shared-asset packages. Fresh native touch
+At the earlier7195 checkpoint, the public Vercel alias served the activated shared-asset packages. Fresh native touch
 flight and same-profile save/reload/Continue movement pass, with zero JS, GL or critical HTTP errors.
 This candidate began Continue near rest, so its braking branch was not exercised. Actual iPhone14
 hardware remains unverified; the visible Windows phone entries establish Bluetooth pairing,
@@ -86,7 +93,7 @@ The remote release receipt reports 2,866 files /629,934,624 bytes and output dig
 `c92cdb7fb3d9939fbfe6da6220184f93e1034c7a3cca01e479bef2ff7b4ac24b`; the unique-host index is
 12,626 bytes with SHA256 `a0be6f9e864a806cf1f2f25993a841c213b51a7f9a59315d67bf8162945aa367`.
 Vercel assigned generated branch/team aliases, but the public `spaceface-play-demo.vercel.app`
-mapping was read back as C9 (`dpl_C9eZXk9gbHTttTY7rittWTMhX2Yq`). It is still a diagnostic
+mapping was then read back as C9 (`dpl_C9eZXk9gbHTttTY7rittWTMhX2Yq`). D6 remained a diagnostic
 deployment, not the public alias or a local/remote bundle comparison. The D6 WebKit route showed
 a black world after rotation. A later staged candidate, `dpl_23Cp5586RZbW6p6UkMVebDXfSn3g` at
 `https://spaceface-play-demo-oaml3siaj-robin-gattis-projects.vercel.app`, uses source
@@ -96,8 +103,8 @@ a black world after rotation. A later staged candidate, `dpl_23Cp5586RZbW6p6UkMV
 public Save, reload and Continue, but its requested iPhone profile reports
 `navigator.maxTouchPoints=0` on Windows. During original-document rotation, `orientationHold` and
 `refillInFlight` remained true for about10s and the world showed a stretched retained portrait
-image, not a black frame; fresh landscape drawing was unverified before F5. Public alias remains
-C9 and physical iPhone14 remains UNKNOWN; no promotion or mobile acceptance is claimed.
+image, not a black frame; fresh landscape drawing was unverified before F5. At that checkpoint
+the public alias remained C9; physical iPhone14 was unknown. The current8ea release is recorded above.
 
 The last measured main static closure is9,959,652 raw bytes; the6MB target remains
 open. The shadow-disabled cold profile reaches flight in37.7s versus37.3s in the preceding run:
@@ -234,7 +241,8 @@ and garden custody/progress in `d87c999ea10d`. The incoming UI work through PR81
 - **Mobile:** candidate29 passes the rotation gate in9.082s and captures a bright advancing canvas,
   while its adjacent WebKit page image is black. The user's physical Escape stopped the planned
   visible-window capture before any app input or capture. Visible-window output and iPhone14 remain
-  UNKNOWN; public C9 is unchanged and candidate29 is not promoted.
+  UNKNOWN in that older checkpoint; candidate29 was not promoted. Current8ea/public touch evidence
+  is recorded above, while physical iPhone remains unknown.
 - **UI and authored visuals:** the six non-default matrix aliases and mounted chart-cost cell remain
   open. The #808–#815 layout changes are source-integrated but have no new local mounted looks. The
   in-world hero/plume/marking look is still open after a preserved zero-draw Kestrel result.
