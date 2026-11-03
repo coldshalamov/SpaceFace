@@ -208,6 +208,46 @@ test('the actual resize owner requests its scene cohort rather than an offscreen
   });
 });
 
+test('rotation does not wait on hidden scene branches or an empty pool texture', async () => {
+  resetPackageDetachManifestsForTests();
+  const previousWindow = globalThis.window;
+  globalThis.window = { innerWidth: 844, innerHeight: 390, devicePixelRatio: 1 };
+  const h = harness(), scene = new THREE.Scene();
+  h.owner.scene = scene;
+  let releaseDecode, decodes = 0;
+  const wait = new Promise(resolve => { releaseDecode = resolve; });
+  const geometry = new THREE.BoxGeometry(), freshGeometry = geometry.clone();
+  const texture = new THREE.DataTexture(new Uint8Array([20, 40, 60, 255]), 1, 1);
+  const freshTexture = new THREE.DataTexture(new Uint8Array([20, 40, 60, 255]), 1, 1);
+  texture.needsUpdate = true;
+  createPackageDetachManifest({ contentHash: 'hidden-orientation-resources', resources: [geometry, texture] }, {
+    redecode: async () => { decodes++; await wait; return { resources: [freshGeometry, freshTexture] }; },
+    collectResources: value => value.resources,
+  });
+  assert.equal(detachPackageGeometry(geometry), true);
+  assert.equal(detachPackageTexture(texture), true);
+  const hidden = new THREE.Group();
+  hidden.visible = false;
+  hidden.add(new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({ map: texture })));
+  const emptyPool = new THREE.InstancedMesh(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial({ map: texture }), 1);
+  emptyPool.count = 0;
+  scene.add(hidden, emptyPool);
+  try {
+    h.owner.onResize();
+    assert.deepEqual(h.sizes, [[844, 390]], 'resources with no possible presented draw cannot hold the current picture');
+    await Promise.resolve();
+    assert.equal(decodes, 0, 'hidden and zero-count owners keep their existing later admission path');
+    assert.equal(h.owner._orientationResizePending, undefined);
+    assert.equal(orientationDetachedHoldActive(h.renderer), false);
+  } finally {
+    releaseDecode();
+    await presentedDetachRehydrateInFlight();
+    await h.owner._orientationResizePending;
+    resetPackageDetachManifestsForTests();
+    globalThis.window = previousWindow;
+  }
+});
+
 for (const retire of ['disposed', 'replaced']) {
   test(`a ${retire} renderer cannot resize from an old refill completion`, async () => {
     await withPendingRefill(async ({ owner, sizes, release }) => {

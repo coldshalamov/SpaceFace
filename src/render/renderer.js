@@ -578,6 +578,7 @@ import { openingLoadPolicy } from './openingLoadPolicy.js';
 import {
   collectStartupGeometries,
   collectStartupGeometriesSteps,
+  collectStartupGeometryDrawables,
   collectOpeningResidencySubjects,
   collectStartupTextures,
   collectStartupTexturesSteps,
@@ -32998,7 +32999,7 @@ export const render = {
       || resources.textures.some(isPackageTextureDetached);
     const aspectChanging = this._drawBufferAspectClass && this._drawBufferAspectClass !== cssAspect;
     if (!this._orientationResizeApplying && !this._orientationResizePending && aspectChanging) {
-      orientationResources = { geometries: collectStartupGeometries(this.scene), textures: collectStartupTextures(this.scene) };
+      orientationResources = collectOrientationResizeResources(this.scene);
       if (globalThis.__SF_BUFFER_RESIZE_DIAG__ === true
           || (typeof location !== 'undefined' && new URLSearchParams(location.search).get('bufferResizeDiag') === '1')) {
         console.info('[render:live-package-cpu]', JSON.stringify(
@@ -33056,7 +33057,7 @@ export const render = {
     // too. A same-aspect resize does not.
     const nextAspect = aspectClassFromSize(drawSize);
     if (!this._orientationResizeApplying && this._drawBufferAspectClass && this._drawBufferAspectClass !== nextAspect) {
-      const resources = orientationResources || { geometries: collectStartupGeometries(this.scene), textures: collectStartupTextures(this.scene) };
+      const resources = orientationResources || collectOrientationResizeResources(this.scene);
       if (needsRefill(resources)) noteOrientationDetachedHold(this.renderer, resources);
     }
     this._drawBufferAspectClass = nextAspect;
@@ -33420,6 +33421,22 @@ function renderGraphDynResBlocked(state) {
   if (render && render.dynResAllowed !== true) return false;
   if (render && render.gpu && render.gpu.software === true) return true;
   return qualityModeForVideo(video) === 'auto' || video.dynamicResolution === true;
+}
+
+function collectOrientationResizeResources(scene) {
+  // An aspect flip replaces the current picture. Hidden scene branches and empty pools have
+  // no draw in that picture; their normal admission owner still refills them when they activate.
+  // Keep startup's broader future-use census intact and scope only this resize hold.
+  const visible = { traverse(visit) {
+    if (typeof scene?.traverseVisible === 'function') scene.traverseVisible(visit);
+    else scene?.traverse?.(visit);
+  } };
+  const drawables = collectStartupGeometryDrawables(visible);
+  const subjects = { traverse(visit) { for (const drawable of drawables) visit(drawable); } };
+  return {
+    geometries: [...new Set(drawables.map(drawable => drawable.geometry))],
+    textures: collectStartupTextures(subjects),
+  };
 }
 
 function aspectClassFromSize(size) {
