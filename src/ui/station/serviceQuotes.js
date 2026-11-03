@@ -290,7 +290,8 @@ function baseServiceQuote(type, state, entity) {
   // One job per verb: the yard queues what it already holds, and a second booking of the same
   // type can never deliver (the live job already covers the deficit). The disabled path turns
   // the click into an honest line instead of a second charge.
-  if ((type === 'repair' || type === 'refuel') && playerYardJobs(state).some((j) => j.type === type)) {
+  const yardSummary = (type === 'repair' || type === 'refuel') ? playerYardSummary(state) : null;
+  if (yardSummary && (type === 'repair' ? yardSummary.hasRepair : yardSummary.hasRefuel)) {
     const verb = type === 'refuel' ? 'refuel' : 'repair';
     return {
       amount: 0,
@@ -808,13 +809,28 @@ export function playerYardJobs(state) {
   return jobs.filter(Boolean);
 }
 
-export function yardJobReadout(state) {
+// Worker mode sends a bounded summary rather than pretending a truncated queue is the real queue.
+// The main-lane and bench owners continue to expose their full jobs array.
+export function playerYardSummary(state) {
+  const player = state?.stationServices?.player;
+  if (!player) return null;
+  if (player.summary && typeof player.summary === 'object') {
+    return state?.ui?.docked === true && state.ui.dockedStationId === player.stationId
+      ? player.summary : null;
+  }
   const jobs = playerYardJobs(state);
-  if (!jobs.length) return null;
+  return { count: jobs.length, head: jobs[0] || null,
+    hasRepair: jobs.some(job => job.type === 'repair'),
+    hasRefuel: jobs.some(job => job.type === 'refuel') };
+}
+
+export function yardJobReadout(state) {
+  const summary = playerYardSummary(state);
+  if (!summary?.count || !summary.head) return null;
   const s = state.stationServices;
   const player = s.player;
   const yardView = (s.stations && s.stations[player.stationId]) || null;
-  const head = jobs[0];
+  const head = summary.head;
   const label = head.type === 'refuel' ? 'Refuel' : 'Repair';
   const frac = head.total > 0 ? Math.max(0, Math.min(1, head.applied / head.total)) : 0;
   const pct = Math.round(frac * 100) + '%';
@@ -841,7 +857,7 @@ export function yardJobReadout(state) {
     detail = 'On the pad — waiting on a free crew';
     tone = 'warn';
   }
-  const extra = jobs.length - 1;
+  const extra = summary.count - 1;
   if (extra > 0) detail += ` · +${extra} more job${extra === 1 ? '' : 's'} queued`;
   return {
     label: 'Yard',

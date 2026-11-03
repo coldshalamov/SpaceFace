@@ -1,3 +1,4 @@
+import { isMawWorksiteBody } from '../missions/mawWorksite.js';
 import { buildSwarmFortifyVisual } from './swarmFortifyVisuals.js';
 import { ironKrakenProfileFor } from '../data/ironKraken.js';
 import { createIronKrakenVisual } from './ironKrakenVisuals.js';
@@ -7025,6 +7026,30 @@ function stampBuiltVisual(root) {
   return root;
 }
 
+// Reuse the existing nine-part Maw at its collision footprint. Keep scale on a parent:
+// installFaunaMotion owns/resets the child root scale on every breath.
+export function buildMawWorksiteVisual(entity) {
+  if (!isMawWorksiteBody(entity)) return null;
+  const body = buildFaunaMesh(entity);
+  if (!body) return null;
+  const root = new THREE.Group();
+  root.name = 'SF_MawWorksite';
+  const collisionRadius = (live) => {
+    const radius = Number(live?.mawPresentationRadius ?? live?.physicsBody?.radius);
+    return Number.isFinite(radius) && radius > 0 ? radius : live.radius;
+  };
+  root.scale.setScalar(collisionRadius(entity) / 18);
+  root.add(body);
+  root.userData = { ...body.userData, mawWorksite: true };
+  root.userData.updateAuthoredMotion = (live, now, a11y, state) => {
+    root.scale.setScalar(collisionRadius(live) / 18);
+    body.userData.updateAuthoredMotion(live, now, a11y, state);
+    root.userData.faunaMotionRead = body.userData.faunaMotionRead;
+    root.userData.faunaDriveState = body.userData.faunaDriveState;
+  };
+  return root;
+}
+
 export function createVisualFactory({ renderer = null, readyPackagedBodies = null, planetDetailAdmission = null } = {}) {
   const readyBodies = readyPackagedBodies || (renderer
     ? createReadyPackagedBodyCache({ residency: getAssetResidency(renderer) }) : null);
@@ -7035,6 +7060,9 @@ export function createVisualFactory({ renderer = null, readyPackagedBodies = nul
       if (isRigWorkshopBody(e)) return stampBuiltVisual(buildRigWorkshopBody(e));
       try {
         if (!e) return null;
+        // This mission keeps asteroid physics for the existing massline impact contract.
+        // Reuse the authored vent-bowl; ordinary rock and ambient fauna keep their owners.
+        if (isMawWorksiteBody(e)) return stampBuiltVisual(buildMawWorksiteVisual(e));
         if (ironKrakenWreckProfileFor(e)) return stampBuiltVisual(createIronKrakenWreckVisual(e));
         // An articulated character owns its graph; static ship batching would freeze its arms.
         if (ironKrakenProfileFor(e)) return stampBuiltVisual(createIronKrakenVisual(e));

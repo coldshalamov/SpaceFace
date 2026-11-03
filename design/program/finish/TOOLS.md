@@ -11,6 +11,11 @@ When a terminal command needs a hidden bounded process on Windows, the repo help
 option: `node scripts/agent-run.mjs --log <log> --timeout <seconds> [--stdin <file>] -- <command> <args>`.
 Use the smallest scoped invocation that fits the task.
 
+Interactive player-route drivers that read commands from stdin need `exec_command` with
+`tty:true`; plain execution can close stdin after boot and leave no way to play. Check the command
+channel before launching a game. Use an absolute packet-directory path for worker artifacts and
+scope replies: “next to this prompt” is ambiguous when the worker's cwd is the repository root.
+
 ## Optional packet layout (git-ignored)
 
 ```

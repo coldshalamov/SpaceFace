@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { resolveWorldPresentationEntity } from '../world/presentationSources.js';
 import { entityVisualCullRadius } from './visualCullRadius.js';
+import { indexedWorldRecordEntity } from '../world/livingWorldViews.js';
+import { presentationAllowsPlayerFacingAction } from '../core/presentationAdmission.js';
 
 const FORGIVE_PX = 6;
 const TINY_BODY_PX = 12;
@@ -162,6 +164,29 @@ function stableEntityKey(entity) {
   if (entity.stableKey != null) return String(entity.stableKey);
   if (entity.id != null) return String(entity.id);
   return '';
+}
+
+// A world-site lamp is a real drawn leaf on the site root. Its selectable sensor
+// is deliberately meshless, so resolve the current component by durable identity
+// only after the root/leaf has passed the ordinary visibility and ray tests.
+function fixtureTarget(state, rootEntity, leaf) {
+  const binding = leaf?.userData?.worldSiteFixtureTarget;
+  if (!binding) return rootEntity;
+  const owner = binding.owner;
+  if (!owner || owner !== rootEntity || state.entities?.get(owner.id) !== owner
+    || owner.alive === false || owner.occupantGeneration !== binding.ownerGeneration
+    || owner.data?.role !== 'world_site_root' || owner.data?.worldSiteId !== binding.siteId
+    || !binding.worldObjectId || owner.data?.worldObjectId !== binding.worldObjectId
+    || owner.data?.worldRecordId !== `${binding.worldObjectId}/root`) return null;
+  const recordId = `${binding.worldObjectId}/component/${binding.componentId}`;
+  const component = indexedWorldRecordEntity(state, recordId);
+  const data = component?.data;
+  if (!component || state.entities?.get(component.id) !== component || component.alive === false
+    || component.farResident === true || data?.role !== 'world_site_component'
+    || data.worldSiteId !== binding.siteId || data.worldSiteComponentId !== binding.componentId
+    || data.worldRecordId !== recordId || data.worldSiteTargetable !== true
+    || !presentationAllowsPlayerFacingAction(component, state)) return null;
+  return component;
 }
 
 export function createWorldObjectPicker(env) {
@@ -407,9 +432,11 @@ export function createWorldObjectPicker(env) {
         const radiusPx = projectRadiusPx(r, Math.max(0.001, t), camera, vp);
         const tiny = (radiusPx * 2) <= TINY_BODY_PX;
         if (overhang <= 0 || tiny) {
+          const pickEntity = fixtureTarget(state, entity, leaf);
+          if (!pickEntity) continue;
           let c = candidates[candCount];
           if (!c) { c = { leaf: null, entity: null, overhang: 0, t: 0, radiusPx: 0, tiny: false, near: 0 }; candidates[candCount] = c; }
-          c.leaf = leaf; c.entity = entity; c.overhang = overhang; c.t = t; c.radiusPx = radiusPx; c.tiny = tiny;
+          c.leaf = leaf; c.entity = pickEntity; c.overhang = overhang; c.t = t; c.radiusPx = radiusPx; c.tiny = tiny;
           // Conservative lower bound on the ray's first contact with this sphere: no real
           // hit from this leaf can land closer than t - r.
           c.near = t - r;

@@ -1,4 +1,5 @@
 import { isCeresWorkfleetHardware } from '../data/ceresWorkfleetIdentity.js';
+import { isOrchardFrame } from '../data/anvilOrchardIdentity.js';
 // salvageActions.js - BP-01.1 SALVAGE_DISTINCT_FROM_MINING system.
 //
 // Annotates existing wreck entities with a distinct salvage verb from the pure catalog. The mining
@@ -77,6 +78,8 @@ function ensureUi(state) {
 
 function isWreck(entity) {
   return !!(entity && entity.type === 'wreck'&&!isCeresWorkfleetHardware(entity)
+    && !(entity.data?.role === 'world_site_component' && entity.data.worldSiteId && entity.data.worldSiteComponentId)
+    && !(entity.data?.orchardKind === 'frame' && isOrchardFrame(entity))
     &&!(entity.data?.worldSiteStructural===true&&entity.data.persistenceOwner==='asteroidSites'));
 }
 

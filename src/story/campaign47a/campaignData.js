@@ -235,22 +235,23 @@ export const CAMPAIGN_BEATS = Object.freeze([
     beat: 3,
     id: 'bigger_boat',
     title: 'Bigger Boat',
-    // W-BOOKS-3-4 (§34.7 Book 3): VARIANCE ADJUSTMENT — the Hawser-class tug whose seam
-    // lets go at the fourth strain spike — then Feed the Maw and the Mirrorjaw Foreman.
+    // W-BOOKS-3-4 (§34.7 Book 3): tow one slag core from Tethys to Ceres, then Feed
+    // the Maw and the Mirrorjaw Foreman. The named VARIANCE ADJUSTMENT berth/tug is a
+    // separate open physical-scene promise; this contract does not transfer a hull.
     // The first Gate Audit (Kepler) welds on the road while the book runs; it is recorded
     // when the world-pressure schedule lands it and never gates the list.
-    objective: 'Take delivery of VARIANCE ADJUSTMENT, feed the Furnace maw, settle the Foreman\u2019s yard feud.',
+    objective: 'Tow a slag core to Ceres, feed the Furnace maw, settle the Foreman\u2019s yard feud.',
     headlineVerb: 'tow',
     setPiece: 'variance adjustment + feed the maw + foreman',
     steps: Object.freeze([
       Object.freeze({
-        // THE BERTH: the long tow is the delivery run and the shakedown both.
+        // THE BERTH: tow one slag core from Tethys to Ceres; no named tug transfer.
         id: 'delivery',
         order: 0,
         accept: Object.freeze(['mission:completed']),
         match: Object.freeze({ storyTag: 'campaign47a:b3:berth' }),
         contractId: 'campaign47a:b3:berth',
-        label: 'Take delivery of VARIANCE ADJUSTMENT — Slate\u2019s berth',
+        label: 'Tow the slag core to Ceres — Slate\u2019s berth',
       }),
       Object.freeze({
         // E-38: stun the Furnace maw with hot slag, then tow it out of the lane.

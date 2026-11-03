@@ -33,6 +33,11 @@ import { LAWFUL_STATION_FACTIONS } from './factions/index.js';
 import { buildSlotList, fits } from '../systems/ships.js';
 import { entityIndexLaneVersion, entityIndexVersion } from '../world/livingWorldViews.js';
 import { SECTORS } from './sectors.js';
+import {
+  VARIANCE_ADJUSTMENT_BERTH,
+  isVarianceAdjustmentBerthEntity,
+} from './varianceAdjustmentBerth.js';
+import { SLATE_COLUMN } from './slate.js';
 
 // Asteroid subset latched on {entityIndexVersion, state.entities}: hail/status lookups used
 // to walk the whole entity map per call. The subset preserves entities.values() order and
@@ -180,6 +185,21 @@ function entityById(state, id) {
   if (id == null || !state) return null;
   if (state.entities && typeof state.entities.get === 'function') return state.entities.get(id) || null;
   return (state.entityList || []).find((row) => row && row.id === id) || null;
+}
+
+function isLiveVarianceAdjustmentTarget(state, entity, expectedId = entity?.id) {
+  return entity?.id === expectedId
+    && state?.entities && typeof state.entities.get === 'function'
+    && state.entities.get(entity.id) === entity
+    && isVarianceAdjustmentBerthEntity(entity);
+}
+
+function varianceAdjustmentStatusLine(state) {
+  const raw = Number(state?.story?.flags?.[SLATE_COLUMN.spikeFlag]);
+  const spikes = Number.isFinite(raw) ? Math.max(0, Math.floor(raw)) : 0;
+  const count = spikes === 0 ? 'NO WELD-SPIKES LOGGED YET'
+    : `${spikes} WELD-SPIKE${spikes === 1 ? '' : 'S'} LOGGED`;
+  return `${VARIANCE_ADJUSTMENT_BERTH.statusLine} · CURRENT SLATE LEDGER: ${count}.`;
 }
 
 function playerEntity(state) {
@@ -636,6 +656,20 @@ export function contactHailAvailability(state) {
   if (!player || player.alive === false) return unavailable('no_player');
   const distance = distanceBetween(player, target);
   if (distance > CONTACT_HAIL_RANGE) return unavailable('out_of_reveal_range');
+  if (state.world?.currentSectorId === VARIANCE_ADJUSTMENT_BERTH.sectorId
+    && isLiveVarianceAdjustmentTarget(state, target, targetId)) {
+    return {
+      enabled: true,
+      reason: null,
+      targetId: target.id,
+      kind: 'variance_adjustment',
+      label: `HAIL ${VARIANCE_ADJUSTMENT_BERTH.callsign}`,
+      distance,
+      entity: target,
+      worldRecordId: VARIANCE_ADJUSTMENT_BERTH.worldRecordId,
+      identityKey: VARIANCE_ADJUSTMENT_BERTH.identityKey,
+    };
+  }
   const classification = contactKind(state, target);
   if (!classification.kind) return unavailable('unsupported_contact');
   return {
@@ -1037,6 +1071,21 @@ function patrolGrievanceHail(state, entity) {
 
 export function createContactHailOffer(state, availability, requestId, expiresAt) {
   if (!availability || !availability.enabled || availability.kind === 'toll') return null;
+  if (availability.kind === 'variance_adjustment') {
+    const target = availability.entity;
+    if (state?.world?.currentSectorId !== VARIANCE_ADJUSTMENT_BERTH.sectorId
+      || !isLiveVarianceAdjustmentTarget(state, target, availability.targetId)) return null;
+    return {
+      requestId,
+      targetId: target.id,
+      kind: 'variance_adjustment',
+      expiresAt,
+      worldRecordId: VARIANCE_ADJUSTMENT_BERTH.worldRecordId,
+      identityKey: VARIANCE_ADJUSTMENT_BERTH.identityKey,
+      lines: [`${VARIANCE_ADJUSTMENT_BERTH.callsign} · YARD REGISTRY`, 'HAIL ACCEPTED · REGISTRY READ ONLY.'],
+      actions: [{ id: 'status', label: 'STATUS' }, { id: 'identify', label: 'IDENTIFY' }],
+    };
+  }
   if (isOrchardReceiver(state, availability?.entity)) {
     const repair = orchardReceiverRepairFacts(state, availability.entity);
     if (repair?.disabled || repair?.unavailable) return { requestId, targetId: availability.targetId, kind: 'worker', expiresAt,
@@ -1819,12 +1868,29 @@ function priorityCourierStatusText(state, target) {
 
 export function createContactHailResponse(state, offer, choice, authority = {}) {
   if (!offer || (offer.kind !== 'patrol' && offer.kind !== 'trader' && offer.kind !== 'worker'
-    && offer.kind !== 'ace')) {
+    && offer.kind !== 'ace' && offer.kind !== 'variance_adjustment')) {
     return null;
   }
   const target = entityById(state, offer.targetId);
   if (!target) return null;
   const id = String(choice || '').toLowerCase();
+  if (offer.kind === 'variance_adjustment') {
+    if (state?.world?.currentSectorId !== VARIANCE_ADJUSTMENT_BERTH.sectorId
+      || offer.worldRecordId !== VARIANCE_ADJUSTMENT_BERTH.worldRecordId
+      || offer.identityKey !== VARIANCE_ADJUSTMENT_BERTH.identityKey
+      || !isLiveVarianceAdjustmentTarget(state, target, offer.targetId)) return null;
+    const line = id === 'status' ? varianceAdjustmentStatusLine(state)
+      : id === 'identify' ? VARIANCE_ADJUSTMENT_BERTH.identifyLine : null;
+    if (!line) return null;
+    return {
+      requestId: offer.requestId,
+      targetId: offer.targetId,
+      kind: offer.kind,
+      choice: id,
+      expiresAt: (Number(state.simTime) || 0) + CONTACT_HAIL_RECEIPT_TTL_S,
+      lines: [line],
+    };
+  }
   let line = null, detailLines = null;
   const pallas = pallasShiftStatus(state, target);
   if (pallas && id === 'status' && authority.weaponsAuthorized !== true) {

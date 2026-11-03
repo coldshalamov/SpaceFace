@@ -1,3 +1,4 @@
+import { syncMawWorksite } from '../missions/mawWorksite.js';
 import { registerMassScaleTow } from './cargoCustody.js';
 import { authoredStarterSite, registerStarterBuoyTow } from '../missions/starterWorkday.js';
 import { authoredCinderRoute, cinderTargetOwner, cinderAvailableSlots, cinderWaspPosition, stampCinderWasp, observeCinderEscape } from '../missions/cinderRoute.js';
@@ -547,6 +548,7 @@ export const missionSpawningOps = {
 
   _spawnTargetsFor(m) {
     if (syncFurnaceWorksite(this, m)) return;
+    if (syncMawWorksite(this, m, sectorLocalToGlobalForSector)) return;
     // Prefer live rematerialized hosts (Continue) over fresh spawns. Adoption repairs
     // mission/actor links without spawning, so it must run even where the spawn seam is absent
     // and a durable subject can be re-found without minting new bodies (NXI-146).
@@ -1343,4 +1345,3 @@ export const missionSpawningOps = {
     this.bus.emit('mission:updated', { missionId: m.id, twist: 'escort_turns' });
   },
 };
-

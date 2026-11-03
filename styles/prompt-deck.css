@@ -17,7 +17,7 @@
      14px left of the dock at any dock height; the fallback keeps it clear before the first
      measurement lands. */
   right: calc(100vw - var(--sf-rightdock-left, calc(100vw - 250px)) + 14px);
-  width: min(392px, calc(100vw - 32px));
+  width: min(320px, calc(100vw - 32px));
   max-height: min(52vh, 520px);
   /* A live decision outranks the receipt lane (toasts x480–800, auto-fading) — an over-tall
      prompt may transiently cover a toast rather than clip its own choices; the deck root is

@@ -22,6 +22,8 @@
 import {
   createReadModel,
   applySpawnInfos,
+  applyCeresWorkfleetActuation,
+  revokeCeresCradleReceipts,
   applyWeaponVfxProjectiles,
   applyDestroyIds,
   applyAuxUpserts,
@@ -67,6 +69,7 @@ import {
   laneViewport,
   laneBusEmit,
   laneCameraFramePayload,
+  clearLanePendingTarget,
 } from './simLaneCommands.js';
 import {
   modalInputActive,
@@ -571,7 +574,7 @@ export function createSimLaneRuntime({
     for (const id of readModel.entities.keys()) {
       if (!ids.has(id)) retiredIds.push(id);
     }
-    if (retiredIds.length) applyDestroyIds(readModel, retiredIds);
+    if (retiredIds.length) applyDestroyIds(readModel, retiredIds, state);
     return true;
   }
   function foldPackIntoReadModel(start, end, hasSpawnInfos = false) {
@@ -586,7 +589,7 @@ export function createSimLaneRuntime({
             alive: rec.kind === PRESENTATION_JOURNAL_KINDS.SPAWN });
         }
       });
-      for (const [id, life] of finalLives) if (!life.alive) applyDestroyIds(readModel, [id]);
+      for (const [id, life] of finalLives) if (!life.alive) applyDestroyIds(readModel, [id], state);
     }
     journal.visitRange(start, end, recordScratch, (rec) => {
       const life = finalLives?.get(rec.entityId);
@@ -594,7 +597,7 @@ export function createSimLaneRuntime({
         && (!life || (life.alive && life.generation === rec.generation))) {
         applyFacadePose(readModel, rec.entityId, rec);
       } else if (!finalLives && rec.kind === PRESENTATION_JOURNAL_KINDS.DESTROY) {
-        applyDestroyIds(readModel, [rec.entityId]);
+        applyDestroyIds(readModel, [rec.entityId], state);
       }
     });
   }
@@ -910,6 +913,7 @@ export function createSimLaneRuntime({
   let consumedTickCount = 0;
   let skippedPresentationTicks = 0;
   let lifecycleGeneration = 0;
+  let ceresActuationTick = -1;
   // Public worker read snapshots are epoch-bound. A facade can reject an older receipt
   // during restore/new-game without mutating any mirrored authority state on main.
   if (helpers) helpers.workerReadGeneration = () => laneClosed ? -1 : lifecycleGeneration;
@@ -921,10 +925,10 @@ export function createSimLaneRuntime({
       const applied = journal.applyRebuildPack(msg.initRebuild);
       retireMissingFullRebuildEntities(msg.initRebuild.start, msg.initRebuild.end, applied);
       if (Array.isArray(msg.initRebuild.spawnInfos)) {
-        applySpawnInfos(readModel, msg.initRebuild.spawnInfos);
+        applySpawnInfos(readModel, msg.initRebuild.spawnInfos, msg.lifecycleGeneration === lifecycleGeneration ? state : null, msg.lifecycleGeneration);
       }
     }
-    if (Array.isArray(msg.spawnInfos)) applySpawnInfos(readModel, msg.spawnInfos);
+    if (Array.isArray(msg.spawnInfos)) applySpawnInfos(readModel, msg.spawnInfos, msg.lifecycleGeneration === lifecycleGeneration ? state : null, msg.lifecycleGeneration);
     if (msg.initRebuild?.pack) foldPackIntoReadModel(msg.initRebuild.start, msg.initRebuild.end, true);
     if (Array.isArray(msg.weaponVfxProjectiles)) {
       applyWeaponVfxProjectiles(readModel, msg.weaponVfxProjectiles);
@@ -1008,7 +1012,7 @@ export function createSimLaneRuntime({
     }
 
     if (Array.isArray(msg.spawnInfos) && msg.spawnInfos.length) {
-      applySpawnInfos(readModel, msg.spawnInfos);
+      applySpawnInfos(readModel, msg.spawnInfos, msg.lifecycleGeneration === lifecycleGeneration ? state : null, msg.lifecycleGeneration);
     }
     if (msg.journalFullRebuild === true) {
       retireMissingFullRebuildEntities(msg.journalStart, msg.journalEnd, rebuildApplied);
@@ -1020,7 +1024,7 @@ export function createSimLaneRuntime({
       applyWeaponVfxProjectiles(readModel, msg.weaponVfxProjectiles);
     }
     if (Array.isArray(msg.entityVitals) && msg.entityVitals.length) {
-      applyEntityVitals(readModel, msg.entityVitals);
+      applyEntityVitals(readModel, msg.entityVitals, msg.lifecycleGeneration === lifecycleGeneration ? state : null, msg.lifecycleGeneration);
     }
     if (Array.isArray(msg.auxUpserts) && msg.auxUpserts.length) applyAuxUpserts(readModel, msg.auxUpserts);
     if (Array.isArray(msg.auxRemovals) && msg.auxRemovals.length) applyAuxRemovals(readModel, msg.auxRemovals);
@@ -1111,6 +1115,11 @@ export function createSimLaneRuntime({
 
     if (Number.isSafeInteger(msg.stateTick)) state.tick = msg.stateTick;
     if (Number.isFinite(msg.simTime)) state.simTime = msg.simTime;
+    if (msg.lifecycleGeneration === lifecycleGeneration && Number.isSafeInteger(msg.stateTick)
+      && msg.stateTick >= ceresActuationTick) {
+      applyCeresWorkfleetActuation(readModel, msg.entityVitals, state, msg.lifecycleGeneration);
+      ceresActuationTick = msg.stateTick;
+    }
     if (Number.isFinite(msg.clockAccumulator)) state.accumulator = Math.max(0, msg.clockAccumulator);
     if (msg.clockDiagnostics && typeof msg.clockDiagnostics === 'object') {
       const d = msg.clockDiagnostics;
@@ -1924,7 +1933,13 @@ export function createSimLaneRuntime({
       return sequence;
     },
     setLifecycleGeneration(value) {
-      lifecycleGeneration = Number.isSafeInteger(value) && value >= 0 ? value : lifecycleGeneration;
+      const nextGeneration = Number.isSafeInteger(value) && value >= 0 ? value : lifecycleGeneration;
+      if (nextGeneration !== lifecycleGeneration) {
+        revokeCeresCradleReceipts(readModel, state);
+        clearLanePendingTarget(state);
+        ceresActuationTick = -1;
+      }
+      lifecycleGeneration = nextGeneration;
       setTimeEffectsGeneration(state, lifecycleGeneration);
     },
     setClockActive(active) {
@@ -2030,6 +2045,7 @@ export function createSimLaneRuntime({
   const initPayload = {
     kind: 'init',
     seq: initSeq,
+    generation: lifecycleGeneration,
     profile: 'production',
     clockMode: workerClockMode,
     timeScale: Number.isFinite(state.timeScale) ? state.timeScale : 0,
@@ -2078,6 +2094,7 @@ export function createSimLaneRuntime({
     workerPumpRequested = false;
     stopWorkerPump();
     laneClosed = true;
+    clearLanePendingTarget(state);
     if (stallWatchdogTimer !== null) {
       clearTimeout(stallWatchdogTimer);
       stallWatchdogTimer = null;
