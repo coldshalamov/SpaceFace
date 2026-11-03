@@ -232,7 +232,7 @@
   "src/ui/orrery/station-marketLayouts.js": "1927b2e1b76b9f3ca5d6866df4e8a65b7e4d024bc530c626e181f738e61f9689",
   "src/ui/orrery/station-shipworksLayouts.js": "bf6e612d18cace3f4ddfba446fab136de034dd6ac40faa77e14a3c0427928c28",
   "src/ui/orrery/stationLayouts.js": "1dfcda01eda59e888a80db342a64e3986e57f8a9799a15c2a9bab8004e1e9cbc",
-  "src/ui/orrery/stationStandard.js": "af4d2bf710cd74b6a8203fd707948a29262ab185b104c6fbe69055cbe0dc542a",
+  "src/ui/orrery/stationStandard.js": "ef5c74172e3f51c74e31d4c3cf46a9d39d132c0190402b00536c89d21537feea",
   "src/ui/orrery/stationTabsLayouts.js": "3ed2d0c85075e3be57c38447566edd6b722dec00d40b4e6ba32f09414f300a93",
   "src/ui/orrery/statisticsLayouts.js": "c002365c31d5900ae405905297b075296b3ff73ec2844bd8e255069bedeb8b8a",
   "src/ui/orrery/stopDial.js": "accaa5f463c11d25101318ca203d99c3c7b476b5856c22595f94eaca085a0419",

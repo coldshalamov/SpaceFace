@@ -231,6 +231,12 @@ ${P} .sxb-vital__acts .orr-act__cost { font-family:${NUM} !important; font-size:
   ${P} .sxb-ops .sx-dock__group--nav { gap:0 6px !important; }
   ${P} .sxb-ops .sx-dock :is(button, a) { padding-left:6px !important; padding-right:6px !important; }
   ${P} .sxb-ops .sx-tile .dust-tab-glyph { display:none !important; }
+  /* The crown is ~587px here: the five readings fit ONE row (hull, fuel, hold, ledger, munitions), so FUEL, HOLD and
+     MUNITIONS stand in the head's visible band. In the two-row grid above they sat on a second row under the head's
+     32vh scrollport (ships: 145px), so a player at 960x540 saw only the hull and ledger. Cell widths follow each
+     reading's own ink (label + figure, or the 92px Repair/Rearm key); 901-959 keeps the two rows, where five do not fit. */
+  ${P} .sxb-crown .sxb-vitals { grid-template-columns:minmax(0,106fr) minmax(0,100fr) minmax(0,98fr) minmax(0,116fr) minmax(0,134fr) !important;
+    grid-template-areas:"hull fuel hold note muni" !important; }
 }
 
 /* ---- the ad-boards: legible, never faint ----------------------------------------------------- */
