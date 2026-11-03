@@ -166,8 +166,8 @@ ${NG} > .sf-ng-footer .k-word.sf-back:focus-visible::after {
   ${NGD} .orr-yard > .orr-turntable__row > li:not(.is-front) .k-word-sub { opacity:0 !important; }
 }
 
-/* 1001–1080 wide: HITCH and the rear names would share a line, so they stop 14px higher, clear of the front name. */
-@media (min-width:1001px) and (max-width:1080px) and (max-height:800px) {
+/* 801–1080 wide: HITCH and the rear names would share a line, so they stop 14px higher, clear of the front name. */
+@media (min-width:801px) and (max-width:1080px) and (max-height:800px) {
   ${NGD} .orr-yard > .orr-turntable__row > li:not(.is-front) { translate:0 24px !important; }
 }
 
