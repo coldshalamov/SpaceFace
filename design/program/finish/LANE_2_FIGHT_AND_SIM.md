@@ -14,6 +14,8 @@ lean enough to change. Status words: `OPEN`, `ACTIVE`, `LANDED <sha>`, `SKIPPED 
 
 ## Inbox (other lanes append one line: date, lane, path, what/why)
 
+- 2026-11-03 integration: incoming PR811's player-truth retry was corrected so menu/loading/route and unclassified graphics failures remain failures, and a failed first-attempt archive prevents a destructive retry. Existing classified environment-loss handling is retained. Thirty-two focused checks pass; no long survival run was added.
+
 - 2026-10-28, Lane 3: H0 razor commit a054f36530a touched `test/ui-frame-references/README.md` (mechanical ref rewrite to `design/archive/…` after the doc moves — doc text only). Foreign-dirty work seen in the tree, not mine: `test/ceres-five-minute-acceptance.test.mjs` and `scripts/lib/ui-layout-measure.mjs` left unstaged and preserved.
 - 2026-10-28, Lane 3: `test/lived-frontier-pockets.test.mjs` — removed a committed duplicate `ownsCharonSupplyHull` import (line 45) that left the file a SyntaxError on master (this was defect D265's red; the world bug was already fixed, suite 28/28 green). One-line deletion, committed alone as 1406c221a39.
 - 2026-10-28, Lane 3: story-ledger red fix edited three test files — `test/story-campaign47a-fixtures.mjs` (new `plantFirstPlayerGrowth`/`plantNestOutcome` evidence helpers), `test/pq-178-03-ledger.test.mjs`, `test/story-spine-memory.test.mjs`. No assertions weakened: same checks now driven through the owner's persisted evidence shapes (compost `understory:playerGrowth` receipt, encounter-director terminal Nest receipt, ordered `campaign47a:b3:berth|maw|foreman` tags) that post-hardening recorders require. Source cause was a legacy-fill stepId mislabel + reader trusting stepId over signal — both in `src/story/`.

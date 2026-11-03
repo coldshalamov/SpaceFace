@@ -25,7 +25,7 @@
 //            loss is retried once. The graded verdict is that retry and keeps the first
 //            run's stopReason. A sim stall is not retried. ENVIRONMENT is printed on its own line.
 
-import { mkdirSync, writeFileSync, rmSync, existsSync, createWriteStream, renameSync } from 'node:fs';
+import { mkdirSync, writeFileSync, rmSync, existsSync, createWriteStream, renameSync, mkdtempSync } from 'node:fs';
 import { freemem, loadavg, totalmem } from 'node:os';
 import { createGzip } from 'node:zlib';
 import { Readable } from 'node:stream';
@@ -379,22 +379,38 @@ export function environmentRetryNote(loss, verdict = 'ENVIRONMENT') {
   return `retried once after environment browser loss (${loss.reason})`;
 }
 
-/** Boot-level retry (one only): the boot never reached play because graphics could not start
- * (NO GL / "Graphics could not start" / no webgl) or the route ended before play (route=none).
- * Null for any run that reached play, an already-retried run, or an environment loss (handled above). */
-export function bootRetryNote(outcome) {
-  if (!outcome || outcome.retried || outcome.environmentLoss) return null;
-  const why = String(outcome.stopReason || '');
-  const noGl = outcome.noGl === true || /graphics could not start|no webgl|could not create a webgl context/i.test(why);
-  if (noGl) return `retried once after boot without graphics (NO GL${why ? `: ${why.slice(0, 160)}` : ''})`;
-  if (outcome.reachedPlay === false) return `retried once after route=none (${why.slice(0, 160) || 'route ended before play'})`;
-  return null;
-}
-
 /** First-attempt record kept in the retried run's verdict.json (meta.bootAttempts). */
 export function bootAttemptRecord(outcome, note, renamedDir) {
   return { attempt: 1, verdict: outcome.verdict, stopReason: outcome.stopReason || null, reachedPlay: outcome.reachedPlay ?? null,
     noGl: outcome.noGl ?? null, retryNote: note, outDir: renamedDir || null };
+}
+
+/** Reserve a fresh archive; never remove a previous attempt to make room. */
+export function archiveFirstAttempt(outDir, { makeTempDir = mkdtempSync, move = renameSync } = {}) {
+  const archived = path.join(makeTempDir(`${outDir}-attempt1-`), 'run');
+  move(outDir, archived);
+  return archived;
+}
+
+/** Retry only the existing proven environment-loss classification, with evidence intact.
+ * A missing menu, loading failure, or NO GL label is no causal proof of transient boot failure. */
+export async function runWithEnvironmentRetry(args, arena, extra = {}, {
+  run = runOne, archive = archiveFirstAttempt, report = (line) => console.error(line),
+} = {}) {
+  const first = await run(args, arena, extra);
+  if (first.retried || args.environmentRetry || args.bootAttempts) return first;
+  const note = environmentRetryNote(first.environmentLoss, first.verdict);
+  if (!note) return first;
+  let archived;
+  try {
+    archived = archive(first.outDir);
+  } catch (error) {
+    report(`player-truth retry skipped: first-attempt evidence could not be archived (${error.message}); retained at ${first.outDir}`);
+    return first;
+  }
+  report(`player-truth ${note}`);
+  return run({ ...args, environmentRetry: note, firstStopReason: first.stopReason,
+    bootAttempts: [bootAttemptRecord(first, note, path.relative(ROOT, archived))] }, arena, extra);
 }
 
 /** Meta for the graded run. A retry keeps the first run's stopReason and says so. */
@@ -1311,22 +1327,7 @@ async function main() {
   for (const viewport of args.viewportList) for (const hull of hulls) for (const arena of arenas) for (const pass of passes) {
     const a = { ...args, viewport, ...pass, tag: pass.tag !== undefined ? [pass.tag, args.tag].filter(Boolean).join('-') || null : args.tag };
     const extra = { hull, vpTag: args.viewportList.length > 1, multiple };
-    let outcome = await runOne(a, arena, extra);
-    const retryNote = environmentRetryNote(outcome.environmentLoss, outcome.verdict);
-    if (retryNote) {
-      console.error(`player-truth ${retryNote}`);
-      outcome = await runOne({ ...a, environmentRetry: retryNote, firstStopReason: outcome.stopReason }, arena, extra);
-    } else {
-      const bootNote = bootRetryNote(outcome);
-      if (bootNote) {
-        console.error(`player-truth ${bootNote}`);
-        // Keep attempt 1's evidence: move its out dir aside so the retry cannot overwrite it.
-        let moved = null;
-        try { moved = `${outcome.outDir}-attempt1`; rmSync(moved, { recursive: true, force: true }); renameSync(outcome.outDir, moved); } catch { moved = null; }
-        const first = bootAttemptRecord(outcome, bootNote, moved && path.relative(ROOT, moved));
-        outcome = await runOne({ ...a, environmentRetry: bootNote, firstStopReason: outcome.stopReason, bootAttempts: [first] }, arena, extra);
-      }
-    }
+    const outcome = await runWithEnvironmentRetry(a, arena, extra);
     outcomes.push(outcome);
   }
   if (outcomes.length > 1) {

@@ -36,10 +36,15 @@ test('encounter and cargo lines format as callsign receipts', () => {
     commsToastSpec({ from: 'Free Trader Ana', text: 'holds full', kind: 'cargo' }),
     { text: 'FREE TRADER ANA: holds full', kind: 'info', ttl: 5 },
   );
+  assert.deepEqual(
+    commsToastSpec({ speaker: 'Archive censor', text: 'A record changed.', kind: 'encounter' }),
+    { text: 'ARCHIVE CENSOR: A record changed.', kind: 'info', ttl: 5 },
+  );
 });
 
 test('self-toasted kinds and empty lines stay out (no doubles, no blanks)', () => {
   assert.equal(commsToastSpec({ from: 'Derelict', text: 'x', kind: 'salvage' }), null);
+  assert.equal(commsToastSpec({ from: 'Storm chapel', text: 'Weather liturgy.', kind: 'special500' }), null);
   assert.equal(commsToastSpec({ from: 'RUMOR', text: '   ', kind: 'encounter' }), null);
   assert.equal(commsToastSpec(null), null);
   assert.equal(commsToastSpec({}), null);
@@ -58,6 +63,7 @@ test('binding turns each comms line into exactly one toast', () => {
   bindCommsLogToasts(bus);
   bus.emit('comms:log', { from: 'RUMOR', text: 'Sable Iask is dead.', kind: 'encounter' });
   bus.emit('comms:log', { from: 'Derelict', text: 'self-toasted', kind: 'salvage' });
+  bus.emit('comms:log', { from: 'Storm chapel', text: 'The full weather liturgy.', kind: 'special500' });
   assert.equal(toasts.length, 1);
   assert.equal(toasts[0].text, 'RUMOR: Sable Iask is dead.');
 });
