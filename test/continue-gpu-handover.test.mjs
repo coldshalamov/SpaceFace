@@ -59,6 +59,11 @@ function harness({ awaitCook = true, cook = async () => true } = {}) {
       s.mode = 'menu';
       bus.emit('game:startFailed', { error: error.message });
     },
+    // Continue now prepares the restored locale and re-applies accessibility
+    // before loading (main.js finalizeLoadedGame); both are platform boundaries.
+    ensureLocaleReady: async () => true,
+    startupLocale: 'en-US',
+    applyAccessibility() {},
     SF_DEBUG: false,
     console: { warn() {}, error() {}, log() {} },
   };
