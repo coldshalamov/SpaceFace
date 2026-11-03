@@ -133,15 +133,8 @@ ${FOOT} :is(.k-kbd, .dp-kbd, .sf-cru-kbd) { background:none !important; border:0
   border-radius:0 !important; padding:0 0 0 8px !important; color:rgb(${BONE} / .45) !important;
   font-size:12px !important; letter-spacing:.14em !important; }
 ${FOOT} :is(.k-kbd, .dp-kbd, .sf-cru-kbd) .k-kbd__paren { color:rgb(${BONE} / .3) !important; }
-/* the deckplate back key's ESC chip is re-boxed by the prep sheet (all:unset + border at
-   (1,9,1)); the crucible family's own voice is the bare glyph — ORRERY.md's pause grammar and
-   screenLayouts' .sf-back strip both say so — so this out-specifies it */
-${D} .k-foot .sf-back.k-word::after { all:unset !important; content:"ESC" / "" !important;
-  display:inline-block !important; margin-left:14px !important; padding:0 !important;
-  font:600 12px var(--dp-face-label, "Archivo") !important; letter-spacing:.06em !important;
-  line-height:1 !important; text-transform:uppercase !important; color:rgb(${BONE} / .45) !important;
-  background:none !important; border:0 !important; border-radius:0 !important;
-  box-shadow:none !important; vertical-align:baseline !important; }
+/* the deckplate back key keeps its boxed ESC chip (the prep sheet's keycap): every other screen's
+   back foot carries that bordered key, so the door must not strip it to a bare glyph */
 /* a short hero: the purse hairline collides with the arena line above it — the words climb and
    the rule retires (the 750 numeral still carries the purse) */
 @media (max-height:820px) {
