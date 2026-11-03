@@ -11,7 +11,7 @@
   "measured": "synchronous registry.get(\"ui\").frame plus authored src/ui requestAnimationFrame callback CPU bucketed per presentation timestamp, 150 ms warm-up discarded; worst combined UI sample per surface over a 600 ms headed window",
   "excluded": "browser layout/paint deferred after the owner callback is outside this CPU window; unclassified non-game requestAnimationFrame callbacks are reported separately as auxiliaryRaf* diagnostics",
   "seed": 47,
-  "uiSourceDigest": "524eaba7ded50f2caaef2adccee07f0f67d99c9371c3c217e6b6a015fda41b16",
+  "uiSourceDigest": "3e62e8d8a94d4846e8d2162720329d9362a1435f70f60d050e32d13258a75acb",
   "uiSourceFiles": {
     "index.html": "9c0ace1a3bbf68b3a3d09215be885e37f276abc617c54b8ef629eb8d4f5f0e64",
     "src/ui/accessibility.js": "56b7068f9460e7175a6d2f8d66537e67949d07db79994b918165b1d7dd7dc1a8",
@@ -171,7 +171,7 @@
     "src/ui/orrery/commsLayouts.js": "076fb329f47adcdbd14d7b3bf90d6c15e7c01f7e238924cd0cd63e2053aed21c",
     "src/ui/orrery/consoleStandard.js": "230861120309fd47ec8c3ccef439cf7fd8f067162cb8a01796da4473c1eff500",
     "src/ui/orrery/constellation.js": "ecd18042350f781bc79a6a7d146ca7985bf6a8a7400ac6128922de12f5710b56",
-    "src/ui/orrery/constellationCssSource.js": "a5aa9aa47004cdd69402280ced7b872af7ce21bd0482a16f2de6991736dad9b6",
+    "src/ui/orrery/constellationCssSource.js": "bb0f2495141252cad4ffd0f5e795788ef7916a23bc3503a293c05e37a86e60b5",
     "src/ui/orrery/constellationLayouts.js": "a280223b81173a6c7aa4126e8bc4cc3779cea3ff3dda9a2bd4012044b26fb0e3",
     "src/ui/orrery/constellationMedals.js": "1a7474e2991a429e30b57805ae6ff2c26349fac0b96c8b46769fbce44c296b8c",
     "src/ui/orrery/creditsLayouts.js": "64bc0b994e38b3a03d6b9d934f6013af741c799d654deb046a2b461834f78287",
