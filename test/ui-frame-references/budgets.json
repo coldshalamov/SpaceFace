@@ -11,7 +11,7 @@
   "measured": "synchronous registry.get(\"ui\").frame plus authored src/ui requestAnimationFrame callback CPU bucketed per presentation timestamp, 150 ms warm-up discarded; worst combined UI sample per surface over a 600 ms headed window",
   "excluded": "browser layout/paint deferred after the owner callback is outside this CPU window; unclassified non-game requestAnimationFrame callbacks are reported separately as auxiliaryRaf* diagnostics",
   "seed": 47,
-  "uiSourceDigest": "b228732f8c7ef3931f3d6d35bc86ba07c40f9d83cb365112d2b4e6dd1c61246e",
+  "uiSourceDigest": "5826f1ba0014cb4e7d6806612f967abc8c4bd11931b33bd9e5017e73e2bf50c0",
   "uiSourceFiles": {
     "index.html": "9c0ace1a3bbf68b3a3d09215be885e37f276abc617c54b8ef629eb8d4f5f0e64",
     "src/ui/accessibility.js": "56b7068f9460e7175a6d2f8d66537e67949d07db79994b918165b1d7dd7dc1a8",
@@ -319,7 +319,7 @@
     "src/ui/screens/pause.js": "1b1995a43364670a376da2e42c5b0b008fcfbcbdbc637fdb93a4bca16acd25b9",
     "src/ui/screens/physicsVenues.js": "c618a414d43d51fd6232e33aa6d782ef1de68f7ede4bf435d4da5ea9d7dc8724",
     "src/ui/screens/raceBoard.js": "1ba95426bb3c03e2ff97adb5f337b525a3516391728d9e4ebb8b8f373fa072b1",
-    "src/ui/screens/range.js": "9dd00dc8ff9b05c2300cf8bf6d4d12abd305d30582e052fa28de539aa52a6673",
+    "src/ui/screens/range.js": "8ca1acc4861e2af42d298e5696f1990985875cc4cccdf258c7a5835cd3acf25b",
     "src/ui/screens/replay.js": "4cdf7e4af11fcb8d2380c493cf1d9e070b269f68319fe26df99f69ea105547c3",
     "src/ui/screens/resultsSheet.js": "7650d44ed2f6e8a0b93ef2888fd02f7e89e9473e24e20dd26091c2dbe915d6d4",
     "src/ui/screens/sandbox.js": "b825ea93500a10a099cc63f5806263f16a93cbc3c92329c5cb8393de7915cf89",
