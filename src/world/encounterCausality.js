@@ -2,6 +2,9 @@
 // Pure data/functions: no state writes, no Three.js, no wall clock, no ambient randomness.
 
 import { hash32 } from '../core/rng.js';
+import { COMMODITIES } from '../data/commodities.js';
+
+const COMMODITY_IDS = new Set(COMMODITIES.map((commodity) => commodity.id));
 
 export const ENCOUNTER_CAUSALITY_SCHEMA_VERSION = 1;
 
@@ -208,6 +211,13 @@ export function causeContractOffer(cause, station, seed = 1) {
   const riskTier = 1 + (hash32(seed >>> 0 || 1, cause.fingerprint, 'risk') % 3);
   const reward_cr = 480 + riskTier * 180 + (hash32(seed >>> 0 || 1, cause.fingerprint, 'reward') % 121);
   const id = `aftc_${cause.fingerprint.slice(4)}_${attempt}`;
+  // The generic fallback is a fresh replacement order, not the missing physical lot. If the
+  // opening raid recorded its commodity, request that commodity rather than silently turning
+  // a working ore barge into a fuel shipment. Actual custody work suppresses this fallback.
+  const raidReplacement = cause.shapeId === 'opening_hauler_raid' && cause.outcome === 'robbed';
+  // Old or damaged records with no known commodity cannot justify a replacement of any kind.
+  if (raidReplacement && !COMMODITY_IDS.has(cause.commodityId)) return null;
+  const replacementCommodity = raidReplacement ? cause.commodityId : 'cmdty_fuel_cells';
   const params = cause.remedyType === 'patrol_clear'
     ? { clearCount: 2, killCount: 0, targetStrength: 1.4 + riskTier * 0.45, fValue: 1.4 + riskTier * 0.45, taskTime: 90 }
     : cause.remedyType === 'bounty_hunt'
@@ -215,7 +225,7 @@ export function causeContractOffer(cause, station, seed = 1) {
       : cause.remedyType === 'recon_scan'
         ? { scanTargets: 1, progress: 0, fValue: 1.25, taskTime: 35 }
         : cause.remedyType === 'cargo_delivery'
-          ? { cmdtyId: 'cmdty_fuel_cells', qty: 6 + riskTier * 2, cargoValue: 600 + riskTier * 160, fValue: 1.25, taskTime: 30, passengers: 0 }
+          ? { cmdtyId: replacementCommodity, qty: 6 + riskTier * 2, cargoValue: 600 + riskTier * 160, fValue: 1.25, taskTime: 30, passengers: 0 }
           : { cmdtyId: 'cmdty_salvage_electronics', qty: 2 + riskTier, cargoValue: 360 + riskTier * 120, fValue: 1.2, taskTime: 30 };
   return {
     id,
@@ -232,7 +242,7 @@ export function causeContractOffer(cause, station, seed = 1) {
     distance: 600,
     params,
     title: `Aftermath: ${cause.actor} at ${cause.zoneName}`,
-    summary: `Evidence: ${cause.evidence} Remedy: ${cause.remedy}`,
+    summary: `Evidence: ${cause.evidence} Remedy: ${cause.remedy}${raidReplacement ? ' This is a new replacement order; its quantity is not a count of the lost lot.' : ''}`,
     cause: {
       tag: cause.consequenceKind,
       fingerprint: cause.fingerprint,
