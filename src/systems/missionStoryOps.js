@@ -16,6 +16,7 @@ import { normalizeBlackFlagJobs } from '../missions/blackFlagMissions.js';
 import { normalizeStandingOrders } from './captainStandingOrders.js';
 import { ADVENTURE_SPEED_CONTRACTS } from '../data/adventureSpeedContracts.js';
 import { RED_KITE } from '../data/redKite.js';
+import { nestOutcomeReceipt } from '../data/nestVisit.js';
 import { BEAT_HINT, BEAT_TRIGGER, BRANCH_CHAIN_COUNT, BRANCH_CHAIN_TYPE, BRANCH_FACTION, BRANCH_INTRO_BY_BRANCH, CONTRACT_47A_B0_TAG, CONTRACT_47A_B1_TAG, CONTRACT_47A_B2_TAG, CONTRACT_47A_B3_TAG, CONTRACT_47A_SAMPLE_ID, CONTRACT_CLAIM_CUT_PERIOD_S, CONTRACT_CLAIM_FLEE_RANGE_WU, CONTRACT_CLAIM_ORBIT_RAD_PER_S, CONTRACT_CLAIM_PLAYER_RANGE_WU, CONTRACT_CLAIM_SCAN_LABEL, CONTRACT_CLAIM_WORK_RANGE_WU, HOME_FACTION, MISSION_WRECK_COLLISION_MASK, SECTOR_BY_ID, STATION_INFO, STORY_SIGNAL_BY_KIND, TYPE_BY_ID, campaign47aOutcomeKey, campaign47aRouteKind, contractClaimSiteMission, crucibleScreenIsLive, isCapitalBossMission, isStoryBranchIntroOffer, missionHostileSpawnPos, missions, mulberryLocal, normalizeMissionReceipts, normalizeSetPieceSettlements, salvagePoolUnits, setPieceCauseOf, setPieceEventFields } from './missions.js';
 import { QUIET_BERTH_TUNING, QUIET_BERTH_TYPE, SPLIT_MANIFEST_LOTS, SPLIT_MANIFEST_TUNING, SPLIT_MANIFEST_TYPE, YARD_CUES, splitManifestNetOffset, splitManifestWreckOffset, yardSinkPos } from '../data/yardContracts.js';
 import { missionIdentityOf } from '../world/worldRecords.js';
@@ -1762,6 +1763,26 @@ export const missionStoryOps = {
     if (res.stepId) {
       this._refreshEmbodiedStoryBoards();
       this._refreshNavigation({ forceStory: true, silent: true });
+      // The accepted ordered step, not a raw growth event or proximity, owns this
+      // handback. Stored growth may be reconciled away from the garden on Continue.
+      if (beat.beat === 2 && res.stepId === 'compost') {
+        this.bus.emit('comms:popup', {
+          id: 'b2_compost_nest_handoff', sender: 'ROOK', category: 'story', ttl: 10, persist: true,
+          text: 'Your garden growth is on the books. The paid 240t run is optional. Next: the Nest in the south radiation lane. Approach from the east; fight or withdraw alive.',
+        });
+      } else if (beat.beat === 2 && res.stepId === 'nest') {
+        const receipt = nestOutcomeReceipt(this.state);
+        const outcome = {
+          carrier_down: 'The Nest carrier went down.',
+          carrier_gutted: "The Nest carrier's launch couplings were breached.",
+          nest_emptied: 'The Nest launched its last Wasp; both blast baffles were torn away.',
+          carrier_escapes: 'Contact broke. The surviving carrier remains a Reach threat.',
+        }[receipt?.outcome];
+        if (outcome) this.bus.emit('comms:popup', {
+          id: 'b2_nest_registry_handoff', sender: 'ROOK', category: 'story', ttl: 10, persist: true,
+          text: `${outcome} Tethys has the Registry Writ. Dock and read it; scan the named ship before choosing force or custody.`,
+        });
+      }
     }
     return true;
   },

@@ -592,11 +592,18 @@ function physicalBodySurface(entity) {
 }
 
 // Environment is the absence of a responsible actor. A nearest-player id on
-// that tag is not a throw. A matching recent impulse record is a real cause
-// and keeps the actor. Damage does not read this id.
+// that tag is not a throw. A matching recent impulse from another actor is a
+// real cause and keeps the actor; the victim's own force must not self-credit
+// a later environmental contact. Damage does not read this id.
 function collisionProvenance(input) {
   const raw = normalizeProvenance(input.provenance, input.tick);
   if (raw.tag !== 'environment' || raw.actorId == null) return raw;
+  if (raw.actorId === input.target?.id) return Object.freeze({
+    actorId: null,
+    weaponId: null,
+    tag: 'environment',
+    appliedTick: raw.appliedTick,
+  });
   if (recentImpulseMatches(input.target, input.other, raw.actorId, input.tick)) return raw;
   return Object.freeze({
     actorId: null,
