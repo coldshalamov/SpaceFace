@@ -239,6 +239,16 @@ ${P} .sxb-vital__acts .orr-act__cost { font-family:${NUM} !important; font-size:
     grid-template-areas:"hull fuel hold note muni" !important; }
 }
 
+/* 901-959 wide x 461-640 tall: the foot is still two rows here, so the head's 167px scrollport shows only the hull and
+   ledger of the two-row crown grid. Put the five readings on ONE row, as 960+ does, trimmed to the ~530px crown: values go
+   to 12px, the cells follow each reading's own ink, so FUEL, HOLD and MUNITIONS stand in the visible band. */
+@media (min-width:901px) and (max-width:959px) and (min-height:461px) and (max-height:640px) {
+  ${P} .sxb-crown .sxb-vitals { grid-template-columns:minmax(0,91fr) minmax(0,85fr) minmax(0,83fr) minmax(0,125fr) minmax(0,125fr) !important;
+    grid-template-areas:"hull fuel hold note muni" !important; gap:4px 5px !important; }
+  ${P} .sxb-crown .sxb-vital__head { column-gap:4px !important; }
+  ${P} .sxb-crown .sxb-vital:not(.sxb-vital--note) .sxb-vital__value { font-size:12px !important; }
+}
+
 /* ---- the ad-boards: legible, never faint ----------------------------------------------------- */
 ${P} .sx-adboard, ${P} .sx-adboard * { font-family:${UI} !important; font-size:13px !important; letter-spacing:0 !important;
   text-transform:none !important; color:rgb(${BONE} / .82) !important; }
