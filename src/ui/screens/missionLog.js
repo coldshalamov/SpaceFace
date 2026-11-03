@@ -501,6 +501,14 @@ export function missionMapAction(state, mission, isTracked) {
   const targetSectorId = (wp && wp.sectorId) || mission.destSectorId || null;
   const sameSector = targetSectorId && currentSectorId && targetSectorId === currentSectorId;
   const hasLocalFix = !!(wp && wp.pos);
+  // The owner waypoint is the actual 47-A recovery site until its sample flag changes. Keep this
+  // exact opening contract's Local Map selection on that live fix; ordinary jobs and malformed
+  // fixes retain their existing explicit destination-station selection.
+  const b0RecoveryFix = !!contract47aReadout(mission)
+    && mission.params && mission.params.sampleRecovered === false
+    && wp && wp.pos
+    && Number.isFinite(wp.pos.x) && Number.isFinite(wp.pos.z)
+    && targetSectorId === currentSectorId;
   if (hasLocalFix || sameSector || !targetSectorId) {
     return mapHandoffAction({
       focus: MAP_FOCUS.LOCAL,
@@ -509,9 +517,10 @@ export function missionMapAction(state, mission, isTracked) {
       body: 'Show the live objective marker and nearby contacts.',
       missionId: mission.id,
       sectorId: targetSectorId,
-      stationId: mission.destStationId || (wp && wp.stationId) || null,
+      stationId: b0RecoveryFix ? null : mission.destStationId || (wp && wp.stationId) || null,
       pos: wp && wp.pos ? wp.pos : null,
       source: 'missionLog',
+      selectionTarget: b0RecoveryFix ? 'active-waypoint' : null,
     });
   }
   return mapHandoffAction({
@@ -938,7 +947,7 @@ function serviceReadinessAction(state, activeMissions) {
   return null;
 }
 
-function mapOpenIntentFromButton(btn) {
+export function mapOpenIntentFromButton(btn) {
   if (!btn) return { focus: MAP_FOCUS.SYSTEM, source: 'missionLog' };
   const sectorId = btn.getAttribute('data-map-sector-id') || null;
   const stationId = btn.getAttribute('data-map-station-id') || null;
@@ -958,6 +967,7 @@ function mapOpenIntentFromButton(btn) {
     missionId,
     pos,
     source: btn.getAttribute('data-map-source') || 'missionLog',
+    selectionTarget: btn.getAttribute('data-map-selection-target') || null,
   };
 }
 
@@ -972,7 +982,7 @@ function openMapScreen(ctx, screenIdOrIntent, maybeIntent) {
   });
 }
 
-function mapActionButtonAttrs(mapAction, missionId) {
+export function mapActionButtonAttrs(mapAction, missionId) {
   if (!mapAction) return '';
   const pos = mapAction.pos;
   return ' data-screen-id="' + escapeHtml(mapAction.screenId) + '"'
@@ -982,6 +992,7 @@ function mapActionButtonAttrs(mapAction, missionId) {
     + (pos && Number.isFinite(pos.x) ? ' data-map-pos-x="' + escapeHtml(String(pos.x)) + '"' : '')
     + (pos && Number.isFinite(pos.z) ? ' data-map-pos-z="' + escapeHtml(String(pos.z)) + '"' : '')
     + (mapAction.source ? ' data-map-source="' + escapeHtml(mapAction.source) + '"' : '')
+    + (mapAction.selectionTarget ? ' data-map-selection-target="' + escapeHtml(mapAction.selectionTarget) + '"' : '')
     + ' data-mid="' + escapeHtml(missionId || mapAction.missionId || '') + '"';
 }
 

@@ -19,9 +19,13 @@ import {
   activeMissionContractTerms,
   missionCommandBrief,
   missionMapAction,
+  mapActionButtonAttrs,
+  mapOpenIntentFromButton,
   objectiveText,
   recommendedActions,
 } from '../src/ui/screens/missionLog.js';
+import { applyMapOpenIntentToView, resolveMapOpenTarget } from '../src/ui/galaxyMap.js';
+import { mapHandoffAction, normalizeMapOpenIntent, setMapOpenIntent, takeMapOpenIntent } from '../src/ui/mapAuthority.js';
 
 const TAG = 'campaign47a:b0:recovery';
 
@@ -56,6 +60,19 @@ function fixtureWithSampleRock() {
 
 function mission47a(state) {
   return (state.missions.active || []).find((m) => m && m.storyTag === TAG) || null;
+}
+
+function mapButton(action, missionId) {
+  const attrs = mapActionButtonAttrs(action, missionId);
+  const values = Object.fromEntries(
+    [...attrs.matchAll(/(?:^|\s)(data-[\w-]+)="([^"]*)"/g)].map(([, name, value]) => [name, value]),
+  );
+  return {
+    attrs,
+    intent: mapOpenIntentFromButton({
+      getAttribute(name) { return Object.prototype.hasOwnProperty.call(values, name) ? values[name] : null; },
+    }),
+  };
 }
 
 test('the installer lands exactly one tracked 47-A row, and never appends a second', () => {
@@ -181,6 +198,27 @@ test('B0 brief follows the actual sample site, then the real recovery owner hand
   assert.equal(beforeMap.pos.x, source.pos.x, 'Map handoff keeps the owner waypoint position');
   assert.equal(beforeMap.pos.z, source.pos.z);
   assert.equal(beforeMap.sectorId, mission.destSectorId);
+  assert.equal(beforeMap.stationId, null, 'unrecovered B0 must not select its eventual berth');
+  const beforeButton = mapButton(beforeMap, mission.id);
+  assert.match(beforeButton.attrs, /data-map-selection-target="active-waypoint"/);
+  assert.equal(beforeButton.intent.selectionTarget, 'active-waypoint');
+  assert.equal(beforeButton.intent.source, 'missionLog', 'selection marker keeps caller provenance');
+  setMapOpenIntent(state, beforeButton.intent);
+  const normalizedBeforeMap = takeMapOpenIntent(state);
+  assert.equal(normalizedBeforeMap.selectionTarget, 'active-waypoint',
+    'the one-shot Map normalizer preserves the explicit selection discriminator');
+  const beforeView = applyMapOpenIntentToView({
+    zoom: 1, targetZoom: 1,
+    cams: { galaxy: { cx: 0, cy: 0 }, system: { cx: 0, cy: 0 }, local: { cx: 0, cy: 0 } },
+  }, normalizedBeforeMap, state);
+  assert.equal(beforeView.openTarget.kind, 'waypoint', 'Map selects the active recovery marker');
+  assert.equal(beforeView.openTarget.missionId, mission.id);
+  assert.equal(beforeView.openTarget.x, source.pos.x);
+  assert.equal(beforeView.openTarget.z, source.pos.z);
+  assert.equal(beforeView.cams.local.cx, source.pos.x, 'Local Map centers on the recovery site');
+  assert.equal(beforeView.cams.local.cy, source.pos.z);
+  const explicitBerth = resolveMapOpenTarget(state, { ...normalizedBeforeMap, stationId: mission.destStationId });
+  assert.equal(explicitBerth.kind, 'station', 'an explicit station request remains authoritative');
 
   // Use the real mining-yield mission owner at the marked rock; do not stamp recovery by hand.
   const creditsBefore = state.player.credits;
@@ -208,6 +246,96 @@ test('B0 brief follows the actual sample site, then the real recovery owner hand
   assert.equal(after.where, 'Helios Station (Helios Prime)');
   assert.match(after.how, /carry the recovered assay sample to Helios Station/i);
   const afterMap = missionMapAction(state, mission, true);
-  assert.equal(afterMap.stationId, mission.destStationId);
+  assert.equal(afterMap.stationId, mission.destStationId, 'recovery restores the explicit Helios selection');
+  assert.ok(afterMap.selectionTarget == null, 'post-recovery destination is not a positional objective');
   assert.equal(afterMap.pos, null);
+  const savedRecoveryIntentAfterHandoff = resolveMapOpenTarget(state, normalizedBeforeMap);
+  assert.equal(savedRecoveryIntentAfterHandoff.kind, 'station',
+    'a stale pre-recovery intent cannot keep selecting a waypoint after the owner hands off');
+  assert.equal(savedRecoveryIntentAfterHandoff.stationId, mission.destStationId);
+  const afterButton = mapButton(afterMap, mission.id);
+  assert.doesNotMatch(afterButton.attrs, /data-map-selection-target=/);
+  setMapOpenIntent(state, afterButton.intent);
+  const normalizedAfterMap = takeMapOpenIntent(state);
+  const afterView = applyMapOpenIntentToView({
+    zoom: 1, targetZoom: 1,
+    cams: { galaxy: { cx: 0, cy: 0 }, system: { cx: 0, cy: 0 }, local: { cx: 0, cy: 0 } },
+  }, normalizedAfterMap, state);
+  assert.equal(afterView.openTarget.kind, 'station');
+  assert.equal(afterView.openTarget.stationId, mission.destStationId);
+});
+
+test('B0 keeps the berth selection when its owner waypoint position is absent or invalid', () => {
+  const cases = [
+    ['missing', (wp) => { delete wp.pos; }],
+    ['null', (wp) => { wp.pos = null; }],
+    ['non-finite x', (wp) => { wp.pos = { x: NaN, z: 80 }; }],
+    ['non-finite z', (wp) => { wp.pos = { x: 120, z: Infinity }; }],
+  ];
+  for (const [label, corrupt] of cases) {
+    const { state, mission } = fixtureWithSampleRock();
+    corrupt(state.nav.waypoint);
+    const action = missionMapAction(state, mission, true);
+    assert.equal(action.stationId, mission.destStationId, `${label} owner fix keeps destination selection`);
+    const button = mapButton(action, mission.id);
+    assert.doesNotMatch(button.attrs, /data-map-selection-target=/);
+    const normalized = normalizeMapOpenIntent(button.intent);
+    assert.equal(Object.hasOwn(normalized, 'selectionTarget'), false, `${label} owner fix keeps the default intent shape`);
+    assert.equal(resolveMapOpenTarget(state, normalized).kind, 'station', `${label} fix does not select a fake waypoint`);
+  }
+});
+
+test('a marked positional selection requires the matching owner and exact current waypoint fix', () => {
+  const cases = [
+    ['moved owner fix', (waypoint) => { waypoint.pos = { x: waypoint.pos.x + 1, z: waypoint.pos.z }; }],
+    ['foreign waypoint mission', (waypoint) => { waypoint.missionId = 'foreign-mission'; }],
+  ];
+  for (const [label, replaceWaypoint] of cases) {
+    const { state, mission } = fixtureWithSampleRock();
+    const action = missionMapAction(state, mission, true);
+    const savedIntent = normalizeMapOpenIntent(mapButton(action, mission.id).intent);
+    replaceWaypoint(state.nav.waypoint);
+    const target = resolveMapOpenTarget(state, savedIntent);
+    assert.equal(target.kind, 'station', `${label} must not select the stale positional objective`);
+    assert.equal(target.stationId, mission.destStationId);
+  }
+});
+
+test('generic mission fallback and focus-only map opens retain their existing selection behavior', () => {
+  const { state } = fixture();
+  const generic = {
+    id: 'generic-map-mission', status: 'active', type: 'cargo_delivery',
+    destStationId: 'station_helios', destSectorId: 'sector_helios_prime', params: {},
+  };
+  state.missions.active.push(generic);
+  const genericFallback = resolveMapOpenTarget(state, {
+    focus: 'local', missionId: generic.id, stationId: null, sectorId: null, pos: null,
+  });
+  assert.equal(genericFallback.kind, 'station', 'positionless generic missions still resolve their berth');
+  assert.equal(genericFallback.stationId, generic.destStationId);
+  const legacyAuthorityState = { ui: {} };
+  setMapOpenIntent(legacyAuthorityState, mapHandoffAction({
+    focus: 'local', missionId: generic.id, source: 'missionLog',
+  }));
+  const legacyRoundTrip = takeMapOpenIntent(legacyAuthorityState);
+  assert.deepEqual(legacyRoundTrip, {
+    focus: 'local', sectorId: null, missionId: generic.id, stationId: null,
+    pos: null, label: 'LOCAL MAP', source: 'missionLog',
+  }, 'legacy/default Map handoffs keep their previous normalized shape');
+  assert.equal(Object.hasOwn(normalizeMapOpenIntent({ focus: 'local', missionId: generic.id }), 'selectionTarget'), false,
+    'legacy/default Map intent shape does not grow a null discriminator field');
+  const noBerth = {
+    id: 'generic-local-mission', status: 'active', type: 'mining_quota',
+    destStationId: null, destSectorId: 'sector_helios_prime', params: {},
+  };
+  state.missions.active.push(noBerth);
+  state.nav.waypoint = { missionId: noBerth.id, sectorId: noBerth.destSectorId, pos: { x: 12, z: 24 } };
+  const noBerthAction = missionMapAction(state, noBerth, true);
+  const noBerthButton = mapButton(noBerthAction, noBerth.id);
+  assert.doesNotMatch(noBerthButton.attrs, /data-map-selection-target=/);
+  const genericPosition = resolveMapOpenTarget(state, normalizeMapOpenIntent(noBerthButton.intent));
+  assert.equal(genericPosition.kind, 'sector',
+    'unmarked generic local missions retain their existing sector fallback');
+  assert.equal(resolveMapOpenTarget(state, { focus: 'local' }), null,
+    'keyboard and ordinary Map opens remain focus-only');
 });
