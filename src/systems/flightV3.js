@@ -50,6 +50,7 @@ import { massline2Flag, travelFlag } from '../data/featureFlags.js';
 import { raceGridHolding } from './racingSteer.js';
 import { consumePrecisionBoostIntent } from './racingPrecision.js';
 import { entityNeedsFlightStep } from '../world/activityRuntime.js';
+import { PLANET_SITE } from '../data/planets.js';
 
 // Coordinated banking: roll follows the ACTUAL turn state (yaw rate × forward speed), not the
 // stick. A ship carving at speed rolls into the turn like an aircraft; the same ship pivoting
@@ -1428,13 +1429,31 @@ function resolveAutopilotInput(host, entity, rawInput, input, dt, state, profile
     return null;
   }
 
-  const target = resolveAutopilotTarget(state, autopilot);
+  let target = resolveAutopilotTarget(state, autopilot);
   if (!target) {
     stopAutopilot(host, state, 'lost-target');
     return null;
   }
 
   if (autopilot.rendezvous === true) return resolveMovingRendezvous(host, entity, input, state, profile, target, autopilot);
+
+  // The chart's Orchard approach is on the frame side. Round the hazardous disc in
+  // short outer legs instead of drawing a chord through the planet from the far side.
+  const center = state?.planet?.center;
+  let perimeterLeg = false;
+  if (autopilot.planetaryApproach === PLANET_SITE.id && state?.planet?.active && center
+      && state?.world?.currentSectorId === PLANET_SITE.sectorId) {
+    const rx = entity.pos.x - center.x, rz = entity.pos.z - center.z;
+    const radius = Math.hypot(rx, rz), angle = Math.atan2(rz, rx);
+    const desired = Math.atan2(target.z - center.z, target.x - center.x);
+    const delta = wrapAngle(desired - angle);
+    const orbit = PLANET_SITE.bands.sling + PLANET_SITE.hysteresis + 380;
+    if (radius < orbit * 0.92 || Math.abs(delta) > Math.PI / 6) {
+      const next = radius < orbit * 0.92 ? angle : angle + Math.sign(delta) * Math.PI / 6;
+      target = { ...target, x: center.x + Math.cos(next) * orbit, z: center.z + Math.sin(next) * orbit };
+      perimeterLeg = true;
+    }
+  }
 
   const pos = entity.pos || { x: 0, z: 0 };
   const vel = entity.vel || { x: 0, z: 0 };
@@ -1443,7 +1462,22 @@ function resolveAutopilotInput(host, entity, rawInput, input, dt, state, profile
   const dist = Math.hypot(dx, dz);
   const arrivalRadius = resolveAutopilotArrivalRadius(entity, autopilot, target);
   const speed = Math.hypot(finite(vel.x), finite(vel.z));
-  if (dist <= arrivalRadius && speed < 11) {
+  const underPlanetPull = !perimeterLeg && state?.planet?.active && center
+    && state?.world?.currentSectorId === PLANET_SITE.sectorId
+    && Math.hypot(target.x - center.x, target.z - center.z) < PLANET_SITE.bands.influence;
+  if (dist <= arrivalRadius && speed < 11 && underPlanetPull) {
+    if (!autopilot.arrivalHolding) {
+      autopilot.arrivalHolding = true;
+      autopilot.status = 'arrived';
+      host?.bus?.emit('nav:autopilot', autopilot);
+      host?.bus?.emit('toast', { text: 'Autopilot arrived', kind: 'info', ttl: 2 });
+    }
+    const counter = counterVelocityInput(entity);
+    const held = { ...input, ...counter, turn: 0, boost: false, brake: true };
+    syncAutopilotInput(state, held, { dist, arrivalRadius, braking: true, avoiding: false, target, status: 'arrived' });
+    return { active: true, input: held, telemetry: { dist, arrivalRadius, status: 'arrived', target } };
+  }
+  if (!perimeterLeg && dist <= arrivalRadius && speed < 11) {
     stopAutopilot(host, state, 'arrived');
     const arrivedInput = { ...input, throttle: 0, strafe: 0, turn: 0, boost: false, brake: false };
     syncAutopilotInput(state, arrivedInput, { dist, arrivalRadius, braking: false, avoiding: false, target, status: 'arrived' });
@@ -1721,6 +1755,7 @@ function stopAutopilot(host, state, reason) {
   // latch is latent-only today but never meaningful once autopilot is off.
   autopilot.brakeSettled = false;
   autopilot.brakeHold = false;
+  autopilot.arrivalHolding = false;
   if (autopilot.active !== true) return;
   clearAutopilotAvoidance(autopilot, true);
   autopilot.active = false;

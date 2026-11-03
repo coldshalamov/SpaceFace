@@ -19,6 +19,9 @@ export const trafficJobOps = {
   // Other roles keep their ambient stepper. Builds the route from the same in-sector stations /
   // asteroids the ambient steppers already use, so no new spawn fountain and no new geometry authority.
   _maybeAssignJob(ent, role, originStation, target, stations, sectorId) {
+    // Rescue lifters need the traffic responder. A generic tender job otherwise owns their
+    // steering forever and prevents them from answering a mayday.
+    if (role === 'rescue') return;
     // Helios' existing ore barge gathers the cutter's loose ore; it is not a second miner.
     if (role === 'ore_carrier' && sectorId === 'sector_helios_prime') return;
     const assign = this.helpers && this.helpers.npcJobs && this.helpers.npcJobs.assign;
@@ -35,6 +38,24 @@ export const trafficJobOps = {
       const rec = this.state.traffic.freighters.find((candidate) => candidate && candidate.id === ent.id);
       this._setTrafficManifest(ent, rec, this._buildMinerManifest(ent, 0, null, 0, role));
     }
+  },
+
+  _releaseLegacyRescueJob(entity, rec) {
+    if (!entity || entity.alive === false || rec?.role !== 'rescue'
+      || entity.data?.trafficRole !== 'rescue' || !entity.data.worldRecordId) return false;
+    const id = entity.data.jobId;
+    const jobs = this.helpers?.npcJobs;
+    if (!id || typeof jobs?.get !== 'function' || typeof jobs?.release !== 'function'
+      || typeof jobs?.controlClaim !== 'function' || jobs.controlClaim(id)) return false;
+    const entry = jobs.get(id);
+    if (!entry || entry.entityId !== entity.id || entry.worldRecordId !== entity.data.worldRecordId
+      || entry.job?.kind !== 'tender' || (entry.entityRef && entry.entityRef !== entity)
+      || entity.data.worldSiteTrafficHookId || entity.data.claimTravelTrafficHookId
+      || entity.data.claimDepotId || entry.towAssist || entry.job.payload
+      || !Array.isArray(entry.job.route) || entry.job.route.length !== 2
+      || !String(entry.job.route[0]?.id || '').startsWith('berth:')
+      || !String(entry.job.route[1]?.id || '').startsWith('client:')) return false;
+    return jobs.release(id) === true;
   },
 
   _buildJobSpec(role, ent, originStation, target, stations, sectorId) {

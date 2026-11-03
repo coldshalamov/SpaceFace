@@ -20,7 +20,8 @@ export function readLineVisualProfile(state, out = {}) {
   const arcade = (kind === 'survival' || kind === 'lab' || kind === 'sandbox') && state.run.phase !== 'inactive';
   const permanent = !arcade && !state?.survival?.active && !state?.gauntlet?.active && !state?.racing?.active;
   const cls = lineClassForIndex(permanent ? bag?.classIndex : 1);
-  const active = !!state?.player?.tether?.active;
+  const tether = state?.player?.tether;
+  const active = !!tether?.active;
   out.classIndex = cls.index;
   out.label = cls.label;
   out.hardware = cls.hardware;
@@ -39,7 +40,21 @@ export function readLineVisualProfile(state, out = {}) {
   out.headColor = lineHead && lineHead.cableColor != null ? lineHead.cableColor : null;
   out.markColor = out.headMark && MARK_COLORS[out.headMark] != null ? MARK_COLORS[out.headMark] : null;
   out.heat = permanent ? Math.max(0, Math.min(1, Number(bag?.winchHeat) || 0)) : 0;
-  out.overClass = permanent && active && bag?.overClass === true;
+  // The worker's class verdict and the player tether are separate mirror paths. A reply
+  // can contain the verdict for the previous cable while the next cable is already visible.
+  // Only a matching attachment and target lifetime may name the current hold. Main-lane
+  // authoritative bags have no presentationHold and keep their direct owner read.
+  const projected = !!bag && Object.prototype.hasOwnProperty.call(bag, 'presentationHold');
+  const hold = projected ? bag.presentationHold : null;
+  const target = active && tether?.targetId != null ? state?.entities?.get?.(tether.targetId) : null;
+  const matches = !projected || (!!hold && active && tether.targetId != null && tether.attachmentId != null
+    && hold.targetId === tether.targetId && hold.attachmentId === tether.attachmentId
+    && Number.isSafeInteger(hold.occupantGeneration) && hold.occupantGeneration > 0
+    && !!target && target.alive !== false && target.occupantGeneration === hold.occupantGeneration);
+  out.verdictKnown = !!(permanent && active && typeof bag?.overClass === 'boolean' && matches);
+  // Null is unknown, rather than a negative verdict. Heat is the winch's own stored heat,
+  // so it remains visible while a released line cools or a hold is awaiting its identity.
+  out.overClass = !permanent || !active ? false : out.verdictKnown ? bag.overClass : null;
   out.ceilingT = cls.fullControlMassT;
   out.active = active;
   return out;

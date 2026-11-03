@@ -1711,9 +1711,11 @@ export class Sg02DynamicBodyOwner {
       if (continuation) this._applyProjectileContinuation(rec, continuation);
     }
 
-    if (tumbleFling) {
-      for (const rec of this.dynamicRecords) {
-        if (rec._tumbling !== rec._tumbleMaterial) this._syncTumbleMaterial(rec, rec._tumbling === true);
+    for (const rec of this.dynamicRecords) {
+      // Switching the feature off must retire an already-installed tumble profile too.
+      // Fresh legacy bodies retain their untouched base-material path.
+      if (rec._tumbling !== rec._tumbleMaterial && (tumbleFling || rec._tumbleMaterial === true)) {
+        this._syncTumbleMaterial(rec, rec._tumbling === true);
       }
     }
 
@@ -3654,6 +3656,11 @@ export class Sg02DynamicBodyOwner {
       if (before) observeAppliedImpulse(rec.entity, before, rec.body.linvel(), impulse.provenance, impulse.tick ?? this.tick, impulse.kind);
     }
     for (const impulse of command.torqueImpulses || []) {
+      // A hull already loose in the previous native solve received the contact's angular
+      // impulse there, through its actual shape and inertia. The legacy hitstun entry
+      // spin is a control consequence, not a second physical hit. Keep it for a newly
+      // disabled helm; deliberate weapon/throw torque remains unmarked and passes through.
+      if (impulse.kind === 'contact_tumble_entry' && rec._tumbleMaterial === true) continue;
       applyYawTorqueImpulse(rec, impulse, impulse);
     }
   }

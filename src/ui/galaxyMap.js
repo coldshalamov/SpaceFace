@@ -54,9 +54,11 @@ import {
   globalToSectorLocalForSector,
   sectorLocalToGlobalForSector,
   sectorGlobalOrigin,
+  sectorMembershipAtGlobal,
   SECTOR_ORIGIN_LATTICE_WU,
 } from '../data/sectorCoordinates.js';
 import { zonesForSector, zoneTypeMeta, zoneThreat, zoneAt } from '../data/sectorZones.js';
+import { PLANET_SITE, anvilOrchardFramePosition } from '../data/planets.js';
 import {
   auditEdgeKey,
   gateAuditCatalogEntry,
@@ -540,17 +542,20 @@ export function mapSearchTargetPriority(state, target) {
   const targetEntityId = target.entityId ?? target.targetEntityId ?? target.id;
   // Promote the body the course actually armed: the stamped bind resolves the live holder, so a
   // recycled slot's new occupant cannot inherit the boost meant for the old one.
-  const boundId = waypoint && waypoint.stable
+  const localWaypoint = mapWaypointSector(state, waypoint) === currentSectorId(state);
+  const boundId = localWaypoint && waypoint && waypoint.stable
     ? ((resolveEntitySelection(state, waypoint.stable) || {}).id ?? null)
-    : (waypoint && waypoint.targetEntityId != null ? waypoint.targetEntityId : null);
+    : (localWaypoint && waypoint && waypoint.targetEntityId != null ? waypoint.targetEntityId : null);
   if (boundId != null && String(targetEntityId) === String(boundId)) return 1_000;
   const trackedMissionId = state && state.ui && state.ui.trackedMissionId;
   const trackedMission = trackedMissionId && state.missions && Array.isArray(state.missions.active)
     ? state.missions.active.find((mission) => mission && mission.status === 'active' && mission.id === trackedMissionId)
     : null;
-  if (trackedMission && Array.isArray(trackedMission.targetEntityIds)
+  const trackedSector = trackedMission && (trackedMission.destSectorId || trackedMission.params?.sectorId);
+  const trackedIsLocal = !trackedSector || trackedSector === currentSectorId(state);
+  if (trackedIsLocal && trackedMission && Array.isArray(trackedMission.targetEntityIds)
     && trackedMission.targetEntityIds.some((id) => String(id) === String(targetEntityId))) return 950;
-  const trackedPos = trackedMission && trackedMission.params && trackedMission.params.samplePos;
+  const trackedPos = trackedIsLocal && trackedMission && trackedMission.params && trackedMission.params.samplePos;
   if (trackedPos && Number.isFinite(target.x) && Number.isFinite(target.z)
     && Math.hypot(target.x - trackedPos.x, target.z - trackedPos.z) <= 0.5) return 925;
   const goal = activeMapGoal(state);
@@ -627,10 +632,32 @@ export function readRouteExecutorForMap(executor) {
   };
 }
 
+// Local courses written by world.js carry a global position but may have no sectorId.
+// Infer only from the stored fix: resolving a stale presentation id first could make a
+// recycled entity in the current sector move an old course onto the wrong chart node.
+export function mapWaypointSector(state, waypoint) {
+  if (!waypoint) return null;
+  if (waypoint.sectorId) return waypoint.sectorId;
+  const pos = waypoint.pos;
+  if (pos && Number.isFinite(pos.x) && Number.isFinite(pos.z)) return sectorMembershipAtGlobal(pos);
+  return null;
+}
+
+export function localMapWaypointPosition(state, waypoint) {
+  if (!waypoint) return null;
+  const sector = mapWaypointSector(state, waypoint);
+  const current = currentSectorId(state);
+  if (sector && current && sector !== current) return null;
+  return resolveWaypointPresentationPosition(state, waypoint);
+}
+
 export function activeMapGoal(state) {
   if (!state) return null;
   const wp = state.nav && state.nav.waypoint;
-  const wpPos = resolveWaypointPresentationPosition(state, wp);
+  const wpSector = mapWaypointSector(state, wp);
+  const wpPos = wpSector && currentSectorId(state) && wpSector !== currentSectorId(state)
+    ? (wp?.pos && Number.isFinite(wp.pos.x) && Number.isFinite(wp.pos.z) ? wp.pos : null)
+    : resolveWaypointPresentationPosition(state, wp);
   const trackedId = state.ui && state.ui.trackedMissionId;
   const active = (state.missions && state.missions.active) || [];
   const tracked = trackedId ? active.find((m) => m && m.status === 'active' && m.id === trackedId) : null;
@@ -638,7 +665,7 @@ export function activeMapGoal(state) {
     ? state.nav.route.legs
     : [];
   const routeDest = routeLegs.length ? routeLegs[routeLegs.length - 1].to : null;
-  const sectorId = (wp && wp.sectorId)
+  const sectorId = wpSector
     || (tracked && (tracked.destSectorId || (tracked.params && tracked.params.sectorId)))
     || routeDest
     || (wpPos ? currentSectorId(state) : null);
@@ -2074,6 +2101,35 @@ export function aftermathChartMarkers(state, sectorId) {
   return rows;
 }
 
+// One physical zone target for the painted ring and the search result. Its existing course
+// contract approaches the region with its radius; searching must not invent a new destination.
+function planetaryApproach(center, playerPos) {
+  if (!playerPos || !Number.isFinite(playerPos.x) || !Number.isFinite(playerPos.z)) return null;
+  const frame = anvilOrchardFramePosition(center);
+  const dx = frame.x - center.x, dz = frame.z - center.z;
+  const distance = Math.hypot(dx, dz);
+  if (!(distance > 0.001)) return null;
+  // Land outside the sling band's hysteresis edge; the extra margin allows ordinary braking.
+  const radius = PLANET_SITE.bands.sling + PLANET_SITE.hysteresis + 240;
+  return { x: center.x + dx / distance * radius, z: center.z + dz / distance * radius };
+}
+
+export function systemZoneTarget(zone, sectorId, playerPos = null) {
+  if (!zone || !sectorId) return null;
+  const pos = sectorLocalToGlobalForSector({ x: zone.x, z: zone.z }, sectorId);
+  const isAnvil = zone.id === PLANET_SITE.zoneId && sectorId === PLANET_SITE.sectorId;
+  const approach = isAnvil ? planetaryApproach(pos, playerPos) : null;
+  return { kind: 'zone', id: zone.id, sectorId, x: pos.x, z: pos.z,
+    drawPos: { x: zone.x, z: zone.z }, radius: zone.radius, name: zone.name,
+    factionId: zone.factionId, threat: zone.threat,
+    // Generic zone arrival stops inside Anvil's atmosphere. The authored planet has a
+    // separate perimeter fix; an unrecognized planetary zone remains inspection-only.
+    ...(isAnvil && approach ? { coursePos: approach, courseArrivalRadius: 80,
+      courseLabel: `${zone.name} · outer approach`, planetaryApproach: true }
+      : zone.type === 'planetary_mass' ? { courseDisabled: true } : {}),
+    detail: `${zone.hazard ? 'Hazard' : 'Zone'} · ${zone.typeLabel} · threat ${zone.threat || 0}` };
+}
+
 export function buildSystemModel(state, sectorId, options = {}) {
   const sid = sectorId || currentSectorId(state);
   const record = sectorRecordById(state, sid);
@@ -2103,6 +2159,7 @@ export function buildSystemModel(state, sectorId, options = {}) {
     return {
       id: z.id,
       name: z.name || meta.label,
+      authoredName: typeof z.name === 'string' && !!z.name.trim(),
       type: z.type,
       typeLabel: meta.label,
       color: meta.color || INK.ink1,
@@ -2528,6 +2585,7 @@ export function resolveCourseTarget(target) {
     if (target.entityId != null) payload.targetEntityId = target.entityId;
     if (target.targetEntityId != null) payload.targetEntityId = target.targetEntityId;
     if (target.stationId) payload.stationId = target.stationId;
+    if (target.planetaryApproach === true) payload.planetaryApproach = PLANET_SITE.id;
     const gateDest = target.targetSectorId || target.gateTo || null;
     if (kind === 'gate' && gateDest) payload.sectorId = gateDest;
     return payload;
@@ -2595,7 +2653,18 @@ export function resolveCourseEntityId(state, target) {
  * durable identity re-materialized onto a new instance rebinds to that instance.
  */
 export function commitCoursePayload(state, target) {
-  const payload = resolveCourseTarget(target);
+  let courseTarget = target;
+  if (target?.planetaryApproach === true) {
+    if (target.id !== PLANET_SITE.zoneId || target.sectorId !== PLANET_SITE.sectorId
+        || currentSectorId(state) !== PLANET_SITE.sectorId) return null;
+    const zone = zonesForSector(PLANET_SITE.sectorId).find((entry) => entry.id === PLANET_SITE.zoneId);
+    if (!zone?.center) return null;
+    const center = sectorLocalToGlobalForSector(zone.center, PLANET_SITE.sectorId);
+    const approach = planetaryApproach(center, playerEntity(state)?.pos);
+    if (!approach) return null;
+    courseTarget = { ...target, coursePos: approach, courseArrivalRadius: 80 };
+  }
+  const payload = resolveCourseTarget(courseTarget);
   if (payload && target && target.stable) {
     const liveId = resolveCourseEntityId(state, target);
     if (liveId == null) delete payload.targetEntityId;
@@ -3845,6 +3914,13 @@ function getSearchTargets(state, level, curSecId, claimsSystem = null, isHostile
       }
     }
   }
+  // Named danger rings already have a public selectable zone target on SYSTEM. Expose that
+  // exact target in search, without indexing anonymous generated clutter.
+  for (const zone of systemModel.zones) {
+    if (!zone.hazard || !zone.authoredName) continue;
+    const target = systemZoneTarget(zone, curSecId, playerEntity(state)?.pos);
+    if (target) targets.push(target);
+  }
   // Galaxy search can name every charted sector, so let its known station catalog answer the
   // same query after the player leaves the station's live sector. Static records are admitted
   // only behind the charted-sector boundary; current-system points above retain their live
@@ -3894,7 +3970,13 @@ function getSearchTargets(state, level, curSecId, claimsSystem = null, isHostile
     // searching the ambient contact list can never resolve the exact marker the canvas exposes.
     const goal = activeMapGoal(state);
     const waypoint = state && state.nav && state.nav.waypoint;
-    if (goal && goal.pos) {
+    const remote = goal && goal.sectorId && goal.sectorId !== curSecId;
+    if (remote) {
+      const node = galaxyModel.nodes.find((entry) => entry.id === goal.sectorId && entry.charted);
+      if (node) targets.push({ id: goal.id, name: goal.label, kind: 'sector', sectorId: goal.sectorId,
+        x: node.x, y: node.y, missionId: goal.missionId, objective: true, markerKind: goal.markerKind,
+        detail: `Active objective · ${node.name}` });
+    } else if (goal && goal.pos) {
       const goalTarget = {
         id: goal.id,
         name: goal.label,
@@ -6055,6 +6137,8 @@ _stepAnimation(now) {
             <span>Threat Index</span>
             <span class="gm-ins-row-val" style="color:${t.threat ? INK.red : INK.good}">Level ${t.threat || 0}</span>
           </div>
+          ${t.planetaryApproach ? '<div class="gm-ins-note">Autopilot holds outside the sling band near the Orchard. Fly inward to take control.</div>'
+            : t.courseDisabled ? '<div class="gm-ins-note">Planetary hazard — inspect the ring and approach manually.</div>' : ''}
         </div>
 
       `;
@@ -6181,7 +6265,7 @@ _stepAnimation(now) {
 
     // 1. Active Waypoint / Goal Pin
     const wp = state.nav && state.nav.waypoint;
-    const wpPos = resolveWaypointPresentationPosition(state, wp);
+    const wpPos = localMapWaypointPosition(state, wp);
     if (wp && wpPos && Number.isFinite(wpPos.x) && Number.isFinite(wpPos.z)) {
       const dist = Math.round(Math.hypot(wpPos.x - px, wpPos.z - pz));
       const brg = compassOctant(wpPos.x - px, wpPos.z - pz);
@@ -6378,7 +6462,7 @@ _stepAnimation(now) {
 
     // Section 2: Active Waypoint & Mission Contract
     const wp = state.nav && state.nav.waypoint;
-    const wpPos = resolveWaypointPresentationPosition(state, wp);
+    const wpPos = localMapWaypointPosition(state, wp);
     let wpHtml = '';
     if (wp && wpPos && Number.isFinite(wpPos.x) && Number.isFinite(wpPos.z)) {
       const wpDist = Math.round(Math.hypot(wpPos.x - globalPos.x, wpPos.z - globalPos.z));
@@ -6400,6 +6484,11 @@ _stepAnimation(now) {
             ? `<div class="gm-ins-note">${escapeMapHtml(wpReason)}</div>`
             : ''}
         </div>`;
+    } else if (wp && mapWaypointSector(state, wp) && mapWaypointSector(state, wp) !== sectorId) {
+      const remoteSector = mapWaypointSector(state, wp);
+      wpHtml = `<div class="gm-ov-wp-box"><div class="gm-ins-row"><span>Waypoint pin</span>
+        <span class="gm-ins-row-val">◆ ${escapeMapHtml(waypointMapLabel(wp))}</span></div>
+        <div class="gm-ins-note">In ${escapeMapHtml(sectorNameOf(state, remoteSector))} — plot a route to reach it.</div></div>`;
     } else {
       wpHtml = '<div class="gm-ins-note">No active waypoint pin — click any marker below or drag from your ship to set a fix.</div>';
     }
@@ -10030,7 +10119,7 @@ _draw() {
 _drawSystem(g, state, w, h) {
     const model = buildSystemModel(state, null, { claimsSystem: this._claimsSystem() });
     const wp = state.nav && state.nav.waypoint;
-    const wpPos = resolveWaypointPresentationPosition(state, wp);
+    const wpPos = localMapWaypointPosition(state, wp);
     let span = 3000;
     const pts = [];
     for (const z of model.zones) pts.push({ x: z.x, z: z.z, r: z.radius });
@@ -10184,12 +10273,7 @@ _drawSystem(g, state, w, h) {
 
       // Zone centres are authored sector-local, but the click target arms an autopilot fix, which
       // world.js stores global.
-      const zoneNav = sectorLocalToGlobalForSector({ x: z.x, z: z.z }, model.sectorId);
-      this._clickTargets.push({
-        sx: x, sy: y, radiusPx: Math.max(16, rr), kind: 'zone', id: z.id,
-        x: zoneNav.x, z: zoneNav.z, radius: z.radius, name: z.name,
-        factionId: z.factionId, detail: `Zone · ${z.typeLabel} · threat ${z.threat || 0}`
-      });
+      this._clickTargets.push({ ...systemZoneTarget(z, model.sectorId, playerEntity(state)?.pos), sx: x, sy: y, radiusPx: Math.max(16, rr) });
 
       if (z.hazard && this._layers.hazard) {
         g.save();
@@ -10716,7 +10800,7 @@ _drawLocal(g, state, w, h) {
     this._localLiveContacts = liveContactCount;
     const cam = this._cams.local;
     const wp = state.nav && state.nav.waypoint;
-    const wpPos = resolveWaypointPresentationPosition(state, wp);
+    const wpPos = localMapWaypointPosition(state, wp);
     const nowS = Math.max(0, Number(state && state.simTime) || 0);
     const reduced = !!this._reduceMotion;
     const animT = this._animT || 0;

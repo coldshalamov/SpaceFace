@@ -36,6 +36,9 @@ function skim(t, speed = 70) {
   t.collector.pos.x = t.state.planet.center.x + 980; t.collector.pos.z = t.state.planet.center.z;
   t.collector.vel.x = 0; t.collector.vel.z = speed;
   t.collector.data.itinerary.phase = 'collect';
+  // This fixture moves the body directly; refresh the real spatial owner so
+  // the band query sees that same pose instead of the old berth bucket.
+  t.state.spatialHash.rebuild(t.state.entityList);
   t.planet._tickShips(SIM_DT, t.state, t.state.planet, PLANET_SITE);
 }
 function harvest(t, dt = 1) { t.planet._tickWorkerHarvest(dt, t.state, t.state.planet, PLANET_SITE); }

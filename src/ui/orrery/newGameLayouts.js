@@ -158,21 +158,14 @@ ${NG} > .sf-ng-footer .k-word.sf-back:focus-visible::after {
   ${NGD} > .k-stage::before { left:24%; width:52%; top:61%; }
 }
 
-/* 801–1366 wide, ≤800 tall: the yard's rear names (WASP, PELICAN) sat on the ring's floor ellipse and its ticks, which are drawn
-   over them, so the line struck through the word and its sub-line and PELICAN ran into the LINE reading at 1100 wide. They drop
-   onto the front name's line, below the ellipse, and go by name only. */
+/* At compact desktop sizes keep the rear names below the ring and away from the LINE dial. */
 @media (min-width:801px) and (max-width:1366px) and (max-height:800px) {
   ${NGD} .orr-yard > .orr-turntable__row > li:not(.is-front) { translate:0 38px !important; }
   ${NGD} .orr-yard > .orr-turntable__row > li:not(.is-front) .k-word-sub { opacity:0 !important; }
 }
-
-/* 801–1080 wide: HITCH and the rear names would share a line, so they stop 14px higher, clear of the front name. */
 @media (min-width:801px) and (max-width:1080px) and (max-height:800px) {
   ${NGD} .orr-yard > .orr-turntable__row > li:not(.is-front) { translate:0 24px !important; }
 }
-
-/* 1081–1180 wide: the stage is narrow enough that PELICAN's last letters still met the LINE reading's dial end, so the two rear
-   names step 18px toward the front name. */
 @media (min-width:1081px) and (max-width:1180px) and (max-height:800px) {
   ${NGD} .orr-yard > .orr-turntable__row > li:not(.is-front):has(~ .is-front) { translate:18px 38px !important; }
   ${NGD} .orr-yard > .orr-turntable__row > li.is-front ~ li { translate:-18px 38px !important; }

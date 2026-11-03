@@ -399,6 +399,11 @@ export function shouldVirtualizeFarActor(entity, state) {
   if (type !== 'ship' && type !== 'drone' && type !== 'wreck') return false;
   const flags = entity.flags || {};
   const data = entity.data || {};
+  // Only the two current shift ships doing actual work need native flight
+  // beyond the player's local table. Their existing owner releases the pin
+  // when work is interrupted or the sector changes.
+  if (state.mode === 'flight' && state.world?.currentSectorId === PLANET_SITE.sectorId
+    && data.anvilWorkLiveness === true && data.transitCritical === true && isAnvilWorker(entity)) return false;
   // The carrier owns a bounded physical cohort and reprints a missing part. The lean NPC row
   // drops those part tags, so shelving four reflectors created four new durable rows every tick.
   // Keep the parts resident under their owner; distant activity/physics tiers still sleep them.

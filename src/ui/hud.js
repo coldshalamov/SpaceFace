@@ -18,7 +18,7 @@
 import { createRadar } from './radar.js';
 import { mountIonStormHud } from './ionStormHud.js';
 import { mountTravelVectorHud } from './travelVectorHud.js';
-import { createTargetPanel, targetDisplayName } from './targetPanel.js';
+import { createTargetPanel, targetDisplayName, authoredSiteRosterDetail } from './targetPanel.js';
 import { createFloatingText } from './floatingText.js';
 import { createDamageIndicators } from './damageIndicators.js';
 import { buildReducedMotionContactCue } from './reducedMotionInformation.js';
@@ -45,6 +45,7 @@ import { coreText } from './localizedCoreCopy.js';
 import { isRunSealed } from '../core/runSeal.js';
 import { SEMANTIC_PALETTE, getMotionReduced, getFlashReduced } from './accessibility.js';
 import { resolveWaypointPresentationPosition, resolveObjectiveGatePresentation } from './navigationWaypoint.js';
+import { objectiveIsOffSector } from './objectiveSector.js';
 import { contactThreatTier, contactStateWord, isHostileToPlayer, isWreckLike, wreckScanned } from '../systems/scanner.js';
 import { livingWorkStatusText } from '../data/contactHail.js';
 import { fuelReserveWarning } from './fuelReserveWarning.js';
@@ -306,6 +307,7 @@ function mtRouteGuidance(state, waypoint) {
     const fuel = Math.round(route.totalFuel || legs.reduce((sum, leg) => sum + (leg.fuel || 0), 0));
     return {
       next: `Next jump: ${mtSectorName(first.to)}`,
+      destination: first.to === waypoint.sectorId ? '' : `To ${mtSectorName(waypoint.sectorId)}`,
       summary: `${hops} hop${hops === 1 ? '' : 's'} / ${fuel}F`,
     };
   }
@@ -393,7 +395,7 @@ export function objectiveTravelReadout(state, wp, out = null) {
   const result = out && typeof out === 'object' ? out : {};
   const pos = wp && wp.pos;
   const player = state && state.entities && state.entities.get && state.entities.get(state.playerId);
-  if (!pos || !player || !player.pos) {
+  if (objectiveIsOffSector(state, wp) || !pos || !player || !player.pos) {
     result.distanceWu = null;
     result.closingSpeed = 0;
     result.etaS = null;
@@ -474,7 +476,7 @@ function mtWaypointDistance(state, wp) {
 export function objectiveBearingGlyph(state, wp) {
   const pos = wp && wp.pos;
   const player = state && state.entities && state.entities.get && state.entities.get(state.playerId);
-  if (!pos || !player || !player.pos) return '';
+  if (objectiveIsOffSector(state, wp) || !pos || !player || !player.pos) return '';
   const dx = Number(pos.x) - Number(player.pos.x);
   const dz = Number(pos.z) - Number(player.pos.z);
   if (!Number.isFinite(dx) || !Number.isFinite(dz) || Math.hypot(dx, dz) < 1) return '•';
@@ -491,7 +493,7 @@ export function objectiveBearingGlyph(state, wp) {
 export function objectiveBearingDeg(state, wp) {
   const pos = wp && wp.pos;
   const player = state && state.entities && state.entities.get && state.entities.get(state.playerId);
-  if (!pos || !player || !player.pos) return null;
+  if (objectiveIsOffSector(state, wp) || !pos || !player || !player.pos) return null;
   const dx = Number(pos.x) - Number(player.pos.x);
   const dz = Number(pos.z) - Number(player.pos.z);
   if (!Number.isFinite(dx) || !Number.isFinite(dz) || Math.hypot(dx, dz) < 1) return null;
@@ -733,7 +735,11 @@ export function flightDestinationSurface(state, command) {
       travel.etaS == null ? '' : travel.etaText,
       deadline,
     );
-    if (travel.distanceText === 'ROUTE PENDING') {
+    const routeGuide = mtRouteGuidance(state, waypoint);
+    if (routeGuide) {
+      readings = [routeGuide.next, routeGuide.destination,
+        `${BINDINGS.starmap.label} Star Map`, deadline].filter(Boolean).join(' · ');
+    } else if (travel.distanceText === 'ROUTE PENDING') {
       const gateFix = resolveObjectiveGatePresentation(state);
       if (gateFix && gateFix.pos) {
         const gateTravel = objectiveTravelReadout(state, { pos: gateFix.pos });
@@ -754,12 +760,11 @@ export function flightDestinationSurface(state, command) {
     const travel = objectiveTravelReadout(state, wp);
     const routeGuide = mtRouteGuidance(state, wp);
     const action = mtObjectiveAction((wp && (wp.reason || wp.label)) || 'Follow the marked route', wp);
-    const readings = mtReadingsLine(
-      objectiveBearingGlyph(state, wp),
-      travel.distanceText,
-      travel.etaS == null ? '' : travel.etaText,
-      routeGuide && routeGuide.summary,
-    );
+    const readings = routeGuide
+      ? [routeGuide.next, routeGuide.destination,
+        `${BINDINGS.starmap.label} Star Map`].filter(Boolean).join(' · ')
+      : mtReadingsLine(objectiveBearingGlyph(state, wp), travel.distanceText,
+        travel.etaS == null ? '' : travel.etaText);
     return {
       show: true,
       line: readings ? `${action}\n${readings}` : action,
@@ -1808,6 +1813,9 @@ export function createHud(ctx, alerts) {
   // recovery). Keep every bus subscription owned by this instance so a detached HUD cannot
   // continue doing work or retain its old state through the shared bus.
   const hudUnsubscribers = [];
+  // The HUD frame is the single pre-paint placement owner. Event bursts only mark it dirty.
+  let receiptLanePlacementDirty = true;
+  function invalidateReceiptLane() { receiptLanePlacementDirty = true; }
   const on = (event, listener, opts = undefined) => {
     if (!ctx.bus || typeof ctx.bus.on !== 'function') return null;
     const unsubscribe = ctx.bus.on(event, listener, opts);
@@ -1980,7 +1988,7 @@ export function createHud(ctx, alerts) {
     else if (returnFocus) mtDetailsButton.focus?.();
     flightTextObstaclesStale = true;
     alertLanePlacementStale = true;
-    placeReceiptLane();
+    invalidateReceiptLane();
   };
   // Ctrl-drag belongs to the tracker, not its interactive disclosure or scroll surface.
   const protectMissionDetailsPointer = (event) => { if (event.ctrlKey) event.stopPropagation(); };
@@ -2809,7 +2817,7 @@ export function createHud(ctx, alerts) {
       caption.classList.remove('show');
       caption.hidden = true;
       flightTextObstaclesStale = true;
-      placeReceiptLane();
+      invalidateReceiptLane();
       return;
     }
     caption.textContent = p.text;
@@ -2823,7 +2831,7 @@ export function createHud(ctx, alerts) {
       else setTimeout(releaseCaptionFlush, 16);
     }
     caption.classList.add('show');
-    placeReceiptLane();
+    invalidateReceiptLane();
     // A voice body carries its real duration — the caption outlives a long slow-register bark
     // instead of dying mid-word (assertive/polite defaults stand for non-voice captions).
     const readableTtl = Math.max(2400, Math.min(12000, Math.ceil((caption.scrollHeight || 0) / 19) * 900));
@@ -2836,7 +2844,7 @@ export function createHud(ctx, alerts) {
         caption.hidden = true;
           externalCaptionsStale = true;
           flightTextObstaclesStale = true;
-          placeReceiptLane();
+          invalidateReceiptLane();
       }, 220); // let the fade-out finish before hiding
     }, ttl);
   });
@@ -4877,7 +4885,8 @@ export function createHud(ctx, alerts) {
     const e = c.e;
     const iff = getIffData(e, playerTeam);
     const glyph = getClassGlyph(e);
-    const sword = c.ally ? 'ALLY' : contactStateWord(e, playerTeam, state);
+    const siteDetail = authoredSiteRosterDetail(state, e, player, c.dist);
+    const sword = siteDetail != null ? '' : c.ally ? 'ALLY' : contactStateWord(e, playerTeam, state);
     const stateCls = OVERVIEW_STATE_CLASS[sword] || 'neutral';
     const scannedWreck = c.isWreck && wreckScanned(e);
     const name = targetDisplayName(e, { concealWreck: c.isWreck && !scannedWreck });
@@ -4885,7 +4894,9 @@ export function createHud(ctx, alerts) {
     // Derelict manifest line: unscanned shows only a ghost outline; a scan resolves the manifest
     // + weak-point callout (GDD 2.0 §7.4).
     let detail = '';
-    if (c.isWreck) {
+    if (siteDetail != null) {
+      detail = siteDetail;
+    } else if (c.isWreck) {
       // data.weakPoint is a string label on wrecks (scanner.js weakPointFor) but the object
       // form ({label, arc…}) reaches wreck-likes via enemy defs — print the label, never the
       // object ("WEAK [object Object]" read as a broken screen).
@@ -4910,7 +4921,7 @@ export function createHud(ctx, alerts) {
     rec.speedMark = speedMark;
     const speedText = speedMark.text;
     const dist = Math.round(c.dist);
-    const unscanned = c.isWreck && !scannedWreck;
+    const unscanned = siteDetail == null && c.isWreck && !scannedWreck;
     const selected = e.id === targetId;
 
     if (rec.unscanned !== unscanned) { setClass(rec.el, 'unscanned', unscanned); rec.unscanned = unscanned; }
@@ -5458,7 +5469,7 @@ export function createHud(ctx, alerts) {
     }
   }
 
-  function frame(dt) {
+  function frame(dt, deferReceiptPlacement = false) {
     // Read dirty obstacle geometry before this frame's HUD writes.
     if (objectiveEdgeBoxes.stale) objectiveEdgeObstacles();
     const frameDt = Number.isFinite(dt) && dt > 0 ? Math.min(dt, 0.25) : 1 / 60;
@@ -5728,7 +5739,7 @@ export function createHud(ctx, alerts) {
     // --- off-screen objective arrow ---
     if (overlayTick || slow) updateObjectiveArrow(p, slow);
     if (overlayTick || slow) updateFirstUseHint(p);
-    if (slow) placeReceiptLane();
+    if (slow) invalidateReceiptLane();
     if (slow) updateAdventureDecisionLine();
     if (slow) refreshLeftContextClasses();
 
@@ -5742,6 +5753,7 @@ export function createHud(ctx, alerts) {
 
     // --- Overview Strip: elapsed-time cadence stays at <=5 Hz at any render refresh rate. ---
     if (overviewTick) updateOverview();
+    if (!deferReceiptPlacement) flushReceiptLane();
   }
 
   function tickHidden(dt) {
@@ -5781,6 +5793,12 @@ export function createHud(ctx, alerts) {
     let wp = null, wpLabel = null, navMeta = null;
     if (state.nav && state.nav.waypoint) {
       const nw = state.nav.waypoint;
+      if (objectiveIsOffSector(state, nw)) {
+        setDisplay(arrow, false);
+        setDisplay(elNavReadout, false);
+        setClass(elNavReadout, 'sf-nav--lock', false);
+        return;
+      }
       let livePos = null;
       if (nw.stationId) {
         const station = resolveNavStation(nw);
@@ -5966,7 +5984,7 @@ export function createHud(ctx, alerts) {
   }
   function invalidateAndPlaceHudOverlays() {
     invalidateObjectiveEdgeBoxes();
-    placeReceiptLane();
+    invalidateReceiptLane();
   }
   if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
     window.addEventListener('resize', invalidateObjectiveEdgeBoxes);
@@ -6461,14 +6479,14 @@ export function createHud(ctx, alerts) {
     externalCaptionOpacity.set(el, el.style?.opacity || '');
     externalCaptionsStale = true;
     flightTextObstaclesStale = true;
-    placeReceiptLane();
+    invalidateReceiptLane();
     return true;
   }
   function refreshExternalFlightCaption(el) {
     if (!el || !externalFlightCaptions.has(el)) return false;
     externalCaptionsStale = true;
     flightTextObstaclesStale = true;
-    placeReceiptLane();
+    invalidateReceiptLane();
     return true;
   }
   function releaseExternalFlightCaption(el) {
@@ -6479,7 +6497,7 @@ export function createHud(ctx, alerts) {
     clearExternalFlightCaptionPlacement(el);
     externalCaptionsStale = true;
     flightTextObstaclesStale = true;
-    placeReceiptLane();
+    invalidateReceiptLane();
     return true;
   }
   function placeOrdinaryCaptionInSafeBands(layout, w, h) {
@@ -6505,6 +6523,13 @@ export function createHud(ctx, alerts) {
       captionBand = captionBands.find((band) => band.bottom - band.top >= captionHeight + 8);
     }
     placeCaptionInSafeSlot(caption, layout, captionSlot, null, captionBand || captionBands[0]);
+  }
+  // The main UI frame calls this after its prompt, toast and caption ticks. Standalone HUD
+  // users flush at the end of frame() instead. No second rAF or slow-tick delay is needed.
+  function flushReceiptLane() {
+    if (!receiptLanePlacementDirty) return;
+    receiptLanePlacementDirty = false;
+    placeReceiptLane();
   }
   function placeReceiptLane(resolvedLayout = null) {
     if (toastsLaneEl === null) toastsLaneEl = document.getElementById('toasts');
@@ -6613,14 +6638,14 @@ export function createHud(ctx, alerts) {
     refreshFlightTextObstacleSnapshot();
   }
   if (typeof window !== 'undefined' && window.addEventListener) {
-    const repositionHudOverlays = () => placeReceiptLane();
+    const repositionHudOverlays = () => invalidateReceiptLane();
     window.addEventListener('resize', repositionHudOverlays);
     hudUnsubscribers.push(() => window.removeEventListener('resize', repositionHudOverlays));
   }
-  on('toast', () => {
+  on('hud:receiptGeometryChanged', () => {
     externalCaptionsStale = true;
     flightTextObstaclesStale = true;
-    placeReceiptLane();
+    invalidateReceiptLane();
   });
   if (typeof MutationObserver !== 'undefined') {
     const alertLaneOptions = {
@@ -6634,14 +6659,14 @@ export function createHud(ctx, alerts) {
         if (records?.length && records.every((record) => alertLaneStyleMutationIsOwned(record, alertLane))) return;
         alertLanePlacementStale = true;
         flightTextObstaclesStale = true;
-        placeReceiptLane();
+        invalidateReceiptLane();
       });
       alertLaneObserver.observe(alertLane, alertLaneOptions);
       if (document.documentElement) alertLaneObserver.observe(document.documentElement, {
         attributes: true, attributeFilter: ['data-sf-mobile-flight'],
       });
       alertLanePlacementStale = true;
-      placeReceiptLane();
+      invalidateReceiptLane();
       return true;
     };
     if (!observeAlertLane()) {
@@ -6785,13 +6810,13 @@ export function createHud(ctx, alerts) {
     for (const el of document.querySelectorAll?.('.sf-airlock--flight-safe, #sf-sector-law[data-flight-critical="true"]:not([hidden])') || []) {
       externalFlightCaptions.add(el);
     }
-    if (externalFlightCaptions.size) placeReceiptLane();
+    if (externalFlightCaptions.size) invalidateReceiptLane();
   }
 
   refreshLeftContextClasses();
 
   return {
-    frame, tickHidden, forceRefresh, setVisible, refreshObjectives, arrive,
+    frame, flushReceiptLane, tickHidden, forceRefresh, setVisible, refreshObjectives, arrive,
     registerExternalFlightCaption, refreshExternalFlightCaption, releaseExternalFlightCaption,
     getFlightTextObstacles,
     getGLagOffset: () => ({ x: opticalGLag.x, y: opticalGLag.y }),

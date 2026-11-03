@@ -28,6 +28,7 @@ import { recordCeresWorkfleetAuthoredSource, recordLatchAuthoredSource } from '.
 import { dedupWarn, noteLaneFault } from '../core/warnDedup.js';
 import { installCeresCradleLayoutGuard, installCeresCradleLayoutGuardSteps } from './ceresCradleLayoutVisuals.js';
 import { ceresWorkfleetCatalogRows, ceresWorkfleetRole, isCeresWorkfleetPlace, ceresWorkfleetPlaceFile, ceresWorkfleetPlaceTransform, CERES_BREAKER_ASSET, CERES_BREAKER_FILE, CERES_BREAKER_NORMALIZED_SCALE } from './ceresWorkfleetVisuals.js';
+import { normalizeCeresWorkfleetPackageNodes } from './ceresWorkfleetPackageNodes.js';
 import { CERES_SHIPBREAK_FILES, isCeresShipbreakSection, ceresShipbreakTransform, ceresShipbreakCatalogCollision } from './ceresShipbreakVisuals.js';
 // GLTFKit: authored ship-part composition over the synchronous procedural visual boundary.
 //
@@ -15200,10 +15201,11 @@ function* instantiateRenderPackagePartSteps(record, parent, placement, palette, 
       + 'the loader must publish planNodes for package instantiation.',
     );
   }
+  const ceresNodeTags = normalizeCeresWorkfleetPackageNodes(record.assetId, planNodes, tagsByName);
   for (let i = 1; i < planNodes.length; i++) {
     if (i % 128 === 0) yield;
     const object = planNodes[i];
-    const tags = tagsByName.get(object.name) || object.userData?.spacefaceTags || {};
+    const tags = ceresNodeTags?.get(object) || tagsByName.get(object.name) || object.userData?.spacefaceTags || {};
     object.userData = {
       ...(object.userData || {}),
       spacefacePartUrl: record.url,

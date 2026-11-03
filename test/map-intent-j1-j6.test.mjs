@@ -15,10 +15,15 @@ async function main() {
   globalThis.document = documentRef;
   globalThis.window = { devicePixelRatio: 1, addEventListener() {}, removeEventListener() {} };
 
-  const { galaxyMapScreen } = await import('../src/ui/galaxyMap.js');
+  const { galaxyMapScreen, activeMapGoal, localMapWaypointPosition, buildSystemModel,
+    systemZoneTarget, resolveCourseTarget, resolveGalaxyMapPrimaryAction,
+    mapSearchTargetPriority } = await import('../src/ui/galaxyMap.js');
   const { createUiInput } = await import('../src/ui/input.js');
   const { SECTORS } = await import('../src/data/sectors.js');
   const { sectorLocalToGlobalForSector } = await import('../src/data/sectorCoordinates.js');
+  const { PLANET_SITE } = await import('../src/data/planets.js');
+  const { world } = await import('../src/systems/world.js');
+  const { resolveAutopilotArrivalRadius } = await import('../src/systems/flightV3.js');
 
   const emitted = [];
   const ctx = {
@@ -176,6 +181,81 @@ async function main() {
     type('Helios Station');
     assert.equal(galaxyMapScreen._searchResultsList.some((hit) => hit.stationId === 'station_helios'), false,
       'the catalog fallback does not reveal stations in uncharted sectors');
+  }
+
+  // The old Helios objective survives the jump, but its presentation id now names an unrelated
+  // live Tethys body. The stored global fix is authoritative for the old marker's sector.
+  {
+    const state = ctx.state;
+    delete state.content;
+    state.world.currentSectorId = 'sector_tethys_junction';
+    state.world.discovery = { sector_helios_prime: { discovered: true }, sector_tethys_junction: { discovered: true } };
+    const tethys = sectorLocalToGlobalForSector({ x: 300, z: 100 }, 'sector_tethys_junction');
+    state.entities = new Map([
+      ['player', { id: 'player', type: 'ship', alive: true, pos: tethys }],
+      [47, { id: 47, type: 'ship', alive: true, pos: { x: tethys.x + 50, z: tethys.z }, data: {} }],
+    ]);
+    state.entityList = [...state.entities.values()];
+    const heliosFix = { x: 710, z: -140 };
+    state.nav = { waypoint: { label: 'Derelict', pos: heliosFix, presentationEntityId: 47 } };
+    const goal = activeMapGoal(state);
+    assert.equal(goal.sectorId, 'sector_helios_prime');
+    assert.deepEqual(goal.pos, heliosFix, 'a foreign marker cannot follow a recycled current-sector id');
+    assert.equal(localMapWaypointPosition(state, state.nav.waypoint), null, 'foreign fix is not a local/system marker');
+    for (const zoom of [1, 2]) {
+      galaxyMapScreen._zoom = zoom;
+      type('Derelict');
+      const hit = galaxyMapScreen._searchResultsList.find((row) => row.id === 'active-map-goal');
+      assert.ok(hit); assert.equal(hit.kind, 'sector'); assert.equal(hit.sectorId, 'sector_helios_prime');
+      assert.equal(resolveGalaxyMapPrimaryAction(state, hit).targetSectorId, 'sector_helios_prime');
+      assert.equal(resolveCourseTarget(hit).type, 'sector', 'a remote search result does not arm a local fix');
+    }
+    state.ui.trackedMissionId = 'foreign-mission';
+    state.missions = { active: [{ id: 'foreign-mission', status: 'active', destSectorId: 'sector_helios_prime', targetEntityIds: [47] }] };
+    assert.equal(mapSearchTargetPriority(state, { id: 47, kind: 'ship', x: tethys.x + 50, z: tethys.z }), 10,
+      'a foreign mission cannot promote a reused local entity id');
+    state.nav.waypoint = { kind: 'local', label: 'Player course', pos: tethys };
+    assert.equal(activeMapGoal(state).sectorId, 'sector_tethys_junction', 'an explicit local player course keeps its sector');
+    assert.deepEqual(localMapWaypointPosition(state, state.nav.waypoint), tethys);
+    delete state.nav; delete state.missions; delete state.ui.trackedMissionId;
+  }
+
+  // The named hazard search selects the very same zone target as the painted ring.
+  {
+    const state = ctx.state;
+    const model = buildSystemModel(state, 'sector_tethys_junction');
+    const zone = model.zones.find((row) => row.id === 'zone_tethys_anvil');
+    assert.ok(zone?.hazard && zone.authoredName);
+    const player = state.entities.get(state.playerId);
+    const paintedTarget = systemZoneTarget(zone, model.sectorId, player.pos);
+    for (const zoom of [1, 2]) {
+      galaxyMapScreen._zoom = zoom;
+      type('Anvil');
+      const hit = galaxyMapScreen._searchResultsList.find((row) => row.id === zone.id);
+      assert.deepEqual(hit, paintedTarget, 'search reuses the ring target and radius');
+      assert.match(hit.detail, /^Hazard/);
+      assert.deepEqual(resolveCourseTarget(hit), resolveCourseTarget(paintedTarget));
+      const course = resolveGalaxyMapPrimaryAction(state, hit).coursePayload;
+      const distance = Math.hypot(course.pos.x - hit.x, course.pos.z - hit.z);
+      assert.ok(distance - course.arrivalRadius > PLANET_SITE.bands.sling + PLANET_SITE.hysteresis,
+        'the entire nominal arrival circle remains outside the sling band');
+      key('Enter');
+      assert.equal(galaxyMapScreen._selectedTarget.id, zone.id);
+    }
+    const staleSelection = galaxyMapScreen._selectedTarget;
+    const center = { x: staleSelection.x, z: staleSelection.z };
+    player.pos = { x: center.x + 3000, z: center.z };
+    const action = resolveGalaxyMapPrimaryAction(state, staleSelection);
+    assert.ok(action.coursePayload.pos.x > center.x, 'commit recomputes the approach from the current side');
+    state.nav = { route: null };
+    const nav = world._onSetCourse.call({ state, bus: ctx.bus }, action.coursePayload);
+    assert.equal(nav.arrivalRadius, 80, 'the real world course owner preserves the bounded radius');
+    const stop = resolveAutopilotArrivalRadius(player, nav, nav.target);
+    assert.ok(Math.hypot(nav.target.x - center.x, nav.target.z - center.z) - stop
+      > PLANET_SITE.bands.sling + PLANET_SITE.hysteresis, 'the flight arrival rule stops outside the sling edge');
+    delete state.nav;
+    state.world.currentSectorId = 'sector_dione_lane';
+    galaxyMapScreen._selectedTarget = null;
   }
 
   // ── J6: first refusal on Escape, through the real document keydown route ──────────────────

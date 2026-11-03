@@ -10,6 +10,7 @@ import { validateOrchardTowQuote, bindOrchardTowLease, orchardTowLease, clearOrc
 import { stepCeresWorkfleet, restoreCeresWorkfleetJob, clearCeresWorkfleetControls } from './ceresWorkfleet.js';
 import { isTowlineCleanupTarget } from '../data/towlineTable.js';
 import { isOrchardFrame, isOrchardPod } from '../data/anvilOrchardIdentity.js';
+import { isScrapSweeperJob, resolveSweeperPickup } from './scrapSweeperOps.js';
 // npcJobsRuntime — the thin runtime adapter that drives the PURE npcJobs kernel into the live game.
 // PQ-014 / SF-15 / W06 integration ("natural NPC miner/hauler/patrol jobs").
 //
@@ -4451,7 +4452,23 @@ export const npcJobsRuntime = {
       const approachingSeam = !claimedBeforeAdvance && starterRock && entity.pos
         && Math.hypot(entity.pos.x - starterRock.pos.x, entity.pos.z - starterRock.pos.z)
           > BEAM_MK1.range + (starterRock.radius || 0);
-      const salvorTarget = !claimedBeforeAdvance && this.helpers.traffic?.salvorWorkTarget?.(entry, entity);
+      // A controller borrows steering, not a completed pickup. Retain the physical clock gate
+      // while leased; the existing claimed checks below still leave its intent untouched.
+      const sweeper = isScrapSweeperJob(entry, entity);
+      const sweeperJob = sweeper && entry.job;
+      const sweeperSeeking = sweeper && !sweeperJob.payload.extracted && !sweeperJob.payload.sourceUnavailable;
+      const sweeperTarget = sweeperSeeking ? resolveSweeperPickup(this.state, entry) : null;
+      if (sweeper && sweeperJob.phase !== NPC_JOB_PHASE.FLEE
+        && ![NPC_JOB_PHASE.RETURN, NPC_JOB_PHASE.UNLOAD].includes(sweeperJob.phase)
+        && !(sweeperJob.phase === NPC_JOB_PHASE.APPROACH && sweeperJob.routeIndex === 0)
+        && (sweeperJob.payload.extracted || (sweeperSeeking && !sweeperTarget))) {
+        // The job kernel returns only after real pickup acceptance or a lost booking.
+        if (!sweeperJob.payload.extracted) sweeperJob.payload.sourceUnavailable = true;
+        sweeperJob.routeIndex = 1;
+        sweeperJob.phase = NPC_JOB_PHASE.RETURN;
+        sweeperJob.progress = 0;
+      }
+      const salvorTarget = !claimedBeforeAdvance && !sweeperSeeking && this.helpers.traffic?.salvorWorkTarget?.(entry, entity);
       if (salvorTarget?.intakeRetry && entry.job.payload?.salvageIntakeWait?.status === 'awaiting-intake') {
         const retry = salvorTarget.intakeRetry;
         const wait = entry.job.payload.salvageIntakeWait;
@@ -4500,7 +4517,7 @@ export const npcJobsRuntime = {
       // threat interrupt (that lives on the damage/proximity seams and stays untouched here).
       if (!claimedBeforeAdvance) this._updateCloseCall(entry, entity, simT);
       const braced = !claimedBeforeAdvance && entry.closeCallUntil != null && simT < entry.closeCallUntil;
-      if (step > 0 && !approachingSeam && !holdingForArrival && !entry.berthHold && !braced
+      if (step > 0 && !sweeperTarget && !approachingSeam && !holdingForArrival && !entry.berthHold && !braced
         && entry.job.phase !== NPC_JOB_PHASE.COMPLETE) {
         advance(entry.job, tallyAdvanceDt(entry.job, tallyTarget, salvorTarget ? Math.min(step, 0.1) : step), this._sink);
       }
@@ -4528,7 +4545,7 @@ export const npcJobsRuntime = {
       // A tug's load is a real attachment owned by the combat/physics authority. Bind it only after
       // the finite freight job has left loading, and never while a controller lease owns the hull.
       // The movement writer below remains the sole intent producer; SG-02 pulls the target body.
-      if (!claimed && entry.job.phase !== NPC_JOB_PHASE.COMPLETE) {
+      if (!claimed && !isScrapSweeperJob(entry, entity) && entry.job.phase !== NPC_JOB_PHASE.COMPLETE) {
         this._tryAttachOccupationalLine(entry, entity, simT);
       }
 
@@ -4542,7 +4559,7 @@ export const npcJobsRuntime = {
       // The finite paired passage owns the same movement channel as seam work. Do not let
       // an ambient errand overwrite its authenticated hold/formation after _drive.
       if (!claimed && !isTallyPassageJob(entry.job) && !(pallasTarget && pallasShiftOwnsMovement(this.state, entry, entity))
-        && !entry.job.payload?.salvageIntakeWait
+        && !entry.job.payload?.salvageIntakeWait && !isScrapSweeperJob(entry, entity)
         && !pallasSeamRole(this.state, entity)) applyLaneErrandIntent(this, entry, entity, simT);
     }
   },
@@ -5063,6 +5080,32 @@ export const npcJobsRuntime = {
     this._writeIntent(entity, 0, brake ? 0 : Math.min(1, throttle), false, chaseAim, brake);
   },
 
+  _driveSweeperPickup(entity, target) {
+    const dx = target.pos.x - entity.pos.x, dz = target.pos.z - entity.pos.z;
+    const distance = Math.hypot(dx, dz), aim = Math.atan2(dz, dx);
+    const ux = dx / Math.max(0.001, distance), uz = dz / Math.max(0.001, distance);
+    const gap = distance - (entity.radius + target.radius);
+    // A slow final closure permits the real pickup contact to reach the mouth. Aim is toward
+    // the piece, so the forward tool, not a side collision, meets it.
+    const aligned = Math.cos(aim - (entity.rot || 0)) > 0.94;
+    const closing = aligned ? Math.min(4, Math.max(0.7, gap * 0.35)) : 0;
+    const dvx = (target.vel?.x || 0) + ux * closing - (entity.vel?.x || 0);
+    const dvz = (target.vel?.z || 0) + uz * closing - (entity.vel?.z || 0);
+    const c = Math.cos(entity.rot || 0), s = Math.sin(entity.rot || 0);
+    const forward = dvx * c + dvz * s, side = -dvx * s + dvz * c;
+    const profile = resolvePropulsionProfile(entity, this.state);
+    const pulse = profile.family === DRIVE_FAMILIES.PULSE_PLATE;
+    const lateral = pulse ? profile.rcsStrafeAccel : profile.strafeAccel;
+    const axial = pulse ? (forward < 0 ? profile.rcsReverseAccel : profile.rcsForwardAccel)
+      : (forward < 0 ? profile.reverseAccel : profile.mainAccel);
+    const input = (error, acceleration) => {
+      if (Math.abs(error) < 0.12) return 0;
+      const raw = clamp(error / Math.max(1, acceleration || 0), -1, 1);
+      return Math.sign(raw) * Math.max(Math.abs(raw), (profile.assist?.deadInput || 0.025) + 0.01);
+    };
+    this._writeIntent(entity, input(side, lateral), input(forward, axial), false, aim, false);
+  },
+
   _drive(entry, entity) {
     const job = entry.job;
     if (!job || job.corrupt) { this._writeIntent(entity, 0, 0, false, entity.rot || 0); return; }
@@ -5145,6 +5188,13 @@ export const npcJobsRuntime = {
       } else {
         this._writeIntent(entity, 0, 0, false, entity.rot || 0);
       }
+      return;
+    }
+
+    if (isScrapSweeperJob(entry, entity) && !job.payload.extracted && !job.payload.sourceUnavailable) {
+      const pickup = resolveSweeperPickup(this.state, entry);
+      if (pickup) this._driveSweeperPickup(entity, pickup);
+      else this._writeIntent(entity, 0, 0, false, entity.rot || 0, true);
       return;
     }
 
@@ -6896,7 +6946,8 @@ export const npcJobsRuntime = {
     // would be both wrong (they didn't happen on-screen) and, under a pathological dt, unbounded.
     // The job STATE advances truthfully; only the current on-screen materialization is surfaced.
     const elapsed = Math.min(MAX_CATCHUP_S, Math.max(0, simT - finite(entry.lastAdvanceSimT, simT)));
-    if (elapsed > 0 && !isTallyPassageJob(entry.job) && !entry.job.payload?.salvageIntakeWait
+    if (elapsed > 0 && entry.job.payload?.role !== 'sweeper'
+        && !isTallyPassageJob(entry.job) && !entry.job.payload?.salvageIntakeWait
         && entry.job.phase !== NPC_JOB_PHASE.COMPLETE) {
       let out = advance(entry.job, elapsed);
       let guard = 0;

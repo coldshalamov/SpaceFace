@@ -13,6 +13,7 @@ import { isConfirmOpen, confirmGamepadAccept, confirmGamepadCancel } from './con
 import { getPromptDeck } from './promptDeck.js';
 import {
   BINDINGS,
+  flightHudFocusShortcut,
   setPromptDevice,
   setGamepadPromptBindings,
   setGamepadGlyphSet,
@@ -285,6 +286,7 @@ export function createUiInput(ctx, screenManager, shipScreenRequest = {}) {
   const gp = ctx.gamepad;
   let dockInRange = false;
   let dockStationId = null;
+  let flightHudFocus = null;
   const unsubscribers = [];
 
   // Gamepad UI navigation state.
@@ -395,6 +397,100 @@ export function createUiInput(ctx, screenManager, shipScreenRequest = {}) {
     // while the player is picking from a dropdown or typing in a composite widget.
     if (!t || typeof t.closest !== 'function') return false;
     return !!t.closest('input, textarea, select, [contenteditable="true"], [contenteditable=""], [data-text-input]');
+  }
+
+  const flightControlSelector = 'button, summary, a[href], input, select, textarea, [role="button"], [role="tab"], [role="menuitem"], [tabindex]';
+  function flightHudControl(t) {
+    const hud = document.getElementById?.('hud');
+    if (!hud || !t || typeof hud.contains !== 'function' || !hud.contains(t)
+        || typeof t.closest !== 'function') return null;
+    const control = t.closest(flightControlSelector);
+    return control && hud.contains(control) ? control : null;
+  }
+
+  function availableFlightControl(control) {
+    if (!control || control.isConnected === false || control.disabled || control.hidden || control.inert
+        || control.getAttribute?.('aria-disabled') === 'true'
+        || Number(control.getAttribute?.('tabindex')) < 0) return false;
+    const hud = document.getElementById?.('hud');
+    if (!hud || !hud.contains?.(control)) return false;
+    for (let node = control; node && node !== hud.parentNode; node = node.parentNode) {
+      if (node.hidden || node.inert || node.getAttribute?.('aria-hidden') === 'true') return false;
+      const style = node.style;
+      if (style && (style.display === 'none' || style.visibility === 'hidden'
+          || (style.opacity != null && style.opacity !== '' && Number(style.opacity) === 0))) return false;
+    }
+    return true;
+  }
+
+  function visibleFlightControl(control) {
+    if (!availableFlightControl(control)) return false;
+    const hud = document.getElementById?.('hud');
+    for (let node = control; node && node !== hud.parentNode; node = node.parentNode) {
+      const style = typeof window.getComputedStyle === 'function' ? window.getComputedStyle(node) : null;
+      if (style && (style.display === 'none' || style.visibility === 'hidden' || Number(style.opacity) === 0)) return false;
+    }
+    return typeof control.getClientRects !== 'function' || control.getClientRects().length > 0;
+  }
+
+  function validateFlightHudFocus(checkComputedVisibility = false) {
+    if (flightHudFocus && (state.mode !== 'flight' || screenManager.isOpen()
+        || !(checkComputedVisibility ? visibleFlightControl(flightHudFocus) : availableFlightControl(flightHudFocus)))) {
+      if (document.activeElement === flightHudFocus) flightHudFocus.blur?.();
+      flightHudFocus = null;
+    } else if (flightHudFocus && document.activeElement !== flightHudFocus) {
+      flightHudFocus = null;
+    }
+  }
+  function onFlightHudResize() { if (flightHudFocus) validateFlightHudFocus(true); }
+
+  function onFlightHudFocusIn(ev) {
+    if (state.mode !== 'flight' || screenManager.isOpen() || isConfirmOpen()) return;
+    const control = flightHudControl(ev.target);
+    if (!control) return;
+    const enteredFromHud = !!flightHudControl(ev.relatedTarget);
+    flightHudFocus = control;
+    if (!enteredFromHud) {
+      // The same owner/facade handles the main and worker lanes. Drop held flight inputs before
+      // a focused button can receive Space or before a key released over it strands thrust.
+      ctx.registry?.get?.('input')?.releaseHeldControls?.('flight-hud-focus');
+    }
+  }
+
+  function onFlightHudFocusKeyDown(ev) {
+    if (state.mode !== 'flight' || screenManager.isOpen() || isConfirmOpen()
+        || isUiInteractionFenced(state) || isTextEntryTarget(ev.target)) return;
+    const control = flightHudControl(ev.target) || flightHudControl(document.activeElement);
+    const shortcut = flightHudFocusShortcut(state);
+    const focusShortcut = shortcut.available && (ev.key === shortcut.code || ev.code === shortcut.code)
+      && !!ev.ctrlKey === shortcut.ctrl && !!ev.altKey === shortcut.alt && !ev.shiftKey && !ev.metaKey;
+    if (focusShortcut && ev.repeat && control) {
+      ev.preventDefault();
+      ev.stopPropagation?.();
+      return;
+    }
+    if (focusShortcut && !ev.repeat) {
+      if (control) {
+        control.blur?.();
+        flightHudFocus = null;
+      } else {
+        const hud = document.getElementById?.('hud');
+        const target = Array.from(hud?.querySelectorAll?.(flightControlSelector) || [])
+          .find((el) => visibleFlightControl(el));
+        if (!target || typeof target.focus !== 'function') return;
+        target.focus();
+        if (document.activeElement !== target) return;
+      }
+      ev.preventDefault();
+      ev.stopPropagation?.();
+      return;
+    }
+    if (control && ev.key === 'Escape') {
+      control.blur?.();
+      flightHudFocus = null;
+      ev.preventDefault();
+      ev.stopPropagation?.();
+    }
   }
 
   function closeActiveModal(def) {
@@ -537,6 +633,13 @@ export function createUiInput(ctx, screenManager, shipScreenRequest = {}) {
     }
 
     if (textEntry) return;
+
+    // A deliberately focused flight control owns its native Tab/Enter/Space and other keys.
+    // Do not prevent their defaults; only keep document/window flight shortcuts from firing.
+    if (state.mode === 'flight' && flightHudControl(t)) {
+      if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
+      return;
+    }
 
     // --- pure flight: UI-owned global keys only (mode must be flight) ---
     if (state.mode !== 'flight') return;
@@ -1023,6 +1126,9 @@ export function createUiInput(ctx, screenManager, shipScreenRequest = {}) {
     'touchstart', 'touchend', 'wheel',
   ];
   document.addEventListener('keydown', onBlackoutKeyDown, true);
+  document.addEventListener('keydown', onFlightHudFocusKeyDown, true);
+  document.addEventListener('focusin', onFlightHudFocusIn);
+  window.addEventListener('resize', onFlightHudResize);
   for (const type of blackoutPointerEvents) {
     document.addEventListener(type, onBlackoutPointerEvent, { capture: true, passive: false });
   }
@@ -1412,6 +1518,7 @@ export function createUiInput(ctx, screenManager, shipScreenRequest = {}) {
   }
 
   function tick(dt) {
+    if (flightHudFocus) validateFlightHudFocus();
     // Gesture capture must own the sample itself. Applying this after gp.tick commits the
     // first modifier as a solo press, and eats the first ordinary press after cancellation.
     if (gp) gp.captureMode = !!getGamepadCaptureHandler();
@@ -1450,6 +1557,9 @@ export function createUiInput(ctx, screenManager, shipScreenRequest = {}) {
     doDock, undock, tick,
     dispose() {
       document.removeEventListener('keydown', onBlackoutKeyDown, true);
+      document.removeEventListener('keydown', onFlightHudFocusKeyDown, true);
+      document.removeEventListener('focusin', onFlightHudFocusIn);
+      window.removeEventListener('resize', onFlightHudResize);
       for (const type of blackoutPointerEvents) {
         document.removeEventListener(type, onBlackoutPointerEvent, true);
       }
