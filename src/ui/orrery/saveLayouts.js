@@ -20,6 +20,8 @@ const SL = 'html body #screens > .k-screen.of-saveload.orr-saveload.orr-saveload
 /** SL for desktop-only rules, after `html:root:not([data-sf-mobile="1"])`. */
 const SLD = 'body #screens > .k-screen.of-saveload.orr-saveload.orr-saveload';
 const LABEL = 'font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-variation-settings:"wdth" 112, "wght" 650; font-weight:650; text-transform:uppercase;';
+// Back and its keycap reset all properties with !important, so their label voice must match.
+const LABEL_I = 'font-family:var(--dp-face-label, "Archivo") !important; font-stretch:112% !important; font-variation-settings:"wdth" 112, "wght" 650 !important; font-weight:650 !important; text-transform:uppercase !important;';
 const DISPLAY = 'font-family:var(--dp-face-display, "Archivo"); font-stretch:125%; font-variation-settings:"wght" 800, "wdth" 125; font-weight:800; text-transform:uppercase;';
 const BODY = 'font-family:var(--dp-face-read, "Instrument Sans"), "Instrument Sans", system-ui, sans-serif; font-variation-settings:normal; font-stretch:100%; text-transform:none;';
 const PLAIN = 'background:none !important; border:0 !important; border-image:none !important; box-shadow:none !important; clip-path:none !important;';
@@ -196,11 +198,11 @@ ${SL} > .k-foot .k-word { ${PLAIN} ${LABEL} display:inline-flex !important; alig
 ${SL} > .k-foot .k-word:not(.sf-back)::before { all:unset !important; content:"›" !important; margin-right:.7em !important; color:rgb(${BONE} / .6) !important; }
 ${SL} > .k-foot .k-word:not(.sf-back)::after { display:none !important; content:none !important; }
 ${SL} > .k-foot .k-word.sf-back { all:unset !important; box-sizing:border-box !important; cursor:pointer !important; display:inline-flex !important; align-items:baseline !important; gap:0 !important;
-  padding:10px 0 12px !important; ${LABEL} font-size:max(12px, calc(13.5px * var(--sv))) !important; letter-spacing:.22em !important; color:rgb(255 253 248) !important;
+  padding:10px 0 12px !important; ${LABEL_I} font-size:max(12px, calc(13.5px * var(--sv))) !important; letter-spacing:.22em !important; color:rgb(255 253 248) !important;
   background:linear-gradient(0deg, rgb(${BONE} / .28) 0 1.5px, transparent 1.5px) 0 100% / 120px 100% no-repeat !important; text-shadow:none !important; }
 ${SL} > .k-foot .k-word.sf-back::before { all:unset !important; content:"‹" !important; margin-right:12px !important; font-size:15px !important; color:rgb(${BONE} / .6) !important; }
 ${SL} > .k-foot .k-word.sf-back::after { all:unset !important; content:"ESC" / "" !important; display:inline-block !important; margin-left:16px !important; padding:3px 7px 4px !important;
-  ${LABEL} font-size:max(12px, calc(11px * var(--sv))) !important; letter-spacing:.06em !important; line-height:1 !important;
+  ${LABEL_I} font-size:max(12px, calc(11px * var(--sv))) !important; letter-spacing:.06em !important; line-height:1 !important;
   color:rgb(${BONE} / .9) !important; background:rgb(${BONE} / .1) !important; border:1px solid rgb(${BONE} / .5) !important; border-radius:3px !important;
   box-shadow:inset 0 -1px 0 rgb(0 0 0 / .35) !important; vertical-align:baseline !important; }
 ${SL} > .k-foot .k-word:is(:hover, :focus-visible) { color:var(--dp-hand, #f2b950) !important; outline:none !important; }
