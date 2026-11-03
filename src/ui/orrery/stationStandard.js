@@ -285,6 +285,20 @@ ${P} .sxb-launch__label { font-family:${TITLE} !important; letter-spacing:.04em 
 }
 ${P} .sxb-launch__state { font-family:${UI} !important; font-size:13px !important; letter-spacing:.02em !important; }
 
+/* A short, narrow desktop window needs a bounded facility rail: otherwise its
+   last tabs run underneath the station's Comms, Help and Undock controls. */
+@media (min-width:801px) and (max-width:900px) and (max-height:460px) {
+  ${P} .sxb-ops { flex-wrap:wrap !important; gap:2px 8px !important; }
+  ${P} .sxb-ops > .of-facility-rail { flex:0 0 100% !important; width:100% !important; min-width:0 !important; max-width:100% !important;
+    overflow-x:auto !important; overflow-y:hidden !important; scrollbar-width:thin; }
+  ${P} .sxb-ops .of-facility-rail :is(.sxb-ops__dock, .sx-dock, .sx-dock__group--nav) { width:max-content !important; min-width:100% !important; max-width:none !important; }
+  ${P} .sxb-ops .sx-dock__group--nav { flex-wrap:nowrap !important; gap:0 3px !important; }
+  ${P} .sxb-ops .sx-dock :is(button, a) { padding-left:5px !important; padding-right:5px !important; }
+  ${P} .sxb-ops .sx-tile .dust-tab-glyph { display:none !important; }
+  ${P} .sxb-ops > .sx-comms { order:2 !important; flex:0 0 auto !important; flex-direction:row !important; gap:4px !important; margin:0 !important; }
+  ${P} .sxb-ops > .sxb-launch-seat { order:3 !important; flex:0 0 auto !important; margin-left:auto !important; }
+}
+
 /* ==== MARKET ================================================================================ */
 /* the two columns are ruled panels over a scrim, so no figure sits on the busy world plate */
 ${P} .sx-mkt__list { box-sizing:border-box; border:${LINE} !important; border-radius:2px; background:${PANEL} !important;

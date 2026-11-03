@@ -7,7 +7,7 @@ const HEARING_RADIUS = 420;
 const CALL_SPACING_S = 8;
 const STALL_S = 5;
 const calls = Object.freeze({
-  awaiting_brace: 'Long plate is still clamped. Use the site beam on the marked long-plate brace if you want the crew to start. You can leave it alone.',
+  awaiting_brace: 'Long plate is still clamped. Use the site beam on the marked long-plate brace: the yard pays 400 credits for the completed brace. You can leave it alone.',
   cutting: 'Brace is in. Cut the long-plate seam and release its clamp yourself to get the breaker moving sooner.',
   lifting: 'The breaker has the plate on its own line. It is too heavy for a small tug; keep the path clear.',
   receiving: 'The plate is at the cradle. Give the breaker room to withdraw.',

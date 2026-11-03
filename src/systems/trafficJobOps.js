@@ -1,6 +1,8 @@
 // Row 413 extraction — methods moved verbatim out of traffic.js;
 // spread back onto the traffic object, so `this` still binds to the system at call time.
 import { applyCaptainRouteMemory } from './captainMemory.js';
+import { promoteAsteroidFieldRock } from '../world/asteroidField.js';
+import { occupantGenerationOf } from '../core/entity.js';
 import { CINDER_RUN_COURIER_CONTACT_ID, NAMED_LANE_CONTACTS, PASSENGER_LINER_ITINERARY_KIND, PASSENGER_LINER_SERVICE, PASSENGER_LINER_SERVICE_SCHEMA, PRIORITY_COURIER_ITINERARY_KIND, PRIORITY_COURIER_JOB_SCHEMA, PRIORITY_COURIER_SERVICE, PRIORITY_COURIER_SERVICE_SCHEMA, carryPassengerLinerLastOutcome, isPassengerLinerItinerary, isPriorityCourierItinerary, pickNamedLaneContact } from '../data/laneContacts.js';
 import { CERES_ACTIVITY_SECTOR_ID } from '../data/sectorActivityPockets.js';
 import { deferredEnterNow } from '../core/sectorEnterDefer.js';
@@ -28,10 +30,20 @@ export const trafficJobOps = {
     if (typeof assign !== 'function') return;                 // runtime not registered → strict no-op
     if (!ent || !ent.data || !ent.data.worldRecordId) return; // no stable identity → not a durable job
     if (ent.data.worldSiteTrafficHookId || ent.data.claimTravelTrafficHookId) return; // infrastructure owns this slot
+    // An existing miner job and hold belong to the old shift, including after Continue.
+    if (role === 'prospector' && ent.data.jobId) return;
     const spec = this._buildJobSpec(role, ent, originStation, target, stations, sectorId);
     if (!spec) return;
     applyCaptainRouteMemory(this.state, ent, spec);
     const jobId = assign(ent, spec);
+    if (jobId && spec.payload?.prospectorField) {
+      const entry = this.helpers.npcJobs.get(jobId);
+      const rock = this.state.entities.get(spec.payload.prospectorField.targetId);
+      if (entry?.job?.payload?.prospectorField && rock
+          && occupantGenerationOf(rock) === spec.payload.prospectorField.generation) {
+        entry._prospectorTarget = { entity: rock, data: rock.data, generation: occupantGenerationOf(rock) };
+      }
+    }
     if (jobId && (role === 'miner' || role === 'ore_carrier' || occupationalJobKind(role) === 'miner')) {
       // A commissioned barge departs empty. Its real cargo is created only when a materialized work
       // stop completes, so scanners never show a miner carrying random market goods outbound.
@@ -91,6 +103,27 @@ export const trafficJobOps = {
           },
         },
       };
+    }
+    if (role === 'prospector') {
+      const id = this._pickWorkableAsteroidNear(this.state, home, 0);
+      const rock = id == null ? null : promoteAsteroidFieldRock(this.state, id, this.helpers, 'npc-prospect');
+      const data = rock?.data, generation = occupantGenerationOf(rock);
+      if (!rock || rock.alive === false || !rock.pos || !data?.fieldId || generation == null
+          || data.siteAnchored || data.opticStructureId || data.respawnAt != null || data.isChunk
+          || (rock.homeSectorId && rock.homeSectorId !== sectorId)) return null;
+      // World owns the durable source. A job must not promise a resumable reading of a
+      // transient body for which the resource owner cannot establish an exact record.
+      const source = this._registry?.get?.('world')?.persistResourceBody?.(rock);
+      if (!source || source.outcome !== 'active' || source.sectorId !== sectorId
+          || source.fieldId !== data.fieldId || !source.slotId || !source.recordId
+          || this.state.world?.resourceBodies?.byId?.[source.recordId] !== source) return null;
+      const pos = { x: rock.pos.x, z: rock.pos.z };
+      return { kind: 'surveyor', sectorId, speed: 30, workS: 8,
+        route: [{ id: 'prospect:departure', pos: { ...pos } }, { id: 'prospect:face', pos: { ...pos } }],
+        payload: { prospectorField: { targetId: rock.id, generation, fieldId: data.fieldId, sectorId,
+          sourceRecordId: source.recordId, sourceIdentityKey: source.identityKey,
+          sourceSlotId: source.slotId, sourceSeed: source.sourceSeed,
+          commissionedAt: Number(this.state.simTime) || 0 } } };
     }
     if (role === 'miner' || role === 'ore_carrier' || occupationalJobKind(role) === 'miner') {
       // The seam this refinery actually works, not a rock drawn uniformly from the whole 4200-unit

@@ -651,6 +651,7 @@ export const world = {
     this.bus = ctx.bus;
     this.helpers = ctx.helpers;
     this.registry = ctx.registry;
+    this._resourceBodyRestoreJobs = null;
 
     const state = this.state;
     const bus = this.bus;
@@ -683,7 +684,7 @@ export const world = {
     state.world.resourceWork = normalizeResourceWorkState(state.world.resourceWork);
     // M2-C2 durable world-entity records (global-space). Runtime residency bags stay separate.
     ensureWorldRecords(state.world);
-    ensureResourceBodies(state.world);
+    ensureResourceBodies(state.world, { npcJobs: state.npcJobs });
     // M2-C2/C3 latest-epoch recipe cache. It is bounded data, not a live-entity authority.
     state.world.embodiment = normalizeEmbodimentCache(state.world.embodiment);
 
@@ -3122,10 +3123,19 @@ export const world = {
     }
   },
 
+  _resourceBodyRetentionOptions() {
+    return { npcJobs: this._resourceBodyRestoreJobs || this.state?.npcJobs };
+  },
+
+  finishResourceBodyRestore() {
+    this._resourceBodyRestoreJobs = null;
+  },
+
   _restoreResourceBody(ent) {
     if (!ent || ent.type !== 'asteroid') return ent;
     const state = this.state;
-    const bag = ensureResourceBodies(state.world);
+    const opts = this._resourceBodyRetentionOptions();
+    const bag = ensureResourceBodies(state.world, opts);
     const rec = findResourceBodyForEntity(bag, ent);
     if (!rec) return ent;
     if (rec.outcome === 'destroyed') {
@@ -3146,7 +3156,7 @@ export const world = {
         && rec.recoveryPolicy && rec.recoveryPolicy.recoverDepleted === true,
     }) || rec;
     applyResourceBodyToEntity(ent, advanced);
-    upsertResourceBody(bag, advanced);
+    upsertResourceBody(bag, advanced, opts);
     return ent;
   },
 
@@ -3154,17 +3164,19 @@ export const world = {
     if (!entity || entity.type !== 'asteroid') return null;
     const state = this.state;
     const d = entity.data || {};
+    const opts = this._resourceBodyRetentionOptions();
+    const bag = ensureResourceBodies(state.world, opts);
     const captured = captureResourceBodyRecord(entity, {
       sectorId: entity.homeSectorId || d.homeSectorId || d.sectorId
         || (state.world && state.world.currentSectorId),
       fieldId: d.fieldId,
       slotId: d.activityObjectSlotId || d.asteroidSlotId || d.slotId,
       simTime: Number.isFinite(state.simTime) ? state.simTime : (state.tick | 0),
-      previousRecord: d.resourceBodyId ? ensureResourceBodies(state.world).byId[d.resourceBodyId] : null,
-      resourceBag: ensureResourceBodies(state.world),
+      previousRecord: d.resourceBodyId ? bag.byId[d.resourceBodyId] : null,
+      resourceBag: bag,
     });
     if (!captured) return null;
-    const stored = upsertResourceBody(ensureResourceBodies(state.world), captured);
+    const stored = upsertResourceBody(bag, captured, opts);
     if (stored && entity.data) entity.data.resourceBodyId = stored.recordId;
     return stored;
   },
@@ -8107,7 +8119,8 @@ export const world = {
       arrangementVersion: readArrangementVersion(state.world.arrangementVersion, ARRANGEMENT_VERSION),
       // v11: durable global-space entity records (never frameOrigin / residentSectors / sectorContents).
       records: serializeRecordsBag(ensureWorldRecords(state.world)),
-      resourceBodies: serializeResourceBodyBag(ensureResourceBodies(state.world)),
+      resourceBodies: serializeResourceBodyBag(
+        ensureResourceBodies(state.world, this._resourceBodyRetentionOptions()), this._resourceBodyRetentionOptions()),
       // Shelved far actors are durable run state: without them a virtualized NPC rematerializes
       // live on load and the next serialize captures a fat record where the save held a thin one.
       farActors: serializeFarActorTable(state.world.farActors),
@@ -8138,14 +8151,17 @@ export const world = {
     return out;
   },
 
-  deserialize(data) {
-    for (const _ of this.deserializeChunked(data)) { /* sync lane: every batch inline */ }
+  deserialize(data, context) {
+    for (const _ of this.deserializeChunked(data, context)) { /* sync lane: every batch inline */ }
   },
 
   // Generator twin: yields only at section boundaries (between the durable bag restores), never
   // inside a section — the async lane paints between them while every call keeps sync order.
-  *deserializeChunked(data) {
+  *deserializeChunked(data, context) {
     if (!data) return;
+    // World and its resource rows restore before npcJobs. During that interval use the
+    // incoming saved job bag, never the outgoing session's transient jobs.
+    this._resourceBodyRestoreJobs = context ? (context.npcJobs || { byId: {} }) : null;
     this._clearAdoptedSalvorApproachState(this.state);
     // Reject unknown future layouts BEFORE any state mutation. Missing means legacy geometry.
     const arrangementVersion = readArrangementVersion(data.arrangementVersion);
@@ -8177,7 +8193,7 @@ export const world = {
     // Durable records restore before enterSector rematerializes them exactly once.
     state.world.records = yield* normalizeRecordsBagChunked(data.records);
     yield 'world-records';
-    state.world.resourceBodies = yield* normalizeResourceBodyBagChunked(data.resourceBodies);
+    state.world.resourceBodies = yield* normalizeResourceBodyBagChunked(data.resourceBodies, this._resourceBodyRetentionOptions());
     yield 'world-resource-bodies';
     // Dark optic cells come back through _ensureOpticStructures on the next materialize;
     // absent (older saves) normalizes to an empty ledger.
