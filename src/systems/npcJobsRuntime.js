@@ -2792,28 +2792,35 @@ export const npcJobsRuntime = {
       if (target.data && target.data.sectorId == null) target.data.sectorId = sectorId;
       syncEntitySectorMembership(this.state && this.state.entityIndex, entity);
       syncEntitySectorMembership(this.state && this.state.entityIndex, target);
+      // The existing salvor job owns the physical cut and yard return. Reuse its authored
+      // home/source builder so an adopted ecology worker returns to the same eligible local
+      // intake route as a dispatched cutter instead of ending its job at the wreck-field hold.
+      // These route builders are owned by Traffic itself, not by the narrow helper facade
+      // exposed to other systems. Adoption runs after every production system has registered.
+      const traffic = this.registry?.get?.('traffic') || this.helpers?.traffic;
+      const stations = traffic?._sectorStations?.() || [];
+      const home = traffic?._salvorHomeForTarget?.(stations, sectorId, target);
+      const jobSpec = traffic?._buildSalvorJobSpec?.(home, target, sectorId, { deferTargetKey: true });
+      if (!jobSpec) return;
+      // Ecology workers are adopted beside their live wreck, not spawned at the yard. Keep the
+      // kernel's initial transit origin at this real spawn pose; traffic migrates that origin to
+      // the canonical yard only after the exact finite extraction is aboard.
+      jobSpec.route[0] = {
+        id: 'cut:hold',
+        pos: { x: entity.pos.x, z: entity.pos.z },
+        label: 'Hold',
+      };
+      jobSpec.speed = 40;
+      jobSpec.commissionS = 0.05;
+      jobSpec.transitS = 0.05;
+      jobSpec.approachS = 0.05;
+      jobSpec.workS = 40;
+      jobSpec.payload.role = 'scavenger';
+
       // This cutter works the existing wreck field. Keep its hold and work marks there; the
       // cathedral's immovable grave scenery is not a salvage destination for this occupation.
       pinOccupationalLatch(target);
-      const jobId = this.assign(entity, {
-        kind: NPC_JOB_KIND.SALVOR,
-        sectorId,
-        speed: 40,
-        commissionS: 0.05,
-        transitS: 0.05,
-        approachS: 0.05,
-        workS: 40,
-        route: [
-          { id: 'cut:hold', pos: { x: entity.pos.x, z: entity.pos.z }, label: 'Hold' },
-          { id: `hulk:${target.id}`, pos: { x: target.pos.x, z: target.pos.z }, label: 'Hulk' },
-        ],
-        payload: {
-          targetId: target.id,
-          targetType: target.type,
-          role: 'scavenger',
-          extracted: false,
-        },
-      });
+      const jobId = this.assign(entity, jobSpec);
       if (!jobId) {
         // assign refused — the latched target was never attached, so unpin it here or its
         // latch leaks a permanent 'tethered' persistence anchor.
@@ -3196,6 +3203,9 @@ export const npcJobsRuntime = {
     const byId = this._byId();
     const entry = byId[jobId];
     if (!entry) return false;
+    const adoptedScavenger = entry.job?.kind === NPC_JOB_KIND.SALVOR
+      && entry.job?.payload?.role === 'scavenger';
+    const adoptedTargetId = adoptedScavenger ? entry.job.payload.targetId : null;
     const realTargetJobBinding = this._ceresRealTargetJobBinding(jobId);
     let ent = this._entryActorForCleanup(entry);
     if (ent && realTargetJobBinding
@@ -3214,6 +3224,10 @@ export const npcJobsRuntime = {
       delete ent.data.jobId;
       delete ent.data.jobPhase;
       delete ent.data.jobProgress;
+      if (adoptedScavenger) {
+        if (ent.data.jobKind === 'salvor') delete ent.data.jobKind;
+        if (ent.data.towTargetId === adoptedTargetId) delete ent.data.towTargetId;
+      }
       // The spawn stamp persisted this hull so a mid-job worker survives save/Continue.
       // With the job gone the mark is dead weight — the durable record already preserves
       // the hull, and clearing lets an idle worker demote to a far row instead of

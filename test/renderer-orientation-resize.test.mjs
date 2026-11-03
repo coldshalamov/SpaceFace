@@ -1,11 +1,14 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import * as THREE from 'three';
-import { render, runWebGlContextRestoreRebuild } from '../src/render/renderer.js';
+import { render, runWebGlContextRestoreRebuild, disposeObjectNode, disposeRendererOwnedResources } from '../src/render/renderer.js';
 import { createUnreadyDrawableGuard } from '../src/render/bloom.js';
 import {
   createPackageDetachManifest,
   detachPackageGeometry,
+  detachPackageTexture,
+  LIVE_PACKAGE_CPU_PAYLOAD,
+  measureLivePackageCpuPayloads,
   orientationDetachedHoldActive,
   presentedDetachRehydrateInFlight,
   resetPackageDetachManifestsForTests,
@@ -43,6 +46,70 @@ function harness() {
   });
   return { owner, renderer, canvas, sizes, postSizes };
 }
+
+test('live shared payloads resize immediately without decoding the scene or a cached package', async () => {
+  resetPackageDetachManifestsForTests();
+  const previousWindow = globalThis.window;
+  globalThis.window = { innerWidth: 844, innerHeight: 390, devicePixelRatio: 1 };
+  const h = harness(), scene = new THREE.Scene();
+  h.owner.scene = scene;
+  h.owner._installLivePackageCpuPayloads(scene);
+  const geometry = new THREE.BoxGeometry();
+  const texture = new THREE.DataTexture(new Uint8Array([20, 40, 60, 255]), 1, 1);
+  texture.needsUpdate = true;
+  let decodes = 0;
+  createPackageDetachManifest({ contentHash: 'live-shared-resize', resources: [geometry, texture] }, {
+    redecode: () => { decodes++; throw new Error('live resources were unexpectedly cold'); },
+    collectResources: value => value.resources,
+  });
+  const material = new THREE.MeshBasicMaterial({ map: texture });
+  const first = new THREE.Mesh(geometry, material), second = new THREE.Mesh(geometry, material.clone());
+  const a = new THREE.Group(), b = new THREE.Group();
+  a.add(first); b.add(second); scene.add(a, b);
+  a.userData.presentationEntityId = 1;
+  b.userData.presentationEntityId = 2;
+  h.owner.state.entities = new Map([[1, { id: 1, alive: true }], [2, { id: 2, alive: true }]]);
+  try {
+    const retain = scene[LIVE_PACKAGE_CPU_PAYLOAD];
+    const releaseFirst = retain(a, first, new Set([first]));
+    retain(b, second, new Set([second]));
+    assert.equal(retain(new THREE.Group(), new THREE.Group(), new Set([first])), null,
+      'an unmounted speculative owner cannot retain live CPU bytes');
+    const warm = new THREE.Group(); warm.userData.rosterPrewarm = 'existing-species-warm';
+    warm.userData.presentationEntityId = 1; scene.add(warm);
+    assert.equal(retain(warm, new THREE.Group(), new Set([first])), null,
+      'a mounted roster specimen is still speculative, even when it copies a real entity ID');
+    const unbound = new THREE.Group(); scene.add(unbound);
+    assert.equal(retain(unbound, new THREE.Group(), new Set([first])), null);
+    assert.equal(detachPackageGeometry(geometry), false);
+    assert.equal(detachPackageTexture(texture), false);
+    const bytes = measureLivePackageCpuPayloads(h.owner._livePackageCpuPayloads);
+    const one = measureLivePackageCpuPayloads([{ geometries: [geometry], textures: [texture] }]);
+    assert.equal(bytes.liveCpuBufferBytes, one.liveCpuBufferBytes, 'shared owners do not double-count backing buffers');
+    h.owner.onResize();
+    assert.deepEqual(h.sizes, [[844, 390]], 'CPU-ready orientation commits in the actual resize call');
+    assert.equal(h.owner._orientationResizePending, undefined);
+    assert.equal(orientationDetachedHoldActive(h.renderer), false);
+    assert.equal(presentedDetachRehydrateInFlight(), null);
+    assert.equal(decodes, 0);
+    releaseFirst();
+    assert.equal(detachPackageGeometry(geometry), false, 'the second live owner still holds the geometry');
+    assert.equal(detachPackageTexture(texture), false);
+    // Private pass reparenting is not resource disposal and cannot expire the lease.
+    const staging = new THREE.Scene(); staging.add(second); b.add(second);
+    assert.equal(detachPackageTexture(texture), false);
+    disposeObjectNode(second);
+    assert.equal(detachPackageGeometry(geometry), true);
+    assert.equal(detachPackageTexture(texture), true);
+    assert.equal(h.owner._livePackageCpuPayloads.size, 0);
+    disposeRendererOwnedResources(h.owner);
+    assert.equal(scene[LIVE_PACKAGE_CPU_PAYLOAD], undefined);
+  } finally {
+    h.owner._releaseLivePackageCpuPayloads?.();
+    globalThis.window = previousWindow;
+    resetPackageDetachManifestsForTests();
+  }
+});
 
 async function withPendingRefill(run, { failFirstRefill = false } = {}) {
   resetPackageDetachManifestsForTests();

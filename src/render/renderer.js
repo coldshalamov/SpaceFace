@@ -598,6 +598,9 @@ import {
   detachedTextureUploadPending,
   dropGeometryGpuResidencyLedger,
   isPackageGeometryDetached,
+  isPackageTextureDetached,
+  LIVE_PACKAGE_CPU_PAYLOAD,
+  measureLivePackageCpuPayloads,
   noteOrientationDetachedHold,
   packageGeometryUploadDiagnostics,
   queuePresentedDetachRehydrate,
@@ -8269,6 +8272,7 @@ export function retireAppearanceGpuGeneration(owner, reason = 'renderer-destroye
 export function disposeRendererOwnedResources(owner, options = {}) {
   if (!owner || owner._rendererResourcesDisposed === true) return false;
   owner._rendererResourcesDisposed = true;
+  owner._releaseLivePackageCpuPayloads?.();
   owner._orientationResizeRelease?.();
   owner._orientationResizeRelease = null;
   owner._orientationResizePending = null;
@@ -10036,6 +10040,7 @@ export const render = {
     { const i = new Image(); i.src = 'assets/cinematics/C-INTRO-01.jpg'; }
 
     this.renderer = renderer; this.scene = scene; this.cam = cam; this.spaceBg = spaceBg; this.vf = vf;
+    this._installLivePackageCpuPayloads(scene);
     if (scene && scene.userData) {
       // Scene-level injection seam: pool and chunk composition code outside
       // renderer scope (asteroid instance pool, packaged instance chunks) adds
@@ -32843,14 +32848,83 @@ export const render = {
     );
   },
 
+  _installLivePackageCpuPayloads(scene) {
+    this._releaseLivePackageCpuPayloads?.();
+    const records = new Set();
+    this._livePackageCpuPayloads = records;
+    const retain = (boundary, root, contextRoots) => {
+      if (this._rendererResourcesDisposed || this.scene !== scene) return null;
+      let anchor = boundary;
+      while (anchor && anchor !== scene) {
+        if (anchor.userData?.rosterPrewarm != null) return null;
+        anchor = anchor.parent;
+      }
+      if (anchor !== scene) return null; // Speculative/cache-only roots have no live scene owner.
+      const entity = shadowPolicyEntityOf(boundary, this.state);
+      const identity = boundary.userData;
+      if (!entity || entity.alive === false
+          || (identity?.presentationEntityType != null && identity.presentationEntityType !== entity.type)
+          || (identity?.presentationOccupantGeneration != null
+            && identity.presentationOccupantGeneration !== entity.occupantGeneration)) return null;
+      const subjects = [...contextRoots];
+      const materials = subjects.filter(subject => subject?.isMaterial);
+      if (materials.length) subjects.push({ traverse(visit) { visit({ material: materials }); } });
+      const geometries = [...new Set([
+        ...collectStartupGeometries(subjects, { includeEmpty: true }),
+        ...subjects.filter(subject => subject?.isBufferGeometry),
+      ])];
+      const textures = collectStartupTextures(subjects);
+      const releaseGeometry = retainPackageGeometryCpu(geometries);
+      const releaseTextures = retainPresentedTextureLeases(textures);
+      // Acquire the successor before releasing an earlier claim on this exact root.
+      root[LIVE_PACKAGE_CPU_PAYLOAD]?.();
+      const record = { geometries, textures, release: null };
+      let liveRoot = root;
+      const release = () => {
+        if (!records.delete(record)) return;
+        release.unregisterOwner?.();
+        release.unregisterOwner = null;
+        releaseGeometry(); releaseTextures();
+        if (liveRoot?.[LIVE_PACKAGE_CPU_PAYLOAD] === release) delete liveRoot[LIVE_PACKAGE_CPU_PAYLOAD];
+        liveRoot = null;
+        record.geometries.length = 0;
+        record.textures.length = 0;
+      };
+      record.release = release;
+      records.add(record);
+      root[LIVE_PACKAGE_CPU_PAYLOAD] = release;
+      return release;
+    };
+    scene[LIVE_PACKAGE_CPU_PAYLOAD] = retain;
+    const releaseAll = () => {
+      for (const record of records) record.release();
+      if (scene[LIVE_PACKAGE_CPU_PAYLOAD] === retain) delete scene[LIVE_PACKAGE_CPU_PAYLOAD];
+      this._livePackageCpuPayloads = null;
+      if (this._releaseLivePackageCpuPayloads === releaseAll) this._releaseLivePackageCpuPayloads = null;
+    };
+    this._releaseLivePackageCpuPayloads = releaseAll;
+  },
+
   // Re-apply the drawing-buffer size (renderer + bloom + render-graph + LOD viewport) from the current
   // window size, the base video settings, AND the live dynamic-resolution scale (state.render.dynResScale).
   // Shared by onResize (window/setting change) and the dynamic-resolution controller (per-frame load).
   _applySize() {
     const cssAspect = (typeof window !== 'undefined' && (window.innerWidth || 0) >= (window.innerHeight || 0))
       ? 'land' : 'port';
+    let orientationResources = null;
+    const needsRefill = (resources) => resources.geometries.some(isPackageGeometryDetached)
+      || resources.textures.some(isPackageTextureDetached);
+    const aspectChanging = this._drawBufferAspectClass && this._drawBufferAspectClass !== cssAspect;
+    if (!this._orientationResizeApplying && !this._orientationResizePending && aspectChanging) {
+      orientationResources = { geometries: collectStartupGeometries(this.scene), textures: collectStartupTextures(this.scene) };
+      if (globalThis.__SF_BUFFER_RESIZE_DIAG__ === true
+          || (typeof location !== 'undefined' && new URLSearchParams(location.search).get('bufferResizeDiag') === '1')) {
+        console.info('[render:live-package-cpu]', JSON.stringify(
+          measureLivePackageCpuPayloads(this._livePackageCpuPayloads || [])));
+      }
+    }
     if (!this._orientationResizeApplying && (this._orientationResizePending
-        || (this._drawBufferAspectClass && this._drawBufferAspectClass !== cssAspect))) {
+        || (aspectChanging && needsRefill(orientationResources)))) {
       // Preserve the last complete picture while the guard protects released hulls. Resizing
       // now clears that picture, then presents a scene with those hulls deliberately hidden.
       const canvas = this.renderer.domElement;
@@ -32864,7 +32938,7 @@ export const render = {
         // Admissions can finish while this scene's refill walks its packages. Keep restored
         // bytes alive until resize and draw run in the same task; cached offscreen packages
         // are not a prerequisite for replacing the current picture.
-        const resources = { geometries: collectStartupGeometries(this.scene), textures: collectStartupTextures(this.scene) };
+        const resources = orientationResources;
         const releaseGeometry = retainPackageGeometryCpu(resources.geometries);
         const releaseTextures = retainPresentedTextureLeases(resources.textures);
         const release = () => { releaseGeometry(); releaseTextures(); };
@@ -32900,7 +32974,8 @@ export const render = {
     // too. A same-aspect resize does not.
     const nextAspect = aspectClassFromSize(drawSize);
     if (!this._orientationResizeApplying && this._drawBufferAspectClass && this._drawBufferAspectClass !== nextAspect) {
-      noteOrientationDetachedHold(this.renderer);
+      const resources = orientationResources || { geometries: collectStartupGeometries(this.scene), textures: collectStartupTextures(this.scene) };
+      if (needsRefill(resources)) noteOrientationDetachedHold(this.renderer, resources);
     }
     this._drawBufferAspectClass = nextAspect;
     // Drawing buffer / RT pool sized at max (no dynResScale). Dyn scale is a content sub-rect.
@@ -33672,6 +33747,8 @@ function driveShadowPolicySteps(owner, root, walkRoot, lodLevel, opts, deadlineF
 
 export function disposeObjectNode(c, state = null) {
   if (!c) return false;
+  try { c[LIVE_PACKAGE_CPU_PAYLOAD]?.(); }
+  catch (error) { stormWarn('teardown:liveCpuPayload', '[render] live CPU payload release failed', error); }
   const heldLight = c.isLight === true;
   // Release the vendored maintained shadow-caster registry entry: a flagged-but-torn-down
   // object would stay pinned by the registry Set otherwise.

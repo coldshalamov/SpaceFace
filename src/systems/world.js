@@ -5068,7 +5068,7 @@ export const world = {
     const payload = job?.payload;
     if (!entry || job?.kind !== 'salvor' || payload?.role !== 'scavenger'
       || payload.targetIdentity?.kind == null
-      || job.route?.[0]?.id !== 'cut:hold' || job.route?.[1]?.id !== `hulk:${payload.targetId}`
+      || job.route?.[1]?.id !== `hulk:${payload.targetId}`
       || [ 'flee', 'complete' ].includes(job.phase)
       || entry.worldRecordId !== request.workerWorldRecordId) return null;
     const worker = state.entities?.get?.(entry.entityId);
@@ -5080,6 +5080,20 @@ export const world = {
       || worker.data?.sectorId || state.world?.currentSectorId;
     if (!sectorId || request.sectorId !== sectorId || request.targetType !== targetType
       || request.targetIdentity?.kind !== identity.kind) return null;
+    const origin = job.route?.[0];
+    const originId = origin?.id;
+    let validOrigin = originId === 'cut:hold'
+      && Number.isFinite(origin.pos?.x) && Number.isFinite(origin.pos?.z);
+    if (!validOrigin && typeof originId === 'string' && originId.startsWith('yard:')) {
+      const yardId = originId.slice(5);
+      const active = state.world?.sectorContents?.[sectorId]
+        || (state.world?.currentSectorId === sectorId ? state.world?.activeSector : null);
+      const yard = active?.stations?.find(row => row && row.stationId === yardId);
+      validOrigin = !!yard?.pos && Number.isFinite(origin.pos?.x) && Number.isFinite(origin.pos?.z)
+        && Number.isFinite(yard.pos.x) && Number.isFinite(yard.pos.z)
+        && Math.hypot(origin.pos.x - yard.pos.x, origin.pos.z - yard.pos.z) <= 0.01;
+    }
+    if (!validOrigin) return null;
     for (const key of ['worldRecordId', 'markerId', 'salvagePointId', 'sourceKey', 'key']) {
       if ((request.targetIdentity?.[key] ?? null) !== (identity[key] ?? null)) return null;
     }

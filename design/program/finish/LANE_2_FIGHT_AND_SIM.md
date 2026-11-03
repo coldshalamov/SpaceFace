@@ -82,6 +82,14 @@ wave-15 or public-Ceres acceptance. Artifacts live under `.devshots/finish/integ
 
 ### Wave C — the fight (the showcase)
 
+November3 F1 follow-up: the official matching Rapier0.19.3 SIMD experiment is complete and
+rejected for promotion. Production-loader guards remain active in the artifact-only trial.
+Full-game trajectories diverge (34,818 scalar impacts versus34,411 SIMD), and the separate
+unchanged-fixture timing ABBA provides no reliable useful gain (mean scalar15.505/16.119ms;
+SIMD15.133/19.715ms). No production dependency changed and no full save-compatibility claim is
+made. F1/F2 targets remain open; do not reassign SIMD as an untried shortcut. See
+`.devshots/finish/integration-2026-11-02/terminal-factory/rapier-simd/measurement-02-results.json`.
+
 Build-map rows are the spec; read each row's prose in `build_map.md` (§31–§34) before briefing it.
 
 - **C1 — Row 501 W-HEADS** — the 14 Line heads, P0 first (Coupler, Breaker, Barb, Weld, Magnet, Override).

@@ -26,6 +26,7 @@ import {
   rehydrateDetachedTextures,
   resetPackageDetachManifestsForTests,
   retainPresentedTextureLeases,
+  measureLivePackageCpuPayloads,
 } from '../src/render/packageCpuDetach.js';
 import {
   claimSharedImageTexture,
@@ -37,6 +38,34 @@ import {
 import { prepareStartupGpuResidency } from '../src/render/startupGpuResidency.js';
 
 const IDENTITY = Object.freeze([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
+
+test('live CPU accounting separates unique detachable bytes from kept and cloned payloads', () => {
+  resetPackageDetachManifestsForTests();
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute([0, 0, 0, 1, 0, 0, 0, 1, 0], 3));
+  geometry.setAttribute('normal', new THREE.Float32BufferAttribute([0, 0, 1, 0, 0, 1, 0, 0, 1], 3));
+  geometry.setIndex(new THREE.Uint16BufferAttribute([0, 1, 2], 1));
+  const texture = new THREE.DataTexture(new Uint8Array([20, 40, 60, 255]), 1, 1);
+  createPackageDetachManifest({ contentHash: 'live-byte-accounting', resources: [geometry, texture] }, {
+    redecode: () => {}, collectResources: value => value.resources,
+  });
+  try {
+    const cohort = { geometries: [geometry], textures: [texture] };
+    const one = measureLivePackageCpuPayloads([cohort, cohort]);
+    assert.equal(one.liveCpuBufferBytes, 82); // positions36 + normals36 + indices6 + pixels4
+    assert.equal(one.incrementalCpuBufferBytes, 40); // normal + map; positions/index already kept
+    assert.equal(one.uniqueBuffers, 4);
+    assert.deepEqual(one.textureFormats, [{ format: THREE.RGBAFormat, type: THREE.UnsignedByteType,
+      compressed: false, textures: 1 }]);
+    const clone = texture.clone();
+    assert.equal(clone.source, texture.source);
+    const shared = measureLivePackageCpuPayloads([cohort, { geometries: [], textures: [clone] }]);
+    assert.equal(shared.liveCpuBufferBytes, 82, 'canonical Source pixels count once across clones');
+    assert.equal(shared.incrementalCpuBufferBytes, 36,
+      'an uncovered clone already requires its shared pixels, so its bytes are not an incremental lease cost');
+    assert.equal(shared.opaqueImages, 0);
+  } finally { resetPackageDetachManifestsForTests(); }
+});
 
 function packageMetadata(assetId = 'fixture.detach') {
   const metadata = {

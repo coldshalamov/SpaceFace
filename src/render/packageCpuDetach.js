@@ -46,6 +46,8 @@ const manifests = new Map();
 const manifestsByContentHash = new Map();
 let manifestSequence = 0;
 const GEOMETRY_CPU_KEEP_ATTRIBUTES = new Set(['position', 'sfHullPosition']);
+// Private scene/prepared-root handoff, never serialized into userData or exposed on the runtime API.
+export const LIVE_PACKAGE_CPU_PAYLOAD = Symbol('live-package-cpu-payload');
 // Material slots a presented draw binds. An emptied compressed map in one of these is the
 // texStorage `mipmaps[0].width` throw; scanning uniforms would walk every sky shader per draw.
 const PRESENTED_DETACH_TEXTURE_KEYS = Object.freeze([
@@ -60,6 +62,26 @@ let orientationHolds = new WeakSet();
 let presentedDetachRehydrate = null;
 let presentedDetachRequestedManifests = null;
 let presentedDetachHeldRenderers = null;
+
+// Private, bounded trace for the existing buffer-resize diagnostic. It records only the
+// refill owner and awaited stage; no resource objects or GPU queries cross this boundary.
+let refillDiagnosticRows = 0;
+function refillDiagnosticEnabled() {
+  return globalThis.__SF_BUFFER_RESIZE_DIAG__ === true
+    || (typeof location !== 'undefined'
+      && new URLSearchParams(location.search).get('bufferResizeDiag') === '1');
+}
+function traceManifestRefill(manifest) {
+  if (!refillDiagnosticEnabled()) return null;
+  const started = performance.now();
+  return (stage) => {
+    if (refillDiagnosticRows++ >= 256) return;
+    console.info('[render:package-refill]', JSON.stringify({
+      manifestId: manifest.manifestId, assetId: manifest.assetId,
+      stage, at: performance.now(), elapsedMs: performance.now() - started,
+    }));
+  };
+}
 
 // Whether a manifest still has any released payload — DERIVED, not ledgered: the F3 shared
 // release lands in imageSourceDedupe without a back-edge into this module, so membership must
@@ -680,6 +702,61 @@ export function retainPackageGeometryCpu(geometries) {
     if (released) return;
     released = true;
     for (const entry of entries) entry.cpuReaders -= 1;
+    entries.clear();
+  };
+}
+
+/** On-demand accounting of actual backing buffers, deduplicated across live owners and clones. */
+export function measureLivePackageCpuPayloads(cohorts) {
+  const all = new Set(), protectedBuffers = new Set(), kept = new Set(), opaqueImages = new Set();
+  const geometries = new Set(), textures = new Set();
+  const formats = new Map();
+  const add = (value, protectedPayload) => {
+    const buffer = ArrayBuffer.isView(value) ? value.buffer
+      : value instanceof ArrayBuffer ? value : null;
+    if (!buffer) return;
+    all.add(buffer);
+    (protectedPayload ? protectedBuffers : kept).add(buffer);
+  };
+  for (const cohort of cohorts || []) {
+    for (const geometry of cohort.geometries || []) geometries.add(geometry);
+    for (const texture of cohort.textures || []) textures.add(texture);
+  }
+  for (const geometry of geometries) {
+    const detachable = !!geometryManifestEntry(geometry);
+    const attrs = geometry.attributes || {};
+    const keptRecords = new Set([geometry.index]);
+    for (const name of GEOMETRY_CPU_KEEP_ATTRIBUTES) {
+      const attr = attrs[name];
+      if (attr) keptRecords.add(attr.isInterleavedBufferAttribute ? attr.data : attr);
+    }
+    add(geometry.index?.array, false);
+    for (const attribute of Object.values(attrs)) {
+      const record = attribute?.isInterleavedBufferAttribute ? attribute.data : attribute;
+      add(record?.array, detachable && !keptRecords.has(record));
+    }
+  }
+  for (const texture of textures) {
+    const key = `${texture.format}/${texture.type}/${texture.isCompressedTexture === true}`;
+    const format = formats.get(key) || { format: texture.format, type: texture.type,
+      compressed: texture.isCompressedTexture === true, textures: 0 };
+    format.textures++;
+    formats.set(key, format);
+    const covered = packageTextureDetachCovers(texture);
+    for (const mip of texture.mipmaps || []) add(mip?.data ?? mip, covered);
+    const image = texture.source?.data;
+    add(image?.data ?? image, covered);
+    if (image && !ArrayBuffer.isView(image) && !(image instanceof ArrayBuffer)
+        && !image.data && !texture.isCompressedTexture && image.width && image.height) opaqueImages.add(image);
+  }
+  const bytes = (buffers) => { let total = 0; for (const buffer of buffers) total += buffer.byteLength; return total; };
+  const incremental = [...protectedBuffers].filter(buffer => !kept.has(buffer));
+  return {
+    geometries: geometries.size, textures: textures.size, uniqueBuffers: all.size,
+    liveCpuBufferBytes: bytes(all), incrementalCpuBufferBytes: bytes(incremental),
+    opaqueImages: opaqueImages.size,
+    textureFormats: [...formats.values()].slice(0, 32), textureFormatsTruncated: formats.size > 32,
+    note: 'Actual unique backing buffers, not total CPU heap. Incremental is an upper bound excluding buffers also required by kept positions/indices or uncovered clones; external cache references can reduce the eventual memory delta further. Opaque images are counted only.',
   };
 }
 
@@ -1092,6 +1169,7 @@ export function queuePresentedDetachRehydrate(renderer, resources = null) {
   // Cohorts joining during an awaited decode stay on this one serial runway. Offscreen
   // cached packages are not a dependency of a scoped orientation request.
   const requested = new Set(wanted);
+  refillDiagnosticRows = 0;
   presentedDetachRequestedManifests = requested;
   const held = new Set(renderer ? [renderer] : []);
   presentedDetachHeldRenderers = held;
@@ -1258,6 +1336,7 @@ export function retainPresentedTextureLeases(textures) {
     if (released) return;
     released = true;
     for (const fn of release) fn();
+    release.length = 0;
   };
 }
 
@@ -1354,7 +1433,10 @@ export function orientationHoldHidesDrawable(renderer, object) {
 }
 
 async function rehydrateManifest(manifest) {
-  const decoded = await manifest.redecode();
+  const trace = traceManifestRefill(manifest);
+  trace?.('decode:start');
+  const decoded = await manifest.redecode(trace);
+  trace?.('rebind:start');
   const template = decodedTemplate(decoded);
   if (!template) throw new Error(`Render package ${manifest.assetId} rehydrate returned no scene.`);
   const freshResources = [...manifest.collectResources(template)];
@@ -1454,6 +1536,7 @@ async function rehydrateManifest(manifest) {
   for (const fresh of freshTextures) {
     try { if (typeof fresh.dispose === 'function') fresh.dispose(); } catch (_) {}
   }
+  trace?.('rebind:complete');
   return {
     textures: restored,
     geometries: restoredGeometries,

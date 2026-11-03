@@ -1919,7 +1919,7 @@ export const trafficRoleOps = {
     return best;
   },
 
-  _buildSalvorJobSpec(home, target, sectorId) {
+  _buildSalvorJobSpec(home, target, sectorId, { deferTargetKey = false } = {}) {
     if (!home || !home.pos || !target || !target.pos) return null;
     const targetKind = target.type === 'payload' ? 'payload' : 'hulk';
     const source = this._salvageSourceBinding(target);
@@ -1938,7 +1938,7 @@ export const trafficRoleOps = {
       payload: {
         targetId: target.id,
         targetType: target.type,
-        ...(!source ? { targetKey: this._salvorTargetKey(target) } : {}),
+        ...(!source && !deferTargetKey ? { targetKey: this._salvorTargetKey(target) } : {}),
         ...(source ? {
           salvageSource: source.sourceKey,
           salvagePointId: source.salvagePointId,
@@ -1955,7 +1955,7 @@ export const trafficRoleOps = {
     return job?.kind === 'salvor'
       && payload?.role === 'scavenger'
       && targetId != null
-      && job.route?.[0]?.id === 'cut:hold'
+      && (job.route?.[0]?.id === 'cut:hold' || job.route?.[0]?.id?.startsWith('yard:'))
       && job.route?.[1]?.id === `hulk:${targetId}`
       && (!entity || entry.entityId === entity.id);
   },
@@ -2362,51 +2362,87 @@ export const trafficRoleOps = {
     if (job.phase === NPC_JOB_PHASE.COMMISSION) return null;
     if (job.phase === NPC_JOB_PHASE.FLEE || job.phase === NPC_JOB_PHASE.COMPLETE) return null;
     if (adoptedScavenger) {
+      // WORK still requires the exact live, eligible wreck below. After a successful cut,
+      // however, that same body is deliberately drained and marked salvaged. Let only the
+      // extraction recorded on this exact job and its matching finite salvor hold finish LOAD;
+      // otherwise the consumed wreck would block the cutter forever before the RETURN leg.
+      const heldManifest = entity.data?.cargoManifest;
+      const extractedQty = job.payload?.totalQty;
+      const hasExtractedSalvorHold = job.phase === NPC_JOB_PHASE.LOAD
+        && job.payload?.extracted === true
+        && Number.isSafeInteger(extractedQty) && extractedQty > 0
+        && heldManifest?.role === 'salvor'
+        && validCausalManifest(heldManifest)
+        && heldManifest.totalQty === extractedQty;
+      const hasOwnedSalvorHold = job.payload?.extracted === true
+        && Number.isSafeInteger(extractedQty) && extractedQty > 0
+        && heldManifest?.role === 'salvor'
+        && validCausalManifest(heldManifest)
+        && heldManifest.totalQty === extractedQty;
+
+      // Existing saved jobs still have a cut:hold origin. Once their own finite extraction is
+      // aboard, migrate that destination once to the same salvor home used by new commissions.
+      // The booked wreck must still resolve by its retained identity before it can supply a home.
+      if (hasOwnedSalvorHold && job.route[0]?.id === 'cut:hold') {
+        const retained = this._retainedAdoptedSalvageTarget(entry);
+        if (!retained) return { blocked: true };
+        const home = this._salvorHomeForTarget(this._sectorStations(), entry.sectorId, retained);
+        if (!home) return { blocked: true };
+        job.route[0] = { id: `yard:${stationIdentity(home)}`,
+          pos: { x: home.pos.x, z: home.pos.z }, label: 'Scrap Yard' };
+      }
+      if (hasExtractedSalvorHold) return this._salvorTargetDescriptor(entity, entity, 1);
+      const adoptedReturningHome = hasOwnedSalvorHold
+        && job.route[0]?.id?.startsWith('yard:')
+        && [NPC_JOB_PHASE.RETURN, NPC_JOB_PHASE.APPROACH, NPC_JOB_PHASE.UNLOAD].includes(job.phase);
+
       // The first native attachment probe establishes the retained object sidecar. Until then,
       // let the existing explicit booking resolver perform its one normal initial bind. A
       // persisted identity also authorizes rebinding after Continue; never fall back to the old
       // numeric slot once that identity exists.
-      if (!entry._salvorBookedTarget && !entry.towTargetRef && !job.payload?.targetIdentity) return null;
-      const target = this._retainedAdoptedSalvageTarget(entry);
-      const claimant = target && this._salvorClaimantOf(target);
-      if (target && this._isSalvageableBody(target)
-        && (!claimant || claimant === context.worldRecordId)) {
-        return this._salvorTargetDescriptor(entity, target, this._salvorReach(entity, target));
-      }
-      if (target) return { blocked: true };
+      if (!adoptedReturningHome) {
+        if (!entry._salvorBookedTarget && !entry.towTargetRef && !job.payload?.targetIdentity) return null;
+        const target = this._retainedAdoptedSalvageTarget(entry);
+        const claimant = target && this._salvorClaimantOf(target);
+        if (target && this._isSalvageableBody(target)
+          && (!claimant || claimant === context.worldRecordId)) {
+          return this._salvorTargetDescriptor(entity, target, this._salvorReach(entity, target));
+        }
+        if (target) return { blocked: true };
 
-      // A shelved booked hulk still supplies a route pose, never a work body. The world owner
-      // advances that exact far record and requests promotion only when this live worker reaches
-      // the physical-work band. ready:false keeps the job clock stopped until a real native body
-      // is restored; the extraction path continues resolving only active salvageable entities.
-      const world = this._registry?.get?.('world');
-      const workPose = this._salvorBodyState(entity);
-      const targetPose = world?.requestAdoptedSalvorTargetMaterialization?.({
-        jobId: job.id,
-        workerWorldRecordId: context.worldRecordId,
-        targetIdentity: job.payload?.targetIdentity,
-        targetType: job.payload?.targetType,
-        sectorId: entry.sectorId || entity.homeSectorId || entity.data?.homeSectorId
-          || entity.data?.sectorId || this.state.world?.currentSectorId,
-        approachBandWU: this._salvorReach(entity, entry._salvorBookedTarget?.entity
-          || { radius: 0, type: job.payload?.targetType }),
-      });
-      if (!targetPose || !workPose) return { blocked: true };
-      if (targetPose.claimant && targetPose.claimant !== context.worldRecordId) return { blocked: true };
-      const poseTarget = { type: targetPose.type, radius: targetPose.radius, mass: targetPose.mass };
-      return {
-        pos: targetPose.pos,
-        vel: targetPose.vel,
-        workPose,
-        reach: this._salvorReach(entity, poseTarget),
-        salvorPhysical: true,
-        settled: false,
-        ready: false,
-      };
+        // A shelved booked hulk still supplies a route pose, never a work body. The world owner
+        // advances that exact far record and requests promotion only when this live worker reaches
+        // the physical-work band. ready:false keeps the job clock stopped until a real native body
+        // is restored; the extraction path continues resolving only active salvageable entities.
+        const world = this._registry?.get?.('world');
+        const workPose = this._salvorBodyState(entity);
+        const targetPose = world?.requestAdoptedSalvorTargetMaterialization?.({
+          jobId: job.id,
+          workerWorldRecordId: context.worldRecordId,
+          targetIdentity: job.payload?.targetIdentity,
+          targetType: job.payload?.targetType,
+          sectorId: entry.sectorId || entity.homeSectorId || entity.data?.homeSectorId
+            || entity.data?.sectorId || this.state.world?.currentSectorId,
+          approachBandWU: this._salvorReach(entity, entry._salvorBookedTarget?.entity
+            || { radius: 0, type: job.payload?.targetType }),
+        });
+        if (!targetPose || !workPose) return { blocked: true };
+        if (targetPose.claimant && targetPose.claimant !== context.worldRecordId) return { blocked: true };
+        const poseTarget = { type: targetPose.type, radius: targetPose.radius, mass: targetPose.mass };
+        return {
+          pos: targetPose.pos,
+          vel: targetPose.vel,
+          workPose,
+          reach: this._salvorReach(entity, poseTarget),
+          salvorPhysical: true,
+          settled: false,
+          ready: false,
+        };
+      }
     }
     const stationId = job.route[0].id.slice(5);
     const home = this._sectorStations().find(station => stationIdentity(station) === stationId);
-    const manifest = entity.data.cargoManifest || context.rec.manifest;
+    const manifest = entity.data.cargoManifest || context.rec?.manifest;
     const carried = manifest?.totalQty > 0;
     const homeLeg = job.payload?.sourceUnavailable === true || (carried && job.phase !== NPC_JOB_PHASE.LOAD) || job.phase === NPC_JOB_PHASE.RETURN
       || (job.routeIndex === 0 && job.phase !== NPC_JOB_PHASE.TRANSIT);
