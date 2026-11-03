@@ -34,7 +34,7 @@
 // heat/stage in their existing persistent entity envelope; ordinary ship heat/stage — seconds-lived,
 // escape-window-forgiving scalars — reset. No save version bump, no golden hash movement.
 
-import { PLANET_SITE, planetSitesForSector, planetFlag, classifyPlanetRegion, PLANET_REGION_RANK, ANVIL_SLING_WITNESS, anvilSlingWitnessPose } from '../data/planets.js';
+import { PLANET_SITE, planetSitesForSector, planetFlag, classifyPlanetRegion, PLANET_REGION_RANK, ANVIL_SLING_WITNESS, anvilSlingWitnessPose, anvilOrchardFramePosition } from '../data/planets.js';
 import { SECTOR_ZONES } from '../data/sectorZones.js';
 import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 import { queuePhysicsImpulse, isDynamicPhysicsBodyEntity } from '../core/physicsAuthority.js';
@@ -451,10 +451,8 @@ export const planetRuntime = {
     // safe sling interval and a small angular offset, keeping it near the skim route while
     // leaving the outer working-band path clear of the frame's 70-WU physical bound. The
     // authored landmark identity also opts it out of debris heat/impact.
-    const radius = site.bands.skim + (site.bands.sling - site.bands.skim) * 0.5;
     const angle = Math.PI / 9;
-    const pos = { x: rt.center.x + Math.cos(angle) * radius,
-      z: rt.center.z + Math.sin(angle) * radius };
+    const pos = anvilOrchardFramePosition(rt.center);
     try {
       frame = spawnEntity({
         type: 'wreck', team: 0, pos, vel: { x: 0, z: 0 }, rot: angle,

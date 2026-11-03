@@ -58,7 +58,7 @@ import {
   SECTOR_ORIGIN_LATTICE_WU,
 } from '../data/sectorCoordinates.js';
 import { zonesForSector, zoneTypeMeta, zoneThreat, zoneAt } from '../data/sectorZones.js';
-import { PLANET_SITE } from '../data/planets.js';
+import { PLANET_SITE, anvilOrchardFramePosition } from '../data/planets.js';
 import {
   auditEdgeKey,
   gateAuditCatalogEntry,
@@ -2105,7 +2105,8 @@ export function aftermathChartMarkers(state, sectorId) {
 // contract approaches the region with its radius; searching must not invent a new destination.
 function planetaryApproach(center, playerPos) {
   if (!playerPos || !Number.isFinite(playerPos.x) || !Number.isFinite(playerPos.z)) return null;
-  const dx = playerPos.x - center.x, dz = playerPos.z - center.z;
+  const frame = anvilOrchardFramePosition(center);
+  const dx = frame.x - center.x, dz = frame.z - center.z;
   const distance = Math.hypot(dx, dz);
   if (!(distance > 0.001)) return null;
   // Land outside the sling band's hysteresis edge; the extra margin allows ordinary braking.
@@ -2584,6 +2585,7 @@ export function resolveCourseTarget(target) {
     if (target.entityId != null) payload.targetEntityId = target.entityId;
     if (target.targetEntityId != null) payload.targetEntityId = target.targetEntityId;
     if (target.stationId) payload.stationId = target.stationId;
+    if (target.planetaryApproach === true) payload.planetaryApproach = PLANET_SITE.id;
     const gateDest = target.targetSectorId || target.gateTo || null;
     if (kind === 'gate' && gateDest) payload.sectorId = gateDest;
     return payload;
@@ -6135,7 +6137,7 @@ _stepAnimation(now) {
             <span>Threat Index</span>
             <span class="gm-ins-row-val" style="color:${t.threat ? INK.red : INK.good}">Level ${t.threat || 0}</span>
           </div>
-          ${t.planetaryApproach ? '<div class="gm-ins-note">Autopilot stops outside the sling band. Enter the working band manually.</div>'
+          ${t.planetaryApproach ? '<div class="gm-ins-note">Autopilot holds outside the sling band near the Orchard. Fly inward to take control.</div>'
             : t.courseDisabled ? '<div class="gm-ins-note">Planetary hazard — inspect the ring and approach manually.</div>' : ''}
         </div>
 

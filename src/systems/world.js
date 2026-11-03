@@ -6578,6 +6578,7 @@ export const world = {
         label,
         arrivalRadius,
         status: 'armed',
+        ...(payload.planetaryApproach === 'planet_tethys_anvil' ? { planetaryApproach: payload.planetaryApproach } : {}),
         ...(payload.rendezvous === true && stableTarget ? { rendezvous: true } : {}),
       };
       if (stableTarget) this.state.nav.autopilot.stable = stableTarget;
