@@ -1,6 +1,6 @@
 # Whole-game integration status
 
-Updated 2026-11-02. This is the compact current outcome map for the Finish Program, not a game-complete claim. The lane boards own active work and acceptance criteria: [Lane 1](./LANE_1_MACHINE_AND_PICTURE.md), [Lane 2](./LANE_2_FIGHT_AND_SIM.md), and [Lane 3](./LANE_3_WORLD_GLASS_HOUSE.md). The [dated archive](../../archive/finish-integration/INTEGRATION_COVERAGE_2026-10-31.md) preserves the previous detailed receipts and failure history. Source coverage U001–U072 is recorded in [the coverage ledger](./SOURCE_COVERAGE_2026-10-29.md).
+Updated 2026-11-03. This is the compact current outcome map for the Finish Program, not a game-complete claim. The lane boards own active work and acceptance criteria: [Lane 1](./LANE_1_MACHINE_AND_PICTURE.md), [Lane 2](./LANE_2_FIGHT_AND_SIM.md), and [Lane 3](./LANE_3_WORLD_GLASS_HOUSE.md). The [dated archive](../../archive/finish-integration/INTEGRATION_COVERAGE_2026-10-31.md) preserves the previous detailed receipts and failure history. Source coverage U001–U072 is recorded in [the coverage ledger](./SOURCE_COVERAGE_2026-10-29.md).
 
 The controller owns all remaining working-tree changes, plans and open PRs under the user's
 2026-11-01 direction. [PR integration](./PR_INTEGRATION.md) records current source reconciliation;
@@ -129,11 +129,11 @@ Hitch V7 candidate-only evidence test was retired; current retail asset validati
 |---|---|---|
 | Ordinary gameplay routes | Racing, Gauntlet, Pinball, Swarm round-three functionality, and the Adventure Ceres delivery/save/Continue route have scoped passes. | These do not establish full-game completion, broad performance, or all public-story routes. Foundry first-ten/boss and Last Shift story routes remain open. The ordinary mining round trip now works after `fb45385f9dd5`; the later `d942b962b0f4` route shows work, survey, finite cargo and flight return. Performance qualification remains open. |
 | Veil Step starter | The headed ordinary starter route passes 8/8 checks: public pointer aim and Shift hold/release produce 234.3 WU of actual displacement, spend capacitor energy (200.0 to 128.9), and return the visible cue to ready after 1.30 simulation seconds. Authored player/world readiness and uncaught-error checks pass; cleanup completes. | The first failed actor log is preserved: it read an absent worker-mirror budget field and required exact post-event pose equality. The corrected route stops before the legacy smoke script's forced damage. This closes Veil use/cooldown only, not ten-wave progression or a performance target. |
-| Ceres and RC458 | Native Ceres ambush/lifecycle and selective RC458 checks pass. `dbda6842048f` fixes the physical station stall;47 focused cases pass and public berthing takes33.53 simulation seconds. The later public route reaches Working Seam and Throughline after the egress and sampled-input transport repairs. Native tow admission now succeeds after observer-relative threat selection, FLEE ownership, descriptor continuity and bounded activity-interest restoration repairs. Attempt09 reaches physical extraction within the160s native continuation. | `0fc6007d63bd` completes the adopted salvor physical return and accepted-intake lifecycle; ten native owner cases pass. The changed whole Ceres continuation and public route remain pending. High-speed structure collisions had previously killed the worker/target; the later extraction demonstrates a physical return path but does not erase that failure or establish public Ceres/Continue acceptance. RC458 and public story routes remain separate evidence. |
+| Ceres and RC458 | Native Ceres owner cases cover tow admission, salvage and intake. The latest 29 continuation reached the yard and accepted one scrap; one restricted classified item remained held, the job stayed active, and the worker died at376.25s after repeated station contacts. | The latest Sol candidate safely retains cargo on partial/refused intake and passes two native partial/refusal plus Continue cases, but the changed Ceres12 continuation has not been rerun and full custody/release is incomplete. This is not a public Ceres/Continue result. Preserve the earlier collision deaths; RC458 and public story routes remain separate. |
 | Tethys stealth offer | Returning after casing now refreshes the standing capsule offer's case file and quiet approach from canonical observations. The focused regression preserves identity/terms, publishes one update, remains idempotent, and leaves accepted contracts unchanged. | Natural public Tethys stealth-route acceptance remains unverified. The existing compressed PQ-019 probe is a fixture route. |
-| Kraken | Candidate native combat, authored-art, and worker-cue checks pass. | Public Swarm wave-seven-plus progression, targeting/portrait, boss progression, and performance remain unrun or unverified. |
+| Foundry and Kraken | The immutable 0fc6007d run fought and paid for fortification, resolved waves1–8, and reached wave9 at the original45-minute cap (38 spawns,36 resolves, two remaining hostiles in the last snapshot). | Wave10 and the Iron Kraken were not reached; targeting, portrait, tells, and boss progression are not established. Host contention and diagnostic frame samples are not a performance pass. Any retry needs a material source/actor change, not the same cap unchanged. |
 | Swarm specialists | `a6b5c8f76d91` integrates Warden finite guard links, Jackal mine salvos and Anchor displacement/recovery through existing damage, AI, mines and field owners, with counter briefs and authored assets. Focused behavior and worker/render transport checks pass. `0f502b00dc3f` also makes Greedy Tractor synthesis use obtainable Swarm stock. | Ordinary later-wave progression, readable tells and authored ship appearance remain open. Native checks and asset hashes do not establish these visual or player-route outcomes. |
-| M8 recovery and stability | Fixed-save reload/economy routes preserve the quickslot. `d1a656a34ac9` refills the actual upload subjects and holds their leases across restoration; a native context-loss run retains the authored mesh, advances pixels/frames and completes a120-second active tail without the upload exception. `75f8eb113008` fixes one concrete retention defect: disposal of a retired rigid batch now unregisters its shadow-caster reference. The focused rigid-batch and registry checks pass52/52. | The recovery pass is not the final30-minute or retention qualification. The prior diagnostic still failed frames (overall p95 83.355ms/p99 149.965ms). The retainer fix addresses one demonstrated owner path; it does not establish that all growth is resolved. Live/unknown owner failures retain warnings. No final soak acceptance is claimed. |
+| M8 recovery and stability | The corrected Save/Continue contract suite passes64/64, including semantic preservation and canonical restore-owner behavior. The retained-resource fix addresses a demonstrated retired-batch shadow reference. | The required30-minute soak with its post-context active tail has not run. These contract and focused retention checks do not qualify long-session memory or frame stability. |
 | Renderer / recovery | Startup, shadow, preview, count-zero instance and census/proxy identity repairs are integrated. `532621b8f848` holds package geometry across the live exact-target async suffix; the real detach interleaving case and related owner suites pass73/73. The armed1ad public F2/Helios route recorded no resize failure. | This scoped route does not establish every transition or long-session resource safety. A startup-upload resize in c65 lacks per-object identity and requires the existing armed diagnostic if reproduced. Final packaged acceptance remains pending. |
 | M10 shader ownership | GL issue and render-state restoration remain serialized; capable backends can settle four independent actual-program readiness sets outside that reservation. Timeout receipts retain ownership of unfinished work. Focused owner, cancellation, delayed-stamp and fallback checks pass. | No matched live speedup has been established. This repair and the loading-queue handoff do not establish loading or runtime performance acceptance. |
 | M5 rigid batching | A current held-scene ABBA preserves exact source, settings, camera/projection and entity poses; real world submissions advance. Both compositor captures are nonblank and inspected. Five cohort roots produce46 instances in five batches; median draw calls122→119. Defaults restore and cleanup passes. | Median intervals remain16.67ms in every arm; no timing improvement is established in this starter scene. Host CPU busy varies27.5–41.9%. The older blank-image742/982draw result is not accepted. This does not establish active crowded-flight performance. |
@@ -145,9 +145,9 @@ Hitch V7 candidate-only evidence test was retired; current retail asset validati
 | Settings pointer and shadows | `614a9dfbd48f` stops pointer-origin focus scrolling a control between down and up. The changed public route has stable pointer targets, a real setting event, observed guarded depth admission, drained queue, advancing flight and an inspected enabled ship/world image. | The success probe does not serialize its page-error list, so no zero-error audit is claimed. This Settings-specific fix does not establish the cause of an intermittent contract hold failure; that is being checked separately. |
 | Hull physics | `48c2d6b09bb9` derives native yaw inertia from measured hull area and radius. The real Rapier low-speed scrape falls from3.98 to0.614rad/s. `9a7324ac5ab1` also gives ordinary weapon hits authored momentum instead of multiplying it by target mass: a126 impulse now produces126/m velocity change across2/16/180/800-tonne native bodies. Both contact/splash paths and real collision blocking pass focused checks. | Native checks do not establish ordinary collision feel across the fleet. Legacy replay hit/cue counts change with the corrected trajectories. Force, Massline and field policies are unchanged; no asset mass/material distribution was guessed. |
 | Asset processing | The catalog covers418 release assets/352 families; all418 actual GLB hashes match their release declarations. Triangle-surface contours keep the three flagged LOD families within4WU. Canonical activation `da05f99fdb4f` includes all417 fresh package bindings,13 shared KTX2 bodies,175 rebuilt semantic-pivot hierarchies and the Fin duplicate-texture fix. The same-source headed sidecar preserves authored Kestrel appearance and reduces measured asset responses25,659,595→20,668,078B; the separate Fin retail package saves1,174,532B. | The wreck/three payload readiness rows are offscreen runway contacts, correctly streamed on reveal; no opening blocker was found. These byte/hierarchy results and the deployed asset/control pass do not establish FPS or loading-time improvement, fleet-wide collision feel or complete hero/marking appearance. |
-| Deployed mobile | Public alias remains C9. Unpromoted `7c45e2b83da7` diagnostic candidate isolates rotation in unchanged Overhead view: the ten-second check fails; world submissions resume after17.213s. Earlier same-context Save/F5/Continue and current Details/View controls have scoped passes. | The late page PNG is black; same-frame canvas versus native-window pixels remain unresolved. Serial manifest refill takes16.644s. A live authored-resource lease candidate is active. Windows profile reports `maxTouchPoints=0`; physical iPhone14 remains UNKNOWN. No public promotion or mobile acceptance is claimed. |
+| Deployed mobile | Unpromoted 29 candidate `dpl_6Z1hm2YGUftoUvqPHwwuA7PwcMxs` passes the original rotation gate in9.082s. A same-frame canvas image is bright and advances; the adjacent WebKit page PNG is black. | The planned Windows native-window capture was stopped before any app input/capture. Visible-window output is UNKNOWN, as is physical iPhone14 behavior; the requested Windows profile reports `maxTouchPoints=0`. Public alias remains C9 and the candidate is not promoted. No mobile acceptance is claimed. |
 | Story guidance and worker boot | Pelican25 on569ceb918d10 passes the first44-C contract through public accept, native aim/latch, sustained physical tow-in, canonical520CR payment and the same mission's receiving event after undock. Errors/warnings are empty and cleanup passes. The worker preview identifies the same latched buoy. All three introductory masses and old accepted-save restoration have native checks. | Later Pelican jobs retain focused native/save coverage only. Discovery placement's ordinary look, public earned Compost growth and later story routes remain open. This first-job route is not current packaged acceptance. |
-| Living traffic | `49b20a2b5f58` makes the existing Helios civic liner yield to an actual attached tug/load crossing its berth, then resume the same itinerary. Current endpoint identities, semantic attachment and live physics telemetry are required; seven focused owner checks pass. No actor or resource is added. | This is one bounded living-world slice, not completion of the whole Lantern Ward plan. Ordinary visible yield/resume remains unverified, and the tow is not a memorial-specific mission object. |
+| Living traffic | The Helios civic liner's native owner checks cover yield to an attached tug/load and resumption of its itinerary. | Ordinary visible liner/tug yield and return remains unverified; the native checks do not complete Lantern Ward or a memorial-specific mission route. |
 | Pro creation | Correct Pro dispatch count: 0. The Browser connects to ChatGPT Chat with Pro selected; the model menu reports “Usage limit reached.” | Five briefs remain queued for ChatGPT Pro. Work and alternate models are not authorized. See the [Pro portfolio](./PRO_CREATION_PORTFOLIO_2026-10-30.md). |
 
 ## M9 measured checkpoint history
@@ -195,64 +195,47 @@ canonical mobile layout keeps all seven navigation labels whole at12px; decorati
 words room at narrow portrait sizes. The actual images were inspected. This closes the demonstrated
 fixture defects, not ordinary docking or every station destination's gameplay.
 
-## Active failures and next acceptance work
+## Current integration status and next work
 
-### November 3 integration delta
+Updated November 3 after the owner requested a bounded integration finish and a stop/report.
+Save/recovery fixes are committed in `0a046adf1e09`, salvager refusal handling in `5ba03b01ca9f`,
+and garden custody/progress in `d87c999ea10d`. The incoming UI work through PR815 is merged in
+`bc9dba8c2cdd`, preserving the local Pause and Motion Ask mobile fixes. The merged baseline passes
+17/17 in50,000ms against its unchanged90,000ms budget. No new long playtest or deployment was started.
 
-- **Mining:** `fb45385f9dd5` fixes retained input objects and premature rejection against a stale
-  worker mirror. The ordinary F2/course/extraction/work/exit/W route passes. On `d942b962b0f4`,
-  the inspected rock presentation, survey serial/contact changes and cargo zero-to-two result
-  also pass. The original work-before-survey observer overlapped held work with survey, so the
-  next actor separates those inputs and records item-level deltas. Artifacts:
-  `.devshots/runtime-witness/drill-art-d942-survey-supervised/`.
-- **Salvor:** `0fc6007d63bd` carries adopted workers from their real cut pose to the canonical
-  yard, retaining finite cargo on refused intake and releasing ecology only after accepted
-  custody. Ten native route cases pass, including Continue and refusal. The changed Ceres
-  continuation is running; no new ordinary public Ceres pass is claimed.
-- **Mobile:** the unpromoted `7c45e2b83da7` diagnostic candidate
-  `dpl_FaHbN8gqHUueFuZ1kKfR2Gw2fhBf` fails the ten-second rotation check in unchanged
-  Overhead view. World submissions resume after17.213 seconds; the late page PNG is black.
-  Sixteen serial manifest refills consume16.644 seconds, mostly verified fetches and paced
-  parse/dedupe queue waits. This is not evidence of a wedged draw-journal dependency. A live
-  authored-resource lease candidate is being implemented; fresh canvas pixels and visible-window
-  capture remain needed to distinguish framebuffer output from Windows WebKit page snapshots.
-  The alert-lane CSSOM observer loop was fixed in `1795763b4789`; the subsequent controls route
-  passes without that hang. Public alias remains C9; physical iPhone14 remains UNKNOWN.
-- **Physics performance:** matching official Rapier0.19.3 SIMD was tested through the normal
-  production loader with its guards retained. Real-game trajectories and impact counts differ.
-  A separate unchanged-fixture ABBA does not show a reliable useful gain: scalar mean steps
-  15.505/16.119ms; SIMD15.133/19.715ms. Because workloads diverge, this is neither an equivalent
-  performance comparison nor a complete save-compatibility verdict. Scalar stays in production;
-  the8ms simulation target is still unmet. Preserve the completed experiment under
-  `.devshots/finish/integration-2026-11-02/terminal-factory/rapier-simd/`; do not repeat it as untried.
+- **Mining:** the ordinary F2/course/extraction/work/exit/W route passes; the later `d942b962b0f4`
+  route records inspected rock art, survey/contact changes and cargo0→2. Its original work/survey
+  observer overlapped the actions; the corrected item-level actor is prepared but has not run.
+- **Save/restore:** the corrected seed47 quick contract passes1482 ticks with no failures or
+  unhandled errors; the only permitted semantic delta is the validated free-ID list filtered by
+  held entities/ledgers, with generation monotonicity preserved. The M8 repair is integrated in `0a046adf1e09`; the affected three-file suite passes64/64,
+  and the final allocator-corruption regression passes. This is not the30-minute soak.
+- **Ceres:** attempt12 reached the yard and partially accepted one scrap, retained one restricted
+  classified item, and left the job active; the worker died after repeated station contacts. The
+  integrated safe-hold fix passes native partial/refusal plus Continue cases. No full custody or
+  changed-route replay is complete, and no public Ceres route is accepted.
+- **Foundry:** the45-minute attempt resolved waves1–8 and ended during wave9. Wave10/Kraken was not
+  reached. The host-contended frame samples are not a performance result.
+- **Mobile:** candidate29 passes the rotation gate in9.082s and captures a bright advancing canvas,
+  while its adjacent WebKit page image is black. The user's physical Escape stopped the planned
+  visible-window capture before any app input or capture. Visible-window output and iPhone14 remain
+  UNKNOWN; public C9 is unchanged and candidate29 is not promoted.
+- **UI and authored visuals:** the six non-default matrix aliases and mounted chart-cost cell remain
+  open. The #808–#815 layout changes are source-integrated but have no new local mounted looks. The
+  in-world hero/plume/marking look is still open after a preserved zero-draw Kestrel result.
+- **Story and traffic:** Last Shift, natural Tethys stealth, earned Compost growth, PQ024H1, visible
+  liner/tug yield-resume and a changed Ceres continuation remain player-route work. The #724 garden
+  source delta is integrated in `d87c999ea10d`, with10 owner-component cases passed but no earned public feed.
+- **Performance/stability:** the6MB main-load, simulation/frame targets and30-minute context-loss
+  soak are open. M5/CPU ABBA experiments without a material win remain closed; do not repeat them as
+  unfinished opportunities.
+- **Provider and closure:** five Pro briefs remain undispatched because the selected provider reports
+  “Usage limit reached” through the Nov4 window. The final build-map and last-300-commit reviews
+  belong at the end.
 
-- The original Ceres attempt09 reaches extraction but not custody before its160s cap. The later salvor lifecycle owner fix passes ten native cases; the changed full continuation is pending. Preserve the earlier collision deaths; no public Ceres or Continue outcome is established.
-- Mining work and flight return now pass after `fb45385f9dd5`; `d942b962b0f4` adds an inspected continuous-rock presentation and a real survey/cargo result. The more precise actor now releases work before surveying and records item-level cargo; its changed run is pending. No frame-budget pass follows.
-- Current `7c45e2b83da7` WebKit rotation fails the original ten-second check in unchanged Overhead view; submissions resume after17.213s but its late page PNG is black. The live resource-lease candidate and direct canvas/window distinction remain pending. Preserve earlier failures; physical iPhone14 is UNKNOWN and public alias remains C9.
-- Complete a qualifying M8 30-minute run with the required post-context observation. The bounded packaged recovery pass does not establish soak acceptance.
-- Run the public Ceres toolkit route after the ready map/actor changes, preserving the native Ceres and RC458 passes as separate evidence.
-- Run the public Foundry first-ten/boss route and verify Kraken wave-seven-plus progression through ordinary play.
-- Finish the remaining public UI and story routes recorded on the lane boards. Do not turn fixture or owner checks into ordinary-route claims.
-- Close the remaining performance and long-session stability work with a relevant matched measurement. Current source size, host contention, and focused test timing do not establish a performance verdict.
-- `75f8eb113008` removes one proven rigid-batch shadow-registry retainer and its focused checks pass52/52; remaining growth and the full soak are open. The responsive work fixed Pause Resume visibility in forced colors and improved matrix failure/alias provenance, but the canonical151/160 matrix and cost failures remain open.
-- Perform the final build-map review and requested last-300-commit review only at the end; neither has started.
-- Resolve the five unsent Pro briefs only if the user’s intended provider becomes available; current correct dispatch remains zero.
-
-The November 2 factory wave also assigned chart-label placement, mining entry/session UX, responsive
-capture, changed-WebKit world visibility and retention through `agent-run`. The chart solver matches
-its prior implementation on143 generated/adversarial inputs and its16 focused tests pass; reported
-synthetic CPU gains are not mounted-chart or frame-rate evidence. The later `fb45385f9dd5` worker-input repair resolves the ordinary mining action; the work/exit/flight route and subsequent survey/cargo route pass. These are gameplay results, not loading or frame-budget qualification. The
-responsive work fixes forced-colors Pause Resume visibility and retains matrix-cell failures/alias
-provenance; this does not pass the canonical matrix. Retention fixes one retired batch reference, not
-the full soak. The D6 WebKit route verifies same-context Save/Continue but still fails the tested
-rotation path and requested touch-profile capability. Packet logs and receipts remain under
-`.devshots/finish/integration-2026-11-02/terminal-factory/`; none of these checks substitutes for the
-ordinary route. The runner fix is `6a51a4aaf563`; these Codex CLI workers are separate from the
-native tool's three-worker cap and from the five queued Pro briefs.
-
-### Current integration candidate — sector epoch, CSS and renderer ownership
-
-The latest integrated changes and their exact receipts are preserved in the [dated archive](../../archive/finish-integration/INTEGRATION_COVERAGE_2026-10-31.md). Active ownership, dependencies, and next actions belong on the lane boards. No source, native, or fixture result by itself closes the public-route or final-soak items above.
+The executable sequence and direct-check boundaries are in [PR integration](./PR_INTEGRATION.md).
+Source ports, native cases and fixture looks remain distinct from ordinary player routes, mobile
+release and full-game acceptance.
 
 ## Integrated changes and measurement limits
 

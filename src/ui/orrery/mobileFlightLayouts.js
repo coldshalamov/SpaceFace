@@ -148,13 +148,21 @@ ${FLIGHT} #sf-touch-overlay.mf-notice-priority .mf-ghost { visibility:hidden; }
 @media (max-height:500px) and (orientation:landscape) {
   ${FLIGHT} #alerts { transform:none; }
   ${FLIGHT} #hud .sf-radar-wrap--expanded { top:calc(8px + var(--sf-safe-top,0px))!important; max-height:calc(100dvh - 16px - var(--sf-safe-top,0px) - var(--sf-safe-bottom,0px)); }
-  ${FLIGHT} #hud .sf-rightdock { top:calc(95px + var(--sf-safe-top,0px))!important; right:calc(70px + var(--sf-safe-right,0px))!important; }
+  ${FLIGHT} #hud .sf-rightdock { top:calc(95px + var(--sf-safe-top,0px))!important; right:calc(84px + var(--sf-safe-right,0px))!important; }
   ${FLIGHT} #hud > .sf-leftcontext { top:calc(100px + var(--sf-safe-top,0px))!important; width:230px!important; }
   ${FLIGHT} #race-tape[data-compact="true"] {
     top:-87px!important; right:auto!important;
-    left:calc(386px - 100vw + var(--sf-safe-left,0px) + var(--sf-safe-right,0px))!important;
+    left:calc(400px - 100vw + var(--sf-safe-left,0px) + var(--sf-safe-right,0px))!important;
   }
   ${FLIGHT} #race-tape[data-compact="true"][data-options-open="true"] .race-tape-actions { right:auto; left:80px; }
+}
+/* The dock's ◆ BEACON key ends 91px from the right edge and the Gun key starts 78-98px from it, so
+   the dock sits 14px further in (the race rail's offset grows 14px to stay put). On a 320-tall
+   window the Tether ring rises into the key's row, so the dock lifts 17px (the rail's offset
+   shrinks 17px to stay put). */
+@media (max-height:340px) and (orientation:landscape) {
+  ${FLIGHT} #hud .sf-rightdock { top:calc(78px + var(--sf-safe-top,0px))!important; }
+  ${FLIGHT} #race-tape[data-compact="true"] { top:-70px!important; }
 }
 @media (orientation:portrait) and (max-width:350px) {
   ${FLIGHT} #hud > .sf-leftcontext { width:calc(100vw - 16px - var(--sf-safe-left,0px) - var(--sf-safe-right,0px))!important; }

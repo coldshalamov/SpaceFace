@@ -283,6 +283,25 @@ test('NXI-025 an unowned drifting rock is not credited to the nearest player', (
     });
     assert.equal(recorded.provenance.actorId, playerId, 'a recorded throw keeps its actor');
     assert.ok(recorded.impactDamage > 0);
+
+    recordImpulseProvenance(ship, {
+      actorId: ship.id, tag: 'massline', weaponId: 'massline', appliedTick: 30, magnitude: 80,
+    });
+    const selfPropelledContact = resolveCollisionConsequence({
+      ...hit,
+      provenance: { actorId: ship.id, tag: 'environment', appliedTick: 30 },
+    });
+    assert.equal(selfPropelledContact.provenance.actorId, null,
+      'a victim cannot receive attacker credit for its own environmental contact');
+    assert.equal(selfPropelledContact.provenance.tag, 'environment');
+    assert.ok(selfPropelledContact.impactDamage > 0, 'removing self-credit does not suppress contact damage');
+
+    const authoredSelfDamage = resolveCollisionConsequence({
+      ...hit,
+      provenance: { actorId: ship.id, tag: 'massline', weaponId: 'massline', appliedTick: 30 },
+    });
+    assert.equal(authoredSelfDamage.provenance.actorId, ship.id,
+      'explicit non-environment self attribution is unchanged');
   } finally {
     clearImpulseProvenance(rock);
     clearImpulseProvenance(ship);

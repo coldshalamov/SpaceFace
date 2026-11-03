@@ -12,7 +12,7 @@ import { encounterDirector } from '../src/systems/encounterDirector.js';
 
 const SECTOR = 'sector_nyx_march';
 
-function makeHarness({ simTime = 0 } = {}) {
+function makeHarness({ simTime = 0, seed = 8008 } = {}) {
   const entities = new Map();
   const player = {
     id: 1, type: 'ship', alive: true, hull: 400, hullMax: 400, shield: 200, shieldMax: 200,
@@ -28,7 +28,7 @@ function makeHarness({ simTime = 0 } = {}) {
     onboarding: { active: false, finished: true },
     ui: {},
     world: { currentSectorId: SECTOR },
-    meta: { seed: 8008 },
+    meta: { seed },
     story: { beatIndex: 3 },
   };
   const events = [];
@@ -91,4 +91,30 @@ test('save:loaded still carries the durable save-owned bags across the rebuild',
   assert.ok(fresh.cooldowns.pirate_toll <= 5 + 900, 'cooldowns are clamped, not discarded');
   assert.deepEqual(fresh.live, {}, 'live encounters are transient and must not survive');
   assert.deepEqual(fresh.active, {}, 'the spawn budget hard-resets on load');
+});
+
+test('save:loaded rebuilds transient dust rows without advancing the durable rotation twice', () => {
+  const { state, dir } = makeHarness({ seed: 0 });
+  state.encounterDirector.plannedKey = null;
+  dir._planSector(SECTOR);
+  const savedRotation = structuredClone(state.encounterDirector.stats.dustRotation || {});
+  assert.ok(Object.keys(savedRotation).length > 0, 'the initial sector-day planned dust offers');
+
+  // Save payloads keep the durable stats, while pending schedule rows are regenerated on load.
+  // Reconstruct that boundary instead of carrying the in-memory pending rows into the handler.
+  state.encounterDirector = { stats: structuredClone(state.encounterDirector.stats) };
+  dir._onSaveLoaded();
+
+  assert.deepEqual(state.encounterDirector.stats.dustRotation, savedRotation,
+    'regenerated pending rows are not counted as a second set of offers');
+  assert.ok(state.encounterDirector.pending.length > 0,
+    'the load still rebuilds the transient sector-day schedule');
+
+  state.simTime = 1200;
+  dir._planSector(SECTOR);
+  const nextDayTotal = Object.values(state.encounterDirector.stats.dustRotation)
+    .reduce((sum, count) => sum + count, 0);
+  const loadedTotal = Object.values(savedRotation).reduce((sum, count) => sum + count, 0);
+  assert.ok(nextDayTotal > loadedTotal,
+    'a genuinely new sector-day still advances fair-selection history');
 });

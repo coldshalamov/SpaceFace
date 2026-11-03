@@ -9,7 +9,7 @@ const BONE = '236 230 216';
 const WARM = '248 244 234';
 const ST = 'html body #screens > .k-screen.orr-statistics.orr-statistics';
 const LABEL = 'font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-variation-settings:"wdth" 112, "wght" 650; font-weight:650; text-transform:uppercase;';
-/* `all:unset !important` on the way back outranks the plain LABEL, so it fell to the UA face in mixed case ('Back'); the foot's label voice must be !important like Settings/Credits */
+// Back and its keycap reset all properties with !important, so their label voice must match.
 const LABEL_I = 'font-family:var(--dp-face-label, "Archivo") !important; font-stretch:112% !important; font-variation-settings:"wdth" 112, "wght" 650 !important; font-weight:650 !important; text-transform:uppercase !important;';
 const DISPLAY = 'font-family:var(--dp-face-display, "Archivo"); font-stretch:125%; font-variation-settings:"wght" 800, "wdth" 125; font-weight:800; text-transform:uppercase;';
 const BODY = 'font-family:var(--dp-face-read, "Instrument Sans"), "Instrument Sans", system-ui, sans-serif; font-variation-settings:normal; font-stretch:100%; text-transform:none;';

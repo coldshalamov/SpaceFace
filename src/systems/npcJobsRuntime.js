@@ -4452,6 +4452,19 @@ export const npcJobsRuntime = {
         && Math.hypot(entity.pos.x - starterRock.pos.x, entity.pos.z - starterRock.pos.z)
           > BEAM_MK1.range + (starterRock.radius || 0);
       const salvorTarget = !claimedBeforeAdvance && this.helpers.traffic?.salvorWorkTarget?.(entry, entity);
+      if (salvorTarget?.intakeRetry && entry.job.payload?.salvageIntakeWait?.status === 'awaiting-intake') {
+        const retry = salvorTarget.intakeRetry;
+        const wait = entry.job.payload.salvageIntakeWait;
+        if (retry.manifestId === wait.manifestId && retry.generation === wait.generation) {
+          // This owner changes the job plan; traffic only quoted an existing real buyer.
+          entry.job.route[0] = { id: `yard:${retry.stationId}`, pos: { ...salvorTarget.pos }, label: 'Salvage intake' };
+          entry.job.routeIndex = 1;
+          entry.job.phase = NPC_JOB_PHASE.RETURN;
+          entry.job.progress = 0;
+          wait.status = 'returning-to-intake';
+          wait.stationId = retry.stationId;
+        }
+      }
       const tallyTarget = isTallyPassageJob(entry.job) && claimedBeforeAdvance
         ? { blocked: true } : tallyPassageTarget(this, entry, entity);
       const physicalTarget = salvorTarget || tallyTarget || (!claimedBeforeAdvance && (pallasSeamTarget(this, entry, entity)
@@ -4529,6 +4542,7 @@ export const npcJobsRuntime = {
       // The finite paired passage owns the same movement channel as seam work. Do not let
       // an ambient errand overwrite its authenticated hold/formation after _drive.
       if (!claimed && !isTallyPassageJob(entry.job) && !(pallasTarget && pallasShiftOwnsMovement(this.state, entry, entity))
+        && !entry.job.payload?.salvageIntakeWait
         && !pallasSeamRole(this.state, entity)) applyLaneErrandIntent(this, entry, entity, simT);
     }
   },
@@ -6882,7 +6896,8 @@ export const npcJobsRuntime = {
     // would be both wrong (they didn't happen on-screen) and, under a pathological dt, unbounded.
     // The job STATE advances truthfully; only the current on-screen materialization is surfaced.
     const elapsed = Math.min(MAX_CATCHUP_S, Math.max(0, simT - finite(entry.lastAdvanceSimT, simT)));
-    if (elapsed > 0 && !isTallyPassageJob(entry.job) && entry.job.phase !== NPC_JOB_PHASE.COMPLETE) {
+    if (elapsed > 0 && !isTallyPassageJob(entry.job) && !entry.job.payload?.salvageIntakeWait
+        && entry.job.phase !== NPC_JOB_PHASE.COMPLETE) {
       let out = advance(entry.job, elapsed);
       let guard = 0;
       while (out.length && isTruncated(out[out.length - 1]) && guard++ < 100000) {
