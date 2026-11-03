@@ -194,6 +194,7 @@ export const MAIN_TO_SIM_BUS_EVENTS = new Set([
   'ui:shipjack',
   'ui:talkContact',
   'ui:trackMission',
+  'ui:unfitModule',
   'ui:unfitPayload',
   'ui:unlockTech',
   'ui:upgradeBombRack',

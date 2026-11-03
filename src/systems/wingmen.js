@@ -254,12 +254,16 @@ export const wingmen = {
     for (const fs of fleet.slice()) {
       yield;
       if (fs._liveId) continue; // already live (continuous handoff or same-sector re-enter)
+      // Older saves can contain a tracked vessel linked before the custody guard existed.
+      // Retain its row, but do not spawn a second body outside Shipjack's physical owner.
+      if (this.registry?.get('ships')?.fleetOwnedHull?.(fs.id)?.vesselId) continue;
       const spec = this._buildWingmanSpec(fs, player);
       if (!spec) continue;
       const e = this.helpers.spawnEntity(spec);
       fs._liveId = e.id;
       e.data.wingmanOf = fs.id; // link live entity → fleet ledger entry
       e.data.isWingman = true;  // flag for render/AI (friend marker, no bounty, no loot)
+      this.registry?.get('ships')?.configureFleetHull?.(e, fs);
       this._applyWingOrder(fs, e, player, ordered.indexOf(fs), ordered.length);
       spawned++;
     }
@@ -277,6 +281,10 @@ export const wingmen = {
       if (fs._liveId && state.entities) {
         this._clearBrace(fs, state.entities.get(fs._liveId));
         const e = state.entities.get(fs._liveId);
+        const ships = this.registry?.get('ships');
+        if (ships?.fleetOwnedHull?.(fs.id) && e?.data?.wingmanOf === fs.id) {
+          fs.parkedBody = ships.fleetHullCondition(e) || fs.parkedBody;
+        }
         // Capture the last hit even when a hard transition lands before our next update.
         // This is the same persisted fraction used by the normal live synchronization.
         if (e && e.hullMax > 0) {
@@ -637,6 +645,14 @@ export const wingmen = {
   // wingman works until trouble arrives, deals with it like an escort, and the
   // anchor pulls it back to the face when the sky clears.
   _applyMiningOrder(fs, entity, player, dt, state) {
+    const ownedHull = this.registry?.get('ships')?.fleetOwnedHull?.(fs.id);
+    if (ownedHull && !entity.data?.miningBeam) {
+      fs._mineRockId = null;
+      if (entity.data) entity.data.wingmanMining = null;
+      this._mineToast(fs, 'nobeam', 'No mining beam fitted — return me to the hangar to refit.');
+      this._applyWingOrder(fs, entity, player, 0, 1);
+      return;
+    }
     const rock = this._mineTargetRock(fs, entity, player, state);
     if (!rock) {
       if (entity.data) entity.data.wingmanMining = null;
@@ -676,7 +692,7 @@ export const wingmen = {
       return;
     }
     const mining = this.registry && this.registry.get && this.registry.get('mining');
-    const beam = ensureWingmanMineBeam(entity);
+    const beam = ownedHull ? entity.data.miningBeam : ensureWingmanMineBeam(entity);
     const dist = Math.hypot(entity.pos.x - rock.pos.x, entity.pos.z - rock.pos.z);
     if (mining && typeof mining.applyMining === 'function'
       && dist <= (beam.range || 0) + (rock.radius || 0)) {

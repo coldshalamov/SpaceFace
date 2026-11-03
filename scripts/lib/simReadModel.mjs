@@ -33,6 +33,7 @@ import { bindCeresWorkfleetPublicActuation } from '../../src/core/ceresWorkfleet
 import { resolveOrchardForecast } from '../../src/world/anvilOrchardForecast.js';
 import { ANVIL_ORCHARD } from '../../src/data/anvilOrchard.js';
 import { isOrchardPod } from '../../src/data/anvilOrchardIdentity.js';
+import { orchardPodBodySpec } from '../../src/data/anvilOrchardBody.js';
 import { sha256Hex } from '../../src/runtime/runtimeFingerprint.js';
 import { nowNs } from './simRealm.mjs';
 import { projectNpcJobsById } from './npcJobsMirror.mjs';
@@ -328,7 +329,7 @@ export function applyEntityVitals(readModel, vitals, state = null, worldGenerati
     if (!row) continue;
     foldNemesisHullVitals(row, fields);
     for (const key of Object.keys(fields)) {
-      if (key === 'ceresCradlePublic' || key === 'ceresWorkfleetPublic') continue;
+      if (key === 'ceresCradlePublic' || key === 'ceresWorkfleetPublic' || key === 'orchardPodPublic') continue;
       const v = fields[key];
       if (v === undefined) delete row[key];
       else row[key] = v;
@@ -342,6 +343,7 @@ export function applyEntityVitals(readModel, vitals, state = null, worldGenerati
     foldCountermeasureVitals(row, fields);
     foldAiState(row, fields);
     foldPallasSeamVitals(row, fields);
+    foldOrchardPodVitals(row, fields);
     if (state && Object.hasOwn(fields, 'ceresCradlePublic')) {
       const update = fields.ceresCradlePublic;
       if (update && Object.hasOwn(update, 'layout') && row.data) {
@@ -366,6 +368,28 @@ export function applyEntityVitals(readModel, vitals, state = null, worldGenerati
       if (fields.vz !== undefined) row.vel.z = fields.vz;
     }
   }
+}
+
+// Reconstitute only the canonical public body and three bounded pod facts. This is
+// presentation data: no native lease, motor, body handle, or simulation writer crosses.
+function foldOrchardPodVitals(row, fields) {
+  if (typeof fields.orchardPodPublic !== 'string' || fields.orchardPodPublic.length > 256
+    || !isOrchardPod(row)) return;
+  let value;
+  try { value = JSON.parse(fields.orchardPodPublic); } catch { return; }
+  if (!Array.isArray(value) || value.length !== 6) return;
+  const [life, lotId, dynamic, revision, tetherable, amount] = value;
+  if (!Number.isSafeInteger(life) || life < 1 || life !== row.occupantGeneration
+    || lotId !== row.data.worldRecordId || typeof dynamic !== 'boolean'
+    || !Number.isSafeInteger(revision) || revision < 1 || revision < row.physicsBody.revision
+    || (revision === row.physicsBody.revision && dynamic !== row.physicsBody.dynamic)
+    || typeof tetherable !== 'boolean' || tetherable !== dynamic
+    || !Number.isSafeInteger(amount) || amount < 1 || amount > ANVIL_ORCHARD.unitsPerPod) return;
+  if (revision !== row.physicsBody.revision || dynamic !== row.physicsBody.dynamic) {
+    row.physicsBody = orchardPodBodySpec({ dynamic, revision });
+  }
+  row.data.masslineTetherable = tetherable;
+  row.data.amount = amount;
 }
 
 // Current-tick workfleet samples bind only after the caller applies the same
@@ -695,7 +719,7 @@ export const DOMAIN_MIRROR_KEYS = Object.freeze([
   'heroManeuverReadModel',
   'lossLedger.impound',
   'sectorSim.field', 'npcJobs.byId', 'npcJobs.revision', 'factionPresence.boarding',
-  'automation.meta', 'automation.traders', 'automation.fleet',
+  'automation.meta', 'automation.traders', 'automation.fleet', 'automation.outposts',
   // The site map, machinery HUD and cargo transfer UI read these authoritative
   // records; presentation-owned siblings remain local to the main realm.
   'sites.byId', 'sites.order', 'sites.worldById', 'sites.worldOrder', 'sites.anvilOrchard', 'automation.drones',
