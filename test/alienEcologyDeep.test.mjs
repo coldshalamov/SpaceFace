@@ -384,6 +384,52 @@ test('cycle-1 ledgers serialize and lures drop', () => {
   assert.equal(ae2.sites.harvest_deep.deepTraceDone, true);
 });
 
+test('site default flags stay canonical across Continue without resetting real progress', () => {
+  const state = makeState();
+  const ae = ensureAlienEcologyState(state);
+  const siteRecord = (siteState = 'dormant') => ({
+    state: siteState, relaySevered: false, objectiveDone: false, bloomAt: -1,
+    beats: {}, deadFauna: {}, siteC: 0, signals: [], offerEmitted: false,
+    offersEmitted: {}, deepTraceDone: false, claimCrew: null,
+  });
+  // Older/live records can predate these two booleans. Their readers treat absent and false
+  // identically, but the saved site shape must not gain fields only after the first Continue.
+  ae.sites.cinder_nursery = {
+    ...siteRecord('awake'), bloomAt: 431, beats: { close: true },
+    claimCrew: { state: 'working', armedAt: 444, killed: 1 },
+    offerArmed: true,
+  };
+  ae.sites.harvest_deep = {
+    ...siteRecord('awake'), scanRevealed: true, offerArmed: false,
+    offerEmitted: true, offersEmitted: { em_scn_quarantine_audit_deep: true },
+    deepTraceDone: true, bloomAt: 512, beats: { deepTrace: true },
+  };
+  ae.sites.red_snow = {
+    ...siteRecord(), scanRevealed: false,
+  };
+
+  const beforeContinue = serializeAlienEcologyState(state);
+  assert.equal(beforeContinue.sites.cinder_nursery.scanRevealed, false);
+  assert.equal(beforeContinue.sites.cinder_nursery.offerArmed, true);
+  assert.equal(beforeContinue.sites.harvest_deep.scanRevealed, true);
+  assert.equal(beforeContinue.sites.harvest_deep.offerArmed, false);
+  assert.equal(beforeContinue.sites.red_snow.scanRevealed, false);
+  assert.equal(beforeContinue.sites.red_snow.offerArmed, false);
+  assert.equal(beforeContinue.sites.cinder_nursery.claimCrew.killed, 1);
+  assert.equal(beforeContinue.sites.cinder_nursery.claimCrew.armedAt, 444);
+  assert.equal(beforeContinue.sites.harvest_deep.bloomAt, 512);
+  assert.equal(beforeContinue.sites.harvest_deep.deepTraceDone, true);
+
+  const continued = makeState();
+  deserializeAlienEcologyState(continued, JSON.parse(JSON.stringify(beforeContinue)));
+  const afterContinue = serializeAlienEcologyState(continued);
+  assert.deepEqual(afterContinue.sites, beforeContinue.sites);
+  assert.deepEqual(ensureAlienEcologyState(continued).sites.cinder_nursery.claimCrew,
+    { state: 'working', killed: 1, armedAt: 444 });
+  assert.deepEqual(ensureAlienEcologyState(continued).sites.harvest_deep.offersEmitted,
+    { em_scn_quarantine_audit_deep: true });
+});
+
 // ── Module rows exist and stay schema-clean ──────────────────────────────────────────
 test('unlock-economy module rows exist with their behavioral mods', () => {
   const ids = new Set(MODULES.map((m) => m.id));

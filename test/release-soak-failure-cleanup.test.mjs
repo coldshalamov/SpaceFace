@@ -5,6 +5,13 @@ import test from 'node:test';
 
 import {
   buildErrorEvidence,
+  compareSoakRecoveryCaptures,
+  compareSoakRecoveryTailProgress,
+  captureSoakRecoveryPixelsInPage,
+  sampleSoakRecoveryAdvancement,
+  buildSoakTerminalCleanup,
+  cleanupSoakFailureProfile,
+  installGlTrapsOnLivePage,
   buildPostTeardownGlDeleteTrapDiagnostic,
   createSoakPresentationFailureError,
   readFailureRuntimeSnapshot,
@@ -14,6 +21,126 @@ import {
   shouldRetrySoakCycle,
   waitForSoakLoadLanding,
 } from '../scripts/lib/releaseSoakProbe.mjs';
+
+test('recovery requires changing nonblank pixels in matching advancing world submissions', () => {
+  const a = { width: 2, height: 1, worldSubmittedFrames: 9, pixels: [10, 0, 0, 255, 0, 20, 0, 255] };
+  const b = { ...a, worldSubmittedFrames: 10, pixels: [11, 0, 0, 255, 0, 20, 0, 255] };
+  assert.equal(compareSoakRecoveryCaptures(a, b).pass, true);
+  assert.equal(compareSoakRecoveryCaptures(a, { ...b, worldSubmittedFrames: 9 }).pass, false);
+  assert.equal(compareSoakRecoveryCaptures(a, { ...b, pixels: a.pixels }).pass, false);
+  assert.equal(compareSoakRecoveryCaptures(a, { ...b, width: 3 }).pass, false);
+  assert.equal(compareSoakRecoveryCaptures(a, { ...b, pixels: [0, 0, 0, 255, 0, 0, 0, 255] }).pass, false);
+  assert.equal(compareSoakRecoveryCaptures(a, { ...b, worldSubmittedFrames: null }).pass, false);
+});
+
+test('recovery capture copies pixels only inside an advancing world frame callback', async () => {
+  const oldWindow = globalThis.window;
+  const oldDocument = globalThis.document;
+  const oldRaf = globalThis.requestAnimationFrame;
+  const oldCancel = globalThis.cancelAnimationFrame;
+  const oldSetTimeout = globalThis.setTimeout;
+  const oldClearTimeout = globalThis.clearTimeout;
+  const source = { width: 120, height: 80 };
+  let drawn = null;
+  let insideFrame = false;
+  const frames = [];
+  const tasks = [];
+  try {
+    globalThis.window = { SF: { state: { render: { worldSubmittedFrames: 42, renderer: { domElement: source } } } } };
+    globalThis.requestAnimationFrame = (callback) => { frames.push(callback); return frames.length; };
+    globalThis.cancelAnimationFrame = () => {};
+    globalThis.setTimeout = (callback, delay) => { if (delay === 0) tasks.push(callback); return {}; };
+    globalThis.clearTimeout = () => {};
+    globalThis.document = { createElement: () => ({ getContext: () => ({
+      drawImage: (canvas) => { assert.equal(insideFrame, true); drawn = canvas; },
+      getImageData: (_x, _y, width, height) => ({ data: new Uint8ClampedArray(width * height * 4) }),
+    }) }) };
+    const pending = captureSoakRecoveryPixelsInPage({ afterFrame: null, timeoutMs: 1000 });
+    assert.equal(drawn, null);
+    assert.equal(frames.length, 0, 'observer schedules after the current rAF batch');
+    tasks.shift()();
+    insideFrame = true; frames.shift()(); insideFrame = false;
+    assert.equal(drawn, null, 'unchanged world count cannot capture');
+    tasks.shift()();
+    window.SF.state.render.worldSubmittedFrames = 43;
+    insideFrame = true; frames.shift()(); insideFrame = false;
+    const sample = await pending;
+    assert.equal(drawn, source);
+    assert.equal(sample.worldSubmittedFrames, 43);
+    assert.deepEqual([sample.width, sample.height, sample.sampleWidth, sample.sampleHeight], [120, 80, 96, 54]);
+    assert.equal(sample.pixels.length, 96 * 54 * 4);
+    drawn = null;
+    const nextPending = captureSoakRecoveryPixelsInPage({ afterFrame: 43, timeoutMs: 1000 });
+    window.SF.state.render.worldSubmittedFrames = 44;
+    tasks.shift()();
+    insideFrame = true; frames.shift()(); insideFrame = false;
+    assert.equal(drawn, null, 'a frame completed before observer scheduling cannot qualify');
+    tasks.shift()();
+    window.SF.state.render.worldSubmittedFrames = 45;
+    insideFrame = true; frames.shift()(); insideFrame = false;
+    assert.equal((await nextPending).worldSubmittedFrames, 45);
+    window.SF.state.render.worldSubmittedFrames = null;
+    assert.equal(await captureSoakRecoveryPixelsInPage({ afterFrame: null, timeoutMs: 1000 }), null);
+  } finally { globalThis.window = oldWindow; globalThis.document = oldDocument;
+    globalThis.requestAnimationFrame = oldRaf; globalThis.cancelAnimationFrame = oldCancel;
+    globalThis.setTimeout = oldSetTimeout; globalThis.clearTimeout = oldClearTimeout; }
+});
+
+test('recovery sampling waits for world progress before comparing the next capture', async () => {
+  const first = { width: 2, height: 1, worldSubmittedFrames: 4, pixels: [1, 0, 0, 255, 0, 2, 0, 255] };
+  const second = { ...first, worldSubmittedFrames: 7, pixels: [3, 0, 0, 255, 0, 2, 0, 255] };
+  const operations = [];
+  const page = { evaluate: async (_fn, args) => { operations.push(`capture:${args.afterFrame}`); return args.afterFrame == null ? first : second; },
+    waitForTimeout: async () => { operations.push('settle'); } };
+  const result = await sampleSoakRecoveryAdvancement(page);
+  assert.equal(result.pass, true);
+  assert.deepEqual(operations, ['capture:null', 'settle', 'capture:4']);
+  const stalled = { evaluate: async (_fn, args) => { if (args.afterFrame == null) return first; throw new Error('stalled'); }, waitForTimeout: async () => {} };
+  const failure = await sampleSoakRecoveryAdvancement(stalled);
+  assert.equal(failure.pass, false);
+  assert.match(failure.error, /stalled/);
+});
+
+test('soak GL status traps can be disabled without installing any hooks', async () => {
+  const calls = [];
+  const page = { evaluate: async (...args) => calls.push(args) };
+  await installGlTrapsOnLivePage(page, { enabled: false });
+  assert.equal(calls.length, 0);
+  await installGlTrapsOnLivePage(page, { enabled: true });
+  assert.equal(calls.length, 2);
+});
+
+test('recovery tail requires both simulation and world submissions to advance', () => {
+  const start = { tick: 100, worldSubmittedFrames: 20 };
+  assert.equal(compareSoakRecoveryTailProgress(start, { tick: 101, worldSubmittedFrames: 21 }).pass, true);
+  assert.equal(compareSoakRecoveryTailProgress(start, { tick: 101, worldSubmittedFrames: 20 }).pass, false);
+  assert.equal(compareSoakRecoveryTailProgress(start, { tick: 100, worldSubmittedFrames: 21 }).pass, false);
+  assert.equal(compareSoakRecoveryTailProgress(start, { tick: null, worldSubmittedFrames: 21 }).pass, false);
+});
+
+test('terminal cleanup keeps the original error and distinguishes unknown from failed', () => {
+  const original = new Error('route failed');
+  const unknown = buildSoakTerminalCleanup({ runtimeKind: 'electron', error: original });
+  assert.equal(unknown.error.message, 'route failed');
+  assert.equal(unknown.status, 'unknown');
+  const failed = buildSoakTerminalCleanup({ runtimeKind: 'electron', error: original, cleanupError: new Error('close failed') });
+  assert.equal(failed.status, 'failed');
+  assert.equal(failed.cleanupError.message, 'close failed');
+  assert.equal(failed.error.message, 'route failed');
+  const owned = { pass: true, pageClosed: true, appCloseCompleted: true, listenerReleased: true,
+    processExited: true, processCloseConfirmed: true, gracefulProcessCloseConfirmed: true,
+    precloseUrlCheck: { pass: true }, urlTracker: { pass: true }, processHealth: { pass: true } };
+  assert.equal(buildSoakTerminalCleanup({ runtimeKind: 'electron', error: original, cleanupReport: owned }).status, 'pass');
+  assert.equal(buildSoakTerminalCleanup({ runtimeKind: 'electron', error: original, cleanupReport: owned, profileCleanup: 'retained' }).status, 'failed');
+  const profileError = new Error('profile removal failed');
+  const profile = cleanupSoakFailureProfile({ cleanup: () => { throw profileError; } }, owned);
+  assert.equal(profile.error, profileError);
+  const result = buildSoakTerminalCleanup({ runtimeKind: 'electron', error: original, cleanupReport: owned,
+    cleanupError: profile.error, profileCleanup: profile.profileCleanup });
+  assert.equal(result.status, 'failed');
+  assert.equal(result.error.message, original.message);
+  assert.equal(result.cleanupError.message, profileError.message);
+});
 
 test('scene geometry census deduplicates shared geometry and attributes entity and unowned roots', () => {
   const oldWindow = globalThis.window;

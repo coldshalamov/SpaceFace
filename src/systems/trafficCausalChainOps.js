@@ -2418,8 +2418,15 @@ export const trafficCausalChainOps = {
         || context.rec?.manifest;
       if (!manifest || !Array.isArray(manifest.lines)) return false;
       if (adoptedScavenger && (context.entry.job.payload?.extracted !== true
-        || !validCausalManifest(manifest) || manifest.role !== 'salvor'
-        || manifest.totalQty !== context.entry.job.payload.totalQty)) return false;
+        || !this._salvorOwnsExtractedManifest(context.entry.job, manifest))) return false;
+      if (context.entry.job.payload?.salvageIntakeWait?.status === 'awaiting-intake') {
+        // General-salvor maintenance can release the physical hold after its canonical
+        // receiver quote becomes eligible. Retire the matching wait too, including
+        // legacy receipt recovery; an actually held remainder still cannot resubmit.
+        if (manifest.salvageIntakeHeld) return false;
+        delete context.entry.job.payload.salvageIntakeWait;
+        delete context.entry._salvorIntakeProbe;
+      }
       const yard = this._sectorStations().find(station => stationIdentity(station) === destination.slice(5));
       if (!yard || !this._salvorAtTarget(context.entity, yard,
         Math.max(this._salvorReach(context.entity, yard), yard.data?.dockRadius || 0))) return false;
@@ -2501,13 +2508,15 @@ export const trafficCausalChainOps = {
           totalQty: copiedQty - acceptedQty, salvageIntakeGeneration: generation + 1, salvageIntakeHeld: true }
           : this._emptySalvorManifest(context.entity, intent.seq | 0);
         this._setTrafficManifest(context.entity, context.rec, next);
+        if (remainder.length) this._holdSalvorIntake(context, next, yardId, 'partial-intake');
+        else delete context.entry.job.payload.salvageIntakeWait;
         committed = true;
         return true;
       } });
       this.bus.emit('salvage:npcUnload', payload);
       if (!committed && this.state.traffic === run && context.entity.data.cargoManifest === manifest
         && ['unsupported_salvage_yard', 'salvage_listing_unavailable'].includes(payload.intakeResult?.reason)) {
-        manifest.salvageIntakeHeld = true;
+        this._holdSalvorIntake(context, manifest, yardId, payload.intakeResult.reason);
       }
       if (committed && adoptedScavenger && !(context.entity.data.cargoManifest?.totalQty > 0)) {
         // Legacy scavenger ecology may resume only after the canonical yard accepts the finite

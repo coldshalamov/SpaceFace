@@ -19,6 +19,8 @@ import { FREIGHT_MARKET_KEYS_FALLBACK, buildCargoManifest } from '../economy/fre
 import { makeShipEntitySpec } from './ships.js';
 import { AMBUSH_LOADED_HAULER_COMMODITY_ID, AMBUSH_LOADED_HAULER_QTY, CERES_AMBUSH_HAULER_SLOT_ID, CIVILIAN_ALARM_FLEE_ROLES, CIVILIAN_ALARM_HOLD_ROLES, CIVILIAN_ALARM_TTL_S, CIVILIAN_DISTRESS_COOLDOWN_S, CIVILIAN_DISTRESS_RADIUS_WU, CIVILIAN_HAULER_DUMP_ROLES, CIVILIAN_MANIFEST_PAYLOAD_TYPE, CIVILIAN_VIOLENCE_RADIUS_SQ, CIVILIAN_VIOLENCE_RING_CAP, DOCK_RANGE, HAULER_SPILL_POD_RADIUS, HAULER_SPILL_VEL_FRACTION, HELIOS_BERTH_MAX_DRIFT, HELIOS_TALLY_COUNT_S, HELIOS_TALLY_LEDGER_CAP, HELIOS_TALLY_REACH, HELIOS_TALLY_STILL, MINER_FIELD_SPREAD_CAP, RESCUE_CALLER_STANDDOWN_S, SALVOR_NOTICE_DELAY_MIN_S, SALVOR_NOTICE_DELAY_SPAN_S, SALVOR_WORK_LEDGER_CAP, SPILL_ANNOUNCE_NOTICE_S, SPILL_POD_CARRIER_RADIUS, STATION_TO_SECTOR, TRAFFIC_ROLES, WELL_DRAG_DANGER, WELL_DRAG_ESCORT_CAP, WELL_DRAG_FULL_HOLD_QTY, WELL_DRAG_PRESSURE_MAX, WELL_DRAG_PRESSURE_MIN, WELL_DRAG_RECOVER_S, WELL_DRAG_REGROUP_S, WELL_DRAG_SEEN_CAP, entityPos, factionHullFor, heliosFreightDisposition, isShipDisabled, isSurvivalCohort, normalizeHeliosFreightTally, pointInHeliosMemorial, setIntent, stationIdentity, validCausalManifest } from './traffic.js';
 
+const SALVOR_INTAKE_QUOTE_INTERVAL_S = 1;
+
 export const trafficRoleOps = {
   // ── Role behaviors (spec §12.1) ────────────────────────────────────────────────────────────
   _ensureCivilianViolenceRing() {
@@ -2104,6 +2106,68 @@ export const trafficRoleOps = {
     return this._jobTrafficContext({ jobId: job.id, kind: 'salvor' }, 'salvor');
   },
 
+  _salvorOwnsExtractedManifest(job, manifest) {
+    const total = job?.payload?.totalQty;
+    return job?.payload?.extracted === true && Number.isSafeInteger(total) && total > 0
+      && manifest?.role === 'salvor' && validCausalManifest(manifest)
+      && manifest.totalQty > 0 && manifest.totalQty <= total
+      && (!job.payload.salvageManifestId || job.payload.salvageManifestId === manifest.manifestId)
+      && (!job.payload.salvageLotId || job.payload.salvageLotId === manifest.lotId)
+      && (manifest.totalQty === total || (manifest.salvageIntakeHeld === true
+        && Number.isSafeInteger(manifest.salvageIntakeGeneration) && manifest.salvageIntakeGeneration > 0));
+  },
+
+  _holdSalvorIntake(context, manifest, stationId, reason) {
+    if (!context?.entry?.job || !manifest?.totalQty) return;
+    manifest.salvageIntakeHeld = true;
+    context.entry.job.payload.salvageIntakeWait = {
+      status: 'awaiting-intake', reason, stationId,
+      manifestId: manifest.manifestId, lotId: manifest.lotId,
+      generation: manifest.salvageIntakeGeneration || 0,
+    };
+    delete context.entry._salvorIntakeProbe;
+  },
+
+  _salvorIntakeWaitTarget(entry, entity, manifest) {
+    const job = entry.job;
+    let wait = job.payload.salvageIntakeWait;
+    if (!wait) {
+      this._holdSalvorIntake({ entry }, manifest, job.route?.[0]?.id?.slice(5), 'restored-intake-hold');
+      wait = job.payload.salvageIntakeWait;
+    }
+    if (wait.manifestId !== manifest.manifestId || wait.lotId !== manifest.lotId
+        || wait.generation !== (manifest.salvageIntakeGeneration || 0)) return { blocked: true, awaitingIntake: true };
+    if (wait.status === 'returning-to-intake') return null;
+    const now = this.state.simTime || 0;
+    let probe = entry._salvorIntakeProbe;
+    if (!probe || probe.entity !== entity || probe.job !== job || probe.manifest !== manifest
+        || now < probe.checkedAt || now >= probe.nextAt) {
+      // Poll eligibility at a bounded sim cadence. Only an actual accepted quote can restart
+      // a physical intake leg; this never resubmits a refused lot on the native tick cadence.
+      probe = { entity, job, manifest, checkedAt: now, nextAt: now + SALVOR_INTAKE_QUOTE_INTERVAL_S, destination: null };
+      const economy = this._registry?.get?.('economy');
+      let bestQty = 0, bestDistance = Infinity;
+      if (typeof economy?.quoteNpcSalvageIntake === 'function') for (const station of this._sectorStations()) {
+        if (station.alive === false || !station.pos || this.state.entities?.get(station.id) !== station) continue;
+        const id = stationIdentity(station);
+        const quote = economy.quoteNpcSalvageIntake(id, manifest.lines);
+        const qty = quote.ok ? quote.acceptedLines.reduce((sum, line) => sum + line.qty, 0) : 0;
+        const distance = Math.hypot(station.pos.x - entity.pos.x, station.pos.z - entity.pos.z);
+        if (qty > bestQty || (qty > 0 && qty === bestQty && distance < bestDistance)) {
+          bestQty = qty; bestDistance = distance;
+          probe.destination = station;
+        }
+      }
+      entry._salvorIntakeProbe = probe;
+    }
+    const station = probe.destination;
+    if (!station || station.alive === false || this.state.entities?.get(station.id) !== station) return { blocked: true, awaitingIntake: true };
+    return { ...this._salvorTargetDescriptor(entity, station,
+      Math.max(this._salvorReach(entity, station), station.data?.dockRadius || 0)),
+      intakeRetry: { stationId: stationIdentity(station), manifestId: manifest.manifestId,
+        generation: manifest.salvageIntakeGeneration || 0 } };
+  },
+
   _salvorJobContext(intent) {
     const jobId = typeof intent?.jobId === 'string' ? intent.jobId : '';
     const entry = jobId && this.helpers?.npcJobs?.get(jobId);
@@ -2265,6 +2329,8 @@ export const trafficRoleOps = {
         } : {}),
         extracted: total > 0,
         totalQty: total,
+        ...(total > 0 ? { salvageManifestId: context.entity.data.cargoManifest.manifestId,
+          salvageLotId: context.entity.data.cargoManifest.lotId } : {}),
       };
     }
 
@@ -2361,6 +2427,11 @@ export const trafficRoleOps = {
     // Source work and the loaded return still require the native arrival gates below.
     if (job.phase === NPC_JOB_PHASE.COMMISSION) return null;
     if (job.phase === NPC_JOB_PHASE.FLEE || job.phase === NPC_JOB_PHASE.COMPLETE) return null;
+    const ownedManifest = entity.data?.cargoManifest || context.rec?.manifest;
+    if (ownedManifest?.salvageIntakeHeld && this._salvorOwnsExtractedManifest(job, ownedManifest)) {
+      const waiting = this._salvorIntakeWaitTarget(entry, entity, ownedManifest);
+      if (waiting) return waiting;
+    }
     if (adoptedScavenger) {
       // WORK still requires the exact live, eligible wreck below. After a successful cut,
       // however, that same body is deliberately drained and marked salvaged. Let only the
@@ -2374,11 +2445,7 @@ export const trafficRoleOps = {
         && heldManifest?.role === 'salvor'
         && validCausalManifest(heldManifest)
         && heldManifest.totalQty === extractedQty;
-      const hasOwnedSalvorHold = job.payload?.extracted === true
-        && Number.isSafeInteger(extractedQty) && extractedQty > 0
-        && heldManifest?.role === 'salvor'
-        && validCausalManifest(heldManifest)
-        && heldManifest.totalQty === extractedQty;
+      const hasOwnedSalvorHold = this._salvorOwnsExtractedManifest(job, heldManifest);
 
       // Existing saved jobs still have a cut:hold origin. Once their own finite extraction is
       // aboard, migrate that destination once to the same salvor home used by new commissions.
@@ -2448,8 +2515,6 @@ export const trafficRoleOps = {
       || (job.routeIndex === 0 && job.phase !== NPC_JOB_PHASE.TRANSIT);
     if (homeLeg) {
       if (!home) return { blocked: true };
-      if (manifest?.salvageIntakeHeld && this._salvorAtTarget(entity, home,
-        Math.max(this._salvorReach(entity, home), home.data?.dockRadius || 0))) return { blocked: true };
       return this._salvorTargetDescriptor(entity, home, Math.max(this._salvorReach(entity, home), home.data?.dockRadius || 0));
     }
     // Once the finite load is aboard, the short wrangle act finishes where it was cut.

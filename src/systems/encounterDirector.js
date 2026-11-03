@@ -802,7 +802,10 @@ export const encounterDirector = {
       fresh.window = [];
       fresh.lastMeaningfulAt = now;                     // entry breath: first beats land ~40-90s in
       fresh.lastAmbientAt = now - AMBIENT_GAP_S;
-      this._planSector(sectorId);
+      // `dustRotation` records the offers from the schedule already saved before this
+      // restore. Pending rows are intentionally transient and are regenerated here; do not
+      // count that reconstruction as a second offer against the durable rotation ledger.
+      this._planSector(sectorId, { reconstructingAfterLoad: true });
     }
     this._seedCeresActivityAmbush(this._currentSectorId(), { loaded: true });
   },
@@ -875,7 +878,7 @@ export const encounterDirector = {
   },
 
   // Build the deterministic schedule for a sector-day. Pure aside from writing dir.pending.
-  _planSector(sectorId) {
+  _planSector(sectorId, { reconstructingAfterLoad = false } = {}) {
     const state = this.state;
     const dir = ensureDirectorState(state);
     if (!sectorId) return;
@@ -921,8 +924,10 @@ export const encounterDirector = {
       rotation: dustRotationMap(dir),
     });
     for (const s of dustSchedule) {
-      const rotation = dustRotationMap(dir);
-      rotation[s.shapeId] = (rotation[s.shapeId] | 0) + 1;
+      if (!reconstructingAfterLoad) {
+        const rotation = dustRotationMap(dir);
+        rotation[s.shapeId] = (rotation[s.shapeId] | 0) + 1;
+      }
       dir.pending.push({ ...s, sectorId, dueAt: now + s.delay, defers: 0, dustLane: true });
     }
     dir.lastPlanned = { sectorId, dayIndex, count: schedule.length + dustSchedule.length };
