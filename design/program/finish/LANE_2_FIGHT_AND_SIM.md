@@ -14,6 +14,8 @@ lean enough to change. Status words: `OPEN`, `ACTIVE`, `LANDED <sha>`, `SKIPPED 
 
 ## Inbox (other lanes append one line: date, lane, path, what/why)
 
+- 2026-11-03 Armory: rapid Refit Strip/Fit/Sell presses previously queued duplicate transactions, replacing a successful action with a refusal. The screen now waits for a matching owner receipt, disables pending transactions and names the actual fitting movement. Review reproduced a late Strip after public Launch at unchanged generation leaving controls pending; correlated early exits now return the existing refusal receipt. The actual UI/main-lane/production-worker regression and focused cohort pass21 cases. Ordinary intermission → refit → round2 firing, first-ten/boss journey and performance remain open.
+
 - 2026-11-03 native contact repair (`c16e43dd6c24`): already tumbling hulls no longer receive a second legacy entry-spin impulse after the native contact solve. The authored Kestrel reproduction previously multiplied spin2.52× and angular energy6.34× across that command boundary; the corrected path preserves the native response. Disabling tumble now restores an installed contact/damping profile. Sixty focused native cases pass, including tracked contact-normal/material/energy checks replacing obsolete world-axis bounce assumptions. No mass/inertia clamp or expected golden was changed; ordinary perceived combat feel remains open.
 
 - 2026-11-03 integration: incoming PR811's player-truth retry was corrected so menu/loading/route and unclassified graphics failures remain failures, and a failed first-attempt archive prevents a destructive retry. Existing classified environment-loss handling is retained. Thirty-two focused checks pass; no long survival run was added.

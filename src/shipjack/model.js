@@ -172,9 +172,18 @@ export function captureReadiness(state, target, attempt = null) {
   if (!tethered && !surrendered) reasons.push('Attach the Massline to hold a physical approach.');
   return {ready:reasons.length === 0,reasons,distance,relativeSpeed,spin:Math.abs(finite(target?.angVel)),tethered,dwell:finite(attempt?.dwell),driveDisabled:disabled('subsystem_drive'),weaponsDisabled:!hasWeapons||disabled('subsystem_weapon'),hasWeapons,surrendered};
 }
+// A fleet row and the actual live body must agree before this guard can claim
+// the contact. A stale row or a recycled entity ID is not fleet custody.
+export function isAssignedFleetBody(state, entity) {
+  if (!entity || state?.entities?.get(entity.id) !== entity || entity.data?.isWingman !== true) return false;
+  const id = entity.data.wingmanOf;
+  return id != null && (state.automation?.fleet || []).some(row => row?.id === id && row._liveId === entity.id);
+}
+
 export function queryShipjack(state, targetId = state.player?.targetId) {
   if (!isBlackFlagAdventure(state)) return {eligible:false,actions:[]};
   const target = state.entities?.get(targetId);
+  if (isAssignedFleetBody(state, target)) return {eligible:false,reason:'This hull is working with your fleet. Return it to the hangar before taking control.',actions:[]};
   const def = HULLS.get(target?.data?.defId);
   const excluded = !def || target?.type !== 'ship' || target?.id === state.playerId || target?.data?.questCritical || target?.data?.capitalBossId || def.role === 'capital'
     || !!target?.data?.missionId && !target?.data?.shipjackEncounterId || target?.flags?.missionPinned===true;

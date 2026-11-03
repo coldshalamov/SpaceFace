@@ -2044,35 +2044,47 @@ export const survivalDraft = {
    */
   refitFit(request) {
     const run = liveSurvivalRun(this.state);
-    if (!run || (run.phase !== 'refit' && !(run.ruleset === 'swarm' && run.phase === 'draft'))) return false;
+    if (!run) return this._refuseRefitRequest(request, 'fit', 'The run is no longer available for refitting.');
+    if (run.phase !== 'refit' && !(run.ruleset === 'swarm' && run.phase === 'draft')) {
+      return this._refuseRefitRequest(request, 'fit', 'Refit is closed. Your loadout is unchanged.');
+    }
     const ships = this._ships();
-    if (!ships || typeof ships.fitModule !== 'function') return false;
+    if (!ships || typeof ships.fitModule !== 'function') {
+      return this._refuseRefitRequest(request, 'fit', 'Fitting is unavailable. Your loadout is unchanged.');
+    }
     const slotIndex = request && request.slotIndex;
     const instanceId = request && request.instanceId;
-    if (!Number.isInteger(slotIndex) || instanceId == null) return false;
+    if (!Number.isInteger(slotIndex) || instanceId == null) {
+      return this._refuseRefitRequest(request, 'fit', 'Choose a valid hardpoint and spare.');
+    }
     // Read the def BEFORE the fit: a successful fit takes the spare out of inventory, and the
     // refusal wording needs its name.
     const def = this._spareDef(instanceId);
     const ok = !!ships.fitModule({ slotIndex, instanceId });
     const reason = ok ? null : this._fitRefusalText(ships, slotIndex, def);
-    this._notice = reason;
-    this._emit('run:refitChanged', { wave: run.wave, slotIndex, action: 'fit', ok, reason });
+    this._notice = ok ? `Fitted ${fittingName(def?.id) || 'the spare'} to hardpoint ${slotIndex + 1}.` : reason;
+    this._emitRefitChanged(request, { wave: run.wave, slotIndex, action: 'fit', ok, reason });
     return ok;
   },
 
   /** Refit: strip a hardpoint back to the run's inventory, through the same owner. */
   refitStrip(request) {
     const run = liveSurvivalRun(this.state);
-    if (!run || (run.phase !== 'refit' && !(run.ruleset === 'swarm' && run.phase === 'draft'))) return false;
+    if (!run) return this._refuseRefitRequest(request, 'strip', 'The run is no longer available for refitting.');
+    if (run.phase !== 'refit' && !(run.ruleset === 'swarm' && run.phase === 'draft')) {
+      return this._refuseRefitRequest(request, 'strip', 'Refit is closed. Your loadout is unchanged.');
+    }
     const ships = this._ships();
-    if (!ships || typeof ships.unfitModule !== 'function') return false;
+    if (!ships || typeof ships.unfitModule !== 'function') {
+      return this._refuseRefitRequest(request, 'strip', 'Removing fittings is unavailable. Your loadout is unchanged.');
+    }
     const slotIndex = request && request.slotIndex;
-    if (!Number.isInteger(slotIndex)) return false;
+    if (!Number.isInteger(slotIndex)) return this._refuseRefitRequest(request, 'strip', 'Choose a valid hardpoint.');
     const held = this._activeLoadout().fittings[slotIndex] || null;
     const ok = !!ships.unfitModule({ slotIndex });
     const reason = ok ? null : this._stripRefusalText(slotIndex, held);
-    this._notice = reason;
-    this._emit('run:refitChanged', { wave: run.wave, slotIndex, action: 'strip', ok, reason });
+    this._notice = ok ? `Moved ${fittingName(held) || 'the fitting'} from hardpoint ${slotIndex + 1} to spares.` : reason;
+    this._emitRefitChanged(request, { wave: run.wave, slotIndex, action: 'strip', ok, reason });
     return ok;
   },
 
@@ -2086,20 +2098,23 @@ export const survivalDraft = {
    */
   refitSell(request) {
     const run = liveSurvivalRun(this.state);
-    if (!run || !isSwarmRuleset(run.ruleset)) return false;
-    if (run.phase !== 'refit' && run.phase !== 'draft') return false;
+    if (!run) return this._refuseRefitRequest(request, 'sell', 'The run is no longer available for selling parts.');
+    if (!isSwarmRuleset(run.ruleset)) return this._refuseRefitRequest(request, 'sell', 'Selling parts is only available in Swarm.');
+    if (run.phase !== 'refit' && run.phase !== 'draft') {
+      return this._refuseRefitRequest(request, 'sell', 'Refit is closed. No part was sold.');
+    }
     // The armory the wager struck has no counter either: selling a part back is priced off the
     // shelf and pays the wallet, so a no-draft contract refuses it in every shop phase.
     if (compileChallenge(run.seed, run.arenaMutators, run.ruleset).skipDraft) {
       this._notice = 'The armory is closed — nothing here buys.';
-      this._emit('run:refitChanged', {
+      this._emitRefitChanged(request, {
         wave: run.wave, slotIndex: Number.isInteger(request && request.slotIndex) ? request.slotIndex : null,
         action: 'sell', ok: false, reason: this._notice,
       });
       return false;
     }
     const ships = this._ships();
-    if (!ships) return false;
+    if (!ships) return this._refuseRefitRequest(request, 'sell', 'Selling parts is unavailable. No part was sold.');
     const slotIndex = request && request.slotIndex;
     const instanceId = request && request.instanceId;
     const loadout = this._activeLoadout();
@@ -2119,7 +2134,7 @@ export const survivalDraft = {
     const refund = defId ? swarmSellPrice(defId) : null;
     if (!defId || !take || refund == null) {
       this._notice = 'Nothing there the armory will buy back.';
-      this._emit('run:refitChanged', {
+      this._emitRefitChanged(request, {
         wave: run.wave, slotIndex: Number.isInteger(slotIndex) ? slotIndex : null,
         action: 'sell', ok: false, reason: this._notice,
       });
@@ -2128,7 +2143,7 @@ export const survivalDraft = {
     const taken = take();
     if (!taken) {
       this._notice = 'That part is no longer in the run.';
-      this._emit('run:refitChanged', {
+      this._emitRefitChanged(request, {
         wave: run.wave, slotIndex: Number.isInteger(slotIndex) ? slotIndex : null,
         action: 'sell', ok: false, reason: this._notice,
       });
@@ -2150,11 +2165,33 @@ export const survivalDraft = {
       this._emit('run:awardRequested', { credits, reason: 'swarm:sellBack' });
     }
     this._notice = `Sold ${fittingName(defId) || 'the part'} for ${credits} cr.`;
-    this._emit('run:refitChanged', {
+    this._emitRefitChanged(request, {
       wave: run.wave, slotIndex: Number.isInteger(slotIndex) ? slotIndex : null,
       action: 'sell', ok: true, credits, defId,
     });
     return true;
+  },
+
+  _refuseRefitRequest(request, action, reason) {
+    // Correlated UI transactions always owe an acknowledgement, even if the run/phase or
+    // fitting service disappeared before the queued command arrived. Legacy uncorrelated
+    // callers retain their existing early-return behavior.
+    if (typeof request?.requestId === 'string') {
+      this._notice = reason;
+      this._emitRefitChanged(request, {
+        wave: Number.isInteger(this.state?.run?.wave) ? this.state.run.wave : 0,
+        slotIndex: Number.isInteger(request.slotIndex) ? request.slotIndex : null,
+        action, ok: false, reason,
+      });
+    }
+    return false;
+  },
+
+  _emitRefitChanged(request, receipt) {
+    this._emit('run:refitChanged', {
+      ...receipt,
+      ...(typeof request?.requestId === 'string' ? { requestId: request.requestId } : {}),
+    });
   },
 
   /**
