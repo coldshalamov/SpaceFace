@@ -321,6 +321,13 @@ ${NG} > .sf-ng-footer .k-word.sf-back:focus-visible::after {
   /* the narrower ring there brings the rear ends close to the front name: the rear hulls go by name only */
   ${NGD} .orr-yard > .orr-turntable__row > li:not(.is-front) .k-word-sub { opacity:0 !important; }
 }
+/* ≤380px: BACK ESC and LAUNCH are 331px side by side in a 288–324px foot, so LAUNCH ran past the right edge
+   (cut off at 320): a tighter gap, ESC margin and key padding/tracking bring them to ~280px */
+@media (max-width:380px) {
+  ${NGD} > .sf-ng-footer.k-foot { gap:12px !important; }
+  ${NGD} > .sf-ng-footer .k-word.sf-back::after { margin-left:12px !important; }
+  ${NGD} > .sf-ng-footer .sf-ng-launch:has(> .orr-lampkey__word) { padding:0 22px 0 16px !important; letter-spacing:.1em !important; margin-left:auto !important; }
+}
 `;
 
 // phone: the three hull names share one row in thirds; keep the wide ones (PELICAN) inside theirs
