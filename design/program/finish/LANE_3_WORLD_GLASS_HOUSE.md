@@ -649,12 +649,12 @@ From `design/program/strategic-chaos/` (`node scripts/strategic-chaos.mjs brief 
 Physical Infrastructure, **SC-09** Supply-Line Warfare, **SC-10** Personal Consequences. Lane 2 builds
 SC-01 Causal Playground and SC-12 Scenario Forge first; use them to prove yours.
 
-### In flight elsewhere — integrate when it lands
-Another agent's opening-experience work (open PR "Create Adventure, Swarm, Tethys, Ceres, Cinder/Rook,
-and Compost opening experiences", plus files staged in the shared index under
-`design/program/opening-experience-2026-10-27/`). Do not take or merge that branch. When it arrives on
-`origin/master`, fold its openings into Wave W1 and re-run the first-hour pass. Also read
-`design/program/alive-world-plan-2026-10-27.md` alongside the living-world pack before W4.
+### Current opening-experience routing
+The branch-era instruction not to take or merge opening work is historical. Route current work
+through the Finish README and active lane claims, preserving user-owned paths in the shared checkout.
+Tethys, Compost, Ceres, Cinder/Rook, and other public opening outcomes remain open until their
+ordinary player routes are accepted; merged source or fixture results alone do not close them. Also
+read `design/program/alive-world-plan-2026-10-27.md` alongside the living-world pack before W4.
 
 ### Wave S — the ear
 Every verb has a voice, the mix has a hierarchy, silence exists (`FINISH_LANES.md` lane 8 checklist,
