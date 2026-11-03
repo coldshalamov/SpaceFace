@@ -153,3 +153,17 @@ test('the card waits for a real first flight and does not spend the flag early',
     setPromptDevice(previousDevice);
   }
 });
+
+
+test('first-flight reminder yields after demonstrated flight or leaving the starter system', () => {
+  const dom=installCardDom();try {
+    const state=firstFlight();state.world.currentSectorId='sector_helios_prime';
+    hudJobFromState(state,null);const card=dom.byId.get('sf-tutorial-flight-card');assert.ok(card && !card.hidden);
+    state.onboarding.pace.fastAtS=1;state.onboarding.pace.slowAtS=2;
+    hudJobFromState(state,null);assert.equal(card.hidden,true);
+    assert.equal(state.onboarding.finished,false,'presentation never completes the tutorial');
+    dom.forget('sf-tutorial-flight-card');const traveler=firstFlight();traveler.world.currentSectorId='sector_ceres_belt';
+    hudJobFromState(traveler,null);assert.equal(dom.byId.get('sf-tutorial-flight-card'),undefined);
+    assert.notEqual(traveler.player.hints.firstFlight,true,'a stale far-sector hint is not spent');
+  } finally {dom.restore();}
+});

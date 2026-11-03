@@ -947,6 +947,12 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
       if (eventName === 'physics:impact' && payload.playerInvolved !== true
         && (st.playerId == null || (payload.aId !== st.playerId && payload.bId !== st.playerId
           && payload.causalActorId !== st.playerId))) return;
+      // These lien events cover the whole sector. The flight register speaks only when the
+      // physical clamp or filing concerns this ship; player-specific paid/cut receipts remain.
+      if ((eventName === 'vael:lienClamped' || eventName === 'vael:lienThrown')
+        && payload?.hostId !== st.playerId) return;
+      if ((eventName === 'helix:lienFiled' || eventName === 'helix:lienStuck')
+        && payload?.shipId !== st.playerId) return;
       // SWARM-03 — the ARENA word is gated by the same contract onSwarmKill keeps: a live
       // run only, teaching causes only, friendly fire already speaks as COLLATERAL.
       if (eventName === 'swarm:killPopup'

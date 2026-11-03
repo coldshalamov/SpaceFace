@@ -591,3 +591,14 @@ test('physics log callouts ignore room-wide impacts that do not involve the play
     'the player-caused environmental impact is still a valid receipt when the player body was not a contact');
   owner.destroy();
 });
+
+
+test('physics register only narrates lien clamps and filings on the player ship', () => {
+  const doc=fakeDocument(),bus=fakeBus(),owner=createStuntCallout({state:calloutState(createComboState()),bus,doc});
+  bus.emit('vael:lienClamped',{hostId:24,anchorId:30});
+  bus.emit('helix:lienStuck',{shipId:25,droneId:31});
+  assert.equal(owner.update(0),false);assert.equal(calloutTextFor(owner.root),'');
+  bus.emit('vael:lienClamped',{hostId:1,anchorId:30});
+  assert.equal(owner.update(1),true);assert.notEqual(calloutTextFor(owner.root),'');
+  owner.destroy();
+});

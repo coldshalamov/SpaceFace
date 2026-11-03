@@ -6,6 +6,7 @@
 // transient and never enters GameState.
 import { aftermathChoices, applyAftermathChoice } from '../combat/aftermathChoices.js';
 import { compactKillCausality, KillCause } from '../combat/killCausality.js';
+import { selectionIsRecycled } from '../combat/targetIdentity.js';
 import { occupantGenerationOf } from '../core/entity.js';
 import { validateRunState } from '../core/runState.js';
 import { isHostileToPlayer } from './scanner.js';
@@ -454,7 +455,20 @@ export const combatOutcome = {
     own.outcomes.push(record);
     if (own.outcomes.length > MAX_OUTCOMES) own.outcomes.splice(0, own.outcomes.length - MAX_OUTCOMES);
     if (this.bus && typeof this.bus.emit === 'function') {
-      this.bus.emit('combat:outcome', record);
+      // Transient receipt only: the mirror can retire the victim and clear its target before
+      // replaying this event. Preserve the selected exact life and both positions at the outcome,
+      // without changing the durable compact combat-outcome/save schema.
+      const player = entityFor(state, state.playerId), generation = occupantGenerationOf(entity);
+      const victimPos = entity?.pos, playerPos = player?.pos;
+      const selected = entity && state.entities?.get?.(entity.id) === entity
+        && state.player?.targetId === entity.id && !selectionIsRecycled(state, entity)
+        && Number.isSafeInteger(generation) && generation > 0
+        && [victimPos?.x, victimPos?.z, playerPos?.x, playerPos?.z].every(Number.isFinite);
+      const receipt = selected ? { ...record, observedSelection: {
+        entityId: entity.id, occupantGeneration: generation,
+        pos: { x: victimPos.x, z: victimPos.z }, playerPos: { x: playerPos.x, z: playerPos.z },
+      } } : record;
+      this.bus.emit('combat:outcome', receipt);
       this.bus.emit('combat:outcomeConsequence', {
         entityId: record.entityId,
         outcome: record.outcome,
