@@ -206,6 +206,7 @@ import { kesslerScale } from '../systems/kesslerScale.js';
 import { furnaceIntake } from '../systems/furnaceIntake.js';
 import { gateThreeWeir } from '../systems/gateThreeWeir.js';
 import { slateColumn } from '../systems/slateColumn.js';
+import { varianceAdjustmentBerth } from '../systems/varianceAdjustmentBerth.js';
 import { bouncer } from '../systems/bouncer.js';
 import { receipt } from '../systems/receipt.js';
 import { mop } from '../systems/mop.js';
@@ -506,6 +507,7 @@ export function getNodeSystemFactoryTable(options = {}) {
     ['crafting', crafting],
     ['heat', heat],
     ['traffic', traffic],
+    ['varianceAdjustmentBerth', varianceAdjustmentBerth],
     ['drill', drill],
     ['claims', claims],
     ['longBerth', longBerth],

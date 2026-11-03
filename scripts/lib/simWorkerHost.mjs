@@ -35,6 +35,7 @@ import { NEW_GAME } from '../../src/data/newGameDefaults.js';
 import { swarmSpecialistKind } from '../../src/data/swarmSpecialists.js';
 import { swarmSpecialistPresentationFrame } from '../../src/data/swarmSpecialistPresentation.js';
 import { isOrchardFrame } from '../../src/data/anvilOrchardIdentity.js';
+import { isMawWorksiteBody } from '../../src/missions/mawWorksite.js';
 import { ceresWorkfleetRoleForEntity } from '../../src/data/ceresWorkfleetIdentity.js';
 import { readCeresCradlePublicLayout } from '../../src/core/ceresWorkfleetLayoutAdmission.js';
 import { readCeresWorkfleetPublicActuation } from '../../src/core/ceresWorkfleetActuation.js';
@@ -301,6 +302,12 @@ function pallasSeamStandbyTick(e) {
   return Number.isSafeInteger(e.data?.pallasSeamStandbyTick) ? e.data.pallasSeamStandbyTick : null;
 }
 
+function mawPresentationRadius(e) {
+  if (!isMawWorksiteBody(e)) return VITAL_SHADOW_MISSING;
+  const radius = e.physicsBody?.radius;
+  return Number.isFinite(radius) && radius > 0 ? radius : null;
+}
+
 export function entityVitalsOf(e, krakenFrame = VITAL_SHADOW_MISSING) {
   const fields = {};
   for (const k of VITAL_FIELDS) {
@@ -355,6 +362,8 @@ export function entityVitalsOf(e, krakenFrame = VITAL_SHADOW_MISSING) {
     const value = authoredMotionFrameValue(e, key);
     if (value !== VITAL_SHADOW_MISSING) fields[key] = value;
   }
+  const mawRadius = mawPresentationRadius(e);
+  if (mawRadius !== VITAL_SHADOW_MISSING) fields.mawPresentationRadius = mawRadius;
   if (krakenFrame !== VITAL_SHADOW_MISSING) fields.ironKrakenMotionFrame = krakenFrame;
   return fields;
 }
@@ -454,6 +463,7 @@ function vitalShadowMatches(e, shadow, krakenFrame) {
   for (const key of AUTHORED_MOTION_FRAME_FIELDS) {
     if (authoredMotionFrameValue(e, key) !== shadow[i++]) return false;
   }
+  if (mawPresentationRadius(e) !== shadow[i++]) return false;
   if (krakenFrame !== shadow[i++]) return false;
   return true;
 }
@@ -498,6 +508,7 @@ function writeVitalShadow(e, shadow, krakenFrame) {
   for (const key of AUTHORED_MOTION_FRAME_FIELDS) {
     shadow[i++] = authoredMotionFrameValue(e, key);
   }
+  shadow[i++] = mawPresentationRadius(e);
   shadow[i++] = krakenFrame;
   shadow.length = i;
   return shadow;
@@ -604,11 +615,14 @@ export function collectEntityVitals(state, vitalShadow, seenScratch = null) {
         && Array.isArray(previous) && previous[previous.length - 1] !== VITAL_SHADOW_MISSING;
       const retiredSpecialistFrame = swarmSpecialistFrameValue(e) === VITAL_SHADOW_MISSING
         && Array.isArray(previous) && previous[SWARM_SHADOW_INDEX] !== VITAL_SHADOW_MISSING;
+      const retiredMawRadius = mawPresentationRadius(e) === VITAL_SHADOW_MISSING
+        && Array.isArray(previous) && previous[previous.length - 2] !== VITAL_SHADOW_MISSING;
       const shadow = Array.isArray(previous) ? previous : [];
       writeVitalShadow(e, shadow, krakenFrame);
       vitalShadow.set(e.id, shadow);
       const fields = entityVitalsOf(e, retiredKrakenFrame ? null : krakenFrame);
       if (retiredSpecialistFrame) fields.swarmSpecialistFrame = null;
+      if (retiredMawRadius) fields.mawPresentationRadius = null;
       out.push([e.id, fields]);
     }
   }

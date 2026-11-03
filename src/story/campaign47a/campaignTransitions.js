@@ -36,6 +36,7 @@ import {
   buildEndingDescriptorReceipt,
   buildOutpostSpecReceipt,
   buildStepProgressReceipt,
+  normalizeFurnaceSettlement,
 } from './campaignReceipts.js';
 import {
   ensureCampaign47aState,
@@ -317,6 +318,16 @@ function recordOrderedSteps(state, own, def, signal, payload, simTime, canon) {
 
   const stepsComplete = steps.every((s) => s.optional === true || bucket.completed.includes(s.id));
   const completionMethod = methodFromPayload(payload, def.beat, canon.branch);
+  const furnaceSettlement = normalizeFurnaceSettlement({
+    beatIndex: def.beat,
+    stepId: hitStep.id,
+    signal,
+    missionId: payload && payload.missionId,
+    storyTag: payload && payload.storyTag,
+    furnaceFeeds: payload && payload.furnaceFeeds,
+    furnaceLosses: payload && payload.furnaceLosses,
+    furnaceOutcome: payload && payload.furnaceOutcome,
+  });
   const receipt = buildStepProgressReceipt({
     beatIndex: def.beat,
     stepId: hitStep.id,
@@ -327,10 +338,17 @@ function recordOrderedSteps(state, own, def, signal, payload, simTime, canon) {
     attempt: own.attempt,
     physicalVerb: payload.physicalVerb || null,
     completionMethod,
+    missionId: payload && payload.missionId,
+    storyTag: payload && payload.storyTag,
+    furnaceSettlement,
   });
   pushCampaignReceipt(own, receipt);
   noteSpineStep(state, own, {
-    beat: def.beat, stepId: hitStep.id, payload, simTime, stepsComplete,
+    beat: def.beat,
+    stepId: hitStep.id,
+    payload: furnaceSettlement ? { ...payload, ...furnaceSettlement, signal } : payload,
+    simTime,
+    stepsComplete,
   });
   pushCampaignHistory(own, {
     kind: 'step_progress',

@@ -2,8 +2,8 @@
 // design/expansion/06_CAMPAIGN_SCRIPT.md §34.7 — live boards, physical signals,
 // and the missions-owned cursor, never sidecar-only metadata.
 //
-// Drives: B3 berth contract → VARIANCE ADJUSTMENT (Hawser seam holds three strain
-// spikes, lets go at the fourth, Slate welds the column entry at the yard) →
+// Drives: B3 slag-core tow → live-tether strain marks (the fourth files a failure
+// in Slate's yard column) →
 // Feed the Maw (three hot-slag stuns, then the tow leaves the lane) → the
 // Mirrorjaw Foreman (capital-boss yard feud) → the first Gate Audit weld recorded
 // as optional world evidence. B4: three doors — Meridian intro → Spine Break,
@@ -20,6 +20,9 @@ import { missions as missionsProto } from '../src/systems/missions.js';
 import { story as storyProto } from '../src/systems/story.js';
 import { addCargo } from '../src/systems/cargo.js';
 import { isBeatStepsComplete, getBeatStepStatus } from '../src/story/campaign47a/index.js';
+import { CAMPAIGN_BEATS } from '../src/story/campaign47a/campaignData.js';
+import { EMBODIED_MISSIONS } from '../src/story/campaign47a/embodiedMissions.js';
+import { leftoverLedgerLine } from '../src/story/storyLedger.js';
 import { PHYSICAL_ROLE } from '../src/systems/missions.js';
 import { physicalRoleOf } from '../src/systems/missions.js';
 // Books 1–2 are replayed physically to stand Books 3–4 up: the refinery mites are
@@ -43,6 +46,16 @@ import { tickNestVisit } from '../src/systems/nestVisit.js';
 import { NEST_VISIT, nestApproach } from '../src/data/nestVisit.js';
 
 let failures = 0;
+
+// Feed the Maw receipts name the actual finite supplied mass. The focused worksite test
+// drives the production massline observer; this campaign fixture tests its mission consumer.
+function hitSuppliedMawPod(h, mission, maw, rating = 'solid') {
+  const pod = (mission.targetEntityIds || []).map(id => h.state.entities.get(id))
+    .find(e => e && e.alive !== false && e.data?.physicalRole === 'maw_slag');
+  assert.ok(pod, 'an actual unspent Ceres hot-slag pod is required');
+  (h.bus || h.sim.bus).emit('tether:whipImpact', { targetId: pod.id, victimId: maw.id, rating });
+}
+
 function check(name, fn) {
   try { fn(); console.log(`  PASS  ${name}`); }
   catch (err) {
@@ -374,7 +387,7 @@ function reachB4(h, elroyOutcome = 'force') {
   const maw = acceptOffer(h, 'station_tethys', 'campaign47a:b3:maw');
   enterDest(h, maw);
   const mawBody = slagCoreOf(h, maw);
-  for (let i = 0; i < 3; i++) bus.emit('tether:whipImpact', { victimId: mawBody.id, rating: 'solid' });
+  for (let i = 0; i < 3; i++) hitSuppliedMawPod(h, maw, mawBody);
   dockTow(h, maw);
   assert.equal(maw.status, 'completed', 'stunned maw tows off the lane');
   const foreman = acceptOffer(h, 'station_tethys', 'campaign47a:b3:foreman');
@@ -437,11 +450,18 @@ function completeEscort(h, m) {
 
 console.log('w534-books-3-4');
 
-// ── BOOK THREE: Bigger Boat — berth, seam, maw, Foreman, the first audit. ────
-check('B3: board posts the berth first — VARIANCE ADJUSTMENT, Hawser class', () => {
+// ── BOOK THREE: Bigger Boat — core tow, live-line strain, maw, Foreman, first audit. ────
+check('B3: board posts the Ceres slag-core tow first', () => {
   const h = makeHarness(60);
   const { state } = h;
   reachB3(h);
+  const campaignBeat = CAMPAIGN_BEATS.find((row) => row.id === 'bigger_boat');
+  assert.ok(campaignBeat.objective.includes('Tow a slag core to Ceres'));
+  assert.ok(campaignBeat.steps.find((row) => row.id === 'delivery').label.includes('Tow the slag core to Ceres'));
+  const embodiedBeat = EMBODIED_MISSIONS.find((row) => row.id === 'bigger_boat');
+  const deliverySpec = embodiedBeat.bookContracts[0];
+  assert.ok(deliverySpec.brief.includes('Tow one slag core from Tethys to Ceres'));
+  assert.ok(deliverySpec.brief.includes('after delivery') && deliverySpec.brief.includes('tally of strain spikes'));
   // Wrong-shape world signals must not satisfy the ordered list.
   h.bus.emit('worldPressure:auditAnnounced', { key: 'x|y', book: 6 });
   h.bus.emit('furnace:fed', { entityId: 7777 });
@@ -452,12 +472,14 @@ check('B3: board posts the berth first — VARIANCE ADJUSTMENT, Hawser class', (
   assert.equal(berth.type, 'tow_recovery');
   assert.equal(berth.params.bookScene, 'variance_delivery');
   assert.equal(berth.params.authoredSetPieceId, 'long_tow');
-  const handover = h.popups.map((p) => p.text || '').join(' ');
-  assert.ok(handover.includes('VARIANCE ADJUSTMENT'), 'Slate names the tug on accept');
-  assert.ok(handover.includes('Hawser'), 'the Hawser class is spoken');
+  const handover = h.popups.find((p) => p.id === `b34_accept_variance_delivery_${berth.id}`)?.text || '';
+  assert.ok(handover.includes('Ceres yard needs that slag core'), 'Slate states the actual delivery');
+  assert.ok(handover.includes('After the drop'), 'Slate says when she will log the strain');
+  assert.ok(handover.includes('tally each strain spike'), 'Slate explains the live-line tally');
+  assert.ok(!/VARIANCE ADJUSTMENT|Hawser/.test(handover), 'the mission makes no named-hull handoff');
 });
 
-check('B3: the seam holds three strain spikes and lets go at the fourth', () => {
+check('B3: the Ceres tow arms the live-line strain record; the fourth spike files failure', () => {
   const h = makeHarness(61);
   const { state, bus } = h;
   reachB3(h);
@@ -470,7 +492,13 @@ check('B3: the seam holds three strain spikes and lets go at the fourth', () => 
   enterDest(h, berth);
   dockTow(h, berth);
   assert.equal(berth.status, 'completed');
-  assert.equal(state.story.flags.variance_delivered, true, 'delivery arms the seam counter');
+  assert.equal(state.story.flags.variance_delivered, true, 'core delivery arms the live-line record');
+  const arrival = h.popups.find((p) => p.id === `b3_variance_berth_${berth.id}`)?.text || '';
+  assert.ok(arrival.includes('Core received at Ceres'), 'Slate confirms the actual delivery');
+  assert.ok(arrival.includes('Furnace maw still blocks the reactor approach'), 'Slate identifies the logged consequence');
+  const ledgerLine = leftoverLedgerLine(state) || '';
+  assert.ok(ledgerLine.includes('delivered the slag core to Ceres'), 'the ledger records the core delivery');
+  assert.ok(!/VARIANCE ADJUSTMENT|Hawser/.test(ledgerLine), 'the ledger does not invent a hull transfer');
   let status = getBeatStepStatus(state, 3);
   assert.deepEqual(status.completed, ['delivery']);
   assert.equal(state.story.beatIndex, 3, 'delivery alone cannot close the book');
@@ -492,14 +520,17 @@ check('B3: the seam holds three strain spikes and lets go at the fourth', () => 
   assert.equal(h.seamFailed.length, 1, 'story:varianceSeamFailed fired once');
   const strain = h.popups.map((p) => p.text || '').join(' ');
   assert.ok(strain.includes('FOURTH SPIKE'), 'the fourth-spike line lands');
+  const failedLine = [...h.popups].reverse().find((p) => p.id === 'b3_seam_fail')?.text || '';
+  assert.ok(failedLine.includes('your tether hit Slate'), "failure describes the player's actual line");
+  assert.ok(!/VARIANCE ADJUSTMENT|Hawser/.test(failedLine), 'failure does not claim ownership of a named tug');
 
-  // Slate welds it at the yard — the column keeps its entry.
+  // Slate closes the yard column — no ship or hull is transferred.
   bus.emit('dock:docked', { stationId: 'station_tethys' });
   assert.equal(state.story.flags.slate_column_entry, true, 'the column entry is filed');
-  assert.equal(state.story.flags.variance_seam_failed, false, 'the weld lays the failure down');
-  const weld = h.popups.map((p) => p.text || '').join(' ');
-  assert.ok(weld.includes('Second pass'), 'Slate speaks the second pass');
-  // Once welded, the seam story is done — further spikes stay silent.
+  assert.equal(state.story.flags.variance_seam_failed, false, 'the failure record closes after docking');
+  const columnClose = [...h.popups].reverse().find((p) => p.id === 'b3_seam_weld')?.text || '';
+  assert.ok(columnClose.includes('strain mark stays in Slate'), 'Slate closes the recorded failure');
+  // Once the failure is filed, further live-line spikes stay silent.
   bus.emit('tether:strain', { ratio: 0.05 });
   bus.emit('tether:strain', { ratio: 0.95 });
   assert.equal(h.seamFailed.length, 1, 'the welded seam does not re-fail');
@@ -537,18 +568,100 @@ check('B3: Feed the Maw needs the slag stuns before the tow settles', () => {
   assert.equal(mawBody.data.furnaceMaw, true, 'the core is stamped as a living maw');
 
   // Two stuns short — the thrashing maw does not ride a line out.
-  bus.emit('tether:whipImpact', { victimId: mawBody.id, rating: 'solid' });
-  bus.emit('tether:whipImpact', { victimId: mawBody.id, rating: 'crushing' });
+  hitSuppliedMawPod(h, maw, mawBody);
+  hitSuppliedMawPod(h, maw, mawBody, 'crushing');
   assert.equal(maw.params.mawStuns, 2);
   dockTow(h, maw);
   assert.equal(maw.status, 'active', 'the tow refuses while the maw still hunts');
 
-  bus.emit('tether:whipImpact', { victimId: mawBody.id, rating: 'solid' });
+  hitSuppliedMawPod(h, maw, mawBody);
   dockTow(h, maw);
   assert.equal(maw.status, 'completed', 'three stuns and the maw leaves the lane');
   assert.equal(state.story.flags.maw_fed, true);
   let status = getBeatStepStatus(state, 3);
   assert.deepEqual(status.completed, ['delivery', 'feed_the_maw']);
+});
+
+check('B3: actual save restore owns its Maw params without mutating the saved payload', () => {
+  const h = makeHarness(530); reachB3(h);
+  const berth = acceptOffer(h, 'station_tethys', 'campaign47a:b3:berth');
+  enterDest(h, berth); dockTow(h, berth);
+  const maw = acceptOffer(h, 'station_tethys', 'campaign47a:b3:maw');
+  enterDest(h, maw); hitSuppliedMawPod(h, maw, slagCoreOf(h, maw));
+  const live = h.state.entities.get(maw.params.mawBodies[2].entityId);
+  live.pos.x += 113; live.vel.z = 17; live.hull = 83;
+  const expectedPos = { ...live.pos };
+  const snapshot = h.missions.serialize();
+  const snapshotRow = snapshot.active.find(row => row.id === maw.id);
+  const snapshotBefore = JSON.stringify(snapshotRow.params);
+  assert.ok(snapshotRow.params.mawBodies.every(row => row.entityId == null));
+  maw.params.mawBodies[2].pos.x += 7;
+  maw.params.mawStuns = 2;
+  assert.equal(JSON.stringify(snapshotRow.params), snapshotBefore, 'live ledger edits do not mutate the returned save');
+  const saved = JSON.parse(JSON.stringify(snapshot));
+  const savedRow = saved.active.find(row => row.id === maw.id);
+  const before = JSON.stringify(savedRow.params);
+  const other = makeHarness(531); other.missions.deserialize(saved);
+  const restored = other.state.missions.active.find(row => row.id === maw.id);
+  assert.notEqual(restored.params, savedRow.params);
+  assert.equal(JSON.stringify(savedRow.params), before, 'restore does not normalize the saved input in place');
+  enterDest(other, restored); enterDest(other, restored);
+  assert.equal(restored.params.mawStuns, 1);
+  assert.equal(restored.targetEntityIds.length, 3);
+  const pod = other.state.entities.get(restored.params.mawBodies[2].entityId);
+  assert.deepEqual(pod.pos, expectedPos); assert.equal(pod.vel.z, 17); assert.equal(pod.hull, 83);
+  assert.equal(JSON.stringify(savedRow.params), before, 'spawn does not write live IDs into the saved input');
+  const invalid = JSON.parse(JSON.stringify(saved));
+  const invalidRow = invalid.active.find(row => row.id === maw.id);
+  invalidRow.params.mawBodies = [];
+  const invalidBefore = JSON.stringify(invalidRow.params);
+  const third = makeHarness(533); third.missions.deserialize(invalid);
+  assert.equal(JSON.stringify(invalidRow.params), invalidBefore, 'invalid-ledger classification also owns its params');
+  assert.equal(third.state.missions.active.find(row => row.id === maw.id).params.mawLedgerInvalid, true);
+});
+
+check('B3: an old active Maw preserves earned stuns but rejects targetless synthetic hits', () => {
+  const h = makeHarness(532); reachB3(h);
+  const berth = acceptOffer(h, 'station_tethys', 'campaign47a:b3:berth');
+  enterDest(h, berth); dockTow(h, berth);
+  h.state.world.currentSectorId = 'sector_tethys_junction';
+  const maw = acceptOffer(h, 'station_tethys', 'campaign47a:b3:maw');
+  // Model an accepted pre-worksite save: keep its previous real core and earned count.
+  delete maw.params.mawWorksiteVersion;
+  maw.params.mawStuns = 1;
+  enterDest(h, maw);
+  const core = slagCoreOf(h, maw);
+  h.bus.emit('tether:whipImpact', { victimId: core.id, rating: 'solid' });
+  assert.equal(maw.params.mawStuns, 1);
+  const mass = h.helpers.spawnEntity({ type: 'asteroid', pos: { ...core.pos }, radius: 12,
+    mass: 40, vel: { x: 60, z: 0 }, data: { tetherable: true } });
+  h.bus.emit('tether:whipImpact', { targetId: mass.id, victimId: core.id, rating: 'solid' });
+  assert.equal(maw.params.mawStuns, 2);
+  assert.equal(maw.params.mawBodies, undefined, 'legacy progress does not mint a second worksite');
+});
+
+check('B3: a lost supplied pod voids the detail without payment and the authored board reoffers it', () => {
+  const h = makeHarness(531);
+  reachB3(h);
+  const berth = acceptOffer(h, 'station_tethys', 'campaign47a:b3:berth');
+  enterDest(h, berth); dockTow(h, berth);
+  const maw = acceptOffer(h, 'station_tethys', 'campaign47a:b3:maw');
+  enterDest(h, maw);
+  const pod = h.state.entities.get(maw.params.mawBodies[1].entityId);
+  const credits = h.state.player.credits;
+  pod.alive = false;
+  // Snapshot can precede the deferred destroyed event; the current session must still settle.
+  h.missions.serialize();
+  h.bus.emit('entity:destroyed', { id: pod.id, entity: pod });
+  assert.equal(maw.status, 'failed');
+  assert.equal(h.state.player.credits, credits, 'loss grants no completion reward');
+  assert.equal(h.state.story.flags.maw_fed, undefined);
+  const retry = acceptOffer(h, 'station_tethys', 'campaign47a:b3:maw');
+  assert.notEqual(retry.id, maw.id);
+  enterDest(h, retry);
+  assert.equal(retry.params.mawStuns, 0);
+  assert.equal(retry.targetEntityIds.length, 4, 'new finite detail, not replenishment of the old one');
+  assert.equal(h.state.entityList.filter(e => e.alive !== false && e.data?.mawMissionId === maw.id).length, 0);
 });
 
 check('B3: the Foreman yard feud closes the book; the audit never gates it', () => {
@@ -563,7 +676,7 @@ check('B3: the Foreman yard feud closes the book; the audit never gates it', () 
   const maw = acceptOffer(h, 'station_tethys', 'campaign47a:b3:maw');
   enterDest(h, maw);
   const mawBody = slagCoreOf(h, maw);
-  for (let i = 0; i < 3; i++) bus.emit('tether:whipImpact', { victimId: mawBody.id, rating: 'solid' });
+  for (let i = 0; i < 3; i++) hitSuppliedMawPod(h, maw, mawBody);
   dockTow(h, maw);
 
   const foreman = acceptOffer(h, 'station_tethys', 'campaign47a:b3:foreman');

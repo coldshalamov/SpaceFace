@@ -1,3 +1,4 @@
+import { isMawWorksite, acceptMawImpact, loseMawBody } from '../missions/mawWorksite.js';
 import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 import { starterBuoySpec, starterMiningReceiptMatches } from '../missions/starterWorkday.js';
 import { authoredCinderRoute, observeCinderKill, cinderExtrasSatisfied, acceptCinderRookReceipt, driveCinderRoute } from '../missions/cinderRoute.js';
@@ -2666,9 +2667,23 @@ export const missionObjectiveOps = {
       // tow honest; the maw itself is the contract's slag-core body.
       if (m.params && Number(m.params.mawStunsNeeded) > 0) {
         if (!m.targetEntityIds || !m.targetEntityIds.includes(p.victimId)) continue;
-        m.params.mawStuns = (m.params.mawStuns | 0) + 1;
+        if (isMawWorksite(m)) {
+          if (!acceptMawImpact(this, m, p)) continue;
+        } else {
+          // Old accepted jobs keep their real core and earned progress, but a targetless
+          // synthetic event is not a hit. Their original route has no proven slag provenance.
+          const mass = this.state.entities.get(p.targetId);
+          const victim = this.state.entities.get(p.victimId);
+          if (!mass || mass.alive === false || mass.id === p.victimId
+            || !victim || victim.alive === false || physicalRoleOf(victim) !== PHYSICAL_ROLE.SLAG_CORE
+            || (p.rating !== 'solid' && p.rating !== 'crushing')) continue;
+          m.params.mawStuns = Math.min(m.params.mawStunsNeeded, (m.params.mawStuns | 0) + 1);
+        }
         delete m._extrasAnnounced;
-        this._sayStoryLine(`The maw shudders — stun ${m.params.mawStuns}/${m.params.mawStunsNeeded}.`, 4);
+        this._sayStoryLine(m.params.mawStuns >= m.params.mawStunsNeeded
+          ? 'The maw is stunned. Latch its body and tow it to Ceres yard, or sling it into the berth.'
+          : `The maw shudders — stun ${m.params.mawStuns}/${m.params.mawStunsNeeded}.${isMawWorksite(m) ? ' Use another marked hot-slag pod.' : ''}`, 6);
+        this._refreshTrackedMissionNav(m);
         this.bus.emit('mission:updated', { missionId: m.id });
         continue;
       }
@@ -2812,6 +2827,11 @@ export const missionObjectiveOps = {
       const mapped = this.state.entities && this.state.entities.get(p.id);
       const victim = (p.entity && mapped !== p.entity) ? p.entity : (mapped || p.entity || null);
       const role = physicalRoleOf(victim);
+      if (loseMawBody(this, m, { ...p, entity: victim })) {
+        this._sayStoryLine('Ceres traffic: worksite lost. The job is void; return to the board for a fresh detail.', 7);
+        this._failMission(m, i, role === PHYSICAL_ROLE.SLAG_CORE ? 'core_lost' : 'maw_slag_lost');
+        continue;
+      }
       if (m.params?.workingBattlefield) continue; // Retirement is not demolition.
       if ((m.type === 'tow_recovery' || (m.type === AUTHORED_SET_PIECE_TYPE && role === PHYSICAL_ROLE.SLAG_CORE))
         && role === PHYSICAL_ROLE.SLAG_CORE) {
@@ -2873,4 +2893,3 @@ export const missionObjectiveOps = {
     }
   },
 };
-
