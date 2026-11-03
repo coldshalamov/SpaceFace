@@ -166,6 +166,9 @@ html[data-k-temp="works"]    { /* Asteroid Works keeps its own law; the kit sets
   transition: opacity var(--k-d-temp) var(--k-ease); }
 [data-screen="mainMenu"] .k-world--plate,
 [data-screen="motionAsk"] .k-world--plate { background-image: url('../assets/ui/backdrops/backdrop-title.jpg'); }
+/* The borrowed title frame floors its drawn mark at 340px; on a window narrower than about 390px that
+   ran past the right edge. The mark keeps its size where it fits and shrinks to the column where not. */
+[data-screen="motionAsk"] .dp-logotype { max-width: 100%; }
 [data-screen="crucible"] .k-world--plate { background-image: url('../assets/ui/backdrops/backdrop-crucible-door.jpg'); }
 /* The results screen stands on the kill-cam stage; its authored still is the Crucible's
    own door plate — the picture that holds while the scene assembles, and the one SKIP
