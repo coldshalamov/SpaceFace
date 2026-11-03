@@ -293,9 +293,14 @@ export function createIndustryScreen(ctx) {
     // instant run (refines commit without entering the queue), so this screen must not either.
     // A queued job still blocks a timed rung, and says so; an instant rung stays live beside it.
     const instantRung = buildDuration(bp) <= 0;
+    const ownedFitting = industryOwnedFitting(bp, state, stn);
     const lineHolds = !!queue && !instantRung;
+    const waitingForHold = !!queue && (queue.waitingForHold === true
+      || (queueBp?.outputs?.kind === 'commodity' && progress >= 1));
     const status = queue
-      ? `Fabricator occupied — ${escapeHtml((queueBp && queueBp.name) || queue.bpId || 'job')}, ${Math.round(progress * 100)}%, ${Math.max(0, Math.ceil((queue.total || 0) - (queue.elapsed || 0)))} s remaining.`
+      ? (waitingForHold
+        ? `Finished goods are waiting for cargo space. Free room and undock to complete delivery.`
+        : `Fabricator occupied — ${escapeHtml((queueBp && queueBp.name) || queue.bpId || 'job')}, ${Math.round(progress * 100)}%, ${Math.max(0, Math.ceil((queue.total || 0) - (queue.elapsed || 0)))} s remaining. Work pauses at berth and advances in flight.`)
         + (r.state === 'ready' && instantRung ? ' Instant processes are not queued — this one still runs.' : '')
       : (r.state === 'ready' ? 'One build slot, idle.' : `${escapeHtml(r.label)}.`);
     const canBuild = r.state === 'ready' && !lineHolds;
@@ -309,9 +314,10 @@ export function createIndustryScreen(ctx) {
         `<p class="k-caps sx-fab-head__cat">Tier ${bp.tier} blueprint</p>` +
         `<h2 class="k-display k-t-title sx-fab-head__name">${outputLink(bp.outputs.id, bp.outputs.kind, escapeHtml(niceName(bp.outputs.id, bp.outputs.kind)))}</h2>` +
         (bp.desc ? `<p class="k-sentence sx-fab-head__desc">${escapeHtml(bp.desc)}</p>` : '') +
+        (!instantRung && !queue ? `<p class="k-sentence sx-fab-flight-note">Work pauses at berth and advances in flight.</p>` : '') +
         `<div class="sx-fab-heroes">` +
           `<div class="k-hero k-hero--hero sx-fab-out"><span class="k-hero__n">${bp.outputs.qty || 1}</span><span class="k-hero__w">${escapeHtml(bp.outputs.kind)} per run</span></div>` +
-          `<div class="k-hero sx-fab-time"><span class="k-hero__n">${buildDuration(bp) || 0}</span><span class="k-hero__w">seconds</span></div>` +
+          `<div class="k-hero sx-fab-time"><span class="k-hero__n">${instantRung ? 'Now' : buildDuration(bp)}</span><span class="k-hero__w">${instantRung ? 'fabrication' : 'seconds'}</span></div>` +
         `</div>` +
         `<p class="k-caps sx-fab-col-k">Needs</p>` +
         (inputs ? `<ul class="k-rows sx-fab-inputs">${inputs}</ul>` : `<p class="k-sentence sx-muted">No inputs.</p>`) +
@@ -322,7 +328,7 @@ export function createIndustryScreen(ctx) {
             `${lineHolds && r.state === 'ready' ? 'Line occupied' : 'Fabricate'}${canBuild ? '<span class="dp-holdring" aria-hidden="true"></span>' : ''}` +
           `</button>` +
         `</li>` +
-        (industryOwnedFitting(bp, state, stn) ? `<li><button type="button" ${stationControlAttrs('shipworks')} class="k-word k-word--fine" data-ind-shipworks="1">Fit owned in Shipworks</button></li>` : '') +
+        (ownedFitting ? `<li><button type="button" ${stationControlAttrs('shipworks')} class="k-word k-word--fine" data-ind-shipworks="1">Fit owned in Shipworks</button></li>` : '') +
         (queue ? `<li><button type="button" ${stationControlAttrs('scrap-run')} class="k-word k-word--fine k-bad sx-fab-scrap" data-ind-scrap="1" aria-label="Scrap the running fabrication — its committed materials are not returned">${stationControlLabel('scrap-run')}</button></li>` : '') +
         `</ul>` +
       `</div>`;

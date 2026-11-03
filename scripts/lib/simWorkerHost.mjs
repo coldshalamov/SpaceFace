@@ -31,11 +31,14 @@ import { missions } from '../../src/systems/missions.js';
 import { story } from '../../src/systems/story.js';
 import { save } from '../../src/save/saveSystem.js';
 import { fittingsFromDefaultModules, makeShipEntitySpec } from '../../src/systems/ships.js';
+import { pinEvidence, unpinEvidence, linkEvidence, unlinkEvidence } from '../../src/systems/shipLedger.js';
 import { NEW_GAME } from '../../src/data/newGameDefaults.js';
 import { swarmSpecialistKind } from '../../src/data/swarmSpecialists.js';
 import { swarmSpecialistPresentationFrame } from '../../src/data/swarmSpecialistPresentation.js';
-import { isOrchardFrame } from '../../src/data/anvilOrchardIdentity.js';
-import { isMawWorksiteBody } from '../../src/missions/mawWorksite.js';
+import { isOrchardFrame, isOrchardPod } from '../../src/data/anvilOrchardIdentity.js';
+import { orchardPodBodySpec } from '../../src/data/anvilOrchardBody.js';
+import { ANVIL_ORCHARD } from '../../src/data/anvilOrchard.js';
+import { isIntactMawWorksiteBody } from '../../src/missions/mawWorksite.js';
 import { ceresWorkfleetRoleForEntity } from '../../src/data/ceresWorkfleetIdentity.js';
 import { readCeresCradlePublicLayout } from '../../src/core/ceresWorkfleetLayoutAdmission.js';
 import { readCeresWorkfleetPublicActuation } from '../../src/core/ceresWorkfleetActuation.js';
@@ -303,7 +306,7 @@ function pallasSeamStandbyTick(e) {
 }
 
 function mawPresentationRadius(e) {
-  if (!isMawWorksiteBody(e)) return VITAL_SHADOW_MISSING;
+  if (!isIntactMawWorksiteBody(e)) return VITAL_SHADOW_MISSING;
   const radius = e.physicsBody?.radius;
   return Number.isFinite(radius) && radius > 0 ? radius : null;
 }
@@ -364,6 +367,8 @@ export function entityVitalsOf(e, krakenFrame = VITAL_SHADOW_MISSING) {
   }
   const mawRadius = mawPresentationRadius(e);
   if (mawRadius !== VITAL_SHADOW_MISSING) fields.mawPresentationRadius = mawRadius;
+  const orchardPod = orchardPodPublicValue(e);
+  if (orchardPod !== VITAL_SHADOW_MISSING) fields.orchardPodPublic = orchardPod;
   if (krakenFrame !== VITAL_SHADOW_MISSING) fields.ironKrakenMotionFrame = krakenFrame;
   return fields;
 }
@@ -376,6 +381,17 @@ export function entityVitalsOf(e, krakenFrame = VITAL_SHADOW_MISSING) {
 // still retained in the emitted row on the first/change path.
 const VITAL_SHADOW_MISSING = Symbol('vital-shadow-missing');
 const VITAL_SHADOW_JSON_NULL = Symbol('vital-shadow-json-null');
+
+// Bounded presentation facts for a canonical pod. Native custody and Rapier handles stay
+// in the worker; a new occupant of the same id cannot inherit this old life's update.
+function orchardPodPublicValue(e) {
+  if (e?.data?.orchardKind !== 'pod' || !isOrchardPod(e)
+    || !Number.isSafeInteger(e.occupantGeneration) || e.occupantGeneration < 1
+    || !Number.isSafeInteger(e.data.amount) || e.data.amount < 1 || e.data.amount > ANVIL_ORCHARD.unitsPerPod
+    || typeof e.data.masslineTetherable !== 'boolean') return VITAL_SHADOW_MISSING;
+  return JSON.stringify([e.occupantGeneration, e.data.worldRecordId, e.physicsBody.dynamic,
+    e.physicsBody.revision, e.data.masslineTetherable, e.data.amount]);
+}
 
 function swarmSpecialistFrameValue(e) {
   const data = e?.data;
@@ -464,6 +480,7 @@ function vitalShadowMatches(e, shadow, krakenFrame) {
     if (authoredMotionFrameValue(e, key) !== shadow[i++]) return false;
   }
   if (mawPresentationRadius(e) !== shadow[i++]) return false;
+  if (orchardPodPublicValue(e) !== shadow[i++]) return false;
   if (krakenFrame !== shadow[i++]) return false;
   return true;
 }
@@ -509,6 +526,7 @@ function writeVitalShadow(e, shadow, krakenFrame) {
     shadow[i++] = authoredMotionFrameValue(e, key);
   }
   shadow[i++] = mawPresentationRadius(e);
+  shadow[i++] = orchardPodPublicValue(e);
   shadow[i++] = krakenFrame;
   shadow.length = i;
   return shadow;
@@ -555,7 +573,10 @@ function entityInfoBlock(state, entityId, host) {
     fieldResident: e.fieldResident === true,
     noMesh: e._noMesh === true,
     flags: flatFlags,
-    ...(isOrchardFrame(e) ? { physicsBody: canonicalClone(e.physicsBody) } : {}),
+    ...(isOrchardFrame(e) ? { physicsBody: canonicalClone(e.physicsBody) }
+      : isOrchardPod(e) ? { physicsBody: orchardPodBodySpec({
+        dynamic: e.physicsBody.dynamic, revision: e.physicsBody.revision,
+      }) } : {}),
     ...(ceresWorkfleetRoleForEntity(e) === 'cradle' ? {
       ceresCradleReceipt: readCeresCradlePublicLayout(e, state, host.registry?.get('physics')?._sg02, host.lifecycleGeneration),
     } : {}),
@@ -727,6 +748,7 @@ const BRIDGE_EVENTS = [
   'presentation:vfxCue', 'presentation:audioCue', 'presentation:uiCue',
   'presentation:cameraCue', 'presentation:caption', 'audio:cue', 'alert',
   'camera:shake', 'presentation:cueApplied', 'sector:enter', 'cargo:changed',
+  'automation:fleetChanged',
 ];
 
 export function createSimHost({ onAsyncSaveReady } = {}) {
@@ -1201,10 +1223,46 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
       .map((event) => bus.on(event, () => host.domainDiffer.invalidateLeaf('missions')));
     // The factions owner emits only after it actually changes standing (including spillover).
     const offRep = bus.on('faction:repChanged', () => host.domainDiffer.invalidateLeaf('factions'));
+    // A fabricated fitting is immediately usable at the berth, including while the
+    // worker clock is paused. Publish only the changed owned-inventory leaf in the
+    // same reply; large inventories otherwise wait for their ordinary cold slot.
+    const offCraftFitting = bus.on('craft:complete', (payload) => {
+      if (payload?.kind === 'module' || payload?.kind === 'weapon') {
+        host.domainDiffer.invalidateLeaf('player.moduleInventory');
+      }
+    });
+    const offFitFitting = bus.on('module:equipped', () => host.domainDiffer.invalidateLeaf('player.moduleInventory'));
+    const offUnfitFitting = bus.on('module:unequipped', () => host.domainDiffer.invalidateLeaf('player.moduleInventory'));
+    const offLedgerLoad = bus.on('save:loaded', () => host.domainDiffer.invalidateLeaf('shipLedger.board'));
+    // Successful outpost changes must reach the open panel in this reply, even
+    // when the clock is paused or the list is on its ordinary cold cadence.
+    const offOutpostsChanged = bus.on('automation:outpostsChanged', () => {
+      host.domainDiffer.invalidateLeaf('automation.outposts');
+    });
+    const offFleetChanged = bus.on('automation:fleetChanged', (payload) => {
+      host.domainDiffer.invalidateLeaf('automation.fleet');
+      if (payload?.action === 'assigned' || payload?.action === 'released') {
+        host.domainDiffer.invalidateLeaf('player.ownedShips');
+      }
+    });
+    // The paid lot desk repaints only after its answer. Publish the book in that same reply,
+    // including an unsuccessful haggle or bid which may still have changed the book.
+    const offLotDeskAnswered = bus.on('impoundLot:deskAnswered', (payload) => {
+      host.domainDiffer.invalidateLeaf('lossLedger.impound');
+      if (payload?.verb === 'acceptRansom' || payload?.verb === 'declineRansom') {
+        host.domainDiffer.invalidateLeaf('player.ownedShips');
+      }
+    });
     host.missionBoardMirrorUnsubscribe = () => {
       offBoardUpdate(); offAccepted();
       for (const off of offTerminal) off();
       offRep();
+      offCraftFitting(); offFitFitting();
+      offUnfitFitting();
+      offLedgerLoad();
+      offOutpostsChanged();
+      offFleetChanged();
+      offLotDeskAnswered();
     };
     if (captureAll === true) {
       const origEmit = bus.emit.bind(bus);
@@ -1548,6 +1606,21 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
       // Generic method passthroughs for facade coverage — the main side's
       // capability checks see the method names; the lane's folded ops (like
       // racingArm) call the same methods inside one directive window.
+      ['shipLedgerBoard', (args) => {
+        const actions = { pin: pinEvidence, unpin: unpinEvidence, link: linkEvidence, unlink: unlinkEvidence };
+        const action = args?.action;
+        if (!Object.hasOwn(actions, action)) return { ok: false, reason: 'Unknown ledger action.' };
+        const result = actions[action](state, args?.a, args?.b);
+        if (result.ok) {
+          host.domainDiffer.invalidateLeaf('shipLedger.board');
+          if (action === 'link') {
+            const before = state.story?.verge?.valeGatesRevoked;
+            host.bus.emit('ledger:evidenceLinked', { a: args.a, b: args.b });
+            if (before !== state.story?.verge?.valeGatesRevoked) host.domainDiffer.invalidateLeaf('story.verge');
+          }
+        }
+        return result;
+      }],
       ['missionsCall', (args) => {
         const m = registry.get('missions');
         if (!m) return { ok: false, reason: 'missions-system-unavailable' };

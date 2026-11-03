@@ -1010,8 +1010,9 @@ export const combat = {
           amount: plan.cargoPayoutCr,
           reason: 'recovery:cargo_policy',
         });
-        if (this.state.player && this.state.player.cargoPolicy) delete this.state.player.cargoPolicy;
       }
+      // Recovery ends the insured trip even if there was no payable cargo loss.
+      if (this.state.player && this.state.player.cargoPolicy) delete this.state.player.cargoPolicy;
 
       this._pendingPlayerRecovery = null;
       if (this.state.combat) this.state.combat.lastPlayerDefeat = null;

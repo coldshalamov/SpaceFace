@@ -6171,6 +6171,16 @@ export function createHud(ctx, alerts) {
     const railVisible = rail && rail.width > 0 && rail.height > 0;
     const dockVisible = dock && dock.width > 0 && dock.height > 0;
     if (w > 760 && h <= 500 && layout?.safe) {
+      // In short mobile landscape the camera/Circuits key occupies the top row beside
+      // the status strip. Use the actual gap to its right and before the radar as one
+      // text column; a full-width band makes that key and the radar block every row.
+      const mobileFlight = document.documentElement?.getAttribute?.('data-sf-mobile-flight') === '1';
+      const cameraKey = mobileFlight ? plateBox(root.querySelector('#race-tape .race-tape-options-trigger')) : null;
+      if (cameraKey && cameraKey.top < h / 3 && dockVisible) {
+        const left = Math.max(layout.safe.left + 12, cameraKey.right + 8, railVisible ? rail.right + 12 : 0);
+        const right = Math.min(layout.safe.right - 12, dock.left - 8);
+        if (right - left >= 200) return { x: left, width: right - left, wide: false };
+      }
       const left = Math.max(layout.safe.left + 12, railVisible ? rail.right + 12 : layout.safe.left + 12);
       // The right dock is tall on desktop but may sit above the actual caption/receipt band in
       // compact landscape. Let vertical obstacle measurement reserve only the rows it occupies.

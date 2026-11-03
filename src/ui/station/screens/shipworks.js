@@ -70,6 +70,8 @@ import { classifyBuildIdentity } from '../../../systems/buildIdentity.js';
 import { impoundLotBoard } from '../../../systems/impoundLot.js';
 import { historyWearDead } from '../../../systems/historyWear.js';
 import { livingHullTrinkets } from '../../../core/livingHull.js';
+import { laneCommandSink, nextLaneToken } from '../../../core/simLaneCommands.js';
+import { reservedCargoQuantity } from '../../../systems/cargo.js';
 import { sableVennServiceAvailable } from '../../../data/sableVenn.js';
 import { mountSableDemo, sablePreviewStamp, sablePreviewMatches } from '../../orrery/sableDemo.js';
 import { instanceIdentityText } from '../../../systems/shipLedger.js';
@@ -209,6 +211,32 @@ const UI_DRAWER_LATCH_CUE = 'sfx_ui_drawer_latch';
 function finite(value, fallback = 0) {
   const number = Number(value);
   return Number.isFinite(number) ? number : fallback;
+}
+
+/** Read the cargo owner's actual per-hull and reserved-freight rules for the activation choice. */
+export function hullSwitchCargoGuidance(state, targetIndex) {
+  const player = state?.player;
+  const ships = Array.isArray(player?.ownedShips) ? player.ownedShips : [];
+  const activeIndex = player?.activeShipIndex;
+  if (!Number.isInteger(targetIndex) || targetIndex === activeIndex || !ships[activeIndex] || !ships[targetIndex]) return '';
+  const name = (owned) => hullNameForOwnedShip(owned, ships.indexOf(owned), state?.meta?.seed)
+    || SHIP_BY_ID.get(owned.defId)?.name || 'the hull';
+  let stays = 0, protectedUnits = 0, incoming = 0;
+  for (const [id, amount] of Object.entries(player.cargo?.items || {})) {
+    const held = Math.max(0, Math.floor(Number(amount) || 0));
+    const reserved = Math.min(held, Math.max(0, reservedCargoQuantity(state, id)));
+    stays += held - reserved;
+    protectedUnits += reserved;
+  }
+  for (const amount of Object.values(ships[targetIndex].cargo?.items || {})) {
+    incoming += Math.max(0, Math.floor(Number(amount) || 0));
+  }
+  const outgoing = stays ? `${stays} unreserved unit${stays === 1 ? '' : 's'} stay on ${name(ships[activeIndex])}.`
+    : `No unreserved cargo stays on ${name(ships[activeIndex])}.`;
+  const protectedText = protectedUnits ? ` ${protectedUnits} sealed or protected unit${protectedUnits === 1 ? '' : 's'} must fit in ${name(ships[targetIndex])} to travel with you.` : '';
+  const incomingText = incoming ? ` ${name(ships[targetIndex])} has ${incoming} stored unit${incoming === 1 ? '' : 's'}; it loads what fits and keeps the rest aboard.`
+    : ` ${name(ships[targetIndex])} has no stored cargo.`;
+  return outgoing + protectedText + incomingText;
 }
 
 function withCargoMass(player, usedMass) {
@@ -736,8 +764,8 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         : `${board.redeem.claimant} may come to buy it back.`);
     }
     const key = (verb, label, cost, enabled, why) => {
-      const can = enabled && (!(cost > 0) || cost <= credits);
-      const reason = !enabled ? why : (cost > 0 && cost > credits ? `${fmt(cost - credits)} cr short` : '');
+      const can = !lotDeskPending && enabled && (!(cost > 0) || cost <= credits);
+      const reason = lotDeskPending ? 'waiting for the lot desk' : !enabled ? why : (cost > 0 && cost > credits ? `${fmt(cost - credits)} cr short` : '');
       const aria = can ? label : `${label}, ${reason}`;
       return `<li><button type="button" ${stationControlAttrs('choice')} class="k-word k-word--fine" data-lot-verb="${verb}" ${can ? '' : 'disabled'} aria-label="${escapeHtml(aria)}" data-why="${escapeHtml(can ? label : reason)}">${escapeHtml(label)}${cost > 0 ? ` <small>${fmt(cost)} cr</small>` : ''}</button></li>`;
     };
@@ -751,13 +779,13 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     if (board.dispute && board.dispute.outcome === 'pending') {
       verbs.push(key('quiet', 'Quiet the claim', board.quietFeeCr, true, ''));
     }
-    verbs.push(`<li><button type="button" ${stationControlAttrs('choice')} class="k-word k-word--fine" data-lot-verb="watch" data-lot-on="${board.watched ? 'false' : 'true'}" aria-pressed="${board.watched ? 'true' : 'false'}">${board.watched ? 'Stop watching' : 'Watch the book'}</button></li>`);
+    verbs.push(`<li><button type="button" ${stationControlAttrs('choice')} class="k-word k-word--fine" data-lot-verb="watch" data-lot-on="${board.watched ? 'false' : 'true'}" aria-pressed="${board.watched ? 'true' : 'false'}" ${lotDeskPending ? 'disabled aria-label="Waiting for the lot desk"' : ''}>${board.watched ? 'Stop watching' : 'Watch the book'}</button></li>`);
     let bidRow = '';
     if (board.auction.open && !board.hold) {
       const suggest = board.tip && board.auction.strike ? board.auction.strike : board.price;
       const initialBid = Math.max(1, Math.round(suggest));
-      const canBid = initialBid <= credits;
-      const reason = `${fmt(initialBid - credits)} cr short`;
+      const canBid = !lotDeskPending && initialBid <= credits;
+      const reason = lotDeskPending ? 'waiting for the lot desk' : `${fmt(initialBid - credits)} cr short`;
       const bidLabel = canBid ? 'Place bid' : `Place bid, ${reason}`;
       bidRow = `<p class="k-sentence sx-sw-lotdesk__bid"><label>Sealed bid <input class="k-input k-input--num" type="number" inputmode="numeric" min="1" step="1" value="${initialBid}" data-lot-bid aria-label="Sealed bid in credits"></label> ` +
         `<button type="button" ${stationControlAttrs('choice')} class="k-word k-word--fine" data-lot-verb="bid" ${canBid ? '' : 'disabled'} aria-label="${escapeHtml(bidLabel)}" data-why="${escapeHtml(canBid ? 'Place bid' : reason)}">Place bid</button></p>`;
@@ -784,8 +812,8 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       `<p class="k-t-fine k-38 sx-sw-lotdesk__who">Lot attendant · papers offer</p>` +
       `<p class="k-sentence sx-muted">${escapeHtml(`${claimant} will pay ${fmt(r.amount)} cr for the dead owner's papers on this hull. Sell them and the debt riding it ends. Keep them and their collector stays on schedule.${left != null ? ` The offer stands ${left === 0 ? 'until tomorrow' : `${left + 1} more days`}.` : ''}`)}</p>` +
       `<ul class="k-words k-words--row sx-sw-lotdesk__verbs">` +
-        `<li><button type="button" ${stationControlAttrs('choice')} class="k-word k-word--fine" data-lot-verb="acceptRansom">Sell the papers <small>+${fmt(r.amount)} cr</small></button></li>` +
-        `<li><button type="button" ${stationControlAttrs('choice')} class="k-word k-word--fine" data-lot-verb="declineRansom">Keep the papers</button></li>` +
+        `<li><button type="button" ${stationControlAttrs('choice')} class="k-word k-word--fine" data-lot-verb="acceptRansom" ${lotDeskPending ? 'disabled aria-label="Waiting for the lot desk"' : ''}>Sell the papers <small>+${fmt(r.amount)} cr</small></button></li>` +
+        `<li><button type="button" ${stationControlAttrs('choice')} class="k-word k-word--fine" data-lot-verb="declineRansom" ${lotDeskPending ? 'disabled aria-label="Waiting for the lot desk"' : ''}>Keep the papers</button></li>` +
       `</ul>` +
     `</div>`;
   }
@@ -796,8 +824,8 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     if (!input || !button) return;
     const amount = Math.round(Number(input.value) || 0);
     const credits = Math.max(0, Number(ctx.state.player?.credits) || 0);
-    const canBid = amount > 0 && amount <= credits;
-    const reason = amount <= 0 ? 'enter a positive bid' : `${fmt(amount - credits)} cr short`;
+    const canBid = !lotDeskPending && amount > 0 && amount <= credits;
+    const reason = lotDeskPending ? 'waiting for the lot desk' : amount <= 0 ? 'enter a positive bid' : `${fmt(amount - credits)} cr short`;
     button.disabled = !canBid;
     button.setAttribute('aria-label', canBid ? 'Place bid' : `Place bid, ${reason}`);
     button.setAttribute('data-why', canBid ? 'Place bid' : reason);
@@ -872,6 +900,8 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   let presetAppliedUnsub = null;
   let pendingPresetRejection = null;
   let stageShown = false;
+  let chooserEpoch = 0;
+  let unfitPending = false;
   let sableDemo = null, sableSelection = null, sableStamp = null;
   const clearSableDemo = () => { sableDemo?.dispose(); sableDemo = null; sableStamp = null; };
   const sableLifecycleUnsubs = ['save:restoring', 'game:newGame'].map(event => ctx.bus?.on(event, clearSableDemo)).filter(Boolean);
@@ -1967,6 +1997,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     const makeActiveLabel = makeActiveEnabled
       ? 'Make active'
       : (model.availability && model.availability.hullLabel ? model.availability.hullLabel : 'Make active');
+    const switchCargo = makeActiveVisible ? hullSwitchCargoGuidance(ctx.state, viewIdx) : '';
     // The paint rack is a berth verb like Make active: dock-side fleet hulls only, gated by the
     // same hull-service access (the yard mixes and cures while you are berthed).
     const paintVisible = host === 'dock' && mode === 'fleet';
@@ -2008,7 +2039,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
           `<li><button type="button" ${stationControlAttrs('record')} class="k-word k-word--body sx-sw-verb${recordOpen ? ' is-active' : ''}" data-verb="record" aria-pressed="${recordOpen ? 'true' : 'false'}">${stationControlLabel('record')}</button></li>` +
           `<li><button type="button" ${stationControlAttrs('fit')} class="k-word k-word--body sx-sw-verb" data-verb="fit" data-fit-action="${escapeHtml(fitAction)}"${selectedPreset ? ` data-loadout-preset-id="${escapeHtml(selectedPreset.id)}"` : ''}${fitEnabled ? '' : ` disabled aria-label="${escapeHtml(fitBlockedText)}"`}>${escapeHtml(fitLabel)}</button></li>` +
           (makeActiveVisible
-            ? `<li><button type="button" ${stationControlAttrs('activate')} class="k-word k-word--body sx-sw-verb" data-verb="activate"${makeActiveEnabled ? '' : ` disabled aria-label="${escapeHtml(makeActiveLabel)}"`}>${escapeHtml(makeActiveLabel)}</button></li>`
+            ? `<li><button type="button" ${stationControlAttrs('activate')} class="k-word k-word--body sx-sw-verb" data-verb="activate"${makeActiveEnabled ? ` aria-label="${escapeHtml('Make active. ' + switchCargo)}"` : ` disabled aria-label="${escapeHtml(makeActiveLabel)}"`}>${escapeHtml(makeActiveLabel)}</button></li>`
             : '') +
           (paintVisible
             ? `<li><button type="button" ${stationControlAttrs('paint')} class="k-word k-word--body sx-sw-verb${paintOpen ? ' is-active' : ''}" data-verb="paint" aria-pressed="${paintOpen ? 'true' : 'false'}"${paintEnabled ? '' : ` disabled aria-label="${escapeHtml((model.availability && model.availability.hullLabel) || 'Dock at a shipyard to paint')}"`}>${stationControlLabel('paint')}</button></li>`
@@ -4227,8 +4258,10 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       `</div>`;
     // MAKE ACTIVE is a berth verb — it never renders on the flight host (SCREENS_B §1.2). While
     // docked it stays gated by hull service availability with the reason printed on the verb.
+    const switchCargo = host === 'dock' && inspectedIndex !== activeIndex
+      ? hullSwitchCargoGuidance(ctx.state, inspectedIndex) : '';
     const activeControl = host === 'flight' ? '' : inspectedIndex !== activeIndex
-      ? `<li><button type="button" ${stationControlAttrs('make-active')} class="k-word k-word--emph sx-sw-circuit__activate" data-activate-ship="${inspectedIndex}" ${availability.hullEnabled ? '' : 'disabled'} aria-label="${escapeHtml(availability.hullEnabled ? 'Make active ship' : availability.hullLabel)}">${availability.hullEnabled ? 'Make active' : escapeHtml(availability.hullLabel)}</button></li>`
+      ? `<li><button type="button" ${stationControlAttrs('make-active')} class="k-word k-word--emph sx-sw-circuit__activate" data-activate-ship="${inspectedIndex}" ${availability.hullEnabled ? '' : 'disabled'} aria-label="${escapeHtml(availability.hullEnabled ? 'Make active. ' + switchCargo : availability.hullLabel)}">${availability.hullEnabled ? 'Make active' : escapeHtml(availability.hullLabel)}</button></li>`
       : `<li><span class="k-word k-word--emph k-38 sx-sw-circuit__active">Active flight hull</span></li>`;
     // The stage-right column: the build's identity, the core as a hero number, each system's
     // draw as a row, and one sentence telling the player where to click.
@@ -4252,6 +4285,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
           `</li>`;
         }).join('')}</ul>` +
         `<p class="k-sentence sx-sw-circuit__instruction">Choose a system on the hull to preview compatible hardware.</p>` +
+        (switchCargo ? `<p class="k-sentence sx-sw-circuit__hold-note">${escapeHtml(switchCargo)}</p>` : '') +
         (activeControl ? `<ul class="k-words k-words--row sx-sw-circuit__acts">${activeControl}</ul>` : '') +
         (inspectedIndex === activeIndex ? ransomDeskHtml() : '') +
         rackBlock +
@@ -4456,6 +4490,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
 
   // ---------- slot chooser (the compatible modules take the hang column) ----------
   function openChooser(slotIndex, anchorEl, opts = {}) {
+    chooserEpoch++;
     clearSableDemo(); sableSelection = null;
     const s = viewedShip(); const def = s ? SHIP_BY_ID.get(s.defId) : null;
     if (!def) return;
@@ -4695,6 +4730,29 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   }
 
   function emitFitIntent(eventName, payload) {
+    if (eventName === 'ui:unfitModule' && laneCommandSink()) {
+      if (!ctx.bus || typeof ctx.bus.on !== 'function') return Promise.resolve(null);
+      const operationId = nextLaneToken('unfit');
+      return new Promise((resolve) => {
+        let done = false;
+        let offAccepted = () => {}, offRefused = () => {}, timer = null;
+        const finish = (result) => {
+          if (done) return;
+          done = true;
+          offAccepted(); offRefused();
+          if (timer != null) clearTimeout(timer);
+          resolve(result);
+        };
+        offAccepted = ctx.bus.on('module:unequipped', (event) => {
+          if (event?.operationId === operationId) finish(true);
+        });
+        offRefused = ctx.bus.on('module:fitRefused', (event) => {
+          if (event?.operationId === operationId) finish(false);
+        });
+        timer = setTimeout(() => finish(null), 5000);
+        try { ctx.bus.emit(eventName, { ...payload, operationId }); } catch (_) { finish(null); }
+      });
+    }
     let refused = false;
     const mark = () => { refused = true; };
     const unsubscribe = ctx.bus && typeof ctx.bus.on === 'function' ? ctx.bus.on('module:fitRefused', mark) : null;
@@ -4704,6 +4762,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   }
 
   function closeChooser(opts = {}) {
+    chooserEpoch++;
     clearSableDemo(); sableSelection = null;
     if (chooserEl.hidden && !chooserEl.classList.contains('is-open')) return;
     if (chooserCloseTimer) { clearTimeout(chooserCloseTimer); chooserCloseTimer = 0; }
@@ -5323,21 +5382,43 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     selectRailButton(ev.target.closest('[data-fleet], [data-buy]'));
   });
 
+  let lotDeskPending = null;
+  function finishLotDeskPending(result, announceTimeout = false) {
+    const pending = lotDeskPending;
+    if (!pending) return;
+    lotDeskPending = null;
+    pending.off?.();
+    if (pending.timer != null) clearTimeout(pending.timer);
+    if (announceTimeout) ctx.bus?.emit('toast', {
+      text: 'The lot desk has not answered yet. Check the book before trying again.', kind: 'warn', ttl: 5,
+    });
+    if (result && stageShown) ctx.bus?.emit('audio:cue', { id: result.ok ? 'ui_accept' : 'ui_deny' });
+    if (stageShown) refresh();
+  }
   function handleLotClick(ev, scope) {
     const lotVerb = ev.target.closest('[data-lot-verb]');
     if (lotVerb) {
-      if (!lotVerb.disabled && ctx.bus) {
+      if (!lotVerb.disabled && !lotDeskPending && ctx.bus && typeof ctx.bus.on === 'function') {
         const verb = lotVerb.getAttribute('data-lot-verb');
-        const intent = { verb };
+        const operationId = nextLaneToken('lot');
+        const intent = { verb, operationId };
         if (verb === 'bid') {
           const input = scope.querySelector('input[data-lot-bid]');
           intent.amount = Math.round(Number(input && input.value) || 0);
         }
         if (verb === 'watch') intent.on = lotVerb.getAttribute('data-lot-on') !== 'false';
+        const pending = { operationId, off: null, timer: null };
+        lotDeskPending = pending;
+        pending.off = ctx.bus.on('impoundLot:deskAnswered', (answer) => {
+          if (answer?.operationId === operationId) finishLotDeskPending(answer);
+        });
+        pending.timer = setTimeout(() => finishLotDeskPending(null, true), 5000);
+        for (const button of scope.querySelectorAll('[data-lot-verb]')) button.disabled = true;
         lotVerb.disabled = true;
-        ctx.bus.emit('impoundLot:deskIntent', intent);
-        ctx.bus.emit('audio:cue', { id: 'ui_accept' });
-        setTimeout(refresh, 60);
+        lotVerb.setAttribute('aria-label', 'Waiting for the lot desk');
+        lotVerb.textContent = 'Waiting for the lot desk…';
+        try { ctx.bus.emit('impoundLot:deskIntent', intent); }
+        catch (_) { finishLotDeskPending(null, true); }
       }
       return true;
     }
@@ -5887,9 +5968,18 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       // listener as its fit twin: a refusal (e.g. cargo capacity changed between render and
       // intent) names its reason through the owner's outcome, keeps the chooser open on the
       // attempted slot, and plays no success detent; only an accepted unfit closes, once.
+      if (unfitPending) return;
       if (ctx.bus) {
+        const epoch = chooserEpoch;
         const accepted = emitFitIntent('ui:unfitModule', { shipIndex: viewIdx, slotIndex: Number(uf.getAttribute('data-unfit')) });
-        if (!accepted) {
+        unfitPending = true;
+        uf.disabled = true;
+        const confirmed = accepted && typeof accepted.then === 'function' ? await accepted : accepted;
+        unfitPending = false;
+        if (!stageShown || epoch !== chooserEpoch) return;
+        if (confirmed !== true) {
+          uf.disabled = false;
+          if (confirmed == null) ctx.bus.emit('toast', { text: 'Removal could not be confirmed. Check the fitting before retrying.', kind: 'warn', ttl: 4 });
           ctx.bus.emit('audio:cue', { id: 'ui_deny' });
           if (typeof uf.focus === 'function') uf.focus({ preventScroll: true });
           return;
@@ -5992,6 +6082,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     onHide() {
       closeLotDesk(false);
       stageShown = false;
+      chooserEpoch++;
       pendingPresetRejection = null;
       clearSableDemo(); sableSelection = null;
       if (previewSettleTimer) clearTimeout(previewSettleTimer);
@@ -6003,6 +6094,8 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     refresh,
     dispose() {
       closeLotDesk(false);
+      stageShown = false;
+      finishLotDeskPending(null);
       window.removeEventListener('keydown', interceptLotKeys, true);
       compactLotMedia.removeEventListener('change', onLotMediaChange);
       compactInstrument.removeEventListener('change', syncCompactInstrument);

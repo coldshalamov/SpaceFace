@@ -1,4 +1,4 @@
-import { isMawWorksiteBody } from '../missions/mawWorksite.js';
+import { isIntactMawWorksiteBody } from '../missions/mawWorksite.js';
 import { buildSwarmFortifyVisual } from './swarmFortifyVisuals.js';
 import { ironKrakenProfileFor } from '../data/ironKraken.js';
 import { createIronKrakenVisual } from './ironKrakenVisuals.js';
@@ -7029,7 +7029,7 @@ function stampBuiltVisual(root) {
 // Reuse the existing nine-part Maw at its collision footprint. Keep scale on a parent:
 // installFaunaMotion owns/resets the child root scale on every breath.
 export function buildMawWorksiteVisual(entity) {
-  if (!isMawWorksiteBody(entity)) return null;
+  if (!isIntactMawWorksiteBody(entity)) return null;
   const body = buildFaunaMesh(entity);
   if (!body) return null;
   const root = new THREE.Group();
@@ -7062,7 +7062,7 @@ export function createVisualFactory({ renderer = null, readyPackagedBodies = nul
         if (!e) return null;
         // This mission keeps asteroid physics for the existing massline impact contract.
         // Reuse the authored vent-bowl; ordinary rock and ambient fauna keep their owners.
-        if (isMawWorksiteBody(e)) return stampBuiltVisual(buildMawWorksiteVisual(e));
+        if (isIntactMawWorksiteBody(e)) return stampBuiltVisual(buildMawWorksiteVisual(e));
         if (ironKrakenWreckProfileFor(e)) return stampBuiltVisual(createIronKrakenWreckVisual(e));
         // An articulated character owns its graph; static ship batching would freeze its arms.
         if (ironKrakenProfileFor(e)) return stampBuiltVisual(createIronKrakenVisual(e));

@@ -858,6 +858,13 @@ const REFIT_RESULT_REFRESH_EVENTS = Object.freeze([
   ['run:awarded', (payload) => payload?.reason === 'partial_bank_refund'],
 ]);
 
+const REFIT_PENDING_LINES = Object.freeze({
+  'run:refitFitRequested': 'Fitting the selected spare…',
+  'run:refitStripRequested': 'Moving the fitting to spares…',
+  'run:refitSellRequested': 'Selling the selected part…',
+});
+let refitRequestSequence = 0;
+
 function unbindScreenResultRefresh(screen) {
   screen._resultRefreshVersion = (screen._resultRefreshVersion || 0) + 1;
   for (const off of screen._resultRefreshUnsubs || []) {
@@ -1962,6 +1969,13 @@ export const crucibleRefitScreen = {
 
   mount(rootEl, ctx) {
     this._root = rootEl;
+    this._pendingRefit = null;
+    this._refitResultOff?.();
+    // Keep the acknowledgement listener while another screen covers the refit. Its normal
+    // visible-screen receipt subscription owns repainting after the read model has landed.
+    this._refitResultOff = ctx.bus.on('run:refitChanged', (receipt) => {
+      if (receipt?.requestId === this._pendingRefit?.requestId) this._pendingRefit = null;
+    });
     rootEl.innerHTML = '';
     this._spareChoice = new Map(); // INF-060: chosen spare per hardpoint, kept across refreshes.
     rootEl.classList.add('k-screen', 'k-screen--stage', 'sf-crucible', 'sf-crucible-refit');
@@ -2291,6 +2305,9 @@ export const crucibleRefitScreen = {
 
   dispose() {
     unbindScreenResultRefresh(this);
+    this._refitResultOff?.();
+    this._refitResultOff = null;
+    this._pendingRefit = null;
     if (this._jig) this._jig.dispose();
     this._jig = null;
     if (this._hullWatch) { this._hullWatch.disconnect(); this._hullWatch = null; }
@@ -2345,7 +2362,13 @@ export const crucibleRefitScreen = {
   },
 
   _emitIntentAndRefresh(context, event, payload) {
-    emitIntentAndRefresh(this, context, event, payload);
+    const line = REFIT_PENDING_LINES[event];
+    if (!line) return emitIntentAndRefresh(this, context, event, payload);
+    if (this._pendingRefit) return;
+    const requestId = `crucible-refit:${++refitRequestSequence}`;
+    this._pendingRefit = { requestId, line,
+      generation: draftOwner(context)?.preparationGeneration?.() };
+    emitIntentAndRefresh(this, context, event, { ...payload, requestId });
   },
 
   refresh(ctx) {
@@ -2359,6 +2382,10 @@ export const crucibleRefitScreen = {
     const context = ctx || this._ctx;
     if (!rows || !context) return;
     this._ctx = context;
+    const generation = draftOwner(context)?.preparationGeneration?.();
+    if (this._pendingRefit && generation !== this._pendingRefit.generation) this._pendingRefit = null;
+    const pending = !!this._pendingRefit;
+    rows.setAttribute('aria-busy', String(pending));
     this._syncFoot(context);
     setWordShown(this._fortifyBtn, fortifyAvailable(context.state?.run));
     // SWARM-04 §6.5 — the same next-round card the armory shows. The refit opens after the
@@ -2468,7 +2495,7 @@ export const crucibleRefitScreen = {
 
       const action = word(lines.action, lines.action === 'Strip' ? 'k-word--body k-word--danger' : 'k-word--body');
       action.classList.add('sf-cru-act');
-      action.disabled = !!lines.disabled;
+      action.disabled = pending || !!lines.disabled;
       // nothing can go in: no verb to offer
       if (state === 'bare') action.hidden = true;
       if (!lines.disabled) {
@@ -2514,6 +2541,7 @@ export const crucibleRefitScreen = {
         if (sellTarget && sellPrice != null && sellPrice > 0) {
           const sell = word(`Sell · ${sellPrice} cr`, 'k-word--fine');
           sell.classList.add('sf-cru-act', 'sf-cru-sell');
+          sell.disabled = pending;
           sell.addEventListener('click', () => {
             this._emitIntentAndRefresh(context, 'run:refitSellRequested', sellTarget);
           });
@@ -2548,7 +2576,7 @@ export const crucibleRefitScreen = {
 
     const owner = draftOwner(context);
     const notice = owner && typeof owner.lastNotice === 'function' ? owner.lastNotice() : null;
-    if (this._note) this._note.textContent = notice || '';
+    if (this._note) this._note.textContent = this._pendingRefit?.line || notice || '';
     this._dressHull();
   },
 
