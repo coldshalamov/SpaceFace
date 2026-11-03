@@ -726,34 +726,36 @@ export function createHullDial(host, { maxima = {} } = {}) {
     host.classList.remove('is-off');
     const small = W < 620 || H < 460;
     host.classList.toggle('is-small', small);
-    const tight = H < 400;
-    host.classList.toggle('is-tight', tight);
     const bandW = small ? 12 : 16;
-    // the readings stand outside the ring, so the ring leaves them room on both sides
-    let R = Math.min(H * 0.36, H / 2 - bandW / 2 - 30 - 80);
-    GAUGES.forEach((_, i) => {
-      const mid = startOf(i) + span / 2;
-      const sn = Math.abs(Math.sin((mid * Math.PI) / 180));
-      if (sn < 0.3) return;
-      const w = labels[i].g.offsetWidth || (small ? 90 : 130);
-      R = Math.min(R, (W / 2 - 8 - w) / sn - bandW / 2 - 30);
-    });
-    // a tight dial's crown figure must still clear the top of its host: the ring shrinks to fit rather than the figure climbing out
-    const floorR = tight ? Math.max(48, Math.min(68, H / 2 - 98)) : 96;
-    const clamped = R < floorR;
-    R = Math.max(floorR, R);
-    // a host too narrow for a side figure even at the smallest ring stays off (as master does under 300px) rather than letting
-    // Handling run past the stage's gutter into the reading's Energy row (880–980 wide at 540–620 tall)
     const nextEl = host.nextElementSibling;
     const room = nextEl ? Math.max(0, nextEl.getBoundingClientRect().left - host.getBoundingClientRect().right) : 0;
-    const overrun = clamped && GAUGES.some((_, i) => {
-      const mid = startOf(i) + span / 2;
-      const sn = Math.abs(Math.sin((mid * Math.PI) / 180));
-      if (sn < 0.3) return false;
-      const w = labels[i].g.offsetWidth || (small ? 90 : 130);
-      return W / 2 + (R + bandW / 2 + 30) * sn + w > W + room - 6;
-    });
-    if (overrun) { host.classList.add('is-off'); geo = null; return; }
+    // fit the ring between the side readings; report whether a side figure still runs past the stage's gutter at the floor
+    const fit = (isTight) => {
+      host.classList.toggle('is-tight', isTight);
+      let r = Math.min(H * 0.36, H / 2 - bandW / 2 - 30 - 80);
+      const sides = [];
+      GAUGES.forEach((_, i) => {
+        const mid = startOf(i) + span / 2;
+        const sn = Math.abs(Math.sin((mid * Math.PI) / 180));
+        if (sn < 0.3) return;
+        const w = labels[i].g.offsetWidth || (small ? 90 : 130);
+        sides.push([sn, w]);
+        r = Math.min(r, (W / 2 - 8 - w) / sn - bandW / 2 - 30);
+      });
+      // a tight dial's crown figure must still clear the top of its host: the ring shrinks to fit rather than the figure climbing out
+      const floorR = isTight ? Math.max(48, Math.min(68, H / 2 - 98)) : 96;
+      const clamped = r < floorR;
+      r = Math.max(floorR, r);
+      const overrun = clamped && sides.some(([sn, w]) => W / 2 + (r + bandW / 2 + 30) * sn + w > W + room - 6);
+      return { r, overrun };
+    };
+    // a short host (under 400px) is tight; a taller one goes tight too when its side figures would otherwise run into the
+    // reading's Energy row (960–1000 wide at 620 tall), so the smaller ring and readings keep the dial on. Only a host that
+    // overruns even when tight (880–940 wide, as master) stays off.
+    let tight = H < 400;
+    let { r: R, overrun } = fit(tight);
+    if (overrun && !tight) { tight = true; ({ r: R, overrun } = fit(true)); }
+    if (overrun) { host.classList.add('is-off'); host.classList.remove('is-tight'); geo = null; return; }
     const cx = W / 2;
     const cy = H / 2;
     geo = { W, H, R, cx, cy, bandW, small };
