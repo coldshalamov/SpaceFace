@@ -4,9 +4,11 @@ Updated 2026-11-03. This is the compact current outcome map for the Finish Progr
 
 The controller owns all remaining working-tree changes, plans and open PRs under the user's
 2026-11-01 direction. [PR integration](./PR_INTEGRATION.md) records current source reconciliation;
-expired agent claims do not block finishing. The owner's latest unattended-session direction permits
-closing Chrome and VLC and stopping competing tasks for profiling; the earlier keep-open request
-is superseded.
+expired agent claims do not block finishing. The owner's latest direction keeps Chrome and VLC
+open; other tasks may be stopped when useful. The current creative production pass is described in
+[STUDIO.md](./STUDIO.md): build coherent physical situations from existing systems and assets,
+judge actual player experience, and iterate through short purposeful play rather than repeated
+long survival checks. Implementation and focused checks remain separate from route acceptance.
 
 ## Product finishing checklist
 
