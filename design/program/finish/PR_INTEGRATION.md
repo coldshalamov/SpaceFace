@@ -4,6 +4,8 @@ The 2026-11-01 GitHub snapshot contains 24 open PRs for `coldshalamov/SpaceFace`
 
 ## Subsequent integrated PRs
 
+- **#811, player-route boot retry:** incoming `308b9b961fba` was reviewed and fast-forwarded, then corrected in the same integration batch. Its blanket pre-play/NO-GL retry could hide a real route failure, and failed archival could erase the first attempt. The unsupported retry is removed; only the existing classified environment-loss path may retry, after successful preservation of the first attempt. Thirty-two focused orchestration/browser-loss/gate checks pass. No additional full-game run was needed for this harness repair.
+
 - **#812–#815, incoming phone layouts:** reviewed and merged in `bc9dba8c2cdd`: narrow New Game Launch, short phone Save layout, objective-anchored speed tape where supported, and landscape Beacon clearance. The merge retains the broader local Pause panel and Motion Ask mobile width bound. Numerical UI budgets are unchanged; incoming source hashes do not qualify the merged build. CSS sidecars match their owners. The merged baseline passes17/17 in50,000ms; no new local visual or physical-phone pass is claimed.
 
 - **#807, software-GL control probes:** merged as `ee3167a3408e`; `65c305dd682f` makes a performed same-input retry authoritative in player-control and round-start checks, while preserving both attempts in the trace. A dead retry can no longer pass because a sparse first attempt looked live. Focused CPU checks pass 44/44; no browser/player-route pass is claimed.
