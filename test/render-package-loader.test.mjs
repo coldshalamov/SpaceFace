@@ -21,6 +21,10 @@ import {
   fetchVerifiedRenderResources,
 } from '../src/render/renderPackageLoader.js';
 import { installVisualOverrides } from '../src/render/visualOverrides.js';
+import {
+  detachPackageGeometry, isPackageGeometryDetached, noteOrientationDetachedHold,
+  presentedDetachRehydrateInFlight,
+} from '../src/render/packageCpuDetach.js';
 
 Object.defineProperty(THREE.Object3D.prototype, 'castShadow',
   Object.getOwnPropertyDescriptor(VendoredObject3D.prototype, 'castShadow'));
@@ -215,6 +219,81 @@ function decodedFixture(disposals = null) {
 
   return { scene: root, geometry, material, texture };
 }
+
+test('private orientation trace follows the real verified GLTF decoder through refill and rebind', async () => {
+  // An actual binary GLTF triangle, with the same semantic owners as packageMetadata().
+  // No GPU or texture decoder is stubbed; this exercises the production decoder's CPU path.
+  const bin = Buffer.alloc(80);
+  [0, 0, 0, 1, 0, 0, 0, 1, 0].forEach((value, i) => bin.writeFloatLE(value, i * 4));
+  [0, 0, 1, 0, 0, 1, 0, 0, 1].forEach((value, i) => bin.writeFloatLE(value, 36 + i * 4));
+  [0, 1, 2].forEach((value, i) => bin.writeUInt16LE(value, 72 + i * 2));
+  const json = {
+    asset: { version: '2.0' }, scene: 0, scenes: [{ nodes: [0, 1] }],
+    nodes: [
+      { name: 'Hull', mesh: 0, children: [2], extras: semanticLocator('Hull', ['fixture.body']) },
+      { name: 'Turret', mesh: 0, extras: semanticLocator('Turret', ['fixture.turret']) },
+      { name: 'FX_Trail_Left', extras: semanticLocator('FX_Trail_Left', ['fixture.trail.left']) },
+    ],
+    meshes: [{ primitives: [{ attributes: { POSITION: 0, NORMAL: 1 }, indices: 2 }] }],
+    buffers: [{ byteLength: bin.length }],
+    bufferViews: [
+      { buffer: 0, byteOffset: 0, byteLength: 36 },
+      { buffer: 0, byteOffset: 36, byteLength: 36 },
+      { buffer: 0, byteOffset: 72, byteLength: 6 },
+    ],
+    accessors: [
+      { bufferView: 0, componentType: 5126, count: 3, type: 'VEC3', min: [0, 0, 0], max: [1, 1, 0] },
+      { bufferView: 1, componentType: 5126, count: 3, type: 'VEC3' },
+      { bufferView: 2, componentType: 5123, count: 3, type: 'SCALAR' },
+    ],
+  };
+  const jsonChunk = glbJson(json);
+  const bytes = Buffer.concat([jsonChunk, Buffer.alloc(8), bin]);
+  bytes.writeUInt32LE(bytes.length, 8);
+  bytes.writeUInt32LE(bin.length, jsonChunk.length);
+  bytes.writeUInt32LE(0x004e4942, jsonChunk.length + 4);
+  const metadata = packageMetadata();
+  metadata.render.sha256 = createHash('sha256').update(bytes).digest('hex');
+  metadata.render.bytes = bytes.length;
+  metadata.contentHash = createHash('sha256').update(stableJsonStringify(renderPackageContentIdentity(metadata))).digest('hex');
+  let reads = 0;
+  const loader = createRenderPackageLoader({ fetchImpl: async () => {
+    reads++;
+    return { ok: true, arrayBuffer: async () => bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) };
+  } });
+  const priorDiagnostic = globalThis.__SF_BUFFER_RESIZE_DIAG__;
+  const originalInfo = console.info;
+  const rows = [];
+  try {
+    const loaded = await loader.load(metadata);
+    const geometry = [...loaded.resources].find(resource => resource.isBufferGeometry);
+    assert.ok(geometry, 'the real GLTF scene publishes geometry');
+    assert.equal(detachPackageGeometry(geometry), true);
+    globalThis.__SF_BUFFER_RESIZE_DIAG__ = true;
+    console.info = (label, value) => {
+      if (label === '[render:package-refill]') rows.push(JSON.parse(value));
+      else originalInfo(label, value);
+    };
+    noteOrientationDetachedHold({}, { geometries: [geometry], textures: [] });
+    await presentedDetachRehydrateInFlight();
+    assert.equal(isPackageGeometryDetached(geometry), false);
+    assert.equal(reads, 2, 'the refill uses the real verified package decoder again');
+    assert.deepEqual(rows.map(row => row.stage), [
+      'decode:start', 'fetch-verify-glb:start', 'fetch-verify-glb:complete',
+      'prepass:start', 'prepass:complete', 'fetch-verify-images:start', 'fetch-verify-images:complete',
+      'parse:queued', 'parse:start', 'parse:complete',
+      'dedupe:queued', 'dedupe:start', 'dedupe:complete', 'rebind:start', 'rebind:complete',
+    ]);
+    assert.ok(rows.every(row => row.assetId === metadata.assetId && Number.isFinite(row.elapsedMs)));
+    assert.ok(geometry.attributes.position.array.length > 0);
+    assert.equal(geometry.attributes.normal.array.length, 9, 'the detached native GLTF attribute is refilled');
+  } finally {
+    console.info = originalInfo;
+    if (priorDiagnostic === undefined) delete globalThis.__SF_BUFFER_RESIZE_DIAG__;
+    else globalThis.__SF_BUFFER_RESIZE_DIAG__ = priorDiagnostic;
+    loader.dispose();
+  }
+});
 
 function flightPackageMetadata() {
   const metadata = packageMetadata();

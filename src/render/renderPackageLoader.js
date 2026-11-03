@@ -460,7 +460,7 @@ export function createRenderPackageLoader(options = {}) {
         // opportunistic: a manifest failure must not fail an otherwise-good package load.
         try {
           entry.detachManifest = createPackageDetachManifest(loaded, {
-            redecode: () => decodeGlb(renderUrl, metadata),
+            redecode: (trace) => decodeGlb(renderUrl, metadata, null, trace),
             collectResources: collectImmutableResources,
           });
         } catch (error) {
@@ -1485,9 +1485,11 @@ export function startMeshoptWorkerPool(MeshoptDecoder, options = {}) {
 }
 
 function createDefaultGlbDecoder({ fetchImpl, configureGltfLoader }) {
-  return async (url, metadata, onProgress = null) => {
+  return async (url, metadata, onProgress = null, trace = null) => {
     if (typeof fetchImpl !== 'function') throw new Error('Render package loader requires fetch to load render.glb.');
+    trace?.('fetch-verify-glb:start');
     let bytes = await fetchVerifiedRenderBytes(fetchImpl, url, metadata, onProgress);
+    trace?.('fetch-verify-glb:complete');
     assertRenderResourceBindings(bytes, metadata);
 
     // Structural pre-pass (glbPrepass.js): the verified GLB goes to a worker by transfer, which
@@ -1499,7 +1501,9 @@ function createDefaultGlbDecoder({ fetchImpl, configureGltfLoader }) {
     let predecodedBufferViews = null;
     let preslicedSourceBytes = null;
     if (bytes.byteOffset === 0 && bytes.byteLength === buffer.byteLength) {
+      trace?.('prepass:start');
       const prepared = await sharedGlbPrepasser().prepass(buffer);
+      trace?.('prepass:complete');
       if (prepared === null) {
         // The worker died holding the buffer; re-read (packages are content-hash immutable).
         bytes = await fetchVerifiedRenderBytes(fetchImpl, url, metadata, onProgress);
@@ -1525,7 +1529,9 @@ function createDefaultGlbDecoder({ fetchImpl, configureGltfLoader }) {
         return { name: 'SpaceFaceGlbPrepass' };
       });
     }
+    trace?.('fetch-verify-images:start');
     const verifiedResources = await fetchVerifiedRenderResources(fetchImpl, url, metadata, onProgress);
+    trace?.('fetch-verify-images:complete');
     if (verifiedResources.size) {
       loader.register((parser) => {
         parser.verifiedExternalKtx2Resources = verifiedResources;
@@ -1535,11 +1541,21 @@ function createDefaultGlbDecoder({ fetchImpl, configureGltfLoader }) {
     if (typeof configureGltfLoader === 'function') {
       await configureGltfLoader(loader, metadata, { resources: verifiedResources, baseUrl: url });
     }
-    const gltf = await scheduleGltfParse(() => loader.parseAsync(buffer, resourceBaseUrl(url)), metadata);
+    trace?.('parse:queued');
+    const gltf = await scheduleGltfParse(() => {
+      trace?.('parse:start');
+      return loader.parseAsync(buffer, resourceBaseUrl(url));
+    }, metadata);
+    trace?.('parse:complete');
     // Cross-package image-source dedupe: embedded PNG/JPEG copies collapse onto one THREE.Source
     // per distinct byte payload; embedded KTX2 sources already dedupe inside the texture plugin.
     // Paced through the class lanes so clustered parse replies can't stack the sync walk.
-    await scheduleGltfCompile(() => dedupeGltfTextureSources(gltf), activeDecodeClass());
+    trace?.('dedupe:queued');
+    await scheduleGltfCompile(() => {
+      trace?.('dedupe:start');
+      return dedupeGltfTextureSources(gltf);
+    }, activeDecodeClass());
+    trace?.('dedupe:complete');
     return gltf;
   };
 }

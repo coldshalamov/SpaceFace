@@ -61,6 +61,26 @@ let presentedDetachRehydrate = null;
 let presentedDetachRequestedManifests = null;
 let presentedDetachHeldRenderers = null;
 
+// Private, bounded trace for the existing buffer-resize diagnostic. It records only the
+// refill owner and awaited stage; no resource objects or GPU queries cross this boundary.
+let refillDiagnosticRows = 0;
+function refillDiagnosticEnabled() {
+  return globalThis.__SF_BUFFER_RESIZE_DIAG__ === true
+    || (typeof location !== 'undefined'
+      && new URLSearchParams(location.search).get('bufferResizeDiag') === '1');
+}
+function traceManifestRefill(manifest) {
+  if (!refillDiagnosticEnabled()) return null;
+  const started = performance.now();
+  return (stage) => {
+    if (refillDiagnosticRows++ >= 256) return;
+    console.info('[render:package-refill]', JSON.stringify({
+      manifestId: manifest.manifestId, assetId: manifest.assetId,
+      stage, at: performance.now(), elapsedMs: performance.now() - started,
+    }));
+  };
+}
+
 // Whether a manifest still has any released payload — DERIVED, not ledgered: the F3 shared
 // release lands in imageSourceDedupe without a back-edge into this module, so membership must
 // be read off the entries' own released state each time (a Set of "detached manifests" would
@@ -1092,6 +1112,7 @@ export function queuePresentedDetachRehydrate(renderer, resources = null) {
   // Cohorts joining during an awaited decode stay on this one serial runway. Offscreen
   // cached packages are not a dependency of a scoped orientation request.
   const requested = new Set(wanted);
+  refillDiagnosticRows = 0;
   presentedDetachRequestedManifests = requested;
   const held = new Set(renderer ? [renderer] : []);
   presentedDetachHeldRenderers = held;
@@ -1354,7 +1375,10 @@ export function orientationHoldHidesDrawable(renderer, object) {
 }
 
 async function rehydrateManifest(manifest) {
-  const decoded = await manifest.redecode();
+  const trace = traceManifestRefill(manifest);
+  trace?.('decode:start');
+  const decoded = await manifest.redecode(trace);
+  trace?.('rebind:start');
   const template = decodedTemplate(decoded);
   if (!template) throw new Error(`Render package ${manifest.assetId} rehydrate returned no scene.`);
   const freshResources = [...manifest.collectResources(template)];
@@ -1454,6 +1478,7 @@ async function rehydrateManifest(manifest) {
   for (const fresh of freshTextures) {
     try { if (typeof fresh.dispose === 'function') fresh.dispose(); } catch (_) {}
   }
+  trace?.('rebind:complete');
   return {
     textures: restored,
     geometries: restoredGeometries,
