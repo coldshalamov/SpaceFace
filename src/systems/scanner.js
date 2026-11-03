@@ -21,6 +21,7 @@ import { hasActiveSpatialHash, queryNearbyEntities } from '../core/spatialQuery.
 import { maxFittedModuleMod, sumFittedModuleMod } from '../core/fittedModules.js';
 import { hash32 } from '../core/rng.js';
 import { takeNearWorkSlice } from '../core/activityScheduler.js';
+import { isPlayerWanted } from './heat.js';
 import { isHostileToPlayer } from './scannerReadModel.js';
 export { isHostileToPlayer };
 export { contactMass, contactThreatTier, SCANNER_CONTACT_RANGE } from './scannerReadModel.js';

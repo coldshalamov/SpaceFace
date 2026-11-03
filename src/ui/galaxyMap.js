@@ -797,6 +797,24 @@ export function resolveMapOpenTarget(state, intent) {
     const active = (state.missions && state.missions.active) || [];
     mission = active.find((m) => m && String(m.id) === missionId) || null;
     if (mission) {
+      // A producer may deliberately omit stationId when its explicit local position is the
+      // objective (rather than the contract's eventual berth). Select only the same live,
+      // mission-owned waypoint the map itself draws. Explicit stationId above this check remains
+      // authoritative; positionless and non-matching intents still fall back to mission destination.
+      const waypoint = state.nav && state.nav.waypoint;
+      const position = intent.pos;
+      if (mission.status === 'active' && !stationId
+        && intent.selectionTarget === 'active-waypoint'
+        && normalizeMapFocus(intent.focus) === MAP_FOCUS.LOCAL
+        && position && Number.isFinite(position.x) && Number.isFinite(position.z)
+        && waypoint && String(waypoint.missionId) === missionId
+        && waypoint.pos && Number.isFinite(waypoint.pos.x) && Number.isFinite(waypoint.pos.z)
+        && waypoint.pos.x === position.x && waypoint.pos.z === position.z
+        && (waypoint.sectorId || mission.destSectorId) === currentSectorId(state)
+        && (!sectorId || sectorId === (waypoint.sectorId || mission.destSectorId))) {
+        const waypointTarget = waypointClickTarget(waypoint, position, 0, 0, state);
+        if (waypointTarget) return waypointTarget;
+      }
       if (!stationId && mission.destStationId != null) stationId = String(mission.destStationId);
       if (!sectorId) {
         const midSector = mission.destSectorId || (mission.params && mission.params.sectorId) || null;
