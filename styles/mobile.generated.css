@@ -378,6 +378,12 @@ html.sf-reduce-motion #sf-touch-overlay *, html.sf-reduce-motion #sf-touch-overl
  :root[data-sf-mobile="1"][data-sf-mobile-lefty="1"][data-sf-mobile-flight="1"] #toasts { left:auto; right:calc(14px + var(--sf-safe-right,0px)); }
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud :is(.sf-contact-hail__button,.sf-comm-backlog-btn) { min-height:40px; min-width:60px; pointer-events:auto; }
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-vtape { left:14px!important; bottom:auto!important; top:calc(128px + var(--sf-safe-top,0px))!important; }
+ /* The tape hangs from the foot of the objective plate (its height changes with the line and the DETAILS key), so the
+    two never print through each other. Where anchoring is unavailable the fixed 128px start above still holds. */
+ @supports (top:anchor(bottom)) {
+ :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud > .sf-leftcontext { anchor-name:--sf-leftcontext; }
+ :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-vtape { position-anchor:--sf-leftcontext; top:calc(anchor(bottom, calc(120px + var(--sf-safe-top,0px))) + 8px)!important; transform-origin:0 0; }
+ }
  /* Ordinary flight's camera/Circuits keys are a narrow rail under Pause, clear of the ship scales.
     Authored races keep their map and readings in a compact central instrument. */
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #race-tape { font:500 12px/1.3 var(--dp-face-body,"Instrument Sans",system-ui,sans-serif); background:color-mix(in srgb, var(--dp-void,#05070a) 76%, transparent); padding:6px; }
