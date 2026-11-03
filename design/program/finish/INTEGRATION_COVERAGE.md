@@ -39,7 +39,20 @@ judged against the player's ordinary route.
   and documentation cleanup. Five separate Pro creation briefs remain blocked on the intended
   provider; the current Codex CLI factory workers are a distinct channel.
 
-The coherent `d7ed4aa450f1` source baseline passes17/17 checks in63,635ms within the
+The current committed `1347d11ee2b0` source passes all17 baseline groups in62,057ms within the
+unchanged90,000ms budget, with normal allowance4. English extraction/readiness is current at
+15,745 surfaces/0 unresolved. It adds the actual-brace wage and Kessler connection, durable
+physical Prospector work, rescue priority, matching Foundry fixture contacts and quieter combat
+feedback. The ordinary paid Ceres shift and changed combat appearance are being played; source
+and component checks do not close those player outcomes.
+
+The public demo now serves validated `8ea6ff577ff2` at
+[`spaceface-play-demo.vercel.app`](https://spaceface-play-demo.vercel.app/), with DDE rollback
+retained. Public-origin worker flight/native touch pass; candidate rotation and Pause/Resume
+also pass. Physical iPhone remains unknown. A normal software-rendered ship picture is too
+dark/coarse despite resident authored LOD0; body legibility and frame targets remain open.
+
+The earlier `d7ed4aa450f1` source baseline passed17/17 checks in63,635ms within the
 unchanged90,000ms budget. Earlier focused worker transport/HUD checks pass24/24. All417 render-package
 plans were validated by the web build from `aba26d770eab`. Its2866 files total629,883,908 bytes;
 the local receipt SHA256 is `6f4e2a15e4414fd8b16ad83bf859151999af6bf0baded3ddefc20cf2a97609e8`.
@@ -147,10 +160,10 @@ Hitch V7 candidate-only evidence test was retired; current retail asset validati
 | Settings pointer and shadows | `614a9dfbd48f` stops pointer-origin focus scrolling a control between down and up. The changed public route has stable pointer targets, a real setting event, observed guarded depth admission, drained queue, advancing flight and an inspected enabled ship/world image. | The success probe does not serialize its page-error list, so no zero-error audit is claimed. This Settings-specific fix does not establish the cause of an intermittent contract hold failure; that is being checked separately. |
 | Hull physics | `48c2d6b09bb9` derives native yaw inertia from measured hull area and radius. The real Rapier low-speed scrape falls from3.98 to0.614rad/s. `9a7324ac5ab1` also gives ordinary weapon hits authored momentum instead of multiplying it by target mass: a126 impulse now produces126/m velocity change across2/16/180/800-tonne native bodies. Both contact/splash paths and real collision blocking pass focused checks. | Native checks do not establish ordinary collision feel across the fleet. Legacy replay hit/cue counts change with the corrected trajectories. Force, Massline and field policies are unchanged; no asset mass/material distribution was guessed. |
 | Asset processing | The catalog covers418 release assets/352 families; all418 actual GLB hashes match their release declarations. Triangle-surface contours keep the three flagged LOD families within4WU. Canonical activation `da05f99fdb4f` includes all417 fresh package bindings,13 shared KTX2 bodies,175 rebuilt semantic-pivot hierarchies and the Fin duplicate-texture fix. The same-source headed sidecar preserves authored Kestrel appearance and reduces measured asset responses25,659,595→20,668,078B; the separate Fin retail package saves1,174,532B. | The wreck/three payload readiness rows are offscreen runway contacts, correctly streamed on reveal; no opening blocker was found. These byte/hierarchy results and the deployed asset/control pass do not establish FPS or loading-time improvement, fleet-wide collision feel or complete hero/marking appearance. |
-| Deployed mobile | Unpromoted 29 candidate `dpl_6Z1hm2YGUftoUvqPHwwuA7PwcMxs` passes the original rotation gate in9.082s. A same-frame canvas image is bright and advances; the adjacent WebKit page PNG is black. | The planned Windows native-window capture was stopped before any app input/capture. Visible-window output is UNKNOWN, as is physical iPhone14 behavior; the requested Windows profile reports `maxTouchPoints=0`. Public alias remains C9 and the candidate is not promoted. No mobile acceptance is claimed. |
+| Deployed mobile | Public8ea/pzm (`dpl_D9kKDyG2QTYTdCGNN3SCf2QQzAMo`) passes actual alias-origin launch17.761s, native touch19.240WU and its versioned worker200. Candidate Pause/Resume and3.267-second rotation pass with visible canvas/page. No rare first-drive plasma warning occurred in these runs. | These are Windows Chromium touch-emulation/SwiftShader results, not physical iPhone14/iOS Chrome. Landscape frame/presentation hitches remain, and the authored ship appears dark/coarse at contentScale0.34. The older Windows WebKit black-page symptom also reproduced in a standalone WebGL triangle; no renderer workaround or physical-phone verdict follows from it. |
 | Story guidance and worker boot | Pelican25 on569ceb918d10 passes the first44-C contract through public accept, native aim/latch, sustained physical tow-in, canonical520CR payment and the same mission's receiving event after undock. Errors/warnings are empty and cleanup passes. The worker preview identifies the same latched buoy. All three introductory masses and old accepted-save restoration have native checks. | Later Pelican jobs retain focused native/save coverage only. Discovery placement's ordinary look, public earned Compost growth and later story routes remain open. This first-job route is not current packaged acceptance. |
 | Living traffic | The Helios civic liner's native owner checks cover yield to an attached tug/load and resumption of its itinerary. | Ordinary visible liner/tug yield and return remains unverified; the native checks do not complete Lantern Ward or a memorial-specific mission route. |
-| Pro creation | Correct Pro dispatch count: 0. The Browser connects to ChatGPT Chat with Pro selected; the model menu reports “Usage limit reached.” | Five briefs remain queued for ChatGPT Pro. Work and alternate models are not authorized. See the [Pro portfolio](./PRO_CREATION_PORTFOLIO_2026-10-30.md). |
+| Pro creation | Correct Pro dispatch count:0. The actual Browser Chat page's November3 model menu showed GPT-6/Medium, disabled power and “Usage limit reached”; Pro was not available in the observed menu. No prompt was sent. | Five briefs remain unsent for ChatGPT Pro and need refreshed interface/base packets before dispatch. Work and alternate models are not authorized substitutes. See the [Pro portfolio](./PRO_CREATION_PORTFOLIO_2026-10-30.md). |
 
 ## M9 measured checkpoint history
 
