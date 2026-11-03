@@ -631,6 +631,13 @@ test('alert lane placement observer ignores its own style writes and cleanup rel
   const ownPositionChange = { type: 'attributes', target: lane, attributeName: 'style', oldValue: 'position:absolute; top:8px; opacity:0.7' };
   assert.equal(harness.alertLaneStyleMutationIsOwned(ownPositionChange, lane), true,
     'positioning changes owned by the allocator do not schedule another placement');
+  lane.styleText = 'position: fixed; inset: 484px auto auto 12px; width: 366px; max-height: 174px; overflow-y: visible; transform: none; pointer-events: none; box-sizing: border-box;';
+  const cssomInsetChange = {
+    type: 'attributes', target: lane, attributeName: 'style',
+    oldValue: 'position: fixed; inset: 0px auto auto 12px; width: 366px; max-height: none; overflow-y: visible; transform: none; pointer-events: none; box-sizing: border-box;',
+  };
+  assert.equal(harness.alertLaneStyleMutationIsOwned(cssomInsetChange, lane), true,
+    'CSSOM inset shorthand serialization of allocator-owned side writes is not treated as an external change');
   lane.styleText = 'position:fixed; top:92px; opacity:0';
   assert.equal(harness.alertLaneStyleMutationIsOwned(ownPositionChange, lane), false,
     'a lane visibility change remains observable even when the allocator also owns position');

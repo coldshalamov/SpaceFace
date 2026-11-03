@@ -6274,7 +6274,10 @@ export function createHud(ctx, alerts) {
   const ALERT_LANE_STYLE_KEYS = ['position', 'left', 'right', 'top', 'bottom', 'width', 'maxHeight',
     'overflowY', 'transform', 'pointerEvents', 'boxSizing'];
   const ALERT_LANE_OWNED_CSS_PROPERTIES = new Set([
-    'position', 'left', 'right', 'top', 'bottom', 'width', 'max-height', 'overflow-y',
+    // CSSOM serializes our four inset longhand writes back to the `inset` shorthand. Treat that
+    // canonical form as owned too, or MutationObserver mistakes its own write batch for outside
+    // geometry and repeatedly runs the synchronous layout allocator.
+    'position', 'left', 'right', 'top', 'bottom', 'inset', 'width', 'max-height', 'overflow-y',
     'transform', 'pointer-events', 'box-sizing',
   ]);
   function alertLaneStyleMutationIsOwned(record, lane) {
