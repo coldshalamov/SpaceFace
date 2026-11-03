@@ -32999,7 +32999,7 @@ export const render = {
       || resources.textures.some(isPackageTextureDetached);
     const aspectChanging = this._drawBufferAspectClass && this._drawBufferAspectClass !== cssAspect;
     if (!this._orientationResizeApplying && !this._orientationResizePending && aspectChanging) {
-      orientationResources = collectOrientationResizeResources(this.scene);
+      orientationResources = collectOrientationResizeResources(this.scene, this.cam?.obj, this.renderer, this.keyLight);
       if (globalThis.__SF_BUFFER_RESIZE_DIAG__ === true
           || (typeof location !== 'undefined' && new URLSearchParams(location.search).get('bufferResizeDiag') === '1')) {
         console.info('[render:live-package-cpu]', JSON.stringify(
@@ -33057,7 +33057,7 @@ export const render = {
     // too. A same-aspect resize does not.
     const nextAspect = aspectClassFromSize(drawSize);
     if (!this._orientationResizeApplying && this._drawBufferAspectClass && this._drawBufferAspectClass !== nextAspect) {
-      const resources = orientationResources || collectOrientationResizeResources(this.scene);
+      const resources = orientationResources || collectOrientationResizeResources(this.scene, this.cam?.obj, this.renderer, this.keyLight);
       if (needsRefill(resources)) noteOrientationDetachedHold(this.renderer, resources);
     }
     this._drawBufferAspectClass = nextAspect;
@@ -33423,7 +33423,7 @@ function renderGraphDynResBlocked(state) {
   return qualityModeForVideo(video) === 'auto' || video.dynamicResolution === true;
 }
 
-function collectOrientationResizeResources(scene) {
+function collectOrientationResizeResources(scene, camera, renderer, keyLight) {
   // An aspect flip replaces the current picture. Hidden scene branches and empty pools have
   // no draw in that picture; their normal admission owner still refills them when they activate.
   // Keep startup's broader future-use census intact and scope only this resize hold.
@@ -33431,7 +33431,41 @@ function collectOrientationResizeResources(scene) {
     if (typeof scene?.traverseVisible === 'function') scene.traverseVisible(visit);
     else scene?.traverse?.(visit);
   } };
-  const drawables = collectStartupGeometryDrawables(visible);
+  let frustum = null, shadowFrustum = null;
+  try {
+    if (camera?.isPerspectiveCamera === true && typeof camera.clone === 'function'
+        && camera.projectionMatrix && camera.matrixWorldInverse) {
+      // createChaseCamera receives globalThis.window and onResize uses this exact CSS ratio.
+      // Other projection adapters have no predicted resize contract here, so retain all draws.
+      const width = Number(globalThis.window?.innerWidth), height = Number(globalThis.window?.innerHeight);
+      if (!(width > 0 && height > 0 && Number.isFinite(width) && Number.isFinite(height))) {
+        throw new Error('Pending camera viewport is unavailable');
+      }
+      const resized = camera.clone(false);
+      resized.aspect = width / height;
+      resized.updateProjectionMatrix();
+      frustum = new THREE.Frustum().setFromProjectionMatrix(
+        new THREE.Matrix4().multiplyMatrices(resized.projectionMatrix, camera.matrixWorldInverse),
+      );
+    }
+    const shadowCamera = renderer?.shadowMap?.enabled === true && keyLight?.castShadow === true
+      ? keyLight.shadow?.camera : null;
+    if (shadowCamera?.projectionMatrix && shadowCamera.matrixWorldInverse) {
+      shadowFrustum = new THREE.Frustum().setFromProjectionMatrix(
+        new THREE.Matrix4().multiplyMatrices(shadowCamera.projectionMatrix, shadowCamera.matrixWorldInverse),
+      );
+    }
+  } catch { /* An uncertain projection cannot exclude an authored draw. */ }
+  const drawables = collectStartupGeometryDrawables(visible).filter(drawable => {
+    if (!frustum || drawable.frustumCulled === false) return true;
+    try {
+      if (frustum.intersectsObject(drawable)) return true;
+      if (drawable.castShadow === true && renderer?.shadowMap?.enabled === true) {
+        return !shadowFrustum || shadowFrustum.intersectsObject(drawable);
+      }
+      return false;
+    } catch { return true; } // Missing bounds stay protected by the refill hold.
+  });
   const subjects = { traverse(visit) { for (const drawable of drawables) visit(drawable); } };
   return {
     geometries: [...new Set(drawables.map(drawable => drawable.geometry))],
