@@ -39,7 +39,27 @@ judged against the player's ordinary route.
   and documentation cleanup. Five separate Pro creation briefs remain blocked on the intended
   provider; the current Codex CLI factory workers are a distinct channel.
 
-The coherent `d7ed4aa450f1` source baseline passes17/17 checks in63,635ms within the
+The current committed `1347d11ee2b0` source passes all17 baseline groups in62,057ms within the
+unchanged90,000ms budget, with normal allowance4. English extraction/readiness is current at
+15,745 surfaces/0 unresolved. It adds the actual-brace wage and Kessler connection, durable
+physical Prospector work, rescue priority, matching Foundry fixture contacts and quieter combat
+feedback. The ordinary paid Ceres shift and changed combat appearance are being played; source
+and component checks do not close those player outcomes.
+
+**Open critical save defect:** production ordering lets `runSession` clear the arcade run before
+the save owner's Exit listener, allowing temporary arena state to overwrite the Adventure
+autosave. The actual owners reproduce this against disposable storage; the save owner is being
+fixed. Public8ea and the unaliased1347 candidate predate that fix. Hold promotion of1347; a DDE
+rollback would not address the same exposure. Combat and the paid Ceres route remain valid
+observations, while arcade Exit/Continue persistence fails this contract.
+
+The public demo now serves validated `8ea6ff577ff2` at
+[`spaceface-play-demo.vercel.app`](https://spaceface-play-demo.vercel.app/), with DDE rollback
+retained. Public-origin worker flight/native touch pass; candidate rotation and Pause/Resume
+also pass. Physical iPhone remains unknown. A normal software-rendered ship picture is too
+dark/coarse despite resident authored LOD0; body legibility and frame targets remain open.
+
+The earlier `d7ed4aa450f1` source baseline passed17/17 checks in63,635ms within the
 unchanged90,000ms budget. Earlier focused worker transport/HUD checks pass24/24. All417 render-package
 plans were validated by the web build from `aba26d770eab`. Its2866 files total629,883,908 bytes;
 the local receipt SHA256 is `6f4e2a15e4414fd8b16ad83bf859151999af6bf0baded3ddefc20cf2a97609e8`.
@@ -60,7 +80,7 @@ original seed, input, tick, event-family and acceptance budgets remain enforced.
 
 The public8f5 route passes compact F2 at1280/960, physical Helios docking,568x320 Market controls
 and the real Industry research-lock state, with no JS/GL/critical HTTP errors or resize failure.
-The public Vercel alias now serves7195 with the activated shared-asset packages. Fresh native touch
+At the earlier7195 checkpoint, the public Vercel alias served the activated shared-asset packages. Fresh native touch
 flight and same-profile save/reload/Continue movement pass, with zero JS, GL or critical HTTP errors.
 This candidate began Continue near rest, so its braking branch was not exercised. Actual iPhone14
 hardware remains unverified; the visible Windows phone entries establish Bluetooth pairing,
@@ -73,7 +93,7 @@ The remote release receipt reports 2,866 files /629,934,624 bytes and output dig
 `c92cdb7fb3d9939fbfe6da6220184f93e1034c7a3cca01e479bef2ff7b4ac24b`; the unique-host index is
 12,626 bytes with SHA256 `a0be6f9e864a806cf1f2f25993a841c213b51a7f9a59315d67bf8162945aa367`.
 Vercel assigned generated branch/team aliases, but the public `spaceface-play-demo.vercel.app`
-mapping was read back as C9 (`dpl_C9eZXk9gbHTttTY7rittWTMhX2Yq`). It is still a diagnostic
+mapping was then read back as C9 (`dpl_C9eZXk9gbHTttTY7rittWTMhX2Yq`). D6 remained a diagnostic
 deployment, not the public alias or a local/remote bundle comparison. The D6 WebKit route showed
 a black world after rotation. A later staged candidate, `dpl_23Cp5586RZbW6p6UkMVebDXfSn3g` at
 `https://spaceface-play-demo-oaml3siaj-robin-gattis-projects.vercel.app`, uses source
@@ -83,8 +103,8 @@ a black world after rotation. A later staged candidate, `dpl_23Cp5586RZbW6p6UkMV
 public Save, reload and Continue, but its requested iPhone profile reports
 `navigator.maxTouchPoints=0` on Windows. During original-document rotation, `orientationHold` and
 `refillInFlight` remained true for about10s and the world showed a stretched retained portrait
-image, not a black frame; fresh landscape drawing was unverified before F5. Public alias remains
-C9 and physical iPhone14 remains UNKNOWN; no promotion or mobile acceptance is claimed.
+image, not a black frame; fresh landscape drawing was unverified before F5. At that checkpoint
+the public alias remained C9; physical iPhone14 was unknown. The current8ea release is recorded above.
 
 The last measured main static closure is9,959,652 raw bytes; the6MB target remains
 open. The shadow-disabled cold profile reaches flight in37.7s versus37.3s in the preceding run:
@@ -147,10 +167,10 @@ Hitch V7 candidate-only evidence test was retired; current retail asset validati
 | Settings pointer and shadows | `614a9dfbd48f` stops pointer-origin focus scrolling a control between down and up. The changed public route has stable pointer targets, a real setting event, observed guarded depth admission, drained queue, advancing flight and an inspected enabled ship/world image. | The success probe does not serialize its page-error list, so no zero-error audit is claimed. This Settings-specific fix does not establish the cause of an intermittent contract hold failure; that is being checked separately. |
 | Hull physics | `48c2d6b09bb9` derives native yaw inertia from measured hull area and radius. The real Rapier low-speed scrape falls from3.98 to0.614rad/s. `9a7324ac5ab1` also gives ordinary weapon hits authored momentum instead of multiplying it by target mass: a126 impulse now produces126/m velocity change across2/16/180/800-tonne native bodies. Both contact/splash paths and real collision blocking pass focused checks. | Native checks do not establish ordinary collision feel across the fleet. Legacy replay hit/cue counts change with the corrected trajectories. Force, Massline and field policies are unchanged; no asset mass/material distribution was guessed. |
 | Asset processing | The catalog covers418 release assets/352 families; all418 actual GLB hashes match their release declarations. Triangle-surface contours keep the three flagged LOD families within4WU. Canonical activation `da05f99fdb4f` includes all417 fresh package bindings,13 shared KTX2 bodies,175 rebuilt semantic-pivot hierarchies and the Fin duplicate-texture fix. The same-source headed sidecar preserves authored Kestrel appearance and reduces measured asset responses25,659,595→20,668,078B; the separate Fin retail package saves1,174,532B. | The wreck/three payload readiness rows are offscreen runway contacts, correctly streamed on reveal; no opening blocker was found. These byte/hierarchy results and the deployed asset/control pass do not establish FPS or loading-time improvement, fleet-wide collision feel or complete hero/marking appearance. |
-| Deployed mobile | Unpromoted 29 candidate `dpl_6Z1hm2YGUftoUvqPHwwuA7PwcMxs` passes the original rotation gate in9.082s. A same-frame canvas image is bright and advances; the adjacent WebKit page PNG is black. | The planned Windows native-window capture was stopped before any app input/capture. Visible-window output is UNKNOWN, as is physical iPhone14 behavior; the requested Windows profile reports `maxTouchPoints=0`. Public alias remains C9 and the candidate is not promoted. No mobile acceptance is claimed. |
+| Deployed mobile | Public8ea/pzm (`dpl_D9kKDyG2QTYTdCGNN3SCf2QQzAMo`) passes actual alias-origin launch17.761s, native touch19.240WU and its versioned worker200. Candidate Pause/Resume and3.267-second rotation pass with visible canvas/page. No rare first-drive plasma warning occurred in these runs. | These are Windows Chromium touch-emulation/SwiftShader results, not physical iPhone14/iOS Chrome. Landscape frame/presentation hitches remain, and the authored ship appears dark/coarse at contentScale0.34. The older Windows WebKit black-page symptom also reproduced in a standalone WebGL triangle; no renderer workaround or physical-phone verdict follows from it. |
 | Story guidance and worker boot | Pelican25 on569ceb918d10 passes the first44-C contract through public accept, native aim/latch, sustained physical tow-in, canonical520CR payment and the same mission's receiving event after undock. Errors/warnings are empty and cleanup passes. The worker preview identifies the same latched buoy. All three introductory masses and old accepted-save restoration have native checks. | Later Pelican jobs retain focused native/save coverage only. Discovery placement's ordinary look, public earned Compost growth and later story routes remain open. This first-job route is not current packaged acceptance. |
 | Living traffic | The Helios civic liner's native owner checks cover yield to an attached tug/load and resumption of its itinerary. | Ordinary visible liner/tug yield and return remains unverified; the native checks do not complete Lantern Ward or a memorial-specific mission route. |
-| Pro creation | Correct Pro dispatch count: 0. The Browser connects to ChatGPT Chat with Pro selected; the model menu reports “Usage limit reached.” | Five briefs remain queued for ChatGPT Pro. Work and alternate models are not authorized. See the [Pro portfolio](./PRO_CREATION_PORTFOLIO_2026-10-30.md). |
+| Pro creation | Correct Pro dispatch count:0. The actual Browser Chat page's November3 model menu showed GPT-6/Medium, disabled power and “Usage limit reached”; Pro was not available in the observed menu. No prompt was sent. | Five briefs remain unsent for ChatGPT Pro and need refreshed interface/base packets before dispatch. Work and alternate models are not authorized substitutes. See the [Pro portfolio](./PRO_CREATION_PORTFOLIO_2026-10-30.md). |
 
 ## M9 measured checkpoint history
 
@@ -221,7 +241,8 @@ and garden custody/progress in `d87c999ea10d`. The incoming UI work through PR81
 - **Mobile:** candidate29 passes the rotation gate in9.082s and captures a bright advancing canvas,
   while its adjacent WebKit page image is black. The user's physical Escape stopped the planned
   visible-window capture before any app input or capture. Visible-window output and iPhone14 remain
-  UNKNOWN; public C9 is unchanged and candidate29 is not promoted.
+  UNKNOWN in that older checkpoint; candidate29 was not promoted. Current8ea/public touch evidence
+  is recorded above, while physical iPhone remains unknown.
 - **UI and authored visuals:** the six non-default matrix aliases and mounted chart-cost cell remain
   open. The #808–#815 layout changes are source-integrated but have no new local mounted looks. The
   in-world hero/plume/marking look is still open after a preserved zero-draw Kestrel result.
