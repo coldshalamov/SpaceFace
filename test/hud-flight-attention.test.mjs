@@ -438,7 +438,7 @@ test('caption bands reserve sibling touch controls and refresh only their layout
     touchOverlayObserver: null,
     objectiveEdgeBoxes: { stale: false },
     externalCaptionsStale: false,
-    placeReceiptLane: () => { placements++; },
+    invalidateReceiptLane: () => { placements++; },
     MutationObserver: class {
       constructor(callback) { this.callback = callback; configObserver = this; }
       observe(el, options) { this.element = el; this.options = options; }
@@ -465,7 +465,7 @@ test('caption bands reserve sibling touch controls and refresh only their layout
   configObserver.callback();
   assert.equal(context.objectiveEdgeBoxes.stale, true);
   assert.equal(context.externalCaptionsStale, true);
-  assert.equal(placements, 1, 'handedness/scale changes immediately refresh the caption reservation');
+  assert.equal(placements, 1, 'handedness/scale changes invalidate the caption reservation for the next paint');
 
   touchElements.splice(touchElements.indexOf(powers), 1);
   freeOverlayBands(slot, 844, layout);
@@ -560,13 +560,13 @@ test('the mobile voice lane moves below open Details and View controls, then re-
     mtDetailsClose: { focus() {} },
     flightTextObstaclesStale: false,
     alertLanePlacementStale: false,
-    placeReceiptLane() { detailPlacementSawStale = detailsContext.alertLanePlacementStale; },
+    invalidateReceiptLane() { detailPlacementSawStale = detailsContext.alertLanePlacementStale; },
   };
   const setMissionDetails = runInNewContext(`(${setMissionDetailsExpression})`, detailsContext);
   setMissionDetails(true);
   assert.equal(detailsState.hidden, false);
   assert.equal(detailsButton.attributes['aria-expanded'], 'true');
-  assert.equal(detailPlacementSawStale, true, 'opening Details re-seats the voice lane immediately');
+  assert.equal(detailPlacementSawStale, true, 'opening Details invalidates the voice lane for the next paint');
   setMissionDetails(false);
   assert.equal(detailsState.hidden, true);
   assert.equal(detailsButton.attributes['aria-expanded'], 'false');

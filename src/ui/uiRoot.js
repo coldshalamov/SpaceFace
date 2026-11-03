@@ -2148,7 +2148,7 @@ export const ui = {
             if (this._hudHiddenByDock && typeof this.hud.arrive === 'function') this.hud.arrive();
           }
           this._hudHiddenByDock = false;
-          this.hud.frame(dt);
+          this.hud.frame(dt, true);
         } else {
           this._hudHiddenByDock = docked;
           if (this.hud.tickHidden) this.hud.tickHidden(dt);
@@ -2173,6 +2173,8 @@ export const ui = {
       if (this.discoveryPlate && this.discoveryPlate.tick) this.discoveryPlate.tick();
       // Comms fade is a flight overlay. Toasts/prompts stay alive on menus.
       if (hudVisible && this.comms && this.comms.tick) this.comms.tick();
+      // Coalesce this paint's receipt, prompt, alert and caption mutations after their owners tick.
+      if (hudVisible) this.hud?.flushReceiptLane?.();
       // refresh the active modal screen at a low cadence (event-driven screens also self-update)
       this._rt = (this._rt || 0) + 1;
       if ((this._rt % 18) === 0 && this.screenManager && this.screenManager.isOpen()) {

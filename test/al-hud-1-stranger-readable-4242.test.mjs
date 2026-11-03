@@ -3,6 +3,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import * as hud from '../src/ui/hud.js';
+import { createToasts } from '../src/ui/toasts.js';
+import { ui as uiRoot } from '../src/ui/uiRoot.js';
 import { createBus } from '../src/core/eventBus.js';
 import { mulberry32 } from '../src/core/rng.js';
 import { createRunState } from '../src/core/runState.js';
@@ -132,13 +134,17 @@ test('compact tape moves only on parent changes and retains actions, visibility 
     assert.equal(moves, 0, 'unchanged frames never move the tape');
     assert.equal(root.querySelectorAll('#race-tape').length, 1);
     const buttons = panel.querySelectorAll('button');
+    const options = buttons.find((button) => button.textContent === 'View & circuits');
     const board = buttons.find((button) => button.textContent === 'Circuits');
+    const view = buttons.find((button) => button.title === 'Toggle chase / overhead camera');
+    assert.ok(options && board && view, 'the compact controls expose their named actions');
+    options.click(0);assert.equal(options.getAttribute('aria-expanded'), 'true');
     board.focus(); board.click(0);
     assert.ok(fx.document.activeElement === board, 'keyboard activation retains focus');
-    board.click(1);
+    options.click(0);board.click(1);
     assert.ok(board.blurred, 'pointer activation blurs');
     assert.deepEqual(pushed, ['raceBoard', 'raceBoard']);
-    const view = buttons[0]; view.click();
+    options.click(0);view.click();
     assert.equal(fx.state.settings.gameplay.steeringView, 'racing');
     fx.state.missions.active = [{ id: 'race429', type: 'race', status: 'active', params: { racingContractId: '429' } }];
     tape.frame(fx.state); // Same simTime: ownership must reconcile ahead of telemetry throttle.
@@ -713,4 +719,57 @@ test('mobile objective details retain long urgent text and remain actionable wit
     assert.equal(panel.hidden, true);
     assert.equal(fx.document.activeElement, trigger);
   } finally { fx.hud.destroy(); fx.restore(); }
+});
+
+
+test('real HUD coalesces accepted receipt bursts into one paint and ignores refused toasts', () => {
+  const fx=mountHudFixture(1460,900), previousRaf=globalThis.requestAnimationFrame;
+  globalThis.requestAnimationFrame=()=>1;
+  const lane=fx.document.createElement('div');lane.id='toasts';
+  const live=fx.document.createElement('div');live.id='toast-live';lane.appendChild(live);
+  fx.document.getElementById('hud').appendChild(lane);
+  const toasts=createToasts({state:fx.state,bus:fx.bus});
+  let queries=0;
+  const active=()=>lane.children.filter(el=>el.classList?.contains('sf-toast') && !el.classList.contains('sf-toast--out'));
+  lane.querySelector=(selector)=>{ if(selector==='.sf-toast:not(.sf-toast--out)'){queries++;return active()[0]||null;}return null; };
+  lane.querySelectorAll=(selector)=>{ if(selector==='.sf-toast:not(.sf-toast--out)'){queries++;return active();}return []; };
+  try {
+    fx.hud.frame(1/60,true);fx.hud.flushReceiptLane();queries=0;
+    for(let i=0;i<50;i++) fx.bus.emit('toast',{text:'Radio chatter',_fromVoice:true});
+    fx.hud.frame(1/60,true);fx.hud.flushReceiptLane();
+    assert.equal(queries,0,'refused toasts never request a geometry walk');
+    fx.document.body.dataset.sfHudJob='cruise';
+    for(let i=0;i<8;i++) fx.bus.emit('toast',{text:'Cargo transferred',kind:'success',ttl:5});
+    assert.equal(queries,0,'accepted burst performs no synchronous HUD measurement');
+    assert.equal(active().length,1,'normal grouping is unchanged');
+    assert.match(active()[0].getAttribute('aria-label'),/×8/);
+    assert.match(live.textContent,/×8/);
+    fx.hud.frame(1/60,true);
+    assert.equal(queries,0,'the UI root may finish its other owners before placement');
+    fx.hud.flushReceiptLane();
+    const firstPaintQueries=queries;
+    assert.ok(firstPaintQueries>0,'the first paint measures the actual accepted receipt');
+    assert.ok(Number.isFinite(Number.parseFloat(lane.style.top)),'the accepted card gets a real lane position');
+    assert.ok(fx.hud.getFlightTextObstacles().some(entry=>entry.owner==='receipt'),'other overlays get the new receipt geometry');
+    fx.hud.flushReceiptLane();assert.equal(queries,firstPaintQueries,'one flush places the whole burst only once');
+    active()[0].click();
+    assert.equal(active().length,0,'the original dismiss control still works');
+    fx.hud.frame(1/60,true);fx.hud.flushReceiptLane();
+    assert.ok(!fx.hud.getFlightTextObstacles().some(entry=>entry.owner==='receipt'),'dismiss removes the obstacle on the same paint');
+    // The real UI root ticks other presentation owners after HUD.frame. A receipt emitted
+    // by one of them still gets placed in that very paint, with no second rAF.
+    queries=0;let lateEvents=0;
+    const owner={state:fx.state,hud:fx.hud,toasts,_hudVisibleLast:true,
+      screenManager:{isOpen:()=>false,isLiveOverlay:()=>false},
+      discoveryPlate:{tick(){lateEvents++;fx.bus.emit('toast',{text:'Late cargo receipt',kind:'success'});}}};
+    uiRoot.frame.call(owner,1/60,fx.state);
+    assert.equal(lateEvents,1);assert.ok(queries>0,'the root flushes late owner mutations before returning');
+    assert.ok(fx.hud.getFlightTextObstacles().some(entry=>entry.owner==='receipt'));
+    const beforeDestroy=queries;fx.hud.destroy();
+    fx.bus.emit('toast',{text:'Another receipt',kind:'success'});
+    assert.equal(queries,beforeDestroy,'a destroyed HUD retains no placement listener');
+  } finally {
+    toasts.destroy();fx.hud.destroy();fx.restore();
+    if(previousRaf===undefined)delete globalThis.requestAnimationFrame;else globalThis.requestAnimationFrame=previousRaf;
+  }
 });

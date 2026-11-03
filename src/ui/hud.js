@@ -1813,6 +1813,9 @@ export function createHud(ctx, alerts) {
   // recovery). Keep every bus subscription owned by this instance so a detached HUD cannot
   // continue doing work or retain its old state through the shared bus.
   const hudUnsubscribers = [];
+  // The HUD frame is the single pre-paint placement owner. Event bursts only mark it dirty.
+  let receiptLanePlacementDirty = true;
+  function invalidateReceiptLane() { receiptLanePlacementDirty = true; }
   const on = (event, listener, opts = undefined) => {
     if (!ctx.bus || typeof ctx.bus.on !== 'function') return null;
     const unsubscribe = ctx.bus.on(event, listener, opts);
@@ -1985,7 +1988,7 @@ export function createHud(ctx, alerts) {
     else if (returnFocus) mtDetailsButton.focus?.();
     flightTextObstaclesStale = true;
     alertLanePlacementStale = true;
-    placeReceiptLane();
+    invalidateReceiptLane();
   };
   // Ctrl-drag belongs to the tracker, not its interactive disclosure or scroll surface.
   const protectMissionDetailsPointer = (event) => { if (event.ctrlKey) event.stopPropagation(); };
@@ -2814,7 +2817,7 @@ export function createHud(ctx, alerts) {
       caption.classList.remove('show');
       caption.hidden = true;
       flightTextObstaclesStale = true;
-      placeReceiptLane();
+      invalidateReceiptLane();
       return;
     }
     caption.textContent = p.text;
@@ -2828,7 +2831,7 @@ export function createHud(ctx, alerts) {
       else setTimeout(releaseCaptionFlush, 16);
     }
     caption.classList.add('show');
-    placeReceiptLane();
+    invalidateReceiptLane();
     // A voice body carries its real duration — the caption outlives a long slow-register bark
     // instead of dying mid-word (assertive/polite defaults stand for non-voice captions).
     const readableTtl = Math.max(2400, Math.min(12000, Math.ceil((caption.scrollHeight || 0) / 19) * 900));
@@ -2841,7 +2844,7 @@ export function createHud(ctx, alerts) {
         caption.hidden = true;
           externalCaptionsStale = true;
           flightTextObstaclesStale = true;
-          placeReceiptLane();
+          invalidateReceiptLane();
       }, 220); // let the fade-out finish before hiding
     }, ttl);
   });
@@ -5466,7 +5469,7 @@ export function createHud(ctx, alerts) {
     }
   }
 
-  function frame(dt) {
+  function frame(dt, deferReceiptPlacement = false) {
     // Read dirty obstacle geometry before this frame's HUD writes.
     if (objectiveEdgeBoxes.stale) objectiveEdgeObstacles();
     const frameDt = Number.isFinite(dt) && dt > 0 ? Math.min(dt, 0.25) : 1 / 60;
@@ -5736,7 +5739,7 @@ export function createHud(ctx, alerts) {
     // --- off-screen objective arrow ---
     if (overlayTick || slow) updateObjectiveArrow(p, slow);
     if (overlayTick || slow) updateFirstUseHint(p);
-    if (slow) placeReceiptLane();
+    if (slow) invalidateReceiptLane();
     if (slow) updateAdventureDecisionLine();
     if (slow) refreshLeftContextClasses();
 
@@ -5750,6 +5753,7 @@ export function createHud(ctx, alerts) {
 
     // --- Overview Strip: elapsed-time cadence stays at <=5 Hz at any render refresh rate. ---
     if (overviewTick) updateOverview();
+    if (!deferReceiptPlacement) flushReceiptLane();
   }
 
   function tickHidden(dt) {
@@ -5980,7 +5984,7 @@ export function createHud(ctx, alerts) {
   }
   function invalidateAndPlaceHudOverlays() {
     invalidateObjectiveEdgeBoxes();
-    placeReceiptLane();
+    invalidateReceiptLane();
   }
   if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
     window.addEventListener('resize', invalidateObjectiveEdgeBoxes);
@@ -6475,14 +6479,14 @@ export function createHud(ctx, alerts) {
     externalCaptionOpacity.set(el, el.style?.opacity || '');
     externalCaptionsStale = true;
     flightTextObstaclesStale = true;
-    placeReceiptLane();
+    invalidateReceiptLane();
     return true;
   }
   function refreshExternalFlightCaption(el) {
     if (!el || !externalFlightCaptions.has(el)) return false;
     externalCaptionsStale = true;
     flightTextObstaclesStale = true;
-    placeReceiptLane();
+    invalidateReceiptLane();
     return true;
   }
   function releaseExternalFlightCaption(el) {
@@ -6493,7 +6497,7 @@ export function createHud(ctx, alerts) {
     clearExternalFlightCaptionPlacement(el);
     externalCaptionsStale = true;
     flightTextObstaclesStale = true;
-    placeReceiptLane();
+    invalidateReceiptLane();
     return true;
   }
   function placeOrdinaryCaptionInSafeBands(layout, w, h) {
@@ -6519,6 +6523,13 @@ export function createHud(ctx, alerts) {
       captionBand = captionBands.find((band) => band.bottom - band.top >= captionHeight + 8);
     }
     placeCaptionInSafeSlot(caption, layout, captionSlot, null, captionBand || captionBands[0]);
+  }
+  // The main UI frame calls this after its prompt, toast and caption ticks. Standalone HUD
+  // users flush at the end of frame() instead. No second rAF or slow-tick delay is needed.
+  function flushReceiptLane() {
+    if (!receiptLanePlacementDirty) return;
+    receiptLanePlacementDirty = false;
+    placeReceiptLane();
   }
   function placeReceiptLane(resolvedLayout = null) {
     if (toastsLaneEl === null) toastsLaneEl = document.getElementById('toasts');
@@ -6627,14 +6638,14 @@ export function createHud(ctx, alerts) {
     refreshFlightTextObstacleSnapshot();
   }
   if (typeof window !== 'undefined' && window.addEventListener) {
-    const repositionHudOverlays = () => placeReceiptLane();
+    const repositionHudOverlays = () => invalidateReceiptLane();
     window.addEventListener('resize', repositionHudOverlays);
     hudUnsubscribers.push(() => window.removeEventListener('resize', repositionHudOverlays));
   }
-  on('toast', () => {
+  on('hud:receiptGeometryChanged', () => {
     externalCaptionsStale = true;
     flightTextObstaclesStale = true;
-    placeReceiptLane();
+    invalidateReceiptLane();
   });
   if (typeof MutationObserver !== 'undefined') {
     const alertLaneOptions = {
@@ -6648,14 +6659,14 @@ export function createHud(ctx, alerts) {
         if (records?.length && records.every((record) => alertLaneStyleMutationIsOwned(record, alertLane))) return;
         alertLanePlacementStale = true;
         flightTextObstaclesStale = true;
-        placeReceiptLane();
+        invalidateReceiptLane();
       });
       alertLaneObserver.observe(alertLane, alertLaneOptions);
       if (document.documentElement) alertLaneObserver.observe(document.documentElement, {
         attributes: true, attributeFilter: ['data-sf-mobile-flight'],
       });
       alertLanePlacementStale = true;
-      placeReceiptLane();
+      invalidateReceiptLane();
       return true;
     };
     if (!observeAlertLane()) {
@@ -6799,13 +6810,13 @@ export function createHud(ctx, alerts) {
     for (const el of document.querySelectorAll?.('.sf-airlock--flight-safe, #sf-sector-law[data-flight-critical="true"]:not([hidden])') || []) {
       externalFlightCaptions.add(el);
     }
-    if (externalFlightCaptions.size) placeReceiptLane();
+    if (externalFlightCaptions.size) invalidateReceiptLane();
   }
 
   refreshLeftContextClasses();
 
   return {
-    frame, tickHidden, forceRefresh, setVisible, refreshObjectives, arrive,
+    frame, flushReceiptLane, tickHidden, forceRefresh, setVisible, refreshObjectives, arrive,
     registerExternalFlightCaption, refreshExternalFlightCaption, releaseExternalFlightCaption,
     getFlightTextObstacles,
     getGLagOffset: () => ({ x: opticalGLag.x, y: opticalGLag.y }),
