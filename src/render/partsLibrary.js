@@ -38,7 +38,7 @@ import { CERES_SHIPBREAK_FILES, isCeresShipbreakSection, ceresShipbreakTransform
 import * as THREE from 'three';
 import { attachSwarmSpecialistVisual } from './swarmSpecialistVisuals.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { detachPackageTexture, isPackageGeometryDetached, rehydrateDetachedGeometries, retainPackageGeometryCpu } from './packageCpuDetach.js';
+import { detachPackageTexture, isPackageGeometryDetached, rehydrateDetachedGeometries, retainPackageGeometryCpu, LIVE_PACKAGE_CPU_PAYLOAD } from './packageCpuDetach.js';
 import { textureGpuResident } from './startupGpuResidency.js';
 import { FACTION_PALETTES, TEAM_FALLBACK_PALETTES, paintDecalForPersonality } from '../data/palettes.js';
 import { paletteWithShipAppearance, shipAppearanceSignature } from '../core/shipAppearance.js';
@@ -895,6 +895,20 @@ function registerPreparedAuthoredAdmission(scene, boundary, authored) {
     registered = registerPreparedAuthoredRoot(scene, boundary, contextRoot) || registered;
   }
   if (!registered) return false;
+  // A real mounted boundary owns these prepared bytes before its first GPU upload/detach.
+  // Publication keeps the lease; the existing epoch-scoped owner cleanup retires failures,
+  // replacement admissions and removed boundaries without pinning cache-only packages.
+  const releaseCpu = scene[LIVE_PACKAGE_CPU_PAYLOAD]?.(boundary, root, contextRoots);
+  if (typeof releaseCpu === 'function') {
+    releaseCpu.unregisterOwner = registerOwnerRelease(boundary, releaseCpu);
+    // A superseded prepared disposer deliberately cannot act on the newer boundary epoch.
+    // Its own admission settlement can still retire this uncommitted CPU lease exactly.
+    const completion = boundary.userData?.authoredUpgradePromise;
+    const retireUnpublished = () => {
+      if (root[LIVE_PACKAGE_CPU_PAYLOAD] === releaseCpu && root.parent !== boundary) releaseCpu();
+    };
+    if (completion?.then) completion.then(retireUnpublished, retireUnpublished);
+  }
   authored.preparedContextRoots = [...contextRoots];
   authored.preparedScene = scene;
   authored.preparedBoundary = boundary;
@@ -17175,6 +17189,7 @@ export function registerOwnerRelease(owner, release) {
   release.__ownerReleaseScope = owner && owner.userData
     ? (owner.userData.admissionEpoch ?? null) : null;
   state.releases.add(release);
+  return () => state.releases.delete(release);
 }
 
 export function releaseOwnerInstances(owner, expectedEpoch = null) {
