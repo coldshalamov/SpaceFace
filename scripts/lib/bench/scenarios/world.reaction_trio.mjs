@@ -48,6 +48,8 @@ import {
   snapshotFeatureMaps,
 } from '../../../../src/data/featureFlags.js';
 import { realPathProof } from '../realPath.mjs';
+import { SECTOR_ANCHORS } from '../../../../src/data/sectorAnchors.js';
+import { sectorLocalToGlobalForSector } from '../../../../src/data/sectorCoordinates.js';
 
 const DT = 1 / 60;
 const SECTOR_ID = 'sector_helios_prime';
@@ -119,7 +121,7 @@ export function bodilessActors(runtime, actors) {
 }
 
 /** Boot the full production world in a real sector. Not a fixture: this is the shipping manifest. */
-export async function bootWorld(seed) {
+export async function bootWorld(seed, { arriveAtStationId = null } = {}) {
   const runtime = createAuthoritativeRuntime({ profileId: 'production', nodeSafeOnly: true, seed });
   const state = runtime.state;
   if (!state) throw new Error('world.reaction_trio: runtime has no simulation state');
@@ -129,8 +131,12 @@ export async function bootWorld(seed) {
   state.settings.gameplay.aiBackend = 'sg06-tactical';
   if (!state.input.actions) state.input.actions = { brake: false, autopursuit: false };
 
+  // Where the player materializes matters: since RC-27 (903b1b10b) the sector's first two ambient
+  // hulls anchor on the player's arrival point, not the station. A clause that stages at a station
+  // must ARRIVE there, or the hulls that would witness it are left behind at the origin.
+  const arrival = arrivalPos(arriveAtStationId);
   const player = runtime.spawn(makeShipEntitySpec('ship_hornet', {
-    isPlayer: true, player: state.player, pos: { x: 0, z: 0 }, fittings: [],
+    isPlayer: true, player: state.player, pos: arrival, fittings: [],
   }));
   state.playerId = player.id;
 
@@ -138,7 +144,9 @@ export async function bootWorld(seed) {
   if (!world || typeof world.enterSector !== 'function') {
     throw new Error('world.reaction_trio: the `world` system is not registered — this is not the real path');
   }
-  world.enterSector(SECTOR_ID);
+  // An explicit arrival keeps its pose (the enter's own `placePlayer: false` path); otherwise the
+  // default boot placement puts the player on the sector's arrival point, as before.
+  world.enterSector(SECTOR_ID, arriveAtStationId ? { placePlayer: false } : {});
 
   const physics = runtime.getSystem('physics');
   if (!physics || typeof physics.prepareBackend !== 'function') {
@@ -157,6 +165,14 @@ export async function bootWorld(seed) {
     }
   }
   return { runtime, state, bus: runtime.bus, player };
+}
+
+function arrivalPos(stationId) {
+  if (!stationId) return { x: 0, z: 0 };
+  const anchor = (SECTOR_ANCHORS[SECTOR_ID]?.stations || []).find((st) => st.id === stationId);
+  if (!anchor) throw new Error(`world.reaction_trio: no anchor for ${stationId} in ${SECTOR_ID}`);
+  const g = sectorLocalToGlobalForSector(anchor.pos, SECTOR_ID);
+  return { x: g.x + 120, z: g.z + 40 };
 }
 
 /** Move the player to witness an event. Trap 1: an unwitnessed event is an unsimulated event. */
@@ -215,7 +231,7 @@ function anchorStation(state) {
 // `stimulus: false` runs the identical staging with NO kill: the control that proves a "met" reading
 // came from the world reacting and not from the instrument's own staging.
 export async function clausePatrolChoice(seed, { stimulus = true } = {}) {
-  const h = await bootWorld(seed);
+  const h = await bootWorld(seed, { arriveAtStationId: JURISDICTION_STATION_ID });
   const { runtime, state, bus } = h;
   const station = anchorStation(state);
   if (!station) throw new Error('world.reaction_trio: the real sector produced no station to hold jurisdiction');
