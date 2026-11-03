@@ -650,6 +650,75 @@ test('alert lane placement observer ignores its own style writes and cleanup rel
   assert.equal(context.alertLanePlacementActive, false);
 });
 
+test('short landscape flight text uses the gap between the camera key and radar', () => {
+  const ast = parse(HUD_SRC, { sourceType: 'module' });
+  let declaration;
+  const visit = (node) => {
+    if (!node || typeof node !== 'object' || declaration) return;
+    if (node.type === 'FunctionDeclaration' && node.id?.name === 'overlaySafeSlot') {
+      declaration = HUD_SRC.slice(node.start, node.end);
+      return;
+    }
+    for (const value of Object.values(node)) {
+      if (Array.isArray(value)) value.forEach(visit);
+      else if (value && typeof value === 'object') visit(value);
+    }
+  };
+  visit(ast);
+  assert.ok(declaration);
+  // The ordinary 844 x 390 phone capture has the camera key at x=168..316
+  // and the radar to its right. Keep the complete text column between them.
+  const key = { left: 168, right: 316, top: 8, bottom: 52, width: 148, height: 44 };
+  const dock = { left: 612, right: 760, top: 95, bottom: 260, width: 148, height: 165 };
+  const keyNode = { isConnected: true, getBoundingClientRect: () => key };
+  const context = {
+    document: { documentElement: { getAttribute: () => '1' } },
+    root: { querySelector: () => keyNode },
+    plateBox: (el) => el?.getBoundingClientRect?.() || null,
+    objectiveEdgeObstacles: () => ({ rail: null, right: dock }),
+  };
+  const place = runInNewContext(`(${declaration})`, context);
+  const slot = place({ safe: { left: 0, right: 844, width: 844 } }, 844, 390);
+  assert.ok(slot.x >= key.right + 8);
+  assert.ok(slot.x + slot.width <= dock.left - 8);
+  assert.ok(slot.width >= 200, 'normal sized text retains a useful line width');
+  assert.equal(slot.captionSlot, undefined, 'captions and receipts share the measured column');
+
+  let bandsDeclaration;
+  const findBands = (node) => {
+    if (!node || typeof node !== 'object' || bandsDeclaration) return;
+    if (node.type === 'FunctionDeclaration' && node.id?.name === 'freeOverlayBands') {
+      bandsDeclaration = HUD_SRC.slice(node.start, node.end);
+      return;
+    }
+    for (const value of Object.values(node)) {
+      if (Array.isArray(value)) value.forEach(findBands);
+      else if (value && typeof value === 'object') findBands(value);
+    }
+  };
+  findBands(ast);
+  assert.ok(bandsDeclaration);
+  const box = (left, top, width, height) => ({ left, top, width, height,
+    right: left + width, bottom: top + height });
+  const node = (rect, touch = false) => ({ getBoundingClientRect: () => rect,
+    closest: () => touch ? {} : null, matches: () => false });
+  const camera = node(key);
+  const status = node(box(14, 10, 124, 92), true);
+  const pause = node(box(780, 10, 52, 52), true);
+  const radar = node(dock);
+  const alert = node(box(slot.x, 12, slot.width, 24));
+  const receipt = node(box(slot.x, 52, slot.width, 24));
+  context.root.querySelectorAll = (selector) => selector.includes('sf-caption.show') ? [receipt] : [radar];
+  context.document.querySelectorAll = (selector) => selector.startsWith('#alerts') ? [alert] : [];
+  context.responsiveOverlayObstacles = () => [camera, status, pause];
+  context.yieldedFlightVisuals = new Map();
+  context.externalFlightCaptions = new Set();
+  const freeBands = runInNewContext(`(${bandsDeclaration})`, context);
+  const bands = freeBands(slot, 390, { viewport: { width: 844 } }, null, true);
+  assert.ok(bands.some((band) => band.top >= receipt.getBoundingClientRect().bottom
+    && band.bottom - band.top >= 48), 'an additional caption has a separate readable band');
+});
+
 test('natural mobile discovery geometry chooses the opposite thumb lane and waits safely when full', () => {
   const names = new Set(['overlaySafeSlot', 'freeOverlayBands', 'placeExternalFlightCaptions',
     'placeCaptionInSafeSlot', 'clearExternalFlightCaptionPlacement', 'plateBox']);
