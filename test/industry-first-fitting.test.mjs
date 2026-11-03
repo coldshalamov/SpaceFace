@@ -30,7 +30,7 @@ test('collected ore becomes a small fitting, survives Continue, and fits the Hit
  const ships=sim.registry.get('ships'),craft=sim.registry.get('crafting');
  ships.recomputeEntity(player.id,state.player.ownedShips[0].fittings);
  const foundry=station('station_forge'),yard=station('station_vesta_outlying_yard');
- const stock={cmdty_ore_iron:4,cmdty_silicate:4,cmdty_volatiles:2};
+ const stock={cmdty_ore_iron:6,cmdty_silicate:4};
  const miner=sim.registry.get('mining');
  for(const [id,qty] of Object.entries(stock)) {
    const pickup=sim.spawn({type:'pickup',pos:{...player.pos},radius:2.2,
@@ -39,16 +39,14 @@ test('collected ore becomes a small fitting, survives Continue, and fits the Hit
    assert.equal(result.accepted,qty);assert.equal(pickup.alive,false);
  }
  const build=id=>attemptIndustryBuild({crafting:craft,bpId:id,stationId:foundry.id});
- for(let i=0;i<2;i++) {assert.equal(industryReadiness(BLUEPRINT_BY_ID.get('bp_refine_metals'),state,foundry).state,'ready');assert.equal(build('bp_refine_metals'),true);}
- assert.equal(build('bp_refine_polymers'),true);
+ for(let i=0;i<3;i++) {assert.equal(industryReadiness(BLUEPRINT_BY_ID.get('bp_refine_metals'),state,foundry).state,'ready');assert.equal(build('bp_refine_metals'),true);}
  const bp=BLUEPRINT_BY_ID.get('bp_build_cargo_net_s');
  assert.equal(industryReadiness(bp,state,foundry).state,'ready');
  assert.equal(industryReadiness(bp,state,yard).state,'station','refining-only outlying yard cannot assemble');
  const before=structuredClone(state.player.cargo.items);
  assert.equal(build(bp.id),true);
- assert.equal(state.player.cargo.items.cmdty_refined_metals||0,(before.cmdty_refined_metals||0)-2);
- assert.equal(state.player.cargo.items.cmdty_silicate||0,(before.cmdty_silicate||0)-2);
- assert.equal(state.player.cargo.items.cmdty_polymers||0,(before.cmdty_polymers||0)-1);
+ assert.equal(state.player.cargo.items.cmdty_refined_metals||0,(before.cmdty_refined_metals||0)-3);
+ assert.equal(state.player.cargo.items.cmdty_silicate||0,(before.cmdty_silicate||0)-4);
  assert.equal(state.player.credits,0);assert.equal(state.player.moduleInventory.length,0);
  craft.update(10,state);const saved=craft.serialize();craft.deserialize(structuredClone(saved));
  assert.equal(state.crafting.queues[foundry.id].elapsed,10);
