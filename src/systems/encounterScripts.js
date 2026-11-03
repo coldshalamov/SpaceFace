@@ -3299,6 +3299,34 @@ const convoy = {
     tickFreightCargoCustody(d, live, state, now);
   },
   event(d, live, state, name, p) {
+    if (name === 'openingCarrierEscaped') {
+      // Only the freight owner may retire its pre-spill marker. A real ledger, recovery
+      // persistence, or mismatched identity belongs to another lifecycle and stays untouched.
+      if (live.shapeId !== 'opening_hauler_raid' || live.data.freightCargoCustody
+          || !p || p.carrierId !== live.data.predationTargetId) return;
+      const carrier = state.entities?.get(p.carrierId);
+      const data = carrier && carrier.data;
+      const stamp = data && data.freightCustody;
+      const manifest = data && data.cargoManifest;
+      const identity = live.data.predationTargetIdentityKey;
+      if (!carrier || carrier.alive === false || carrier.occupantGeneration !== p.generation
+          || live.roles?.[carrier.id] !== 'hauler' || !identity || !stamp
+          || data.freightCustodyCarrierIdentityKey !== identity || carrier[FREIGHT_CARRIER_INSTANCE] !== identity
+          || (data.predationEncounterId && data.predationEncounterId !== live.id)
+          || stamp.encounterId !== live.id || stamp.status !== 'carrier'
+          || stamp.carrierId !== carrier.id || stamp.carrierIdentityKey !== identity
+          || data.freightCustodyPersistence || !manifest || stamp.manifestId !== p.manifestId
+          || manifest.manifestId !== p.manifestId || Number(manifest.totalQty) !== p.totalQty
+          || !Array.isArray(manifest.lines)
+          || JSON.stringify(manifest.lines.map((line) => [line.commodityId, line.qty])) !== p.lines) return;
+      delete data.freightCustody;
+      delete data.freightCustodyCarrierIdentityKey;
+      delete carrier[FREIGHT_CARRIER_INSTANCE];
+      if (data.predationEncounterId !== live.id && data.predationIdentityKey === stamp.carrierIdentityKey) {
+        delete data.predationIdentityKey;
+      }
+      return;
+    }
     if (name === 'subsystemDisabled') {
       if (!p || p.subsystemId !== 'subsystem_drive') return;
       if (p.targetId === live.data.predationTargetId) {
