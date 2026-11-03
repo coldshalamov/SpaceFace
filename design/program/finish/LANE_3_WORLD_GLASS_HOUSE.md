@@ -14,6 +14,8 @@ Status words: `OPEN`, `ACTIVE`, `LANDED <sha>`, `SKIPPED (<reason>)`.
 
 ## Inbox (other lanes append one line: date, lane, path, what/why)
 
+- 2026-11-03 integration: Flight controls gain F10 keyboard entry with rebind-aware fallback; the Line reader matches its class verdict to the live attachment; the chart keeps foreign objectives in their own sector and routes Anvil search to a safe outer approach. Focused input, Line and map checks passed. The Line worker projection lands with central integration; refreshed ordinary Anvil arrival and the full player work route remain open.
+
 - 2026-11-03 integration: rescue lifters retain the same survivor in durable custody after boarding; only verified station arrival settles rescue credit. Disable, destruction, sector exit and Continue retain or rematerialize that person. Recycled victim slots now mint separate person identities, preventing one person's expiry from deleting another passenger. Focused real-physics/save-envelope/identity checks pass; the uninterrupted ordinary rescue-to-cleanup view and visible passenger presentation remain open.
 
 - 2026-11-03 integration: `special500` atmospheric messages now retain their full sender/text in the existing Comms backlog with its unread cue, instead of becoming stacked flight receipts. Ordinary cargo/encounter receipts keep their behavior. Fourteen focused/real-DOM checks passed, including the opening attention gate and open-history refresh; this is not a whole-game or device acceptance claim. Current creative departments and player outcomes are in `STUDIO.md`.
