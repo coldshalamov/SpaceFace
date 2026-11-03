@@ -53,7 +53,7 @@ test('banks use one shared, bounded steel surface through the production factory
   assert.ok(bodies[1].geometry.getAttribute('position').count > 0);
 });
 
-test('top has three broad flush panels, two weld divisions and an inset wear rim', () => {
+test('warm steel panels and end mark remain flush, with a real inset chamfer above the collision plane', () => {
   const body = meshes(createVisualFactory().build(bank(4)))[0];
   const { position, normal, color } = body.geometry.attributes;
   function colorAt(x, z) {
@@ -73,14 +73,32 @@ test('top has three broad flush panels, two weld divisions and an inset wear rim
   }
   const panel = colorAt(-0.6, 0.1), middle = colorAt(0, 0.1), other = colorAt(0.6, 0.1);
   const weldA = colorAt(-0.333, 0.1), weldB = colorAt(0.333, 0.1);
-  const edge = colorAt(0.1, 0.96);
+  const mark = colorAt(-0.81, 0.1);
   assert.deepEqual(panel, other);
   assert.notDeepEqual(panel, middle);
   assert.deepEqual(weldA, weldB);
   assert.notDeepEqual(weldA, panel);
-  assert.notDeepEqual(edge, middle);
-  for (let i = 0; i < position.count; i++) assert.ok(Math.abs(position.getY(i)) === 1,
-    'surface markings remain flush, not painted holes or floating geometry');
+  assert.ok(mark[0] > mark[1] && mark[1] > mark[2], 'the end marking is restrained ochre');
+  assert.notDeepEqual(mark, panel);
+  assert.ok(position.count / 3 <= 100, 'the shared surface stays a bounded simple mesh');
+  let bevelVertices = 0;
+  const walls = new Set();
+  for (let i = 0; i < position.count; i++) {
+    const x = position.getX(i), y = position.getY(i), z = position.getZ(i);
+    assert.ok(Math.abs(x) <= 1 && Math.abs(y) <= 1 && Math.abs(z) <= 1);
+    if (normal.getY(i) > 0 && normal.getY(i) < 0.999) {
+      bevelVertices++;
+      assert.ok(y >= 0.7 - 1e-6, 'chamfer stays above the flight plane');
+    }
+    if (normal.getY(i) === 0 && y < 0) {
+      if (x === 1) walls.add('+x');
+      if (x === -1) walls.add('-x');
+      if (z === 1) walls.add('+z');
+      if (z === -1) walls.add('-z');
+    }
+  }
+  assert.ok(bevelVertices > 0, 'sloped faces have geometric normals');
+  assert.deepEqual([...walls].sort(), ['+x', '+z', '-x', '-z'], 'all four planar walls reach the flight plane');
 });
 
 test('retained batch admission preserves vertex colors for the shared steel surface', () => {

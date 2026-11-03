@@ -1,7 +1,7 @@
 {
   "schema": "spaceface.localizationCatalog.v1",
   "locale": "en-US",
-  "inventoryDigest": "20ae9e9edcba4a2501c07350e1d401ba6773142f7c1a82045b349ea1dd824b9c",
+  "inventoryDigest": "7220257e95c59e537719dcce808924cf1ea94379448e57a2042bea18a5e5b279",
   "messages": {
     "loc.index.template.text.12f9c963d733": "SpaceFace",
     "loc.index.template.text.4eb12ed308ef": "SPACEFACE",
@@ -9854,6 +9854,10 @@
     "loc.src.systems.barkdirector.field.text.5c32c808593a": "{who} made off with {qty} units of {what}${bearing ?",
     "loc.src.systems.barkdirector.field.text.66c01e716b98": "Manifest line reassigned under {payload_routingCode_routing_hold} — proceed to the holding point.",
     "loc.src.systems.barkdirector.field.text.a1ba65e50a4c": "Payment posted — the hunt cools {pct}%.",
+    "loc.src.systems.barkdirector.field.text.a76e34af4a54": "Cargo recovery notice: restitution after the spill.",
+    "loc.src.systems.barkdirector.field.text.a77160258157": "Cargo recovery notice: cargo returned.",
+    "loc.src.systems.barkdirector.field.text.c03eb3c1b9c6": "Cargo recovery notice",
+    "loc.src.systems.barkdirector.field.text.c0f5ccfd76e4": "Cargo recovery notice: bounty after the spill.",
     "loc.src.systems.barkdirector.field.text.ea1be9c2e388": "Breaking off. This chase is going nowhere.",
     "loc.src.systems.barkdirector.field.text.f40ce4692d3a": "Ace on your line. Cutting it.",
     "loc.src.systems.beacons.field.name.389d1c7dea63": "beacons",
