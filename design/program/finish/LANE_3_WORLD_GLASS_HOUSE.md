@@ -337,6 +337,30 @@ Rows are the spec (`build_map.md` §31–§32; read each row's prose before brie
   and fed at t=1346; `m_4` settled, story advanced to "Tethys board — Cinder
   marks", m_5 (b2:cinder) accepted and the ship gate-hopped Tethys→Vesta→Charon
   Expanse cleanly. Every Furnace lot resolved `received`, zero lost.
+  **2026-11-03 Ceres first-job consequence / return seam (owner-scoped follow-up):** the authored B1 `campaign47a:b1:infested`
+  detail is a *four marked suture-mite sites + three finite ore pods* job. The fixed hauler
+  dressing remains owned by `worldOneOffs`; the player physically tows the three mission lots
+  through the 90-WU CR-FEED intake. The ecology owns every mite and its drive: only the four
+  authored site keys count toward clearance, and the neighboring refinery fauna are not a
+  blanket combat or safety flag (`src/data/alienFauna.js`, `src/systems/alienEcology.js`,
+  `src/missions/furnaceWorksite.js`, `src/world/worldOneOffs.js`). The receipt owner already
+  settles all four real pod-feed counts from its retained `furnaceLots`, requires complementary
+  verified losses for a cargo-short settlement, and prorates only the disposal payment
+  (`src/missions/furnaceWorksiteRuntime.js`; `scripts/test-furnace-worksite.mjs`).
+  Run 83 only proved the 3/0 path. Before this pass, both the B1 solved-spine memory and the
+  Mechanic berth ledger always narrated that the *whole hauler* was fed, so a legitimate 0/3
+  clearance-only close could return with a false story even though the mission paid zero.
+  The bounded repair carries the already-settled 0/3, 1/2, 2/1, or 3/0 result through the
+  accepted ordered receipt into Maera's existing greeting and the existing Mechanic ledger.
+  Restored/legacy records without a valid settlement remain neutral. No new mission, cargo
+  writer, reward, hostile-mite rule, or ambient-fauna clearance was introduced.
+  **2026-11-03 scoped consequence check (owner tests, not another actual-game route):** the
+  candidate owner tests pass 25/25 against the untouched-parent prose control at 22/22. The
+  fixture uses actual `prepareFurnaceSettlement` results and the extracted cleanup → story
+  callback seam, then checks accepted receipt and Maera/Mechanic readers. Campaign-sidecar
+  serialize/apply and duplicate behavior are covered; this is not full game/world Save/Continue.
+  Test imports still use sparse-source fallback for unresolved unrelated dependencies. No
+  rendered route, ordinary-input, or performance acceptance was obtained.
   **Runs 85–93 — the Cinder Wasp delivery chain (seed 4242, actual-game harness):**
   m_5's authored third act (3 wasps → marked evidence hull → Rook's pad) produced
   a four-layer wedge chain, each layer one owned fix: (a) **egress lifecycle

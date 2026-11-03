@@ -1,6 +1,7 @@
 import { authoredCinderRoute, retainCinderRetry } from '../missions/cinderRoute.js';
 import { snapshotFurnaceWorksite, retireFurnaceWorksite, syncFurnaceWorksite, snapshotFurnaceAftermath, restoreFurnaceAftermath, normalizeFurnaceAftermath, materializeFurnaceAftermath } from '../missions/furnaceWorksiteRuntime.js';
 import { authoredFurnaceWorksite } from '../missions/furnaceWorksite.js';
+import { furnaceSettlementFromMission } from '../story/campaign47a/campaignReceipts.js';
 // Row 413 extraction — methods moved verbatim out of missions.js;
 // spread back onto the missions object, so `this` still binds to the system at call time.
 import { CIVILIAN_MANIFEST_PAYLOAD_TYPE } from './lootShards.js';
@@ -1668,12 +1669,14 @@ export const missionStoryOps = {
       this._advanceStory(beat, { skipCredits: true });
       return true;
     }
+    const furnaceSettlement = furnaceSettlementFromMission(m, beat.beat, 'infested', 'mission:completed');
     const observed = recordBeatStep(this.state, 'mission:completed', {
       missionId: m.id,
       storyTag: m.storyTag,
       storyTargetId: m.storyTarget && m.storyTarget.id || null,
       physicalVerb: m.params && m.params.physicalVerb || beat.headlineVerb || null,
       completionMethod: m.params && m.params.completionMethod || null,
+      ...(furnaceSettlement || {}),
     }, this.state.simTime || 0);
     if (!observed || !observed.ok) return false;
     // §34.7 B1: the sealed manifest re-categorizes silent — the HUD does not notify, but
