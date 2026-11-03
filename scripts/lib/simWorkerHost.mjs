@@ -35,6 +35,9 @@ import { NEW_GAME } from '../../src/data/newGameDefaults.js';
 import { swarmSpecialistKind } from '../../src/data/swarmSpecialists.js';
 import { swarmSpecialistPresentationFrame } from '../../src/data/swarmSpecialistPresentation.js';
 import { isOrchardFrame } from '../../src/data/anvilOrchardIdentity.js';
+import { ceresWorkfleetRoleForEntity } from '../../src/data/ceresWorkfleetIdentity.js';
+import { readCeresCradlePublicLayout } from '../../src/core/ceresWorkfleetLayoutAdmission.js';
+import { readCeresWorkfleetPublicActuation } from '../../src/core/ceresWorkfleetActuation.js';
 import { COMBAT_FLAGS, applyFeatureConfigToMaps } from '../../src/data/featureFlags.js';
 import {
   makeEvidenceSpindleSpec,
@@ -74,6 +77,7 @@ import {
   update47aScenarioActorIntents,
 } from './simScenarioDriver.mjs';
 import { drainSimCommandEnvelopes } from './simCommandChannel.mjs';
+import { reconcileLaneComponentSelection } from '../../src/core/simLaneCommands.js';
 import { projectBridgeEvent, resolveEventEntityRef } from './simEventBridge.mjs';
 import { createAuthoritativeRuntime } from '../../src/runtime/createAuthoritativeRuntime.js';
 import { createAuthoritativeStepper } from '../../src/core/authoritativeSimStep.js';
@@ -499,7 +503,7 @@ function writeVitalShadow(e, shadow, krakenFrame) {
   return shadow;
 }
 
-function entityInfoBlock(state, entityId) {
+function entityInfoBlock(state, entityId, host) {
   const e = resolveWorldPresentationEntity(state, entityId);
   if (!e) return null;
   const data = e.data && typeof e.data === 'object' ? e.data : {};
@@ -538,8 +542,12 @@ function entityInfoBlock(state, entityId) {
     isPlayer: e.isPlayer === true,
     farResident: e.farResident === true,
     fieldResident: e.fieldResident === true,
+    noMesh: e._noMesh === true,
     flags: flatFlags,
     ...(isOrchardFrame(e) ? { physicsBody: canonicalClone(e.physicsBody) } : {}),
+    ...(ceresWorkfleetRoleForEntity(e) === 'cradle' ? {
+      ceresCradleReceipt: readCeresCradlePublicLayout(e, state, host.registry?.get('physics')?._sg02, host.lifecycleGeneration),
+    } : {}),
     vitals: entityVitalsOf(e, krakenMotionFrame(state, e)),
     data: canonicalClone(data),
   };
@@ -788,6 +796,8 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
     inputPublishes: [],       // per-step publish records drained onto the reply
     vitalShadow: new Map(),   // entityId -> scalar tuple (production diff channel)
     vitalSeen: new Set(),     // reused membership scratch for vitalShadow cleanup
+    ceresCradleIds: new Set(),
+    ceresActuationIds: new Set(),
     // replayed main→worker emits must not echo back — scoped to the replayed
     // TYPE so a cascaded emit (save:loaded riding a forwarded game:load)
     // still bridges: main's presenters need it to unstack screens.
@@ -1891,7 +1901,7 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
       initRebuild.pack = packJournalRange(journal, initRebuild.start, initRebuild.end, host.scratch, host.sabArena);
       initRebuild.spawnInfos = [];
       for (const entityId of initRebuild.pack.spawnEntityIds) {
-        const info = entityInfoBlock(host.state, entityId);
+        const info = entityInfoBlock(host.state, entityId, host);
         if (info) initRebuild.spawnInfos.push(info);
       }
     }
@@ -1903,6 +1913,7 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
     collectEntityVitals(host.state, host.vitalShadow, host.vitalSeen);
     host.ready = true;
     return {
+      lifecycleGeneration: host.lifecycleGeneration,
       journalSequence: host.committedJournalSequence,
       initRebuild,
       weaponVfxProjectiles: collectWeaponVfxProjectiles(host.state),
@@ -1922,6 +1933,8 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
   }
 
   async function handleInit(msg) {
+    host.lifecycleGeneration = Number.isSafeInteger(msg.generation) && msg.generation >= 0
+      ? msg.generation : (Number.isSafeInteger(msg.timeEffectsSnapshot?.generation) ? msg.timeEffectsSnapshot.generation : 0);
     host.profile = msg.profile === 'production' ? 'production' : 'legacy47a';
     if (host.profile === 'production') return handleInitProduction(msg);
     applyFeatureConfigToMaps(LEGACY47A_FEATURES);
@@ -2089,7 +2102,7 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
       initRebuild.pack = packJournalRange(journal, initRebuild.start, initRebuild.end, host.scratch, host.sabArena);
       initRebuild.spawnInfos = [];
       for (const entityId of initRebuild.pack.spawnEntityIds) {
-        const info = entityInfoBlock(state, entityId);
+        const info = entityInfoBlock(state, entityId, host);
         if (info) initRebuild.spawnInfos.push(info);
       }
     }
@@ -2102,6 +2115,7 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
     const initDomains = diffDomains(state, host.domainDiffSeq++);
     host.ready = true;
     return {
+      lifecycleGeneration: host.lifecycleGeneration,
       journalSequence: host.committedJournalSequence,
       initRebuild,
       weaponVfxProjectiles: collectWeaponVfxProjectiles(state),
@@ -2252,6 +2266,7 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
     }
     const steps = Number.isSafeInteger(msg.steps) ? Math.max(0, msg.steps) : 1;
     const production = host.profile === 'production';
+    reconcileLaneComponentSelection(state);
 
     // Present-side ack: main consumed up to ackJournalEnd → free the ring slots.
     if (Number.isSafeInteger(msg.ackJournalEnd) && msg.ackJournalEnd > 0) {
@@ -2262,6 +2277,7 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
     let journalStart = host.committedJournalSequence;
     if (production) host.inputPublishes.length = 0;
     for (let s = 0; s < steps; s++) {
+      if (s > 0) reconcileLaneComponentSelection(state);
       if (production) {
         host.stepper.step(SIM_DT, host.tickBoundary);
       } else {
@@ -2401,7 +2417,7 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
     host.committedJournalSequence = journalEnd;
     const spawnInfos = [];
     for (const entityId of pack.spawnEntityIds) {
-      const info = entityInfoBlock(state, entityId);
+      const info = entityInfoBlock(state, entityId, host);
       if (info) spawnInfos.push(info);
     }
     const packNs = nowNs() - packStart;
@@ -2411,6 +2427,54 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
     const entityVitals = production
       ? collectEntityVitals(state, host.vitalShadow, host.vitalSeen)
       : null;
+    // This single authored body may become ready or fail without a normal vital
+    // changing. Ship its complete vitals each existing packet so coalescing keeps
+    // the newest native receipt and the scalar layout it authenticates together.
+    if (production) {
+      const current = new Set();
+      const actuationCurrent = new Set();
+      for (const entity of state.entityList || []) {
+        const role = ceresWorkfleetRoleForEntity(entity);
+        if (role !== 'cradle' && role !== 'breaker' && role !== 'cutterHead') continue;
+        const fields = entityVitalsOf(entity, krakenMotionFrame(state, entity));
+        if (role === 'cradle') {
+          current.add(entity.id);
+          fields.ceresCradlePublic = {
+            receipt: readCeresCradlePublicLayout(entity, state, host.registry?.get('physics')?._sg02, host.lifecycleGeneration),
+            layout: entity.data?.ceresWorkfleetCradleLayout ?? null,
+            itineraryLayout: entity.data?.itinerary?.ceresWorkfleet?.cradleLayout ?? null,
+          };
+        } else {
+          actuationCurrent.add(entity.id);
+          fields.ceresWorkfleetPublic = {
+            receipt: readCeresWorkfleetPublicActuation(entity, state, host.lifecycleGeneration, host.registry?.get('physics')?._sg02),
+            playerOwned: entity.playerOwned === true, dataPlayerOwned: entity.data?.playerOwned === true,
+            controlled: !!entity.data?.controlLease, disabled: entity.data?.disabled === true,
+          };
+        }
+        const existing = entityVitals.findIndex(entry => entry[0] === entity.id);
+        if (existing >= 0) entityVitals[existing] = [entity.id, fields];
+        else entityVitals.push([entity.id, fields]);
+      }
+      for (const id of host.ceresCradleIds) if (!current.has(id) && state.entities.has(id)) {
+        const existing = entityVitals.findIndex(entry => entry[0] === id);
+        const fields = existing >= 0 ? entityVitals[existing][1]
+          : entityVitalsOf(state.entities.get(id), krakenMotionFrame(state, state.entities.get(id)));
+        fields.ceresCradlePublic = { receipt: null };
+        if (existing >= 0) entityVitals[existing] = [id, fields];
+        else entityVitals.push([id, fields]);
+      }
+      host.ceresCradleIds = current;
+      for (const id of host.ceresActuationIds) if (!actuationCurrent.has(id) && state.entities.has(id)) {
+        const existing = entityVitals.findIndex(entry => entry[0] === id);
+        const fields = existing >= 0 ? entityVitals[existing][1]
+          : entityVitalsOf(state.entities.get(id), krakenMotionFrame(state, state.entities.get(id)));
+        fields.ceresWorkfleetPublic = { receipt: null };
+        if (existing >= 0) entityVitals[existing] = [id, fields];
+        else entityVitals.push([id, fields]);
+      }
+      host.ceresActuationIds = actuationCurrent;
+    }
     const aux = diffAuxTables(state);
     host.auxUpsertsTotal += aux.upserts.length;
     host.auxRemovalsTotal += aux.removals.length;
@@ -2421,6 +2485,7 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
     const boundaryMs = Number(nowNs() - workStart) / 1e6;
     return {
       tick: msg.tick,
+      lifecycleGeneration: host.lifecycleGeneration,
       arrivalNs,
       completedTick,
       auxUpserts: aux.upserts,

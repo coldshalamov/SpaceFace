@@ -37,11 +37,13 @@ export const CERES_SHIPBREAK_MANIFEST = {
     { id:'ceres-second-measure-cutter',owner:'npcJobsRuntime',sequenceSource:'state.tick' }],
   components: definitions.flatMap(d => [
     { id: d.id, label: `${d.label.toUpperCase()} — CUT SEAM`, kind: 'weakpoint', anchorId: d.socket, initialStatus: 'intact' },
-    { id: supportId(d.id), label: `${d.label.toUpperCase()} — BRACE / RELEASE`, kind: 'repair', anchorId: d.support, initialStatus: 'unbraced' },
+    { id: supportId(d.id), label: d.id === 'long_plate' ? 'LONG PLATE — SUPPORT CLAMP' : `${d.label.toUpperCase()} — BRACE / RELEASE`, kind: 'repair', anchorId: d.support, initialStatus: 'unbraced' },
   ]),
   proxies: definitions.flatMap(d => [
     { id: `proxy_${d.id}`, componentId: d.id, anchorId: d.socket, offset: { x: 0, z: 0 }, shape: 'circle', radius: 28, bodyType: 'sensor' },
-    { id: `proxy_${supportId(d.id)}`, componentId: supportId(d.id), anchorId: d.support, offset: { x: 0, z: 0 }, shape: 'circle', radius: 3, bodyType: 'sensor' },
+    // The work socket remains exact; its selectable sensor is wide enough to aim at in flight.
+    // It is not a collider and does not move the support or the section.
+    { id: `proxy_${supportId(d.id)}`, componentId: supportId(d.id), anchorId: d.support, offset: { x: 0, z: 0 }, shape: 'circle', radius: d.id === 'long_plate' ? 6 : 3, bodyType: 'sensor' },
   ]),
   collisionProxies: [
     shellBox('aft_island', -180, -114, -70, 99),
@@ -68,13 +70,17 @@ export const CERES_SHIPBREAK_MANIFEST = {
   receivers: [], consequences: [], failureTriggers: [],
   stages: [{ id: 'working', placeId: rootId, scale: SCALE, label: 'SECOND MEASURE — SHIPBREAK', requires: [], presentation: {
     schemaVersion: 1,
-    fixtures: definitions.map(d => ({ id: `lamp_${d.id}`, kind: 'status-light', socketId: d.support, componentId: supportId(d.id), color: 0xe6a747, intensity: 0.8, radius: 1, opacity: 0.8 })),
-    animations: definitions.map(d => ({ id: `pulse_${d.id}`, kind: 'pulse', targetId: `lamp_${d.id}`, rate: 0.5, amplitude: 0.1 })),
+    // Support_A is at the structure datum; its authored beacon reaches y=9.1 metres.
+    fixtures: definitions.map(d => ({ id: `lamp_${d.id}`, kind: 'status-light', socketId: d.support, componentId: supportId(d.id), color: 0xe6a747, intensity: 0.8, radius: d.id === 'long_plate' ? 1.2 : 1, ...(d.id === 'long_plate' ? { height: 10 } : {}), opacity: 0.8 })),
+    animations: definitions.map(d => ({ id: `pulse_${d.id}`, kind: 'pulse', targetId: `lamp_${d.id}`, rate: 0.5, amplitude: d.id === 'long_plate' ? 0 : 0.1 })),
   } }],
   persistence: { collection: 'state.sites.worldById', serializer: 'asteroidSites', recordSchemaVersion: 3 },
   discovery: { naturalProducer: 'asteroidSites', visibleOnDefaultRoute: true, revealRadius: 1100, initialDiscovered: true },
   mapAnnotation: { kind: 'world-site', poiType: 'derelict', label: 'Second Measure Shipbreak', searchText: 'Ceres Second Measure shipbreak brace cut release long plate crossbeam keel',
-    coursePos: { x: globalPos.x - 80, z: globalPos.z - 150 }, courseLabel: 'Second Measure approach', courseArrivalRadius: 48 },
+    // Approach the long-plate support from outside the shell and carrier's working sweep.
+    // The closer bearing brings its socket into the ordinary chase view at nominal arrival;
+    // the pilot still flies in to work rather than arriving inside the machinery.
+    coursePos: { x: globalPos.x - 205, z: globalPos.z - 125 }, courseLabel: 'Second Measure approach', courseArrivalRadius: 48 },
   producer: { kind: 'authored_static', cadence: 'sector_enter', sectorId: 'sector_ceres_belt' },
   debug: { packet: 'P03', fixture: 'ceres_second_measure', sectorLocalPlacement: CERES_SHIPBREAK_LOCAL_POS, reservationEnvelope: 740 },
 };

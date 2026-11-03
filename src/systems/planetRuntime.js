@@ -40,14 +40,50 @@ import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 import { queuePhysicsImpulse, isDynamicPhysicsBodyEntity } from '../core/physicsAuthority.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
 import { occupantGenerationOf } from '../core/entity.js';
-import { ANVIL_ORCHARD, createOrchardRecord, normalizeOrchardRecord, orchardHistoryFitsTick } from '../data/anvilOrchard.js';
+import { ANVIL_ORCHARD, createOrchardRecord, normalizeOrchardRecord, orchardHistoryFitsTick, orchardPhase } from '../data/anvilOrchard.js';
 import { ORCHARD_GEOMETRY, orchardFrameBodySpec } from '../data/anvilOrchardBody.js';
 import { createOrchardMotorState } from '../core/anvilOrchardNative.js';
 import { isOrchardFrame, isOrchardPod } from '../data/anvilOrchardIdentity.js';
+import { stableEntityKey } from '../data/interactionDescriptorCatalog.js';
+import { beamRangeFor, isBeamTargetEligible } from './miningBeamTargetingRead.js';
 
 const MAX_TRACKED_SHIPS = 8;   // bounded per-tick work: player + the nearest 7 ships in the bands
 const MAX_AFTERMATH = 4;       // bounded presentation memory of recent plunge terminations
 const REGION_ORDER = ['outside', 'influence', 'sling', 'skim', 'danger', 'reentry'];
+
+// A receipt exists only during the synchronous handoff of whole, already-flown yield.
+// The machinery owner consumes it once; callers cannot manufacture harvest with a quantity.
+const playerFeedReceipts = new WeakMap();
+export function consumePlayerOrchardFeedReceipt(receipt, state, player, frame, socket, qty) {
+  const saved = receipt && playerFeedReceipts.get(receipt);
+  if (!saved || saved.state !== state || saved.player !== player || saved.frame !== frame
+    || saved.socket !== socket || saved.qty !== qty || saved.tick !== state.tick) return false;
+  playerFeedReceipts.delete(receipt);
+  return true;
+}
+
+// Public, bounded facts for the socket UI and the simulation gate. Native frame/body authority
+// remains with environmentalMachinery; this readout never grants a pod by itself.
+export function readPlayerOrchardFeed(state, frame, socket) {
+  const row = normalizeOrchardRecord(state?.sites?.anvilOrchard);
+  const slot = row?.sockets?.[socket], lot = slot?.lotId && row.lots.find(l => l.id === slot.lotId);
+  if (!row || !isOrchardFrame(frame) || row.frameStatus !== 'intact' || !slot) return { eligible: false, reason: 'frame-unavailable' };
+  if (row.sourceRemaining <= 0) return { eligible: false, reason: 'reserve-empty' };
+  const available = ['empty', 'delivered', 'lost'].includes(slot.status) && slot.operation === 'closed' && slot.progress === 0 && slot.cycle < ANVIL_ORCHARD.cyclesPerSocket;
+  const partial = slot.status === 'stowed' && slot.operation === 'closed' && slot.progress === 0 && slot.handoff === 'fixed' && lot?.contributor === 'player' && lot.units < ANVIL_ORCHARD.unitsPerPod;
+  if (!available && !partial) return { eligible: false, reason: slot.status === 'stowed' && lot?.contributor !== 'player' ? 'worker-pod' : 'socket-unavailable' };
+  if (orchardPhase(row, state.tick)?.phase !== 'calm') return { eligible: false, reason: 'wait-calm' };
+  const rt = state.planet, player = state.entities?.get?.(state.playerId);
+  if (state.mode !== 'flight' || state.world?.currentSectorId !== ANVIL_ORCHARD.sectorId
+    || state.entities?.get?.(frame.id) !== frame || !rt?.active || rt.siteId !== ANVIL_ORCHARD.planetId || !rt.center || !player || !player.pos || player.alive === false) return { eligible: false, reason: 'site-unavailable' };
+  if (!rt.player?.collectorOn) return { eligible: false, reason: 'open-scoop' };
+  const radius = Math.hypot(player.pos.x - rt.center.x, player.pos.z - rt.center.z);
+  if (!Number.isFinite(radius) || radius < PLANET_SITE.bands.danger || radius >= PLANET_SITE.bands.skim) return { eligible: false, reason: 'enter-skim' };
+  if (Math.hypot(player.vel?.x || 0, player.vel?.z || 0) < PLANET_SITE.harvest.minSpeed) return { eligible: false, reason: 'increase-speed' };
+  const range = beamRangeFor(player, state);
+  if (!Number.isFinite(range) || !isBeamTargetEligible(frame, state) || Math.hypot(player.pos.x-frame.pos.x, player.pos.z-frame.pos.z) > range + (frame.radius || 0)) return { eligible: false, reason: 'beam-reach' };
+  return { eligible: true, reason: null };
+}
 
 function finite(v, fb = 0) { return Number.isFinite(v) ? v : fb; }
 function nowOf(state) { return Number.isFinite(state.simTime) ? state.simTime : state.tick / 60; }
@@ -169,6 +205,8 @@ export const planetRuntime = {
     this.registry = ctx.registry || null;
     this._queryOut = [];
     this._scratchIds = [];
+    this._orchardFeedHeld = false;
+    this._orchardFeedGesture = null;
     ensureRuntime(ctx.state);
     if (this.bus && typeof this.bus.on === 'function') {
       // Transient normalize-away (fields.js precedent): the adapter rebuilds from authored data.
@@ -199,6 +237,8 @@ export const planetRuntime = {
     }
     if (site && !rt.active) this._register(state, rt, site, sectorId);
     if (!rt.active || !site) {
+      this._orchardFeedHeld = false;
+      this._orchardFeedGesture = null;
       // Away from a planet band the skim toggle would otherwise evaporate in silence — the key
       // answers why it cannot fire here, the same way a deploy cooldown does.
       this._denySkimToggle(state);
@@ -220,7 +260,7 @@ export const planetRuntime = {
       this._ensureOrchardFrame(state, rt, site);
     }
 
-    if (state.mode !== 'flight' || dt <= 0) return;
+    if (state.mode !== 'flight' || dt <= 0) { this._orchardFeedHeld = false; this._orchardFeedGesture = null; return; }
     this._tickShips(dt, state, rt, site);
     this._tickHarvest(dt, state, rt, site);
     this._tickWorkerHarvest(dt, state, rt, site);
@@ -453,6 +493,8 @@ export const planetRuntime = {
 
   _unwind(why) {
     const state = this.state;
+    this._orchardFeedHeld = false;
+    this._orchardFeedGesture = null;
     if (!state) return;
     const rt = ensureRuntime(state);
     // Retire the old runtime before publication. A listener may synchronously restore or
@@ -785,7 +827,7 @@ export const planetRuntime = {
     const actions = state.input && state.input.actions;
     const player = state.entities.get(state.playerId);
     const rec = rt.player;
-    if (!player || player.alive === false) return;
+    if (!player || player.alive === false) { this._orchardFeedHeld = false; this._orchardFeedGesture = null; return; }
 
     if (actions && actions.toggleSkimCollector) {
       actions.toggleSkimCollector = false;
@@ -798,6 +840,7 @@ export const planetRuntime = {
         this._emitPlanetCue('planet.skim.intake', player, { sourceEvent: 'planet:collector' });
       }
     }
+    this._updateOrchardFeedGesture(state, rec);
     if (!rec.collectorOn) return;
 
     const region = rec.region;
@@ -815,8 +858,29 @@ export const planetRuntime = {
     // Settle whole units through the cargo owner (mining idiom, partial-add honest).
     const cargoSys = this.registry && this.registry.get ? this.registry.get('cargo') : null;
     if (!cargoSys || typeof cargoSys.addCargo !== 'function') return;
-    this._settle(rt, rec, cargoSys, 'pendingShallow', site.harvest.commodityShallow);
+    this._settle(rt, rec, cargoSys, 'pendingShallow', site.harvest.commodityShallow, state, player);
     this._settle(rt, rec, cargoSys, 'pendingRich', site.harvest.commodityRich);
+  },
+
+  _updateOrchardFeedGesture(state, rec) {
+    const held = state.input?.actions?.siteBeam === true;
+    if (!held) this._orchardFeedGesture = null;
+    else if (!this._orchardFeedHeld && rec.collectorOn) {
+      const selection = state.ui?.componentSelection;
+      const frame = state.entities?.get?.(state.player?.targetId);
+      const match = /^orchard_socket_([0-2])$/.exec(selection?.componentId || '');
+      if (frame && isOrchardFrame(frame) && selection?.targetId === frame.id
+        && selection.stableKey === stableEntityKey(frame) && match) {
+        this._orchardFeedGesture = { frame, socket: Number(match[1]), generation: occupantGenerationOf(frame) };
+      }
+    }
+    this._orchardFeedHeld = held;
+  },
+
+  isOrchardFeedGesture(state, frame) {
+    const gesture = this._orchardFeedGesture;
+    return !!gesture && state === this.state && state.input?.actions?.siteBeam === true
+      && gesture.frame === frame && boundLife(frame, frame.id, gesture.generation);
   },
 
   // One admitted worker uses the SAME physical band and density law as the player.
@@ -908,12 +972,36 @@ export const planetRuntime = {
     this._emitHarvestMotes(rt, rec, commodityId, qty, worker);
   },
 
-  _settle(rt, rec, cargoSys, key, commodityId) {
+  _settle(rt, rec, cargoSys, key, commodityId, state, player) {
     const whole = Math.floor(rec[key]);
     if (whole < 1) return;
-    const got = cargoSys.addCargo(commodityId, whole);
-    const accepted = Number.isFinite(got) ? got : (got ? whole : 0);
+    // Spend this whole yield before native callbacks: a recursive update cannot award it twice.
     rec[key] -= whole;
+    let inserted = 0;
+    const gesture = this._orchardFeedGesture;
+    if (key === 'pendingShallow' && state && player && gesture
+      && this.isOrchardFeedGesture(state, gesture.frame)
+      && state.player?.targetId === gesture.frame.id
+      && state.ui?.componentSelection?.targetId === gesture.frame.id
+      && state.ui.componentSelection.stableKey === stableEntityKey(gesture.frame)
+      && state.ui.componentSelection.componentId === `orchard_socket_${gesture.socket}`
+      && readPlayerOrchardFeed(state, gesture.frame, gesture.socket).eligible) {
+      const machine = this.registry?.get?.('environmentalMachinery');
+      if (typeof machine?.acceptPlayerOrchardHarvest === 'function') {
+        const receipt = {};
+        playerFeedReceipts.set(receipt, { state, player, frame: gesture.frame, socket: gesture.socket, qty: whole, tick: state.tick });
+        try {
+          const result = machine.acceptPlayerOrchardHarvest(player, { frame: gesture.frame, socket: gesture.socket, commodityId, qty: whole, receipt });
+          inserted = Number.isSafeInteger(result) && result >= 0 && result <= whole ? result : 0;
+        } catch (_) { inserted = 0; } finally { playerFeedReceipts.delete(receipt); }
+      }
+    }
+    // A native spawn callback may synchronously Continue or replace the player life.
+    // Do not move old-session remainder into its successor.
+    if (state && (this.state !== state || state.planet !== rt || state.entities?.get?.(player.id) !== player)) return;
+    const remaining = whole - inserted;
+    const got = remaining ? cargoSys.addCargo(commodityId, remaining) : 0;
+    const accepted = inserted + (Number.isFinite(got) ? got : (got ? remaining : 0));
     if (accepted > 0) {
       rec.harvestedUnits += accepted;
       rt.telemetry.harvestUnits += accepted;

@@ -12,6 +12,9 @@
 // settings allowlist from here — one source of truth for "which writes are legal".
 
 import { bindSelection } from '../combat/targetIdentity.js';
+import { occupantGenerationOf } from './entity.js';
+import { stableEntityKey } from '../data/interactionDescriptorCatalog.js';
+import { describeComponent } from '../systems/interactionDescriptors.js';
 
 let _sink = null;
 let _tokenSeq = 0;
@@ -41,7 +44,12 @@ export const LANE_INPUT_FOLD_WRITERS = {
   // bindSelection records WHICH occupant of that number the player picked (runtime memory, never
   // state), so a recycled id cannot inherit the bracket and a deliberate re-pick re-binds.
   'player.targetId': (state, v) => {
-    if (state.player) { state.player.targetId = (v == null ? null : v); bindSelection(state); }
+    if (state.player) {
+      const id = v == null ? null : v;
+      if (state.ui?.componentSelection && state.ui.componentSelection.targetId !== id) state.ui.componentSelection = null;
+      state.player.targetId = id;
+      bindSelection(state);
+    }
   },
   'input.targetAssistDisabled': (state, v) => { if (state.input) state.input.targetAssistDisabled = !!v; },
   'input.autoAim': (state, v) => { if (state.input) state.input.autoAim = v; },
@@ -55,6 +63,20 @@ export const LANE_INPUT_FOLD_WRITERS = {
     else state.input.worldObjectTargetId = v;
   },
   'ui.objectSelection': (state, v) => { if (!state.ui) state.ui = {}; state.ui.objectSelection = v; },
+  'ui.componentSelection': (state, v) => {
+    if (!state.ui) state.ui = {};
+    if (v == null) { state.ui.componentSelection = null; return; }
+    const target = state.entities?.get?.(v.targetId);
+    if (!target || target.alive === false || state.player?.targetId !== target.id
+      || v.stableKey !== stableEntityKey(target)
+      || v.occupantGeneration !== occupantGenerationOf(target)
+      || typeof v.componentId !== 'string') return;
+    const component = describeComponent(state, target, v.componentId);
+    if (!component) return;
+    state.ui.componentSelection = { targetId: target.id, stableKey: stableEntityKey(target),
+      occupantGeneration: occupantGenerationOf(target), componentId: component.componentId,
+      kind: component.kind, verb: component.verb };
+  },
   'ui.docked': (state, v) => { if (!state.ui) state.ui = {}; state.ui.docked = !!v; },
   'ui.dockedStationId': (state, v) => { if (!state.ui) state.ui = {}; state.ui.dockedStationId = (v == null ? null : v); },
 };
@@ -74,11 +96,39 @@ export function applyLaneInputWrites(state, writes) {
 
 /** Replace `state.<path> = v` at call sites. Always safe to call. */
 export function laneInputWrite(state, path, value) {
+  if (path === 'player.targetId' && state?.ui?.componentSelection
+    && state.ui.componentSelection.targetId !== (value == null ? null : value)) {
+    state.ui.componentSelection = null;
+  }
   if (_sink) { _sink({ kind: 'inputFold', path, value }); return true; }
   const fn = LANE_INPUT_FOLD_WRITERS[path];
   if (!fn || !state) return false;
   fn(state, value);
   return true;
+}
+
+// Component choice is UI-owned and responsive on main. The same bounded scalar
+// intent is folded in FIFO order with target changes on the authoritative lane.
+export function laneSetComponentSelection(state, target, component) {
+  if (!state) return false;
+  if (!state.ui) state.ui = {};
+  const value = target && component ? { targetId: target.id, stableKey: stableEntityKey(target),
+    occupantGeneration: occupantGenerationOf(target), componentId: component.componentId,
+    kind: component.kind, verb: component.verb } : null;
+  state.ui.componentSelection = value;
+  return laneInputWrite(state, 'ui.componentSelection', value);
+}
+
+// A selected numeric id can be recycled after a command was accepted. Keep the
+// simulation consumer bound to the selected occupant and current component.
+export function reconcileLaneComponentSelection(state) {
+  const selection = state?.ui?.componentSelection;
+  if (!selection) return;
+  const entity = state.entities?.get?.(selection.targetId);
+  if (!entity || entity.alive === false || state.player?.targetId !== entity.id
+    || selection.occupantGeneration !== occupantGenerationOf(entity)
+    || selection.stableKey !== stableEntityKey(entity)
+    || !describeComponent(state, entity, selection.componentId)) state.ui.componentSelection = null;
 }
 
 // ---------------------------------------------------------------------------

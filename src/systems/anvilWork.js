@@ -65,6 +65,41 @@ function actor(owner, role) {
   return e;
 }
 
+// The work route requires the two original physical ships, not abstract transit.
+// Reuse a uniquely shelved original from an earlier visit; never replace a record.
+function restoreShelvedWorker(owner, role) {
+  const state = owner.state, id = anvilWorkerRecordId(state, role);
+  const rec = state.world?.records?.byId?.[id];
+  if (state.mode !== 'flight' || state.world?.currentSectorId !== PLANET_SITE.sectorId
+    || !rec || rec.recordId !== id || rec.kind !== RECORD_KIND.CONVOY || rec.alive === false
+    || !(rec.hull > 0) || rec.playerOwned === true || rec.playerCreated === true
+    || rec.itinerary?.kind !== KIND || rec.itinerary?.role !== role) return null;
+  return owner._registry?.get?.('world')?.promoteFarActorByIdentity?.(
+    { kind: 'worldRecord', worldRecordId: id }, { type: 'ship', sectorId: PLANET_SITE.sectorId }) || null;
+}
+
+function setWorkLiveness(owner, entity, role) {
+  if (!entity?.data) return;
+  const route = itinerary(entity);
+  const phases = role === 'collector'
+    ? ['outbound', 'collect', 'clear_band', 'return', 'berthed']
+    : ['receiving', 'delivery', 'return_berth'];
+  const needed = owner.state.mode === 'flight' && owner.state.world?.currentSectorId === PLANET_SITE.sectorId
+    && actor(owner, role) === entity && !entity.data.jobId && entity.data.playerOwned !== true
+    && entity.data.playerCreated !== true && phases.includes(route?.phase) && workerDriveReady(owner.state, entity);
+  if (needed) {
+    if (entity.data.transitCritical !== true) {
+      entity.data.transitCritical = true;
+      entity.data.anvilWorkSetTransit = true;
+    }
+    entity.data.anvilWorkLiveness = true;
+  } else if (!needed && entity.data.anvilWorkLiveness === true) {
+    if (entity.data.anvilWorkSetTransit === true) delete entity.data.transitCritical;
+    delete entity.data.anvilWorkLiveness;
+    delete entity.data.anvilWorkSetTransit;
+  }
+}
+
 // Read-only projection for the existing Hail/target surface, using the same actor
 // identity and corridor decision as work. It grants no movement or cargo authority.
 export function anvilCollectorWorkStatus(state, entity, { detail = false } = {}) {
@@ -284,6 +319,7 @@ function persist(owner, e) { owner._registry?.get?.('world')?.upsertWorldRecord?
 function recFor(owner, e) { return owner.state.traffic?.freighters?.find(r => r.id === e.id) || null; }
 function bindWorkerIdentity(owner, e, role) {
   if (!e || actor(owner, role) !== e) return;
+  setWorkLiveness(owner, e, role);
   // World residency keeps the stable actor and itinerary, but its compact data need
   // not retain presentation names or the newly adopted traffic row's stable key.
   // Rebind this original authored identity before existing violence/spill readers run.
@@ -609,6 +645,7 @@ export const anvilTrafficMethods = {
     for (const role of ['collector', 'receiver']) {
       let e = actor(this, role);
       const recordId = anvilWorkerRecordId(state, role);
+      if (!e && state.world?.records?.byId?.[recordId]) e = restoreShelvedWorker(this, role);
       if (!e) {
         // A stored body, including a dead one, belongs to world residency. Never replace it.
         if (state.world?.records?.byId?.[recordId]) continue;
@@ -839,8 +876,32 @@ export const anvilTrafficMethods = {
 
   _stepAnvilWork(dt, state) {
     advanceAnvilSpillRendezvous(state,this._registry?.get?.('physics'));
-    if (!(dt > 0) || state.world?.currentSectorId !== PLANET_SITE.sectorId) return;
-    const e = actor(this, 'collector'), receiver = actor(this, 'receiver');
+    if (!(dt > 0)) return;
+    // Release only this shift's liveness on the sector edge; do no ongoing
+    // Anvil census while another sector owns the player.
+    if (state.world?.currentSectorId !== PLANET_SITE.sectorId) {
+      if (this._anvilWorkLivenessActive) {
+        for (const role of ['collector', 'receiver']) {
+          const candidate = indexedWorldRecordEntity(state, anvilWorkerRecordId(state, role));
+          if (candidate) setWorkLiveness(this, candidate, role);
+        }
+        this._anvilWorkLivenessActive = false;
+      }
+      return;
+    }
+    this._anvilWorkLivenessActive = true;
+    // A captured, repurposed or disabled worker loses the work pin.
+    for (const role of ['collector', 'receiver']) {
+      const candidate = indexedWorldRecordEntity(state, anvilWorkerRecordId(state, role));
+      if (candidate) setWorkLiveness(this, candidate, role);
+    }
+    let e = actor(this, 'collector'), receiver = actor(this, 'receiver');
+    // A budget-refused promotion remains in the existing shelf. Retry at the
+    // ordinary one-second work boundary without spawning a substitute.
+    if (state.planet?.active && state.tick % 60 === 0) {
+      if (!e) e = restoreShelvedWorker(this, 'collector');
+      if (!receiver) receiver = restoreShelvedWorker(this, 'receiver');
+    }
     bindWorkerIdentity(this, e, 'collector'); bindWorkerIdentity(this, receiver, 'receiver');
     this._stepAnvilReceiver(receiver);
     if (!e || e.data.jobId) return; // another existing movement owner wins

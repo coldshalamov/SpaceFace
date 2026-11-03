@@ -5150,6 +5150,11 @@ export const world = {
     this._adoptedSalvorLeaseClock = now;
   },
 
+  /** Promote the unique existing shelf through the world owner, preserving its normal admission. */
+  promoteFarActorByIdentity(identity, options = {}) {
+    return promoteFarActorForTargetIdentity(this.state, identity, options, this.helpers);
+  },
+
   /** Resolve a booked far target's current owner pose and enqueue only near physical approach. */
   requestAdoptedSalvorTargetMaterialization(request = {}) {
     const context = this._adoptedSalvorMaterializationContext(request);

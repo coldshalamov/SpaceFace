@@ -27,7 +27,7 @@ import {
   presentationAllowsPlayerFacingAction,
   presentationAllowsTargetLock,
 } from '../core/presentationAdmission.js';
-import { verbAcceptsType, stableEntityKey } from '../data/interactionDescriptorCatalog.js';
+import { verbAcceptsType } from '../data/interactionDescriptorCatalog.js';
 import { listSelectableComponents, nextComponentSelection } from '../systems/interactionDescriptors.js';
 import { pointerLockIsLegitimate } from '../systems/autoTargetAssist.js';
 import { isPirateDisengaged } from '../systems/pirateDisengage.js';
@@ -46,7 +46,7 @@ import { mountProExperiencesBrowser } from '../features/proExperiencesBrowser.js
 import { bindSound, bindTemperature } from './kit/index.js';
 import { indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
 import { resolveWorldPresentationEntity } from '../world/presentationSources.js';
-import { laneInputWrite } from '../core/simLaneCommands.js';
+import { laneInputWrite, laneSetComponentSelection } from '../core/simLaneCommands.js';
 import { occupantGenerationOf } from '../core/entity.js';
 import { targetIdentityGeneration } from '../ai/perception.js';
 import { concealedFromPlayer, selectionIsRecycled, selectionRetired } from '../combat/targetIdentity.js';
@@ -2344,7 +2344,7 @@ function clearCombatTarget(state, bus) {
 // check:save-schema). The pure cycle/enumeration lives in interactionDescriptors; this handler owns
 // the state write, target-change rebind, and player feedback. A null/absent selection leaves every
 // verb resolving exactly as before, so this is inert until the player opts in.
-function cycleTargetComponent(state, dir, bus) {
+export function cycleTargetComponent(state, dir, bus) {
   const targetId = state.player && state.player.targetId;
   const target = targetId != null && state.entities && state.entities.get ? state.entities.get(targetId) : null;
   if (!target || target.alive === false) {
@@ -2367,14 +2367,7 @@ function cycleTargetComponent(state, dir, bus) {
 }
 
 function setComponentSelection(state, target, next) {
-  if (!state.ui) state.ui = {};
-  state.ui.componentSelection = (target && next) ? {
-    targetId: target.id,
-    stableKey: stableEntityKey(target),
-    componentId: next.componentId,
-    kind: next.kind,
-    verb: next.verb,
-  } : null;
+  laneSetComponentSelection(state, target, next);
 }
 
 function isScannerHostileLock(player, state, entity) {
