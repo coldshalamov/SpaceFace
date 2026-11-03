@@ -143,6 +143,10 @@ html.sf-reduce-motion .orr-hloop__orbit-pulse, html.sf-reduce-motion .orr-hloop_
 .orr-hdial .orr-hi-svg text.orr-hdial__end, .orr-hdial text.orr-hdial__end { font-family:var(--dp-face-label, "Archivo"); font-size:12px; font-weight:650; letter-spacing:.16em; text-transform:uppercase; fill:rgb(${BONE} / .8); }
 .orr-hdial .orr-hdial__ref { fill:rgb(5 7 10); stroke:rgb(${BONE} / .9); stroke-width:2px; }
 .orr-hdial__g-val.is-long { font-size:clamp(26px, 1.6vw, 36px); }
+/* a dial host under 400px tall (the 960×540 Help stage) tightens the readings so the ring's five figures stand inside it */
+.orr-hdial.is-tight .orr-hdial__g-name { letter-spacing:.08em; }
+.orr-hdial.is-tight .orr-hdial__g-val { font-size:26px; }
+.orr-hdial.is-tight .orr-hdial__g-delta { font-size:12px; }
 .orr-hdial__g-delta { font-family:var(--dp-face-numeral, "Archivo"); font-variation-settings:"wdth" 100, "wght" 420; font-size:clamp(13px, .72vw, 17px); letter-spacing:.02em;
   color:rgb(${BONE} / .74); font-variant-numeric:tabular-nums; white-space:nowrap; }
 .orr-hdial__g-delta.is-better { color:rgb(255 255 255); }
@@ -722,6 +726,8 @@ export function createHullDial(host, { maxima = {} } = {}) {
     host.classList.remove('is-off');
     const small = W < 620 || H < 460;
     host.classList.toggle('is-small', small);
+    const tight = H < 400;
+    host.classList.toggle('is-tight', tight);
     const bandW = small ? 12 : 16;
     // the readings stand outside the ring, so the ring leaves them room on both sides
     let R = Math.min(H * 0.36, H / 2 - bandW / 2 - 30 - 80);
@@ -732,7 +738,8 @@ export function createHullDial(host, { maxima = {} } = {}) {
       const w = labels[i].g.offsetWidth || (small ? 90 : 130);
       R = Math.min(R, (W / 2 - 8 - w) / sn - bandW / 2 - 30);
     });
-    R = Math.max(96, R);
+    // a tight dial's crown figure must still clear the top of its host: the ring shrinks to fit rather than the figure climbing out
+    R = Math.max(tight ? Math.max(48, Math.min(68, H / 2 - 98)) : 96, R);
     const cx = W / 2;
     const cy = H / 2;
     geo = { W, H, R, cx, cy, bandW, small };
@@ -779,8 +786,9 @@ export function createHullDial(host, { maxima = {} } = {}) {
       const lab = labels[i].g;
       const a = ((mid % 360) + 360) % 360;
       const left = a > 180;
-      const upper = a < 90 || a > 270;
       const crown = a < 20 || a > 340;
+      // a tight dial hangs the side figures from their anchor instead of standing them on it, clear of the price arc's end words
+      const upper = (a < 90 || a > 270) && (!tight || crown);
       const keel = a > 160 && a < 200;
       const centred = crown || keel;
       lab.classList.toggle('is-left', left && !centred);
@@ -854,7 +862,7 @@ export function createHullDial(host, { maxima = {} } = {}) {
       obs.stop();
       springs.forEach((s) => s.stop());
       host.textContent = '';
-      host.classList.remove('orr-hdial', 'is-off', 'is-small');
+      host.classList.remove('orr-hdial', 'is-off', 'is-small', 'is-tight');
     },
   };
 }

@@ -360,6 +360,11 @@ ${H} .orr-hmix__lbl:focus-visible { outline:none; }
   ${HD} .orr-help-list--ores .orr-help-reading > .orr-help-reading__name { font-size:clamp(22px, 2.2vw, 28px); }
   ${HD} .orr-help-list--ores .orr-help-terms { margin:14px 0 0; grid-template-columns:auto minmax(0, 1fr); column-gap:18px; }
 }
+/* ui-polish-321: at 960×540 the Ships dial's right-hand figure (Handling) ran under the reading's Mass row and its crown figure (Price)
+   sat on the tab rule. The reading column gives the dial 28px, and the dial (helpInstruments.js, is-tight) draws a smaller ring. */
+@media (min-width:761px) and (max-width:1200px) and (min-height:461px) and (max-height:620px) {
+  ${HD}[data-tab="ships"] .orr-help-list__stage { grid-template-columns:minmax(0, 1fr) clamp(220px, 24vw, 232px); }
+}
 /* ui-polish-282: the readings beside the Ships, Commodities, Ores and Factions instruments were loose
    label/value pairs floating on the glass (≥1201 wide), so the spec read unfinished next to the framed
    section list. The ledger now sits in one hairline-framed sheet on a faint fill, a rule between rows,
