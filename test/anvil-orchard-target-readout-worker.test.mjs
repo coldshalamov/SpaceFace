@@ -90,6 +90,7 @@ test('real Orchard production reaches the worker target card throughout release 
     sentence(/44 units in reserve.*select a pod socket/i);
     const frontendFrame = main.entities.get(frame.id);
     const selection = { targetId: frame.id, stableKey: stableEntityKey(frontendFrame),
+      occupantGeneration: frontendFrame.occupantGeneration,
       componentId: `orchard_socket_${SOCKET}`, kind: 'machine', verb: 'mine' };
     main.ui.componentSelection = selection;
     assert.equal(listSelectableComponents(main, frontendFrame).length, 3);

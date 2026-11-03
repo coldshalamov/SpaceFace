@@ -1,12 +1,15 @@
 import { readLineVisualProfile } from '../render/lineVisualProfile.js';
 
-export function lineStrainWords(state, profile, target) {
-  const mass = Number(target?.physicsBody?.mass ?? target?.mass);
-  const tonnes = Number.isFinite(mass) && mass > 0 ? `${Math.round(mass * 10) / 10} T / ${profile.ceilingT.toLocaleString('en-US')} T` : '';
+export function lineStrainWords(state, profile) {
+  // overClass is a positive signal from the progression owner, not an inverse proof that the
+  // current body has been checked. A line can hold an anchor or a tow, and a fresh/arcade
+  // mirror can legitimately have no active class verdict. Never print a fabricated one.
+  const rating = Number.isFinite(profile.ceilingT) && profile.ceilingT > 0
+    ? `RATED ${profile.ceilingT.toLocaleString('en-US')} T` : 'RATING UNKNOWN';
   return {
-    title: `LINE ${profile.label}${tonnes ? ' · ' + tonnes : ''}`,
+    title: `LINE ${profile.label} · ${rating}`,
     detail: profile.overClass ? `OVER CLASS · WINCH ${Math.round(profile.heat * 100)}%`
-      : profile.active ? `WITHIN CLASS · WINCH ${Math.round(profile.heat * 100)}%` : 'WINCH COOLING',
+      : profile.active ? `WINCH ${Math.round(profile.heat * 100)}%` : 'WINCH COOLING',
   };
 }
 
@@ -54,8 +57,7 @@ export function createLineStrainReadout(host) {
       const clear = edge && Number.isFinite(edge.x) ? Math.max(30, Math.abs(edge.x - x)) + 18 : 50;
       const w = doc.documentElement?.clientWidth || globalThis.innerWidth || 960;
       const h = doc.documentElement?.clientHeight || globalThis.innerHeight || 540;
-      const target = state.entities?.get?.(state.player?.tether?.targetId);
-      const words = lineStrainWords(state, profile, target);
+      const words = lineStrainWords(state, profile);
       title.textContent = words.title; detail.textContent = words.detail;
       root.dataset.over = String(profile.overClass);
       root.setAttribute('aria-label', `${words.title}. ${words.detail}`);

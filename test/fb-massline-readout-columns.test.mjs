@@ -10,6 +10,7 @@ import {
   createMasslineCadenceReadout,
   resolveMasslineInstrumentColumns,
   whipUrgency,
+  masslineFlightRead,
 } from '../src/ui/masslineCadenceReadout.js';
 
 const SEED = 4242;
@@ -96,7 +97,7 @@ test('FB-011: the mounted readout paints the five columns and hides with no line
 
 function mountableParent() {
   const node = () => ({
-    textContent: '', style: {}, dataset: {}, className: '',
+    textContent: '', style: {}, dataset: {}, className: '', open: true,
     setAttribute() {},
   });
   const root = {
@@ -138,4 +139,78 @@ test('FB-011: the whip column warns inside one second and goes quiet with no lin
   view.update(state);
   assert.equal(view.element.dataset.whip, 'none');
   view.destroy();
+});
+
+
+test('compact line read names the attached body and respects uncertain solutions', () => {
+  const state = swingState();
+  state.entities.get(2).type = 'asteroid';
+  state.massline2 = { throw: { payloadId: 1, solution: { valid: true, onSolution: true } } };
+  assert.deepEqual(masslineFlightRead(state), { name: 'Asteroid', cue: 'Release path aligned' });
+  state.massline2.throw.solution.decisionStale = true;
+  assert.match(masslineFlightRead(state).cue, /uncertain/);
+  state.massline2.throw.solution = { window: { reliable: true, enterS: 0.42 } };
+  assert.match(masslineFlightRead(state).cue, /If coasting · window in 0.4 s/);
+  state.entities.get(2).type = 'payload';
+  assert.equal(masslineFlightRead(state).name, 'Cargo Mass');
+  state.player.tether.active = false;
+  assert.equal(masslineFlightRead(state), null);
+});
+
+test('details are a native disclosure and diagnostics refresh when opened', () => {
+  const nodes = new Map();
+  const makeNode = () => ({ textContent: '', dataset: {}, style: {}, open: false,
+    setAttribute() {}, addEventListener(type, fn) { this[type] = fn; }, removeEventListener() {} });
+  const root = makeNode();
+  root.querySelector = selector => { if (!nodes.has(selector)) nodes.set(selector, makeNode()); return nodes.get(selector); };
+  root.remove = () => {};
+  const parent = { ownerDocument: { createElement: () => root }, append() {} };
+  const view = createMasslineCadenceReadout(parent);
+  const state = swingState();
+  state.player.masslineTelemetry = { load: 0.6, storedSwingEnergy: 123, apexProximity: 0.2, arcPreview: { exitSpeed: 42, timeToWhip: 2 } };
+  view.update(state);
+  assert.match(root.innerHTML, /<details><summary role="button">Line details/);
+  assert.equal(nodes.get('[data-ml="energy"]').textContent, '');
+  nodes.get('details').open = true;
+  nodes.get('details').toggle();
+  assert.equal(nodes.get('[data-ml="energy"]').textContent, '123');
+  state.player.masslineTelemetry.storedSwingEnergy = 234;
+  view.update(state);
+  assert.equal(nodes.get('[data-ml="energy"]').textContent, '234');
+  view.destroy();
+});
+
+test('visible hint and open details refresh independently of HUD repaint and stop on hide', () => {
+  const originalSet = globalThis.setTimeout, originalClear = globalThis.clearTimeout;
+  let nextId=0; const scheduled=new Map();
+  globalThis.setTimeout = (fn,ms) => { const id=++nextId; scheduled.set(id,{fn,ms}); return id; };
+  globalThis.clearTimeout = id => { scheduled.delete(id); };
+  const run = ms => { const [id, task]=[...scheduled].find(([,task])=>task.ms===ms); scheduled.delete(id); task.fn(); };
+  const nodes = new Map();
+  const node = () => ({ textContent:'', dataset:{}, open:false, setAttribute(){}, addEventListener(type,fn){this[type]=fn;}, removeEventListener(){} });
+  const root = node(); root.querySelector = selector => {
+    if (!nodes.has(selector)) nodes.set(selector,node()); return nodes.get(selector);
+  }; root.remove = () => {};
+  const view = createMasslineCadenceReadout({ ownerDocument:{createElement:()=>root}, append(){} });
+  try {
+    const state=swingState();
+    state.settings={ controls:{bindings:{pull:['Digit1']}} };
+    state.player.masslineTelemetry={storedSwingEnergy:10};
+    view.update(state);
+    assert.equal(nodes.get('.ml-cadence__focus-hint').textContent,'F10: focus flight controls');
+    state.settings.controls.bindings.pull=['F10'];
+    run(1000);
+    assert.equal(nodes.get('.ml-cadence__focus-hint').textContent,'Ctrl+F10: focus flight controls');
+    state.settings.controls.bindings.brake=['ControlLeft'];
+    run(1000);
+    assert.equal(nodes.get('.ml-cadence__focus-hint').textContent,'Alt+F10: focus flight controls');
+    state.settings.controls.bindings.brake.push('AltLeft');
+    run(1000);
+    assert.equal(nodes.get('.ml-cadence__focus-hint').textContent,'Rebind F10 to focus flight controls');
+    nodes.get('details').open=true; nodes.get('details').toggle();
+    state.player.masslineTelemetry.storedSwingEnergy=27;
+    run(250);
+    assert.equal(nodes.get('[data-ml="energy"]').textContent,'27');
+    view.hide(); assert.equal(scheduled.size,0);
+  } finally { view.destroy(); globalThis.setTimeout=originalSet; globalThis.clearTimeout=originalClear; }
 });

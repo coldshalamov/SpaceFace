@@ -8,7 +8,7 @@ export const EMBODIED_DIALOGUE_ID = 'campaign47a.embodiedDialogue.v2';
 export const EMBODIED_DIALOGUE_SCHEMA_VERSION = 2;
 export const MAX_COMMS_WORDS = 12;
 export const MAX_CONTACT_BLURB_WORDS = 12;
-export const DIALOGUE_VARIANTS = Object.freeze(['primary', 'failure_recovery']);
+export const DIALOGUE_VARIANTS = Object.freeze(['primary', 'failure_recovery', 'step_handoff']);
 export const CAREER_CROSSOVER_IDS = Object.freeze(['hauler', 'hunter', 'prospector']);
 
 const card = (id, name, roleLabel, stationHint, blurb, namedCaptainId = null, options = {}) => Object.freeze({
@@ -84,6 +84,7 @@ export const BEAT_COMMS = Object.freeze([
   line('comms.47a.b0.recovery', 0, 'failure_recovery', 'contact_kessler', 'KESSLER', 'Manifest remains open. Sample again, then dock.'),
   line('comms.47a.b1.primary', 1, 'primary', 'contact_kessler', 'KESSLER', 'The book posts the alloy run. Scale 4 and the furnace follow.'),
   line('comms.47a.b1.recovery', 1, 'failure_recovery', 'contact_kessler', 'KESSLER', 'Honest work holds. The book re-posts the next job.'),
+  line('comms.47a.b1.scale4_handoff', 1, 'step_handoff', 'contact_kessler', 'KESSLER DESK', 'Variance filed. Next: Ceres furnace detail. Feed ore intact; losses stay recorded.'),
   line('comms.47a.b2.primary', 2, 'primary', 'contact_rook', 'ROOK', 'Cinder board first. Compost, the Nest, the register after.'),
   line('comms.47a.b2.recovery', 2, 'failure_recovery', 'contact_rook', 'ROOK', 'The board still holds. The book re-posts the next job.'),
   line('comms.47a.b3.primary', 3, 'primary', 'contact_slate', 'SLATE', 'Variance Adjustment posts first. Maw and Foreman follow.'),

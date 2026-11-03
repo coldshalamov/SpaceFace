@@ -27,7 +27,7 @@ import {
   presentationAllowsPlayerFacingAction,
   presentationAllowsTargetLock,
 } from '../core/presentationAdmission.js';
-import { verbAcceptsType, stableEntityKey } from '../data/interactionDescriptorCatalog.js';
+import { verbAcceptsType } from '../data/interactionDescriptorCatalog.js';
 import { listSelectableComponents, nextComponentSelection } from '../systems/interactionDescriptors.js';
 import { pointerLockIsLegitimate } from '../systems/autoTargetAssist.js';
 import { isPirateDisengaged } from '../systems/pirateDisengage.js';
@@ -46,7 +46,7 @@ import { mountProExperiencesBrowser } from '../features/proExperiencesBrowser.js
 import { bindSound, bindTemperature } from './kit/index.js';
 import { indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
 import { resolveWorldPresentationEntity } from '../world/presentationSources.js';
-import { laneInputWrite } from '../core/simLaneCommands.js';
+import { laneInputWrite, laneSetComponentSelection, laneTargetWritePending } from '../core/simLaneCommands.js';
 import { occupantGenerationOf } from '../core/entity.js';
 import { targetIdentityGeneration } from '../ai/perception.js';
 import { concealedFromPlayer, selectionIsRecycled, selectionRetired } from '../combat/targetIdentity.js';
@@ -2148,7 +2148,7 @@ export const ui = {
             if (this._hudHiddenByDock && typeof this.hud.arrive === 'function') this.hud.arrive();
           }
           this._hudHiddenByDock = false;
-          this.hud.frame(dt);
+          this.hud.frame(dt, true);
         } else {
           this._hudHiddenByDock = docked;
           if (this.hud.tickHidden) this.hud.tickHidden(dt);
@@ -2173,6 +2173,8 @@ export const ui = {
       if (this.discoveryPlate && this.discoveryPlate.tick) this.discoveryPlate.tick();
       // Comms fade is a flight overlay. Toasts/prompts stay alive on menus.
       if (hudVisible && this.comms && this.comms.tick) this.comms.tick();
+      // Coalesce this paint's receipt, prompt, alert and caption mutations after their owners tick.
+      if (hudVisible) this.hud?.flushReceiptLane?.();
       // refresh the active modal screen at a low cadence (event-driven screens also self-update)
       this._rt = (this._rt || 0) + 1;
       if ((this._rt % 18) === 0 && this.screenManager && this.screenManager.isOpen()) {
@@ -2344,7 +2346,7 @@ function clearCombatTarget(state, bus) {
 // check:save-schema). The pure cycle/enumeration lives in interactionDescriptors; this handler owns
 // the state write, target-change rebind, and player feedback. A null/absent selection leaves every
 // verb resolving exactly as before, so this is inert until the player opts in.
-function cycleTargetComponent(state, dir, bus) {
+export function cycleTargetComponent(state, dir, bus) {
   const targetId = state.player && state.player.targetId;
   const target = targetId != null && state.entities && state.entities.get ? state.entities.get(targetId) : null;
   if (!target || target.alive === false) {
@@ -2367,14 +2369,7 @@ function cycleTargetComponent(state, dir, bus) {
 }
 
 function setComponentSelection(state, target, next) {
-  if (!state.ui) state.ui = {};
-  state.ui.componentSelection = (target && next) ? {
-    targetId: target.id,
-    stableKey: stableEntityKey(target),
-    componentId: next.componentId,
-    kind: next.kind,
-    verb: next.verb,
-  } : null;
+  laneSetComponentSelection(state, target, next);
 }
 
 function isScannerHostileLock(player, state, entity) {
@@ -2509,6 +2504,7 @@ function collectAcquisitionCandidates(state, player) {
 
 function targetNearestHostileToPlayer(state, bus, options = {}) {
   if (state.input?.targetAssistDisabled === true) return;
+  if (options.quiet && laneTargetWritePending(state)) return;
   const player = state.entities.get(state.playerId);
   if (!player) return;
   const quiet = !!options.quiet;

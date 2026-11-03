@@ -22,6 +22,7 @@ import { solveIntercept } from '../core/flight/flightTelemetry.js';
 import { isHostileToPlayer, playerSensorBlock } from '../systems/scanner.js';
 import { heatZoneInCurrentSector } from '../systems/heat.js';
 import { resolveWaypointPresentationPosition, resolveObjectiveGatePresentation } from './navigationWaypoint.js';
+import { objectiveIsOffSector } from './objectiveSector.js';
 import { SHIPS } from '../data/ships.js';
 import { prefersReducedMotion } from './effects/effectRuntime.js';
 import {
@@ -1112,6 +1113,22 @@ function waypointLabel(waypoint) {
   // the old optional group also swallowed a bare " 419" and glued the neighbours ("Beaconu").
   const cleaned = String(raw || '').replace(/\s+\d+(?:\.\d+)?\s*(?:wu|u)\b/gi, '').trim();
   return sanitizeMapLabel(cleaned || 'OBJECTIVE', 20);
+}
+
+export function resolveRadarObjective(state) {
+  const waypoint = state && state.nav && state.nav.waypoint;
+  // A foreign-sector coordinate is not a physical target on this local scope.
+  if (objectiveIsOffSector(state, waypoint)) return null;
+  let waypointPos = resolveWaypointPresentationPosition(state, waypoint);
+  let cueOwner = waypoint;
+  if (!waypointPos) {
+    const gateFix = resolveObjectiveGatePresentation(state);
+    if (gateFix) {
+      cueOwner = { label: gateFix.label, kind: 'gate-fallback' };
+      waypointPos = gateFix.pos;
+    }
+  }
+  return cueOwner ? { cueOwner, waypointPos, label: waypointLabel(cueOwner) } : null;
 }
 
 function drawWaypointDiamond(g, cue, now, reducedMotion) {
@@ -2457,20 +2474,10 @@ export function createRadar(ctx) {
       }
     }
 
-    const waypoint = state.nav && state.nav.waypoint;
-    let waypointPos = resolveWaypointPresentationPosition(state, waypoint);
-    let label = waypointLabel(waypoint);
-    let cueOwner = waypoint;
-    if (!waypointPos) {
-      // Cross-sector objective: point the scope at the gate that starts the trip instead of
-      // parking the unresolved mark. Presentation-only — the plot step stays a map verb.
-      const gateFix = resolveObjectiveGatePresentation(state);
-      if (gateFix) {
-        cueOwner = { label: gateFix.label, kind: 'gate-fallback' };
-        label = waypointLabel(cueOwner);
-        waypointPos = gateFix.pos;
-      }
-    }
+    const objective = resolveRadarObjective(state);
+    const waypointPos = objective && objective.waypointPos;
+    const cueOwner = objective && objective.cueOwner;
+    const label = objective && objective.label;
     const cue = cueOwner
       ? (
         waypointPos
@@ -2559,7 +2566,7 @@ export function createRadar(ctx) {
     if (frame) frame.setRange(dialDistance(range));
     else drawRangePlate(g, metrics, range, expanded);
 
-    const ariaLabel = waypoint
+    const ariaLabel = cueOwner
       ? `Local tactical radar. You are the lit centre hull. Objective ${label}, ${dialDistance(cue && cue.distance)}.`
       : 'Local tactical radar. You are the lit centre hull. Hostiles are red class silhouettes, stations are cyan berth hexagons, gates are violet double rings, allied ships are green, and nearby traffic is blue-grey. Distant small traffic stays off the dial.';
     lastAriaLabel = ariaLabel;

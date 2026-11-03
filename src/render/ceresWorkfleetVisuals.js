@@ -1,5 +1,6 @@
 // One exact authored workfleet. Ordinary tugs, cutters and wrecks keep their own identity.
 import { CERES_WORKFLEET_CONTRACT as C } from '../data/ceresWorkfleet.js';
+import * as THREE from 'three';
 import { ceresWorkfleetSlide, ceresWorkfleetRigPose } from '../data/ceresWorkfleetArticulation.js';
 import { ceresWorkfleetRoleForEntity } from '../data/ceresWorkfleetIdentity.js';
 export const ceresWorkfleetRole=ceresWorkfleetRoleForEntity;
@@ -97,6 +98,13 @@ export function isCeresWorkfleetPropulsion(entity) {
 export function createCeresWorkfleetNozzleSamples(role) {
   return (C.assets[role]?.propulsion?.channels || []).map(channel => ({channel, force:0, capacity:0, level:0}));
 }
+/** A cutter contact is visible only for a work receipt in the current live sim tick. */
+export function ceresWorkfleetCutContactActive(entity, state, receipt = null) {
+  return ceresWorkfleetRole(entity)==='cutterHead' && state?.entities?.get(entity.id)===entity
+    && entity.alive!==false && entity.hull>0 && Number.isSafeInteger(state.tick)
+    && (receipt?.public === true ? receipt.cutWork === true
+      : state.npcJobs?.ceresWorkfleet?.phase==='head_cut' && entity.data?.ceresWorkfleetCutTick===state.tick);
+}
 // Signed local force allocation. Actual force is retained without saturation; only
 // radiance is normalized. No opposing throats at a station can burn together.
 export function sampleCeresWorkfleetNozzles(role, receipt, samples) {
@@ -177,6 +185,21 @@ export function createCeresWorkfleetPropulsionDriver(root, entity) {
       node.material=Array.isArray(node.material)?node.material.map(clone):clone(node.material);
     }
   }
+  // One short, solid contact lance sits between the real cutter emitter and Cut socket.
+  // The mesh is local to the source socket and carries no light, particle loop or sim state.
+  let cutterContact=null;
+  if (role==='cutterHead') {
+    const socket=root.getObjectByName('SOCKET_Cut');
+    if(socket){
+      const length=C.assets.cutterHead.cutFocus.focalDistance/C.sourceScale;
+      const geometry=new THREE.CylinderGeometry(.18,.18,length,8);
+      const material=new THREE.MeshBasicMaterial({color:0xffc66b,toneMapped:false});
+      const mesh=new THREE.Mesh(geometry,material);
+      mesh.name='CeresWorkfleetCutContact';mesh.rotation.z=Math.PI/2;mesh.position.x=-length/2;
+      mesh.visible=false;mesh.frustumCulled=false;socket.add(mesh);
+      cutterContact={socket,mesh,geometry,material};
+    }
+  }
   const binding={entity,root,role,samples,life:entity.occupantGeneration,disposed:false};
   const identity={id:entity.id,worldRecordId:entity.data.worldRecordId,life:entity.occupantGeneration};
   let boundEntity=entity, activated=entity.deferAuthoredMotionRegistration!==true, set=null;
@@ -185,7 +208,8 @@ export function createCeresWorkfleetPropulsionDriver(root, entity) {
   };
   if(activated)register(boundEntity);
   const clear=()=>{for(const sample of samples) {sample.force=sample.level=0;
-    for(const entry of sample.materials)entry.material.emissiveIntensity=0;}};
+    for(const entry of sample.materials)entry.material.emissiveIntensity=0;}
+    if(cutterContact)cutterContact.mesh.visible=false;};
   const update=(liveEntity,a11y)=>{
     const receipt=activated && liveEntity===boundEntity && !binding.disposed
       && binding.life===boundEntity.occupantGeneration && activeBinding(boundEntity)===binding
@@ -194,6 +218,7 @@ export function createCeresWorkfleetPropulsionDriver(root, entity) {
     const reducedFlash=a11y?.reducedFlash ?? receipt?.state?.settings?.accessibility?.flashReduce;
     for(const sample of samples)for(const entry of sample.materials)
       entry.material.emissiveIntensity=entry.maximum*sample.level*(reducedFlash ? .55 : 1);
+    if(cutterContact)cutterContact.mesh.visible=!!receipt&&ceresWorkfleetCutContactActive(liveEntity,receipt.state,receipt);
   };
   // Appearance rebuilds compose a detached snapshot. Only the renderer's explicit
   // post-publication activation may hand that binding to the authoritative object.
@@ -208,6 +233,7 @@ export function createCeresWorkfleetPropulsionDriver(root, entity) {
     clear();boundEntity=liveEntity;binding.entity=liveEntity;activated=true;register(liveEntity);return true;
   };
   const dispose=()=>{clear();binding.disposed=true;
+    if(cutterContact){cutterContact.socket.remove(cutterContact.mesh);cutterContact.geometry.dispose();cutterContact.material.dispose();cutterContact=null;}
     if(set){set.delete(binding);if(!set.size)propulsionBindings.delete(boundEntity);}};
   return {update,clear,activate,dispose,binding};
 }

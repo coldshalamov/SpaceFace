@@ -15,6 +15,7 @@ import { TETHYS_TALLY, tallyMarks, tallyRouteDuration } from '../data/tethysTall
 import {claimsTallyAssessor} from '../world/tallyThreeIdentity.js';
 import { ceresWorkfleetHardwareRoleForRecord } from '../data/ceresWorkfleetHardware.js';
 import { syncCeresWorkfleetHardware, captureCeresWorkfleetHardware, clearCeresWorkfleetControls, reconcileCeresWorkfleetPresentation } from './ceresWorkfleet.js';
+import { acceptSweeperPickup, dispatchSweeperWork, finishSweeperCycle } from './scrapSweeperOps.js';
 import { registerMachineryReconciliation, unregisterMachineryReconciliation, invalidateMachineryPresentation } from '../core/machineryPresentation.js';
 // Ambient NPC traffic (V2 §28b / cut-list #2 visible-haulers). Spawns benign freighter ships that
 // ply station-to-station routes, making populated space feel ALIVE and — now that the economy
@@ -1781,8 +1782,10 @@ export const traffic = {
     this.bus.on('freight:recoveryAbandoned', (p) => this._onCeresDisabledHaulerAbandoned(p || {}));
     this.bus.on('save:loaded', () => bindRestoredCharonSupply(this));
     this.bus.on('npcjobs:cycle', p => charonSupplyRoundBoundary(this, p));
+    this.bus.on('npcjobs:cycle', p => finishSweeperCycle(this, p));
     this.bus.on('npcjobs:complete', p => charonSupplyRoundBoundary(this, p));
     this.bus.on('pickup:collected', p => winnowPickupReceipt(this, p || {}));
+    this.bus.on('pickup:collected', p => acceptSweeperPickup(this, p));
     this.bus.on('freight:cargoSpilled', p => winnowSpillReceipt(this, p || {}));
     this.bus.on('loot:manifestPayload', p => winnowSpillReceipt(this, p || {}));
     this.bus.on('entity:killed', p => winnowKilledReceipt(this, p || {}));
@@ -1796,7 +1799,7 @@ export const traffic = {
     this.bus.on('freight:cargoSpilled', (p) => this._onFreightCargoSpilled(p || {}));
     this.bus.on('well:haulerDragged', (p) => this._onWellHaulerDragged(p || {}));
     this.bus.on('uniqueWreck:resolved', (p) => this._onCeresTenderWreckResolved(p || {}));
-    this.bus.on('survivorPod:rescued', (p) => this._onSurvivorPodRescued(p || {}));
+    this.bus.on('survivorPod:boarded', (p) => this._onSurvivorPodRescued(p || {}));
     // Nearby violence: production hits, aimed ship-to-ship combat:fire (Ambush first shots often
     // apply 0), and opened incidents. Bare/mining fire without a live ship victim is ignored.
     this.bus.on('combat:damage', (p) => this._onCombatDamage(p || {}));
@@ -2191,7 +2194,10 @@ export const traffic = {
         : def.express
         ? this._pickExpressDestination(stations, station)
         : this._pickStation(stations);
-      const manifest = this._assignManifest(ent, role, target, sectorId);
+      const manifest = role === 'sweeper'
+        ? this._emptySalvorManifest(ent, 0)
+        : this._assignManifest(ent, role, target, sectorId);
+      if (role === 'sweeper' && ent.data) ent.data.cargoManifest = manifest;
       this._watchSpawnedTraffic(ent);
       this._active.push(ent.id);
       const rec = {
@@ -3901,6 +3907,7 @@ export const traffic = {
     }
     const list = state.traffic.freighters;
     const stations = this._sectorStations();
+    dispatchSweeperWork(this, stations, state.world && state.world.currentSectorId);
     // Even with zero freighters, a wreck can still call a cutter into the sector.
     if ((!list || list.length === 0) || stations.length === 0) {
       if (stations.length > 0) {
@@ -4031,6 +4038,9 @@ export const traffic = {
         continue;
       }
       if (hasLivePlayer && entityNeedsAiThink(e, state) === false) continue;
+      // Retire only this exact rescue hull's old unleased generic tender assignment. Until
+      // that owner releases it, the normal job and violence branches remain authoritative.
+      if (rec.role === 'rescue' && e.data?.jobId) this._releaseLegacyRescueJob(e, rec);
       // Nearby gunfire: civilians change course before ordinary / world-site / job branches.
       // Job hulls are interrupted through npcJobsRuntime; traffic never writes their intent.
       if (this._reactCivilianViolence(e, rec, stations, state)) {

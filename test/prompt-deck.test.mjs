@@ -2,6 +2,9 @@
 // (src/ui/promptDeck.js keeps its pure helpers pure); these tests pin the ladder, digit routing
 // and countdown grammar that the live deck and its adapters rely on.
 import test from 'node:test';
+import { createBus } from '../src/core/eventBus.js';
+import { createAftermathChoicePrompt } from '../src/ui/aftermathChoicePrompt.js';
+import { createRecoveryEncounterPrompt } from '../src/ui/recoveryEncounterPrompt.js';
 import assert from 'node:assert/strict';
 
 import {
@@ -45,7 +48,7 @@ test('equally urgent player decisions precede passive information and collapse a
   const slots = fullSlotsForViewport(900, 900);
   assert.equal(slots, 1, '900 px wide reserves one full card');
   assert.equal(fullSlotsForViewport(390, 844), 1, 'phone layout uses the same compact ladder');
-  assert.equal(fullSlotsForViewport(1440, 900), 2, 'desktop retains its established two-card layout');
+  assert.equal(fullSlotsForViewport(1440, 900), 1, 'desktop keeps one decision clear of the pilot');
   assert.deepEqual(routeDigit(entries, null, '1', slots), {
     type: 'choose', id: 'scan-return', choiceId: 'investigate',
   });
@@ -95,6 +98,59 @@ test('mounted 900 px deck gives Scan Return the full card, routes Digit1, and ke
     deck.destroy();
     globalThis.document = previousDocument;
   }
+});
+
+
+test('observed aftermath yields to real timed recovery and retires off-field without losing its choice', () => {
+  const previousDocument = globalThis.document, doc = promptDeckDocument(1460,900);
+  globalThis.document = doc;
+  const player={id:1,pos:{x:0,z:0}}, distant={id:2,occupantGeneration:4,pos:{x:1600,z:0}};
+  const state={mode:'flight',simTime:10,world:{currentSectorId:'sector_ceres_belt'},ui:{},playerId:1,entities:new Map([[1,player],[2,distant]])};
+  const bus=createBus(), deck=createPromptDeck({document:doc,state,bus});
+  const aftermath=createAftermathChoicePrompt({state,bus,deck});
+  const recovery=createRecoveryEncounterPrompt({state,bus,document:doc});
+  try {
+    const offer={sectorId:'sector_ceres_belt',choices:[{id:'salvage',label:'Salvage'},{id:'escape',label:'Leave'}]};
+    bus.emit('combat:aftermathChoices',offer);
+    assert.equal(deck.size,0,'unwitnessed sector debris does not mount a decision');
+    bus.emit('combat:outcome',{sectorId:'sector_ceres_belt',entityId:2,occupantGeneration:4});
+    bus.emit('combat:aftermathChoices',offer);
+    assert.equal(deck.size,0,'a remote NPC outcome is not a witnessed encounter');
+    distant.pos.x=200;bus.emit('combat:outcome',{sectorId:'sector_ceres_belt',entityId:2,occupantGeneration:4});
+    bus.emit('combat:aftermathChoices',offer);
+    assert.equal(deck.size,0,'a nearby but unselected NPC outcome does not claim the pilot was involved');
+    bus.emit('combat:outcome',{sectorId:'sector_ceres_belt',entityId:2,occupantGeneration:4,killerId:1});
+    bus.emit('combat:aftermathChoices',offer);
+    assert.equal(deck.raisedId,'aftermath:field','the player-caused field is actionable');
+    bus.emit('surrender:option',{id:'civilian-1',recoveryKind:'civilian_disabled',phase:'awaiting_tether',deadlineAt:78,label:'Jorah',remainingQty:16});
+    assert.equal(deck.raisedId,'custody','the real civilian deadline outranks the untimed field');
+    assert.equal(deck.el.children[0].dataset.deckId,'custody');
+    assert.equal(deck.el.children[1].classList.contains('sf-prompt-chip'),true,'the other decision stays accessible');
+    deck.el.children[1].click();
+    assert.equal(deck.raisedId,'aftermath:field');
+    state.simTime=11;deck.tick();
+    assert.equal(deck.raisedId,'aftermath:field','refreshing the recovery countdown cannot undo a deliberate raise');
+    player.pos.x=1000;deck.tick();
+    assert.equal(deck.el.children.length,1,'an abandoned field no longer covers flight or claims a digit');
+    assert.equal(deck.hasDecision('aftermath:field'),true,'the unresolved choice remains retained');
+    assert.equal(deck.choose('aftermath:field','salvage','keyboard'),false,'a hidden field cannot intercept a power key');
+    player.pos.x=0;deck.tick();
+    assert.equal(deck.el.children.length,2,'returning to the same field restores the choice');
+    assert.equal(deck.el.children[1].dataset.deckId,'aftermath:field');
+    bus.emit('sector:exit');assert.equal(deck.size,0,'sector exit clears stale choices and their input claims');
+  } finally { recovery.destroy();aftermath.destroy();deck.destroy();globalThis.document=previousDocument; }
+});
+
+test('a newly arriving real deadline preempts a manually raised untimed field', () => {
+  const previousDocument=globalThis.document,doc=promptDeckDocument(1460,900);globalThis.document=doc;
+  const deck=createPromptDeck({document:doc,state:{mode:'flight',simTime:10,ui:{}},bus:{emit(){},on(){return()=>{};}}});
+  try {
+    deck.offerDecision({id:'old',headline:'FIELD',choices:[{id:'leave',label:'Leave'}]});
+    deck.raise('old');
+    deck.offerDecision({id:'new',headline:'CIVILIAN',deadlineAt:78,choices:[]});
+    assert.equal(deck.raisedId,'new');
+    assert.equal(deck.el.children[1].dataset.deckId,'old');
+  } finally {deck.destroy();globalThis.document=previousDocument;}
 });
 
 test('digits are global display-line slots: every printed keycap fires, chips claim the rest', () => {

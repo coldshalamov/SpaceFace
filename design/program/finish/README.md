@@ -6,7 +6,7 @@
 an agent gets its job** until every lane board below reads finished. Those files stay as detail
 references (a lane board names a build-map row; the row's prose in `build_map.md` is the spec).
 
-**Current execution.** The controller owns integration of the working tree, plans and open PRs. Use GPT-6 Luna for most bounded coverage and implementation, with up to three native workers on disjoint current assignments. Preserve active work and use the shared protocol in §5. The owner permits unattended local work and stopping competing tasks, including Chrome and VLC, when needed for performance work. ChatGPT Pro creation jobs remain on hold while the intended Pro account is usage-locked; do not substitute Work.
+**Current execution.** The controller owns integration of the working tree, plans and open PRs. The latest owner direction calls for 5–10 useful GPT-6.1 Terra/Sol departments, using terminal workers alongside the three available native worker slots. Assign substantial, disjoint work and preserve concurrent edits under §5. Keep the owner's Chrome and VLC open. Prefer short, purposeful play and checks that resolve a named question. ChatGPT Pro creation jobs remain on hold while the intended Pro account is usage-locked; do not substitute Work or another model.
 
 | File | What it is |
 |---|---|
@@ -133,11 +133,11 @@ the game is accepted. There is no fixed batch-review gate.
 ## 5. The shared working protocol (every lane, every packet)
 
 ### 5.1 Controller and coverage
-The current controller owns scope, integration, conflict handling, exact-path publication, and the final claim. Use GPT-6 Luna for most bounded source coverage and implementation, as requested by the user. Assign concrete player-visible outcomes, exact owned paths, existing interfaces to preserve, and a done condition; use direct work for integration or narrow edits where that is faster. Do not create parallel implementations of an active or completed task.
+The current controller owns scope, integration, conflict handling, exact-path publication, and the final claim. Use the current model and staffing direction above. Assign concrete player-visible outcomes, exact owned paths, existing interfaces to preserve, and a done condition; use direct work for integration or narrow edits where that is faster. Do not create parallel implementations of an active or completed task.
 
 ### 5.2 One outcome, start to finish
 1. **Select.** Take the next ordered item on the owning lane board. Use the smallest scope that can close a player-visible outcome; a separate packet brief is optional when the board already makes scope and acceptance clear.
-2. **Build and integrate.** Use GPT-6 Luna for the bulk of investigation and implementation. The controller owns integration into the shared checkout, preserves concurrent work, and reconciles the result with the live source owner and active contracts.
+2. **Build and integrate.** Use the current staffing direction above. The controller owns integration into the shared checkout, preserves concurrent work, and reconciles the result with the live source owner and active contracts.
 3. **Verify directly.** Run the smallest check that establishes the claimed result at its relevant layer: a focused behavior check for an invariant, the normal player route for player-facing behavior, and a matched measurement for a performance claim. Run `npm run check:baseline` when the change could plausibly break what it touches. Gameplay batches still follow §2.11. After a failure, change the relevant cause before repeating the same check.
 4. **Land.** Commit exact owned paths and push `origin master` under §3. Preserve the shared-tree, fetch/merge, and exact-path rules there. Update the owning board in the same push.
 

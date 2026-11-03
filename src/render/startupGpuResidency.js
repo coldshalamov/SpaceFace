@@ -603,6 +603,19 @@ function residencyProgramLinked(renderer, material) {
   }
 }
 
+function residencyProgramReady(renderer, material, programWrapperDead) {
+  if (!residencyProgramLinked(renderer, material)) return false;
+  try {
+    const gl = renderer.getContext();
+    const program = renderer.properties.get(material).currentProgram;
+    return !!gl && gl.isContextLost?.() !== true
+      && !programWrapperDead(gl, program)
+      && typeof program.isReady === 'function' && program.isReady() === true;
+  } catch {
+    return false;
+  }
+}
+
 function createResidencyMaterial() {
   // WebGLObjects.update() uploads every BufferGeometry attribute before renderBufferDirect() binds
   // the program. The shader stays tiny and clips every vertex outside the 1x1 target.
@@ -846,6 +859,7 @@ export async function prepareStartupGeometryResidency(renderer, subjects, option
   try {
     const counters = options.counters || null;
     await enqueueGeometryResidencyBatches(renderer, async () => {
+      const compiler = typeof renderer.compileAsync === 'function' ? await import('./bloom.js') : null;
       for (let index = 0; index < batches.length; index++) {
         const batch = batches[index];
         if (!submitSerial && paceQueue) await paceQueue();
@@ -864,10 +878,14 @@ export async function prepareStartupGeometryResidency(renderer, subjects, option
           // in every batch shares one program. Once that program is linked on this renderer the
           // compile unit is a pure serial-route round trip (a presented-frame wait + gl.finish per
           // batch on SwiftShader); skip it. A miss is still safe: the draw links synchronously.
-          // Serial route only: with KHR_parallel_shader_compile a populated program cache means the
-          // link was only issued, not finished, and an urgent batch would draw into the stall.
-          if (typeof renderer.compileAsync === 'function' && !(submitSerial && residencyProgramLinked(renderer, material))) {
-            const { compilePipelinesContextSafe } = await import('./bloom.js');
+          // KHR cache presence alone is not readiness: an urgent batch can overlap a pending
+          // ordinary link. Reuse only a live wrapper that actually reports ready, with bloom's
+          // context-generation guard so a lost/restored context cannot inherit the old proof.
+          const programReady = compiler && (submitSerial
+            ? residencyProgramLinked(renderer, material)
+            : residencyProgramReady(renderer, material, compiler.programWrapperDead));
+          if (compiler && !programReady) {
+            const { compilePipelinesContextSafe } = compiler;
             const compile = () => {
               if (typeof options.beforeSubmit === 'function') options.beforeSubmit();
               if (typeof options.isActive === 'function' && !options.isActive()) {

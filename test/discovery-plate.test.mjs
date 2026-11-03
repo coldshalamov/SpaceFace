@@ -1,303 +1,69 @@
-// Feature 20 — the first-discovery plate: slides in on the durable discovery receipts
-// (discovery:plateUnlocked / uniqueWreck:bearingFixed / aceMemory:transition 'encountered'),
-// holds ~3 s, dedupes repeat keys, and cleans up on destroy. Driven through the real module
-// with a stub DOM — no jsdom in this repo.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-
 import { createBus } from '../src/core/eventBus.js';
+import { setReceiptPresenter } from '../src/core/receiptPresenter.js';
 import { createDiscoveryPlate } from '../src/ui/discoveryPlate.js';
-import { uniqueWreckById, UNIQUE_WRECKS } from '../src/data/uniqueWrecks.js';
 
-function makeClassList() {
-  const set = new Set();
-  return {
-    add(...names) { for (const n of names) set.add(n); },
-    remove(...names) { for (const n of names) set.delete(n); },
-    contains(n) { return set.has(n); },
-    _set: set,
-  };
+function fixture() {
+  const bus = createBus();
+  const ship = { vel: { x: 0, z: 0 } };
+  const state = { mode: 'flight', ui: {}, input: {}, playerId: 1,
+    player: { tether: { active: false } }, entities: new Map([[1, ship]]),
+    world: { sectors: { belt: { name: 'Belt', pois: [{ id: 'vault', name: 'The Vault', type: 'site' }] } } } };
+  const shown = [];
+  const dispose = setReceiptPresenter(spec => { shown.push(spec); return true; });
+  const plate = createDiscoveryPlate({ bus, state });
+  return { bus, state, ship, shown, dispose, plate };
 }
 
-function makeElement(tag = 'div') {
-  const el = {
-    tagName: String(tag).toUpperCase(),
-    className: '',
-    classList: makeClassList(),
-    attributes: {},
-    style: {},
-    children: [],
-    childNodes: [],
-    parentNode: null,
-    isConnected: false,
-    _innerHTML: '',
-    _text: '',
-    set innerHTML(v) {
-      this._innerHTML = String(v);
-      // discoveryPlate builds three labelled children inside its frame; expose them
-      // by class so querySelector can resolve kicker/title/meta.
-      this._kids = {};
-      for (const cls of ['sf-discovery-plate__kicker', 'sf-discovery-plate__title', 'sf-discovery-plate__meta']) {
-        if (this._innerHTML.includes(cls)) {
-          const kid = makeElement('div');
-          kid.className = cls;
-          kid.parentNode = this;
-          this._kids[cls] = kid;
-        }
-      }
-    },
-    get innerHTML() { return this._innerHTML; },
-    set textContent(v) { this._text = String(v); },
-    get textContent() { return this._text; },
-    setAttribute(k, v) { this.attributes[k] = String(v); },
-    getAttribute(k) { return this.attributes[k]; },
-    appendChild(child) { this.children.push(child); child.parentNode = this; child.isConnected = this._live; return child; },
-    removeChild(child) {
-      const i = this.children.indexOf(child);
-      if (i >= 0) this.children.splice(i, 1);
-      child.parentNode = null; child.isConnected = false;
-    },
-    removeFromParent() { if (this.parentNode) this.parentNode.removeChild(this); },
-    querySelector(sel) {
-      const cls = sel.replace(/^\./, '');
-      return (this._kids && this._kids[cls]) || null;
-    },
-  };
-  return el;
-}
+test('discovery waits for a quiet flight and uses the existing receipt presenter', () => {
+  const f = fixture();
+  try {
+    f.ship.vel.x = 80;
+    f.bus.emit('discovery:plateUnlocked', { sectorId: 'belt', poiId: 'vault' });
+    f.plate.tick(); assert.equal(f.shown.length, 0);
+    f.ship.vel.x = 0; f.state.player.tether.active = true;
+    f.plate.tick(); assert.equal(f.shown.length, 0);
+    f.state.player.tether.active = false; f.state.input.moveZ = 1;
+    f.plate.tick(); assert.equal(f.shown.length, 0);
+    f.state.input.moveZ = 0; f.plate.tick();
+    assert.equal(f.shown.length, 1);
+    assert.equal(f.shown[0].text, 'Discovery: The Vault · saved to Codex');
+    f.bus.emit('discovery:plateUnlocked', { sectorId: 'belt', poiId: 'vault' });
+    f.plate.tick(); assert.equal(f.shown.length, 1);
+  } finally { f.plate.destroy(); f.dispose(); }
+});
 
-function makeDom() {
-  const hud = makeElement('div');
-  hud._live = true;
-  const body = makeElement('body');
-  body._live = true;
-  const document = {
-    createElement: (tag) => makeElement(tag),
-    getElementById: (id) => (id === 'hud' ? hud : null),
-    body,
-  };
-  return { document, hud, body };
-}
+test('discovery remains queued when receipt lane is unavailable and respects danger', () => {
+  const f = fixture();
+  const previous = globalThis.document;
+  try {
+    globalThis.document = { body: { dataset: { sfHudJob: 'fight' } } };
+    f.bus.emit('aceMemory:transition', { transition: 'encountered', aceId: 'a', aceName: 'Vora' });
+    f.plate.tick(); assert.equal(f.shown.length, 0);
+    globalThis.document.body.dataset.sfHudJob = 'cruise';
+    f.dispose(); f.plate.tick(); assert.equal(f.shown.length, 0);
+    const restore = setReceiptPresenter(spec => { f.shown.push(spec); return true; });
+    f.plate.tick(); assert.match(f.shown[0].text, /Vora/);
+    restore();
+  } finally { f.plate.destroy(); f.dispose(); globalThis.document = previous; }
+});
 
-function makeClock() {
+test('queue stays bounded, drains in order, and destroy removes its listeners', () => {
+  const f = fixture();
+  const originalNow = performance.now;
   let now = 0;
-  const rafQueue = [];
-  return {
-    now: () => now,
-    advance(ms) { now += ms; },
-    raf(cb) { rafQueue.push(cb); },
-    flushRaf() { const q = rafQueue.splice(0); for (const cb of q) cb(now); },
-  };
-}
-
-function installDom({ clock }) {
-  const { document, hud } = makeDom();
-  const saved = {
-    document: globalThis.document,
-    requestAnimationFrame: globalThis.requestAnimationFrame,
-    performanceNow: performance.now,
-  };
-  globalThis.document = document;
-  globalThis.requestAnimationFrame = clock.raf;
-  performance.now = clock.now;
-  return {
-    hud,
-    restore() {
-      globalThis.document = saved.document;
-      globalThis.requestAnimationFrame = saved.requestAnimationFrame;
-      performance.now = saved.performanceNow;
-    },
-  };
-}
-
-function findPlate(hud) {
-  return hud.children.find((c) => c.className === 'sf-discovery-plate') || null;
-}
-
-function stateWithSector() {
-  return {
-    world: {
-      sectors: {
-        sector_ceres_belt: {
-          name: 'Ceres Belt',
-          pois: [{ id: 'poi_vault', name: 'The Ancient Vault', type: 'vault' }],
-        },
-      },
-      discovery: {},
-    },
-  };
-}
-
-test('a discovery receipt slides a titled plate onto the HUD and retires it after ~3 s', () => {
-  const clock = makeClock();
-  const { hud, restore } = installDom({ clock });
   try {
-    const bus = createBus();
-    const plate = createDiscoveryPlate({ bus, state: stateWithSector() });
-    bus.emit('discovery:plateUnlocked', { sectorId: 'sector_ceres_belt', poiId: 'poi_vault' });
-
-    plate.tick();
-    clock.flushRaf();
-    const el = findPlate(hud);
-    assert.ok(el, 'plate element mounts under #hud');
-    assert.equal(el.style.display, 'block');
-    assert.ok(el.classList.contains('sf-discovery-plate--in'), 'slide-in class applied');
-    const title = el.querySelector('.sf-discovery-plate__title');
-    const kicker = el.querySelector('.sf-discovery-plate__kicker');
-    assert.equal(title.textContent, 'The Ancient Vault');
-    assert.match(kicker.textContent, /DISCOVERY/i);
-
-    clock.advance(2990);
-    plate.tick();
-    assert.equal(el.style.display, 'block', 'still visible just before TTL');
-    clock.advance(20);
-    plate.tick();
-    assert.ok(el.classList.contains('sf-discovery-plate--out'), 'leaving class at TTL');
-    clock.advance(400);
-    plate.tick();
-    assert.equal(el.style.display, 'none', 'plate retires after fade');
-    plate.destroy();
-  } finally {
-    restore();
-  }
-});
-
-test('repeat keys dedupe; a queued second discovery follows the first', () => {
-  const clock = makeClock();
-  const { hud, restore } = installDom({ clock });
-  try {
-    const bus = createBus();
-    const plate = createDiscoveryPlate({ bus, state: stateWithSector() });
-    bus.emit('discovery:plateUnlocked', { sectorId: 'sector_ceres_belt', poiId: 'poi_vault' });
-    bus.emit('discovery:plateUnlocked', { sectorId: 'sector_ceres_belt', poiId: 'poi_vault' });
-    bus.emit('discovery:plateUnlocked', { sectorId: 'sector_ceres_belt', poiId: 'poi_other' });
-    plate.tick();
-    clock.advance(3600);
-    plate.tick();
-    plate.tick();
-    const el = findPlate(hud);
-    const title = el.querySelector('.sf-discovery-plate__title');
-    assert.equal(title.textContent, 'Poi Other', 'second discovery shows once the first retires');
-    plate.destroy();
-  } finally {
-    restore();
-  }
-});
-
-test('unique-wreck and flagship contacts produce their own kickers', () => {
-  const clock = makeClock();
-  const { hud, restore } = installDom({ clock });
-  try {
-    const bus = createBus();
-    const plate = createDiscoveryPlate({ bus, state: stateWithSector() });
-    const wreckId = UNIQUE_WRECKS[0] && UNIQUE_WRECKS[0].id;
-    assert.ok(wreckId, 'fixture needs at least one authored unique wreck');
-    bus.emit('uniqueWreck:bearingFixed', { wreckId, sectorId: 'sector_ceres_belt' });
-    bus.emit('aceMemory:transition', { transition: 'encountered', aceId: 'ace_x', aceName: 'Vora Keth' });
-    bus.emit('aceMemory:transition', { transition: 'dismissed', aceId: 'ace_y', aceName: 'Ignored' });
-
-    plate.tick();
-    const el = findPlate(hud);
-    const kicker = el.querySelector('.sf-discovery-plate__kicker');
-    const title = el.querySelector('.sf-discovery-plate__title');
-    assert.equal(kicker.textContent, 'HISTORIC WRECK LOCATED');
-    assert.equal(title.textContent, uniqueWreckById(wreckId).name || title.textContent);
-
-    clock.advance(3600);
-    plate.tick(); plate.tick();
-    assert.equal(kicker.textContent, 'FLAGSHIP CONTACT');
-    assert.equal(title.textContent, 'Vora Keth');
-
-    clock.advance(3600);
-    plate.tick(); plate.tick(); plate.tick();
-    assert.equal(el.style.display, 'none', 'non-encountered transition never queued a third plate');
-    plate.destroy();
-  } finally {
-    restore();
-  }
-});
-
-test('destroy() unsubscribes and removes the element', () => {
-  const clock = makeClock();
-  const { hud, restore } = installDom({ clock });
-  try {
-    const bus = createBus();
-    const plate = createDiscoveryPlate({ bus, state: stateWithSector() });
-    plate.destroy();
-    bus.emit('discovery:plateUnlocked', { sectorId: 'sector_ceres_belt', poiId: 'poi_vault' });
-    plate.tick();
-    assert.equal(findPlate(hud), null, 'no plate after destroy');
-  } finally {
-    restore();
-  }
-});
-
-test('flight discoveries use the existing HUD safe bands and release them after the original lifetime', () => {
-  const clock = makeClock(), { hud, restore } = installDom({ clock });
-  const calls = [];
-  const allocator = (name) => ({
-    registerExternalFlightCaption(el) {
-      calls.push(`${name}:register`);
-      assert.equal(el.style.display, 'block', 'the real title is measurable before layout admission');
-      assert.equal(el.style.minWidth, '0', 'the fixed plate floor cannot overflow a narrow safe band');
-      el.style.left = '500px'; el.style.top = '140px'; el.style.transform = 'none';
-    },
-    releaseExternalFlightCaption(el) {
-      calls.push(`${name}:release`);
-      el.style.left = ''; el.style.top = ''; el.style.transform = '';
-    },
-  });
-  const state = { ...stateWithSector(), mode: 'flight', ui: { docked: false } };
-  const ctx = { state, bus: createBus(), ui: { hud: allocator('first') } };
-  const plate = createDiscoveryPlate(ctx);
-  try {
-    ctx.bus.emit('discovery:plateUnlocked', { sectorId: 'sector_ceres_belt', poiId: 'poi_vault' });
-    plate.tick(); clock.flushRaf();
-    const el = findPlate(hud);
-    assert.deepEqual(calls, ['first:register']);
-    assert.equal(el.getAttribute('role'), 'status');
-    assert.equal(el.getAttribute('aria-live'), 'polite');
-    assert.equal(el.style.transform, 'none', 'layout position takes priority over the edge slide');
-    clock.advance(1500); plate.tick();
-    assert.deepEqual(calls, ['first:register'], 'steady frames do not remeasure the HUD');
-    ctx.ui.hud = allocator('replacement');
-    hud.removeChild(el);
-    plate.tick();
-    assert.equal(el.parentNode, hud, 'HUD rebuild reattaches the same active announcement');
-    assert.deepEqual(calls, ['first:register', 'first:release', 'replacement:register']);
-    clock.advance(1500); plate.tick();
-    assert.equal(el.classList.contains('sf-discovery-plate--out'), true,
-      'HUD replacement did not restart the three-second hold');
-    assert.equal(el.style.transform, 'none', 'the layout remains reserved through the opacity fade');
-    clock.advance(320); plate.tick();
-    assert.equal(el.style.display, 'none');
-    assert.equal(el.style.minWidth, '');
-    assert.equal(el.style.left, '');
-    assert.equal(calls.at(-1), 'replacement:release');
-  } finally { plate.destroy(); restore(); }
-});
-
-test('docking and destruction release discovery placement without changing dedupe or queue order', () => {
-  const clock = makeClock(), { hud, restore } = installDom({ clock });
-  const calls = [], state = { ...stateWithSector(), mode: 'flight', ui: {} };
-  const api = {
-    registerExternalFlightCaption() { calls.push('register'); },
-    releaseExternalFlightCaption() { calls.push('release'); },
-  };
-  const bus = createBus(), plate = createDiscoveryPlate({ bus, state,
-    registry: { get: name => name === 'ui' ? { hud: api } : null } });
-  try {
-    bus.emit('discovery:plateUnlocked', { sectorId: 'sector_ceres_belt', poiId: 'poi_vault' });
-    bus.emit('discovery:plateUnlocked', { sectorId: 'sector_ceres_belt', poiId: 'poi_vault' });
-    bus.emit('discovery:plateUnlocked', { sectorId: 'sector_ceres_belt', poiId: 'poi_other' });
-    plate.tick(); state.ui.docked = true; plate.tick();
-    assert.deepEqual(calls, ['register', 'release']);
-    state.ui.docked = false; plate.tick();
-    assert.deepEqual(calls, ['register', 'release', 'register']);
-    clock.advance(3320); plate.tick(); plate.tick();
-    assert.equal(findPlate(hud).querySelector('.sf-discovery-plate__title').textContent, 'Poi Other');
-    plate.destroy();
-    assert.equal(calls.at(-1), 'release');
-    assert.equal(findPlate(hud), null);
-  } finally { plate.destroy(); restore(); }
+    performance.now = () => now;
+    f.ship.vel.x = 100;
+    for (const title of ['one', 'two', 'three', 'four']) f.plate.push({ key: title, title });
+    f.ship.vel.x = 0; f.plate.tick();
+    assert.match(f.shown[0].text, /two/);
+    f.plate.tick(); assert.equal(f.shown.length, 1);
+    now += 3500; f.plate.tick(); assert.match(f.shown[1].text, /three/);
+    now += 3500; f.plate.tick(); assert.match(f.shown[2].text, /four/);
+    f.plate.destroy();
+    f.bus.emit('discovery:plateUnlocked', { sectorId: 'belt', poiId: 'vault' });
+    now += 3500; f.plate.tick(); assert.equal(f.shown.length, 3);
+  } finally { performance.now = originalNow; f.plate.destroy(); f.dispose(); }
 });

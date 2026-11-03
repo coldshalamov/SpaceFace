@@ -50,6 +50,7 @@ import { withBankStone } from '../core/surfaceContact.js';
 import { asteroidColliderRadius } from '../data/asteroidColliders.js';
 import { validateRunState } from '../core/runState.js';
 import { createBroodEngine } from './swarmBrood.js';
+import { BANK_STONE_MIN_DISTANCE, BANK_STONE_MAX_DISTANCE } from './swarmBank.js';
 import { OPENING_LESSON_RELEASE_TICKS } from './survivalWave.js';
 import { BROOD_EXPLOSION_EVENTS } from '../data/swarmBrood.js';
 import {
@@ -944,7 +945,10 @@ export const swarmArena = {
     if (this._lessonHoldS != null) {
       this._broodHeldUntil = now + this._lessonHoldS;
       this._lessonHoldS = null;
-    } else if (this._brood) this._brood.spawnWave(this.state);
+    } else if (this._brood) {
+      this._prepareBankStone(run, now);
+      this._brood.spawnWave(this.state);
+    }
     // The planning settle runs before the draft; the last round's fields and ricochets keep working
     // through it, so rocks were still sliding 12–16 u/s when the next pack arrived and killed four
     // hulls in its first second (player-truth m4-active, round 2). The opener is the exception:
@@ -953,6 +957,41 @@ export const swarmArena = {
     // B4 — the Hive's room lands with the wave: first wall ring standing, sacs pulsing.
     if (run.arenaId === HIVE_ARENA_ID) this._hiveInstall(run);
     this._pressureAlive = liveCohortCount(this.state);
+  },
+
+  // If this wave can run the Bank but its existing rocks cannot make the first pass,
+  // put one ordinary, capped arena pebble in a clear pocket before Brood admission.
+  // A blocked or full room gets the unchanged ordinary wave instead.
+  _prepareBankStone(run, now) {
+    const state = this.state, brood = this._brood;
+    if (!state?.entities || !brood?.canPrepareBank(state) || brood.planBank(state)
+      || typeof this.helpers?.spawnEntity !== 'function') return null;
+    const player = state.entities.get(state.playerId);
+    if (!player?.pos || !Number.isFinite(player.pos.x) || !Number.isFinite(player.pos.z)) return null;
+    let existing = 0;
+    for (const entity of state.entities.values()) {
+      if (entity?.alive !== false && entity?.data?.[SWARM_DEBRIS_TAG]) existing++;
+    }
+    if (existing >= SWARM_DEBRIS_MAX) return null;
+    const radius = 6, nativeRadius = asteroidColliderRadius(TYPE_ID, radius);
+    const distance = (BANK_STONE_MIN_DISTANCE + BANK_STONE_MAX_DISTANCE) / 2;
+    const heading = Number.isFinite(player.rot) ? player.rot : 0;
+    for (let i = 0; i < 16; i++) {
+      const angle = heading + i * Math.PI / 8;
+      const pos = { x: player.pos.x + Math.cos(angle) * distance, z: player.pos.z + Math.sin(angle) * distance };
+      if (!swarmPlacementIsClear(state, pos, nativeRadius, { clearance: 24 })) continue;
+      const candidate = { id: 'bank-preview', type: 'asteroid', alive: true, collides: true, pos, radius,
+        mass: radius * radius * 40, physicsBody: { radius: nativeRadius, dynamic: true },
+        data: { [SWARM_DEBRIS_TAG]: true } };
+      if (brood.planBank(state, candidate)?.rockId !== candidate.id) continue;
+      const rng = mulberry32(debrisStreamSeed(Number.isInteger(run.seed) ? run.seed : 1, run.wave) ^ 0x3fa1287d);
+      const id = this._spawnDebrisRock(pos.x, pos.z, radius, rng, now, { material: 'rock', bankOpportunity: true });
+      if (id == null) return null;
+      this._ids.push(id);
+      this._emit('swarmArena:debris', { wave: run.wave, added: 1, total: this._ids.length, layoutId: 'bank_opportunity' });
+      return id;
+    }
+    return null;
   },
 
   _installOpeningPocket(run) {
