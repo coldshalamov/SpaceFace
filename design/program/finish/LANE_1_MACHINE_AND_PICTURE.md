@@ -1,7 +1,7 @@
 <!-- LIFETIME: STABLE -->
 # Lane 1 — THE MACHINE & THE PICTURE (high complexity, taste)
 
-**Written only by Lane 1.** Other lanes append one line to *Inbox* and nothing else.
+The controller coordinates current writers under README §3; lane labels do not create permanent path locks.
 Program law: [`README.md`](./README.md). Commands: [`TOOLS.md`](./TOOLS.md). Prompt: [`PROMPT_LANE_1.md`](./PROMPT_LANE_1.md).
 
 **The outcome:** SpaceFace runs like a professional game on the owner's Intel-iGPU laptop — combat
