@@ -642,6 +642,13 @@ export function cargoSpillLedgerText(ownerName, reaction) {
   return `${ownerName || 'Unknown owner'} — ${verb} after the spill.`;
 }
 
+const CARGO_RECOVERY_NOTICE = Object.freeze({
+  restitution: { text: 'Cargo recovery notice: restitution after the spill.' },
+  bounty: { text: 'Cargo recovery notice: bounty after the spill.' },
+  thanks: { text: 'Cargo recovery notice: cargo returned.' },
+});
+const CARGO_RECOVERY_SENDER = Object.freeze({ text: 'Cargo recovery notice' });
+
 export function stuntRecognitionBarkFor(factionId, rng, tokens = {}) {
   const faction = (factionId && Object.hasOwn(STUNT_BARKS, factionId)) ? STUNT_BARKS[factionId] : STUNT_BARKS.faction_free;
   let idx = 0;
@@ -2719,8 +2726,10 @@ export const barkDirector = {
     const key = `${resolved.ownerId}|${reaction}|${state.tick || 0}`;
     if (record.lastKey === key) return null;
 
-    const barkText = cargoSpillBarkText(resolved.ownerName, reaction);
-    const ledgerText = cargoSpillLedgerText(resolved.ownerName, reaction);
+    const barkText = resolved.claimantName
+      ? cargoSpillBarkText(resolved.claimantName, reaction) : CARGO_RECOVERY_NOTICE[reaction].text;
+    const ledgerText = resolved.claimantName
+      ? cargoSpillLedgerText(resolved.claimantName, reaction) : CARGO_RECOVERY_NOTICE[reaction].text;
     const barkKey = CARGO_OWNER_REACTIONS[reaction].barkKey;
     const voice = this.helpers && this.helpers.voice;
     let accepted = true;
@@ -2760,7 +2769,7 @@ export const barkDirector = {
     };
     this._emit('barkDirector:voice', receipt);
     this._emit('comms:log', {
-      from: resolved.ownerName,
+      from: resolved.claimantName || CARGO_RECOVERY_SENDER.text,
       text: ledgerText,
       kind: 'cargo',
       reaction,
@@ -3071,15 +3080,21 @@ function speakableNameOrNull(raw, ownerId) {
   return s;
 }
 
-/** The spill owner as spoken: the stamped name if it is a name, else the hull's traffic
- *  label or callsign, else the generic "The hauler" — a raw id never reaches the radio. */
-function speakableOwnerName(name, ownerId, ownerEntity) {
+/** A wreck's own label describes the object, not the person or organization making a claim. */
+function speakableClaimantName(name, ownerId, ownerEntity) {
   const d = ownerEntity && ownerEntity.data || {};
-  return speakableNameOrNull(name, ownerId)
+  const stamped = speakableNameOrNull(name, ownerId);
+  if (ownerEntity && ownerEntity.type === 'wreck') {
+    const labels = [d.displayName, d.name, d.label, d.scanLabel, ownerEntity.name];
+    if (stamped && !labels.some((label) => typeof label === 'string'
+      && label.trim().toLowerCase() === stamped.toLowerCase())) return stamped;
+    return null;
+  }
+  return stamped
     || speakableNameOrNull(d.displayName, ownerId)
     || speakableNameOrNull(d.trafficLabel, ownerId)
     || speakableNameOrNull(d.callsign, ownerId)
-    || 'The hauler';
+    || null;
 }
 
 function namedPodIdentity(entity) {
@@ -3188,12 +3203,17 @@ function resolveNamedCargoIncident(state, payload, eventName) {
     && (payload.attackerId == null || String(payload.attackerId) !== String(playerId))) {
     return null;
   }
-  const ownerEntity = entityFromState(state, ownerId);
-  const ownerName = speakableOwnerName(identity.ownerName, ownerId, ownerEntity);
-  if (!ownerName) return null;
+  // Cargo identities stringify entity ids; live entity maps commonly use numeric keys.
+  const numericOwnerId = typeof ownerId === 'string' && /^(0|[1-9]\d*)$/.test(ownerId)
+    ? Number(ownerId) : null;
+  const ownerEntity = entityFromState(state, ownerId)
+    || (Number.isSafeInteger(numericOwnerId) ? entityFromState(state, numericOwnerId) : null);
+  const ownerName = identity.ownerName;
+  const claimantName = speakableClaimantName(ownerName, ownerId, ownerEntity);
   return {
     ownerId,
     ownerName,
+    claimantName,
     originId: identity.originId || null,
     destinationId: identity.destinationId || null,
     reaction,
