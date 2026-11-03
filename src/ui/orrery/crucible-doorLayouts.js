@@ -48,6 +48,15 @@ export const CRUCIBLE_DOOR_LAYOUT_CSS = `
    128px keeps four faces in the ~610px column of a 1366-wide window where 150px fell back to
    three plus an orphaned Daily; long words wrap inside the tile like the arena names do. */
 ${D} .sf-crd-modes { grid-template-columns:repeat(auto-fit, minmax(128px, 1fr)) !important; }
+/* …and at 901-1100 wide the settings column is ~430px: 128px floors still dropped to three faces and
+   orphaned Daily on a second row of dead space (960x540). 88px keeps all four on one row; long words
+   (FOUNDRY BLOCK) wrap inside their face like the arena names do. */
+@media (min-width:901px) and (max-width:1100px) {
+  ${D} .sf-crd-modes { grid-template-columns:repeat(auto-fit, minmax(88px, 1fr)) !important; }
+}
+/* the mode sentence wraps to a second line instead of ending in an ellipsis mid-clause
+   ("…Push your build as far a…") — it is the only place that says what the mode does */
+${D} .sf-crd-mode-sub { white-space:normal !important; overflow:visible !important; text-overflow:clip !important; }
 /* the arena strip is one calm row of named stops — all seven at either bench width (80px keeps
    seven inside the ~625px a 1366-wide window gives the row once the strip's gaps are paid;
    at 1920 auto-fit stretches them exactly as wide as the old 99px rule did) */
