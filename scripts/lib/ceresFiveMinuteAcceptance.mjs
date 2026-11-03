@@ -3652,6 +3652,7 @@ export function planCeresThroughlineToolkitReposition({
       minRemainingTicks,
       allowBoost: true,
       controlClock: 'fixed-tick',
+      allowArrivalCone: true,
     }),
     Object.freeze({
       targetId: 'ceres-throughline-toolkit-camera-clearance',
@@ -3897,6 +3898,7 @@ export function chooseCeresPocketApproachAction(status, {
   arrivalRadiusWU = 90,
   allowBoost = true,
   settleOnArrival = true,
+  allowArrivalCone = false,
 } = {}) {
   const distanceWU = status?.distanceWU;
   const headingError = status?.headingError;
@@ -3917,7 +3919,14 @@ export function chooseCeresPocketApproachAction(status, {
       boost: false,
     });
   }
-  if (Math.abs(headingError) > 0.08) {
+  // For the impact-settle dogleg, a stopped hull need not repeatedly turn to
+  // an exact bearing when its heading already passes safely through the gate.
+  // Require observed low yaw as well as low speed: missing yaw stays strict.
+  const headingTolerance = allowArrivalCone && speed <= 1
+    && Number.isFinite(status?.angularVelocity) && Math.abs(status.angularVelocity) <= 0.05
+    ? Math.max(0.08, Math.min(0.2, Math.asin(Math.min(1, arrivalRadiusWU / (2 * distanceWU)))))
+    : 0.08;
+  if (Math.abs(headingError) > headingTolerance) {
     const turnMagnitude = Math.abs(headingError);
     return Object.freeze({
       kind: 'turn',
@@ -4044,6 +4053,7 @@ async function readCeresPocketApproachStatus(page, point, terminalTick) {
       distanceWU,
       headingError,
       speed,
+      angularVelocity: finiteNumber(player.angVel),
       radialSpeed: geometryValid && velocityValid
         ? (distanceWU > 0 ? (velocity.x * dx + velocity.z * dz) / distanceWU : 0)
         : null,
@@ -4202,6 +4212,7 @@ export async function drivePublicToCeresPoint(page, target, endTick) {
         arrivalRadiusWU,
         allowBoost: activeTarget.allowBoost !== false,
         settleOnArrival: activeTarget.settleOnArrival !== false,
+        allowArrivalCone: activeTarget.allowArrivalCone === true,
       });
       recordCeresPocketApproachDecision(diagnostic, status, action.kind);
       if (action.kind === 'invalid') {
@@ -5041,6 +5052,7 @@ function recordCeresPocketApproachDecision(diagnostic, status, action) {
     action,
     distanceWU: status.distanceWU,
     speed: status.speed,
+    angularVelocity: status.angularVelocity,
     radialSpeed: status.radialSpeed,
     headingError: status.headingError,
   };
