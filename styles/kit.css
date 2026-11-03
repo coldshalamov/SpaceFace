@@ -166,9 +166,11 @@ html[data-k-temp="works"]    { /* Asteroid Works keeps its own law; the kit sets
   transition: opacity var(--k-d-temp) var(--k-ease); }
 [data-screen="mainMenu"] .k-world--plate,
 [data-screen="motionAsk"] .k-world--plate { background-image: url('../assets/ui/backdrops/backdrop-title.jpg'); }
-/* The borrowed title frame floors its drawn mark at 340px; on a window narrower than about 390px that
-   ran past the right edge. The mark keeps its size where it fits and shrinks to the column where not. */
+/* The borrowed mark's 340px floor must fit the first-boot frame on narrow screens. */
 [data-screen="motionAsk"] .dp-logotype { max-width: 100%; }
+@media (max-width: 960px), (max-height: 540px) and (pointer: coarse) {
+  html[data-sf-mobile="1"] [data-screen="motionAsk"] .dp-logotype { max-width: min(100%, 85vw) !important; }
+}
 [data-screen="crucible"] .k-world--plate { background-image: url('../assets/ui/backdrops/backdrop-crucible-door.jpg'); }
 /* The results screen stands on the kill-cam stage; its authored still is the Crucible's
    own door plate — the picture that holds while the scene assembles, and the one SKIP

@@ -127,6 +127,10 @@ function siteRecord(state, siteId) {
       siteC: 0,
       // AE-056 interaction buffer: recent ecological signals fauna react to.
       signals: [],
+      // Persisted edge/readout flags use explicit booleans so a fresh save and a Continue
+      // produce the same site shape.
+      scanRevealed: false,
+      offerArmed: false,
       offerEmitted: false,
       // AE-130..137: each authored ecology mission emits once — a per-mission ledger.
       offersEmitted: {},
@@ -2608,6 +2612,14 @@ export function recordEvidence(state, id, sectorId = null) {
 export function serializeAlienEcologyState(state) {
   captureClosedRefineryProps(state);
   const ae = ensureAlienEcologyState(state);
+  const sites = JSON.parse(JSON.stringify(ae.sites));
+  for (const rec of Object.values(sites)) {
+    if (!rec || typeof rec !== 'object' || Array.isArray(rec)) continue;
+    // Absence and false already mean the same thing to the runtime readers. Write the
+    // canonical booleans into the saved copy so a legacy site does not change shape on Continue.
+    rec.scanRevealed = !!rec.scanRevealed;
+    rec.offerArmed = rec.offerArmed === true;
+  }
   const heatDerivative = copyHeatDerivative(ae.heatDerivative);
   const surveyCopy = copySurveySale(ae.surveyCopy);
   return {
@@ -2615,7 +2627,7 @@ export function serializeAlienEcologyState(state) {
     revelation: ae.revelation,
     machineProtocol: ae.machineProtocol,
     taxonomy: { ...ae.taxonomy },
-    sites: JSON.parse(JSON.stringify(ae.sites)),
+    sites,
     exposure: ae.exposure || 0,
     machineAccess: ae.machineAccess ? { ...ae.machineAccess } : {},
     mapKnowledge: ae.mapKnowledge ? JSON.parse(JSON.stringify(ae.mapKnowledge)) : {},
@@ -2728,6 +2740,7 @@ export function deserializeAlienEcologyState(state, data) {
         siteC: Number.isFinite(rec.siteC) ? rec.siteC : 0,
         signals: [], // transient buffer — never persisted
         scanRevealed: !!rec.scanRevealed,
+        offerArmed: rec.offerArmed === true,
         offerEmitted: !!rec.offerEmitted,
         offersEmitted: rec.offersEmitted && typeof rec.offersEmitted === 'object'
           ? { ...rec.offersEmitted } : {},

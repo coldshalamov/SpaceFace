@@ -27,7 +27,8 @@ export const SALVOR_POOL = Object.freeze({ cmdty_scrap_metal: 5, cmdty_salvage_e
 // are unchanged.
 // The world is registered for its station producer but not ticked: unrelated sector contents
 // and encounters are outside this bounded haul. No worker phase, position or speed is forced.
-export async function salvorNativeFixture({ drifting = false, withSave = false, adoptedScavenger = false } = {}) {
+export async function salvorNativeFixture({ drifting = false, withSave = false, adoptedScavenger = false,
+  salvagePool = SALVOR_POOL } = {}) {
   const priorFlags = snapshotFeatureMaps();
   applyFeatureConfigToMaps(PRODUCTION_FEATURES);
   const bus = createBus();
@@ -79,7 +80,7 @@ export async function salvorNativeFixture({ drifting = false, withSave = false, 
       radius: 4, mass: 160, hull: 100, hullMax: 100, collides: true,
       flags: { persistent: true },
       data: {
-        salvagePool: { ...SALVOR_POOL }, salvageTimeLeft: 8, parentType: 'ship',
+        salvagePool: { ...salvagePool }, salvageTimeLeft: 8, parentType: 'ship',
         sectorId: sector.id, homeSectorId: sector.id,
       },
     });

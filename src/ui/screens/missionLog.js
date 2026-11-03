@@ -15,7 +15,7 @@
 
 import {
   STATION_INFO, SECTOR_BY_ID, fmtTime, titleCaseWords, prettyType, cmdtyName,
-  destStationName, contractSectorName, inSector, objectiveText,
+  destStationName, contractSectorName, inSector, objectiveText, registryContactReadout, contract47aReadout,
 } from '../sim/missionRecap.js';
 export { objectiveText, continueRecap } from '../sim/missionRecap.js';
 import { commodityDisplayName } from '../commodityNames.js';
@@ -354,6 +354,8 @@ export function storyIntroducesDisplayName(value) {
 }
 
 function nextStepText(m, state) {
+  const registry = registryContactReadout(m);
+  if (registry) return `Next: ${registry.next}`;
   const p = m.params || {};
   const dest = m.destStationId ? destStationName(m.destStationId) : 'the tracked marker';
   const wreckName = p.wreckName || 'the marked wreck';
@@ -454,6 +456,7 @@ function stripNextPrefix(text) {
 }
 
 function missionPurposeText(m) {
+  if (registryContactReadout(m)) return 'Check the named vessel’s registry and choose how to resolve the writ.';
   if (!m) return 'Complete the contract and secure its payout.';
   // Paperwork deep-read: authorization / admin field / full contract body (B0 mass story).
   if (m.description && String(m.description).includes('MASS ON ACCEPT')) {
@@ -498,6 +501,14 @@ export function missionMapAction(state, mission, isTracked) {
   const targetSectorId = (wp && wp.sectorId) || mission.destSectorId || null;
   const sameSector = targetSectorId && currentSectorId && targetSectorId === currentSectorId;
   const hasLocalFix = !!(wp && wp.pos);
+  // The owner waypoint is the actual 47-A recovery site until its sample flag changes. Keep this
+  // exact opening contract's Local Map selection on that live fix; ordinary jobs and malformed
+  // fixes retain their existing explicit destination-station selection.
+  const b0RecoveryFix = !!contract47aReadout(mission)
+    && mission.params && mission.params.sampleRecovered === false
+    && wp && wp.pos
+    && Number.isFinite(wp.pos.x) && Number.isFinite(wp.pos.z)
+    && targetSectorId === currentSectorId;
   if (hasLocalFix || sameSector || !targetSectorId) {
     return mapHandoffAction({
       focus: MAP_FOCUS.LOCAL,
@@ -506,9 +517,10 @@ export function missionMapAction(state, mission, isTracked) {
       body: 'Show the live objective marker and nearby contacts.',
       missionId: mission.id,
       sectorId: targetSectorId,
-      stationId: mission.destStationId || (wp && wp.stationId) || null,
+      stationId: b0RecoveryFix ? null : mission.destStationId || (wp && wp.stationId) || null,
       pos: wp && wp.pos ? wp.pos : null,
       source: 'missionLog',
+      selectionTarget: b0RecoveryFix ? 'active-waypoint' : null,
     });
   }
   return mapHandoffAction({
@@ -823,9 +835,11 @@ export function missionCommandBrief(m, state) {
   const terms = activeMissionContractTerms(m, state);
   const term = (label, fallback) => terms.find((item) => item.label === label)?.text || fallback;
   const stake = terms.find((item) => item.label === 'Stake');
+  const registry = registryContactReadout(m);
+  const firstSample = contract47aReadout(m);
   return Object.freeze({
     what: objectiveText(m),
-    where: destLabel(m),
+    where: registry?.where || firstSample?.where || destLabel(m),
     how: stripNextPrefix(nextStepText(m, state)),
     why: missionPurposeText(m),
     reward: term('Pays', 'close cleanly'),
@@ -933,7 +947,7 @@ function serviceReadinessAction(state, activeMissions) {
   return null;
 }
 
-function mapOpenIntentFromButton(btn) {
+export function mapOpenIntentFromButton(btn) {
   if (!btn) return { focus: MAP_FOCUS.SYSTEM, source: 'missionLog' };
   const sectorId = btn.getAttribute('data-map-sector-id') || null;
   const stationId = btn.getAttribute('data-map-station-id') || null;
@@ -953,6 +967,7 @@ function mapOpenIntentFromButton(btn) {
     missionId,
     pos,
     source: btn.getAttribute('data-map-source') || 'missionLog',
+    selectionTarget: btn.getAttribute('data-map-selection-target') || null,
   };
 }
 
@@ -967,7 +982,7 @@ function openMapScreen(ctx, screenIdOrIntent, maybeIntent) {
   });
 }
 
-function mapActionButtonAttrs(mapAction, missionId) {
+export function mapActionButtonAttrs(mapAction, missionId) {
   if (!mapAction) return '';
   const pos = mapAction.pos;
   return ' data-screen-id="' + escapeHtml(mapAction.screenId) + '"'
@@ -977,6 +992,7 @@ function mapActionButtonAttrs(mapAction, missionId) {
     + (pos && Number.isFinite(pos.x) ? ' data-map-pos-x="' + escapeHtml(String(pos.x)) + '"' : '')
     + (pos && Number.isFinite(pos.z) ? ' data-map-pos-z="' + escapeHtml(String(pos.z)) + '"' : '')
     + (mapAction.source ? ' data-map-source="' + escapeHtml(mapAction.source) + '"' : '')
+    + (mapAction.selectionTarget ? ' data-map-selection-target="' + escapeHtml(mapAction.selectionTarget) + '"' : '')
     + ' data-mid="' + escapeHtml(missionId || mapAction.missionId || '') + '"';
 }
 

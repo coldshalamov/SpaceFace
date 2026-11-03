@@ -2253,6 +2253,13 @@ export const world = {
     const advanced = advanceWorldRecord(rec, fromT, simTime) || rec;
     applyRecordVitals(ent, advanced);
     bindEntityToRecord(ent, advanced);
+    // `captureEntityRecord` uses this birth stamp to preserve createdTick on the next
+    // residency capture. A rematerialized record has no fresh birth: losing the stamp here
+    // made the next eviction rewrite its age to the current tick (and restarted age-based
+    // aftermath/retention behavior after every Continue).
+    if (ent.data && Number.isFinite(advanced.createdTick)) {
+      ent.data.recordCreatedTick = advanced.createdTick;
+    }
     // bindEntityToRecord stamps data.worldRecordId post-append — register it so the index's
     // byWorldRecordId/count answer O(1) for this rematerialized durable immediately instead
     // of waiting on a fallback-walk reseed (which can't bump the lane or the count).

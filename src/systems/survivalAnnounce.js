@@ -36,6 +36,7 @@ import { physicalProblemFromPackages, shippedQuestionFor } from '../data/surviva
 import { SWARM_CHAMPION_LEAD_WAVES, swarmNextBossFor } from '../data/swarmMode.js';
 import { SWARM_AFFIX_BY_ID } from '../data/swarmThreats.js';
 import { validateRunState } from '../core/runState.js';
+import { occupantGenerationOf } from '../core/entity.js';
 import {
   SURVIVAL_ARENA_INTRO_TICKS,
   SURVIVAL_WAVE_INTRO_TICKS,
@@ -44,6 +45,7 @@ import { playerBearingName } from '../core/playerCompass.js';
 import { CRYO_ARENA_ID } from './cryoDriftArena.js';
 import { GATE_BEARINGS } from './waveMaterialization.js';
 import { isSwarmSpecialistRun, swarmSpecialistBriefForEnemy } from '../data/swarmSpecialists.js';
+import { isHostileToPlayer } from './scannerReadModel.js';
 
 /**
  * Hard ceiling on player-facing lines per wave. Counts voice:say AND alert, because alerts.js
@@ -135,6 +137,9 @@ const NUMBER_WORD = Object.freeze([
 const SPECIALIST_RANK = Object.freeze(['elite', 'control', 'anchor', 'disruptor', 'support', 'reach', 'pressure']);
 
 const ENEMY_BY_ID = new Map(ENEMY_TYPES.map((def) => [def.id, def]));
+// The exact massline receipt may survive in a restored read model. It is never re-read or replayed
+// on load, and this weak set also rejects duplicate delivery while the module stays alive.
+const FIRST_COURT_IMPACT_RECEIPTS = new WeakSet();
 
 /** Live-run guard, mirroring survivalRun.js / survivalResults.js exactly. */
 function liveSurvivalRun(state) {
@@ -375,6 +380,8 @@ export const survivalAnnounce = {
     this._unsubs.push(this.bus.on('run:wavePlanned', (p) => this._onWavePlanned(p)));
     this._unsubs.push(this.bus.on('run:waveStarted', (p) => this._onWaveStarted(p)));
     this._unsubs.push(this.bus.on('run:waveMaterialized', (p) => this._onWaveMaterialized(p)));
+    this._unsubs.push(this.bus.on('tether:latched', (p) => this._onFirstCourtRockLatched(p)));
+    this._unsubs.push(this.bus.on('tether:whipImpact', (p) => this._onFirstCourtRockImpact(p)));
     this._unsubs.push(this.bus.on('swarm:pressureTelegraph', (p) => this._onPressureTelegraph(p)));
     this._unsubs.push(this.bus.on('swarm:broodTelegraph', (p) => this._onBroodTelegraph(p)));
     this._unsubs.push(this.bus.on('swarm:affix', (p) => this._onAffix(p)));
@@ -391,6 +398,7 @@ export const survivalAnnounce = {
   destroy() {
     for (const off of this._unsubs || []) if (typeof off === 'function') off();
     this._unsubs = [];
+    this._firstCourtRock = null;
   },
 
   newGame() {
@@ -425,6 +433,7 @@ export const survivalAnnounce = {
     this._broodTeleLines = 0;      // telegraph lines spent this wave
     this._affixLines = 0;          // affix first-sight lines spent this wave
     this._stallSpokeWave = 0;      // the wave the stall release last spoke on
+    this._firstCourtRock = null;
   },
 
   // ── emit helpers ──────────────────────────────────────────────────────────────────────────────
@@ -527,6 +536,7 @@ export const survivalAnnounce = {
     if (this._openedWave !== wave) {
       this._resetWave(wave);
       this._openedWave = wave;
+      this._armFirstCourtRock(wave, this._plan);
       this._speakOpening(wave);
     }
     this._waveIntroTicks = 0;
@@ -712,6 +722,114 @@ export const survivalAnnounce = {
   },
 
   /**
+   * Arm a single optional first-round reaction only for the ordinary T0 Foundry court.
+   * Training has its own explicit openingLesson copy, Circuits have their own round contract,
+   * and every other arena/variant keeps its existing introduction.
+   */
+  _armFirstCourtRock(wave, plan) {
+    const state = this.state;
+    const run = liveSurvivalRun(state);
+    if (!run || wave !== 1 || run.wave !== 1 || run.ruleset !== 'swarm'
+      || run.arenaId !== 'helios_core' || plan?.openingLesson || !plan?.swarm
+      || plan.swarm.circuit || (Array.isArray(run.arenaMutators) && run.arenaMutators.length > 0)
+      || Number(state.rockCore?.ratingT || 0) !== 0) return;
+    const player = state.entities?.get?.(state.playerId);
+    const generation = occupantGenerationOf(player);
+    if (!player || player.alive === false || generation == null) return;
+    this._firstCourtRock = {
+      seed: run.seed,
+      playerId: player.id,
+      player,
+      generation,
+      targetId: null,
+      target: null,
+      targetGeneration: null,
+      consumed: false,
+    };
+  },
+
+  /** Arm only from the player's real latch to one of the authored, generation-stamped court rocks. */
+  _onFirstCourtRockLatched(payload) {
+    const track = this._firstCourtRock;
+    const state = this.state;
+    const run = liveSurvivalRun(state);
+    if (!track || !payload || payload.sourceId !== track.playerId) return;
+    const player = state.entities?.get?.(state.playerId);
+    if (!run || run.seed !== track.seed || run.ruleset !== 'swarm' || run.wave !== 1
+      || !['wave_intro', 'active'].includes(run.phase) || state.mode !== 'flight'
+      || !player || player !== track.player || player.alive === false
+      || occupantGenerationOf(player) !== track.generation) {
+      this._firstCourtRock = null;
+      return;
+    }
+
+    // A newer player latch supersedes an earlier sling. Never attribute a later, unrelated mass
+    // to the court rock that happened to be on the line first.
+    track.targetId = null;
+    track.target = null;
+    track.targetGeneration = null;
+    const rock = state.entities?.get?.(payload.targetId);
+    if (!rock || rock.alive === false || (rock.type !== 'asteroid' && rock.type !== 'wreck')
+      || rock.data?.swarmArenaDebris !== true
+      || !Number.isInteger(rock.data?.openingTerrainSlot)
+      || rock.data.openingTerrainSlot < 0 || rock.data.openingTerrainSlot >= 8) return;
+    const targetGeneration = occupantGenerationOf(rock);
+    if (targetGeneration == null) return;
+    track.targetId = rock.id;
+    track.target = rock;
+    track.targetGeneration = targetGeneration;
+  },
+
+  /**
+   * A low-priority, one-shot acknowledgement of the real contact—not a damage claim or a prompt.
+   * The observer's emitted object must be the exact current read-model receipt in this tick. The
+   * player/rock generations bind it to the latch, and live hostile identity rejects nearby scenery,
+   * recycled ids and stale/posthumous deliveries. No update-loop scan is added.
+   */
+  _onFirstCourtRockImpact(payload) {
+    const track = this._firstCourtRock;
+    const state = this.state;
+    if (!track || track.consumed || !payload || typeof payload !== 'object'
+      || FIRST_COURT_IMPACT_RECEIPTS.has(payload)) return;
+    const record = state.player?.masslineImpacts;
+    if (record?.latest !== payload || !Array.isArray(record.impacts) || !record.impacts.includes(payload)
+      || !Number.isFinite(state.simTime) || payload.time !== state.simTime
+      || !Number.isFinite(state.tick) || payload.tick !== state.tick) return;
+    // A real receipt is consumed once even when it proves unrelated or no voice slot remains.
+    FIRST_COURT_IMPACT_RECEIPTS.add(payload);
+
+    const run = liveSurvivalRun(state);
+    if (!run || run.seed !== track.seed || run.ruleset !== 'swarm' || run.wave !== 1
+      || run.arenaId !== 'helios_core' || run.phase !== 'active' || state.mode !== 'flight'
+      || (Array.isArray(state.ui?.screenStack) && state.ui.screenStack.length > 0)) return;
+    const player = state.entities?.get?.(state.playerId);
+    if (!player || player !== track.player || player.alive === false
+      || occupantGenerationOf(player) !== track.generation) return;
+    if (payload.targetId !== track.targetId || (payload.slung !== true && payload.slung !== false)) return;
+    const rock = state.entities?.get?.(payload.targetId);
+    if (!rock || rock !== track.target || rock.alive === false
+      || (rock.type !== 'asteroid' && rock.type !== 'wreck')
+      || occupantGenerationOf(rock) !== track.targetGeneration
+      || rock.data?.swarmArenaDebris !== true
+      || !Number.isInteger(rock.data?.openingTerrainSlot)
+      || rock.data.openingTerrainSlot < 0 || rock.data.openingTerrainSlot >= 8) return;
+    const victim = state.entities?.get?.(payload.victimId);
+    if (!victim || victim.alive === false || (victim.type !== 'ship' && victim.type !== 'drone')
+      || occupantGenerationOf(victim) == null
+      || !isHostileToPlayer(victim, player.team, state)
+      || victim.data?.runCohort !== 'survival' || victim.data?.runWave !== 1) return;
+    const enemyId = victim.data?.lootTableId;
+    const enemy = typeof enemyId === 'string' ? ENEMY_BY_ID.get(enemyId) : null;
+    if (!enemy) return;
+
+    track.consumed = true;
+    // Keep one slot for the result line. Bark (50) yields to objective/clear (60), tutorial (70),
+    // and danger (80/110); a busy or nearly-full wave simply stays quiet.
+    if (this._linesThisWave >= MAX_LINES_PER_WAVE - 1) return;
+    this._say('bark', 'survival:w1:court-impact', `Rock strike: ${enemy.name || 'a hostile'}. Keep moving.`, 3);
+  },
+
+  /**
    * The wave-10 boss gets a real arrival: its own authored telegraph, a camera beat, and a danger
    * alert — fired when the hull actually exists, not when the wave nominally opens.
    *
@@ -763,6 +881,7 @@ export const survivalAnnounce = {
     if (!Number.isInteger(wave) || wave !== this._wave) return;
     if (this._closedWave === wave) return;
     this._closedWave = wave;
+    if (wave === 1) this._firstCourtRock = null;
 
     if (rec.starved === true) {
       // The cap admitted nothing, so the wave resolved without a fight. Saying "clear" here would
@@ -799,6 +918,7 @@ export const survivalAnnounce = {
 
   _onTransitioned(payload) {
     const phase = payload && payload.phase;
+    if (phase && !['arena_intro', 'wave_intro', 'active'].includes(phase)) this._firstCourtRock = null;
     // 'victory' is a TERMINAL phase that emits no run:ended (uiRoot.js:1003), so run:ended alone
     // would leave a won run's announcer live. Both terminal phases mute.
     if (phase === 'victory' || phase === 'ended') {
