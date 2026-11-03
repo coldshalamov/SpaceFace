@@ -1235,7 +1235,7 @@ html:root body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog.orr-mlog.orr-mlog 
    ends back on one row (FROM | THIS SECTOR | TO, names wrapping) bring the whole lane into frame. */
 @media (min-width:901px) and (max-width:1100px) and (max-height:640px) {
   ${ML} { grid-template-columns:minmax(0, 284px) minmax(0, 1fr) !important; }
-  ${ML} > .k-stage.sf-mlog-stage { padding-bottom:4px !important; margin-bottom:-28px !important; }
+  ${ML} > .k-stage.sf-mlog-stage { padding-bottom:4px !important; margin-bottom:-40px !important; }
   ${ML} .ml-route { --ml-disc:36px; }
   ${ML} .ml-route__ends { grid-template-columns:minmax(0, 1fr) auto minmax(0, 1fr); grid-template-rows:auto; align-items:start; gap:12px; }
   ${ML} .ml-route__mid { grid-column:2; grid-row:1; flex-direction:column; align-items:center; gap:3px; }
@@ -1246,7 +1246,9 @@ html:root body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog.orr-mlog.orr-mlog 
   ${ML} .sf-mlog-card .sf-mlog-terms > .k-row { column-gap:12px; padding-top:2px !important; padding-bottom:2px !important; }
   ${ML} .sf-mlog-card .sf-mlog-terms > .k-row > .k-62 { letter-spacing:.1em !important; white-space:nowrap; }
   ${ML} .sf-mlog-card .sf-mlog-terms > .k-row > .k-row__name { line-height:1.25 !important; }
-  ${ML} .sf-mlog-card > .ml-route-host { margin-top:8px; }
+  ${ML} .sf-mlog-card > .ml-route-host { margin-top:4px; }
+  /* The lane's faces sat 7px under the stage's fold: the stage now runs 12px lower (margin above) and the route claws back 4px + 10px of foot room. */
+  ${ML} .ml-route:not(.has-slot) .ml-route__track { height:calc(var(--ml-disc) + 6px); }
 }
 /* On desktop, group the selected contract's terms into a single reading card while leaving the
    public tracking, route, and action controls in their existing owners. */
