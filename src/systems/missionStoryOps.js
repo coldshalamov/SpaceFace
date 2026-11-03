@@ -26,7 +26,7 @@ import { counterweightRuntime, heistMissionRuntime } from '../missions/heistMiss
 import { snapshotWorkingBattlefield } from './workingBattlefieldRuntime.js';
 import { snapshotReckoning } from '../missions/reckoningRuntime.js';
 import { CAMPAIGN_BEATS } from '../story/campaign47a/campaignData.js';
-import { buildMissionBoardContract, completeBeatStepsForLegacy, getDeepReachOperation, getEmbodiedLocation, getPickSideStake, isBeatStepsComplete, recordBeatStep, recoveryCommsForBeat } from '../story/campaign47a/index.js';
+import { buildMissionBoardContract, completeBeatStepsForLegacy, commsForBeat, getDeepReachOperation, getEmbodiedLocation, getPickSideStake, isBeatStepsComplete, recordBeatStep, recoveryCommsForBeat } from '../story/campaign47a/index.js';
 import { CAMPAIGN_INTERLUDES, CAMPAIGN_INTERLUDE_ENCOUNTER_PREFIX, interludeByEncounterId, interludeEligible, interludeSeen } from '../story/campaign47a/interludes.js';
 import { pushCampaignHistory, pushChoiceLog } from '../story/campaign47a/index.js';
 import { CONTRACT_47A_B0_BODY, THREAD_B_FRAGMENT_ID, GRAFFITI } from '../data/narrative.js';
@@ -1763,9 +1763,16 @@ export const missionStoryOps = {
     if (res.stepId) {
       this._refreshEmbodiedStoryBoards();
       this._refreshNavigation({ forceStory: true, silent: true });
-      // The accepted ordered step, not a raw growth event or proximity, owns this
-      // handback. Stored growth may be reconciled away from the garden on Continue.
-      if (beat.beat === 2 && res.stepId === 'compost') {
+      // Accepted ordered steps own these handoffs, not raw world events or proximity.
+      if (beat.beat === 1 && res.stepId === 'scale_4') {
+        // Only the ordered Scale 4 variance receipt points Book 1 to its existing Ceres job.
+        const handoff = commsForBeat(1, { variant: 'step_handoff' })[0];
+        if (handoff) this.bus.emit('comms:popup', {
+          id: handoff.id, sender: handoff.sender, category: 'story', ttl: 10, persist: true,
+          text: handoff.text,
+        });
+      } else if (beat.beat === 2 && res.stepId === 'compost') {
+        // Stored growth may be reconciled away from the garden on Continue.
         this.bus.emit('comms:popup', {
           id: 'b2_compost_nest_handoff', sender: 'ROOK', category: 'story', ttl: 10, persist: true,
           text: 'Your garden growth is on the books. The paid 240t run is optional. Next: the Nest in the south radiation lane. Approach from the east; fight or withdraw alive.',
