@@ -2840,6 +2840,7 @@ export const automation = {
     // Enrich payload with stable defId so story/campaign sidecar can tag specialization.
     // automation remains sole outpost deployer — no second ownership system.
     this.bus.emit('asset:deployed', { kind: 'outpost', id: o.id, defId: def.id || defId });
+    this.bus.emit('automation:outpostsChanged', { id: o.id, action: 'built' });
     this.toast(`Outpost established in ${prettySector(o.sectorId)}`, 'success');
     return true;
   },
@@ -2850,6 +2851,7 @@ export const automation = {
     if (idx < 0) return false;
     this._releaseOutpostEntity(a.outposts[idx]);
     a.outposts.splice(idx, 1);
+    this.bus.emit('automation:outpostsChanged', { id, action: 'decommissioned' });
     this.toast('Outpost decommissioned', 'info');
     return true;
   },

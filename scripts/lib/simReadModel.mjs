@@ -695,7 +695,7 @@ export const DOMAIN_MIRROR_KEYS = Object.freeze([
   'heroManeuverReadModel',
   'lossLedger.impound',
   'sectorSim.field', 'npcJobs.byId', 'npcJobs.revision', 'factionPresence.boarding',
-  'automation.meta', 'automation.traders', 'automation.fleet',
+  'automation.meta', 'automation.traders', 'automation.fleet', 'automation.outposts',
   // The site map, machinery HUD and cargo transfer UI read these authoritative
   // records; presentation-owned siblings remain local to the main realm.
   'sites.byId', 'sites.order', 'sites.worldById', 'sites.worldOrder', 'sites.anvilOrchard', 'automation.drones',
