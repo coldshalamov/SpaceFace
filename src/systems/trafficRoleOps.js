@@ -2,6 +2,7 @@ import { NPC_JOB_PHASE } from './npcJobs.js';
 import { hullEnvelopeWu } from '../data/collisionProxyManifests.js';
 import { markAuxRowDirty } from '../world/auxRowJournal.js';
 import { physicsBodyNativeReady } from '../core/physicsAuthority.js';
+import { isScrapSweeperJob } from './scrapSweeperOps.js';
 // Row 413 extraction — methods moved verbatim out of traffic.js;
 // spread back onto the traffic object, so `this` still binds to the system at call time.
 import { forEachFieldRock, forEachJobInteractable, forEachLivingWorldActor } from '../world/livingWorldViews.js';
@@ -2121,7 +2122,8 @@ export const trafficRoleOps = {
         && entity.data?.jobId === job.id && this.state.entities?.get(entity.id) === entity
         ? { jobId: job.id, worldRecordId, entity, rec: null } : null;
     }
-    return this._jobTrafficContext({ jobId: job.id, kind: 'salvor' }, 'salvor');
+    return this._jobTrafficContext({ jobId: job.id, kind: 'salvor' }, 'salvor',
+      isScrapSweeperJob(entry, entity) ? ['sweeper'] : ['salvor']);
   },
 
   _salvorOwnsExtractedManifest(job, manifest) {
