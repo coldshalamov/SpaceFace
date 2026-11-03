@@ -39,25 +39,37 @@ judged against the player's ordinary route.
   and documentation cleanup. Five separate Pro creation briefs remain blocked on the intended
   provider; the current Codex CLI factory workers are a distinct channel.
 
-The current committed `1347d11ee2b0` source passes all17 baseline groups in62,057ms within the
-unchanged90,000ms budget, with normal allowance4. English extraction/readiness is current at
-15,745 surfaces/0 unresolved. It adds the actual-brace wage and Kessler connection, durable
-physical Prospector work, rescue priority, matching Foundry fixture contacts and quieter combat
-feedback. The ordinary paid Ceres shift and changed combat appearance are being played; source
-and component checks do not close those player outcomes.
+The current published source is `89ddfe4830e2`. Its integrated save/art/feedback cohort passes
+all17 baseline groups in62,919ms within the unchanged90,000ms budget and normal allowance4.
+English extraction/readiness is current at15,749 surfaces/0 unresolved; the incoming Continue
+harness fixes pass12 focused cases. Incoming UI reference source-hash refreshes are metadata,
+not fresh visual or performance acceptance.
 
-**Open critical save defect:** production ordering lets `runSession` clear the arcade run before
-the save owner's Exit listener, allowing temporary arena state to overwrite the Adventure
-autosave. The actual owners reproduce this against disposable storage; the save owner is being
-fixed. Public8ea and the unaliased1347 candidate predate that fix. Hold promotion of1347; a DDE
-rollback would not address the same exposure. Combat and the paid Ceres route remain valid
-observations, while arcade Exit/Continue persistence fails this contract.
+**Critical save defect repaired and directly checked:** temporary arcade ownership now survives
+the run reset, preventing Exit from overwriting Adventure autosave. The final29 Exit/isolation
+and13 affected Racing/export cases pass. On the ordinary89dd route, buying iron, saving, entering
+and leaving Swarm, then Continue preserves exactly4,962 credits, cargo and Helios sector in normal
+flight. Root inspected the settled resumed picture. This closes that persistence defect; other
+mode journeys still need their own player outcomes.
 
-The public demo now serves validated `8ea6ff577ff2` at
-[`spaceface-play-demo.vercel.app`](https://spaceface-play-demo.vercel.app/), with DDE rollback
-retained. Public-origin worker flight/native touch pass; candidate rotation and Pause/Resume
-also pass. Physical iPhone remains unknown. A normal software-rendered ship picture is too
-dark/coarse despite resident authored LOD0; body legibility and frame targets remain open.
+The public demo serves this fix at
+[`spaceface-play-demo.vercel.app`](https://spaceface-play-demo.vercel.app/), deployment
+`dpl_Gg6MKJkSLbEJeRvdebjMxsS46cn1`. Alias target, release receipt, entry module and three versioned
+workers match the validated89dd artifact. All2,446 authored assets are retained and417 package
+plans pass. Earlier8ea/DDE references remain available but predate the save fix. Earlier8ea
+public-origin native touch and candidate rotation/Pause/Resume results retain their original
+scope; they were not repeated after this promotion. Physical iPhone14 remains unknown.
+
+The ordinary1347 Ceres route now pays the same player's actual completed plate brace400 credits
+once,4,806→5,206, and the crew subsequently cuts/releases that plate. Full tow/extraction/cradle
+receiving remains open on the ordinary route. A selected-native continuation now completes the
+same plate's reacquisition, tow, seating, transport, measured transfer and real cradle retention
+at tick79,518, over two purposeful invocations totaling53.5 seconds; no deadlines, poses, damage
+or gates were changed. This closes that machine composition at its native layer, while rendered
+default-worker timing and ambient interference remain unverified. Foundry's second bank surface pass is visible on89dd; the1347 combat
+attempt ended in defeat during wave4 before Bank/boss, with significant operator movement
+limitations. A corrected moving, cohort-aware pilot is exercising defensive spending next.
+Close-quarters hero visibility, software mobile body legibility and the frame targets remain open.
 
 The earlier `d7ed4aa450f1` source baseline passed17/17 checks in63,635ms within the
 unchanged90,000ms budget. Earlier focused worker transport/HUD checks pass24/24. All417 render-package
@@ -219,11 +231,9 @@ fixture defects, not ordinary docking or every station destination's gameplay.
 
 ## Current integration status and next work
 
-Updated November 3 after the owner requested a bounded integration finish and a stop/report.
-Save/recovery fixes are committed in `0a046adf1e09`, salvager refusal handling in `5ba03b01ca9f`,
-and garden custody/progress in `d87c999ea10d`. The incoming UI work through PR815 is merged in
-`bc9dba8c2cdd`, preserving the local Pause and Motion Ask mobile fixes. The merged baseline passes
-17/17 in50,000ms against its unchanged90,000ms budget. No new long playtest or deployment was started.
+Updated November3 after publishing89dd and closing the ordinary arcade Exit/Adventure Continue
+defect. The earlier save/recovery, salvager refusal, garden custody and PR815 UI repairs remain
+integrated; their historical receipts do not replace the current outcome limits below.
 
 - **Mining:** the ordinary F2/course/extraction/work/exit/W route passes; the later `d942b962b0f4`
   route records inspected rock art, survey/contact changes and cargo0→2. Its original work/survey
@@ -232,28 +242,38 @@ and garden custody/progress in `d87c999ea10d`. The incoming UI work through PR81
   unhandled errors; the only permitted semantic delta is the validated free-ID list filtered by
   held entities/ledgers, with generation monotonicity preserved. The M8 repair is integrated in `0a046adf1e09`; the affected three-file suite passes64/64,
   and the final allocator-corruption regression passes. This is not the30-minute soak.
-- **Ceres:** attempt12 reached the yard and partially accepted one scrap, retained one restricted
-  classified item, and left the job active; the worker died after repeated station contacts. The
-  integrated safe-hold fix passes native partial/refusal plus Continue cases. No full custody or
-  changed-route replay is complete, and no public Ceres route is accepted.
-- **Foundry:** the45-minute attempt resolved waves1–8 and ended during wave9. Wave10/Kraken was not
-  reached. The host-contended frame samples are not a performance result.
+- **Ceres:** the ordinary paid brace and physical cutter release pass as described above. The
+  selected-native same-plate continuation reaches the real cradle's keeper contact and site-owner
+  retention. The older partial/refusal route remains distinct; ordinary rendered full custody and
+  public Ceres acceptance remain open.
+- **Foundry:** the newer1347 attempt ended at wave4; movement/operator weaknesses prevent treating
+  it as a demonstrated balance defect. The moving pilot now uses actual defensive spending.
+  Older waves1–8 progress does not close Bank7, first boss or the complete mode journey; the
+  contended historical frame samples are not a performance result.
 - **Mobile:** candidate29 passes the rotation gate in9.082s and captures a bright advancing canvas,
   while its adjacent WebKit page image is black. The user's physical Escape stopped the planned
   visible-window capture before any app input or capture. Visible-window output and iPhone14 remain
-  UNKNOWN in that older checkpoint; candidate29 was not promoted. Current8ea/public touch evidence
-  is recorded above, while physical iPhone remains unknown.
+  UNKNOWN in that older checkpoint; candidate29 was not promoted. Earlier8ea/public touch evidence
+  is recorded above; current89dd is now public, while physical iPhone remains unknown.
 - **UI and authored visuals:** the six non-default matrix aliases and mounted chart-cost cell remain
   open. The #808–#815 layout changes are source-integrated but have no new local mounted looks. The
   in-world hero/plume/marking look is still open after a preserved zero-draw Kestrel result.
 - **Story and traffic:** Last Shift, natural Tethys stealth, earned Compost growth, PQ024H1, visible
   liner/tug yield-resume and a changed Ceres continuation remain player-route work. The #724 garden
   source delta is integrated in `d87c999ea10d`, with10 owner-component cases passed but no earned public feed.
-- **Performance/stability:** the6MB main-load, simulation/frame targets and30-minute context-loss
-  soak are open. M5/CPU ABBA experiments without a material win remain closed; do not repeat them as
-  unfinished opportunities.
+- **New connected-action defects:** ordinary89dd Fortify builds the turret and correctly displays
+  the180-credit charge,994→814; its correlated worker reply omits the shared run-wallet update.
+  The initial stuck-purchase interpretation was wrong. The existing host invalidation path is
+  being repaired. Last Shift's authoritative filed report is omitted from the main read model,
+  so the contact cannot offer the earned report action. Both have exact owner/test assignments.
+- **Performance/stability:** loading and simulation/frame targets remain open. The existing8.57s
+  combat profile points at scene submission/uniforms and a transmission pass; a later bounded
+  material census identifies transmission-eligible instanced ice, with cached-list provenance
+  limits. The performance department is evaluating that concrete owner; no FPS win is claimed.
+  M5/CPU ABBA experiments without a material win remain closed. Long retention/context-loss work
+  needs a specific unresolved failure, not repeated generic survival runs.
 - **Provider and closure:** five Pro briefs remain undispatched because the selected provider reports
-  “Usage limit reached” through the Nov4 window. The final build-map and last-300-commit reviews
+  “Usage limit reached” on the latest actual Browser check. The final build-map and last-300-commit reviews
   belong at the end.
 
 The executable sequence and direct-check boundaries are in [PR integration](./PR_INTEGRATION.md).
