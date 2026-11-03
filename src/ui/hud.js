@@ -18,7 +18,7 @@
 import { createRadar } from './radar.js';
 import { mountIonStormHud } from './ionStormHud.js';
 import { mountTravelVectorHud } from './travelVectorHud.js';
-import { createTargetPanel, targetDisplayName } from './targetPanel.js';
+import { createTargetPanel, targetDisplayName, authoredSiteRosterDetail } from './targetPanel.js';
 import { createFloatingText } from './floatingText.js';
 import { createDamageIndicators } from './damageIndicators.js';
 import { buildReducedMotionContactCue } from './reducedMotionInformation.js';
@@ -45,6 +45,7 @@ import { coreText } from './localizedCoreCopy.js';
 import { isRunSealed } from '../core/runSeal.js';
 import { SEMANTIC_PALETTE, getMotionReduced, getFlashReduced } from './accessibility.js';
 import { resolveWaypointPresentationPosition, resolveObjectiveGatePresentation } from './navigationWaypoint.js';
+import { objectiveIsOffSector } from './objectiveSector.js';
 import { contactThreatTier, contactStateWord, isHostileToPlayer, isWreckLike, wreckScanned } from '../systems/scanner.js';
 import { livingWorkStatusText } from '../data/contactHail.js';
 import { fuelReserveWarning } from './fuelReserveWarning.js';
@@ -306,6 +307,7 @@ function mtRouteGuidance(state, waypoint) {
     const fuel = Math.round(route.totalFuel || legs.reduce((sum, leg) => sum + (leg.fuel || 0), 0));
     return {
       next: `Next jump: ${mtSectorName(first.to)}`,
+      destination: first.to === waypoint.sectorId ? '' : `To ${mtSectorName(waypoint.sectorId)}`,
       summary: `${hops} hop${hops === 1 ? '' : 's'} / ${fuel}F`,
     };
   }
@@ -393,7 +395,7 @@ export function objectiveTravelReadout(state, wp, out = null) {
   const result = out && typeof out === 'object' ? out : {};
   const pos = wp && wp.pos;
   const player = state && state.entities && state.entities.get && state.entities.get(state.playerId);
-  if (!pos || !player || !player.pos) {
+  if (objectiveIsOffSector(state, wp) || !pos || !player || !player.pos) {
     result.distanceWu = null;
     result.closingSpeed = 0;
     result.etaS = null;
@@ -474,7 +476,7 @@ function mtWaypointDistance(state, wp) {
 export function objectiveBearingGlyph(state, wp) {
   const pos = wp && wp.pos;
   const player = state && state.entities && state.entities.get && state.entities.get(state.playerId);
-  if (!pos || !player || !player.pos) return '';
+  if (objectiveIsOffSector(state, wp) || !pos || !player || !player.pos) return '';
   const dx = Number(pos.x) - Number(player.pos.x);
   const dz = Number(pos.z) - Number(player.pos.z);
   if (!Number.isFinite(dx) || !Number.isFinite(dz) || Math.hypot(dx, dz) < 1) return '•';
@@ -491,7 +493,7 @@ export function objectiveBearingGlyph(state, wp) {
 export function objectiveBearingDeg(state, wp) {
   const pos = wp && wp.pos;
   const player = state && state.entities && state.entities.get && state.entities.get(state.playerId);
-  if (!pos || !player || !player.pos) return null;
+  if (objectiveIsOffSector(state, wp) || !pos || !player || !player.pos) return null;
   const dx = Number(pos.x) - Number(player.pos.x);
   const dz = Number(pos.z) - Number(player.pos.z);
   if (!Number.isFinite(dx) || !Number.isFinite(dz) || Math.hypot(dx, dz) < 1) return null;
@@ -733,7 +735,11 @@ export function flightDestinationSurface(state, command) {
       travel.etaS == null ? '' : travel.etaText,
       deadline,
     );
-    if (travel.distanceText === 'ROUTE PENDING') {
+    const routeGuide = mtRouteGuidance(state, waypoint);
+    if (routeGuide) {
+      readings = [routeGuide.next, routeGuide.destination,
+        `${BINDINGS.starmap.label} Star Map`, deadline].filter(Boolean).join(' · ');
+    } else if (travel.distanceText === 'ROUTE PENDING') {
       const gateFix = resolveObjectiveGatePresentation(state);
       if (gateFix && gateFix.pos) {
         const gateTravel = objectiveTravelReadout(state, { pos: gateFix.pos });
@@ -754,12 +760,11 @@ export function flightDestinationSurface(state, command) {
     const travel = objectiveTravelReadout(state, wp);
     const routeGuide = mtRouteGuidance(state, wp);
     const action = mtObjectiveAction((wp && (wp.reason || wp.label)) || 'Follow the marked route', wp);
-    const readings = mtReadingsLine(
-      objectiveBearingGlyph(state, wp),
-      travel.distanceText,
-      travel.etaS == null ? '' : travel.etaText,
-      routeGuide && routeGuide.summary,
-    );
+    const readings = routeGuide
+      ? [routeGuide.next, routeGuide.destination,
+        `${BINDINGS.starmap.label} Star Map`].filter(Boolean).join(' · ')
+      : mtReadingsLine(objectiveBearingGlyph(state, wp), travel.distanceText,
+        travel.etaS == null ? '' : travel.etaText);
     return {
       show: true,
       line: readings ? `${action}\n${readings}` : action,
@@ -4877,7 +4882,8 @@ export function createHud(ctx, alerts) {
     const e = c.e;
     const iff = getIffData(e, playerTeam);
     const glyph = getClassGlyph(e);
-    const sword = c.ally ? 'ALLY' : contactStateWord(e, playerTeam, state);
+    const siteDetail = authoredSiteRosterDetail(state, e, player, c.dist);
+    const sword = siteDetail != null ? '' : c.ally ? 'ALLY' : contactStateWord(e, playerTeam, state);
     const stateCls = OVERVIEW_STATE_CLASS[sword] || 'neutral';
     const scannedWreck = c.isWreck && wreckScanned(e);
     const name = targetDisplayName(e, { concealWreck: c.isWreck && !scannedWreck });
@@ -4885,7 +4891,9 @@ export function createHud(ctx, alerts) {
     // Derelict manifest line: unscanned shows only a ghost outline; a scan resolves the manifest
     // + weak-point callout (GDD 2.0 §7.4).
     let detail = '';
-    if (c.isWreck) {
+    if (siteDetail != null) {
+      detail = siteDetail;
+    } else if (c.isWreck) {
       // data.weakPoint is a string label on wrecks (scanner.js weakPointFor) but the object
       // form ({label, arc…}) reaches wreck-likes via enemy defs — print the label, never the
       // object ("WEAK [object Object]" read as a broken screen).
@@ -4910,7 +4918,7 @@ export function createHud(ctx, alerts) {
     rec.speedMark = speedMark;
     const speedText = speedMark.text;
     const dist = Math.round(c.dist);
-    const unscanned = c.isWreck && !scannedWreck;
+    const unscanned = siteDetail == null && c.isWreck && !scannedWreck;
     const selected = e.id === targetId;
 
     if (rec.unscanned !== unscanned) { setClass(rec.el, 'unscanned', unscanned); rec.unscanned = unscanned; }
@@ -5781,6 +5789,12 @@ export function createHud(ctx, alerts) {
     let wp = null, wpLabel = null, navMeta = null;
     if (state.nav && state.nav.waypoint) {
       const nw = state.nav.waypoint;
+      if (objectiveIsOffSector(state, nw)) {
+        setDisplay(arrow, false);
+        setDisplay(elNavReadout, false);
+        setClass(elNavReadout, 'sf-nav--lock', false);
+        return;
+      }
       let livePos = null;
       if (nw.stationId) {
         const station = resolveNavStation(nw);
