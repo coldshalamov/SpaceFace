@@ -705,8 +705,16 @@ export const factionMeridian = {
     // joint closes behind it. The lead of a dead spine can never re-head a train.
     const tails = new Map();
     for (const [spineId, members] of spines) {
-      if (!members.length) continue;
-      tails.set(spineId, members[members.length - 1]);
+      // The break pass above mutates members but leaves them in this tick's group.
+      // Only a still-linked tail behind a live head can receive loose freight.
+      if (!members.length || members[0].data.spineIndex !== 0) continue;
+      for (let i = members.length - 1; i >= 0; i--) {
+        const member = members[i];
+        if (member.data.spineLoose !== true && member.data.spineId === spineId) {
+          tails.set(spineId, member);
+          break;
+        }
+      }
     }
     for (const body of loose) {
       const d = body.data || (body.data = {});
