@@ -3554,6 +3554,7 @@ export const rangeScreen = {
       const loadedTurn = turnMassForRatio(loadedRatio);
       const slowerPct = Math.max(0, Math.round((1 - (loadedTurn / Math.max(0.0001, emptyTurn))) * 100));
       const extraRoom = Math.max(0, Math.round(stopDistanceEstimate(loadedDerived.flightModel) - stopDistanceEstimate(emptyDerived.flightModel)));
+      const roomUnits = Math.max(1, extraRoom);
       return {
         ...base,
         variant: selected,
@@ -3574,7 +3575,7 @@ export const rangeScreen = {
           { x: 290, centerZ: -165, tol: 92, state: 'pending' },
           { x: 560, centerZ: 105, tol: 92, state: 'pending' },
         ],
-        because: `Empty, this hull clears it. Loaded, it turns ${Math.max(1, slowerPct)}% slower and needs ${Math.max(1, extraRoom)} units more room.`,
+        because: `Empty, this hull clears it. Loaded, it turns ${Math.max(1, slowerPct)}% slower and needs ${roomUnits} ${roomUnits === 1 ? 'unit' : 'units'} more room.`,
         headingHint: `Loaded mass set to ${loadedMass} t (80% cargo cap).`,
       };
     }
