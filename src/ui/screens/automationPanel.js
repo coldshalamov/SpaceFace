@@ -35,6 +35,14 @@ function fleetAssignmentForShip(ship, fleet) {
     : (fleet || []).find((row) => row && row.id === ship.fleetAssignmentId) || null;
 }
 
+function trackedVesselAtBerth(state, ship) {
+  const sj = state?.player?.shipjack || state?.shipjack;
+  const v = ship?.vesselId && sj?.vesselsById?.[ship.vesselId];
+  return !!(v && v.custodian === 'player' && v.defId === ship.defId && v.condition?.hull > 0
+    && state.ui?.docked && v.location?.kind === 'berth' && v.location.stationId === state.ui.dockedStationId
+    && !sj.yards?.[ship.vesselId] && !sj.fleetOperations?.[ship.vesselId]);
+}
+
 /** Earnings are ceilings on one shared bucket; depot receipts settle physical throughput. */
 export function describeDroneEarnings(state, assetOrDef = {}) {
   const def = DRONES.find((d) => d.id === (assetOrDef.defId || assetOrDef.id)) || assetOrDef;
@@ -1117,10 +1125,12 @@ export const automationScreen = {
       };
       const refusal = { active: 'Your active hull cannot be assigned.', assigned: 'That hull is already assigned to the wing.',
         capacity: 'Fleet is at capacity.', missing: 'That owned hull is no longer available.', unavailable: 'Fleet assignment is unavailable.',
-        tracked_vessel: 'This tracked vessel remains under Registry custody and cannot deploy as a wingman.',
+        tracked_vessel: 'Bring this tracked hull to this berth and finish any yard or recovery work before assigning it.',
         destroyed: 'This hull has no integrity. Switch to it at a berth and repair it before deploying.' };
       const text = event?.reason === 'destroyed' && event.action === 'released'
         ? 'Wingman lost; its owned hull remains with zero integrity.'
+        : event?.reason === 'tracked_not_berthed' && event.action === 'releaseRejected'
+          ? 'Bring this wingman to the receiving berth and stop before returning it.'
         : event?.action === 'assignmentRejected' ? (refusal[event.reason] || 'Fleet assignment was not accepted.') : messages[event?.action];
       if (text) ctx.bus.emit('toast', { text, kind: /Rejected$/.test(event.action) || event.reason === 'destroyed' ? 'warn' : 'good', ttl: 4000 });
     });
@@ -1781,7 +1791,7 @@ export const automationScreen = {
               <span>deploy ${deploymentPill(deployment)}</span>
               ${fs.hullPct != null ? `<span>hull ${Math.round(fs.hullPct * 100)}% ${miniBar(fs.hullPct)}</span>` : ''}
             </div>
-            <div class="au-note">${escapeHtml(deployment.detail)} ${fs.order === 'mine' ? (links.length === 1 && !hasMiningBeam ? 'No mining beam fitted; return to hangar to refit.' : 'Mines nearby rock; scoop the ore it drops.') : 'Escort guards you; Regroup returns to formation.'} ${links.length === 1 ? (links[0].vesselId ? 'Tracked vessel remains under Registry custody; return this assignment before using it.' : 'Owned hull assigned to wing with its fitted equipment. Return it before flying, selling or refitting it; its stored cargo remains aboard.') : 'Legacy wingman: owned hull link unavailable; retained in fleet.'}</div>
+            <div class="au-note">${escapeHtml(deployment.detail)} ${fs.order === 'mine' ? (links.length === 1 && !hasMiningBeam ? 'No mining beam fitted; return to hangar to refit.' : 'Mines nearby rock; scoop the ore it drops.') : 'Escort guards you; Regroup returns to formation.'} ${links.length === 1 ? (links[0].vesselId ? 'Registry vessel on fleet duty. Bring it to a receiving berth and stop before returning it to the hangar.' : 'Owned hull assigned to wing with its fitted equipment. Return it before flying, selling or refitting it; its stored cargo remains aboard.') : 'Legacy wingman: owned hull link unavailable; retained in fleet.'}</div>
           </div>
           <button class="au-order" data-act="orderEscort" data-ref="${automationRecordRefAttr(fs.id, fs.defId)}" data-kind="fleet">Escort</button>
           <button class="au-order" data-act="orderMine" data-ref="${automationRecordRefAttr(fs.id, fs.defId)}" data-kind="fleet">Mine</button>
@@ -1795,10 +1805,10 @@ export const automationScreen = {
     const activeIdx = (st.player && st.player.activeShipIndex) || 0;
     frag.appendChild(this._section('Assign Owned Ship'));
     const spare = owned.map((s, i) => ({ s, i })).filter(({ s, i }) => s && i !== activeIdx);
-    const assignable = spare.filter(({ s }) => !s.vesselId && !fleetAssignmentForShip(s, fleet));
+    const assignable = spare.filter(({ s }) => (!s.vesselId || trackedVesselAtBerth(st, s)) && !fleetAssignmentForShip(s, fleet));
     const tracked = spare.some(({ s }) => s.vesselId && !fleetAssignmentForShip(s, fleet));
     if (!assignable.length) {
-      frag.appendChild(emptyEl(tracked ? 'Tracked vessels remain under Registry custody and cannot deploy as wingmen.' : spare.length ? 'Your spare ships are already assigned to the wing.' : 'No spare ships to assign. Buy a second hull at a shipyard, then return here to crew it as a wingman.'));
+      frag.appendChild(emptyEl(tracked ? 'Bring a tracked vessel to this berth and finish its yard or recovery work before assigning it.' : spare.length ? 'Your spare ships are already assigned to the wing.' : 'No spare ships to assign. Buy a second hull at a shipyard, then return here to crew it as a wingman.'));
     } else if (fleet.length >= cap) {
       frag.appendChild(lockedEl(`Fleet at capacity (${cap}). Research higher Drone/Fleet tiers to expand.`));
     } else {
@@ -2209,7 +2219,7 @@ export function automationNextAction(state) {
   const droneMk1 = DRONES[0] || {};
   const ownedShips = player.ownedShips || [];
   const activeShipIndex = player.activeShipIndex || 0;
-  const spareShipIndex = ownedShips.findIndex((ship, index) => ship && !ship.vesselId && index !== activeShipIndex && !fleetAssignmentForShip(ship, a.fleet));
+  const spareShipIndex = ownedShips.findIndex((ship, index) => ship && (!ship.vesselId || trackedVesselAtBerth(state, ship)) && index !== activeShipIndex && !fleetAssignmentForShip(ship, a.fleet));
   const spareShips = spareShipIndex >= 0;
   if (summary.distressedAssets > 0) {
     return nextAction('drones', 'Stabilize distressed assets',

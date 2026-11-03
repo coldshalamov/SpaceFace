@@ -1243,6 +1243,7 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
       host.domainDiffer.invalidateLeaf('automation.fleet');
       if (payload?.action === 'assigned' || payload?.action === 'released') {
         host.domainDiffer.invalidateLeaf('player.ownedShips');
+        if (payload.vesselId) host.domainDiffer.invalidateLeaf('player.shipjack');
       }
     });
     // The paid lot desk repaints only after its answer. Publish the book in that same reply,

@@ -94,6 +94,7 @@ export function normalizeShipjack(input) {
       subsystems[key]={id:key,health:bounded(row.health,0,10000),maxHealth:bounded(row.maxHealth,1,10000,45),destroyed:row.destroyed===true,effectiveDisabled:row.effectiveDisabled===true,pendingTransition:null};
     }
     v.parkedBody={hull:bounded(b.hull,0,1e6),armorHp:bounded(b.armorHp,0,1e6),shield:bounded(b.shield,0,1e6),cap:bounded(b.cap,0,1e6),fittings:(Array.isArray(b.fittings)?b.fittings:[]).slice(0,32).map(x=>typeof x==='string'?x.slice(0,80):null),subsystems};
+    if(Number.isFinite(b.armorMax)&&b.armorMax>=0)v.parkedBody.armorMax=bounded(b.armorMax,0,1e6);
   }
   Object.assign(out,normalizeFleetPersistence(input,out.vesselsById));
   return out;
