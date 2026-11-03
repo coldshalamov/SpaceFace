@@ -97,6 +97,8 @@ The owner suite passes 84/84. A fresh 92e run passed its two public save/F9 warm
 
 ## Inbox (other lanes append one line: date, lane, path, what/why)
 
+- 2026-11-03 Continue: the ordinary earned Ceres save stalled at the authored-visuals gate with Crossbeam1397 and Keel1398 still loading. A restored-save queue reproduction found the Crossbeam within the gate's required runway but excluded by its restricted loading queue. Both owners now share the same live-entity/mesh/runway predicate; required contacts drain while distant wrecks and ambient work stay deferred. Focused queue/admission/lifetime checks pass. The captured browser omitted queue-owner detail, so the previous Keel promise's cause and the corrected ordinary Continue remain open; no deadline or authored-content shortcut was added.
+
 - 2026-10-31 integration: `check-vfx-frame-sleep.mjs` now gives its unchanged 420 seam-bearing bodies the canonical GameState/index/hash setup. Setup assertions and the unchanged 0.25 ms ceiling pass at 0.06493 ms; existing hash/fallback marker parity passes 3/3. This corrects the measurement fixture, not runtime VFX or fallback speed. Full UI performance matrix remains stale after style changes.
 
 - 2026-10-28, Lane 3: H0 razor commit a054f36530a touched `assets/**/measured-contract.json`, `assets/ui/kit/*`, `assets/incubator/*/INTEGRATION.md`, `assets/ships/m5_*/MATERIAL_TRUTH_PREFLIGHT.md`, `assets/ships/npc_work_fleet/PROVENANCE.json`, `tools/blender/forge/source_assets/pip_spanner/provenance.json` — mechanical ref rewrite only (provenance strings now point at `design/archive/…` after the doc moves). No asset content changed.

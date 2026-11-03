@@ -1133,6 +1133,16 @@ function startupAuthoredContactOnRunway(entity, state) {
   return Math.sqrt(distanceSq) - entityPresenceRadius(entity) <= radius;
 }
 
+// The loading veil and its restricted queue must agree on the same live contact.
+function loadingContactOwnsFlightGate(entity, state) {
+  if (!entity || !state || state.mode !== 'loading' || entity.alive === false) return false;
+  if (typeof state.entities?.get === 'function' && state.entities.get(entity.id) !== entity) return false;
+  if (entity.type !== 'wreck' && entity.type !== 'drone' && !startupPayloadOwnsVeilPin(entity, state)) return false;
+  return !authoredOpeningFailedClosed(authoredAssetState(entity))
+    && startupContactHasMesh(entity)
+    && startupAuthoredContactOnRunway(entity, state);
+}
+
 function criticalHubWithinStartupRunway(entity, state) {
   const currentSectorId = state && state.world && state.world.currentSectorId;
   if (!isCriticalHubInCurrentSector(entity, currentSectorId)) return false;
@@ -8602,7 +8612,8 @@ function admitNextUpgradeJob(state) {
     const live = authoredRuntimeState();
     const hullIndex = state.jobs.findIndex((job) => isLoadingHullUpgradeJob(job)
       || pickVerdict(job, 'glass', (j) => entityIsOnReadableGlass(j && j.entity))
-      || openingFrameAdmissionPriority(job && job.entity, live) !== null);
+      || openingFrameAdmissionPriority(job && job.entity, live) !== null
+      || loadingContactOwnsFlightGate(job && job.entity, live));
     if (hullIndex < 0) {
       state.running = state.inFlight > 0 || state.diagnostics.activeJobs > 0;
       publishUpgradeDiagnostics(state);
@@ -9649,23 +9660,8 @@ export function authoredCriticalVisualReadiness(state) {
       : null;
     const role = entity && (entity.flightReadyRole || data.flightReadyRole
       || data.renderFlightReadyRole || data.render && data.render.flightReadyRole
-      || (state && state.mode === 'loading'
-          && (entity.type === 'wreck' || entity.type === 'drone'
-            // A generic payload the packaged-prop lane can mount (packagedPropSpec is the
-            // mount hook's own predicate — attachPackagedScenarioProp no-ops without it)
-            // settles through the same authoredPackageUrl admission the wreck/drone pins
-            // ride; an on-runway tow body (survivor pod at +6/-4) holds the veil for its
-            // warm commit instead of swapping a beat after it lifts. Explicit-authored
-            // payloads already pin via entityRequiresAuthoredPresentation above.
-            // startupPayloadOwnsVeilPin is the composition's own predicate — pinning a
-            // payload the composition cannot schedule (the on-table 47-A spindle, whose
-            // admission is the post-gate first-flight cook) deadlocks this gate.
-            || startupPayloadOwnsVeilPin(entity, state))
-          && entity.alive !== false
-          && !authoredOpeningFailedClosed(authoredAssetState(entity))
-          && startupContactHasMesh(entity)
-          && startupAuthoredContactOnRunway(entity, state)
-          ? FLIGHT_READY_ROLE.GLASS_ACTORS : null)
+      // The on-table 47-A spindle retains its separate first-flight cook lane.
+      || (loadingContactOwnsFlightGate(entity, state) ? FLIGHT_READY_ROLE.GLASS_ACTORS : null)
       || ((isCurrentGlass || (allowRuntimeActivityGate
         && entity.activity?.presentationTier === PRESENTATION_TIER.R0_GLASS))
         ? autoGlassRole : null));
