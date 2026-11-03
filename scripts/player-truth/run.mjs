@@ -25,7 +25,7 @@
 //            loss is retried once. The graded verdict is that retry and keeps the first
 //            run's stopReason. A sim stall is not retried. ENVIRONMENT is printed on its own line.
 
-import { mkdirSync, writeFileSync, rmSync, existsSync, createWriteStream } from 'node:fs';
+import { mkdirSync, writeFileSync, rmSync, existsSync, createWriteStream, renameSync } from 'node:fs';
 import { freemem, loadavg, totalmem } from 'node:os';
 import { createGzip } from 'node:zlib';
 import { Readable } from 'node:stream';
@@ -377,6 +377,24 @@ export function formatRouteFailure(message, { notes = [], exitCode = null, signa
 export function environmentRetryNote(loss, verdict = 'ENVIRONMENT') {
   if (verdict !== 'ENVIRONMENT' || !loss || loss.environment !== true || !loss.reason) return null;
   return `retried once after environment browser loss (${loss.reason})`;
+}
+
+/** Boot-level retry (one only): the boot never reached play because graphics could not start
+ * (NO GL / "Graphics could not start" / no webgl) or the route ended before play (route=none).
+ * Null for any run that reached play, an already-retried run, or an environment loss (handled above). */
+export function bootRetryNote(outcome) {
+  if (!outcome || outcome.retried || outcome.environmentLoss) return null;
+  const why = String(outcome.stopReason || '');
+  const noGl = outcome.noGl === true || /graphics could not start|no webgl|could not create a webgl context/i.test(why);
+  if (noGl) return `retried once after boot without graphics (NO GL${why ? `: ${why.slice(0, 160)}` : ''})`;
+  if (outcome.reachedPlay === false) return `retried once after route=none (${why.slice(0, 160) || 'route ended before play'})`;
+  return null;
+}
+
+/** First-attempt record kept in the retried run's verdict.json (meta.bootAttempts). */
+export function bootAttemptRecord(outcome, note, renamedDir) {
+  return { attempt: 1, verdict: outcome.verdict, stopReason: outcome.stopReason || null, reachedPlay: outcome.reachedPlay ?? null,
+    noGl: outcome.noGl ?? null, retryNote: note, outDir: renamedDir || null };
 }
 
 /** Meta for the graded run. A retry keeps the first run's stopReason and says so. */
@@ -1124,7 +1142,7 @@ async function runOne(args, arena, extra = {}) {
     simSeconds: t1 && playStart != null ? +(t1.sim - playStart).toFixed(1) : 0, frames: trace.samples.length, shots: shots.length,
     rowStorage: trace.rowStorage || null,
     script: `idle ${args.idle} s → thrust/yaw probes → ${args.mode === 'swarm' || args.mode === 'gauntlet' ? 'kiting fighter: RMB select a reachable hostile, track its visible lead pip or hull while firing, hold 230–400 u range, burn away from packs, chase a fresh public radar bearing with sustained forward thrust and aligned boost, reposition after selection misses, latch every 7th beat; probes + shots at every round start' : args.fight ? 'adventure fight: RMB select nearest reachable hostile, aim at visible lead pip or hull and fire, else cruise' : 'cruise: thrust bursts and turns'}${args.gatePass ? ` · gate ${args.gatePass} pass` : ''}${args.fortify ? ' · public Foundry construction and paid service between rounds' : ''} · public gameplay admission; no probe-owned invulnerability toggle`,
-    stopReason, pageErrors: pageErrors.slice(0, 10), consoleErrors, arenasOffered: doorInfo && doorInfo.arenas ? doorInfo.arenas : null,
+    stopReason, bootAttempts: args.bootAttempts || null, pageErrors: pageErrors.slice(0, 10), consoleErrors, arenasOffered: doorInfo && doorInfo.arenas ? doorInfo.arenas : null,
     sessionSignals: seenSignals, chromePid: chrome.pid, chromePgid: chrome.pgid, chromeSid: chrome.sid, chromeOwnSession: chrome.ownGroup,
   });
   trace.playWatch = playWatch.snapshot();
@@ -1132,7 +1150,7 @@ async function runOne(args, arena, extra = {}) {
   stampHarnessClock();
 
   const verdict = await gradeAndWrite({ trace, shots, outDir, label, evidence: args.evidence, pruneFrames: args.pruneFrames, vw, vh });
-  return { label, verdict, outDir, environmentLoss, stopReason };
+  return { label, verdict, outDir, environmentLoss, stopReason, reachedPlay: playStart != null, noGl: /no webgl/i.test(renderer), retried: !!(args.environmentRetry || args.bootAttempts) };
 }
 
 /** Scratch frames stay for review. They are removed only when --evidence and --prune-frames are both set. */
@@ -1298,6 +1316,16 @@ async function main() {
     if (retryNote) {
       console.error(`player-truth ${retryNote}`);
       outcome = await runOne({ ...a, environmentRetry: retryNote, firstStopReason: outcome.stopReason }, arena, extra);
+    } else {
+      const bootNote = bootRetryNote(outcome);
+      if (bootNote) {
+        console.error(`player-truth ${bootNote}`);
+        // Keep attempt 1's evidence: move its out dir aside so the retry cannot overwrite it.
+        let moved = null;
+        try { moved = `${outcome.outDir}-attempt1`; rmSync(moved, { recursive: true, force: true }); renameSync(outcome.outDir, moved); } catch { moved = null; }
+        const first = bootAttemptRecord(outcome, bootNote, moved && path.relative(ROOT, moved));
+        outcome = await runOne({ ...a, environmentRetry: bootNote, firstStopReason: outcome.stopReason, bootAttempts: [first] }, arena, extra);
+      }
     }
     outcomes.push(outcome);
   }
