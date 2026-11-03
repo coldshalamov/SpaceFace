@@ -2880,7 +2880,8 @@ export const automation = {
     const fs = this.state.automation.fleet.find((x) => x.id === id);
     if (!fs) return false;
     fs.order = order;
-    fs.targetRef = targetRef != null ? { kind: 'ref', refId: targetRef } : null;
+    fs.targetRef = order !== 'mine' && order !== 'idle' && targetRef != null
+      ? { kind: 'ref', refId: targetRef } : null;
     fs.redeployTimer = 2; // brief redeploy delay (spec)
     fs.status = order;
     if (order === 'attack' || order === 'guard' || order === 'escort' || order === 'idle') {
@@ -2889,6 +2890,7 @@ export const automation = {
         targetId: order === 'attack' && targetRef != null ? targetRef : null,
       }, this.state.world && this.state.world.currentSectorId, order);
     }
+    this.bus.emit('automation:fleetChanged', { id: fs.id, action: 'order' });
     return true;
   },
 
@@ -3534,8 +3536,10 @@ export const automation = {
     a.fleet = normalizeAutomationRecordList(a.fleet, 'fleet');
     const sectorId = this.state && this.state.world && this.state.world.currentSectorId || null;
     for (const fs of a.fleet) {
+      const mining = fs.order === 'mine';
       fs.wingOrder = normalizePersistedWingOrder(fs.wingOrder, sectorId, fs.order);
-      fs.order = legacyFleetOrderFor(fs.wingOrder.kind);
+      fs.order = mining ? 'mine' : legacyFleetOrderFor(fs.wingOrder.kind);
+      if (mining) fs.status = 'mine';
       fs.targetRef = fs.wingOrder.kind === WING_ORDER.ATTACK && fs.wingOrder.targetId != null
         ? { kind: 'ref', refId: fs.wingOrder.targetId } : null;
     }
@@ -3614,9 +3618,9 @@ export const automation = {
     // entityIds so a reloaded save doesn't reference a dead/stale entity.
     const sectorId = this.state.world && this.state.world.currentSectorId || null;
     const fleet = a.fleet.map((fs) => {
-      const { _liveId, ...rest } = fs;
+      const { _liveId, _mineRockId, ...rest } = fs;
       const wingOrder = normalizePersistedWingOrder(fs.wingOrder, sectorId, fs.order);
-      return { ...rest, order: legacyFleetOrderFor(wingOrder.kind), targetRef: null, wingOrder };
+      return { ...rest, order: fs.order === 'mine' ? 'mine' : legacyFleetOrderFor(wingOrder.kind), targetRef: null, wingOrder };
     });
     return {
       drones, traders: a.traders, outposts, fleet,

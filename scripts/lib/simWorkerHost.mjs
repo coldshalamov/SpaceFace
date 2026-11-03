@@ -728,6 +728,7 @@ const BRIDGE_EVENTS = [
   'presentation:vfxCue', 'presentation:audioCue', 'presentation:uiCue',
   'presentation:cameraCue', 'presentation:caption', 'audio:cue', 'alert',
   'camera:shake', 'presentation:cueApplied', 'sector:enter', 'cargo:changed',
+  'automation:fleetChanged',
 ];
 
 export function createSimHost({ onAsyncSaveReady } = {}) {
@@ -1211,19 +1212,25 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
       }
     });
     const offFitFitting = bus.on('module:equipped', () => host.domainDiffer.invalidateLeaf('player.moduleInventory'));
+    const offUnfitFitting = bus.on('module:unequipped', () => host.domainDiffer.invalidateLeaf('player.moduleInventory'));
     const offLedgerLoad = bus.on('save:loaded', () => host.domainDiffer.invalidateLeaf('shipLedger.board'));
     // Successful outpost changes must reach the open panel in this reply, even
     // when the clock is paused or the list is on its ordinary cold cadence.
     const offOutpostsChanged = bus.on('automation:outpostsChanged', () => {
       host.domainDiffer.invalidateLeaf('automation.outposts');
     });
+    const offFleetChanged = bus.on('automation:fleetChanged', () => {
+      host.domainDiffer.invalidateLeaf('automation.fleet');
+    });
     host.missionBoardMirrorUnsubscribe = () => {
       offBoardUpdate(); offAccepted();
       for (const off of offTerminal) off();
       offRep();
       offCraftFitting(); offFitFitting();
+      offUnfitFitting();
       offLedgerLoad();
       offOutpostsChanged();
+      offFleetChanged();
     };
     if (captureAll === true) {
       const origEmit = bus.emit.bind(bus);

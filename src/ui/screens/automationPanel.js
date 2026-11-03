@@ -1097,6 +1097,13 @@ export const automationScreen = {
     body.addEventListener('input', (e) => this._onLoopInput(e.target, false));
     this._listenProgramRejections();
 
+    // Worker replies apply the fleet mirror before replaying this owner event.
+    // Refresh the open panel from that mirror, not from the click's optimistic state.
+    if (this._offFleetChanged) this._offFleetChanged();
+    this._offFleetChanged = ctx?.bus?.on?.('automation:fleetChanged', () => {
+      if (this._root && this._tab === 'fleet') this.refresh(this._ctx);
+    });
+
     // A finished trader cycle had no reader. The strip says what the receipt paid.
     if (this._offCycle) this._offCycle();
     this._cycleNote = '';
@@ -1115,6 +1122,8 @@ export const automationScreen = {
   onShow(ctx) { if (ctx) this._ctx = ctx; this.refresh(this._ctx, { forceBody: true }); },
   onHide() { /* cached DOM retained */ },
   dispose() {
+    if (this._offFleetChanged) this._offFleetChanged();
+    this._offFleetChanged = null;
     if (this._offProgramRejected) this._offProgramRejected();
     if (this._offProgramAssigned) this._offProgramAssigned();
     this._offProgramRejected = this._offProgramAssigned = null;
@@ -1736,7 +1745,7 @@ export const automationScreen = {
       for (const fs of fleet) {
         const card = document.createElement('div');
         card.className = 'au-card';
-        const order = fs.order || 'escort';
+        const order = fs.order === 'idle' ? 'regroup' : (fs.order || 'escort');
         const deployment = describeWingmanDeployment(fs);
         card.innerHTML = `
           <div class="grow">
@@ -1746,11 +1755,11 @@ export const automationScreen = {
               <span>deploy ${deploymentPill(deployment)}</span>
               ${fs.hullPct != null ? `<span>hull ${Math.round(fs.hullPct * 100)}% ${miniBar(fs.hullPct)}</span>` : ''}
             </div>
-            <div class="au-note">${escapeHtml(deployment.detail)} An escort guards you now and can guard your automation assets later.</div>
+            <div class="au-note">${escapeHtml(deployment.detail)} ${fs.order === 'mine' ? 'Mines nearby rock; scoop the ore it drops.' : 'Escort guards you; Regroup returns to formation.'}</div>
           </div>
           <button class="au-order" data-act="orderEscort" data-ref="${automationRecordRefAttr(fs.id, fs.defId)}" data-kind="fleet">Escort</button>
           <button class="au-order" data-act="orderMine" data-ref="${automationRecordRefAttr(fs.id, fs.defId)}" data-kind="fleet">Mine</button>
-          <button class="au-recall" data-act="orderRecall" data-ref="${automationRecordRefAttr(fs.id, fs.defId)}" data-kind="fleet">Recall</button>`;
+          <button class="au-recall" data-act="orderRecall" data-ref="${automationRecordRefAttr(fs.id, fs.defId)}" data-kind="fleet">Regroup</button>`;
         frag.appendChild(card);
       }
     }
@@ -1986,9 +1995,9 @@ export const automationScreen = {
       resumeTrader: 'Resuming trader…',
       buildOutpost: 'Constructing outpost…',
       decommission: 'Decommissioning outpost…',
-      orderEscort: 'Order: escort.',
-      orderMine: 'Order: mine.',
-      orderRecall: 'Order: recall.',
+      orderEscort: 'Sending escort order…',
+      orderMine: 'Sending mining order…',
+      orderRecall: 'Sending regroup order…',
       assignFleet: 'Assigning wingman…',
       assignProgram: 'Assigning drone program…',
     };

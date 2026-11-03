@@ -1964,7 +1964,7 @@ export const ships = {
     // UI intent events (§4.4): the UI emits these; ships owns the mutation + credit emits. The
     // adapter validates the physical berth, while direct methods remain available to internal
     // crafting/reward/sandbox owners that do not originate at a station screen.
-    const withShipworksAccess = (capability, action) => (payload) => {
+    const withShipworksAccess = (capability, action, onRefuse = null) => (payload) => {
       const access = shipworksStationAccess(this.state);
       if (!access[capability]) {
         this.bus.emit('toast', {
@@ -1972,6 +1972,7 @@ export const ships = {
           kind: 'error',
           ttl: 3,
         });
+        if (onRefuse) onRefuse(payload || {});
         return false;
       }
       return action(payload || {});
@@ -2027,7 +2028,11 @@ export const ships = {
       const instanceId = p && typeof p.instanceId === 'string' && p.instanceId ? p.instanceId : null;
       return this.fitModule({ shipIndex, slotIndex, instanceId });
     }));
-    bus.on('ui:unfitModule', withShipworksAccess('outfit', (p) => this.unfitModule(p)));
+    bus.on('ui:unfitModule', withShipworksAccess('outfit', (p) => this.unfitModule(p), (p) => {
+      if (p.operationId) this.bus.emit('module:fitRefused', {
+        shipIndex: p.shipIndex, slotIndex: p.slotIndex, operationId: p.operationId, reason: 'station_unavailable',
+      });
+    }));
     // Saving a preset snapshots the CURRENT fit — it mutates only the preset store, not the
     // ship, so it needs no station service and works on the flight host too (J13 packet).
     // Apply and delete DO change the fit / preset ownership: they stay behind the outfit gate.
@@ -3225,11 +3230,9 @@ export const ships = {
     return true;
   },
 
-  unfitModule({ shipIndex, slotIndex }) {
-    // Research G / P08 residual — a refused unfit travels the SAME authoritative outcome channel
-    // as a refused fit: module:fitRefused names the reason, and the chooser's synchronous
-    // listener keeps the attempted slot mounted instead of playing the success detent over an
-    // intent the owner rejected (e.g. cargo capacity changed between render and intent).
+  unfitModule({ shipIndex, slotIndex, operationId }) {
+    // A refused unfit travels the same authoritative outcome channel as a refused fit.
+    // A worker-lane caller can correlate that receipt with its own pending action.
     const refuse = (reason, refusedDefId = null, refusedInstanceId = null) => {
       this.bus.emit('module:fitRefused', {
         shipIndex,
@@ -3237,6 +3240,7 @@ export const ships = {
         defId: refusedDefId,
         instanceId: refusedInstanceId,
         reason,
+        ...(operationId ? { operationId } : {}),
       });
       return false;
     };
@@ -3251,16 +3255,19 @@ export const ships = {
     const inst = this._takeFittedInstance(owned, slotIndex);
     owned.fittings[slotIndex] = null;
     if (this.wouldOverflowCargo(owned)) {
+      const used = Number(p.cargo?.usedVolume) || 0;
+      const capacity = getDerivedStats(owned.defId, owned.fittings, p).cargoCap;
       owned.fittings[slotIndex] = defId; // revert
       if (inst) {
         if (!owned.fittedInstances) owned.fittedInstances = {};
         owned.fittedInstances[slotIndex] = inst;
       }
-      this.bus.emit('toast', { text: 'Cargo would overflow — jettison first', kind: 'error', ttl: 3 });
+      this.bus.emit('toast', { text: `Cargo would overflow: ${used.toLocaleString('en-US', { maximumFractionDigits: 2 })} used / ${capacity.toLocaleString('en-US')} capacity without this module. Sell or transfer cargo first.`, kind: 'error', ttl: 5 });
       return refuse('cargo_overflow', defId, inst ? inst.instanceId : null);
     }
     p.moduleInventory.push(inst ? { ...inst } : { instanceId: this.nextInstanceId(), defId });
-    this.bus.emit('module:unequipped', { shipId: this.shipIdFor(shipIndex), slotIndex, defId });
+    this.bus.emit('module:unequipped', { shipId: this.shipIdFor(shipIndex), slotIndex, defId,
+      ...(operationId ? { operationId } : {}) });
     this.recomputeIfActive(shipIndex, owned.fittings);
     return true;
   },

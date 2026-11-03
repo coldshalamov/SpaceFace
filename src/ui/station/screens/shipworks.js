@@ -70,6 +70,7 @@ import { classifyBuildIdentity } from '../../../systems/buildIdentity.js';
 import { impoundLotBoard } from '../../../systems/impoundLot.js';
 import { historyWearDead } from '../../../systems/historyWear.js';
 import { livingHullTrinkets } from '../../../core/livingHull.js';
+import { laneCommandSink, nextLaneToken } from '../../../core/simLaneCommands.js';
 import { sableVennServiceAvailable } from '../../../data/sableVenn.js';
 import { mountSableDemo, sablePreviewStamp, sablePreviewMatches } from '../../orrery/sableDemo.js';
 import { instanceIdentityText } from '../../../systems/shipLedger.js';
@@ -872,6 +873,8 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   let presetAppliedUnsub = null;
   let pendingPresetRejection = null;
   let stageShown = false;
+  let chooserEpoch = 0;
+  let unfitPending = false;
   let sableDemo = null, sableSelection = null, sableStamp = null;
   const clearSableDemo = () => { sableDemo?.dispose(); sableDemo = null; sableStamp = null; };
   const sableLifecycleUnsubs = ['save:restoring', 'game:newGame'].map(event => ctx.bus?.on(event, clearSableDemo)).filter(Boolean);
@@ -4456,6 +4459,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
 
   // ---------- slot chooser (the compatible modules take the hang column) ----------
   function openChooser(slotIndex, anchorEl, opts = {}) {
+    chooserEpoch++;
     clearSableDemo(); sableSelection = null;
     const s = viewedShip(); const def = s ? SHIP_BY_ID.get(s.defId) : null;
     if (!def) return;
@@ -4695,6 +4699,29 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   }
 
   function emitFitIntent(eventName, payload) {
+    if (eventName === 'ui:unfitModule' && laneCommandSink()) {
+      if (!ctx.bus || typeof ctx.bus.on !== 'function') return Promise.resolve(null);
+      const operationId = nextLaneToken('unfit');
+      return new Promise((resolve) => {
+        let done = false;
+        let offAccepted = () => {}, offRefused = () => {}, timer = null;
+        const finish = (result) => {
+          if (done) return;
+          done = true;
+          offAccepted(); offRefused();
+          if (timer != null) clearTimeout(timer);
+          resolve(result);
+        };
+        offAccepted = ctx.bus.on('module:unequipped', (event) => {
+          if (event?.operationId === operationId) finish(true);
+        });
+        offRefused = ctx.bus.on('module:fitRefused', (event) => {
+          if (event?.operationId === operationId) finish(false);
+        });
+        timer = setTimeout(() => finish(null), 5000);
+        try { ctx.bus.emit(eventName, { ...payload, operationId }); } catch (_) { finish(null); }
+      });
+    }
     let refused = false;
     const mark = () => { refused = true; };
     const unsubscribe = ctx.bus && typeof ctx.bus.on === 'function' ? ctx.bus.on('module:fitRefused', mark) : null;
@@ -4704,6 +4731,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   }
 
   function closeChooser(opts = {}) {
+    chooserEpoch++;
     clearSableDemo(); sableSelection = null;
     if (chooserEl.hidden && !chooserEl.classList.contains('is-open')) return;
     if (chooserCloseTimer) { clearTimeout(chooserCloseTimer); chooserCloseTimer = 0; }
@@ -5887,9 +5915,18 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       // listener as its fit twin: a refusal (e.g. cargo capacity changed between render and
       // intent) names its reason through the owner's outcome, keeps the chooser open on the
       // attempted slot, and plays no success detent; only an accepted unfit closes, once.
+      if (unfitPending) return;
       if (ctx.bus) {
+        const epoch = chooserEpoch;
         const accepted = emitFitIntent('ui:unfitModule', { shipIndex: viewIdx, slotIndex: Number(uf.getAttribute('data-unfit')) });
-        if (!accepted) {
+        unfitPending = true;
+        uf.disabled = true;
+        const confirmed = accepted && typeof accepted.then === 'function' ? await accepted : accepted;
+        unfitPending = false;
+        if (!stageShown || epoch !== chooserEpoch) return;
+        if (confirmed !== true) {
+          uf.disabled = false;
+          if (confirmed == null) ctx.bus.emit('toast', { text: 'Removal could not be confirmed. Check the fitting before retrying.', kind: 'warn', ttl: 4 });
           ctx.bus.emit('audio:cue', { id: 'ui_deny' });
           if (typeof uf.focus === 'function') uf.focus({ preventScroll: true });
           return;
@@ -5992,6 +6029,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     onHide() {
       closeLotDesk(false);
       stageShown = false;
+      chooserEpoch++;
       pendingPresetRejection = null;
       clearSableDemo(); sableSelection = null;
       if (previewSettleTimer) clearTimeout(previewSettleTimer);
