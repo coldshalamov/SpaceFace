@@ -595,6 +595,54 @@ test('the mobile voice lane moves below open Details and View controls, then re-
   assert.equal(lane.style.transform, '', 'desktop transform policy remains owned by its existing stylesheet');
 });
 
+test('alert lane placement observer ignores its own style writes and cleanup releases the lane', () => {
+  const ast = parse(HUD_SRC, { sourceType: 'module' });
+  const names = new Set(['alertLaneStyleMutationIsOwned', 'restoreAlertLanePlacement', 'cleanupAlertLanePlacement']);
+  const declarations = new Map();
+  const constants = [];
+  const visit = (node) => {
+    if (!node || typeof node !== 'object') return;
+    if (node.type === 'FunctionDeclaration' && names.has(node.id?.name)) {
+      declarations.set(node.id.name, HUD_SRC.slice(node.start, node.end));
+    }
+    if (node.type === 'VariableDeclaration' && node.declarations?.some((item) =>
+      ['ALERT_LANE_STYLE_KEYS', 'ALERT_LANE_OWNED_CSS_PROPERTIES'].includes(item.id?.name))) {
+      constants.push(HUD_SRC.slice(node.start, node.end));
+    }
+    for (const value of Object.values(node)) {
+      if (Array.isArray(value)) value.forEach(visit);
+      else if (value && typeof value === 'object') visit(value);
+    }
+  };
+  visit(ast);
+  assert.equal(declarations.size, names.size);
+  assert.equal(constants.length, 2);
+  const lane = { style: { position: 'fixed', top: '92px' }, getAttribute: () => lane.styleText };
+  let disconnected = 0;
+  const context = {
+    lane, alertsEl: lane, alertLanePlacementActive: true,
+    alertLaneOriginalStyle: { position: 'absolute', left: '', right: '', top: '', bottom: '', width: '',
+      maxHeight: '', overflowY: '', transform: 'translateY(4px)', pointerEvents: '', boxSizing: '' },
+    alertLaneObserver: { disconnect() { disconnected++; } },
+    setStyle(el, key, value) { el.style[key] = value; },
+  };
+  const harness = runInNewContext(`${constants.join('\n')}\n${declarations.get('restoreAlertLanePlacement')}\n${declarations.get('cleanupAlertLanePlacement')}\n${declarations.get('alertLaneStyleMutationIsOwned')}\n({ cleanupAlertLanePlacement, alertLaneStyleMutationIsOwned })`, context);
+  lane.styleText = 'position:fixed; top:92px; opacity:0.7';
+  const ownPositionChange = { type: 'attributes', target: lane, attributeName: 'style', oldValue: 'position:absolute; top:8px; opacity:0.7' };
+  assert.equal(harness.alertLaneStyleMutationIsOwned(ownPositionChange, lane), true,
+    'positioning changes owned by the allocator do not schedule another placement');
+  lane.styleText = 'position:fixed; top:92px; opacity:0';
+  assert.equal(harness.alertLaneStyleMutationIsOwned(ownPositionChange, lane), false,
+    'a lane visibility change remains observable even when the allocator also owns position');
+  assert.equal(harness.alertLaneStyleMutationIsOwned({ ...ownPositionChange, target: {} }, lane), false,
+    'child alert changes continue to refresh the lane');
+  harness.cleanupAlertLanePlacement();
+  assert.equal(disconnected, 1);
+  assert.equal(lane.style.position, 'absolute');
+  assert.equal(lane.style.transform, 'translateY(4px)');
+  assert.equal(context.alertLanePlacementActive, false);
+});
+
 test('natural mobile discovery geometry chooses the opposite thumb lane and waits safely when full', () => {
   const names = new Set(['overlaySafeSlot', 'freeOverlayBands', 'placeExternalFlightCaptions',
     'placeCaptionInSafeSlot', 'clearExternalFlightCaptionPlacement', 'plateBox']);

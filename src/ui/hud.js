@@ -6139,6 +6139,12 @@ export function createHud(ctx, alerts) {
   // Both roots are static index.html markup: resolve each once, retrying only while absent.
   let toastsLaneEl = null;
   let alertsEl = null;
+  let alertLaneObserver = null;
+  function cleanupAlertLanePlacement() {
+    alertLaneObserver?.disconnect();
+    if (alertLanePlacementActive) restoreAlertLanePlacement(alertsEl);
+  }
+  hudUnsubscribers.push(cleanupAlertLanePlacement);
   function overlaySafeSlot(layout, w, h) {
     const safe = layout && layout.centerSafe;
     const measured = objectiveEdgeObstacles();
@@ -6267,10 +6273,26 @@ export function createHud(ctx, alerts) {
   }
   const ALERT_LANE_STYLE_KEYS = ['position', 'left', 'right', 'top', 'bottom', 'width', 'maxHeight',
     'overflowY', 'transform', 'pointerEvents', 'boxSizing'];
+  const ALERT_LANE_OWNED_CSS_PROPERTIES = new Set([
+    'position', 'left', 'right', 'top', 'bottom', 'width', 'max-height', 'overflow-y',
+    'transform', 'pointer-events', 'box-sizing',
+  ]);
+  function alertLaneStyleMutationIsOwned(record, lane) {
+    if (!record || record.type !== 'attributes' || record.target !== lane
+      || record.attributeName !== 'style' || !('oldValue' in record)) return false;
+    const externalStyle = (styleText) => String(styleText || '').split(';').map((declaration) => {
+      const colon = declaration.indexOf(':');
+      if (colon < 0) return '';
+      const property = declaration.slice(0, colon).trim().toLowerCase();
+      return ALERT_LANE_OWNED_CSS_PROPERTIES.has(property) ? '' : `${property}:${declaration.slice(colon + 1).trim()}`;
+    }).filter(Boolean).sort().join(';');
+    return externalStyle(record.oldValue) === externalStyle(lane.getAttribute?.('style'));
+  }
   function restoreAlertLanePlacement(lane) {
     if (!lane || !alertLanePlacementActive) return;
     for (const key of ALERT_LANE_STYLE_KEYS) setStyle(lane, key, alertLaneOriginalStyle?.[key] || '');
     alertLanePlacementActive = false;
+    alertLaneOriginalStyle = null;
   }
   function placeAlertLaneInSafeBands(layout, w, h) {
     if (!alertLanePlacementStale) return;
@@ -6297,6 +6319,7 @@ export function createHud(ctx, alerts) {
     if (!alertLaneOriginalStyle) {
       alertLaneOriginalStyle = Object.fromEntries(ALERT_LANE_STYLE_KEYS.map((key) => [key, lane.style?.[key] || '']));
     }
+    alertLanePlacementActive = true;
     const slot = overlaySafeSlot(layout, w, h);
     if (!slot || !(slot.width > 0)) { restoreAlertLanePlacement(lane); return; }
     for (const [key, value] of Object.entries({ position: 'fixed', left: `${Math.round(slot.x)}px`,
@@ -6314,7 +6337,6 @@ export function createHud(ctx, alerts) {
     setStyle(lane, 'maxHeight', `${bandHeight}px`);
     setStyle(lane, 'overflowY', contentHeight > bandHeight ? 'auto' : 'visible');
     setStyle(lane, 'pointerEvents', contentHeight > bandHeight ? 'auto' : 'none');
-    alertLanePlacementActive = true;
   }
   function placeCaptionInSafeSlot(target, layout, slot, laneRoot, band = null) {
     if (!target || target.hidden || !slot) return;
@@ -6599,19 +6621,22 @@ export function createHud(ctx, alerts) {
   });
   if (typeof MutationObserver !== 'undefined') {
     const alertLaneOptions = {
-      attributes: true, attributeFilter: ['class', 'hidden', 'style'],
+      attributes: true, attributeFilter: ['class', 'hidden', 'style'], attributeOldValue: true,
       childList: true, subtree: true, characterData: true,
     };
-    let alertLaneObserver = null;
     const observeAlertLane = () => {
       const alertLane = document.getElementById('alerts');
       if (!alertLane || alertLaneObserver) return false;
-      alertLaneObserver = new MutationObserver(() => {
+      alertLaneObserver = new MutationObserver((records) => {
+        if (records?.length && records.every((record) => alertLaneStyleMutationIsOwned(record, alertLane))) return;
         alertLanePlacementStale = true;
         flightTextObstaclesStale = true;
         placeReceiptLane();
       });
       alertLaneObserver.observe(alertLane, alertLaneOptions);
+      if (document.documentElement) alertLaneObserver.observe(document.documentElement, {
+        attributes: true, attributeFilter: ['data-sf-mobile-flight'],
+      });
       alertLanePlacementStale = true;
       placeReceiptLane();
       return true;
@@ -6623,7 +6648,6 @@ export function createHud(ctx, alerts) {
       waitForAlertLane.observe(document.documentElement, { childList: true, subtree: true });
       hudUnsubscribers.push(() => waitForAlertLane.disconnect());
     }
-    hudUnsubscribers.push(() => alertLaneObserver?.disconnect());
   }
 
   function placeFlightBox(el, rect) {
