@@ -5,6 +5,7 @@ import { createSimHost } from '../scripts/lib/simWorkerHost.mjs';
 import { createReadModel, applySpawnInfos, applyEntityVitals } from '../scripts/lib/simReadModel.mjs';
 import { syncMawWorksite } from '../src/missions/mawWorksite.js';
 import { buildMawWorksiteVisual } from '../src/render/visualFactory.js';
+import { queueEnvironmentImpact } from '../src/systems/environmentMaterials.js';
 
 const contract = JSON.parse(readFileSync(new URL('../src/data/scenarios/47a.scenario.json', import.meta.url), 'utf8'));
 test('authored Maw native radius survives production spawn, rebuild and changed vitals to visual sizing', async () => {
@@ -49,5 +50,22 @@ test('authored Maw native radius survives production spawn, rebuild and changed 
     assert.equal(readModel.entities.get(maw.id).mawPresentationRadius, undefined, 'a recycled life cannot inherit it');
     assert.ok(Math.abs(initialVisualScale - nativeRadius / 18) < 1e-5);
     assert.equal(changedVisualScale, 30 / 18);
+
+    // Physical children keep non-ore lineage, but never publish whole-Maw geometry.
+    maw.data.mawMissionId = mission.id;
+    const materials = registry.get('environmentMaterials');
+    assert.equal(queueEnvironmentImpact(state, maw, 120), true);
+    materials.update(1 / 60, state);
+    const fragments = state.entityList.filter(e => e.alive && e.data?.materialFragment
+      && e.data.mawMissionId === mission.id);
+    assert.equal(fragments.length, 4);
+    await publish();
+    for (const fragment of fragments) {
+      const child = readModel.entities.get(fragment.id);
+      assert.ok(child);
+      assert.equal(child.mawPresentationRadius, undefined, 'new children have no whole-Maw scalar');
+      assert.ok(buildMawWorksiteVisual(child) === null, 'a worker fragment cannot build the whole Maw');
+      assert.equal(child.radius, fragment.radius, 'the ordinary fragment size crosses the wire');
+    }
   } finally { host.shutdown(); }
 });

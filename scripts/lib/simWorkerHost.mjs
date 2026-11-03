@@ -35,7 +35,7 @@ import { NEW_GAME } from '../../src/data/newGameDefaults.js';
 import { swarmSpecialistKind } from '../../src/data/swarmSpecialists.js';
 import { swarmSpecialistPresentationFrame } from '../../src/data/swarmSpecialistPresentation.js';
 import { isOrchardFrame } from '../../src/data/anvilOrchardIdentity.js';
-import { isMawWorksiteBody } from '../../src/missions/mawWorksite.js';
+import { isIntactMawWorksiteBody } from '../../src/missions/mawWorksite.js';
 import { ceresWorkfleetRoleForEntity } from '../../src/data/ceresWorkfleetIdentity.js';
 import { readCeresCradlePublicLayout } from '../../src/core/ceresWorkfleetLayoutAdmission.js';
 import { readCeresWorkfleetPublicActuation } from '../../src/core/ceresWorkfleetActuation.js';
@@ -303,7 +303,7 @@ function pallasSeamStandbyTick(e) {
 }
 
 function mawPresentationRadius(e) {
-  if (!isMawWorksiteBody(e)) return VITAL_SHADOW_MISSING;
+  if (!isIntactMawWorksiteBody(e)) return VITAL_SHADOW_MISSING;
   const radius = e.physicsBody?.radius;
   return Number.isFinite(radius) && radius > 0 ? radius : null;
 }

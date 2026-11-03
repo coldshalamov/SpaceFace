@@ -36,6 +36,7 @@ import { hasMachineProtocol } from '../data/alienEcology.js';
 import { tickProgram, assignTemplate, clearTemplate, assignReaction, clearReaction, resolveStationDisplayName, resolveProgram, validateProgram, hasProgram, TEMPLATES } from './alphabet.js';
 import { resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
 import { ASTEROIDS } from '../data/mining.js';
+import { isMawWorksiteBody } from '../missions/mawWorksite.js';
 import {
   addToShipment,
   commitShipmentSale,
@@ -925,7 +926,8 @@ export const automation = {
     const cap = Math.max(0, Number(g.bufferCap || def.bufferCap) || 0) || 40;
     const rate = Math.max(0, (def.mineRate || 0.8) * Math.max(1, Number(g.count) || 1));
     const rock = targetRock || this._nearestAsteroid(g.originPos || this._playerPos(), def.deployRange || 400);
-    if (!rock || rock.alive === false || rock.data?.respawnAt != null || rate <= 0) return;
+    if (!rock || rock.alive === false || rock.data?.respawnAt != null
+      || isMawWorksiteBody(rock) || rate <= 0) return;
     const room = Math.max(0, cap - shipmentUsed(g) - (Number(g._programMineCarry) || 0));
     const fuelTime = Math.max(0, Number(g.fuel) || 0) / Math.max(0.001, Number(def.fuelRate) || 1);
     const workTime = Math.min(Math.max(0, Number(dt) || 0), fuelTime, room / rate);
@@ -1103,7 +1105,8 @@ export const automation = {
 
       // (re)acquire the nearest live asteroid within the deploy range of the drone itself.
       let ast = e.data && e.data.targetAstId != null ? getEnt(e.data.targetAstId) : null;
-      if (!ast || !ast.alive || ast.type !== 'asteroid' || (ast.data && ast.data.respawnAt != null)) {
+      if (!ast || !ast.alive || ast.type !== 'asteroid' || (ast.data && ast.data.respawnAt != null)
+        || isMawWorksiteBody(ast)) {
         ast = this._nearestAsteroid(e.pos, ((def && def.deployRange) || 400) * 1.6);
         e.data.targetAstId = ast ? ast.id : null;
       }
@@ -1193,6 +1196,7 @@ export const automation = {
   // Sim-affecting yield is the group's authored buffer accrual (kept in _updateDrones), so this only
   // depletes the field + drives VFX — it never double-credits ore. Deterministic (no RNG draw here).
   _chipAsteroid(ast, def, dt, miner = null) {
+    if (isMawWorksiteBody(ast)) return 0;
     const d = ast.data || (ast.data = {});
     const hpMax = d.oreHPMax || d.oreHP || ast.hullMax || 1;
     if (d.oreHPMax == null) d.oreHPMax = hpMax;
@@ -1238,7 +1242,7 @@ export const automation = {
     this._diag.asteroidCandidates += list.length;
     let best = null, bestD2 = (range || 1e9) * (range || 1e9);
     for (const e of list) {
-      if (!e.alive || e.type !== 'asteroid') continue;
+      if (!e.alive || e.type !== 'asteroid' || isMawWorksiteBody(e)) continue;
       if (e.data && e.data.respawnAt != null) continue; // mined-out
       const dx = e.pos.x - pos.x, dz = e.pos.z - pos.z;
       const d2 = dx * dx + dz * dz;

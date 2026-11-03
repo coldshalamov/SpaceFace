@@ -18,15 +18,20 @@ export function isMawWorksite(m) {
     && m.params?.mawWorksiteVersion === MAW_WORKSITE_VERSION;
 }
 export function isMawWorksiteBody(e) {
+  // Non-ore lineage includes material fragments; objective identity below is narrower.
   return e?.type === 'asteroid' && e.data?.persistenceOwner === OWNER
     && e.data.mawWorksiteVersion === MAW_WORKSITE_VERSION && e.data.mawSlot === 0
     && e.data.missionStoryTag === TAG && typeof e.data.mawMissionId === 'string'
     && e.data.mawMissionId.length > 0 && e.data.furnaceMaw === true;
 }
+export function isIntactMawWorksiteBody(e) {
+  return isMawWorksiteBody(e) && e.data.materialFragment !== true;
+}
 function belongs(e, m, slot) {
   return e?.data?.persistenceOwner === OWNER && e.data.mawWorksiteVersion === 1
     && e.data.mawMissionId === m.id && e.data.missionStoryTag === TAG
-    && e.data.mawSlot === slot && e.type === (slot === 0 ? 'asteroid' : 'payload');
+    && e.data.mawSlot === slot && (slot === 0 ? isIntactMawWorksiteBody(e)
+      : e.type === 'payload' && e.data.materialFragment !== true);
 }
 const finitePoint = p => Number.isFinite(p?.x) && Number.isFinite(p?.z);
 export function restoreMawWorksite(m) {
@@ -84,6 +89,9 @@ function specFor(m, row) {
 }
 export function syncMawWorksite(owner, m, toGlobal) {
   if (!isMawWorksite(m)) return false;
+  // Reconciliation may run before the deferred destruction receipt. Record the
+  // issued body's loss before considering any surviving same-lineage bodies.
+  snapshotMawWorksite(owner, m);
   if (m.params.mawLedgerInvalid || m.params.mawBodies?.some?.(row => row.lost)) {
     owner._sayStoryLine?.('Ceres traffic: the worksite cannot settle. This detail is void; return to the board for a fresh attempt.', 7);
     const index = owner.state.missions.active.indexOf(m);
