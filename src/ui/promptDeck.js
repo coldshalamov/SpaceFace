@@ -40,6 +40,7 @@
 import { settle, reducedMotion } from './kit/motion.js';
 import { arcGauge } from './orrery/instruments.js';
 import { injectOrrery } from './orrery/tokens.js';
+import { setLocalizedTextTemplate } from '../localization/domBridge.js';
 
 const FULL_SLOTS = 2;          // full glass frames on the ladder before collapse to chips
 const EXPIRY_GRACE_S = 2.5;    // display-expire grace after a passed deadline (producer may still resolve)
@@ -412,6 +413,7 @@ export function createPromptDeck(ctx = {}) {
     if (nextText !== entry.lastCountdown) {
       entry.lastCountdown = nextText;
       setText(entry.detailEl, nextText);
+      setLocalizedTextTemplate(entry.detailEl, spec.detailCopy, next ? (spec.detail ? ' ' : '') + next : '');
       entry.detailEl.classList.toggle('sf-prompt__detail--urgent',
         hasLiveChoices && Number.isFinite(spec.deadlineAt) && spec.deadlineAt - simNow() <= COUNTDOWN_URGENT_S);
     }
@@ -776,6 +778,7 @@ export function createPromptDeck(ctx = {}) {
       sender: spec.sender != null ? String(spec.sender) : '',
       headline: spec.headline != null ? String(spec.headline) : '',
       detail: spec.detail != null ? String(spec.detail) : '',
+      detailCopy: spec.detailCopy || null,
       statusFlag: spec.statusFlag != null ? String(spec.statusFlag) : null,
       choices,
       deadlineAt: finiteOr(spec.deadlineAt, null),

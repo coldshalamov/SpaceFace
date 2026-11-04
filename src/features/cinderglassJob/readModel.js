@@ -7,7 +7,7 @@ import {
   CINDERGLASS_JOB_DEPOSIT_CR, CINDERGLASS_JOB_BROKER_CR,
   CINDERGLASS_JOB_RECEIVE_SPEED, CINDERGLASS_JOB_SERVICE_SECONDS,
   CINDERGLASS_JOB_SECTOR_ID,
-  CINDERGLASS_JOB_ROLES,
+  CINDERGLASS_JOB_ROLES, CINDERGLASS_JOB_TEXT, CINDERGLASS_JOB_TERMS_COPY,
 } from './definition.js';
 import { cinderglassJobContactRows, cinderglassJobRevisit } from './contact.js';
 import { occupantGenerationOf } from '../../core/entity.js';
@@ -21,6 +21,11 @@ const action = a => ({ id: text(a?.id, 48), label: text(a?.label, 100), disabled
   ...(a?.recipient ? { recipient: text(a.recipient, 24) } : {}),
   ...(a?.markerId ? { markerId: text(a.markerId, 96) } : {}) });
 
+/** Only the original offer terms have this template; other contact details stay untouched. */
+export function cinderglassJobDetailCopy(detail) {
+  return detail === CINDERGLASS_JOB_TEXT.offerDetail ? CINDERGLASS_JOB_TERMS_COPY : null;
+}
+
 export function cinderglassJobPublicPrompt(raw) {
   if (!raw || typeof raw !== 'object' || typeof raw.token !== 'string' || !raw.token) return null;
   const source = Array.isArray(raw.choices) ? raw.choices : Array.isArray(raw.actions) ? raw.actions : [];
@@ -30,7 +35,9 @@ export function cinderglassJobPublicPrompt(raw) {
     revision: finite(raw.revision), epoch: finite(raw.epoch),
     title: text(raw.title, 100), sender: text(raw.sender, 100),
     headline: text(raw.headline || raw.line, 500), line: text(raw.line || raw.headline, 500),
-    detail: text(raw.detail, 1100), statusFlag: text(raw.statusFlag, 160),
+    detail: text(raw.detail, 1100),
+    ...(cinderglassJobDetailCopy(raw.detail) ? { detailCopy: CINDERGLASS_JOB_TERMS_COPY } : {}),
+    statusFlag: text(raw.statusFlag, 160),
     kind: raw.kind === 'warn' ? 'warn' : 'info', choices,
     ...(raw.actions ? { actions: choices } : {}),
   };

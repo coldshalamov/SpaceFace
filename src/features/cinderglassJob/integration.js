@@ -1,6 +1,8 @@
 // Browser reader adapters for the ordinary station/Contracts, chart and journal owners.
 // Root supplies the small call-site hunks; all facts come from the bounded worker-safe view.
 import { CINDERGLASS_JOB_STATION_ID, CINDERGLASS_JOB_SECTOR_ID } from './definition.js';
+import { cinderglassJobDetailCopy } from './readModel.js';
+import { setLocalizedTextTemplate } from '../../localization/domBridge.js';
 
 export function getCinderglassJobMapMarkers(state, sectorId) {
   return sectorId === CINDERGLASS_JOB_SECTOR_ID
@@ -29,6 +31,8 @@ export function mountCinderglassJobContracts(ctx, host) {
   let signature = '', eventOffer = null, eventView = null, disposed = false;
   const consumed = new Set(), off = [];
   const node = (tag, text, className) => { const e = document.createElement(tag); if (text) e.textContent = text; if (className) e.className = className; return e; };
+  const detailNode = text => { const e = node('p', text, 'k-sentence');
+    setLocalizedTextTemplate(e, cinderglassJobDetailCopy(text)); return e; };
   function send(action, captured, extra = {}) {
     const p = { action, token: captured.token, operationId: captured.operationId,
       offerEpoch: captured.epoch, revision: captured.revision, ...extra, result: null };
@@ -59,7 +63,7 @@ export function mountCinderglassJobContracts(ctx, host) {
     if (offer && !consumed.has(offerKey)) {
       panel.appendChild(node('h3', offer.title || 'Tala Rook · disputed consignment', 'k-caps'));
       panel.appendChild(node('p', offer.headline || offer.line, 'k-sentence'));
-      panel.appendChild(node('p', offer.detail, 'k-sentence'));
+      panel.appendChild(detailNode(offer.detail));
       for (const a of (offer.choices || offer.actions || [])) {
         const b = button(a.label, a.id, offer);
         b.addEventListener('click', () => { consumed.add(offerKey); while (consumed.size > 8) consumed.delete(consumed.values().next().value); signature = ''; frame(ctx.state); });
@@ -69,7 +73,7 @@ export function mountCinderglassJobContracts(ctx, host) {
       const row = node('div');
       row.appendChild(node('h3', contact.title, 'k-caps'));
       row.appendChild(node('p', contact.line, 'k-sentence'));
-      if (contact.detail) row.appendChild(node('p', contact.detail, 'k-sentence'));
+      if (contact.detail) row.appendChild(detailNode(contact.detail));
       for (const a of contact.actions.slice(0, 2)) row.appendChild(button(a.label, a.id, contact, { actor: contact.actor }));
       panel.appendChild(row);
     }

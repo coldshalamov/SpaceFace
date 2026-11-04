@@ -67,9 +67,9 @@ const RECEIVER_ZONE = Object.freeze({ radius: 34, receiver: true, physicalProfil
 export const COUNTERWEIGHT_EVENTS = Object.freeze([
   {
     id: 'soft_berth', index: 0, title: 'SOFT BERTH',
-    tagline: 'Tow the practice load into the receiving cradle â€” arrive gentle.',
+    tagline: 'Tow the practice load into the receiving cradle — arrive gentle.',
     skill: 'Braking and relative speed',
-    nextSkill: 'Line work under swing â€” THE LONG ARM',
+    nextSkill: 'Line work under swing — THE LONG ARM',
     bodies: [
       { role: 'load', kind: 'load', ...LOAD_POD, local: { x: 210, z: 0 } },
       { role: 'cradle', kind: 'static', ...RECEIVER, local: { x: 520, z: 0 },
@@ -77,7 +77,7 @@ export const COUNTERWEIGHT_EVENTS = Object.freeze([
     ],
     legs: [
       { kind: 'attach', role: 'load', hint: 'Line the practice load' },
-      { kind: 'seat', role: 'load', zone: 'cradle', maxSpeed: 4, dwellS: 1.2, hint: 'Seat the load in the cradle at â‰¤ 4 WU/s' },
+      { kind: 'seat', role: 'load', zone: 'cradle', maxSpeed: 4, dwellS: 1.2, hint: 'Seat the load in the cradle at ≤ 4 WU/s' },
     ],
     constraints: [{ kind: 'survive', role: 'load' }],
     medals: { gold: 40, silver: 60, bronze: 90 },
@@ -88,7 +88,7 @@ export const COUNTERWEIGHT_EVENTS = Object.freeze([
     id: 'long_arm', index: 1, title: 'THE LONG ARM',
     tagline: 'Swing the load around the counterweight and release it through the gate.',
     skill: 'Throw angle and release timing',
-    nextSkill: 'Stand-off containment â€” CLEAN SLING',
+    nextSkill: 'Stand-off containment — CLEAN SLING',
     bodies: [
       { role: 'load', kind: 'load', ...LOAD_POD, local: { x: 300, z: 0 } },
       { role: 'counterweight', kind: 'static', asset: 'place_rock_metallic_ore_boulder', file: 'places/place_rock_metallic_ore_boulder.glb', radius: 20, local: { x: 420, z: 0 }, label: 'Counterweight' },
@@ -108,7 +108,7 @@ export const COUNTERWEIGHT_EVENTS = Object.freeze([
     id: 'clean_sling', index: 2, title: 'CLEAN SLING',
     tagline: 'Redirect the load into the catch basin. Your ship stays outside the basin.',
     skill: 'Stand-off redirect and patient braking',
-    nextSkill: 'Gentle hands â€” FRAGILE FREIGHT',
+    nextSkill: 'Gentle hands — FRAGILE FREIGHT',
     bodies: [
       { role: 'load', kind: 'load', ...LOAD_POD, local: { x: 300, z: 60 } },
       { role: 'basin', kind: 'static', ...RECEIVER, radius: 42, local: { x: 560, z: -120 },
@@ -132,7 +132,7 @@ export const COUNTERWEIGHT_EVENTS = Object.freeze([
     id: 'fragile_freight', index: 3, title: 'FRAGILE FREIGHT',
     tagline: 'Thread a real instrument pod through the baffles. It keeps its scars.',
     skill: 'Precision handling and condition keeping',
-    nextSkill: 'Two-load parking â€” SPLIT DECISION',
+    nextSkill: 'Two-load parking — SPLIT DECISION',
     bodies: [
       { role: 'pod', kind: 'load', ...INSTRUMENT_POD, local: { x: 200, z: -60 }, fragile: true },
       { role: 'baffle_a', kind: 'static', asset: 'place_maintenance_gantry', file: 'places/place_maintenance_gantry.glb', radius: 18, local: { x: 360, z: -20 } },
@@ -146,7 +146,7 @@ export const COUNTERWEIGHT_EVENTS = Object.freeze([
       { kind: 'transit', role: 'pod', gate: 'baffle_a', attached: true, hint: 'Pass below the first baffle' },
       { kind: 'transit', role: 'pod', gate: 'baffle_b', attached: true, hint: 'Pass above the second baffle' },
       { kind: 'transit', role: 'pod', gate: 'baffle_c', attached: true, hint: 'Pass below the final baffle' },
-      { kind: 'seat', role: 'pod', zone: 'receiver', maxSpeed: 4, dwellS: 1.2, hint: 'Deliver the pod to the receiver at â‰¤ 4 WU/s' },
+      { kind: 'seat', role: 'pod', zone: 'receiver', maxSpeed: 4, dwellS: 1.2, hint: 'Deliver the pod to the receiver at ≤ 4 WU/s' },
     ],
     constraints: [{ kind: 'survive', role: 'pod' }],
     // Tangents run Z; each plane is downlane X, beside the actual solid gantry.
@@ -163,7 +163,7 @@ export const COUNTERWEIGHT_EVENTS = Object.freeze([
     id: 'split_decision', index: 4, title: 'SPLIT DECISION',
     tagline: 'Two different loads, two marked shelves. One line, one at a time.',
     skill: 'Parking, staging and load switching',
-    nextSkill: 'A moving receiver â€” MOVING BERTH',
+    nextSkill: 'A moving receiver — MOVING BERTH',
     bodies: [
       { role: 'load_a', kind: 'load', ...LOAD_POD, local: { x: 250, z: 40 } },
       { role: 'load_b', kind: 'load', ...ORE_LOAD, local: { x: 250, z: -40 } },
@@ -187,7 +187,7 @@ export const COUNTERWEIGHT_EVENTS = Object.freeze([
     id: 'moving_berth', index: 5, title: 'MOVING BERTH',
     tagline: 'The receiver does not hold still. Match the barge, then seat the load.',
     skill: 'Relative-speed matching on a live itinerary',
-    nextSkill: 'The full circuit â€” COUNTERWEIGHT FINALE',
+    nextSkill: 'The full circuit — COUNTERWEIGHT FINALE',
     requires: ['soft_berth'],
     bodies: [
       { role: 'load', kind: 'load', ...LOAD_POD, local: { x: 260, z: 0 } },
@@ -198,7 +198,7 @@ export const COUNTERWEIGHT_EVENTS = Object.freeze([
     ],
     legs: [
       { kind: 'attach', role: 'load', hint: 'Line the practice load' },
-      { kind: 'seat', role: 'load', zone: 'barge', maxSpeed: 4, dwellS: 1.5, relative: true, hint: 'Seat the load on the moving deck â€” relative â‰¤ 4 WU/s' },
+      { kind: 'seat', role: 'load', zone: 'barge', maxSpeed: 4, dwellS: 1.5, relative: true, hint: 'Seat the load on the moving deck — relative ≤ 4 WU/s' },
     ],
     constraints: [{ kind: 'survive', role: 'load' }],
     medals: { gold: 85, silver: 120, bronze: 180 },
@@ -206,7 +206,7 @@ export const COUNTERWEIGHT_EVENTS = Object.freeze([
   },
   {
     id: 'counterweight_finale', index: 6, title: 'COUNTERWEIGHT FINALE',
-    tagline: 'Attach, swing, release through the gate, reacquire â€” then berth it soft.',
+    tagline: 'Attach, swing, release through the gate, reacquire — then berth it soft.',
     skill: 'The whole circuit in one run',
     nextSkill: 'Personal bests and a clean ghost',
     requires: ['soft_berth', 'long_arm', 'clean_sling', 'fragile_freight', 'split_decision'],
@@ -224,7 +224,7 @@ export const COUNTERWEIGHT_EVENTS = Object.freeze([
       { kind: 'release', role: 'load', hint: 'Release on the gate line' },
       { kind: 'transit', role: 'load', gate: 'gate', windowS: 6, hint: 'Through the gate', onMiss: { retry: 0 } },
       { kind: 'reacquire', role: 'load', windowS: 14, hint: 'Reacquire the load before it leaves', onMiss: { retry: 0, failIfLost: true } },
-      { kind: 'seat', role: 'load', zone: 'cradle', maxSpeed: 4, dwellS: 1.2, hint: 'Berth it in the final cradle at â‰¤ 4 WU/s' },
+      { kind: 'seat', role: 'load', zone: 'cradle', maxSpeed: 4, dwellS: 1.2, hint: 'Berth it in the final cradle at ≤ 4 WU/s' },
     ],
     constraints: [
       { kind: 'survive', role: 'load' },

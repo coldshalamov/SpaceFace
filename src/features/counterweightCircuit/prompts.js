@@ -43,6 +43,7 @@ export const counterweightCircuitPrompt = {
       id: CIRCUIT_PROMPT_ID, kind: offer.kind === 'result' ? 'info' : (offer.kind || 'contact'),
       sender: offer.sender || 'COUNTERWEIGHT · CIRCUIT REGISTRAR',
       headline: offer.headline, detail: offer.detail, statusFlag: offer.statusFlag,
+      detailCopy: offer.detailTemplate ? { template: offer.detailTemplate, values: offer.detailValues } : null,
       choices: offer.choices.map((c) => ({
         id: c.id, label: c.label, title: c.title,
         disabled: c.disabled === true, cancel: ['close', 'leave', 'back', 'menu'].includes(c.id),

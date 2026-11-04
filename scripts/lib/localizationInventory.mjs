@@ -20,6 +20,11 @@ export function inventoryText({ path: filePath, source, kind = null, config = {}
   const add = (messageValue, sink, index = 0) => {
     const message = normalizeMessage(messageValue);
     if (!isVisibleCopy(message) || looksCodeOnly(message)) return;
+    // Feature systems also use `name` and `detail` for internal identifiers. Do not turn
+    // those into player copy merely because this root is now part of the inventory.
+    if (normalizedPath.startsWith('src/features/') &&
+        (message.includes('${') || (sink === 'field:name' && /^(?:[a-z]+(?:[A-Z_][A-Za-z0-9_]*)+|[a-z]+:[\w:.-]+)$/.test(message)) ||
+         ((sink === 'field:detail' || sink === 'field:warning') && /^[a-z][a-z0-9_]*$/.test(message)))) return;
     const key = makeLocalizationKey(normalizedPath, sink, message);
     const entry = Object.freeze({
       key,
@@ -35,7 +40,7 @@ export function inventoryText({ path: filePath, source, kind = null, config = {}
   if (fileKind === 'html') {
     inventoryHtml(sourceText, 0, config, add);
   } else {
-    inventoryJavaScript(sourceText, config, add);
+    inventoryJavaScript(sourceText, config, add, normalizedPath);
   }
   return [...entries.values()].sort(compareEntry);
 }
@@ -202,16 +207,40 @@ async function walk(absoluteDir, relativeDir, out, extensions, excludes) {
   }
 }
 
-function inventoryJavaScript(source, config, add) {
-  const fields = arrayOr(config.recognizedCopyFields, [
+function inventoryJavaScript(source, config, add, filePath) {
+  const fields = [...new Set([...arrayOr(config.recognizedCopyFields, [
     'name', 'label', 'title', 'text', 'desc', 'description', 'subtitle', 'summary', 'hint',
     'headline', 'body', 'message', 'objective', 'ariaLabel', 'placeholder',
-  ]);
+  ]), ...arrayOr(config.scopedCopyFields?.[filePath], [])])];
   if (fields.length) {
     const re = new RegExp(`(?:^|[,{]\\s*|\\n\\s*)\\b(${fields.map(escapeRe).join('|')})\\s*:\\s*${LITERAL}`, 'gm');
     for (const match of source.matchAll(re)) {
       const literalIndex = match.index + match[0].lastIndexOf(match[2]);
-      add(decodeStartingExpression(source, literalIndex, match[2]), `field:${match[1]}`, match.index);
+      add(decodeStartingExpression(source, literalIndex, match[2], filePath.startsWith('src/features/')), `field:${match[1]}`, match.index);
+    }
+  }
+
+  // These functions return whole player-facing objectives, and these calls record whole
+  // receipt/itinerary lines. Restrict them by file and sink so arbitrary return values,
+  // identifiers and asset paths do not become catalog messages.
+  for (const name of arrayOr(config.scopedReturnFunctions?.[filePath], [])) {
+    const start = new RegExp(`\\bfunction\\s+${escapeRe(name)}\\s*\\([^)]*\\)\\s*\\{`).exec(source);
+    if (!start) continue;
+    const end = source.indexOf('\n}', start.index + start[0].length);
+    if (end < 0) continue;
+    const body = source.slice(start.index, end);
+    const re = new RegExp(`\\breturn\\s+${LITERAL}`, 'g');
+    for (const match of body.matchAll(re)) {
+      const index = start.index + match.index + match[0].lastIndexOf(match[1]);
+      add(decodeStartingExpression(source, index, match[1]), `return:${name}`, start.index + match.index);
+    }
+  }
+  for (const [prefix, names] of Object.entries(config.scopedTextCalls || {})) {
+    if (!filePath.startsWith(prefix)) continue;
+    const re = new RegExp(`\\b(${arrayOr(names, []).map(escapeRe).join('|')})\\s*\\(\\s*[A-Za-z_$][\\w$]*\\s*,\\s*${LITERAL}`, 'g');
+    for (const match of source.matchAll(re)) {
+      const index = match.index + match[0].lastIndexOf(match[2]);
+      add(decodeStartingExpression(source, index, match[2]), `call:${match[1]}`, match.index);
     }
   }
 
@@ -269,10 +298,10 @@ function decodeLiteral(literal) {
   return decodeEscapes(body);
 }
 
-function decodeStartingExpression(source, literalIndex, literal) {
+function decodeStartingExpression(source, literalIndex, literal, multiline = false) {
   const after = literalIndex + literal.length;
   if (!/^\s*\+/.test(source.slice(after))) return decodeLiteral(literal);
-  const expression = source.slice(literalIndex, expressionEnd(source, literalIndex));
+  const expression = source.slice(literalIndex, expressionEnd(source, literalIndex, multiline));
   const tokens = splitTopLevelPlus(expression);
   if (tokens.length < 2) return decodeLiteral(literal);
   const names = new Map();
@@ -292,7 +321,7 @@ function decodeStartingExpression(source, literalIndex, literal) {
   return message;
 }
 
-function expressionEnd(source, start) {
+function expressionEnd(source, start, multiline = false) {
   let quote = null;
   let escaped = false;
   let depth = 0;
@@ -310,6 +339,7 @@ function expressionEnd(source, start) {
       if (depth > 0) { depth--; continue; }
       return index;
     }
+    if (multiline && depth === 0 && char === '\n' && /\+\s*$/.test(source.slice(start, index))) continue;
     if (depth === 0 && (char === ';' || char === ',' || char === '}' || char === '\n')) return index;
   }
   return source.length;

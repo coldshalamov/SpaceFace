@@ -58,6 +58,7 @@ export const cinderglassJobPrompt = {
     const spec = {
       id, kind: prompt.kind, sender: prompt.sender || prompt.title || 'CINDERGLASS · RECOVERY',
       headline: prompt.headline, detail: prompt.detail, statusFlag: prompt.statusFlag || null,
+      detailCopy: prompt.detailCopy || null,
       choices: prompt.choices.map(c => ({ ...c, cancel: ['decline', 'abort', 'leave', 'back'].includes(c.id) })),
       onChoose: (choiceId, source) => {
         const selected = prompt.choices.find(c => c.id === choiceId);

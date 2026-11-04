@@ -3,6 +3,7 @@
 // live here. Pure data + pure helpers only; no RNG, no time, no DOM.
 
 import { sectorLocalToGlobalForSector } from '../../data/sectorCoordinates.js';
+import { interpolate } from '../../localization/runtime.js';
 
 export const CINDERGLASS_JOB_FEATURE_ID = 'cinderglassJob';
 export const CINDERGLASS_JOB_SECTOR_ID = 'sector_tethys_junction';
@@ -164,15 +165,23 @@ export const CINDERGLASS_JOB_OUTCOMES = Object.freeze({
 export const CINDERGLASS_JOB_RELEASE_NEGOTIATED = 'negotiated_release';
 export const CINDERGLASS_JOB_RELEASE_QUIET = 'service_release';
 
-/* ── Player-facing lines (plain strings; a later loc pass wraps these) ── */
+// The simulation publishes the same English terms as before. Presentation can use this
+// source template and its values with the shared localization runtime at the DOM boundary.
+export const CINDERGLASS_JOB_TERMS_COPY = Object.freeze({
+  template: 'Convoy: one Mule, two escorts, four legs through the layby at the far pull-off. ' +
+    'Bring a scanner — you need a real read on the pod before anyone talks. A starter Massline tows the 18t pod home. Force is unlawful; this is no warrant. ' +
+    'Intact controller: {intactCr}CR. Damaged but whole: {damagedCr}CR. ' +
+    'Dask will hear {depositCr}CR against release; that comes back to you when I accept the pod.',
+  values: Object.freeze({ intactCr: CINDERGLASS_JOB_TALA_BASE_CR,
+    damagedCr: CINDERGLASS_JOB_TALA_DAMAGED_CR, depositCr: CINDERGLASS_JOB_DEPOSIT_CR }),
+});
+
+/* ── Player-facing lines ── */
 export const CINDERGLASS_JOB_TEXT = Object.freeze({
   offerTitle: 'TALA ROOK · DISPUTED CONSIGNMENT',
   offerLine: 'A sealed industrial controller left Tethys inside a consignment I still hold papers on. ' +
     'Dask hauled it fair — title is contested, not stolen. I need the pod, not a firefight.',
-  offerDetail: 'Convoy: one Mule, two escorts, four legs through the layby at the far pull-off. ' +
-    'Bring a scanner — you need a real read on the pod before anyone talks. A starter Massline tows the 18t pod home. Force is unlawful; this is no warrant. ' +
-    `Intact controller: ${CINDERGLASS_JOB_TALA_BASE_CR}CR. Damaged but whole: ${CINDERGLASS_JOB_TALA_DAMAGED_CR}CR. ` +
-    `Dask will hear ${CINDERGLASS_JOB_DEPOSIT_CR}CR against release; that comes back to you when I accept the pod.`,
+  offerDetail: interpolate(CINDERGLASS_JOB_TERMS_COPY.template, CINDERGLASS_JOB_TERMS_COPY.values),
   accept: 'Take the recovery.',
   decline: 'Leave it.',
   declinedLine: 'Then it rides to the buyer. Door stays open while the convoy holds.',

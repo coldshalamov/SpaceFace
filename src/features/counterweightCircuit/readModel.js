@@ -255,6 +255,10 @@ export function resultOfferSpec(result) {
     sender: 'Circuit Registrar',
     headline: `${outcome}${result.practice ? ' (practice)' : ''}`,
     detail: `${medal}${time}\nDecided by ${reason}${measured}.${reward}`,
+    // Plain data only: the presentation boundary resolves the source template using the
+    // existing localization runtime, while simulation retains the original English detail.
+    detailTemplate: '{medal}{time}{lineBreak}Decided by {reason}{measured}.{reward}',
+    detailValues: { medal, time, lineBreak: '\n', reason, measured, reward },
     statusFlag: result.outcome === 'complete' ? 'success' : 'notice',
     choices: [{ id: 'menu', label: 'Course list' }, { id: 'close', label: 'Leave' }],
   };
