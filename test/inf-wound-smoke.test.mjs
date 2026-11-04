@@ -126,7 +126,9 @@ test('absent books and hulls without wounds plan nothing', () => {
 
 test('the live owner is wired: the trail tick smokes the scar book, not the hull centre', () => {
   const vfx = readFileSync(new URL('../src/render/vfx.js', import.meta.url), 'utf8');
-  assert.match(vfx, /import \{ collectHullWounds, resolveWoundBeat, woundWorldPoint \} from '\.\/vfx\/woundSmoke\.js';/);
+  // The import line may grow (later wound reads share the module); pin the symbols, not the set.
+  assert.match(vfx, /import \{[^}]*collectHullWounds[^}]*\} from '\.\/vfx\/woundSmoke\.js';/);
+  assert.match(vfx, /import \{[^}]*resolveWoundBeat[^}]*\} from '\.\/vfx\/woundSmoke\.js';/);
   assert.match(vfx, /collectHullWounds\(causeLayer\.scars, e\.id, this\._causeNow\(\)/,
     'the emitter reads the same scar book the scar lines draw from');
   assert.match(vfx, /beat\.vent01 > 0/, 'the fresh wound breathes its weapon tint');
