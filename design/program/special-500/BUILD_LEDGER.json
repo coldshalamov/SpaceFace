@@ -7,9 +7,9 @@
   "small": 167,
   "medium": 167,
   "large": 166,
-  "landed": 36,
+  "landed": 50,
   "assigned": 32,
-  "approved": 36
+  "approved": 50
  },
  "derivation": {
   "ratifiedFollowup": 330,
@@ -9774,9 +9774,9 @@
    "size": "small",
    "family": "mail",
    "batch": 3,
-   "status": "pending",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused 6/6 + pulse-435/batch regressions 24/24 + controller re-run 18/18",
    "note": ""
   },
   {
@@ -9794,9 +9794,9 @@
    "size": "small",
    "family": "mail",
    "batch": 3,
-   "status": "pending",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused 6/6 + pulse-435/batch regressions 24/24 + controller re-run 18/18",
    "note": ""
   },
   {
@@ -9814,9 +9814,9 @@
    "size": "small",
    "family": "mail",
    "batch": 3,
-   "status": "pending",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused 6/6 + pulse-435/batch regressions 24/24 + controller re-run 18/18",
    "note": ""
   },
   {
@@ -9834,9 +9834,9 @@
    "size": "small",
    "family": "mail",
    "batch": 3,
-   "status": "pending",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused 6/6 + pulse-435/batch regressions 24/24 + controller re-run 18/18",
    "note": ""
   },
   {
@@ -9852,9 +9852,9 @@
    "size": "small",
    "family": "mail",
    "batch": 3,
-   "status": "pending",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused 6/6 + pulse-435/batch regressions 24/24 + controller re-run 18/18",
    "note": ""
   },
   {
@@ -9872,9 +9872,9 @@
    "size": "small",
    "family": "mail",
    "batch": 3,
-   "status": "pending",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused 6/6 + pulse-435/batch regressions 24/24 + controller re-run 18/18",
    "note": ""
   },
   {
@@ -9892,9 +9892,9 @@
    "size": "small",
    "family": "mail",
    "batch": 3,
-   "status": "pending",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused 6/6 + pulse-435/batch regressions 24/24 + controller re-run 18/18",
    "note": ""
   },
   {
@@ -9912,9 +9912,9 @@
    "size": "small",
    "family": "mail",
    "batch": 3,
-   "status": "pending",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused 6/6 + pulse-435/batch regressions 24/24 + controller re-run 18/18",
    "note": ""
   },
   {
@@ -9930,9 +9930,9 @@
    "size": "small",
    "family": "mail",
    "batch": 3,
-   "status": "pending",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused 6/6 + pulse-435/batch regressions 24/24 + controller re-run 18/18",
    "note": ""
   },
   {
@@ -9948,9 +9948,9 @@
    "size": "small",
    "family": "mail",
    "batch": 3,
-   "status": "pending",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused 6/6 + pulse-435/batch regressions 24/24 + controller re-run 18/18",
    "note": ""
   },
   {
@@ -9968,9 +9968,9 @@
    "size": "small",
    "family": "mail",
    "batch": 3,
-   "status": "pending",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused 6/6 + pulse-435/batch regressions 24/24 + controller re-run 18/18",
    "note": ""
   },
   {
@@ -9986,9 +9986,9 @@
    "size": "small",
    "family": "mail",
    "batch": 3,
-   "status": "pending",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused 6/6 + pulse-435/batch regressions 24/24 + controller re-run 18/18",
    "note": ""
   },
   {
@@ -10006,9 +10006,9 @@
    "size": "small",
    "family": "mail",
    "batch": 3,
-   "status": "pending",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused 6/6 + pulse-435/batch regressions 24/24 + controller re-run 18/18",
    "note": ""
   },
   {
@@ -10024,9 +10024,9 @@
    "size": "small",
    "family": "mail",
    "batch": 3,
-   "status": "pending",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused 6/6 + pulse-435/batch regressions 24/24 + controller re-run 18/18",
    "note": ""
   },
   {
