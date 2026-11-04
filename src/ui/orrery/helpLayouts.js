@@ -371,6 +371,18 @@ ${H} .orr-hmix__lbl:focus-visible { outline:none; }
   ${HD} .orr-help-list--ores .orr-help-terms dt { padding-block:4px; }
   ${HD} .orr-help-list--ores .orr-help-terms dd { padding-block:2px; line-height:1.3; }
 }
+/* ui-polish-330: at 761-870 wide the Ores hero is under the ring's 320px floor, so the ring sleeps and its 257px slot sat empty
+   between the list and the reading. The sleeping slot closes and the reading takes the stage's width, its ledger on the same
+   hairline-framed sheet the 1201+ readings wear, so the term values read on one line (FOUND IN no longer wraps). */
+@media (min-width:761px) and (max-width:870px) and (min-height:461px) {
+  ${HD} .orr-help-list--ores .orr-help-list__stage { grid-template-columns:minmax(0, 1fr); }
+  ${HD} .orr-help-list--ores .orr-help-list__hero { display:none; }
+  ${HD} .orr-help-list--ores .orr-help-list__stage > .orr-help-reading { justify-self:center; width:100%; max-width:440px; }
+  ${HD} .orr-help-list--ores .orr-help-terms { margin:10px 0 0; padding:2px 12px; column-gap:0; border:1px solid rgb(${BONE} / .18); border-radius:6px; background:rgb(${BONE} / .025); }
+  ${HD} .orr-help-list--ores .orr-help-terms dt { padding:4px 18px 4px 0; border-top:1px solid rgb(${BONE} / .09); }
+  ${HD} .orr-help-list--ores .orr-help-terms dd { padding:2px 0; border-top:1px solid rgb(${BONE} / .09); }
+  ${HD} .orr-help-list--ores .orr-help-terms > .orr-help-terms__row:first-child > * { border-top:0; }
+}
 /* ui-polish-282: the readings beside the Ships, Commodities, Ores and Factions instruments were loose
    label/value pairs floating on the glass (≥1201 wide), so the spec read unfinished next to the framed
    section list. The ledger now sits in one hairline-framed sheet on a faint fill, a rule between rows,

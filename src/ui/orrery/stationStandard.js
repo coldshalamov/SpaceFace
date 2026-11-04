@@ -250,6 +250,16 @@ ${P} .sxb-vital__acts .orr-act__cost { font-family:${NUM} !important; font-size:
     grid-template-areas:"hull fuel hold note muni" !important; }
 }
 
+/* 901-959 wide x 461-640 tall: the foot is still two rows here, so the head's 167px scrollport shows only the hull and
+   ledger of the two-row crown grid. Put the five readings on ONE row, as 960+ does, trimmed to the ~530px crown: values go
+   to 12px, the cells follow each reading's own ink, so FUEL, HOLD and MUNITIONS stand in the visible band. */
+@media (min-width:901px) and (max-width:959px) and (min-height:461px) and (max-height:640px) {
+  ${P} .sxb-crown .sxb-vitals { grid-template-columns:minmax(0,91fr) minmax(0,85fr) minmax(0,83fr) minmax(0,125fr) minmax(0,125fr) !important;
+    grid-template-areas:"hull fuel hold note muni" !important; gap:4px 5px !important; }
+  ${P} .sxb-crown .sxb-vital__head { column-gap:4px !important; }
+  ${P} .sxb-crown .sxb-vital:not(.sxb-vital--note) .sxb-vital__value { font-size:12px !important; }
+}
+
 /* ---- the ad-boards: legible, never faint ----------------------------------------------------- */
 ${P} .sx-adboard, ${P} .sx-adboard * { font-family:${UI} !important; font-size:13px !important; letter-spacing:0 !important;
   text-transform:none !important; color:rgb(${BONE} / .82) !important; }
@@ -303,8 +313,10 @@ ${P} .sxb-launch__label { font-family:${TITLE} !important; letter-spacing:.04em 
 ${P} .sxb-launch__state { font-family:${UI} !important; font-size:13px !important; letter-spacing:.02em !important; }
 
 /* A short, narrow desktop window needs a bounded facility rail: otherwise its
-   last tabs run underneath the station's Comms, Help and Undock controls. */
-@media (min-width:801px) and (max-width:900px) and (max-height:460px) {
+   last tabs run underneath the station's Comms, Help and Undock controls. 801–900 wide × 461–800 tall had no rule at all
+   (seven tabs ~790px against a 737px foot), so FACTIONS sat under COMMS · HELP and BAR · LEDGER under UNDOCK: it takes
+   the same two-row foot as the 460px-tall window, the rail on its own row and COMMS · HELP · UNDOCK under it. */
+@media (min-width:801px) and (max-width:900px) and (max-height:800px) {
   ${P} .sxb-ops { flex-wrap:wrap !important; gap:2px 8px !important; }
   ${P} .sxb-ops > .of-facility-rail { flex:0 0 100% !important; width:100% !important; min-width:0 !important; max-width:100% !important;
     overflow-x:auto !important; overflow-y:hidden !important; scrollbar-width:thin; }
@@ -314,6 +326,16 @@ ${P} .sxb-launch__state { font-family:${UI} !important; font-size:13px !importan
   ${P} .sxb-ops .sx-tile .dust-tab-glyph { display:none !important; }
   ${P} .sxb-ops > .sx-comms { order:2 !important; flex:0 0 auto !important; flex-direction:row !important; gap:4px !important; margin:0 !important; }
   ${P} .sxb-ops > .sxb-launch-seat { order:3 !important; flex:0 0 auto !important; margin-left:auto !important; }
+}
+/* The 461–800 tall window cannot spare the 57px two-line UNDOCK on a row of its own: UNDOCK and its READY line sit side by
+   side and COMMS · HELP centre on them, so the second row is the keys' own 32px instead of ~57px under a 20px gap. */
+@media (min-width:801px) and (max-width:900px) and (min-height:461px) and (max-height:800px) {
+  ${P} .sxb-ops > .sx-comms { align-self:center !important; margin-top:0 !important; }
+  ${P} .sxb-ops > .sxb-launch-seat { align-self:center !important; margin-top:0 !important; }
+  ${P} .sxb-launch__copy { flex-direction:row !important; align-items:baseline !important; gap:10px !important; }
+  /* the tabs' one-line gloss painted nothing here but its 26px of reserved padding still held a blank band under the keys, a gap above COMMS · HELP */
+  ${P} .sxb-ops .sx-tile__gloss { display:none !important; }
+  ${P} .sxb-ops .sx-dock__group--nav { padding-top:0 !important; padding-bottom:0 !important; }
 }
 
 /* ==== MARKET ================================================================================ */
