@@ -1,4 +1,5 @@
 import { validateCinderglassJob } from '../features/cinderglassJob/persistence.js';
+import { cinderglassJobFlagsForSave } from '../features/cinderglassJob/physical.js';
 import { normalizeSurveyMemory } from '../data/surveyCartography.js';
 import {
   compareOccupiedSlotNewestFirst,
@@ -9434,7 +9435,7 @@ function plainEntity(e, isPlayer) {
     if (shouldSkipEntitySaveKey(k)) continue;
     const v = e[k];
     if (k === 'flags') {
-      const flags = sanitizeEntityFlagsForSave(v, isPlayer);
+      const flags = sanitizeEntityFlagsForSave(cinderglassJobFlagsForSave(e), isPlayer);
       if (Object.keys(flags).length) out.flags = flags;
     } else if (k === 'boost') {
       const boost = sanitizeBoostForSave(v);

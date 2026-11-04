@@ -3,6 +3,7 @@
 import { getPromptDeck } from '../../ui/promptDeck.js';
 import { cinderglassJobPublicPrompt } from './readModel.js';
 import { occupantGenerationOf } from '../../core/entity.js';
+import { cinderglassJobRequestPresentation } from './physical.js';
 
 export const CINDERGLASS_PROMPT_ID = 'cinderglassJob:decision';
 export const CINDERGLASS_SERVICE_PROMPT_ID = 'cinderglassJob:service';
@@ -20,6 +21,7 @@ export const cinderglassJobPrompt = {
     this._active = new Map(); this._signatures = new Map(); this._elapsed = 0;
     this._refusalKey = ''; this._destroyed = false;
     this._admittedSignature = ''; this._requestedMeshes = new WeakSet();
+    this._admissionLife = '';
     if (this.state) OWNERS.set(this.state, this);
     const on = (name, fn) => {
       const off = this.bus?.on?.(name, fn);
@@ -36,6 +38,7 @@ export const cinderglassJobPrompt = {
     });
     on('cinderglassJob:close', p => this.close(p?.approachOnly ? CINDERGLASS_SERVICE_PROMPT_ID : null));
     for (const name of ['save:restoring', 'sector:exit', 'dock:docked', 'game:new', 'game:newGame']) on(name, () => this.close());
+    for (const name of ['save:restoring', 'sector:exit', 'game:new', 'game:newGame']) on(name, () => this._releasePreparation());
     this.frame(0, this.state, true, true);
     return this;
   },
@@ -118,10 +121,16 @@ export const cinderglassJobPrompt = {
 
   _admitWorld(state) {
     const admission = state.cinderglassJobView?.admission, scene = state.render?.scene;
-    if (!admission?.token || !admission.operationId || !scene || !Array.isArray(admission.bodies)
-      || !admission.bodies.length || admission.bodies.length > 8) return;
+    if (state.cinderglassJobView?.outcome || !admission?.token || !admission.operationId || !scene || !Array.isArray(admission.bodies)
+      || !admission.bodies.length || admission.bodies.length > 8) { this._releasePreparation(); return; }
+    const life = `${admission.token}:${admission.operationId}`;
+    if (life !== this._admissionLife) { this._releasePreparation(); this._admissionLife = life; }
+    // This adapter and the renderer share a realm. Worker flags are spawn metadata,
+    // so changing a sim-side boolean later would never request or retire this work.
+    cinderglassJobRequestPresentation(this, state, true, admission);
     const signature = JSON.stringify(admission);
     if (signature === this._admittedSignature) return;
+    let ready = true;
     for (const row of admission.bodies) {
       const entity = state.entities?.get?.(row.id), mesh = entity?.mesh;
       if (!entity || entity.alive === false || occupantGenerationOf(entity) !== row.generation
@@ -129,10 +138,10 @@ export const cinderglassJobPrompt = {
         || entity.data?.cinderglassOperationId !== admission.operationId
         || entity.data?.cinderglassAssetId !== row.assetId
         || entity.data?.cinderglassAssetFile !== row.assetFile
-        || !row.assetFile || !mesh?.parent) return;
+        || !row.assetFile || !mesh?.parent) { ready = false; continue; }
       let parent = mesh;
       while (parent && parent !== scene) parent = parent.parent;
-      if (parent !== scene) return;
+      if (parent !== scene) { ready = false; continue; }
       const data = mesh.userData || {};
       if (!['authored', 'authored-with-cleanup-error'].includes(data.authoredAssetState)
         || data.pipelinesPending === true || data.geometryPending === true) {
@@ -141,7 +150,8 @@ export const cinderglassJobPrompt = {
           try { Promise.resolve(data.requestAuthoredUpgrade(state.render.renderer, scene, { admissionVisible: true })).catch(() => {}); }
           catch { /* admission stays pending until actual mounted geometry is ready */ }
         }
-        return;
+        ready = false;
+        continue;
       }
       const expectedFile = row.assetFile.replace(/\\/g, '/').split('?')[0];
       let found = false, geometryReady = false;
@@ -155,11 +165,19 @@ export const cinderglassJobPrompt = {
           if (file === expectedFile || file.endsWith(`/${expectedFile}`)) found = true;
         }
       });
-      if (!found || !geometryReady) return;
+      if (!found || !geometryReady) ready = false;
     }
+    if (!ready) return;
     this._admittedSignature = signature;
     this.bus?.emit?.('cinderglassJob:presentationReady', { token: admission.token, operationId: admission.operationId,
       bodies: admission.bodies.map(({ id, generation }) => ({ id, generation })) });
+  },
+
+  _releasePreparation() {
+    if (!this._admissionLife) return;
+    if (this.state) cinderglassJobRequestPresentation(this, this.state, false);
+    this._admissionLife = '';
+    this._requestedMeshes = new WeakSet();
   },
 
   close(id = null, consume = true) {
@@ -171,8 +189,9 @@ export const cinderglassJobPrompt = {
     }
     return true;
   },
-  newGame() { this.close(); this._facts?.clear(); this._refusalKey = ''; },
+  newGame() { this._releasePreparation(); this.close(); this._facts?.clear(); this._refusalKey = ''; },
   destroy() {
+    this._releasePreparation();
     this.close();
     for (const off of this._subs || []) off();
     this._subs = []; this._destroyed = true;

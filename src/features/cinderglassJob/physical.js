@@ -73,6 +73,67 @@ export function cinderglassJobPhysicalOwnersReady(sys) {
     && typeof sys.helpers?.npcJobs?.assign === 'function');
 }
 
+const PRESENTATION_REQUESTS = new WeakMap();
+const PRESENTATION_ENTITY_REQUESTS = new WeakMap();
+
+// Direct-main presentation shares entities with the save owner. Capture the original flag.
+// This read-only projection never lends a former life's lease to a replacement.
+export function cinderglassJobFlagsForSave(entity) {
+  const request = entity && PRESENTATION_ENTITY_REQUESTS.get(entity);
+  const flags = entity?.flags;
+  if (!request || request.state.entities?.get(request.id) !== entity
+    || entity.occupantGeneration !== request.generation || flags !== request.flags
+    || flags.forceRender !== true) return flags;
+  const snapshot = { ...flags };
+  if (request.hadOwn) snapshot.forceRender = request.previous;
+  else delete snapshot.forceRender;
+  return snapshot;
+}
+
+// Dispatch needs the original eight released bodies prepared even though the receivers
+// are kilometres apart. Borrow the renderer's existing explicit-focus input only while
+// that gate is pending; missionPinned alone does not request a mesh or authored upgrade.
+export function cinderglassJobRequestPresentation(sys, state, requested, admission = state.cinderglassJobView?.admission) {
+  let held = PRESENTATION_REQUESTS.get(sys);
+  if (!requested) {
+    for (const [entity, request] of held || []) {
+      if (PRESENTATION_ENTITY_REQUESTS.get(entity) === request) PRESENTATION_ENTITY_REQUESTS.delete(entity);
+      if (state.entities?.get(request.id) !== entity
+        || entity.occupantGeneration !== request.generation || entity.flags !== request.flags
+        || entity.flags.forceRender !== true) continue;
+      if (request.hadOwn) entity.flags.forceRender = request.previous;
+      else delete entity.flags.forceRender;
+    }
+    held?.clear();
+    return;
+  }
+  if (!admission?.operationId || !Array.isArray(admission.bodies)) return;
+  if (!held) PRESENTATION_REQUESTS.set(sys, held = new Map());
+  const rows = new Map(admission.bodies.map(row => [row.key, row]));
+  for (const [key, descriptor] of Object.entries(CINDERGLASS_JOB_ROLES)) {
+    const row = rows.get(key), entity = row && state.entities?.get(row.id);
+    if (!cinderglassJobBodyMatches(entity, descriptor, admission.operationId)
+      || entity.occupantGeneration !== row.generation || entity.data.cinderglassAssetId !== row.assetId
+      || entity.data.cinderglassAssetFile !== row.assetFile) continue;
+    const previousRequest = held.get(entity);
+    if (previousRequest?.flags === entity.flags) continue;
+    // A transported rebuild can replace the facade's flags without replacing its life.
+    // Reacquire from that current object; never restore through the discarded object.
+    if (previousRequest) {
+      held.delete(entity);
+      if (PRESENTATION_ENTITY_REQUESTS.get(entity) === previousRequest) PRESENTATION_ENTITY_REQUESTS.delete(entity);
+    }
+    const flags = entity.flags || (entity.flags = {});
+    // Existing focus belongs to its existing owner. Never clear it on completion.
+    if (flags.forceRender === true || flags.neverCull === true) continue;
+    const request = { state, id: entity.id, generation: entity.occupantGeneration, flags,
+      hadOwn: Object.hasOwn(flags, 'forceRender'), previous: flags.forceRender };
+    held.set(entity, request);
+    PRESENTATION_ENTITY_REQUESTS.set(entity, request);
+    flags.forceRender = true;
+  }
+}
+
 export function cinderglassJobCohortReady(sys, state) {
   for (const [key, descriptor] of Object.entries(CINDERGLASS_JOB_ROLES)) {
     const e = state.entities?.get(sys._cg.entities[key]);

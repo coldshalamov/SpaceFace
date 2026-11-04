@@ -240,8 +240,9 @@ export const cinderglassJobSystem = {
     let headline = 'Choose how to recover the original controller.', detail = 'Force is unlawful; normal damage and witness rules apply.';
     if (st.phase === P.DISPATCH) {
       headline = 'Preparing the original convoy hardware.';
-      detail = st.admissionReason ? `Waiting for ${st.admissionReason.replaceAll('_', ' ')}. No deposit has been charged.` : 'Native bodies, released visuals and traffic owners must all be ready.';
-      choices.push({ id: 'retryAdmission', label: 'Retry preparation' }, { id: 'abandon', label: 'Abandon this recovery' });
+      detail = st.admissionReason ? `Waiting for ${st.admissionReason.replaceAll('_', ' ')}. No deposit has been charged.` : 'Preparing the eight original hulls and receiving sites. Track the convoy while they prepare; no deposit has been charged.';
+      choices.push({ id: 'track', markerId: 'cinderglassJob:marshal', label: 'Track Dask convoy' },
+        { id: 'retryAdmission', label: 'Retry preparation' }, { id: 'abandon', label: 'Abandon this recovery' });
     } else if (st.serviceActive) {
       headline = `Servicing the external latch · ${Math.floor(st.serviceProgressS / CINDERGLASS_JOB_SERVICE_SECONDS * 100)}%`;
       detail = `Hold close, matched drift and clear sightlines for ${CINDERGLASS_JOB_SERVICE_SECONDS} seconds.`;
