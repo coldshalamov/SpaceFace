@@ -21,6 +21,12 @@ ${FLIGHT} #sf-touch-overlay.mf-notice-priority .mf-ghost { visibility:hidden; }
 ${FLIGHT} #hud:has(.sf-radar-wrap--expanded) :is(.sf-leftcontext,.sf-leftcontext *) {
   visibility:hidden!important; pointer-events:none!important;
 }
+/* Expansion reparents the dial from the interactive right dock into #hud, whose children
+   default to pointer-through. A live navigation surface also survives informational receipt
+   yielding; Pause and Powers retain their own visibility/input ownership. */
+${FLIGHT}:not([data-sf-mobile-wheel="1"]) body:not(.ui-modal-open) #hud > .sf-radar-wrap--expanded {
+  pointer-events:auto!important; visibility:visible!important;
+}
 @media (orientation:portrait) and (max-width:959px) {
   /* The same Powers button joins Pause in the top navigation lane. Its old 110px side
      handle could not fit between the radar caption and the action cluster on short phones.

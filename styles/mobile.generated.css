@@ -216,6 +216,23 @@
  }
  #sf-touch-overlay .mf-pick-name { font-size:14px; }
  #sf-touch-overlay .mf-pick-text { font-size:12px; line-height:1.25; }
+ /* An active authority notice shares the clear column with the wheel caption. Reserve two
+    bounded, scrollable rows below the tabs; neither the warning nor its copy is suppressed. */
+ :root[data-sf-mobile-wheel="1"]:has(#sf-sector-law[data-flight-critical="true"]:not([hidden])) #sf-touch-overlay .mf-wheel-top {
+   max-height:calc(96px + max(44px,(100dvh - 228px - var(--sf-safe-top,0px) - var(--sf-safe-bottom,0px)) / 2));
+ }
+ :root[data-sf-mobile-wheel="1"] #ui-root > #sf-sector-law[data-flight-critical="true"]:not([hidden]) {
+   top:auto!important; bottom:calc(12px + var(--sf-safe-bottom,0px))!important;
+   left:calc(12px + var(--sf-safe-left,0px))!important; right:auto!important;
+   width:min(200px,calc(50vw - 124px - var(--sf-safe-left,0px) - var(--sf-safe-right,0px)))!important;
+   max-width:min(200px,calc(50vw - 124px - var(--sf-safe-left,0px) - var(--sf-safe-right,0px)))!important;
+   max-height:max(44px,calc((100dvh - 228px - var(--sf-safe-top,0px) - var(--sf-safe-bottom,0px)) / 2))!important;
+   overflow-y:auto!important; overscroll-behavior:contain; touch-action:pan-y;
+   pointer-events:auto!important; visibility:visible!important; opacity:1!important; transform:none!important; text-align:left!important;
+ }
+ :root[data-sf-mobile-wheel="1"][data-sf-mobile-lefty="1"] #ui-root > #sf-sector-law[data-flight-critical="true"]:not([hidden]) {
+   left:auto!important; right:calc(12px + var(--sf-safe-right,0px))!important;
+ }
 }
 /* ---- toast, guide pill, guide dialog ---- */
 /* the deck's own feedback sits in the clear lane above the key cluster and below the wheel's orbit:

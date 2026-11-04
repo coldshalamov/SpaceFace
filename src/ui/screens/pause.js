@@ -1017,17 +1017,16 @@ function enterPhoto(rootEl, ctx) {
   closeBtn.setAttribute('aria-label', 'Close photo mode');
   closeBtn.addEventListener('click', () => exitPhoto(rootEl, ctx));
   bar.appendChild(closeBtn);
-  // Seat the deck on the bottom frame. #screens flex-centres unpositioned children, which parked
-  // this bar mid-air over the subject the player is framing; the hint (k-fine) owns the bottom
-  // left, so the deck takes the bottom centre, one k-margin step above it. Seated without a
-  // transform — kit settle animates transform to none, so translateX centring would fight it.
+  // The hint shares the deck's flow, so wrapped phone controls and 44px keys reserve their
+  // actual height instead of painting over an independently positioned bottom caption.
+  // Seat without a transform: kit settle animates transform back to none.
   bar.style.position = 'absolute';
-  bar.style.left = '0';
-  bar.style.right = '0';
+  bar.style.left = 'var(--sf-safe-left, 0px)';
+  bar.style.right = 'var(--sf-safe-right, 0px)';
   bar.style.width = 'fit-content';
   bar.style.marginInline = 'auto';
-  bar.style.bottom = 'var(--k-margin, 24px)';
-  host.appendChild(hint);
+  bar.style.bottom = 'calc(var(--k-margin, 24px) + var(--sf-safe-bottom, 0px))';
+  bar.appendChild(hint);
   host.appendChild(bar);
   settle(hint, { from: 'bottom', state: 'photo-hint' });
   settle(bar, { from: 'bottom', delay: 60, state: 'photo-bar' });
