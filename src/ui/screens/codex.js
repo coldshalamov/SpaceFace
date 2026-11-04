@@ -49,20 +49,34 @@ import {
   alignmentRows,
   buoyKeepingRows,
   checkpointCatRows,
+  cockpitManifestRows,
+  constellationRows,
+  customsCoinRows,
   decodedSuhlClauses,
+  dustScriptRows,
   galleryAccessionRows,
   halfConversationRows,
   incident7741ShelfRows,
   jumpLogRows,
+  jukeboxRows,
+  kitchenRows,
   latchTidyRows,
   longGameRows,
   longSentenceRows,
   morrowHundredRows,
   namesForTheDead,
+  photographRows,
+  plinthRows,
+  quietCountRows,
   refund47aRows,
+  rimTitheRows,
   shaftSevenTallyRows,
+  slingChimeRows,
+  tallyRows,
+  tideLedgerRows,
   vergeGateReceiptRows,
   volsLastLogRows,
+  voidCrateRows,
 } from '../../data/discoveryPresentation.js';
 import { hash32 } from '../../core/rng.js';
 import { recordSectionModel } from './codexRecord.js';
@@ -623,6 +637,101 @@ const WORLD_ROW_COPY = Object.freeze({
       + 'and a sun-glint on your own hull. Whether or not anyone is looking.',
     sealed: 'The frame keeps whether or not it was captured. That is what alignment means.',
     note: 'Helios Prime — annual alignment, day 16.',
+  }),
+});
+
+// ── special-500 batch 13 (codex family) ────────────────────────────────────────
+// The World-row copy for the fourteen batch-13 receipt sections. Same shape as the
+// batch-12 table above: one sub line, an open-line voice, a sealed-line voice, and a
+// note naming where in the world the page was earned.
+
+const WORLD_ROW_COPY_13 = Object.freeze({
+  plinth: Object.freeze({
+    sub: 'Memorial line', open: 'One stored line, in a maintenance clerk\'s voice, kept for whoever scanned '
+      + 'the dark plinth after watching a hull die here. It does not cheer. It counts.',
+    sealed: 'The clerk kept the line short so it would fit a single lamp. It has fit for years.',
+    note: 'Candle Fleet memorial, twenty-fifth plinth — Helios Prime.',
+  }),
+  cockpit: Object.freeze({
+    sub: 'Manifest line', open: 'One more line every session, items being added, not recovered. Somebody out '
+      + 'there is still packing for a pilot who is not awake to argue about it.',
+    sealed: 'The last line stays sealed because the status is redacted, and the redaction is the point.',
+    note: 'The Preserved Cockpit — Charon Expanse. Do not wake.',
+  }),
+  kitchen: Object.freeze({
+    sub: 'Galley PA', open: 'The vent breathed once — a real, thermal event — and the PA took the order in a '
+      + 'voice warm as the hull. The kitchen is open. The kitchen has always been open.',
+    sealed: 'Nothing in the galley is sealed. That is what open means, and it has always meant it.',
+    note: 'The Warm Freighter — Charon Expanse. Tab good at any Charon dock.',
+  }),
+  photograph: Object.freeze({
+    sub: 'Audit note', open: 'The file never resolved, year after year, because a file is not a place. Stand '
+      + 'in the right spot with the salvaged communicator and it resolves all at once.',
+    sealed: 'The Helix Directorate has waited years for someone to stand there. It does not say so. The '
+      + 'page does.',
+    note: 'The B8 manifest\'s unresolvable point — Veil Nebula.',
+  }),
+  crate: Object.freeze({
+    sub: 'Stasis receipt', open: 'The scanner says 0.0. The massline says heavy. One of them is lying about '
+      + 'the rock, and the crate inside it is not talking.',
+    sealed: 'The answer stays withheld. The Verge-Layers wrote the lid, and the lid is not taking questions.',
+    note: 'The Scale Zero Rock — Nereid Shoal deep field. One unit, discontinued.',
+  }),
+  quiet: Object.freeze({
+    sub: 'Board amendment', open: 'The board amended itself mid-scan and owned the count out loud: it has '
+      + 'been counting you the whole time. The Quiet respect a fellow bookkeeper.',
+    sealed: 'Nothing on this page is sealed. That is the Quiet\'s idea of a compliment.',
+    note: 'The Listening Field board — Io Reach. Forty-two observed.',
+  }),
+  chime: Object.freeze({
+    sub: 'Band note', open: 'Cross the sling band fast and tangential and mass becomes audible: one harmonic, '
+      + 'every hull singing the same note at the same place on the curve.',
+    sealed: 'The band keeps no secrets. It keeps a note, and it keeps it lawlike.',
+    note: 'The Anvil sling band, r 1040–1450 — Tethys Junction.',
+  }),
+  dust: Object.freeze({
+    sub: 'Wake script', open: 'The calm patches hold wakes for hours, and someone has been writing there at '
+      + 'the same honest fade rate as everything else. Yours will last exactly as long as anyone\'s.',
+    sealed: 'The daily line\'s signature is a pilot everyone thought died. The dust keeps it fresh anyway.',
+    note: 'The calm dust sea, Murmur Buoy patch — Veil Nebula.',
+  }),
+  rim: Object.freeze({
+    sub: 'Tally plate', open: 'Your offerings, squared to the dark in a neat row, under a fresh plate. Nobody '
+      + 'ever takes. You kept giving anyway. That is what got noticed.',
+    sealed: 'The signature is a single glyph — the Watcher\'s own. The page seals the one line the rim signed.',
+    note: 'The Watcher\'s Tithe rim — Triton Wake.',
+  }),
+  tide: Object.freeze({
+    sub: 'Odometer reading', open: 'A mechanical odometer, sun-bleached, counting tides nobody watches with '
+      + 'a correctness nobody checks. Someone winds it. The sector pretends not to know.',
+    sealed: 'The winder stays sealed because nobody has ever been seen winding it, and the page does not '
+      + 'pretend to be the first.',
+    note: 'The debris tide\'s transponder gate — Orcus Shadow. Cycle 4,110.',
+  }),
+  jukebox: Object.freeze({
+    sub: 'Track note', open: 'The Pale Holiday mix cuts and something plays: slow, wrong-temperature, no '
+      + 'recipe in the catalog matches. The room listens all the way through.',
+    sealed: 'Nothing here is sealed. Nobody loaded that, and nobody ever will, and the page says so on '
+      + 'schedule, once a year.',
+    note: 'The bar, Pale Holiday, day 33 — the game\'s one unexplained audio artifact.',
+  }),
+  constellation: Object.freeze({
+    sub: 'Frame note', open: 'At third watch, from one marked bearing, the welding drones read as a '
+      + 'constellation\'s dots. On inspection they are just following the weld schedule. Both things are true.',
+    sealed: 'The plate is signed where it always was. The page leaves the sky where the plate puts it.',
+    note: 'The construction frame off the abandoned colony — Charon Expanse, third watch.',
+  }),
+  tally: Object.freeze({
+    sub: 'Survey mark', open: 'One rock per field, painted 500, forty strokes under it. It rings one note of '
+      + 'a ten-note scale. Somebody spent a decade painting an instrument.',
+    sealed: 'The scale seals itself at ten notes heard — the belt was left tuned, and now it is played.',
+    note: 'THE TALLY — one painted rock per field, every sector.',
+  }),
+  coin: Object.freeze({
+    sub: 'Customs stamp', open: 'One hull, two liens, settled honestly, and the stamp comes down on a coin '
+      + 'that is legal nowhere and valid everywhere — because customs watched you earn it.',
+    sealed: 'Spent coins stay on the wall. Customs polishes around it; the callsign stays legible.',
+    note: 'Dione customs hall — the Dione Lane dispute, settled both ways.',
   }),
 });
 
@@ -1677,6 +1786,49 @@ export const codexScreen = {
     this._section('Alignment, Day 16',
       rowEntries(alignmentRows(ctx?.state), 'alignment', WORLD_ROW_COPY.alignment),
       'No alignment has composed itself around your hull yet. Once a year, four seconds — the calendar knows the day.');
+    // ── special-500 batch 13 (codex family) ──
+    this._section('The Twenty-Fifth Plinth',
+      rowEntries(plinthRows(ctx?.state), 'plinth', WORLD_ROW_COPY_13.plinth),
+      'The twenty-fifth plinth is still dark. It answers one scan, and only after a death has been witnessed in this sector.');
+    this._section('Do Not Wake',
+      rowEntries(cockpitManifestRows(ctx?.state), 'cockpit', WORLD_ROW_COPY_13.cockpit),
+      'The preserved cockpit has not been scanned yet. Its manifest is not finished, and that is the point.');
+    this._section('The Kitchen Is Open',
+      rowEntries(kitchenRows(ctx?.state), 'kitchen', WORLD_ROW_COPY_13.kitchen),
+      'The warm freighter has not taken an order yet. Fly hungry through Charon and mind the vent.');
+    this._section('The Photograph',
+      rowEntries(photographRows(ctx?.state), 'photograph', WORLD_ROW_COPY_13.photograph),
+      'The B8 file still does not resolve. Bring the salvaged communicator and stand in the file\u2019s one wrong place.');
+    this._section('Void Stasis Crate',
+      rowEntries(voidCrateRows(ctx?.state), 'crate', WORLD_ROW_COPY_13.crate),
+      'No rock has scanned 0.0 yet. The massline will disagree with the scanner when you find it.');
+    this._section('The Quiet Count',
+      rowEntries(quietCountRows(ctx?.state), 'quiet', WORLD_ROW_COPY_13.quiet),
+      'The field has not amended its board yet. It counts hulls; it has been counting you.');
+    this._section('Mass Made Audible',
+      rowEntries(slingChimeRows(ctx?.state), 'chime', WORLD_ROW_COPY_13.chime),
+      'The sling band has not sung for you yet. Cross the Anvil band fast and tangential, and listen.');
+    this._section('The Dust Script',
+      rowEntries(dustScriptRows(ctx?.state), 'dust', WORLD_ROW_COPY_13.dust),
+      'The calm dust has shown you no script yet. The Murmur Buoy\u2019s patch keeps the best entries.');
+    this._section('The Rim Notices',
+      rowEntries(rimTitheRows(ctx?.state), 'rim', WORLD_ROW_COPY_13.rim),
+      'The rim has not noticed you yet. It notices leaving, not visiting.');
+    this._section('Cycle 4,110',
+      rowEntries(tideLedgerRows(ctx?.state), 'tide', WORLD_ROW_COPY_13.tide),
+      'You have not sat through a full tide cycle at the gate. The odometer does not mind waiting; it is good at it.');
+    this._section('Nobody Loaded That',
+      rowEntries(jukeboxRows(ctx?.state), 'jukebox', WORLD_ROW_COPY_13.jukebox),
+      'The Pale Holiday has not cut the bar\u2019s mix for you yet. Day 33, one play per sitting, no recipe.');
+    this._section('The Sky We Came From',
+      rowEntries(constellationRows(ctx?.state), 'constellation', WORLD_ROW_COPY_13.constellation),
+      'The night frame has not welded its pattern for you yet. Third watch, from the marked bearing, or not at all.');
+    this._section('The Tally',
+      rowEntries(tallyRows(ctx?.state), 'tally', WORLD_ROW_COPY_13.tally),
+      'No painted rock has rung for you yet. One per field, and the paint is a survey mark, not a joke.');
+    this._section('The Coin',
+      rowEntries(customsCoinRows(ctx?.state), 'coin', WORLD_ROW_COPY_13.coin),
+      'Customs has not stamped your coin yet. Settle both liens on the Dione dispute, honestly, and it is legal nowhere and valid everywhere.');
   },
 
   _renderDiscoveries(ctx) {

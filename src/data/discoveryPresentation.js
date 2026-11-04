@@ -1,6 +1,7 @@
-import { CAL_DAY_S, CAL_YEAR_DAYS } from './worldCalendar.js';
+import { CAL_DAY_S, CAL_YEAR_DAYS, stationShiftAt } from './worldCalendar.js';
 import { SECTORS } from './sectors.js';
 import { SHIPS } from './ships.js';
+import { COMMODITIES } from './commodities.js';
 
 // Field classification is a crew's practical taxonomy, not a claim about common ancestry.
 export const FAUNA_FAMILIES = Object.freeze({
@@ -533,6 +534,616 @@ export function alignmentRows(state) {
       label: 'CAPTURE',
       value: kept ? 'KEPT — THE SCANNER FIRED INSIDE THE WINDOW' : 'FIRE THE SCANNER INSIDE THE WINDOW',
       sealed: false,
+    }),
+  ];
+}
+
+// ── special-500 Phase 2 (batch 13, codex family) ────────────────────────────────────────────
+// Fourteen more codex/lore reads, same pattern as batches 1 and 12: frozen authored tables
+// plus pure reads over durable state, failing closed (an empty list) until the world has
+// honestly earned the page. The director's `special500.<id>` receipt is the durable writer
+// for every moment; where the consensus names a plain flag for another leg's writer, the
+// read accepts it as an alternate seam. None of these reads write anything.
+//
+// Live owners these reads key on beyond the receipts: the chronicler's kill facts (the
+// plinth's witnessed-death gate), the scanner's per-signal record (the cockpit manifest's
+// scan counter), the economy trade ledger (the discontinued cargo's sale date), and the
+// calendar's station watches (the welding constellation's third-watch visibility).
+
+// The Tessera's registration, as the wires and the Helix ping keep reading it out
+// (src/data/narrative.js). The tide ledger's odometer whimsy reads its last digit off this
+// authored registry line — the one hull number every save actually carries.
+export const TESSERA_REGISTRY = 'VHL-4471-T';
+export const TESSERA_HULL_DIGIT = (TESSERA_REGISTRY.match(/\d(?=\D*$)/) || ['0'])[0];
+
+/** Any ship death the chronicler has on file for one sector — the plinth's honest gate. */
+export function witnessedDeathsInSector(state, sectorId) {
+  const stories = state?.chronicler?.stories;
+  if (!Array.isArray(stories)) return 0;
+  let count = 0;
+  for (const story of stories) {
+    if (!story || !Array.isArray(story.nodes)) continue;
+    for (const fact of story.nodes) {
+      if (fact && fact.stage === 'kill' && (fact.sectorId === sectorId
+        || (typeof fact.sectorName === 'string'
+          && String(sectorId).replace(/^sector_/, '').replace(/_/g, ' ')
+            === fact.sectorName.toLowerCase()))) count++;
+    }
+  }
+  return count;
+}
+
+// SP2-009 "The Twenty-Fifth Plinth" — the Candle Fleet memorial's dark plinth, Helios Prime.
+// The scan interaction's receipt is the consensus-named plain flag `candle_count_understood`;
+// the scan leg does not exist yet, so the read honestly waits on the director's proximity
+// receipt AND a witnessed death (a chronicler kill fact in-sector) — both are live reads.
+// The plinth-light session behavior after a near-death belongs to that scan leg, not this page.
+export const CANDLE_COUNT_UNDERSTOOD_FLAG = 'candle_count_understood';
+
+export const PLINTH_TABLE = Object.freeze([
+  Object.freeze({ label: 'PLINTH', value: 'THE TWENTY-FIFTH — KEPT DARK ON PURPOSE', sealed: false }),
+  Object.freeze({
+    label: 'THE CLERK\'S LINE',
+    value: '"WE LIGHT TWENTY-FOUR BECAUSE TWENTY-FIVE IS WHOEVER IS OUT THERE RIGHT NOW. '
+      + 'IT GOES ON WHEN YOU DON\'T COME BACK. WELCOME TO THE COUNT."',
+    sealed: false,
+  }),
+  Object.freeze({ label: 'THE LIGHT', value: 'BREATHES ONCE, THEN HOLDS', sealed: false }),
+  Object.freeze({ label: 'THE COUNT', value: 'OPEN — THE NEXT NAME IS WHOEVER DOESN\'T COME BACK', sealed: false }),
+]);
+
+/** The plinth's one stored line, once a death has been witnessed here and the scan answers. */
+export function plinthRows(state) {
+  const answered = special500Moment(state, 'SP2-009') != null
+    || plainFlag(state, CANDLE_COUNT_UNDERSTOOD_FLAG) != null;
+  if (!answered) return [];
+  if (witnessedDeathsInSector(state, 'sector_helios_prime') < 1) return [];
+  return PLINTH_TABLE;
+}
+
+// SP2-166 "The Preserved Cockpit's Manifest" — the sealed cockpit in Charon Expanse. The
+// scanner's durable per-signal record is the live scan counter (the same retained-reading
+// bag the batch-1 shelf reads); the counter leg's session-separated tally would write the
+// plain numeric flag `cockpit_manifest` and does not exist yet. Pruned records degrade to
+// the director's discovery receipt, never to an invented line count.
+export const COCKPIT_MANIFEST_FLAG = 'cockpit_manifest';
+export const COCKPIT_POI_ID = 'poi_charon_preserved_cockpit';
+export const COCKPIT_MANIFEST_LINES = Object.freeze([
+  'ONE (1) PAIR WORK GLOVES, WORN RIGHT',
+  'ONE (1) THERMOS, STOWED WARM-SIDE DOWN',
+  'ONE (1) PAPERBACK, WATER-COCKED',
+  'ONE (1) SECOND PAPERBACK, SAME BOOK',
+  'ONE (1) NOTE: "SO YOU DON\'T FINISH IT TOO FAST"',
+]);
+
+/** How many scans the cockpit's signal has on file (the record's count, or the counter leg's
+ * plain flag). The director's discovery receipt is not a scan and files no line. */
+export function cockpitScanCount(state) {
+  const record = state?.signalInvestigation?.records?.[`signal:poi:${COCKPIT_POI_ID}`];
+  const scans = Number(record && record.scanCount) || 0;
+  const counted = Math.max(0, Math.floor(Number(plainFlag(state, COCKPIT_MANIFEST_FLAG)) || 0));
+  return Math.max(scans, counted);
+}
+
+/** The manifest so far: one more line per scan — items being added, not recovered. A save
+ * whose record was pruned still shows the page off the discovery receipt, honestly empty. */
+export function cockpitManifestRows(state) {
+  const scans = cockpitScanCount(state);
+  if (scans < 1 && special500Moment(state, 'SP2-166') == null) return [];
+  const shown = Math.min(scans, COCKPIT_MANIFEST_LINES.length);
+  const rows = [
+    Object.freeze({ label: 'COCKPIT', value: 'PRESERVED — SEALED, LIT, OCCUPIED', sealed: false }),
+  ];
+  for (let i = 0; i < shown; i++) {
+    rows.push(Object.freeze({ label: `LINE ${i + 1}`, value: COCKPIT_MANIFEST_LINES[i], sealed: false }));
+  }
+  if (shown >= COCKPIT_MANIFEST_LINES.length) {
+    rows.push(Object.freeze({
+      label: 'LAST LINE',
+      value: 'ONE (1) PILOT, PRESERVED, DO NOT WAKE UNTIL THE BELT IS SAFE. STATUS: [REDACTED]',
+      sealed: true,
+    }));
+  } else {
+    rows.push(Object.freeze({
+      label: 'THE MANIFEST',
+      value: 'ONE MORE LINE EVERY SESSION — ITEMS BEING ADDED, NOT RECOVERED',
+      sealed: false,
+    }));
+  }
+  return rows;
+}
+
+// SP2-164 "The Warm Freighter's Order" — the crewless galley in Charon Expanse. The
+// jettison-alongside delivery and the station-tab writer ("PAID — KITCHEN") belong to the
+// counter/vendor legs; until they land, the page carries the PA's own announcement — read
+// off the director's receipt, with the order naming whatever food the hold actually has.
+export const KITCHEN_POI_ID = 'poi_charon_warm_freighter';
+
+const FOOD_BY_ID = new Map(COMMODITIES.filter((c) => c.category === 'food').map((c) => [c.id, c]));
+
+/** The first food commodity the hold actually carries, or null. */
+export function holdFoodName(state) {
+  const cargo = state?.player?.cargo?.items;
+  if (!cargo || typeof cargo !== 'object') return null;
+  for (const [id, qty] of Object.entries(cargo)) {
+    if ((Number(qty) || 0) > 0 && FOOD_BY_ID.has(id)) return FOOD_BY_ID.get(id).name;
+  }
+  return null;
+}
+
+/** The galley PA's order, once the vent has breathed. Empty until the receipt. */
+export function kitchenRows(state) {
+  if (special500Moment(state, 'SP2-164') == null) return [];
+  const food = holdFoodName(state);
+  return [
+    Object.freeze({ label: 'GALLEY VENT', value: 'BREATHED ONCE — A REAL, THERMAL EVENT', sealed: false }),
+    Object.freeze({
+      label: 'THE PA',
+      value: `"ORDER FOR ${food ? String(food).toUpperCase() : 'WHOEVER IS HOLDING FOOD'}, `
+        + 'TABLE FOR CREW COUNT: ZERO. KITCHEN IS OPEN. KITCHEN HAS ALWAYS BEEN OPEN."',
+      sealed: false,
+    }),
+    Object.freeze({
+      label: 'THE DELIVERY',
+      value: 'JETTISON ALONGSIDE — TAKEN IN BY A MECHANISM NOBODY SEES',
+      sealed: false,
+    }),
+    Object.freeze({
+      label: 'THE TAB',
+      value: 'ONE MEAL AT EVERY CHARON DOCK — MARKED PAID — KITCHEN',
+      sealed: false,
+    }),
+  ];
+}
+
+// SP2-192 "The B8 Coordinates Bloom" — the Helix audit's unresolvable point, Veil Nebula.
+// The chain reads story_b8_helix_audit (the audit's own flag, filed by the comms story) AND
+// the director's communicator receipt; the consensus-named plain flag `b8_resolved` is the
+// coordinate-reveal leg's receipt and opens the page on its own. The standing-in-the-spot
+// reveal itself is that leg's moment, not this page's.
+export const B8_RESOLVED_FLAG = 'b8_resolved';
+export const B8_HELIX_AUDIT_FLAG = 'story_b8_helix_audit';
+
+export const PHOTOGRAPH_TABLE = Object.freeze([
+  Object.freeze({
+    label: 'THE FILE',
+    value: 'COORDINATES DO NOT RESOLVE — FILED AS UNRESOLVABLE, YEAR AFTER YEAR',
+    sealed: false,
+  }),
+  Object.freeze({
+    label: 'THE STAND',
+    value: 'THEY RESOLVE — ALL AT ONCE, FOR WHOEVER IS STANDING IN THEM WITH THE SALVAGED COMMUNICATOR',
+    sealed: false,
+  }),
+  Object.freeze({
+    label: 'THE PINGS',
+    value: 'A BLOOM OF HELIX VARIANCE, EVERY ONE POINTING AT ONE EMPTY PATCH OF SPACE',
+    sealed: false,
+  }),
+  Object.freeze({
+    label: 'THE HOLE',
+    value: 'BY EVERY INSTRUMENT, EXACTLY ONE HULL-SIZED HOLE IN THE UNIVERSE',
+    sealed: false,
+  }),
+  Object.freeze({
+    label: 'VERDICT',
+    value: 'THE FILE WAS NEVER WRONG. THE FILE WAS A PHOTOGRAPH.',
+    sealed: false,
+  }),
+]);
+
+/** The photograph, once the audit has been read and the spot has been stood in. */
+export function photographRows(state) {
+  const flags = state?.story?.flags;
+  const audited = !!(flags && flags[B8_HELIX_AUDIT_FLAG]);
+  if (!plainFlag(state, B8_RESOLVED_FLAG)
+    && !(special500Moment(state, 'SP2-192') != null && audited)) return [];
+  return PHOTOGRAPH_TABLE;
+}
+
+// SP2-138 "The Scale Zero Rock" — the mass-0.0 rock in Nereid Shoal, and the one unit of a
+// commodity no market lists anymore. The codex-only commodity page (Discontinued Cargo)
+// lives in codexPages.js; the sale-date rewrite is a live read off the economy trade
+// ledger's sell row, and states the condition until a row exists. The seeded rock and its
+// massline override belong to the spawn leg, not this page.
+export const DISCONTINUED_CARGO_ID = 'cmdty_discontinued_cargo';
+
+/** The ledger's sell row for the discontinued unit, if the Archive berth has ever bought one. */
+function discontinuedSaleRow(state) {
+  const ledger = state?.player?.tradeLedger;
+  if (!Array.isArray(ledger)) return null;
+  for (const row of ledger) {
+    if (row && row.commodityId === DISCONTINUED_CARGO_ID && row.side === 'sell') return row;
+  }
+  return null;
+}
+
+/** The void stasis crate's receipt: the readings, the withheld answer, and the sale. */
+export function voidCrateRows(state) {
+  if (special500Moment(state, 'SP2-138') == null) return [];
+  const sale = discontinuedSaleRow(state);
+  const rows = [
+    Object.freeze({ label: 'SCANNER', value: 'MASS 0.0', sealed: false }),
+    Object.freeze({ label: 'MASSLINE', value: 'PULLS HEAVY', sealed: false }),
+    Object.freeze({
+      label: 'INTERIOR',
+      value: 'VOID STASIS CRATE — MASS-CANCELED, OLDER THAN THE CHARTER',
+      sealed: false,
+    }),
+    Object.freeze({
+      label: 'THE GLYPH',
+      value: 'WHAT WAS STORED HERE? (ANSWER WITHHELD)',
+      sealed: true,
+    }),
+    Object.freeze({
+      label: 'THE CARGO',
+      value: 'ONE UNIT — DISCONTINUED. NO MARKET LISTS IT ANYMORE.',
+      sealed: false,
+    }),
+  ];
+  rows.push(Object.freeze({
+    label: 'THE SALE',
+    value: sale
+      ? `SOLD — DAY ${dayOf(Number(sale.seenAt)) != null ? dayOf(Number(sale.seenAt)) : 'UNFILED'}`
+        + `${sale.stationId ? `, ${String(sale.stationId).toUpperCase()}` : ''} — THIS PAGE REWROTE ITSELF`
+      : 'HOLD IT. THE PAGE REWRITES ITSELF THE DAY AN ARCHIVE BERTH BUYS IT.',
+    sealed: false,
+  }));
+  return rows;
+}
+
+// SP2-039 "The Forty-First Hull" — the Listening Field's board, Io Reach, which has been
+// counting the player the whole time. The transit counter's own receipt is the
+// consensus-named plain flag `counted_counted` (the counter leg does not exist yet); the
+// read accepts it beside the director's receipt. The Quiet standing tick belongs to that leg.
+export const COUNTED_COUNTED_FLAG = 'counted_counted';
+
+export const QUIET_COUNT_TABLE = Object.freeze([
+  Object.freeze({ label: 'REGISTERED', value: 'FORTY-ONE', sealed: false }),
+  Object.freeze({ label: 'OBSERVED', value: 'FORTY-TWO', sealed: false }),
+  Object.freeze({ label: 'THE DIFFERENCE', value: 'ALWAYS YOU', sealed: false }),
+  Object.freeze({
+    label: 'THE BOARD',
+    value: 'AMENDED ITSELF MID-SCAN — IT HAS BEEN COUNTING YOU THE WHOLE TIME',
+    sealed: false,
+  }),
+  Object.freeze({
+    label: 'FILED UNDER',
+    value: 'THE QUIET — THEY RESPECT A FELLOW BOOKKEEPER',
+    sealed: false,
+  }),
+]);
+
+/** The Quiet count, once the board has amended itself for you. */
+export function quietCountRows(state) {
+  if (!special500Moment(state, 'SP2-039') && !plainFlag(state, COUNTED_COUNTED_FLAG)) return [];
+  return QUIET_COUNT_TABLE;
+}
+
+// SP3-025 "The Sling Chime" — the Anvil gravity-assist band, Tethys Junction. The
+// sling-band predicate and the shared harmonic are the bespoke setpiece leg; the codex page
+// ("mass made audible") reads the director's sector-entry receipt.
+export const SLING_BAND = Object.freeze({
+  sectorId: 'sector_tethys_junction',
+  minSpeedWuS: 140,
+  minRadius: 1040,
+  maxRadius: 1450,
+});
+
+export const SLING_CHIME_TABLE = Object.freeze([
+  Object.freeze({
+    label: 'THE BAND',
+    value: 'THE ANVIL SLING — TANGENTIAL, ABOVE 140 WU/S, BETWEEN r 1040 AND r 1450',
+    sealed: false,
+  }),
+  Object.freeze({
+    label: 'THE HARMONIC',
+    value: 'SWELLS UNDER THE BAND CHATTER — MASS MADE AUDIBLE',
+    sealed: false,
+  }),
+  Object.freeze({
+    label: 'THE ARCS',
+    value: 'EVERY PREDICTOR LINE AND ENGINE TRAIL BENDS INTO THE SAME FAMILY',
+    sealed: false,
+  }),
+  Object.freeze({
+    label: 'THE HAULERS',
+    value: 'ALL SING THE SAME NOTE AT THE SAME PLACE ON THE CURVE',
+    sealed: false,
+  }),
+  Object.freeze({
+    label: 'THE LAW',
+    value: 'THE MOST LAWLIKE SOUND IN THE SECTOR — EVEN THE PIRATES CROSS IT POLITELY',
+    sealed: false,
+  }),
+]);
+
+/** The chime's page, once the band has been crossed fast enough to sing. */
+export function slingChimeRows(state) {
+  if (special500Moment(state, 'SP3-025') == null) return [];
+  return SLING_CHIME_TABLE;
+}
+
+// SP1-156 "The Dust Script" — the calm fog patches in Veil Nebula, where wakes hold. The
+// ephemeral per-visit wake polyline is the visual leg's canvas; the codex thread is the
+// daily writer's. The read keys on the director's Murmur Buoy proximity receipt.
+export const DAILY_WRITER_NOTE = Object.freeze({
+  line: 'RE-CARVED FRESH EVERY DAY FOR YEARS',
+  signed: 'BY A PILOT EVERYONE THOUGHT DIED',
+});
+
+export const DUST_SCRIPT_TABLE = Object.freeze([
+  Object.freeze({ label: 'THE DUST', value: 'THE CALM PATCHES HOLD WAKES FOR HOURS', sealed: false }),
+  Object.freeze({
+    label: 'THE SCRIPT',
+    value: 'OLD ROUTES · A NAME · AN ARROW POINTING AT NOTHING, PATIENTLY',
+    sealed: false,
+  }),
+  Object.freeze({
+    label: 'THE FADE RATE',
+    value: 'THE SAME HONEST RATE AS EVERYTHING ELSE — INCLUDING YOURS',
+    sealed: false,
+  }),
+  Object.freeze({
+    label: 'THE DAILY LINE',
+    value: `${DAILY_WRITER_NOTE.line} — SIGNED ${DAILY_WRITER_NOTE.signed}`,
+    sealed: false,
+  }),
+  Object.freeze({
+    label: 'YOUR LINE',
+    value: 'LASTS EXACTLY AS LONG AS ANYONE\'S — THE DUST DOES NOT KEEP FAVORITES',
+    sealed: false,
+  }),
+]);
+
+/** The dust's script, once the calm patch has shown you a wake that will not fade. */
+export function dustScriptRows(state) {
+  if (special500Moment(state, 'SP1-156') == null) return [];
+  return DUST_SCRIPT_TABLE;
+}
+
+// SP2-153 "The Triton Tithe Audit" — the Watcher's rim, which curates what you leave. The
+// rim jettison counter and the guaranteed find belong to their own legs; the read accepts
+// the consensus-named plain flag `tithe_notices` beside the director's receipt.
+export const TITHE_NOTICES_FLAG = 'tithe_notices';
+
+export const RIM_TITHE_TABLE = Object.freeze([
+  Object.freeze({
+    label: 'THE TALLY PLATE',
+    value: '3 FOR 3. NOBODY EVER TAKES. YOU KEPT GIVING ANYWAY. THE RIM NOTICES.',
+    sealed: false,
+  }),
+  Object.freeze({
+    label: 'THE ARRANGEMENT',
+    value: 'YOUR OFFERINGS IN A NEAT ROW, SQUARED TO THE DARK',
+    sealed: false,
+  }),
+  Object.freeze({
+    label: 'SIGNATURE',
+    value: 'A SINGLE GLYPH — THE WATCHER\'S OWN',
+    sealed: true,
+  }),
+  Object.freeze({
+    label: 'THE RIM\'S LEDGER',
+    value: 'THE RIM DOES NOT PAY. THE RIM NOTICES. THESE ARE DIFFERENT THINGS.',
+    sealed: false,
+  }),
+]);
+
+/** The curated tithe, once the rim has squared your offerings to the dark. */
+export function rimTitheRows(state) {
+  if (!special500Moment(state, 'SP2-153') && !plainFlag(state, TITHE_NOTICES_FLAG)) return [];
+  return RIM_TITHE_TABLE;
+}
+
+// SP2-155 "The Orcus Tide Ledger" — the transponder gate's sun-bleached odometer. The
+// hold-timer is the counter leg's moment; its receipt is the consensus-named plain flag
+// `tide_wound`. The odometer's next reading ends in the last digit of the hull's
+// registration — read off the authored Tessera registry line, not invented.
+export const TIDE_WOUND_FLAG = 'tide_wound';
+export const TIDE_CYCLE = '4,110';
+
+export const TIDE_LEDGER_TABLE = Object.freeze([
+  Object.freeze({ label: 'ODOMETER', value: `CYCLE ${TIDE_CYCLE}`, sealed: false }),
+  Object.freeze({
+    label: 'STAMPED',
+    value: `COUNT CORRECT AS OF CYCLE ${TIDE_CYCLE}`,
+    sealed: false,
+  }),
+  Object.freeze({ label: 'THE WINDER', value: 'NOBODY HAS EVER BEEN SEEN WINDING IT', sealed: true }),
+  Object.freeze({
+    label: 'THE WINDMILL-SHAPED COMPONENT',
+    value: 'THE DARK\'S BEST-KEPT SECRET AND ITS LEAST-KEPT SECRET, SIMULTANEOUSLY',
+    sealed: false,
+  }),
+]);
+
+/** The tide ledger, once you have sat through a full cycle at the gate. */
+export function tideLedgerRows(state) {
+  if (!special500Moment(state, 'SP2-155') && !plainFlag(state, TIDE_WOUND_FLAG)) return [];
+  return [
+    ...TIDE_LEDGER_TABLE,
+    Object.freeze({
+      label: 'THE NEXT READING',
+      value: `ENDS IN A ${TESSERA_HULL_DIGIT} — THE LAST DIGIT OF YOUR HULL'S REGISTRATION`,
+      sealed: false,
+    }),
+  ];
+}
+
+// SP3-145 "The Jukebox Ghost" — the Pale Holiday's one unexplained audio artifact. The
+// detuned off-scale recipe is the audio leg's (gated inside the festival window, one play
+// per sitting); the barkeep's barContact line is its own leg. The codex entry reads the
+// director's calendar receipt — day 33, the window the festival row already keeps.
+export const JUKEBOX_TABLE = Object.freeze([
+  Object.freeze({
+    label: 'THE TRACK',
+    value: 'SLOW, WRONG-TEMPERATURE — NO RECIPE IN THE CATALOG MATCHES',
+    sealed: false,
+  }),
+  Object.freeze({
+    label: 'THE ENDING',
+    value: 'THE JUKEBOX\'S MECHANICAL RESET CLUNK',
+    sealed: false,
+  }),
+  Object.freeze({
+    label: 'THE ROOM',
+    value: 'LISTENED ALL THE WAY THROUGH. NOBODY DANCED.',
+    sealed: false,
+  }),
+  Object.freeze({
+    label: 'THE BARKEEP',
+    value: '"NOBODY LOADED THAT."',
+    sealed: false,
+  }),
+  Object.freeze({
+    label: 'THE HOLIDAY',
+    value: 'THE PALE HOLIDAY, DAY 33 — SIGNALS RUN STRANGE ON SCHEDULE',
+    sealed: false,
+  }),
+]);
+
+/** The jukebox's page, once the Pale Holiday has cut the mix for you. */
+export function jukeboxRows(state) {
+  if (special500Moment(state, 'SP3-145') == null) return [];
+  return JUKEBOX_TABLE;
+}
+
+// SP3-091 "The Welding Constellation" — the construction frame off the abandoned Charon
+// colony. The drone flash timings and the bearing data row are the spectacle leg's; the
+// codex entry reads the director's proximity receipt, and the watch row is a live read off
+// the calendar (third watch at the frame's own clock, stationShiftAt).
+export const CONSTELLATION_FRAME_ID = 'poi_colony';
+
+export const CONSTELLATION_TABLE = Object.freeze([
+  Object.freeze({
+    label: 'THE FRAME',
+    value: 'LONE CONSTRUCTION FRAME, OFF THE COLONY — WELD SCHEDULE AS USUAL',
+    sealed: false,
+  }),
+  Object.freeze({
+    label: 'THE PATTERN',
+    value: 'FROM ONE BEARING THE DRONE FLASHES READ AS A CONSTELLATION\'S DOTS',
+    sealed: false,
+  }),
+  Object.freeze({
+    label: 'THE BEARING',
+    value: 'MARKED ON THE CHART\'S MARGIN — THIRD WATCH ONLY',
+    sealed: false,
+  }),
+  Object.freeze({
+    label: 'THE PLATE',
+    value: '"THE SKY WE CAME FROM."',
+    sealed: false,
+  }),
+  Object.freeze({
+    label: 'ON INSPECTION',
+    value: 'THE DRONES ARE JUST FOLLOWING THE WELD SCHEDULE. BOTH THINGS ARE TRUE.',
+    sealed: false,
+  }),
+]);
+
+/** The constellation's page, plus whether the frame is on third watch right now. */
+export function constellationRows(state) {
+  if (special500Moment(state, 'SP3-091') == null) return [];
+  const now = Number(state && state.simTime);
+  const showing = Number.isFinite(now)
+    && stationShiftAt(CONSTELLATION_FRAME_ID, now).id === 'third';
+  return [
+    ...CONSTELLATION_TABLE,
+    Object.freeze({
+      label: 'TONIGHT',
+      value: showing
+        ? 'THIRD WATCH AT THE FRAME — THE PATTERN IS SHOWING'
+        : 'NOT THIRD WATCH AT THE FRAME — THE PATTERN KEEPS THE WELD SCHEDULE',
+      sealed: false,
+    }),
+  ];
+}
+
+// SP3-199 "The 500th Rock" — the Tally: a painted survey mark, one rock per field, one
+// person's decade project. The seeded painted-rock flag and the strike pitch belong to the
+// spawn leg; its counter would write the plain numeric flag `tally_marks` (marks found,
+// 1–10). Until a writer exists, the director's strike receipt is the one honest mark.
+export const TALLY_MARKS_FLAG = 'tally_marks';
+export const TALLY_SCALE_NOTES = 10;
+
+/** How many of the scale's notes you have heard: the counter's flag, or the one receipt. */
+export function tallyMarksFound(state) {
+  const counted = Math.max(0, Math.floor(Number(plainFlag(state, TALLY_MARKS_FLAG)) || 0));
+  const receipt = special500Moment(state, 'SP3-199') != null ? 1 : 0;
+  return Math.min(TALLY_SCALE_NOTES, Math.max(counted, receipt));
+}
+
+/** The Tally's page: the mark, the note, and how much of the scale you have heard. */
+export function tallyRows(state) {
+  const found = tallyMarksFound(state);
+  if (found < 1) return [];
+  const complete = found >= TALLY_SCALE_NOTES;
+  return [
+    Object.freeze({
+      label: 'THE MARK',
+      value: 'A SMALL PAINTED 500 AND FORTY STROKES UNDER IT',
+      sealed: false,
+    }),
+    Object.freeze({
+      label: 'THE RING',
+      value: 'ONE CLEAN NOTE, LOWER THAN THE ROCK HAS ANY RIGHT TO BE',
+      sealed: false,
+    }),
+    Object.freeze({
+      label: 'THE TALLY',
+      value: 'A SURVEY MARK — ONE PERSON\'S DECADE PROJECT, ONE ROCK PER FIELD',
+      sealed: false,
+    }),
+    Object.freeze({
+      label: 'THE SCALE',
+      value: complete
+        ? 'TEN NOTES, ALL HEARD — THE BELT WAS LEFT TUNED, AND NOW IT IS PLAYED'
+        : `TEN NOTES LONG — ${found} HEARD SO FAR`,
+      sealed: complete,
+    }),
+    Object.freeze({
+      label: 'THE PAINTER',
+      value: 'SPENT TEN YEARS PAINTING AN INSTRUMENT, THEN STOPPED COUNTING AT FIVE HUNDRED',
+      sealed: false,
+    }),
+  ];
+}
+
+// SP2-135 "The Dione Customs Coin" — stamped after both liens are paid, valid everywhere
+// once. The coin item and the one-use dispute waiver are the vendor/cargo legs; their
+// retirement receipt is the plain flag `dione_coin_retired`, which does not exist yet —
+// the page carries the stamp and the honest "still in hand" until it does. Customs
+// standing +4 belongs to the interaction leg, not this page.
+export const DIONE_COIN_RETIRED_FLAG = 'dione_coin_retired';
+
+/** The coin's page: the stamp, the caveat, and whether the nail has it now. */
+export function customsCoinRows(state) {
+  if (!special500Moment(state, 'SP2-135') && !plainFlag(state, DIONE_COIN_RETIRED_FLAG)) return [];
+  const retired = plainFlag(state, DIONE_COIN_RETIRED_FLAG) != null;
+  return [
+    Object.freeze({
+      label: 'THE COIN',
+      value: 'ONE (1) HULL SETTLED TWO (2) LIENS',
+      sealed: false,
+    }),
+    Object.freeze({
+      label: 'THE STAMP',
+      value: 'THIS COIN IS LEGAL NOWHERE AND VALID EVERYWHERE',
+      sealed: false,
+    }),
+    Object.freeze({
+      label: 'THE WITNESS',
+      value: 'CUSTOMS WATCHED YOU EARN IT — WHICH IS THE ONLY REASON IT WORKS',
+      sealed: false,
+    }),
+    Object.freeze({
+      label: 'SPENT',
+      value: retired
+        ? 'RETIRED — DRILLED, AND NAILED TO THE CUSTOMS HALL WALL'
+        : 'STILL IN HAND — IT WORKS ONCE, ON THE AUTHORED DISPUTE, HONESTLY SETTLED',
+      sealed: retired,
     }),
   ];
 }

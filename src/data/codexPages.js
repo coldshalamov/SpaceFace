@@ -279,7 +279,12 @@ const FACTION_OVERLAYS = Object.freeze({
   faction_mts: { maker: 'Owns the freight lanes it does not bother to patrol; price is the only law with a signature.' },
   faction_dmc: { maker: 'Mines the drift, drinks the dust, and keeps the names of the crews the veins kept.', casualty: 'Senna reads the roll at shift end. It gets longer.' },
   faction_reach: { maker: 'Tolls the lanes it cannot hold outright; a Reach stamp means you paid, not that you are safe.', casualty: 'Sker Vane\'s toll-saints died proving the toll was negotiable. It was not.' },
-  faction_quiet: { maker: 'Moves what the other thirteen will not touch, through doors that do not officially open.', casualty: 'Maera Vols flew their colors. The crew manifest is still mostly blank.' },
+  faction_quiet: {
+    maker: 'Moves what the other thirteen will not touch, through doors that do not officially open. '
+      + 'Their board at the Listening Field has been counting hulls all along — forty-one registered, forty-two observed, '
+      + 'and the difference is always you. They respect a fellow bookkeeper.',
+    casualty: 'Maera Vols flew their colors. The crew manifest is still mostly blank.',
+  },
   faction_vael: { maker: 'Xeno-reclusive; their lockers move cargo at night and their biology is nobody\'s business.' },
   faction_free: { maker: 'Independent haulers flying their own flag because nobody else\'s fit.', casualty: '"Coldburn" Rey drinks to the ones who went independent and stayed that way.' },
   faction_choir: { maker: 'Casts relics to a hymn spec and listens for the answer in the relay band.' },
@@ -293,39 +298,59 @@ const FACTION_OVERLAYS = Object.freeze({
 
 const SECTOR_OVERLAYS = Object.freeze({
   sector_helios_prime: 'The Concord\'s shop window. Everything legal, everything priced, everything watched. '
-    + 'Scale 4 keeps one line of 47-A paperwork older than most of its clerks; the desk neither closes it nor explains it.',
+    + 'Scale 4 keeps one line of 47-A paperwork older than most of its clerks; the desk neither closes it nor explains it. '
+    + 'The Candle Fleet memorial keeps a twenty-fifth plinth dark on purpose; scan it after you have watched a hull die here '
+    + 'and it answers once, in a maintenance clerk\'s voice — twenty-five is whoever is out there right now.',
   sector_ceres_belt: 'First belt, first lesson: the rock does not care about your manifest. '
-    + 'Shaft 7\'s stake carries a re-chalked tally and two helmets face-out on a memorial clamp. The math is legal. The math is not done.',
+    + 'Shaft 7\'s stake carries a re-chalked tally and two helmets face-out on a memorial clamp. The math is legal. The math is not done. '
+    + 'One rock in every field carries the Tally\'s paint — a small 500, forty strokes under it — and rings one note of a ten-note scale '
+    + 'when the beam bites. One person spent a decade painting an instrument, then stopped counting at five hundred.',
   sector_tethys_junction: 'Where the lanes braid. Half the rumor-trade passes through with the cargo. '
-    + 'The weigh-slip buoy\'s abutment stone keeps a season of chalk: every hull that ever idled there, massed and dated, whether or not it asked.',
+    + 'The weigh-slip buoy\'s abutment stone keeps a season of chalk: every hull that ever idled there, massed and dated, whether or not it asked. '
+    + 'Cross the Anvil sling band fast and tangential and the band becomes audible for a moment: one harmonic, every hull singing the '
+    + 'same note at the same place on the curve. Mass made audible; even the pirates cross it politely.',
   sector_vesta_forge: 'Foundry sector; the glow is honest work and the smoke is somebody\'s claim. '
     + 'Gallery Rock is a permanent collection now. Accession No. 1; the label is for you.',
-  sector_pallas_drift: 'Quiet rock, long sightlines, and claims filed on faith.',
   sector_io_reach: 'Listening posts and the traffic that learned to whisper back. '
     + 'The retired channel buoy at the Listening Field answers anyway. Nobody living holds its license, and the channel is held open regardless.',
   sector_charon_expanse: 'The long dark between customs desks. Smugglers call it "the reading room." '
-    + 'Past the Tether Memorial a pre-Collapse beacon still spells out one very long sentence, one pulse per character. Old hands do not spoil it.',
+    + 'Past the Tether Memorial a pre-Collapse beacon still spells out one very long sentence, one pulse per character. Old hands do not spoil it. '
+    + 'The Preserved Cockpit\'s manifest grows a line every session — gloves, a thermos, a paperback, a second paperback, a note — items '
+    + 'being added, not recovered; the last line says DO NOT WAKE UNTIL THE BELT IS SAFE. A crewless freighter keeps its galley open '
+    + 'and its tab good: one meal at any Charon dock, marked PAID — KITCHEN. And at third watch the construction frame off the abandoned '
+    + 'colony welds in a pattern that reads as a constellation from one marked bearing; the plate calls it the sky we came from.',
   sector_sker_haven: 'Reach country. The bazaar prices everything, including you.',
   sector_veil_nebula: 'Research Station Veil and the things Dr. Suhl has not translated yet. '
-    + 'A marginal note on the Veil chart: two cold hulls nose-to-nose over a mid-game table, one piece moved per visit. The chart does not say who countersigns the notation.',
+    + 'A marginal note on the Veil chart: two cold hulls nose-to-nose over a mid-game table, one piece moved per visit. The chart does not say who countersigns the notation. '
+    + 'The Helix audit\'s unresolvable coordinates resolve for whoever stands in them holding the salvaged communicator: one hull-sized '
+    + 'hole in the universe. The file was never wrong; the file was a photograph. In the calm patches of the fog, wakes hold for hours, '
+    + 'and someone has been writing there — re-carved daily, signed by a pilot everyone thought died.',
   sector_ashfall_reach: 'A ledger that kept running after everyone else left. Kurtz is still there.',
   sector_nyx_march: 'Frontier march; the patrol grid thins to a rumor of itself.',
   sector_hyperion_cut: 'A lane cut through wreck-mass older than the Concord.',
   sector_kepler_scar: 'The scar is the map; everything else is collateral.',
-  sector_orcus_shadow: 'Where shadows the size of stations drift without comment.',
+  sector_orcus_shadow: 'Where shadows the size of stations drift without comment. '
+    + 'The debris tide\'s transponder gate keeps a sun-bleached odometer reading CYCLE 4,110, count correct as of CYCLE 4,110. '
+    + 'Someone winds it. Nobody has ever been seen winding it.',
   sector_rhea_cinder: 'Burned-over belt; the cinder fields still pay if you sift them right.',
   sector_haumea_rift: 'The rift reads your drive plume and decides to be elsewhere.',
   sector_eris_margin: 'Margin space — the chart\'s apology for what it cannot promise.',
   sector_phoebe_echo: 'Every signal arrives twice here. The second one lies.',
-  sector_nereid_shoal: 'Shoal water for hulls; wreck-divers file the names in Senna\'s book.',
+  sector_nereid_shoal: 'Shoal water for hulls; wreck-divers file the names in Senna\'s book. '
+    + 'One rock in the deep field scans 0.0 and pulls heavy anyway; its interior is a void stasis crate stamped with a Verge-Layer '
+    + 'interrogative, and the answer is withheld.',
   sector_proteus_well: 'The well at the lane\'s bottom; what falls in, the Understory catalogues.',
-  sector_triton_wake: 'Wake-line territory — follow a big enough hull and the law forgets you.',
+  sector_triton_wake: 'Wake-line territory — follow a big enough hull and the law forgets you. '
+    + 'Leave an offering at the Watcher\'s rim often enough and the rim curates it: a neat row under a tally plate — 3 FOR 3, '
+    + 'NOBODY EVER TAKES — signed with the Watcher\'s own glyph.',
   sector_eunomia_gulf: 'Wide, legal, and dull until it is none of those.',
   sector_sedna_dark: 'The dark the Verge-Layers asked about first. It is still answering. '
     + 'On the ringworld arc a dormant gate ring wakes one ring at a time and asks each hull the same '
     + 'toll-question — WHAT IS THE MASS OF A DECISION? — then weighs hull, cargo and transponder '
     + 'history and files the answer as a receipt. The ring has never opened. The receipts are the prize.',
-  sector_dione_lane: 'The straight shot everyone takes and nobody watches.',
+  sector_dione_lane: 'The straight shot everyone takes and nobody watches. '
+    + 'Settle the Dione customs dispute honestly — both liens — and the desk stamps a coin that is legal nowhere and valid everywhere. '
+    + 'It works once. There is a nail waiting in the customs hall.',
   sector_the_bolus: 'Not a sector — a mouth the chart agreed to draw around.',
 });
 
@@ -337,7 +362,9 @@ const CHARACTER_OVERLAYS = Object.freeze({
   hale: 'Gate 3 customs officer. Hale does not need to open a sealed hold; he only needs to file the second fine correctly.',
   rook: 'Bounty broker. A clean tag is useful because it can be billed twice before anyone asks which target was real.',
   slate: 'Shipyard welder. His repairs look official because they are signed official, which is not the same as safe.',
-  quinn: 'Outpost 9 bar proprietor. Rates stay posted, management keeps changing, and the drawer always closes on the same count.',
+  quinn: 'Outpost 9 bar proprietor. Rates stay posted, management keeps changing, and the drawer always closes on the same count. '
+    + 'Once a year on the Pale Holiday the jukebox plays one slow, wrong-temperature track that no recipe in the catalog matches, '
+    + 'and the barkeep\'s review never changes: "Nobody loaded that."',
   voss: 'Drift claim recorder. Exhausted claims have a way of becoming fresh again for the crew that files second.',
   elroy: 'Pit Engineering maintenance worker attached to the recycler report. The bounty paperwork called him hostile; the ledger says why that mattered.',
   kurtz: 'The Ashfall figure. His station is less a confession than a ledger that kept running after everyone else left.',
@@ -602,7 +629,22 @@ function buildCatalog() {
 }
 
 /** All pages, in section order. Pure — unlock state is applied by the view in ui/sim/codexPages.js. */
-export const CODEX_PAGES = buildCatalog();
+
+// SP2-138 "The Scale Zero Rock" — the codex-only commodity: one unit, void stasis crate,
+// discontinued. It is deliberately not in COMMODITIES (no market lists it anymore), so the
+// catalog builder never sees it; the page unseals through the ordinary commodity gate the
+// day the hold or the trade ledger carries it. The sale-date rewrite is a live read — the
+// World tab's void stasis crate section prints the day — because this file stays pure data.
+const EXTRA_PAGES = [
+  entry('commodities', 'cmdty_discontinued_cargo', 'Discontinued Cargo',
+    'The manifest calls it discontinued because the market stopped listing it, not because it stopped existing. '
+    + 'One unit survives, packed in a void stasis crate that is older than the charter and mass-canceled past the point of honesty. '
+    + 'The Verge-Layer interrogative on the lid — WHAT WAS STORED HERE? (ANSWER WITHHELD) — is the only label it will ever carry. '
+    + 'No market stocks it; an Archive berth is the only desk that has ever bought one, and this page rewrites itself with the sale date the day you sell.',
+    { tag: 'discontinued' }),
+];
+
+export const CODEX_PAGES = Object.freeze([...buildCatalog(), ...EXTRA_PAGES]);
 
 const PAGE_BY_ID = new Map(CODEX_PAGES.map((p) => [p.id, p]));
 export function codexPageById(id) { return PAGE_BY_ID.get(id) || null; }

@@ -7,9 +7,9 @@
   "small": 167,
   "medium": 167,
   "large": 166,
-  "landed": 104,
-  "assigned": 28,
-  "approved": 104
+  "landed": 118,
+  "assigned": 42,
+  "approved": 118
  },
  "derivation": {
   "ratifiedFollowup": 330,
@@ -1437,9 +1437,9 @@
    "size": "medium",
    "family": "codex",
    "batch": 13,
-   "status": "pending",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused 25/25 + codex neighbor suites 75/75 + controller re-run 64/64",
    "note": "pilot batch"
   },
   {
@@ -1543,9 +1543,9 @@
    "size": "medium",
    "family": "codex",
    "batch": 13,
-   "status": "pending",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused 25/25 + codex neighbor suites 75/75 + controller re-run 64/64",
    "note": "promoted to medium (balance)"
   },
   {
@@ -1605,9 +1605,9 @@
    "size": "medium",
    "family": "codex",
    "batch": 13,
-   "status": "pending",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused 25/25 + codex neighbor suites 75/75 + controller re-run 64/64",
    "note": "promoted to medium (balance)"
   },
   {
@@ -1792,9 +1792,9 @@
    "size": "small",
    "family": "codex",
    "batch": 13,
-   "status": "pending",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused 25/25 + codex neighbor suites 75/75 + controller re-run 64/64",
    "note": ""
   },
   {
@@ -1812,9 +1812,9 @@
    "size": "small",
    "family": "codex",
    "batch": 13,
-   "status": "pending",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused 25/25 + codex neighbor suites 75/75 + controller re-run 64/64",
    "note": ""
   },
   {
@@ -1853,9 +1853,9 @@
    "size": "medium",
    "family": "codex",
    "batch": 13,
-   "status": "pending",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused 25/25 + codex neighbor suites 75/75 + controller re-run 64/64",
    "note": "promoted to medium (balance)"
   },
   {
@@ -2283,9 +2283,9 @@
    "size": "small",
    "family": "codex",
    "batch": 13,
-   "status": "pending",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused 25/25 + codex neighbor suites 75/75 + controller re-run 64/64",
    "note": ""
   },
   {
@@ -3006,9 +3006,9 @@
    "size": "small",
    "family": "codex",
    "batch": 13,
-   "status": "pending",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused 25/25 + codex neighbor suites 75/75 + controller re-run 64/64",
    "note": ""
   },
   {
@@ -3276,9 +3276,9 @@
    "size": "medium",
    "family": "codex",
    "batch": 13,
-   "status": "pending",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused 25/25 + codex neighbor suites 75/75 + controller re-run 64/64",
    "note": "promoted to medium (balance)"
   },
   {
@@ -3315,9 +3315,9 @@
    "size": "medium",
    "family": "codex",
    "batch": 13,
-   "status": "pending",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused 25/25 + codex neighbor suites 75/75 + controller re-run 64/64",
    "note": "promoted to medium (balance)"
   },
   {
@@ -3369,9 +3369,9 @@
    "size": "small",
    "family": "codex",
    "batch": 13,
-   "status": "pending",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused 25/25 + codex neighbor suites 75/75 + controller re-run 64/64",
    "note": ""
   },
   {
@@ -3472,9 +3472,9 @@
    "size": "small",
    "family": "codex",
    "batch": 13,
-   "status": "pending",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused 25/25 + codex neighbor suites 75/75 + controller re-run 64/64",
    "note": ""
   },
   {
@@ -3491,9 +3491,9 @@
    "size": "medium",
    "family": "codex",
    "batch": 13,
-   "status": "pending",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused 25/25 + codex neighbor suites 75/75 + controller re-run 64/64",
    "note": "promoted to medium (balance)"
   },
   {
@@ -3511,9 +3511,9 @@
    "size": "small",
    "family": "codex",
    "batch": 13,
-   "status": "pending",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused 25/25 + codex neighbor suites 75/75 + controller re-run 64/64",
    "note": ""
   },
   {
