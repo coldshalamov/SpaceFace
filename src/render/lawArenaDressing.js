@@ -1235,6 +1235,34 @@ function buildAffixHasted(r, sink) {
   };
 }
 
+/** Rider: a dropped keel that reads the room current — cold plate, one lit leading edge,
+ *  and an aft needle vane that swings to the water it rides. The drive-cut trick made metal. */
+function buildAffixRider(r, sink) {
+  const shared = sharedAssets();
+  const seam = cloneEmissive(shared.tideMat, sink);
+  const group = new THREE.Group();
+  group.name = 'sf-swarm-threat-affix-rider';
+  const keel = mesh(shared.boxGeo, shared.darkMat, 'sf-swarm-threat-affix-rider-keel');
+  keel.scale.set(r * 0.34, r * 0.03, r * 0.04);
+  group.add(keel);
+  const edge = mesh(shared.boxGeo, seam, 'sf-swarm-threat-affix-rider-edge');
+  edge.scale.set(r * 0.34, r * 0.012, r * 0.012);
+  edge.position.y = -r * 0.02; // the leading edge the current presses on
+  group.add(edge);
+  const needle = mesh(shared.boxGeo, shared.metalMat, 'sf-swarm-threat-affix-rider-needle');
+  needle.scale.set(r * 0.03, r * 0.025, r * 0.22);
+  needle.position.z = -r * 0.24; // aft, reading the water the hull just left
+  group.add(needle);
+  return {
+    group,
+    tick(mark, simTime, dt, reduced) {
+      // The needle swings across the keel line, slow — the hull is reading, not racing.
+      const swing = reduced ? 0.3 : 0.3 + Math.sin(simTime * 1.9) * 0.22;
+      needle.rotation.y = swing;
+    },
+  };
+}
+
 // Per-affix builder + the seam's breath cadence (rad·s⁻¹). Volatile races; commander is the
 // slow steady heartbeat the cohort flies on.
 const AFFIX_MARKS = Object.freeze({
@@ -1244,6 +1272,7 @@ const AFFIX_MARKS = Object.freeze({
   magnetic: Object.freeze({ build: buildAffixMagnetic, pulse: 3.1 }),
   commander: Object.freeze({ build: buildAffixCommander, pulse: 1.5 }),
   hasted: Object.freeze({ build: buildAffixHasted, pulse: 3.9 }),
+  rider: Object.freeze({ build: buildAffixRider, pulse: 2.2 }),
 });
 
 export function createLawArenaDressing() {

@@ -36,6 +36,8 @@
 // Single-writer law holds: it never writes state.run (the blast and the chip request travel as
 // intents), never writes Adventure credits, never touches the profile.
 import { swarmPassiveHullBonus } from '../data/swarmDraft.js';
+import { fieldContainsPoint } from '../core/fields/fieldKernel.js';
+import { LAW_ARENA_IDS } from './survivalArena.js';
 
 import { createRewardDeathLedger, runOwnsReward } from '../combat/rewardEligibility.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
@@ -45,6 +47,7 @@ import { makeEnemySpawnSpec } from './combat.js';
 import { CREDIT_CHIP_KIND } from '../data/killRewards.js';
 import { runHasPerk } from '../data/swarmPerks.js';
 import {
+  SWARM_AFFIXES,
   SWARM_AFFIX_BY_ID,
   swarmAffixFor,
   swarmAffixFromWave,
@@ -97,6 +100,11 @@ const SWARM_RAM_PLATE_DAMAGE = 34;
 const SWARM_RAM_PLATE_MIN_DP = 220;
 /** One ram per pair per window — a grinding contact pays once a beat, not every tick. */
 const SWARM_RAM_PLATE_COOLDOWN_TICKS = 30;
+/** Rider (inf-current-rider): one ride per window — 4 s on the current, 14 s between rides. */
+const SWARM_RIDE_WINDOW_TICKS = 240;
+const SWARM_RIDE_COOLDOWN_TICKS = 840;
+/** Rider phase stagger: hull ids spread their ride starts so a marked band never rides as one. */
+const SWARM_RIDE_PHASE_STRIDE_TICKS = 10;
 
 function liveSwarmRun(state) {
   if (!state) return null;
@@ -122,7 +130,8 @@ function simTickOf(state) {
  * same hulls the same way, every replay. The veteran band reuses the law under its own
  * salts so a second trick can never shift the primary pick.
  */
-function affixHash(seed, wave, ordinal, salt = SWARM_AFFIX_SALT) {
+/** FNV over seed + wave + ordinal (+ optional salt). Exported for focused stamp-gate tests. */
+export function affixHash(seed, wave, ordinal, salt = SWARM_AFFIX_SALT) {
   let h = (seed >>> 0) ^ (salt >>> 0);
   h = Math.imul(h ^ (wave >>> 0), 0x01000193) >>> 0;
   h = Math.imul(h ^ (ordinal >>> 0), 0x01000193) >>> 0;
@@ -143,6 +152,7 @@ export const swarmElites = {
     this.state = ctx.state;
     this.bus = ctx.bus || null;
     this.helpers = ctx.helpers || null;
+    this.registry = ctx.registry || null;
     this._unsubs = [];
     this._reset();
     if (!this.bus || typeof this.bus.on !== 'function') return;
@@ -182,6 +192,82 @@ export const swarmElites = {
       this._stampPass(st, run);
     }
     this._auraPass(st, run, step);
+    this._ridePass(st, run);
+  },
+
+  // ---- the rider affix -------------------------------------------------------
+
+  /**
+   * inf-current-rider — the trick only a room with a field law can carry. A marked elite
+   * inside a kernel field kills its drive for one bounded window: the room's own current
+   * (the Mill's grind, a well, a lane) physically owns its motion — no scripted glide, the
+   * same acceleration every body feels. One hit (hull or shield below the ride-start read)
+   * knocks it off the current, the window expires on its own clock, and the authored
+   * thrust returns untouched. Phase stagger comes off the hull id so a marked band never
+   * rides as one. Deterministic: ticks and stored reads only.
+   */
+  _ridePass(state, run) {
+    if (!Array.isArray(LAW_ARENA_IDS) || !LAW_ARENA_IDS.includes(run.arenaId)) return;
+    const entities = state.entities;
+    if (!entities || typeof entities.forEach !== 'function') return;
+    const fields = this._kernelFields();
+    const tick = simTickOf(state);
+    entities.forEach((e) => {
+      if (!e || e.alive === false || !e.pos) return;
+      const data = entityData(e);
+      if (!data || !bodyHasAffix(data, 'rider')) return;
+      const ride = data.swarmRide;
+      if (ride) {
+        const hull = Number.isFinite(e.hull) ? e.hull : 0;
+        const shield = Number.isFinite(e.shield) ? e.shield : 0;
+        if (hull < ride.hull || hull + shield < ride.total) this._endRide(e, data, 'knocked_off', tick);
+        else if (!this._insideCurrent(fields, e)) this._endRide(e, data, 'current_ended', tick);
+        else if (tick >= ride.until) this._endRide(e, data, 'done', tick);
+        return;
+      }
+      // First gate: the phase stagger spreads a marked band's ride starts off the hull id,
+      // so they never all cut their drives on the same tick.
+      if (data.swarmRideNextAt == null) {
+        data.swarmRideNextAt = tick + (Number(e.id) || 0) % 97 * SWARM_RIDE_PHASE_STRIDE_TICKS;
+      }
+      if (tick < data.swarmRideNextAt) return;
+      if (!this._insideCurrent(fields, e)) return;
+      if (!Number.isFinite(e.thrust)) return;
+      data.swarmRide = {
+        thrust: e.thrust,
+        hull: Number.isFinite(e.hull) ? e.hull : 0,
+        total: (Number.isFinite(e.hull) ? e.hull : 0) + (Number.isFinite(e.shield) ? e.shield : 0),
+        until: tick + SWARM_RIDE_WINDOW_TICKS,
+      };
+      e.thrust = 0; // the drive cut IS the telegraph — the room takes the wheel from here
+      this._emit('swarm:affixRide', { id: e.id, phase: 'start', untilTick: tick + SWARM_RIDE_WINDOW_TICKS, pos: { x: e.pos.x, z: e.pos.z } });
+    });
+  },
+
+  _endRide(e, data, reason, tick) {
+    const ride = data.swarmRide;
+    if (!ride) return;
+    delete data.swarmRide;
+    if (Number.isFinite(ride.thrust)) e.thrust = ride.thrust;
+    // The cooldown counts from the ride's END: 4 s on the current, then 14 s off it.
+    data.swarmRideNextAt = tick + SWARM_RIDE_COOLDOWN_TICKS;
+    this._emit('swarm:affixRide', { id: e.id, phase: 'end', reason, tick });
+  },
+
+  _kernelFields() {
+    const fields = this.registry && typeof this.registry.get === 'function'
+      ? this.registry.get('fields')
+      : null;
+    return fields && typeof fields.kernelList === 'function' ? fields.kernelList() : null;
+  },
+
+  _insideCurrent(fields, e) {
+    if (!fields || !fields.length) return false;
+    for (const field of fields) {
+      if (!field || !(field.radius > 0) || !field.center) continue;
+      if (fieldContainsPoint(field, e.pos.x, e.pos.z)) return true;
+    }
+    return false;
   },
 
   _reset() {
@@ -286,7 +372,12 @@ export const swarmElites = {
     if (data.swarmChampion !== true && data.runRole !== 'elite') return;
     const ordinal = this._affixOrdinal++;
     const seed = Number.isInteger(run.seed) ? run.seed : 1;
-    const affix = swarmAffixFor(affixHash(seed, wave, ordinal));
+    // The rider's road is the room's own field law, and the rider row sits last in the
+    // catalog — so a room without a law rolls the room-agnostic head of the table and
+    // every champion still carries one trick. A law room rolls the full vocabulary.
+    const lawRoom = Array.isArray(LAW_ARENA_IDS) && LAW_ARENA_IDS.includes(run.arenaId);
+    const affixCount = lawRoom ? SWARM_AFFIXES.length : SWARM_AFFIXES.length - 1;
+    const affix = swarmAffixFor(affixHash(seed, wave, ordinal), affixCount);
     if (!affix || !SWARM_AFFIX_BY_ID[affix]) return;
     data.swarmAffix = affix;
     data.swarmAffixWave = wave;
@@ -297,7 +388,7 @@ export const swarmElites = {
     let affix2 = null;
     const veteranPct = swarmAffixVeteranPct(wave);
     if (veteranPct > 0 && affixHash(seed, wave, ordinal, SWARM_AFFIX_VETERAN_ROLL_SALT) % 100 < veteranPct) {
-      const pick = swarmAffixVeteranFor(affixHash(seed, wave, ordinal, SWARM_AFFIX_VETERAN_PICK_SALT), affix);
+      const pick = swarmAffixVeteranFor(affixHash(seed, wave, ordinal, SWARM_AFFIX_VETERAN_PICK_SALT), affix, affixCount);
       if (pick && pick !== affix && SWARM_AFFIX_BY_ID[pick]) {
         affix2 = pick;
         data.swarmAffix2 = pick;
