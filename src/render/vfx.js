@@ -324,6 +324,15 @@ import {
   writeDockApproachGeometry,
 } from './dockApproachBeacons.js';
 import {
+  createSalvageLampGeometry,
+  SALVAGE_LAMP_CAP,
+  SALVAGE_LAMP_MAX_RANGE_WU,
+  salvageLampGlow01,
+  salvageLampHalfWidthWu,
+  salvageLampLive,
+  writeSalvageLampQuads,
+} from './salvageLamp.js';
+import {
   ENGINE_WASH_RANGE_WU,
   ENGINE_WASH_SURFACE_KINDS,
   engineWashEmitPayload,
@@ -1118,6 +1127,7 @@ function emptyVfxSubsystemDiag() {
     monofilamentBlade: 0, // taut monofilament chord: one world-XZ segment, gone the tick it slacks
     dockingCradle: 0,   // holo berth pad on the bay floor while a corridor engagement is live
     dockApproachBeacons: 0, // station approach beacons: gate pair + inbound lane, pre-approach dressing
+    salvageLamp: 0,     // a paying wreck's amber work-lamp — which hulk is worth a stop
     engineWash: 0,      // a burning drive stirring dust off the surface it hangs over
     apexFlare: 0,       // chromatic apex-release flare around the ship
     momentumSink: 0,
@@ -1945,6 +1955,7 @@ export const vfx = {
     disposeVfxRoot(this._masslineChainReadout && this._masslineChainReadout.mesh, disposeState);
     disposeVfxRoot(this._dockingCradle && this._dockingCradle.mesh, disposeState);
     disposeVfxRoot(this._dockApproach && this._dockApproach.mesh, disposeState);
+    disposeVfxRoot(this._salvageLamp && this._salvageLamp.mesh, disposeState);
 
     const planetSkim = this._planetSkim;
     for (const slot of planetSkim && planetSkim.slots || []) {
@@ -2065,6 +2076,7 @@ export const vfx = {
     this._masslineChainReadout = null;
     this._dockingCradle = null;
     this._dockApproach = null;
+    this._salvageLamp = null;
     this._selectionSigil = null;
     this._lights = [];
     this._ambientFixtureReads = null;
@@ -8185,6 +8197,107 @@ export const vfx = {
   },
 
   // -------------------------------------------------------------------------
+  // Salvage work-lamp (inf-salvage-lamp): a wreck whose salvagePool still pays wears a slow
+  // amber work-lamp — the salvage crews' "worth a stop" convention — and a stripped husk goes
+  // dark. The truth read is `data.salvagePool`, the same live predicate aftermathWrecks and the
+  // beam consume. One additive mesh, one draw call; deterministic off simTime; no lights are
+  // created or toggled; the plan is pure (salvageLamp.js, headless-tested).
+  // -------------------------------------------------------------------------
+  _salvageLamp: null,
+  _salvageLampIdleCadence: 0,
+
+  _initSalvageLamp() {
+    if (!this._scene) return;
+    const scratch = createSalvageLampGeometry();
+    const geo = new THREE.BufferGeometry();
+    const position = new THREE.BufferAttribute(scratch.positions, 3);
+    const color = new THREE.BufferAttribute(scratch.colors, 3);
+    position.usage = THREE.DynamicDrawUsage;
+    color.usage = THREE.DynamicDrawUsage;
+    geo.setAttribute('position', position);
+    geo.setAttribute('color', color);
+    geo.setIndex(new THREE.BufferAttribute(scratch.indices, 1));
+    geo.setDrawRange(0, 0);
+    const mat = new THREE.MeshBasicMaterial({
+      color: new THREE.Color(1.1, 1.1, 1.1),
+      vertexColors: true,
+      transparent: true,
+      opacity: 0.62,
+      depthWrite: false,
+      depthTest: true,
+      blending: THREE.AdditiveBlending,
+      side: THREE.DoubleSide,
+      forceSinglePass: true,
+      toneMapped: false,
+    });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.name = 'sf-salvage-lamps';
+    mesh.frustumCulled = false;
+    mesh.renderOrder = 5;
+    mesh.visible = false;
+    this._scene.add(mesh);
+    this._salvageLamp = { mesh, scratch, idle: false };
+  },
+
+  _updateSalvageLamp(dt) {
+    const sl = this._salvageLamp || (this._initSalvageLamp(), this._salvageLamp);
+    if (!sl) return false;
+    const state = this.state;
+    const player = this.helpers && this.helpers.player ? this.helpers.player() : this._ent(state.playerId);
+    const px = player && player.pos && Number.isFinite(player.pos.x) ? player.pos.x : NaN;
+    const pz = player && player.pos && Number.isFinite(player.pos.z) ? player.pos.z : NaN;
+    if (!Number.isFinite(px) || !Number.isFinite(pz)) {
+      if (sl.mesh.visible) { sl.mesh.visible = false; sl.mesh.geometry.setDrawRange(0, 0); }
+      sl.idle = true;
+      return false;
+    }
+    // Idle watch: no paying wreck nearby re-checks on a slow cadence; a live lamp rewrites
+    // every frame so only light moves (the breath), never geometry.
+    this._salvageLampIdleCadence += Number.isFinite(dt) ? dt : 0;
+    if (sl.idle && this._salvageLampIdleCadence < 0.5) return sl.mesh.visible;
+    this._salvageLampIdleCadence = 0;
+    const simTime = Number.isFinite(state.simTime) ? state.simTime : 0;
+    const reduced = !!(state.settings && state.settings.video && state.settings.video.motionReduce);
+    const gain = resolveVfxAccessibilityProfile(state.settings).flashOpacityScale;
+    const scratch = sl.scratch;
+    scratch.indexCount = 0;
+    let live = 0;
+    let baseQuads = 0;
+    const range2 = SALVAGE_LAMP_MAX_RANGE_WU * SALVAGE_LAMP_MAX_RANGE_WU;
+    const wrecks = indexedTypeScan(state, 'wrecks');
+    for (let i = 0; i < wrecks.length && live < SALVAGE_LAMP_CAP; i++) {
+      const e = wrecks[i];
+      if (!e || e.alive === false || e.type !== 'wreck' || !e.pos) continue;
+      if (!salvageLampLive(e.data && e.data.salvagePool)) continue;
+      const dx = px - e.pos.x, dz = pz - e.pos.z;
+      if (dx * dx + dz * dz > range2) continue;
+      writeSalvageLampQuads(scratch, e.pos.x, e.pos.z,
+        salvageLampHalfWidthWu(e.radius),
+        salvageLampGlow01(e.id, simTime, reduced) * gain, baseQuads);
+      baseQuads = scratch.indexCount / 6;
+      live += 1;
+    }
+    sl.idle = live === 0;
+    if (!(scratch.indexCount > 0)) {
+      if (sl.mesh.visible) { sl.mesh.visible = false; sl.mesh.geometry.setDrawRange(0, 0); }
+      return false;
+    }
+    const positions = scratch.positions;
+    for (let vertex = 0; vertex < (scratch.indexCount / 6) * 4; vertex += 1) {
+      const offset = vertex * 3;
+      const local = this._toLocalXZ(positions[offset], positions[offset + 2], this._spawnLocalXZ);
+      positions[offset] = local.x;
+      positions[offset + 2] = local.z;
+    }
+    sl.mesh.geometry.setDrawRange(0, scratch.indexCount);
+    sl.mesh.geometry.attributes.position.needsUpdate = true;
+    sl.mesh.geometry.attributes.color.needsUpdate = true;
+    sl.mesh.material.opacity = Math.min(0.62, 0.62 * Math.max(0.3, gain));
+    sl.mesh.visible = true;
+    return true;
+  },
+
+  // -------------------------------------------------------------------------
   // Engine wash (inf-engine-wash): a burning main drive stirring the dust off a surface it
   // hangs over. The contact law lives in engineWash.js (pure, headless-tested); this adapter
   // owns the walk: thrusting ships against the rock/station/wreck buckets, nearest surface
@@ -10131,6 +10244,7 @@ export const vfx = {
     sub.monofilamentBlade = this._updateMonofilamentBlade() ? 1 : 0;
     sub.dockingCradle = this._updateDockingCradle(dt) ? 1 : 0;
     sub.dockApproachBeacons = this._updateDockApproach() ? 1 : 0;
+    sub.salvageLamp = this._updateSalvageLamp(dt) ? 1 : 0;
     sub.engineWash = this._updateEngineWash() ? 1 : 0;
     sub.apexFlare = this._updateApexFlare(dt) ? 1 : 0;
     // Massline UVP: continuous tumble thrash puffs + spin ribbons while status_tumbling / drifting.
