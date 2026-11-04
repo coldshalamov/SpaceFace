@@ -37,6 +37,7 @@ const headed = process.env.MOBILE_PROBE_HEADED === '1';
 const channel = process.env.MOBILE_PROBE_CHANNEL || null;
 const throttleRequest = process.env.MOBILE_PROBE_THROTTLE || 'off';
 const contextLossExercise = process.env.MOBILE_PROBE_CONTEXT_LOSS === '1';
+const powersPauseFrontier = process.env.MOBILE_PROBE_FRONTIER === 'powers-pause';
 const mobileDeviceName = 'iPhone 14';
 const mobileDeviceProfile = devices[mobileDeviceName];
 // Chromium's literal-loopback path is pathologically slow on some loaded Windows hosts — local
@@ -472,7 +473,17 @@ try {
       // (the throttled local run's New Game tap landed on empty space that way).
       await control.tap({ timeout: 20000 });
       return;
-    } catch { /* fall through to the touchscreen tap below */ }
+    } catch (error) {
+      if (powersPauseFrontier) {
+        report.firstControlError = { route: activeRoute, actorStage,
+          selector: typeof selector === 'string' ? selector : 'locator',
+          at: new Date().toISOString(), error: String(error?.stack || error) };
+        await writeFile(join(out, 'first-control-error.json'), JSON.stringify(report.firstControlError, null, 2))
+          .catch(writeError => report.finalDiagnosticErrors.push({ kind: 'first-control-error-write', error: String(writeError) }));
+        throw error;
+      }
+      // Other existing probe routes retain their animated-menu tap handling.
+    }
     // Under handset-class CPU throttle the animated menu never settles enough for the
     // scroll helper's stability gate; scrolling is best-effort (the tap reads the live box).
     await control.scrollIntoViewIfNeeded({ timeout: 500 }).catch(() => {});
@@ -803,6 +814,14 @@ try {
     actorStage = 'new-game-context-loss';
     await exerciseRendererRecovery(page, { report });
   }
+  if (powersPauseFrontier) {
+    if (report.pageErrors.length) throw new Error(`${report.pageErrors.length} unhandled page error(s)`);
+    if (report.criticalResponseCount || report.criticalRequestFailureCount || report.workerResponseFailureCount)
+      throw new Error('Frontier route recorded critical HTTP or runtime worker response failures; see response ledger');
+    report.acceptance.startupAndControls = 'passed';
+    report.acceptance.workerContract = 'not-run-frontier-scope';
+    report.scopedRoute = 'new-game-powers-pause-resume';
+  } else {
   actorStage = 'new-game-rotation';
   await page.setViewportSize({ width: 844, height: 390 });
   await page.waitForTimeout(1500);
@@ -920,6 +939,7 @@ try {
       throw new Error(`Continue observed ${report.criticalResponseCount + report.criticalRequestFailureCount} critical HTTP failure(s)`);
     report.acceptance.continue = 'passed';
     report.continue.status = 'passed';
+  }
   }
   report.passed = report.acceptance.mobileCapabilities === 'passed'; // Renderer health is applied below; world visibility remains unverified.
   if (report.acceptance.mobileCapabilities === 'mismatch') {

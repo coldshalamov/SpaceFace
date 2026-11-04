@@ -6931,6 +6931,20 @@
       "ktx2Textures": 4,
       "meshoptBufferViews": 22,
       "contractNodeCount": 1
+    },
+    {
+      "id": "wholeship_hornet_scn_customs_cutter",
+      "kind": "part:wholeships",
+      "source": "assets/ships/parts/wholeships/hornet_scn_customs_cutter.glb",
+      "release": "assets/ships/release/parts/wholeships/hornet_scn_customs_cutter.glb",
+      "sourceSha256": "8c4d100881b7a016a6472db2e3819cb4e6a0ed8c680729cbb869ad8835357133",
+      "releaseSha256": "d35dd4f58e9bd528a736bd758a20bc2b53e686a7001e0d3eef739173ce8a5d56",
+      "sourceBytes": 1656744,
+      "releaseBytes": 782436,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 220,
+      "contractNodeCount": 75
     }
   ]
 }

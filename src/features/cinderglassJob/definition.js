@@ -210,8 +210,10 @@ export const CINDERGLASS_JOB_TEXT = Object.freeze({
   releasedViolent: 'The latch is wrecked. The pod is loose. This is unlawful force; any surviving witnesses can report it.',
   cradleHint: 'Tala’s cradle is marked. Bring the pod in under 8 — she clamps it and pays.',
   brokerHint: 'Vesi Khand buys freight no-questions. 300CR, colder name.',
-  paidTala: 'Controller checks out. Papers settled — deposit back with the payment.',
-  paidDamaged: 'She’s scuffed, but the seal held. 300CR for a damaged original. Deposit still comes back.',
+  paidTala: 'Controller checks out. Papers settled — 450CR payment and the paid 150CR inspection deposit returned.',
+  paidTalaNoRefund: 'Controller checks out. Papers settled — 450CR paid.',
+  paidDamaged: 'She’s scuffed, but the seal held. 300CR for a damaged original and the paid 150CR inspection deposit returned.',
+  paidDamagedNoRefund: 'She’s scuffed, but the seal held. 300CR for the damaged original.',
   podDestroyed: 'The pod is gone. Whatever was inside is scrap now. We’re done here.',
   convoyLeftLine: 'The run reached the buyer. Consignment is out of reach — that’s closure.',
   brokerPaid: 'Khand pays and forgets the serial. So should you.',
@@ -221,6 +223,18 @@ export const CINDERGLASS_JOB_TEXT = Object.freeze({
   depositRefunded: 'Deposit returned with Tala’s payment.',
   staleRefusal: 'That arrangement is already spent.',
 });
+
+// Receipt copy follows the committed financial result, including old saved paid facts.
+// Whole source sentences stay localizable; no refund is inferred from the return alone.
+export function cinderglassJobPaidText(st) {
+  const paid = st?.settlement;
+  if (!paid || paid.recipient !== 'tala' || ![300, 450].includes(paid.baseCr)
+    || ![0, 150].includes(paid.refundCr) || paid.creditedCr !== paid.baseCr + paid.refundCr
+    || paid.refundCr === 150 && (st.depositPaid !== true || st.depositRefunded !== true)) return null;
+  return paid.baseCr === 450
+    ? paid.refundCr === 150 ? CINDERGLASS_JOB_TEXT.paidTala : CINDERGLASS_JOB_TEXT.paidTalaNoRefund
+    : paid.refundCr === 150 ? CINDERGLASS_JOB_TEXT.paidDamaged : CINDERGLASS_JOB_TEXT.paidDamagedNoRefund;
+}
 
 // Root installs these exact, bounded definitions through physical-owner.patch.
 export const CINDERGLASS_JOB_COMBAT_PROFILE = Object.freeze({

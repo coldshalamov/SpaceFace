@@ -1,4 +1,4 @@
-import { SWARM_FORTIFY_DEVICES } from '../data/swarmFortify.js';
+import { SWARM_FORTIFY_DEVICES, SWARM_FORTIFY_FACINGS } from '../data/swarmFortify.js';
 import { injectOrreryScreens } from './orrery/screenLayouts.js';
 import { injectSwarmFortifyLayouts } from './orrery/swarmFortifyLayouts.js';
 import { cue } from './kit/index.js';
@@ -18,6 +18,14 @@ const reasons = {
   phase: 'Construction is available between waves.',
   run_changed: 'The run changed before construction could commit.',
   spawn_failed: 'The structure could not be placed. No credits were spent.',
+  unknown_facing: 'Choose how the slab faces first.',
+  socket_unavailable: 'That position is not available. Choose another position.',
+};
+const facingTitles = {
+  square: 'Face the field squarely — your radial fire comes back at you.',
+  cant_cw: 'Canted slab — the map shows where your radial fire goes.',
+  cant_ccw: 'Canted slab — the map shows where your radial fire goes.',
+  edge: 'Edge to the field — a long wall the approach must go around.',
 };
 function element(doc, tag, className, text) {
   const node = doc.createElement(tag);
@@ -43,7 +51,7 @@ export const crucibleFortifyScreen = {
   id: 'crucibleFortify', data: { locked: true },
   mount(root, ctx) {
     this._ctx = ctx; this._root = root; this._doc = root.ownerDocument || globalThis.document;
-    this._shown = false; this._deviceId = 'gravity_beacon'; this._socketId = null;
+    this._shown = false; this._deviceId = 'gravity_beacon'; this._socketId = null; this._facing = 'square';
     this._model = null; this._pending = null; this._queryId = null; this._offs = [];
     root.replaceChildren();
     root.classList.add('k-screen', 'k-screen--stage', 'sf-crucible', 'sf-crucible-fortify', 'orr-crucible');
@@ -60,8 +68,10 @@ export const crucibleFortifyScreen = {
     this._map = svg(this._doc, 'svg', { viewBox: '-560 -560 1120 1120', role: 'img', 'aria-label': 'Live paused field: physical obstacles, defenses, approach corridors and selected device reach' });
     this._sockets = make('div', 'sf-fortify-sockets');
     this._sockets.setAttribute('role', 'group'); this._sockets.setAttribute('aria-label', 'Construction position');
+    this._facings = make('div', 'sf-fortify-sockets sf-fortify-facings');
+    this._facings.setAttribute('role', 'group'); this._facings.setAttribute('aria-label', 'Slab facing'); this._facings.hidden = true;
     this._position = make('p', 'k-sentence sf-fortify-position', '');
-    plan.append(this._map, this._sockets, this._position);
+    plan.append(this._map, this._sockets, this._facings, this._position);
     const shelf = make('section', 'sf-fortify-shelf'); shelf.dataset.sfScroll = 'fortify-shelf';
     shelf.setAttribute('aria-label', 'Construction devices'); this._deviceButtons = new Map();
     for (const device of Object.values(SWARM_FORTIFY_DEVICES)) {
@@ -74,7 +84,11 @@ export const crucibleFortifyScreen = {
     this._structures = make('section', 'sf-fortify-state'); shelf.appendChild(this._structures); layout.append(plan, shelf);
     const foot = make('footer', 'k-foot'); this._build = make('button', 'k-word k-word--emph sf-fortify-build', 'Choose a position');
     this._build.type = 'button'; this._build.disabled = true;
-    this._build.addEventListener('click', () => this._submit('swarm:fortifyBuildRequested', { deviceId: this._deviceId, socketId: this._socketId }));
+    this._build.addEventListener('click', () => {
+      const payload = { deviceId: this._deviceId, socketId: this._socketId };
+      if (SWARM_FORTIFY_DEVICES[this._deviceId]?.facings === true) payload.facing = this._facing;
+      this._submit('swarm:fortifyBuildRequested', payload);
+    });
     const close = make('button', 'k-word sf-fortify-close', 'Return to armory'); close.type = 'button'; this._close = close;
     close.addEventListener('click', () => ctx.bus.emit('ui:popScreen', {}));
     this._note = make('p', 'k-sentence sf-fortify-receipt', 'Choose a device, then a field position.');
@@ -132,6 +146,7 @@ export const crucibleFortifyScreen = {
     if (!model) { this._build.disabled = true; return; }
     const active = this._doc.activeElement;
     const focusSocket = this._root.contains(active) ? active?.dataset?.socketId : null;
+    const focusFacing = this._root.contains(active) ? active?.dataset?.facingId : null;
     const focusRepair = this._root.contains(active) ? active?.dataset?.repairId : null;
     this._balance.textContent = 'Run purse · ' + Math.max(0, Math.floor(model.credits || 0)) + ' cr';
     const slots = deviceSlots(model, this._deviceId);
@@ -145,6 +160,18 @@ export const crucibleFortifyScreen = {
       button.addEventListener('click', () => { this._socketId = slot.id; this._paint(); }); this._sockets.appendChild(button);
     }
     const device = SWARM_FORTIFY_DEVICES[this._deviceId]; const selected = slots.find(slot => slot.id === this._socketId);
+    this._facings.replaceChildren();
+    this._facings.hidden = device.facings !== true;
+    if (device.facings === true) {
+      for (const facing of SWARM_FORTIFY_FACINGS) {
+        const button = element(this._doc, 'button', 'k-word k-word--fine', facing.label);
+        button.type = 'button'; button.dataset.facingId = facing.id;
+        button.setAttribute('aria-pressed', String(facing.id === this._facing));
+        button.title = facingTitles[facing.id] || facing.label;
+        button.addEventListener('click', () => { this._facing = facing.id; this._paint(); });
+        this._facings.appendChild(button);
+      }
+    }
     this._position.textContent = !selected ? 'No construction position is available.'
       : selected.occupied ? 'Position ' + (slots.indexOf(selected) + 1) + ' is occupied. Choose another position to build.'
       : selected.blocked ? reasons[selected.reason] || 'Position ' + (slots.indexOf(selected) + 1) + ' is obstructed. Choose another position to build.'
@@ -179,6 +206,7 @@ export const crucibleFortifyScreen = {
     }
     this._structures.appendChild(list);
     if (focusSocket) [...this._sockets.children].find(button => button.dataset.socketId === focusSocket)?.focus();
+    else if (focusFacing) [...this._facings.children].find(button => button.dataset.facingId === focusFacing)?.focus();
     else if (focusRepair) {
       const repair = [...this._structures.querySelectorAll('[data-repair-id]')].find(button => button.dataset.repairId === focusRepair);
       (repair || (this._build.disabled ? this._close : this._build)).focus();
@@ -200,11 +228,27 @@ export const crucibleFortifyScreen = {
       layer.appendChild(svg(this._doc, 'path', { d: `M ${x * 535} ${z * 535} L ${x * 440} ${z * 440} M ${x * 460 - z * 15} ${z * 460 + x * 15} L ${x * 440} ${z * 440} L ${x * 460 + z * 15} ${z * 460 - x * 15}`,
         class: 'sf-fortify-approach' }));
     }
+    const slabCorners = (cx, cz, rot, halfWidth, halfDepth) => {
+      const tx = Math.cos(rot); const tz = Math.sin(rot);
+      const nx = -tz; const nz = tx;
+      return [[1, 1], [1, -1], [-1, -1], [-1, 1]]
+        .map(([a, b]) => `${cx + tx * halfWidth * a + nx * halfDepth * b} ${cz + tz * halfWidth * a + nz * halfDepth * b}`)
+        .join(' ');
+    };
     for (const structure of model.structures || []) {
       const device = SWARM_FORTIFY_DEVICES[structure.deviceId];
-      for (const pos of structure.positions || []) layer.appendChild(svg(this._doc, 'circle', {
-        cx: pos.x - origin.x, cy: pos.z - origin.z, r: device?.colliderRadius || 12, class: 'sf-fortify-built',
-      }));
+      for (const pos of structure.positions || []) {
+        if (structure.plate) {
+          layer.appendChild(svg(this._doc, 'polygon', {
+            points: slabCorners(pos.x - origin.x, pos.z - origin.z, structure.rot || 0,
+              structure.plate.halfWidth, structure.plate.halfDepth), class: 'sf-fortify-built',
+          }));
+        } else {
+          layer.appendChild(svg(this._doc, 'circle', {
+            cx: pos.x - origin.x, cy: pos.z - origin.z, r: device?.colliderRadius || 12, class: 'sf-fortify-built',
+          }));
+        }
+      }
     }
     const selected = slots.find(slot => slot.id === this._socketId);
     const device = SWARM_FORTIFY_DEVICES[this._deviceId];
@@ -216,9 +260,29 @@ export const crucibleFortifyScreen = {
       if (points.length === 2) preview.appendChild(svg(this._doc, 'path', {
         d: `M ${points[0].x} ${points[0].z} L ${points[1].x} ${points[1].z}`, class: 'sf-fortify-pair',
       }));
-      for (const point of points) preview.appendChild(svg(this._doc, 'circle', {
-        cx: point.x, cy: point.z, r: device.colliderRadius, class: 'sf-fortify-footprint',
-      }));
+      const finPreview = device.facings === true
+        ? (selected.facings || []).find(row => row.id === this._facing) : null;
+      if (finPreview) {
+        const cx = points[0].x; const cz = points[0].z;
+        preview.appendChild(svg(this._doc, 'polygon', {
+          points: slabCorners(cx, cz, finPreview.rot, finPreview.halfWidth, finPreview.halfDepth),
+          class: 'sf-fortify-footprint',
+        }));
+        preview.appendChild(svg(this._doc, 'path', {
+          d: `M ${cx} ${cz} L ${cx + finPreview.entryNormal.x * 34} ${cz + finPreview.entryNormal.z * 34}`,
+          class: 'sf-fortify-face',
+        }));
+        const rx = finPreview.reflected.x; const rz = finPreview.reflected.z;
+        const tipX = cx + rx * 118; const tipZ = cz + rz * 118;
+        preview.appendChild(svg(this._doc, 'path', {
+          d: `M ${cx} ${cz} L ${tipX} ${tipZ} M ${tipX - rx * 16 + rz * 9} ${tipZ - rz * 16 - rx * 9} L ${tipX} ${tipZ} L ${tipX - rx * 16 - rz * 9} ${tipZ - rz * 16 + rx * 9}`,
+          class: 'sf-fortify-bank',
+        }));
+      } else {
+        for (const point of points) preview.appendChild(svg(this._doc, 'circle', {
+          cx: point.x, cy: point.z, r: device.colliderRadius, class: 'sf-fortify-footprint',
+        }));
+      }
       layer.appendChild(preview);
     }
     for (let index = 0; index < slots.length; index++) {

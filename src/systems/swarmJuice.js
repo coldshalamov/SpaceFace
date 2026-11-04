@@ -257,9 +257,12 @@ export const swarmJuice = {
     const friendlyFire = !playerKill && runOwnsReward(killer);
     const cause = styleCauseFromKill(payload);
     const surface = payload.presentation && payload.presentation.surface || null;
+    // The emitter's own end label (combat.killEndLabelFor — 'wasted' for a DoT end) speaks the
+    // WORD; the style family stays on the canonical cause, so attrition never pays physics rate.
+    const killLabel = payload.cause === 'wasted' ? 'wasted' : null;
     // Row 481 — the live room's own vocabulary; the Circuit can switch arenas mid-run, so the
     // arena is read at kill time, never captured at run start.
-    const word = swarmKillCauseWord({ cause, surface, friendlyFire, arenaId: run.arenaId });
+    const word = swarmKillCauseWord({ cause, surface, friendlyFire, arenaId: run.arenaId, killLabel });
     const threat = victim.data && victim.data.stuntThreat;
 
     if (playerKill) {

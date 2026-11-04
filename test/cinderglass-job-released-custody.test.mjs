@@ -83,6 +83,7 @@ test('continuous Dione membership retains the original radio reply and accepted 
     t.sys._publish();
     assert.equal(t.action('track', { markerId: 'cinderglassJob:cradle' }).ok, true);
     assert.equal(t.state.nav.autopilot.active, false, 'Track keeps its preview behavior');
+    assert.equal(t.state.nav.autopilot.arrivalRadius, 60);
     const entry = commissionEntries(t.state).find(e => e.key === 'cinder');
     const course = entry.actions.find(a => a.key === 'recovery:autopilotCradle');
     assert.ok(course, 'the normal Journal adapter exposes the explicit recovery flight action');
@@ -91,6 +92,7 @@ test('continuous Dione membership retains the original radio reply and accepted 
     t.bus.emit(course.event, course.payload);
     assert.equal(course.payload.result.ok, true);
     assert.equal(t.state.nav.autopilot.active, true);
+    assert.equal(t.state.nav.autopilot.arrivalRadius, 50, 'explicit tow approach leaves room for the trailing original inside the unchanged receiver gate');
     assert.deepEqual(t.state.nav.autopilot.target, publicCradle.pos);
     assert.equal(t.state.nav.route, null, 'the canonical course owner arms continuous flight, not a jump');
     assert.deepEqual(nativeCinderglassPose(t.sys, t.state, pod), pose, 'engagement cannot move the original');

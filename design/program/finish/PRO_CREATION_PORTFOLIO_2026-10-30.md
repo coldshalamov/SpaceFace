@@ -2,6 +2,14 @@
 
 ## Current status: Pro queued; usage limit observed
 
+November4,21:52UTC: all five remain unsent. The integrated Browser is now reachable. A fresh regular
+ChatGPT page had Chat selected and Work unselected; its actual model menu showed **Pro,5of5**, a
+locked power slider and **Usage limit reached**. No prompt was submitted and no alternate model/app
+was used. Only the empty check tab created for this observation was closed. The earlier18:09UTC
+`Browser is not available: iab` result is historical; it does not describe the current browser.
+The quota reset time remains unknown. Refresh the exact remote base and interface packet before
+any later authorized Pro dispatch, and keep main game integration moving meanwhile.
+
 The integrated Browser connects in Codex. On the 2026-11-03 recheck, the actual regular ChatGPT
 page had **Chat** selected, **Work** unselected, and the GPT-6 family. The model/effort menu
 showed **Medium**, a disabled power control and **“Usage limit reached”**. Pro was not available

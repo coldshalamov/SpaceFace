@@ -819,6 +819,27 @@ Implemented and focused-tested, wave 4 (INFERENCE 100 program — one commit eac
 Verified already deep, wave 4: giver-voice offers (443fb963cf7a), ship name + captain on
 hail (shipRegistry, re-verified through the registry refactor).
 
+Implemented and focused-tested, wave 5 (INFERENCE 100 program — one commit each, recorded in
+`design/program/inference-memory.json`):
+- inf-patrol-challenge (WF-16): carrying heat, the ambient patrol that finds you cuts its
+  station orbit, holds a 220-WU standoff off your beam, and names the sheet on the band once
+  per heat episode — long before any scan cone or seeded hunter; challenged hulls stay
+  passive; law writes the fact, traffic only flies it (56acd9157562).
+- inf-fine-why (WF-14): the law desk's fine card names what the fine is made of — base plus
+  one step per heat band, your live step named — and the conviction it answers for, via the
+  same no-false-witness trace as the flight alert; suspicion without a receipt renders
+  nothing (63723f81ce70 + dad25ea2f40d hardening).
+- inf-defeat-situation (WF-09): the after-action sheet names the hunt you died in — the
+  wanted band, the escape clock, and on a real receipt the convicting incident it traced to;
+  heat freezes over the open sheet so the clause reads the situation at death (e4f279764227).
+Verified already deep, wave 5: traffic registry continuity (durable worldRecordId +
+identityKey stamps at spawn; replacement hulls minting fresh names is the by-design per-hull
+law), defeat receipt depth (killer/weapon/strike/vitals/Range teaching already present).
+Inbox addition: test/infer-p05-patrol-hostility-live.test.mjs fails on the current tree
+("0 shots") — the rig loads combatDoctrine.js/physics.js, both carrying large uncommitted
+edits from the active integration thread; left for the owning thread (same pattern as the
+two Inbox lines above).
+
 ## Traps
 
 Integration 2026-10-31: phone station title/credits and Shipworks diagram/nameplate overlaps are

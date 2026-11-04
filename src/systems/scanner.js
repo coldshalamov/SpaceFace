@@ -73,6 +73,7 @@ import {
   towAssistBodyFor,
 } from '../data/contactHail.js';
 import { TOW_ASSIST_FEE_CR } from '../data/yardContracts.js';
+import { ruudTowAssistFeeQuote } from './ruud.js'; // SP2-123: the stamped tow-assist grade
 import { entityIndexVersion, entityIndexLaneVersion, forEachLivingWorldActor } from '../world/livingWorldViews.js';
 import { makeShipEntitySpec } from './ships.js';
 import {
@@ -1910,16 +1911,20 @@ export const scanner = {
       }
     }
     if (!dest) dest = this._nearestStationPosTo(body) || { x: body.pos.x, z: body.pos.z };
+    // SP2-123 — a hull Ruud has stamped ("You came back. Stamps like that.") hires the
+    // working tugs one grade better, permanently. The quote is still the runtime's settled
+    // fee whenever the tab settles short.
+    const stampedFee = ruudTowAssistFeeQuote(this.state);
     const out = jobApi.requestTowAssist(worker.id, body.id, dest, {
       holder: 'contactHail',
       missionId,
       deliverW,
-      feeCr: TOW_ASSIST_FEE_CR,
+      feeCr: stampedFee,
     });
     // The runtime bills take-what-they-have and records the settled fee — a short tab reads
     // back the real amount on the line, never the sticker price.
     if (out && out.granted === true) {
-      return { granted: true, feeCr: Number.isFinite(out.feeCr) ? out.feeCr : TOW_ASSIST_FEE_CR };
+      return { granted: true, feeCr: Number.isFinite(out.feeCr) ? out.feeCr : stampedFee };
     }
     return { granted: false, reason: out && out.reason || 'claim_refused' };
   },

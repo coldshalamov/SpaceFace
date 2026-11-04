@@ -97,6 +97,12 @@ export function mailTriggerSatisfied(trigger, state, events) {
       const ships = Array.isArray(player.ownedShips) ? player.ownedShips : [];
       return ships.some((row) => row && (row.shipId === trigger.ship || (row.def && row.def.id === trigger.ship)));
     }
+    case 'ownedShips': {
+      // The hull count as a live read of the player record — the single owner of the fleet
+      // list — so "second hull onward" needs no counter flag to survive Continue.
+      const ships = Array.isArray(player.ownedShips) ? player.ownedShips : [];
+      return ships.length >= (Number(trigger.gte) || 1);
+    }
     case 'credits':
       return (Number(player.credits) || 0) >= (Number(trigger.gte) || 0);
     case 'event': {

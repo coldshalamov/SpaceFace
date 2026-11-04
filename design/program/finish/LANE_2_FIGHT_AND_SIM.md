@@ -258,6 +258,39 @@ cross-run grudges (aceMemory New Run+ tiers + moral memory + defeat-streak mercy
 signature moments (six authored room laws + round events), formation-half of the wingman gap
 (squadFrame sockets + wingMorale).
 
+Implemented and focused-tested, wave 5 (INFERENCE 100 program — one commit each, recorded in
+`design/program/inference-memory.json`):
+- inf-coverseek (WF-02): a marked elite swings until a rock sits between it and you, then
+  holds and coasts its orbit there; flank, hit, or the 5 s window restores the closing intent;
+  the mark's lit lip shows only while a hold is live (6869b4f0b4dd).
+- inf-room-end-cause (WF-16 repair): a hull a mine, drift bomb, sympathetic cookoff or the
+  crusher jaws took reads MINED/MILLED and pays the documented PQ-174.02 physics rate when
+  player-attributed, instead of reading as a gun kill (fe9b97714a9a).
+- inf-dot-end-word (WF-16 repair): a hull the burn or tar corroded down reads WASTED in each
+  arena's own language (TEMPERED/SOLDERED/SINGED/THAWED/SURGED/SLAGGED/SCALDED) instead of
+  the gun word; attrition pays gun rate, never the force-table ratio (0aa2bdac25c4).
+Verified already deep, wave 5: patrol intervention breadth (20182af972c4 —
+patrolJurisdictionFor over four lawful responders; the board's "Concord-only" seam note was
+stale), ricochet/bounce causality (collisionConsequences provenance + chainKills), DoT kill
+credit (status periodic routes the applier as attackerId). Named skip: well dives (same
+kind/subject family as coverseek — rotation reserves it).
+
+Implemented and focused-tested, wave 6 (INFERENCE 100 program — one commit each, recorded in
+`design/program/inference-memory.json`):
+- inf-well-dive (WF-02): a marked Crucible elite dives THROUGH a gravity well to reach you —
+  full thrust bent through the pull, guns live — instead of holding behind a rock; a hit
+  breaks the commit; law-identical window/stagger/cooldown to the rider (392426e9c689).
+- inf-plow-turn (WF-05 repair): shoving an enemy mine fence with your own plow turns it into
+  your grenade — it trips on the pack that laid it, pays your credit, and the band says the
+  shove took; NPC fields never turn NPC mines; your own mines never turn (8c77b0ed9119).
+- inf-lance-aim (WF-15 repair): the Orbital Lance paints and strikes exactly where the
+  crosshair points instead of a quarter-turn off it, and the thrown decoy drops ahead of the
+  nose line (47209b767a46).
+Verified already deep, wave 6: weapon-fire telemetry (overheat/empty/guns-out/guidance-lost
+all tell), mine death by gunfire (routed through routeDamage → kernel). Named candidates
+left with next steps: tether-latched pair crossing a field zone (needs a fixed-seed sim A/B
+before a defect claim), spawn-cadence tell (survivalWave family foreign-dirty at the time).
+
 ## Traps
 
 - Never edit `test/*.expected.json` to pass. A sim change that moves the golden is a real change: explain it or undo it.

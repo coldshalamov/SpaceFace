@@ -105,7 +105,7 @@ export {
   releaseSharedTextureConsumer,
 };
 import { createLiveGeometryAdmissionQueue } from './liveGeometryAdmission.js';
-import { applyMasslineReleaseCameraCue, createChaseCamera, IMPACT_KICK_WU_MAX, shakeDistanceAttenuation } from './camera.js';
+import { applyMasslineReleaseCameraCue, createChaseCamera, IMPACT_KICK_WU_MAX, PHOTO_EXPOSURE_MIN, PHOTO_EXPOSURE_MAX, shakeDistanceAttenuation } from './camera.js';
 import { createShakeAdmission } from './shakeAdmission.js';
 import {
   clearanceCellInRange,
@@ -29829,7 +29829,7 @@ export const render = {
     }
   },
 
-  prepareFrame(alpha, frameDt, presentationFrame = null) {
+  prepareFrame(alpha, frameDt, presentationFrame = null, cameraFrameDt = frameDt) {
     this._racingCourseView?.frame();
     this._notePicturePresent(presentationFrame);
     this._presentationFrame = presentationFrame;
@@ -30254,7 +30254,7 @@ export const render = {
           ? pm.position
           : null;
         tryPresentedCall(this, 'camera-follow', () => {
-          this.cam.follow(frameDt, alpha, presented, this._cameraClearanceAt);
+          this.cam.follow(cameraFrameDt, alpha, presented, this._cameraClearanceAt);
           this._updateCameraOccluders(frameDt);
         });
       }
@@ -32900,6 +32900,16 @@ export const render = {
     }
     // Event VFX publish after prepareFrame. Resolve them before the one scene matrix walk.
     if (scene === this.scene) this._nocturne?.flush(camera);
+    // Photo is a final presentation override: Nocturne's held world exposure must not replace
+    // the slider, and the slider must not advance or rewrite that world's adaptation state.
+    const photo = scene === this.scene && this.state?.render?.photoMode;
+    if (photo?.active === true && Number.isFinite(photo.exposure)) {
+      const options = this._postFrameOptions || (this._postFrameOptions = { time: 0 });
+      options.exposure = Math.max(PHOTO_EXPOSURE_MIN, Math.min(PHOTO_EXPOSURE_MAX, photo.exposure));
+      if (this.bloom) this.bloom.setOptions(options);
+      if (this._renderGraph) this._renderGraph.setOptions(options);
+      if (this.renderer) this.renderer.toneMappingExposure = options.exposure;
+    }
     // All transform writes for the frame are complete before this dispatch. One explicit walk
     // here replaces the per-pass walk every renderer.render(scene, …) would otherwise repeat
     // (scene.matrixWorldAutoUpdate is false; bloom, graph scene+normal passes, and the internal

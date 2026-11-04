@@ -53,6 +53,13 @@ import { StatusMatterVfx, collectHeatedMaterialBodies } from './vfx/statusMatter
 import { CombatContactVfx } from './vfx/combatContactVfx.js';
 import { DamagedPortVfxPlanner } from './vfx/damagedPortVfx.js';
 import { resolveWreckAgeS, wreckBurnPicture } from './vfx/wreckAftermathState.js';
+import {
+  arrivalReadForSpawn,
+  ARRIVAL_FLASH_LIFE_S,
+  ARRIVAL_SHEET_LIFE_S,
+  ARRIVAL_BRAKE_LIFE_S,
+  ARRIVAL_STREAK_LIFE_S,
+} from './arrivalRead.js';
 import { createToolConduitGeometry, installToolConduitShader } from './toolConduit.js';
 import { FieldForcePresentation } from './forceLanguage/fieldForcePresentation.js';
 import { GyreSnarePresentation } from './forceLanguage/gyreSnarePresentation.js';
@@ -308,6 +315,39 @@ import {
   updateDockingCradle,
   writeDockingCradleGeometry,
 } from './dockingCradle.js';
+import {
+  buildDockApproachLayout,
+  createDockApproachGeometry,
+  DOCK_APPROACH_MAX_RANGE_WU,
+  DOCK_APPROACH_STATION_CAP,
+  resolveDockApproachPlan,
+  writeDockApproachGeometry,
+} from './dockApproachBeacons.js';
+import {
+  createSalvageLampGeometry,
+  SALVAGE_LAMP_CAP,
+  SALVAGE_LAMP_MAX_RANGE_WU,
+  salvageLampGlow01,
+  salvageLampHalfWidthWu,
+  salvageLampLive,
+  writeSalvageLampQuads,
+} from './salvageLamp.js';
+import {
+  APRON_FLOOD_MAX_RANGE_WU,
+  APRON_FLOOD_STATION_CAP,
+  buildApronFloodLayout,
+  createApronFloodGeometry,
+  resolveApronFloodPlan,
+  writeApronFloodGeometry,
+} from './apronFloodlights.js';
+import {
+  ENGINE_WASH_RANGE_WU,
+  ENGINE_WASH_SURFACE_KINDS,
+  engineWashEmitPayload,
+  engineWashSlot,
+  resolveEngineWashContact,
+  shouldEmitEngineWash,
+} from './engineWash.js';
 import { pitchPresentationEpoch, shipPitchCandidates } from './shipPitchPresentation.js';
 import { SelectionSigil, resolveSelectionSigil } from './selectionSigil.js';
 import {
@@ -1094,6 +1134,10 @@ function emptyVfxSubsystemDiag() {
     masslineChainReadout: 0, // thrown mass's accepted release→contact→kill ancestry trace
     monofilamentBlade: 0, // taut monofilament chord: one world-XZ segment, gone the tick it slacks
     dockingCradle: 0,   // holo berth pad on the bay floor while a corridor engagement is live
+    dockApproachBeacons: 0, // station approach beacons: gate pair + inbound lane, pre-approach dressing
+    apronFlood: 0,      // apron work lights: rig pair + deck pools at the dock mouth
+    salvageLamp: 0,     // a paying wreck's amber work-lamp — which hulk is worth a stop
+    engineWash: 0,      // a burning drive stirring dust off the surface it hangs over
     apexFlare: 0,       // chromatic apex-release flare around the ship
     momentumSink: 0,
     seamMarkers: 0,
@@ -1919,6 +1963,9 @@ export const vfx = {
     this._masslineLatchRim = null;
     disposeVfxRoot(this._masslineChainReadout && this._masslineChainReadout.mesh, disposeState);
     disposeVfxRoot(this._dockingCradle && this._dockingCradle.mesh, disposeState);
+    disposeVfxRoot(this._dockApproach && this._dockApproach.mesh, disposeState);
+    disposeVfxRoot(this._apronFlood && this._apronFlood.mesh, disposeState);
+    disposeVfxRoot(this._salvageLamp && this._salvageLamp.mesh, disposeState);
 
     const planetSkim = this._planetSkim;
     for (const slot of planetSkim && planetSkim.slots || []) {
@@ -2038,6 +2085,9 @@ export const vfx = {
     this._masslineSwingTrace = null;
     this._masslineChainReadout = null;
     this._dockingCradle = null;
+    this._dockApproach = null;
+    this._apronFlood = null;
+    this._salvageLamp = null;
     this._selectionSigil = null;
     this._lights = [];
     this._ambientFixtureReads = null;
@@ -2377,6 +2427,7 @@ export const vfx = {
     this._initMasslineChainReadout();
     this._initMonofilamentBlade();
     this._initDockingCradle();
+    this._initDockApproach();
     this._initApexFlare();
     this._initSelectionSigil();
     this._initSeamMarkers();
@@ -2773,6 +2824,14 @@ export const vfx = {
       this._onDestroyed(p);
     }, { presentation: true });
     add('entity:spawned', (p) => { this._markEntityCacheDirtyIfTrailType(p); this._onChainEntitySpawned(p); this._offerWreckHandoff(p); });
+    // Drop-in arrival read (inf-drop-in-read): a hull arriving mid-session through an ingress
+    // lane or a warp tear wears one hard flash + inbound wake + brake flare in its faction tint.
+    // The grace origin is re-stamped on every world (re)materialization so sector population,
+    // a fresh run and a restored save never flash as arrivals.
+    add('entity:spawned', (p) => this._onShipDropIn(p));
+    for (const name of ['sector:enter', 'game:new', 'game:newGame', 'save:loaded']) {
+      add(name, () => { this._dropInEnteredAtT = this._causeNow(); });
+    }
     add('weapons:mineDeployed', (p) => this._noteWellDeployed(p));
     add('weapons:mineExpired', (p) => { if (this._causeMarks && p) this._causeMarks.forgetWell(p.mineId); });
     // NXB-050 chain readout — accepted ancestry of one thrown body. Whip/sweep contacts
@@ -4364,6 +4423,50 @@ export const vfx = {
     if (id === 'travel.aftermath.clear') {
       this._spawnSprite(SPR_COMBUSTION, pos.x, 0, pos.z, 0.82, 5, 20, 0.32, 0, palette.secondary, 0, 0, 0.6, Math.atan2(dz, dx));
     }
+  },
+
+  // Drop-in arrival read (inf-drop-in-read). The sim already publishes the arrival truth —
+  // spawnContext producers mean "arrived from elsewhere mid-session", and SF-053 ingress squads
+  // materialize with nose and velocity still carrying them down the lane. This is the read the
+  // player never had: WHERE they came in and THAT they are new here, at gameplay camera.
+  // Sprites age on the presentation clock (presFrameDt — sim-scaled), so a frozen sim freezes
+  // the beat; eligibility lives in arrivalRead.js (pure, headless-tested).
+  _onShipDropIn(p) {
+    const entity = p && p.entity;
+    const plan = arrivalReadForSpawn(entity, {
+      simTime: this._causeNow(),
+      sectorEnteredAtT: this._dropInEnteredAtT,
+      playerPos: this._playerPos(),
+      playerId: this.state && this.state.playerId,
+      reducedMotion: this._isReduced(),
+    });
+    if (!plan) return;
+    const pal = this._factionPalette(entity.factionId || (entity.data && entity.data.factionId));
+    const primary = (pal && pal.primary) || '#39d0ff';
+    const secondary = (pal && pal.secondary) || '#d7e6ff';
+    const dx = Math.cos(plan.headingRad);
+    const dz = Math.sin(plan.headingRad);
+    const r = plan.radius;
+    // The arrival flash: one hard punch at the drop point, faction-tinted. No ring — the
+    // travel grammar keeps arrival a single readable world-space beat.
+    this._spawnSprite(SPR_FLASH, plan.x, 0.4, plan.z, ARRIVAL_FLASH_LIFE_S,
+      r * 1.6, r * 4.2, 0.9, 0, primary, 0, 0, 1, plan.headingRad);
+    // The door it came through: thin sheets perpendicular to the lane, at the drop point.
+    for (let i = 0; i < plan.sheets; i++) {
+      const along = (i - (plan.sheets - 1) / 2) * r * 1.3;
+      this._spawnSprite(SPR_COMBUSTION, plan.x + dx * along, 0.1, plan.z + dz * along,
+        ARRIVAL_SHEET_LIFE_S, r * 0.9, r * 2.6, 0.3, 0, secondary, 0, 0, 0.38,
+        plan.headingRad + Math.PI / 2);
+    }
+    // The lane it flew in on: a wake still streaming behind the hull down its inbound heading.
+    this._spawnTravelVectorWake({ x: plan.x, z: plan.z }, dx, dz,
+      plan.wakeCount, secondary, primary, plan.wakeSpeed, ARRIVAL_STREAK_LIFE_S);
+    // The brake: one flare at the tail washing against travel while the drive kills ingress speed.
+    this._spawnSprite(SPR_COMBUSTION, plan.x - dx * r * 1.1, 0.2, plan.z - dz * r * 1.1,
+      ARRIVAL_BRAKE_LIFE_S, r * 0.5, r * 1.8, plan.brakeOpacity, 0, primary,
+      -dx * 8, -dz * 8, 0.4, plan.headingRad);
+    // The picture lights its surroundings for the one moment the hull is still slow.
+    this._eventLight({ x: plan.x, z: plan.z }, 'impact', { color: primary, peak: 3.4, decay: 7, distance: 190 });
   },
 
   _travelPalette(tags) {
@@ -7914,25 +8017,32 @@ export const vfx = {
     const dc = this._dockingCradle;
     if (!dc) return false;
     const state = this.state;
-    const readout = state && state.dockingCorridor;
+    const hasProjection = !!state && Object.prototype.hasOwnProperty.call(state, 'dockingPresentation');
+    const projection = hasProjection ? state.dockingPresentation : null;
+    const sameSector = !hasProjection || !!projection && (projection.sectorId == null
+      || projection.sectorId === state.world?.currentSectorId);
+    let readout = sameSector ? (hasProjection ? projection?.readout : state?.dockingCorridor) : null;
+    const rows = sameSector ? (hasProjection ? projection?.rows : state?.physicsRuntime?.collisionProxies) : null;
+    let proxy = null;
+    if (readout && Array.isArray(rows)) {
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        if (!row || (readout.stationId != null ? row.stationId !== readout.stationId : row.proxyId !== readout.proxyId)) continue;
+        const station = state.entities?.get?.(row.entityId);
+        if (!station || station.alive === false
+          || (row.generation != null && station.occupantGeneration !== row.generation)) continue;
+        proxy = row;
+        break;
+      }
+    }
+    // No live matching station means the saved/mirrored engagement is no longer current.
+    if (!proxy) readout = null;
     // Quiet settled flight: cradle still paid proxy scan + updateDockingCradle +
     // writeDockingCradleGeometry + a11y resolve every tick after fade-out. Latch
     // when fully faded; cheap phase/berth wake. Soft-GPU fps not claimed.
     if (this._dockingCradleQuietHidden) {
       if (!this._dockingCradleQuietMaybeAwake(readout)) return false;
       this._dockingCradleQuietHidden = false;
-    }
-    // Match the engaged station's diagnostics row for the corridor axis and lane width. Rows are
-    // frozen records — reading them here never touches sim state.
-    let proxy = null;
-    const rows = state && state.physicsRuntime && state.physicsRuntime.collisionProxies;
-    if (readout && (readout.stationId != null || readout.proxyId != null) && Array.isArray(rows)) {
-      for (let i = 0; i < rows.length; i++) {
-        const row = rows[i];
-        if (!row) continue;
-        if (readout.stationId != null && row.stationId === readout.stationId) { proxy = row; break; }
-        if (readout.stationId == null && readout.proxyId != null && row.proxyId === readout.proxyId) { proxy = row; break; }
-      }
     }
     const wasPhase = dc.cradle.phase;
     const cradle = updateDockingCradle(dc.cradle, dt, readout, proxy);
@@ -7974,6 +8084,423 @@ export const vfx = {
     dc.mesh.material.opacity = Math.min(0.85, cradle.visible01 * 0.85);
     dc.mesh.visible = true;
     return true;
+  },
+
+  // -------------------------------------------------------------------------
+  // Docking approach beacons (inf-dock-approach-beacons): the station's own answer to "where is
+  // the dock and is it open", readable from two rings out. One additive mesh, one draw call;
+  // the plan is the same dockingCorridor truth the cradle consumes, so the picture never
+  // disagrees with the hologram. Deterministic off simTime; no lights are created or toggled.
+  // -------------------------------------------------------------------------
+  _dockApproach: null,
+
+  _initDockApproach() {
+    if (!this._scene) return;
+    const scratch = createDockApproachGeometry();
+    const geo = new THREE.BufferGeometry();
+    const position = new THREE.BufferAttribute(scratch.positions, 3);
+    const color = new THREE.BufferAttribute(scratch.colors, 3);
+    position.usage = THREE.DynamicDrawUsage;
+    color.usage = THREE.DynamicDrawUsage;
+    geo.setAttribute('position', position);
+    geo.setAttribute('color', color);
+    geo.setIndex(new THREE.BufferAttribute(scratch.indices, 1));
+    geo.setDrawRange(0, 0);
+    const mat = new THREE.MeshBasicMaterial({
+      color: new THREE.Color(1.1, 1.1, 1.1),
+      vertexColors: true,
+      transparent: true,
+      opacity: 0,
+      depthWrite: false,
+      depthTest: true,
+      blending: THREE.AdditiveBlending,
+      side: THREE.DoubleSide,
+      forceSinglePass: true,
+      toneMapped: false,
+    });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.name = 'sf-dock-approach';
+    mesh.frustumCulled = false;
+    mesh.renderOrder = 6;
+    mesh.visible = false;
+    this._scene.add(mesh);
+    this._dockApproach = { mesh, scratch, layouts: new Map(), plan: {}, lastRows: null };
+  },
+
+  _updateDockApproach() {
+    const da = this._dockApproach;
+    if (!da) return false;
+    const state = this.state;
+    const hasProjection = !!state && Object.prototype.hasOwnProperty.call(state, 'dockingPresentation');
+    const rows = hasProjection ? state.dockingPresentation?.rows : state?.physicsRuntime?.collisionProxies;
+    const readout = hasProjection ? state.dockingPresentation?.readout : state?.dockingCorridor;
+    const now = Number.isFinite(state && state.simTime) ? state.simTime : 0;
+    const reduced = !!(state && state.settings && state.settings.video && state.settings.video.motionReduce);
+    const gain = resolveVfxAccessibilityProfile(state && state.settings).flashOpacityScale;
+    // Row arrays are rebuilt per sector (the diagnostics publish retains the array object), so an
+    // identity change is the cheap "layouts are stale" epoch — rebuild them, never grow a map
+    // across departed stations.
+    if (rows !== da.lastRows) { da.layouts.clear(); da.lastRows = rows; }
+    const player = state && state.entities && state.entities.get(state.playerId);
+    const px = player && player.pos && Number.isFinite(player.pos.x) ? player.pos.x : NaN;
+    const pz = player && player.pos && Number.isFinite(player.pos.z) ? player.pos.z : NaN;
+    const scratch = da.scratch;
+    scratch.indexCount = 0;
+    let live = 0;
+    let base = 0;
+    const sectorMatches = !state.dockingPresentation || state.dockingPresentation.sectorId == null
+      || state.dockingPresentation.sectorId === state.world?.currentSectorId;
+    if (sectorMatches && Array.isArray(rows) && Number.isFinite(px) && Number.isFinite(pz)) {
+      const range2 = DOCK_APPROACH_MAX_RANGE_WU * DOCK_APPROACH_MAX_RANGE_WU;
+      for (let i = 0; i < rows.length && live < DOCK_APPROACH_STATION_CAP; i++) {
+        const row = rows[i];
+        if (!row || row.stationId == null || !row.berth || !row.corridor || !row.pos) continue;
+        const dx = px - row.pos.x, dz = pz - row.pos.z;
+        if (dx * dx + dz * dz > range2) continue;
+        const liveStation = state.entities?.get?.(row.entityId);
+        if (row.entityId != null && (!liveStation || liveStation.alive === false
+          || (row.generation != null && liveStation.occupantGeneration !== row.generation))) continue;
+        let layout = da.layouts.get(row.stationId);
+        if (!layout || layout.row !== row || layout.x !== row.pos.x || layout.z !== row.pos.z
+          || layout.rot !== row.rot || layout.bearing !== row.corridorBearingDeg
+          || layout.bx !== row.berth.x || layout.bz !== row.berth.z
+          || layout.outer !== row.corridor.captureOuterRadius || layout.width !== row.corridor.captureHalfWidth) {
+          layout = { row, x: row.pos.x, z: row.pos.z, rot: row.rot, bearing: row.corridorBearingDeg,
+            bx: row.berth.x, bz: row.berth.z, outer: row.corridor.captureOuterRadius,
+            width: row.corridor.captureHalfWidth, data: buildDockApproachLayout(row, {}) };
+          da.layouts.set(row.stationId, layout);
+        }
+        if (!layout.data.live) continue;
+        const plan = resolveDockApproachPlan(row, readout, now, reduced, da.plan);
+        writeDockApproachGeometry(scratch, layout.data, plan, { gain, base });
+        base = scratch.indexCount / 6;
+        live += 1;
+      }
+    }
+    for (const id of da.layouts.keys()) {
+      let present = false;
+      if (sectorMatches && Array.isArray(rows)) {
+        for (let i = 0; i < rows.length; i++) if (rows[i]?.stationId === id) { present = true; break; }
+      }
+      if (!present) da.layouts.delete(id);
+    }
+    if (!(scratch.indexCount > 0)) {
+      if (da.mesh.visible) {
+        da.mesh.visible = false;
+        da.mesh.material.opacity = 0;
+        da.mesh.geometry.setDrawRange(0, 0);
+      }
+      return false;
+    }
+    const positions = scratch.positions;
+    for (let vertex = 0; vertex < (scratch.indexCount / 6) * 4; vertex += 1) {
+      const offset = vertex * 3;
+      const local = this._toLocalXZ(positions[offset], positions[offset + 2], this._spawnLocalXZ);
+      positions[offset] = local.x;
+      positions[offset + 2] = local.z;
+    }
+    da.mesh.geometry.setDrawRange(0, scratch.indexCount);
+    da.mesh.geometry.attributes.position.needsUpdate = true;
+    da.mesh.geometry.attributes.color.needsUpdate = true;
+    da.mesh.material.opacity = Math.min(0.8, gain);
+    da.mesh.visible = true;
+    return true;
+  },
+
+  // -------------------------------------------------------------------------
+  // Apron floodlights (inf-apron-flood): the station's physical work lights over the dock
+  // apron — a rig pair at the berth mouth, taxi pools on the deck, a lit pad diamond over the
+  // berth. The holo-green approach lane is the dock's signage; these are its working lights,
+  // in the dock-sodium tint instead of green. The state read is the same docking proxy rows
+  // the cradle and beacons consume; the apron steps up while a corridor works and holds while
+  // berthed. One additive mesh, one draw call; deterministic off simTime; no lights created.
+  // -------------------------------------------------------------------------
+  _apronFlood: null,
+
+  _initApronFlood() {
+    if (!this._scene) return;
+    const scratch = createApronFloodGeometry();
+    const geo = new THREE.BufferGeometry();
+    const position = new THREE.BufferAttribute(scratch.positions, 3);
+    const color = new THREE.BufferAttribute(scratch.colors, 3);
+    position.usage = THREE.DynamicDrawUsage;
+    color.usage = THREE.DynamicDrawUsage;
+    geo.setAttribute('position', position);
+    geo.setAttribute('color', color);
+    geo.setIndex(new THREE.BufferAttribute(scratch.indices, 1));
+    geo.setDrawRange(0, 0);
+    const mat = new THREE.MeshBasicMaterial({
+      color: new THREE.Color(1.1, 1.1, 1.1),
+      vertexColors: true,
+      transparent: true,
+      opacity: 0,
+      depthWrite: false,
+      depthTest: true,
+      blending: THREE.AdditiveBlending,
+      side: THREE.DoubleSide,
+      forceSinglePass: true,
+      toneMapped: false,
+    });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.name = 'sf-apron-flood';
+    mesh.frustumCulled = false;
+    mesh.renderOrder = 6;
+    mesh.visible = false;
+    this._scene.add(mesh);
+    this._apronFlood = { mesh, scratch, layouts: new Map(), plan: {}, lastRows: null };
+  },
+
+  _updateApronFlood() {
+    const af = this._apronFlood || (this._initApronFlood(), this._apronFlood);
+    if (!af) return false;
+    const state = this.state;
+    const hasProjection = !!state && Object.prototype.hasOwnProperty.call(state, 'dockingPresentation');
+    const rows = hasProjection ? state.dockingPresentation?.rows : state?.physicsRuntime?.collisionProxies;
+    const readout = hasProjection ? state.dockingPresentation?.readout : state?.dockingCorridor;
+    const now = Number.isFinite(state && state.simTime) ? state.simTime : 0;
+    const reduced = !!(state && state.settings && state.settings.video && state.settings.video.motionReduce);
+    const gain = resolveVfxAccessibilityProfile(state && state.settings).flashOpacityScale;
+    if (rows !== af.lastRows) { af.layouts.clear(); af.lastRows = rows; }
+    const player = state && state.entities && state.entities.get(state.playerId);
+    const px = player && player.pos && Number.isFinite(player.pos.x) ? player.pos.x : NaN;
+    const pz = player && player.pos && Number.isFinite(player.pos.z) ? player.pos.z : NaN;
+    const scratch = af.scratch;
+    scratch.indexCount = 0;
+    let live = 0;
+    let base = 0;
+    const sectorMatches = !state.dockingPresentation || state.dockingPresentation.sectorId == null
+      || state.dockingPresentation.sectorId === state.world?.currentSectorId;
+    if (sectorMatches && Array.isArray(rows) && Number.isFinite(px) && Number.isFinite(pz)) {
+      const range2 = APRON_FLOOD_MAX_RANGE_WU * APRON_FLOOD_MAX_RANGE_WU;
+      for (let i = 0; i < rows.length && live < APRON_FLOOD_STATION_CAP; i++) {
+        const row = rows[i];
+        if (!row || row.stationId == null || !row.berth || !row.corridor || !row.pos) continue;
+        const dx = px - row.pos.x, dz = pz - row.pos.z;
+        if (dx * dx + dz * dz > range2) continue;
+        const liveStation = state.entities?.get?.(row.entityId);
+        if (row.entityId != null && (!liveStation || liveStation.alive === false
+          || (row.generation != null && liveStation.occupantGeneration !== row.generation))) continue;
+        let layout = af.layouts.get(row.stationId);
+        if (!layout || layout.row !== row || layout.x !== row.pos.x || layout.z !== row.pos.z
+          || layout.rot !== row.rot || layout.bearing !== row.corridorBearingDeg
+          || layout.bx !== row.berth.x || layout.bz !== row.berth.z
+          || layout.outer !== row.corridor.captureOuterRadius || layout.width !== row.corridor.captureHalfWidth) {
+          layout = { row, x: row.pos.x, z: row.pos.z, rot: row.rot, bearing: row.corridorBearingDeg,
+            bx: row.berth.x, bz: row.berth.z, outer: row.corridor.captureOuterRadius,
+            width: row.corridor.captureHalfWidth, data: buildApronFloodLayout(row, {}) };
+          af.layouts.set(row.stationId, layout);
+        }
+        if (!layout.data.live) continue;
+        const plan = resolveApronFloodPlan(row, readout, now, reduced, af.plan);
+        writeApronFloodGeometry(scratch, layout.data, plan, { gain, base });
+        base = scratch.indexCount / 6;
+        live += 1;
+      }
+    }
+    if (!(scratch.indexCount > 0)) {
+      if (af.mesh.visible) {
+        af.mesh.visible = false;
+        af.mesh.material.opacity = 0;
+        af.mesh.geometry.setDrawRange(0, 0);
+      }
+      return false;
+    }
+    const positions = scratch.positions;
+    for (let vertex = 0; vertex < (scratch.indexCount / 6) * 4; vertex += 1) {
+      const offset = vertex * 3;
+      const local = this._toLocalXZ(positions[offset], positions[offset + 2], this._spawnLocalXZ);
+      positions[offset] = local.x;
+      positions[offset + 2] = local.z;
+    }
+    af.mesh.geometry.setDrawRange(0, scratch.indexCount);
+    af.mesh.geometry.attributes.position.needsUpdate = true;
+    af.mesh.geometry.attributes.color.needsUpdate = true;
+    af.mesh.material.opacity = Math.min(0.85, gain);
+    af.mesh.visible = true;
+    return true;
+  },
+
+  // -------------------------------------------------------------------------
+  // Salvage work-lamp (inf-salvage-lamp): a wreck whose salvagePool still pays wears a slow
+  // amber work-lamp — the salvage crews' "worth a stop" convention — and a stripped husk goes
+  // dark. The truth read is `data.salvagePool`, the same live predicate aftermathWrecks and the
+  // beam consume. One additive mesh, one draw call; deterministic off simTime; no lights are
+  // created or toggled; the plan is pure (salvageLamp.js, headless-tested).
+  // -------------------------------------------------------------------------
+  _salvageLamp: null,
+  _salvageLampIdleCadence: 0,
+
+  _initSalvageLamp() {
+    if (!this._scene) return;
+    const scratch = createSalvageLampGeometry();
+    const geo = new THREE.BufferGeometry();
+    const position = new THREE.BufferAttribute(scratch.positions, 3);
+    const color = new THREE.BufferAttribute(scratch.colors, 3);
+    position.usage = THREE.DynamicDrawUsage;
+    color.usage = THREE.DynamicDrawUsage;
+    geo.setAttribute('position', position);
+    geo.setAttribute('color', color);
+    geo.setIndex(new THREE.BufferAttribute(scratch.indices, 1));
+    geo.setDrawRange(0, 0);
+    const mat = new THREE.MeshBasicMaterial({
+      color: new THREE.Color(1.1, 1.1, 1.1),
+      vertexColors: true,
+      transparent: true,
+      opacity: 0.62,
+      depthWrite: false,
+      depthTest: true,
+      blending: THREE.AdditiveBlending,
+      side: THREE.DoubleSide,
+      forceSinglePass: true,
+      toneMapped: false,
+    });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.name = 'sf-salvage-lamps';
+    mesh.frustumCulled = false;
+    mesh.renderOrder = 5;
+    mesh.visible = false;
+    this._scene.add(mesh);
+    this._salvageLamp = { mesh, scratch, idle: false };
+  },
+
+  _updateSalvageLamp(dt) {
+    const sl = this._salvageLamp || (this._initSalvageLamp(), this._salvageLamp);
+    if (!sl) return false;
+    const state = this.state;
+    const player = this.helpers && this.helpers.player ? this.helpers.player() : this._ent(state.playerId);
+    const px = player && player.pos && Number.isFinite(player.pos.x) ? player.pos.x : NaN;
+    const pz = player && player.pos && Number.isFinite(player.pos.z) ? player.pos.z : NaN;
+    if (!Number.isFinite(px) || !Number.isFinite(pz)) {
+      if (sl.mesh.visible) { sl.mesh.visible = false; sl.mesh.geometry.setDrawRange(0, 0); }
+      sl.idle = true;
+      return false;
+    }
+    // Idle watch: no paying wreck nearby re-checks on a slow cadence; a live lamp rewrites
+    // every frame so only light moves (the breath), never geometry.
+    this._salvageLampIdleCadence += Number.isFinite(dt) ? dt : 0;
+    if (sl.idle && this._salvageLampIdleCadence < 0.5) return sl.mesh.visible;
+    this._salvageLampIdleCadence = 0;
+    const simTime = Number.isFinite(state.simTime) ? state.simTime : 0;
+    const reduced = !!(state.settings && state.settings.video && state.settings.video.motionReduce);
+    const gain = resolveVfxAccessibilityProfile(state.settings).flashOpacityScale;
+    const scratch = sl.scratch;
+    scratch.indexCount = 0;
+    let live = 0;
+    let baseQuads = 0;
+    const range2 = SALVAGE_LAMP_MAX_RANGE_WU * SALVAGE_LAMP_MAX_RANGE_WU;
+    const wrecks = indexedTypeScan(state, 'wrecks');
+    for (let i = 0; i < wrecks.length && live < SALVAGE_LAMP_CAP; i++) {
+      const e = wrecks[i];
+      if (!e || e.alive === false || e.type !== 'wreck' || !e.pos) continue;
+      if (!salvageLampLive(e.data && e.data.salvagePool)) continue;
+      const dx = px - e.pos.x, dz = pz - e.pos.z;
+      if (dx * dx + dz * dz > range2) continue;
+      writeSalvageLampQuads(scratch, e.pos.x, e.pos.z,
+        salvageLampHalfWidthWu(e.radius),
+        salvageLampGlow01(e.id, simTime, reduced) * gain, baseQuads);
+      baseQuads = scratch.indexCount / 6;
+      live += 1;
+    }
+    sl.idle = live === 0;
+    if (!(scratch.indexCount > 0)) {
+      if (sl.mesh.visible) { sl.mesh.visible = false; sl.mesh.geometry.setDrawRange(0, 0); }
+      return false;
+    }
+    const positions = scratch.positions;
+    for (let vertex = 0; vertex < (scratch.indexCount / 6) * 4; vertex += 1) {
+      const offset = vertex * 3;
+      const local = this._toLocalXZ(positions[offset], positions[offset + 2], this._spawnLocalXZ);
+      positions[offset] = local.x;
+      positions[offset + 2] = local.z;
+    }
+    sl.mesh.geometry.setDrawRange(0, scratch.indexCount);
+    sl.mesh.geometry.attributes.position.needsUpdate = true;
+    sl.mesh.geometry.attributes.color.needsUpdate = true;
+    sl.mesh.material.opacity = Math.min(0.62, 0.62 * Math.max(0.3, gain));
+    sl.mesh.visible = true;
+    return true;
+  },
+
+  // -------------------------------------------------------------------------
+  // Engine wash (inf-engine-wash): a burning main drive stirring the dust off a surface it
+  // hangs over. The contact law lives in engineWash.js (pure, headless-tested); this adapter
+  // owns the walk: thrusting ships against the rock/station/wreck buckets, nearest surface
+  // wins, quantized sim-time slots gate the emission, and the pooled gas dust family carries
+  // the breath. Deterministic: no rng, no wall time, seeds hashed off ship id + slot.
+  // -------------------------------------------------------------------------
+  _engineWashSlots: null,
+  _engineWashContact: null,
+  _engineWashPayload: null,
+
+  _updateEngineWash() {
+    const gas = this._suppressBreakupGas ? null : this._gas;
+    const state = this.state;
+    if (!gas || !state || !state.entities || !state.entities.get) return false;
+    const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+    const slot = engineWashSlot(now);
+    // Candidates: ships whose plume is actually working. `_engineDriveFor` is the same read the
+    // nozzles draw with, so the wash can never burn harder than the bell it belongs to.
+    const ships = indexedShipLikeScan(state);
+    const candidates = this._engineWashCandidates || (this._engineWashCandidates = []);
+    candidates.length = 0;
+    for (const e of ships) {
+      if (!e || (e.type !== 'ship' && e.type !== 'drone') || e.alive === false
+        || !e.pos || !Number.isFinite(e.pos.x) || !Number.isFinite(e.pos.z)) continue;
+      if (e.id === state.playerId) {
+        if ((state.ui && state.ui.docked === true) || e.flags?.docked) continue;
+      } else if (e.flags?.docked || !npcPropulsionVisible(state, e, this._scene)) continue;
+      const drive = this._engineDriveFor(e, this._engineWashDriveScratch ||= {}).drive;
+      if (!(drive > 0.3)) continue; // below the resolver's own floor: skip the surface walk too
+      candidates.push(e);
+      if (candidates.length >= 8) break;
+    }
+    if (candidates.length === 0) return false;
+    const slots = this._engineWashSlots || (this._engineWashSlots = new Map());
+    if (slots.size > 48) slots.clear(); // bounded: an id churn burst resets the cadence book
+    const surfaces = this._engineWashSurface || (this._engineWashSurface = { pos: { x: 0, z: 0 }, radius: 0, kind: 'rock' });
+    const contact = this._engineWashContact || (this._engineWashContact = {});
+    const payload = this._engineWashPayload || (this._engineWashPayload = {});
+    let emitted = 0;
+    // One pass per surface bucket per frame: each thrusting ship tests the surfaces in range.
+    // Squared-distance rejects keep the common frame (ship far from everything) at a few hypots.
+    for (const bucketName of ['asteroids', 'stations', 'wrecks']) {
+      const bucket = indexedTypeScan(state, bucketName);
+      if (!Array.isArray(bucket)) continue;
+      for (let i = 0; i < bucket.length; i++) {
+        const surf = bucket[i];
+        if (!surf || surf.alive === false || !surf.pos
+          || !Number.isFinite(surf.pos.x) || !Number.isFinite(surf.pos.z)) continue;
+        const kind = surf.type === 'station' ? 'station'
+          : surf.type === 'wreck' ? 'wreck' : 'rock';
+        if (!ENGINE_WASH_SURFACE_KINDS.includes(kind)) continue;
+        const surfR = Math.max(2, Number(surf.radius) || 10);
+        for (let c = 0; c < candidates.length; c++) {
+          const ship = candidates[c];
+          const drive = this._engineDriveFor(ship, this._engineWashDriveScratch ||= {}).drive;
+          const dx = surf.pos.x - ship.pos.x, dz = surf.pos.z - ship.pos.z;
+          const range = ENGINE_WASH_RANGE_WU + ship.radius * 2;
+          if (dx * dx + dz * dz > range * range) continue;
+          surfaces.pos.x = surf.pos.x; surfaces.pos.z = surf.pos.z;
+          surfaces.radius = surfR; surfaces.kind = kind;
+          const wash = resolveEngineWashContact(ship, drive, surfaces, contact);
+          if (!wash.hit) continue;
+          const shipId = ship.id != null ? ship.id : c;
+          if (slots.get(shipId) === slot) continue; // this slot already washed
+          if (!shouldEmitEngineWash(drive, slot, shipId)) continue;
+          slots.set(shipId, slot);
+          engineWashEmitPayload(wash, shipId, slot, payload);
+          gas.emitFractureDust({
+            ...payload,
+            occluderX: surf.pos.x,
+            occluderY: 0,
+            occluderZ: surf.pos.z,
+            occluderRadius: surfR * 0.9,
+          });
+          emitted += 1;
+        }
+      }
+    }
+    return emitted > 0;
   },
 
   // -------------------------------------------------------------------------
@@ -9840,6 +10367,10 @@ export const vfx = {
     sub.masslineChainReadout = this._updateMasslineChainReadout(dt) ? 1 : 0;
     sub.monofilamentBlade = this._updateMonofilamentBlade() ? 1 : 0;
     sub.dockingCradle = this._updateDockingCradle(dt) ? 1 : 0;
+    sub.dockApproachBeacons = this._updateDockApproach() ? 1 : 0;
+    sub.apronFlood = this._updateApronFlood() ? 1 : 0;
+    sub.salvageLamp = this._updateSalvageLamp(dt) ? 1 : 0;
+    sub.engineWash = this._updateEngineWash() ? 1 : 0;
     sub.apexFlare = this._updateApexFlare(dt) ? 1 : 0;
     // Massline UVP: continuous tumble thrash puffs + spin ribbons while status_tumbling / drifting.
     this._updateTumbleBodyLanguageVfx(dt);

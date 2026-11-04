@@ -264,7 +264,7 @@ test('native field promotion with an active resource ledger cannot be eaten behi
   assert.equal(h.garden.data.gardenBiomass, 52);
 });
 
-test('real quiet-cache producer remains edible with its open owner record and after session restore forgets the return', () => {
+test('real quiet-cache producer remains edible with its open owner record and after legacy restore forgets the return', () => {
   for (const orphan of [false, true]) {
     const h = fixture('all-lost');
     const rec = h.gardenOwner._spawnDrop(h.state, h.state.understory, {
@@ -275,6 +275,7 @@ test('real quiet-cache producer remains edible with its open owner record and af
     body.pos = { x: h.player.pos.x + 40, z: h.player.pos.z };
     if (orphan) {
       const saved = JSON.parse(JSON.stringify(h.gardenOwner.serialize()));
+      delete saved.quietCaches; // Legacy saves have no payable work receipt.
       h.gardenOwner.deserialize(saved); h.bus.emit('save:loaded', {});
       h.gardenOwner.update(1 / 60, h.state);
       assert.equal(body.data.understoryResolved, true, 'existing orphan handling resolves the forgotten envelope');
@@ -337,6 +338,7 @@ test('quiet-cache exceptions reject bare tags, copied active rows, stale generat
       body.occupantGeneration = `${rec.gen}:replaced`;
     } else if (variant === 'duplicate-orphan') {
       const saved = JSON.parse(JSON.stringify(h.gardenOwner.serialize()));
+      delete saved.quietCaches;
       h.gardenOwner.deserialize(saved); h.bus.emit('save:loaded', {});
       h.gardenOwner.update(1 / 60, h.state);
       assert.equal(original.data.understoryResolved, true);

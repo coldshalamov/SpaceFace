@@ -39,7 +39,8 @@ test('mobile radar coordinates select the same contact at the actual compact fac
   const course = radarPingCourses(state)[0];
   const player = { x: 0, z: 0 };
   const point = projectRadarPoint(player, course.pos, 4000, MOBILE_RADAR_METRICS);
-  assert.equal(MOBILE_RADAR_METRICS.size, 116);
   assert.equal(radarDialCourse(state, player, 4000, MOBILE_RADAR_METRICS, point.x, point.y)?.targetEntityId, course.targetEntityId);
-  assert.equal(radarDialCourse(state, player, 4000, MOBILE_RADAR_METRICS, 110, 110), null);
+  const corner = MOBILE_RADAR_METRICS.size - 6;
+  assert.equal(radarDialCourse(state, player, 4000, MOBILE_RADAR_METRICS, corner, corner), null,
+    'a tap outside the native compact face selects no contact');
 });

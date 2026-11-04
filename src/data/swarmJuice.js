@@ -61,6 +61,7 @@ export function swarmChainTierIndex(tier) {
  *   SLUNG   — a body thrown into another hull
  *   MINED   — an explosive end (mine, charge, cookoff)
  *   SHREDDED — shot down, plain and loud
+ *   WASTED  — a burn or corrosive DoT ticked it down (attrition, never a gun kill)
  *   FRIENDLY FIRE — the room killed one of its own
  */
 export const SWARM_KILL_WORDS = Object.freeze({
@@ -69,6 +70,7 @@ export const SWARM_KILL_WORDS = Object.freeze({
   slung: 'SLUNG',
   mined: 'MINED',
   shredded: 'SHREDDED',
+  wasted: 'WASTED',
   friendlyFire: 'FRIENDLY FIRE',
   down: 'DOWN',
 });
@@ -87,31 +89,31 @@ export const SWARM_KILL_WORDS = Object.freeze({
 export const SWARM_ARENA_KILL_WORDS = Object.freeze({
   helios_core: Object.freeze({
     slammed: 'PRESSED', banked: 'CAROMED', slung: 'SHUNTED',
-    mined: 'COOKED', shredded: 'PUNCHED', down: 'SCRAPPED',
+    mined: 'COOKED', shredded: 'PUNCHED', wasted: 'TEMPERED', down: 'SCRAPPED',
   }),
   lagrange_crucible: Object.freeze({
     slammed: 'SPIKED', banked: 'PYLONED', slung: 'SLINGSHOT',
-    mined: 'DROWNED', shredded: 'PINNED', down: 'WELLED',
+    mined: 'DROWNED', shredded: 'PINNED', wasted: 'SOLDERED', down: 'WELLED',
   }),
   cinder_sluice: Object.freeze({
     slammed: 'ASHED', banked: 'SLUICED', slung: 'WASHED',
-    mined: 'BURNED', shredded: 'SCORED', down: 'DRIFTED',
+    mined: 'BURNED', shredded: 'SCORED', wasted: 'SINGED', down: 'DRIFTED',
   }),
   cryo_drift: Object.freeze({
     slammed: 'SHATTERED', banked: 'SKIDDED', slung: 'PLATED',
-    mined: 'ICED', shredded: 'CHIPPED', down: 'FROSTED',
+    mined: 'ICED', shredded: 'CHIPPED', wasted: 'THAWED', down: 'FROSTED',
   }),
   storm_lattice: Object.freeze({
     slammed: 'GROUNDED', banked: 'ARCED', slung: 'CIRCUITED',
-    mined: 'SHORTED', shredded: 'ZAPPED', down: 'FRIED',
+    mined: 'SHORTED', shredded: 'ZAPPED', wasted: 'SURGED', down: 'FRIED',
   }),
   asteroid_mill: Object.freeze({
     slammed: 'MILLED', banked: 'BELTED', slung: 'CRUSHED',
-    mined: 'BLASTED', shredded: 'GOUGED', down: 'GROUND',
+    mined: 'BLASTED', shredded: 'GOUGED', wasted: 'SLAGGED', down: 'GROUND',
   }),
   the_hive: Object.freeze({
     slammed: 'SWALLOWED', banked: 'WEBBED', slung: 'LASHED',
-    mined: 'DIGESTED', shredded: 'BITTEN', down: 'EATEN',
+    mined: 'DIGESTED', shredded: 'BITTEN', wasted: 'SCALDED', down: 'EATEN',
   }),
 });
 
@@ -124,14 +126,17 @@ function arenaKillWords(arenaId) {
 
 /**
  * `arenaId` names the live room (`run.arenaId`) so the same cause speaks that arena's word;
- * omit it (or pass a room with no table) for the generic vocabulary. Friendly fire always wins,
+ * omit it (or pass a room with no table) for the generic vocabulary. `killLabel` is the
+ * emitter's own end label (combat.killEndLabelFor — 'wasted' for a DoT end) and outranks the
+ * style family for the WORD only: the style read stays on `cause`. Friendly fire always wins,
  * in every room.
  */
 export function swarmKillCauseWord({
-  cause = null, surface = null, friendlyFire = false, arenaId = null,
+  cause = null, surface = null, friendlyFire = false, arenaId = null, killLabel = null,
 } = {}) {
   const words = arenaKillWords(arenaId);
   if (friendlyFire === true) return SWARM_KILL_WORDS.friendlyFire;
+  if (killLabel === 'wasted') return words.wasted;
   if (cause === 'terrain') {
     return surface === 'structure' ? words.banked : words.slammed;
   }

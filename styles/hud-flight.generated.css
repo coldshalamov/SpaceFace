@@ -3294,8 +3294,8 @@
     .sf-objarrow__mark-bloom { display:none; }
   }
   
-/* Fallback only until the HUD measures a safe band for the live voice/status lane. */
-:root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #alerts { transform:translateY(calc(124px + var(--sf-safe-top,0px))); }
+/* The mobile information lanes are viewport seats, not a translated desktop alert stack. */
+:root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #alerts { transform:none!important; }
 /* The law presenter shares the HUD's measured caption bands on mobile, outside the
    radar dock's flow. Long notices scroll inside the allocated band. */
 :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #ui-root > #sf-sector-law {
@@ -3307,9 +3307,16 @@
 }
 /* A critical notice may temporarily occupy the decorative teaching ghost's space. */
 :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #sf-touch-overlay.mf-notice-priority .mf-ghost { visibility:hidden; }
-/* Portrait receipts share the objective's left lane, not the radar caption's right lane.
-   Keep the existing bottom/cluster reservation and information semantics; critical receipts
-   can still wrap, while informational receipts retain their existing full-text announcement. */
+/* Expanded navigation owns this space; hidden task controls must not intercept radar taps. */
+:root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud:has(.sf-radar-wrap--expanded) :is(.sf-leftcontext,.sf-leftcontext *) {
+  visibility:hidden!important; pointer-events:none!important;
+}
+/* Expansion reparents the dial from the interactive right dock into #hud, whose children
+   default to pointer-through. A live navigation surface also survives informational receipt
+   yielding; Pause and Powers retain their own visibility/input ownership. */
+:root[data-sf-mobile="1"][data-sf-mobile-flight="1"]:not([data-sf-mobile-wheel="1"]) body:not(.ui-modal-open) #hud > .sf-radar-wrap--expanded {
+  pointer-events:auto!important; visibility:visible!important;
+}
 @media (orientation:portrait) and (max-width:959px) {
   /* The same Powers button joins Pause in the top navigation lane. Its old 110px side
      handle could not fit between the radar caption and the action cluster on short phones.
@@ -3341,35 +3348,31 @@
   :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #sf-touch-overlay .mf-speed { flex-wrap:wrap; row-gap:2px; }
   /* The two-line flight hint must clear the bottom safe edge on short portrait screens. */
   :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #sf-touch-overlay .mf-ghost-label { top:82px; }
-  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #toasts,
-  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"][data-sf-mobile-lefty="1"] #toasts {
-    left:calc(14px + var(--sf-safe-left,0px)); right:auto;
-    width:min(320px,calc(100vw - 26px - max(166px,var(--mf-cluster-w,196px) * .25) - var(--sf-safe-left,0px) - var(--sf-safe-right,0px)));
-  }
 }
 
-/* Actual phone-sized instruments: the canvas and SVG use the same 116px coordinate space. */
+/* One small task instrument and one radar: disclosure, rather than desktop prose at phone size. */
 @media (max-width:959px), (max-height:599px) {
-  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud { --sf-radar-size:116px; }
+  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud { --sf-radar-size:88px; }
   :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #sf-touch-overlay .mf-status { width:150px!important; gap:3px; }
   :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #sf-touch-overlay .mf-speed b { font-size:32px; }
   :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-rightdock {
     top:calc(112px + var(--sf-safe-top,0px))!important;
     right:calc(8px + var(--sf-safe-right,0px))!important;
-    bottom:auto!important; width:148px!important; align-items:flex-end;
+    bottom:auto!important; width:120px!important; align-items:flex-end;
     transform:none!important; max-height:none!important; overflow:visible!important;
   }
   :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-radar-wrap:not(.sf-radar-wrap--expanded) {
-    position:relative!important; inset:auto!important; width:148px!important;
+    position:relative!important; inset:auto!important; width:120px!important;
     --sf-kit-radar-rim:16px; transform:none!important; pointer-events:auto!important;
   }
   :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-radar-wrap:not(.sf-radar-wrap--expanded) .sf-radar {
-    width:116px!important; height:116px!important; overflow:visible;
+    width:88px!important; height:88px!important; overflow:visible;
   }
-  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-radar-wrap:not(.sf-radar-wrap--expanded) .sf-radar canvas { width:116px!important; height:116px!important; }
+  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-radar-wrap:not(.sf-radar-wrap--expanded) .sf-radar canvas { width:88px!important; height:88px!important; }
+  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-radar-wrap:not(.sf-radar-wrap--expanded) .sf-radar-orrery text { font-size:12px!important; }
   :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-radar-wrap--expanded .sf-radar { flex-shrink:0; }
   :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-radar-wrap--expanded .sf-radar canvas { width:290px!important; height:290px!important; }
-  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-radar-objective-key { font-size:12px!important; line-height:1.25; letter-spacing:normal; }
+  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-radar-objective-key { margin-top:12px!important; font-size:12px!important; line-height:1.25; letter-spacing:normal; overflow-wrap:anywhere; }
   :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-radar-wrap--expanded {
     position:fixed!important; top:calc(112px + var(--sf-safe-top,0px))!important;
     left:clamp(calc(8px + var(--sf-safe-left,0px)),calc(50vw - 179px),calc(100vw - 366px - var(--sf-safe-right,0px)))!important;
@@ -3381,20 +3384,24 @@
   :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud > .sf-leftcontext {
     top:calc(112px + var(--sf-safe-top,0px))!important;
     left:calc(8px + var(--sf-safe-left,0px))!important; bottom:auto!important;
-    width:min(205px,calc(100vw - 172px - var(--sf-safe-left,0px) - var(--sf-safe-right,0px)))!important;
+    width:min(320px,calc(100vw - 144px - var(--sf-safe-left,0px) - var(--sf-safe-right,0px)))!important;
     max-width:none!important; transform:none!important; overflow:visible!important; contain:style!important;
+    padding:0!important; border:0!important; background:none!important; box-shadow:none!important;
   }
   :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud > .sf-leftcontext > .sf-mission-tracker {
     box-sizing:border-box; width:100%; max-width:100%; padding:6px 8px!important;
-    contain:style!important; background:rgb(5 7 10 / .88)!important; overflow:visible;
+    contain:style!important; background:var(--dp-glass-flight,rgb(5 7 10 / .88))!important; overflow:visible;
+    border:1px solid var(--dp-line-faint,rgb(232 226 212 / .14)); border-radius:4px;
+    pointer-events:none!important;
   }
   :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-mission-tracker .sf-mt-dial { display:none!important; }
   :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-mission-tracker::before { display:none!important; }
   :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-mt-obj { display:none!important; }
   :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-mt-compact { display:block; font:500 14px/1.3 var(--dp-face-body,system-ui,sans-serif); color:var(--dp-ink,#e8e2d4); }
-  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-mt-compact-action { display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:3; overflow:hidden; overflow-wrap:anywhere; }
-  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-mt-compact-readings { white-space:pre-line; overflow-wrap:anywhere; color:var(--dp-lamp,#f2b950); }
-  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-mt-time { font-size:12px!important; line-height:1.3; }
+  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-mt-compact-action { height:2.6em; min-height:0; max-height:2.6em; padding-right:58px; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; overflow-wrap:anywhere; }
+  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-mt-compact-readings { margin-top:2px; white-space:pre-line; overflow-wrap:anywhere; color:var(--dp-lamp,#f2b950); font-size:13px; line-height:1.3; }
+  /* The full objective AND this tutorial caption already live in the existing Details panel. */
+  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-mt-time { display:none!important; }
   :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-mt-details-button, :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-mt-details-close,
   :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #race-tape .race-tape-options-trigger, :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #race-tape .race-tape-options-close {
     display:block!important; box-sizing:border-box; min-width:44px; min-height:44px; padding:6px 10px;
@@ -3420,9 +3427,10 @@
     white-space:pre-line; overflow-wrap:anywhere;
   }
   :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-mt-details-close { flex:none; align-self:flex-end; margin-bottom:8px; }
+  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-mt-details-button { position:absolute; top:6px; right:6px; width:54px; height:44px; padding:4px; }
   :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #race-tape[data-compact="true"] {
     position:absolute!important; top:-48px!important; right:0!important; left:auto!important; bottom:auto!important;
-    width:148px!important; padding:0!important; background:none!important; transform:none!important;
+    width:120px!important; padding:0!important; background:none!important; transform:none!important;
     display:block; overflow:visible!important;
   }
   :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #race-tape[data-compact="true"] .race-tape-options-trigger { width:100%; }
@@ -3434,12 +3442,62 @@
   }
   :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #race-tape[data-compact="true"] .race-tape-actions .k-word { min-height:44px; width:100%; text-align:left; font-size:12px; }
   :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #race-tape[data-compact="false"] :is(.race-tape-options-trigger,.race-tape-options-close) { display:none!important; }
+
+  /* Facts share one edge lane with the low-priority teaching voice. Never print both over the
+     ship. The receipt owner retains its queue, full announcements, counts, actions and expiry. */
+  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] body #hud #toasts,
+  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #alerts .sf-alert--floor.sf-alert--info {
+    position:fixed!important; left:calc(8px + var(--sf-safe-left,0px))!important; right:auto!important;
+    top:calc(208px + var(--sf-safe-top,0px))!important; bottom:auto!important;
+    width:min(320px,calc(100vw - 144px - var(--sf-safe-left,0px) - var(--sf-safe-right,0px)))!important;
+    box-sizing:border-box; transform:none!important; text-align:left!important;
+    font:400 13px/1.35 var(--dp-face-body,system-ui,sans-serif);
+  }
+  /* Important results wrap in full; a pointer-through feed must never require a hidden scroll. */
+  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] body #hud #toasts { max-height:none!important; overflow:visible!important; gap:5px; }
+  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #toasts .sf-toast { box-sizing:border-box; width:100%; max-width:100%; font:inherit; min-width:0; padding:3px 0; }
+  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #toasts .sf-toast__text { min-width:0; flex:1; }
+  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #toasts .sf-toast:not(.sf-toast--info) .sf-toast__text { white-space:normal; overflow:visible; text-overflow:clip; }
+  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #alerts .sf-alert--floor.sf-alert--info .sf-alert__text { display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; }
+  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"]:has(#toasts .sf-toast:not(.sf-toast--out)) #alerts .sf-alert--floor.sf-alert--info { visibility:hidden!important; }
+
+  /* The diamond stays on its body. Its words belong above the touch actions, not on top of
+     that body, a receipt, or the pilot's own ship. Inline display remains the live owner's. */
+  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #sf-ml2 .ml2-preview {
+    position:fixed!important; left:calc(8px + var(--sf-safe-left,0px))!important; right:auto!important;
+    top:auto!important; bottom:calc(196px + var(--sf-safe-bottom,0px))!important; transform:none!important;
+    box-sizing:border-box; width:max-content; max-width:min(280px,calc(100vw - 32px - var(--sf-safe-left,0px) - var(--sf-safe-right,0px)))!important;
+    white-space:normal!important; font-size:12px; line-height:1.35; letter-spacing:.03em;
+  }
+  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"][data-sf-mobile-lefty="1"] #sf-ml2 .ml2-preview { left:auto!important; right:calc(8px + var(--sf-safe-right,0px))!important; }
+}
+@media (max-height:599px) and (orientation:landscape) {
+  /* The left-hand wheel occupies the usual status seat. Put the existing status
+     above its mirrored tabs, beside (not under) Pause; the top row already owns
+     the viewport safe insets. The normal flight and right-hand seats stay put. */
+  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"][data-sf-mobile-lefty="1"][data-sf-mobile-wheel="1"] #sf-touch-overlay .mf-top > .mf-status {
+    position:absolute; left:auto; top:0;
+    right:calc(max(44px,52px * var(--mf-scale)) + 8px);
+  }
 }
 @media (max-height:500px) and (orientation:landscape) {
-  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #alerts { transform:none; }
   :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-radar-wrap--expanded { top:calc(8px + var(--sf-safe-top,0px))!important; max-height:calc(100dvh - 16px - var(--sf-safe-top,0px) - var(--sf-safe-bottom,0px)); }
   :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-rightdock { top:calc(95px + var(--sf-safe-top,0px))!important; right:calc(84px + var(--sf-safe-right,0px))!important; }
   :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud > .sf-leftcontext { top:calc(100px + var(--sf-safe-top,0px))!important; width:230px!important; }
+  /* Use landscape's width: results at the upper edge, context at the lower edge, with the
+     central ship between them. These seats also clear the mirrored left-hand action cluster. */
+  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] body #hud #toasts,
+  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #alerts .sf-alert--floor.sf-alert--info {
+    left:calc(176px + var(--sf-safe-left,0px))!important;
+    width:calc(100vw - 390px - var(--sf-safe-left,0px) - var(--sf-safe-right,0px))!important;
+    top:calc(10px + var(--sf-safe-top,0px))!important;
+  }
+  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #sf-ml2 .ml2-preview,
+  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"][data-sf-mobile-lefty="1"] #sf-ml2 .ml2-preview {
+    left:calc(176px + var(--sf-safe-left,0px))!important; right:auto!important;
+    bottom:calc(12px + var(--sf-safe-bottom,0px))!important;
+    max-width:calc(100vw - 390px - var(--sf-safe-left,0px) - var(--sf-safe-right,0px))!important;
+  }
   :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #race-tape[data-compact="true"] {
     top:-87px!important; right:auto!important;
     left:calc(400px - 100vw + var(--sf-safe-left,0px) + var(--sf-safe-right,0px))!important;
@@ -3453,11 +3511,6 @@
 @media (max-height:340px) and (orientation:landscape) {
   :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-rightdock { top:calc(78px + var(--sf-safe-top,0px))!important; }
   :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #race-tape[data-compact="true"] { top:-70px!important; }
-}
-@media (orientation:portrait) and (max-width:350px) {
-  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud > .sf-leftcontext { width:calc(100vw - 16px - var(--sf-safe-left,0px) - var(--sf-safe-right,0px))!important; }
-  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-rightdock { top:calc(270px + var(--sf-safe-top,0px))!important; }
-  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #race-tape[data-compact="true"] { top:-206px!important; }
 }
 
   

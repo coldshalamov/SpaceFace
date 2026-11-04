@@ -18,6 +18,7 @@
 
 import { BINDINGS } from './bindings.js';
 import { createPirateParleyPrompt } from './pirateParleyPrompt.js';
+import { createSpecial500InvoicePrompt } from './special500InvoicePrompt.js';
 import { createSectorLawPresenter } from './sectorLawPresenter.js';
 import { createSignalInvestigationPrompt } from './signalInvestigationPrompt.js';
 import { createRecoveryEncounterPrompt } from './recoveryEncounterPrompt.js';
@@ -305,6 +306,9 @@ export function createComms(ctx) {
   const signalInvestigationPrompt = createSignalInvestigationPrompt(ctx);
   const recoveryEncounterPrompt = createRecoveryEncounterPrompt(ctx);
   const contactHailPrompt = createContactHailPrompt(ctx);
+  // The special-500 invoice (SP2-044): the same adapter pattern — the sim leg owns the bill,
+  // the deck renders it, this module never prices or settles anything.
+  const special500InvoicePrompt = createSpecial500InvoicePrompt(ctx);
   const commsRadial = createCommsRadial(ctx);
   const endingEpilogue = createEndingEpilogue({
     ...ctx,
@@ -410,8 +414,14 @@ export function createComms(ctx) {
     body.textContent = p.text;
 
     entry.append(head, body);
-    // dismiss on click (the player learns to clear the migraine)
-    entry.addEventListener('click', () => dismissLive(rec));
+    // dismiss on click (the player learns to clear the migraine). A player dismissal is the
+    // attention stat SP2-188's channel reads — TTL sweeps and feed overflow are not attention.
+    entry.addEventListener('click', () => {
+      if (dismissLive(rec)) {
+        if (!state.ui) state.ui = {};
+        state.ui.commsDismissed = (state.ui.commsDismissed | 0) + 1;
+      }
+    });
     feed.prepend(entry);
 
     const rec = {
@@ -421,6 +431,10 @@ export function createComms(ctx) {
       ttl: p.persist ? Infinity : normalizeTtlMs(p.ttl), persist: !!p.persist,
     };
     live.unshift(rec);
+    // The channel's own counter of what it actually surfaced: SP2-188's run-end read needs a
+    // seen-count as well as the dismissal count, so "zero dismissed" cannot mean "nothing said".
+    if (!state.ui) state.ui = {};
+    state.ui.commsSeen = (state.ui.commsSeen | 0) + 1;
     recomputeNextSweep();
     backlog.unshift({ sender: rec.sender, text: rec.text, category: rec.category, note: rec.note, at: Date.now() });
     while (backlog.length > MAX_BACKLOG) backlog.pop();
@@ -432,13 +446,14 @@ export function createComms(ctx) {
   }
 
   function dismissLive(rec) {
-    if (!rec) return;
+    if (!rec) return false;
     const i = live.indexOf(rec);
     if (i >= 0) live.splice(i, 1);
     rec.el.classList.remove('sf-comm--in');
     rec.el.classList.add('sf-comm--out');
     setTimeout(() => { if (rec.el.parentNode) rec.el.parentNode.removeChild(rec.el); }, 220);
     recomputeNextSweep();
+    return i >= 0;
   }
 
   // Fade sweep called from tick(), but sleeps until a non-persistent line can fade or expire.

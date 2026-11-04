@@ -524,8 +524,29 @@ Implemented and focused-tested, wave 4 (INFERENCE 100 program — one commit eac
   (29a5dddde27f).
 Verified already deep, wave 4: station night-side lights (stationNightLights.js), muzzle flash
 per family (weaponImpactVfx consumes the classifier), projectile-side shield contacts
-(shieldContacts.js). Named next unit, needs a Lane 2 writer: docking beacons pre-approach
-(state.dockingCorridor.berth is null until engagement).
+(shieldContacts.js). Correction (wave 5 probe): the wave-4 docking-beacon note was stale —
+state.dockingCorridor publishes phase='approach' + berth at ALL distances and the cradle
+preview already fades in pre-approach; the real gap was station-side dressing, shipped below.
+
+Implemented and focused-tested, wave 5 (INFERENCE 100 program — one commit each, recorded in
+`design/program/inference-memory.json`):
+- inf-dock-approach-beacons (WF-11 integration): a docking station says where its dock is and
+  whether it is open — gate pair, inbound lane walk, threshold bar in the cradle's holo-green;
+  walking pulse while the corridor works, anti-collision double-flash on capture; reduced
+  motion stretches, never silences (10168f20ba5d).
+- inf-engine-wash (WF-12): a burning drive hanging over a rock, deck or wreck stirs that
+  surface's dust off its skin — contact under the plume path, breath downrange, strength
+  following throttle and height, tint naming the surface (3713cd0923d0).
+- inf-scar-skid (WF-12 repair): a lasting scar points the way the shot was travelling —
+  grazing fire smears into a gouge, dead-center keeps the round seat, stored hull-local so a
+  turning hull shows the hit's true bearing (4218ebd9d49f).
+- inf-scar-seats (WF-11 repair): a hull chewed on one spot grows one wound there — strikes
+  inside a kept seat widen and reheat it instead of spawning scattered identical pocks;
+  absorbed strikes never touch the scar-history book (5244ade5f3a7).
+Verified already deep, wave 5: Massline cable tension feedback (masslinePresentation.js —
+load swell, strain chatter, overload heat, parting ferrules, whip/reel glow at pixel numbers).
+Defect on this lane's paths, recorded: visualFactory.js animateStation pulses nav blinkers on
+wall clock, not sim time — frozen sims keep blinking (pre-existing; fix with next touching).
 
 ## Traps — measured and rejected; do not repeat
 

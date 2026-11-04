@@ -82,7 +82,10 @@ function aimPoint(state) {
   const fallback = ship && Number.isFinite(ship.rot) ? ship.rot : 0;
   const angle = Number.isFinite(input.aimAngle) ? input.aimAngle : fallback;
   const dist = 320;
-  return { x: pos.x + Math.sin(angle) * dist, z: pos.z + Math.cos(angle) * dist };
+  // The input owner's own convention (input.js mints aimAngle as atan2(dz, dx) and aims
+  // aimWorld with cos→x, sin→z, the same pairing every gun consumer uses): the lance paints
+  // THE aim point, not a quarter-turn off it.
+  return { x: pos.x + Math.cos(angle) * dist, z: pos.z + Math.sin(angle) * dist };
 }
 
 /**
@@ -331,7 +334,9 @@ export function createSwarmCallinsDirector(ctx) {
       const spec = makeShipEntitySpec(DECOY_SHIP_ID, {
         team: 0,
         factionId: 'faction_scn',
-        pos: { x: pos.x + Math.sin(angle) * 14, z: pos.z + Math.cos(angle) * 14 },
+        // The thrown lure drops ahead of the aim line, the same cos→x/sin→z pairing the
+        // input owner and every gun consumer share.
+        pos: { x: pos.x + Math.cos(angle) * 14, z: pos.z + Math.sin(angle) * 14 },
         ai: {
           archetype: 'guard',
           squadId: 'swarm_callin',

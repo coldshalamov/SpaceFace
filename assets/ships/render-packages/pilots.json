@@ -2947,6 +2947,27 @@
       "sceneRoot": true
     },
     {
+      "key": "hornet-scn-customs-cutter",
+      "assetId": "sf.render.hornet-scn-customs-cutter",
+      "runtimeAssetId": "SF_HORNET_SCN_CUSTOMS_CUTTER",
+      "kind": "ship",
+      "slot": "hull",
+      "releaseAssetId": "wholeship_hornet_scn_customs_cutter",
+      "sourceUrl": "assets/ships/release/parts/wholeships/hornet_scn_customs_cutter.glb",
+      "releaseSha256": "d35dd4f58e9bd528a736bd758a20bc2b53e686a7001e0d3eef739173ce8a5d56",
+      "releaseBytes": 782436,
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE",
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR"
+      ],
+      "outputDir": "assets/ships/release/render-packages/hornet-scn-customs-cutter",
+      "metadataUrl": "assets/ships/release/render-packages/hornet-scn-customs-cutter/render-package.json",
+      "sceneRoot": true
+    },
+    {
       "key": "hull-capital",
       "assetId": "sf.render.hull-capital",
       "runtimeAssetId": "SF_HULL_CAPITAL",

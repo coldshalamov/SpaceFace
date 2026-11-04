@@ -242,6 +242,15 @@ import { contractClausesSystem } from '../systems/contractClauses.js';
 import { moralTrapSystem } from '../systems/moralTrap.js';
 import { moralMemorySystem } from '../systems/moralMemory.js';
 import { special500Director } from '../systems/special500Director.js';
+import { special500Spectacle } from '../systems/special500Spectacle.js';
+import { special500Question } from '../systems/special500Question.js';
+import { special500Invoice } from '../systems/special500Invoice.js';
+import { special500PortraitBuoys } from '../systems/special500PortraitBuoys.js';
+import { special500Sommelier } from '../systems/special500Sommelier.js';
+import { special500DockLedger } from '../systems/special500DockLedger.js';   // batch 18 counter legs: the per-station dock counter
+import { special500HullLog } from '../systems/special500HullLog.js';         // batch 18 counter legs: the player-hull log
+import { special500ReadEverything } from '../systems/special500ReadEverything.js'; // batch 18 counter leg: SP2-188's run-end chain
+import { special500CollectiveHours } from '../systems/special500CollectiveHours.js'; // batch 18 counter leg: SP1-173's tally
 import { mail } from '../systems/mail.js';
 import { worldClock } from '../systems/worldClock.js';
 import { worldPressure } from '../systems/worldPressure.js';
@@ -548,6 +557,15 @@ export function getNodeSystemFactoryTable(options = {}) {
     ['moralTrapSystem', moralTrapSystem],
     ['moralMemory', moralMemorySystem],
     ['special500', special500Director],
+    ['special500Spectacle', special500Spectacle],
+    ['special500Question', special500Question],
+    ['special500Invoice', special500Invoice],
+    ['special500PortraitBuoys', special500PortraitBuoys],
+    ['special500Sommelier', special500Sommelier],
+    ['special500DockLedger', special500DockLedger],
+    ['special500HullLog', special500HullLog],
+    ['special500ReadEverything', special500ReadEverything],
+    ['special500CollectiveHours', special500CollectiveHours],
     ['mail', mail],
     ['worldClock', worldClock],
     ['worldPressure', worldPressure],

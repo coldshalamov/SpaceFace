@@ -47,7 +47,7 @@ import { orbitRing, ring as orrRing, hand as orrHand } from './orrery/instrument
 import { injectOrrery } from './orrery/tokens.js';
 import GLYPHS from '../../assets/ui/kit/assets/radar/radar-glyph-paths.json' with { type: 'json' };
 
-export const MOBILE_RADAR_METRICS = Object.freeze({ size: 116, center: 58, radius: 54 });
+export const MOBILE_RADAR_METRICS = Object.freeze({ size: 88, center: 44, radius: 40 });
 const COMPACT_SIZE = 208;
 const COMPACT_C = COMPACT_SIZE / 2;
 const COMPACT_R = 100;
@@ -1439,19 +1439,26 @@ function drawBackground(g, center, radius, { grid = true } = {}) {
 const FRAME_PAD = 26;
 function createRadarFrame(size, center, radius) {
   injectOrrery();
+  const phone = size === MOBILE_RADAR_METRICS.size;
+  const pad = phone ? 16 : FRAME_PAD;
   const root = orrSvg('svg', {
     class: 'orr-svg sf-radar-orrery',
-    viewBox: `${-FRAME_PAD} ${-FRAME_PAD} ${size + FRAME_PAD * 2} ${size + FRAME_PAD * 2}`,
+    viewBox: `${-pad} ${-pad} ${size + pad * 2} ${size + pad * 2}`,
     'aria-hidden': 'true',
   });
   const rim = orrRing({ cx: center, cy: center, r: radius + 1, tone: 'hi', width: 2.4, bloom: 10 });
   root.appendChild(rim);
   root.appendChild(orbitRing({ cx: center, cy: center, r: radius + 5, count: 72, major: 6, len: 3, majorLen: 7, tone: 'rest', drift: -2400, inward: false }).el);
-  root.appendChild(orrSvg('path', {
+  if (!phone) root.appendChild(orrSvg('path', {
     d: `M ${center - 4.5} ${center - radius - 13} L ${center} ${center - radius - 19} L ${center + 4.5} ${center - radius - 13}`,
     class: 'orr-core orr-hi', 'stroke-width': 1.2, fill: 'none',
   }));
-  const north = orrSvg('text', { x: center, y: center - radius - 22, 'text-anchor': 'middle', 'font-size': 12 });
+  const north = orrSvg('text', { x: center, y: center - radius - (phone ? 3 : 22), 'text-anchor': 'middle', 'font-size': 12 });
+  if (phone) {
+    north.setAttribute('paint-order', 'stroke');
+    north.setAttribute('stroke', 'var(--dp-void,#05070a)');
+    north.setAttribute('stroke-width', '3');
+  }
   north.textContent = 'N';
   root.appendChild(north);
   const objective = orrHand({ cx: center, cy: center, r0: radius - 18, r1: radius + 13, width: 1.5, pip: 4 });
@@ -1471,11 +1478,12 @@ function createRadarFrame(size, center, radius) {
   let hintNow = false;
   return {
     el: root,
+    pad,
     setRange(text) {
       if (text === rangeText) return;
       rangeText = text;
       if (rangeNode) rangeNode.remove();
-      rangeNode = circularText(center, center, radius + 19, `RANGE  ${text}`.toUpperCase(),
+      rangeNode = circularText(center, center, radius + (phone ? 12 : 19), `RANGE  ${text}`.toUpperCase(),
         { startDeg: 270, size: 12, className: 'orr-micro orr-micro--hi', anchor: 'middle', upright: true });
       root.appendChild(rangeNode);
     },
@@ -1599,7 +1607,7 @@ export function createRadar(ctx) {
     frame = createRadarFrame(configuredSize, configuredCenter, configuredRadius);
     // Inside the dial, sized in percent of it, so the frame tracks the dial through every responsive
     // size (208 / 172 / 132) and the expanded scope without a layout read.
-    const span = `${(((configuredSize + FRAME_PAD * 2) / configuredSize) * 100).toFixed(3)}%`;
+    const span = `${(((configuredSize + frame.pad * 2) / configuredSize) * 100).toFixed(3)}%`;
     frame.el.style.cssText = `position:absolute;left:50%;top:50%;width:${span};height:${span};transform:translate(-50%,-50%);pointer-events:none;overflow:visible;z-index:1;`;
     dial.appendChild(frame.el);
   }

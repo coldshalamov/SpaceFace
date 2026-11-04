@@ -668,6 +668,7 @@ function unwatchPauseNarrow() {
 
 function photoHintText() {
   // Esc is the modal-close key uiInput owns; inside photo it returns to this screen.
+  if (isPhoneLayout()) return 'Capture saves the photo · Close returns to Pause';
   return 'Esc to return · WASD pan · wheel zoom · Capture for the store page';
 }
 
@@ -870,17 +871,26 @@ export function syncPhotoFov(ctx, value) {
   return next;
 }
 
-function runPhotoCapture(ctx) {
-  const capture = capturePhotoPng(resolvePhotoCanvas(ctx), { kind: PHOTO_STORE_KIND });
-  return writePhotoCapture(capture, {
-    document: globalThis.document,
-    sfDesktop: globalThis.sfDesktop,
-    electronAPI: globalThis.electronAPI,
-    spaceface: globalThis.spaceface,
-    writeStorePage: ctx && ctx.writeStorePage,
-    publishStoreStill: ctx && ctx.publishStoreStill,
-    state: ctx && ctx.state,
-  });
+export async function runPhotoCapture(ctx, host = globalThis) {
+  const state = ctx && ctx.state;
+  const render = ctx?.registry?.get?.('render');
+  const canvas = resolvePhotoCanvas(ctx);
+  // Pause retains the last composited picture, but WebGL may discard its drawing buffer after
+  // presentation. Submit the current prepared scene and begin readback in the same task.
+  if (!state?.render?.photoMode?.active || !canvas || !render
+    || render.state !== state || render.renderer !== state.render.renderer || render.renderer?.domElement !== canvas
+    || typeof render.drawPreparedFrame !== 'function') return { ok: false, reason: 'no-frame' };
+  try {
+    if (render.drawPreparedFrame() !== true) return { ok: false, reason: 'no-frame' };
+    const capture = await capturePhotoPngAsync(canvas, { kind: PHOTO_STORE_KIND });
+    return writePhotoCapture(capture, {
+      document: host.document, sfDesktop: host.sfDesktop, electronAPI: host.electronAPI,
+      spaceface: host.spaceface, writeStorePage: ctx.writeStorePage,
+      publishStoreStill: ctx.publishStoreStill, state,
+    });
+  } catch {
+    return { ok: false, reason: 'capture-failed' };
+  }
 }
 
 function bindPhotoKeys(photoState) {
@@ -980,8 +990,11 @@ function enterPhoto(rootEl, ctx) {
   captureBtn.type = 'button';
   // The capture's result is a saved file off-page (a download or the desktop photo folder), and
   // photo mode hides the receipt rails — so the key itself names the outcome, then reverts.
-  captureBtn.addEventListener('click', () => {
-    const result = runPhotoCapture(ctx);
+  captureBtn.addEventListener('click', async () => {
+    if (captureBtn.disabled) return;
+    captureBtn.disabled = true;
+    const result = await runPhotoCapture(ctx);
+    captureBtn.disabled = false;
     if (photoCaptureAckTimer) clearTimeout(photoCaptureAckTimer);
     captureBtn.textContent = result && result.ok ? 'Captured' : 'No frame';
     photoCaptureAckTimer = setTimeout(() => {
@@ -999,17 +1012,21 @@ function enterPhoto(rootEl, ctx) {
   fovControl.appendChild(fov);
   bar.appendChild(fovControl);
   bar.appendChild(captureBtn);
-  // Seat the deck on the bottom frame. #screens flex-centres unpositioned children, which parked
-  // this bar mid-air over the subject the player is framing; the hint (k-fine) owns the bottom
-  // left, so the deck takes the bottom centre, one k-margin step above it. Seated without a
-  // transform — kit settle animates transform to none, so translateX centring would fight it.
+  const closeBtn = el('button', 'k-word k-word--fine fh-key fh-key--small', 'Close');
+  closeBtn.type = 'button';
+  closeBtn.setAttribute('aria-label', 'Close photo mode');
+  closeBtn.addEventListener('click', () => exitPhoto(rootEl, ctx));
+  bar.appendChild(closeBtn);
+  // The hint shares the deck's flow, so wrapped phone controls and 44px keys reserve their
+  // actual height instead of painting over an independently positioned bottom caption.
+  // Seat without a transform: kit settle animates transform back to none.
   bar.style.position = 'absolute';
-  bar.style.left = '0';
-  bar.style.right = '0';
+  bar.style.left = 'var(--sf-safe-left, 0px)';
+  bar.style.right = 'var(--sf-safe-right, 0px)';
   bar.style.width = 'fit-content';
   bar.style.marginInline = 'auto';
-  bar.style.bottom = 'var(--k-margin, 24px)';
-  host.appendChild(hint);
+  bar.style.bottom = 'calc(var(--k-margin, 24px) + var(--sf-safe-bottom, 0px))';
+  bar.appendChild(hint);
   host.appendChild(bar);
   settle(hint, { from: 'bottom', state: 'photo-hint' });
   settle(bar, { from: 'bottom', delay: 60, state: 'photo-bar' });

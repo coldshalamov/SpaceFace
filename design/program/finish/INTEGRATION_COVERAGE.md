@@ -6,7 +6,8 @@ or release verdict. The [Finish Program](./README.md) and three lane boards own 
 
 ## Current integration status and next work
 
-The controller's latest integrated candidate is `7273930710e2`. It includes actual cold-scenery
+The controller's latest gameplay source batch is `494b48608a7e`. Other authors continue landing
+work; this is a controller cut, not a freeze or a release verdict. It includes actual cold-scenery
 avoidance/visibility (`e177d76038a2`), remote-destination plotting (`53a901ed2d54`), commission chart
 and journal integration (`793587dfa662`), compact station controls (`a289d5cfa6ee`), three commission
 assembly, chain-kill activation, manual-course preservation, loading checkpoints and canonical audio.
@@ -22,9 +23,66 @@ Journal now selects commissions into its central dossier, preserving native miss
 Shared static geometry has explicit source/template/instance/preview/ghost lifetimes. The conservative
 Ashline factor candidate remains default off pending actual shader/look/frame qualification. The
 compatible updater/runtime/YAML dependency repair and its complete fake-shell checks pass; real
-signed-update acceptance remains separate. Preload and English inventory match source `9dc1ae142b5d`.
+signed-update acceptance remains separate. `2ba68f9d6aa4` separates pure site/radiator/drill-field
+readers from native simulation owners; 72 focused cases, independent review and a durable fresh-process
+import-boundary check pass. The production registry closure shrinks330123bytes; the total three-entry
+union grows1075bytes, so this is not a total-byte, phone-speed or frame-rate claim. Incoming scar
+capture now preserves the surface normal separately from skid direction; the actual production-method
+regression failed before repair and all eight scar checks pass. The separate managed/fallback skid
+upload repair passes ten focused cases. Bounded current-life docking projection, station-centered
+gate/dashes and visible undocked NPC wash are integrated; their actual gameplay look remains open.
+Last Shift's filed account and finite Compost cache/delivery identity now survive real cold saves
+in focused owner checks; the ordinary physical journeys remain open. Patrol/fine5bf repairs typed
+IDs, current-life hail and the real cold-Continue→re-arm→release brake lease, preserving foreign
+intents; the integrated22 focused checks pass. Shipping metadata `ab3d6f19a334` matches frozen494b:42main imports/1007preloads,
+16769 extracted entries and zero unresolved; bytes outside the managed index block are unchanged.
+These counts establish generated freshness, not translated-language completeness.
 Public deployment remains `89ddfe4830e2` at https://spaceface-play-demo.vercel.app/. These later
-source changes have not been published. Physical iPhone 14 play remains **UNKNOWN**.
+source changes after `fcc4491ac441` are not claimed pushed by this controller. A separate a704
+immutable production deployment is READY at
+https://spaceface-play-demo-mvkhvu5y2-robin-gattis-projects.vercel.app/ with no aliases assigned. Its
+entry, workers and sampled authored packages match the release receipt and pinned input. One WebKit
+New Game reaches flight in24.772s; Powers/Pause/Resume inputs and inner evaluations respond, unlike
+the earlier FCC stall. The retained maxTouchPoints0 capability mismatch fails the overall probe;
+Powers choices and Pause controls are absent from its captures despite accepted DOM/input checks.
+The paint/capture distinction is being diagnosed; no visual usability, physical-device success,
+causal fix or public promotion is claimed. Physical iPhone14 remains **UNKNOWN**.
+
+`945e1d8fb91c` connects the approved Customs cutter derivative through genuine Forge/source/release/
+motion/package/pilot/runtime registration. Matched chase/close images now show a broad pale armored
+forebody distinct from the existing blue patrol ship. Material/group/texture/socket/helper/bounds
+contracts are preserved; the LOD0 mesh adds960 triangles. Real native comparison finds identical
+geometry/mass/inertia for corresponding old/new art branches: NPC radius18/mass62, then the existing
+capture recompute to owned radius16/mass38, retained through cold Continue. Appearance survives
+capture, repaint through the actual paint-rack intent, switching and cold rematerialization; eight
+focused selector/lifecycle cases pass. Two census hints accidentally derived from foreign dirty
+enemy definitions are corrected to the committed input in `a4783e1e6cca`. No new native hull class,
+physics tuning or ordinary enemy encounter acceptance is claimed.
+
+The Weir review reproduced a second payout after cold save/reentry and loss of the unfinished
+physical lot. The subsequent custody review reproduced captured patrol/salvor deletion from saves
+and re-hostiling of a captured specialist. `24136b3fc449` connects the scene with those repairs:
+original task/cast continuation, once-only terminal consequences and canonical captured-body
+persistence. Seventeen focused checks pass against the actual committed source, with21 foreign
+dirty JS owners overlaid from that commit; ordinary scene flight/towing remains open.
+
+`ccbe486d21c0` connects the Cracker Run ring, fixes late ladder intrusion into reserved lanes and
+moves the Turn clear of existing approach chords. Production materialization/native Kestrel casts,
+saved worked-body preservation and fifteen selected checks pass. Three creative perspectives found
+the existing zero-force warning cone already reaches the pooled force presentation; its adequacy
+from the flown approach is unknown. No speculative new overlay or second phase clock was added.
+`9c1b136531e3` clears landscape left-handed Powers vitals from the wheel while retaining their
+size and Pause/tab access, including injected safe insets in the actual mounted component.
+
+`494b48608a7e` connects the six other authored encounter rows and fixes those integration defects.
+Memorial earned text survives world rebuild/Continue; Keeper reoffers remain actionable; Shadow
+Ring advances once per saved day; Tool Ledger keeps the original native wrench across a real cold
+envelope and finishes through the actual committed-dock publisher once. Eris now has a real chair
+and accepted free drink per bounded Bar visit, with immediate served feedback through existing
+worker comms; its wake uses the canonical five-day sector week and retains mission/services.
+Eighteen checks pass against committed source with foreign dirty JS owners overlaid. The actual
+phone/desktop Bar fixture was inspected; the later served label/lagged worker projection passed
+mounted CPU checks. Earned ordinary encounter journeys remain open.
 
 The actual frozen-53 Swarm run cleared six rounds, bought all four defensive devices and used the
 Runner's Bank Shot. It reached a living Kraken encounter in round seven, then stopped with player
@@ -56,7 +114,7 @@ this real resource repair is **not** established as the iPhone failure's cause.
 | Experience | Direct outcome | Remaining work |
 |---|---|---|
 | Adventure opening | Genuine Continue, chart Track, original47-A mining, earned assay and Helios handoff advance Book1 and pay400. Actual F5 after undocking succeeds; authored player hull visible. | Later campaign, first-hour polish and full-mode performance. |
-| Tethys and Cinderglass | Genuine six-alloy delivery pays600; cg:47:1 accepted without deposit. Seven surviving authored originals render after real NPC fire released the pod. Public beacon refresh now works across Dione, Track reaches the fix, and one ordinary Line tap attaches the original18t CG-7. Latest genuine attached/armed save tick354224 retains5389cr and real losses. Explicit Journal/prompt cradle autopilot uses the canonical positional course owner. | Full return tow, native receiver, result and Continue remain in progress. Destroyed latch appearance is not proven by seven-survivor readiness. No rewind, remint or hidden-position steering. |
+| Tethys and Cinderglass | Genuine six-alloy delivery600; cg:47:1 accepted without deposit. Public Dione beacon interception, ordinary original18t Line, continuous return tow and actual native Tala receiver succeed. Visible450 quote accepted; exactly450 settlement; genuine final save tick397738/5809CR/one composite cold-Continues closed/received without another payout. Original identity and real earlier losses retained. Corrected450CR/no-deposit-refund Journal words pass an ordinary visible scroll check. | Two same-pause art attempts produced identical pictures, accepting no visual improvement. Destroyed latch appearance is not proven by seven-survivor readiness. No rewind/remint/hidden-position steering; final balance is5809, not an inferred5839. |
 | Forge and workshop | Corrected ordinary approach/dock, lawful replacement purchases, two real refines and fabrication complete. Owned Deck Cargo Net S fitted in slot3 without Buy&Fit shortcut. Real F5/Continue retains5725cr,3refined,4silicate and fitted instance. Subsequent outbound journey reaches Tethys with genuine damage/cargo loss retained. | Temporary outbound slowdown's precise contact cause remains unknown; static egress fixture passes and no speculative fix was selected. No cargo rollback or grants. |
 | Breakwater | Open cradle, full-footprint support, original custody, finite freight and atomic receipts are integrated. Real native cooperative18t supply tow/Save/Continue/receiver/secondContinue passes with fixture charter/location admission. Bond/return words are truthful; bonded transit exposes the authored clear southeast receiving mark and course. | Full ordinary restore/tow/services/defense/bonded receiving and cold browser Continue. Native fixture is not earned whole-route proof. |
 | Counterweight | Seven physical events, real Hand/Line/native support, gates, scoring/PB and worker journal are connected. Remaining Split Decision/Moving Berth/Finale pilot-only native courses now complete after receiver friction and compact-hull containment fixes. Retry history is durable without score penalty. | All seven ordinary rendered courses, higher-medal tuning and gameplay-camera look remain open. Native fixtures are explicitly staged and do not establish ordinary progression. |
@@ -65,7 +123,7 @@ this real resource repair is **not** established as the iPhone failure's cause.
 | Screens/input | Compact Shipworks final controls, opaque Departure Check, short Contracts dossier, separated combat tells, chart/journal outcomes and actual touch movement have scoped checks. | Actual changed routes, missing content-specific duties, accessible/reduced-motion presentation, error/recovery and remaining mode surfaces. |
 | Audio and visual assets | Existing authored assets/material contracts retained; Circuit/Cinder transitions use canonical audio; Helios hero hull visibly reads. | Actual commission/boss/worksite looks, human sound audition, remaining placement and propulsion accessibility repairs. |
 | Localization | Extractor includes src/features. Composed Circuit/Cinder terms/receipts carry template/value metadata through actual DOM readers and locale switches; visible Counterweight encoding corrected. A legacy controller regenerated catalogs during integration. | Freeze final source, reconcile/generate/check catalogs against that commit, preserve proper names and fallback. Counts do not establish language completeness. |
-| Mobile | Loading deadline and bounded opt-in launch report survive interrupted/replaced documents. Preview resource ownership corrected separately. | Physical iPhone14 menu-to-play failure remains unidentified/unaccepted; no device bridge. Desktop Chromium/WebKit is not phone proof. |
+| Mobile | Immutable local source reaches actual New Game→47-A flight at390×664/DPR3 on Intel ANGLE in22.84s. Touch movement, Details, Pause/Resume and landscape controls pass. Ca1b actual radar collapse, Photo44px keys/flow and Close→heldPause→Resume pass both orientations. Root's image review found bright-scene key washout;8260 control deck passes the actual945 route. New immutablea704 WebKit reaches flight and responds to Powers/Pause/Resume; first control error is absent. | Physical iPhone14 remains unaccepted; no device bridge. a704 retains maxTouchPoints0 mismatch and missing captured Powers/Pause controls; paint/capture diagnosis is active. Intercept lacked actual damage/public-visible target; that cell remains UNKNOWN. Local handset Chromium and desktop WebKit are separate evidence. |
 
 The first Forge fix used a fixture that wrongly put the cold Hopper into the main entity list and
 missed the producer/query boundary. Its ordinary Continue still collided and lost cargo. The
@@ -76,14 +134,19 @@ revive the earlier false acceptance or restore lost iron to make the journey eas
 
 ## Performance and verification limits
 
-The current integrated source's baseline passes all17 assertion groups but **fails its90s wall
-budget**, taking188.433s with the normal four-job allowance (Massline188.431s). No checks, goldens
-or thresholds were weakened and no agent was stopped. This is not a baseline pass; the cause of the
-timing regression is unresolved and an unchanged repeat is not scheduled. The previous whole
-baseline was17/17 in57.175s at the normal four-job allowance and unchanged90s budget,
-on the46 integration batch. It does **not** cover all newer source. The earlier two-job run passed
-assertions but failed the budget; reduced child throughput was isolated without weakening checks,
-goldens or thresholds. Resolve a relevant timing cause before repeating the latest failed budget.
+The current shared checkout after494b and metadataab3 passes all17 baseline groups in74.832s
+with the normal four-job allowance and unchanged90s budget. The priorb25789.908s pass and188.433s
+budget failure remain archived. No checks, goldens or thresholds were weakened and no agent was
+stopped. These separate host samples do not establish a causal game-performance improvement.
+The committed-source18 focused encounter checks separately cover the integrated owner repairs;
+foreign WIP was present during the shared-tree baseline. No confidence rerun is scheduled.
+
+Actual paused Photo now pans/zooms/changes FOV and exposure0.6→1.95 while tick/time/player state
+stay held. A real1440×900 nonblack PNG passes after the exposure/final-render readback repair;
+transparent preview backdrop also passes. Actual touch Close returns to still-frozen Pause and
+Resume in both orientations. Ca1b fixes the subsequently observed button/hint flow and touch
+floor; that later source needs its targeted handset check. Unsupported default-bloom filters are
+hidden intentionally and have no filter acceptance claim.
 
 Current seeded wave15 simulation scout: p9549.099ms, mean33.149ms, host52.9%busy. The20ms floor and8ms
 target remain missed. This is not earned wave15 or quiet-host acceptance. Physics readback, AI sensor
@@ -91,6 +154,25 @@ batch and fields membership proposals were all rejected for lack of a supported 
 win; their exact changes were reverted and proposals retained. Native parity isolation found the
 first differing selected event was process-scoped attack-family identity; sampled state/RNG matched,
 so no gameplay rewrite was warranted.
+
+A later isolated native binding demonstrated a small toy bridge saving, then failed the actual
+production-owner comparison: command/prediction/readback work increased2.089→2.283ms/tick (+9.29%).
+Host busy fell66.24%→45.70%, confounding the aggregate simulation/solver improvement. All300 full
+native/state/contact/journal digests matched, including8115 impacts; correctness alone does not
+make the slower targeted work a useful optimization. The prototype remains artifact-only and is
+rejected for production. Scalar production and its observation contracts remain intact.
+
+The prepared AI cohort candidate also remains artifact-only and rejected: its single native pair
+increased targeted AI mean6.250→9.193ms and raw p9512.470→16.140ms. Simulation and entity/contact
+workloads changed as well, so this is not an isolated equal-work slowdown attribution. Sixty-one
+focused contracts and deterministic candidate replay passed, but no useful speedup was shown;
+scalar production is unchanged. No repeat is scheduled.
+
+The later direct PerceptionMemory sensor sink was also rejected after its single native ABBA.
+Total mean32.504→32.126ms and AI7.112→7.283ms/tick do not establish a material matched gain. Decisions,
+memory, impacts and RNG matched; full state/events differed across baselines too. The candidate
+was actually exercised, then removed by exact owned hashes, with its result archived. No unchanged
+repeat, performance promotion or unrelated rollback followed.
 
 The round7 ordinary sample records about21simulation ticks/s and7.8submitted frames/s, with median
 callback103ms/render83ms under a busy host. It is a material slowdown, not an isolated attribution.

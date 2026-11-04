@@ -7,6 +7,7 @@ import { cinderglassJobAdmit, cinderglassJobStepConvoy } from '../src/features/c
 import { cinderglassJobReleasePod, cinderglassJobReceiveQuote, nativeCinderglassAttachment } from '../src/features/cinderglassJob/custody.js';
 import { CINDERGLASS_JOB_POINTS as POINTS } from '../src/features/cinderglassJob/definition.js';
 import { latchWorld, cinderglassJobServiceGate } from '../src/features/cinderglassJob/interception.js';
+import { buildCinderglassJobView } from '../src/features/cinderglassJob/readModel.js';
 
 function inspectionFixture(t) {
   const c = t.body('carrierId'), delta = { x: POINTS.pullOff.x - c.pos.x, z: POINTS.pullOff.z - c.pos.z };
@@ -194,6 +195,32 @@ test('native broker receive requires explicit quote, intact original and real ca
   assert.equal(t.state.player.credits,5300);
 });
 
+test('Tala without a paid deposit publishes only its canonical payment, including an old saved paid sentence',async()=>{
+  const t=await candidateScene();
+  try {
+    await t.accept();
+    const facts=[]; t.bus.on('cinderglassJob:fact',f=>facts.push(f));
+    const q=receivingFixture(t,'tala');
+    assert.equal(q.baseCr,450); assert.equal(q.refundCr,0);
+    assert.equal(t.action('receiveTala',{quoteId:q.quoteId}).ok,true); t.step();
+    assert.equal(t.cg().settlement.creditedCr,450);
+    assert.equal(t.cg().depositPaid,false); assert.equal(t.cg().depositRefunded,false);
+    assert.equal(t.state.player.credits,5450);
+    const published=facts.find(f=>f.id==='paid');
+    assert.match(published.text,/450CR paid/);
+    assert.doesNotMatch(published.text,/deposit/i);
+    // The actual pre-fix save contains this historical sentence beside a truthful receipt.
+    const paid=t.cg().rememberedFacts.find(f=>f.id==='paid');
+    paid.text='Controller checks out. Papers settled — deposit back with the payment.';
+    const saved=t.sim.registry.get('save').serializeData(); t.restore(saved);
+    const settlement=structuredClone(t.cg().settlement), history=t.cg().rememberedFacts.find(f=>f.id==='paid').text;
+    const journal=buildCinderglassJobView(t.state).journal.facts.find(f=>f.id==='paid');
+    assert.match(journal.text,/450CR paid/); assert.doesNotMatch(journal.text,/deposit/i);
+    assert.equal(t.cg().rememberedFacts.find(f=>f.id==='paid').text,history,'projection preserves recorded history');
+    assert.deepEqual(t.cg().settlement,settlement); assert.equal(t.state.player.credits,5450);
+  } finally {t.sim.dispose();}
+});
+
 test('Tala accepted damaged original pays its quote and refunds only an actual committed deposit once',async()=>{
   const t=await candidateScene(); await t.accept(); inspectionFixture(t);
   assert.equal(t.action('propose').ok,true);
@@ -202,6 +229,10 @@ test('Tala accepted damaged original pays its quote and refunds only an actual c
   assert.equal(t.action('receiveTala',{quoteId:q.quoteId}).ok,true);
   assert.equal(t.cg().outcome.id,'returned_damaged'); assert.equal(t.cg().depositRefunded,true);
   assert.equal(t.state.player.credits,5300);
+  const paid=buildCinderglassJobView(t.state).journal.facts.find(f=>f.id==='paid');
+  assert.match(paid.text,/300CR for a damaged original/);
+  assert.match(paid.text,/paid 150CR inspection deposit returned/);
+  assert.doesNotMatch(paid.text,/450CR.*150CR/,'credited total is not described as base payment plus another refund');
   const saved=t.sim.registry.get('save').serializeData(); t.restore(saved);
   assert.equal(t.state.player.credits,5300); assert.equal(t.cg().depositRefunded,true);
   assert.equal(t.action('receiveTala',{quoteId:q.quoteId}).ok,false);

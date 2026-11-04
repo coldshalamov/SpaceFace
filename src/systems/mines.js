@@ -5,7 +5,9 @@
 // never direct hull writes or direct Rapier body mutation. Mines carry hull and are
 // shootable (counterplay: destroy before trigger). Telegraph uses cue 'wake_mines'.
 // A Massline throw stamps playerThrown so the mine becomes a grenade against the
-// pack that laid it.
+// pack that laid it. A mine the pilot's own field is moving turns the same way
+// (inf-plow-turn: playerPushed, armed on the spot, the player's credit) — the fence
+// the plow shoves into the pack does not stay loyal to the pack that laid it.
 //
 // Determinism: arm/trigger timers use state.simTime only; no Math.random / wall clock.
 import { scalarHitToDamagePacket, npcCrossfireAdmits } from '../combat/damage.js';
@@ -196,6 +198,8 @@ export const mines = {
         mine.alive = false;
         continue;
       }
+      // The pilot's field may turn this mine before anything else reads its allegiance.
+      this._turnPlayerPushedMine(state, mine, data, now);
       if (!data.armed) {
         if (now >= (data.armedAt || 0)) {
           data.armed = true;
@@ -210,6 +214,53 @@ export const mines = {
       this._triggerMine(state, mine, data, victim);
     }
   },
+
+  /**
+   * inf-plow-turn — the fence law's other half. The wake-corridor counterplay names
+   * "displace the fence with a field/blast" as a physical solution; the Massline throw
+   * already honors that custody (playerThrown → the mine trips on anyone and pays the
+   * player's credit). A mine the PILOT'S OWN FIELD is moving now turns the same way: the
+   * fields owner vouches for whose accepted force moved this body this tick, and when that
+   * force is the player's, the mine becomes the player's grenade — stamped, armed on the
+   * spot, one band line so the turn is readable. An NPC's field never turns an NPC's mine
+   * against its own pack.
+   */
+  _turnPlayerPushedMine(state, mine, data, now) {
+    if (data.playerThrown === true || data.playerPushed === true) return;
+    const playerId = state.playerId;
+    if (playerId == null || data.ownerId === playerId) return;
+    const fieldsSys = this.registry && typeof this.registry.get === 'function'
+      ? this.registry.get('fields') : null;
+    if (!fieldsSys || typeof fieldsSys.readAcceptedFieldOwnerIds !== 'function') return;
+    const owners = fieldsSys.readAcceptedFieldOwnerIds(mine);
+    if (!owners || !owners.some((owner) => String(owner) === String(playerId))) return;
+    data.playerPushed = true;
+    data.pushedAt = now;
+    data.pushedBy = playerId;
+    if (!data.armed) {
+      data.armed = true;
+      data.armedAt = now;
+      if (this.bus) this.bus.emit('mines:armed', { mineId: mine.id, ownerId: data.ownerId, pushed: true });
+    }
+    if (this.bus) {
+      this.bus.emit('mines:turned', {
+        mineId: mine.id,
+        ownerId: data.ownerId,
+        pushedBy: playerId,
+        pos: { x: mine.pos.x, z: mine.pos.z },
+      });
+      if (!data.turnTold) {
+        data.turnTold = true;
+        this.bus.emit('voice:say', {
+          channel: 'alert',
+          id: 'mine-turned',
+          text: 'Your field turned that mine — it trips on anyone now',
+          ttl: 2.5,
+        });
+      }
+    }
+  },
+
 
   _onThrown(payload) {
     const id = payload && payload.payloadId;
@@ -256,9 +307,13 @@ export const mines = {
     const mz = mine.pos.z;
     const ownerId = data.ownerId;
     const team = mine.team;
-    const thrown = data.playerThrown === true;
+    // Player custody (inf-plow-turn): a thrown OR field-turned mine trips on any hull — the
+    // short grace is the only kindness the pilot's own hull gets — while a mine still loyal
+    // to its layer keeps the owner/team IFF and the crossfire admission below.
+    const playerOrdnance = data.playerThrown === true || data.playerPushed === true;
     const now = state.simTime || 0;
-    const grace = thrown && (now - (Number(data.thrownAt) || 0) < MINE_THROW_GRACE_S);
+    const grace = playerOrdnance
+      && (now - (Number(data.playerThrown === true ? data.thrownAt : data.pushedAt) || 0)) < MINE_THROW_GRACE_S;
     const playerId = state.playerId;
     let best = null;
     let bestDistance = Infinity;
@@ -266,7 +321,7 @@ export const mines = {
     for (const e of source) {
       if (!e || !e.alive || e.id === mine.id) continue;
       if (!TRIGGER_TYPES.has(e.type)) continue;
-      if (thrown) {
+      if (playerOrdnance) {
         if (grace && e.id === playerId) continue;
       } else {
         if (e.id === ownerId) continue;
@@ -304,7 +359,9 @@ export const mines = {
     });
     // allowAnyTarget not required for ships; mines themselves use hull via projectile:hit path.
     const request = {
-      attackerId: data.playerThrown === true ? state.playerId
+      // A mine in the player's custody (thrown or field-turned) pays the player's credit;
+      // a loyal one stays its layer's ordnance.
+      attackerId: (data.playerThrown === true || data.playerPushed === true) ? state.playerId
         : data.ownerId != null ? data.ownerId : mine.id,
       targetId: victim.id,
       packet,

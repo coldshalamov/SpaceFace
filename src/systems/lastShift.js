@@ -367,6 +367,11 @@ export const lastShift = {
     }
     return 'towing';
   },
+  _filedAccount() {
+    const text = lastShiftReport(this._row.knownClueIds, this._row.destroyedClueIds);
+    return this._row.receipts.find(receipt => receipt.text === text
+      && JSON.stringify(receipt.clueIds) === JSON.stringify(this._row.knownClueIds));
+  },
   readout() {
     const gate = this._returnEligibility();
     return { siteId: C.siteId, revision: this._row.revision, clueIds: [...this._row.knownClueIds],
@@ -375,7 +380,7 @@ export const lastShift = {
       recoveryActive: this._row.recoveryActive === true, recoveryGuidance: this._recoveryGuidance(),
       canRecoverRecorder: this._row.knownClueIds.includes('recorder') && !!this._find('recorder')
         && !terminal.has(this._row.bodies.recorder?.status),
-      archiveFiled: this._row.receipts.some(receipt => receipt.id === `${C.siteId}:archive:r${this._row.revision}`),
+      archiveFiled: !!this._filedAccount(),
       recorderRecovery: this._recorderRecovery(gate),
       recorderReturned: !!this._row.recorderReturn };
   },
@@ -384,9 +389,11 @@ export const lastShift = {
     if (this._restoring || !this._row.knownClueIds.length) return { ok: false, reason: 'no_evidence' };
     if (expectedRevision != null && expectedRevision !== this._row.revision) return { ok: false, reason: 'evidence_changed' };
     const id = `${C.siteId}:archive:r${this._row.revision}`;
-    const prior = this._row.receipts.find(r => r.id === id);
+    // Custody changes advance the action revision but do not change the filed evidence.
+    // Compare the actual account so old saves and physical returns cannot republish it.
+    const prior = this._filedAccount();
     if (prior) {
-      this.bus.emit('toast', { text: `LAST SHIFT — this ${prior.clueIds.length}/3 source revision is already filed.`, kind: 'info', ttl: 3 });
+      this.bus.emit('toast', { text: `LAST SHIFT — this ${prior.clueIds.length}/3 source account is already filed.`, kind: 'info', ttl: 3 });
       return { ok: true, duplicate: true, receipt: clone(prior) };
     }
     const receipt = { id, revision: this._row.revision, clueIds: [...this._row.knownClueIds],
