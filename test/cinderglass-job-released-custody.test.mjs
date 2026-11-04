@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { candidateScene } from './cinderglass-job-fixture.mjs';
 import { makeShipEntitySpec } from '../src/systems/ships.js';
 import { CINDERGLASS_JOB_POINTS } from '../src/features/cinderglassJob/definition.js';
-import { cinderglassJobObserveCustody, nativeCinderglassAttachment } from '../src/features/cinderglassJob/custody.js';
+import { cinderglassJobObserveCustody, nativeCinderglassAttachment, nativeCinderglassPose } from '../src/features/cinderglassJob/custody.js';
 import { buildCinderglassJobView } from '../src/features/cinderglassJob/readModel.js';
 
 test('a real Line tracks the released same original without promoting initial cohort admission', async () => {
@@ -41,5 +41,43 @@ test('a real Line tracks the released same original without promoting initial co
     assert.equal(attachments.cut(made.attachment.id, t.player.id, 'player_cut').ok, true);
     cinderglassJobObserveCustody(t.sys, t.state);
     assert.equal(t.cg().custody, 'released'); assert.equal(t.cg().cohortAdmitted, false);
+  } finally { t.sim.dispose(); }
+});
+
+test('continuous Dione membership retains the original radio reply and accepted recovery Line', async () => {
+  const marshal = CINDERGLASS_JOB_POINTS.marshal;
+  const t = await candidateScene({ playerPos: { x: marshal.x - 120, z: marshal.z + 130 } });
+  try {
+    assert.equal(t.action('contact').ok, true);
+    assert.equal(t.action('accept', { offerEpoch: t.cg().offerEpoch }).ok, true);
+    t.step(4);
+    const pirate = t.sim.spawn(makeShipEntitySpec('ship_wasp', { team: 1, factionId: 'faction_pirate', pos: { x: 0, z: 0 } }));
+    const latch = t.body('latchId'), pod = t.body('podId');
+    t.sim.registry.get('combat').onHit({ targetId: latch.id, ownerId: pirate.id,
+      damage: 80, damageType: 'kinetic', pos: latch.pos });
+    t.step(2);
+    const identity = { id: pod.id, generation: pod.occupantGeneration };
+    // Exercise the actual membership producer with no body relocation or renderer receipt.
+    t.sim.registry.get('world').enterSector('sector_dione_lane', { continuous: true, noTeleport: true });
+    t.sys.update(1 / 60, t.state);
+    assert.equal(t.state.world.currentSectorId, 'sector_dione_lane');
+    assert.equal(t.state.world.residentSectors.sector_tethys_junction.tier, 'REDUCED');
+    assert.equal(t.body('podId'), pod); assert.ok(nativeCinderglassPose(t.sys, t.state, pod));
+    assert.equal(t.cg().phase, 'recovery'); assert.equal(t.cg().custody, 'released');
+    assert.equal(t.action('tuneBeacon', { revision: t.cg().promptRevision }).ok, true,
+      'an enabled same-original cargo radio remains available across membership boundaries');
+    assert.deepEqual(t.cg().beaconFix.pos, nativeCinderglassPose(t.sys, t.state, pod).pos);
+    const attachments = t.sim.registry.get('combat').kernel.attachments;
+    const made = attachments.create({ defId: 'tether_standard', ownerId: t.player.id, targetId: pod.id });
+    assert.equal(made.ok, true, made.reason); assert.ok(made.attachment.restLength < 390);
+    assert.ok(nativeCinderglassAttachment(t.sys, t.state, made.attachment));
+    t.sys.update(1 / 60, t.state);
+    assert.equal(t.cg().custody, 'tethered');
+    assert.equal(buildCinderglassJobView(t.state).navigation.find(m => m.id === 'cinderglassJob:pod')?.followId, pod.id);
+    assert.equal(t.cg().cohortAdmitted, false); assert.equal(t.sys._presentationReady, false);
+    assert.equal(t.cg().settlement, null); assert.equal(t.cg().receiveQuote, null);
+    assert.equal(t.cg().depositPaid, false); assert.equal(t.state.player.credits, 5000);
+    assert.deepEqual({ id: pod.id, generation: pod.occupantGeneration }, identity);
+    assert.equal(t.originalCount(), 1);
   } finally { t.sim.dispose(); }
 });

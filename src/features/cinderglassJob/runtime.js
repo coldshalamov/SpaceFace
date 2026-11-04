@@ -91,7 +91,15 @@ export const cinderglassJobSystem = {
       cinderglassJobApplyClosingMemory(this, state); cinderglassJobApplyConsequences(this, state);
       this._publishFacts(); this._publish(false); return;
     }
-    if (state.world?.currentSectorId !== CINDERGLASS_JOB_SECTOR_ID) { this._publish(false); return; }
+    if (state.world?.currentSectorId !== CINDERGLASS_JOB_SECTOR_ID) {
+      // A drifting original can cross ordinary sector membership. Its live native
+      // recovery Line remains a custody observation, without advancing convoy work.
+      if (st.phase === P.RECOVERY && nativeCinderglassPose(this, state, podEntity(this, state))) {
+        cinderglassJobObserveCustody(this, state);
+        this._publishApproachPrompts();
+      }
+      this._publish(false); return;
+    }
     if (st.phase === P.DISPATCH) {
       if (state.mode !== 'flight' || state.player?.docked || state.ui?.docked) { this._publish(false); return; }
       const admitted = cinderglassJobAdmit(this, state);
@@ -312,7 +320,6 @@ export const cinderglassJobSystem = {
     } else if (action === 'tuneBeacon') {
       if (p.revision !== st.promptRevision) return this._refuseAction(p, 'stale_beacon_view');
       if (st.outcome || st.phase !== P.RECOVERY || ![C.RELEASED, C.TETHERED].includes(st.custody)
-        || state.world?.currentSectorId !== CINDERGLASS_JOB_SECTOR_ID
         || state.entities?.get(state.playerId)?.alive !== true) return this._refuseAction(p, 'beacon_unavailable');
       const pod = podEntity(this, state);
       if (!cinderglassJobBodyMatches(pod, CINDERGLASS_JOB_ROLES.podId, st.operationId) || !(pod.hull > 0)) return this._refuseAction(p, 'beacon_no_original');
