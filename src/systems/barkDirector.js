@@ -15,6 +15,7 @@ import {
   lawResponseBarkFor,
   lawStepBarkFor,
   oreFloodBarkFor,
+  patrolInterventionHailFor,
   pursuitBarkFor,
   rivalScavengerLineFor,
   sectorGreetingBarkFor,
@@ -1225,16 +1226,16 @@ export const barkDirector = {
     return this._speakEventLine(witness, 'witness-crime', 'law:reportIncidentReceipt', lineFor, payload);
   },
 
-  // LAW-03 — a patrol that spawns to take the player's fight announces itself in the law's
-  // register: the arriving hull speaks its pursuit line at the attacker it was dispatched on.
+  // The encounter owner supplies the same truthful line to the log and the live voice.
   _speakLawIntervention(payload) {
     const state = this.state;
     const patrol = payload && payload.patrolId != null
       && state && state.entities && state.entities.get && state.entities.get(payload.patrolId);
     if (!patrol || patrol.alive === false) return false;
-    // No _speak fallback: the corpus always resolves, and a re-emitted event must not spend
-    // the hull's 'warn' situation on a moment it already announced.
-    return this._speakEventLine(patrol, 'law-intervention', 'encounter:patrolIntervened', pursuitBarkFor, payload);
+    const text = typeof payload.hailText === 'string' && payload.hailText
+      ? payload.hailText : patrolInterventionHailFor(null).lines[0].text;
+    return this._speakEventLine(patrol, 'law-intervention', 'encounter:patrolIntervened',
+      () => text, payload);
   },
 
   // FB-040 — the law's own receipts read back in the lawful register. Each event resolves a
@@ -1469,6 +1470,7 @@ export const barkDirector = {
     const state = this.state;
     const own = ensureState(state);
     const entityId = String(entity.id);
+    const speakerGeneration = entity.occupantGeneration;
     const rec = entityRecordFor(own, entityId, entity);
     if (rec.said[situation]) return false;
     const factionId = factionFor(entity);
@@ -1488,7 +1490,7 @@ export const barkDirector = {
       factionId,
       valid: () => {
         const e = state.entities && typeof state.entities.get === 'function' ? state.entities.get(entity.id) : null;
-        return !!e && e.alive !== false;
+        return e === entity && e.occupantGeneration === speakerGeneration && e.alive !== false;
       },
     });
     if (!accepted) return false;

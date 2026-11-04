@@ -72,6 +72,8 @@ import {
 } from '../data/encounters/planning.js';
 export { PURSUIT_RESOLVE_S, sectorSecurityOf };
 import { makeEnemySpawnSpec } from './combat.js';
+import { patrolJurisdictionFor } from '../data/factionContactGrammar.js';
+import { patrolInterventionHailFor } from '../data/barks.js';
 import {
   ENCOUNTER_REPETITION_DAY_SECONDS,
   ENCOUNTER_SHAPE_BUDGET_PER_HOUR,
@@ -3367,8 +3369,16 @@ export const encounterDirector = {
     const spawnX = ppos.x + bx * 420;
     const spawnZ = ppos.z + bz * 420;
 
+    // A zone is not jurisdiction by itself: live control must agree with its local role.
+    const sectorId = state.world && state.world.currentSectorId;
+    const local = globalToSectorLocalForSector(ppos, sectorId);
+    const zone = zoneAt(sectorId, local.x, local.z);
+    const jurisdiction = patrolJurisdictionFor(state, sectorId, zone);
+    // Retain the existing Concord responder where no local authority is established.
+    const responderFactionId = jurisdiction || 'faction_scn';
+
     const spec = makeEnemySpawnSpec('patrol_lawman', 4, { x: spawnX, z: spawnZ }, {
-      factionId: 'faction_scn',
+      factionId: responderFactionId,
       startedTick: state.tick,
       motive: 'jurisdiction_enforcement',
       engagementTrigger: 'security_response',
@@ -3404,14 +3414,23 @@ export const encounterDirector = {
     const spawned = spawnEntity(spec);
     if (!spawned) return false;
 
+    const hail = patrolInterventionHailFor(jurisdiction);
+    const seed = state.meta && state.meta.seed;
+    const hailLine = hail.lines[
+      Math.abs(hash32(seed == null ? 0 : seed, 'patrol-intervention-hail', attacker.id, now | 0)) % hail.lines.length
+    ]?.text || hail.lines[0].text;
     this.emit('comms:log', {
-      from: 'CONCORD PATROL',
-      text: 'Patrol Interceptor on scene. Hostile vessel, break off pursuit immediately!',
+      from: hail.name,
+      text: hailLine,
       kind: 'encounter',
     });
     this.emit('encounter:patrolIntervened', {
       patrolId: spawned.id,
       attackerId: attacker.id,
+      factionId: responderFactionId,
+      jurisdiction,
+      zoneId: zone ? zone.id : null,
+      hailText: hailLine,
       t: now,
     });
     return true;
