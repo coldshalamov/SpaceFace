@@ -203,6 +203,8 @@ export function refusalText(reason) {
   return ({ beacon_unavailable: 'The CG-7 cargo beacon cannot answer right now. The last fix has not changed.',
     beacon_no_original: 'The original CG-7 pod is not answering. The last fix has not changed.',
     stale_beacon_view: 'Open the current recovery entry and request a fresh fix.',
+    stale_recovery_view: 'Open the current recovery entry and choose the current action.',
+    recovery_course_unavailable: 'Attach the original CG-7 pod with your Line and undock before starting its tow.',
     too_fast: 'Too much relative speed. Match the Mule below 4 WU/s.',
     range: 'Move within reach of the external yellow latch.',
     obstructed: 'Solid hardware blocks access to the latch. Approach its exposed side.',

@@ -278,6 +278,7 @@ export const cinderglassJobSystem = {
       }
       choices.push({ id: 'tuneBeacon', label: st.beaconFix ? 'Request fresh CG-7 beacon fix' : 'Tune CG-7 cargo beacon' });
       if (st.beaconFix) choices.push({ id: 'track', markerId: 'cinderglassJob:pod', label: 'Track last CG-7 fix' });
+      if (st.custody === C.TETHERED && !st.receiveQuote) choices.push({ id: 'autopilotCradle', label: 'Autopilot to Tala cradle' });
     }
     if (choices.length && !st.serviceActive) choices.push({ id: 'leave', label: 'Leave this conversation' });
     const availability = JSON.stringify(choices);
@@ -316,6 +317,26 @@ export const cinderglassJobSystem = {
       if (!marker || !Number.isFinite(marker.pos?.x) || !Number.isFinite(marker.pos?.z)) return this._refuseAction(p, 'stale_marker');
       this.bus.emit('ui:setCourse', { pos: { ...marker.pos }, label: marker.label,
         targetEntityId: marker.followId ?? null, autopilot: false, arrivalRadius: 60, source: 'cinderglassJob' });
+      p.result = { ok: true };
+    } else if (action === 'autopilotCradle') {
+      if (p.revision !== st.promptRevision) return this._refuseAction(p, 'stale_recovery_view');
+      const player = state.entities?.get(state.playerId), pod = podEntity(this, state);
+      const line = pod && attachments(this)?.listForEntity(pod.id).find(a => a.state === 'active'
+        && a.ownerId === player?.id && a.targetId === pod.id
+        && a.ownerGeneration === player?.occupantGeneration && a.targetGeneration === pod.occupantGeneration
+        && nativeCinderglassAttachment(this, state, a));
+      const marker = state.cinderglassJobView?.navigation?.find(m => m.id === 'cinderglassJob:cradle');
+      if (st.outcome || st.phase !== P.RECOVERY || st.custody !== C.TETHERED
+        || player?.alive !== true || state.player?.docked || state.ui?.docked || !line
+        || !cinderglassJobBodyMatches(pod, CINDERGLASS_JOB_ROLES.podId, st.operationId) || !(pod.hull > 0)
+        || !nativeCinderglassPose(this, state, pod) || !nativeCinderglassPose(this, state, player)
+        || !marker || !Number.isFinite(marker.pos?.x) || !Number.isFinite(marker.pos?.z)) {
+        return this._refuseAction(p, 'recovery_course_unavailable');
+      }
+      // This explicit flight command uses the already public receiving fix. Track
+      // remains a preview; the ordinary course owner alone engages and flies it.
+      this.bus.emit('ui:setCourse', { pos: { ...marker.pos }, label: marker.label,
+        autopilot: true, arrivalRadius: 60, source: 'cinderglassJob' });
       p.result = { ok: true };
     } else if (action === 'tuneBeacon') {
       if (p.revision !== st.promptRevision) return this._refuseAction(p, 'stale_beacon_view');

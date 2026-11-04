@@ -116,6 +116,10 @@ export function buildCinderglassJobView(state) {
   view.recoveryActions = !st.outcome && st.phase === P.RECOVERY && [C.RELEASED, C.TETHERED].includes(st.custody)
     ? [{ id: 'tuneBeacon', label: st.beaconFix ? 'Request fresh CG-7 beacon fix' : 'Tune CG-7 cargo beacon',
       action: { action: 'tuneBeacon', token, operationId: view.operationId, revision: view.revision } }] : [];
+  if (!st.outcome && st.phase === P.RECOVERY && st.custody === C.TETHERED && !st.receiveQuote) {
+    view.recoveryActions.push({ id: 'autopilotCradle', label: 'Autopilot to Tala cradle',
+      action: { action: 'autopilotCradle', token, operationId: view.operationId, revision: view.revision } });
+  }
   if (st.everAdmitted && !state.cinderglassJobPresentationReady) {
     const bodies = [];
     for (const [key, role] of Object.entries(CINDERGLASS_JOB_ROLES)) {

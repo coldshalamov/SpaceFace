@@ -7,6 +7,7 @@ import { makeShipEntitySpec } from '../src/systems/ships.js';
 import { CINDERGLASS_JOB_POINTS } from '../src/features/cinderglassJob/definition.js';
 import { cinderglassJobObserveCustody, nativeCinderglassAttachment, nativeCinderglassPose } from '../src/features/cinderglassJob/custody.js';
 import { buildCinderglassJobView } from '../src/features/cinderglassJob/readModel.js';
+import { commissionEntries } from '../src/ui/screens/missionLog.js';
 
 test('a real Line tracks the released same original without promoting initial cohort admission', async () => {
   const marshal = CINDERGLASS_JOB_POINTS.marshal;
@@ -79,5 +80,25 @@ test('continuous Dione membership retains the original radio reply and accepted 
     assert.equal(t.cg().depositPaid, false); assert.equal(t.state.player.credits, 5000);
     assert.deepEqual({ id: pod.id, generation: pod.occupantGeneration }, identity);
     assert.equal(t.originalCount(), 1);
+    t.sys._publish();
+    assert.equal(t.action('track', { markerId: 'cinderglassJob:cradle' }).ok, true);
+    assert.equal(t.state.nav.autopilot.active, false, 'Track keeps its preview behavior');
+    const entry = commissionEntries(t.state).find(e => e.key === 'cinder');
+    const course = entry.actions.find(a => a.key === 'recovery:autopilotCradle');
+    assert.ok(course, 'the normal Journal adapter exposes the explicit recovery flight action');
+    const pose = nativeCinderglassPose(t.sys, t.state, pod);
+    const publicCradle = t.state.cinderglassJobView.navigation.find(m => m.id === 'cinderglassJob:cradle');
+    t.bus.emit(course.event, course.payload);
+    assert.equal(course.payload.result.ok, true);
+    assert.equal(t.state.nav.autopilot.active, true);
+    assert.deepEqual(t.state.nav.autopilot.target, publicCradle.pos);
+    assert.equal(t.state.nav.route, null, 'the canonical course owner arms continuous flight, not a jump');
+    assert.deepEqual(nativeCinderglassPose(t.sys, t.state, pod), pose, 'engagement cannot move the original');
+    assert.equal(attachments.get(made.attachment.id).state, 'active');
+    assert.equal(t.action('autopilotCradle', course.payload).reason, 'stale_recovery_view');
+    assert.equal(t.action('autopilotCradle', { revision: t.cg().promptRevision, token: 'old-life' }).reason, 'stale_life');
+    assert.equal(attachments.cut(made.attachment.id, t.player.id, 'player_cut').ok, true);
+    assert.equal(t.action('autopilotCradle', { revision: t.cg().promptRevision }).reason, 'recovery_course_unavailable',
+      'a stale tethered projection cannot start a tow without the real native Line');
   } finally { t.sim.dispose(); }
 });
