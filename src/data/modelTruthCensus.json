@@ -10205,8 +10205,8 @@
         "dockRadius": null,
         "entityRadius": 18,
         "proportions": {
-          "halfWidth": 0.37,
-          "height": 0.54,
+          "halfWidth": 0.77,
+          "height": 0.25,
           "length": 1.72
         },
         "sizes": null
