@@ -5,6 +5,7 @@ import { writePhysicsControl } from '../core/physicsAuthority.js';
 import { isAssignedFleetBody, isBlackFlagAdventure, SHIPJACK_HANDOFF_RANGE_WU } from '../shipjack/model.js';
 import { MODULES } from '../data/modules.js';
 import { WEAPONS } from '../data/weapons.js';
+import { normalizeShipAppearance } from '../core/shipAppearance.js';
 
 const TRANSFER_CAP = 1024; // Terminal keys never evict: saturation fails closed, never replays.
 const SAFE_ID = /^[A-Za-z0-9_:.\-]{1,128}$/;
@@ -22,7 +23,9 @@ function planAdmission(owner, to, vesselId) {
   const owned = admitted ? {
     defId: def.id, vesselId, fittings: (to.data.fittings || []).slice(),
     fittedInstances: to.data.fittedInstances ? structuredClone(to.data.fittedInstances) : {},
-    appearance: to.data.appearance ? structuredClone(to.data.appearance) : undefined,
+    appearance: def.id === 'ship_hornet' && to.data.lootTableId === 'customs_cutter'
+      ? normalizeShipAppearance({ ...to.data.appearance, variantId: 'customs_cutter' }, def.id)
+      : to.data.appearance ? structuredClone(to.data.appearance) : undefined,
     livingHull: to.data.livingHull ? structuredClone(to.data.livingHull) : undefined,
     name: String(to.data.shipName || to.data.name || '').slice(0, 48),
     shipjackProvisional: true, shipjackNoLegacyWeapon: true,
@@ -86,6 +89,7 @@ export function admitCapturedVessel(owner, request = {}) {
     const releaseActivityControl = owner.helpers?.aiManeuver?.captureActivity?.(to);
     p.ownedShips.push(plan.owned);
     to.data.fittedInstances = plan.owned.fittedInstances;
+    if (plan.owned.appearance) to.data.appearance = normalizeShipAppearance(plan.owned.appearance, plan.owned.defId);
     if (plan.owned.cargo) to.data.cargo = plan.owned.cargo;
     to.flags ||= {}; to.flags.persistent = true;
     releaseFreightControl?.();
@@ -175,6 +179,7 @@ export function captureAndTransfer(owner, request = {}) {
   to.data.shipjackParked = false;
   to.data.combat = { targetId: null, lockTarget: null, lockProgress: 0 };
   to.data.fittedInstances = owned.fittedInstances;
+  if (owned.appearance) to.data.appearance = normalizeShipAppearance(owned.appearance, owned.defId);
   delete to.data.cargo; // Cargo now has exactly one canonical owned/live hold.
   state.playerId = to.id;
   p.activeShipIndex = index;

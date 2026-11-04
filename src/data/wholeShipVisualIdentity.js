@@ -156,7 +156,8 @@ function packagedLiveWholeShipFile(file) {
 // S6 faction hulls: palette + lit-trim variants of the hull the enemy already renders (same
 // geometry, collider fit and sockets; tools/blender/forge/variant.py). Enemy-id keyed on purpose:
 // the live entity's factionId is whatever zone or encounter fielded it, the enemy id is not.
-//   patrol_lawman, customs_cutter  Concord navy Hornet interdictor (was the player's yellow Hornet)
+//   patrol_lawman                 Concord navy Hornet interdictor
+//   customs_cutter                Concord Hornet with an armored pale forebody
 //   quiet_ghost                    The Quiet's ink-violet Wasp (lancer_sniper and the pirate Wasp stay put)
 //   choir_zealot                   Ascendant Choir plum/magenta dart (the Reach dart keeps its sodium)
 //   warden_escort                  Vael teal lode (the Reach bruisers keep the oxide lode)
@@ -166,7 +167,7 @@ const WHOLE_SHIP_FILE_BY_HOSTILE_ID = Object.freeze({
   lancer_sniper: 'wholeships/wasp_production_v1.glb',
   quiet_ghost: 'wholeships/wasp_quiet_ghost.glb',
   patrol_lawman: 'wholeships/hornet_scn_interdictor.glb',
-  customs_cutter: 'wholeships/hornet_scn_interdictor.glb',
+  customs_cutter: 'wholeships/hornet_scn_customs_cutter.glb',
   warden_escort: 'wholeships/swarm_warden.glb',
   bruiser_brawler: 'wholeships/ashline_lode.glb',
   pd_screen_escort: 'wholeships/ashline_lode.glb',
@@ -183,7 +184,7 @@ const WHOLE_SHIP_ASSET_ID_BY_HOSTILE_ID = Object.freeze({
   lancer_sniper: 'SF_WASP_PRODUCTION_V1',
   quiet_ghost: 'SF_WASP_QUIET_GHOST',
   patrol_lawman: 'SF_HORNET_SCN_INTERDICTOR',
-  customs_cutter: 'SF_HORNET_SCN_INTERDICTOR',
+  customs_cutter: 'SF_HORNET_SCN_CUSTOMS_CUTTER',
   warden_escort: 'SF_SWARM_WARDEN',
   bruiser_brawler: 'SF_WHOLESHIP_ASHLINE_LODE',
   pd_screen_escort: 'SF_WHOLESHIP_ASHLINE_LODE',
@@ -426,7 +427,17 @@ function applyFactionWholeShipKit(entity, selection) {
 /** Select ordinary families only; callers own any special-actor precedence. */
 export function ordinaryWholeShipVisualForEntity(entity, options = {}) {
   const data = entity && entity.data || {};
-  const hostileId = String(data.lootTableId || '');
+  // A captured cutter carries its authored identity as owned appearance. The
+  // package-live gate still decides whether this body is safe to admit.
+  if ((data.defId || data.hullDefId) === 'ship_hornet'
+      && data.appearance?.variantId === 'customs_cutter') {
+    return liveWholeShipSelection('wholeships/hornet_scn_customs_cutter.glb',
+      'SF_HORNET_SCN_CUSTOMS_CUTTER', 'customs_cutter');
+  }
+  // Switching the piloted entity to another owned hull can retain the former
+  // cutter's loot tag. Its current hull, not that historical tag, owns the look.
+  const hostileId = entity?.isPlayer === true && data.lootTableId === 'customs_cutter'
+    ? '' : String(data.lootTableId || '');
   const hostileFile = WHOLE_SHIP_FILE_BY_HOSTILE_ID[hostileId];
   if (hostileFile) {
     return applyFactionWholeShipKit(entity, liveWholeShipSelection(

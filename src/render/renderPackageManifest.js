@@ -1605,6 +1605,16 @@ const PILOTS = [
     "sourceUrl": "assets/ships/release/parts/wholeships/hornet_scn_interdictor.glb"
   },
   {
+    "assetId": "sf.render.hornet-scn-customs-cutter",
+    "expectedContentHash": "8fbe4870d59fb97bcac71ce8df81724790b664b9b7ddb0446a017f00c8c211ed",
+    "key": "hornet-scn-customs-cutter",
+    "metadataUrl": "assets/ships/release/render-packages/hornet-scn-customs-cutter/render-package.json",
+    "runtimeAssetId": "SF_HORNET_SCN_CUSTOMS_CUTTER",
+    "slot": "hull",
+    "sourceSha256": "d35dd4f58e9bd528a736bd758a20bc2b53e686a7001e0d3eef739173ce8a5d56",
+    "sourceUrl": "assets/ships/release/parts/wholeships/hornet_scn_customs_cutter.glb"
+  },
+  {
     "assetId": "sf.render.hull-capital",
     "expectedContentHash": "267d56ade7cbb1e40b4ca0c0343b6e770758a98a2c6f68c3d956df0bae40bc0c",
     "key": "hull-capital",

@@ -518,7 +518,8 @@ export const shipjack = {
     const b=v.parkedBody || {},dt=Math.min(60,Math.max(0,now(this.state)-v.location.at));
     const pos=sectorLocalToGlobalForSector({x:v.location.pos.x+v.location.vel.x*dt,z:v.location.pos.z+v.location.vel.z*dt},v.location.sectorId);
     const pilot=this.state.entities.get(this.state.playerId);if(pilot&&Math.hypot(pos.x-pilot.pos.x,pos.z-pilot.pos.z)<80){pos.x+=100;}
-    const spec=makeShipEntitySpec(v.defId,{team:v.custodian==='player'?0:2,fittings:b.fittings || this.state.player.ownedShips?.find(s=>s.vesselId===v.vesselId)?.fittings || [],pos,rot:v.location.rot});
+    const owned=this.state.player.ownedShips?.find(s=>s.vesselId===v.vesselId);
+    const spec=makeShipEntitySpec(v.defId,{team:v.custodian==='player'?0:2,fittings:b.fittings || owned?.fittings || [],appearance:owned?.appearance,pos,rot:v.location.rot});
     Object.assign(spec,{vel:vec(v.location.vel),angVel:v.location.angVel,hull:b.hull ?? spec.hull*v.condition.hull,armorHp:b.armorHp ?? spec.armorHp,shield:b.shield ?? 0,cap:b.cap ?? spec.cap});
     Object.assign(spec.data,{vesselId:v.vesselId,shipjackGeneration:v.generation,persistenceOwner:'shipjack',shipjackParked:v.custodian==='player',name:v.name,shipjackUncrewed:v.crewSafe || v.crew==='evacuated'});spec.flags={...spec.flags,persistent:true};
     if(v.location.sectorId!=null){spec.homeSectorId=v.location.sectorId;spec.data.homeSectorId=v.location.sectorId;spec.data.sectorId=v.location.sectorId;}
