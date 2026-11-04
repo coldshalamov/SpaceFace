@@ -38,6 +38,7 @@ import {
   BOMB_STATUS_LOOP_PREFIX,
 } from './bombAudio.js';
 import { bindFieldAudio, isFieldLoopKey } from './fieldAudio.js';
+import { bindCommissionCues } from './commissionCues.js';
 import { resolveMasslineInstrument, resolveTetherTone } from './masslineInstrument.js';
 import { tetherBreakCueForReason } from '../systems/presentationOrchestrator.js';
 import { postTaskAtBackgroundPriorityBounded } from '../core/backgroundPost.js';
@@ -955,6 +956,11 @@ export function arbitrateCommsLine(input = {}) {
 export function incomeVoices(event, payload) {
   if (event === 'credits:changed') {
     if (!payload || !(Number(payload.delta) > 0)) return [];
+    // The commission owners forward these accepted receipts through audio:cue
+    // so worker and main use the same one cash voice, not two on main.
+    const reason = String(payload.reason || '');
+    if (reason.startsWith('counterweight:first-completion:')
+      || (reason.startsWith('cinderglass:cg:') && reason.endsWith(':settlement'))) return [];
     if (String(payload.reason || '').startsWith('trade')) return [];
     return ['sfx_cash_register'];
   }
@@ -2587,6 +2593,7 @@ export const audio = {
   name: 'audio',
 
   init(ctx) {
+    this.rt?._commissionCueDispose?.();
     this.state = ctx.state;
     this.bus = ctx.bus;
     this.helpers = ctx.helpers;
@@ -2751,6 +2758,8 @@ export const audio = {
     this.rt = rt;
 
     const bus = this.bus;
+    rt._commissionCueDispose?.();
+    rt._commissionCueDispose = bindCommissionCues(this, bus);
     bus.on('scan:shipRevealed', (p) => this._noteAnomalyCandidate(p));
     bus.on('scan:wreckRevealed', (p) => this._noteAnomalyCandidate(p));
 
@@ -3428,6 +3437,8 @@ export const audio = {
     }
     this._gestureHandler = null;
     rt._trailerScoreDispose?.();
+    rt._commissionCueDispose?.();
+    rt._commissionCueDispose = null;
     this._unbindOutputDeviceFollow();
     this._teardownMine();
     if (rt.bandBed && typeof rt.bandBed.destroy === 'function') rt.bandBed.destroy();

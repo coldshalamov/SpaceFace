@@ -37,11 +37,13 @@ export function mountCinderglassJobContracts(ctx, host) {
   }
   function frame(state = ctx.state) {
     if (disposed) return;
-    const view = eventView || state.cinderglassJobView;
+    // The worker-owned snapshot is applied before bridged events. A cached
+    // event can outlive a newer eligibility/restore snapshot while docked.
+    const view = state.cinderglassJobView || eventView;
     const visible = state.ui?.dockedStationId === CINDERGLASS_JOB_STATION_ID && !!view?.contacts?.length;
     panel.hidden = !visible;
     if (!visible) return;
-    const offer = view.offer || eventOffer;
+    const offer = view.offer || (eventOffer?.token === view.token ? eventOffer : null);
     const next = JSON.stringify([view.token, view.contacts, view.journal, view.navigation, offer,
       view.refusal, [...consumed]]);
     if (signature === next) return;
@@ -73,7 +75,14 @@ export function mountCinderglassJobContracts(ctx, host) {
   for (const event of ['cinderglassJob:offer', 'cinderglassJob:close', 'cinderglassJob:refused']) {
     off.push(ctx.bus.on(event, p => { eventOffer = event === 'cinderglassJob:offer' ? p : null; signature = ''; frame(ctx.state); }));
   }
-  off.push(ctx.bus.on('cinderglassJob:view', view => { eventView = view; signature = ''; frame(ctx.state); }));
+  off.push(ctx.bus.on('cinderglassJob:view', view => {
+    const current = ctx.state?.cinderglassJobView;
+    if (current && view?.token !== current.token) return;
+    // Main-side/no-mirror callers may still emit a complete view. The worker
+    // emits only a wakeup after applying its authoritative snapshot.
+    if (Array.isArray(view?.contacts)) eventView = view;
+    signature = ''; frame(ctx.state);
+  }));
   frame();
   return { frame, destroy() { if (disposed) return; disposed = true; for (const remove of off) remove?.(); panel.remove(); } };
 }

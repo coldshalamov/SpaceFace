@@ -10,6 +10,11 @@ import { cinderglassJobFirstDeliveryComplete } from '../src/features/cinderglass
 import { createCinderglassJobState } from '../src/features/cinderglassJob/operation.js';
 import { CINDERGLASS_JOB_SECTOR_ID } from '../src/features/cinderglassJob/definition.js';
 import { mountCinderglassJobContracts } from '../src/features/cinderglassJob/integration.js';
+import { createSimHost } from '../scripts/lib/simWorkerHost.mjs';
+import { applyDomainPathUpdate } from '../scripts/lib/simReadModel.mjs';
+import { missions } from '../src/systems/missions.js';
+import { initCampaignSidecar } from '../src/story/campaign47a/campaignTransitions.js';
+import { readFileSync } from 'node:fs';
 
 const prompt = revision => ({ id: 'approaches', token: 'life:1', operationId: 'original:1', revision,
   headline: 'Inspection · both approaches are legal', detail: 'Choose a physical approach.',
@@ -37,6 +42,56 @@ test('docked Tethys Contracts control shows actual terms and forwards captured a
     assert.equal(state.cinderglassJobView.outcome,undefined);
     mounted.destroy();assert.equal(doc.body.children.includes(panel),false);
   } finally {globalThis.document=previous;}
+});
+
+test('Contracts prefers the current worker view over a stale event and retains retry controls',()=>{
+  const previous=globalThis.document,doc=promptDeckDocument(900,900);globalThis.document=doc;
+  const bus=createBus(),sent=[];
+  const stale={token:'life:1',contacts:[],navigation:[]};
+  const state={ui:{dockedStationId:'station_tethys'},cinderglassJobView:stale};
+  bus.on('cinderglassJob:action',p=>{sent.push(p);p.result={ok:false};});
+  try{
+    const mounted=mountCinderglassJobContracts({state,bus},doc.body),panel=doc.body.children.at(-1);
+    bus.emit('cinderglassJob:view',stale);assert.equal(panel.hidden,true);
+    state.cinderglassJobView={token:'life:2',contacts:[{title:'Tala',line:'Original only',token:'life:2',
+      actions:[{id:'contact',label:'Read recovery terms'}],actor:'tala'}],navigation:[]};
+    mounted.frame();assert.equal(panel.hidden,false);
+    const buttons=n=>[...(n.tagName==='button'?[n]:[]),...n.children.flatMap(buttons)];
+    buttons(panel)[0].click();buttons(panel)[0].click();
+    assert.equal(sent.length,2);assert.equal(sent[0].token,'life:2');
+    mounted.destroy();
+  }finally{globalThis.document=previous;}
+});
+
+test('default paused worker publishes the earned contact and wakes the mounted Contracts panel',async()=>{
+  const previous=globalThis.document,doc=promptDeckDocument(900,900);globalThis.document=doc;
+  const lane=createSimHost(),domains=new Map(),uiBus=createBus();let mounted;
+  try{
+    const init=await lane.init({profile:'production',seed:47,
+      scenarioContract:JSON.parse(readFileSync(new URL('../src/data/scenarios/47a.scenario.json',import.meta.url)))});
+    const {state,registry,bus}=lane.host;
+    state.mode='flight';state.run={kind:'adventure'};state.world.currentSectorId='sector_tethys_junction';
+    state.story={beatIndex:1,flags:{}};initCampaignSidecar(state,state.simTime);
+    state.ui.docked=true;state.ui.dockedStationId='station_tethys';state.player.docked=true;
+    const owner=registry.get('cinderglassJob');owner._publish();
+    const uiState={ui:{dockedStationId:'station_tethys'},cinderglassJobView:structuredClone(state.cinderglassJobView)};
+    mounted=mountCinderglassJobContracts({state:uiState,bus:uiBus},doc.body);
+    const panel=doc.body.children.at(-1);assert.equal(panel.hidden,true);
+    const m=Object.assign(Object.create(missions),{state,bus,
+      _releaseCampaignNavForSwarm:()=>false,_onboardingOwnsOpeningNav:()=>false,_nearestStation:()=>null,
+      _ensureCampaignSidecar:()=>initCampaignSidecar(state,state.simTime),_refreshEmbodiedStoryBoards:()=>{}});
+    assert.equal(m._recordCampaignBookSignal('mission:completed',{storyTag:'campaign47a:b1:alloy_run'}),true);
+    bus.emit('mission:completed',{storyTag:'campaign47a:b1:alloy_run'});
+    const reply=await lane.tick({tick:1,steps:0,ackEnd:init.initRebuild?.end??0,commands:[]});
+    for(const update of reply.domainUpdates)applyDomainPathUpdate(domains,structuredClone(update),new Set());
+    uiState.cinderglassJobView=domains.get('cinderglassJobView');
+    const wake=reply.events.filter(e=>e.t==='cinderglassJob:view').at(-1);
+    assert.deepEqual(wake?.p,{token:uiState.cinderglassJobView.token,revision:uiState.cinderglassJobView.revision});
+    uiBus.emit(wake.t,wake.p);
+    assert.equal(panel.hidden,false);
+    const buttons=n=>[...(n.tagName==='button'?[n]:[]),...n.children.flatMap(buttons)];
+    assert.ok(buttons(panel).some(b=>b.textContent==='Read recovery terms'));
+  }finally{mounted?.destroy();lane.shutdown();globalThis.document=previous;}
 });
 
 test('canonical first delivery gates pure contact rows; bounded view preserves explicit optional tracking', () => {

@@ -19,6 +19,7 @@ import { createCircuitPhysical, venueAnchorGlobal, venueGlobalPos, CIRCUIT_OWNER
 import { createAttemptState, advanceAttempt, cancelAttempt } from './attempt.js';
 import { applyResultToRecord, freshEventRecord, medalAtMost } from './scoring.js';
 import { createGhostRecorder, normalizeGhost, ghostAllowed } from './ghost.js';
+import { emitCommissionCue } from '../../audio/commissionCues.js';
 import {
   projectCounterweightCircuitView, registrarOfferSpec, eventPreviewSpec,
   recordsOfferSpec, resultOfferSpec, attemptProgressSpec,
@@ -142,6 +143,7 @@ export function createCounterweightCircuitSystem() {
     }
     const tape = ghostAllowed(r.settings, reducedMotionPref()) ? r.ghost[eventId] : null;
     state.counterweightCircuitGhost = tape ? { eventId, attemptId, allowReducedMotion: r.settings.ghostReduceMotion, tape } : null;
+    emitCommissionCue(bus, 'commission.counterweight.start', `${eventId}:${attemptId}`, VENUE_SECTOR_ID, state.tick);
     bus?.emit('counterweightCircuit:attemptStarted', { eventId, practice: practice === true });
     publishView(true);
     emitProgressOffer(true);
@@ -149,7 +151,7 @@ export function createCounterweightCircuitSystem() {
 
   function endAttempt(outcome, reason) {
     if (!attempt) return null;
-    const { def, fsm, cohort } = attempt;
+    const { def, fsm, cohort, eventId, attemptId } = attempt;
     const r = row();
     let conditionFrac = null;
     const fragile = def.bodies.find((b) => b.fragile);
@@ -183,6 +185,13 @@ export function createCounterweightCircuitSystem() {
     attempt = null;
     publishView(true);
     emitResultOffer(result);
+    if (!restoring && inVenueSector() && result?.reason !== 'interrupted_unconfirmed') {
+      if (result?.outcome === 'complete' && result.rewardStatus !== 'accepted') {
+        emitCommissionCue(bus, 'commission.counterweight.complete', `${eventId}:${attemptId}`, VENUE_SECTOR_ID, state.tick);
+      } else if (result?.outcome === 'failed') {
+        emitCommissionCue(bus, 'commission.counterweight.failed', `${eventId}:${attemptId}`, VENUE_SECTOR_ID, state.tick);
+      }
+    }
     return result;
   }
 
@@ -520,6 +529,15 @@ export function createCounterweightCircuitSystem() {
     on('counterweightCircuit:action', onAction);
     on('counterweightCircuit:inspect', onInspect);
     on('counterweightCircuit:presentationReady', onPresentationReady);
+    on('credits:changed', payload => {
+      const prefix = 'counterweight:first-completion:';
+      const key = payload?.reason;
+      if (typeof key !== 'string' || !key.startsWith(prefix) || !(payload.delta > 0) || restoring || !inVenueSector()) return;
+      const eventId = key.slice(prefix.length);
+      if (COUNTERWEIGHT_EVENT_BY_ID[eventId] && row().records[eventId]?.paid === true) {
+        emitCommissionCue(bus, 'commission.counterweight.payout', key, VENUE_SECTOR_ID, state.tick);
+      }
+    });
     on('save:restoring', () => { restoring = true; admissionGeneration += 1; closeOffers(); });
     on('save:loaded', afterContinue);
     on('save:error', payload => {

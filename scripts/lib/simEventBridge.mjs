@@ -193,6 +193,12 @@ export const EVENT_BRIDGE_ADAPTERS = {
   ...SHIPBREAKING_YARD_EVENT_BRIDGE_ADAPTERS,
   ...SWARM_FORTIFY_EVENT_BRIDGE_ADAPTERS,
   'run:wavePlanned': projectSurvivalWavePlan,
+  // The full Cinderglass view is a worker-owned mirrored domain. Its nested
+  // contact/actions do not fit the generic event depth; this wakes the panel
+  // after that mirror has been applied without shipping the view twice.
+  'cinderglassJob:view': (p) => p && typeof p === 'object' && typeof p.token === 'string'
+    ? { token: p.token.slice(0, 200), revision: Number.isSafeInteger(p.revision) ? p.revision : 0 }
+    : undefined,
   // Chain receipts have a small scalar wire contract; do not project live entities.
   'combat:chainKill': (p) => p && typeof p === 'object' ? {
     firstId: typeof p.firstId === 'string' ? p.firstId.slice(0, 120) : Number.isSafeInteger(p.firstId) ? p.firstId : null,

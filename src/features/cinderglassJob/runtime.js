@@ -16,6 +16,7 @@ import { cinderglassJobRevisit } from './contact.js';
 import { restoreCinderglassJob, installCinderglassJobSave, uninstallCinderglassJobSave } from './persistence.js';
 import { publishCinderglassJobReadModel } from './readModel.js';
 import { nextCinderglassLife, currentRole, bindRole, exactRoleEvent } from './identity.js';
+import { emitCommissionCue } from '../../audio/commissionCues.js';
 
 export const cinderglassJobSystem = {
   name: 'cinderglassJob',
@@ -29,6 +30,20 @@ export const cinderglassJobSystem = {
     const on = (name, fn) => this._subs.push(this.bus.on(name, fn));
     on('cinderglassJob:action', p => this._onAction(p));
     on('cinderglassJob:presentationReady', p => this._onPresentationReady(p));
+    // Mission settlement writes the canonical 47-A step before this event.
+    // Docking can pause the sim immediately afterwards, so the normal idle
+    // update may never get a chance to publish the newly available contact.
+    on('mission:completed', () => {
+      if (!this._restoring && !this._destroying && cinderglassJobOfferEligible(this.state)
+        && !this.state.cinderglassJobView?.contacts?.length) this._publish();
+    });
+    on('credits:changed', p => {
+      const settlement = this._cg?.settlement;
+      if (!this._restoring && !this._destroying && this.state.world?.currentSectorId === CINDERGLASS_JOB_SECTOR_ID
+        && settlement && p?.reason === settlement.key && p.delta === settlement.creditedCr && p.delta > 0) {
+        emitCommissionCue(this.bus, 'commission.cinderglass.settlement', settlement.key, CINDERGLASS_JOB_SECTOR_ID, this.state.tick);
+      }
+    });
     on('scan:pulse', p => { if (!this._restoring) cinderglassJobObserveScan(this, this.state, p); });
     for (const name of ['entity:killed', 'entity:destroyed']) on(name, p => this._onEntityKilled(p));
     on('npcjobs:complete', p => this._onRouteComplete(p));
@@ -95,8 +110,13 @@ export const cinderglassJobSystem = {
     if (this._serviceActionId != null) {
       const r = cinderglassJobServiceProgress(this, state, this._serviceActionId, dt);
       if (r.status !== 'running') {
+        const serviceId = this._serviceActionId;
         this._serviceActionId = null; st.serviceActive = false;
-        if (r.status === 'interrupted') { cinderglassJobServiceAbort(this, state, r.reason); this._refuseAction(null, r.reason); }
+        if (r.status === 'interrupted') {
+          cinderglassJobServiceAbort(this, state, r.reason);
+          emitCommissionCue(this.bus, 'commission.cinderglass.interrupted', `${this.token()}:${st.operationId}:${serviceId}`, CINDERGLASS_JOB_SECTOR_ID, state.tick);
+          this._refuseAction(null, r.reason);
+        }
         st.promptRevision++;
       }
     }
