@@ -30,7 +30,7 @@ test('Fortify hardware resources survive retiring another instance and do not sh
 });
 
 test('each Fortify device has physical hardware inside its collision footprint', () => {
-  for (const deviceId of ['gravity_beacon', 'repulsor_pylon', 'tesla_pair', 'kinetic_turret']) {
+  for (const deviceId of ['gravity_beacon', 'repulsor_pylon', 'tesla_pair', 'kinetic_turret', 'reflector_fin']) {
     const model = buildSwarmFortifyVisual(structure(deviceId));
     assert.equal(model.userData.interactionKind, 'fortify-structure');
     for (const child of model.children) {

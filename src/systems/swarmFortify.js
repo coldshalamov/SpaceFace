@@ -13,6 +13,7 @@ import { isHostileForAI } from '../ai/engagementAuthority.js';
 import {
   SWARM_FORTIFY_COMMAND,
   SWARM_FORTIFY_DEVICES,
+  SWARM_FORTIFY_FACINGS,
   SWARM_FORTIFY_MIN_PILOT_GAP,
   SWARM_FORTIFY_PHASES,
   SWARM_FORTIFY_RECEIPT,
@@ -25,9 +26,12 @@ import {
   SWARM_FORTIFY_STATE_REQUESTED,
   swarmFortifyDevice,
   swarmFortifyCorridorForGate,
+  swarmFortifyFacing,
   swarmFortifyPosition,
+  swarmFortifyReflectorGeometry,
   swarmFortifySocket,
 } from '../data/swarmFortify.js';
+import { foundryPlateProxy } from '../data/foundryPlate.js';
 
 let nextFortifyRunToken = 1;
 
@@ -58,7 +62,7 @@ function liveSwarmBuildRun(state) {
     ? run : null;
 }
 
-function physicalStructureSpec({ run, device, position, socket, player, requestId, runToken, ordinal, endpointIndex = null }) {
+function physicalStructureSpec({ run, device, position, socket, player, requestId, runToken, ordinal, endpointIndex = null, anchor = null, facing = null }) {
   const fieldId = `swarm-fortify-field-${runToken}-${ordinal}`;
   const pairId = device.id === 'tesla_pair' ? `swarm-fortify-pair-${runToken}-${ordinal}` : null;
   const fortifyData = {
@@ -75,7 +79,7 @@ function physicalStructureSpec({ run, device, position, socket, player, requestI
     ...(device.effect?.ammo != null ? { ammo: device.effect.ammo } : {}),
     ...(pairId ? { pairId, endpointIndex } : {}),
   };
-  return {
+  const spec = {
     type: 'beacon',
     pos: { x: position.x, z: position.z },
     vel: { x: 0, z: 0 },
@@ -113,6 +117,27 @@ function physicalStructureSpec({ run, device, position, socket, player, requestI
       } } : {}),
     },
   };
+  if (device.facings === true) {
+    const geometry = facing && swarmFortifyReflectorGeometry(position, anchor, facing, device.plate);
+    if (!geometry) return null;
+    const shape = geometry.shape;
+    spec.rot = shape.rot;
+    spec.radius = shape.radius;
+    spec.collisionMask = Masks.SHIP | Masks.ASTEROID | Masks.STATION | Masks.PROJECTILE | Masks.DRONE | Masks.PAYLOAD;
+    spec.physicsBody.radius = shape.radius;
+    spec.physicsBody.inertiaY = Math.max(8, Math.round(device.bodyMass * shape.radius * shape.radius * 0.4));
+    spec.physicsBody.collisionProxyManifest = foundryPlateProxy(shape);
+    spec.data.surfaceMaterial = 'plate';
+    spec.data.foundryPlate = {
+      referenceRadius: shape.referenceRadius,
+      halfWidth: shape.halfWidth,
+      halfDepth: shape.halfDepth,
+      halfHeight: shape.halfHeight,
+    };
+    fortifyData.facing = facing.id;
+    fortifyData.faceNormal = { x: geometry.face.x, z: geometry.face.z };
+  }
+  return spec;
 }
 
 export const swarmFortify = {
@@ -195,8 +220,19 @@ export const swarmFortify = {
           heat: 0,
           ammo: null,
           operational: true,
+          facing: null,
+          rot: 0,
+          plate: null,
         };
         structuresByPurchase.set(record.requestId, row);
+      }
+      if (entity.data?.swarmFortify?.facing) row.facing = entity.data.swarmFortify.facing;
+      if (Number.isFinite(entity.rot)) row.rot = entity.rot;
+      if (entity.data?.foundryPlate) {
+        row.plate = {
+          halfWidth: entity.data.foundryPlate.halfWidth,
+          halfDepth: entity.data.foundryPlate.halfDepth,
+        };
       }
       row.entityIds.push(record.entityId);
       row.positions.push({ x: entity.pos?.x ?? 0, z: entity.pos?.z ?? 0 });
@@ -289,7 +325,25 @@ export const swarmFortify = {
       }
       reserved.push({ alive: true, collides: true, pos: at, radius: device.colliderRadius });
     }
-    return { blocked: false, reason: null, positions };
+    const result = { blocked: false, reason: null, positions };
+    // The preview answers the same physics question the build will: the entry face a radial
+    // shot meets and the mirror it leaves by, per facing. UI draws it; nothing here commits.
+    if (device.facings === true && positions.length === 1) {
+      result.facings = SWARM_FORTIFY_FACINGS.map((candidate) => {
+        const geometry = swarmFortifyReflectorGeometry(positions[0], anchor, candidate, device.plate);
+        return geometry ? {
+          id: candidate.id,
+          label: candidate.label,
+          face: { x: geometry.face.x, z: geometry.face.z },
+          entryNormal: { x: geometry.entryNormal.x, z: geometry.entryNormal.z },
+          reflected: { x: geometry.reflected.x, z: geometry.reflected.z },
+          rot: geometry.shape.rot,
+          halfWidth: geometry.shape.halfWidth,
+          halfDepth: geometry.shape.halfDepth,
+        } : null;
+      }).filter(Boolean);
+    }
+    return result;
   },
 
   getArenaAnchor() {
@@ -359,6 +413,10 @@ export const swarmFortify = {
     const device = swarmFortifyDevice(request.deviceId);
     const socket = swarmFortifySocket(request.socketId);
     if (!device || !socket) return fail('unknown_build_option');
+    const facing = device.facings === true
+      ? (request.facing == null ? swarmFortifyFacing('square') : swarmFortifyFacing(request.facing))
+      : null;
+    if (device.facings === true && !facing) return fail('unknown_facing');
     const player = this.state.entities && this.state.entities.get
       ? this.state.entities.get(this.state.playerId) : null;
     if (!player || player.alive === false || !player.pos) return fail('pilot_unavailable');
@@ -373,7 +431,9 @@ export const swarmFortify = {
     const specs = positions.map((at, endpointIndex) => physicalStructureSpec({
       run, device, position: at, socket, player, requestId, runToken: runtime.runToken, ordinal,
       endpointIndex: device.id === 'tesla_pair' ? endpointIndex : null,
+      anchor: runtime.arenaAnchor, facing,
     }));
+    if (specs.some((spec) => !spec)) return fail('socket_unavailable');
     const receipt = this.runSessionOwner.purchase({
       requestId,
       deviceId: device.id,

@@ -50,7 +50,7 @@ function model(requestId, extra = {}) {
 }
 
 test('player-truth records two full waves of surviving devices without inferring combat effects', () => {
-  const ids = ['gravity_beacon', 'repulsor_pylon', 'tesla_pair', 'kinetic_turret'];
+  const ids = ['gravity_beacon', 'repulsor_pylon', 'tesla_pair', 'kinetic_turret', 'reflector_fin'];
   const snapshot = wave => summarizeFortifyModel({ runToken: 'run:1', wave, credits: 12,
     structures: ids.map((deviceId, id) => ({ id, deviceId, operational: true, entityIds: [id] })) });
   const visits = [1, 2, 3].map(wave => ({ before: snapshot(wave), end: snapshot(wave) }));

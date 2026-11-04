@@ -1,6 +1,9 @@
 // Gold Fortify pilot. Values are prototype calibration seeds; the physical effect is owned by the
 // field kernel, while the run wallet, collision solver, and render factory remain their owners.
 
+import { foundryPlateShape } from './foundryPlate.js';
+import { reflectVelocity } from '../core/surfaceContact.js';
+
 export const SWARM_FORTIFY_COMMAND = 'swarm:fortifyBuildRequested';
 export const SWARM_FORTIFY_REPAIR_COMMAND = 'swarm:fortifyRepairRequested';
 export const SWARM_FORTIFY_RELOAD_COMMAND = 'swarm:fortifyReloadRequested';
@@ -12,6 +15,22 @@ export const SWARM_FORTIFY_SCHEMA_VERSION = 1;
 export const SWARM_FORTIFY_PHASES = Object.freeze(['draft', 'refit']);
 export const SWARM_FORTIFY_MIN_PILOT_GAP = 190;
 export const SWARM_FORTIFY_SIEGE_REACH = 1500;
+
+// Reflector Fin facings are relative to the socket's radial (socket -> arena anchor). 'square'
+// faces the field so a radial shot returns to sender; the cants turn that shot ~84 degrees;
+// 'edge' stands the slab along the approach so only its end cap meets radial fire. Cant signs
+// are authored against the mirrored fortify map: a positive offset tips the face clockwise
+// from the approach as the player sees it.
+export const SWARM_FORTIFY_FACINGS = Object.freeze([
+  Object.freeze({ id: 'square', label: 'Square', offsetRad: 0 }),
+  Object.freeze({ id: 'cant_cw', label: 'Cant clockwise', offsetRad: 42 * Math.PI / 180 }),
+  Object.freeze({ id: 'cant_ccw', label: 'Cant counter-clockwise', offsetRad: -42 * Math.PI / 180 }),
+  Object.freeze({ id: 'edge', label: 'Edge-on', offsetRad: Math.PI / 2 }),
+]);
+
+export function swarmFortifyFacing(facingId) {
+  return SWARM_FORTIFY_FACINGS.find((facing) => facing.id === facingId) || null;
+}
 
 export const SWARM_FORTIFY_SOCKETS = Object.freeze({
   frontNear: Object.freeze({ id: 'front-near', label: 'Front corridor · inner', distance: 280, angle: -Math.PI / 2, corridor: 'front' }),
@@ -72,6 +91,20 @@ export const SWARM_FORTIFY_DEVICES = Object.freeze({
     serviceCostPerRound: 2,
     effect: Object.freeze({ intervalTicks: 30, damage: 8, range: 420, ammo: 32, weaponId: 'wpn_autocannon_s' }),
   }),
+  reflector_fin: Object.freeze({
+    id: 'reflector_fin',
+    name: 'Reflector Fin',
+    description: 'An angled slab. Bank-capable fire turns along its face; anything else meets a wall.',
+    cost: 90,
+    repairCost: 27,
+    // Placement clearance covers the whole slab; the physical collider is the
+    // authored foundry bank-plate proxy, radius-normalized to foundryPlateShape.
+    colliderRadius: 52,
+    bodyMass: 1400,
+    hull: 200,
+    plate: Object.freeze({ halfWidth: 48, referenceRadius: 26 }),
+    facings: true,
+  }),
 });
 
 export function swarmFortifyDevice(deviceId) {
@@ -81,6 +114,44 @@ export function swarmFortifyDevice(deviceId) {
 
 export function swarmFortifySocket(socketId) {
   return Object.values(SWARM_FORTIFY_SOCKETS).find((socket) => socket.id === socketId) || null;
+}
+
+/**
+ * One surface definition for the Reflector Fin's collider, its read-model preview and its
+ * tests. `face` is the slab's authored broad-face normal (foundryPlateShape input); the four
+ * side normals of the OBB are {face, -face, tangent, -tangent}. `entryNormal` is the side a
+ * radial (anchor -> socket) shot enters — the dominant-face answer the contact solver gives —
+ * and `reflected` is that shot's mirror via the canonical reflectVelocity, so the preview can
+ * never promise a bounce physics would not produce.
+ */
+export function swarmFortifyReflectorGeometry(position, anchor, facing, plateDef = {}) {
+  const ax = anchor && (Number.isFinite(anchor.x) ? anchor.x : anchor.pos && anchor.pos.x);
+  const az = anchor && (Number.isFinite(anchor.z) ? anchor.z : anchor.pos && anchor.pos.z);
+  if (!position || !Number.isFinite(position.x) || !Number.isFinite(position.z)
+    || !Number.isFinite(ax) || !Number.isFinite(az)) return null;
+  const dx = ax - position.x;
+  const dz = az - position.z;
+  const len = Math.hypot(dx, dz);
+  if (!(len > 1e-6)) return null;
+  const inward = { x: dx / len, z: dz / len };
+  const offset = facing && Number.isFinite(facing.offsetRad) ? facing.offsetRad : 0;
+  const cos = Math.cos(offset);
+  const sin = Math.sin(offset);
+  const face = { x: inward.x * cos - inward.z * sin, z: inward.x * sin + inward.z * cos };
+  const tangent = { x: -face.z, z: face.x };
+  const shape = foundryPlateShape({ ...plateDef, normal: face });
+  const outward = { x: -inward.x, z: -inward.z };
+  let entryNormal = face;
+  let best = -Infinity;
+  for (const axis of [face, { x: -face.x, z: -face.z }, tangent, { x: -tangent.x, z: -tangent.z }]) {
+    const against = -(outward.x * axis.x + outward.z * axis.z);
+    if (against > best) {
+      best = against;
+      entryNormal = axis;
+    }
+  }
+  const reflected = reflectVelocity(outward, entryNormal);
+  return { face, tangent, entryNormal, reflected, shape };
 }
 
 export function swarmFortifyPosition(anchor, socket, rotation = anchor?.rot) {

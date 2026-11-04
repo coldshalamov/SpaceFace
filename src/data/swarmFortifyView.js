@@ -27,7 +27,13 @@ export function projectSwarmFortifyView(raw) {
       devices: Object.fromEntries(Object.keys(SWARM_FORTIFY_DEVICES).flatMap(deviceId => {
         const device = slot.devices?.[deviceId];
         return device ? [[deviceId, { blocked: device.blocked === true, reason: text(device.reason),
-          positions: positions(device.positions) }]] : [];
+          positions: positions(device.positions),
+          facings: list(device.facings, 4).map(row => ({
+            id: text(row && row.id), label: text(row && row.label),
+            face: point(row && row.face), entryNormal: point(row && row.entryNormal),
+            reflected: point(row && row.reflected), rot: number(row && row.rot),
+            halfWidth: number(row && row.halfWidth), halfDepth: number(row && row.halfDepth),
+          })).filter(row => row.id && row.face && row.entryNormal && row.reflected) }]] : [];
       })),
     })),
     structures: list(raw.structures, 6).map(row => ({
@@ -38,6 +44,9 @@ export function projectSwarmFortifyView(raw) {
       operational: row.operational === true, missingEndpoint: row.missingEndpoint === true, repairCost: number(row.repairCost),
       ammoMax: number(row.ammoMax), serviceCostPerRound: number(row.serviceCostPerRound),
       serviceCost: number(row.serviceCost),
+      facing: text(row.facing), rot: number(row.rot),
+      plate: row.plate && Number.isFinite(row.plate.halfWidth) && Number.isFinite(row.plate.halfDepth)
+        ? { halfWidth: row.plate.halfWidth, halfDepth: row.plate.halfDepth } : null,
     })),
     terrain: list(raw.terrain, 48).map(body => ({
       id: id(body.id), type: text(body.type), x: number(body.x), z: number(body.z), radius: number(body.radius),

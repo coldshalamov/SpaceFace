@@ -2199,8 +2199,9 @@ function projectileContactFrame(proj, target, pos) {
 }
 
 function foundryBankPlateProxy(target) {
-  return target?.physicsBody?.collisionProxyManifest?.id === 'foundry:bank-plate'
-    && target?.data?.roomOwner === 'survival-arena' && target?.data?.roomKind === 'plate';
+  if (target?.physicsBody?.collisionProxyManifest?.id !== 'foundry:bank-plate') return false;
+  if (target?.data?.roomOwner === 'survival-arena' && target?.data?.roomKind === 'plate') return true;
+  return target?.data?.swarmFortify?.deviceId === 'reflector_fin';
 }
 
 export function projectileHitPayload(proj, targetOrId, pos, receipt) {
