@@ -33,6 +33,7 @@ import { wantedClearClause, wantedReasonText } from './wantedReason.js';
 import { SECTORS } from '../data/sectors.js';
 import { isPlayerWanted, heatLevelFor } from '../systems/heat.js';
 import { LAW_DOCK_FINE_BASE_CR, LAW_DOCK_FINE_PER_LEVEL_CR } from '../systems/lawSecurity.js';
+import { FINE_WHY_COPY, lawDeskLine } from '../data/lawDeskCopy.js';
 
 const DECK_ID = 'impound-pay';
 const FINE_DECK_ID = 'law-fine';
@@ -499,9 +500,13 @@ export function fineWhyClause(state) {
   if (!(level > 0)) return '';
   const baseCr = Math.max(0, Math.round(Number(LAW_DOCK_FINE_BASE_CR)) || 0);
   const perLevelCr = Math.max(0, Math.round(Number(LAW_DOCK_FINE_PER_LEVEL_CR)) || 0);
-  const parts = [` The price is the read: ${baseCr} cr for the warrant plus ${perLevelCr} cr for each heat step — yours sits at step ${level}.`];
+  const parts = [lawDeskLine(FINE_WHY_COPY.price, {
+    base: baseCr, perStep: perLevelCr, step: level,
+  })];
   const trace = wantedReasonText(null, state && state.player);
-  if (trace) parts.push(` It answers for${trace.replace(/^ · /, ' ')}.`);
+  if (trace) parts.push(lawDeskLine(FINE_WHY_COPY.answersFor, {
+    trace: trace.replace(/^ · /, ' ') + '.',
+  }));
   return parts.join('');
 }
 

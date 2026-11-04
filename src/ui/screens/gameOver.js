@@ -40,6 +40,7 @@ import { rangeRungIndex } from './range.js';
 import { killcamStageRequestFor } from '../../sim/killcamTape.js';
 import { isPlayerWanted, heatLevelFor, heatClearSecondsForLevel, wantedTierInfo } from '../../systems/heat.js';
 import { wantedReasonText } from '../wantedReason.js';
+import { DEFEAT_HUNT_COPY, lawDeskLine } from '../../data/lawDeskCopy.js';
 
 export { restoredDefeatIntent } from '../sim/restoredDefeatIntent.js';
 
@@ -196,11 +197,11 @@ export function deathSituationClause(state = null) {
   const player = state && state.player;
   const heat = player && Number.isFinite(Number(player.heat)) ? Number(player.heat) : 0;
   if (!isPlayerWanted({ player: { heat } })) return '';
-  const parts = ['hunt live: ' + wantedTierInfo(heat).label + ' sheet'];
+  const parts = [lawDeskLine(DEFEAT_HUNT_COPY.band, { band: wantedTierInfo(heat).label })];
   const clearS = heatClearSecondsForLevel(heatLevelFor(heat));
-  if (clearS > 0) parts.push('clears in ' + Math.ceil(clearS) + 's out of the zone');
+  if (clearS > 0) parts.push(lawDeskLine(DEFEAT_HUNT_COPY.clearClock, { seconds: Math.ceil(clearS) }));
   const trace = wantedReasonText(null, player);
-  if (trace) parts.push('traced to' + trace.replace(/^ · /, ' '));
+  if (trace) parts.push(lawDeskLine(DEFEAT_HUNT_COPY.tracedTo, { trace: trace.replace(/^ · /, ' ') }));
   return parts.join(', ');
 }
 
