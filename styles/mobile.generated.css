@@ -200,9 +200,20 @@
 #sf-touch-overlay .mf-wheel[data-orbit="1"] .mf-pick-name { font-size:16px; }
 #sf-touch-overlay .mf-wheel[data-orbit="1"] .mf-pick-text { font-size:12px; line-height:1.25; }
 @media (max-height:599px) and (min-aspect-ratio:1/1) {
- #sf-touch-overlay .mf-wheel-top { top:calc(10px + var(--sf-safe-top,0px)); left:calc(212px + var(--sf-safe-left,0px)); right:calc(270px + var(--sf-safe-right,0px)); width:auto; transform:none; }
+ /* The caption and bank tabs use the clear column opposite the half-orbit, below status. */
+ #sf-touch-overlay .mf-wheel-top {
+   top:calc(112px + var(--sf-safe-top,0px)); left:calc(12px + var(--sf-safe-left,0px)); right:auto;
+   width:min(200px,calc(100vw - 2 * var(--mf-wheel-r,150px) - 28px - var(--sf-safe-left,0px) - var(--sf-safe-right,0px)));
+   max-height:calc(100dvh - 124px - var(--sf-safe-top,0px) - var(--sf-safe-bottom,0px));
+   transform:none; gap:8px; grid-template-rows:auto minmax(0,1fr);
+ }
+ #sf-touch-overlay[data-lefty="1"] .mf-wheel-top { left:auto; right:calc(12px + var(--sf-safe-right,0px)); }
+ #sf-touch-overlay .mf-tabs { grid-template-columns:repeat(2,minmax(0,1fr)); overflow-wrap:anywhere; }
  #sf-touch-overlay .mf-tab { font-size:12px; font-stretch:90%; letter-spacing:0; }
- #sf-touch-overlay .mf-pick { box-sizing:border-box; width:176px; max-width:100%; padding:6px 10px; justify-self:start; }
+ #sf-touch-overlay .mf-pick {
+   box-sizing:border-box; width:100%; min-height:0; max-width:100%; padding:6px 10px; justify-self:start;
+   overflow-y:auto; overscroll-behavior:contain; touch-action:pan-y; pointer-events:auto;
+ }
  #sf-touch-overlay .mf-pick-name { font-size:14px; }
  #sf-touch-overlay .mf-pick-text { font-size:12px; line-height:1.25; }
 }
