@@ -46,6 +46,8 @@ import { separateSkinOverlaps } from '../data/modelTruth.js';
 import { createSectorArranger } from '../world/arranger.js';
 import { ARRANGEMENT_VERSION, readArrangementVersion } from '../data/sectorCompositions.js';
 import { WORLD_ONE_OFFS } from '../data/worldOneOffs.js'; // PQ-143.02 six texture one-offs
+import { vxFreeDriveReservationsFor, vxFreeDriveStructuresFor, vxFreeDriveMarkersFor }
+  from '../data/vxFreeDriveRing.js'; // VX-02 — the Cracker Run free-drive ring
 import { HELIOS_ROPE_CACHE } from '../data/worldOneOffs.js';
 import { KETTLE_LINE } from '../data/kettleLine.js';
 import { FACTION_BERTHS } from '../data/factionBerths.js'; // CR-BERTH-1 faction berths
@@ -2697,6 +2699,10 @@ export const world = {
         });
       }
     }
+    // VX-02 Cracker Run: authored lane discs keep seeded scatter out of the ring's rib
+    // corridor, apron, chute and refuge lines, the same protection machines and boulders get.
+    reservations.push(...vxFreeDriveReservationsFor(sector.id,
+      (localPos) => this._toGlobal(localPos, sector.id)));
     const heliosFace = heliosOpeningFaceBinding(sector.id, 'f_helios_starter', 1,
       (localPos) => this._toGlobal(localPos, sector.id));
     if (heliosFace) {
@@ -3087,6 +3093,9 @@ export const world = {
       blockers.push({ pos: machine.anvil.pos,
         radius: asteroidColliderRadius('ast_common_rock', machine.anvil.radius) });
     }
+    // Keep fresh ladder bedrock out of the same authored lanes as arranged scatter.
+    blockers.push(...vxFreeDriveReservationsFor(sector.id,
+      (localPos) => this._toGlobal(localPos, sector.id)));
     const center = this._toGlobal(centerLocal || { x: 0, z: 0 }, sector.id);
     for (let tier = 0; tier <= 4; tier++) {
       for (let k = counts[tier]; k < ROCK_LADDER_MIN_PER_TIER; k++) {
@@ -3539,6 +3548,7 @@ export const world = {
     this._spawnWreckAftermathDressing(sector, active, paletteClass);
     yield 'materialize:dressing-wrecks';
     this._spawnWorldOneOffs(sector, active);
+    this._spawnFreeDriveRing(sector, active);
     yield 'materialize:dressing-oneoffs';
     // Alien Ecology program (doc 08/09): growth dressing + fauna cast for ALIEN_SITES in this
     // sector. Deterministic off its own rng stream — runs last so the world rng order is
@@ -3667,6 +3677,32 @@ export const world = {
     this._spawnKettleLinePayoff(sector, active);
     this._spawnCachePayoffs(sector, active);
     this._spawnFactionBerths(sector, active);
+  },
+
+  // VX-02 — the Cracker Run. Authored fixed dressing (skip the arranger like the one-offs):
+  // census-solid structures form the plaza/ribs/chute, nav buoys breadcrumb the route. Nothing
+  // here is a mission, a gate, a lease or a score — it is a place that exists in the sector.
+  _spawnFreeDriveRing(sector, active) {
+    for (const structure of vxFreeDriveStructuresFor(sector.id)) {
+      const pos = this._toGlobal(
+        { x: structure.localPos.x, z: structure.localPos.z }, sector.id);
+      this._spawnPlaceProp(active, sector, structure.placeId, pos, {
+        rot: structure.rot,
+        name: structure.name,
+        radius: structure.radius,
+        worldOneOff: true,
+      });
+    }
+    for (const marker of vxFreeDriveMarkersFor(sector.id)) {
+      const pos = this._toGlobal(
+        { x: marker.localPos.x, z: marker.localPos.z }, sector.id);
+      this._spawnPlaceProp(active, sector, 'place_nav_buoy', pos, {
+        rot: 0,
+        name: 'Cracker Run marker',
+        radius: 10,
+        worldOneOff: true,
+      });
+    }
   },
 
   _decoratePhysicalOneOff(ent, oneOff, sector, recordId, identityKey) {
