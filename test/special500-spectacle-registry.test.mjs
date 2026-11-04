@@ -19,7 +19,14 @@
 // its place-gated skip, the Last Tow's honors at tow speed, the Arrival Stencil's
 // lane board, the Comet's anti-sunward tail, the Ashcache count's audio-only strokes,
 // the Berth Queue's light-code grant, the Choir's same-breath pulse, and the Dark
-// Lantern's escalation-and-hold.
+// Lantern's escalation-and-hold. The batch-7 rows pin the Range Note's red fleck
+// loop and its roost-gated skip, the Shoal Toast's unison crowd and floor-gain dim,
+// the Clearing's wipe-and-exhale at the weather eye, the Full Burn's simultaneous
+// light-off with its held re-strikes and the cut, the Broadside's flashbulb string
+// with the band's respectful silence, the Moonrise's four-minute rim walk, the
+// Merger's lights-to-lights leads, the Farmers' strike line and capacitor bang, the
+// unscheduled Eighth Bell note, the Frequency's three-note phrase loop, and the
+// Tender's note with its harmony answers.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -1086,4 +1093,469 @@ test('Solstice’s lantern escalates, rings its reach once, and holds steady whi
   const before = bus.events.length;
   step(700);
   assert.equal(bus.events.length, before, 'one night per game: the grid comes back and the row keeps its dark');
+});
+
+// ---- batch 7 (the spectacle family) ----
+
+const NEREID = 'sector_nereid_shoal';
+
+test('the Range Note loop snaps three red flecks per cycle and skips where the lattice does not stand', () => {
+  const bus = stubBus();
+  special500Spectacle.init({ bus });
+  const lattice = { x: 2400, z: 600 }; // the Unidentified Lattice, the Expanse roost
+  const firedAt = 3000;
+  const state = withPoi(fixtureState({ simTime: firedAt, sectorId: CHARON }), 'poi_charon_pylon_field', lattice);
+  bus.emit('special500:spectacle', { id: 'SP1-115', sectorId: CHARON });
+  special500Spectacle.update(1 / 60, state);
+  const step = (t) => {
+    state.simTime = firedAt + t;
+    state.tick = Math.floor(state.simTime * 60);
+    special500Spectacle.update(1 / 60, state);
+  };
+  const flecks = () => bus.of('presentation:vfxCue').filter((e) => e.payload.id === 'thermal.mark');
+  step(7);
+  const first = flecks();
+  assert.equal(first.length, 3, 'three flecks inside the first cycle');
+  for (const f of first) {
+    assert.equal(f.payload.color, '#d0483a', 'red: a ranging fleck, not a lamp');
+    assert.ok(f.payload.radius <= 12, 'small: brief, precise');
+    assert.ok(f.payload.life <= 0.5, 'gone before the eye can answer it');
+  }
+  assert.equal(bus.of('news:publish').length, 0, 'the sniper files nothing');
+  assert.equal(bus.of('audio:cue').length, 0, 'a fleck from nowhere makes no sound');
+  step(52);
+  assert.equal(flecks().length, 6, 'the reminder recurs on its cadence while the day lasts');
+  state.world.currentSectorId = HELIOS;
+  step(100);
+  assert.equal(flecks().length, 6, 'leaving ends the flecks where they belong');
+  // The ace has no fixed perch and the entry fires in any sector: where the roost
+  // does not stand, the beats skip rather than misplace (the SP3-044 precedent).
+  const bus2 = stubBus();
+  special500Spectacle.init({ bus: bus2 });
+  const elsewhere = fixtureState({ simTime: firedAt, sectorId: HELIOS });
+  bus2.emit('special500:spectacle', { id: 'SP1-115', sectorId: HELIOS });
+  special500Spectacle.update(1 / 60, elsewhere);
+  elsewhere.simTime = firedAt + 8;
+  special500Spectacle.update(1 / 60, elsewhere);
+  assert.equal(bus2.of('presentation:vfxCue').length, 0, 'no fleck without its roost');
+  assert.equal(bus2.of('news:publish').length, 0, 'and no wire either');
+});
+
+test('the Shoal Toast raises the bar in unison and dims the lights on cue', () => {
+  const bus = stubBus();
+  special500Spectacle.init({ bus });
+  const firedAt = 18 * CAL_DAY_S + 200; // bloom day, dayOfYear 18
+  const state = withStation(
+    fixtureState({ simTime: firedAt, sectorId: NEREID }), 'station_nereid', { x: 960, z: -380 });
+  bus.emit('special500:spectacle', { id: 'SP2-076', sectorId: NEREID });
+  special500Spectacle.update(1 / 60, state);
+  const step = (t) => {
+    state.simTime = firedAt + t;
+    state.tick = Math.floor(state.simTime * 60);
+    special500Spectacle.update(1 / 60, state);
+  };
+  step(2);
+  const toast = bus.of('audio:cue');
+  assert.equal(toast.length, 1, 'one toast, one word, every glass at once');
+  assert.equal(toast[0].payload.id, 'ambient_station_crowd', 'the shipped crowd voice');
+  assert.equal(toast[0].payload.position.x, 960, 'the toast comes from the station direction');
+  step(20);
+  const bloom = bus.of('presentation:vfxCue').filter((e) => e.payload.id === 'special500.light');
+  assert.equal(bloom.length, 5, 'the bloom passes the glass like slow fireworks');
+  step(26);
+  const all = bus.of('presentation:vfxCue').filter((e) => e.payload.id === 'special500.light');
+  assert.equal(all.length, 7, 'the bloom and the dim pair together');
+  const dims = all.slice(5);
+  assert.equal(dims.length, 2, "the bar's lights dim on cue");
+  assert.ok(dims.every((e) => e.payload.magnitude <= 0.15), 'floor gain: additive cannot darken, so the dim is the lowest the cue light burns');
+  assert.equal(bus.of('news:publish').length, 0, 'the toast is the bar\'s, not the board\'s');
+  const before = bus.events.length;
+  step(60);
+  assert.equal(bus.events.length, before, 'one bloom day per year');
+});
+
+test('the Clearing wipes the sky in one sweep and the sector exhales at the weather eye', () => {
+  const bus = stubBus();
+  special500Spectacle.init({ bus });
+  const buoy = { x: -340, z: 580 }; // the Murmur Buoy — the Weather eye's post
+  const firedAt = 500;
+  const state = withPoi(fixtureState({ simTime: firedAt, sectorId: VEIL }), 'poi_veil_murmur_buoy', buoy);
+  bus.emit('special500:spectacle', { id: 'SP3-060', sectorId: VEIL });
+  special500Spectacle.update(1 / 60, state);
+  const step = (t) => {
+    state.simTime = firedAt + t;
+    state.tick = Math.floor(state.simTime * 60);
+    special500Spectacle.update(1 / 60, state);
+  };
+  step(7);
+  const wipe = bus.of('presentation:vfxCue').filter((e) => e.payload.id === 'thermal.mark');
+  assert.equal(wipe.length, 1, 'the curtain-light collapses anti-sunward as one wide ring');
+  assert.equal(wipe[0].payload.color, '#bfe8f0');
+  assert.equal(wipe[0].payload.radius, 160);
+  const lights = bus.of('presentation:vfxCue').filter((e) => e.payload.id === 'special500.light');
+  assert.equal(lights.length, 7, 'two hard star points and every hull rim light coming back');
+  const exhale = bus.of('audio:cue');
+  assert.equal(exhale.length, 1, 'the sector audibly relaxes');
+  assert.equal(exhale[0].payload.id, 'bolus_breath', 'the shipped breath voice');
+  assert.equal(exhale[0].payload.rate, 0.5, 'one low exhale under the mix');
+  // The hash-daily firing lands in any sector; where the weather eye does not stand,
+  // the beats skip rather than misplace — the wipe stays the compositor leg's business.
+  const bus2 = stubBus();
+  special500Spectacle.init({ bus: bus2 });
+  const forgeSide = fixtureState({ simTime: firedAt, sectorId: VESTA });
+  bus2.emit('special500:spectacle', { id: 'SP3-060', sectorId: VESTA });
+  special500Spectacle.update(1 / 60, forgeSide);
+  forgeSide.simTime = firedAt + 8;
+  special500Spectacle.update(1 / 60, forgeSide);
+  assert.equal(bus2.of('presentation:vfxCue').length, 0, 'no wipe without its post');
+  assert.equal(bus2.of('audio:cue').length, 0, 'no exhale without its post');
+});
+
+test('the Full Burn lights every hull off on one tick, holds, and cuts together', () => {
+  const bus = stubBus();
+  special500Spectacle.init({ bus });
+  const firedAt = 10 * CAL_DAY_S + 150; // dayOfYear 10, inside the drill window
+  const state = withStation(fixtureState({ simTime: firedAt, sectorId: HELIOS }), 'station_helios', { x: 400, z: 0 });
+  bus.emit('special500:spectacle', { id: 'SP1-153', sectorId: HELIOS });
+  special500Spectacle.update(1 / 60, state);
+  const step = (t) => {
+    state.simTime = firedAt + t;
+    state.tick = Math.floor(state.simTime * 60);
+    special500Spectacle.update(1 / 60, state);
+  };
+  const bearing = SPECTACLE_LEGS['SP1-153'].bearingRad;
+  const lights = () => bus.of('presentation:vfxCue').filter((e) => e.payload.id === 'special500.light');
+  step(0.9);
+  assert.equal(bus.of('news:publish').length, 1, 'the drill, announced');
+  assert.equal(bus.of('news:publish')[0].payload.kind, 'notices');
+  assert.equal(lights().length, 0, 'nothing burns before the hour turns');
+  step(2);
+  const ignition = lights();
+  assert.equal(ignition.length, 6, 'every operational hull lights off — tugs, barges, patrol, the lot');
+  assert.deepEqual(ignition.map((e) => bearingOffset(e.payload, { x: 400, z: 0 }, bearing)).sort((a, b) => a - b),
+    [-100, -60, -20, 20, 60, 100], 'the formation ring reads symmetric about the spine');
+  assert.ok(ignition.every((e) => e.payload.magnitude === 1.2), 'one light-off, one brightness: together or not at all');
+  assert.equal(bus.of('audio:cue')[0].payload.id, 'sfx_engine_thrust', 'the burn has the shipped fleet voice');
+  step(8);
+  const hold = lights().slice(6).map((e) => e.payload.magnitude);
+  assert.deepEqual(hold, [0.5, 0.45], 'the burn holds ten — dim re-strikes, the honest way to keep it visible');
+  step(12);
+  assert.equal(lights().length, 9, 'the cut is the last flicker');
+  assert.equal(lights()[8].payload.magnitude, 0.3, 'and then every engine is dead on the same tick');
+  const before = bus.events.length;
+  step(40);
+  assert.equal(bus.events.length, before, 'the drill runs once; the grading is the vignette leg\'s business');
+});
+
+test('the Broadside stitches flashbulbs across the moon\'s face while the band goes respectfully silent', () => {
+  const bus = stubBus();
+  special500Spectacle.init({ bus });
+  const moonlet = { x: -200, z: -1500 }; // the Towed Moonlet, the moon on a chain
+  const firedAt = 31 * CAL_DAY_S + 200; // dayOfYear 31, the shower window
+  const state = withPoi(fixtureState({ simTime: firedAt, sectorId: ASHFALL }), 'poi_ashfall_towed_moonlet', moonlet);
+  bus.emit('special500:spectacle', { id: 'SP1-155', sectorId: ASHFALL });
+  special500Spectacle.update(1 / 60, state);
+  const step = (t) => {
+    state.simTime = firedAt + t;
+    state.tick = Math.floor(state.simTime * 60);
+    special500Spectacle.update(1 / 60, state);
+  };
+  const lights = () => bus.of('presentation:vfxCue').filter((e) => e.payload.id === 'special500.light');
+  const plumes = () => bus.of('presentation:vfxCue').filter((e) => e.payload.id === 'thermal.mark');
+  step(29);
+  assert.equal(lights().length, 11, 'two files of the string so far');
+  assert.equal(plumes().length, 2, 'the plumes you can pick out from the lane');
+  step(42);
+  assert.equal(lights().length, 15, 'the slow string of flashbulbs, end to end');
+  assert.equal(plumes().length, 3, 'each impact opens a plume wide and dim');
+  assert.ok(plumes().every((e) => e.payload.radius >= 90), 'the plumes read from the lane');
+  assert.equal(bus.of('audio:cue').length, 0, 'the band goes uncharacteristically respectful — the row says nothing');
+  assert.equal(bus.of('news:publish').length, 0, 'and files nothing');
+  const before = bus.events.length;
+  step(90);
+  assert.equal(bus.events.length, before, 'one broadside per year; the real iron is the debris leg\'s business');
+});
+
+test('the Frost Line reads for one breath, the traffic wears frost, and the comms crackle', () => {
+  const bus = stubBus();
+  special500Spectacle.init({ bus });
+  const firedAt = 1200;
+  const state = fixtureState({ simTime: firedAt, sectorId: CHARON }); // sectorEntry, first crossing
+  bus.emit('special500:spectacle', { id: 'SP1-151', sectorId: CHARON });
+  special500Spectacle.update(1 / 60, state);
+  const step = (t) => {
+    state.simTime = firedAt + t;
+    state.tick = Math.floor(state.simTime * 60);
+    special500Spectacle.update(1 / 60, state);
+  };
+  step(11);
+  const line = bus.of('presentation:vfxCue').filter((e) => e.payload.id === 'thermal.mark');
+  assert.equal(line.length, 1, 'the invisible boundary reads for one breath');
+  assert.equal(line[0].payload.color, '#eaf4f8', 'ice-white');
+  const frost = bus.of('presentation:vfxCue').filter((e) => e.payload.id === 'special500.light');
+  assert.equal(frost.length, 6, 'the frosted traffic walks the sunward side, and your nose whitens');
+  step(13);
+  const crackle = bus.of('audio:cue');
+  assert.equal(crackle.length, 1, 'comms acquire a crackle');
+  assert.equal(crackle[0].payload.id, 'sfx_comms_squelch_tail', 'the shipped squelch tail');
+  const before = bus.events.length;
+  step(40);
+  assert.equal(bus.events.length, before, 'the first crossing only; every crossing after is the crossing-check leg\'s business');
+});
+
+test('the Ashfall Skim walks the barges starward with their fields on lines behind them', () => {
+  const bus = stubBus();
+  special500Spectacle.init({ bus });
+  const firedAt = 8 * CAL_DAY_S + 350; // dayOfYear 8, inside the skim window
+  const state = fixtureState({ simTime: firedAt, sectorId: ASHFALL });
+  bus.emit('special500:spectacle', { id: 'SP1-150', sectorId: ASHFALL });
+  special500Spectacle.update(1 / 60, state);
+  const step = (t) => {
+    state.simTime = firedAt + t;
+    state.tick = Math.floor(state.simTime * 60);
+    special500Spectacle.update(1 / 60, state);
+  };
+  const zone = zonesForSector(ASHFALL).find((z) => z.id === 'zone_ashfall_belt');
+  const bearing = SPECTACLE_LEGS['SP1-150'].bearingRad;
+  step(15);
+  const barges = bus.of('presentation:vfxCue').filter((e) => e.payload.id === 'special500.light');
+  assert.equal(barges.length, 5, 'the file in line-ahead, dipping starward');
+  assert.deepEqual(barges.map((e) => bearingOffset(e.payload, zone.center, bearing)),
+    [-120, -60, 0, 60, 120], 'the run crosses the seams they feed');
+  const fields = bus.of('presentation:vfxCue').filter((e) => e.payload.id === 'thermal.mark');
+  assert.equal(fields.length, 2, 'the collector fields drag behind on lines');
+  assert.ok(fields.every((e) => ['#e8a060', '#d89050'].includes(e.payload.color)), 'flare-lit');
+  const band = bus.of('audio:cue');
+  assert.equal(band.length, 2, 'the crew\'s voices, with the calm of people who do this twice a shift');
+  assert.deepEqual(band.map((e) => e.payload.rate), [1, 0.95]);
+  step(21);
+  const wake = bus.of('presentation:vfxCue').filter((e) => e.payload.id === 'special500.light')[5];
+  assert.ok(wake.payload.magnitude < 1, 'the sheared wake reads as one brief lane behind the last barge');
+  const before = bus.events.length;
+  step(60);
+  assert.equal(bus.events.length, before, 'one skim per year; the speed lane is the machinery leg\'s business');
+});
+
+test('the Lightning Farmers run strikes down the line and the capacitor bank bangs', () => {
+  const bus = stubBus();
+  special500Spectacle.init({ bus });
+  const orchard = { x: -220, z: 700 };
+  const firedAt = 700;
+  const state = withPoi(fixtureState({ simTime: firedAt, sectorId: VEIL }), 'poi_veil_black_orchard', orchard);
+  bus.emit('special500:spectacle', { id: 'SP1-157', sectorId: VEIL });
+  special500Spectacle.update(1 / 60, state);
+  const step = (t) => {
+    state.simTime = firedAt + t;
+    state.tick = Math.floor(state.simTime * 60);
+    special500Spectacle.update(1 / 60, state);
+  };
+  const bearing = SPECTACLE_LEGS['SP1-157'].bearingRad;
+  const lights = () => bus.of('presentation:vfxCue').filter((e) => e.payload.id === 'special500.light');
+  step(6);
+  const strike = lights();
+  assert.equal(strike.length, 6, 'the cell grounds, the strike runs the line, the bank takes it');
+  const run = lights().slice(1, 5).map((e) => bearingOffset(e.payload, orchard, bearing));
+  assert.deepEqual(run, [-60, -20, 20, 60], 'the strike walks the collector line rock to rock');
+  assert.ok(lights()[0].payload.magnitude > 1, 'the grounding is the hard beat');
+  let bangs = bus.of('audio:cue').filter((e) => e.payload.id === 'sfx_mining_seismic_pulse');
+  assert.equal(bangs.length, 1, 'a bang you feel in your teeth');
+  step(21);
+  bangs = bus.of('audio:cue').filter((e) => e.payload.id === 'sfx_mining_seismic_pulse');
+  assert.equal(bangs.length, 2, 'the second strike harvests too');
+  assert.ok(bangs[1].payload.rate < bangs[0].payload.rate, 'the bank settles lower than the last');
+  const chatter = bus.of('audio:cue').filter((e) => e.payload.id === 'sfx_bark_radio');
+  assert.equal(chatter.length, 2, 'the farmers talk weather because the weather is the whole conversation');
+  const before = bus.events.length;
+  step(60);
+  assert.equal(bus.events.length, before, 'one harvest per firing; the vendor is the vendor leg\'s business');
+});
+
+test('the Merger Convoy meets lights-to-lights, reads the register, and walks on as one column', () => {
+  const bus = stubBus();
+  special500Spectacle.init({ bus });
+  const beacon = { x: 3040, z: -920 }; // the Throughline weigh beacon, the junction
+  const firedAt = 900;
+  const state = withPoi(fixtureState({ simTime: firedAt, sectorId: CERES }), 'poi_ceres_throughline', beacon);
+  bus.emit('special500:spectacle', { id: 'SP1-052', sectorId: CERES });
+  special500Spectacle.update(1 / 60, state);
+  const step = (t) => {
+    state.simTime = firedAt + t;
+    state.tick = Math.floor(state.simTime * 60);
+    special500Spectacle.update(1 / 60, state);
+  };
+  const bearing = SPECTACLE_LEGS['SP1-052'].bearingRad;
+  const lights = () => bus.of('presentation:vfxCue').filter((e) => e.payload.id === 'special500.light');
+  step(3);
+  const leads = lights();
+  assert.equal(leads.length, 2, 'two convoys, one junction');
+  assert.deepEqual(leads.map((e) => bearingOffset(e.payload, beacon, bearing)), [-40, 40],
+    'lights-to-lights: the leads meet on the lane bearing');
+  step(7);
+  const register = bus.of('audio:cue');
+  assert.equal(register.length, 2, 'the manifest exchange, voice and answer');
+  assert.deepEqual(register.map((e) => e.payload.rate), [1, 0.95], 'read like a marriage register: one voice, then the other');
+  step(10);
+  assert.deepEqual(lights().slice(2).map((e) => bearingOffset(e.payload, beacon, bearing)), [-8, 8],
+    'the old leads fall in side by side');
+  step(21);
+  assert.equal(lights().length, 9, 'one column walking on');
+  assert.equal(bus.of('news:publish').length, 0, 'the register rides the band, not the wire');
+  const before = bus.events.length;
+  step(60);
+  assert.equal(bus.events.length, before, 'one merger per seed; the raid math is the convoy script\'s business');
+});
+
+test('the Ocean Glint Walk slides the bead across the band and pinches out at the limb, in silence', () => {
+  const bus = stubBus();
+  special500Spectacle.init({ bus });
+  const firedAt = 6 * CAL_DAY_S + 435; // dayOfYear 6, inside the authored window
+  const state = fixtureState({ simTime: firedAt, sectorId: TETHYS });
+  bus.emit('special500:spectacle', { id: 'SP3-036', sectorId: TETHYS });
+  special500Spectacle.update(1 / 60, state);
+  const step = (t) => {
+    state.simTime = firedAt + t;
+    state.tick = Math.floor(state.simTime * 60);
+    special500Spectacle.update(1 / 60, state);
+  };
+  const zone = zonesForSector(TETHYS).find((z) => z.id === 'zone_tethys_anvil');
+  const bearing = SPECTACLE_LEGS['SP3-036'].bearingRad;
+  const lights = () => bus.of('presentation:vfxCue').filter((e) => e.payload.id === 'special500.light');
+  step(2);
+  const bead = lights();
+  assert.equal(bead.length, 1, 'a single burning point of reflected sun');
+  assert.equal(bearingOffset(bead[0].payload, zone.center, bearing), -150, 'it arrives at the limb');
+  step(27);
+  const walk = lights().map((e) => bearingOffset(e.payload, zone.center, bearing));
+  assert.deepEqual(walk, [-150, -150, -90, -30, 30, 90, 150], 'the bead slides across the ocean band');
+  step(31);
+  const road = bus.of('presentation:vfxCue').filter((e) => e.payload.id === 'thermal.mark');
+  assert.equal(road.length, 1, 'the golden road of specular glint widens');
+  assert.equal(road[0].payload.color, '#e8c860');
+  step(36);
+  const last = lights()[7];
+  assert.equal(bearingOffset(last.payload, zone.center, bearing), 160, 'the pinch out at the limb');
+  assert.ok(last.payload.magnitude < 1, 'and the light dies small');
+  assert.equal(bus.of('audio:cue').length, 0, 'sun-angle geometry makes no sound');
+  const before = bus.events.length;
+  step(60);
+  assert.equal(bus.events.length, before, 'once a day, exactly as long as the geometry takes');
+});
+
+test('Moonrise walks the lit rim across the Anvil over four minutes and keeps the coin dark', () => {
+  const bus = stubBus();
+  special500Spectacle.init({ bus });
+  const firedAt = 30 * CAL_DAY_S + 150; // dayOfYear 30, inside the crossing window
+  const state = fixtureState({ simTime: firedAt, sectorId: TETHYS });
+  bus.emit('special500:spectacle', { id: 'SP3-028', sectorId: TETHYS });
+  special500Spectacle.update(1 / 60, state);
+  const step = (t) => {
+    state.simTime = firedAt + t;
+    state.tick = Math.floor(state.simTime * 60);
+    special500Spectacle.update(1 / 60, state);
+  };
+  const zone = zonesForSector(TETHYS).find((z) => z.id === 'zone_tethys_anvil');
+  const bearing = SPECTACLE_LEGS['SP3-028'].bearingRad;
+  const lights = () => bus.of('presentation:vfxCue').filter((e) => e.payload.id === 'special500.light');
+  const rims = () => bus.of('presentation:vfxCue').filter((e) => e.payload.id === 'thermal.mark');
+  step(5);
+  assert.equal(rims().length, 1, 'first contact: the leading rim reads against the disc');
+  step(111);
+  assert.equal(lights().length, 3, 'the rim walks the chord sparse as a clock hand');
+  assert.ok(rims().length === 1, 'no second ring mid-crossing');
+  step(225);
+  assert.equal(lights().length, 5, 'the rim\'s whole chord');
+  assert.equal(rims().length, 2, 'last contact: the rim pinches off the limb');
+  assert.deepEqual(lights().map((e) => bearingOffset(e.payload, zone.center, bearing)),
+    [-80, -40, 0, 40, 80], 'the crossing runs the face, not the belt');
+  assert.equal(bus.of('audio:cue').length, 0, 'a moonrise is signed, not announced');
+  assert.equal(bus.of('news:publish').length, 0, 'and posted nowhere');
+  const before = bus.events.length;
+  step(300);
+  assert.equal(bus.events.length, before, 'one moonrise per year — no eclipse in it, no omen');
+});
+
+test('the Eighth Bell rings once with nothing driving it, and the silence after is the answer', () => {
+  const bus = stubBus();
+  special500Spectacle.init({ bus });
+  const firedAt = 4 * CAL_DAY_S + 100; // a clean pulse receipt, mid-shift
+  const state = fixtureState({ simTime: firedAt, sectorId: VESTA });
+  bus.emit('special500:spectacle', { id: 'SP2-124', sectorId: VESTA });
+  special500Spectacle.update(1 / 60, state);
+  const step = (t) => {
+    state.simTime = firedAt + t;
+    state.tick = Math.floor(state.simTime * 60);
+    special500Spectacle.update(1 / 60, state);
+  };
+  step(3);
+  const note = bus.of('audio:cue');
+  assert.equal(note.length, 1, 'one unscheduled note');
+  assert.equal(note[0].payload.id, 'sfx_eighth_bell_strike', 'the shipped strike voice');
+  assert.equal(note[0].payload.rate, 1, 'at written pitch — it is the timing that is unscheduled');
+  const ring = bus.of('presentation:vfxCue').filter((e) => e.payload.id === 'thermal.mark');
+  assert.equal(ring.length, 1, 'one ring rolling out with no pulse behind it');
+  assert.equal(ring[0].payload.color, '#c8d8e8');
+  assert.equal(bus.of('news:publish').length, 0, 'the Choir\'s channel is not the news wire');
+  const before = bus.events.length;
+  step(20);
+  assert.equal(bus.events.length, before, 'it does not do that. It has never done that.');
+});
+
+test('the Frequency Nobody Owns plays the Vesper phrase two octaves down and stops mid-phrase when the murk breaks', () => {
+  const bus = stubBus();
+  special500Spectacle.init({ bus });
+  const firedAt = 300;
+  const state = fixtureState({ simTime: firedAt, sectorId: VEIL }); // sectorEntry into the murk
+  bus.emit('special500:spectacle', { id: 'SP2-026', sectorId: VEIL });
+  special500Spectacle.update(1 / 60, state);
+  const step = (t) => {
+    state.simTime = firedAt + t;
+    state.tick = Math.floor(state.simTime * 60);
+    special500Spectacle.update(1 / 60, state);
+  };
+  step(8);
+  const phrase = bus.of('audio:cue');
+  assert.equal(phrase.length, 3, 'LOW HIGH MIDDLE: the whole phrase, nothing else');
+  assert.deepEqual(phrase.map((e) => e.payload.rate), [0.5, 0.75, 0.6], 'the Vesper phrase, two octaves down');
+  for (const note of phrase) {
+    assert.equal(note.payload.id, 'sfx_vesper_resonator_0', 'one voice — and it is not Vesper\'s three');
+    assert.equal(note.payload.gain, 0.15, 'lullaby-grade');
+  }
+  assert.equal(bus.of('presentation:vfxCue').length, 0, 'nothing to see: the murk keeps its own counsel');
+  assert.equal(bus.of('news:publish').length, 0, 'nobody owns the frequency, so nobody posts it');
+  step(38);
+  assert.equal(bus.of('audio:cue').length, 6, 'the phrase recurs while the murk holds the pilot');
+  state.world.currentSectorId = CHARON;
+  step(45);
+  assert.equal(bus.of('audio:cue').length, 6, 'the murk breaks the phrase between cycles — the loop dies where it stands, like a door closed gently from the other side');
+  step(80);
+  assert.equal(bus.of('audio:cue').length, 6, 'and nothing plays again');
+});
+
+test('the Choir Tender’s bell rings one note and every hull that answers arrives in harmony', () => {
+  const bus = stubBus();
+  special500Spectacle.init({ bus });
+  const tender = { x: 120, z: -520 }; // the Relief-Freighter Choir-Tender, the hospital wreck
+  const firedAt = 5 * CAL_DAY_S + 90; // the scheduled hymn window
+  const state = withPoi(fixtureState({ simTime: firedAt, sectorId: HELIOS }), 'poi_helios_choir_tender', tender);
+  bus.emit('special500:spectacle', { id: 'SP2-176', sectorId: HELIOS });
+  special500Spectacle.update(1 / 60, state);
+  const step = (t) => {
+    state.simTime = firedAt + t;
+    state.tick = Math.floor(state.simTime * 60);
+    special500Spectacle.update(1 / 60, state);
+  };
+  step(4);
+  const notes = bus.of('audio:cue');
+  assert.equal(notes.length, 4, 'the note, and the answers');
+  assert.equal(notes[0].payload.id, 'sfx_morrow_bell_0', 'the dead tender\'s own bell');
+  assert.equal(notes[0].payload.rate, 0.84, 'the lullaby\'s first note, low and soft');
+  assert.deepEqual(notes.slice(1).map((e) => e.payload.rate), [1.26, 1.68, 0.84],
+    'the harmony: the fifth, the octave, the unison under');
+  assert.ok(notes.slice(1).every((e) => e.payload.gain < notes[0].payload.gain),
+    'mid-shift: the answers carry, they do not lead');
+  assert.equal(bus.of('presentation:vfxCue').length, 0, 'no light is filed either');
+  assert.equal(bus.of('news:publish').length, 0, 'no explanation filed');
+  const before = bus.events.length;
+  step(30);
+  assert.equal(bus.events.length, before, 'one note a day; the codex page is its own leg\'s business');
 });

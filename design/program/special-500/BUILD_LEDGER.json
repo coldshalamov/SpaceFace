@@ -7,9 +7,9 @@
   "small": 167,
   "medium": 167,
   "large": 166,
-  "landed": 76,
-  "assigned": 26,
-  "approved": 76
+  "landed": 90,
+  "assigned": 28,
+  "approved": 90
  },
  "derivation": {
   "ratifiedFollowup": 330,
@@ -221,7 +221,7 @@
    "size": "medium",
    "family": "counter",
    "batch": 18,
-   "status": "pending",
+   "status": "assigned",
    "commit": "",
    "verification": "",
    "note": "promoted to medium (balance)"
@@ -471,7 +471,7 @@
    "size": "medium",
    "family": "counter",
    "batch": 18,
-   "status": "pending",
+   "status": "assigned",
    "commit": "",
    "verification": "",
    "note": "promoted to medium (balance)"
@@ -491,7 +491,7 @@
    "size": "medium",
    "family": "counter",
    "batch": 18,
-   "status": "pending",
+   "status": "assigned",
    "commit": "",
    "verification": "",
    "note": "promoted to medium (balance)"
@@ -608,7 +608,7 @@
    "size": "medium",
    "family": "counter",
    "batch": 18,
-   "status": "pending",
+   "status": "assigned",
    "commit": "",
    "verification": "",
    "note": "promoted to medium (balance)"
@@ -667,7 +667,7 @@
    "size": "medium",
    "family": "counter",
    "batch": 18,
-   "status": "pending",
+   "status": "assigned",
    "commit": "",
    "verification": "",
    "note": "promoted to medium (balance)"
@@ -766,7 +766,7 @@
    "size": "medium",
    "family": "counter",
    "batch": 18,
-   "status": "pending",
+   "status": "assigned",
    "commit": "",
    "verification": "",
    "note": "promoted to medium (balance)"
@@ -951,7 +951,7 @@
    "size": "medium",
    "family": "counter",
    "batch": 18,
-   "status": "pending",
+   "status": "assigned",
    "commit": "",
    "verification": "",
    "note": "promoted to medium (balance)"
@@ -1136,7 +1136,7 @@
    "size": "medium",
    "family": "counter",
    "batch": 18,
-   "status": "pending",
+   "status": "assigned",
    "commit": "",
    "verification": "",
    "note": "promoted to medium (balance)"
@@ -1255,7 +1255,7 @@
    "size": "medium",
    "family": "counter",
    "batch": 18,
-   "status": "pending",
+   "status": "assigned",
    "commit": "",
    "verification": "",
    "note": "promoted to medium (balance)"
@@ -2183,7 +2183,7 @@
    "size": "medium",
    "family": "counter",
    "batch": 18,
-   "status": "pending",
+   "status": "assigned",
    "commit": "",
    "verification": "",
    "note": "promoted to medium (balance)"
@@ -2321,9 +2321,9 @@
    "size": "small",
    "family": "spectacle",
    "batch": 7,
-   "status": "pending",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused suite 41/41 + validator CLEAN (44 rows) + controller re-run",
    "note": ""
   },
   {
@@ -2341,9 +2341,9 @@
    "size": "small",
    "family": "spectacle",
    "batch": 7,
-   "status": "pending",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused suite 41/41 + validator CLEAN (44 rows) + controller re-run",
    "note": ""
   },
   {
@@ -2359,9 +2359,9 @@
    "size": "small",
    "family": "spectacle",
    "batch": 7,
-   "status": "pending",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused suite 41/41 + validator CLEAN (44 rows) + controller re-run",
    "note": ""
   },
   {
@@ -2399,9 +2399,9 @@
    "size": "small",
    "family": "spectacle",
    "batch": 7,
-   "status": "pending",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused suite 41/41 + validator CLEAN (44 rows) + controller re-run",
    "note": ""
   },
   {
@@ -2419,9 +2419,9 @@
    "size": "small",
    "family": "spectacle",
    "batch": 7,
-   "status": "pending",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused suite 41/41 + validator CLEAN (44 rows) + controller re-run",
    "note": ""
   },
   {
@@ -2439,9 +2439,9 @@
    "size": "small",
    "family": "spectacle",
    "batch": 7,
-   "status": "pending",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused suite 41/41 + validator CLEAN (44 rows) + controller re-run",
    "note": ""
   },
   {
@@ -2479,9 +2479,9 @@
    "size": "small",
    "family": "spectacle",
    "batch": 7,
-   "status": "pending",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused suite 41/41 + validator CLEAN (44 rows) + controller re-run",
    "note": ""
   },
   {
@@ -2499,9 +2499,9 @@
    "size": "medium",
    "family": "spectacle",
    "batch": 7,
-   "status": "pending",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused suite 41/41 + validator CLEAN (44 rows) + controller re-run",
    "note": ""
   },
   {
@@ -2519,9 +2519,9 @@
    "size": "medium",
    "family": "spectacle",
    "batch": 7,
-   "status": "pending",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused suite 41/41 + validator CLEAN (44 rows) + controller re-run",
    "note": ""
   },
   {
@@ -2539,9 +2539,9 @@
    "size": "small",
    "family": "spectacle",
    "batch": 7,
-   "status": "pending",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused suite 41/41 + validator CLEAN (44 rows) + controller re-run",
    "note": ""
   },
   {
@@ -2559,9 +2559,9 @@
    "size": "medium",
    "family": "spectacle",
    "batch": 7,
-   "status": "pending",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused suite 41/41 + validator CLEAN (44 rows) + controller re-run",
    "note": ""
   },
   {
@@ -2621,9 +2621,9 @@
    "size": "small",
    "family": "spectacle",
    "batch": 7,
-   "status": "pending",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused suite 41/41 + validator CLEAN (44 rows) + controller re-run",
    "note": ""
   },
   {
@@ -2660,9 +2660,9 @@
    "size": "small",
    "family": "spectacle",
    "batch": 7,
-   "status": "pending",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused suite 41/41 + validator CLEAN (44 rows) + controller re-run",
    "note": ""
   },
   {
@@ -2699,9 +2699,9 @@
    "size": "small",
    "family": "spectacle",
    "batch": 7,
-   "status": "pending",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused suite 41/41 + validator CLEAN (44 rows) + controller re-run",
    "note": ""
   },
   {
@@ -3194,7 +3194,7 @@
    "size": "small",
    "family": "counter",
    "batch": 18,
-   "status": "pending",
+   "status": "assigned",
    "commit": "",
    "verification": "",
    "note": ""
@@ -3236,7 +3236,7 @@
    "size": "small",
    "family": "counter",
    "batch": 18,
-   "status": "pending",
+   "status": "assigned",
    "commit": "",
    "verification": "",
    "note": ""
@@ -3351,7 +3351,7 @@
    "size": "small",
    "family": "counter",
    "batch": 18,
-   "status": "pending",
+   "status": "assigned",
    "commit": "",
    "verification": "",
    "note": ""
@@ -3716,7 +3716,7 @@
    "size": "medium",
    "family": "counter",
    "batch": 18,
-   "status": "pending",
+   "status": "assigned",
    "commit": "",
    "verification": "",
    "note": "promoted to medium (balance)"

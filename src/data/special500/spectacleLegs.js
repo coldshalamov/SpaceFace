@@ -869,6 +869,375 @@ const ROWS = {
       Object.freeze({ atS: 100.0, template: 'lightFlash', params: Object.freeze({ offsetWu: 0, magnitude: 2.2 }) }),
     ]),
   }),
+
+  // ---- batch 7 (the spectacle family) ----
+
+  // SP1-115 — The Range Note. The sector-day after the ace's return receipt: for a
+  // whole day, occasionally, a red ranging fleck crosses the hull glass — brief,
+  // precise, from nowhere, no contact on any scanner. Sable Iask is a roaming named
+  // captain with no fixed perch, and the fleck crosses YOUR glass — hull-space the
+  // registry's place anchors cannot render; the payload tell carries the fleck
+  // wherever the reminder lands. The row renders the ranging sweep from the
+  // Unidentified Lattice in the Expanse — the anonymous dark roost the flecks sweep
+  // out of — and, per the SP3-044 precedent, skips rather than misplaces where the
+  // lattice does not stand. The loop is the day: the flecks recur on their cadence
+  // while the sector holds the pilot; leaving ends them, exactly like the Boulder
+  // Binary's clock. The accuracy-nerf half of the payoff was dropped by ratification
+  // (hones c) — the story prop is the whole leg, and a fleck from nowhere makes no
+  // sound and files no wire.
+  'SP1-115': Object.freeze({
+    title: 'The Range Note',
+    anchor: Object.freeze({ sectorId: 'sector_charon_expanse', poiId: 'poi_charon_pylon_field' }),
+    bearingRad: 2.1,
+    loopS: 45,
+    spanS: 8,
+    steps: Object.freeze([
+      Object.freeze({ atS: 1.0, template: 'echoRing', params: Object.freeze({ color: '#d0483a', radiusWu: 10, lifeS: 0.4 }) }),
+      Object.freeze({ atS: 3.5, template: 'echoRing', params: Object.freeze({ color: '#d0483a', radiusWu: 8, lifeS: 0.35 }) }),
+      Object.freeze({ atS: 6.5, template: 'echoRing', params: Object.freeze({ color: '#d0483a', radiusWu: 12, lifeS: 0.45 }) }),
+    ]),
+  }),
+
+  // SP2-076 — The Shoal Toast. Bloom day at Nereid Waystation (calendar dayOfYear 18,
+  // re-armed yearly): outside the glass the shoal's annual bloom passes like slow
+  // fireworks, the bar's lights dim on cue, and every glass in the place goes up at
+  // once — the toast is one word, in unison, and the word is the first mapper's name.
+  // HONEST SCOPING: the bar interior, the codex page and the `shoal_toast` flag are
+  // their own legs; additive VFX cannot darken, so "the bar's lights dim on cue"
+  // renders as floor-gain beats — the lowest the cue light burns (the SP3-106
+  // precedent). The crowd's unison toast is the shipped crowd voice from the
+  // station's direction in space; the bloom is the slow file passing the glass.
+  'SP2-076': Object.freeze({
+    title: 'The Shoal Toast',
+    anchor: Object.freeze({ sectorId: 'sector_nereid_shoal', stationId: 'station_nereid' }),
+    bearingRad: 1.4,
+    loopS: 0,
+    spanS: 28,
+    steps: Object.freeze([
+      Object.freeze({ atS: 1.0, template: 'bellVoice', params: Object.freeze({ recipe: 'ambient_station_crowd', gain: 0.5, rate: 1 }) }),
+      Object.freeze({ atS: 3.0, template: 'lampCascade', params: Object.freeze({ count: 5, lengthWu: 340, stepS: 4 }) }),
+      Object.freeze({ atS: 22.0, template: 'lightFlash', params: Object.freeze({ offsetWu: 0, magnitude: 0.15 }) }),
+      Object.freeze({ atS: 24.0, template: 'lightFlash', params: Object.freeze({ offsetWu: 30, magnitude: 0.12 }) }),
+    ]),
+  }),
+
+  // SP3-060 — The Clearing. The exact second each surge ends: the sky cleans in one
+  // wipe — the curtain-light collapses anti-sunward, stars sharpen over a second,
+  // every hull's rim light comes back at once, and the sector audibly relaxes. It
+  // ends every storm the same way. HONEST SCOPING: the exposure/structure wipe on the
+  // background resolve is the sectorVisualProfiles compositor leg; this row renders
+  // the clearing as the registry carries it — the wipe's wide ring, the rim lights
+  // returning in one fast sweep, two hard star points, and the single low exhale in
+  // the mix (the shipped breath voice, down an octave). The hash-daily firing lands
+  // in any sector; the row plays at the Murmur Buoy — the Weather eye, the fog watch
+  // post the payload is filed from — and skips rather than misplaces where the post
+  // does not stand (the SP3-044 precedent). The best five seconds of weather in the
+  // game, observed from the post that watches for a living.
+  'SP3-060': Object.freeze({
+    title: 'The Clearing',
+    anchor: Object.freeze({ sectorId: 'sector_veil_nebula', poiId: 'poi_veil_murmur_buoy' }),
+    bearingRad: 2.9,
+    loopS: 0,
+    spanS: 10,
+    steps: Object.freeze([
+      Object.freeze({ atS: 0.5, template: 'echoRing', params: Object.freeze({ color: '#bfe8f0', radiusWu: 160, lifeS: 4 }) }),
+      Object.freeze({ atS: 1.5, template: 'lightFlash', params: Object.freeze({ offsetWu: -80, magnitude: 0.5 }) }),
+      Object.freeze({ atS: 1.6, template: 'lightFlash', params: Object.freeze({ offsetWu: 120, magnitude: 0.4 }) }),
+      Object.freeze({ atS: 2.5, template: 'lampCascade', params: Object.freeze({ count: 5, lengthWu: 200, stepS: 0.8 }) }),
+      Object.freeze({ atS: 6.0, template: 'bellVoice', params: Object.freeze({ recipe: 'bolus_breath', gain: 0.3, rate: 0.5 }) }),
+    ]),
+  }),
+
+  // SP1-150 — The Ashfall Skim. Calendar dayOfYear 8, recurring: Ashfall's refinery
+  // skim runs dip close enough to the star that the hulls read as silhouettes against
+  // the flare, collector fields dragging behind on lines, the crew's voices over the
+  // band with the calm of people who do this twice a shift. HONEST SCOPING: the wake
+  // speed lane is the environmentalMachinery field row (hones c) and the barges are
+  // the ambient-encounter leg; this row renders the run as the registry carries it —
+  // the file in line-ahead dipping starward over the seams they feed, the fields on
+  // their lines as wide flare-lit rings, the band voices, and the sheared wake
+  // reading as one brief bright lane behind the last barge.
+  'SP1-150': Object.freeze({
+    title: 'The Ashfall Skim',
+    anchor: Object.freeze({ sectorId: 'sector_ashfall_reach', zoneId: 'zone_ashfall_belt' }),
+    bearingRad: -0.7,
+    loopS: 0,
+    spanS: 26,
+    steps: Object.freeze([
+      Object.freeze({ atS: 1.0, template: 'bellVoice', params: Object.freeze({ recipe: 'sfx_bark_radio', gain: 0.3, rate: 1 }) }),
+      Object.freeze({ atS: 2.0, template: 'lampCascade', params: Object.freeze({ count: 5, lengthWu: 240, stepS: 3 }) }),
+      Object.freeze({ atS: 8.0, template: 'bellVoice', params: Object.freeze({ recipe: 'sfx_bark_radio', gain: 0.25, rate: 0.95 }) }),
+      Object.freeze({ atS: 10.0, template: 'echoRing', params: Object.freeze({ color: '#e8a060', radiusWu: 120, lifeS: 3 }) }),
+      Object.freeze({ atS: 10.5, template: 'echoRing', params: Object.freeze({ color: '#d89050', radiusWu: 90, lifeS: 3 }) }),
+      Object.freeze({ atS: 20.0, template: 'lightFlash', params: Object.freeze({ offsetWu: 120, magnitude: 0.5 }) }),
+    ]),
+  }),
+
+  // SP1-151 — The Frost Line. First crossing into Charon's outer belt: one invisible
+  // boundary and the universe changes — hull rims whiten with feathered ice, comms
+  // acquire a crackle, and every hull ahead wears the same frost. HONEST SCOPING:
+  // the persistent hull-frost state and the frost-side-only trade good are the
+  // mechanic legs; the catalog trigger fires the first crossing (sectorEntry, not
+  // recurring) and every crossing after is the crossing-check leg's business. This
+  // row renders the crossing as the registry carries it — the line reading for one
+  // breath as a crisp ring, the frosted traffic walking the sunward side, your own
+  // nose whitening, and the crackle arriving on the shipped squelch tail.
+  'SP1-151': Object.freeze({
+    title: 'The Frost Line',
+    anchor: Object.freeze({ sectorId: 'sector_charon_expanse', zoneId: 'zone_charon_belt' }),
+    bearingRad: 1.9,
+    loopS: 0,
+    spanS: 16,
+    steps: Object.freeze([
+      Object.freeze({ atS: 0.8, template: 'echoRing', params: Object.freeze({ color: '#eaf4f8', radiusWu: 90, lifeS: 2.5 }) }),
+      Object.freeze({ atS: 2.5, template: 'lampCascade', params: Object.freeze({ count: 5, lengthWu: 180, stepS: 2 }) }),
+      Object.freeze({ atS: 7.0, template: 'lightFlash', params: Object.freeze({ offsetWu: -60, magnitude: 0.6 }) }),
+      Object.freeze({ atS: 12.0, template: 'bellVoice', params: Object.freeze({ recipe: 'sfx_comms_squelch_tail', gain: 0.35, rate: 0.9 }) }),
+    ]),
+  }),
+
+  // SP1-153 — The Full Burn. Calendar dayOfYear 10, once: every operational hull at
+  // Helios — tugs, barges, patrol, the lot — lights off simultaneously for a
+  // synchronized station-keeping burn, holds ten seconds, and cuts together. Pure,
+  // pointless, perfect choreography, sixty years strong. HONEST SCOPING: the
+  // formation-ring motions, the join check and the tower's forever-grading are the
+  // vignette legs; the cue light is momentary, so the held burn renders as dim
+  // re-strikes inside the hold — the honest way to keep a ten-second burn visible.
+  // Six beats on one atS is the point: together or not at all (the SP2-100
+  // precedent). The tower's announcement rides the wire; the burn's voice is the
+  // shipped engine voice, down; the cut together is the last flicker, and the dark
+  // remainder of the window is every engine dead on the same tick.
+  'SP1-153': Object.freeze({
+    title: 'The Full Burn',
+    anchor: Object.freeze({ sectorId: 'sector_helios_prime', stationId: 'station_helios' }),
+    bearingRad: 2.2,
+    loopS: 0,
+    spanS: 15,
+    steps: Object.freeze([
+      Object.freeze({
+        atS: 0.5,
+        template: 'trafficAdvisory',
+        params: Object.freeze({
+          source: 'helios tower',
+          kind: 'notices',
+          text: 'DRILL NOTICE · Helios tower — fleet station-keeping drill at the turn of the hour. Every operational hull lights off together, holds ten, cuts together. It is not a test; nothing is being tested. It is the schedule, and the schedule has outlived everyone who laughed at it. The formation ring takes volunteers. The tower grades once. Forever.',
+        }),
+      }),
+      Object.freeze({ atS: 1.0, template: 'bellVoice', params: Object.freeze({ recipe: 'sfx_engine_thrust', gain: 0.25, rate: 0.75 }) }),
+      Object.freeze({ atS: 1.0, template: 'lightFlash', params: Object.freeze({ offsetWu: -100, magnitude: 1.2 }) }),
+      Object.freeze({ atS: 1.0, template: 'lightFlash', params: Object.freeze({ offsetWu: -60, magnitude: 1.2 }) }),
+      Object.freeze({ atS: 1.0, template: 'lightFlash', params: Object.freeze({ offsetWu: -20, magnitude: 1.2 }) }),
+      Object.freeze({ atS: 1.0, template: 'lightFlash', params: Object.freeze({ offsetWu: 20, magnitude: 1.2 }) }),
+      Object.freeze({ atS: 1.0, template: 'lightFlash', params: Object.freeze({ offsetWu: 60, magnitude: 1.2 }) }),
+      Object.freeze({ atS: 1.0, template: 'lightFlash', params: Object.freeze({ offsetWu: 100, magnitude: 1.2 }) }),
+      Object.freeze({ atS: 4.5, template: 'lightFlash', params: Object.freeze({ offsetWu: 0, magnitude: 0.5 }) }),
+      Object.freeze({ atS: 7.0, template: 'lightFlash', params: Object.freeze({ offsetWu: -40, magnitude: 0.45 }) }),
+      Object.freeze({ atS: 11.0, template: 'lightFlash', params: Object.freeze({ offsetWu: 0, magnitude: 0.3 }) }),
+    ]),
+  }),
+
+  // SP1-155 — The Broadside. Calendar dayOfYear 31, recurring: the moon takes a
+  // meteor stream broadside — a hundred visible impacts stitched across its face like
+  // a slow string of flashbulbs, each one throwing a plume you can pick out from the
+  // lane, while the band goes uncharacteristically respectful. HONEST SCOPING: the
+  // stream's real iron crossing the lane (dodge-or-weather-it) is the debrisCrossings
+  // mechanic leg, and the plumes' one-hour persistence is the aftermath leg — echo
+  // ring life is the owner's 4 s ceiling. The moon is the Towed Moonlet, the sector's
+  // authored moon on a chain; the row plays at its face. The flashbulb string walks
+  // the face as a slow file, the plumes open wide and dim, and the band's respect is
+  // the row saying nothing at all — no wire, no voice (that silence is the point, the
+  // SPX-A-08 precedent). The moon is not in danger. Everyone watches anyway.
+  'SP1-155': Object.freeze({
+    title: 'The Broadside',
+    anchor: Object.freeze({ sectorId: 'sector_ashfall_reach', poiId: 'poi_ashfall_towed_moonlet' }),
+    bearingRad: 0.55,
+    loopS: 0,
+    spanS: 40,
+    steps: Object.freeze([
+      Object.freeze({ atS: 1.0, template: 'lampCascade', params: Object.freeze({ count: 6, lengthWu: 260, stepS: 3.2 }) }),
+      Object.freeze({ atS: 4.0, template: 'echoRing', params: Object.freeze({ color: '#c8b8a0', radiusWu: 90, lifeS: 4 }) }),
+      Object.freeze({ atS: 14.0, template: 'lampCascade', params: Object.freeze({ count: 5, lengthWu: 220, stepS: 3.6 }) }),
+      Object.freeze({ atS: 18.0, template: 'echoRing', params: Object.freeze({ color: '#b8a890', radiusWu: 120, lifeS: 4 }) }),
+      Object.freeze({ atS: 30.0, template: 'lampCascade', params: Object.freeze({ count: 4, lengthWu: 180, stepS: 3.2 }) }),
+      Object.freeze({ atS: 36.0, template: 'echoRing', params: Object.freeze({ color: '#a89880', radiusWu: 140, lifeS: 4 }) }),
+    ]),
+  }),
+
+  // SP1-157 — The Lightning Farmers. Storm season on the Black Orchard — the farm
+  // rocks planted in rows off the Veil's storm lanes: the cells ground themselves on
+  // the ridge and the farmers harvest, strikes running the collector lines to the
+  // capacitor bank with a bang you feel in your teeth. HONEST SCOPING: the
+  // charged-cell vendor, the queue and the module charge are the vendor leg; the
+  // storm cells themselves are the weather leg; this row is the harvest as the lane
+  // sees it — two strikes walking the line rock to rock, the bank taking each charge
+  // with the shipped seismic thump, and the band's weather conversation (the shipped
+  // radio-bark voice — people who talk about weather because the weather is the
+  // whole conversation). The catalog trigger is a one-time proximity firing at the
+  // Veil; the row plays where the Orchard stands.
+  'SP1-157': Object.freeze({
+    title: 'The Lightning Farmers',
+    anchor: Object.freeze({ sectorId: 'sector_veil_nebula', poiId: 'poi_veil_black_orchard' }),
+    bearingRad: 0.5,
+    loopS: 0,
+    spanS: 24,
+    steps: Object.freeze([
+      Object.freeze({ atS: 1.0, template: 'bellVoice', params: Object.freeze({ recipe: 'sfx_bark_radio', gain: 0.3, rate: 1 }) }),
+      Object.freeze({ atS: 3.0, template: 'lightFlash', params: Object.freeze({ offsetWu: -60, magnitude: 1.5 }) }),
+      Object.freeze({ atS: 3.4, template: 'lampCascade', params: Object.freeze({ count: 4, lengthWu: 120, stepS: 0.6 }) }),
+      Object.freeze({ atS: 5.0, template: 'bellVoice', params: Object.freeze({ recipe: 'sfx_mining_seismic_pulse', gain: 0.45, rate: 0.9 }) }),
+      Object.freeze({ atS: 5.5, template: 'lightFlash', params: Object.freeze({ offsetWu: 80, magnitude: 1.2 }) }),
+      Object.freeze({ atS: 13.0, template: 'lightFlash', params: Object.freeze({ offsetWu: -60, magnitude: 1.3 }) }),
+      Object.freeze({ atS: 13.4, template: 'lampCascade', params: Object.freeze({ count: 4, lengthWu: 120, stepS: 0.7 }) }),
+      Object.freeze({ atS: 15.0, template: 'bellVoice', params: Object.freeze({ recipe: 'sfx_mining_seismic_pulse', gain: 0.4, rate: 0.85 }) }),
+      Object.freeze({ atS: 15.5, template: 'lightFlash', params: Object.freeze({ offsetWu: 80, magnitude: 1 }) }),
+      Object.freeze({ atS: 20.0, template: 'bellVoice', params: Object.freeze({ recipe: 'sfx_bark_radio', gain: 0.25, rate: 0.92 }) }),
+    ]),
+  }),
+
+  // SP1-052 — The Merger Convoy. Once per seeded week (hash-daily, Ceres only): two
+  // convoys meet at the Throughline weigh junction, run lights-to-lights for a
+  // moment, and merge into one column with the old leads falling in side by side —
+  // the band carrying a brief, formal exchange of freight manifests, read like a
+  // marriage register. HONEST SCOPING: the doubled column's raid math (twice the
+  // loot, twice the escort work, one shared graveyard) is the convoy-script leg's
+  // business; this row is the merger as the lane sees it — the two matched leads
+  // meeting on the lane bearing, the register read over the band in two voices, the
+  // side-by-side leads at the head, and the merged column walking on. Nobody smokes
+  // in vacuum; the row lights no cigars either.
+  'SP1-052': Object.freeze({
+    title: 'The Merger Convoy',
+    anchor: Object.freeze({ sectorId: 'sector_ceres_belt', poiId: 'poi_ceres_throughline' }),
+    bearingRad: 0.15,
+    loopS: 0,
+    spanS: 22,
+    steps: Object.freeze([
+      Object.freeze({ atS: 2.0, template: 'lightFlash', params: Object.freeze({ offsetWu: -40, magnitude: 1 }) }),
+      Object.freeze({ atS: 2.0, template: 'lightFlash', params: Object.freeze({ offsetWu: 40, magnitude: 1 }) }),
+      Object.freeze({ atS: 5.0, template: 'bellVoice', params: Object.freeze({ recipe: 'sfx_bark_radio', gain: 0.3, rate: 1 }) }),
+      Object.freeze({ atS: 6.2, template: 'bellVoice', params: Object.freeze({ recipe: 'sfx_bark_radio', gain: 0.28, rate: 0.95 }) }),
+      Object.freeze({ atS: 9.0, template: 'lightFlash', params: Object.freeze({ offsetWu: -8, magnitude: 1.2 }) }),
+      Object.freeze({ atS: 9.0, template: 'lightFlash', params: Object.freeze({ offsetWu: 8, magnitude: 1.2 }) }),
+      Object.freeze({ atS: 11.0, template: 'lampCascade', params: Object.freeze({ count: 5, lengthWu: 200, stepS: 2.4 }) }),
+    ]),
+  }),
+
+  // SP3-036 — Ocean Glint Walk. Calendar dayOfYear 6, recurring, in its authored
+  // forty-second window: a single burning point of reflected sun slides across the
+  // Anvil's ocean band like a bead of fire, widening as the angle shallows into a
+  // golden road of specular glint, then pinching out at the limb. For exactly that
+  // long the planet reads as water. HONEST SCOPING: the planet-factory specular
+  // parametric band (one authored material moment, no new shader) is the compositor
+  // leg; this row renders the walk's light as the registry carries it — the bead
+  // arriving at the limb, the slide across the band, the road widening as one warm
+  // ring, the pinch — silent, because sun-angle geometry makes no sound (the SP3-001
+  // sibling's own rule). Once a day, exactly as long as the geometry takes.
+  'SP3-036': Object.freeze({
+    title: 'Ocean Glint Walk',
+    anchor: Object.freeze({ sectorId: 'sector_tethys_junction', zoneId: 'zone_tethys_anvil' }),
+    bearingRad: 0.9,
+    loopS: 0,
+    spanS: 38,
+    steps: Object.freeze([
+      Object.freeze({ atS: 1.0, template: 'lightFlash', params: Object.freeze({ offsetWu: -150, magnitude: 1.6 }) }),
+      Object.freeze({ atS: 6.0, template: 'lampCascade', params: Object.freeze({ count: 6, lengthWu: 300, stepS: 4 }) }),
+      Object.freeze({ atS: 30.0, template: 'echoRing', params: Object.freeze({ color: '#e8c860', radiusWu: 160, lifeS: 4 }) }),
+      Object.freeze({ atS: 35.0, template: 'lightFlash', params: Object.freeze({ offsetWu: 160, magnitude: 0.4 }) }),
+    ]),
+  }),
+
+  // SP3-028 — Moonrise Over the Anvil. Day 30 of every year: a small cratered
+  // moonlet the background never quite showed before rises across the Anvil's face —
+  // a hard black coin with a lit rim, taking four minutes to cross. Ratification
+  // kept this fully decoupled from the eclipse chain: a moonrise signature, not a
+  // fourth transit. HONEST SCOPING: the signatureHero background composition is the
+  // sectorVisualProfiles compositor leg, and additive VFX cannot darken — the black
+  // coin is the sky keeping it; this row renders the half the registry can carry:
+  // the LIT RIM. First contact rings at the limb, the rim walking the chord as a
+  // sparse file over the four minutes (a clock hand, not a flare), last contact as
+  // the rim pinches off. No sound and no wire: a moonrise is signed, not announced.
+  'SP3-028': Object.freeze({
+    title: 'Moonrise Over the Anvil',
+    anchor: Object.freeze({ sectorId: 'sector_tethys_junction', zoneId: 'zone_tethys_anvil' }),
+    bearingRad: 1.15,
+    loopS: 0,
+    spanS: 240,
+    steps: Object.freeze([
+      Object.freeze({ atS: 4.0, template: 'echoRing', params: Object.freeze({ color: '#d8d4c8', radiusWu: 60, lifeS: 2.5 }) }),
+      Object.freeze({ atS: 30.0, template: 'lightFlash', params: Object.freeze({ offsetWu: -80, magnitude: 0.9 }) }),
+      Object.freeze({ atS: 70.0, template: 'lightFlash', params: Object.freeze({ offsetWu: -40, magnitude: 0.9 }) }),
+      Object.freeze({ atS: 110.0, template: 'lightFlash', params: Object.freeze({ offsetWu: 0, magnitude: 0.9 }) }),
+      Object.freeze({ atS: 150.0, template: 'lightFlash', params: Object.freeze({ offsetWu: 40, magnitude: 0.9 }) }),
+      Object.freeze({ atS: 190.0, template: 'lightFlash', params: Object.freeze({ offsetWu: 80, magnitude: 0.9 }) }),
+      Object.freeze({ atS: 224.0, template: 'echoRing', params: Object.freeze({ color: '#d8d4c8', radiusWu: 40, lifeS: 2 }) }),
+    ]),
+  }),
+
+  // SP2-124 — The Eighth Bell Answers. The receipt of a clean pulse chain — nothing
+  // shattered, no hull billed — and the Eighth Bell rings once with nothing driving
+  // it. An unscheduled note. HONEST SCOPING: the `eighth_approval` flag, the Choir
+  // standing tick and the future extra ribbon are the counter/flag legs; the Choir's
+  // channel is not the news wire, so the row files nothing — the personal register
+  // line is the payload tell, verbatim (the SP2-160 audio-led precedent). The row is
+  // the answer itself: the shipped strike voice at written pitch, one ring rolling
+  // out with no pulse behind it, and then the silence the Choir decided not to
+  // examine. It does not do that. It has never done that.
+  'SP2-124': Object.freeze({
+    title: 'The Eighth Bell Answers',
+    anchor: Object.freeze({ sectorId: 'sector_vesta_forge', zoneId: 'zone_vesta_forge' }),
+    bearingRad: 0,
+    loopS: 0,
+    spanS: 12,
+    steps: Object.freeze([
+      Object.freeze({ atS: 1.0, template: 'bellVoice', params: Object.freeze({ recipe: 'sfx_eighth_bell_strike', gain: 0.6, rate: 1 }) }),
+      Object.freeze({ atS: 1.4, template: 'echoRing', params: Object.freeze({ color: '#c8d8e8', radiusWu: 120, lifeS: 3 }) }),
+    ]),
+  }),
+
+  // SP2-026 — The Frequency Nobody Owns. First entry into the Veil: deep in the
+  // Blind Nebula murk, the band carries a tone pattern nobody owns — the Vesper
+  // phrase, LOW HIGH MIDDLE, two octaves down, played by something that is not
+  // Vesper. HONEST SCOPING: the `veil_hums_vesper` flag and the next-scan line are
+  // the comms legs; this row is the frequency itself. Three notes on the shipped
+  // resonator voice at lullaby gain — the phrase recognizable and wrong, one voice,
+  // no source filed. The phrase recurs on its own cadence while the murk holds the
+  // pilot; when the murk breaks the runtime's sector gate ends the loop wherever it
+  // is — the mid-note stop, like a door closed gently from the other side.
+  'SP2-026': Object.freeze({
+    title: 'The Frequency Nobody Owns',
+    anchor: Object.freeze({ sectorId: 'sector_veil_nebula', zoneId: 'zone_veil_fog' }),
+    bearingRad: 0,
+    loopS: 30,
+    spanS: 10,
+    steps: Object.freeze([
+      Object.freeze({ atS: 1.0, template: 'bellVoice', params: Object.freeze({ recipe: 'sfx_vesper_resonator_0', gain: 0.15, rate: 0.5 }) }),
+      Object.freeze({ atS: 4.0, template: 'bellVoice', params: Object.freeze({ recipe: 'sfx_vesper_resonator_0', gain: 0.15, rate: 0.75 }) }),
+      Object.freeze({ atS: 7.5, template: 'bellVoice', params: Object.freeze({ recipe: 'sfx_vesper_resonator_0', gain: 0.15, rate: 0.6 }) }),
+    ]),
+  }),
+
+  // SP2-176 — The Choir Tender's Lullaby. Proximity to the dead hospital tender
+  // during her scheduled hymn: the wreck's bell rings one note — no crew, no power,
+  // one note a day — and every Choir hull in three sectors answers it in harmony,
+  // mid-shift, no explanation filed. HONEST SCOPING: the codex page "The Hospital
+  // Bell" and the Choir standing tick are their own legs, and the note's
+  // day-seeded pitch variation is the calendar tell's business — the row voices one
+  // playing of it, resolving, as the payload promises. One anchor cannot stand in
+  // three sectors (the SP3-085 precedent), so the row plays the note at the tender
+  // and the answers arrive over the band as the harmony voices: the fifth, the
+  // octave, the unison under. The first note of a lullaby, from a hospital ship.
+  'SP2-176': Object.freeze({
+    title: 'The Choir Tender’s Lullaby',
+    anchor: Object.freeze({ sectorId: 'sector_helios_prime', poiId: 'poi_helios_choir_tender' }),
+    bearingRad: 0,
+    loopS: 0,
+    spanS: 12,
+    steps: Object.freeze([
+      Object.freeze({ atS: 1.0, template: 'bellVoice', params: Object.freeze({ recipe: 'sfx_morrow_bell_0', gain: 0.4, rate: 0.84 }) }),
+      Object.freeze({ atS: 3.0, template: 'bellVoice', params: Object.freeze({ recipe: 'sfx_core_bell', gain: 0.3, rate: 1.26 }) }),
+      Object.freeze({ atS: 3.2, template: 'bellVoice', params: Object.freeze({ recipe: 'sfx_core_bell', gain: 0.25, rate: 1.68 }) }),
+      Object.freeze({ atS: 3.4, template: 'bellVoice', params: Object.freeze({ recipe: 'sfx_core_bell', gain: 0.2, rate: 0.84 }) }),
+    ]),
+  }),
 };
 
 export const SPECTACLE_LEGS = Object.freeze(ROWS);
