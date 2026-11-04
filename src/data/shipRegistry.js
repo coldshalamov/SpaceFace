@@ -70,11 +70,13 @@ function registryEntityId(entity) {
 }
 
 /**
- * The registry slot a hail header should carry: "SLOW VERDICT · CAPT. WREN OSGOOD", or null
- * when the hull already has an authored name. `genericLabels` is the set of plain role labels
- * (TRAFFIC_ROLES labels); a traffic label outside that set is an authored line and never mints.
+ * The structured registry slot for a hull: { shipName, captain }, or null when the hull
+ * already has an authored identity. `genericLabels` is the set of plain role labels
+ * (TRAFFIC_ROLES labels); a traffic label outside that set is an authored line and never
+ * mints. One mint rule for every reader — a hail header and a wreck's black box must
+ * agree on who was aboard.
  */
-export function hailRegistrySlot(entity, seed, genericLabels = null) {
+export function registrySlotFor(entity, seed, genericLabels = null) {
   const data = (entity && entity.data) || {};
   const aceBoss = data.aceMemory && data.aceMemory.role === 'boss'
     ? data.aceMemory.aceName : null;
@@ -85,7 +87,16 @@ export function hailRegistrySlot(entity, seed, genericLabels = null) {
   }
   const id = registryEntityId(entity);
   if (!id) return null;
-  const { shipName, captain } = registryIdentityFor(seed, id);
-  const honorific = String(CAPTAIN_HONORIFIC_COPY.text).replace('{name}', captain);
-  return `${shipName} · ${honorific}`;
+  return registryIdentityFor(seed, id);
+}
+
+/**
+ * The registry slot a hail header should carry: "SLOW VERDICT · CAPT. WREN OSGOOD", or null
+ * when the hull already has an authored name.
+ */
+export function hailRegistrySlot(entity, seed, genericLabels = null) {
+  const slot = registrySlotFor(entity, seed, genericLabels);
+  if (!slot) return null;
+  const honorific = String(CAPTAIN_HONORIFIC_COPY.text).replace('{name}', slot.captain);
+  return `${slot.shipName} · ${honorific}`;
 }

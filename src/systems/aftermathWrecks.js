@@ -36,6 +36,8 @@ import { rememberChainDeath, bindChainWreck, clearChainWreckWitnesses } from '..
 import { WARM_FREIGHTER_HOST, warmFreighterCollisionModel, warmFreighterWorldScale } from '../data/warmFreighter.js';
 import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 import { wreckHulkBodyUpgrade } from '../data/wreckHulkCollision.js';
+import { registrySlotFor } from '../data/shipRegistry.js';
+import { GENERIC_ROLE_LABELS } from '../data/contactHail.js';
 import { hasWholeHulkGeometry, wholeHulkVisualForEntity, MULE_SITE_COLLISION_PROFILE } from '../data/wholeShipVisualIdentity.js';
 
 const STATE_VERSION = 3;
@@ -506,6 +508,20 @@ function killerLabelFor(state, killerId) {
   return data.name || data.shipName || data.callsign || data.callSign || null;
 }
 
+// The wreck history's person (inf-wreck-captain) rides the same record-time law as the
+// killer label: the hull registry's mint is deterministic per (save seed, hull id), but
+// entity ids recycle, so the captain who signed this manifest is captured while the hull
+// in hand is still the body that died. Same mint rule as the hail path (shipRegistry.js,
+// GENERIC_ROLE_LABELS) — the captain who answers a hail is the captain the black box names.
+// A hull with an authored identity never mints, and stays exactly as written.
+function victimRegistryFor(state, entity) {
+  try {
+    return registrySlotFor(entity, seedOf(state), GENERIC_ROLE_LABELS) || null;
+  } catch (_) {
+    return null;
+  }
+}
+
 function classForVictim(victimClass) {
   const key = String(victimClass || '').toLowerCase();
   if (key.includes('patrol') || key.includes('law') || key.includes('military')) return 'military';
@@ -743,6 +759,7 @@ function makeMarker(state, payload, entity) {
     victimPitch: boundedPoseAngle(entity && entity.pitch),
     victimBank: boundedPoseAngle(entity && entity.bank),
     victimLabel: victimLabelFor(entity, payload),
+    victimRegistry: victimRegistryFor(state, entity),
     victimFactionId: entity && entity.factionId || payload && payload.factionId || null,
     killerId: payload && payload.killerId != null ? payload.killerId : null,
     killerLabel: killerLabelFor(state, payload && payload.killerId),
@@ -1002,6 +1019,14 @@ function rememberMarker(state, bus, marker, onEvicted = null, { publishNews = tr
   return marker;
 }
 
+function normalizeVictimRegistry(input) {
+  if (!input || typeof input !== 'object') return null;
+  const shipName = boundedIdentityText(input.shipName);
+  const captain = boundedIdentityText(input.captain);
+  if (!shipName || !captain) return null;
+  return { shipName, captain };
+}
+
 function normalizeMarker(input) {
   if (!input || typeof input !== 'object') return null;
   if (!input.markerId || !input.sectorId || !input.pos) return null;
@@ -1040,6 +1065,10 @@ function normalizeMarker(input) {
     // Markers written before the record carried a name restore to null — the black box
     // then honestly reports an unidentified killer rather than guessing one.
     killerLabel: boundedIdentityText(input.killerLabel),
+    // The minted captain rides the same law (inf-wreck-captain): markers written before
+    // the capture restore to null, and the scan honestly stays silent about who was aboard
+    // rather than re-minting against an id that may have recycled.
+    victimRegistry: normalizeVictimRegistry(input.victimRegistry),
     tick: Number.isFinite(input.tick) ? input.tick : 0,
     t: Number.isFinite(input.t) ? input.t : 0,
     wreckClass: input.wreckClass || 'battlefield',
@@ -2731,6 +2760,7 @@ export const aftermathWrecks = {
           zoneName: marker.zoneName,
           victimClass: marker.victimClass,
           victimLabel: marker.victimLabel,
+          victimRegistry: clonePlain(marker.victimRegistry) || null,
           victimDefId: marker.victimDefId || null,
           victimFactionId: marker.victimFactionId,
           killerId: marker.killerId,
