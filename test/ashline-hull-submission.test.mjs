@@ -187,10 +187,62 @@ test('new worker-presented hulls stay direct while an unchanged resident cohort 
   } finally { release(); f.dispose(); }
 });
 
+test('completed hull batches retain their allocations through genuine Pause and resume', async () => {
+  let compiles = 0;
+  const f = await fixture({ compile: () => { compiles++; return { pipelines: {}, gpuResidency: {} }; } });
+  try {
+    f.owner._enableRigidOpaqueBatch(true); await f.owner._syncRigidOpaqueBatchProbe();
+    const resident = batches(f.scene), before = f.owner.getRigidOpaqueBatchDiagnosticsForBench();
+    const prepared = compiles;
+    f.state.mode = 'paused'; f.state.ui = { screenStack: ['pause'], docked: false };
+    await f.owner._syncRigidOpaqueBatchProbe();
+    assert.deepEqual(batches(f.scene), resident);
+    assert.equal(f.owner.getRigidOpaqueBatchDiagnosticsForBench().instances, before.instances);
+    f.state.mode = 'flight'; f.state.ui.screenStack = [];
+    await f.owner._syncRigidOpaqueBatchProbe();
+    assert.deepEqual(batches(f.scene), resident);
+    assert.equal(compiles, prepared, 'resume reuses admitted work without compiling it again');
+    assert.equal(f.owner.getRigidOpaqueBatchDiagnosticsForBench().rollbacks, before.rollbacks);
+  } finally { f.dispose(); }
+});
+
+test('an already-started finite hull plan survives genuine Pause without starting another plan', async () => {
+  let release, started, compiles = 0;
+  const wait = new Promise(resolve => { release = resolve; });
+  const compiling = new Promise(resolve => { started = resolve; });
+  const f = await fixture({ compile: async () => {
+    compiles++; started(); await wait; return { pipelines: {}, gpuResidency: {} };
+  } });
+  try {
+    f.owner._enableRigidOpaqueBatch(true); const pending = f.owner._syncRigidOpaqueBatchProbe();
+    await compiling;
+    f.state.mode = 'paused'; f.state.ui = { screenStack: ['pause'], docked: false };
+    assert.equal(f.owner._syncRigidOpaqueBatchProbe(), undefined);
+    assert.equal(compiles, 1);
+    release(); await pending;
+    assert.equal(f.owner.getRigidOpaqueBatchDiagnosticsForBench().status, 'active');
+    assert.equal(f.owner.getRigidOpaqueBatchDiagnosticsForBench().instances, 28);
+    const resident = batches(f.scene), readyCompiles = compiles;
+    f.state.mode = 'flight'; f.state.ui.screenStack = [];
+    await f.owner._syncRigidOpaqueBatchProbe();
+    assert.deepEqual(batches(f.scene), resident);
+    assert.equal(compiles, readyCompiles);
+  } finally { release(); f.dispose(); }
+
+  const paused = await fixture({ compile: () => assert.fail('Pause cannot start an unready plan') });
+  try {
+    paused.state.mode = 'paused'; paused.state.ui = { screenStack: ['pause'] };
+    paused.owner._enableRigidOpaqueBatch(true);
+    await paused.owner._syncRigidOpaqueBatchProbe();
+    assert.equal(batches(paused.scene).length, 0);
+  } finally { paused.dispose(); }
+});
+
 test('generation/context changes and compare rollback cannot publish a pending hull replacement', async () => {
   for (const invalidate of [f => { f.state.contextRestoreSeq++; }, f => { f.owner._rendererGeneration = 2; },
     f => { f.owner.scene = new THREE.Scene(); },
     f => { f.state.render.admissionRunGeneration++; }, f => { f.state.world.enterSerial++; },
+    f => { f.state.mode = 'menu'; f.state.ui = { screenStack: ['mainMenu'] }; },
     f => { f.state.entities.get(1).occupantGeneration++; }]) {
     let release;
     const wait = new Promise(resolve => { release = resolve; });
@@ -199,6 +251,7 @@ test('generation/context changes and compare rollback cannot publish a pending h
       f.owner._enableRigidOpaqueBatch(true);
       const pending = f.owner._syncRigidOpaqueBatchProbe();
       assert.ok(f.records.every(record => record.cold.every(leaf => leaf.layers.mask === 1)));
+      f.state.mode = 'paused'; f.state.ui = { screenStack: ['pause'], docked: false };
       invalidate(f); release(); await pending;
       assert.ok(f.records.every(record => record.cold.every(leaf => leaf.layers.mask === 1)));
       assert.equal(batches(f.scene).length, 0);

@@ -9037,14 +9037,27 @@ export function isRigidOpaqueDefaultCohortSource(owner, source) {
     || rigidOpaqueShipSourceRoot(owner, source) != null;
 }
 
-function defaultRigidBatchMayPrepare(owner) {
+function defaultRigidBatchOwnerResident(owner) {
   const state = owner?.state;
   const renderState = state?.render;
-  return state?.mode === 'flight' && Number.isFinite(renderState?.firstPlayableFrameAt)
+  const stack = state?.ui?.screenStack;
+  const hasScreen = Array.isArray(stack) && stack.length > 0;
+  const pause = hasScreen && stack.length === 1 && stack[0] === 'pause'
+    && (state?.mode === 'flight' || state?.mode === 'paused');
+  // Pause covers the same resident world. It can retain an existing finite
+  // preparation, but menus/docks/loading cannot acquire that lifetime.
+  return (pause || (state?.mode === 'flight' && !hasScreen)) && state?.ui?.docked !== true
+    && Number.isFinite(renderState?.firstPlayableFrameAt)
     && renderState.openingGraphPublicationFrozen !== true
     && renderState.sectorShellAdmission !== true
     && owner._contextLost !== true && owner._contextRecovery?.pending !== true
     && owner._rendererResourcesDisposed !== true;
+}
+
+function defaultRigidBatchMayPrepare(owner) {
+  const stack = owner?.state?.ui?.screenStack;
+  return owner?.state?.mode === 'flight' && (!Array.isArray(stack) || stack.length === 0)
+    && defaultRigidBatchOwnerResident(owner);
 }
 
 function createRigidOpaqueBatchProbe(owner, scene, options = {}) {
@@ -9087,7 +9100,7 @@ function createRigidOpaqueBatchProbe(owner, scene, options = {}) {
       const recoveryGeneration = recovery?.generation, recoveryLosses = recovery?.losses;
       const pictureEpoch = owner._rigidOpaqueBatchPictureEpoch || 0;
       const paint = renderState?.firstPlayableFrameAt;
-      return () => defaultRigidBatchMayPrepare(owner)
+      return () => defaultRigidBatchOwnerResident(owner)
         && owner.scene === scene && owner.state === state && state.render === renderState && state.world === world
         && world?.enterSerial === serial && world?.currentSectorId === sector
         && renderState?.admissionRunGeneration === generation && state.contextRestoreSeq === restore
