@@ -151,6 +151,14 @@ test('next action reads honest missing parts, never a percent bar', () => {
   assert.match(nextActionFor(row), /original|lost|destroyed/i);
 });
 
+test('bonded terms say when payment and refund occur before a bond is posted', () => {
+  const row=createBreakwaterRow();row.phase='operating';row.charter='bonded';row.commission.status='paid';
+  const offer=buildBreakwaterSpurOffer({world:{breakwaterSpur:row}});
+  assert.match(offer.detail,/Bond: none/);
+  assert.match(offer.detail,/return to the spur for 220 CR and the bond refund/i);
+  assert.match(offer.detail,/lost consignment forfeits the bond/i);
+});
+
 // ---------------------------------------------------------------------------
 // Sim fixture — real physics, economy, cargo, npcJobs owners.
 // ---------------------------------------------------------------------------

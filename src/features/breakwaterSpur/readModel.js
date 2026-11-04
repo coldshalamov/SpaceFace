@@ -244,7 +244,7 @@ function operatingOffer(row, base, status, actions) {
   }
   const load = row.looseLoad;
   const detail = [
-    `Bond ${row.bonded.bond.status} (${BREAKWATER_BONDED.bondCr} CR posted) · freight ${BREAKWATER_BONDED.payCr} CR on accepted handoff.`,
+    `Bond: ${row.bonded.bond.status} · ${BREAKWATER_BONDED.bondCr} CR required. After the outpost accepts the consignment, return to the spur for ${BREAKWATER_BONDED.payCr} CR and the bond refund. A lost consignment forfeits the bond.`,
     status.nextAction || '',
   ].join(' ');
   if (row.bonded.bond.status === 'none' && row.bonded.job.status === 'open') {
