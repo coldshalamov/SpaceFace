@@ -1596,6 +1596,438 @@ const ROWS = {
       Object.freeze({ atS: 22.0, template: 'lightFlash', params: Object.freeze({ offsetWu: 80, magnitude: 0.5 }) }),
     ]),
   }),
+
+  // ---- batch 9 (the spectacle family) ----
+
+  // SP3-023 — Lightning Web. Surge phase over the Anvil danger band: discharge forks
+  // walk the storm band's cloud deck, each strike a white flash throwing real light
+  // onto every hull skimming nearby, each leaving a fading afterglow patch on the
+  // clouds. The rhythm is learnable — the third strike of a triplet always lands on
+  // the richest cloud row — and rewards positioning. HONEST SCOPING: the walking
+  // forks themselves are the vfxColorLightDirector's event-light vocabulary and the
+  // gas-volume flash is the weather leg; this row renders the strikes as cue-light
+  // beats at the band's three authored cloud rows, the afterglow as the
+  // bloom-independent ring, and the thunder under the triplet's landing on the
+  // shipped impact voice at half speed. The loop is the strike cadence; the dark
+  // remainder is the band drawing breath between triplets. The hash that picks the
+  // day's phase is the calendar tell's business.
+  'SP3-023': Object.freeze({
+    title: 'Lightning Web',
+    anchor: Object.freeze({ sectorId: 'sector_tethys_junction', zoneId: 'zone_tethys_anvil' }),
+    bearingRad: 2.0,
+    loopS: 24,
+    spanS: 18,
+    steps: Object.freeze([
+      Object.freeze({ atS: 1.0, template: 'lightFlash', params: Object.freeze({ offsetWu: -140, magnitude: 1.2 }) }),
+      Object.freeze({ atS: 9.0, template: 'lightFlash', params: Object.freeze({ offsetWu: 60, magnitude: 1.0 }) }),
+      Object.freeze({ atS: 17.0, template: 'lightFlash', params: Object.freeze({ offsetWu: 0, magnitude: 2.2 }) }),
+      Object.freeze({ atS: 17.3, template: 'echoRing', params: Object.freeze({ color: '#eef2ff', radiusWu: 120, lifeS: 3.5 }) }),
+      Object.freeze({ atS: 17.3, template: 'bellVoice', params: Object.freeze({ recipe: 'sfx_explosion_small', gain: 0.25, rate: 0.5 }) }),
+    ]),
+  }),
+
+  // SP3-104 — Festival Bunting. Festival day, and the lamp strings come out: cheap
+  // colored bulbs run spine to spine by whoever drew the short straw, and at night
+  // watch they carry the whole silhouette. HONEST SCOPING: the strings themselves
+  // are Forge emissive finishes on the station's window rows (the variant finish
+  // idiom — asset work); this row renders the day as the registry carries it — the
+  // festival glow as one white ring (the Founders' Day scheme) and the strings as
+  // two cue-light walks down the spine, with the whole silhouette taking the last
+  // beat. The per-festival schemes (Ring Fair's mixed trading-house colors) are a
+  // per-festival pass, and Quiet Night's "none at all" is additive-VFX-impossible —
+  // it is already the Quiet Night row's floor-gain read. The calendar already speaks
+  // the day on the wire; the bunting files nothing and says nothing.
+  'SP3-104': Object.freeze({
+    title: 'Festival Bunting',
+    anchor: Object.freeze({ sectorId: 'sector_helios_prime', stationId: 'station_helios' }),
+    bearingRad: 1.5,
+    loopS: 0,
+    spanS: 16,
+    steps: Object.freeze([
+      Object.freeze({ atS: 1.0, template: 'echoRing', params: Object.freeze({ color: '#f2f0e4', radiusWu: 120, lifeS: 3.5 }) }),
+      Object.freeze({ atS: 2.0, template: 'lampCascade', params: Object.freeze({ count: 5, lengthWu: 280, stepS: 1.2 }) }),
+      Object.freeze({ atS: 8.0, template: 'lampCascade', params: Object.freeze({ count: 4, lengthWu: 200, stepS: 1.2 }) }),
+      Object.freeze({ atS: 13.5, template: 'lightFlash', params: Object.freeze({ offsetWu: 0, magnitude: 0.8 }) }),
+    ]),
+  }),
+
+  // SP3-092 — The Drill Choir. Mining watch at the Hyperion drill line: the
+  // refinery's six seam drills spin up in sequence, each starter throwing a light
+  // beat and a bass note, the line playing a rising chord as it comes to life — by
+  // the sixth drill the chord fills the sector, and the Ascendant Choir keeps its
+  // word. HONEST SCOPING: the consensus seam's one composed chord recipe is audio-leg
+  // work; this row voices the line through the audio owner's cue admission — the
+  // shipped drill-starter voice, one note per drill, the house transposition rising
+  // per starter (the rising fifth stays; the sixth fills the sector). The lights walk
+  // the drill line as each starter takes. The watch-end fall-silent in reverse is the
+  // watch's own end, outside this firing window; the chord's decay is the last light
+  // going down the line.
+  'SP3-092': Object.freeze({
+    title: 'The Drill Choir',
+    anchor: Object.freeze({ sectorId: 'sector_hyperion_cut', poiId: 'poi_hyperion_driller' }),
+    bearingRad: 1.2,
+    loopS: 0,
+    spanS: 40,
+    steps: Object.freeze([
+      Object.freeze({ atS: 1.0, template: 'lightFlash', params: Object.freeze({ offsetWu: -250, magnitude: 1 }) }),
+      Object.freeze({ atS: 1.0, template: 'bellVoice', params: Object.freeze({ recipe: 'sfx_mining_drill_contact', gain: 0.3, rate: 0.5 }) }),
+      Object.freeze({ atS: 6.0, template: 'lightFlash', params: Object.freeze({ offsetWu: -150, magnitude: 1 }) }),
+      Object.freeze({ atS: 6.0, template: 'bellVoice', params: Object.freeze({ recipe: 'sfx_mining_drill_contact', gain: 0.32, rate: 0.75 }) }),
+      Object.freeze({ atS: 11.0, template: 'lightFlash', params: Object.freeze({ offsetWu: -50, magnitude: 1 }) }),
+      Object.freeze({ atS: 11.0, template: 'bellVoice', params: Object.freeze({ recipe: 'sfx_mining_drill_contact', gain: 0.34, rate: 1.0 }) }),
+      Object.freeze({ atS: 16.0, template: 'lightFlash', params: Object.freeze({ offsetWu: 50, magnitude: 1 }) }),
+      Object.freeze({ atS: 16.0, template: 'bellVoice', params: Object.freeze({ recipe: 'sfx_mining_drill_contact', gain: 0.36, rate: 1.125 }) }),
+      Object.freeze({ atS: 21.0, template: 'lightFlash', params: Object.freeze({ offsetWu: 150, magnitude: 1 }) }),
+      Object.freeze({ atS: 21.0, template: 'bellVoice', params: Object.freeze({ recipe: 'sfx_mining_drill_contact', gain: 0.38, rate: 1.335 }) }),
+      Object.freeze({ atS: 26.0, template: 'lightFlash', params: Object.freeze({ offsetWu: 250, magnitude: 1.2 }) }),
+      Object.freeze({ atS: 26.0, template: 'bellVoice', params: Object.freeze({ recipe: 'sfx_mining_drill_contact', gain: 0.4, rate: 1.5 }) }),
+      Object.freeze({ atS: 33.0, template: 'echoRing', params: Object.freeze({ color: '#c8a860', radiusWu: 160, lifeS: 4 }) }),
+      Object.freeze({ atS: 38.0, template: 'lightFlash', params: Object.freeze({ offsetWu: 0, magnitude: 0.5 }) }),
+    ]),
+  }),
+
+  // SP3-098 — The Governor. Once a season the depot's flywheel runs away with
+  // itself: the governor screams over speed, sheds its safety ring — the ring
+  // tumbles away, strobing, while a skiff scurries after it — and spends a full
+  // minute visibly slowing under the yard's alarms before it settles and the ring is
+  // re-welded. HONEST SCOPING: the shed ring's physical tumble and the recovery
+  // skiff are the spawnCauseFragment leg and the red alarm wash is lamp-bus
+  // vocabulary; this row renders the arc as the registry carries it — the overspeed
+  // scream, the alarm beats painting the yard, the shed as one red ring mark walking
+  // the tumble bearing, the spin-down as decaying re-strikes across the minute, and
+  // the hydraulic jaw of the re-weld closing the season's story. No casualties; the
+  // depot board reads it the way the depot tells it.
+  'SP3-098': Object.freeze({
+    title: 'The Governor',
+    anchor: Object.freeze({ sectorId: 'sector_ceres_belt', stationId: 'station_beltout' }),
+    bearingRad: -0.3,
+    loopS: 0,
+    spanS: 60,
+    steps: Object.freeze([
+      Object.freeze({ atS: 0.5, template: 'bellVoice', params: Object.freeze({ recipe: 'sfx_rubric_alarm', gain: 0.3, rate: 1.2 }) }),
+      Object.freeze({ atS: 1.0, template: 'lightFlash', params: Object.freeze({ offsetWu: 0, magnitude: 1.6 }) }),
+      Object.freeze({ atS: 3.0, template: 'lightFlash', params: Object.freeze({ offsetWu: 10, magnitude: 1.2 }) }),
+      Object.freeze({ atS: 3.0, template: 'echoRing', params: Object.freeze({ color: '#d0483a', radiusWu: 30, lifeS: 2.5 }) }),
+      Object.freeze({ atS: 8.0, template: 'lightFlash', params: Object.freeze({ offsetWu: 60, magnitude: 0.6 }) }),
+      Object.freeze({ atS: 14.0, template: 'lightFlash', params: Object.freeze({ offsetWu: 130, magnitude: 0.5 }) }),
+      Object.freeze({ atS: 24.0, template: 'lightFlash', params: Object.freeze({ offsetWu: 0, magnitude: 1.0 }) }),
+      Object.freeze({ atS: 38.0, template: 'lightFlash', params: Object.freeze({ offsetWu: 0, magnitude: 0.7 }) }),
+      Object.freeze({ atS: 50.0, template: 'lightFlash', params: Object.freeze({ offsetWu: 0, magnitude: 0.5 }) }),
+      Object.freeze({ atS: 57.0, template: 'bellVoice', params: Object.freeze({ recipe: 'sfx_salvage_hydraulic', gain: 0.3, rate: 0.9 }) }),
+      Object.freeze({
+        atS: 58.5,
+        template: 'trafficAdvisory',
+        params: Object.freeze({
+          source: 'depot board',
+          text: 'DEPOT BOARD · Beltout — the flywheel governor tripped on the schedule nobody admits to: ring shed, skiff sent, a full minute of slowing under the alarms. It settled; the ring is back on and the weld is fresh. No casualties, no fault, no change to the season. The depot thanks the pilots who kept clear of the tumble, and notes the skiff crew are telling it bigger in the canteen.',
+        }),
+      }),
+    ]),
+  }),
+
+  // SP3-057 — The Lightning Catcher. Ion surge, and the forge's comm mast earns its
+  // grounding: a crawling glow gathers at the tip, then the bolt takes it — the
+  // light visibly landing on the mast's neighbors and every hull parked on the
+  // apron, throwing sharp transient shadows. A safe distance away it is the best
+  // show in the sector, one bolt every forty-five seconds for as long as the surge
+  // holds. HONEST SCOPING: the event-light pool is the explosionIgnition row's
+  // vocabulary and the mast geometry is the everyday-kit's place_sensor_mast; this
+  // row renders the strike as cue-light beats — the glow gathering at the mast, the
+  // bolt, the neighbors' transient answers — with the thunder arriving on the
+  // shipped impact voice. The loop is the bolt cadence; the dark remainder is the
+  // surge between bolts. The Reach mast is the per-station pass (the SP3-144
+  // station-anchor rule); this row plays the Forge, and the doubled apron lights are
+  // SP3-056's business.
+  'SP3-057': Object.freeze({
+    title: 'The Lightning Catcher',
+    anchor: Object.freeze({ sectorId: 'sector_vesta_forge', stationId: 'station_forge' }),
+    bearingRad: 2.7,
+    loopS: 46,
+    spanS: 12,
+    steps: Object.freeze([
+      Object.freeze({ atS: 1.0, template: 'lightFlash', params: Object.freeze({ offsetWu: 0, magnitude: 0.3 }) }),
+      Object.freeze({ atS: 3.5, template: 'lightFlash', params: Object.freeze({ offsetWu: 0, magnitude: 0.5 }) }),
+      Object.freeze({ atS: 6.0, template: 'lightFlash', params: Object.freeze({ offsetWu: 0, magnitude: 3.0 }) }),
+      Object.freeze({ atS: 6.2, template: 'bellVoice', params: Object.freeze({ recipe: 'sfx_explosion_small', gain: 0.3, rate: 0.6 }) }),
+      Object.freeze({ atS: 6.5, template: 'lightFlash', params: Object.freeze({ offsetWu: -60, magnitude: 0.5 }) }),
+      Object.freeze({ atS: 6.8, template: 'lightFlash', params: Object.freeze({ offsetWu: 70, magnitude: 0.4 }) }),
+      Object.freeze({ atS: 9.0, template: 'echoRing', params: Object.freeze({ color: '#b8a0e8', radiusWu: 60, lifeS: 2 }) }),
+    ]),
+  }),
+
+  // SP3-102 — Market Day Rush. Market day, and the station breathes faster: shuttle
+  // swarms queue on the approach in lamp-trails, container racks shuffle on their
+  // crawlers, and the window rows brighten a step — from the lane it reads as one
+  // organism breathing faster, for the length of the rush window. HONEST SCOPING:
+  // the traffic thickening is the traffic owner's rush read (the calendar:rushHour
+  // hook already fires) and the apron streaks are spawnStationSideEventStreak's;
+  // this row renders the rush as the registry carries it — the queues walking the
+  // approach bearing, the crawlers' crossings, the window rows stepping up, and the
+  // apron's noise arriving on the shipped crowd voice. The loop is the rush window;
+  // the dark remainder is the market catching its breath between windows. The Ceres
+  // floor is the per-station pass (the SP3-144 station-anchor rule); this row plays
+  // Helios.
+  'SP3-102': Object.freeze({
+    title: 'Market Day Rush',
+    anchor: Object.freeze({ sectorId: 'sector_helios_prime', stationId: 'station_helios' }),
+    bearingRad: 0.2,
+    loopS: 90,
+    spanS: 70,
+    steps: Object.freeze([
+      Object.freeze({ atS: 2.0, template: 'bellVoice', params: Object.freeze({ recipe: 'ambient_station_crowd', gain: 0.3, rate: 1.05 }) }),
+      Object.freeze({ atS: 3.0, template: 'lampCascade', params: Object.freeze({ count: 5, lengthWu: 340, stepS: 3 }) }),
+      Object.freeze({ atS: 24.0, template: 'lampCascade', params: Object.freeze({ count: 4, lengthWu: 260, stepS: 2.6 }) }),
+      Object.freeze({ atS: 44.0, template: 'lightFlash', params: Object.freeze({ offsetWu: -40, magnitude: 0.5 }) }),
+      Object.freeze({ atS: 47.0, template: 'lightFlash', params: Object.freeze({ offsetWu: 30, magnitude: 0.4 }) }),
+      Object.freeze({ atS: 52.0, template: 'lightFlash', params: Object.freeze({ offsetWu: 0, magnitude: 0.9 }) }),
+      Object.freeze({ atS: 56.0, template: 'lightFlash', params: Object.freeze({ offsetWu: 60, magnitude: 0.7 }) }),
+    ]),
+  }),
+
+  // SP3-068 — The Shed Panel. Once a season, on a schedule only the wreck knows, a
+  // hull in the Cruiser Graveyard quietly lets go of a panel: a groan you feel more
+  // than hear, the panel tumbling free in the light, spinning so its lacquer
+  // catches the sun in slow flashes as it drifts off the site. Nothing explodes. It
+  // is just a dead ship becoming more dead. HONEST SCOPING: the donor panel prop is
+  // the wreckAftermathDressing vocabulary and the shed's seeded per-family schedule
+  // is the world leg; this row renders the let-go as the registry carries it — the
+  // hull-stress groan, the release beat, the tumbling drift as a file of sun-flashes
+  // walking the drift bearing, and one wide silver flash where the lacquer fills.
+  // The named-panel codex entry is the codex leg's business. The Graveyard files
+  // nothing; the dead keep their own schedule.
+  'SP3-068': Object.freeze({
+    title: 'The Shed Panel',
+    anchor: Object.freeze({ sectorId: 'sector_io_reach', poiId: 'poi_cruiser' }),
+    bearingRad: 3.4,
+    loopS: 0,
+    spanS: 20,
+    steps: Object.freeze([
+      Object.freeze({ atS: 1.0, template: 'bellVoice', params: Object.freeze({ recipe: 'sfx_hull_stress_groan', gain: 0.3, rate: 0.85 }) }),
+      Object.freeze({ atS: 3.0, template: 'lightFlash', params: Object.freeze({ offsetWu: 0, magnitude: 0.8 }) }),
+      Object.freeze({ atS: 5.0, template: 'lightFlash', params: Object.freeze({ offsetWu: 30, magnitude: 0.5 }) }),
+      Object.freeze({ atS: 8.0, template: 'echoRing', params: Object.freeze({ color: '#e8ecf0', radiusWu: 40, lifeS: 3 }) }),
+      Object.freeze({ atS: 8.5, template: 'lightFlash', params: Object.freeze({ offsetWu: 90, magnitude: 0.6 }) }),
+      Object.freeze({ atS: 12.5, template: 'lightFlash', params: Object.freeze({ offsetWu: 150, magnitude: 0.5 }) }),
+      Object.freeze({ atS: 16.5, template: 'lightFlash', params: Object.freeze({ offsetWu: 220, magnitude: 0.4 }) }),
+      Object.freeze({ atS: 19.5, template: 'lightFlash', params: Object.freeze({ offsetWu: 300, magnitude: 0.3 }) }),
+    ]),
+  }),
+
+  // SP3-045 — Dust Shear. Solar-wind surge, and the front arrives on time and
+  // visible: a wall of glowing dust rolls through the rock field and the rocks lean
+  // and shiver as it passes — asteroid motion you can see coming, like wind through
+  // wheat — while loose ore scatters ahead of the wave. HONEST SCOPING: the impulse
+  // wave on the rocks is the asteroidMotion leg (one registered sheet field); this
+  // row renders the front as the registry carries it — the wave crossing the field
+  // as a wide file of light, the lean-and-shiver beats behind it, the ore's scatter
+  // ring kicked ahead of the wall, the field settling on the shipped voice, and the
+  // fresh exposure the wave leaves glowing after. The loop is the surge cadence; the
+  // dark remainder is the field at rest between surges. The Rhea slag field is the
+  // per-field pass; this row plays the belt's authored field floor.
+  'SP3-045': Object.freeze({
+    title: 'Dust Shear',
+    anchor: Object.freeze({ sectorId: 'sector_ceres_belt', zoneId: 'zone_ceres_belt' }),
+    bearingRad: 0.8,
+    loopS: 60,
+    spanS: 30,
+    steps: Object.freeze([
+      Object.freeze({ atS: 2.0, template: 'lampCascade', params: Object.freeze({ count: 6, lengthWu: 400, stepS: 2.4 }) }),
+      Object.freeze({ atS: 6.0, template: 'echoRing', params: Object.freeze({ color: '#c8a050', radiusWu: 60, lifeS: 2.5 }) }),
+      Object.freeze({ atS: 12.0, template: 'lightFlash', params: Object.freeze({ offsetWu: -80, magnitude: 0.4 }) }),
+      Object.freeze({ atS: 16.0, template: 'lightFlash', params: Object.freeze({ offsetWu: 40, magnitude: 0.4 }) }),
+      Object.freeze({ atS: 20.0, template: 'lightFlash', params: Object.freeze({ offsetWu: 120, magnitude: 0.35 }) }),
+      Object.freeze({ atS: 20.0, template: 'bellVoice', params: Object.freeze({ recipe: 'sfx_mining_field_settle', gain: 0.25, rate: 0.9 }) }),
+      Object.freeze({ atS: 26.0, template: 'echoRing', params: Object.freeze({ color: '#e8c060', radiusWu: 120, lifeS: 3.5 }) }),
+    ]),
+  }),
+
+  // SP3-050 — The Wash. Twice a calm phase the lane's debris wash runs: eight
+  // seconds of warning stinger, then a wall of tumbling wreck-fragments sweeps
+  // across the trade lane at hull height, backlit — for ten seconds the lane is a
+  // river of iron. Hold, dodge, or ride the edge. HONEST SCOPING: the physical wash
+  // and its hits are the racing-set-piece wave ported to the weather volume (the
+  // mechanic leg); this row renders the crossing as the registry carries it — the
+  // lane board's posted warning, the stinger on the shipped horn, the wall crossing
+  // the lane as a wide file of backlit light, and the bloom the fog makes of it. The
+  // loop is the wash cadence; the dark remainder is the lane between washes.
+  'SP3-050': Object.freeze({
+    title: 'The Wash',
+    anchor: Object.freeze({ sectorId: 'sector_veil_nebula', zoneId: 'zone_veil_fog' }),
+    bearingRad: 1.7,
+    loopS: 150,
+    spanS: 26,
+    steps: Object.freeze([
+      Object.freeze({
+        atS: 0.3,
+        template: 'trafficAdvisory',
+        params: Object.freeze({
+          source: 'lane board',
+          kind: 'notices',
+          text: 'LANE BOARD · Blind Nebula — wash warning: the debris wash runs the lane on its fixed bearing, twice a calm, eight seconds after the horn. This is not weather you wait out; it is iron at hull height, and it hits. Hold, dodge, or ride the edge. The fog watch does not grade style. Only survival.',
+        }),
+      }),
+      Object.freeze({ atS: 0.5, template: 'bellVoice', params: Object.freeze({ recipe: 'sfx_hauler_horn_fund', gain: 0.4, rate: 0.9 }) }),
+      Object.freeze({ atS: 9.0, template: 'lampCascade', params: Object.freeze({ count: 6, lengthWu: 400, stepS: 1.6 }) }),
+      Object.freeze({ atS: 10.0, template: 'echoRing', params: Object.freeze({ color: '#c8b898', radiusWu: 160, lifeS: 3.5 }) }),
+      Object.freeze({ atS: 18.0, template: 'lampCascade', params: Object.freeze({ count: 4, lengthWu: 300, stepS: 1.8 }) }),
+    ]),
+  }),
+
+  // SP3-067 — The Sluice Pulse. Shift change, and the Cinder Sluice's kill machines
+  // drink: the gates open in sequence and a river of gravel pours through the
+  // channel, each gate's opening throwing a light beat down the line. HONEST
+  // SCOPING: the channel's live carrier is the world-site runtime (state.sites
+  // .worldById[CINDER_SLUICE_SITE_ID]) — a seam the registry's poi/station/zone
+  // anchor contract does not read — so this row plays the pulse at the Refinery
+  // Flare Rack, the works' approach light up the leg in (the arrival queue's
+  // vantage), with the gate walk running the channel bearing and the machines' bang
+  // on the shipped seismic voice. The pour itself is the killMachinePhase mechanic
+  // leg's business; standing in the channel is between the pilot and the machines.
+  'SP3-067': Object.freeze({
+    title: 'The Sluice Pulse',
+    anchor: Object.freeze({ sectorId: 'sector_ceres_belt', poiId: 'poi_ceres_flare_rack' }),
+    bearingRad: -0.42,
+    loopS: 0,
+    spanS: 40,
+    steps: Object.freeze([
+      Object.freeze({ atS: 1.0, template: 'bellVoice', params: Object.freeze({ recipe: 'sfx_work_motor', gain: 0.28, rate: 0.75 }) }),
+      Object.freeze({ atS: 2.0, template: 'lampCascade', params: Object.freeze({ count: 6, lengthWu: 300, stepS: 3 }) }),
+      Object.freeze({ atS: 6.0, template: 'bellVoice', params: Object.freeze({ recipe: 'sfx_mining_seismic_pulse', gain: 0.35, rate: 0.9 }) }),
+      Object.freeze({ atS: 6.5, template: 'echoRing', params: Object.freeze({ color: '#a08858', radiusWu: 90, lifeS: 3 }) }),
+      Object.freeze({ atS: 20.0, template: 'lightFlash', params: Object.freeze({ offsetWu: 80, magnitude: 0.7 }) }),
+      Object.freeze({ atS: 28.0, template: 'lightFlash', params: Object.freeze({ offsetWu: 140, magnitude: 0.6 }) }),
+      Object.freeze({ atS: 36.0, template: 'lightFlash', params: Object.freeze({ offsetWu: 200, magnitude: 0.5 }) }),
+    ]),
+  }),
+
+  // SP3-018 — The Long Twilight. Third watch of every day, everywhere: the key
+  // light warms and eases down a third, the ambient gains drop, and for a third of
+  // every 600-second day headlights and lamps carry the frame — the LOOK.md "dark,
+  // with lonely lights" picture becoming the default state of the night watch, then
+  // lifting again at first watch. Nobody had to add a single light. HONEST SCOPING:
+  // the key-light warm/dim and the ambient drop are the mood-overlay leg (the
+  // lookMoods overlay seam; additive VFX cannot darken). This row renders the half
+  // that is light — the lonely lights coming up one by one to carry the frame, then
+  // holding (dim re-strikes) through the watch — at the berth the night watch
+  // actually keeps. The overlay itself is global; every sector inherits it. No
+  // sound, no wire: the twilight's voice is the lights.
+  'SP3-018': Object.freeze({
+    title: 'The Long Twilight',
+    anchor: Object.freeze({ sectorId: 'sector_helios_prime', stationId: 'station_helios' }),
+    bearingRad: 1.05,
+    loopS: 0,
+    spanS: 150,
+    steps: Object.freeze([
+      Object.freeze({ atS: 2.0, template: 'lightFlash', params: Object.freeze({ offsetWu: -120, magnitude: 0.4 }) }),
+      Object.freeze({ atS: 6.0, template: 'lightFlash', params: Object.freeze({ offsetWu: -60, magnitude: 0.45 }) }),
+      Object.freeze({ atS: 10.0, template: 'lightFlash', params: Object.freeze({ offsetWu: 0, magnitude: 0.5 }) }),
+      Object.freeze({ atS: 14.0, template: 'lightFlash', params: Object.freeze({ offsetWu: 60, magnitude: 0.45 }) }),
+      Object.freeze({ atS: 18.0, template: 'lightFlash', params: Object.freeze({ offsetWu: 120, magnitude: 0.4 }) }),
+      Object.freeze({ atS: 60.0, template: 'lightFlash', params: Object.freeze({ offsetWu: -60, magnitude: 0.4 }) }),
+      Object.freeze({ atS: 90.0, template: 'lightFlash', params: Object.freeze({ offsetWu: 0, magnitude: 0.45 }) }),
+      Object.freeze({ atS: 120.0, template: 'lightFlash', params: Object.freeze({ offsetWu: 60, magnitude: 0.4 }) }),
+    ]),
+  }),
+
+  // SP3-022 — The Anvil Breathes Water. Every three hundred seconds, at a longitude
+  // only the Anvil's rotation decides, a white column of vapor punches off the
+  // ocean band, hangs one absurd second, and falls back as a slow fountain of beads
+  // that catch the key light; the column's shadow walks the cloud deck. Fly through
+  // the falling spray and it glitters your hull and cools your heat read. HONEST
+  // SCOPING: the physical column and the bounded cooling field are the mechanic leg
+  // (the heat bands' own vocabulary) and the particle pour is the pooled spawn
+  // vocabulary; this row renders the breath as the registry carries it — the punch
+  // and its thump, the column's standing ring, the fall as a slow file of bead
+  // beats, and the shadow's reach. The loop is the geyser cycle; the dark remainder
+  // is the hold between breaths. The codex page and the heat-cool bonus are their
+  // own legs.
+  'SP3-022': Object.freeze({
+    title: 'The Anvil Breathes Water',
+    anchor: Object.freeze({ sectorId: 'sector_tethys_junction', zoneId: 'zone_tethys_anvil' }),
+    bearingRad: -1.9,
+    loopS: 300,
+    spanS: 22,
+    steps: Object.freeze([
+      Object.freeze({ atS: 1.0, template: 'lightFlash', params: Object.freeze({ offsetWu: 0, magnitude: 2.5 }) }),
+      Object.freeze({ atS: 1.0, template: 'bellVoice', params: Object.freeze({ recipe: 'sfx_mining_seismic_pulse', gain: 0.3, rate: 0.7 }) }),
+      Object.freeze({ atS: 3.0, template: 'echoRing', params: Object.freeze({ color: '#eef4f8', radiusWu: 90, lifeS: 3.5 }) }),
+      Object.freeze({ atS: 6.0, template: 'lightFlash', params: Object.freeze({ offsetWu: -20, magnitude: 0.5 }) }),
+      Object.freeze({ atS: 9.0, template: 'lightFlash', params: Object.freeze({ offsetWu: 10, magnitude: 0.45 }) }),
+      Object.freeze({ atS: 12.0, template: 'lightFlash', params: Object.freeze({ offsetWu: -5, magnitude: 0.4 }) }),
+      Object.freeze({ atS: 15.0, template: 'lightFlash', params: Object.freeze({ offsetWu: 15, magnitude: 0.3 }) }),
+      Object.freeze({ atS: 18.0, template: 'echoRing', params: Object.freeze({ color: '#8a94a0', radiusWu: 140, lifeS: 4 }) }),
+    ]),
+  }),
+
+  // SP3-116 — Laundry Day. Once a week the station does its wash: it vents steam in
+  // fat white puffs, and on the sunward side a line of suited figures drifts on
+  // tethers, shaking out laundry sheets that catch the light like sails — flashing
+  // silver when they fill. The least dramatic and most alive thing in the sector:
+  // the game's largest and smallest things in one frame. HONEST SCOPING: the gas
+  // puffs are the pooled gas vocabulary and the cloth-line proxies are place-donor
+  // props with a simTime-keyed sway; this row renders the day as the registry
+  // carries it — the vents' steam on the shipped laundry-machine voice, the puffs as
+  // low white beats, the tether line as a slow walk, and each sheet's fill as its
+  // own silver flash on the sunward side. The Reach line is the per-station pass
+  // (the SP3-144 station-anchor rule); this row plays Tethys.
+  'SP3-116': Object.freeze({
+    title: 'Laundry Day',
+    anchor: Object.freeze({ sectorId: 'sector_tethys_junction', stationId: 'station_tethys' }),
+    bearingRad: 0.55,
+    loopS: 0,
+    spanS: 200,
+    steps: Object.freeze([
+      Object.freeze({ atS: 1.0, template: 'bellVoice', params: Object.freeze({ recipe: 'sfx.secondRinse.steam', gain: 0.3, rate: 0.9 }) }),
+      Object.freeze({ atS: 2.0, template: 'lightFlash', params: Object.freeze({ offsetWu: -30, magnitude: 0.3 }) }),
+      Object.freeze({ atS: 5.0, template: 'lightFlash', params: Object.freeze({ offsetWu: 0, magnitude: 0.35 }) }),
+      Object.freeze({ atS: 8.0, template: 'lightFlash', params: Object.freeze({ offsetWu: 30, magnitude: 0.3 }) }),
+      Object.freeze({ atS: 12.0, template: 'echoRing', params: Object.freeze({ color: '#e8ecf0', radiusWu: 24, lifeS: 2.5 }) }),
+      Object.freeze({ atS: 20.0, template: 'lightFlash', params: Object.freeze({ offsetWu: -60, magnitude: 0.25 }) }),
+      Object.freeze({ atS: 30.0, template: 'bellVoice', params: Object.freeze({ recipe: 'sfx.secondRinse.clap', gain: 0.2, rate: 1 }) }),
+      Object.freeze({ atS: 32.0, template: 'echoRing', params: Object.freeze({ color: '#e8ecf0', radiusWu: 20, lifeS: 2.5 }) }),
+      Object.freeze({ atS: 44.0, template: 'lightFlash', params: Object.freeze({ offsetWu: 0, magnitude: 0.25 }) }),
+      Object.freeze({ atS: 55.0, template: 'echoRing', params: Object.freeze({ color: '#dce4ec', radiusWu: 22, lifeS: 2.5 }) }),
+      Object.freeze({ atS: 70.0, template: 'lightFlash', params: Object.freeze({ offsetWu: 60, magnitude: 0.25 }) }),
+      Object.freeze({ atS: 90.0, template: 'echoRing', params: Object.freeze({ color: '#e8ecf0', radiusWu: 24, lifeS: 2.5 }) }),
+      Object.freeze({ atS: 100.0, template: 'bellVoice', params: Object.freeze({ recipe: 'sfx.secondRinse.stallCreak', gain: 0.18, rate: 0.9 }) }),
+      Object.freeze({ atS: 130.0, template: 'echoRing', params: Object.freeze({ color: '#dce4ec', radiusWu: 20, lifeS: 2.5 }) }),
+      Object.freeze({ atS: 170.0, template: 'lightFlash', params: Object.freeze({ offsetWu: 30, magnitude: 0.2 }) }),
+    ]),
+  }),
+
+  // SP3-041 — The Curtain Rises. Ion-storm season, and the forecast is visible: a
+  // slow wall of violet curtain-light leans across the sector from the forecast
+  // bearing, its leading edge throwing flickers on every hull it passes, closing to
+  // surge in thirty seconds exactly as the forecast says. You can outfly it, face
+  // it, or dock. HONEST SCOPING: the front's field and its season timing are the
+  // weather-volume kernel's registration and the gas-volume color ramp is the
+  // vfx._gas vocabulary; this row renders the warning phase as the registry carries
+  // it — the curtain closing from the forecast bearing as violet rings and closing
+  // light beats, the flickers the edge throws on the hulls it passes, and the
+  // front's own swell on the shipped anomaly voice. The row plays at the Murmur
+  // Buoy — the fog watch post the forecast is filed from — and skips rather than
+  // misplaces where the post does not stand (the SP3-044 precedent). The surge
+  // itself is SP3-060's clearing read backward.
+  'SP3-041': Object.freeze({
+    title: 'The Curtain Rises',
+    anchor: Object.freeze({ sectorId: 'sector_veil_nebula', poiId: 'poi_veil_murmur_buoy' }),
+    bearingRad: 2.6,
+    loopS: 0,
+    spanS: 30,
+    steps: Object.freeze([
+      Object.freeze({ atS: 1.0, template: 'bellVoice', params: Object.freeze({ recipe: 'sfx_anomaly_swell', gain: 0.25, rate: 0.8 }) }),
+      Object.freeze({ atS: 2.0, template: 'lightFlash', params: Object.freeze({ offsetWu: -1400, magnitude: 0.8 }) }),
+      Object.freeze({ atS: 4.0, template: 'echoRing', params: Object.freeze({ color: '#8a5ac8', radiusWu: 160, lifeS: 4 }) }),
+      Object.freeze({ atS: 6.0, template: 'lightFlash', params: Object.freeze({ offsetWu: -1100, magnitude: 1.0 }) }),
+      Object.freeze({ atS: 8.0, template: 'lightFlash', params: Object.freeze({ offsetWu: -950, magnitude: 0.4 }) }),
+      Object.freeze({ atS: 10.0, template: 'lightFlash', params: Object.freeze({ offsetWu: -800, magnitude: 1.2 }) }),
+      Object.freeze({ atS: 14.0, template: 'lightFlash', params: Object.freeze({ offsetWu: -500, magnitude: 1.4 }) }),
+      Object.freeze({ atS: 16.0, template: 'echoRing', params: Object.freeze({ color: '#7a4ab8', radiusWu: 160, lifeS: 4 }) }),
+      Object.freeze({ atS: 18.0, template: 'lightFlash', params: Object.freeze({ offsetWu: -250, magnitude: 1.6 }) }),
+      Object.freeze({ atS: 20.0, template: 'lightFlash', params: Object.freeze({ offsetWu: -350, magnitude: 0.4 }) }),
+      Object.freeze({ atS: 22.0, template: 'lightFlash', params: Object.freeze({ offsetWu: -80, magnitude: 1.8 }) }),
+    ]),
+  }),
 };
 
 export const SPECTACLE_LEGS = Object.freeze(ROWS);
