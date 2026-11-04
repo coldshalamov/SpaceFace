@@ -2751,7 +2751,7 @@ export const missions = {
     const mission = (state.missions.active || []).find((m) => m.id === missionId && m.status === 'active');
     if (!mission) return false;
     state.ui.trackedMissionId = mission.id;
-    this._refreshTrackedMissionNav(mission);
+    this._refreshTrackedMissionNav(mission, { forceRoute: true });
     if (!options.silent) {
       const wp = state.nav && state.nav.waypoint;
       const ownsWaypoint = wp && wp.kind === 'mission' && wp.missionId === mission.id;
@@ -2993,7 +2993,7 @@ export const missions = {
     return true;
   },
 
-  _refreshTrackedMissionNav(mission = null) {
+  _refreshTrackedMissionNav(mission = null, options = {}) {
     // Direct callers (trackMission, objective progress) must not clobber the staged opening marker.
     // Use active-teaching (not the broader pre-init _tutorialOwnsOpening) so headless harnesses
     // without an onboarding subtree still get normal mission nav ownership.
@@ -3003,13 +3003,13 @@ export const missions = {
     const m = mission || (this.state.missions.active || []).find((x) => x.id === trackedId && x.status === 'active');
     if (!m || m.id !== trackedId || m.status !== 'active') return;
     const current = this.state.nav && this.state.nav.waypoint;
-    if (m.storyTag === CONTRACT_47A_B0_TAG && current && !current.onboarding
-      && (current.kind === 'local' || current.kind === 'nav')) {
-      if (!m.params?.sampleRecovered) this._resolveContract47aSampleSource(m);
+    if (!options.forceRoute && current && !current.onboarding
+      && (current.kind === 'local' || current.kind === 'nav' || current.kind === 'trade')) {
+      if (m.storyTag === CONTRACT_47A_B0_TAG && !m.params?.sampleRecovered) this._resolveContract47aSampleSource(m);
       return;
     }
     const waypoint = this._missionWaypoint(m);
-    if (waypoint) this._setNavWaypoint(waypoint);
+    if (waypoint) this._setNavWaypoint(waypoint, options);
   },
 
   _refreshNavigation(options = {}) {
@@ -3145,7 +3145,7 @@ export const missions = {
     return active[0];
   },
 
-  _setNavWaypoint(waypoint) {
+  _setNavWaypoint(waypoint, options = {}) {
     this.state.nav = this.state.nav || {};
     // Stamp the durable bind at the single write seam: every mission waypoint literal above
     // carries a bare targetEntityId, and a recycled slot would redirect throw aim, tether
@@ -3161,25 +3161,25 @@ export const missions = {
       this.state.nav.waypoint = waypoint || null;
       this.bus.emit('nav:waypoint', waypoint || null);
     }
-    this._syncWaypointRoute(waypoint);
+    this._syncWaypointRoute(waypoint, options);
   },
 
-  _syncWaypointRoute(waypoint) {
+  _syncWaypointRoute(waypoint, { forceRoute = false } = {}) {
     if (!waypoint || !waypoint.sectorId) return;
     const state = this.state;
     const currentSectorId = state.world && state.world.currentSectorId;
     if (!currentSectorId || currentSectorId === waypoint.sectorId) return;
     const route = state.nav && state.nav.route;
-    // Do not replace a player's already plotted course while advertising the opening contract.
-    const mission = waypoint.missionId && (state.missions?.active || []).find((m) => m.id === waypoint.missionId);
-    if (mission?.storyTag === CONTRACT_47A_B0_TAG && route && Array.isArray(route.legs) && route.legs.length) return;
+    // A tracked objective may update its marker without taking over a player-plotted detour.
+    // Only an explicit Track request replaces an existing course; routine progress does not.
+    if (!forceRoute && route && Array.isArray(route.legs) && route.legs.length) return;
     const legs = route && Array.isArray(route.legs) ? route.legs : [];
     const first = legs[0];
     const last = legs[legs.length - 1];
     if (first && last && first.from === currentSectorId && last.to === waypoint.sectorId) return;
     const key = `${currentSectorId}->${waypoint.sectorId}`;
     const now = deferredEnterNow(state) || 0;
-    if (this._lastWaypointRouteKey === key && now - (this._lastWaypointRouteAt || 0) < 3) return;
+    if (!forceRoute && this._lastWaypointRouteKey === key && now - (this._lastWaypointRouteAt || 0) < 3) return;
     this._lastWaypointRouteKey = key;
     this._lastWaypointRouteAt = now;
     this.bus.emit('ui:setCourse', {
@@ -4035,6 +4035,9 @@ export const missions = {
     const existing = state.nav && state.nav.waypoint;
     const force = !!(options.forceStory || options.force);
     const allowReplaceTrade = force || !!options.preferStory;
+    // Story progress updates guidance; it never cancels a pilot's explicit local burn.
+    // This also applies to completion/restore refreshes that force story guidance.
+    if (existing && (existing.kind === 'local' || existing.kind === 'nav')) return false;
     // The optional physical weigh follows delivery; never hijack a pilot's own
     // course (even the completion path's forceStory refresh) to perform it.
     if (kesslerScalePending(state) && existing
