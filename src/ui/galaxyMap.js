@@ -2760,6 +2760,14 @@ export function commitCoursePayload(state, target) {
     courseTarget = { ...target, coursePos: approach, courseArrivalRadius: 80 };
   }
   const payload = resolveCourseTarget(courseTarget);
+  // A known global fix can be shown on another sector's chart without being a
+  // local flight command. Plot that sector first; explicit Engage owns travel.
+  // Sector nodes and physical gate controls keep their separate jump semantics.
+  const destination = courseTarget?.sectorId || courseTarget?.targetSectorId;
+  if (payload?.pos && destination && destination !== currentSectorId(state)
+      && courseTarget.kind !== 'gate' && courseTarget.kind !== 'sector') {
+    return { type: 'sector', sectorId: destination, path: null, label: payload.label };
+  }
   if (payload && target && target.stable) {
     const liveId = resolveCourseEntityId(state, target);
     if (liveId == null) delete payload.targetEntityId;
@@ -2847,14 +2855,8 @@ export function resolveGalaxyMapPrimaryAction(state, target) {
 
   if (!coursePayload) return null;
   if (coursePayload.type === 'sector' && coursePayload.sectorId) {
-    if (isOneHopNeighbor(state, coursePayload.sectorId)) {
-      return attachJumpToll(state, {
-        kind: 'jump',
-        label: 'Set Course & Jump',
-        targetSectorId: coursePayload.sectorId,
-        coursePayload,
-      });
-    }
+    // A remote mark is a destination plot even when its sector is next door.
+    // Only the explicit sector-node/gate actions above authorize an immediate jump.
     return {
       kind: 'route',
       label: 'Plot Course',
