@@ -481,9 +481,9 @@ test('the World tab carries the batch-13 receipt sections in order, with honest 
       'The Rim Notices', 'Cycle 4,110', 'Nobody Loaded That', 'The Sky We Came From',
       'The Tally', 'The Coin',
     ], 'the batch-13 sections sit after the batch-12 receipts, before the batch-14 sections');
-    assert.equal(codexScreen._sections.length, 49,
+    assert.equal(codexScreen._sections.length, 63,
       'eight standing sections, the thirteen batch-12 sections, the fourteen batch-13 sections, '
-      + 'and the fourteen batch-14 sections');
+      + 'the fourteen batch-14 sections, and the fourteen batch-14b sections');
     for (const entry of codexScreen._entries) {
       assert.ok(entry.article, `${entry.id} carries a real article`);
       const text = textLines(entry.article).join('\n');
@@ -507,7 +507,7 @@ test('a fresh save renders every batch-13 section as its honest empty state', ()
     codexScreen._sections = [];
     codexScreen._entries = [];
     codexScreen._renderWorld({ state: baseState() });
-    assert.equal(codexScreen._sections.length, 49, 'the sections exist before their moments');
+    assert.equal(codexScreen._sections.length, 63, 'the sections exist before their moments');
     const empties = codexScreen._sections.slice(21, 35).map((s) => s.empty);
     for (const line of empties) {
       assert.ok(typeof line === 'string' && line.length > 0, 'every empty state says something honest');
@@ -534,7 +534,7 @@ test('a hostile save renders the batch-13 sections without crashing or inventing
     codexScreen._sections = [];
     codexScreen._entries = [];
     codexScreen._renderWorld({ state: hostile });
-    assert.equal(codexScreen._sections.length, 49, 'the page structure survives a hostile save');
+    assert.equal(codexScreen._sections.length, 63, 'the page structure survives a hostile save');
     const cockpitEntries = codexScreen._entries.filter((e) => e.id.startsWith('world:cockpit:'));
     assert.equal(cockpitEntries.length, 2,
       'the cockpit degrades to header and growth note, never to an invented manifest line');

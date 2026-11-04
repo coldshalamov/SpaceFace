@@ -3,6 +3,7 @@ import { SECTORS } from './sectors.js';
 import { SHIPS } from './ships.js';
 import { COMMODITIES } from './commodities.js';
 import { aceById } from './namedAces.js';
+import { QUILL } from './quill.js';
 
 // Field classification is a crew's practical taxonomy, not a claim about common ancestry.
 export const FAUNA_FAMILIES = Object.freeze({
@@ -1634,4 +1635,478 @@ export function shelterAdvisoryRows(state) {
   }));
   rows.push(Object.freeze({ label: 'THE LESSON', value: 'STATIONS RESPOND TO WEATHER', sealed: false }));
   return rows;
+}
+
+// ── special-500 Phase 2 (batch 14b, codex family) ────────────────────────────────────────────
+// Fourteen more codex/lore reads, same pattern as batches 1, 12, 13 and 14: frozen authored
+// tables plus pure reads over durable state, failing closed (an empty list) until the world
+// has honestly earned the page. The director's `special500.<id>` receipt is the durable writer
+// for every live moment; where the consensus names a plain flag for another leg's writer, the
+// read accepts it as an alternate seam and states the condition until that leg lands. None of
+// these reads write anything.
+//
+// Live owners these reads key on beyond the receipts: the quill copy counter the Quill system
+// already writes (src/systems/quill.js, `quill_copied` — the Reader's Stake bookmark), the
+// per-POI discovery records World keeps in state.world.discovery[sectorId].pois (the two ash
+// pins — the honest gate for the pair, because the catalog's bare poi:discovered receipt proves
+// less than the page claims), the calendar's storm-season table (the Still Eye's season step)
+// and its station watches (the Star Marker's sextant watches).
+//
+// Deferred to their own legs, stated in-page rather than invented: the mooring's departure
+// state machine and Helios standing tick, the Bookmark's standing tick and stake dressing,
+// the Two-Credit sale-band nudge, the Bargain Light's lamp channel, the Paper Plane's pooled
+// prop and breach cue, the Hum's audio-bus duck and chord mix, the Shepherd's wreck-herding
+// presentation, the Still Eye's sectorZones record, the Slurry scan's commodity-context branch
+// and Bay 7 thread flags, the Mast's edited-hail bark variant, the Star Marker's per-phase scan
+// copy and intersection POI, the Vanishing Field's per-visit count ledger, and the Surveyor's
+// spawned precursor-pin row.
+
+// SP2-179 "The Pilgrim Mooring's Guest Book" — the mooring's handwritten register. The
+// proximity receipt is the settle gate; the hold-timer's text state machine (ARRIVED →
+// DEPARTED on actual leaving) is that leg's, and its consensus-named plain flag
+// `mooring_between` is accepted as the alternate seam. Until it writes, the page keeps the
+// player's line honestly half-finished — the book does not finish a departure nobody made.
+export const MOORING_BETWEEN_FLAG = 'mooring_between';
+export const MOORING_POI_ID = 'poi_helios_pilgrim_moor';
+
+export const MOORING_BOOK_ROWS = Object.freeze([
+  Object.freeze({ label: 'THE BOOK', value: 'EVERY HULL THAT EVER MOORED HERE, IN HANDWRITING', sealed: false }),
+  Object.freeze({
+    label: 'THE HOUSE RULE',
+    value: 'THE MOST RECENT ENTRY IS ALWAYS HALF-FINISHED — EVERY PILGRIM MOORS MID-THOUGHT',
+    sealed: false,
+  }),
+]);
+
+/** The guest book, once you have settled. Empty until then. */
+export function mooringGuestRows(state) {
+  const between = honestReceipt(plainFlag(state, MOORING_BETWEEN_FLAG));
+  if (special500Moment(state, 'SP2-179') == null && !between) return [];
+  return [
+    ...MOORING_BOOK_ROWS,
+    Object.freeze({
+      label: 'YOUR LINE',
+      value: between
+        ? 'ARRIVED. DEPARTED. BETWEEN: EVERYTHING.'
+        : 'ARRIVED — (THE ENTRY FINISHES ITSELF WHEN YOU LEAVE)',
+      sealed: false,
+    }),
+    Object.freeze({ label: 'THE BLINKING', value: 'A CURSOR, WAITING FOR A DEPARTURE', sealed: false }),
+  ];
+}
+
+// SP2-171 "The Reader's Stake Bookmark" — the ribbon AR-3 tied at the Reader's Stake, marking
+// the page of its open log that names every sealed thing the player unsealed. The gate is a
+// live read the world already keeps: the quill copy counter `quill_copied` (src/systems/quill.js
+// writes it per copy; the director fires the entry at 2+). A receipt or flag without the
+// counter — a pruned save — keeps the page and reads the count honestly off AR-3's own log.
+// The stake dressing and the Archive standing tick are that leg's.
+export const STAKE_BOOKMARKED_FLAG = 'stake_bookmarked';
+export const STAKE_BOOKMARK_MIN = 2;
+export const STAKE_POI_ID = 'poi_charon_reader_stake';
+
+/** Pages the Quill system has copied open: the counter it actually writes, floored at zero. */
+export function quillCopiedCount(state) {
+  const flags = state?.story?.flags;
+  const copied = Math.floor(Number(flags && flags[QUILL.copiedFlag])) || 0;
+  return copied > 0 ? copied : 0;
+}
+
+/** The bookmark's page: the ribbon, the knot, and the count your copies actually carry. */
+export function stakeBookmarkRows(state) {
+  const copied = quillCopiedCount(state);
+  const got = copied >= STAKE_BOOKMARK_MIN
+    || special500Moment(state, 'SP2-171') != null
+    || honestReceipt(plainFlag(state, STAKE_BOOKMARKED_FLAG));
+  if (!got) return [];
+  const live = quillCopiedCount(state);
+  return [
+    Object.freeze({ label: 'THE STAKE', value: 'THE READER\'S STAKE, CHARON EXPANSE — ITS LOG STAYS OPEN', sealed: false }),
+    Object.freeze({ label: 'THE BOOKMARK', value: 'A PHYSICAL RIBBON, TIED BY AR-3\'s GRIP', sealed: false }),
+    Object.freeze({ label: 'THE KNOT', value: 'THE ARCHIVE\'S INDEX KNOT', sealed: false }),
+    Object.freeze({ label: 'THE PAGE', value: 'EVERY SEALED THING YOU HAVE EVER UNSEALED, WITH DATES', sealed: false }),
+    Object.freeze({
+      label: 'COPIED OPEN',
+      value: live > 0
+        ? `${live} PAGE${live === 1 ? '' : 'S'} — FILED AS AR-3\'S OWN RECOMMENDATIONS`
+        : 'THE COUNT RIDES AR-3\'S LOG, NOT THIS PAGE — THE RIBBON STAYS TIED',
+      sealed: false,
+    }),
+  ];
+}
+
+// SP2-085 "The Two-Credit Truth" — the miners' corner buys the tired seller a drink for exactly
+// two credits. The director's trade receipt in the Belt is the moment; the three-loss sale
+// counter and the next above-band +2% nudge are the economy leg's — its consensus-named plain
+// flag `two_credit_truth` is the alternate seam, and until it writes, the advice's mechanics
+// stay the rockhand's claim, not the page's.
+export const TWO_CREDIT_TRUTH_FLAG = 'two_credit_truth';
+export const TWO_CREDIT_NUDGE_PCT = 2;
+export const TWO_CREDIT_LOSS_STREAK = 3;
+
+/** The two-credit page: the drink, the advice, and whether the mechanics have caught up. */
+export function twoCreditTruthRows(state) {
+  const told = honestReceipt(plainFlag(state, TWO_CREDIT_TRUTH_FLAG));
+  if (special500Moment(state, 'SP2-085') == null && !told) return [];
+  return [
+    Object.freeze({ label: 'THE BAR', value: 'THE MINERS\' CORNER, BELT OUTPOST — EXACT CHANGE ONLY', sealed: false }),
+    Object.freeze({ label: 'THE DRINK', value: 'BOUGHT FOR YOU, FOR EXACTLY TWO CREDITS', sealed: false }),
+    Object.freeze({
+      label: 'THE ADVICE',
+      value: '"YOU ARE SELLING TIRED. THE SCALE CAN HEAR IT IN THE TONNAGE. REST, THEN SELL."',
+      sealed: false,
+    }),
+    Object.freeze({
+      label: 'THE ROCK',
+      value: '"THE ROCK IS NOT GOING ANYWHERE; THAT IS ITS WHOLE PERSONALITY."',
+      sealed: false,
+    }),
+    Object.freeze({
+      label: 'THE NEXT SALE',
+      value: told
+        ? `ABOVE BAND, ONE TIME, +${TWO_CREDIT_NUDGE_PCT}% — THE ADVICE WAS MECHANICALLY REAL`
+        : 'THE PRICE-BAND NUDGE WAITS FOR THE SALE LEDGER THAT KEEPS THE BANDS',
+      sealed: told,
+    }),
+  ];
+}
+
+// SP3-107 "The Bargain Light" — the Den's green vent-spine lamp, lit only on Ring Fair. The
+// director's annual calendar receipt is the gate; the lamp channel itself is the light leg's.
+// The calendar row is a live read (the same day-of-year arithmetic the wire keeps): on the
+// fair day the page says lit, between fairs it says when the lamp comes back.
+export const BARGAIN_LIGHT_DAY = 13; // Ring Fair
+export const BARGAIN_LIGHT_SECTOR = 'sector_pallas_drift';
+
+/** The lamp's page: the light, the pattern, and the decode the neighbors pretend not to read. */
+export function bargainLightRows(state) {
+  if (special500Moment(state, 'SP3-107') == null) return [];
+  const now = Number(state && state.simTime);
+  const today = Number.isFinite(now) && now > 0 ? Math.floor(now / CAL_DAY_S) % CAL_YEAR_DAYS : null;
+  return [
+    Object.freeze({ label: 'THE LAMP', value: 'ONE SMALL GREEN LIGHT — THE DEN\'S VENT SPINE, SHADOW SIDE', sealed: false }),
+    Object.freeze({
+      label: 'THE OCCASION',
+      value: today === BARGAIN_LIGHT_DAY
+        ? `RING FAIR, DAY ${BARGAIN_LIGHT_DAY} — THE LAMP IS LIT`
+        : `BETWEEN FAIRS — IT LIGHTS AGAIN ON DAY ${BARGAIN_LIGHT_DAY}`,
+      sealed: false,
+    }),
+    Object.freeze({ label: 'THE PATTERN', value: 'LONG, SHORT-SHORT, LONG — PATIENT, REPEATING, AUTHORED', sealed: false }),
+    Object.freeze({
+      label: 'THE DECODE',
+      value: 'THE TAG LANE BUOY\'S ROLL, READ AT DOCK — THE MARGIN IS WHERE THE BUOY POINTS',
+      sealed: false,
+    }),
+    Object.freeze({ label: 'THE NEIGHBORS', value: 'ALL KNOW IT. ALL PRETEND THE LAMP IS A LAMP.', sealed: false }),
+  ];
+}
+
+// SP3-117 "The Paper Plane" — the pod bay's annual throw: a folded hull plate with a lamp on
+// it, on a computed arc, burning to a silver flash in the apron's heat wash. The director's
+// calendar window (day 21, twenty seconds, Helios only) is the witness gate as implemented;
+// the pooled prop and the breach cue light are the spectacle leg's. The page keeps the two
+// lines the witness actually gets.
+/** The plane's page: the object, the flight, and the only question it asks. */
+export function paperPlaneRows(state) {
+  if (special500Moment(state, 'SP3-117') == null) return [];
+  return [
+    Object.freeze({ label: 'THE OBJECT', value: 'A FOLDED HULL PLATE WITH A LAMP ON IT', sealed: false }),
+    Object.freeze({
+      label: 'THE FLIGHT',
+      value: 'A COMPUTED ARC ACROSS THE APRON\'S LIGHT — BURNING TO A SILVER FLASH IN THE HEAT WASH',
+      sealed: false,
+    }),
+    Object.freeze({ label: 'THE PHYSICS', value: 'NOTHING GLIDES IN VACUUM. SOMEBODY THREW IT ON PURPOSE.', sealed: false }),
+    Object.freeze({ label: 'THE WIRE', value: 'NEVER MENTIONS IT', sealed: false }),
+    Object.freeze({ label: 'THE QUESTION', value: 'WHO FOLDS THESE?', sealed: false }),
+  ];
+}
+
+// SP3-138 "The Hum at Sker" — hold still inside the 80 WU zone off the market and the
+// machinery composes. The proximity receipt is the gate as implemented; the stillness gate's
+// audio-bus duck and chord mix are the audio leg's, and the page says so instead of claiming
+// a mix nobody has patched yet. The listening place itself is real: the director filed you
+// standing in it.
+export const HUM_ZONE_WU = 80;
+export const HUM_STILL_S = 30;
+export const HUM_ANCHOR_ID = 'station_sker';
+
+/** The listening place's page: the resolution, the orchestra, the rule, and the mix's status. */
+export function humAtSkerRows(state) {
+  if (special500Moment(state, 'SP3-138') == null) return [];
+  return [
+    Object.freeze({ label: 'THE BEARING', value: `INSIDE THE ${HUM_ZONE_WU} WU ZONE OFF THE SKER MARKET`, sealed: false }),
+    Object.freeze({
+      label: 'THE RESOLUTION',
+      value: 'THE HUM EVERY HULL HALF-NOTICES RESOLVES, HERE, INTO A SLOW MELODY',
+      sealed: false,
+    }),
+    Object.freeze({ label: 'THE ORCHESTRA', value: 'CRANES, PUMPS, WELDERS — ALL IN TUNE, COMPOSING FROM HERE', sealed: false }),
+    Object.freeze({
+      label: 'THE RULE',
+      value: 'MOVE, AND IT DEGRADES BACK INTO MACHINERY. IT WAS ALWAYS THE SAME MACHINERY. YOU ARE WHAT CHANGED.',
+      sealed: false,
+    }),
+    Object.freeze({
+      label: 'THE MIX',
+      value: 'THE DUCK-AND-CHORD MIX WAITS FOR THE AUDIO BUS — THE LISTENING PLACE IS REAL REGARDLESS',
+      sealed: false,
+    }),
+  ];
+}
+
+// SP2-168 "The Broken Shepherd's Flock" — break a hull near the Broken Shepherd and its herding
+// rigs re-flock the wreckage. The director's combat receipt in the Expanse is the gate as
+// implemented; the 600 WU proximity refinement and the orbiting-wreck presentation are the
+// uniqueWrecks leg's — its consensus-named plain flag `flock_reflocked` is the alternate seam.
+// The salvage stays collectible either way; the Understory's first claim is filing, not fencing.
+export const FLOCK_REFLOCKED_FLAG = 'flock_reflocked';
+export const FLOCK_RADIUS_WU = 600;
+export const FLOCK_POI_ID = 'poi_charon_broken_shepherd';
+
+/** The re-flocked flock's page: the rigs, the orbit, the PA, and the count that is correct. */
+export function reFlockedRows(state) {
+  const got = special500Moment(state, 'SP2-168') != null
+    || honestReceipt(plainFlag(state, FLOCK_REFLOCKED_FLAG));
+  if (!got) return [];
+  return [
+    Object.freeze({ label: 'THE SHEPHERD', value: 'BROKEN — AND ITS HERDING RIGS STILL DETACH, PIECE BY PIECE', sealed: false }),
+    Object.freeze({ label: 'THE FLOCK', value: 'THE FRESH WRECKAGE, GATHERED INTO A QUIET ORBIT AROUND IT', sealed: false }),
+    Object.freeze({ label: 'THE PA', value: '"COUNTED. COUNTED. COUNTED." — SOFTER EACH CYCLE', sealed: false }),
+    Object.freeze({ label: 'THE COUNT', value: 'CORRECT', sealed: false }),
+    Object.freeze({ label: 'THE SALVAGE', value: 'STILL COLLECTIBLE BY ANYONE — THE UNDERSTORY FILES FIRST CLAIM', sealed: false }),
+  ];
+}
+
+// SP3-026 "The Still Eye" — the calm pocket inside the Anvil band. The director's sector-entry
+// receipt is the gate; the zone record (anomaly_deep, no presence) and its drag/heat exemption
+// are the sectorZones leg's — the page keeps the phenomenon and the season cadence, and reads
+// the season count off the calendar the storm bands already use. It never names a position:
+// the pilots who track the eye do not share the coordinates, only the season math.
+export const STILL_EYE_SECTOR = 'sector_tethys_junction';
+export const STILL_EYE_WU = 80;
+
+/** The eye's page: the pocket, the heat, and which season the current step is filed under. */
+export function stillEyeRows(state) {
+  if (special500Moment(state, 'SP3-026') == null) return [];
+  const now = Number(state && state.simTime);
+  const season = Number.isFinite(now) && now >= 0 ? stormSeasonAt(STILL_EYE_SECTOR, now) : null;
+  return [
+    Object.freeze({
+      label: 'THE EYE',
+      value: `AN ${STILL_EYE_WU} WU CIRCLE INSIDE THE ANVIL BAND — LIGHTNING STOPS, DRAG VANISHES, DEBRIS HANGS GLITTERING`,
+      sealed: false,
+    }),
+    Object.freeze({ label: 'THE HEAT', value: 'COOLS AT THE OUT-OF-BAND RATE INSIDE', sealed: false }),
+    Object.freeze({
+      label: 'THIS SEASON',
+      value: season
+        ? `THE EYE\'S STEP IS FILED UNDER SEASON ${season.season} — IT MOVES ONE BAND-WIDTH EACH`
+        : 'THE STEP IS FILED PER SEASON — THE CALENDAR KEEPS THE COUNT',
+      sealed: false,
+    }),
+    Object.freeze({ label: 'THE PILOTS', value: 'THEY DO NOT SHARE THE COORDINATES. THEY DO SHARE THE SEASON MATH.', sealed: false }),
+  ];
+}
+
+// SP2-173 "The Slurry Relic's Contents" — the relic's scan returns a container, not a commodity:
+// R3-CARRIER GRID, PANEL 9, shelved full in Helios Bay 7, the only panel that ever left the
+// warehouse, and it left as a container, not cargo. The director's scan receipt in the Expanse
+// is the gate as implemented; the commodity-context scan branch (slurry fresh in the sampling
+// log) is the scanner leg's, and its consensus-named plain flag `panel9_found` is the alternate
+// seam. The physical middle chapter rides the Bay 7 thread flags — queued, not claimed.
+export const PANEL9_FOUND_FLAG = 'panel9_found';
+export const PANEL_NINE_LINE = 'SLURRY, REFINED, BATCH R3-CARRIER. CONTAINER: R3-CARRIER GRID, PANEL 9.';
+export const SLURRY_POI_ID = 'poi_charon_slurry';
+
+/** Panel Nine's page: the composition, the provenance, and the middle chapter's status. */
+export function panelNineRows(state) {
+  const got = special500Moment(state, 'SP2-173') != null
+    || honestReceipt(plainFlag(state, PANEL9_FOUND_FLAG));
+  if (!got) return [];
+  return [
+    Object.freeze({ label: 'THE SCAN', value: PANEL_NINE_LINE, sealed: false }),
+    Object.freeze({ label: 'THE PROVENANCE', value: 'SHELVED IN HELIOS BAY 7 — THE ONLY PANEL THAT EVER LEFT THE WAREHOUSE', sealed: false }),
+    Object.freeze({ label: 'THE MANNER', value: 'IT LEFT AS A CONTAINER, NOT CARGO', sealed: false }),
+    Object.freeze({
+      label: 'THE MIDDLE CHAPTER',
+      value: 'QUEUED — THE BAY 7 THREAD FLAGS CARRY IT WHEN THEY LAND',
+      sealed: false,
+    }),
+  ];
+}
+
+// SP2-175 "The Quiet Mast's Silence Toll" — three hails inside a minute near the mast and the
+// third plays back edited: every filler word removed, content preserved. The director's hail
+// receipt in the Reach is the gate as implemented; the chatter-rate check and the edited-hail
+// playback variant are the comms leg's, and the register payoff (first-ping resolution, band
+// priority) is the mast's own word on the page until that leg's flag `mast_prefers_you` lands.
+export const MAST_PREFERS_YOU_FLAG = 'mast_prefers_you';
+export const MAST_HAIL_WINDOW_S = 60;
+export const MAST_HAIL_COUNT = 3;
+export const MAST_POI_ID = 'poi_io_quiet_mast';
+
+/** The mast's page: the toll, the edit, the verdict, and the preference it never explains. */
+export function mastPrefersYouRows(state) {
+  const got = special500Moment(state, 'SP2-175') != null
+    || honestReceipt(plainFlag(state, MAST_PREFERS_YOU_FLAG));
+  if (!got) return [];
+  return [
+    Object.freeze({ label: 'THE TOLL', value: `THREE HAILS INSIDE ${MAST_HAIL_WINDOW_S} SECONDS, NEAR THE MAST`, sealed: false }),
+    Object.freeze({ label: 'THE EDIT', value: 'NOT JAMMING — EDITING. EVERY FILLER WORD, REMOVED.', sealed: false }),
+    Object.freeze({
+      label: 'THE PLAYBACK',
+      value: '"TRANSMISSION: EDITED. CONTENT: PRESERVED. THE MAST PREFERS YOU."',
+      sealed: false,
+    }),
+    Object.freeze({ label: 'THE PREFERENCE', value: 'PERMANENT — THE MAST HAS NEVER EXPLAINED IT', sealed: false }),
+    Object.freeze({
+      label: 'THE BAND',
+      value: 'OTHER PILOTS HEAR YOU AHEAD OF THEIR OWN TRAFFIC — THE MAST\'S DOING',
+      sealed: false,
+    }),
+  ];
+}
+
+// SP2-180 "The Ash Pin's Second Age" — the pins are a pair: same stake design, same paint
+// batch, same era, one incident from two ends. The honest gate is a live read World already
+// keeps: both per-POI discovery records (state.world.discovery[sectorId].pois) for
+// poi_helios_ash_pin and poi_ceres_ash_pin. The catalog's bare poi:discovered receipt proves
+// less than the page claims, so it is not accepted on its own; the two-visit leg's
+// consensus-named plain flag `pins_paired` (both pins within one in-game week) is the stricter
+// writer and is honored on its own. The middle line — the player's campaign thread number —
+// has no read yet and the page leaves it unwritten, like everyone else has.
+export const PINS_PAIRED_FLAG = 'pins_paired';
+export const ASH_PIN_POIS = Object.freeze({
+  helios: { sectorId: 'sector_helios_prime', poiId: 'poi_helios_ash_pin' },
+  ceres: { sectorId: 'sector_ceres_belt', poiId: 'poi_ceres_ash_pin' },
+});
+
+/** The world's own discovery records for both pins: found or not found, from the bags World keeps. */
+export function ashPinDiscovery(state) {
+  const disc = state && state.world && state.world.discovery;
+  const found = (where) => {
+    if (!disc || typeof disc !== 'object') return false;
+    const sector = disc[where.sectorId];
+    const pois = sector && typeof sector === 'object' ? sector.pois : null;
+    const row = pois && typeof pois === 'object' ? pois[where.poiId] : null;
+    return !!(row && typeof row === 'object'
+      && (row.discovered === true || row.identified === true || row.investigated === true || row.defeated === true));
+  };
+  return { helios: found(ASH_PIN_POIS.helios), ceres: found(ASH_PIN_POIS.ceres) };
+}
+
+/** The pair's page: the pins, the text that completes itself, and the middle nobody wrote. */
+export function twoPinsRows(state) {
+  const both = ashPinDiscovery(state);
+  const paired = both.helios && both.ceres;
+  const got = paired
+    || honestReceipt(plainFlag(state, PINS_PAIRED_FLAG));
+  if (!got) return [];
+  return [
+    Object.freeze({ label: 'THE PAIR', value: 'SAME STAKE DESIGN, SAME PAINT BATCH, SAME ERA — ONE INCIDENT, TWO ENDS', sealed: false }),
+    Object.freeze({ label: 'THE HELIOS PIN', value: 'BURNED DOWN IN HELIOS', sealed: false }),
+    Object.freeze({ label: 'THE CERES PIN', value: 'ON THE PALLAS LEG OF CERES', sealed: false }),
+    Object.freeze({ label: 'THE TEXT', value: 'THE TWO PARTIAL TEXTS COMPLETE EACH OTHER — EXCEPT THE MIDDLE', sealed: false }),
+    Object.freeze({
+      label: 'THE MIDDLE',
+      value: 'THE PART NEITHER PIN CARRIES IS THE PART EVERYONE REMEMBERS AND NO ONE WROTE DOWN',
+      sealed: false,
+    }),
+  ];
+}
+
+// SP2-040 "The Star Marker's Star" — an aimed stake that reads as a sextant: two bearings by
+// two watches, intersecting above nothing, where nothing is charted. The director's scan
+// receipt in the Expanse is the gate; the per-phase scan copy is the scanner leg's, and the
+// intersection POI (a preserved cockpit beacon — a grave; Understory +3 for leaving it
+// undisturbed) is the world leg's on its consensus-named plain flag `star_marker_fixed`, the
+// accepted alternate seam. The watch row is a live read off the calendar: the station watch
+// the marker is keeping right now, and which bearing that leaves un-read.
+export const STAR_MARKER_FIXED_FLAG = 'star_marker_fixed';
+export const STAR_MARKER_POI_ID = 'poi_charon_star_marker';
+
+/** The sextant's page: the bearings, the intersection, and the watch the marker keeps now. */
+export function starMarkerRows(state) {
+  const fixed = honestReceipt(plainFlag(state, STAR_MARKER_FIXED_FLAG));
+  if (special500Moment(state, 'SP2-040') == null && !fixed) return [];
+  const now = Number(state && state.simTime);
+  const shift = Number.isFinite(now) && now >= 0 ? stationShiftAt(STAR_MARKER_POI_ID, now) : null;
+  return [
+    Object.freeze({
+      label: 'THE MARKER',
+      value: 'AN AIMED STAKE, CHARON EXPANSE — TWO BEARINGS BY TWO WATCHES',
+      sealed: false,
+    }),
+    Object.freeze({
+      label: 'THE SEXTANT',
+      value: 'CROSS THE TWO BEARINGS AND THEY INTERSECT AT ONE FIXED POINT — ABOVE NOTHING',
+      sealed: false,
+    }),
+    Object.freeze({
+      label: 'THIS WATCH',
+      value: shift
+        ? `${String(shift.name || shift.id).toUpperCase()} — THE OTHER BEARING WAITS FOR THE OTHER WATCH`
+        : 'THE MARKER KEEPS STATION WATCHES — THE PAGE READS THE CLOCK WHEN THE SAVE CARRIES ONE',
+      sealed: false,
+    }),
+    Object.freeze({
+      label: 'THE INTERSECTION',
+      value: fixed
+        ? 'FLOWN — A SINGLE PRESERVED COCKPIT BEACON. A GRAVE. LEFT AS FOUND.'
+        : 'UNCHARTED — THE POINT WAITS FOR A FLIGHT',
+      sealed: fixed,
+    }),
+  ];
+}
+
+// SP3-178 "The Vanishing Field" — a rock field that is measurably smaller every visit, the
+// missing rocks standing elsewhere in a neat survey-painted row. The director's sector-entry
+// receipt in the March is the gate; the seeded per-visit count ledger (the discovery-bag
+// pattern) and the row placement are that leg's — the page states the ledger's absence and
+// keeps the audit trail it can honestly keep: the finding itself.
+export const VANISHING_FIELD_SECTOR = 'sector_nyx_march';
+
+/** The field's page: the shrink, the row, and the ledger that has not been filed yet. */
+export function vanishingFieldRows(state) {
+  if (special500Moment(state, 'SP3-178') == null) return [];
+  return [
+    Object.freeze({ label: 'THE FIELD', value: 'MEASURABLY SMALLER EVERY TIME YOU COUNT IT', sealed: false }),
+    Object.freeze({
+      label: 'THE ROW',
+      value: 'THE MISSING ROCKS, ELSEWHERE IN THE SECTOR — NEAT, NUMBERED IN SURVEY PAINT, FACING AWAY FROM EVERYTHING',
+      sealed: false,
+    }),
+    Object.freeze({ label: 'THE COUNT', value: 'EXACT. THE ARRANGEMENT IS EXACT.', sealed: false }),
+    Object.freeze({ label: 'THE REASON', value: 'ABSENT', sealed: false }),
+    Object.freeze({
+      label: 'THE LEDGER',
+      value: 'THE PER-VISIT COUNT IS NOT FILED YET — THE FIELD SHRINKS REGARDLESS',
+      sealed: false,
+    }),
+  ];
+}
+
+// SP2-023 "The Dead Star Chart" — the drifting survey wreck's chart table, every star replaced
+// by a hand-cut tally mark, one circled. The director's scan receipt in the dark is the gate
+// as implemented; the first-scan overlay copy is the scanner leg's, and the circled position's
+// POI row (a dead precursor pin, Verge-Layer register) is the world leg's — the page keeps the
+// chart honestly unfiled until that row exists, because the map is only a map.
+export const SURVEYOR_SECTOR = 'sector_sedna_dark';
+
+/** The chart's page: the tallies, the circle, and the filing the surveyor never made. */
+export function surveyorMapRows(state) {
+  if (special500Moment(state, 'SP2-023') == null) return [];
+  return [
+    Object.freeze({ label: 'THE WRECK', value: 'A DRIFTING SURVEY SHIP, SEDNA DARK — ITS CHART TABLE STILL LIT', sealed: false }),
+    Object.freeze({ label: 'THE CHART', value: 'EVERY STAR REPLACED BY A HAND-CUT TALLY MARK', sealed: false }),
+    Object.freeze({ label: 'THE CIRCLE', value: 'ONE TALLY, CIRCLED — POSITION FOR POSITION, A REAL UNCHARTED BODY', sealed: false }),
+    Object.freeze({
+      label: 'THE SURVEYOR',
+      value: 'DIED BEFORE FILING IT, OR AFTER, OR BECAUSE OF IT. THE MAP DOES NOT SAY. THE MAP IS ONLY A MAP.',
+      sealed: false,
+    }),
+    Object.freeze({ label: 'THE PIN', value: 'UNCHARTED STILL — THE CIRCLED POSITION WAITS FOR ITS POI ROW', sealed: false }),
+  ];
 }

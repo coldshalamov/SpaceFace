@@ -7,10 +7,14 @@
   "small": 167,
   "medium": 167,
   "large": 166,
-  "landed": 146,
+  "landed": 160,
   "assigned": 42,
-  "approved": 146,
-  "bonusLanded": 10
+  "approved": 160,
+  "bonusLanded": 10,
+  "playerTruthGate": {
+   "date": "2026-11-04",
+   "verdict": "FAIL-environment (software GL): route PASS on 3061 frames; player_control probes dead on SwiftShader (GPU slot held by another worker); frame_time UNKNOWN same cause; gameplay-readable checks PASS (tumble, ship, vfx/backdrop coverage, LOD churn, popping); re-run owed when a GPU slot frees"
+  }
  },
  "derivation": {
   "ratifiedFollowup": 330,
@@ -3574,9 +3578,9 @@
    "size": "medium",
    "family": "codex",
    "batch": 14,
-   "status": "assigned",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused 22/22 + neighbors 99/99 + controller re-run 27/27",
    "note": "promoted to medium (balance)"
   },
   {
@@ -3617,9 +3621,9 @@
    "size": "medium",
    "family": "codex",
    "batch": 14,
-   "status": "assigned",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused 22/22 + neighbors 99/99 + controller re-run 27/27",
    "note": "promoted to medium (balance)"
   },
   {
@@ -3638,9 +3642,9 @@
    "size": "medium",
    "family": "codex",
    "batch": 14,
-   "status": "assigned",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused 22/22 + neighbors 99/99 + controller re-run 27/27",
    "note": "promoted to medium (balance)"
   },
   {
@@ -3659,9 +3663,9 @@
    "size": "medium",
    "family": "codex",
    "batch": 14,
-   "status": "assigned",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused 22/22 + neighbors 99/99 + controller re-run 27/27",
    "note": "promoted to medium (balance)"
   },
   {
@@ -3759,9 +3763,9 @@
    "size": "medium",
    "family": "codex",
    "batch": 14,
-   "status": "assigned",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused 22/22 + neighbors 99/99 + controller re-run 27/27",
    "note": "promoted to medium (balance)"
   },
   {
@@ -3779,9 +3783,9 @@
    "size": "small",
    "family": "codex",
    "batch": 14,
-   "status": "assigned",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused 22/22 + neighbors 99/99 + controller re-run 27/27",
    "note": ""
   },
   {
@@ -3861,9 +3865,9 @@
    "size": "small",
    "family": "codex",
    "batch": 14,
-   "status": "assigned",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused 22/22 + neighbors 99/99 + controller re-run 27/27",
    "note": ""
   },
   {
@@ -3901,9 +3905,9 @@
    "size": "small",
    "family": "codex",
    "batch": 14,
-   "status": "assigned",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused 22/22 + neighbors 99/99 + controller re-run 27/27",
    "note": ""
   },
   {
@@ -3942,9 +3946,9 @@
    "size": "medium",
    "family": "codex",
    "batch": 14,
-   "status": "assigned",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused 22/22 + neighbors 99/99 + controller re-run 27/27",
    "note": "promoted to medium (balance)"
   },
   {
@@ -3984,9 +3988,9 @@
    "size": "small",
    "family": "codex",
    "batch": 14,
-   "status": "assigned",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused 22/22 + neighbors 99/99 + controller re-run 27/27",
    "note": ""
   },
   {
@@ -4025,9 +4029,9 @@
    "size": "small",
    "family": "codex",
    "batch": 14,
-   "status": "assigned",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused 22/22 + neighbors 99/99 + controller re-run 27/27",
    "note": ""
   },
   {
@@ -4235,9 +4239,9 @@
    "size": "medium",
    "family": "codex",
    "batch": 14,
-   "status": "assigned",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused 22/22 + neighbors 99/99 + controller re-run 27/27",
    "note": "promoted to medium (balance)"
   },
   {
@@ -4277,9 +4281,9 @@
    "size": "medium",
    "family": "codex",
    "batch": 14,
-   "status": "assigned",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused 22/22 + neighbors 99/99 + controller re-run 27/27",
    "note": "promoted to medium (balance)"
   },
   {
@@ -4322,9 +4326,9 @@
    "size": "medium",
    "family": "codex",
    "batch": 14,
-   "status": "assigned",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused 22/22 + neighbors 99/99 + controller re-run 27/27",
    "note": "promoted to medium (balance)"
   },
   {
@@ -4380,7 +4384,7 @@
    "size": "small",
    "family": "counter",
    "batch": 19,
-   "status": "pending",
+   "status": "assigned",
    "commit": "",
    "verification": "",
    "note": ""
@@ -4439,7 +4443,7 @@
    "size": "medium",
    "family": "spectacle",
    "batch": 9,
-   "status": "pending",
+   "status": "assigned",
    "commit": "",
    "verification": "",
    "note": ""
@@ -4477,7 +4481,7 @@
    "size": "small",
    "family": "spectacle",
    "batch": 9,
-   "status": "pending",
+   "status": "assigned",
    "commit": "",
    "verification": "",
    "note": ""
@@ -4517,7 +4521,7 @@
    "size": "small",
    "family": "spectacle",
    "batch": 9,
-   "status": "pending",
+   "status": "assigned",
    "commit": "",
    "verification": "",
    "note": ""
@@ -4557,7 +4561,7 @@
    "size": "small",
    "family": "spectacle",
    "batch": 9,
-   "status": "pending",
+   "status": "assigned",
    "commit": "",
    "verification": "",
    "note": ""
@@ -4600,7 +4604,7 @@
    "size": "medium",
    "family": "spectacle",
    "batch": 9,
-   "status": "pending",
+   "status": "assigned",
    "commit": "",
    "verification": "",
    "note": ""
@@ -4621,7 +4625,7 @@
    "size": "small",
    "family": "spectacle",
    "batch": 9,
-   "status": "pending",
+   "status": "assigned",
    "commit": "",
    "verification": "",
    "note": ""
@@ -4682,7 +4686,7 @@
    "size": "small",
    "family": "spectacle",
    "batch": 9,
-   "status": "pending",
+   "status": "assigned",
    "commit": "",
    "verification": "",
    "note": ""
@@ -4703,7 +4707,7 @@
    "size": "small",
    "family": "spectacle",
    "batch": 9,
-   "status": "pending",
+   "status": "assigned",
    "commit": "",
    "verification": "",
    "note": ""
@@ -4723,7 +4727,7 @@
    "size": "small",
    "family": "spectacle",
    "batch": 9,
-   "status": "pending",
+   "status": "assigned",
    "commit": "",
    "verification": "",
    "note": ""
@@ -4830,7 +4834,7 @@
    "size": "small",
    "family": "spectacle",
    "batch": 9,
-   "status": "pending",
+   "status": "assigned",
    "commit": "",
    "verification": "",
    "note": ""
@@ -4848,7 +4852,7 @@
    "size": "medium",
    "family": "spectacle",
    "batch": 9,
-   "status": "pending",
+   "status": "assigned",
    "commit": "",
    "verification": "",
    "note": ""
@@ -4888,7 +4892,7 @@
    "size": "small",
    "family": "spectacle",
    "batch": 9,
-   "status": "pending",
+   "status": "assigned",
    "commit": "",
    "verification": "",
    "note": ""
@@ -4909,7 +4913,7 @@
    "size": "medium",
    "family": "counter",
    "batch": 19,
-   "status": "pending",
+   "status": "assigned",
    "commit": "",
    "verification": "",
    "note": "promoted to medium (balance)"
@@ -5027,7 +5031,7 @@
    "size": "small",
    "family": "spectacle",
    "batch": 9,
-   "status": "pending",
+   "status": "assigned",
    "commit": "",
    "verification": "",
    "note": ""
@@ -5067,7 +5071,7 @@
    "size": "small",
    "family": "spectacle",
    "batch": 9,
-   "status": "pending",
+   "status": "assigned",
    "commit": "",
    "verification": "",
    "note": ""
@@ -5148,7 +5152,7 @@
    "size": "medium",
    "family": "counter",
    "batch": 19,
-   "status": "pending",
+   "status": "assigned",
    "commit": "",
    "verification": "",
    "note": "promoted to medium (balance)"
@@ -5207,7 +5211,7 @@
    "size": "small",
    "family": "counter",
    "batch": 19,
-   "status": "pending",
+   "status": "assigned",
    "commit": "",
    "verification": "",
    "note": ""
@@ -5326,7 +5330,7 @@
    "size": "small",
    "family": "counter",
    "batch": 19,
-   "status": "pending",
+   "status": "assigned",
    "commit": "",
    "verification": "",
    "note": ""
@@ -5407,7 +5411,7 @@
    "size": "small",
    "family": "counter",
    "batch": 19,
-   "status": "pending",
+   "status": "assigned",
    "commit": "",
    "verification": "",
    "note": ""
@@ -5475,7 +5479,7 @@
    "size": "medium",
    "family": "counter",
    "batch": 19,
-   "status": "pending",
+   "status": "assigned",
    "commit": "",
    "verification": "",
    "note": "promoted to medium (balance)"
@@ -5495,7 +5499,7 @@
    "size": "small",
    "family": "counter",
    "batch": 19,
-   "status": "pending",
+   "status": "assigned",
    "commit": "",
    "verification": "",
    "note": ""
@@ -5701,7 +5705,7 @@
    "size": "small",
    "family": "counter",
    "batch": 19,
-   "status": "pending",
+   "status": "assigned",
    "commit": "",
    "verification": "",
    "note": ""
@@ -5798,7 +5802,7 @@
    "size": "small",
    "family": "counter",
    "batch": 19,
-   "status": "pending",
+   "status": "assigned",
    "commit": "",
    "verification": "",
    "note": ""
@@ -6298,7 +6302,7 @@
    "size": "small",
    "family": "counter",
    "batch": 19,
-   "status": "pending",
+   "status": "assigned",
    "commit": "",
    "verification": "",
    "note": ""
@@ -6442,7 +6446,7 @@
    "size": "medium",
    "family": "counter",
    "batch": 19,
-   "status": "pending",
+   "status": "assigned",
    "commit": "",
    "verification": "",
    "note": "promoted to medium (balance)"
@@ -6528,7 +6532,7 @@
    "size": "small",
    "family": "counter",
    "batch": 19,
-   "status": "pending",
+   "status": "assigned",
    "commit": "",
    "verification": "",
    "note": ""
@@ -6737,7 +6741,7 @@
    "size": "small",
    "family": "counter",
    "batch": 19,
-   "status": "pending",
+   "status": "assigned",
    "commit": "",
    "verification": "",
    "note": ""

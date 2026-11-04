@@ -324,15 +324,28 @@ const SECTOR_OVERLAYS = Object.freeze({
     + 'Inside the apron approach the docking chatter stops being noise and becomes texture — overlapping approach calls, '
     + 'berth assignments, one voice always slightly behind the others. The apron has a choir and it is made of work. '
     + 'The station wire also runs the bay 7 notice, and the regulars will tell you bay 7 has been empty for nine years, '
-    + 'which is exactly why the wire uses it: nothing in bay 7 has ever contradicted the wire yet.',
+    + 'which is exactly why the wire uses it: nothing in bay 7 has ever contradicted the wire yet. '
+    + 'The pilgrim mooring keeps a guest book in handwriting; the most recent entry is always half-finished, '
+    + 'because every pilgrim moors mid-thought, and the entry finishes itself when the hull actually leaves. '
+    + 'Once a year, on day 21, the pod bay throws a folded hull plate with a lamp on it across the apron\'s light — '
+    + 'a computed arc, a brief silver flash in the heat wash, and the wire never mentions it. '
+    + 'Nothing glides in vacuum. Somebody folds these on purpose.',
   sector_ceres_belt: 'First belt, first lesson: the rock does not care about your manifest. '
     + 'Shaft 7\'s stake carries a re-chalked tally and two helmets face-out on a memorial clamp. The math is legal. The math is not done. '
     + 'One rock in every field carries the Tally\'s paint — a small 500, forty strokes under it — and rings one note of a ten-note scale '
-    + 'when the beam bites. One person spent a decade painting an instrument, then stopped counting at five hundred.',
+    + 'when the beam bites. One person spent a decade painting an instrument, then stopped counting at five hundred. '
+    + 'At the Belt Outpost bar the miners\' corner buys the tired seller a drink for exactly two credits: rest, then sell — '
+    + 'the scale can hear it in the tonnage, and the rock is not going anywhere; that is its whole personality. '
+    + 'The ash pins are a pair — one burned down in Helios, one on the Pallas leg of Ceres: same stake design, '
+    + 'same paint batch, same era, marking the same incident from two ends. Read both and the two partial texts complete '
+    + 'each other, except the middle: the part everyone remembers and no one wrote down.',
   sector_tethys_junction: 'Where the lanes braid. Half the rumor-trade passes through with the cargo. '
     + 'The weigh-slip buoy\'s abutment stone keeps a season of chalk: every hull that ever idled there, massed and dated, whether or not it asked. '
     + 'Cross the Anvil sling band fast and tangential and the band becomes audible for a moment: one harmonic, every hull singing the '
-    + 'same note at the same place on the curve. Mass made audible; even the pirates cross it politely.',
+    + 'same note at the same place on the curve. Mass made audible; even the pirates cross it politely. '
+    + 'Inside the band there is also one calm pocket the storm flows around — eighty WU where the lightning stops, the drag vanishes '
+    + 'and heat cools at the out-of-band rate. It steps one band-width per season, and the pilots who track it do not share '
+    + 'the coordinates. They share the season math.',
   sector_vesta_forge: 'Foundry sector; the glow is honest work and the smoke is somebody\'s claim. '
     + 'Gallery Rock is a permanent collection now. Accession No. 1; the label is for you. '
     + 'Cold Drill Four, the derelict on the cold line, still runs its PA on schedule — a night-shift roll call for a crew '
@@ -341,26 +354,44 @@ const SECTOR_OVERLAYS = Object.freeze({
     + 'to watch-light: the announcement is the appointment.',
   sector_pallas_drift: 'Tag-lane bookkeeping, read aloud: a roadside buoy transmits a rolling list of captains of interest — '
     + 'names, unpaid tithes, interest accrued — updated while you listen. One entry always matches a callsign you have met. '
-    + 'The buoy does not editorialize. It does not have to.',
+    + 'The buoy does not editorialize. It does not have to. '
+    + 'During Ring Fair, one small green lamp on the Den\'s vent spine, shadow side, blinks a patient pattern; decoded, '
+    + 'it names the tag lane buoy\'s roll — the market\'s oldest sign, hidden where only neighbors would look. '
+    + 'The neighbors all pretend the lamp is a lamp.',
   sector_io_reach: 'Listening posts and the traffic that learned to whisper back. '
-    + 'The retired channel buoy at the Listening Field answers anyway. Nobody living holds its license, and the channel is held open regardless.',
+    + 'The retired channel buoy at the Listening Field answers anyway. Nobody living holds its license, and the channel is held open regardless. '
+    + 'The Quiet Mast edits, and does not jam: three hails inside a minute near it and your third plays back with every filler word '
+    + 'removed. TRANSMISSION: EDITED. CONTENT: PRESERVED. The preference is permanent, and nobody has ever gotten the mast to explain it.',
   sector_charon_expanse: 'The long dark between customs desks. Smugglers call it "the reading room." '
     + 'Past the Tether Memorial a pre-Collapse beacon still spells out one very long sentence, one pulse per character. Old hands do not spoil it. '
     + 'The Preserved Cockpit\'s manifest grows a line every session — gloves, a thermos, a paperback, a second paperback, a note — items '
     + 'being added, not recovered; the last line says DO NOT WAKE UNTIL THE BELT IS SAFE. A crewless freighter keeps its galley open '
     + 'and its tab good: one meal at any Charon dock, marked PAID — KITCHEN. And at third watch the construction frame off the abandoned '
-    + 'colony welds in a pattern that reads as a constellation from one marked bearing; the plate calls it the sky we came from.',
+    + 'colony welds in a pattern that reads as a constellation from one marked bearing; the plate calls it the sky we came from. '
+    + 'At the Reader\'s Stake a ribbon bookmark has been tied by AR-3\'s grip, marking the page that names every sealed thing you have '
+    + 'unsealed, with dates — the Archive has been filing your work as its own recommendations, and the recommendations are good. '
+    + 'Break a hull near the Broken Shepherd and its herding rigs gather the fresh wreckage into a quiet orbit around it; the one '
+    + 'working PA loops, softer each cycle: COUNTED. The count is correct. '
+    + 'The Slurry Relic\'s scan names its container — R3-CARRIER GRID, PANEL 9, shelved full in Helios Bay 7, the only panel that ever '
+    + 'left the warehouse, and it left as a container, not cargo. '
+    + 'And the Star Marker is a sextant: two bearings by two watches intersect above nothing, where nothing is charted. It has been aimed this whole time.',
   sector_sker_haven: 'Reach country. The bazaar prices everything, including you. '
     + 'Drift quiet near the Bounty Wrecks field and you may pass through a hunter stakeout\'s open channel — target '
     + 'descriptions, shift changes, crisp argot, none of it about you. Professionals mid-job; the band is their workplace. '
-    + 'The plan is worth money to exactly two parties, and only one of them is the hunters.',
+    + 'The plan is worth money to exactly two parties, and only one of them is the hunters. '
+    + 'And at one bearing off the market, if you hold still inside the eighty-WU zone, the hum every hull half-notices resolves '
+    + 'into a slow melody: the yard\'s cranes, pumps and welders are all in tune, and from here they compose. Move, and it '
+    + 'degrades back into machinery. It was always the same machinery. You are what changed.',
   sector_veil_nebula: 'Research Station Veil and the things Dr. Suhl has not translated yet. '
     + 'A marginal note on the Veil chart: two cold hulls nose-to-nose over a mid-game table, one piece moved per visit. The chart does not say who countersigns the notation. '
     + 'The Helix audit\'s unresolvable coordinates resolve for whoever stands in them holding the salvaged communicator: one hull-sized '
     + 'hole in the universe. The file was never wrong; the file was a photograph. In the calm patches of the fog, wakes hold for hours, '
     + 'and someone has been writing there — re-carved daily, signed by a pilot everyone thought died.',
   sector_ashfall_reach: 'A ledger that kept running after everyone else left. Kurtz is still there.',
-  sector_nyx_march: 'Frontier march; the patrol grid thins to a rumor of itself.',
+  sector_nyx_march: 'Frontier march; the patrol grid thins to a rumor of itself. '
+    + 'One rock field here is measurably smaller every time it is counted, and the missing rocks stand elsewhere in the sector '
+    + 'in a neat row, numbered in survey paint, facing away from everything. The count is exact. The arrangement is exact. '
+    + 'The reason is absent.',
   sector_hyperion_cut: 'A lane cut through wreck-mass older than the Concord.',
   sector_kepler_scar: 'The scar is the map; everything else is collateral. '
     + 'The wire posts rock crossings one day ahead and the rock keeps the appointment: a forty-meter iron on the lane at '
@@ -384,7 +415,10 @@ const SECTOR_OVERLAYS = Object.freeze({
   sector_sedna_dark: 'The dark the Verge-Layers asked about first. It is still answering. '
     + 'On the ringworld arc a dormant gate ring wakes one ring at a time and asks each hull the same '
     + 'toll-question — WHAT IS THE MASS OF A DECISION? — then weighs hull, cargo and transponder '
-    + 'history and files the answer as a receipt. The ring has never opened. The receipts are the prize.',
+    + 'history and files the answer as a receipt. The ring has never opened. The receipts are the prize. '
+    + 'A drifting survey wreck keeps its chart table lit: every star replaced by a hand-cut tally mark, one circled — '
+    + 'position for position, a real body no chart row names. The surveyor died before filing it, or after, or because of it. '
+    + 'The map does not say. The map is only a map.',
   sector_dione_lane: 'The straight shot everyone takes and nobody watches. '
     + 'Settle the Dione customs dispute honestly — both liens — and the desk stamps a coin that is legal nowhere and valid everywhere. '
     + 'It works once. There is a nail waiting in the customs hall.',

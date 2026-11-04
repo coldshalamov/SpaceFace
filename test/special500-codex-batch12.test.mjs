@@ -420,9 +420,9 @@ test('the World tab carries the batch-12 receipt sections in order, with honest 
       'The Tidied Wreck', 'The Long Sentence', 'Shaft 7 Tally', 'Morrow\u2019s Tally',
       'Checkpoint Niner', 'Jump Log', 'Accession No. 1', 'The Long Game', 'Alignment, Day 16',
     ], 'the batch-12 sections sit after the pilot receipts, before the batch-13 sections');
-    assert.equal(codexScreen._sections.length, 49,
+    assert.equal(codexScreen._sections.length, 63,
       'eight standing sections, the thirteen batch-12 receipt sections, the fourteen batch-13 sections, '
-      + 'and the fourteen batch-14 sections');
+      + 'the fourteen batch-14 sections, and the fourteen batch-14b sections');
     for (const entry of codexScreen._entries) {
       assert.ok(entry.article, `${entry.id} carries a real article`);
       const text = textLines(entry.article).join('\n');
@@ -447,7 +447,7 @@ test('a fresh save renders every batch-12 section as its honest empty state', ()
     codexScreen._sections = [];
     codexScreen._entries = [];
     codexScreen._renderWorld({ state: baseState() });
-    assert.equal(codexScreen._sections.length, 49, 'the sections exist before their moments');
+    assert.equal(codexScreen._sections.length, 63, 'the sections exist before their moments');
     const empties = codexScreen._sections.slice(8, 21).map((s) => s.empty);
     for (const line of empties) {
       assert.ok(typeof line === 'string' && line.length > 0, 'every empty state says something honest');
