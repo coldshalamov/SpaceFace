@@ -13,6 +13,7 @@ import { WeaponLightPool } from './weaponLights.js';
 import { HullScorchPool, heatForWeaponVariant, CONTACT_MARK_KINDS } from './contactMarks.js';
 import { createScarHistory, noteHullScorchStrike, resetScarHistory } from './scarHistory.js';
 import { resolveScarSkid, scarSkidSize } from './scarDirection.js';
+import { findScarSeat, reinforceScarSeat } from './scarSeats.js';
 import { weaponEffectSeed } from './energyBoltPool.js';
 import { planPlayerSurfaceSplash } from './playerSurfaceSplash.js';
 import { QuarksVfxSystem } from '../vfx/quarksSystem.js';
@@ -400,46 +401,61 @@ export class WeaponVfxPresenter {
         payload.targetId, world.x, y, world.z, nx, 0.08, nz,
         skid.skidX, skid.skidY, skid.skidZ,
       );
-      // SCAR HISTORY — a hull under sustained fire keeps its last marks: once the book counts
-      // SCAR_HISTORY_AFTER_HITS bare-hull strikes, this and later hits cool to charcoal and stay
-      // target-bound for the fight (the pool's persistent path: evict-transient-first, fade
-      // floor, retained across dispose), instead of every hull reading brand-new after ~5 s.
-      const history = noteHullScorchStrike(
-        this._scarHistory,
+      // SCAR SEATS — a strike landing inside an existing kept seat is absorbed by that wound
+      // instead of spawning another sibling mark: the seat widens a step, reheats under the
+      // fresh hit, and creeps along the fire path. An absorbed strike never spawns and never
+      // touches the history book, so the kept-slot accounting stays exact.
+      const seatIndex = findScarSeat(
+        this.scorches.slots,
         payload.targetId,
-        now,
-        (grant) => {
-          const s = this.scorches.slots[grant.slot];
-          return !!s && s.alive === 1 && s.targetId === payload.targetId
-            && s.boundKey === captured.boundKey;
-        },
         captured.boundKey,
+        captured.x, captured.y, captured.z,
       );
-      const spawned = this.scorches.spawn({
-        targetId: payload.targetId,
-        localX: captured.x,
-        localY: captured.y,
-        localZ: captured.z,
-        nx: captured.nx,
-        ny: captured.ny,
-        nz: captured.nz,
-        attached: captured.attached === true,
-        boundKey: captured.boundKey,
-        width: skidSize.width,
-        height: skidSize.height,
-        skidX: captured.skidX,
-        skidY: captured.skidY,
-        skidZ: captured.skidZ,
-        stretch: skid.stretch,
-        life: history.persistent ? history.life : scorch.life,
-        opacity: scorch.opacity0,
-        heat: heatForWeaponVariant(recipe.variant),
-        persistent: history.persistent === true,
-        r: _color.r,
-        g: _color.g,
-        b: _color.b,
-      });
-      if (spawned >= 0 && history.grantRef) history.grantRef.slot = spawned;
+      if (seatIndex >= 0) {
+        reinforceScarSeat(this.scorches.slots[seatIndex], captured.x, captured.y, captured.z);
+      } else {
+        // SCAR HISTORY — a hull under sustained fire keeps its last marks: once the book counts
+        // SCAR_HISTORY_AFTER_HITS bare-hull strikes, this and later hits cool to charcoal and
+        // stay target-bound for the fight (the pool's persistent path: evict-transient-first,
+        // fade floor, retained across dispose), instead of every hull reading brand-new after
+        // ~5 s. Skipped for absorbed strikes so the kept-slot accounting stays exact.
+        const history = noteHullScorchStrike(
+          this._scarHistory,
+          payload.targetId,
+          now,
+          (grant) => {
+            const s = this.scorches.slots[grant.slot];
+            return !!s && s.alive === 1 && s.targetId === payload.targetId
+              && s.boundKey === captured.boundKey;
+          },
+          captured.boundKey,
+        );
+        const spawned = this.scorches.spawn({
+          targetId: payload.targetId,
+          localX: captured.x,
+          localY: captured.y,
+          localZ: captured.z,
+          nx: captured.nx,
+          ny: captured.ny,
+          nz: captured.nz,
+          attached: captured.attached === true,
+          boundKey: captured.boundKey,
+          width: skidSize.width,
+          height: skidSize.height,
+          skidX: captured.skidX,
+          skidY: captured.skidY,
+          skidZ: captured.skidZ,
+          stretch: skid.stretch,
+          life: history.persistent ? history.life : scorch.life,
+          opacity: scorch.opacity0,
+          heat: heatForWeaponVariant(recipe.variant),
+          persistent: history.persistent === true,
+          r: _color.r,
+          g: _color.g,
+          b: _color.b,
+        });
+        if (spawned >= 0 && history.grantRef) history.grantRef.slot = spawned;
+      }
     }
     if (a11y.eventLightPeakScale > 0) {
       const hitLight = hitLightForVariant(recipe.variant);
