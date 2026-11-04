@@ -1605,7 +1605,9 @@ export function installVisualOverrides(factory, options = {}) {
       && !(authoredWholeShipsOnly && !requiredWholeShip);
     const authoredCargoCapsule = hasExplicitAuthoredPayloadPresentation(entity);
     const lastShiftRecorder = lastShiftRecorderPackagedPropSpec(entity);
-    const scenarioProp = directShip || isWorldPlaceProp(entity) || authoredCargoCapsule || lastShiftRecorder
+    const explicitPackagedProp = (entity?.type === 'drone' || entity?.type === 'wreck')
+      && typeof entity.data?.packagedPropFile === 'string' && packagedPropSpec(entity);
+    const scenarioProp = directShip || isWorldPlaceProp(entity) || authoredCargoCapsule || lastShiftRecorder || explicitPackagedProp
       ? null
       : build47aScenarioProp(entity);
     if (lastShiftRecorder) {
@@ -1706,6 +1708,13 @@ export function installVisualOverrides(factory, options = {}) {
       }
     }
 
+    if (!visual && explicitPackagedProp) {
+      // Generic drone/wreck builders already arm a type-selected package. An explicit
+      // recipe needs a clean boundary or that stamp suppresses its authored identity.
+      visual = new THREE.Group();
+      visual.name = 'ExplicitPackagedProp_AuthoredBoundary';
+      visual.userData.kind = entity.type;
+    }
     if (!visual) visual = fallbackBuild(entity);
     visual = attachPackagedScenarioProp(visual, entity, options);
     assertReleaseHeroVisual(entity, visual, releaseMode);
