@@ -45,6 +45,46 @@ export function berthVisitLine(state, stationId) {
     : `The berth keeper nods — ${days} days since your last visit.`;
 }
 
+/**
+ * The quiet berth tells its tiny story (inf-quiet-berth). A berth with no news, no traffic,
+ * no deed and no rumor is where the world breathes out, and the card speaks the one true
+ * thing a quiet place can say — whether its boards have moved since you last read them.
+ * Reads only the persisted market memory and the docked station's own quotes; never invents
+ * movement, and a station you have never priced stays wordless. Pure read.
+ */
+export function quietBerthLine(state, stationId) {
+  const memory = state && state.player && state.player.marketMemory;
+  const stationMemory = memory && memory[stationId];
+  if (!stationMemory || typeof stationMemory !== 'object' || Array.isArray(stationMemory)) return null;
+  const now = Number(state && state.simTime);
+  if (!Number.isFinite(now)) return null;
+  const liveMarket = state && state.economy && state.economy.markets && state.economy.markets[stationId];
+  if (!liveMarket || typeof liveMarket !== 'object') return null;
+  let freshest = -1;
+  let moved = false;
+  let rows = 0;
+  for (const cid of Object.keys(stationMemory)) {
+    const row = stationMemory[cid];
+    if (!row || typeof row !== 'object' || Array.isArray(row)) continue;
+    rows += 1;
+    const seenAt = Number(row.seenAt);
+    if (Number.isFinite(seenAt) && seenAt > freshest) freshest = seenAt;
+    const live = liveMarket[cid];
+    const liveBuy = live && (live.buy != null ? live.buy : live.lastBuy);
+    const liveSell = live && (live.sell != null ? live.sell : live.lastSell);
+    if ((Number.isFinite(Number(liveBuy)) && Math.round(Number(liveBuy)) !== Math.round(Number(row.buy)))
+      || (Number.isFinite(Number(liveSell)) && Math.round(Number(liveSell)) !== Math.round(Number(row.sell)))) {
+      moved = true;
+    }
+  }
+  if (!rows || freshest < 0) return null;
+  const days = Math.floor(Math.max(0, now - freshest) / SIM_DAY_S);
+  const ago = days >= 1 ? (days === 1 ? ', a day ago' : `, ${days} days ago`) : '';
+  return moved
+    ? `Quiet berth — prices have crept since you last read these boards${ago}.`
+    : `Quiet berth — the boards have not moved since you last read them${ago}.`;
+}
+
 /** TEACH-07 — one line for a loaded save older than a sim day. A fresh save stays quiet. */
 export function returningPilotLine(state) {
   const ui = state && state.ui;
@@ -576,6 +616,9 @@ export function buildDockArrival(state = {}, station = {}) {
   const news = rumor || localNews(state, stationId) || localDeedLine(state);
   const route = leftoverRouteLine(state, stationId);
   const traffic = localTraffic(state, stationId) || route;
+  // A berth with nothing to say still says one true thing (inf-quiet-berth) — but only when
+  // the world's louder voices (rumor, news, deed, traffic) are all silent here.
+  const quietLine = (news || traffic) ? null : quietBerthLine(state, stationId);
   const paperwork = paperworkFor(state, station);
   const factionBerth = factionBerthStatusLine(state, stationId);
   const homeCard = stationId === LONG_BERTH_STATION_ID ? longBerthHomeCard(state) : null;
@@ -615,7 +658,7 @@ export function buildDockArrival(state = {}, station = {}) {
   // paperwork still shows it; patch/ledger/mechanic dressing falls off first. The visit
   // memory rides beside the return summary — both are recognition, and a keeper who
   // remembers you outranks the weekly digest.
-  const lines = [action.label, berthLine, returnSummary, visitLine, serviceNotice, news, digest, traffic, paperwork, patchText, ledgerLine, mechanicLine]
+  const lines = [action.label, berthLine, returnSummary, visitLine, serviceNotice, news, digest, traffic, paperwork, patchText, ledgerLine, mechanicLine, quietLine]
     .filter(Boolean)
     .slice(0, 7);
   return {
@@ -628,6 +671,7 @@ export function buildDockArrival(state = {}, station = {}) {
     digest,
     digestLine: digest,
     news,
+    quietLine,
     eventCard,
     rumor,
     patch: patchText,
