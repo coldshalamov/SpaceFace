@@ -126,6 +126,28 @@ test('continuous source sockets follow rotated render pose, rebasing, pause and 
   t.state.render.contextRecovery.pending=true;assert.equal(batch.update(t.state,1/60,{}),0);
   assert.ok(batch.slots.every(s=>s.driveState.plumeDrive===0));batch.dispose();t.driver.dispose();
 });
+test('special Ceres plume writes live hull and sim time without carrying damage into another frame',()=>{
+  for (const role of ['breaker','cutterHead']) {
+    const t=fixture(role), plume=new ContinuousPlumeSystem(THREE,resolveThrusterRecipes('engine_industrial').main,{maxSockets:16,distortionEnabled:false});
+    const batch=createCeresWorkfleetPlumeBatch(plume,THREE.Vector3);
+    try {
+      t.entity.hullMax=100; t.entity.hull=100; record(t,800);
+      assert.ok(batch.update(t.state,0,{reducedFlash:true})>0);
+      const slot=batch.slots.find(s=>s.signals.throttle>0), healthy=[...plume.pool.slots[0].color];
+      assert.equal(slot.signals.entityId,t.entity.id); assert.equal(slot.signals.hullFrac,1);
+      t.entity.hull=8; t.state.simTime=3; record(t,800);
+      assert.ok(batch.update(t.state,0,{reducedFlash:true})>0);
+      const wounded=[...plume.pool.slots[0].color];
+      assert.equal(slot.signals.hullFrac,.08); assert.equal(slot.signals.sputterPhase,3);
+      assert.ok(wounded[2]<healthy[2]);
+      t.state.simTime=30; record(t,800); batch.update(t.state,0,{reducedFlash:true});
+      assert.deepEqual([...plume.pool.slots[0].color],wounded,'reduced flash holds a stable per-frame tint');
+      delete t.entity.hullMax; record(t,800); batch.update(t.state,0,{reducedFlash:true});
+      assert.equal(slot.signals.hullFrac,1,'unknown maximum is intact');
+      assert.deepEqual([...plume.pool.slots[0].color],healthy,'restoring intact does not retain tint');
+    } finally {batch.dispose();t.driver.dispose();}
+  }
+});
 test('generic speed plume path excludes only exact Ceres bodies, preserving ordinary ships and wrecks',()=>{
   const owner=Object.create(vfx);owner.state={playerId:'player'};
   owner._rcsScaleCache=new Map();owner._rcsDefaultScale={};owner._mainDriveDemandScratch={};
