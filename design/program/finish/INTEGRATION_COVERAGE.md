@@ -6,11 +6,15 @@ or release verdict. The [Finish Program](./README.md) and three lane boards own 
 
 ## Current integration status and next work
 
-The controller's latest integrated candidate is `d74fd1a13beb`. It includes actual cold-scenery
+The controller's latest integrated candidate is `d604a1ddfb77`. It includes actual cold-scenery
 avoidance/visibility (`e177d76038a2`), remote-destination plotting (`53a901ed2d54`), commission chart
 and journal integration (`793587dfa662`), compact station controls (`a289d5cfa6ee`), three commission
 assembly, chain-kill activation, manual-course preservation, loading checkpoints and canonical audio.
-Additional local berth/Circuit commits have arrived and are under focused integration repair.
+Newer repairs bind berth/quote memory to actual observations, retain Circuit retry history, preserve
+pending hull preparation through real Pause, honor explicit industrial visual packages, and feed
+special propulsion its real hull state. The four latest feedback repairs connect beacon renewal,
+accepted cargo-kill pressure receipts, observed worker market comparisons and fresh wound debris.
+Rider and patrol repairs remain in progress; interrupted legacy-controller writes are protected.
 Public deployment remains `89ddfe4830e2` at https://spaceface-play-demo.vercel.app/. These later
 source changes have not been published. Physical iPhone 14 play remains **UNKNOWN**.
 
@@ -28,8 +32,10 @@ wall-time pulse observations did not establish an input defect.
 The new explicit **End run** candidate produces an unranked retired debrief, discloses loss of
 unbanked salvage, and uses the existing same-seed Retry. It does not invent death, clear a wave or
 perform new terminal settlement. Owner/default-worker/mounted-control checks pass, including real
-Adventure serialized-save preservation. It is integrated in `cc4cd01dc6c8`; ordinary rendered use
-remains pending. A root-found legacy run-envelope compatibility defect was fixed before landing.
+Adventure serialized-save preservation. Ordinary Cancel/Resume, confirmed End run, retired debrief
+and same-seed73311 Retry now pass on the default worker, with a fresh draft750cr/tick0/hull260.
+Natural combat defeat remains open. A root-found legacy run-envelope compatibility defect was fixed
+before landing. Distinct Kills and Round threat resolved metrics were not an established defect.
 
 `e367fbf56b67` keeps a valid retained hull preparation alive across pure new arrivals; new hulls
 continue direct rendering. Removal, generation, source/material/context and lifetime guards remain.
@@ -42,22 +48,22 @@ this real resource repair is **not** established as the iPhone failure's cause.
 | Experience | Direct outcome | Remaining work |
 |---|---|---|
 | Adventure opening | Genuine Continue, chart Track, original47-A mining, earned assay and Helios handoff advance Book1 and pay400. Actual F5 after undocking succeeds; authored player hull visible. | Later campaign, first-hour polish and full-mode performance. |
-| Tethys and Cinderglass | Genuine first six-alloy delivery pays600 and records alloy_run. Ordinary Tala terms are readable with Take/Leave after paused eligibility, worker wake and Contracts layout repairs. | Job not accepted in ordinary play; scan/latch/convoy/tow/receiving/aftermath and cold Continue remain open. |
-| Forge and workshop | Mission/story refresh preserves manual detours; remote destinations plot sectors before local approach. Actual cc4 Continue from the loss-preserving save now reaches Forge Foundry and docks through ordinary Set Waypoint/E, with5829cr and the surviving cargo. | Normal replacement trade, refine/net/fitted instance remain in progress; no cargo rollback or grants. |
+| Tethys and Cinderglass | Genuine first six-alloy delivery pays600. Job cg:47:1 accepted with no deposit; ordinary refuel leaves5239cr. Cold Continue now admits the seven surviving authored originals on9e8; real NPC fire released the pod during a period the pilot had incorrectly assumed paused. | Original pod recovery is blocked by public discovery/Track despite a living native pod; repair in progress. Full8 latch appearance, scan/convoy/tow/receiving/aftermath remain open. No rewind to a richer save. |
+| Forge and workshop | Corrected ordinary approach/dock, lawful replacement purchases, two real refines and fabrication complete. Owned Deck Cargo Net S fitted in slot3 without Buy&Fit shortcut. Real F5/Continue retains5725cr,3refined,4silicate and fitted instance. Subsequent outbound journey reaches Tethys with genuine damage/cargo loss retained. | Temporary outbound slowdown's precise contact cause remains unknown; static egress fixture passes and no speculative fix was selected. No cargo rollback or grants. |
 | Breakwater | Real open cradle, native full-footprint support, original custody, finite freight and atomic receipts are integrated. Chart uses global coordinates and current-stage action; recent receipts/next action reach journal. | Full ordinary restore/tow/services/defense/receiving and cold browser Continue. |
-| Counterweight | Seven physical events, real Hand/Line/native support, gates, owner scoring/PB and default-worker journal are connected. Fragile Freight pilot-only native route passes. | Split Decision, Moving Berth and full Finale need legitimate complete native handling and all seven ordinary plays. Retry history is being made durable and visible without adding a score penalty. |
+| Counterweight | Seven physical events, real Hand/Line/native support, gates, scoring/PB and worker journal are connected. Remaining Split Decision/Moving Berth/Finale pilot-only native courses now complete after receiver friction and compact-hull containment fixes. Retry history is durable without score penalty. | All seven ordinary rendered courses, higher-medal tuning and gameplay-camera look remain open. Native fixtures are explicitly staged and do not establish ordinary progression. |
 | Swarm/Crucible | Six actual rounds cleared after material-fracture repair; four Fortify types bought; Bank Shot used. Earlier Veil starter route verified displacement, cost and cooldown. | Fix round7 fatal owner clock boundary; complete boss, meaningful device effects, natural debrief/Retry and later specialists/Kraken. |
 | Physical economy | Anvil full native buyer route passes within its unchanged deadline; native wreck inheritance and original salvage/custody checks are integrated. | Remaining ordinary Ceres receiving, Compost growth, Last Shift and other linked worksite loops. |
 | Screens/input | Compact Shipworks final controls, opaque Departure Check, short Contracts dossier, separated combat tells, chart/journal outcomes and actual touch movement have scoped checks. | Actual changed routes, missing content-specific duties, accessible/reduced-motion presentation, error/recovery and remaining mode surfaces. |
 | Audio and visual assets | Existing authored assets/material contracts retained; Circuit/Cinder transitions use canonical audio; Helios hero hull visibly reads. | Actual commission/boss/worksite looks, human sound audition, remaining placement and propulsion accessibility repairs. |
-| Localization | Published English catalog is frozen03b9:15832 entries in1778 configured files. New extractor includes static src/features copy; composed terms/receipts and visible encoding are being repaired. | Freeze final source, generate/check catalogs against that commit, preserve proper names and fallback. Counts do not establish language completeness. |
+| Localization | Extractor includes src/features. Composed Circuit/Cinder terms/receipts carry template/value metadata through actual DOM readers and locale switches; visible Counterweight encoding corrected. A legacy controller regenerated catalogs during integration. | Freeze final source, reconcile/generate/check catalogs against that commit, preserve proper names and fallback. Counts do not establish language completeness. |
 | Mobile | Loading deadline and bounded opt-in launch report survive interrupted/replaced documents. Preview resource ownership corrected separately. | Physical iPhone14 menu-to-play failure remains unidentified/unaccepted; no device bridge. Desktop Chromium/WebKit is not phone proof. |
 
 The first Forge fix used a fixture that wrongly put the cold Hopper into the main entity list and
 missed the producer/query boundary. Its ordinary Continue still collided and lost cargo. The
 corrected shared physicalObstacleQuery reads the actual dressing table for AP, manual warnings,
 NPC avoidance and exact line of sight. The captured793 fixture now uses that true storage path;
-ordinary corrected approach and dock now pass. Workshop production remains in progress. Do not
+ordinary corrected approach, dock and workshop production now pass. Do not
 revive the earlier false acceptance or restore lost iron to make the journey easier.
 
 ## Performance and verification limits
@@ -79,7 +85,16 @@ callback103ms/render83ms under a busy host. It is a material slowdown, not an is
 An attempted UI A/B had zero hover/receipt duty and only13unique frames: **INCONCLUSIVE**. Retained
 hulls had prior activations, so one preparing/zero-visible snapshot is not proof of no activation.
 The pending-plan fix, UI placement candidates and exact Ashline batches still need valid active
-within-session frame/look qualification. No live speed improvement is claimed for them yet.
+within-session frame/look qualification. A dedicated Sol worker is preparing that next active cell
+on the sole pilot's existing page. No live speed improvement is claimed for them yet.
+
+Unchanged physical-input producer deduplication removes repeat gamepad/cursor samples. Actual
+paused traffic still contains required wall-time keepalive and camera packets at zero sim steps;
+it is not an established acknowledgement loop and no total packet/FPS reduction is claimed.
+Cold-obstacle query cost was immaterial in the sampled empty-cold-table Swarm fixture; populated
+Adventure cost is unmeasured. The native construction path already caches its specifications.
+Presentation lookup extraction removes an unnecessary eager native-owner dependency, but actual
+constructor observation found no duplicate physics world. None of these facts resolves the phone.
 
 Closed negative render-sort and AI-leaf experiments stay closed. Do not repeat a source census,
 full profile, long soak or unchanged failed comparison merely to accumulate confidence. Use the

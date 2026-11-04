@@ -11,22 +11,26 @@ restore superseded dispatch, worktree, provider, review or verification procedur
 
 | Task | Thread | State | Exact paths being changed now | Next terminal action |
 |---|---|---|---|---|
-| Finish integration and publication | Codex controller | active | Finish status/docs, `NOW.md`, inference ledger reconciliation, exact-path Git integration | source `d74fd1a13beb`; public `89ddfe4830e2`; final approvals 0/3 |
-| Earned routes and frame qualification | `/root/map_mission_label_finish` | active; sole GPU/input owner | ignored route artifacts | cc4 genuine Continue now docked Forge; normal workshop production, then ordinary End run/Retry; six-wave Swarm interrupted by captured round7 owner exception |
-| Worker transport cost | `/root/sim_v3_integration_repair` | read-only diagnosis | existing worker-clock diagnostics; source changes require exact hunk coordination | separate legitimate lifetime counts from repeated no-op paused rAF directives; no profile or second browser |
-| Feature localization | Terra CLI, thread `01a1a661-dc64-7d20-ad35-674de9e1d711` | active | localizationInventory/surfaces/test; Circuit/Cinder definition/readModel copy hunks; domBridge/promptDeck template seam; Circuit prompts and Cinder integration/presentation | preserve deterministic source metadata and locale switches; catalogs controller-owned |
-| Remaining native Circuit handling | Sol CLI | active | `test/counterweight-circuit-native-course.test.mjs`, causal `course.js`/physical handling hunks | legitimate pilot-only Split/Moving/Finale completion; definition geometry changes require coordination |
-| Incoming product integration repair | Terra CLI, thread `01a1a6a9-e53b-7071-ba1d-e19d962fb2f1` | active | economy/dockArrival berth facts; familyFleet/continuousPlume/dyingDrive/vfx/plasmaStream dying treatment; Cinder convoy/runtime attribution; Circuit attempt, retry projector and missionLog reader; focused tests | fix actual berth, job-generation, accessibility/player-exhaust and durable retry defects; preserve l10n hunks |
+| Finish integration and publication | Codex controller | active | Finish status/docs, `NOW.md`, inference ledger reconciliation, exact-path Git integration | source `d604a1ddfb77`; public `89ddfe4830e2`; final approvals 0/3 |
+| Earned routes | `/root/map_mission_label_finish` | active; sole GPU/input owner | ignored route artifacts | genuine Cinder recovery paused at tick322410 after public pod-discovery failure; preserve original pod and progression |
+| Cinder recovery continuity | `/root/forge_egress_repair` | active | Cinder feature physical/runtime/presentation/readers and focused tests; shared navigation seams by coordination | fix ordinary original-pod discovery/Track; no diagnostic-coordinate steering or remint |
+| Breakwater continuity | `/root/occupational_hull_fit_finish` | active | `src/features/breakwaterSpur/**`, directly relevant `test/breakwater*` cases | remaining legitimate restoration/freight/defense/receiving native-owner path; prepare ordinary route |
+| Rider gameplay and active tell | Terra CLI, thread `01a1a6f0-7a67-7391-bd55-d1e79930b99a` | active | Rider-only swarmElites/flightV3; Rider scalar vitals/shadow in simWorkerHost/simReadModel; existing lawArenaDressing mark; focused tests | real accepted force/drive/damage and active→inactive default-worker tell; preserve integrated beacon/PA hunks |
+| Patrol jurisdiction | Terra CLI, thread `01a1a729-b26b-77a1-8dc4-1b1b283fee38` | active | factionContactGrammar/barks intervention rows; encounterDirector intervention resolver/payload; barkDirector `_speakLawIntervention`; focused patrol test | truthful local authority and voice through current owner/control state; no altered combat/ROE |
+| Active frame qualification | Sol CLI, active-frame-finish | active | ignored matched observer; causal retained-plan/compare defects only in renderer/rigidOpaqueBatch/policy and focused tests | prepare one valid active batch/frame/look comparison on Map's existing page; no competing game/GPU |
 
 The freight, commission assembly, chain-kill, mobile checkpoint, station controls, audio, preview,
-retained-plan, explicit-retirement and capital frozen-clock repair windows are closed. Physics
+explicit-retirement, capital frozen-clock, localization metadata, native Circuit handling, native
+lookup extraction and four canonical-feedback repair windows are closed. Physics
 readback, AI sensor batch and fields membership performance proposals were not promoted; their exact
 changes were reverted with artifacts preserved. Committed source does not establish ordinary
 complete play, physical iPhone success or the performance bars.
 
-The former ZCode controller was stopped on 2026-11-02 after preserving its session state and
-working changes. Its subsequent source work has been claimed, reviewed and repaired by the Finish
-controller. Its former broad DUST path reservation is released; DUST product status remains in
+An additional legacy ZCode INFERENCE controller was found still writing on November4. Its parent,
+descendant session records and task state were preserved before the verified controller/backend
+stop; the interrupted writes belong to this integration queue. Its three Devin commission authors
+also acknowledged their freeze in their verified panes. Earlier prose claiming all controllers had
+stopped was inaccurate. The former broad DUST path reservation is released; DUST product status remains in
 [`dust/README.md`](dust/README.md). The owner has authorized the Finish controller to integrate
 remaining work without a separate landing decision.
 
