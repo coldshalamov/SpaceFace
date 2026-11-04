@@ -4283,6 +4283,39 @@ export const economy = {
     return {ok:true,duplicate:false,...result};
   },
 
+  // Breakwater's finite authored awards settle only against the live feature
+  // owner's pending accepted custody/work receipt. No caller chooses an amount.
+  settleBreakwaterReceipt(kind, sourceId) {
+    const amounts = { scrap:90, supply:160, defend:180, bonded:220, bond_refund:100 };
+    const amount = Object.hasOwn(amounts, kind) ? amounts[kind] : 0;
+    const owner = this.registryGet('breakwaterSpur');
+    if (!amount || typeof sourceId !== 'string' || !sourceId) return {ok:false,reason:'invalid_receipt'};
+    const key = `breakwater:first:${kind}`;
+    const intents = ensureCommittedIntents(this.state), prior = intents?.[key];
+    if (!intents || !this.state.player) return {ok:false,reason:'economy_unavailable'};
+    if (prior) {
+      if (prior.result?.kind !== kind || prior.result?.sourceId !== sourceId
+        || prior.result?.creditedCr !== amount) return {ok:false,reason:'receipt_mismatch'};
+      if (!owner?.payoutAlreadyAccepted?.(kind,sourceId)
+        && !owner?.acceptPayout?.(kind,sourceId,amount)) return {ok:false,reason:'unaccepted_receipt'};
+      return {ok:true,duplicate:true,...prior.result};
+    }
+    const auth = owner?.payoutAuthorization?.(kind,sourceId);
+    if (!auth || auth.key !== key || auth.amount !== amount || auth.sourceId !== sourceId)
+      return {ok:false,reason:'unaccepted_receipt'};
+    const player=this.state.player, before=normalizeCredits(player.credits);
+    if (normalizeCredits(before+amount)-before !== amount) return {ok:false,reason:'wallet_full'};
+    const result={kind,sourceId,creditedCr:amount,key};
+    if (!owner.acceptPayout(kind,sourceId,amount)) return {ok:false,reason:'unaccepted_receipt'};
+    // All three owner writes precede any outward event or reentrant save.
+    player.credits=before+amount;
+    intents[key]={result};
+    recordEconomyCash(this.state.economy,this.state.simTime,amount,key);
+    if (player.stats) player.stats.creditsEarned=(player.stats.creditsEarned||0)+amount;
+    this.bus.emit('credits:changed',{delta:amount,reason:key,total:player.credits});
+    return {ok:true,duplicate:false,...result};
+  },
+
   /**
    * Admit one conserved NPC salvage lot into an eligible industrial yard. This intentionally has
    * no player wallet/cargo path: player salvage continues through execute(..., 'sell', ...).

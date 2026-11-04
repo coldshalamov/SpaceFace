@@ -86,6 +86,7 @@ import { vestaOreCacheMapReadouts, vestaOreCacheMapTarget } from './vestaOreCach
 import { pallasHiddenCacheMapReadouts, pallasHiddenCacheMapTarget } from './pallasHiddenCacheMapLayer.js';
 import { worldSiteMapMarkers } from './worldSiteMapLayer.js';
 import { getCounterweightCircuitMapMarkers } from '../features/counterweightCircuit/readModel.js';
+import { getBreakwaterSpurMapMarkers } from '../features/breakwaterSpur/readModel.js';
 import { orrinWitnessMapTarget } from '../data/orrinWitnessCase.js';
 import { sectorExplorationProgress } from '../world/explorationJournal.js';
 import { chartFilingBounty, normalizeChartFiling } from '../data/surveyCharts.js';
@@ -1737,6 +1738,7 @@ export function buildClaimOwnershipMarkers(state, sectorId, claimsSystem = null)
   }
   for (const mark of wreckEcologyMarkers(state, sid)) markers.push(mark);
   markers.push(...getSalvageTenderMapMarkers(state, sid));
+  markers.push(...getBreakwaterSpurMapMarkers(state, sid));
   return markers;
 }
 

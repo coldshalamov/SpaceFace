@@ -4619,6 +4619,20 @@ export const npcJobsRuntime = {
               || Math.hypot(physicalPose.pos.x - physicalTarget.pos.x, physicalPose.pos.z - physicalTarget.pos.z) > physicalTarget.reach
               || Math.hypot((physicalPose.vel?.x || 0) - (physicalTarget.vel?.x || 0),
                 (physicalPose.vel?.z || 0) - (physicalTarget.vel?.z || 0)) > 8)));
+      // Opt-in physical arrival: the retained native body, not the virtual
+      // itinerary clock, must settle at its final waypoint before work starts.
+      const arrivalPolicy=entry.job.payload?.requirePhysicalArrival;
+      const arrivalWaypoint=entry.job.route?.[entry.job.routeIndex];
+      const arrivalNative=this.registry?.get?.('physics')?._sg02?.records?.get?.(entity.id);
+      const waitingForPhysicalArrival=!!arrivalPolicy && entry.job.phase===NPC_JOB_PHASE.APPROACH
+        && entry.job.routeIndex===entry.job.route.length-1 && (
+          !arrivalWaypoint || arrivalNative?.entity!==entity || !arrivalNative.body
+          || arrivalNative.body.isValid?.()===false || !physicsBodyNativeReady(entity)
+          || ![entity.pos?.x,entity.pos?.z,entity.vel?.x,entity.vel?.z,arrivalWaypoint.pos?.x,arrivalWaypoint.pos?.z].every(Number.isFinite)
+          || !Number.isFinite(arrivalPolicy.reach) || arrivalPolicy.reach<=0 || arrivalPolicy.reach>100
+          || !Number.isFinite(arrivalPolicy.maxSpeed) || arrivalPolicy.maxSpeed<=0 || arrivalPolicy.maxSpeed>20
+          || Math.hypot(entity.pos.x-arrivalWaypoint.pos.x,entity.pos.z-arrivalWaypoint.pos.z)>arrivalPolicy.reach
+          || Math.hypot(entity.vel?.x||0,entity.vel?.z||0)>arrivalPolicy.maxSpeed);
       // SF-080: a queued berth wait is the same class of bounded physical hold — the hull waits
       // out the line at a real position, so the kernel clock waits with it (no work at distance).
       // Leased hulls keep their clock: their owner drives, we never gate a controller's route.
@@ -4633,7 +4647,7 @@ export const npcJobsRuntime = {
       if (!claimedBeforeAdvance) this._updateCloseCall(entry, entity, simT);
       const braced = !claimedBeforeAdvance && entry.closeCallUntil != null && simT < entry.closeCallUntil;
       if (step > 0 && !(prospecting && (claimedBeforeAdvance || entry.towAssist))
-        && !sweeperTarget && !approachingSeam && !holdingForArrival && !entry.berthHold && !braced
+        && !sweeperTarget && !approachingSeam && !holdingForArrival && !waitingForPhysicalArrival && !entry.berthHold && !braced
         && entry.job.phase !== NPC_JOB_PHASE.COMPLETE) {
         advance(entry.job, tallyAdvanceDt(entry.job, tallyTarget, salvorTarget ? Math.min(step, 0.1) : step), this._sink);
       }
@@ -5232,6 +5246,15 @@ export const npcJobsRuntime = {
     // become a second movement owner or stop a route after the lease has been released.
     if (entity.data && entity.data.ceresCausalDisabled === true) {
       this._writeIntent(entity, 0, 0, false, entity.rot || 0, true);
+      return;
+    }
+
+    if (phase===NPC_JOB_PHASE.APPROACH && job.payload?.requirePhysicalArrival
+      && job.routeIndex===job.route.length-1 && job.route[job.routeIndex]?.pos) {
+      const policy=job.payload.requirePhysicalArrival;
+      if (Number.isFinite(policy.reach) && policy.reach>0 && policy.reach<=100)
+        this._driveLivingAdventureWorker(entry,entity,{pos:job.route[job.routeIndex].pos,vel:{x:0,z:0},reach:policy.reach});
+      else this._writeIntent(entity,0,0,false,entity.rot||0,true);
       return;
     }
 
@@ -7079,7 +7102,7 @@ export const npcJobsRuntime = {
     // The job STATE advances truthfully; only the current on-screen materialization is surfaced.
     const elapsed = Math.min(MAX_CATCHUP_S, Math.max(0, simT - finite(entry.lastAdvanceSimT, simT)));
     if (elapsed > 0 && entry.job.payload?.role !== 'sweeper' && !entry.job.payload?.prospectorField
-        && !isTallyPassageJob(entry.job) && !entry.job.payload?.salvageIntakeWait
+        && !isTallyPassageJob(entry.job) && !entry.job.payload?.salvageIntakeWait && !entry.job.payload?.requirePhysicalArrival
         && entry.job.phase !== NPC_JOB_PHASE.COMPLETE) {
       let out = advance(entry.job, elapsed);
       let guard = 0;

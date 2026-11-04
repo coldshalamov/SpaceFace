@@ -27,6 +27,7 @@ export const MAIN_TO_SIM_BUS_EVENTS = new Set([
   'combat:aftermathChoose',
   'contactHail:choice',
   'contactHail:request',
+  'breakwaterSpur:action',
   'counterweightCircuit:action',
   'counterweightCircuit:inspect',
   'counterweightCircuit:presentationReady',

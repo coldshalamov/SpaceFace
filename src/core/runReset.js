@@ -74,7 +74,7 @@ export const FRESH_RUN_SYSTEMS = Object.freeze([
   'shipbreakingYard', 'shipbreakingYardBrowser', 'salvageTender', 'salvageTenderPrompt', 'industrialDisasters', 'rigWorkshop',
   // Counterweight Circuit records/attempts are run-scoped world state; a fresh
   // run retires its owned bodies and clears the section before rematerializing.
-  'counterweightCircuit', 'counterweightCircuitPrompt',
+  'counterweightCircuit', 'counterweightCircuitPrompt', 'breakwaterSpur', 'breakwaterSpurPrompt',
   'borrowedSun', 'borrowedSunPrompt',
   'borrowedVoice', 'borrowedVoicePrompt',
   'salvageOutfits', 'salvageOutfitsPrompt',

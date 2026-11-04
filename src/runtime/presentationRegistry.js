@@ -36,6 +36,7 @@ import { miningHud } from '../ui/miningHud.js';
 import { createShipbreakingYardBrowserEntries } from '../features/shipbreakingYard/browser.js';
 import { createSalvageTenderPromptSystem } from '../features/salvageTender/prompts.js';
 import { createCounterweightCircuitPromptSystem } from '../features/counterweightCircuit/prompts.js';
+import { createBreakwaterSpurPromptSystem } from '../features/breakwaterSpur/presentation.js';
 import { salvageOutfitsPrompt } from '../features/salvageOutfits/integration.js';
 
 export function createPresentationRegistry(ctx) {
@@ -54,6 +55,7 @@ export function createPresentationRegistry(ctx) {
     ...createShipbreakingYardBrowserEntries(),
     ['salvageTenderPrompt', createSalvageTenderPromptSystem()],
     ['counterweightCircuitPrompt', createCounterweightCircuitPromptSystem()],
+    ['breakwaterSpurPrompt', createBreakwaterSpurPromptSystem()],
     ['salvageOutfitsPrompt', Object.create(salvageOutfitsPrompt)],
     ...[lastShiftPrompt, redKitePrompt, ilexArkPrompt, mothlightPrompt, palletJackPrompt,
       towlineTablePrompt, borrowedVoicePrompt, borrowedSunPrompt, masslineHud, massSeedHud,

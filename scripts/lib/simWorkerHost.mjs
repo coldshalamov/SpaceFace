@@ -753,6 +753,7 @@ const BRIDGE_EVENTS = [
   'presentation:cameraCue', 'presentation:caption', 'audio:cue', 'alert',
   'camera:shake', 'presentation:cueApplied', 'sector:enter', 'cargo:changed',
   'automation:fleetChanged',
+  'breakwaterSpur:offer', 'breakwaterSpur:close', 'breakwaterSpur:receipt', 'breakwaterSpur:cue',
 ];
 
 export function createSimHost({ onAsyncSaveReady } = {}) {

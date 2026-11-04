@@ -8,6 +8,8 @@ import { createCounterweightCircuitPromptSystem } from './counterweightCircuit/p
 import { updateCounterweightCircuitPresentation, releaseCounterweightCircuitPresentation } from './counterweightCircuit/presentation.js';
 import { mountSalvageOutfitsPresentation } from './salvageOutfits/integration.js';
 import { createIndustrialDisastersPresentation } from './industrialDisasters/presentationAdapter.js';
+import { createBreakwaterSpurPromptSystem, mountBreakwaterSpurPresentation } from './breakwaterSpur/presentation.js';
+import * as THREE from 'three';
 
 const OWNERS = new WeakMap();
 const signature = offer => offer ? JSON.stringify(offer) : '';
@@ -23,14 +25,17 @@ export function mountProExperiencesBrowser(ctx = {}) {
   // Standalone mounts without a registry retain their own prompt lifecycle.
   const registeredTender = ctx.registry?.get?.('salvageTenderPrompt');
   const registeredCircuit = ctx.registry?.get?.('counterweightCircuitPrompt');
+  const registeredBreakwater = ctx.registry?.get?.('breakwaterSpurPrompt');
   const tender = registeredTender || createSalvageTenderPromptSystem();
   const circuit = registeredCircuit || createCounterweightCircuitPromptSystem();
+  const breakwater = registeredBreakwater || createBreakwaterSpurPromptSystem();
   if (!registeredTender) tender.init(ctx);
   if (!registeredCircuit) circuit.init(ctx);
+  if (!registeredBreakwater) breakwater.init(ctx);
   const outfits = mountSalvageOutfitsPresentation(ctx);
   const off = [];
-  let disaster = null, rig = null, scene = null, renderer = null, destroyed = false;
-  let uiElapsed = 0, tenderSignature, circuitSignature;
+  let disaster = null, rig = null, breakwaterWorld = null, scene = null, renderer = null, destroyed = false;
+  let uiElapsed = 0, tenderSignature, circuitSignature, breakwaterSignature;
   const on = (event, fn) => {
     const remove = bus.on(event, fn);
     off.push(typeof remove === 'function' ? remove : () => bus.off?.(event, fn));
@@ -39,11 +44,12 @@ export function mountProExperiencesBrowser(ctx = {}) {
   // a queued worker command waits for its next authoritative snapshot.
   on('salvageTender:offer', offer => { tenderSignature = signature(offer); });
   on('counterweightCircuit:offer', offer => { circuitSignature = signature(offer); });
-  const reset = () => { tender.close(); circuit.close(); releaseWorld(); };
+  on('breakwaterSpur:offer', offer => { breakwaterSignature = signature(offer); });
+  const reset = () => { tender.close(); circuit.close(); breakwater.close(); releaseWorld(); };
   for (const event of ['save:restoring', 'sector:exit', 'game:new', 'game:newGame']) on(event, reset);
 
   function releaseWorld() {
-    disaster?.dispose(); disaster = null; rig?.destroy(); rig = null; scene = renderer = null;
+    disaster?.dispose(); disaster = null; rig?.destroy(); rig = null; breakwaterWorld?.destroy(); breakwaterWorld = null; scene = renderer = null;
     releaseSalvageTenderPresentation(state);
     releaseShipbreakingYardPresentation(state);
     releaseCounterweightCircuitPresentation(state);
@@ -52,12 +58,13 @@ export function mountProExperiencesBrowser(ctx = {}) {
     const nextScene = state.render?.scene, nextRenderer = state.render?.renderer;
     if (!nextScene?.add) return null;
     if (disaster && (scene !== nextScene || renderer !== nextRenderer)) {
-      disaster.dispose(); disaster = null; rig?.destroy(); rig = null;
+      disaster.dispose(); disaster = null; rig?.destroy(); rig = null; breakwaterWorld?.destroy(); breakwaterWorld = null;
     }
     if (!disaster) {
       scene = nextScene; renderer = nextRenderer;
       disaster = createIndustrialDisastersPresentation({ ...ctx, scene, renderer });
       rig = createRigWorkshopView({ state, bus, scene });
+      breakwaterWorld = mountBreakwaterSpurPresentation({ ...ctx, scene, THREE });
     }
     return disaster;
   }
@@ -77,6 +84,13 @@ export function mountProExperiencesBrowser(ctx = {}) {
         if (offer && state.mode === 'flight' && !state.ui?.docked) tender.offer(offer);
         else tender.close();
       }
+      const breakwaterOffer = state.breakwaterSpurOffer || null;
+      const nextBreakwaterSignature = signature(breakwaterOffer);
+      if (nextBreakwaterSignature !== breakwaterSignature) {
+        breakwaterSignature = nextBreakwaterSignature;
+        if (breakwaterOffer && state.mode === 'flight' && !state.ui?.docked) breakwater.offer(breakwaterOffer);
+        else breakwater.close();
+      }
       // Same mirror discipline for the circuit registrar's deck.
       const circuitOffer = state.counterweightCircuitOffer || null;
       const nextCircuitSignature = signature(circuitOffer);
@@ -90,6 +104,7 @@ export function mountProExperiencesBrowser(ctx = {}) {
       if (destroyed) return;
       ensureDisaster()?.update(alpha);
       rig?.frame(1 / 60, state);
+      breakwaterWorld?.update(alpha);
       updateCounterweightCircuitPresentation(state, bus);
     },
     releaseWorld,
@@ -100,6 +115,7 @@ export function mountProExperiencesBrowser(ctx = {}) {
       off.length = 0;
       if (registeredTender) tender.close(); else tender.destroy();
       if (registeredCircuit) circuit.close(); else circuit.destroy();
+      if (registeredBreakwater) breakwater.close(); else breakwater.destroy();
       outfits?.destroy(); releaseWorld();
       if (OWNERS.get(state) === api) OWNERS.delete(state);
     },
