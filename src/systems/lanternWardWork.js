@@ -280,11 +280,12 @@ function clearCutLane(owner, anchor, obstacle) {
 }
 
 function crewStand(anchor, w) {
-  // A borrowed load can arrive around the freight rim while the mast still
-  // occupies the cut. Attend from the open east side, clear of mast and load.
-  if (w.tugRouteMode === 'bypass') return position(anchor, 'receiver', 45, 45);
-  return w.clearanceLane < 0 ? position(anchor, 'receiver', -22, 16)
-    : position(anchor, 'receiver', -35, 51);
+  // A borrowed load arrives from the open east side. A cut-route operator
+  // attends beside the receiver's west approach, clear of every loaded lane.
+  // The old center stand was in the cradle's swept path: arriving first could
+  // pin the rig there forever, including after Continue.
+  return w.tugRouteMode === 'bypass' ? position(anchor, 'receiver', 45, 45)
+    : position(anchor, 'receiver', -22, 16);
 }
 
 function flyTugToWork(owner, tug, anchor, w, blocked) {
