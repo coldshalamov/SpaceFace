@@ -2,7 +2,7 @@ import { laneRpc, laneDomEvent } from '../core/simLaneCommands.js';
 import { economyReadView } from '../systems/economy.js';
 import { claimsReadView } from '../systems/claimsReadModel.js';
 import { drillReadView, CHARGE_PAYLOAD_ORDER } from '../systems/drill.js';
-import { asteroidSites, canInstallAsteroidSiteFromState, findAsteroidSiteFromState, getAsteroidSiteFromState, projectAsteroidSiteFromState } from '../systems/asteroidSites.js';
+import { asteroidSiteReadMethods, createAsteroidSiteMirrorReadView, canInstallAsteroidSiteFromState, findAsteroidSiteFromState, getAsteroidSiteFromState, projectAsteroidSiteFromState } from '../systems/asteroidSiteReadModel.js';
 import { careerLadders, listLadderDefinitions } from '../careers/ladders/careerLadders.js';
 import { getCareerOfferViewReadOnly, getCareerProgress } from '../careers/origins/careerOrigins.js';
 import { computeDiscoveredRoute, activeDriveForState, wormholeGateCheck, machineRouteStanding } from '../systems/routePlanner.js';
@@ -19,30 +19,8 @@ function cloneReadValue(value) {
   try { return JSON.parse(JSON.stringify(value)); } catch (_) { return value; }
 }
 
-// asteroidSites' projection/preview methods use its transient runtime caches.  Run those methods
-// against an isolated prototype view over one cloned mirrored site so a presentation read cannot
-// normalize or reconcile the main-lane mirror.  Volatile survey state is deliberately absent here;
-// durable survey records still read correctly and an unknown volatile assay stays unknown.
-function asteroidReadViewFor(state, siteId) {
-  const source = getAsteroidSiteFromState(state, siteId);
-  if (!source || typeof source !== 'object') return null;
-  const sites = state && state.sites && typeof state.sites === 'object' ? state.sites : {};
-  const isolated = {
-    ...(state || {}),
-    sites: {
-      ...sites,
-      byId: { ...(sites.byId || {}), [siteId]: cloneReadValue(source) },
-    },
-  };
-  const view = Object.create(asteroidSites);
-  view.state = isolated;
-  view._rt = new Map();
-  view._surveyByAsteroid = new Map();
-  view._accessCache = null;
-  view.siteForAsteroid = (asteroidId) => findAsteroidSiteFromState(view.state, asteroidId);
-  return view;
-}
-
+// Site projections use a narrow read vocabulary over one detached mirrored site. Authoritative
+// production/materialization methods are not part of that surface; volatile assays stay unknown.
 export function createLaneSystemFacade(ctx) {
   let nextSaveToken = 0;
   function durableSaveCommand(op, args = {}) {
@@ -296,7 +274,7 @@ export function createLaneSystemFacade(ctx) {
           if (native === undefined) return { ok: false, reason: 'asteroid-sites-empty-result' };
           return native;
         });
-        const readView = (siteId) => asteroidReadViewFor(st, siteId);
+        const readView = (siteId) => createAsteroidSiteMirrorReadView(st, siteId, cloneReadValue);
         // These selectors are cheap identity reads used by the screen's dirty probe. Callers only
         // inspect the records; projection and preview paths below are the mutation-safe selectors
         // that run over isolated clones.
@@ -312,8 +290,8 @@ export function createLaneSystemFacade(ctx) {
           siteForAsteroid,
           projection,
           canInstall,
-          machineAt: (site, col, row) => asteroidSites.machineAt(site, col, row),
-          hasCore: (site) => asteroidSites.hasCore(site),
+          machineAt: (site, col, row) => asteroidSiteReadMethods.machineAt(site, col, row),
+          hasCore: (site) => asteroidSiteReadMethods.hasCore(site),
           previewBreak: (siteId, col, row) => {
             const view = readView(siteId);
             return view ? view.previewBreak(siteId, col, row) : null;
