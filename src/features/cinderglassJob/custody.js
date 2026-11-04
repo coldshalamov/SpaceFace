@@ -84,7 +84,10 @@ export function cinderglassJobReleasePod(sys, state, { actorId, reason }) {
 }
 export function cinderglassJobObserveCustody(sys, state) {
   const st = sys._cg;
-  if (sys._restoring || !st.cohortAdmitted || st.outcome) return;
+  // Third-party fire can release the original before initial convoy admission.
+  // Its real recovery Line still changes custody; it never approves convoy work.
+  const recovering = st.phase === P.RECOVERY && [C.RELEASED, C.TETHERED].includes(st.custody);
+  if (sys._restoring || (!st.cohortAdmitted && !recovering) || st.outcome) return;
   const pod = podEntity(sys, state);
   if (!pod) {
     const prior = currentRole(sys, state, 'podId', true);

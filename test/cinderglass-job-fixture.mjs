@@ -24,7 +24,7 @@ import { npcJobsRuntime } from '../src/systems/npcJobsRuntime.js';
 import { CINDERGLASS_JOB_COMBAT_PROFILE, CINDERGLASS_JOB_MOUNT_DEFINITION,
   CINDERGLASS_JOB_SECTOR_ID, CINDERGLASS_JOB_ROLES } from '../src/features/cinderglassJob/definition.js';
 
-export async function candidateScene({ withLaw = false } = {}) {
+export async function candidateScene({ withLaw = false, playerPos = null } = {}) {
   const catalog = createCombatCatalog({
     profiles: [...COMBAT_PROFILES.filter(r => r.id !== CINDERGLASS_JOB_COMBAT_PROFILE.id), CINDERGLASS_JOB_COMBAT_PROFILE],
     attachments: [...ATTACHMENT_DEFS.filter(r => r.id !== CINDERGLASS_JOB_MOUNT_DEFINITION.id), CINDERGLASS_JOB_MOUNT_DEFINITION] });
@@ -39,9 +39,10 @@ export async function candidateScene({ withLaw = false } = {}) {
   assert.equal(await sim.registry.get('physics').prepareBackend(state), true);
   state.player.credits = 5000; state.player.docked = false;
   state.story ||= {}; state.story.campaign47a = { stepProgress: { '1': { completed: ['alloy_run'] } } };
-  const player = sim.spawn(makeShipEntitySpec('ship_kestrel', { isPlayer: true, team: 0, pos: { x: 0, z: 0 } }));
+  const player = sim.spawn(makeShipEntitySpec('ship_kestrel', { isPlayer: true, team: 0, pos: playerPos || { x: 0, z: 0 } }));
   state.playerId = player.id;
-  sim.registry.get('world').enterSector(CINDERGLASS_JOB_SECTOR_ID);
+  // Optional authored fixture placement happens before native admission, never by moving a live body.
+  sim.registry.get('world').enterSector(CINDERGLASS_JOB_SECTOR_ID, playerPos ? { placePlayer: false } : {});
   const sys = sim.registry.get('cinderglassJob');
   const t = { sim, state, bus, sys, player,
     cg: () => state.world.cinderglassJob,
