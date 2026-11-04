@@ -1,4 +1,5 @@
 import { CERES_CAUSAL_CHAIN_EVENT } from '../contracts/trafficEvents.js';
+import { occupantGenerationOf } from '../core/entity.js';
 import { MAX_PER_SECTOR, CORE_MIN_TRAFFIC, priorityCourierServiceForSector,
   FLEET_BY_FACTION, TRAFFIC_ROLES, CERES_TENDER_SLOT_ID, CERES_ACTIVITY_CAST,
   CERES_ACTIVITY_CAST_BY_SLOT_ID, sectorHasAuthoredRock, trafficRoleMixForSector,
@@ -4077,17 +4078,19 @@ export const traffic = {
       }
       if (stepCharonSupply(this, e, rec)) { this._syncTrafficRecordToData(e, rec); continue; }
       if (stepWinnowRecovery(this, e, rec)) { this._syncTrafficRecordToData(e, rec); continue; }
-      if (e.data?.itinerary?.kind === 'anvil_work') continue;
-      if (e.data && e.data.jobId) continue;
-      if (e.data?.claimDepotId) continue; // wait for the depot's next berth job, never ambient rerouting
+      if (e.data?.itinerary?.kind === 'anvil_work' || e.data?.jobId || e.data?.claimDepotId) {
+        this._releaseHeatChallengeBrake(e, false);
+        continue; // the job/depot owns its current intent, including any brake
+      }
       // inf-patrol-challenge — the law owns the fact (lawSecurity stamps data.heatChallenge on
       // an ambient patrol that acquires a wanted hull); traffic owns the flying. The challenged
       // hull breaks its station orbit and holds the standoff ring off the wanted hull's beam
       // until the law releases the stamp. Route work and role behavior wait behind it.
-      if (e.data && e.data.heatChallenge) {
-        this._stepHeatChallenge(e, state);
-        this._syncTrafficRecordToData(e, rec);
-        continue;
+      if (e.data?.heatChallenge || this._heatChallengeBrakeLeases?.has(e)) {
+        if (this._stepHeatChallenge(e, state)) {
+          this._syncTrafficRecordToData(e, rec);
+          continue;
+        }
       }
       const role = TRAFFIC_ROLES[rec.role] || TRAFFIC_ROLES.hauler;
 
@@ -4324,24 +4327,69 @@ export const traffic = {
    */
   _stepHeatChallenge(e, state) {
     const stamp = e.data && e.data.heatChallenge;
-    if (!stamp) return false;
+    if (!stamp || stamp.patrolId !== e.id
+        || (stamp.patrolGeneration != null && stamp.patrolGeneration !== occupantGenerationOf(e))) {
+      this._releaseHeatChallengeBrake(e);
+      return false;
+    }
     const wanted = state && state.playerId != null && state.entities
       ? state.entities.get(state.playerId) : null;
-    if (!wanted || wanted.alive === false || !wanted.pos || !e.pos) return false;
+    if (!wanted || wanted.alive === false || !wanted.pos || !e.pos) {
+      this._releaseHeatChallengeBrake(e);
+      return false;
+    }
     const dx = wanted.pos.x - e.pos.x;
     const dz = wanted.pos.z - e.pos.z;
     const dist = Math.hypot(dx, dz) || 1;
     const standoff = Math.max(60, Number(stamp.standoffWu) || 0);
+    const leases = this._heatChallengeBrakeLeases || (this._heatChallengeBrakeLeases = new WeakMap());
+    const old = leases.get(e);
+    if (old && (old.stamp !== stamp || old.intent !== e.data.intent)) this._releaseHeatChallengeBrake(e);
     if (dist > standoff * 1.15) {
       // Close the ring at station-keeping speed, never a ramming burn.
       setIntent(e, 0, 0.45, false, false, null, Math.atan2(dz, dx));
-      if (e.data.intent) e.data.intent.brake = false;
     } else {
       // On the ring: hold position facing the hull. The visible pressure is the stop
       // itself — a patrol sitting off the beam, nose on, while the band names the sheet.
       setIntent(e, 0, 0, false, false, null, Math.atan2(dz, dx));
-      if (e.data.intent) e.data.intent.brake = true;
     }
+    const intent = e.data.intent;
+    let lease = leases.get(e);
+    if (!lease) {
+      // The generic save carries the intent. Keep data-only provenance with our borrowed brake
+      // so Continue can return it without making traffic a writer of the law's challenge stamp.
+      const borrow = { token: heatChallengeBrakeToken(stamp),
+        hadBrake: Object.prototype.hasOwnProperty.call(intent, 'brake'), priorBrake: intent.brake };
+      lease = { stamp, intent, generation: occupantGenerationOf(e), borrow };
+      leases.set(e, lease);
+    }
+    intent.brake = dist <= standoff * 1.15;
+    intent.heatChallengeBrakeBorrow = lease.borrow;
+    lease.borrow.writtenBrake = intent.brake;
+    return true;
+  },
+
+  _releaseHeatChallengeBrake(e, restore = true) {
+    const lease = this._heatChallengeBrakeLeases?.get(e);
+    if (!lease) return;
+    this._heatChallengeBrakeLeases.delete(e);
+    const data = e.data;
+    const intent = data && data.intent;
+    // This is a traffic-owned, same-life borrow. A new intent/controller keeps its brake.
+    if (!restore || intent !== lease.intent || occupantGenerationOf(e) !== lease.generation) return;
+    this._restoreHeatChallengeBrake(e, lease.stamp, lease.borrow);
+  },
+
+  _restoreHeatChallengeBrake(e, stamp, borrow = e.data?.intent?.heatChallengeBrakeBorrow) {
+    const data = e.data;
+    const intent = data && data.intent;
+    if (!intent || typeof borrow?.hadBrake !== 'boolean' || typeof borrow.writtenBrake !== 'boolean'
+        || borrow.token !== heatChallengeBrakeToken(stamp) || intent.heatChallengeBrakeBorrow !== borrow
+        || intent.brake !== borrow.writtenBrake || data.jobId || data.claimDepotId
+        || data.itinerary?.kind === 'anvil_work' || data.ai?.securityTargetId != null) return false;
+    if (borrow.hadBrake) intent.brake = borrow.priorBrake;
+    else delete intent.brake;
+    delete intent.heatChallengeBrakeBorrow;
     return true;
   },
 
@@ -4350,6 +4398,10 @@ export const traffic = {
 
 
 };
+
+function heatChallengeBrakeToken(stamp) {
+  return `${typeof stamp?.patrolId}:${stamp?.patrolId}:${stamp?.patrolGeneration ?? 'unknown'}:${stamp?.episodeId}:${stamp?.since}`;
+}
 
 export function setIntent(e, moveX, moveZ, boost, fire, fireGroup, aimAngle) {
   const data = e.data || (e.data = {});

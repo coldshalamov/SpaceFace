@@ -79,6 +79,8 @@ import { RECORD_KIND, stableRecordId } from '../world/worldRecords.js';
 import { requestActivityReclassify } from '../world/activityRuntime.js';
 import { SECTORS } from '../data/sectors.js';
 import { lawHeatChallengeCopy } from '../data/lawChallengeCopy.js';
+import { LAW_DOCK_FINE_BASE_CR, LAW_DOCK_FINE_PER_LEVEL_CR } from '../data/lawDeskTariff.js';
+export { LAW_DOCK_FINE_BASE_CR, LAW_DOCK_FINE_PER_LEVEL_CR } from '../data/lawDeskTariff.js';
 import {
   collectLivingWorldActors,
   findLivingWorldActor,
@@ -344,6 +346,7 @@ export const lawSecurity = {
       this._sanctuaryWakeSeq = 0;
     };
     this._onSaveLoaded = () => {
+      this._clearRestoredHeatChallenges(this.state);
       this._resetInspectionTransient();
       this._resetWeirTransient();
       normalizePersistedLawfulInspection(this.state);
@@ -574,6 +577,7 @@ export const lawSecurity = {
     // Heat-challenge stamps name live hull ids too, and entity ids re-bind on load. A stamp
     // left across the boundary would hold a recycled hull in a ring it never chose, so the
     // watch re-derives from durable truth (the live heat tier) the same way a cold session does.
+    this._releaseAllHeatChallenges(this.state, 'restore');
     delete own.heatChallenges;
     delete own.heatChallengeEpisodeTier;
     own.nextHeatChallengeTick = 0;
@@ -5354,11 +5358,14 @@ export const lawSecurity = {
       ? own.heatChallenges : (own.heatChallenges = {});
     // 1. Release dead, stale-episode, and long-out-of-range stamps.
     for (const key of Object.keys(map)) {
-      const hull = entityById(state, key);
       const stamp = map[key];
+      const hull = incidentOccupant(state, stamp?.patrolId, stamp?.patrolGeneration);
       let release = null;
       if (!hull || hull.alive === false || !hull.data || hull.data.heatChallenge !== stamp) {
         release = 'hull_gone';
+      } else if (hull.data.jobId || hull.data.claimDepotId || hull.data.itinerary?.kind === 'anvil_work'
+          || hull.data.ai?.securityTargetId != null) {
+        release = 'controller_changed';
       } else if ((stamp.episodeId | 0) !== episodeId) {
         release = 'episode_ended';
       } else {
@@ -5394,6 +5401,7 @@ export const lawSecurity = {
       const ai = entity.data.ai;
       if (!ai || ai.lawful !== true) return;
       if (ai.securityTargetId != null) return;
+      if (entity.data.jobId || entity.data.claimDepotId || entity.data.itinerary?.kind === 'anvil_work') return;
       const dx = entity.pos.x - playerEnt.pos.x;
       const dz = entity.pos.z - playerEnt.pos.z;
       const d2 = dx * dx + dz * dz;
@@ -5405,6 +5413,8 @@ export const lawSecurity = {
     if (!copy || !copy.hail) return;
     const seed = (state.meta && state.meta.seed) || 1;
     const stamp = {
+      patrolId: best.id,
+      patrolGeneration: occupantGenerationOf(best),
       episodeId,
       tier,
       since: now,
@@ -5420,6 +5430,7 @@ export const lawSecurity = {
       episodeId,
       seedKey: hash32(seed >>> 0, 'law-heat-challenge', String(best.id)),
     });
+    this._emit('comms:log', { from: 'PATROL', text: copy.hail, kind: 'law' });
     this._emit('toast', { text: copy.text, kind: 'law', ttl: 4 });
   },
 
@@ -5428,7 +5439,8 @@ export const lawSecurity = {
     const map = own && own.heatChallenges;
     if (!map || typeof map !== 'object') return;
     for (const key of Object.keys(map)) {
-      const hull = entityById(state, key);
+      const stamp = map[key];
+      const hull = incidentOccupant(state, stamp?.patrolId, stamp?.patrolGeneration);
       if (hull && hull.data && hull.data.heatChallenge === map[key]) delete hull.data.heatChallenge;
     }
     own.heatChallenges = {};
@@ -5436,6 +5448,23 @@ export const lawSecurity = {
       // The sheet fell: the next rise is a new episode, not a continuation.
       own.heatChallengeEpisodeTier = null;
       own.heatChallengeEpisode = (own.heatChallengeEpisode | 0) + 1;
+    }
+  },
+
+  _clearRestoredHeatChallenges(state) {
+    // Generic persistent-entity restore clones data after the session map was discarded.
+    // IDs/generations may rebind, so only the current owner's exact tracked stamp can survive.
+    const tracked = state?.lawSecurity?.heatChallenges;
+    if (!state?.entities || typeof state.entities.values !== 'function') return;
+    for (const hull of state.entities.values()) {
+      const stamp = hull?.data?.heatChallenge;
+      if (!stamp || !lawHeatChallengeCopy(stamp.tier) || !Number.isInteger(stamp.episodeId)
+          || !Number.isFinite(stamp.since) || !Number.isFinite(stamp.standoffWu)) continue;
+      if (tracked?.[hull.id] === stamp
+          && incidentOccupant(state, stamp.patrolId, stamp.patrolGeneration) === hull) continue;
+      this.registry?.get('traffic')?._restoreHeatChallengeBrake(hull, stamp);
+      delete hull.data.heatChallenge;
+      // Only traffic can return a matched saved borrow. An unrelated/new intent is unchanged.
     }
   },
 
@@ -7803,8 +7832,6 @@ const LAW_KILL_ADJUDICATION_TYPES = new Set(['ship', 'fighter', 'drone', 'hauler
 /** The kill gate reuses the theft-report eyes: same radius, same "who could see the act" rule. */
 const LAW_KILL_WITNESS_RADIUS = LAW_INCIDENT_WITNESS_RADIUS;
 /** Lawful dock clearance: assessed fine for the two escapable tiers, real credits, never free. */
-export const LAW_DOCK_FINE_BASE_CR = 150;
-export const LAW_DOCK_FINE_PER_LEVEL_CR = 100;
 /** Same length as the impound shift: a chosen fine can be worked off instead of paid. */
 const LAW_FINE_WORK_S = 4;
 /** Engines cut, holding still, inside a lawful cone. Surrender is not instant and not free. */

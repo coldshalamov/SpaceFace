@@ -11,7 +11,7 @@
 
 export const FINE_WHY_COPY = Object.freeze({
   price: Object.freeze({
-    text: 'The price is the read: {base} cr for the warrant plus {perStep} cr for each heat step — yours sits at step {step}.',
+    text: 'The price is the read: {base} cr for the warrant plus {perStep} cr for each heat step — assessed at step {step}.',
   }),
   answersFor: Object.freeze({ text: ' It answers for{trace}.' }),
 });
