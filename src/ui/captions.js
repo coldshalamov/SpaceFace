@@ -222,6 +222,7 @@ const EXPLICIT_RECIPE_CAPTIONS = Object.freeze({
   ambient_station_crowd: Object.freeze({ text: 'Dockside voices mingle.', urgency: 'normal', event: 'station.crowd' }),
   ambient_station_murmur: Object.freeze({ text: 'The berth hums.', urgency: 'normal', event: 'station.room' }),
   ambient_station_shift_bell: Object.freeze({ text: 'The shift bell rings.', urgency: 'normal', event: 'station.shift' }),
+  ambient_station_market_chime: Object.freeze({ text: 'The market desk chimes.', urgency: 'normal', event: 'station.market' }),
   sfx_refusal_empty: Object.freeze({ text: 'No ammunition.', urgency: 'high', event: 'refusal.ammo' }),
   sfx_refusal_target: Object.freeze({ text: 'No valid target.', urgency: 'high', event: 'refusal.target' }),
   sfx_massline_deny: Object.freeze({ text: 'Action refused.', urgency: 'high', event: 'refusal' }),
