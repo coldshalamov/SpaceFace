@@ -406,7 +406,10 @@ body.k-photo .sf-photo-bar .sf-photo-hint {
   position: static; inset: auto; flex: 0 0 100%; box-sizing: border-box;
   width: 100%; max-width: 100%; margin: 0; text-align: center; pointer-events: none;
 }
+/* A bright planet can fill the frame behind any control: the small deck owns an opaque kit
+   ground, while the photo preview itself remains unshaded. No backdrop filter is needed. */
 body.k-photo #screens > .sf-photo-bar {
+  box-sizing: border-box; padding: 12px; background: var(--k-ink); color: var(--k-bone);
   max-width: calc(100vw - 2 * var(--k-margin, 24px) - var(--sf-safe-left, 0px) - var(--sf-safe-right, 0px)) !important;
   max-height: calc(100dvh - 2 * var(--k-margin, 24px) - var(--sf-safe-top, 0px) - var(--sf-safe-bottom, 0px));
   overflow-y: auto; overscroll-behavior: contain;
