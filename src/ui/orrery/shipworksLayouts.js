@@ -210,6 +210,9 @@ ${W} .sx-sw__gauges { ${PLAIN} gap:0 26px !important; justify-content:center !im
 }
 ${W} .sx-sw-rack .sx-sw-band__label > .k-38 { display:block; margin-top:3px; letter-spacing:.14em; }
 ${W} .sx-sw-band--presets .sx-sw-band__label > .k-38 { display:none !important; }
+/* Keep the focused bid field's outline clear of its label on narrow station panes. */
+${W} .sx-sw-lotdesk__bid label { display:inline-flex; align-items:center; gap:8px; }
+${W} .sx-sw-lotdesk__bid input { width:120px; max-width:100%; }
 ${W} .sx-sw-gauge { ${PLAIN} padding:0 !important; min-height:0 !important; gap:8px !important; }
 ${W} .sx-sw-gauge .k-row__name { ${LABEL} font-size: 12px !important; letter-spacing:.06em !important; color:rgb(${BONE} / .6) !important; }
 ${W} .sx-sw-gauge .k-row__num { font-size:13px !important; color:rgb(248 244 234) !important; font-variant-numeric:tabular-nums; }
@@ -265,6 +268,15 @@ ${W} .sx-chooser__head h3 { ${LABEL} font-size: 12px !important; letter-spacing:
 ${W} .sx-chooser__head h3 .k-38 { color:rgb(${BONE} / .6) !important; }
 ${W} .sx-chooser__unfit { ${PLAIN} ${LABEL} font-size: 12px !important; letter-spacing:.16em !important; color:rgb(248 244 234) !important; padding:3px 0 !important; min-height:0 !important; }
 ${W} .sx-chooser__list { background:linear-gradient(90deg, transparent 7px, rgb(${BONE} / .22) 7px, rgb(${BONE} / .22) 8px, transparent 8px) !important; padding:0 !important; }
+/* The phone station body is the scroller; the chooser list must not collapse inside it. */
+@media (max-width:960px) {
+  html:root[data-sf-mobile="1"] body #screens > .sx-berth.orr-station .sx-sw .sx-sw__chooser,
+  html:root[data-sf-mobile="1"] body #screens > .sx-berth.orr-station .sx-sw .sx-chooser__panel,
+  html:root[data-sf-mobile="1"] body #screens > .sx-berth.orr-station .sx-sw .sx-chooser__list {
+    flex:none !important; height:auto !important; max-height:none !important; overflow:visible !important;
+  }
+  html:root[data-sf-mobile="1"] body #screens > .sx-berth.orr-station .sx-sw .sx-sw__chooser { padding-bottom:0 !important; -webkit-mask-image:none !important; mask-image:none !important; }
+}
 ${W} .sx-modrow { ${PLAIN} display:block !important; position:relative; padding:9px 0 11px 26px !important; min-height:0 !important; height:auto !important; cursor:pointer; }
 ${W} .sx-modrow::after { display:none !important; }
 ${W} .sx-modrow::before { content:"" !important; display:block !important; position:absolute !important; left:4px !important; top:17px !important; width:8px !important; height:1px !important;
