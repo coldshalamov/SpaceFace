@@ -96,6 +96,11 @@ export const PRODUCTION_INIT_ORDER = Object.freeze([
   // special500: the 500-entry special catalog runtime. init subscribes the receipt events;
   // update is the 0.5 s self-throttled trigger sweep (calendar clock, matches CHECK_S).
   'special500',
+  // special500Spectacle: the spectacle leg owner (Phase 2). init subscribes
+  // 'special500:spectacle' (parked, drained per update — the director's receipt pattern);
+  // update plays each firing's authored registry steps off state.simTime through the
+  // existing owner seams (presentation:vfxCue / news:publish). Presentation dispatch only.
+  'special500Spectacle',
   // PULSE-MAIL (435) / PULSE-TIME (439): listener+tick delivery and the world calendar's
   // transition announcer — both slow observers on the calendar clock.
   // worldPressure (§34 rows 520–523): the tide/gate-audit/slow-gray owner — reads
@@ -206,6 +211,11 @@ export const PRODUCTION_UPDATE_ORDER = Object.freeze([
   // tick, so receipts and flags they produced are visible; comms lines it emits are
   // collected by voiceArbiter below on the same tick.
   'special500',
+  // special500Spectacle: plays the spectacle legs the director fired THIS tick, same tick,
+  // so a beat authored atS:0 lands with the noticing line. Emits presentation/news only;
+  // before voiceArbiter like the director, and after it in init (the subscription exists
+  // before the sweep that emits the event).
+  'special500Spectacle',
   'voiceArbiter',
   // PULSE-MAIL / PULSE-TIME: mail delivery and calendar announcements run after the story
   // and deed systems so same-tick triggers resolve before letters and headlines go out.
@@ -426,6 +436,10 @@ export const CALENDAR_CLOCK_IDS = Object.freeze([
   // special500: the catalog sweep self-throttles to 0.5 s of simTime (CHECK_S), which is
   // exactly this clock's period. Appended last so every cohort index stays put.
   'special500',
+  // special500Spectacle: plays authored beats off state.simTime; the 2 Hz pass is finer
+  // than every authored atS gap and matches its director's cadence. Appended last so
+  // every existing cohort index stays put.
+  'special500Spectacle',
 ]);
 
 /**

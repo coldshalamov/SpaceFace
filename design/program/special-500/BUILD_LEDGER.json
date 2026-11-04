@@ -8,7 +8,8 @@
   "medium": 167,
   "large": 166,
   "landed": 0,
-  "assigned": 12
+  "assigned": 12,
+  "approved": 2
  },
  "derivation": {
   "ratifiedFollowup": 330,
@@ -34,9 +35,9 @@
    "size": "large",
    "family": "infra",
    "batch": 0,
-   "status": "assigned",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused 7/7 + baseline 17/17 + seam grep verified by controller",
    "note": "infrastructure — not counted toward the 500"
   },
   {
@@ -1583,10 +1584,10 @@
    "size": "small",
    "family": "spectacle",
    "batch": 1,
-   "status": "assigned",
+   "status": "approved",
    "commit": "",
-   "verification": "",
-   "note": "pilot batch"
+   "verification": "focused 7/7 + baseline 17/17 + seam grep verified by controller",
+   "note": "pilot batch; honest scoping documented in row (lamp-bus envelope deferred to Forge asset work)"
   },
   {
    "id": "SP2-164",
@@ -1831,10 +1832,10 @@
    "size": "small",
    "family": "spectacle",
    "batch": 1,
-   "status": "assigned",
+   "status": "approved",
    "commit": "",
-   "verification": "",
-   "note": "pilot batch"
+   "verification": "focused 7/7 + baseline 17/17 + seam grep verified by controller",
+   "note": "pilot batch; honest scoping documented in row (lamp-bus envelope deferred to Forge asset work)"
   },
   {
    "id": "SP2-039",

@@ -4,7 +4,24 @@
 Owner commission: 500 special in-game things. Debate phase (rounds 1-4,
 ratified) produced `CONSENSUS_500.json`. Build phase status lives here.
 
-## Landed
+## Phase 2 — build the 500 things the player encounters (opened 2026-11-04)
+
+Owner direction: extend the campaign into its playable substance — 500 build
+units, equally small/medium/large, INFERENCE-style, orchestrated by subagents
+and landed on review. The decision, derivation and protocol live in
+[`PHASE2_PLAN.md`](./PHASE2_PLAN.md); the per-agent contract is
+[`PHASE2_BUILD_BRIEF.md`](./PHASE2_BUILD_BRIEF.md); the single status authority
+is [`BUILD_LEDGER.json`](./BUILD_LEDGER.json) (regenerable by
+`tools/derive-units.mjs`; preserves progress).
+
+Derivation (2026-11-04, from live catalog truth): 330 ratified followup legs +
+92 ratified spectacle-only + 14 dormant + 35 annex legs + 29 mail letters =
+**500 units** (167 small / 167 medium / 166 large), 43 batches. Infra:
+`INFRA-SPECTACLE-REGISTRY` (director emits `special500:spectacle`; presentation
+registry + system so every spectacle leg lands as data). Pilot batch 1 (12
+units, 6 families) dispatched; landed units will be recorded here per batch.
+
+## Phase 1 — the catalog (complete)
 
 - `ebaea2ad5c1` — debate artifacts + ratified consensus (500 + 20 bench).
 - `d47d91c9e61` — spine: `src/data/special500/` catalog + `src/systems/special500Director.js`

@@ -44,6 +44,12 @@ the build instruction).
   reduced-motion/flash profiles apply automatically. Never spawn a second render pipeline.
 - **counter** — flag/counter chains with a real reader (a UI row, a letter, a bark) — a counter
   nothing reads is not done.
+- **dormant** — each dormant entry's `dormantReason` (in the catalog entry) names exactly the world
+  read that does not exist. The unit = (1) build that missing read in its owning system
+  (deterministic, save-carried where it must survive Continue), (2) re-author the entry's payload
+  so every claim comes from the live read (no hardcoded hulls/counts/tokens), (3) clear `dormant`
+  and `dormantReason`, (4) focused test proving the read returns real facts and the entry fires
+  honest. The entry text itself is the player-facing deliverable — the world must back every word.
 - **dormant/world/spawn/minigame** — per the entry's followup; locate the live owner with grep;
   the followup's file hints may be stale — the live owner is the truth.
 
