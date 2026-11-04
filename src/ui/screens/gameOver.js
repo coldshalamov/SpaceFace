@@ -38,6 +38,8 @@ import { confirm } from '../confirm.js';
 import { loadConfirmBody } from './saveLoad.js';
 import { rangeRungIndex } from './range.js';
 import { killcamStageRequestFor } from '../../sim/killcamTape.js';
+import { isPlayerWanted, heatLevelFor, heatClearSecondsForLevel, wantedTierInfo } from '../../systems/heat.js';
+import { wantedReasonText } from '../wantedReason.js';
 
 export { restoredDefeatIntent } from '../sim/restoredDefeatIntent.js';
 
@@ -178,6 +180,28 @@ export function lastDeathSummary(ctx = {}) {
     cause: deathCauseLabel(entry),
     lifespan: entry && entry.lifespanMs != null ? fmtMs(entry.lifespanMs) : '-',
   };
+}
+
+/**
+ * inf-defeat-situation — the after-action sheet's situation clause: the loss receipt names the
+ * hull that killed you, but until now it never said the SITUATION you died in. When the law's
+ * hunt was live at death, the sheet names it: the wanted band the hull died under, the escape
+ * clock it carried, and — through the same no-false-witness trace the flight alert uses — the
+ * convicting incident the sheet stood on (suspicion without a receipt names nothing, and a
+ * clean or sub-threshold sheet gets no clause at all). The defeat freezes heat (heat decays
+ * only in flight), so the values here are the situation AT death, not the sheet's later state.
+ * Pure read; '' whenever any part would have to be invented.
+ */
+export function deathSituationClause(state = null) {
+  const player = state && state.player;
+  const heat = player && Number.isFinite(Number(player.heat)) ? Number(player.heat) : 0;
+  if (!isPlayerWanted({ player: { heat } })) return '';
+  const parts = ['hunt live: ' + wantedTierInfo(heat).label + ' sheet'];
+  const clearS = heatClearSecondsForLevel(heatLevelFor(heat));
+  if (clearS > 0) parts.push('clears in ' + Math.ceil(clearS) + 's out of the zone');
+  const trace = wantedReasonText(null, player);
+  if (trace) parts.push('traced to' + trace.replace(/^ · /, ' '));
+  return parts.join(', ');
 }
 
 /** What the sortie's black box kept: the moments of the lost hull's last sortie, from the session's own
@@ -957,6 +981,8 @@ export const gameOverScreen = {
       recovery.policyName, recovery.premiumCr, recovery.deductibleCr,
       deathRangeOfferText(receipt),
       latestSlot,
+      state.player && state.player.heat,
+      state.player && state.player.heatLastIncident ? 1 : 0,
     ].join('|');
     if (sig === this._summarySig) return;
     this._summarySig = sig;
@@ -1035,6 +1061,10 @@ export const gameOverScreen = {
       const pairs = [];
       if (values.lifespan && values.lifespan !== '-') pairs.push(LABEL.lifespan + ' ' + values.lifespan);
       if (values.damage && values.damage !== 'Unresolved') pairs.push(lower(LABEL.damage) + ' ' + lower(values.damage));
+      // inf-defeat-situation — the situation the hull died in rides the same line: the live
+      // hunt, its escape clock, and (only on a real receipt) what the sheet traced to.
+      const situation = deathSituationClause(state);
+      if (situation) pairs.push(lower(situation));
       const text = pairs.join(' · ');
       if (this._lineEl.textContent !== text) this._lineEl.textContent = text;
       this._lineEl.hidden = !text;
