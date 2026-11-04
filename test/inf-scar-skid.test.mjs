@@ -20,6 +20,7 @@ import {
 } from '../src/render/weapons/scarDirection.js';
 import { HullScorchPool } from '../src/render/weapons/contactMarks.js';
 import { WeaponVfxPresenter } from '../src/render/weapons/presenter.js';
+import { createDynamicBufferCoordinator, disposeDynamicBufferCoordinator } from '../src/render/dynamicBufferRanges.js';
 
 test('a grazing rake stretches the mark downrange along the shot path', () => {
   // Outward normal +X, shot raking across the surface along −Z: a pure side graze.
@@ -105,6 +106,57 @@ test('the pool carries the skid through spawn and writes it with the rotated pos
   assert.equal(pool.skid.array[other * 4 + 3], 1, 'a mark without skid stays round');
   pool.dispose();
 });
+
+for (const managed of [false, true]) {
+  test(`reused scar slots publish changed skid through the ${managed ? 'managed' : 'fallback'} upload boundary`, () => {
+    const scene = managed ? new THREE.Scene() : null;
+    const coordinator = scene ? createDynamicBufferCoordinator(scene) : null;
+    const camera = new THREE.PerspectiveCamera();
+    const pool = new HullScorchPool(scene, { capacity: 1 });
+    // Exercise the real scene publication hook and acknowledge its CPU-side upload records.
+    // No WebGL upload or rendered-picture assertion is made here.
+    const publish = () => {
+      if (!coordinator) return;
+      const epoch = coordinator.arm();
+      try {
+        scene.onBeforeRender({}, scene, camera, null);
+        for (const { attribute } of pool.dynamicBufferOwner.bindings) {
+          attribute.clearUpdateRanges();
+          attribute.onUploadCallback();
+        }
+      } finally {
+        coordinator.disarm(epoch);
+      }
+    };
+    try {
+      const spec = { targetId: 'same-hull', nx: 0, ny: 1, nz: 0,
+        width: 2, height: 1, life: 30, persistent: true, stretch: 2 };
+      const slot = pool.spawn({ ...spec, skidX: 1 });
+      pool.update(0);
+      publish();
+      const version = pool.skid.version;
+      const normal = Array.from(pool.normal.array);
+      const size = Array.from(pool.size.array);
+      assert.equal(pool.spawn({ ...spec, skidZ: -1 }), slot, 'the occupied slot is reused');
+      pool.update(0);
+      assert.equal(pool.skid.getZ(0), -1, 'the reused slot writes the new skid');
+      assert.deepEqual(Array.from(pool.normal.array), normal, 'the surface normal is unchanged');
+      assert.deepEqual(Array.from(pool.size.array), size, 'the mark size and heat are unchanged');
+      if (managed) {
+        const binding = pool.dynamicBufferOwner.bindings.find(({ attribute }) => attribute === pool.skid);
+        assert.equal(binding.forceFull, false, 'initial publication cannot mask a missing dirty mark');
+        assert.deepEqual([binding.pending.start, binding.pending.end], [0, 4],
+          'the changed skid owns a four-component pending upload');
+        publish();
+        assert.equal(pool.dynamicBufferOwner.invalid, false);
+      }
+      assert.equal(pool.skid.version, version + 1, 'skid advances its own upload version');
+    } finally {
+      pool.dispose();
+      disposeDynamicBufferCoordinator(coordinator);
+    }
+  });
+}
 
 test('production scar capture preserves distinct normal and skid through hull rotation', () => {
   const root = new THREE.Object3D();

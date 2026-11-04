@@ -502,6 +502,7 @@ export class HullScorchPool {
         markDynamicBufferItems(this.dynamicBufferOwner, 3, drawn);
         markDynamicBufferItems(this.dynamicBufferOwner, 4, drawn);
         markDynamicBufferItems(this.dynamicBufferOwner, 5, drawn);
+        markDynamicBufferItems(this.dynamicBufferOwner, 6, drawn);
       }
       drawn++;
     }
@@ -516,6 +517,7 @@ export class HullScorchPool {
       this.color.needsUpdate = true;
       this.mark.needsUpdate = true;
       this.surface.needsUpdate = true;
+      this.skid.needsUpdate = true;
     }
     this.mesh.visible = drawn > 0;
     return drawn;
