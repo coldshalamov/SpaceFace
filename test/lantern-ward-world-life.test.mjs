@@ -250,6 +250,47 @@ test('uninvited commuter uses its specific berth approach and waits for the actu
   } finally { h.sim.dispose(); }
 });
 
+test('a mast moved only halfway out still blocks the loaded swept route', async () => {
+  const h = await nativeHarness(7621);
+  try {
+    const mast = h.actor('obstruction'), cradle = h.actor('cradle');
+    queuePhysicsImpulse(mast, { x: mast.mass * 12, z: 0 }, { tick: h.state.tick, tag: 'partial_clearance_fixture' });
+    h.run(240);
+    queuePhysicsImpulse(mast, { x: -mast.mass * mast.vel.x, z: -mast.mass * mast.vel.z }, { tick: h.state.tick });
+    h.run(120);
+    assert.ok(mast.pos.x > 1815 && mast.pos.x < 1835, 'the real mast has passed the old single-point gate');
+    assert.equal(lanternWardStatus(h.owner).blocked, true, 'the receiver court still needs the rig width');
+    assert.equal(h.events.length, 0);
+    assert.ok(Math.hypot(cradle.pos.x - 1710, cradle.pos.z + 650) < 2, 'crew waits with its actual loaded platform');
+  } finally { h.sim.dispose(); }
+});
+
+test('removing the installed original bearing stops household work until that physical part returns', async () => {
+  const h = await nativeHarness(7622);
+  try {
+    for (let i = 0; i < 6000 && !h.actor('service_face').data.lanternWardRepaired; i++) h.sim.step();
+    const face = h.actor('service_face'), part = h.actor('maintenance_part');
+    assert.equal(face.data.lanternWardRepaired, true);
+    const service = h.sim.registry.get('combat').kernel.attachments;
+    const held = service.create({ defId: 'tether_standard', ownerId: h.player.id, targetId: part.id,
+      sourceWorld: { ...h.player.pos, y: 0 }, targetWorld: { ...part.pos, y: 0 } });
+    assert.equal(held.ok, true);
+    h.run(2);
+    assert.equal(face.data.lanternWardRepaired, false);
+    assert.equal(part.data.lanternWardCustody.holder, 'loose');
+    assert.equal(part.data.cargoManifest.custody.holderId, 'loose');
+    for (let i = 0; i < 1200; i++) {
+      service.reel(held.attachment.id, -5 * DT, 25); h.sim.step();
+    }
+    assert.ok(Math.hypot(part.pos.x - face.pos.x, part.pos.z - face.pos.z) > 25);
+    assert.equal(face.data.lanternWardWorkerPresent, false, 'history does not animate a repair with missing hardware');
+    assert.equal(face.data.lanternWardRepaired, false);
+    assert.equal(h.actor('maintenance_part'), part);
+    assert.equal(lanternWardStatus(h.owner).history.maintenanceServices, 1, 'the earlier repair remains remembered');
+    assert.equal(h.state.entityList.filter(e => e.alive && e.data?.worldRecordId === IDS.maintenance_part).length, 1);
+  } finally { h.sim.dispose(); }
+});
+
 test('a recycled numeric entity id cannot inherit the finite lamp, even with copied public tags', async () => {
   const h = await nativeHarness(811);
   try {

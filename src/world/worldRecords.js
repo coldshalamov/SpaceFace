@@ -5,6 +5,7 @@ import { ceresWorkfleetRoleForEntity } from '../data/ceresWorkfleetIdentity.js';
 import { ceresWorkfleetHardwareSpec, ceresWorkfleetHardwareRoleForRecord, isCeresWorkfleetRecordIdentity } from '../data/ceresWorkfleetHardware.js';
 import { captureLanternWardHardware, isLanternWardHardwareEntity, isLanternWardRecordIdentity,
   lanternWardHardwareRoleForRecord, lanternWardHardwareSpec } from '../data/lanternWardHardware.js';
+import { LANTERN_WARD_SECTOR } from '../data/lanternWardLayout.js';
 import { isLanternWardActorRecord, lanternWardActorRoleForRecord,
   lanternWardActorSpec } from './lanternWardActors.js';
 // Pure durable world-entity record schema + rematerialization helpers (M2-C2).
@@ -347,40 +348,57 @@ export function* normalizeRecordsBagChunked(input) {
  * @returns {object|null}
  */
 export function normalizeRecord(raw, fallbackId) {
-  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
-  const kind = DURABLE_KINDS.has(raw.kind) ? raw.kind : null;
-  if (!kind) return null;
-  const sectorId = raw.sectorId || raw.homeSectorId;
-  if (!sectorId || typeof sectorId !== 'string') return null;
+  const fallbackIdentity = typeof fallbackId === 'string' && fallbackId.startsWith('lantern-ward:')
+    ? { recordId: fallbackId } : null;
+  const wardSlot = fallbackIdentity && (isLanternWardRecordIdentity(fallbackIdentity) || isLanternWardActorRecord(fallbackIdentity));
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+    if (!wardSlot) return null;
+    // The bag key still proves that this finite original existed. Retain an
+    // unavailable row instead of letting a corrupt/null value mint it anew.
+    raw = { recordId: fallbackId, extra: { lanternWardInvalid: true } };
+  } else if (wardSlot && raw.recordId != null && raw.recordId !== fallbackId) {
+    // A contradictory value cannot erase the occupied finite slot and thereby
+    // authorize another original. The slot remains unavailable, not rekeyed.
+    raw = { ...raw, recordId: fallbackId, extra: { ...raw.extra, lanternWardInvalid: true } };
+  }
   const recordId = typeof raw.recordId === 'string' && raw.recordId
     ? raw.recordId
     : (typeof fallbackId === 'string' && fallbackId ? fallbackId : null);
   if (!recordId) return null;
-  if (!finiteXZ(raw.pos)) return null;
+  const wardIdentity = raw.recordId === recordId ? raw : { ...raw, recordId };
+  const wardHardware = isLanternWardRecordIdentity(wardIdentity), wardActor = isLanternWardActorRecord(wardIdentity);
+  const wardOriginal = wardHardware || wardActor;
+  const rawKind = DURABLE_KINDS.has(raw.kind) ? raw.kind : null;
+  const kind = rawKind || (wardOriginal ? RECORD_KIND.NPC : null);
+  if (!kind) return null;
+  const rawSector = raw.sectorId || raw.homeSectorId;
+  const sectorId = typeof rawSector === 'string' && rawSector ? rawSector : wardOriginal ? LANTERN_WARD_SECTOR : null;
+  if (!sectorId) return null;
+  const validPosition = finiteXZ(raw.pos);
+  if (!validPosition && !wardOriginal) return null;
   // missionTag is the v1 live-entity spelling of the same durable contract identity. Canonicalize
   // both fields so old saves cannot rematerialize an unowned target or miss kill attribution.
   const missionId = raw.missionId || raw.missionTag || null;
   const extra = preserveUnknownFields(raw);
   // Preserve corruption as an unavailable finite identity. Generic pose defaults must
   // not turn a malformed workpiece into a freshly valid lamp on the next normalize pass.
-  if (isLanternWardRecordIdentity(raw) && raw.alive !== false
-      && !['destroyed', 'defeated'].includes(raw.outcome)
-      && !lanternWardHardwareRoleForRecord(raw)) extra.lanternWardInvalid = true;
-  if (isLanternWardActorRecord(raw) && raw.alive !== false
-      && !['destroyed', 'defeated'].includes(raw.outcome)
-      && !lanternWardActorRoleForRecord(raw)) extra.lanternWardInvalid = true;
+  if (wardOriginal && (!rawKind || !validPosition || typeof rawSector !== 'string' || !rawSector || raw.enemyTypeId != null
+      || (wardHardware && !lanternWardHardwareRoleForRecord(wardIdentity))
+      || (wardActor && !lanternWardActorRoleForRecord(wardIdentity)))) extra.lanternWardInvalid = true;
 
   const rec = {
     recordId,
     kind,
     sectorId: String(sectorId),
     homeSectorId: String(raw.homeSectorId || sectorId),
-    pos: cloneXZ(raw.pos),
+    // A placeholder exists only on a permanently unavailable Ward row. It is
+    // never a spawn position and does not repair the invalid original.
+    pos: validPosition ? cloneXZ(raw.pos) : { x: 0, z: 0 },
     vel: finiteXZ(raw.vel) ? cloneXZ(raw.vel) : { x: 0, z: 0 },
     rot: Number.isFinite(raw.rot) ? raw.rot : 0,
     angVel: Number.isFinite(raw.angVel) ? raw.angVel : 0,
     // identity / spawn
-    type: isStarterBuoyRecord(raw) || (raw.type === 'payload' && isLanternWardRecordIdentity(raw)) ? 'payload'
+    type: isStarterBuoyRecord(raw) || (raw.type === 'payload' && wardHardware) ? 'payload'
       : raw.type === 'wreck' || raw.type === 'fx' || raw.type === 'ship' ? raw.type : 'ship',
     enemyTypeId: raw.enemyTypeId || null,
     shipDefId: raw.shipDefId || raw.defId || null,
@@ -405,7 +423,7 @@ export function normalizeRecord(raw, fallbackId) {
     playerCreated: raw.playerCreated === true,
     named: raw.named === true || (typeof raw.name === 'string' && raw.name.trim().length > 0),
     name: typeof raw.name === 'string' && raw.name ? raw.name : null,
-    retentionClass: deriveRetentionClass(raw),
+    retentionClass: wardOriginal ? RETENTION_CLASS.PERMANENT : deriveRetentionClass(raw),
     trafficRole: raw.trafficRole || null,
     trafficLabel: raw.trafficLabel || null,
     itinerary: raw.itinerary && typeof raw.itinerary === 'object' ? clonePlain(raw.itinerary) : null,
@@ -717,6 +735,12 @@ export function recordsForSector(bag, sectorId) {
 export function recordShouldRematerialize(rec, tier) {
   if (!rec || rec.alive === false) return false;
   if (rec.outcome === 'defeated' || rec.outcome === 'destroyed') return false;
+  // These finite originals have exact native recipes. Refuse before world's
+  // enemyTypeId shortcut can replace a corrupted civic body with an enemy ship.
+  if (isLanternWardRecordIdentity(rec)
+      && (rec.enemyTypeId != null || !lanternWardHardwareRoleForRecord(rec))) return false;
+  if (isLanternWardActorRecord(rec)
+      && (rec.enemyTypeId != null || !lanternWardActorRoleForRecord(rec))) return false;
   // REDUCED: only mission targets + wreck markers (structural anchors come from authored data).
   if (tier === 'REDUCED') {
     return rec.kind === RECORD_KIND.MISSION_TARGET

@@ -33,6 +33,15 @@ const names = Object.freeze({
 });
 const masses = Object.freeze({ cradle: 54, lamp: 9, receiver: 1600, obstruction: 120, service_face: 1600, maintenance_part: 9 });
 const hulls = Object.freeze({ cradle: 280, lamp: 90, receiver: 1400, obstruction: 540, service_face: 1000, maintenance_part: 90 });
+const mobileRoles = new Set(['cradle', 'lamp', 'obstruction', 'maintenance_part']);
+const canonicalSectorIds = new Set(SECTORS.map(row => row.id));
+const actorById = new Map(['tug', 'commuter', 'maintenance'].map(role => [LANTERN_WARD_RECORD_IDS[role], role]));
+const nonempty = value => typeof value === 'string' && value.trim().length > 0;
+const finitePose = value => Number.isFinite(value?.pos?.x) && Number.isFinite(value.pos.z)
+  && Number.isFinite(value.vel?.x) && Number.isFinite(value.vel.z)
+  && Number.isFinite(value.rot) && Number.isFinite(value.angVel);
+const validVitals = (value, role) => value?.hullMax === hulls[role]
+  && Number.isFinite(value.hull) && value.hull > 0 && value.hull <= value.hullMax;
 
 export function lanternWardCanonicalAnchor() {
   const sector = SECTORS.find(row => row.id === LANTERN_WARD_SECTOR);
@@ -54,48 +63,89 @@ export function lanternWardHardwareCollision(role) {
 
 export function isLanternWardRecordIdentity(record) { return roleById.has(record?.recordId); }
 
+function validRecordSector(record, role, holder) {
+  if (record.homeSectorId !== LANTERN_WARD_SECTOR) return false;
+  if (record.sectorId === LANTERN_WARD_SECTOR) return true;
+  // Custody can travel; provenance cannot. Moving an original across an ordinary
+  // sector boundary must not turn it into a missing object after Continue.
+  return mobileRoles.has(role) && canonicalSectorIds.has(record.sectorId)
+    && !(role === 'lamp' && holder === 'receiver')
+    && !(role === 'maintenance_part' && holder === 'service_face');
+}
+
 export function lanternWardHardwareRoleForRecord(record) {
   const role = roleById.get(record?.recordId), saved = record?.itinerary?.lanternWard;
-  if (!role || record.extra?.lanternWardInvalid === true || record.type !== 'payload' || record.sectorId !== LANTERN_WARD_SECTOR
+  if (!role || record.extra?.lanternWardInvalid === true || record.type !== 'payload'
+      || !validRecordSector(record, role, saved?.custody?.holder)
+      || record.enemyTypeId != null || record.shipDefId != null || record.identityKey !== record.recordId
       || record.alive === false || ['destroyed', 'defeated'].includes(record.outcome)
       || record.itinerary?.kind !== 'lantern_ward' || saved?.role !== role
-      || saved.version !== 1 || saved.identity !== record.recordId
+      || saved.version !== 1 || saved.identity !== record.recordId || saved.invalid === true
       || (role === 'lamp' && saved.serial !== LANTERN_WARD_LAMP_SERIAL)
       || (role === 'maintenance_part' && saved.serial !== LANTERN_WARD_PART_SERIAL)
-      || ![record.pos?.x, record.pos?.z, record.vel?.x, record.vel?.z,
-        record.rot, record.angVel, record.hull, record.hullMax].every(Number.isFinite)
-      || record.hull <= 0 || record.hull > record.hullMax
-      || !validSavedCustody(role, saved.custody)
-      || (role === 'lamp' && !validLampManifest(saved.manifest))
-      || (role === 'maintenance_part' && !validPartManifest(saved.manifest))) return null;
+      || !finitePose(record) || !validVitals(record, role)
+      || !validCustody(role, saved.custody)
+      || (role === 'lamp' || role === 'maintenance_part')
+        && !validManifest(role, saved.manifest, saved.custody)) return null;
   return role;
 }
 
-function validLampManifest(manifest) {
-  return manifest?.manifestId === LANTERN_WARD_LAMP_SERIAL && manifest.lotId === LANTERN_WARD_LAMP_SERIAL
-    && manifest.destinationId === LANTERN_WARD_RECORD_IDS.receiver && manifest.totalQty === 1
+function validClamp(clamp, ownerRecordId, targetRecordId, defId) {
+  return clamp?.active === true && nonempty(clamp.attachmentId)
+    && clamp.ownerRecordId === ownerRecordId && clamp.targetRecordId === targetRecordId
+    // v1 custody receipts predate these optional provenance fields. A restored
+    // receipt never authorizes service: the live job must adopt an actual native
+    // attachment with the required definition, mode and occupant generations.
+    && (clamp.defId == null || clamp.defId === defId)
+    && (clamp.controlMode == null || clamp.controlMode === 'lantern_ward_attended_work');
+}
+function validCustody(role, custody) {
+  if (!custody || typeof custody !== 'object' || Array.isArray(custody)) return false;
+  const holder = custody.holder, link = custody.clamp;
+  if (role === 'lamp' || role === 'maintenance_part') {
+    const lamp = role === 'lamp', serial = lamp ? LANTERN_WARD_LAMP_SERIAL : LANTERN_WARD_PART_SERIAL;
+    if (custody.serial !== serial) return false;
+    if (holder === 'loose' || holder === 'player') return link == null;
+    if (lamp && holder === 'cradle') return link == null
+      || validClamp(link, LANTERN_WARD_RECORD_IDS.cradle, LANTERN_WARD_RECORD_IDS.lamp, 'attachment_transport_clamp');
+    if (lamp && holder === 'receiver') return validClamp(link,
+      LANTERN_WARD_RECORD_IDS.receiver, LANTERN_WARD_RECORD_IDS.lamp, 'attachment_transport_clamp');
+    if (!lamp && holder === 'source') return link == null;
+    if (!lamp && (holder === 'maintenance' || holder === 'service_face')) return validClamp(link,
+      LANTERN_WARD_RECORD_IDS[holder], LANTERN_WARD_RECORD_IDS.maintenance_part,
+      holder === 'maintenance' ? 'tether_standard' : 'attachment_transport_clamp');
+    return false;
+  }
+  if (role === 'cradle') {
+    if (holder !== 'ward' && holder !== 'player') return false;
+    if (custody.loadSerial == null && link == null) return true;
+    return custody.loadSerial === LANTERN_WARD_LAMP_SERIAL
+      && validClamp(link, LANTERN_WARD_RECORD_IDS.cradle, LANTERN_WARD_RECORD_IDS.lamp, 'attachment_transport_clamp');
+  }
+  return holder === 'ward' && link == null && custody.loadSerial == null;
+}
+function validManifest(role, manifest, custody) {
+  const lamp = role === 'lamp', serial = lamp ? LANTERN_WARD_LAMP_SERIAL : LANTERN_WARD_PART_SERIAL;
+  const holderId = custody?.holder === 'source' ? 'lantern-ward:maintenance-source'
+    : LANTERN_WARD_RECORD_IDS[custody?.holder] || custody?.holder;
+  return manifest?.manifestId === serial && manifest.lotId === serial
+    && manifest.destinationId === LANTERN_WARD_RECORD_IDS[lamp ? 'receiver' : 'service_face'] && manifest.totalQty === 1
     && Array.isArray(manifest.lines) && manifest.lines.length === 1
-    && manifest.lines[0]?.commodityId === 'cmdty_electronics' && manifest.lines[0]?.qty === 1
-    && typeof manifest.custody?.holderId === 'string' && manifest.custody.holderId.length > 0;
-}
-function validSavedCustody(role, custody) {
-  if (!custody || typeof custody !== 'object' || Array.isArray(custody)
-      || !['ward', 'cradle', 'receiver', 'loose', 'player', 'source', 'maintenance', 'service_face'].includes(custody.holder)) return false;
-  return role !== 'lamp' || custody.serial === LANTERN_WARD_LAMP_SERIAL;
-}
-function validPartManifest(m) {
-  return m?.manifestId === LANTERN_WARD_PART_SERIAL && m.lotId === LANTERN_WARD_PART_SERIAL
-    && m.destinationId === LANTERN_WARD_RECORD_IDS.service_face && m.totalQty === 1
-    && Array.isArray(m.lines) && m.lines.length === 1 && m.lines[0]?.commodityId === 'cmdty_comp_hullplate'
-    && m.lines[0]?.qty === 1 && typeof m.custody?.holderId === 'string';
+    && manifest.lines[0]?.commodityId === (lamp ? 'cmdty_electronics' : 'cmdty_comp_hullplate')
+    && manifest.lines[0]?.qty === 1 && nonempty(holderId) && manifest.custody?.holderId === holderId;
 }
 
 /** Pure catch-up gate. A remembered load is fixed only by an exact accepted
  * native clamp receipt; a loose/stolen body retains normal ballistic catch-up. */
 export function lanternWardRecordHasCustody(record) {
-  const actor = ['tug', 'commuter', 'maintenance'].find(role => record?.recordId === LANTERN_WARD_RECORD_IDS[role]);
+  const actor = actorById.get(record?.recordId);
   if (actor) return record.type === 'ship' && record.alive !== false && record.playerOwned !== true
-    && record.sectorId === LANTERN_WARD_SECTOR && record.jobId === `job:${record.recordId}`
+    && record.extra?.lanternWardInvalid !== true && !['destroyed', 'defeated'].includes(record.outcome)
+    && record.sectorId === LANTERN_WARD_SECTOR && record.homeSectorId === LANTERN_WARD_SECTOR
+    && record.shipDefId === (actor === 'tug' ? 'ship_mule' : 'ship_drifter')
+    && record.jobId === `job:${record.recordId}` && finitePose(record)
+    && Number.isFinite(record.hull) && record.hull > 0 && Number.isFinite(record.hullMax)
+    && record.hullMax > 0 && record.hull <= record.hullMax
     && record.itinerary?.kind === 'lantern_ward_actor' && record.itinerary.lanternWard?.version === 1
     && record.itinerary.lanternWard.role === actor && record.itinerary.lanternWard.identity === record.recordId
     && record.itinerary.lanternWard.workLease === 'lantern_ward_attended_work';
@@ -103,19 +153,11 @@ export function lanternWardRecordHasCustody(record) {
   if (role === 'receiver' || role === 'service_face') return true;
   if (role === 'maintenance_part') {
     const c = record.itinerary.lanternWard.custody, link = c?.clamp;
-    return ['maintenance', 'service_face'].includes(c.holder) && c.serial === LANTERN_WARD_PART_SERIAL
-      && link?.active === true && typeof link.attachmentId === 'string'
-      && link.ownerRecordId === LANTERN_WARD_RECORD_IDS[c.holder]
-      && link.targetRecordId === LANTERN_WARD_RECORD_IDS.maintenance_part;
+    return (c.holder === 'maintenance' || c.holder === 'service_face') && link?.active === true;
   }
   if (role !== 'lamp' && role !== 'cradle') return false;
   const custody = record.itinerary.lanternWard.custody, clamp = custody?.clamp;
-  return clamp?.active === true && typeof clamp.attachmentId === 'string' && clamp.attachmentId.length > 0
-    && clamp.targetRecordId === LANTERN_WARD_RECORD_IDS.lamp
-    && (clamp.ownerRecordId === LANTERN_WARD_RECORD_IDS.cradle
-      || (role === 'lamp' && clamp.ownerRecordId === LANTERN_WARD_RECORD_IDS.receiver))
-    && (role === 'cradle' ? custody.loadSerial === LANTERN_WARD_LAMP_SERIAL
-      : custody.serial === LANTERN_WARD_LAMP_SERIAL && ['cradle', 'receiver'].includes(custody.holder));
+  return clamp?.active === true;
 }
 
 /** Allocation-free recipe admission. Runtime bindings independently require
@@ -128,6 +170,23 @@ export function isLanternWardHardwareEntity(entity) {
     && (role !== 'maintenance_part' || d.lanternWardSerial === LANTERN_WARD_PART_SERIAL);
 }
 
+/** Complete live finite-workpiece contract. Keep the cheaper identity predicate
+ * above for capture: corrupted originals still need an unavailable durable row.
+ * The job separately proves native body ownership and exact live attachment
+ * generations; this predicate cannot grant either authority from saved tags. */
+export function isLanternWardWorkpieceEligible(entity) {
+  if (!isLanternWardHardwareEntity(entity) || entity.alive === false) return false;
+  const d = entity.data, role = d.lanternWardRole, recipe = d.itinerary?.lanternWard;
+  return (role === 'lamp' || role === 'maintenance_part') && d.lanternWardInvalid !== true
+    && d.identityKey === LANTERN_WARD_RECORD_IDS[role] && d.persistenceOwner === 'worldRecords'
+    && entity.homeSectorId === LANTERN_WARD_SECTOR && d.homeSectorId === LANTERN_WARD_SECTOR && d.physicalCustodyOnly === true
+    && d.itinerary?.kind === 'lantern_ward' && recipe?.version === 1 && recipe.invalid !== true
+    && recipe.role === role && recipe.identity === LANTERN_WARD_RECORD_IDS[role]
+    && recipe.serial === (role === 'lamp' ? LANTERN_WARD_LAMP_SERIAL : LANTERN_WARD_PART_SERIAL)
+    && finitePose(entity) && validVitals(entity, role)
+    && validCustody(role, d.lanternWardCustody) && validManifest(role, d.cargoManifest, d.lanternWardCustody);
+}
+
 /** Capture only an exact recipe identity, never a same-name or recycled-id body. */
 export function captureLanternWardHardware(entity) {
   if (!isLanternWardHardwareEntity(entity)) return null;
@@ -137,6 +196,8 @@ export function captureLanternWardHardware(entity) {
     lanternWard: {
       version: 1, role, identity: d.worldRecordId,
       serial: role === 'lamp' ? LANTERN_WARD_LAMP_SERIAL : role === 'maintenance_part' ? LANTERN_WARD_PART_SERIAL : null,
+      ...((role === 'lamp' || role === 'maintenance_part') && !isLanternWardWorkpieceEligible(entity)
+        ? { invalid: true } : {}),
       custody: copy(d.lanternWardCustody), manifest: copy(d.cargoManifest),
       phase: phases.has(d.lanternWardPhase) ? d.lanternWardPhase : 'waiting',
       progress: unit(d.lanternWardProgress01), clamp: unit(d.lanternWardClamp01),
@@ -156,7 +217,7 @@ export function lanternWardHardwareSpec(role, record = null) {
   const pos = record ? { ...record.pos } : role === 'maintenance_part'
     ? lanternWardPoint(anchor, 'maintenanceSource')
     : lanternWardPoint(anchor, role === 'service_face' ? 'maintenanceFace' : role);
-  const dynamic = role === 'cradle' || role === 'lamp' || role === 'obstruction' || role === 'maintenance_part';
+  const dynamic = mobileRoles.has(role);
   const manifest = record ? saved.manifest : (role === 'lamp' ? {
     manifestId: LANTERN_WARD_LAMP_SERIAL, lotId: LANTERN_WARD_LAMP_SERIAL,
     destinationId: LANTERN_WARD_RECORD_IDS.receiver,
@@ -185,7 +246,7 @@ export function lanternWardHardwareSpec(role, record = null) {
       name: names[role], scanLabel: names[role], lanternWardId: LANTERN_WARD_ID,
       lanternWardRole: role, worldRecordId: LANTERN_WARD_RECORD_IDS[role],
       identityKey: LANTERN_WARD_RECORD_IDS[role], persistenceOwner: 'worldRecords',
-      worldRecordNamed: true, homeSectorId: LANTERN_WARD_SECTOR, sectorId: LANTERN_WARD_SECTOR,
+      worldRecordNamed: true, homeSectorId: LANTERN_WARD_SECTOR, sectorId: record?.sectorId || LANTERN_WARD_SECTOR,
       transientSector: false, lifetime: Infinity, physicalCustodyOnly: true,
       worldSiteTargetable: true,
       towable: dynamic, masslineTetherable: dynamic, salvagePool: {}, loot: [],
@@ -202,6 +263,12 @@ export function lanternWardHardwareSpec(role, record = null) {
       lanternWardWorkerPresent: false,
     },
   };
+  // Establish the immutable recipe identity before capture checks the complete
+  // live contract. This initial construction is the only fresh-original path.
+  spec.data.itinerary = { kind: 'lantern_ward', lanternWard: { version: 1, role,
+    identity: LANTERN_WARD_RECORD_IDS[role],
+    serial: role === 'lamp' ? LANTERN_WARD_LAMP_SERIAL : role === 'maintenance_part' ? LANTERN_WARD_PART_SERIAL : null,
+  } };
   spec.data.itinerary = captureLanternWardHardware(spec);
   return spec;
 }

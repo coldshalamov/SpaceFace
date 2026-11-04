@@ -40,8 +40,10 @@ test('world owner captures every finite body with its actual pose, damage and cu
     const e = { id: 100 + i, ...lanternWardHardwareSpec(role) };
     e.pos.x += 17; e.pos.z -= 9; e.rot += 0.4; e.vel = { x: 1.2, z: -0.5 };
     e.hull -= 13; e.data.lanternWardDamage01 = 0.31;
-    e.data.lanternWardCustody = { holder: 'loose', operation: 'interrupted',
-      ...(role === 'lamp' ? { serial: 'venn-family-lamp:01' } : {}) };
+    if (role === 'lamp' || role === 'maintenance_part') {
+      e.data.lanternWardCustody = { holder: 'loose', operation: 'interrupted', serial: e.data.lanternWardSerial };
+      e.data.cargoManifest.custody = { holderId: 'loose' };
+    } else e.data.lanternWardCustody = { holder: 'ward' };
     assert.equal(entityIsDurableCandidate(e, 1), true);
     const r = captureEntityRecord(e, { sectorId: 'sector_helios_prime', seed: 7401 });
     assert.equal(r.type, 'payload');
@@ -67,7 +69,7 @@ test('dead, substituted and malformed lamp records cannot fall through to a gene
     r => { r.type = 'ship'; },
     r => { r.itinerary.lanternWard.serial = 'some-other-family'; },
     r => { r.itinerary.lanternWard.role = 'cradle'; },
-    r => { r.sectorId = 'sector_ceres_belt'; },
+    r => { r.homeSectorId = 'sector_ceres_belt'; },
     r => { delete r.vel; },
     r => { r.rot = null; },
   ]) {

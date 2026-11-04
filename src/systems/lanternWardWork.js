@@ -14,6 +14,7 @@ import {
   LANTERN_WARD_PART_SERIAL as PART_SERIAL,
   LANTERN_WARD_HARDWARE_ROLES, lanternWardCanonicalAnchor,
   lanternWardHardwareSpec, captureLanternWardHardware, isLanternWardHardwareEntity,
+  isLanternWardWorkpieceEligible,
 } from '../data/lanternWardHardware.js';
 
 const STORY = 'lw_helios_empty_plinth';
@@ -111,9 +112,15 @@ function hasWorkPower(owner, e) {
   const live = owner.state.combat?.entities?.[String(e?.id)];
   return (live?.capabilities || kernel(owner)?.capabilities?.(e?.id)?.capabilities)?.power === true;
 }
+const lineDefinition = key => key === 'clearing' || key === 'maintenance-tow'
+  ? 'tether_standard' : 'attachment_transport_clamp';
+const eligibleEndpoint = e => !['lamp', 'maintenance_part'].includes(e?.data?.lanternWardRole)
+  || isLanternWardWorkpieceEligible(e);
 function activeLine(owner, key, a, b) {
   const id = runtime(owner).attachments.get(key), line = id && attachments(owner)?.get?.(id);
   if (!line || line.state !== 'active' || !a || !b || line.ownerId !== a.id || line.targetId !== b.id
+      || line.controlMode !== CONTROL || line.defId !== lineDefinition(key)
+      || !eligibleEndpoint(a) || !eligibleEndpoint(b)
       || !attachmentBindsOccupant(line, a.id, a.occupantGeneration)
       || !attachmentBindsOccupant(line, b.id, b.occupantGeneration)) return null;
   return line;
@@ -124,6 +131,7 @@ function dropLine(owner, key, reason) {
   runtime(owner).attachments.delete(key);
 }
 function lineBetween(owner, key, a, b, source, target, defId = 'attachment_transport_clamp') {
+  if (defId !== lineDefinition(key) || !eligibleEndpoint(a) || !eligibleEndpoint(b)) return null;
   const held = activeLine(owner, key, a, b);
   if (held) return held;
   if (!nativePose(owner, a) || !nativePose(owner, b)) return null;
@@ -131,7 +139,7 @@ function lineBetween(owner, key, a, b, source, target, defId = 'attachment_trans
   // Continue can restore a real native attachment before this job restores its
   // transient map. Adopt only an exact generation-bound link with our control mode.
   const existing = service?.listForEntity?.(a.id)?.find(row => row.state === 'active'
-    && row.controlMode === CONTROL && row.ownerId === a.id && row.targetId === b.id
+    && row.controlMode === CONTROL && row.defId === defId && row.ownerId === a.id && row.targetId === b.id
     && attachmentBindsOccupant(row, a.id, a.occupantGeneration)
     && attachmentBindsOccupant(row, b.id, b.occupantGeneration));
   if (existing) { runtime(owner).attachments.set(key, existing.id); return existing; }
@@ -244,6 +252,15 @@ function pointSegmentDistance(p, a, b) {
   return distance(p, { x: a.x + dx * t, z: a.z + dz * t });
 }
 
+function segmentDistance(a, b, c, d) {
+  const cross = (p, q, r) => (q.x - p.x) * (r.z - p.z) - (q.z - p.z) * (r.x - p.x);
+  if (cross(a, b, c) * cross(a, b, d) <= 0 && cross(c, d, a) * cross(c, d, b) <= 0
+      && Math.max(Math.min(a.x, b.x), Math.min(c.x, d.x)) <= Math.min(Math.max(a.x, b.x), Math.max(c.x, d.x))
+      && Math.max(Math.min(a.z, b.z), Math.min(c.z, d.z)) <= Math.min(Math.max(a.z, b.z), Math.max(c.z, d.z))) return 0;
+  return Math.min(pointSegmentDistance(a, c, d), pointSegmentDistance(b, c, d),
+    pointSegmentDistance(c, a, b), pointSegmentDistance(d, a, b));
+}
+
 /** Clearance measures the current fallen mast, including arbitrary rotations. */
 function clearCutLane(owner, anchor, obstacle) {
   const pose = nativePose(owner, obstacle);
@@ -253,7 +270,13 @@ function clearCutLane(owner, anchor, obstacle) {
   const b = { x: pose.pos.x + 29 * c, z: pose.pos.z + 29 * s };
   // The procession occupies a 36 WU swept envelope. Either real side route
   // through the 84 WU throat is sufficient; any force can earn this fact.
-  return [0, -22, 22].find(z => pointSegmentDistance({ x: cut.x, z: cut.z + z }, a, b) >= 24) ?? null;
+  // Test the swept route, not only the throat's centre point. A mast pushed
+  // halfway through the cut still blocks the rig downstream of that point.
+  const loadTarget = position(anchor, 'receiver', 0, 45);
+  return [0, -22, 22].find(z => {
+    const entry = { x: cut.x - 40, z: cut.z + z }, exit = { x: cut.x + 35, z: cut.z + z };
+    return segmentDistance(entry, exit, a, b) >= 24 && segmentDistance(exit, loadTarget, a, b) >= 24;
+  }) ?? null;
 }
 
 function crewStand(anchor, w) {
@@ -353,13 +376,38 @@ function updateMaintenance(owner, dt, anchor, tender, face, part) {
   const w = ward(owner);
   if (!tender || !face) return;
   const source = position(anchor, 'maintenanceSource', 55, 73), stand = position(anchor, 'maintenanceFace', 23, 90);
+  if (!isLanternWardWorkpieceEligible(part) || !nativePose(owner, part)) {
+    face.data.lanternWardRepaired = false;
+    setPhase(face, 'waiting'); w.maintenanceS = 0;
+    tender.data.lanternWardCarrying = null; fly(owner, tender, source, 7, 4); return;
+  }
+  if (playerLine(owner, part)) {
+    dropLine(owner, 'maintenance-tow', 'lantern_part_taken');
+    dropLine(owner, 'maintenance-seat', 'lantern_part_taken');
+    part.data.lanternWardCustody = { holder: 'loose', serial: PART_SERIAL };
+    part.data.cargoManifest.custody = { holderId: 'loose' };
+    tender.data.lanternWardCarrying = null;
+    face.data.lanternWardRepaired = false;
+    w.maintenancePhase = 'approach'; w.maintenanceS = 0;
+    setPhase(face, 'waiting'); return;
+  }
   if (w.history.maintenanceServices === 1 && part && !playerLine(owner, part)
       && distance(part.pos, lanternWardSocketWorld(face, 'service_approach')) < 5) {
     const held = lineBetween(owner, 'maintenance-seat', face, part,
       lanternWardSocketWorld(face, 'service_approach'), part.pos);
-    if (held) part.data.lanternWardCustody = { holder: 'service_face', serial: PART_SERIAL,
-      clamp: { attachmentId: held.id, active: true, ownerRecordId: IDS.service_face, targetRecordId: IDS.maintenance_part } };
+    if (held) {
+      part.data.lanternWardCustody = { holder: 'service_face', serial: PART_SERIAL,
+        clamp: { attachmentId: held.id, active: true, ownerRecordId: IDS.service_face, targetRecordId: IDS.maintenance_part } };
+      part.data.cargoManifest.custody = { holderId: IDS.service_face };
+    }
     if (held && hasWorkPower(owner, face)) workForce(owner, part, lanternWardSocketWorld(face, 'service_approach'), .5, 30);
+  }
+  const alreadyDone = w.history.maintenanceServices === 1
+    && !!activeLine(owner, 'maintenance-seat', face, part)
+    && distance(part.pos, lanternWardSocketWorld(face, 'service_approach')) < 5;
+  face.data.lanternWardRepaired = alreadyDone;
+  if (!alreadyDone && (w.maintenancePhase === 'retreat' || w.maintenancePhase === 'inspection')) {
+    w.maintenancePhase = 'approach'; w.maintenanceS = 0;
   }
   if (w.maintenancePhase === 'retreat') {
     setPhase(face, 'retreat');
@@ -373,20 +421,7 @@ function updateMaintenance(owner, dt, anchor, tender, face, part) {
     if (w.maintenanceS > 36) { w.maintenancePhase = 'approach'; w.maintenanceS = 0; }
     return;
   }
-  const alreadyDone = w.history.maintenanceServices === 1;
   const manifest = part?.data?.cargoManifest;
-  if (!alreadyDone && (!part || !nativePose(owner, part) || part.data.lanternWardSerial !== PART_SERIAL
-      || manifest?.manifestId !== PART_SERIAL || manifest?.totalQty !== 1
-      || manifest?.lines?.length !== 1 || manifest.lines[0].qty !== 1)) {
-    setPhase(face, 'waiting'); w.maintenanceS = 0; fly(owner, tender, source, 7, 4); return;
-  }
-  if (!alreadyDone && playerLine(owner, part)) {
-    dropLine(owner, 'maintenance-tow', 'lantern_part_taken');
-    dropLine(owner, 'maintenance-seat', 'lantern_part_taken');
-    part.data.lanternWardCustody = { holder: 'loose', serial: PART_SERIAL };
-    tender.data.lanternWardCarrying = null;
-    setPhase(face, 'waiting'); w.maintenanceS = 0; return;
-  }
   let capture = activeLine(owner, 'maintenance-seat', face, part);
   if (!alreadyDone && !capture) {
     let line = activeLine(owner, 'maintenance-tow', tender, part);
@@ -407,8 +442,13 @@ function updateMaintenance(owner, dt, anchor, tender, face, part) {
     if (w.maintenancePickupS < 2) { setPhase(tender, 'brace', w.maintenancePickupS / 2); return; }
     const socket = lanternWardSocketWorld(face, 'service_approach');
     dropLine(owner, 'maintenance-tow', 'lantern_shutter_receiving');
+    part.data.lanternWardCustody = { holder: 'loose', serial: PART_SERIAL };
+    manifest.custody = { holderId: 'loose' };
     capture = lineBetween(owner, 'maintenance-seat', face, part, socket, part.pos);
     if (!capture) return;
+    part.data.lanternWardCustody = { holder: 'service_face', serial: PART_SERIAL,
+      clamp: { attachmentId: capture.id, active: true, ownerRecordId: IDS.service_face, targetRecordId: IDS.maintenance_part } };
+    manifest.custody = { holderId: IDS.service_face };
   }
   const attending = fly(owner, tender, stand, 7, 3) && nativePose(owner, face) && hasWorkPower(owner, tender);
   if (!attending) { setPhase(face, 'approach'); w.maintenanceS = 0; return; }
@@ -473,6 +513,12 @@ function updateCommuter(owner, dt, anchor, commuter, tug, cradle) {
 
 function commitService(owner, lamp, receiver, method) {
   const w = ward(owner);
+  const mounted = activeLine(owner, 'installed', receiver, lamp);
+  if (!isLanternWardWorkpieceEligible(lamp) || entityFor(owner, 'lamp') !== lamp
+      || entityFor(owner, 'receiver') !== receiver || !mounted || w.workS < 18
+      || !nativePose(owner, lamp) || !nativePose(owner, receiver)
+      || distance(lamp.pos, lanternWardSocketWorld(receiver, 'lamp_seat')) > 2
+      || speed(lamp) > .8 || lamp.hull < lamp.hullMax * .65) return;
   if (w.firstCompletionReceipt) {
     w.phase = 'installed'; w.needsReinstall = false; w.history.recovered = true;
     custody(lamp, 'receiver', activeLine(owner, 'installed', receiver, lamp)); lamp.data.lanternWardLit = true; receiver.data.lanternWardLit = true;
@@ -518,16 +564,18 @@ export function stepLanternWard(owner, dt) {
   ensureBodies(owner, anchor);
   const bodies = Object.fromEntries(ROLES.map(role => [role, entityFor(owner, role)]));
   const { lamp, cradle, receiver, obstruction, tug, commuter, maintenance, service_face: face, maintenance_part: part } = bodies;
-  w.lampMissing = !lamp;
+  const eligibleLamp = isLanternWardWorkpieceEligible(lamp);
+  w.lampMissing = !lamp || !eligibleLamp;
   w.cradleAway = !cradle || distance(cradle.pos, position(anchor, 'cradle')) > 280;
   if (playerNear(owner, position(anchor, 'cradle'), 240)) {
     w.observedS += dt; if (w.firstSeenAtS == null) w.firstSeenAtS = now(owner);
   }
   updateMaintenance(owner, dt, anchor, maintenance, face, part);
   updateCommuter(owner, dt, anchor, commuter, tug, cradle);
-  theft(owner, 'cradle', cradle, anchor); theft(owner, 'lamp', lamp, anchor);
+  theft(owner, 'cradle', cradle, anchor);
+  if (eligibleLamp) theft(owner, 'lamp', lamp, anchor);
   if (playerLine(owner, obstruction)) w.obstructionTouchedAtS = now(owner);
-  if (!receiver || !lamp || !tug) {
+  if (!receiver || !lamp || !eligibleLamp || (!tug && !w.firstCompletionReceipt)) {
     if (!w.firstCompletionReceipt) w.phase = 'missing';
     w.workS = 0; setPhase(receiver, 'waiting');
     if (receiver) receiver.data.lanternWardLit = false;
@@ -540,8 +588,10 @@ export function stepLanternWard(owner, dt) {
     w.history.damaged = true; w.phase = 'damaged'; w.workS = 0;
     lamp.data.lanternWardLit = false; receiver.data.lanternWardLit = false;
     setPhase(lamp, 'damaged'); setPhase(receiver, 'damaged');
-    if (lamp.pos.x < position(anchor, 'obstruction').x) fly(owner, tug, position(anchor, 'cradle', -40, 28), 7, 4);
-    else flyTugToWork(owner, tug, anchor, w, clearCutLane(owner, anchor, obstruction) == null);
+    if (tug) {
+      if (lamp.pos.x < position(anchor, 'obstruction').x) fly(owner, tug, position(anchor, 'cradle', -40, 28), 7, 4);
+      else flyTugToWork(owner, tug, anchor, w, clearCutLane(owner, anchor, obstruction) == null);
+    }
     return;
   }
   if (w.firstCompletionReceipt) {
@@ -567,6 +617,7 @@ export function stepLanternWard(owner, dt) {
     w.needsReinstall = true;
     custody(lamp, 'loose');
   }
+  if (!tug) { w.phase = 'missing'; w.workS = 0; return; }
   const lane = clearCutLane(owner, anchor, obstruction), blocked = lane == null;
   if (lane != null) w.clearanceLane = lane;
   w.blocked = blocked;
@@ -599,7 +650,14 @@ export function stepLanternWard(owner, dt) {
     } else cradle.data.lanternWardCustody = { holder: w.cradleAway && w.history.cradleStolen ? 'player' : 'ward' };
     if (!loaded || playerLine(owner, lamp) || playerLine(owner, cradle)) {
       w.phase = 'interrupted'; setPhase(cradle, 'waiting');
-      flyTugToWork(owner, tug, anchor, w, blocked); return;
+      // Far from the player, native payload residency may not yet admit the
+      // clamp. The operator waits beside the real load; an unavailable clamp
+      // is not a completed pickup or permission to fly an empty service route.
+      if (!loaded && distance(lamp.pos, originalSeat) <= 6
+          && !playerLine(owner, lamp) && !playerLine(owner, cradle)) {
+        fly(owner, tug, { x: cradle.pos.x - 40, z: cradle.pos.z + 28 }, 7, 4);
+      } else flyTugToWork(owner, tug, anchor, w, blocked);
+      return;
     }
     if (distance(tug.pos, cradle.pos) >= 90 && !playerLine(owner, cradle)) {
       w.phase = 'recovering'; setPhase(cradle, 'waiting');
@@ -653,19 +711,19 @@ export function stepLanternWard(owner, dt) {
   // load. Its unloading face points through the native rail opening.
   if (!cradleParked) { w.workS = 0; return; }
   dropLine(owner, 'load', 'lantern_receiver_transfer');
+  custody(lamp, 'loose');
   if (cradle) { cradle.data.lanternWardClamp01 = 0; cradle.data.lanternWardCustody = { holder: 'ward' }; }
   w.phase = 'brace'; setPhase(receiver, 'brace', 0, true);
   const mounted = lineBetween(owner, 'installed', receiver, lamp, seat, lamp.pos);
   if (!mounted) { w.workS = 0; return; }
+  custody(lamp, 'receiver', mounted);
   if (mounted.restLength > .5) attachments(owner)?.reel?.(mounted.id, -2.5 * dt, .5);
   // Once inside the actual receiver frame, the attended power head damps the
   // passive lamp's lateral swing. The accepted native capture line must exist;
   // outside this 12 WU work envelope only its real winch can move the lamp.
   if (distance(lamp.pos, seat) <= 12) workForce(owner, lamp, seat, .5, 30);
   if (distance(lamp.pos, seat) > 2 || speed(lamp) > .8) { w.workS = 0; return; }
-  if (!mounted || lamp.data?.lanternWardSerial !== SERIAL
-      || lamp.data?.cargoManifest?.manifestId !== SERIAL || lamp.data.cargoManifest.totalQty !== 1
-      || lamp.data.cargoManifest.lines?.length !== 1 || lamp.data.cargoManifest.lines[0].qty !== 1) {
+  if (!isLanternWardWorkpieceEligible(lamp)) {
     w.workS = 0; return;
   }
   custody(lamp, 'receiver', mounted); w.workS += dt; w.phase = 'connect';
@@ -749,6 +807,8 @@ export function lanternWardCompletionReceipt(owner, receiptId) {
     && mint?.receipt === r && mint.lamp?.alive !== false && mint.receiver?.alive !== false
     && owner.state.entities?.get(mint.lamp.id) === mint.lamp && owner.state.entities?.get(mint.receiver.id) === mint.receiver
     && mint.lamp.occupantGeneration === mint.lampGeneration && mint.receiver.occupantGeneration === mint.receiverGeneration
+    && entityFor(owner, 'lamp') === mint.lamp && entityFor(owner, 'receiver') === mint.receiver
+    && isLanternWardWorkpieceEligible(mint.lamp)
     && nativePose(owner, mint.lamp) && nativePose(owner, mint.receiver)
     && !!activeLine(owner, 'installed', mint.receiver, mint.lamp)
     && w.history.installations === 1 && r.lampSerial === SERIAL && r.receiverRecordId === IDS.receiver ? clone(r) : null;
@@ -770,7 +830,7 @@ export function lanternWardStatus(owner) {
  * original serial. Normal cargo removal and combat repair remain their owners. */
 export function repairLanternWardLamp(owner, target = null) {
   const w = ward(owner), lamp = entityFor(owner, 'lamp'), tug = entityFor(owner, 'tug');
-  if ((target != null && target !== tug) || !lamp || !tug || !nativePose(owner, lamp) || !nativePose(owner, tug)
+  if ((target != null && target !== tug) || !isLanternWardWorkpieceEligible(lamp) || !tug || !nativePose(owner, lamp) || !nativePose(owner, tug)
       || lamp.data?.lanternWardSerial !== SERIAL || lamp.hull >= lamp.hullMax * .65
       || distance(lamp.pos, tug.pos) > 65 || !playerNear(owner, lamp.pos, 80)
       || speed(lamp) > 2 || speed(tug) > 2) return { ok: false, reason: 'attended_lamp_required' };

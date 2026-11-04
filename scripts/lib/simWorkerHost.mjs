@@ -94,6 +94,7 @@ import {
   applyRemoteTimeEffectsSnapshot, setTimeEffectsGeneration,
 } from '../../src/core/timeEffects.js';
 import { canonicalClone, deepAssignInPlace } from './simReadModel.mjs';
+import { LANTERN_WARD_VITAL_KEYS, lanternWardPresentationLife, lanternWardVitalValue } from './npcJobsMirror.mjs';
 import { setLaneViewport, setLaneModalActive } from '../../src/systems/input.js';
 import { nowNs, realmMemoryUsage, installLaneStorage, stageLaneStorage, settleLaneStorageCheck } from './simRealm.mjs';
 import { sabArenaTotalBytes } from './simSabEnvelope.mjs';
@@ -367,6 +368,10 @@ export function entityVitalsOf(e, krakenFrame = VITAL_SHADOW_MISSING, state = nu
     fields.pallasSeamCutting = e.data.minerShiftActive === true;
     fields.pallasSeamStandbyTick = pallasSeamStandbyTick(e);
   }
+  const wardLife = lanternWardPresentationLife(e);
+  if (wardLife != null) {
+    for (const key of LANTERN_WARD_VITAL_KEYS) fields[key] = lanternWardVitalValue(e, key, wardLife);
+  }
   for (const key of AUTHORED_MOTION_FRAME_FIELDS) {
     const value = authoredMotionFrameValue(e, key);
     if (value !== VITAL_SHADOW_MISSING) fields[key] = value;
@@ -500,6 +505,16 @@ function vitalShadowMatches(e, shadow, krakenFrame, state) {
   const seam = hasPallasSeamWorkLight(e);
   if ((seam ? e.data.minerShiftActive === true : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
   if ((seam ? pallasSeamStandbyTick(e) : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
+  const wardLife = lanternWardPresentationLife(e);
+  const wardShadow = shadow[i++];
+  if (wardLife == null) {
+    if (wardShadow !== VITAL_SHADOW_MISSING) return false;
+  } else {
+    if (!Array.isArray(wardShadow)) return false;
+    for (let j = 0; j < LANTERN_WARD_VITAL_KEYS.length; j++) {
+      if (lanternWardVitalValue(e, LANTERN_WARD_VITAL_KEYS[j], wardLife) !== wardShadow[j]) return false;
+    }
+  }
   for (const key of AUTHORED_MOTION_FRAME_FIELDS) {
     if (authoredMotionFrameValue(e, key) !== shadow[i++]) return false;
   }
@@ -549,6 +564,16 @@ function writeVitalShadow(e, shadow, krakenFrame, state) {
   const seam = hasPallasSeamWorkLight(e);
   shadow[i++] = seam ? e.data.minerShiftActive === true : VITAL_SHADOW_MISSING;
   shadow[i++] = seam ? pallasSeamStandbyTick(e) : VITAL_SHADOW_MISSING;
+  const wardLife = lanternWardPresentationLife(e);
+  // One empty slot for all other entities; only the nine Ward occupants retain this tuple.
+  if (wardLife == null) shadow[i++] = VITAL_SHADOW_MISSING;
+  else {
+    const wardShadow = Array.isArray(shadow[i]) ? shadow[i] : [];
+    for (let j = 0; j < LANTERN_WARD_VITAL_KEYS.length; j++) {
+      wardShadow[j] = lanternWardVitalValue(e, LANTERN_WARD_VITAL_KEYS[j], wardLife);
+    }
+    shadow[i++] = wardShadow;
+  }
   for (const key of AUTHORED_MOTION_FRAME_FIELDS) {
     shadow[i++] = authoredMotionFrameValue(e, key);
   }
