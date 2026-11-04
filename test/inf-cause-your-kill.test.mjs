@@ -36,6 +36,8 @@ function stateFor({ chainAgeS = 40, receiptQty = 10, chain = {} } = {}) {
       closed: true,
       salvaged: {},
       redeemed: { [GOOD]: 6 },
+      pressureReceipts: { [GOOD]: { receiptId: 'trade:test', stationId: STATION,
+        saleStationId: SALE, seenAt: NOW - chainAgeS, qty: 6 } },
       ...chain,
     }] },
     player: { tradeLedger: [{
@@ -53,7 +55,7 @@ test('a redeemed chain at this station names the kill behind the move', () => {
   const line = cargoKillLine(stateFor(), STATION, GOOD);
   assert.ok(line, 'the kill speaks');
   assert.match(line, /hauler you downed never landed/);
-  assert.match(line, /6u of its manifest went to your hold and back to this desk\./);
+  assert.match(line, /6u of its manifest was sold at/);
 });
 
 test('the receipt is the clock: stale or missing sales render nothing', () => {
@@ -61,10 +63,11 @@ test('the receipt is the clock: stale or missing sales render nothing', () => {
     null, 'an old sale never claims a live move');
   const noReceipt = stateFor();
   noReceipt.player.tradeLedger = [];
-  assert.equal(cargoKillLine(noReceipt, STATION, GOOD), null, 'no receipt, no claim');
+  assert.ok(cargoKillLine(noReceipt, STATION, GOOD), 'the owner-recorded receipt fact survives ledger eviction');
   const smallSale = stateFor({ receiptQty: 4 });
-  assert.equal(cargoKillLine(smallSale, STATION, GOOD), null,
-    'a sale smaller than the redeemed units cannot be the closing receipt');
+  assert.ok(cargoKillLine(smallSale, STATION, GOOD), 'an unrelated ledger entry cannot replace the bound fact');
+  const legacy = stateFor(); delete legacy.economy.cargoKillChains[0].pressureReceipts;
+  assert.equal(cargoKillLine(legacy, STATION, GOOD), null, 'legacy chains cannot borrow a recent unrelated sale');
 });
 
 test('another station or another good never borrows this desk\u2019s why', () => {
@@ -72,7 +75,7 @@ test('another station or another good never borrows this desk\u2019s why', () =>
   assert.equal(cargoKillLine(state, 'station_elsewhere', GOOD), null,
     'the move happened at the destination, nowhere else');
   assert.equal(cargoKillLine(state, STATION, 'cmdty_food'), null);
-  assert.equal(cargoKillLine(stateFor({ chain: { destStationId: null } }), STATION, GOOD), null);
+  assert.ok(cargoKillLine(stateFor({ chain: { destStationId: null } }), STATION, GOOD), 'the actual pressure station owns the fact');
   assert.equal(cargoKillLine({}, STATION, GOOD), null);
   assert.equal(cargoKillLine(null, STATION, GOOD), null);
 });

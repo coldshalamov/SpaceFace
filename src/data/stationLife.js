@@ -105,18 +105,12 @@ export const MARKET_REF_MIN_AGE_S = 120;
 export const MARKET_MOVE_MIN_CR = 5;
 export const MARKET_MOVE_MIN_FRAC = 0.08;
 
-function historyPoint(point) {
-  if (Array.isArray(point)) return { t: Number(point[0]), mid: Number(point[1]) };
-  if (point && typeof point === 'object') return { t: Number(point.t), mid: Number(point.mid) };
-  return { t: NaN, mid: NaN };
-}
-
 /**
  * The docked station's market desk line, or null when it has nothing true to say.
  * The station is the price authority while the pilot stands in it, so the live book is
  * the honest source — no memory, no survey packets, no invented movement. Pure read.
  */
-export function stationMarketLine(state, stationId) {
+export function stationMarketLine(state, stationId, observed = null) {
   if (!state || !stationId) return null;
   const starved = state.worldNews && state.worldNews.starved;
   if (starved && typeof starved === 'object' && !Array.isArray(starved)) {
@@ -131,40 +125,30 @@ export function stationMarketLine(state, stationId) {
       return { text: `Market desk: ${names[0]} is starved at this berth. Haulers, the desk is listening.` };
     }
   }
-  const market = state.economy && state.economy.markets && state.economy.markets[stationId];
+  if (!observed || observed.stationId !== stationId || !Number.isFinite(observed.asOf)) return null;
+  const market = observed.comparisons;
   if (!market || typeof market !== 'object' || Array.isArray(market)) return null;
   const now = Number(state.simTime) || 0;
+  if (now < observed.asOf || now - observed.asOf > 5) return null;
   let best = null;
   for (const commodityId of Object.keys(market).sort()) {
     const entry = market[commodityId];
-    const history = entry && Array.isArray(entry.history) ? entry.history : null;
-    const mid = Number(entry && entry.lastMid);
-    if (!history || history.length < 2 || !Number.isFinite(mid)) continue;
-    // The newest sampled mid at least one watch back grounds the claim; a shorter
-    // history qualifies only through its oldest point once that is most of a watch old.
-    let ref = null;
-    for (const point of history) {
-      const { t, mid: pointMid } = historyPoint(point);
-      if (!Number.isFinite(t) || !Number.isFinite(pointMid)) continue;
-      if (now - t >= MARKET_WATCH_S) ref = pointMid;
-    }
-    if (ref == null) {
-      const oldest = historyPoint(history[0]);
-      if (Number.isFinite(oldest.t) && Number.isFinite(oldest.mid)
-        && now - oldest.t >= MARKET_REF_MIN_AGE_S) ref = oldest.mid;
-    }
-    if (ref == null || !(ref > 0)) continue;
+    const mid = Number(entry && entry.current);
+    const ref = Number(entry && entry.reference);
+    const observedAt = Number(entry && entry.observedAt);
+    if (!Number.isFinite(mid) || !(ref > 0) || !Number.isFinite(observedAt)
+      || observed.asOf - observedAt < MARKET_REF_MIN_AGE_S || observed.asOf > now) continue;
     const drift = mid - ref;
     if (Math.abs(drift) < MARKET_MOVE_MIN_CR) continue;
     if (Math.abs(drift) < Math.abs(ref) * MARKET_MOVE_MIN_FRAC) continue;
     const name = CMDTY_NAMES.get(commodityId) || commodityId;
     if (!best || Math.abs(drift) > Math.abs(best.drift)) {
-      best = { name, drift, ref };
+      best = { name, drift, observedAt };
     }
   }
   if (!best) return null;
   const cr = Math.max(1, Math.round(Math.abs(best.drift)));
   return {
-    text: `Market desk: ${best.name} is ${best.drift > 0 ? 'up' : 'down'} ${cr} since the last bell. Trade at the counter, not on the floor.`,
+    text: `Market desk: ${best.name} is ${best.drift > 0 ? 'up' : 'down'} ${cr} compared with ${Math.floor(now - best.observedAt)} seconds ago. Trade at the counter, not on the floor.`,
   };
 }

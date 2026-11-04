@@ -1,5 +1,6 @@
 import { stationLifeProfile, stationLifeElapsed, stationBayCalls, stationPALine, stationMarketLine } from '../../data/stationLife.js';
 import { bindStationLifeClock } from '../../presentation/stationLifeClock.js';
+import { laneRpc, laneCommandSink } from '../../core/simLaneCommands.js';
 
 /** Docked presentation keeps breathing while the canonical simulation is paused. */
 export function createStationLifePresenter(ctx, options = {}) {
@@ -11,6 +12,8 @@ export function createStationLifePresenter(ctx, options = {}) {
   const receipt = options.showReceipt || (() => {});
   let timer = null, visible = false, disposed = false, visit = null;
   let competingUntil = 0, emitting = false;
+  let requestGeneration = 0;
+  const request = options.request || laneRpc;
   const offs = [];
   const current = () => state.ui?.docked ? state.ui.dockedStationId : null;
   // Bus-optional construction: the lifecycle suite drives a bare `{ state: {} }` presenter
@@ -45,6 +48,23 @@ export function createStationLifePresenter(ctx, options = {}) {
     if (request?.scene === 'berth' && visit) bindStationLifeClock(request, visit.clock);
   }
   function cancel() { if (timer !== null) clearTimer(timer); timer = null; }
+  function requestMarket() {
+    if (!visible || disposed || !visit || visit.marketPending || current() !== visit.stationId) return;
+    const owner = visit, token = ++requestGeneration, sink = laneCommandSink();
+    owner.marketPending = true;
+    Promise.resolve().then(() => request('marketHistory', { stationId: owner.stationId, includeObservedComparisons: true }))
+      .then((ack) => {
+        if (disposed || !visible || visit !== owner || token !== requestGeneration
+          || laneCommandSink() !== sink || current() !== owner.stationId) return;
+        let result = ack;
+        for (let i = 0; i < 3 && result && !result.observedComparisons; i++) {
+          if (result.ok === false) return;
+          result = result.result;
+        }
+        const summary = result?.observedComparisons;
+        if (summary?.stationId === owner.stationId) owner.marketObserved = summary;
+      }).catch(() => {}).finally(() => { if (visit === owner && token === requestGeneration) owner.marketPending = false; });
+  }
   function tick() {
     timer = null;
     if (!visible || disposed || !visit || current() !== visit.stationId) return;
@@ -74,7 +94,8 @@ export function createStationLifePresenter(ctx, options = {}) {
         // The market desk takes the free PA slot once per watch (inf-pa-market-desk): the
         // desk chime answers first, then the line reads what this station's own market
         // just did. No news, no move — the ordinary rotation keeps the floor.
-        const market = stationMarketLine(state, visit.stationId);
+        const market = stationMarketLine(state, visit.stationId, visit.marketObserved);
+        requestMarket();
         const watchKey = `${profile.shift.watchDay}:${profile.shift.index}`;
         if (market && visit.marketKey !== watchKey) {
           visit.marketKey = watchKey;
@@ -89,7 +110,7 @@ export function createStationLifePresenter(ctx, options = {}) {
     visit.lastS = seconds;
     timer = setTimer(tick, 500);
   }
-  function invalidate() { cancel(); visit = null; }
+  function invalidate() { requestGeneration++; cancel(); visit = null; }
   for (const event of ['dock:undocked', 'save:restoring', 'game:new', 'game:newGame']) on(event, invalidate);
   return {
     // The lifecycle suite pins this read; the module flag was never exposed before
@@ -104,10 +125,10 @@ export function createStationLifePresenter(ctx, options = {}) {
         clock: { elapsedS: 0, updatedAt: now(), running: true },
         lastS: 0, crowdAt: 1, paAt: 20, paIndex: 0, shiftKey: null, marketKey: null };
       else { visit.clock.updatedAt = now(); visit.clock.running = true; }
-      bindStage(); cancel(); timer = setTimer(tick, 500);
+      bindStage(); cancel(); requestMarket(); timer = setTimer(tick, 500);
     },
     hide() {
-      visible = false; cancel();
+      visible = false; requestGeneration++; if (visit) visit.marketPending = false; cancel();
       if (visit) { visit.clock.elapsedS = stationLifeElapsed(visit.clock, now()); visit.clock.running = false; }
     },
     dispose() { disposed = true; visible = false; invalidate(); offs.splice(0).forEach(off => off()); },

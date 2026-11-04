@@ -59,6 +59,16 @@ test('unnamed collisions and legacy scars heat nothing', () => {
   assert.equal(resolveWoundMetalHeat(null, NOW, {}).gain01, 0);
 });
 
+test('the live death reader chooses the newest eligible named wound, not an older severe scar', async () => {
+  const {vfx} = await import('../src/render/vfx.js');
+  const older = scar(NOW - 6, [1,0,0], 1);
+  const fresh = scar(NOW - 0.5, [0,0,1], 0.1);
+  const owner = {_causeMarks:{scars:{slots:[older,fresh]}}, _causeNow:()=>NOW};
+  const result = vfx._killBreachHeat.call(owner, 'h1');
+  assert.deepEqual(result, resolveWoundMetalHeat(fresh, NOW, {}));
+  assert.equal(vfx._killBreachHeat.call(owner, 'other'), null);
+});
+
 test('the shard start is the authored cold grey pulled toward the heat by the wound gain', () => {
   const cold = 0x94897b;
   const hot = 0xffaa30;

@@ -335,6 +335,9 @@ export function entityVitalsOf(e, krakenFrame = VITAL_SHADOW_MISSING) {
   if (typeof e.data?.scanLabel === 'string') fields.dataScanLabel = e.data.scanLabel;
   // Wreck concealment reads data.scanned — it flips after spawn, so it rides vitals like scanLabel.
   if (e.data && e.data.scanned !== undefined) fields.dataScanned = e.data.scanned === true;
+  if (e.type === 'beacon' && e.data?.storyPropKind === 'claim_beacon' && Number.isFinite(e.data.expireAt)) {
+    fields.dataBeaconExpireAt = e.data.expireAt;
+  }
   const ecology = e.data && e.data.ecology;
   if (ecology) {
     fields.ecologyName = e.data.name ?? null;
@@ -454,6 +457,8 @@ function vitalShadowMatches(e, shadow, krakenFrame) {
   if (swarmSpecialistFrameValue(e) !== shadow[i++]) return false;
   if ((typeof e.data?.scanLabel === 'string' ? e.data.scanLabel : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
   if ((e.data && e.data.scanned !== undefined ? e.data.scanned === true : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
+  if ((e.type === 'beacon' && e.data?.storyPropKind === 'claim_beacon' && Number.isFinite(e.data.expireAt)
+    ? e.data.expireAt : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
   const ecology = e.data && e.data.ecology;
   if ((ecology ? e.data.name ?? null : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
   if ((ecology ? e.data.scanLabel ?? null : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
@@ -501,6 +506,8 @@ function writeVitalShadow(e, shadow, krakenFrame) {
   shadow[i++] = swarmSpecialistFrameValue(e);
   shadow[i++] = typeof e.data?.scanLabel === 'string' ? e.data.scanLabel : VITAL_SHADOW_MISSING;
   shadow[i++] = e.data && e.data.scanned !== undefined ? e.data.scanned === true : VITAL_SHADOW_MISSING;
+  shadow[i++] = e.type === 'beacon' && e.data?.storyPropKind === 'claim_beacon' && Number.isFinite(e.data.expireAt)
+    ? e.data.expireAt : VITAL_SHADOW_MISSING;
   const ecology = e.data && e.data.ecology;
   shadow[i++] = ecology ? e.data.name ?? null : VITAL_SHADOW_MISSING;
   shadow[i++] = ecology ? e.data.scanLabel ?? null : VITAL_SHADOW_MISSING;
@@ -1382,11 +1389,30 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
           const entry = market[args.commodityId];
           return { stationId: args.stationId, commodityId: args.commodityId, history: (entry && entry.history) || null };
         }
-        const histories = {};
-        for (const cid of Object.keys(market)) {
-          histories[cid] = (market[cid] && market[cid].history) || null;
+        const result = { stationId: args.stationId };
+        if (args.includeObservedComparisons !== true) {
+          const histories = {};
+          for (const cid of Object.keys(market)) histories[cid] = (market[cid] && market[cid].history) || null;
+          result.histories = histories;
         }
-        return { stationId: args.stationId, histories };
+        if (args.includeObservedComparisons === true && state.ui?.docked
+          && state.ui.dockedStationId === args.stationId) {
+          const now = Number(state.simTime) || 0;
+          const comparisons = {};
+          for (const [cid, entry] of Object.entries(market)) {
+            if (!Number.isFinite(entry?.lastMid) || !Array.isArray(entry.history)) continue;
+            let reference = null;
+            for (const point of entry.history) {
+              if (point?.origin !== 'observed' || !Number.isFinite(point.t)
+                || !Number.isFinite(point.mid) || now - point.t < 120) continue;
+              if (!reference || point.t > reference.t) reference = point;
+            }
+            if (reference) comparisons[cid] = { reference: reference.mid,
+              observedAt: reference.t, current: entry.lastMid };
+          }
+          result.observedComparisons = { stationId: args.stationId, asOf: now, comparisons };
+        }
+        return result;
       }],
       ['physicsPrep', (args) => preparePhysicsBackend(registry, state, (args && args.backend) || 'rapier-dynamic')],
       // Sandbox/lab ops converted off the direct-call surface. Each replays the

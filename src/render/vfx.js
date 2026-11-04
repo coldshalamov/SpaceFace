@@ -334,6 +334,7 @@ import { createWeaponImpactVfxMethods } from './vfx/weaponImpactVfx.js';
 import { CauseMarkLayer } from './vfx/causeMarks.js';
 import { StationNightLightLayer } from './vfx/stationNightLights.js';
 import { collectHullWounds, resolveWoundBeat, resolveWoundMetalHeat, woundWorldPoint } from './vfx/woundSmoke.js';
+import { WOUND_METAL_HEAT_S } from './vfx/woundSmoke.js';
 import { resolveLineShieldSustain, shieldBiteDir } from './vfx/lineShieldBite.js';
 import { BeaconLampLayer } from './beaconLampLife.js';
 import {
@@ -5867,9 +5868,15 @@ export const vfx = {
     const layer = this._causeMarks || this._ensureCauseMarks();
     if (!layer) return null;
     const now = this._causeNow();
-    const wounds = collectHullWounds(layer.scars, victimId, now, this._breachWoundScratch || (this._breachWoundScratch = []));
-    if (!wounds.length) return null;
-    const heat = resolveWoundMetalHeat(wounds[0].slot, now, this._breachHeatScratch || (this._breachHeatScratch = {}));
+    let freshest = null;
+    for (const slot of layer.scars.slots) {
+      if (!slot || slot.hullId !== victimId || slot.wr == null || !Number.isFinite(slot.born)) continue;
+      const age = now - slot.born;
+      if (age < 0 || age >= WOUND_METAL_HEAT_S) continue;
+      if (!freshest || slot.born > freshest.born) freshest = slot;
+    }
+    if (!freshest) return null;
+    const heat = resolveWoundMetalHeat(freshest, now, this._breachHeatScratch || (this._breachHeatScratch = {}));
     return heat.gain01 > 0 ? heat : null;
   },
 

@@ -53,9 +53,12 @@ test('the biggest honest move against a watch-old mid speaks, with credits and d
     cmdty_food: { lastMid: 115, history: [[state.simTime - (MARKET_WATCH_S + 40), 95], [state.simTime - 30, 113]] },
     cmdty_ore_iron: { lastMid: 15, history: [[state.simTime - (MARKET_WATCH_S + 40), 14], [state.simTime - 30, 14.6]] },
   } } };
-  const line = stationMarketLine(state, STATION);
+  const observed = {stationId:STATION,asOf:state.simTime,comparisons:{
+    cmdty_food:{current:115,reference:95,observedAt:state.simTime-240},
+    cmdty_ore_iron:{current:15,reference:14,observedAt:state.simTime-240}}};
+  const line = stationMarketLine(state, STATION, observed);
   assert.ok(line, 'a real move speaks');
-  assert.match(line.text, /Market desk: Provisions is up 20 since the last bell\./);
+  assert.match(line.text, /Market desk: Provisions is up 20 compared with 240 seconds ago\./);
 });
 
 test('a move below the credits floor or the fraction gate is weather, not news', () => {
@@ -64,11 +67,13 @@ test('a move below the credits floor or the fraction gate is weather, not news',
     // 2 cr on a 100 cr board: under MARKET_MOVE_MIN_CR.
     cmdty_food: { lastMid: 102, history: [[state.simTime - (MARKET_WATCH_S + 40), 100], [state.simTime - 30, 101]] },
   } } };
-  assert.equal(stationMarketLine(state, STATION), null, 'a two-credit drift stays silent');
+  const observed={stationId:STATION,asOf:state.simTime,comparisons:{cmdty_food:{current:102,reference:100,observedAt:state.simTime-240}}};
+  assert.equal(stationMarketLine(state, STATION, observed), null, 'a two-credit drift stays silent');
   state.economy.markets[STATION].cmdty_food = {
     lastMid: 106, history: [[state.simTime - (MARKET_WATCH_S + 40), 100], [state.simTime - 30, 105]],
   };
-  assert.equal(stationMarketLine(state, STATION), null, 'six percent of the board is not a market move');
+  observed.comparisons.cmdty_food.current=106;
+  assert.equal(stationMarketLine(state, STATION, observed), null, 'six percent of the board is not a market move');
 });
 
 test('a market younger than a watch, or without history, leaves the desk wordless', () => {
@@ -152,4 +157,40 @@ test('a berth with no market news never schedules the desk — the PA stays exac
   assert.equal(cues.some((c) => c.id === CHIME), false, 'no chime without news');
   assert.ok(receipts.length > 0, 'the ordinary PA rotation still runs');
   p.dispose();
+});
+
+test('a retired visit cannot install its late worker comparison into a reopened berth', async () => {
+  let clock=0, pending=[], timers=[], receipts=[];
+  const state=baseState();
+  const presenter=createStationLifePresenter({state,bus:{on(){},off(){},emit(){}}},{
+    now:()=>clock,setTimeout:fn=>(timers.push(fn),timers.length),clearTimeout(){},
+    showReceipt:(...args)=>receipts.push(args),
+    request:()=>new Promise(resolve=>pending.push(resolve)),
+  });
+  presenter.show();await Promise.resolve();assert.equal(pending.length,1);
+  presenter.hide();presenter.show();await Promise.resolve();assert.equal(pending.length,2);
+  const dto=(delta)=>({result:{observedComparisons:{stationId:STATION,asOf:state.simTime,
+    comparisons:{cmdty_food:{reference:100,current:100+delta,observedAt:state.simTime-200}}}}});
+  pending[1](dto(30));await new Promise(resolve=>setImmediate(resolve));
+  pending[0](dto(60));await new Promise(resolve=>setImmediate(resolve));
+  for(let i=0;i<180;i++){clock+=500;const scheduled=timers;timers=[];for(const fn of scheduled)fn();}
+  const desk=receipts.find(x=>x[0]==='Market desk');assert.ok(desk);assert.match(desk[1],/up 30/);assert.doesNotMatch(desk[1],/up 60/);
+  presenter.dispose();
+});
+
+test('a comparison from a replaced worker cannot speak in the current berth', async () => {
+  const {installSimCommandSink,uninstallSimCommandSink}=await import('../src/core/simLaneCommands.js');
+  let clock=0, resolveRequest, timers=[], receipts=[];const state=baseState();
+  installSimCommandSink(()=>{});
+  const presenter=createStationLifePresenter({state,bus:{on(){},off(){},emit(){}}},{now:()=>clock,
+    setTimeout:fn=>(timers.push(fn),timers.length),clearTimeout(){},showReceipt:(...args)=>receipts.push(args),
+    request:()=>new Promise(resolve=>{resolveRequest=resolve;})});
+  try {
+    presenter.show();await Promise.resolve();installSimCommandSink(()=>{});
+    resolveRequest({result:{observedComparisons:{stationId:STATION,asOf:state.simTime,
+      comparisons:{cmdty_food:{reference:100,current:160,observedAt:state.simTime-200}}}}});
+    await new Promise(resolve=>setImmediate(resolve));
+    for(let i=0;i<180;i++){clock+=500;const scheduled=timers;timers=[];for(const fn of scheduled)fn();}
+    assert.equal(receipts.some(x=>x[0]==='Market desk'),false);
+  } finally {presenter.dispose();uninstallSimCommandSink();}
 });

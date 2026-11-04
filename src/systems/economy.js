@@ -1256,6 +1256,14 @@ function normalizeCargoKillChain(raw) {
     const qty = Math.max(0, Math.floor(Number(redeemedSource[id]) || 0));
     if (qty > 0) redeemed[id] = qty;
   }
+  const pressureReceipts = {};
+  for (const [id, fact] of Object.entries(raw.pressureReceipts || {})) {
+    if (!fact || typeof fact.receiptId !== 'string' || typeof fact.stationId !== 'string'
+      || typeof fact.saleStationId !== 'string' || !Number.isFinite(fact.seenAt)
+      || !(Number(fact.qty) > 0) || !redeemed[id]) continue;
+    pressureReceipts[id] = { receiptId: fact.receiptId, stationId: fact.stationId,
+      saleStationId: fact.saleStationId, seenAt: fact.seenAt, qty: Math.floor(fact.qty) };
+  }
   return {
     id: String(raw.id),
     victimId: raw.victimId,
@@ -1272,6 +1280,7 @@ function normalizeCargoKillChain(raw) {
     originStationId: typeof raw.originStationId === 'string' ? raw.originStationId : null,
     salvaged,
     redeemed,
+    pressureReceipts,
     closed: raw.closed === true,
     saleStationId: typeof raw.saleStationId === 'string' ? raw.saleStationId : null,
   };
@@ -3225,7 +3234,7 @@ export const economy = {
         commodityId,
       });
     }
-    if (side === 'sell') this._closeCargoKillChain(stationId, commodityId, qty);
+    if (side === 'sell') this._closeCargoKillChain(stationId, commodityId, qty, receipt);
     return receipt;
   },
 
@@ -3321,7 +3330,7 @@ export const economy = {
    * chain's own salvaged units of the sold good are consumed: an ordinary hold sale that shares
    * the commodity id debits the count it actually redeems, it does not settle the chain early.
    */
-  _closeCargoKillChain(saleStationId, commodityId, qty) {
+  _closeCargoKillChain(saleStationId, commodityId, qty, receipt = null) {
     const state = this.state;
     const chains = state && state.economy && state.economy.cargoKillChains;
     if (!Array.isArray(chains) || !commodityId) return null;
@@ -3369,6 +3378,12 @@ export const economy = {
           }
           midAfter = entry.lastMid;
         }
+      }
+      if (receipt && receipt.receiptId && receipt.side === 'sell' && receipt.stationId === saleStationId
+        && receipt.commodityId === commodityId && midBefore != null && midAfter > midBefore) {
+        const receipts = chain.pressureReceipts || (chain.pressureReceipts = {});
+        receipts[commodityId] = { receiptId: receipt.receiptId, stationId: priceStationId,
+          saleStationId, seenAt: receipt.seenAt, qty: consumed };
       }
       const fact = {
         kind: 'price_move',

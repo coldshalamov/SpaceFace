@@ -88,10 +88,11 @@ function foldMineVitals(row, fields) {
 // Story props change scanner text as work progresses after their spawn; the scanned flag flips
 // on the same path and gates wreck identity concealment on the read model.
 function foldScanLabel(row, fields) {
-  if (fields.dataScanLabel === undefined && fields.dataScanned === undefined) return;
+  if (fields.dataScanLabel === undefined && fields.dataScanned === undefined && fields.dataBeaconExpireAt === undefined) return;
   if (!row.data || typeof row.data !== 'object') row.data = {};
   if (fields.dataScanLabel !== undefined) row.data.scanLabel = fields.dataScanLabel;
   if (fields.dataScanned !== undefined) row.data.scanned = fields.dataScanned;
+  if (fields.dataBeaconExpireAt !== undefined) row.data.expireAt = fields.dataBeaconExpireAt;
 }
 
 // Revelation changes labels and the sail's silhouette after its spawn.

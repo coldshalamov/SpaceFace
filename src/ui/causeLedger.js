@@ -28,6 +28,7 @@ import { FACTION_META } from '../data/factions.js';
 import { showWhyTip, hideWhyTip } from './whyReveal.js';
 
 const SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s]));
+const STATION_NAME_BY_ID = new Map(SECTORS.flatMap((sector) => (sector.stations || []).map((station) => [station.id, station.name])));
 const FACTION_BY_ID = new Map(FACTION_META.map((f) => [f.id, f]));
 const STATION_TO_SECTOR = new Map();
 for (const sec of SECTORS) for (const st of (sec.stations || [])) STATION_TO_SECTOR.set(st.id, sec.id);
@@ -161,23 +162,18 @@ export function handTradeLine(state, stationId, commodityId) {
 export function cargoKillLine(state, stationId, commodityId) {
   const chains = state && state.economy && Array.isArray(state.economy.cargoKillChains)
     ? state.economy.cargoKillChains : null;
-  const entries = state && state.player && Array.isArray(state.player.tradeLedger)
-    ? state.player.tradeLedger : null;
-  if (!chains || !entries || !stationId || !commodityId) return null;
+  if (!chains || !stationId || !commodityId) return null;
   const now = Number(state && state.simTime) || 0;
-  const chain = chains.find((row) => row && String(row.destStationId || '') === String(stationId)
-    && row.commodityId === commodityId
-    && Math.floor(Number(row.redeemed && row.redeemed[commodityId]) || 0) > 0);
+  const chain = chains.find((row) => {
+    const fact = row && row.pressureReceipts && row.pressureReceipts[commodityId];
+    return fact && fact.stationId === stationId && fact.receiptId && fact.saleStationId
+      && Number.isFinite(fact.seenAt) && now >= fact.seenAt
+      && now - fact.seenAt <= HAND_TRADE_PRESSURE_WINDOW_S && fact.qty > 0;
+  });
   if (!chain) return null;
-  const redeemed = Math.floor(Number(chain.redeemed[commodityId]) || 0);
-  const saleStationId = String(chain.saleStationId || '');
-  const receipt = saleStationId ? entries.find((e) => e && String(e.stationId || '') === saleStationId
-    && e.commodityId === commodityId && e.side === 'sell'
-    && Math.floor(Number(e.qty) || 0) >= redeemed
-    && Number.isFinite(Number(e.seenAt)) && now - Number(e.seenAt) >= 0
-    && now - Number(e.seenAt) <= HAND_TRADE_PRESSURE_WINDOW_S) : null;
-  if (!receipt) return null;
-  return `Its freight ran short when the hauler you downed never landed: ${redeemed}u of its manifest went to your hold and back to this desk.`;
+  const fact = chain.pressureReceipts[commodityId];
+  const saleName = STATION_NAME_BY_ID.get(fact.saleStationId) || fact.saleStationId;
+  return `Its freight ran short when the hauler you downed never landed: ${fact.qty}u of its manifest was sold at ${saleName}.`;
 }
 
 /**

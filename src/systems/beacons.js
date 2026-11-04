@@ -162,6 +162,8 @@ export const beacons = {
             this.bus.emit('toast', { text: 'Claim beacon holds — the skirmish is live', kind: 'good', ttl: 2.5 });
           }
           b.expireAt = Math.min(now + BEACON_HOLD_ON_INTEREST_S, capAt);
+          const buoy = state.entities && state.entities.get(b.entityId);
+          if (buoy && buoy.data && buoy.data.claimBeaconId === b.id) buoy.data.expireAt = b.expireAt;
           this._lure(state, b, player);
           continue;
         }
@@ -194,6 +196,7 @@ export const beacons = {
         scanLabel: 'Claim beacon',
         storyPropKind: 'claim_beacon',
         claimBeaconId: rec.id,
+        expireAt: rec.expireAt,
         ...(rec.source === 'drone' ? { source: rec.source, ownerId: rec.ownerId, groupId: rec.groupId } : {}),
         tetherable: true,
         // The latch gate's real field (src/systems/tetherGameplay.js reads data.masslineTetherable);
