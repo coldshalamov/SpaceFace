@@ -29829,7 +29829,7 @@ export const render = {
     }
   },
 
-  prepareFrame(alpha, frameDt, presentationFrame = null) {
+  prepareFrame(alpha, frameDt, presentationFrame = null, cameraFrameDt = frameDt) {
     this._racingCourseView?.frame();
     this._notePicturePresent(presentationFrame);
     this._presentationFrame = presentationFrame;
@@ -30254,7 +30254,7 @@ export const render = {
           ? pm.position
           : null;
         tryPresentedCall(this, 'camera-follow', () => {
-          this.cam.follow(frameDt, alpha, presented, this._cameraClearanceAt);
+          this.cam.follow(cameraFrameDt, alpha, presented, this._cameraClearanceAt);
           this._updateCameraOccluders(frameDt);
         });
       }
