@@ -1157,6 +1157,19 @@ function attachPackagedScenarioProp(root, entity, options = {}) {
   if (root.userData.visualBuildFailed || root.userData.authoredAdmissionSubstrate) return root;
   const spec = packagedPropSpec(entity);
   if (!spec || !spec.file) return root;
+  // Procedural beacons scale a unit model at the entity root. Authored props,
+  // resolving markers and subsequently attached lamp layers already use WU.
+  // Preserve the original graph's transform beneath a unit-scale admission root
+  // so a 60 WU arrival zone cannot multiply a 14 WU beacon into a kilometre wall.
+  if (root.scale.x !== 1 || root.scale.y !== 1 || root.scale.z !== 1) {
+    const proceduralFrame = new THREE.Group();
+    proceduralFrame.name = 'ProceduralPropScaleFrame';
+    proceduralFrame.scale.copy(root.scale);
+    while (root.children.length) proceduralFrame.add(root.children[0]);
+    root.scale.set(1, 1, 1);
+    root.updateMatrix();
+    root.add(proceduralFrame);
+  }
   const url = packagedPartUrl(spec.file);
   // Two pending families, two doctrines. hideImmediately specs (rescue hardware, explicit
   // packagedPropFile/assetRef mappings) keep the procedural form hidden for the whole
