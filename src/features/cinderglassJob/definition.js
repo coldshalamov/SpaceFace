@@ -216,4 +216,3 @@ export const CINDERGLASS_JOB_MOUNT_DEFINITION = Object.freeze({
   limits: { maxPerOwner: 1 },
   cues: { created: 'combat.attachment.created', broken: 'combat.attachment.broken' },
 });
-

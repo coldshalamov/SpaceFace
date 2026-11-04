@@ -231,7 +231,7 @@ test('D240: the live context strip is a measured obstacle again, for arrows and 
     'content-driven strip growth refreshes the box, not only window resizes');
   assert.match(src, /function invalidateAndPlaceHudOverlays\(\)\s*\{\s*invalidateObjectiveEdgeBoxes\(\)/s,
     'the observed invalidator still marks the edge boxes stale');
-  assert.match(src, /resolveDoctrineTellPlacement\(w, h, proj, slotIndex, objectiveEdgeObstacles\(\)\.left\)/,
+  assert.match(src, /const measuredLeft = objectiveEdgeObstacles\(\)\.left;[\s\S]*?resolveDoctrineTellPlacement\(w, h, proj, slotIndex,\s*\[measuredLeft, \.\.\.touchReserved, \.\.\.placed\]/,
     'doctrine tells yield to the same measured strip');
 });
 

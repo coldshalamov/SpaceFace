@@ -8905,6 +8905,20 @@ const RIGID_ASHLINE_MOTION_IDENTITY = Object.freeze({
   bankSha256: '89c9edb48125d150ed95b74e024a24c93b5155a3a521e62a5856d5487314ee9e',
   sourceAssetId: 'SF_WHOLESHIP_ASHLINE_DART', rigId: 'hull', bindingId: 'hull_core',
 });
+// The legacy pin remains only for the matched runtime comparison. Current packages keep the
+// same verified rigid-motion ABI; changing their package hash must not strand every hull leaf
+// on a separate draw. These two measured families are the entire scope of this admission repair.
+const RIGID_ASHLINE_CURRENT_MOTION_IDENTITY = Object.freeze({
+  ...RIGID_ASHLINE_MOTION_IDENTITY,
+  packageContentHash: 'a42a7418282d4c3f79ce55c1af2fe7d18a9ab00451de600901403403c3da0ed3',
+});
+const RIGID_ASHLINE_RIG_HULL_URL = 'assets/ships/release/parts/wholeships/ashline_rig.glb';
+const RIGID_ASHLINE_RIG_MOTION_IDENTITY = Object.freeze({
+  packageAssetId: 'sf.render.ashline-rig',
+  packageContentHash: 'be256f60992a8517c276eb229f8597613c0db76ea4704f48e70cc270f17fc779',
+  bankSha256: '840d8935b3ef67db1d6a9bfa667b8440a874f626eede9d93168740f3881f54b2',
+  sourceAssetId: 'SF_WHOLESHIP_ASHLINE_RIG', rigId: 'hull', bindingId: 'hull_core',
+});
 
 export function isRigidOpaqueAshlineCohortRoot(owner, root) {
   const data = root?.userData, id = data?.presentationEntityId;
@@ -8929,12 +8943,14 @@ function rigidOpaqueAshlineSourceRoot(owner, source) {
   if ((!retro && !body) || source.isMesh !== true
       || source.userData?.spacefaceInstanceProxy || source.userData?.spacefaceRenderPackagePooled) return null;
   if (body && source.userData?.spacefacePartUrl !== RIGID_ASHLINE_HULL_URL) return null;
+  const expected = owner._ashlineHullBatchEnabled === false
+    ? RIGID_ASHLINE_MOTION_IDENTITY : RIGID_ASHLINE_CURRENT_MOTION_IDENTITY;
   let packageMatched = retro;
   for (let node = source; node; node = node.parent) {
     const identity = node.userData?.spacefaceRenderPackage;
     if (body && !packageMatched && identity) {
-      if (identity.assetId !== RIGID_ASHLINE_MOTION_IDENTITY.packageAssetId
-          || identity.contentHash !== RIGID_ASHLINE_MOTION_IDENTITY.packageContentHash) return null;
+      if (identity.assetId !== expected.packageAssetId
+          || identity.contentHash !== expected.packageContentHash) return null;
       packageMatched = true;
     }
     if (packageMatched && isRigidOpaqueAshlineCohortRoot(owner, node)) return node;
@@ -8944,14 +8960,19 @@ function rigidOpaqueAshlineSourceRoot(owner, source) {
 
 function isRigidOpaqueAshlineMotionOwner(owner, object, source) {
   if (!RIGID_ASHLINE_BODY_SOURCE_NAMES.has(source?.name)) return false;
-  const root = rigidOpaqueAshlineSourceRoot(owner, source);
+  const rig = source.userData?.spacefacePartUrl === RIGID_ASHLINE_RIG_HULL_URL;
+  if (rig && owner._ashlineHullBatchEnabled === false) return false;
+  const root = rig ? rigidOpaqueShipSourceRoot(owner, source) : rigidOpaqueAshlineSourceRoot(owner, source);
   if (!root) return false;
+  const expected = rig ? RIGID_ASHLINE_RIG_MOTION_IDENTITY
+    : owner._ashlineHullBatchEnabled === false
+      ? RIGID_ASHLINE_MOTION_IDENTITY : RIGID_ASHLINE_CURRENT_MOTION_IDENTITY;
   let matched = null;
   for (let node = source; node; node = node.parent) {
     const controllers = node.userData?.authoredMotionControllers;
     if (Array.isArray(controllers)) {
       for (const controller of controllers) {
-        if (!hasBoundRigidMotionNode(controller, object, RIGID_ASHLINE_MOTION_IDENTITY.bindingId)) continue;
+        if (!hasBoundRigidMotionNode(controller, object, expected.bindingId)) continue;
         // A second transform writer is not the attested single-owner contract.
         if (matched && matched !== controller) return false;
         matched = controller;
@@ -8959,7 +8980,7 @@ function isRigidOpaqueAshlineMotionOwner(owner, object, source) {
     }
     if (node === root) break;
   }
-  return !!matched && isAttestedRigidMotionOwner(matched, object, RIGID_ASHLINE_MOTION_IDENTITY);
+  return !!matched && isAttestedRigidMotionOwner(matched, object, expected);
 }
 
 // Beyond the named Kestrel/Ashline allowlists, every live authored traffic ship carries the
@@ -9067,7 +9088,7 @@ function createRigidOpaqueBatchProbe(owner, scene, options = {}) {
       const pictureEpoch = owner._rigidOpaqueBatchPictureEpoch || 0;
       const paint = renderState?.firstPlayableFrameAt;
       return () => defaultRigidBatchMayPrepare(owner)
-        && owner.state === state && state.render === renderState && state.world === world
+        && owner.scene === scene && owner.state === state && state.render === renderState && state.world === world
         && world?.enterSerial === serial && world?.currentSectorId === sector
         && renderState?.admissionRunGeneration === generation && state.contextRestoreSeq === restore
         && owner.renderer === nativeRenderer && owner._rendererGeneration === rendererGeneration
@@ -9098,7 +9119,7 @@ function createRigidOpaqueBatchProbe(owner, scene, options = {}) {
         const ship = shipLifetimes.get(root);
         return ship ? [{ root, ...ship, ship: true }] : [];
       }) : [];
-      const isActive = () => owner.state === state && state.render === renderState
+      const isActive = () => owner.scene === scene && owner.state === state && state.render === renderState
         && state.world === world && world?.enterSerial === serial && world?.currentSectorId === sector
         && renderState.admissionRunGeneration === generation && state.contextRestoreSeq === restore
         && owner.renderer === nativeRenderer && owner._contextLost !== true
@@ -9413,6 +9434,7 @@ export const render = {
     // resolves successfully. A supported GPU therefore gets the bounded default without making
     // the bench flag part of the player route.
     const rigidOpaqueBatchBenchRequested = !!(query && query.get('rigidOpaqueBatch') === '1');
+    this._ashlineHullBatchEnabled = true;
     this._rigidOpaqueBatchDefaultCohort = !rigidOpaqueBatchBenchRequested;
     this._rigidOpaqueBatchProbeEnabled = this._opaqueBatchSupported === true;
     this._rigidOpaqueBatchScene = scene;
@@ -9429,6 +9451,8 @@ export const render = {
     state.render.rigidOpaqueBatchTwinCohort = this._rigidOpaqueBatchProbeEnabled === true;
     state.render.setRigidOpaqueBatchForBench = (enabled) => this.setRigidOpaqueBatchForBench(enabled);
     state.render.getRigidOpaqueBatchDiagnosticsForBench = () => this.getRigidOpaqueBatchDiagnosticsForBench();
+    state.render.setAshlineHullBatchForBench = (enabled) => this.setAshlineHullBatchForBench(enabled);
+    state.render.getAshlineHullBatchDiagnosticsForBench = () => this.getAshlineHullBatchDiagnosticsForBench();
     if (this._rigidOpaqueBatchProbeEnabled) {
       if (rigidOpaqueBatchBenchRequested) this.setRigidOpaqueBatchForBench(true);
       else this._enableRigidOpaqueBatch(true);
@@ -28685,6 +28709,32 @@ export const render = {
     // Keep the public bench seam snapshot-like so a caller can retain one block's counters while
     // the live state/render diagnostics continue accumulating on the next frame.
     return { ...publishRigidOpaqueBatchDiagnostics(this) };
+  },
+
+  // Switch only the current Rig/Dart hull admission; retain all other default cohorts. Rolling
+  // back first restores canonical sources and cancels an in-flight compile before either side
+  // can publish. A pilot can await the first plan and then let normal frames settle membership.
+  async setAshlineHullBatchForBench(enabled) {
+    if (typeof enabled !== 'boolean') throw new TypeError('Ashline hull batch switch requires a boolean');
+    if (this._rigidOpaqueBatchDefaultCohort !== true) {
+      throw new Error('Ashline hull comparison requires the ordinary default rigid cohort');
+    }
+    const previousEnabled = this._ashlineHullBatchEnabled !== false;
+    if (previousEnabled !== enabled) {
+      this._ashlineHullBatchEnabled = enabled;
+      this._rigidOpaqueBatchPictureEpoch = (this._rigidOpaqueBatchPictureEpoch || 0) + 1;
+      this._rigidOpaqueBatchController?.rollback?.('ashline-hull-compare-switch');
+    }
+    await this._syncRigidOpaqueBatchProbe();
+    return { previousEnabled, ...this.getAshlineHullBatchDiagnosticsForBench() };
+  },
+
+  getAshlineHullBatchDiagnosticsForBench() {
+    return {
+      enabled: this._ashlineHullBatchEnabled !== false,
+      defaultCohort: this._rigidOpaqueBatchDefaultCohort === true,
+      rigidOpaqueBatch: this.getRigidOpaqueBatchDiagnosticsForBench(),
+    };
   },
 
   // Retained rigid candidate. The default path walks only the already-resident player root; the

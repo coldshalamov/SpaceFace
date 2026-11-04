@@ -119,9 +119,9 @@ export const crucibleFortifyScreen = {
       this._note.textContent = 'The run changed before that request completed.'; this._requestView(); return;
     }
     this._note.textContent = receipt.accepted === true
-      ? (receipt.serviced ? 'Turret rearmed and ready.' : receipt.replaced ? 'Tesla endpoint replaced. The link is ready.' : receipt.repaired ? 'Structure repaired and ready.'
-        : receipt.modeActivated ? 'Structure placed. Future waves enter from three fixed approaches.'
-        : 'Structure placed. It will work in the next wave.')
+      ? (receipt.serviced ? 'Last action: turret rearmed and ready.' : receipt.replaced ? 'Last action: Tesla endpoint replaced. The link is ready.' : receipt.repaired ? 'Last action: structure repaired and ready.'
+        : receipt.modeActivated ? 'Last build: structure placed. Future waves enter from three fixed approaches.'
+        : 'Last build: structure placed. It will work in the next wave.')
       : reasons[receipt.reason] || 'Construction refused. No credits were spent; choose another position.';
     cue(receipt.accepted === true ? 'confirm' : 'deny');
     if (receipt.readModel) { this._model = receipt.readModel; this._paint(); } else this._requestView();
