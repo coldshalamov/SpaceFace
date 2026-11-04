@@ -9,6 +9,9 @@ import {
 import {
   isLanternWardBody, buildLanternWardVisual, lanternWardVisualPose,
 } from '../src/render/lanternWardVisuals.js';
+import { createVisualFactory } from '../src/render/visualFactory.js';
+import { installVisualOverrides, packagedPropSpec } from '../src/render/visualOverrides.js';
+import { lanternWardHardwareSpec } from '../src/data/lanternWardHardware.js';
 
 function entity(role, extra = {}) {
   return { id: `lantern:${role}`, type: role === 'lamp' ? 'payload' : 'wreck', alive: true,
@@ -26,6 +29,58 @@ function poses(root) {
   });
   return out;
 }
+
+test('the installed production wrapper retains finite Ward geometry instead of admitting a generic cargo model', () => {
+  const factory = installVisualOverrides(createVisualFactory(), {
+    releaseMode: true, directAuthoredMount: true, authoredWholeShipsOnly: true,
+  });
+  for (const [index, role] of ['cradle', 'lamp', 'receiver', 'obstruction', 'service_face', 'maintenance_part'].entries()) {
+    const e = { ...lanternWardHardwareSpec(role), id: 800 + index, occupantGeneration: 3 };
+    const before = JSON.stringify(e), root = factory.build(e);
+    assert.ok(root);
+    assert.equal(packagedPropSpec(e), null);
+    assert.equal(root.userData.requestAuthoredUpgrade, undefined, 'no later cargo admission may hide the producer');
+    assert.equal(root.userData.authoredUpgradePromise, undefined);
+    assert.equal(root.userData.authoredPayloadAssetId, undefined);
+    assert.equal(root.getObjectByName('payload_PackagedBody'), undefined);
+    assert.equal(JSON.stringify(e), before, 'the presentation wrapper does not rewrite body or custody');
+    root.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(root);
+    assert.equal(box.isEmpty(), false);
+    assert.ok(box.max.x - box.min.x <= e.radius * 2);
+    assert.ok(box.max.z - box.min.z <= e.radius * 2);
+    if (role !== 'maintenance_part') {
+      assert.equal(root.userData.generatedVisualProducer, 'lantern-ward-authored-civic-v1');
+      assert.equal(root.userData.lanternWardAssetId, LANTERN_WARD_BODY_CONTRACTS[role].assetId);
+      assert.ok(box.max.y - box.min.y <= LANTERN_WARD_BODY_CONTRACTS[role].size[1]);
+    }
+    if (role === 'lamp') {
+      const globe = root.getObjectByName('Family_Globe');
+      assert.ok(globe?.isMesh); assert.equal(globe.material.emissiveIntensity, 0);
+      e.data.lanternWardLit = true; root.userData.updateRuntimeState(e);
+      assert.ok(globe.material.emissiveIntensity > 0, 'a committed light remains the visible body after wrapping');
+    }
+    if (role === 'cradle') assert.ok(root.getObjectByName('Cradle_Swivel_Brace'));
+    root.userData.disposeLanternWardVisual?.();
+  }
+});
+
+test('Ward admission exclusion preserves ordinary cargo and explicit authored recipe priority', () => {
+  const ordinary = { type: 'payload', alive: true, radius: 4, data: {} };
+  const generic = packagedPropSpec(ordinary);
+  assert.ok(generic?.file);
+  for (const mutate of [
+    e => { e.data.worldRecordId = 'unrelated:cradle'; },
+    e => { e.data.lanternWardId = 'another_district'; },
+  ]) {
+    const e = lanternWardHardwareSpec('cradle'); mutate(e);
+    assert.deepEqual(packagedPropSpec(e), generic, 'public-looking tags cannot suppress unrelated cargo admission');
+  }
+  const explicit = lanternWardHardwareSpec('cradle');
+  Object.assign(explicit.data, { packagedPropFile: 'places/place_cargo_pod_standard.glb', packagedPropRadius: 4 });
+  assert.equal(packagedPropSpec(explicit).file, explicit.data.packagedPropFile);
+  assert.equal(packagedPropSpec(explicit).radius, 4);
+});
 
 test('ordinary visual selector only accepts its explicit ward identity; never the Candle Fleet', () => {
   for (const e of [null, {}, { ...entity('cradle'), alive: false },
