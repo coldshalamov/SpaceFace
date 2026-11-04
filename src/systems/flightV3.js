@@ -24,15 +24,13 @@ import { queueSaucerVelocity } from '../core/physicsAuthority.js';
 // not drop the dash mechanic, HUD boost bar, VFX/audio, or save parity. NPCs use only the boolean
 // intent.boost (no resource model), exactly as in the legacy controller — AI never used e.boost.
 
-import { measureThrusterAuthority, queuePhysicsImpulse, writePhysicsControl, resolvePhysicsBodySpec } from '../core/physicsAuthority.js';
-import { PHYSICS_MATERIALS } from '../data/physicsMaterials.js';
-import { resolveCollisionProxyManifest, proxyOuterRadiusWu } from '../data/collisionProxyManifests.js';
+import { measureThrusterAuthority, queuePhysicsImpulse, writePhysicsControl } from '../core/physicsAuthority.js';
 import { cancelPhaseBlink, stepPhaseBlink } from './phaseBlink.js';
 // FB-095: _diag.tickMs is diagnostics-only — it reads the classified instrumentation clock
 // (perfNow in perfRuntime) so this simulation owner never touches wall time itself.
 import { perfNow } from '../core/perfRuntime.js';
 import { composePlayerDriveAuthority, DAMAGED_DRIVE_AUTHORITY_FLOOR } from '../core/flight/driveAuthority.js';
-import { queryNearbyEntities } from '../core/spatialQuery.js';
+import { physicalObstacleBody, queryNearbyPhysicalObstacles } from '../core/physicalObstacleQuery.js';
 import {
   cryoLockStickLive,
   helmControlScaleFromCombat,
@@ -1933,32 +1931,6 @@ const AUTOPILOT_OBSTACLE_QUERY_SCRATCH = [];
 const AUTOPILOT_OBSTACLE_QUERY_POS = { x: 0, z: 0 };
 const AUTOPILOT_DRESSING_BOUNDS = [];
 
-// Both guidance and the hand-flight warning read this physical vocabulary. Bounds
-// describe a contact; they never replace/mutate the original entity or its life token.
-function flightObstacleBody(e, bounds, index) {
-  if (!e || e.alive === false || e.collides === false || !e.pos) return null;
-  if (e.type === 'projectile' || e.type === 'pickup') return null;
-  if (e.type === 'fx') {
-    // Dressing may own a fixed compound body despite its FX entity vocabulary.
-    if (!e.physicsBody || typeof e.physicsBody !== 'object') return null;
-    const spec = resolvePhysicsBodySpec(e);
-    if (!spec || PHYSICS_MATERIALS[spec.material]?.ghost) return null;
-    const manifest = resolveCollisionProxyManifest(e);
-    const bound = bounds[index] || (bounds[index] = {});
-    bound.id = e.id;
-    bound.type = e.type;
-    bound.alive = e.alive;
-    bound.occupantGeneration = e.occupantGeneration;
-    bound.pos = e.pos;
-    bound.vel = e.vel;
-    bound.radius = Math.max(positive(e.radius, 0), spec.radius, manifest ? proxyOuterRadiusWu(manifest, e) : 0);
-    return bound;
-  }
-  const radius = Number.isFinite(e.radius) ? e.radius : 0;
-  if (radius <= 0 && e.type !== 'station' && e.type !== 'asteroid' && e.type !== 'wreck' && e.type !== 'ship') return null;
-  return e;
-}
-
 // An obstacle only matters when its center sits inside the lookahead capsule: projection within
 // (0, maxProjection] of the player along the steer direction and |lateral| below its clearance
 // (player radius + obstacle radius + ≤128 WU slack). One circle covering that capsule returns
@@ -1974,7 +1946,7 @@ function autopilotObstacles(state, player, target, baseX, baseZ, maxProjection) 
   const clearanceSlack = positive(player.radius, 0) + 58 + 70;
   AUTOPILOT_OBSTACLE_QUERY_POS.x = px + baseX * halfProjection;
   AUTOPILOT_OBSTACLE_QUERY_POS.z = pz + baseZ * halfProjection;
-  const list = queryNearbyEntities(
+  const list = queryNearbyPhysicalObstacles(
     state,
     AUTOPILOT_OBSTACLE_QUERY_POS,
     halfProjection + clearanceSlack,
@@ -1987,7 +1959,7 @@ function autopilotObstacles(state, player, target, baseX, baseZ, maxProjection) 
     const targetStationBlocksMouthApproach = e === target.entity
       && !!target.dockingProxyId && target.dockingStage === 'corridor-mouth';
     if (e === player || (e === target.entity && !targetStationBlocksMouthApproach)) continue;
-    const obstacle = flightObstacleBody(e, AUTOPILOT_DRESSING_BOUNDS, out.length);
+    const obstacle = physicalObstacleBody(e, AUTOPILOT_DRESSING_BOUNDS, out.length);
     if (obstacle) out.push(obstacle);
   }
   return out;
@@ -2018,7 +1990,7 @@ function sweptHullContacts(state, entity) {
   const pz = finite(entity.pos && entity.pos.z);
   SWEPT_HULL_QUERY_POS.x = px + (vx / speed) * halfProjection;
   SWEPT_HULL_QUERY_POS.z = pz + (vz / speed) * halfProjection;
-  const list = queryNearbyEntities(
+  const list = queryNearbyPhysicalObstacles(
     state,
     SWEPT_HULL_QUERY_POS,
     halfProjection + hullRadius + SWEPT_HULL_DEFAULTS.grazeGapWU,
@@ -2028,7 +2000,7 @@ function sweptHullContacts(state, entity) {
   out.length = 0;
   for (const e of list) {
     if (e === entity) continue;
-    const obstacle = flightObstacleBody(e, SWEPT_HULL_DRESSING_BOUNDS, out.length);
+    const obstacle = physicalObstacleBody(e, SWEPT_HULL_DRESSING_BOUNDS, out.length);
     if (obstacle) out.push(obstacle);
   }
   return out;
