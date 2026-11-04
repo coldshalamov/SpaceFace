@@ -53,6 +53,13 @@ import { StatusMatterVfx, collectHeatedMaterialBodies } from './vfx/statusMatter
 import { CombatContactVfx } from './vfx/combatContactVfx.js';
 import { DamagedPortVfxPlanner } from './vfx/damagedPortVfx.js';
 import { resolveWreckAgeS, wreckBurnPicture } from './vfx/wreckAftermathState.js';
+import {
+  arrivalReadForSpawn,
+  ARRIVAL_FLASH_LIFE_S,
+  ARRIVAL_SHEET_LIFE_S,
+  ARRIVAL_BRAKE_LIFE_S,
+  ARRIVAL_STREAK_LIFE_S,
+} from './arrivalRead.js';
 import { createToolConduitGeometry, installToolConduitShader } from './toolConduit.js';
 import { FieldForcePresentation } from './forceLanguage/fieldForcePresentation.js';
 import { GyreSnarePresentation } from './forceLanguage/gyreSnarePresentation.js';
@@ -2794,6 +2801,14 @@ export const vfx = {
       this._onDestroyed(p);
     }, { presentation: true });
     add('entity:spawned', (p) => { this._markEntityCacheDirtyIfTrailType(p); this._onChainEntitySpawned(p); this._offerWreckHandoff(p); });
+    // Drop-in arrival read (inf-drop-in-read): a hull arriving mid-session through an ingress
+    // lane or a warp tear wears one hard flash + inbound wake + brake flare in its faction tint.
+    // The grace origin is re-stamped on every world (re)materialization so sector population,
+    // a fresh run and a restored save never flash as arrivals.
+    add('entity:spawned', (p) => this._onShipDropIn(p));
+    for (const name of ['sector:enter', 'game:new', 'game:newGame', 'save:loaded']) {
+      add(name, () => { this._dropInEnteredAtT = this._causeNow(); });
+    }
     add('weapons:mineDeployed', (p) => this._noteWellDeployed(p));
     add('weapons:mineExpired', (p) => { if (this._causeMarks && p) this._causeMarks.forgetWell(p.mineId); });
     // NXB-050 chain readout — accepted ancestry of one thrown body. Whip/sweep contacts
@@ -4385,6 +4400,50 @@ export const vfx = {
     if (id === 'travel.aftermath.clear') {
       this._spawnSprite(SPR_COMBUSTION, pos.x, 0, pos.z, 0.82, 5, 20, 0.32, 0, palette.secondary, 0, 0, 0.6, Math.atan2(dz, dx));
     }
+  },
+
+  // Drop-in arrival read (inf-drop-in-read). The sim already publishes the arrival truth —
+  // spawnContext producers mean "arrived from elsewhere mid-session", and SF-053 ingress squads
+  // materialize with nose and velocity still carrying them down the lane. This is the read the
+  // player never had: WHERE they came in and THAT they are new here, at gameplay camera.
+  // Sprites age on the presentation clock (presFrameDt — sim-scaled), so a frozen sim freezes
+  // the beat; eligibility lives in arrivalRead.js (pure, headless-tested).
+  _onShipDropIn(p) {
+    const entity = p && p.entity;
+    const plan = arrivalReadForSpawn(entity, {
+      simTime: this._causeNow(),
+      sectorEnteredAtT: this._dropInEnteredAtT,
+      playerPos: this._playerPos(),
+      playerId: this.state && this.state.playerId,
+      reducedMotion: this._isReduced(),
+    });
+    if (!plan) return;
+    const pal = this._factionPalette(entity.factionId || (entity.data && entity.data.factionId));
+    const primary = (pal && pal.primary) || '#39d0ff';
+    const secondary = (pal && pal.secondary) || '#d7e6ff';
+    const dx = Math.cos(plan.headingRad);
+    const dz = Math.sin(plan.headingRad);
+    const r = plan.radius;
+    // The arrival flash: one hard punch at the drop point, faction-tinted. No ring — the
+    // travel grammar keeps arrival a single readable world-space beat.
+    this._spawnSprite(SPR_FLASH, plan.x, 0.4, plan.z, ARRIVAL_FLASH_LIFE_S,
+      r * 1.6, r * 4.2, 0.9, 0, primary, 0, 0, 1, plan.headingRad);
+    // The door it came through: thin sheets perpendicular to the lane, at the drop point.
+    for (let i = 0; i < plan.sheets; i++) {
+      const along = (i - (plan.sheets - 1) / 2) * r * 1.3;
+      this._spawnSprite(SPR_COMBUSTION, plan.x + dx * along, 0.1, plan.z + dz * along,
+        ARRIVAL_SHEET_LIFE_S, r * 0.9, r * 2.6, 0.3, 0, secondary, 0, 0, 0.38,
+        plan.headingRad + Math.PI / 2);
+    }
+    // The lane it flew in on: a wake still streaming behind the hull down its inbound heading.
+    this._spawnTravelVectorWake({ x: plan.x, z: plan.z }, dx, dz,
+      plan.wakeCount, secondary, primary, plan.wakeSpeed, ARRIVAL_STREAK_LIFE_S);
+    // The brake: one flare at the tail washing against travel while the drive kills ingress speed.
+    this._spawnSprite(SPR_COMBUSTION, plan.x - dx * r * 1.1, 0.2, plan.z - dz * r * 1.1,
+      ARRIVAL_BRAKE_LIFE_S, r * 0.5, r * 1.8, plan.brakeOpacity, 0, primary,
+      -dx * 8, -dz * 8, 0.4, plan.headingRad);
+    // The picture lights its surroundings for the one moment the hull is still slow.
+    this._eventLight({ x: plan.x, z: plan.z }, 'impact', { color: primary, peak: 3.4, decay: 7, distance: 190 });
   },
 
   _travelPalette(tags) {
