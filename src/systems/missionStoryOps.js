@@ -1967,7 +1967,7 @@ export const missionStoryOps = {
     const story = this.state.story;
     story.flags = story.flags || {};
     story.flags.contract_47a_skimmed = true;
-    this._spawnContract47aSkimWrecks(m);
+    const salvageWreckCount = this._spawnContract47aSkimWrecks(m);
     // The kill feed, exactly as authored. The escorts die; the unknown hull departs with
     // the alloy. The strain gauge reads 12.4 t — the Line reads true, so the player now
     // knows the mass the manifest will lie about.
@@ -1979,8 +1979,11 @@ export const missionStoryOps = {
       id: 'b0_skim_strain', sender: 'LINE STRAIN', category: 'story', ttl: 9, persist: true,
       text: 'STRAIN GAUGE: 12.4t — UNKNOWN VESSEL ON A BLACK LINE. THE TOW IS EMPTY.',
     });
+    const salvageCue = salvageWreckCount > 0
+      ? ` Optional salvage: ${salvageWreckCount} wreck${salvageWreckCount === 1 ? '' : 's'}, 1 alloy${salvageWreckCount === 1 ? '' : ' each'}.`
+      : '';
     this.bus.emit('toast', {
-      text: 'The black Line takes the load — 12.4 t on your own gauge. The escort feed is already a graveyard.',
+      text: `Unknown Black Line ship took 12.4 t. Escorts and drone lost.${salvageCue}`,
       kind: 'warn', ttl: 7,
     });
     this.bus.emit('story:skimResolved', {
@@ -1993,40 +1996,63 @@ export const missionStoryOps = {
   /** The ambush site's receipt: the escort wrecks and the cargo drone stay behind as
    *  salvageable hulls (§34.7 — "the ambush site keeps its escort wrecks"). Deterministic
    *  offsets from the meta seed + mission id — no wall clock, no Math.random. */
+  /** Returns the count of unique, live, map-and-list-backed one-alloy wrecks. A failed
+   *  prop spawn is isolated so it cannot strand the already-latched story receipt. */
   _spawnContract47aSkimWrecks(m) {
-    if (!this.helpers || typeof this.helpers.spawnEntity !== 'function') return;
-    const player = this.state.entities && this.state.playerId != null
-      ? this.state.entities.get(this.state.playerId) : null;
-    if (!player || !player.pos) return;
-    const seed = (this.state.meta && this.state.meta.seed) >>> 0;
-    const sectorId = this.state.world && this.state.world.currentSectorId || null;
+    const state = this.state;
+    const entities = state && state.entities;
+    if (!this.helpers || typeof this.helpers.spawnEntity !== 'function'
+      || !entities || typeof entities.values !== 'function' || typeof entities.get !== 'function') return 0;
+    const player = state.playerId != null ? entities.get(state.playerId) : null;
+    if (!player || !player.pos) return 0;
+    const seed = (state.meta && state.meta.seed) >>> 0;
+    const sectorId = state.world && state.world.currentSectorId || null;
     const rows = [
       { name: 'ESCORT-01', label: 'Escort wreck — lane casualty', r: 140 },
       { name: 'ESCORT-02', label: 'Escort wreck — lane casualty', r: 175 },
       { name: 'CARGO DRONE 03', label: 'Cargo drone wreck — cargo gone', r: 210 },
     ];
+    const hasLiveWreck = (row) => {
+      const label = `${row.name} — WRECK`;
+      for (const entity of entities.values()) {
+        if (!entity || entity.alive === false || entity.type !== 'wreck'
+          || entities.get(entity.id) !== entity || !Array.isArray(state.entityList)
+          || !state.entityList.includes(entity)) continue;
+        const data = entity.data;
+        if (data && data.contract47aSkim === true && data.scanLabel === label
+          && data.salvagePool && Number(data.salvagePool.cmdty_alloys) === 1) return true;
+      }
+      return false;
+    };
     rows.forEach((row, idx) => {
+      // An uncertain prior spawn must not mint another copy of the same one-alloy wreck.
+      if (hasLiveWreck(row)) return;
       const angle = ((hash32(seed, 4747, idx) % 360) * Math.PI) / 180;
       const dist = row.r + (hash32(seed, 4751, idx) % 30);
-      this.helpers.spawnEntity({
-        type: 'wreck',
-        pos: { x: player.pos.x + Math.cos(angle) * dist, z: player.pos.z + Math.sin(angle) * dist },
-        vel: { x: 0, z: 0 },
-        radius: 9, mass: 40000, hull: 1, hullMax: 1,
-        homeSectorId: sectorId,
-        data: {
+      try {
+        this.helpers.spawnEntity({
+          type: 'wreck',
+          pos: { x: player.pos.x + Math.cos(angle) * dist, z: player.pos.z + Math.sin(angle) * dist },
+          vel: { x: 0, z: 0 },
+          radius: 9, mass: 40000, hull: 1, hullMax: 1,
           homeSectorId: sectorId,
-          parentType: 'ship',
-          wreckClass: 'battlefield',
-          wreckClassLabel: row.label,
-          contract47aSkim: true,
-          salvagePool: { cmdty_alloys: 1 },
-          salvageTimeLeft: 60,
-          scanLabel: `${row.name} — WRECK`,
-          killedAt: this.state.simTime || 0,
-        },
-      });
+          data: {
+            homeSectorId: sectorId,
+            parentType: 'ship',
+            wreckClass: 'battlefield',
+            wreckClassLabel: row.label,
+            contract47aSkim: true,
+            salvagePool: { cmdty_alloys: 1 },
+            salvageTimeLeft: 60,
+            scanLabel: `${row.name} — WRECK`,
+            killedAt: state.simTime || 0,
+          },
+        });
+      } catch (_) {
+        // A wreck failure must not suppress the already-latched story receipt or later wrecks.
+      }
     });
+    return rows.filter(hasLiveWreck).length;
   },
 
   /** B5 branch-chain progress: completing a branch mission ticks chainProgress toward the goal. */

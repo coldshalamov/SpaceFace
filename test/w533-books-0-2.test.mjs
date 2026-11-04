@@ -38,6 +38,9 @@ import { ALIEN_SITES } from '../src/data/alienEcology.js';
 import { sectorLocalToGlobalForSector } from '../src/data/sectorCoordinates.js';
 import { hash32, mulberry32 } from '../src/core/rng.js';
 import { isBeatStepsComplete, getBeatStepStatus } from '../src/story/campaign47a/index.js';
+import { createToasts } from '../src/ui/toasts.js';
+import { openingInstructionSolo } from '../src/ui/hudAttention.js';
+import { installDom } from './toast-dom-fixture.mjs';
 
 let failures = 0;
 function check(name, fn) {
@@ -71,10 +74,12 @@ function makeHarness(seed = 47) {
 
   const bus = createBus();
   const popups = [];
+  const toasts = [];
   const skimResolved = [];
   const elroyResolved = [];
   const beatAdvances = [];
   bus.on('comms:popup', (p) => popups.push(p || {}));
+  bus.on('toast', (p) => toasts.push(p || {}));
   bus.on('story:skimResolved', (p) => skimResolved.push(p || {}));
   bus.on('story:elroyResolved', (p) => elroyResolved.push(p || {}));
   bus.on('story:beatAdvanced', (p) => beatAdvances.push(p || {}));
@@ -125,7 +130,7 @@ function makeHarness(seed = 47) {
     _toGlobal: sectorLocalToGlobalForSector };
   bus.on('entity:killed', (p) => handleAlienEcologyEvent(ecologyWorld, 'entity:killed', p));
   return { state, bus, missions, story, helpers, popups, skimResolved, elroyResolved, beatAdvances,
-    combat, aftermath, rook, furnace, understory, ecologyWorld, systems, registry };
+    combat, aftermath, rook, furnace, understory, ecologyWorld, systems, registry, toasts };
 }
 
 function acceptOffer(h, stationId, expectedTag) {
@@ -216,6 +221,50 @@ function feedReceivingGarden(h, m) {
   assert.equal(h.state.player.credits, credits, 'first growth is not the separate240t payout');
 }
 
+function showSkimCueDuringOpening(h, resolve) {
+  const { state, bus } = h;
+  state.onboarding = { ...(state.onboarding || {}), active: true, finished: false, startedAt: 10 };
+  const dom = installDom();
+  const presenter = createToasts({ state, bus });
+  let skimLiveCopy = '';
+  bus.on('toast', (payload) => {
+    if (payload && typeof payload.text === 'string' && payload.text.startsWith('Unknown Black Line ship')) {
+      skimLiveCopy = dom.toastLive.textContent;
+    }
+  });
+  try {
+    assert.equal(openingInstructionSolo(state), true, 'opening onboarding still owns its instruction');
+    resolve();
+    const cards = dom.toasts.children.filter((card) => card.classList.contains('sf-toast')
+      && card.textContent.startsWith('Unknown Black Line ship'));
+    assert.equal(cards.length, 1, 'the actual toast presenter renders one Skim cue');
+    assert.equal(skimLiveCopy, cards[0].textContent, 'the exact cue reaches the polite live region when emitted');
+    assert.doesNotMatch(cards[0].textContent, /save|continue/i, 'the cue makes no Save or Continue promise');
+    return cards[0].textContent;
+  } finally {
+    presenter.destroy();
+    dom.restore();
+  }
+}
+
+function liveSkimWrecks(state) {
+  return state.entityList.filter((entity) => entity && entity.alive !== false
+    && state.entities.get(entity.id) === entity
+    && entity.type === 'wreck' && entity.data && entity.data.contract47aSkim === true
+    && entity.data.salvagePool && Number(entity.data.salvagePool.cmdty_alloys) === 1);
+}
+
+function prepareB0Skim(h) {
+  const { state, bus, missions } = h;
+  const b0 = state.missions.active.find((m) => m && m.storyTag === 'campaign47a:b0:recovery');
+  assert.ok(b0, 'cold-start contract installed');
+  assert.ok(missions.trackMission(b0.id, { silent: true }), 'the opening recovery contract can be tracked');
+  bus.emit('mining:yield', { commodityId: 'cmdty_ore_iron', qty: 2 });
+  assert.equal(b0.params.sampleRecovered, true, 'sample aboard');
+  state.simTime = b0.params.sampleRecoveredAt + 8.1;
+  return b0;
+}
+
 
 console.log('w533-books-0-2');
 
@@ -226,6 +275,8 @@ check('B0: mine → skim scene → dock plays Cold Start in order', () => {
   assert.equal(state.story.beatIndex, 0);
   const b0 = state.missions.active.find((m) => m.storyTag === 'campaign47a:b0:recovery');
   assert.ok(b0, 'cold-start contract installed');
+  assert.ok(missions.trackMission(b0.id, { silent: true }), 'the opening recovery contract can be tracked');
+  assert.equal(state.ui.trackedMissionId, b0.id, '47-A owns the tracked mission slot');
 
   bus.emit('mining:yield', { commodityId: 'cmdty_ore_iron', qty: 2 });
   assert.equal(b0.params.sampleRecovered, true, 'sample aboard');
@@ -234,16 +285,55 @@ check('B0: mine → skim scene → dock plays Cold Start in order', () => {
 
   // The lane beat: 8 s later the unknown vessel takes exactly the 12.4 t.
   state.simTime = b0.params.sampleRecoveredAt + 8.1;
-  missions.update(0.016, state);
+  state.onboarding = { ...(state.onboarding || {}), active: true, finished: false, startedAt: 10 };
+  const dom = installDom();
+  const toastPresenter = createToasts({ state, bus });
+  try {
+    assert.equal(openingInstructionSolo(state), true, 'the first-flight onboarding still owns its opening instruction');
+    missions.update(0.016, state);
+    const visibleCue = dom.toasts.children.filter((card) => card.classList.contains('sf-toast')
+      && card.textContent.startsWith('Unknown Black Line ship'));
+    assert.equal(visibleCue.length, 1, 'the real toast presenter shows one immediate salvage cue during onboarding');
+    assert.equal(visibleCue[0].textContent, h.toasts.find((p) => /Unknown Black Line ship/.test(p.text || '')).text,
+      'the displayed copy matches the mission-owned toast');
+    assert.equal(dom.toastLive.textContent, visibleCue[0].textContent,
+      'the same short cue reaches the polite live region');
+    assert.doesNotMatch(visibleCue[0].textContent, /save|continue/i,
+      'the cue makes no Save or Continue promise');
+    dom.advance(7100);
+    toastPresenter.tick();
+    assert.ok(visibleCue[0].classList.contains('sf-toast--out'),
+      'the receipt enters its normal fade-out after its seven-second TTL');
+  } finally {
+    toastPresenter.destroy();
+    dom.restore();
+  }
   assert.equal(h.skimResolved.length, 1, 'story:skimResolved emitted on the lane');
   assert.equal(h.skimResolved[0].massT, 12.4);
   const feed = h.popups.map((p) => p.text || '').join(' ');
   assert.ok(feed.includes('ESCORT-02 ELIMINATED'), 'kill feed runs');
   assert.ok(feed.includes('UNKNOWN VESSEL DEPARTED'), 'unknown vessel departs');
   assert.ok(feed.includes('12.4'), 'strain gauge reads the true mass');
+  assert.ok(feed.includes('CARGO DRONE 03 LOST'), 'the loss beat includes the cargo drone');
   // The ambush site keeps its escort wrecks.
   const wrecks = state.entityList.filter((e) => e.data && e.data.contract47aSkim === true);
   assert.equal(wrecks.length, 3, 'escort wrecks persist as salvage');
+  assert.ok(wrecks.every((wreck) => wreck.data.salvagePool?.cmdty_alloys === 1),
+    'each casualty leaves its existing one-alloy physical salvage opportunity');
+  const salvageToast = h.toasts.filter((p) => /Unknown Black Line ship/.test(p.text || ''));
+  assert.equal(salvageToast.length, 1, 'the optional detour is surfaced immediately, once');
+  assert.equal(salvageToast[0].text.length, 102, 'the full salvage cue stays within its 102-character budget');
+  assert.match(salvageToast[0].text, /Unknown Black Line ship.*12\.4 t.*escorts and drone lost.*optional salvage: 3 wrecks, 1 alloy each/i);
+  assert.equal(salvageToast[0].ttl, 7, 'the live cue is a transient receipt');
+  assert.equal(b0.status, 'active', 'salvage remains optional; 47-A still needs its Helios return');
+  const creditsBeforeRepeat = state.player.credits;
+  missions.update(0.016, state);
+  assert.equal(h.toasts.filter((p) => /Unknown Black Line ship/.test(p.text || '')).length, 1,
+    'a repeated tick does not replay the contact');
+  assert.equal(h.popups.some((p) => /optional salvage: 3 wrecks/i.test(p.text || '')), false,
+    'the salvage cue is not duplicated in the attention-gated story comms feed');
+  assert.equal(state.player.credits, creditsBeforeRepeat, 'the contact grants no money');
+  assert.equal(state.story.beatIndex, 0, 'the optional opportunity does not advance the book');
   assert.equal(b0.params.skimResolved, true);
   assert.equal(state.story.beatIndex, 0, 'skim alone cannot close the book');
 
@@ -257,14 +347,114 @@ check('B0: mine → skim scene → dock plays Cold Start in order', () => {
   assert.equal(state.story.flags.contract_47a_skimmed, true);
 });
 
-check('B0: jumping the lane still resolves the Skim at the Pit (dock fallback)', () => {
+check('B0: dock fallback presents only salvage wrecks that survived a spawn throw', () => {
   const h = makeHarness(48);
-  const { state, bus } = h;
-  bus.emit('mining:yield', { commodityId: 'cmdty_ore_iron', qty: 2 });
-  bus.emit('dock:docked', { stationId: 'station_helios' });
+  const { state, bus, missions } = h;
+  const b0 = prepareB0Skim(h);
+  const spawn = h.helpers.spawnEntity;
+  let attempts = 0;
+  h.helpers.spawnEntity = (spec) => {
+    attempts += 1;
+    if (attempts === 1) throw new Error('isolated pre-spawn failure');
+    if (attempts === 2) {
+      spawn(spec);
+      throw new Error('isolated post-spawn failure');
+    }
+    return spawn(spec);
+  };
+  const cue = showSkimCueDuringOpening(h, () => bus.emit('dock:docked', { stationId: 'station_helios' }));
+  assert.equal(attempts, 3, 'wreck spawning continues after pre- and post-spawn failures');
   assert.equal(h.skimResolved.length, 1, 'skim resolved inline at dock');
   assert.equal(h.skimResolved[0].where, 'dock');
-  assert.equal(state.story.beatIndex, 1);
+  assert.match(cue, /Optional salvage: 2 wrecks, 1 alloy each\./);
+  assert.equal(liveSkimWrecks(state).length, 2, 'only two live salvage wrecks materialized');
+  assert.equal(state.story.beatIndex, 1, 'the dock story beat resolves after salvage spawn failures');
+  assert.equal(missions._resolveContract47aSkim(b0, 'dock'), false, 'the latched dock fallback cannot replay');
+  assert.equal(attempts, 3, 'a repeated resolution does not retry uncertain spawns');
+  assert.equal(h.toasts.filter((p) => /Unknown Black Line ship/.test(p.text || '')).length, 1);
+  assert.equal(liveSkimWrecks(state).length, 2, 'a repeated resolution grants no duplicate salvage');
+});
+
+check('B0: an absent spawn helper omits the salvage claim but resolves the story', () => {
+  const h = makeHarness(53);
+  const { state, bus, missions } = h;
+  const b0 = prepareB0Skim(h);
+  h.helpers.spawnEntity = null;
+  const cue = showSkimCueDuringOpening(h, () => bus.emit('dock:docked', { stationId: 'station_helios' }));
+  assert.equal(h.skimResolved.length, 1, 'the authored story still resolves');
+  assert.equal(h.skimResolved[0].where, 'dock');
+  assert.match(cue, /Unknown Black Line ship.*12\.4 t.*Escorts and drone lost\./);
+  assert.doesNotMatch(cue, /salvage|wreck|alloy/i, 'zero materialized wrecks means no salvage promise');
+  assert.equal(liveSkimWrecks(state).length, 0);
+  assert.equal(state.story.beatIndex, 1, 'the dock story beat still advances');
+  const toastCount = h.toasts.filter((p) => /Unknown Black Line ship/.test(p.text || '')).length;
+  assert.equal(missions._resolveContract47aSkim(b0, 'dock'), false);
+  assert.equal(h.toasts.filter((p) => /Unknown Black Line ship/.test(p.text || '')).length, toastCount,
+    'the zero-wreck contact does not replay');
+  assert.equal(liveSkimWrecks(state).length, 0, 'the missing helper cannot create duplicate rewards');
+});
+
+check('B0: null spawn returns tailor lane salvage copy to one real wreck', () => {
+  const h = makeHarness(54);
+  const { state, missions } = h;
+  const b0 = prepareB0Skim(h);
+  const spawn = h.helpers.spawnEntity;
+  let attempts = 0;
+  h.helpers.spawnEntity = (spec) => {
+    attempts += 1;
+    if (attempts < 3) return null;
+    return spawn(spec);
+  };
+  const cue = showSkimCueDuringOpening(h, () => missions.update(0.016, state));
+  assert.equal(attempts, 3, 'null results do not stop later wreck attempts');
+  assert.equal(h.skimResolved.length, 1);
+  assert.equal(h.skimResolved[0].where, 'lane');
+  assert.match(cue, /Optional salvage: 1 wreck, 1 alloy\./);
+  assert.equal(liveSkimWrecks(state).length, 1);
+  missions.update(0.016, state);
+  assert.equal(h.toasts.filter((p) => /Unknown Black Line ship/.test(p.text || '')).length, 1,
+    'a repeated lane tick cannot replay the cue');
+  assert.equal(liveSkimWrecks(state).length, 1, 'a repeated lane tick cannot duplicate salvage');
+  assert.equal(state.player.credits, 5000, 'the optional salvage cue grants no credits');
+  assert.equal(b0.params.skimResolved, true);
+});
+
+check('B0: unregistered, dead, map-only, list-only, and recycled values are not salvage', () => {
+  const h = makeHarness(55);
+  const { state, missions } = h;
+  prepareB0Skim(h);
+  const spawn = h.helpers.spawnEntity;
+  let attempts = 0;
+  let recycledId = null;
+  h.helpers.spawnEntity = (spec) => {
+    attempts += 1;
+    if (attempts === 1) return { id: 9001, alive: true, ...spec };
+    if (attempts === 2) {
+      const dead = spawn(spec);
+      dead.alive = false;
+      return dead;
+    }
+    const stale = spawn(spec);
+    recycledId = stale.id;
+    state.entities.set(stale.id, { ...stale, data: structuredClone(stale.data) });
+    const mapOnly = { id: 9002, alive: true, ...spec, data: structuredClone(spec.data) };
+    const listOnly = { id: 9003, alive: true, ...spec, data: structuredClone(spec.data) };
+    state.entities.set(mapOnly.id, mapOnly);
+    state.entityList.push(listOnly);
+    return stale;
+  };
+  const cue = showSkimCueDuringOpening(h, () => missions.update(0.016, state));
+  assert.equal(attempts, 3);
+  assert.equal(h.skimResolved.length, 1, 'invalid physical props do not suppress the story receipt');
+  assert.doesNotMatch(cue, /salvage|wreck|alloy/i, 'invalid physical props do not promise salvage');
+  assert.equal(liveSkimWrecks(state).length, 0, 'only live, map-registered, list-backed wrecks count');
+  assert.ok(recycledId != null);
+  assert.notEqual(state.entities.get(recycledId), state.entityList.find((entity) => entity.id === recycledId),
+    'a recycled handle cannot validate the stale entity-list entry');
+  missions.update(0.016, state);
+  assert.equal(attempts, 3, 'the latched story beat does not retry questionable spawns');
+  assert.equal(h.toasts.filter((p) => /Unknown Black Line ship/.test(p.text || '')).length, 1);
+  assert.equal(liveSkimWrecks(state).length, 0);
 });
 
 // ── BOOK ONE: Honest Work — alloy run, Scale 4, the infested hauler. ───────────
