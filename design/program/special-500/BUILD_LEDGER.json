@@ -7,9 +7,9 @@
   "small": 167,
   "medium": 167,
   "large": 166,
-  "landed": 50,
-  "assigned": 32,
-  "approved": 50
+  "landed": 58,
+  "assigned": 26,
+  "approved": 58
  },
  "derivation": {
   "ratifiedFollowup": 330,
@@ -10044,9 +10044,9 @@
    "size": "small",
    "family": "mail",
    "batch": 4,
-   "status": "pending",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused 6/6 + regressions (b2/b3/pulse-435) 24/24 + controller re-run 30/30",
    "note": ""
   },
   {
@@ -10062,9 +10062,9 @@
    "size": "small",
    "family": "mail",
    "batch": 4,
-   "status": "pending",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused 6/6 + regressions (b2/b3/pulse-435) 24/24 + controller re-run 30/30",
    "note": ""
   },
   {
@@ -10082,9 +10082,9 @@
    "size": "small",
    "family": "mail",
    "batch": 4,
-   "status": "pending",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused 6/6 + regressions (b2/b3/pulse-435) 24/24 + controller re-run 30/30",
    "note": ""
   },
   {
@@ -10102,9 +10102,9 @@
    "size": "small",
    "family": "mail",
    "batch": 4,
-   "status": "pending",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused 6/6 + regressions (b2/b3/pulse-435) 24/24 + controller re-run 30/30",
    "note": ""
   },
   {
@@ -10120,9 +10120,9 @@
    "size": "small",
    "family": "mail",
    "batch": 4,
-   "status": "pending",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused 6/6 + regressions (b2/b3/pulse-435) 24/24 + controller re-run 30/30",
    "note": ""
   },
   {
@@ -10140,9 +10140,9 @@
    "size": "small",
    "family": "mail",
    "batch": 4,
-   "status": "pending",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused 6/6 + regressions (b2/b3/pulse-435) 24/24 + controller re-run 30/30",
    "note": ""
   },
   {
@@ -10158,9 +10158,9 @@
    "size": "small",
    "family": "mail",
    "batch": 4,
-   "status": "pending",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused 6/6 + regressions (b2/b3/pulse-435) 24/24 + controller re-run 30/30",
    "note": ""
   },
   {
@@ -10179,9 +10179,9 @@
    "size": "small",
    "family": "mail",
    "batch": 4,
-   "status": "pending",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused 6/6 + regressions (b2/b3/pulse-435) 24/24 + controller re-run 30/30",
    "note": ""
   }
  ]

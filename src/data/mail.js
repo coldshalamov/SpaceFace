@@ -1435,6 +1435,153 @@ export const MAIL_LETTERS = Object.freeze([
       + 'is the one that travels. Forward it or don\'t — the desk has filed its copy.',
     triggers: [FLAG('special500.SP1-191')],
   },
+
+  // ── special-500 Phase 2 (batch 4, serial mail pass — final tranche) ─────────────────
+  // Eight letters, one per catalog entry, each keyed to the story flag the director
+  // writes when its entry fires: state.story.flags['special500.<id>'] (the director is the
+  // only writer of that namespace — src/systems/special500Director.js). The letter is the
+  // world remembering the beat; the sender is the entry's own voice.
+
+  // SP1-028 "The Warden Drill" — the border checkpoint's lane-closure drill. Entry payload
+  // `from` is "Checkpoint lane" — no natural letter-writer — so the nearest in-world sender
+  // signs it: the Concord checkpoint watch (wardens recast to Concord patrol per the
+  // verify-remit hone; Vael's remit is the far rim).
+  {
+    id: 'mail_special500_sp1-028', kind: 'cast', from: 'Concord checkpoint watch, io_reach',
+    subject: 'Lane closure notice: it says DRILL on the sign',
+    body: 'The checkpoint on the Reach will close today, the way it does on most days. The sign '
+      + 'says DRILL, and the sign is technically accurate: the lane shuts, every hull stacks into '
+      + 'a holding pattern you can see from the outer marks, and the wardens walk the queue '
+      + 'hull-to-hull with a manifest lamp. Nobody is being arrested. It is exercise. The locals '
+      + 'do not complain, because complaining costs the same as waiting and waiting is shorter. '
+      + 'When the walk finishes, the lane reopens with no announcement at all, which is the '
+      + 'drill\'s most honest part: the checkpoint does not consider reopening an event. The '
+      + 'mine-marker cut-through around the back is open the whole time, on no chart, and its '
+      + 'toll is variable — priced at whatever a patrol decides you look like. We recommend the '
+      + 'queue. The queue has a fixed price.',
+    triggers: [FLAG('special500.SP1-028')],
+  },
+  // SP3-180 "The Toll of Names" — the Drift Wake roll call with the witness pause. Entry
+  // payload `from` is "Drift Wake fire" — a fire is not a correspondent — so the letter is
+  // signed by the reader the consensus names: "Dustwife" Senna, keeper of names.
+  {
+    id: 'mail_special500_sp3-180', kind: 'cast', from: '"Dustwife" Senna',
+    subject: 'The roll, and the two seconds',
+    body: 'Drift Wake is done for another year and the fire has gone back to being a fire. I read '
+      + 'the roll the way I always read it: every name, no editorial, to anyone who would stand '
+      + 'still long enough. Most names get nothing but the next name. But when the reading came '
+      + 'to a death that somebody in that circle had actually seen happen, it stopped. Two full '
+      + 'seconds of nothing, the name held up in the quiet, while the fire did the only work '
+      + 'there was to do. That pause is not mine to give and not yours to skip. It belongs to '
+      + 'the people who watched it happen, and every one of them knows it when they hear it. '
+      + 'Unwitnessed names cost the reader nothing. Witnessed names are the only ones that cost '
+      + 'anything. The book is closed for the year. The names are not. They never are.',
+    triggers: [FLAG('special500.SP3-180')],
+  },
+  // SP1-198 "The Homecoming Bell" — the starter beacon's saved line, rung on first re-entry
+  // after a long absence. Sender is the entry payload's own `from`.
+  {
+    id: 'mail_special500_sp1-198', kind: 'cast', from: 'Tutorial Beacon',
+    subject: 'Throttle\'s where I taught you. Welcome home.',
+    body: 'You crossed the gate and I rang. Not the ordinary arrival tone — the other one. The '
+      + 'old-timers on the band caught it before your transponder finished talking: someone\'s '
+      + 'come back. That pattern is rung for hulls that left this sector and made it back, and '
+      + 'for nobody else. Not for hulls that never left, not for hulls that left and stayed '
+      + 'left. Every beacon keeps one line it saves, and mine is spent now, on schedule, on '
+      + 'you: Throttle\'s where I taught you. Welcome home. The pattern stays in my rotation '
+      + 'from here on. It rings one way for a hull that left with nothing and came back the '
+      + 'same, and differently for one that left and got rich, and the band will argue about '
+      + 'which version it prefers. I taught you the throttle. I never taught you to stay gone.',
+    triggers: [FLAG('special500.SP1-198')],
+  },
+  // SP2-027 "The Posthumous Ping" — the Quiet Mast relays a dead contact's queued personal.
+  // Sender is the entry payload's own `from`; the dead contact stays unnamed, per the beat.
+  {
+    id: 'mail_special500_sp2-027', kind: 'cast', from: 'The Quiet Mast',
+    subject: 'One personal, queued, released',
+    body: 'This mast does not write letters. It relays them, on schedule, whether or not the '
+      + 'schedule still makes sense. The personal below was queued with a send-after date, and '
+      + 'its sender died the day before that date arrived. The mast is not equipped to care '
+      + 'about that, so here it is, verbatim, timestamped the day before the death: "If this '
+      + 'sends, the count got me. Settle nothing on my behalf. Especially not to Rook." That is '
+      + 'the whole message. No signature, because the sender assumed you would know the hand. '
+      + 'The mast notes, for the record, that the queue held this one for exactly the interval '
+      + 'it was asked to hold it, through weather, patrols, and one change of administration on '
+      + 'the Reach. Queues keep their promises. That is the whole difference between a mast and '
+      + 'a person, and today it worked in somebody\'s favor.',
+    triggers: [FLAG('special500.SP2-027')],
+  },
+  // SP2-003 "The Seventh Run" — the half-sentence from no registered sender. Sender is the
+  // entry payload's own `from`: the unregistered relay, forwarding the fragment it cannot
+  // put down.
+  {
+    id: 'mail_special500_sp2-003', kind: 'cast', from: 'unregistered relay',
+    subject: 'FWD: fragment, no origin, no follow-up',
+    body: 'The relay has no registered sender to attach this to, so the log attached it to you, '
+      + 'which is what logs do with things they cannot put down. Reproduced exactly, both halves '
+      + 'of it: "—sevenths run, if anyone is counting, we did not talk about—" Then static, and '
+      + 'the static is part of the quote. The note field admits what the note field always '
+      + 'admits: the relay could not triangulate. Whoever was transmitting was talking to one '
+      + 'specific person about one thing the rest of the band does not get to have, and the '
+      + 'sentence stopped where their nerve or their signal stopped. This desk files fragments; '
+      + 'it does not solve them. If anyone is counting — and somebody is, or the sentence would '
+      + 'have said something else — the count did not come from here, and the answer is not '
+      + 'coming either.',
+    triggers: [FLAG('special500.SP2-003')],
+  },
+  // SP2-008 "REF 44-C, Filed Against You" — the patrol assigns you a clerk. Sender is the
+  // entry payload's own `from`; the desk she inherits is Clerk Yune's own, per the entry text.
+  {
+    id: 'mail_special500_sp2-008', kind: 'cast', from: 'CONCORD PATROL',
+    subject: 'REF 44-C: a clerk has been assigned',
+    body: 'CONCORD PATROL, form letter, pre-signed as required: "REF 44-C RECURS. YOUR FILING '
+      + 'PATTERN IS NOW ITS OWN CATEGORY. A CLERK HAS BEEN ASSIGNED. SHE HAS ALREADY READ '
+      + 'EVERYTHING." That is the form. The form does not name her, because the form is not the '
+      + 'interesting document; the assignment is. The desk she now works is not a Concord desk '
+      + 'and never was. It is the Quiet\'s sealed-evidence desk — Clerk Yune\'s own — inherited '
+      + 'whole, seals and all, which means your file now sits in a drawer that has outlived '
+      + 'every clerk who ever opened it. The patrol files this letter under routine. You should '
+      + 'file it under: somebody has read everything you have done, in order, on purpose. She '
+      + 'will not introduce herself. Clerks from that desk never do. Pay your fines. She '
+      + 'prefers receipts.',
+    triggers: [FLAG('special500.SP2-008')],
+  },
+  // SP2-042 "Spam: You Have Won A Sector" — the bonds house finds your hull. Sender is the
+  // entry payload's own `from`; the consensus files this leg as a kind 'spam' row, and the
+  // fine print is the accurate silt/atmo economy summary the beat promises.
+  {
+    id: 'mail_special500_sp2-042', kind: 'spam', from: 'MERIDIAN BONDS OFFICIAL',
+    subject: 'CONGRATULATIONS VHL-4471-T — you have won a sector',
+    body: 'CONGRATULATIONS VHL-4471-T! YOUR HULL HAS BEEN PRE-APPROVED TO SPONSOR A SECTOR. '
+      + 'ATMOSPHERIC NAMING RIGHTS FROM 900 CR. CURRENT LEAD BIDDER: NOBODY. CURRENT SECTOR '
+      + 'CONDITION: DECLINING.\n\n'
+      + 'This message is unsolicited, automated, and — in the fine print the bonds house hopes '
+      + 'you never expand — entirely accurate. The fine print says: a declining sector has '
+      + 'cheap atmosphere and bad silt; cheap atmosphere gets bought in bulk by houses that '
+      + 'need somewhere to vent; the venting pays for the reclamation that makes the silt '
+      + 'mineable; and the naming rights are collateral on exactly that schedule. Sponsorship '
+      + 'does not fix the sector. Sponsorship is a bet that the venting holds. The bonds house '
+      + 'sells the bet, not the sector. CURRENT LEAD BIDDER: NOBODY, every cycle, which is the '
+      + 'most honest line on the form. Terms from 900 CR. Do not reply. The desk is also a form.',
+    triggers: [FLAG('special500.SP2-042')],
+  },
+  // SP2-099 "The Reach Weigh-Booth Tollbooth Poetry" — the receipt's rotating bottom line.
+  // Sender is the entry payload's own `from`; the collector's denial confirms, per the beat.
+  {
+    id: 'mail_special500_sp2-099', kind: 'cast', from: 'Reach weigh-booth',
+    subject: 'Bottom line of today\'s receipt, filed',
+    body: 'The booth does not comment on the bottom line. The bottom line prints anyway, a '
+      + 'different one every day, and today\'s read: WEIGH-SLIP FOUR HULLS / THREE FILLED, ONE '
+      + 'SHORT, THE LANE / KEEPS WHAT IT IS OWED. Haiku-shaped, nobody hired, nobody paid. '
+      + 'Hail the collector about it and you will get a denial — not the author\'s, but a '
+      + 'denial shaped exactly like an author: too specific, too fast, and somehow always '
+      + 'describing the meter correctly. The booth\'s position is that receipts are legal '
+      + 'documents and legal documents do not have a poetry habit. The receipts disagree daily. '
+      + 'Your copy is attached. Keep it, because the line rotates on the day-seed and never '
+      + 'prints the same one twice in a row, and a full set of them is the kind of thing this '
+      + 'booth will neither confirm nor deny exists.',
+    triggers: [FLAG('special500.SP2-099')],
+  },
 ]);
 
 export default { MAIL_LETTERS, MAIL_KINDS, MAIL_EVENT_NAMES, MAIL_DAY_S };

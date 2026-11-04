@@ -21,6 +21,25 @@ Derivation (2026-11-04, from live catalog truth): 330 ratified followup legs +
 registry + system so every spectacle leg lands as data). Pilot batch 1 (12
 units, 6 families) dispatched; landed units will be recorded here per batch.
 
+### Landed (Phase 2)
+
+- `ab9b97e8196c` — INFRA spectacle registry + SP1-101 The Scheduled Ghost +
+  SP3-127 The Echo Wreck (first two spectacle rows; templates lightFlash,
+  echoRing, lampCascade, trafficAdvisory).
+- `387fd003dde0` — SP2-172 The Tether Memorial's New Line + SP2-157 The Eris
+  Last Pod (encounter legs 1310/1311; generated index carries a foreign worker's
+  1400 module pending its owner's commit).
+- `e28d9ac9e619` — pilot mail/codex slice: SP2-018, SP2-041 (+Rets bar contact),
+  SP2-004 (durable scanner read found — no writer needed; rep branch deferred),
+  SP2-112; ownedShips conjunct; mail occurrence rule gains 'flag'.
+- `d2341bcb4999` — spectacle batch 5 (14 rows; new bellVoice template through
+  the audio owner's existing cue seam) + concurrent loop-resurrection repair
+  preserved into the landed owner.
+- `99fbbf920f14` — mail batch 2 (14 letters; the serial mail pass opens).
+- `cd41374aad19` — mail batch 3 (14 letters; 28 special500 letters live).
+
+Running: pilot choice+vendor slice, spectacle batch 6, mail batch 4 (final 8).
+
 ## Phase 1 — the catalog (complete)
 
 - `ebaea2ad5c1` — debate artifacts + ratified consensus (500 + 20 bench).
