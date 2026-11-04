@@ -1,7 +1,7 @@
 {
   "schema": "spaceface.localizationCatalog.v1",
   "locale": "en-US",
-  "inventoryDigest": "d3376df6a267205dc7a2abba2dce8eb80d31cdd91c1d8ea09b334eda2663fe36",
+  "inventoryDigest": "eab66180a2e741a9a8dd3f023997c805b694ea7e1c92fa7d76a31ec63c6eaa2e",
   "messages": {
     "loc.index.template.text.12f9c963d733": "SpaceFace",
     "loc.index.template.text.4eb12ed308ef": "SPACEFACE",
