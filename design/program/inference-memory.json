@@ -132,45 +132,6 @@
   ],
   "units": [
     {
-      "id": "seed-sw-23",
-      "date": "2026-10-24",
-      "wf": "WF-02",
-      "mode": "opportunity",
-      "verdict": "implemented",
-      "reason": "glaive return arc",
-      "fingerprint": "verb=chain,subject=glaive,sector=crucible,layer=subsystem,domain=wf-02",
-      "references": [],
-      "integration": "live",
-      "commit": "dda2c2cc96",
-      "verification": "focused_green"
-    },
-    {
-      "id": "seed-se-15",
-      "date": "2026-10-24",
-      "wf": "WF-13",
-      "mode": "opportunity",
-      "verdict": "implemented",
-      "reason": "player hull hits paint banded damage ticks on the tape",
-      "fingerprint": "verb=see,subject=replay-tape,sector=adventure,layer=presentation,domain=wf-13",
-      "references": [],
-      "integration": "live",
-      "commit": "ebd55bf608",
-      "verification": "focused_green"
-    },
-    {
-      "id": "seed-pc-01",
-      "date": "2026-10-24",
-      "wf": "WF-02",
-      "mode": "opportunity",
-      "verdict": "implemented",
-      "reason": "ending-cast watched spawns keep arrival signatures; watches sweep on release",
-      "fingerprint": "verb=see,subject=traffic-wake,sector=ending,layer=sim,domain=wf-02",
-      "references": [],
-      "integration": "live",
-      "commit": "46461eed33",
-      "verification": "focused_green"
-    },
-    {
       "id": "seed-se-01",
       "date": "2026-10-24",
       "wf": "WF-13",
@@ -1689,6 +1650,45 @@
       "references": [],
       "integration": "live",
       "commit": "29a5dddde27f",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inf-room-end-cause",
+      "date": "2026-11-04",
+      "wf": "WF-16",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "A hull a mine, charge, cookoff or the crusher jaws took now reads MINED/MILLED on the kill popup and pays the documented physics rate, instead of reading as a gun kill.",
+      "fingerprint": "verb=stamp,subject=kill-cause,sector=crucible-kill-popup,domain=wf-16",
+      "references": [],
+      "integration": "live",
+      "commit": "fe9b97714a9a",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inf-coverseek",
+      "date": "2026-11-04",
+      "wf": "WF-02",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "A marked elite swings until a rock sits between it and you, then holds and coasts its orbit there — flank it, hit it, and it closes again.",
+      "fingerprint": "verb=hold,subject=elite-affix,sector=crucible-arena,domain=wf-02",
+      "references": [],
+      "integration": "live",
+      "commit": "6869b4f0b4dd",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inf-dot-end-word",
+      "date": "2026-11-04",
+      "wf": "WF-16",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "A hull the burn or tar corroded down now reads WASTED on the kill popup in every arena's own language, instead of reading as a gun kill.",
+      "fingerprint": "verb=label,subject=dot-end-word,sector=crucible-kill-popup,domain=wf-16",
+      "references": [],
+      "integration": "live",
+      "commit": "0aa2bdac25c4",
       "verification": "focused_green"
     }
   ],

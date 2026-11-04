@@ -258,6 +258,23 @@ cross-run grudges (aceMemory New Run+ tiers + moral memory + defeat-streak mercy
 signature moments (six authored room laws + round events), formation-half of the wingman gap
 (squadFrame sockets + wingMorale).
 
+Implemented and focused-tested, wave 5 (INFERENCE 100 program — one commit each, recorded in
+`design/program/inference-memory.json`):
+- inf-coverseek (WF-02): a marked elite swings until a rock sits between it and you, then
+  holds and coasts its orbit there; flank, hit, or the 5 s window restores the closing intent;
+  the mark's lit lip shows only while a hold is live (6869b4f0b4dd).
+- inf-room-end-cause (WF-16 repair): a hull a mine, drift bomb, sympathetic cookoff or the
+  crusher jaws took reads MINED/MILLED and pays the documented PQ-174.02 physics rate when
+  player-attributed, instead of reading as a gun kill (fe9b97714a9a).
+- inf-dot-end-word (WF-16 repair): a hull the burn or tar corroded down reads WASTED in each
+  arena's own language (TEMPERED/SOLDERED/SINGED/THAWED/SURGED/SLAGGED/SCALDED) instead of
+  the gun word; attrition pays gun rate, never the force-table ratio (0aa2bdac25c4).
+Verified already deep, wave 5: patrol intervention breadth (20182af972c4 —
+patrolJurisdictionFor over four lawful responders; the board's "Concord-only" seam note was
+stale), ricochet/bounce causality (collisionConsequences provenance + chainKills), DoT kill
+credit (status periodic routes the applier as attackerId). Named skip: well dives (same
+kind/subject family as coverseek — rotation reserves it).
+
 ## Traps
 
 - Never edit `test/*.expected.json` to pass. A sim change that moves the golden is a real change: explain it or undo it.
