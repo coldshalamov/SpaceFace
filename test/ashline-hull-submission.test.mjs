@@ -79,6 +79,61 @@ async function fixture({ compile = () => ({ pipelines: {}, gpuResidency: {} }) }
 
 function batches(scene) { return scene.children.filter(node => node.userData?.spacefaceRigidOpaqueBatch); }
 
+test('optional factor palette merges only the two cold pairs and rolls back on a source mutation', async () => {
+  const f = await fixture();
+  try {
+    f.owner._enableRigidOpaqueBatch(true);
+    await f.owner._syncRigidOpaqueBatchProbe();
+    const before = f.owner.getRigidOpaqueBatchDiagnosticsForBench();
+    assert.equal(before.batches, 7);
+    await f.owner.setAshlineFactorPaletteForBench(true);
+    const after = f.owner.getRigidOpaqueBatchDiagnosticsForBench();
+    assert.equal(after.batches, 5, JSON.stringify(after));
+    assert.equal(after.instances, before.instances);
+    const factorBatches = batches(f.scene).filter(x => x.material.customProgramCacheKey().includes('ashline-factor-v1'));
+    assert.equal(factorBatches.length, 2);
+    for (const batch of factorBatches) {
+      assert.ok(batch.geometry.getAttribute('sfFactorColor'));
+      assert.ok(batch.geometry.getAttribute('sfFactorRM'));
+    }
+    const source = f.records[0].cold.find(x => x.name.endsWith('_Armor'));
+    const sourceGeometry = source.geometry;
+    let sourceDisposals = 0, batchDisposals = 0;
+    sourceGeometry.addEventListener('dispose', () => sourceDisposals++);
+    for (const batch of factorBatches) batch.addEventListener('dispose', () => batchDisposals++);
+    const point = source.getWorldPosition(new THREE.Vector3());
+    const camera = new THREE.PerspectiveCamera(60, 4 / 3, 0.1, 500);
+    camera.position.copy(point).add(new THREE.Vector3(0, 0, 50)); camera.lookAt(point); camera.updateMatrixWorld(true);
+    const picker = createWorldObjectPicker({ state: f.state, getCamera: () => camera,
+      getMeshes: () => f.owner._meshes, getScene: () => f.scene, getViewport: () => ({ width: 800, height: 600 }) });
+    assert.equal(picker.pick(400, 300)?.entity.id, f.records[0].id, 'picking retains the canonical source');
+    source.material.roughness = 0.123;
+    await f.owner._syncRigidOpaqueBatchProbe();
+    assert.notEqual(source.layers.mask, 0, 'changed source returns to its canonical direct rendering');
+    await f.owner.setAshlineFactorPaletteForBench(false);
+    assert.equal(f.owner._ashlineFactorPaletteEnabled, false);
+    assert.equal(sourceDisposals, 0, 'rollback does not dispose the source geometry');
+    assert.equal(batchDisposals, 2, 'both retained batches dispose with their copied buffers');
+  } finally { f.dispose(); }
+});
+
+test('factor candidate cannot publish a material changed during asynchronous preparation', async () => {
+  let release;
+  const gate = new Promise(resolve => { release = resolve; });
+  const f = await fixture({ compile: async () => { await gate; return { pipelines: {}, gpuResidency: {} }; } });
+  try {
+    f.owner._ashlineFactorPaletteEnabled = true;
+    f.owner._enableRigidOpaqueBatch(true);
+    const pending = f.owner._syncRigidOpaqueBatchProbe();
+    const source = f.records[0].cold.find(x => x.name.endsWith('_Hull'));
+    source.material.metalness = 0.73;
+    release(); await pending;
+    assert.ok(f.records.every(record => record.cold.every(leaf => leaf.layers.mask === 1)),
+      'stale factor geometry cannot replace any direct source');
+    assert.equal(batches(f.scene).length, 0);
+  } finally { release(); f.dispose(); }
+});
+
 function instanceMatrixFor(scene, source) {
   const target = new THREE.Matrix4();
   for (const batch of batches(scene)) {

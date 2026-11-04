@@ -8063,6 +8063,7 @@ const RENDER_STATE_REFERENCE_KEYS = Object.freeze([
   'openingSubmissionLateInstancedPbr', 'openingSubmissionPreSubmitValidation',
   'openingSubmissionReady', 'openingSubmissionValidation', 'pipelinePrecompileReady',
   'rigidOpaqueBatch', 'setRigidOpaqueBatchForBench', 'getRigidOpaqueBatchDiagnosticsForBench',
+  'setAshlineFactorPaletteForBench',
   'firstPlayableContentHashes', 'firstPlayableContentHashesVerified',
   'firstPlayableGlobalProgramKeys', 'firstPlayableOpeningProgramKeys',
   'firstPlayableResourceIdentitySets', 'openingGraphPublicationFrozen', 'openingVfxFrozen',
@@ -9118,6 +9119,13 @@ function createRigidOpaqueBatchProbe(owner, scene, options = {}) {
     isAttestedRigidMotionOwner: defaultCohort
       ? (object, source) => isRigidOpaqueAshlineMotionOwner(owner, object, source)
       : undefined,
+    isAshlineFactorSource: (source) => {
+      if (owner._ashlineFactorPaletteEnabled !== true || owner._ashlineHullBatchEnabled === false || !defaultCohort) return false;
+      for (let node = source?.parent; node; node = node.parent) {
+        if (node.name === 'MOTION_HULL_CORE') return isRigidOpaqueAshlineMotionOwner(owner, node, source);
+      }
+      return false;
+    },
     prepare: async (batches, context = {}) => {
       const renderState = state?.render;
       const compile = renderState?.compileObjectPipelines;
@@ -9450,6 +9458,7 @@ export const render = {
     const rigidOpaqueBatchBenchRequested = !!(query && query.get('rigidOpaqueBatch') === '1');
     this._ashlineHullBatchEnabled = true;
     this._rigidOpaqueBatchDefaultCohort = !rigidOpaqueBatchBenchRequested;
+    this._ashlineFactorPaletteEnabled = false;
     this._rigidOpaqueBatchProbeEnabled = this._opaqueBatchSupported === true;
     this._rigidOpaqueBatchScene = scene;
     this._rigidOpaqueBatchRootsScratch = [];
@@ -9467,6 +9476,7 @@ export const render = {
     state.render.getRigidOpaqueBatchDiagnosticsForBench = () => this.getRigidOpaqueBatchDiagnosticsForBench();
     state.render.setAshlineHullBatchForBench = (enabled) => this.setAshlineHullBatchForBench(enabled);
     state.render.getAshlineHullBatchDiagnosticsForBench = () => this.getAshlineHullBatchDiagnosticsForBench();
+    state.render.setAshlineFactorPaletteForBench = (enabled) => this.setAshlineFactorPaletteForBench(enabled);
     if (this._rigidOpaqueBatchProbeEnabled) {
       if (rigidOpaqueBatchBenchRequested) this.setRigidOpaqueBatchForBench(true);
       else this._enableRigidOpaqueBatch(true);
@@ -28753,9 +28763,21 @@ export const render = {
   getAshlineHullBatchDiagnosticsForBench() {
     return {
       enabled: this._ashlineHullBatchEnabled !== false,
+      factorPaletteEnabled: this._ashlineFactorPaletteEnabled === true,
       defaultCohort: this._rigidOpaqueBatchDefaultCohort === true,
       rigidOpaqueBatch: this.getRigidOpaqueBatchDiagnosticsForBench(),
     };
+  },
+
+  async setAshlineFactorPaletteForBench(enabled) {
+    const previousEnabled = this._ashlineFactorPaletteEnabled === true;
+    this._ashlineFactorPaletteEnabled = enabled === true;
+    if (previousEnabled !== this._ashlineFactorPaletteEnabled) {
+      this._rigidOpaqueBatchController?.rollback?.('ashline-factor-palette-compare-switch');
+    }
+    await this._syncRigidOpaqueBatchProbe();
+    return { previousEnabled, enabled: this._ashlineFactorPaletteEnabled,
+      rigidOpaqueBatch: this.getRigidOpaqueBatchDiagnosticsForBench() };
   },
 
   // Retained rigid candidate. The default path walks only the already-resident player root; the
