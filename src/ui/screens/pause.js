@@ -668,6 +668,7 @@ function unwatchPauseNarrow() {
 
 function photoHintText() {
   // Esc is the modal-close key uiInput owns; inside photo it returns to this screen.
+  if (isPhoneLayout()) return 'Capture saves the photo · Close returns to Pause';
   return 'Esc to return · WASD pan · wheel zoom · Capture for the store page';
 }
 
@@ -1011,6 +1012,11 @@ function enterPhoto(rootEl, ctx) {
   fovControl.appendChild(fov);
   bar.appendChild(fovControl);
   bar.appendChild(captureBtn);
+  const closeBtn = el('button', 'k-word k-word--fine fh-key fh-key--small', 'Close');
+  closeBtn.type = 'button';
+  closeBtn.setAttribute('aria-label', 'Close photo mode');
+  closeBtn.addEventListener('click', () => exitPhoto(rootEl, ctx));
+  bar.appendChild(closeBtn);
   // Seat the deck on the bottom frame. #screens flex-centres unpositioned children, which parked
   // this bar mid-air over the subject the player is framing; the hint (k-fine) owns the bottom
   // left, so the deck takes the bottom centre, one k-margin step above it. Seated without a

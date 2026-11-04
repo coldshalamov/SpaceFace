@@ -400,6 +400,7 @@ body.k-photo #hud, body.k-photo #toasts, body.k-photo #alerts { opacity: 0 !impo
 /* Pause keeps its modal stack while Photo is active; its legacy backdrop must not darken the
    exposure preview relative to the image captured from the canvas. */
 body.k-photo #modal-backdrop { background: none !important; }
+body.k-photo .sf-photo-bar button { box-sizing: border-box; min-width: 44px; min-height: 44px; }
 /* The legacy modal backdrop (ui.css #modal-backdrop) paints a radial vignette under every screen; a kit
    screen's scrim (.k-screen::before) is the only darkening the sheet allows, so the vignette goes with the ground. */
 body.k-screen-top #modal-backdrop { background: none; }

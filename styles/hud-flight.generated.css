@@ -3307,6 +3307,10 @@
 }
 /* A critical notice may temporarily occupy the decorative teaching ghost's space. */
 :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #sf-touch-overlay.mf-notice-priority .mf-ghost { visibility:hidden; }
+/* Expanded navigation owns this space; hidden task controls must not intercept radar taps. */
+:root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud:has(.sf-radar-wrap--expanded) :is(.sf-leftcontext,.sf-leftcontext *) {
+  visibility:hidden!important; pointer-events:none!important;
+}
 @media (orientation:portrait) and (max-width:959px) {
   /* The same Powers button joins Pause in the top navigation lane. Its old 110px side
      handle could not fit between the radar caption and the action cluster on short phones.

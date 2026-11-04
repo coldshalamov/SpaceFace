@@ -17,6 +17,10 @@ ${FLIGHT} #ui-root > #sf-sector-law {
 }
 /* A critical notice may temporarily occupy the decorative teaching ghost's space. */
 ${FLIGHT} #sf-touch-overlay.mf-notice-priority .mf-ghost { visibility:hidden; }
+/* Expanded navigation owns this space; hidden task controls must not intercept radar taps. */
+${FLIGHT} #hud:has(.sf-radar-wrap--expanded) :is(.sf-leftcontext,.sf-leftcontext *) {
+  visibility:hidden!important; pointer-events:none!important;
+}
 @media (orientation:portrait) and (max-width:959px) {
   /* The same Powers button joins Pause in the top navigation lane. Its old 110px side
      handle could not fit between the radar caption and the action cluster on short phones.
