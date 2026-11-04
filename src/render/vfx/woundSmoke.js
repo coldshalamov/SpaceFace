@@ -122,3 +122,36 @@ export function resolveWoundBeat(slot, now, out = {}) {
   out.b = VAPOR_FLOOR + VAPOR_SPAN * clamp01(num(slot.wb));
   return out;
 }
+
+// Metal torn from a fresh named wound starts at the wound's own heat and cools on the authored
+// dark track. Past this window the tear is burnt metal — the debris forgets again, exactly like
+// the scar's own glow cools into shared burn amber.
+export const WOUND_METAL_HEAT_S = 4.0;
+
+/**
+ * The breach-heat plan for solids torn out of one wound. Fields (all written):
+ *   gain01    0..1 — how much of the wound's heat the torn edge still carries (0 when the wound
+ *             is unnamed, burnt out, or the caller should keep the authored cold grey)
+ *   colorHex  the heated-metal start color: incandescent steel carrying the striking weapon's
+ *             tint, as 0xRRGGBB the burst writer can hand straight to the pool's color track
+ *
+ * Pure, allocation-free beyond `out`. No sim reads.
+ */
+export function resolveWoundMetalHeat(slot, now, out = {}) {
+  out.gain01 = 0;
+  out.colorHex = 0x94897b;
+  if (!slot || slot.wr == null) return out;
+  const age = Math.max(0, num(now) - num(slot.born));
+  if (age >= WOUND_METAL_HEAT_S) return out;
+  out.gain01 = clamp01(1 - age / WOUND_METAL_HEAT_S);
+  // Incandescent base mixed toward the striking weapon's own color — the fragment is metal at
+  // the breach's temperature, not painted glass, so the tint never owns more than half the mix.
+  const r = 1.0 + (clamp01(num(slot.wr)) - 1.0) * 0.45;
+  const g = 0.84 + (clamp01(num(slot.wg)) - 0.84) * 0.45;
+  const b = 0.58 + (clamp01(num(slot.wb)) - 0.58) * 0.45;
+  const ri = Math.round(Math.min(1, Math.max(0, r)) * 255);
+  const gi = Math.round(Math.min(1, Math.max(0, g)) * 255);
+  const bi = Math.round(Math.min(1, Math.max(0, b)) * 255);
+  out.colorHex = (ri << 16) | (gi << 8) | bi;
+  return out;
+}

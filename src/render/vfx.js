@@ -333,7 +333,7 @@ import { createExplosionPresentationMethods } from './vfx/explosionPresentationV
 import { createWeaponImpactVfxMethods } from './vfx/weaponImpactVfx.js';
 import { CauseMarkLayer } from './vfx/causeMarks.js';
 import { StationNightLightLayer } from './vfx/stationNightLights.js';
-import { collectHullWounds, resolveWoundBeat, woundWorldPoint } from './vfx/woundSmoke.js';
+import { collectHullWounds, resolveWoundBeat, resolveWoundMetalHeat, woundWorldPoint } from './vfx/woundSmoke.js';
 import { resolveLineShieldSustain, shieldBiteDir } from './vfx/lineShieldBite.js';
 import { BeaconLampLayer } from './beaconLampLife.js';
 import {
@@ -5574,6 +5574,11 @@ export const vfx = {
     req.priority = admission.admissionPriority;
     req.cause = 'kill';
     req.victimId = p && p.id;
+    // Breach heat (inf-debris-wound-heat): solids torn out of this death start their cooling
+    // track at the freshest wound's heated-metal color — the wreck field remembers what killed
+    // it for a beat. Consumed-and-cleared by the burst spawn, so it never leaks into the next
+    // collision or bank burst on this shared scratch.
+    req.breachHeat = this._killBreachHeat(req.victimId);
     req.axisAngle = 0;
     req.magnitude = 1;
     req.dv = 0;
@@ -5777,6 +5782,10 @@ export const vfx = {
     this._initArcadeStructural();
     if (!this._arcadeStructural || !req) return false;
     if (this.state?.render?.openingVfxFrozen === true) return false;
+    // Consume-and-clear the death receipt's breach heat: whatever burst runs next on this
+    // shared scratch starts clean.
+    const breachHeat = req.breachHeat || null;
+    req.breachHeat = null;
     const x = req.x;
     const z = req.z;
     if (!Number.isFinite(x) || !Number.isFinite(z)) return false;
@@ -5845,7 +5854,23 @@ export const vfx = {
       reduced,
       pattern01: explosionPattern01,
       patternSigned: explosionPatternSigned,
+      // Breach heat (inf-debris-wound-heat): consumed from the death receipt above; null for
+      // every other burst family, forced-colors and mineral terrain keep their authored greys.
+      breachHeat,
     }) > 0;
+  },
+
+  // The freshest wound's remaining heat for a killed hull, read from the same scar book the
+  // wound smoke plans from. Presentation only; null when the death carries no such wound.
+  _killBreachHeat(victimId) {
+    if (victimId == null) return null;
+    const layer = this._causeMarks || this._ensureCauseMarks();
+    if (!layer) return null;
+    const now = this._causeNow();
+    const wounds = collectHullWounds(layer.scars, victimId, now, this._breachWoundScratch || (this._breachWoundScratch = []));
+    if (!wounds.length) return null;
+    const heat = resolveWoundMetalHeat(wounds[0].slot, now, this._breachHeatScratch || (this._breachHeatScratch = {}));
+    return heat.gain01 > 0 ? heat : null;
   },
 
   ...createExplosionPresentationMethods({
