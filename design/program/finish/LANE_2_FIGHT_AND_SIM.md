@@ -226,6 +226,21 @@ Verified already deep, no unit taken: formations break when their leader is pinn
 (squadFrame.js pinned-commander succession), the near miss rewarded (stunt closeShave → witness
 barks → rep/salvage pay), creatures react to Massline vibration (alienEcology AE-051/F5).
 
+Implemented and focused-tested, wave 2 (INFERENCE 100 program — one commit each unless noted,
+recorded in `design/program/inference-memory.json`):
+- inf-throw-carries (WF-02): the rock you threw keeps its speed into the next round and the
+  room says so, instead of forgetting the carry (e08c9b664dd8).
+- inf-wing-casualty-fold (WF-02): pick off a wingman and the enemy wing visibly folds in around
+  the gap instead of flying a leaderless line; bundled with inf-scar-history and
+  inf-mine-lane-drift in one commit (f8b04d2c3ca3 — deviation from one-commit-per-unit, noted).
+- inf-mine-lane-drift (WF-02): a jackal's telegraphed mine seed is placed on the drifting
+  rock's live pose with its current motion (same bundled commit).
+
+Verified already deep, wave 3 reconciliation, no unit taken: chain kills ("a kill that
+ricochets into a second kill and the game noticing") are fully built and registered —
+src/combat/chainKills.js witnesses the wreck that carried the contact, holds a bounded
+corpse ring, and the wire says one line per link (registered in the authoritative manifest).
+
 ## Traps
 
 - Never edit `test/*.expected.json` to pass. A sim change that moves the golden is a real change: explain it or undo it.

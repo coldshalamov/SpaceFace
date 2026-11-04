@@ -773,6 +773,31 @@ route outcomes remain distinct from these owner and layout checks):
   the PA — is readable on the market at 1280×720 instead of painting off the top of the glass;
   layout probe 17 findings → 0 (d9f10637f688).
 
+Implemented and focused-tested, waves 2–3 (INFERENCE 100 program — one commit each, recorded
+in `design/program/inference-memory.json`):
+- inf-radio-kill (WF-13, wave 2): the radio mentions the hostile wing you downed yourself —
+  The Margin airs the receipt over the band (b414436038b1).
+- inf-wreck-history (WF-16, wave 2): a scanned battlefield wreck reads as a history — the
+  black box names how it died, what it carried, how long it has been dead (ca1f422ec8b0).
+- inf-bar-regular (WF-09, wave 2): a bar regular whose story advances every visit —
+  recognition names your last exchange instead of one bark forever (c0f7eb02056b).
+- inf-berth-remembers (WF-04, wave 3, direct): docking at a station you berthed at before
+  reads one keeper line — days since your last visit — from persisted dock-provenance
+  stamps (visitedAt/priorVisitAt on the market-memory row); surveys and uplink refreshes
+  are knowledge, never presence, so the memory never lies about a hull in the bay
+  (8905cfb8f385).
+- inf-quiet-berth (WF-14, wave 3, direct): a berth with nothing happening reads one honest
+  quiet line — whether its boards have moved since you last read them — instead of a dead
+  card; never spoken over louder voices, never invented movement (41729f77ea5a).
+Verified already deep, wave 3 reconciliation, no unit taken: a hail that carries the ship's
+name and captain (src/data/shipRegistry.js mints the painted hull name + manifest captain
+per save seed; contactHail's callsign read already answers with it).
+
+Inbox (Lane 3, noticed 2026-11-04): ceres-workfleet-recovery/production-cycle suites fail on
+the current working tree (bodies.length/service-state assertions in restore()); the fixture
+imports src/systems/world.js, which has large uncommitted edits from the active integration
+thread — flagging so the thread lands or repairs it with its wave.
+
 ## Traps
 
 Integration 2026-10-31: phone station title/credits and Shipworks diagram/nameplate overlaps are

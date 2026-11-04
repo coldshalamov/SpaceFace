@@ -494,6 +494,18 @@ Verified already deep, no unit taken: sector sky (per-sector palettes + deep-sky
 landmark layer), loading screen (five authored worker-rendered tableaux), asteroid geology
 family, station side events (7 authored profiles).
 
+Implemented and focused-tested, waves 2–3 (INFERENCE 100 program — one commit each, focused
+tests in `test/inf-*.test.mjs`, recorded in `design/program/inference-memory.json`):
+- inf-mortal-blow (WF-12, wave 2): the shot that empties a hull punches through with a white
+  core and its own light before the flare, so the kill reads as its own event (212d29beeb05).
+- inf-shield-reknit (WF-12, wave 2): a shield coming back online after a break breathes once
+  through its lattice (af5d3d3bbd8c).
+- inf-scar-history (WF-12, wave 2): sustained fire leaves cool, target-bound hull scars that
+  keep their identity across a fight (with f8b04d2c3ca3).
+- inf-dying-drive (WF-12, wave 3, direct): a dying hull's exhaust says so — the bell cools
+  toward ember and sputters on its own deterministic phase as the hull fails, from the same
+  hull truth the smoke trail reads; hulls without hull fields never gutter (a3ae485e5d6d).
+
 ## Traps — measured and rejected; do not repeat
 
 - Shader prewarm with dummy meshes (made the fly worse: 147 → 207–219 ms).
