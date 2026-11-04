@@ -487,7 +487,10 @@ export function buildLanternWardVisual(entity) {
   for (const [name, coordinates] of Object.entries(contract.sockets)) socket(root, name, coordinates);
   root.userData.kind = entity.type;
   root.userData.interactionKind = entity.type;
-  root.userData.generatedVisualProducer = 'lantern-ward-authored-civic-v1';
+  // The factory producer owns opening recipe admission; Ward authorship is separate metadata.
+  root.userData.generatedVisualProducer = 'visual-factory-procedural';
+  root.userData.lanternWardVisualProducer = 'lantern-ward-authored-civic-v1';
+  root.userData.assetId = contract.assetId;
   root.userData.lanternWardAssetId = contract.assetId;
   root.userData.lanternWardAssetVersion = LANTERN_WARD_ASSET_VERSION;
   root.userData.visualBounds = { center: contract.center.slice(), size: contract.size.slice() };

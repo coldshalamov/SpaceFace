@@ -50,7 +50,9 @@ test('the installed production wrapper retains finite Ward geometry instead of a
     assert.ok(box.max.x - box.min.x <= e.radius * 2);
     assert.ok(box.max.z - box.min.z <= e.radius * 2);
     if (role !== 'maintenance_part') {
-      assert.equal(root.userData.generatedVisualProducer, 'lantern-ward-authored-civic-v1');
+      assert.equal(root.userData.generatedVisualProducer, 'visual-factory-procedural');
+      assert.equal(root.userData.lanternWardVisualProducer, 'lantern-ward-authored-civic-v1');
+      assert.equal(root.userData.assetId, LANTERN_WARD_BODY_CONTRACTS[role].assetId);
       assert.equal(root.userData.lanternWardAssetId, LANTERN_WARD_BODY_CONTRACTS[role].assetId);
       assert.ok(box.max.y - box.min.y <= LANTERN_WARD_BODY_CONTRACTS[role].size[1]);
     }
