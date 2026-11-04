@@ -88,6 +88,8 @@ import { BOMB_DEFS, BOMB_IDS, BOMB_RACK } from '../../../data/bombs.js';
 import { TURRET_RING_OUTPUT, WEAPONS, shoveMetricValue } from '../../../data/weapons.js';
 import { admitModuleMetric, liveDamageRate } from '../moduleCardMetrics.js';
 import { escapeHtml } from '../../comms.js';
+import { CAL_DAY_S } from '../../../data/worldCalendar.js';
+import { GRAFFITI } from '../../../data/narrative.js';
 import { entitySpanHtml } from '../../entityResolver.js';
 import { confirm, isConfirmOpen } from '../../confirm.js';
 import { describeOutfittingSpendConfirm, focusNamedStationControl, isOutfittingSpendDanger, statedHullStillViewed, statedModulePurchaseStillMatches } from '../../outfittingSpendConfirm.js';
@@ -1507,6 +1509,36 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     ).join('');
   }
 
+  // special-500 batch 18 — the hull margin notes: the four counter legs that read as dressing
+  // rows on THE SHIP's condition band. Each is a plain-named story flag written once by the
+  // counter leg that owns the moment; a hull without the stamp shows nothing here.
+  //   SP2-007  hull_held_15     — "BULKHEAD 3 LOG — SHE HELD TOGETHER. WE DIDN'T." (GRAFFITI
+  //                              corpus; the handwriting is not the player's)
+  //   SPX-B-02 rack_mark_done   — the launch rack's scored line: "rack mark, {date}"
+  //   SP2-120  rubric_signed    — the stencil "HM-11 ✕ [callsign]", dated the first sighting
+  //   SP2-035  wren_buoy_found  — the hull note the buoy tag files: "she pulls left"
+  function hullMarginNotesFor(state) {
+    const flags = state && state.story && state.story.flags;
+    if (!flags || typeof flags !== 'object') return [];
+    const notes = [];
+    if (flags.hull_held_15 != null) {
+      notes.push({ id: 'bulkhead_log', label: 'BULKHEAD 3 LOG', value: GRAFFITI.GANG_SHE_HELD });
+    }
+    const scar = flags.first_hull_damage;
+    if (flags.rack_mark_done != null && scar && Number.isFinite(Number(scar.day))) {
+      notes.push({ id: 'rack_mark', label: 'Rack mark', value: `rack mark, day ${Math.max(0, Math.floor(Number(scar.day)))}` });
+    }
+    const signed = flags.rubric_signed;
+    if (signed && typeof signed === 'object' && Number.isFinite(Number(signed.firstSighting))) {
+      const day = Math.max(0, Math.floor(Number(signed.firstSighting) / CAL_DAY_S));
+      notes.push({ id: 'rubric_stencil', label: 'HM-11 \u2715', value: `stencil dated day ${day}` });
+    }
+    if (flags.wren_buoy_found != null) {
+      notes.push({ id: 'wren_buoy', label: 'Hull notes', value: '"she pulls left"' });
+    }
+    return notes;
+  }
+
   function deriveBandModel(previewCtx) {
     if (!previewCtx) return null;
     const def = SHIP_BY_ID.get(previewCtx.defId);
@@ -1543,6 +1575,9 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     const history = mode === 'fleet'
       ? { trinkets: livingHullTrinkets(viewedLivingHullForModel()), dead: historyWearDead(ctx.state) }
       : null;
+    // special-500 batch 18 — the hull's own margin notes (counter-family readers). Each row
+    // reads one plain-named story flag its counter leg wrote; an unstamped hull shows none.
+    const hullNotes = mode === 'fleet' ? hullMarginNotesFor(ctx.state) : null;
     const availability = shipworksActionAvailability(ctx.state);
     const slots = buildSlotList(def);
     const fittedDefs = fittings.map((id) => id && FITTABLE_BY_ID.get(id)).filter(Boolean);
@@ -1583,6 +1618,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       hullName,
       identity,
       variantRows,
+      hullNotes,
     };
   }
 
@@ -1922,6 +1958,12 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         const named = latest && latest.name ? ` — last: ${latest.name}` : '';
         const yours = dead.filter((d) => d && d.byPlayer === true).length;
         rows.push(staticRow('Memorial', escapeHtml(`${dead.length} named${yours ? ` (${yours} by this hull)` : ''}${named}`)));
+      }
+      // The hull margin notes (special-500 batch 18): each counter leg's dressing row, in the
+      // band's own row grammar. An unstamped hull adds nothing — the band never apologizes.
+      const notes = Array.isArray(model.hullNotes) ? model.hullNotes : [];
+      for (const note of notes) {
+        rows.push(staticRow(escapeHtml(note.label), escapeHtml(note.value)));
       }
       return (
         `<div class="sx-sw-condition__rows"${whyAttr(model.condition && model.condition.why)}>` +

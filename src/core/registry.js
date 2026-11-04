@@ -228,6 +228,10 @@ import { special500Question } from '../systems/special500Question.js';       // 
 import { special500Invoice } from '../systems/special500Invoice.js';         // SP2-044 leg: the standby-fee invoice
 import { special500PortraitBuoys } from '../systems/special500PortraitBuoys.js'; // SP1-193 leg: the corridor's portrait buoy line
 import { special500Sommelier } from '../systems/special500Sommelier.js';     // SP2-065 leg: the depot bar's censer pour
+import { special500DockLedger } from '../systems/special500DockLedger.js';   // batch 18 counter legs: the per-station dock counter
+import { special500HullLog } from '../systems/special500HullLog.js';         // batch 18 counter legs: the player-hull log
+import { special500ReadEverything } from '../systems/special500ReadEverything.js'; // batch 18 counter leg: SP2-188's run-end chain
+import { special500CollectiveHours } from '../systems/special500CollectiveHours.js'; // batch 18 counter leg: SP1-173's tally
 
 import { shepherd12 } from '../systems/shepherd12.js';
 import { quill } from '../systems/quill.js';
@@ -535,6 +539,10 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['special500Invoice', special500Invoice],
     ['special500PortraitBuoys', special500PortraitBuoys],
     ['special500Sommelier', special500Sommelier],
+    ['special500DockLedger', special500DockLedger],
+    ['special500HullLog', special500HullLog],
+    ['special500ReadEverything', special500ReadEverything],
+    ['special500CollectiveHours', special500CollectiveHours],
 
     ['shepherd12', shepherd12],
     ['quill', quill],

@@ -153,6 +153,7 @@ import { MEGA_HEIST_ENCOUNTERS } from '../data/encounters/mega-heist.js';
 import { endgamePullsUnlocked } from '../data/postEndingReplayChains.js';
 import { syncCaptainStandingOrders, noteStandingOrderCompletion, normalizeStandingOrders, captainStandingOfferPreflight } from './captainStandingOrders.js';
 import { syncColdburnBid, coldburnDeliveryBonus } from './coldburnRey.js';
+import { quinnStoolPayoutBonus } from './special500DockLedger.js';
 import { SUBSYSTEM_DEFS } from '../data/combatDefs.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
 import {
@@ -5667,7 +5668,10 @@ export const missions = {
     const setPieceTransition = this._compileSetPieceTransition(m, 'completed');
     const clauseSettlement = settleContractClauses(m);
     if (m.cause?.reyBid) this.bus.emit('coldburnRey:playerDelivered', { missionId: m.id });
-    const settledRewardCr = clauseSettlement.rewardCr + coldburnDeliveryBonus(state, m);
+    // SP2-053: Quinn's stool regulars get the +1 cr nudge on contracts offered at her bars
+    // (tiny, real — the flag read lives with the counter leg that writes it).
+    const settledRewardCr = clauseSettlement.rewardCr + coldburnDeliveryBonus(state, m)
+      + quinnStoolPayoutBonus(state, m);
     m.status = 'completed';
     noteStandingOrderCompletion(state, m);
     if (m.params?.workingBattlefield) state.story.flags.workingBattlefieldCompleted = true;

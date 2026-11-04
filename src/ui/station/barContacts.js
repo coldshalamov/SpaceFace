@@ -884,6 +884,8 @@ export function generateContacts(stationId, state = {}, opts = {}) {
   stampDeedOpener(listed, stationId, state, info, opts && opts.deedSession);
   stampAceRouteRumor(listed, stationId, state);
   stampLastShiftLocalReport(listed, stationId, state);
+  stampCollectiveHours(listed, stationId, state);
+  stampQuinnsStool(listed, stationId, state);
   return listed;
 }
 
@@ -994,6 +996,35 @@ function stampHeliosBay7Rumor(contacts, stationId, state) {
   if (!kessler) return;
   kessler.line = 'Maintenance still files tickets about a smell in Bay 7. Nobody walks the pad.';
   kessler.bay7Rumor = true;
+}
+
+// SP1-173 "The Hours": the stamped ledger number persists, and the Collective's host at the
+// Ceres refinery references it with respect proportional to its size. No stamp, no change —
+// the host does not ask about hours nobody filed.
+function stampCollectiveHours(contacts, stationId, state) {
+  if (stationId !== 'station_ceres') return;
+  const flags = state && state.story && state.story.flags;
+  const hours = flags ? Math.floor(Number(flags.collective_credit_hours)) || 0 : 0;
+  if (hours <= 0) return;
+  const host = contacts.find((contact) => contact
+    && contact.id === 'contact_station_ceres_0' && contact.role === 'barkeep');
+  if (!host) return;
+  host.collectiveHours = hours;
+  host.line = hours >= 75
+    ? `The host reads your stamped ledger — ${hours} credit hours — and stands to pour. Nobody stands to pour.`
+    : hours >= 30
+      ? `"${hours} credit hours," the host says, and checks the tally twice. Belt crews do not check numbers that low twice.`
+      : `The host nods at the stamp on your ledger. ${hours} credit hours. Everyone starts somewhere; most stay there.`;
+}
+
+// SP2-053 "The Third Stool's Letter": after the stool letter, Quinn's greeting is permanent.
+function stampQuinnsStool(contacts, stationId, state) {
+  const flags = state && state.story && state.story.flags;
+  if (!flags || flags.quinns_stool == null) return;
+  const quinn = contacts.find((contact) => contact && contact.canonicalKey === 'quinn');
+  if (!quinn) return;
+  quinn.line = 'Your stool. Same one.';
+  quinn.stoolRegular = true;
 }
 
 // U6 — the plated derelicts have first contact on the glass, but the bar — the place that

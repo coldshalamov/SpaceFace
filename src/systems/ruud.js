@@ -1,10 +1,26 @@
 // HOOK-LEFT owns the fin, the suit, the lane buoy, and (after a cut) the backup bladder.
 // state.ruud only. Movement is an impulse the physics authority consumes. The filing
 // does not fine, bounty, board, follow, or touch the player's stick.
-import { RUUD as C, RUUD_LINES, freshRuudMemory, normalizeRuudMemory, ruudGlobal } from '../data/ruud.js';
-import { globalToSectorLocalForSector } from '../data/sectorCoordinates.js';
+import { RUUD as C, RUUD_LINES, RUUD_RETURN_STAMP_LINE, freshRuudMemory, normalizeRuudMemory, ruudGlobal } from '../data/ruud.js';
+import { globalToSectorLocalForSector, sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
+import { CAL_DAY_S } from '../data/worldCalendar.js';
+import { TOW_ASSIST_FEE_CR } from '../data/yardContracts.js';
 import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
 import { deferSectorEnterMaterialization } from '../core/sectorEnterDefer.js';
+
+// SP2-123 — the return is authored at ten sector-days since first meeting.
+export const RETURN_DAYS = 10;
+// SP2-123 "Ruud's Nineteen Hours" — the tow-assist quote one grade better, permanently, once
+// the stamp is earned. The yard's standard assist call-out quotes 140cr
+// (yardContracts.TOW_ASSIST_FEE_CR); a hull Ruud has stamped hires the working tugs for 120.
+export const RUUD_STAMP_TOW_ASSIST_FEE_CR = 120;
+
+/** Pure reader for the quote seam (systems/scanner.js): the stamped fee once `ruud_stamp`
+ * is set, the yard's standard fee before it. Missing state degrades to the standard quote. */
+export function ruudTowAssistFeeQuote(state) {
+  const flags = state && state.story && state.story.flags;
+  return flags && flags.ruud_stamp != null ? RUUD_STAMP_TOW_ASSIST_FEE_CR : TOW_ASSIST_FEE_CR;
+}
 
 const PARTS = ['fin', 'suit', 'buoy', 'bladder'];
 const HUNG = ['fin', 'suit', 'buoy'];
@@ -321,11 +337,46 @@ export function createRuud() {
       this._scanSeq = p.seq;
       if (dist(player.pos, suit.pos) > Math.min(C.scanRadius, p.radius)) return;
       const m = this.state.ruud;
-      if (!m.met) { m.met = true; this._say('hello', true); return; }
+      if (!m.met) { m.met = true; this._stampFirstMet(); this._say('hello', true); return; }
       if (!this._hoursSaid) { this._hoursSaid = true; this._say('hours', true); return; }
       if (m.disposition === 'spared' && !this._hatchSaid) { this._hatchSaid = true; this._say('hatch', true); return; }
       if (m.disposition === 'spared' && !this._buoySaid) { this._buoySaid = true; this._say('buoy', true); return; }
       if (m.disposition === 'cut') this._say('memorial');
+      this._maybeReturnStamp();
+    },
+
+    // SP2-123 "Ruud's Nineteen Hours" — the save-carried return-day counter. The first
+    // meeting stamps the day; a scan ten or more sector-days later earns the one new
+    // sentence, once, and the permanent tow-assist grade (scanner.js reads the flag).
+    _stampFirstMet() {
+      const state = this.state;
+      if (!state.story) state.story = { flags: {} };
+      if (!state.story.flags || typeof state.story.flags !== 'object') state.story.flags = {};
+      if (state.story.flags.ruud_first_met_at == null) {
+        state.story.flags.ruud_first_met_at = Number(state.simTime) || 0;
+      }
+    },
+
+    _maybeReturnStamp() {
+      const state = this.state;
+      if (!state || !state.story || !state.story.flags) return;
+      const flags = state.story.flags;
+      if (flags.ruud_stamp != null || flags.ruud_first_met_at == null) return;
+      const firstMet = Number(flags.ruud_first_met_at);
+      if (!Number.isFinite(firstMet)) return;
+      const now = Number(state.simTime) || 0;
+      if (now - firstMet < RETURN_DAYS * CAL_DAY_S) return;
+      flags.ruud_stamp = now;
+      // The one new sentence, exactly once (the authored variant, spoken through the same
+      // voice/toast lane every RUUD_LINES line rides).
+      this._lastVoice = now;
+      if (this.helpers.voice?.say) {
+        this.helpers.voice.say({ id: 'ruud:return_stamp', priority: 58, channel: 'comms', text: RUUD_RETURN_STAMP_LINE, ttl: 9 });
+      } else {
+        this.bus?.emit('toast', { text: RUUD_RETURN_STAMP_LINE, kind: 'info', ttl: 9 });
+      }
+      this.bus?.emit('ruud:voice', { from: C.callsign, key: 'return_stamp', text: RUUD_RETURN_STAMP_LINE });
+      this.bus?.emit('ruud:stamp', { at: now });
     },
     _latch(p) {
       if (!this._live()) return;

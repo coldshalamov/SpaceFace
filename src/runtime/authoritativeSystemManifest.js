@@ -112,6 +112,15 @@ export const PRODUCTION_INIT_ORDER = Object.freeze([
   'special500Invoice',
   'special500PortraitBuoys',
   'special500Sommelier',
+  // special500 Phase 2 batch 18 counter legs: event-only readers of receipts other owners
+  // already emit (dock:docked, combat:damage, player:death) — like historyWear/deedRecord,
+  // init-only subscriptions with plain-named flag writes, deliberately absent from
+  // PRODUCTION_UPDATE_ORDER; special500CollectiveHours carries the one accrual clock and
+  // joins the update order from there.
+  'special500DockLedger',
+  'special500HullLog',
+  'special500ReadEverything',
+  'special500CollectiveHours',
   // PULSE-MAIL (435) / PULSE-TIME (439): listener+tick delivery and the world calendar's
   // transition announcer — both slow observers on the calendar clock.
   // worldPressure (§34 rows 520–523): the tide/gate-audit/slow-gray owner — reads
@@ -234,6 +243,10 @@ export const PRODUCTION_UPDATE_ORDER = Object.freeze([
   'special500Invoice',
   'special500PortraitBuoys',
   'special500Sommelier',
+  // special500 Phase 2 batch 18: SP1-173's logged-labor accrual — dt sums only while the
+  // Ceres Belt sector is held and flight runs; a 2 Hz pass is generous for a seconds-scale
+  // tally. The batch's other counter legs are event-only (init-only, above).
+  'special500CollectiveHours',
   'voiceArbiter',
   // PULSE-MAIL / PULSE-TIME: mail delivery and calendar announcements run after the story
   // and deed systems so same-tick triggers resolve before letters and headlines go out.
@@ -464,6 +477,10 @@ export const CALENDAR_CLOCK_IDS = Object.freeze([
   'special500Invoice',
   'special500PortraitBuoys',
   'special500Sommelier',
+  // special500 Phase 2 batch 18: SP1-173's logged-labor accrual — dt sums only while the
+  // Ceres Belt sector is held and flight runs; a 2 Hz pass is generous for a seconds-scale
+  // tally. Appended last so every existing cohort index stays put.
+  'special500CollectiveHours',
 ]);
 
 /**

@@ -1625,6 +1625,34 @@ export const MAIL_LETTERS = Object.freeze([
       + '— H." Settle through the ordinary channels. Readiness remains the service.',
     triggers: [FLAG('standby_fee_refused')],
   },
+  // ── special-500 Phase 2, batch 18 (counter family): flag-triggered on the plain-named
+  // flags the counter legs write (never the director's special500. namespace). ──────────
+  {
+    // SP2-053 "The Third Stool's Letter" — `quinns_stool` is written by
+    // special500DockLedger.js on the tenth dock at a Quinn bar station.
+    id: 'mail_quinns_stool', kind: 'cast', from: 'Quinn',
+    subject: 'RE: YOUR STOOL',
+    body: 'FROM: QUINN / RE: YOUR STOOL / The third stool has been reupholstered. The old '
+      + 'cover is in the lost-property column under "evidence." Nobody asked for it back. You '
+      + 'are the only person who sat there and left the seat warm instead of the tab long. '
+      + 'This is not sentiment. It is inventory. — Q',
+    triggers: [FLAG('quinns_stool')],
+  },
+  {
+    // SP1-184 "The Squatter" — `berth_squatter` is written by special500DockLedger.js when
+    // the stranger takes the habitual berth; the formal note is the stranger's introduction,
+    // and it is how they become a named contact.
+    id: 'mail_berth_squatter_note', kind: 'cast', from: 'P. Ilse, transient',
+    subject: 'RE: THE BERTH I SLEPT IN',
+    body: 'They said someone loves this berth. It looked like just a berth. I am sorry — the '
+      + 'harbor master asked for a paper name for the ledger, so "P. Ilse, transient" is what '
+      + 'he wrote, and now it is what I am called. Your fee for the night is paid, and the '
+      + 'gift is wrapped the way the deed led me to wrap it, which you will either find funny '
+      + 'or find alarming, and both answers are correct. I have docked badly at good berths '
+      + 'in nine sectors. This is the first one that was already someone\'s. The next time the '
+      + 'war comes — and around here it comes — I will yield with ceremony. — P. Ilse',
+    triggers: [FLAG('berth_squatter')],
+  },
 ]);
 
 export default { MAIL_LETTERS, MAIL_KINDS, MAIL_EVENT_NAMES, MAIL_DAY_S };

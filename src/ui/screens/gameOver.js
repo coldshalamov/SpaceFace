@@ -479,6 +479,14 @@ export const gameOverScreen = {
     const recovery = el('p', 'k-sentence sf-go-recovery', 'Recovery receipt pending.');
     this._recoveryEl = recovery;
     stage.appendChild(recovery);
+    // SP2-188 — the results sheet gains one line on the defeat where the channel noticed a
+    // session of zero dismissed popups (state.ui.readEverythingFired, written by the
+    // special500ReadEverything leg on the same receipt). Hidden otherwise; no flag read past
+    // this session — the next session's quiet channel is story.js's own read.
+    const channelLine = el('p', 'k-sentence sf-go-channel');
+    channelLine.hidden = true;
+    this._channelEl = channelLine;
+    stage.appendChild(channelLine);
     rootEl.appendChild(stage);
     // The career record beside the loss report: what this pilot had done before the hull went, so
     // the screen reads as the end of a chapter, not a receipt alone. Refilled on every show.
@@ -1099,6 +1107,15 @@ export const gameOverScreen = {
         if (recoverable) this._recoveryEl.classList.add('is-receipt');
         else this._recoveryEl.classList.remove('is-receipt');
       }
+    }
+    if (this._channelEl) {
+      const ui = ctx && ctx.state && ctx.state.ui;
+      const fired = !!(ui && ui.readEverythingFired);
+      this._channelEl.textContent = fired
+        ? 'One last popup arrives as the sheet renders and dismisses itself: YOU READ '
+          + 'EVERYTHING. THE CHANNEL NOTICED.'
+        : '';
+      this._channelEl.hidden = !fired;
     }
     setWordHidden(this._retryButton, !recoverable);
     // Row 463: the retry-act verb rides with recoverable but adds its own gates — the receipt's
