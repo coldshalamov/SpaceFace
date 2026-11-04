@@ -504,7 +504,28 @@ tests in `test/inf-*.test.mjs`, recorded in `design/program/inference-memory.jso
   keep their identity across a fight (with f8b04d2c3ca3).
 - inf-dying-drive (WF-12, wave 3, direct): a dying hull's exhaust says so — the bell cools
   toward ember and sputters on its own deterministic phase as the hull fails, from the same
-  hull truth the smoke trail reads; hulls without hull fields never gutter (a3ae485e5d6d).
+  hull truth the smoke trail reads; hulls without hull fields never gutter (a3ae485e5d6d;
+  accessibility-gated sputter, plasma-stream carrier and pooled-slot pins hardened a795a25d2904).
+
+Implemented and focused-tested, wave 4 (INFERENCE 100 program — one commit each, recorded in
+`design/program/inference-memory.json`):
+- inf-wound-smoke (WF-12 repair): the smoke a wounded ship trails rises from the wounds it
+  actually has — the emitter round-robins the hottest scars, scales by severity/youth, and a
+  fresh energy wound vents the striking weapon's tint before it greys (5861ca1c3e3e).
+- inf-line-shield-bite (WF-12 repair): a massline latching a shielded hull bites at hit
+  parity on the shell's own contact wire, re-asserts on cadence while strained, and lands
+  one last full-strength bite on the break; reduced-flash halves the sustained gain
+  (e5f677b2d8d8).
+- inf-beacon-lamp (WF-11): claim buoys carry a light read at last — breathing running light,
+  claim-green pulse, fast anti-collision double-flash inside the lease warn window; reduced
+  motion stretches periods, never silences (32d3f41104e9).
+- inf-debris-wound-heat (WF-11 repair): death debris tears warm — the freshest wound's heat
+  rides the death receipt into the shard cooling track's start, pulled toward the weapon tint
+  (29a5dddde27f).
+Verified already deep, wave 4: station night-side lights (stationNightLights.js), muzzle flash
+per family (weaponImpactVfx consumes the classifier), projectile-side shield contacts
+(shieldContacts.js). Named next unit, needs a Lane 2 writer: docking beacons pre-approach
+(state.dockingCorridor.berth is null until engagement).
 
 ## Traps — measured and rejected; do not repeat
 

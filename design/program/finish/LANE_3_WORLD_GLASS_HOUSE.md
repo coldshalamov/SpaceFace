@@ -797,6 +797,27 @@ Inbox (Lane 3, noticed 2026-11-04): ceres-workfleet-recovery/production-cycle su
 the current working tree (bodies.length/service-state assertions in restore()); the fixture
 imports src/systems/world.js, which has large uncommitted edits from the active integration
 thread — flagging so the thread lands or repairs it with its wave.
+Inbox (Lane 3, noticed 2026-11-04, second): test/tier2-why.test.mjs section 7 crashes in
+Node — contracts.js (Cinderglass thread commit 8ba645d79394) transitively imports
+src/localization/sourceText.js, which writes documentElement.dataset.locale at module load
+under the suite's DOM stub. Next step: guard sourceText's boot write or lazy-import in
+contracts.js; owning thread holds the contracts screens.
+
+Implemented and focused-tested, wave 4 (INFERENCE 100 program — one commit each, recorded in
+`design/program/inference-memory.json`):
+- inf-pa-market-desk (WF-13): docked, the station PA airs what its own market just did — an
+  active shortage first, else the biggest listing move against a watch-old mid (credits
+  floor + 8% fraction gate so drift never reads as news), once per watch, with an authored
+  desk-chime recipe and caption (ac5f3d86d1c3).
+- inf-wreck-captain (WF-09 integration): a scanned wreck now tells you who was aboard — the
+  aftermath owner stamps the registry identity at record time (same law as killerLabel) and
+  the scan adds "CAPT. <name> of the <ship>"; authored hulls never mint, legacy restores
+  honestly to nobody (a8015cf28f34).
+- inf-cause-your-kill (WF-06 repair): selling the freight you took off the hull you downed
+  tightens the destination's book — the why-tooltip names that cause instead of leaving the
+  player's biggest economy move a mystery (6b392b33409c).
+Verified already deep, wave 4: giver-voice offers (443fb963cf7a), ship name + captain on
+hail (shipRegistry, re-verified through the registry refactor).
 
 ## Traps
 

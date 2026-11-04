@@ -241,6 +241,23 @@ ricochets into a second kill and the game noticing") are fully built and registe
 src/combat/chainKills.js witnesses the wreck that carried the contact, holds a bounded
 corpse ring, and the wire says one line per link (registered in the authoritative manifest).
 
+Implemented and focused-tested, wave 4 (INFERENCE 100 program — one commit each, recorded in
+`design/program/inference-memory.json`):
+- inf-patrol-bait (WF-02): a hurt Reach raider squad spoofs Concord's voice — a Meridian
+  screen hears a tithe at gunpoint, the patrol hears a rogue screen, and both stamp the
+  canonical hostility fields, so the cross-fire flies through isHostileForAI while raiders
+  hang wide with cold guns; a scanner pulse burns the mask (9f332bd9e1db).
+- inf-current-rider (WF-02): a marked Crucible elite cuts its drive and lets the room current
+  carry it — the same field-kernel acceleration every body feels slings it around the seam;
+  one hit knocks it off and the authored thrust returns (72661896ebfb).
+- inf-wing-gap-press (WF-16): a wingman's death names him on the band from the seat beside
+  and carries a bounded grief press — attack_run at the killer, weapons free, leashed to the
+  player; the player's fresh order cancels it (821b2b834e56).
+Verified already deep, wave 4: Massline fauna vibration (alienEcology AE-051/059),
+cross-run grudges (aceMemory New Run+ tiers + moral memory + defeat-streak mercy), Crucible
+signature moments (six authored room laws + round events), formation-half of the wingman gap
+(squadFrame sockets + wingMorale).
+
 ## Traps
 
 - Never edit `test/*.expected.json` to pass. A sim change that moves the golden is a real change: explain it or undo it.
