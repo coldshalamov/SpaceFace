@@ -104,7 +104,7 @@ test('Continue preserves last-received knowledge and fresh Tune rejects old live
   } finally { t.sim.dispose(); }
 });
 
-test('mounted Journal keeps Tune reachable after Leave and forwards only the captured current recovery view', async context => {
+test('mounted Journal keeps Tune reachable after Leave and uses the current recovery view', async context => {
   // Keep real timer behavior, but retire this mounted fixture's deferred UI work.
   const timers = new Set(), schedule = globalThis.setTimeout;
   context.mock.method(globalThis, 'setTimeout', (fn, ms, ...args) => {
@@ -118,24 +118,23 @@ test('mounted Journal keeps Tune reachable after Leave and forwards only the cap
     addEventListener(name, fn) { this.listeners[name] = fn; }, click() { this.listeners.click?.(); } });
   globalThis.document = { createElement: node };
   const host = node('div'), screen = Object.assign(Object.create(missionLogScreen), {
-    _ctx: { state: t.state, bus: t.bus }, _commissionsEl: host, _commissionHeader: node('h3') });
+    _ctx: { state: t.state, bus: t.bus }, _stageEl: host, _commissionSelection: { key: 'cinder', life: t.state.cinderglassJobView.operationId } });
   const buttons = root => [...(root.tagName === 'button' ? [root] : []), ...root.children.flatMap(buttons)];
   try {
     assert.equal(t.action('leave').ok, true);
     t.state.mode = 'paused'; t.state.ui.docked = true;
     t.sys._publish();
-    screen._renderCommissions(t.state);
-    const oldButton = buttons(host).find(b => b.textContent === 'Tune CG-7 cargo beacon');
+    screen._renderChosen(t.state, null, null);
+    const oldButton = buttons(host).find(b => b.getAttribute('aria-label') === 'Tune CG-7 cargo beacon');
     assert.ok(oldButton); oldButton.click();
     const fix = structuredClone(t.cg().beaconFix);
     assert.equal(fix.source, 'cg7-cargo-beacon');
     oldButton.click();
-    assert.equal(t.cg().lastRefusal.reason, 'stale_beacon_view');
-    assert.deepEqual(t.cg().beaconFix, fix);
-    screen._renderCommissions(t.state);
-    const fresh = buttons(host).find(b => b.textContent === 'Request fresh CG-7 beacon fix');
+    assert.equal(t.cg().beaconFix.seq, fix.seq + 1, 'the old visible control resolves the latest live action');
+    screen._renderChosen(t.state, null, null);
+    const fresh = buttons(host).find(b => b.getAttribute('aria-label') === 'Request fresh CG-7 beacon fix');
     assert.ok(fresh); fresh.click();
-    assert.equal(t.cg().beaconFix.seq, fix.seq + 1);
+    assert.equal(t.cg().beaconFix.seq, fix.seq + 2);
     assert.equal(t.cg().cohortAdmitted, false); assert.equal(t.cg().depositPaid, false);
   } finally {
     globalThis.document = previousDocument; t.sim.dispose();

@@ -4,7 +4,7 @@ import { mkdir } from 'node:fs/promises';
 import { startBenchServer } from '../scripts/lib/benchServer.mjs';
 import { loadPlaywright } from '../scripts/lib/load-playwright.mjs';
 
-const shots = '.devshots/finish/integration-2026-11-04/commission-ui';
+const shots = 'C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/finish/integration-2026-11-04/journal-unification';
 test('mounted chart and journal expose commission views and navigation at desktop and compact sizes', async () => {
   await mkdir(shots, { recursive: true });
   const server = await startBenchServer();
@@ -26,11 +26,15 @@ test('mounted chart and journal expose commission views and navigation at deskto
         window.__benchRefresh();
       });
       const panel = page.locator('.sf-mlog-commissions');
-      await assertVisibleText(panel, 'Tow the same CG-7 pod');
-      await assertVisibleText(panel, 'FRAGILE FREIGHT');
-      await assertVisibleText(panel, 'Attach the same original pod');
-      await assertVisibleText(panel, 'Deliver the supply cartridge');
-      await panel.getByRole('button', {name:'Track CG-7 pod'}).click();
+      const stage = page.locator('.sf-mlog-stage');
+      await panel.locator('.k-row').filter({hasText:'The Cinderglass Job'}).click();
+      await assertVisibleText(stage, 'Tow the same CG-7 pod');
+      await stage.getByRole('button', {name:'Track CG-7 pod'}).click();
+      await panel.locator('.k-row').filter({hasText:'Counterweight Circuit'}).click();
+      await assertVisibleText(stage, 'FRAGILE FREIGHT');
+      await assertVisibleText(stage, 'Attach the same original pod');
+      await panel.locator('.k-row').filter({hasText:'Breakwater Spur'}).click();
+      await assertVisibleText(stage, 'Deliver the supply cartridge');
       const actions = await page.evaluate(() => window.__commissionActions);
       assert.equal(actions[0].token, 'life:1'); assert.equal(actions[0].operationId, 'cg:1');
       assert.equal(actions[0].markerId, 'cinderglassJob:pod');

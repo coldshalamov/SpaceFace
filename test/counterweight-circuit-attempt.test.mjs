@@ -4,7 +4,7 @@ import { COUNTERWEIGHT_EVENT_BY_ID } from '../src/features/counterweightCircuit/
 import { createAttemptState, advanceAttempt, cancelAttempt } from '../src/features/counterweightCircuit/attempt.js';
 import { applyResultToRecord, freshEventRecord, medalForTime, medalForCompletion } from '../src/features/counterweightCircuit/scoring.js';
 import { projectCounterweightCircuitJournal } from '../src/features/counterweightCircuit/readModel.js';
-import { missionLogScreen } from '../src/ui/screens/missionLog.js';
+import { commissionEntries } from '../src/ui/screens/missionLog.js';
 
 // Pure-FSM harness: fabricated observation frames shaped exactly like
 // physical.observe() emits. Local def coordinates are used as-is (the test
@@ -142,15 +142,8 @@ test('recoverable miss: load stops short of the gate → retry from attach', () 
   const journal = projectCounterweightCircuitJournal({}, { attempt: { eventId: def.id, fsm: st } });
   assert.equal(journal.attempt.retryCount, 1);
   assert.equal(journal.attempt.legs[3].retries, 1);
-  const oldDocument = globalThis.document;
-  const makeNode = () => ({ style: {}, children: [], appendChild(child) { this.children.push(child); } });
-  globalThis.document = { createElement: makeNode };
-  try {
-    const host = makeNode(), header = makeNode();
-    missionLogScreen._renderCommissions.call({ _commissionsEl: host, _commissionHeader: header },
-      { counterweightCircuitView: { eventId: def.id, journal } });
-    assert.match(host.children[0].children[0].children[1].textContent, /1 retry/);
-  } finally { globalThis.document = oldDocument; }
+  const [entry] = commissionEntries({ counterweightCircuitView: { eventId: def.id, attemptId: 1, journal } });
+  assert.ok(entry.details.some(([label, value]) => label === 'Leg' && value.includes('1 retry')));
   // Recreate the same physical swing and complete the previously missed gate.
   const retryFrames = [];
   for (let deg = 180; deg >= -30; deg -= 3) {
