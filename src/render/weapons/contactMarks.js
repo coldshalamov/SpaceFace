@@ -84,6 +84,7 @@ const VERTEX_SHADER = /* glsl */`
   attribute vec3 aColor;
   attribute vec3 aMark; // kind+phase for transient reactions, fracture, stable seed
   attribute vec4 aSurface; // world-space receiver centre XYZ and approximate collision radius
+  attribute vec4 aSkid; // surface-projected shot skid axis XYZ (0 = round mark) + stretch
   varying vec2 vUv;
   varying vec3 vColor;
   varying float vOpacity;
@@ -100,7 +101,15 @@ const VERTEX_SHADER = /* glsl */`
     vFracture = aMark.y;
     vSeed = aMark.z;
     vec3 n = normalize(aNormal);
+    // The card's width axis (uv.x, aSize.x) aligns with the incoming shot's surface-projected
+    // skid when the mark carries one (inf-scar-skid): a grazing hit smears downrange, a head-on
+    // strike (zero skid) keeps the legacy frame. Same two-step cross construction as the legacy
+    // path, so handedness never flips between the two frames.
+    vec3 skid = aSkid.xyz;
     vec3 tangent = abs(n.y) > 0.9 ? vec3(1.0, 0.0, 0.0) : vec3(0.0, 1.0, 0.0);
+    if (dot(skid, skid) > 0.01) {
+      tangent = skid - n * dot(n, skid);
+    }
     vec3 bitangent = normalize(cross(n, tangent));
     tangent = normalize(cross(bitangent, n));
     vec3 world = aPos + n * 0.16
@@ -283,6 +292,10 @@ export class HullScorchPool {
       persistent: false,
       boundKey: null,
       scarId: null,
+      skidX: 0,
+      skidY: 0,
+      skidZ: 0,
+      stretch: 1,
     }));
     // 5x5 receiver curvature: 36 vertices per slot, 1152 at existing 32-slot saturation.
     this.geometry = new THREE.PlaneGeometry(1, 1, 5, 5);
@@ -292,12 +305,14 @@ export class HullScorchPool {
     this.color = dynamicAttribute(this.capacity * 3, 3);
     this.mark = dynamicAttribute(this.capacity * 3, 3);
     this.surface = dynamicAttribute(this.capacity * 4, 4);
+    this.skid = dynamicAttribute(this.capacity * 4, 4);
     this.geometry.setAttribute('aPos', this.pos);
     this.geometry.setAttribute('aNormal', this.normal);
     this.geometry.setAttribute('aSize', this.size);
     this.geometry.setAttribute('aColor', this.color);
     this.geometry.setAttribute('aMark', this.mark);
     this.geometry.setAttribute('aSurface', this.surface);
+    this.geometry.setAttribute('aSkid', this.skid);
     this.material = new THREE.ShaderMaterial({
       vertexShader: VERTEX_SHADER,
       fragmentShader: FRAGMENT_SHADER,
@@ -331,6 +346,7 @@ export class HullScorchPool {
         { name: 'color', attribute: this.color },
         { name: 'mark', attribute: this.mark },
         { name: 'surface', attribute: this.surface },
+        { name: 'skid', attribute: this.skid },
       ],
     }) : null;
     if (scene) scene.add(this.mesh);
@@ -387,6 +403,12 @@ export class HullScorchPool {
     s.persistent = spec.persistent === true;
     s.boundKey = spec.boundKey != null ? spec.boundKey : null;
     s.scarId = spec.scarId != null ? spec.scarId : null;
+    // Skid axis (hull-local or world per `attached`) + stretch along it. All zero / 1 keeps
+    // the legacy round mark bit-for-bit (inf-scar-skid).
+    s.skidX = finiteOr(spec.skidX, 0);
+    s.skidY = finiteOr(spec.skidY, 0);
+    s.skidZ = finiteOr(spec.skidZ, 0);
+    s.stretch = Math.min(1 + 2.35, Math.max(1, finiteOr(spec.stretch, 1)));
     return slot;
   }
 
@@ -458,6 +480,12 @@ export class HullScorchPool {
       this.pos.setXYZ(drawn, x, y, z);
       this.normal.setXYZ(drawn, nx, ny, nz);
       this.size.setXYZW(drawn, s.width, s.height, fade, heat);
+      const poseSkid = pose && pose.skidX != null;
+      this.skid.setXYZW(drawn,
+        poseSkid ? pose.skidX : s.skidX,
+        poseSkid ? pose.skidY : s.skidY,
+        poseSkid ? pose.skidZ : s.skidZ,
+        s.stretch);
       this.color.setXYZ(drawn, s.r, s.g, s.b);
       this.mark.setXYZ(drawn,
         s.surfaceSplash ? s.markKind + Math.min(0.98, s.age / s.life * 0.98) : s.markKind,
@@ -509,6 +537,10 @@ export class HullScorchPool {
         nx: s.nx,
         ny: s.ny,
         nz: s.nz,
+        skidX: s.skidX,
+        skidY: s.skidY,
+        skidZ: s.skidZ,
+        stretch: s.stretch,
       });
     }
     this.retainedScars = retained;
