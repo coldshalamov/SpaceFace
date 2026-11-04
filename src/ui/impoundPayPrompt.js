@@ -29,9 +29,10 @@
 // `helix:docketChoice` intents. The Bureau re-checks reach, the instrument and credits.
 
 import { getPromptDeck } from './promptDeck.js';
-import { wantedClearClause } from './wantedReason.js';
+import { wantedClearClause, wantedReasonText } from './wantedReason.js';
 import { SECTORS } from '../data/sectors.js';
-import { isPlayerWanted } from '../systems/heat.js';
+import { isPlayerWanted, heatLevelFor } from '../systems/heat.js';
+import { LAW_DOCK_FINE_BASE_CR, LAW_DOCK_FINE_PER_LEVEL_CR } from '../systems/lawSecurity.js';
 
 const DECK_ID = 'impound-pay';
 const FINE_DECK_ID = 'law-fine';
@@ -476,10 +477,32 @@ export function fineWarrantDetail(offer, state) {
   const clock = (typeof heat === 'number' && isPlayerWanted({ player: { heat } }))
     ? wantedClearClause(heat)
     : '';
+  const why = fineWhyClause(state);
   if (offer && offer.status === 'working') {
-    return `The shift is running against the bill — stay on the lane while it accrues, or wire the ${amount} cr and walk.${clock}`;
+    return `The shift is running against the bill — stay on the lane while it accrues, or wire the ${amount} cr and walk.${clock}${why}`;
   }
-  return `The warrant rides your transponder. Wire the ${amount} cr, work the desk's shift, or carry the warrant — the next lawful berth will ask again.${short ? ` You hold ${credits} cr.` : ''}${clock}`;
+  return `The warrant rides your transponder. Wire the ${amount} cr, work the desk's shift, or carry the warrant — the next lawful berth will ask again.${short ? ` You hold ${credits} cr.` : ''}${clock}${why}`;
+}
+
+/**
+ * inf-fine-why — the fine card's why clause: what the number is made of and what it answers
+ * for. The composition is the law's own price (LAW_DOCK_FINE_BASE_CR plus one
+ * LAW_DOCK_FINE_PER_LEVEL_CR step per heat band), the step is the live heat level, and the
+ * trace is the heat owner's convicting-incident record rendered by the same no-false-witness
+ * helper the flight alert uses (suspicion without a receipt names nothing, never a witness
+ * claim). '' whenever any part would have to be invented — a clean or sub-threshold sheet
+ * gets no clause at all. Pure read; never mutates state.
+ */
+export function fineWhyClause(state) {
+  const heat = state && state.player ? Number(state.player.heat) : 0;
+  const level = heatLevelFor(heat);
+  if (!(level > 0)) return '';
+  const baseCr = Math.max(0, Math.round(Number(LAW_DOCK_FINE_BASE_CR)) || 0);
+  const perLevelCr = Math.max(0, Math.round(Number(LAW_DOCK_FINE_PER_LEVEL_CR)) || 0);
+  const parts = [` The price is the read: ${baseCr} cr for the warrant plus ${perLevelCr} cr for each heat step — yours sits at step ${level}.`];
+  const trace = wantedReasonText(null, state && state.player);
+  if (trace) parts.push(` It answers for${trace.replace(/^ · /, ' ')}.`);
+  return parts.join('');
 }
 
 // Station display name for the card sender — authored geography first, else a bare desk.

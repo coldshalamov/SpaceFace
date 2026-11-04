@@ -7803,8 +7803,8 @@ const LAW_KILL_ADJUDICATION_TYPES = new Set(['ship', 'fighter', 'drone', 'hauler
 /** The kill gate reuses the theft-report eyes: same radius, same "who could see the act" rule. */
 const LAW_KILL_WITNESS_RADIUS = LAW_INCIDENT_WITNESS_RADIUS;
 /** Lawful dock clearance: assessed fine for the two escapable tiers, real credits, never free. */
-const LAW_DOCK_FINE_BASE_CR = 150;
-const LAW_DOCK_FINE_PER_LEVEL_CR = 100;
+export const LAW_DOCK_FINE_BASE_CR = 150;
+export const LAW_DOCK_FINE_PER_LEVEL_CR = 100;
 /** Same length as the impound shift: a chosen fine can be worked off instead of paid. */
 const LAW_FINE_WORK_S = 4;
 /** Engines cut, holding still, inside a lawful cone. Surrender is not instant and not free. */
