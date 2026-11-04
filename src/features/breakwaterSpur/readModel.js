@@ -107,7 +107,7 @@ export function getBreakwaterSpurMapMarkers(state, sectorId) {
     : row.stage === 1 ? 'half-restored'
     : row.stage === 2 ? 'restored frame'
     : row.charter === BREAKWATER_CHARTER.COOP ? 'co-op berth' : 'bonded berth';
-  return [{
+  const markers = [{
     id: BREAKWATER_POI_ID,
     kind: 'poi', poiType: 'breakwater_spur',
     name: 'Breakwater Spur',
@@ -120,6 +120,19 @@ export function getBreakwaterSpurMapMarkers(state, sectorId) {
     stageLabel,
     statusLine: row.nextAction || nextActionFor(row) || stageLabel,
   }];
+  if (row.charter === BREAKWATER_CHARTER.BONDED && row.looseLoad?.kind === 'consignment'
+    && row.looseLoad.status === 'in_transit') {
+    const spot = BREAKWATER_CONSIGNMENT.receiverLocal;
+    markers.push({
+      id: 'poi_breakwater_belt_receiver', kind: 'poi', poiType: 'breakwater_spur',
+      name: 'Belt Outpost · southeast receiving mark', x: spot.x, z: spot.z,
+      drawPos: { x: spot.x, z: spot.z }, coursePos: { x: spot.x, z: spot.z },
+      courseLabel: 'Belt Outpost · southeast receiving mark', courseArrivalRadius: 60,
+      stageId: 'bonded_receiving', stageLabel: 'Southeast receiving mark',
+      statusLine: 'Keep the ship clear. Tow the sealed load to this mark, settle below 4 WU/s and keep the line attached for handoff.',
+    });
+  }
+  return markers;
 }
 
 // Decision-deck offers — built from the row only, with a revision the adapter
@@ -249,6 +262,9 @@ function operatingOffer(row, base, status, actions) {
   ].join(' ');
   if (row.bonded.bond.status === 'none' && row.bonded.job.status === 'open') {
     actions.push({ id: 'job:bonded', label: `Post ${BREAKWATER_BONDED.bondCr} CR bond — take the consignment` });
+  }
+  if (load?.kind === 'consignment' && load.status === 'in_transit') {
+    actions.push({ id: 'course:receiver', label: 'Mark southeast receiving berth' });
   }
   if (load?.kind === 'consignment' && load.status === 'delivered') {
     actions.push({ id: 'settle:bonded', label: `Settle the run (${BREAKWATER_BONDED.payCr} CR + bond)` });

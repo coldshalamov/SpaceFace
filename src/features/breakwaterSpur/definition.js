@@ -139,6 +139,8 @@ export const BREAKWATER_CONSIGNMENT = Object.freeze({
   radius: 5, mass: 18, hullMax: 900,
   destStationId: 'station_beltout',
   destLocal: Object.freeze({ x: 780, z: -940 }),  // Belt Outpost, sector-local
+  // The tested southeast opening: the cargo center is 34 WU from the outpost center.
+  receiverLocal: Object.freeze({ x: 804.04, z: -964.04 }),
   handoffRadius: 90,                            // within the outpost dock approach
 });
 

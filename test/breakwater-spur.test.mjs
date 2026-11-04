@@ -35,6 +35,7 @@ import { createBreakwaterRow, nextActionFor, recomputePhase, recomputeStage } fr
 import { normalizeBreakwaterSpurRow } from '../src/features/breakwaterSpur/persistence.js';
 import { getBreakwaterSpurStatus, getBreakwaterSpurMapMarkers, buildBreakwaterSpurOffer } from '../src/features/breakwaterSpur/readModel.js';
 import { sectorLocalToGlobalForSector } from '../src/data/sectorCoordinates.js';
+import { buildSystemModel, resolveCourseTarget } from '../src/ui/galaxyMap.js';
 
 const DT = 1 / 60;
 const copy = v => JSON.parse(JSON.stringify(v));
@@ -196,6 +197,30 @@ async function fixture() {
   const admitted = await native.prepareBackend(s);
   return { sim, s, owner, native, player, offers, receipts, cues, emit, tick, admitted };
 }
+
+test('the in-transit bonded original exposes its real southeast mark through the chart and offer', async () => {
+  const {sim,s,owner,tick}=await fixture();tick(4);
+  const row=s.world.breakwaterSpur;row.phase='operating';row.stage=3;row.charter='bonded';row.commission.status='paid';
+  row.looseLoad={kind:'consignment',status:'in_transit',worldRecordId:breakwaterRecordId('consignment_1')};
+  s.breakwaterSpurView=getBreakwaterSpurStatus(s);
+  const point=buildSystemModel(s,BREAKWATER_SECTOR_ID).points.find(p=>p.id==='poi_breakwater_belt_receiver');
+  assert.ok(point);assert.match(point.statusLine,/southeast|sealed load/i);
+  const target=sectorLocalToGlobalForSector(BREAKWATER_CONSIGNMENT.receiverLocal,BREAKWATER_SECTOR_ID);
+  assert.deepEqual(resolveCourseTarget(point).pos,target);
+  assert.equal(resolveCourseTarget(point).arrivalRadius,60);
+  assert.ok(buildBreakwaterSpurOffer(s).actions.some(a=>a.id==='course:receiver'));
+  let course;sim.bus.on('ui:setCourse',p=>{course=p;});owner._offer();
+  sim.bus.emit('breakwaterSpur:action',{actionId:'course:receiver',revision:s.breakwaterSpurOffer.revision});
+  assert.deepEqual(course.pos,target);assert.equal(course.autopilot,false);
+  for(const status of ['waiting','delivered','lost']) {
+    row.looseLoad.status=status;s.breakwaterSpurView=getBreakwaterSpurStatus(s);
+    assert.equal(buildSystemModel(s,BREAKWATER_SECTOR_ID).points.some(p=>p.id==='poi_breakwater_belt_receiver'),false,status);
+    owner._offer(); course = null;
+    sim.bus.emit('breakwaterSpur:action',{actionId:'course:receiver',revision:s.breakwaterSpurOffer.revision});
+    assert.equal(course,null,`${status} cannot expose an in-transit course through another current offer`);
+  }
+  sim.dispose();
+});
 
 function cartridgeEntity(s, role) {
   const id = breakwaterRecordId(`cartridge_${role}`);

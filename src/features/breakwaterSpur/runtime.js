@@ -239,8 +239,8 @@ export function createBreakwaterSpurSystem() {
       else if (!this._destinationOffer && !this._offerRevision) {
         this._destinationOffer=true;
         const offer={revision:`destination:${row.seq}`,kind:'bonded',title:'Belt Outpost receiver',
-          detail:'Bring the sealed original to the receiver at low speed for handoff.',
-          actions:[{id:'deliver:consignment',label:'Hand off consignment'},{id:'close',label:'Leave'}],
+          detail:'Approach from the southeast. Keep the ship clear; tow the sealed load to the receiving mark, settle below 4 WU/s and keep the line attached.',
+          actions:[{id:'deliver:consignment',label:'Hand off consignment'},{id:'course:receiver',label:'Mark southeast receiving berth'},{id:'close',label:'Leave'}],
           expiresAt:this.state.simTime+BREAKWATER_OFFER_TTL_S};
         this._offerRevision=offer.revision; this.state.breakwaterSpurOffer=offer; this.bus.emit('breakwaterSpur:offer',offer);
       }
@@ -278,7 +278,7 @@ export function createBreakwaterSpurSystem() {
       const row = this._row();
       const id = payload?.actionId || payload?.id;
       if (!id || !this._inSector() || !this._player()) return;
-      if (id !== 'deliver:consignment' && id !== 'close' && this._playerDist() > BREAKWATER_ACTION_RADIUS) return;
+      if (id !== 'deliver:consignment' && id !== 'course:receiver' && id !== 'close' && this._playerDist() > BREAKWATER_ACTION_RADIUS) return;
       // Stale-offer refusal: the revision the adapter echoes must match live.
       if (!payload.revision || payload.revision !== this._offerRevision) {
         this.bus.emit('breakwaterSpur:receipt', { text: 'That offer has gone stale.', kind: 'warn' });
@@ -293,6 +293,11 @@ export function createBreakwaterSpurSystem() {
           break;
         case 'course_pocket':
           this.bus.emit('ui:setCourse', { pos:sectorLocalToGlobalForSector(BREAKWATER_POCKET_LOCAL,BREAKWATER_SECTOR_ID), sectorId:BREAKWATER_SECTOR_ID, label:'Breakwater salvage pocket', autopilot:false });
+          break;
+        case 'course:receiver':
+          if (row.charter !== BREAKWATER_CHARTER.BONDED || row.looseLoad?.kind !== 'consignment'
+            || row.looseLoad.status !== 'in_transit') break;
+          this.bus.emit('ui:setCourse', { pos:sectorLocalToGlobalForSector(BREAKWATER_CONSIGNMENT.receiverLocal,BREAKWATER_SECTOR_ID), sectorId:BREAKWATER_SECTOR_ID, label:'Belt Outpost southeast receiving mark', arrivalRadius:60, autopilot:false });
           break;
         case 'seat:drive': case 'seat:drum': {
           const socketRole = id.split(':')[1];

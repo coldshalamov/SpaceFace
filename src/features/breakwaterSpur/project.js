@@ -161,7 +161,7 @@ function operatingAction(row) {
     if (row.bonded.job.status === 'done') return 'Bonded run complete — freight terms on the console.';
     if (!c) return `Post the ${BREAKWATER_BONDED.bondCr} CR bond and take the sealed consignment.`;
     if (c.status === 'waiting') return 'Take custody of the sealed consignment and haul for Belt Outpost.';
-    if (c.status === 'in_transit') return 'Deliver the consignment to the Belt Outpost dock approach.';
+    if (c.status === 'in_transit') return 'Tow the consignment to the Belt Outpost southeast receiving mark; settle below 4 WU/s and keep the line attached.';
     if (c.status === 'delivered') return 'Consignment handed off — return to the spur for settlement.';
     if (c.status === 'lost') return 'Consignment lost — the bond is forfeit.';
     return 'Return to the dispatcher console.';
