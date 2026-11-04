@@ -1,3 +1,4 @@
+import { cinderglassJobLatchPaint } from '../features/cinderglassJob/physical.js';
 import { LAST_SHIFT, lastShiftBodyKey } from '../data/lastShift.js';
 import { isOrchardFrame } from '../data/anvilOrchardIdentity.js';
 import { isLatchActor } from './latchNineVisuals.js';
@@ -1293,6 +1294,17 @@ function attachPackagedScenarioProp(root, entity, options = {}) {
         root.userData.authoredAssetState = 'unavailable';
         return false;
       }
+      // One released latch's painted shell; clone before tinting so shared steel and
+      // every other salvage clamp retain their authored materials.
+      if (liveEntity?.data?.cinderglassRole === 'latch') packaged.traverse(object => {
+        if (!object.isMesh) return;
+        const paint = material => {
+          const color = cinderglassJobLatchPaint(liveEntity, material?.name);
+          if (color == null) return material;
+          const next = material.clone(); next.color.setHex(color); return next;
+        };
+        object.material = Array.isArray(object.material) ? object.material.map(paint) : paint(object.material);
+      });
       if ((await driveLeg(fitPackagedGroupSteps(packaged, packagedFitRadius(entity, spec)))) === COMMIT_ORPHANED) {
         disposeDetachedPackagedGroup(packaged);
         return false;
@@ -1394,6 +1406,10 @@ function attachPackagedScenarioProp(root, entity, options = {}) {
       }
       root.userData.hull = packaged;
       root.userData.authoredAssetState = 'authored';
+      if (liveEntity?.data?.runtimeOwner === 'cinderglassJob'
+        && ['latch', 'cradle', 'broker', 'layby'].includes(liveEntity.data.cinderglassRole)) {
+        setPresentationAdmission(liveEntity, PRESENTATION_ADMISSION.ready);
+      }
       // The resolving marker's envelope stamp was only correct while pending: the committed
       // body is bigger or smaller than [r*3.4, r*0.6, r*1.7], so cull grading must fall back
       // to measurement like the ship commit path (which deletes its stamp here too).

@@ -1,3 +1,4 @@
+import { cinderglassJobJournalReceipt } from '../../features/cinderglassJob/integration.js';
 // src/ui/screens/missionLog.js — In-flight mission log.
 // Shows all active + recently completed missions with progress, timer, reward, and a Track word.
 // READ-ONLY on state; emits ui:trackMission + ui:abandonMission (+ career origin/ladder intents)
@@ -3144,7 +3145,8 @@ export const missionLogScreen = {
   _renderCompleted() {
     if (!this._compListEl || !this._ctx) return;
     const log = (this._ctx.state.missions && this._ctx.state.missions.completedLog) || [];
-    const receipts = missionReceiptRows(this._ctx.state, 5);
+    const cinderglass = cinderglassJobJournalReceipt(this._ctx.state);
+    const receipts = [...missionReceiptRows(this._ctx.state, 5), ...(cinderglass ? [cinderglass] : [])];
     this._compListEl.innerHTML = '';
     if (!receipts.length && !log.length) {
       this._compListEl.innerHTML = '<div class="sf-mlog-empty"><p class="k-sentence k-38">No settlement receipts yet. The ledger writes its first line the first time a job pays out.</p></div>';

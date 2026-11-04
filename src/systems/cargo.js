@@ -1,3 +1,4 @@
+import { receiveCinderglassPod } from '../features/cinderglassJob/ownerSeams.js';
 import { ANVIL_ORCHARD } from '../data/anvilOrchard.js';
 // Cargo system (ARCHITECTURE §0.6 single-writer, §0.12/§0.13 cargo shape, spec 02-mining-ores-cargo).
 // Owns state.player.cargo = { items:{[cmdtyId]:qty}, usedVolume, usedMass, capVolume, capMass }.
@@ -734,6 +735,7 @@ export function removeCargo(state, commodityId, qty) {
 
 export const cargo = {
   name: 'cargo',
+  receiveCinderglassPod,
   init(ctx) {
     this.state = ctx.state;
     this.bus = ctx.bus;

@@ -1,3 +1,4 @@
+import { cinderglassJobTrafficTarget, cinderglassJobTrafficDt } from '../features/cinderglassJob/physical.js';
 import { pallasShiftOwnsMovement } from '../data/pallasWorkShift.js';
 import { pallasSeamTarget, pallasSeamMeasurement, stepPallasSeamCut, forgetPallasSeamLife } from './pallasSeamWork.js';
 import { pallasSeamRole, pallasSeamRecordRole } from '../data/pallasSeamWork.js';
@@ -4591,7 +4592,8 @@ export const npcJobsRuntime = {
       }
       const tallyTarget = isTallyPassageJob(entry.job) && claimedBeforeAdvance
         ? { blocked: true } : tallyPassageTarget(this, entry, entity);
-      const physicalTarget = salvorTarget || tallyTarget || (!claimedBeforeAdvance && ((prospecting && this._prospectorWorkTarget(entry, entity)) || pallasSeamTarget(this, entry, entity)
+      const cinderglassTarget = cinderglassJobTrafficTarget(this.state, entry, entity);
+      const physicalTarget = cinderglassTarget || salvorTarget || tallyTarget || (!claimedBeforeAdvance && ((prospecting && this._prospectorWorkTarget(entry, entity)) || pallasSeamTarget(this, entry, entity)
         || this._ceresTenderPhysicalTarget(entry, entity) || this._livingAdventureWorkTarget(entry, entity)));
       // A terminal or unprovable source cannot be replaced by a similar rock.
       if (prospecting && physicalTarget?.lost && !claimedBeforeAdvance && !entry.towAssist) {
@@ -4609,7 +4611,7 @@ export const npcJobsRuntime = {
       // This target is authenticated by the traffic owner; it never advances a cargo timetable.
       const pallasTarget = !claimedBeforeAdvance && this.helpers.traffic?.pallasWorkTarget?.(entry, entity);
       const physicalPose = physicalTarget?.workPose || entity;
-      const holdingForArrival = tallyTarget ? (tallyTarget.blocked || tallyTarget.holdClock || (!tallyTarget.moving && !tallyTarget.reached))
+      const holdingForArrival = cinderglassTarget ? (!cinderglassTarget.settled || cinderglassTarget.held || cinderglassTarget.blocked) : tallyTarget ? (tallyTarget.blocked || tallyTarget.holdClock || (!tallyTarget.moving && !tallyTarget.reached))
         : (pallasTarget || physicalTarget?.blocked || physicalTarget?.ready === false
           || (physicalTarget
             && ![NPC_JOB_PHASE.TRANSIT, NPC_JOB_PHASE.RETURN].includes(entry.job.phase)
@@ -4649,7 +4651,8 @@ export const npcJobsRuntime = {
       if (step > 0 && !(prospecting && (claimedBeforeAdvance || entry.towAssist))
         && !sweeperTarget && !approachingSeam && !holdingForArrival && !waitingForPhysicalArrival && !entry.berthHold && !braced
         && entry.job.phase !== NPC_JOB_PHASE.COMPLETE) {
-        advance(entry.job, tallyAdvanceDt(entry.job, tallyTarget, salvorTarget ? Math.min(step, 0.1) : step), this._sink);
+        advance(entry.job, cinderglassTarget ? cinderglassJobTrafficDt(entry.job, cinderglassTarget, step)
+          : tallyAdvanceDt(entry.job, tallyTarget, salvorTarget ? Math.min(step, 0.1) : step), this._sink);
       }
 
       // An owner intent is synchronous and may invoke Continue/New Game while advance() is still on
@@ -4685,11 +4688,12 @@ export const npcJobsRuntime = {
       // job; `releaseControl` completes the handback.
       if (entry.job.phase === NPC_JOB_PHASE.COMPLETE && !claimed) { this.release(jobId); continue; }
 
-      if (!claimed) this._drive(entry, entity);
+      if (cinderglassTarget?.held) this._driveLivingAdventureWorker(entry, entity, cinderglassTarget);
+      else if (!claimed) this._drive(entry, entity);
       // The finite paired passage owns the same movement channel as seam work. Do not let
       // an ambient errand overwrite its authenticated hold/formation after _drive.
       if (!claimed && !isTallyPassageJob(entry.job) && !(pallasTarget && pallasShiftOwnsMovement(this.state, entry, entity))
-        && !entry.job.payload?.salvageIntakeWait && !isScrapSweeperJob(entry, entity) && !prospecting
+        && !cinderglassTarget && !entry.job.payload?.salvageIntakeWait && !isScrapSweeperJob(entry, entity) && !prospecting
         && !pallasSeamRole(this.state, entity)) applyLaneErrandIntent(this, entry, entity, simT);
     }
   },
@@ -5156,8 +5160,8 @@ export const npcJobsRuntime = {
     const distance = Math.hypot(dx, dz), close = distance <= target.reach;
     const aim = distance > 0.01 ? Math.atan2(dz, dx) : entity.rot || 0;
     const profile = resolvePropulsionProfile(entity, this.state);
-    const planningSpeed = Math.min(isTallyPassageJob(entry.job) ? target.navigationSpeed || 40 : 40, entry.job.speed || 35);
-    if (isTallyPassageJob(entry.job)) {
+    const planningSpeed = Math.min(isTallyPassageJob(entry.job) || target.cinderglassPhysical ? target.navigationSpeed || 40 : 40, entry.job.speed || 35);
+    if (isTallyPassageJob(entry.job) || target.cinderglassPhysical === true) {
       // A count mark needs lateral-drift cancellation, not a heading-only orbit.
       const stopRadius = target.stopRadius ?? target.reach * 0.5;
       const closing = Math.min(planningSpeed, Math.max(0, distance - stopRadius) * 0.6);
@@ -5369,7 +5373,8 @@ export const npcJobsRuntime = {
       return;
     }
 
-    const physicalTarget = this.helpers.traffic?.salvorWorkTarget?.(entry, entity)
+    const physicalTarget = cinderglassJobTrafficTarget(this.state, entry, entity)
+      || this.helpers.traffic?.salvorWorkTarget?.(entry, entity)
       || tallyPassageTarget(this, entry, entity) || pallasSeamTarget(this, entry, entity)
       || this._livingAdventureWorkTarget(entry, entity);
     if (physicalTarget?.blocked) {

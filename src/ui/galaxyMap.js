@@ -1,3 +1,4 @@
+import { getCinderglassJobMapMarkers } from '../features/cinderglassJob/integration.js';
 import { getSalvageTenderMapMarkers, filterSalvageTenderMapContacts } from '../features/salvageTender/readModel.js';
 import { commodityDisplayName } from './commodityNames.js';
 import { playerBearingLetter } from '../core/playerCompass.js';
@@ -2193,6 +2194,14 @@ export function systemZoneTarget(zone, sectorId, playerPos = null) {
     detail: `${zone.hazard ? 'Hazard' : 'Zone'} · ${zone.typeLabel} · threat ${zone.threat || 0}` };
 }
 
+function cinderglassChartTargets(state, sectorId) {
+  return getCinderglassJobMapMarkers(state, sectorId).map(marker => ({
+    id: marker.id, kind: 'poi', poiType: 'cinderglass', name: marker.label,
+    x: marker.pos.x, z: marker.pos.z, drawPos: globalToSectorLocalForSector(marker.pos, sectorId),
+    sectorId, entityId: marker.followId ?? null, named: true, searchText: marker.label,
+  }));
+}
+
 function counterweightChartTargets(state, sectorId) {
   return getCounterweightCircuitMapMarkers(state, sectorId).map(marker => ({
     id: marker.id, kind: 'poi', poiType: 'circuit', name: marker.label,
@@ -2378,7 +2387,7 @@ export function buildSystemModel(state, sectorId, options = {}) {
     // it; suppressing the dynamic duplicate must never suppress its authoritative activity.
     points[staticIndex] = Object.freeze({ ...points[staticIndex], ...marker });
   }
-  points.push(...counterweightChartTargets(state, sid));
+  points.push(...counterweightChartTargets(state, sid), ...cinderglassChartTargets(state, sid));
   // Orrin's accepted original resolves through the ordinary station target/click/course path.
   // The case reader deliberately supplies no nav state; this only gives the existing Customs
   // Gate point a persistent reason to be selected after the one-shot referral intent is gone.
@@ -2553,7 +2562,7 @@ export function buildLocalModel(state, isHostile, options = {}) {
     sectorId,
     player: player ? { id: player.id, x: player.pos.x, z: player.pos.z, rot: player.rot || 0 } : null,
     contacts: filterSalvageTenderMapContacts(state, contacts),
-    circuitSites: counterweightChartTargets(state, sectorId),
+    circuitSites: [...counterweightChartTargets(state, sectorId), ...cinderglassChartTargets(state, sectorId)],
     ownership: buildClaimOwnershipMarkers(state, sectorId, options.claimsSystem || null),
     bearings: discoveryBearingReadouts(state, sectorId),
     rumorCorroborations: frontierRumorCorroborations(state, sectorId),

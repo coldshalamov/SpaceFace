@@ -1,3 +1,4 @@
+import { settleCinderglassResult } from '../features/cinderglassJob/ownerSeams.js';
 import { winnowCarrierHandoffReady } from '../world/vestaWinnowRecovery.js';
 // economy system — stock-based market economy + SOLE writer of state.player.credits.
 // Contract: ARCHITECTURE §0.6 (single-writer credits), §0.12/§0.13 (cargo: volume is the only
@@ -4235,6 +4236,8 @@ export const economy = {
 
   // Circuit awards are authorised by the live feature owner, never by a caller-supplied amount.
   // The wallet, accepted receipt and feature record settle synchronously before outward events.
+  settleCinderglassResult,
+
   settleCounterweightResult(eventId, attemptId) {
     const owner = this.registryGet('counterweightCircuit');
     const intents = ensureCommittedIntents(this.state);

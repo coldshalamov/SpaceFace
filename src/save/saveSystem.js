@@ -1,3 +1,4 @@
+import { validateCinderglassJob } from '../features/cinderglassJob/persistence.js';
 import { normalizeSurveyMemory } from '../data/surveyCartography.js';
 import {
   compareOccupiedSlotNewestFirst,
@@ -9081,6 +9082,7 @@ export function readSaveVersion(version, currentVersion = CURRENT_VERSION) {
 // Returns false if a migration throws (caller aborts the load without touching live state).
 // Exported for the migration-ladder proof.
 export function runMigrations(data, fromVer) {
+  if (!validateCinderglassJob(data?.world?.cinderglassJob)) throw new Error('cinderglass_invalid_save');
   let v = fromVer | 0;
   let guard = 0;
   while (v < CURRENT_VERSION && guard++ < 64) {

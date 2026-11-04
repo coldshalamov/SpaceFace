@@ -1251,6 +1251,7 @@ export const scanner = {
       radius: profile.nearRadius,
       source: 'player-scanner',
       scannerId: player.id,
+      scannerGeneration: player.occupantGeneration,
       seq: this._pulseSeq,
       simTime: now,
     });

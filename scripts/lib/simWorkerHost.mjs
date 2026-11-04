@@ -754,6 +754,7 @@ const BRIDGE_EVENTS = [
   'camera:shake', 'presentation:cueApplied', 'sector:enter', 'cargo:changed',
   'automation:fleetChanged',
   'breakwaterSpur:offer', 'breakwaterSpur:close', 'breakwaterSpur:receipt', 'breakwaterSpur:cue',
+  'cinderglassJob:offer', 'cinderglassJob:servicePrompt', 'cinderglassJob:fact', 'cinderglassJob:refused', 'cinderglassJob:serviceEnd', 'cinderglassJob:close',
 ];
 
 export function createSimHost({ onAsyncSaveReady } = {}) {

@@ -8,6 +8,7 @@ import { createCounterweightCircuitPromptSystem } from './counterweightCircuit/p
 import { updateCounterweightCircuitPresentation, releaseCounterweightCircuitPresentation } from './counterweightCircuit/presentation.js';
 import { mountSalvageOutfitsPresentation } from './salvageOutfits/integration.js';
 import { createIndustrialDisastersPresentation } from './industrialDisasters/presentationAdapter.js';
+import { createCinderglassJobPromptSystem } from './cinderglassJob/presentation.js';
 import { createBreakwaterSpurPromptSystem, mountBreakwaterSpurPresentation } from './breakwaterSpur/presentation.js';
 import * as THREE from 'three';
 
@@ -32,6 +33,9 @@ export function mountProExperiencesBrowser(ctx = {}) {
   if (!registeredTender) tender.init(ctx);
   if (!registeredCircuit) circuit.init(ctx);
   if (!registeredBreakwater) breakwater.init(ctx);
+  const registeredCinderglass = ctx.registry?.get?.('cinderglassJobPrompt');
+  const cinderglass = registeredCinderglass || createCinderglassJobPromptSystem();
+  if (!registeredCinderglass) cinderglass.init(ctx);
   const outfits = mountSalvageOutfitsPresentation(ctx);
   const off = [];
   let disaster = null, rig = null, breakwaterWorld = null, scene = null, renderer = null, destroyed = false;
@@ -45,7 +49,7 @@ export function mountProExperiencesBrowser(ctx = {}) {
   on('salvageTender:offer', offer => { tenderSignature = signature(offer); });
   on('counterweightCircuit:offer', offer => { circuitSignature = signature(offer); });
   on('breakwaterSpur:offer', offer => { breakwaterSignature = signature(offer); });
-  const reset = () => { tender.close(); circuit.close(); breakwater.close(); releaseWorld(); };
+  const reset = () => { tender.close(); circuit.close(); breakwater.close(); cinderglass.close(); releaseWorld(); };
   for (const event of ['save:restoring', 'sector:exit', 'game:new', 'game:newGame']) on(event, reset);
 
   function releaseWorld() {
@@ -72,6 +76,7 @@ export function mountProExperiencesBrowser(ctx = {}) {
     frame(dt, currentState = state, hudVisible = true) {
       if (destroyed || currentState !== state) return;
       outfits?.draw(currentState, hudVisible);
+      cinderglass.frame(dt, currentState, hudVisible);
       // Domain mirrors recover offers across a worker attach or UI remount. Ordinary
       // main-sim events remain the immediate route, with no registry-facade calls.
       uiElapsed += Number.isFinite(dt) && dt > 0 ? dt : 0;
@@ -116,6 +121,7 @@ export function mountProExperiencesBrowser(ctx = {}) {
       if (registeredTender) tender.close(); else tender.destroy();
       if (registeredCircuit) circuit.close(); else circuit.destroy();
       if (registeredBreakwater) breakwater.close(); else breakwater.destroy();
+      if (registeredCinderglass) cinderglass.close(); else cinderglass.destroy();
       outfits?.destroy(); releaseWorld();
       if (OWNERS.get(state) === api) OWNERS.delete(state);
     },

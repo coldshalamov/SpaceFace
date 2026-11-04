@@ -1,3 +1,5 @@
+import { createCinderglassJobSystem } from './cinderglassJob/runtime.js';
+import { createCinderglassJobPromptSystem } from './cinderglassJob/presentation.js';
 // Fresh simulation owners shared by the browser and Node production registries.
 // Presentation stays on the browser path; importing this table never loads Three.js.
 import { createShipbreakingYardSystemEntries } from './shipbreakingYard/integration.js';
@@ -25,5 +27,7 @@ export function createProExperienceSystemEntries() {
     ['salvageOutfits', Object.create(salvageOutfits)],
     ['salvageOutfitsPrompt', Object.create(salvageOutfitsPrompt)],
     ['industrialDisasters', createIndustrialDisastersSystem()],
+    ['cinderglassJob', createCinderglassJobSystem()],
+    ['cinderglassJobPrompt', createCinderglassJobPromptSystem()],
   ];
 }
