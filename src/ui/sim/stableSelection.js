@@ -53,6 +53,10 @@ export function identityStampForEntity(entity) {
   if (!entity) return null;
   const data = entity.data && typeof entity.data === 'object' ? entity.data : {};
   const stamp = { type: entity.type != null ? String(entity.type) : null };
+  if (entity.occupantGeneration != null) stamp.occupantGeneration = entity.occupantGeneration;
+  for (const key of ['fieldId', 'asteroidSlotId', 'activityObjectSlotId']) {
+    if (data[key] != null) stamp[key] = String(data[key]);
+  }
   if (data.role != null) stamp.role = String(data.role);
   if (entity.factionId != null) stamp.factionId = String(entity.factionId);
   const name = data.name || data.displayName || data.shipName;
@@ -69,7 +73,11 @@ export function stampMatchesEntity(entity, stamp) {
   if (!entity || !stamp || typeof stamp !== 'object') return false;
   const entityType = entity.type != null ? String(entity.type) : null;
   if (stamp.type !== entityType) return false;
+  if (stamp.occupantGeneration != null && stamp.occupantGeneration !== entity.occupantGeneration) return false;
   const data = entity.data && typeof entity.data === 'object' ? entity.data : {};
+  for (const key of ['fieldId', 'asteroidSlotId', 'activityObjectSlotId']) {
+    if (stamp[key] != null && stamp[key] !== String(data[key])) return false;
+  }
   if (stamp.role != null && stamp.role !== String(data.role)) return false;
   if (stamp.factionId != null && stamp.factionId !== String(entity.factionId)) return false;
   if (stamp.kind != null && stamp.kind !== String(data.kind)) return false;

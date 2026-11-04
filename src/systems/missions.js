@@ -3067,9 +3067,28 @@ export const missions = {
     if (sectorId) this.spawnTargetsForSector(sectorId);
     const nav = this.state.nav;
     const existing = nav && nav.waypoint;
-    if (this._trackedOrFirstActiveMission()) {
+    const tracked = this._trackedOrFirstActiveMission();
+    if (tracked) {
+      const restoredRecovery = tracked.storyTag === CONTRACT_47A_B0_TAG && existing?.kind === 'mission'
+        && existing.missionId === tracked.id && !existing.stationId;
+      const resumeRecovery = restoredRecovery && nav.autopilot?.active === true;
       if (existing && existing.kind === 'local') this._retireRestoredLocalCourse();
       this._refreshNavigation({ silent: true });
+      if (restoredRecovery) {
+        const waypoint = nav.waypoint;
+        if (waypoint?.recoverySource && waypoint.targetEntityId != null && waypoint.stable) {
+          // Saves intentionally drop transient IDs/stamps. The mission's durable field/slot
+          // proves the restored source; World revalidates its fresh witness at the normal seam.
+          this.bus.emit('ui:setCourse', { pos: waypoint.pos, label: waypoint.label,
+            waypointKind: 'mission', missionId: tracked.id, recoverySource: waypoint.recoverySource,
+            targetEntityId: waypoint.targetEntityId, stable: waypoint.stable,
+            arrivalRadius: 48, autopilot: resumeRecovery });
+        } else if (nav.autopilot) {
+          nav.autopilot = { active: false, target: null, targetEntityId: null,
+            label: '', arrivalRadius: 36, status: 'lost-target' };
+          this.bus.emit('nav:autopilot', nav.autopilot);
+        }
+      }
       return;
     }
     if (existing && existing.kind === 'trade') {
@@ -3223,6 +3242,11 @@ export const missions = {
             ? (m.destSectorId || (this.state.world && this.state.world.currentSectorId))
             : (this.state.world && this.state.world.currentSectorId || m.destSectorId),
           pos: { x: source.pos.x, z: source.pos.z },
+          ...(source.type === 'asteroid' && source.id != null ? {
+            targetEntityId: source.id,
+            stable: captureEntitySelection(source),
+            ...(m.params.sampleSource ? { recoverySource: { ...m.params.sampleSource } } : {}),
+          } : {}),
         };
       }
       return { ...base, label: '47-A Recovery Site', stationId: null };

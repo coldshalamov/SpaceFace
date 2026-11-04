@@ -6344,7 +6344,11 @@ export const audio = {
       panner.connect(targetBus);
       dest = panner;
     }
-    const peak = Math.min(1, this._ampFor(recipe) * (gain == null ? 1 : gain) * att);
+    // Mining tracks its target throughout the hold. Its recipe already receives the authored
+    // level here; the outer voice gain must carry distance only, or position updates multiply
+    // that level a second time and make the cutter almost inaudible.
+    const miningBeam = recipeId === 'sfx_mining_beam';
+    const peak = Math.min(1, this._ampFor(recipe) * (gain == null ? 1 : gain) * (miningBeam ? 1 : att));
     // PQ-158.00 hybrid loop: resident sample body + live synth layer, released together.
     const sampleBinding = rt._samples ? resolveSampleBinding(recipeId) : null;
     const sampleBuffer = sampleBinding ? rt._samples.acquire(sampleBinding.sampleId) : null;
@@ -6357,7 +6361,8 @@ export const audio = {
       id: rt._nextVoiceId++,
     }, rt._caches);
     v._panner = panner;
-    v._baseGain = this._ampFor(recipe) * (gain == null ? 1 : gain);
+    v._baseGain = miningBeam ? 1 : this._ampFor(recipe) * (gain == null ? 1 : gain);
+    if (miningBeam) v.gain.gain.value = att;
     v.busName = busName;
     v.recipeId = recipeId;
     v.loop = true;

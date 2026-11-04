@@ -190,8 +190,8 @@ import {
 } from '../world/worldRecords.js';
 import { bumpCollidesFlipEpoch, entityIndexLaneVersion, forEachLivingWorldActor, isLivingWorldActor, indexedShipLikeScan, indexedTypeScan, registerEntityWorldRecordId } from '../world/livingWorldViews.js';
 import { syncEntityCollisionIndexMembership, syncEntitySectorMembership, syncEntityTypeLaneMembership } from '../core/coreSystem.js';
-import { presentationEntityIdForCourseTarget } from '../ui/navigationWaypoint.js';
-import { captureEntitySelection, liveEntityById } from '../ui/sim/stableSelection.js';
+import { presentationEntityIdForCourseTarget, resolveContract47aRecoveryTarget } from '../ui/navigationWaypoint.js';
+import { captureEntitySelection, liveEntityById, resolveEntitySelection } from '../ui/sim/stableSelection.js';
 import {
   dropAsteroidFieldSector,
   insertAsteroidFieldRock,
@@ -6537,6 +6537,13 @@ export const world = {
   _onSetCourse(payload = {}) {
     const pos = sanitizeCoursePos(payload.pos);
     if (pos) {
+      if (payload.recoverySource) {
+        const source = resolveContract47aRecoveryTarget(this.state, payload.missionId, payload.recoverySource);
+        if (!source || !payload.stable || resolveEntitySelection(this.state, payload.stable) !== source
+          || source.id !== payload.targetEntityId) return null;
+        // The UI command crosses a worker boundary: retain its identity, but use the live pose.
+        pos.x = source.pos.x; pos.z = source.pos.z;
+      }
       const label = String(payload.label || payload.reason || 'Autopilot fix');
       const targetEntityId = payload.targetEntityId != null ? payload.targetEntityId : null;
       const targetSectorId = typeof payload.targetSectorId === 'string'
@@ -6552,6 +6559,8 @@ export const world = {
         label,
         reason: payload.reason || label,
         pos,
+        ...(payload.recoverySource ? { missionId: payload.missionId,
+          recoverySource: { ...payload.recoverySource } } : {}),
       };
       let stableTarget = null;
       if (targetEntityId != null) {
@@ -6559,22 +6568,23 @@ export const world = {
         // leave an unprovable bind that a recycled occupant later inherits — the authored pos
         // stays the fail-closed place instead. presentationEntityId already refused the same
         // dead bind two lines above; the id write now agrees with it (review).
-        const bound = liveEntityById(this.state, targetEntityId);
+        const bound = payload.stable ? resolveEntitySelection(this.state, payload.stable)
+          : liveEntityById(this.state, targetEntityId);
         // SF-244: the armed course outlives the commit instant and the core recycles entity
         // ids — stamp what the id meant so a later holder resolves closed (autopilot falls
         // back to the fix) instead of redirecting the burn onto an unrelated body. A live but
         // uncapturable entity binds nothing: the waypoint must not keep a bare recyclable id
         // the autopilot already refused (review).
         if (bound) {
-          stableTarget = captureEntitySelection(bound);
+          stableTarget = payload.stable || captureEntitySelection(bound);
           if (stableTarget) {
-            this.state.nav.waypoint.targetEntityId = targetEntityId;
+            this.state.nav.waypoint.targetEntityId = bound.id;
             this.state.nav.waypoint.stable = stableTarget;
             // INF-056: the course aimed at a live body, so bind the presentation id too — flight
             // (resolveAutopilotTarget) re-resolves the entity every tick, and with the bind every
             // instrument resolves the same moving position through the canonical resolver. The
             // save whitelist drops the field, so a loaded waypoint falls back to pos the same way.
-            const presentationEntityId = presentationEntityIdForCourseTarget(this.state.entities, targetEntityId);
+            const presentationEntityId = presentationEntityIdForCourseTarget(this.state.entities, bound.id);
             if (presentationEntityId != null) this.state.nav.waypoint.presentationEntityId = presentationEntityId;
           }
         }
@@ -6586,12 +6596,14 @@ export const world = {
       this.state.nav.autopilot = {
         active: payload.autopilot !== false,
         target: pos,
-        targetEntityId: stableTarget ? targetEntityId : null,
+        targetEntityId: stableTarget ? this.state.nav.waypoint.targetEntityId : null,
         label,
         arrivalRadius,
         status: 'armed',
         ...(payload.planetaryApproach === 'planet_tethys_anvil' ? { planetaryApproach: payload.planetaryApproach } : {}),
         ...(payload.rendezvous === true && stableTarget ? { rendezvous: true } : {}),
+        ...(payload.recoverySource ? { missionId: payload.missionId,
+          recoverySource: { ...payload.recoverySource } } : {}),
       };
       if (stableTarget) this.state.nav.autopilot.stable = stableTarget;
       this.bus.emit('nav:waypoint', this.state.nav.waypoint);

@@ -77,7 +77,7 @@ import { canNavigateToKnowledge, discoveryKnowledge, selectionKnowledgeLine } fr
 import {
   careersTabAvailability, careersTabHtml, careersOverviewLineHtml,
 } from './map/careersReadout.js';
-import { resolveWaypointPresentationPosition } from './navigationWaypoint.js';
+import { resolveWaypointPresentationPosition, resolveContract47aRecoveryTarget } from './navigationWaypoint.js';
 import { sectorLawProfile } from './securityReadout.js';
 import { causeFor } from './causeLedger.js';
 import { uniqueWreckMapReadouts } from './uniqueWreckMapLayer.js';
@@ -871,13 +871,17 @@ export function resolveMapOpenTarget(state, intent) {
         && mission.type === 'salvage_retrieval' && mission.params?.contractId === '47-A'
         && mission.params?.sampleRecovered === false;
       const fix = mission.params?.samplePos;
+      const source = recovery && resolveContract47aRecoveryTarget(state, mission);
       if (recovery && !stationId && intent.selectionTarget === '47a-recovery-fix'
         && normalizeMapFocus(intent.focus) === MAP_FOCUS.LOCAL && mission.destSectorId === currentSectorId(state)
         && (!sectorId || sectorId === mission.destSectorId)
-        && fix && Number.isFinite(fix.x) && Number.isFinite(fix.z)
-        && intent.pos?.x === fix.x && intent.pos?.z === fix.z) {
+        && (source || (fix && Number.isFinite(fix.x) && Number.isFinite(fix.z)
+          && intent.pos?.x === fix.x && intent.pos?.z === fix.z))) {
         const target = waypointClickTarget({ kind: 'mission', missionId, sectorId: mission.destSectorId,
-          label: '47-A Recovery Site', reason: 'Recover the 47-A sample' }, fix, 0, 0, state);
+          label: '47-A Recovery Site', reason: 'Recover the 47-A sample',
+          ...(source ? { targetEntityId: source.id, stable: captureEntitySelection(source),
+            recoverySource: { ...mission.params.sampleSource } } : {}),
+        }, source?.pos || fix, 0, 0, state);
         return target && { ...target, id: `mission-fix:${missionId}`, missionFix: true, sectorId: mission.destSectorId };
       }
       // A producer may deliberately omit stationId when its explicit local position is the
@@ -2710,6 +2714,11 @@ export function resolveCourseEntityId(state, target) {
  */
 export function commitCoursePayload(state, target) {
   let courseTarget = target;
+  if (target?.recoverySource) {
+    const source = resolveContract47aRecoveryTarget(state, target.missionId, target.recoverySource);
+    if (!source || !target.stable || resolveEntitySelection(state, target.stable) !== source) return null;
+    courseTarget = { ...target, x: source.pos.x, z: source.pos.z };
+  }
   if (target?.planetaryApproach === true) {
     if (target.id !== PLANET_SITE.zoneId || target.sectorId !== PLANET_SITE.sectorId
         || currentSectorId(state) !== PLANET_SITE.sectorId) return null;
@@ -2724,7 +2733,11 @@ export function commitCoursePayload(state, target) {
   if (payload && target && target.stable) {
     const liveId = resolveCourseEntityId(state, target);
     if (liveId == null) delete payload.targetEntityId;
-    else payload.targetEntityId = liveId;
+    else { payload.targetEntityId = liveId; payload.stable = target.stable; }
+  }
+  if (payload && target?.recoverySource) {
+    payload.missionId = target.missionId;
+    payload.recoverySource = { ...target.recoverySource };
   }
   return payload;
 }
@@ -12629,6 +12642,7 @@ function waypointClickTarget(wp, pos, sx, sy, state) {
     name: label,
     detail: wp.reason || wp.label || wp.mapLabel || 'Active navigation waypoint',
     missionId: wp.missionId || null,
+    ...(wp.recoverySource ? { recoverySource: { ...wp.recoverySource } } : {}),
     targetEntityId: wp.targetEntityId,
     stable: wp.stable || null,
     stationId: wp.stationId,

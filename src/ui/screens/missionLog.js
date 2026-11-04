@@ -45,6 +45,7 @@ import {
   missionUpfrontCost,
 } from '../missionPreflight.js';
 import { MAP_FOCUS, mapHandoffAction, openGalaxyMap } from '../mapAuthority.js';
+import { resolveContract47aRecoveryTarget } from '../navigationWaypoint.js';
 import {
   buildMissionLogCareerChip,
   buildMissionLogOriginChoiceModel,
@@ -501,6 +502,12 @@ export function missionMapAction(state, mission, isTracked) {
   const targetSectorId = (wp && wp.sectorId) || mission.destSectorId || null;
   const sameSector = targetSectorId && currentSectorId && targetSectorId === currentSectorId;
   const recovery = !!contract47aReadout(mission) && mission.params?.sampleRecovered === false;
+  const source = recovery && sameSector && resolveContract47aRecoveryTarget(state, mission);
+  if (source) {
+    return mapHandoffAction({ focus: MAP_FOCUS.LOCAL, missionId: mission.id, sectorId: targetSectorId,
+      pos: source.pos, source: 'missionLog', selectionTarget: '47a-recovery-fix',
+      title: 'Open the recovery site on Local Map' });
+  }
   const savedFix = recovery && mission.params?.samplePos;
   const liveRecoveryWaypoint = wp && !wp.stationId && wp.pos
     && Number.isFinite(wp.pos.x) && Number.isFinite(wp.pos.z);

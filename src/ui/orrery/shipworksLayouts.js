@@ -1317,6 +1317,15 @@ html body #screens > .sx-berth.orr-station .sx-sw.orr-sw--jig .sx-sw__rail .sx-s
   ${W}.orr-sw--jig > .sx-sw__side { max-width:none !important; }
   ${W}.orr-sw--jig .sx-sw-circuit__identity { flex-wrap:nowrap !important; white-space:nowrap !important; }
 }
+/* Short desktop fleet: give the roster and the independently scrollable readings
+   separate seats, and make the pinned Save Fit band cover readings passing behind it. */
+@media (min-width:1101px) and (max-width:1366px) and (max-height:800px) {
+  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw-row { display:block !important; position:relative !important; }
+  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw-row > .k-row__num { position:absolute !important; right:0 !important; top:0 !important; }
+  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw-row .sx-sw-row__name { padding-right:60px !important; }
+  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw__stats { top:140px !important; bottom:6px !important; min-height:0 !important; max-height:none !important; }
+  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw-band--presets { background:rgb(8 10 13 / .98) !important; padding-top:5px !important; }
+}
 /* 1280×720 / 1366×768 desktop: Range / Record / Paint own a foot inside the main
    column, leaving the schematic its own height above it instead of pinning to the viewport. */
 @media (min-width:1101px) and (max-width:1366px) and (max-height:800px) {

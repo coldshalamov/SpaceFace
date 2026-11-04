@@ -11,6 +11,43 @@ import { SECTORS } from '../data/sectors.js';
 
 const SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s]));
 
+// The mission owns acquisition/re-marking. Readers may follow only its exact live resource slot,
+// never pick the nearest asteroid or replace the saved anchor with a moving body's position.
+export function resolveContract47aRecoveryTarget(state, missionOrId, expectedSource = null) {
+  const mission = typeof missionOrId === 'object' ? missionOrId
+    : state?.missions?.active?.find(m => String(m?.id) === String(missionOrId));
+  if (!mission || mission.status !== 'active' || mission.storyTag !== 'campaign47a:b0:recovery'
+    || mission.params?.contractId !== '47-A' || mission.params.sampleRecovered !== false) return null;
+  const source = mission.params.sampleSource;
+  const sectorId = state?.world?.currentSectorId;
+  if (!source || source.sectorId !== sectorId || mission.destSectorId !== sectorId) return null;
+  if (expectedSource && ['sectorId', 'fieldId', 'slotId', 'resourceSlotId']
+    .some(key => (source[key] ?? null) !== (expectedSource[key] ?? null))) return null;
+  const matches = entity => {
+    const data = entity?.data;
+    const home = entity?.homeSectorId || data?.homeSectorId || data?.sectorId;
+    return entity?.alive !== false && entity?.type === 'asteroid'
+      && (!home || home === sectorId) && data?.fieldId === source.fieldId
+      && data?.asteroidSlotId === source.slotId
+      && (source.resourceSlotId == null
+        || (data.activityObjectSlotId || data.asteroidSlotId || data.slotId) === source.resourceSlotId)
+      && Number.isFinite(entity.pos?.x) && Number.isFinite(entity.pos?.z);
+  };
+  const waypoint = state?.nav?.waypoint;
+  if (waypoint?.missionId === mission.id && waypoint.stable) {
+    const entity = resolveEntitySelection(state, waypoint.stable);
+    if (matches(entity)) return entity;
+  }
+  let result = null;
+  const entities = state?.entities?.values?.() || state?.entityList || [];
+  for (const entity of entities) {
+    if (!matches(entity)) continue;
+    if (result) return null;
+    result = entity;
+  }
+  return result;
+}
+
 function sectorDisplayName(sectorId) {
   const sector = SECTOR_BY_ID.get(sectorId);
   return (sector && sector.name) || String(sectorId || '');
@@ -118,6 +155,11 @@ export function resolveObjectiveGatePresentation(state) {
 
 export function resolveWaypointPresentationPosition(state, waypoint) {
   if (!waypoint) return null;
+  if (waypoint.recoverySource) {
+    const source = resolveContract47aRecoveryTarget(state, waypoint.missionId, waypoint.recoverySource);
+    const selected = waypoint.stable && resolveEntitySelection(state, waypoint.stable);
+    return source && source === selected ? source.pos : null;
+  }
   if (waypoint.stable) {
     // The bind was stamped at arm time: a durable target follows its new instance, a
     // recycled transient id resolves closed and the authored fix keeps the waypoint honest.

@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
+import { execFileSync } from 'node:child_process';
 
 const LITERAL = String.raw`("(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\`(?:\\.|[^\`\\])*\`)`;
 
@@ -39,11 +40,13 @@ export function inventoryText({ path: filePath, source, kind = null, config = {}
   return [...entries.values()].sort(compareEntry);
 }
 
-export async function buildLocalizationInventory({ rootDir, surfaces, exemptions }) {
-  const files = await collectSurfaceFiles(rootDir, surfaces);
+export async function buildLocalizationInventory({ rootDir, surfaces, exemptions, sourceFiles = null }) {
+  const files = sourceFiles ? sourceFiles.map(({ path: filePath }) => ({ path: filePath, kind: filePath.endsWith('.html') ? 'html' : 'js' }))
+    : await collectSurfaceFiles(rootDir, surfaces);
   const first = [];
-  for (const file of files) {
-    const source = await readFile(path.join(rootDir, file.path), 'utf8');
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    const source = sourceFiles ? sourceFiles[i].source : await readFile(path.join(rootDir, file.path), 'utf8');
     first.push(...inventoryText({ path: file.path, source, kind: file.kind, config: surfaces }));
   }
   first.sort(compareEntry);
@@ -85,6 +88,46 @@ export async function buildLocalizationInventory({ rootDir, surfaces, exemptions
       unresolved: conflicts.length + exemptionErrors.length,
     }),
   });
+}
+
+// Load one immutable Git tree without consulting the working tree or checking it out. Paths are
+// selected by the same root, extension and prefix-exclusion rules as the live inventory.
+export function readGitLocalizationSource(rootDir, ref) {
+  const git = (args, options = {}) => execFileSync('git', args, { cwd: rootDir, maxBuffer: 512 * 1024 * 1024, ...options });
+  const commit = git(['rev-parse', '--verify', '--end-of-options', `${ref}^{commit}`], { encoding: 'utf8' }).trim();
+  const read = file => git(['show', `${commit}:${file}`], { encoding: 'utf8' });
+  const surfaces = JSON.parse(read('scripts/localization-surfaces.json'));
+  const exemptions = JSON.parse(read('scripts/localization-exemptions.json'));
+  const tree = git(['ls-tree', '-rz', '--full-tree', commit], { encoding: 'utf8' }).split('\0').filter(Boolean).map(row => {
+    const match = /^(\d+) blob ([0-9a-f]+)\t([\s\S]+)$/.exec(row);
+    return match && { mode: match[1], oid: match[2], path: match[3] };
+  }).filter(row => row && (row.mode === '100644' || row.mode === '100755'));
+  const extensions = new Set((surfaces.extensions || ['.js', '.mjs', '.html']).map(String));
+  const selected = [];
+  for (const row of Array.isArray(surfaces.roots) ? surfaces.roots : []) {
+    const root = normalizePath(typeof row === 'string' ? row : row.path);
+    if (!root || excluded(root, surfaces.excludes)) continue;
+    const matches = tree.filter(file => (path.extname(root) ? file.path === root : file.path.startsWith(`${root}/`))
+      && !excluded(file.path, surfaces.excludes) && extensions.has(path.posix.extname(file.path)));
+    const exists = tree.some(file => path.extname(root) ? file.path === root : file.path.startsWith(`${root}/`));
+    if (!exists && (path.extname(root) ? extensions.has(path.extname(root)) : true)) {
+      throw new Error(`localization source root missing in ${commit}: ${root}`);
+    }
+    selected.push(...matches);
+  }
+  selected.sort((a, b) => a.path.localeCompare(b.path));
+  const output = git(['cat-file', '--batch'], { input: selected.map(file => file.oid).join('\n') + '\n' });
+  let offset = 0;
+  const sourceFiles = selected.map(file => {
+    const end = output.indexOf(10, offset), header = output.subarray(offset, end).toString('utf8');
+    const match = /^([0-9a-f]+) blob (\d+)$/.exec(header);
+    if (!match || match[1] !== file.oid) throw new Error(`invalid Git blob response for ${file.path}`);
+    const start = end + 1, finish = start + Number(match[2]);
+    if (finish >= output.length || output[finish] !== 10) throw new Error(`truncated Git blob for ${file.path}`);
+    offset = finish + 1;
+    return { path: file.path, source: output.subarray(start, finish).toString('utf8') };
+  });
+  return { commit, surfaces, exemptions, sourceFiles };
 }
 
 export function renderGeneratedCatalog(inventory) {
