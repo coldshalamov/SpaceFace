@@ -196,20 +196,21 @@ export function buildDockApproachLayout(row, out = {}) {
   const bz = finite(row.berth.z, pz);
   const ax = Math.cos(base), az = Math.sin(base);
   out.axisX = ax; out.axisZ = az;
-  const inner = outer * 0.66, span = outer - inner;
+  const gx = px + ax * outer, gz = pz + az * outer;
+  const span = Math.hypot(gx - bx, gz - bz);
   out.dashX = out.dashX || [];
   out.dashZ = out.dashZ || [];
   out.dashX.length = 0;
   out.dashZ.length = 0;
   for (let k = 0; k < DOCK_APPROACH_LAN_DASHES; k++) {
-    const d = inner + (span * (k + 0.5)) / DOCK_APPROACH_LAN_DASHES;
-    out.dashX.push(bx + ax * d);
-    out.dashZ.push(bz + az * d);
+    const t = (k + 0.5) / DOCK_APPROACH_LAN_DASHES;
+    out.dashX.push(bx + (gx - bx) * t);
+    out.dashZ.push(bz + (gz - bz) * t);
   }
   out.dashHalfLen = Math.max(0.8, span / DOCK_APPROACH_LAN_DASHES * 0.34);
   // Threshold bar across the lane at the capture outer gate, perpendicular to the axis.
-  out.barX = bx + ax * outer;
-  out.barZ = bz + az * outer;
+  out.barX = gx;
+  out.barZ = gz;
   out.barDX = -az; out.barDZ = ax;
   out.barHalfLen = halfWidth;
   out.deckY = 0.35;

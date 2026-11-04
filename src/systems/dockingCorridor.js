@@ -64,6 +64,7 @@ export const dockingCorridor = {
 
   init(ctx) {
     this.bus = ctx && ctx.bus || null;
+    this._state = ctx && ctx.state || null;
     // Cache static proxy geometry per station object. Entity ids can be reused after a load.
     // only recomputes when the station record actually changes (sector entry), never per frame.
     this._proxyGeometryCache = new Map();
@@ -73,7 +74,10 @@ export const dockingCorridor = {
     }
     this._farQuietUnsubs = [];
     if (this.bus && typeof this.bus.on === 'function') {
-      const clear = () => { this._farQuiet = null; };
+      const clear = () => {
+        this._farQuiet = null;
+        if (this._state) this._state.dockingPresentation = null;
+      };
       this._farQuietUnsubs = [
         this.bus.on('sector:exit', clear),
         this.bus.on('sector:enter', clear),
@@ -84,6 +88,8 @@ export const dockingCorridor = {
   },
 
   destroy() {
+    if (this._state) this._state.dockingPresentation = null;
+    this._state = null;
     if (this._proxyGeometryCache) this._proxyGeometryCache.clear();
     this._farQuiet = null;
     for (const unsub of this._farQuietUnsubs || []) {
@@ -100,6 +106,7 @@ export const dockingCorridor = {
 
   update(dt, state) {
     if (!state || !state.entities) return;
+    this._state = state;
     const player = state.playerId != null ? state.entities.get(state.playerId) : null;
     if (!player || !player.alive || state.mode !== 'flight'
       || (player.flags && player.flags.docked) || (state.ui && state.ui.docked === true)) {
@@ -262,11 +269,12 @@ export const dockingCorridor = {
       let entry = this._proxyGeometryCache.get(station);
       if (!entry || entry.manifest !== manifest || entry.px !== px || entry.pz !== pz
         || entry.rot !== rot || entry.bearing !== bearing || entry.scale !== scale
-        || entry.stationId !== data.stationId) {
+        || entry.stationId !== data.stationId || entry.generation !== station.occupantGeneration) {
         entry = {
-          manifest, px, pz, rot, bearing, scale, stationId: data.stationId,
+          manifest, px, pz, rot, bearing, scale, stationId: data.stationId, generation: station.occupantGeneration,
           frozen: Object.freeze({
             entityId: station.id,
+            generation: station.occupantGeneration ?? null,
             stationId: data.stationId || null,
             proxyId: manifest.id,
             flags: manifest.flags,
@@ -295,6 +303,43 @@ export const dockingCorridor = {
       if (!seen.has(id)) this._proxyGeometryCache.delete(id);
     }
     runtime.collisionProxies = out;
+    // Presentation receives only nearby docking geometry, never collision primitives.
+    // Each entry is tied to the current station object and regenerated with its proxy.
+    const player = state.playerId != null && state.entities?.get?.(state.playerId);
+    const rows = this._dockingPresentationRows || (this._dockingPresentationRows = []);
+    rows.length = 0;
+    const projections = this._dockingPresentationCache || (this._dockingPresentationCache = new WeakMap());
+    if (player?.alive && state.mode === 'flight' && !player.flags?.docked && !state.ui?.docked
+      && Number.isFinite(player.pos?.x) && Number.isFinite(player.pos?.z)) {
+      for (const row of out) {
+        if (!row.stationId || !row.berth || !row.corridor) continue;
+        const dx = row.pos.x - player.pos.x, dz = row.pos.z - player.pos.z;
+        if (dx * dx + dz * dz > 1400 * 1400) continue;
+        let projected = projections.get(row);
+        if (!projected) {
+          projected = { entityId: row.entityId, generation: row.generation, stationId: row.stationId, proxyId: row.proxyId,
+            pos: row.pos, rot: row.rot, corridorBearingDeg: row.corridorBearingDeg,
+            berth: row.berth, corridor: { captureOuterRadius: row.corridor.captureOuterRadius,
+              captureHalfWidth: row.corridor.captureHalfWidth } };
+          projections.set(row, projected);
+        }
+        if (rows.length < 4) rows.push(projected);
+        else if (row.stationId === state.dockingCorridor?.stationId) rows[3] = projected;
+      }
+    }
+    const readout = state.dockingCorridor;
+    const view = this._dockingPresentation || (this._dockingPresentation = { sectorId: null, rows, readout: null });
+    const publicReadout = this._dockingPublicReadout || (this._dockingPublicReadout = {});
+    view.sectorId = state.world?.currentSectorId ?? null;
+    view.rows = rows;
+    if (readout) {
+      publicReadout.stationId = readout.stationId;
+      publicReadout.proxyId = readout.proxyId;
+      publicReadout.phase = readout.phase;
+      publicReadout.berth = readout.berth;
+      view.readout = publicReadout;
+    } else view.readout = null;
+    state.dockingPresentation = view;
   },
 };
 

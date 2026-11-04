@@ -161,7 +161,6 @@ test('the layout sits on the corridor axis with the cradle axis convention', () 
   const layout = buildDockApproachLayout(ROW, {});
   assert.ok(layout.live);
   const base = ROW.rot + ROW.corridorBearingDeg * Math.PI / 180;
-  const scale = ROW.corridor.captureOuterRadius / 1.2;
   const gateR = ROW.corridor.captureOuterRadius * (0.8 / 1.2);
   const spread = 25 * Math.PI / 180;
   for (const [k, sign] of [[0, -1], [1, 1]]) {
@@ -177,11 +176,11 @@ test('the layout sits on the corridor axis with the cradle axis convention', () 
     const dz = layout.dashZ[k] - ROW.berth.z;
     const along = dx * ax + dz * az;
     const lateral = Math.abs(dx * -az + dz * ax);
-    assert.ok(along > scale * 0.6 && along < scale * 1.2, `dash ${k} sits on the lane (along ${along.toFixed(1)})`);
+    assert.ok(along > 0 && along < ROW.corridor.captureOuterRadius - 64.8, `dash ${k} sits on the lane (along ${along.toFixed(1)})`);
     assert.ok(lateral < 0.01, `dash ${k} is on the axis (lateral ${lateral.toExponential(1)})`);
   }
   // The threshold bar crosses the lane at the outer gate, perpendicular to the axis.
-  const bx = layout.barX - ROW.berth.x, bz = layout.barZ - ROW.berth.z;
+  const bx = layout.barX - ROW.pos.x, bz = layout.barZ - ROW.pos.z;
   assert.ok(Math.abs(bx * ax + bz * az - ROW.corridor.captureOuterRadius) < 1e-6);
   assert.ok(Math.abs(layout.barDX * ax + layout.barDZ * az) < 1e-9, 'the bar runs across the lane');
 });

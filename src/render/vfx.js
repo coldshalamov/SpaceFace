@@ -7935,25 +7935,32 @@ export const vfx = {
     const dc = this._dockingCradle;
     if (!dc) return false;
     const state = this.state;
-    const readout = state && state.dockingCorridor;
+    const hasProjection = !!state && Object.prototype.hasOwnProperty.call(state, 'dockingPresentation');
+    const projection = hasProjection ? state.dockingPresentation : null;
+    const sameSector = !hasProjection || !!projection && (projection.sectorId == null
+      || projection.sectorId === state.world?.currentSectorId);
+    let readout = sameSector ? (hasProjection ? projection?.readout : state?.dockingCorridor) : null;
+    const rows = sameSector ? (hasProjection ? projection?.rows : state?.physicsRuntime?.collisionProxies) : null;
+    let proxy = null;
+    if (readout && Array.isArray(rows)) {
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        if (!row || (readout.stationId != null ? row.stationId !== readout.stationId : row.proxyId !== readout.proxyId)) continue;
+        const station = state.entities?.get?.(row.entityId);
+        if (!station || station.alive === false
+          || (row.generation != null && station.occupantGeneration !== row.generation)) continue;
+        proxy = row;
+        break;
+      }
+    }
+    // No live matching station means the saved/mirrored engagement is no longer current.
+    if (!proxy) readout = null;
     // Quiet settled flight: cradle still paid proxy scan + updateDockingCradle +
     // writeDockingCradleGeometry + a11y resolve every tick after fade-out. Latch
     // when fully faded; cheap phase/berth wake. Soft-GPU fps not claimed.
     if (this._dockingCradleQuietHidden) {
       if (!this._dockingCradleQuietMaybeAwake(readout)) return false;
       this._dockingCradleQuietHidden = false;
-    }
-    // Match the engaged station's diagnostics row for the corridor axis and lane width. Rows are
-    // frozen records — reading them here never touches sim state.
-    let proxy = null;
-    const rows = state && state.physicsRuntime && state.physicsRuntime.collisionProxies;
-    if (readout && (readout.stationId != null || readout.proxyId != null) && Array.isArray(rows)) {
-      for (let i = 0; i < rows.length; i++) {
-        const row = rows[i];
-        if (!row) continue;
-        if (readout.stationId != null && row.stationId === readout.stationId) { proxy = row; break; }
-        if (readout.stationId == null && readout.proxyId != null && row.proxyId === readout.proxyId) { proxy = row; break; }
-      }
     }
     const wasPhase = dc.cradle.phase;
     const cradle = updateDockingCradle(dc.cradle, dt, readout, proxy);
@@ -8042,8 +8049,9 @@ export const vfx = {
     const da = this._dockApproach;
     if (!da) return false;
     const state = this.state;
-    const rows = state && state.physicsRuntime && state.physicsRuntime.collisionProxies;
-    const readout = state && state.dockingCorridor;
+    const hasProjection = !!state && Object.prototype.hasOwnProperty.call(state, 'dockingPresentation');
+    const rows = hasProjection ? state.dockingPresentation?.rows : state?.physicsRuntime?.collisionProxies;
+    const readout = hasProjection ? state.dockingPresentation?.readout : state?.dockingCorridor;
     const now = Number.isFinite(state && state.simTime) ? state.simTime : 0;
     const reduced = !!(state && state.settings && state.settings.video && state.settings.video.motionReduce);
     const gain = resolveVfxAccessibilityProfile(state && state.settings).flashOpacityScale;
@@ -8058,16 +8066,26 @@ export const vfx = {
     scratch.indexCount = 0;
     let live = 0;
     let base = 0;
-    if (Array.isArray(rows) && Number.isFinite(px) && Number.isFinite(pz)) {
+    const sectorMatches = !state.dockingPresentation || state.dockingPresentation.sectorId == null
+      || state.dockingPresentation.sectorId === state.world?.currentSectorId;
+    if (sectorMatches && Array.isArray(rows) && Number.isFinite(px) && Number.isFinite(pz)) {
       const range2 = DOCK_APPROACH_MAX_RANGE_WU * DOCK_APPROACH_MAX_RANGE_WU;
       for (let i = 0; i < rows.length && live < DOCK_APPROACH_STATION_CAP; i++) {
         const row = rows[i];
         if (!row || row.stationId == null || !row.berth || !row.corridor || !row.pos) continue;
         const dx = px - row.pos.x, dz = pz - row.pos.z;
         if (dx * dx + dz * dz > range2) continue;
+        const liveStation = state.entities?.get?.(row.entityId);
+        if (row.entityId != null && (!liveStation || liveStation.alive === false
+          || (row.generation != null && liveStation.occupantGeneration !== row.generation))) continue;
         let layout = da.layouts.get(row.stationId);
-        if (!layout || layout.row !== row) {
-          layout = { row, data: buildDockApproachLayout(row, {}) };
+        if (!layout || layout.row !== row || layout.x !== row.pos.x || layout.z !== row.pos.z
+          || layout.rot !== row.rot || layout.bearing !== row.corridorBearingDeg
+          || layout.bx !== row.berth.x || layout.bz !== row.berth.z
+          || layout.outer !== row.corridor.captureOuterRadius || layout.width !== row.corridor.captureHalfWidth) {
+          layout = { row, x: row.pos.x, z: row.pos.z, rot: row.rot, bearing: row.corridorBearingDeg,
+            bx: row.berth.x, bz: row.berth.z, outer: row.corridor.captureOuterRadius,
+            width: row.corridor.captureHalfWidth, data: buildDockApproachLayout(row, {}) };
           da.layouts.set(row.stationId, layout);
         }
         if (!layout.data.live) continue;
@@ -8076,6 +8094,13 @@ export const vfx = {
         base = scratch.indexCount / 6;
         live += 1;
       }
+    }
+    for (const id of da.layouts.keys()) {
+      let present = false;
+      if (sectorMatches && Array.isArray(rows)) {
+        for (let i = 0; i < rows.length; i++) if (rows[i]?.stationId === id) { present = true; break; }
+      }
+      if (!present) da.layouts.delete(id);
     }
     if (!(scratch.indexCount > 0)) {
       if (da.mesh.visible) {
@@ -8123,8 +8148,11 @@ export const vfx = {
     const candidates = this._engineWashCandidates || (this._engineWashCandidates = []);
     candidates.length = 0;
     for (const e of ships) {
-      if (!e || e.alive === false || !e.pos || !Number.isFinite(e.pos.x) || !Number.isFinite(e.pos.z)) continue;
-      if (e.id === state.playerId && state.ui && state.ui.docked === true) continue;
+      if (!e || (e.type !== 'ship' && e.type !== 'drone') || e.alive === false
+        || !e.pos || !Number.isFinite(e.pos.x) || !Number.isFinite(e.pos.z)) continue;
+      if (e.id === state.playerId) {
+        if ((state.ui && state.ui.docked === true) || e.flags?.docked) continue;
+      } else if (e.flags?.docked || !npcPropulsionVisible(state, e, this._scene)) continue;
       const drive = this._engineDriveFor(e, this._engineWashDriveScratch ||= {}).drive;
       if (!(drive > 0.3)) continue; // below the resolver's own floor: skip the surface walk too
       candidates.push(e);
