@@ -158,3 +158,22 @@ test('an empty turret with a full hull can buy ammunition without a fake hull re
     assert.equal(findAll(h.root, child => child.dataset.repairId === 'ammo:fortify-run-1-4').length, 0);
   } finally { h.cleanup(); }
 });
+
+test('a broken Tesla link explains the failure and offers its endpoint replacement', () => {
+  const h = boot();
+  try {
+    const requestId = h.events.at(-1)[1].requestId;
+    h.bus.emit('swarm:fortifyState', model(requestId, { structures: [{ id: 'pair-1', entityId: 'pair-1',
+      deviceId: 'tesla_pair', hull: 90, hullMax: 90, operational: false, missingEndpoint: true, repairCost: 36 }] }));
+    const row = h.screen._structures.children[1].children[0];
+    assert.match(row.textContent, /link offline.*endpoint destroyed/i);
+    const replace = findAll(h.root, child => child.dataset.repairId === 'pair-1')[0];
+    assert.match(replace.textContent, /replace endpoint.*36/i);
+    replace.click();
+    const command = h.events.at(-1)[1];
+    assert.equal(command.entityId, 'pair-1');
+    h.bus.emit('swarm:fortifyBuildResolved', { requestId: command.requestId, runToken: 'run:1', accepted: true,
+      replaced: true, readModel: model(0, { credits: 264 }) });
+    assert.match(h.screen._note.textContent, /endpoint replaced/i);
+  } finally { h.cleanup(); }
+});

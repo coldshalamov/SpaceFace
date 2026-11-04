@@ -240,7 +240,7 @@ export const survivalWave = {
     this._dispatchDue();
     this._shapeSwarmFire();
     this._reinforceSwarm(run);
-    this._releaseStragglers();
+    this._commitStragglers();
     this._commitLastStand();
     this._tickCircuitObjective();
     this._publishWaveProgress();
@@ -1501,26 +1501,21 @@ export const survivalWave = {
   },
 
   /**
-   * Pack bodies left far behind a pilot who has outrun them (no drag: a new pilot drifts
-   * thousands of units without meaning to) would otherwise hold a won round open forever.
-   * Once a body has stayed past the leash — well off screen — for the grace window, it breaks
-   * off and leaves the field: removed out of sight, resolved by the destroyed receipt, never
-   * paid out as a kill. There is no head-count gate: three or five stranded hulls are just
-   * as far off screen as one, and a count gate left exactly those rounds open forever.
+   * A pilot can outrun the pack by thousands of units. Distant survivors commit to pursuit
+   * after a grace window; they remain physical members of the wave and must still be resolved.
    */
-  _releaseStragglers() {
+  _commitStragglers() {
     if (!this._swarm || !this._swarm.killTarget || !this._cohort || this._cohort.size === 0) return;
     // The ledger gate guards the arrival phase only: while the wave is still inside its
     // authored duration, outstanding quota may still be inbound. Past that budget the quota
     // is debt, not arrival — a stalled ledger (a pending batch retrying a refused arrival,
-    // clamp-dropped chaff the stream cannot refill while far stragglers hold the room) is
-    // produced BY the tail this tool exists to clear, so it cannot be allowed to disarm it.
+    // clamp-dropped chaff the stream cannot refill while far stragglers hold the room) must
+    // not prevent a distant survivor from committing to the fight.
     const pastBudget = !(this._elapsedSeconds() < this._durationSeconds());
     if ((this._admittedTotal < this._plannedBodies || (this._pending && this._pending.length))
       && !pastBudget) return;
-    const helpers = this.helpers;
     const state = this.state;
-    if (!helpers || typeof helpers.removeEntity !== 'function' || !state || !state.entities) return;
+    if (!state || !state.entities) return;
     const player = state.entities.get(state.playerId);
     if (!player || player.alive === false || !player.pos) return;
     const leash2 = SWARM_STRAGGLER_LEASH_WU * SWARM_STRAGGLER_LEASH_WU;
@@ -1537,7 +1532,10 @@ export const survivalWave = {
       if (dx * dx + dz * dz < leash2) { member.strayTicks = 0; continue; }
       if (!this._isCohortMemberActionable(id, member)) continue;
       member.strayTicks = (member.strayTicks || 0) + 1;
-      if (member.strayTicks >= SWARM_STRAGGLER_GRACE_TICKS) helpers.removeEntity(id);
+      if (member.strayTicks >= SWARM_STRAGGLER_GRACE_TICKS && data.ai && data.ai.swarmLastStand !== true) {
+        data.ai.combatDoctrineId = SWARM_LAST_STAND_DOCTRINE;
+        data.ai.swarmLastStand = true;
+      }
     }
   },
 
@@ -1545,7 +1543,7 @@ export const survivalWave = {
     if (!this._cohort || this._cohort.size === 0) return;
     const swarmKillRound = !!(this._swarm && this._swarm.killTarget);
     if (swarmKillRound) {
-      // Same stalemate as the straggler gate above: inside the finite duration the ledger
+      // Same stalemate as the distant pursuit above: inside the finite duration the ledger
       // check is already implied by the clock; past it, owed quota is debt. A late tail
       // commits regardless of what the stream still owes — it still has to be killed, and
       // _checkCleared still waits for the full quota before clearing.

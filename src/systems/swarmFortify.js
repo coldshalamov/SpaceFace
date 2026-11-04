@@ -209,6 +209,8 @@ export const swarmFortify = {
     }
     const structures = [...structuresByPurchase.values()].map((row) => ({
       ...row,
+      missingEndpoint: row.deviceId === 'tesla_pair' && row.entityIds.length === 1,
+      operational: row.operational && (row.deviceId !== 'tesla_pair' || row.entityIds.length === 2),
       entityIds: [...row.entityIds],
       positions: [...row.positions],
       repairCost: swarmFortifyDevice(row.deviceId)?.repairCost ?? null,
@@ -471,6 +473,9 @@ export const swarmFortify = {
     if (!target.length) return fail('structure_unavailable');
     const device = swarmFortifyDevice(target[0].deviceId);
     if (!device || !Number.isFinite(device.repairCost) || device.repairCost <= 0) return fail('repair_unavailable');
+    if (device.id === 'tesla_pair' && target.length === 1) {
+      return this._replaceTeslaEndpoint({ requestId, request, runtime, lifetime, run, record: target[0], device, fail });
+    }
     const prepareRepairHulls = this.helpers && this.helpers.prepareRepairCombatHulls;
     if (typeof prepareRepairHulls !== 'function') return fail('repair_owner_unavailable');
     const targets = target.map((record) => ({ entityId: record.entityId, amount: device.hull }));
@@ -508,6 +513,54 @@ export const swarmFortify = {
       deviceId: device.id,
     };
     return this._rememberCommand(runtime, result);
+  },
+
+  _replaceTeslaEndpoint({ requestId, request, runtime, lifetime, run, record, device, fail }) {
+    if (record.entity.alive === false || !(record.entity.hull > 0)) return fail('structure_unavailable');
+    const socket = swarmFortifySocket(record.socketId);
+    const anchor = runtime.arenaAnchor;
+    const player = this.state.entities?.get?.(this.state.playerId);
+    const center = anchor && socket && swarmFortifyPosition(anchor, socket, anchor.rotation);
+    if (!center || !player?.pos || player.alive === false) return fail('socket_unavailable');
+    if (Math.hypot(center.x - player.pos.x, center.z - player.pos.z) < SWARM_FORTIFY_MIN_PILOT_GAP) return fail('pilot_clearance');
+    const radialX = (center.x - anchor.x) / socket.distance;
+    const radialZ = (center.z - anchor.z) / socket.distance;
+    const endpointIndex = record.endpointIndex === 0 ? 1 : 0;
+    const side = endpointIndex === 0 ? 1 : -1;
+    const position = { x: center.x - side * radialZ * device.pairSpan / 2,
+      z: center.z + side * radialX * device.pairSpan / 2 };
+    if (!swarmPlacementIsClear(this.state, position, device.colliderRadius, { clearance: 10 })) return fail('socket_blocked');
+    const spec = physicalStructureSpec({ run, device, position, socket, player,
+      requestId: record.requestId, runToken: runtime.runToken, ordinal: record.ordinal, endpointIndex });
+    const receipt = this.runSessionOwner.purchase({ requestId, deviceId: device.id, entityId: request.entityId,
+      credits: device.repairCost, reason: 'swarm_fortify_replace:tesla_pair' }, () => {
+      if (this.state.run !== run || runLifetime(this.state.run) !== lifetime) return { ok: false, reason: 'run_lifetime_changed' };
+      const spawn = this.helpers?.spawnEntity;
+      if (typeof spawn !== 'function') return { ok: false, reason: 'spawn_unavailable' };
+      const existingIds = new Set(this.state.entities?.keys?.() || []);
+      let entity;
+      try {
+        entity = spawn(spec);
+        if (!entity || entity.alive === false || entity.id == null || this.state.run !== run
+          || runtime.structures.get(record.entityId) !== record || record.entity.alive === false) throw new Error('spawn_refused');
+      } catch {
+        if (entity?.id != null) this._removeEntity(entity, 'spawn_failed');
+        for (const candidate of this.state.entities?.values?.() || []) {
+          const mark = candidate?.data?.swarmFortify;
+          if (!existingIds.has(candidate.id) && mark?.pairId === record.pairId && mark.endpointIndex === endpointIndex) {
+            this._removeEntity(candidate, 'spawn_failed');
+          }
+        }
+        return { ok: false, reason: 'spawn_failed' };
+      }
+      const replacement = { ...record, entityId: entity.id, entity, endpointIndex };
+      runtime.structures.set(entity.id, replacement);
+      runtime.structureRows.push(replacement);
+      return { ok: true, rollback: () => this._retireStructure(runtime, replacement, 'purchase_rollback') };
+    });
+    return this._rememberCommand(runtime, { requestId, accepted: receipt.accepted === true,
+      replaced: receipt.accepted === true, reason: receipt.reason, credits: receipt.credits,
+      totalCredits: receipt.totalCredits, entityId: request.entityId, deviceId: device.id });
   },
 
   reloadTurret(request) {

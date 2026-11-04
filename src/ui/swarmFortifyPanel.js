@@ -119,7 +119,7 @@ export const crucibleFortifyScreen = {
       this._note.textContent = 'The run changed before that request completed.'; this._requestView(); return;
     }
     this._note.textContent = receipt.accepted === true
-      ? (receipt.serviced ? 'Turret rearmed and ready.' : receipt.repaired ? 'Structure repaired and ready.'
+      ? (receipt.serviced ? 'Turret rearmed and ready.' : receipt.replaced ? 'Tesla endpoint replaced. The link is ready.' : receipt.repaired ? 'Structure repaired and ready.'
         : receipt.modeActivated ? 'Structure placed. Future waves enter from three fixed approaches.'
         : 'Structure placed. It will work in the next wave.')
       : reasons[receipt.reason] || 'Construction refused. No credits were spent; choose another position.';
@@ -157,11 +157,13 @@ export const crucibleFortifyScreen = {
     for (const structure of model.structures || []) {
       const name = SWARM_FORTIFY_DEVICES[structure.deviceId]?.name || 'Structure';
       let detail = name + ' · ' + Math.max(0, Math.ceil(structure.hull || 0)) + '/' + Math.ceil(structure.hullMax || 0) + ' hull';
+      if (structure.missingEndpoint) detail += ' · link offline: one endpoint destroyed';
+      else if (structure.operational === false) detail += ' · offline';
       if (Number.isFinite(structure.ammo)) detail += ' · ' + structure.ammo + ' rounds';
       if (structure.heat > 0) detail += ' · ' + Math.ceil(structure.heat) + '% heat';
       const row = element(this._doc, 'li', '', detail);
-      if (structure.hull < structure.hullMax && Number.isSafeInteger(structure.repairCost) && structure.repairCost > 0) {
-        const repair = element(this._doc, 'button', 'k-word k-word--fine', 'Repair · ' + structure.repairCost + ' cr');
+      if ((structure.missingEndpoint || structure.hull < structure.hullMax) && Number.isSafeInteger(structure.repairCost) && structure.repairCost > 0) {
+        const repair = element(this._doc, 'button', 'k-word k-word--fine', (structure.missingEndpoint ? 'Replace endpoint · ' : 'Repair · ') + structure.repairCost + ' cr');
         repair.type = 'button'; repair.dataset.repairId = String(structure.id); repair.disabled = !!this._pending || model.credits < structure.repairCost;
         repair.addEventListener('click', () => { if (!repair.disabled) this._submit('swarm:fortifyRepairRequested', { entityId: structure.entityId }); }); row.appendChild(repair);
       }
