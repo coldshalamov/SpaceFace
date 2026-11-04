@@ -159,6 +159,34 @@ test('comparison restores legacy submission then readmits the same current hulls
   } finally { f.dispose(); }
 });
 
+test('new worker-presented hulls stay direct while an unchanged resident cohort finishes preparation', async () => {
+  let release, started;
+  const wait = new Promise(resolve => { release = resolve; });
+  const compiling = new Promise(resolve => { started = resolve; });
+  let compileCalls = 0;
+  const f = await fixture({ compile: async () => {
+    compileCalls++; started(); await wait;
+    return { pipelines: {}, gpuResidency: {} };
+  } });
+  try {
+    const shown = f.owner._entityFrame.shipAux;
+    f.owner._entityFrame.shipAux = shown.slice(0, 2);
+    f.owner._enableRigidOpaqueBatch(true);
+    const pending = f.owner._syncRigidOpaqueBatchProbe();
+    await compiling;
+    f.owner._entityFrame.shipAux = shown;
+    const withArrivals = f.owner._syncRigidOpaqueBatchProbe();
+    await Promise.resolve();
+    assert.equal(compileCalls, 1, 'arrival does not start a duplicate compile plan');
+    release(); await pending; await withArrivals;
+    assert.equal(f.owner.getRigidOpaqueBatchDiagnosticsForBench().status, 'active');
+    assert.equal(f.owner.getRigidOpaqueBatchDiagnosticsForBench().instances, 14);
+    assert.ok(f.records.slice(0, 2).every(record => record.cold.every(leaf => leaf.layers.mask === 0)));
+    assert.ok(f.records.slice(2).every(record => record.cold.every(leaf => leaf.layers.mask === 1)),
+      'newcomers retain their actual direct appearance until a normal subsequent replan');
+  } finally { release(); f.dispose(); }
+});
+
 test('generation/context changes and compare rollback cannot publish a pending hull replacement', async () => {
   for (const invalidate of [f => { f.state.contextRestoreSeq++; }, f => { f.owner._rendererGeneration = 2; },
     f => { f.owner.scene = new THREE.Scene(); },

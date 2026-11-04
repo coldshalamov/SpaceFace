@@ -1267,7 +1267,11 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
       }
     }
     const signature = signatureFor(normalized);
-    if (pending && pending.signature === signature
+    // Arriving roots stay on their canonical direct draws while the resident plan compiles.
+    // Restarting that work on every arrival can starve admission in a streaming fight.
+    // A departure/replacement still cancels, as do all captured owner/source guards.
+    if (pending && (pending.signature === signature
+        || pending.roots.every((root) => rootInList(normalized, root)))
         && (typeof pending.ownerIsActive !== 'function' || pending.ownerIsActive() === true)) return pending.promise;
     if (pending) {
       pending.cancelled = true;

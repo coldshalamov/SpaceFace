@@ -623,10 +623,23 @@ export function createShipPreviewMount(canvas, opts) {
   let warmupPromise = null;
   const meshCache = new Map(); // defId -> THREE.Object3D, retained to avoid rebuilding on hover.
   const meshCacheOrder = [];
+  const previewMaterialClones = new WeakMap();
 
   function disposePreviewMesh(mesh) {
     if (!mesh) return;
-    mesh.traverse((c) => { if (c.geometry) c.geometry.dispose(); });
+    const geometries = new Set();
+    mesh.traverse((object) => {
+      const geometry = object.geometry;
+      // Authored packages and static factory batches are borrowed by other hulls/contexts.
+      // Their cache/residency owner releases them; a preview must not invalidate their uploads.
+      if (geometry && !geometry.userData?.spacefaceSharedAsset) geometries.add(geometry);
+    });
+    for (const geometry of geometries) geometry.dispose();
+    // Only the tuning clones below belong to this preview. Factory materials and all texture
+    // maps remain with their original owners, including when the preview cache evicts a hull.
+    const materials = previewMaterialClones.get(mesh);
+    previewMaterialClones.delete(mesh);
+    if (materials) for (const material of materials) material.dispose();
   }
 
   function touchCachedMesh(defId, mesh) {
@@ -680,6 +693,7 @@ export function createShipPreviewMount(canvas, opts) {
           ? object.material.map(tuneMaterial)
           : tuneMaterial(object.material);
       });
+      previewMaterialClones.set(mesh, new Set(materialClones.values()));
       mesh.userData.previewMaterialsPrepared = true;
     }
     // Warm procedural canvas textures so the first frame isn't black.
