@@ -7,9 +7,9 @@
   "small": 167,
   "medium": 167,
   "large": 166,
-  "landed": 118,
+  "landed": 132,
   "assigned": 42,
-  "approved": 118,
+  "approved": 132,
   "bonusLanded": 10
  },
  "derivation": {
@@ -2782,9 +2782,9 @@
    "size": "small",
    "family": "spectacle",
    "batch": 8,
-   "status": "assigned",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused suite 55/55 + validator CLEAN (58 rows) re-run by controller after foreign ruud.js transient settled",
    "note": "codex enrichment leg landed via bonus batch codex-bonus-b14"
   },
   {
@@ -2820,9 +2820,9 @@
    "size": "small",
    "family": "spectacle",
    "batch": 8,
-   "status": "assigned",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused suite 55/55 + validator CLEAN (58 rows) re-run by controller after foreign ruud.js transient settled",
    "note": "codex enrichment leg landed via bonus batch codex-bonus-b14"
   },
   {
@@ -3799,9 +3799,9 @@
    "size": "small",
    "family": "spectacle",
    "batch": 8,
-   "status": "assigned",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused suite 55/55 + validator CLEAN (58 rows) re-run by controller after foreign ruud.js transient settled",
    "note": "pilot batch"
   },
   {
@@ -3841,9 +3841,9 @@
    "size": "small",
    "family": "spectacle",
    "batch": 8,
-   "status": "assigned",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused suite 55/55 + validator CLEAN (58 rows) re-run by controller after foreign ruud.js transient settled",
    "note": ""
   },
   {
@@ -3881,9 +3881,9 @@
    "size": "small",
    "family": "spectacle",
    "batch": 8,
-   "status": "assigned",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused suite 55/55 + validator CLEAN (58 rows) re-run by controller after foreign ruud.js transient settled",
    "note": ""
   },
   {
@@ -3921,9 +3921,9 @@
    "size": "small",
    "family": "spectacle",
    "batch": 8,
-   "status": "assigned",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused suite 55/55 + validator CLEAN (58 rows) re-run by controller after foreign ruud.js transient settled",
    "note": ""
   },
   {
@@ -4004,9 +4004,9 @@
    "size": "small",
    "family": "spectacle",
    "batch": 8,
-   "status": "assigned",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused suite 55/55 + validator CLEAN (58 rows) re-run by controller after foreign ruud.js transient settled",
    "note": ""
   },
   {
@@ -4045,9 +4045,9 @@
    "size": "small",
    "family": "spectacle",
    "batch": 8,
-   "status": "assigned",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused suite 55/55 + validator CLEAN (58 rows) re-run by controller after foreign ruud.js transient settled",
    "note": ""
   },
   {
@@ -4065,9 +4065,9 @@
    "size": "medium",
    "family": "spectacle",
    "batch": 8,
-   "status": "assigned",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused suite 55/55 + validator CLEAN (58 rows) re-run by controller after foreign ruud.js transient settled",
    "note": ""
   },
   {
@@ -4152,9 +4152,9 @@
    "size": "small",
    "family": "spectacle",
    "batch": 8,
-   "status": "assigned",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused suite 55/55 + validator CLEAN (58 rows) re-run by controller after foreign ruud.js transient settled",
    "note": ""
   },
   {
@@ -4256,9 +4256,9 @@
    "size": "small",
    "family": "spectacle",
    "batch": 8,
-   "status": "assigned",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused suite 55/55 + validator CLEAN (58 rows) re-run by controller after foreign ruud.js transient settled",
    "note": ""
   },
   {
@@ -4342,9 +4342,9 @@
    "size": "small",
    "family": "spectacle",
    "batch": 8,
-   "status": "assigned",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused suite 55/55 + validator CLEAN (58 rows) re-run by controller after foreign ruud.js transient settled",
    "note": ""
   },
   {
@@ -4362,9 +4362,9 @@
    "size": "small",
    "family": "spectacle",
    "batch": 8,
-   "status": "assigned",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused suite 55/55 + validator CLEAN (58 rows) re-run by controller after foreign ruud.js transient settled",
    "note": ""
   },
   {
@@ -4419,9 +4419,9 @@
    "size": "small",
    "family": "spectacle",
    "batch": 8,
-   "status": "assigned",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused suite 55/55 + validator CLEAN (58 rows) re-run by controller after foreign ruud.js transient settled",
    "note": ""
   },
   {

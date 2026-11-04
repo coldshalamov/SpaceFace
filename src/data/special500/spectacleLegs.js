@@ -1238,6 +1238,364 @@ const ROWS = {
       Object.freeze({ atS: 3.4, template: 'bellVoice', params: Object.freeze({ recipe: 'sfx_core_bell', gain: 0.2, rate: 0.84 }) }),
     ]),
   }),
+
+  // ---- batch 8 (the spectacle family) ----
+
+  // SP3-078 — Rock Crossing Warning. The wire posts the crossing one day ahead,
+  // and the crossing happens on schedule: a forty-meter iron walks the Scar lane
+  // with three blinking survey lamps, a lit tail of dust, and a bored tender
+  // skiff hanging back. HONEST SCOPING: the physical boulder and the
+  // schedule-literacy codex page are the calendar-row legs; this row is the
+  // crossing as the lane sees it — the survey lamps blinking in file on the iron,
+  // the dust tail reading where it crossed, the skiff's bored check-in on the
+  // band. The entry fires in either sector; the row's place is the Tow Marks
+  // beacon on the Scar's metallic seam (the paint the enforcers keep) — an
+  // Ashfall-side firing delivers the wire tell only, and the beats skip rather
+  // than misplace (the SP3-044 precedent).
+  'SP3-078': Object.freeze({
+    title: 'Rock Crossing Warning',
+    anchor: Object.freeze({ sectorId: 'sector_kepler_scar', poiId: 'poi_kepler_tow_marks' }),
+    bearingRad: 1.75,
+    loopS: 0,
+    spanS: 14,
+    steps: Object.freeze([
+      Object.freeze({ atS: 0.8, template: 'lightFlash', params: Object.freeze({ offsetWu: -6, magnitude: 1 }) }),
+      Object.freeze({ atS: 1.6, template: 'lightFlash', params: Object.freeze({ offsetWu: -6, magnitude: 0.7 }) }),
+      Object.freeze({ atS: 3.0, template: 'lightFlash', params: Object.freeze({ offsetWu: 0, magnitude: 1.2 }) }),
+      Object.freeze({ atS: 3.8, template: 'lightFlash', params: Object.freeze({ offsetWu: 0, magnitude: 0.7 }) }),
+      Object.freeze({ atS: 5.2, template: 'lightFlash', params: Object.freeze({ offsetWu: 6, magnitude: 1 }) }),
+      Object.freeze({ atS: 6.0, template: 'lightFlash', params: Object.freeze({ offsetWu: 6, magnitude: 0.7 }) }),
+      Object.freeze({ atS: 7.5, template: 'echoRing', params: Object.freeze({ color: '#a89478', radiusWu: 24, lifeS: 3 }) }),
+      Object.freeze({ atS: 10.0, template: 'lightFlash', params: Object.freeze({ offsetWu: -60, magnitude: 0.4 }) }),
+      Object.freeze({ atS: 12.0, template: 'bellVoice', params: Object.freeze({ recipe: 'sfx_bark_radio', gain: 0.22, rate: 1 }) }),
+    ]),
+  }),
+
+  // SP3-108 — The Dock Choir. Inside the apron approach the docking chatter stops
+  // being noise and becomes texture: overlapping approach calls, berth
+  // assignments, one voice always slightly behind the others. AUDIO-LED: the choir
+  // is the shipped station and band voices through the audio owner's cue
+  // admission, from the apron's direction in space; ducking under urgent cues is
+  // the audio owner's own mix rule — never a second mixer here. HONEST SCOPING:
+  // the STATION_LIFE_AUDIO_RECIPES table the consensus seam named does not exist
+  // in the live audio data, so the choir voices through the shipped ambient/band
+  // recipes. The row loops on the rush window: the choir fills, and the remainder
+  // is the gap between calls. Plays only where the berth stands (the SP3-144
+  // station-anchor rule).
+  'SP3-108': Object.freeze({
+    title: 'The Dock Choir',
+    anchor: Object.freeze({ sectorId: 'sector_helios_prime', stationId: 'station_helios' }),
+    bearingRad: 0,
+    loopS: 45,
+    spanS: 30,
+    steps: Object.freeze([
+      Object.freeze({ atS: 0.5, template: 'bellVoice', params: Object.freeze({ recipe: 'ambient_station_murmur', gain: 0.3, rate: 1 }) }),
+      Object.freeze({ atS: 1.2, template: 'bellVoice', params: Object.freeze({ recipe: 'sfx_bark_radio', gain: 0.3, rate: 1 }) }),
+      Object.freeze({ atS: 1.8, template: 'bellVoice', params: Object.freeze({ recipe: 'sfx_comms_squelch_tail', gain: 0.2, rate: 1 }) }),
+      Object.freeze({ atS: 2.2, template: 'bellVoice', params: Object.freeze({ recipe: 'sfx_bark_radio', gain: 0.28, rate: 0.95 }) }),
+      Object.freeze({ atS: 6.0, template: 'bellVoice', params: Object.freeze({ recipe: 'sfx_bark_radio', gain: 0.3, rate: 1.05 }) }),
+      Object.freeze({ atS: 6.6, template: 'bellVoice', params: Object.freeze({ recipe: 'sfx_bark_radio', gain: 0.26, rate: 0.95 }) }),
+      Object.freeze({ atS: 12.0, template: 'bellVoice', params: Object.freeze({ recipe: 'sfx_comms_squelch_tail', gain: 0.18, rate: 0.9 }) }),
+      Object.freeze({ atS: 13.0, template: 'bellVoice', params: Object.freeze({ recipe: 'ambient_station_murmur', gain: 0.25, rate: 1 }) }),
+      Object.freeze({ atS: 20.0, template: 'bellVoice', params: Object.freeze({ recipe: 'sfx_bark_radio', gain: 0.28, rate: 1 }) }),
+      Object.freeze({ atS: 20.6, template: 'bellVoice', params: Object.freeze({ recipe: 'sfx_bark_radio', gain: 0.24, rate: 0.95 }) }),
+    ]),
+  }),
+
+  // SP3-004 — The Zodiacal Shelf. Calm phase, and the deep field shows its shelf:
+  // a faint tilted wedge of dust-light, brightest where the key light rakes it,
+  // gone by the sector edge. HONEST SCOPING: the wedge itself is background
+  // structure work (the sectorVisualProfiles leg); this row renders the shelf's
+  // instrument tell on its authored day — one wide faint ring (the rake's reach),
+  // the raked edge brightening, the fade toward the sector edge — and then the day
+  // is done. The one-quadrant-per-season drift is the lawful-motion leg the codex
+  // page charts across three seasons. Dust shows; it does not speak.
+  'SP3-004': Object.freeze({
+    title: 'The Zodiacal Shelf',
+    anchor: Object.freeze({ sectorId: 'sector_ceres_belt', zoneId: 'zone_ceres_belt' }),
+    bearingRad: 0.9,
+    loopS: 0,
+    spanS: 590,
+    steps: Object.freeze([
+      Object.freeze({ atS: 2.0, template: 'echoRing', params: Object.freeze({ color: '#d8cfae', radiusWu: 160, lifeS: 4 }) }),
+      Object.freeze({ atS: 300.0, template: 'lightFlash', params: Object.freeze({ offsetWu: 80, magnitude: 0.5 }) }),
+      Object.freeze({ atS: 580.0, template: 'lightFlash', params: Object.freeze({ offsetWu: -100, magnitude: 0.25 }) }),
+    ]),
+  }),
+
+  // SP3-017 — The Ghost Limb. Out on the rim, away from everything, a rim-light
+  // arc draws itself around empty space — the violet-on-black edge exactly as a
+  // hull would catch it, corvette-sized, holding three seconds, then gone. HONEST
+  // SCOPING: the pooled rim sprite and the Archive scan bonus are their own legs;
+  // this row renders the arc as the bloom-independent ring contract gives it —
+  // one violet rim at the Far Sounding (the rim point away from all the sector's
+  // volumes) with the bow edge catching a dim point, holding its three seconds,
+  // then nothing. It never repeats from the same angle — one arc per firing —
+  // which is how you know it is not a hull. A hull-shaped absence files nothing
+  // and makes no sound.
+  'SP3-017': Object.freeze({
+    title: 'The Ghost Limb',
+    anchor: Object.freeze({ sectorId: 'sector_veil_nebula', poiId: 'poi_veil_far_sounding' }),
+    bearingRad: 2.2,
+    loopS: 0,
+    spanS: 8,
+    steps: Object.freeze([
+      Object.freeze({ atS: 1.0, template: 'echoRing', params: Object.freeze({ color: '#8a6ac8', radiusWu: 30, lifeS: 3 }) }),
+      Object.freeze({ atS: 1.6, template: 'lightFlash', params: Object.freeze({ offsetWu: 34, magnitude: 0.3 }) }),
+    ]),
+  }),
+
+  // SP2-169 — The Lung's Breath. Hold near the Lung through one full pressure
+  // cycle — the period is posted on the hunters' writ wall, and the row loops on
+  // exactly that posted cycle — and it inhales: dust, debris, one careless cargo
+  // lid. Then the exhale, a slow resonant tone rolling the whole lane, the band
+  // pausing, and the hunters' mandatory tonal answer. HONEST SCOPING: the
+  // economy-linked pitch (air price) is the mechanic leg — this row voices one
+  // playing at written pitch; the `lung_exhale_heard` flag and the "Breathe Easy"
+  // codex page are their own legs. The inhale renders as the dust ring pulled at
+  // the marker; the exhale is the shipped breath voice, down an octave, from the
+  // Lung's place in space.
+  'SP2-169': Object.freeze({
+    title: 'The Lung’s Breath',
+    anchor: Object.freeze({ sectorId: 'sector_charon_expanse', poiId: 'poi_charon_lung_marker' }),
+    bearingRad: 0,
+    loopS: 300,
+    spanS: 24,
+    steps: Object.freeze([
+      Object.freeze({ atS: 1.0, template: 'echoRing', params: Object.freeze({ color: '#9a8878', radiusWu: 90, lifeS: 3 }) }),
+      Object.freeze({ atS: 8.0, template: 'bellVoice', params: Object.freeze({ recipe: 'bolus_breath', gain: 0.4, rate: 0.5 }) }),
+      Object.freeze({ atS: 12.0, template: 'echoRing', params: Object.freeze({ color: '#8a7868', radiusWu: 160, lifeS: 4 }) }),
+      Object.freeze({ atS: 16.0, template: 'bellVoice', params: Object.freeze({ recipe: 'sfx_bark_radio', gain: 0.3, rate: 1 }) }),
+    ]),
+  }),
+
+  // SP3-163 — The Wrong Weather Patch. One forty-WU patch off the tutorial lane
+  // runs an ion cell every day in every season, and the forecast line for that
+  // exact patch reads CLEAR — the footprint of a station that isn't there
+  // anymore. HONEST SCOPING: the registered tiny weather volume and the
+  // clear-reading forecast line are the mechanic leg (the hones carried them);
+  // this row renders the patch's presentation as the registry carries it — the
+  // cell boundary pulsing off the lane bearing, curtain flickers walking the
+  // footprint, the static pooling at its edge — on its own cadence while the
+  // sector holds the pilot. The forecast's silence is the patch's voice: nothing
+  // here files, and nothing here speaks.
+  'SP3-163': Object.freeze({
+    title: 'The Wrong Weather Patch',
+    anchor: Object.freeze({ sectorId: 'sector_helios_prime', zoneId: 'zone_helios_lane' }),
+    bearingRad: -0.8,
+    loopS: 26,
+    spanS: 14,
+    steps: Object.freeze([
+      Object.freeze({ atS: 1.0, template: 'echoRing', params: Object.freeze({ color: '#7a68b0', radiusWu: 40, lifeS: 2.5 }) }),
+      Object.freeze({ atS: 3.5, template: 'lightFlash', params: Object.freeze({ offsetWu: 70, magnitude: 0.3 }) }),
+      Object.freeze({ atS: 5.0, template: 'lightFlash', params: Object.freeze({ offsetWu: 92, magnitude: 0.25 }) }),
+      Object.freeze({ atS: 8.0, template: 'echoRing', params: Object.freeze({ color: '#6a58a0', radiusWu: 28, lifeS: 2 }) }),
+    ]),
+  }),
+
+  // SP3-031 — The Wrong Shadow. Third watch of the Pale Holiday, once: the
+  // Anvil's shadow stretches across the belt pointing away from the sun —
+  // backward — for exactly one watch. Additive VFX cannot darken: the dust going
+  // dark is the mood-overlay leg (the hones carried the mood path and its Pale
+  // Holiday sanction). This row renders the half that is light — the
+  // Void_signal's violet rim bleeding faintly onto everything the false shadow
+  // touches, walking the backward bearing, dimmer the farther it reaches — and
+  // then holds its peace for the rest of the watch (the dark remainder is the
+  // shadow lying there). Signals run strange on schedule.
+  'SP3-031': Object.freeze({
+    title: 'The Wrong Shadow',
+    anchor: Object.freeze({ sectorId: 'sector_tethys_junction', zoneId: 'zone_tethys_anvil' }),
+    bearingRad: 3.6,
+    loopS: 0,
+    spanS: 50,
+    steps: Object.freeze([
+      Object.freeze({ atS: 1.0, template: 'echoRing', params: Object.freeze({ color: '#7a5ab8', radiusWu: 120, lifeS: 4 }) }),
+      Object.freeze({ atS: 6.0, template: 'lightFlash', params: Object.freeze({ offsetWu: -120, magnitude: 0.2 }) }),
+      Object.freeze({ atS: 14.0, template: 'echoRing', params: Object.freeze({ color: '#6a4aa8', radiusWu: 90, lifeS: 4 }) }),
+      Object.freeze({ atS: 22.0, template: 'lightFlash', params: Object.freeze({ offsetWu: -240, magnitude: 0.15 }) }),
+    ]),
+  }),
+
+  // SP3-158 — The Beacon That Isn't. A navigation light blinking the standard
+  // pattern in open space — catalog-clean, no hull, no wreck, no reason — and it
+  // is moving, one world-unit per season along a bearing that, plotted visit over
+  // visit, aims out of the sector. HONEST SCOPING: the drift is a season-hash
+  // step function (the codex plot draws its track from the same pure function);
+  // this row replays the blink on the standard pattern at the Old Sterile Zone —
+  // the only clean ground in the sector, which is exactly why the light bothers
+  // cartography — while the sector holds the pilot. The row hangs the blink at
+  // the charted position; the season steps are the plot's business. No hull has
+  // ever answered it. No hull ever will.
+  'SP3-158': Object.freeze({
+    title: 'The Beacon That Isn’t',
+    anchor: Object.freeze({ sectorId: 'sector_ashfall_reach', zoneId: 'zone_ashfall_sterile_zone' }),
+    bearingRad: 1.35,
+    loopS: 16,
+    spanS: 6,
+    steps: Object.freeze([
+      Object.freeze({ atS: 0.5, template: 'lightFlash', params: Object.freeze({ offsetWu: 0, magnitude: 0.8 }) }),
+      Object.freeze({ atS: 1.3, template: 'lightFlash', params: Object.freeze({ offsetWu: 0, magnitude: 0.8 }) }),
+      Object.freeze({ atS: 3.0, template: 'lightFlash', params: Object.freeze({ offsetWu: 0, magnitude: 1.1 }) }),
+    ]),
+  }),
+
+  // SP3-055 — Rime Lightning. Cold surge on the seams: a pale-blue arc walks
+  // between two rocks and the fork hangs in the air after it. Ratification was
+  // specific — no bolt freezes mid-fork; the statue is the persistent ionized
+  // trace seen from distance, you can fly straight through the outline, and the
+  // minutes-long traces are the sprite-batch leg. This row renders the strike as
+  // the registry carries it: the fork walking the two rocks, the glassy trace
+  // holding at the ring contract's ceiling, the crumble into ice-dust — on the
+  // hash cadence the cold surges keep (the loop is the strike cadence; the dark
+  // remainder is the cold between strikes).
+  'SP3-055': Object.freeze({
+    title: 'Rime Lightning',
+    anchor: Object.freeze({ sectorId: 'sector_pallas_drift', zoneId: 'zone_pallas_belt' }),
+    bearingRad: 0.55,
+    loopS: 40,
+    spanS: 14,
+    steps: Object.freeze([
+      Object.freeze({ atS: 1.0, template: 'lampCascade', params: Object.freeze({ count: 3, lengthWu: 30, stepS: 0.7 }) }),
+      Object.freeze({ atS: 4.0, template: 'echoRing', params: Object.freeze({ color: '#a8c8f0', radiusWu: 16, lifeS: 4 }) }),
+      Object.freeze({ atS: 8.0, template: 'lightFlash', params: Object.freeze({ offsetWu: 0, magnitude: 0.3 }) }),
+    ]),
+  }),
+
+  // SP3-042 — Static Crawl. The last ten seconds before an ion front: violet
+  // discharge crawls your own hull's panel seams and pools at the wingtips, then
+  // snaps off all at once with a tick. HONEST SCOPING: the hull-attached crawl is
+  // the status-matter owner's verb (a DIRTY file — request, don't edit); the
+  // payload tell carries the hull-space half either way. This row renders the
+  // discharge's hunting ground at the Forge's hottest face — the crawl walking
+  // the seams, pooling at the claim pin, the snap-off tick when the front hits,
+  // then nothing. The entry fires in either storm sector; where the Hot Face does
+  // not stand the beats skip rather than misplace (the SP3-044 precedent).
+  'SP3-042': Object.freeze({
+    title: 'Static Crawl',
+    anchor: Object.freeze({ sectorId: 'sector_vesta_forge', poiId: 'poi_vesta_hot_face' }),
+    bearingRad: 1.1,
+    loopS: 0,
+    spanS: 14,
+    steps: Object.freeze([
+      Object.freeze({ atS: 1.0, template: 'echoRing', params: Object.freeze({ color: '#8868c8', radiusWu: 30, lifeS: 2.5 }) }),
+      Object.freeze({ atS: 2.0, template: 'lightFlash', params: Object.freeze({ offsetWu: -20, magnitude: 0.3 }) }),
+      Object.freeze({ atS: 4.0, template: 'echoRing', params: Object.freeze({ color: '#7858b8', radiusWu: 40, lifeS: 2.5 }) }),
+      Object.freeze({ atS: 6.0, template: 'lightFlash', params: Object.freeze({ offsetWu: 24, magnitude: 0.25 }) }),
+      Object.freeze({ atS: 9.0, template: 'bellVoice', params: Object.freeze({ recipe: 'sfx_fringe_tick', gain: 0.3, rate: 1 }) }),
+    ]),
+  }),
+
+  // SP3-013 — Sparkle Front. Solar-wind surge, and the dust between you and the
+  // key light ignites into a drifting field of microscopic glints — the whole sky
+  // acquires grain, every hull silhouette a faint halo. HONEST SCOPING: the
+  // gas-layer brightening is the weather-volume compositor leg (a DIRTY file —
+  // request the existing vocabulary); this row renders the front's arrival as the
+  // registry carries it — the glint field igniting across the approach, one wide
+  // faint halo, the drift moving on — and nothing else. Nothing new is drawn, no
+  // sound is added: the air show is silent, and the pilots who read the forecast
+  // come out early for it. The entry fires in either storm sector; where the
+  // Forge apron does not stand the beats skip rather than misplace (the SP3-044
+  // precedent).
+  'SP3-013': Object.freeze({
+    title: 'Sparkle Front',
+    anchor: Object.freeze({ sectorId: 'sector_vesta_forge', stationId: 'station_forge' }),
+    bearingRad: 2.6,
+    loopS: 0,
+    spanS: 18,
+    steps: Object.freeze([
+      Object.freeze({ atS: 1.0, template: 'lampCascade', params: Object.freeze({ count: 6, lengthWu: 200, stepS: 1.2 }) }),
+      Object.freeze({ atS: 9.0, template: 'echoRing', params: Object.freeze({ color: '#e8e0c8', radiusWu: 160, lifeS: 4 }) }),
+      Object.freeze({ atS: 14.0, template: 'lampCascade', params: Object.freeze({ count: 4, lengthWu: 120, stepS: 0.9 }) }),
+    ]),
+  }),
+
+  // SP3-053 — First Snow. The Pallas crews' cold turn of the year: the sector's
+  // dust acquires a slow falling drift of bright motes, and the whole sector
+  // lowers its voice. Ratification cut the hull-settling — nothing settles in
+  // vacuum, and the crews know it and say it anyway; the gas-volume mote field is
+  // the weather leg. This row renders the fall as the registry carries it — a
+  // slow file of small bright motes walking the drift bearing, thinning as they
+  // go — on its own cadence while the sector holds the pilot (the season's length
+  // is the weather leg's business; leaving ends the snow, the way the Binary's
+  // clock does). The row adds no sound: the lowered voice IS the silence.
+  'SP3-053': Object.freeze({
+    title: 'First Snow',
+    anchor: Object.freeze({ sectorId: 'sector_pallas_drift', zoneId: 'zone_pallas_drift' }),
+    bearingRad: 2.0,
+    loopS: 90,
+    spanS: 70,
+    steps: Object.freeze([
+      Object.freeze({ atS: 2.0, template: 'lightFlash', params: Object.freeze({ offsetWu: -120, magnitude: 0.35 }) }),
+      Object.freeze({ atS: 9.0, template: 'lightFlash', params: Object.freeze({ offsetWu: -96, magnitude: 0.3 }) }),
+      Object.freeze({ atS: 16.0, template: 'lightFlash', params: Object.freeze({ offsetWu: -72, magnitude: 0.3 }) }),
+      Object.freeze({ atS: 23.0, template: 'lightFlash', params: Object.freeze({ offsetWu: -48, magnitude: 0.25 }) }),
+      Object.freeze({ atS: 30.0, template: 'lightFlash', params: Object.freeze({ offsetWu: -24, magnitude: 0.25 }) }),
+      Object.freeze({ atS: 37.0, template: 'lightFlash', params: Object.freeze({ offsetWu: 0, magnitude: 0.25 }) }),
+      Object.freeze({ atS: 44.0, template: 'lightFlash', params: Object.freeze({ offsetWu: 24, magnitude: 0.2 }) }),
+      Object.freeze({ atS: 51.0, template: 'lightFlash', params: Object.freeze({ offsetWu: 48, magnitude: 0.2 }) }),
+      Object.freeze({ atS: 58.0, template: 'lightFlash', params: Object.freeze({ offsetWu: 72, magnitude: 0.2 }) }),
+      Object.freeze({ atS: 65.0, template: 'lightFlash', params: Object.freeze({ offsetWu: 96, magnitude: 0.2 }) }),
+    ]),
+  }),
+
+  // SP3-141 — The Whisper Buoy. Inside a hundred WU of the lane marker its
+  // speaker crackles and plays forty seconds of year-old traffic chatter — real
+  // voices, real idioms, the sector's own contact ledger played back degraded —
+  // then stops, mid-word. HONEST SCOPING: the contact-ledger feeding and the
+  // never-the-same-transcript rule are the mechanic leg (the deed memory is the
+  // ledger); this row voices one playing of it — the crackle coming on, the
+  // degraded snippets at lullaby gain with the band's own slop in the rates, the
+  // carrier dropping mid-word at the end. The wire has no comment, so the row
+  // files none, and there is nothing to see: the lane's memory is ears-only.
+  'SP3-141': Object.freeze({
+    title: 'The Whisper Buoy',
+    anchor: Object.freeze({ sectorId: 'sector_charon_expanse', poiId: 'poi_charon_lung_marker' }),
+    bearingRad: 0,
+    loopS: 0,
+    spanS: 44,
+    steps: Object.freeze([
+      Object.freeze({ atS: 0.8, template: 'bellVoice', params: Object.freeze({ recipe: 'sfx_comms_squelch_tail', gain: 0.3, rate: 0.85 }) }),
+      Object.freeze({ atS: 2.0, template: 'bellVoice', params: Object.freeze({ recipe: 'sfx_bark_radio', gain: 0.28, rate: 0.88 }) }),
+      Object.freeze({ atS: 6.5, template: 'bellVoice', params: Object.freeze({ recipe: 'sfx_bark_radio', gain: 0.24, rate: 0.8 }) }),
+      Object.freeze({ atS: 12.0, template: 'bellVoice', params: Object.freeze({ recipe: 'sfx_comms_squelch_tail', gain: 0.2, rate: 0.8 }) }),
+      Object.freeze({ atS: 14.0, template: 'bellVoice', params: Object.freeze({ recipe: 'sfx_bark_radio', gain: 0.26, rate: 0.92 }) }),
+      Object.freeze({ atS: 21.0, template: 'bellVoice', params: Object.freeze({ recipe: 'sfx_bark_radio', gain: 0.22, rate: 0.85 }) }),
+      Object.freeze({ atS: 29.0, template: 'bellVoice', params: Object.freeze({ recipe: 'sfx_comms_squelch_tail', gain: 0.18, rate: 0.75 }) }),
+      Object.freeze({ atS: 31.0, template: 'bellVoice', params: Object.freeze({ recipe: 'sfx_bark_radio', gain: 0.24, rate: 0.9 }) }),
+      Object.freeze({ atS: 39.5, template: 'bellVoice', params: Object.freeze({ recipe: 'sfx_bark_radio', gain: 0.2, rate: 0.82 }) }),
+      Object.freeze({ atS: 41.5, template: 'bellVoice', params: Object.freeze({ recipe: 'sfx_comms_squelch_tail', gain: 0.22, rate: 1.1 }) }),
+    ]),
+  }),
+
+  // SP3-086 — Shift Change Cascade. The watch turns and the building shows its
+  // work: window rows gutter out floor by floor, then relight at the new watch's
+  // gain — a station visibly changing hands. HONEST SCOPING: additive VFX cannot
+  // darken, so the extinguishing renders as the gutter walking the spine (dim
+  // beats, dimmer as they go — the dark between them is the rows going out), and
+  // the relight as the re-strikes at the new watch's floor gain; the "warmer"
+  // tint itself is lamp-bus work the cue payload cannot carry. "Every berth keeps
+  // its own offset" is a per-station row pass (the SP3-144 precedent); this row
+  // voices the Helios spine. The PA mumble is the audio owner's own ambient bed
+  // docked; outside, the lights do all the talking — the row files nothing.
+  'SP3-086': Object.freeze({
+    title: 'Shift Change Cascade',
+    anchor: Object.freeze({ sectorId: 'sector_helios_prime', stationId: 'station_helios' }),
+    bearingRad: 0.4,
+    loopS: 0,
+    spanS: 40,
+    steps: Object.freeze([
+      Object.freeze({ atS: 1.0, template: 'lightFlash', params: Object.freeze({ offsetWu: -80, magnitude: 0.2 }) }),
+      Object.freeze({ atS: 1.8, template: 'lightFlash', params: Object.freeze({ offsetWu: -40, magnitude: 0.15 }) }),
+      Object.freeze({ atS: 2.6, template: 'lightFlash', params: Object.freeze({ offsetWu: 0, magnitude: 0.12 }) }),
+      Object.freeze({ atS: 3.4, template: 'lightFlash', params: Object.freeze({ offsetWu: 40, magnitude: 0.1 }) }),
+      Object.freeze({ atS: 4.2, template: 'lightFlash', params: Object.freeze({ offsetWu: 80, magnitude: 0.1 }) }),
+      Object.freeze({ atS: 14.0, template: 'lightFlash', params: Object.freeze({ offsetWu: -80, magnitude: 0.5 }) }),
+      Object.freeze({ atS: 16.0, template: 'lightFlash', params: Object.freeze({ offsetWu: -40, magnitude: 0.5 }) }),
+      Object.freeze({ atS: 18.0, template: 'lightFlash', params: Object.freeze({ offsetWu: 0, magnitude: 0.5 }) }),
+      Object.freeze({ atS: 20.0, template: 'lightFlash', params: Object.freeze({ offsetWu: 40, magnitude: 0.5 }) }),
+      Object.freeze({ atS: 22.0, template: 'lightFlash', params: Object.freeze({ offsetWu: 80, magnitude: 0.5 }) }),
+    ]),
+  }),
 };
 
 export const SPECTACLE_LEGS = Object.freeze(ROWS);
