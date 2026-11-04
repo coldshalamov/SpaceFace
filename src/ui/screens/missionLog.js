@@ -1848,7 +1848,7 @@ const PERSISTENT_CAMPAIGN_LABELS = new Set([
  * Keep the final disposition / post-ending thread visible beside ordinary work whenever that
  * work owns CURRENT ACTION. Earlier story beats remain folded into the single-command policy.
  */
-export function persistentCampaignAction(state, activeMissions = [], trackedMissionId = null) {
+export function persistentCampaignAction(state, activeMissions = [], trackedMissionId = null, commissionSelected = false) {
   const beatIndex = state && state.story ? (state.story.beatIndex || 0) : 0;
   const action = storyActionForBeat(STORY_BEATS[beatIndex], state);
   const label = String(action && action.label || '');
@@ -1856,7 +1856,7 @@ export function persistentCampaignAction(state, activeMissions = [], trackedMiss
   if (!action || (!PERSISTENT_CAMPAIGN_LABELS.has(label) && !isEndingLabel)) return null;
   const active = (activeMissions || []).filter((mission) => mission && mission.status === 'active');
   const tracked = trackedMissionId ? active.find((mission) => mission.id === trackedMissionId) : null;
-  const ordinaryWorkOwnsCurrent = !!tracked || active.length > 0 || !!tradeRouteAction(state);
+  const ordinaryWorkOwnsCurrent = !!tracked || active.length > 0 || !!tradeRouteAction(state) || commissionSelected;
   return ordinaryWorkOwnsCurrent ? action : null;
 }
 
@@ -2595,11 +2595,12 @@ export const missionLogScreen = {
       this._focusedId = activeMissions.some((m) => m.id === tracked) ? tracked : (activeMissions[0]?.id || null);
       if (!this._focusedId && entries.length) this._commissionSelection = { key: entries[0].key, life: entries[0].life };
     }
+    const selectedCommission = entries.find((entry) => entry.key === this._commissionSelection?.key && entry.life === this._commissionSelection?.life) || null;
     // Capture before rebuilding either list so a live mirror refresh retains focus.
     const focusToken = this._captureFocusToken();
     // Story is folded into CURRENT ACTION when no tracked/active contract owns the next verb.
-    this._renderStory(state);
-    this._renderRecommendations(state, activeMissions, tracked);
+    this._renderStory(state, !!selectedCommission && !activeMissions.length);
+    this._renderRecommendations(state, activeMissions, tracked, selectedCommission);
     this._renderCareerChip(state);
     this._renderCommissions(state, entries);
 
@@ -3092,11 +3093,11 @@ export const missionLogScreen = {
 
   // Only final disposition / post-ending continuity persists beside normal work. Earlier story
   // beats remain folded into CURRENT ACTION so this screen never returns to competing commands.
-  _renderStory(state) {
+  _renderStory(state, commissionSelected = false) {
     if (!this._storyEl) return;
     const active = (state.missions && state.missions.active) || [];
     const tracked = state.ui && state.ui.trackedMissionId;
-    const action = persistentCampaignAction(state, active, tracked);
+    const action = persistentCampaignAction(state, active, tracked, commissionSelected);
     if (!action) {
       this._storyEl.innerHTML = '';
       this._storyEl.hidden = true;
@@ -3123,11 +3124,15 @@ export const missionLogScreen = {
       '</div>';
   },
 
-  _renderRecommendations(state, activeMissions, trackedMissionId) {
+  _renderRecommendations(state, activeMissions, trackedMissionId, selectedCommission = null) {
     if (!this._recommendEl) return;
     // The policy may produce secondary readiness advice for other consumers, but this screen paints
     // exactly one command. Readiness and terms live on the focused mission's stage.
     const actions = recommendedActions(state, activeMissions, trackedMissionId).slice(0, 1);
+    if (selectedCommission && !(activeMissions || []).some((m) => m && m.status === 'active')) {
+      actions.splice(0, actions.length, { tone: 'primary', label: 'COMMISSION',
+        title: selectedCommission.title, body: selectedCommission.objective, commission: true });
+    }
     if (!actions.length) {
       this._recommendEl.innerHTML = '';
       return;
@@ -3149,9 +3154,9 @@ export const missionLogScreen = {
           '<span class="k-row__name sf-mlog-rec-title">' + (a.titleRef ? entitySpanHtml(a.titleRef, escapeHtml(a.title || 'Next action')) : escapeHtml(a.title || 'Next action')) + '</span>' +
           '<div class="k-row__sub sf-mlog-rec-body">' + escapeHtml((a.brief && a.brief.how) || a.body || '') + '</div>' +
           (a.meta ? '<div class="k-row__sub sf-mlog-rec-meta">' + escapeHtml(wordText(a.meta)) + '</div>' : '') +
-          '<div class="k-row__sub sf-mlog-rec-marker">' + escapeHtml(wordText(a.mapAction
+          (a.commission ? '' : '<div class="k-row__sub sf-mlog-rec-marker">' + escapeHtml(wordText(a.mapAction
             ? '◆ THE AMBER DIAMOND IS YOUR CURRENT GOAL'
-            : (a.action === 'track' ? 'NO GOAL MARKER · TRACK NAV TO CREATE ONE' : 'NO GOAL MARKER YET'))) + '</div>' +
+            : (a.action === 'track' ? 'NO GOAL MARKER · TRACK NAV TO CREATE ONE' : 'NO GOAL MARKER YET'))) + '</div>') +
         '</div>' +
         '<span class="k-row__num sf-mlog-rec-label">' + escapeHtml(wordText(a.label || 'NEXT')) + '</span>' +
       '</div></div>' +
