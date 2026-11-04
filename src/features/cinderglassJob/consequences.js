@@ -3,10 +3,6 @@ import { rememberFact } from './operation.js';
 import { podEntity } from './custody.js';
 
 // Payment is exclusively settleCinderglassResult on the canonical economy owner.
-export function cinderglassJobApplyEconomy(sys, state) {
-  const r = sys._cg.custodyReceipt;
-  return r && sys.registry?.get('economy')?.settleCinderglassResult?.(sys._cg.operationId, r.receiptId);
-}
 export function cinderglassJobApplyClosingMemory(sys, state) {
   const st = sys._cg, out = st.outcome?.id;
   if (!out) return;

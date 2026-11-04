@@ -38,21 +38,6 @@ function convoyObservers(sys, state) {
   return out;
 }
 
-/* Retained legacy geometry helper for old callers. The service gate below uses
-   current perception and the shared physical sightline owner, never this cone. */
-export function observerSees(observer, targetPos) {
-  if (!observer || !observer.pos || !targetPos) return false;
-  const dx = targetPos.x - observer.pos.x;
-  const dz = targetPos.z - observer.pos.z;
-  const dist = Math.hypot(dx, dz);
-  if (dist > CINDERGLASS_JOB_SIGHT_RANGE_WU) return false;
-  const rot = Number(observer.rot) || 0;
-  const fx = Math.cos(rot), fz = Math.sin(rot);
-  if (dist < 1e-6) return true;
-  const dot = (dx * fx + dz * fz) / dist;
-  return dot > -0.2;
-}
-
 export function cinderglassJobWatched(sys, state, atPos) {
   const pe = findPlayerEntity(state);
   const pos = atPos || (pe && pe.pos);

@@ -1,5 +1,5 @@
 import { CINDERGLASS_JOB_CUSTODY as C, CINDERGLASS_JOB_OUTCOMES as O,
-  CINDERGLASS_JOB_TEXT as T, CINDERGLASS_JOB_POD_ID,
+  CINDERGLASS_JOB_PHASES as P, CINDERGLASS_JOB_TEXT as T,
   CINDERGLASS_JOB_RECEIVE_RADIUS_WU as RECEIVE_RADIUS, CINDERGLASS_JOB_RECEIVE_SPEED as RECEIVE_SPEED,
   CINDERGLASS_JOB_TALA_BASE_CR, CINDERGLASS_JOB_TALA_DAMAGED_CR, CINDERGLASS_JOB_DEPOSIT_CR,
   CINDERGLASS_JOB_BROKER_CR, CINDERGLASS_JOB_DAMAGED_FRACTION,
@@ -96,7 +96,7 @@ export function cinderglassJobObserveCustody(sys, state) {
   }
   if (st.custody === C.CARRIED && !st.entities.pendingClamp && !cinderglassJobLiveClamp(sys, state)) {
     cinderglassJobSetCustody(sys, state, C.RELEASED, { reason: 'joint_lost' });
-    st.phase = 'recovery';
+    st.phase = P.RECOVERY;
   }
   if ([C.RELEASED, C.TETHERED].includes(st.custody)) {
     const line = attachments(sys)?.listForEntity(pod.id).find(a => a.state === 'active'

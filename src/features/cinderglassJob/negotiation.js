@@ -57,13 +57,11 @@ export function cinderglassJobPropose(sys, state, { token, requestId } = {}) {
       return true;
     },
   };
-  sys.bus.emit('economy:chargeCredits', charge);
+  sys.bus?.emit?.('economy:chargeCredits', charge);
   return charge.result === true
     ? { ok: true, accepted: true, receiptId, requestId }
     : { ok: false, reason: 'charge_refused' };
 }
-// No external callback can confer a deposit: only the economy's exact commit above may do so.
-export function cinderglassJobDepositCommitted() { return { ok: false, reason: 'owner_commit_required' }; }
 export function cinderglassJobDaskRelease(sys, state) {
   const st = sys._cg;
   if (!st.depositPaid || !st.depositReceipt || !st.actors.dask.dealAccepted || st.custody !== 'carried') return { ok: false };

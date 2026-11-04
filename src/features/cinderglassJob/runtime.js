@@ -1,11 +1,11 @@
 import { CINDERGLASS_JOB_PHASES as P, CINDERGLASS_JOB_CUSTODY as C, CINDERGLASS_JOB_OUTCOMES as O,
   CINDERGLASS_JOB_TEXT as T, CINDERGLASS_JOB_SECTOR_ID, CINDERGLASS_JOB_ROLES,
-  CINDERGLASS_JOB_CARRIER_ID, CINDERGLASS_JOB_POINTS } from './definition.js';
+  CINDERGLASS_JOB_CARRIER_ID, CINDERGLASS_JOB_POINTS, CINDERGLASS_JOB_SERVICE_SECONDS } from './definition.js';
 import { createCinderglassJobState, cinderglassJobOfferEligible, cinderglassJobOfferOpen,
   cinderglassJobMakeOffer, cinderglassJobDecline, cinderglassJobClose, rememberFact, recordReceipt } from './operation.js';
 import { cinderglassJobAdmit, cinderglassJobStepConvoy, cinderglassJobDismissConvoy } from './convoy.js';
 import { cinderglassJobEnsureLatchMount, cinderglassJobCohortReady } from './physical.js';
-import { attachments, podEntity, carrierEntity, cinderglassJobEnsureClamp, cinderglassJobLiveClamp,
+import { attachments, podEntity, carrierEntity, cinderglassJobEnsureClamp,
   cinderglassJobObserveCustody, cinderglassJobReleasePod, cinderglassJobStepHandoff,
   cinderglassJobReceiveQuote, nativeCinderglassAttachment, nativeCinderglassPose } from './custody.js';
 import { cinderglassJobProposalAvailable, cinderglassJobPropose, cinderglassJobDaskRelease } from './negotiation.js';
@@ -138,9 +138,11 @@ export const cinderglassJobSystem = {
     this._needsRebind = false;
     const st = this._cg, matches = new Map(Object.keys(CINDERGLASS_JOB_ROLES).map(k => [k, []]));
     if (!st.operationId) return;
-    for (const e of state.entities?.values() || []) for (const [key, d] of Object.entries(CINDERGLASS_JOB_ROLES)) {
-      if (e.data?.worldRecordId === d.worldRecordId && e.data.cinderglassRole === d.role
-        && e.data.cinderglassOperationId === st.operationId && e.alive !== false) matches.get(key).push(e);
+    const byRecord = new Map(Object.entries(CINDERGLASS_JOB_ROLES).map(([key, d]) => [d.worldRecordId, [key, d.role]]));
+    for (const e of state.entities?.values() || []) {
+      const m = e.data && byRecord.get(e.data.worldRecordId);
+      if (m && e.data.cinderglassRole === m[1] && e.data.cinderglassOperationId === st.operationId
+        && e.alive !== false) matches.get(m[0]).push(e);
     }
     for (const [key, list] of matches) {
       if (list.length === 1) bindRole(this, key, list[0]);
@@ -180,19 +182,28 @@ export const cinderglassJobSystem = {
   _onEntityKilled(p) {
     if (this._restoring || this._destroying) return;
     const st = this._cg, state = this.state;
+    // Only the canonical kill attribution makes the release the player's violent
+    // approach. Third-party fire still frees the physical pod; it does not brand
+    // the player or spend their one approach record.
+    const playerCaused = state.playerId != null && p?.killerId === state.playerId;
     if (exactRoleEvent(this, state, 'latchId', p)) {
       st.latchDestroyed = true;
-      const out = cinderglassJobReleasePod(this, state, { actorId: state.playerId, reason: 'cinderglass_latch_destroyed' });
+      const out = cinderglassJobReleasePod(this, state, { actorId: playerCaused ? state.playerId : p?.killerId ?? null, reason: 'cinderglass_latch_destroyed' });
       if (out.ok || st.custody !== C.CARRIED) {
-        st.approach = 'violent'; st.phase = P.RECOVERY; st.forceUnlawful = true;
-        rememberFact(st, state.simTime, 'released_violent', T.releasedViolent);
+        if (playerCaused) { st.approach = 'violent'; st.forceUnlawful = true; }
+        st.phase = P.RECOVERY;
+        rememberFact(st, state.simTime, playerCaused ? 'released_violent' : 'latch_lost',
+          playerCaused ? T.releasedViolent : p?.killerId != null
+            ? 'The rack latch was destroyed by other fire. The pod is adrift.'
+            : 'The rack latch was destroyed. The pod is adrift; the cause is unconfirmed.');
       }
     }
     if (exactRoleEvent(this, state, 'carrierId', p)) {
       st.captainAlive = false; st.actors.dask.alive = false; st.actors.dask.knowsTheft = true;
       rememberFact(st, state.simTime, 'carrier_lost', 'Oren Dask died on the route. Surviving crew can report what they witnessed.');
       if (!st.outcome) {
-        st.approach ||= 'violent'; st.phase = P.RECOVERY;
+        if (playerCaused) st.approach ||= 'violent';
+        st.phase = P.RECOVERY;
         // The native attachment owner may have broken the endpoint before this receipt.
         const a = attachments(this)?.get(st.entities.clampAttachmentId);
         if (!a || a.state !== 'active') { st.custody = C.RELEASED; st.entities.pendingClamp = false; }
@@ -232,8 +243,8 @@ export const cinderglassJobSystem = {
       detail = st.admissionReason ? `Waiting for ${st.admissionReason.replaceAll('_', ' ')}. No deposit has been charged.` : 'Native bodies, released visuals and traffic owners must all be ready.';
       choices.push({ id: 'retryAdmission', label: 'Retry preparation' }, { id: 'abandon', label: 'Abandon this recovery' });
     } else if (st.serviceActive) {
-      headline = `Servicing the external latch · ${Math.floor(st.serviceProgressS / 5 * 100)}%`;
-      detail = 'Hold close, matched drift and clear sightlines for five seconds.';
+      headline = `Servicing the external latch · ${Math.floor(st.serviceProgressS / CINDERGLASS_JOB_SERVICE_SECONDS * 100)}%`;
+      detail = `Hold close, matched drift and clear sightlines for ${CINDERGLASS_JOB_SERVICE_SECONDS} seconds.`;
       choices.push({ id: 'serviceAbort', label: 'Abort service' });
     } else if ([P.RECON, P.DECIDE].includes(st.phase)) {
       if (cinderglassJobProposalAvailable(this, state)) choices.push({ id: 'propose', label: 'Post the quoted 150CR inspection deposit' });
@@ -272,7 +283,7 @@ export const cinderglassJobSystem = {
       if (!st.offer?.open || p.offerEpoch !== st.offerEpoch || !cinderglassJobOfferEligible(state)) return this._refuseAction(p, 'stale_offer');
       if (action === 'decline') cinderglassJobDecline(st, state);
       else { st.offer = null; st.publicRequested = false; st.phase = P.DISPATCH; st.runId++;
-        st.operationId = `cg:${state.meta.seed}:${st.runId}`; recordReceipt(st, state.simTime, { kind: 'accepted' }); }
+        st.operationId = `cg:${state.meta?.seed ?? 0}:${st.runId}`; recordReceipt(st, state.simTime, { kind: 'accepted' }); }
       this.state.cinderglassJobOffer = null; this._closePrompts(); p.result = { ok: true }; this._publish(); return;
     }
     if (p.operationId !== st.operationId) return this._refuseAction(p, 'stale_operation');

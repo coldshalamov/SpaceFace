@@ -2,7 +2,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { candidateScene, placeBody } from './cinderglass-job-fixture.mjs';
-import { cinderglassJobStepConvoy } from '../src/features/cinderglassJob/convoy.js';
+import { makeShipEntitySpec } from '../src/systems/ships.js';
+import { cinderglassJobAdmit, cinderglassJobStepConvoy } from '../src/features/cinderglassJob/convoy.js';
 import { cinderglassJobReleasePod, cinderglassJobReceiveQuote, nativeCinderglassAttachment } from '../src/features/cinderglassJob/custody.js';
 import { CINDERGLASS_JOB_POINTS as POINTS } from '../src/features/cinderglassJob/definition.js';
 import { latchWorld, cinderglassJobServiceGate } from '../src/features/cinderglassJob/interception.js';
@@ -106,6 +107,48 @@ test('actual combat external-latch death cuts original once and Continue never r
   const saved=t.sim.registry.get('save').serializeData();t.restore(saved);
   assert.equal(t.cg().custody,'released');assert.equal(t.originalCount(),1);
   assert.equal(t.originalCount('latchId'),0);assert.equal(t.state.player.credits,5000);
+});
+
+test('third-party latch destruction frees the same original without branding the player violent',async()=>{
+  const t=await candidateScene({withLaw:true});await t.accept();
+  const pirate=t.sim.spawn(makeShipEntitySpec('ship_wasp',{team:1,factionId:'faction_pirate',pos:{x:0,z:0}}));
+  const latch=t.body('latchId'), pod=t.body('podId'), c=t.sim.registry.get('combat');
+  assert.equal(c.onHit({targetId:latch.id,ownerId:pirate.id,damage:80,damageType:'kinetic',pos:latch.pos}).ok,true);
+  t.step(2);
+  assert.equal(t.cg().custody,'released');assert.equal(t.body('podId'),pod);
+  assert.equal(t.cg().latchDestroyed,true);assert.equal(t.cg().approach,null);
+  assert.notEqual(t.cg().forceUnlawful,true);
+  assert.ok(t.cg().rememberedFacts.some(f=>f.id==='latch_lost'));
+  assert.ok(!t.cg().rememberedFacts.some(f=>f.id==='released_violent'));
+});
+
+test('repeat admission accepts only the current canonical job and generation', async () => {
+  const t = await candidateScene(); await t.accept();
+  t.sys._rebind(t.state);
+  const st = t.cg(), id = st.entities.carrierJobId, e = t.body('carrierId');
+  const entry = t.state.npcJobs.byId[id];
+  assert.equal(cinderglassJobAdmit(t.sys, t.state), true);
+  st.entities.carrierJobId = 'job:wrong';
+  t.state.npcJobs.byId['job:wrong'] = { ...entry, job: { ...entry.job, id: 'job:wrong' } };
+  assert.equal(cinderglassJobAdmit(t.sys, t.state), false);
+  assert.equal(st.admissionReason, 'traffic_assignment_conflict');
+  delete t.state.npcJobs.byId['job:wrong']; st.entities.carrierJobId = id;
+  entry.entityRef = { ...e };
+  assert.equal(cinderglassJobAdmit(t.sys, t.state), false, 'recycled numeric id cannot adopt old entity');
+  entry.entityRef = e;
+  const generation = e.occupantGeneration; e.occupantGeneration++;
+  assert.equal(cinderglassJobAdmit(t.sys, t.state), false, 'old role binding cannot authorize a new generation');
+  e.occupantGeneration = generation;
+});
+
+test('an unattributed latch kill records an unknown cause', async () => {
+  const t = await candidateScene(); await t.accept();
+  const latch = t.body('latchId');
+  assert.equal(t.sim.registry.get('combat').onHit({ targetId: latch.id, damage: 80, damageType: 'kinetic', pos: latch.pos }).ok, true);
+  t.step(2);
+  const fact = t.cg().rememberedFacts.find(f => f.id === 'latch_lost');
+  assert.match(fact.text, /cause is unconfirmed/);
+  assert.equal(t.cg().approach, null);
 });
 
 for(const released of [false,true]) test(`full actual save owner preserves ${released?'released':'carried'} original, jobs and receiving roles`,async()=>{

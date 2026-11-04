@@ -1,5 +1,6 @@
 // Cinderglass convoy: native originals + finite npcJobs itinerary. No movement/health writer.
 import { Masks } from '../../core/entity.js';
+import { currentRole } from './identity.js';
 import { makeShipEntitySpec } from '../../systems/ships.js';
 import { modelTruthRow } from '../../data/modelTruth.js';
 import {
@@ -16,7 +17,7 @@ import {
 import {
   cinderglassJobBodyMatches, cinderglassJobIndustrialSpec, cinderglassJobLatchSpec,
   cinderglassJobPhysicalOwnersReady, cinderglassJobCohortReady,
-  cinderglassJobEnsureLatchMount, cinderglassJobClearLatchMount,
+  cinderglassJobEnsureLatchMount,
 } from './physical.js';
 
 const FEATURE_ROLE = 'cinderglassJob';
@@ -123,18 +124,26 @@ export function cinderglassJobAdmit(sys, state) {
   ]) {
     const e = entity(state, st.entities[bodyKey]);
     if (!cinderglassJobBodyMatches(e, CINDERGLASS_JOB_ROLES[bodyKey], st.operationId)) return false;
-    const id = jobs.assign(e, { kind, route: routeFor(route), speed: CINDERGLASS_JOB_SPEED_WU,
-      commissionS: 1, departS: 1, approachS: 1, loadS: 1, unloadS: 1, dwellS: 1,
-      sectorId: CINDERGLASS_JOB_SECTOR_ID, homeStationId: 'station_tethys' });
-    if (!id) { st.admissionReason = 'traffic_assignment_refused'; return false; }
+    const expectedId = `job:${CINDERGLASS_JOB_ROLES[bodyKey].worldRecordId}`;
+    const heldId = st.entities[jobKey];
+    const held = heldId && state.npcJobs?.byId?.[heldId];
+    const canonical = state.npcJobs?.byId?.[expectedId];
+    const matches = entry => entry?.job?.id === expectedId && entry.job.kind === kind
+      && entry.kind === kind && entry.worldRecordId === e.data.worldRecordId
+      && entry.entityId === e.id && entry.entityRef === e && e.data.jobId === expectedId;
+    if ((heldId && (heldId !== expectedId || !held || currentRole(sys, state, bodyKey) !== e || !matches(held)))
+      || (canonical && (currentRole(sys, state, bodyKey) !== e || !matches(canonical)))) {
+      st.admissionReason = 'traffic_assignment_conflict'; return false;
+    }
+    const id = heldId || (canonical ? expectedId : jobs.assign(e, { kind, route: routeFor(route), speed: CINDERGLASS_JOB_SPEED_WU,
+        commissionS: 1, departS: 1, approachS: 1, loadS: 1, unloadS: 1, dwellS: 1,
+        sectorId: CINDERGLASS_JOB_SECTOR_ID, homeStationId: 'station_tethys' }));
+    if (id !== expectedId || !matches(state.npcJobs?.byId?.[id])) { st.admissionReason = 'traffic_assignment_refused'; return false; }
     st.entities[jobKey] = id;
   }
   st.admissionReason = null;
   return true;
 }
-
-// Compatibility entry now only admits the canonical physical mount; it never writes health.
-export function cinderglassJobAuthorLatch(sys, state) { return cinderglassJobEnsureLatchMount(sys, state); }
 
 export function cinderglassJobStepConvoy(sys, state) {
   const st = sys._cg, jobs = jobsService(sys);
