@@ -87,6 +87,10 @@ export function createCapitalBossEncounters({observe,spawnWing}={}) {
   if(typeof observe!=='function'||typeof spawnWing!=='function')
     throw new TypeError('Capital bosses require explicit observation and mission-owned wing spawning');
   let ctx=null;const unsubs=[];
+  // The frozen worker consumes raw counter ticks without advancing simulation time or
+  // invoking combat. These process-local observations distinguish those holes from a
+  // genuinely missed active score step; they never survive restore or a new fight life.
+  const scoreClocks=new WeakMap();
   // The score owns the character's role binding on every route, including a future mission
   // spawn and save rematerialization. The marker carries no second animation/attack clock.
   const bindCharacter=(record,attached=true)=>{
@@ -255,10 +259,28 @@ export function createCapitalBossEncounters({observe,spawnWing}={}) {
         if(r.terminal) { system._clearPlateCover(r,state); continue; }
         const o=observe(r,state,ctx.helpers);
         if(!o||typeof o.active!=='boolean') throw new TypeError('observe must explicitly decide lifecycle activity');
+        const previous=scoreClocks.get(r),boss=state.entities.get(r.bossId),target=state.entities.get(r.targetId);
+        if(previous && r.started && !r.suspended && !r.terminal && state.tick>r.lastTick+1
+          && previous.tick===r.lastTick && _dt>0 && _dt<=1/60+1e-8
+          && Math.abs(state.simTime-previous.simTime-_dt)<1e-8
+          && previous.world===state.world && previous.sector===state.world?.currentSectorId
+          && previous.enterSerial===state.world?.enterSerial && previous.restore===state.contextRestoreSeq
+          && previous.boss===boss && previous.bossLife===boss?.occupantGeneration
+          && previous.target===target && previous.targetLife===target?.occupantGeneration) {
+          // Exactly one active dt elapsed: consume only that one score step, retaining
+          // the cast/phase clock. No attack executes for any frozen counter tick.
+          r.lastTick=state.tick-1;
+        }
         for(const c of stepCapitalBossFight(r,{...o,
           boss:r.bossKilled?{id:r.bossId,alive:false,hull:0}:o.boss,
           target:r.targetKilled?{id:r.targetId,alive:false,hull:0}:o.target,
           tick:state.tick,simTime:state.simTime})) runCommand(c,r);
+        const clock=previous||{};
+        clock.tick=r.lastTick;clock.simTime=state.simTime;clock.world=state.world;
+        clock.sector=state.world?.currentSectorId;clock.enterSerial=state.world?.enterSerial;
+        clock.restore=state.contextRestoreSeq;clock.boss=boss;clock.bossLife=boss?.occupantGeneration;
+        clock.target=target;clock.targetLife=target?.occupantGeneration;
+        if(!previous) scoreClocks.set(r,clock);
         system._stepPlates(r,state);
       }
     },

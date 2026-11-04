@@ -63,4 +63,3 @@ test('Adventure menu exit preserves the real serialized campaign snapshot',async
   assert.equal(ready,0);assert.equal(state.run.phase,'inactive');
  } finally {lane.shutdown();}
 });
-

@@ -58,5 +58,3 @@ test('mounted Pause confirmation and result Retry retain real controls',async()=
   await page.close();
  }} finally {await browser.close();await server.close();}
 });
-
-
