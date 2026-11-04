@@ -4080,6 +4080,15 @@ export const traffic = {
       if (e.data?.itinerary?.kind === 'anvil_work') continue;
       if (e.data && e.data.jobId) continue;
       if (e.data?.claimDepotId) continue; // wait for the depot's next berth job, never ambient rerouting
+      // inf-patrol-challenge — the law owns the fact (lawSecurity stamps data.heatChallenge on
+      // an ambient patrol that acquires a wanted hull); traffic owns the flying. The challenged
+      // hull breaks its station orbit and holds the standoff ring off the wanted hull's beam
+      // until the law releases the stamp. Route work and role behavior wait behind it.
+      if (e.data && e.data.heatChallenge) {
+        this._stepHeatChallenge(e, state);
+        this._syncTrafficRecordToData(e, rec);
+        continue;
+      }
       const role = TRAFFIC_ROLES[rec.role] || TRAFFIC_ROLES.hauler;
 
       if (rec.worldSiteRoute) {
@@ -4303,6 +4312,37 @@ export const traffic = {
     // This is a normal V3 intent. The infrastructure chooses the job's two physical endpoints;
     // it never assigns position or velocity and never bypasses NPC thrust/turn authority.
     setIntent(entity, 0, 1, true, false, null, aim);
+  },
+
+  /**
+   * inf-patrol-challenge — fly the standing-heat challenge ring. The law stamped
+   * `data.heatChallenge` on this ambient patrol (its fact, our flying): close onto the
+   * standoff ring around the wanted hull, then hold station there — engines simmering,
+   * nose on the hull — until the law releases the stamp and the route resumes below.
+   * Returns false only when the wanted hull is gone; the ordinary dispatch takes the
+   * hull back and lawSecurity releases the stamp on its own watch.
+   */
+  _stepHeatChallenge(e, state) {
+    const stamp = e.data && e.data.heatChallenge;
+    if (!stamp) return false;
+    const wanted = state && state.playerId != null && state.entities
+      ? state.entities.get(state.playerId) : null;
+    if (!wanted || wanted.alive === false || !wanted.pos || !e.pos) return false;
+    const dx = wanted.pos.x - e.pos.x;
+    const dz = wanted.pos.z - e.pos.z;
+    const dist = Math.hypot(dx, dz) || 1;
+    const standoff = Math.max(60, Number(stamp.standoffWu) || 0);
+    if (dist > standoff * 1.15) {
+      // Close the ring at station-keeping speed, never a ramming burn.
+      setIntent(e, 0, 0.45, false, false, null, Math.atan2(dz, dx));
+      if (e.data.intent) e.data.intent.brake = false;
+    } else {
+      // On the ring: hold position facing the hull. The visible pressure is the stop
+      // itself — a patrol sitting off the beam, nose on, while the band names the sheet.
+      setIntent(e, 0, 0, false, false, null, Math.atan2(dz, dx));
+      if (e.data.intent) e.data.intent.brake = true;
+    }
+    return true;
   },
 
 
