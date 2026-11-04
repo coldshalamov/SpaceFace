@@ -292,8 +292,10 @@ ${P} .sxb-launch__label { font-family:${TITLE} !important; letter-spacing:.04em 
 ${P} .sxb-launch__state { font-family:${UI} !important; font-size:13px !important; letter-spacing:.02em !important; }
 
 /* A short, narrow desktop window needs a bounded facility rail: otherwise its
-   last tabs run underneath the station's Comms, Help and Undock controls. */
-@media (min-width:801px) and (max-width:900px) and (max-height:460px) {
+   last tabs run underneath the station's Comms, Help and Undock controls. 801–900 wide × 461–800 tall had no rule at all
+   (seven tabs ~790px against a 737px foot), so FACTIONS sat under COMMS · HELP and BAR · LEDGER under UNDOCK: it takes
+   the same two-row foot as the 460px-tall window, the rail on its own row and COMMS · HELP · UNDOCK under it. */
+@media (min-width:801px) and (max-width:900px) and (max-height:800px) {
   ${P} .sxb-ops { flex-wrap:wrap !important; gap:2px 8px !important; }
   ${P} .sxb-ops > .of-facility-rail { flex:0 0 100% !important; width:100% !important; min-width:0 !important; max-width:100% !important;
     overflow-x:auto !important; overflow-y:hidden !important; scrollbar-width:thin; }
@@ -303,6 +305,16 @@ ${P} .sxb-launch__state { font-family:${UI} !important; font-size:13px !importan
   ${P} .sxb-ops .sx-tile .dust-tab-glyph { display:none !important; }
   ${P} .sxb-ops > .sx-comms { order:2 !important; flex:0 0 auto !important; flex-direction:row !important; gap:4px !important; margin:0 !important; }
   ${P} .sxb-ops > .sxb-launch-seat { order:3 !important; flex:0 0 auto !important; margin-left:auto !important; }
+}
+/* The 461–800 tall window cannot spare the 57px two-line UNDOCK on a row of its own: UNDOCK and its READY line sit side by
+   side and COMMS · HELP centre on them, so the second row is the keys' own 32px instead of ~57px under a 20px gap. */
+@media (min-width:801px) and (max-width:900px) and (min-height:461px) and (max-height:800px) {
+  ${P} .sxb-ops > .sx-comms { align-self:center !important; margin-top:0 !important; }
+  ${P} .sxb-ops > .sxb-launch-seat { align-self:center !important; margin-top:0 !important; }
+  ${P} .sxb-launch__copy { flex-direction:row !important; align-items:baseline !important; gap:10px !important; }
+  /* the tabs' one-line gloss painted nothing here but its 26px of reserved padding still held a blank band under the keys, a gap above COMMS · HELP */
+  ${P} .sxb-ops .sx-tile__gloss { display:none !important; }
+  ${P} .sxb-ops .sx-dock__group--nav { padding-top:0 !important; padding-bottom:0 !important; }
 }
 
 /* ==== MARKET ================================================================================ */
