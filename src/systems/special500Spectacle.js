@@ -5,7 +5,9 @@
 // registry (src/data/special500/spectacleLegs.js) and plays the row's authored steps off
 // state.simTime, dispatching each beat through the EXISTING owner seams:
 //   'presentation:vfxCue' — the vfx owner's cue admission (light point, thermal-mark ring);
-//   'news:publish'        — the news wire (logged advisories).
+//   'news:publish'        — the news wire (logged advisories);
+//   'audio:cue'           — the audio owner's generic cue admission (existing recipes,
+//                           transposed and spatialized at the anchor).
 // No rendering happens here and no second pipeline exists: headless runtimes simply emit
 // into the bus unconsumed, exactly like bombs.js/hullBurst.js cue emissions.
 //
@@ -19,6 +21,8 @@ import { zonesForSector } from '../data/sectorZones.js';
 
 // Receipts can arrive between update passes; they park here until the next update drains
 // them into that pass's activations (the director's PENDING_RECEIPTS pattern). Bounded.
+// Only the Echo Wreck is authored as an ongoing post-discovery sector loop.
+const RESUMABLE_LOOP_IDS = Object.freeze(['SP3-127']);
 const MAX_PENDING = 64;
 const PENDING = [];
 
@@ -139,6 +143,23 @@ function emitStep(bus, state, entryId, step, anchor, bearingRad, cycle) {
     return;
   }
   const pos = offsetPos(anchor, bearingRad, p.offsetWu || 0);
+  if (step.template === 'bellVoice') {
+    // One diegetic note from an EXISTING audio recipe through the audio owner's generic
+    // cue admission (_onCue resolves the id against AUDIO_RECIPE_BY_ID and plays it with
+    // gain/rate/position). The note comes from the anchor's direction in space; the mix,
+    // mute and caption rules stay the audio owner's — no second audio graph here.
+    bus.emit('audio:cue', {
+      id: p.recipe,
+      gain: clampNum(p.gain, 0.05, 1, 0.8),
+      rate: clampNum(p.rate, 0.5, 2, 1),
+      position: pos,
+      ...(p.duck === true ? {
+        duck: true,
+        duckSeconds: clampNum(p.duckSeconds, 0, 600, 60),
+      } : {}),
+    });
+    return;
+  }
   if (step.template === 'echoRing') {
     // The fields system's thermal-mark contract exactly: bloom-independent coloured ring,
     // particles 0, lights 0. The vfx owner renders this shape identically under reduced
@@ -176,7 +197,13 @@ export const special500Spectacle = {
     for (const off of this.off || []) { if (typeof off === 'function') off(); }
     PENDING.length = 0; // a registry rebuild must not deliver stale parked firings twice
     this.bus = ctx.bus;
+    const clearLifetime = () => {
+      PENDING.length = 0;
+      if (ctx.state) RUNTIME.delete(ctx.state);
+    };
     this.off = [
+      this.bus.on('save:restoring', clearLifetime),
+      this.bus.on('game:new', clearLifetime),
       this.bus.on('special500:spectacle', (payload) => {
         if (PENDING.length < MAX_PENDING) PENDING.push(payload);
       }),
@@ -200,9 +227,21 @@ export const special500Spectacle = {
         done: stepsFor(row).map(() => 0),
       });
     }
+    const sector = currentSectorId(state);
+    // A loop is an ongoing place presentation after its one-time director firing. Recreate
+    // it from the durable firing time on sector return or Continue, without replaying the
+    // director, story, rewards, or beats that elapsed while this sector was absent.
+    for (const id of RESUMABLE_LOOP_IDS) {
+      const row = SPECTACLE_LEGS[id];
+      if (!(row?.loopS > 0) || row.anchor?.sectorId !== sector || rt.active.has(id)) continue;
+      const fired = state.story?.flags?.[`special500.${id}`];
+      if (!Number.isFinite(fired) || fired > now) continue;
+      const elapsed = now - fired;
+      rt.active.set(id, { startedAt: fired, sectorId: sector,
+        done: stepsFor(row).map(step => Math.max(0, Math.floor((elapsed - step.atS) / row.loopS) + 1)) });
+    }
     if (!rt.active.size) return;
 
-    const sector = currentSectorId(state);
     for (const [id, act] of rt.active) {
       const row = SPECTACLE_LEGS[id];
       if (!row) { rt.active.delete(id); continue; }
