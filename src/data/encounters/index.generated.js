@@ -15,6 +15,7 @@ import * as encounter011 from './110-salvage-signal.js';
 import * as encounter012 from './120-anomaly-whisper.js';
 import * as encounter013 from './130-unique-wreck-tideline-held-mass.js';
 import * as encounter014 from './140-unique-wreck-deepsurvey-ping-elite.js';
+import * as encounter355 from './1400-cargo-weir-ambush.js';
 import * as encounter015 from './150-unique-wreck-silver-draft-cleaner.js';
 import * as encounter016 from './160-unique-wreck-cassandra-hardliners.js';
 import * as encounter017 from './170-k1-understory-salvager.js';
@@ -371,6 +372,7 @@ export const ENCOUNTER_MODULES = Object.freeze([
   encounter012,
   encounter013,
   encounter014,
+  encounter355,
   encounter015,
   encounter016,
   encounter017,

@@ -733,7 +733,9 @@ export const encounterDirector = {
     for (const id of Object.keys(dir.live)) {
       const live = dir.live[id];
       const script = encounterScriptFor(live);
-      if (live.script === 'namedHunter' && script) {
+      if (live.script === 'weirAmbush' && script) {
+        script.depart(this, live, this.state);
+      } else if (live.script === 'namedHunter' && script) {
         script._depart(this, live, !!(live.data && live.data.engaged));
       } else {
         if (leaveNestVisit(this, live)) continue;
@@ -770,6 +772,14 @@ export const encounterDirector = {
     ensureNamed(fresh);
     for (const runtime of SELF_REGISTERED_RUNTIME_BY_ID.values()) {
       if (typeof runtime.restoreSaved === 'function') runtime.restoreSaved(this, state);
+    }
+    const weir = ENCOUNTER_SCRIPTS.weirAmbush.restoreSaved(this, state);
+    if (weir) {
+      fresh.active[weir.squadId] = { ids: weir.ids.slice(), sectorId: weir.sectorId };
+      for (const id of weir.ids) {
+        indexSquadMember(fresh, weir, id);
+        indexActiveMember(fresh, weir, id);
+      }
     }
     this._restorePersistedFreightCustodies();
     this._rebindPersistedFreightCustodyCarriers();
@@ -1908,6 +1918,9 @@ export const encounterDirector = {
   },
 
   _fire(dir, state, item, shape, now) {
+    // The one finite Weir visit is either resumed or terminal. A replan must not replace
+    // its coordinator (including a same-id day row) or manufacture another original lot.
+    if (shape.script === 'weirAmbush' && ENCOUNTER_SCRIPTS.weirAmbush.hasVisit(state)) return;
     if (shape.id === 'the_nest' && Object.values(dir.live).some(l => l?.shapeId === 'the_nest' && l.phase !== 'done')) return;
     const nestResume = shape.id === 'the_nest' && item.encounterId === this._nestResumePermit && item.data?.nestResume === true;
     if (!nestResume) {
