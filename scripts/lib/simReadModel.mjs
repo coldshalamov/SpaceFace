@@ -727,6 +727,7 @@ export const DOMAIN_MIRROR_KEYS = Object.freeze([
   'physicsVenueSession', 'world.wreckCourtRulings',
   // Home/worksite labels and offers join native bodies through the ordinary entity journal.
   'salvageTender', 'salvageTenderOffer', 'salvageOutfits', 'rigWorkshop',
+  'counterweightCircuitOffer', 'counterweightCircuitView', 'counterweightCircuitGhost',
   'replay.latestPoseSample', 'mercyServicePublic', 'wreckCourtPublic',
   // leaf-path mirrors (root stays on the facade; only the subtree ships)
   'flightRuntime.angularIntent',
@@ -749,6 +750,7 @@ export const DOMAIN_MIRROR_KEYS = Object.freeze([
   'world.frameOrigin', 'world.frameOriginSeq', 'world.frontierRumors',
   'world.scanPings', 'world.activeSector', 'world.records.byId',
   'world.vestaOreCache', 'world.pallasHiddenCache',
+  'world.counterweightCircuit.discovered',
   // Filed local evidence and original-recorder custody feed the existing Ceres host.
   // The presentation projection excludes live body poses and the owner's other internals.
   'world.lastShift',
@@ -862,6 +864,7 @@ export const DOMAIN_CADENCE = Object.freeze({
   onboarding: 10, meta: 30, run: 30, save: 10, aceMemory: 60,
   'save.sharedStoreStatus': 1,
   'heroManeuverReadModel': 6,
+  'counterweightCircuitGhost': 60,
   // Native phase identity shares the body reply's clock. A paced intro label over already-live
   // field motion misrepresents the public round; score/history retain the run root cadence.
   'run.kind': 1, 'run.ruleset': 1, 'run.phase': 1, 'run.wave': 1,
@@ -992,6 +995,8 @@ export function configureDomainMirroring(config = {}) {
 // the full segment count (rule prefix + path suffix) so a rule can't reach
 // deeper into a subtree than it declared.
 function domainLeafViewFor(segs) {
+  if (segs.length === 1 && segs[0] === 'world.counterweightCircuit.discovered') return { hotPresentation: true };
+  if (segs.length === 1 && ['counterweightCircuitOffer', 'counterweightCircuitView'].includes(segs[0])) return { hotPresentation: true };
   if (segs.length === 1 && ['planet.active', 'planet.siteId'].includes(segs[0])) return { hotPresentation: true };
   if (segs.length === 1 && segs[0] === 'planet.player') return { project: 'planetPlayer', hotPresentation: true };
   if (segs.length === 1 && segs[0] === 'planet.center') return { project: 'planetCenter', hotPresentation: true };
@@ -2056,6 +2061,10 @@ export function createDomainDiffer(options = {}) {
     // ordinary in-place market updates still use the explicit lower bound.
     const marketLiveSourceChanged = leafRule && leafRule.project === 'marketLive'
       && node.lastSign >= 0 && node.marketLiveSource !== v;
+    // The selected PB tape is immutable for an attempt. Ship its start/clear edge immediately,
+    // but do not re-sign a large unchanged tape on every simulation reply.
+    const circuitGhostChanged = path === 'counterweightCircuitGhost'
+      && node.lastSign >= 0 && node.circuitGhostSource !== v;
     // The first admitted threat in an active wave is a bootstrap edge, not a
     // recurring progress sample.  A new game can leave the run root already
     // expanded with spawnedThreat=0; if the worker then reaches active and
@@ -2077,7 +2086,7 @@ export function createDomainDiffer(options = {}) {
     // Active cable loads and cuts belong to the same reply as their moving bodies, at any table size.
     // The finite Orchard ledger (three sockets, at most twelve lots) also carries live motor progress.
     if (node.lastSign >= 0 && path !== 'sites.anvilOrchard' && !leafRule?.hotPresentation && !metadata.isCombatAttachments && !node.urgentSign && !freshOwnerSnapshot && !npcJobsRevisionChanged
-        && !runAdmissionBootstrap && !marketLiveSourceChanged && !combatTracePlayerChanged) {
+        && !runAdmissionBootstrap && !marketLiveSourceChanged && !circuitGhostChanged && !combatTracePlayerChanged) {
       const tierTicks = leafRule?.project === 'capitalBossPresentation' ? 1 : node.bytes > DOMAIN_COLD_BYTES ? DOMAIN_COLD_TICKS
         : node.bytes > DOMAIN_WARM_BYTES ? DOMAIN_WARM_TICKS : 1;
       // minCadenceTicks is a true minimum after a sign, rather than a slot
@@ -2134,6 +2143,7 @@ export function createDomainDiffer(options = {}) {
     node.lastSign = tick;
     node.bytes = sig.length;
     if (leafRule && leafRule.project === 'marketLive') node.marketLiveSource = v;
+    if (path === 'counterweightCircuitGhost') node.circuitGhostSource = v;
     if (currentCombatTraceWatermark) {
       const eventRefs = node.combatTraceEventRefs || [];
       eventRefs.length = currentCombatTraceWatermark.events.length;

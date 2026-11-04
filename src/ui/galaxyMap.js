@@ -85,6 +85,7 @@ import { frontierRumorMapReadouts, frontierRumorMapTarget, frontierRumorCorrobor
 import { vestaOreCacheMapReadouts, vestaOreCacheMapTarget } from './vestaOreCacheMapLayer.js';
 import { pallasHiddenCacheMapReadouts, pallasHiddenCacheMapTarget } from './pallasHiddenCacheMapLayer.js';
 import { worldSiteMapMarkers } from './worldSiteMapLayer.js';
+import { getCounterweightCircuitMapMarkers } from '../features/counterweightCircuit/readModel.js';
 import { orrinWitnessMapTarget } from '../data/orrinWitnessCase.js';
 import { sectorExplorationProgress } from '../world/explorationJournal.js';
 import { chartFilingBounty, normalizeChartFiling } from '../data/surveyCharts.js';
@@ -2190,6 +2191,15 @@ export function systemZoneTarget(zone, sectorId, playerPos = null) {
     detail: `${zone.hazard ? 'Hazard' : 'Zone'} · ${zone.typeLabel} · threat ${zone.threat || 0}` };
 }
 
+function counterweightChartTargets(state, sectorId) {
+  return getCounterweightCircuitMapMarkers(state, sectorId).map(marker => ({
+    id: marker.id, kind: 'poi', poiType: 'circuit', name: marker.label,
+    x: marker.pos.x, z: marker.pos.z,
+    drawPos: globalToSectorLocalForSector(marker.pos, sectorId), sectorId,
+    entityId: null, named: true, searchText: marker.label,
+  }));
+}
+
 export function buildSystemModel(state, sectorId, options = {}) {
   const sid = sectorId || currentSectorId(state);
   const record = sectorRecordById(state, sid);
@@ -2366,6 +2376,7 @@ export function buildSystemModel(state, sectorId, options = {}) {
     // it; suppressing the dynamic duplicate must never suppress its authoritative activity.
     points[staticIndex] = Object.freeze({ ...points[staticIndex], ...marker });
   }
+  points.push(...counterweightChartTargets(state, sid));
   // Orrin's accepted original resolves through the ordinary station target/click/course path.
   // The case reader deliberately supplies no nav state; this only gives the existing Customs
   // Gate point a persistent reason to be selected after the one-shot referral intent is gone.
@@ -2540,6 +2551,7 @@ export function buildLocalModel(state, isHostile, options = {}) {
     sectorId,
     player: player ? { id: player.id, x: player.pos.x, z: player.pos.z, rot: player.rot || 0 } : null,
     contacts: filterSalvageTenderMapContacts(state, contacts),
+    circuitSites: counterweightChartTargets(state, sectorId),
     ownership: buildClaimOwnershipMarkers(state, sectorId, options.claimsSystem || null),
     bearings: discoveryBearingReadouts(state, sectorId),
     rumorCorroborations: frontierRumorCorroborations(state, sectorId),
@@ -11032,6 +11044,15 @@ _drawLocal(g, state, w, h) {
     g.restore();
 
     if (this._layers.discovery) {
+      for (const site of model.circuitSites || []) {
+        const x = sx(site.x), y = sz(site.z);
+        if (offView(x, y)) { pushEdgeTick(x, y, INK.ink0, 'waypoint', site); continue; }
+        drawPoiMark(g, x, y);
+        this._clickTargets.push({ ...site, sx: x, sy: y, radiusPx: 14 });
+        labelCandidates.push(makeMapLabelCandidate(g, { id: `poi:${site.id}`, kind: 'poi',
+          text: site.name, lines: [site.name], x, y, anchorRadius: 12,
+          color: INK.ink0, named: true, selected: this._selectedTarget?.id === site.id }));
+      }
       for (const bearing of model.bearings) {
         const fixed = !!bearing.fixedPos;
         const point = bearing.fixedPos || bearing.center;

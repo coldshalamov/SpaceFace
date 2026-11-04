@@ -63,7 +63,7 @@ export const PRODUCTION_INIT_ORDER = Object.freeze([
   // w-501: the §7.1 behavior heads' sim owner — event-only (tether:whipImpact subscription),
   // no update slot, no clock, same posture as customsPrompt.
   'lineHeads',
-  'sectorSim', 'towlineTable', 'towlineTablePrompt', 'shipbreakingYard', 'shipbreakingYardBrowser', 'rigWorkshop', 'salvageTender', 'salvageTenderPrompt', 'borrowedSun', 'borrowedSunPrompt', 'borrowedVoice', 'borrowedVoicePrompt', 'salvageOutfits', 'salvageOutfitsPrompt', 'npcJobsRuntime', 'careerOrigins',
+  'sectorSim', 'towlineTable', 'towlineTablePrompt', 'shipbreakingYard', 'shipbreakingYardBrowser', 'rigWorkshop', 'salvageTender', 'salvageTenderPrompt', 'counterweightCircuit', 'counterweightCircuitPrompt', 'borrowedSun', 'borrowedSunPrompt', 'borrowedVoice', 'borrowedVoicePrompt', 'salvageOutfits', 'salvageOutfitsPrompt', 'npcJobsRuntime', 'careerOrigins',
   'careerLadders', 'liveCareerLadderBranches', 'missions', 'careerContracts',
   'economyContracts', 'postEndingReplay', 'story', 'scenarioRuntime',
   'presentationOrchestrator', 'presentationAdapters', 'ships', 'crafting', 'heat', 'traffic',
@@ -158,7 +158,7 @@ export const PRODUCTION_UPDATE_ORDER = Object.freeze([
   // registration would silently never run their update().
   'understoryGardens', 'fulfillmentRoutes', 'pitbornCull', 'vaelLiens',
   'archiveRedaction', 'choirResonance', 'vergeCourt', 'frontierHomesteads',
-  'sectorSim', 'towlineTable', 'shipbreakingYard', 'rigWorkshop', 'borrowedVoice', 'borrowedSun', 'salvageOutfits', 'npcJobsRuntime', 'missions', 'careerOrigins', 'careerLadders',
+  'sectorSim', 'towlineTable', 'shipbreakingYard', 'rigWorkshop', 'counterweightCircuit', 'borrowedVoice', 'borrowedSun', 'salvageOutfits', 'npcJobsRuntime', 'missions', 'careerOrigins', 'careerLadders',
   'liveCareerLadderBranches', 'story', 'scenarioRuntime',
   // survivalWave: materializes the planned wave through spawnBudget and reports the cleared
   // receipt. Immediately before survivalRun so a wave cleared this tick advances the phase this tick.
@@ -251,6 +251,8 @@ export const SYSTEM_CAPABILITIES = Object.freeze({
   shipbreakingYardBrowser: Object.freeze({ nodeSafe: false, phase: 'platform', capability: 'presentation' }),
   // Event-only prompt owners — glass, no update slot, no clock declaration.
   salvageTenderPrompt: Object.freeze({ nodeSafe: true, phase: 'platform', capability: 'hud' }),
+  counterweightCircuit: Object.freeze({ nodeSafe: true, phase: 'sim', capability: 'occupation' }),
+  counterweightCircuitPrompt: Object.freeze({ nodeSafe: true, phase: 'platform', capability: 'hud' }),
   salvageOutfitsPrompt: Object.freeze({ nodeSafe: true, phase: 'platform', capability: 'hud' }),
   masslineHud: Object.freeze({ nodeSafe: true, phase: 'sim', capability: 'hud', domGuarded: true }),
   survivalHud: Object.freeze({ nodeSafe: true, phase: 'sim', capability: 'hud', domGuarded: true }),
@@ -532,6 +534,9 @@ export const TABLE_CLOCK_IDS = Object.freeze([
   // industrialDisasters queues tether impulses immediately before physics; the yard and
   // workshop observe the settled tick and run their own body work on the 60 Hz step.
   'shipbreakingYard', 'rigWorkshop', 'salvageTender', 'industrialDisasters',
+  // Counterweight Circuit observes the settled post-physics tick like the yard
+  // and workshop — attempt legs read committed positions and impact receipts.
+  'counterweightCircuit',
   // §34 faction-signature owners — per-step kinematics (formation lock, coupler snap,
   // pylon settle, false-flag deviation, sweep-ring read). Calendar would miss the motion.
   'massSignature', 'faction_concord', 'faction_meridian', 'faction_helix', 'faction_drift',

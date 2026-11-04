@@ -4233,6 +4233,39 @@ export const economy = {
     return { ok: true, duplicate: false, ...result };
   },
 
+  // Circuit awards are authorised by the live feature owner, never by a caller-supplied amount.
+  // The wallet, accepted receipt and feature record settle synchronously before outward events.
+  settleCounterweightResult(eventId, attemptId) {
+    const owner = this.registryGet('counterweightCircuit');
+    const intents = ensureCommittedIntents(this.state);
+    const key = typeof eventId === 'string' ? `counterweight:first-completion:${eventId}` : '';
+    const prior = intents?.[key];
+    if (prior?.result?.eventId === eventId && prior.result.attemptId === attemptId
+      && owner?.payoutAlreadyAccepted?.(eventId)) return { ok: true, duplicate: true, ...prior.result };
+    const auth = owner?.payoutAuthorization?.(eventId, attemptId);
+    if (!auth || !Number.isSafeInteger(auth.amount) || auth.amount <= 0) return { ok: false, reason: 'unaccepted_result' };
+    if (!intents || !this.state.player) return { ok: false, reason: 'economy_unavailable' };
+    if (prior) {
+      if (prior.result?.eventId !== eventId || prior.result?.attemptId !== attemptId
+        || prior.result?.creditedCr !== auth.amount || !owner.acceptPayout(eventId, attemptId, prior.result.creditedCr)) {
+        return { ok: false, reason: 'receipt_mismatch' };
+      }
+      return { ok: true, duplicate: true, ...prior.result };
+    }
+    const player = this.state.player, before = normalizeCredits(player.credits);
+    if (normalizeCredits(before + auth.amount) - before !== auth.amount) return { ok: false, reason: 'wallet_full' };
+    const result = { eventId, attemptId, creditedCr: auth.amount, key: auth.key };
+    // No callbacks occur between these owner writes; a later credits listener can save or retry
+    // and will see both the accepted receipt and the updated wallet/feature record.
+    player.credits = before + auth.amount;
+    intents[auth.key] = { result };
+    owner.acceptPayout(eventId, attemptId, auth.amount);
+    recordEconomyCash(this.state.economy, this.state.simTime, auth.amount, auth.key);
+    if (player.stats) player.stats.creditsEarned = (player.stats.creditsEarned || 0) + auth.amount;
+    this.bus.emit('credits:changed', { delta: auth.amount, reason: auth.key, total: player.credits });
+    return { ok: true, duplicate: false, ...result };
+  },
+
   settleTallyThreeDelivery(receipt) {
     const source=tallyThreeSource(this.state),canonical=source?.delivery;
     if(!canonical||JSON.stringify(canonical)!==JSON.stringify(receipt)

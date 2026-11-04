@@ -2,6 +2,37 @@
 
 Updated 2026-11-03. This is the compact current outcome map for the Finish Program, not a game-complete claim. The lane boards own active work and acceptance criteria: [Lane 1](./LANE_1_MACHINE_AND_PICTURE.md), [Lane 2](./LANE_2_FIGHT_AND_SIM.md), and [Lane 3](./LANE_3_WORLD_GLASS_HOUSE.md). The [dated archive](../../archive/finish-integration/INTEGRATION_COVERAGE_2026-10-31.md) preserves the previous detailed receipts and failure history. Source coverage U001–U072 is recorded in [the coverage ledger](./SOURCE_COVERAGE_2026-10-29.md).
 
+November 4 integrated source now includes checkpoints `51ead0a695b1`, `81bc45808d13` and
+`032055e7b860`. Public publication remains the `89ddfe4830e2` deployment below; committed source,
+focused checks and ordinary local play are distinct from that deployed build.
+
+The genuine `81bc45808d13` campaign route now completes Continue → mission chart Track → original
+47-A source selection/RMB mining → earned assay → physical Helios dock. The accepted handoff
+removes the sample, pays exactly400 credits (4,926→5,326), and advances to Book1. Genuine F5 after
+undocking succeeds and the earned Book1 save is preserved. The controller opened the actual mining
+and handoff screens. The earlier static-coordinate chase is fixed with a bound live source and
+generation/resource witnesses. The authored player hull is clearly visible in that Helios scene.
+This closes that mission loop and scene visibility, not later campaign or whole-game acceptance.
+
+Counterweight's corrected native pilot-force tests now compose same-line taut swing, accepted
+player cut, actual open receiver support, owner FSM result, accepted60-credit award and PB ghost.
+The runtime projects all three physical Fragile Freight gates. An actual save-envelope ordering
+defect is repaired; unconfirmed restored attempts cannot award. These are native/owner checks;
+all-seven ordinary events and actual-camera look remain open. Shared prompt ownership is being
+corrected to avoid constructing two owners on browser and worker routes.
+
+Independent Breakwater and Cinderglass reviews rejected their initial candidates for concrete
+transaction, physical custody, restore and reachable-route defects. Feature repairs are active,
+with a separate canonical cargo-owner engineer handling actual accepted freight. Their reported
+isolated completions do not count as integrated player outcomes. Swarm's living distant survivors
+and paid broken-Tesla replacement are committed; the ordinary first-boss route is in progress.
+
+One active within-session render-sort A/B did not establish a compelling gain; the original sort
+was restored. A separate AI candidate slowed its leaf operation and failed parity, and was also
+restored. Neither experiment is a shipped performance improvement. Frame targets remain open.
+The November4 Browser check still reports Pro locked/usage-limit reached; the five original Pro
+jobs remain unsent and no replacement model was used. Physical iPhone14 remains unknown.
+
 The controller owns all remaining working-tree changes, plans and open PRs under the user's
 2026-11-01 direction. [PR integration](./PR_INTEGRATION.md) records current source reconciliation;
 expired agent claims do not block finishing. The owner's latest direction keeps Chrome and VLC

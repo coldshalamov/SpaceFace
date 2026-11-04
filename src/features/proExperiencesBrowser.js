@@ -4,6 +4,8 @@ import { createRigWorkshopView } from './rigWorkshop/view.js';
 import { presentShipbreakingYardFrame, releaseShipbreakingYardPresentation } from './shipbreakingYard/browser.js';
 import { createSalvageTenderPromptSystem } from './salvageTender/prompts.js';
 import { updateSalvageTenderPresentation, releaseSalvageTenderPresentation } from './salvageTender/presentation.js';
+import { createCounterweightCircuitPromptSystem } from './counterweightCircuit/prompts.js';
+import { updateCounterweightCircuitPresentation, releaseCounterweightCircuitPresentation } from './counterweightCircuit/presentation.js';
 import { mountSalvageOutfitsPresentation } from './salvageOutfits/integration.js';
 import { createIndustrialDisastersPresentation } from './industrialDisasters/presentationAdapter.js';
 
@@ -16,12 +18,19 @@ export function mountProExperiencesBrowser(ctx = {}) {
   const { state, bus } = ctx;
   if (!state || !bus) return null;
   OWNERS.get(state)?.destroy();
-  const tender = createSalvageTenderPromptSystem();
-  tender.init(ctx);
+  // The full and worker presentation registries already own these adapters. UI initializes
+  // before them, so borrow the registered instance and let its lifecycle initialize it once.
+  // Standalone mounts without a registry retain their own prompt lifecycle.
+  const registeredTender = ctx.registry?.get?.('salvageTenderPrompt');
+  const registeredCircuit = ctx.registry?.get?.('counterweightCircuitPrompt');
+  const tender = registeredTender || createSalvageTenderPromptSystem();
+  const circuit = registeredCircuit || createCounterweightCircuitPromptSystem();
+  if (!registeredTender) tender.init(ctx);
+  if (!registeredCircuit) circuit.init(ctx);
   const outfits = mountSalvageOutfitsPresentation(ctx);
   const off = [];
   let disaster = null, rig = null, scene = null, renderer = null, destroyed = false;
-  let uiElapsed = 0, tenderSignature;
+  let uiElapsed = 0, tenderSignature, circuitSignature;
   const on = (event, fn) => {
     const remove = bus.on(event, fn);
     off.push(typeof remove === 'function' ? remove : () => bus.off?.(event, fn));
@@ -29,13 +38,15 @@ export function mountProExperiencesBrowser(ctx = {}) {
   // Live receipts win over an older mirror. A closed choice must not reappear while
   // a queued worker command waits for its next authoritative snapshot.
   on('salvageTender:offer', offer => { tenderSignature = signature(offer); });
-  const reset = () => { tender.close(); releaseWorld(); };
+  on('counterweightCircuit:offer', offer => { circuitSignature = signature(offer); });
+  const reset = () => { tender.close(); circuit.close(); releaseWorld(); };
   for (const event of ['save:restoring', 'sector:exit', 'game:new', 'game:newGame']) on(event, reset);
 
   function releaseWorld() {
     disaster?.dispose(); disaster = null; rig?.destroy(); rig = null; scene = renderer = null;
     releaseSalvageTenderPresentation(state);
     releaseShipbreakingYardPresentation(state);
+    releaseCounterweightCircuitPresentation(state);
   }
   function ensureDisaster() {
     const nextScene = state.render?.scene, nextRenderer = state.render?.renderer;
@@ -66,11 +77,20 @@ export function mountProExperiencesBrowser(ctx = {}) {
         if (offer && state.mode === 'flight' && !state.ui?.docked) tender.offer(offer);
         else tender.close();
       }
+      // Same mirror discipline for the circuit registrar's deck.
+      const circuitOffer = state.counterweightCircuitOffer || null;
+      const nextCircuitSignature = signature(circuitOffer);
+      if (nextCircuitSignature !== circuitSignature) {
+        circuitSignature = nextCircuitSignature;
+        if (circuitOffer && state.mode === 'flight' && !state.ui?.docked) circuit.offer(circuitOffer);
+        else circuit.close();
+      }
     },
     present(alpha = 1) {
       if (destroyed) return;
       ensureDisaster()?.update(alpha);
       rig?.frame(1 / 60, state);
+      updateCounterweightCircuitPresentation(state, bus);
     },
     releaseWorld,
     destroy() {
@@ -78,7 +98,9 @@ export function mountProExperiencesBrowser(ctx = {}) {
       destroyed = true;
       for (const remove of off) remove();
       off.length = 0;
-      tender.destroy(); outfits?.destroy(); releaseWorld();
+      if (registeredTender) tender.close(); else tender.destroy();
+      if (registeredCircuit) circuit.close(); else circuit.destroy();
+      outfits?.destroy(); releaseWorld();
       if (OWNERS.get(state) === api) OWNERS.delete(state);
     },
   };

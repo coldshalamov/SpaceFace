@@ -7,6 +7,8 @@ import { createSalvageTenderPromptSystem } from './salvageTender/prompts.js';
 import { salvageOutfits } from './salvageOutfits/index.js';
 import { salvageOutfitsPrompt } from './salvageOutfits/integration.js';
 import { createIndustrialDisastersSystem } from './industrialDisasters/runtime.js';
+import { createCounterweightCircuitSystem } from './counterweightCircuit/runtime.js';
+import { createCounterweightCircuitPromptSystem } from './counterweightCircuit/prompts.js';
 
 export function createProExperienceSystemEntries() {
   return [
@@ -14,6 +16,8 @@ export function createProExperienceSystemEntries() {
     ['rigWorkshop', createRigWorkshopSystem()],
     ['salvageTender', createSalvageTenderSystem()],
     ['salvageTenderPrompt', createSalvageTenderPromptSystem()],
+    ['counterweightCircuit', createCounterweightCircuitSystem()],
+    ['counterweightCircuitPrompt', createCounterweightCircuitPromptSystem()],
     ['salvageOutfits', Object.create(salvageOutfits)],
     ['salvageOutfitsPrompt', Object.create(salvageOutfitsPrompt)],
     ['industrialDisasters', createIndustrialDisastersSystem()],
