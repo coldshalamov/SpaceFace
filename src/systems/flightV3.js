@@ -9,6 +9,7 @@ export {
   applyAutoTargetHelmProfile, applyAutoTargetPathProfile, resolveAutopilotTarget,
 } from '../core/flight/flightPresentationReads.js';
 import { consumeCeresBreakerControl, publishCeresWorkfleetActuation } from './ceresWorkfleet.js';
+import { isSwarmCoverLive } from './swarmCoverSeek.js';
 import { isPlayerSaucer } from '../data/saucer.js';
 import { saucerVelocity } from '../core/flight/saucerControl.js';
 import { queueSaucerVelocity } from '../core/physicsAuthority.js';
@@ -409,6 +410,16 @@ export const flightV3 = {
       && run?.kind === 'survival' && run.ruleset === 'swarm'
       && (run.phase === 'active' || run.phase === 'cleanup')) {
       driveAuthority.forward = 0; driveAuthority.reverse = 0; driveAuthority.strafe = 0;
+    }
+    // A coverseek elite (inf-coverseek) holds its ground while a room rock sits on the line
+    // to the player: forward/reverse cut, yaw and strafe intact — the hull coasts its orbit
+    // behind the stone until the pilot flanks or a hit flushes it. swarmElites owns the
+    // record's life cycle under the same run gates as the ride; flight only reads it live.
+    const cover = entity.data?.swarmCover;
+    if (!isPlayer && cover
+      && isSwarmCoverLive(cover, { tick: state.tick, life: entity.occupantGeneration ?? null })
+      && state.entities?.get(entity.id) === entity) {
+      driveAuthority.forward = 0; driveAuthority.reverse = 0;
     }
     this._driveAuthority = driveAuthority;
     if (isPlayer) this._playerDriveAuthority = driveAuthority;

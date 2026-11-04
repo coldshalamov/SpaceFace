@@ -1277,6 +1277,36 @@ function buildAffixRider(r, sink) {
   };
 }
 
+/** Coverseek: a broad hug-plate hung low on one side with a peek notch — the hull pressed
+ *  against its stone. The plate's seam edge lights only while a hold is actually live, so the
+ *  actionable state survives reduced motion. */
+function buildAffixCover(r, sink) {
+  const shared = sharedAssets();
+  const seam = cloneEmissive(shared.tideMat, sink);
+  const group = new THREE.Group();
+  group.name = 'sf-swarm-threat-affix-cover';
+  const plate = mesh(shared.boxGeo, shared.metalMat, 'sf-swarm-threat-affix-cover-plate');
+  plate.scale.set(r * 0.09, r * 0.035, r * 0.4);
+  plate.position.z = r * 0.3; // hung off one flank — the side the stone sits on
+  group.add(plate);
+  const notch = mesh(shared.boxGeo, shared.darkMat, 'sf-swarm-threat-affix-cover-notch');
+  notch.scale.set(r * 0.045, r * 0.2, r * 0.06);
+  notch.position.set(0, r * 0.06, r * 0.16); // the peek slot the hull aims around
+  group.add(notch);
+  const lip = mesh(shared.boxGeo, seam, 'sf-swarm-threat-affix-cover-lip');
+  lip.scale.set(r * 0.095, r * 0.012, r * 0.03);
+  lip.position.set(0, 0, r * 0.5); // the lit edge a muzzle peeks past
+  plate.add(lip);
+  return {
+    group,
+    tick(mark, simTime, dt, reduced, active) {
+      lip.visible = active === true;
+      const lean = reduced ? 0.34 : 0.34 + Math.sin(simTime * 1.3) * 0.08;
+      plate.rotation.x = lean; // settled low — a hull leaning on its stone
+    },
+  };
+}
+
 // Per-affix builder + the seam's breath cadence (rad·s⁻¹). Volatile races; commander is the
 // slow steady heartbeat the cohort flies on.
 const AFFIX_MARKS = Object.freeze({
@@ -1286,6 +1316,7 @@ const AFFIX_MARKS = Object.freeze({
   magnetic: Object.freeze({ build: buildAffixMagnetic, pulse: 3.1 }),
   commander: Object.freeze({ build: buildAffixCommander, pulse: 1.5 }),
   hasted: Object.freeze({ build: buildAffixHasted, pulse: 3.9 }),
+  cover: Object.freeze({ build: buildAffixCover, pulse: 1.9 }),
   rider: Object.freeze({ build: buildAffixRider, pulse: 2.2 }),
 });
 
@@ -1689,6 +1720,8 @@ export function createLawArenaDressing() {
     const rideActive = entity.alive !== false && (data?.swarmRideTellLife != null
       ? data.swarmRideTellLife === life && data.swarmRideActive === true
       : !!data?.swarmRide && data.swarmRide.life === life);
+    const coverActive = entity.alive !== false && !!data?.swarmCover
+      && data.swarmCover.life === life;
     const dt = Math.max(0, frameDt || 0);
     const simNow = Number.isFinite(simTime) ? simTime : 0;
     rec.clock += dt;
@@ -1702,7 +1735,8 @@ export function createLawArenaDressing() {
       rec.group.scale.setScalar(Math.max(0.0001, easeOutCubic(buildT)));
       for (let i = 0; i < rec.marks.length; i++) {
         const mark = rec.marks[i];
-        if (mark.tick) mark.tick(mark, simNow, dt, reduced, mark.id === 'rider' && rideActive);
+        if (mark.tick) mark.tick(mark, simNow, dt, reduced,
+          (mark.id === 'rider' && rideActive) || (mark.id === 'cover' && coverActive));
         for (const mat of mark.mats) {
           mat.emissiveIntensity = calmFlash
             ? 0.7

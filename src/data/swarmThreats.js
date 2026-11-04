@@ -58,6 +58,9 @@ export const SWARM_AFFIXES = Object.freeze([
   Object.freeze({ id: 'magnetic', name: 'Magnetic', blurb: 'Drags your credit chips off the field.' }),
   Object.freeze({ id: 'commander', name: 'Commander', blurb: 'Hardens the hulls flying near it.' }),
   Object.freeze({ id: 'hasted', name: 'Hasted', blurb: 'Runs a third faster than its kin.' }),
+  Object.freeze({ id: 'cover', name: 'Coverseek', blurb: 'Swings until a rock sits between it and you — flank it to flush.' }),
+  // The rider row sits LAST: non-law rooms roll the head of the table, so a room without a
+  // field law can never stamp the trick only a current can carry (see swarmElites._stampAffix).
   Object.freeze({ id: 'rider', name: 'Rider', blurb: 'Cuts its drive and rides the room current — one hit knocks it off.' }),
 ]);
 
