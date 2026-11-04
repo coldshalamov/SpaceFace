@@ -334,6 +334,7 @@ import { createWeaponImpactVfxMethods } from './vfx/weaponImpactVfx.js';
 import { CauseMarkLayer } from './vfx/causeMarks.js';
 import { StationNightLightLayer } from './vfx/stationNightLights.js';
 import { collectHullWounds, resolveWoundBeat, woundWorldPoint } from './vfx/woundSmoke.js';
+import { resolveLineShieldSustain, shieldBiteDir } from './vfx/lineShieldBite.js';
 import {
   presentShipBoost,
   presentShipDash,
@@ -7383,12 +7384,30 @@ export const vfx = {
       && remoteTether.sourceId != null && remoteTether.targetId != null);
     const tether = remote ? remoteTether : playerTether;
     const target = tether && tether.active && tether.targetId != null ? this._ent(tether.targetId) : null;
-    const plan = resolveMasslineLatchRimPlan(
-      tether, target,
-      target ? (tether && Number.isFinite(tether.load) ? tether.load : 0) : 0,
-      target ? resolveMasslineWhipGlow(tether) : 0,
-      rim.plan,
-    );
+    const load = target ? (tether && Number.isFinite(tether.load) ? tether.load : 0) : 0;
+    const whip = target ? resolveMasslineWhipGlow(tether) : 0;
+    // Sustained strain bite (inf-line-shield-bite): a loaded line holding a shielded hull
+    // re-asserts its contact on the shell's own wire, so the lattice visibly carries the load
+    // between hull hits instead of the bite dying a quarter-second after the latch.
+    const shieldUp = !!(target && Number.isFinite(target.shield) && target.shield > 0);
+    if (shieldUp) {
+      const source = remote ? this._ent(tether.sourceId) : (this.helpers && this.helpers.player ? this.helpers.player() : this._ent(state && state.playerId));
+      if (source && source.pos) {
+        const sustain = resolveLineShieldSustain(
+          this._causeNow(), this._lineShieldBiteAt, load, whip, shieldUp, this._isReduced(),
+          this._lineShieldSustainScratch || (this._lineShieldSustainScratch = {}),
+        );
+        if (sustain.bite) {
+          const dir = shieldBiteDir(source.pos.x, source.pos.z, target.pos.x, target.pos.z,
+            this._lineShieldBiteScratch || (this._lineShieldBiteScratch = { x: 0, z: 0 }));
+          if (dir) {
+            addShieldContact(target.id, dir.x, 0.12, dir.z, sustain.strength);
+            this._lineShieldBiteAt = this._causeNow();
+          }
+        }
+      }
+    }
+    const plan = resolveMasslineLatchRimPlan(tether, target, load, whip, rim.plan);
     return updateMasslineLatchRim(rim, plan, dt, (x, z) => this._toLocalXZ(x, z, this._spawnLocalXZ));
   },
 
