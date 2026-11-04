@@ -26,9 +26,27 @@
 // rides the cone's west flank: at z -490 the wedge's west edge sits near x 654 and the anvil's
 // west edge near x 698, a ~40 wu slot that is inside the cone's tail during surge. Entering it
 // in the calm window is the ring's committed line; riding it during the surge is the honest
-// price of mistiming — the field drags you at the anvil, not through it.
+// price of mistiming — the field shoves south toward the anvil, not through it.
 
 export const VX_FREE_DRIVE_SECTOR_ID = 'sector_helios_prime';
+
+// Public yard navigation, like the nearby Outer Yard Derelict: no hidden/story gate. The fix
+// rides the first existing ghost buoy, clear of the solid Mouth. Its runtimeOwner makes this
+// an identity row, not an extra physical body or a paid exploration/completion site.
+export const VX_FREE_DRIVE_POI = Object.freeze({
+  id: 'poi_helios_cracker_run',
+  type: 'beacon',
+  name: 'Cracker Run',
+  pos: Object.freeze({ x: 1060, z: 40 }),
+  runtimeOwner: 'vxFreeDriveRing',
+  chartNote: 'Unscored free flying through the yard: follow the lit Mouth into solid berth ribs. Take the low road south of the Helios Claim Cracker for a safe machinery bypass; its warning precedes the southward shove. Wait for calm before the narrow anvil thread.',
+});
+
+/** Add the public fix to the mutable sector catalog without editing the static Atlas. */
+export function vxFreeDrivePoisFor(sectorId, pois = []) {
+  if (sectorId !== VX_FREE_DRIVE_SECTOR_ID || pois.some((poi) => poi.id === VX_FREE_DRIVE_POI.id)) return pois;
+  return [...pois, VX_FREE_DRIVE_POI];
+}
 
 export const VX_FREE_DRIVE_STRUCTURES = Object.freeze([
   // ── Departure plaza: the mouth, southwest of the station apron ─────────────

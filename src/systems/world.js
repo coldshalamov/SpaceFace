@@ -46,7 +46,8 @@ import { separateSkinOverlaps } from '../data/modelTruth.js';
 import { createSectorArranger } from '../world/arranger.js';
 import { ARRANGEMENT_VERSION, readArrangementVersion } from '../data/sectorCompositions.js';
 import { WORLD_ONE_OFFS } from '../data/worldOneOffs.js'; // PQ-143.02 six texture one-offs
-import { vxFreeDriveReservationsFor, vxFreeDriveStructuresFor, vxFreeDriveMarkersFor }
+import { VX_FREE_DRIVE_SECTOR_ID, vxFreeDrivePoisFor,
+  vxFreeDriveReservationsFor, vxFreeDriveStructuresFor, vxFreeDriveMarkersFor }
   from '../data/vxFreeDriveRing.js'; // VX-02 — the Cracker Run free-drive ring
 import { HELIOS_ROPE_CACHE } from '../data/worldOneOffs.js';
 import { KETTLE_LINE } from '../data/kettleLine.js';
@@ -677,6 +678,7 @@ export const world = {
       state.world.sectors = {};
       for (const s of SECTORS) state.world.sectors[s.id] = { ...s, owner: s.factionId };
     }
+    this._registerFreeDriveRingPoi();
     if (!state.world.discovery) state.world.discovery = {};
     if (Object.keys(state.world.discovery).length === 0) this._seedChartedDiscovery();
     if (!state.world.scanPings || typeof state.world.scanPings !== 'object') state.world.scanPings = {};
@@ -3287,8 +3289,11 @@ export const world = {
     const fullPresence = tier === RESIDENCY_TIER.FULL;
     if (!disc.pois) disc.pois = {};
     for (const poi of (sector.pois || [])) {
-      const ang = rng() * Math.PI * 2;
-      const r = wr * (0.2 + rng() * 0.6);
+      // This added navigation identity uses an existing buoy; consume no content RNG, so the
+      // original POIs, dressing and physical bodies retain their established generation stream.
+      const ringNavigation = poi.runtimeOwner === 'vxFreeDriveRing';
+      const ang = ringNavigation ? 0 : rng() * Math.PI * 2;
+      const r = ringNavigation ? 0 : wr * (0.2 + rng() * 0.6);
       const local = poi.pos
         ? { x: poi.pos.x, z: poi.pos.z }
         : { x: Math.cos(ang) * r, z: Math.sin(ang) * r };
@@ -3686,6 +3691,11 @@ export const world = {
   // VX-02 — the Cracker Run. Authored fixed dressing (skip the arranger like the one-offs):
   // census-solid structures form the plaza/ribs/chute, nav buoys breadcrumb the route. Nothing
   // here is a mission, a gate, a lease or a score — it is a place that exists in the sector.
+  _registerFreeDriveRingPoi() {
+    const sector = this.state.world.sectors?.[VX_FREE_DRIVE_SECTOR_ID];
+    if (sector) sector.pois = vxFreeDrivePoisFor(sector.id, sector.pois);
+  },
+
   _spawnFreeDriveRing(sector, active) {
     for (const structure of vxFreeDriveStructuresFor(sector.id)) {
       const pos = this._toGlobal(
@@ -8219,6 +8229,7 @@ export const world = {
     const arrangementVersion = readArrangementVersion(data.arrangementVersion);
     const state = this.state;
     state.world.arrangementVersion = arrangementVersion;
+    this._registerFreeDriveRingPoi();
     // Sector entities are runtime-only and save load clears them before re-entering the saved
     // sector. Drop all residency bags as well, otherwise stale structural IDs make the
     // materializer believe stations/gates are still live and the loaded sector appears empty.
@@ -8300,6 +8311,7 @@ export const world = {
     for (const sector of SECTORS) {
       state.world.sectors[sector.id] = { ...sector, owner: sector.factionId };
     }
+    this._registerFreeDriveRingPoi();
     state.world.discovery = {};
     state.world.wreckCourtRulings = normalizeCourtRulings(null);
     state.world.scanPings = {};

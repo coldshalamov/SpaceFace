@@ -2375,6 +2375,7 @@ export function buildSystemModel(state, sectorId, options = {}) {
         kind: 'poi',
         poiType: poi.type || 'poi',
         name: poi.name || poi.id,
+        ...(typeof poi.chartNote === 'string' && poi.chartNote ? { chartNote: poi.chartNote } : {}),
         x: frames.x,
         z: frames.z,
         drawPos: frames.drawPos,
@@ -4000,6 +4001,7 @@ function getSearchTargets(state, level, curSecId, claimsSystem = null, isHostile
         searchText: p.searchText,
         mapKind: p.mapKind,
         poiType: p.poiType,
+        ...(p.chartNote ? { chartNote: p.chartNote } : {}),
         stageId: p.stageId,
         stageLabel: p.stageLabel,
         coursePos: p.coursePos,
@@ -6296,6 +6298,7 @@ _stepAnimation(now) {
 
         <div class="gm-ins-section">
           <div class="gm-ins-title">Object Class</div>
+          ${t.kind === 'poi' && t.chartNote ? `<div class="gm-ins-note">${escapeMapHtml(t.chartNote)}</div>` : ''}
           <div class="gm-ins-row"><span>Type</span><span class="gm-ins-row-val">${t.kind ? t.kind.toUpperCase() : 'UNKNOWN'}</span></div>
           <div class="gm-ins-row"><span>Faction</span><span class="gm-ins-row-val" style="color:${factionColorOf(t.factionId)}"><span${entityAttr('faction:' + t.factionId)}>${escapeMapHtml(contactFaction)}</span></span></div>
           <div class="gm-ins-row"><span>Hostile</span><span class="gm-ins-row-val" style="color:${t.hostile ? INK.red : INK.good}">${t.hostile ? 'YES' : 'NO'}</span></div>
