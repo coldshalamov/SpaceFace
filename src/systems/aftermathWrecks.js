@@ -32,6 +32,7 @@ import {
   normalizeCausalAftermath,
 } from '../world/encounterCausality.js';
 import { getFarActor, removeFarRecord } from '../world/farActorTable.js';
+import { rememberChainDeath, bindChainWreck, clearChainWreckWitnesses } from '../combat/killCausality.js';
 import { WARM_FREIGHTER_HOST, warmFreighterCollisionModel, warmFreighterWorldScale } from '../data/warmFreighter.js';
 import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 import { wreckHulkBodyUpgrade } from '../data/wreckHulkCollision.js';
@@ -1149,7 +1150,7 @@ export const aftermathWrecks = {
           && payload.enterEpoch !== this.state.world.enterSerial) return;
       yield* this._spawnForSectorSteps(sectorId);
     };
-    this._onSectorExit = (payload) => this._clearLiveRefs(payload && payload.sectorId);
+    this._onSectorExit = (payload) => { clearChainWreckWitnesses(this.state); this._clearLiveRefs(payload && payload.sectorId); };
     this._onSalvageCompleted = (payload) => this._completeByEntity(payload || {});
     this._onEncounterResolved = (payload) => {
       const cause = rememberCause(this.state, this.bus, payload || {});
@@ -1171,8 +1172,9 @@ export const aftermathWrecks = {
     this._onMissionCompleted = (payload) => this._settleMission(payload || {}, true);
     this._onMissionFailed = (payload) => this._settleMission(payload || {}, false);
     this._onNewGame = () => this.newGame();
-    this._onSaveRestoring = () => { this._saveRestoring = true;this._siteAdmissionPending = false; };
+    this._onSaveRestoring = () => { clearChainWreckWitnesses(this.state); this._saveRestoring = true;this._siteAdmissionPending = false; };
     this._onSaveLoaded = () => {
+      clearChainWreckWitnesses(this.state);
       this._saveRestoring = false;
       this._spawned.clear();
       if (this._shards) this._shards.clear();
@@ -1228,6 +1230,7 @@ export const aftermathWrecks = {
   },
 
   newGame() {
+    clearChainWreckWitnesses(this.state);
     this._saveRestoring = false;
     this._siteWreckLife = null;
     this._siteAdmissionPending = false;
@@ -1641,6 +1644,7 @@ export const aftermathWrecks = {
       }
     }, { publishNews });
     if (remembered) {
+      rememberChainDeath(this.state, remembered.markerId, payload, entity);
       this._stampNearbyStructurePatch(remembered, payload);
       // A manifested kill re-arms the field's contested stamp (memoized in _populateField) so a
       // freight hauler dying inside a young generic field still draws the fresh contest.
@@ -1786,6 +1790,7 @@ export const aftermathWrecks = {
       if (Number.isInteger(run.wave)) entity.data.runWave = run.wave;
     }
     if (!this._bindLiveMarker(marker, entity)) return null;
+    bindChainWreck(this.state, marker.markerId, entity);
     // Same kill tick, companion body. skipIfFracture already returned above, so a slam's seam
     // pieces stay the whole story; the player's own memorial hull is exempt in the shard call.
     this._spawnArenaKillShard(marker);
@@ -2177,7 +2182,9 @@ export const aftermathWrecks = {
       delete entity.data.hulkCollisionFile;
       delete entity.data.hulkCollisionProfile;
     }
-    return this._bindLiveMarker(marker, entity) ? entity : null;
+    if (!this._bindLiveMarker(marker, entity)) return null;
+    bindChainWreck(this.state, markerId, entity);
+    return entity;
   },
 
   // The marker already holds the joined cause. Copy it onto the bound hulk in place:

@@ -332,6 +332,7 @@ import { resolveCausalVfxPresentation } from '../presentation/causalVfxGrammar.j
 import { createExplosionPresentationMethods } from './vfx/explosionPresentationVfx.js';
 import { createWeaponImpactVfxMethods } from './vfx/weaponImpactVfx.js';
 import { CauseMarkLayer } from './vfx/causeMarks.js';
+import { StationNightLightLayer } from './vfx/stationNightLights.js';
 import {
   presentShipBoost,
   presentShipDash,
@@ -1848,6 +1849,7 @@ export const vfx = {
     this._ironKrakenDeathReceipts = null;
     invokeVfxDisposer(this._stationOperationVfx, 'station operation matter');
     this._stationOperationVfx = null;
+    this._stationNightLightsDispose();
     invokeVfxDisposer(this._emergentPools, 'emergent primitive pools');
     invokeVfxDisposer(this._emergentPayloads, 'emergent payloads');
     this._emergentPayloads = null;
@@ -6057,6 +6059,18 @@ export const vfx = {
     return this._stationOperationVfx?.update(this.state) || 0;
   },
 
+  // The released station owns these emissive window and navigation surfaces.
+  _updateStationNightLights() {
+    if (!this.state) return 0;
+    if (!this._stationNightLights) this._stationNightLights = new StationNightLightLayer();
+    return this._stationNightLights.update(indexedTypeScan(this.state, 'stations'), this.state);
+  },
+
+  _stationNightLightsDispose() {
+    this._stationNightLights?.dispose();
+    this._stationNightLights = null;
+  },
+
   _emitStationSideEventAccent() {
     // Native cadence still owns operation timing; the retained matter owner renders
     // continuous paths each frame instead of respawning tiny strokes at each beat.
@@ -9798,6 +9812,7 @@ export const vfx = {
     }
     sub.ceresJobActions = this._updateCeresJobActionVfx(dt) > 0 ? 1 : 0;
     this._updateStationOperationVfx();
+    this._updateStationNightLights();
     // WF-12 law/heat telegraph — scan sweep / suspicion / WANTED flip (shared event-light pool).
     sub.lawHeatTelegraph = this._updateLawHeatTelegraph(dt) > 0 ? 1 : 0;
     // "The Working Light" — civilian hulls showing what job they are on.

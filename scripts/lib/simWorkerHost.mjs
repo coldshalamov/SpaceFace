@@ -752,7 +752,7 @@ const BRIDGE_EVENTS = [
   'presentation:vfxCue', 'presentation:audioCue', 'presentation:uiCue',
   'presentation:cameraCue', 'presentation:caption', 'audio:cue', 'alert',
   'camera:shake', 'presentation:cueApplied', 'sector:enter', 'cargo:changed',
-  'automation:fleetChanged',
+  'automation:fleetChanged', 'combat:chainKill', 'comms:log',
   'breakwaterSpur:offer', 'breakwaterSpur:close', 'breakwaterSpur:receipt', 'breakwaterSpur:cue',
   'cinderglassJob:offer', 'cinderglassJob:servicePrompt', 'cinderglassJob:fact', 'cinderglassJob:refused', 'cinderglassJob:serviceEnd', 'cinderglassJob:close',
 ];
@@ -1315,7 +1315,12 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
       return;
     }
     for (const type of BRIDGE_EVENTS) {
-      bus.on(type, (payload) => recordBridgeEvent(type, payload));
+      bus.on(type, (payload) => {
+        if (type === 'comms:log') {
+          if (payload?.kind !== 'chainKill') return;
+          recordBridgeEvent(type, {kind:'chainKill', speaker:String(payload.speaker || '').slice(0,64), text:String(payload.text || '').slice(0,256)});
+        } else recordBridgeEvent(type, payload);
+      });
     }
   }
 

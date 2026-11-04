@@ -792,6 +792,8 @@ export const combat = {
       ...(lethal?.origin?.kind === 'massline_whip' ? { cause: 'massline_whip' } : {}),
       // The collision partner — law's witness sightline must not let it occlude its own kill.
       impactorId: killImpactorId(lethal),
+      ...(lethal?.origin?.kind === 'collision' && lethal?.packet?.source?.chainWitness
+        ? { chainWitness: lethal.packet.source.chainWitness } : {}),
       presentation,
     });
     // SEAM-BASE: a destructible base entity is an ordinary damageable station carrying

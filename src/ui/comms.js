@@ -250,8 +250,9 @@ const SCENARIO_DIALOGUE_TTL = 18; // authored mission comms need to survive cold
 
 export function discoveryCommsPayload(payload) {
   const category = payload?.kind || payload?.channel;
-  if (!['machine', 'ecology', 'special500'].includes(category) || typeof payload.text !== 'string' || !payload.text.trim()) return null;
+  if (!['machine', 'ecology', 'special500', 'chainKill'].includes(category) || typeof payload.text !== 'string' || !payload.text.trim()) return null;
   const sender = payload.from || payload.sender || payload.speaker || 'FIELD NOTES';
+  if (category === 'chainKill') return { sender, text: payload.text, category: 'personal' };
   return category === 'special500'
     ? { sender, text: payload.text, category: 'ambient', logOnly: true }
     : { sender, text: payload.text, category };

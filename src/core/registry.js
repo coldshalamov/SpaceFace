@@ -8,6 +8,7 @@ import { runSession } from '../systems/runSession.js';
 import { survivalDraft } from '../systems/survivalDraft.js';
 import { survivalResults } from '../systems/survivalResults.js';
 import { killReplay } from '../systems/killReplay.js';
+import { chainKills } from '../combat/chainKills.js';
 import { killcamRecorder } from '../sim/killcamTape.js';
 import { survivalAnnounce } from '../systems/survivalAnnounce.js';
 import { survivalArena } from '../systems/survivalArena.js';
@@ -342,6 +343,7 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['survivalDraft', survivalDraft],
     ['survivalResults', survivalResults],
     ['killReplay', killReplay],
+    ['chainKills', chainKills],
     ['killcamRecorder', killcamRecorder],
     ['survivalAnnounce', survivalAnnounce],
     ['survivalArena', survivalArena],

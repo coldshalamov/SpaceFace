@@ -93,7 +93,8 @@ function roleWord(entity) {
 
 function callsign(entity, seed = 0) {
   const data = entity && entity.data || {};
-  const authored = data.callsign || data.scanLabel || data.name;
+  const aceBoss = data.aceMemory && data.aceMemory.role === 'boss' ? data.aceMemory.aceName : null;
+  const authored = data.callsign || data.scanLabel || data.name || aceBoss;
   if (authored) {
     return String(authored).replace(/\s+/g, ' ').trim().toUpperCase();
   }
