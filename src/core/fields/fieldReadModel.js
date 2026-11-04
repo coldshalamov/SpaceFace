@@ -282,7 +282,7 @@ export function fieldEntityIsPrimed(registry, state, entity) {
 export function activeFieldSnapshot(state) {
   return (state && state.fields && Array.isArray(state.fields.snapshot)) ? state.fields.snapshot : EMPTY_SNAPSHOT;
 }
-const EMPTY_SNAPSHOT = Object.freeze([]);
+export const EMPTY_SNAPSHOT = Object.freeze([]);
 
 export function gooStatus(state, entity) {
   if (!entity || !state || !state.combat || !state.combat.entities) return null;

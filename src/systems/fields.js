@@ -2,6 +2,7 @@ import {
   FIELD_EMITTER_TYPE as EMITTER_TYPE, FIELD_PHASE_ACTIVE, fieldLifecyclePhase,
   collectorFitted, playerFieldSpec, isForceableFieldBody, pullMarkTargetEligible,
   fieldBodyProfile, fieldVelocityTermApplies, fieldEntityIsPrimed, gooStatus,
+  EMPTY_SNAPSHOT,
 } from '../core/fields/fieldReadModel.js';
 export {
   FIELD_VELOCITY_TERM_TYPES, FIELD_WINDUP_S, FIELD_DISSIPATE_S,
