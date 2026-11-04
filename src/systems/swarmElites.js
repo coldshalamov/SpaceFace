@@ -47,6 +47,7 @@ import {
   findCoverRock,
   rockCoversLine,
 } from './swarmCoverSeek.js';
+import { findDivePull, livePullsOf } from './swarmDiveSeek.js';
 
 import { createRewardDeathLedger, runOwnsReward } from '../combat/rewardEligibility.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
@@ -116,6 +117,15 @@ const SWARM_RIDE_COOLDOWN_TICKS = 840;
 const SWARM_RIDE_PHASE_STRIDE_TICKS = 10;
 /** Coverseek (inf-coverseek): one bounded verdict, refreshed at the scan cadence. */
 const SWARM_COVER_HOLD_RADIUS = 10;
+/** Diver (inf-well-dive): one commit per window — 6 s through the pull, 14 s between dives. */
+const SWARM_DIVE_WINDOW_TICKS = 360;
+const SWARM_DIVE_COOLDOWN_TICKS = 840;
+/** Diver phase stagger: hull ids spread their commit starts so a marked band never dives as one. */
+const SWARM_DIVE_PHASE_STRIDE_TICKS = 10;
+/** Diver commit band: the detour through the pull is a real approach only from this far. */
+const SWARM_DIVE_MIN_RANGE_WU = 240;
+/** Inside this the dive is done — the hull arrived, and the ordinary brawl takes over. */
+const SWARM_DIVE_ARRIVE_WU = 200;
 
 function liveSwarmRun(state) {
   if (!state) return null;
@@ -171,6 +181,7 @@ export const swarmElites = {
     this._unsubs.push(this.bus.on('entity:killed', (p) => this._onKilled(p)));
     this._unsubs.push(this.bus.on('combat:damage', (p) => this._onRideDamage(p)));
     this._unsubs.push(this.bus.on('combat:damage', (p) => this._onCoverDamage(p)));
+    this._unsubs.push(this.bus.on('combat:damage', (p) => this._onDiveDamage(p)));
     this._unsubs.push(this.bus.on('physics:impact', (p) => this._onImpact(p)));
     this._unsubs.push(this.bus.on('swarm:chain', (p) => this._onChain(p)));
     this._unsubs.push(this.bus.on('swarm:chainBroken', () => { this._chain = 0; }));
@@ -181,6 +192,7 @@ export const swarmElites = {
   destroy() {
     this._clearRides();
     this._clearCovers();
+    this._clearDives();
     for (const off of this._unsubs || []) if (typeof off === 'function') off();
     this._unsubs = [];
   },
@@ -199,7 +211,7 @@ export const swarmElites = {
     const run = liveSwarmRun(st);
     if (!run) { this._clearRides(); this._clearCovers(); return; }
     // Active and cleanup both host live bodies; draft/refit pause the fight and pause us too.
-    if (run.phase !== 'active' && run.phase !== 'cleanup') { this._clearRides(); this._clearCovers(); return; }
+    if (run.phase !== 'active' && run.phase !== 'cleanup') { this._clearRides(); this._clearCovers(); this._clearDives(); return; }
     const step = Math.max(0, Number(dt) || 0);
     this._scanIn -= 1;
     if (this._scanIn <= 0) {
@@ -209,6 +221,7 @@ export const swarmElites = {
     this._auraPass(st, run, step);
     this._ridePass(st, run);
     this._coverPass(st, run);
+    this._divePass(st, run);
   },
 
   // ---- the rider affix -------------------------------------------------------
@@ -371,12 +384,130 @@ export const swarmElites = {
     this._riders?.clear();
   },
 
+  // ---- the diver affix --------------------------------------------------------
+
+  /**
+   * inf-well-dive — the commit-through slice of "enemies that use the environment". A marked
+   * elite closing from range scans for a live room pull whose disc its line to the pilot
+   * genuinely pierces; when one does, it COMMITS: the life-bound `swarmDive` record keeps
+   * full drive authority (flightV3 bends the approach at the well instead — thrust through
+   * the grip arrives hot and bent, guns live) until the pilot's hit breaks the commit, the
+   * hull arrives at brawl range, the window lapses, or the well dries. The pull sweep runs at
+   * the scan cadence and revalidates the recorded well by id; expiry and arrival run every
+   * tick. Unlike Coverseek's hold or the Rider's drift, nothing is cut — the dive is thrust.
+   */
+  _divePass(state, run) {
+    if (!this._divers.size) return;
+    const entities = state.entities;
+    if (!entities || typeof entities.get !== 'function') return;
+    const tick = simTickOf(state);
+    const player = state.playerId != null ? entities.get(state.playerId) : null;
+    if (!player || player.alive === false || !player.pos) { this._clearDives(); return; }
+    const fields = this.registry && this.registry.get?.('fields');
+    const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+    this._diveScanIn -= 1;
+    let pulls = null;
+    if (this._diveScanIn <= 0) {
+      this._diveScanIn = SWARM_ELITE_SCAN_TICKS;
+      pulls = livePullsOf(fields, now);
+    }
+    for (const e of this._divers) {
+      const data = entityData(e);
+      if (!data || e.alive === false || entities.get(e.id) !== e || !bodyHasAffix(data, 'diver')) {
+        if (data) delete data.swarmDive;
+        this._divers.delete(e);
+        continue;
+      }
+      const life = e.occupantGeneration ?? null;
+      const dive = data.swarmDive;
+      if (dive) {
+        if (dive.life !== life) { delete data.swarmDive; continue; }
+        if (tick >= dive.until) { this._endDive(e, data, 'done', tick); continue; }
+        if (!e.pos) continue;
+        const dx = player.pos.x - e.pos.x;
+        const dz = player.pos.z - e.pos.z;
+        if (dx * dx + dz * dz <= SWARM_DIVE_ARRIVE_WU * SWARM_DIVE_ARRIVE_WU) {
+          this._endDive(e, data, 'arrived', tick);
+          continue;
+        }
+        // On a sweep tick the recorded well is revalidated by id and its geometry refreshed —
+        // a dried or moved pull must not own a bearing it no longer exerts.
+        if (pulls) {
+          const live = pulls.find((field) => field.id === dive.fieldId);
+          if (!live) { this._endDive(e, data, 'well_gone', tick); continue; }
+          dive.cx = live.center.x;
+          dive.cz = live.center.z;
+          dive.radius = Number(live.radius);
+        }
+        continue;
+      }
+      if (!pulls) continue;
+      if (data.swarmDiveBreakUntil != null && tick < data.swarmDiveBreakUntil) continue;
+      // The phase stagger spreads a marked band's commit starts off the hull id, so they
+      // never all bend onto the same well bearing on the same tick.
+      if (data.swarmDiveNextAt == null) {
+        data.swarmDiveNextAt = tick + (Number(e.id) || 0) % 97 * SWARM_DIVE_PHASE_STRIDE_TICKS;
+      }
+      if (tick < data.swarmDiveNextAt) continue;
+      if (!e.pos) continue;
+      const dx = e.pos.x - player.pos.x;
+      const dz = e.pos.z - player.pos.z;
+      const dist = Math.hypot(dx, dz);
+      if (dist < SWARM_DIVE_MIN_RANGE_WU) continue;
+      const found = findDivePull(e, player, pulls);
+      if (found) {
+        data.swarmDive = {
+          life,
+          fieldId: found.fieldId,
+          cx: found.cx,
+          cz: found.cz,
+          radius: found.radius,
+          until: tick + SWARM_DIVE_WINDOW_TICKS,
+        };
+      }
+    }
+  },
+
+  /** A landed hit breaks a committed dive — the hull goes back to the ordinary closing intent. */
+  _onDiveDamage(payload) {
+    const state = this.state;
+    if (!this._divers?.size || !(payload?.applied > 0)) return;
+    const e = state.entities?.get(payload.targetId);
+    const data = e?.data;
+    if (!data || !data.swarmDive || e.alive === false || !this._divers.has(e)
+      || data.swarmDive.life !== (e.occupantGeneration ?? null)
+      || (payload.targetGeneration != null && payload.targetGeneration !== data.swarmDive.life)
+      || !liveSwarmRun(state)) return;
+    this._endDive(e, data, 'knocked_off', simTickOf(state));
+  },
+
+  _endDive(e, data, reason, tick) {
+    if (!data.swarmDive) return;
+    delete data.swarmDive;
+    // The cooldown counts from the commit's END, like the ride's: one dive, then a beat off.
+    data.swarmDiveNextAt = tick + SWARM_DIVE_COOLDOWN_TICKS;
+  },
+
+  _clearDives() {
+    for (const e of this._divers || []) {
+      if (!e.data) continue;
+      delete e.data.swarmDive;
+      // A cooldown is only meaningful inside the run that earned it; leaving active combat
+      // clears the old commit's beat with the record, exactly like the ride's.
+      delete e.data.swarmDiveNextAt;
+    }
+    this._divers?.clear();
+  },
+
   _reset() {
     this._clearRides();
     this._clearCovers();
+    this._clearDives();
     this._riders = new Set();
     this._coverSeekers = new Set();
+    this._divers = new Set();
     this._coverScanIn = 0;
+    this._diveScanIn = 0;
     this._rideAcceleration = { ax: 0, az: 0, tick: 0 };
     this._scanIn = 0;
     this._affixOrdinal = 0;
@@ -475,6 +606,7 @@ export const swarmElites = {
     if (!data) return;
     if (bodyHasAffix(data, 'rider')) this._riders.add(e);
     if (bodyHasAffix(data, 'cover')) this._coverSeekers.add(e);
+    if (bodyHasAffix(data, 'diver')) this._divers.add(e);
     if (data.swarmAffix != null || data.swarmAffixChecked === true) return;
     const wave = Number.isInteger(data.runWave) ? data.runWave : (Number.isInteger(run.wave) ? run.wave : 0);
     data.swarmAffixChecked = true;
@@ -482,11 +614,12 @@ export const swarmElites = {
     if (data.swarmChampion !== true && data.runRole !== 'elite') return;
     const ordinal = this._affixOrdinal++;
     const seed = Number.isInteger(run.seed) ? run.seed : 1;
-    // The rider's road is the room's own field law, and the rider row sits last in the
-    // catalog — so a room without a law rolls the room-agnostic head of the table and
-    // every champion still carries one trick. A law room rolls the full vocabulary.
+    // The rider's and diver's roads are the room's own field law, and those two rows sit last
+    // in the catalog in a fixed order — so a room without a law rolls the room-agnostic head
+    // short of both and every champion still carries one trick. A law room rolls the full
+    // vocabulary.
     const lawRoom = Array.isArray(LAW_ARENA_IDS) && LAW_ARENA_IDS.includes(run.arenaId);
-    const affixCount = lawRoom ? SWARM_AFFIXES.length : SWARM_AFFIXES.length - 1;
+    const affixCount = lawRoom ? SWARM_AFFIXES.length : SWARM_AFFIXES.length - 2;
     const affix = swarmAffixFor(affixHash(seed, wave, ordinal), affixCount);
     if (!affix || !SWARM_AFFIX_BY_ID[affix]) return;
     data.swarmAffix = affix;
@@ -508,6 +641,7 @@ export const swarmElites = {
     if (affix2) this._applyAffixStamp(e, affix2);
     if (affix === 'rider' || affix2 === 'rider') this._riders.add(e);
     if (affix === 'cover' || affix2 === 'cover') this._coverSeekers.add(e);
+    if (affix === 'diver' || affix2 === 'diver') this._divers.add(e);
     this._emit('swarm:affix', {
       id: e.id,
       affix,

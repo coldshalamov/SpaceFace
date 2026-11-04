@@ -421,6 +421,30 @@ export const flightV3 = {
       && state.entities?.get(entity.id) === entity) {
       driveAuthority.forward = 0; driveAuthority.reverse = 0;
     }
+    // A committed diver (inf-well-dive) flies its approach THROUGH the room's pull: no drive
+    // authority is cut — the commit is the trick, thrust through the well arrives hot and
+    // bent — but while the hull is still outside the grip, translation answers the stamped
+    // well center: turn onto the dive bearing under a committed throttle floor, guns still on
+    // the pilot (NPC aim is not this record's business). Inside the grip the ordinary closing
+    // intent resumes and the field's own acceleration shapes the slingshot. swarmElites owns
+    // the record's life under the same run gates as the ride and cover; flight only reads it.
+    const dive = entity.data?.swarmDive;
+    if (!isPlayer && dive && dive.life === (entity.occupantGeneration ?? null)
+      && state.entities?.get(entity.id) === entity && state.tick < dive.until
+      && (entity.data.swarmAffix === 'diver' || entity.data.swarmAffix2 === 'diver')
+      && run?.kind === 'survival' && run.ruleset === 'swarm'
+      && (run.phase === 'active' || run.phase === 'cleanup')
+      && entity.pos && Number.isFinite(dive.cx) && Number.isFinite(dive.cz)) {
+      const wellDx = dive.cx - entity.pos.x;
+      const wellDz = dive.cz - entity.pos.z;
+      if (Math.hypot(wellDx, wellDz) > dive.radius * SWARM_DIVE_GRIP_FRAC) {
+        const diveBearing = Math.atan2(wellDz, wellDx);
+        const diveErr = wrapAngle(diveBearing - entity.rot);
+        input.turn = clamp(diveErr * SWARM_DIVE_TURN_GAIN, -1, 1);
+        if (input.throttle < SWARM_DIVE_THROTTLE_FLOOR) input.throttle = SWARM_DIVE_THROTTLE_FLOOR;
+        input.brake = false;
+      }
+    }
     this._driveAuthority = driveAuthority;
     if (isPlayer) this._playerDriveAuthority = driveAuthority;
     // Hoisted above the player boost block: the boost state machine only queues impulses and
@@ -2241,6 +2265,12 @@ function npcIntentIsLive(entity, intent) {
 function normalizeFlightComputerMode(mode) {
   return mode === 'cruise' || mode === 'lane' ? mode : 'manual';
 }
+// The committed diver's steering shape (inf-well-dive): the grip fraction where the pull's own
+// acceleration takes the approach over, the heading gain onto the dive bearing, and the
+// throttle floor that makes the commit read as thrust through, not a drift.
+const SWARM_DIVE_GRIP_FRAC = 0.55;
+const SWARM_DIVE_TURN_GAIN = 2.2;
+const SWARM_DIVE_THROTTLE_FLOOR = 0.6;
 function damp(cur, target, lambda, dt) { return cur + (target - cur) * (1 - Math.exp(-lambda * dt)); }
 function wrapAngle(v) { let x = finite(v) % (Math.PI * 2); if (x <= -Math.PI) x += Math.PI * 2; if (x > Math.PI) x -= Math.PI * 2; return x; }
 function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }

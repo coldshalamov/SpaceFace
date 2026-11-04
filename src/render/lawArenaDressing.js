@@ -1307,6 +1307,39 @@ function buildAffixCover(r, sink) {
   };
 }
 
+/** Diver: a committed bow — two swept chines meeting forward at a lit nose point the pull
+ *  will bend, and an aft vane holding the dive bearing. The nose lights only while a commit
+ *  is live, so the actionable state survives reduced motion or flashing disabled. */
+function buildAffixDiver(r, sink) {
+  const shared = sharedAssets();
+  const seam = cloneEmissive(shared.tideMat, sink);
+  const group = new THREE.Group();
+  group.name = 'sf-swarm-threat-affix-diver';
+  for (const side of [-1, 1]) {
+    const chine = mesh(shared.boxGeo, shared.metalMat, `sf-swarm-threat-affix-diver-chine-${side > 0 ? 'stb' : 'pt'}`);
+    chine.scale.set(r * 0.03, r * 0.02, r * 0.3);
+    chine.position.set(side * r * 0.1, 0, r * 0.18);
+    chine.rotation.y = side * -0.42; // swept forward to the point
+    group.add(chine);
+  }
+  const vane = mesh(shared.boxGeo, shared.darkMat, 'sf-swarm-threat-affix-diver-vane');
+  vane.scale.set(r * 0.02, r * 0.16, r * 0.05);
+  vane.position.z = -r * 0.26; // aft, holding the committed bearing
+  group.add(vane);
+  const nose = mesh(shared.boxGeo, seam, 'sf-swarm-threat-affix-diver-nose');
+  nose.scale.set(r * 0.035, r * 0.014, r * 0.06);
+  nose.position.z = r * 0.36; // the lit point the well bends
+  group.add(nose);
+  return {
+    group,
+    tick(mark, simTime, dt, reduced, active) {
+      nose.visible = active === true;
+      const hold = reduced ? 0.1 : 0.1 + Math.sin(simTime * 2.4) * 0.05;
+      vane.rotation.x = hold;
+    },
+  };
+}
+
 // Per-affix builder + the seam's breath cadence (rad·s⁻¹). Volatile races; commander is the
 // slow steady heartbeat the cohort flies on.
 const AFFIX_MARKS = Object.freeze({
@@ -1317,6 +1350,7 @@ const AFFIX_MARKS = Object.freeze({
   commander: Object.freeze({ build: buildAffixCommander, pulse: 1.5 }),
   hasted: Object.freeze({ build: buildAffixHasted, pulse: 3.9 }),
   cover: Object.freeze({ build: buildAffixCover, pulse: 1.9 }),
+  diver: Object.freeze({ build: buildAffixDiver, pulse: 2.5 }),
   rider: Object.freeze({ build: buildAffixRider, pulse: 2.2 }),
 });
 
@@ -1722,6 +1756,8 @@ export function createLawArenaDressing() {
       : !!data?.swarmRide && data.swarmRide.life === life);
     const coverActive = entity.alive !== false && !!data?.swarmCover
       && data.swarmCover.life === life;
+    const diveActive = entity.alive !== false && !!data?.swarmDive
+      && data.swarmDive.life === life;
     const dt = Math.max(0, frameDt || 0);
     const simNow = Number.isFinite(simTime) ? simTime : 0;
     rec.clock += dt;
@@ -1736,7 +1772,8 @@ export function createLawArenaDressing() {
       for (let i = 0; i < rec.marks.length; i++) {
         const mark = rec.marks[i];
         if (mark.tick) mark.tick(mark, simNow, dt, reduced,
-          (mark.id === 'rider' && rideActive) || (mark.id === 'cover' && coverActive));
+          (mark.id === 'rider' && rideActive) || (mark.id === 'cover' && coverActive)
+          || (mark.id === 'diver' && diveActive));
         for (const mat of mark.mats) {
           mat.emissiveIntensity = calmFlash
             ? 0.7
