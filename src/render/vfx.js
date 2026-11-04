@@ -12362,6 +12362,7 @@ export const vfx = {
       out = this._driveScratch = {
         drive: 0, throttle: 0, speed: 0, speedDrive: 0, boost: 0,
         cruise: 0, reverse: 0, retroOnly: false, brake: 0,
+        hullFrac: 1,
       };
     }
     if (!e || isCeresWorkfleetPropulsion(e)) {
@@ -12464,6 +12465,13 @@ export const vfx = {
     out.reverse = pilotHoldsDrive ? 0 : reverse;
     out.retroOnly = retroOnly;
     out.brake = brake;
+    // The dying tell (inf-dying-drive): the same hull truth the smoke trail reads. A hull
+    // without hull fields (set dressing, props) reads intact and never gutters.
+    if (Number.isFinite(e.hullMax) && e.hullMax > 0 && Number.isFinite(e.hull)) {
+      out.hullFrac = Math.max(0, Math.min(1, e.hull / e.hullMax));
+    } else {
+      out.hullFrac = 1;
+    }
     out.dashFired = !!this._plumeDashPending;
     this._plumeDashPending = false;
     return out;

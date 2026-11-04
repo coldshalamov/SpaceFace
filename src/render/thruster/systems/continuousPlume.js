@@ -18,6 +18,10 @@ import {
   DRIVE_HEAT_DEFAULT_ROLE_COOL,
 } from './throttleResponse.js';
 import {
+  resolveDyingDrive,
+  applyDyingDriveToSlot,
+} from './dyingDrive.js';
+import {
   compileAccessibilityTables,
   createPresentationScratch,
   resolveAccessibilityPresentationInto,
@@ -379,6 +383,11 @@ export class PlumeSlotPool {
     tf.drive = state.plumeDrive; // residual / smoothed energy
     tf.throttle = commandThrottle; // commanded — brake mode key
     tf.mode = signals && signals.mode ? signals.mode : null;
+    // The dying tell (inf-dying-drive): hull truth and its own sputter clock ride the
+    // signals the fleet already forwards (the ship record). Unknown fields read intact.
+    tf.hullFrac = signals && Number.isFinite(signals.hullFrac) ? signals.hullFrac : 1;
+    tf.sputterPhase = signals && Number.isFinite(signals.sputterPhase) ? signals.sputterPhase : 0;
+    tf.entityPhase = signals && signals.entityId != null ? entityPhaseOffset(signals.entityId) : 0;
     // No object literal: mode resolver reads the same scratch.
     if (!tf.mode) tf.mode = resolveDriveMode(tf, this.recipe);
     // Crossfade the structural mode (brake x0.42, reverse x0.08, ...) instead of stepping it.
@@ -408,6 +417,10 @@ export class PlumeSlotPool {
     // Steady-state heat of the drive mode, blended with the same mode weights that crossfade the
     // structure. Applied per slot below: boost burns white-hot, idle/brake/reverse cool.
     const heat = blendDriveModeHeat(tf.modeWeights, dynMode, DRIVE_HEAT_SCRATCH);
+    // The dying tell resolves once per entity, like the heat pass — the hull is one truth.
+    const dying = tf.hullFrac < 1
+      ? resolveDyingDrive(tf.hullFrac, tf.sputterPhase, tf.entityPhase)
+      : null;
     // One-shot overpressure from integrateDriveState. Bounded here as well as there, because a
     // caller supplying its own driveState object is not obliged to have run through that path.
     const ignition = Math.max(0, Math.min(1, state.ignition || 0));
@@ -495,6 +508,10 @@ export class PlumeSlotPool {
           slot.color[1] *= keep;
           slot.color[2] *= keep;
         }
+        // The dying tell (inf-dying-drive): a failing hull's bell cools toward ember and
+        // sputters on its own phase — applied after the maneuver heat, which still owns
+        // the boost-white and idle-cool answers for a healthy hull.
+        if (dying) applyDyingDriveToSlot(slot, dying);
         // Per-instance continuum dynamics (not shared material uniforms).
         slot.flowSpeed = dynFlow * (this._layerScroll[li] / 2.4);
         slot.turbulence = dynTurb;

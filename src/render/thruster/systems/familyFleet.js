@@ -193,6 +193,9 @@ export class FamilyProductionFleet {
       factionR: 0.533,
       factionG: 0.667,
       factionB: 1.0,
+      // The dying tell (inf-dying-drive): hull truth from the sim, advanced sputter clock.
+      hullFrac: 1,
+      sputterPhase: 0,
       // Tumbling ships corkscrew (PQ-139.04): raw angVel and the accumulated wobble phase.
       spin: 0,
       spinPhase: 0,
@@ -480,6 +483,8 @@ export class FamilyProductionFleet {
     ship.retroOnly = !!driveInfo.retroOnly;
     ship.brake = driveInfo.brake || 0;
     ship.speedDrive = driveInfo.speedDrive || 0;
+    // Hull truth the plume reads for the dying tell (unknown fields read intact).
+    ship.hullFrac = Number.isFinite(driveInfo.hullFrac) ? driveInfo.hullFrac : 1;
   }
 
   /**
@@ -539,6 +544,8 @@ export class FamilyProductionFleet {
       // The wobble screw turns with the hull: advance the phase by the ship's own spin
       // (PQ-139.04) — before the socket skip, so a re-drawn hidden ship's phase never stalls.
       if (ship.spin) ship.spinPhase += ship.spin * dt;
+      // The dying tell's sputter clock runs on sim dt for every live ship (cheap, constant).
+      ship.sputterPhase = (ship.sputterPhase || 0) + dt;
       if (ship.drive < 0.08 && ship.boost < 0.05) idleShips += 1;
       // 0 sockets is intentional (player plasma stream owns the jet). Do not invent
       // a fallback socket — that drew a throttle-locked ghost at the world origin.
