@@ -1,7 +1,7 @@
 import { CINDERGLASS_JOB_PHASES as P, CINDERGLASS_JOB_CUSTODY as C, CINDERGLASS_JOB_OUTCOMES as O,
   CINDERGLASS_JOB_TEXT as T, CINDERGLASS_JOB_SECTOR_ID, CINDERGLASS_JOB_ROLES,
   CINDERGLASS_JOB_CARRIER_ID, CINDERGLASS_JOB_POINTS, CINDERGLASS_JOB_SERVICE_SECONDS,
-  CINDERGLASS_JOB_BEACON_SOURCE } from './definition.js';
+  CINDERGLASS_JOB_BEACON_SOURCE, cinderglassJobPaidText } from './definition.js';
 import { createCinderglassJobState, cinderglassJobOfferEligible, cinderglassJobOfferOpen,
   cinderglassJobMakeOffer, cinderglassJobDecline, cinderglassJobClose, rememberFact, recordReceipt } from './operation.js';
 import { cinderglassJobAdmit, cinderglassJobStepConvoy, cinderglassJobDismissConvoy } from './convoy.js';
@@ -427,7 +427,7 @@ export const cinderglassJobSystem = {
     st.actors[auth.recipient].paid = true;
     cinderglassJobClose(st, this.state.simTime, auth.recipient === 'broker' ? O.SOLD_BROKER
       : auth.baseCr === 450 ? O.RETURNED_TALA : O.RETURNED_DAMAGED, { paidCr: result.creditedCr });
-    rememberFact(st, this.state.simTime, 'paid', auth.recipient === 'broker' ? T.brokerPaid : auth.baseCr === 450 ? T.paidTala : T.paidDamaged);
+    rememberFact(st, this.state.simTime, 'paid', auth.recipient === 'broker' ? T.brokerPaid : cinderglassJobPaidText(st));
     return true;
   },
   settlementMatches(r) { const own = this._cg.settlement; return !!own && ['operationId','receiptId','recipient','creditedCr','baseCr','refundCr','key'].every(k => own[k] === r[k]); },

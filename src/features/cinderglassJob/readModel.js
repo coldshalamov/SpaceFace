@@ -7,7 +7,7 @@ import {
   CINDERGLASS_JOB_DEPOSIT_CR, CINDERGLASS_JOB_BROKER_CR,
   CINDERGLASS_JOB_RECEIVE_SPEED, CINDERGLASS_JOB_SERVICE_SECONDS,
   CINDERGLASS_JOB_SECTOR_ID,
-  CINDERGLASS_JOB_ROLES, CINDERGLASS_JOB_TEXT, CINDERGLASS_JOB_TERMS_COPY, cinderglassJobBeaconFixValid,
+  CINDERGLASS_JOB_ROLES, CINDERGLASS_JOB_TEXT, CINDERGLASS_JOB_TERMS_COPY, cinderglassJobBeaconFixValid, cinderglassJobPaidText,
 } from './definition.js';
 import { cinderglassJobContactRows, cinderglassJobRevisit } from './contact.js';
 import { occupantGenerationOf } from '../../core/entity.js';
@@ -104,7 +104,7 @@ export function buildCinderglassJobView(state) {
       condition: text(st.receiveQuote.condition, 40), podId: st.receiveQuote.podId, token: text(st.receiveQuote.token, 200) } : null,
     marking: st.podMarked || st.scanDone ? CINDERGLASS_JOB_POD_MARKING : null,
     facts: (Array.isArray(st.rememberedFacts) ? st.rememberedFacts : []).slice(-6).filter(Boolean)
-      .map(f => ({ id: text(f.id, 100), atS: finite(f.atS), text: text(f.text, 500) })),
+      .map(f => ({ id: text(f.id, 100), atS: finite(f.atS), text: text(f.id === 'paid' ? cinderglassJobPaidText(st) || f.text : f.text, 500) })),
     markers: [], serviceActive: st.serviceActive === true,
     serviceProgress: Math.min(1, Math.max(0, finite(st.serviceProgressS) / CINDERGLASS_JOB_SERVICE_SECONDS)),
     actors: { tala: { paid: actors.tala?.paid === true },
