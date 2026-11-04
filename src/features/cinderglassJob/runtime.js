@@ -336,7 +336,7 @@ export const cinderglassJobSystem = {
       // This explicit flight command uses the already public receiving fix. Track
       // remains a preview; the ordinary course owner alone engages and flies it.
       this.bus.emit('ui:setCourse', { pos: { ...marker.pos }, label: marker.label,
-        autopilot: true, arrivalRadius: 60, source: 'cinderglassJob' });
+        autopilot: true, arrivalRadius: 50, source: 'cinderglassJob' });
       p.result = { ok: true };
     } else if (action === 'tuneBeacon') {
       if (p.revision !== st.promptRevision) return this._refuseAction(p, 'stale_beacon_view');
