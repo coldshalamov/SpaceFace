@@ -4,6 +4,22 @@ import { authoredStarterSite, registerStarterBuoyTow } from '../missions/starter
 import { authoredCinderRoute, cinderTargetOwner, cinderAvailableSlots, cinderWaspPosition, stampCinderWasp, observeCinderEscape } from '../missions/cinderRoute.js';
 import { fleeOrderActive, EGRESS_DISTANCE_WU, EGRESS_FADE_S } from '../ai/egressExit.js';
 import { syncFurnaceWorksite } from '../missions/furnaceWorksiteRuntime.js';
+import { spawnJettisonedCargoPod } from './lootShards.js';
+import {
+  ensureSpineBreakWorksite,
+  isSpineBreakOperation,
+  noteSpineBreakDisposition,
+  spineBreakContainerIdentity,
+  spineBreakContainerLayout,
+  spineBreakSpineId,
+  spineBreakTugIdentity,
+  SPINE_BREAK_CONFIG,
+  SPINE_BREAK_CONTAINER_COUNT,
+  SPINE_BREAK_CONTAINER_VALUE_CR,
+  SPINE_BREAK_HEAD_LINKED,
+  SPINE_BREAK_MAX_RETRIES,
+  spineBreakOutcome,
+} from '../missions/spineBreakWorksite.js';
 // Row 413 extraction — methods moved verbatim out of missions.js;
 // spread back onto the missions object, so `this` still binds to the system at call time.
 import { MARK_HAIL_RANGE_WU, bountyMarkHail, markArchetypePoolFor } from '../data/bountyMarks.js';
@@ -157,6 +173,21 @@ export const missionSpawningOps = {
     }
     const candidates = list.filter((e) => {
       if (!e || !e.alive || e.isPlayer) return false;
+      if (isSpineBreakOperation(m) && e.data?.escortee === 'lead') {
+        const worksite = ensureSpineBreakWorksite(m);
+        const data = e.data;
+        const unboundLegacy = worksite.tugId == null && data.spineBreakMissionId == null
+          && data.spineBreakTug !== true && String(data.missionTag) === String(m.id);
+        const sameId = e.id === worksite.tugId || (this._spineBreakSaveRestorePending === true
+          && data.spineBreakTugId === worksite.tugId);
+        if (!unboundLegacy && (!sameId || data.spineBreakTug !== true
+            || data.spineBreakTugIdentity !== worksite.tugIdentity
+            || String(data.spineBreakMissionId) !== String(m.id)
+            || data.spineBreakAttempt !== worksite.attempt || data.spineId !== worksite.spineId
+            || data.spineBreakTugGeneration !== worksite.tugGeneration
+            || (this._spineBreakSaveRestorePending !== true
+              && (e.occupantGeneration ?? null) !== worksite.tugGeneration))) return false;
+      }
       if (starterBuoy && (e.type !== 'payload' || e.data?.physicalRole !== PHYSICAL_ROLE.SLAG_CORE
         || e.data?.starterWorkdayVersion !== m.params.starterWorkdayVersion
         || e.data?.starterJobId !== m.params.starterJobId || e.data?.starterStep !== m.params.starterStep)) return false;
@@ -242,7 +273,320 @@ export const missionSpawningOps = {
     }
     ordered.sort((a, b) => a.slot - b.slot || stableEntityId(a.id).localeCompare(stableEntityId(b.id)));
     m.targetEntityIds = ordered.map((entry) => entry.id);
+    if (isSpineBreakOperation(m)) adopted += this._adoptSpineBreakContainers(m);
     return adopted;
+  },
+
+  _adoptSpineBreakContainers(m) {
+    if (!isSpineBreakOperation(m)) return 0;
+    const existing = new Set(m.targetEntityIds || []);
+    const missionId = String(m.id);
+    const worksite = ensureSpineBreakWorksite(m);
+    if (!worksite) return 0;
+    const savedTugId = worksite.tugId;
+    const savedTugGeneration = worksite.tugGeneration;
+    const tug = m._escorteeId != null && this.state.entities.get(m._escorteeId);
+    if (tug && tug.alive !== false && tug.data?.escortee === 'lead'
+        && String(tug.data?.missionTag) === missionId) {
+      const tugIdentity = spineBreakTugIdentity(m, worksite.attempt);
+      const tugIdMatches = worksite.tugId === tug.id
+        || (this._spineBreakSaveRestorePending === true && tug.data?.spineBreakTugId === savedTugId);
+      const recorded = worksite.tugId === tug.id
+        || (this._spineBreakSaveRestorePending === true && tugIdMatches);
+      const recordedIdentity = worksite.tugIdentity === tugIdentity
+        && tug.data?.spineBreakTugIdentity === tugIdentity
+        && String(tug.data?.spineBreakMissionId) === missionId
+        && tug.data?.spineBreakAttempt === worksite.attempt
+        && tug.data?.spineId === worksite.spineId
+        && tug.data?.spineBreakTugGeneration === savedTugGeneration
+        && (worksite.tugGeneration === (tug.occupantGeneration ?? null)
+          || this._spineBreakSaveRestorePending === true);
+      const unbound = worksite.tugId == null && !tug.data?.spineBreakMissionId;
+      const current = recorded && recordedIdentity
+        ? tug.data?.spineBreakTug === true
+          && String(tug.data?.spineBreakMissionId) === missionId
+          && tug.data?.spineBreakAttempt === worksite.attempt
+          && tug.data?.spineId === worksite.spineId
+        : unbound;
+      if (current) {
+        worksite.tugId = tug.id;
+        worksite.tugGeneration = tug.occupantGeneration ?? null;
+        tug.flags = tug.flags || {};
+        tug.flags.persistent = true;
+        tug.data.spineBreakTug = true;
+        tug.data.spineBreakTugId = tug.id;
+        tug.data.spineBreakTugIdentity = tugIdentity;
+        tug.data.spineBreakMissionId = missionId;
+        tug.data.spineBreakAttempt = worksite.attempt;
+        tug.data.spineBreakTugGeneration = worksite.tugGeneration;
+        tug.data.spineId = worksite.spineId;
+        tug.data.spineIndex = 0;
+      }
+    }
+    const byIndex = new Map();
+    forEachJobInteractable(this.state, (entity) => {
+      if (!entity || entity.alive === false || entity.type !== 'payload') return;
+      const data = entity.data || {};
+      if (data.spineBreakContainer !== true || String(data.spineBreakMissionId) !== missionId) return;
+      const slot = Number(data.spineBreakIndex);
+      const identity = Number.isInteger(slot) ? spineBreakContainerIdentity(m, slot, worksite.attempt) : null;
+      const saved = worksite.containers.find((row) => row.index === slot);
+      const savedIdentityMatches = saved?.identity === identity
+        && (saved.id === entity.id || this._spineBreakSaveRestorePending === true)
+        && (saved.id === entity.id || data.spineBreakTugId === savedTugId);
+      const current = Number.isInteger(slot) && slot >= 0 && slot < SPINE_BREAK_CONTAINER_COUNT
+        && data.spineBreakAttempt === worksite.attempt
+        && data.spineBreakIdentity === identity
+        && data.spineBreakTugIdentity === worksite.tugIdentity
+        && (data.spineId === worksite.spineId
+          || (data.spineLoose === true && data.lostFromSpineId === worksite.spineId))
+        && worksite.tugId != null
+        && data.spineBreakTugId === savedTugId
+        && data.spineBreakTugGeneration === savedTugGeneration
+        && savedIdentityMatches
+        && (saved.generation == null || saved.generation === (entity.occupantGeneration ?? null)
+          || this._spineBreakSaveRestorePending === true);
+      if (!current) {
+        const remove = this.helpers?.removeEntity;
+        if (typeof remove === 'function') remove(entity.id, { immediate: true, reason: 'spine_break_stale_cast' });
+        else entity.alive = false;
+        return;
+      }
+      const found = byIndex.get(slot);
+      if (!found) byIndex.set(slot, entity);
+    });
+    const ordered = [...byIndex.entries()].sort((a, b) => a[0] - b[0]);
+    for (const saved of worksite.containers) {
+      if (!byIndex.has(saved.index)) noteSpineBreakDisposition(m, saved.index, 'lost');
+    }
+    const keep = new Set(ordered.map(([, entity]) => entity.id));
+    forEachJobInteractable(this.state, (entity) => {
+      if (!entity || entity.alive === false || entity.type !== 'payload') return;
+      const data = entity.data || {};
+      if (data.spineBreakContainer !== true || String(data.spineBreakMissionId) !== missionId
+          || data.spineBreakAttempt !== worksite.attempt
+          || (data.spineId !== worksite.spineId
+            && !(data.spineLoose === true && data.lostFromSpineId === worksite.spineId))) return;
+      if (keep.has(entity.id)) return;
+      const remove = this.helpers?.removeEntity;
+      if (typeof remove === 'function') remove(entity.id, { immediate: true, reason: 'spine_break_duplicate_cast' });
+      else entity.alive = false;
+    });
+    worksite.containers = [];
+    for (const [slot, entity] of ordered) {
+      entity.data.meridianMissionOwnedCargo = true;
+      entity.data.spineBreakIdentity = spineBreakContainerIdentity(m, slot, worksite.attempt);
+      entity.data.spineBreakTugIdentity = worksite.tugIdentity;
+      entity.data.spineBreakTugId = worksite.tugId;
+      entity.data.spineBreakTugGeneration = worksite.tugGeneration;
+      worksite.containers.push({ index: slot, id: entity.id,
+        generation: entity.occupantGeneration ?? null,
+        identity: spineBreakContainerIdentity(m, slot, worksite.attempt),
+        attempt: worksite.attempt, spineId: worksite.spineId });
+      this._stampMissionTargetIdentity(entity, m, 100 + slot);
+      if (!existing.has(entity.id)) m.targetEntityIds.push(entity.id);
+    }
+    return ordered.filter(([, entity]) => !existing.has(entity.id)).length;
+  },
+
+  _ensureSpineBreakWorksite(m) {
+    if (!isSpineBreakOperation(m)) return 0;
+    const state = this.state;
+    const helpers = this.helpers;
+    const worksite = ensureSpineBreakWorksite(m);
+    const tug = m._escorteeId != null && state.entities.get(m._escorteeId);
+    if (!worksite || !tug || tug.alive === false) return 0;
+
+    const tugData = tug.data || (tug.data = {});
+    const tugIdentity = spineBreakTugIdentity(m, worksite.attempt);
+    const savedTugId = worksite.tugId;
+    const tugIdMatches = worksite.tugId === tug.id
+      || (this._spineBreakSaveRestorePending === true && tugData.spineBreakTugId === savedTugId);
+    const recorded = tugIdMatches
+      && worksite.tugIdentity === tugIdentity
+      && tugData.spineBreakTugIdentity === tugIdentity
+      && String(tugData.spineBreakMissionId) === String(m.id)
+      && tugData.spineBreakAttempt === worksite.attempt
+      && tugData.spineId === worksite.spineId
+      && tugData.spineBreakTugGeneration === worksite.tugGeneration
+      && (worksite.tugGeneration === (tug.occupantGeneration ?? null)
+        || this._spineBreakSaveRestorePending === true);
+    const unbound = worksite.tugId == null && !tugData.spineBreakMissionId
+      && tugData.escortee === 'lead' && String(tugData.missionTag) === String(m.id);
+    const current = recorded
+      ? tugData.spineBreakTug === true && String(tugData.spineBreakMissionId) === String(m.id)
+        && tugData.spineBreakAttempt === worksite.attempt && tugData.spineId === worksite.spineId
+      : unbound;
+    if (!current) {
+      m._escorteeId = null;
+      m._escorteeArrived = false;
+      m.needsTargets = true;
+      return 0;
+    }
+    if (recorded && this._spineBreakSaveRestorePending === true
+        && (worksite.tugId !== tug.id
+          || worksite.tugGeneration !== (tug.occupantGeneration ?? null))) {
+      this._adoptSpineBreakContainers(m);
+      if (worksite.tugId !== tug.id
+          || worksite.tugGeneration !== (tug.occupantGeneration ?? null)) {
+        m._escorteeId = null;
+        m._escorteeArrived = false;
+        m.needsTargets = true;
+        return 0;
+      }
+    }
+    worksite.tugId = tug.id;
+    worksite.tugGeneration = tug.occupantGeneration ?? null;
+    const tugFlags = tug.flags || (tug.flags = {});
+    // The operation's one convoy lead is also the spine tug. Persist that exact hull with its
+    // mission-owned payload so Continue restores one cast instead of replacing its tow authority.
+    tugFlags.persistent = true;
+    tugData.spineBreakTug = true;
+    tugData.spineBreakTugId = tug.id;
+    tugData.spineBreakTugGeneration = worksite.tugGeneration;
+    tugData.spineBreakTugIdentity = tugIdentity;
+    tugData.spineBreakMissionId = String(m.id);
+    tugData.spineBreakAttempt = worksite.attempt;
+    tugData.spineId = worksite.spineId;
+    tugData.spineIndex = 0;
+
+    const present = this._adoptSpineBreakContainers(m);
+    const byIndex = new Set(worksite.containers.map((row) => row.index));
+    const forbidden = new Set([...(worksite.lostIndices || []), ...(worksite.stolenIndices || [])]);
+    const hash = typeof helpers.hash32 === 'function' ? helpers.hash32 : hash32;
+    const seed = hash((state.meta && state.meta.seed) || 1, m.id, 'spine-break', worksite.attempt);
+    const rng = helpers.mulberry32 ? helpers.mulberry32(seed) : mulberryLocal(seed);
+    let spawned = 0;
+    for (let slot = 0; slot < SPINE_BREAK_CONTAINER_COUNT; slot++) {
+      if (byIndex.has(slot) || forbidden.has(slot)) continue;
+      const layout = spineBreakContainerLayout(tug.pos || { x: 0, z: 0 }, slot, rng, SPINE_BREAK_CONFIG);
+      const pod = spawnJettisonedCargoPod(state, {
+        pos: layout.pos,
+        vel: layout.vel,
+        commodityId: 'cmdty_electronics',
+        amount: 6,
+        unitMass: 6,
+        ownerName: 'Meridian Trade Syndicate',
+        factionId: 'faction_mts',
+      }, helpers);
+      if (!pod) continue;
+      pod.data = pod.data || {};
+      pod.data.spineBreakContainer = true;
+      pod.data.spineBreakIdentity = spineBreakContainerIdentity(m, slot, worksite.attempt);
+      pod.data.spineBreakTugIdentity = worksite.tugIdentity;
+      pod.data.spineBreakMissionId = String(m.id);
+      pod.data.spineBreakIndex = slot;
+      pod.data.spineBreakAttempt = worksite.attempt;
+      pod.data.meridianMissionOwnedCargo = true;
+      pod.data.spineBreakTugId = tug.id;
+      pod.data.spineBreakTugGeneration = worksite.tugGeneration;
+      pod.data.spineId = worksite.spineId;
+      pod.data.spineIndex = slot + 1;
+      pod.data.cargoValueCr = SPINE_BREAK_CONTAINER_VALUE_CR - slot * 150;
+      pod.data.authoredLoose = slot >= SPINE_BREAK_HEAD_LINKED;
+      pod.data.encounterId = `mission:${m.id}:attempt:${worksite.attempt}`;
+      worksite.containers.push({ index: slot, id: pod.id,
+        generation: pod.occupantGeneration ?? null,
+        identity: spineBreakContainerIdentity(m, slot, worksite.attempt),
+        attempt: worksite.attempt, spineId: worksite.spineId });
+      this._stampMissionTargetIdentity(pod, m, 100 + slot);
+      m.targetEntityIds.push(pod.id);
+      byIndex.add(slot);
+      spawned++;
+    }
+    if (byIndex.size + forbidden.size >= SPINE_BREAK_CONTAINER_COUNT) worksite.status = 'active';
+    if (spawned || present) this.bus.emit('mission:updated', { missionId: m.id, spineBreakContainers: byIndex.size });
+    return spawned;
+  },
+
+  _refreshSpineBreakProgress(m) {
+    if (!isSpineBreakOperation(m)) return null;
+    const outcome = spineBreakOutcome(this.state, m);
+    const worksite = ensureSpineBreakWorksite(m);
+    if (!worksite) return outcome;
+    const changed = m.objectiveProgress !== outcome.recoupled
+      || m.objectiveTarget !== outcome.goal;
+    m.objectiveTarget = outcome.goal;
+    m.objectiveProgress = outcome.recoupled;
+    if (outcome.status === 'unrecoverable') worksite.status = 'unrecoverable';
+    else if (outcome.status === 'spine_recoupled') worksite.status = 'ready';
+    else if (worksite.status !== 'retrying' && worksite.status !== 'completed') worksite.status = 'active';
+    if (changed) {
+      this._refreshTrackedMissionNav(m);
+      this.bus.emit('mission:updated', { missionId: m.id, objectiveProgress: outcome.recoupled,
+        objectiveTarget: outcome.goal, spineBreakOutcome: outcome.status });
+    }
+    return outcome;
+  },
+
+  _retireSpineBreakContainers(m) {
+    if (!isSpineBreakOperation(m)) return 0;
+    const missionId = String(m.id);
+    const rows = Array.isArray(this.state.entityList) ? this.state.entityList.slice() : [];
+    let retired = 0;
+    for (const entity of rows) {
+      if (!entity || entity.alive === false || entity.type !== 'payload') continue;
+      const data = entity.data || {};
+      if (data.spineBreakContainer !== true || String(data.spineBreakMissionId) !== missionId) continue;
+      const remove = this.helpers && this.helpers.removeEntity;
+      if (typeof remove === 'function') remove(entity.id, { immediate: true, reason: 'spine_break_retry' });
+      else entity.alive = false;
+      retired++;
+    }
+    return retired;
+  },
+
+  _retrySpineBreakAttempt(m, destroyed) {
+    if (!isSpineBreakOperation(m)) return false;
+    const worksite = ensureSpineBreakWorksite(m);
+    if (!worksite || worksite.retries >= SPINE_BREAK_MAX_RETRIES) return false;
+    const oldTugId = m._escorteeId;
+    const oldTug = oldTugId != null && this.state.entities.get(oldTugId);
+    worksite.attemptHistory.push({
+      attempt: worksite.attempt,
+      spineId: worksite.spineId,
+      status: 'retrying',
+      reason: destroyed?.reason || 'worksite_lost',
+      lostIndices: [...worksite.lostIndices],
+      stolenIndices: [...worksite.stolenIndices],
+      endedAt: Number(this.state.simTime) || 0,
+    });
+    worksite.attemptHistory = worksite.attemptHistory.slice(-SPINE_BREAK_MAX_RETRIES - 1);
+    this._retireSpineBreakContainers(m);
+    if (oldTug && oldTug.alive !== false && oldTug.data?.spineBreakTug === true
+        && String(oldTug.data.spineBreakMissionId) === String(m.id)
+        && oldTug.data.spineBreakAttempt === worksite.attempt) {
+      const remove = this.helpers && this.helpers.removeEntity;
+      if (typeof remove === 'function') remove(oldTug.id, { immediate: true, reason: 'spine_break_retry' });
+      else oldTug.alive = false;
+    }
+    worksite.retries++;
+    worksite.attempt++;
+    worksite.spineId = spineBreakSpineId(m, worksite.attempt);
+    worksite.status = 'retrying';
+    worksite.tugId = null;
+    worksite.tugGeneration = null;
+    worksite.tugIdentity = spineBreakTugIdentity(m, worksite.attempt);
+    worksite.containers = [];
+    worksite.lostIndices = [];
+    worksite.stolenIndices = [];
+    m.targetEntityIds = (m.targetEntityIds || []).filter((id) => id !== destroyed?.id && id !== oldTugId
+      && this.state.entities.get(id)?.alive !== false
+      && this.state.entities.get(id)?.data?.spineBreakContainer !== true);
+    m._escorteeId = null;
+    m._escorteeArrived = false;
+    m.needsTargets = true;
+    m.params = m.params || {};
+    m.params.convoyTotal = 0;
+    m.params.convoyLost = 0;
+    this._nextMissionSpawnRetryTick = 0;
+    this.bus.emit('comms:popup', {
+      id: `spine_break_retry_${m.id}_${worksite.attempt}`,
+      sender: 'MERIDIAN TRADE SYNDICATE', category: 'mission', ttl: 7,
+      text: 'Tug lost. Meridian has sent a replacement train with a fresh manifest. Re-couple three boxes to close the operation.',
+    });
+    this.bus.emit('mission:updated', { missionId: m.id, spineBreakRetry: worksite.retries });
+    return true;
   },
 
   /**
@@ -736,8 +1080,22 @@ export const missionSpawningOps = {
       if (spawned === n && this._missionBudgetDeferrals) this._missionBudgetDeferrals.delete(String(m.id));
     } else if (m.type === 'escort') {
       // Already adopted a live convoy from world.records — do not double-spawn.
-      if (m._escorteeId != null && this.state.entities.get(m._escorteeId)) return;
-      if ((m.targetEntityIds || []).length > 0) return;
+      if (m._escorteeId != null && this.state.entities.get(m._escorteeId)) {
+        if (isSpineBreakOperation(m)) {
+          this._ensureSpineBreakWorksite(m);
+          if (m._escorteeId != null) return;
+        } else return;
+      }
+      if (isSpineBreakOperation(m) && ensureSpineBreakWorksite(m)?.tugId != null) {
+        // A previously bound lead went missing or failed its durable identity check.
+        // It is a real attempt loss, not permission to mint an unbound lead on every tick.
+        if (!this._retrySpineBreakAttempt(m, { reason: 'tug_missing_or_invalid' })) {
+          const index = this.state.missions.active.indexOf(m);
+          if (index >= 0) this._failMission(m, index, 'spine_break_tug_lost');
+        }
+        return;
+      }
+      if (!isSpineBreakOperation(m) && (m.targetEntityIds || []).length > 0) return;
       const budget = helpers.spawnBudget;
       const requester = `mission:${m.id}`;
       // The convoy: a named lead hauler plus wing haulers (070-convoy shape — mules in a column).
@@ -820,7 +1178,9 @@ export const missionSpawningOps = {
       // player. Stamped escortAmbushOf (never missionTag) so adopt/cleanup treat them as what
       // they are — ordinary raiders this contract happened to spring, not objective targets.
       if (spawned > 0 && m._escorteeId != null) {
-        const ambushWant = Math.max(0, Math.min(4, (m.params && m.params.ambushSize) || 0));
+        const ambushWant = Math.max(0, Math.min(4,
+          isSpineBreakOperation(m) ? Math.max(2, (m.params && m.params.ambushSize) || 0)
+            : (m.params && m.params.ambushSize) || 0));
         const ambushGrant = ambushWant > 0 && budget && typeof budget.request === 'function'
           ? budget.request(ambushWant, requester)
           : ambushWant;
@@ -874,6 +1234,7 @@ export const missionSpawningOps = {
           }
         }
       }
+      if (isSpineBreakOperation(m)) this._ensureSpineBreakWorksite(m);
     } else if (m.type === 'salvage_retrieval' && isMutationRecovery(m)) {
       // INF-068: the convoy-wreck pocket. One unstable drifting wreck holding the contract
       // cargo, spawned where the hull actually died. Tow it clear or vent it (safe), or race
@@ -1198,6 +1559,7 @@ export const missionSpawningOps = {
    *  wings run the lane in trail formation and do not gate completion. Deterministic
    *  (pure geometry — no RNG). */
   _steerEscortee(m, state, dt) {
+    if (isSpineBreakOperation(m)) this._refreshSpineBreakProgress(m);
     const lead = state.entities.get(m._escorteeId);
     // NXB-038: a drive-disabled convoy hull is a recoverable loss with a real continuation —
     // a taut tow line repairs a friendly drive — but only if the player is TOLD it went dead.

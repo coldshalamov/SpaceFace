@@ -8,6 +8,8 @@ import { kesslerScalePending, kesslerScaleWaypoint } from './kesslerScaleWorksit
 import { furnaceWorksiteFocus } from '../missions/furnaceWorksite.js';
 import { UNDERSTORY_RECEIVER, firstPlayerGardenGrowth } from '../data/understoryReceiver.js';
 import { nestOutcomeReceipt, nestWaypoint } from '../data/nestVisit.js';
+import { ensureSpineBreakWorksite, isSpineBreakOperation, spineBreakOutcome, SPINE_BREAK_CONFIG,
+  SPINE_BREAK_MAX_RETRIES, spineBreakContainers, spineBreakTugIdentity } from '../missions/spineBreakWorksite.js';
 // Missions, contracts & story-spine system (ARCHITECTURE §2.3 step 15, §3.11 state, §4.4 event
 // table; design/specs/07-missions-contracts-story-spine.md).
 //
@@ -58,6 +60,7 @@ import { QUIET_PASSAGE, buildQuietPassageOffer, evaluatePassengerHeatProximity }
 import { pointContaminationAt } from '../data/alienEcology.js';
 import { RED_KITE, validRedKiteReceipt } from '../data/redKite.js';
 import { validIlexOutcome } from '../data/ilexArk.js';
+import { FRONTIER_MODULES } from '../data/factions/free.js';
 import {
   MISSION_TYPES, STORY_BEATS, OFFER_MIX, MISSION_TUNING, ONE_LOAD_CARGO_TYPES, DOCK_SETTLED_TYPES,
   CONTRACT_DESK_SERVICES, hasContractsDesk,
@@ -1316,6 +1319,19 @@ function missionNavReason(m, station, sector) {
   const sectorName = sector && sector.name || 'target sector';
   const remaining = Math.max(0, (m.objectiveTarget || p.qty || 1) - (m.objectiveProgress || 0));
   const wreckName = p.wreckName || 'the marked wreck';
+  if (p.frontierBarnRaisingVersion === 1) {
+    const remainingModules = Math.max(0, FRONTIER_MODULES.length - Math.max(0, Number(m.objectiveProgress) || 0));
+    return remainingModules > 0
+      ? `Tow or push ${remainingModules} marked E-21 module${remainingModules === 1 ? '' : 's'} into the matching Io frame slots`
+      : 'Hold the six snapped modules while the frame welders finish';
+  }
+  if (isSpineBreakOperation(m)) {
+    const goal = SPINE_BREAK_CONFIG.recoupleGoal;
+    const progress = Math.max(0, Math.min(goal, Number(m.objectiveProgress) || 0));
+    return progress >= goal
+      ? `Escort the re-coupled train to ${stationName}`
+      : `Re-couple ${goal} loose containers (${progress}/${goal}), then escort the train to ${stationName}`;
+  }
   if (p.setPieceObjective === 'long_read_rumor_survey') {
     if (p.rumorAlreadyKnown) return `Fix the known ${wreckName} bearing in ${sectorName}`;
     return p.rumorPurchased
@@ -1488,6 +1504,153 @@ export const missions = {
   ...missionStoryOps,
   name: 'missions',
 
+  _adoptLiveMissionTargets(m) {
+    // This version's targets are physical Frontier-owned module/frame entities, not the
+    // generic one-asteroid tow objective. Unmarked accepted tow jobs keep the original adopter.
+    if (m?.params?.frontierBarnRaisingVersion === 1) return 0;
+    return missionSpawningOps._adoptLiveMissionTargets.call(this, m);
+  },
+
+  _isFrontierBarnMission(m) {
+    return !!m && m.type === 'tow_recovery' && m.storyTag === 'campaign47a:b4:operation'
+      && m.params?.bookScene === 'barn_raising'
+      && m.params?.frontierBarnRaisingVersion === 1;
+  },
+
+  _frontierBarnAttempt(m) {
+    if (!this._isFrontierBarnMission(m)) return null;
+    const attempt = this.state.frontier?.barnAttempt;
+    if (!attempt || attempt.version !== 1 || attempt.status !== 'active'
+        || attempt.missionId !== m.id || attempt.sectorId !== 'sector_io_reach'
+        || typeof attempt.siteId !== 'string' || attempt.frameId == null) return null;
+    const frame = this.state.entities?.get(attempt.frameId);
+    if (!frame || frame.alive === false || this.state.entities.get(frame.id) !== frame
+        || frame.data?.homesteadFrame !== true
+        || frame.data?.frontierMissionId !== m.id || frame.data?.frontierSite !== attempt.siteId
+        || frame.occupantGeneration !== attempt.frameGen) return null;
+    return { attempt, frame };
+  },
+
+  _frontierBarnSnappedKinds(m) {
+    const bound = this._frontierBarnAttempt(m);
+    if (!bound) return [];
+    const { attempt, frame } = bound;
+    const slots = frame.data?.slots;
+    if (!slots || typeof slots !== 'object' || Array.isArray(slots)) return [];
+    const valid = [];
+    for (const module of FRONTIER_MODULES) {
+      const id = slots[module.id];
+      if (id == null) continue;
+      const body = this.state.entities?.get(id);
+      if (!body || body.alive === false || this.state.entities.get(body.id) !== body
+          || attempt.moduleIds[module.id] !== id
+          || attempt.moduleGens[module.id] !== body.occupantGeneration
+          || body.type !== 'payload' || body.data?.homesteadModule !== module.id
+          || body.data?.frontierMissionId !== m.id || body.data?.frontierSite !== attempt.siteId
+          || body.data?.snapped !== true || body.data?.slotKind !== module.id
+          || body.data?.snappedFrameId !== frame.id
+          || body.data?.snappedFrameGen !== (frame.occupantGeneration ?? null)) continue;
+      valid.push(module.id);
+    }
+    return valid;
+  },
+
+  _frontierBarnReceipt(m) {
+    const bound = this._frontierBarnAttempt(m);
+    if (!bound) return null;
+    const { attempt, frame } = bound;
+    if (frame.data?.homesteadRaised !== true || frame.data?.homestead !== true || frame.data?.barnDone !== true) return null;
+    const kinds = this._frontierBarnSnappedKinds(m);
+    if (kinds.length !== FRONTIER_MODULES.length
+        || new Set(kinds).size !== FRONTIER_MODULES.length) return null;
+    const rec = (this.state.frontier?.homesteads || []).find((row) => row
+      && row.entityId === frame.id && row.gone !== true && row.partial !== true
+      && row.frontierMissionId === m.id && row.frontierSite === attempt.siteId
+      && row.gen === (frame.occupantGeneration ?? null)
+      && Number(row.raisedAt) >= Number(attempt.acceptedAt)
+      && Number(row.raisedAt) >= Number(attempt.plantedAt));
+    if (!rec || rec.modules?.length !== FRONTIER_MODULES.length
+        || FRONTIER_MODULES.some((module) => !rec.modules?.includes(module.id))) return null;
+    return {
+      version: 1, missionId: m.id, siteId: attempt.siteId, frameId: frame.id,
+      frameGen: frame.occupantGeneration ?? null,
+      moduleIds: Object.fromEntries(FRONTIER_MODULES.map((module) => [module.id, frame.data.slots[module.id]])),
+      raisedAt: rec.raisedAt,
+    };
+  },
+
+  _reconcileFrontierBarnAttempt() {
+    const attempt = this.state.frontier?.barnAttempt;
+    if (!attempt || !['active', 'pending'].includes(attempt.status)) return;
+    const mission = (this.state.missions?.active || []).find((m) => m && m.id === attempt.missionId && m.status === 'active');
+    if (!this._isFrontierBarnMission(mission)) return;
+    const frame = attempt.frameId != null ? this.state.entities?.get(attempt.frameId) : null;
+    if (frame && frame.alive !== false && frame.data?.frontierMissionId === mission.id
+        && frame.data?.frontierSite === attempt.siteId) {
+      // The durable owner tag and exact frame identity survive Continue; the saved occupant
+      // generation alone does not. Frontier has rebound snapped modules before this listener.
+      attempt.frameGen = frame.occupantGeneration ?? null;
+      mission.objectiveProgress = this._frontierBarnSnappedKinds(mission).length;
+      mission.params.frontierAttempt = {
+        siteId: attempt.siteId, frameId: frame.id, frameGen: frame.occupantGeneration ?? null,
+      };
+      this._refreshTrackedMissionNav(mission);
+    }
+  },
+
+  _onFrontierBarnSitePlanted(payload) {
+    const mission = (this.state.missions?.active || []).find((m) => m && m.id === payload.missionId && m.status === 'active');
+    const bound = this._frontierBarnAttempt(mission);
+    if (!bound || payload.siteId !== bound.attempt.siteId || payload.frameId !== bound.frame.id) return;
+    mission.params.frontierAttempt = {
+      siteId: bound.attempt.siteId, frameId: bound.frame.id,
+      frameGen: bound.frame.occupantGeneration ?? null,
+    };
+    this._refreshTrackedMissionNav(mission);
+    this.bus.emit('mission:updated', { missionId: mission.id });
+  },
+
+  _onFrontierBarnModuleSnapped(payload) {
+    const mission = (this.state.missions?.active || []).find((m) => m && m.id === payload.missionId && m.status === 'active');
+    if (!this._isFrontierBarnMission(mission)) return;
+    const bound = this._frontierBarnAttempt(mission);
+    if (!bound || payload.siteId !== bound.attempt.siteId || payload.frameId !== bound.frame.id) return;
+    const kinds = this._frontierBarnSnappedKinds(mission);
+    mission.objectiveProgress = kinds.length;
+    mission.params.frontierModulesSnapped = kinds;
+    this._refreshTrackedMissionNav(mission);
+    this.bus.emit('mission:updated', { missionId: mission.id, objectiveProgress: kinds.length });
+  },
+
+  _onFrontierBarnRetry(payload) {
+    const mission = (this.state.missions?.active || []).find((m) => m && m.id === payload.missionId && m.status === 'active');
+    const bound = this._frontierBarnAttempt(mission);
+    if (!bound || payload.siteId !== bound.attempt.siteId || payload.frameId !== bound.frame.id) return;
+    mission.params.frontierRetries = Math.max(0, Number(mission.params.frontierRetries) || 0) + 1;
+    mission.objectiveProgress = this._frontierBarnSnappedKinds(mission).length;
+    this._refreshTrackedMissionNav(mission);
+    this.bus.emit('mission:updated', { missionId: mission.id, frontierRetries: mission.params.frontierRetries });
+  },
+
+  _onFrontierBarnRaised(payload) {
+    const index = (this.state.missions?.active || []).findIndex((m) => m && m.id === payload.missionId && m.status === 'active');
+    if (index < 0) return;
+    const mission = this.state.missions.active[index];
+    if (!this._isFrontierBarnMission(mission)) return;
+    const receipt = this._frontierBarnReceipt(mission);
+    if (!receipt || payload.siteId !== receipt.siteId || payload.homesteadId !== receipt.frameId) return;
+    mission.params.frontierReceipt = receipt;
+    mission.objectiveProgress = FRONTIER_MODULES.length;
+    this._completeMission(mission, index);
+  },
+
+  _onFrontierBarnAttemptLost(payload) {
+    const index = (this.state.missions?.active || []).findIndex((m) => m && m.id === payload.missionId && m.status === 'active');
+    if (index >= 0 && this._isFrontierBarnMission(this.state.missions.active[index])) {
+      this._failMission(this.state.missions.active[index], index, 'target_lost');
+    }
+  },
+
   init(ctx) {
     this._racingSetPieces?.stop('reinitialize');
     this._racingSetPieces = null;
@@ -1520,17 +1683,34 @@ export const missions = {
     this._nextMissionSpawnRetryTick = 0;
     this._lastWaypointRouteKey = null;
     this._lastWaypointRouteAt = 0;
+    this._spineBreakSaveRestorePending = false;
 
     // New game → seed config + reset boards/active (idempotent: a load may already have populated).
     bus.on('game:started', () => this.newGame());
     bus.on('tutorial:finished', () => this._releaseStoryNavigationAfterTutorial());
     bus.on('save:loaded', () => {
+      // Persistent trains must rebind while the restore's identity window is open,
+      // even if 3/3 couplers are already complete or the player saved in another sector.
+      for (const m of this.state.missions?.active || []) {
+        if (m.status === 'active' && isSpineBreakOperation(m)) this._adoptLiveMissionTargets(m);
+      }
+      this._spineBreakSaveRestorePending = false;
       this._reconcileCompostGrowth();
       this._reconcileNestOutcome();
+      this._reconcileFrontierBarnAttempt();
       this._restoreNavigationAfterLoad();
       this._reconcileLandmarkQuestOffers();
     });
-    bus.on('save:restoring', () => this._missionBudgetDeferrals.clear());
+    bus.on('frontier:sitePlanted', (p) => this._onFrontierBarnSitePlanted(p || {}));
+    bus.on('frontier:moduleSnapped', (p) => this._onFrontierBarnModuleSnapped(p || {}));
+    bus.on('frontier:barnRetry', (p) => this._onFrontierBarnRetry(p || {}));
+    bus.on('frontier:homesteadRaised', (p) => this._onFrontierBarnRaised(p || {}));
+    bus.on('frontier:missionAttemptLost', (p) => this._onFrontierBarnAttemptLost(p || {}));
+    bus.on('frontier:missionAttemptUnavailable', (p) => this._onFrontierBarnAttemptLost(p || {}));
+    bus.on('save:restoring', () => {
+      this._spineBreakSaveRestorePending = true;
+      this._missionBudgetDeferrals.clear();
+    });
     // A Crucible launch (Swarm / Gauntlet / scored) boots the shared NEW_GAME world, whose
     // newGame() installs and tracks the 47-A cold-start contract. The Crucible is not the
     // campaign: withdraw that contract before the run so its objective, nav marker and HUD
@@ -1626,7 +1806,10 @@ export const missions = {
     bus.on('worldPressure:auditAnnounced', (p) => this._recordCampaignBookSignal('worldPressure:auditAnnounced', p));
     bus.on('worldPressure:gateClosed', (p) => this._recordCampaignBookSignal('worldPressure:gateClosed', p));
     bus.on('tether:strain', (p) => this._onBookVarianceStrain(p));
-    bus.on('pickup:collected', (payload) => onWakePickupCollected(this, payload));
+    bus.on('pickup:collected', (payload) => {
+      onWakePickupCollected(this, payload);
+      this._onSpineBreakCargoCollected(payload);
+    });
 
     // ── Objective tracking listeners ─────────────────────────────────────────────────────────
     // bulk_trade quota: sell qty of the target commodity (trade.sold alias → economy:tradeCompleted).
@@ -2907,6 +3090,7 @@ export const missions = {
         ? Math.max(1, params.scanTargets || 1) + Math.max(1, params.sampleQty || 1)
         : params.scanTargets;
       case 'tow_recovery':
+        if (params?.frontierBarnRaisingVersion === 1) return FRONTIER_MODULES.length;
       case 'demolition':
       case 'rescue_under_fire':
       case AUTHORED_SET_PIECE_TYPE:
@@ -2928,10 +3112,13 @@ export const missions = {
   },
 
   _typeSpawnsTargets(typeId, offer = null, params = null) {
+    const barnParams = params || (offer && offer.params) || null;
+    // B4 v1 receives its target set from Frontier's six-module frame, never the generic tow core.
+    if (typeId === 'tow_recovery' && barnParams?.frontierBarnRaisingVersion === 1) return false;
     // WF-08 claim-stake salvage: a board salvage row materializes a contested wreck site
     // on arrival, so it needs the deferred spawn lifecycle like every other placed contract.
     if (typeId === 'salvage_retrieval' && contractClaimSiteOffer(offer)) return true;
-    const p = params || (offer && offer.params) || null;
+    const p = barnParams;
     // PB-MIS-E: the yard scenes materialize their bodies on destination arrival like every
     // other placed contract — deferred spawn lifecycle, sector-exit conservation.
     return typeId === SPLIT_MANIFEST_TYPE || typeId === QUIET_BERTH_TYPE
@@ -3215,6 +3402,21 @@ export const missions = {
       sectorId: m.destSectorId || null,
       sectorName: sector && sector.name || null,
     };
+    if (m.params?.frontierBarnRaisingVersion === 1) {
+      const bound = this._frontierBarnAttempt(m);
+      if (bound) {
+        return {
+          ...base, label: 'Io Reach E-21 frame', stationId: null,
+          targetEntityId: bound.frame.id,
+          pos: { x: bound.frame.pos.x, z: bound.frame.pos.z },
+          reason: missionNavReason(m, station, sector),
+        };
+      }
+      return {
+        ...base, label: 'Io Reach worksite',
+        reason: 'Reach Io Station and follow the mission marker to the Frontier frame',
+      };
+    }
     const cinderFocus = cinderRouteFocus(m, this.state);
     if (cinderFocus) return { ...base, ...cinderFocus, stationId: null };
     const mawFocus = mawWorksiteFocus(m, this.state, sectorLocalToGlobalForSector);
@@ -3929,17 +4131,31 @@ export const missions = {
       const stake = getPickSideStake(flags.elroy_outcome);
       const authored = embodiedMissionAt(4) || {};
       const loc = authored.location || {};
-      // PQ-032.02: the live route posts all three doors — none is "the" stake until the
-      // player picks, so point at the clearing administrator's authored desk instead of a
-      // flavour branch. Legacy/pinned saves keep their outcome-shaped stake pointer.
-      const target = campaign47aRouteKind(state) === 'live'
+      const routeKind = campaign47aRouteKind(state);
+      // PQ-032.02: before the player chooses, the live route points at the clearing
+      // administrator's desk. Once an intro settles, use the same authored operation row
+      // the board posts so the story marker hands off to that door's actual station.
+      const operation = routeKind === 'live' && state.story && state.story.branch
+        ? buildMissionBoardContract(4, { state, branch: state.story.branch })
+        : null;
+      const operationInfo = operation && operation.storyTag === 'campaign47a:b4:operation'
+        ? STATION_INFO.get(operation.stationId)
+        : null;
+      const target = operationInfo
         ? {
-          stationId: loc.stationId || stake.stationId,
-          sectorId: loc.sectorId || stake.sectorId,
-          label: storyBeatTitle(beat),
-          instruction: authored.recovery || stake.instruction,
+          stationId: operation.stationId,
+          sectorId: operationInfo.sectorId,
+          label: operation.title || storyBeatTitle(beat),
+          instruction: `${operation.title || 'The operation'} is on the board at ${operationInfo.name}.`,
         }
-        : stake;
+        : routeKind === 'live'
+          ? {
+            stationId: loc.stationId || stake.stationId,
+            sectorId: loc.sectorId || stake.sectorId,
+            label: storyBeatTitle(beat),
+            instruction: authored.recovery || stake.instruction,
+          }
+          : stake;
       const info = STATION_INFO.get(target.stationId);
       const station = currentSectorId === target.sectorId ? this._liveStation(target.stationId) : null;
       return {
@@ -4664,6 +4880,45 @@ export const missions = {
       if (this._refuseTurnInIfBlocked(m)) continue;
 
       if (t === 'escort') {
+        if (isSpineBreakOperation(m)) {
+          const outcome = this._refreshSpineBreakProgress(m) || spineBreakOutcome(this.state, m);
+          if (!this._escorteeArrivedOk(m)) {
+            this.bus.emit('toast', { text: 'Spine Break: wait for the Meridian tug to dock', kind: 'warn', ttl: 3 });
+            continue;
+          }
+          if (outcome.status !== 'spine_recoupled') {
+            if (outcome.status === 'unrecoverable') {
+              if (this._retrySpineBreakAttempt(m, { reason: 'manifest_unrecoverable' })) {
+                this.bus.emit('toast', {
+                  text: 'Manifest unrecoverable. Meridian has sent one fresh train and six new boxes.',
+                  kind: 'warn', ttl: 5,
+                });
+              } else {
+                const worksite = ensureSpineBreakWorksite(m);
+                if (worksite) worksite.status = 'failed';
+                this._failMission(m, i, 'spine_break_unrecoverable');
+              }
+            } else {
+              this.bus.emit('toast', {
+                text: `Spine Break: re-couple ${outcome.remaining} more loose container${outcome.remaining === 1 ? '' : 's'} before docking`,
+                kind: 'warn', ttl: 4,
+              });
+            }
+            continue;
+          }
+          const worksite = ensureSpineBreakWorksite(m);
+          if (worksite) {
+            worksite.status = 'completed';
+            worksite.completedAt = Number(this.state.simTime) || 0;
+            worksite.recoupledIndices = spineBreakContainers(this.state, m)
+              .filter((entity) => entity.data?.authoredLoose === true
+                && entity.data?.spineLoose === false && entity.data?.spineId === worksite.spineId)
+              .map((entity) => entity.data.spineBreakIndex).sort((a, b) => a - b);
+          }
+          this._settleEscortConvoyPay(m);
+          this._completeMission(m, i);
+          continue;
+        }
         // Player reached the destination — complete only if the convoy survived AND arrived too.
         const ok = this._escorteeArrivedOk(m);
         if (ok) { this._settleEscortConvoyPay(m); this._completeMission(m, i); }
@@ -4865,6 +5120,21 @@ export const missions = {
     }
     const e = this.state.entities.get(m._escorteeId);
     if (!e || !e.alive) return false;       // dead → _onEntityDestroyed will fail it anyway
+    if (isSpineBreakOperation(m)) {
+      const worksite = ensureSpineBreakWorksite(m);
+      const identity = spineBreakTugIdentity(m, worksite?.attempt);
+      if (!worksite || e.id !== worksite.tugId
+          || (e.occupantGeneration ?? null) !== worksite.tugGeneration
+          || e.data?.spineBreakTug !== true
+          || e.data?.spineBreakTugIdentity !== identity
+          || String(e.data?.spineBreakMissionId) !== String(m.id)
+          || e.data?.spineBreakAttempt !== worksite.attempt
+          || e.data?.spineId !== worksite.spineId) return false;
+      const station = this._liveStation(m.destStationId);
+      if (this.state.world?.currentSectorId !== m.destSectorId || !station?.pos || !e.pos) return false;
+      const radius = (station.data?.dockRadius || 80) + 40;
+      if (Math.hypot(e.pos.x - station.pos.x, e.pos.z - station.pos.z) > radius) return false;
+    }
     return !!m._escorteeArrived;
   },
 
@@ -5363,6 +5633,36 @@ export const missions = {
     // not settled until its physical terms are — and the player is told which one and why. The
     // mission stays active and re-settles the moment the term latches (see _onConditionSatisfied).
     if (this._refuseTurnInIfBlocked(m)) { m._settlePending = true; return; }
+    if (this._isFrontierBarnMission(m)) {
+      const receipt = this._frontierBarnReceipt(m);
+      if (!receipt) {
+        // No dock, tow, stale event, or saved objective counter can settle the v1 job.
+        delete m.params.frontierReceipt;
+        m._settlePending = true;
+        return;
+      }
+      m.params.frontierReceipt = receipt;
+      m.objectiveProgress = FRONTIER_MODULES.length;
+    }
+    if (isSpineBreakOperation(m)) {
+      const outcome = spineBreakOutcome(state, m);
+      const worksite = ensureSpineBreakWorksite(m);
+      if (outcome.status !== 'spine_recoupled' || !this._escorteeArrivedOk(m)) {
+        if (worksite && worksite.status !== 'completed') worksite.status = outcome.status;
+        m._settlePending = true;
+        return;
+      }
+      m.objectiveTarget = outcome.goal;
+      m.objectiveProgress = outcome.recoupled;
+      if (worksite) {
+        worksite.status = 'completed';
+        worksite.completedAt = Number(state.simTime) || 0;
+        worksite.recoupledIndices = spineBreakContainers(state, m)
+          .filter((entity) => entity.data?.authoredLoose === true
+            && entity.data?.spineLoose === false && entity.data?.spineId === worksite.spineId)
+          .map((entity) => entity.data.spineBreakIndex).sort((a, b) => a - b);
+      }
+    }
     if (m._settlePending) delete m._settlePending;
     const setPieceTransition = this._compileSetPieceTransition(m, 'completed');
     const clauseSettlement = settleContractClauses(m);
@@ -5464,6 +5764,8 @@ export const missions = {
       causeFingerprint: m.cause && m.cause.fingerprint || undefined,
       causeTag: m.cause && m.cause.tag || undefined,
       rewardCr: settledRewardCr,
+      ...(this._isFrontierBarnMission(m) && m.params?.frontierReceipt
+        ? { frontierReceipt: JSON.parse(JSON.stringify(m.params.frontierReceipt)) } : {}),
       ...(m.featured ? { featured: { dayKey: m.featured.dayKey ?? null, repBonus: featuredRep } } : {}),
       ...setPieceEventFields(m, setPieceTransition),
     };

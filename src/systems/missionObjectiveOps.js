@@ -33,6 +33,9 @@ import { SET_PIECE_FOLLOW_ON_SOURCE, setPieceFollowOnBody, setPieceFollowOnOffer
 import { recordBeatStep } from '../story/campaign47a/index.js';
 import { decorateCapitalBossSpawnSpec } from '../missions/capitalBossSpawn.js';
 import { missionTargetSlotOf } from './missions.js';
+import { ensureSpineBreakWorksite, isSpineBreakOperation, noteSpineBreakDisposition,
+  spineBreakOutcome } from '../missions/spineBreakWorksite.js';
+import { hasExplicitPickupAcceptance, finiteWholePickupAmount } from '../core/pickupAcceptance.js';
 
 export const missionObjectiveOps = {
   // =========================================================================================
@@ -492,17 +495,89 @@ export const missionObjectiveOps = {
     this._failMission(m, i, 'failed_external');
   },
 
+  _resolveSpineBreakCargoLoss(m, index, entity, kind) {
+    if (!isSpineBreakOperation(m) || !entity || entity.data?.spineBreakContainer !== true
+        || String(entity.data.spineBreakMissionId) !== String(m.id)) return false;
+    const worksite = ensureSpineBreakWorksite(m);
+    if (!worksite || entity.data.spineBreakAttempt !== worksite.attempt
+        || entity.data.spineId !== worksite.spineId
+          && !(entity.data.spineLoose === true && entity.data.lostFromSpineId === worksite.spineId)
+        || entity.data.spineBreakTugId !== worksite.tugId
+        || entity.data.spineBreakTugGeneration !== worksite.tugGeneration) return false;
+    const row = worksite.containers.find((entry) => entry.id === entity.id
+      && entry.attempt === worksite.attempt && entry.spineId === worksite.spineId
+      && (entry.generation == null || entry.generation === entity.occupantGeneration));
+    if (!row) return false;
+    noteSpineBreakDisposition(m, row.index, kind);
+    const outcome = this._refreshSpineBreakProgress(m) || spineBreakOutcome(this.state, m);
+    if (outcome.status === 'unrecoverable') {
+      if (this._retrySpineBreakAttempt(m, { reason: `manifest_${kind}` })) {
+        this.bus.emit('toast', {
+          text: 'Too much of the manifest is gone. Meridian has sent one fresh train and six new boxes.',
+          kind: 'warn', ttl: 5,
+        });
+      } else {
+        worksite.status = 'failed';
+        this._failMission(m, index, `spine_break_${kind}_unrecoverable`);
+      }
+    }
+    this.bus.emit('mission:updated', { missionId: m.id, spineBreakDisposition: kind, index: row.index });
+    return true;
+  },
+
+  _onSpineBreakCargoCollected(p) {
+    if (!p || p.pickupId == null) return;
+    if (hasExplicitPickupAcceptance(p) && !(finiteWholePickupAmount(p.acceptedAmount) > 0)) return;
+    const entity = this.state.entities && this.state.entities.get(p.pickupId);
+    if (!entity || entity.data?.spineBreakContainer !== true) return;
+    for (let i = this.state.missions.active.length - 1; i >= 0; i--) {
+      const m = this.state.missions.active[i];
+      if (!isSpineBreakOperation(m) || m.status !== 'active') continue;
+      this._resolveSpineBreakCargoLoss(m, i, entity, 'stolen');
+    }
+  },
+
   _onEntityDestroyed(p) {
     if (!p || p.id == null) return;
     // PQ-019C: a destroyed capsule is a `payload_destroyed` CANDIDATE, arbitrated against whatever
     // else happened this tick — not an immediate failure. It is stamped from the live tick because
     // this listener runs synchronously with the destruction that caused it.
     this._heistEach((h) => heistMissionRuntime.onEntityDestroyed(this._heistCtx(), h, p.id));
+    // The Book 4 mission owns its train and retries one complete cast before it can fail.
+    // Do not treat Continue cleanup or the owner's retry retirement as a real loss.
+    const ignoredSpineBreakRemoval = new Set([
+      'run_reset', 'save_restore', 'spine_break_retry',
+      'spine_break_stale_cast', 'spine_break_duplicate_cast',
+    ]).has(p.reason);
+    for (let i = this.state.missions.active.length - 1; i >= 0; i--) {
+      const m = this.state.missions.active[i];
+      if (!isSpineBreakOperation(m) || m.status !== 'active' || ignoredSpineBreakRemoval) continue;
+      const worksite = ensureSpineBreakWorksite(m);
+      const destroyed = p.entity;
+      if (!worksite || !destroyed || destroyed.id !== p.id) continue;
+      if (m._escorteeId === p.id) {
+        if (destroyed.occupantGeneration !== worksite.tugGeneration
+            || destroyed.data?.spineBreakTug !== true
+            || String(destroyed.data?.spineBreakMissionId) !== String(m.id)
+            || destroyed.data?.spineBreakAttempt !== worksite.attempt
+            || destroyed.data?.spineId !== worksite.spineId) continue;
+        if (this._retrySpineBreakAttempt(m, { ...p, reason: p.reason || 'tug_lost' })) continue;
+        worksite.status = 'failed';
+        this._failMission(m, i, 'spine_break_tug_lost');
+        continue;
+      }
+      if (destroyed.data?.spineBreakContainer === true) {
+        this._resolveSpineBreakCargoLoss(m, i, destroyed, 'lost');
+        continue;
+      }
+    }
+
     // Escort fail: the escortee entity died. Stamp the loss site first (INF-066) — the
     // destroy payload's last pos is the only pointer to the hull, and the entity row is
     // already deleted, so the salvage successor routes to the true wreck from this stamp.
     for (let i = this.state.missions.active.length - 1; i >= 0; i--) {
       const m = this.state.missions.active[i];
+      if (isSpineBreakOperation(m)) continue; // handled by the mission-owned retry above
       if (m.status !== 'active' || m.type !== 'escort') continue;
       if (m._escorteeId != null && m._escorteeId === p.id) {
         const site = escortLossSite(p.pos, this.state.world && this.state.world.currentSectorId);
@@ -1646,7 +1721,8 @@ export const missionObjectiveOps = {
       ? rescueEncounter.actors.find((actor) => actor.role === PHYSICAL_ROLE.ESCORT) : null;
     const rescueActorOutcomes = b2Rescue ? ensureB2RescueActorOutcomes(m) : null;
     const have = this._countPhysicalRoles(m);
-    const wantCore = m.type === 'tow_recovery' ? 1 : 0;
+    const wantCore = m.type === 'tow_recovery'
+      && m.params?.frontierBarnRaisingVersion !== 1 ? 1 : 0;
     const wantTower = m.type === 'demolition' ? 1 : 0;
     const configuredPodCount = Math.max(1, Number(m.params && m.params.podCount) || 2);
     // B2 actor outcomes are a per-cast durable ledger; the counters remain as compact HUD/save
@@ -2303,6 +2379,9 @@ export const missionObjectiveOps = {
 
   _completePhysical(m, index, method) {
     if (!m || m.status !== 'active') return false;
+    // B4 v1 is settled only by the Frontier owner's live six-slot weld receipt. The inherited
+    // tow-recovery paths remain intact for old accepted jobs without this version marker.
+    if (m.params?.frontierBarnRaisingVersion === 1) return false;
     // W-BOOKS-3-4: a book contract whose authored extra is still owed refuses the settle —
     // the maw stays on the lane until the slag has knocked it stupid. Only contracts that
     // carry an extras param are affected; every other physical completion path is unchanged.
