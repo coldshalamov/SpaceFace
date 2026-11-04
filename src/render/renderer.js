@@ -1,4 +1,5 @@
 import { createHiddenSubtreeLifecycleMethods } from './runtime/hiddenSubtreeLifecycle.js';
+import { releaseStaticBatchGeometryForObject } from './staticBatchGeometryCache.js';
 import { isPhysicsBoundWholeHulk } from '../data/wholeShipVisualIdentity.js';
 import { createShadowDepthStageMethods } from './runtime/shadowDepthStage.js';
 import {
@@ -34037,6 +34038,7 @@ function driveShadowPolicySteps(owner, root, walkRoot, lodLevel, opts, deadlineF
 }
 
 export function disposeObjectNode(c, state = null) {
+  releaseStaticBatchGeometryForObject(c);
   if (!c) return false;
   try { c[LIVE_PACKAGE_CPU_PAYLOAD]?.(); }
   catch (error) { stormWarn('teardown:liveCpuPayload', '[render] live CPU payload release failed', error); }

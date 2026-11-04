@@ -3,6 +3,9 @@ import { after, test } from 'node:test';
 import { registerHooks } from 'node:module';
 import { createVisualFactory } from '../src/render/visualFactory.js';
 import { SHIPS } from '../src/data/ships.js';
+import * as THREE from 'three';
+import { rememberStaticBatchGeometry, retainStaticBatchGeometryForObject,
+  releaseStaticBatchGeometryForObject, clearStaticBatchGeometryCacheForTests } from '../src/render/staticBatchGeometryCache.js';
 
 // CPU ownership fixture. The constructor, visual factory, caches and disposal events are real;
 // WebGLRenderer and the browser surfaces are substitutes. These are not GPU/device observations.
@@ -94,6 +97,33 @@ function mountPreview() {
   const mount = createShipPreviewMount(element(), { authoredShips: false, authoredWarmup: false });
   return { mount, renderer: renderers.at(-1) };
 }
+
+test('real preview teardown releases its cached geometry lease without stealing a live scene borrower', () => {
+  clearStaticBatchGeometryCacheForTests();
+  const { mount, renderer } = mountPreview();
+  mount.show('ship_pelican', { rotating: false });
+  let root;
+  renderer.scene.traverse(object => { if (!root && object.userData?.kind === 'ship') root = object; });
+  assert.ok(root, 'real preview owns a mounted ship');
+  const geometry = new THREE.BoxGeometry();
+  let disposals = 0;
+  geometry.addEventListener('dispose', () => disposals++);
+  rememberStaticBatchGeometry('preview-fixture', geometry);
+  const previewLeaf = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial());
+  const sceneLeaf = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial());
+  let residencyReleases = 0;
+  previewLeaf.userData.releaseAuthoredAssetResidency = () => { residencyReleases++; };
+  retainStaticBatchGeometryForObject(previewLeaf); retainStaticBatchGeometryForObject(sceneLeaf);
+  root.add(previewLeaf);
+  rememberStaticBatchGeometry('preview-evictor', new THREE.BoxGeometry(), 1);
+  mount.dispose(); mount.dispose();
+  assert.equal(residencyReleases, 1);
+  assert.equal(disposals, 0, 'separate live scene still owns its lease');
+  releaseStaticBatchGeometryForObject(sceneLeaf);
+  assert.equal(disposals, 1, 'the preview released its own lease exactly once');
+  previewLeaf.material.dispose(); sceneLeaf.material.dispose();
+  clearStaticBatchGeometryCacheForTests();
+});
 
 test('retirement preserves real factory geometry borrowed by another hull and releases only preview material clones', () => {
   const def = SHIPS.find(ship => ship.id === 'ship_pelican');

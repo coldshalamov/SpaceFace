@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { releaseStaticBatchGeometryForObject } from './staticBatchGeometryCache.js';
 import { SHIPS } from '../data/ships.js';
 import { WEAPONS } from '../data/weapons.js';
 import { ENEMY_TYPES } from '../data/enemies.js';
@@ -1434,6 +1435,8 @@ function retainPipelineWarmup(renderer, root) {
 function disposeObject(root) {
   root.traverse((object) => {
     if (object.userData?.precompileBorrowedResources) return;
+    try { object.userData?.releaseAuthoredAssetResidency?.('precompile-disposed'); } catch { /* continue teardown */ }
+    releaseStaticBatchGeometryForObject(object);
     if (object.geometry && typeof object.geometry.dispose === 'function'
       && !(object.geometry.userData && object.geometry.userData.spacefaceSharedAsset)) {
       object.geometry.dispose();

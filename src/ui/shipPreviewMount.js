@@ -12,6 +12,7 @@
 // textures/materials are shared with the visualFactory (procedural canvas textures) — we do NOT
 // dispose those (the factory may reuse them); we only dispose our renderer + RT + geometry we add.
 import * as THREE from 'three';
+import { releaseStaticBatchGeometryForObject } from '../render/staticBatchGeometryCache.js';
 import { SHIPS } from '../data/ships.js';
 import { normalizeShipAppearance, shipAppearanceSignature } from '../core/shipAppearance.js';
 import { modelTruthMountFractions } from '../data/modelTruth.js';
@@ -630,6 +631,8 @@ export function createShipPreviewMount(canvas, opts) {
     const geometries = new Set();
     mesh.traverse((object) => {
       const geometry = object.geometry;
+      try { object.userData?.releaseAuthoredAssetResidency?.('preview-disposed'); } catch { /* continue teardown */ }
+      releaseStaticBatchGeometryForObject(object);
       // Authored packages and static factory batches are borrowed by other hulls/contexts.
       // Their cache/residency owner releases them; a preview must not invalidate their uploads.
       if (geometry && !geometry.userData?.spacefaceSharedAsset) geometries.add(geometry);

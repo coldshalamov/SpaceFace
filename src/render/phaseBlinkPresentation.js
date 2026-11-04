@@ -6,6 +6,7 @@
 // the place the hull now is. Nothing here writes the sim.
 
 import * as THREE from 'three';
+import { retainStaticBatchGeometryTree, releaseStaticBatchGeometryTree } from './staticBatchGeometryCache.js';
 import { cloneMaterialPreservingShaderHooks } from './materialClone.js';
 import {
   ARRIVE_DUR,
@@ -593,6 +594,7 @@ export function createPhaseBlinkPresentation() {
 
   function disposeGhost() {
     if (ghost && ghost.parent) ghost.parent.remove(ghost);
+    releaseStaticBatchGeometryTree(ghost);
     for (let i = 0; i < ghostMaterials.length; i += 1) {
       const mat = ghostMaterials[i];
       if (mat && typeof mat.dispose === 'function') {
@@ -640,32 +642,38 @@ export function createPhaseBlinkPresentation() {
     for (let i = 0; i < skipped.length; i += 1) {
       if (skipped[i].parent) skipped[i].parent.remove(skipped[i]);
     }
-    ghost.matrixAutoUpdate = true;
-    ghost.frustumCulled = false;
-    ghost.renderOrder = 3;
-    ghost.traverse((obj) => {
-      if (!obj) return;
-      obj.castShadow = false;
-      obj.receiveShadow = false;
-      obj.frustumCulled = false;
-      obj.renderOrder = 3;
-      if (!obj.material) return;
-      if (Array.isArray(obj.material)) {
-        obj.material = obj.material.map((mat) => {
-          const next = tintShadow(mat);
-          if (next && next !== mat) ghostMaterials.push(next);
-          return next;
-        });
-      } else {
-        const next = tintShadow(obj.material);
-        if (next && next !== obj.material) ghostMaterials.push(next);
-        obj.material = next;
-      }
-    });
-    ghost.userData = ghost.userData || {};
-    ghost.userData.phaseBlinkGhost = true;
-    clonedFrom = playerMesh;
-    if (scene) scene.add(ghost);
+    retainStaticBatchGeometryTree(ghost);
+    try {
+      ghost.matrixAutoUpdate = true;
+      ghost.frustumCulled = false;
+      ghost.renderOrder = 3;
+      ghost.traverse((obj) => {
+        if (!obj) return;
+        obj.castShadow = false;
+        obj.receiveShadow = false;
+        obj.frustumCulled = false;
+        obj.renderOrder = 3;
+        if (!obj.material) return;
+        if (Array.isArray(obj.material)) {
+          obj.material = obj.material.map((mat) => {
+            const next = tintShadow(mat);
+            if (next && next !== mat) ghostMaterials.push(next);
+            return next;
+          });
+        } else {
+          const next = tintShadow(obj.material);
+          if (next && next !== obj.material) ghostMaterials.push(next);
+          obj.material = next;
+        }
+      });
+      ghost.userData = ghost.userData || {};
+      ghost.userData.phaseBlinkGhost = true;
+      clonedFrom = playerMesh;
+      if (scene) scene.add(ghost);
+    } catch (error) {
+      disposeGhost();
+      throw error;
+    }
   }
 
   function pair(kind) {

@@ -242,6 +242,12 @@ import {
   rememberStaticBatchGeometry,
   staticBatchGeometryCacheKey,
   takeCachedStaticBatchGeometry,
+  retainStaticBatchGeometry,
+  retainStaticBatchGeometryForObject,
+  releaseStaticBatchGeometryForObject,
+  retainStaticBatchGeometryTree,
+  releaseStaticBatchGeometryTree,
+  isManagedStaticBatchGeometry,
 } from './staticBatchGeometryCache.js';
 import { configureTransparentSinglePassSurfaces } from './transparentSinglePassPolicy.js';
 import {
@@ -3768,6 +3774,7 @@ function isolatePreparedCargoBatchGeometries(root) {
     const ownerGeometry = sharedGeometry.clone();
     ownerGeometry.userData = { ...(ownerGeometry.userData || {}) };
     delete ownerGeometry.userData.spacefaceSharedAsset;
+    releaseStaticBatchGeometryForObject(object);
     object.geometry = ownerGeometry;
     ownerLocalGeometries.push(ownerGeometry);
   });
@@ -12027,6 +12034,7 @@ function* disposeAbortPartialPreScanSteps(partial) {
     if (!object) continue;
     if ((++visited % 128) === 0) yield;
     object.castShadow = false;
+    releaseStaticBatchGeometryForObject(object);
     const instance = object.userData ? object.userData.renderPackageInstance : null;
     if (instance && typeof instance.dispose === 'function') {
       try { instance.dispose('compose-aborted'); } catch { /* best-effort */ }
@@ -12207,27 +12215,34 @@ function* createFlightRootTemplateEntrySteps({
 }) {
   const packageRecipes = yield* collectFlightPackageRecipesSteps(root);
   const templateRoot = yield* createFlightTemplateRootSteps(root);
-  yield* stripFlightPackageTemplateSubtreesSteps(templateRoot, packageRecipes);
-  return {
-    root: templateRoot,
-    hullPath: objectPathFromRoot(root, root.userData && root.userData.hull),
-    shieldBubblePath: objectPathFromRoot(root, root.userData && root.userData.shieldBubble),
-    safetyCorePath: findObjectPath(root, (object) => object.userData?.spacefaceReadabilityCore === true),
-    bindings: captureFlightTemplateBindings(root, bindings),
-    authoredHullLevels: [...(authoredHullLevels || EMPTY_ARRAY)],
-    authoredParts: [...(authoredParts || EMPTY_ARRAY)],
-    authoredSlots: cloneFlightTemplateMetadata(authoredSlots || {}),
-    fallbackParts: [...(root.userData?.renderContract?.proceduralFallbackParts || EMPTY_ARRAY)],
-    renderContract: cloneFlightTemplateMetadata(root.userData?.renderContract || {}),
-    producerManifest: cloneFlightTemplateMetadata(root.userData?.openingSubmissionPackage?.manifest || null),
-    packageRecipes,
-    retainedGeometryBytes: estimateFlightTemplateGeometryBytes(templateRoot),
-    wholeShip: wholeShip === true,
-    loadoutFingerprint,
-    cacheHeld: true,
-    instanceRefs: 0,
-    disposed: false,
-  };
+  let adopted = false;
+  try {
+    yield* stripFlightPackageTemplateSubtreesSteps(templateRoot, packageRecipes);
+    const entry = {
+      root: templateRoot,
+      hullPath: objectPathFromRoot(root, root.userData && root.userData.hull),
+      shieldBubblePath: objectPathFromRoot(root, root.userData && root.userData.shieldBubble),
+      safetyCorePath: findObjectPath(root, (object) => object.userData?.spacefaceReadabilityCore === true),
+      bindings: captureFlightTemplateBindings(root, bindings),
+      authoredHullLevels: [...(authoredHullLevels || EMPTY_ARRAY)],
+      authoredParts: [...(authoredParts || EMPTY_ARRAY)],
+      authoredSlots: cloneFlightTemplateMetadata(authoredSlots || {}),
+      fallbackParts: [...(root.userData?.renderContract?.proceduralFallbackParts || EMPTY_ARRAY)],
+      renderContract: cloneFlightTemplateMetadata(root.userData?.renderContract || {}),
+      producerManifest: cloneFlightTemplateMetadata(root.userData?.openingSubmissionPackage?.manifest || null),
+      packageRecipes,
+      retainedGeometryBytes: estimateFlightTemplateGeometryBytes(templateRoot),
+      wholeShip: wholeShip === true,
+      loadoutFingerprint,
+      cacheHeld: true,
+      instanceRefs: 0,
+      disposed: false,
+    };
+    adopted = true;
+    return entry;
+  } finally {
+    if (!adopted) releaseStaticBatchGeometryTree(templateRoot);
+  }
 }
 
 function createFlightTemplateRoot(sourceRoot) {
@@ -12251,6 +12266,7 @@ function* createFlightTemplateRootSteps(sourceRoot) {
       });
     }
     templateRoot = sourceRoot.clone(true);
+    retainStaticBatchGeometryTree(templateRoot);
   } finally {
     for (const [object, userData] of sourceUserData) object.userData = userData;
   }
@@ -12258,44 +12274,54 @@ function* createFlightTemplateRootSteps(sourceRoot) {
   const materials = new Map();
   const sanitizeStack = [templateRoot];
   let sanitizeVisited = 0;
-  while (sanitizeStack.length) {
-    const object = sanitizeStack.pop();
-    if ((++sanitizeVisited % 128) === 0) yield;
-    if (!object) continue;
-    object.onBeforeRender = THREE.Object3D.prototype.onBeforeRender;
-    object.onAfterRender = THREE.Object3D.prototype.onAfterRender;
-    object.userData = sanitizeFlightTemplateUserData(object.userData);
-    object.userData.spacefaceFlightTemplatePath = (objectPathFromRoot(templateRoot, object) || []).join('/');
-    if (object.geometry) {
-      // Fleet-shared bakes (retro packs, bounds proxy, other spacefaceSharedAsset geometry) are
-      // immutable and disposal-proofed by construction — the template must alias them. Cloning
-      // one made every template's instances draw unique buffers, which is exactly the +29s
-      // Retro_*/BoundsProxy upload burst the D160 witness measured at wave materialization.
-      const shared = object.geometry.userData
-        && (object.geometry.userData.spacefaceSharedAsset === true
-          || object.geometry.userData.spacefaceSharedFallback === true);
-      if (shared) {
-        geometries.set(object.geometry, object.geometry);
-      } else {
-        let geometry = geometries.get(object.geometry);
-        if (!geometry) {
-          geometry = typeof object.geometry.clone === 'function' ? object.geometry.clone() : object.geometry;
-          geometry.userData = {
-            ...(geometry.userData || {}),
-            spacefaceFlightTemplateGeometry: true,
-            spacefaceSharedAsset: true,
-          };
-          geometries.set(object.geometry, geometry);
+  let complete = false;
+  try {
+    while (sanitizeStack.length) {
+      const object = sanitizeStack.pop();
+      if ((++sanitizeVisited % 128) === 0) yield;
+      if (!object) continue;
+      object.onBeforeRender = THREE.Object3D.prototype.onBeforeRender;
+      object.onAfterRender = THREE.Object3D.prototype.onAfterRender;
+      object.userData = sanitizeFlightTemplateUserData(object.userData);
+      object.userData.spacefaceFlightTemplatePath = (objectPathFromRoot(templateRoot, object) || []).join('/');
+      if (object.geometry) {
+        // Fleet-shared bakes (retro packs, bounds proxy, other spacefaceSharedAsset geometry) are
+        // immutable and disposal-proofed by construction — the template must alias them. Cloning
+        // one made every template's instances draw unique buffers, which is exactly the +29s
+        // Retro_*/BoundsProxy upload burst the D160 witness measured at wave materialization.
+        const shared = object.geometry.userData
+          && (object.geometry.userData.spacefaceSharedAsset === true
+            || object.geometry.userData.spacefaceSharedFallback === true);
+        if (shared) {
+          geometries.set(object.geometry, object.geometry);
+        } else {
+          let geometry = geometries.get(object.geometry);
+          if (!geometry) {
+            geometry = typeof object.geometry.clone === 'function' ? object.geometry.clone() : object.geometry;
+            geometry.userData = {
+              ...(geometry.userData || {}),
+              spacefaceFlightTemplateGeometry: true,
+              spacefaceSharedAsset: true,
+            };
+            geometries.set(object.geometry, geometry);
+          }
+          object.geometry = geometry;
         }
-        object.geometry = geometry;
       }
+      if (object.material) object.material = cloneFlightTemplateMaterials(object.material, materials);
+      const kids = object.children || EMPTY_ARRAY;
+      for (let i = kids.length - 1; i >= 0; i--) sanitizeStack.push(kids[i]);
     }
-    if (object.material) object.material = cloneFlightTemplateMaterials(object.material, materials);
-    const kids = object.children || EMPTY_ARRAY;
-    for (let i = kids.length - 1; i >= 0; i--) sanitizeStack.push(kids[i]);
+    clearFlightTemplateDynamicUserData(templateRoot);
+    complete = true;
+    return templateRoot;
+  } finally {
+    if (!complete) {
+      releaseStaticBatchGeometryTree(templateRoot);
+      for (const material of materials.values()) material.dispose?.();
+      templateRoot?.clear?.();
+    }
   }
-  clearFlightTemplateDynamicUserData(templateRoot);
-  return templateRoot;
 }
 
 function cloneFlightTemplateMaterials(material, materials) {
@@ -12445,6 +12471,7 @@ function* stripFlightPackageTemplateSubtreesSteps(root, recipes) {
     const partRoot = findFlightTemplateObject(root, recipe.sourcePath);
     if (partRoot) {
       partRoot.removeFromParent();
+      releaseStaticBatchGeometryTree(partRoot);
       detached.push(partRoot);
     }
   }
@@ -12480,7 +12507,8 @@ function* stripFlightPackageTemplateSubtreesSteps(root, recipes) {
       if (!object) continue;
       object.castShadow = false;
       const geometry = object.geometry;
-      if (geometry && !retainedGeometries.has(geometry) && !disposedGeometries.has(geometry)) {
+      if (geometry && !isManagedStaticBatchGeometry(geometry)
+        && !retainedGeometries.has(geometry) && !disposedGeometries.has(geometry)) {
         disposedGeometries.add(geometry);
         try { geometry.dispose?.(); } catch (_) { /* cache construction remains fail-closed */ }
       }
@@ -12802,6 +12830,7 @@ function createFlightTemplateRootInstance(templateRoot) {
 function* createFlightTemplateRootInstanceSteps(templateRoot, sliceEvery = 128) {
   if (!templateRoot || typeof templateRoot.clone !== 'function') return null;
   const root = templateRoot.clone(true);
+  retainStaticBatchGeometryTree(root);
   const materials = new Map();
   const every = Math.max(1, Math.floor(Number(sliceEvery) || 1));
   const stack = [root];
@@ -12823,6 +12852,7 @@ function* createFlightTemplateRootInstanceSteps(templateRoot, sliceEvery = 128) 
     return root;
   } finally {
     if (!complete) {
+      releaseStaticBatchGeometryTree(root);
       for (const material of materials.values()) material.dispose?.();
       root.clear();
     }
@@ -13050,6 +13080,7 @@ function finalizeFlightRootTemplateIfUnused(entry) {
   const materials = new Set();
   entry.root?.traverse?.((object) => {
     object.castShadow = false;
+    releaseStaticBatchGeometryForObject(object);
     if (object.geometry) geometries.add(object.geometry);
     const list = object.material
       ? (Array.isArray(object.material) ? object.material : [object.material])
@@ -13057,6 +13088,7 @@ function finalizeFlightRootTemplateIfUnused(entry) {
     for (const material of list) if (material) materials.add(material);
   });
   for (const geometry of geometries) {
+    if (isManagedStaticBatchGeometry(geometry)) continue;
     try { geometry.dispose?.(); } catch (_) { /* cache eviction is best effort */ }
   }
   for (const material of materials) {
@@ -14205,7 +14237,7 @@ function* flushStaticBatchSteps(parent, bindings, bucket, options = {}) {
         promoteStaticPositionToFloat(geometry);
         geometry.applyMatrix4(entry.primitive.matrix);
         geometry.applyMatrix4(entry.partMatrix);
-        rememberStaticBatchGeometry(leafKey, geometry);
+        geometry = rememberStaticBatchGeometry(leafKey, geometry);
       }
       addStaticBatchMesh(parent, bindings, geometry, material, bucket.tags, [entry.record && entry.record.url], entry.primitive.name);
     }
@@ -14246,48 +14278,55 @@ function* flushStaticBatchGroupSteps(parent, bindings, buckets, options = {}) {
   }
 
   const geometries = [];
+  const releaseGeometries = [];
   const materials = [];
   const urls = new Set();
   let partCount = 0;
-  for (const bucket of buckets) {
-    const geometry = yield* buildStaticBatchGeometrySteps(bucket, options);
-    if (!geometry) {
-      for (const pending of geometries) {
-        if (pending && typeof pending.dispose === 'function'
-          && !(pending.userData && pending.userData.spacefaceSharedAsset)) {
-          pending.dispose();
+  try {
+    for (const bucket of buckets) {
+      const geometry = yield* buildStaticBatchGeometrySteps(bucket, options);
+      if (!geometry) {
+        for (const pending of geometries) {
+          if (pending && typeof pending.dispose === 'function'
+            && !(pending.userData && pending.userData.spacefaceSharedAsset)) {
+            pending.dispose();
+          }
         }
+        for (const fallback of buckets) yield* flushStaticBatchSteps(parent, bindings, fallback, options);
+        return;
       }
+      geometries.push(geometry);
+      const release = retainStaticBatchGeometry(geometry);
+      if (release) releaseGeometries.push(release);
+      materials.push(resolveCanonicalHullMaterial(bucket.material));
+      partCount += bucket.entries.length;
+      for (const url of bucket.urls) urls.add(url);
+    }
+    yield;
+
+    const tier1Geometry = tier1CausalCounters();
+    const normalized = normalizeStaticBatchGeometries(geometries, options);
+    if (tier1Geometry) tier1Geometry.countGeometryNormalization(geometries.length, 'static-batch-group');
+    let merged = canMergeStaticBatchGeometries(normalized) ? mergeGeometries(normalized, true) : null;
+    if (tier1Geometry && merged) tier1Geometry.countGeometryMerge(normalized.length, 'static-batch-group');
+    for (const geometry of normalized) {
+      // Bucket geometries are shared cache entries now — disposing one steals the resident
+      // buffer from every other boundary that drew it. Only fresh normalized copies dispose.
+      if (geometry && typeof geometry.dispose === 'function'
+        && !(geometry.userData && geometry.userData.spacefaceSharedAsset)) {
+        if (tier1Geometry) tier1Geometry.countResourcesDisposed(1, 'static-batch-group');
+        geometry.dispose();
+      }
+    }
+    if (!merged) {
       for (const fallback of buckets) yield* flushStaticBatchSteps(parent, bindings, fallback, options);
       return;
     }
-    geometries.push(geometry);
-    materials.push(resolveCanonicalHullMaterial(bucket.material));
-    partCount += bucket.entries.length;
-    for (const url of bucket.urls) urls.add(url);
+    merged = rememberStaticBatchGeometry(groupCacheKey, merged);
+    addStaticBatchMesh(parent, bindings, merged, materials, buckets[0].tags, [...urls], `StaticGroup_${partCount}_${materials.length}`);
+  } finally {
+    for (const release of releaseGeometries) release();
   }
-  yield;
-
-  const tier1Geometry = tier1CausalCounters();
-  const normalized = normalizeStaticBatchGeometries(geometries, options);
-  if (tier1Geometry) tier1Geometry.countGeometryNormalization(geometries.length, 'static-batch-group');
-  const merged = canMergeStaticBatchGeometries(normalized) ? mergeGeometries(normalized, true) : null;
-  if (tier1Geometry && merged) tier1Geometry.countGeometryMerge(normalized.length, 'static-batch-group');
-  for (const geometry of normalized) {
-    // Bucket geometries are shared cache entries now — disposing one steals the resident
-    // buffer from every other boundary that drew it. Only fresh normalized copies dispose.
-    if (geometry && typeof geometry.dispose === 'function'
-      && !(geometry.userData && geometry.userData.spacefaceSharedAsset)) {
-      if (tier1Geometry) tier1Geometry.countResourcesDisposed(1, 'static-batch-group');
-      geometry.dispose();
-    }
-  }
-  if (!merged) {
-    for (const fallback of buckets) yield* flushStaticBatchSteps(parent, bindings, fallback, options);
-    return;
-  }
-  rememberStaticBatchGeometry(groupCacheKey, merged);
-  addStaticBatchMesh(parent, bindings, merged, materials, buckets[0].tags, [...urls], `StaticGroup_${partCount}_${materials.length}`);
 }
 
 function buildStaticBatchGeometry(bucket, options = {}) {
@@ -14320,7 +14359,7 @@ export function* buildStaticBatchGeometrySteps(bucket, options = {}) {
   }
   const geometries = normalizeStaticBatchGeometries(cloned, options);
   if (tier1Geometry) tier1Geometry.countGeometryNormalization(geometries.length, 'static-batch');
-  const merged = canMergeStaticBatchGeometries(geometries) ? mergeGeometries(geometries, false) : null;
+  let merged = canMergeStaticBatchGeometries(geometries) ? mergeGeometries(geometries, false) : null;
   if (tier1Geometry && merged) tier1Geometry.countGeometryMerge(geometries.length, 'static-batch');
   for (const geometry of geometries) {
     if (geometry && typeof geometry.dispose === 'function') {
@@ -14329,7 +14368,7 @@ export function* buildStaticBatchGeometrySteps(bucket, options = {}) {
     }
   }
   if (merged) {
-    rememberStaticBatchGeometry(cacheKey, merged);
+    merged = rememberStaticBatchGeometry(cacheKey, merged);
     return merged;
   }
   return null;
@@ -14529,6 +14568,7 @@ function addStaticBatchMesh(parent, bindings, geometry, material, tags, urls, la
   if (geometry && typeof geometry.computeBoundingSphere === 'function') geometry.computeBoundingSphere();
   if (geometry && typeof geometry.computeBoundingBox === 'function') geometry.computeBoundingBox();
   const mesh = new THREE.Mesh(geometry, material);
+  retainStaticBatchGeometryForObject(mesh);
   mesh.name = `GLTFKit_${label || 'StaticBatch'}`;
   const materials = Array.isArray(material) ? material : [material];
   mesh.castShadow = materials.some((entry) => entry && !entry.transparent && entry.depthWrite !== false);
@@ -14542,8 +14582,14 @@ function addStaticBatchMesh(parent, bindings, geometry, material, tags, urls, la
     spacefacePartUrls: partUrls,
     spacefaceTags: tags,
   };
-  parent.add(mesh);
-  registerBinding(mesh, tags, bindings);
+  try {
+    parent.add(mesh);
+    registerBinding(mesh, tags, bindings);
+  } catch (error) {
+    mesh.removeFromParent();
+    releaseStaticBatchGeometryForObject(mesh);
+    throw error;
+  }
   return mesh;
 }
 
@@ -17857,6 +17903,7 @@ export function disposeDetachedObject(root, state = null) {
 // this generator. DFS order is pre-order, root first, and shared-asset guards remain
 // identical when a deferred commit suspends while owning the detached subtree.
 export function* disposeDetachedObjectSteps(root, state = null) {
+  try { root?.userData?.releaseAuthoredAssetResidency?.('detached-root-disposed'); } catch { /* continue teardown */ }
   // Root hooks are fenced individually — a throwing hook must not veto the
   // subtree teardown (a retry mint would re-throw at the same hook and leak the
   // whole tree).
@@ -17892,6 +17939,7 @@ export function* disposeDetachedObjectSteps(root, state = null) {
     if ((++visited % 128) === 0) yield;
     object.castShadow = false;
     try {
+      releaseStaticBatchGeometryForObject(object);
       if (object.geometry && typeof object.geometry.dispose === 'function'
         && !(object.geometry.userData && object.geometry.userData.spacefaceSharedAsset)) {
         object.geometry.dispose();
