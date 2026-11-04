@@ -7,9 +7,9 @@
   "small": 167,
   "medium": 167,
   "large": 166,
-  "landed": 62,
+  "landed": 76,
   "assigned": 26,
-  "approved": 62
+  "approved": 76
  },
  "derivation": {
   "ratifiedFollowup": 330,
@@ -2003,10 +2003,10 @@
    "size": "small",
    "family": "spectacle",
    "batch": 6,
-   "status": "assigned",
+   "status": "approved",
    "commit": "",
-   "verification": "",
-   "note": ""
+   "verification": "focused suite 27/27 + validator CLEAN (30 rows) + controller re-run",
+   "note": "no new templates needed; honest mechanic legs documented per row"
   },
   {
    "id": "SP3-065",
@@ -2023,10 +2023,10 @@
    "size": "small",
    "family": "spectacle",
    "batch": 6,
-   "status": "assigned",
+   "status": "approved",
    "commit": "",
-   "verification": "",
-   "note": ""
+   "verification": "focused suite 27/27 + validator CLEAN (30 rows) + controller re-run",
+   "note": "no new templates needed; honest mechanic legs documented per row"
   },
   {
    "id": "SP3-076",
@@ -2043,10 +2043,10 @@
    "size": "small",
    "family": "spectacle",
    "batch": 6,
-   "status": "assigned",
+   "status": "approved",
    "commit": "",
-   "verification": "",
-   "note": ""
+   "verification": "focused suite 27/27 + validator CLEAN (30 rows) + controller re-run",
+   "note": "no new templates needed; honest mechanic legs documented per row"
   },
   {
    "id": "SP3-001",
@@ -2063,10 +2063,10 @@
    "size": "small",
    "family": "spectacle",
    "batch": 6,
-   "status": "assigned",
+   "status": "approved",
    "commit": "",
-   "verification": "",
-   "note": ""
+   "verification": "focused suite 27/27 + validator CLEAN (30 rows) + controller re-run",
+   "note": "no new templates needed; honest mechanic legs documented per row"
   },
   {
    "id": "SP1-183",
@@ -2083,10 +2083,10 @@
    "size": "small",
    "family": "spectacle",
    "batch": 6,
-   "status": "assigned",
+   "status": "approved",
    "commit": "",
-   "verification": "",
-   "note": ""
+   "verification": "focused suite 27/27 + validator CLEAN (30 rows) + controller re-run",
+   "note": "no new templates needed; honest mechanic legs documented per row"
   },
   {
    "id": "SP3-044",
@@ -2104,10 +2104,10 @@
    "size": "small",
    "family": "spectacle",
    "batch": 6,
-   "status": "assigned",
+   "status": "approved",
    "commit": "",
-   "verification": "",
-   "note": ""
+   "verification": "focused suite 27/27 + validator CLEAN (30 rows) + controller re-run",
+   "note": "no new templates needed; honest mechanic legs documented per row"
   },
   {
    "id": "SPX-B-01",
@@ -2124,10 +2124,10 @@
    "size": "small",
    "family": "spectacle",
    "batch": 6,
-   "status": "assigned",
+   "status": "approved",
    "commit": "",
-   "verification": "",
-   "note": ""
+   "verification": "focused suite 27/27 + validator CLEAN (30 rows) + controller re-run",
+   "note": "no new templates needed; honest mechanic legs documented per row"
   },
   {
    "id": "SPX-C-05",
@@ -2142,10 +2142,10 @@
    "size": "small",
    "family": "spectacle",
    "batch": 6,
-   "status": "assigned",
+   "status": "approved",
    "commit": "",
-   "verification": "",
-   "note": ""
+   "verification": "focused suite 27/27 + validator CLEAN (30 rows) + controller re-run",
+   "note": "no new templates needed; honest mechanic legs documented per row"
   },
   {
    "id": "SP3-005",
@@ -2162,10 +2162,10 @@
    "size": "small",
    "family": "spectacle",
    "batch": 6,
-   "status": "assigned",
+   "status": "approved",
    "commit": "",
-   "verification": "",
-   "note": ""
+   "verification": "focused suite 27/27 + validator CLEAN (30 rows) + controller re-run",
+   "note": "no new templates needed; honest mechanic legs documented per row"
   },
   {
    "id": "SPX-B-08",
@@ -2203,10 +2203,10 @@
    "size": "small",
    "family": "spectacle",
    "batch": 6,
-   "status": "assigned",
+   "status": "approved",
    "commit": "",
-   "verification": "",
-   "note": ""
+   "verification": "focused suite 27/27 + validator CLEAN (30 rows) + controller re-run",
+   "note": "no new templates needed; honest mechanic legs documented per row"
   },
   {
    "id": "SP2-160",
@@ -2223,10 +2223,10 @@
    "size": "small",
    "family": "spectacle",
    "batch": 6,
-   "status": "assigned",
+   "status": "approved",
    "commit": "",
-   "verification": "",
-   "note": ""
+   "verification": "focused suite 27/27 + validator CLEAN (30 rows) + controller re-run",
+   "note": "no new templates needed; honest mechanic legs documented per row"
   },
   {
    "id": "SP1-047",
@@ -2243,10 +2243,10 @@
    "size": "small",
    "family": "spectacle",
    "batch": 6,
-   "status": "assigned",
+   "status": "approved",
    "commit": "",
-   "verification": "",
-   "note": ""
+   "verification": "focused suite 27/27 + validator CLEAN (30 rows) + controller re-run",
+   "note": "no new templates needed; honest mechanic legs documented per row"
   },
   {
    "id": "SP2-100",
@@ -2263,10 +2263,10 @@
    "size": "small",
    "family": "spectacle",
    "batch": 6,
-   "status": "assigned",
+   "status": "approved",
    "commit": "",
-   "verification": "",
-   "note": ""
+   "verification": "focused suite 27/27 + validator CLEAN (30 rows) + controller re-run",
+   "note": "no new templates needed; honest mechanic legs documented per row"
   },
   {
    "id": "SP3-025",
@@ -2303,10 +2303,10 @@
    "size": "small",
    "family": "spectacle",
    "batch": 6,
-   "status": "assigned",
+   "status": "approved",
    "commit": "",
-   "verification": "",
-   "note": ""
+   "verification": "focused suite 27/27 + validator CLEAN (30 rows) + controller re-run",
+   "note": "no new templates needed; honest mechanic legs documented per row"
   },
   {
    "id": "SP1-115",
