@@ -342,9 +342,11 @@ export function advanceAttempt(state, def, obs) {
   if (leg.windowS != null && obs.simTime - state.mem.legStartedAt[state.legIndex] > leg.windowS) {
     const miss = leg.onMiss;
     if (miss && Number.isInteger(miss.retry)) {
+      const missedIndex = state.legIndex;
       state.legIndex = miss.retry;
       resetLegMemory(state, def, miss.retry);
       markLegs(state);
+      if (missedIndex !== state.legIndex) state.legStatus[missedIndex] = 'missed';
       events.push({ type: 'retry', leg: leg.kind, eventId: def.id, at: obs.simTime });
       return events;
     }
@@ -355,7 +357,9 @@ export function advanceAttempt(state, def, obs) {
 
   const verdict = (LEG_EVALUATORS[leg.kind] || (() => 'pending'))(state, def, leg, obs);
   if (verdict === 'retry') {
+    const missedIndex = state.legIndex;
     state.legIndex = 0; resetLegMemory(state, def, 0); markLegs(state);
+    if (missedIndex !== state.legIndex) state.legStatus[missedIndex] = 'missed';
     events.push({ type:'retry', leg:leg.kind, eventId:def.id, at:obs.simTime });
     return events;
   }
@@ -379,9 +383,11 @@ export function advanceAttempt(state, def, obs) {
       const key = `stall:${state.legIndex}`;
       state.mem.insideSince[key] = (state.mem.insideSince[key] || 0) + obs.dt;
       if (state.mem.insideSince[key] >= 3) {
+        const missedIndex = state.legIndex;
         state.legIndex = leg.onMiss.retry;
         resetLegMemory(state, def, leg.onMiss.retry);
         markLegs(state);
+        if (missedIndex !== state.legIndex) state.legStatus[missedIndex] = 'missed';
         events.push({ type: 'retry', leg: leg.kind, eventId: def.id, at: obs.simTime });
       }
     } else {

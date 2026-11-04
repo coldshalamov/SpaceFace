@@ -30,7 +30,7 @@ remains an explicit player action.
 
 ## Direct checks and remaining player work
 
-The focused integration batch passed84 cases, including force-only native Soft
+The focused integration batch passed73 cases, including force-only native Soft
 Berth → line/cut/receiver → owner completion → accepted60CR → PB, native taut
 Long Arm/cut → transit, actual worker transport, canonical save-envelope restore,
 prompt lifecycle, chart regressions and actual released keeper geometry.
