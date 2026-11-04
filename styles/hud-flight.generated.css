@@ -3471,6 +3471,15 @@
   }
   :root[data-sf-mobile="1"][data-sf-mobile-flight="1"][data-sf-mobile-lefty="1"] #sf-ml2 .ml2-preview { left:auto!important; right:calc(8px + var(--sf-safe-right,0px))!important; }
 }
+@media (max-height:599px) and (orientation:landscape) {
+  /* The left-hand wheel occupies the usual status seat. Put the existing status
+     above its mirrored tabs, beside (not under) Pause; the top row already owns
+     the viewport safe insets. The normal flight and right-hand seats stay put. */
+  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"][data-sf-mobile-lefty="1"][data-sf-mobile-wheel="1"] #sf-touch-overlay .mf-top > .mf-status {
+    position:absolute; left:auto; top:0;
+    right:calc(max(44px,52px * var(--mf-scale)) + 8px);
+  }
+}
 @media (max-height:500px) and (orientation:landscape) {
   :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-radar-wrap--expanded { top:calc(8px + var(--sf-safe-top,0px))!important; max-height:calc(100dvh - 16px - var(--sf-safe-top,0px) - var(--sf-safe-bottom,0px)); }
   :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-rightdock { top:calc(95px + var(--sf-safe-top,0px))!important; right:calc(84px + var(--sf-safe-right,0px))!important; }
