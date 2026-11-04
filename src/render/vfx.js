@@ -333,6 +333,7 @@ import { createExplosionPresentationMethods } from './vfx/explosionPresentationV
 import { createWeaponImpactVfxMethods } from './vfx/weaponImpactVfx.js';
 import { CauseMarkLayer } from './vfx/causeMarks.js';
 import { StationNightLightLayer } from './vfx/stationNightLights.js';
+import { collectHullWounds, resolveWoundBeat, woundWorldPoint } from './vfx/woundSmoke.js';
 import {
   presentShipBoost,
   presentShipDash,
@@ -13882,6 +13883,21 @@ export const vfx = {
     if (!this._scene) return;
     // severity 0..1: 0 at the wound threshold (40%), 1 at death's door (0%)
     const severe = Math.max(0, Math.min(1, (0.40 - frac) / 0.40));
+    // Wound-local smoke (inf-wound-smoke): the scar book already knows where this hull was
+    // opened — hull-local wound seats with a severity, an age, and the striking weapon's own
+    // color. Smoke rises from those wounds, so the flank that took the fire smokes hardest and
+    // the picture reads as a damage map, not a symmetric blob. A wound inside the vent window
+    // still breathes a beat of the striking weapon's tinted vapor before it greys. Ships hurt
+    // without a recorded contact (fields, DoTs) keep the legacy centre offsets below.
+    const causeLayer = this._ensureCauseMarks();
+    const wounds = causeLayer
+      ? collectHullWounds(causeLayer.scars, e.id, this._causeNow(), this._woundScratch || (this._woundScratch = []))
+      : null;
+    const hasWounds = !!(wounds && wounds.length);
+    if (hasWounds) {
+      if (!this._woundPointScratch) this._woundPointScratch = { x: 0, z: 0 };
+      if (!this._woundBeatScratch) this._woundBeatScratch = {};
+    }
     // emit rate scales with severity; cap so a swarm of wounded ships can't drown the pool.
     // throttle the smoke to ~every other trail tick to stay cheap, harder when critical.
     this._smokeAcc = (this._smokeAcc || 0) + dt * (0.6 + severe * 1.4);
@@ -13895,14 +13911,29 @@ export const vfx = {
     // carry slightly with the ship's motion so the trail streams behind
     const vx = -(e.vel.x || 0) * 0.15;
     const vz = -(e.vel.z || 0) * 0.15;
+    const now = this._causeNow();
 
     for (let k = 0; k < n; k++) {
-      // pick a spot on the hull: alternate rear-ish and mid-side so the smoke looks like it's
-      // venting from multiple breaches, not a single exhaust.
-      const off = (k === 0 ? -0.3 : 0.25) * r + (Math.random() - 0.5) * r * 0.4;
-      const lat = (Math.random() - 0.5) * r * 0.7;
-      const sx = e.pos.x + cf * off - sf * lat;
-      const sz = e.pos.z + sf * off + cf * lat;
+      let slot = null;
+      let sx; let sz;
+      if (hasWounds) {
+        // Round-robin the hottest wounds so one emit cycle samples the damage map instead of
+        // always the same hole. Deterministic off the emit counter — no sim RNG consumed.
+        this._woundCursor = ((this._woundCursor || 0) + 1) % wounds.length;
+        slot = wounds[this._woundCursor].slot;
+        const point = woundWorldPoint(slot, e, this._woundPointScratch);
+        if (!point) { slot = null; }
+        else { sx = point.x; sz = point.z; }
+      }
+      if (!slot) {
+        // pick a spot on the hull: alternate rear-ish and mid-side so the smoke looks like it's
+        // venting from multiple breaches, not a single exhaust.
+        const off = (k === 0 ? -0.3 : 0.25) * r + (Math.random() - 0.5) * r * 0.4;
+        const lat = (Math.random() - 0.5) * r * 0.7;
+        sx = e.pos.x + cf * off - sf * lat;
+        sz = e.pos.z + sf * off + cf * lat;
+      }
+      const beat = slot ? resolveWoundBeat(slot, now, this._woundBeatScratch) : null;
 
       // grey smoke puff: grows, drifts back, fades. Long life + low drag = a lingering trail.
       this._c0.set(this._SMOKE_GREY); this._c1.set(this._SMOKE_DARK);
@@ -13920,8 +13951,27 @@ export const vfx = {
         3.0 + Math.random() * 2.0,  // vy: buoyant rise
       );
 
+      // Fresh energy-weapon wound: a short breath of the striking weapon's own tinted vapor,
+      // dimmer and tighter than the grey billow, gone well before the scar's weapon glow —
+      // the vent names the gun, the grey smoke keeps saying "hurt here" after it clears.
+      if (beat && beat.vent01 > 0) {
+        this._c0.setRGB(beat.r, beat.g, beat.b);
+        this._c1.set(this._SMOKE_GREY);
+        this._spawnParticle(
+          sx, sz,
+          vx * 0.5, vz * 0.5,
+          0.45 + beat.vent01 * 0.25, // short breath, tied to the vent window
+          1.2 + beat.heat,           // tighter than the grey puff
+          3.4 + beat.heat * 1.6,
+          this._c0, this._c1,
+          1.2,                       // more drag: the gas stalls at the tear
+          1.2, 4.2,
+        );
+      }
+
       // critical-only hot embers: bright orange sparks that flicker out fast — reads as "this ship
       // is about to die" without needing a health bar. Sparse so it doesn't spam the pool.
+      // Wounded hulls throw them at the wound seat itself.
       if (severe > 0.55 && Math.random() < 0.5) {
         this._c0.set(this._EMBER_HOT); this._c1.set(this._EMBER_DIM);
         const ea = Math.random() * Math.PI * 2;
