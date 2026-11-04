@@ -11,12 +11,17 @@ restore superseded dispatch, worktree, provider, review or verification procedur
 
 | Task | Thread | State | Exact paths being changed now | Next terminal action |
 |---|---|---|---|---|
-| Finish integration and publication | Codex controller | active | `design/program/finish/INTEGRATION_COVERAGE.md`, `design/program/finish/PR_INTEGRATION.md`, `design/program/NOW.md`; combined commission registry/reset/browser assembly | integrate and publish coherent batches; latest core/combat commit `032055e7b860` |
-| Counterweight integration | `/root/map_mission_label_finish` | active | Circuit runtime/prompts/presentation/readModel/persistence and integration tests; Counterweight mirror, command-surface, chart and economy hunks; `test/ceres-receiver-keeper-assets.test.mjs`; prompt reuse in `proExperiencesBrowser.js` | finish native-to-FSM/payment/ghost and restore composition; physical/attempt/scoring/ghost source is frozen |
-| Breakwater repair | `/root/occupational_hull_fit_finish` | active | `src/features/breakwaterSpur/**`, `test/breakwater-spur*.mjs`; only `economy.settleBreakwaterReceipt` after Tally Three | repair originals, accepted delivery/stock, durable money and reachable services |
-| Combat player route | `/root/sim_v3_integration_repair` | active | Swarm/Fortify four source and five test paths committed `032055e7b860`; ignored route artifacts | ordinary ten waves, first boss, Fortify devices and abilities on immutable pin; sole GPU owner |
-| Cinderglass repair | Sol CLI, thread `01a1a549-ca30-74c3-a6ad-0124ac23cd40` | active | `src/features/cinderglassJob/**`, `test/cinderglass-job*.mjs` | correct debit/refusal, restore, physical custody, service choices and authored latch; propose shared seams |
-| Accepted freight owner | Sol CLI | active | `src/systems/cargo.js`, new `test/breakwater-cargo-owner.test.mjs` only if existing APIs cannot express acceptance | give Breakwater an actual cargo/receiving contract; no intent-only stock or payout |
+| Finish integration and publication | Codex controller | active | Finish status/docs, `NOW.md`, inference ledger, exact-path Git integration | source `46c7594ca88a`; public `89ddfe4830e2`; final approvals0/3 |
+| Earned Adventure progression | `/root/map_mission_label_finish` | active; GPU owner | ignored route artifacts; Cinder Contracts layout hunk and focused real-panel test | genuine post-Tethys Continue, visible Tala terms, Forge refine/net/Fit; no grants/save edits |
+| Counterweight physical checks | `/root/occupational_hull_fit_finish` | frozen candidate | course feasibility and impact-fastpath tests; non-payload early rejection in Circuit `physical.js` | integrate relevant-pair guard; retain partial/player-route limits |
+| Swarm recovery and frame qualification | `/root/sim_v3_integration_repair` | queued after Adventure | ignored combat/performance artifacts only | recovery/devices/powers/boss/debrief; combined UI and Ashline active comparisons |
+| Native physics performance | Sol CLI | active | `src/core/sg02DynamicBodyOwner.js`, owned readback regression | reduce repeated post-solve native reads without stale contact data; sole CPU benchmark lease |
+| Tactical AI performance | Terra CLI | source proposal | owned artifacts; sensor-construction proposal in `aiPorts.js` | find material safe work reduction; benchmark queued behind physics |
+| Compact station controls | Terra CLI, thread `01a1a615-6998-72f2-9b8f-f8073a4cde44` | active | `src/ui/orrery/shipworksLayouts.js`, Departure Check hunk in `styles/station.css`, focused impound/control test | repair chooser collapse and confirmation text bleed; preserve inset/reset evidence |
+
+The freight owner, three-commission assembly, chain-kill activation, mobile checkpoint and audio
+write windows are closed. Committed source does not establish ordinary complete play, physical
+iPhone success or the performance bars.
 
 The former ZCode controller was stopped on 2026-11-02 after preserving its session state and
 working changes. Its subsequent source work has been claimed, reviewed and repaired by the Finish

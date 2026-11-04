@@ -1,10 +1,55 @@
 # Whole-game integration status
 
-Updated 2026-11-03. This is the compact current outcome map for the Finish Program, not a game-complete claim. The lane boards own active work and acceptance criteria: [Lane 1](./LANE_1_MACHINE_AND_PICTURE.md), [Lane 2](./LANE_2_FIGHT_AND_SIM.md), and [Lane 3](./LANE_3_WORLD_GLASS_HOUSE.md). The [dated archive](../../archive/finish-integration/INTEGRATION_COVERAGE_2026-10-31.md) preserves the previous detailed receipts and failure history. Source coverage U001–U072 is recorded in [the coverage ledger](./SOURCE_COVERAGE_2026-10-29.md).
+Updated 2026-11-04. This is the compact current outcome map for the Finish Program, not a game-complete claim. The lane boards own active work and acceptance criteria: [Lane 1](./LANE_1_MACHINE_AND_PICTURE.md), [Lane 2](./LANE_2_FIGHT_AND_SIM.md), and [Lane 3](./LANE_3_WORLD_GLASS_HOUSE.md). The [dated archive](../../archive/finish-integration/INTEGRATION_COVERAGE_2026-10-31.md) preserves the previous detailed receipts and failure history. Source coverage U001–U072 is recorded in [the coverage ledger](./SOURCE_COVERAGE_2026-10-29.md).
 
 November 4 integrated source now includes checkpoints `51ead0a695b1`, `81bc45808d13` and
 `032055e7b860`. Public publication remains the `89ddfe4830e2` deployment below; committed source,
 focused checks and ordinary local play are distinct from that deployed build.
+
+Latest integrated source is `46c7594ca88a`: Breakwater's real receivers/freight (`7b7256122ea9`),
+Cinderglass's live three-commission assembly (`8ba645d79394`), clear/conservative material births
+and checked Anvil traffic (`6f6b15061d5b`), real wreck-chain worker activation (`b1c33da3aa98`),
+bounded mobile interruption checkpoints (`d655c7e4ec88`), manual-course ownership (`a2283a1ac658`),
+and docked Cinderglass availability plus accepted commission audio (`46c7594ca88a`). UI and exact
+Ashline hull-submission candidates are committed in `127784a0b17e`; native frame gains and live
+appearance remain unqualified. Root opened the desktop and compact threat-layout fixtures.
+
+The genuine earned Adventure route now reaches Tethys and delivers its original six sealed
+alloys for600 credits (4,996→5,596), records `alloy_run`, and retains the post-delivery save.
+Actual play exposed Cinder's paused eligibility, stale-panel and default-worker wakeup defects;
+their repaired owner/transport/panel checks pass. The next actual route exposed a one-character-wide
+Contracts panel with its recovery button below the aperture; that layout repair and ordinary
+terms acceptance remain active. Forge flight exposed mission/story refresh overriding manual
+sector and local courses. The owner fix preserves passive detours while explicit Track can replot;
+12 related checks pass. Actual corrected Forge approach/refine/net/Fit remains open.
+
+The integrated baseline passes17/17 in57.175s with its normal four-job allowance and unchanged90s
+budget. The earlier two-job run passed assertions but exceeded the budget; direct child timing
+isolated reduced throughput, so no test, coverage or threshold was removed. Current seeded wave15
+native simulation still misses the20ms floor: raw p9549.099ms/mean33.149ms with52.9% host busy.
+This fixture is not ordinary progression or quiet-host acceptance. Physics and AI optimization
+departments are using that captured profile. Final release approvals remain0/3; final build-map
+and last300-commit review have not begun.
+
+Further checkpoints: Counterweight integration `d25475ec6fdc`, bounded defeat notification
+`949426366c6a`, reviewed incoming loading/CSS merge `03b9e46336f7`, and sealed-arena advisory
+`a08e1cee7dc8`. English `c755b08562e1` is generated from frozen03b9 source:15,832 extracted,
+0 unresolved within its configured1,778-file scope; feature directories remain outside that scope.
+The incoming slow-GL fix required an absolute-deadline correction;20 affected checks pass.
+
+The ordinary03b9 Contender run now clears waves1 and2 with full hull and uses Veil Step.
+The retained last Wasp was physically approached and defeated; the four actual Fortify types
+are now built after combat moved debris. Device loss, repair and paid rebuilding are visible.
+The controller opened the last-hostile and Fortify screens. The first boss and later outcomes
+remain open. Earlier deaths exposed a worker drop of nested scarred-hull results; the compact
+wakeup passes38 affected lifecycle cases, while its integrated natural-death/debrief route
+remains pending. A screenshot also exposed the arena's campaign no-fire warning: the source
+fix passes13 seal/advisory cases and preserves real campaign warnings.
+
+One valid7.30s active-combat CPU capture retains living/advancing endpoints and records roughly
+800–950 draw calls and54–58ms render time on a76%-busy host. It does not establish quiet-host FPS.
+A hover-placement candidate removes forced box-size reads; its actual frame win/look remains
+unmeasured. Larger render/submission cost remains an open target, not excused by this small candidate.
 
 The genuine `81bc45808d13` campaign route now completes Continue → mission chart Track → original
 47-A source selection/RMB mining → earned assay → physical Helios dock. The accepted handoff

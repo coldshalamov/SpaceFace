@@ -4,6 +4,24 @@ The 2026-11-01 GitHub snapshot contains 24 open PRs for `coldshalamov/SpaceFace`
 
 ## Subsequent integrated PRs
 
+- **#835/#838/#839, compact station and Help:** merged with `origin/master90beba0230f1` in
+  `03b9e46336f7`. The scoped source/DOM/breakpoint review found the vitals row, footer rail and
+  Ores reading selectors consistent. Integrated ordinary looks remain open. Both historical
+  reference files retain their exact authentic October30 blobs; incoming hash-only rebindings
+  were excluded.
+
+- **#836, progressing slow-GL admission:** reviewed and corrected in the same merge. Its relative
+  timers accepted a picture at105ms despite a20ms base plus20ms cap. The owner now captures time
+  before work, uses an absolute hard deadline, accounts for delayed callbacks and refuses late
+  success while preserving typed driver errors. The20 affected first-picture/recovery cases pass.
+  This is bounded admission behavior, not physical iPhone or actual-picture acceptance.
+
+- **#837, patrol arrival and wreck momentum:** integrated in `8d241e2be007`. The patrol stages at
+  its valid jurisdiction arrival. The corrected native scenario observes the original death and
+  admitted wreck rather than a nearby unrelated hull; clear-coast momentum retains100.9% after2s,
+  while real populated-bay contacts may destroy the wreck. No runtime momentum injection,
+  collision suppression or golden refresh was made. Publication and ordinary arrival look remain open.
+
 - **#819, Forge and current trade integration:** selectively ported useful current source in `5a2e6e7fbd3e` and `a5610244d72d`; the old branch's broad deletions, duplicate documents and stale benchmark metadata were excluded. Forge's named berth, global Slate position, ordered handoff, truthful furnace settlement and finite native Maw/slag work now share the campaign owners. The worker carries the real Maw radius into its visual. Market confirmation uses one execution transport, exact intent/receipt identity and a same-ID unknown-result retry. Review reproduced a warm-ledger partial-fill explanation loss; the local receipt fix now preserves the real six-of-ten result before the ledger leaf arrives. Focused native/worker/story/trade checks pass; ordinary Forge/Maw/Market route acceptance remains open.
 
 - **#817 and #820–#823, compact controls:** ported in `88f53902ab90` without stale reference metadata. Back controls retain their label/keycap typography, New Game rear names clear the ring, stake economics wrap, and compact Crucible mode choices remain together. Software-mounted New Game and Crucible views were opened at their affected desktop sizes; this does not establish ordinary mode play or mobile flight.
