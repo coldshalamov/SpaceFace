@@ -24,6 +24,27 @@ function offlineSummaryReceipt(state) {
   return (meta && meta.lastOfflineReceipt) || null;
 }
 
+/**
+ * The berth keeper remembers your last visit (inf-berth-remembers). The stamps live on the
+ * persisted market-memory station row (economy.recordMarketMemory writes them only for a
+ * physical dock), so the memory costs no new save field and never lies about presence: a
+ * first visit, a same-day return, and a station you have never berthed at all stay quiet.
+ * Pure read.
+ */
+export function berthVisitLine(state, stationId) {
+  const memory = state && state.player && state.player.marketMemory;
+  const stationMemory = memory && memory[stationId];
+  const prior = Number(stationMemory && stationMemory.priorVisitAt);
+  if (!Number.isFinite(prior) || prior <= 0) return null;
+  const now = Number(state && state.simTime);
+  if (!Number.isFinite(now) || now <= prior) return null;
+  const days = Math.floor((now - prior) / SIM_DAY_S);
+  if (days < 1) return null;
+  return days === 1
+    ? 'The berth keeper nods — you were here yesterday.'
+    : `The berth keeper nods — ${days} days since your last visit.`;
+}
+
 /** TEACH-07 — one line for a loaded save older than a sim day. A fresh save stays quiet. */
 export function returningPilotLine(state) {
   const ui = state && state.ui;
@@ -586,12 +607,15 @@ export function buildDockArrival(state = {}, station = {}) {
   const mechanicLine = mechanic && mechanic.body ? mechanic.body : null;
   const berthLine = [yardBerthLine(state, stationId), factionBerth].filter(Boolean).join(' ') || null;
   const returnSummary = returningPilotLine(state);
+  const visitLine = berthVisitLine(state, stationId);
   const digest = weeklyDigestLine(state);
   const hull = activeHullIdentity(state);
   // serviceNotice rides position 4: the seven-line slice must never spend the berth's
   // missing-refuel/repair warning on flavor cards. A station with news, traffic and
-  // paperwork still shows it; patch/ledger/mechanic dressing falls off first.
-  const lines = [action.label, berthLine, returnSummary, serviceNotice, news, digest, traffic, paperwork, patchText, ledgerLine, mechanicLine]
+  // paperwork still shows it; patch/ledger/mechanic dressing falls off first. The visit
+  // memory rides beside the return summary — both are recognition, and a keeper who
+  // remembers you outranks the weekly digest.
+  const lines = [action.label, berthLine, returnSummary, visitLine, serviceNotice, news, digest, traffic, paperwork, patchText, ledgerLine, mechanicLine]
     .filter(Boolean)
     .slice(0, 7);
   return {
@@ -600,6 +624,7 @@ export function buildDockArrival(state = {}, station = {}) {
     primaryAction: action.label,
     primaryTarget: action.target,
     returnSummary,
+    visitLine,
     digest,
     digestLine: digest,
     news,

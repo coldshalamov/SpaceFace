@@ -227,6 +227,9 @@ const REPAIR_HP_CR = 0.9;          // cr per hull/armor point restored
 const AMMO_UNIT_CR = 12;           // cr per munition
 export const AMMO_BATCH = 100;     // munitions per ammo purchase — the dock verb's default fill
 const HULL_WASH_CR = 75;           // cosmetic berth service; history survives the wash
+// Two market-memory writes inside one sim day are the same berthing (a docked day-tick or a
+// re-opened market screen must not mint a phantom prior visit). Matches the dock card's SIM_DAY_S.
+const MARKET_MEMORY_VISIT_WINDOW_S = 600;
 // PQ-155.03 sink: a Pitborn yard buys out a claimed salvage right at a premium over a medium
 // kill's chip line (2 chips × 60–120 cr). Rights stay scarce by mint, not by a cheap sink.
 const SALVAGE_RIGHT_CR = 150;
@@ -2678,6 +2681,21 @@ export const economy = {
     const source = options && (options.source === 'survey' || options.source === 'uplink') ? options.source : null;
     const memory = ensurePlayerMarketMemory(state.player);
     const stationMemory = memory[stationId] || (memory[stationId] = {});
+    // A physical berth stamps its own visits (the keeper who remembers your last visit reads
+    // these). Only a null-source write is presence: surveys and uplink refreshes are knowledge
+    // the market handed you, never a hull in the bay. Re-stamps inside one visit window keep
+    // the arrival stamp, so a docked day-tick or a re-opened market screen cannot mint a
+    // phantom prior visit out of the same berthing.
+    if (!source) {
+      const nowT = Math.max(0, Number(state.simTime) || 0);
+      const priorStamp = Number(stationMemory.visitedAt);
+      const sameVisit = Number.isFinite(priorStamp) && priorStamp > 0
+        && (nowT - priorStamp) < MARKET_MEMORY_VISIT_WINDOW_S;
+      if (Number.isFinite(priorStamp) && priorStamp > 0 && !sameVisit) {
+        stationMemory.priorVisitAt = priorStamp;
+      }
+      if (!sameVisit) stationMemory.visitedAt = nowT;
+    }
     for (const cid in market) {
       const e = market[cid];
       if (!e) continue;
