@@ -90,12 +90,8 @@ function eventMenuRow(def, records, row) {
  * status so the progress card can name the next physical landmark and the
  * current condition without guessing.
  */
-export function projectCounterweightCircuitView(state, opts = {}) {
+export function projectCounterweightCircuitJournal(state, opts = {}) {
   const r = row(state);
-  const facts = counterweightVenueFacts(state);
-  const records = r?.records || {};
-  const menu = COUNTERWEIGHT_EVENTS.map((def) => eventMenuRow(def, records, r));
-  const completedCount = menu.filter((m) => m.completed).length;
   let attempt = null;
   const live = opts.attempt || r?.attempt || null;
   if (live && live.fsm) {
@@ -120,6 +116,16 @@ export function projectCounterweightCircuitView(state, opts = {}) {
       armed: live.fsm.phase !== 'staged',
     };
   }
+  return { attempt, lastResult: r?.lastResult || null };
+}
+
+export function projectCounterweightCircuitView(state, opts = {}) {
+  const r = row(state);
+  const facts = counterweightVenueFacts(state);
+  const records = r?.records || {};
+  const menu = COUNTERWEIGHT_EVENTS.map((def) => eventMenuRow(def, records, r));
+  const completedCount = menu.filter((m) => m.completed).length;
+  const { attempt, lastResult } = projectCounterweightCircuitJournal(state, opts);
   return {
     schema: 1,
     discovered: r?.discovered === true,
@@ -134,7 +140,7 @@ export function projectCounterweightCircuitView(state, opts = {}) {
     menu,
     completedCount,
     attempt,
-    lastResult: r?.lastResult || null,
+    lastResult,
     settings: {
       ghostEnabled: r?.settings?.ghostEnabled === true,
       ghostReduceMotion: r?.settings?.ghostReduceMotion === true,

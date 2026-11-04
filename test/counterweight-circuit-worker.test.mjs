@@ -55,6 +55,8 @@ test('worker-owned registrar actions and admission view reach the main facade', 
       action: 'practice', eventId: 'soft_berth', offerId: offer.id, generation: offer.generation } });
     const view = domains.get('counterweightCircuitView');
     assert.equal(view.eventId, 'soft_berth');
+    assert.equal(view.journal.attempt.eventId, 'soft_berth');
+    assert.ok(view.journal.attempt.legs[0].hint, 'authored next-leg hint reaches the worker facade');
     assert.equal(view.admission.bodies.length, 2);
     assert.equal(domains.get('counterweightCircuitOffer').id, 'counterweight:progress');
     assert.equal(view.ghost, undefined, 'the frequently updated view does not contain the tape');
@@ -76,5 +78,17 @@ test('worker-owned registrar actions and admission view reach the main facade', 
     state.counterweightCircuitGhost = null;
     const cleared = await send();
     assert.ok(cleared.domainUpdates.some(u => u.segs.join('.') === 'counterweightCircuitGhost'));
+    circuit._cancelAttempt('cancelled');
+    await send();
+    const result = domains.get('counterweightCircuitView');
+    assert.equal(result.phase, null, 'idle journal cannot draw course markings');
+    assert.equal(result.journal.lastResult.eventId, 'soft_berth');
+    assert.equal(result.journal.lastResult.outcome, 'cancelled');
+    const save = registry.get('save'), envelope = save.serialize('circuit journal');
+    assert.equal(save.loadEnvelope(envelope, 'circuit journal'), true);
+    await send();
+    assert.equal(domains.get('counterweightCircuitView').journal.lastResult.outcome, 'cancelled', 'Continue restores the same truthful result');
+    circuit.newGame(); await send();
+    assert.equal(domains.get('counterweightCircuitView'), null, 'new game clears the journal view');
   } finally { lane.shutdown(); }
 });

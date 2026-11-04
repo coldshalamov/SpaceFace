@@ -1739,7 +1739,6 @@ export function buildClaimOwnershipMarkers(state, sectorId, claimsSystem = null)
   }
   for (const mark of wreckEcologyMarkers(state, sid)) markers.push(mark);
   markers.push(...getSalvageTenderMapMarkers(state, sid));
-  markers.push(...getBreakwaterSpurMapMarkers(state, sid));
   return markers;
 }
 
@@ -2194,6 +2193,14 @@ export function systemZoneTarget(zone, sectorId, playerPos = null) {
     detail: `${zone.hazard ? 'Hazard' : 'Zone'} · ${zone.typeLabel} · threat ${zone.threat || 0}` };
 }
 
+function breakwaterChartTargets(state, sectorId) {
+  return getBreakwaterSpurMapMarkers(state, sectorId).map(marker => {
+    const pos = sectorLocalToGlobalForSector(marker.drawPos, sectorId);
+    return { ...marker, x: pos.x, z: pos.z, coursePos: pos, sectorId,
+      entityId: null, named: true, searchText: marker.name };
+  });
+}
+
 function cinderglassChartTargets(state, sectorId) {
   return getCinderglassJobMapMarkers(state, sectorId).map(marker => ({
     id: marker.id, kind: 'poi', poiType: 'cinderglass', name: marker.label,
@@ -2387,7 +2394,7 @@ export function buildSystemModel(state, sectorId, options = {}) {
     // it; suppressing the dynamic duplicate must never suppress its authoritative activity.
     points[staticIndex] = Object.freeze({ ...points[staticIndex], ...marker });
   }
-  points.push(...counterweightChartTargets(state, sid), ...cinderglassChartTargets(state, sid));
+  points.push(...breakwaterChartTargets(state, sid), ...counterweightChartTargets(state, sid), ...cinderglassChartTargets(state, sid));
   // Orrin's accepted original resolves through the ordinary station target/click/course path.
   // The case reader deliberately supplies no nav state; this only gives the existing Customs
   // Gate point a persistent reason to be selected after the one-shot referral intent is gone.
@@ -2562,7 +2569,7 @@ export function buildLocalModel(state, isHostile, options = {}) {
     sectorId,
     player: player ? { id: player.id, x: player.pos.x, z: player.pos.z, rot: player.rot || 0 } : null,
     contacts: filterSalvageTenderMapContacts(state, contacts),
-    circuitSites: [...counterweightChartTargets(state, sectorId), ...cinderglassChartTargets(state, sectorId)],
+    circuitSites: [...breakwaterChartTargets(state, sectorId), ...counterweightChartTargets(state, sectorId), ...cinderglassChartTargets(state, sectorId)],
     ownership: buildClaimOwnershipMarkers(state, sectorId, options.claimsSystem || null),
     bearings: discoveryBearingReadouts(state, sectorId),
     rumorCorroborations: frontierRumorCorroborations(state, sectorId),
@@ -3990,6 +3997,7 @@ function getSearchTargets(state, level, curSecId, claimsSystem = null, isHostile
         factionId: p.factionId,
         searchText: p.searchText,
         mapKind: p.mapKind,
+        poiType: p.poiType,
         stageId: p.stageId,
         stageLabel: p.stageLabel,
         coursePos: p.coursePos,
@@ -6265,6 +6273,13 @@ _stepAnimation(now) {
 
       `;
       buttonLabel = 'Track Waypoint';
+    } else if (t.poiType === 'breakwater_spur') {
+      html += `<div class="gm-ins-section">
+        <div class="gm-ins-kind">Breakwater Spur</div>
+        <div class="gm-ins-target-name">${escapeMapHtml(t.stageLabel || 'Loading frame')}</div>
+        <div class="gm-ins-note">${escapeMapHtml(t.statusLine || '')}</div>
+      </div>`;
+      buttonLabel = 'Track Target';
     } else {
       // General contact
       const contactDist = player && Number.isFinite(t.x) && Number.isFinite(t.z)

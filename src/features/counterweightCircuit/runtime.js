@@ -21,7 +21,7 @@ import { applyResultToRecord, freshEventRecord, medalAtMost } from './scoring.js
 import { createGhostRecorder, normalizeGhost, ghostAllowed } from './ghost.js';
 import { emitCommissionCue } from '../../audio/commissionCues.js';
 import {
-  projectCounterweightCircuitView, registrarOfferSpec, eventPreviewSpec,
+  projectCounterweightCircuitView, projectCounterweightCircuitJournal, registrarOfferSpec, eventPreviewSpec,
   recordsOfferSpec, resultOfferSpec, attemptProgressSpec,
 } from './readModel.js';
 import {
@@ -288,12 +288,14 @@ export function createCounterweightCircuitSystem() {
 
   function publishView(force = false) {
     if (!attempt) {
-      if (state.counterweightCircuitView != null) state.counterweightCircuitView = null;
+      const lastResult = row().lastResult || null;
+      state.counterweightCircuitView = lastResult ? { phase: null, journal: { attempt: null, lastResult } } : null;
       lastViewAt = -1;
       return;
     }
     if (!force && state.simTime - lastViewAt < 0.125) return;
     lastViewAt = state.simTime;
+    const journal = projectCounterweightCircuitJournal(state, { attempt, simTime: state.simTime });
     const marks = [];
     for (const b of attempt.def.bodies) {
       if (!b.zone) continue;
@@ -329,6 +331,7 @@ export function createCounterweightCircuitSystem() {
     state.counterweightCircuitView = {
       eventId: attempt.eventId,
       attemptId: attempt.attemptId,
+      journal,
       admission: attempt.admissionPending ? { generation: attempt.admissionGeneration,
         bodies: attempt.def.bodies.map(b => ({ id: attempt.cohort.get(b.role).id,
           generation: attempt.cohort.get(b.role).occupantGeneration, file: b.file })) } : null,
@@ -549,7 +552,7 @@ export function createCounterweightCircuitSystem() {
       // Leaving mid-flight cancels clearly; venue fixtures stay — durable
       // persistent originals that the residency owner shelves and returns.
       if (attempt) cancelLiveAttempt('left_venue');
-      state.counterweightCircuitView = null;
+      publishView(true);
       registrarInRange = false;
       closeOffers();
     });
@@ -642,7 +645,7 @@ export function createCounterweightCircuitSystem() {
   function afterContinue() {
     physical.afterRestore();
     restoring = false;
-    if (!attempt) return;
+    if (!attempt) { publishView(true); return; }
     // Rebind the saved cohort to the bodies the entity restore actually brought
     // back. A body that did not return marks the attempt interrupted —
     // unconfirmed, never awarded, never inferred.

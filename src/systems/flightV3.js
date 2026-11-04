@@ -24,7 +24,9 @@ import { queueSaucerVelocity } from '../core/physicsAuthority.js';
 // not drop the dash mechanic, HUD boost bar, VFX/audio, or save parity. NPCs use only the boolean
 // intent.boost (no resource model), exactly as in the legacy controller — AI never used e.boost.
 
-import { measureThrusterAuthority, queuePhysicsImpulse, writePhysicsControl } from '../core/physicsAuthority.js';
+import { measureThrusterAuthority, queuePhysicsImpulse, writePhysicsControl, resolvePhysicsBodySpec } from '../core/physicsAuthority.js';
+import { PHYSICS_MATERIALS } from '../data/physicsMaterials.js';
+import { resolveCollisionProxyManifest, proxyOuterRadiusWu } from '../data/collisionProxyManifests.js';
 import { cancelPhaseBlink, stepPhaseBlink } from './phaseBlink.js';
 // FB-095: _diag.tickMs is diagnostics-only — it reads the classified instrumentation clock
 // (perfNow in perfRuntime) so this simulation owner never touches wall time itself.
@@ -1005,12 +1007,15 @@ export const flightV3 = {
       ? sweptHullContacts(state, entity)
       : null;
     const advisory = computeSweptHullAdvisory(entity, profile, contacts);
+    const contact = advisory.active ? contacts?.find(e => e.id === advisory.contactId) : null;
+    advisory.contactGeneration = contact?.occupantGeneration ?? null;
     const latch = this._sweptHull
       || (this._sweptHull = { active: false, contactId: null, sliding: false, emittedAt: -Infinity });
     if (advisory.active && this.bus && typeof this.bus.emit === 'function') {
       const now = finite(state && state.simTime, 0);
       const faceChanged = !latch.active
         || latch.contactId !== advisory.contactId
+        || latch.contactGeneration !== advisory.contactGeneration
         || latch.sliding !== advisory.sliding;
       if (faceChanged || now - latch.emittedAt >= SWEPT_HULL_REEMIT_S) {
         this.bus.emit('flight:sweptHull', sweptHullEventPayload(entity.id, advisory));
@@ -1019,6 +1024,7 @@ export const flightV3 = {
     }
     latch.active = advisory.active;
     latch.contactId = advisory.contactId;
+    latch.contactGeneration = advisory.contactGeneration;
     latch.sliding = advisory.sliding;
     return advisory;
   },
@@ -1925,6 +1931,33 @@ function deterministicAvoidanceSide(baseX, baseZ) {
 const AUTOPILOT_OBSTACLE_SCRATCH = [];
 const AUTOPILOT_OBSTACLE_QUERY_SCRATCH = [];
 const AUTOPILOT_OBSTACLE_QUERY_POS = { x: 0, z: 0 };
+const AUTOPILOT_DRESSING_BOUNDS = [];
+
+// Both guidance and the hand-flight warning read this physical vocabulary. Bounds
+// describe a contact; they never replace/mutate the original entity or its life token.
+function flightObstacleBody(e, bounds, index) {
+  if (!e || e.alive === false || e.collides === false || !e.pos) return null;
+  if (e.type === 'projectile' || e.type === 'pickup') return null;
+  if (e.type === 'fx') {
+    // Dressing may own a fixed compound body despite its FX entity vocabulary.
+    if (!e.physicsBody || typeof e.physicsBody !== 'object') return null;
+    const spec = resolvePhysicsBodySpec(e);
+    if (!spec || PHYSICS_MATERIALS[spec.material]?.ghost) return null;
+    const manifest = resolveCollisionProxyManifest(e);
+    const bound = bounds[index] || (bounds[index] = {});
+    bound.id = e.id;
+    bound.type = e.type;
+    bound.alive = e.alive;
+    bound.occupantGeneration = e.occupantGeneration;
+    bound.pos = e.pos;
+    bound.vel = e.vel;
+    bound.radius = Math.max(positive(e.radius, 0), spec.radius, manifest ? proxyOuterRadiusWu(manifest, e) : 0);
+    return bound;
+  }
+  const radius = Number.isFinite(e.radius) ? e.radius : 0;
+  if (radius <= 0 && e.type !== 'station' && e.type !== 'asteroid' && e.type !== 'wreck' && e.type !== 'ship') return null;
+  return e;
+}
 
 // An obstacle only matters when its center sits inside the lookahead capsule: projection within
 // (0, maxProjection] of the player along the steer direction and |lateral| below its clearance
@@ -1953,12 +1986,9 @@ function autopilotObstacles(state, player, target, baseX, baseZ, maxProjection) 
     // in obstacle guidance until the ship is aligned for the final berth lane.
     const targetStationBlocksMouthApproach = e === target.entity
       && !!target.dockingProxyId && target.dockingStage === 'corridor-mouth';
-    if (!e || e === player || (e === target.entity && !targetStationBlocksMouthApproach)
-        || e.alive === false || e.collides === false || !e.pos) continue;
-    if (e.type === 'projectile' || e.type === 'fx' || e.type === 'pickup') continue;
-    const radius = Number.isFinite(e.radius) ? e.radius : 0;
-    if (radius <= 0 && e.type !== 'station' && e.type !== 'asteroid' && e.type !== 'wreck' && e.type !== 'ship') continue;
-    out.push(e);
+    if (e === player || (e === target.entity && !targetStationBlocksMouthApproach)) continue;
+    const obstacle = flightObstacleBody(e, AUTOPILOT_DRESSING_BOUNDS, out.length);
+    if (obstacle) out.push(obstacle);
   }
   return out;
 }
@@ -1969,6 +1999,7 @@ const SWEPT_HULL_OBSTACLE_SCRATCH = [];
 const SWEPT_HULL_QUERY_SCRATCH = [];
 const SWEPT_HULL_QUERY_POS = { x: 0, z: 0 };
 const SWEPT_HULL_NO_CONTACTS = [];
+const SWEPT_HULL_DRESSING_BOUNDS = [];
 
 // The sweep capsule runs along the CURRENT velocity out to the advisory horizon. One circle
 // covering that capsule returns every possible contributor — the hash buckets entities by their
@@ -1996,11 +2027,9 @@ function sweptHullContacts(state, entity) {
   const out = SWEPT_HULL_OBSTACLE_SCRATCH;
   out.length = 0;
   for (const e of list) {
-    if (!e || e === entity || e.alive === false || e.collides === false || !e.pos) continue;
-    if (e.type === 'projectile' || e.type === 'fx' || e.type === 'pickup') continue;
-    const radius = Number.isFinite(e.radius) ? e.radius : 0;
-    if (radius <= 0 && e.type !== 'station' && e.type !== 'asteroid' && e.type !== 'wreck' && e.type !== 'ship') continue;
-    out.push(e);
+    if (e === entity) continue;
+    const obstacle = flightObstacleBody(e, SWEPT_HULL_DRESSING_BOUNDS, out.length);
+    if (obstacle) out.push(obstacle);
   }
   return out;
 }
@@ -2009,7 +2038,7 @@ function sweptHullContacts(state, entity) {
 // the ship:thrust contract. No field aliases a per-tick advisory object.
 const _sweptHullPayload = {
   shipId: null, active: true, sliding: false, speed: 0, forwardSpeed: 0, lateralSpeed: 0,
-  driftAngle: 0, contactId: null, contactType: null, contactRadius: 0, timeToContactS: null,
+  driftAngle: 0, contactId: null, contactGeneration: null, contactType: null, contactRadius: 0, timeToContactS: null,
   contactDistance: 0, closestGapWU: 0, closestTimeS: 0, contactPoint: null,
   canStopBeforeContact: false, stopDistanceWU: 0,
 };
@@ -2025,6 +2054,7 @@ function sweptHullEventPayload(shipId, advisory) {
   P.lateralSpeed = advisory.lateralSpeed;
   P.driftAngle = advisory.driftAngle;
   P.contactId = advisory.contactId;
+  P.contactGeneration = advisory.contactGeneration;
   P.contactType = advisory.contactType;
   P.contactRadius = advisory.contactRadius;
   P.timeToContactS = advisory.timeToContactS;

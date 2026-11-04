@@ -1,4 +1,5 @@
 import { cinderglassJobJournalReceipt } from '../../features/cinderglassJob/integration.js';
+import { COUNTERWEIGHT_EVENTS } from '../../features/counterweightCircuit/definition.js';
 // src/ui/screens/missionLog.js — In-flight mission log.
 // Shows all active + recently completed missions with progress, timer, reward, and a Track word.
 // READ-ONLY on state; emits ui:trackMission + ui:abandonMission (+ career origin/ladder intents)
@@ -2094,6 +2095,15 @@ export const missionLogScreen = {
     body.appendChild(list);
     this._listEl = list;
 
+    const commissionHeader = sectionHeader('Commissions');
+    commissionHeader.hidden = true;
+    body.appendChild(commissionHeader);
+    this._commissionHeader = commissionHeader;
+    const commissions = el('div', 'sf-mlog-commissions');
+    commissions.hidden = true;
+    body.appendChild(commissions);
+    this._commissionsEl = commissions;
+
     // Career ladder chip (CL-UI-03) rows: start/decline/choose/recover/abandon + map/track words
     // emit intents; owners transition state. Non-diegetic: no visor, no portrait.
     const careerH = sectionHeader('Career', 'sf-mlog-section-career');
@@ -2413,7 +2423,15 @@ export const missionLogScreen = {
    */
   refresh(ctx, options = {}) {
     if (ctx) this._ctx = ctx;
-    if (options && options.periodic) return;
+    if (options && options.periodic) {
+      const signature = JSON.stringify(this._ctx?.state?.counterweightCircuitView?.journal || null);
+      if (signature !== this._commissionJournalSignature) {
+        this._commissionJournalSignature = signature;
+        this._renderCommissions(this._ctx.state);
+        if (this._compVisible) this._renderCompleted();
+      }
+      return;
+    }
     this._render();
   },
 
@@ -2456,6 +2474,12 @@ export const missionLogScreen = {
     this._subbed = true;
     const bus = this._ctx.bus;
     const refresh = () => { if (this._visible()) this._render(); };
+    bus.on('counterweightCircuit:view', refresh);
+    bus.on('counterweightCircuit:close', refresh);
+    bus.on('breakwaterSpur:offer', refresh);
+    bus.on('breakwaterSpur:receipt', refresh);
+    bus.on('cinderglassJob:view', refresh);
+    bus.on('cinderglassJob:refused', refresh);
     bus.on('mission:updated', refresh);
     bus.on('mission:accepted', refresh);
     bus.on('mission:completed', refresh);
@@ -2502,6 +2526,7 @@ export const missionLogScreen = {
     this._renderStory(state);
     this._renderRecommendations(state, activeMissions, tracked);
     this._renderCareerChip(state);
+    this._renderCommissions(state);
 
     // Remember where focus was so a repaint (every click repaints) does not drop it.
     const focusToken = this._captureFocusToken();
@@ -3142,11 +3167,60 @@ export const missionLogScreen = {
     this._restoreCareerFocusToken(focusToken);
   },
 
+  _renderCommissions(state) {
+    const host = this._commissionsEl;
+    if (!host) return;
+    host.innerHTML = '';
+    const cg = state.cinderglassJobView;
+    const journal = cg?.journal;
+    const circuit = state.counterweightCircuitView;
+    const spur = state.breakwaterSpurView;
+    const entries = [];
+    if (journal?.objective && !journal.outcome) entries.push({ title: journal.title, detail: journal.objective, navigation: cg.navigation || [] });
+    if (circuit?.eventId) {
+      const attempt = circuit.journal?.attempt;
+      const leg = attempt?.legs?.[attempt.legIndex];
+      entries.push({ title: 'Counterweight Circuit', detail: [attempt?.title || COUNTERWEIGHT_EVENTS.find(e => e.id === circuit.eventId)?.title || circuit.eventId,
+        leg?.hint || leg?.label || circuit.phase].filter(Boolean).join(' · ') });
+    }
+    if (spur && spur.phase !== 'dark' && spur.nextAction) entries.push({ title: 'Breakwater Spur', detail: spur.nextAction });
+    host.hidden = !entries.length;
+    this._commissionHeader.hidden = !entries.length;
+    if (!entries.length) return;
+    for (const entry of entries) {
+      const row = el('div', 'k-row k-row--static sf-mlog-career');
+      const text = el('div');
+      text.style.minWidth = '0';
+      text.appendChild(el('div', 'sf-mlog-career-title', entry.title));
+      text.appendChild(el('div', 'k-row__sub', entry.detail));
+      row.appendChild(text);
+      host.appendChild(row);
+      for (const marker of (entry.navigation || []).slice(0, 4)) {
+        if (!marker.action || !marker.id) continue;
+        const button = el('button', 'k-word k-word--body sf-mlog-career-btn', `Track ${marker.label}`);
+        button.type = 'button';
+        button.addEventListener('click', () => this._ctx.bus.emit('cinderglassJob:action', { ...marker.action, action: 'track', markerId: marker.id }));
+        text.appendChild(button);
+      }
+    }
+    if (cg?.refusal?.reason) host.appendChild(el('p', 'k-sentence', cg.refusal.text || cg.refusal.reason.replaceAll('_', ' ')));
+  },
+
   _renderCompleted() {
     if (!this._compListEl || !this._ctx) return;
     const log = (this._ctx.state.missions && this._ctx.state.missions.completedLog) || [];
-    const cinderglass = cinderglassJobJournalReceipt(this._ctx.state);
-    const receipts = [...missionReceiptRows(this._ctx.state, 5), ...(cinderglass ? [cinderglass] : [])];
+    const cinderglass = this._ctx.state.cinderglassJobView?.journal?.outcome
+      ? cinderglassJobJournalReceipt(this._ctx.state) : null;
+    const spurReceipts = (this._ctx.state.breakwaterSpurView?.receipts || []).slice(-4).map((receipt) => ({
+      title: 'Breakwater Spur', body: receipt.text || '', meta: '',
+      outcome: String(receipt.kind || 'record').replaceAll('_', ' '), tone: 'neutral',
+    }));
+    const result = this._ctx.state.counterweightCircuitView?.journal?.lastResult;
+    const circuitReceipt = result ? { title: 'Counterweight Circuit',
+      body: COUNTERWEIGHT_EVENTS.find(e => e.id === result.eventId)?.title || result.eventId || '',
+      meta: result.reason ? String(result.reason).replaceAll('_', ' ') : '',
+      outcome: [result.outcome, result.medal].filter(Boolean).join(' · '), tone: 'neutral' } : null;
+    const receipts = [...missionReceiptRows(this._ctx.state, 5), ...spurReceipts, ...(circuitReceipt ? [circuitReceipt] : []), ...(cinderglass ? [cinderglass] : [])];
     this._compListEl.innerHTML = '';
     if (!receipts.length && !log.length) {
       this._compListEl.innerHTML = '<div class="sf-mlog-empty"><p class="k-sentence k-38">No settlement receipts yet. The ledger writes its first line the first time a job pays out.</p></div>';
