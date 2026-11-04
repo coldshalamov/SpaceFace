@@ -4,8 +4,8 @@
 const FLIGHT = ':root[data-sf-mobile="1"][data-sf-mobile-flight="1"]';
 
 export const MOBILE_FLIGHT_LAYOUT_CSS = `
-/* Fallback only until the HUD measures a safe band for the live voice/status lane. */
-${FLIGHT} #alerts { transform:translateY(calc(124px + var(--sf-safe-top,0px))); }
+/* The mobile information lanes are viewport seats, not a translated desktop alert stack. */
+${FLIGHT} #alerts { transform:none!important; }
 /* The law presenter shares the HUD's measured caption bands on mobile, outside the
    radar dock's flow. Long notices scroll inside the allocated band. */
 ${FLIGHT} #ui-root > #sf-sector-law {
@@ -17,9 +17,6 @@ ${FLIGHT} #ui-root > #sf-sector-law {
 }
 /* A critical notice may temporarily occupy the decorative teaching ghost's space. */
 ${FLIGHT} #sf-touch-overlay.mf-notice-priority .mf-ghost { visibility:hidden; }
-/* Portrait receipts share the objective's left lane, not the radar caption's right lane.
-   Keep the existing bottom/cluster reservation and information semantics; critical receipts
-   can still wrap, while informational receipts retain their existing full-text announcement. */
 @media (orientation:portrait) and (max-width:959px) {
   /* The same Powers button joins Pause in the top navigation lane. Its old 110px side
      handle could not fit between the radar caption and the action cluster on short phones.
@@ -51,35 +48,31 @@ ${FLIGHT} #sf-touch-overlay.mf-notice-priority .mf-ghost { visibility:hidden; }
   ${FLIGHT} #sf-touch-overlay .mf-speed { flex-wrap:wrap; row-gap:2px; }
   /* The two-line flight hint must clear the bottom safe edge on short portrait screens. */
   ${FLIGHT} #sf-touch-overlay .mf-ghost-label { top:82px; }
-  ${FLIGHT} #toasts,
-  ${FLIGHT}[data-sf-mobile-lefty="1"] #toasts {
-    left:calc(14px + var(--sf-safe-left,0px)); right:auto;
-    width:min(320px,calc(100vw - 26px - max(166px,var(--mf-cluster-w,196px) * .25) - var(--sf-safe-left,0px) - var(--sf-safe-right,0px)));
-  }
 }
 
-/* Actual phone-sized instruments: the canvas and SVG use the same 116px coordinate space. */
+/* One small task instrument and one radar: disclosure, rather than desktop prose at phone size. */
 @media (max-width:959px), (max-height:599px) {
-  ${FLIGHT} #hud { --sf-radar-size:116px; }
+  ${FLIGHT} #hud { --sf-radar-size:88px; }
   ${FLIGHT} #sf-touch-overlay .mf-status { width:150px!important; gap:3px; }
   ${FLIGHT} #sf-touch-overlay .mf-speed b { font-size:32px; }
   ${FLIGHT} #hud .sf-rightdock {
     top:calc(112px + var(--sf-safe-top,0px))!important;
     right:calc(8px + var(--sf-safe-right,0px))!important;
-    bottom:auto!important; width:148px!important; align-items:flex-end;
+    bottom:auto!important; width:120px!important; align-items:flex-end;
     transform:none!important; max-height:none!important; overflow:visible!important;
   }
   ${FLIGHT} #hud .sf-radar-wrap:not(.sf-radar-wrap--expanded) {
-    position:relative!important; inset:auto!important; width:148px!important;
+    position:relative!important; inset:auto!important; width:120px!important;
     --sf-kit-radar-rim:16px; transform:none!important; pointer-events:auto!important;
   }
   ${FLIGHT} #hud .sf-radar-wrap:not(.sf-radar-wrap--expanded) .sf-radar {
-    width:116px!important; height:116px!important; overflow:visible;
+    width:88px!important; height:88px!important; overflow:visible;
   }
-  ${FLIGHT} #hud .sf-radar-wrap:not(.sf-radar-wrap--expanded) .sf-radar canvas { width:116px!important; height:116px!important; }
+  ${FLIGHT} #hud .sf-radar-wrap:not(.sf-radar-wrap--expanded) .sf-radar canvas { width:88px!important; height:88px!important; }
+  ${FLIGHT} #hud .sf-radar-wrap:not(.sf-radar-wrap--expanded) .sf-radar-orrery text { font-size:12px!important; }
   ${FLIGHT} #hud .sf-radar-wrap--expanded .sf-radar { flex-shrink:0; }
   ${FLIGHT} #hud .sf-radar-wrap--expanded .sf-radar canvas { width:290px!important; height:290px!important; }
-  ${FLIGHT} #hud .sf-radar-objective-key { font-size:12px!important; line-height:1.25; letter-spacing:normal; }
+  ${FLIGHT} #hud .sf-radar-objective-key { margin-top:12px!important; font-size:12px!important; line-height:1.25; letter-spacing:normal; overflow-wrap:anywhere; }
   ${FLIGHT} #hud .sf-radar-wrap--expanded {
     position:fixed!important; top:calc(112px + var(--sf-safe-top,0px))!important;
     left:clamp(calc(8px + var(--sf-safe-left,0px)),calc(50vw - 179px),calc(100vw - 366px - var(--sf-safe-right,0px)))!important;
@@ -91,20 +84,24 @@ ${FLIGHT} #sf-touch-overlay.mf-notice-priority .mf-ghost { visibility:hidden; }
   ${FLIGHT} #hud > .sf-leftcontext {
     top:calc(112px + var(--sf-safe-top,0px))!important;
     left:calc(8px + var(--sf-safe-left,0px))!important; bottom:auto!important;
-    width:min(205px,calc(100vw - 172px - var(--sf-safe-left,0px) - var(--sf-safe-right,0px)))!important;
+    width:min(320px,calc(100vw - 144px - var(--sf-safe-left,0px) - var(--sf-safe-right,0px)))!important;
     max-width:none!important; transform:none!important; overflow:visible!important; contain:style!important;
+    padding:0!important; border:0!important; background:none!important; box-shadow:none!important;
   }
   ${FLIGHT} #hud > .sf-leftcontext > .sf-mission-tracker {
     box-sizing:border-box; width:100%; max-width:100%; padding:6px 8px!important;
-    contain:style!important; background:rgb(5 7 10 / .88)!important; overflow:visible;
+    contain:style!important; background:var(--dp-glass-flight,rgb(5 7 10 / .88))!important; overflow:visible;
+    border:1px solid var(--dp-line-faint,rgb(232 226 212 / .14)); border-radius:4px;
+    pointer-events:none!important;
   }
   ${FLIGHT} #hud .sf-mission-tracker .sf-mt-dial { display:none!important; }
   ${FLIGHT} #hud .sf-mission-tracker::before { display:none!important; }
   ${FLIGHT} #hud .sf-mt-obj { display:none!important; }
   ${FLIGHT} #hud .sf-mt-compact { display:block; font:500 14px/1.3 var(--dp-face-body,system-ui,sans-serif); color:var(--dp-ink,#e8e2d4); }
-  ${FLIGHT} #hud .sf-mt-compact-action { display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:3; overflow:hidden; overflow-wrap:anywhere; }
-  ${FLIGHT} #hud .sf-mt-compact-readings { white-space:pre-line; overflow-wrap:anywhere; color:var(--dp-lamp,#f2b950); }
-  ${FLIGHT} #hud .sf-mt-time { font-size:12px!important; line-height:1.3; }
+  ${FLIGHT} #hud .sf-mt-compact-action { min-height:44px; padding-right:58px; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; overflow-wrap:anywhere; }
+  ${FLIGHT} #hud .sf-mt-compact-readings { margin-top:2px; white-space:pre-line; overflow-wrap:anywhere; color:var(--dp-lamp,#f2b950); font-size:13px; line-height:1.3; }
+  /* The full objective AND this tutorial caption already live in the existing Details panel. */
+  ${FLIGHT} #hud .sf-mt-time { display:none!important; }
   ${FLIGHT} #hud .sf-mt-details-button, ${FLIGHT} #hud .sf-mt-details-close,
   ${FLIGHT} #race-tape .race-tape-options-trigger, ${FLIGHT} #race-tape .race-tape-options-close {
     display:block!important; box-sizing:border-box; min-width:44px; min-height:44px; padding:6px 10px;
@@ -130,9 +127,10 @@ ${FLIGHT} #sf-touch-overlay.mf-notice-priority .mf-ghost { visibility:hidden; }
     white-space:pre-line; overflow-wrap:anywhere;
   }
   ${FLIGHT} #hud .sf-mt-details-close { flex:none; align-self:flex-end; margin-bottom:8px; }
+  ${FLIGHT} #hud .sf-mt-details-button { position:absolute; top:6px; right:6px; width:54px; height:44px; padding:4px; }
   ${FLIGHT} #race-tape[data-compact="true"] {
     position:absolute!important; top:-48px!important; right:0!important; left:auto!important; bottom:auto!important;
-    width:148px!important; padding:0!important; background:none!important; transform:none!important;
+    width:120px!important; padding:0!important; background:none!important; transform:none!important;
     display:block; overflow:visible!important;
   }
   ${FLIGHT} #race-tape[data-compact="true"] .race-tape-options-trigger { width:100%; }
@@ -144,12 +142,53 @@ ${FLIGHT} #sf-touch-overlay.mf-notice-priority .mf-ghost { visibility:hidden; }
   }
   ${FLIGHT} #race-tape[data-compact="true"] .race-tape-actions .k-word { min-height:44px; width:100%; text-align:left; font-size:12px; }
   ${FLIGHT} #race-tape[data-compact="false"] :is(.race-tape-options-trigger,.race-tape-options-close) { display:none!important; }
+
+  /* Facts share one edge lane with the low-priority teaching voice. Never print both over the
+     ship. The receipt owner retains its queue, full announcements, counts, actions and expiry. */
+  ${FLIGHT} body #hud #toasts,
+  ${FLIGHT} #alerts .sf-alert--floor.sf-alert--info {
+    position:fixed!important; left:calc(8px + var(--sf-safe-left,0px))!important; right:auto!important;
+    top:calc(208px + var(--sf-safe-top,0px))!important; bottom:auto!important;
+    width:min(320px,calc(100vw - 144px - var(--sf-safe-left,0px) - var(--sf-safe-right,0px)))!important;
+    box-sizing:border-box; transform:none!important; text-align:left!important;
+    font:400 13px/1.35 var(--dp-face-body,system-ui,sans-serif);
+  }
+  /* Important results wrap in full; a pointer-through feed must never require a hidden scroll. */
+  ${FLIGHT} body #hud #toasts { max-height:none!important; overflow:visible!important; gap:5px; }
+  ${FLIGHT} #toasts .sf-toast { box-sizing:border-box; width:100%; max-width:100%; font:inherit; min-width:0; padding:3px 0; }
+  ${FLIGHT} #toasts .sf-toast__text { min-width:0; flex:1; }
+  ${FLIGHT} #toasts .sf-toast:not(.sf-toast--info) .sf-toast__text { white-space:normal; overflow:visible; text-overflow:clip; }
+  ${FLIGHT} #alerts .sf-alert--floor.sf-alert--info .sf-alert__text { display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; }
+  ${FLIGHT}:has(#toasts .sf-toast:not(.sf-toast--out)) #alerts .sf-alert--floor.sf-alert--info { visibility:hidden!important; }
+
+  /* The diamond stays on its body. Its words belong above the touch actions, not on top of
+     that body, a receipt, or the pilot's own ship. Inline display remains the live owner's. */
+  ${FLIGHT} #sf-ml2 .ml2-preview {
+    position:fixed!important; left:calc(8px + var(--sf-safe-left,0px))!important; right:auto!important;
+    top:auto!important; bottom:calc(196px + var(--sf-safe-bottom,0px))!important; transform:none!important;
+    box-sizing:border-box; width:max-content; max-width:min(280px,calc(100vw - 32px - var(--sf-safe-left,0px) - var(--sf-safe-right,0px)))!important;
+    white-space:normal!important; font-size:12px; line-height:1.35; letter-spacing:.03em;
+  }
+  ${FLIGHT}[data-sf-mobile-lefty="1"] #sf-ml2 .ml2-preview { left:auto!important; right:calc(8px + var(--sf-safe-right,0px))!important; }
 }
 @media (max-height:500px) and (orientation:landscape) {
-  ${FLIGHT} #alerts { transform:none; }
   ${FLIGHT} #hud .sf-radar-wrap--expanded { top:calc(8px + var(--sf-safe-top,0px))!important; max-height:calc(100dvh - 16px - var(--sf-safe-top,0px) - var(--sf-safe-bottom,0px)); }
   ${FLIGHT} #hud .sf-rightdock { top:calc(95px + var(--sf-safe-top,0px))!important; right:calc(84px + var(--sf-safe-right,0px))!important; }
   ${FLIGHT} #hud > .sf-leftcontext { top:calc(100px + var(--sf-safe-top,0px))!important; width:230px!important; }
+  /* Use landscape's width: results at the upper edge, context at the lower edge, with the
+     central ship between them. These seats also clear the mirrored left-hand action cluster. */
+  ${FLIGHT} body #hud #toasts,
+  ${FLIGHT} #alerts .sf-alert--floor.sf-alert--info {
+    left:calc(176px + var(--sf-safe-left,0px))!important;
+    width:calc(100vw - 390px - var(--sf-safe-left,0px) - var(--sf-safe-right,0px))!important;
+    top:calc(10px + var(--sf-safe-top,0px))!important;
+  }
+  ${FLIGHT} #sf-ml2 .ml2-preview,
+  ${FLIGHT}[data-sf-mobile-lefty="1"] #sf-ml2 .ml2-preview {
+    left:calc(176px + var(--sf-safe-left,0px))!important; right:auto!important;
+    bottom:calc(12px + var(--sf-safe-bottom,0px))!important;
+    max-width:calc(100vw - 390px - var(--sf-safe-left,0px) - var(--sf-safe-right,0px))!important;
+  }
   ${FLIGHT} #race-tape[data-compact="true"] {
     top:-87px!important; right:auto!important;
     left:calc(400px - 100vw + var(--sf-safe-left,0px) + var(--sf-safe-right,0px))!important;
@@ -163,10 +202,5 @@ ${FLIGHT} #sf-touch-overlay.mf-notice-priority .mf-ghost { visibility:hidden; }
 @media (max-height:340px) and (orientation:landscape) {
   ${FLIGHT} #hud .sf-rightdock { top:calc(78px + var(--sf-safe-top,0px))!important; }
   ${FLIGHT} #race-tape[data-compact="true"] { top:-70px!important; }
-}
-@media (orientation:portrait) and (max-width:350px) {
-  ${FLIGHT} #hud > .sf-leftcontext { width:calc(100vw - 16px - var(--sf-safe-left,0px) - var(--sf-safe-right,0px))!important; }
-  ${FLIGHT} #hud .sf-rightdock { top:calc(270px + var(--sf-safe-top,0px))!important; }
-  ${FLIGHT} #race-tape[data-compact="true"] { top:-206px!important; }
 }
 `;
