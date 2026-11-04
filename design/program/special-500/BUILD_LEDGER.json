@@ -7,9 +7,9 @@
   "small": 167,
   "medium": 167,
   "large": 166,
-  "landed": 0,
+  "landed": 36,
   "assigned": 32,
-  "approved": 22
+  "approved": 36
  },
  "derivation": {
   "ratifiedFollowup": 330,
@@ -1012,9 +1012,9 @@
    "size": "medium",
    "family": "mail",
    "batch": 2,
-   "status": "assigned",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused 6/6 + pulse-435 12/12 + controller re-run 18/18",
    "note": "promoted to medium (balance)"
   },
   {
@@ -2003,7 +2003,7 @@
    "size": "small",
    "family": "spectacle",
    "batch": 6,
-   "status": "pending",
+   "status": "assigned",
    "commit": "",
    "verification": "",
    "note": ""
@@ -2023,7 +2023,7 @@
    "size": "small",
    "family": "spectacle",
    "batch": 6,
-   "status": "pending",
+   "status": "assigned",
    "commit": "",
    "verification": "",
    "note": ""
@@ -2043,7 +2043,7 @@
    "size": "small",
    "family": "spectacle",
    "batch": 6,
-   "status": "pending",
+   "status": "assigned",
    "commit": "",
    "verification": "",
    "note": ""
@@ -2063,7 +2063,7 @@
    "size": "small",
    "family": "spectacle",
    "batch": 6,
-   "status": "pending",
+   "status": "assigned",
    "commit": "",
    "verification": "",
    "note": ""
@@ -2083,7 +2083,7 @@
    "size": "small",
    "family": "spectacle",
    "batch": 6,
-   "status": "pending",
+   "status": "assigned",
    "commit": "",
    "verification": "",
    "note": ""
@@ -2104,7 +2104,7 @@
    "size": "small",
    "family": "spectacle",
    "batch": 6,
-   "status": "pending",
+   "status": "assigned",
    "commit": "",
    "verification": "",
    "note": ""
@@ -2124,7 +2124,7 @@
    "size": "small",
    "family": "spectacle",
    "batch": 6,
-   "status": "pending",
+   "status": "assigned",
    "commit": "",
    "verification": "",
    "note": ""
@@ -2142,7 +2142,7 @@
    "size": "small",
    "family": "spectacle",
    "batch": 6,
-   "status": "pending",
+   "status": "assigned",
    "commit": "",
    "verification": "",
    "note": ""
@@ -2162,7 +2162,7 @@
    "size": "small",
    "family": "spectacle",
    "batch": 6,
-   "status": "pending",
+   "status": "assigned",
    "commit": "",
    "verification": "",
    "note": ""
@@ -2203,7 +2203,7 @@
    "size": "small",
    "family": "spectacle",
    "batch": 6,
-   "status": "pending",
+   "status": "assigned",
    "commit": "",
    "verification": "",
    "note": ""
@@ -2223,7 +2223,7 @@
    "size": "small",
    "family": "spectacle",
    "batch": 6,
-   "status": "pending",
+   "status": "assigned",
    "commit": "",
    "verification": "",
    "note": ""
@@ -2243,7 +2243,7 @@
    "size": "small",
    "family": "spectacle",
    "batch": 6,
-   "status": "pending",
+   "status": "assigned",
    "commit": "",
    "verification": "",
    "note": ""
@@ -2263,7 +2263,7 @@
    "size": "small",
    "family": "spectacle",
    "batch": 6,
-   "status": "pending",
+   "status": "assigned",
    "commit": "",
    "verification": "",
    "note": ""
@@ -2303,7 +2303,7 @@
    "size": "small",
    "family": "spectacle",
    "batch": 6,
-   "status": "pending",
+   "status": "assigned",
    "commit": "",
    "verification": "",
    "note": ""
@@ -3111,9 +3111,9 @@
    "size": "medium",
    "family": "mail",
    "batch": 2,
-   "status": "assigned",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused 6/6 + pulse-435 12/12 + controller re-run 18/18",
    "note": "promoted to medium (balance)"
   },
   {
@@ -3255,9 +3255,9 @@
    "size": "medium",
    "family": "mail",
    "batch": 2,
-   "status": "assigned",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused 6/6 + pulse-435 12/12 + controller re-run 18/18",
    "note": "promoted to medium (balance)"
   },
   {
@@ -3679,9 +3679,9 @@
    "size": "medium",
    "family": "mail",
    "batch": 2,
-   "status": "assigned",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused 6/6 + pulse-435 12/12 + controller re-run 18/18",
    "note": "promoted to medium (balance)"
   },
   {
@@ -6777,9 +6777,9 @@
    "size": "small",
    "family": "mail",
    "batch": 2,
-   "status": "assigned",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused 6/6 + pulse-435 12/12 + controller re-run 18/18",
    "note": ""
   },
   {
@@ -6859,9 +6859,9 @@
    "size": "medium",
    "family": "mail",
    "batch": 2,
-   "status": "assigned",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused 6/6 + pulse-435 12/12 + controller re-run 18/18",
    "note": "promoted to medium (balance)"
   },
   {
@@ -7563,9 +7563,9 @@
    "size": "small",
    "family": "mail",
    "batch": 2,
-   "status": "assigned",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused 6/6 + pulse-435 12/12 + controller re-run 18/18",
    "note": ""
   },
   {
@@ -9638,9 +9638,9 @@
    "size": "small",
    "family": "mail",
    "batch": 2,
-   "status": "assigned",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused 6/6 + pulse-435 12/12 + controller re-run 18/18",
    "note": ""
   },
   {
@@ -9656,9 +9656,9 @@
    "size": "small",
    "family": "mail",
    "batch": 2,
-   "status": "assigned",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused 6/6 + pulse-435 12/12 + controller re-run 18/18",
    "note": ""
   },
   {
@@ -9676,9 +9676,9 @@
    "size": "small",
    "family": "mail",
    "batch": 2,
-   "status": "assigned",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused 6/6 + pulse-435 12/12 + controller re-run 18/18",
    "note": ""
   },
   {
@@ -9696,9 +9696,9 @@
    "size": "small",
    "family": "mail",
    "batch": 2,
-   "status": "assigned",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused 6/6 + pulse-435 12/12 + controller re-run 18/18",
    "note": ""
   },
   {
@@ -9716,9 +9716,9 @@
    "size": "small",
    "family": "mail",
    "batch": 2,
-   "status": "assigned",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused 6/6 + pulse-435 12/12 + controller re-run 18/18",
    "note": ""
   },
   {
@@ -9736,9 +9736,9 @@
    "size": "small",
    "family": "mail",
    "batch": 2,
-   "status": "assigned",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused 6/6 + pulse-435 12/12 + controller re-run 18/18",
    "note": ""
   },
   {
@@ -9754,9 +9754,9 @@
    "size": "small",
    "family": "mail",
    "batch": 2,
-   "status": "assigned",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused 6/6 + pulse-435 12/12 + controller re-run 18/18",
    "note": ""
   },
   {

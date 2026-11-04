@@ -971,6 +971,229 @@ export const MAIL_LETTERS = Object.freeze([
       + 'The fifth owner still buys, wherever they drifted.',
     triggers: [E('ship:purchased'), OWNSHIPS(2)],
   },
+
+  // ── special-500 Phase 2 (batch 2, serial mail pass) ────────────────────────────────
+  // Fourteen letters, one per catalog entry, each keyed to the story flag the director
+  // writes when its entry fires: state.story.flags['special500.<id>'] (the director is the
+  // only writer of that namespace — src/systems/special500Director.js). The letter is the
+  // world remembering the beat; the sender is the entry's own voice.
+
+  // SP1-089 "The Far-Side Message" — the SORRY wreck off the Black Orchard, legible from one
+  // bearing only. Entry payload `from` is "Veil fog" — no natural letter-writer — so the
+  // nearest in-world sender signs it: the soundings desk at Research Station Veil.
+  {
+    id: 'mail_special500_sp1-089', kind: 'cast', from: 'Soundings desk, Research Station Veil',
+    subject: 'The wreck that says SORRY',
+    body: 'We run soundings out of Research Station Veil, and most of what the fog gives back '
+      + 'we file and forget. Not this one. The wreck off the Black Orchard carries one word on its '
+      + 'far side, welded in plate, and the nebula\'s rim glow reads it through the hull: SORRY. You '
+      + 'only get the word from one bearing and one side — stand anywhere else and it is just a '
+      + 'hull with its back to you. The registration says it carried passengers. I have stopped '
+      + 'guessing what it was sorry for. The codex page is one word long, and it took me a week to '
+      + 'stop standing there. Come read it before the fog closes.',
+    triggers: [FLAG('special500.SP1-089')],
+  },
+  // SP2-036 "The Overtime Log" — the night-only line on the Helios derelict's work log. The
+  // sender is the one the consensus names: Kessler, weights desk.
+  {
+    id: 'mail_special500_sp2-036', kind: 'cast', from: 'Kessler',
+    subject: 'Overtime log: one unreconciled line',
+    body: 'Someone finally scanned the overtime derelict at night and pulled the extra line: '
+      + 'SHIFT ENDED. I STAYED. THE LANE DOES NOT SUPERVISE ITSELF. By day the log ends two entries '
+      + 'earlier, like the line was never typed. I checked the copies going back before my time at '
+      + 'the weights desk. Same line, every night shift, for years. Somebody has been leaving it on '
+      + 'and never once billed for the hour. We built our whole ledger on catching discrepancies, '
+      + 'and the honest one was sitting in a derelict the whole time. The night clerk at the '
+      + 'overtime pin. Good man. Never billed us. I have noted the line under no charge, which is '
+      + 'where the best entries live.',
+    triggers: [FLAG('special500.SP2-036')],
+  },
+  // SP2-056 "Letters For The Dead Crew" — the benefits desk writes to the hull's dead crew,
+  // never having been told. Addressed to the Tessera, so it files under the Vols crew thread.
+  {
+    id: 'mail_special500_sp2-056', kind: 'crew', from: 'Concord Benefits Desk',
+    subject: 'TO: CREW, TESSERA — RE: THE SEVENTH RUN',
+    body: 'TO: CREW, TESSERA / RE: THE SEVENTH RUN. We are still holding your deposits. They have '
+      + 'matured. Come collect. Bring registration.\n\n'
+      + 'This desk writes to the address on file, and the address on file is a hull. If the hull is '
+      + 'reading this and the crew is not, that is a filing problem, not ours. The deposits drew '
+      + 'interest for every year the account sat quiet, which the ledger calls diligence and we '
+      + 'call momentum. The count will not release the sum to a name, a cousin, or a story. '
+      + 'Registration only. We have never once been told what happened on the seventh run, and we '
+      + 'have decided that being told is more trouble than the interest. Come collect. Or keep her '
+      + 'flying, and we will keep holding it. Either way the account stays open.',
+    triggers: [FLAG('special500.SP2-056')],
+  },
+  // SP2-178 "The Lost Freight's Address" — the Helios lost-property board names the player
+  // courier; the letter is the tag arriving as the mail attachment the followup describes.
+  {
+    id: 'mail_special500_sp2-178', kind: 'cast', from: 'Helios Lost-Property Desk',
+    subject: 'Tag 41: ONE (1) ENGINE, still waiting',
+    body: 'You scanned the freight on the lost apron, so the board has matched its label to a tag '
+      + 'and printed your name in the courier line. We did not choose you; the match did. CONTENTS: '
+      + 'ONE (1) ENGINE. WAITING SINCE BEFORE YOU ARRIVED. OWNER NOTIFIED 41 TIMES. OWNER IS THE '
+      + 'WAITING PROBLEM. Read that line twice. The freight is waiting for itself. The board is '
+      + 'waiting for the freight. Nobody at this desk can say which notice failed first, and the '
+      + 'file has been open longer than most careers. You are now the loop\'s only moving part. '
+      + 'Carry the tag to the freight and both halves close. Or keep the tag, and the loop keeps '
+      + 'its shape. The board is indifferent. The engine is not going anywhere.',
+    triggers: [FLAG('special500.SP2-178')],
+  },
+  // SP2-046 "The Recruitment Letter" — Sker Vane's office after a fine reached the Reach.
+  // Vane voice per FIGURES; the job terms are the entry's own payload, unchanged.
+  {
+    id: 'mail_special500_sp2-046', kind: 'cast', from: 'Boss Sker Vane',
+    subject: 'The Reach weighed you',
+    body: 'A fine on your record reached us before Concord finished filing it. Good. The Reach '
+      + 'weighed you while you were standing still — you came up short, loud, and useful. Two of '
+      + 'those are fixable and one of them is the job. One task, no contract paper, paid in hull '
+      + 'parts and not asking: shadow a Meridian toll run and report its timing. No shots. We want '
+      + 'the schedule, not the cargo; cargo is loud and schedules are cheap. Refusal is fine. This '
+      + 'is an office, not a trap. Refusal twice is memorable. I keep a short list for memorable '
+      + 'and a long burn for the rest of it. Answer by flying or by not.',
+    triggers: [FLAG('special500.SP2-046')],
+  },
+  // SP2-051 "Voss's Open Page" — the claim office's paper-clipped ledger page, the convoy that
+  // never logged. Voss asking, not as a mission, as a favor between ledgers.
+  {
+    id: 'mail_special500_sp2-051', kind: 'cast', from: 'Voss',
+    subject: 'The page with the paper clip',
+    body: 'There is a page in the claim ledger I have not closed in years. A paper clip holds it '
+      + 'open: the convoy that never logged. Old route, full tally on the outbound, nothing on the '
+      + 'return. The books call that a rounding error the size of a convoy. I am not asking as a '
+      + 'mission. I am asking as a favor between ledgers. Fly the old route once with a live tally '
+      + 'rig and let the scale say what the page says. If it confirms the hole, I write one '
+      + 'correction line and hand you five points of DMC goodwill, and the clerk — me — keeps the '
+      + 'page open. If the scale reads one extra hull, we both learn something the page did not '
+      + 'know. Either way it is a story with a receipt.',
+    triggers: [FLAG('special500.SP2-051')],
+  },
+  // SP2-132 "The Claim Tag Wedding" — the rival crew's joint claim form. The entry payload has
+  // no `from` (memory channel); the followup's co-owner letters are signed "— V", so that is
+  // the voice that signs here too.
+  {
+    id: 'mail_special500_sp2-132', kind: 'cast', from: 'V. (rival claim crew)',
+    subject: 'The claim form, pre-signed',
+    body: 'The form you are holding is real. Pre-signed, one blank line, filed in duplicate like '
+      + 'anything that matters. You ran an honest scale over that rock and we watched the numbers '
+      + 'behave, and out here that is rarer than ore. So: SECOND NAME. THIS IS NOT A QUESTION. WE '
+      + 'SAW YOUR SCALE READINGS. MARRY US COMMERCIALLY. What signing means, plainly: both yields '
+      + 'on the claim double, the quarrels end, and the form outlives both crews like all '
+      + 'paperwork does. What declining means, also plainly: respect, no grudge, and we go back to '
+      + 'arguing with the rock instead of you. One line, one signature. The rock does not care. '
+      + 'We do.',
+    triggers: [FLAG('special500.SP2-132')],
+  },
+  // SP3-014 "The Sun Dogs" — the annual 22-degree mock suns over Helios. Sender is the
+  // entry's own voice: Helios traffic.
+  {
+    id: 'mail_special500_sp3-014', kind: 'cast', from: 'Helios Traffic Control',
+    subject: 'Optics check: two mock suns',
+    body: 'Optics check, annual, filed late as always: two mock suns flanking the key at exactly '
+      + '22 degrees, each dragging a short tail of colored fire, holding formation for about a '
+      + 'minute while everything moves and nothing does. Haulers flew through them like they were '
+      + 'lanes. One rookie called it a sensor fault; the fault called back with both birds. The '
+      + 'bar is running its usual bet on which one goes out first, and the book still will not '
+      + 'split them, which tells you everything about how seriously this station takes physics. '
+      + 'It happens every year around now, first watch. Set your clock by it or set your drink by '
+      + 'it.',
+    triggers: [FLAG('special500.SP3-014')],
+  },
+  // SP3-019 "Eclipse Bulletin" — the wire teach that the umbra is scheduled, not random. The
+  // news payload has no named writer; the Sector Wire desk that prints it signs the letter.
+  {
+    id: 'mail_special500_sp3-019', kind: 'cast', from: 'Sector Wire Desk',
+    subject: 'SECTOR WIRE: umbra transit tomorrow, second bell',
+    body: 'SECTOR WIRE, standing item, reprinted because people keep calling it an omen: umbra '
+      + 'transit tomorrow, second bell. Window glass down, work lights up. The umbra is not '
+      + 'weather and it is not a curse; it is a schedule. It crosses when the geometry says it '
+      + 'crosses, which is the same authority the tolls use, so you already trust it more than '
+      + 'you think. Crews on open gantries: down before the bell. Pilots in the dark half: '
+      + 'lights, formation, and no heroics — the black out there is total and it does not care '
+      + 'what your mirrors cost. The starmap has the minute marked. The wire will run it again '
+      + 'next cycle. The dark keeps the appointment either way.',
+    triggers: [FLAG('special500.SP3-019')],
+  },
+  // SPX-A-02 "The Forty-Year Crate" — the oldest manifest line on the Helios dock. Entry
+  // payload has no `from` (memory channel); the nearest in-world sender is the dock office
+  // that owns the manifest the line sits on.
+  {
+    id: 'mail_special500_spx-a-02', kind: 'cast', from: 'Helios Manifest Desk',
+    subject: 'The oldest line on the manifest',
+    body: 'Every dock keeps one item it has stopped trying to explain. Ours is the crate on the '
+      + 'apron past the freight lanes, and its manifest line is the oldest thing on the dock\'s '
+      + 'books: IN TRANSIT, YEAR 3. Not year three of its transit — just YEAR 3, an era with no '
+      + 'number after it. The tape has been opened and resealed so many times it has stratified; '
+      + 'peel one layer and you get the paperwork of a different decade, all of it agreeing the '
+      + 'crate is somebody else\'s problem. It is scan scenery. It is not for sale. Forty years of '
+      + 'clerks have signed it onward, and every one of them is retired or worse, and the crate '
+      + 'is, in every way that matters, still in transit.',
+    triggers: [FLAG('special500.SPX-A-02')],
+  },
+  // SP1-008 "The Captain's tow" — the Reach pack's burial column in Sker Haven. The news
+  // payload has no named writer; Lira Vonn ("The Margin") is the in-world correspondent whose
+  // beat is hulls like this one.
+  {
+    id: 'mail_special500_sp1-008', kind: 'cast', from: 'Lira Vonn',
+    subject: 'REACH BURIAL — the long burn',
+    body: 'The wire ran it as an incident and I am running it as what it was. A Reach pack took a '
+      + 'dead captain home on the long burn: casket-rigged hull in slow column toward the star, '
+      + 'engines dim, and every hundred WU a wasp peeling off the column like a gun salute you '
+      + 'could set a watch by. The pack declared hands-off for the tow and is keeping the '
+      + 'declaration. Nobody touched them; they touched nobody. Plenty of you price the hulls of '
+      + 'dead captains. The market is closed for this one, and every Reach pack will remember it '
+      + 'otherwise. The Margin does not print sentiment, so I will print physics instead: the '
+      + 'formation held the whole way down. Whoever they ran with, the captain takes the long '
+      + 'burn.',
+    triggers: [FLAG('special500.SP1-008')],
+  },
+  // SP3-033 "The Fiddle Strings" — eleven cargo tethers between the f_ceres_2 boulders. Entry
+  // payload `from` is "Belt chatter" — no natural letter-writer — so the nearest in-world
+  // sender signs it: an old-timer driller at Belt Outpost.
+  {
+    id: 'mail_special500_sp3-033', kind: 'cast', from: 'A driller at Belt Outpost',
+    subject: 'Eleven strings, no fiddle',
+    body: 'Somebody between the f_ceres_2 boulders strung eleven real cargo tethers across the '
+      + 'dark like a harp, and nobody is claiming it, which is how you know it was done for free. '
+      + 'Old-timers at the outpost say they sing when the wind fronts come through — a slow, '
+      + 'detuned chord that changes pitch as each front passes, every string throwing its own '
+      + 'faint vibration glint. I heard it once on a fuel run and stood there like an idiot until '
+      + 'my tanks topped. One house rule, posted nowhere and obeyed everywhere: do not shoot a '
+      + 'string. Cut one and the chord loses a voice for good, and nobody will thank you for the '
+      + 'experiment. It is not a fight. It is a listening place. Leave it one.',
+    triggers: [FLAG('special500.SP3-033')],
+  },
+  // SPX-A-01 "The Pointing Chain" — five dead nav buoys aimed at a chalked X in the Ceres
+  // derelict field. Entry payload `from` is "Belt chatter" — no natural letter-writer — so the
+  // nearest in-world sender signs it: the Ceres survey desk that walked the rumor.
+  {
+    id: 'mail_special500_spx-a-01', kind: 'cast', from: 'Ceres survey desk',
+    subject: 'Five buoys, one X',
+    body: 'The survey desk finally walked the derelict field\'s newest rumor and it checks out: '
+      + 'five dead nav buoys in a chain, each one physically aimed at the next — not transmitting, '
+      + 'not powered, just pointed, the way you aim a thing when you mean it. The last one aims '
+      + 'at an uncharted rock marked with a hand-chalked X and nothing else. No name, no date, no '
+      + 'hazard glyph. Someone wanted to be followed, and did it the hard way, with alignment '
+      + 'instead of a signal. The rock holds one modest cache and a page of somebody\'s codex, '
+      + 'which is a strange thing to leave behind and an honest one. If you go: the buoys are '
+      + 'dead, the X is chalk, and the intent has outlasted both.',
+    triggers: [FLAG('special500.SPX-A-01')],
+  },
+  // SP3-048 "The Forecast Bell" — the season-turn chime: three notes, one per temper. The news
+  // payload has no named writer; the Season Wire desk that files the bulletin signs the letter.
+  {
+    id: 'mail_special500_sp3-048', kind: 'cast', from: 'Season Wire Desk',
+    subject: 'SEASON WIRE: the bell has struck',
+    body: 'SEASON WIRE, filed on the stroke: the bell has struck and the weather has changed '
+      + 'addresses. Three notes, one per temper — ion, wind, iron — and the season you get is the '
+      + 'one it names. That is the whole announcement. There is no forecast desk arguing with the '
+      + 'bell, no sponsor, no corrections; the almanac calls it an announcement and the dockhands '
+      + 'call it the only honest thing on the band, which is the same sentence wearing different '
+      + 'coats. What it means for you: whatever temper the bell named is now the weather\'s legal '
+      + 'residence, and hulls that fly like the last season still lives pay the difference out of '
+      + 'their own plating. The bell strikes again in seven days. It has never once been late.',
+    triggers: [FLAG('special500.SP3-048')],
+  },
 ]);
 
 export default { MAIL_LETTERS, MAIL_KINDS, MAIL_EVENT_NAMES, MAIL_DAY_S };
