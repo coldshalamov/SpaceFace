@@ -596,6 +596,7 @@ export async function prepareMobileOpeningFirstPicture(render, options = {}) {
   const timeoutMs = Math.max(1, Number(options.timeoutMs) || DEFAULT_OPENING_BUDGET_MS);
   const yieldToMain = typeof options.yieldToMain === 'function' ? options.yieldToMain : yieldToBrowser;
   let active = true;
+  let progressMark = 0;
   const isActive = () => active
     && (typeof options.isActive !== 'function' || options.isActive());
   const assertActive = () => {
@@ -608,6 +609,7 @@ export async function prepareMobileOpeningFirstPicture(render, options = {}) {
     if (await render.prepareOpeningFirstPicture(timeoutMs, { isActive }) === false) {
       throw new Error('mobile opening first-picture preparation failed');
     }
+    progressMark += 1;
     assertActive();
     let plan;
     if (typeof render.captureOpeningSubmissionPlanSteps === 'function') {
@@ -617,6 +619,7 @@ export async function prepareMobileOpeningFirstPicture(render, options = {}) {
           assertActive();
           const step = steps.next();
           if (step.done) { plan = step.value; break; }
+          progressMark += 1;
           await yieldToMain();
         }
       } finally {
@@ -627,7 +630,9 @@ export async function prepareMobileOpeningFirstPicture(render, options = {}) {
     if (!plan || plan.complete !== true || plan.firstPlayablePipelineSet?.complete !== true) {
       throw new Error('mobile opening submission plan is incomplete');
     }
+    progressMark += 1;
     const submission = await render.drainOpeningSubmissionPlan(plan);
+    progressMark += 1;
     assertActive();
     assertMobileOpeningGraphicsHealthy(render);
     if (submission === false || submission?.ok === false) {
@@ -646,12 +651,61 @@ export async function prepareMobileOpeningFirstPicture(render, options = {}) {
     }
     return { plan, submission, resources };
   })();
-  const settled = await settleWithin(work, timeoutMs);
+  const settled = await settleWhileProgressing(work, timeoutMs, {
+    progress: () => progressMark + linkedProgramCount(render),
+    windowMs: options.progressWindowMs,
+    extensionCapMs: options.slowGlExtensionCapMs,
+  });
   active = false;
   if (!settled.ok) {
-    throw settled.error || new Error('mobile opening first-picture admission timed out');
+    throw settled.error || new Error(`mobile opening first-picture admission timed out after ${Math.round(settled.elapsedMs)}ms `
+      + `(budget ${timeoutMs}ms, slow-GL extension ${Math.round(settled.extendedMs)}ms)`);
   }
   return settled.value;
+}
+
+// Renderer-owned work counters: linked programs plus uploaded textures/geometries. Any change
+// between two checks is evidence the GL work is advancing rather than wedged.
+function linkedProgramCount(render) {
+  const info = render?.renderer?.info;
+  const programs = Array.isArray(info?.programs) ? info.programs.length : 0;
+  const memory = info?.memory || {};
+  return programs * 1e6 + (Number(memory.textures) || 0) * 1e3 + (Number(memory.geometries) || 0);
+}
+
+// Slow-GL tolerance for the exact first picture (shard-4 timeouts on the 1.5-1.7x slower CI image
+// ubuntu-24.04 20261025.353.1; software GL on slow handsets). The base budget is unchanged, so a
+// normal-speed host settles exactly as before. When the base expires while the admission is still
+// measurably advancing (a pipeline stage finished, a capture step yielded, or the renderer linked
+// another program within the last window), the deadline slides forward one window at a time, up to
+// a cap of one more base budget. A wedged admission makes no progress and still fails within one
+// window of its base deadline.
+export const FIRST_PICTURE_PROGRESS_WINDOW_MS = 5000;
+
+export async function settleWhileProgressing(promise, baseMs, options = {}) {
+  const now = typeof options.now === 'function' ? options.now : ledgerNow;
+  const progress = typeof options.progress === 'function' ? options.progress : () => 0;
+  const windowMs = Math.max(1, Number(options.windowMs) || FIRST_PICTURE_PROGRESS_WINDOW_MS);
+  const capMs = Math.max(0, Number(options.extensionCapMs ?? Math.max(baseMs, DEFAULT_OPENING_BUDGET_MS)) || 0);
+  const startedAt = now();
+  let extendedMs = 0;
+  let mark = progress();
+  let budgetMs = baseMs;
+  const outcome = Promise.resolve(promise).then(
+    (value) => ({ ok: true, value }),
+    (error) => ({ ok: false, error }),
+  );
+  for (;;) {
+    const settled = await raceDeadline(outcome, Math.max(0, budgetMs), null);
+    if (settled) return settled;
+    const next = progress();
+    const advanced = next !== mark;
+    mark = next;
+    const grantMs = Math.min(windowMs, capMs - extendedMs);
+    if (!advanced || grantMs <= 0) return { ok: false, timeout: true, elapsedMs: now() - startedAt, extendedMs };
+    extendedMs += grantMs;
+    budgetMs = grantMs;
+  }
 }
 
 // The link reporter already records driver failures. Read that result rather than issuing
