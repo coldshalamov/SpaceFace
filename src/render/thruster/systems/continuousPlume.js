@@ -419,7 +419,7 @@ export class PlumeSlotPool {
     const heat = blendDriveModeHeat(tf.modeWeights, dynMode, DRIVE_HEAT_SCRATCH);
     // The dying tell resolves once per entity, like the heat pass — the hull is one truth.
     const dying = tf.hullFrac < 1
-      ? resolveDyingDrive(tf.hullFrac, tf.sputterPhase, tf.entityPhase)
+      ? resolveDyingDrive(tf.hullFrac, tf.sputterPhase, tf.entityPhase, flags)
       : null;
     // One-shot overpressure from integrateDriveState. Bounded here as well as there, because a
     // caller supplying its own driveState object is not obliged to have run through that path.
@@ -511,10 +511,10 @@ export class PlumeSlotPool {
         // The dying tell (inf-dying-drive): a failing hull's bell cools toward ember and
         // sputters on its own phase — applied after the maneuver heat, which still owns
         // the boost-white and idle-cool answers for a healthy hull.
-        if (dying) applyDyingDriveToSlot(slot, dying);
         // Per-instance continuum dynamics (not shared material uniforms).
         slot.flowSpeed = dynFlow * (this._layerScroll[li] / 2.4);
         slot.turbulence = dynTurb;
+        if (dying) applyDyingDriveToSlot(slot, dying);
         slot.coreSheath = dynCoreSheath;
         slot.dissipation = dynDiss;
         slot.boostBlend = dynBoost;

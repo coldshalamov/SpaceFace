@@ -23,13 +23,14 @@ export const DRIVE_DYING_INTACT = Object.freeze({
  * static offset so a crowd does not sputter in unison. The same inputs always answer the
  * same way — no ambient randomness.
  */
-export function resolveDyingDrive(hullFrac, sputterPhase = 0, entityPhase = 0) {
+export function resolveDyingDrive(hullFrac, sputterPhase = 0, entityPhase = 0, accessibility = null) {
   const frac = Number.isFinite(hullFrac) ? Math.max(0, Math.min(1, hullFrac)) : 1;
   if (frac >= DRIVE_HULL_FAIL_FRAC) return DRIVE_DYING_INTACT;
   const fail = (DRIVE_HULL_FAIL_FRAC - frac) / DRIVE_HULL_FAIL_FRAC;
   const critical = frac < DRIVE_HULL_CRITICAL_FRAC;
   // A wounded bell misses beats: deterministic sputter on the ship's own phase.
-  const beat = Math.max(0, Math.sin((Number(sputterPhase) || 0) * 13 + (Number(entityPhase) || 0) * 6.283));
+  const beat = accessibility?.reducedMotion || accessibility?.reducedFlash ? 0
+    : Math.max(0, Math.sin((Number(sputterPhase) || 0) * 13 + (Number(entityPhase) || 0) * 6.283));
   const sputter = critical ? beat * 0.55 + 0.2 : beat * 0.18;
   const cool = fail * (critical ? 0.85 : 0.5);
   // Ember lean: green and blue collapse harder than red, so the bell reads burnt, not gray.

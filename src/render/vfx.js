@@ -11630,6 +11630,7 @@ export const vfx = {
           plumeAchievedPicture(driveInfo, this._actuatorsFor(player)),
           a11y,
           player,
+          this.state.simTime,
         );
         energy.plumeDrive = driveInfo.drive;
         energy.boostBlend = driveInfo.boost;
@@ -11691,6 +11692,7 @@ export const vfx = {
             plumeAchievedPicture(driveInfo, this._actuatorsFor(player)),
             a11y,
             player,
+            this.state.simTime,
           );
           energy.plumeDrive = Math.max(energy.plumeDrive || 0, driveInfo.drive);
           energy.boostBlend = driveInfo.boost;
@@ -11753,6 +11755,7 @@ export const vfx = {
             plumeAchievedPicture(driveInfo, this._actuatorsFor(player)),
             this._productionThrusterA11y || {},
             player,
+            this.state.simTime,
           );
         } else {
           fleet.setShipSockets(ship, this._productionPlumeSocketView, socketCount);
@@ -12465,6 +12468,7 @@ export const vfx = {
     out.reverse = pilotHoldsDrive ? 0 : reverse;
     out.retroOnly = retroOnly;
     out.brake = brake;
+    out.simTime = Number.isFinite(this.state?.simTime) ? this.state.simTime : 0;
     // The dying tell (inf-dying-drive): the same hull truth the smoke trail reads. A hull
     // without hull fields (set dressing, props) reads intact and never gutters.
     if (Number.isFinite(e.hullMax) && e.hullMax > 0 && Number.isFinite(e.hull)) {
