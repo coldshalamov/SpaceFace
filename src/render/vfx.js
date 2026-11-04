@@ -316,6 +316,14 @@ import {
   resolveDockApproachPlan,
   writeDockApproachGeometry,
 } from './dockApproachBeacons.js';
+import {
+  ENGINE_WASH_RANGE_WU,
+  ENGINE_WASH_SURFACE_KINDS,
+  engineWashEmitPayload,
+  engineWashSlot,
+  resolveEngineWashContact,
+  shouldEmitEngineWash,
+} from './engineWash.js';
 import { pitchPresentationEpoch, shipPitchCandidates } from './shipPitchPresentation.js';
 import { SelectionSigil, resolveSelectionSigil } from './selectionSigil.js';
 import {
@@ -1103,6 +1111,7 @@ function emptyVfxSubsystemDiag() {
     monofilamentBlade: 0, // taut monofilament chord: one world-XZ segment, gone the tick it slacks
     dockingCradle: 0,   // holo berth pad on the bay floor while a corridor engagement is live
     dockApproachBeacons: 0, // station approach beacons: gate pair + inbound lane, pre-approach dressing
+    engineWash: 0,      // a burning drive stirring dust off the surface it hangs over
     apexFlare: 0,       // chromatic apex-release flare around the ship
     momentumSink: 0,
     seamMarkers: 0,
@@ -8092,6 +8101,85 @@ export const vfx = {
   },
 
   // -------------------------------------------------------------------------
+  // Engine wash (inf-engine-wash): a burning main drive stirring the dust off a surface it
+  // hangs over. The contact law lives in engineWash.js (pure, headless-tested); this adapter
+  // owns the walk: thrusting ships against the rock/station/wreck buckets, nearest surface
+  // wins, quantized sim-time slots gate the emission, and the pooled gas dust family carries
+  // the breath. Deterministic: no rng, no wall time, seeds hashed off ship id + slot.
+  // -------------------------------------------------------------------------
+  _engineWashSlots: null,
+  _engineWashContact: null,
+  _engineWashPayload: null,
+
+  _updateEngineWash() {
+    const gas = this._suppressBreakupGas ? null : this._gas;
+    const state = this.state;
+    if (!gas || !state || !state.entities || !state.entities.get) return false;
+    const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+    const slot = engineWashSlot(now);
+    // Candidates: ships whose plume is actually working. `_engineDriveFor` is the same read the
+    // nozzles draw with, so the wash can never burn harder than the bell it belongs to.
+    const ships = indexedShipLikeScan(state);
+    const candidates = this._engineWashCandidates || (this._engineWashCandidates = []);
+    candidates.length = 0;
+    for (const e of ships) {
+      if (!e || e.alive === false || !e.pos || !Number.isFinite(e.pos.x) || !Number.isFinite(e.pos.z)) continue;
+      if (e.id === state.playerId && state.ui && state.ui.docked === true) continue;
+      const drive = this._engineDriveFor(e, this._engineWashDriveScratch ||= {}).drive;
+      if (!(drive > 0.3)) continue; // below the resolver's own floor: skip the surface walk too
+      candidates.push(e);
+      if (candidates.length >= 8) break;
+    }
+    if (candidates.length === 0) return false;
+    const slots = this._engineWashSlots || (this._engineWashSlots = new Map());
+    if (slots.size > 48) slots.clear(); // bounded: an id churn burst resets the cadence book
+    const surfaces = this._engineWashSurface || (this._engineWashSurface = { pos: { x: 0, z: 0 }, radius: 0, kind: 'rock' });
+    const contact = this._engineWashContact || (this._engineWashContact = {});
+    const payload = this._engineWashPayload || (this._engineWashPayload = {});
+    let emitted = 0;
+    // One pass per surface bucket per frame: each thrusting ship tests the surfaces in range.
+    // Squared-distance rejects keep the common frame (ship far from everything) at a few hypots.
+    for (const bucketName of ['asteroids', 'stations', 'wrecks']) {
+      const bucket = indexedTypeScan(state, bucketName);
+      if (!Array.isArray(bucket)) continue;
+      for (let i = 0; i < bucket.length; i++) {
+        const surf = bucket[i];
+        if (!surf || surf.alive === false || !surf.pos
+          || !Number.isFinite(surf.pos.x) || !Number.isFinite(surf.pos.z)) continue;
+        const kind = surf.type === 'station' ? 'station'
+          : surf.type === 'wreck' ? 'wreck' : 'rock';
+        if (!ENGINE_WASH_SURFACE_KINDS.includes(kind)) continue;
+        const surfR = Math.max(2, Number(surf.radius) || 10);
+        for (let c = 0; c < candidates.length; c++) {
+          const ship = candidates[c];
+          const drive = this._engineDriveFor(ship, this._engineWashDriveScratch ||= {}).drive;
+          const dx = surf.pos.x - ship.pos.x, dz = surf.pos.z - ship.pos.z;
+          const range = ENGINE_WASH_RANGE_WU + ship.radius * 2;
+          if (dx * dx + dz * dz > range * range) continue;
+          surfaces.pos.x = surf.pos.x; surfaces.pos.z = surf.pos.z;
+          surfaces.radius = surfR; surfaces.kind = kind;
+          const wash = resolveEngineWashContact(ship, drive, surfaces, contact);
+          if (!wash.hit) continue;
+          const shipId = ship.id != null ? ship.id : c;
+          if (slots.get(shipId) === slot) continue; // this slot already washed
+          if (!shouldEmitEngineWash(drive, slot, shipId)) continue;
+          slots.set(shipId, slot);
+          engineWashEmitPayload(wash, shipId, slot, payload);
+          gas.emitFractureDust({
+            ...payload,
+            occluderX: surf.pos.x,
+            occluderY: 0,
+            occluderZ: surf.pos.z,
+            occluderRadius: surfR * 0.9,
+          });
+          emitted += 1;
+        }
+      }
+    }
+    return emitted > 0;
+  },
+
+  // -------------------------------------------------------------------------
   // Slingshot apex: the actual thrown mass unloads three unequal folded channels.
   // The success beat follows its velocity and drains locally; it never claims an AOE.
   // -------------------------------------------------------------------------
@@ -9956,6 +10044,7 @@ export const vfx = {
     sub.monofilamentBlade = this._updateMonofilamentBlade() ? 1 : 0;
     sub.dockingCradle = this._updateDockingCradle(dt) ? 1 : 0;
     sub.dockApproachBeacons = this._updateDockApproach() ? 1 : 0;
+    sub.engineWash = this._updateEngineWash() ? 1 : 0;
     sub.apexFlare = this._updateApexFlare(dt) ? 1 : 0;
     // Massline UVP: continuous tumble thrash puffs + spin ribbons while status_tumbling / drifting.
     this._updateTumbleBodyLanguageVfx(dt);
