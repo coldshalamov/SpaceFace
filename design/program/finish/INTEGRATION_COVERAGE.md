@@ -34,8 +34,9 @@ gate/dashes and visible undocked NPC wash are integrated; their actual gameplay 
 Last Shift's filed account and finite Compost cache/delivery identity now survive real cold saves
 in focused owner checks; the ordinary physical journeys remain open. Patrol/fine5bf repairs typed
 IDs, current-life hail and the real cold-Continue→re-arm→release brake lease, preserving foreign
-intents; the integrated22 focused checks pass. Preload and English inventory match frozen17a
-(`f382f2da76a4`), so later copy/imports require the next coherent metadata batch.
+intents; the integrated22 focused checks pass. Shipping metadata `ab3d6f19a334` matches frozen494b:42main imports/1007preloads,
+16769 extracted entries and zero unresolved; bytes outside the managed index block are unchanged.
+These counts establish generated freshness, not translated-language completeness.
 Public deployment remains `89ddfe4830e2` at https://spaceface-play-demo.vercel.app/. These later
 source changes after `fcc4491ac441` are not claimed pushed by this controller. A separate a704
 immutable production deployment is READY at
@@ -133,11 +134,12 @@ revive the earlier false acceptance or restore lost iron to make the journey eas
 
 ## Performance and verification limits
 
-The shared b257 checkout baseline passes17/17 in89.908s with the normal four-job allowance and
-unchanged90s budget: only92ms headroom. The prior188.433s budget failure remains archived. No
-checks, goldens or thresholds were weakened and no agent was stopped; these separate busy-host
-samples do not establish a causal speedup or robust headroom. Later material sim-owner batches
-require their relevant check after the current GPU route; no unchanged confidence rerun is scheduled.
+The current shared checkout after494b and metadataab3 passes all17 baseline groups in74.832s
+with the normal four-job allowance and unchanged90s budget. The priorb25789.908s pass and188.433s
+budget failure remain archived. No checks, goldens or thresholds were weakened and no agent was
+stopped. These separate host samples do not establish a causal game-performance improvement.
+The committed-source18 focused encounter checks separately cover the integrated owner repairs;
+foreign WIP was present during the shared-tree baseline. No confidence rerun is scheduled.
 
 Actual paused Photo now pans/zooms/changes FOV and exposure0.6→1.95 while tick/time/player state
 stay held. A real1440×900 nonblack PNG passes after the exposure/final-render readback repair;

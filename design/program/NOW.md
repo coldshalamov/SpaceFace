@@ -23,7 +23,7 @@ the historical stops described below do not authorize another stop. Preserve Chr
 | New immutable mobile stage | Sol terminal `release-a704` | completed; no active write | ignored `release-a704/` |a704 READY at immutable mvkhvu5y2 URL, receipt/input/entry/worker/package checks pass; aliases empty, no public promotion |
 | New WebKit causal frontier | Sol terminal `01a1a7b1-149b-79a3-b444-c93934bbbaa6` | completed; own browser closed normally | ignored `mobile-current-release/a704/` |New Game24.772s and Powers/Pause/Resume DOM/input respond; no first control error or hung evaluation. Capability mismatch retained; captured choices/Pause absent, visual acceptance incomplete |
 | WebKit overlay painting | Sol terminal `mobile-webkit-paint` | active; offline/CPU first, GPU not granted | ignored `mobile-webkit-paint/` only until exact fix granted |distinguish capture/compositor omission from production UI paint; actual iPhone remains UNKNOWN |
-| Shipping metadata494 | Terra terminal `shipping-metadata-494` | active; CPU generation released | managed index block + three official localization outputs; ignored artifacts |frozen494 source only, preserve foreign WIP and outside-block bytes; no deployment/Git mutation |
+| Shipping metadata494 | Terra terminal `shipping-metadata-494` | completed; integratedab3 | source claims released |frozen494 output checked,16769 entries/zero unresolved; index outside managed block unchanged |
 | Active frame qualification | Sol CLI `01a1a73b-c10c-7c53-a4a3-1c14d2273a07` | ready; no active write | ignored active-frame actor and invocation | productive residency preparation and factor/retained compare using existing APIs; wait for Map/root GPU slot, no production telemetry or competing game |
 
 The direct sensor-memory candidate was rejected after one native ABBA: total32.504→32.126ms,
@@ -42,8 +42,9 @@ Photo contrast8260 also passes. Intercept trigger lacked public-visible target a
 so that cell remains UNKNOWN, with no product-refusal claim or unchanged repeat. Lefty vitals9c1b
 passes mounted actual component/hit checks. Metadataa704 is frozen945; newer Weir/VX needs the next
 coherent metadata batch. The newa704 WebKit owned context closed normally; ring play now owns the qualitative GPU route.
-The shared b257 checkout baseline passes17/17 in89.908s, just92ms under90s; it is not a performance
-improvement comparison or full-mode acceptance. No unchanged repeat is scheduled.
+The current shared checkout after494b+metadataab3 baseline passes17/17 in74.832s under90s,
+normal four-job allowance; foreign WIP was present. This is not a matched game-performance
+improvement or full-mode acceptance. Earlier89.908s/188.433s receipts remain historical; no repeat is scheduled.
 
 The freight, commission assembly, chain-kill, mobile checkpoint, station controls, audio, preview,
 explicit-retirement, capital frozen-clock, localization metadata, native Circuit handling, native
