@@ -435,7 +435,8 @@ export function createCircuitPhysical(ctx) {
   on('physics:impact', (payload = {}) => {
     if (payload.backend!=='rapier-dynamic' || payload.tick!==state.tick) return;
     const a=state.entities?.get(payload.aId),b=state.entities?.get(payload.bId);
-    if (!a || !b || a.alive===false || b.alive===false
+    if (!a || !b || (a.type!=='payload' && b.type!=='payload')) return;
+    if (a.alive===false || b.alive===false
       || a.occupantGeneration!==payload.aGeneration || b.occupantGeneration!==payload.bGeneration
       || !nativeReady(a) || !nativeReady(b)) return;
     for (const [hit,other] of [[a,b],[b,a]]) {
