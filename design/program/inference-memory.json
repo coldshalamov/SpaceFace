@@ -132,45 +132,6 @@
   ],
   "units": [
     {
-      "id": "seed-sc-17",
-      "date": "2026-10-24",
-      "wf": "WF-11",
-      "mode": "opportunity",
-      "verdict": "implemented",
-      "reason": "The Triton watcher is an aperture monolith facing the wake.",
-      "fingerprint": "verb=show,subject=watcher,sector=triton,domain=wf-11",
-      "references": [],
-      "integration": "live",
-      "commit": "eeeaef5893",
-      "verification": "focused_green"
-    },
-    {
-      "id": "seed-sc-21",
-      "date": "2026-10-24",
-      "wf": "WF-11",
-      "mode": "opportunity",
-      "verdict": "implemented",
-      "reason": "The Dione relay draws a customs pylon on the cleared lane.",
-      "fingerprint": "verb=show,subject=cleared-lane,sector=dione,domain=wf-11",
-      "references": [],
-      "integration": "live",
-      "commit": "efd9882bfc",
-      "verification": "focused_green"
-    },
-    {
-      "id": "seed-sc-01",
-      "date": "2026-10-24",
-      "wf": "WF-11",
-      "mode": "opportunity",
-      "verdict": "implemented",
-      "reason": "Io's approach wreck is a broken nave that only Io uses.",
-      "fingerprint": "verb=show,subject=wreck-cathedral,sector=io,domain=wf-11",
-      "references": [],
-      "integration": "live",
-      "commit": "eeeaef5893",
-      "verification": "focused_green"
-    },
-    {
       "id": "seed-sc-02",
       "date": "2026-10-24",
       "wf": "WF-11",
@@ -1689,6 +1650,45 @@
       "references": [],
       "integration": "live",
       "commit": "a3ae485e5d6d",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inf-patrol-bait",
+      "date": "2026-11-04",
+      "wf": "WF-02",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "A losing raider squad spoofs the law's own band, a Concord patrol and a Meridian screen open fire on each other through the ordinary hostility oracle, and a scanner pulse on the raider burns the lie",
+      "fingerprint": "verb=spoofs-and-turns,subject=raider-squad-vs-lawful-parties,sector=flight-lanes,domain=wf-02",
+      "references": [],
+      "integration": "live",
+      "commit": "9f332bd9e1db",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inf-current-rider",
+      "date": "2026-11-04",
+      "wf": "WF-02",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "A marked Crucible elite kills its drive inside a room current and the field law physically carries it around the seam - one hit knocks it off the current",
+      "fingerprint": "verb=rides,subject=crucible-elite-affix,sector=crucible-law-arenas,domain=wf-02",
+      "references": [],
+      "integration": "live",
+      "commit": "72661896ebfb",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inf-wing-gap-press",
+      "date": "2026-11-04",
+      "wf": "WF-16",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "A lost wingman's seat says his name on the band, presses his killer for one bounded window, and a lost mining watch is named instead of silently dying",
+      "fingerprint": "verb=grieves-and-presses,subject=player-wingman-casualty,sector=adventure-flight,domain=wf-16",
+      "references": [],
+      "integration": "live",
+      "commit": "821b2b834e56",
       "verification": "focused_green"
     }
   ],
