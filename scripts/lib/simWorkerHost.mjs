@@ -784,6 +784,7 @@ const BRIDGE_EVENTS = [
   'presentation:vfxCue', 'presentation:audioCue', 'presentation:uiCue',
   'presentation:cameraCue', 'presentation:caption', 'audio:cue', 'alert',
   'camera:shake', 'presentation:cueApplied', 'sector:enter', 'cargo:changed',
+  'survivalArena:stormWarning', 'survivalArena:stormResolve', 'survivalArena:stormCancel',
   'automation:fleetChanged', 'combat:chainKill', 'comms:log', 'run:resultsReady',
   'breakwaterSpur:offer', 'breakwaterSpur:close', 'breakwaterSpur:receipt', 'breakwaterSpur:cue',
   'cinderglassJob:offer', 'cinderglassJob:view', 'cinderglassJob:servicePrompt', 'cinderglassJob:fact', 'cinderglassJob:refused', 'cinderglassJob:serviceEnd', 'cinderglassJob:close',

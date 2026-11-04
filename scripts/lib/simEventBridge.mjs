@@ -24,6 +24,7 @@ export const PRESENTATION_LANE_TYPES = new Set([
   'presentation:vfxCue', 'presentation:audioCue', 'presentation:uiCue',
   'presentation:cameraCue', 'presentation:caption', 'audio:cue', 'alert',
   'camera:shake',
+  'survivalArena:stormWarning', 'survivalArena:stormResolve', 'survivalArena:stormCancel',
 ]);
 
 const REJECT = Symbol('sf.bridge.reject');

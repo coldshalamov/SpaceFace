@@ -112,11 +112,25 @@ import {
 import { LAGRANGE_ARENA_ID, planLagrangeInstall } from './lagrangeCrucible.js';
 import {
   STORM_ARENA_ID,
+  STORM_DISCHARGE_DAMAGE,
+  STORM_DISCHARGE_FIRST_S,
+  STORM_DISCHARGE_MAX_EXTRAS,
+  STORM_DISCHARGE_PERIOD_S,
+  STORM_DISCHARGE_PLAYER_WIRE_S,
+  STORM_DISCHARGE_RADIUS,
+  STORM_DISCHARGE_WARNING_S,
+  STORM_ISLAND_RADIUS,
   STORM_RELAY_COUNT,
   STORM_RELAY_ORBIT,
   STORM_RELAY_PERIOD,
+  conductAlongGraph,
+  buildConductivityGraph,
+  createStormLineage,
+  dischargeBiteTargets,
   placeStormRelays,
   planStormInstall,
+  selectDischargeOrigin,
+  stormGraphNodes,
   stormRelayGuide,
 } from './stormLatticeArena.js';
 import { MILL_ARENA_ID, planMillInstall } from './asteroidMillArena.js';
@@ -1253,6 +1267,10 @@ export const survivalArena = {
     // Mines report themselves as they land; this is the only way to know WHICH entities are ours.
     // `mines.releaseAll` would also take the player's own mines, so it is never called from here.
     this._unsubs.push(this.bus.on('mines:placed', (p) => this._onMinePlaced(p)));
+    this._unsubs.push(this.bus.on('tether:attached', (p) => this._observeStormLine(p)));
+    this._unsubs.push(this.bus.on('tether:broken', (p) => this._observeStormLine(p)));
+    this._unsubs.push(this.bus.on('tether:rebound', (p) => this._observeStormLine(p)));
+    this._unsubs.push(this.bus.on('survivalArena:stormPresented', (p) => this._onStormPresented(p)));
     // fields._clearAll (sector change / new game / save load) empties the kernel under us. Drop the
     // bookkeeping so teardown never reports releasing something the kernel no longer holds.
     const forget = () => {
@@ -1262,6 +1280,8 @@ export const survivalArena = {
     this._unsubs.push(this.bus.on('sector:enter', forget));
     this._unsubs.push(this.bus.on('sector:exit', forget));
     this._unsubs.push(this.bus.on('save:loaded', forget));
+    this._unsubs.push(this.bus.on('save:restoring', () => this._resetStormDischarge()));
+    this._unsubs.push(this.bus.on('save:loaded', () => this._resetStormDischarge()));
   },
 
   destroy() {
@@ -1319,7 +1339,10 @@ export const survivalArena = {
     // it must still run once to release its field and drop its pending shoves.
     if (this._legendaries) this._legendaries.update(_dt, st);
     if (this._callins) this._callins.update(_dt, st);
-    if (!liveSurvivalRun(st)) return;
+    if (!liveSurvivalRun(st)) {
+      if (this._dischargePending) this._resetStormDischarge();
+      return;
+    }
     if (this._cycleMachinery) {
       const system = this._fieldsSystem();
       if (system && typeof system.updateExternal === 'function') {
@@ -1421,7 +1444,9 @@ export const survivalArena = {
     this._stormAt = run.arenaId === STORM_ARENA_ID
       ? { x: install.at ? install.at.x : playerAnchor(state).x, z: install.at ? install.at.z : playerAnchor(state).z }
       : null;
+    if (this._stormAt) this._stormRoomGeneration = (this._stormRoomGeneration || 0) + 1;
     this._relayLive = new Map();
+    this._resetStormDischarge();
     this._cryoShocked = new Set();
     if (this._cycleMachinery) {
       const cone = install.fields.find((f) => f.kind === 'cone') || install.fields[0];
@@ -1460,6 +1485,7 @@ export const survivalArena = {
     this._emit('survivalArena:installed', {
       wave,
       arenaId: run.arenaId,
+      stormRoomGeneration: this._stormAt ? this._stormRoomGeneration : null,
       lawId: this._lawId,
       arenaPhase: install.phase,
       note: install.note,
@@ -2172,8 +2198,274 @@ export const survivalArena = {
         });
       }
     }
+    this._tickStormDischarge(state, at);
   },
 
+  /** Reset transient discharge state on a new room, restore, or teardown. */
+  _resetStormDischarge() {
+    if (this._dischargePending) this._emit('survivalArena:stormCancel', {
+      wave: this._wave, roomGeneration: this._stormRoomGeneration, serial: this._dischargePending.serial,
+    });
+    this._relayWiredAt = new Map();
+    this._dischargeElapsed = 0;
+    this._dischargeLastAt = null;
+    this._dischargeNextAt = STORM_DISCHARGE_FIRST_S;
+    this._dischargePending = null;
+    if (!Number.isSafeInteger(this._dischargeSerial)) this._dischargeSerial = 0;
+  },
+
+  _onStormPresented(payload) {
+    const pending = this._dischargePending;
+    const now = simTimeOf(this.state);
+    if (!pending || payload?.wave !== this._wave
+      || payload.roomGeneration !== this._stormRoomGeneration || payload.serial !== pending.serial) return;
+    if (payload.available === false) {
+      this._dischargePending = null;
+      this._dischargeNextAt = this._dischargeElapsed + STORM_DISCHARGE_PERIOD_S;
+      this._emit('survivalArena:stormCancel', { wave: this._wave,
+        roomGeneration: this._stormRoomGeneration, serial: pending.serial });
+      return;
+    }
+    if (pending.presentedAt != null
+      || this.state?.mode !== 'flight' || !['active', 'cleanup'].includes(this.state.run?.phase)
+      || now + STORM_DISCHARGE_WARNING_S > pending.expiresAtSim) return;
+    pending.presentedAt = now;
+    if (this._dischargeLastAt === now) pending.fireAt = this._dischargeElapsed + STORM_DISCHARGE_WARNING_S;
+  },
+
+  // The accepted attachment owner, endpoint lives and controller are the only source of
+  // player wiring credit. A HUD held-id and another actor's cable are not possession.
+  _rememberStormLine(state, attachment, broken = false) {
+    if (!attachment || !['tether_standard', 'attachment_massline'].includes(attachment.defId)) return;
+    if (broken ? attachment.state !== 'broken' : attachment.state !== 'active') return;
+    const player = state.entities?.get(state.playerId);
+    const target = state.entities?.get(attachment.targetId);
+    if (!player || player.alive === false || !target || target.alive === false
+      || !Number.isSafeInteger(player.occupantGeneration) || !Number.isSafeInteger(target.occupantGeneration)) return;
+    const playerOwns = attachment.ownerId === player.id && attachment.ownerGeneration === player.occupantGeneration
+      && (attachment.controllerId == null || (attachment.controllerId === player.id
+        && attachment.controllerGeneration === player.occupantGeneration));
+    const playerControls = attachment.controllerId === player.id
+      && attachment.controllerGeneration === player.occupantGeneration;
+    if (attachment.targetGeneration !== target.occupantGeneration) return;
+    for (const [id, relay] of this._roomSolids || []) {
+      if (!String(id).startsWith('relay_') || relay !== target) continue;
+      if (!playerOwns && !playerControls) {
+        // A new accepted hand on the same relay supersedes an earlier player's release.
+        this._relayWiredAt.delete(id);
+        break;
+      }
+      this._relayWiredAt.set(id, { at: simTimeOf(state), playerId: player.id,
+        playerLife: player.occupantGeneration, relayId: relay.id, relayLife: relay.occupantGeneration });
+      break;
+    }
+  },
+
+  _observeStormLine(payload) {
+    const state = this.state;
+    if (!this._stormAt || this._phase !== 'furnace_active' || state?.mode !== 'flight'
+      || !['active', 'cleanup'].includes(state.run?.phase) || !payload?.attachmentId) return;
+    const attachments = this.ctx && getCombatKernel(this.ctx)?.attachments;
+    const attachment = attachments?.get(payload.attachmentId);
+    if (!attachment) return;
+    if (attachment.state === 'active' && !attachments.physicsContract(attachment.id)) return;
+    this._rememberStormLine(state, attachment, attachment.state === 'broken');
+  },
+
+  _stormPlayerWiring(state) {
+    const attachments = this.ctx && getCombatKernel(this.ctx)?.attachments;
+    if (!attachments || state.playerId == null) return;
+    const owned = attachments.listForEntity(state.playerId, true);
+    const controlled = attachments.listControlledBy(state.playerId, true);
+    for (const attachment of owned.concat(controlled)) {
+      if (attachments.physicsContract(attachment.id)) this._rememberStormLine(state, attachment);
+    }
+    for (const [id, relay] of this._roomSolids || []) {
+      if (!String(id).startsWith('relay_') || !relay || state.entities?.get(relay.id) !== relay) continue;
+      for (const attachment of attachments.listForEntity(relay.id, true)) {
+        if (attachment.targetId !== relay.id || !attachments.physicsContract(attachment.id)) continue;
+        const player = state.entities?.get(state.playerId);
+        const controls = attachment.controllerId != null ? attachment.controllerId === player?.id
+          && attachment.controllerGeneration === player?.occupantGeneration
+          : attachment.ownerId === player?.id && attachment.ownerGeneration === player?.occupantGeneration;
+        if (!controls) this._relayWiredAt.delete(id);
+      }
+    }
+  },
+
+  _stormRelayCredited(state, id, now) {
+    const record = this._relayWiredAt.get(id);
+    const player = state.entities?.get(state.playerId);
+    const relay = this._roomSolids?.get(id);
+    return !!(record && player && player.alive !== false && relay && relay.alive !== false
+      && state.entities?.get(relay.id) === relay && record.playerId === player.id
+      && record.playerLife === player.occupantGeneration && record.relayId === relay.id
+      && record.relayLife === relay.occupantGeneration && now >= record.at
+      && now - record.at <= STORM_DISCHARGE_PLAYER_WIRE_S);
+  },
+
+  // Only actual current relay bodies and current hull lives enter the graph. A dead,
+  // removed or replaced relay is insulating; never substitute its old orbital pose.
+  _stormDischargeGraph(state, at, extras) {
+    const relays = new Map();
+    let live = 0;
+    for (let i = 0; i < STORM_RELAY_COUNT; i++) {
+      const id = `relay_${i}`;
+      const body = this._roomSolids?.get(id);
+      const valid = body && body.alive !== false && state.entities?.get(body.id) === body
+        && Number.isSafeInteger(body.occupantGeneration) && body.occupantGeneration > 0
+        && Number.isFinite(body.pos?.x) && Number.isFinite(body.pos?.z);
+      if (valid) live++;
+      relays.set(id, valid ? { pos: body.pos, conductive: true }
+        : { pos: at, conductive: false });
+    }
+    if (!live) return null;
+    const hulls = [];
+    for (const entry of extras) {
+      const e = entry.entity;
+      if (!e || e.alive === false || state.entities?.get(e.id) !== e
+        || e.occupantGeneration !== entry.life || !Number.isFinite(e.pos?.x) || !Number.isFinite(e.pos?.z)) continue;
+      hulls.push({ id: e.id, kind: 'hull', conductive: true, score: 4,
+        pos: { x: e.pos.x, z: e.pos.z } });
+    }
+    return buildConductivityGraph(stormGraphNodes(at, simTimeOf(state), hulls, relays), { at, discharge: true });
+  },
+
+  /** Warn a bounded, committed graph before damage; no elapsed fight time while paused. */
+  _tickStormDischarge(state, at) {
+    const run = state.run;
+    if (this._phase !== 'furnace_active' || run?.arenaId !== STORM_ARENA_ID || run.wave !== this._wave
+      || !['active', 'cleanup'].includes(run.phase)) {
+      if (this._dischargePending || this._dischargeElapsed) this._resetStormDischarge();
+      return;
+    }
+    if (state.mode !== 'flight') { this._dischargeLastAt = null; return; }
+    const now = simTimeOf(state);
+    if (this._dischargeLastAt != null && now >= this._dischargeLastAt) {
+      this._dischargeElapsed += now - this._dischargeLastAt;
+    }
+    this._dischargeLastAt = now;
+    const elapsed = this._dischargeElapsed;
+    if (this._dischargePending) {
+      if (now >= this._dischargePending.expiresAtSim) {
+        const pending = this._dischargePending;
+        this._dischargePending = null;
+        this._dischargeNextAt = elapsed + STORM_DISCHARGE_PERIOD_S;
+        this._emit('survivalArena:stormCancel', { wave: this._wave,
+          roomGeneration: this._stormRoomGeneration, serial: pending.serial });
+        return;
+      }
+      if (this._dischargePending.fireAt == null) {
+        if (this._dischargePending.presentedAt == null) return;
+        this._dischargePending.fireAt = elapsed + STORM_DISCHARGE_WARNING_S;
+      }
+      if (elapsed < this._dischargePending.fireAt) return;
+      const pending = this._dischargePending;
+      this._dischargePending = null;
+      this._dischargeNextAt = elapsed + STORM_DISCHARGE_PERIOD_S;
+      this._resolveStormDischarge(state, at, pending);
+      return;
+    }
+    if (elapsed < this._dischargeNextAt - STORM_DISCHARGE_WARNING_S) return;
+    this._stormPlayerWiring(state);
+    const candidates = (state.entityList || []).filter(e => e && e.alive !== false
+      && (e.type === 'ship' || e.type === 'drone') && state.entities?.get(e.id) === e
+      && Number.isSafeInteger(e.occupantGeneration) && Number.isFinite(e.pos?.x) && Number.isFinite(e.pos?.z)
+      && Math.hypot(e.pos.x - at.x, e.pos.z - at.z) >= STORM_ISLAND_RADIUS);
+    candidates.sort((a, b) => {
+      const da = (a.pos.x - at.x) ** 2 + (a.pos.z - at.z) ** 2;
+      const db = (b.pos.x - at.x) ** 2 + (b.pos.z - at.z) ** 2;
+      return da - db || (String(a.id) < String(b.id) ? -1 : String(a.id) > String(b.id) ? 1 : 0);
+    });
+    const extras = candidates.slice(0, STORM_DISCHARGE_MAX_EXTRAS)
+      .map(entity => ({ entity, life: entity.occupantGeneration }));
+    const graph = this._stormDischargeGraph(state, at, extras);
+    const origin = selectDischargeOrigin(graph);
+    if (!origin) { this._dischargeNextAt = elapsed + STORM_DISCHARGE_PERIOD_S; return; }
+    const tick = state.tick | 0;
+    const walk = conductAlongGraph(graph, origin.id, createStormLineage({ lineageProcBudget: 16, tick }), { tick });
+    if (!walk.hops.length) { this._dischargeNextAt = elapsed + STORM_DISCHARGE_PERIOD_S; return; }
+    const points = new Map();
+    for (const hop of walk.hops) for (const id of [hop.fromId, hop.toId]) {
+      const node = graph.nodesById.get(id);
+      if (node?.pos) points.set(id, { x: node.pos.x, z: node.pos.z });
+    }
+    const serial = ++this._dischargeSerial;
+    const relayLives = new Map();
+    for (const [id, entity] of this._roomSolids) if (String(id).startsWith('relay_') && entity) {
+      relayLives.set(id, { entity, life: entity.occupantGeneration });
+    }
+    this._dischargePending = { serial, fireAt: null, expiresAtSim: now + 4, extras,
+      originId: origin.id, hops: walk.hops, points, relayLives };
+    this._emit('survivalArena:stormWarning', {
+      wave: this._wave, roomGeneration: this._stormRoomGeneration, serial,
+      atSim: now, expiresAtSim: now + 4, warningS: STORM_DISCHARGE_WARNING_S,
+      segments: walk.hops.map(hop => {
+        const a = points.get(hop.fromId), b = points.get(hop.toId);
+        return { ax: a.x, az: a.z, bx: b.x, bz: b.z };
+      }),
+      nodes: [origin.id, ...walk.hops.map(hop => hop.toId)]
+        .map(id => ({ ...points.get(id), radius: STORM_DISCHARGE_RADIUS })),
+    });
+    this._emit('audio:cue', { id: 'sfx_doctrine_ranged_charge', position: { x: at.x, z: at.z }, gain: 0.5 });
+  },
+
+  _resolveStormDischarge(state, at, pending) {
+    this._stormPlayerWiring(state);
+    const graph = this._stormDischargeGraph(state, at, pending.extras);
+    const now = simTimeOf(state);
+    const wave = this._wave, roomGeneration = this._stormRoomGeneration, run = state.run;
+    const kernel = this.ctx && getCombatKernel(this.ctx);
+    if (!graph || !kernel?.routeDamage) {
+      this._emit('survivalArena:stormCancel', { wave: this._wave, roomGeneration: this._stormRoomGeneration, serial: pending.serial });
+      return;
+    }
+    const candidates = (state.entityList || []).filter(e => e && e.alive !== false
+      && (e.type === 'ship' || e.type === 'drone') && state.entities?.get(e.id) === e
+      && Number.isFinite(e.pos?.x) && Number.isFinite(e.pos?.z)
+      && Math.hypot(e.pos.x - at.x, e.pos.z - at.z) >= STORM_ISLAND_RADIUS);
+    const bitten = new Set();
+    let bites = 0, playerBites = 0, hops = 0, playerWire = false;
+    const segments = [], nodes = [];
+    for (const hop of [{ fromId: pending.originId, toId: pending.originId }, ...pending.hops]) {
+      if (state.run !== run || this._wave !== wave || this._stormRoomGeneration !== roomGeneration
+        || this._phase !== 'furnace_active' || !['active', 'cleanup'].includes(run.phase)) break;
+      let staleRelay = false;
+      for (const id of [hop.fromId, hop.toId]) {
+        if (!String(id).startsWith('relay_')) continue;
+        const saved = pending.relayLives.get(id), current = this._roomSolids.get(id);
+        if (!saved || saved.entity !== current || saved.life !== current?.occupantGeneration) staleRelay = true;
+      }
+      if (staleRelay) break;
+      const from = graph.nodesById.get(hop.fromId), node = graph.nodesById.get(hop.toId);
+      const warnedFrom = pending.points.get(hop.fromId), warned = pending.points.get(hop.toId);
+      if (!from || !node || !warnedFrom || !warned || from.conductive === false || node.conductive === false
+        || (hop.fromId !== hop.toId && !graph.neighbors.get(hop.fromId)?.includes(hop.toId))
+        || Math.hypot(from.pos.x - warnedFrom.x, from.pos.z - warnedFrom.z) > STORM_DISCHARGE_RADIUS
+        || Math.hypot(node.pos.x - warned.x, node.pos.z - warned.z) > STORM_DISCHARGE_RADIUS) break;
+      if (this._stormRelayCredited(state, hop.fromId, now) || this._stormRelayCredited(state, hop.toId, now)) playerWire = true;
+      nodes.push({ x: node.pos.x, z: node.pos.z, radius: STORM_DISCHARGE_RADIUS });
+      if (hop.fromId !== hop.toId) {
+        hops++;
+        segments.push({ ax: from.pos.x, az: from.pos.z, bx: node.pos.x, bz: node.pos.z });
+      }
+      const targets = dischargeBiteTargets(warned, candidates, { excludeIds: bitten });
+      for (const body of targets) {
+        if (state.run !== run || this._wave !== wave || this._phase !== 'furnace_active') break;
+        if (Math.hypot(body.pos.x - node.pos.x, body.pos.z - node.pos.z) > STORM_DISCHARGE_RADIUS) continue;
+        bitten.add(body.id);
+        const attackerId = playerWire && body.id !== state.playerId ? state.playerId : STORM_ARENA_ID;
+        const packet = scalarHitToDamagePacket({ damage: STORM_DISCHARGE_DAMAGE, damageType: 'kinetic',
+          pos: { x: node.pos.x, z: node.pos.z }, source: { kind: 'storm_discharge', nodeId: hop.toId } });
+        const result = kernel.routeDamage({ attackerId, targetId: body.id, packet,
+          origin: { kind: 'storm_discharge', id: hop.toId } });
+        if (result?.totalApplied > 0) { bites++; if (attackerId === state.playerId) playerBites++; }
+      }
+    }
+    this._emit('survivalArena:stormResolve', { wave, roomGeneration,
+      serial: pending.serial, hops, atSim: now, segments, nodes });
+    this._emit('swarm:stormDischarge', { hops, bites, playerBites, at: { x: at.x, z: at.z }, t: now, tick: state.tick | 0 });
+  },
   /** Entity ids currently held by an active Massline attachment (attachment targetIds). */
   _heldBodyIds(state) {
     const byId = state && state.combat && state.combat.attachments
@@ -2200,6 +2492,7 @@ export const survivalArena = {
   },
 
   _reset() {
+    this._resetStormDischarge();
     this._fieldIds = [];
     this._deferredFields = null;
     this._deferredUntil = null;

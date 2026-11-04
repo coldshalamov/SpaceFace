@@ -1300,6 +1300,109 @@ export function createLawArenaDressing() {
     root: null, parts: [], clones: [], installedAtSim: 0, arenaId: null,
     relayWires: [], pylonPositions: [],
   };
+  let stormCue = null;
+  let stormLatestGeneration = 0;
+  let stormLatestSerial = 0;
+
+  function clearStormCue() {
+    if (!stormCue) return;
+    if (stormCue.root.parent) stormCue.root.parent.remove(stormCue.root);
+    for (const material of stormCue.materials) material.dispose();
+    stormCue = null;
+  }
+
+  // Geometry comes from the simulation's committed walk, never the decorative orbit wires.
+  function handleStormWarning(payload, scene, onPresented) {
+    if (!payload || !scene || !Number.isSafeInteger(payload.wave)
+      || !Number.isSafeInteger(payload.roomGeneration) || payload.roomGeneration < 1
+      || !Number.isSafeInteger(payload.serial) || payload.serial < 1
+      || !Number.isFinite(payload.expiresAtSim) || !Number.isFinite(payload.atSim)
+      || payload.expiresAtSim <= payload.atSim || !Array.isArray(payload.segments)
+      || !Array.isArray(payload.nodes) || payload.segments.length < 1 || payload.segments.length > 8
+      || payload.nodes.length < 1 || payload.nodes.length > 9) return false;
+    if (payload.roomGeneration < stormLatestGeneration
+      || (payload.roomGeneration === stormLatestGeneration && payload.serial <= stormLatestSerial)) return false;
+    if (!payload.segments.every(s => [s.ax, s.az, s.bx, s.bz].every(Number.isFinite))
+      || !payload.nodes.every(n => Number.isFinite(n.x) && Number.isFinite(n.z)
+        && Number.isFinite(n.radius) && n.radius > 0 && n.radius <= 100)) return false;
+    clearStormCue();
+    stormLatestGeneration = payload.roomGeneration;
+    stormLatestSerial = payload.serial;
+    const shared = sharedAssets(), materials = [];
+    const warning = cloneEmissive(shared.amberMat, materials);
+    warning.emissiveIntensity = 1.15;
+    const root = new THREE.Group();
+    const wires = [], rings = [];
+    root.name = 'storm_discharge_warning';
+    for (const segment of payload.segments) {
+      const wire = mesh(shared.boxGeo, warning, 'storm_discharge_warning_segment');
+      wire.scale.set(Math.max(1, Math.hypot(segment.bx - segment.ax, segment.bz - segment.az)), 1.5, 2.5);
+      wire.position.set((segment.ax + segment.bx) / 2, 43, (segment.az + segment.bz) / 2);
+      wire.rotation.y = -Math.atan2(segment.bz - segment.az, segment.bx - segment.ax);
+      root.add(wire);
+      wires.push(wire);
+    }
+    for (const node of payload.nodes) {
+      const ring = mesh(shared.torusGeo, warning, 'storm_discharge_warning_node');
+      ring.rotation.x = Math.PI / 2;
+      ring.position.set(node.x, 43, node.z);
+      ring.scale.setScalar(node.radius);
+      root.add(ring);
+      rings.push(ring);
+    }
+    scene.add(root);
+    stormCue = { root, materials, wave: payload.wave, roomGeneration: payload.roomGeneration,
+      serial: payload.serial, expiresAtSim: payload.expiresAtSim, onPresented, presented: false, wires, rings };
+    return true;
+  }
+
+  function handleStormEnd(payload) {
+    if (!stormCue || !payload || payload.wave !== stormCue.wave
+      || payload.roomGeneration !== stormCue.roomGeneration || payload.serial !== stormCue.serial) return false;
+    clearStormCue();
+    return true;
+  }
+
+  function handleStormResolve(payload) {
+    if (!stormCue || !payload || payload.wave !== stormCue.wave
+      || payload.roomGeneration !== stormCue.roomGeneration || payload.serial !== stormCue.serial) return false;
+    if (!Number.isFinite(payload.atSim) || !Array.isArray(payload.segments) || !Array.isArray(payload.nodes)
+      || payload.segments.length > stormCue.wires.length || payload.nodes.length > stormCue.rings.length
+      || !payload.segments.every(s => [s.ax, s.az, s.bx, s.bz].every(Number.isFinite))
+      || !payload.nodes.every(n => Number.isFinite(n.x) && Number.isFinite(n.z))) {
+      clearStormCue(); return false;
+    }
+    if (!payload.nodes.length) { clearStormCue(); return true; }
+    for (let i = 0; i < stormCue.wires.length; i++) {
+      const wire = stormCue.wires[i], segment = payload.segments[i];
+      wire.visible = !!segment;
+      if (!segment) continue;
+      wire.scale.set(Math.max(1, Math.hypot(segment.bx - segment.ax, segment.bz - segment.az)), 2, 3.5);
+      wire.position.set((segment.ax + segment.bx) / 2, 43, (segment.az + segment.bz) / 2);
+      wire.rotation.y = -Math.atan2(segment.bz - segment.az, segment.bx - segment.ax);
+    }
+    for (let i = 0; i < stormCue.rings.length; i++) {
+      const ring = stormCue.rings[i], node = payload.nodes[i];
+      ring.visible = !!node;
+      if (node) ring.position.set(node.x, 43, node.z);
+    }
+    stormCue.root.name = 'storm_discharge_arc';
+    stormCue.expiresAtSim = payload.atSim + 0.3;
+    return true;
+  }
+
+  function resetStormPresentation() {
+    clearStormCue();
+    stormLatestGeneration = 0;
+    stormLatestSerial = 0;
+  }
+
+  function invalidateStormPresentation() {
+    if (!stormCue) return;
+    const { wave, roomGeneration, serial, onPresented } = stormCue;
+    clearStormCue();
+    if (typeof onPresented === 'function') onPresented({ wave, roomGeneration, serial, available: false });
+  }
 
   function releaseRoom() {
     if (room.root && room.root.parent) room.root.parent.remove(room.root);
@@ -1313,6 +1416,7 @@ export function createLawArenaDressing() {
   }
 
   function handleInstall(payload, scene) {
+    clearStormCue();
     releaseRoom();
     if (!payload || !scene) return;
     const arenaId = payload.arenaId;
@@ -1427,10 +1531,19 @@ export function createLawArenaDressing() {
   }
 
   function handleReleased() {
+    clearStormCue();
     releaseRoom();
   }
 
   function updateRoom(simTime, frameDt, options) {
+    if (stormCue) {
+      if (Number.isFinite(simTime) && simTime >= stormCue.expiresAtSim) clearStormCue();
+      else if (!stormCue.presented) {
+        stormCue.presented = true;
+        if (typeof stormCue.onPresented === 'function') stormCue.onPresented({ wave: stormCue.wave,
+          roomGeneration: stormCue.roomGeneration, serial: stormCue.serial });
+      }
+    }
     if (!room.root) return;
     const dt = Math.max(0, frameDt || 0);
     const reduced = !!(options && options.reducedMotion);
@@ -1769,7 +1882,8 @@ export function createLawArenaDressing() {
   }
 
   return {
-    handleInstall, handleReleased, updateRoom,
+    handleInstall, handleReleased, handleStormWarning, handleStormResolve, handleStormEnd,
+    resetStormPresentation, invalidateStormPresentation, updateRoom,
     updateBossDressing, releaseEntityMesh, releaseMesh, releaseMeshSet, prune,
     peekRoom, peekBoss, peekAffix,
   };

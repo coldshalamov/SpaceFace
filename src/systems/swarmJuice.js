@@ -167,6 +167,10 @@ export const swarmJuice = {
     this._unsubs.push(this.bus.on('capitalBoss:start', (p) => this._onCapitalBoss(p)));
     this._unsubs.push(this.bus.on('swarm:chain', (p) => this._onChain(p)));
     this._unsubs.push(this.bus.on('swarm:chainBroken', (p) => this._onChainBroken(p)));
+    // inf-storm-discharge — the lattice firing is a room moment, so it speaks through the
+    // one-voice announcer like every other named beat (the arena emits the receipt; the
+    // juice layer decides whether it is worth a word).
+    this._unsubs.push(this.bus.on('swarm:stormDischarge', (p) => this._onStormDischarge(p)));
     this._unsubs.push(this.bus.on('run:started', () => this._reset()));
     this._unsubs.push(this.bus.on('run:ended', () => this._reset()));
   },
@@ -474,6 +478,19 @@ export const swarmJuice = {
       // A capital that arrives without a planned boss card is still a boss arriving.
       this._slamCues(true);
     }
+  },
+
+  /** inf-storm-discharge — the room's own arc walk bit someone; the moment gets its word. */
+  _onStormDischarge(payload) {
+    if (!payload) return;
+    if (!liveSwarmRun(this.state)) return;
+    const bites = Number.isFinite(payload.bites) ? payload.bites : 0;
+    if (bites <= 0) return;
+    this._emit('swarm:announce', {
+      kind: 'discharge',
+      text: 'GRID LIVE',
+      count: bites,
+    });
   },
 
   _onChain(payload) {

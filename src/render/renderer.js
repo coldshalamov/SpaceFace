@@ -9688,6 +9688,7 @@ export const render = {
       lifecycle.listen(canvas, 'webglcontextlost', (ev) => {
         ev.preventDefault();        // allow restoration
         if (this._contextLost) return;
+        globalLawArenaDressing.invalidateStormPresentation();
         this._contextRestoreReceipt?.cancel?.();
         this._contextRestoreReceipt = null;
         publishContextLostState(this, true);
@@ -20201,6 +20202,12 @@ export const render = {
     // self-gates on arenaId, so non-law rooms pass through untouched.
     onBus('survivalArena:installed', (p) => globalLawArenaDressing.handleInstall(p, this.scene));
     onBus('survivalArena:released', () => globalLawArenaDressing.handleReleased());
+    onBus('survivalArena:stormWarning', (p) => globalLawArenaDressing.handleStormWarning(p, this.scene,
+      receipt => this.bus.emit('survivalArena:stormPresented', receipt)));
+    onBus('survivalArena:stormResolve', (p) => globalLawArenaDressing.handleStormResolve(p));
+    onBus('survivalArena:stormCancel', (p) => globalLawArenaDressing.handleStormEnd(p));
+    onBus('save:loaded', () => globalLawArenaDressing.resetStormPresentation());
+    onBus('game:started', () => globalLawArenaDressing.resetStormPresentation());
     onBus('run:wavePlanned', (p) => this._kickWaveHullDecodeRunway(p));
     // Continue decode runway — the worker-prepared envelope arrives before restore clears
     // the live world; its entity histogram is the only prefetch source that names the saved

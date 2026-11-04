@@ -147,6 +147,7 @@ export const MAIN_TO_SIM_BUS_EVENTS = new Set([
   'sim:pause',
   'siteEvidence:action',
   'spectrum:focus',
+  'survivalArena:stormPresented',
   'survivorPod:choose',
   'swarm:eventVerdict',
   'swarm:fortifyBuildRequested',
