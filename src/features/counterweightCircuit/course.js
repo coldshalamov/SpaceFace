@@ -72,7 +72,12 @@ export function receiverFootprint(body, receiver) {
   };
   const manifest = body.physicsBody?.collisionProxyManifest;
   const radius = body.radius;
-  for (const p of manifest?.primitives || []) {
+  // SG-02 uses compactHull instead of the primitive fallback when available.
+  // Keep its vertices so a keeper constrains only the part actually beside it.
+  const polygon = manifest?.compactHull?.length >= 3 ? manifest.compactHull.map(p => ({
+    x: center.x+c*p.x*radius-s*p.z*radius, z: center.z+s*p.x*radius+c*p.z*radius,
+  })) : null;
+  for (const p of polygon ? [] : manifest?.primitives || []) {
     if (p.kind === 'capsule') {
       include(p.ax*radius,p.az*radius,p.r*radius);
       include(p.bx*radius,p.bz*radius,p.r*radius);
@@ -84,9 +89,44 @@ export function receiverFootprint(body, receiver) {
         radius*(Math.abs(sa)*p.hx+Math.abs(ca)*p.hz));
     }
   }
-  for (const p of manifest?.compactHull || []) include(p.x*radius,p.z*radius);
+  for (const p of polygon || []) {
+    minX=Math.min(minX,p.x); maxX=Math.max(maxX,p.x);
+    minZ=Math.min(minZ,p.z); maxZ=Math.max(maxZ,p.z);
+  }
   if (!Number.isFinite(minX)) include(0,0,radius);
-  return { minX,maxX,minZ,maxZ };
+  return { minX,maxX,minZ,maxZ,...(polygon ? {polygon} : {}) };
+}
+
+function clipAtX(points, x, keepGreater) {
+  const out=[];
+  for (let i=0;i<points.length;i++) {
+    const a=points[i],b=points[(i+1)%points.length];
+    const insideA=keepGreater ? a.x>=x : a.x<=x,insideB=keepGreater ? b.x>=x : b.x<=x;
+    if (insideA) out.push(a);
+    if (insideA!==insideB) {
+      const t=(x-a.x)/(b.x-a.x);
+      out.push({x,z:a.z+t*(b.z-a.z)});
+    }
+  }
+  return out;
+}
+
+function keeperDepth(footprint,lo,hi) {
+  if (footprint.maxX<lo || footprint.minX>hi) return -Infinity;
+  if (!footprint.polygon) return footprint.maxZ;
+  return Math.max(-Infinity,...clipAtX(clipAtX(footprint.polygon,lo,true),hi,false).map(p=>p.z));
+}
+
+/** Exact authored pockets remain deeper than the two narrow depth keepers. */
+export function receiverContainsFootprint(bounds,footprint,tolerance=.08) {
+  return footprint.minX>=bounds.minX-tolerance && footprint.maxX<=bounds.maxX+tolerance
+    && footprint.minZ>=bounds.mouthZ-tolerance && footprint.maxZ<=bounds.spineZ+tolerance
+    && bounds.keeperRanges.every(([lo,hi])=>keeperDepth(footprint,lo,hi)<=bounds.backZ+tolerance);
+}
+
+export function receiverSupportGap(bounds,footprint) {
+  return Math.max(0,Math.min(bounds.spineZ-footprint.maxZ,
+    ...bounds.keeperRanges.map(([lo,hi])=>bounds.backZ-keeperDepth(footprint,lo,hi))));
 }
 
 /** Swept open-mouth entry, with the full lateral footprint clear of both rails. */

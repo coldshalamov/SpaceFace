@@ -12,7 +12,7 @@ import { getCombatKernel } from '../../combat/kernel.js';
 import { scalarHitToDamagePacket } from '../../combat/damage.js';
 import { resolveCollisionConsequence } from '../../combat/impulseKernel.js';
 import { CERES_WORKFLEET_CONTRACT as CERES, ceresWorkfleetCollision } from '../../data/ceresWorkfleet.js';
-import { pickCourseShift, admissionResult, cradleFit, receiverBackZ, receiverFootprint, crossedReceiverMouth } from './course.js';
+import { pickCourseShift, admissionResult, cradleFit, receiverFootprint, receiverContainsFootprint, receiverSupportGap, crossedReceiverMouth } from './course.js';
 import { attachmentBindsOccupant } from '../../combat/attachments.js';
 import { physicsBodyNativeReady, writePhysicsControl } from '../../core/physicsAuthority.js';
 import { modelTruthRow, modelTruthProxyManifest, modelTruthSkinHull } from '../../data/modelTruth.js';
@@ -136,9 +136,11 @@ export function makeCohortSpec(bodyDef, attemptId, venueShift) {
     collisionMask: DEFAULT_MASK.payload | Masks.PROJECTILE,
     physicsBody: physicsSpec(bodyDef.radius, mass, bodyDef.asset, {
       dynamic,
-      // Receiving rails absorb a gentle landing; do not bounce an arrived load
-      // out during its support dwell. This changes only these authored receivers.
-      ...(bodyDef.zone?.receiver ? { contact: { restitution: 0, restitutionCombine: 'min' } } : {}),
+      // Receiving rails absorb a gentle landing and its tangential slide. With
+      // zero friction a parked load slides off a depth keeper into the deeper
+      // outer pocket while the pilot works the other shelf. This is real native
+      // contact response, only on receivers; it never holds a floating load.
+      ...(bodyDef.zone?.receiver ? { contact: { friction: .8, restitution: 0, restitutionCombine: 'min' } } : {}),
     }),
     flags: { persistent: true, missionPinned: true, invuln: !dynamic },
     data: {
@@ -394,9 +396,7 @@ export function createCircuitPhysical(ctx) {
     if (crossedReceiverMouth(mem.footprint,footprint,bounds)) mem.entered=true;
     if (footprint.maxZ<bounds.mouthZ-.1 || footprint.minX<bounds.minX-.1 || footprint.maxX>bounds.maxX+.1) mem.entered=false;
     mem.footprint=footprint;
-    const backZ=receiverBackZ(bounds,footprint);
-    result.inside=footprint.minX>=bounds.minX-.08 && footprint.maxX<=bounds.maxX+.08
-      && footprint.minZ>=bounds.mouthZ-.08 && footprint.maxZ<=backZ+.08;
+    result.inside=receiverContainsFootprint(bounds,footprint);
     result.entered=mem.entered;
     const contacts=helpers.combatPhysics?.sampleSolidContacts?.(body.id,{targetId:receiver.id}) || [];
     const live=contacts.filter(c=>c.source==='rapier-solid-contact' && c.tick===state.tick
@@ -407,7 +407,7 @@ export function createCircuitPhysical(ctx) {
     const dx=body.pos.x-receiver.pos.x,dz=body.pos.z-receiver.pos.z,w=finite(receiver.angVel);
     result.relativeSpeed=Math.hypot(body.vel.x-receiver.vel.x+w*dz,body.vel.z-receiver.vel.z-w*dx);
     const age=mem.supportAt==null?Infinity:Math.max(0,state.simTime-mem.supportAt);
-    const gap=Math.max(0,backZ-footprint.maxZ);
+    const gap=receiverSupportGap(bounds,footprint);
     result.supportGapWu=gap;result.supportContactAgeS=Number.isFinite(age)?age:null;
     result.supportWitness=result.supportContact || (age<=(zone.supportWitnessS??1.5)
       && gap<=(zone.supportGapWu??.15) && result.relativeSpeed<=(zone.settleSpeedWu??.5));
