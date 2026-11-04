@@ -36,6 +36,9 @@ import { runtime as keeperRuntime, PART_COMMODITY as KEEPER_PART } from '../src/
 import { runtime as buoyRuntime } from '../src/data/encounters/1321-wren-buoy.js';
 import { runtime as ringRuntime, RING } from '../src/data/encounters/1322-the-shadow-ring.js';
 import { runtime as toolRuntime } from '../src/data/encounters/1323-the-tool-ledger.js';
+import { createSimulation } from '../src/core/sim.js';
+import { createDockIntent } from '../src/core/dockIntent.js';
+import { commitDockedUiState } from '../src/ui/dockStateCommit.js';
 
 const DAY = CAL_DAY_S;
 
@@ -822,10 +825,37 @@ function toolState({ docked = false, latched = false, flags = {} } = {}) {
   return state;
 }
 
-test('SP2-151: the loose wrench is ropeable beside the seated mast, and the ledger is real', () => {
-  const state = toolState();
+function physicalToolFixture(t) {
+  const sim=createSimulation({systems:[],updateOrder:[]});
+  t.after(()=>sim.dispose());
+  const state=sim.state;
+  state.mode='flight';state.simTime=1000;state.world.currentSectorId='sector_haumea_rift';
+  const player=sim.spawn({type:'ship',hull:100,hullMax:100,pos:{x:20,z:180},data:{callsign:'VHL-4471-T'}});
+  state.playerId=player.id;
+  sim.spawn({type:'station',hull:100,pos:{x:0,z:180},data:{stationId:'station_haumea_rift'}});
+  state.world.activeSector.pois=[{poiId:'poi_haumea_fissure',pos:{x:0,z:180}}];
   const d = stubD(1000, state);
   const live = stubLive('the_tool_ledger', { x: 0, z: 180 });
+  live.sectorId=state.world.currentSectorId;
+  d.spawnProp=(record,opts)=>{
+    d.bus.emit('spawnProp',opts);
+    return sim.spawn({...opts,hull:1,data:{}});
+  };
+  d.bus.on('dock:committed',payload=>toolRuntime.event(d,live,state,'dockCommitted',payload));
+  const dock=()=>commitDockedUiState(state,createDockIntent(state,{stationId:'station_haumea_rift'}),d.bus);
+  // This unit fixture supplies the attachment-owner record. The default-simHost regression
+  // separately creates the actual native attachment and traverses the real Director dispatch.
+  const line=()=>{
+    const wrench=state.entities.get(live.vars.wrenchId);
+    state.combat={attachments:{byId:{fixture:{state:'active',ownerId:player.id,targetId:wrench.id,
+      ownerGeneration:player.occupantGeneration,targetGeneration:wrench.occupantGeneration}}}};
+    toolRuntime.event(d,live,state,'tetherAttached',{attachmentId:'fixture'});
+  };
+  return {state,d,live,dock,line};
+}
+
+test('SP2-151: the loose wrench is ropeable beside the seated mast, and the ledger is real', t => {
+  const {state,d,live}=physicalToolFixture(t);
   toolRuntime.fire(d, live, state);
   const spawn = d.events.find((e) => e.name === 'spawnProp');
   assert.ok(spawn, 'the wrench is spawned beside the mast');
@@ -835,18 +865,15 @@ test('SP2-151: the loose wrench is ropeable beside the seated mast, and the ledg
     'the ledger line introduces the score');
 });
 
-test('SP2-151: the return files at the claim office with the tool on the line, once', () => {
-  const state = toolState({ latched: true });
-  const d = stubD(1000, state);
-  const live = stubLive('the_tool_ledger', { x: 0, z: 180 });
+test('SP2-151: the return files at the claim office with the tool on the line, once', t => {
+  const {state,d,live,dock,line}=physicalToolFixture(t);
   toolRuntime.fire(d, live, state);
-  live.vars.wrenchId = 132000;
-  state.entities.set(132000, { id: 132000, alive: true, pos: { x: 30, z: 190 } });
+  const original=state.entities.get(live.vars.wrenchId);
+  original.pos={x:30,z:190};line();
   toolRuntime.tick(d, live, state, 1100);
   assert.equal(state.story.flags.tool_returned, undefined, 'not docked yet: no return');
-  state.ui.docked = true;
-  state.ui.dockedStationId = 'station_haumea_rift';
-  toolRuntime.tick(d, live, state, 1200);
+  assert.equal(dock(),true);
+  assert.equal(state.entities.get(live.vars.wrenchId),original,'the returned physical tool was never substituted');
   assert.notEqual(state.story.flags.tool_returned, undefined, 'the flag is written');
   const rep = d.events.find((e) => e.name === 'faction:repDelta');
   assert.ok(rep, 'standing moves through the factions owner');
@@ -862,22 +889,17 @@ test('SP2-151: the return files at the claim office with the tool on the line, o
   assert.ok(d2.events.some((e) => e.name === 'abort'));
 });
 
-test('SP2-151: a dock without the tool on the line files nothing', () => {
-  const state = toolState({ docked: true });
-  const d = stubD(1000, state);
-  const live = stubLive('the_tool_ledger', { x: 0, z: 180 });
+test('SP2-151: a dock without the tool on the line files nothing', t => {
+  const {state,d,live,dock}=physicalToolFixture(t);
   toolRuntime.fire(d, live, state);
-  live.vars.wrenchId = 132000;
-  state.entities.set(132000, { id: 132000, alive: true, pos: { x: 900, z: 900 } });
-  toolRuntime.tick(d, live, state, 1100);
+  state.entities.get(live.vars.wrenchId).pos={x:900,z:900};
+  assert.equal(dock(),true);
   assert.equal(state.story.flags.tool_returned, undefined);
 });
 
-test('SP2-151: a watch without the fissure row aborts inert', () => {
-  const state = toolState();
-  state.world.active.pois = [];
-  const d = stubD(1000, state);
-  const live = stubLive('the_tool_ledger', { x: 0, z: 180 });
+test('SP2-151: a watch without the fissure row aborts inert', t => {
+  const {state,d,live}=physicalToolFixture(t);
+  state.world.activeSector.pois = [];
   toolRuntime.fire(d, live, state);
   assert.ok(d.events.some((e) => e.name === 'abort' && e.payload.reason === 'no_mast_row'));
 });

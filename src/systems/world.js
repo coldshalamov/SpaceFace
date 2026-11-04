@@ -121,6 +121,7 @@ import {
 } from './fieldDepletion.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
 import { chooseLawfulStation, recoveryCostQuote } from '../combat/playerDefeat.js';
+import { tetherMemorialPresentation } from '../data/tetherMemorialPresentation.js';
 import { makeEnemySpawnSpec } from './combat.js';
 import { planZoneSpawns, zoneAt, zoneThreat, zonesForSector } from '../data/sectorZones.js'; // named-zone purposeful spawning (WORLD_OVERHAUL_2_1)
 import {
@@ -3293,6 +3294,7 @@ export const world = {
         : { x: Math.cos(ang) * r, z: Math.sin(ang) * r };
       let pos = this._toGlobal(local, sector.id);
       if (!disc.pois[poi.id]) disc.pois[poi.id] = { discovered: false, identified: false };
+      const earnedMemorial = tetherMemorialPresentation(this.state, poi.id);
       // Static Atlas rows may delegate their physical representation to a durable runtime owner.
       // Keep the discovery identity here, but never create a second marker entity beside that owner.
       // A markerless projection still joins active.pois: sector sweeps mark it discovered and
@@ -3327,6 +3329,7 @@ export const world = {
       const hidden = !!poi.hidden && disc.pois[poi.id].discovered !== true;
       const poiData = {
         poi: true, poiId: poi.id, poiType: poi.type, name: poi.name,
+        ...earnedMemorial,
         hidden, gatedBy: poi.gatedBy || null,
         requiresTriangulation: !!triangulation,
         triangulation,
@@ -3425,6 +3428,7 @@ export const world = {
       this._stampHomeSector(ent, sector.id);
       active.pois.push({
         id: ent.id, poiId: poi.id, type: poi.type, pos: { x: pos.x, z: pos.z },
+        ...earnedMemorial,
         hidden, claimable: !!poi.claimable,
         ...(poi.scannerSignalKind ? { scannerSignalKind: String(poi.scannerSignalKind) } : {}),
         ...(finitePositive(poi.scannerSignalPriority)

@@ -61,7 +61,7 @@ async function boot({ contextFlag = true, hullFrac = 1, wallKnows = false, nearD
   }
   // The memorial as the world materializes it: an active POI row plus its marker entity.
   const marker = host.spawnObstacle({ pos: { ...SITE }, radius: 10, mass: 40, data: { poiId: MEMORIAL.poiId } });
-  state.world.active = {
+  state.world.activeSector = {
     stations: [],
     pois: [{ id: marker.id, poiId: MEMORIAL.poiId, type: 'beacon', pos: { x: SITE.x, z: SITE.z } }],
   };
@@ -168,7 +168,7 @@ test('bring the near-death back to the buoy: the line goes on the wall, chart, a
     assert.ok(flags[MEMORIAL.flagDrink] != null, 'the drink is on the house');
 
     // The dressing: the live POI row and its marker carry the new line for the scanner.
-    const row = h.state.world.active.pois[0];
+    const row = h.state.world.activeSector.pois[0];
     assert.match(row.scanDescription, /same paint as every bunk line/);
     assert.match(h.marker.data.scanLabel, /one line newer/);
     assert.match(h.marker.data.scanDescription, /No hand signed it/);

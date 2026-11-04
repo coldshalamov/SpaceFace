@@ -239,6 +239,7 @@ function oreLotRumorForReply(state) {
 
 export function emitBarContactChoice(bus, payload = {}) {
   if (!bus || typeof bus.emit !== 'function') return null;
+  if (payload.stationId === 'station_eris_margin' && payload.choiceId === 'eris_silence') return null;
   if (isKurtzDeskChoice(payload)) {
     bus.emit('ui:kurtzInteract', {
       action: payload.choiceId,
@@ -874,8 +875,18 @@ export function generateContacts(stationId, state = {}, opts = {}) {
   // U-B: this berth's fence shows their face when the pilot is WANTED or trusted by them.
   const fence = fenceBarContact(stationId, state);
   const sori = soriComparisonContact(state, stationId);
+  const erisChair = stationId === 'station_eris_margin'
+    && state?.story?.flags?.eris_choir_chair_claimed != null ? [{
+      id: 'contact_eris_choir_chair', canonicalKey: 'eris_choir_chair',
+      name: 'The Choir Chair', role: 'barkeep', roleLabel: 'Reserved chair',
+      factionId: 'faction_choir',
+      line: 'The chair at the window is yours. The room stands as you approach.',
+      approach: 'The barkeep waits beside your chair.',
+      erisChoirServed: state?.story?.flags?.eris_choir_bar_service?.active === true
+        && state.story.flags.eris_choir_bar_service.served === true,
+    }] : [];
   const listed = [
-    ...endingCourier, ...storyBuyerContacts(state, stationId), ...(sori ? [sori] : []), ...authoredBarContactsForStation(stationId, state), ...(fence ? [fence] : []), ...contacts,
+    ...erisChair, ...endingCourier, ...storyBuyerContacts(state, stationId), ...(sori ? [sori] : []), ...authoredBarContactsForStation(stationId, state), ...(fence ? [fence] : []), ...contacts,
   ];
   stampUnheardBarRumor(listed, stationId, state);
   stampHeliosBay7Rumor(listed, stationId, state);
@@ -886,6 +897,19 @@ export function generateContacts(stationId, state = {}, opts = {}) {
   stampLastShiftLocalReport(listed, stationId, state);
   stampCollectiveHours(listed, stationId, state);
   stampQuinnsStool(listed, stationId, state);
+  // The wake silences this room's ambient patrons, not its mission and service contacts.
+  const erisSilentUntil = Number(state?.story?.flags?.eris_choir_bar_silent_until);
+  if (stationId === 'station_eris_margin' && Number.isFinite(erisSilentUntil)
+      && erisSilentUntil > (Number(state?.simTime) || 0)) {
+    for (const contact of contacts) {
+      if (!contact.id.startsWith('contact_station_eris_margin_')) continue;
+      contact.erisChoirSilent = true;
+      contact.line = 'The room falls silent as you enter.';
+      contact.approach = 'The room stays silent.';
+      // A muted opener cannot consume a deed that nobody actually told.
+      delete contact.deedId;
+    }
+  }
   return listed;
 }
 
@@ -1111,6 +1135,10 @@ function stampAceRouteRumor(contacts, stationId, state) {
 /* ── dialog option builders (per role) ────────────────────────────── */
 
 export function getChoices(role, contact = null) {
+  if (contact?.erisChoirSilent) return [{ id: 'eris_silence', label: 'Leave them in peace.' }];
+  if (contact?.canonicalKey === 'eris_choir_chair') return contact.erisChoirServed
+    ? [{ id: 'free_drink', label: 'Served this visit', disabled: true, reason: 'Your free drink has already been served this visit.' }]
+    : [{ id: 'free_drink', label: 'Take your free drink.' }];
   if (contact && Array.isArray(contact.choices) && contact.choices.length) return contact.choices;
   switch (role) {
     case 'barkeep':       return [
@@ -1484,6 +1512,7 @@ const REGULAR_SUBJECT_WORDS = Object.freeze({
 });
 
 export function barRegularStoryLine(contact = {}, state = {}, stationId = '') {
+  if (contact.erisChoirSilent) return contact.line;
   const memory = stationContactMemoryFor(state, contact.id);
   if (!memory || !memory.met || memory.talkCount < 1) return null;
   const firstName = String(contact.name || '').trim().split(/\s+/)[0] || 'The regular';
@@ -1591,6 +1620,19 @@ function bestTradeRoute(state, currentStationId) {
  * Returns { text, missionOffer? }.
  */
 export function buildReply(role, choiceId, ctx, stationId, contact = null) {
+  if (stationId === 'station_eris_margin' && contact?.canonicalKey === 'eris_choir_chair'
+      && choiceId === 'free_drink') {
+    const service = ctx?.state?.story?.flags?.eris_choir_bar_service;
+    if (!service?.active || !Number.isSafeInteger(service.visitId)) {
+      return { text: 'The barkeep checks your seat. One moment.' };
+    }
+    return { text: service?.active && service.served
+      ? 'Your drink for this visit has been served.'
+      : 'The barkeep checks your seat. One moment.' };
+  }
+  if (contact?.erisChoirSilent && stationId === 'station_eris_margin') {
+    return { text: 'The room stays silent.' };
+  }
   if (contact && contact.endgameChoice === 'E') {
     if (choiceId === 'accept_next_run') {
       if (!isChoiceECourierReady(ctx && ctx.state, stationId)) {

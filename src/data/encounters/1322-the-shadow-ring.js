@@ -136,7 +136,7 @@ export const runtime = Object.freeze({
         if (dx * dx + dz * dz <= RING.radiusWu * RING.radiusWu) {
           const hits = latchFlag(state, 'shadow_ring_hits', 0) + 1;
           state.story.flags.shadow_ring_hits = hits;
-          latchFlag(state, 'shadow_ring_lit_day', day);
+          state.story.flags.shadow_ring_lit_day = day;
           this._cueLamp(d, state, live);
           live.vars.lastCueAt = now;
           if (live.vars.saidToday !== day) {
@@ -150,7 +150,7 @@ export const runtime = Object.freeze({
             state.story.flags.shadow_ring_paint = Number(state.simTime) || 0;
             d.say(live, 'info',
               'Fresh paint under the ring, dry by morning: STILL GOT IT.',
-              null, { literal: true, primary: true });
+              null, { literal: true });
           }
         }
       }

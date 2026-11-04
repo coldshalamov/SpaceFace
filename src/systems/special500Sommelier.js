@@ -24,6 +24,10 @@ export const special500Sommelier = {
     this.bus = ctx.bus;
     this._off = [
       this.bus.on('ui:talkContact', (payload) => this._onTalkContact(payload || {})),
+      this.bus.on('dock:undocked', () => {
+        const service = this.state?.story?.flags?.eris_choir_bar_service;
+        if (service?.active) service.active = false;
+      }),
     ].filter((off) => typeof off === 'function');
   },
 
@@ -42,9 +46,11 @@ export const special500Sommelier = {
     });
   },
 
-  _onTalkContact({ canonicalKey, stationId, choiceId }) {
+  _onTalkContact(payload) {
+    const { canonicalKey, stationId, choiceId } = payload;
     const state = this.state || null;
     if (!state) return null;
+    if (canonicalKey === 'eris_choir_chair') return this._onErisChair(payload);
     if (canonicalKey !== SOMMELIER.contactKey
       || stationId !== SOMMELIER.stationId
       || choiceId !== SOMMELIER.choiceId) return null;
@@ -107,5 +113,54 @@ export const special500Sommelier = {
       kind: 'special500',
     });
     return { outcome: 'settled' };
+  },
+
+  _onErisChair({ stationId, choiceId, visitId, requestId }) {
+    const state = this.state;
+    const flags = state?.story?.flags;
+    if (stationId !== 'station_eris_margin' || state?.ui?.docked === false
+      || state?.ui?.dockedStationId !== stationId || flags?.eris_choir_chair_claimed == null) return null;
+    let service = flags.eris_choir_bar_service;
+    if (choiceId === 'bar_enter') {
+      if (!Number.isSafeInteger(visitId) || requestId !== `eris:${visitId}:bar_enter`) return null;
+      if (!service || !Number.isSafeInteger(service.visitId) || service.visitId < 1) {
+        if (visitId !== 1) return null;
+        service = flags.eris_choir_bar_service = { visitId: 1, active: true, served: false };
+      } else if (!service.active) {
+        if (visitId !== service.visitId + 1) return null;
+        service.visitId += 1;
+        service.active = true;
+        service.served = false;
+      } else if (visitId !== service.visitId) return null;
+      return { outcome: 'entered', visitId: service.visitId };
+    }
+    if (!service?.active || !Number.isSafeInteger(visitId) || visitId !== service.visitId
+      || requestId !== `eris:${visitId}:${choiceId}`) return null;
+    if (choiceId === 'bar_leave') {
+      service.active = false;
+      return { outcome: 'left', visitId };
+    }
+    if (choiceId !== 'free_drink') return null;
+    const receipt = (outcome) => {
+      this.bus.emit('erisChoir:drinkReceipt', { stationId, visitId, requestId, outcome });
+      return { outcome, visitId };
+    };
+    if (service.served) return receipt('already');
+    const credits = Math.max(0, Math.round(Number(state.player?.credits) || 0));
+    const req = { amount: 0, reason: 'special500:eris_choir_drink', requireFull: true,
+      expectedCredits: credits, commit: () => service.active && !service.served && service.visitId === visitId,
+      result: false };
+    this.bus.emit('economy:chargeCredits', req);
+    if (req.result !== true) {
+      this.bus.emit('comms:log', { from: 'Margin Fence', kind: 'special500',
+        source: 'eris_choir_chair', stationId, visitId, outcome: 'refused',
+        text: 'The barkeep cannot pour just now. Try again shortly.' });
+      return receipt('pending');
+    }
+    service.served = true;
+    this.bus.emit('comms:log', { from: 'Margin Fence', kind: 'special500',
+      source: 'eris_choir_chair', stationId, visitId, outcome: 'settled',
+      text: 'The room stands. The barkeep sets your free beer at the chair.' });
+    return receipt('settled');
   },
 };

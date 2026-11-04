@@ -113,6 +113,9 @@ export const runtime = Object.freeze({
   // offered button that always fails is not a vignette, it is a taunt.
   _offer(d, live, state) {
     if (live.phase !== 'watch') return;
+    // Listening and a hold-changing donation denial explicitly start a new offer.
+    // Director's one-shot guard still protects each accepted terminal donation.
+    live.offerConsumed = false;
     const canDonate = heldUnits(state, PART_COMMODITY) >= 1;
     const options = canDonate ? ['donate_part', 'listen', 'leave'] : ['listen', 'leave'];
     d.offerChoices(live, options, 'leave', live.vars.offerEndsAt);
@@ -141,7 +144,7 @@ export const runtime = Object.freeze({
         `The transmitter stops dying. The keeper opens the station log and writes your hull `
           + `number in by hand \u2014 ${hullPlate(state)} \u2014 filed under "crew, visiting." `
           + `It is the nicest thing anyone does all week.`,
-        null, { literal: true, primary: true });
+        null, { literal: true });
       d.despawnAll(live, 0.5, 'prop');
       return settleSituation(d, live, state, 'donated', { part: PART_COMMODITY });
     }

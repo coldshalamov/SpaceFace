@@ -29,6 +29,11 @@
 // special-500 context arrives through the director's flag, never on wall time.
 import { deepFreeze, defineEncounter } from './catalog.js';
 import { priorOutcome, settleSituation } from '../../systems/crSituationKit.js';
+import { resolveWorldPresentationEntity } from '../../world/presentationSources.js';
+import { TETHER_MEMORIAL_POI_ID, TETHER_MEMORIAL_WALL_FLAG,
+  TETHER_MEMORIAL_SCAN_LABEL as SCAN_LABEL, TETHER_MEMORIAL_SCAN_DESCRIPTION as SCAN_DESCRIPTION,
+  tetherMemorialPresentation,
+} from '../tetherMemorialPresentation.js';
 
 export const encounterOrder = 1310;
 export const trigger = deepFreeze({
@@ -48,7 +53,7 @@ export const trigger = deepFreeze({
 
 export const MEMORIAL = Object.freeze({
   sectorId: 'sector_charon_expanse',
-  poiId: 'poi_charon_tether_memorial',
+  poiId: TETHER_MEMORIAL_POI_ID,
   // A hull read at or below this fraction, with the player still alive, is the near-death
   // the wall stencils. Authored line: "below 10% integrity".
   nearDeathFrac: 0.10,
@@ -57,16 +62,11 @@ export const MEMORIAL = Object.freeze({
   // One watch shift per firing; the beat re-fires on its cooldown until the wall knows.
   watchWindowS: 1200,
   contextFlag: 'special500.SP2-172',
-  flagWallKnows: 'wall_knows',
+  flagWallKnows: TETHER_MEMORIAL_WALL_FLAG,
   flagNearDeath: 'tether_wall_near_death',
   flagNearDeathHull: 'tether_wall_near_death_hull',
   flagDrink: 'tether_wall_drink',
 });
-
-const SCAN_LABEL = 'Tether Memorial — one line newer';
-const SCAN_DESCRIPTION = 'The intake town\u2019s names, one per bunk that did not make the last '
-  + 'boat. Between them, in the same paint as every bunk line: a new date, and a hull that '
-  + 'came back. No hand signed it.';
 
 function flagOf(state, key) {
   return state && state.story && state.story.flags ? state.story.flags[key] : undefined;
@@ -90,12 +90,12 @@ function playerHullFraction(state) {
 
 /** The live active-sector POI row for the memorial, with its marker entity if present. */
 function memorialRow(state) {
-  const active = state && state.world && state.world.active;
+  const active = state && state.world && state.world.activeSector;
   const row = ((active && active.pois) || []).find(
     (poi) => poi && poi.poiId === MEMORIAL.poiId,
   );
   if (!row || !row.pos) return null;
-  const entity = state.entities && state.entities.get ? state.entities.get(row.id) : null;
+  const entity = resolveWorldPresentationEntity(state, row.id);
   return { row, entity: entity && entity.alive !== false ? entity : null };
 }
 
@@ -116,6 +116,15 @@ export function nearDeathRecord(state) {
 }
 
 export const runtime = Object.freeze({
+  restoreSaved(d, state) {
+    // World materialization precedes story restoration; apply the saved earned line once
+    // the complete incoming story is published, without firing or delivering the beat again.
+    const site = memorialRow(state);
+    if (!site) return;
+    const presentation = tetherMemorialPresentation(state, MEMORIAL.poiId);
+    Object.assign(site.row, presentation);
+    if (site.entity?.data) Object.assign(site.entity.data, presentation);
+  },
   // The wall listens only where it stands (the expanse) and only after a mayday reached it
   // (the director's hull:fractured receipt set the context flag). Once the line is on the
   // wall the beat is history, on the flag and on the durable situation record both.
@@ -129,7 +138,7 @@ export const runtime = Object.freeze({
 
   fire(d, live, state) {
     if (!runtime.fireReady(state)) return d.abort(live, 'wall_not_listening');
-    if (nearDeathRecord(state) && (memorialDistance(state) || Infinity) <= MEMORIAL.deliveryWu) {
+    if (nearDeathRecord(state) && (memorialDistance(state) ?? Infinity) <= MEMORIAL.deliveryWu) {
       return deliver(d, live, state);
     }
     // Watch mode: the wall stands its silent shift. No spawn, no line — it listens.
@@ -155,7 +164,7 @@ export const runtime = Object.freeze({
     }
 
     // The delivery: bring the recorded near-death back to the buoy.
-    if (nearDeathRecord(state) && (memorialDistance(state) || Infinity) <= MEMORIAL.deliveryWu) {
+    if (nearDeathRecord(state) && (memorialDistance(state) ?? Infinity) <= MEMORIAL.deliveryWu) {
       return deliver(d, live, state);
     }
 

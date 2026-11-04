@@ -429,6 +429,7 @@ export const encounterDirector = {
       this.bus.on('mission:expired', (p) => this._onDeniableMissionSettled(p, 'failed'));
       this.bus.on('player:death', () => this._onDeniablePlayerDown());
       this.bus.on('dock:docked', (p) => this._onDeniableDock(p));
+      this.bus.on('dock:committed', (p) => this._routeToSelfRegistered('dockCommitted', p));
       // U-B: six authored fences remember what the pilot did with their jobs (trust, route, scrub).
       this._fenceDesk = installFenceDesk(this);
       this.bus.on('resonance:scanCompleted', (p) => this._onResonanceScan(p));

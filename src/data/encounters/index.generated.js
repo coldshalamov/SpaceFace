@@ -15,7 +15,6 @@ import * as encounter011 from './110-salvage-signal.js';
 import * as encounter012 from './120-anomaly-whisper.js';
 import * as encounter013 from './130-unique-wreck-tideline-held-mass.js';
 import * as encounter014 from './140-unique-wreck-deepsurvey-ping-elite.js';
-import * as encounter355 from './1400-cargo-weir-ambush.js';
 import * as encounter015 from './150-unique-wreck-silver-draft-cleaner.js';
 import * as encounter016 from './160-unique-wreck-cassandra-hardliners.js';
 import * as encounter017 from './170-k1-understory-salvager.js';
@@ -351,11 +350,18 @@ import * as encounter346 from './1303-glue-meet-mass.js';
 import * as encounter347 from './1304-two-ships-one-mistake.js';
 import * as encounter348 from './1305-the-blind-welder.js';
 import * as encounter349 from './1306-the-drift-auction.js';
-import * as encounter350 from './8201-pro-yard.js';
-import * as encounter351 from './8202-pro-rig-workshop.js';
-import * as encounter352 from './8203-pro-salvage-tender.js';
-import * as encounter353 from './8204-pro-salvage-outfits.js';
-import * as encounter354 from './8205-pro-industrial-disasters.js';
+import * as encounter350 from './1310-tether-memorial-line.js';
+import * as encounter351 from './1311-eris-last-pod.js';
+import * as encounter352 from './1320-the-keeper.js';
+import * as encounter353 from './1321-wren-buoy.js';
+import * as encounter354 from './1322-the-shadow-ring.js';
+import * as encounter355 from './1323-the-tool-ledger.js';
+import * as encounter356 from './1400-cargo-weir-ambush.js';
+import * as encounter357 from './8201-pro-yard.js';
+import * as encounter358 from './8202-pro-rig-workshop.js';
+import * as encounter359 from './8203-pro-salvage-tender.js';
+import * as encounter360 from './8204-pro-salvage-outfits.js';
+import * as encounter361 from './8205-pro-industrial-disasters.js';
 
 export const ENCOUNTER_MODULES = Object.freeze([
   encounter001,
@@ -372,7 +378,6 @@ export const ENCOUNTER_MODULES = Object.freeze([
   encounter012,
   encounter013,
   encounter014,
-  encounter355,
   encounter015,
   encounter016,
   encounter017,
@@ -713,5 +718,12 @@ export const ENCOUNTER_MODULES = Object.freeze([
   encounter352,
   encounter353,
   encounter354,
+  encounter355,
+  encounter356,
+  encounter357,
+  encounter358,
+  encounter359,
+  encounter360,
+  encounter361,
 ]);
 export const ENCOUNTERS = buildEncounterCatalog(ENCOUNTER_MODULES);
