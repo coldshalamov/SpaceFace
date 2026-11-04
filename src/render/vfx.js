@@ -333,6 +333,14 @@ import {
   writeSalvageLampQuads,
 } from './salvageLamp.js';
 import {
+  APRON_FLOOD_MAX_RANGE_WU,
+  APRON_FLOOD_STATION_CAP,
+  buildApronFloodLayout,
+  createApronFloodGeometry,
+  resolveApronFloodPlan,
+  writeApronFloodGeometry,
+} from './apronFloodlights.js';
+import {
   ENGINE_WASH_RANGE_WU,
   ENGINE_WASH_SURFACE_KINDS,
   engineWashEmitPayload,
@@ -1127,6 +1135,7 @@ function emptyVfxSubsystemDiag() {
     monofilamentBlade: 0, // taut monofilament chord: one world-XZ segment, gone the tick it slacks
     dockingCradle: 0,   // holo berth pad on the bay floor while a corridor engagement is live
     dockApproachBeacons: 0, // station approach beacons: gate pair + inbound lane, pre-approach dressing
+    apronFlood: 0,      // apron work lights: rig pair + deck pools at the dock mouth
     salvageLamp: 0,     // a paying wreck's amber work-lamp — which hulk is worth a stop
     engineWash: 0,      // a burning drive stirring dust off the surface it hangs over
     apexFlare: 0,       // chromatic apex-release flare around the ship
@@ -1955,6 +1964,7 @@ export const vfx = {
     disposeVfxRoot(this._masslineChainReadout && this._masslineChainReadout.mesh, disposeState);
     disposeVfxRoot(this._dockingCradle && this._dockingCradle.mesh, disposeState);
     disposeVfxRoot(this._dockApproach && this._dockApproach.mesh, disposeState);
+    disposeVfxRoot(this._apronFlood && this._apronFlood.mesh, disposeState);
     disposeVfxRoot(this._salvageLamp && this._salvageLamp.mesh, disposeState);
 
     const planetSkim = this._planetSkim;
@@ -2076,6 +2086,7 @@ export const vfx = {
     this._masslineChainReadout = null;
     this._dockingCradle = null;
     this._dockApproach = null;
+    this._apronFlood = null;
     this._salvageLamp = null;
     this._selectionSigil = null;
     this._lights = [];
@@ -8197,6 +8208,119 @@ export const vfx = {
   },
 
   // -------------------------------------------------------------------------
+  // Apron floodlights (inf-apron-flood): the station's physical work lights over the dock
+  // apron — a rig pair at the berth mouth, taxi pools on the deck, a lit pad diamond over the
+  // berth. The holo-green approach lane is the dock's signage; these are its working lights,
+  // in the dock-sodium tint instead of green. The state read is the same docking proxy rows
+  // the cradle and beacons consume; the apron steps up while a corridor works and holds while
+  // berthed. One additive mesh, one draw call; deterministic off simTime; no lights created.
+  // -------------------------------------------------------------------------
+  _apronFlood: null,
+
+  _initApronFlood() {
+    if (!this._scene) return;
+    const scratch = createApronFloodGeometry();
+    const geo = new THREE.BufferGeometry();
+    const position = new THREE.BufferAttribute(scratch.positions, 3);
+    const color = new THREE.BufferAttribute(scratch.colors, 3);
+    position.usage = THREE.DynamicDrawUsage;
+    color.usage = THREE.DynamicDrawUsage;
+    geo.setAttribute('position', position);
+    geo.setAttribute('color', color);
+    geo.setIndex(new THREE.BufferAttribute(scratch.indices, 1));
+    geo.setDrawRange(0, 0);
+    const mat = new THREE.MeshBasicMaterial({
+      color: new THREE.Color(1.1, 1.1, 1.1),
+      vertexColors: true,
+      transparent: true,
+      opacity: 0,
+      depthWrite: false,
+      depthTest: true,
+      blending: THREE.AdditiveBlending,
+      side: THREE.DoubleSide,
+      forceSinglePass: true,
+      toneMapped: false,
+    });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.name = 'sf-apron-flood';
+    mesh.frustumCulled = false;
+    mesh.renderOrder = 6;
+    mesh.visible = false;
+    this._scene.add(mesh);
+    this._apronFlood = { mesh, scratch, layouts: new Map(), plan: {}, lastRows: null };
+  },
+
+  _updateApronFlood() {
+    const af = this._apronFlood || (this._initApronFlood(), this._apronFlood);
+    if (!af) return false;
+    const state = this.state;
+    const hasProjection = !!state && Object.prototype.hasOwnProperty.call(state, 'dockingPresentation');
+    const rows = hasProjection ? state.dockingPresentation?.rows : state?.physicsRuntime?.collisionProxies;
+    const readout = hasProjection ? state.dockingPresentation?.readout : state?.dockingCorridor;
+    const now = Number.isFinite(state && state.simTime) ? state.simTime : 0;
+    const reduced = !!(state && state.settings && state.settings.video && state.settings.video.motionReduce);
+    const gain = resolveVfxAccessibilityProfile(state && state.settings).flashOpacityScale;
+    if (rows !== af.lastRows) { af.layouts.clear(); af.lastRows = rows; }
+    const player = state && state.entities && state.entities.get(state.playerId);
+    const px = player && player.pos && Number.isFinite(player.pos.x) ? player.pos.x : NaN;
+    const pz = player && player.pos && Number.isFinite(player.pos.z) ? player.pos.z : NaN;
+    const scratch = af.scratch;
+    scratch.indexCount = 0;
+    let live = 0;
+    let base = 0;
+    const sectorMatches = !state.dockingPresentation || state.dockingPresentation.sectorId == null
+      || state.dockingPresentation.sectorId === state.world?.currentSectorId;
+    if (sectorMatches && Array.isArray(rows) && Number.isFinite(px) && Number.isFinite(pz)) {
+      const range2 = APRON_FLOOD_MAX_RANGE_WU * APRON_FLOOD_MAX_RANGE_WU;
+      for (let i = 0; i < rows.length && live < APRON_FLOOD_STATION_CAP; i++) {
+        const row = rows[i];
+        if (!row || row.stationId == null || !row.berth || !row.corridor || !row.pos) continue;
+        const dx = px - row.pos.x, dz = pz - row.pos.z;
+        if (dx * dx + dz * dz > range2) continue;
+        const liveStation = state.entities?.get?.(row.entityId);
+        if (row.entityId != null && (!liveStation || liveStation.alive === false
+          || (row.generation != null && liveStation.occupantGeneration !== row.generation))) continue;
+        let layout = af.layouts.get(row.stationId);
+        if (!layout || layout.row !== row || layout.x !== row.pos.x || layout.z !== row.pos.z
+          || layout.rot !== row.rot || layout.bearing !== row.corridorBearingDeg
+          || layout.bx !== row.berth.x || layout.bz !== row.berth.z
+          || layout.outer !== row.corridor.captureOuterRadius || layout.width !== row.corridor.captureHalfWidth) {
+          layout = { row, x: row.pos.x, z: row.pos.z, rot: row.rot, bearing: row.corridorBearingDeg,
+            bx: row.berth.x, bz: row.berth.z, outer: row.corridor.captureOuterRadius,
+            width: row.corridor.captureHalfWidth, data: buildApronFloodLayout(row, {}) };
+          af.layouts.set(row.stationId, layout);
+        }
+        if (!layout.data.live) continue;
+        const plan = resolveApronFloodPlan(row, readout, now, reduced, af.plan);
+        writeApronFloodGeometry(scratch, layout.data, plan, { gain, base });
+        base = scratch.indexCount / 6;
+        live += 1;
+      }
+    }
+    if (!(scratch.indexCount > 0)) {
+      if (af.mesh.visible) {
+        af.mesh.visible = false;
+        af.mesh.material.opacity = 0;
+        af.mesh.geometry.setDrawRange(0, 0);
+      }
+      return false;
+    }
+    const positions = scratch.positions;
+    for (let vertex = 0; vertex < (scratch.indexCount / 6) * 4; vertex += 1) {
+      const offset = vertex * 3;
+      const local = this._toLocalXZ(positions[offset], positions[offset + 2], this._spawnLocalXZ);
+      positions[offset] = local.x;
+      positions[offset + 2] = local.z;
+    }
+    af.mesh.geometry.setDrawRange(0, scratch.indexCount);
+    af.mesh.geometry.attributes.position.needsUpdate = true;
+    af.mesh.geometry.attributes.color.needsUpdate = true;
+    af.mesh.material.opacity = Math.min(0.85, gain);
+    af.mesh.visible = true;
+    return true;
+  },
+
+  // -------------------------------------------------------------------------
   // Salvage work-lamp (inf-salvage-lamp): a wreck whose salvagePool still pays wears a slow
   // amber work-lamp — the salvage crews' "worth a stop" convention — and a stripped husk goes
   // dark. The truth read is `data.salvagePool`, the same live predicate aftermathWrecks and the
@@ -10244,6 +10368,7 @@ export const vfx = {
     sub.monofilamentBlade = this._updateMonofilamentBlade() ? 1 : 0;
     sub.dockingCradle = this._updateDockingCradle(dt) ? 1 : 0;
     sub.dockApproachBeacons = this._updateDockApproach() ? 1 : 0;
+    sub.apronFlood = this._updateApronFlood() ? 1 : 0;
     sub.salvageLamp = this._updateSalvageLamp(dt) ? 1 : 0;
     sub.engineWash = this._updateEngineWash() ? 1 : 0;
     sub.apexFlare = this._updateApexFlare(dt) ? 1 : 0;
