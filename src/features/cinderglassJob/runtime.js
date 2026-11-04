@@ -1,10 +1,11 @@
 import { CINDERGLASS_JOB_PHASES as P, CINDERGLASS_JOB_CUSTODY as C, CINDERGLASS_JOB_OUTCOMES as O,
   CINDERGLASS_JOB_TEXT as T, CINDERGLASS_JOB_SECTOR_ID, CINDERGLASS_JOB_ROLES,
-  CINDERGLASS_JOB_CARRIER_ID, CINDERGLASS_JOB_POINTS, CINDERGLASS_JOB_SERVICE_SECONDS } from './definition.js';
+  CINDERGLASS_JOB_CARRIER_ID, CINDERGLASS_JOB_POINTS, CINDERGLASS_JOB_SERVICE_SECONDS,
+  CINDERGLASS_JOB_BEACON_SOURCE } from './definition.js';
 import { createCinderglassJobState, cinderglassJobOfferEligible, cinderglassJobOfferOpen,
   cinderglassJobMakeOffer, cinderglassJobDecline, cinderglassJobClose, rememberFact, recordReceipt } from './operation.js';
 import { cinderglassJobAdmit, cinderglassJobStepConvoy, cinderglassJobDismissConvoy } from './convoy.js';
-import { cinderglassJobEnsureLatchMount, cinderglassJobCohortReady } from './physical.js';
+import { cinderglassJobEnsureLatchMount, cinderglassJobCohortReady, cinderglassJobBodyMatches } from './physical.js';
 import { attachments, podEntity, carrierEntity, cinderglassJobEnsureClamp,
   cinderglassJobObserveCustody, cinderglassJobReleasePod, cinderglassJobStepHandoff,
   cinderglassJobReceiveQuote, nativeCinderglassAttachment, nativeCinderglassPose } from './custody.js';
@@ -102,7 +103,12 @@ export const cinderglassJobSystem = {
       }
       this._publishApproachPrompts(); this._publish(false); return;
     }
-    if (!this._presentationReady) { this._publish(false); return; }
+    if (!this._presentationReady) {
+      // A native cargo-radio reply is knowledge, not permission to start jobs or
+      // handle unseen hardware. Keep that recovery action reachable during Continue.
+      if (st.phase === P.RECOVERY) this._publishApproachPrompts();
+      this._publish(false); return;
+    }
     if (st.custody === C.CARRIED) cinderglassJobEnsureClamp(this, state);
     cinderglassJobStepConvoy(this, state);
     cinderglassJobObserveCustody(this, state);
@@ -256,6 +262,15 @@ export const cinderglassJobSystem = {
       detail = `${q.baseCr}CR payment${q.refundCr ? ' + 150CR paid deposit refund' : ''}. Acceptance transfers this original into the receiving clamp.`;
       choices.push({ id: q.recipient === 'tala' ? 'receiveTala' : 'receiveBroker', label: `Accept physical ${q.recipient === 'tala' ? 'return' : 'unlawful sale'}`, quoteId: q.quoteId, recipient: q.recipient });
     }
+    if (st.phase === P.RECOVERY && [C.RELEASED, C.TETHERED].includes(st.custody)) {
+      if (!st.receiveQuote) {
+        headline = 'Recover the original CG-7 pod.';
+        detail = st.beaconFix ? 'The last beacon fix stays where it was received. The pod is still drifting; request a fresh fix as you close.'
+          : 'Tune the CG-7 cargo beacon for a current radio fix, then track that fix and tow the original to Tala.';
+      }
+      choices.push({ id: 'tuneBeacon', label: st.beaconFix ? 'Request fresh CG-7 beacon fix' : 'Tune CG-7 cargo beacon' });
+      if (st.beaconFix) choices.push({ id: 'track', markerId: 'cinderglassJob:pod', label: 'Track last CG-7 fix' });
+    }
     if (choices.length && !st.serviceActive) choices.push({ id: 'leave', label: 'Leave this conversation' });
     const availability = JSON.stringify(choices);
     if (!choices.length) this._leftAvailability = null;
@@ -294,6 +309,26 @@ export const cinderglassJobSystem = {
       this.bus.emit('ui:setCourse', { pos: { ...marker.pos }, label: marker.label,
         targetEntityId: marker.followId ?? null, autopilot: false, arrivalRadius: 60, source: 'cinderglassJob' });
       p.result = { ok: true };
+    } else if (action === 'tuneBeacon') {
+      if (p.revision !== st.promptRevision) return this._refuseAction(p, 'stale_beacon_view');
+      if (st.outcome || st.phase !== P.RECOVERY || ![C.RELEASED, C.TETHERED].includes(st.custody)
+        || state.world?.currentSectorId !== CINDERGLASS_JOB_SECTOR_ID
+        || state.entities?.get(state.playerId)?.alive !== true) return this._refuseAction(p, 'beacon_unavailable');
+      const pod = podEntity(this, state);
+      if (!cinderglassJobBodyMatches(pod, CINDERGLASS_JOB_ROLES.podId, st.operationId) || !(pod.hull > 0)) return this._refuseAction(p, 'beacon_no_original');
+      const pose = nativeCinderglassPose(this, state, pod);
+      if (!pose || !Number.isFinite(pose.pos.x) || !Number.isFinite(pose.pos.z)) return this._refuseAction(p, 'beacon_unavailable');
+      const seq = Number.isSafeInteger(st.beaconFix?.seq) && st.beaconFix.seq < Number.MAX_SAFE_INTEGER ? st.beaconFix.seq + 1 : 1;
+      // The original itself answers now. This is new communication knowledge, not
+      // an invented earlier sighting or a read-model peek at a remote body.
+      st.beaconFix = { source: CINDERGLASS_JOB_BEACON_SOURCE, operationId: st.operationId,
+        worldRecordId: pod.data.worldRecordId, podId: pod.id, generation: pod.occupantGeneration,
+        atS: state.simTime, seq, pos: { ...pose.pos } };
+      recordReceipt(st, state.simTime, { kind: 'beacon_fix', seq, podId: pod.id,
+        generation: pod.occupantGeneration, pos: { ...pose.pos } });
+      rememberFact(st, state.simTime, 'beacon_fix', 'CG-7 cargo beacon replied. Track the last-received fix; request a fresh fix as the original drifts.');
+      this._publishFacts();
+      p.result = { ok: true, seq };
     } else if (action === 'retryAdmission' && st.phase === P.DISPATCH) {
       st.admissionReason = null; p.result = { ok: true };
     } else if (action === 'abandon' && st.phase === P.DISPATCH) {

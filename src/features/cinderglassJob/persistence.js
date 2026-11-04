@@ -1,5 +1,5 @@
 import { createCinderglassJobState } from './operation.js';
-import { CINDERGLASS_JOB_PHASES as P, CINDERGLASS_JOB_CUSTODY as C } from './definition.js';
+import { CINDERGLASS_JOB_PHASES as P, CINDERGLASS_JOB_CUSTODY as C, cinderglassJobBeaconFixValid } from './definition.js';
 
 const ADAPTERS = new WeakMap();
 const clone = value => value == null ? value : JSON.parse(JSON.stringify(value));
@@ -9,7 +9,7 @@ const SCALARS = ['runId', 'operationId', 'everAdmitted', 'cohortAdmitted', 'phas
   'suspicion', 'captainAlive', 'runFinished', 'laybyDone', 'laybyRemainingS', 'laybyHoldS',
   'routeLeg', 'podHullAtRelease', 'runStartedAtS', 'custodyReceipt', 'settlement', 'pendingReceive',
   'cohortRetired', 'forceUnlawful', 'lawReceipt', 'keepAcknowledged', 'latchMountCreated',
-  'latchDestroyed', 'hardwareObservation', 'effectsApplied'];
+  'latchDestroyed', 'hardwareObservation', 'beaconFix', 'effectsApplied'];
 
 export function serializeCinderglassJob(st, state) {
   if (!st || st.version !== 1) return null;
@@ -34,6 +34,7 @@ export function validateCinderglassJob(data) {
   return typeof data === 'object' && data.version === 1
     && Object.values(P).includes(data.phase) && Object.values(C).includes(data.custody)
     && (data.operationId == null || typeof data.operationId === 'string' && data.operationId.length <= 100)
+    && (data.beaconFix == null || cinderglassJobBeaconFixValid(data.beaconFix, data.operationId))
     && (!data.receipts || Array.isArray(data.receipts) && data.receipts.length <= 12)
     && (!data.rememberedFacts || Array.isArray(data.rememberedFacts) && data.rememberedFacts.length <= 24)
     && (!data.settlement || ['tala', 'broker'].includes(data.settlement.recipient)

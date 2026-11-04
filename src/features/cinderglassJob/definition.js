@@ -123,6 +123,19 @@ export const CINDERGLASS_JOB_SIGHT_RANGE_WU = 300;
 export const CINDERGLASS_JOB_SERVICE_SECONDS = 5;
 export const CINDERGLASS_JOB_RECEIVE_RADIUS_WU = 70;
 export const CINDERGLASS_JOB_RECEIVE_SPEED = 8;
+// Recovery radio is explicitly tuned by the player. Each answer is one last-received
+// native fix, never a continuous projection of unseen freight motion.
+export const CINDERGLASS_JOB_BEACON_SOURCE = 'cg7-cargo-beacon';
+export function cinderglassJobBeaconFixValid(fix, operationId) {
+  return typeof operationId === 'string' && operationId.length > 0
+    && !!fix && fix.source === CINDERGLASS_JOB_BEACON_SOURCE && fix.operationId === operationId
+    && fix.worldRecordId === CINDERGLASS_JOB_POD_ID
+    && Number.isSafeInteger(fix.podId) && fix.podId > 0
+    && Number.isSafeInteger(fix.generation) && fix.generation > 0
+    && Number.isSafeInteger(fix.seq) && fix.seq > 0
+    && Number.isFinite(fix.atS) && fix.atS >= 0
+    && Number.isFinite(fix.pos?.x) && Number.isFinite(fix.pos?.z);
+}
 export const CINDERGLASS_JOB_MARK_RANGE_WU = 150;
 export const CINDERGLASS_JOB_SCAN_RADIUS_WU = 950;
 export const CINDERGLASS_JOB_NEGOTIATE_RANGE_WU = 220;

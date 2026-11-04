@@ -7,7 +7,7 @@ import {
   CINDERGLASS_JOB_DEPOSIT_CR, CINDERGLASS_JOB_BROKER_CR,
   CINDERGLASS_JOB_RECEIVE_SPEED, CINDERGLASS_JOB_SERVICE_SECONDS,
   CINDERGLASS_JOB_SECTOR_ID,
-  CINDERGLASS_JOB_ROLES, CINDERGLASS_JOB_TEXT, CINDERGLASS_JOB_TERMS_COPY,
+  CINDERGLASS_JOB_ROLES, CINDERGLASS_JOB_TEXT, CINDERGLASS_JOB_TERMS_COPY, cinderglassJobBeaconFixValid,
 } from './definition.js';
 import { cinderglassJobContactRows, cinderglassJobRevisit } from './contact.js';
 import { occupantGenerationOf } from '../../core/entity.js';
@@ -47,7 +47,8 @@ function objective(st) {
   if (st.phase === P.DISPATCH) return 'Preparing the original freight cohort. No inspection deposit is being charged.';
   if (st.phase === P.RECON) return 'Read the visible CG-7 plate, then scan the original pod and external latch through a clear sightline.';
   if (st.phase === P.DECIDE) return 'Negotiate with Dask at inspection, service the external latch unseen, or use ordinary force and face the law.';
-  if (st.phase === P.RECOVERY) return `Tow the same CG-7 pod to Tala’s cradle below ${CINDERGLASS_JOB_RECEIVE_SPEED} WU/s. Khand accepts only an intact original.`;
+  if (st.phase === P.RECOVERY) return `${st.custody === C.RELEASED && !st.hardwareObservation && !cinderglassJobBeaconFixValid(st.beaconFix, st.operationId)
+    ? 'Tune the CG-7 cargo beacon to locate the drifting original. ' : ''}Tow the same CG-7 pod to Tala’s cradle below ${CINDERGLASS_JOB_RECEIVE_SPEED} WU/s. Khand accepts only an intact original.`;
   if (st.phase === P.HANDOFF) return 'Read the condition quote, accept the receiving terms and hold the original slowly at the physical clamp.';
   return null;
 }
@@ -112,6 +113,9 @@ export function buildCinderglassJobView(state) {
     revisit: Object.fromEntries(['tala', 'dask', 'broker'].map(a => [a, cinderglassJobRevisit(st, a)])),
   };
   const markers = view.markers, ids = st.entities || {};
+  view.recoveryActions = !st.outcome && st.phase === P.RECOVERY && [C.RELEASED, C.TETHERED].includes(st.custody)
+    ? [{ id: 'tuneBeacon', label: st.beaconFix ? 'Request fresh CG-7 beacon fix' : 'Tune CG-7 cargo beacon',
+      action: { action: 'tuneBeacon', token, operationId: view.operationId, revision: view.revision } }] : [];
   if (st.everAdmitted && !state.cinderglassJobPresentationReady) {
     const bodies = [];
     for (const [key, role] of Object.entries(CINDERGLASS_JOB_ROLES)) {
@@ -131,10 +135,19 @@ export function buildCinderglassJobView(state) {
   if ([P.RECOVERY, P.HANDOFF].includes(st.phase)) {
     const pod = entity(state, ids.podId, st.operationId);
     if (pod && [C.TETHERED, C.RELEASED].includes(st.custody)) {
-      // Held cargo is an instrument contact; a loose unseen original exposes
-      // only its last actual observation, rather than omniscient live tracking.
-      const seenPos = st.custody === C.TETHERED ? pod.pos : st.hardwareObservation?.pos;
-      if (seenPos) markers.push(marker('pod', 'Original CG-7 pod', seenPos, 'cargo', st.custody === C.TETHERED ? pod.id : null));
+      // Held cargo is an instrument contact. A loose original exposes only the
+      // last actual observation or an explicitly requested cargo-beacon reply.
+      const beacon = cinderglassJobBeaconFixValid(st.beaconFix, st.operationId) ? st.beaconFix : null;
+      const observed = st.hardwareObservation;
+      const useBeacon = st.custody !== C.TETHERED && beacon && (!observed || beacon.atS >= observed.atS);
+      const seenPos = st.custody === C.TETHERED ? pod.pos : useBeacon ? beacon.pos : observed?.pos;
+      const age = useBeacon ? Math.max(0, Math.floor(finite(state.simTime) - beacon.atS)) : 0;
+      const label = useBeacon ? `CG-7 pod · beacon fix · ${age}s old` : 'Original CG-7 pod';
+      if (seenPos) {
+        const podMarker = marker('pod', label, seenPos, 'cargo', st.custody === C.TETHERED ? pod.id : null);
+        if (useBeacon) podMarker.labelCopy = { template: 'CG-7 pod · beacon fix · {age}s old', values: { age } };
+        markers.push(podMarker);
+      }
     }
     markers.push(marker('cradle', 'Tala Rook · receiving cradle', entity(state, ids.cradleId, st.operationId)?.pos || CINDERGLASS_JOB_POINTS.cradle, 'site'));
     if (st.scanDone) markers.push(marker('broker', 'Vesi Khand · unlawful receiving clamp', entity(state, ids.brokerId, st.operationId)?.pos || CINDERGLASS_JOB_POINTS.broker, 'site'));

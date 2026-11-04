@@ -1,4 +1,5 @@
 import { cinderglassJobJournalReceipt } from '../../features/cinderglassJob/integration.js';
+import { setLocalizedTextTemplate } from '../../localization/domBridge.js';
 import { COUNTERWEIGHT_EVENTS } from '../../features/counterweightCircuit/definition.js';
 // src/ui/screens/missionLog.js — In-flight mission log.
 // Shows all active + recently completed missions with progress, timer, reward, and a Track word.
@@ -3176,7 +3177,8 @@ export const missionLogScreen = {
     const circuit = state.counterweightCircuitView;
     const spur = state.breakwaterSpurView;
     const entries = [];
-    if (journal?.objective && !journal.outcome) entries.push({ title: journal.title, detail: journal.objective, navigation: cg.navigation || [] });
+    if (journal?.objective && !journal.outcome) entries.push({ title: journal.title, detail: journal.objective,
+      navigation: cg.navigation || [], actions: cg.recoveryActions || [] });
     if (circuit?.eventId) {
       const attempt = circuit.journal?.attempt;
       const leg = attempt?.legs?.[attempt.legIndex];
@@ -3196,9 +3198,17 @@ export const missionLogScreen = {
       text.appendChild(el('div', 'k-row__sub', entry.detail));
       row.appendChild(text);
       host.appendChild(row);
+      for (const control of (entry.actions || []).slice(0, 1)) {
+        if (!control.action || !control.id) continue;
+        const button = el('button', 'k-word k-word--body sf-mlog-career-btn', control.label);
+        button.type = 'button';
+        button.addEventListener('click', () => this._ctx.bus.emit('cinderglassJob:action', { ...control.action, action: control.id }));
+        text.appendChild(button);
+      }
       for (const marker of (entry.navigation || []).slice(0, 4)) {
         if (!marker.action || !marker.id) continue;
         const button = el('button', 'k-word k-word--body sf-mlog-career-btn', `Track ${marker.label}`);
+        if (marker.labelCopy) setLocalizedTextTemplate(button, { ...marker.labelCopy, template: `Track ${marker.labelCopy.template}` });
         button.type = 'button';
         button.addEventListener('click', () => this._ctx.bus.emit('cinderglassJob:action', { ...marker.action, action: 'track', markerId: marker.id }));
         text.appendChild(button);
