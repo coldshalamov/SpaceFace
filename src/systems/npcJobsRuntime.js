@@ -9,6 +9,12 @@ import { applyCutIntakeCourtesy } from '../world/cutIntakeCourtesy.js';
 import { tallyPassageTarget, tallyAdvanceDt, isTallyPassageJob } from './tethysTallyPassage.js';
 import { validateOrchardTowQuote, bindOrchardTowLease, orchardTowLease, clearOrchardTowLease, withOrchardTowAttachment, ORCHARD_TOW_HOLDER } from '../world/anvilOrchardTowAssist.js';
 import { stepCeresWorkfleet, restoreCeresWorkfleetJob, clearCeresWorkfleetControls } from './ceresWorkfleet.js';
+import {
+  stepLanternWard, serializeLanternWard, restoreLanternWard,
+  clearLanternWardControls, lanternWardCompletionReceipt, lanternWardStatus,
+  repairLanternWardLamp,
+  noteLanternWardInteraction,
+} from './lanternWardWork.js';
 import { isTowlineCleanupTarget } from '../data/towlineTable.js';
 import { isOrchardFrame, isOrchardPod } from '../data/anvilOrchardIdentity.js';
 import { isScrapSweeperJob, resolveSweeperPickup } from './scrapSweeperOps.js';
@@ -1191,6 +1197,8 @@ export const npcJobsRuntime = {
       // (_isJobThreat only fears the wanted), so shot workers kept drilling while the
       // player hosed them down. Damage with the player's signature interrupts directly.
       this.bus.on('combat:damage', (p) => this._onPlayerDamage(p || {}));
+      this.bus.on('combat:damage', (p) => noteLanternWardInteraction(this, p, 'damage'));
+      this.bus.on('physics:impact', (p) => noteLanternWardInteraction(this, p, 'impact'));
       // INF-U8: the player's own breakdown dispatches the nearest working tender.
       // INF-WF01: the same drive-death seam also answers NPC crews — routed by target.
       this.bus.on('combat:subsystemDisabled', (p) => this._onDriveDown(p || {}));
@@ -1236,6 +1244,7 @@ export const npcJobsRuntime = {
         threatQueryDiagnostics: () => this.threatQueryDiagnostics(),
         // PQ-195.04: read-only berth service projection for the flight HUD and focused tests.
         berthStatus: () => this.berthStatus(),
+        lanternWardStatus: () => this.lanternWardStatus(),
         ceresTenderOwnsFlight: (entity) => this._ceresTenderOwnsFlight(entity),
         // INF-WF01: read-only crew-response projection for focused tests (detached scalars).
         crewResponseOwnsFlight: (entity) => this._crewResponseOwnsFlight(entity),
@@ -2403,7 +2412,9 @@ export const npcJobsRuntime = {
   },
 
   newGame() {
+    clearLanternWardControls(this);
     this.state.npcJobs = { byId: {}, siteCouriers: {}, lots: {}, revision: 0 };
+    restoreLanternWard(this, null);
     this._invalidateJobIds();
     this._pendingMinerFieldRetargets = new Map();
     this._heaveToLease = null;
@@ -4400,6 +4411,7 @@ export const npcJobsRuntime = {
       return; // scenery only matters in flight (mirrors traffic)
     }
     stepCeresWorkfleet(this,dt);
+    stepLanternWard(this,dt);
     this._stepPlayerTenderDispatch(dt);
     this._stepOncallTenderReturn();
     this._stepYardPending();
@@ -7212,9 +7224,16 @@ export const npcJobsRuntime = {
   },
 
   // ── save / restore ────────────────────────────────────────────────────────────────────────────
+  // Physical receipts are retrieved from this owner; a bus payload is not service truth.
+  lanternWardReceipt(receiptId) { return lanternWardCompletionReceipt(this, receiptId); },
+  lanternWardStatus() { return lanternWardStatus(this); },
+  lanternWardRepair(target) { return repairLanternWardLamp(this, target); },
+
   serialize() {
     const byId = this._byId();
     const out = { byId: {} };
+    const ward = serializeLanternWard(this);
+    if (ward) out.lanternWard = ward;
     if(this.state.npcJobs?.ceresWorkfleet)out.ceresWorkfleet=JSON.parse(JSON.stringify(this.state.npcJobs.ceresWorkfleet));
     for (const jobId of Object.keys(byId)) {
       const entry = byId[jobId];
@@ -7277,6 +7296,7 @@ export const npcJobsRuntime = {
   // between those record boundaries — order and RNG consumption stay identical.
   *deserializeChunked(data) {
     clearCeresWorkfleetControls(this.state);
+    clearLanternWardControls(this);
     this._crewResponse = null;
     this._crewLastT = -Infinity;
     this._crewScanNextT = 0;
@@ -7354,6 +7374,7 @@ export const npcJobsRuntime = {
       yield 'npcjobs-job';
     }
     this.state.npcJobs = { byId, siteCouriers: {}, lots: {}, surveyMarks: {}, revision: 0 };
+    restoreLanternWard(this, data?.lanternWard ?? null);
     const ceresWorkfleet=restoreCeresWorkfleetJob(data?.ceresWorkfleet);
     if(ceresWorkfleet)this.state.npcJobs.ceresWorkfleet=ceresWorkfleet;
     this._invalidateJobIds();

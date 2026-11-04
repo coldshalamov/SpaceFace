@@ -210,6 +210,8 @@ import {
 } from '../world/dressingTable.js';
 import { markAuxRowDirty } from '../world/auxRowJournal.js';
 import { stampSolidDressing } from '../world/solidDressing.js';
+import { lanternWardReservations, materializeLanternWardDressing } from '../world/lanternWardDressing.js';
+import { isLanternWardHardwareEntity } from '../data/lanternWardHardware.js';
 import { racingCorridorSceneryShift } from '../world/racingCorridor.js';
 import { requestDecodeRunwayPromote, resetWorldPresentationTables } from '../world/presentationSources.js';
 import {
@@ -2030,10 +2032,11 @@ export const world = {
       registerEntityWorldRecordId(state && state.entityIndex, e);
     };
     forEachLivingWorldActor(state, capture);
-    // The authored starter buoy is a payload, outside the actor view. Keep every other
-    // payload on its existing persistence path, and never capture a future actor twice.
+    // These exact finite work payloads sit outside the actor view. All other payloads
+    // retain their existing persistence paths, and an actor is never captured twice.
     for (const e of indexedTypeScan(state, 'payloads')) {
-      if (e?.type === 'payload' && !isLivingWorldActor(e) && starterBuoyRecordMarker(e)) capture(e);
+      if (e?.type === 'payload' && !isLivingWorldActor(e)
+          && (starterBuoyRecordMarker(e) || isLanternWardHardwareEntity(e))) capture(e);
     }
     // Match _despawnEntityIds' reverse walk and swap-pop ordering without a second population scan.
     this._destroyEntitiesAtIndices(despawnIndexes);
@@ -2646,6 +2649,7 @@ export const world = {
   _arrangerForSector(sector, active) {
     if (readArrangementVersion(this.state.world.arrangementVersion, ARRANGEMENT_VERSION) === 0) return null;
     const reservations = [];
+    reservations.push(...lanternWardReservations(this, sector, active));
     // Machine adapters materialize after scatter; reserve the same authored envelopes
     // used by ladder bedrock before any native body can be born inside their skins.
     for (const machine of killMachinesForSector(sector.id)) {
@@ -3536,6 +3540,8 @@ export const world = {
     yield 'materialize:dressing-palette';
     this._spawnEverydaySpaceKitDressing(sector, active, paletteClass);
     yield 'materialize:dressing-kit';
+    materializeLanternWardDressing(this, sector, active);
+    yield 'materialize:lantern-ward';
     this._spawnWreckAftermathDressing(sector, active, paletteClass);
     yield 'materialize:dressing-wrecks';
     this._spawnWorldOneOffs(sector, active);

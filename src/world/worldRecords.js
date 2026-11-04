@@ -3,6 +3,10 @@ import { captureOrchardWorkDamage } from '../combat/orchardWorkDamage.js';
 import {claimsTallyAssessor} from './tallyThreeIdentity.js';
 import { ceresWorkfleetRoleForEntity } from '../data/ceresWorkfleetIdentity.js';
 import { ceresWorkfleetHardwareSpec, ceresWorkfleetHardwareRoleForRecord, isCeresWorkfleetRecordIdentity } from '../data/ceresWorkfleetHardware.js';
+import { captureLanternWardHardware, isLanternWardHardwareEntity, isLanternWardRecordIdentity,
+  lanternWardHardwareRoleForRecord, lanternWardHardwareSpec } from '../data/lanternWardHardware.js';
+import { isLanternWardActorRecord, lanternWardActorRoleForRecord,
+  lanternWardActorSpec } from './lanternWardActors.js';
 // Pure durable world-entity record schema + rematerialization helpers (M2-C2).
 //
 // Owned exclusively by systems/world.js for capture on demote and rematerialize on promote.
@@ -356,6 +360,15 @@ export function normalizeRecord(raw, fallbackId) {
   // missionTag is the v1 live-entity spelling of the same durable contract identity. Canonicalize
   // both fields so old saves cannot rematerialize an unowned target or miss kill attribution.
   const missionId = raw.missionId || raw.missionTag || null;
+  const extra = preserveUnknownFields(raw);
+  // Preserve corruption as an unavailable finite identity. Generic pose defaults must
+  // not turn a malformed workpiece into a freshly valid lamp on the next normalize pass.
+  if (isLanternWardRecordIdentity(raw) && raw.alive !== false
+      && !['destroyed', 'defeated'].includes(raw.outcome)
+      && !lanternWardHardwareRoleForRecord(raw)) extra.lanternWardInvalid = true;
+  if (isLanternWardActorRecord(raw) && raw.alive !== false
+      && !['destroyed', 'defeated'].includes(raw.outcome)
+      && !lanternWardActorRoleForRecord(raw)) extra.lanternWardInvalid = true;
 
   const rec = {
     recordId,
@@ -367,7 +380,7 @@ export function normalizeRecord(raw, fallbackId) {
     rot: Number.isFinite(raw.rot) ? raw.rot : 0,
     angVel: Number.isFinite(raw.angVel) ? raw.angVel : 0,
     // identity / spawn
-    type: isStarterBuoyRecord(raw) ? 'payload'
+    type: isStarterBuoyRecord(raw) || (raw.type === 'payload' && isLanternWardRecordIdentity(raw)) ? 'payload'
       : raw.type === 'wreck' || raw.type === 'fx' || raw.type === 'ship' ? raw.type : 'ship',
     enemyTypeId: raw.enemyTypeId || null,
     shipDefId: raw.shipDefId || raw.defId || null,
@@ -446,7 +459,7 @@ export function normalizeRecord(raw, fallbackId) {
         ? Math.max(0, Math.floor(raw.deactivation.generation))
         : 0,
     },
-    extra: preserveUnknownFields(raw),
+    extra,
   };
   rec[RECORD_NORMALIZED] = true;
   return rec;
@@ -738,6 +751,8 @@ export function entityHasDurableMarkers(entity, playerId) {
   if (entity.type === 'station' && entity.data && entity.data.stationId) return false;
   if (entity.type === 'asteroid') return false;
   if (entity.type === 'payload') {
+    if (isLanternWardHardwareEntity(entity)
+        && (entity.homeSectorId || entity.data.homeSectorId) === 'sector_helios_prime') return true;
     const missionId = missionIdentityOf(entity);
     return !!starterBuoyRecordMarker(entity) && !!missionId
       && entity.data.identityKey === `mission:${missionId}:0`
@@ -773,6 +788,7 @@ export function entityIsDurableCandidate(entity, playerId) {
  */
 export function classifyEntityKind(entity) {
   const d = entity && entity.data || {};
+  if (entity.type === 'payload' && isLanternWardHardwareEntity(entity)) return RECORD_KIND.NPC;
   if (entity.type === 'wreck' || d.wreckClass || d.markerId) {
     return d.markerId ? RECORD_KIND.AFTERMATH : RECORD_KIND.WRECK;
   }
@@ -836,6 +852,7 @@ export function captureEntityRecord(entity, opts = {}) {
   const seed = opts.seed != null ? opts.seed : 1;
   const d = entity.data || {};
   const starterBuoy = kind === RECORD_KIND.MISSION_TARGET && sectorId === 'sector_helios_prime' ? starterBuoyRecordMarker(entity) : null;
+  const lanternHardware = captureLanternWardHardware(entity);
   const existingId = d.worldRecordId || opts.recordId || null;
   const previous = opts.previousRecord
     || opts.existingRecord
@@ -948,7 +965,7 @@ export function captureEntityRecord(entity, opts = {}) {
     vel: entity.vel,
     rot: entity.rot,
     angVel: entity.angVel,
-    type: starterBuoy ? 'payload' : entity.type === 'wreck' || entity.type === 'fx' ? entity.type : 'ship',
+    type: starterBuoy || lanternHardware ? 'payload' : entity.type === 'wreck' || entity.type === 'fx' ? entity.type : 'ship',
     enemyTypeId: d.lootTableId || d.enemyTypeId || null,
     shipDefId: d.defId || null,
     factionId: entity.factionId || d.factionId || null,
@@ -972,7 +989,7 @@ export function captureEntityRecord(entity, opts = {}) {
     retentionClass,
     trafficRole: d.trafficRole || null,
     trafficLabel: d.trafficLabel || null,
-    itinerary: d.itinerary || (opts.itinerary || null),
+    itinerary: lanternHardware || d.itinerary || (opts.itinerary || null),
     cargoManifest: d.cargoManifest || null,
     freightDockSeq: Number.isFinite(d.freightDockSeq) ? d.freightDockSeq : null,
     wreckClass: d.wreckClass || null,
@@ -1211,6 +1228,17 @@ export function spawnSpecFromRecord(record) {
   if (isCeresWorkfleetRecordIdentity(record)) {
     const role=ceresWorkfleetHardwareRoleForRecord(record);
     return role ? ceresWorkfleetHardwareSpec(role,record) : null;
+  }
+  // A finite household object never degrades into a generic ship after Continue.
+  // Validate the supplied record before normalization can repair a malformed identity.
+  if (isLanternWardRecordIdentity(record)) {
+    if (record.extra?.lanternWardInvalid === true) return null;
+    const role = lanternWardHardwareRoleForRecord(record);
+    return role ? lanternWardHardwareSpec(role, record) : null;
+  }
+  if (isLanternWardActorRecord(record)) {
+    const role = lanternWardActorRoleForRecord(record);
+    return role ? lanternWardActorSpec(role, null, record) : null;
   }
 
   if (rec.extra?.salvorSource) {

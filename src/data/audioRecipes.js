@@ -1110,6 +1110,22 @@ export const RECIPES = [
     filterType: 'lowpass', filterFreq: 600,
   },
 
+  // Lantern Ward: short mechanical contacts, dispatched only by committed local work.
+  // The quiet after the family relay closes is intentional; there is no ambient loop.
+  {
+    id: 'sfx_lantern_jaws', category: 'engine', type: 'oscillator', wave: 'triangle',
+    baseFreq: 135, freqSweep: [135, 62], sweepTimeS: 0.11,
+    gainEnvelope: { attack: 0.004, sustain: 0.015, release: 0.14 },
+    filterType: 'lowpass', filterFreq: 920, gainMult: 0.45,
+    repeatCount: 2, repeatIntervalS: 0.12,
+  },
+  {
+    id: 'sfx_lantern_relay', category: 'engine', type: 'oscillator', wave: 'sine',
+    baseFreq: 330, freqSweep: [330, 440], sweepTimeS: 0.09,
+    gainEnvelope: { attack: 0.018, sustain: 0.025, release: 0.3 },
+    filterType: 'lowpass', filterFreq: 1200, gainMult: 0.25,
+  },
+
   // --- Station ambient hum (low continuous hum when docked) ---
   {
     id: 'sfx_station_hum',

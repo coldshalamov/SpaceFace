@@ -547,6 +547,17 @@ export const COMBAT_PROFILES = Object.freeze([
     capabilities: { drive: false, weapon: false, sensor: false, tether: false, power: false },
   },
   {
+    // A civic load seat can secure the finite lamp through the same native attachment owner.
+    // Opt-in only: ordinary payloads do not gain powered clamps or a drive.
+    id: 'combat_profile_lantern_hardware', version: 1, entityTypes: ['payload'],
+    heat: { max: 0, dissipationPerTick: 0 }, immunityTags: [], subsystemIds: [],
+    sockets: [
+      { id: 'socket_lantern_clamp', tags: ['transport_clamp'], localPos: [0, 0], maxAttachments: 1 },
+      { id: 'socket_lantern_tow', tags: ['tether'], localPos: [0, 0], maxAttachments: 4 },
+    ],
+    capabilities: { drive: false, weapon: false, sensor: false, tether: false, power: true, transport_clamp: true },
+  },
+  {
     id: 'combat_profile_tether_anchor', version: 1, entityTypes: ['asteroid', 'wreck', 'pickup', 'fieldEmitter', 'masslineSnareAnchor', 'mine', 'gate'],
     heat: { max: 0, dissipationPerTick: 0 },
     immunityTags: [],
