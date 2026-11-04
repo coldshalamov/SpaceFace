@@ -870,17 +870,26 @@ export function syncPhotoFov(ctx, value) {
   return next;
 }
 
-function runPhotoCapture(ctx) {
-  const capture = capturePhotoPng(resolvePhotoCanvas(ctx), { kind: PHOTO_STORE_KIND });
-  return writePhotoCapture(capture, {
-    document: globalThis.document,
-    sfDesktop: globalThis.sfDesktop,
-    electronAPI: globalThis.electronAPI,
-    spaceface: globalThis.spaceface,
-    writeStorePage: ctx && ctx.writeStorePage,
-    publishStoreStill: ctx && ctx.publishStoreStill,
-    state: ctx && ctx.state,
-  });
+export async function runPhotoCapture(ctx, host = globalThis) {
+  const state = ctx && ctx.state;
+  const render = ctx?.registry?.get?.('render');
+  const canvas = resolvePhotoCanvas(ctx);
+  // Pause retains the last composited picture, but WebGL may discard its drawing buffer after
+  // presentation. Submit the current prepared scene and begin readback in the same task.
+  if (!state?.render?.photoMode?.active || !canvas || !render
+    || render.state !== state || render.renderer !== state.render.renderer || render.renderer?.domElement !== canvas
+    || typeof render.drawPreparedFrame !== 'function') return { ok: false, reason: 'no-frame' };
+  try {
+    if (render.drawPreparedFrame() !== true) return { ok: false, reason: 'no-frame' };
+    const capture = await capturePhotoPngAsync(canvas, { kind: PHOTO_STORE_KIND });
+    return writePhotoCapture(capture, {
+      document: host.document, sfDesktop: host.sfDesktop, electronAPI: host.electronAPI,
+      spaceface: host.spaceface, writeStorePage: ctx.writeStorePage,
+      publishStoreStill: ctx.publishStoreStill, state,
+    });
+  } catch {
+    return { ok: false, reason: 'capture-failed' };
+  }
 }
 
 function bindPhotoKeys(photoState) {
@@ -980,8 +989,11 @@ function enterPhoto(rootEl, ctx) {
   captureBtn.type = 'button';
   // The capture's result is a saved file off-page (a download or the desktop photo folder), and
   // photo mode hides the receipt rails — so the key itself names the outcome, then reverts.
-  captureBtn.addEventListener('click', () => {
-    const result = runPhotoCapture(ctx);
+  captureBtn.addEventListener('click', async () => {
+    if (captureBtn.disabled) return;
+    captureBtn.disabled = true;
+    const result = await runPhotoCapture(ctx);
+    captureBtn.disabled = false;
     if (photoCaptureAckTimer) clearTimeout(photoCaptureAckTimer);
     captureBtn.textContent = result && result.ok ? 'Captured' : 'No frame';
     photoCaptureAckTimer = setTimeout(() => {

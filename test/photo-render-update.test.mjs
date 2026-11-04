@@ -5,6 +5,7 @@ import { runRenderUpdatePhase } from '../src/core/renderUpdatePhase.js';
 import { shouldFreezeFlightSubmit, shouldSkipFullTickSystems } from '../src/core/presentationFreeze.js';
 import { createChaseCamera } from '../src/render/camera.js';
 import { enterPhotoMode, exitPhotoMode } from '../src/ui/screens/pause.js';
+import { POST_PROCESS_ROUTE, render as renderer } from '../src/render/renderer.js';
 
 function pausedPhoto() {
   const player = {
@@ -108,4 +109,40 @@ test('Photo cannot bypass a refused prepared frame or loading/sector/dock/modal 
   legacy.args.render = { renderFrame() { throw Error('Photo must use guarded prepare/draw'); } };
   runRenderUpdatePhase(legacy.args);
   assert.deepEqual(legacy.calls.map(([name]) => name), ['feel', 'ui']);
+});
+
+test('Photo exposure reaches the final post owners after held Nocturne exposure', () => {
+  const writes = [];
+  const scene = { updateMatrixWorld() {} };
+  const photoMode = { active: true, exposure: 1.85 };
+  const owner = {
+    scene, state: { render: { photoMode } }, renderer: { toneMappingExposure: 0.93 },
+    _postFrameOptions: { time: 0 },
+    _nocturne: { exposure: 0.93, flush() { writes.push(['nocturne']); } },
+    bloom: { setOptions(options) { writes.push(['bloom', options.exposure]); }, render() { return true; } },
+    _renderGraph: { setOptions(options) { writes.push(['graph', options.exposure]); }, render() { return true; } },
+    _unreadyDrawableGuard: { hide() { writes.push(['guard']); }, restore() { writes.push(['restore']); } },
+  };
+  const bag = owner._postFrameOptions;
+  renderer._renderPostRoute.call(owner, POST_PROCESS_ROUTE.GRAPH, scene, {});
+  assert.equal(owner.renderer.toneMappingExposure, 1.85);
+  assert.deepEqual(writes, [['nocturne'], ['bloom', 1.85], ['graph', 1.85], ['guard'], ['restore']]);
+  assert.equal(owner._nocturne.exposure, 0.93, 'Photo leaves held adaptation untouched');
+  assert.equal(owner._postFrameOptions, bag, 'the existing frame options bag is reused');
+
+  for (const [requested, expected] of [[99, 2.2], [-1, 0.35]]) {
+    photoMode.exposure = requested;
+    renderer._renderPostRoute.call(owner, POST_PROCESS_ROUTE.BLOOM, scene, {});
+    assert.equal(owner.renderer.toneMappingExposure, expected);
+  }
+
+  for (const overrides of [{ exposure: NaN }, { active: false, exposure: 1.85 }]) {
+    Object.assign(photoMode, { active: true }, overrides);
+    // The next ordinary prepare keeps its existing world exposure authority after Photo exits.
+    owner.renderer.toneMappingExposure = 0.93;
+    writes.length = 0;
+    renderer._renderPostRoute.call(owner, POST_PROCESS_ROUTE.GRAPH, scene, {});
+    assert.equal(owner.renderer.toneMappingExposure, 0.93);
+    assert.deepEqual(writes, [['nocturne'], ['guard'], ['restore']]);
+  }
 });
