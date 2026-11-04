@@ -252,6 +252,34 @@ test('mark seams breathe off the authored pulse, and reduced motion holds the po
   assert.ok(Math.abs(after - before) > 1e-3, 'the claw seam breathes on sim time');
 });
 
+test('the Rider current opens only for the active current life and stays steady with reduced effects', () => {
+  const dressing = createLawArenaDressing();
+  const entity = eliteEntity('rider-state', { swarmAffix: 'rider' });
+  entity.occupantGeneration = 17;
+  const mesh = hullMesh();
+  drive(dressing, entity, mesh, 30, { motionReduce: true, flashReduce: true });
+  const mark = markGroup(mesh, 'rider');
+  const current = mark.getObjectByName('sf-swarm-threat-affix-rider-current');
+  assert.equal(current.visible, false);
+  entity.data.swarmRide = { life: 17, until: 100 };
+  drive(dressing, entity, mesh, 1, { motionReduce: true, flashReduce: true });
+  assert.equal(current.visible, true, 'the local simulation state reaches the mark');
+  const first = current.children.map(child => [child.rotation.y, child.material.emissiveIntensity]);
+  drive(dressing, entity, mesh, 30, { motionReduce: true, flashReduce: true });
+  assert.deepEqual(current.children.map(child => [child.rotation.y, child.material.emissiveIntensity]), first);
+  entity.data.swarmRideTellLife = 17;
+  entity.data.swarmRideActive = false;
+  drive(dressing, entity, mesh);
+  assert.equal(current.visible, false, 'the explicit worker end overrides old spawn data');
+  entity.data.swarmRideActive = true;
+  entity.data.swarmRideTellLife = 16;
+  drive(dressing, entity, mesh);
+  assert.equal(current.visible, false, 'a prior life cannot light the current');
+  entity.data.swarmRideTellLife = 17;
+  drive(dressing, entity, mesh);
+  assert.equal(current.visible, true, 'a matching worker life lights it');
+});
+
 test('every affix id the elites runtime can stamp resolves to a builder', () => {
   // The stamp table (swarmThreats) and the mark table (lawArenaDressing) are keyed on the
   // same ids — an affix with no builder would field a bare hull anyway.

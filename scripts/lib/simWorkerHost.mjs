@@ -275,6 +275,7 @@ const VITAL_FIELDS = [
 ];
 const VITAL_ROT_INDEX = VITAL_FIELDS.indexOf('rot');
 const SWARM_SHADOW_INDEX = VITAL_FIELDS.length + 7;
+const RIDER_SHADOW_INDEX = SWARM_SHADOW_INDEX + 1;
 const AUTHORED_MOTION_FRAME_FIELDS = Object.freeze(['palletJackMotionFrame', 'kilnbackMotionFrame']);
 
 // Native effects are replaced on deployment; their wire identity must survive clones.
@@ -311,7 +312,7 @@ function mawPresentationRadius(e) {
   return Number.isFinite(radius) && radius > 0 ? radius : null;
 }
 
-export function entityVitalsOf(e, krakenFrame = VITAL_SHADOW_MISSING) {
+export function entityVitalsOf(e, krakenFrame = VITAL_SHADOW_MISSING, state = null) {
   const fields = {};
   for (const k of VITAL_FIELDS) {
     if (e[k] !== undefined) fields[k] = e[k];
@@ -332,6 +333,8 @@ export function entityVitalsOf(e, krakenFrame = VITAL_SHADOW_MISSING) {
   if (e.type === 'mine') fields.mineArmed = e.data?.armed === true;
   const specialistFrame = swarmSpecialistFrameValue(e);
   if (specialistFrame !== VITAL_SHADOW_MISSING) fields.swarmSpecialistFrame = specialistFrame;
+  const riderTell = riderTellValue(e, state);
+  if (riderTell !== VITAL_SHADOW_MISSING) fields.swarmRideTell = riderTell;
   if (typeof e.data?.scanLabel === 'string') fields.dataScanLabel = e.data.scanLabel;
   // Wreck concealment reads data.scanned — it flips after spawn, so it rides vitals like scanLabel.
   if (e.data && e.data.scanned !== undefined) fields.dataScanned = e.data.scanned === true;
@@ -404,6 +407,21 @@ function swarmSpecialistFrameValue(e) {
   return swarmSpecialistPresentationFrame(data?.swarmSpecialist);
 }
 
+// Signed occupant generation is one bounded scalar: positive while riding, negative while
+// idle. It identifies the life whose mark may consume the update across the worker boundary.
+function riderTellValue(e, state) {
+  const data = e?.data;
+  const life = e?.occupantGeneration;
+  if ((data?.swarmAffix !== 'rider' && data?.swarmAffix2 !== 'rider')
+    || !Number.isSafeInteger(life) || life < 1) return VITAL_SHADOW_MISSING;
+  const ride = data.swarmRide;
+  const run = state?.run;
+  return e.alive !== false && state?.entities?.get(e.id) === e && e.id !== state.playerId
+    && ride?.life === life && state.tick < ride.until
+    && run?.kind === 'survival' && run.ruleset === 'swarm'
+    && (run.phase === 'active' || run.phase === 'cleanup') ? life : -life;
+}
+
 function vitalShadowValue(value) {
   if (value === undefined) return VITAL_SHADOW_MISSING;
   if (value === null || (typeof value === 'number' && !Number.isFinite(value))) {
@@ -433,7 +451,7 @@ function krakenMotionFrame(state, e) {
       .map(p => ({ id: p.id, attached: p.attached !== false })) : [] });
 }
 
-function vitalShadowMatches(e, shadow, krakenFrame) {
+function vitalShadowMatches(e, shadow, krakenFrame, state) {
   if (!Array.isArray(shadow)) return false;
   // Moving actors commonly change velocity or heading each publish. Check those same
   // canonical scalar tokens first; unchanged actors still compare every field below.
@@ -455,6 +473,7 @@ function vitalShadowMatches(e, shadow, krakenFrame) {
   if ((machine ? Boolean(machine.working) : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
   if ((e.type === 'mine' ? e.data?.armed === true : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
   if (swarmSpecialistFrameValue(e) !== shadow[i++]) return false;
+  if (riderTellValue(e, state) !== shadow[i++]) return false;
   if ((typeof e.data?.scanLabel === 'string' ? e.data.scanLabel : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
   if ((e.data && e.data.scanned !== undefined ? e.data.scanned === true : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
   if ((e.type === 'beacon' && e.data?.storyPropKind === 'claim_beacon' && Number.isFinite(e.data.expireAt)
@@ -490,7 +509,7 @@ function vitalShadowMatches(e, shadow, krakenFrame) {
   return true;
 }
 
-function writeVitalShadow(e, shadow, krakenFrame) {
+function writeVitalShadow(e, shadow, krakenFrame, state) {
   let i = 0;
   for (const key of VITAL_FIELDS) shadow[i++] = vitalShadowValue(e[key]);
   const vel = e.vel && typeof e.vel === 'object' ? e.vel : null;
@@ -504,6 +523,7 @@ function writeVitalShadow(e, shadow, krakenFrame) {
   shadow[i++] = machine ? Boolean(machine.working) : VITAL_SHADOW_MISSING;
   shadow[i++] = e.type === 'mine' ? e.data?.armed === true : VITAL_SHADOW_MISSING;
   shadow[i++] = swarmSpecialistFrameValue(e);
+  shadow[i++] = riderTellValue(e, state);
   shadow[i++] = typeof e.data?.scanLabel === 'string' ? e.data.scanLabel : VITAL_SHADOW_MISSING;
   shadow[i++] = e.data && e.data.scanned !== undefined ? e.data.scanned === true : VITAL_SHADOW_MISSING;
   shadow[i++] = e.type === 'beacon' && e.data?.storyPropKind === 'claim_beacon' && Number.isFinite(e.data.expireAt)
@@ -587,7 +607,7 @@ function entityInfoBlock(state, entityId, host) {
     ...(ceresWorkfleetRoleForEntity(e) === 'cradle' ? {
       ceresCradleReceipt: readCeresCradlePublicLayout(e, state, host.registry?.get('physics')?._sg02, host.lifecycleGeneration),
     } : {}),
-    vitals: entityVitalsOf(e, krakenMotionFrame(state, e)),
+    vitals: entityVitalsOf(e, krakenMotionFrame(state, e), state),
     data: canonicalClone(data),
   };
 }
@@ -638,18 +658,23 @@ export function collectEntityVitals(state, vitalShadow, seenScratch = null) {
     seen.add(e.id);
     const previous = vitalShadow.get(e.id);
     const krakenFrame = krakenMotionFrame(state, e);
-    if (!vitalShadowMatches(e, previous, krakenFrame)) {
+    if (!vitalShadowMatches(e, previous, krakenFrame, state)) {
       const retiredKrakenFrame = krakenFrame === VITAL_SHADOW_MISSING
         && Array.isArray(previous) && previous[previous.length - 1] !== VITAL_SHADOW_MISSING;
       const retiredSpecialistFrame = swarmSpecialistFrameValue(e) === VITAL_SHADOW_MISSING
         && Array.isArray(previous) && previous[SWARM_SHADOW_INDEX] !== VITAL_SHADOW_MISSING;
+      const retiredRiderTell = riderTellValue(e, state) === VITAL_SHADOW_MISSING
+        && Array.isArray(previous) && previous[RIDER_SHADOW_INDEX] !== VITAL_SHADOW_MISSING;
       const retiredMawRadius = mawPresentationRadius(e) === VITAL_SHADOW_MISSING
         && Array.isArray(previous) && previous[previous.length - 2] !== VITAL_SHADOW_MISSING;
       const shadow = Array.isArray(previous) ? previous : [];
-      writeVitalShadow(e, shadow, krakenFrame);
+      writeVitalShadow(e, shadow, krakenFrame, state);
       vitalShadow.set(e.id, shadow);
-      const fields = entityVitalsOf(e, retiredKrakenFrame ? null : krakenFrame);
+      const fields = entityVitalsOf(e, retiredKrakenFrame ? null : krakenFrame, state);
       if (retiredSpecialistFrame) fields.swarmSpecialistFrame = null;
+      if (retiredRiderTell && Number.isSafeInteger(e.occupantGeneration) && e.occupantGeneration > 0) {
+        fields.swarmRideTell = -e.occupantGeneration;
+      }
       if (retiredMawRadius) fields.mawPresentationRadius = null;
       out.push([e.id, fields]);
     }
@@ -2582,7 +2607,7 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
       for (const entity of state.entityList || []) {
         const role = ceresWorkfleetRoleForEntity(entity);
         if (role !== 'cradle' && role !== 'breaker' && role !== 'cutterHead') continue;
-        const fields = entityVitalsOf(entity, krakenMotionFrame(state, entity));
+        const fields = entityVitalsOf(entity, krakenMotionFrame(state, entity), state);
         if (role === 'cradle') {
           current.add(entity.id);
           fields.ceresCradlePublic = {
@@ -2605,7 +2630,7 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
       for (const id of host.ceresCradleIds) if (!current.has(id) && state.entities.has(id)) {
         const existing = entityVitals.findIndex(entry => entry[0] === id);
         const fields = existing >= 0 ? entityVitals[existing][1]
-          : entityVitalsOf(state.entities.get(id), krakenMotionFrame(state, state.entities.get(id)));
+          : entityVitalsOf(state.entities.get(id), krakenMotionFrame(state, state.entities.get(id)), state);
         fields.ceresCradlePublic = { receipt: null };
         if (existing >= 0) entityVitals[existing] = [id, fields];
         else entityVitals.push([id, fields]);
@@ -2614,7 +2639,7 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
       for (const id of host.ceresActuationIds) if (!actuationCurrent.has(id) && state.entities.has(id)) {
         const existing = entityVitals.findIndex(entry => entry[0] === id);
         const fields = existing >= 0 ? entityVitals[existing][1]
-          : entityVitalsOf(state.entities.get(id), krakenMotionFrame(state, state.entities.get(id)));
+          : entityVitalsOf(state.entities.get(id), krakenMotionFrame(state, state.entities.get(id)), state);
         fields.ceresWorkfleetPublic = { receipt: null };
         if (existing >= 0) entityVitals[existing] = [id, fields];
         else entityVitals.push([id, fields]);

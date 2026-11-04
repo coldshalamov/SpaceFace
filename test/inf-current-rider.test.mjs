@@ -1,193 +1,171 @@
-// inf-current-rider — a marked Crucible elite cuts its drive inside a room current and the
-// room's own field law carries it; one hit knocks it off and the authored thrust returns.
-// The stamp gate keeps the trick to law arenas — no current, no mark. Real system object,
-// real field containment read, no renderer, no Math.random, no wall clock.
+// Rider: real field, combat and flight owners, with no renderer or native/GPU route.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-
-import { createBus } from '../src/core/eventBus.js';
-import { swarmElites } from '../src/systems/swarmElites.js';
+import { createSimulation, SIM_DT } from '../src/core/sim.js';
+import { createRunState } from '../src/core/runState.js';
+import { consumePhysicsCommand } from '../src/core/physicsAuthority.js';
+import { createDamageRouter, scalarHitToDamagePacket } from '../src/combat/damage.js';
+import { createCombatCatalog } from '../src/combat/runtime.js';
+import { FIELD_FLAGS } from '../src/data/fields.js';
+import { SWARM_AFFIXES, swarmAffixFor } from '../src/data/swarmThreats.js';
+import { fields } from '../src/systems/fields.js';
+import { flightV3 } from '../src/systems/flightV3.js';
+import { physics } from '../src/core/physics.js';
+import { swarmElites, affixHash } from '../src/systems/swarmElites.js';
+import { noteSwarmPilotAction } from '../src/systems/swarmSafety.js';
 import { MILL_ARENA_ID } from '../src/systems/asteroidMillArena.js';
-import { SWARM_AFFIXES, SWARM_AFFIX_BY_ID, swarmAffixFor } from '../src/data/swarmThreats.js';
-import { affixHash } from '../src/systems/swarmElites.js';
 
-const RIDE_COOLDOWN_TICKS = 840;
-
-function makeHost(state, fields) {
-  const bus = createBus();
-  const receipts = [];
-  bus.on('swarm:affixRide', (p) => receipts.push(p));
-  const host = Object.create(swarmElites);
-  host.init({
-    state,
-    bus,
-    helpers: {},
-    registry: { get: () => ({ kernelList: () => fields }) },
-  });
-  return { host, receipts, bus };
+function fixture(t, fieldSpec = {}, native = false) {
+  const prior = FIELD_FLAGS.enabled;
+  FIELD_FLAGS.enabled = true;
+  const sim = createSimulation({ seed: 1, systems: native
+    ? [flightV3, fields, physics, swarmElites] : [flightV3, fields, swarmElites] });
+  t.after(() => { sim.dispose(); FIELD_FLAGS.enabled = prior; });
+  const { state, bus } = sim;
+  state.mode = 'flight';
+  state.settings.gameplay.physicsBackend = 'rapier-dynamic';
+  state.run = { ...createRunState({ kind: 'survival', ruleset: 'swarm', seed: 1 }),
+    phase: 'active', wave: 30, arenaId: MILL_ARENA_ID };
+  const body = sim.spawn({ type: 'ship', team: 1, pos: { x: 100, z: 0 }, vel: { x: 0, z: 0 },
+    hull: 100, hullMax: 100, armorHp: 0, armorMax: 0, shield: 0, shieldMax: 0,
+    radius: 10, mass: 20, thrust: 42, collides: true,
+    physicsBody: { schemaVersion: 1, dynamic: true, radius: 10, mass: 20, inertiaY: 90, revision: 1 },
+    data: { runCohort: 'survival', runRole: 'elite', runWave: 30, swarmAffix: 'rider',
+      intent: { throttle: 1, strafe: 0, turn: 0, assistMode: 'newtonian' } } });
+  body.data.swarmRideNextAt = 0;
+  const fieldOwner = sim.registry.get('fields');
+  fieldOwner.registerExternal({ id: 'rider-test-well', kind: 'well', center: { x: 0, z: 0 },
+    radius: 500, strength: 1000, damping: 0, ...fieldSpec });
+  const route = createDamageRouter({ state, bus, catalog: createCombatCatalog(), helpers: {} }, { schedule() {} });
+  return { sim, state, body, fieldOwner, elites: sim.registry.get('swarmElites'),
+    flight: sim.registry.get('flight'), route, bus };
 }
 
-function riderBody(id, pos = { x: 0, z: 0 }) {
-  return {
-    id, alive: true, type: 'ship', pos: { x: pos.x, z: pos.z }, radius: 10,
-    hull: 100, hullMax: 100, shield: 0, thrust: 42, maxSpeed: 90, combatSpeed: 60,
-    data: { runCohort: 'survival', swarmAffix: 'rider' },
-  };
+function start(h) {
+  h.sim.step(SIM_DT);
+  assert.ok(h.fieldOwner.readAcceptedFieldAcceleration(h.body, {}), 'real field owner admitted force');
+  assert.ok(h.body.data.swarmRide, 'rider consumes accepted force after the field pass');
+}
+function command(h) {
+  h.flight._stepCraft(h.body, { throttle: 1, strafe: 0, turn: 0.6, assistMode: 'newtonian' }, SIM_DT, h.state, false);
+  return consumePhysicsCommand(h.body)?.control;
 }
 
-function riderState({ arenaId = MILL_ARENA_ID, tick = 0, bodies = [], fields = [well()] } = {}) {
-  const entities = new Map();
-  for (const body of bodies) entities.set(body.id, body);
-  return {
-    state: {
-      tick, simTime: tick / 60, playerId: 'player',
-      run: { kind: 'survival', phase: 'active', ruleset: 'swarm', seed: 1, wave: 30, arenaId },
-      entities,
-    },
-    fields,
-  };
-}
+test('real field acceptance gates riding; zero, excluded, aged and replaced receipts cannot drive it', t => {
+  const h = fixture(t);
+  start(h);
+  assert.equal(h.body.thrust, 42, 'fitted thrust is never rewritten');
+  const first = h.state.tick;
+  h.state.tick = first + 1;
+  h.elites._ridePass(h.state, h.state.run);
+  assert.ok(h.body.data.swarmRide, 'the immediately preceding owner pass is valid');
+  h.state.tick = first + 2;
+  h.elites._ridePass(h.state, h.state.run);
+  assert.equal(h.body.data.swarmRide, undefined, 'older feedback ends the ride');
+  h.state.tick = first;
+  h.body.data.swarmRideNextAt = 0;
+  const old = h.body.occupantGeneration;
+  h.body.occupantGeneration = old + 1;
+  h.elites._ridePass(h.state, h.state.run);
+  assert.equal(h.body.data.swarmRide, undefined, 'receipt belongs to the prior life');
+  h.body.occupantGeneration = old;
+  h.fieldOwner.unregisterExternal('rider-test-well');
+  h.fieldOwner.registerExternal({ id: 'excluded', kind: 'well', center: { x: 0, z: 0 }, radius: 500,
+    strength: 1000, damping: 0, filters: { excludeId: h.body.id } });
+  h.sim.step(SIM_DT);
+  assert.equal(h.fieldOwner.readAcceptedFieldAcceleration(h.body, {}), null);
+  assert.equal(h.body.data.swarmRide, undefined, 'geometric membership is insufficient');
+  h.fieldOwner.unregisterExternal('excluded');
+  h.fieldOwner.registerExternal({ id: 'zero', kind: 'well', center: { x: 0, z: 0 }, radius: 500, strength: 0, damping: 0 });
+  h.sim.step(SIM_DT);
+  assert.equal(h.body.data.swarmRide, undefined, 'zero field force cannot start a ride');
+});
 
-function well() {
-  return { kind: 'well', center: { x: 0, z: 0 }, radius: 500, strength: 120, falloff: 1.2 };
-}
+test('accepted field force moves the drive-cut rider through the native physics owner', async t => {
+  const h = fixture(t, {}, true);
+  assert.equal(await h.sim.registry.get('physics').prepareBackend(h.state), true);
+  start(h);
+  const initialX = h.body.pos.x;
+  for (let i = 0; i < 12; i++) h.sim.step(SIM_DT);
+  assert.ok(h.body.data.swarmRide);
+  assert.ok(h.body.pos.x < initialX, 'the native solve carries the rider into the well');
+});
 
-function runRides(host, state, fromTick, toTick) {
-  for (let t = fromTick; t <= toTick; t++) {
-    state.tick = t;
-    host._ridePass(state, state.run);
+test('V3 cuts only the current NPC translation and preserves yaw and fitted thrust', t => {
+  const h = fixture(t);
+  // Before the field pass, the ordinary NPC has thrust and yaw.
+  const normal = command(h);
+  assert.ok(Math.hypot(normal.force.x, normal.force.z) > 0);
+  start(h);
+  const riding = command(h);
+  assert.equal(Math.hypot(riding.force.x, riding.force.z), 0);
+  assert.notEqual(riding.torque.y, 0, 'yaw authority remains available');
+  const life = h.body.occupantGeneration;
+  h.body.occupantGeneration = life + 1;
+  const replacement = command(h);
+  assert.ok(Math.hypot(replacement.force.x, replacement.force.z) > 0, 'a stale life cannot cut the drive');
+  h.body.occupantGeneration = life;
+  h.state.run.ruleset = 'scored';
+  const otherMode = command(h);
+  assert.ok(Math.hypot(otherMode.force.x, otherMode.force.z) > 0, 'other modes keep normal propulsion');
+  h.state.run.ruleset = 'swarm';
+  h.body.thrust = 99; // fitting changes during a ride are owned elsewhere
+  h.elites._endRide(h.body, h.body.data, 'test', h.state.tick);
+  assert.equal(h.body.thrust, 99, 'ride end does not restore stale fitting data');
+  const restored = command(h);
+  assert.ok(Math.hypot(restored.force.x, restored.force.z) > 0);
+});
+
+test('leaving active combat clears the local ride and its old cooldown', t => {
+  const h = fixture(t);
+  start(h);
+  h.state.run.phase = 'draft';
+  h.elites.update(SIM_DT);
+  assert.equal(h.body.data.swarmRide, undefined);
+  assert.equal(h.body.data.swarmRideNextAt, undefined);
+});
+
+test('canonical armor, shield and hull damage each interrupt once; refused and stale receipts do not', t => {
+  const h = fixture(t);
+  start(h);
+  noteSwarmPilotAction(h.state);
+  h.bus.emit('combat:damage', { targetId: h.body.id, targetGeneration: h.body.occupantGeneration - 1, applied: 10 });
+  h.bus.emit('combat:damage', { targetId: h.body.id, applied: 0 });
+  assert.ok(h.body.data.swarmRide);
+  h.body.flags.invuln = true;
+  const packet = scalarHitToDamagePacket({ damage: 10, damageType: 'kinetic' });
+  assert.equal(h.route({ targetId: h.body.id, packet }).ok, false);
+  assert.ok(h.body.data.swarmRide);
+  h.body.flags.invuln = false;
+  for (const layer of ['armor', 'shield', 'hull']) {
+    h.body.hull = 100; h.body.armorHp = layer === 'armor' ? 100 : 0;
+    h.body.armorMax = layer === 'armor' ? 100 : 0;
+    h.body.shield = layer === 'shield' ? 100 : 0; h.body.shieldMax = h.body.shield;
+    h.body.data.swarmRideNextAt = 0;
+    h.elites._ridePass(h.state, h.state.run);
+    assert.ok(h.body.data.swarmRide);
+    const result = h.route({ targetId: h.body.id, packet });
+    assert.ok(result[`${layer}Damage`] > 0, `${layer} took real damage: ${JSON.stringify(result)}`);
+    assert.equal(h.body.data.swarmRide, undefined);
+    const cooldown = h.body.data.swarmRideNextAt;
+    h.bus.emit('combat:damage', { targetId: h.body.id, applied: 1 });
+    assert.equal(h.body.data.swarmRideNextAt, cooldown, 'duplicate cannot end the ride twice');
   }
-}
-
-test('the affix exists in the shipped vocabulary with its teaching line', () => {
-  const row = SWARM_AFFIX_BY_ID.rider;
-  assert.ok(row, 'rider is a real affix');
-  assert.match(row.blurb, /current/);
-  assert.match(row.blurb, /knocks it off/);
-  assert.ok(SWARM_AFFIXES.some((r) => r.id === 'rider'));
+  h.bus.emit('run:ended');
+  assert.equal(h.body.data.swarmRideNextAt, undefined, 'the old run cannot keep its cooldown');
 });
 
-test('inside a current the drive cuts; the hull is riding, not gliding on its own thrust', () => {
-  const body = riderBody(5);
-  const { state } = riderState({ bodies: [body] });
-  const { host, receipts } = makeHost(state, [well()]);
-
-  // id 5 → phase stagger (5 % 97) * 10 = 50 ticks; the ride opens on tick 51.
-  runRides(host, state, 0, 51);
-  assert.ok(body.data.swarmRide, 'the ride window is live');
-  assert.equal(body.thrust, 0, 'the drive is cut — the room owns the motion now');
-  assert.equal(receipts.filter((p) => p.phase === 'start').length, 1);
-
-  // Riding on: the cut holds for the window (the field kernel moves the body in production).
-  runRides(host, state, 52, 200);
-  assert.equal(body.thrust, 0);
-  assert.equal(receipts.filter((p) => p.phase === 'start').length, 1, 'no double ride');
-});
-
-test('one hit knocks it off the current and the authored thrust returns exactly', () => {
-  const body = riderBody(5);
-  const { state } = riderState({ bodies: [body] });
-  const { host, receipts } = makeHost(state, [well()]);
-  runRides(host, state, 0, 51);
-  assert.equal(body.thrust, 0);
-
-  body.hull = 90; // any real damage tears it off the current
-  runRides(host, state, 52, 53);
-  assert.equal(body.data.swarmRide, undefined);
-  assert.equal(body.thrust, 42);
-  const end = receipts.find((p) => p.phase === 'end');
-  assert.equal(end.reason, 'knocked_off');
-});
-
-test('leaving the current ends the ride; so does the window expiring', () => {
-  const body = riderBody(5);
-  const { state } = riderState({ bodies: [body] });
-  const { host, receipts } = makeHost(state, [well()]);
-  runRides(host, state, 0, 51);
-
-  body.pos.x = 900; // outside the well's radius
-  runRides(host, state, 52, 53);
-  assert.equal(body.data.swarmRide, undefined);
-  assert.equal(body.thrust, 42);
-  assert.equal(receipts.find((p) => p.phase === 'end').reason, 'current_ended');
-
-  // Again, this time letting the window expire while still inside the current.
-  body.pos.x = 0;
-  body.data.swarmRideNextAt = state.tick + 1;
-  runRides(host, state, state.tick + 1, state.tick + 1);
-  assert.equal(body.thrust, 0);
-  body.data.swarmRide.until = state.tick + 1;
-  runRides(host, state, state.tick + 2, state.tick + 2);
-  assert.equal(body.data.swarmRide, undefined);
-  assert.equal(body.thrust, 42);
-  assert.equal(receipts.filter((p) => p.reason === 'done').length, 1);
-});
-
-test('the cooldown and phase stagger keep a marked band from riding as one', () => {
-  const a = riderBody(5);
-  const b = riderBody(502);
-  const { state } = riderState({ bodies: [a, b] });
-  const { host } = makeHost(state, [well()]);
-  runRides(host, state, 0, 60);
-  // id 5 staggered to tick 51; id 502 staggered to (502 % 97) * 10 = 170 ticks — not yet.
-  assert.ok(a.data.swarmRide, 'the first rider is up');
-  assert.equal(b.data.swarmRide, undefined, 'the second rides on its own phase');
-  assert.ok(b.data.swarmRideNextAt > state.tick, 'and its gate is still ahead');
-
-  // After a ride, the cooldown holds before the next one.
-  const endOfFirstRide = 51 + 240;
-  runRides(host, state, 60, endOfFirstRide);
-  assert.equal(a.data.swarmRide, undefined);
-  assert.ok(a.data.swarmRideNextAt >= endOfFirstRide);
-  const before = a.thrust;
-  runRides(host, state, endOfFirstRide + 1, endOfFirstRide + RIDE_COOLDOWN_TICKS - 3);
-  assert.equal(a.data.swarmRide, undefined, 'no re-ride inside the cooldown');
-  assert.equal(a.thrust, before);
-});
-
-test('no law arena, no trick: a marked hull outside the law rooms never rides', () => {
-  const body = riderBody(5);
-  const { state } = riderState({ arenaId: 'helios_core', bodies: [body] });
-  const { host } = makeHost(state, [well()]);
-  runRides(host, state, 0, 600);
-  assert.equal(body.data.swarmRide, undefined);
-  assert.equal(body.thrust, 42);
-});
-
-test('no field installed, no ride — the mark stays quiet in an empty room', () => {
-  const body = riderBody(5);
-  const { state } = riderState({ bodies: [body] });
-  const { host } = makeHost(state, []);
-  runRides(host, state, 0, 600);
-  assert.equal(body.data.swarmRide, undefined);
-  assert.equal(body.thrust, 42);
-});
-
-test('the stamp gate: law rooms roll the full vocabulary, plain rooms never roll the rider', () => {
-  // Find an ordinal whose seeded pick IS the rider in a law room, then drive the real
-  // stamp path twice. The probe uses the fixture run's own seed (1) and wave (30).
-  let ordinal = -1;
-  for (let probe = 0; probe < 4096 && ordinal < 0; probe++) {
-    if (swarmAffixFor(affixHash(1, 30, probe)) === 'rider') ordinal = probe;
-  }
-  assert.ok(ordinal >= 0, 'the seeded pick reaches the rider');
-
-  const make = (arenaId) => {
-    const body = riderBody(77);
-    body.data.swarmAffix = null;
-    body.data.runRole = 'elite';
-    body.data.runWave = 30;
-    const { state } = riderState({ arenaId, bodies: [body] });
-    const { host } = makeHost(state, [well()]);
-    host._affixOrdinal = ordinal;
-    host._stampAffix(state, state.run, body, 21);
-    return body;
+test('stamping keeps Rider restricted to law rooms, deterministically', t => {
+  const h = fixture(t);
+  let ordinal = 0;
+  while (swarmAffixFor(affixHash(1, 30, ordinal)) !== 'rider') ordinal++;
+  const make = arenaId => {
+    const body = { id: 900, alive: true, pos: { x: 0, z: 0 }, data: { runCohort: 'survival', runRole: 'elite', runWave: 30 } };
+    h.elites._affixOrdinal = ordinal;
+    h.elites._stampAffix(h.state, { ...h.state.run, arenaId }, body, 21);
+    return body.data.swarmAffix;
   };
-  const inLaw = make(MILL_ARENA_ID);
-  const outside = make('helios_core');
-  assert.equal(inLaw.data.swarmAffix, 'rider');
-  // The plain room still marks its champion — one trick every time — but the trick it
-  // carries comes from the room-agnostic head of the catalog, never the rider.
-  assert.ok(SWARM_AFFIX_BY_ID[outside.data.swarmAffix], 'every champion carries one trick');
-  assert.notEqual(outside.data.swarmAffix, 'rider');
+  assert.equal(make(MILL_ARENA_ID), 'rider');
+  assert.notEqual(make('helios_core'), 'rider');
+  assert.ok(SWARM_AFFIXES.some(row => row.id === 'rider'));
 });

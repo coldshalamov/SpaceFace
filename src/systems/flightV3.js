@@ -399,6 +399,17 @@ export const flightV3 = {
       driveAuthority.forward = 0; driveAuthority.reverse = 0;
       driveAuthority.strafe = 0; driveAuthority.yaw = 0;
     }
+    // A current rider spends no translation authority during its own live ride. Keep yaw and
+    // all pre-existing drive restrictions intact; field/physics forces remain independent.
+    const ride = entity.data?.swarmRide;
+    const run = state.run;
+    if (!isPlayer && ride && ride.life === (entity.occupantGeneration ?? null)
+      && state.entities?.get(entity.id) === entity && state.tick < ride.until
+      && (entity.data.swarmAffix === 'rider' || entity.data.swarmAffix2 === 'rider')
+      && run?.kind === 'survival' && run.ruleset === 'swarm'
+      && (run.phase === 'active' || run.phase === 'cleanup')) {
+      driveAuthority.forward = 0; driveAuthority.reverse = 0; driveAuthority.strafe = 0;
+    }
     this._driveAuthority = driveAuthority;
     if (isPlayer) this._playerDriveAuthority = driveAuthority;
     // Hoisted above the player boost block: the boost state machine only queues impulses and

@@ -36,7 +36,6 @@
 // Single-writer law holds: it never writes state.run (the blast and the chip request travel as
 // intents), never writes Adventure credits, never touches the profile.
 import { swarmPassiveHullBonus } from '../data/swarmDraft.js';
-import { fieldContainsPoint } from '../core/fields/fieldKernel.js';
 import { LAW_ARENA_IDS } from './survivalArena.js';
 
 import { createRewardDeathLedger, runOwnsReward } from '../combat/rewardEligibility.js';
@@ -158,6 +157,7 @@ export const swarmElites = {
     if (!this.bus || typeof this.bus.on !== 'function') return;
     this._unsubs.push(this.bus.on('entity:spawned', (p) => this._onSpawned(p)));
     this._unsubs.push(this.bus.on('entity:killed', (p) => this._onKilled(p)));
+    this._unsubs.push(this.bus.on('combat:damage', (p) => this._onRideDamage(p)));
     this._unsubs.push(this.bus.on('physics:impact', (p) => this._onImpact(p)));
     this._unsubs.push(this.bus.on('swarm:chain', (p) => this._onChain(p)));
     this._unsubs.push(this.bus.on('swarm:chainBroken', () => { this._chain = 0; }));
@@ -166,6 +166,7 @@ export const swarmElites = {
   },
 
   destroy() {
+    this._clearRides();
     for (const off of this._unsubs || []) if (typeof off === 'function') off();
     this._unsubs = [];
   },
@@ -182,9 +183,9 @@ export const swarmElites = {
     this._maintainPassiveStack(this.state);
     const st = this.state;
     const run = liveSwarmRun(st);
-    if (!run) return;
+    if (!run) { this._clearRides(); return; }
     // Active and cleanup both host live bodies; draft/refit pause the fight and pause us too.
-    if (run.phase !== 'active' && run.phase !== 'cleanup') return;
+    if (run.phase !== 'active' && run.phase !== 'cleanup') { this._clearRides(); return; }
     const step = Math.max(0, Number(dt) || 0);
     this._scanIn -= 1;
     if (this._scanIn <= 0) {
@@ -199,78 +200,85 @@ export const swarmElites = {
 
   /**
    * inf-current-rider — the trick only a room with a field law can carry. A marked elite
-   * inside a kernel field kills its drive for one bounded window: the room's own current
-   * (the Mill's grind, a well, a lane) physically owns its motion — no scripted glide, the
-   * same acceleration every body feels. One hit (hull or shield below the ride-start read)
-   * knocks it off the current, the window expires on its own clock, and the authored
-   * thrust returns untouched. Phase stagger comes off the hull id so a marked band never
-   * rides as one. Deterministic: ticks and stored reads only.
+   * with an accepted nonzero field force cuts its translation drive for one bounded window.
+   * Flight consumes the life-bound ride state; the field and physics owners still own force.
+   * A settled damage receipt, loss of accepted force or expiry ends the ride.
    */
   _ridePass(state, run) {
-    if (!Array.isArray(LAW_ARENA_IDS) || !LAW_ARENA_IDS.includes(run.arenaId)) return;
+    if (!this._riders.size) return;
     const entities = state.entities;
-    if (!entities || typeof entities.forEach !== 'function') return;
-    const fields = this._kernelFields();
+    if (!entities || typeof entities.get !== 'function') return;
+    const lawRoom = LAW_ARENA_IDS.includes(run.arenaId);
+    const fields = this.registry && this.registry.get?.('fields');
     const tick = simTickOf(state);
-    entities.forEach((e) => {
-      if (!e || e.alive === false || !e.pos) return;
+    for (const e of this._riders) {
       const data = entityData(e);
-      if (!data || !bodyHasAffix(data, 'rider')) return;
+      if (!data || e.alive === false || entities.get(e.id) !== e || !bodyHasAffix(data, 'rider')) {
+        if (data) delete data.swarmRide;
+        this._riders.delete(e);
+        continue;
+      }
       const ride = data.swarmRide;
+      const life = e.occupantGeneration ?? null;
+      if (ride && ride.life !== life) {
+        delete data.swarmRide;
+        delete data.swarmRideNextAt;
+        continue;
+      }
+      const accepted = lawRoom && fields?.readAcceptedFieldAcceleration?.(e, this._rideAcceleration);
+      const current = accepted && Number.isFinite(accepted.ax) && Number.isFinite(accepted.az)
+        && (accepted.ax !== 0 || accepted.az !== 0);
       if (ride) {
-        const hull = Number.isFinite(e.hull) ? e.hull : 0;
-        const shield = Number.isFinite(e.shield) ? e.shield : 0;
-        if (hull < ride.hull || hull + shield < ride.total) this._endRide(e, data, 'knocked_off', tick);
-        else if (!this._insideCurrent(fields, e)) this._endRide(e, data, 'current_ended', tick);
+        if (!current) this._endRide(e, data, 'current_ended', tick);
         else if (tick >= ride.until) this._endRide(e, data, 'done', tick);
-        return;
+        continue;
       }
       // First gate: the phase stagger spreads a marked band's ride starts off the hull id,
       // so they never all cut their drives on the same tick.
       if (data.swarmRideNextAt == null) {
         data.swarmRideNextAt = tick + (Number(e.id) || 0) % 97 * SWARM_RIDE_PHASE_STRIDE_TICKS;
       }
-      if (tick < data.swarmRideNextAt) return;
-      if (!this._insideCurrent(fields, e)) return;
-      if (!Number.isFinite(e.thrust)) return;
+      if (tick < data.swarmRideNextAt || !current) continue;
       data.swarmRide = {
-        thrust: e.thrust,
-        hull: Number.isFinite(e.hull) ? e.hull : 0,
-        total: (Number.isFinite(e.hull) ? e.hull : 0) + (Number.isFinite(e.shield) ? e.shield : 0),
+        life,
         until: tick + SWARM_RIDE_WINDOW_TICKS,
       };
-      e.thrust = 0; // the drive cut IS the telegraph — the room takes the wheel from here
-      this._emit('swarm:affixRide', { id: e.id, phase: 'start', untilTick: tick + SWARM_RIDE_WINDOW_TICKS, pos: { x: e.pos.x, z: e.pos.z } });
-    });
+    }
+  },
+
+  _onRideDamage(payload) {
+    const state = this.state;
+    if (!this._riders?.size || !(payload?.applied > 0)) return;
+    const e = state.entities?.get(payload.targetId);
+    const ride = e?.data?.swarmRide;
+    if (!ride || e.alive === false || !this._riders.has(e)
+      || ride.life !== (e.occupantGeneration ?? null)
+      || (payload.targetGeneration != null && payload.targetGeneration !== ride.life)
+      || !liveSwarmRun(state)) return;
+    this._endRide(e, e.data, 'knocked_off', simTickOf(state));
   },
 
   _endRide(e, data, reason, tick) {
     const ride = data.swarmRide;
     if (!ride) return;
     delete data.swarmRide;
-    if (Number.isFinite(ride.thrust)) e.thrust = ride.thrust;
     // The cooldown counts from the ride's END: 4 s on the current, then 14 s off it.
     data.swarmRideNextAt = tick + SWARM_RIDE_COOLDOWN_TICKS;
-    this._emit('swarm:affixRide', { id: e.id, phase: 'end', reason, tick });
   },
 
-  _kernelFields() {
-    const fields = this.registry && typeof this.registry.get === 'function'
-      ? this.registry.get('fields')
-      : null;
-    return fields && typeof fields.kernelList === 'function' ? fields.kernelList() : null;
-  },
-
-  _insideCurrent(fields, e) {
-    if (!fields || !fields.length) return false;
-    for (const field of fields) {
-      if (!field || !(field.radius > 0) || !field.center) continue;
-      if (fieldContainsPoint(field, e.pos.x, e.pos.z)) return true;
+  _clearRides() {
+    for (const e of this._riders || []) {
+      if (!e.data) continue;
+      delete e.data.swarmRide;
+      delete e.data.swarmRideNextAt;
     }
-    return false;
+    this._riders?.clear();
   },
 
   _reset() {
+    this._clearRides();
+    this._riders = new Set();
+    this._rideAcceleration = { ax: 0, az: 0, tick: 0 };
     this._scanIn = 0;
     this._affixOrdinal = 0;
     this._chain = 0;
@@ -365,7 +373,9 @@ export const swarmElites = {
    */
   _stampAffix(state, run, e, affixFloor) {
     const data = entityData(e);
-    if (!data || data.swarmAffix != null || data.swarmAffixChecked === true) return;
+    if (!data) return;
+    if (bodyHasAffix(data, 'rider')) this._riders.add(e);
+    if (data.swarmAffix != null || data.swarmAffixChecked === true) return;
     const wave = Number.isInteger(data.runWave) ? data.runWave : (Number.isInteger(run.wave) ? run.wave : 0);
     data.swarmAffixChecked = true;
     if (wave < affixFloor) return;
@@ -396,6 +406,7 @@ export const swarmElites = {
     }
     this._applyAffixStamp(e, affix);
     if (affix2) this._applyAffixStamp(e, affix2);
+    if (affix === 'rider' || affix2 === 'rider') this._riders.add(e);
     this._emit('swarm:affix', {
       id: e.id,
       affix,

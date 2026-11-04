@@ -1253,9 +1253,23 @@ function buildAffixRider(r, sink) {
   needle.scale.set(r * 0.03, r * 0.025, r * 0.22);
   needle.position.z = -r * 0.24; // aft, reading the water the hull just left
   group.add(needle);
+  // A steady V opens only during the drive-cut window, so the actionable state remains
+  // distinguishable with reduced motion or flashing disabled.
+  const current = new THREE.Group();
+  current.name = 'sf-swarm-threat-affix-rider-current';
+  current.visible = false;
+  for (const side of [-1, 1]) {
+    const rail = mesh(shared.boxGeo, seam, 'sf-swarm-threat-affix-rider-current-rail');
+    rail.scale.set(r * 0.24, r * 0.025, r * 0.035);
+    rail.position.set(-r * 0.22, r * 0.04, side * r * 0.19);
+    rail.rotation.y = side * 0.55;
+    current.add(rail);
+  }
+  group.add(current);
   return {
     group,
-    tick(mark, simTime, dt, reduced) {
+    tick(mark, simTime, dt, reduced, active) {
+      current.visible = active === true;
       // The needle swings across the keel line, slow — the hull is reading, not racing.
       const swing = reduced ? 0.3 : 0.3 + Math.sin(simTime * 1.9) * 0.22;
       needle.rotation.y = swing;
@@ -1558,6 +1572,10 @@ export function createLawArenaDressing() {
 
     const reduced = !!(options && options.motionReduce);
     const calmFlash = !!(options && options.flashReduce);
+    const life = entity.occupantGeneration ?? null;
+    const rideActive = entity.alive !== false && (data?.swarmRideTellLife != null
+      ? data.swarmRideTellLife === life && data.swarmRideActive === true
+      : !!data?.swarmRide && data.swarmRide.life === life);
     const dt = Math.max(0, frameDt || 0);
     const simNow = Number.isFinite(simTime) ? simTime : 0;
     rec.clock += dt;
@@ -1571,7 +1589,7 @@ export function createLawArenaDressing() {
       rec.group.scale.setScalar(Math.max(0.0001, easeOutCubic(buildT)));
       for (let i = 0; i < rec.marks.length; i++) {
         const mark = rec.marks[i];
-        if (mark.tick) mark.tick(mark, simNow, dt, reduced);
+        if (mark.tick) mark.tick(mark, simNow, dt, reduced, mark.id === 'rider' && rideActive);
         for (const mat of mark.mats) {
           mat.emissiveIntensity = calmFlash
             ? 0.7

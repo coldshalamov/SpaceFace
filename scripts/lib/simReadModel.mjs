@@ -85,6 +85,15 @@ function foldMineVitals(row, fields) {
   row.data.armed = fields.mineArmed;
 }
 
+// Reject an old occupant's phase even if a recycled entity id is still in flight.
+function foldRiderTell(row, fields, life = row.occupantGeneration) {
+  const tell = fields.swarmRideTell;
+  if (!Number.isSafeInteger(tell) || tell === 0 || Math.abs(tell) !== life) return;
+  if (!row.data || typeof row.data !== 'object') row.data = {};
+  row.data.swarmRideTellLife = life;
+  row.data.swarmRideActive = tell > 0;
+}
+
 // Story props change scanner text as work progresses after their spawn; the scanned flag flips
 // on the same path and gates wreck identity concealment on the read model.
 function foldScanLabel(row, fields) {
@@ -235,6 +244,7 @@ export function applySpawnInfos(readModel, spawnInfos, state = null, worldGenera
       foldMachineVitals(row, info.vitals);
       foldMineVitals(row, info.vitals);
       foldSwarmSpecialistPresentation(row, info.vitals);
+      foldRiderTell(row, info.vitals, info.occupantGeneration);
       foldScanLabel(row, info.vitals);
       foldEcologyVitals(row, info.vitals);
       foldCountermeasureVitals(row, info.vitals);
@@ -340,6 +350,7 @@ export function applyEntityVitals(readModel, vitals, state = null, worldGenerati
     foldMachineVitals(row, fields);
     foldMineVitals(row, fields);
     foldSwarmSpecialistPresentation(row, fields);
+    foldRiderTell(row, fields);
     foldScanLabel(row, fields);
     foldEcologyVitals(row, fields);
     foldCountermeasureVitals(row, fields);
