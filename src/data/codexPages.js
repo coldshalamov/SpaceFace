@@ -314,7 +314,10 @@ const SECTOR_OVERLAYS = Object.freeze({
   sector_proteus_well: 'The well at the lane\'s bottom; what falls in, the Understory catalogues.',
   sector_triton_wake: 'Wake-line territory — follow a big enough hull and the law forgets you.',
   sector_eunomia_gulf: 'Wide, legal, and dull until it is none of those.',
-  sector_sedna_dark: 'The dark the Verge-Layers asked about first. It is still answering.',
+  sector_sedna_dark: 'The dark the Verge-Layers asked about first. It is still answering. '
+    + 'On the ringworld arc a dormant gate ring wakes one ring at a time and asks each hull the same '
+    + 'toll-question — WHAT IS THE MASS OF A DECISION? — then weighs hull, cargo and transponder '
+    + 'history and files the answer as a receipt. The ring has never opened. The receipts are the prize.',
   sector_dione_lane: 'The straight shot everyone takes and nobody watches.',
   sector_the_bolus: 'Not a sector — a mouth the chart agreed to draw around.',
 });
@@ -334,7 +337,11 @@ const CHARACTER_OVERLAYS = Object.freeze({
   clerk_yune: 'The Quiet\'s sealed-evidence broker. Everything has a price; hers have citations.',
   coldburn_rey: 'Free Frontier\'s loudest independent. Races you for the same contract and buys the first round whoever loses.',
   iren_suhl: 'Xenolinguist at Research Station Veil. Translates what the deep fauna means by what it does to your hull.',
-  warrant_orrin: 'Concord Inspector General. The evidence-case witness the case was built around.',
+  // SP2-004 "Incident 7741, the Sealed Side" — the Orrin line: his file closes on the one
+  // unsealed line, and he has never explained the exception.
+  warrant_orrin: 'Concord Inspector General. The evidence-case witness the case was built around. '
+    + 'His file on Incident 7741 closes on one unsealed line — HULL STATUS: HELD TOGETHER — and he has '
+    + 'never said out loud what held it, or why that was the line he left open.',
   sker_vane: 'Crimson Reach lane kingpin. The toll is the toll; the courtesy is optional.',
   dustwife_senna: 'Drift Miners wreck elder and keeper of names. If a crew died in the drift, she files them.',
   latch_child: 'Feral salvage automaton running Quiet logistics with an origin nobody can file.',

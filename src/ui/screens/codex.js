@@ -44,7 +44,12 @@ import { knownAces, stanceForRecord, rememberedBarkFor } from '../../data/namedA
 import { FACTION_LABELS } from '../../data/encounterIdentity.js';
 import { logbookEntries } from '../../chronicler/logbook.js';
 import { logbookStill } from '../logbookMedia.js';
-import { decodedSuhlClauses, namesForTheDead } from '../../data/discoveryPresentation.js';
+import {
+  decodedSuhlClauses,
+  incident7741ShelfRows,
+  namesForTheDead,
+  vergeGateReceiptRows,
+} from '../../data/discoveryPresentation.js';
 import { hash32 } from '../../core/rng.js';
 import { recordSectionModel } from './codexRecord.js';
 import {
@@ -1494,6 +1499,23 @@ export const codexScreen = {
       note: `Recorded at ${Math.floor(row.at / 60)}:${String(Math.floor(row.at % 60)).padStart(2, '0')}. Cited ${row.citation}.`,
       art: codexEntryArt('chronicler-story'),
     }))), 'No named loss is recorded. This page never fills the silence with invented people.');
+    this._section('The Sealed Side', toEntries(incident7741ShelfRows(ctx?.state).map(row => ({
+      id: `world:incident7741:${row.label}`, name: `${row.label}: ${row.value}`,
+      sub: row.sealed ? 'SEALED' : 'On the board',
+      body: row.sealed
+        ? 'The shelf sealed this line and left the seal intact. Whatever was filed here stays filed.'
+        : 'The one line the shelf left open. It is either an oversight or the entire point.',
+      note: 'Incident 7741 — evidence shelf, Listening Field re-scan.',
+      art: codexEntryArt('chronicler-story'),
+    }))), 'The Listening Field has not shown you its sealed side yet. It takes a second reading.');
+    this._section('Gate Receipt', toEntries(vergeGateReceiptRows(ctx?.state).map(row => ({
+      id: `world:verge-receipt:${row.label}`, name: `${row.label}: ${row.value}`,
+      sub: row.sealed ? 'CLOSED' : 'Filed',
+      body: row.sealed
+        ? 'The ring stays closed either way. The receipt was always the prize.'
+        : 'The gate filed this line against your hull, in the interrogative register the Verge-Layers never drop.',
+      art: codexEntryArt('chronicler-story'),
+    }))), 'No gate has weighed you yet. The dark the Verge-Layers asked about first keeps its receipts.');
   },
 
   _renderDiscoveries(ctx) {

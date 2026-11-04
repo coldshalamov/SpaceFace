@@ -580,6 +580,17 @@ const CANONICAL_CONTACTS = [
     factionId: 'faction_fulfillment',
     line: 'Your order has always been important to us.',
   },
+  // SP2-041 "The Previous Tenant's Mail": the cushion letter's author, drinking at Quinn's
+  // under the same management. Six owners is the hull's count, not Rets's patience.
+  {
+    key: 'rets',
+    stationIds: ['station_smuggler'],
+    name: 'Rets',
+    role: 'pilot',
+    roleLabel: 'Retired Watch Regular',
+    factionId: 'faction_quiet',
+    line: '"You are sitting in the chair. The cushion before yours held better arguments than most crews."',
+  },
 ];
 
 const CANONICAL_BY_STATION = new Map();

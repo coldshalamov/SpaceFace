@@ -20,6 +20,7 @@
 //   { type: 'cargo',   commodity: '<cmdty id>', gte?: n }
 //   { type: 'docked',  station: '<station id>' }
 //   { type: 'ship',    ship: '<ship id>' }   an owned hull
+//   { type: 'ownedShips', gte: n }          owned hull count >= n (second hull onward)
 //   { type: 'credits', gte: n }
 //
 // Pure data: stable `mail_*` ids, authored text, deterministic trigger lists. No state reads,
@@ -70,6 +71,7 @@ const FLAG = (flag) => ({ type: 'flag', flag });
 const CARGO = (commodity, gte) => ({ type: 'cargo', commodity, ...(gte ? { gte } : {}) });
 const DOCKED = (station) => ({ type: 'docked', station });
 const SHIP = (ship) => ({ type: 'ship', ship });
+const OWNSHIPS = (gte) => ({ type: 'ownedShips', gte });
 const CREDITS = (gte) => ({ type: 'credits', gte });
 
 export const MAIL_LETTERS = Object.freeze([
@@ -934,6 +936,40 @@ export const MAIL_LETTERS = Object.freeze([
     subject: 'Same lane, better terms',
     body: 'The convoy captains talk. You flew flank and the count came home whole — we log that differently than the guns-for-hire. Standing escort terms are posted under your name. Repeat customers get the berth with the light.',
     triggers: [E('mission:completed', { type: 'escort' }), STAT('missionsDone', 4)],
+  },
+
+  // ── special-500 Phase 2 (batch 1, mail family) ─────────────────────────────────────
+  // SP2-018 "The Manifest That Reads You" — mail leg. The hail half of the unit (the
+  // weigh-slip buoy's contactHail variants, gated on an empty hold and 0 credits) is a
+  // separate build; it writes flag `weighslip_intent`. Until that leg lands the letter
+  // waits, gated and honest — the evaluator delivers nothing without the flag.
+  {
+    id: 'mail_hale_special500_weighslip', kind: 'cast', from: 'Hale',
+    subject: 'REF T-9 — intent reading, noted',
+    body: 'Buoy T-9 filed an intent reading on you. Standard. Ignore it. I ignore mine. '
+      + 'For the record you did not ask for: the buoy reads hold mass, transponder age, and how long '
+      + 'you hesitated before the hail. The hesitation is the field it files. It goes in a drawer at '
+      + 'the customs clamp zone with ten thousand identical drawers, and nobody reads them unless '
+      + 'somebody dies, and then everybody reads them. Yours says PENDING. Keep it pending. A pilot '
+      + 'with no intentions is a pilot whose paperwork I never have to open. That is a compliment. '
+      + 'File it where you file everything else.',
+    triggers: [FLAG('weighslip_intent')],
+  },
+  // SP2-041 "The Previous Tenant's Mail" — mail leg. The mail system routes by hull, not by
+  // person, so the first delivery after the player's second hull arrives addressed to whoever
+  // held the seat before. Second-hull gate is the live ownedShips read plus the witnessed
+  // purchase; delivery is once, like every letter here.
+  {
+    id: 'mail_previous_tenant_01', kind: 'cast', from: 'Rets',
+    subject: 'RE: THE SEAT CUSHION YOU TOOK',
+    body: 'TO: [OLD REG, SIXTH OWNER] / RE: THE SEAT CUSHION YOU TOOK. WE NOTICED. WE HAVE NOT '
+      + 'FORGIVEN. THE CUSHION WAS LOAD-BEARING SOCIALLY.\n\n'
+      + 'Whoever sits in that chair now — this was addressed to the hull, and the hull is a forwarding '
+      + 'address now. Six owners, four cushions, and the one that mattered went out the airlock with '
+      + 'the fifth. That cushion held the whole watch together. Arguments were won from it. If you are '
+      + 'reading this, the broker sold you a hull with a hole in its social manifest. Sit carefully. '
+      + 'The fifth owner still buys, wherever they drifted.',
+    triggers: [E('ship:purchased'), OWNSHIPS(2)],
   },
 ]);
 
