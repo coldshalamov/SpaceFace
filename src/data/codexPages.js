@@ -292,15 +292,22 @@ const FACTION_OVERLAYS = Object.freeze({
 });
 
 const SECTOR_OVERLAYS = Object.freeze({
-  sector_helios_prime: 'The Concord\'s shop window. Everything legal, everything priced, everything watched.',
-  sector_ceres_belt: 'First belt, first lesson: the rock does not care about your manifest.',
-  sector_tethys_junction: 'Where the lanes braid. Half the rumor-trade passes through with the cargo.',
-  sector_vesta_forge: 'Foundry sector; the glow is honest work and the smoke is somebody\'s claim.',
+  sector_helios_prime: 'The Concord\'s shop window. Everything legal, everything priced, everything watched. '
+    + 'Scale 4 keeps one line of 47-A paperwork older than most of its clerks; the desk neither closes it nor explains it.',
+  sector_ceres_belt: 'First belt, first lesson: the rock does not care about your manifest. '
+    + 'Shaft 7\'s stake carries a re-chalked tally and two helmets face-out on a memorial clamp. The math is legal. The math is not done.',
+  sector_tethys_junction: 'Where the lanes braid. Half the rumor-trade passes through with the cargo. '
+    + 'The weigh-slip buoy\'s abutment stone keeps a season of chalk: every hull that ever idled there, massed and dated, whether or not it asked.',
+  sector_vesta_forge: 'Foundry sector; the glow is honest work and the smoke is somebody\'s claim. '
+    + 'Gallery Rock is a permanent collection now. Accession No. 1; the label is for you.',
   sector_pallas_drift: 'Quiet rock, long sightlines, and claims filed on faith.',
-  sector_io_reach: 'Listening posts and the traffic that learned to whisper back.',
-  sector_charon_expanse: 'The long dark between customs desks. Smugglers call it "the reading room."',
+  sector_io_reach: 'Listening posts and the traffic that learned to whisper back. '
+    + 'The retired channel buoy at the Listening Field answers anyway. Nobody living holds its license, and the channel is held open regardless.',
+  sector_charon_expanse: 'The long dark between customs desks. Smugglers call it "the reading room." '
+    + 'Past the Tether Memorial a pre-Collapse beacon still spells out one very long sentence, one pulse per character. Old hands do not spoil it.',
   sector_sker_haven: 'Reach country. The bazaar prices everything, including you.',
-  sector_veil_nebula: 'Research Station Veil and the things Dr. Suhl has not translated yet.',
+  sector_veil_nebula: 'Research Station Veil and the things Dr. Suhl has not translated yet. '
+    + 'A marginal note on the Veil chart: two cold hulls nose-to-nose over a mid-game table, one piece moved per visit. The chart does not say who countersigns the notation.',
   sector_ashfall_reach: 'A ledger that kept running after everyone else left. Kurtz is still there.',
   sector_nyx_march: 'Frontier march; the patrol grid thins to a rumor of itself.',
   sector_hyperion_cut: 'A lane cut through wreck-mass older than the Concord.',
@@ -343,8 +350,10 @@ const CHARACTER_OVERLAYS = Object.freeze({
     + 'His file on Incident 7741 closes on one unsealed line — HULL STATUS: HELD TOGETHER — and he has '
     + 'never said out loud what held it, or why that was the line he left open.',
   sker_vane: 'Crimson Reach lane kingpin. The toll is the toll; the courtesy is optional.',
-  dustwife_senna: 'Drift Miners wreck elder and keeper of names. If a crew died in the drift, she files them.',
-  latch_child: 'Feral salvage automaton running Quiet logistics with an origin nobody can file.',
+  dustwife_senna: 'Drift Miners wreck elder and keeper of names. If a crew died in the drift, she files them. '
+    + 'The names reach her however they can — re-chalked tally plates, helmets on a clamp, half a tonne of water filed as moisture so the paperwork could close.',
+  latch_child: 'Feral salvage automaton running Quiet logistics with an origin nobody can file. '
+    + 'It keeps things. A wreck left intact comes back tidied — plates stacked, tags straightened, a child\'s drawing welded where the hull number was. Nothing was taken. Something was kept.',
   the_question: 'A persistent interrogative of precursor make. Every artifact it leaves is a question with mass.',
   filecleaver_dorin: 'Concord records clerk who cleaved the wrong file open and is now bounty-posted for honesty.',
   lira_vonn: 'Independent correspondent of The Margin. Files the stories the factions pay to keep unfiled.',
@@ -352,7 +361,14 @@ const CHARACTER_OVERLAYS = Object.freeze({
   mara_children: 'Civilian convoy survivors. The refugee witness whose testimony the factions keep misplacing.',
   wraith_kell: 'The Quiet\'s deep-cover manifest clerk at Customs. Reads every seal, forgets none, remembers being paid to.',
   halev_doss: 'Helios public archive. The last academic still filing what the Concord would rather misplace.',
-  maera_vols: 'Previous captain of the Tessera. Her crew\'s manifest is the blank the story keeps circling.',
+  maera_vols: 'Previous captain of the Tessera. Her crew\'s manifest is the blank the story keeps circling. '
+    + 'A scorched crew-pod past the Helios weigh-lanes still carries her transponder — TESSERA / OLD RIG — and plays one calm log to whoever finds it: she floats better than she steers; third bulkhead, behind the plate; sorry about the plate.',
+  // SP2-116 "Morrow's Hundredth Push" — the rescue machine keeps its own count, and the
+  // archive keeps Morrow's: a civilian momentum-rescue register, lapsed, that never
+  // stopped answering.
+  morrow: 'Civilian momentum-rescue machine, callsign R-07, anchored beside the Helios tutorial corridor. '
+    + 'Built to give motion back to heavy hulls on the starter seam; the yard that welded it has moved twice and stopped filing. '
+    + 'It counts departures and arrivals in the same column, which is either optimism or arithmetic.',
 });
 
 // When each non-core figure's page unseals: at this story beat, or the moment the story
@@ -364,6 +380,7 @@ const FIGURE_UNLOCK_BEATS = Object.freeze({
   mira: 4, rook: 4, filecleaver_dorin: 4, mara_children: 4,
   warrant_orrin: 5, wraith_kell: 5,
   kurtz: 6, the_question: 6, maera_vols: 6,
+  morrow: 1,
 });
 const FIGURE_ALWAYS = new Set(['protagonist', 'kessler', 'hale', 'slate', 'quinn', 'voss']);
 

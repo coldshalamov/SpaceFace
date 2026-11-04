@@ -7,9 +7,9 @@
   "small": 167,
   "medium": 167,
   "large": 166,
-  "landed": 90,
+  "landed": 104,
   "assigned": 28,
-  "approved": 90
+  "approved": 104
  },
  "derivation": {
   "ratifiedFollowup": 330,
@@ -529,9 +529,9 @@
    "size": "medium",
    "family": "codex",
    "batch": 12,
-   "status": "pending",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused 26/26 + neighbor sweep 76 pass + Morrow 16/16 + fb-codex-world-tab + controller re-run 31/31",
    "note": "promoted to medium (balance)"
   },
   {
@@ -588,9 +588,9 @@
    "size": "medium",
    "family": "codex",
    "batch": 12,
-   "status": "pending",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused 26/26 + neighbor sweep 76 pass + Morrow 16/16 + fb-codex-world-tab + controller re-run 31/31",
    "note": "promoted to medium (balance)"
   },
   {
@@ -687,9 +687,9 @@
    "size": "medium",
    "family": "codex",
    "batch": 12,
-   "status": "pending",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused 26/26 + neighbor sweep 76 pass + Morrow 16/16 + fb-codex-world-tab + controller re-run 31/31",
    "note": "promoted to medium (balance)"
   },
   {
@@ -707,9 +707,9 @@
    "size": "medium",
    "family": "codex",
    "batch": 12,
-   "status": "pending",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused 26/26 + neighbor sweep 76 pass + Morrow 16/16 + fb-codex-world-tab + controller re-run 31/31",
    "note": "promoted to medium (balance)"
   },
   {
@@ -725,9 +725,9 @@
    "size": "medium",
    "family": "codex",
    "batch": 12,
-   "status": "pending",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused 26/26 + neighbor sweep 76 pass + Morrow 16/16 + fb-codex-world-tab + controller re-run 31/31",
    "note": "promoted to medium (balance)"
   },
   {
@@ -746,9 +746,9 @@
    "size": "medium",
    "family": "codex",
    "batch": 12,
-   "status": "pending",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused 26/26 + neighbor sweep 76 pass + Morrow 16/16 + fb-codex-world-tab + controller re-run 31/31",
    "note": "promoted to medium (balance)"
   },
   {
@@ -806,9 +806,9 @@
    "size": "medium",
    "family": "codex",
    "batch": 12,
-   "status": "pending",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused 26/26 + neighbor sweep 76 pass + Morrow 16/16 + fb-codex-world-tab + controller re-run 31/31",
    "note": "promoted to medium (balance)"
   },
   {
@@ -849,9 +849,9 @@
    "size": "medium",
    "family": "codex",
    "batch": 12,
-   "status": "pending",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused 26/26 + neighbor sweep 76 pass + Morrow 16/16 + fb-codex-world-tab + controller re-run 31/31",
    "note": "promoted to medium (balance)"
   },
   {
@@ -869,9 +869,9 @@
    "size": "medium",
    "family": "codex",
    "batch": 12,
-   "status": "pending",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused 26/26 + neighbor sweep 76 pass + Morrow 16/16 + fb-codex-world-tab + controller re-run 31/31",
    "note": "promoted to medium (balance)"
   },
   {
@@ -911,9 +911,9 @@
    "size": "medium",
    "family": "codex",
    "batch": 12,
-   "status": "pending",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused 26/26 + neighbor sweep 76 pass + Morrow 16/16 + fb-codex-world-tab + controller re-run 31/31",
    "note": "promoted to medium (balance)"
   },
   {
@@ -1155,9 +1155,9 @@
    "size": "medium",
    "family": "codex",
    "batch": 12,
-   "status": "pending",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused 26/26 + neighbor sweep 76 pass + Morrow 16/16 + fb-codex-world-tab + controller re-run 31/31",
    "note": "promoted to medium (balance)"
   },
   {
@@ -1176,9 +1176,9 @@
    "size": "medium",
    "family": "codex",
    "batch": 12,
-   "status": "pending",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused 26/26 + neighbor sweep 76 pass + Morrow 16/16 + fb-codex-world-tab + controller re-run 31/31",
    "note": "promoted to medium (balance)"
   },
   {
@@ -1217,9 +1217,9 @@
    "size": "medium",
    "family": "codex",
    "batch": 12,
-   "status": "pending",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused 26/26 + neighbor sweep 76 pass + Morrow 16/16 + fb-codex-world-tab + controller re-run 31/31",
    "note": "promoted to medium (balance)"
   },
   {
@@ -1237,9 +1237,9 @@
    "size": "medium",
    "family": "codex",
    "batch": 12,
-   "status": "pending",
+   "status": "approved",
    "commit": "",
-   "verification": "",
+   "verification": "focused 26/26 + neighbor sweep 76 pass + Morrow 16/16 + fb-codex-world-tab + controller re-run 31/31",
    "note": "pilot batch"
   },
   {
@@ -2781,7 +2781,7 @@
    "size": "small",
    "family": "spectacle",
    "batch": 8,
-   "status": "pending",
+   "status": "assigned",
    "commit": "",
    "verification": "",
    "note": ""
@@ -2819,7 +2819,7 @@
    "size": "small",
    "family": "spectacle",
    "batch": 8,
-   "status": "pending",
+   "status": "assigned",
    "commit": "",
    "verification": "",
    "note": ""
@@ -3798,7 +3798,7 @@
    "size": "small",
    "family": "spectacle",
    "batch": 8,
-   "status": "pending",
+   "status": "assigned",
    "commit": "",
    "verification": "",
    "note": "pilot batch"
@@ -3840,7 +3840,7 @@
    "size": "small",
    "family": "spectacle",
    "batch": 8,
-   "status": "pending",
+   "status": "assigned",
    "commit": "",
    "verification": "",
    "note": ""
@@ -3880,7 +3880,7 @@
    "size": "small",
    "family": "spectacle",
    "batch": 8,
-   "status": "pending",
+   "status": "assigned",
    "commit": "",
    "verification": "",
    "note": ""
@@ -3920,7 +3920,7 @@
    "size": "small",
    "family": "spectacle",
    "batch": 8,
-   "status": "pending",
+   "status": "assigned",
    "commit": "",
    "verification": "",
    "note": ""
@@ -4003,7 +4003,7 @@
    "size": "small",
    "family": "spectacle",
    "batch": 8,
-   "status": "pending",
+   "status": "assigned",
    "commit": "",
    "verification": "",
    "note": ""
@@ -4044,7 +4044,7 @@
    "size": "small",
    "family": "spectacle",
    "batch": 8,
-   "status": "pending",
+   "status": "assigned",
    "commit": "",
    "verification": "",
    "note": ""
@@ -4064,7 +4064,7 @@
    "size": "medium",
    "family": "spectacle",
    "batch": 8,
-   "status": "pending",
+   "status": "assigned",
    "commit": "",
    "verification": "",
    "note": ""
@@ -4151,7 +4151,7 @@
    "size": "small",
    "family": "spectacle",
    "batch": 8,
-   "status": "pending",
+   "status": "assigned",
    "commit": "",
    "verification": "",
    "note": ""
@@ -4255,7 +4255,7 @@
    "size": "small",
    "family": "spectacle",
    "batch": 8,
-   "status": "pending",
+   "status": "assigned",
    "commit": "",
    "verification": "",
    "note": ""
@@ -4341,7 +4341,7 @@
    "size": "small",
    "family": "spectacle",
    "batch": 8,
-   "status": "pending",
+   "status": "assigned",
    "commit": "",
    "verification": "",
    "note": ""
@@ -4361,7 +4361,7 @@
    "size": "small",
    "family": "spectacle",
    "batch": 8,
-   "status": "pending",
+   "status": "assigned",
    "commit": "",
    "verification": "",
    "note": ""
@@ -4418,7 +4418,7 @@
    "size": "small",
    "family": "spectacle",
    "batch": 8,
-   "status": "pending",
+   "status": "assigned",
    "commit": "",
    "verification": "",
    "note": ""

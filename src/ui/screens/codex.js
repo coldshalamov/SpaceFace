@@ -45,10 +45,24 @@ import { FACTION_LABELS } from '../../data/encounterIdentity.js';
 import { logbookEntries } from '../../chronicler/logbook.js';
 import { logbookStill } from '../logbookMedia.js';
 import {
+  abutmentChalkRows,
+  alignmentRows,
+  buoyKeepingRows,
+  checkpointCatRows,
   decodedSuhlClauses,
+  galleryAccessionRows,
+  halfConversationRows,
   incident7741ShelfRows,
+  jumpLogRows,
+  latchTidyRows,
+  longGameRows,
+  longSentenceRows,
+  morrowHundredRows,
   namesForTheDead,
+  refund47aRows,
+  shaftSevenTallyRows,
   vergeGateReceiptRows,
+  volsLastLogRows,
 } from '../../data/discoveryPresentation.js';
 import { hash32 } from '../../core/rng.js';
 import { recordSectionModel } from './codexRecord.js';
@@ -524,6 +538,109 @@ function codexEntryArt(key) {
 
 function codexWreckArt(wreckId) {
   return codexEntryArt(CODEX_WRECK_ART[wreckId]);
+}
+
+// ── special-500 batch 12 (codex family) ────────────────────────────────────────
+// The World tab's receipt sections: each renders one pure read from
+// data/discoveryPresentation.js, keyed to durable state the live owners already keep
+// (director receipts, the Morrow launches counter, calendar day, the memory records).
+// Empty until earned; the empty lines name the gate, never the payoff.
+
+const WORLD_ROW_COPY = Object.freeze({
+  buoy: Object.freeze({
+    sub: 'Channel note', open: 'The buoy said it into a retired channel, on schedule, to nobody in particular. '
+      + 'Out here that is what keeping looks like.',
+    sealed: 'This line stays between the buoy and whoever it was asked to keep answering for. '
+      + 'The network has no column for it.',
+    note: 'Retired channel buoy — Listening Field, Io Reach.',
+  }),
+  chalk: Object.freeze({
+    sub: 'Chalk line', open: 'Chalk on stone, in weigh-slip handwriting. The clamp records every hull the weather does not.',
+    sealed: 'Whoever keeps the chalk current, the roster does not name. The line stays written anyway.',
+    note: 'Tethys Junction weigh clamp — abutment stone.',
+  }),
+  refund: Object.freeze({
+    sub: 'Scale 4 filing', open: 'The release went out in full, with interest, under a signature that has been dormant '
+      + 'longer than the contract has been open. Then the desk re-filed it. Nothing else about the campaign changed. That is the point.',
+    sealed: 'The desk sealed nothing here. It simply re-filed it, which is worse.',
+    note: 'Kessler, Scale 4, Helios Prime — Contract 47-A.',
+  }),
+  vols: Object.freeze({
+    sub: 'Log entry', open: 'A calm voice, recorded for whoever inherited the hull. You are whoever inherited the hull.',
+    sealed: 'The apology stays as recorded. The plate behind the third bulkhead stays where she left it.',
+    note: 'Scorched crew-pod, unmarked drift box — Helios Prime.',
+  }),
+  tidy: Object.freeze({
+    sub: 'Tidy receipt', open: 'Nothing was taken. Something was kept. The automaton files its work under maintenance; '
+      + 'the drawing says otherwise.',
+    sealed: 'The registry stamp is the only line the Quiet will confirm. Origin lapsed; workmanship current.',
+    note: 'Aftermath wreck, left intact one full day, no jettison.',
+  }),
+  sentence: Object.freeze({
+    sub: 'Transmission line', open: 'One pulse, one character. The transmission is not a loop and has never been one; '
+      + 'this page keeps whatever the beacon has spelled so far.',
+    sealed: 'The ending is still pulses away. The beacon does not mind. Neither should you.',
+    note: 'Pre-Collapse beacon, past the Tether Memorial — Charon Expanse.',
+  }),
+  tally: Object.freeze({
+    sub: 'Tally plate', open: 'Nine returned of eleven. The half-tonne filed as moisture closed the paperwork '
+      + 'and opened this page.',
+    sealed: 'Chalk this size is not filed. It is left where the next crew will read it.',
+    note: 'Shaft 7 stake, Ceres Belt — re-chalked tally plate.',
+  }),
+  morrow: Object.freeze({
+    sub: 'Departure tally', open: 'The machine counts departures and arrivals in one column and says the number '
+      + 'out loud only when it is worth saying.',
+    sealed: 'The count is the machine\'s own. Even this page only borrows it.',
+    note: 'MORROW / R-07 — momentum-rescue machine, Helios Prime.',
+  }),
+  cat: Object.freeze({
+    sub: 'Checkpoint paperwork', open: 'Officially logged as equipment, morale. The examiner denies this in writing; '
+      + 'the denial is posted where the drone can be seen next to it.',
+    sealed: 'The denial is the only line the examiner will countersign. The drone does not read.',
+    note: 'Concord scan ring, Checkpoint Niner — Helios Prime.',
+  }),
+  jump: Object.freeze({
+    sub: 'Registry line', open: 'The registry line slips in under the arrival chime, once, quieter than the chime. '
+      + 'The mass knew.',
+    sealed: 'The private counter is never shown. That is not a lock; it is a promise.',
+    note: 'Lanes registry — jump attribution, first arrival of the save.',
+  }),
+  accession: Object.freeze({
+    sub: 'Collection record', open: 'The weld-beads were rearranged, not added. The collection does not alter exhibits; '
+      + 'it accessioned this one that way.',
+    sealed: 'Accession paperwork is forever. That is the entire administrative point of it.',
+    note: 'Gallery Rock, Vesta Forge — permanent collection.',
+  }),
+  longGame: Object.freeze({
+    sub: 'Table note', open: 'Power cold, one light on, one piece moved per visit. The notation sheet is the only '
+      + 'testimony either player ever gave.',
+    sealed: 'Both hands the same. The page seals that line because the game does.',
+    note: 'Derelict pair nose-to-nose — Veil Nebula murk.',
+  }),
+  alignment: Object.freeze({
+    sub: 'Frame note', open: 'Four seconds a year when the frame composes itself: giant, ring-edge, comet tail, '
+      + 'and a sun-glint on your own hull. Whether or not anyone is looking.',
+    sealed: 'The frame keeps whether or not it was captured. That is what alignment means.',
+    note: 'Helios Prime — annual alignment, day 16.',
+  }),
+});
+
+/** One read's rows shaped for makeEntry: label:value names, per-section body copy. A value
+ * too long for the ladder (the Long Sentence transcript) prints whole in the body instead. */
+function special500RowEntries(rows, prefix, copy) {
+  return rows.map((row) => {
+    const long = String(row.value).length > 64;
+    const voice = row.sealed ? copy.sealed : copy.open;
+    return {
+      id: `world:${prefix}:${row.label}`,
+      name: long ? `${row.label}: ${String(row.value).slice(0, 61).trimEnd()}…` : `${row.label}: ${row.value}`,
+      sub: row.sealed ? 'SEALED' : copy.sub,
+      body: long ? `${row.value}\n\n${voice}` : voice,
+      note: copy.note,
+      art: codexEntryArt('chronicler-story'),
+    };
+  });
 }
 
 function codexFactionArt(factionId) {
@@ -1516,6 +1633,50 @@ export const codexScreen = {
         : 'The gate filed this line against your hull, in the interrogative register the Verge-Layers never drop.',
       art: codexEntryArt('chronicler-story'),
     }))), 'No gate has weighed you yet. The dark the Verge-Layers asked about first keeps its receipts.');
+    // ── special-500 batch 12 (codex family) ──
+    const rowEntries = (rows, prefix, copy) => toEntries(special500RowEntries(rows, prefix, copy));
+    this._section('The Retired Channel',
+      rowEntries([
+        ...buoyKeepingRows(ctx?.state),
+        ...halfConversationRows(ctx?.state),
+      ], 'buoy', WORLD_ROW_COPY.buoy),
+      'The retired channel buoy has not answered you yet. The standard response out here is no registry at all.');
+    this._section('Weigh-Clamp Chalk',
+      rowEntries(abutmentChalkRows(ctx?.state), 'chalk', WORLD_ROW_COPY.chalk),
+      'The abutment has not weighed you yet. Idle at the clamp and it will make you a line regardless.');
+    this._section('Contract 47-A',
+      rowEntries(refund47aRows(ctx?.state), 'refund', WORLD_ROW_COPY.refund),
+      'Scale 4 has not processed your 47-A paperwork yet. The withheld line stays withheld.');
+    this._section('Vols\u2019s Last Log',
+      rowEntries(volsLastLogRows(ctx?.state), 'vols', WORLD_ROW_COPY.vols),
+      'No pod has caught your light yet. The charts do not mention one, and they mean it.');
+    this._section('The Tidied Wreck',
+      rowEntries(latchTidyRows(ctx?.state), 'tidy', WORLD_ROW_COPY.tidy),
+      'No wreck you left intact has come back tidied yet. Keep the cargo, leave the hull alone, give it a day.');
+    this._section('The Long Sentence',
+      rowEntries(longSentenceRows(ctx?.state), 'sentence', WORLD_ROW_COPY.sentence),
+      'The beacon past the Tether Memorial has not started spelling for you yet. Each pulse is one character, and it has time.');
+    this._section('Shaft 7 Tally',
+      rowEntries(shaftSevenTallyRows(ctx?.state), 'tally', WORLD_ROW_COPY.tally),
+      'The stake\u2019s tally plate reads only chalk and weather so far.');
+    this._section('Morrow\u2019s Tally',
+      rowEntries(morrowHundredRows(ctx?.state), 'morrow', WORLD_ROW_COPY.morrow),
+      'Morrow\u2019s departure count is its own business. It has not reached a number worth saying aloud yet.');
+    this._section('Checkpoint Niner',
+      rowEntries(checkpointCatRows(ctx?.state), 'cat', WORLD_ROW_COPY.cat),
+      'No drone has adopted a checkpoint in your presence. The examiner denies everything anyway, in writing.');
+    this._section('Jump Log',
+      rowEntries(jumpLogRows(ctx?.state), 'jump', WORLD_ROW_COPY.jump),
+      'No jump has been logged under your name yet. The lanes are patient.');
+    this._section('Accession No. 1',
+      rowEntries(galleryAccessionRows(ctx?.state), 'accession', WORLD_ROW_COPY.accession),
+      'Nothing you have scanned has been accessioned yet. The collection is waiting for its first exhibit.');
+    this._section('The Long Game',
+      rowEntries(longGameRows(ctx?.state), 'long-game', WORLD_ROW_COPY.longGame),
+      'The game in the murk is not yours and has not shown itself. It has been resumed every few cycles for eleven years.');
+    this._section('Alignment, Day 16',
+      rowEntries(alignmentRows(ctx?.state), 'alignment', WORLD_ROW_COPY.alignment),
+      'No alignment has composed itself around your hull yet. Once a year, four seconds — the calendar knows the day.');
   },
 
   _renderDiscoveries(ctx) {

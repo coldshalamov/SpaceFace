@@ -280,7 +280,14 @@ export function createMorrow() {
       this.state.morrow.launches += 1;
       this.state.morrow.cooldownUntil = now + MORROW.cooldownSeconds;
       this._sound('sfx_morrow_release'); this._song();
-      this._say(this.state.morrow.launches === 10 ? 'tenth' : 'launched', true);
+      // SP2-116: the hundredth departure is the one number it says out loud, and the one
+      // plain-named receipt this machine files (the codex read also accepts the counter).
+      if (this.state.morrow.launches >= 100 && this.state.story
+        && this.state.story.flags && !this.state.story.flags.morrow_hundred) {
+        this.state.story.flags.morrow_hundred = now;
+      }
+      this._say(this.state.morrow.launches === 100 ? 'hundredth'
+        : this.state.morrow.launches === 10 ? 'tenth' : 'launched', true);
       this.bus?.emit('morrow:launch', { id: e.id, playerId: player.id,
         deltaVelocity: delta, duration: MORROW.launchSeconds, direction: this._launchYaw });
     },
