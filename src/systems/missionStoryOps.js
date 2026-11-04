@@ -2036,11 +2036,13 @@ export const missionStoryOps = {
           vel: { x: 0, z: 0 },
           radius: 9, mass: 40000, hull: 1, hullMax: 1,
           homeSectorId: sectorId,
+          flags: { persistent: true },
           data: {
             homeSectorId: sectorId,
             parentType: 'ship',
             wreckClass: 'battlefield',
             wreckClassLabel: row.label,
+            persistenceOwner: 'campaign47aSkim',
             contract47aSkim: true,
             salvagePool: { cmdty_alloys: 1 },
             salvageTimeLeft: 60,
