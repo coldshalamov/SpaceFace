@@ -335,6 +335,7 @@ import { CauseMarkLayer } from './vfx/causeMarks.js';
 import { StationNightLightLayer } from './vfx/stationNightLights.js';
 import { collectHullWounds, resolveWoundBeat, woundWorldPoint } from './vfx/woundSmoke.js';
 import { resolveLineShieldSustain, shieldBiteDir } from './vfx/lineShieldBite.js';
+import { BeaconLampLayer } from './beaconLampLife.js';
 import {
   presentShipBoost,
   presentShipDash,
@@ -1852,6 +1853,7 @@ export const vfx = {
     invokeVfxDisposer(this._stationOperationVfx, 'station operation matter');
     this._stationOperationVfx = null;
     this._stationNightLightsDispose();
+    this._beaconLampLifeDispose();
     invokeVfxDisposer(this._emergentPools, 'emergent primitive pools');
     invokeVfxDisposer(this._emergentPayloads, 'emergent payloads');
     this._emergentPayloads = null;
@@ -6073,6 +6075,27 @@ export const vfx = {
     this._stationNightLights = null;
   },
 
+  // Beacon lamp life (inf-beacon-lamp): world beacons — a claim buoy holding a paid-for safe
+  // zone, a permanent route buoy — carry a working lamp read. Bead slots ride the beacon view
+  // roots. Beacons have no typed index lane, so the scan walks radarContacts (falling back to
+  // the fat entityList) and the layer keeps the beacon predicate in both modes. Runs every
+  // frame: the warn double-flash's pulses are shorter than any sane scan cadence.
+  _updateBeaconLampLife() {
+    if (!this.state) return 0;
+    if (!this._beaconLampLife) this._beaconLampLife = new BeaconLampLayer();
+    const accessibility = resolveVfxAccessibilityProfile(this.state && this.state.settings);
+    return this._beaconLampLife.update(
+      indexedTypeScan(this.state, 'radarContacts'),
+      Number.isFinite(this.state.simTime) ? this.state.simTime : this._t,
+      accessibility.id !== 'full',
+    );
+  },
+
+  _beaconLampLifeDispose() {
+    this._beaconLampLife?.dispose();
+    this._beaconLampLife = null;
+  },
+
   _emitStationSideEventAccent() {
     // Native cadence still owns operation timing; the retained matter owner renders
     // continuous paths each frame instead of respawning tiny strokes at each beat.
@@ -9833,6 +9856,7 @@ export const vfx = {
     sub.ceresJobActions = this._updateCeresJobActionVfx(dt) > 0 ? 1 : 0;
     this._updateStationOperationVfx();
     this._updateStationNightLights();
+    this._updateBeaconLampLife();
     // WF-12 law/heat telegraph — scan sweep / suspicion / WANTED flip (shared event-light pool).
     sub.lawHeatTelegraph = this._updateLawHeatTelegraph(dt) > 0 ? 1 : 0;
     // "The Working Light" — civilian hulls showing what job they are on.
