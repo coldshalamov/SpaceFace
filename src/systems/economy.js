@@ -227,9 +227,6 @@ const REPAIR_HP_CR = 0.9;          // cr per hull/armor point restored
 const AMMO_UNIT_CR = 12;           // cr per munition
 export const AMMO_BATCH = 100;     // munitions per ammo purchase — the dock verb's default fill
 const HULL_WASH_CR = 75;           // cosmetic berth service; history survives the wash
-// Two market-memory writes inside one sim day are the same berthing (a docked day-tick or a
-// re-opened market screen must not mint a phantom prior visit). Matches the dock card's SIM_DAY_S.
-const MARKET_MEMORY_VISIT_WINDOW_S = 600;
 // PQ-155.03 sink: a Pitborn yard buys out a claimed salvage right at a premium over a medium
 // kill's chip line (2 chips × 60–120 cr). Rights stay scarce by mint, not by a cheap sink.
 const SALVAGE_RIGHT_CR = 150;
@@ -1826,7 +1823,7 @@ export const economy = {
         this._lastDockedStation = p.stationId;
         this._stationServiceBerth = p.stationId;
         this.ensureStationMarkets(p.stationId);
-        this.snapshotIntel(p.stationId);
+        this.snapshotIntel(p.stationId, { arrival: true });
         this._runDockedCustomsPost(p.stationId);
         // FB-124: a cargo policy covers one trip. Docking under your own power ends it — a
         // defeat claim was already priced into the recovery plan before the rescue berth.
@@ -2597,6 +2594,29 @@ export const economy = {
     const record = { snapshot, seenAtT: state.simTime };
     if (source) record.source = source;
     state.economy.marketIntel[stationId] = record;
+    if (options?.arrival) {
+      const memory = state.player.berthMemory ||= {};
+      const row = memory[stationId] || (memory[stationId] = {});
+      const now = Math.max(0, Number(state.simTime) || 0);
+      const previous = Number.isFinite(row.visitedAt) ? row.visitedAt : null;
+      const quotes = row.berthQuotes;
+      let compared = 0, moved = false;
+      if (quotes && typeof quotes === 'object') {
+        for (const [cid, quote] of Object.entries(quotes)) {
+          const current = snapshot[cid];
+          if (!current || !quote || !Number.isFinite(current.buy) || !Number.isFinite(current.sell)
+            || !Number.isFinite(quote.buy) || !Number.isFinite(quote.sell)) continue;
+          compared++;
+          if (Math.round(current.buy) !== quote.buy || Math.round(current.sell) !== quote.sell) moved = true;
+        }
+      }
+      row.priorVisitAt = previous;
+      row.visitedAt = now;
+      row.berthBoard = compared && previous != null ? { moved, observedAt: previous, arrivalAt: now } : null;
+      row.berthQuotes = Object.fromEntries(Object.entries(snapshot).filter(([, quote]) =>
+        Number.isFinite(quote.buy) && Number.isFinite(quote.sell)).map(([cid, quote]) => [cid,
+        { buy: Math.round(quote.buy), sell: Math.round(quote.sell) }]));
+    }
     this.recordMarketMemory(stationId, snapshot, source ? { source } : null);
   },
 
@@ -2681,21 +2701,6 @@ export const economy = {
     const source = options && (options.source === 'survey' || options.source === 'uplink') ? options.source : null;
     const memory = ensurePlayerMarketMemory(state.player);
     const stationMemory = memory[stationId] || (memory[stationId] = {});
-    // A physical berth stamps its own visits (the keeper who remembers your last visit reads
-    // these). Only a null-source write is presence: surveys and uplink refreshes are knowledge
-    // the market handed you, never a hull in the bay. Re-stamps inside one visit window keep
-    // the arrival stamp, so a docked day-tick or a re-opened market screen cannot mint a
-    // phantom prior visit out of the same berthing.
-    if (!source) {
-      const nowT = Math.max(0, Number(state.simTime) || 0);
-      const priorStamp = Number(stationMemory.visitedAt);
-      const sameVisit = Number.isFinite(priorStamp) && priorStamp > 0
-        && (nowT - priorStamp) < MARKET_MEMORY_VISIT_WINDOW_S;
-      if (Number.isFinite(priorStamp) && priorStamp > 0 && !sameVisit) {
-        stationMemory.priorVisitAt = priorStamp;
-      }
-      if (!sameVisit) stationMemory.visitedAt = nowT;
-    }
     for (const cid in market) {
       const e = market[cid];
       if (!e) continue;

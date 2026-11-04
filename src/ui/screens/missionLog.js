@@ -3181,7 +3181,8 @@ export const missionLogScreen = {
       const attempt = circuit.journal?.attempt;
       const leg = attempt?.legs?.[attempt.legIndex];
       entries.push({ title: 'Counterweight Circuit', detail: [attempt?.title || COUNTERWEIGHT_EVENTS.find(e => e.id === circuit.eventId)?.title || circuit.eventId,
-        leg?.hint || leg?.label || circuit.phase].filter(Boolean).join(' · ') });
+        leg?.hint || leg?.label || circuit.phase,
+        attempt?.retryCount ? `${attempt.retryCount} ${attempt.retryCount === 1 ? 'retry' : 'retries'}` : null].filter(Boolean).join(' · ') });
     }
     if (spur && spur.phase !== 'dark' && spur.nextAction) entries.push({ title: 'Breakwater Spur', detail: spur.nextAction });
     host.hidden = !entries.length;

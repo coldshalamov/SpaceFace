@@ -39,6 +39,7 @@ export function createAttemptState(def, opts = {}) {
       roleWitness: {},
       swingLine: {},
       arrivalSpeed: null,
+      retriesByLeg: {},
     },
     // Live leg status for the read model: 'pending' | 'active' | 'done' | 'missed'
     legStatus: def.legs.map(() => 'pending'),
@@ -59,6 +60,11 @@ function markLegs(state) {
     else if (i === state.legIndex) state.legStatus[i] = 'active';
     else state.legStatus[i] = 'pending';
   }
+}
+
+function recordRetry(state, index) {
+  const counts = state.mem.retriesByLeg ||= {};
+  counts[index] = Math.min(999, Math.max(0, Number(counts[index]) || 0) + 1);
 }
 
 function finish(state, phase, obs, reason, detail) {
@@ -343,6 +349,7 @@ export function advanceAttempt(state, def, obs) {
     const miss = leg.onMiss;
     if (miss && Number.isInteger(miss.retry)) {
       const missedIndex = state.legIndex;
+      recordRetry(state, missedIndex);
       state.legIndex = miss.retry;
       resetLegMemory(state, def, miss.retry);
       markLegs(state);
@@ -358,6 +365,7 @@ export function advanceAttempt(state, def, obs) {
   const verdict = (LEG_EVALUATORS[leg.kind] || (() => 'pending'))(state, def, leg, obs);
   if (verdict === 'retry') {
     const missedIndex = state.legIndex;
+    recordRetry(state, missedIndex);
     state.legIndex = 0; resetLegMemory(state, def, 0); markLegs(state);
     if (missedIndex !== state.legIndex) state.legStatus[missedIndex] = 'missed';
     events.push({ type:'retry', leg:leg.kind, eventId:def.id, at:obs.simTime });
@@ -384,6 +392,7 @@ export function advanceAttempt(state, def, obs) {
       state.mem.insideSince[key] = (state.mem.insideSince[key] || 0) + obs.dt;
       if (state.mem.insideSince[key] >= 3) {
         const missedIndex = state.legIndex;
+        recordRetry(state, missedIndex);
         state.legIndex = leg.onMiss.retry;
         resetLegMemory(state, def, leg.onMiss.retry);
         markLegs(state);

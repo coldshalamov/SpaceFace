@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import { COUNTERWEIGHT_EVENT_BY_ID } from '../src/features/counterweightCircuit/definition.js';
 import { createAttemptState, advanceAttempt, cancelAttempt } from '../src/features/counterweightCircuit/attempt.js';
 import { applyResultToRecord, freshEventRecord, medalForTime, medalForCompletion } from '../src/features/counterweightCircuit/scoring.js';
+import { projectCounterweightCircuitJournal } from '../src/features/counterweightCircuit/readModel.js';
+import { missionLogScreen } from '../src/ui/screens/missionLog.js';
 
 // Pure-FSM harness: fabricated observation frames shaped exactly like
 // physical.observe() emits. Local def coordinates are used as-is (the test
@@ -133,9 +135,38 @@ test('recoverable miss: load stops short of the gate → retry from attach', () 
   const ev = run(st, def, stalls);
   assert.ok(ev.some((e) => e.type === 'retry'));
   assert.equal(st.legIndex, 0);
+  assert.equal(st.mem.retriesByLeg[3], 1);
   // Re-attach and swing again → the attempt honestly continues.
   run(st, def, [obs(t, { bodies: { load: bodyAt(500, 20, { id: 7 }), counterweight: cw }, lines: [line(1, 7)] })]);
   assert.equal(st.legIndex, 1);
+  const journal = projectCounterweightCircuitJournal({}, { attempt: { eventId: def.id, fsm: st } });
+  assert.equal(journal.attempt.retryCount, 1);
+  assert.equal(journal.attempt.legs[3].retries, 1);
+  const oldDocument = globalThis.document;
+  const makeNode = () => ({ style: {}, children: [], appendChild(child) { this.children.push(child); } });
+  globalThis.document = { createElement: makeNode };
+  try {
+    const host = makeNode(), header = makeNode();
+    missionLogScreen._renderCommissions.call({ _commissionsEl: host, _commissionHeader: header },
+      { counterweightCircuitView: { eventId: def.id, journal } });
+    assert.match(host.children[0].children[0].children[1].textContent, /1 retry/);
+  } finally { globalThis.document = oldDocument; }
+  // Recreate the same physical swing and complete the previously missed gate.
+  const retryFrames = [];
+  for (let deg = 180; deg >= -30; deg -= 3) {
+    const a = deg * Math.PI / 180;
+    retryFrames.push(obs(t, { bodies: { load: bodyAt(420 + Math.cos(a)*60, Math.sin(a)*60), counterweight: cw }, lines: [line(1, 7)] }));
+    t += 1/60;
+  }
+  run(st, def, retryFrames);
+  run(st, def, [obs(t, { bodies: { load: bodyAt(480, 52), counterweight: cw }, releases: [{ id:'line-1', role:'load' }] })]);
+  t += 1/60;
+  run(st, def, [obs(t, { bodies: { load: bodyAt(625, 5, { prevX: 615, prevZ: -5, vx: 300 }), counterweight: cw } })]);
+  assert.equal(st.phase, 'complete');
+  assert.equal(st.legStatus[3], 'done');
+  assert.equal(st.mem.retriesByLeg[3], 1);
+  const result = applyResultToRecord(freshEventRecord(), def, st, null).result;
+  assert.equal(result.outcome, 'complete');
 });
 
 test('destroyed load fails for real', () => {

@@ -26,19 +26,18 @@ function offlineSummaryReceipt(state) {
 
 /**
  * The berth keeper remembers your last visit (inf-berth-remembers). The stamps live on the
- * persisted market-memory station row (economy.recordMarketMemory writes them only for a
- * physical dock), so the memory costs no new save field and never lies about presence: a
+ * persisted player berth-memory row (economy stamps only physical arrivals). The existing
+ * player serializer retains it; market refreshes never stand in for presence. A
  * first visit, a same-day return, and a station you have never berthed at all stay quiet.
  * Pure read.
  */
 export function berthVisitLine(state, stationId) {
-  const memory = state && state.player && state.player.marketMemory;
+  const memory = state && state.player && state.player.berthMemory;
   const stationMemory = memory && memory[stationId];
-  const prior = Number(stationMemory && stationMemory.priorVisitAt);
-  if (!Number.isFinite(prior) || prior <= 0) return null;
-  const now = Number(state && state.simTime);
-  if (!Number.isFinite(now) || now <= prior) return null;
-  const days = Math.floor((now - prior) / SIM_DAY_S);
+  const prior = stationMemory?.priorVisitAt;
+  const arrival = stationMemory?.visitedAt;
+  if (!Number.isFinite(prior) || !Number.isFinite(arrival) || arrival <= prior) return null;
+  const days = Math.floor((arrival - prior) / SIM_DAY_S);
   if (days < 1) return null;
   return days === 1
     ? 'The berth keeper nods — you were here yesterday.'
@@ -49,38 +48,15 @@ export function berthVisitLine(state, stationId) {
  * The quiet berth tells its tiny story (inf-quiet-berth). A berth with no news, no traffic,
  * no deed and no rumor is where the world breathes out, and the card speaks the one true
  * thing a quiet place can say — whether its boards have moved since you last read them.
- * Reads only the persisted market memory and the docked station's own quotes; never invents
- * movement, and a station you have never priced stays wordless. Pure read.
+ * Reads the arrival comparison recorded by the economy owner. Pure read.
  */
 export function quietBerthLine(state, stationId) {
-  const memory = state && state.player && state.player.marketMemory;
-  const stationMemory = memory && memory[stationId];
-  if (!stationMemory || typeof stationMemory !== 'object' || Array.isArray(stationMemory)) return null;
-  const now = Number(state && state.simTime);
-  if (!Number.isFinite(now)) return null;
-  const liveMarket = state && state.economy && state.economy.markets && state.economy.markets[stationId];
-  if (!liveMarket || typeof liveMarket !== 'object') return null;
-  let freshest = -1;
-  let moved = false;
-  let rows = 0;
-  for (const cid of Object.keys(stationMemory)) {
-    const row = stationMemory[cid];
-    if (!row || typeof row !== 'object' || Array.isArray(row)) continue;
-    rows += 1;
-    const seenAt = Number(row.seenAt);
-    if (Number.isFinite(seenAt) && seenAt > freshest) freshest = seenAt;
-    const live = liveMarket[cid];
-    const liveBuy = live && (live.buy != null ? live.buy : live.lastBuy);
-    const liveSell = live && (live.sell != null ? live.sell : live.lastSell);
-    if ((Number.isFinite(Number(liveBuy)) && Math.round(Number(liveBuy)) !== Math.round(Number(row.buy)))
-      || (Number.isFinite(Number(liveSell)) && Math.round(Number(liveSell)) !== Math.round(Number(row.sell)))) {
-      moved = true;
-    }
-  }
-  if (!rows || freshest < 0) return null;
-  const days = Math.floor(Math.max(0, now - freshest) / SIM_DAY_S);
+  const memory = state && state.player && state.player.berthMemory;
+  const board = memory?.[stationId]?.berthBoard;
+  if (!board || !Number.isFinite(board.arrivalAt) || !Number.isFinite(board.observedAt)) return null;
+  const days = Math.floor(Math.max(0, board.arrivalAt - board.observedAt) / SIM_DAY_S);
   const ago = days >= 1 ? (days === 1 ? ', a day ago' : `, ${days} days ago`) : '';
-  return moved
+  return board.moved
     ? `Quiet berth — prices have crept since you last read these boards${ago}.`
     : `Quiet berth — the boards have not moved since you last read them${ago}.`;
 }
@@ -658,7 +634,7 @@ export function buildDockArrival(state = {}, station = {}) {
   // paperwork still shows it; patch/ledger/mechanic dressing falls off first. The visit
   // memory rides beside the return summary — both are recognition, and a keeper who
   // remembers you outranks the weekly digest.
-  const lines = [action.label, berthLine, returnSummary, visitLine, serviceNotice, news, digest, traffic, paperwork, patchText, ledgerLine, mechanicLine, quietLine]
+  const lines = [action.label, berthLine, returnSummary, visitLine, serviceNotice, news, digest, traffic, quietLine, paperwork, patchText, ledgerLine, mechanicLine]
     .filter(Boolean)
     .slice(0, 7);
   return {

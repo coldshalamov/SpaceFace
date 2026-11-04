@@ -102,12 +102,14 @@ export function projectCounterweightCircuitJournal(state, opts = {}) {
       practice: live.practice === true,
       phase: live.fsm.phase,
       legIndex: live.fsm.legIndex,
+      retryCount: (def?.legs || []).reduce((sum, _, i) => sum + Math.min(999, Math.max(0, Number(live.fsm.mem?.retriesByLeg?.[i]) || 0)), 0),
       legs: (def?.legs || []).map((leg, i) => ({
         id: `${leg.kind}:${i}`,
         kind: leg.kind,
         label: LEG_LABEL[leg.kind] || leg.kind,
         hint: leg.hint || '',
         status: live.fsm.legStatus?.[i] || 'pending',
+        retries: Math.min(999, Math.max(0, Number(live.fsm.mem?.retriesByLeg?.[i]) || 0)),
       })),
       elapsedS: live.fsm.phase === 'running' && live.fsm.armedAt != null
         ? Math.max(0, (opts.simTime ?? state?.simTime ?? 0) - live.fsm.armedAt)
