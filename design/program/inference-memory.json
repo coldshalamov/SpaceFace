@@ -132,19 +132,6 @@
   ],
   "units": [
     {
-      "id": "seed-sw-22",
-      "date": "2026-10-24",
-      "wf": "WF-02",
-      "mode": "opportunity",
-      "verdict": "implemented",
-      "reason": "debris orbit rocks-as-shield",
-      "fingerprint": "verb=orbit,subject=debris-shield,sector=crucible,layer=subsystem,domain=wf-02",
-      "references": [],
-      "integration": "live",
-      "commit": "dda2c2cc96",
-      "verification": "focused_green"
-    },
-    {
       "id": "seed-sw-23",
       "date": "2026-10-24",
       "wf": "WF-02",
@@ -1689,6 +1676,19 @@
       "references": [],
       "integration": "live",
       "commit": "6b392b33409c",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inf-debris-wound-heat",
+      "date": "2026-11-04",
+      "wf": "WF-11",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "Kill debris torn from a fresh named wound starts glowing in that wound's heated-metal tint and cools to the authored dark metal - the wreck field remembers what killed it for a beat",
+      "fingerprint": "verb=carry,subject=kill-debris,sector=wreck-spawn,domain=wf-11",
+      "references": [],
+      "integration": "live",
+      "commit": "29a5dddde27f",
       "verification": "focused_green"
     }
   ],
