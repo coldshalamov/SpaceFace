@@ -19,6 +19,7 @@ import {
   scarSkidSize,
 } from '../src/render/weapons/scarDirection.js';
 import { HullScorchPool } from '../src/render/weapons/contactMarks.js';
+import { WeaponVfxPresenter } from '../src/render/weapons/presenter.js';
 
 test('a grazing rake stretches the mark downrange along the shot path', () => {
   // Outward normal +X, shot raking across the surface along −Z: a pure side graze.
@@ -105,30 +106,43 @@ test('the pool carries the skid through spawn and writes it with the rotated pos
   pool.dispose();
 });
 
-test('a turned hull carries its skid with it (local storage round-trips through a quaternion)', () => {
-  // Mirror the presenter's contract: world skid at capture → local via inverse quaternion →
-  // world via the hull's live quaternion. The round trip lands on the same world bearing, and
-  // the SAME local skid on a differently-yawed hull smears along that hull's own new bearing.
+test('production scar capture preserves distinct normal and skid through hull rotation', () => {
+  const root = new THREE.Object3D();
   const hull = new THREE.Object3D();
-  hull.rotation.y = -Math.PI / 2; // the renderer's hull yaw convention
-  hull.updateMatrixWorld(true);
-  const worldQuat = new THREE.Quaternion();
-  hull.getWorldQuaternion(worldQuat);
-  const axis = new THREE.Vector3();
-  axis.set(0, 0, -1).applyQuaternion(worldQuat.clone().invert()); // capture to hull-local
-  const local = { x: axis.x, y: axis.y, z: axis.z };
-  axis.set(local.x, local.y, local.z).applyQuaternion(worldQuat); // resolve on the same hull
-  assert.ok(Math.abs(axis.x) < 1e-6 && Math.abs(axis.z + 1) < 1e-6,
-    'the stored skid points the same world way on the hull that carries it');
-  // A hull yawed differently smears the same hull-local scar along ITS new bearing.
-  const turned = new THREE.Object3D();
-  turned.rotation.y = Math.PI / 4;
-  turned.updateMatrixWorld(true);
-  const quat = new THREE.Quaternion();
-  turned.getWorldQuaternion(quat);
-  axis.set(local.x, local.y, local.z).applyQuaternion(quat);
-  assert.ok(Math.abs(Math.hypot(axis.x, axis.y, axis.z) - 1) < 1e-6, 'the skid stays unit');
-  assert.ok(Math.abs(axis.z + 1) > 0.01, `the smear turns with the hull (z ${axis.z.toFixed(3)})`);
+  root.add(hull); root.userData.hull = hull; root.userData.sfStableEntityKey = 'hull-life-7';
+  root.position.set(30, 0, -20); root.rotation.y = -Math.PI / 2;
+  hull.position.set(1, 0.3, -0.7); hull.rotation.set(0.13, 0, -0.08);
+  root.updateMatrixWorld(true);
+  // Use the actual presenter methods without allocating its GPU effects.
+  const presenter = Object.create(WeaponVfxPresenter.prototype);
+  presenter.state = { render: { meshes: new Map([[7, root]]) } };
+  presenter._targetScratch = {}; presenter._scorchPoseScratch = {};
+  const point = new THREE.Vector3(32, 0.4, -21);
+  const normal = new THREE.Vector3(1, 0.08, 0).normalize();
+  const skid = resolveScarSkid(normal.x, normal.y, normal.z, 0, 0, -1, {});
+  const captured = { ...presenter._captureTargetLocal(7, point.x, point.y, point.z,
+    normal.x, normal.y, normal.z, skid.skidX, skid.skidY, skid.skidZ) };
+  const slot = { ...captured, targetId: 7, localX: captured.x, localY: captured.y, localZ: captured.z };
+  assert.equal(captured.attached, true); assert.equal(captured.boundKey, 'hull-life-7');
+  const vector = (pose, prefix = '') => prefix
+    ? new THREE.Vector3(pose.skidX, pose.skidY, pose.skidZ)
+    : new THREE.Vector3(pose.nx, pose.ny, pose.nz);
+  const worldSkid = new THREE.Vector3(skid.skidX, skid.skidY, skid.skidZ);
+  const resolved = { ...presenter._worldFromTargetLocal(slot) };
+  assert.ok(new THREE.Vector3(resolved.x, resolved.y, resolved.z).distanceTo(point) < 1e-6);
+  assert.ok(vector(resolved).distanceTo(normal) < 1e-6, 'capture must not replace the surface normal with the skid');
+  assert.ok(vector(resolved, 'skid').distanceTo(worldSkid) < 1e-6);
+  assert.ok(Math.abs(vector(resolved).dot(vector(resolved, 'skid'))) < 1e-6,
+    'the shader receives a nondegenerate in-surface skid');
+  const turn = 0.4, up = new THREE.Vector3(0, 1, 0);
+  root.rotation.y += turn; root.updateMatrixWorld(true);
+  const turned = presenter._worldFromTargetLocal(slot);
+  assert.ok(vector(turned).distanceTo(normal.clone().applyAxisAngle(up, turn)) < 1e-6);
+  assert.ok(vector(turned, 'skid').distanceTo(worldSkid.clone().applyAxisAngle(up, turn)) < 1e-6);
+  const round = presenter._captureTargetLocal(7, point.x, point.y, point.z, normal.x, normal.y, normal.z);
+  const roundPose = presenter._worldFromTargetLocal({ ...round, targetId: 7, localX: round.x, localY: round.y, localZ: round.z });
+  assert.ok(vector(roundPose).distanceTo(normal) < 1e-6, 'round marks retain the same normal');
+  assert.equal(vector(roundPose, 'skid').length(), 0, 'round marks clear the retained skid scratch');
 });
 
 test('the live owner is wired: the presenter resolves the skid from the impact payload', () => {

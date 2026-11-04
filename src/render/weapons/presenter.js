@@ -913,13 +913,14 @@ export class WeaponVfxPresenter {
     anchor.getWorldQuaternion(_worldQuat);
     _invQuat.copy(_worldQuat).invert();
     _axis.set(nx, ny, nz).applyQuaternion(_invQuat);
+    out.nx = _axis.x; out.ny = _axis.y; out.nz = _axis.z;
     if (skidX !== 0 || skidY !== 0 || skidZ !== 0) {
       // The skid is stored hull-local so it turns with the hull, exactly like the seat normal.
       _axis.set(skidX, skidY, skidZ).applyQuaternion(_invQuat);
       out.skidX = _axis.x; out.skidY = _axis.y; out.skidZ = _axis.z;
     }
     out.x = _offset.x; out.y = _offset.y; out.z = _offset.z;
-    out.nx = _axis.x; out.ny = _axis.y; out.nz = _axis.z; out.attached = true;
+    out.attached = true;
     const key = mesh.userData && mesh.userData.sfStableEntityKey;
     out.boundKey = key != null ? key : null;
     return out;
