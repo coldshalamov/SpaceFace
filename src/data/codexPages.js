@@ -275,22 +275,42 @@ const WEAPON_OVERLAYS = Object.freeze({
 });
 
 const FACTION_OVERLAYS = Object.freeze({
-  faction_scn: { maker: 'Runs the patrol grid, the customs desk, and the forms both are filed on.', casualty: 'Hale files REF 44-C in the name of everyone the grid could not save.' },
-  faction_mts: { maker: 'Owns the freight lanes it does not bother to patrol; price is the only law with a signature.' },
+  faction_scn: {
+    maker: 'Runs the patrol grid, the customs desk, and the forms both are filed on. '
+      + 'File enough paperwork and Records returns the favor: your patterns filed back as a form, '
+      + 'a 44-C number assigned by receipt day, you citable in correspondence you never addressed.',
+    casualty: 'Hale files REF 44-C in the name of everyone the grid could not save.',
+  },
+  faction_mts: {
+    maker: 'Owns the freight lanes it does not bother to patrol; price is the only law with a signature. '
+      + 'When the wire raises a shelter advisory, the aprons double their work-lights and berths go half price '
+      + 'until second bell — weather, touching the price of a berth through one honest sentence.',
+  },
   faction_dmc: { maker: 'Mines the drift, drinks the dust, and keeps the names of the crews the veins kept.', casualty: 'Senna reads the roll at shift end. It gets longer.' },
   faction_reach: { maker: 'Tolls the lanes it cannot hold outright; a Reach stamp means you paid, not that you are safe.', casualty: 'Sker Vane\'s toll-saints died proving the toll was negotiable. It was not.' },
   faction_quiet: {
     maker: 'Moves what the other thirteen will not touch, through doors that do not officially open. '
       + 'Their board at the Listening Field has been counting hulls all along — forty-one registered, forty-two observed, '
-      + 'and the difference is always you. They respect a fellow bookkeeper.',
+      + 'and the difference is always you. They respect a fellow bookkeeper. '
+      + 'Sixty seconds after quiet business closes, an unaddressed relay files you a receipt sealed one character off '
+      + 'your own hull registration; they will not say which character, and the file is current regardless. '
+      + 'Their chain letter denies itself in writing. Forwarding it is how it moves.',
     casualty: 'Maera Vols flew their colors. The crew manifest is still mostly blank.',
   },
   faction_vael: { maker: 'Xeno-reclusive; their lockers move cargo at night and their biology is nobody\'s business.' },
   faction_free: { maker: 'Independent haulers flying their own flag because nobody else\'s fit.', casualty: '"Coldburn" Rey drinks to the ones who went independent and stayed that way.' },
   faction_choir: { maker: 'Casts relics to a hymn spec and listens for the answer in the relay band.' },
-  faction_helix: { maker: 'Paper-first authority; their writs arrive before their ships do and outlast them.' },
+  faction_helix: {
+    maker: 'Paper-first authority; their writs arrive before their ships do and outlast them. '
+      + 'Every tenth fine receipt runs a verse in the footer — THE FINE IS THE PRICE / OF KNOWING THE PRICE / '
+      + 'OF THE ROAD. Unauthorized, unauthorized for years; removing it is queued.',
+  },
   faction_understory: { maker: 'Grows in the wreck-filament understory; trades in what the dead left composting.' },
-  faction_fulfillment: { maker: 'The administrative automaton; it processes you the way weather processes a field.' },
+  faction_fulfillment: {
+    maker: 'The administrative automaton; it processes you the way weather processes a field. '
+      + 'Exactly once per pilot, a delivery with zero seconds of buffer is classified MIRACLE (STATISTICAL). '
+      + 'The queue is emotional about this and declines to elaborate.',
+  },
   faction_archive: { maker: 'Silent-script archivists. They do not confiscate — they accession.', casualty: 'Everything in the collection is a casualty of being remembered.' },
   faction_pitborn: { maker: 'Escaped scrappers welding patchwork miracles out of the Pit\'s offal.' },
   faction_verge_layers: { maker: 'Precursor-interrogative; they leave relics where the questions accumulate and wait for the answer to arrive screaming.' },
@@ -300,7 +320,11 @@ const SECTOR_OVERLAYS = Object.freeze({
   sector_helios_prime: 'The Concord\'s shop window. Everything legal, everything priced, everything watched. '
     + 'Scale 4 keeps one line of 47-A paperwork older than most of its clerks; the desk neither closes it nor explains it. '
     + 'The Candle Fleet memorial keeps a twenty-fifth plinth dark on purpose; scan it after you have watched a hull die here '
-    + 'and it answers once, in a maintenance clerk\'s voice — twenty-five is whoever is out there right now.',
+    + 'and it answers once, in a maintenance clerk\'s voice — twenty-five is whoever is out there right now. '
+    + 'Inside the apron approach the docking chatter stops being noise and becomes texture — overlapping approach calls, '
+    + 'berth assignments, one voice always slightly behind the others. The apron has a choir and it is made of work. '
+    + 'The station wire also runs the bay 7 notice, and the regulars will tell you bay 7 has been empty for nine years, '
+    + 'which is exactly why the wire uses it: nothing in bay 7 has ever contradicted the wire yet.',
   sector_ceres_belt: 'First belt, first lesson: the rock does not care about your manifest. '
     + 'Shaft 7\'s stake carries a re-chalked tally and two helmets face-out on a memorial clamp. The math is legal. The math is not done. '
     + 'One rock in every field carries the Tally\'s paint — a small 500, forty strokes under it — and rings one note of a ten-note scale '
@@ -310,7 +334,14 @@ const SECTOR_OVERLAYS = Object.freeze({
     + 'Cross the Anvil sling band fast and tangential and the band becomes audible for a moment: one harmonic, every hull singing the '
     + 'same note at the same place on the curve. Mass made audible; even the pirates cross it politely.',
   sector_vesta_forge: 'Foundry sector; the glow is honest work and the smoke is somebody\'s claim. '
-    + 'Gallery Rock is a permanent collection now. Accession No. 1; the label is for you.',
+    + 'Gallery Rock is a permanent collection now. Accession No. 1; the label is for you. '
+    + 'Cold Drill Four, the derelict on the cold line, still runs its PA on schedule — a night-shift roll call for a crew '
+    + 'that has not assembled in years, faithful down to the pause where the last name should be. Good watch. '
+    + 'When the forge wire calls pour in thirty, the channel is hot, the aprons dim on schedule, and the floor stands down '
+    + 'to watch-light: the announcement is the appointment.',
+  sector_pallas_drift: 'Tag-lane bookkeeping, read aloud: a roadside buoy transmits a rolling list of captains of interest — '
+    + 'names, unpaid tithes, interest accrued — updated while you listen. One entry always matches a callsign you have met. '
+    + 'The buoy does not editorialize. It does not have to.',
   sector_io_reach: 'Listening posts and the traffic that learned to whisper back. '
     + 'The retired channel buoy at the Listening Field answers anyway. Nobody living holds its license, and the channel is held open regardless.',
   sector_charon_expanse: 'The long dark between customs desks. Smugglers call it "the reading room." '
@@ -319,7 +350,10 @@ const SECTOR_OVERLAYS = Object.freeze({
     + 'being added, not recovered; the last line says DO NOT WAKE UNTIL THE BELT IS SAFE. A crewless freighter keeps its galley open '
     + 'and its tab good: one meal at any Charon dock, marked PAID — KITCHEN. And at third watch the construction frame off the abandoned '
     + 'colony welds in a pattern that reads as a constellation from one marked bearing; the plate calls it the sky we came from.',
-  sector_sker_haven: 'Reach country. The bazaar prices everything, including you.',
+  sector_sker_haven: 'Reach country. The bazaar prices everything, including you. '
+    + 'Drift quiet near the Bounty Wrecks field and you may pass through a hunter stakeout\'s open channel — target '
+    + 'descriptions, shift changes, crisp argot, none of it about you. Professionals mid-job; the band is their workplace. '
+    + 'The plan is worth money to exactly two parties, and only one of them is the hunters.',
   sector_veil_nebula: 'Research Station Veil and the things Dr. Suhl has not translated yet. '
     + 'A marginal note on the Veil chart: two cold hulls nose-to-nose over a mid-game table, one piece moved per visit. The chart does not say who countersigns the notation. '
     + 'The Helix audit\'s unresolvable coordinates resolve for whoever stands in them holding the salvaged communicator: one hull-sized '
@@ -328,7 +362,10 @@ const SECTOR_OVERLAYS = Object.freeze({
   sector_ashfall_reach: 'A ledger that kept running after everyone else left. Kurtz is still there.',
   sector_nyx_march: 'Frontier march; the patrol grid thins to a rumor of itself.',
   sector_hyperion_cut: 'A lane cut through wreck-mass older than the Concord.',
-  sector_kepler_scar: 'The scar is the map; everything else is collateral.',
+  sector_kepler_scar: 'The scar is the map; everything else is collateral. '
+    + 'The wire posts rock crossings one day ahead and the rock keeps the appointment: a forty-meter iron on the lane at '
+    + 'the posted minute — survey lamps blinking in file, a lit tail of dust, a bored tender skiff hanging back. '
+    + 'Schedule literacy is a survival skill here.',
   sector_orcus_shadow: 'Where shadows the size of stations drift without comment. '
     + 'The debris tide\'s transponder gate keeps a sun-bleached odometer reading CYCLE 4,110, count correct as of CYCLE 4,110. '
     + 'Someone winds it. Nobody has ever been seen winding it.',
@@ -358,7 +395,8 @@ const CHARACTER_OVERLAYS = Object.freeze({
   protagonist: 'Wren, current pilot of the Tessera. Concord Registry lists the operator as UNKNOWN; the ship knows better than the paperwork.',
   vale: 'Concord administrator. Vale appears through forwarded paperwork, authorization codes, and systems that make refusal more expensive than compliance.',
   kessler: 'Cargo registrar tied to the 47-A weight variance. If a manifest changes mass, his initials usually survive the transfer.',
-  mira: 'Bourse freight seal clerk. When the verification database agrees with the cargo seal, the seal becomes the story everyone else must use.',
+  mira: 'Bourse freight seal clerk. When the verification database agrees with the cargo seal, the seal becomes the story everyone else must use. '
+    + 'When a manifest corrects itself, a line from Bourse Freight arrives dated one hour before the correction happened, taking credit for your misreading. You checked. You did not misread it.',
   hale: 'Gate 3 customs officer. Hale does not need to open a sealed hold; he only needs to file the second fine correctly.',
   rook: 'Bounty broker. A clean tag is useful because it can be billed twice before anyone asks which target was real.',
   slate: 'Shipyard welder. His repairs look official because they are signed official, which is not the same as safe.',

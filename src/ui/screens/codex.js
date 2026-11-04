@@ -47,15 +47,22 @@ import { logbookStill } from '../logbookMedia.js';
 import {
   abutmentChalkRows,
   alignmentRows,
+  baySevenRows,
+  blindRows,
   buoyKeepingRows,
+  chainLetterRows,
   checkpointCatRows,
   cockpitManifestRows,
+  coldFourRows,
+  concordFormRows,
   constellationRows,
   customsCoinRows,
   decodedSuhlClauses,
+  dockChoirRows,
   dustScriptRows,
   galleryAccessionRows,
   halfConversationRows,
+  helixVerseRows,
   incident7741ShelfRows,
   jumpLogRows,
   jukeboxRows,
@@ -63,7 +70,14 @@ import {
   latchTidyRows,
   longGameRows,
   longSentenceRows,
+  miraFixesRows,
   morrowHundredRows,
+  pourAnnouncementRows,
+  quietReceiptRows,
+  queueMiracleRows,
+  ransomBuoyRows,
+  rockCrossingRows,
+  shelterAdvisoryRows,
   namesForTheDead,
   photographRows,
   plinthRows,
@@ -732,6 +746,99 @@ const WORLD_ROW_COPY_13 = Object.freeze({
       + 'that is legal nowhere and valid everywhere — because customs watched you earn it.',
     sealed: 'Spent coins stay on the wall. Customs polishes around it; the callsign stays legible.',
     note: 'Dione customs hall — the Dione Lane dispute, settled both ways.',
+  }),
+});
+
+// ── special-500 batch 14 (codex family) ────────────────────────────────────────
+// The World-row copy for the fourteen batch-14 receipt sections. Same shape as the
+// batch-12 and batch-13 tables: one sub line, an open-line voice, a sealed-line voice,
+// and a note naming where in the world the page was earned.
+
+const WORLD_ROW_COPY_14 = Object.freeze({
+  seal: Object.freeze({
+    sub: 'Relay receipt', open: 'The receipt names the commodity and the amount; the archive keeps only what it can '
+      + 'verify — and the one thing it can verify is the seal. One character off your own hull registration.',
+    sealed: 'The line items stay sealed because the Quiet does not share its ledger. The seal dispute is public.',
+    note: 'Unaddressed relay — sixty seconds after quiet business closes.',
+  }),
+  miracle: Object.freeze({
+    sub: 'Fulfillment filing', open: 'A delivery with zero seconds of buffer, filed as a statistical miracle. The '
+      + 'queue is emotional about this and declines to elaborate.',
+    sealed: 'The classification is one-time by rule: MIRACLE WILL NOT BE REPEATED. The queue does not do encores.',
+    note: 'FULFILLMENT — the delivery desk, any sector.',
+  }),
+  form: Object.freeze({
+    sub: 'Records filing', open: 'Your patterns, filed as a form. The number is assigned by receipt day; the citation '
+      + 'is automatic.',
+    sealed: 'The header variant stays queued until the next Concord letter carries it. Bureaucracy is patient; '
+      + 'it is also literal.',
+    note: 'CONCORD RECORDS — reciprocal filing, any sector.',
+  }),
+  verse: Object.freeze({
+    sub: 'Fine receipt', open: 'The footer verse runs on every tenth payment, by unwritten rule. Nobody wrote it; '
+      + 'nobody has been able to remove it.',
+    sealed: 'Removal is queued. The queue has been consulted. The verse remains.',
+    note: 'HELIX DIRECTORATE — the tenth fine, any sector.',
+  }),
+  rollcall: Object.freeze({
+    sub: 'PA transcript', open: 'A shift-change roll call for a crew that has not assembled in years, faithful down '
+      + 'to the pause where the last name should be.',
+    sealed: 'The pause is not damage. The audio is 100% faithful. That is the whole finding.',
+    note: 'Cold Drill Four — the Vesta cold line, deep-night watch.',
+  }),
+  blind: Object.freeze({
+    sub: 'Overheard discipline', open: 'Target descriptions, shift changes, known habits — all in crisp argot, all '
+      + 'audible, none of it about you. They are professionals mid-job.',
+    sealed: 'The plan stays what you make of it. The takedown runs on schedule either way.',
+    note: 'A hunter stakeout — the Bounty Wrecks field, Sker Haven.',
+  }),
+  crossing: Object.freeze({
+    sub: 'Wire posting', open: 'Posted one day ahead, kept to the minute: a forty-meter iron on the Scar lane, survey '
+      + 'lamps blinking in file, a bored tender skiff hanging back.',
+    sealed: 'The wire has never been wrong. That is not a promise; it is a record.',
+    note: 'The Scar lane — Kepler Scar / Ashfall Reach, day 16, second bell.',
+  }),
+  pour: Object.freeze({
+    sub: 'Forge wire', open: '"Pour in thirty. Channel is hot. Give the spine room." The apron floods dim on schedule '
+      + 'and the floor stands down to watch-light.',
+    sealed: 'The lead is exactly thirty seconds. The pour runs the window the announcement ends on.',
+    note: 'The Vesta Forge spine — day 9, the pour\u2019s lead-in.',
+  }),
+  ransom: Object.freeze({
+    sub: 'Buoy roll', open: 'Names, unpaid tithes, interest accrued — dry, official, updated while you listen. One '
+      + 'entry matches a callsign your log carries.',
+    sealed: 'The buoy does not editorialize. It does not have to.',
+    note: 'The tag lane\u2019s roadside buoy — Pallas Drift.',
+  }),
+  choir: Object.freeze({
+    sub: 'Apron texture', open: 'Overlapping approach calls, berth assignments, one voice always slightly behind the '
+      + 'others. It ducks under anything urgent and fills the rest.',
+    sealed: 'The choir keeps no secrets. The choir is made of work.',
+    note: 'The Helios apron approach — inside 250 WU at rush.',
+  }),
+  chain: Object.freeze({
+    sub: 'Enclosed text', open: 'The letter denies itself in writing: not a chain letter, do not forward it, '
+      + 'forwarding is how it moves. You have not read this.',
+    sealed: 'The log line stays sealed because the letter will not stay in it. LOG CORRECTED, says the log.',
+    note: '[NO SENDER] — after quiet business, any sector.',
+  }),
+  bay: Object.freeze({
+    sub: 'Station wire', open: '"UNATTENDED CARGO, BAY 7. CLAIM OR IT DRILLS." The regulars will tell you bay 7 has '
+      + 'been empty for nine years — which is why the wire uses it.',
+    sealed: 'Nothing in bay 7 has ever contradicted the wire. The regulars take that as proof.',
+    note: 'station_helios, bay 7 — the weekly notice.',
+  }),
+  mira: Object.freeze({
+    sub: 'Freight line', open: 'The manifest was always correct. You misread it. The correction was filed one hour '
+      + 'before the misreading happened. You checked.',
+    sealed: 'The audit queue keeps what Mira touches sealed. That is what write access means.',
+    note: 'Bourse Freight — untraceable, dated retroactively.',
+  }),
+  advisory: Object.freeze({
+    sub: 'Station broadcast', open: '"Surge until second bell. Apron lights doubled, berths half price." Weather, '
+      + 'touching the price of a berth through one honest sentence.',
+    sealed: 'The fee cut is real; the storm decides how long it lasts. The page reads the season, not the promise.',
+    note: 'Station advisories — any sector with an active surge.',
   }),
 });
 
@@ -1829,6 +1936,49 @@ export const codexScreen = {
     this._section('The Coin',
       rowEntries(customsCoinRows(ctx?.state), 'coin', WORLD_ROW_COPY_13.coin),
       'Customs has not stamped your coin yet. Settle both liens on the Dione dispute, honestly, and it is legal nowhere and valid everywhere.');
+    // ── special-500 batch 14 (codex family) ──
+    this._section('The Off-By-One Seal',
+      rowEntries(quietReceiptRows(ctx?.state), 'seal', WORLD_ROW_COPY_14.seal),
+      'The Quiet has not filed you yet. Business first; the relay does not do introductions.');
+    this._section('The Queue Files An Emotion',
+      rowEntries(queueMiracleRows(ctx?.state), 'miracle', WORLD_ROW_COPY_14.miracle),
+      'No delivery of yours has landed on a zero buffer yet. The queue does not classify luck as a miracle twice.');
+    this._section('You Are Now Citable',
+      rowEntries(concordFormRows(ctx?.state), 'form', WORLD_ROW_COPY_14.form),
+      'Concord Records has not filed you back yet. Keep filing; the pattern is the point.');
+    this._section('The Queued Verse',
+      rowEntries(helixVerseRows(ctx?.state), 'verse', WORLD_ROW_COPY_14.verse),
+      'No tenth fine has crossed the desk yet. The verse is unauthorized, and it has been for years.');
+    this._section('Good Watch',
+      rowEntries(coldFourRows(ctx?.state), 'rollcall', WORLD_ROW_COPY_14.rollcall),
+      'The derelict drill has not taken your proximity for an audience yet. Fly the cold line at deep night.');
+    this._section('The Blind',
+      rowEntries(blindRows(ctx?.state), 'blind', WORLD_ROW_COPY_14.blind),
+      'No stakeout has drifted under your hull yet. Stay quiet near the Bounty Wrecks field and the band does the talking.');
+    this._section('The Crossing',
+      rowEntries(rockCrossingRows(ctx?.state), 'crossing', WORLD_ROW_COPY_14.crossing),
+      'The Scar lane\u2019s wire posts its crossings one day ahead. The rock keeps the appointment; the wire has never been wrong.');
+    this._section('Pour In Thirty',
+      rowEntries(pourAnnouncementRows(ctx?.state), 'pour', WORLD_ROW_COPY_14.pour),
+      'The forge wire has not called a pour in thirty for you yet. Day 9, before the window — give the spine room regardless.');
+    this._section('Captains Of Interest',
+      rowEntries(ransomBuoyRows(ctx?.state), 'ransom', WORLD_ROW_COPY_14.ransom),
+      'The ransom buoy has not read you the roll yet. The tag lane\u2019s bookkeeping is official and ceaseless.');
+    this._section('The Dock Choir',
+      rowEntries(dockChoirRows(ctx?.state), 'choir', WORLD_ROW_COPY_14.choir),
+      'The Helios apron has not raised its choir for you yet. Inside the approach, listen for the voice that is always slightly behind.');
+    this._section('Not A Chain Letter',
+      rowEntries(chainLetterRows(ctx?.state), 'chain', WORLD_ROW_COPY_14.chain),
+      'No Quiet business has flagged you for the letter yet. You have not read this.');
+    this._section('Bay Seven',
+      rowEntries(baySevenRows(ctx?.state), 'bay', WORLD_ROW_COPY_14.bay),
+      'The wire has not posted bay 7 for you yet. Nothing in bay 7 has ever contradicted the wire.');
+    this._section('Dated One Hour Early',
+      rowEntries(miraFixesRows(ctx?.state), 'mira', WORLD_ROW_COPY_14.mira),
+      'No manifest of yours has corrected itself yet. When it does, the correction was always already filed.');
+    this._section('Shelter Advisory',
+      rowEntries(shelterAdvisoryRows(ctx?.state), 'advisory', WORLD_ROW_COPY_14.advisory),
+      'No surge has been posted for your sector yet. When the wire raises the advisory, the aprons will brighten first.');
   },
 
   _renderDiscoveries(ctx) {

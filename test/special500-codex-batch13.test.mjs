@@ -475,14 +475,15 @@ test('the World tab carries the batch-13 receipt sections in order, with honest 
     codexScreen._entries = [];
     codexScreen._renderWorld({ state: renderedWorldState13() });
     const labels = codexScreen._sections.map((s) => s.label);
-    assert.deepEqual(labels.slice(-14), [
+    assert.deepEqual(labels.slice(21, 35), [
       'The Twenty-Fifth Plinth', 'Do Not Wake', 'The Kitchen Is Open', 'The Photograph',
       'Void Stasis Crate', 'The Quiet Count', 'Mass Made Audible', 'The Dust Script',
       'The Rim Notices', 'Cycle 4,110', 'Nobody Loaded That', 'The Sky We Came From',
       'The Tally', 'The Coin',
-    ], 'the batch-13 sections close the World tab after the batch-12 receipts');
-    assert.equal(codexScreen._sections.length, 35,
-      'eight standing sections, the thirteen batch-12 sections, and the fourteen batch-13 sections');
+    ], 'the batch-13 sections sit after the batch-12 receipts, before the batch-14 sections');
+    assert.equal(codexScreen._sections.length, 49,
+      'eight standing sections, the thirteen batch-12 sections, the fourteen batch-13 sections, '
+      + 'and the fourteen batch-14 sections');
     for (const entry of codexScreen._entries) {
       assert.ok(entry.article, `${entry.id} carries a real article`);
       const text = textLines(entry.article).join('\n');
@@ -506,8 +507,8 @@ test('a fresh save renders every batch-13 section as its honest empty state', ()
     codexScreen._sections = [];
     codexScreen._entries = [];
     codexScreen._renderWorld({ state: baseState() });
-    assert.equal(codexScreen._sections.length, 35, 'the sections exist before their moments');
-    const empties = codexScreen._sections.slice(-14).map((s) => s.empty);
+    assert.equal(codexScreen._sections.length, 49, 'the sections exist before their moments');
+    const empties = codexScreen._sections.slice(21, 35).map((s) => s.empty);
     for (const line of empties) {
       assert.ok(typeof line === 'string' && line.length > 0, 'every empty state says something honest');
     }
@@ -533,7 +534,7 @@ test('a hostile save renders the batch-13 sections without crashing or inventing
     codexScreen._sections = [];
     codexScreen._entries = [];
     codexScreen._renderWorld({ state: hostile });
-    assert.equal(codexScreen._sections.length, 35, 'the page structure survives a hostile save');
+    assert.equal(codexScreen._sections.length, 49, 'the page structure survives a hostile save');
     const cockpitEntries = codexScreen._entries.filter((e) => e.id.startsWith('world:cockpit:'));
     assert.equal(cockpitEntries.length, 2,
       'the cockpit degrades to header and growth note, never to an invented manifest line');

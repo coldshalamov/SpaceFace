@@ -1,7 +1,8 @@
-import { CAL_DAY_S, CAL_YEAR_DAYS, stationShiftAt } from './worldCalendar.js';
+import { CAL_DAY_S, CAL_YEAR_DAYS, stationShiftAt, stormSeasonAt } from './worldCalendar.js';
 import { SECTORS } from './sectors.js';
 import { SHIPS } from './ships.js';
 import { COMMODITIES } from './commodities.js';
+import { aceById } from './namedAces.js';
 
 // Field classification is a crew's practical taxonomy, not a claim about common ancestry.
 export const FAUNA_FAMILIES = Object.freeze({
@@ -1146,4 +1147,491 @@ export function customsCoinRows(state) {
       sealed: retired,
     }),
   ];
+}
+
+// ── special-500 Phase 2 (batch 14, codex family) ────────────────────────────────────────────
+// Fourteen more codex/lore reads, same pattern as batches 1, 12 and 13: frozen authored tables
+// plus pure reads over durable state, failing closed (an empty list) until the world has
+// honestly earned the page. The director's `special500.<id>` receipt is the durable writer for
+// every live moment; where the consensus names a plain flag for another leg's writer, the read
+// accepts it as an alternate seam and states the condition until that leg lands. SP2-114's
+// catalog entry is still dormant (no delivery-timing read exists), so its read gates on the
+// consensus-named plain flag alone and honestly waits. None of these reads write anything.
+//
+// Live owners these reads key on beyond the receipts: the authored Tessera registry line (the
+// Quiet's off-by-one seal), the director's nth-receipt counter (the Helix fine count), the
+// calendar's station shifts (Cold Drill Four's deep-night watch), the ace-memory bag the
+// encounter systems keep (the ransom roll's met callsigns), and the solar-storm season read
+// (the shelter advisory's sector weather).
+
+/** Whether a plain-flag receipt is an honest writer receipt: `true`, a simTime number, or a
+ * numeric string. Any other shape is stale-save garbage and fails closed — the legs that
+ * would write these flags write receipts, not prose. */
+function honestReceipt(value) {
+  if (value === true) return true;
+  if (typeof value === 'number') return Number.isFinite(value) && value >= 0;
+  if (typeof value === 'string') return value.trim() !== '' && Number.isFinite(Number(value));
+  return false;
+}
+
+/** The receipt seal the Quiet files: the hull's own registration with its last digit advanced
+ * by one — one character off, no invented code. Pure string arithmetic over the authored line. */
+function sealOffByOne(registry) {
+  const chars = String(registry).split('');
+  for (let i = chars.length - 1; i >= 0; i--) {
+    if (/[0-9]/.test(chars[i])) {
+      chars[i] = String((Number(chars[i]) + 1) % 10);
+      return chars.join('');
+    }
+  }
+  return String(registry);
+}
+
+// SP2-020 "The Quiet's Receipt" — the unaddressed relay that files you sixty seconds after a
+// fence deal closes. The printed seal is the authored Tessera registry line; the receipt's is
+// derived from it. The scan-copy variant (one extra line when you scan your own hull) belongs
+// to the scanner leg; its receipt is the consensus-named plain flag `quiet_receipt_off_by_one`,
+// which has no writer yet — the page carries the relay's own paperwork honestly until it does.
+export const QUIET_RECEIPT_OFF_BY_ONE_FLAG = 'quiet_receipt_off_by_one';
+export const QUIET_RECEIPT_SEAL = sealOffByOne(TESSERA_REGISTRY);
+
+export const QUIET_RECEIPT_TABLE = Object.freeze([
+  Object.freeze({
+    label: 'THE RELAY',
+    value: 'UNADDRESSED — THE QUIET THANK NOBODY. THE QUIET FILE EVERYTHING.',
+    sealed: false,
+  }),
+  Object.freeze({ label: 'YOUR FILE', value: 'CURRENT', sealed: false }),
+  Object.freeze({
+    label: 'LINE ITEMS',
+    value: 'FILED — COMMODITY, AMOUNT — THE QUIET DOES NOT SHARE ITS LEDGER',
+    sealed: true,
+  }),
+  Object.freeze({ label: 'HULL SEAL (PRINTED)', value: TESSERA_REGISTRY, sealed: false }),
+  Object.freeze({ label: 'RECEIPT SEAL (FILED)', value: QUIET_RECEIPT_SEAL, sealed: false }),
+  Object.freeze({ label: 'THE DIFFERENCE', value: 'ONE CHARACTER, IN DISPUTE', sealed: false }),
+]);
+
+/** The Quiet's receipt, once quiet business has flagged you for it. */
+export function quietReceiptRows(state) {
+  const got = special500Moment(state, 'SP2-020') != null
+    || honestReceipt(plainFlag(state, QUIET_RECEIPT_OFF_BY_ONE_FLAG));
+  if (!got) return [];
+  return QUIET_RECEIPT_TABLE;
+}
+
+// SP2-114 "The Fulfillment Queue Miracle" — a delivery with zero seconds of buffer, classified
+// MIRACLE (STATISTICAL), filed once. The catalog entry is still dormant: no delivery-timing
+// read exists for the zero-buffer check to key on, so the zero-buffer re-arm belongs to that
+// dormant unit. The read gates on the consensus-named plain flag `queue_miracle` — an honest
+// gated wait; the greeting variant and the standing tick belong to the same glue pass.
+export const QUEUE_MIRACLE_FLAG = 'queue_miracle';
+
+export const QUEUE_MIRACLE_TABLE = Object.freeze([
+  Object.freeze({ label: 'FULFILLMENT LOG', value: 'DELIVERY RECEIVED. BUFFER: 0.00s.', sealed: false }),
+  Object.freeze({ label: 'CLASSIFICATION', value: 'MIRACLE (STATISTICAL)', sealed: false }),
+  Object.freeze({ label: 'THE FILING', value: 'MIRACLE HAS BEEN FILED. MIRACLE WILL NOT BE REPEATED.', sealed: false }),
+  Object.freeze({ label: 'THE QUEUE', value: 'IS EMOTIONAL ABOUT THIS AND DECLINES TO ELABORATE', sealed: false }),
+  Object.freeze({ label: 'HONORIFIC', value: 'MIRACLE — ADDED TO EVERY FUTURE FULFILLMENT GREETING', sealed: false }),
+]);
+
+/** The miracle filing, once the delivery-timing leg has written its one receipt. */
+export function queueMiracleRows(state) {
+  if (!honestReceipt(plainFlag(state, QUEUE_MIRACLE_FLAG))) return [];
+  return QUEUE_MIRACLE_TABLE;
+}
+
+// SP2-094 "The Concord Form That Files You Back" — reciprocal filing: your patterns filed as a
+// form. The form number reads off the receipt's day (44-C-P<day>), the same arithmetic the
+// payload names. The mail header variant (every later Concord letter citing you by number) is
+// the mail leg's; its receipt is the consensus-named plain flag `player_is_a_form`, with no
+// writer yet — the page states the condition instead of claiming the citation.
+export const PLAYER_IS_A_FORM_FLAG = 'player_is_a_form';
+export const CONCORD_FORM_PREFIX = '44-C-P';
+
+/** The form number Concord Records assigned you, read off the receipt day. */
+export function concordFormNumber(state) {
+  const at = special500Moment(state, 'SP2-094');
+  const flagged = honestReceipt(plainFlag(state, PLAYER_IS_A_FORM_FLAG));
+  if (at == null && !flagged) return null;
+  const day = at != null ? dayOf(at) : null;
+  return `${CONCORD_FORM_PREFIX}${day != null ? day : 'UNFILED'}`;
+}
+
+/** Your form's page: the notice, the number, and whether the headers have caught up. */
+export function concordFormRows(state) {
+  const form = concordFormNumber(state);
+  if (!form) return [];
+  const cited = honestReceipt(plainFlag(state, PLAYER_IS_A_FORM_FLAG));
+  return [
+    Object.freeze({
+      label: 'NOTICE',
+      value: 'RECIPROCAL FILING — YOUR PATTERNS HAVE BEEN FILED AS A FORM',
+      sealed: false,
+    }),
+    Object.freeze({ label: 'FORM NUMBER', value: form, sealed: false }),
+    Object.freeze({ label: 'STATUS', value: 'YOU ARE NOW CITABLE', sealed: false }),
+    Object.freeze({
+      label: 'THE HEADERS',
+      value: cited
+        ? 'ACTIVE — CONCORD CORRESPONDENCE CITES YOU BY NUMBER'
+        : 'QUEUED — THE NEXT CONCORD LETTER CARRIES IT',
+      sealed: false,
+    }),
+  ];
+}
+
+// SP2-113 "The Helix Invoice Poem" — the unauthorized footer verse on every tenth fine receipt.
+// The director's nth-receipt counter (`special500.SP2-113.n`) is the running fine count the
+// desk actually keeps — save-carried, capped at the trigger's own nth; a pruned counter
+// degrades to the receipt, never below it. The verse page ("The Queued Verse") is the codex
+// leg the consensus names; the fine-payment counter UI is not part of this page.
+export const HELIX_VERSE_LINES = 'THE FINE IS THE PRICE / OF KNOWING THE PRICE / OF THE ROAD';
+export const HELIX_FINES_NTH = 10;
+
+/** How many Helix fines the desk has on file: the running counter, floored by the receipt. */
+export function helixFineCount(state) {
+  const flags = state?.story?.flags;
+  const counted = Math.floor(Number(flags && flags['special500.SP2-113.n'])) || 0;
+  const receipt = special500Moment(state, 'SP2-113') != null ? HELIX_FINES_NTH : 0;
+  return Math.min(HELIX_FINES_NTH, Math.max(counted, receipt));
+}
+
+/** The verse page: the footer, its authorization status, and the count that earned it. */
+export function helixVerseRows(state) {
+  const fines = helixFineCount(state);
+  if (fines < HELIX_FINES_NTH) return [];
+  return [
+    Object.freeze({ label: 'FINES PAID', value: `${fines} OF ${HELIX_FINES_NTH} — THE TENTH RUNS THE FOOTER`, sealed: false }),
+    Object.freeze({ label: 'THE VERSE', value: HELIX_VERSE_LINES, sealed: false }),
+    Object.freeze({ label: 'AUTHORIZATION', value: 'NONE — UNAUTHORIZED, AND UNAUTHORIZED FOR YEARS', sealed: false }),
+    Object.freeze({ label: 'REMOVAL', value: 'QUEUED', sealed: false }),
+  ];
+}
+
+// SP2-131 "The Cold Drill Four Broadcast" — the derelict drill's shift roll call for a crew
+// that has not assembled in years. The proximity receipt is the gate; the watch row is a live
+// read off the calendar (deep night at the drill's own clock, stationShiftAt — the SP3-091
+// precedent). The consensus-named plain flag `cold_four_rollcall` is the PA-audio leg's
+// receipt; no audio row exists yet, and the page does not wait on one to keep the transcript.
+export const COLD_FOUR_ROLLCALL_FLAG = 'cold_four_rollcall';
+export const COLD_FOUR_POI_ID = 'poi_vesta_cold_line';
+
+export const COLD_FOUR_TABLE = Object.freeze([
+  Object.freeze({ label: 'THE DRILL', value: 'COLD DRILL FOUR — DERELICT, PA STILL ON SCHEDULE', sealed: false }),
+  Object.freeze({
+    label: 'THE ROLL CALL',
+    value: '"COLD FOUR, NIGHT WATCH: REPORT. ... REPORT. ... ALL POSITIONS NOTED AS PRESENT."',
+    sealed: false,
+  }),
+  Object.freeze({
+    label: 'THE PAUSE',
+    value: 'WHERE THE LAST NAME SHOULD BE — 100% FAITHFUL TO THE ORIGINAL AUDIO',
+    sealed: false,
+  }),
+  Object.freeze({ label: 'CLOSING', value: '"GOOD WATCH."', sealed: false }),
+]);
+
+/** The roll call's transcript, plus whether deep night holds at the drill right now. */
+export function coldFourRows(state) {
+  const got = special500Moment(state, 'SP2-131') != null
+    || honestReceipt(plainFlag(state, COLD_FOUR_ROLLCALL_FLAG));
+  if (!got) return [];
+  const now = Number(state && state.simTime);
+  const deepNight = Number.isFinite(now) && stationShiftAt(COLD_FOUR_POI_ID, now).id === 'third';
+  return [
+    ...COLD_FOUR_TABLE,
+    Object.freeze({
+      label: 'TONIGHT',
+      value: deepNight
+        ? 'DEEP-NIGHT AT THE DRILL — THE PA IS ON SHIFT'
+        : 'NOT DEEP-NIGHT AT THE DRILL — THE PA KEEPS THE SCHEDULE',
+      sealed: false,
+    }),
+  ];
+}
+
+// SP1-138 "The Blind" — a hunter stakeout's open channel at the Bounty Wrecks field. The
+// proximity receipt is the gate. The sell-the-plan-to-the-quarry choice and the named contact
+// are the encounter/counter legs; their receipt is the consensus-shaped plain flag
+// `blind_sold`, with no writer yet — the page records the band's discipline and states what
+// the plan still is, without claiming a sale nobody made.
+export const BLIND_SOLD_FLAG = 'blind_sold';
+
+export const BLIND_TABLE = Object.freeze([
+  Object.freeze({ label: 'THE BAND', value: 'A HUNTER STAKEOUT\'S WORKPLACE — OPEN CHANNEL, CRISP ARGOT', sealed: false }),
+  Object.freeze({ label: 'ON THE AIR', value: 'TARGET DESCRIPTIONS · SHIFT CHANGES · KNOWN HABITS', sealed: false }),
+  Object.freeze({ label: 'THE SUBJECT', value: 'NONE OF IT ABOUT YOU', sealed: false }),
+  Object.freeze({
+    label: 'THE QUARRY',
+    value: 'ITS ENGINE NOTE, PASSING UNDER EVERYONE\'S — INCLUDING YOURS',
+    sealed: false,
+  }),
+]);
+
+/** The stakeout's discipline, and what the plan still is. */
+export function blindRows(state) {
+  const sold = honestReceipt(plainFlag(state, BLIND_SOLD_FLAG));
+  const got = special500Moment(state, 'SP1-138') != null || sold;
+  if (!got) return [];
+  return [
+    ...BLIND_TABLE,
+    Object.freeze({
+      label: 'THE PLAN',
+      value: sold
+        ? 'SOLD TO THE QUARRY — THEY PAID, AND THE TAKEDOWN RAN ON SCHEDULE ANYWAY'
+        : 'UNSOLD — THE TAKEDOWN RUNS ON SCHEDULE, AND YOU CAN WATCH',
+      sealed: sold,
+    }),
+  ];
+}
+
+// SP3-078 "Rock Crossing Warning" — the wire posts the crossing one day ahead and the rock
+// keeps the appointment (day 16, second bell — the window the landed calendar row runs). The
+// crossing day reads off the receipt; the calendar row tells you whether the posting, the
+// crossing, or the wait is tonight. The physical boulder and the lamp tells are the spectacle
+// row's (already landed); the deterministic spawn is that calendar leg's.
+export const ROCK_CROSSING_DAY = 16;
+export const ROCK_CROSSING_WINDOW = Object.freeze([200, 260]);
+
+/** The crossing's page: the posting, the iron, the escort, and where tonight sits on the wire. */
+export function rockCrossingRows(state) {
+  const at = special500Moment(state, 'SP3-078');
+  if (at == null) return [];
+  const day = dayOf(at);
+  const dayOfYear = day != null ? day % CAL_YEAR_DAYS : ROCK_CROSSING_DAY;
+  const now = Number(state && state.simTime);
+  const today = Number.isFinite(now) && now > 0 ? Math.floor(now / CAL_DAY_S) % CAL_YEAR_DAYS : null;
+  return [
+    Object.freeze({ label: 'THE WIRE', value: 'A 40 M IRON CROSSES THE SCAR LANE — POSTED ONE DAY AHEAD', sealed: false }),
+    Object.freeze({
+      label: 'THE CROSSING',
+      value: day != null ? `DAY ${dayOfYear}, SECOND BELL — ON SCHEDULE` : 'SECOND BELL, ON SCHEDULE',
+      sealed: false,
+    }),
+    Object.freeze({ label: 'THE IRON', value: 'A DARK BOULDER — THREE BLINKING SURVEY LAMPS, A LIT TAIL OF DUST', sealed: false }),
+    Object.freeze({ label: 'THE ESCORT', value: 'A BORED TENDER SKIFF — GIVES IT ROOM, MOSTLY', sealed: false }),
+    Object.freeze({
+      label: 'THE CALENDAR',
+      value: today == null
+        ? 'THE WIRE KEEPS THE APPOINTMENT; THE PAGE KEEPS THE DAY'
+        : today === dayOfYear
+          ? 'CROSSING DAY — GIVE IT ROOM'
+          : (today + 1) % CAL_YEAR_DAYS === dayOfYear
+            ? 'THE WIRE POSTS IT TOMORROW'
+            : `THE NEXT CROSSING IS DAY ${ROCK_CROSSING_DAY}`,
+      sealed: false,
+    }),
+  ];
+}
+
+// SP3-093 "The Pour Announcement" — thirty seconds of warning before the landed SP3-083 pour.
+// The announcement's window ends where the pour's begins; the receipt's day is the announcement
+// day. The traffic reaction is hones'd to apron dim + watch-light only (no job re-route) — the
+// page carries exactly what the wire and the apron actually do.
+export const POUR_ANNOUNCEMENT_LEAD_S = 30;
+
+/** The announcement's page: the wire line, the standing-down, and the lead it keeps. */
+export function pourAnnouncementRows(state) {
+  const at = special500Moment(state, 'SP3-093');
+  if (at == null) return [];
+  const day = dayOf(at);
+  return [
+    Object.freeze({ label: 'THE WIRE', value: '"POUR IN THIRTY. CHANNEL IS HOT. GIVE THE SPINE ROOM."', sealed: false }),
+    Object.freeze({ label: 'THE CHANNEL', value: 'HOT', sealed: false }),
+    Object.freeze({ label: 'THE APRON', value: 'FLOODS DIM ON SCHEDULE', sealed: false }),
+    Object.freeze({ label: 'THE FLOOR', value: 'STANDS DOWN TO WATCH-LIGHT — INDUSTRY, REHEARSED', sealed: false }),
+    Object.freeze({
+      label: 'THE LEAD',
+      value: (day != null ? `THIRTY SECONDS, DAY ${day % CAL_YEAR_DAYS} — ` : 'THIRTY SECONDS — ')
+        + 'THE POUR RUNS THE WINDOW THE ANNOUNCEMENT ENDS ON',
+      sealed: false,
+    }),
+  ];
+}
+
+// SP1-007 "The Ransom Buoy" — the tag lane's rolling list of captains of interest. The names
+// are a live read off the ace-memory bag the encounter systems already keep (systems/
+// aceMemory.js): the buoy can only list captains your log actually carries, and an empty log
+// degrades to names you have not met — never to an invented captain. The poorer-and-angrier
+// encounter delta belongs to the numbered-script leg.
+export const RANSOM_ROLL_LIMIT = 5;
+
+/** Callsigns the buoy can honestly read: captains your ace memory actually carries. */
+export function ransomRollNames(state) {
+  const memory = state && state.aceMemory;
+  if (!memory || typeof memory !== 'object') return [];
+  const names = [];
+  for (const [id, rec] of Object.entries(memory)) {
+    if (rec && typeof rec === 'object' && rec.encountered) {
+      const ace = aceById(id);
+      if (ace && ace.name) names.push(ace.name);
+    }
+  }
+  return names.sort((a, b) => String(a).localeCompare(String(b))).slice(0, RANSOM_ROLL_LIMIT);
+}
+
+/** The roll: the buoy's format, the one entry of note, and whether it names someone you met. */
+export function ransomBuoyRows(state) {
+  if (special500Moment(state, 'SP1-007') == null) return [];
+  const names = ransomRollNames(state);
+  const rows = [
+    Object.freeze({ label: 'THE BUOY', value: 'LANE BUOY, OFFICIAL — THE TAG LANE, PALLAS DRIFT', sealed: false }),
+    Object.freeze({ label: 'THE ROLL', value: 'CAPTAINS OF INTEREST — NAMES, UNPAID TITHES, INTEREST ACCRUED', sealed: false }),
+  ];
+  if (names.length) {
+    rows.push(Object.freeze({
+      label: 'ENTRY OF NOTE',
+      value: `${String(names[0]).toUpperCase()} — TITHE UNPAID, INTEREST ACCRUING`,
+      sealed: false,
+    }));
+    rows.push(Object.freeze({
+      label: 'THE TELL',
+      value: 'ONE ENTRY MATCHES A CALLSIGN YOUR LOG CARRIES',
+      sealed: false,
+    }));
+  } else {
+    rows.push(Object.freeze({
+      label: 'ENTRY OF NOTE',
+      value: 'NAMES YOU HAVE NOT MET — THE ROLL KEEPS SCROLLING',
+      sealed: false,
+    }));
+    rows.push(Object.freeze({
+      label: 'THE TELL',
+      value: 'NO ENTRY MATCHES YOUR LOG YET — KEEP FLYING THE LANES',
+      sealed: false,
+    }));
+  }
+  rows.push(Object.freeze({ label: 'EDITORIALIZING', value: 'NONE. IT DOES NOT HAVE TO.', sealed: false }));
+  return rows;
+}
+
+// SP3-108 "The Dock Choir" — docking chatter as audible texture inside the Helios apron
+// approach. The spectacle row (already landed, batch 8) owns the audio; the codex page keeps
+// the choir's score — the parts, the mix rule, the material — off the director's proximity
+// receipt. The station-life audio recipes table the consensus named does not exist in the
+// live audio data; the row voices through the shipped ambient/band recipes instead.
+export const DOCK_CHOIR_TABLE = Object.freeze([
+  Object.freeze({ label: 'THE CHOIR', value: 'DOCKING CHATTER AS TEXTURE — THE HELIOS APRON APPROACH', sealed: false }),
+  Object.freeze({
+    label: 'THE PARTS',
+    value: 'OVERLAPPING APPROACH CALLS · BERTH ASSIGNMENTS · ONE VOICE ALWAYS SLIGHTLY BEHIND',
+    sealed: false,
+  }),
+  Object.freeze({ label: 'THE MIX RULE', value: 'DUCKS UNDER ANYTHING URGENT — FILLS THE REST', sealed: false }),
+  Object.freeze({ label: 'THE MATERIAL', value: 'WORK — THE APRON HAS A CHOIR AND IT IS MADE OF WORK', sealed: false }),
+]);
+
+/** The choir's score, once the apron has raised it for you. */
+export function dockChoirRows(state) {
+  if (special500Moment(state, 'SP3-108') == null) return [];
+  return DOCK_CHOIR_TABLE;
+}
+
+// SP2-045 "Chain Letter, Quiet Edition" — the letter that denies its own existence. The
+// self-redacting mail-log quirk is the mail evaluator's glue; the page keeps the letter's text
+// and attributes the log's correction to the letter's own account — sealed, not asserted.
+export const CHAIN_LETTER_TABLE = Object.freeze([
+  Object.freeze({ label: 'THE LETTER', value: '"THIS MESSAGE IS NOT A CHAIN LETTER. DO NOT FORWARD IT."', sealed: false }),
+  Object.freeze({ label: 'THE MECHANISM', value: 'FORWARDING IT IS HOW IT MOVES', sealed: false }),
+  Object.freeze({ label: 'THE LAST LINE', value: '"YOU HAVE NOT READ THIS."', sealed: false }),
+  Object.freeze({ label: 'SENDER', value: '[NO SENDER]', sealed: false }),
+  Object.freeze({
+    label: 'THE LOG',
+    value: '"LOG CORRECTED." — BY THE LETTER\'S OWN ACCOUNT',
+    sealed: true,
+  }),
+]);
+
+/** The letter, once quiet business has flagged you for it. */
+export function chainLetterRows(state) {
+  if (special500Moment(state, 'SP2-045') == null) return [];
+  return CHAIN_LETTER_TABLE;
+}
+
+// SP3-109 "Bay Seven's Cargo" — the weekly unattended-cargo notice, and why it uses bay 7:
+// canon emptiness is the joke the regulars explain. The landed entry is the hones'd version —
+// nobody has ever found a pod there — so the page does not claim a pod; the keyed pickup
+// spawn, if a world leg ever arms it, would rewrite THE POD row through its own receipt.
+export const BAY_SEVEN_TABLE = Object.freeze([
+  Object.freeze({ label: 'THE WIRE', value: '"UNATTENDED CARGO, BAY 7. CLAIM OR IT DRILLS."', sealed: false }),
+  Object.freeze({
+    label: 'THE REGULARS',
+    value: 'BAY 7 HAS BEEN EMPTY FOR NINE YEARS — WHICH IS WHY THE WIRE USES IT',
+    sealed: false,
+  }),
+  Object.freeze({ label: 'THE PROOF', value: 'NOTHING IN BAY 7 HAS EVER CONTRADICTED THE WIRE', sealed: false }),
+  Object.freeze({ label: 'THE POD', value: 'NONE FOUND — WHICH THE REGULARS TAKE AS THE WIRE WORKING', sealed: false }),
+]);
+
+/** Bay seven's page, once the notice has posted for you. */
+export function baySevenRows(state) {
+  if (special500Moment(state, 'SP3-109') == null) return [];
+  return BAY_SEVEN_TABLE;
+}
+
+// SP2-052 "Mira Fixes It" — the manifest self-corrects and Bourse Freight takes credit,
+// retroactively. The pre-dated stamp is the message's own authored tell. The audit-trap
+// suppression (one CONCORD/MTS trap pre-dismissed) belongs to the trap leg; its receipt is
+// the consensus-named plain flag `mira_timestamp`, with no writer yet — the queue row states
+// the condition until that leg lands.
+export const MIRA_TIMESTAMP_FLAG = 'mira_timestamp';
+
+/** The correction's page: the line, the signature, the date, and the audit queue's status. */
+export function miraFixesRows(state) {
+  const fixed = honestReceipt(plainFlag(state, MIRA_TIMESTAMP_FLAG));
+  const got = special500Moment(state, 'SP2-052') != null || fixed;
+  if (!got) return [];
+  return [
+    Object.freeze({
+      label: 'THE LINE',
+      value: '"THE MANIFEST WAS ALWAYS CORRECT. YOU MISREAD IT. I HAVE CORRECTED YOUR MISREADING."',
+      sealed: false,
+    }),
+    Object.freeze({ label: 'SIGNATURE', value: 'MIRA — BOURSE FREIGHT, UNTRACEABLE', sealed: false }),
+    Object.freeze({
+      label: 'THE DATE',
+      value: 'ONE HOUR BEFORE THE CORRECTION HAPPENED. YOU CHECKED. YOU DID NOT MISREAD IT.',
+      sealed: false,
+    }),
+    Object.freeze({
+      label: 'THE AUDIT QUEUE',
+      value: fixed
+        ? 'ONE TRAP PRE-DISMISSED — SHE HAS WRITE ACCESS NOW'
+        : 'UNTOUCHED — SHE HAS NOT NEEDED THE QUEUE YET',
+      sealed: fixed,
+    }),
+  ];
+}
+
+// SP3-056 "Shelter Advisory" — the surge-start broadcast: apron lights doubled, berths half
+// price. The sector row is a live read off the calendar's storm-season table for the sector
+// you are actually in (stormSeasonAt); a clear season says so honestly. The apron light
+// streaks and the fee cut are the vfx/economy glue — deferred, not invented here.
+export const SHELTER_ADVISORY_LINE = '"SURGE UNTIL SECOND BELL. APRON LIGHTS DOUBLED, BERTHS HALF PRICE."';
+
+/** The advisory's page: the line, the aprons, and the weather your sector is actually having. */
+export function shelterAdvisoryRows(state) {
+  const at = special500Moment(state, 'SP3-056');
+  if (at == null) return [];
+  const sectorId = state && state.world ? state.world.currentSectorId : null;
+  const now = Number(state && state.simTime);
+  const storm = sectorId && Number.isFinite(now) ? stormSeasonAt(sectorId, now) : null;
+  const rows = [
+    Object.freeze({ label: 'THE ADVISORY', value: SHELTER_ADVISORY_LINE, sealed: false }),
+    Object.freeze({ label: 'THE APRONS', value: 'BRIGHTEN AS THE LINE RUNS', sealed: false }),
+  ];
+  const endsInS = storm ? Number(storm.endsInS) : NaN;
+  rows.push(Object.freeze({
+    label: 'THIS SECTOR',
+    value: storm && storm.stormy
+      ? `${String(storm.label).toUpperCase()} — THE WIRE IS TALKING ABOUT YOUR WEATHER`
+        + (Number.isFinite(endsInS)
+          ? `, ${Math.max(1, Math.ceil(endsInS / CAL_DAY_S))} DAY(S) LEFT IN THE SEASON`
+          : '')
+      : 'CLEAR SEASON — THE ADVISORY WAS SOMEONE ELSE\'S WEATHER',
+    sealed: false,
+  }));
+  rows.push(Object.freeze({ label: 'THE LESSON', value: 'STATIONS RESPOND TO WEATHER', sealed: false }));
+  return rows;
 }
