@@ -308,6 +308,14 @@ import {
   updateDockingCradle,
   writeDockingCradleGeometry,
 } from './dockingCradle.js';
+import {
+  buildDockApproachLayout,
+  createDockApproachGeometry,
+  DOCK_APPROACH_MAX_RANGE_WU,
+  DOCK_APPROACH_STATION_CAP,
+  resolveDockApproachPlan,
+  writeDockApproachGeometry,
+} from './dockApproachBeacons.js';
 import { pitchPresentationEpoch, shipPitchCandidates } from './shipPitchPresentation.js';
 import { SelectionSigil, resolveSelectionSigil } from './selectionSigil.js';
 import {
@@ -1094,6 +1102,7 @@ function emptyVfxSubsystemDiag() {
     masslineChainReadout: 0, // thrown mass's accepted release→contact→kill ancestry trace
     monofilamentBlade: 0, // taut monofilament chord: one world-XZ segment, gone the tick it slacks
     dockingCradle: 0,   // holo berth pad on the bay floor while a corridor engagement is live
+    dockApproachBeacons: 0, // station approach beacons: gate pair + inbound lane, pre-approach dressing
     apexFlare: 0,       // chromatic apex-release flare around the ship
     momentumSink: 0,
     seamMarkers: 0,
@@ -1919,6 +1928,7 @@ export const vfx = {
     this._masslineLatchRim = null;
     disposeVfxRoot(this._masslineChainReadout && this._masslineChainReadout.mesh, disposeState);
     disposeVfxRoot(this._dockingCradle && this._dockingCradle.mesh, disposeState);
+    disposeVfxRoot(this._dockApproach && this._dockApproach.mesh, disposeState);
 
     const planetSkim = this._planetSkim;
     for (const slot of planetSkim && planetSkim.slots || []) {
@@ -2038,6 +2048,7 @@ export const vfx = {
     this._masslineSwingTrace = null;
     this._masslineChainReadout = null;
     this._dockingCradle = null;
+    this._dockApproach = null;
     this._selectionSigil = null;
     this._lights = [];
     this._ambientFixtureReads = null;
@@ -2377,6 +2388,7 @@ export const vfx = {
     this._initMasslineChainReadout();
     this._initMonofilamentBlade();
     this._initDockingCradle();
+    this._initDockApproach();
     this._initApexFlare();
     this._initSelectionSigil();
     this._initSeamMarkers();
@@ -7977,6 +7989,109 @@ export const vfx = {
   },
 
   // -------------------------------------------------------------------------
+  // Docking approach beacons (inf-dock-approach-beacons): the station's own answer to "where is
+  // the dock and is it open", readable from two rings out. One additive mesh, one draw call;
+  // the plan is the same dockingCorridor truth the cradle consumes, so the picture never
+  // disagrees with the hologram. Deterministic off simTime; no lights are created or toggled.
+  // -------------------------------------------------------------------------
+  _dockApproach: null,
+
+  _initDockApproach() {
+    if (!this._scene) return;
+    const scratch = createDockApproachGeometry();
+    const geo = new THREE.BufferGeometry();
+    const position = new THREE.BufferAttribute(scratch.positions, 3);
+    const color = new THREE.BufferAttribute(scratch.colors, 3);
+    position.usage = THREE.DynamicDrawUsage;
+    color.usage = THREE.DynamicDrawUsage;
+    geo.setAttribute('position', position);
+    geo.setAttribute('color', color);
+    geo.setIndex(new THREE.BufferAttribute(scratch.indices, 1));
+    geo.setDrawRange(0, 0);
+    const mat = new THREE.MeshBasicMaterial({
+      color: new THREE.Color(1.1, 1.1, 1.1),
+      vertexColors: true,
+      transparent: true,
+      opacity: 0,
+      depthWrite: false,
+      depthTest: true,
+      blending: THREE.AdditiveBlending,
+      side: THREE.DoubleSide,
+      forceSinglePass: true,
+      toneMapped: false,
+    });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.name = 'sf-dock-approach';
+    mesh.frustumCulled = false;
+    mesh.renderOrder = 6;
+    mesh.visible = false;
+    this._scene.add(mesh);
+    this._dockApproach = { mesh, scratch, layouts: new Map(), plan: {}, lastRows: null };
+  },
+
+  _updateDockApproach() {
+    const da = this._dockApproach;
+    if (!da) return false;
+    const state = this.state;
+    const rows = state && state.physicsRuntime && state.physicsRuntime.collisionProxies;
+    const readout = state && state.dockingCorridor;
+    const now = Number.isFinite(state && state.simTime) ? state.simTime : 0;
+    const reduced = !!(state && state.settings && state.settings.video && state.settings.video.motionReduce);
+    const gain = resolveVfxAccessibilityProfile(state && state.settings).flashOpacityScale;
+    // Row arrays are rebuilt per sector (the diagnostics publish retains the array object), so an
+    // identity change is the cheap "layouts are stale" epoch — rebuild them, never grow a map
+    // across departed stations.
+    if (rows !== da.lastRows) { da.layouts.clear(); da.lastRows = rows; }
+    const player = state && state.entities && state.entities.get(state.playerId);
+    const px = player && player.pos && Number.isFinite(player.pos.x) ? player.pos.x : NaN;
+    const pz = player && player.pos && Number.isFinite(player.pos.z) ? player.pos.z : NaN;
+    const scratch = da.scratch;
+    scratch.indexCount = 0;
+    let live = 0;
+    let base = 0;
+    if (Array.isArray(rows) && Number.isFinite(px) && Number.isFinite(pz)) {
+      const range2 = DOCK_APPROACH_MAX_RANGE_WU * DOCK_APPROACH_MAX_RANGE_WU;
+      for (let i = 0; i < rows.length && live < DOCK_APPROACH_STATION_CAP; i++) {
+        const row = rows[i];
+        if (!row || row.stationId == null || !row.berth || !row.corridor || !row.pos) continue;
+        const dx = px - row.pos.x, dz = pz - row.pos.z;
+        if (dx * dx + dz * dz > range2) continue;
+        let layout = da.layouts.get(row.stationId);
+        if (!layout || layout.row !== row) {
+          layout = { row, data: buildDockApproachLayout(row, {}) };
+          da.layouts.set(row.stationId, layout);
+        }
+        if (!layout.data.live) continue;
+        const plan = resolveDockApproachPlan(row, readout, now, reduced, da.plan);
+        writeDockApproachGeometry(scratch, layout.data, plan, { gain, base });
+        base = scratch.indexCount / 6;
+        live += 1;
+      }
+    }
+    if (!(scratch.indexCount > 0)) {
+      if (da.mesh.visible) {
+        da.mesh.visible = false;
+        da.mesh.material.opacity = 0;
+        da.mesh.geometry.setDrawRange(0, 0);
+      }
+      return false;
+    }
+    const positions = scratch.positions;
+    for (let vertex = 0; vertex < (scratch.indexCount / 6) * 4; vertex += 1) {
+      const offset = vertex * 3;
+      const local = this._toLocalXZ(positions[offset], positions[offset + 2], this._spawnLocalXZ);
+      positions[offset] = local.x;
+      positions[offset + 2] = local.z;
+    }
+    da.mesh.geometry.setDrawRange(0, scratch.indexCount);
+    da.mesh.geometry.attributes.position.needsUpdate = true;
+    da.mesh.geometry.attributes.color.needsUpdate = true;
+    da.mesh.material.opacity = Math.min(0.8, gain);
+    da.mesh.visible = true;
+    return true;
+  },
+
+  // -------------------------------------------------------------------------
   // Slingshot apex: the actual thrown mass unloads three unequal folded channels.
   // The success beat follows its velocity and drains locally; it never claims an AOE.
   // -------------------------------------------------------------------------
@@ -9840,6 +9955,7 @@ export const vfx = {
     sub.masslineChainReadout = this._updateMasslineChainReadout(dt) ? 1 : 0;
     sub.monofilamentBlade = this._updateMonofilamentBlade() ? 1 : 0;
     sub.dockingCradle = this._updateDockingCradle(dt) ? 1 : 0;
+    sub.dockApproachBeacons = this._updateDockApproach() ? 1 : 0;
     sub.apexFlare = this._updateApexFlare(dt) ? 1 : 0;
     // Massline UVP: continuous tumble thrash puffs + spin ribbons while status_tumbling / drifting.
     this._updateTumbleBodyLanguageVfx(dt);
