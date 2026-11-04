@@ -1,0 +1,30 @@
+{
+  "candidate": "95a775e283a3936523b0db493ac2a4e4eb67fdc4",
+  "executedBy": "visual_occlusion_repair specialist",
+  "tests": [
+    {
+      "command": "node --test test/lantern-ward-native-pose-render.test.mjs",
+      "passed": 3,
+      "failed": 0,
+      "duration_ms": 1533
+    },
+    {
+      "command": "node --test test/ordnance-motion-presentation.test.mjs",
+      "passed": 14,
+      "failed": 0,
+      "duration_ms": 244
+    }
+  ],
+  "negativeControl": {
+    "method": "Remove only the Ward guard through an in-memory module-load hook; shared files unchanged",
+    "passed": 1,
+    "failed": 2,
+    "exitCode": 1,
+    "duration_ms": 1273,
+    "firstCradlePitch": 0.3174411288915552,
+    "restoredReceiverPitch": 1.3917534890967507
+  },
+  "sourceSha256": "ed5fb991ff63d260a0af5547bd04ef68bdb04b47b80ae4a586bf8dded4cac21b",
+  "testSha256": "20fd9c0eb88bf0902b340d5057f2c42bfc12c4365ba5c7c2c3d239e917ad2ef7",
+  "provenance": "Summary of specialist tool results; full raw stdout was not saved to disk. This is not public-pixel or GPU performance evidence."
+}

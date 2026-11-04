@@ -1,0 +1,38 @@
+{
+  "candidate": "9c7bb9006b5dffee7fc39487277ad8f411feba10",
+  "provenance": "Specialist execution results summarized from tool output; raw stdout was not persisted to disk. No fabricated raw log.",
+  "tests": [
+    {
+      "command": "node --test test/lantern-ward-opening-admission.test.mjs",
+      "passed": 3,
+      "failed": 0
+    },
+    {
+      "command": "node --test test/lantern-ward-visuals.test.mjs test/d157-packaged-opening-boundary.test.mjs test/opening-submission-plan.test.mjs",
+      "passed": 43,
+      "failed": 0
+    }
+  ],
+  "negativeControl": "A memory-only module loader restored only the old Ward generatedVisualProducer marker. The positive opening test failed with exit1 at LanternWard_cradle publishes its real generated recipe, actual:null. Shared source was unchanged.",
+  "coverage": "Actual installed production wrapper, canonical generated-recipe ensure, producer census and opening plan for all6 hardware roles and all8 authored dressing rows, including White Side, atLOD0/1/2. Exact live leaf references, geometry identities and material program subjects; old-marker/unmarked roots remain incomplete even with matching resource census and firstPlayableComplete:true.",
+  "publicGate": "Independent ordinary import/load of the unchanged exported Quick save is a separate pending check.",
+  "exportedReproduction": {
+    "file": "public-quick-7407.json.gz",
+    "uncompressedSHA256": "d010d23e939dcbc6aa61e090913dd5b23026d7a65b72a8495f23aed0e283f3ed",
+    "uncompressedBytes": 2388721,
+    "checksum": "a00db65c",
+    "seed": 7407,
+    "savedAt": "2026-11-04T22:35:37.741Z",
+    "method": "Ordinary Load screen Export action; original downloaded JSON compressed losslessly for repository evidence. Import the decompressed JSON through the normal save UI."
+  },
+  "independentReviewerTwo": {
+    "command": "node --test test/lantern-ward-opening-admission.test.mjs",
+    "passed": 3,
+    "failed": 0,
+    "skipped": 0,
+    "exitCode": 0,
+    "duration_ms": 1589.672396,
+    "sourceTree": "9480029db29511f4260b59ff05a4c78c919b4357",
+    "scope": "Independent source inspection and execution of the existing producer/census/plan seam and its old-marker/unmarked negative controls. Public load and visual qualification are separate."
+  }
+}

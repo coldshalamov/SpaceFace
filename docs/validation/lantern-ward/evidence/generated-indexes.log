@@ -1,0 +1,10 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> spaceface@0.2.0-beta.1 build:indexes
+> node scripts/build-encounter-index.mjs && node scripts/build-flavor-index.mjs && node scripts/build-code-index.mjs
+
+Encounter indexes generated: 354 authored modules.
+Flavor index generated: 10 authored modules.
+[build-code-index] wrote docs/EVENT_ROUTING.md (2066 events)
+[build-code-index] wrote docs/SYSTEM_REGISTRY.md (214 systems in update order)
+[build-code-index] 222 events with no emitter, 1081 with no subscriber

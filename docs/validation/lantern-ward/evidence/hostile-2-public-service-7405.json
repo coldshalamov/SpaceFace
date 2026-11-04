@@ -1,0 +1,847 @@
+{
+  "schema": "lantern-ward-independent-public-review-v1",
+  "reviewer": "hostile_review_two",
+  "browserSession": 5887,
+  "seed": 7405,
+  "serviceCandidate": "95da882cc002e8ee846651b00268851ea02167a6",
+  "sourceManifest": "hostile-2-source-7405.json",
+  "renderer": "Chromium software SwiftShader; concurrent software browsers; no performance qualification",
+  "publicInputProvenance": [
+    "Use First Light; Settings / Audio / Mute all On; Video / High performance; Escape",
+    "New Game; Universe seed 7405; I've flown before; Launch",
+    "M at tick0; Procession Cradle and Nessa searches initially returned no results before live actors; Escape",
+    "After live tick259, M / search Procession Cradle / Enter / Track Target; native autopilot",
+    "S 2500ms cancelled the wide avoidance route and braked; A 400ms (no measured rotation); later held A across read then released",
+    "Mouse wheel +600 at (640,400); W1800ms; S2200ms. Manual approach physically moved the mast; no Space/Massline action was used",
+    "Normal Overhead screenshot; Escape pause at sim259.15; read-only renderer raycasts and bounds inspection",
+    "Escape resume; no further gameplay input before installed outcome, 5000\u21925180 credits",
+    "Screenshot installed; Escape pause; F5 Quick Save; waited for Saved Quick acknowledgment; public Main Menu confirmation"
+  ],
+  "evidenceNotes": [
+    "Browser evaluation read SF state, diagnostics, DOM and render geometry only; no authority, positions, settings flags, clocks or save contents were mutated through evaluation.",
+    "Read-only state replies below are copied automatically from the browser-driver JSON results. Presentation custody intentionally omits authoritative private clamp descriptors.",
+    "The transient transit stall observed near329s later resolved with no additional input and is not a confirmed deadlock."
+  ],
+  "rawReadOnlyReplies": [
+    {
+      "capturedAtUTC": "2026-11-04T21:30:14.397Z",
+      "result": {
+        "tick": 27536,
+        "simTime": 458.9333333332446,
+        "credits": 5180,
+        "ward": {
+          "version": 1,
+          "phase": "installed",
+          "blocked": false,
+          "history": {
+            "playerCleared": true,
+            "playerCarried": false,
+            "repaired": false,
+            "ignored": false,
+            "cradleStolen": false,
+            "lampStolen": false,
+            "damaged": false,
+            "recovered": false,
+            "borrowed": false
+          },
+          "objects": {
+            "cradle": {
+              "lost": false
+            }
+          }
+        },
+        "missionKeys": [
+          "boards",
+          "active",
+          "completedLog",
+          "receipts",
+          "nextId",
+          "config",
+          "careerContracts",
+          "lanternWardConversation",
+          "lanternWardReward"
+        ],
+        "lamp": {
+          "name": "Venn Family Lamp \u00b7 Serial 01",
+          "scanLabel": "Venn Family Lamp \u00b7 Serial 01",
+          "lanternWardId": "district_helios_lantern_ward",
+          "lanternWardRole": "lamp",
+          "worldRecordId": "lantern-ward:lamp",
+          "identityKey": "lantern-ward:lamp",
+          "persistenceOwner": "worldRecords",
+          "worldRecordNamed": true,
+          "homeSectorId": "sector_helios_prime",
+          "sectorId": "sector_helios_prime",
+          "transientSector": false,
+          "lifetime": null,
+          "physicalCustodyOnly": true,
+          "worldSiteTargetable": true,
+          "towable": true,
+          "masslineTetherable": true,
+          "salvagePool": {},
+          "loot": [],
+          "lanternWardSerial": "venn-family-lamp:01",
+          "lanternWardCustody": {
+            "holder": "receiver",
+            "serial": "venn-family-lamp:01"
+          },
+          "cargoManifest": {
+            "manifestId": "venn-family-lamp:01",
+            "lotId": "venn-family-lamp:01",
+            "destinationId": "lantern-ward:receiver",
+            "lines": [
+              {
+                "commodityId": "cmdty_electronics",
+                "qty": 1
+              }
+            ],
+            "totalQty": 1,
+            "custody": {
+              "holderId": "lantern-ward:receiver"
+            }
+          },
+          "lanternWardPhase": "finish",
+          "lanternWardProgress01": 1,
+          "lanternWardClamp01": 0,
+          "lanternWardDamage01": 0,
+          "lanternWardLit": true,
+          "lanternWardRepaired": false,
+          "lanternWardWorkerPresent": false,
+          "itinerary": {
+            "kind": "lantern_ward",
+            "lanternWard": {
+              "version": 1,
+              "role": "lamp",
+              "identity": "lantern-ward:lamp",
+              "serial": "venn-family-lamp:01",
+              "custody": {
+                "holder": "cradle",
+                "serial": "venn-family-lamp:01",
+                "clamp": {
+                  "attachmentId": "att_000004",
+                  "active": true,
+                  "ownerRecordId": "lantern-ward:cradle",
+                  "targetRecordId": "lantern-ward:lamp"
+                }
+              },
+              "manifest": {
+                "manifestId": "venn-family-lamp:01",
+                "lotId": "venn-family-lamp:01",
+                "destinationId": "lantern-ward:receiver",
+                "lines": [
+                  {
+                    "commodityId": "cmdty_electronics",
+                    "qty": 1
+                  }
+                ],
+                "totalQty": 1,
+                "custody": {
+                  "holderId": "lantern-ward:cradle"
+                }
+              },
+              "phase": "waiting",
+              "progress": 0,
+              "clamp": 0,
+              "damage": 0,
+              "lit": false,
+              "repaired": false
+            }
+          },
+          "lanternWardYielding": false,
+          "lanternWardCarrying": null,
+          "lanternWardInstalledPartRecordId": null
+        },
+        "cradle": {
+          "name": "Lantern Ward \u00b7 Borrowable Procession Cradle",
+          "scanLabel": "Lantern Ward \u00b7 Borrowable Procession Cradle",
+          "lanternWardId": "district_helios_lantern_ward",
+          "lanternWardRole": "cradle",
+          "worldRecordId": "lantern-ward:cradle",
+          "identityKey": "lantern-ward:cradle",
+          "persistenceOwner": "worldRecords",
+          "worldRecordNamed": true,
+          "homeSectorId": "sector_helios_prime",
+          "sectorId": "sector_helios_prime",
+          "transientSector": false,
+          "lifetime": null,
+          "physicalCustodyOnly": true,
+          "worldSiteTargetable": true,
+          "towable": true,
+          "masslineTetherable": true,
+          "salvagePool": {},
+          "loot": [],
+          "combatProfileId": "combat_profile_lantern_hardware",
+          "lanternWardCustody": {
+            "holder": "ward"
+          },
+          "lanternWardPhase": "waiting",
+          "lanternWardProgress01": 0,
+          "lanternWardClamp01": 0,
+          "lanternWardDamage01": 0,
+          "lanternWardLit": false,
+          "lanternWardRepaired": false,
+          "lanternWardWorkerPresent": false,
+          "itinerary": {
+            "kind": "lantern_ward",
+            "lanternWard": {
+              "version": 1,
+              "role": "cradle",
+              "identity": "lantern-ward:cradle",
+              "serial": null,
+              "custody": {
+                "holder": "ward",
+                "loadSerial": "venn-family-lamp:01",
+                "clamp": {
+                  "attachmentId": "att_000004",
+                  "active": true,
+                  "ownerRecordId": "lantern-ward:cradle",
+                  "targetRecordId": "lantern-ward:lamp"
+                }
+              },
+              "manifest": null,
+              "phase": "waiting",
+              "progress": 0,
+              "clamp": 1,
+              "damage": 0,
+              "lit": false,
+              "repaired": false
+            }
+          },
+          "lanternWardYielding": false,
+          "lanternWardCarrying": null,
+          "lanternWardInstalledPartRecordId": null
+        },
+        "nessa": {
+          "pos": {
+            "x": 1744.4346923828125,
+            "y": 0,
+            "z": -577.8685913085938
+          },
+          "hull": 200,
+          "carrying": null
+        },
+        "events": []
+      }
+    },
+    {
+      "capturedAtUTC": "2026-11-04T21:30:29.606Z",
+      "result": {
+        "tick": 27552,
+        "simTime": 459.19999999991103,
+        "mode": "paused",
+        "credits": 5180,
+        "settings": {
+          "video": {
+            "renderScale": 0.75,
+            "bloom": true,
+            "bloomStrength": 0.4,
+            "bloomThreshold": 1,
+            "vsync": true,
+            "fov": 50,
+            "particleQuality": "low",
+            "engineTrails": true,
+            "pixelRatioCap": 1,
+            "motionReduce": true,
+            "shadows": false,
+            "shadowsDefaultVersion": 1,
+            "nocturne": true,
+            "nocturneShadows": false,
+            "nocturneAtmosphere": true,
+            "nocturneQuality": "auto",
+            "energyMaterials": true,
+            "renderGraph": false,
+            "dynamicResolution": false,
+            "qualityMode": "manual",
+            "chaseClose": false,
+            "qualityPreset": "low",
+            "frameCap": 0,
+            "bloomLevels": 1,
+            "postFx": true,
+            "sharpen": true,
+            "screenShake": 100,
+            "hudScale": 1,
+            "hudOpacity": 1,
+            "arcadeEffects": "full"
+          },
+          "audio": {
+            "master": 0.55,
+            "sfx": 0.7,
+            "music": 0.32,
+            "muted": true,
+            "muteOnFocusLoss": false,
+            "mono": false,
+            "nightMode": false,
+            "voice": 1,
+            "engine": 0.7,
+            "ambient": 0.7,
+            "combat": 0.7,
+            "ui": 0.7,
+            "comms": 0.7,
+            "defaultMuteVersion": 2
+          },
+          "accessibility": {
+            "colorblindMode": "none",
+            "highContrast": true,
+            "flashReduce": true,
+            "dyslexiaFont": false,
+            "motionPreference": "reduce",
+            "motionAsked": true,
+            "motionPrompted": true,
+            "motionDefaultVersion": 1,
+            "captions": true,
+            "audioCues": true,
+            "captionSize": "large",
+            "captionBackground": true,
+            "haptics": "full",
+            "holdToToggle": {},
+            "firstLightOffered": true,
+            "textScale": 1.15,
+            "firstLightChoice": "applied"
+          }
+        },
+        "ward": {
+          "version": 1,
+          "phase": "installed",
+          "blocked": false,
+          "history": {
+            "playerCleared": true,
+            "playerCarried": false,
+            "repaired": false,
+            "ignored": false,
+            "cradleStolen": false,
+            "lampStolen": false,
+            "damaged": false,
+            "recovered": false,
+            "borrowed": false
+          },
+          "objects": {
+            "cradle": {
+              "lost": false
+            }
+          }
+        },
+        "reward": {
+          "version": 1,
+          "status": "settled",
+          "storyId": "lw_helios_empty_plinth",
+          "receiptId": "lantern-ward:venn-family-lamp:service:01",
+          "credited": 180,
+          "committedTick": 25067,
+          "committedAtS": 417.78333333328203
+        },
+        "conversation": {
+          "version": 1,
+          "visits": 1,
+          "inside": true,
+          "lastSector": "sector_helios_prime",
+          "nextSpeechAt": 460.49999999993713,
+          "spoken": [
+            "lw_helios_empty_plinth:nessa:help",
+            "lw_helios_empty_plinth:nessa:installedHelp"
+          ],
+          "pendingHousehold": null
+        },
+        "originals": [
+          {
+            "id": 169,
+            "recordId": "lantern-ward:scenery:steps_lower:v1",
+            "role": "shore_spine",
+            "pos": {
+              "x": 1581,
+              "y": 0,
+              "z": -661
+            },
+            "vel": {
+              "x": 0,
+              "z": 0
+            }
+          },
+          {
+            "id": 170,
+            "recordId": "lantern-ward:scenery:steps_middle:v1",
+            "role": "shore_spine",
+            "pos": {
+              "x": 1535,
+              "y": 0,
+              "z": -710
+            },
+            "vel": {
+              "x": 0,
+              "z": 0
+            }
+          },
+          {
+            "id": 171,
+            "recordId": "lantern-ward:scenery:steps_upper:v1",
+            "role": "shore_spine",
+            "pos": {
+              "x": 1505,
+              "y": 0,
+              "z": -765
+            },
+            "vel": {
+              "x": 0,
+              "z": 0
+            }
+          },
+          {
+            "id": 172,
+            "recordId": "lantern-ward:scenery:steps_back:v1",
+            "role": "shore_spine",
+            "pos": {
+              "x": 1501,
+              "y": 0,
+              "z": -825
+            },
+            "vel": {
+              "x": 0,
+              "z": 0
+            }
+          },
+          {
+            "id": 173,
+            "recordId": "lantern-ward:scenery:steps_north:v1",
+            "role": "shore_spine",
+            "pos": {
+              "x": 1518,
+              "y": 0,
+              "z": -884
+            },
+            "vel": {
+              "x": 0,
+              "z": 0
+            }
+          },
+          {
+            "id": 174,
+            "recordId": "lantern-ward:scenery:white_rim:v1",
+            "role": "shore_spine",
+            "pos": {
+              "x": 1929,
+              "y": 0,
+              "z": -756
+            },
+            "vel": {
+              "x": 0,
+              "z": 0
+            }
+          },
+          {
+            "id": 175,
+            "recordId": "lantern-ward:scenery:service_cut_north:v1",
+            "role": "service_cheek",
+            "pos": {
+              "x": 1775,
+              "y": 0,
+              "z": -704
+            },
+            "vel": {
+              "x": 0,
+              "z": 0
+            }
+          },
+          {
+            "id": 176,
+            "recordId": "lantern-ward:scenery:service_cut_south:v1",
+            "role": "service_cheek",
+            "pos": {
+              "x": 1775,
+              "y": 0,
+              "z": -596
+            },
+            "vel": {
+              "x": 0,
+              "z": 0
+            }
+          },
+          {
+            "id": 596,
+            "generation": 121,
+            "recordId": "lantern-ward:cradle",
+            "role": "cradle",
+            "pos": {
+              "x": 1829.9967041015625,
+              "y": 0,
+              "z": -649.9910278320312
+            },
+            "vel": {
+              "x": 2.7250497414144093e-09,
+              "z": 5.5866933301729205e-09
+            },
+            "hull": 280,
+            "hullMax": 280,
+            "phase": "waiting",
+            "progress": 0,
+            "lit": false,
+            "clamp": 0,
+            "custody": {
+              "holder": "ward"
+            },
+            "carrying": null,
+            "installedPart": null,
+            "repaired": false
+          },
+          {
+            "id": 597,
+            "generation": 122,
+            "recordId": "lantern-ward:lamp",
+            "role": "lamp",
+            "serial": "venn-family-lamp:01",
+            "pos": {
+              "x": 1829.9683837890625,
+              "y": 0,
+              "z": -695.00439453125
+            },
+            "vel": {
+              "x": 0.037938885390758514,
+              "z": 0.0052735102362930775
+            },
+            "hull": 90,
+            "hullMax": 90,
+            "phase": "finish",
+            "progress": 1,
+            "lit": true,
+            "clamp": 0,
+            "custody": {
+              "holder": "receiver",
+              "serial": "venn-family-lamp:01"
+            },
+            "carrying": null,
+            "installedPart": null,
+            "repaired": false,
+            "manifest": {
+              "manifestId": "venn-family-lamp:01",
+              "lotId": "venn-family-lamp:01",
+              "destinationId": "lantern-ward:receiver",
+              "lines": [
+                {
+                  "commodityId": "cmdty_electronics",
+                  "qty": 1
+                }
+              ],
+              "totalQty": 1,
+              "custody": {
+                "holderId": "lantern-ward:receiver"
+              }
+            }
+          },
+          {
+            "id": 598,
+            "generation": 123,
+            "recordId": "lantern-ward:receiver",
+            "role": "receiver",
+            "pos": {
+              "x": 1830,
+              "y": 0,
+              "z": -695
+            },
+            "vel": {
+              "x": 0,
+              "z": 0
+            },
+            "hull": 1400,
+            "hullMax": 1400,
+            "phase": "finish",
+            "progress": 1,
+            "lit": true,
+            "clamp": 0,
+            "custody": {
+              "holder": "ward"
+            },
+            "carrying": null,
+            "installedPart": null,
+            "repaired": false
+          },
+          {
+            "id": 599,
+            "generation": 124,
+            "recordId": "lantern-ward:obstruction",
+            "role": "obstruction",
+            "pos": {
+              "x": 1754.66845703125,
+              "y": 0,
+              "z": -678.4384765625
+            },
+            "vel": {
+              "x": -0.01913043111562729,
+              "z": 0.2331959307193756
+            },
+            "hull": 540,
+            "hullMax": 540,
+            "phase": "waiting",
+            "progress": 0,
+            "lit": false,
+            "clamp": 0,
+            "custody": {
+              "holder": "ward"
+            },
+            "carrying": null,
+            "installedPart": null,
+            "repaired": false
+          },
+          {
+            "id": 600,
+            "generation": 125,
+            "recordId": "lantern-ward:service_face",
+            "role": "service_face",
+            "pos": {
+              "x": 1652,
+              "y": 0,
+              "z": -670
+            },
+            "vel": {
+              "x": 0,
+              "z": 0
+            },
+            "hull": 1000,
+            "hullMax": 1000,
+            "phase": "retreat",
+            "progress": 0,
+            "lit": false,
+            "clamp": 0,
+            "custody": {
+              "holder": "ward"
+            },
+            "carrying": null,
+            "installedPart": "lantern-ward:maintenance_part",
+            "repaired": true
+          },
+          {
+            "id": 601,
+            "generation": 126,
+            "recordId": "lantern-ward:maintenance_part",
+            "role": "maintenance_part",
+            "serial": "lantern-ward:shutter-bearing:01",
+            "pos": {
+              "x": 1652.0224609375,
+              "y": 0,
+              "z": -648.9885864257812
+            },
+            "vel": {
+              "x": -0.02695341780781746,
+              "z": -0.013696439564228058
+            },
+            "hull": 90,
+            "hullMax": 90,
+            "phase": "waiting",
+            "progress": 0,
+            "lit": false,
+            "clamp": 0,
+            "custody": {
+              "holder": "service_face",
+              "serial": "lantern-ward:shutter-bearing:01"
+            },
+            "carrying": null,
+            "installedPart": null,
+            "repaired": false,
+            "manifest": {
+              "manifestId": "lantern-ward:shutter-bearing:01",
+              "lotId": "lantern-ward:shutter-bearing:01",
+              "destinationId": "lantern-ward:service_face",
+              "lines": [
+                {
+                  "commodityId": "cmdty_comp_hullplate",
+                  "qty": 1
+                }
+              ],
+              "totalQty": 1,
+              "custody": {
+                "holderId": "lantern-ward:service_face"
+              }
+            }
+          },
+          {
+            "id": 602,
+            "generation": 127,
+            "recordId": "lantern-ward:tug",
+            "role": "tug",
+            "pos": {
+              "x": 1746.2393798828125,
+              "y": 0,
+              "z": -576.7904663085938
+            },
+            "vel": {
+              "x": 6.802164077758789,
+              "z": 4.056713581085205
+            },
+            "hull": 200,
+            "hullMax": 200,
+            "phase": "waiting",
+            "progress": 0,
+            "lit": false,
+            "clamp": 0,
+            "carrying": null,
+            "installedPart": null,
+            "repaired": false,
+            "manifest": {
+              "schemaId": "spaceface.freightCausality.v1",
+              "schemaVersion": 1,
+              "manifestId": "fm_8eb956d9",
+              "freighterKey": "lantern-ward:tug",
+              "role": "tug",
+              "lines": [
+                {
+                  "commodityId": "cmdty_control_unit",
+                  "qty": 4
+                },
+                {
+                  "commodityId": "cmdty_impulse_charge",
+                  "qty": 15
+                }
+              ],
+              "totalQty": 19,
+              "custody": {
+                "holderId": null
+              }
+            }
+          },
+          {
+            "id": 603,
+            "generation": 128,
+            "recordId": "lantern-ward:commuter",
+            "role": "commuter",
+            "pos": {
+              "x": 1949.0621337890625,
+              "y": 0,
+              "z": -731.9716186523438
+            },
+            "vel": {
+              "x": -1.2611686178923354e-44,
+              "z": -3.2229864679470793e-44
+            },
+            "hull": 320,
+            "hullMax": 320,
+            "phase": "waiting",
+            "progress": 0,
+            "lit": false,
+            "clamp": 0,
+            "carrying": null,
+            "installedPart": null,
+            "repaired": false,
+            "manifest": {
+              "schemaId": "spaceface.freightCausality.v1",
+              "schemaVersion": 1,
+              "manifestId": "fm_66fbc6ec",
+              "freighterKey": "lantern-ward:commuter",
+              "role": "shuttle",
+              "lines": [
+                {
+                  "commodityId": "cmdty_scrap_metal",
+                  "qty": 16
+                }
+              ],
+              "totalQty": 16,
+              "custody": {
+                "holderId": null
+              }
+            }
+          },
+          {
+            "id": 604,
+            "generation": 129,
+            "recordId": "lantern-ward:maintenance",
+            "role": "maintenance",
+            "pos": {
+              "x": 1693.2174072265625,
+              "y": 0,
+              "z": -548.137451171875
+            },
+            "vel": {
+              "x": 1.2089531421661377,
+              "z": 2.127795696258545
+            },
+            "hull": 320,
+            "hullMax": 320,
+            "phase": "brace",
+            "progress": 1,
+            "lit": false,
+            "clamp": 0,
+            "carrying": null,
+            "installedPart": null,
+            "repaired": false,
+            "manifest": {
+              "manifestId": "lantern-ward:shutter-bearing:01",
+              "lotId": "lantern-ward:shutter-bearing:01",
+              "destinationId": "lantern-ward:service_face",
+              "lines": [],
+              "totalQty": 0,
+              "custody": {
+                "holderId": "lantern-ward:maintenance"
+              }
+            }
+          }
+        ],
+        "text": "RADIO\nLantern Ward \u00b7 Borrowable Procession Cradle\n\u2196 9 u\nN\nRANGE 4.0K\n\u25c6 LANTERN WARD \u00b7 BORRO \u00b7 125\nHITCH \u00b7 STARTER \u00b7 TIER 0\nF8\n1\n2\n3\n4\n5\nLINE \u00b7 HAULSPACE\n'\nBOOST\n0\nU/S\n0\nTOP\n195\n439\nAT REST\nENERGY\n80\nHEAT\n0%\n100%\nHULL\n100\nSHIELD\n0\nARMOR\nAchievement: Signed and Delivered.\nMassline break.\nBAND OFF\nBROTHER INDEX: The board posts an accession. A page wants carrying.\nPAUSED\nFLIGHT BRIEF\n\nUNTRACKED CONTRACT\nContract 47-A: Mass Variance Sample\n0%\n\nA slam hit you.\n\nNext: open Mission Log (J) and Track Nav on a contract.\n\nSAVED 2 MIN AGO TO AUTOSAVE.\n\nGAME\nSHIP\nREFERENCE\nMEDIA\nPLAY\nDEV\nEXIT\nRESUME\nSETTINGS\nSAVE\nLOAD\nMISSION LOG\nMY SHIP\nOPERATIONS (AUTOMATION)\nHELP / CONTROLS\nCODEX\nACHIEVEMENTS\nRECORDS WALL\nPHOTO\nREPLAY\nCLIPS\nPHYSICS CHALLENGES\nSANDBOX\nMAIN MENU\n\nEsc\nRESUME\nP\nPHOTO\nF5\nQUICK SAVE\nF9\nQUICK LOAD\n\u2191\u2193\nCATEGORY\n\u2190\u2192\nITEM\n\nSPACEFACE V0.2.0-BETA.1 \u00b7 SEED 7405\n\nMORROWLIGHT \u00b7 PERSONAL SALVAGE TENDER. Morrowlight \u00b7 A light left on. These three finite recovery loads contain scrap metal, salvage electronics and fuel cells. Match a crate\u2019s speed within 75 wu to transfer what fits into your normal hold. Stage 3 clamps one of these original pods; unload it before using its supplies. Empty shells stay empty.. Choices: 1 Morrowlight emergency locker \u00b7 11 units, 2 Broken shift repair crate \u00b7 18 units, 3 Old survey expedition chest \u00b7 24 units, 4 Return to flight."
+      }
+    },
+    {
+      "capturedAtUTC": "2026-11-04T21:30:39.535Z",
+      "result": {
+        "tick": 27552,
+        "simTime": 459.19999999991103,
+        "mode": "paused",
+        "meta": {
+          "version": 23,
+          "seed": 7405,
+          "playtimeS": 459.19999999991103,
+          "createdAt": "",
+          "lastSavedAt": "2026-11-04T21:30:28.584Z"
+        },
+        "save": {
+          "lastAutosaveAt": 0,
+          "dirty": false,
+          "currentSlot": "auto",
+          "pendingWrite": null,
+          "lastWriteOk": null,
+          "lastWriteFailure": null,
+          "consecutiveWriteFailures": 0,
+          "sharedStoreStatus": {
+            "syncPending": false,
+            "mirrorHealthy": true
+          }
+        },
+        "keys": [
+          "sf.save.auto",
+          "sf.settings.profile.v1",
+          "sf.save.achievements",
+          "sf.save.index",
+          "sf.save.quick"
+        ]
+      }
+    },
+    {
+      "capturedAtUTC": "2026-11-04T21:31:16.062Z",
+      "result": {
+        "mode": "paused",
+        "tick": 27552,
+        "credits": 5180,
+        "reward": {
+          "version": 1,
+          "status": "settled",
+          "storyId": "lw_helios_empty_plinth",
+          "receiptId": "lantern-ward:venn-family-lamp:service:01",
+          "credited": 180,
+          "committedTick": 25067,
+          "committedAtS": 417.78333333328203
+        },
+        "index": "{\"auto\":{\"slot\":\"auto\",\"savedAt\":\"2026-11-04T21:28:44.229Z\",\"playtimeS\":417,\"credits\":5180,\"sectorName\":\"Helios Prime\",\"shipName\":\"ship_kestrel\",\"navObjectiveSummary\":\"Objective: Lantern Ward \u00b7 Borrowable Procession Cradle\",\"missionSummary\":\"Mission: Contract 47-A: Mass Variance Sample\",\"storySummary\":\"Story: Cold Start - Contract 47-A: sample the 12.4t mass discrepancy, dock Helios. Payment wi...\",\"objectiveSummary\":\"Objective: Lantern Ward \u00b7 Borrowable Procession Cradle\",\"mode\":\"adventure\",\"version\":23,\"_blobHash\":\"b82530c4\"},\"quick\":{\"slot\":\"quick\",\"savedAt\":\"2026-11-04T21:30:28.584Z\",\"playtimeS\":459,\"credits\":5180,\"sectorName\":\"Helios Prime\",\"shipName\":\"ship_kestrel\",\"navObjectiveSummary\":\"Objective: Lantern Ward \u00b7 Borrowable Procession Cradle\",\"missionSummary\":\"Mission: Contract 47-A: Mass Variance Sample\",\"storySummary\":\"Story: Cold Start - Contract 47-A: sample the 12.4t mass discrepancy, dock Helios. Payment wi...\",\"objectiveSummary\":\"Objective: Lantern Ward \u00b7 Borrowable Procession Cradle\",\"mode\":\"adventure\",\"version\":23,\"_blobHash\":\"9fe6de60\"}}",
+        "quickLength": 680683,
+        "quickPrefix": "{\"fmt\":\"spaceface-save-gz\",\"gz\":1,\"version\":23,\"savedAt\":\"2026-11-04T21:30:28.584Z\",\"checksum\":\"5eda30f7\",\"payload\":\"H4sIAAAAAAAAA6y9bXMjx5E",
+        "autoLength": 678463,
+        "text": "RADIO\nLantern Ward \u00b7 Borrowable Procession Cradle\n\u2196 9 u\nN\nRANGE 4.0K\n\u25c6 LANTERN WARD \u00b7 BORRO \u00b7 125\nHITCH \u00b7 STARTER \u00b7 TIER 0\nF8\n1\n2\n3\n4\n5\nLINE \u00b7 HAULSPACE\n'\nBOOST\n0\nU/S\n0\nTOP\n195\n439\nAT REST\nENERGY\n80\nHEAT\n0%\n100%\nHULL\n100\nSHIELD\n0\nARMOR\nAchievement: Signed and Delivered.\nMassline break.\nBAND OFF\nSaved Quick\nPAUSED\nFLIGHT BRIEF\n\nUNTRACKED CONTRACT\nContract 47-A: Mass Variance Sample\n0%\n\nA slam hit you.\n\nNext: open Mission Log (J) and Track Nav on a contract.\n\nSAVED 1 MIN AGO TO AUTOSAVE.\n\nGAME\nSHIP\nREFERENCE\nMEDIA\nPLAY\nDEV\nEXIT\nRESUME\nSETTINGS\nSAVE\nLOAD\nMISSION LOG\nMY SHIP\nOPERATIONS (AUTOMATION)\nHELP / CONTROLS\nCODEX\nACHIEVEMENTS\nRECORDS WALL\nPHOTO\nREPLAY\nCLIPS\nPHYSICS CHALLENGES\nSANDBOX\nMAIN MENU\n\nEsc\nRESUME\nP\nPHOTO\nF5\nQUICK SAVE\nF9\nQUICK LOAD\n\u2191\u2193\nCATEGORY\n\u2190\u2192\nITEM\n\nSPACEFACE V0.2.0-BETA.1 \u00b7 SEED 7405\n\nMORROWLIGHT \u00b7 PERSONAL SALVAGE TENDER. Morrowlight \u00b7 A light left on. These three finite recovery loads contain scrap metal, salvage electronics and fuel cells. Match a crate\u2019s speed within 75 wu to transfer what fits into your normal hold. Stage 3 clamps one of these original pods; unload it before using its supplies. Empty shells stay empty.. Choices: 1 Morrowlight emergency locker \u00b7 11 units, 2 Broken shift repair crate \u00b7 18 units, 3 Old survey expedition chest \u00b7 24 units, 4 Return to flight."
+      }
+    },
+    {
+      "capturedAtUTC": "2026-11-04T21:32:36.607Z",
+      "result": {
+        "mode": "menu",
+        "tick": 27552,
+        "simTime": 459.19999999991103,
+        "text": "RADIO\nLantern Ward \u00b7 Borrowable Procession Cradle\n\u2196 9 u\nN\nRANGE 4.0K\n\u25c6 LANTERN WARD \u00b7 BORRO \u00b7 125\nHITCH \u00b7 STARTER \u00b7 TIER 0\nF8\n1\n2\n3\n4\n5\nLINE \u00b7 HAULSPACE\n'\nBOOST\n0\nU/S\n0\nTOP\n195\n439\nAT REST\nENERGY\n80\nHEAT\n0%\n100%\nHULL\n100\nSHIELD\n0\nARMOR\nAchievement: Signed and Delivered.\nMassline break.\nBAND OFF\nSaved Quick\n\nCONTINUE \u00b7 QUICK \u00b7 SAVED 11/4/2026, 4:30:28 PM \u00b7 HELIOS PRIME \u00b7 KESTREL \u00b7 OBJECTIVE: LANTERN WARD \u00b7 BORROWABLE PROCESSION CRADLE \u00b7 7M PLAYED \u00b7 5,180 CR\n\nSpaceFace\nORRERY OF THE HELIOS REACH\nCONTINUE\nContinue: Quick \u00b7 saved 11/4/2026, 4:30:28 PM \u00b7 Helios Prime \u00b7 Kestrel \u00b7 Objective: Lantern Ward \u00b7 Borrowable Procession Cradle \u00b7 7m played \u00b7 5,180 CR\nNEW GAME\nLOAD\nCRUCIBLE\nA scored ten-wave survival run\nSETTINGS\nHELP\nARCHIVE\nAuthored intro reels, in the Codex\nCIRCUITS\nLogic circuit sandbox\nSANDBOX\nFree flight sandbox\nPHYSICS CHALLENGES\nOrbital physics challenges\nSPACEFACE V0.2.0-BETA.1\n\u00b7\nCREDITS\n\u00b7\nACHIEVEMENTS\nMORROWLIGHT \u00b7 PERSONAL SALVAGE TENDER. Morrowlight \u00b7 A light left on. These three finite recovery loads contain scrap metal, salvage electronics and fuel cells. Match a crate\u2019s speed within 75 wu to transfer what fits into your normal hold. Stage 3 clamps one of these original pods; unload it before using its supplies. Empty shells stay empty.. Choices: 1 Morrowlight emergency locker \u00b7 11 units, 2 Broken shift repair crate \u00b7 18 units, 3 Old survey expedition chest \u00b7 24 units, 4 Return to flight.",
+        "saveIndex": "{\"auto\":{\"slot\":\"auto\",\"savedAt\":\"2026-11-04T21:28:44.229Z\",\"playtimeS\":417,\"credits\":5180,\"sectorName\":\"Helios Prime\",\"shipName\":\"ship_kestrel\",\"navObjectiveSummary\":\"Objective: Lantern Ward \u00b7 Borrowable Procession Cradle\",\"missionSummary\":\"Mission: Contract 47-A: Mass Variance Sample\",\"storySummary\":\"Story: Cold Start - Contract 47-A: sample the 12.4t mass discrepancy, dock Helios. Payment wi...\",\"objectiveSummary\":\"Objective: Lantern Ward \u00b7 Borrowable Procession Cradle\",\"mode\":\"adventure\",\"version\":23,\"_blobHash\":\"b82530c4\"},\"quick\":{\"slot\":\"quick\",\"savedAt\":\"2026-11-04T21:30:28.584Z\",\"playtimeS\":459,\"credits\":5180,\"sectorName\":\"Helios Prime\",\"shipName\":\"ship_kestrel\",\"navObjectiveSummary\":\"Objective: Lantern Ward \u00b7 Borrowable Procession Cradle\",\"missionSummary\":\"Mission: Contract 47-A: Mass Variance Sample\",\"storySummary\":\"Story: Cold Start - Contract 47-A: sample the 12.4t mass discrepancy, dock Helios. Payment wi...\",\"objectiveSummary\":\"Objective: Lantern Ward \u00b7 Borrowable Procession Cradle\",\"mode\":\"adventure\",\"version\":23,\"_blobHash\":\"9fe6de60\"}}",
+        "quickLength": 680683
+      }
+    }
+  ],
+  "saveStatus": "F5 Quick Save acknowledged; public Main Menu reached; Continue advertises Quick, 5180 CR; waiting for repaired visual source before reload/Continue"
+}

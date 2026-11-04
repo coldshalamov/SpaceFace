@@ -1,0 +1,19 @@
+{
+  "capturedAtUTC": "2026-11-04T21:13:50.097243+00:00",
+  "head": "95da882cc002e8ee846651b00268851ea02167a6",
+  "browserSession": 5887,
+  "seed": 7405,
+  "profile": "public First Light, High performance, Mute all; public experienced Adventure launch",
+  "renderer": "Chromium software SwiftShader",
+  "files": {
+    "src/systems/lanternWardWork.js": "535e7a2d424699af7ef1260b6343e3e0fcd5dd8609b92478b9d36f15042ac9d9",
+    "src/data/lanternWardHardware.js": "398a673f0de7a16ac654736171ffc83fcc1f78bbcd4fc8d88c45d5dddd1e825c",
+    "src/data/lanternWardLayout.js": "05e261278e5e45b638515d2c2e40b0a601c79496d58a36f03ceb50977ca27662",
+    "src/world/worldRecords.js": "698830b9c4e565092214912edbe78b09aa57d9bd4532499dc83738e1921cf0d7",
+    "src/render/lanternWardVisuals.js": "cfa3efce32427c39cc20f5363da56869f48b0d965a211b5ff0edd9f8840f6e10",
+    "scripts/lib/simReadModel.mjs": "ac839ac4b764245656a54b637612bf1e4a3fa2b94167f96a82334449e78cd5cc",
+    "scripts/lib/simWorkerHost.mjs": "5ef0133ef46bbdc3208cc47f8a1cbcdcc0fb19c04dce6fec9d327dbf3324f3f8",
+    "scripts/lib/npcJobsMirror.mjs": "86bc38aa6d4fd99169fb60008e6b54b82ff141d0813afb4ccdc42cf618b5e651"
+  },
+  "note": "Independent source snapshot immediately before seed-7405 ordinary route; source read-only, settings chosen through public UI."
+}

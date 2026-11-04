@@ -1,0 +1,31 @@
+{
+  "capturedAtUTC": "2026-11-04T20:37:41.053280+00:00",
+  "baseCommit": "b431c9b9d297572b00faff828bb152e0a736858f",
+  "note": "Historical pre-G5 candidate, superseded by the later authority, startup, swept-route and worker-projection repairs. These original hashes are retained for provenance. This manifest does not identify the current source or certify later captures; use the repaired-candidate manifest for those results.",
+  "files": {
+    "src/audio/commissionCues.js": "71b24621f56e25f6f69289fde38866a2db12f150761970d0cf9810010b8797c7",
+    "src/data/audioRecipes.js": "81fc14cb92d34cfbf57224c7463a04dd3127c329ea7eb16f23034ed688b17be4",
+    "src/data/combatDefs.js": "0f19a23537ff7c25fb722b49ade282840eab0bd4feac1c181d563e0e2a913c3f",
+    "src/data/contactHail.js": "db02cf27ef15a8b2fa66887afeb2d129eea8ec754648e4fe8834ca9cc5ffe348",
+    "src/data/lanternWardHail.js": "cbe0891f0e1120085a8593bffd18207ac99beefd9bc86a596b8088686d7ddeca",
+    "src/data/lanternWardHardware.js": "b055b92d0526a1b0d357b0ed34b6935e2a2f7789ba49979c7f823ed9738efa8e",
+    "src/data/lanternWardLayout.js": "05e261278e5e45b638515d2c2e40b0a601c79496d58a36f03ceb50977ca27662",
+    "src/data/saveVersion.js": "afb140227a1d018a61a444b427f1fca237138f451a7bfde709368951fd43223f",
+    "src/missions/lanternWardConversation.js": "13edc2ce991030b720267660d09c875ac79c64c4c8d53c18d7c5b3cc166b43b2",
+    "src/missions/lanternWardStory.js": "d02649b9e8aebe478cb68c62ccd9138d6159f693442af457ae9faf4ffad689fe",
+    "src/render/combat/npcCableFx.js": "035ad99895cf54faef3ff8ea0a1d767e5fa7e7f3a4e2d8ff2470a90e14c90b95",
+    "src/render/lanternWardVisuals.js": "cfa3efce32427c39cc20f5363da56869f48b0d965a211b5ff0edd9f8840f6e10",
+    "src/render/visualFactory.js": "ce4fbf5d0a2a14a221dec29fd3dd2706cf6de6fa65e7ef3006bc045339bfd32c",
+    "src/save/migrations.js": "10e16563e9dd889d54eec5405fc87bc144b3e5a0b2c2ef9fcab61cd36e2f2bdf",
+    "src/systems/lanternWardWork.js": "13a064dfa661135ebb49d9a678509dc54737d91a6781745e7ac11c3ad4edf94e",
+    "src/systems/missionStoryOps.js": "5a5706e2d74adcc67a1d2c6be9b65284868d2c370cd47bab7d684cd2439b8e01",
+    "src/systems/missions.js": "a2e89bfc6d6fe6f606a2ffbadd62cd049917c44eac07ed42c1ac142e1b00f2fd",
+    "src/systems/npcJobsRuntime.js": "c55847c4f7297997154cd6ec551fe9325827e1a11a42781de45475f6a52ff4d8",
+    "src/systems/scanner.js": "f7182cf06f4bea291c378772226caae26611667cd84d738170a87a7f13d4a331",
+    "src/systems/world.js": "4b82d4431b4baab10837077f9b2f2689ad024dc363e9551279c0171f300e7460",
+    "src/world/lanternWardActors.js": "58a43fdd3ba2001270c388fc9ded26a385eadddc553b5ae1ec358444534d7f96",
+    "src/world/lanternWardDressing.js": "4fc0676803c67692433c60d8e7ddc2354e09b00f76b42794dc2a815cf1b31a1b",
+    "src/world/worldCatchup.js": "9470dc36c66b36c1764a87e8737f3f344d9fdf67c183ee97be7fb61ef39bd101",
+    "src/world/worldRecords.js": "f17c80580a5cfcdc1b4e67a683d8c8abe588b9181bf42355025291026215799f"
+  }
+}

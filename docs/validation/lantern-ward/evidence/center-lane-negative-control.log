@@ -1,0 +1,30 @@
+LANTERN_NEGATIVE_CONTROL: original crew stand substituted in memory only
+LANTERN_CONTINUED_CENTER_LANE {"tick":10810,"simTime":180.16666666670218,"phase":"transit","lane":0,"cradle":{"pos":{"x":1772.9459228515625,"y":0,"z":-650.0033569335938},"vel":{"x":0.013568186201155186,"y":0,"z":-0.02030983939766884}},"tug":{"pos":{"x":1795.288818359375,"y":0,"z":-644.0086669921875},"vel":{"x":-0.006311308592557907,"y":0,"z":0.01128237321972847}},"lamp":{"x":1772.83203125,"y":0,"z":-650.42626953125}}
+✖ a continued center-lane jam moves its already waiting operator clear and resumes the same load (9698.387107ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 12881.610587
+
+✖ failing tests:
+
+test at test/lantern-ward-center-lane.test.mjs:96:1
+✖ a continued center-lane jam moves its already waiting operator clear and resumes the same load (9698.387107ms)
+  AssertionError [ERR_ASSERTION]: the already parked original must release the actual load path
+  
+  false !== true
+  
+      at TestContext.<anonymous> (file:///workspace/scratch/3a00c06b9899/SpaceFace/test/lantern-ward-center-lane.test.mjs:105:12)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

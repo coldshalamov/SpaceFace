@@ -1,0 +1,267 @@
+{
+  "evidence": "7404-public-auto-continue",
+  "sourceCommit": "37ee2378",
+  "inputRoute": "Public reload, menu Continue from acknowledged Auto slot",
+  "mode": "flight",
+  "simTime": 415.16666666661774,
+  "seed": 7404,
+  "credits": 5000,
+  "player": {
+    "x": 1929.6021728515625,
+    "y": 0,
+    "z": -693.1591186523438
+  },
+  "autosave": {
+    "length": 633995,
+    "version": 23,
+    "savedAt": "2026-11-04T20:47:28.820Z",
+    "sectionCount": 109,
+    "ward": {
+      "version": 1,
+      "initialized": true,
+      "phase": "missing",
+      "objects": {
+        "cradle": {
+          "recordId": "lantern-ward:cradle",
+          "spawned": true,
+          "lost": false
+        },
+        "lamp": {
+          "recordId": "lantern-ward:lamp",
+          "spawned": true,
+          "lost": false
+        },
+        "receiver": {
+          "recordId": "lantern-ward:receiver",
+          "spawned": true,
+          "lost": false
+        },
+        "obstruction": {
+          "recordId": "lantern-ward:obstruction",
+          "spawned": true,
+          "lost": false
+        },
+        "service_face": {
+          "recordId": "lantern-ward:service_face",
+          "spawned": true,
+          "lost": false
+        },
+        "maintenance_part": {
+          "recordId": "lantern-ward:maintenance_part",
+          "spawned": true,
+          "lost": false
+        },
+        "tug": {
+          "recordId": "lantern-ward:tug",
+          "spawned": true,
+          "lost": true
+        },
+        "commuter": {
+          "recordId": "lantern-ward:commuter",
+          "spawned": true,
+          "lost": false
+        },
+        "maintenance": {
+          "recordId": "lantern-ward:maintenance",
+          "spawned": true,
+          "lost": false
+        }
+      },
+      "history": {
+        "playerCleared": false,
+        "playerCarried": false,
+        "borrowed": false,
+        "cradleStolen": false,
+        "lampStolen": false,
+        "damaged": false,
+        "repaired": false,
+        "ignored": false,
+        "recovered": false,
+        "clampSounded": false,
+        "departures": 4,
+        "installations": 0,
+        "maintenanceServices": 1
+      },
+      "observedS": 275.0833333334118,
+      "blockedS": 71.88333333333054,
+      "workS": 0,
+      "maintenanceS": 0,
+      "maintenancePickupS": 2.0166666666666644,
+      "maintenancePhase": "retreat",
+      "commuterLeg": 0,
+      "commuterDwellS": 0,
+      "commuterWaitS": 0,
+      "firstCompletionReceipt": null,
+      "firstSeenAtS": 74.69999999999705,
+      "repairConsumed": false,
+      "needsReinstall": false,
+      "lampMissing": false,
+      "cradleAway": true,
+      "obstructionTouchedAtS": null,
+      "clearanceLane": 0,
+      "tugRouteMode": "cut",
+      "tugRouteStage": 0,
+      "cradleRouteStage": 0,
+      "tugReturnStage": 0,
+      "blocked": false
+    },
+    "tugRecord": {
+      "recordId": "lantern-ward:tug",
+      "kind": "convoy",
+      "sectorId": "sector_helios_prime",
+      "homeSectorId": "sector_helios_prime",
+      "pos": {
+        "x": 1776.2803955078125,
+        "z": -620.6697387695312
+      },
+      "vel": {
+        "x": 0,
+        "z": 0
+      },
+      "rot": 0,
+      "angVel": 0,
+      "type": "ship",
+      "enemyTypeId": null,
+      "shipDefId": "ship_mule",
+      "factionId": "faction_free",
+      "team": 2,
+      "level": 1,
+      "hull": 200,
+      "hullMax": 200,
+      "shield": 70,
+      "shieldMax": 70,
+      "armorHp": 0,
+      "armorMax": 0,
+      "alive": false,
+      "outcome": "destroyed",
+      "missionId": null,
+      "missionTag": null,
+      "jobId": null,
+      "playerOwned": false,
+      "playerCreated": false,
+      "named": true,
+      "name": "Nessa Venn · Last Watch Electrical",
+      "retentionClass": "permanent",
+      "trafficRole": "tug",
+      "trafficLabel": null,
+      "itinerary": {
+        "kind": "lantern_ward_actor",
+        "lanternWard": {
+          "role": "tug",
+          "identity": "lantern-ward:tug",
+          "version": 1
+        }
+      },
+      "cargoManifest": null,
+      "freightDockSeq": null,
+      "wreckClass": null,
+      "markerId": null,
+      "victimClass": null,
+      "ai": {
+        "passive": true,
+        "allowPassiveManeuver": false,
+        "roe": "hold_fire",
+        "spawnContext": "convoy_civilian"
+      },
+      "isBoss": false,
+      "bossPoiId": null,
+      "bossSectorId": null,
+      "epoch": 0,
+      "createdTick": 2,
+      "lastSeenTick": 4587,
+      "durableReason": "convoy",
+      "identityKey": "lantern-ward:tug",
+      "recordSource": null,
+      "recipeKey": null,
+      "lastExactT": 0.03333333333333333,
+      "lastObservedT": 0.03333333333333333,
+      "abstractTier": "S0_EXACT",
+      "intent": null,
+      "nextEventAtT": null,
+      "scheduledEventIds": [],
+      "regeneration": {
+        "hullRate": 0,
+        "shieldRate": 0,
+        "repairAtT": null
+      },
+      "deactivation": {
+        "reason": null,
+        "exactSnapshotHash": null,
+        "generation": 0
+      },
+      "extra": {}
+    }
+  },
+  "bodies": [
+    {
+      "record": "lantern-ward:cradle",
+      "id": 590,
+      "g": 92,
+      "pos": {
+        "x": 2278.85400390625,
+        "y": 0,
+        "z": -710.0343627929688
+      },
+      "hull": 280,
+      "custody": {
+        "holder": "ward",
+        "loadSerial": "venn-family-lamp:01",
+        "clamp": {
+          "attachmentId": "att_000159",
+          "active": true,
+          "ownerRecordId": "lantern-ward:cradle",
+          "targetRecordId": "lantern-ward:lamp"
+        }
+      },
+      "lit": false
+    },
+    {
+      "record": "lantern-ward:lamp",
+      "id": 591,
+      "g": 93,
+      "pos": {
+        "x": 2278.623046875,
+        "y": 0,
+        "z": -709.7260131835938
+      },
+      "hull": 90,
+      "serial": "venn-family-lamp:01",
+      "custody": {
+        "holder": "cradle",
+        "serial": "venn-family-lamp:01",
+        "clamp": {
+          "attachmentId": "att_000159",
+          "active": true,
+          "ownerRecordId": "lantern-ward:cradle",
+          "targetRecordId": "lantern-ward:lamp"
+        }
+      },
+      "lit": false
+    },
+    {
+      "record": "lantern-ward:maintenance_part",
+      "id": 595,
+      "g": 97,
+      "pos": {
+        "x": 1652.0267333984375,
+        "y": 0,
+        "z": -649.0142822265625
+      },
+      "hull": 90,
+      "serial": "lantern-ward:shutter-bearing:01",
+      "custody": {
+        "holder": "service_face",
+        "serial": "lantern-ward:shutter-bearing:01",
+        "clamp": {
+          "attachmentId": "att_000161",
+          "active": true,
+          "ownerRecordId": "lantern-ward:service_face",
+          "targetRecordId": "lantern-ward:maintenance_part"
+        }
+      },
+      "lit": false
+    }
+  ],
+  "host": "Chromium 153 / SwiftShader, 1280×800, First Light accessibility preset; software renderer, no native GPU qualification",
+  "limitation": "This proves ordinary acknowledged autosave/Continue for the disrupted operation, not successful installation or later authority-repair code."
+}

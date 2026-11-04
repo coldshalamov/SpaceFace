@@ -1,0 +1,45 @@
+✔ ordinary Helios world pass admits one bounded shore, never a second memorial (3.624239ms)
+✔ static collision uses the same boxes as the authored visible shore (5.909327ms)
+✔ reservations and all bodies use the live anchor in the existing global frame (0.614739ms)
+✔ ordinary Nessa hail describes a physical repair and dispatches its offered action once (10.797906ms)
+✔ expired, unoffered and recycled-occupant hail actions cannot dispatch a repair (1.950143ms)
+✔ the first forty observed seconds stay wordless; saved return dialogue follows actual work history (1.014119ms)
+✔ legacy Continue starts unvisited Ward history without replacing existing jobs or memorial records (2.957153ms)
+✔ migration never resurrects supplied Ward history and tolerates malformed old envelopes (0.427021ms)
+✔ world owner captures every finite body with its actual pose, damage and custody (9.710758ms)
+✔ dead, substituted and malformed lamp records cannot fall through to a generic ship (1.361723ms)
+✔ Continue preserves all three crew hulls, work identities, damage and an emptied hold (8.608068ms)
+✔ optional ambient service settles through canonical world sector and economy event once (2.619104ms)
+✔ only a stable receipt ID is accepted, never a caller-provided receipt object (0.314966ms)
+✔ receipt identity, cardinality, commitment and player contribution are strict (0.489654ms)
+✔ late, future and off-sector evidence cannot settle (0.309057ms)
+✔ work authority denial of a replaced generation is honored even with a saved completion (0.16213ms)
+✔ work receipt lookup failures are closed without reserving or paying (0.151554ms)
+✔ reentrant dispatch cannot pay twice and leaves the saved journal settled (0.220255ms)
+✔ Continue preserves both settled and uncertain reserved journals without repayment (0.334956ms)
+✔ normalization is additive, typed, whitelisted, idempotent and nonmutating (1.476759ms)
+✔ authority capability and valid balance are required before reserving (0.403818ms)
+✔ reward respects integer capacity including a full credit balance (0.309398ms)
+✔ throwing or missing credit listeners preserve a closed reservation across Continue (5.949395ms)
+✔ completion presentation failures cannot reopen a paid reward (0.288808ms)
+✔ dialogue remains a deterministic pure projection with distinct household consequences (0.847374ms)
+✔ saved causal revisits require an explicit player revisit, never commuter departures (0.294847ms)
+✔ unknown status stays neutral and the canonical memorial stays dark (0.360514ms)
+✔ ordinary visual selector only accepts its explicit ward identity; never the Candle Fleet (1.79864ms)
+✔ lamp is one distinct physical visual; empty cradle and receiver contain no cosmetic payload (87.433892ms)
+✔ phase, clamp and saved damage articulate real parts and never mutate the entity (19.590767ms)
+✔ tool tip contacts the named power socket after rotation and nonzero frame translation (25.745869ms)
+✔ new occupants cannot reuse the old visual worker, light or attachment pose (17.804686ms)
+✔ damage and actual service truth distinguish return views without flashing (6.905982ms)
+✔ finite authored bounds contain all work, empty, broken and retreat poses (56.684584ms)
+✔ all named sockets agree with the same XZ transform used by physical owners (46.299939ms)
+✔ bounded graph and private resources survive LOD, malformed poses and repeated retirement (17.922655ms)
+✔ district geometry is a live-anchor-relative crescent with a real clear service gap (0.537114ms)
+ℹ tests 37
+ℹ suites 0
+ℹ pass 37
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 490.56073

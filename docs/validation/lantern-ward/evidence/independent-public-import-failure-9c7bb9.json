@@ -1,0 +1,209 @@
+{
+  "schema": "lantern-ward-independent-public-import-failure-v1",
+  "reviewer": "hostile_review_one",
+  "capturedAtUTC": "2026-11-04 23:38:48 UTC",
+  "loadedSourceCommit": "9c7bb9006b5dffee7fc39487277ad8f411feba10",
+  "harness": {
+    "session": 18311,
+    "path": ".devshots/lantern-ward/hostile-review-1-import-session.mjs",
+    "basis": "One isolated copy of root's harness, adding only the authorized Playwright native file-input action",
+    "viewport": {
+      "width": 1280,
+      "height": 800
+    },
+    "renderer": "Chromium / SwiftShader",
+    "stateAtHandoff": "alive, idle on public Load screen, mode menu, tick 0"
+  },
+  "reproductionFile": {
+    "path": ".devshots/lantern-ward/public-quick-7407.json",
+    "bytes": 2388721,
+    "sha256Before": "d010d23e939dcbc6aa61e090913dd5b23026d7a65b72a8495f23aed0e283f3ed",
+    "sha256After": "d010d23e939dcbc6aa61e090913dd5b23026d7a65b72a8495f23aed0e283f3ed",
+    "version": 23,
+    "slot": "quick",
+    "savedAt": "2026-11-04T22:35:37.741Z",
+    "playtimeS": 557,
+    "checksum": "a00db65c",
+    "dataMetaSeed": 7407
+  },
+  "publicRoute": [
+    "Choose Play on the observed First light prompt",
+    "Main menu Load Game",
+    "Select unchanged exported JSON through the observed native input[type=file] using setInputFiles",
+    "Observe Import save file? and Import & Load confirmation",
+    "Click the observed .sf-confirm__ok Import & Load button",
+    "Observe Import failed / Flight interrupted",
+    "Capture 14",
+    "Click observed Restart to main menu",
+    "Open Load Game and observe No saves yet / Quick Empty slot",
+    "Capture 15 and hold at menu for source update"
+  ],
+  "independentObservation": {
+    "error": "SimulationRunner is closed — sim worker directive failed: Failed to execute 'postMessage' on 'DedicatedWorkerGlobalScope': #<Promise> could not be cloned.",
+    "afterImport": {
+      "mode": "menu",
+      "tick": 0,
+      "simTime": 0,
+      "ui": [
+        "Import failed",
+        "Flight interrupted",
+        "The simulation stopped before another frame could be completed."
+      ]
+    },
+    "afterPublicRecovery": {
+      "mode": "menu",
+      "tick": 0,
+      "noSavesYet": true,
+      "quickVisibleState": "Empty slot"
+    },
+    "controllableFlightReached": false,
+    "openingAdmissionVerified": false,
+    "originalLiveCustodyVerified": false,
+    "f9RoundTripPerformed": false
+  },
+  "constraints": {
+    "noLocalStorageOrStateAPIWrites": true,
+    "noSimulationMutation": true,
+    "noDebugFlagChange": true,
+    "oneOwnBrowser": true,
+    "foreignBrowsersUntouched": true,
+    "noRuntimeSourceEdits": true
+  },
+  "captures": [
+    {
+      "file": "14-independent-public-import-failure-7407.png",
+      "sha256": "736f4c1c26de79e8bee3211c7de2b1f71db05feaf08b009cd5ad0700a63b3e79",
+      "personallyOpened": true
+    },
+    {
+      "file": "15-independent-empty-quick-after-import-7407.png",
+      "sha256": "7bd460dcd1995af02ba8f104312ba7a9d5f7cb71963399793f4f4eb41fadc54d",
+      "personallyOpened": true
+    }
+  ],
+  "verdict": "REJECT: concrete independent public-import failure before flight; repaired opening-admission contract remains unverified by this route",
+  "rawHarnessActionLog": [
+    {
+      "command": {
+        "action": "read",
+        "expression": "({text:document.body.innerText.slice(0,7000),buttons:[...document.querySelectorAll('button')].filter(e=>e.getClientRects().length).map(e=>({id:e.id,text:e.innerText,aria:e.getAttribute('aria-label')})).slice(0,40),fileInputs:[...document.querySelectorAll('input[type=file]')].map(e=>({id:e.id,accept:e.accept}))})"
+      },
+      "result": "{\"action\":\"read\",\"expression\":\"({text:document.body.innerText.slice(0,7000),buttons:[...document.querySelectorAll('button')].filter(e=>e.getClientRects().length).map(e=>({id:e.id,text:e.innerText,aria:e.getAttribute('aria-label')})).slice(0,40),fileInputs:[...document.querySelectorAll('input[type=file]')].map(e=>({id:e.id,accept:e.accept}))})\"}\r\n{\"done\":\"read\",\"result\":{\"text\":\"RADIO\\nN\\nYOU\\nHOSTILE\\nSTATION\\nGATE\\nALLY\\nHAULER\\nPATROL\\nNEUTRAL\\nHITCH · STARTER · TIER 0\\nBOOST\\n0\\nU/S\\n0\\nTOP\\nENERGY\\nHEAT\\nHULL\\nSHIELD\\nARMOR\\nGraphics hardware acceleration appears OFF — the game is rendering in slow software mode. Turn on hardware acceleration in your browser (or run the Desktop launcher) for smooth play.\\n\\nFLIGHT SYSTEMS ONLINE\\n\\nSpaceFace\\nORRERY OF THE HELIOS REACH\\nNEW GAME\\nLOAD\\nCRUCIBLE\\nA scored ten-wave survival run\\nSETTINGS\\nHELP\\nARCHIVE\\nAuthored intro reels, in the Codex\\nCIRCUITS\\nLogic circuit sandbox\\nSANDBOX\\nFree flight sandbox\\nPHYSICS CHALLENGES\\nOrbital physics challenges\\nSPACEFACE V0.2.0-BETA.1\\n·\\nCREDITS\\n·\\nACHIEVEMENTS\\nHELIOS SYSTEM · FRONTIER SECTOR\\nDEEP SPACE FLIGHT SYSTEMS\\nSPACEFACE\\nSPACE FLIGHT & EXPLORATION\\nCLICK OR PRESS ANY KEY TO BEGIN\\nBEACON SIGNAL\\nHELIOS TRANSIT\\nALL CHANNELS OPEN\\nCONFIRM\\nFirst light\\n\\nPlay as-is, or start with calmer motion, reduced flashing, high contrast, larger text and backed captions. Settings > Access has them any time.\\n\\nUSE FIRST LIGHT\\nESC\\nPLAY\",\"buttons\":[{\"id\":\"sf-comm-backlog-btn\",\"text\":\"\",\"aria\":\"Open comms log\"},{\"id\":\"\",\"text\":\"\",\"aria\":\"Hail selected contact\"},{\"id\":\"\",\"text\":\"NEW GAME\",\"aria\":null},{\"id\":\"\",\"text\":\"LOAD\",\"aria\":\"Load Game\"},{\"id\":\"\",\"text\":\"CRUCIBLE\",\"aria\":null},{\"id\":\"\",\"text\":\"SETTINGS\",\"aria\":null},{\"id\":\"\",\"text\":\"HELP\",\"aria\":\"Help and flight controls\"},{\"id\":\"\",\"text\":\"ARCHIVE\",\"aria\":\"Signal Archive\"},{\"id\":\"\",\"text\":\"CIRCUITS\",\"aria\":\"Logic circuit sandbox\"},{\"id\":\"\",\"text\":\"SANDBOX\",\"aria\":\"Free flight sandbox\"},{\"id\":\"\",\"text\":\"PHYSICS CHALLENGES\",\"aria\":\"Orbital physics challenges\"},{\"id\":\"\",\"text\":\"CREDITS\",\"aria\":null},{\"id\":\"\",\"text\":\"ACHIEVEMENTS\",\"aria\":null},{\"id\":\"\",\"text\":\"USE FIRST LIGHT\\nESC\",\"aria\":null},{\"id\":\"\",\"text\":\"PLAY\",\"aria\":null}],\"fileInputs\":[{\"id\":\"\",\"accept\":\".json,application/json\"}]}}\r\n"
+    },
+    {
+      "command": {
+        "action": "read",
+        "expression": "({confirmButtons:[...document.querySelectorAll('button')].filter(e=>e.getClientRects().length&&(/PLAY|FIRST LIGHT/.test(e.innerText))).map(e=>e.outerHTML),files:[...document.querySelectorAll('input[type=file]')].map(e=>e.outerHTML)})"
+      },
+      "result": "{\"action\":\"read\",\"expression\":\"({confirmButtons:[...document.querySelectorAll('button')].filter(e=>e.getClientRects().length&&(/PLAY|FIRST LIGHT/.test(e.innerText))).map(e=>e.outerHTML),files:[...document.querySelectorAll('input[type=file]')].map(e=>e.outerHTML)})\"}\r\n"
+    },
+    {
+      "poll": true,
+      "result": "{\"done\":\"read\",\"result\":{\"confirmButtons\":[\"<button class=\\\"sf-confirm__key sf-confirm__cancel\\\" type=\\\"button\\\">Use first light<span class=\\\"sf-confirm__kbd\\\" aria-hidden=\\\"true\\\">ESC</span></button>\",\"<button class=\\\"sf-confirm__key sf-confirm__ok sf-confirm__key--lamp\\\" type=\\\"button\\\">Play</button>\"],\"files\":[\"<input type=\\\"file\\\" accept=\\\".json,application/json\\\" hidden=\\\"\\\">\"]}}\r\n"
+    },
+    {
+      "command": {
+        "action": "selector",
+        "selector": ".sf-confirm__ok"
+      },
+      "result": "{\"action\":\"selector\",\"selector\":\".sf-confirm__ok\"}\r\n"
+    },
+    {
+      "poll": true,
+      "result": "{\"done\":\"selector\",\"result\":\"clicked\"}\r\n"
+    },
+    {
+      "command": {
+        "action": "click",
+        "name": "Load Game"
+      },
+      "result": "{\"action\":\"click\",\"name\":\"Load Game\"}\r\n{\"done\":\"click\",\"result\":\"clicked\"}\r\n"
+    },
+    {
+      "command": {
+        "action": "read",
+        "expression": "({text:document.body.innerText.slice(0,5500),buttons:[...document.querySelectorAll('button')].filter(e=>e.getClientRects().length).map(e=>({id:e.id,text:e.innerText,aria:e.getAttribute('aria-label')})).slice(-30),fileInputs:[...document.querySelectorAll('input[type=file]')].map(e=>e.outerHTML)})"
+      },
+      "result": "{\"action\":\"read\",\"expression\":\"({text:document.body.innerText.slice(0,5500),buttons:[...document.querySelectorAll('button')].filter(e=>e.getClientRects().length).map(e=>({id:e.id,text:e.innerText,aria:e.getAttribute('aria-label')})).slice(-30),fileInputs:[...document.querySelectorAll('input[type=file]')].map(e=>e.outerHTML)})\"}\r\n{\"done\":\"read\",\"result\":{\"text\":\"RADIO\\nN\\nYOU\\nHOSTILE\\nSTATION\\nGATE\\nALLY\\nHAULER\\nPATROL\\nNEUTRAL\\nHITCH · STARTER · TIER 0\\nBOOST\\n0\\nU/S\\n0\\nTOP\\nENERGY\\nHEAT\\nHULL\\nSHIELD\\nARMOR\\nGraphics hardware acceleration appears OFF — the game is rendering in slow software mode. Turn on hardware acceleration in your browser (or run the Desktop launcher) for smooth play.\\nLOAD\\n\\nNo saves yet\\n\\nQUICK\\nEmpty slot\\nSLOT 1\\nEmpty slot\\nSLOT 2\\nEmpty slot\\nSLOT 3\\nEmpty slot\\nSLOT 4\\nEmpty slot\\n\\nQUICK SAVE\\n\\nEMPTY SLOT\\n\\nNothing is filed here yet — a new game starts a life you can save to this slot.\\n\\nNEW GAME\\nEXPORT\\nIMPORT\\nBACK\",\"buttons\":[{\"id\":\"sf-comm-backlog-btn\",\"text\":\"\",\"aria\":\"Open comms log\"},{\"id\":\"\",\"text\":\"\",\"aria\":\"Hail selected contact\"},{\"id\":\"\",\"text\":\"NEW GAME\",\"aria\":null},{\"id\":\"\",\"text\":\"EXPORT\",\"aria\":null},{\"id\":\"\",\"text\":\"IMPORT\",\"aria\":null},{\"id\":\"\",\"text\":\"BACK\",\"aria\":null}],\"fileInputs\":[\"<input type=\\\"file\\\" accept=\\\".json,application/json\\\" hidden=\\\"\\\">\"]}}\r\n"
+    },
+    {
+      "command": {
+        "action": "file",
+        "selector": "input[type=file]",
+        "path": "/workspace/scratch/3a00c06b9899/SpaceFace/.devshots/lantern-ward/public-quick-7407.json"
+      },
+      "result": "{\"action\":\"file\",\"selector\":\"input[type=file]\",\"path\":\"/workspace/scratch/3a00c06b9899/SpaceFace/.devshots/lantern-ward/public-quick-7407.json\"}\r\n{\"done\":\"file\",\"result\":\"file selected\"}\r\n"
+    },
+    {
+      "command": {
+        "action": "read",
+        "expression": "({text:document.body.innerText.slice(-6000),confirm:[...document.querySelectorAll('.sf-confirm__key')].filter(e=>e.getClientRects().length).map(e=>e.outerHTML)})"
+      },
+      "result": "{\"action\":\"read\",\"expression\":\"({text:document.body.innerText.slice(-6000),confirm:[...document.querySelectorAll('.sf-confirm__key')].filter(e=>e.getClientRects().length).map(e=>e.outerHTML)})\"}\r\n{\"done\":\"read\",\"result\":{\"text\":\"RADIO\\nN\\nYOU\\nHOSTILE\\nSTATION\\nGATE\\nALLY\\nHAULER\\nPATROL\\nNEUTRAL\\nHITCH · STARTER · TIER 0\\nBOOST\\n0\\nU/S\\n0\\nTOP\\nENERGY\\nHEAT\\nHULL\\nSHIELD\\nARMOR\\nGraphics hardware acceleration appears OFF — the game is rendering in slow software mode. Turn on hardware acceleration in your browser (or run the Desktop launcher) for smooth play.\\nLOAD\\n\\nNo saves yet\\n\\nQUICK\\nEmpty slot\\nSLOT 1\\nEmpty slot\\nSLOT 2\\nEmpty slot\\nSLOT 3\\nEmpty slot\\nSLOT 4\\nEmpty slot\\n\\nQUICK SAVE\\n\\nEMPTY SLOT\\n\\nNothing is filed here yet — a new game starts a life you can save to this slot.\\n\\nNEW GAME\\nEXPORT\\nIMPORT\\nBACK\\nIRREVERSIBLE\\nImport save file?\\n\\nImporting public-quick-7407.json into Quick will validate and load that save immediately. Unsaved progress is lost.\\n\\nCANCEL\\nESC\\nIMPORT & LOAD\",\"confirm\":[\"<button class=\\\"sf-confirm__key sf-confirm__cancel\\\" type=\\\"button\\\">Cancel<span class=\\\"sf-confirm__kbd\\\" aria-hidden=\\\"true\\\">ESC</span></button>\",\"<button class=\\\"sf-confirm__key sf-confirm__ok sf-confirm__key--hazard\\\" type=\\\"button\\\">Import &amp; Load</button>\"]}}\r\n"
+    },
+    {
+      "command": {
+        "action": "selector",
+        "selector": ".sf-confirm__ok"
+      },
+      "result": "{\"action\":\"selector\",\"selector\":\".sf-confirm__ok\"}\r\n{\"done\":\"selector\",\"result\":\"clicked\"}\r\n{\"console\":\"[loop] frame error: Error: SimulationRunner is closed — sim worker directive failed: Failed to execute 'postMessage' on 'DedicatedWorkerGlobalScope': #<Promise> could not be cloned.\\n    at assertLaneOpen (http://127.0.0.1:34807/src/core/simLaneMain.js:641:13)\\n    at Object.prepareWithoutAdvance (http://127.0.0.1:34807/src/core/simLaneMain.js:1884:7\"}\r\n"
+    },
+    {
+      "command": {
+        "action": "read",
+        "expression": "({text:document.body.innerText.slice(-7000),mode:window.SF?.state?.mode,tick:window.SF?.state?.tick,simTime:window.SF?.state?.simTime,buttons:[...document.querySelectorAll('button')].filter(e=>e.getClientRects().length).map(e=>({id:e.id,text:e.innerText,aria:e.getAttribute('aria-label')})).slice(-30)})"
+      },
+      "result": "{\"action\":\"read\",\"expression\":\"({text:document.body.innerText.slice(-7000),mode:window.SF?.state?.mode,tick:window.SF?.state?.tick,simTime:window.SF?.state?.simTime,buttons:[...document.querySelectorAll('button')].filter(e=>e.getClientRects().length).map(e=>({id:e.id,text:e.innerText,aria:e.getAttribute('aria-label')})).slice(-30)})\"}\r\n{\"done\":\"read\",\"result\":{\"text\":\"RADIO\\nYOU\\nHOSTILE\\nSTATION\\nGATE\\nALLY\\nHAULER\\nPATROL\\nNEUTRAL\\nImport failed\\nFLIGHT INTERRUPTED\\n\\nFlight interrupted\\n\\nThe simulation stopped before another frame could be completed.\\n\\nRestart from the main menu to recover. Progress since your last save may be lost.\\n\\nRestart to main menu\\nCopy details\",\"mode\":\"menu\",\"tick\":0,\"simTime\":0,\"buttons\":[{\"id\":\"\",\"text\":\"Restart to main menu\",\"aria\":null},{\"id\":\"\",\"text\":\"Copy details\",\"aria\":null}]}}\r\n"
+    },
+    {
+      "command": {
+        "action": "shot",
+        "path": "/workspace/scratch/3a00c06b9899/SpaceFace/docs/validation/lantern-ward/evidence/14-independent-public-import-failure-7407.png"
+      },
+      "result": "{\"action\":\"shot\",\"path\":\"/workspace/scratch/3a00c06b9899/SpaceFace/docs/validation/lantern-ward/evidence/14-independent-public-import-failure-7407.png\"}\r\n{\"done\":\"shot\",\"result\":\"/workspace/scratch/3a00c06b9899/SpaceFace/docs/validation/lantern-ward/evidence/14-independent-public-import-failure-7407.png\"}\r\n"
+    },
+    {
+      "command": {
+        "action": "click",
+        "name": "Restart to main menu"
+      },
+      "result": "{\"action\":\"click\",\"name\":\"Restart to main menu\"}\r\n{\"done\":\"click\",\"result\":\"clicked\"}\r\n"
+    },
+    {
+      "command": {
+        "action": "read",
+        "expression": "({text:document.body.innerText.slice(-6500),buttons:[...document.querySelectorAll('button')].filter(e=>e.getClientRects().length).map(e=>({id:e.id,text:e.innerText,aria:e.getAttribute('aria-label')})).slice(-25)})"
+      },
+      "result": "{\"http\":404,\"url\":\"http://127.0.0.1:34807/__spaceface_player_store\"}\r\n{\"action\":\"read\",\"expression\":\"({text:document.body.innerText.slice(-6500),buttons:[...document.querySelectorAll('button')].filter(e=>e.getClientRects().length).map(e=>({id:e.id,text:e.innerText,aria:e.getAttribute('aria-label')})).slice(-25)})\"}\r\n{\"done\":\"read\",\"result\":{\"text\":\"RADIO\\nCOMMS\\nHAIL\\nN\\nYOU\\nHOSTILE\\nSTATION\\nGATE\\nALLY\\nHAULER\\nPATROL\\nNEUTRAL\\nHITCH · STARTER · TIER 0\\nBOOST\\n0\\nU/S\\n0\\nTOP\\nENERGY\\nHEAT\\nHULL\\nSHIELD\\nARMOR\\nGraphics hardware acceleration appears OFF — the game is rendering in slow software mode. Turn on hardware acceleration in your browser (or run the Desktop launcher) for smooth play.\\nGraphics hardware acceleration appears OFF — the game is rendering in slow software mode. Turn on hardware acceleration in your browser (or run the Desktop launcher) for smooth play.\",\"buttons\":[{\"id\":\"sf-comm-backlog-btn\",\"text\":\"COMMS\",\"aria\":\"Open comms log\"},{\"id\":\"\",\"text\":\"HAIL\",\"aria\":\"Hail selected contact\"}]}}\r\n"
+    },
+    {
+      "command": {
+        "action": "read",
+        "expression": "({ready:document.readyState,mode:window.SF?.state?.mode,tick:window.SF?.state?.tick,text:document.body.innerText.slice(-6500),buttons:[...document.querySelectorAll('button')].filter(e=>e.getClientRects().length).map(e=>({id:e.id,text:e.innerText,aria:e.getAttribute('aria-label')})).slice(-30)})"
+      },
+      "result": "{\"action\":\"read\",\"expression\":\"({ready:document.readyState,mode:window.SF?.state?.mode,tick:window.SF?.state?.tick,text:document.body.innerText.slice(-6500),buttons:[...document.querySelectorAll('button')].filter(e=>e.getClientRects().length).map(e=>({id:e.id,text:e.innerText,aria:e.getAttribute('aria-label')})).slice(-30)})\"}\r\n{\"done\":\"read\",\"result\":{\"ready\":\"complete\",\"mode\":\"menu\",\"tick\":0,\"text\":\"RADIO\\nN\\nYOU\\nHOSTILE\\nSTATION\\nGATE\\nALLY\\nHAULER\\nPATROL\\nNEUTRAL\\nHITCH · STARTER · TIER 0\\nBOOST\\n0\\nU/S\\n0\\nTOP\\nENERGY\\nHEAT\\nHULL\\nSHIELD\\nARMOR\\nGraphics hardware acceleration appears OFF — the game is rendering in slow software mode. Turn on hardware acceleration in your browser (or run the Desktop launcher) for smooth play.\\n\\nFLIGHT SYSTEMS ONLINE\\n\\nSpaceFace\\nORRERY OF THE HELIOS REACH\\nNEW GAME\\nLOAD\\nCRUCIBLE\\nA scored ten-wave survival run\\nSETTINGS\\nHELP\\nARCHIVE\\nAuthored intro reels, in the Codex\\nCIRCUITS\\nLogic circuit sandbox\\nSANDBOX\\nFree flight sandbox\\nPHYSICS CHALLENGES\\nOrbital physics challenges\\nSPACEFACE V0.2.0-BETA.1\\n·\\nCREDITS\\n·\\nACHIEVEMENTS\",\"buttons\":[{\"id\":\"sf-comm-backlog-btn\",\"text\":\"\",\"aria\":\"Open comms log\"},{\"id\":\"\",\"text\":\"\",\"aria\":\"Hail selected contact\"},{\"id\":\"\",\"text\":\"NEW GAME\",\"aria\":null},{\"id\":\"\",\"text\":\"LOAD\",\"aria\":\"Load Game\"},{\"id\":\"\",\"text\":\"CRUCIBLE\",\"aria\":null},{\"id\":\"\",\"text\":\"SETTINGS\",\"aria\":null},{\"id\":\"\",\"text\":\"HELP\",\"aria\":\"Help and flight controls\"},{\"id\":\"\",\"text\":\"ARCHIVE\",\"aria\":\"Signal Archive\"},{\"id\":\"\",\"text\":\"CIRCUITS\",\"aria\":\"Logic circuit sandbox\"},{\"id\":\"\",\"text\":\"SANDBOX\",\"aria\":\"Free flight sandbox\"},{\"id\":\"\",\"text\":\"PHYSICS CHALLENGES\",\"aria\":\"Orbital physics challenges\"},{\"id\":\"\",\"text\":\"CREDITS\",\"aria\":null},{\"id\":\"\",\"text\":\"ACHIEVEMENTS\",\"aria\":null}]}}\r\n"
+    },
+    {
+      "command": {
+        "action": "click",
+        "name": "Load Game"
+      },
+      "result": "{\"action\":\"click\",\"name\":\"Load Game\"}\r\n{\"done\":\"click\",\"result\":\"clicked\"}\r\n"
+    },
+    {
+      "command": {
+        "action": "read",
+        "expression": "({mode:window.SF?.state?.mode,tick:window.SF?.state?.tick,text:document.body.innerText.slice(-7000),buttons:[...document.querySelectorAll('button')].filter(e=>e.getClientRects().length).map(e=>({id:e.id,text:e.innerText,aria:e.getAttribute('aria-label')})).slice(-25)})"
+      },
+      "result": "{\"action\":\"read\",\"expression\":\"({mode:window.SF?.state?.mode,tick:window.SF?.state?.tick,text:document.body.innerText.slice(-7000),buttons:[...document.querySelectorAll('button')].filter(e=>e.getClientRects().length).map(e=>({id:e.id,text:e.innerText,aria:e.getAttribute('aria-label')})).slice(-25)})\"}\r\n{\"done\":\"read\",\"result\":{\"mode\":\"menu\",\"tick\":0,\"text\":\"RADIO\\nN\\nYOU\\nHOSTILE\\nSTATION\\nGATE\\nALLY\\nHAULER\\nPATROL\\nNEUTRAL\\nHITCH · STARTER · TIER 0\\nBOOST\\n0\\nU/S\\n0\\nTOP\\nENERGY\\nHEAT\\nHULL\\nSHIELD\\nARMOR\\nGraphics hardware acceleration appears OFF — the game is rendering in slow software mode. Turn on hardware acceleration in your browser (or run the Desktop launcher) for smooth play.\\nLOAD\\n\\nNo saves yet\\n\\nQUICK\\nEmpty slot\\nSLOT 1\\nEmpty slot\\nSLOT 2\\nEmpty slot\\nSLOT 3\\nEmpty slot\\nSLOT 4\\nEmpty slot\\n\\nQUICK SAVE\\n\\nEMPTY SLOT\\n\\nNothing is filed here yet — a new game starts a life you can save to this slot.\\n\\nNEW GAME\\nEXPORT\\nIMPORT\\nBACK\",\"buttons\":[{\"id\":\"sf-comm-backlog-btn\",\"text\":\"\",\"aria\":\"Open comms log\"},{\"id\":\"\",\"text\":\"\",\"aria\":\"Hail selected contact\"},{\"id\":\"\",\"text\":\"NEW GAME\",\"aria\":null},{\"id\":\"\",\"text\":\"EXPORT\",\"aria\":null},{\"id\":\"\",\"text\":\"IMPORT\",\"aria\":null},{\"id\":\"\",\"text\":\"BACK\",\"aria\":null}]}}\r\n"
+    },
+    {
+      "command": {
+        "action": "shot",
+        "path": "/workspace/scratch/3a00c06b9899/SpaceFace/docs/validation/lantern-ward/evidence/15-independent-empty-quick-after-import-7407.png"
+      },
+      "result": "{\"action\":\"shot\",\"path\":\"/workspace/scratch/3a00c06b9899/SpaceFace/docs/validation/lantern-ward/evidence/15-independent-empty-quick-after-import-7407.png\"}\r\n{\"done\":\"shot\",\"result\":\"/workspace/scratch/3a00c06b9899/SpaceFace/docs/validation/lantern-ward/evidence/15-independent-empty-quick-after-import-7407.png\"}\r\n"
+    }
+  ]
+}
+
