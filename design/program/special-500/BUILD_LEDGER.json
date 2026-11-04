@@ -9,7 +9,7 @@
   "large": 166,
   "landed": 0,
   "assigned": 12,
-  "approved": 2
+  "approved": 4
  },
  "derivation": {
   "ratifiedFollowup": 330,
@@ -3552,10 +3552,10 @@
    "size": "medium",
    "family": "encounter",
    "batch": 1,
-   "status": "assigned",
+   "status": "approved",
    "commit": "",
-   "verification": "",
-   "note": "pilot batch"
+   "verification": "focused 8/8 each (16/16) + check:encounter-index green + controller diff review",
+   "note": "pilot batch; SP2-157: consensus cross-ref SP2-016 not in ratified set — hearings counted by the encounter on the bell cadence; SP2-172: no live survival-record owner — runtime owns two plain-named flags"
   },
   {
    "id": "SP2-179",
@@ -5680,10 +5680,10 @@
    "size": "medium",
    "family": "encounter",
    "batch": 1,
-   "status": "assigned",
+   "status": "approved",
    "commit": "",
-   "verification": "",
-   "note": "pilot batch"
+   "verification": "focused 8/8 each (16/16) + check:encounter-index green + controller diff review",
+   "note": "pilot batch; SP2-157: consensus cross-ref SP2-016 not in ratified set — hearings counted by the encounter on the bell cadence; SP2-172: no live survival-record owner — runtime owns two plain-named flags"
   },
   {
    "id": "SP1-186",
