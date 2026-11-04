@@ -126,6 +126,7 @@ export const MAIN_TO_SIM_BUS_EVENTS = new Set([
   'run:refitFitRequested',
   'run:refitSellRequested',
   'run:refitStripRequested',
+  'run:retireRequested',
   'sable:demonstrated',
   'salvage:reactorVented',
   'salvageOutfits:choose',

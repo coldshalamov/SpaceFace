@@ -495,6 +495,18 @@ export function pauseStatusLines(state) {
 // The exit gate carries facts, not coaching: one consequence sentence, the save fact, and the
 // loss line separate (`confirm`'s note). Objective and next-step guidance stay on the flight
 // brief behind the dialog — reading them here taught the player nothing they couldn't already see.
+function pauseSurvivalRunActive(state) {
+  const run = state?.run;
+  return run?.kind === 'survival' && !['inactive', 'ended', 'victory'].includes(run.phase);
+}
+
+export function pauseRetireToken(state) {
+  const run = state?.run;
+  if (!pauseSurvivalRunActive(state)) return null;
+  const token = run.retireToken;
+  return Number.isSafeInteger(token) && token > 0 ? token : null;
+}
+
 export function pauseExitSaveFact(state) {
   const run = state && state.run;
   if (run && run.phase !== 'inactive' && (run.kind === 'survival' || run.kind === 'lab')) {
@@ -1150,14 +1162,31 @@ export const pauseScreen = {
     if (ctx.state?.wreckCourtPublic?.bodies?.length) mk('Wreck Court notebook', () => { nav(ctx, 'popScreen'); ctx.registry?.get('ui')?.physicalJobsPrompt?.court(); }, { group: 'Field work', bank: true, icon: 'utility' });
     if (IS_DEV) mk('Sandbox', () => nav(ctx, 'pushScreen', 'sandbox'), { dev: true, group: 'Dev', bank: true, icon: 'utility' });
     // Main Menu discards the current session entirely — confirm with the live run context first.
-    mk(coreText('mainMenu'), async () => {
+    this._retireAtMount = pauseSurvivalRunActive(ctx && ctx.state);
+    mk(this._retireAtMount ? 'End run' : coreText('mainMenu'), async () => {
+      const token = pauseRetireToken(ctx && ctx.state);
+      if (pauseSurvivalRunActive(ctx && ctx.state)) {
+        if (token == null) { ctx.bus?.emit?.('ui:toast', { text: 'Run is still preparing. Try again shortly.', kind: 'info' }); return; }
+        const generation = ctx.helpers?.workerReadGeneration?.();
+        const ok = await confirm({
+          title: 'End this run?',
+          body: 'Retire and see your flight record. Only completed rounds count as cleared.',
+          note: 'Retired runs are unranked. Unbanked salvage does not carry back to the hangar.',
+          confirmLabel: 'Retire run', danger: true,
+        });
+        if (ok && pauseRetireToken(ctx && ctx.state) === token
+          && ctx.helpers?.workerReadGeneration?.() === generation) {
+          ctx.bus?.emit?.('run:retireRequested', { token });
+        }
+        return;
+      }
       const ok = await confirm({
         title: 'Return to main menu?',
         body: pauseExitConfirmBody(ctx && ctx.state, 'menu'),
         note: pauseExitConfirmNote(ctx && ctx.state),
         confirmLabel: 'Main Menu', danger: true,
       });
-      if (ok) this._toMenu(ctx);
+      if (ok && !pauseSurvivalRunActive(ctx && ctx.state)) this._toMenu(ctx);
     }, { danger: true, group: 'Exit', bank: true, icon: 'undock' });
 
     // Web build: Main Menu above is the way out; Quit Game is offered only where the shell can quit.
@@ -1328,6 +1357,7 @@ export const pauseScreen = {
 
   onShow(ctx) {
     if (ctx.state.mode === 'flight') laneSetMode(ctx.state, ctx.bus, 'paused');
+    if (pauseRootEl && this._retireAtMount !== pauseSurvivalRunActive(ctx.state)) this.mount(pauseRootEl, ctx);
     // the window may have crossed 760 while another screen was over this one
     if (pauseRootEl && typeof this._columnAtMount === 'boolean' && pauseWantsColumn() !== this._columnAtMount) {
       this.mount(pauseRootEl, ctx);
