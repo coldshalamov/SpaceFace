@@ -1582,6 +1582,49 @@ export const MAIL_LETTERS = Object.freeze([
       + 'booth will neither confirm nor deny exists.',
     triggers: [FLAG('special500.SP2-099')],
   },
+  // ── special-500 Phase 2 (SP2-044 "The Bill For Nothing" — the invoice's three papers) ──
+  // The invoice system (src/systems/special500Invoice.js) writes the three plain-named flags:
+  // standby_fee_due (issued), standby_fee_paid (settled inside the one-day window),
+  // standby_fee_refused (the LATE FEE assessment). These are the papers that arrive with them;
+  // the comms log lines the system itself emits remain the live half of the beat.
+  {
+    id: 'mail_concord_standby_fee', kind: 'bill', from: 'CONCORD TOWAGE',
+    subject: 'STANDBY FEE — NO TOW PERFORMED — 4 CR',
+    body: 'CONCORD TOWAGE — STANDBY FEE. NO TOW PERFORMED. READINESS IS THE SERVICE. Amount: 4 cr. '
+      + 'Itemized: tow capacity, held. Vantage, maintained. The night you did not need us, we were '
+      + 'there, and that is the thing you are paying for. The account line\'s memo field reads: '
+      + '"This is a shakedown. It is also legal. — H." Payment is due within one world day of issue. '
+      + 'Settle it through the ordinary channels and the file closes. Contest it through the ordinary '
+      + 'channels and the file also closes, once the late fee clears. There is no third channel. '
+      + 'Readiness thanks you in advance for your readiness.',
+    triggers: [FLAG('standby_fee_due')],
+  },
+  {
+    id: 'mail_hale_correct_answer', kind: 'cast', from: 'Hale',
+    subject: 'RE: STANDBY FEE — filed',
+    body: 'Correct answer. You read the item, you read the room, you paid the four cr without a '
+      + 'speech, and the speech is why the fee exists. Most pilots fight it. The fight is billed '
+      + 'separately, in hours, and the hours are worth more than the tow. You did not make me open '
+      + 'a second file. That is rarer than you think and worth more than the four cr, which was '
+      + 'never the point. The point was watching who reads the whole form. The memo was mine. The '
+      + 'fee was real. Both things were true at once, and you handled both without needing them '
+      + 'to take turns. File your copy where you file everything else. It will not repeat. '
+      + 'Readiness is the service; you are the reason it stays cheap.',
+    triggers: [FLAG('standby_fee_paid')],
+  },
+  {
+    id: 'mail_concord_late_fee', kind: 'bill', from: 'CONCORD TOWAGE',
+    subject: 'LATE FEE ON STANDBY FEE — 4 CR',
+    body: 'CONCORD TOWAGE — LATE FEE ON STANDBY FEE. The original standby fee (4 cr) went unpaid '
+      + 'inside its one world day, and the lateness is now also a service we provided: the grace '
+      + 'period, held. Vantage, maintained twice. Amount: 4 cr. Two fees, one tow, zero tows — the '
+      + 'arithmetic of readiness. Your contest window closed when your payment window did; the two '
+      + 'windows are the same window, which is why it was called a window and not a door. Concord '
+      + 'rep stands +1: you answered the form, in your own way, and the desk records consistency '
+      + 'the same direction regardless of sign. The account line\'s memo field reads: "Late counts. '
+      + '— H." Settle through the ordinary channels. Readiness remains the service.',
+    triggers: [FLAG('standby_fee_refused')],
+  },
 ]);
 
 export default { MAIL_LETTERS, MAIL_KINDS, MAIL_EVENT_NAMES, MAIL_DAY_S };

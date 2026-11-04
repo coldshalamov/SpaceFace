@@ -55,6 +55,11 @@ import {
   ORRIN_WITNESS_STATION_ID,
   ORRIN_WITNESS_SUBMISSION_EVENT,
 } from '../../data/orrinWitnessCase.js';
+// special-500 Phase 2 bar residents: the corridor's shroud painter (SP1-193) and the depot
+// bar's censer sommelier (SP2-065). Their settlements live in the sim legs; this module reads
+// the authored specs for the canonical rows and the reply branches.
+import { PORTRAIT_PAINTER } from '../../data/special500/portraitBuoyLine.js';
+import { SOMMELIER } from '../../data/special500/sommelier.js';
 import { MAP_FOCUS, openGalaxyMap } from '../mapAuthority.js';
 import { fenceBarContact, fenceBarReply, proteusFindingMapOffer } from './fenceContact.js'; // U-B: fences with faces
 import { hash32 } from '../../core/rng.js';
@@ -590,6 +595,39 @@ const CANONICAL_CONTACTS = [
     roleLabel: 'Retired Watch Regular',
     factionId: 'faction_quiet',
     line: '"You are sitting in the chair. The cushion before yours held better arguments than most crews."',
+  },
+  // SP1-193 "The Portrait Buoys": the corridor's shroud painter, findable at Reach Station.
+  // The buoy line (src/data/special500/portraitBuoyLine.js) hangs her work; she takes
+  // commissions and refuses payment in anything but a good story (settled by
+  // src/systems/special500PortraitBuoys.js on ui:talkContact).
+  {
+    key: 'painter',
+    stationIds: ['station_reach'],
+    name: 'Vesper',
+    role: 'pilot',
+    roleLabel: 'Shroud Painter',
+    factionId: 'faction_free',
+    line: 'Your hull is the newest frame on the corridor line. It is not finished. It will be, if the story is worth the canvas.',
+    choices: [
+      { id: 'commission', label: 'Commission the portrait — pay in a story.' },
+      { id: 'ask_paint', label: 'Ask why nobody signs them.' },
+    ],
+  },
+  // SP2-065 "The Sommelier of Coolant": the depot bar's retired Choir censer machine, which
+  // has rebranded its incense burn as "beverage temperature control" (settled by
+  // src/systems/special500Sommelier.js on ui:talkContact).
+  {
+    key: 'sommelier',
+    stationIds: ['station_depot3'],
+    name: 'The Sommelier of Coolant',
+    role: 'barkeep',
+    roleLabel: 'Retired Censer',
+    factionId: 'faction_choir',
+    line: 'This cell — cast on a Thursday. You will taste the Thursday.',
+    choices: [
+      { id: 'the_thursday', label: 'Buy "the Thursday" — 12 cr.' },
+      { id: 'ask_vintages', label: 'Ask what else is on the rail.' },
+    ],
   },
 ];
 
@@ -1984,6 +2022,47 @@ function buildCanonicalReply(contact, choiceId, ctx, stationId) {
         return { text: 'The board says balanced. My ledger says the same manifest weighs less after every handoff. Both records are official if the right clerk initials them.' };
       }
       if (choiceId === 'dismiss') return { text: 'Then do not sign the seal. Pilots always sign the seal.' };
+      return null;
+    }
+
+    // SP1-193 "The Portrait Buoys": the shroud painter's commission verb. The bar reply is the
+    // read; the settlement (the story taken, the flag written) is the sim leg's on ui:talkContact.
+    case 'painter': {
+      const flags = (state.story && state.story.flags) || {};
+      if (choiceId === 'commission') {
+        if (flags[PORTRAIT_PAINTER.commissionFlag]) {
+          return { text: 'The frame came down and went back up finished. You have seen it. The rest is weather now — the same weather as everyone\'s.' };
+        }
+        const record = peekDeedRecord(state);
+        if (!record || !record.deeds || !record.deeds.length) {
+          return { text: 'Nothing yet worth the canvas. Fly something first. I do not paint intentions, and I do not paint on credit.' };
+        }
+        return {
+          text: 'Vesper listens all the way through the best story in your record — the parts you did not say, too. Payment accepted, in the only currency she takes. Come back after the next pass; the frame finishes in the cold.',
+        };
+      }
+      if (choiceId === 'ask_paint') {
+        return { text: 'Because the paint is the signature. You put a name on a shroud and it stops being everyone\'s, and then it starts being somebody\'s to argue about.' };
+      }
+      return null;
+    }
+
+    // SP2-065 "The Sommelier of Coolant": the depot bar's censer machine and its vintage rail.
+    // The purchase settles in the sim leg (src/systems/special500Sommelier.js); this reply is
+    // the liturgy.
+    case 'sommelier': {
+      const flags = (state.story && state.story.flags) || {};
+      if (choiceId === 'the_thursday') {
+        if (flags[SOMMELIER.pourFlag]) {
+          return { text: 'The Thursday is poured, and it was drunk at the correct temperature. There will not be another Thursday this cycle. The censer remembers patronage; it does not repeat it.' };
+        }
+        return {
+          text: 'The censer hums its incense burn down to beverage temperature and sets the vintage on the rail. "Cast on a Thursday. You will taste the Thursday." 12 cr, and two cells for the road — poured, not sold. The Choir remembers patronage.',
+        };
+      }
+      if (choiceId === 'ask_vintages') {
+        return { text: 'The rail holds Monday, which is sharp and industrial; Wednesday, which is apologetic; and the Thursday. The Thursday is the only one with a congregation.' };
+      }
       return null;
     }
 

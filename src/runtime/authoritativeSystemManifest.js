@@ -101,6 +101,17 @@ export const PRODUCTION_INIT_ORDER = Object.freeze([
   // update plays each firing's authored registry steps off state.simTime through the
   // existing owner seams (presentation:vfxCue / news:publish). Presentation dispatch only.
   'special500Spectacle',
+  // special500 Phase 2 choice/vendor legs, each keyed off the director's fired flags (never
+  // re-evaluating the trigger): special500Question runs SP2-012's reply-listen interpreter
+  // (bus listeners + a simTime window); special500Invoice runs SP2-044's pay-or-refuse invoice
+  // (simTime deadline, economy/factions intents); special500PortraitBuoys rebuilds SP1-193's
+  // corridor buoy line from authored data + the deed record and settles the story-priced
+  // commission; special500Sommelier settles SP2-065's pour through the economy, cargo and
+  // factions intents. All four are bus/state readers with plain-named flags — node-safe.
+  'special500Question',
+  'special500Invoice',
+  'special500PortraitBuoys',
+  'special500Sommelier',
   // PULSE-MAIL (435) / PULSE-TIME (439): listener+tick delivery and the world calendar's
   // transition announcer — both slow observers on the calendar clock.
   // worldPressure (§34 rows 520–523): the tide/gate-audit/slow-gray owner — reads
@@ -216,6 +227,13 @@ export const PRODUCTION_UPDATE_ORDER = Object.freeze([
   // before voiceArbiter like the director, and after it in init (the subscription exists
   // before the sweep that emits the event).
   'special500Spectacle',
+  // special500 Phase 2 legs: read the flags the director wrote THIS tick (fresh-window reads
+  // tolerate a cohort of latency), resolve their simTime windows, and emit comms/deck offers
+  // that voiceArbiter and the UI collect on the same tick.
+  'special500Question',
+  'special500Invoice',
+  'special500PortraitBuoys',
+  'special500Sommelier',
   'voiceArbiter',
   // PULSE-MAIL / PULSE-TIME: mail delivery and calendar announcements run after the story
   // and deed systems so same-tick triggers resolve before letters and headlines go out.
@@ -440,6 +458,12 @@ export const CALENDAR_CLOCK_IDS = Object.freeze([
   // than every authored atS gap and matches its director's cadence. Appended last so
   // every existing cohort index stays put.
   'special500Spectacle',
+  // special500 Phase 2 legs: window/expiry resolution and world reads at the director's own
+  // cadence (0.5 s simTime), appended last so every existing cohort index stays put.
+  'special500Question',
+  'special500Invoice',
+  'special500PortraitBuoys',
+  'special500Sommelier',
 ]);
 
 /**

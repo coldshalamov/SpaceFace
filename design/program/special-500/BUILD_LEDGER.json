@@ -7,9 +7,9 @@
   "small": 167,
   "medium": 167,
   "large": 166,
-  "landed": 58,
+  "landed": 62,
   "assigned": 26,
-  "approved": 58
+  "approved": 62
  },
  "derivation": {
   "ratifiedFollowup": 330,
@@ -131,10 +131,10 @@
    "size": "medium",
    "family": "choice",
    "batch": 1,
-   "status": "assigned",
+   "status": "approved",
    "commit": "",
-   "verification": "",
-   "note": "pilot batch"
+   "verification": "focused 8/8, 10/10, 6/6, 7/7 (31/31) + registration 58/58 + controller re-run + churn-free rebuild of the three registration tables",
+   "note": "pilot batch; SP2-044: three invoice papers appended to mail.js by controller after mail.js freed; SP1-193 portraits ride authored scan captions (pixel shroud = Forge texture work, noted); SP2-065 pour is the honest efficiency deliverable (no new fuel writer; world.js foreign-dirty)"
   },
   {
    "id": "SP2-200",
@@ -167,10 +167,10 @@
    "size": "medium",
    "family": "choice",
    "batch": 1,
-   "status": "assigned",
+   "status": "approved",
    "commit": "",
-   "verification": "",
-   "note": "pilot batch"
+   "verification": "focused 8/8, 10/10, 6/6, 7/7 (31/31) + registration 58/58 + controller re-run + churn-free rebuild of the three registration tables",
+   "note": "pilot batch; SP2-044: three invoice papers appended to mail.js by controller after mail.js freed; SP1-193 portraits ride authored scan captions (pixel shroud = Forge texture work, noted); SP2-065 pour is the honest efficiency deliverable (no new fuel writer; world.js foreign-dirty)"
   },
   {
    "id": "SP1-140",
@@ -4767,10 +4767,10 @@
    "size": "medium",
    "family": "vendor",
    "batch": 1,
-   "status": "assigned",
+   "status": "approved",
    "commit": "",
-   "verification": "",
-   "note": "pilot batch"
+   "verification": "focused 8/8, 10/10, 6/6, 7/7 (31/31) + registration 58/58 + controller re-run + churn-free rebuild of the three registration tables",
+   "note": "pilot batch; SP2-044: three invoice papers appended to mail.js by controller after mail.js freed; SP1-193 portraits ride authored scan captions (pixel shroud = Forge texture work, noted); SP2-065 pour is the honest efficiency deliverable (no new fuel writer; world.js foreign-dirty)"
   },
   {
    "id": "SP3-007",
@@ -5266,10 +5266,10 @@
    "size": "medium",
    "family": "vendor",
    "batch": 1,
-   "status": "assigned",
+   "status": "approved",
    "commit": "",
-   "verification": "",
-   "note": "pilot batch"
+   "verification": "focused 8/8, 10/10, 6/6, 7/7 (31/31) + registration 58/58 + controller re-run + churn-free rebuild of the three registration tables",
+   "note": "pilot batch; SP2-044: three invoice papers appended to mail.js by controller after mail.js freed; SP1-193 portraits ride authored scan captions (pixel shroud = Forge texture work, noted); SP2-065 pour is the honest efficiency deliverable (no new fuel writer; world.js foreign-dirty)"
   },
   {
    "id": "SP1-113",
