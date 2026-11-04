@@ -37,8 +37,18 @@ units, 6 families) dispatched; landed units will be recorded here per batch.
   preserved into the landed owner.
 - `99fbbf920f14` — mail batch 2 (14 letters; the serial mail pass opens).
 - `cd41374aad19` — mail batch 3 (14 letters; 28 special500 letters live).
+- `fc656797c52e` — mail batch 4 (8 letters; **serial mail pass complete: 29 letters**).
+- `1aaf75817f9d` — pilot choice/vendor slice: SP2-012 The Question, SP2-044 The Bill For
+  Nothing (+ three invoice papers appended to mail.js once it freed), SP1-193 The Portrait
+  Buoys, SP2-065 The Sommelier of Coolant; three new registered leg systems; concurrent
+  whitespace churn in the three shared registration tables rebuilt from HEAD bytes.
+- `6183617c4d24` — spectacle batch 6 (14 rows; 30 registry rows live; bellVoice meaning
+  widened; validator caught two authored cadences, rows re-paced).
 
-Running: pilot choice+vendor slice, spectacle batch 6, mail batch 4 (final 8).
+**Pilot batch complete: all 12 units + INFRA landed.** Every route proved: registry rows,
+encounter files, mail letters, codex overlays, choice mechanics, vendor mechanics.
+
+Running: codex batch 12, spectacle batch 7, counter batch 18.
 
 ## Phase 1 — the catalog (complete)
 
