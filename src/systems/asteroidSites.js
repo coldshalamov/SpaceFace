@@ -72,6 +72,8 @@ import {
 } from './siteSurvey.js';
 import { getDressingRow, insertDressingRow } from '../world/dressingTable.js';
 import { indexedWorldRecordEntity } from '../world/livingWorldViews.js';
+import { handleWarmHeatAction, invalidateWarmHeatOffer, reconcileWarmHeatTerminalSource, WARM_HEAT_INTERACTION } from './alienEcology.js';
+import { WARM_FREIGHTER_HOST } from '../data/warmFreighter.js';
 import { handleFoundryProtocolAction, offerFoundryProtocol } from './machineWork.js';
 import {
   handleMotionFossilAction, tickMotionFossil, interruptMotionFossil, copyMotionFossilState, captureMotionFossilState,
@@ -665,10 +667,27 @@ export const asteroidSites = {
     // conversion. Keep these operations on the sim side in worker and main modes.
     this.bus.on('siteEvidence:action', (request = {}) => {
       const world = this._registry?.get('world');
+      if (request.interactionId === WARM_HEAT_INTERACTION) {
+        const result = !world || this._worldRestoreActive
+          ? { ok: false, reason: 'Standby is unavailable while the world is restoring. Scan again.' }
+          : handleWarmHeatAction(world, request);
+        this.bus.emit('siteEvidence:result', { siteId: request.siteId, interactionId: request.interactionId,
+          requestId: request.requestId, ...result });
+        return;
+      }
       if (!world || this._worldRestoreActive) return;
       const result = handleFoundryProtocolAction(world, request) || handleMotionFossilAction(world, request);
       if (result) this.bus.emit('siteEvidence:result', { siteId: request.siteId, ...result });
     });
+    for (const event of ['save:restoring', 'game:new', 'game:load', 'sector:exit', 'game:exitToMenu']) {
+      this.bus.on(event, () => invalidateWarmHeatOffer(this.state));
+    }
+    for (const event of ['aftermathWreck:retired', 'aftermathWreck:completed']) {
+      this.bus.on(event, payload => {
+        if (payload?.markerId === WARM_FREIGHTER_HOST.markerId) reconcileWarmHeatTerminalSource(this.state);
+      });
+    }
+    this.bus.on('save:loaded', () => reconcileWarmHeatTerminalSource(this.state));
     this.bus.on('scan:pulse', () => {
       const world = this._registry?.get('world');
       if (!world || this._worldRestoreActive) return;

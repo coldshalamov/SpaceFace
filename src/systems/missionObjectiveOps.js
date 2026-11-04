@@ -79,7 +79,10 @@ export const missionObjectiveOps = {
     if (b0 && !(b0.params && b0.params.sampleRecovered) && p.minerId !== null
       && (p.minerId == null || p.minerId === this.state.playerId)) {
       const source = this._resolveContract47aSampleSource(b0);
-      const sourceMatches = !p.pos || !source || distSq(p.pos, source.pos) <= 80 * 80;
+      const sector = this.state.world && this.state.world.currentSectorId;
+      const sourceMatches = sector === b0.destSectorId && source && source.type === 'asteroid'
+        && source.alive !== false && p.pos && Number.isFinite(p.pos.x) && Number.isFinite(p.pos.z)
+        && distSq(p.pos, source.pos) <= 1;
       if (sourceMatches && addCargo(this.state, CONTRACT_47A_SAMPLE_ID, 1) === 1) {
         b0.params.sampleRecovered = true;
         // W-BOOKS-0-2 (§34.7): the Skim's lane delay is anchored on this stamp.

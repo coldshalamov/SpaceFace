@@ -1,3 +1,4 @@
+import { wholeHulkVisualForEntity } from '../data/wholeShipVisualIdentity.js';
 import { isIntactMawWorksiteBody } from '../missions/mawWorksite.js';
 import { buildSwarmFortifyVisual } from './swarmFortifyVisuals.js';
 import { ironKrakenProfileFor } from '../data/ironKraken.js';
@@ -4048,16 +4049,7 @@ function fractureFragmentFitRadius(entity) {
 // aftermath piece below.
 function hulkPackagedFileForEntity(e) {
   if (ironKrakenWreckProfileFor(e)) return null;
-  const data = e && e.data || {};
-  const visual = data.hulkVisual && typeof data.hulkVisual === 'object'
-    ? data.hulkVisual
-    : (data.hulkOfDefId ? { defId: data.hulkOfDefId } : null);
-  if (!visual) return null;
-  const selection = wholeShipVisualForEntity(
-    { type: 'ship', factionId: data.hulkFactionId || null, data: visual },
-    { requiredWholeShip: true },
-  );
-  return selection && selection.file || null;
+  return wholeHulkVisualForEntity(e, wholeShipVisualForEntity)?.file || null;
 }
 
 // Mission evidence has a persistent semantic identity. Runtime entity IDs are reallocated

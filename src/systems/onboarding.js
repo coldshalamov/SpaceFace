@@ -79,6 +79,7 @@ import {
 } from '../data/economyContractTemplates.js';
 import { gateTollFor } from '../data/travelChoices.js';
 import { SECTORS } from '../data/sectors.js';
+import { CORRIDOR_SECTOR_IDS, sectorMembershipAtGlobal } from '../data/sectorCoordinates.js';
 import {
   FLIGHT_DRILL_BRAKE_WU,
   FLIGHT_DRILL_BURST_SHOTS,
@@ -499,6 +500,31 @@ function hasPlayerSelectedNavWaypoint(state) {
   // waypoint is the durable player intent after flightV3 stops the autopilot and clears its
   // transient target bind. Tutorial objectives have their own onboarding:true ownership mark.
   return waypoint.kind === 'nav' || waypoint.kind === 'local';
+}
+
+function validTrainingDerelict(owner) {
+  const wreck = owner._derelictId != null && owner.state?.entities?.get(owner._derelictId);
+  return wreck && wreck === owner._derelictBody && wreck.alive !== false
+    && occupantGenerationOf(wreck) === owner._derelictGeneration
+    && wreck.data?.onboarding === true && wreck.data?.kind === 'derelict' ? wreck : null;
+}
+
+function tetherLessonIsLocal(state, owner) {
+  const home = state?.onboarding?.tetherSectorId;
+  const current = state?.world?.currentSectorId;
+  // Continuous corridor travel keeps both physical bodies in global coordinates. An actual
+  // same-life wreck follows its canonical position, even after the player's membership changes.
+  const wreck = validTrainingDerelict(owner);
+  if (current && CORRIDOR_SECTOR_IDS.includes(current) && wreck?.pos
+      && Number.isFinite(wreck.pos.x) && Number.isFinite(wreck.pos.z)) {
+    return sectorMembershipAtGlobal(wreck.pos) === current;
+  }
+  return !home || !current || home === current;
+}
+
+function hasTrackedActiveMission(state) {
+  const id = state?.ui?.trackedMissionId;
+  return id != null && (state?.missions?.active || []).some((m) => m?.id === id && m.status === 'active');
 }
 
 export const onboarding = {
@@ -1430,6 +1456,7 @@ export const onboarding = {
       oreCollected: 0,            // B2 progress
       trainingOre: 0,
       tetherReeled: false,
+      tetherSectorId: null,
       tetherBreaks: 0,
       beatAction: '',
       burstShots: 0,
@@ -1543,6 +1570,7 @@ export const onboarding = {
       oreCollected: ob.oreCollected | 0,
       trainingOre: ob.trainingOre | 0,
       tetherReeled: ob.tetherReeled === true,
+      tetherSectorId: typeof ob.tetherSectorId === 'string' ? ob.tetherSectorId : null,
       tetherBreaks: ob.tetherBreaks | 0,
       beatAction: typeof ob.beatAction === 'string' ? ob.beatAction : '',
       rescue: rescue ? railRecord(rescue) : null,
@@ -1578,6 +1606,10 @@ export const onboarding = {
     ob.oreCollected = d.oreCollected | 0;
     ob.trainingOre = d.trainingOre | 0;
     ob.tetherReeled = d.tetherReeled === true;
+    // Older ordinary saves did not retain the first-pull site; that opening began in Helios.
+    ob.tetherSectorId = typeof d.tetherSectorId === 'string' ? d.tetherSectorId
+      : (d.tetherSectorId === undefined && BEATS[ob.currentBeat]?.key === 'tether' && st.world?.currentSectorId
+        ? 'sector_helios_prime' : null);
     ob.tetherBreaks = d.tetherBreaks | 0;
     ob.beatAction = typeof d.beatAction === 'string' ? d.beatAction : '';
     ob.pace = normalizePaceState(d.pace);
@@ -1680,14 +1712,15 @@ export const onboarding = {
         // rebuild (and reset) the record the restore just preserved.
         const subrailStaged = (beat.key === 'raid' && raidRestaged)
           || (beat.key === 'claimed' && claimedRestaged);
-        if (!subrailStaged) {
+        const tetherAway = beat.key === 'tether' && !tetherLessonIsLocal(this.state, this);
+        if (!subrailStaged && !tetherAway) {
           // The restaged derelict is a fresh body — a saved reel flag described a
           // wreck the restore could not keep, so the lesson asks for the reel again.
           if (beat.key === 'tether') ob.tetherReeled = false;
           this._enterBeat(beat);
         }
         if (!ob.beatAction) ob.beatAction = taughtVerbLine(this.state, beat.key, beat.line);
-        speakMainBeat = true;
+        speakMainBeat = !tetherAway;
       } else {
         // A completed tether beat already dropped its salvage. Let the normal cadence
         // advance to its successor instead of replaying entry/reward work.
@@ -1889,7 +1922,9 @@ export const onboarding = {
     this._enterBeat(beat);
     const waypoint = this.state.nav && this.state.nav.waypoint;
     const persistentObjectiveOwnsLine = !!(waypoint && waypoint.onboarding
-      && String(waypoint.reason || '').trim() === String(ob.beatAction || '').trim());
+      && (String(waypoint.reason || '').trim() === String(ob.beatAction || '').trim()
+        || (beat.key === 'tether'
+          && String(waypoint.reason || '').trim() === `Optional: ${String(ob.beatAction || '').trim()}`)));
     this._sayTutorial(ob.beatAction, { visual: !persistentObjectiveOwnsLine });
     this._refreshBeatPanel();
   },
@@ -2397,6 +2432,7 @@ export const onboarding = {
     if (!ob || !ob.active || ob.finished) return;
     const beat = BEATS[ob.currentBeat];
     if (!beat || ob.beatDoneAt[beat.key] != null) return;
+    if (beat.key === 'tether' && !tetherLessonIsLocal(this.state, this)) return;
     const player = this.state.entities.get(this.state.playerId);
     if (!player || !player.pos) return;
     // A seam rock destroyed in crossfire (the wanted-escape chaos) restages — retry,
@@ -2476,6 +2512,7 @@ export const onboarding = {
   // B1: spawn a derelict wreck near the beacon for the tether trio (latch/winch/cut).
   _spawnDerelict() {
     const st = this.state;
+    if (!tetherLessonIsLocal(st, this)) return;
     const player = st.entities && st.entities.get(st.playerId);
     if (!player || !player.pos || !this.helpers || !this.helpers.spawnEntity) return;
     // Offset from the current ship so the stronger live massline can be learned without a chase.
@@ -2493,6 +2530,9 @@ export const onboarding = {
       data: { parentType: 'ship', proportions: WRECK_COLLIDER_PROPORTIONS, loot: [], salvagePool: {}, salvageTimeLeft: 0, onboarding: true, kind: 'derelict' },
     });
     if (wreck) {
+      if (st.onboarding && !st.onboarding.tetherSectorId && st.world?.currentSectorId) {
+        st.onboarding.tetherSectorId = st.world.currentSectorId;
+      }
       this._derelictId = wreck.id;
       this._derelictBody = wreck;
       this._derelictGeneration = occupantGenerationOf(wreck);
@@ -2500,10 +2540,8 @@ export const onboarding = {
   },
 
   _liveTrainingDerelict() {
-    const wreck = this._derelictId != null && this.state.entities?.get(this._derelictId);
-    return wreck && wreck === this._derelictBody && wreck.alive !== false
-      && occupantGenerationOf(wreck) === this._derelictGeneration
-      && wreck.data?.onboarding === true && wreck.data?.kind === 'derelict' ? wreck : null;
+    if (!tetherLessonIsLocal(this.state, this)) return null;
+    return validTrainingDerelict(this);
   },
 
   // B1 DONE: the vacuum shows itself — drop 2 salvage pickups, no line.
@@ -4740,12 +4778,34 @@ export const onboarding = {
     if (!ob || !ob.active || ob.finished || !st.nav) return;
     // Entry/recovery stamps are automatic. Do not let them replace a player-selected local course
     // while its own autopilot/ribbon is still active; explicit map course actions can retarget it.
-    if (hasPlayerSelectedNavWaypoint(st)) return;
+    if (hasPlayerSelectedNavWaypoint(st)) {
+      if (BEATS[ob.currentBeat]?.key === 'tether') {
+        const context = !tetherLessonIsLocal(st, this) ? 'away' : hasTrackedActiveMission(st) ? 'tracked' : 'lesson';
+        if (this._tetherCueContext !== context) {
+          this._tetherCueContext = context;
+          this._refreshBeatPanel();
+        }
+      }
+      return;
+    }
     // A current rescue verb owns the marker: one verb, one diamond, same beat-stable identity.
     if (this._setRescueWaypoint(force)) return;
     if (this._setMissingThreeWaypoint(force)) return;
     const beat = BEATS[ob.currentBeat];
     const existing = st.nav.waypoint;
+    if (beat?.key === 'tether') {
+      const away = !tetherLessonIsLocal(st, this);
+      const yielding = away || hasTrackedActiveMission(st);
+      const context = away ? 'away' : yielding ? 'tracked' : 'lesson';
+      if (yielding && existing?.onboarding && existing.markerId === 'onboarding:tether') {
+        st.nav.waypoint = null;
+      }
+      if (this._tetherCueContext !== context) {
+        this._tetherCueContext = context;
+        this._refreshBeatPanel();
+      }
+      if (yielding) return;
+    }
     if (beat && ob.pace && ob.pace.folded && ob.pace.folded[beat.key]) {
       if (existing && existing.onboarding) st.nav.waypoint = null;
       return;
@@ -4828,8 +4888,8 @@ export const onboarding = {
       if (trainer) target = { pos: trainer.pos, label: trainer.name && !/trainer/i.test(trainer.name) ? trainer.name : 'Fleeing Raider' };
     }
     else if (beat && beat.key === 'tether') {
-      const derelict = this._derelictId != null && st.entities && st.entities.get(this._derelictId);
-      if (derelict && derelict.alive !== false) target = { pos: derelict.pos, label: 'Derelict' };
+      const derelict = this._liveTrainingDerelict();
+      if (derelict) target = { pos: derelict.pos, label: 'Derelict' };
     }
     else if (beat && beat.key === 'seam') {
       const rock = this._miningRockId != null && st.entities && st.entities.get(this._miningRockId);
@@ -4844,7 +4904,7 @@ export const onboarding = {
     // (hud.js Tutorial Objective branch). Prefer the beat verb in reason; keep short nav label.
     st.nav.waypoint = buildOnboardingObjectiveWaypoint({
       ...beat,
-      line: ob.beatAction || beat.line,
+      line: beat.key === 'tether' ? `Optional: ${ob.beatAction || beat.line}` : ob.beatAction || beat.line,
     }, target);
   },
 
@@ -5003,7 +5063,9 @@ export const onboarding = {
     const step = onboardingTrackerStep(ob, BEATS);
     // Exactly one persistent command surface: spatial lessons use the HUD waypoint; non-spatial
     // lessons (thrust/brake/heat) use this compact panel title.
-    const demoteObjectiveCopy = !!(this.state.nav && this.state.nav.waypoint
+    const tetherAway = beat?.key === 'tether' && !tetherLessonIsLocal(this.state, this);
+    const tetherYields = beat?.key === 'tether' && hasTrackedActiveMission(this.state);
+    const demoteObjectiveCopy = tetherAway || !!(this.state.nav && this.state.nav.waypoint
       && this.state.nav.waypoint.onboarding);
 
     if (this._kickerLabelEl) {
@@ -5021,7 +5083,7 @@ export const onboarding = {
     }
 
     if (this._titleEl) {
-      const line = beat ? (beat.line || '') : '';
+      const line = tetherYields ? 'Optional: practice Massline on the derelict.' : beat ? (beat.line || '') : '';
       // Keep textContent in sync for beat tests while hiding the duplicate verb from the visual and
       // assistive trees. The one transient tutorial line already routes through _sayTutorial().
       if (this._titleEl.textContent !== line) this._titleEl.textContent = line;

@@ -1392,7 +1392,8 @@ export const codexScreen = {
       play.setAttribute('aria-label', 'Play signal ' + c.id + ': ' + c.title);
       play.addEventListener('click', () => { cue('confirm'); this._playCinematic(c.video, c.title); });
       try { dressLampKey(play); } catch (_) { /* a host without SVG keeps the word */ }
-      entry.article.appendChild(play);
+      // Keep the primary action ahead of the scrollable caption on short screens.
+      entry.article.insertBefore(play, entry.measure);
       return entry;
     });
     this._section('Recovered Signals', entries);

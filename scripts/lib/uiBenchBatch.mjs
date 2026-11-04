@@ -16,7 +16,10 @@ export function parseBenchArgs(argv) {
     list: 'boolean', walk: 'boolean', demo: 'boolean', phone: 'boolean', headed: 'boolean',
     shot: 'list', bg: 'value', out: 'value', query: 'value', probe: 'value', max: 'value',
     viewport: 'value', viewports: 'value', 'timeout-ms': 'value', 'baseline-source': 'value',
+    'reduced-motion': 'value', 'forced-colors': 'value',
   });
+  if (o['reduced-motion'] && !['reduce', 'no-preference'].includes(o['reduced-motion'])) throw new Error('Invalid --reduced-motion');
+  if (o['forced-colors'] && !['active', 'none'].includes(o['forced-colors'])) throw new Error('Invalid --forced-colors');
   if (o.viewport && o.viewports) throw new Error('Use --viewport or --viewports, not both');
   const viewports = (o.viewports || o.viewport || (o.phone ? '390x844' : '1920x1080')).split(',').map(value => {
     const m = /^(\d+)x(\d+)$/.exec(value.trim());
@@ -98,6 +101,7 @@ export async function runUiBenchBatch({ args, root, loadPlaywright, startServer,
       try {
         // Reuse the expensive browser process; isolate storage, listeners, focus and fixtures.
         context = await browser.newContext({ viewport,
+          reducedMotion: args['reduced-motion'] || 'no-preference', forcedColors: args['forced-colors'] || 'none',
           ...(args.phone ? { deviceScaleFactor: 2, isMobile: true, hasTouch: true } : {}) });
         const page = await context.newPage();
         page.setDefaultTimeout(args.timeoutMs);

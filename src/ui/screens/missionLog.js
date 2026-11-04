@@ -500,6 +500,16 @@ export function missionMapAction(state, mission, isTracked) {
   const currentSectorId = state.world && state.world.currentSectorId || null;
   const targetSectorId = (wp && wp.sectorId) || mission.destSectorId || null;
   const sameSector = targetSectorId && currentSectorId && targetSectorId === currentSectorId;
+  const recovery = !!contract47aReadout(mission) && mission.params?.sampleRecovered === false;
+  const savedFix = recovery && mission.params?.samplePos;
+  const liveRecoveryWaypoint = wp && !wp.stationId && wp.pos
+    && Number.isFinite(wp.pos.x) && Number.isFinite(wp.pos.z);
+  if (recovery && sameSector && savedFix && Number.isFinite(savedFix.x) && Number.isFinite(savedFix.z)
+    && !liveRecoveryWaypoint) {
+    return mapHandoffAction({ focus: MAP_FOCUS.LOCAL, missionId: mission.id, sectorId: targetSectorId,
+      pos: savedFix, source: 'missionLog', selectionTarget: '47a-recovery-fix',
+      title: 'Open the recovery site on Local Map' });
+  }
   const hasLocalFix = !!(wp && wp.pos);
   // The owner waypoint is the actual 47-A recovery site until its sample flag changes. Keep this
   // exact opening contract's Local Map selection on that live fix; ordinary jobs and malformed
@@ -517,7 +527,7 @@ export function missionMapAction(state, mission, isTracked) {
       body: 'Show the live objective marker and nearby contacts.',
       missionId: mission.id,
       sectorId: targetSectorId,
-      stationId: b0RecoveryFix ? null : mission.destStationId || (wp && wp.stationId) || null,
+      stationId: recovery ? null : mission.destStationId || (wp && wp.stationId) || null,
       pos: wp && wp.pos ? wp.pos : null,
       source: 'missionLog',
       selectionTarget: b0RecoveryFix ? 'active-waypoint' : null,
@@ -530,7 +540,7 @@ export function missionMapAction(state, mission, isTracked) {
     body: 'Plot or review the jump route to this objective.',
     missionId: mission.id,
     sectorId: targetSectorId,
-    stationId: mission.destStationId || (wp && wp.stationId) || null,
+    stationId: recovery ? null : mission.destStationId || (wp && wp.stationId) || null,
     pos: null,
     source: 'missionLog',
   });

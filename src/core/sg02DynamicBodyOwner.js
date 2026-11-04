@@ -2316,9 +2316,19 @@ export class Sg02DynamicBodyOwner {
   // threshold; a light grind or a scrape distributed over compound colliders does contact
   // work without ever earning one. Pairs between the record's own colliders (a compound
   // hull's primitives pack tightly enough to neighbour each other) are self-contact, not
-  // contact work. Only consulted on unexplained, receiptless delta-V, so the ordinary
-  // no-contact tick costs nothing.
-  _playerInLiveContact(rec) {
+  // contact work. Consulted on unexplained delta-V, either to admit a dynamic
+  // partner's solver response or classify receiptless contact work.
+  _playerInLiveContact(rec, dynamicOnly = false) {
+    // Force receipts retain contacts that separated during the solve; the live
+    // narrow phase below also covers light dynamic contact with no force receipt.
+    if (dynamicOnly) {
+      const own = rec.entity && rec.entity.id;
+      for (const receipt of this._stepContactReceipts || []) {
+        const otherId = receipt.aId === own ? receipt.bId : receipt.bId === own ? receipt.aId : null;
+        const other = otherId == null ? null : this.records.get(otherId);
+        if (other && other !== rec && other.spec.dynamic === true && other.body.isDynamic()) return true;
+      }
+    }
     const colliders = rec && rec.colliders;
     const world = this.world;
     if (!Array.isArray(colliders) || colliders.length === 0
@@ -2329,6 +2339,8 @@ export class Sg02DynamicBodyOwner {
         world.contactPairsWith(colliders[i], (other) => {
           if (touching) return;
           const owned = this._colliderOwners.get(other.handle);
+          if (dynamicOnly && (!owned || owned.rec.spec.dynamic !== true
+            || !owned.rec.body.isDynamic() || other.isSensor())) return;
           if (!owned || owned.rec !== rec) touching = true;
         });
       } catch (_) {
@@ -2381,6 +2393,7 @@ export class Sg02DynamicBodyOwner {
 
     const closingFraction = this._playerContactClosingFraction(rec);
     const unexplained = rawDv > PLAYER_CONTACT_ACTIVITY_EPSILON;
+    const hasDynamicContact = unexplained && this._playerInLiveContact(rec, true);
     // A contact-force receipt only exists for collider pairs that crossed the gameplay
     // threshold (SG02_CONTACT_FORCE_EVENT_THRESHOLD_N): a sustained light grind, or a
     // scrape spread across the primitives of compound colliders, stays receiptless while
@@ -2388,7 +2401,7 @@ export class Sg02DynamicBodyOwner {
     // work, island noise — leaves no receipt AND no live contact pair; only that carries
     // solver momentum the give pass must not rewrite.
     const receiptlessContact = closingFraction == null && unexplained
-      && this._playerInLiveContact(rec);
+      && (hasDynamicContact || this._playerInLiveContact(rec));
     const isActive = unexplained && (closingFraction != null || receiptlessContact);
     const tickNow = Number.isFinite(this._simTick) ? this._simTick : this.tick;
     if (isActive) {
@@ -2403,6 +2416,9 @@ export class Sg02DynamicBodyOwner {
     const cumulative = rec._playerContactCumulativeDeltaV || 0;
     const preservesSolverResponse = rec._tumbling === true
       || this._sleepHeld.has(rec)
+      // A dynamic partner keeps the opposite solver impulse. Restoring just the
+      // player's graze velocity would create momentum/energy on every contact.
+      || hasDynamicContact
       || closingFraction > 0.55
       || (closingFraction == null && !receiptlessContact);
     let eventBudget = 5;

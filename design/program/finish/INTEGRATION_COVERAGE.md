@@ -45,6 +45,75 @@ English extraction/readiness is current at15,749 surfaces/0 unresolved; the inco
 harness fixes pass12 focused cases. Incoming UI reference source-hash refreshes are metadata,
 not fresh visual or performance acceptance.
 
+The next connected source batch is active, not published. Its earlier integration baseline passed
+17/17 groups in80,529ms. The later coherent run passed16/17 in67,191ms within the unchanged90,000ms
+budget; the sole failure was the old V3 replay hash. Causal isolation reproduces that old hash by
+loading only the old dynamic-contact owner: the fixture's tick54 heavy-spindle collision depended
+on player-only restored speed. The corrected native response deliberately changes the downstream
+trajectory and four observed counts while preserving firing, tether, boost, mission and economy
+events. A reviewed versioned native-contact envelope now passes the original focused gate,
+repeat5 and reload60/600; the historical envelope stays byte-identical. This is an explicit
+gameplay-contract migration, not an unexplained hash refresh. Whole-game/frame targets remain open.
+
+The batch connects the real Warm Freighter Mule, finite salvage, measured hull collision,
+attached growth, deliberate standby choices and truthful arrival lines. Fifteen exact canonical
+whole-hulk releases now use measured native geometry and area inertia, with presentation following
+the collision-bearing body. A32-case comparison preserves the previous visual selector outputs.
+The ordinary rendered encounter and handling remain open. The attachment correction now uses the
+same effective level hull pose at creation, movement and Continue, while preserving saved sim tilt;
+the affected seven production-host/aux/renderer checks pass.
+
+A short actual-native contact check exposed asymmetric player graze assistance: it restored player
+speed after a dynamic wreck retained the transferred momentum. The measured player/Mule pair
+gained16.55% energy despite dissipative native contacts. The owner correction retains the native
+translational response for dynamic partners, preserving helm/static-graze/commanded-force behavior;
+the same case now loses18.25%. The two existing coasting-debris expectations now check actual
+momentum/energy transfer and nonpenetration instead of asymmetric retained speed. All26 focused
+native-contact/static/helm/force cases pass; ordinary handling remains open.
+
+The ordinary Adventure journey exposed broken47-A recovery guidance: the mission advertised a
+marked source while the chart opened its eventual delivery station. The producer fix now binds
+the real field/slot, distinguishes recovery from delivery and survives optional onboarding/manual
+navigation. The real mining producer passes the worker-to-reader phase handoff. A mounted consumer
+then exposed a separate marker-identity defect while a manual course exists; the repair draws a
+distinct mission fix without changing that course. A marked source depleted by an NPC now re-marks
+to a real live exposure in the same field only after exact resource-owner depletion proof. The
+genuine saved journey also exposed an unbound legacy fix canonically in Ceres despite its Helios
+contract; that proven wrong-sector fix is corrected only once a real eligible Helios slot exists.
+Valid, absent or ambiguous legacy sources are not guessed. The ordinary earned-sample/delivery
+journey remains active. No fixture assay is a player completion.
+
+The connected workshop fixture refines three batches, fabricates the net, fits that exact instance
+and publishes capacity250→270 with unchanged credits. Review found that its Fit chooser could
+confirm before an asynchronous owner refusal; it now waits for a correlated exact-instance result,
+retains the chooser on refusal and treats timeout as unconfirmed. Production-host acceptance,
+refusal, duplicate and late-reply cases pass; the earned ordinary workshop route remains open.
+
+The recovery and manual-course chart captions now share a readable unveiled-field solve, with
+cached veil geometry rather than per-draw DOM measurement. The affected compact mounted controls
+and four focused cases pass. Helios Span's unskinned occupational hulk now qualifies for the same
+measured fit through its exact current release; decoded GLB bounds/outline and native mass/inertia,
+serialization and rebind checks pass. Its one convex hull approximates concavity within existing
+tolerance; faction variants remain excluded and the historical census digest is absent.
+
+An independently reproduced startup presentation bug is repaired: an unrelated save error during
+New Game no longer removes the loading shell. The30 affected presenter/recovery checks pass;
+Continue and true startup failure Retry/Back behavior remain intact. This is not established as
+the physical iPhone failure. Current English extraction/readiness covers15,758 surfaces with no
+unresolved extraction candidates; newly arriving commissions are not yet included in that snapshot.
+
+The three new additive commissions—Breakwater Spur, Counterweight Circuit and Cinderglass Job—
+have begun in their separate feature directories. They supplement the existing Finish work and
+the separate five Pro briefs. Their candidates are not integrated or accepted yet. The controller
+owns incorporation and improvement. Final release requires the owner's three successive
+independent readiness approvals after material findings and remaining outcomes are resolved.
+
+Incoming Help/station layout changes have selected mounted desktop/compact looks and fixture
+repair/rearm feedback. Their performance metadata previously replaced source hashes while keeping
+the October30 capture. The exact original capture-bound metadata from`d59a80207513` is restored;
+no measured row or numeric threshold changes. Current source correctly remains stale against that
+old capture until a genuine new measurement. A digest refresh is not performance acceptance.
+
 **Critical save defect repaired and directly checked:** temporary arcade ownership now survives
 the run reset, preventing Exit from overwriting Adventure autosave. The final29 Exit/isolation
 and13 affected Racing/export cases pass. On the ordinary89dd route, buying iron, saving, entering
@@ -255,21 +324,31 @@ integrated; their historical receipts do not replace the current outcome limits 
   visible-window capture before any app input or capture. Visible-window output and iPhone14 remain
   UNKNOWN in that older checkpoint; candidate29 was not promoted. Earlier8ea/public touch evidence
   is recorded above; current89dd is now public, while physical iPhone remains unknown.
-- **UI and authored visuals:** the six non-default matrix aliases and mounted chart-cost cell remain
-  open. The #808–#815 layout changes are source-integrated but have no new local mounted looks. The
-  in-world hero/plume/marking look is still open after a preserved zero-draw Kestrel result.
+- **UI and authored visuals:** the six selected non-default map alias/motion/forced-color/locale
+  cells now mount the canonical map at the correct focus. The forced-color icon contrast defect
+  is repaired and directly inspected. Eight compact selected-control walks report no errors or
+  reachability findings; this is partial coverage, not the full matrix. A matched retained Galaxy
+  chart comparison reduces JavaScript per draw8.796→3.618ms (about59%) with identical142 label
+  placements; it does not establish FPS, full UI-owner cost or the2ms target. The #808–#815 layout
+  changes still lack their own complete mounted looks. The in-world hero/plume/marking look remains
+  open. The selected hostile offscreen cue now has desktop and actual mounted touch-control
+  geometry checks; ordinary changed combat remains open.
 - **Story and traffic:** Last Shift, natural Tethys stealth, earned Compost growth, PQ024H1, visible
   liner/tug yield-resume and a changed Ceres continuation remain player-route work. The #724 garden
   source delta is integrated in `d87c999ea10d`, with10 owner-component cases passed but no earned public feed.
 - **New connected-action defects:** ordinary89dd Fortify builds the turret and correctly displays
   the180-credit charge,994→814; its correlated worker reply omits the shared run-wallet update.
-  The initial stuck-purchase interpretation was wrong. The existing host invalidation path is
-  being repaired. Last Shift's authoritative filed report is omitted from the main read model,
-  so the contact cannot offer the earned report action. Both have exact owner/test assignments.
+  The initial stuck-purchase interpretation was wrong. The source repair now publishes the
+  canonical purse in that same reply. Last Shift's source repair projects its bounded validated
+  filed account and original-recorder return to the existing Ceres host. Borrowed Voice now places
+  its fresh scene at the actual global Charon anchor while preserving moved saved originals and
+  ambiguous legacy placements. Focused owner checks pass; their changed ordinary routes are open.
 - **Performance/stability:** loading and simulation/frame targets remain open. The existing8.57s
-  combat profile points at scene submission/uniforms and a transmission pass; a later bounded
-  material census identifies transmission-eligible instanced ice, with cached-list provenance
-  limits. The performance department is evaluating that concrete owner; no FPS win is claimed.
+  combat profile points at scene submission/uniforms and a transmission pass. The later bounded
+  cached-list observation identifies the physical optic diamond/splitter prism, not ordinary ice
+  or canopies; provenance limits remain. The zero-comparator opaque sort is a concrete candidate,
+  but structural depth prepasses constrain any replacement. No valid active A/B has run and no
+  FPS win is claimed; paused Swarm did not advance the world or renderer.
   M5/CPU ABBA experiments without a material win remain closed. Long retention/context-loss work
   needs a specific unresolved failure, not repeated generic survival runs.
 - **Provider and closure:** five Pro briefs remain undispatched because the selected provider reports

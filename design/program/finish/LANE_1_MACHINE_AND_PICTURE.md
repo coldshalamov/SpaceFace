@@ -11,6 +11,14 @@ budget. Status words: `OPEN`, `ACTIVE`, `LANDED <sha>`, `SKIPPED (<one-line reas
 
 ## Baseline (packet M0 rewrites this table with today's numbers, then keeps a dated row per re-measure)
 
+**Active connected batch,2026-11-03:** retained Galaxy label reuse reduces synchronous chart
+JavaScript8.796→3.618ms/draw in one matched ABBA, with142 identical placements and unchanged visual
+policy. This is a component result; D222/full-owner/FPS targets remain open. Canonical map aliases
+and forced-color icons have selected mounted looks. Fifteen qualified whole-hulk releases now
+share physical/render identity and level collision-aligned presentation; ordinary hull/hero looks
+remain open. Integration found a growth-attachment tilt mismatch and assigns the correction.
+No opaque-sort or refraction quality change has shipped from the latest profile.
+
 | Date | Build | Crucible p50 / p99 / longest | GPU p50 | Adventure p50 / p99 / longest | Longest load task | Loading anim gap p99 | Launch→flight | Host busy |
 |---|---|---|---|---|---|---|---|---|
 | 2026-10-28 (from docs) | various | 86 / ~125 (p95) / multi-s | 23.7 ms | 23.2 / 109.4 / 324 | 5,000 ms | unmeasured | 11.6 s | contended |

@@ -32,6 +32,10 @@ import {
   normalizeCausalAftermath,
 } from '../world/encounterCausality.js';
 import { getFarActor, removeFarRecord } from '../world/farActorTable.js';
+import { WARM_FREIGHTER_HOST, warmFreighterCollisionModel, warmFreighterWorldScale } from '../data/warmFreighter.js';
+import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
+import { wreckHulkBodyUpgrade } from '../data/wreckHulkCollision.js';
+import { hasWholeHulkGeometry, wholeHulkVisualForEntity, MULE_SITE_COLLISION_PROFILE } from '../data/wholeShipVisualIdentity.js';
 
 const STATE_VERSION = 3;
 const MAX_PER_SECTOR = 8;
@@ -159,6 +163,24 @@ export function isPlayerWreckMarker(marker) {
 // recovery wrecks (their live body unbinds on eviction and would never rematerialize).
 function isProtectedMarker(marker) {
   return isPlayerWreckMarker(marker) || !!(marker && marker.pinWreck === true);
+}
+
+// A single authored site uses the existing marker as both its finite wreck record
+// and its bounded terminal receipt. It is not a repeatable recovery offer.
+function isSiteWreckMarker(marker) {
+  return marker?.markerId === WARM_FREIGHTER_HOST.markerId
+    && marker.sectorId === WARM_FREIGHTER_HOST.sectorId
+    && marker.siteId === WARM_FREIGHTER_HOST.siteId && marker.source === 'authored_site';
+}
+
+function siteWreckClaimed(entity) {
+  return entity?.playerOwned === true || entity?.data?.playerOwned === true
+    || !!entity?.data?.claimedBy || !!entity?.data?.custodyOwner
+    || entity?.data?.persistenceOwner !== 'aftermathWrecks';
+}
+
+function siteWreckHasSalvage(entity) {
+  return Object.values(entity?.data?.salvagePool || {}).some(qty => Number(qty) > 0);
 }
 
 export function playerWreckMarker(state) {
@@ -590,6 +612,7 @@ function poolForMarker(marker) {
 }
 
 function aftermathLine(marker) {
+  if (isSiteWreckMarker(marker)) return 'The Warm Freighter — abandoned Mule hull; no recorded killer.';
   const zone = marker.zoneName || 'a local zone';
   if (isPlayerWreckMarker(marker)) return `Your wreck and pod remain in ${zone}.`;
   const victim = marker.victimLabel || marker.victimClass || 'ship';
@@ -1034,6 +1057,15 @@ function normalizeMarker(input) {
   // pool rebuilds its pool from its own residue, not from the generic class default.
   marker.manifestResidue = normalizeSalvagePool(input.manifestResidue);
   if (input.pinWreck === true) marker.pinWreck = true;
+  if (isSiteWreckMarker(input)) {
+    marker.siteId = WARM_FREIGHTER_HOST.siteId;
+    marker.siteOutcome = ['live', 'destroyed', 'exhausted', 'claimed'].includes(input.siteOutcome)
+      ? input.siteOutcome : 'live';
+    marker.pinWreck = true;
+    if (input.sitePlayerOwned === true) marker.sitePlayerOwned = true;
+    if (input.siteClaimedBy) marker.siteClaimedBy = boundedIdentityText(input.siteClaimedBy);
+    if (input.siteCustodyOwner) marker.siteCustodyOwner = boundedIdentityText(input.siteCustodyOwner);
+  }
   if (input.playerWreck === true || input.kind === PLAYER_WRECK_KIND) {
     marker.playerWreck = true;
     marker.kind = PLAYER_WRECK_KIND;
@@ -1045,8 +1077,15 @@ function normalizeMarker(input) {
 }
 
 function trimAndSort(markers, retained) {
-  const normalized = markers.filter(row => !isDuplicateRetainedRow(row, retained))
+  let normalized = markers.filter(row => !isDuplicateRetainedRow(row, retained))
     .map(row => ({ row, marker: normalizeMarker(row) })).filter(item => item.marker);
+  // The authored site has exactly one bounded row, including its terminal state.
+  const siteRows = normalized.filter(item => isSiteWreckMarker(item.marker));
+  if (siteRows.length > 1) {
+    const rank = { live: 0, claimed: 1, exhausted: 2, destroyed: 3 };
+    const winner = siteRows.reduce((a, b) => rank[b.marker.siteOutcome] > rank[a.marker.siteOutcome] ? b : a);
+    normalized = normalized.filter(item => !isSiteWreckMarker(item.marker) || item === winner);
+  }
   const keep = item => isProtectedMarker(item.marker) || retained.get(item.marker.markerId) === item.row;
   const protectedMarkers = normalized.filter(keep).map(item => item.marker);
   const rest = normalized
@@ -1072,6 +1111,8 @@ export const aftermathWrecks = {
     // Transient object identity, not another persistence ledger. A recycled numeric id
     // (even with copied marker data) is not the body this owner actually bound.
     this._boundWreckMarkers = new WeakMap();
+    this._siteWreckLife = null;
+    this._siteAdmissionPending = false;
     // Companion debris bodies, keyed by the marker whose kill threw them. Unbound (no
     // markerId/provenance on the entity) so no durable marker owns them — the map is their
     // only handle, and retiring a marker retires its shard with it (cap, eviction, completion).
@@ -1130,12 +1171,16 @@ export const aftermathWrecks = {
     this._onMissionCompleted = (payload) => this._settleMission(payload || {}, true);
     this._onMissionFailed = (payload) => this._settleMission(payload || {}, false);
     this._onNewGame = () => this.newGame();
-    this._onSaveRestoring = () => { this._saveRestoring = true; };
+    this._onSaveRestoring = () => { this._saveRestoring = true;this._siteAdmissionPending = false; };
     this._onSaveLoaded = () => {
       this._saveRestoring = false;
       this._spawned.clear();
       if (this._shards) this._shards.clear();
       this._spawnForSector(this.state && this.state.world && this.state.world.currentSectorId);
+      if (this._siteAdmissionPending) {
+        this._siteAdmissionPending = false;
+        this.admitSiteWreck(WARM_FREIGHTER_HOST.siteId);
+      }
     };
     this._onSaveError = () => { this._saveRestoring = false; };
     this._onLooseImpact = (payload) => this._shedImpactChips(payload || {});
@@ -1184,6 +1229,8 @@ export const aftermathWrecks = {
 
   newGame() {
     this._saveRestoring = false;
+    this._siteWreckLife = null;
+    this._siteAdmissionPending = false;
     const prior = this.state && this.state.aftermathWrecks && Number.isFinite(this.state.aftermathWrecks.runToken)
       ? this.state.aftermathWrecks.runToken >>> 0
       : 0;
@@ -1203,6 +1250,7 @@ export const aftermathWrecks = {
   update(_dt, state) {
     const sectorId = state && state.world && state.world.currentSectorId;
     if (!sectorId || this._saveRestoring) return;
+    this._reconcileSiteWreck();
     this._syncEcologyForSector(sectorId);
     this._driveScavengers(state, sectorId);
   },
@@ -1857,17 +1905,77 @@ export const aftermathWrecks = {
     return true;
   },
 
-  /**
-   * PQ-195.06: a mission-owned destruction (the SP-07 breakaway assembly) asks for ONE bounded
-   * reduced-value recovery — an ordinary marker that materializes as an ordinary wreck carrying
-   * the payload's own reduced pool. Two deliberate differences from `entity:killed`:
-   *   - the victim need not be shiplike: the caller explicitly offers it, so SHIPLIKE_TYPES stays;
-   *   - the markerId is deterministic per (sector, victim) with NO tick/killer, so a duplicate
-   *     offer converges on the same marker through rememberMarker's own dedupe instead of
-   *     stacking a second opportunity.
-   * Everything after that is the stock path: `aftermathWreck:recorded`, a headline, and
-   * `_spawnForSector` materialization into the shipped scanner/salvage flow.
-   */
+  /** Admit the one authored site without a victim death, recovery offer or reward. */
+  admitSiteWreck(siteId) {
+    const C = WARM_FREIGHTER_HOST, state = this.state;
+    if (siteId !== C.siteId || !state
+      || state.world?.currentSectorId !== C.sectorId
+      || state.mode && state.mode !== 'flight') return null;
+    if (this._saveRestoring) { this._siteAdmissionPending = true;return null; }
+    this._reconcileSiteWreck();
+    let marker = this._markerById(C.markerId);
+    if (marker && !isSiteWreckMarker(marker)) return null;
+    if (!marker) {
+      marker = normalizeMarker({
+        markerId: C.markerId, sectorId: C.sectorId, siteId: C.siteId, siteOutcome: 'live', source: 'authored_site',
+        pos: sectorLocalToGlobalForSector(C.center, C.sectorId), victimId: null,
+        victimClass: 'freighter', victimDefId: C.defId, victimVisual: { defId: C.defId },
+        victimMass: C.mass, victimRadius: C.radius, victimRot: C.rot,
+        victimVel: { x: 0, z: 0 }, victimAngVel: 0,
+        victimLabel: 'The Warm Freighter', wreckClass: 'ancient', pinWreck: true,
+        tick: state.tick || 0, t: Number(state.simTime) || 0,
+      });
+      rememberMarker(state, this.bus, marker, null, { publishNews: false });
+    }
+    if (marker.siteOutcome !== 'live') return null;
+    // A recycled/mutated life never authorizes an adoption or a replacement.
+    const prior = this._siteWreckLife;
+    if (prior && state.entities.get(prior.entity.id) === prior.entity
+      && prior.entity.occupantGeneration !== prior.generation) return null;
+    if (!this.siteWreckBinding(siteId)) this._spawnForSector(C.sectorId);
+    return this.siteWreckBinding(siteId);
+  },
+
+  siteWreckBinding(siteId) {
+    const C = WARM_FREIGHTER_HOST, marker = this._markerById(C.markerId), life = this._siteWreckLife;
+    if (siteId !== C.siteId || !isSiteWreckMarker(marker) || marker.siteOutcome !== 'live' || !life) return null;
+    const host = life.entity;
+    if (this.state.entities.get(host.id) !== host || host.occupantGeneration !== life.generation
+      || this._boundWreckMarkers.get(host) !== marker.markerId || this._spawned.get(marker.markerId) !== host.id
+      || !isBoundWreck(host, marker.markerId) || !(host.hull > 0) || siteWreckClaimed(host)
+      || !siteWreckHasSalvage(host) || ![host.pos?.x, host.pos?.z, host.rot].every(Number.isFinite)) return null;
+    return { siteId, markerId: marker.markerId, entityId: host.id, occupantGeneration: life.generation, host,
+      pose: { x: host.pos.x, z: host.pos.z, rot: host.rot }, radius: host.radius, mass: host.mass,
+      worldScale: warmFreighterWorldScale(host.radius) };
+  },
+
+  _reconcileSiteWreck() {
+    const life = this._siteWreckLife;
+    if (!life) return;
+    const marker = this._markerById(WARM_FREIGHTER_HOST.markerId);
+    if (!isSiteWreckMarker(marker) || ['destroyed', 'exhausted'].includes(marker.siteOutcome)) return;
+    const entity = life.entity;
+    if (entity.occupantGeneration !== life.generation) return;
+    if (entity.alive === false && entity.hull <= 0) {
+      this._retireDestroyedMarker(marker, entity.id);return;
+    }
+    if (this.state.entities.get(entity.id) !== entity || entity.alive === false) return;
+    if (siteWreckClaimed(entity)) {
+      const firstClaim = marker.siteOutcome !== 'claimed';
+      marker.siteOutcome = 'claimed';
+      if (entity.playerOwned === true || entity.data.playerOwned === true) marker.sitePlayerOwned = true;
+      if (entity.data.claimedBy) marker.siteClaimedBy = boundedIdentityText(entity.data.claimedBy);
+      if (entity.data.custodyOwner) marker.siteCustodyOwner = boundedIdentityText(entity.data.custodyOwner);
+      if (entity.data.persistenceOwner !== 'aftermathWrecks') marker.siteCustodyOwner = boundedIdentityText(entity.data.persistenceOwner);
+      if (firstClaim) this.bus?.emit('aftermathWreck:siteUnavailable', { siteId: marker.siteId, markerId: marker.markerId, reason: 'claimed' });
+    }
+    if (!siteWreckHasSalvage(entity) && this._completeByEntity({ wreckId: entity.id, markerId: marker.markerId })) {
+      if (this.helpers.removeEntity) this.helpers.removeEntity(entity.id, { immediate: true });
+      else entity.alive = false;
+    }
+  },
+
+  /** PQ-195.06: deterministic reduced-value recovery offered by a real mission-owned loss. */
   offerRecoveryWreck(payload = {}) {
     const state = this.state;
     if (!state || !payload || typeof payload !== 'object') return null;
@@ -2010,6 +2118,9 @@ export const aftermathWrecks = {
     if (!markerId || !entity || !this.state || !this._spawned) return null;
     const marker = this._markerById(markerId);
     if (!marker) return null;
+    if (isSiteWreckMarker(marker) && (['destroyed', 'exhausted'].includes(marker.siteOutcome)
+      || marker.siteCustodyOwner
+      || this._siteWreckLife?.entity === entity && this._siteWreckLife.generation !== entity.occupantGeneration)) return null;
     const existing = this._resolveBoundWreck(markerId);
     if (existing && existing.alive !== false && existing.id !== entity.id) return existing;
 
@@ -2046,6 +2157,25 @@ export const aftermathWrecks = {
       entity.rot = identity.rot;
       entity.pitch = identity.pitch;
       entity.bank = identity.bank;
+    }
+    // Bind geometry only after retaining a live fracture/custom identity. Never
+    // replace pose, custody, pool, occupant life or attachment state to fit a hull.
+    const body = entity.physicsBody;
+    const siteModel = isSiteWreckMarker(marker) ? warmFreighterCollisionModel() : null;
+    const siteBound = siteModel && hasWholeHulkGeometry(entity)
+      && wholeHulkVisualForEntity(entity)?.file === WARM_FREIGHTER_HOST.file
+      && body?.shape === 'compound'
+      && body.inertiaY === body.mass * entity.radius * entity.radius * siteModel.inertiaPerMassRadiusSquared
+      && (body.collisionProxyManifest === siteModel.manifest
+        || JSON.stringify(body.collisionProxyManifest) === JSON.stringify(siteModel.manifest));
+    const upgrade = siteBound ? null : wreckHulkBodyUpgrade(entity);
+    if (siteBound || upgrade) {
+      if (upgrade?.changed) entity.physicsBody = upgrade.physicsBody;
+      entity.data.hulkCollisionFile = siteBound ? WARM_FREIGHTER_HOST.file : upgrade.model.file;
+      entity.data.hulkCollisionProfile = siteBound ? MULE_SITE_COLLISION_PROFILE : upgrade.model.profile;
+    } else {
+      delete entity.data.hulkCollisionFile;
+      delete entity.data.hulkCollisionProfile;
     }
     return this._bindLiveMarker(marker, entity) ? entity : null;
   },
@@ -2141,6 +2271,15 @@ export const aftermathWrecks = {
     const rows = own.bySector[marker.sectorId];
     const index = Array.isArray(rows) ? rows.indexOf(marker) : -1;
     if (index < 0) return false;
+    if (isSiteWreckMarker(marker)) {
+      if (this._siteWreckLife?.entity.id !== entityId
+        || this._siteWreckLife.entity.occupantGeneration !== this._siteWreckLife.generation) return false;
+      if (['destroyed', 'exhausted'].includes(marker.siteOutcome)) return false;
+      marker.siteOutcome = 'destroyed';marker.wreckHull = 0;marker.salvagePool = {};
+      this._spawned?.delete(marker.markerId);this._retireMarkerShard(marker.markerId);
+      this.bus?.emit('aftermathWreck:retired', { markerId: marker.markerId, entityId, sectorId: marker.sectorId, reason });
+      return true;
+    }
     // A malformed/restored bag may contain the same durable id twice. Retiring one
     // row would leave the other able to recreate a second life for the same wreck.
     for (const sectorId of Object.keys(own.bySector)) {
@@ -2404,7 +2543,8 @@ export const aftermathWrecks = {
     // canonical row for diagnosis; never mint a healed body or a false retirement.
     this._writeBackAllBound();
     const listed = physicalWrecksForSector(state, sectorId)
-      .filter((marker) => wreckIntegrity(marker).wreckHull > 0);
+      .filter((marker) => wreckIntegrity(marker).wreckHull > 0
+        && (!isSiteWreckMarker(marker) || !['destroyed', 'exhausted'].includes(marker.siteOutcome) && !marker.siteCustodyOwner));
     const own = ensureAftermathState(state);
     const retained = cinderRetentionIds(state);
     const player = listed.filter(isPlayerWreckMarker);
@@ -2468,6 +2608,7 @@ export const aftermathWrecks = {
     this._spawned.set(marker.markerId, entity.id);
     if (!this._boundWreckMarkers) this._boundWreckMarkers = new WeakMap();
     this._boundWreckMarkers.set(entity, marker.markerId);
+    if (isSiteWreckMarker(marker)) this._siteWreckLife = { entity, generation: entity.occupantGeneration };
     if (!alreadyBound && this.bus && typeof this.bus.emit === 'function') {
       this.bus.emit('aftermathWreck:spawned', {
         markerId: marker.markerId,
@@ -2493,7 +2634,10 @@ export const aftermathWrecks = {
     const pitch = boundedPoseAngle(marker.victimPitch);
     const bank = boundedPoseAngle(marker.victimBank);
     const integrity = wreckIntegrity(marker);
-    return {
+    const siteCollision = isSiteWreckMarker(marker) ? warmFreighterCollisionModel() : null;
+    const wreckRadius = boundedVictimRadius(marker.victimRadius) || WRECK_RADIUS;
+    const wreckMass = mass != null ? mass : 1e6;
+    const spec = {
       type: 'wreck',
       pos: { x: marker.pos.x, z: marker.pos.z },
       vel: { x: vel.x, z: vel.z },
@@ -2503,17 +2647,21 @@ export const aftermathWrecks = {
       bank,
       // The wreck is the victim's body: it fills the circle the hull filled. Legacy markers
       // recorded no radius and keep the historical fallback.
-      radius: boundedVictimRadius(marker.victimRadius) || WRECK_RADIUS,
+      radius: wreckRadius,
       // Dead man's mass: the victim's real mass so the wreck is shoveable. 1e6 only when no mass
       // was ever recorded (legacy markers).
-      mass: mass != null ? mass : 1e6,
+      mass: wreckMass,
       hull: integrity.wreckHull,
       hullMax: integrity.wreckHullMax,
       // SFQ-B025: the named operational mass rides the body spec itself — without an authored
       // physicsBody.mass the normalizer re-derives a wreck-density mass (0.10·R³) that has
       // nothing to do with the victim's real mass, and every rope/impact consumer that reads
       // physicsBody.mass first would see the wrong number.
-      physicsBody: { shape: 'capsule', mass: mass != null ? mass : 1e6 },
+      physicsBody: siteCollision
+        ? { shape: 'compound', mass: wreckMass,
+          inertiaY: wreckMass * wreckRadius * wreckRadius * siteCollision.inertiaPerMassRadiusSquared,
+          collisionProxyManifest: siteCollision.manifest }
+        : { shape: 'capsule', mass: wreckMass },
       // The physical residence owns this body, not its incident provenance: without homeSectorId it survived sector
       // teardown live and unbound, and the marker's re-entry spawn doubled it (D89).
       homeSectorId: physicalWreckSector(marker),
@@ -2523,6 +2671,10 @@ export const aftermathWrecks = {
         // The marker in state.aftermathWrecks IS this body's durable record: world.records and the
         // far-actor shelf must never persist a second copy of it.
         persistenceOwner: 'aftermathWrecks',
+        ...(isSiteWreckMarker(marker) ? { siteId: marker.siteId,
+          ...(marker.sitePlayerOwned ? { playerOwned: true } : {}),
+          ...(marker.siteClaimedBy ? { claimedBy: marker.siteClaimedBy } : {}),
+          ...(marker.siteCustodyOwner ? { custodyOwner: marker.siteCustodyOwner } : {}) } : {}),
         parentType: marker.wreckClass === 'military' ? 'military' : 'ship',
         proportions: WRECK_COLLIDER_PROPORTIONS,
         loot: [],
@@ -2565,7 +2717,7 @@ export const aftermathWrecks = {
         killedAt: Number.isFinite(marker.t) ? marker.t : 0,
         provenanceLine: line,
         provenance: {
-          source: isPlayerWreckMarker(marker) ? PLAYER_WRECK_KIND : 'battle-aftermath',
+          source: isSiteWreckMarker(marker) ? 'authored_site' : isPlayerWreckMarker(marker) ? PLAYER_WRECK_KIND : 'battle-aftermath',
           markerId: marker.markerId,
           sectorId: marker.sectorId,
           zoneId: marker.zoneId,
@@ -2593,9 +2745,24 @@ export const aftermathWrecks = {
         ...(marker.pinWreck === true ? { missionPinned: true } : {}),
       },
     };
+    if (siteCollision && hasWholeHulkGeometry(spec)
+      && wholeHulkVisualForEntity(spec)?.file === WARM_FREIGHTER_HOST.file) {
+      // Preserve NativePlay's geometry-identical, already checked Mule profile.
+      spec.data.hulkCollisionFile = WARM_FREIGHTER_HOST.file;
+      spec.data.hulkCollisionProfile = MULE_SITE_COLLISION_PROFILE;
+    } else {
+      const upgrade = wreckHulkBodyUpgrade(spec);
+      if (upgrade) {
+        spec.physicsBody = upgrade.physicsBody;
+        spec.data.hulkCollisionFile = upgrade.model.file;
+        spec.data.hulkCollisionProfile = upgrade.model.profile;
+      }
+    }
+    return spec;
   },
 
   _clearLiveRefs(sectorId) {
+    this._reconcileSiteWreck();
     if (!sectorId || !this._spawned) {
       if (this._spawned) {
         this._writeBackAllBound();
@@ -2632,6 +2799,8 @@ export const aftermathWrecks = {
     if (!marker || !marker.markerId) return false;
     const entity = this._resolveBoundWreck(marker.markerId);
     if (!entity) return false;
+    if (isSiteWreckMarker(marker) && (this._siteWreckLife?.entity !== entity
+      || entity.occupantGeneration !== this._siteWreckLife.generation)) return false;
     if (entity.pos && Number.isFinite(entity.pos.x) && Number.isFinite(entity.pos.z)) {
       marker.pos = { x: entity.pos.x, z: entity.pos.z };
       const residentSector = physicalWreckSector(marker);
@@ -2690,6 +2859,16 @@ export const aftermathWrecks = {
     const canonical = own.bySector[sectorId];
     if (!Array.isArray(canonical)
       || !canonical.some(marker => marker?.markerId === markerId && marker.sectorId === sectorId)) return false;
+    const siteMarker = canonical.find(marker => marker?.markerId === markerId && isSiteWreckMarker(marker));
+    if (siteMarker) {
+      if (['destroyed', 'exhausted'].includes(siteMarker.siteOutcome) || siteWreckHasSalvage(live)
+        || this._siteWreckLife?.entity !== live || this._siteWreckLife.generation !== live.occupantGeneration) return false;
+      this._writeBackBoundWreck(siteMarker);
+      siteMarker.siteOutcome = 'exhausted';siteMarker.salvagePool = {};
+      this._spawned.delete(markerId);this._retireMarkerShard(markerId);
+      this.bus?.emit('aftermathWreck:completed', { markerId, wreckId, sectorId });
+      return true;
+    }
     // One real consumed body retires every malformed duplicate of its durable id,
     // never a second completion or a hull that can be sold again after Continue.
     for (const key of Object.keys(own.bySector)) {
@@ -2706,6 +2885,7 @@ export const aftermathWrecks = {
 
   serialize() {
     const own = ensureAftermathState(this.state);
+    this._reconcileSiteWreck();
     this._writeBackAllBound();
     const retained = retainedCinderRows(this.state, own.bySector);
     const bySector = {};
@@ -2755,6 +2935,7 @@ export const aftermathWrecks = {
       yield 'wrecks-sector';
     }
     if (this._spawned) this._spawned.clear();
+    this._siteWreckLife = null;
     if (this._shards) this._shards.clear();
     if (this._ecologySpawned) this._ecologySpawned.clear();
     if (this._ecologyLiveToKey) this._ecologyLiveToKey.clear();
@@ -2828,7 +3009,7 @@ export const aftermathWrecks = {
     if (!markers.length) return;
     const groups = new Map();
     for (const marker of markers) {
-      if (!marker) continue;
+      if (!marker || isSiteWreckMarker(marker)) continue;
       // Zone-less markers group into the sector's shared zone-less field ('aft:<sector>:zone')
       // so open-space battles feed the same wreck-field ecology a named zone gets.
       const key = aftermathFieldId(marker.sectorId, marker.zoneId);

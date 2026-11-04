@@ -173,6 +173,17 @@ ${P} .sxb-vital__acts .orr-act__cost { font-family:${NUM} !important; font-size:
     mask-image:linear-gradient(to bottom, #000 calc(100% - 2px), transparent) !important; padding-bottom:2px !important; }
 }
 @media (min-width:901px) and (max-width:1100px) and (min-height:461px) and (max-height:640px) {
+  /* The active handoff needs its complete instruction above the tab body. Keep the compact
+     Market and Shipworks allocations below; other tabs can use the available head room. */
+  ${P}:not(:has(#sx-panel > .sx-mkt)):not(:has(#sx-panel > .sx-sw:not([hidden]))) {
+    grid-template-rows:minmax(0, 40vh) minmax(200px, 1fr) max-content !important;
+  }
+  ${P}:not(:has(#sx-panel > .sx-mkt)):not(:has(#sx-panel > .sx-sw:not([hidden]))) .sxb-berth.dp-frame__head {
+    max-height:40vh !important;
+  }
+  ${P}:not(:has(#sx-panel > .sx-mkt)):not(:has(#sx-panel > .sx-sw:not([hidden]))) .sxb-berth > .sxb-signs {
+    padding-top:0 !important;
+  }
   ${P}:has(#sx-panel > .sx-sw:not([hidden])) { grid-template-rows:max-content minmax(0,1fr) max-content !important; }
   ${P}:has(#sx-panel > .sx-sw:not([hidden])) .sxb-berth.dp-frame__head {
     min-height:0 !important; max-height:145px !important; overflow-y:auto !important; overflow-x:hidden !important;

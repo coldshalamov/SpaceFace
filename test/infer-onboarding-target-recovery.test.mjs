@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { createGameState } from '../src/core/gameState.js';
 import { makeEntity } from '../src/core/entity.js';
 import { onboarding, BEATS } from '../src/systems/onboarding.js';
+import { sectorGlobalOrigin } from '../src/data/sectorCoordinates.js';
 
 function harness(beatKey) {
   const state = createGameState(103);
@@ -68,4 +69,84 @@ test('a derelict respawn that reuses the old id still resets its physical lesson
   assert.equal(state.onboarding.tetherReeled, false);
   assert.equal(state.onboarding.firedFollowups['tether:tether:latched'], undefined);
   assert.equal(state.player.targetId, 2);
+});
+
+test('first-pull cue yields to tracked work and stays at its home sector across return', () => {
+  const { state, owner } = harness('tether');
+  owner._setObjectiveWaypoint = onboarding._setObjectiveWaypoint;
+  owner._setRescueWaypoint = () => false;
+  owner._setMissingThreeWaypoint = () => false;
+  owner._refreshBeatPanel = () => {};
+  state.world.currentSectorId = 'sector_helios_prime';
+  owner._spawnDerelict();
+  const target = owner._derelictId;
+  owner._setObjectiveWaypoint(false);
+  assert.equal(state.nav.waypoint.markerId, 'onboarding:tether');
+  assert.match(state.nav.waypoint.reason, /^Optional:/);
+  assert.equal(state.onboarding.tetherSectorId, 'sector_helios_prime');
+
+  state.ui.trackedMissionId = '47a';
+  state.missions.active = [{ id: '47a', status: 'active' }];
+  owner._setObjectiveWaypoint(false);
+  assert.equal(state.nav.waypoint, null, 'tracked work receives the primary slot');
+  const missionWaypoint = { kind: 'mission', missionId: '47a', pos: { x: 12, z: 34 } };
+  state.nav.waypoint = missionWaypoint;
+  state.world.currentSectorId = 'sector_ceres';
+  owner._resolveProximityDone();
+  owner._setObjectiveWaypoint(true);
+  assert.equal(owner._derelictId, target, 'no second lesson body is restaged away');
+  assert.equal(state.onboarding.tetherReeled, true, 'leaving does not complete or reset progress');
+  assert.equal(state.nav.waypoint, missionWaypoint, 'the lesson cannot reclaim the mission route');
+
+  state.world.currentSectorId = 'sector_helios_prime';
+  state.ui.trackedMissionId = null;
+  state.nav.waypoint = null;
+  owner._setObjectiveWaypoint(false);
+  assert.equal(state.nav.waypoint.markerId, 'onboarding:tether');
+  assert.equal(owner._derelictId, target, 'the original live body resumes when available');
+});
+
+test('first-pull home survives a save and legacy ordinary saves return to Helios', () => {
+  const { state, owner } = harness('tether');
+  state.world.currentSectorId = 'sector_helios_prime';
+  owner._spawnDerelict();
+  const record = owner.serialize();
+  assert.equal(record.tetherSectorId, 'sector_helios_prime');
+  state.world.currentSectorId = 'sector_ceres';
+  owner.deserialize(record);
+  assert.equal(state.onboarding.tetherSectorId, 'sector_helios_prime');
+  const before = state.entityList.length;
+  owner._resolveProximityDone();
+  assert.equal(state.entityList.length, before);
+  delete record.tetherSectorId;
+  owner.deserialize(record);
+  assert.equal(state.onboarding.tetherSectorId, 'sector_helios_prime');
+});
+
+test('the same live first-pull body can be worked after crossing a corridor boundary', () => {
+  const { state, owner } = harness('tether');
+  owner._setObjectiveWaypoint = onboarding._setObjectiveWaypoint;
+  owner._setRescueWaypoint = () => false;
+  owner._setMissingThreeWaypoint = () => false;
+  owner._refreshBeatPanel = () => {};
+  state.world.currentSectorId = 'sector_helios_prime';
+  owner._spawnDerelict();
+  const body = state.entities.get(owner._derelictId);
+  state.world.currentSectorId = 'sector_ceres_belt';
+  owner._setObjectiveWaypoint(false);
+  assert.equal(state.nav.waypoint, null, 'an old Helios body is not a local Ceres cue');
+
+  const ceres = sectorGlobalOrigin('sector_ceres_belt');
+  body.pos.x = ceres.x;
+  body.pos.z = ceres.z;
+  assert.equal(owner._liveTrainingDerelict(), body);
+  owner._setObjectiveWaypoint(false);
+  assert.equal(state.nav.waypoint.markerId, 'onboarding:tether');
+  let event = null;
+  owner._onBeatEvent = (name) => { event = name; };
+  owner._onTetherReel({ targetId: body.id, after: 30 });
+  assert.equal(event, 'tether:reel', 'actual lesson progress remains possible');
+
+  state.entities.set(body.id, { ...body, pos: { ...body.pos } });
+  assert.equal(owner._liveTrainingDerelict(), null, 'a recycled life does not inherit the lesson');
 });

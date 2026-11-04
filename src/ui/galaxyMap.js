@@ -362,6 +362,49 @@ function mapLabelEligible(candidate) {
   return candidate.named === true;
 }
 
+// A solve may be reused only for the complete, unchanged plain-data graph. The binding map
+// also preserves nested input references in the fresh result (lines, alternate shapes, etc.).
+function matchLabelSolveInputs(previous, current) {
+  const bindings = new Map(), reverse = new Map();
+  let remaining = 16384;
+  const match = (a, b) => {
+    if (--remaining < 0 || typeof a === 'function' || typeof b === 'function') return false;
+    if (!a || typeof a !== 'object' || !b || typeof b !== 'object') return Object.is(a, b);
+    const array = Array.isArray(a);
+    if (array !== Array.isArray(b)
+      || Object.getPrototypeOf(a) !== (array ? Array.prototype : Object.prototype)
+      || Object.getPrototypeOf(b) !== (array ? Array.prototype : Object.prototype)) return false;
+    if (bindings.has(a)) return bindings.get(a) === b;
+    if (reverse.has(b)) return false;
+    bindings.set(a, b); reverse.set(b, a);
+    const keys = Reflect.ownKeys(a), other = Reflect.ownKeys(b);
+    if (keys.length !== other.length) return false;
+    for (let i = 0; i < keys.length; i += 1) {
+      const key = keys[i];
+      if (typeof key !== 'string' || key !== other[i]) return false;
+      const x = Object.getOwnPropertyDescriptor(a, key), y = Object.getOwnPropertyDescriptor(b, key);
+      if (!('value' in x) || !('value' in y)
+        || ((!x.enumerable || !y.enumerable) && !(array && key === 'length'))
+        || !match(x.value, y.value)) return false;
+    }
+    return true;
+  };
+  return match(previous, current) ? bindings : null;
+}
+
+function freshLabelSolveResult(value, bindings, copies = new Map()) {
+  if (!value || typeof value !== 'object') return value;
+  if (bindings.has(value)) return bindings.get(value);
+  if (copies.has(value)) return copies.get(value);
+  const copy = Array.isArray(value) ? new Array(value.length) : {};
+  copies.set(value, copy);
+  for (const key of Object.keys(value)) {
+    Object.defineProperty(copy, key, { value: freshLabelSolveResult(value[key], bindings, copies),
+      enumerable: true, configurable: true, writable: true });
+  }
+  return copy;
+}
+
 function rectsOverlap(a, b, gap = 0) {
   return a.x < b.x + b.width + gap
     && a.x + a.width + gap > b.x
@@ -824,6 +867,19 @@ export function resolveMapOpenTarget(state, intent) {
     const active = (state.missions && state.missions.active) || [];
     mission = active.find((m) => m && String(m.id) === missionId) || null;
     if (mission) {
+      const recovery = mission.status === 'active' && mission.storyTag === 'campaign47a:b0:recovery'
+        && mission.type === 'salvage_retrieval' && mission.params?.contractId === '47-A'
+        && mission.params?.sampleRecovered === false;
+      const fix = mission.params?.samplePos;
+      if (recovery && !stationId && intent.selectionTarget === '47a-recovery-fix'
+        && normalizeMapFocus(intent.focus) === MAP_FOCUS.LOCAL && mission.destSectorId === currentSectorId(state)
+        && (!sectorId || sectorId === mission.destSectorId)
+        && fix && Number.isFinite(fix.x) && Number.isFinite(fix.z)
+        && intent.pos?.x === fix.x && intent.pos?.z === fix.z) {
+        const target = waypointClickTarget({ kind: 'mission', missionId, sectorId: mission.destSectorId,
+          label: '47-A Recovery Site', reason: 'Recover the 47-A sample' }, fix, 0, 0, state);
+        return target && { ...target, id: `mission-fix:${missionId}`, missionFix: true, sectorId: mission.destSectorId };
+      }
       // A producer may deliberately omit stationId when its explicit local position is the
       // objective (rather than the contract's eventual berth). Select only the same live,
       // mission-owned waypoint the map itself draws. Explicit stationId above this check remains
@@ -842,7 +898,7 @@ export function resolveMapOpenTarget(state, intent) {
         const waypointTarget = waypointClickTarget(waypoint, position, 0, 0, state);
         if (waypointTarget) return waypointTarget;
       }
-      if (!stationId && mission.destStationId != null) stationId = String(mission.destStationId);
+      if (!stationId && !recovery && mission.destStationId != null) stationId = String(mission.destStationId);
       if (!sectorId) {
         const midSector = mission.destSectorId || (mission.params && mission.params.sectorId) || null;
         if (midSector != null) sectorId = String(midSector);
@@ -4474,6 +4530,8 @@ export const galaxyMapScreen = {
   _railMarker: null,
 
   mount(rootEl, ctx) {
+    this._labelSolveReuse = null;
+    this._clearFieldCache = null;
     this._releaseSensorLattice();
     injectStyle();
     this._ctx = ctx;
@@ -5036,6 +5094,8 @@ export const galaxyMapScreen = {
   },
 
   onShow(ctx) {
+    this._labelSolveReuse = null;
+    this._clearFieldCache = null;
     if (ctx) this._ctx = ctx;
     this._visible = true;
     this._selectedTarget = null;
@@ -5124,6 +5184,7 @@ export const galaxyMapScreen = {
   },
 
   onHide() {
+    this._labelSolveReuse = null;
     this._visible = false;
     this._iris = null;
     this._releaseSensorLattice();
@@ -6150,7 +6211,7 @@ _stepAnimation(now) {
         : null;
       html += `
         <div class="gm-ins-section">
-          <div class="gm-ins-kind" style="color:${INK.amberHot};">ACTIVE WAYPOINT</div>
+          <div class="gm-ins-kind" style="color:${INK.amberHot};">${t.missionFix ? 'MISSION FIX' : 'ACTIVE WAYPOINT'}</div>
           <div class="gm-ins-target-name" style="color:${INK.amberHot};">${escapeMapHtml(t.name)}</div>
         </div>
 
@@ -8754,6 +8815,7 @@ _onCanvasDblClick(ev) {
 
   _resize() {
     if (!HAS_DOC || !this._body || !this._canvas) return;
+    this._clearFieldCache = null;
     const viewportW = Number(this._root && this._root.clientWidth)
       || (typeof window !== 'undefined' && Number(window.innerWidth))
       || this._body.clientWidth;
@@ -9087,7 +9149,8 @@ _draw() {
     if (!HAS_DOC || !this._root || !this._canvas || typeof this._canvas.getBoundingClientRect !== 'function') return fallback;
     const now = this._nowMs();
     const cache = this._clearFieldCache;
-    if (cache && cache.w === w && cache.h === h && now - cache.at < 250) return cache.rect;
+    const recoverySelected = !!this._selectedTarget?.missionFix;
+    if (cache && cache.w === w && cache.h === h && cache.recoverySelected === recoverySelected && now - cache.at < 250) return cache.rect;
     const frame = this._canvas.getBoundingClientRect();
     const rectOf = (sel) => {
       const el = typeof this._root.querySelector === 'function' ? this._root.querySelector(sel) : null;
@@ -9121,7 +9184,16 @@ _draw() {
     if (ribbon && ribbon.top > h * 0.5 && ribbon.left < (left + right) / 2) bottom = Math.min(bottom, ribbon.top - 14);
     let rect = { x: left, y: top, width: right - left, height: bottom - top };
     if (!(rect.width > 220 && rect.height > 160)) rect = fallback;
-    this._clearFieldCache = { w, h, at: now, rect };
+    let veilRight = null;
+    if (recoverySelected && typeof getComputedStyle === 'function') {
+      const stage = this._root.querySelector('.gm-body-container');
+      if (stage) {
+        const width = parseFloat(getComputedStyle(stage, '::before').width);
+        const stageRect = stage.getBoundingClientRect();
+        if (Number.isFinite(width)) veilRight = stageRect.left - frame.left + width;
+      }
+    }
+    this._clearFieldCache = { w, h, at: now, rect, recoverySelected, veilRight };
     return rect;
   },
 
@@ -9206,7 +9278,7 @@ _draw() {
    * never outside the clear field. The marks already on the table (this frame's click targets) are
    * obstacles; `extra` adds rings, discs, lanes and rects a level knows about.
    */
-  _placeLabels(candidates, w, h, { reserved = [], rings = [], discs = [], segments = [] } = {}) {
+  _placeLabels(candidates, w, h, { reserved = [], rings = [], discs = [], segments = [], recoveryLabelId = null } = {}) {
     // A laid line's reading hangs over the chart: names keep 24 px clear of where it stands.
     const readingRect = this._line && this._lastReadingRect ? this._lastReadingRect : null;
     const keepOff = readingRect
@@ -9237,16 +9309,60 @@ _draw() {
     for (let i = 1; i < bp.length; i += 1) beam.push({ x1: bp[i - 1].x, y1: bp[i - 1].y, x2: bp[i].x, y2: bp[i].y });
     const reservedAll = reserved.concat(keepOff);
     if (edgeRect) reservedAll.push(edgeRect);
-    const placed = placeChartLabels(candidates, {
+    const environment = {
       bounds: field,
       reserved: this._reservedLabelRects(w, h, reservedAll),
       discs: marks.concat(discs),
       rings,
       segments: beam.length ? segments.concat(beam, beam, beam, beam, beam, beam) : segments,
-      priorityOf: mapLabelPriority,
-      eligible: mapLabelEligible,
       maxLeader: 64,
-    });
+    };
+    // Both navigation names must clear the rail's veil; solve them together before reserving
+    // their seats for the other labels. The veil edge shares the chrome measurement cache.
+    let navigationPlacements = [];
+    if (recoveryLabelId && Number.isFinite(this._clearFieldCache?.veilRight)) {
+      const left = Math.max(field.x, this._clearFieldCache.veilRight);
+      if (left + 40 < field.x + field.width) {
+        const bounds = { ...field, x: left, width: field.x + field.width - left };
+        const navigation = candidates.filter(c => c.id === recoveryLabelId || c.id === 'objective:active-waypoint')
+          .map(c => c.id === recoveryLabelId ? { ...c, priority: 1001 } : c);
+        let proposed = placeChartLabels(navigation, { ...environment, bounds,
+          priorityOf: mapLabelPriority, eligible: mapLabelEligible });
+        if (proposed.some(p => !p.visible || p.x < left + 4)) {
+          proposed = placeChartLabels(navigation.map(c => ({ ...c, leaderOnly: true, dock: bounds })),
+            { ...environment, bounds, priorityOf: mapLabelPriority, eligible: mapLabelEligible });
+        }
+        if (proposed.length && proposed.every(p => p.visible && p.x >= left + 4)) {
+          navigationPlacements = proposed;
+          environment.reserved.push(...proposed);
+          candidates = candidates.filter(c => c.id !== recoveryLabelId && c.id !== 'objective:active-waypoint');
+        }
+      }
+    }
+    const priorityOf = mapLabelPriority, eligible = mapLabelEligible;
+    const input = { candidates, environment };
+    const reusable = this._visible === true && levelForZoom(this._zoom) === 'galaxy'
+      && typeof structuredClone === 'function';
+    const last = this._labelSolveReuse;
+    const bindings = reusable && last && last.root === this._root && last.context === this._ctx
+      && last.state === this._ctx?.state && last.priorityOf === priorityOf && last.eligible === eligible
+      ? matchLabelSolveInputs(last.snapshot.input, input) : null;
+    let placed;
+    if (bindings) placed = freshLabelSolveResult(last.snapshot.placed, bindings);
+    else {
+      placed = placeChartLabels(candidates, { ...environment, priorityOf, eligible });
+      this._labelSolveReuse = null;
+      if (reusable && matchLabelSolveInputs(input, input)) {
+        try {
+          // Snapshot input and output TOGETHER: structuredClone retains their shared references,
+          // while mutations to a caller's previous result cannot poison the next frame's solve.
+          const snapshot = structuredClone({ input, placed });
+          this._labelSolveReuse = { snapshot, priorityOf, eligible,
+            root: this._root, context: this._ctx, state: this._ctx?.state };
+        } catch (_) { /* unsupported data keeps the original uncached solve */ }
+      }
+    }
+    if (navigationPlacements.length) placed.unshift(...navigationPlacements);
     // what the drag reading must keep off: the marks, the names and the level's own rects
     this._readingObstacles = {
       segments,
@@ -10801,6 +10917,21 @@ _drawLocal(g, state, w, h) {
     const cam = this._cams.local;
     const wp = state.nav && state.nav.waypoint;
     const wpPos = localMapWaypointPosition(state, wp);
+    // An inspected mission fix is separate from the player's armed course. Revalidate it on
+    // current owner state, so an accepted sample or changed fix cannot leave a stale marker.
+    const fixMission = this._selectedTarget?.missionFix
+      ? (state.missions?.active || []).find(m => String(m.id) === this._selectedTarget.missionId) : null;
+    const selectedFix = fixMission ? resolveMapOpenTarget(state, {
+      focus: MAP_FOCUS.LOCAL, selectionTarget: '47a-recovery-fix',
+      missionId: this._selectedTarget.missionId, sectorId: this._selectedTarget.sectorId,
+      pos: fixMission.params?.samplePos,
+    }) : null;
+    const missionFix = selectedFix?.missionFix ? selectedFix : null;
+    if (this._selectedTarget?.missionFix
+      && (!missionFix || missionFix.x !== this._selectedTarget.x || missionFix.z !== this._selectedTarget.z)) {
+      this._selectedTarget = missionFix;
+      this._inspectorPending = true;
+    }
     const nowS = Math.max(0, Number(state && state.simTime) || 0);
     const reduced = !!this._reduceMotion;
     const animT = this._animT || 0;
@@ -10830,6 +10961,7 @@ _drawLocal(g, state, w, h) {
     if (wpPos) {
       fitSpans.push(Math.hypot(wpPos.x - px, wpPos.z - pz));
     }
+    if (missionFix) fitSpans.push(Math.hypot(missionFix.x - px, missionFix.z - pz));
     let m = 0;
     if (fitSpans.length) {
       fitSpans.sort((a, b) => a - b);
@@ -11290,6 +11422,26 @@ _drawLocal(g, state, w, h) {
 
     // The goal: in the field it is a pin; off it, its tick on the field's border carries its words.
     let objectivePlacement = null;
+    let missionFixPlacement = null;
+    let missionFixScreen = null;
+    if (missionFix) {
+      let x = sx(missionFix.x), y = sz(missionFix.z);
+      if (offView(x, y)) {
+        const tick = ringPinTick(shipX, shipY, pinRadius, x, y, INK.ink0, 'waypoint', missionFix);
+        edgeTicks.push(tick); x = tick.x; y = tick.y;
+      } else {
+        missionFixScreen = { x, y };
+        this._clickTargets.push({ ...missionFix, sx: x, sy: y });
+      }
+      const recoveryName = missionFix.name.toUpperCase();
+      const compact = makeMapLabelCandidate(g, { text: 'MISSION', lines: ['MISSION', recoveryName] });
+      labelCandidates.push(makeMapLabelCandidate(g, {
+        id: `objective:${missionFix.id}`, kind: 'objective', objective: true, selected: true,
+        text: `MISSION · ${recoveryName}`, lines: [`MISSION · ${recoveryName}`],
+        alts: [{ width: compact.width, height: compact.height, lines: compact.lines, nameLines: 2 }],
+        x, y, anchorRadius: 16, color: INK.ink0,
+      }));
+    }
     let wpScreen = null;
     if (wpPos && (this._layers.route || this._layers.mission)) {
       let wx = sx(wpPos.x);
@@ -11332,11 +11484,13 @@ _drawLocal(g, state, w, h) {
       localReserved.push({ x: shipX + rrPx * 0.707 + 4, y: shipY - rrPx * 0.707 - 16, width: 64, height: 20 });
     }
     this._edgeScalePxPerWU = baseScale * cam.zoom;
-    const labelLayout = this._placeLabels(labelCandidates, w, h, { reserved: localReserved });
+    const labelLayout = this._placeLabels(labelCandidates, w, h, { reserved: localReserved,
+      recoveryLabelId: missionFix ? `objective:${missionFix.id}` : null });
     this._lastLabelLayout = labelLayout;
     for (const placement of labelLayout) {
       if (!placement.visible) continue;
-      if (placement.objective) objectivePlacement = placement;
+      if (missionFix && placement.id === `objective:${missionFix.id}`) missionFixPlacement = placement;
+      else if (placement.objective) objectivePlacement = placement;
       else drawMapLabelBlock(g, placement);
     }
 
@@ -11353,6 +11507,9 @@ _drawLocal(g, state, w, h) {
     this._drawLocalPreview(g, state, { reduced, animT });
 
     // The tracked objective owns the final paint and the strongest label reservation.
+    if (missionFixScreen) {
+      drawWaypointPin(g, missionFixScreen.x, missionFixScreen.y, missionFix.name, w, missionFixPlacement, 'bone');
+    } else if (missionFixPlacement) drawMapLabelBlock(g, missionFixPlacement);
     if (wpScreen && (this._layers.route || this._layers.mission)) {
       drawWaypointPin(g, wpScreen.x, wpScreen.y, waypointMapLabel(wp), w, objectivePlacement, this._line ? 'bone' : 'hand');
     } else if (objectivePlacement) {

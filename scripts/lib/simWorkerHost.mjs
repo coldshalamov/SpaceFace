@@ -680,6 +680,7 @@ const AUX_FAMILIES = [
 
 function auxRowBlock(kind, row) {
   const data = row && row.data && typeof row.data === 'object' ? row.data : {};
+  const pose = kind === 'dressing' && data.warmFreighterHostMarkerId && data.warmFreighterVisualPose;
   return {
     v: 1,
     kind,
@@ -698,12 +699,15 @@ function auxRowBlock(kind, row) {
     sectorId: typeof row.sectorId === 'string' ? row.sectorId
       : (typeof row.homeSectorId === 'string' ? row.homeSectorId
         : (typeof data.sectorId === 'string' ? data.sectorId : null)),
+    ...(pose && [pose.height, pose.bank, pose.pitch, pose.localYaw].every(Number.isFinite)
+      ? { warmFreighterPose: { height: pose.height, bank: pose.bank, pitch: pose.pitch, localYaw: pose.localYaw } } : {}),
   };
 }
 
 function auxSignature(b) {
   return `${b.type}|${b.alive ? 1 : 0}|${b.x}|${b.z}|${b.vx}|${b.vz}|${b.rot}|${b.radius}`
-    + `|${b.lastExactT}|${b.liveEntityId}|${b.noMesh ? 1 : 0}|${b.sectorId}`;
+    + `|${b.lastExactT}|${b.liveEntityId}|${b.noMesh ? 1 : 0}|${b.sectorId}`
+    + (b.warmFreighterPose ? `|${b.warmFreighterPose.height}|${b.warmFreighterPose.bank}|${b.warmFreighterPose.pitch}|${b.warmFreighterPose.localYaw}` : '');
 }
 
 const _collectOrigin = { x: 0, z: 0 };
@@ -1183,6 +1187,7 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
       'run:draftPickRejected',
       'run:draftRerollRejected',
       'run:refitChanged',       // fit, strip, or sell receipt (including refusal)
+      'swarm:fortifyBuildResolved', // paused construction/service receipt updates the same run purse
     ];
     const offRunShopResults = runShopResultEvents.map((event) => bus.on(event, () => {
       if (host.state?.run?.kind === 'survival') host.domainDiffer?.invalidateSubtree('run');
@@ -1215,6 +1220,10 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
     // those retain their normal cold root cadence and existing hot active-mission mirror.
     const offBoardUpdate = bus.on('mission:updated', (payload) => {
       if (payload?.missionId == null) host.domainDiffer.invalidateLeaf('missions');
+      else if ((payload.objectiveProgress != null || payload.sourceFix === true) && (host.state?.missions?.active || []).some((m) =>
+        m.id === payload.missionId && m.storyTag === 'campaign47a:b0:recovery')) {
+        host.domainDiffer.invalidateLeaf('missions.active');
+      }
     });
     const offAccepted = bus.on('mission:accepted', () => host.domainDiffer.invalidateLeaf('missions'));
     // Terminal settlement mutates the receipt/history root before its canonical event;

@@ -14,6 +14,7 @@
 // PURE RENDER-ONLY PRESENTATION: Determinism-safe, zero per-frame allocation.
 
 import { resolveStationSideEventVfxProfile } from './stationSideEventVfx.js';
+import { isPhysicsBoundWholeHulk } from '../data/wholeShipVisualIdentity.js';
 
 function hashId(id) {
   const s = String(id || '');
@@ -528,13 +529,31 @@ export function createInfrastructureMotionTracker() {
     const rec = getState(entity.id);
     noteBoundaryRoot(rec, mesh);
     const reducedMotion = options.motionReduce === true;
+    const boundHulk = isPhysicsBoundWholeHulk(entity);
     lastSimTime = simTime;
+
+    // A qualified full hulk's child must stay in the solver's planar frame.
+    // This also removes drift left by a late physics-binding handoff.
+    if (boundHulk) {
+      const body = (mesh.children && mesh.children[0]) || null;
+      const hull = mesh.userData && mesh.userData.hull;
+      if (body && body !== mesh && body.rotation
+          && (body.rotation.x !== 0 || body.rotation.y !== 0 || body.rotation.z !== 0)) {
+        body.rotation.x = 0; body.rotation.y = 0; body.rotation.z = 0;
+        if (body.matrixAutoUpdate === false && typeof body.updateMatrix === 'function') body.updateMatrix();
+      }
+      if (hull && hull !== mesh && hull !== body && hull.rotation
+          && (hull.rotation.x !== 0 || hull.rotation.y !== 0 || hull.rotation.z !== 0)) {
+        hull.rotation.x = 0; hull.rotation.y = 0; hull.rotation.z = 0;
+        if (hull.matrixAutoUpdate === false && typeof hull.updateMatrix === 'function') hull.updateMatrix();
+      }
+    }
 
     // Slow zero-G dead drift: a bounded wobble riding the entity's real yaw. Wrecks now carry an
     // elongated capsule collider aligned with the spine, so the visual may only oscillate around
     // the sim-authored heading — an accumulating tumble would swing the drawn hulk through space
     // the collider doesn't occupy.
-    if (!reducedMotion) {
+    if (!reducedMotion && !boundHulk) {
       rec.driftRotX += rec.driftRate * 0.7 * dt;
       rec.driftRotY += rec.driftRate * dt;
       rec.driftRotZ += rec.driftRate * 0.5 * dt;
@@ -558,7 +577,7 @@ export function createInfrastructureMotionTracker() {
     }
     if (rec.arcIntensity > 0) {
       rec.arcIntensity = Math.max(0, rec.arcIntensity - dt * 6.0);
-      if (!reducedMotion) {
+      if (!reducedMotion && !boundHulk) {
         const body = (mesh.children && mesh.children[0]) || mesh;
         const jolt = rec.arcIntensity * rec.arcIntensity * 0.028;
         body.rotation.y += Math.sin(simTime * 71.0 + rec.phase) * jolt;

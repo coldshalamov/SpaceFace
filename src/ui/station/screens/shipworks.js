@@ -902,6 +902,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   let stageShown = false;
   let chooserEpoch = 0;
   let unfitPending = false;
+  let fitPending = null;
   let sableDemo = null, sableSelection = null, sableStamp = null;
   const clearSableDemo = () => { sableDemo?.dispose(); sableDemo = null; sableStamp = null; };
   const sableLifecycleUnsubs = ['save:restoring', 'game:newGame'].map(event => ctx.bus?.on(event, clearSableDemo)).filter(Boolean);
@@ -4491,6 +4492,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   // ---------- slot chooser (the compatible modules take the hang column) ----------
   function openChooser(slotIndex, anchorEl, opts = {}) {
     chooserEpoch++;
+    cancelFitPending();
     clearSableDemo(); sableSelection = null;
     const s = viewedShip(); const def = s ? SHIP_BY_ID.get(s.defId) : null;
     if (!def) return;
@@ -4730,6 +4732,32 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   }
 
   function emitFitIntent(eventName, payload) {
+    if (eventName === 'ui:fitModule' && laneCommandSink()) {
+      if (!ctx.bus || typeof ctx.bus.on !== 'function') return Promise.resolve(null);
+      const operationId = nextLaneToken('fit');
+      return new Promise((resolve) => {
+        let done = false;
+        let offAccepted = () => {}, offRefused = () => {}, timer = null;
+        const finish = (result) => {
+          if (done) return;
+          done = true;
+          offAccepted(); offRefused();
+          if (timer != null) clearTimeout(timer);
+          if (fitPending?.operationId === operationId) fitPending = null;
+          resolve(result);
+        };
+        fitPending = { operationId, cancel: () => finish(null) };
+        offAccepted = ctx.bus.on('module:equipped', (event) => {
+          if (event?.operationId === operationId && event.instanceId === payload.instanceId
+              && event.slotIndex === payload.slotIndex) finish(true);
+        });
+        offRefused = ctx.bus.on('module:fitRefused', (event) => {
+          if (event?.operationId === operationId) finish({ reason: event.reason });
+        });
+        timer = setTimeout(() => finish(null), 5000);
+        try { ctx.bus.emit(eventName, { ...payload, operationId }); } catch (_) { finish(null); }
+      });
+    }
     if (eventName === 'ui:unfitModule' && laneCommandSink()) {
       if (!ctx.bus || typeof ctx.bus.on !== 'function') return Promise.resolve(null);
       const operationId = nextLaneToken('unfit');
@@ -4761,8 +4789,13 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     return !refused;
   }
 
+  function cancelFitPending() {
+    fitPending?.cancel();
+  }
+
   function closeChooser(opts = {}) {
     chooserEpoch++;
+    cancelFitPending();
     clearSableDemo(); sableSelection = null;
     if (chooserEl.hidden && !chooserEl.classList.contains('is-open')) return;
     if (chooserCloseTimer) { clearTimeout(chooserCloseTimer); chooserCloseTimer = 0; }
@@ -4794,6 +4827,8 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   // list in place of the hulls; Back returns them. Every verb is an intent — the bombs
   // system owns the rack and the economy owner debits the credits; this screen only asks.
   function openPayloadChooser(socketIndex, anchorEl) {
+    chooserEpoch++;
+    cancelFitPending();
     const rack = bombRackModel();
     if (!Number.isInteger(socketIndex) || socketIndex < 0 || socketIndex >= rack.sockets) return;
     emitUiCue(UI_SWITCH_DETENT_CUE);
@@ -4958,6 +4993,8 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   }
 
   function openPaintChooser(anchorEl) {
+    chooserEpoch++;
+    cancelFitPending();
     emitUiCue(UI_SWITCH_DETENT_CUE);
     selectedSlot = -1;
     payloadSocket = -1;
@@ -5947,14 +5984,25 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     // hull's index — the chooser outfits the ship on screen, not always the active one.
     const fi = ev.target.closest('[data-fit-inv]');
     if (fi && !fi.disabled && shipworksActionAvailability(ctx.state).outfitEnabled) {
+      if (fitPending) return;
       if (ctx.bus) {
+        const epoch = chooserEpoch;
         const accepted = emitFitIntent('ui:fitModule', {
           shipIndex: viewIdx,
           slotIndex: Number(fi.getAttribute('data-fit-inv-slot')),
           instanceId: fi.getAttribute('data-fit-inv'),
         });
-        if (!accepted) {
-          ctx.bus.emit('audio:cue', { id: 'ui_deny' });
+        const asynchronous = accepted && typeof accepted.then === 'function';
+        if (asynchronous) fi.disabled = true;
+        const confirmed = asynchronous ? await accepted : accepted;
+        if (asynchronous) fi.disabled = false;
+        if (!stageShown || epoch !== chooserEpoch) return;
+        if (confirmed !== true) {
+          if (confirmed == null) ctx.bus.emit('toast', { text: 'Fit could not be confirmed. Check the fitting before retrying.', kind: 'warn', ttl: 4 });
+          else {
+            if (asynchronous && confirmed?.reason !== 'station_unavailable') ctx.bus.emit('toast', { text: 'Fit unavailable. Check the module and try again.', kind: 'warn', ttl: 4 });
+            ctx.bus.emit('audio:cue', { id: 'ui_deny' });
+          }
           if (typeof fi.focus === 'function') fi.focus({ preventScroll: true });
           return;
         }
@@ -6083,6 +6131,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       closeLotDesk(false);
       stageShown = false;
       chooserEpoch++;
+      cancelFitPending();
       pendingPresetRejection = null;
       clearSableDemo(); sableSelection = null;
       if (previewSettleTimer) clearTimeout(previewSettleTimer);
@@ -6095,6 +6144,8 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     dispose() {
       closeLotDesk(false);
       stageShown = false;
+      chooserEpoch++;
+      cancelFitPending();
       finishLotDeskPending(null);
       window.removeEventListener('keydown', interceptLotKeys, true);
       compactLotMedia.removeEventListener('change', onLotMediaChange);

@@ -2,6 +2,7 @@ import { projectIlexGreenhouse } from '../../src/data/ilexGreenhouse.js';
 import { foldSwarmSpecialistPresentation } from '../../src/data/swarmSpecialistPresentation.js';
 import { bindCeresCradlePublicLayout } from '../../src/core/ceresWorkfleetLayoutAdmission.js';
 import { bindCeresWorkfleetPublicActuation } from '../../src/core/ceresWorkfleetActuation.js';
+import { LAST_SHIFT, lastShiftFactIds, lastShiftLocalReport } from '../../src/data/lastShift.js';
 // S1 Phase-B stage 3 — main-side read model v1.
 //
 // Reconstructs what the present lane reads from live sim state, fed entirely by
@@ -447,6 +448,16 @@ export function applyAuxUpserts(readModel, upserts) {
       sectorId: u.sectorId || null,
       cell,
     };
+    // A journaled dressing entity also has a stable renderer facade. Its ordinary
+    // transform journal does not tick table rows; the bounded aux delta owns this pose.
+    const facade = u.kind === 'dressing' && readModel.entities.get(u.id);
+    const pose = u.warmFreighterPose;
+    if (facade?.data?.warmFreighterHostMarkerId && pose
+        && [pose.height, pose.bank, pose.pitch, pose.localYaw].every(Number.isFinite)) {
+      facade.pos.x = finite(u.x); facade.pos.z = finite(u.z); facade.rot = finite(u.rot);
+      const dest = facade.data.warmFreighterVisualPose || (facade.data.warmFreighterVisualPose = {});
+      dest.height = pose.height; dest.bank = pose.bank; dest.pitch = pose.pitch; dest.localYaw = pose.localYaw;
+    }
     if (!prev) {
       let bucket = readModel.auxCells.get(cell);
       if (!bucket) {
@@ -472,6 +483,11 @@ export function applyAuxRemovals(readModel, ids) {
   for (const id of ids) {
     const prev = readModel.aux.get(id);
     if (!prev) continue;
+    const facade = prev.kind === 'dressing' && readModel.entities.get(id);
+    if (facade?.data?.warmFreighterHostMarkerId) {
+      facade.alive = false;
+      readModel.entities.delete(id);
+    }
     const bucket = readModel.auxCells.get(prev.cell);
     if (bucket) {
       bucket.delete(id);
@@ -733,6 +749,9 @@ export const DOMAIN_MIRROR_KEYS = Object.freeze([
   'world.frameOrigin', 'world.frameOriginSeq', 'world.frontierRumors',
   'world.scanPings', 'world.activeSector', 'world.records.byId',
   'world.vestaOreCache', 'world.pallasHiddenCache',
+  // Filed local evidence and original-recorder custody feed the existing Ceres host.
+  // The presentation projection excludes live body poses and the owner's other internals.
+  'world.lastShift',
   // Bounded paired-passage receipt for main-side Pallas Hail, not the traffic owner graph.
   'traffic.pallasWorkLoop',
   // The existing survey ledger caps this sector at24 plain records; no global history mirror.
@@ -986,6 +1005,10 @@ function domainLeafViewFor(segs) {
     return { project: segs[0], hotPresentation: true };
   }
   if (segs.length === 1 && segs[0] === 'capitalBossEncounters') return { project: 'capitalBossPresentation' };
+  if ((segs.length === 1 && segs[0] === 'world.lastShift')
+      || (segs.length === 2 && segs[0] === 'world' && segs[1] === 'lastShift')) {
+    return { project: 'lastShiftLocalReport', hotPresentation: true };
+  }
   if (segs.length === 1 && segs[0] === 'ilexGreenhousePublic') return ILEX_GREENHOUSE_MIRROR_RULE;
   if (segs.length === 1 && segs[0] === 'planet.orchardForecast') return ORCHARD_FORECAST_MIRROR_RULE;
   if (segs.length === 1 && segs[0] === 'planet.ships') return ORCHARD_EXPOSURE_MIRROR_RULE;
@@ -1163,7 +1186,37 @@ function projectDrillPresentation(source) {
   return out;
 }
 
+function projectLastShiftLocalRecord(source) {
+  if (source?.schema !== 1 || source.siteId !== LAST_SHIFT.siteId) return null;
+  const status = source.bodies?.recorder?.status;
+  const shown = {
+    schema: 1, siteId: LAST_SHIFT.siteId,
+    knownClueIds: lastShiftFactIds(source.knownClueIds),
+    revision: Number.isInteger(source.revision) && source.revision >= 0 && source.revision <= 16
+      ? source.revision : 0,
+    receipts: [],
+    bodies: ['live', 'returned', 'destroyed', 'salvaged'].includes(status)
+      ? { recorder: { status } } : {},
+  };
+  // Use the same evidence/custody validator as the actual contact reader. A new scan
+  // does not silently revise the last filed report; invalid receipts reveal no report.
+  const report = lastShiftLocalReport({ world: { lastShift: source } });
+  if (!report) return shown;
+  const receipt = source.receipts.at(-1);
+  shown.receipts.push({ id: receipt.id, revision: receipt.revision,
+    clueIds: lastShiftFactIds(receipt.clueIds),
+    destroyedClueIds: lastShiftFactIds(receipt.destroyedClueIds),
+    text: receipt.text, at: receipt.at });
+  if (report.recorderReturned) {
+    const returned = source.recorderReturn;
+    shown.recorderReturn = { id: returned.id, bodyKey: returned.bodyKey,
+      stationId: returned.stationId, at: returned.at };
+  }
+  return shown;
+}
+
 function projectDomainLeaf(rule, v, state) {
+  if (rule?.project === 'lastShiftLocalReport') return projectLastShiftLocalRecord(v);
   if (rule?.project === 'stationYard') {
     const stationId = state?.ui?.docked === true && state.ui.dockedStationId;
     const player = v?.player;

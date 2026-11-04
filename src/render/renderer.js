@@ -1,4 +1,5 @@
 import { createHiddenSubtreeLifecycleMethods } from './runtime/hiddenSubtreeLifecycle.js';
+import { isPhysicsBoundWholeHulk } from '../data/wholeShipVisualIdentity.js';
 import { createShadowDepthStageMethods } from './runtime/shadowDepthStage.js';
 import {
   clearEntityMeshReference,
@@ -9135,6 +9136,35 @@ function createRigidOpaqueBatchProbe(owner, scene, options = {}) {
       return { ready: true };
     },
   });
+}
+
+const WARM_GROWTH_AXIS_X = new THREE.Vector3(1, 0, 0);
+const WARM_GROWTH_AXIS_Y = new THREE.Vector3(0, 1, 0);
+const WARM_GROWTH_AXIS_Z = new THREE.Vector3(0, 0, 1);
+const WARM_GROWTH_POSE = new THREE.Quaternion();
+const WARM_GROWTH_TURN = new THREE.Quaternion();
+
+// Optional dressing-only pose. Compose the same host child rotation as the Mule
+// hulk, then the original growth yaw in the host's surface plane.
+export function applyWarmFreighterDressingPose(mesh, row, frameMembrane) {
+  const p = row?.data?.warmFreighterVisualPose;
+  if (!mesh?.position || !row?.data?.warmFreighterHostMarkerId || !row.pos || !p
+      || !Number.isFinite(row.rot) || !Number.isFinite(p.height) || !Number.isFinite(p.bank)
+      || !Number.isFinite(p.pitch) || !Number.isFinite(p.localYaw) || !frameMembrane?.toLocal) return false;
+  const local = frameMembrane.toLocal(row.pos, _meshLocalXZ);
+  const height = p.height - (Number.isFinite(frameMembrane.origin?.y) ? frameMembrane.origin.y : 0);
+  WARM_GROWTH_POSE.setFromAxisAngle(WARM_GROWTH_AXIS_Y, -(row.rot - p.localYaw));
+  WARM_GROWTH_POSE.multiply(WARM_GROWTH_TURN.setFromAxisAngle(WARM_GROWTH_AXIS_X, p.bank));
+  WARM_GROWTH_POSE.multiply(WARM_GROWTH_TURN.setFromAxisAngle(WARM_GROWTH_AXIS_Z, p.pitch));
+  WARM_GROWTH_POSE.multiply(WARM_GROWTH_TURN.setFromAxisAngle(WARM_GROWTH_AXIS_Y, -p.localYaw));
+  const changed = mesh.position.x !== local.x || mesh.position.y !== height || mesh.position.z !== local.z
+    || Math.abs(mesh.quaternion.dot(WARM_GROWTH_POSE)) < 1 - 1e-12;
+  if (changed) {
+    mesh.position.set(local.x, height, local.z);
+    mesh.quaternion.copy(WARM_GROWTH_POSE);
+    if (mesh.matrixAutoUpdate === false) mesh.updateMatrix();
+  }
+  return changed;
 }
 
 export const render = {
@@ -26862,6 +26892,7 @@ export const render = {
       const local = this._frameMembrane.toLocal(e.pos, _meshLocalXZ);
       m.position.set(local.x, 0, local.z);
       m.rotation.y = -(e.rot || 0);
+      if (e.data?.warmFreighterVisualPose) applyWarmFreighterDressingPose(m, e, this._frameMembrane);
       if (m.matrixAutoUpdate === false) m.updateMatrix();
       if (e.type === 'ship' || e.type === 'station') {
         attachContactShadow(m, e);
@@ -27066,8 +27097,12 @@ export const render = {
     if (m.matrixAutoUpdate === false) m.updateMatrix();
     // carry the bank pose so the rebuilt hull doesn't momentarily sit level mid-turn
     const hull = m.userData && m.userData.hull;
-    if (hull && e.bank != null) hull.rotation.x = e.bank;
-    if (hull && e.pitch != null) hull.rotation.z = e.pitch;
+    if (hull && isPhysicsBoundWholeHulk(e)) {
+      hull.rotation.x = 0; hull.rotation.z = 0;
+    } else {
+      if (hull && e.bank != null) hull.rotation.x = e.bank;
+      if (hull && e.pitch != null) hull.rotation.z = e.pitch;
+    }
     if (e.type === 'ship' || e.type === 'station') {
       attachContactShadow(m, e);
       const lodLevel = m.userData && m.userData.lod ? m.userData.lod.level : null;
@@ -27620,13 +27655,22 @@ export const render = {
       slot,
     );
     if (!applied) return false;
+    const attachedRow = this.state?.entities?.get(world.entityIds[slot]);
+    if (attachedRow?.data?.warmFreighterVisualPose) {
+      applyWarmFreighterDressingPose(mesh, attachedRow, this._frameMembrane);
+    }
     const poseDx = mesh.position.x - poseBeforeX;
     const poseDz = mesh.position.z - poseBeforeZ;
     if (poseDx * poseDx + poseDz * poseDz >= POSE_JUMP_WU * POSE_JUMP_WU && this.state && this.state.render) {
       this.state.render.poseJump = attributePoseJump({ dx: poseDx, dz: poseDz });
     }
     const hull = mesh.userData && mesh.userData.hull;
-    if (hull && !(snapshot.columns && snapshot.columns.bank && snapshot.columns.pitch)) {
+    if (hull && isPhysicsBoundWholeHulk(attachedRow)) {
+      if (hull.rotation.x !== 0 || hull.rotation.z !== 0) {
+        hull.rotation.x = 0; hull.rotation.z = 0;
+        if (hull.matrixAutoUpdate === false && typeof hull.updateMatrix === 'function') hull.updateMatrix();
+      }
+    } else if (hull && !(snapshot.columns && snapshot.columns.bank && snapshot.columns.pitch)) {
       hull.rotation.x = world.bank[slot];
       hull.rotation.z = world.pitch[slot];
     }
@@ -27976,6 +28020,13 @@ export const render = {
           }
           if (posed) this._persistentSubmitLanes.markDirty(entityId, 'transform');
           transformed++;
+        }
+        // Table-row motion arrives on the bounded aux channel, not the ordinary
+        // entity transform journal. Its live facade can change while the snapshot is clean.
+        if (posed && entity?.data?.warmFreighterVisualPose
+            && applyWarmFreighterDressingPose(mesh, entity, this._frameMembrane)) {
+          this._persistentSubmitLanes.markDirty(entityId, 'transform');
+          poseApplied = true;
         }
         if (userData.asteroidInstanceBody) userData.asteroidInstanceViewCulled = false;
 
@@ -28924,13 +28975,17 @@ export const render = {
       if (!row || row.alive === false || !row.pos) return false;
       const mesh = this._meshes && this._meshes.get(row.id);
       if (!mesh) return false;
-      const local = this._frameMembrane.toLocal(row.pos, _meshLocalXZ);
-      mesh.position.set(local.x, 0, local.z);
+      const warm = row.data?.warmFreighterHostMarkerId && row.data?.warmFreighterVisualPose;
+      if (warm) applyWarmFreighterDressingPose(mesh, row, this._frameMembrane);
+      else {
+        const local = this._frameMembrane.toLocal(row.pos, _meshLocalXZ);
+        mesh.position.set(local.x, 0, local.z);
+        mesh.rotation.y = -(row.rot || 0);
+      }
       // A table row under a sightline duck keeps its sink through this re-pose — the
       // occluder pass already ran this frame and will not write again until next frame.
       const occEntry = this._cameraOccluderState && this._cameraOccluderState.entries.get(row.id);
-      if (occEntry && occEntry.applied !== 0) mesh.position.y = -occEntry.applied;
-      mesh.rotation.y = -(row.rot || 0);
+      if (occEntry && occEntry.applied !== 0) mesh.position.y -= occEntry.applied;
       if (mesh.matrixAutoUpdate === false) mesh.updateMatrix();
       return true;
     };

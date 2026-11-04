@@ -33,6 +33,7 @@ import { injectOrreryScreens } from '../orrery/screenLayouts.js';
 import { injectPauseLayouts, PAUSE_COLUMN_QUERY } from '../orrery/pauseLayouts.js';
 import { openReplay, forceCloseReplay, REPLAY_LABEL } from './replay.js';
 import { openClips, forceCloseClips, CLIPS_LABEL } from './clips.js';
+import { contract47aReadout } from '../sim/missionRecap.js';
 import { requestCodexTab } from '../codexRequests.js';
 import { writtenEndingArchive } from '../../story/endings/index.js';
 import { latestPlayerImpactFromTrace, pauseImpactCause } from '../../combat/presentationImpact.js';
@@ -182,6 +183,9 @@ function missionCommodity(m) {
 
 function missionNextStep(m) {
   const dest = missionDestination(m);
+  if (contract47aReadout(m)) return m.params.sampleRecovered === true
+    ? 'Next: deliver the recovered assay sample to Helios Station.'
+    : 'Next: recover the assay sample at the 47-A Recovery Site in Helios Prime.';
   switch (m && m.type) {
     case 'cargo_delivery':
     case 'passenger_transport':

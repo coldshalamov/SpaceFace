@@ -12,6 +12,15 @@ Status words: `OPEN`, `ACTIVE`, `LANDED <sha>`, `SKIPPED (<reason>)`.
 
 ## Claimed paths (beyond README §3)
 
+**Active connected batch,2026-11-03:** ordinary Adventure exposed47-A's missing recovery marker
+and false delivery focus. Source now binds the actual field/slot, publishes the recovery/delivery
+phase through the worker, and makes first-pull teaching optional without stealing a manual course
+or losing a physically carried training body. The real mining producer handoff passes. Mounted
+chart review found the separate source marker sharing manual-course identity; correction is active.
+The earned sample/delivery/workshop journey remains open. Last Shift's bounded filed account,
+Borrowed Voice's actual global anchor, and the physical Warm Freighter/attached growth/deliberate
+standby scene are source-ready, with ordinary connected-world play still required.
+
 ## Inbox (other lanes append one line: date, lane, path, what/why)
 
 **Current November3 checkpoint:** public `89ddfe4830e2` includes the repaired arcade Exit/Adventure autosave boundary. Ordinary purchase/save/Swarm/Exit/Continue returns to flight with exact4,962 credits, cargo and sector. The actual Ceres plate brace pays400 once,4,806→5,206, followed by crew cutter release; full physical receiving remains open. Connected mining/refining/crafting/fitting and Last Shift are the next ordinary journeys. Earlier source/fixture receipts below do not imply those routes are accepted.

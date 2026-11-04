@@ -540,6 +540,38 @@ export function resolveObjectiveEdgePlacement(width, height, player, target, mar
   return result;
 }
 
+// Selected bearing only: the mobile touch deck is a body sibling and can cover the
+// bottom/right edge. Use the HUD's already-cached touch rectangles; do not measure
+// layout while updating the cue. Moving the cue keeps its camera-derived angle intact.
+export function avoidSelectedTargetTouchControls(marker, text, obstacles, height) {
+  const labelWidth = Math.min(280, Math.max(80, String(text || '').length * 8));
+  const edge = marker.edge, minY = 40, maxY = Math.max(minY, height - 50);
+  let x = marker.x, y = marker.y;
+  const touch = Array.isArray(obstacles) ? obstacles : [];
+  for (let pass = 0; pass <= touch.length; pass++) {
+    let left = x - 8, right = x + 24;
+    if (edge === 'left') right = Math.max(right, x + 20 + labelWidth);
+    else if (edge === 'right') left = Math.min(left, x - 20 - labelWidth);
+    else { left = Math.min(left, x + 8 - labelWidth / 2); right = Math.max(right, x + 8 + labelWidth / 2); }
+    const above = edge === 'bottom' ? 36 : 10;
+    const below = edge === 'top' ? 52 : 26;
+    let blocked = null;
+    for (const rect of touch) {
+      if (rect.owner !== 'touch-control') continue;
+      if (left < rect.right && right > rect.left && y - above < rect.bottom && y + below > rect.top) {
+        blocked = rect; break;
+      }
+    }
+    if (!blocked) break;
+    const next = y >= height / 2 ? blocked.top - below - 4 : blocked.bottom + above + 4;
+    const clamped = Math.max(minY, Math.min(maxY, next));
+    if (Math.abs(clamped - y) < .01) break;
+    y = clamped;
+  }
+  marker.x = x; marker.y = y;
+  return marker;
+}
+
 /**
  * FB-065 — a physics contract condition says when it is pending, progressing or broken, in
  * flight. missions.js already emits the three states from the per-tick evaluator and the
@@ -4459,10 +4491,14 @@ export function createHud(ctx, alerts) {
     }
     const tgt = tid != null ? resolveWorldPresentationEntity(state, tid) : null;
     const tgtAnchor = tgt && tgt.alive ? presentedEntityAnchor(tgt) : null;
-    if (tgt && tgt.alive && tgtAnchor && helpers.worldToScreen) {
-      const proj = projectTargetCenter(tgtAnchor);
+    // A known selected contact may outlive its rendered mesh. Only an offscreen cue can
+    // fall back to its live position; never draw a bracket over an unpresented onscreen hull.
+    const cueAnchor = tgtAnchor || (tgt && tgt.pos);
+    if (tgt && tgt.alive && cueAnchor && Number.isFinite(cueAnchor.x)
+      && Number.isFinite(cueAnchor.z) && helpers.worldToScreen) {
+      const proj = projectTargetCenter(cueAnchor);
       const marker = resolveSelectedTargetMarker(p, tgt, proj, window.innerWidth, window.innerHeight, targetMarkerRecord);
-      if (proj.onScreen) {
+      if (proj.onScreen && tgtAnchor) {
         setDisplay(targetEdge, false);
         stampMarkLive(lockDiamond);
         setClass(lockDiamond, 'visible', true);
@@ -4482,7 +4518,7 @@ export function createHud(ctx, alerts) {
         }
       } else {
         setClass(lockDiamond, 'visible', false);
-        if (marker) {
+        if (marker && !proj.onScreen) {
           // Same presenter as the roster/panel: an unscanned wreck-like keeps its broadcast
           // callsign but never leaks its private name or scan label onto the edge ribbon.
           const name = String(targetDisplayName(tgt)).replace(/\s+/g, ' ').trim().slice(0, 26);
@@ -4491,6 +4527,22 @@ export function createHud(ctx, alerts) {
           setAttr(targetEdge, 'aria-label', text);
           setDataEdge(targetEdge, marker.edge);
           setCssVar(targetEdge, '--sf-arrow-angle', `${marker.angleRad}rad`);
+          // Share the objective cue's cached layout boxes without changing its direction.
+          let edgeX = marker.x, edgeY = marker.y;
+          const obstacles = objectiveEdgeObstacles();
+          const { left: leftBox, right: rightBox, orrery: orreryBox } = obstacles;
+          if (orreryBox && edgeX < orreryBox.right && edgeY > orreryBox.top - 16) {
+            if (marker.edge === 'bottom') edgeX = orreryBox.right + 18;
+            else edgeY = orreryBox.top - 18;
+          } else if (leftBox && edgeX < leftBox.right && edgeY > leftBox.top - 14 && edgeY < leftBox.bottom + 14) {
+            edgeX = leftBox.right + 18;
+          } else if (rightBox && edgeX > rightBox.left && edgeY > rightBox.top - 14 && edgeY < rightBox.bottom + 14) {
+            edgeX = rightBox.left - 18;
+          }
+          const edgeSafeInset = Math.max(0, (window.innerWidth - window.innerHeight * 16 / 9) / 2);
+          if (edgeSafeInset > 0) edgeX = Math.min(Math.max(edgeX, edgeSafeInset + 34), window.innerWidth - edgeSafeInset - 34);
+          marker.x = edgeX; marker.y = edgeY;
+          avoidSelectedTargetTouchControls(marker, text, getFlightTextObstacles(), window.innerHeight);
           setStyle(targetEdge, 'transform', `translate3d(${marker.x}px,${marker.y}px,0)`);
           setDisplay(targetEdge, true);
         } else setDisplay(targetEdge, false);

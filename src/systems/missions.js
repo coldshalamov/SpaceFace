@@ -217,7 +217,7 @@ import { SECTOR_ANCHORS } from '../data/sectorAnchors.js';
 import { zonesForSector } from '../data/sectorZones.js';
 import { rollBountyMark, bountyMarkHail, markArchetypePoolFor, MARK_HAIL_RANGE_WU } from '../data/bountyMarks.js';
 import { promotedPilotIdentity } from '../data/pilotCallsigns.js';
-import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
+import { sectorGlobalOrigin, sectorLocalToGlobalForSector, sectorMembershipAtGlobal } from '../data/sectorCoordinates.js';
 // FB-066 — race courses are derived data: the course record rides the offer's params verbatim.
 import {
   raceCourseForSector,
@@ -1155,10 +1155,7 @@ const CONTRACT_47A_REWARD_CR = Math.max(0, Math.round(Number(
   STORY_BEATS[0] && STORY_BEATS[0].reward && STORY_BEATS[0].reward.credits) || 0));
 const contract47aBalanceNote = (cr) =>
   `Contract pay withheld — status pending. ${Math.max(0, Math.round(Number(cr) || 0)).toLocaleString('en-US')} cr posted for balance.`;
-// A yield within this radius of the 47-A fix is the sample (missionObjectiveOps._onMiningYield).
-const CONTRACT_47A_SAMPLE_MATCH_WU = 80;
-// Standing this close to the fix means its rocks are loaded; only then can a missing rock re-mark.
-const CONTRACT_47A_SITE_LOADED_WU = 400;
+// The opening assay binds a real world slot; only proven depletion can re-mark its field exposure.
 export const CONTRACT_47A_B2_SCAN_RADIUS_WU = 1200;
 export const CONTRACT_47A_B2_CUSTODY_REEL_WU = 60;
 
@@ -3005,6 +3002,12 @@ export const missions = {
     if (!trackedId) return;
     const m = mission || (this.state.missions.active || []).find((x) => x.id === trackedId && x.status === 'active');
     if (!m || m.id !== trackedId || m.status !== 'active') return;
+    const current = this.state.nav && this.state.nav.waypoint;
+    if (m.storyTag === CONTRACT_47A_B0_TAG && current && !current.onboarding
+      && (current.kind === 'local' || current.kind === 'nav')) {
+      if (!m.params?.sampleRecovered) this._resolveContract47aSampleSource(m);
+      return;
+    }
     const waypoint = this._missionWaypoint(m);
     if (waypoint) this._setNavWaypoint(waypoint);
   },
@@ -3148,6 +3151,9 @@ export const missions = {
     const currentSectorId = state.world && state.world.currentSectorId;
     if (!currentSectorId || currentSectorId === waypoint.sectorId) return;
     const route = state.nav && state.nav.route;
+    // Do not replace a player's already plotted course while advertising the opening contract.
+    const mission = waypoint.missionId && (state.missions?.active || []).find((m) => m.id === waypoint.missionId);
+    if (mission?.storyTag === CONTRACT_47A_B0_TAG && route && Array.isArray(route.legs) && route.legs.length) return;
     const legs = route && Array.isArray(route.legs) ? route.legs : [];
     const first = legs[0];
     const last = legs[legs.length - 1];
@@ -3679,38 +3685,109 @@ export const missions = {
     const p = m.params || (m.params = {});
     const saved = p.samplePos && Number.isFinite(Number(p.samplePos.x)) && Number.isFinite(Number(p.samplePos.z))
       ? { x: Number(p.samplePos.x), z: Number(p.samplePos.z) } : null;
+    const sectorId = this.state.world && this.state.world.currentSectorId;
+    // An old save may not yet have a fix. Never choose a rock in the sector being visited.
+    if (m.destSectorId && sectorId !== m.destSectorId) {
+      return saved ? { id: null, type: 'sample_site', pos: saved } : null;
+    }
     const player = this.state.entities.get(this.state.playerId);
     const playerPos = player && player.pos ? player.pos : { x: 0, z: 0 };
+    const binding = p.sampleSource;
+    // Older saves could mark a Ceres asteroid before returning to this Helios contract. Correct
+    // only an unbound legacy point that lies in Ceres' authored disc, outside Helios' disc and in
+    // canonical Ceres membership. A missing local body alone is never proof of a wrong sector.
+    const helios = SECTOR_BY_ID.get('sector_helios_prime');
+    const ceres = SECTOR_BY_ID.get('sector_ceres_belt');
+    const heliosOrigin = sectorGlobalOrigin('sector_helios_prime');
+    const ceresOrigin = sectorGlobalOrigin('sector_ceres_belt');
+    const wrongLegacyFix = !!(saved && !binding && p.sampleRecovered !== true
+      && m.destSectorId === 'sector_helios_prime' && sectorId === m.destSectorId
+      && Number.isFinite(helios?.worldRadius) && Number.isFinite(ceres?.worldRadius)
+      && sectorMembershipAtGlobal(saved) === 'sector_ceres_belt'
+      && Math.hypot(saved.x - ceresOrigin.x, saved.z - ceresOrigin.z) <= ceres.worldRadius
+      && Math.hypot(saved.x - heliosOrigin.x, saved.z - heliosOrigin.z) > helios.worldRadius);
     // The first fix is chosen near the player; once fixed, distance is measured from the fix so a
     // re-mark (below) lands on the rock nearest the site, never on whatever the player is beside.
-    const anchor = saved || playerPos;
+    const anchor = wrongLegacyFix ? playerPos : (saved || playerPos);
     let nearest = null;
     let nearestD2 = Infinity;
+    let replacement = null;
+    let replacementD2 = Infinity;
     for (const entity of missionIndexedEntities(this.state, 'mineables', 'asteroids')) {
       if (!entity || entity.alive === false || entity.type !== 'asteroid' || !entity.pos) continue;
+      if (binding) {
+        if (binding.sectorId === sectorId && binding.fieldId === entity.data?.fieldId
+          && binding.slotId === entity.data?.asteroidSlotId) {
+          if (binding.resourceSlotId == null) {
+            binding.resourceSlotId = entity.data.activityObjectSlotId || entity.data.asteroidSlotId || entity.data.slotId;
+            this.bus.emit('mission:updated', { missionId: m.id, sourceFix: true });
+          }
+          return entity;
+        }
+        const data = entity.data || {};
+        const home = entity.homeSectorId || data.homeSectorId || data.sectorId;
+        if (binding.sectorId === sectorId && home === sectorId && data.fieldId === binding.fieldId
+          && data.asteroidSlotId != null && data.asteroidSlotId !== binding.slotId
+          && data.siteAnchored !== true && data.respawnAt == null && data.depleted !== true && data.destroyed !== true
+          && (!Number.isFinite(data.oreHP) || data.oreHP > 0)
+          && Number.isFinite(entity.pos.x) && Number.isFinite(entity.pos.z)) {
+          const dx = entity.pos.x - anchor.x, dz = entity.pos.z - anchor.z;
+          const d2 = dx * dx + dz * dz;
+          if (d2 < replacementD2) { replacementD2 = d2; replacement = entity; }
+        }
+        continue;
+      }
+      // Only choose a new (or legacy-unbound) fix from a body the mining beam can work.
+      // A previously bound slot above keeps its identity until depletion is proved.
+      const data = entity.data || {};
+      if (wrongLegacyFix && ((entity.homeSectorId || data.homeSectorId || data.sectorId) !== sectorId
+        || data.fieldId == null || data.asteroidSlotId == null)) continue;
+      if (data.siteAnchored === true || data.respawnAt != null || data.depleted === true
+        || data.destroyed === true || (Number.isFinite(data.oreHP) && data.oreHP <= 0)
+        || !Number.isFinite(entity.pos.x) || !Number.isFinite(entity.pos.z)) continue;
       const dx = entity.pos.x - anchor.x;
       const dz = entity.pos.z - anchor.z;
       const d2 = dx * dx + dz * dz;
-      if (saved && d2 <= CONTRACT_47A_SAMPLE_MATCH_WU * CONTRACT_47A_SAMPLE_MATCH_WU) return entity;
       if (d2 < nearestD2) { nearestD2 = d2; nearest = entity; }
     }
-    if (!saved) {
-      if (nearest) p.samplePos = { x: nearest.pos.x, z: nearest.pos.z };
+    if (!saved || wrongLegacyFix) {
+      if (nearest) {
+        p.samplePos = { x: nearest.pos.x, z: nearest.pos.z };
+        if (nearest.data?.fieldId != null && nearest.data?.asteroidSlotId != null) {
+          p.sampleSource = { sectorId, fieldId: nearest.data.fieldId, slotId: nearest.data.asteroidSlotId,
+            resourceSlotId: nearest.data.activityObjectSlotId || nearest.data.asteroidSlotId || nearest.data.slotId };
+        }
+        this.bus.emit('mission:updated', { missionId: m.id, sourceFix: true });
+        if (wrongLegacyFix) this.bus.emit('toast', { text: 'Recovery site corrected. Follow the marked Helios exposure.', kind: 'info', ttl: 5 });
+      }
+      return nearest || (saved ? { id: null, type: 'sample_site', pos: saved } : null);
+    }
+    // Legacy saves carry only the fix. Bind a real world slot only at that recorded position;
+    // a later occupant of a nearby recycled id must never inherit the assay.
+    if (!binding && nearest && nearestD2 <= 1) {
+      if (nearest.data?.fieldId != null && nearest.data?.asteroidSlotId != null) {
+        p.sampleSource = { sectorId, fieldId: nearest.data.fieldId, slotId: nearest.data.asteroidSlotId,
+          resourceSlotId: nearest.data.activityObjectSlotId || nearest.data.asteroidSlotId || nearest.data.slotId };
+        this.bus.emit('mission:updated', { missionId: m.id, sourceFix: true });
+      }
       return nearest;
     }
-    // The site the board marked is the site. A sector change, a cold or emptied index, or a rock
-    // that simply has not streamed in must not move it: report the fix itself so the waypoint
-    // and the yield match stay on it. Only when the player is standing at the fix in the
-    // contract's own sector — so the area is certainly loaded — and the marked rock is gone is
-    // the site re-marked, onto the rock nearest the old fix.
-    const sectorId = this.state.world && this.state.world.currentSectorId;
-    const inContractSector = !m.destSectorId || !sectorId || sectorId === m.destSectorId;
-    const px = playerPos.x - saved.x;
-    const pz = playerPos.z - saved.z;
-    const playerAtFix = px * px + pz * pz <= CONTRACT_47A_SITE_LOADED_WU * CONTRACT_47A_SITE_LOADED_WU;
-    if (nearest && inContractSector && playerAtFix) {
-      p.samplePos = { x: nearest.pos.x, z: nearest.pos.z };
-      return nearest;
+    // Only the resource owner can prove this exact marked slot was exhausted. A cold or missing
+    // source alone is not evidence: never slide the marker to whatever happens to be loaded.
+    if (binding && replacement && binding.sectorId === sectorId) {
+      const resourceSlot = binding.resourceSlotId ?? binding.slotId;
+      const records = Object.values(this.state.world?.resourceBodies?.byId || {}).filter((record) =>
+        record?.sectorId === binding.sectorId && record.fieldId === binding.fieldId
+        && record.slotId === resourceSlot);
+      if (records.length === 1 && records[0].outcome === 'depleted') {
+        const data = replacement.data;
+        p.sampleSource = { sectorId, fieldId: data.fieldId, slotId: data.asteroidSlotId,
+          resourceSlotId: data.activityObjectSlotId || data.asteroidSlotId || data.slotId };
+        p.samplePos = { x: replacement.pos.x, z: replacement.pos.z };
+        this.bus.emit('mission:updated', { missionId: m.id, sourceFix: true });
+        this.bus.emit('toast', { text: 'The marked rock is exhausted. Another exposure in the same field is marked.', kind: 'info', ttl: 5 });
+        return replacement;
+      }
     }
     return { id: null, type: 'sample_site', pos: saved };
   },

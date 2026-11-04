@@ -12,6 +12,15 @@ lean enough to change. Status words: `OPEN`, `ACTIVE`, `LANDED <sha>`, `SKIPPED 
 
 ## Claimed paths (beyond README §3)
 
+**Active connected batch,2026-11-03:** fifteen exact whole-hulk releases use existing measured
+outlines, native convex decompositions and uniform-area inertia at unchanged operational mass.
+Old capsule native-save caches correctly decline exact continuation and rebuild the fitted body;
+pose, motion, remaining salvage and custody survive the selected restore check. Normal impact
+behavior and the ordinary encounter remain separate checks. Swarm arena pursuit now retains its
+existing wounded-tail commitment; the Fortify same-reply mirror includes the charged purse.
+The changed ordinary Bank7/boss journey remains open. One batch baseline passes17/17 in80,529ms,
+within90,000ms; the in-flight ecology attachment hunk has its own affected check.
+
 ## Inbox (other lanes append one line: date, lane, path, what/why)
 
 **Current November3 checkpoint:** published `89ddfe4830e2` fixes arcade Exit overwriting Adventure autosave; the ordinary buy/save/Swarm/Exit/Continue route preserves4,962 credits, cargo and sector. Final29 isolation and13 affected Racing/export cases pass. The newer1347 Swarm attempt lost at wave4 with significant pilot/operator movement limitations; a corrected moving pilot is now exercising repair/Fortify and natural Bank/boss progression. This is not yet a balance defect or mode acceptance. Ceres's paid player brace and crew cutter release pass; full same-plate tow/receiving is still being completed. Earlier inbox receipts below retain their original scope.

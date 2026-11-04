@@ -2723,6 +2723,12 @@ export const missionStoryOps = {
     const gameplay = this.state && this.state.settings && this.state.settings.gameplay;
     if (gameplay && gameplay.tutorialHints === false) return false;
     const ob = this.state && this.state.onboarding;
+    // The first tether exercise is optional once a real tracked mission is available.
+    // Its own marker yields to the mission; later teaching beats keep their existing priority.
+    if (ob && ob.currentBeat === 0) {
+      const tracked = this.state.ui && this.state.ui.trackedMissionId;
+      if (tracked && (this.state.missions?.active || []).some((m) => m?.id === tracked && m.status === 'active')) return false;
+    }
     // Once B4's authored delivery is accepted, that physical mission must own its route. The
     // tutorial remains active only to await completion and present B5; keeping the Helios marker
     // here would strand the player at the origin with a tracked job pointing nowhere.

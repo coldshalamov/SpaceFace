@@ -563,6 +563,26 @@ test('load_failed during the active loading shell becomes a startup failure; ord
   }
 });
 
+test('unrelated save errors do not dismiss an active New Game loading shell', async () => {
+  const f = fixture('menu');
+  const presenter = await makePresenter(f);
+  try {
+    f.bus.emit('game:new', {});
+    f.state.mode = 'loading';
+    f.bus.emit('mode:changed', { mode: 'loading', previousMode: 'menu' });
+    f.bus.emit('game:loadingProgress', { id: 'gpu-resources', transition: 'new-game', progress: .9 });
+    for (const error of [{ reason: 'settings_write_failed', slot: 'settings' }, {}]) {
+      f.bus.emit('save:error', error);
+      assert.equal(f.overlay.classList.contains('hidden'), false);
+      assert.equal(f.overlay.getAttribute('aria-busy'), 'true');
+      assert.equal(f.overlay.querySelector('[data-startup-failure]'), null);
+    }
+    assert.equal(f.state.mode, 'loading');
+  } finally {
+    presenter.destroy(); globalThis.document = f.priorDocument;
+  }
+});
+
 test('a restore that never rode game:load arms the slate honestly and names it once the world lands', async () => {
   const f = fixture();
   const presenter = await makePresenter(f);
