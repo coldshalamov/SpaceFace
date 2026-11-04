@@ -332,6 +332,19 @@ function normalizeKillSurface(value) {
   return KILL_PRESENTATION_SURFACES.has(value) ? value : null;
 }
 
+/**
+ * The kill-END label a damage-over-time end carries. A hull the burn or the tar corroded
+ * through stamped 'generic' — the honest canonical cause for an attrition end — and the kill
+ * popup then read it as a gun kill (SHREDDED/PUNCHED). The label rides the payload next to
+ * the massline_whip precedent; the room-grammar owner (swarmKillCauseWord) speaks it, while
+ * styleCauseFromKill keeps it out of the style families, so a torch burn pays gun rate — an
+ * attrition end is not a physics play, and must not reach the force-table ratio.
+ */
+export function killEndLabelFor(lethal) {
+  const kind = lethal && lethal.origin && lethal.origin.kind;
+  return kind === 'status' ? 'wasted' : null;
+}
+
 function freezeKillPoint(value) {
   return Object.freeze({
     x: Number.isFinite(value && value.x) ? value.x : 0,
@@ -813,8 +826,10 @@ export const combat = {
       lootTableId: d.lootTableId || null, victimClass: d.shipClass || t.type,
       targetHostileToPlayer,
       baseKind: d.baseKind || null,
-      // A lethal whip need not leave an impulse record; keep its damage-owned cause.
-      ...(lethal?.origin?.kind === 'massline_whip' ? { cause: 'massline_whip' } : {}),
+      // A lethal whip need not leave an impulse record; keep its damage-owned cause. A DoT end
+      // carries its own attrition label so the room can say the end honestly (killEndLabelFor).
+      ...(lethal?.origin?.kind === 'massline_whip' ? { cause: 'massline_whip' }
+        : killEndLabelFor(lethal) ? { cause: killEndLabelFor(lethal) } : {}),
       // The collision partner — law's witness sightline must not let it occlude its own kill.
       impactorId: killImpactorId(lethal),
       ...(lethal?.origin?.kind === 'collision' && lethal?.packet?.source?.chainWitness
