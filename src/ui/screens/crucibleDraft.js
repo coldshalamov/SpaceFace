@@ -1576,12 +1576,14 @@ export const crucibleDraftScreen = {
       cards.appendChild(card);
     }
 
-    if (shop && !visibleOffers.length && typeof document.createElementNS === 'function') {
-      // The Hulls shelf is empty at the opening stop by design (the door's pick is being
-      // fitted, not re-sold) — it says where the hulls are instead of reading as broken.
-      const hullPause = this._category === 'Hulls' && !this._query && wave === 0;
+    if (shop && !visibleOffers.length && !recommended.length
+        && typeof document.createElementNS === 'function') {
+      // The Ships shelf is empty at the opening stop by design: the player's launch hull is
+      // already selected. Say what to do next without promising hulls will unlock after round 1;
+      // One Hull contracts intentionally keep that shelf empty for the whole run.
+      const hullPause = this._category === 'Ships' && !this._query && wave === 0;
       const empty = el('div', 'orr-armory-empty', hullPause
-        ? 'New hulls go on sale after round 1 — this stop fits the ship you chose.'
+        ? 'Your launch hull is already selected. Fit it from the other shelves.'
         : 'No equipment matches this search.');
       const clear = el('button', 'orr-armory-clear', hullPause ? 'Back to all fittings' : 'Clear filters');
       clear.type = 'button';
