@@ -56,13 +56,14 @@ function material(name, color, roughness, metalness, emission = 0) {
 
 // Private materials prevent one damaged receiver dimming a sibling lamp. Static
 // fine hardware is merged by finish, so rivets do not each become a draw call.
-function palette(whiteSide = false) {
+function palette(whiteSide = false, quiet = false) {
   return {
-    hull: material('painted_hull', whiteSide ? 0xc9d0ce : 0x45676a, 0.58, 0.3),
-    cream: material('reused_enamel', 0xdbd1b8, 0.54, 0.12),
-    ochre: material('safety_ochre', 0xbf8242, 0.62, 0.18),
+    hull: material('painted_hull', whiteSide ? 0xc9d0ce : quiet ? 0x3e585c : 0x45676a, 0.58, 0.3),
+    cream: material('reused_enamel', quiet ? 0x84938e : 0xdbd1b8, 0.54, 0.12),
+    ochre: material('safety_ochre', quiet ? 0x887758 : 0xbf8242, 0.62, 0.18),
     dark: material('machinery', 0x202c33, 0.6, 0.45),
-    metal: material('bare_metal', 0x8b9799, 0.38, 0.72),
+    metal: material('bare_metal', quiet ? 0x6c7f83 : 0x8b9799, 0.38, 0.72),
+    brass: material('family_brass', 0xe3bf76, 0.55, 0.38),
     warm: material('civic_lamp', 0xffc78a, 0.5, 0.08, 0.85),
     glass: material('frosted_globe', 0xbfc8b7, 0.34, 0.08),
   };
@@ -151,6 +152,31 @@ function bolts(b, x, y, z, length, width, count = 4) {
   }
 }
 
+// The household's three hand-cut strokes are broad, raised hardware on exposed
+// top faces. Keep the same proportions on the portable lamp and both seats;
+// their identity must survive the ordinary camera and the coarse LOD.
+function familyMark(root, materials, x, y, z, scale = 1) {
+  const b = batch(root, materials, 'Family_Three_Brass_Strokes');
+  for (let i = -1; i <= 1; i++) {
+    b.box('brass', x + i * 1.4 * scale, y, z,
+      0.9 * scale, 0.18 * scale, 2.8 * scale, -0.1, 0.04 * scale);
+  }
+  b.flush();
+}
+
+function receiverRim() {
+  // A real annular plate with a broad top face and an open center. Its dark
+  // recessed floor stays below the lamp foot; no cosmetic lamp fills the cup.
+  const shape = new THREE.Shape(); shape.absarc(0, 0, 4.5, 0, TAU, false);
+  const hole = new THREE.Path(); hole.absarc(0, 0, 3.4, 0, TAU, true);
+  shape.holes.push(hole);
+  const g = new THREE.ExtrudeGeometry(shape, { depth: 0.42,
+    bevelEnabled: true, bevelSize: 0.1, bevelThickness: 0.1, bevelSegments: 1,
+    curveSegments: 16, steps: 1 });
+  g.rotateX(-Math.PI / 2); g.translate(0, -0.21, 0);
+  return g;
+}
+
 function cradle(root, materials) {
   const b = batch(root, materials, 'Cradle_Fixed');
   for (const side of [-1, 1]) {
@@ -195,11 +221,12 @@ function cradle(root, materials) {
   b.box('warm', -7.5, 3.1, -4.9, 0.62, 0.08, 0.34, 0, 0.015);
   b.ring('dark', -9.3, 1.5, 2.6, 1.35, 0.32);
   b.ring('ochre', -9.3, 1.8, 2.6, 1.05, 0.2);
+  b.box('dark', 4.5, 1.86, 6.3, 6.5, 0.24, 3.9, 0, 0.08);
   b.flush();
+  familyMark(root, materials, 4.5, 2.079, 6.3, 1.1);
 
   const fine = batch(root, materials, 'Cradle_Manufacture', true);
   bolts(fine, -8.6, 1.66, -6.3, 6.4, 3.7, 4); bolts(fine, 1.2, 1.66, 6.3, 17, 3.7, 7);
-  for (let i = 0; i < 5; i++) fine.box('dark', 3.8 + i * 0.55, 1.82, 6.3, 0.2, 0.04, 2.6, -0.4, 0.009);
   fine.flush();
 
   const jaws = [];
@@ -232,8 +259,9 @@ function lamp(root, materials) {
   b.ring('metal', 0, 1.45, 0, 3.05, 0.25);
   b.ring('ochre', 0, 1.8, 0, 2.25, 0.16);
   b.ring('metal', 0, 6.75, 0, 2.25, 0.18);
-  b.cylinder('cream', 0, 7.2, 0, 0.8, 2.3, 0.8);
-  b.ring('metal', 0, 7.9, 0, 0.52, 0.17, 0, 0);
+  b.cylinder('cream', 0, 7.03, 0, 2.65, 2.25, 0.46, 0, 20);
+  b.cylinder('dark', 0, 7.31, 0, 2.55, 2.55, 0.14, 0, 20);
+  b.ring('metal', 0, 7.9, -2.1, 0.52, 0.17, 0, 0);
   for (let i = 0; i < 4; i++) {
     const a = Math.PI / 4 + i * Math.PI / 2;
     b.box('hull', Math.cos(a) * 2.15, 4.25, Math.sin(a) * 2.15, 0.35, 5.2, 0.35, -a, 0.07);
@@ -241,8 +269,8 @@ function lamp(root, materials) {
   }
   b.box('dark', -2.65, 2.2, 0, 1.1, 0.8, 0.85);
   b.box('metal', -3.2, 2.2, 0, 0.28, 0.62, 0.62);
-  for (let i = 0; i < 3; i++) b.box('ochre', -0.9 + i * 0.9, 1.48, 1.25, 0.28, 0.08, 0.7, 0, 0.015);
   b.flush();
+  familyMark(root, materials, 0, 7.47, 0.1);
   const globe = new THREE.Mesh(markGeometry(new THREE.SphereGeometry(1.85, 20, 12), 'Family_Globe'), materials.glass);
   globe.name = 'Family_Globe'; globe.position.y = 4.35; globe.scale.y = 1.2;
   globe.castShadow = globe.receiveShadow = true; globe.userData.animated = true; root.add(globe);
@@ -343,18 +371,19 @@ function receiver(root, materials, shutter = false) {
   }
   b.box('metal', 0, 3.7, -9.0, 20, 0.16, 0.16, 0, 0.025);
   if (!shutter) {
-    b.cylinder('hull', 0, -0.05, 0, 3.9, 4.4, 0.85, 0, 16);
-    b.ring('cream', 0, 0.5, 0, 3.55, 0.35);
+    b.cylinder('hull', 0, -0.05, 0, 4.5, 4.4, 0.85, 0, 24);
+    b.cylinder('dark', 0, 0.38, 0, 3.3, 3.3, 0.12, 0, 24);
+    b.add(receiverRim(), 'cream', 0, 0.58, 0);
     for (let i = 0; i < 3; i++) {
       const a = (i * TAU / 3) + Math.PI;
       b.box('ochre', Math.cos(a) * 4.0, 0.7, Math.sin(a) * 4.0, 1.6, 0.9, 1.0, -a);
     }
     b.box('metal', 1.2, -0.2, -4.8, 1.1, 0.7, 4.8, -0.22);
-    b.box('cream', -6.2, 1.22, -6.5, 4.3, 0.14, 2.7, -0.09, 0.025);
-    // Three hand-cut brass strokes identify this household on cargo and receiver.
-    for (let i = 0; i < 3; i++) b.box('ochre', -7.3 + i * 0.95, 1.34, -6.5, 0.36, 0.08, 1.65, -0.09, 0.015);
+    b.box('cream', -4.8, 1.24, -7.3, 7.8, 0.24, 4.8, 0, 0.06);
+    b.box('dark', -4.8, 1.41, -7.3, 7.2, 0.12, 4.1, 0, 0.04);
   }
   b.flush();
+  if (!shutter) familyMark(root, materials, -4.8, 1.5825, -7.3, 1.25);
   const signal = new THREE.Mesh(markGeometry(plate(1.9, 0.28, 0.7, 0.05), 'Service_Status'), materials.glass);
   signal.name = 'Receiver_Service_Status'; signal.position.set(7.8, 4.75, 0.0); root.add(signal);
   const work = serviceWorker(root, materials);
@@ -447,7 +476,7 @@ export function buildLanternWardVisual(entity) {
   if (!isLanternWardBody(entity)) return null;
   const role = entity.data.lanternWardRole, contract = LANTERN_WARD_BODY_CONTRACTS[role];
   const root = new THREE.Group(); root.name = `LanternWard_${role}`;
-  const materials = palette(entity.data.lanternWardWhiteSide === true);
+  const materials = palette(entity.data.lanternWardWhiteSide === true, role === 'service_cheek');
   const applyPose = role === 'cradle' ? cradle(root, materials)
     : role === 'lamp' ? lamp(root, materials)
       : role === 'receiver' ? receiver(root, materials)
@@ -495,7 +524,7 @@ export function buildLanternWardVisual(entity) {
     });
     for (const g of geometries) g.dispose();
     for (const m of finishes) m.dispose();
-    // Some roles use only a subset of the seven finishes.
+    // Some roles use only a subset of the private finishes.
     for (const m of Object.values(materials)) if (!finishes.has(m)) m.dispose();
     root.removeFromParent();
   };

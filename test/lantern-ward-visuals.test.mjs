@@ -103,6 +103,69 @@ test('lamp is one distinct physical visual; empty cradle and receiver contain no
   for (const root of roots) root.userData.disposeLanternWardVisual();
 });
 
+function exposedTop(root, x, z) {
+  const ray = new THREE.Raycaster(new THREE.Vector3(x, 20, z), new THREE.Vector3(0, -1, 0));
+  return ray.intersectObject(root, true).find(hit => {
+    for (let node = hit.object; node; node = node.parent) if (!node.visible) return false;
+    return true;
+  });
+}
+
+test('three broad matching brass strokes are exposed on the lamp cap and both seats at every LOD', () => {
+  const factory = installVisualOverrides(createVisualFactory(), { releaseMode: true, directAuthoredMount: true });
+  let brassColor;
+  for (const [index, [role, x, z, scale]] of [
+    ['lamp', 0, 0.1, 1], ['cradle', 4.5, 6.3, 1.1], ['receiver', -4.8, -7.3, 1.25],
+  ].entries()) {
+    const e = { ...lanternWardHardwareSpec(role), id: 920 + index, occupantGeneration: 3 };
+    const root = factory.build(e), before = JSON.stringify(e);
+    try {
+      const mark = root.getObjectByName('Family_Three_Brass_Strokes_brass');
+      assert.ok(mark?.isMesh, `${role} carries physical brass geometry`);
+      mark.geometry.computeBoundingBox();
+      const size = mark.geometry.boundingBox.getSize(new THREE.Vector3());
+      assert.ok(size.x / scale > 3.8 && size.z / scale > 2.7, `${role} mark is a broad top-face feature`);
+      assert.ok(size.y > 0.15, 'the strokes are raised plates');
+      assert.equal(mark.material.emissiveIntensity, 0, 'the household mark cannot imply an illuminated lamp');
+      brassColor ??= mark.material.color.getHex();
+      assert.equal(mark.material.color.getHex(), brassColor, 'all three bodies carry the same brass finish');
+      for (const lod of ['lod0', 'lod1', 'lod2']) {
+        root.userData.updateLod(lod); root.updateMatrixWorld(true);
+        for (const stroke of [-1, 0, 1]) {
+          // Probe a broad patch on each stroke, not just a potentially exposed
+          // vertex. Other geometry above it would defeat the first-hit check.
+          for (const dx of [-0.28, 0.28]) for (const dz of [-0.9, 0.9]) {
+            const hit = exposedTop(root, x + (stroke * 1.4 + dx) * scale, z + dz * scale);
+            assert.equal(hit?.object, mark, `${role}/${lod}: the brass top face remains uncovered`);
+          }
+        }
+        for (const gap of [-0.7, 0.7]) {
+          const hit = exposedTop(root, x + gap * scale, z);
+          assert.equal(hit?.object.material.name, 'LanternWard_machinery',
+            `${role}/${lod}: dark gaps keep three strokes distinguishable`);
+        }
+      }
+      assert.equal(JSON.stringify(e), before);
+    } finally { root.userData.disposeLanternWardVisual(); }
+  }
+});
+
+test('the receiver shows a broad pale annulus around a recessed empty cup', () => {
+  const root = buildLanternWardVisual(entity('receiver'));
+  try {
+    root.updateMatrixWorld(true);
+    const well = exposedTop(root, 0, 0);
+    assert.equal(well?.object.material.name, 'LanternWard_machinery', 'the empty center is a dark recess');
+    for (const angle of [0, Math.PI / 2]) for (const radius of [3.6, 4.1, 4.35]) {
+      const rim = exposedTop(root, Math.cos(angle) * radius, Math.sin(angle) * radius);
+      assert.equal(rim?.object.material.name, 'LanternWard_reused_enamel', 'a broad pale surface outlines the cup');
+      assert.ok(rim.point.y - well.point.y > 0.4, 'the empty well sits below its physical rim');
+      assert.ok(rim.face.normal.y > 0.95, 'the rim presents a flat top face to the gameplay camera');
+    }
+    assert.equal(root.getObjectByName('Family_Globe'), undefined);
+  } finally { root.userData.disposeLanternWardVisual(); }
+});
+
 test('phase, clamp and saved damage articulate real parts and never mutate the entity', () => {
   const e = entity('cradle'), before = JSON.stringify(e), root = buildLanternWardVisual(e);
   const jaw = root.getObjectByName('Cradle_Retainer_Port'), arm = root.getObjectByName('Cradle_Swivel_Brace');
