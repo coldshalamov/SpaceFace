@@ -574,6 +574,13 @@ export function stepLanternWard(owner, dt) {
   updateCommuter(owner, dt, anchor, commuter, tug, cradle);
   theft(owner, 'cradle', cradle, anchor);
   if (eligibleLamp) theft(owner, 'lamp', lamp, anchor);
+  // A live player line supersedes crew clamps even when damage or a missing
+  // operator stops the job below. Keep the finite manifest's custody truthful.
+  if (eligibleLamp && playerLine(owner, lamp)) {
+    dropLine(owner, 'load', 'lantern_lamp_hand_off');
+    dropLine(owner, 'installed', 'lantern_lamp_hand_off');
+    custody(lamp, 'player');
+  }
   if (playerLine(owner, obstruction)) w.obstructionTouchedAtS = now(owner);
   if (!receiver || !lamp || !eligibleLamp || (!tug && !w.firstCompletionReceipt)) {
     if (!w.firstCompletionReceipt) w.phase = 'missing';
@@ -615,7 +622,7 @@ export function stepLanternWard(owner, dt) {
       return;
     }
     w.needsReinstall = true;
-    custody(lamp, 'loose');
+    custody(lamp, playerLine(owner, lamp) ? 'player' : 'loose');
   }
   if (!tug) { w.phase = 'missing'; w.workS = 0; return; }
   const lane = clearCutLane(owner, anchor, obstruction), blocked = lane == null;
@@ -625,11 +632,6 @@ export function stepLanternWard(owner, dt) {
   if (playerLine(owner, lamp) || playerLine(owner, cradle)) {
     if (distance(lamp.pos, position(anchor, 'lamp')) > 18) w.history.playerCarried = true;
     dropLine(owner, 'tow', 'lantern_player_borrow');
-    if (playerLine(owner, lamp)) {
-      dropLine(owner, 'load', 'lantern_lamp_hand_off');
-      dropLine(owner, 'installed', 'lantern_lamp_hand_off');
-      custody(lamp, 'loose');
-    }
   }
   if (!blocked && w.blockedS > 0 && !w.history.ignored && w.obstructionTouchedAtS != null
       && now(owner) - w.obstructionTouchedAtS <= 30) w.history.playerCleared = true;
