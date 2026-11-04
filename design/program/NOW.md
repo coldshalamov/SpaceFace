@@ -11,17 +11,18 @@ restore superseded dispatch, worktree, provider, review or verification procedur
 
 | Task | Thread | State | Exact paths being changed now | Next terminal action |
 |---|---|---|---|---|
-| Finish integration and publication | Codex controller | active | Finish status/docs, `NOW.md`, inference ledger, exact-path Git integration | source `46c7594ca88a`; public `89ddfe4830e2`; final approvals0/3 |
-| Earned Adventure progression | `/root/map_mission_label_finish` | active; GPU owner | ignored route artifacts; Cinder Contracts layout hunk and focused real-panel test | genuine post-Tethys Continue, visible Tala terms, Forge refine/net/Fit; no grants/save edits |
-| Counterweight physical checks | `/root/occupational_hull_fit_finish` | frozen candidate | course feasibility and impact-fastpath tests; non-payload early rejection in Circuit `physical.js` | integrate relevant-pair guard; retain partial/player-route limits |
-| Swarm recovery and frame qualification | `/root/sim_v3_integration_repair` | queued after Adventure | ignored combat/performance artifacts only | recovery/devices/powers/boss/debrief; combined UI and Ashline active comparisons |
-| Native physics performance | Sol CLI | active | `src/core/sg02DynamicBodyOwner.js`, owned readback regression | reduce repeated post-solve native reads without stale contact data; sole CPU benchmark lease |
-| Tactical AI performance | Terra CLI | source proposal | owned artifacts; sensor-construction proposal in `aiPorts.js` | find material safe work reduction; benchmark queued behind physics |
-| Compact station controls | Terra CLI, thread `01a1a615-6998-72f2-9b8f-f8073a4cde44` | active | `src/ui/orrery/shipworksLayouts.js`, Departure Check hunk in `styles/station.css`, focused impound/control test | repair chooser collapse and confirmation text bleed; preserve inset/reset evidence |
+| Finish integration and publication | Codex controller | active | Finish status/docs, `NOW.md`, inference ledger reconciliation, exact-path Git integration | source `d74fd1a13beb`; public `89ddfe4830e2`; final approvals 0/3 |
+| Earned routes and frame qualification | `/root/map_mission_label_finish` | active; sole GPU/input owner | ignored route artifacts | cc4 genuine Continue now docked Forge; normal workshop production, then ordinary End run/Retry; six-wave Swarm interrupted by captured round7 owner exception |
+| Worker transport cost | `/root/sim_v3_integration_repair` | read-only diagnosis | existing worker-clock diagnostics; source changes require exact hunk coordination | separate legitimate lifetime counts from repeated no-op paused rAF directives; no profile or second browser |
+| Feature localization | Terra CLI, thread `01a1a661-dc64-7d20-ad35-674de9e1d711` | active | localizationInventory/surfaces/test; Circuit/Cinder definition/readModel copy hunks; domBridge/promptDeck template seam; Circuit prompts and Cinder integration/presentation | preserve deterministic source metadata and locale switches; catalogs controller-owned |
+| Remaining native Circuit handling | Sol CLI | active | `test/counterweight-circuit-native-course.test.mjs`, causal `course.js`/physical handling hunks | legitimate pilot-only Split/Moving/Finale completion; definition geometry changes require coordination |
+| Incoming product integration repair | Terra CLI, thread `01a1a6a9-e53b-7071-ba1d-e19d962fb2f1` | active | economy/dockArrival berth facts; familyFleet/continuousPlume/dyingDrive/vfx/plasmaStream dying treatment; Cinder convoy/runtime attribution; Circuit attempt, retry projector and missionLog reader; focused tests | fix actual berth, job-generation, accessibility/player-exhaust and durable retry defects; preserve l10n hunks |
 
-The freight owner, three-commission assembly, chain-kill activation, mobile checkpoint and audio
-write windows are closed. Committed source does not establish ordinary complete play, physical
-iPhone success or the performance bars.
+The freight, commission assembly, chain-kill, mobile checkpoint, station controls, audio, preview,
+retained-plan, explicit-retirement and capital frozen-clock repair windows are closed. Physics
+readback, AI sensor batch and fields membership performance proposals were not promoted; their exact
+changes were reverted with artifacts preserved. Committed source does not establish ordinary
+complete play, physical iPhone success or the performance bars.
 
 The former ZCode controller was stopped on 2026-11-02 after preserving its session state and
 working changes. Its subsequent source work has been claimed, reviewed and repaired by the Finish
