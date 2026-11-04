@@ -98,7 +98,7 @@ ${FLIGHT} #sf-touch-overlay.mf-notice-priority .mf-ghost { visibility:hidden; }
   ${FLIGHT} #hud .sf-mission-tracker::before { display:none!important; }
   ${FLIGHT} #hud .sf-mt-obj { display:none!important; }
   ${FLIGHT} #hud .sf-mt-compact { display:block; font:500 14px/1.3 var(--dp-face-body,system-ui,sans-serif); color:var(--dp-ink,#e8e2d4); }
-  ${FLIGHT} #hud .sf-mt-compact-action { min-height:44px; padding-right:58px; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; overflow-wrap:anywhere; }
+  ${FLIGHT} #hud .sf-mt-compact-action { height:2.6em; min-height:0; max-height:2.6em; padding-right:58px; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; overflow-wrap:anywhere; }
   ${FLIGHT} #hud .sf-mt-compact-readings { margin-top:2px; white-space:pre-line; overflow-wrap:anywhere; color:var(--dp-lamp,#f2b950); font-size:13px; line-height:1.3; }
   /* The full objective AND this tutorial caption already live in the existing Details panel. */
   ${FLIGHT} #hud .sf-mt-time { display:none!important; }
