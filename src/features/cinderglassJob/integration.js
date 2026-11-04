@@ -17,9 +17,15 @@ export function cinderglassJobJournalReceipt(state) {
 
 export function mountCinderglassJobContracts(ctx, host) {
   const panel = document.createElement('section');
-  panel.className = 'k-panel'; panel.dataset.cinderglassContracts = '';
+  panel.dataset.cinderglassContracts = '';
+  panel.style.flex = 'none';
+  panel.style.minWidth = '0';
+  panel.style.paddingLeft = '26px';
   panel.setAttribute('aria-label', 'The Cinderglass Job');
-  host.appendChild(panel);
+  // Keep the contact inside the existing scrollable mission rail rather than
+  // adding a third item to the board/dossier grid.
+  const rail = host.querySelector?.('.sx-ct__hang') || host;
+  rail.insertBefore(panel, rail.firstElementChild);
   let signature = '', eventOffer = null, eventView = null, disposed = false;
   const consumed = new Set(), off = [];
   const node = (tag, text, className) => { const e = document.createElement(tag); if (text) e.textContent = text; if (className) e.className = className; return e; };
@@ -33,6 +39,7 @@ export function mountCinderglassJobContracts(ctx, host) {
   function button(label, action, captured, extra) {
     const b = node('button', label, 'k-key'); b.type = 'button';
     b.style.minHeight = '44px'; b.style.fontSize = '12px';
+    b.style.color = '#f1e8d6';
     b.addEventListener('click', () => send(action, captured, extra)); return b;
   }
   function frame(state = ctx.state) {
@@ -59,7 +66,7 @@ export function mountCinderglassJobContracts(ctx, host) {
         panel.appendChild(b);
       }
     } else for (const contact of view.contacts.slice(0, 3)) {
-      const row = node('div', '', 'k-row');
+      const row = node('div');
       row.appendChild(node('h3', contact.title, 'k-caps'));
       row.appendChild(node('p', contact.line, 'k-sentence'));
       if (contact.detail) row.appendChild(node('p', contact.detail, 'k-sentence'));
