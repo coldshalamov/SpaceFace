@@ -397,6 +397,9 @@ body.k-screen-top[data-k-screen="pause"] #hud { opacity: 0.38; pointer-events: n
 .k-screen--cold::before { background: rgb(6 8 15 / 0.35); }
 /* §1.7: photo mode - everything gone but the world. !important outranks the pause 38 % above. */
 body.k-photo #hud, body.k-photo #toasts, body.k-photo #alerts { opacity: 0 !important; pointer-events: none !important; }
+/* Pause keeps its modal stack while Photo is active; its legacy backdrop must not darken the
+   exposure preview relative to the image captured from the canvas. */
+body.k-photo #modal-backdrop { background: none !important; }
 /* The legacy modal backdrop (ui.css #modal-backdrop) paints a radial vignette under every screen; a kit
    screen's scrim (.k-screen::before) is the only darkening the sheet allows, so the vignette goes with the ground. */
 body.k-screen-top #modal-backdrop { background: none; }
