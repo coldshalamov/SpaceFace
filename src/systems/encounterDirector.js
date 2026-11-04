@@ -152,6 +152,7 @@ import {
   tickLootSweeps,
 } from '../ai/lootSweep.js';
 import { tickTowedLurePursuits } from '../ai/towedLure.js';
+import { tickPatrolBaits } from './patrolBait.js';
 import {
   tickImpoundGrudge,
   noteImpoundGrudgeKill,
@@ -511,6 +512,14 @@ export const encounterDirector = {
       tickTowedLurePursuits(state, state.player && state.player.tether);
     } catch (err) {
       dedupWarn('encounterDirector/towed-lure-pursuit', '[encounterDirector] towed lure pursuit tick failed', err);
+    }
+    // inf-patrol-bait: a losing raider's spoofed band can turn two lawful parties on each
+    // other for one short beat; a scanner pulse (or the clock) burns the mask and they
+    // stand down. Stamps and restores ride the same 1 Hz beat as the towed-lure pass.
+    try {
+      tickPatrolBaits(state, this.bus);
+    } catch (err) {
+      dedupWarn('encounterDirector/patrol-bait', '[encounterDirector] patrol bait tick failed', err);
     }
     // CRT-03 second slice: the bought lot hull's nemesis — one cadenced find/track
     // pass per director clock, spawns through the same helpers/budget the scripts use.
