@@ -580,6 +580,12 @@ export function stepLanternWard(owner, dt) {
     dropLine(owner, 'load', 'lantern_lamp_hand_off');
     dropLine(owner, 'installed', 'lantern_lamp_hand_off');
     custody(lamp, 'player');
+    if (cradle) {
+      cradle.data.lanternWardClamp01 = 0;
+      cradle.data.lanternWardCustody = {
+        holder: cradle.data.lanternWardCustody?.holder === 'player' ? 'player' : 'ward',
+      };
+    }
   }
   if (playerLine(owner, obstruction)) w.obstructionTouchedAtS = now(owner);
   if (!receiver || !lamp || !eligibleLamp || (!tug && !w.firstCompletionReceipt)) {
