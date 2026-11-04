@@ -1,9 +1,9 @@
 // S1 Phase-B stage 9 — event-surface census.
 //
 // Computes the sim-bus event boundary the same way stage-5 drew the write
-// census: the sim side is exactly the module set the whole-sim worker imports
-// (static-import closure of scripts/lib/simWorkerHost.mjs). Everything else
-// under src/ is main-side.
+// census: worker import membership is the default, refined by the actual
+// presentation registry's factories and manifest capabilities. Importing a
+// node-safe prompt factory in the worker does not make its UI callbacks sim.
 //
 // Emits a table (JSON + markdown) classifying every literal-string event type:
 //   subscribers : files with bus.on/bus.once('type') inside the worker set
@@ -17,11 +17,174 @@
 
 import { readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, resolve, relative, extname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import { parse } from '@babel/parser';
+import traverseModule from '@babel/traverse';
+import { PRODUCTION_INIT_ORDER, getSystemCapability, isNodeSafeSystemId } from '../../src/runtime/authoritativeSystemManifest.js';
+
+const traverse = traverseModule.default || traverseModule;
+const isCLI = process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href;
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(HERE, '..', '..');
 const ENTRY = resolve(ROOT, 'scripts/lib/simWorkerHost.mjs');
+
+function visit(node, fn) {
+  if (!node || typeof node !== 'object') return;
+  if (node.type) fn(node);
+  for (const [key, value] of Object.entries(node)) {
+    if (key === 'loc' || key === 'comments' || key === 'tokens') continue;
+    if (Array.isArray(value)) { for (const child of value) visit(child, fn); }
+    else if (value && typeof value === 'object') visit(value, fn);
+  }
+}
+
+// Read the registration owner, not a feature-directory/name convention. Follow
+// the registered export through factory/local-object indirection, retaining
+// ranges so a module may still contain a separate simulation factory.
+export function registeredPresentationRanges(registryFile, {
+  readSource = srcOf, resolveModule = resolveSpecifier,
+  isPresentationId = id => PRODUCTION_INIT_ORDER.includes(id) && (!isNodeSafeSystemId(id)
+    || getSystemCapability(id).phase === 'platform' || getSystemCapability(id).domGuarded === true),
+} = {}) {
+  const modules = new Map(), ranges = new Map(), seen = new Set();
+  function moduleOf(file) {
+    if (modules.has(file)) return modules.get(file);
+    const ast = parse(readSource(file), { sourceType: 'module' });
+    const imports = new Map(), defs = new Map();
+    for (const statement of ast.program.body) {
+      if (statement.type === 'ImportDeclaration') {
+        for (const spec of statement.specifiers) {
+          if (spec.type === 'ImportSpecifier') imports.set(spec.local.name,
+            { file: resolveModule(statement.source.value, file), name: spec.imported.name });
+        }
+      }
+      const node = statement.type === 'ExportNamedDeclaration' ? statement.declaration : statement;
+      if (node?.type === 'FunctionDeclaration') defs.set(node.id.name, node);
+      if (node?.type === 'VariableDeclaration') {
+        for (const decl of node.declarations) if (decl.id.type === 'Identifier') defs.set(decl.id.name, decl.init);
+      }
+    }
+    const references = new Map();
+    traverse(ast, { ReferencedIdentifier(path) {
+      const binding = path.scope.getBinding(path.node.name);
+      if (binding?.scope.path.isProgram() && defs.has(path.node.name)) references.set(path.node, path.node.name);
+    } });
+    const result = { ast, imports, defs, references };
+    modules.set(file, result);
+    return result;
+  }
+  function include(file, name, followImport = false) {
+    const key = `${file}:${name}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    const mod = moduleOf(file), imported = mod.imports.get(name), node = mod.defs.get(name);
+    if (followImport && imported?.file) return include(imported.file, imported.name, true);
+    if (!node) return;
+    if (!ranges.has(file)) ranges.set(file, []);
+    ranges.get(file).push([node.start, node.end]);
+    // Local helper functions/objects share this registered owner. Imported
+    // utilities remain shared; their entire module is never reclassified.
+    visit(node, child => { if (mod.references.has(child)) include(file, mod.references.get(child)); });
+  }
+  const registry = moduleOf(registryFile);
+  visit(registry.ast.program, node => {
+    if (node.type !== 'ArrayExpression' || node.elements.length !== 2) return;
+    const [id, value] = node.elements;
+    if (id?.type !== 'StringLiteral' || !isPresentationId(id.value)) return;
+    visit(value, child => { if (child.type === 'Identifier') include(registryFile, child.name, true); });
+  });
+  return ranges;
+}
+
+const busReceiver = recv => /(^|[._])bus$/i.test(recv) || /(^|\.)(eventBus|events)$/i.test(recv);
+
+// Bind only local, lexically resolved parameter relays into a bus emit/queue.
+// This covers renamed/nested UI helpers without declaring every string passed
+// to an arbitrary method to be a transport interface.
+export function scanLocalEventHelpers(src) {
+  const ast = parse(src, { sourceType: 'module' });
+  const calls = [], functions = new Map();
+  traverse(ast, {
+    Function(path) { functions.set(path.node, { path, roles: new Map() }); },
+    'CallExpression|OptionalCallExpression'(path) { calls.push(path); },
+  });
+  const memberName = node => !node.computed && node.property?.name;
+  function target(path) {
+    const callee = path.node.callee;
+    let binding;
+    if (callee.type === 'Identifier') {
+      const resolved = path.scope.getBinding(callee.name);
+      if (!resolved?.constant) return null;
+      binding = resolved.path;
+    }
+    else if (callee.type === 'MemberExpression' || callee.type === 'OptionalMemberExpression') {
+      let object;
+      if (callee.object.type === 'ThisExpression') {
+        // A normal nested function has its own `this`; arrows inherit it.
+        const owner = path.findParent(p => p.isFunction() && !p.isArrowFunctionExpression());
+        if (owner?.isObjectMethod() || owner?.parentPath?.isObjectProperty()) object = owner.parentPath;
+        if (object?.isObjectProperty()) object = object.parentPath;
+      } else if (callee.object.type === 'Identifier') {
+        const decl = path.scope.getBinding(callee.object.name)?.path;
+        if (decl?.isVariableDeclarator()) object = decl.get('init');
+      }
+      if (!object?.isObjectExpression()) return null;
+      const prop = object.get('properties').find(p => !p.node.computed && p.node.key?.name === memberName(callee));
+      if (prop?.isObjectMethod()) return functions.get(prop.node);
+      if (prop?.isObjectProperty()) return functions.get(prop.node.value);
+      return null;
+    }
+    if (binding?.isVariableDeclarator()) binding = binding.get('init');
+    return binding && functions.get(binding.node);
+  }
+  function parameter(path, arg) {
+    if (arg?.type !== 'Identifier') return null;
+    const binding = path.scope.getBinding(arg.name);
+    if (binding?.kind !== 'param' || !binding.constant) return null;
+    const owner = binding.path.findParent(p => p.isFunction());
+    const index = owner?.node.params.indexOf(binding.path.node);
+    return index >= 0 ? { owner: functions.get(owner.node), index } : null;
+  }
+  const addRole = (fn, index, verbs) => {
+    if (!fn.roles.has(index)) fn.roles.set(index, new Set());
+    const role = fn.roles.get(index), before = role.size;
+    for (const verb of verbs) role.add(verb);
+    return role.size !== before;
+  };
+  for (const path of calls) {
+    const callee = path.node.callee, verb = memberName(callee);
+    if (!['emit', 'queue'].includes(verb) || !busReceiver(src.slice(callee.object.start, callee.object.end))) continue;
+    const param = parameter(path, path.node.arguments[0]);
+    if (param) addRole(param.owner, param.index, [verb]);
+  }
+  let changed;
+  do {
+    changed = false;
+    for (const path of calls) {
+      const fn = target(path);
+      for (const [index, verbs] of fn?.roles || []) {
+        const param = parameter(path, path.node.arguments[index]);
+        if (param) changed = addRole(param.owner, param.index, verbs) || changed;
+      }
+    }
+  } while (changed);
+  const hits = [];
+  for (const path of calls) {
+    const fn = target(path);
+    for (const [index, verbs] of fn?.roles || []) {
+      const node = path.node.arguments[index];
+      if (!node) continue;
+      if (node.type === 'Identifier' && path.scope.getBinding(node.name)?.kind === 'param') continue;
+      const arg = classifyArg(src.slice(node.start, node.end));
+      if (arg.kind !== 'literal') continue;
+      for (const verb of verbs) for (const type of arg.types) hits.push({
+        recv: 'bus', verb, type, kind: 'literal', line: path.node.loc.start.line, offset: path.node.start,
+      });
+    }
+  }
+  return hits;
+}
 
 // ---- worker import set -----------------------------------------------------
 const IMPORT_RE = /(?:import|export)\s+(?:[^'";]*?\s+from\s+)?['"]([^'"]+)['"]/g;
@@ -188,10 +351,10 @@ function classifyArg(arg) {
 function scanFile(file) {
   const src = srcOf(file);
   const hits = [];
-  const pushArgHits = (recv, verb, argSrc, line) => {
+  const pushArgHits = (recv, verb, argSrc, line, offset) => {
     const arg = classifyArg(argSrc);
     for (const type of arg.types) {
-      hits.push({ recv, verb, kind: arg.kind === 'template' ? 'template' : (arg.kind === 'expr' ? 'expr' : 'literal'), type, line });
+      hits.push({ recv, verb, kind: arg.kind === 'template' ? 'template' : (arg.kind === 'expr' ? 'expr' : 'literal'), type, line, offset });
     }
   };
   CALL_RE.lastIndex = 0;
@@ -200,7 +363,7 @@ function scanFile(file) {
     const recv = m[1];
     const verb = m[2];
     const line = src.slice(0, m.index).split('\n').length;
-    pushArgHits(recv, verb, m[3], line);
+    pushArgHits(recv, verb, m[3], line, m.index);
   }
   // `X._listen('type' | IDENT.PROP, fn)` — the per-system bus.on wrapper.
   LISTEN_DEF_RE.lastIndex = 0;
@@ -210,7 +373,7 @@ function scanFile(file) {
     LISTEN_RE.lastIndex = 0;
     while ((m = LISTEN_RE.exec(src))) {
       const line = src.slice(0, m.index).split('\n').length;
-      pushArgHits(`${m[1]}._listen`, 'on', m[2], line);
+      pushArgHits(`${m[1]}._listen`, 'on', m[2], line, m.index);
     }
   }
   // Bus-alias verbs defined in this file. An arrow assignment counts when its
@@ -229,8 +392,11 @@ function scanFile(file) {
       const verb = m[2];
       if (!aliases.has(verb)) continue;
       const line = src.slice(0, m.index).split('\n').length;
-      pushArgHits(`alias:${verb}`, verb, m[3], line);
+      pushArgHits(`alias:${verb}`, verb, m[3], line, m.index);
     }
+  }
+  if (hits.some(hit => hit.kind === 'expr' && ['emit', 'queue'].includes(hit.verb) && busReceiver(hit.recv))) {
+    hits.push(...scanLocalEventHelpers(src));
   }
   return hits;
 }
@@ -263,13 +429,15 @@ const HARNESS_RE = /^src\/(balance|testing)\//;
 const HARNESS_FILES = new Set(['src/careers/origins/haulerOriginSystem.js']);
 const isHarnessPath = (rel) => HARNESS_RE.test(rel) || HARNESS_FILES.has(rel);
 
+const presentationRanges = registeredPresentationRanges(resolve(ROOT, 'src/runtime/presentationRegistry.js'));
+
 const SRC = resolve(ROOT, 'src');
 for (const file of walk(SRC)) {
   const rel = relative(ROOT, file).replace(/\\/g, '/');
-  const inWorker = workerRel.has(rel) && !isPresentationPath(rel);
   for (const hit of scanFile(file)) {
-    const busish = /(^|[._])bus$/i.test(hit.recv)
-      || /(^|\.)(eventBus|events)$/i.test(hit.recv)
+    const inPresentationFactory = presentationRanges.get(file)?.some(([start, end]) => start <= hit.offset && hit.offset < end);
+    const inWorker = workerRel.has(rel) && !isPresentationPath(rel) && !inPresentationFactory;
+    const busish = busReceiver(hit.recv)
       // `X._listen('type', fn)` hits carry recv '<X>._listen' — the per-system
       // bus.on wrapper verified by scanFile's LISTEN_DEF_RE check.
       || /\._listen$/.test(hit.recv);
@@ -292,7 +460,7 @@ for (const file of walk(SRC)) {
 }
 
 // ---- output ----------------------------------------------------------------
-const rows = [];
+export const rows = [];
 for (const [t, r] of types) {
   rows.push({
     type: t,
@@ -312,7 +480,7 @@ const out = {
   dynamicSites: dynamicSites.sort((a, b) => a.file.localeCompare(b.file) || a.line - b.line),
   nonBusOnReceivers: [...nonBusOn.entries()].sort(),
 };
-if (!process.argv.includes('--forward-set') && !process.argv.includes('--markdown')) {
+if (isCLI && !process.argv.includes('--forward-set') && !process.argv.includes('--markdown')) {
   console.log(JSON.stringify(out, null, 1));
 }
 
@@ -423,7 +591,7 @@ const FORWARD_EXCLUDE = {
 // Existing committed main-only contracts, retained without enabling forwarding.
 const COMPAT_KNOWN_UNFORWARDED = ['comms:log', 'encounter:choiceOffered'];
 
-function computeForwardSet() {
+export function computeForwardSet() {
   const censusTypes = new Set();
   for (const r of rows) if (r.needsForward) censusTypes.add(r.type);
   const dynamic = new Set(DYNAMIC_FORWARD.map((d) => d.type));
@@ -499,10 +667,12 @@ function emitMarkdown(path) {
   L.push('');
   L.push('Generated by `node scripts/lib/eventSurfaceCensus.mjs --markdown`. Do not hand-edit.');
   L.push('');
-  L.push('Sim side = static-import closure of `scripts/lib/simWorkerHost.mjs`, excluding');
+  L.push('Sim side defaults to the import closure of `scripts/lib/simWorkerHost.mjs`, excluding');
   L.push('presentation paths (`src/ui/`, `src/render/`, `src/audio/`, `src/presentation/`,');
   L.push('`src/main.js`) and harness paths (`src/balance/**`, `src/testing/**`,');
-  L.push('`src/careers/origins/haulerOriginSystem.js`). Main side = everything else.');
+  L.push('`src/careers/origins/haulerOriginSystem.js`). Registered presentation factories');
+  L.push('are main-side according to the current manifest capability, even when node-safe.');
+  L.push('Local event-parameter helpers are resolved by lexical binding. Main side = everything else.');
   L.push('');
   L.push(`**Forwarded main\u2192sim types: ${all.size}** (census-resolved + hand-resolved dynamic + legacy).`);
   L.push('');
@@ -574,5 +744,5 @@ function emitMarkdown(path) {
 
 const fwdFlag = process.argv.indexOf('--forward-set');
 const mdFlag = process.argv.indexOf('--markdown');
-if (fwdFlag !== -1) emitForwardSetModule(resolve(ROOT, process.argv[fwdFlag + 1] || 'src/core/mainToSimEventSurface.js'));
-if (mdFlag !== -1) emitMarkdown(resolve(ROOT, process.argv[mdFlag + 1] || 'design/perf/S1-EVENT-SURFACE.md'));
+if (isCLI && fwdFlag !== -1) emitForwardSetModule(resolve(ROOT, process.argv[fwdFlag + 1] || 'src/core/mainToSimEventSurface.js'));
+if (isCLI && mdFlag !== -1) emitMarkdown(resolve(ROOT, process.argv[mdFlag + 1] || 'design/perf/S1-EVENT-SURFACE.md'));
