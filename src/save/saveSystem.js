@@ -4128,9 +4128,18 @@ export const save = {
     }
 
     const snapshotBoundary = this._captureSaveSnapshotBoundary();
+    let plan;
+    try { plan = this._saveCapturePlan(); }
+    catch (error) { return this._failAutosave(job, 'invalid_capture_plan', null); }
+    // Feature adapters must preserve the indexed [key, reader] array contract. A generator
+    // has no length, so the capture loop would otherwise skip every reader and successfully
+    // replace the last playable save with a checksum-valid empty data object.
+    if (!Array.isArray(plan) || plan.length === 0 || plan.some((row) => (
+      !Array.isArray(row) || typeof row[0] !== 'string' || !row[0] || typeof row[1] !== 'function'
+    ))) return this._failAutosave(job, 'invalid_capture_plan', null);
     const descriptor = this._autosaveDescriptor();
     const capture = {
-      plan: this._saveCapturePlan(),
+      plan,
       data: {},
       index: 0,
       tick: this.state.tick,

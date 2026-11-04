@@ -164,10 +164,10 @@ export function installCounterweightCircuitSaveAdapter(save, systemRef) {
   const stepsBefore = save._serializeDataSteps?.bind?.(save);
   const restoreBefore = save._restoreChunks?.bind?.(save);
   if (planBefore) {
-    save._saveCapturePlan = function* () {
-      const rows = yield* planBefore();
+    save._saveCapturePlan = function () {
+      const rows = planBefore();
       return rows.map(([key, fn]) => (key === 'world'
-        ? [key, function worldWithCounterweight() {
+        ? [key, () => {
             const bag = fn.call(this);
             const section = systemRef?.serialize?.() ?? captureCounterweightCircuitSave(this.state);
             if (bag && typeof bag === 'object' && section) bag[COUNTERWEIGHT_SAVE_KEY] = section;
