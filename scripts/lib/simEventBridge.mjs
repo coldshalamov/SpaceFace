@@ -193,6 +193,17 @@ export const EVENT_BRIDGE_ADAPTERS = {
   ...SHIPBREAKING_YARD_EVENT_BRIDGE_ADAPTERS,
   ...SWARM_FORTIFY_EVENT_BRIDGE_ADAPTERS,
   'run:wavePlanned': projectSurvivalWavePlan,
+  // The full result, including wreck and replay, travels in the authoritative
+  // survivalResultsPublic snapshot before this wakeup. Deep wreck scars cannot
+  // fit the event bridge's bounded generic projection.
+  'run:resultsReady': (p) => (p && typeof p === 'object' ? {
+    outcome: p.outcome ?? null,
+    stopReason: p.stopReason ?? null,
+    seed: Number.isInteger(p.seed) ? p.seed : null,
+    arenaId: p.arenaId ?? null,
+    wave: Number.isInteger(p.wave) ? p.wave : null,
+    endedAtTick: Number.isInteger(p.endedAt?.tick) ? p.endedAt.tick : null,
+  } : undefined),
   // entity:spawned carries the live entity — consumers resolve it via the
   // main-side read model by entityId (the spawn already rode the journal).
   'entity:spawned': (p) => (p && typeof p === 'object'
