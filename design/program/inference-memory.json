@@ -132,45 +132,6 @@
   ],
   "units": [
     {
-      "id": "inf-veil-planet",
-      "date": "2026-10-25",
-      "wf": "WF-05",
-      "mode": "opportunity",
-      "verdict": "implemented",
-      "reason": "The veil step stops on the world's skin.",
-      "fingerprint": "verb=step,subject=planet,sector=tethys,domain=wf-05",
-      "references": [],
-      "integration": "live",
-      "commit": "46b17dc9983dc2b78c106e20e36bd7cd3f593d7a",
-      "verification": "focused_green"
-    },
-    {
-      "id": "al-lg-04",
-      "date": "2026-10-25",
-      "wf": "WF-02",
-      "mode": "starved",
-      "verdict": "implemented",
-      "reason": "B7 reckoning boards are built from the run's actual B1-B6 callbacks: a towed or slung B3 core returns as usable mass at Ashfall; two saves differing only at B3 spawn different bodies; focused test 4/4 (al-long-2-reckoning-4242)",
-      "fingerprint": "verb=spawn,subject=reckoning-callbacks,sector=ashfall,layer=subsystem,domain=wf-02",
-      "references": [],
-      "integration": "live",
-      "commit": "e3711912bc",
-      "verification": "focused_green"
-    },
-    {
-      "id": "inf-pilgrim-call",
-      "date": "2026-10-25",
-      "wf": "WF-13",
-      "mode": "opportunity",
-      "verdict": "implemented",
-      "reason": "A Pilgrim Spine plays its own call.",
-      "fingerprint": "verb=hear,subject=pilgrim-spine,sector=io,domain=wf-13",
-      "references": [],
-      "integration": "live",
-      "commit": "ec222ba6a9691eebfb501aa902072cf2dd2b1d2f",
-      "verification": "focused_green"
-    },
-    {
       "id": "inf-pod-buyer",
       "date": "2026-10-25",
       "wf": "WF-06",
@@ -1689,6 +1650,45 @@
       "references": [],
       "integration": "live",
       "commit": "e4f279764227",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inf-well-dive",
+      "date": "2026-11-04",
+      "wf": "WF-02",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "A marked Crucible elite dives THROUGH a gravity well to reach you — full thrust bent through the pull, guns live — instead of holding behind a rock; a hit breaks the commit.",
+      "fingerprint": "verb=commit-dive,subject=gravity-well-approach,sector=swarm-arena-elites,domain=wf-02",
+      "references": [],
+      "integration": "live",
+      "commit": "392426e9c689",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inf-plow-turn",
+      "date": "2026-11-04",
+      "wf": "WF-05",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "Shoving an enemy mine fence with your own plow now turns it into your grenade - it trips on the pack that laid it, pays your credit, and the band tells you the shove took.",
+      "fingerprint": "verb=turn-credit,subject=mine-iff-under-player-field-force,sector=mines-fields,domain=wf-05",
+      "references": [],
+      "integration": "live",
+      "commit": "8c77b0ed9119",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inf-lance-aim",
+      "date": "2026-11-04",
+      "wf": "WF-15",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "The Orbital Lance now paints and strikes exactly where your crosshair points instead of a quarter-turn off it, and the thrown decoy drops ahead of the nose line.",
+      "fingerprint": "verb=repair-point,subject=callin-aim-line,sector=swarm-armory-callins,domain=wf-15",
+      "references": [],
+      "integration": "live",
+      "commit": "47209b767a46",
       "verification": "focused_green"
     }
   ],

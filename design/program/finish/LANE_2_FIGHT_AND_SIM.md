@@ -275,6 +275,22 @@ stale), ricochet/bounce causality (collisionConsequences provenance + chainKills
 credit (status periodic routes the applier as attackerId). Named skip: well dives (same
 kind/subject family as coverseek — rotation reserves it).
 
+Implemented and focused-tested, wave 6 (INFERENCE 100 program — one commit each, recorded in
+`design/program/inference-memory.json`):
+- inf-well-dive (WF-02): a marked Crucible elite dives THROUGH a gravity well to reach you —
+  full thrust bent through the pull, guns live — instead of holding behind a rock; a hit
+  breaks the commit; law-identical window/stagger/cooldown to the rider (392426e9c689).
+- inf-plow-turn (WF-05 repair): shoving an enemy mine fence with your own plow turns it into
+  your grenade — it trips on the pack that laid it, pays your credit, and the band says the
+  shove took; NPC fields never turn NPC mines; your own mines never turn (8c77b0ed9119).
+- inf-lance-aim (WF-15 repair): the Orbital Lance paints and strikes exactly where the
+  crosshair points instead of a quarter-turn off it, and the thrown decoy drops ahead of the
+  nose line (47209b767a46).
+Verified already deep, wave 6: weapon-fire telemetry (overheat/empty/guns-out/guidance-lost
+all tell), mine death by gunfire (routed through routeDamage → kernel). Named candidates
+left with next steps: tether-latched pair crossing a field zone (needs a fixed-seed sim A/B
+before a defect claim), spawn-cadence tell (survivalWave family foreign-dirty at the time).
+
 ## Traps
 
 - Never edit `test/*.expected.json` to pass. A sim change that moves the golden is a real change: explain it or undo it.
