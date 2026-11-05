@@ -16,6 +16,8 @@ export { SURVIVOR_POD_RETIRE };
 // cosmetic only: never discover collisions, change a body, or fabricate a successful action.
 export const ADDITIONAL_ACTION_VFX_RECIPES = Object.freeze({
   'presentation:cue': WORLD_CUE_ACTION_RECIPE,
+  // A phase receipt only retires/continues an existing committed lane; it never spawns an effect.
+  'ai:doctrinePhase': {verb:'command',primitive:'induction',color:0xf4b484,life:.1,continuous:false},
   'ai:telegraph': {verb:'command',primitive:'induction',color:0xf4b484,life:1.6,continuous:false,
     variants:{
       engine_flare:{verb:'ignition',primitive:'compression',color:0xeac891,life:1.6},
@@ -176,6 +178,25 @@ export const ADDITIONAL_ACTION_VFX_RECIPES = Object.freeze({
 const point = p => p && Number.isFinite(p.x) && Number.isFinite(p.z);
 const body = (state,id) => state.entities?.get?.(id);
 const copyPoint = p => ({x:p.x,z:p.z});
+
+/** Validated committed-run geometry carried by the actual telegraph, not an inferred target. */
+export function committedAttackLaneReceipt(name, p, state) {
+  if (name !== 'ai:telegraph' || p?.kind !== 'engine_flare' || p.phase !== 'engine_flare'
+    || (p.doctrineId !== 'interceptor_flyby' && p.doctrineId !== 'brawler_commit')) return null;
+  const source = body(state, p.entityId), target = body(state, p.targetId), line = p.attackLine, aim = p.aimCommit;
+  if (!source || source.alive === false || !point(source.pos)
+    || !target || target.alive === false
+    || !Number.isSafeInteger(p.sourceGeneration) || source.occupantGeneration !== p.sourceGeneration
+    || !Number.isSafeInteger(p.targetGeneration) || target.occupantGeneration !== p.targetGeneration
+    || !Number.isInteger(p.tick) || !Number.isInteger(aim?.untilTick) || aim.untilTick <= p.tick
+    || (Number.isInteger(state.tick) && state.tick > aim.untilTick)
+    || !Number.isFinite(line?.heading) || !Number.isFinite(line?.range) || line.range <= 0 || line.range > 2000
+    || !Number.isFinite(aim?.bearing) || !Number.isFinite(aim?.capRad) || aim.capRad <= 0 || aim.capRad >= Math.PI / 2
+    || Math.abs(Math.atan2(Math.sin(line.heading-aim.bearing), Math.cos(line.heading-aim.bearing))) > 1e-6) return null;
+  return { sourceGeneration:p.sourceGeneration, targetId:p.targetId, target,
+    targetGeneration:p.targetGeneration, startTick:p.tick, untilTick:aim.untilTick,
+    bearing:aim.bearing, capRad:aim.capRad, range:line.range };
+}
 
 export function resolveAdditionalActionVfxReceipt(name,p,state) {
   if(name==='presentation:cue')return resolveWorldCueReceipt(p,state);
