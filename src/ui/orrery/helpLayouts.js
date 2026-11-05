@@ -383,6 +383,15 @@ ${H} .orr-hmix__lbl:focus-visible { outline:none; }
   ${HD} .orr-help-list--ores .orr-help-terms dd { padding:2px 0; border-top:1px solid rgb(${BONE} / .09); }
   ${HD} .orr-help-list--ores .orr-help-terms > .orr-help-terms__row:first-child > * { border-top:0; }
 }
+/* ui-polish-335: at 871-1200 the Ores ledger still floats as bare label/value pairs while 761-870 and
+   1201+ wear the hairline-framed sheet. Box the mid-band ledger the same way so the terms read as one
+   card beside the mix; type, colours and the one-pair-per-row grid are unchanged. */
+@media (min-width:871px) and (max-width:1200px) and (min-height:461px) {
+  ${HD} .orr-help-list--ores .orr-help-terms { margin:10px 0 0; padding:2px 12px; column-gap:0; border:1px solid rgb(${BONE} / .18); border-radius:6px; background:rgb(${BONE} / .025); }
+  ${HD} .orr-help-list--ores .orr-help-terms dt { padding:4px 18px 4px 0; border-top:1px solid rgb(${BONE} / .09); }
+  ${HD} .orr-help-list--ores .orr-help-terms dd { padding:2px 0; border-top:1px solid rgb(${BONE} / .09); }
+  ${HD} .orr-help-list--ores .orr-help-terms > .orr-help-terms__row:first-child > * { border-top:0; }
+}
 /* ui-polish-282: the readings beside the Ships, Commodities, Ores and Factions instruments were loose
    label/value pairs floating on the glass (≥1201 wide), so the spec read unfinished next to the framed
    section list. The ledger now sits in one hairline-framed sheet on a faint fill, a rule between rows,
