@@ -52,7 +52,7 @@ import { validateRunState } from '../core/runState.js';
 import { createBroodEngine } from './swarmBrood.js';
 import { BANK_STONE_MIN_DISTANCE, BANK_STONE_MAX_DISTANCE } from './swarmBank.js';
 import { OPENING_LESSON_RELEASE_TICKS } from './survivalWave.js';
-import { BROOD_EXPLOSION_EVENTS } from '../data/swarmBrood.js';
+import { BROOD_EXPLOSION_EVENTS, BROOD_QUEEN_LOOT_ID, TENDRIL_HEAD_LOOT_ID } from '../data/swarmBrood.js';
 import {
   SWARM_BREATH_SECONDS,
   SWARM_BREATH_TICKS,
@@ -814,6 +814,11 @@ export const swarmArena = {
     for (const name of BROOD_EXPLOSION_EVENTS) {
       this._unsubs.push(this.bus.on(name, (p) => this._brood && this._brood.onExplosion(p)));
     }
+    // B-BLOOM aggression — the relay/hit seam: a hit on the brood's relay node (the Queen
+    // champion, or the Tendril's head) forwards to the engine, and the authored aggression
+    // cascade turns the linked brood on the hitter. The engine owns the law (which ids are
+    // relays, the reach, the window); this listener is only the arena's forwarding hand.
+    this._unsubs.push(this.bus.on('combat:damage', (p) => this._onBroodRelayHit(p)));
   },
 
   destroy() {
@@ -1087,6 +1092,26 @@ export const swarmArena = {
     if (Number.isInteger(prev) && alive < prev) {
       noteSwarmPressureKills(prev - alive);
     }
+  },
+
+  // B-BLOOM aggression's forwarding hand: one hit receipt on a relay entity reaches the
+  // brood engine's relayHit seam. Cheap by construction — one Map lookup and one string
+  // read for every combat hit, and the engine re-validates the live run before arming.
+  _onBroodRelayHit(payload) {
+    const brood = this._brood;
+    if (!brood || typeof brood.relayHit !== 'function') return;
+    const targetId = payload && payload.targetId;
+    if (targetId == null) return;
+    const entity = this.state && this.state.entities
+      && typeof this.state.entities.get === 'function' ? this.state.entities.get(targetId) : null;
+    if (!entity || entity.alive === false || !entity.data) return;
+    const relayLootId = entity.data.lootTableId;
+    if (relayLootId !== BROOD_QUEEN_LOOT_ID && relayLootId !== TENDRIL_HEAD_LOOT_ID) return;
+    brood.relayHit({
+      relayLootId,
+      x: entity.pos && Number.isFinite(entity.pos.x) ? entity.pos.x : null,
+      z: entity.pos && Number.isFinite(entity.pos.z) ? entity.pos.z : null,
+    });
   },
 
   _onPressureHoldStart(payload) {

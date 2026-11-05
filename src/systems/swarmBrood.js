@@ -81,6 +81,7 @@ import {
   BROOD_TERRAIN_SLAM_FACTOR,
   BROOD_PLAYER_RAM_SPEED,
   BROOD_POOL_MAX,
+  BROOD_QUEEN_LOOT_ID,
   BROOD_SEP_RADIUS,
   BROOD_SHED_SPEED,
   BROOD_SPITTER_COOLDOWN_S,
@@ -94,6 +95,9 @@ import {
   BROOD_SPITTER_WINDUP_S,
   BROOD_WHIP_BAT_SPEED,
   BROOD_WHIP_KILL_SPEED,
+  BROOD_AGGRESSION_ACCEL,
+  BROOD_AGGRESSION_S,
+  BROOD_CASCADE_AGGRESSION,
   BROOD_CASCADE_GRIEF,
   BROOD_CASCADE_NONE,
   BROOD_CASCADE_PANIC,
@@ -401,12 +405,22 @@ export function createBroodEngine(deps = {}) {
   // target is the panic centroid itself (the corpse) — the tight ball the spec promises,
   // "the best throw of the fight". The cascade REPLACES the ordinary jitter for its window
   // (the animal's own steering, never the room's fields), rides the ordinary integration
-  // below — family speed cap, windup hold — and outranks grief while it is live. The
-  // aggression cascade stays unwired (authored, named next step); nothing invents numbers.
+  // below — family speed cap, windup hold — and outranks grief while it is live.
   const panicUntil = new Float64Array(CAP);
   const knotUntil = new Float64Array(CAP);
   const panicX = new Float32Array(CAP);
   const panicZ = new Float32Array(CAP);
+  // Aggression — "a relay or the Queen taking a hit turns every linked member on you": a hit
+  // on the brood's relay node (BROOD_QUEEN_LOOT_ID, or the Tendril's head for its wave) arms
+  // every living neighbor inside the cascade reach for the authored BROOD_AGGRESSION_S
+  // window. Each aggravated body rushes the player at BROOD_AGGRESSION_ACCEL — the
+  // grief/panic family's own wu/s² unit — and the rush target is the player's LIVE position,
+  // not a stamped point: the pack tracks you for the whole window. Same law as its siblings:
+  // the cascade replaces the ordinary flock jitter (never the room's fields), the attack
+  // language outranks it, a live panic outranks it, and it outranks grief (mourning resumes
+  // on its own clock when the rush lets go). The kind publishes on the view
+  // (BROOD_CASCADE_AGGRESSION) and the arm receipts as `swarm:broodAggression`.
+  const aggrUntil = new Float64Array(CAP);
 
   // field sampling scratch — reused for every body, every tick
   const accel = { ax: 0, az: 0 };
@@ -695,6 +709,7 @@ export function createBroodEngine(deps = {}) {
     griefUntil.fill(0);
     panicUntil.fill(0);
     knotUntil.fill(0);
+    aggrUntil.fill(0);
     splitterReserve = 0;
     motherReserve = 0;
     birthLeft.fill(0);
@@ -937,10 +952,11 @@ export function createBroodEngine(deps = {}) {
     primeUntil[slot] = 0;
     gluedUntil[slot] = 0;
     dragTold[slot] = 0;
-    // A reused slot never inherits a dead cell's mourning — or its panic.
+    // A reused slot never inherits a dead cell's mourning — or its panic, or its rush.
     griefUntil[slot] = 0;
     panicUntil[slot] = 0;
     knotUntil[slot] = 0;
+    aggrUntil[slot] = 0;
     // Per-slot reserve flags die with the body too — a reused slot never inherits a dead
     // mother's told-flag or an unspent share of her tide.
     birthLeft[slot] = 0;
@@ -1485,6 +1501,15 @@ export function createBroodEngine(deps = {}) {
             ax = (kdx / kd) * BROOD_PANIC_REFORM_ACCEL;
             az = (kdz / kd) * BROOD_PANIC_REFORM_ACCEL;
           }
+        } else if (aggrUntil[i] > simTime && phase[i] === BROOD_PHASE_FLOCK && !bankStaged(i)) {
+          // -- B-BLOOM aggression: the relay was hit — the brood stops feeding and rushes
+          // the player together, tracking the LIVE signature for its whole authored window.
+          // The room's fields still add on top below: a rushing pack is still mass in the
+          // room's physics, the same law the panic keeps.
+          if (dp > 1e-4) {
+            ax = (dxp / dp) * BROOD_AGGRESSION_ACCEL;
+            az = (dzp / dp) * BROOD_AGGRESSION_ACCEL;
+          }
         }
 
         // -- the room's fields: the SAME kernel the ships feel, sampled at the brood's own point
@@ -1507,11 +1532,12 @@ export function createBroodEngine(deps = {}) {
         // ring or the clock lets go. Only plain flocking bends: a windup holds so the
         // telegraph tells the truth, a committed dash runs the line it drew, a latched
         // body rides its host, a staged bank beat runs its own language — the attack
-        // language outranks the mourning. A live panic window outranks it too (the
-        // fresher cascade replaces the jitter; the grief clock keeps running underneath
-        // and resumes when the panic lets go). The bend rides the ordinary integration
-        // below, so the family speed cap and the drag stay honest.
+        // language outranks the mourning. A live panic or aggression window outranks it
+        // too (the fresher cascade replaces the jitter; the grief clock keeps running
+        // underneath and resumes when the window lets go). The bend rides the ordinary
+        // integration below, so the family speed cap and the drag stay honest.
         if (griefUntil[i] > simTime && panicUntil[i] <= simTime && knotUntil[i] <= simTime
+            && aggrUntil[i] <= simTime
             && phase[i] === BROOD_PHASE_FLOCK && !bankStaged(i)) {
           const gdx = griefX[i] - bx;
           const gdz = griefZ[i] - bz;
@@ -3572,6 +3598,21 @@ export function createBroodEngine(deps = {}) {
     }
   }
 
+  // B-BLOOM aggression: the position form the relay seam uses — every living neighbor inside
+  // the cascade reach of the RELAY joins the rush window. The rush's target is not stamped
+  // here: the integration tracks the player's live position, so a strafing pilot drags the
+  // whole angry pack with them for the authored BROOD_AGGRESSION_S.
+  function armAggressionAt(x, z, now) {
+    const cr2 = BROOD_CASCADE_RADIUS * BROOD_CASCADE_RADIUS;
+    for (let j = 0; j < CAP; j++) {
+      if (!alive[j]) continue;
+      const dx = px[j] - x;
+      const dz = pz[j] - z;
+      if (dx * dx + dz * dz > cr2) continue;
+      aggrUntil[j] = now + BROOD_AGGRESSION_S;
+    }
+  }
+
   // W-BLOOM-LOW: a burst remain's splash kills by 'explosive' law around the impact point —
   // the same cause every family's own burst uses, so each cell's kill-gate still decides.
   function splashKillAround(x, z, radius, credited) {
@@ -3810,6 +3851,37 @@ export function createBroodEngine(deps = {}) {
     return mourners;
   }
 
+  // B-BLOOM aggression — the relay/hit seam BROOD_CASCADE_EVENTS' comment names ("queen
+  // hits"): a hit on the brood's relay node turns the linked brood on the hitter. The arena
+  // forwards the ordinary `combat:damage` receipt for a relay entity (the Queen champion, or
+  // the Tendril's head — the two nodes the data contract stamps); this engine owns the law:
+  // only an authored relay id counts, only a live run arms, only neighbors inside the
+  // cascade reach join, and the window is the authored BROOD_AGGRESSION_S. Every hit re-arms
+  // — keeping the pressure on the relay is what the window means. Returns the members armed.
+  function relayHit(request) {
+    const state = getState();
+    const run = liveSwarmRun(state);
+    if (!run || run.phase !== 'active' || run.wave !== liveWave) return 0;
+    const relayLootId = request && request.relayLootId;
+    if (relayLootId !== BROOD_QUEEN_LOOT_ID && relayLootId !== TENDRIL_HEAD_LOOT_ID) return 0;
+    const x = finite(request?.x);
+    const z = finite(request?.z);
+    if (!Number.isFinite(x) || !Number.isFinite(z)) return 0;
+    const now = finite(state?.simTime);
+    armAggressionAt(x, z, now);
+    const members = aggressionCount(now);
+    if (members > 0) {
+      if (bus) {
+        bus.emit('swarm:broodAggression', {
+          wave: liveWave, relayLootId, members,
+          window: BROOD_AGGRESSION_S, pos: { x, z },
+        });
+      }
+      publish();
+    }
+    return members;
+  }
+
   // The tide is deliverable while some live unspent sac still owes a birth: one heartbeat
   // (successful sacRelease) within the last SAC_TIDE_SILENCE_S, or a tide fresh from install.
   function sacTidePendingAt(now) {
@@ -3851,6 +3923,23 @@ export function createBroodEngine(deps = {}) {
     let count = 0;
     for (let j = 0; j < CAP; j++) {
       if (alive[j] && knotUntil[j] > finite(now)) count += 1;
+    }
+    return count;
+  }
+
+  // The aggression census: living cells mid-rush (the window is one flat authored band, so
+  // one clock answers the whole kind — unlike panic's scatter-then-knot pair).
+  function aggressionLive(now) {
+    for (let j = 0; j < CAP; j++) {
+      if (alive[j] && aggrUntil[j] > finite(now)) return true;
+    }
+    return false;
+  }
+
+  function aggressionCount(now) {
+    let count = 0;
+    for (let j = 0; j < CAP; j++) {
+      if (alive[j] && aggrUntil[j] > finite(now)) count += 1;
     }
     return count;
   }
@@ -3911,10 +4000,12 @@ export function createBroodEngine(deps = {}) {
     view.sacBudget = sacBudget;
     view.sacStranded = sacStrandedAt(finite(getState()?.simTime));
     // B-BLOOM cascade kind on the view — the data contract's own seam ("published on the
-    // view"); panic outranks grief as the more urgent reading while its window is live.
+    // view"); the authored urgency order reads panic (the pack breaking), then aggression
+    // (the pack rushing you), then grief (the pack mourning) while each window is live.
     const cascadeNow = finite(getState()?.simTime);
     view.cascade = panicLive(cascadeNow) ? BROOD_CASCADE_PANIC
-      : (griefLive(cascadeNow) ? BROOD_CASCADE_GRIEF : BROOD_CASCADE_NONE);
+      : (aggressionLive(cascadeNow) ? BROOD_CASCADE_AGGRESSION
+      : (griefLive(cascadeNow) ? BROOD_CASCADE_GRIEF : BROOD_CASCADE_NONE));
     view.reserveFamily = reserveFamily;
     view.reserveBudget = reserveBudget;
     view.strain = strainDef ? strainDef.id : null;
@@ -4012,6 +4103,10 @@ export function createBroodEngine(deps = {}) {
     sacRelease,
     hivePool,
     hiveSacFell,
+    // B-BLOOM aggression — the relay/hit seam: the arena forwards a relay entity's hit
+    // receipt (`combat:damage` on the Queen or the Tendril's head) and the authored
+    // aggression cascade arms here.
+    relayHit,
     // Row-270 — the Domino shove lands here through the arena, never across the buffers' owner.
     applyLegendaryShove,
     /** Live population figures, for tests and the lab overlay. */
@@ -4019,7 +4114,8 @@ export function createBroodEngine(deps = {}) {
       return { alive: aliveCount, cap: CAP, min: SWARM_BROOD_MIN, wave: liveWave, sacBudget,
         sacStranded: sacStrandedAt(finite(getState()?.simTime)), reserveBudget, machineReserve,
         mourners: griefMournerCount(finite(getState()?.simTime)),
-        panicking: panicCount(finite(getState()?.simTime)) };
+        panicking: panicCount(finite(getState()?.simTime)),
+        aggravated: aggressionCount(finite(getState()?.simTime)) };
     },
     // Test seams: direct, read-only unless named as a seam.
     _bodies: { px, pz, vx, vz, alive, family, heading, hp, phase, timer, teleX, teleZ, teleDir, serial, seedPhase, gluedUntil, birthLeft, birthTold, liveFamilyId, liveFamilyRadius, affix, commandBuff, shielded, linkPartner, channelEntity, squadId, squadSlot, beamState },

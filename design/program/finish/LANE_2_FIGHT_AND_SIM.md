@@ -358,6 +358,22 @@ clearance owns that case, not the contact solve. Shove-recovery honesty (tossed 
 wall/asteroid) stays covered by the committed wave subjects: native contact spin
 preservation c16e43dd6c24, INF-027 tumble recovery, and wave-5 ricochet causality.
 
+Implemented and focused-tested, wave 9 (INFERENCE 100 program — one commit each, recorded in
+`design/program/inference-memory.json`):
+- inf-aggression-cascade (WF-16 completion): the last authored-but-unwired BLOOM cascade
+  finally runs — a hit on the brood's relay node (the Queen champion, or the Tendril's head,
+  the two relay loot ids the data contract stamps) turns every living neighbor inside the
+  authored BROOD_CASCADE_RADIUS onto the player for BROOD_AGGRESSION_S at
+  BROOD_AGGRESSION_ACCEL, tracking the player's live position for the whole window; the
+  arena forwards the relay's ordinary `combat:damage` receipt to a new engine `relayHit`
+  seam, the arm receipts as `swarm:broodAggression`, and the view publishes the authored
+  BROOD_CASCADE_AGGRESSION kind — panic outranks the rush, the rush outranks grief, the
+  attack language outranks both, and every hit re-arms (sha below,
+  test/inf-aggression-cascade.test.mjs). Note for Lane 1: broodPresentation's
+  resolveBroodCascadeFlush still returns null for the now-live aggression kind — the
+  authored "filaments flush red" read is its deliberate follow-up; no colors were invented
+  on Lane 2's side.
+
 ## Traps
 
 - Never edit `test/*.expected.json` to pass. A sim change that moves the golden is a real change: explain it or undo it.
