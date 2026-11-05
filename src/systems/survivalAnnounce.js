@@ -81,6 +81,20 @@ export const MAX_AFFIX_LINES_PER_WAVE = 2;
 const AFFIX_TELL_TTL_S = 5;
 
 /**
+ * A mid-wave reinforcement tell is the arrival beat the pressure hold cannot give: the hold
+ * telegraphs a breath before the spend, but the GATE is only drawn when the batch materializes,
+ * so the bearing exists only on the materialization receipt. The batch lands as one clump at
+ * the gate — seconds of approach before contact — so a line spoken there is a true pre-contact
+ * tell: the count and the world bearing, one per gap, a small count per wave. Each still counts
+ * against MAX_LINES_PER_WAVE through _alert, because the bound is hard.
+ */
+export const MAX_REINFORCE_LINES_PER_WAVE = 2;
+/** Sim seconds between reinforcement tells inside one wave. */
+export const REINFORCE_TELL_GAP_S = 8;
+/** Reading time for an arrival tell — the hulls are already on the approach. */
+const REINFORCE_TELL_TTL_S = 4;
+
+/**
  * Gate id → world bearing, in words.
  *
  * These are WORLD directions, not player-relative ones: waveMaterialization.js:117-118 takes the
@@ -440,6 +454,8 @@ export const survivalAnnounce = {
     this._broodTeleAt = new Map(); // family id -> simTime it last spoke a tell
     this._broodTeleLines = 0;      // telegraph lines spent this wave
     this._affixLines = 0;          // affix first-sight lines spent this wave
+    this._reinforceAt = 0;         // simTime the last reinforcement tell spoke
+    this._reinforceLines = 0;      // reinforcement arrival lines spent this wave
     this._stallSpokeWave = 0;      // the wave the stall release last spoke on
     this._firstCourtRock = null;
   },
@@ -628,7 +644,31 @@ export const survivalAnnounce = {
     if (typeof enemyId !== 'string' || !ENEMY_BY_ID.has(enemyId)) return;
 
     if (this._tryBossArrival(wave, enemyId)) return;
+    if (this._tryReinforcementTell(wave, rec)) return;
     this._tryCounterHint(enemyId);
+  },
+
+  /**
+   * The reinforcement batch exists now, at its gate, still seconds from contact. Say how many
+   * and from where — the count and the world bearing off the same receipt the spawner keeps.
+   * Returns true only when a line actually spoke, so a rate-limited or budget-starved tell
+   * falls through to the counter hint instead of swallowing it.
+   */
+  _tryReinforcementTell(wave, rec) {
+    if (rec.reinforcement !== true) return false;
+    const now = Number.isFinite(this.state && this.state.simTime) ? this.state.simTime : 0;
+    if (now - this._reinforceAt < REINFORCE_TELL_GAP_S) return false;
+    if (this._reinforceLines >= MAX_REINFORCE_LINES_PER_WAVE) return false;
+    const where = BEARING_WORD[rec.gateGroup] || null;
+    const text = where
+      ? `${capitalize(countWord(rec.admitted))} more inbound — out of ${where}.`
+      : `${capitalize(countWord(rec.admitted))} more inbound, on approach.`;
+    const spoke = this._alert(
+      `reinforce:${wave}:${rec.tick != null ? rec.tick : 0}`, 'warn', text, REINFORCE_TELL_TTL_S);
+    if (!spoke) return false;
+    this._reinforceAt = now;
+    this._reinforceLines += 1;
+    return true;
   },
 
   _onPressureTelegraph(payload) {
