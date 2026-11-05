@@ -459,6 +459,9 @@ test('live route binds player + NPC different families at once via vfx system', 
   const { scene, system } = makeVfxHarness([player, npc]);
   // npcPropulsionVisible binds NPC propulsion only to a hull presented under the live scene.
   npc.mesh = scene.add(new THREE.Object3D());
+  system.warmupLiveFlightEffectsForLoading();
+  assert.equal(system._energy.fleet.familyPlume('engine_vector').getActiveGeometryStats().tier, 'low',
+    'loading warms the same NPC fleet geometry tier used in flight');
   for (let f = 0; f < 10; f++) system.update(1 / 60);
 
   const fleet = system._energy.fleet;
@@ -473,6 +476,16 @@ test('live route binds player + NPC different families at once via vfx system', 
   assert.equal(ion.group.visible, false);
   assert.ok(vector.group.visible, 'NPC vector family live');
   assert.ok(vector.pool.activeCount > 0);
+  assert.equal(vector.getActiveGeometryStats().tier, 'low');
+  assert.deepEqual([...new Set(vector.pool.slots.slice(0, vector.pool.activeCount)
+    .map((slot) => slot.layerRole))].sort(), ['core', 'inner']);
+  assert.equal(system._productionThrusterA11y.qualityTier, 'high',
+    'the separate player stream retains the selected quality');
+  system.state.settings.video.motionReduce = true;
+  system.state.settings.accessibility.flashReduce = true;
+  system.update(1 / 60);
+  assert.equal(system._fleetThrusterA11y.reducedMotion, true);
+  assert.equal(system._fleetThrusterA11y.reducedFlash, true);
 
   const vCore = vector.pool.slots.slice(0, vector.pool.activeCount).find((s) => s.layerRole === 'core');
   assert.ok(vCore, 'NPC vector core is written');

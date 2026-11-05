@@ -1404,6 +1404,13 @@ export const vfx = {
       lowQuality: false,
       qualityTier: 'high',
     };
+    // Fleet jets share one budget; the player's separate plasma stream keeps its chosen tier.
+    this._fleetThrusterA11y = {
+      reducedMotion: false,
+      reducedFlash: false,
+      lowQuality: true,
+      qualityTier: 'low',
+    };
     this._productionThrusterOpts = {
       boost: 0,
       a11y: this._productionThrusterA11y,
@@ -11914,6 +11921,11 @@ export const vfx = {
       }
     }
     const plumeOpts = { boost: 0.4, a11y };
+    const fleetPlumes = new Set();
+    const fleetPlumeOpts = { boost: 0.4, a11y: {
+      reducedMotion: a11y.reducedMotion, reducedFlash: a11y.reducedFlash,
+      lowQuality: true, qualityTier: 'low',
+    } };
     let plumes = 0;
     const seen = new Set();
     const livePlumes = [];
@@ -11922,13 +11934,16 @@ export const vfx = {
     if(energy.latchNine?.plume)livePlumes.push(energy.latchNine.plume);
     if (energy.fleet && Array.isArray(energy.fleet.families)) {
       for (const family of energy.fleet.families) {
-        if (family && family.plume) livePlumes.push(family.plume);
+        if (family && family.plume) {
+          livePlumes.push(family.plume);
+          fleetPlumes.add(family.plume);
+        }
       }
     }
     for (const plume of livePlumes) {
       if (!plume || seen.has(plume) || typeof plume.update !== 'function') continue;
       seen.add(plume);
-      plume.update(dt, 1, sockets, plumeOpts);
+      plume.update(dt, 1, sockets, fleetPlumes.has(plume) ? fleetPlumeOpts : plumeOpts);
       plumes += 1;
     }
     const liveRcs = [];
@@ -12323,7 +12338,10 @@ export const vfx = {
     const ceresActive = energy.ceresWorkfleet?.update(this.state, dt, a11y) || 0;
     const latchActive=energy.latchNine?.update(this.state,dt,a11y)||0;
     const fleet = energy.fleet;
-    fleet.beginFrame(a11y);
+    const fleetA11y = this._fleetThrusterA11y;
+    fleetA11y.reducedMotion = a11y.reducedMotion;
+    fleetA11y.reducedFlash = a11y.reducedFlash;
+    fleet.beginFrame(fleetA11y);
 
     // Retention-safe two-phase (no per-frame arrays / closures):
     // 1) retainShip every eligible survivor by entityId (player first)
