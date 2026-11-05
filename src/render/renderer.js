@@ -1,4 +1,5 @@
 import { createHiddenSubtreeLifecycleMethods } from './runtime/hiddenSubtreeLifecycle.js';
+import { rigidBatchDepthProvenOff, subscribeRigidBatchShadowWarm } from './rigidBatchShadowGate.js';
 import { releaseStaticBatchGeometryForObject } from './staticBatchGeometryCache.js';
 import { isPhysicsBoundWholeHulk } from '../data/wholeShipVisualIdentity.js';
 import { createShadowDepthStageMethods } from './runtime/shadowDepthStage.js';
@@ -9090,7 +9091,7 @@ function createRigidOpaqueBatchProbe(owner, scene, options = {}) {
       || rigidOpaqueAshlineSourceRoot(owner, source) != null
       || rigidOpaqueShipSourceRoot(owner, source) != null
     : undefined;
-  return createRetainedRigidOpaqueBatchController({
+  const controller = createRetainedRigidOpaqueBatchController({
     scene,
     capturePreparationGuard: defaultCohort ? () => {
       const renderState = state.render, world = state.world;
@@ -9101,6 +9102,8 @@ function createRigidOpaqueBatchProbe(owner, scene, options = {}) {
       const recovery = owner._contextRecovery;
       const recoveryGeneration = recovery?.generation, recoveryLosses = recovery?.losses;
       const pictureEpoch = owner._rigidOpaqueBatchPictureEpoch || 0;
+      const depthEpoch = shadowCensusEpoch();
+      const depthOff = rigidBatchDepthProvenOff(owner, depthEpoch);
       const paint = renderState?.firstPlayableFrameAt;
       return () => defaultRigidBatchOwnerResident(owner)
         && owner.scene === scene && owner.state === state && state.render === renderState && state.world === world
@@ -9110,6 +9113,8 @@ function createRigidOpaqueBatchProbe(owner, scene, options = {}) {
         && owner._contextRecovery === recovery && recovery?.generation === recoveryGeneration
         && recovery?.losses === recoveryLosses
         && (owner._rigidOpaqueBatchPictureEpoch || 0) === pictureEpoch
+        && (!depthOff || (shadowCensusEpoch() === depthEpoch
+          && rigidBatchDepthProvenOff(owner, depthEpoch)))
         && renderState?.firstPlayableFrameAt === paint;
     } : undefined,
     supported: owner?._opaqueBatchSupported === true,
@@ -9179,6 +9184,11 @@ function createRigidOpaqueBatchProbe(owner, scene, options = {}) {
       return { ready: true };
     },
   });
+  const unsubscribeShadowWarm = subscribeRigidBatchShadowWarm(owner.renderer,
+    () => controller.setShadowDepthDisabled(false));
+  const dispose = controller.dispose.bind(controller);
+  controller.dispose = () => { unsubscribeShadowWarm(); return dispose(); };
+  return controller;
 }
 
 const WARM_GROWTH_AXIS_X = new THREE.Vector3(1, 0, 0);
@@ -19351,6 +19361,10 @@ export const render = {
     if (typeof this._videoSettingsOff === 'function') this._videoSettingsOff();
     this._videoSettingsOff = onBus('settings:changed', (p) => {
       if (!p || p.section !== 'video') return;
+      if (p.key == null || p.key === 'shadows' || p.key === 'nocturne'
+          || p.key === 'nocturneShadows') {
+        this._rigidOpaqueBatchController?.setShadowDepthDisabled(false);
+      }
       this._authoredPreparationEpoch++;
       this._sectorBoundaryPreparations?.abortAll('video-settings-changed-during-sector-prewarm');
       const vd = state.settings.video;
@@ -28787,6 +28801,12 @@ export const render = {
     const controller = this._rigidOpaqueBatchController;
     const state = this.state;
     if (!controller || this._rigidOpaqueBatchProbeEnabled !== true || !this._meshes) return;
+    if (this._rigidOpaqueBatchDefaultCohort === true && this._shadowSettingOn === false
+        && this.state?.settings?.video?.shadows === false) {
+      this._shadowCensusForFrame?.();
+    }
+    controller.setShadowDepthDisabled(this._rigidOpaqueBatchDefaultCohort === true
+      && rigidBatchDepthProvenOff(this, shadowCensusEpoch()));
     if (this._rigidOpaqueBatchDefaultCohort === true && !defaultRigidBatchMayPrepare(this)) return;
     // The default waits until the first picture is painted and its graph hold is released.
     // The explicit bench probe retains its existing loading exclusion.
@@ -32900,6 +32920,10 @@ export const render = {
     }
     // Event VFX publish after prepareFrame. Resolve them before the one scene matrix walk.
     if (scene === this.scene) this._nocturne?.flush(camera);
+    // Check the final light budget after flush and before any post-route world draw.
+    if (scene === this.scene && !rigidBatchDepthProvenOff(this, shadowCensusEpoch())) {
+      this._rigidOpaqueBatchController?.setShadowDepthDisabled(false);
+    }
     // Photo is a final presentation override: Nocturne's held world exposure must not replace
     // the slider, and the slider must not advance or rewrite that world's adaptation state.
     const photo = scene === this.scene && this.state?.render?.photoMode;
