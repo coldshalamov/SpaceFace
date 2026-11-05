@@ -11,6 +11,15 @@ budget. Status words: `OPEN`, `ACTIVE`, `LANDED <sha>`, `SKIPPED (<one-line reas
 
 ## Baseline (packet M0 rewrites this table with today's numbers, then keeps a dated row per re-measure)
 
+**November5 source integration:** c4b88c85acd4 (runtime6794833) passes17/17 baseline groups in73.563s/90s,
+with unchanged source and no failures/timeouts. This is not an FPS comparison. Live worker controls
+no longer wait for an older reply while simulation deadlines advance; the existing watchdog retains
+real progress accounting. Packaged props no longer inherit a second procedural root scale: the
+actual beacon wrapper is28WU rather than1680WU, with procedural transforms/materials retained.
+Ordinary Ring obstruction/input and Counterweight admission checks now move to this candidate;
+their older failures and changed-build look limits remain in INTEGRATION_COVERAGE.md. Startup,
+frame targets, physical iPhone and signed-update acceptance remain open.
+
 **Active connected batch,2026-11-03:** retained Galaxy label reuse reduces synchronous chart
 JavaScript8.796→3.618ms/draw in one matched ABBA, with142 identical placements and unchanged visual
 policy. This is a component result; D222/full-owner/FPS targets remain open. Canonical map aliases

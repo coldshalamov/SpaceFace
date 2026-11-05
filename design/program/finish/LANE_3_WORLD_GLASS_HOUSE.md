@@ -12,6 +12,15 @@ Status words: `OPEN`, `ACTIVE`, `LANDED <sha>`, `SKIPPED (<reason>)`.
 
 ## Claimed paths (beyond README §3)
 
+**November5 source integration:** c4b88c85acd4 connects canonical course momentum/receiver guidance,
+seven briefings and earned-result comparisons, and prioritizes the real current course objective.
+Compressed Load cards now retain scar truth; restored seed identity arrives with the actual worker
+receipt. The Counterweight adapter now preserves the full110-reader autosave capture, and invalid
+plans refuse before encoding. Focused integration checks pass; actual flown courses remain open.
+The genuine Ring pilot's latest414u approach/eleven-scar/grudge save is preserved for the repaired
+candidate. Lantern Ward PR840 is a separate active31-path integration, with native/ordinary work
+still pending; it is not covered by the c4b88 baseline. See NOW for exact live writers.
+
 **Active connected batch,2026-11-03:** ordinary Adventure exposed47-A's missing recovery marker
 and false delivery focus. Source now binds the actual field/slot, publishes the recovery/delivery
 phase through the worker, and makes first-pull teaching optional without stealing a manual course

@@ -1,13 +1,53 @@
 # Whole-game integration coverage
 
-Updated 2026-11-04. This records current product outcomes and material limits. It is not a completion
+Updated 2026-11-05 UTC. This records current product outcomes and material limits. It is not a completion
 or release verdict. The [Finish Program](./README.md) and three lane boards own the product bar;
 [NOW](../NOW.md) records exact active writes. The controller owns integration of all arriving work.
 
 ## Current integration status and next work
 
-The controller's latest coherent source/metadata is `9fbed32391ee`. Other authors continue landing
-work; this is a controller cut, not a freeze or a release verdict. It includes actual cold-scenery
+The latest coherent candidate is `c4b88c85acd4`, runtime source `6794833bc886`. It passes all17 baseline
+groups in73.563s/90s with four jobs and no failures/timeouts; source stayed unchanged during the
+check. The later Lantern Ward working tree is a separate candidate. No new deployment or release
+acceptance follows from this source check.
+
+`442d7b79221e` repairs a reproduced live-command queue failure: a valid course-ready/key-release
+batch could wait behind an older reply while the worker kept advancing. Ordered advancing-flight
+commands now ship without that gate; paused/loading coalescing and genuine ACK/watchdog accounting
+remain. Five new and23 adjacent checks pass. The real-worker fixture admits the new course and
+remains running beyond the original cancellation boundary; its sole driver failure was an incorrect
+staged expectation, corrected afterward without replaying it for a green exit. Actual browser
+Counterweight admission and all seven flown courses remain open. `1a7157543cb2`/`f047e0c6cb53` add
+canonical load momentum/settling witnesses, native-mouth guidance, seven course briefings and
+truthful earned-result comparisons. The combined handling/native/record checks pass63 cases and
+the integrated presentation checks pass9; independent coordinate/interface review found no material
+defect. These establish source behavior, not camera readability, feel or earned medals.
+
+`349d7fc20fbc` fixes compressed title save-card projection: the genuine Ring export retained six
+scars while Load incorrectly displayed Clean plates. Canonical gzip decoding now feeds the existing
+portrait on module/Blob worker and fallback lanes. `fcf34cd34d94` publishes restored meta.seed with
+the same save receipt; actual postMessage regression distinguishes the preserved4242 authority from
+the stale698239137 main footer. `1220bfd9925f` fixes Counterweight's generator/array autosave adapter
+mismatch: actual capture previously reached encoding with empty data. The normal110-reader plan now
+retains player/world/course data; malformed plans refuse before encoding/durable writes. Fourteen
+focused capture/persistence checks pass. Existing user saves were not overwritten for these tests.
+
+`6794833bc886` prevents a procedural root from rescaling already-fitted authored props. The real
+beacon wrapper measured1680WU instead of28WU under a60x root; three actual-wrapper checks now pass,
+including retained procedural world transforms/materials. The large surfaces in the ordinary
+Ring/Counterweight views are not yet attributed to that mesh. Ring's genuine approach reached414u
+from Cracker Run, retained eleven scars and its earned grudge, but remained obstructed and then did
+not visibly respond to short forward/reverse inputs on185355. Its latest public export is preserved
+for continuation on c4b88; no loop, phase crossing or changed-build obstruction acceptance is claimed.
+
+Shipping metadata at c4b88 matches6794833:1009 eager preloads remain current,16790 messages extract
+with zero unresolved, and official code indexes are regenerated. PR840's Lantern Ward is now being
+integrated separately with its optional schema23 migration; its62 component/async-save checks pass,
+while native service/custody and ordinary public arrival remain open. The generic scale/capture
+repairs above are already committed independently. Existing Electron executables are unsigned and
+stale/incomplete; a genuine signed old-to-new update is still unperformed, not a current-source bug.
+
+Earlier integration includes actual cold-scenery
 avoidance/visibility (`e177d76038a2`), remote-destination plotting (`53a901ed2d54`), commission chart
 and journal integration (`793587dfa662`), compact station controls (`a289d5cfa6ee`), three commission
 assembly, chain-kill activation, manual-course preservation, loading checkpoints and canonical audio.
@@ -34,11 +74,10 @@ gate/dashes and visible undocked NPC wash are integrated; their actual gameplay 
 Last Shift's filed account and finite Compost cache/delivery identity now survive real cold saves
 in focused owner checks; the ordinary physical journeys remain open. Patrol/fine5bf repairs typed
 IDs, current-life hail and the real cold-Continue→re-arm→release brake lease, preserving foreign
-intents; the integrated22 focused checks pass. Shipping metadata `ab3d6f19a334` matches frozen494b:42main imports/1007preloads,
-16769 extracted entries and zero unresolved; bytes outside the managed index block are unchanged.
-These counts establish generated freshness, not translated-language completeness.
+intents; the integrated22 focused checks pass. Current shipping metadata is recorded above; those
+counts establish generated freshness, not translated-language completeness.
 The public alias was last verified at `89ddfe4830e2` at https://spaceface-play-demo.vercel.app/;
-that is a recorded observation, not a fresh alias check. Source through9fbed is integrated with
+that is a recorded observation, not a fresh alias check. Source throughc4b88 is integrated with
 the named checks; publication is tracked separately in the controller's Git/checkpoint receipts.
 Committed source, a Git push and deployed player acceptance remain separate claims. A separate a704
 immutable production deployment is READY at
@@ -230,12 +269,13 @@ revive the earlier false acceptance or restore lost iron to make the journey eas
 
 ## Performance and verification limits
 
-The coherent shared checkout at9fbed passes all17 baseline groups in76.113s
-with the normal four-job allowance and unchanged90s budget. The priorb25789.908s pass and188.433s
+The coherent candidatec4b88 passes all17 baseline groups in73.563s
+with the normal four-job allowance and unchanged90s budget. Its runtime source was clean and stable
+through the check; Ward source work resumed afterward. The prior9fbed76.113s andb25789.908s passes and188.433s
 budget failure remain archived. No checks, goldens or thresholds were weakened and no agent was
 stopped. These separate host samples do not establish a causal game-performance improvement.
-The committed-source18 focused encounter checks separately cover the integrated owner repairs;
-foreign WIP was present during the shared-tree baseline. No confidence rerun is scheduled.
+The earlier committed-source18 focused encounter checks separately cover their owner repairs.
+No confidence rerun is scheduled.
 
 Actual paused Photo now pans/zooms/changes FOV and exposure0.6→1.95 while tick/time/player state
 stay held. A real1440×900 nonblack PNG passes after the exposure/final-render readback repair;
