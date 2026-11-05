@@ -96,11 +96,19 @@ import {
   BROOD_WHIP_KILL_SPEED,
   BROOD_CASCADE_GRIEF,
   BROOD_CASCADE_NONE,
+  BROOD_CASCADE_PANIC,
   BROOD_CASCADE_RADIUS,
   BROOD_FILAMENT_FLINCH_DV,
   BROOD_GRIEF_ACCEL,
   BROOD_GRIEF_RING,
   BROOD_GRIEF_S,
+  BROOD_PANIC_KILL_MASS,
+  BROOD_PANIC_KNOT_RADIUS,
+  BROOD_PANIC_REFORM_ACCEL,
+  BROOD_PANIC_REFORM_S,
+  BROOD_PANIC_SCATTER_ACCEL,
+  BROOD_PANIC_SCATTER_MAX_S,
+  BROOD_PANIC_SCATTER_MIN_S,
   HIVE_POOL_TTL_S,
   SWARM_BROOD_FAMILIES,
   SWARM_BROOD_KILL_CAUSES,
@@ -382,12 +390,23 @@ export function createBroodEngine(deps = {}) {
   // members outward this hard" — rides the same death seam as an additive Δv, the exact
   // shape the Domino shove lands through. A Hive node's death answers through the same
   // loop (BROOD_CASCADE_EVENTS names `swarm:hiveSacKilled` a cascade seam; the arena calls
-  // hiveSacFell at the corpse, the authored "a Hive node dying" trigger). Panic
-  // scatter/knot and the aggression cascade stay unwired (authored, named next steps);
-  // nothing here invents numbers.
+  // hiveSacFell at the corpse, the authored "a Hive node dying" trigger).
   const griefUntil = new Float64Array(CAP);
   const griefX = new Float32Array(CAP);
   const griefZ = new Float32Array(CAP);
+  // Panic — "a mass kill above BROOD_PANIC_KILL_MASS inside the pack scatters it for
+  // 1.5–2.5 s (fixed-seed per body), then re-forms it into a tight knot": each living
+  // neighbor inside the cascade reach bolts outward from the trigger centroid for its own
+  // seeded slice of the band, then converges back onto it for the reform window. The knot's
+  // target is the panic centroid itself (the corpse) — the tight ball the spec promises,
+  // "the best throw of the fight". The cascade REPLACES the ordinary jitter for its window
+  // (the animal's own steering, never the room's fields), rides the ordinary integration
+  // below — family speed cap, windup hold — and outranks grief while it is live. The
+  // aggression cascade stays unwired (authored, named next step); nothing invents numbers.
+  const panicUntil = new Float64Array(CAP);
+  const knotUntil = new Float64Array(CAP);
+  const panicX = new Float32Array(CAP);
+  const panicZ = new Float32Array(CAP);
 
   // field sampling scratch — reused for every body, every tick
   const accel = { ax: 0, az: 0 };
@@ -674,6 +693,8 @@ export function createBroodEngine(deps = {}) {
     sacBudget = 0;
     sacLastBirthAt = -Infinity;
     griefUntil.fill(0);
+    panicUntil.fill(0);
+    knotUntil.fill(0);
     splitterReserve = 0;
     motherReserve = 0;
     birthLeft.fill(0);
@@ -916,8 +937,10 @@ export function createBroodEngine(deps = {}) {
     primeUntil[slot] = 0;
     gluedUntil[slot] = 0;
     dragTold[slot] = 0;
-    // A reused slot never inherits a dead cell's mourning.
+    // A reused slot never inherits a dead cell's mourning — or its panic.
     griefUntil[slot] = 0;
+    panicUntil[slot] = 0;
+    knotUntil[slot] = 0;
     // Per-slot reserve flags die with the body too — a reused slot never inherits a dead
     // mother's told-flag or an unspent share of her tide.
     birthLeft[slot] = 0;
@@ -1438,6 +1461,31 @@ export function createBroodEngine(deps = {}) {
           continue;
         }
 
+        // -- B-BLOOM panic: while the window is live the cascade replaces the ordinary
+        // jitter — scatter bolts outward from the trigger centroid, the knot converges
+        // back onto it. The room's fields below still add on top: a panicking pack is
+        // still mass in the room's physics, the same law the current-rider keeps. Only
+        // plain flocking panics: a windup holds so the telegraph tells the truth, a
+        // committed dash runs its line — the attack language outranks the cascade. Inside
+        // the knot radius the override lets go: the ball has re-formed and the pack's own
+        // cohesion holds it tight. Grief yields while the fresher cascade runs and resumes
+        // on its own clock when the panic lets go.
+        if (panicUntil[i] > simTime && phase[i] === BROOD_PHASE_FLOCK) {
+          const pdx = bx - panicX[i];
+          const pdz = bz - panicZ[i];
+          const pd = Math.hypot(pdx, pdz) || 1;
+          ax = (pdx / pd) * BROOD_PANIC_SCATTER_ACCEL;
+          az = (pdz / pd) * BROOD_PANIC_SCATTER_ACCEL;
+        } else if (knotUntil[i] > simTime && phase[i] === BROOD_PHASE_FLOCK) {
+          const kdx = panicX[i] - bx;
+          const kdz = panicZ[i] - bz;
+          const kd = Math.hypot(kdx, kdz);
+          if (kd > BROOD_PANIC_KNOT_RADIUS) {
+            ax = (kdx / kd) * BROOD_PANIC_REFORM_ACCEL;
+            az = (kdz / kd) * BROOD_PANIC_REFORM_ACCEL;
+          }
+        }
+
         // -- the room's fields: the SAME kernel the ships feel, sampled at the brood's own point
         if (!fieldsEmpty) {
           posScratch.x = px[i];
@@ -1457,9 +1505,12 @@ export function createBroodEngine(deps = {}) {
         // -- B-BLOOM grief: a mourner bends toward its corpse until it reaches the mourning
         // ring or the clock lets go. Only plain flocking bends: a windup holds so the
         // telegraph tells the truth, a committed dash runs the line it drew, a latched
-        // body rides its host — the attack language outranks the mourning. The bend rides
+        // body rides its host — the attack language outranks the mourning. A live panic
+        // window outranks it too (the fresher cascade replaces the jitter; the grief clock
+        // keeps running underneath and resumes when the panic lets go). The bend rides
         // the ordinary integration below, so the family speed cap and the drag stay honest.
-        if (griefUntil[i] > simTime && phase[i] === BROOD_PHASE_FLOCK) {
+        if (griefUntil[i] > simTime && panicUntil[i] <= simTime && knotUntil[i] <= simTime
+            && phase[i] === BROOD_PHASE_FLOCK) {
           const gdx = griefX[i] - bx;
           const gdz = griefZ[i] - bz;
           const gd = Math.hypot(gdx, gdz);
@@ -3447,6 +3498,13 @@ export function createBroodEngine(deps = {}) {
     // so a slot reused inside the wave still counts as a new death.
     noteCreditedDeath(`cell:${serial[i]}`, px[i], pz[i]);
     armGrief(i, finite(getState()?.simTime));
+    // B-BLOOM panic: a MASS kill is the pack's worst moment. One credited death of a body
+    // at or above BROOD_PANIC_KILL_MASS inside the pack (the cascade reach) breaks it like
+    // one animal — scatter, then the knot. Same credit law as grief: a kill nobody credits
+    // is a kill the room does not answer.
+    if (liveFamilyMass[family[i]] >= BROOD_PANIC_KILL_MASS) {
+      armPanic(px[i], pz[i], finite(getState()?.simTime));
+    }
   }
 
   // B-BLOOM grief: a kill the game credits is a kill the room notices. Every living
@@ -3473,6 +3531,30 @@ export function createBroodEngine(deps = {}) {
       griefUntil[j] = now + BROOD_GRIEF_S;
       griefX[j] = x;
       griefZ[j] = z;
+    }
+  }
+
+  // B-BLOOM panic: the position form every trigger uses (the credited mass kill rides the
+  // cell's own coordinates). Each living neighbor inside the cascade reach draws its own
+  // seeded slice of the authored scatter band — the seed every cell already carries at
+  // spawn, so the same pack replays the same break — and knots on the centroid after it.
+  // The centroid is the corpse itself: the scatter flees it, the knot re-forms on it, the
+  // tight ball "the best throw of the fight" promises. A mourner already grieving an older
+  // corpse yields for the window — the fresher cascade replaces the jitter — and grief
+  // resumes on its own clock when the panic lets go.
+  function armPanic(x, z, now) {
+    const cr2 = BROOD_CASCADE_RADIUS * BROOD_CASCADE_RADIUS;
+    for (let j = 0; j < CAP; j++) {
+      if (!alive[j]) continue;
+      const dx = px[j] - x;
+      const dz = pz[j] - z;
+      if (dx * dx + dz * dz > cr2) continue;
+      const dur = BROOD_PANIC_SCATTER_MIN_S
+        + (seedPhase[j] % 1) * (BROOD_PANIC_SCATTER_MAX_S - BROOD_PANIC_SCATTER_MIN_S);
+      panicUntil[j] = now + dur;
+      knotUntil[j] = panicUntil[j] + BROOD_PANIC_REFORM_S;
+      panicX[j] = x;
+      panicZ[j] = z;
     }
   }
 
@@ -3742,6 +3824,23 @@ export function createBroodEngine(deps = {}) {
     return count;
   }
 
+  // The panic census: living cells mid-scatter or mid-knot (scatter always ends before its
+  // knot does, so one upper bound answers both).
+  function panicLive(now) {
+    for (let j = 0; j < CAP; j++) {
+      if (alive[j] && knotUntil[j] > finite(now)) return true;
+    }
+    return false;
+  }
+
+  function panicCount(now) {
+    let count = 0;
+    for (let j = 0; j < CAP; j++) {
+      if (alive[j] && knotUntil[j] > finite(now)) count += 1;
+    }
+    return count;
+  }
+
   /** A sac's acid drip — the same pool pipeline a spitter splash leaves behind. */
   function hivePool(x, z, ttl = HIVE_POOL_TTL_S) {
     const slot = poolCursor % BROOD_POOL_MAX;
@@ -3798,8 +3897,10 @@ export function createBroodEngine(deps = {}) {
     view.sacBudget = sacBudget;
     view.sacStranded = sacStrandedAt(finite(getState()?.simTime));
     // B-BLOOM cascade kind on the view — the data contract's own seam ("published on the
-    // view"); the grief loop is the one kind the engine runs today.
-    view.cascade = griefLive(finite(getState()?.simTime)) ? BROOD_CASCADE_GRIEF : BROOD_CASCADE_NONE;
+    // view"); panic outranks grief as the more urgent reading while its window is live.
+    const cascadeNow = finite(getState()?.simTime);
+    view.cascade = panicLive(cascadeNow) ? BROOD_CASCADE_PANIC
+      : (griefLive(cascadeNow) ? BROOD_CASCADE_GRIEF : BROOD_CASCADE_NONE);
     view.reserveFamily = reserveFamily;
     view.reserveBudget = reserveBudget;
     view.strain = strainDef ? strainDef.id : null;
@@ -3903,7 +4004,8 @@ export function createBroodEngine(deps = {}) {
     census() {
       return { alive: aliveCount, cap: CAP, min: SWARM_BROOD_MIN, wave: liveWave, sacBudget,
         sacStranded: sacStrandedAt(finite(getState()?.simTime)), reserveBudget, machineReserve,
-        mourners: griefMournerCount(finite(getState()?.simTime)) };
+        mourners: griefMournerCount(finite(getState()?.simTime)),
+        panicking: panicCount(finite(getState()?.simTime)) };
     },
     // Test seams: direct, read-only unless named as a seam.
     _bodies: { px, pz, vx, vz, alive, family, heading, hp, phase, timer, teleX, teleZ, teleDir, serial, seedPhase, gluedUntil, birthLeft, birthTold, liveFamilyId, liveFamilyRadius, affix, commandBuff, shielded, linkPartner, channelEntity, squadId, squadSlot, beamState },
