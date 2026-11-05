@@ -39,7 +39,16 @@ export const VX_FREE_DRIVE_POI = Object.freeze({
   name: 'Cracker Run',
   pos: Object.freeze({ x: 1060, z: 40 }),
   runtimeOwner: 'vxFreeDriveRing',
-  chartNote: 'Unscored free flying through the yard: follow the lit Mouth into solid berth ribs. Take the low road south of the Helios Claim Cracker for a safe machinery bypass; its warning precedes the southward shove. Wait for calm before the narrow anvil thread.',
+  chartNote: 'Unscored free flying through the yard; no start to trigger. This fix is the outer entry buoy. Find the Mouth, then follow buoys north into solid berth ribs. Take the low road south of the Helios Claim Cracker for a safe machinery bypass; its warning precedes the southward shove. Wait for calm before the narrow anvil thread.',
+});
+
+// Arrival copy names an existing body. These are presentation semantics, not a
+// new checkpoint, route executor or physical entrance position.
+export const VX_FREE_DRIVE_ENTRY_GUIDANCE = Object.freeze({
+  mouthId: 'vx_ring_plaza_gate',
+  nearPoiRadius: 200,
+  label: 'Cracker Run · unscored',
+  instruction: 'No start. Buoys lead north into solid berth ribs.',
 });
 
 /** Add the public fix to the mutable sector catalog without editing the static Atlas. */
@@ -205,7 +214,7 @@ export const VX_FREE_DRIVE_MARKERS = Object.freeze([
   Object.freeze({ localPos: Object.freeze({ x: 1000, z: -490 }) }),
   Object.freeze({ localPos: Object.freeze({ x: 1090, z: -350 }) }),
   Object.freeze({ localPos: Object.freeze({ x: 1150, z: -190 }) }),
-]);
+].map((marker, index) => Object.freeze({ ...marker, id: `vx_ring_marker_${index + 1}` })));
 
 // Authored reservations (sector-local discs) — fed into `_arrangerForSector` so seeded scatter
 // respects the run the way it respects machines, boulders and authored slots. Lean on purpose:

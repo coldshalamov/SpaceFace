@@ -27,6 +27,8 @@
 // Shared materials are never touched — strobes ride scale pings, not emissive. Render-only,
 // determinism-safe, zero per-frame allocation.
 
+import { isLanternWardHardwareEntity } from '../data/lanternWardHardware.js';
+
 function hashId(id) {
   const s = String(id == null ? '' : id);
   let h = 0x811c9dc5;
@@ -162,6 +164,9 @@ const BEACON_WARN_S = 8;       // expireAt inside this window reads as "lease ne
 
 export function createOrdnanceMotionTracker() {
   const states = new Map();
+  // Track our writes on the actual render object: a pooled mesh can change IDs,
+  // and a new mesh with an old ID must not inherit the former body's scale.
+  const meshMotion = new WeakMap();
   let busSubscribers = [];
   let lastSimTime = 0;
   const swayScratch = { x: 0, z: 0 };
@@ -275,11 +280,39 @@ export function createOrdnanceMotionTracker() {
     const kind = String(entity.type || '');
     const cfg = resolveOrdnanceKindConfig(kind);
     if (!cfg) return;
+    lastSimTime = simTime;
+    if (isLanternWardHardwareEntity(entity)) {
+      // These finite workpieces use the native planar pose, including while
+      // towed. Cosmetic tumble/unfold would move their visible sockets away
+      // from the real clamp and turn fixed seats edge-on after their own update.
+      const previous = meshMotion.get(mesh);
+      let changed = false;
+      if (mesh.rotation && (mesh.rotation.x !== 0 || mesh.rotation.z !== 0)) {
+        mesh.rotation.x = 0; mesh.rotation.z = 0; changed = true;
+      }
+      if (previous?.scaleDirty && mesh.scale) {
+        mesh.scale.x = previous.scaleX;
+        mesh.scale.y = previous.scaleY;
+        mesh.scale.z = previous.scaleZ;
+        changed = true;
+      }
+      if (previous && states.get(previous.id) === previous.record) states.delete(previous.id);
+      states.delete(entity.id);
+      meshMotion.delete(mesh);
+      if (changed && mesh.matrixAutoUpdate === false && typeof mesh.updateMatrix === 'function') mesh.updateMatrix();
+      return;
+    }
     const dt = Math.min(0.05, Math.max(0.001, frameDt));
     const rec = getState(entity.id, kind);
+    let presented = meshMotion.get(mesh);
+    if (!presented) {
+      presented = { id: entity.id, record: rec, scaleDirty: false, scaleX: 0, scaleY: 0, scaleZ: 0 };
+      meshMotion.set(mesh, presented);
+    } else {
+      presented.id = entity.id; presented.record = rec;
+    }
     const reducedMotion = a11y && (a11y.reducedMotion === true || a11y.motionReduce === true);
     const reducedFlash = a11y && (a11y.reducedFlash === true || a11y.flashReduce === true);
-    lastSimTime = simTime;
     const data = entity.data || {};
     const radius = Number.isFinite(entity.radius) && entity.radius > 0 ? entity.radius : cfg.sizeRef;
 
@@ -421,6 +454,11 @@ export function createOrdnanceMotionTracker() {
 
     if (mesh.scale && mesh.userData
         && (scaleMul !== 1 || rec.scaleDirty)) {
+      if (!presented.scaleDirty) {
+        presented.scaleX = mesh.scale.x;
+        presented.scaleY = mesh.scale.y;
+        presented.scaleZ = mesh.scale.z;
+      }
       if (!(rec.baseScaleX > 0)) {
         rec.baseScaleX = Number.isFinite(mesh.scale.x) ? mesh.scale.x : 1;
         rec.baseScaleY = Number.isFinite(mesh.scale.y) ? mesh.scale.y : 1;
@@ -433,6 +471,7 @@ export function createOrdnanceMotionTracker() {
       else if (typeof mesh.scale.setScalar === 'function') mesh.scale.setScalar(tx);
       else { mesh.scale.x = tx; mesh.scale.y = ty; mesh.scale.z = tz; }
       rec.scaleDirty = scaleMul !== 1;
+      presented.scaleDirty = rec.scaleDirty;
     }
   }
 

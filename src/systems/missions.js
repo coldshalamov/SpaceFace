@@ -60,6 +60,8 @@ import { QUIET_PASSAGE, buildQuietPassageOffer, evaluatePassengerHeatProximity }
 import { pointContaminationAt } from '../data/alienEcology.js';
 import { RED_KITE, validRedKiteReceipt } from '../data/redKite.js';
 import { validIlexOutcome } from '../data/ilexArk.js';
+import { settleLanternWard } from '../missions/lanternWardStory.js';
+import { stepLanternWardConversation } from '../missions/lanternWardConversation.js';
 import { FRONTIER_MODULES } from '../data/factions/free.js';
 import {
   MISSION_TYPES, STORY_BEATS, OFFER_MIX, MISSION_TUNING, ONE_LOAD_CARGO_TYPES, DOCK_SETTLED_TYPES,
@@ -1689,6 +1691,7 @@ export const missions = {
     // New game → seed config + reset boards/active (idempotent: a load may already have populated).
     bus.on('game:started', () => this.newGame());
     bus.on('tutorial:finished', () => this._releaseStoryNavigationAfterTutorial());
+    bus.on('lanternWard:serviceCommitted', (p) => this.settleLanternWard(p?.receiptId));
     bus.on('save:loaded', () => {
       // Persistent trains must rebind while the restore's identity window is open,
       // even if 3/3 couplers are already complete or the player saved in another sector.
@@ -2051,6 +2054,7 @@ export const missions = {
     // wall answers — fires docked or flying, the wall doesn't care where you read it.
     this._stepBookDoubledWall(state);
     if (state.mode && state.mode !== 'flight') return; // sim frozen while docked/paused
+    stepLanternWardConversation(this);
     // W-BOOKS-0-2 (§34.7 Book 0): the Skim fires on the lane once the sample has been
     // aboard long enough — the dock fallback covers a pilot who jumps the lane first.
     this._stepContract47aSkim(state);
@@ -3255,12 +3259,29 @@ export const missions = {
     if (sectorId) this.spawnTargetsForSector(sectorId);
     const nav = this.state.nav;
     const existing = nav && nav.waypoint;
+    if (existing && existing.kind === 'local') {
+      const pos = existing.pos;
+      if (pos && Number.isFinite(pos.x) && Number.isFinite(pos.z)
+          && (!existing.sectorId || existing.sectorId === sectorId)) {
+        // An explicit local fix outranks idle story guidance, just as a saved trade course
+        // does. Save already restored its coordinates and durable identity. Do NOT call
+        // _setNavWaypoint here: its capture-at-write seam could stamp a recycled occupant
+        // of a saved transient handle. Unproven binds fall back to the recorded fix instead.
+        for (const target of [existing, nav.autopilot]) {
+          if (!target || target.stable) continue;
+          if (target === existing) delete target.targetEntityId;
+          else target.targetEntityId = null;
+          delete target.presentationEntityId;
+        }
+        return;
+      }
+      this._retireRestoredLocalCourse('invalid');
+    }
     const tracked = this._trackedOrFirstActiveMission();
     if (tracked) {
       const restoredRecovery = tracked.storyTag === CONTRACT_47A_B0_TAG && existing?.kind === 'mission'
         && existing.missionId === tracked.id && !existing.stationId;
       const resumeRecovery = restoredRecovery && nav.autopilot?.active === true;
-      if (existing && existing.kind === 'local') this._retireRestoredLocalCourse();
       this._refreshNavigation({ silent: true });
       if (restoredRecovery) {
         const waypoint = nav.waypoint;
@@ -3282,24 +3303,6 @@ export const missions = {
     if (existing && existing.kind === 'trade') {
       this._setNavWaypoint(existing);
       return;
-    }
-    if (existing && existing.kind === 'local') {
-      const pos = existing.pos;
-      if (pos && Number.isFinite(pos.x) && Number.isFinite(pos.z)
-          && (!existing.sectorId || existing.sectorId === sectorId)) {
-        // An explicit local fix outranks idle story guidance, just as a saved trade course
-        // does. Save already restored its coordinates and durable identity. Do NOT call
-        // _setNavWaypoint here: its capture-at-write seam could stamp a recycled occupant
-        // of a saved transient handle. Unproven binds fall back to the recorded fix instead.
-        for (const target of [existing, nav.autopilot]) {
-          if (!target || target.stable) continue;
-          if (target === existing) delete target.targetEntityId;
-          else target.targetEntityId = null;
-          delete target.presentationEntityId;
-        }
-        return;
-      }
-      this._retireRestoredLocalCourse('invalid');
     }
     this._refreshNavigation({ forceStory: true, silent: true });
   },
@@ -5545,6 +5548,9 @@ export const missions = {
   // =========================================================================================
   // COMPLETION / FAILURE / EXPIRY (settle)
   // =========================================================================================
+  // The work owner authenticates the finite installed component; missions owns its sole reward.
+  settleLanternWard(receiptId) { return settleLanternWard(this, receiptId); },
+
   // SF20-05: the course owner supplies the exact physical first finish; missions reserves one
   // reward before synchronous credit/presentation callbacks. Retries never mint a contract.
   settleRedKiteRelay(receiptId) {

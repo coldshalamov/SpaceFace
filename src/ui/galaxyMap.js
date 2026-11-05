@@ -41,6 +41,7 @@ import { dressLampKey } from './orrery/lampKey.js';
 // Flight/nav/jump ownership stays in world.js; the map never mutates jump/sector state directly.
 
 import { SECTORS } from '../data/sectors.js';
+import { lanternWardCradleApproach } from '../data/lanternWardNavigation.js';
 import { glyphForStationType } from '../data/stationGlyphs.js';
 import { gateTollFor } from '../data/travelChoices.js';
 import { wreckEcologyMarkers } from './wreckEcologyMarkers.js';
@@ -2777,6 +2778,15 @@ export function commitCoursePayload(state, target) {
   if (payload && target?.recoverySource) {
     payload.missionId = target.missionId;
     payload.recoverySource = { ...target.recoverySource };
+  }
+  const wardApproach = payload?.pos && target?.stable
+    ? lanternWardCradleApproach(state, resolveEntitySelection(state, target.stable)) : null;
+  if (wardApproach) {
+    Object.assign(payload, wardApproach, { reason: wardApproach.label, waypointKind: 'local' });
+    // Apply after the stable rebind above: a live entity bind would override this authored fix
+    // with the cradle's center every flight tick. The selected contact keeps its own stamp.
+    delete payload.targetEntityId;
+    delete payload.stable;
   }
   return payload;
 }

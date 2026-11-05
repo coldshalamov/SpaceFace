@@ -7,6 +7,7 @@ import { createIronKrakenWreckVisual, ironKrakenWreckProfileFor } from './ironKr
 import { lastShiftPackagedFile } from './lastShiftVisualIdentity.js';
 export { lastShiftPackagedFile };
 import { buildRigWorkshopBody, isRigWorkshopBody } from '../features/rigWorkshop/view.js';
+import { buildLanternWardVisual, isLanternWardBody } from './lanternWardVisuals.js';
 import { isOrchardFrame, ORCHARD_FRAME_FILE } from '../data/anvilOrchardIdentity.js';
 import { isLatchActor } from './latchNineVisuals.js';
 import { isTallyThreeAssessor } from './tallyThreeVisuals.js';
@@ -7065,6 +7066,7 @@ export function createVisualFactory({ renderer = null, readyPackagedBodies = nul
     readyPackagedBodyDiagnostics() { return readyBodies?.diagnostics() || { templates: 0, geometryBytes: 0 }; },
     build(e) {
       if (isRigWorkshopBody(e)) return stampBuiltVisual(buildRigWorkshopBody(e));
+      if (isLanternWardBody(e)) return stampBuiltVisual(buildLanternWardVisual(e));
       try {
         if (!e) return null;
         // This mission keeps asteroid physics for the existing massline impact contract.

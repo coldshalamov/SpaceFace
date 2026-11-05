@@ -59,16 +59,16 @@ test('a restored local fix cannot impersonate a different-sector course', () => 
   assert.equal(h.state.nav.waypoint.kind, 'story');
   assert.equal(h.state.nav.autopilot.target, null);
 });
-test('active missions keep Continue priority and retire a superseded local burn', () => {
+test('an explicit saved local course keeps Continue priority over a tracked mission', () => {
   const h = harness(); h.plot({ autopilot: true });
   const m = { id: 'saved-mission', status: 'active', type: 'cargo_delivery', title: 'Deliver provisions',
     params: { cmdtyId: 'cmdty_food', qty: 2 }, destSectorId: SECTOR, destStationId: 'station_ceres',
     objectiveProgress: 0, objectiveTarget: 2, targetEntityIds: [] };
   h.state.missions.active = [m]; h.state.ui.trackedMissionId = m.id; h.restore();
-  assert.equal(h.state.nav.waypoint.kind, 'mission');
-  assert.equal(h.state.nav.waypoint.missionId, m.id);
-  assert.equal(h.state.nav.autopilot.active, false);
-  assert.equal(h.state.nav.autopilot.target, null);
+  assert.equal(h.state.nav.waypoint.kind, 'local');
+  assert.equal(h.state.ui.trackedMissionId, m.id);
+  assert.equal(h.state.nav.autopilot.active, true);
+  targetsAgree(h.state, FIX);
 });
 test('trade guidance and normal story restoration are unchanged', () => {
   const h = harness();

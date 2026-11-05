@@ -47,6 +47,7 @@ import { VENUE_SECTOR_ID as COUNTERWEIGHT_SECTOR_ID } from '../features/counterw
 import { isRunSealed } from '../core/runSeal.js';
 import { SEMANTIC_PALETTE, getMotionReduced, getFlashReduced } from './accessibility.js';
 import { resolveWaypointPresentationPosition, resolveObjectiveGatePresentation } from './navigationWaypoint.js';
+import { crackerRunEntryGuidance } from './crackerRunGuidance.js';
 import { objectiveIsOffSector } from './objectiveSector.js';
 import { contactThreatTier, contactStateWord, isHostileToPlayer, isWreckLike, wreckScanned } from '../systems/scanner.js';
 import { livingWorkStatusText } from '../data/contactHail.js';
@@ -810,6 +811,14 @@ export function flightDestinationSurface(state, command) {
   }
   if (command.owner === 'navigation') {
     const wp = command.waypoint;
+    const entry = crackerRunEntryGuidance(state, wp);
+    if (entry) {
+      const mouth = { pos: entry.mouth.pos };
+      const reading = mtReadingsLine(objectiveBearingGlyph(state, mouth),
+        objectiveTravelReadout(state, mouth).distanceText, '');
+      return { show: true, urgent: false,
+        line: `${localizeText(entry.label)}\n${localizeText('Mouth')} ${reading}\n${localizeText(entry.instruction)}` };
+    }
     const travel = objectiveTravelReadout(state, wp);
     const routeGuide = mtRouteGuidance(state, wp);
     const action = mtObjectiveAction((wp && (wp.reason || wp.label)) || 'Follow the marked route', wp);

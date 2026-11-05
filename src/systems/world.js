@@ -46,7 +46,7 @@ import { separateSkinOverlaps } from '../data/modelTruth.js';
 import { createSectorArranger } from '../world/arranger.js';
 import { ARRANGEMENT_VERSION, readArrangementVersion } from '../data/sectorCompositions.js';
 import { WORLD_ONE_OFFS } from '../data/worldOneOffs.js'; // PQ-143.02 six texture one-offs
-import { VX_FREE_DRIVE_SECTOR_ID, vxFreeDrivePoisFor,
+import { VX_FREE_DRIVE_SECTOR_ID, VX_FREE_DRIVE_POI, vxFreeDrivePoisFor,
   vxFreeDriveReservationsFor, vxFreeDriveStructuresFor, vxFreeDriveMarkersFor }
   from '../data/vxFreeDriveRing.js'; // VX-02 — the Cracker Run free-drive ring
 import { HELIOS_ROPE_CACHE } from '../data/worldOneOffs.js';
@@ -214,6 +214,8 @@ import {
 } from '../world/dressingTable.js';
 import { markAuxRowDirty } from '../world/auxRowJournal.js';
 import { stampSolidDressing } from '../world/solidDressing.js';
+import { lanternWardReservations, materializeLanternWardDressing } from '../world/lanternWardDressing.js';
+import { isLanternWardHardwareEntity } from '../data/lanternWardHardware.js';
 import { racingCorridorSceneryShift } from '../world/racingCorridor.js';
 import { requestDecodeRunwayPromote, resetWorldPresentationTables } from '../world/presentationSources.js';
 import {
@@ -1673,7 +1675,10 @@ export const world = {
     // materialize — promoting it re-walked the entire record bag a second time in one
     // unyielded task (the largest restore-lane brick on a mature save). Bags built REDUCED
     // or stripped since still run the full promote below.
-    if (active.fullExtrasBuilt === true) return;
+    if (active.fullExtrasBuilt === true) {
+      this._spawnFreeDriveRing(sector, active, { metadataOnly: true });
+      return;
+    }
     // Rematerialize durable combat/convoy/mission records first (idempotent).
     const rematerialized = this._rematerializeSectorRecords(
       sectorId,
@@ -2035,10 +2040,11 @@ export const world = {
       registerEntityWorldRecordId(state && state.entityIndex, e);
     };
     forEachLivingWorldActor(state, capture);
-    // The authored starter buoy is a payload, outside the actor view. Keep every other
-    // payload on its existing persistence path, and never capture a future actor twice.
+    // These exact finite work payloads sit outside the actor view. All other payloads
+    // retain their existing persistence paths, and an actor is never captured twice.
     for (const e of indexedTypeScan(state, 'payloads')) {
-      if (e?.type === 'payload' && !isLivingWorldActor(e) && starterBuoyRecordMarker(e)) capture(e);
+      if (e?.type === 'payload' && !isLivingWorldActor(e)
+          && (starterBuoyRecordMarker(e) || isLanternWardHardwareEntity(e))) capture(e);
     }
     // Match _despawnEntityIds' reverse walk and swap-pop ordering without a second population scan.
     this._destroyEntitiesAtIndices(despawnIndexes);
@@ -2651,6 +2657,7 @@ export const world = {
   _arrangerForSector(sector, active) {
     if (readArrangementVersion(this.state.world.arrangementVersion, ARRANGEMENT_VERSION) === 0) return null;
     const reservations = [];
+    reservations.push(...lanternWardReservations(this, sector, active));
     // Machine adapters materialize after scatter; reserve the same authored envelopes
     // used by ladder bedrock before any native body can be born inside their skins.
     for (const machine of killMachinesForSector(sector.id)) {
@@ -3554,6 +3561,8 @@ export const world = {
     yield 'materialize:dressing-palette';
     this._spawnEverydaySpaceKitDressing(sector, active, paletteClass);
     yield 'materialize:dressing-kit';
+    materializeLanternWardDressing(this, sector, active);
+    yield 'materialize:lantern-ward';
     this._spawnWreckAftermathDressing(sector, active, paletteClass);
     yield 'materialize:dressing-wrecks';
     this._spawnWorldOneOffs(sector, active);
@@ -3696,27 +3705,67 @@ export const world = {
     if (sector) sector.pois = vxFreeDrivePoisFor(sector.id, sector.pois);
   },
 
-  _spawnFreeDriveRing(sector, active) {
-    for (const structure of vxFreeDriveStructuresFor(sector.id)) {
-      const pos = this._toGlobal(
-        { x: structure.localPos.x, z: structure.localPos.z }, sector.id);
-      this._spawnPlaceProp(active, sector, structure.placeId, pos, {
-        rot: structure.rot,
-        name: structure.name,
-        radius: structure.radius,
-        worldOneOff: true,
-      });
+  _spawnFreeDriveRing(sector, active, { metadataOnly = false } = {}) {
+    const structures = vxFreeDriveStructuresFor(sector.id);
+    const markers = vxFreeDriveMarkersFor(sector.id);
+    if (!structures.length || !active?.dressing) return;
+    const table = this.state.world.dressing;
+    let known = 0, needsStamp = false;
+    // Cached FULL promotion is hot. Correct, missing, dead or replaced slots
+    // need no new allocation or write; only an original missing metadata does.
+    for (const slot of active.dressing) {
+      if (!slot.vxFreeDriveId) continue;
+      known++;
+      const body = table?.byId?.get(slot.id);
+      if (body && body === slot._vxFreeDriveOriginal && body.alive !== false
+          && (body.data?.vxFreeDriveId !== slot.vxFreeDriveId
+            || body.data?.vxFreeDrivePoiId !== VX_FREE_DRIVE_POI.id)) needsStamp = true;
     }
-    for (const marker of vxFreeDriveMarkersFor(sector.id)) {
-      const pos = this._toGlobal(
-        { x: marker.localPos.x, z: marker.localPos.z }, sector.id);
-      this._spawnPlaceProp(active, sector, 'place_nav_buoy', pos, {
-        rot: 0,
-        name: 'Cracker Run marker',
-        radius: 10,
-        worldOneOff: true,
-      });
-    }
+    if (known === structures.length + markers.length && !needsStamp) return;
+
+    let metadataChanged = false;
+    const adopt = (source, placeId, name, radius, rot) => {
+      const pos = this._toGlobal(source.localPos, sector.id);
+      let slot = null;
+      for (const candidate of active.dressing) {
+        if (candidate.vxFreeDriveId === source.id) { slot = candidate; break; }
+        // Legacy first adoption uses the world's existing static dressing
+        // identity tuple, never a nearby body or its display name alone.
+        if (!candidate.vxFreeDriveId && candidate.placeId === placeId
+            && candidate.pos?.x === pos.x && candidate.pos?.z === pos.z) slot = candidate;
+      }
+      let body = slot && table?.byId?.get(slot.id);
+      if (!slot) {
+        if (metadataOnly) return;
+        body = this._spawnPlaceProp(active, sector, placeId, pos, {
+          rot, name, radius, worldOneOff: true,
+        });
+        if (!body) return;
+        for (const candidate of active.dressing) if (candidate.id === body.id) { slot = candidate; break; }
+      }
+      if (!slot) return;
+      // An occupied original slot stays occupied even when its body is absent.
+      // No metadata pass replaces a worked/dead body or reuses a recycled id.
+      slot.vxFreeDriveId = source.id;
+      const data = body?.data;
+      if (!body || body.alive === false || body.type !== 'fx'
+          || table?.byId?.get(slot.id) !== body
+          || (this.state.entities?.has(body.id) && this.state.entities.get(body.id) !== body)
+          || (slot._vxFreeDriveOriginal && slot._vxFreeDriveOriginal !== body)
+          || data?.worldDressing !== true || data.worldOneOff !== true
+          || data.placeId !== placeId || data.name !== name || body.radius !== radius
+          || data.homeSectorId !== sector.id || data.sectorId !== sector.id) return;
+      if (!slot._vxFreeDriveOriginal) Object.defineProperty(slot, '_vxFreeDriveOriginal', { value: body });
+      if (data.vxFreeDriveId !== source.id) { data.vxFreeDriveId = source.id; metadataChanged = true; }
+      if (data.vxFreeDrivePoiId !== VX_FREE_DRIVE_POI.id) {
+        data.vxFreeDrivePoiId = VX_FREE_DRIVE_POI.id; metadataChanged = true;
+      }
+    };
+    for (const structure of structures) adopt(structure, structure.placeId, structure.name, structure.radius, structure.rot);
+    for (const marker of markers) adopt(marker, 'place_nav_buoy', 'Cracker Run marker', 10, 0);
+    // Legacy rows may already have crossed the worker boundary. Their data uses
+    // the existing spawn/rebuild channel, not the pose-only aux delta.
+    if (metadataOnly && metadataChanged) this.helpers.requestPresentationRebuild?.('cracker-run-guidance');
   },
 
   _decoratePhysicalOneOff(ent, oneOff, sector, recordId, identityKey) {
