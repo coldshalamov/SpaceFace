@@ -1466,17 +1466,18 @@ export function createBroodEngine(deps = {}) {
         // back onto it. The room's fields below still add on top: a panicking pack is
         // still mass in the room's physics, the same law the current-rider keeps. Only
         // plain flocking panics: a windup holds so the telegraph tells the truth, a
-        // committed dash runs its line — the attack language outranks the cascade. Inside
-        // the knot radius the override lets go: the ball has re-formed and the pack's own
-        // cohesion holds it tight. Grief yields while the fresher cascade runs and resumes
-        // on its own clock when the panic lets go.
-        if (panicUntil[i] > simTime && phase[i] === BROOD_PHASE_FLOCK) {
+        // committed dash runs its line, a staged bank beat runs its own language — the
+        // attack language outranks the cascade. Inside the knot radius the override lets
+        // go: the ball has re-formed and the pack's own cohesion holds it tight. Grief
+        // yields while the fresher cascade runs and resumes on its own clock when the
+        // panic lets go.
+        if (panicUntil[i] > simTime && phase[i] === BROOD_PHASE_FLOCK && !bankStaged(i)) {
           const pdx = bx - panicX[i];
           const pdz = bz - panicZ[i];
           const pd = Math.hypot(pdx, pdz) || 1;
           ax = (pdx / pd) * BROOD_PANIC_SCATTER_ACCEL;
           az = (pdz / pd) * BROOD_PANIC_SCATTER_ACCEL;
-        } else if (knotUntil[i] > simTime && phase[i] === BROOD_PHASE_FLOCK) {
+        } else if (knotUntil[i] > simTime && phase[i] === BROOD_PHASE_FLOCK && !bankStaged(i)) {
           const kdx = panicX[i] - bx;
           const kdz = panicZ[i] - bz;
           const kd = Math.hypot(kdx, kdz);
@@ -1505,12 +1506,13 @@ export function createBroodEngine(deps = {}) {
         // -- B-BLOOM grief: a mourner bends toward its corpse until it reaches the mourning
         // ring or the clock lets go. Only plain flocking bends: a windup holds so the
         // telegraph tells the truth, a committed dash runs the line it drew, a latched
-        // body rides its host — the attack language outranks the mourning. A live panic
-        // window outranks it too (the fresher cascade replaces the jitter; the grief clock
-        // keeps running underneath and resumes when the panic lets go). The bend rides
-        // the ordinary integration below, so the family speed cap and the drag stay honest.
+        // body rides its host, a staged bank beat runs its own language — the attack
+        // language outranks the mourning. A live panic window outranks it too (the
+        // fresher cascade replaces the jitter; the grief clock keeps running underneath
+        // and resumes when the panic lets go). The bend rides the ordinary integration
+        // below, so the family speed cap and the drag stay honest.
         if (griefUntil[i] > simTime && panicUntil[i] <= simTime && knotUntil[i] <= simTime
-            && phase[i] === BROOD_PHASE_FLOCK) {
+            && phase[i] === BROOD_PHASE_FLOCK && !bankStaged(i)) {
           const gdx = griefX[i] - bx;
           const gdz = griefZ[i] - bz;
           const gd = Math.hypot(gdx, gdz);
@@ -1769,6 +1771,18 @@ export function createBroodEngine(deps = {}) {
   }
 
   function bankLife(slot, life) { return alive[slot] && serial[slot] === life; }
+
+  // B-BLOOM yield: a staged bank slot runs its own beat. The composition's attack language
+  // outranks the cascades exactly like the windup hold does — without this, a mourner's bend
+  // (or a panic bolt) walks the NEXT staged pass off its flank into the room's scrum before
+  // its stage ever calls it, and the authored beat dies of room noise. The room's mourning
+  // keeps everything else it had: unstaged cells bend, the clock runs, nothing is cancelled.
+  function bankStaged(i) {
+    return bank != null
+      && ((i === bank.first && serial[i] === bank.firstLife)
+        || (i === bank.spit && serial[i] === bank.spitLife)
+        || (i === bank.second && serial[i] === bank.secondLife));
+  }
 
   function advanceBank(now) {
     if (!bank) return;
@@ -4011,6 +4025,14 @@ export function createBroodEngine(deps = {}) {
     _bodies: { px, pz, vx, vz, alive, family, heading, hp, phase, timer, teleX, teleZ, teleDir, serial, seedPhase, gluedUntil, birthLeft, birthTold, liveFamilyId, liveFamilyRadius, affix, commandBuff, shielded, linkPartner, channelEntity, squadId, squadSlot, beamState },
     _machine() {
       return { reserve: machineReserve, squads: squadCount, beams: beamCount };
+    },
+    // The staged composition, read-only for tests and the lab overlay: null when no bank
+    // is live, else its phase and the three (slot, spawn serial) pairs it holds.
+    _bank() {
+      return bank
+        ? { phase: bank.phase, until: bank.until,
+          slots: [[bank.first, bank.firstLife], [bank.spit, bank.spitLife], [bank.second, bank.secondLife]] }
+        : null;
     },
     _beams: { x: beamX, z: beamZ, a0: beamA0, a1: beamA1, t: beamT, total: beamTotal, range: beamRange, width: beamWidth, alive: beamAlive, owner: beamOwner },
     _lobs: { x: lobX, z: lobZ, t: lobT, total: lobTotal, tx: lobTX, tz: lobTZ, alive: lobAlive },
