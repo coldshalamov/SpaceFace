@@ -143,6 +143,12 @@ import {
 } from './statusAttachedVfx.js';
 import { addShieldContact } from './weapons/shieldContacts.js';
 import { isMortalBlowContact, resolveMortalBlowPlan } from './vfx/mortalBlowRead.js';
+import {
+  isSurvivorEjectMoment,
+  SURVIVOR_EJECT_CUE_ID,
+  SURVIVOR_EJECT_FLARE_PLAN,
+  SURVIVOR_EJECT_PRIORITY,
+} from './vfx/survivorEjectRead.js';
 import { collisionThrowRead, impactAxisAngle, impactRead } from './combat/impactRead.js';
 import {
   collisionDisplayDeltaV,
@@ -2887,6 +2893,9 @@ export const vfx = {
     add('asteroid:destroyed', (p) => this._onAsteroidShatter(p, false));
     add('environment:detonated', (p) => this._onEnvironmentDetonated(p));
     add('asteroid:chunked', (p) => this._onAsteroidShatter(p, true));
+    // inf-mayday-flare: a mayday starts here — the pod tearing clear of a killed crew reads
+    // on the glass, not just in the speaker.
+    add('survivorPod:ejected', (p) => this._onSurvivorPodEjected(p));
     add('weapons:vent', (p) => this._onWeaponVent(p));
     add('station:sideEvent', (p) => this._onStationSideEvent(p));
     add('station:broadcastTic', (p) => {
@@ -9691,6 +9700,31 @@ export const vfx = {
       { pos },
       chunked ? 0.8 : 1.2,
     );
+  },
+
+  // inf-mayday-flare: a survivor pod tearing clear of a killed crew — one white retro
+  // flash, a cold vent whiff from the torn mount, and the beacon's first full-power shout
+  // (the lamp-red star that keeps burning after the flash dies). survivorEjectRead owns the
+  // plan and the gate: only a causal eject plays; a rematerialized player pod re-emits its
+  // event on every sector re-entry, and a re-entry is not an ejection. The light rides the
+  // director's tell/mayday row so the pool owns admission and the a11y profile owns the peak.
+  _onSurvivorPodEjected(p) {
+    if (!isSurvivorEjectMoment(p)) return;
+    const pod = p.entityId != null ? this._ent(p.entityId) : null;
+    const pos = pod && pod.pos;
+    if (!this._scene || !pos) return;
+    const plan = SURVIVOR_EJECT_FLARE_PLAN;
+    this._spawnSprite(SPR_FLASH, pos.x, 0.4, pos.z, plan.flash.life, plan.flash.size0,
+      plan.flash.size1, plan.flash.op0, plan.flash.op1, plan.flash.color, 0, 0, 1, null,
+      SURVIVOR_EJECT_PRIORITY);
+    this._spawnSprite(SPR_PUFF, pos.x, 0.3, pos.z, plan.vent.life, plan.vent.size0,
+      plan.vent.size1, plan.vent.op0, plan.vent.op1, plan.vent.color,
+      (Math.random() - 0.5) * plan.vent.drift, (Math.random() - 0.5) * plan.vent.drift);
+    this._spawnSprite(SPR_FLASH, pos.x, 0.5, pos.z, plan.star.life, plan.star.size0,
+      plan.star.size1, plan.star.op0, plan.star.op1, plan.star.color, 0, 0, 1, null,
+      SURVIVOR_EJECT_PRIORITY);
+    this._eventLight({ x: pos.x, z: pos.z }, 'tell', { severity: 'mayday' });
+    this._emitJuiceCue(SURVIVOR_EJECT_CUE_ID, { pos }, 0.9);
   },
 
   _onEnvironmentDetonated(p) {
