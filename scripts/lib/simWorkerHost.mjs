@@ -1307,7 +1307,12 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
     });
     const offFitFitting = bus.on('module:equipped', () => host.domainDiffer.invalidateLeaf('player.moduleInventory'));
     const offUnfitFitting = bus.on('module:unequipped', () => host.domainDiffer.invalidateLeaf('player.moduleInventory'));
-    const offLedgerLoad = bus.on('save:loaded', () => host.domainDiffer.invalidateLeaf('shipLedger.board'));
+    const offLedgerLoad = bus.on('save:loaded', () => {
+      host.domainDiffer.invalidateLeaf('shipLedger.board');
+      // Restore identity must accompany its receipt, including paused Import/Continue.
+      // Waiting for meta's cold mirror pass leaves the main Pause footer on the title seed.
+      host.domainDiffer.invalidateLeaf('meta.seed');
+    });
     // Successful outpost changes must reach the open panel in this reply, even
     // when the clock is paused or the list is on its ordinary cold cadence.
     const offOutpostsChanged = bus.on('automation:outpostsChanged', () => {
