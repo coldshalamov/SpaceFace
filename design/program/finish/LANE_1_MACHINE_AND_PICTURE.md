@@ -561,6 +561,29 @@ nowSec() prefers the presentation clock the renderer pushes every frame
 (renderer.js setFactoryPresentationNow(state.simTime)); wall clock is only the documented
 headless fallback, so a frozen sim holds its blinkers with the world. No change made.
 
+Implemented and focused-tested, wave 6 (INFERENCE 100 program — one commit each, recorded in
+`design/program/inference-memory.json`):
+- inf-gate-departure (WF-12 integration): leaving through a gate plays the commit — aperture
+  swells as the drive bites, swirl runs hot through the tunnel, the ring collapses behind the
+  hull with the wake snapping shut, then rebounds to idle; reduced motion halves travel,
+  keeps every phase (b9ff98db42ef).
+- inf-mayday-pod (WF-11 repair): the survivor pod is an authored ejection lifeboat — blunt
+  capsule, nose-viewport burn, foam collar, dead retro — carrying a distress lamp group whose
+  period tightens 1.6 s → 0.55 s as the oxygen drains; wreck squatters keep the canister;
+  flashReduce keeps the steady burn, never silences (4f94db085335).
+- inf-mayday-flare (WF-12 integration): a causal eject reads at the kill site — white retro
+  flash, cold vent whiff, and the lamp-red beacon star that outlives the flash 3:1, with a
+  director-owned mayday event light reaching gameplay range; a sector re-entry is not an
+  ejection (b49b2e7edc99).
+- inf-pod-worth (WF-11 repair): a drop's own price grades its light — junk rests dimmer, the
+  median drop keeps today's read bit-exactly, rich lots burn hotter and build a second
+  counter-precessing inner band; unpriceable drops read plain, never dim on a guess
+  (fe4cd12a0718).
+Verified already deep, wave 6: shield-break membrane distinctness (uFlash rupture punch +
+ordered weld-network collapse), asteroid split pop (conchoidal cleavage + parent-scaled
+dust + event light), NPC jump departure surface (fov punch, trauma, travel cues, portal
+spin-up), station apron night family.
+
 ## Traps — measured and rejected; do not repeat
 
 - Shader prewarm with dummy meshes (made the fly worse: 147 → 207–219 ms).
