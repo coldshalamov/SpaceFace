@@ -461,6 +461,27 @@ export function createTacticalAISystem({
     for (const decision of liveStack.lastResult?.decisions || []) {
       const entity = state.entities.get(decision.entityId);
       if (entity) lastDecisionEntityRefs.set(entity.id, entity);
+      // The DTO preserves cognition but cold presentation has no prior warning.
+      // Re-owe only a still-live committed announce on the canonically rebound
+      // bodies. Saved decisions are value copies: latch the doctrine owner's
+      // actual telegraph object so the next decision can recognize its debt.
+      const record = liveStack.combatDoctrine?.byEntity.get(decision.entityId);
+      const doctrine = decision.combatDoctrine;
+      const cue = record?.telegraph;
+      const target = state.entities.get(record?.targetId);
+      if (entity?.alive !== false && Number.isSafeInteger(entity?.occupantGeneration)
+          && target?.alive !== false && Number.isSafeInteger(target?.occupantGeneration)
+          && record?.entityId === entity.id && record.targetId === doctrine?.targetId
+          && record.doctrineId === doctrine?.doctrineId && record.phase === doctrine?.phase
+          && doctrine?.aimCommit && doctrine.attackLine
+          && Number.isFinite(record.aimCommitBearing)
+          && record.aimCommitBearing === doctrine.aimCommit.bearing
+          && record.aimCommitUntilTick === doctrine.aimCommit.untilTick
+          && record.aimCommitUntilTick > state.tick
+          && Number.isInteger(cue?.startedTick) && cue.startedTick <= state.tick
+          && Number.isFinite(cue.durationTicks) && state.tick < cue.startedTick + cue.durationTicks) {
+        heldLaneTelegraphs.set(entity, cue);
+      }
     }
     for (const [id, row] of saved.bodyLaunches) {
       const actor = state.entities.get(id);
