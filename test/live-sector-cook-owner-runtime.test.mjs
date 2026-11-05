@@ -16,7 +16,7 @@ import * as lifecycleHelpers from '../src/core/sectorEnterDefer.js';
 import { openingLoadPolicy } from '../src/render/openingLoadPolicy.js';
 import { collectStartupGeometries } from '../src/render/startupGpuResidency.js';
 import { retainPackageGeometryCpu } from '../src/render/packageCpuDetach.js';
-import { createOpeningLoadingAdmission, observePipelineAdmission, prepareMobileOpeningFirstPicture, waitForOpeningFirstPicture } from '../src/render/pipelineReadiness.js';
+import { createOpeningLoadingAdmission, createProgressDeadline, observePipelineAdmission, prepareMobileOpeningFirstPicture, renderWorkProgressMark, waitForOpeningFirstPicture } from '../src/render/pipelineReadiness.js';
 import { createCatalogStationRestore } from '../src/save/catalogStationRestore.js';
 import { createBus } from '../src/core/eventBus.js';
 import { createSimLaneRuntime } from '../src/core/simLaneMain.js';
@@ -1103,6 +1103,7 @@ function preflightFixture() {
     observePipelineAdmission,
     // startupPacing device-scaled budget; the fixture pins the desktop-scale window.
     openingGateBudgetMs: () => 20000,
+    createProgressDeadline, renderWorkProgressMark,
   });
   return { ...f, opening, preflight: evaluate(preflightCode, f.owner, f.values) };
 }
