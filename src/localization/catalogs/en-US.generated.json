@@ -1,7 +1,7 @@
 {
   "schema": "spaceface.localizationCatalog.v1",
   "locale": "en-US",
-  "inventoryDigest": "06fb3a11ada1c62b25398aafefd3c81b54fd60cfa993fb8c03daf1ded8500e21",
+  "inventoryDigest": "5a3f2a15c7622dfaa0519f0b0459fc89aaa6c6c1422a5b08ae00afc734fab6bb",
   "messages": {
     "loc.index.template.text.12f9c963d733": "SpaceFace",
     "loc.index.template.text.4eb12ed308ef": "SPACEFACE",
@@ -16243,7 +16243,6 @@
     "loc.src.ui.station.stationarrival.field.label.4b2cb5985516": "Recognized",
     "loc.src.ui.station.stationarrival.field.label.ad9e730df81b": "Guarded",
     "loc.src.ui.station.stationarrival.field.label.baa90211b72d": "Trusted",
-    "loc.src.ui.station.stationarrival.field.text.2a185703d0c6": "{pilot}, {body_welcome_aboard} {ARRIVAL_LINES_band}",
     "loc.src.ui.station.stationbindingmap.field.label.02dfa9eb4900": "Open the board",
     "loc.src.ui.station.stationbindingmap.field.label.06d8724755d4": "Open Sker-Run wreck map",
     "loc.src.ui.station.stationbindingmap.field.label.0bb304bd0860": "Sell",

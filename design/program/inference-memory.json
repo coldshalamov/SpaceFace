@@ -132,45 +132,6 @@
   ],
   "units": [
     {
-      "id": "inf-bounty-standing",
-      "date": "2026-10-25",
-      "wf": "WF-08",
-      "mode": "repair",
-      "verdict": "implemented",
-      "reason": "Helping a bounty hunter kill the quarry pays the guild standing with the collector cut.",
-      "fingerprint": "verb=pay,subject=guild-standing,sector=flight,domain=wf-08",
-      "references": [],
-      "integration": "live",
-      "commit": "a68d2a27a4523f5c7edbb6e60aff73e17e9ad44f",
-      "verification": "focused_green"
-    },
-    {
-      "id": "inf-airlock-line",
-      "date": "2026-10-25",
-      "wf": "WF-09",
-      "mode": "repair",
-      "verdict": "implemented",
-      "reason": "A line scratched on the airlock stays readable, including THEY KNEW THE MASS.",
-      "fingerprint": "verb=read,subject=airlock-line,sector=dock,domain=wf-09",
-      "references": [],
-      "integration": "live",
-      "commit": "cf6ece9d547ff794fec3170e2a03b0605809ea57",
-      "verification": "focused_green"
-    },
-    {
-      "id": "inf-berth-gone",
-      "date": "2026-10-25",
-      "wf": "WF-10",
-      "mode": "repair",
-      "verdict": "implemented",
-      "reason": "Standing at the nearer empty berth, the scan says the hauler is gone.",
-      "fingerprint": "verb=say,subject=empty-berth,sector=scan,domain=wf-10",
-      "references": [],
-      "integration": "live",
-      "commit": "33469628691631b05a9eb210847173bb8af0a3ee",
-      "verification": "focused_green"
-    },
-    {
       "id": "inf-weep-dry",
       "date": "2026-10-25",
       "wf": "WF-16",
@@ -1689,6 +1650,45 @@
       "references": [],
       "integration": "live",
       "commit": "fe4cd12a0718",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inf-title-greeting",
+      "date": "2026-11-05",
+      "wf": "WF-09",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "A NEW title you earn is named by the keeper at your next dock — once, in the earn verb's own flavor",
+      "fingerprint": "verb=greet,subject=title acknowledgment,sector=station,domain=wf-09",
+      "references": [],
+      "integration": "live",
+      "commit": "449fa14beee2",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inf-berth-voice",
+      "date": "2026-11-05",
+      "wf": "WF-13",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "The yard answers its own verbs: a paid order is stamped taken, the decant pours, and a refused decant refuses out loud instead of clicking like an info toast",
+      "fingerprint": "verb=voice,subject=berth service lifecycle,sector=station,domain=wf-13",
+      "references": [],
+      "integration": "live",
+      "commit": "c829fb7760d6",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inf-decant-quote",
+      "date": "2026-11-05",
+      "wf": "WF-14",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "The Decant key names the fuel it will move before you press it - and names which refusal is coming when the pour is unreachable",
+      "fingerprint": "verb=quote,subject=decant pre-commit read,sector=station,domain=wf-14",
+      "references": [],
+      "integration": "live",
+      "commit": "347bd0cf962f",
       "verification": "focused_green"
     }
   ],
