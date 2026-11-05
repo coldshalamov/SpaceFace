@@ -2346,6 +2346,12 @@ export const onboarding = {
       this._tickPowerSituations(state);
       this._resolveMissingThreeDone();
       this._setObjectiveWaypoint(false);
+      // Course selection can change independently of tutorial beats. Reuse this update's existing
+      // cadence, and only rebuild the panel when its objective ownership actually changes.
+      if (this._panel && this._titleEl && !this._storyMode
+        && this._beatPanelYields() !== (this._titleEl.style.display === 'none')) {
+        this._refreshBeatPanel();
+      }
       } catch (_) { /* never let onboarding break the loop */ }
   },
 
@@ -5052,6 +5058,13 @@ export const onboarding = {
     this._syncModalAccessibility();
   },
 
+  _beatPanelYields() {
+    const beat = BEATS[this.state.onboarding?.currentBeat];
+    const waypoint = this.state.nav?.waypoint;
+    return (beat?.key === 'tether' && !tetherLessonIsLocal(this.state, this))
+      || !!waypoint?.onboarding || hasPlayerSelectedNavWaypoint(this.state);
+  },
+
   // Render the current beat into the objective panel.
   // The HUD mission tracker owns the sole persistent actionable verb (via nav.waypoint.reason).
   // This panel yields whenever the HUD owns a spatial lesson; tutorial verbs speak once through the
@@ -5063,10 +5076,8 @@ export const onboarding = {
     const step = onboardingTrackerStep(ob, BEATS);
     // Exactly one persistent command surface: spatial lessons use the HUD waypoint; non-spatial
     // lessons (thrust/brake/heat) use this compact panel title.
-    const tetherAway = beat?.key === 'tether' && !tetherLessonIsLocal(this.state, this);
     const tetherYields = beat?.key === 'tether' && hasTrackedActiveMission(this.state);
-    const demoteObjectiveCopy = tetherAway || !!(this.state.nav && this.state.nav.waypoint
-      && this.state.nav.waypoint.onboarding);
+    const demoteObjectiveCopy = this._beatPanelYields();
 
     if (this._kickerLabelEl) {
       const kicker = 'Tutorial';

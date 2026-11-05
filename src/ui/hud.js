@@ -42,6 +42,8 @@ import { travelFlag } from '../data/featureFlags.js';
 import { BINDINGS, promptLabel } from './bindings.js';
 import { plottedRouteEngageTeach } from './map/mapRouteRibbon.js';
 import { coreText } from './localizedCoreCopy.js';
+import { localizeText } from '../localization/sourceText.js';
+import { VENUE_SECTOR_ID as COUNTERWEIGHT_SECTOR_ID } from '../features/counterweightCircuit/definition.js';
 import { isRunSealed } from '../core/runSeal.js';
 import { SEMANTIC_PALETTE, getMotionReduced, getFlashReduced } from './accessibility.js';
 import { resolveWaypointPresentationPosition, resolveObjectiveGatePresentation } from './navigationWaypoint.js';
@@ -697,6 +699,17 @@ export function resolveFlightObjectiveCommand(
     ? active.find((mission) => mission && mission.id === trackedId && mission.status === 'active')
     : null;
   const navWaypoint = state && state.nav && state.nav.waypoint;
+  const course = state && state.counterweightCircuitView;
+  const attempt = course && course.journal && course.journal.attempt;
+  // The published attempt is temporary context, not a new navigation waypoint. An urgent
+  // claim defense remains actionable, and a stale mirror cannot follow the pilot out of flight.
+  if (state?.mode === 'flight' && state?.world?.currentSectorId === COUNTERWEIGHT_SECTOR_ID
+    && navWaypoint?.kind !== 'claim_defense' && course?.attemptId != null
+    && attempt?.eventId === course.eventId && attempt?.phase === course.phase
+    && (course.phase === 'staged' || course.phase === 'running')
+    && attempt.legs?.[attempt.legIndex]?.hint) {
+    return { owner: 'counterweight-course', attempt, preparing: !!course.admission, waypoint: null };
+  }
   const trackedOwnsWaypoint = !!(
     tracked && navWaypoint && navWaypoint.kind === 'mission' && navWaypoint.missionId === tracked.id
   );
@@ -746,6 +759,14 @@ export function flightDestinationSurface(state, command) {
     return { show: false, line: '', urgent: false };
   }
   if (!command) return { show: false, line: '', urgent: false };
+  if (command.owner === 'counterweight-course') {
+    const title = localizeText(command.attempt.title);
+    const hint = localizeText(command.attempt.legs[command.attempt.legIndex].hint);
+    const line = command.preparing
+      ? localizeText('{title} — preparing course', { title })
+      : `${hint}\n${title}`;
+    return { show: true, line, urgent: false };
+  }
   if (command.owner === 'tracked-mission') {
     const tracked = command.mission;
     const waypoint = command.waypoint;
@@ -2075,6 +2096,7 @@ export function createHud(ctx, alerts) {
   // tracker's existing region, not a second live region.
   if (mtTime) mtTime.setAttribute('aria-label', 'Tutorial caption');
   const objectiveRecall = createObjectiveRecall();
+  let lastFlightObjectiveOwner = null;
   if (ctx.bus) {
     // FB-065 — the three condition states the sim already emits, surfaced on the objective
     // slot this same tracker owns. Progress never voices; the break voices once at mission
@@ -5794,8 +5816,16 @@ export function createHud(ctx, alerts) {
       const onboardingVerb = navWaypoint && navWaypoint.reason;
       const command = resolveFlightObjectiveCommand(state, wp);
       const dest = flightDestinationSurface(state, command);
+      if (lastFlightObjectiveOwner === 'counterweight-course' && command?.owner !== 'counterweight-course') {
+        // Recall can be pinned or dismissed while a course runs; it must not resurrect that
+        // course after the public attempt has ended or the pilot has left it.
+        objectiveRecall.text = dest.line || '';
+        objectiveRecall.snapshot = dest.line || '';
+      }
+      lastFlightObjectiveOwner = command?.owner || null;
       // the dial's needle takes the nearest way round to the objective's bearing
-      const bearingDeg = objectiveBearingDeg(state, (command && command.waypoint) || wp);
+      const bearingDeg = command?.owner === 'counterweight-course'
+        ? null : objectiveBearingDeg(state, (command && command.waypoint) || wp);
       if (bearingDeg != null && mtNeedle) {
         let next = bearingDeg;
         if (mtNeedleDeg != null) { while (next - mtNeedleDeg > 180) next -= 360; while (next - mtNeedleDeg < -180) next += 360; }
@@ -5926,6 +5956,12 @@ export function createHud(ctx, alerts) {
   }
 
   function updateObjectiveArrow(p, slow) {
+    if (lastFlightObjectiveOwner === 'counterweight-course') {
+      setDisplay(arrow, false);
+      setDisplay(elNavReadout, false);
+      setClass(elNavReadout, 'sf-nav--lock', false);
+      return;
+    }
     // Priority: durable nav waypoint (mission/trade/story), else legacy mission-local waypoint.
     const tracked = state.ui.trackedMissionId;
     const objectiveOwnsAttention = !!tracked || !!(state.nav && state.nav.waypoint);
