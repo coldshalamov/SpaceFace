@@ -874,6 +874,30 @@ Verified already deep, wave 6: dock social second voice (keeper line + arrival r
 bands + INF-074 rescue memory), the yard's eye (dock-home vitals + departure chip), empty
 states on clean surfaces (achievements/statistics/comms/ledger/evidence all speak).
 
+Implemented and focused-tested, wave 7 (INFERENCE 100 program — one commit each, recorded in
+`design/program/inference-memory.json`):
+- inf-rescue-tow-voice (WF-13): the pod you tow home talks — a grip on the latch, the air
+  clock read once per threshold, silence the moment the cable lets go; each line rides the
+  arbiter floor with the same voiceId, spent lines stamp the persistent causal record so
+  save/restore never re-speaks (09d54617ae49).
+- inf-adrift-confession (WF-16): a hull that loses its drive tells the band while it is still
+  a person with a problem — one confession per episode on the combat:subsystemDisabled seam
+  everyone else already reads, in its own faction register, naming the sector so the mayday
+  is actionable (770aefd940c8).
+- inf-completion-standing (WF-06): handing in a contract names the standing it bought in the
+  moment the pay lands — "· +15 MERIDIAN standing" on the toast, the payer's debrief opens
+  with it; the number is factions' own applied delta after clamps and run seals, so softened
+  gains read honestly and a sealed run claims nothing (ae276501aa79).
+Verified already deep, wave 7: career rank-up world answer (ladder-completed audio payoff),
+market trade-verb audio (needs avoid-listed screens), giver favor lines (giver-voice deep).
+Inbox additions (wave 7, both pre-existing at HEAD, verified by owner-swap):
+1. test/captain-rescue-production-continue.test.mjs fails — fixture deps lack
+   ensureLocaleReady (main.js finalizeLoadedGame gained it in e934dd13aafb). Owner:
+   localization/main-finalizer thread.
+2. test/missions-player-truth-fixes.test.mjs — two 47-A tests fail identically with the
+   pre-edit missions.js too; landed with 8398e7c8d2b1 (lantern-ward), which postdates the
+   test. Owner: lantern-ward/missions story integration.
+
 ## Traps
 
 Integration 2026-10-31: phone station title/credits and Shipworks diagram/nameplate overlaps are
