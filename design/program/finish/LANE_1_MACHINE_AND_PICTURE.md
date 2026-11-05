@@ -584,6 +584,28 @@ ordered weld-network collapse), asteroid split pop (conchoidal cleavage + parent
 dust + event light), NPC jump departure surface (fov punch, trauma, travel cues, portal
 spin-up), station apron night family.
 
+Implemented and focused-tested, wave 7 (INFERENCE 100 program — one commit each, recorded in
+`design/program/inference-memory.json`):
+- inf-corridor-speed-read (WF-12 repair): the dock pad reads your own approach speed — a hot
+  lane holds the pad visible in caution amber with a quickened pulse, brackets and chevrons
+  march at your closing speed, a settled berth calms the read; reduced motion keeps the calm
+  sweep (c48c5c7e77eb; also un-nulled cradle engagement on anonymous rows, pre-existing red
+  in the quiet-skip suite).
+- inf-belt-wind (WF-11): sitting still, the near-field dust now rides a slow wind keyed to
+  the sector's palette class — core drift, brisk belt flow, cold fringe pull, wrong-heading
+  anomaly shear — handing over with the sky on the same eased transition; reduced motion
+  freezes the weather clock, never the membership (71384b4fa8c6).
+- inf-storm-crossing (WF-12 integration): the hazard zone you are dying in reads on the hull —
+  a charge beat at the boundary line keyed by the bite, then sparse deterministic static
+  crawling the hull in the family hue while you ride it (8cc0fcb90268).
+- inf-storm-body (WF-11): hazard zones have a body from two rings out — counter-rotating
+  broken arc rings plus orbiting motes in the family hue, brightness keyed on LIVE intensity
+  so the Ashfall boss-defeat aftermath visibly thins the storm on screen (7752cec23d3d).
+Verified already deep, wave 7: mining-at-rock camera read (contact flash, chips, steam,
+carved scars, seam lock pulse, fracture anticipation), capital boss death (authored debris
+families + staged breakup). Skipped: wreck aging (adjacent to a committed subject), zoom
+honesty (lives in foreign-modified LOD owners).
+
 ## Traps — measured and rejected; do not repeat
 
 - Shader prewarm with dummy meshes (made the fly worse: 147 → 207–219 ms).
