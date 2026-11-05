@@ -222,6 +222,8 @@ export const VX_FREE_DRIVE_MARKERS = Object.freeze([
 // deliberately left live (the third option). Nothing straddles the field rim — a rim disc starves
 // the arranger's re-seat crescent and can pin a rock inside the lane it guards.
 const LANE_DISCS = [
+  // Optional loose ore tub: keep seeded scatter clear of its starting footprint and approach.
+  [1020, 80, 55],
   // plaza mouth
   [1180, -30, 90],
   // the rib-gap threads: one disc centred on each gap along the arc

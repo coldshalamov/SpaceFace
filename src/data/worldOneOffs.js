@@ -240,6 +240,22 @@ export const WORLD_ONE_OFFS = Object.freeze([
   // purpose: no mission, no scan gate, no economy hook. Rare enough to stay specific.
   // ─────────────────────────────────────────────────────────────────────────────────────────────
   Object.freeze({
+    // An optional loaded work tub beside the Cracker Run's public approach. Its own durable
+    // physical identity means a pilot can shove, tow, leave or lose it without resetting the yard.
+    id: 'oneoff_cracker_loose_ore_tub',
+    name: 'Loose ore tub',
+    placeId: 'place_ore_bulk_container',
+    sectorId: 'sector_helios_prime',
+    anchor: { type: 'station', id: 'station_helios' },
+    // station (1280,-420) + offset = (1020,80), west of the first buoy and rib.
+    offsetLocal: Object.freeze({ x: -260, z: 500 }),
+    rot: 1.3,
+    spin: 0,
+    radius: 12,
+    physicalBody: Object.freeze({ mass: 24 }),
+    why: 'A loaded yard tub left loose beside the stripped berth.',
+  }),
+  Object.freeze({
     // A BODY - a heavy thing sitting in the middle of the shortest hop in the game. You rope it or
     // you go around it; either way the hop is a place now instead of a line on the glass.
     id: 'oneoff_spare_keg',
