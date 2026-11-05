@@ -44,7 +44,7 @@ import { mulberry32 } from '../core/rng.js';
 import { swarmPlacementIsClear, sweptDiscsOverlap } from './swarmSafety.js';
 import { resolvePhysicsBodySpec } from '../core/physicsAuthority.js';
 import { articulatedColliderRadius } from '../core/articulatedColliderBounds.js';
-import { hullEnvelopeWu, proxyOuterRadiusWu, resolveCollisionProxyManifest } from '../data/collisionProxyManifests.js';
+import { hullEnvelopeWu, proxyOuterRadiusWu, proxyScaleFor, resolveCollisionProxyManifest } from '../data/collisionProxyManifests.js';
 import { OPTIC_LATTICE_SPACING } from '../combat/opticField.js';
 import { withBankStone } from '../core/surfaceContact.js';
 import { asteroidColliderRadius } from '../data/asteroidColliders.js';
@@ -233,10 +233,10 @@ export const SWARM_DEBRIS_KEEP_RADIUS = 900;
 
 // A fresh rigid stamp must clear the bodies the native solver actually holds. A tiny gameplay
 // radius can describe a long offset wreck or compound hull; it is not their contact footprint.
-function opticPlacementFootprints(state, native) {
+function opticPlacementFootprints(state, native, excluded = null) {
   const footprints = [];
   for (const entity of state.entities?.values?.() || state.entityList || []) {
-    if (!entity || entity.alive === false || entity.collides === false || entity.physicsBody === false
+    if (!entity || entity === excluded || entity.alive === false || entity.collides === false || entity.physicsBody === false
       || !entity.pos || !WELL_SOLID_TYPES.has(entity.type) && entity.type !== 'ship' && entity.type !== 'drone') continue;
     const spec = resolvePhysicsBodySpec(entity);
     if (!spec || spec.material === 'sensor' || spec.material === 'massline_sensor') continue;
@@ -244,18 +244,67 @@ function opticPlacementFootprints(state, native) {
     if (rec?.entity === entity && rec.body.isEnabled() !== false) {
       if (rec.colliders.every(collider => collider.isSensor() || !collider.isEnabled())) continue;
       const pos = rec.body.translation(), vel = rec.body.linvel();
-      footprints.push({ alive: true, radius: articulatedColliderRadius(rec),
+      let radius = articulatedColliderRadius(rec);
+      if (excluded) {
+        // Fracture is a new admission. Read current SDK geometry/offsets, not
+        // a collector's historical shape/radius cache, and include contact skin.
+        const colliders = rec.colliders.filter(c => c.isEnabled() && !c.isSensor());
+        radius = articulatedColliderRadius({ colliders: colliders.map(c => ({
+          shape: native.RAPIER.Shape.fromRaw(native.world.colliders.raw, c.handle),
+          translationWrtParent: () => c.translationWrtParent(),
+        })) }) + Math.max(0, ...colliders.map(c => c.contactSkin?.() || 0));
+      }
+      footprints.push({ alive: true, radius,
         pos: { x: pos.x + native._frameOrigin.x, z: pos.z + native._frameOrigin.z },
         vel: { x: vel.x, z: vel.z } });
     } else {
       const proxy = resolveCollisionProxyManifest(entity);
       // Conservative cold bounds include the same resolved compound as the next native sync.
-      const radius = Math.max(spec.radius, hullEnvelopeWu(entity), proxy ? proxyOuterRadiusWu(proxy, entity) : 0,
+      const radius = excluded ? fractureBodyRadius(entity) : Math.max(spec.radius, hullEnvelopeWu(entity), proxy ? proxyOuterRadiusWu(proxy, entity) : 0,
         spec.shape === 'capsule' ? spec.radius * 2 : spec.shape === 'cuboid' ? spec.radius * Math.SQRT2 : 0);
       footprints.push({ alive: true, radius, pos: entity.pos, vel: entity.vel });
     }
   }
   return footprints;
+}
+
+function fractureBodyRadius(entity) {
+  const spec = resolvePhysicsBodySpec(entity);
+  if (!spec) return Infinity;
+  const proxy = resolveCollisionProxyManifest(entity);
+  let radius = Math.max(spec.radius, hullEnvelopeWu(entity), proxy ? proxyOuterRadiusWu(proxy, entity) : 0,
+    spec.shape === 'capsule' ? spec.radius * 2 : spec.shape === 'cuboid' ? spec.radius * Math.SQRT2 : 0);
+  if (proxy) {
+    const scale = proxyScaleFor(entity, proxy);
+    for (const points of [proxy.compactHull, proxy.planarPolygon, ...(proxy.convexParts || []).map(p => p.points)]) {
+      for (const p of points || []) radius = Math.max(radius, Math.hypot(p.x, p.z) * scale);
+    }
+  }
+  return radius;
+}
+
+function fractureBirthPositions(state, native, parent, children) {
+  const gap = 0.25, reaches = children.map(fractureBodyRadius);
+  if (reaches.some(r => !Number.isFinite(r))) return null;
+  const peers = opticPlacementFootprints(state, native, parent);
+  const clear = positions => Math.hypot(positions[0].x - positions[1].x, positions[0].z - positions[1].z)
+    >= reaches[0] + reaches[1] + gap
+    && positions.every((pos, i) => !peers.some(peer => sweptDiscsOverlap(pos, reaches[i], peer, { clearance: gap })));
+  const original = children.map(child => child.pos);
+  if (clear(original)) return original;
+  // Preserve already-clear authored births. For a blocked pair, rotate an
+  // opposed pair locally; sample bounds are fixed and no existing body moves.
+  const angle = Math.atan2(original[0].z - parent.pos.z, original[0].x - parent.pos.x);
+  const distances = original.map(pos => Math.hypot(pos.x - parent.pos.x, pos.z - parent.pos.z));
+  for (let ring = 0; ring < 3; ring++) for (let turn = 0; turn < 16; turn++) {
+    const bearing = angle + turn * Math.PI / 8;
+    const positions = distances.map((distance, i) => {
+      const r = distance + ring * Math.max(...reaches) * 0.5, a = bearing + i * Math.PI;
+      return { x: parent.pos.x + Math.cos(a) * r, z: parent.pos.z + Math.sin(a) * r };
+    });
+    if (clear(positions)) return positions;
+  }
+  return null;
 }
 
 // Some optic recipes put large stone cells on the shared lattice. Their native circles can be
@@ -1468,11 +1517,16 @@ export const swarmArena = {
       const hullBefore = Math.max(0, Number(rock.hull) || 0);
       const hullMax = Math.max(1, Number(rock.hullMax) || hullBefore || 1);
       const hullAfter = hullBefore - dp / SWARM_DEBRIS_WEAR_DIV;
+      const oreBefore = d.oreHP, wearBefore = d.miningWear;
       rock.hull = Math.max(0, hullAfter);
       // oreHP is the field the renderer's fracture-progress reads — keep it paired with hull.
       d.oreHP = Math.max(0, Math.round(hullAfter));
       d.miningWear = Math.min(1, Math.max(0, 1 - hullAfter / hullMax));
-      if (hullAfter <= 0) this._fractureDebris(rock);
+      if (hullAfter <= 0 && this._fractureDebris(rock) === false) {
+        rock.hull = hullBefore;
+        if (oreBefore === undefined) delete d.oreHP; else d.oreHP = oreBefore;
+        if (wearBefore === undefined) delete d.miningWear; else d.miningWear = wearBefore;
+      }
       return;
     }
   },
@@ -1493,12 +1547,13 @@ export const swarmArena = {
       && rock.pos && Number.isFinite(rock.pos.x) && Number.isFinite(rock.pos.z)) {
       const now = Number.isFinite(state.simTime) ? state.simTime : 0;
       const parentRadius = Math.max(1, Number(rock.radius) || Number(d.size) || 8);
+      const children = [];
       for (let i = 0; i < SWARM_DEBRIS_REMNANTS; i++) {
         const ang = rng() * Math.PI * 2;
         const radius = Math.max(6, parentRadius * (SWARM_DEBRIS_REMNANT_RATIO + rng() * 0.08));
         const dist = parentRadius * 0.55 + radius;
         const oreHP = Math.max(40, Math.round(parentRadius * 10));
-        const spawned = helpers.spawnEntity({
+        children.push({
           type: 'asteroid',
           pos: {
             x: rock.pos.x + Math.cos(ang) * dist,
@@ -1534,6 +1589,11 @@ export const swarmArena = {
             tetherPayload: true,
           }),
         });
+      }
+      const positions = fractureBirthPositions(state, this.registry?.get?.('physics')?._sg02, rock, children);
+      if (!positions) return false;
+      for (let i = 0; i < children.length; i++) {
+        const spawned = helpers.spawnEntity({ ...children[i], pos: positions[i] });
         const id = spawned && typeof spawned === 'object' ? spawned.id : spawned;
         if (id != null) {
           ids.push(id);
@@ -1567,6 +1627,7 @@ export const swarmArena = {
     // economy: the wave pays the player for breaking the seam, through the same collect
     // seam the supply pod uses.
     this._millShake(rock);
+    return true;
   },
 
   /**
