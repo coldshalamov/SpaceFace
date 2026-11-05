@@ -537,6 +537,8 @@ import {
   formatOpeningCookLedger,
   observePipelineAdmission,
   recordOpeningCookStep,
+  createProgressDeadline,
+  renderWorkProgressMark,
 } from './pipelineReadiness.js';
 import { openingGateBudgetMs } from './startupPacing.js';
 import {
@@ -13589,9 +13591,20 @@ export const render = {
             ? collectFirstFlightEffectRoots(scene).filter(root => root.name === 'SF_ArcadeStructuralFx')
             : [];
           const actorIds = new Set(firstFlightActors.map((entity) => entity.id));
+          // Slow GL (software rasterisers, CPU-starved CI) can spend the whole base budget in the
+          // actor's authored upgrade + strict pipeline compile while still linking programs. The
+          // base deadline is unchanged; it only slides while measurable work advances (capped at
+          // one more base budget), so a wedged admission still fails at its base deadline.
+          let actorSteps = 0;
+          const actorBudget = createProgressDeadline(openingGateBudgetMs(), {
+            startedAt: exactStarted,
+            now: () => performance.now(),
+            progress: () => actorSteps + renderWorkProgressMark(state.render),
+          });
           const assertExactActive = () => {
             if (!exactActive || recookStale()) throw new Error('opening first-flight actor admission superseded');
-            if (performance.now() - exactStarted >= openingGateBudgetMs()) {
+            actorSteps += 1;
+            if (!actorBudget.check()) {
               throw new Error('opening first-flight actor admission timed out');
             }
           };
@@ -13626,10 +13639,14 @@ export const render = {
             }
             let actorTimer;
             const actorDeadline = new Promise((_, reject) => {
-              actorTimer = setTimeout(() => {
-                exactActive = false;
-                reject(new Error('opening first-flight actor admission timed out'));
-              }, Math.max(1, openingGateBudgetMs() - (performance.now() - exactStarted)));
+              const arm = () => {
+                actorTimer = setTimeout(() => {
+                  if (actorBudget.check()) { arm(); return; }
+                  exactActive = false;
+                  reject(new Error('opening first-flight actor admission timed out'));
+                }, Math.max(1, actorBudget.remainingMs()));
+              };
+              arm();
             });
             let playerPlasmaWarm = null;
             try {
@@ -13684,7 +13701,7 @@ export const render = {
             }
           }
           const admitted = await prepareMobileOpeningFirstPicture(state.render, {
-            timeoutMs: Math.max(1, openingGateBudgetMs() - (performance.now() - exactStarted)),
+            timeoutMs: Math.max(1, actorBudget.remainingMs()),
             yieldToMain: yieldToBrowser,
             isActive: () => exactActive && !recookStale(),
           });
