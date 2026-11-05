@@ -7114,6 +7114,21 @@ function buildPayload(e) {
   );
   transponder.position.y = 0.47;
   g.add(transponder);
+  // inf-jettison-claim: a pod YOU jettisoned holds a brief claim window on its transponder —
+  // the sim stamps playerJettisonOrigin (only when the owner is this player) and embargoes
+  // the re-pickup. The lamp is a per-pod CLONE handed to the pose pass via userData (the
+  // mayday-lamp grammar) — the shared transponder material is never touched, so ordinary
+  // payloads keep one static light and pay nothing.
+  if (e && e.data && e.data.playerJettisonOrigin
+      && Number.isFinite(Number(e.data.pickupEmbargoUntil))) {
+    const claimMat = transponder.material.clone();
+    transponder.material = claimMat;
+    g.userData.jettisonClaimLamp = {
+      material: claimMat,
+      until: Number(e.data.pickupEmbargoUntil),
+      base: claimMat.emissiveIntensity,
+    };
+  }
   g.scale.setScalar(R);
   g.userData.kind = 'payload';
   g.userData.interactionKind = 'payload';

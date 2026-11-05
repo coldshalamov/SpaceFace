@@ -163,6 +163,48 @@ const CLAIM_LEAN_RANGE_WU = 220;
 const CLAIM_LEAN_MAX_RAD = 0.06;
 const BEACON_WARN_S = 8;       // expireAt inside this window reads as "lease nearly up"
 
+// inf-jettison-claim — the pod YOU jettisoned reads as yours-just-lost, then goes public.
+//
+// The sim's story is already honest: a deliberate dump spawns the pod aft at eject speed,
+// stamps it yours (`data.playerJettisonOrigin` — set only when the owner IS this player) and
+// embargoes the re-pickup for a brief window (`data.pickupEmbargoUntil`), so you cannot
+// re-scoop what you just dropped. The picture contradicted both: the pod joined anonymous
+// drift the same frame — a dark canister whose only light is a static shared transponder
+// material, indistinguishable from any other drifting payload. A moment later you cannot
+// even tell your own dropped lot from the field.
+//
+// The claim read rides the pod's own transponder voice (visualFactory hands a per-pod
+// CLONE via userData.jettisonClaimLamp — the shared-material contract is untouched, the
+// mayday-lamp grammar): a hot parting beat as it leaves your hold, easing to a steady claim
+// burn (the pod resting, still yours) for the embargo window, then relaxing to the
+// anonymous read exactly when the sim makes it public. Nothing strobes; reducedFlash drops
+// the spike and keeps the steady claim. Anonymous payloads never get a clone — zero cost.
+
+/** The steady claim burn above the transponder's authored base, while the window is live. */
+export const JETTISON_CLAIM_STEADY_GAIN = 0.55;
+/** The parting beat's peak above the steady burn, decaying as the pod clears your hold. */
+export const JETTISON_CLAIM_SPIKE_GAIN = 1.6;
+/** The parting beat's decay rate (per second) — roughly a one-second tail. */
+export const JETTISON_CLAIM_SPIKE_DECAY = 2.2;
+
+/**
+ * The claim lamp's emissiveIntensity for a player-jettisoned pod, or null once the embargo
+ * has lapsed (the caller writes the base back and retires the lamp). Pure function of
+ * (simTime, spawnAgeS, until, reducedFlash, base) — test-seam, no allocation. A pod whose
+ * spawn moment the tracker never saw (restored save, cold pose) reads the steady claim
+ * without the spike rather than inventing a birth.
+ */
+export function resolveJettisonClaimBurn(simTime, spawnAgeS, until, reducedFlash, base) {
+  const b = Number.isFinite(base) ? base : 0.8;
+  const u = Number.isFinite(until) ? until : NaN;
+  if (!Number.isFinite(u) || (Number.isFinite(simTime) && simTime >= u)) return null;
+  const age = Number.isFinite(spawnAgeS) && spawnAgeS >= 0 ? spawnAgeS : Infinity;
+  const spike = (reducedFlash || !Number.isFinite(age))
+    ? 0
+    : Math.exp(-age * JETTISON_CLAIM_SPIKE_DECAY) * JETTISON_CLAIM_SPIKE_GAIN;
+  return b + JETTISON_CLAIM_STEADY_GAIN + spike;
+}
+
 export function createOrdnanceMotionTracker() {
   const states = new Map();
   // Track our writes on the actual render object: a pooled mesh can change IDs,
@@ -490,6 +532,21 @@ export function createOrdnanceMotionTracker() {
       if (lamp.material && lamp.material.emissiveIntensity !== burn) {
         lamp.material.emissiveIntensity = burn;
       }
+    }
+
+    // inf-jettison-claim: a pod you jettisoned holds its claim window on the transponder —
+    // the parting beat easing into a steady claim burn, then the anonymous read exactly
+    // when the sim makes the pod public. The lamp record retires at the lapse so settled
+    // pods stop paying the compare. Survivor pods never carry this stamp.
+    if (kind === 'payload' && mesh.userData && mesh.userData.jettisonClaimLamp) {
+      const lamp = mesh.userData.jettisonClaimLamp;
+      const spawnAge = rec.materializeT0 >= 0 ? simTime - rec.materializeT0 : -1;
+      const burn = resolveJettisonClaimBurn(simTime, spawnAge, lamp.until, reducedFlash, lamp.base);
+      const target = burn == null ? lamp.base : burn;
+      if (lamp.material && lamp.material.emissiveIntensity !== target) {
+        lamp.material.emissiveIntensity = target;
+      }
+      if (burn == null) delete mesh.userData.jettisonClaimLamp;
     }
   }
 
