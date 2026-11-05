@@ -1760,6 +1760,24 @@ export function storyActionForBeat(beat, state) {
         meta: 'Scale 4',
       };
       const completed = story.campaign47a?.stepProgress?.['1']?.completed;
+      if (Array.isArray(completed) && completed.includes('alloy_run')
+          && completed.includes('scale_4') && !completed.includes('infested')) {
+        const tag = 'campaign47a:b1:infested';
+        const active = (state?.missions?.active || []).some((mission) =>
+          mission?.status === 'active' && mission.storyTag === tag);
+        const slots = state?.missions?.boards?.station_tethys?.slots;
+        if (!active && Array.isArray(slots) && slots.some((offer) =>
+          offer?.storyTag === tag && offer.stationId === 'station_tethys')) {
+          return {
+            tone: 'primary',
+            label: 'CONTRACT',
+            title: 'Furnace Detail · the infested hauler',
+            body: 'At Tethys Junction, take Furnace Detail from Missions. Read the brief and prepare for the Ceres refinery.',
+            meta: 'Tethys board',
+          };
+        }
+        return null;
+      }
       if (Array.isArray(completed) && completed.length) return null;
       if ((state?.missions?.active || []).some((mission) => mission?.status === 'active'
           && mission.storyTag === 'campaign47a:b1:alloy_run')) return null;

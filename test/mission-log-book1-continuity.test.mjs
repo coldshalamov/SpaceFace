@@ -43,8 +43,18 @@ test('Book 1 Journal follows the ordered offer, scale work and handoff without t
   assert.equal(state.ui.trackedMissionId, tracked.id);
 
   state.story.campaign47a.stepProgress['1'].completed.push('scale_4');
-  assert.equal(buildMissionBoardContract(1, { state }).storyTag, 'campaign47a:b1:infested');
-  assert.equal(storyActionForBeat(STORY_BEATS[1], state), null, 'no stale scale or generic haul direction');
+  const furnace = buildMissionBoardContract(1, { state });
+  assert.equal(furnace.storyTag, 'campaign47a:b1:infested');
+  assert.equal(storyActionForBeat(STORY_BEATS[1], state), null, 'no advice for an unposted offer');
+  state.missions.boards.station_tethys = { slots: [furnace] };
+  const next = storyActionForBeat(STORY_BEATS[1], state);
+  assert.match(next.title, /Furnace Detail/i);
+  assert.match(next.body, /Tethys Junction.*Missions.*Ceres refinery/i);
+  assert.equal(recommendedActions(state, state.missions.active, tracked.id)[0].missionId, tracked.id);
+  assert.equal(state.nav.waypoint, course);
+  state.missions.active = [{ ...furnace, id: 'furnace', status: 'active' }];
+  assert.equal(storyActionForBeat(STORY_BEATS[1], state), null, 'accepted work is not re-offered');
+  state.missions.active = [];
   state.story.campaign47a.stepProgress['1'].completed.push('infested');
   assert.equal(storyActionForBeat(STORY_BEATS[1], state), null);
 });
