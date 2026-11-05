@@ -116,7 +116,10 @@ export function createLaneSystemFacade(ctx) {
           drainSharedStoreWrites: () => durableSaveCommand('saveDrain'),
           prepareForQuit: () => durableSaveCommand('savePrepareQuit'),
           cancelPreparedQuit: () => laneRpc('saveCancelPreparedQuit', {}),
-          load: (slot) => laneRpc('saveLoad', { slot: slot === undefined ? null : slot }),
+          load: async (slot) => {
+            const ack = await laneRpc('saveLoad', { slot: slot === undefined ? null : slot });
+            return ack?.ok === true && ack.result?.ok === true && ack.result.result === true;
+          },
           delete: (slot) => laneRpc('saveDelete', { slot: slot === undefined ? null : slot }),
           // saveLoad.js's delete path — the delete must reach the worker's save
           // system (staged store + index), not just main's localStorage.
@@ -130,7 +133,10 @@ export function createLaneSystemFacade(ctx) {
             reader.onload = () => {
               try {
                 Promise.resolve(laneRpc('saveImport', { json: String(reader.result || ''), slot: 'quick' }))
-                  .then((ack) => finish(ack && ack.ok !== false))
+                  // The outer acknowledgement only confirms RPC delivery. Preserve the
+                  // settled save owner's refusal, including the older boolean result shape.
+                  .then((ack) => finish(ack && ack.ok !== false
+                    && ack.result !== false && ack.result?.ok !== false))
                   .catch(() => finish(false));
               } catch (_) { finish(false); }
             };

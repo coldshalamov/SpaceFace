@@ -1613,10 +1613,11 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
         s.cancelPreparedQuit();
         return { ok: true };
       }],
-      ['saveLoad', (args) => {
+      ['saveLoad', async (args) => {
         const s = registry.get('save');
         if (!s || typeof s.load !== 'function') return { ok: false, reason: 'save-system-unavailable' };
-        return { ok: true, result: s.load((args && args.slot) || undefined) };
+        const result = await s.load((args && args.slot) || undefined);
+        return { ok: result === true, result };
       }],
       ['saveDelete', (args) => {
         const s = registry.get('save');
