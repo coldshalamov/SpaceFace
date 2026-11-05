@@ -132,45 +132,6 @@
   ],
   "units": [
     {
-      "id": "inference26-services-continue-clock",
-      "date": "2026-10-26",
-      "wf": "WF-04",
-      "mode": "repair",
-      "verdict": "implemented",
-      "reason": "Continue restores the loaded yard clock and refresh deadlines instead of future session state",
-      "fingerprint": "verb=continue,subject=yard-clock,sector=station,domain=wf-04",
-      "references": [],
-      "integration": "live",
-      "commit": "f5dfe19fb4c",
-      "verification": "focused_green"
-    },
-    {
-      "id": "inference26-scan-survey-continue",
-      "date": "2026-10-26",
-      "wf": "WF-10",
-      "mode": "repair",
-      "verdict": "implemented",
-      "reason": "Actual save envelope preserves owner-owned surveyed wreck receipts and milestones without duplicate payment",
-      "fingerprint": "verb=remember,subject=wreck-survey,sector=exploration,domain=wf-10",
-      "references": [],
-      "integration": "live",
-      "commit": "a589c7a254a",
-      "verification": "focused_green"
-    },
-    {
-      "id": "inference26-reactor-applied-damage",
-      "date": "2026-10-26",
-      "wf": "WF-05",
-      "mode": "repair",
-      "verdict": "implemented",
-      "reason": "Explicitly rejected damage cannot cook reactors or detonate hot cores; legacy applied-absent packets remain valid",
-      "fingerprint": "verb=absorb,subject=reactor-hit,sector=salvage,domain=wf-05",
-      "references": [],
-      "integration": "live",
-      "commit": "7a16e2233c4",
-      "verification": "focused_green"
-    },
-    {
       "id": "inference26-reactor-blast-strength",
       "date": "2026-10-26",
       "wf": "WF-12",
@@ -1689,6 +1650,45 @@
       "references": [],
       "integration": "live",
       "commit": "1a54592ab63c",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inf-aggression-cascade",
+      "date": "2026-11-05",
+      "wf": "WF-16",
+      "mode": "integration",
+      "verdict": "implemented",
+      "reason": "A hit on the brood's relay node turns the whole flood on you — the last authored BLOOM cascade finally runs",
+      "fingerprint": "verb=wire,subject=swarmBrood relayHit cascade,sector=crucible-swarm,domain=wf-16",
+      "references": [],
+      "integration": "live",
+      "commit": "3056262f9856",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inf-brood-reserve-tell",
+      "date": "2026-11-05",
+      "wf": "WF-14",
+      "mode": "integration",
+      "verdict": "implemented",
+      "reason": "The brood's held-back second breath names its count and bearing as it lands",
+      "fingerprint": "verb=tell,subject=swarmBroodReserve consumer,sector=survival-announce,domain=wf-14",
+      "references": [],
+      "integration": "live",
+      "commit": "26a2d4460e38",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inf-tacticalai-lane-scans",
+      "date": "2026-11-05",
+      "wf": "WF-19",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "The tactical AI's per-tick universe walks ride the index lanes — the crowd sim sheds a third of a millisecond a tick and grows cleaner as sectors clutter",
+      "fingerprint": "verb=trim,subject=tacticalAI lane scans,sector=tactical-sim-cost,domain=wf-19",
+      "references": [],
+      "integration": "live",
+      "commit": "5b57d6583001",
       "verification": "focused_green"
     }
   ],
