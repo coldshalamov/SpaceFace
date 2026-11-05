@@ -52,6 +52,7 @@ import { normalizeNestVisit } from '../data/nestVisit.js';
 import { raceLeaseActive } from './racingSteer.js';
 import { tickEarlyTrailerEncounters } from './trailerEncounterStaging.js';
 import { hash32, mulberry32 } from '../core/rng.js';
+import { laneSetNavWaypoint } from '../core/simLaneCommands.js';
 import { dedupWarn } from '../core/warnDedup.js';
 import { bumpCollidesFlipEpoch, indexedShipLikeOrEntitiesScan, indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
 import { syncEntityCollisionIndexMembership } from '../core/coreSystem.js';
@@ -2644,6 +2645,38 @@ export const encounterDirector = {
       options, deadlineAt,
       timeoutChoice: timeoutChoice || live.shape.timeoutChoice || null,
     });
+  },
+
+  // A script may point the existing nav mark at its own scene. The previous mark is
+  // remembered on the live record and put back by clearEncounterMark. The lane writer
+  // owns the nav slot; this does not mint credits, heat, or cargo.
+  markEncounter(live, waypoint) {
+    if (!live || !waypoint || waypoint.encounterId !== live.id) return false;
+    if (!live.data) live.data = {};
+    if (!live.data.markSaved) {
+      const current = this.state && this.state.nav && this.state.nav.waypoint;
+      let previous = null;
+      if (current && current.encounterId !== live.id) {
+        try { previous = JSON.parse(JSON.stringify(current)); } catch { previous = null; }
+      }
+      live.data.previousWaypoint = previous;
+      live.data.markSaved = true;
+    }
+    laneSetNavWaypoint(this.state, waypoint);
+    this.emit('nav:waypoint', waypoint);
+    return true;
+  },
+
+  clearEncounterMark(live) {
+    if (!live || !live.data || !live.data.markSaved) return false;
+    const current = this.state && this.state.nav && this.state.nav.waypoint;
+    live.data.markSaved = false;
+    if (!current || current.encounterId !== live.id) return true;
+    const restored = live.data.previousWaypoint || null;
+    live.data.previousWaypoint = null;
+    laneSetNavWaypoint(this.state, restored);
+    this.emit('nav:waypoint', restored);
+    return true;
   },
 
   // Offer consumption semantics for encounter:choose:
