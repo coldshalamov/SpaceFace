@@ -366,6 +366,7 @@ import {
   STORM_STATIC_CADENCE_HZ,
   STORM_STATIC_REDUCED_CADENCE_HZ,
 } from './hazardStormRead.js';
+import { resolveStormDepartureBeat } from './stormDepartureRead.js';
 import {
   createStormZoneGeometry,
   resolveStormZonePlans,
@@ -8165,8 +8166,10 @@ export const vfx = {
   // the picture was silent about all of it, so the storm that was killing you was invisible.
   // Crossing the boundary plays a charge beat around the hull (a pooled event light keyed by
   // the bite at the line); riding the storm keeps a sparse deterministic static crawling the
-  // hull at the sustained cadence. Colors are per hazard family (radiation chartreuse, nebula
-  // violet, debris slate); reduced motion thins the static and halves the beat, never to zero.
+  // hull at the sustained cadence; leaving it sheds one last discharge flicker drifting off
+  // the hull (inf-storm-departure, thinner and slower than the entry charge). Colors are per
+  // hazard family (radiation chartreuse, nebula violet, debris slate); reduced motion thins
+  // the static and halves the beats, never to zero.
   // -------------------------------------------------------------------------
   _onHazardBoundary(p, entering) {
     const state = this.state;
@@ -8176,7 +8179,37 @@ export const vfx = {
     const zoneType = String(p.zoneType || '');
     if (!zoneType) return;
     if (!entering) {
+      const hadPresence = this._stormPresence && this._stormPresence[zoneType] != null;
       if (this._stormPresence) delete this._stormPresence[zoneType];
+      // inf-storm-departure: leaving the zone sheds — one last discharge flicker of the
+      // zone's own hue drifting OFF the hull, thinner and slower than the entry charge.
+      // The sustained static stops with the presence flag; the shed is the goodbye.
+      if (!this._scene) return;
+      const shedPlayer = (this.helpers && this.helpers.player ? this.helpers.player() : this._ent(state.playerId));
+      if (!shedPlayer || shedPlayer.alive === false || !shedPlayer.pos) return;
+      const shedAccess = resolveVfxAccessibilityProfile(state && state.settings);
+      const shedReduced = shedAccess.id.includes('motion');
+      const shedSimTime = Number.isFinite(state.simTime) ? state.simTime : 0;
+      const shed = resolveStormDepartureBeat(p, shedSimTime, shedReduced);
+      if (!shed) return;
+      const shedR = Math.max(4, shedPlayer.radius || 6);
+      this._c0.set(shed.colorHex); this._c1.set(shed.colorHex);
+      for (let k = 0; k < shed.angles.length; k++) {
+        const a = shed.angles[k];
+        this._spawnParticle(
+          shedPlayer.pos.x + Math.cos(a) * shedR * 1.05,
+          shedPlayer.pos.z + Math.sin(a) * shedR * 1.05,
+          Math.cos(a) * shed.shedSpeed, Math.sin(a) * shed.shedSpeed,
+          shed.lifeS, 1.4, 0.2, this._c0, this._c1, 1.4, 0.5, 0, a, 1.6,
+        );
+      }
+      if (shedAccess.eventLightPeakScale > 0 && hadPresence) {
+        this._eventLight({ x: shedPlayer.pos.x, z: shedPlayer.pos.z }, 'impact', {
+          severity: shed.lightSeverity,
+          color: shed.colorHex,
+          peakMul: 0.45 + shed.intensity * 0.3,
+        });
+      }
       return;
     }
     const intensity = Math.max(0, Math.min(1, Number(p.intensity) || 0));
