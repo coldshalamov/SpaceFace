@@ -409,6 +409,7 @@ export const survivalAnnounce = {
     this._unsubs.push(this.bus.on('swarm:affix', (p) => this._onAffix(p)));
     this._unsubs.push(this.bus.on('swarm:stallReleased', (p) => this._onStallReleased(p)));
     this._unsubs.push(this.bus.on('swarm:hiveSacKilled', (p) => this._onHiveSacKilled(p)));
+    this._unsubs.push(this.bus.on('swarm:broodReserve', (p) => this._onBroodReserve(p)));
     this._unsubs.push(this.bus.on('run:openingLessonReleased', (p) => this._onOpeningLessonReleased(p)));
     this._unsubs.push(this.bus.on('run:waveCleared', (p) => this._onWaveCleared(p)));
     this._unsubs.push(this.bus.on('run:levelUp', (p) => this._onLevelUp(p)));
@@ -722,6 +723,60 @@ export const survivalAnnounce = {
     const spoke = this._say('objective', `hive-sac:w${wave}`,
       'The sac bursts — the tide it was feeding dies with it.', 4);
     if (spoke) this._sacSpoke = true;
+  },
+
+  /**
+   * B5 — the wave's held-back second breath, heard. The brood reserve lands mid-wave as one
+   * gate clump at the 165 wu arrival ring — the same arrival shape the pressure hold's
+   * reinforcement names — and its only voice was the family telegraph, which speaks a
+   * family's behavior line for ANY commitment (a mother's birth, a splitter's break) and
+   * carries no count and no bearing. This is the reinforce tell's own sentence for the
+   * reserve's receipt (`swarm:broodReserve`): the count and the compass word where the clump
+   * landed, one per gap, sharing the reinforcement tell's small per-wave budget — they are
+   * the same kind of sentence about the same kind of arrival, and the room should not spend
+   * two budgets saying it. The bearing reads the landing point against the player POSITION
+   * (the camera follows position only, so the compass word stays true on screen); a receipt
+   * without a readable landing point still says the count. The drop may finish its budget
+   * over several ticks — the gap timer coalesces that burst into one line per 8 s, exactly
+   * like a reinforcement stream. Warn-sev, finite ttl, counted in the hard per-wave bound.
+   */
+  _onBroodReserve(payload) {
+    if (this._muted) return;
+    if (!liveSurvivalRun(this.state)) return;
+    const rec = payload || {};
+    const wave = rec.wave;
+    if (!Number.isInteger(wave) || wave !== this._wave) return;
+    const count = Number.isInteger(rec.count) && rec.count > 0 ? rec.count : 0;
+    if (count <= 0) return;
+    const now = Number.isFinite(this.state && this.state.simTime) ? this.state.simTime : 0;
+    if (now - this._reinforceAt < REINFORCE_TELL_GAP_S) return;
+    if (this._reinforceLines >= MAX_REINFORCE_LINES_PER_WAVE) return;
+    const where = this._reserveBearingWord(rec.pos);
+    const text = where
+      ? `${capitalize(countWord(count))} more inbound — out of ${where}.`
+      : `${capitalize(countWord(count))} more inbound, on approach.`;
+    const spoke = this._alert(`reserve:${wave}`, 'warn', text, REINFORCE_TELL_TTL_S);
+    if (!spoke) return;
+    this._reinforceAt = now;
+    this._reinforceLines += 1;
+  },
+
+  /**
+   * The reserve landing's compass word against the player's position, in the gate table's
+   * own shape ("the north"). Null when nothing readable stands — no player, no point, or a
+   * landing under one wu from the pilot, where a compass word would be a guess.
+   */
+  _reserveBearingWord(pos) {
+    const player = this.state && this.state.entities
+      && typeof this.state.entities.get === 'function'
+      ? this.state.entities.get(this.state.playerId) : null;
+    if (!player || !player.pos || !pos
+      || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return null;
+    const dx = pos.x - player.pos.x;
+    const dz = pos.z - player.pos.z;
+    if (!Number.isFinite(dx) || !Number.isFinite(dz) || dx * dx + dz * dz < 1) return null;
+    const name = playerBearingName(dx, dz);
+    return name ? `the ${name}` : null;
   },
 
   /**

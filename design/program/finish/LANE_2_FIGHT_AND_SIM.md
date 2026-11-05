@@ -373,6 +373,18 @@ Implemented and focused-tested, wave 9 (INFERENCE 100 program — one commit eac
   resolveBroodCascadeFlush still returns null for the now-live aggression kind — the
   authored "filaments flush red" read is its deliberate follow-up; no colors were invented
   on Lane 2's side.
+- inf-brood-reserve-tell (WF-14 integration): the brood reserve's landing finally has a
+  voice — the wave's held-back second breath (B5) lands mid-wave as one gate clump at the
+  165 wu arrival ring and its `swarm:broodReserve` receipt had no consumer; the only word
+  near the drop was the family telegraph, which speaks a behavior line for ANY commitment
+  and carries no count and no bearing. survivalAnnounce now reads the receipt with the
+  reinforce tell's own sentence and machinery — the count and the compass word where the
+  clump landed ("Six more inbound — out of the north.", read against the pilot position so
+  the word stays true on screen), the same 8 s gap coalescing a multi-tick drop to one
+  line, the same 2/wave cap and shared counters, warn/finite-ttl, counted in the hard
+  per-wave bound; a landing nobody can read still says the count (sha below,
+  test/inf-brood-reserve-tell.test.mjs). `swarm:broodReserve` now has a production
+  consumer; the wave-7 candidate note is closed.
 
 ## Traps
 
