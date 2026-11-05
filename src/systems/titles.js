@@ -287,6 +287,10 @@ function ensureState(state) {
       seenAt: finiteInteger(record.seenAt),
       holderKey: cleanText(record.holderKey),
       ...(record.trickId ? { trickId: cleanText(record.trickId) } : {}),
+      // inf-title-greeting — the one station-voice acknowledgment stamp. 0 is a valid stamp;
+      // anything else non-finite restores as never greeted.
+      ...(Number.isFinite(Number(record.greetedAt)) && Number(record.greetedAt) >= 0
+        ? { greetedAt: Math.floor(Number(record.greetedAt)) } : {}),
     }))
     .filter((record) => record.id && record.holderKey);
   return own;
@@ -577,13 +581,14 @@ export function createTitlesSystem() {
       this._onPodResolved = (payload) => this._onSurvivorPodResolved(payload || {});
       this._onReleaseRatedEvt = (payload) => this._onReleaseRated(payload || {});
       this._onHeatChangedEvt = (payload) => this._onHeatChanged(payload || {});
+      this._onArrivalGreetedEvt = (payload) => this._onArrivalGreeted(payload || {});
       if (this.bus && typeof this.bus.on === 'function') {
         this.bus.on('title:holdResolved', this._onHold);
         this.bus.on('combat:damage', this._onDamage);
         this.bus.on('entity:killed', this._onKilled);
         this.bus.on('entity:spawned', this._onSpawned);
         this.bus.on('save:loaded', this._onSaveLoaded);
-        this.bus.on('game:newGame', this._onNewGame);
+        this.bus.on('game:new', this._onNewGame);
         this.bus.on('stunt:trickDetected', this._onTrickDetected);
         this.bus.on('stunt:trickAmended', this._onTrickDetected);
         this.bus.on('story:newGamePlusStarted', this._onNewGamePlus);
@@ -591,6 +596,7 @@ export function createTitlesSystem() {
         this.bus.on('survivorPod:rescued', this._onPodResolved);
         this.bus.on('tether:releaseRated', this._onReleaseRatedEvt);
         this.bus.on('heat:changed', this._onHeatChangedEvt);
+        this.bus.on('title:arrivalGreeted', this._onArrivalGreetedEvt);
       }
       this._rebindSilently();
     },
@@ -1177,6 +1183,29 @@ export function createTitlesSystem() {
         `quiet:${window.openedTick}:${tick}`);
     },
 
+    // ---- inf-title-greeting ----------------------------------------------------------------
+    // A station voice acknowledged a title sighting out loud (the arrival presenter emits this
+    // only when its receipt actually delivered). The titles bag stays this system's to write:
+    // the presenter picks the record with the pure data reader, this handler stamps greetedAt.
+    _onArrivalGreeted(payload) {
+      if (!this.state || !Array.isArray(this.state.story?.titlesSeen) || !payload) return null;
+      const seenId = cleanText(payload.seenId);
+      if (!seenId) return null;
+      ensureState(this.state);
+      const tick = Number.isFinite(Number(payload.greetedAt))
+        ? Math.max(0, Math.floor(Number(payload.greetedAt)))
+        : finiteInteger(this.state.tick);
+      let marked = 0;
+      for (const record of this.state.story.titlesSeen) {
+        if (!record || record.id !== seenId) continue;
+        if (record.greetedAt != null && Number.isFinite(Number(record.greetedAt))) break;
+        record.greetedAt = tick;
+        marked += 1;
+        break;
+      }
+      return marked ? { seenId, greetedAt: tick } : null;
+    },
+
     _onStuntTrick(trick) {
       const state = this.state;
       if (!state || !adventureStunts(state) || trick?.actorId !== state.playerId || !KNOWN_TRICK_ID_SET.has(trick?.trickId)) return null;
@@ -1256,9 +1285,10 @@ export function createTitlesSystem() {
         if (this._onPodResolved) this.bus.off('survivorPod:rescued', this._onPodResolved);
         if (this._onReleaseRatedEvt) this.bus.off('tether:releaseRated', this._onReleaseRatedEvt);
         if (this._onHeatChangedEvt) this.bus.off('heat:changed', this._onHeatChangedEvt);
+        if (this._onArrivalGreetedEvt) this.bus.off('title:arrivalGreeted', this._onArrivalGreetedEvt);
       }
       this._onHold = this._onDamage = this._onKilled = this._onSpawned = this._onSaveLoaded = this._onNewGame = this._onTrickDetected = this._onNewGamePlus = null;
-      this._onPodDelivered = this._onPodResolved = this._onReleaseRatedEvt = this._onHeatChangedEvt = null;
+      this._onPodDelivered = this._onPodResolved = this._onReleaseRatedEvt = this._onHeatChangedEvt = this._onArrivalGreetedEvt = null;
       this._activeEntityIds?.clear();
     },
   };

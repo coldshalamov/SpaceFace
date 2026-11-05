@@ -1,7 +1,9 @@
 import { SECTORS } from '../../data/sectors.js';
 import { barGreetingBarkFor } from '../../data/barks.js';
 import { stationContactMemoryFor } from '../../data/stationContacts.js';
+import { newestUngreetedPlayerTitleSeen } from '../../data/titles.js';
 import { rankFromRep } from '../../systems/factions.js';
+import { localizeText } from '../../localization/sourceText.js';
 import { hash32 } from '../../core/rng.js';
 import { dockIntentStatus } from '../../core/dockIntent.js';
 import { generateContacts } from './barContacts.js';
@@ -18,6 +20,34 @@ const ARRIVAL_LINES = Object.freeze({
   trusted: 'You are always welcome here.',
   wary: 'Keep your paperwork close. We are watching.',
 });
+
+// inf-title-greeting — the barkeep's one spoken acknowledgment of a NEW title. The world news
+// already printed the earn; this is the place you walk into answering it, once per title.
+// Flavor follows the earn verb: the aura records by name, every stunt title through one dock
+// register — the witnesses talked, the keeper confirms. Templates interpolate at composition.
+const TITLE_GREETING_LINES = Object.freeze({
+  title_thunderchild: 'Word crossed the band — the {title} flies under your name now. Drinks are on the house.',
+  title_lifeline: '{title}, they call you. The berths remember every pod you brought in.',
+  title_razorline: 'They still argue about the {title} cuts down here. Yard verdicts do not lie.',
+  title_quiet_clear: '{title} — a whole wanted window and not one hull down. The regulars checked twice.',
+});
+const TITLE_GREETING_STUNT = 'The docks are calling you {title} now. That was yours, was it? Thought so.';
+const TITLE_GREETING_FALLBACK = 'Word crossed the band — {title}, under your name. Congratulations are owed.';
+
+/**
+ * Pure. The one title clause this arrival can speak, or null. Reads only the durable titlesSeen
+ * receipt bag; the acknowledgment stamp (greetedAt) is written by the titles system when the
+ * receipt actually delivers, so a greeting crowded off the glass keeps its one chance.
+ */
+export function titleGreetingLineFor(state) {
+  const record = newestUngreetedPlayerTitleSeen(state);
+  if (!record) return null;
+  const title = String(record.title || '').trim() || 'a title';
+  const authored = String(record.id || '').split(':')[0] || '';
+  const template = TITLE_GREETING_LINES[authored]
+    || (authored.startsWith('title_') ? TITLE_GREETING_STUNT : TITLE_GREETING_FALLBACK);
+  return { seenId: record.id, titleId: authored, line: localizeText(template, { title }) };
+}
 const ANCHOR_MS = 4000;
 const RETRY_MS = 500;
 const CAPTION_MS = 600;
@@ -47,9 +77,14 @@ export function buildStationArrivalGreeting(state, stationId) {
   const body = host.canonicalKey || host.depthProgram
     ? host.line
     : barGreetingBarkFor(host.factionId, host.role, hash32(`${host.id}_arrival`)) || host.line;
+  // One NEW title per visit: the newest un-greeted sighting names itself in the greeting. The
+  // stamp waits for actual delivery (finish), so a crowded-out greeting keeps its chance.
+  const title = titleGreetingLineFor(state);
+  const text = `${pilot}, ${body || 'welcome aboard.'} ${ARRIVAL_LINES[band]}${title ? ` ${title.line}` : ''}`;
   return {
     stationId, contactId: host.id, speakerName: host.name, factionId: host.factionId,
-    band, text: `${pilot}, ${body || 'welcome aboard.'} ${ARRIVAL_LINES[band]}`,
+    band, text,
+    ...(title ? { titleSeenId: title.seenId, titleId: title.titleId } : {}),
   };
 }
 
@@ -94,6 +129,11 @@ export function createStationArrivalPresenter(ctx, options = {}) {
     v.waiting = false;
     cancel();
     showReceipt(v.greeting.speakerName, v.greeting.text, 'Bar');
+    // The line actually spoke: the titles system stamps greetedAt (its bag, its writer), so the
+    // same title is never greeted twice even across stations and saves.
+    if (v.greeting.titleSeenId) {
+      bus.emit('title:arrivalGreeted', { seenId: v.greeting.titleSeenId, stationId: v.stationId });
+    }
   }
   function attempt(v) {
     if (!valid(v) || v.delivered) return;
