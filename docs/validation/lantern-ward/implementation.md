@@ -1,5 +1,29 @@
 # Lantern Ward — implementation and qualification receipt
 
+## Current integration result
+
+Published implementation: [draft PR840](https://github.com/coldshalamov/SpaceFace/pull/840).
+The controller baseline is `f71edbfc`; production runtime is `8cf0034e`, with
+reviewed schema/replay metadata at `8c66b485`. Exact source and test hashes are
+in [final-source.json](evidence/final-source.json). No PR merge or public deploy
+has been performed.
+
+- Fresh merged native/contract regression: **73/73 passed**, no skips.
+- Existing relevant baseline: **10/13 initially passed**. Independent paired
+  captures isolate both golden changes to `meta.version 22→23`; all motion,
+  native bodies, traces and metrics match. Canonical schema regeneration passes.
+  The two strict five-run golden checks then pass after the reviewed hash update.
+  The first closure attempt rejected oversized provenance notes under the existing
+  evidence schema; those notes were split and the failed log is retained.
+- Independent ordinary **Import & Load**, then **F5 → F9**, reach live flight
+  on 8cf. Six blocking Ward hardware/shore producers have verified hashes.
+  The restored unfinished operation subsequently installs the original lamp,
+  leaves the original cradle empty and sends Nessa away; the unassisted player
+  remains at 5000 credits. Final public artifacts and verdict are in the hostile reports.
+- Visual qualification remains separate: current clean wide frames establish the
+  restored shore but have not yet made the family fittings unambiguous. The
+  independent report owns that decision. No native-GPU or 60 fps qualification.
+
 ## G0 · source and ownership lock
 
 Initial integrated source: `fcc4491ac44162e5e73b5a062ccc37622fe7b9d4` (4 November 2026).
@@ -363,3 +387,119 @@ Electronics unit in the hold and hailing Nessa beside the original lamp at low
 relative speed. The normal procurement and cargo owners consume that unit.
 Local borrowing is legitimate; witnessed removal beyond the yard can record theft.
 Leaving without helping remains valid, and restored service history cannot pay again.
+
+
+## Current controller integration and import bridge repair
+
+Latest production runtime: **8cf0034e814ef18af14dcc52f26485e637820e57**, tree
+`33f509a5c4012d36e7261befce58c216a2930d37`. The current Finish controller
+master **f71edbfcbccb33c2fbc424116c6684b4ed7596ad** is retained as the second
+parent of ordinary merge **27f4571dc964ee50944622ab33385faba796ec22**. The
+only merge conflict was the worker's appended domain list: the controller's
+`dockingPresentation` stays first, followed by `npcJobs.lanternWard`. The
+automerged world, scanner and missions hooks were inspected against the new
+controller baseline. No controller edit was discarded or reauthored.
+
+The independent public retry on9c7 exposed a separate existing import-bridge
+failure before it could qualify opening admission. `saveImport` put the
+canonical asynchronous importer's unresolved Promise inside its response; the
+worker could not clone that response. The main-side facade also discarded the
+UI-selected destination and treated a domain refusal as a successful import.
+The8cf repair awaits the existing owner, passes the selected destination, leaves
+omitted destinations to the canonical first-empty chooser, and requires both
+transport success and owner acceptance. No save writer, storage, schema,
+clock, timeout or admission gate changed in this repair.
+
+The specialist's focused production-host/facade suite and adjacent canonical
+import checks pass **21/21**, with no failures, cancellations or skips, in
+1972.806ms. Its two in-memory original-source controls reproduce the actual
+Promise-clone failure and the wrong Quick-slot/false-success response without
+rewriting shared source. Successful focused imports use controlled owner
+results; malformed imports execute the real canonical validator. This check
+therefore establishes the bridge contract, not successful public restoration
+of the exported campaign. The unchanged seed7407 export is being retried through
+the ordinary Import & Load screen by the independent reviewer. That retry and the subsequent public F5/F9 roundtrip now pass; see the final public closure below.
+
+On this merged source, `npm run build:indexes` succeeds with361 encounter
+modules,10 flavor modules,2074 events and220 systems in update order. The two
+living-world commands again pass the authored specification checks. These
+results do not close the independent visual verdict or establish a rendered
+performance comparison. New source and historical source are separated in
+[final-source.json](evidence/final-source.json) and
+[pre-integration-source.json](evidence/pre-integration-source.json).
+
+
+### Fresh merged-source behavioral result
+
+The serial regression on 8cf passed **73/73**, with zero failures, cancellations,
+skips or todo, in 82,178.511215ms of TAP time. The ten selected files cover native
+world life, story/reward, saved finite bodies, Nessa hail, identity/authority,
+worker projection, opening admission, the import bridge and adjacent canonical
+import rejection/export behavior. All captured source and test hashes remained
+unchanged from start to finish. The exact command, raw stdout/stderr and source
+identity are in [the machine receipt](evidence/merged-source-regression.json)
+and [raw TAP log](evidence/merged-source-regression.log). This is a new run on
+the merged candidate, not a relabeling of earlier branch results.
+
+The reviewable implementation is published in
+[PR840](https://github.com/coldshalamov/SpaceFace/pull/840). It remains a draft
+for the Finish integration controller; no PR merge or public production deploy
+has been performed.
+
+
+## Baseline semantic diagnosis and closure
+
+The first relevant 13-link baseline returned 10 passes and three failures.
+The generated schema still described v22; the two golden snapshots included
+`meta.version 22` while the intended Ward migration requires 23. The independent
+diagnosis did not infer that explanation from matching reloads: it captured
+the actual current runtime and in-memory controller f71 source for V3 reload60,
+V3 reload600 and legacy reload600. Each complete canonical snapshot differs at
+exactly `$.meta.version 22→23`. All 720 per-step motion/vitals frames, full 855-event
+V3 and 414-event legacy traces, combat traces, metrics and final native bodies
+match within each pair. Current-runtime controls substituting only the old
+version module reproduce the exact prior complete snapshots and hashes.
+
+R2 independently rehashed 20 raw outputs and recomputed these comparisons before
+endorsing the four existing hash-field updates. The canonical schema retains
+465 paths. No input, event count/family, threshold, physics owner or five-run
+requirement changed. The original failures and exact evidence remain in
+[the baseline log](evidence/merged-relevant-baseline.log) and
+[the complete semantic receipt](evidence/merged-baseline-diagnosis.json).
+
+Commit 07a updates the generated contract and reviewed hash metadata. Its first
+closure passed save-schema but rejected the new provenance notes before any
+simulation because individual notes exceeded the existing 260-character limit.
+Commit 8c66 splits those notes within that unchanged bound. The strict modern
+and legacy five-run checks then pass **2/2**,7.220seconds wall time.
+[Failed metadata closure](evidence/merged-baseline-closure.log);
+[successful strict golden closure](evidence/merged-golden-closure.log).
+This closes the three concrete failures; it is not presented as a fresh full
+13-link or17-link baseline, or as a rendered performance benchmark.
+
+
+## Final imported-campaign closure on the merged runtime
+
+The first reviewer independently imported the byte-identical public export,
+saved Quick during the real brace phase at tick35867 /597.7833seconds, and
+loaded that new checkpoint with F9. The actual opening plan completed with
+36roots, matching census, zero unverified entries and six explicitly verified
+blocking Ward producers. Seven native-body probes match the presentation
+mirror in pose, velocity, hull and renewed generation. The nine stable records
+and family/bearing serials persist.
+
+Live simulation subsequently reached installation by tick37439 /623.9333seconds:
+the original lamp603 is lit in receiver604, cradle602 is empty, bearing607
+remains in its service face, and Nessa608 departs. Help/theft/damage/borrow flags
+remain false and credits remain 5000. This directly proves resumed, attended
+completion without help payment. It is not a timed-ignore completion or a
+second completed-state reload. R2 independently verified the artifact, image
+hashes, all 15 summarized observations against raw reads and the seven native
+probes before closing the specific public admission failure.
+
+[Exact public evidence](evidence/independent-public-import-f9-8cf0034e.json).
+Frames16–21 preserve the visual limits:18 is a Pause overlay;19 is sharper
+fixed-Balanced flight; the final tracked approach leaves all three work roots
+outside the left viewport during interception. Neither reviewer infers a
+remaining shape defect from absent subjects, and neither calls that acceptance.
+A separate fresh-save arrival at fixed Balanced quality is being reviewed.

@@ -17,9 +17,22 @@
     "c6036f79d668c8baa2e430693c3e118216a79956": "56ec4e2149650067bcf467d8112577092838b93e",
     "95a775e283a3936523b0db493ac2a4e4eb67fdc4": "5144e48febcd9f84801a71d42ef133595c5e9ce4",
     "dee4757cfaba8e069a6f270fa80c8199aa9f06f2": "f785433a447d25b20f33222a055d65bd7aba31c2",
-    "9c7bb9006b5dffee7fc39487277ad8f411feba10": "5ef89c7f14d1489ec514d06e6085a09f91be3e3d"
+    "9c7bb9006b5dffee7fc39487277ad8f411feba10": "5ef89c7f14d1489ec514d06e6085a09f91be3e3d",
+    "742454b8c514db5f12b9aeb9a6f10d496f1183bb": "827b93a6a618879120a0512c62956767eb7abd4c",
+    "27f4571dc964ee50944622ab33385faba796ec22": "d8cd1c4a696da22d500b361b243c1b9fe4cb2de9",
+    "8cf0034e814ef18af14dcc52f26485e637820e57": "74329c72502df3af12696c63687f60f823d3e5fe",
+    "07a39eef4d26ce09061d2a430a98726b125527cd": "83211f5d8aa68b4ec0995f68b1f1d62b16d48791",
+    "8c66b48500d475e48518118293b810dab589e4fc": "2cee6f0ad2af9734634f285c201842b02fcda7f0"
   },
-  "sourceTip": "5ef89c7f14d1489ec514d06e6085a09f91be3e3d",
-  "sourceTree": "9480029db29511f4260b59ff05a4c78c919b4357",
-  "fetchVerification": "Fetched the published branch through ordinary git and verified sourceTip^{tree} equals local9c7bb900^{tree}. The same fetch discovered controller master advancing from fcc4491ac44162e5e73b5a062ccc37622fe7b9d4 to f71edbfcbccb33c2fbc424116c6684b4ed7596ad; integration is pending in this checkpoint."
+  "sourceTip": "2cee6f0ad2af9734634f285c201842b02fcda7f0",
+  "sourceTree": "b94f35023dcce270a1938fc904b4db815399bd2a",
+  "fetchVerification": "Ordinary git fetch of both master and the published feature branch verified published74329c72502df3af12696c63687f60f823d3e5fe^{tree} equals local8cf0034e814ef18af14dcc52f26485e637820e57^{tree}:33f509a5c4012d36e7261befce58c216a2930d37. The published branch retains current controller masterf71edbfcbccb33c2fbc424116c6684b4ed7596ad as an ancestor through the ordinary merge.",
+  "integration": {
+    "upstream": "f71edbfcbccb33c2fbc424116c6684b4ed7596ad",
+    "localMerge": "27f4571dc964ee50944622ab33385faba796ec22",
+    "publishedMerge": "d8cd1c4a696da22d500b361b243c1b9fe4cb2de9",
+    "additionalParent": "f71edbfcbccb33c2fbc424116c6684b4ed7596ad"
+  },
+  "sourceCandidate": "8c66b48500d475e48518118293b810dab589e4fc",
+  "runtimeCandidate": "8cf0034e814ef18af14dcc52f26485e637820e57"
 }

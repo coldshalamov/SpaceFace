@@ -1,0 +1,473 @@
+COMMAND: node --test --test-concurrency=1 --test-reporter=tap test/lantern-ward-world-life.test.mjs test/lantern-ward-story.test.mjs test/lantern-ward-save.test.mjs test/lantern-ward-hail.test.mjs test/lantern-ward-authority.test.mjs test/lantern-ward-worker-projection.test.mjs test/lantern-ward-opening-admission.test.mjs test/lantern-ward-save-import-bridge.test.mjs test/save-rejected-candidate.test.mjs test/fb-export-bundles-medals.test.mjs
+SOURCE_HEAD: 8cf0034e814ef18af14dcc52f26485e637820e57
+SOURCE_TREE: 33f509a5c4012d36e7261befce58c216a2930d37
+STARTED_UTC: 2026-11-04T23:52:16.456365+00:00
+FINISHED_UTC: 2026-11-04T23:53:38.718884+00:00
+EXIT_CODE: 0
+ELAPSED_WALL_MS: 82262.494364
+RAW_STDOUT_BYTES: 26761
+--- BEGIN RAW STDOUT ---
+TAP version 13
+# Subtest: export bundles both profile side bags and import restores them after wiping
+ok 1 - export bundles both profile side bags and import restores them after wiping
+  ---
+  duration_ms: 14.329477
+  type: 'test'
+  ...
+# Subtest: import merges additively — counters max, unlocks union, a best is never lowered
+ok 2 - import merges additively — counters max, unlocks union, a best is never lowered
+  ---
+  duration_ms: 5.704695
+  type: 'test'
+  ...
+# Subtest: an import without a destination lands in the first empty numbered slot, never quick
+ok 3 - an import without a destination lands in the first empty numbered slot, never quick
+  ---
+  duration_ms: 9.621356
+  type: 'test'
+  ...
+# Subtest: a gzipped export bundle carries profile on the wrapper and merges it on import
+ok 4 - a gzipped export bundle carries profile on the wrapper and merges it on import
+  ---
+  duration_ms: 17.253405
+  type: 'test'
+  ...
+# Subtest: a rejected envelope never touches the side bags
+ok 5 - a rejected envelope never touches the side bags
+  ---
+  duration_ms: 0.876927
+  type: 'test'
+  ...
+# Subtest: mergeCrucibleProfiles merges upward under one record key and stays idempotent
+ok 6 - mergeCrucibleProfiles merges upward under one record key and stays idempotent
+  ---
+  duration_ms: 1.25843
+  type: 'test'
+  ...
+# Subtest: complete live admission and record restoration accept every original and coherent custody phase
+ok 7 - complete live admission and record restoration accept every original and coherent custody phase
+  ---
+  duration_ms: 10.704727
+  type: 'test'
+  ...
+# Subtest: each live manifest and custody substitution fails independently and cannot heal through save normalization
+ok 8 - each live manifest and custody substitution fails independently and cannot heal through save normalization
+  ---
+  duration_ms: 3.551481
+  type: 'test'
+  ...
+# Subtest: clamp custody rejects empty IDs, wrong owners, mismatched roles and contradictory cradle loads
+ok 9 - clamp custody rejects empty IDs, wrong owners, mismatched roles and contradictory cradle loads
+  ---
+  duration_ms: 3.378695
+  type: 'test'
+  ...
+# Subtest: stolen movable originals survive a canonical sector crossing without changing their Helios provenance
+ok 10 - stolen movable originals survive a canonical sector crossing without changing their Helios provenance
+  ---
+  duration_ms: 2.96935
+  type: 'test'
+  ...
+# Subtest: actor catch-up custody uses finite living original hull, pose, recipe and accepted work lease
+ok 11 - actor catch-up custody uses finite living original hull, pose, recipe and accepted work lease
+  ---
+  duration_ms: 3.400588
+  type: 'test'
+  ...
+# Subtest: malformed Ward pose and null ledger values retain permanent unavailable identities across repeated normalization
+ok 12 - malformed Ward pose and null ledger values retain permanent unavailable identities across repeated normalization
+  ---
+  duration_ms: 6.027122
+  type: 'test'
+  ...
+# Subtest: malformed Ward hardware and actors cannot reach the generic enemy rematerialization shortcut
+ok 13 - malformed Ward hardware and actors cannot reach the generic enemy rematerialization shortcut
+  ---
+  duration_ms: 3.658138
+  type: 'test'
+  ...
+# Subtest: real spawn reconciliation never remints a malformed original with valid, absent or legacy Ward state
+ok 14 - real spawn reconciliation never remints a malformed original with valid, absent or legacy Ward state
+  ---
+  duration_ms: 456.395968
+  type: 'test'
+  ...
+# Subtest: live work and receipt authority reject independent manifest substitutions on the actual native original
+ok 15 - live work and receipt authority reject independent manifest substitutions on the actual native original
+  ---
+  duration_ms: 2328.38218
+  type: 'test'
+  ...
+# Subtest: ordinary Nessa hail describes a physical repair and dispatches its offered action once
+ok 16 - ordinary Nessa hail describes a physical repair and dispatches its offered action once
+  ---
+  duration_ms: 6.893803
+  type: 'test'
+  ...
+# Subtest: expired, unoffered and recycled-occupant hail actions cannot dispatch a repair
+ok 17 - expired, unoffered and recycled-occupant hail actions cannot dispatch a repair
+  ---
+  duration_ms: 1.75183
+  type: 'test'
+  ...
+# Subtest: the first forty observed seconds stay wordless; saved return dialogue follows actual work history
+ok 18 - the first forty observed seconds stay wordless; saved return dialogue follows actual work history
+  ---
+  duration_ms: 0.853973
+  type: 'test'
+  ...
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: all wrapped Ward bodies and shore variants earn canonical recipe admission with exact live subjects
+ok 19 - all wrapped Ward bodies and shore variants earn canonical recipe admission with exact live subjects
+  ---
+  duration_ms: 195.373471
+  type: 'test'
+  ...
+# Subtest: lantern-ward-authored-civic-v1 Ward roots remain blocked despite nonempty geometry and a matching resource census
+ok 20 - lantern-ward-authored-civic-v1 Ward roots remain blocked despite nonempty geometry and a matching resource census
+  ---
+  duration_ms: 33.104436
+  type: 'test'
+  ...
+# Subtest: unmarked Ward roots remain blocked despite nonempty geometry and a matching resource census
+ok 21 - unmarked Ward roots remain blocked despite nonempty geometry and a matching resource census
+  ---
+  duration_ms: 28.481471
+  type: 'test'
+  ...
+# Subtest: save import uses the production worker command boundary and save facade
+    # Subtest: awaits the asynchronous owner before a clone-safe worker reply
+    ok 1 - awaits the asynchronous owner before a clone-safe worker reply
+      ---
+      duration_ms: 5.072941
+      type: 'test'
+      ...
+    # Subtest: facade preserves the selected destination and waits for owner success
+    ok 2 - facade preserves the selected destination and waits for owner success
+      ---
+      duration_ms: 2.060677
+      type: 'test'
+      ...
+    # Subtest: canonical malformed import is rejected without losing the live world or worker
+    ok 3 - canonical malformed import is rejected without losing the live world or worker
+      ---
+      duration_ms: 5.087421
+      type: 'test'
+      ...
+    # Subtest: an asynchronous domain refusal is not reported as successful transport
+    ok 4 - an asynchronous domain refusal is not reported as successful transport
+      ---
+      duration_ms: 1.44088
+      type: 'test'
+      ...
+    # Subtest: an asynchronous owner exception becomes a clone-safe failed reply
+    ok 5 - an asynchronous owner exception becomes a clone-safe failed reply
+      ---
+      duration_ms: 2.039375
+      type: 'test'
+      ...
+    # Subtest: an omitted destination remains the canonical owner first-empty choice
+    ok 6 - an omitted destination remains the canonical owner first-empty choice
+      ---
+      duration_ms: 1.314203
+      type: 'test'
+      ...
+    # Subtest: facade rejects incomplete acknowledgements and transport failure
+    ok 7 - facade rejects incomplete acknowledgements and transport failure
+      ---
+      duration_ms: 0.368736
+      type: 'test'
+      ...
+    1..7
+ok 22 - save import uses the production worker command boundary and save facade
+  ---
+  duration_ms: 175.561164
+  type: 'test'
+  ...
+# Subtest: legacy Continue starts unvisited Ward history without replacing existing jobs or memorial records
+ok 23 - legacy Continue starts unvisited Ward history without replacing existing jobs or memorial records
+  ---
+  duration_ms: 1.865127
+  type: 'test'
+  ...
+# Subtest: migration never resurrects supplied Ward history and tolerates malformed old envelopes
+ok 24 - migration never resurrects supplied Ward history and tolerates malformed old envelopes
+  ---
+  duration_ms: 0.345951
+  type: 'test'
+  ...
+# Subtest: world owner captures every finite body with its actual pose, damage and custody
+ok 25 - world owner captures every finite body with its actual pose, damage and custody
+  ---
+  duration_ms: 7.805721
+  type: 'test'
+  ...
+# Subtest: dead, substituted and malformed lamp records cannot fall through to a generic ship
+ok 26 - dead, substituted and malformed lamp records cannot fall through to a generic ship
+  ---
+  duration_ms: 1.16989
+  type: 'test'
+  ...
+# Subtest: Continue preserves all three crew hulls, work identities, damage and an emptied hold
+ok 27 - Continue preserves all three crew hulls, work identities, damage and an emptied hold
+  ---
+  duration_ms: 5.057167
+  type: 'test'
+  ...
+# Subtest: optional ambient service settles through canonical world sector and economy event once
+ok 28 - optional ambient service settles through canonical world sector and economy event once
+  ---
+  duration_ms: 2.716085
+  type: 'test'
+  ...
+# Subtest: only a stable receipt ID is accepted, never a caller-provided receipt object
+ok 29 - only a stable receipt ID is accepted, never a caller-provided receipt object
+  ---
+  duration_ms: 0.201077
+  type: 'test'
+  ...
+# Subtest: receipt identity, cardinality, commitment and player contribution are strict
+ok 30 - receipt identity, cardinality, commitment and player contribution are strict
+  ---
+  duration_ms: 0.438268
+  type: 'test'
+  ...
+# Subtest: late, future and off-sector evidence cannot settle
+ok 31 - late, future and off-sector evidence cannot settle
+  ---
+  duration_ms: 0.41271
+  type: 'test'
+  ...
+# Subtest: work authority denial of a replaced generation is honored even with a saved completion
+ok 32 - work authority denial of a replaced generation is honored even with a saved completion
+  ---
+  duration_ms: 0.217903
+  type: 'test'
+  ...
+# Subtest: work receipt lookup failures are closed without reserving or paying
+ok 33 - work receipt lookup failures are closed without reserving or paying
+  ---
+  duration_ms: 0.226565
+  type: 'test'
+  ...
+# Subtest: reentrant dispatch cannot pay twice and leaves the saved journal settled
+ok 34 - reentrant dispatch cannot pay twice and leaves the saved journal settled
+  ---
+  duration_ms: 0.270379
+  type: 'test'
+  ...
+# Subtest: Continue preserves both settled and uncertain reserved journals without repayment
+ok 35 - Continue preserves both settled and uncertain reserved journals without repayment
+  ---
+  duration_ms: 0.321576
+  type: 'test'
+  ...
+# Subtest: normalization is additive, typed, whitelisted, idempotent and nonmutating
+ok 36 - normalization is additive, typed, whitelisted, idempotent and nonmutating
+  ---
+  duration_ms: 0.481282
+  type: 'test'
+  ...
+# Subtest: authority capability and valid balance are required before reserving
+ok 37 - authority capability and valid balance are required before reserving
+  ---
+  duration_ms: 0.455574
+  type: 'test'
+  ...
+# Subtest: reward respects integer capacity including a full credit balance
+ok 38 - reward respects integer capacity including a full credit balance
+  ---
+  duration_ms: 0.703981
+  type: 'test'
+  ...
+# Subtest: throwing or missing credit listeners preserve a closed reservation across Continue
+ok 39 - throwing or missing credit listeners preserve a closed reservation across Continue
+  ---
+  duration_ms: 0.640887
+  type: 'test'
+  ...
+# Subtest: completion presentation failures cannot reopen a paid reward
+ok 40 - completion presentation failures cannot reopen a paid reward
+  ---
+  duration_ms: 1.234585
+  type: 'test'
+  ...
+# Subtest: dialogue remains a deterministic pure projection with distinct household consequences
+ok 41 - dialogue remains a deterministic pure projection with distinct household consequences
+  ---
+  duration_ms: 1.213504
+  type: 'test'
+  ...
+# Subtest: saved causal revisits require an explicit player revisit, never commuter departures
+ok 42 - saved causal revisits require an explicit player revisit, never commuter departures
+  ---
+  duration_ms: 0.234617
+  type: 'test'
+  ...
+# Subtest: unknown status stays neutral and the canonical memorial stays dark
+ok 43 - unknown status stays neutral and the canonical memorial stays dark
+  ---
+  duration_ms: 0.455573
+  type: 'test'
+  ...
+# Subtest: Ward articulation and explicit cleared flags cross browser JSON with scalar dirty detection
+ok 44 - Ward articulation and explicit cleared flags cross browser JSON with scalar dirty detection
+  ---
+  duration_ms: 6.201809
+  type: 'test'
+  ...
+# Subtest: Ward articulation and explicit cleared flags cross node V8 with scalar dirty detection
+ok 45 - Ward articulation and explicit cleared flags cross node V8 with scalar dirty detection
+  ---
+  duration_ms: 1.515812
+  type: 'test'
+  ...
+# Subtest: worker custody, delivery completion and commuter yield update without transporting authority
+ok 46 - worker custody, delivery completion and commuter yield update without transporting authority
+  ---
+  duration_ms: 1.956323
+  type: 'test'
+  ...
+# Subtest: late recycled occupants, wrong records, partial frames and removed entities cannot inherit Ward visuals
+ok 47 - late recycled occupants, wrong records, partial frames and removed entities cannot inherit Ward visuals
+  ---
+  duration_ms: 1.130933
+  type: 'test'
+  ...
+# Subtest: bounded Ward domains keep Nessa Hail and saved causal history in step with the worker
+ok 48 - bounded Ward domains keep Nessa Hail and saved causal history in step with the worker
+  ---
+  duration_ms: 50.875401
+  type: 'test'
+  ...
+# LANTERN_NATIVE_PHASE 12 blocked
+# LANTERN_NATIVE_PHASE 248 transit
+# LANTERN_NATIVE_PHASE 1581 brace
+# LANTERN_NATIVE_PHASE 3405 connect
+# LANTERN_NATIVE_PHASE 4484 installed
+# LANTERN_NATIVE_RESULT {"status":{"districtId":"district_helios_lantern_ward","phase":"installed","blocked":false,"installed":true,"damaged":false,"missingLamp":false,"cradleMissing":false,"cradleStolen":false,"playerHelped":true,"helpedBy":"cleared_passage","ignored":false,"repaired":false,"receiverRecordId":"lantern-ward:receiver","lampRecordId":"lantern-ward:lamp","lampSerial":"venn-family-lamp:01","receiptId":"lantern-ward:venn-family-lamp:service:01","history":{"playerCleared":true,"playerCarried":false,"borrowed":false,"cradleStolen":false,"lampStolen":false,"damaged":false,"repaired":false,"ignored":false,"recovered":false,"clampSounded":true,"departures":1,"installations":1,"maintenanceServices":1}},"bodies":[{"role":"cradle","pos":{"x":1829.987548828125,"y":0,"z":-650},"vel":{"x":0.014941258355975151,"y":0,"z":0},"rot":0,"phase":"approach"},{"role":"lamp","pos":{"x":1830.029052734375,"y":0,"z":-695.00439453125},"vel":{"x":-0.0348627008497715,"y":0,"z":0.00527350977063179},"rot":0,"phase":"connect"},{"role":"receiver","pos":{"x":1830,"y":0,"z":-695},"vel":{"x":0,"y":0,"z":0},"rot":0,"phase":"connect"},{"role":"obstruction","pos":{"x":2913.88671875,"y":0,"z":-308.5796203613281},"vel":{"x":20.000001907348633,"y":0,"z":6.000000476837158},"rot":1.570796461153735,"phase":"waiting"},{"role":"service_face","pos":{"x":1652,"y":0,"z":-670},"vel":{"x":0,"y":0,"z":0},"rot":0,"phase":"retreat"},{"role":"maintenance_part","pos":{"x":1651.9947509765625,"y":0,"z":-648.9886474609375},"vel":{"x":0.006298755295574665,"y":0,"z":-0.013622899539768696},"rot":0,"phase":"waiting"},{"role":"tug","pos":{"x":1807.94580078125,"y":0,"z":-678.9728393554688},"vel":{"x":0.03793954849243164,"y":0,"z":-0.01901250332593918},"rot":-0.8020340341409151},{"role":"commuter","pos":{"x":1736.446533203125,"y":0,"z":-509.02398681640625},"vel":{"x":13.735438346862793,"y":0,"z":-1.8127434253692627},"rot":-0.13121755544844907},{"role":"maintenance","pos":{"x":1694.9427490234375,"y":0,"z":-545.028564453125},"vel":{"x":0.04007574915885925,"y":0,"z":0.019995149224996567},"rot":1.0541147249789102,"phase":"brace"}],"lines":[{"id":"att_000004","owner":8,"target":9,"rest":0.5,"source":{"x":0,"z":21},"dest":{"x":0,"z":0}},{"id":"att_000005","owner":6,"target":5,"rest":0.5,"source":{"x":0,"z":0},"dest":{"x":0,"z":0}}]}
+# LANTERN_CARRY_RESULT {"status":{"districtId":"district_helios_lantern_ward","phase":"installed","blocked":true,"installed":true,"damaged":false,"missingLamp":false,"cradleMissing":false,"cradleStolen":false,"playerHelped":true,"helpedBy":"physical_carry","ignored":false,"repaired":false,"receiverRecordId":"lantern-ward:receiver","lampRecordId":"lantern-ward:lamp","lampSerial":"venn-family-lamp:01","receiptId":"lantern-ward:venn-family-lamp:service:01","history":{"playerCleared":false,"playerCarried":true,"borrowed":true,"cradleStolen":false,"lampStolen":false,"damaged":false,"repaired":false,"ignored":false,"recovered":false,"clampSounded":true,"departures":0,"installations":1,"maintenanceServices":1}},"player":{"x":1964.93798828125,"y":0,"z":-500.01568603515625},"cradle":{"x":1830.0196533203125,"y":0,"z":-649.989501953125},"lamp":{"x":1829.9951171875,"y":0,"z":-695.0047607421875},"tug":{"x":1874.9876708984375,"y":0,"z":-650.0313720703125},"mast":{"x":1775,"y":0,"z":-650},"mastContacts":[]}
+# LANTERN_FULL_ADVENTURE {"simTime":99.99999999999561,"status":{"districtId":"district_helios_lantern_ward","phase":"blocked","blocked":true,"installed":false,"damaged":false,"missingLamp":false,"cradleMissing":false,"cradleStolen":false,"playerHelped":false,"helpedBy":null,"ignored":false,"repaired":false,"receiverRecordId":"lantern-ward:receiver","lampRecordId":"lantern-ward:lamp","lampSerial":"venn-family-lamp:01","receiptId":null,"history":{"playerCleared":false,"playerCarried":false,"borrowed":false,"cradleStolen":false,"lampStolen":false,"damaged":false,"repaired":false,"ignored":false,"recovered":false,"clampSounded":true,"departures":1,"installations":0,"maintenanceServices":1}},"cradle":{"pos":{"x":1709.5311279296875,"y":0,"z":-660.5938720703125},"vel":{"x":0.1317712366580963,"y":0,"z":2.99710750579834}},"lamp":{"pos":{"x":1709.2796630859375,"y":0,"z":-661.0111694335938},"vel":{"x":0.13190442323684692,"y":0,"z":2.9032039642333984}},"tug":{"pos":{"x":1670.055419921875,"y":0,"z":-622.0270385742188},"vel":{"x":-0.03879404067993164,"y":0,"z":0.018927067518234253}},"maintenance":[{"pos":{"x":1694.9427490234375,"y":0,"z":-545.028564453125},"vel":{"x":0.04007575660943985,"y":0,"z":0.019995147362351418},"rot":1.0541358291780776,"job":"job:lantern-ward:maintenance","carrying":null}],"part":[{"pos":{"x":1651.9906005859375,"y":0,"z":-649.0156860351562},"vel":{"x":0.011279154568910599,"y":0,"z":0.018822956830263138},"rot":-2.2740219429717712e-11,"custody":{"holder":"service_face","serial":"lantern-ward:shutter-bearing:01","clamp":{"attachmentId":"att_000005","active":true,"ownerRecordId":"lantern-ward:service_face","targetRecordId":"lantern-ward:maintenance_part"}}}],"lines":[{"owner":606,"target":607,"rest":0.5,"mode":"lantern_ward_attended_work"},{"owner":610,"target":611,"rest":0.5,"mode":"lantern_ward_attended_work"},{"owner":636,"target":178,"rest":64.19810198078598,"mode":"npc_tow"},{"owner":589,"target":590,"rest":234.58122298242895,"mode":"npc_tow"},{"owner":577,"target":626,"rest":310.6875289704595,"mode":"npc_tow"}],"contacts":[{"tick":2521,"impulse":69.02978515625,"a":"The Spare Keg — a bulk container set down mid-hop","b":"Lantern Steps · Shutter Bearing 01"},{"tick":2522,"impulse":11.233731079101563,"a":"The Spare Keg — a bulk container set down mid-hop","b":"Lantern Steps · Shutter Bearing 01"},{"tick":2526,"impulse":4.670048014322917,"a":"The Spare Keg — a bulk container set down mid-hop","b":"Lantern Steps · Shutter Bearing 01"},{"tick":2527,"impulse":3.939447275797526,"a":"The Spare Keg — a bulk container set down mid-hop","b":"Lantern Steps · Shutter Bearing 01"},{"tick":2528,"impulse":88.83221028645833,"a":"The Spare Keg — a bulk container set down mid-hop","b":"Lantern Steps · Shutter Bearing 01"},{"tick":2529,"impulse":31.558209228515626,"a":"The Spare Keg — a bulk container set down mid-hop","b":"Lantern Steps · Shutter Bearing 01"},{"tick":2530,"impulse":30.81648152669271,"a":"The Spare Keg — a bulk container set down mid-hop","b":"Lantern Steps · Shutter Bearing 01"},{"tick":2531,"impulse":27.674538167317706,"a":"The Spare Keg — a bulk container set down mid-hop","b":"Lantern Steps · Shutter Bearing 01"},{"tick":2532,"impulse":24.658646647135416,"a":"The Spare Keg — a bulk container set down mid-hop","b":"Lantern Steps · Shutter Bearing 01"},{"tick":2533,"impulse":57.61129964192708,"a":"The Spare Keg — a bulk container set down mid-hop","b":"Lantern Steps · Shutter Bearing 01"},{"tick":2534,"impulse":48.44679361979166,"a":"The Spare Keg — a bulk container set down mid-hop","b":"Lantern Steps · Shutter Bearing 01"},{"tick":2535,"impulse":52.122355143229164,"a":"The Spare Keg — a bulk container set down mid-hop","b":"Lantern Steps · Shutter Bearing 01"},{"tick":2536,"impulse":52.871988932291664,"a":"The Spare Keg — a bulk container set down mid-hop","b":"Lantern Steps · Shutter Bearing 01"},{"tick":2537,"impulse":53.642329915364584,"a":"The Spare Keg — a bulk container set down mid-hop","b":"Lantern Steps · Shutter Bearing 01"},{"tick":2538,"impulse":56.32313639322916,"a":"The Spare Keg — a bulk container set down mid-hop","b":"Lantern Steps · Shutter Bearing 01"},{"tick":2539,"impulse":53.4055908203125,"a":"The Spare Keg — a bulk container set down mid-hop","b":"Lantern Steps · Shutter Bearing 01"},{"tick":2540,"impulse":55.64431559244792,"a":"The Spare Keg — a bulk container set down mid-hop","b":"Lantern Steps · Shutter Bearing 01"},{"tick":2541,"impulse":56.26677652994792,"a":"The Spare Keg — a bulk container set down mid-hop","b":"Lantern Steps · Shutter Bearing 01"},{"tick":2542,"impulse":56.84909261067708,"a":"The Spare Keg — a bulk container set down mid-hop","b":"Lantern Steps · Shutter Bearing 01"},{"tick":2543,"impulse":57.36083984375,"a":"The Spare Keg — a bulk container set down mid-hop","b":"Lantern Steps · Shutter Bearing 01"},{"tick":2544,"impulse":57.801814778645834,"a":"The Spare Keg — a bulk container set down mid-hop","b":"Lantern Steps · Shutter Bearing 01"},{"tick":2545,"impulse":58.225512695312496,"a":"The Spare Keg — a bulk container set down mid-hop","b":"Lantern Steps · Shutter Bearing 01"},{"tick":2546,"impulse":58.578104654947914,"a":"The Spare Keg — a bulk container set down mid-hop","b":"Lantern Steps · Shutter Bearing 01"},{"tick":2547,"impulse":58.85812581380208,"a":"The Spare Keg — a bulk container set down mid-hop","b":"Lantern Steps · Shutter Bearing 01"}]}
+# Subtest: native production order: a cleared cut carries the finite lamp and commits its receiver once
+ok 49 - native production order: a cleared cut carries the finite lamp and commits its receiver once
+  ---
+  duration_ms: 2597.859167
+  type: 'test'
+  ...
+# Subtest: native damaged original accepts exactly one procured electronics unit and resumes the real installation
+ok 50 - native damaged original accepts exactly one procured electronics unit and resumes the real installation
+  ---
+  duration_ms: 2264.69625
+  type: 'test'
+  ...
+# Subtest: native alternative: a player Massline carries the loaded cradle around the still-blocked cut
+ok 51 - native alternative: a player Massline carries the loaded cradle around the still-blocked cut
+  ---
+  duration_ms: 6456.446621
+  type: 'test'
+  ...
+# Subtest: exact hardware captures native payload recipe and rejects an impostor or malformed record
+ok 52 - exact hardware captures native payload recipe and rejects an impostor or malformed record
+  ---
+  duration_ms: 3.893697
+  type: 'test'
+  ...
+# Subtest: uninvited commuter uses its specific berth approach and waits for the actual slow service launch
+ok 53 - uninvited commuter uses its specific berth approach and waits for the actual slow service launch
+  ---
+  duration_ms: 1875.209128
+  type: 'test'
+  ...
+# Subtest: a mast moved only halfway out still blocks the loaded swept route
+ok 54 - a mast moved only halfway out still blocks the loaded swept route
+  ---
+  duration_ms: 151.158071
+  type: 'test'
+  ...
+# Subtest: removing the installed original bearing stops household work until that physical part returns
+ok 55 - removing the installed original bearing stops household work until that physical part returns
+  ---
+  duration_ms: 1288.173815
+  type: 'test'
+  ...
+# Subtest: a recycled numeric entity id cannot inherit the finite lamp, even with copied public tags
+ok 56 - a recycled numeric entity id cannot inherit the finite lamp, even with copied public tags
+  ---
+  duration_ms: 10.29386
+  type: 'test'
+  ...
+# Subtest: missing/damaged originals stay missing/damaged across a durable recipe and work restore
+ok 57 - missing/damaged originals stay missing/damaged across a durable recipe and work restore
+  ---
+  duration_ms: 12.229943
+  type: 'test'
+  ...
+# Subtest: pause, duplicate tick, malformed state and fabricated receipt cannot advance or pay
+ok 58 - pause, duplicate tick, malformed state and fabricated receipt cannot advance or pay
+  ---
+  duration_ms: 17.976769
+  type: 'test'
+  ...
+# Subtest: full Adventure geography keeps the untouched original operation coherent with ordinary traffic and colliders
+ok 59 - full Adventure geography keeps the untouched original operation coherent with ordinary traffic and colliders
+  ---
+  duration_ms: 55233.06002
+  type: 'test'
+  ...
+# Subtest: every rejected import class fails before the restore boundary with live state byte-identical
+ok 60 - every rejected import class fails before the restore boundary with live state byte-identical
+  ---
+  duration_ms: 42.844347
+  type: 'test'
+  ...
+# Subtest: a corrupt stored slot and its corrupt recovery both reject without touching live state
+ok 61 - a corrupt stored slot and its corrupt recovery both reject without touching live state
+  ---
+  duration_ms: 1.714355
+  type: 'test'
+  ...
+# Subtest: a refusing storage layer reports read_failed without touching live state
+ok 62 - a refusing storage layer reports read_failed without touching live state
+  ---
+  duration_ms: 0.86554
+  type: 'test'
+  ...
+# Subtest: a late-completing compressed import cannot overwrite a newer committed run
+ok 63 - a late-completing compressed import cannot overwrite a newer committed run
+  ---
+  duration_ms: 11.928029
+  type: 'test'
+  ...
+# Subtest: a compressed import resolving inside an active restore defers and wins as the latest request
+ok 64 - a compressed import resolving inside an active restore defers and wins as the latest request
+  ---
+  duration_ms: 7.542695
+  type: 'test'
+  ...
+# Subtest: a current-generation compressed import restores the imported campaign
+ok 65 - a current-generation compressed import restores the imported campaign
+  ---
+  duration_ms: 5.202083
+  type: 'test'
+  ...
+# Subtest: after rejected imports the campaign continues and a valid older save still loads
+ok 66 - after rejected imports the campaign continues and a valid older save still loads
+  ---
+  duration_ms: 3.478694
+  type: 'test'
+  ...
+1..66
+# tests 73
+# suites 0
+# pass 73
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 82178.511215
+
+--- END RAW STDOUT ---
+RAW_STDERR_BYTES: 0
+--- BEGIN RAW STDERR ---
+
+--- END RAW STDERR ---

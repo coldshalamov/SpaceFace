@@ -15,9 +15,9 @@ LANTERN_CONTINUED_CENTER_LANE {"tick":10810,"simTime":180.16666666670218,"phase"
 test at test/lantern-ward-center-lane.test.mjs:96:1
 ✖ a continued center-lane jam moves its already waiting operator clear and resumes the same load (9698.387107ms)
   AssertionError [ERR_ASSERTION]: the already parked original must release the actual load path
-  
+
   false !== true
-  
+
       at TestContext.<anonymous> (file:///workspace/scratch/3a00c06b9899/SpaceFace/test/lantern-ward-center-lane.test.mjs:105:12)
       at async Test.run (node:internal/test_runner/test:1409:7)
       at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {

@@ -438,3 +438,114 @@ Root requested a source-update hold for an upstream merge. The reviewer finished
 Required next closure remains concrete: the unchanged export must complete its public Import & Load path; then the imported run must reach controllable flight with the opening plan complete, the Ward roots verified, and the original identities/custody observable. A subsequent ordinary F9 round trip, or the supported public load of that imported slot, must be recorded separately. Root has authorized an ordinary F5/Save in this isolated browser if necessary to create a new Quick slot, with that new save's tick/custody distinguished from the source export. None of those later results is claimed here.
 
 **Checkpoint handoff: REJECT.** The reviewer releases this report, screenshots 14/15 and `independent-public-import-failure-9c7bb9.json` for root's exact-path evidence commit. The browser remains alive and idle at menu under this reviewer's control while awaiting the new source pin; no foreign session or runtime source file was changed.
+
+## Independent repaired Import, F5/F9 and installation — runtime 8cf0034e
+
+**Mechanical verdict: PASS for the exercised public import, new Quick save/reload, native restored custody and subsequent uncredited installation. Visual verdict: REJECT / unproven because the required trio is not adequately framed. No new shape-legibility defect is inferred from subjects outside the image.** These are deliberately separate conclusions.
+
+This reviewer executed the route below. The loaded production source was `8cf0034e814ef18af14dcc52f26485e637820e57`, including the import-bridge repair after upstream integration. Final checkout HEAD was `8c66b48500d475e48518118293b810dab589e4fc`; an independent `git diff --name-only 8cf0034e814ef18af14dcc52f26485e637820e57 HEAD` listed only `SAVE_SCHEMA.md`, the two 47-A expected-telemetry JSON files and the import-bridge test. No production source or asset changed during this browser run, and no reload for those metadata/test-only commits occurred.
+
+### Infrastructure boundary and exact public route
+
+After the earlier interruption and sparse reapplication, the old session binding/known endpoint could not be recovered. Root expressly authorized one replacement reviewer harness, preserving every inaccessible or foreign process. The replacement was **session 44212**, URL `http://127.0.0.1:37073/`, a fresh 1280 × 800 Chromium/SwiftShader context using the canonical game server in the same Node process. This is an infrastructure boundary, not a game failure.
+
+The ignored harness is `.devshots/lantern-ward/hostile-review-1-import-retry-session.mjs`. From the repository, its launch command is:
+
+```sh
+LD_LIBRARY_PATH=/workspace/scratch/3a00c06b9899/browser-bin node .devshots/lantern-ward/hostile-review-1-import-retry-session.mjs
+```
+
+Root's unchanged public export was recovered by lossless decompression of the committed gzip into `.devshots/lantern-ward/reviewer1-public-quick-7407.json`. Its **2,388,721 bytes**, SHA-256 **`d010d23e939dcbc6aa61e090913dd5b23026d7a65b72a8495f23aed0e283f3ed`**, v23, seed 7407, original Quick timestamp `2026-11-04T22:35:37.741Z`, playtime 557 seconds and checksum `a00db65c` match the prior reproduction. The same SHA-256 was independently checked again after this pass. No source save field was edited.
+
+1. Choose **Play** on the ordinary First light prompt and open main-menu **Load Game**.
+2. Select that unchanged file through the native `input[type=file]`; observe **Import save file?**, then click **Import & Load**.
+3. Reach ordinary live flight. No Promise-clone failure or Flight interrupted screen occurs. Public Escape pauses the run.
+4. Resume, press public `-` four times, take frame 16, and pause.
+5. Press **F5** once while paused at tick **35867**, simulation time **597.7833333331183**. The ordinary UI says **Saved Quick**. This creates a new Quick checkpoint in the isolated browser; it does not overwrite the exported reproduction file.
+6. Press **F9** once. The UI shows **Restoring Quick** and the normal handover; after admission, click the observed **Back to the run** recap button and pause. This F9 is a reload of the new in-progress checkpoint, not a claim to have reloaded the unchanged 557-second export directly.
+7. Resume ordinary live simulation with public zoom and short A/W/brake inputs. The original operation reaches installation. Later choose public Settings → Video → **Balanced**, then use public map search and **Track Target** for the borrowable cradle. Make one ordinary D/W/brake approach attempt and capture its result. No further flight follows the final projection diagnostic.
+
+All browser commands and original tool responses are retained in [the independent raw evidence artifact](evidence/independent-public-import-f9-8cf0034e.json). No localStorage write, save-state API import, simulation mutation, teleport, hidden flag, injected steering or camera rewrite occurred. No new tests were run in this public closure pass.
+
+### Direct admission closure
+
+The first imported opening plan completed with 18 roots, zero unverified blocking hashes, a matching resource census and first-playable completion. That first cohort contained no named Ward roots and **was not used by itself to close the specific Ward admission failure**.
+
+The subsequent ordinary **F9** plan completed with **36 roots**, `firstPlayableComplete: true`, `resourceIdentityCensusMatches: true`, no opening capture failure and **zero unverified blocking roots**. Six blocking Ward roots were actually included and verified:
+
+| Actual blocking root | Asset identity | Verified content hash |
+| --- | --- | --- |
+| `LanternWard_cradle` | `place_lw_lantern_cradle` | `0f0ed65092fda69331508d25d28ee14331a66a320389a1424af0c62ffc91d3a0` |
+| `LanternWard_lamp` | `place_lw_family_lamp` | `7840d606467d08f42d3241103be6c91cbb1ddfc1fe6a1d1d9597f9855aceb733` |
+| `LanternWard_receiver` | `place_lw_family_receiver` | `718c79a0cd4640b8162cc13cd534257a97c0dc8a63505225f52bfc930897c0a5` |
+| `LanternWard_shore_spine` | `place_lw_shore_spine` | `02c00721ef3b6d0bbcc782f5608e6de765a01fcb94fbbda75cb3f8fe8778d149` |
+| `LanternWard_service_cheek` | `place_lw_service_cheek` | `4ba25d053f22a7289aaee3301f54b1bc34158d519488d2a4b5e2b7b032cf8067` |
+| `LanternWard_service_cheek` | `place_lw_service_cheek` | `52244298b6c66b589468555a1e623469c420adf0f7fcd1d1cb42e5b9d3e18ccc` |
+
+The raw JSON preserves each exact UUID, package identity, hash and verification flag. This independently closes the observed procedural-hash failure mechanism **for the exercised F9 cohort**; it does not assert that the old camera's exact five-instance census was reproduced. The present cohort includes one shore spine, both service cheeks, the cradle, lamp and receiver. Absence of an additional off-camera spine is not offered as verification of that absent instance.
+
+The application subsequently accepted ordinary flight controls. This is runtime evidence through the unchanged gate, not only a unit-test result. The earlier 9c7bb900 public Promise-clone failure is also closed for this unchanged export on 8cf. Import-slot durability before the later F5 was not separately tested; the successful new F5/F9 round trip is recorded explicitly.
+
+### Native custody and actual live completion
+
+Both presenting metadata and the authoritative read-only worker probe returned **seed 7407** at the observed checkpoints. This resolves the previous main/worker seed discrepancy for this run without rewriting the historical evidence.
+
+After F9, IDs and world-record/serial identities are preserved. Runtime occupant generations legitimately renew from **89–97** before F9 to **371–379** after F9; this report does **not** claim that those transient generation numbers remained numerically unchanged.
+
+At the paused post-load checkpoint, tick **36568**, simulation time **609.466666666441**, the phase is `connect`. Read-only `probeState` calls independently confirmed matching entity/native poses and real Rapier bodies for cradle 602, lamp 603, receiver 604, bearing 607, Nessa 608, commuter 609 and maintenance crew 610. The native backend reports ready. In particular:
+
+| Body | Observed post-F9 state and subsequent outcome |
+| --- | --- |
+| Cradle 602, generation 371 | Original `lantern-ward:cradle`, hull 280, native mass 54, near `(1829.985, -649.990)`; remains empty, unlit and held by the Ward after installation. |
+| Lamp 603, generation 372 | Original `lantern-ward:lamp`, serial `venn-family-lamp:01`, hull 90, native mass 9, receiver custody; native pose near `(1829.987, -695.004)` during connection, then lit. |
+| Receiver 604, generation 373 | Original `lantern-ward:receiver`, hull 1400, fixed native body at `(1830, -695)`; becomes lit with the original lamp. |
+| Bearing 607, generation 376 | Original serial `lantern-ward:shutter-bearing:01`, hull 90, native mass 9, retained in `service_face` custody. |
+| Nessa 608, generation 377 | Real native tug, hull 200, mass 55, near the work at connection; later moves away toward the service side after completion. |
+| Commuter 609 and maintenance crew 610 | Original records/IDs remain alive with native bodies. Subsequent snapshots show actual movement after the operation, rather than replacement actors appearing at a final pose. |
+
+At tick **37439**, simulation time **623.9333333330945**, the live phase is **installed**. Lamp 603 and receiver 604 are lit, the cradle is empty, and Nessa has begun departing. The UI says **The family lamp relay closes.** Installation remains present at the final paused boundary, tick **40589**, simulation time **674.3333333330487**.
+
+Credits stay **5000** throughout these recorded checkpoints, with player-clear, carry, repair, theft, damage and borrow history flags false. This is autonomous completion without observed help payment. The `ignored` flag also remains false, so this is **not** renamed a completed timed-ignore branch. The mast was already far from the cut in the imported save; this pass cannot prove first-arrival blockage or the player's original alternative. A second F9 of the completed state was not repeated: this pass proves in-progress Quick continuity followed by real installation, while the earlier independent rewarded Continue evidence remains separately attributed.
+
+### Normal-camera evidence and quality qualification
+
+Every new PNG 16–21 was personally opened. Camera mode was read from the actual runtime as **Overhead**, not inferred from a filename or button expectation. It remained at tilt 60 and FOV 50. Frame 16 followed four public minus presses, configured zoom 176; later frames used seven more public minus presses, configured zoom 232. Ordinary camera composition produced smaller displayed zoom values, including approximately 204.55 at the final checkpoint.
+
+Frames 16/17 used `qualityMode: auto`, stored `qualityPreset: medium`, render scale 1 and adaptive-resolution toggle off. The public Video UI explicitly explains that **Automatic** trials resolution bands. Selecting its **Balanced** button changed quality mode to `manual`; the ensuing ordinary frame 19 was substantially sharper. At frame 19 and the final boundary, canvas and viewport were 1280 × 800 and `dynResScale: 1`. Full motion, audio, bloom and ordinary gameplay presentation were retained.
+
+The earlier actual transient resolution band was not measured. Therefore the report records a real presentation confound and a visibly improved fixed-quality result, without inventing an exact earlier scale or treating all blur as an authored-material defect.
+
+| Frame | Independent assessment |
+| --- | --- |
+| [16](evidence/16-independent-public-ward-overhead-7407.png) | Actual unpaused imported flight, Automatic quality. Memorial geography is apparent, but the required load/receiver comparison is not established. |
+| [17](evidence/17-independent-public-ward-post-f9-7407.png) | Actual unpaused post-F9 flight. The immediately following pause confirms installed state; the picture remains aliased and does not identify the trio dependably. |
+| [18](evidence/18-independent-public-installed-balanced-7407.png) | **Failed capture: full PAUSED menu.** An exact-role Back locator timed out; a subsequent Escape returned to pause rather than flight. The filename does not make this gameplay evidence. |
+| [19](evidence/19-independent-public-installed-balanced-flight-7407.png) | Actual unpaused Balanced/manual-quality flight, visibly much sharper. Clear scenery does not by itself identify the family lamp and empty cradle. |
+| [20](evidence/20-independent-public-cradle-tracked-7407.png) | Actual unpaused view after public map tracking. The HUD identifies the cradle at 242 u; the memorial occupies the main frame. The redundant Close Map locator timed out after Track Target had already closed the map. |
+| [21](evidence/21-independent-public-installed-approach-7407.png) | Final unpaused attempt; HUD cradle range 249 u, with law/combat UI and effects elsewhere. The attempt did not bring the required trio into the frame. No cause or player culpability is inferred from that unrelated incident display. |
+
+Full SHA-256 values and precise command ordering are preserved in the JSON artifact.
+
+### Final bounded projection diagnostic — no steering from it
+
+Only after frame 21 and public Escape pause, root requested a read-only diagnostic of the exact three existing roots. It used their cached world matrices, cloned vectors and the current camera; no geometry traversal, live transform update or camera write occurred. **No subsequent flight was steered from these coordinates.**
+
+| Exact root | Screen center in 1280 × 800 | Center within frustum | Root visible flag | Scale / pitch / roll |
+| --- | --- | --- | --- | --- |
+| Cradle 602 | `(-22.54, 29.96)` | No | true | `1,1,1 / 0 / 0` |
+| Lamp 603 | `(-82.20, 130.45)` | No | true | `1,1,1 / 0 / 0` |
+| Receiver 604 | `(-82.24, 130.43)` | No | false | `1,1,1 / 0 / 0` |
+
+These are **all outside the left edge**. A center outside the frustum does not determine every pixel of a large mesh, and the root visibility flag alone is not an occlusion proof. Nevertheless this diagnostic decisively prevents misidentifying unrelated small fittings near the upper center as the installed trio. Frame 21 is missing-subject evidence, not a valid test of the corrected lamp/receiver shapes. The receiver's visibility flag in this off-screen case is not promoted to a new renderer defect.
+
+### Final closures and remaining requirements
+
+- **Public import / G6 admission:** closed for this exact source, unchanged export and successful new F5/F9 route, with the cohort qualification above.
+- **Native continuation and uncredited installation:** independently observed. No latest-source empty-save, Promise-clone, native-body-loss or duplicate-lamp failure was observed in this route.
+- **V4 pitch/roll defect:** the specific trio now has independent live checkpoint evidence of upright unit-scale roots, including the final installed state.
+- **V1/V3 visual load/receiver and installed-state distinction:** **remain unproven**. This reviewer did not obtain a properly framed comparison. Do not use this failed capture to demand another shape repair without seeing the actual subjects.
+- **V2 first-arrival obstruction and outside alternative:** **remain untested by this resumed campaign**. The correct remaining public cell is a fresh ordinary arrival with the original blockage, fixed Balanced quality and a normal view containing the actual work.
+
+**Final bounded verdict: mechanical PASS for the exercised route; visual REJECT / unproven.** The raw evidence and this addendum preserve both results. No runtime source, shared test, other review report or foreign process was altered. The browser was publicly paused with no pending command at the evidence boundary; the normal shutdown receipt is recorded below after closing only this reviewer's authorized process.
+
+**Normal shutdown and release:** after writing the report/evidence, the reviewer sent only own harness session **44212** the ordinary `{ "action": "quit" }` command. It exited normally with **exit code 0**. No foreign or inaccessible session was touched. This report, PNGs 16–21 and `evidence/independent-public-import-f9-8cf0034e.json` are released for integration. The ignored harness path/API above remains available for a separately commissioned fresh-save public pilot.

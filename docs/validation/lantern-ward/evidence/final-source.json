@@ -1,12 +1,12 @@
 {
-  "candidate": "9c7bb9006b5dffee7fc39487277ad8f411feba10",
-  "base": "fcc4491ac44162e5e73b5a062ccc37622fe7b9d4",
-  "recordedAtUtc": "2026-11-04T23:29:27.286064+00:00",
-  "scope": "Final owned implementation and test files. The source is committed; docs and independently produced evidence are committed separately.",
+  "candidate": "8c66b48500d475e48518118293b810dab589e4fc",
+  "base": "f71edbfcbccb33c2fbc424116c6684b4ed7596ad",
+  "recordedAtUtc": "2026-11-05T00:15:28.691551+00:00",
+  "scope": "56 owned implementation/test/expected-envelope paths against current Finish controller f71; SAVE_SCHEMA.md is separately hashed. Upstream work is not Ward authorship. Historical validation retains original source pins.",
   "files": {
     "scripts/lib/npcJobsMirror.mjs": "86bc38aa6d4fd99169fb60008e6b54b82ff141d0813afb4ccdc42cf618b5e651",
-    "scripts/lib/simReadModel.mjs": "ac839ac4b764245656a54b637612bf1e4a3fa2b94167f96a82334449e78cd5cc",
-    "scripts/lib/simWorkerHost.mjs": "5ef0133ef46bbdc3208cc47f8a1cbcdcc0fb19c04dce6fec9d327dbf3324f3f8",
+    "scripts/lib/simReadModel.mjs": "2ea6e6f3c143bc440353987d6de29a99982b1f2c8b20c5daba3e27feae661645",
+    "scripts/lib/simWorkerHost.mjs": "9a6e90fe62f1f48f04b75eec4bd2ef7b20b77024d76550b0f2c9ff9c4b004826",
     "src/audio/commissionCues.js": "71b24621f56e25f6f69289fde38866a2db12f150761970d0cf9810010b8797c7",
     "src/data/audioRecipes.js": "81fc14cb92d34cfbf57224c7463a04dd3127c329ea7eb16f23034ed688b17be4",
     "src/data/combatDefs.js": "0f19a23537ff7c25fb722b49ade282840eab0bd4feac1c181d563e0e2a913c3f",
@@ -24,19 +24,22 @@
     "src/render/ordnanceMotionPresentation.js": "ed5fb991ff63d260a0af5547bd04ef68bdb04b47b80ae4a586bf8dded4cac21b",
     "src/render/visualFactory.js": "ce4fbf5d0a2a14a221dec29fd3dd2706cf6de6fa65e7ef3006bc045339bfd32c",
     "src/render/visualOverrides.js": "eec5d5c31df4695d8e521de0b8e9244cd139a8386121efbafeddbec8e7db199a",
+    "src/runtime/laneSystemFacades.js": "5f35541c3548043be4e9c08bdc9ff8609528a67881ccc993b30116954927cbaa",
     "src/save/migrations.js": "10e16563e9dd889d54eec5405fc87bc144b3e5a0b2c2ef9fcab61cd36e2f2bdf",
     "src/save/saveSystem.js": "02f4fc821bd389b11b32973c3c5424eecf81a63f637b37f0d07b3d794e449ed2",
     "src/systems/lanternWardWork.js": "a084bfc3e5fced5feb4c0eb52653e6ddaf553a2a6ec6061107f157aee643a9b5",
     "src/systems/missionStoryOps.js": "5a5706e2d74adcc67a1d2c6be9b65284868d2c370cd47bab7d684cd2439b8e01",
-    "src/systems/missions.js": "a2e89bfc6d6fe6f606a2ffbadd62cd049917c44eac07ed42c1ac142e1b00f2fd",
+    "src/systems/missions.js": "49f24eebcf68d3db0cd5e5c3b699e069971db1c48e9172230dcf8530f890a917",
     "src/systems/npcJobsRuntime.js": "c55847c4f7297997154cd6ec551fe9325827e1a11a42781de45475f6a52ff4d8",
-    "src/systems/scanner.js": "f7182cf06f4bea291c378772226caae26611667cd84d738170a87a7f13d4a331",
-    "src/systems/world.js": "4b82d4431b4baab10837077f9b2f2689ad024dc363e9551279c0171f300e7460",
+    "src/systems/scanner.js": "67b270a6111ddd4bde2bebe7df55a896ab8ecadd69c7826c56e9402d05943ea1",
+    "src/systems/world.js": "cafcc7ae13e5d67e1afd0fb64862ba46ecd98c8cc1a96b6d529727aed3a1af6b",
     "src/ui/galaxyMap.js": "9f409272852ff94e4a0a2461826681c9845d945c65db7ad41e5ca4cdeacc8af1",
     "src/world/lanternWardActors.js": "58a43fdd3ba2001270c388fc9ded26a385eadddc553b5ae1ec358444534d7f96",
     "src/world/lanternWardDressing.js": "4fc0676803c67692433c60d8e7ddc2354e09b00f76b42794dc2a815cf1b31a1b",
     "src/world/worldCatchup.js": "9470dc36c66b36c1764a87e8737f3f344d9fdf67c183ee97be7fb61ef39bd101",
     "src/world/worldRecords.js": "698830b9c4e565092214912edbe78b09aa57d9bd4532499dc83738e1921cf0d7",
+    "test/47a.telemetry.expected.json": "f2c6c586cc8fcb23dd30ca5bf7399a88866a3c8c1a17beabda7f83595912eeb4",
+    "test/47a.telemetry.v3.native-contact.expected.json": "58de24dcf6022bfe519971aa4014897765122b217373436c8631377363c9e215",
     "test/counterweight-circuit-persistence.test.mjs": "27667a076fe52537de4d31f1e219998564131b1611dc141dafbb5255fe387b90",
     "test/lantern-ward-approach.test.mjs": "b51cd862ee80b971afff25984a976b8e5a4299ee83f5474ade56c21ff29d40bb",
     "test/lantern-ward-authority.test.mjs": "eeea2e84a5ebd1d59f61cc9954ecfed82a7ef41d87e5b200293fdb3f9b10c464",
@@ -50,6 +53,7 @@
     "test/lantern-ward-opening-admission.test.mjs": "6da8593e77dfa5b1407e49470b840ecbab01bc814ec4544df9b1c9461855b40c",
     "test/lantern-ward-production-settlement.test.mjs": "b7cb2d584bd52b357664c011fc798844de5f91648f72f95692382df5ec320f24",
     "test/lantern-ward-rescue-occlusion.test.mjs": "3d0c2dc612a24009dc5bd1bfe2befb2a3c89e7aacdbc42c2481f8181d3eea610",
+    "test/lantern-ward-save-import-bridge.test.mjs": "88e46959620998f23bc51444849b27868ef0e52d7d2e93c56dc8d844dc86e359",
     "test/lantern-ward-save.test.mjs": "b40517c5143bb4741758ae3f818436cca5b95a5ea897249643deb6c82a4e112f",
     "test/lantern-ward-story.test.mjs": "56a21b19cb257520115f102f1c6dc1b58ca4703b299c409efbda97c6f42e7b74",
     "test/lantern-ward-unattended-law.test.mjs": "b529954fb007e5043066b4763604040b9526b68a9d93c7c0e923781df9e56276",
@@ -172,9 +176,83 @@
       "passed": 43,
       "failed": 0,
       "summary": "opening-admission-validation.json"
+    },
+    {
+      "command": "node --test --test-concurrency=1 --test-reporter=tap test/lantern-ward-world-life.test.mjs test/lantern-ward-story.test.mjs test/lantern-ward-save.test.mjs test/lantern-ward-hail.test.mjs test/lantern-ward-authority.test.mjs test/lantern-ward-worker-projection.test.mjs test/lantern-ward-opening-admission.test.mjs test/lantern-ward-save-import-bridge.test.mjs test/save-rejected-candidate.test.mjs test/fb-export-bundles-medals.test.mjs",
+      "candidate": "8cf0034e814ef18af14dcc52f26485e637820e57",
+      "tests": 73,
+      "passed": 73,
+      "failed": 0,
+      "skipped": 0,
+      "duration_ms": 82178.511215,
+      "log": "merged-source-regression.log",
+      "receipt": "merged-source-regression.json",
+      "scope": "Fresh serial regression on current Finish-merged source. Exact worker domains, custody, physical service, reward, schema restore and import bridge; not rendered acceptance."
+    },
+    {
+      "command": "npm run check:baseline -- --jobs=4 --only=ui-screen-imports,ui-control-labels,save-schema,opening-mesh-defer,smooth-flight,flight-v3,m1-tether-mass,sim-v3-compare,render-package-plan,sim-compare,sim-v3,sim,massline",
+      "candidate": "8cf0034e814ef18af14dcc52f26485e637820e57",
+      "links": 13,
+      "passedLinks": 10,
+      "failedLinks": [
+        "save-schema",
+        "sim-v3",
+        "sim"
+      ],
+      "exitCode": 1,
+      "wall_ms": 37462.992029002635,
+      "log": "merged-relevant-baseline.log",
+      "receipt": "merged-relevant-baseline.json",
+      "scope": "First post-merge relevant baseline. State/golden delta diagnosis pending; failed results retained. No expected hashes or checks have been changed."
+    },
+    {
+      "candidate": "07a39eef4d26ce09061d2a430a98726b125527cd",
+      "command": "npm run check:baseline -- --jobs=4 --only=save-schema,sim-v3,sim",
+      "exitCode": 1,
+      "elapsedWallMs": 1228.7009170031524,
+      "log": "merged-baseline-closure.log",
+      "receipt": "merged-baseline-closure.json",
+      "scope": "Reruns only the three previously failed baseline links after independently reviewed version-only metadata correction. Canonical repeated strict sim checks retain five runs and all previous event/count/threshold conditions. Other ten links passed in the original13-link batch; this is not a fresh full13/17-link run. No production runtime changes in this commit."
+    },
+    {
+      "candidate": "8c66b48500d475e48518118293b810dab589e4fc",
+      "command": "npm run check:baseline -- --jobs=4 --only=sim-v3,sim",
+      "exitCode": 0,
+      "elapsedWallMs": 7489.575152998441,
+      "log": "merged-golden-closure.log",
+      "receipt": "merged-golden-closure.json",
+      "scope": "Strict five-run modern/legacy golden checks after splitting the provenance notes to respect the existing260-character evidence-schema bound. No hash, behavioral criterion or validation threshold changed after07a39eef. The preceding closure attempt passed save-schema but rejected oversized notes before simulation; retained in merged-baseline-closure.log."
     }
   ],
   "runtimeDeltaAfterPublicA132": "Later exact owned changes clear detached cradle projection, expose matching family marks and empty receiver, move the cut-route crew stand outside the loaded sweep, and exclude the six canonical Ward bodies from late cosmetic tumble/unfold. The a132 public run remains attributed to a132; the later public source manifest is post-motion-source-7407.json. Latest9c7bb900 restores the canonical procedural producer marker and explicit assetId; Ward attribution remains separate. It changes no geometry or admission gate. New public import/load evidence is attributed separately.",
   "qualification": "Native/contract outcomes, public flight, rendered look and device performance are separate claims. See independent hostile review 2 for actual public acceptance and outstanding limits.",
-  "sourceTree": "9480029db29511f4260b59ff05a4c78c919b4357"
+  "sourceTree": "b94f35023dcce270a1938fc904b4db815399bd2a",
+  "initialBase": "fcc4491ac44162e5e73b5a062ccc37622fe7b9d4",
+  "integration": {
+    "mergeCommit": "27f4571dc964ee50944622ab33385faba796ec22",
+    "upstream": "f71edbfcbccb33c2fbc424116c6684b4ed7596ad",
+    "conflict": "scripts/lib/simReadModel.mjs appended mirrored domains: retain upstream dockingPresentation first and then npcJobs.lanternWard.",
+    "importRepair": "8cf0034e814ef18af14dcc52f26485e637820e57",
+    "publicRetry": "Independently passed ordinary Import & Load and a new F5/F9 in-progress roundtrip on runtime8cf. Exact six verified blocking Ward roots and seven native/mirror body matches are in independent-public-import-f9-8cf0034e.json. The same finite lamp later installed without help or payment; no second completed-state reload is claimed."
+  },
+  "runtimeCandidate": "8cf0034e814ef18af14dcc52f26485e637820e57",
+  "generatedContracts": {
+    "SAVE_SCHEMA.md": "a57235f9880db5263f40053b4c77c218bc28109a4bcd96b5fb7e479d54e1234a"
+  },
+  "metadataRefresh": {
+    "commits": [
+      "07a39eef4d26ce09061d2a430a98726b125527cd",
+      "8c66b48500d475e48518118293b810dab589e4fc"
+    ],
+    "reason": "Intended save migration22->23 changes only $.meta.version in the existing47-A canonical snapshots. Independent review recomputed all paired captures and single-module negative controls before hash refresh.",
+    "diagnosis": "merged-baseline-diagnosis.json",
+    "scope": "Generated save contract, only existing authoritativeHash fields and provenance notes, and one test comment clarification. Production src/scripts runtime identical to8cf."
+  },
+  "publicEvidence": {
+    "runtimeCandidate": "8cf0034e814ef18af14dcc52f26485e637820e57",
+    "receipt": "independent-public-import-f9-8cf0034e.json",
+    "mechanicalVerdict": "PASS for the exercised import/in-progress save/load/continued installation route",
+    "visualVerdict": "REJECT/unproven on16\u201321: insufficient subject framing; final21 has the trio off-left plus intercept. Fresh arrival review pending.",
+    "rewardedHistoricalRoute": "Independent seed7405 actual ram-clear,180-credit settlement and completed-state Quick/Auto Continue remain separately attributed to their historical source."
+  }
 }

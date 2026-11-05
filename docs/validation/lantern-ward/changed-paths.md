@@ -1,6 +1,6 @@
 # Lantern Ward — exact source and test paths
 
-Base: `fcc4491ac44162e5e73b5a062ccc37622fe7b9d4`. Latest source is pinned at `9c7bb9006b5dffee7fc39487277ad8f411feba10`, which repairs canonical procedural opening admission. `dee4757cfaba8e069a6f270fa80c8199aa9f06f2` adds the repeated commuter test to the preceding runtime candidate. Published aliases and identical Git trees are recorded in [published-history.json](evidence/published-history.json).
+Initial base: `fcc4491ac44162e5e73b5a062ccc37622fe7b9d4`. Current Finish controller base: `f71edbfcbccb33c2fbc424116c6684b4ed7596ad`, integrated by ordinary merge `27f4571d`. Latest source and reviewed compatibility metadata: `8c66b48500d475e48518118293b810dab589e4fc`. Production runtime is unchanged from `8cf0034e814ef18af14dcc52f26485e637820e57`. The 56 source/test paths below are the exact delta against that current controller base; upstream work is not claimed as Ward authorship. Published aliases and byte-identical Git trees are recorded in [published-history.json](evidence/published-history.json).
 
 ## Dedicated district modules
 
@@ -43,6 +43,7 @@ Base: `fcc4491ac44162e5e73b5a062ccc37622fe7b9d4`. Latest source is pinned at `9c
 - `scripts/lib/npcJobsMirror.mjs`
 - `scripts/lib/simReadModel.mjs`
 - `scripts/lib/simWorkerHost.mjs`
+- `src/runtime/laneSystemFacades.js`
 
 ## Focused tests
 
@@ -59,6 +60,7 @@ Base: `fcc4491ac44162e5e73b5a062ccc37622fe7b9d4`. Latest source is pinned at `9c
 - `test/lantern-ward-opening-admission.test.mjs`
 - `test/lantern-ward-production-settlement.test.mjs`
 - `test/lantern-ward-rescue-occlusion.test.mjs`
+- `test/lantern-ward-save-import-bridge.test.mjs`
 - `test/lantern-ward-save.test.mjs`
 - `test/lantern-ward-story.test.mjs`
 - `test/lantern-ward-unattended-law.test.mjs`
@@ -66,10 +68,17 @@ Base: `fcc4491ac44162e5e73b5a062ccc37622fe7b9d4`. Latest source is pinned at `9c
 - `test/lantern-ward-worker-projection.test.mjs`
 - `test/lantern-ward-world-life.test.mjs`
 
-## Generated navigation indexes and validation artifacts
+## Existing simulation envelopes — version-only hash metadata
+
+- `test/47a.telemetry.expected.json`
+- `test/47a.telemetry.v3.native-contact.expected.json`
+
+## Generated save contract, navigation indexes and validation artifacts
+
+- `SAVE_SCHEMA.md`
 
 - `docs/EVENT_ROUTING.md`
 - `docs/SYSTEM_REGISTRY.md`
 - `docs/validation/lantern-ward/` — exact implementation/art/story/design contracts, independent hostile reports, source/hash manifests, native logs and original ordinary-camera PNGs.
 
-No program-status, Finish board, NOW, camera, physics-backend, sector ID or memorial asset path is changed. Foreign temporary asset writes remain untouched.
+The Ward delta changes no program-status, Finish board, NOW, camera, physics-backend, sector ID or memorial asset path. The ordinary merge preserves newer controller-owned program/status edits. Foreign temporary asset writes remain untouched.

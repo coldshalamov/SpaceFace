@@ -1,0 +1,31 @@
+{
+  "candidate": "8cf0034e814ef18af14dcc52f26485e637820e57",
+  "sourceTree": "33f509a5c4012d36e7261befce58c216a2930d37",
+  "generatedIndexes": {
+    "command": "npm run build:indexes",
+    "exitCode": 0,
+    "encounterModules": 361,
+    "flavorModules": 10,
+    "events": 2074,
+    "systemsInUpdateOrder": 220,
+    "log": "merged-generated-indexes.log"
+  },
+  "specificationChecks": {
+    "districtCommand": "node scripts/living-world.mjs --district=district_helios_lantern_ward",
+    "districtLog": "merged-district-spec.log",
+    "validateCommand": "node scripts/living-world.mjs --validate",
+    "validateLog": "merged-pack-spec.log",
+    "exitCode": 0,
+    "districts": 8,
+    "routines": 24,
+    "opportunities": 24,
+    "tasks": 19,
+    "claim": "Authored specification only; not player acceptance."
+  },
+  "checkoutInputRepair": {
+    "path": "assets/ships/render-packages/pilots.json",
+    "gitBlob": "330bedf5d19b2ef1e64f2feff24f5a782ac3939f",
+    "bytes": 341394,
+    "cause": "The ordinary merge reapplied the sparse inclusion list and omitted this tracked render manifest. Added its exact path to sparse inclusion and materialized the current commit bytes. No production source or asset content edit."
+  }
+}

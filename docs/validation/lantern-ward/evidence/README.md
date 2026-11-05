@@ -16,6 +16,10 @@ These are original browser screenshots. Source snapshots, native results and pub
 | 12 | 95a775e2 return near the memorial. An unrelated Aftermath panel obscures the work relationship. Failed visual capture. |
 | 13 | 95a775e2 attempted closer receiver view. Continuing Navy interception leaves the pilot at critical hull and moves the view; combat obscures the arrangement. Failed visual capture. |
 | 14–15 | Independent9c7bb900 public Import & Load fails with a Promise-clone worker error. Public restart returns to an empty Quick slot. This is a new import-bridge failure, not evidence of successful opening admission. |
+| 16–17 | Independent8cf ordinary import, new F5/F9 and resumed work. The restored shore is visible; wide framing and automatic-quality blur do not establish the lamp/cradle/receiver relationship. Exact native identity and admission evidence are in the new JSON receipt. |
+| 18 | Failed PAUSED-menu frame. Its filename does not make it ordinary-gameplay evidence. |
+| 19 | Clean unpaused Overhead view after public fixed Balanced selection. Sharper than Automatic, but family fittings remain small near the upper edge; visual acceptance remains open. |
+| 20–21 | One actual public tracked return approach. It did not arrive: final trio centers are outside the left viewport, with active Navy interception. This is insufficient subject evidence, not proof of a corrected-object shape defect. |
 
 The source manifest `post-motion-source-7407.json` was captured before the latest public Quick Continue. `post-motion-public-continue-7407.json` records exact observed original identities, receiver custody, light, empty cradle, returning Nessa and the absence of player reward, with its capture limitation.
 
@@ -33,10 +37,23 @@ JSON is2388721bytes, SHA-256
 `d010d23e939dcbc6aa61e090913dd5b23026d7a65b72a8495f23aed0e283f3ed`,
 with v23 checksum`a00db65c`, seed7407 and557seconds played. It contains the actual
 public center-lane jam; it is not a fixture-generated save or a completed-service
-snapshot. Latest source9c7bb900 repairs its procedural opening boundary.
+snapshot. Source9c7bb900 repairs its procedural opening boundary. Current merged source8cf0034e also repairs the separately observed asynchronous import bridge; the independent public retry is attributed in report1.
 Independent public admission and visual decisions remain in the hostile reports.
 
 A later read-only authoritative worker probe returned seed7407 while the
 presenting main metadata still reported683623714. The worker retained the saved
 seed at that checkpoint; the presentation metadata discrepancy does not prove
 a world reseed.
+
+
+## Latest independent public closure
+
+[The8cf import/F5/F9 artifact](independent-public-import-f9-8cf0034e.json)
+preserves88 raw harness results, screenshots and their hashes, settings, native
+body probes and exact verified opening roots. It establishes an in-progress
+Quick roundtrip followed by installation of the same original lamp, empty
+cradle and departing Nessa, with credits still5000 and no help/history flags.
+Runtime occupant generations renew on restore; original world records, IDs
+and serials persist. This is unassisted attended completion, not the timed-ignore
+branch and not a newly repeated completed-state reload. Both independent
+hostile reports keep the separate visual criterion open.
