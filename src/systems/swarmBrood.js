@@ -94,6 +94,13 @@ import {
   BROOD_SPITTER_WINDUP_S,
   BROOD_WHIP_BAT_SPEED,
   BROOD_WHIP_KILL_SPEED,
+  BROOD_CASCADE_GRIEF,
+  BROOD_CASCADE_NONE,
+  BROOD_CASCADE_RADIUS,
+  BROOD_FILAMENT_FLINCH_DV,
+  BROOD_GRIEF_ACCEL,
+  BROOD_GRIEF_RING,
+  BROOD_GRIEF_S,
   HIVE_POOL_TTL_S,
   SWARM_BROOD_FAMILIES,
   SWARM_BROOD_KILL_CAUSES,
@@ -364,6 +371,20 @@ export function createBroodEngine(deps = {}) {
   }
   const CAUSE_INDEX = {};
   SWARM_BROOD_KILL_CAUSES.forEach((cause, i) => { CAUSE_INDEX[cause] = i; });
+
+  // --- B-BLOOM pathology: the room notices a kill (the ladder's own numbers) --------------
+  //
+  // Grief — "cluster around the corpse for this long": a credited death arms every living
+  // neighbor inside the cascade reach; each mourner bends toward ITS corpse until it
+  // reaches the mourning ring or the clock lets go. The bend rides the ordinary flock
+  // integration (semi-implicit Euler, family speed cap, windup hold), so it can never
+  // outrun the room's own levers. The filament flinch — "a node's death pushes linked
+  // members outward this hard" — rides the same death seam as an additive Δv, the exact
+  // shape the Domino shove lands through. Panic scatter/knot and the aggression cascade
+  // stay unwired (authored, named next steps); nothing here invents numbers.
+  const griefUntil = new Float64Array(CAP);
+  const griefX = new Float32Array(CAP);
+  const griefZ = new Float32Array(CAP);
 
   // field sampling scratch — reused for every body, every tick
   const accel = { ax: 0, az: 0 };
@@ -649,6 +670,7 @@ export function createBroodEngine(deps = {}) {
     hiveMode = false;
     sacBudget = 0;
     sacLastBirthAt = -Infinity;
+    griefUntil.fill(0);
     splitterReserve = 0;
     motherReserve = 0;
     birthLeft.fill(0);
@@ -891,6 +913,8 @@ export function createBroodEngine(deps = {}) {
     primeUntil[slot] = 0;
     gluedUntil[slot] = 0;
     dragTold[slot] = 0;
+    // A reused slot never inherits a dead cell's mourning.
+    griefUntil[slot] = 0;
     // Per-slot reserve flags die with the body too — a reused slot never inherits a dead
     // mother's told-flag or an unspent share of her tide.
     birthLeft[slot] = 0;
@@ -1427,6 +1451,20 @@ export function createBroodEngine(deps = {}) {
             if (Math.abs(creditAccel.ax) + Math.abs(creditAccel.az) > 1e-6) creditUntil[i] = simTime + BROOD_CREDIT_WINDOW_S;
           }
         }
+        // -- B-BLOOM grief: a mourner bends toward its corpse until it reaches the mourning
+        // ring or the clock lets go. Only plain flocking bends: a windup holds so the
+        // telegraph tells the truth, a committed dash runs the line it drew, a latched
+        // body rides its host — the attack language outranks the mourning. The bend rides
+        // the ordinary integration below, so the family speed cap and the drag stay honest.
+        if (griefUntil[i] > simTime && phase[i] === BROOD_PHASE_FLOCK) {
+          const gdx = griefX[i] - bx;
+          const gdz = griefZ[i] - bz;
+          const gd = Math.hypot(gdx, gdz);
+          if (gd > BROOD_GRIEF_RING) {
+            ax += (gdx / gd) * BROOD_GRIEF_ACCEL;
+            az += (gdz / gd) * BROOD_GRIEF_ACCEL;
+          }
+        }
 
         // The brood mother walks at her authored speed. Flock separation would
         // otherwise pin her inside the mite ball while she drops the tide.
@@ -1726,6 +1764,7 @@ export function createBroodEngine(deps = {}) {
       teleX[i] += bank.flankX * 38;
       teleZ[i] += bank.flankZ * 38;
     }
+    plantOnLine(i);
     phase[i] = BROOD_PHASE_WINDUP;
     timer[i] = BROOD_SPITTER_WINDUP_S;
     emitTelegraph(i, def);
@@ -1868,9 +1907,26 @@ export function createBroodEngine(deps = {}) {
     teleX[i] = playerX + playerVX * lead;
     teleZ[i] = playerZ + playerVZ * lead;
     teleDir[i] = Math.atan2(teleZ[i] - pz[i], teleX[i] - px[i]);
+    plantOnLine(i);
     phase[i] = BROOD_PHASE_WINDUP;
     timer[i] = BROOD_CHARGER_WINDUP_S;
     emitTelegraph(i, def);
+  }
+
+  // The plant: lateral velocity off the drawn line dies at the stamp. The hold law says the
+  // body plants while its marker speaks — the buried family's windup has always zeroed the
+  // velocity outright, and this is that same truth for the LED-drawn holds, kept axial so an
+  // inward run keeps its inward speed. A body the room shoved or grieved sideways starts its
+  // hold on the line, not drifting across it.
+  function plantOnLine(i) {
+    const dx = teleX[i] - px[i];
+    const dz = teleZ[i] - pz[i];
+    const d = Math.hypot(dx, dz);
+    if (!(d > 1e-4)) return;
+    const ax = dx / d, az = dz / d;
+    const along = vx[i] * ax + vz[i] * az;
+    vx[i] = along * ax;
+    vz[i] = along * az;
   }
 
   /** One tick of a live pass: the hull takes it and the shove it carries, once per dash. */
@@ -3305,6 +3361,24 @@ export function createBroodEngine(deps = {}) {
     }
     alive[i] = 0;
     aliveCount -= 1;
+    // B-BLOOM filament flinch: a node's death pushes its linked partner outward this
+    // hard — the web's visible recoil, an additive Δv along the corpse→partner axis,
+    // the same write shape the Domino shove lands through. A winding or committed
+    // body does not flinch: its hold is the telegraph's truth, and a committed pass
+    // runs the line it drew.
+    if (linkPartner[i] >= 0) {
+      const flinchPartner = linkPartner[i];
+      if (alive[flinchPartner]
+        && (phase[flinchPartner] === BROOD_PHASE_FLOCK || phase[flinchPartner] === BROOD_PHASE_RECOVER)) {
+        const fdx = px[flinchPartner] - px[i];
+        const fdz = pz[flinchPartner] - pz[i];
+        const fd = Math.hypot(fdx, fdz);
+        if (fd > 1e-4) {
+          vx[flinchPartner] += (fdx / fd) * BROOD_FILAMENT_FLINCH_DV;
+          vz[flinchPartner] += (fdz / fd) * BROOD_FILAMENT_FLINCH_DV;
+        }
+      }
+    }
     // A dying turret's sweep dies with it; a dying linker's charge drops its shield
     // THIS tick — the link pass only rebuilds flags for the living.
     freeBeamOf(i);
@@ -3369,6 +3443,24 @@ export function createBroodEngine(deps = {}) {
     // Same Domino receipt as the chain: the cell's own last position, keyed by its spawn serial
     // so a slot reused inside the wave still counts as a new death.
     noteCreditedDeath(`cell:${serial[i]}`, px[i], pz[i]);
+    armGrief(i, finite(getState()?.simTime));
+  }
+
+  // B-BLOOM grief: a kill the game credits is a kill the room notices. Every living
+  // neighbor inside the cascade reach mourns THIS corpse for the authored window —
+  // the freshest corpse wins a mourner that was already grieving an older one, the
+  // same last-write the Domino ledger keeps. The victim itself is already dead.
+  function armGrief(victim, now) {
+    const cr2 = BROOD_CASCADE_RADIUS * BROOD_CASCADE_RADIUS;
+    for (let j = 0; j < CAP; j++) {
+      if (!alive[j]) continue;
+      const dx = px[j] - px[victim];
+      const dz = pz[j] - pz[victim];
+      if (dx * dx + dz * dz > cr2) continue;
+      griefUntil[j] = now + BROOD_GRIEF_S;
+      griefX[j] = px[victim];
+      griefZ[j] = pz[victim];
+    }
   }
 
   // W-BLOOM-LOW: a burst remain's splash kills by 'explosive' law around the impact point —
@@ -3607,6 +3699,22 @@ export function createBroodEngine(deps = {}) {
     return (hiveMode && sacBudget > 0 && !sacTidePendingAt(now)) ? sacBudget : 0;
   }
 
+  // The mourning census: living cells still bending toward a corpse.
+  function griefLive(now) {
+    for (let j = 0; j < CAP; j++) {
+      if (alive[j] && griefUntil[j] > finite(now)) return true;
+    }
+    return false;
+  }
+
+  function griefMournerCount(now) {
+    let count = 0;
+    for (let j = 0; j < CAP; j++) {
+      if (alive[j] && griefUntil[j] > finite(now)) count += 1;
+    }
+    return count;
+  }
+
   /** A sac's acid drip — the same pool pipeline a spitter splash leaves behind. */
   function hivePool(x, z, ttl = HIVE_POOL_TTL_S) {
     const slot = poolCursor % BROOD_POOL_MAX;
@@ -3662,6 +3770,9 @@ export function createBroodEngine(deps = {}) {
     view.hive = hiveMode;
     view.sacBudget = sacBudget;
     view.sacStranded = sacStrandedAt(finite(getState()?.simTime));
+    // B-BLOOM cascade kind on the view — the data contract's own seam ("published on the
+    // view"); the grief loop is the one kind the engine runs today.
+    view.cascade = griefLive(finite(getState()?.simTime)) ? BROOD_CASCADE_GRIEF : BROOD_CASCADE_NONE;
     view.reserveFamily = reserveFamily;
     view.reserveBudget = reserveBudget;
     view.strain = strainDef ? strainDef.id : null;
@@ -3762,7 +3873,8 @@ export function createBroodEngine(deps = {}) {
     /** Live population figures, for tests and the lab overlay. */
     census() {
       return { alive: aliveCount, cap: CAP, min: SWARM_BROOD_MIN, wave: liveWave, sacBudget,
-        sacStranded: sacStrandedAt(finite(getState()?.simTime)), reserveBudget, machineReserve };
+        sacStranded: sacStrandedAt(finite(getState()?.simTime)), reserveBudget, machineReserve,
+        mourners: griefMournerCount(finite(getState()?.simTime)) };
     },
     // Test seams: direct, read-only unless named as a seam.
     _bodies: { px, pz, vx, vz, alive, family, heading, hp, phase, timer, teleX, teleZ, teleDir, serial, seedPhase, gluedUntil, birthLeft, birthTold, liveFamilyId, liveFamilyRadius, affix, commandBuff, shielded, linkPartner, channelEntity, squadId, squadSlot, beamState },
