@@ -399,6 +399,25 @@ ${H} .orr-hmix__lbl:focus-visible { outline:none; }
   ${HD} .orr-help-list--ores .orr-help-terms > .orr-help-terms__row:nth-child(odd) > dd { padding-right:14px; }
   ${HD} .orr-help-reading__legal { margin:8px 0 0; padding:8px 12px; gap:20px; border:1px solid rgb(${BONE} / .18); border-radius:6px; background:rgb(${BONE} / .025); }
 }
+/* ui-polish-331: at 1201+ wide and 461-599 tall the Ores hero (stage minus the reading under it) is 170-250px, but the mix
+   keeps its 300px min-height, so its ring spilled over the reading's ledger and the rock's name. Here the reading stands beside
+   the mix, as it does at 761-1200, so the ring has its own room and the ledger keeps its sheet and one pair per row. */
+@media (min-width:1201px) and (min-height:461px) and (max-height:599px) {
+  ${HD} .orr-help-list--ores .orr-help-list__stage { grid-template-columns:minmax(0, 1fr) clamp(240px, 20vw, 300px); grid-template-rows:minmax(0, 1fr); column-gap:20px; align-items:center; }
+  ${HD} .orr-help-list--ores .orr-hmix__rock-name { letter-spacing:.03em; }
+  ${HD} .orr-help-list--ores .orr-hmix.is-small .orr-hmix__centre { translate:0 -14px; }
+  ${HD} .orr-help-list--ores .orr-hmix.is-small .orr-hmix__centre > b { font-size:12px; letter-spacing:0; }
+  ${HD} .orr-help-list--ores .orr-hmix.is-small .orr-hmix__centre > span { letter-spacing:.08em; }
+  ${HD} .orr-help-list--ores .orr-hmix.is-small .orr-hmix__centre > span ~ span { display:none; }
+  ${HD} .orr-help-list--ores .orr-help-list__stage > .orr-help-reading { display:block; align-self:center; max-height:100%; min-height:0; overflow:hidden auto; scrollbar-width:none; padding:0 0 14px; box-sizing:border-box; }
+  ${HD} .orr-help-list--ores .orr-help-list__stage > .orr-help-reading::-webkit-scrollbar { display:none; }
+  ${HD} .orr-help-list--ores .orr-help-reading > .orr-help-reading__name { font-size:clamp(22px, 1.7vw, 28px); margin-bottom:2px; }
+  ${HD} .orr-help-list--ores .orr-help-terms { margin:8px 0 0; grid-template-columns:auto minmax(0, 1fr); }
+  ${HD} .orr-help-list--ores .orr-help-terms dt { padding:5px 10px 5px 0; }
+  ${HD} .orr-help-list--ores .orr-help-terms dd { padding-block:3px; line-height:1.3; }
+  ${HD} .orr-help-list--ores .orr-help-terms > .orr-help-terms__row:nth-child(2) > * { border-top:1px solid rgb(${BONE} / .09); }
+  ${HD} .orr-help-list--ores .orr-help-terms > .orr-help-terms__row:nth-child(odd) > dd { padding-right:0; }
+}
 /* UI polish 42: a short desktop (≤460 tall). The 761–1200 row of sections still sits beside the
    title, and the Controls stage still splits the ship rig beside EVERY KEY — but under ~460px of
    height the title row, the section ticks, the rig's "PRESS ANY KEY" echo and the register's rebound

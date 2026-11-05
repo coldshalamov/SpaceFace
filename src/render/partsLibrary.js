@@ -6364,7 +6364,20 @@ export async function prepareFirstQueuedAuthoredBoundaryForOpening(scene) {
   state.openingHandoffHold = true;
   invalidateScheduledUpgradeFrame(state);
 
-  const inFlight = [...state.byBoundary.values()].find((job) => job.lifecycle === 'in-flight');
+  // Hulls-only loading must not let a leftover FX compile own the opening barrier. A prior
+  // ambient job can still be in flight when the cohort starts; awaiting it burned the whole
+  // first-picture budget on CI software GL (GPU_RESIDENCY_UNAVAILABLE / authored boundary
+  // cohort timed out) while the player hull and stations stayed queued. Prefer an in-flight
+  // hull/glass/contact job; otherwise fall through and admit one from the restricted lane.
+  const live = authoredRuntimeState();
+  const inFlight = [...state.byBoundary.values()].find((job) => {
+    if (!job || job.lifecycle !== 'in-flight') return false;
+    if (state.loadingHullsOnly !== true) return true;
+    return isLoadingHullUpgradeJob(job)
+      || entityIsOnReadableGlass(job.entity, live)
+      || openingFrameAdmissionPriority(job.entity, live) !== null
+      || loadingContactOwnsFlightGate(job.entity, live);
+  });
   if (inFlight) {
     await inFlight.completion;
     return { prepared: true, source: 'in-flight', key: inFlight.key };
