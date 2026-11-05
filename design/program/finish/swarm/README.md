@@ -75,6 +75,11 @@ things. Most of the work is taste and configuration, not systems.
 
 ## 3. What I saw (played 2026-11-05: title → Crucible → Quick Play → round 1)
 
+The "before" pictures are committed in [`baseline/`](./baseline/) — look at them before you start
+any plan; they are what "wrong" looks like: `01-round1-open-space`, `02-idle-chain9-pileup`
+(ship at rest, no input), `03-jargon-and-line-panel`, `04-bomb-whiteout`,
+`05-last-enemy-offscreen`, `06-armory-catalog`, `07-foundry-menu-art` (compare with 01).
+
 1. **Six gates before the first shot**: splash → motion ask → "First light" prompt → Encounter
    tab (4 modes × 4 stakes × 7 arenas) → Ship & Kit (10+ starter builds) → an 81-item Armory
    opening on a "wager".
@@ -161,9 +166,16 @@ missing death pop). A global change needs an Adventure before/after.
   physics weapons stay limited to 1–2 archetypes.
 - The five powers stay on 1–5 (owner ruling 2026-10-22). Plan S5 changes what the rest of the
   keyboard does in Swarm, not the powers' keys.
-- Lane 2's queued Swarm work that adds systems (W-HEADS, W-PROVENANCE, Circuit route map, Grudge
-  Ledger, Trick Book, Strategic Chaos) should wait until this program's S-plans land; they are
-  breadth on a mode whose core is not yet tight.
+
+**Recommendation (not an owner ruling — the controller or owner may overrule):** Lane 2's queued
+Swarm work that adds systems (W-HEADS, W-PROVENANCE, Circuit route map, Grudge Ledger, Trick Book,
+Strategic Chaos) should wait until this program's S-plans land; it is breadth on a mode whose core
+is not yet tight.
+
+**What counts as "new".** The program allows very few new things (combo cards, boss break-up into
+ammunition, one reserved). Enemy abilities in S7 built through existing owners — fields, mines,
+tethers, impulse charges, shields, doctrines — are **not** new things; they are existing systems
+pointed at enemies. A new owner, currency, menu, item tier or simulation system is.
 
 ## 7. Order
 
@@ -171,3 +183,35 @@ See `PLANS.md`. Phase A (feel and glass) → Phase B (character and spectacle) �
 and structure) → Phase D (showpiece and rehearsal). Plans touching disjoint files may run in
 parallel. Before editing, run `git status --short`, read `design/program/NOW.md`, and preserve
 concurrent work.
+
+## 8. The game at large — what Swarm teaches Adventure
+
+These are **follow-ups, not S-plans**. Each S-plan stays Swarm-only unless marked global; once its
+Swarm version is proven, the same idea should be carried to Adventure as its own packet.
+
+**What carries back from Swarm:**
+- **The glass policy (S2)** → an Adventure flight glass that shows the fight and the objective,
+  not prose. Adventure flight today overlays atmospheric lines on the action (*"The desk is open.
+  The stacks already know what you carry."*), a jargon stack ("BAND OFF", "IMPACT LOGGED — 214",
+  "MASS 20 · EVEN PULL"), a permanent seven-row power list with words, and chatter/news with no
+  priority gate. One persistent set, ≤ 3 short transients, plain words — the same rule.
+- **The feel profile idea (S1)** → Adventure keeps its own tuning, but in one profile file too,
+  so nobody edits shared constants to tune one mode.
+- **Enemy character (S7)** → the same silhouettes, hues and tells in Adventure encounters, so a
+  Lancer is a Lancer everywhere.
+- **Spectacle ladder (S8)** → global already for the flash cap; the rest should follow.
+- **Controls (S5)** → the Adventure keyboard binds every letter; a context system (flight, combat,
+  station) with a short visible set per context would make it learnable.
+
+**Adventure-wide problems the audit found (not Swarm):**
+- **Two different title screens** in a row (an older ring splash "DEEP SPACE FLIGHT SYSTEMS", then
+  the ORRERY title). One brand, one title.
+- **Three art styles in one frame**: flat painted planets (2D images) beside blocky/voxel cargo
+  props beside detailed ships — different rendering and scale. One art direction, consistent scale.
+- **Station screens are dense**: small type, clipped lines ("Idle hands will be…"), every panel
+  competing. Menus outside flight are otherwise the game's most professional surface — keep that
+  standard and give each screen one focus.
+- **Writing voice** is cryptic and over-written in flight and station flavor text. Plain,
+  punchy, characterful; flavor belongs in the bar and the codex, not over the action.
+- **Breadth over depth**: ~430 data files and ~380 systems, many named one-offs. The program
+  direction "depth, not bolt-ons" (owner 2026-10-21) applies everywhere; this audit is evidence for it.

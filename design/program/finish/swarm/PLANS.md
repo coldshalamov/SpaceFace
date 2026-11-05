@@ -85,7 +85,8 @@ the field deploy owner (`grep -rn "field_well_standard" src/systems`), `src/comb
 // (design/program/finish/swarm/AUDIT.md). Read through swarmFeel(state): it returns
 // this profile during a live Swarm run and null otherwise, so every owner keeps its Adventure
 // value when it gets null. Values are starting points; tune by play and record changes here.
-import { isSwarmRuleset } from '../systems/survivalSwarm.js';
+// Data imports data only: compare against SWARM_RULESET, never import a system from here.
+import { SWARM_RULESET } from './swarmMode.js';
 
 export const SWARM_FEEL_PROFILE = Object.freeze({
   id: 'swarm_feel_v1',
@@ -100,12 +101,13 @@ export const SWARM_FEEL_PROFILE = Object.freeze({
   pull: Object.freeze({ yankS: 1.2, yankStrengthMult: 3, yankDampingMult: 0.35, holdS: 2, cooldownS: 6 }),   // P4
   shove: Object.freeze({ punchS: 0.35, punchStrengthMult: 3, bermS: 1.5, cooldownS: 5 }),                      // P5
   dying: Object.freeze({ instantBelowMassT: 32, mediumWindowS: 0.5 }),                                        // P6
-  fodder: Object.freeze({ ids: ['wasp_swarmer', 'choir_zealot', 'detonator_dart'], hullMult: 0.4, shield: 0 }), // C1/C2
+  // C1/C2: Wasp 55→11 hull, no shield, no armor → 0.40 s under the 27.5 DPS pulse starter.
+  fodder: Object.freeze({ ids: ['wasp_swarmer', 'choir_zealot', 'detonator_dart'], hullMult: 0.2, shield: 0, armor: 0 }),
 });
 
 export function swarmFeel(state) {
   const run = state && state.run;
-  if (!run || run.kind !== 'survival' || run.phase === 'inactive' || !isSwarmRuleset(run.ruleset)) return null;
+  if (!run || run.kind !== 'survival' || run.phase === 'inactive' || run.ruleset !== SWARM_RULESET) return null;
   return SWARM_FEEL_PROFILE;
 }
 ```
@@ -143,7 +145,8 @@ Materialisation applies `fodder.hullMult` and removes shields from the fodder id
 
 TTK table test: for every starter build in the Crucible Ship & Kit list (read them from the data,
 don't hard-code), time-to-kill a Wasp/Zealot/Dart under continuous fire ≤ 0.5 s at mid range.
-Record the table in the commit body.
+Record the table in the commit body. If a build misses, raise its damage against light hulls
+through the profile (a `lightHullDamageMult`), **never** relax the test's 0.5 s bar.
 
 ### Task 5: versioned references
 
@@ -178,7 +181,7 @@ S5 owns it). **Do not touch:** `barkDirector.js`, `faction_archive.js` — silen
 ```js
 // src/ui/swarmGlass.js — what a live Swarm round may show (README §4). Pure. Outside a live
 // Swarm run every rule admits, so Adventure is untouched.
-import { isSwarmRuleset } from '../systems/survivalSwarm.js';
+import { SWARM_RULESET } from '../data/swarmMode.js';
 
 export const SWARM_CALLOUT_MAX = 3;
 export const SWARM_CALLOUT_WORDS = 3;
@@ -188,7 +191,7 @@ const BARE_NUMBER = /(^|\s)\d{2,}(\s|$)/;
 
 export function isSwarmGlass(state) {
   const run = state && state.run;
-  return !!(run && run.kind === 'survival' && run.phase !== 'inactive' && isSwarmRuleset(run.ruleset));
+  return !!(run && run.kind === 'survival' && run.phase !== 'inactive' && run.ruleset === SWARM_RULESET);
 }
 export function swarmGlassAdmits(state, { source = '' } = {}) {
   return !isSwarmGlass(state) || FIGHT_SOURCES.has(String(source));
@@ -431,6 +434,12 @@ Tasks:
 4. **Debut rule**: the wave a type debuts, it arrives as its own small group with a one-line name
    callout (`NEW: SNIPER`), never mixed into a crowd.
 
+**Done when:** the sheet test is green; a **silhouette lineup** screenshot (every ship archetype
+and Brood family side by side at the gameplay camera, HUD hidden) lets an independent reviewer
+name each one by shape and colour alone; every row has its 5–10 s tell → ability → counter
+capture; a 10-run death-cause table shows ≥ 50% of deaths come from a telegraphed ability or the
+room (not chip fire).
+
 **How you will get this wrong:**
 - Giving enemies more HP to make them "formidable". Formidable = a dangerous ability with a fair tell.
 - Abilities without tells, or tells that are text. The tell is in the world.
@@ -466,6 +475,12 @@ burst under S1's dying profile; (3) heavy break-up chunks as ordinary throwable 
 existing wreck/fragment body path; no new physics body type) + shockwave impulse through the
 existing impulse membrane; (4) audio pitch/mass terms; (5) captures of each ladder row.
 
+**Done when:** the flash-cap test passes for the largest bomb; a light-kill fixture shows the
+burst within 1 tick of `entity:killed`; a heavy-kill fixture leaves 3–6 bodies the Line scoring
+accepts as grabbable; one capture per ladder row is saved and judged against README §4 (no frame
+where an effect hides a red telegraph); an Adventure bomb capture shows the global cap and nothing
+else changed.
+
 **How you will get this wrong:**
 - "Bigger" = brighter and whiter. Bigger = more world: debris, rings, light, smoke.
 - Particles that hide the next enemy. Effects must not occlude telegraphs (red lines/rings draw above VFX).
@@ -495,6 +510,12 @@ can kill you; the round looks like the arena's picture.
    from the real round so the picture matches.
 4. **Bounds**: a visible edge (machinery walls, a field fence with glow) — never an invisible wall.
 
+**Done when:** the inventory table is in the commit body; per arena, a fixture proves the
+signature hazard kills a thrown Wasp **and** damages the player who drifts in, with its telegraph
+starting ≥ 1 s before; per arena, the menu image and a round-1 screenshot are placed side by side
+and an independent reviewer agrees they show the same place; no arena shows the generic ringed
+planet unless it is an open-space arena by design.
+
 **How you will get this wrong:**
 - Adding scenery that doesn't do anything. Every big prop is a weapon, a hazard or cover.
 - Hazards that only hurt the player (or only enemies). Friend *and* foe.
@@ -521,6 +542,10 @@ visibly, the last few come to you, a title opens the round.
 4. **Tune** wave lengths to 60–90 s for a competent player with `src/data/waveRecipeSimulator.js`,
    then confirm in two live runs; record lengths.
 5. **Special rounds** (S12) slot in at waves 4, 8, 13…
+
+**Done when:** the last-three test is green; an arrival test shows no hostile ship materialises
+within 1.3 screens of the player; two live runs record waves 1–6 at 60–90 s each with no hunting;
+a screenshot of a group entering through a lit gate.
 
 **How you will get this wrong:** tuning length by adding HP; making the last three teleport.
 
@@ -577,6 +602,25 @@ cues, `test/swarm-staples*.test.mjs`.
 | Perks | two chosen before the run (existing Hangar); shown as two icons beside the hull ring |
 | Fortify | from the shop: place a build on a lit socket in the arena; it fights visibly; enemies go for weak links — the tower-defense flavour |
 
+Tasks — one commit per staple, each through its existing owner:
+1. **Drops** (`swarmSupply.js`): pod visual with a beacon column (reuse the loot-beacon look),
+   pickup sound, a cap of 2 per round from credited kills. Test: a scripted round yields 1–2 drops
+   only from credited kills.
+2. **Call-ins** (`swarmCallins.js` + S5's Q key): shop sells charges as S11 cards; Q fires the
+   next charge; each call-in has a ≥ 0.8 s world telegraph and a one-word callout. Test: Q with a
+   charge fires it; without one does nothing and shows nothing.
+3. **Special rounds** (`swarmEvents.js`): waves 4, 8, 13, 18… draw one event card; announce it in
+   ≤ 2 words with the round title; switch the music layer (S13). Test: those waves always carry an
+   event; others never do (seeded).
+4. **Perks** (`swarmPerks.js`): the two chosen perks show as two icons beside the hull ring; when
+   a perk triggers, its icon pulses. Test: icons mount for a run with perks, not without.
+5. **Fortify** (`swarmFortify.js`): reachable from the shop as one button; lit sockets visible in
+   the arena during the shop; a placed build is visible and fights in the round; enemies' weak-link
+   attacks telegraph. Test: place → round → the build engages a hostile.
+
+**Done when:** all five tests green; one live run captures a drop pickup, a call-in, a special
+round announce, a perk trigger and a Fortify build fighting — each judged against README §4.
+
 **How you will get this wrong:** adding new staples. Use these five; make them visible and timed.
 
 ## S13 — The payoff ladder and the sound of Swarm
@@ -600,6 +644,11 @@ music rises with the wave and drops in the shop.
 - Music: intensity stems tied to live pressure (ships + Brood alive), drop to a calm layer in the
   shop, a boss layer. If no new music can be authored, drive the existing score engine (phases,
   keys, bar quantisation) from wave state.
+
+**Done when:** the payoff test (scripted credited receipts → the right announce kind; `count:0`
+→ nothing; two pile-ups within 1.5 s → one presentation) is green; a short capture of a live
+pile-up shows the freeze, punch and one `PILE-UP!`; an audio check records the music state at
+round start, mid-round peak, shop and boss (four distinct layers or states).
 
 **How you will get this wrong:** juice on everything (it stops meaning anything); hit-stop on every
 kill; music that never changes.
@@ -628,6 +677,11 @@ into it, and dies into chunks you keep using as ammunition.
 5. **First boss victory**: a victory variant of Run Over (`IRON MAW DOWN`), with "Keep going"
    (focused), "Run it again", "Main menu".
 
+**Done when:** a cadence test (boss at 5, 15, 25; none at 10 unless the rotation says so) is green
+with versioned references; a death fixture leaves 4–6 grabbable chunks; one live run beats the wave-5
+Iron Maw using at least one thrown chunk or ballast, with screenshots of the entrance, a plate shed,
+the chunks in use and the victory screen; time-to-beat for a competent player is 60–120 s.
+
 **How you will get this wrong:** a boss with a big HP bar you shoot for 90 s — the vision forbids
 it (VISION "not from making every enemy absorb thirty seconds of damage").
 
@@ -653,6 +707,10 @@ The file header must say exactly which existing modules/legendaries each evoluti
 (e.g. Black Hole = Graviton Heart's well attached to tagged targets). An evolution that can't be
 built from existing parts is dropped. Tests: needs exist in the authored pools; offered once, only
 when both owned. Capture each in a live round.
+
+**Done when:** the evolution tests are green; each landed evolution has a 5–10 s live capture
+showing its effect change how a fight plays, and an independent reviewer can say what it does
+from the capture alone.
 
 **How you will get this wrong:** evolutions that are +50% numbers. Each must change what you *do*.
 
