@@ -232,6 +232,9 @@ import { special500DockLedger } from '../systems/special500DockLedger.js';   // 
 import { special500HullLog } from '../systems/special500HullLog.js';         // batch 18 counter legs: the player-hull log
 import { special500ReadEverything } from '../systems/special500ReadEverything.js'; // batch 18 counter leg: SP2-188's run-end chain
 import { special500CollectiveHours } from '../systems/special500CollectiveHours.js'; // batch 18 counter leg: SP1-173's tally
+import { createSpecial500Confessional } from '../systems/special500Confessional.js';
+import { createSpecial500DeathBell } from '../systems/special500DeathBell.js';
+import { createSpecial500ForgeKaraoke } from '../systems/special500ForgeKaraoke.js';
 
 import { shepherd12 } from '../systems/shepherd12.js';
 import { quill } from '../systems/quill.js';
@@ -543,6 +546,9 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['special500HullLog', special500HullLog],
     ['special500ReadEverything', special500ReadEverything],
     ['special500CollectiveHours', special500CollectiveHours],
+    ['special500Confessional', createSpecial500Confessional()],
+    ['special500DeathBell', createSpecial500DeathBell()],
+    ['special500ForgeKaraoke', createSpecial500ForgeKaraoke()],
 
     ['shepherd12', shepherd12],
     ['quill', quill],

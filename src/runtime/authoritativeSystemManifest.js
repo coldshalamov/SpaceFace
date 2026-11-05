@@ -121,6 +121,11 @@ export const PRODUCTION_INIT_ORDER = Object.freeze([
   'special500HullLog',
   'special500ReadEverything',
   'special500CollectiveHours',
+  // Incoming event-only legs: canonical dock/death receipts and an explicit public choice.
+  // No update slot or additional polling clock.
+  'special500Confessional',
+  'special500DeathBell',
+  'special500ForgeKaraoke',
   // PULSE-MAIL (435) / PULSE-TIME (439): listener+tick delivery and the world calendar's
   // transition announcer — both slow observers on the calendar clock.
   // worldPressure (§34 rows 520–523): the tide/gate-audit/slow-gray owner — reads
