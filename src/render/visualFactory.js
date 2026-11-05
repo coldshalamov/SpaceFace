@@ -77,6 +77,7 @@ import { WEAPONS } from '../data/weapons.js';
 import { MODULES } from '../data/modules.js';
 import { commodityPresentationFor } from '../data/commodities.js';
 import { buildPickupGeometry, pickupShapeForCommodity } from './pickupShapes.js';
+import { isSurvivorPodEntity, MAYDAY_LAMP_COLOR, MAYDAY_LAMP_CORE_COLOR } from './survivorPodVisual.js';
 import { PICKUP_ROLE, buildPickupRoleGeometry, pickupRoleForEntity } from './vfx/fragmentFamilies.js';
 import { FACTION_META } from '../data/factions.js';
 import { configureMaterialLibrary } from './materialLibrary.js';
@@ -6933,7 +6934,92 @@ function buildBroodRemainVisual(e) {
   return g;
 }
 
+// ---------------------------------------------------------------------------------------------
+// SURVIVOR EJECTION POD — a mayday is a person, not cargo (inf-mayday-pod).
+// The causal eject loop (src/systems/survivorPod.js) used to render through the generic
+// sealed-cargo canister, so a 180-second oxygen mayday was visually just another freight
+// drop in the field. The lifeboat composes from survivorPodVisual.js decisions: a blunt
+// capsule with a viewport on the nose, a retro block on the tail, a foam crash collar, and
+// a distress lamp mast running the two-short-one-long group. The lamp's strobe is painted
+// per-frame by ordnanceMotionPresentation on the CLONED lamp material this factory hands
+// over via userData.survivorMaydayLamp (per-pod material, so pods never share a strobe —
+// the shared-material pose contract stays intact). userData carries the payload contract
+// intact so tether, scan and loot owners keep working unchanged.
+// ---------------------------------------------------------------------------------------------
+function buildSurvivorPod(e) {
+  const R = Math.max(1, (e && e.radius) || 5);
+  const g = new THREE.Group();
+  const shell = getMaterial('survivorpod:shell', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
+    color: 0x9aa4ac, roughness: 0.52, metalness: 0.38, flatShading: true,
+  }), SHARED_MATERIAL_ROLE.HULL));
+  const collar = getMaterial('survivorpod:collar', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
+    color: 0x2e3438, roughness: 0.85, metalness: 0.2,
+  }), SHARED_MATERIAL_ROLE.HULL));
+  const retro = getMaterial('survivorpod:retro', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
+    color: 0x46515a, roughness: 0.6, metalness: 0.55,
+  }), SHARED_MATERIAL_ROLE.HULL));
+  const viewport = getMaterial('survivorpod:viewport', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
+    color: 0x1d2b30, emissive: new THREE.Color(MAYDAY_LAMP_CORE_COLOR), emissiveIntensity: 0.9,
+    roughness: 0.25, metalness: 0.1,
+  }), SHARED_MATERIAL_ROLE.HULL));
+  const body = new THREE.Group();
+  body.name = 'SurvivorPodBody';
+  const add = (geoKey, geoBuild, material, name, pos) => {
+    const m = new THREE.Mesh(getGeometry(geoKey, geoBuild), material);
+    m.name = name;
+    if (pos) m.position.set(pos[0], pos[1], pos[2]);
+    m.frustumCulled = false;
+    body.add(m);
+    return m;
+  };
+  // Blunt capsule along X — barrel, rounded nose, and the tail the retro block bolts to.
+  add('survivorpod:barrel', () => new THREE.CylinderGeometry(0.34, 0.36, 0.92, 10).rotateZ(Math.PI / 2),
+    shell, 'SurvivorPodBarrel', [0, 0, 0]);
+  add('survivorpod:nose', () => new THREE.SphereGeometry(0.34, 10, 8),
+    shell, 'SurvivorPodNose', [0.46, 0, 0]);
+  // The viewport: a ringed eye on the nose with a warm burn behind it — the lamp's steady
+    // read between strobe groups (maydayViewportBurn paints the cloned lamp, this glass is the
+    // always-lit promise that someone is alive in here).
+  add('survivorpod:viewportring', () => new THREE.TorusGeometry(0.16, 0.035, 6, 14).rotateY(Math.PI / 2),
+    collar, 'SurvivorPodViewportRing', [0.62, 0, 0]);
+  add('survivorpod:viewportglass', () => new THREE.SphereGeometry(0.13, 8, 6),
+    viewport, 'SurvivorPodViewportGlass', [0.6, 0, 0]);
+  // Foam crash collar around the mid — a thrown lifeboat, not a machined cargo drum.
+  add('survivorpod:crashcollar', () => new THREE.TorusGeometry(0.4, 0.075, 6, 14).rotateY(Math.PI / 2),
+    collar, 'SurvivorPodCrashCollar', [0, 0, 0]);
+  // Retro block on the tail: the burn that flung it clear, dead since.
+  add('survivorpod:retroblock', () => new THREE.BoxGeometry(0.22, 0.42, 0.42),
+    retro, 'SurvivorPodRetroBlock', [-0.52, 0, 0]);
+  // Distress lamp mast on top: warning red (the luminaire family's warning color), per-pod
+  // cloned so the two-short-one-long group phases per pod.
+  add('survivorpod:mast', () => new THREE.CylinderGeometry(0.025, 0.035, 0.3, 6),
+    retro, 'SurvivorPodLampMast', [-0.1, 0.49, 0]);
+  const lampMat = getMaterial('survivorpod:lamp', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
+    color: 0x2a0f0c, emissive: new THREE.Color(MAYDAY_LAMP_COLOR), emissiveIntensity: 1.2,
+    roughness: 0.4, metalness: 0.1,
+  }), SHARED_MATERIAL_ROLE.HULL)).clone();
+  add('survivorpod:lamp', () => new THREE.SphereGeometry(0.09, 8, 6),
+    lampMat, 'SurvivorPodDistressLamp', [-0.1, 0.66, 0]);
+  body.scale.setScalar(R);
+  g.add(body);
+  const causal = (e && e.data && e.data.survivorPodCausal) || null;
+  g.userData.survivorMaydayLamp = {
+    material: lampMat,
+    ejectedAt: causal ? causal.ejectedAt : (e && e.data && e.data.ejectedAt),
+    expireAt: causal ? causal.expireAt : (e && e.data && e.data.expireAt),
+    phase: (hashId(e && e.id) % 256) / 256,
+  };
+  g.userData.kind = 'payload';
+  g.userData.interactionKind = 'payload';
+  g.userData.visualLanguage = 'ejection-lifeboat';
+  g.userData.pickupRole = PICKUP_ROLE.POD;
+  g.userData.animated = true;
+  return g;
+}
+
 function buildPayload(e) {
+  // A pod from a killed crew is a lifeboat with a mayday to shout, never a canister.
+  if (isSurvivorPodEntity(e)) return buildSurvivorPod(e);
   // FB-075: a pod carrying a volatile lot is a pressure bottle with a collar, not a canister —
   // the silhouette is the hazard warning at chase distance.
   if (e && e.data && (e.data.volatileClass || e.data.volatileLamp)) return buildVolatilePod(e);

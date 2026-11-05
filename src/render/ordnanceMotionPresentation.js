@@ -28,6 +28,7 @@
 // determinism-safe, zero per-frame allocation.
 
 import { isLanternWardHardwareEntity } from '../data/lanternWardHardware.js';
+import { resolveMaydayLamp, maydayViewportBurn } from './survivorPodVisual.js';
 
 function hashId(id) {
   const s = String(id == null ? '' : id);
@@ -472,6 +473,23 @@ export function createOrdnanceMotionTracker() {
       else { mesh.scale.x = tx; mesh.scale.y = ty; mesh.scale.z = tz; }
       rec.scaleDirty = scaleMul !== 1;
       presented.scaleDirty = rec.scaleDirty;
+    }
+
+    // Mayday lamp (inf-mayday-pod): a survivor pod's distress beacon shouts its two-short-
+    // one-long group here, painted onto the CLONED lamp material the factory handed over in
+    // userData.survivorMaydayLamp. The shared-material contract is untouched — this material
+    // is per-pod by construction, so no sibling payload ever inherits the strobe. Sim-time
+    // keyed, zero allocation, and one userData compare for every ordinary payload.
+    if (kind === 'payload' && mesh.userData && mesh.userData.survivorMaydayLamp) {
+      const lamp = mesh.userData.survivorMaydayLamp;
+      // flashReduce: steady viewport burn only — a distress beacon stays legible without
+      // strobing. reducedMotion alone halves the gain; the rhythm never silences.
+      const gain = reducedFlash ? 0 : (reducedMotion ? 0.5 : 1);
+      const sample = resolveMaydayLamp(simTime, lamp.ejectedAt, lamp.expireAt, lamp.phase, gain);
+      const burn = maydayViewportBurn(sample.flash);
+      if (lamp.material && lamp.material.emissiveIntensity !== burn) {
+        lamp.material.emissiveIntensity = burn;
+      }
     }
   }
 
