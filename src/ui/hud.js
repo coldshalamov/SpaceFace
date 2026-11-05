@@ -1951,7 +1951,7 @@ export function createHud(ctx, alerts) {
   // FB-012 — mount the stunt callout layer from the flight HUD path. Adventure now names its
   // stunts; the Crucible-only score fields stay gated inside the layer itself. Idle-quiet: the
   // layer's update returns false and stops listening for frames when nothing is on screen.
-  ensureStuntCallout({ state, bus: ctx.bus, onFlightTextGeometryChange: invalidateAndPlaceHudOverlays });
+  ensureStuntCallout({ state, bus: ctx.bus, onFlightTextGeometryChange: invalidateTransientOverlayGeometry });
 
   // Reserve the active Cluster's rendered height for the comms strip. A viewport scale
   // step can change that height, so both ResizeObserver and resize publish the same value.
@@ -6182,7 +6182,7 @@ export function createHud(ctx, alerts) {
   };
   function plateBox(el) {
     if (!el || !el.isConnected || typeof el.getBoundingClientRect !== 'function') return null;
-    const box = el.getBoundingClientRect();
+    const box = readReceiptRect(el);
     return box && box.width > 0 && box.height > 0 ? box : null;
   }
   function invalidateObjectiveEdgeBoxes() {
@@ -6190,6 +6190,14 @@ export function createHud(ctx, alerts) {
     externalCaptionsStale = true;
     flightTextObstaclesStale = true;
     alertLanePlacementStale = true;
+  }
+  function invalidateTransientOverlayGeometry() {
+    // A fixed callout appearing/moving cannot change the structural HUD plates. Keep their
+    // settled boxes, but place new text/alerts in the same pre-paint turn as before.
+    externalCaptionsStale = true;
+    flightTextObstaclesStale = true;
+    alertLanePlacementStale = true;
+    invalidateReceiptLane();
   }
   function invalidateAndPlaceHudOverlays() {
     invalidateObjectiveEdgeBoxes();
@@ -6211,19 +6219,23 @@ export function createHud(ctx, alerts) {
     // read when the HUD layout changes, not on every slow presentation frame.
     const railEl = root.querySelector('.orr-hud-cluster .orr-cluster, .sf-prail');
     objectiveEdgeBoxes.railEl = railEl;
+    const orreryEl = orreryCluster ? orreryCluster.host.querySelector('.orr-cluster') : null;
+    objectiveEdgeBoxes.orreryEl = orreryEl;
+    objectiveEdgeBoxes.orrery = orreryCluster ? plateBox(orreryEl) : null;
+    objectiveEdgeBoxes.rail = railEl === orreryEl ? objectiveEdgeBoxes.orrery : plateBox(railEl);
+    // Finish the read batch before publishing a CSS variable that can dirty the HUD subtree.
     // The prompt deck anchors its right edge to this var (styles/prompt-deck.css): measured here so
     // decisions sit left of the dock column instead of growing over the target card. The dock's
     // left edge only moves with the layout step, which is exactly this box's stale lifecycle.
     if (objectiveEdgeBoxes.right && typeof document !== 'undefined'
       && document.documentElement && document.documentElement.style
       && typeof document.documentElement.style.setProperty === 'function') {
-      document.documentElement.style.setProperty(
-        '--sf-rightdock-left', `${Math.round(objectiveEdgeBoxes.right.left)}px`);
+      const value = `${Math.round(objectiveEdgeBoxes.right.left)}px`;
+      const style = document.documentElement.style;
+      if (style.getPropertyValue?.('--sf-rightdock-left') !== value) {
+        style.setProperty('--sf-rightdock-left', value);
+      }
     }
-    const orreryEl = orreryCluster ? orreryCluster.host.querySelector('.orr-cluster') : null;
-    objectiveEdgeBoxes.orreryEl = orreryEl;
-    objectiveEdgeBoxes.orrery = orreryCluster ? plateBox(orreryEl) : null;
-    objectiveEdgeBoxes.rail = railEl === orreryEl ? objectiveEdgeBoxes.orrery : plateBox(railEl);
     return objectiveEdgeBoxes;
   }
   // Other persistent UI owners may register a short-lived flight caption. Keep those captions in
@@ -6271,7 +6283,8 @@ export function createHud(ctx, alerts) {
             || (!enteringOverlay && Number.parseFloat(style?.opacity) === 0)) return;
         } catch (_) { /* geometry remains the visibility fallback for partial DOM hosts */ }
       }
-      const rect = cachedRect || el.getBoundingClientRect?.();
+      // The dock alert's legacy readout writer runs after allocation and owns its fixed box.
+      const rect = cachedRect || (owner === 'alert' ? el.getBoundingClientRect?.() : readReceiptRect(el));
       if (!rect || !(rect.width > 0) || !(rect.height > 0)) return;
       seen.add(el);
       entries.push({ owner, rect });
@@ -6313,7 +6326,11 @@ export function createHud(ctx, alerts) {
   let touchOverlayOwner = null;
   let touchOverlayObserver = null;
   if (typeof ResizeObserver === 'function') {
-    overlayLayoutObserver = new ResizeObserver(invalidateAndPlaceHudOverlays);
+    overlayLayoutObserver = new ResizeObserver(entries => {
+      if (entries.length && entries.every(entry => externalFlightCaptions.has(entry.target))) {
+        invalidateTransientOverlayGeometry();
+      } else invalidateAndPlaceHudOverlays();
+    });
     const railEl = root.querySelector('.orr-hud-cluster .orr-cluster, .sf-prail');
     if (railEl) overlayLayoutObserver.observe(railEl);
     if (rightDock) overlayLayoutObserver.observe(rightDock);
@@ -6428,8 +6445,8 @@ export function createHud(ctx, alerts) {
     }
     return slot;
   }
-  // Diagnostic comparison is local to this HUD. Geometry never survives a flush, and a real
-  // placement write ends the current read stage before another owner can consume its boxes.
+  // Diagnostic comparison is local to this HUD. Geometry never survives a flush. Out-of-flow
+  // overlay writes invalidate their own tree, retaining unrelated settled obstacle measurements.
   let receiptPlacementMode = 'shared';
   let receiptGeometryRects = null;
   function setReceiptPlacementMode(mode) {
@@ -6453,9 +6470,19 @@ export function createHud(ctx, alerts) {
       // Keep the old lane writer coherent when the diagnostic switches back to original.
       if (el._sfStyle) el._sfStyle[prop] = value;
       if (el.style[prop] === value) return;
-      // These are scoped placement writes. Pointer/opacity changes do not move boxes; all
-      // other writes conservatively discard the entire stage, including ancestor geometry.
-      if (prop !== 'pointerEvents' && prop !== 'opacity') receiptGeometryRects?.clear();
+      if (prop !== 'pointerEvents' && prop !== 'opacity' && receiptGeometryRects) {
+        // Only these absolute/fixed overlay roots are independent of sibling layout. Their
+        // descendants (receipt/alert cards) and ancestors must still be measured after writes.
+        const isolated = el === caption || el === toastsLaneEl || el === alertsEl
+          || (externalFlightCaptions.has(el)
+            && (el.style.position === 'absolute' || el.style.position === 'fixed'));
+        if (!isolated) receiptGeometryRects.clear();
+        else for (const cached of receiptGeometryRects.keys()) {
+          if (cached === el || el.contains?.(cached) || cached.contains?.(el)) {
+            receiptGeometryRects.delete(cached);
+          }
+        }
+      }
     }
     el.style[prop] = value;
   }
@@ -6662,26 +6689,22 @@ export function createHud(ctx, alerts) {
       let placement = null;
       for (const candidate of slots) {
         // Wrapping changes height: measure only after applying this lane's actual width.
-        setReceiptStyle(el, 'width', 'fit-content');
-        setReceiptStyle(el, 'maxWidth', `${Math.round(candidate.width)}px`);
-        setReceiptStyle(el, 'maxHeight', 'none');
+        prepareReceiptCaptionSize(candidate, el);
         const bands = freeOverlayBands(candidate, h, layout, el, true);
         const height = Math.max(48, el.scrollHeight || el.getBoundingClientRect?.().height || 48);
         const band = bands.find((available) => available.bottom - available.top >= height + 8);
-        if (band) { placement = { slot: candidate, band }; break; }
+        if (band) { placement = { slot: candidate, band, height }; break; }
         if ((!mobile || el.dataset?.flightCritical === 'true') && bands[0]
             && (!placement || (el.dataset?.flightCritical === 'true'
               && bands[0].bottom - bands[0].top > placement.band.bottom - placement.band.top))) {
-          placement = { slot: candidate, band: bands[0] };
+          placement = { slot: candidate, band: bands[0], height };
         }
       }
       if (!placement && mobile && el.dataset?.flightCritical === 'true') {
         // The teaching ghost is decorative; a time-limited authority notice takes
         // priority when a small screen cannot fit both alongside the controls.
         for (const candidate of slots) {
-          setReceiptStyle(el, 'width', 'fit-content');
-          setReceiptStyle(el, 'maxWidth', `${Math.round(candidate.width)}px`);
-          setReceiptStyle(el, 'maxHeight', 'none');
+          prepareReceiptCaptionSize(candidate, el);
           const bands = freeOverlayBands(candidate, h, layout, el, true, true);
           if (bands[0] && (!placement || bands[0].bottom - bands[0].top > placement.band.bottom - placement.band.top)) {
             placement = { slot: candidate, band: bands[0] };
@@ -6730,7 +6753,9 @@ export function createHud(ctx, alerts) {
         continue;
       }
       el.style.opacity = externalCaptionOpacity.get(el) || '';
-      placeCaptionInSafeSlot(el, layout, placement.slot, null, placement.band);
+      placeCaptionInSafeSlot(el, layout, placement.slot, null, placement.band,
+        receiptPlacementMode === 'shared' && el.style.maxWidth === `${Math.round(placement.slot.width)}px`
+          ? placement.height ?? null : null);
     }
   }
   function clearExternalFlightCaptionPlacement(el) {
@@ -6820,15 +6845,15 @@ export function createHud(ctx, alerts) {
     }
     write(laneRoot, 'pointerEvents', 'none');
   }
-  function prepareReceiptCaptionSize(captionSlot) {
-    setReceiptStyle(caption, 'width', 'fit-content');
-    setReceiptStyle(caption, 'maxWidth', `${Math.round(captionSlot.width)}px`);
+  function prepareReceiptCaptionSize(captionSlot, target = caption) {
+    setReceiptStyle(target, 'width', 'fit-content');
+    setReceiptStyle(target, 'maxWidth', `${Math.round(captionSlot.width)}px`);
     // Visible overflow has no scrollbar and scrollHeight still reports the full text. Keep a
     // settled cap rather than toggling it none -> px on every flush; reset a scrolling caption.
-    if (receiptPlacementMode === 'original' || caption.style.overflowY !== 'visible') {
-      setReceiptStyle(caption, 'maxHeight', 'none');
+    if (receiptPlacementMode === 'original' || target.style.overflowY !== 'visible') {
+      setReceiptStyle(target, 'maxHeight', 'none');
     }
-    setReceiptStyle(caption, 'overflowY', 'visible');
+    setReceiptStyle(target, 'overflowY', 'visible');
   }
   function placeReceiptLane(resolvedLayout = null) {
     if (toastsLaneEl === null) toastsLaneEl = document.getElementById('toasts');
