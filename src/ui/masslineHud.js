@@ -45,7 +45,6 @@ import { targetDisplayName } from './targetPanel.js';
 import { isMassSeedTetherEligible, massSeedLatchPreview } from '../systems/massSeed.js';
 import { resolveThrowCollateral, resolveThrowOwnRouteRisk } from '../combat/masslineReleaseGeometry.js';
 import { announceStrokeGrade } from './stuntCallout.js';
-import { releaseReadReceipt } from './hudAttention.js';
 import { formatSpeed } from './units.js';
 
 // Lead moving intercept targets by half a fixed sim step. The 60 ms CSS tween then bridges the
@@ -420,6 +419,16 @@ export function lineBreakInvolvesPlayer(state, payload) {
   return payload.actorId === pid;
 }
 
+// Format only the facts carried by the release event; missing legacy fields are unknown.
+function lineReleaseReceipt(payload) {
+  const parts = [];
+  if (Number.isFinite(payload.tonnageU)) parts.push(`${Math.max(0, Math.round(payload.tonnageU))} t`);
+  if (Number.isFinite(payload.load)) parts.push(`load ${Math.round(clamp01(payload.load) * 100)}%`);
+  const strain = Object.hasOwn(payload, 'receiptStrain') ? payload.receiptStrain : payload.strain;
+  if (Number.isFinite(strain)) parts.push(`strain ${Math.round(clamp01(strain) * 100)}%`);
+  return parts.length ? `Line released: ${parts.join(', ')}` : '';
+}
+
 // INF-014 — line-load warning with hysteresis. Strain is the solver-owned break ratio the
 // telemetry already mirrors (tether.strain); trend is strain per second. The warning turns on
 // at high load (or moderate load climbing fast) and stays until the line relaxes well below
@@ -589,31 +598,31 @@ export const MASSLINE_HUD_CSS = `
 #sf-ml2 svg.ml2-orbit-ring { position:absolute; left:0; top:0; overflow:visible; }
 #sf-ml2 .ml2-orbit-ring circle { fill:none; stroke:rgba(140,190,235,0.45); stroke-width:1.2;
   stroke-dasharray:6 10; }
-#sf-ml2 .ml2-meters { position:absolute; left:50%; bottom:120px; transform:translateX(-50%);
+#sf-ml2 .ml2-meters { position:absolute; left:50%; bottom:118px; transform:translateX(-50%);
   display:flex; flex-direction:row; flex-wrap:wrap; justify-content:center;
-  gap:6px 10px; align-items:center; max-width:min(560px, 60vw); }
-#sf-ml2 .ml2-pill { display:flex; align-items:center; gap:7px; padding:3px 9px;
-  border-radius:var(--dp-r-instrument, 3px);
-  background-color:var(--dp-metal-1, #12151a); background-image:none;
-  border:0; box-shadow:none;
-  font:600 12px/1.4 system-ui, sans-serif; letter-spacing:.06em; color:var(--dp-ink-dim, #cbd5e1); }
-#sf-ml2 .ml2-pill .ml2-fill { width:64px; height:4px; border-radius:2px; background:var(--dp-metal-3, rgba(148,163,184,0.22));
+  gap:6px 8px; align-items:center; max-width:min(560px, 60vw); }
+#sf-ml2 .ml2-pill { display:flex; align-items:center; gap:8px; padding:4px 10px;
+  border-radius:4px;
+  background:linear-gradient(180deg, rgb(16 20 28 / .90), rgb(11 14 20 / .90));
+  border:1px solid rgb(236 230 216 / .12);
+  box-shadow:inset 0 1px 0 rgb(255 255 255 / .05), 0 6px 16px -4px rgb(0 0 0 / .60);
+  font:500 12px/1.3 var(--dp-face-read, "Instrument Sans", system-ui, sans-serif);
+  letter-spacing:.04em; color:var(--dp-ink, #e8e2d4); }
+#sf-ml2 .ml2-pill .ml2-fill { width:64px; height:4px; border-radius:2px; background:rgb(236 230 216 / .14);
   position:relative; overflow:hidden; }
-#sf-ml2 .ml2-pill .ml2-fill i { position:absolute; inset:0; transform-origin:left center; background:var(--dp-lamp, var(--dp-lamp, #f2b950)); }
-#sf-ml2 .ml2-pill.ml2-on { box-shadow:0 0 8px var(--dp-lamp-bloom, rgba(242,185,80,0.35)); color:var(--dp-lamp-hot, #ffd98c); }
+#sf-ml2 .ml2-pill .ml2-fill i { position:absolute; inset:0; transform-origin:left center; background:var(--dp-lamp, #f2b950); }
+#sf-ml2 .ml2-pill.ml2-on { border-color:rgb(242 185 80 / .45); box-shadow:inset 0 1px 0 rgb(242 185 80 / .16), 0 0 10px var(--dp-lamp-bloom, rgba(242,185,80,0.3)); color:var(--dp-lamp-hot, #ffd98c); }
 #sf-ml2 .ml2-pill.ml2-cloak .ml2-fill i { background:#9f8bff; }
-#sf-ml2 .ml2-pill.ml2-cloak.ml2-on { box-shadow:0 0 8px rgba(159,139,255,.3); color:#efeaff; }
+#sf-ml2 .ml2-pill.ml2-cloak.ml2-on { border-color:rgba(159,139,255,.45); box-shadow:0 0 10px rgba(159,139,255,.28); color:#efeaff; }
 #sf-ml2 .ml2-pill.ml2-strain .ml2-fill i { background:var(--dp-lamp, #f2b950); }
 #sf-ml2 .ml2-pill.ml2-strain.ml2-warn { color:#ffd08a; border:1px solid #8a6b3a; }
 #sf-ml2 .ml2-pill.ml2-strain.ml2-warn .ml2-fill i { background:#ff9d5c; }
-/* Cadence instrument slot: mid-LEFT column — away from the central playfield, clear of the comms
-   strip (top-left), the vitals cluster (bottom-left), the FOCUS/CLOAK pills (bottom-centre), the
-   objective/band HUD (top-right) and the radar dock (bottom-right). The side columns are the
-   flight deck's cue space (see pinToCueRing below), so an instrument belongs there. */
+/* Cadence instrument slot: mid-LEFT column — aligned to the exact same left HUD edge as
+   .sf-leftcontext and seated cleanly below the comms/news strip and above the flight cluster. */
 #sf-ml2 .ml2-cadence-slot { position:absolute;
-  left:calc(22px + var(--sf-safe-inset-x, 0px)); top:46%; transform:translateY(-50%); }
+  left:calc(var(--sf-hud-edge, 16px) + var(--sf-safe-inset-x, 0px)); top:max(168px, 20vh); transform:none; }
 @media (max-height: 760px) {
-  #sf-ml2 .ml2-cadence-slot { top:30%; }
+  #sf-ml2 .ml2-cadence-slot { top:144px; }
 }
 #sf-ml2.ml2-reduced-motion .ml2-mark,
 #sf-ml2.ml2-reduced-motion .ml2-preview-mark { transition:none; }
@@ -1079,6 +1088,10 @@ function writeMasslineHudFields(fields, state, player) {
   index = appendEntityFields(fields, index, state, selfSolution.targetId);
   index = appendEntityFields(fields, index, state, selected.targetId);
   index = appendEntityFields(fields, index, state, bridle.sourceId);
+  // A release receipt follows its original body, including its movement or retirement.
+  index = appendEntityFields(fields, index, state, verdict && verdict.targetId);
+  const verdictTarget = verdict && verdict.targetId != null ? state.entities?.get?.(verdict.targetId) : null;
+  fields[index++] = verdictTarget?.occupantGeneration;
   // VERB-29: a drifting anchor must re-center the orbit ring even when nothing else changed.
   index = appendEntityFields(fields, index, state,
     playerState.tether && playerState.tether.targetId);
@@ -1176,6 +1189,9 @@ export const masslineHud = {
     this._dom = null;
     this._cadenceReadout = null;
     this._lineLoad = null;
+    this._receiptLifecycleUnsubs = [];
+    this._receiptPaused = false;
+    this._receiptResetting = false;
     // M3: every denied latch gets words — the bus event is the one seam all six emit sites share.
     // The denial lands on a state field so it joins the HUD signature and redraws on arrival/expiry.
     // INF-015: a held latch input must not re-announce the same denial every tick, and a
@@ -1204,11 +1220,14 @@ export const masslineHud = {
       // denial uses — a grade is a fact/result, anchored at the body it graded. Only
       // `deliberate` ratings speak; a snapped line is a consequence, not a lesson.
       ctx.bus.on('tether:releaseRated', (p) => {
-        if (!this.state || !p || p.deliberate !== true) return;
+        if (!this.state || !p || this._receiptPaused || this._receiptResetting
+          || (this.state.mode && this.state.mode !== 'flight')) return;
+        if (p.deliberate !== true) {
+          if (isLineBreakReason(p.breakReason)) this._assignLineFailure(p, 'broke');
+          else if (isLineSeverReason(p.breakReason)) this._assignLineFailure(p, 'severed');
+          return;
+        }
         const now = finite(this.state.simTime);
-        const target = p.targetId != null && this.state.entities
-          && typeof this.state.entities.get === 'function'
-          ? this.state.entities.get(p.targetId) : null;
         this.state.masslineReleaseVerdict = {
           classification: p.classification,
           technique: p.technique,
@@ -1218,16 +1237,13 @@ export const masslineHud = {
             ? { keptFraction: Math.max(0, Math.min(1, p.ride.keptFraction)) }
             : null,
           targetId: p.targetId != null ? p.targetId : null,
-          atX: Number.isFinite(target && target.pos && target.pos.x) ? target.pos.x : null,
-          atZ: Number.isFinite(target && target.pos && target.pos.z) ? target.pos.z : null,
+          targetGeneration: Number.isSafeInteger(p.targetGeneration) && p.targetGeneration > 0 ? p.targetGeneration : null,
+          atX: Number.isFinite(p.targetX) ? p.targetX : null,
+          atZ: Number.isFinite(p.targetZ) ? p.targetZ : null,
           untilSimTime: now + MASSLINE_VERDICT_PILL_S,
         };
         // RC-GLASS 474 — the release-read receipt: tonnage and strain the moment the Line lets go.
-        const receipt = releaseReadReceipt({
-          tonnageU: Number(p.tonnageU) || (target && Number(target.mass)) || 0,
-          load: Number(p.load) || 0,
-          strain: Number(p.strain) || 0,
-        });
+        const receipt = lineReleaseReceipt(p);
         if (receipt && ctx.bus && typeof ctx.bus.emit === 'function') {
           // `ui:receipt` had no listener; receipts reach the lane as a `toast` (admitReceipt in toasts.js).
           ctx.bus.emit('toast', { text: receipt, kind: 'info', channel: 'massline', ttl: 3 });
@@ -1236,20 +1252,39 @@ export const masslineHud = {
       // SFQ-B023 — overload snap names itself. A deliberate cut emits tether:broken
       // with reason tether_cut and must keep the release grade, not LINE BROKE.
       ctx.bus.on('tether:broken', (p) => {
-        if (!this.state || !p || !lineBreakInvolvesPlayer(this.state, p)) return;
+        if (!this.state || !p || this._receiptPaused || this._receiptResetting
+          || (this.state.mode && this.state.mode !== 'flight') || !lineBreakInvolvesPlayer(this.state, p)) return;
         if (isLineBreakReason(p.reason)) this._assignLineFailure(p, 'broke');
         else if (isLineSeverReason(p.reason)) this._assignLineFailure(p, 'severed');
       });
       // The twin bridle the player is holding is not always one of its endpoints.
       // An involuntary end still belongs on their glass; a deliberate cut does not.
       ctx.bus.on('massline:bridleEnded', (p) => {
-        if (!this.state || !p) return;
+        if (!this.state || !p || this._receiptPaused || this._receiptResetting
+          || (this.state.mode && this.state.mode !== 'flight')) return;
         if (isLineBreakReason(p.reason) || p.reason === 'line_broken') {
           this._assignLineFailure(p, 'broke');
         } else if (isLineSeverReason(p.reason)) {
           this._assignLineFailure(p, 'severed');
         }
       });
+      this._receiptLifecycleUnsubs.push(ctx.bus.on('sim:pause', () => {
+        this._receiptPaused = true; this._clearLineReceipt();
+      }));
+      this._receiptLifecycleUnsubs.push(ctx.bus.on('sim:resume', () => { this._receiptPaused = false; }));
+      for (const type of ['save:restoring', 'game:new', 'game:exitToMenu']) {
+        this._receiptLifecycleUnsubs.push(ctx.bus.on(type, () => {
+          this._receiptResetting = true; this._clearLineReceipt();
+        }));
+      }
+      for (const type of ['save:loaded', 'game:started']) {
+        this._receiptLifecycleUnsubs.push(ctx.bus.on(type, () => {
+          this._receiptResetting = false; this._clearLineReceipt();
+        }));
+      }
+      this._receiptLifecycleUnsubs.push(ctx.bus.on('mode:changed', p => {
+        if (p?.mode !== 'flight') this._clearLineReceipt();
+      }));
     }
   },
 
@@ -1259,9 +1294,6 @@ export const masslineHud = {
     const now = finite(state.simTime);
     const targetId = payload.targetId != null ? payload.targetId
       : (payload.sourceId != null ? payload.sourceId : null);
-    const target = targetId != null && state.entities
-      && typeof state.entities.get === 'function'
-      ? state.entities.get(targetId) : null;
     state.masslineReleaseVerdict = {
       broke: kind === 'broke',
       severed: kind === 'severed',
@@ -1270,13 +1302,22 @@ export const masslineHud = {
       releasedAtApex: false,
       ride: null,
       targetId,
-      atX: Number.isFinite(target && target.pos && target.pos.x) ? target.pos.x : null,
-      atZ: Number.isFinite(target && target.pos && target.pos.z) ? target.pos.z : null,
+      targetGeneration: Number.isSafeInteger(payload.targetGeneration) && payload.targetGeneration > 0 ? payload.targetGeneration : null,
+      atX: Number.isFinite(payload.targetX) ? payload.targetX : null,
+      atZ: Number.isFinite(payload.targetZ) ? payload.targetZ : null,
       untilSimTime: now + MASSLINE_VERDICT_PILL_S,
     };
   },
 
+  _clearLineReceipt() {
+    if (this.state) this.state.masslineReleaseVerdict = null;
+    clearHudSignature(this.state, 'masslineHud');
+    if (this._dom) this._hideAcquisitionPreview(this._dom);
+  },
+
   destroy() {
+    for (const off of this._receiptLifecycleUnsubs || []) if (typeof off === 'function') off();
+    this._receiptLifecycleUnsubs = [];
     this._lineStrainReadout?.destroy();
     this._lineStrainReadout = null;
     if (this._cadenceReadout) {
@@ -1558,8 +1599,11 @@ export const masslineHud = {
   // result, not a denial — earned grades keep the solid 'can' diamond, weaker ones the
   // broken ring; the copy is the teaching.
   _renderVerdictPill(dom, state, player, w2s, verdict) {
-    const graded = verdict.targetId != null && state.entities && state.entities.get
+    const candidate = verdict.targetId != null && state.entities && state.entities.get
       ? state.entities.get(verdict.targetId) : null;
+    // Entity IDs are reused. Follow the original occupant, otherwise retain the receipt position.
+    const graded = candidate && candidate.alive !== false && verdict.targetGeneration != null
+      && candidate.occupantGeneration === verdict.targetGeneration ? candidate : null;
     const anchor = graded && graded.pos ? graded.pos
       : (Number.isFinite(verdict.atX) && Number.isFinite(verdict.atZ)
         ? { x: verdict.atX, z: verdict.atZ } : player.pos);
@@ -2169,6 +2213,7 @@ export const masslineHud = {
   },
 
   _hideAll() {
+    this._clearLineReceipt();
     this._lineStrainReadout?.hide();
     const dom = this._dom;
     if (!dom) return;
