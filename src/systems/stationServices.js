@@ -279,9 +279,14 @@ export const stationServices = {
       this.bus.on('ship:statsChanged', this._onHullChanged);
       this._onDecantRequest = () => {
         const result = this.decantFuelCells();
-        if (result.reason === 'no_free_cells') this.bus.emit('toast', {
-          text: 'No unreserved whole fuel cells are available to decant.', kind: 'warn', ttl: 4,
-        });
+        if (result.reason === 'no_free_cells') {
+          // audio:false — the refusal rides the capacity-refusal voice (see decantFuelCells);
+          // the toast keeps the words and must not stack a toast tone on top of it.
+          this.bus.emit('toast', {
+            text: 'No unreserved whole fuel cells are available to decant.', kind: 'warn', ttl: 4, audio: false,
+          });
+          this.bus.emit('audio:cue', { id: 'service.decantRefused' });
+        }
       };
       this.bus.on('service:decantRequest', this._onDecantRequest);
     }
@@ -540,12 +545,16 @@ export const stationServices = {
     if (room < FUEL_UNITS_PER_CELL) {
       // The dock button stays up while the tank shows leftover room that cannot hold a whole
       // cell, and while a paid pump already owns that room. Say which, or the click is silence.
+      // audio:false — the refusal speaks on the capacity-refusal voice; the toast keeps words.
       const left = Math.max(0, Math.floor((fuel.max || 0) - (fuel.current || 0)));
       const booked = Math.floor(bookedFuel);
       const text = booked > 0
         ? `The pump already owns ${booked} of this tank — no room to decant a cell.`
         : `The tank has ${left} left — a fuel cell needs ${FUEL_UNITS_PER_CELL}.`;
-      if (this.bus) this.bus.emit('toast', { text, kind: 'warn', ttl: 2.8 });
+      if (this.bus) {
+        this.bus.emit('toast', { text, kind: 'warn', ttl: 2.8, audio: false });
+        this.bus.emit('audio:cue', { id: 'service.decantRefused' });
+      }
       return { ok: false, reason: 'tank_full', cells: 0, units: 0, text };
     }
     // The same custody reader as sale, jettison and flight Crack protects sealed manifests.
