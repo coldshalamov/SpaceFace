@@ -331,6 +331,14 @@ export function entityVitalsOf(e, krakenFrame = VITAL_SHADOW_MISSING, state = nu
     fields.machineWorking = Boolean(machine.working);
   }
   if (e.type === 'mine') fields.mineArmed = e.data?.armed === true;
+  if (e.type === 'projectile' && e.data?.kind === 'missile') {
+    fields.seekerSourceGeneration = e.occupantGeneration ?? null;
+    fields.seekerTargetId = e.data.targetId ?? null;
+    fields.seekerTargetGeneration = e.data.targetGeneration ?? null;
+    fields.seekerTurnRate = Number.isFinite(e.data.turnRate) ? e.data.turnRate : 0;
+    fields.seekerDiverted = e.data.diverted === true;
+    fields.seekerGuidanceBroken = e.data.guidanceBroken === true;
+  }
   const specialistFrame = swarmSpecialistFrameValue(e);
   if (specialistFrame !== VITAL_SHADOW_MISSING) fields.swarmSpecialistFrame = specialistFrame;
   const riderTell = riderTellValue(e, state);
@@ -453,6 +461,15 @@ function krakenMotionFrame(state, e) {
 
 function vitalShadowMatches(e, shadow, krakenFrame, state) {
   if (!Array.isArray(shadow)) return false;
+  if (e.type === 'projectile' && e.data?.kind === 'missile') {
+    const data = e.data;
+    if (shadow.seekerSourceGeneration !== (e.occupantGeneration ?? null)
+      || shadow.seekerTargetId !== (data.targetId ?? null)
+      || shadow.seekerTargetGeneration !== (data.targetGeneration ?? null)
+      || shadow.seekerTurnRate !== (Number.isFinite(data.turnRate) ? data.turnRate : 0)
+      || shadow.seekerDiverted !== (data.diverted === true)
+      || shadow.seekerGuidanceBroken !== (data.guidanceBroken === true)) return false;
+  } else if (Object.hasOwn(shadow, 'seekerSourceGeneration')) return false;
   // Moving actors commonly change velocity or heading each publish. Check those same
   // canonical scalar tokens first; unchanged actors still compare every field below.
   const vel = e.vel && typeof e.vel === 'object' ? e.vel : null;
@@ -510,6 +527,19 @@ function vitalShadowMatches(e, shadow, krakenFrame, state) {
 }
 
 function writeVitalShadow(e, shadow, krakenFrame, state) {
+  // Named runtime-only slots preserve every existing positional/tail vital index.
+  if (e.type === 'projectile' && e.data?.kind === 'missile') {
+    shadow.seekerSourceGeneration = e.occupantGeneration ?? null;
+    shadow.seekerTargetId = e.data.targetId ?? null;
+    shadow.seekerTargetGeneration = e.data.targetGeneration ?? null;
+    shadow.seekerTurnRate = Number.isFinite(e.data.turnRate) ? e.data.turnRate : 0;
+    shadow.seekerDiverted = e.data.diverted === true;
+    shadow.seekerGuidanceBroken = e.data.guidanceBroken === true;
+  } else if (Object.hasOwn(shadow, 'seekerSourceGeneration')) {
+    delete shadow.seekerSourceGeneration; delete shadow.seekerTargetId;
+    delete shadow.seekerTargetGeneration; delete shadow.seekerTurnRate;
+    delete shadow.seekerDiverted; delete shadow.seekerGuidanceBroken;
+  }
   let i = 0;
   for (const key of VITAL_FIELDS) shadow[i++] = vitalShadowValue(e[key]);
   const vel = e.vel && typeof e.vel === 'object' ? e.vel : null;

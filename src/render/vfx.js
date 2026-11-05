@@ -60,6 +60,21 @@ import {
   ARRIVAL_BRAKE_LIFE_S,
   ARRIVAL_STREAK_LIFE_S,
 } from './arrivalRead.js';
+import {
+  SEEKER_TELL_COLOR_OTHER,
+  SEEKER_TELL_COLOR_YOU,
+  SEEKER_TELL_GAIN_OTHER,
+  SEEKER_TELL_GAIN_YOU,
+  SEEKER_TELL_LIFE_S,
+  SEEKER_TELL_MAX_ACTIVE,
+  SEEKER_TELL_MAX_RANGE_WU,
+  SEEKER_TELL_REDUCED_PERIOD_MUL,
+  seekerTellHuntsPlayer,
+  seekerTellLit,
+  seekerTellOfProjectile,
+  seekerTellPhase,
+  seekerTellSizes,
+} from './seekerTell.js';
 import { createToolConduitGeometry, installToolConduitShader } from './toolConduit.js';
 import { FieldForcePresentation } from './forceLanguage/fieldForcePresentation.js';
 import { GyreSnarePresentation } from './forceLanguage/gyreSnarePresentation.js';
@@ -1153,6 +1168,7 @@ function emptyVfxSubsystemDiag() {
     npcJobSignatures: 0,  // "The Working Light" — live NPC jobs showing their working state
     ceresJobActions: 0,   // R6B receipt-bound punctuation; detached from sim authority after intake
     lawHeatTelegraph: 0,  // WF-12 scan-sweep / suspicion / WANTED-flip via shared event-light pool
+    seekerTell: 0,      // a guided round's pursuit lamp — which tracers are hunting you
   };
 }
 
@@ -3363,6 +3379,7 @@ export const vfx = {
   },
 
   _clearWorldTransientMatter() {
+    this._clearSeekerTells();
     // A new world can reuse the same scene-local coordinates while the sim is paused. Retire
     // the CPU residents and publish empty draws immediately; waiting for their ordinary lifetime
     // would show the previous world's sparks, smoke and debris over the new scene.
@@ -10350,6 +10367,9 @@ export const vfx = {
       // (quiet latch). Soft-GPU fps not claimed.
       sub.projectileTrails = 0;
     }
+    // Seeker tell (inf-seeker-tell): guided rounds wear a pursuit lamp so a furball names which
+    // tracers are hunting you. Reads the same cached projectile candidates the trails lane uses.
+    sub.seekerTell = this._emitSeekerTells(dt) ? 1 : 0;
     if (this._miningBeamActive()) {
       this._updateMiningBeam(dt);
       sub.miningBeam = 1;
@@ -14083,6 +14103,111 @@ export const vfx = {
       this._tableVfxDrawWu || tableVfxDrawWuFromState(state),
       this._projectileFrameLook || (this._projectileFrameLook = { x: 0, z: 0 }),
     );
+  },
+
+  // Seeker tell (inf-seeker-tell): a guided round (data.kind 'missile' — stamped iff
+  // tracking 'homing' — with turnRate > 0) carries a hard pursuit blinker, red-orange when it
+  // hunts the pilot, amber when it hunts anyone else; dumb tracers stay cold. The decision is
+  // pure (seekerTell.js, headless-tested); this adapter owns the per-round emit cadence, the
+  // readability band, and the sprite pool. Sprites age on the presentation clock, so a frozen
+  // sim freezes the lamp.
+  _seekerTellNext: null,
+  _seekerTellStamp: 0,
+
+  _retireSeekerTell(entry) {
+    const sprite = entry.sprite;
+    if (sprite && sprite.alive && sprite.admissionSerial === entry.serial
+      && this._spr[entry.slot] === sprite) {
+      this._retireSprite(entry.slot);
+      if (this._liveSpriteCount === 0) this._integrateSprites(0);
+    }
+    entry.sprite = null;
+  },
+
+  _clearSeekerTells() {
+    if (!this._seekerTellNext) return;
+    this._seekerTellRetireEach ||= (entry) => this._retireSeekerTell(entry);
+    this._seekerTellNext.forEach(this._seekerTellRetireEach);
+    this._seekerTellNext.clear();
+  },
+
+  _emitSeekerTells(dt) {
+    if (!this._scene) return false;
+    if (this._projectileTrailsQuietEmpty && !this._seekerTellNext?.size
+      && !this._projectileTrailsQuietMaybeAwake()) return false;
+    this._refreshProjectileCandidates();
+    const list = this._projectileCandidates;
+    if (!list.length) {
+      this._clearSeekerTells();
+      return false;
+    }
+    const state = this.state;
+    const simTime = Number.isFinite(state.simTime) ? state.simTime : (this._t || 0);
+    const reduced = !!(state.settings && state.settings.video && state.settings.video.motionReduce);
+    const flashReduced = !!(state.settings?.accessibility?.flashReduce || state.settings?.video?.flashReduce);
+    const player = this.helpers && this.helpers.player ? this.helpers.player() : this._ent(state.playerId);
+    const px = player && player.pos && Number.isFinite(player.pos.x) ? player.pos.x : NaN;
+    const pz = player && player.pos && Number.isFinite(player.pos.z) ? player.pos.z : NaN;
+    if (player?.alive === false || !Number.isFinite(px) || !Number.isFinite(pz)) { this._clearSeekerTells(); return false; }
+    const next = this._seekerTellNext || (this._seekerTellNext = new Map());
+    const stamp = (this._seekerTellStamp = (this._seekerTellStamp + 1) >>> 0);
+    const range2 = SEEKER_TELL_MAX_RANGE_WU * SEEKER_TELL_MAX_RANGE_WU;
+    const sizes = this._seekerTellSizesScratch || (this._seekerTellSizesScratch = {});
+    let retained = 0, anyLit = false;
+    // Existing indexed candidates only; no second entity census. The two bounded passes admit
+    // player-seeking rounds first, and allocate a cadence record only once per projectile life.
+    for (let pass = 0; pass < 2; pass++) for (let i = 0; i < list.length; i++) {
+      const e = list[i];
+      if (!e || !e.alive || e.type !== 'projectile' || !e.pos || this._ent(e.id) !== e) continue;
+      const data = e.data;
+      const read = seekerTellOfProjectile(data);
+      if (!read) continue;
+      const huntsYou = seekerTellHuntsPlayer(data, state.playerId, player.occupantGeneration);
+      if (huntsYou !== (pass === 0)) continue;
+      const dx = px - e.pos.x, dz = pz - e.pos.z;
+      if (dx * dx + dz * dz > range2) continue;
+      if (retained++ >= SEEKER_TELL_MAX_ACTIVE) continue;
+      let entry = next.get(e.id);
+      if (entry && (entry.entity !== e || entry.generation !== e.occupantGeneration)) {
+        this._retireSeekerTell(entry);
+        next.delete(e.id); entry = null;
+      }
+      if (!entry) {
+        entry = { entity: e, generation: e.occupantGeneration, phase: seekerTellPhase(e.id),
+          sprite: null, slot: -1, serial: -1, stamp };
+        next.set(e.id, entry);
+      }
+      entry.stamp = stamp;
+      if (entry.huntsYou !== huntsYou || entry.reduced !== reduced || entry.flashReduced !== flashReduced) {
+        this._retireSeekerTell(entry);
+        entry.huntsYou = huntsYou; entry.reduced = reduced; entry.flashReduced = flashReduced;
+      }
+      if (!seekerTellLit(e.id, simTime, reduced, flashReduced, entry.phase)) {
+        this._retireSeekerTell(entry); continue;
+      }
+      let sprite = entry.sprite;
+      if (!sprite || !sprite.alive || sprite.admissionSerial !== entry.serial) {
+        seekerTellSizes(e.radius, sizes);
+        sprite = this._spawnSprite(SPR_FLASH, e.pos.x, 0.35, e.pos.z,
+          SEEKER_TELL_LIFE_S * (reduced ? SEEKER_TELL_REDUCED_PERIOD_MUL : 1),
+          sizes.size0, sizes.size1, huntsYou ? SEEKER_TELL_GAIN_YOU : SEEKER_TELL_GAIN_OTHER, 0,
+          huntsYou ? SEEKER_TELL_COLOR_YOU : SEEKER_TELL_COLOR_OTHER, 0, 0, 1, 0);
+        if (!sprite) continue;
+        entry.sprite = sprite;
+        entry.serial = sprite.admissionSerial;
+        entry.slot = this._activeSprites[this._liveSpriteCount - 1];
+      }
+      // Attach to the current projectile pose, not a launch-time position or extrapolated aim.
+      const local = this._toLocalXZ(e.pos.x, e.pos.z, this._spawnLocalXZ);
+      sprite.x = local.x; sprite.z = local.z;
+      if (flashReduced) sprite.age = 0;
+      anyLit = true;
+    }
+    this._seekerTellCullEach ||= (entry, id) => {
+      if (entry.stamp !== this._seekerTellStamp) { this._retireSeekerTell(entry); this._seekerTellNext.delete(id); }
+    };
+    next.forEach(this._seekerTellCullEach);
+    return anyLit;
   },
 
   _emitProjectileTrails(dt) {

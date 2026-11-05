@@ -132,6 +132,21 @@ function foldAiState(row, fields) {
   row.data.ai.state = fields.aiFsm;
 }
 
+function seekerVitalsMatch(row, fields, generation = row.occupantGeneration) {
+  return !Object.hasOwn(fields, 'seekerSourceGeneration')
+    || row.type === 'projectile' && generation != null && fields.seekerSourceGeneration === generation;
+}
+
+function foldSeekerVitals(row, fields, generation = row.occupantGeneration) {
+  if (!Object.hasOwn(fields, 'seekerSourceGeneration') || !seekerVitalsMatch(row, fields, generation)) return;
+  const data = row.data || (row.data = {});
+  data.targetId = fields.seekerTargetId ?? null;
+  data.targetGeneration = fields.seekerTargetGeneration ?? null;
+  data.turnRate = Number.isFinite(fields.seekerTurnRate) ? fields.seekerTurnRate : 0;
+  data.diverted = fields.seekerDiverted === true;
+  data.guidanceBroken = fields.seekerGuidanceBroken === true;
+}
+
 function foldPallasSeamVitals(row, fields) {
   if (fields.pallasSeamCutting === undefined && fields.pallasSeamStandbyTick === undefined) return;
   if (!row.data || typeof row.data !== 'object') row.data = {};
@@ -249,6 +264,7 @@ export function applySpawnInfos(readModel, spawnInfos, state = null, worldGenera
       foldEcologyVitals(row, info.vitals);
       foldCountermeasureVitals(row, info.vitals);
       foldAiState(row, info.vitals);
+      foldSeekerVitals(row, info.vitals, info.occupantGeneration);
       foldPallasSeamVitals(row, info.vitals);
     }
     // A re-delivered spawn (init replay, rebuild) must not mint a fresh row
@@ -339,6 +355,7 @@ export function applyEntityVitals(readModel, vitals, state = null, worldGenerati
     if (!Number.isSafeInteger(id) || !fields || typeof fields !== 'object') continue;
     const row = readModel.entities.get(id);
     if (!row) continue;
+    if (!seekerVitalsMatch(row, fields)) continue;
     foldNemesisHullVitals(row, fields);
     for (const key of Object.keys(fields)) {
       if (key === 'ceresCradlePublic' || key === 'ceresWorkfleetPublic' || key === 'orchardPodPublic') continue;
@@ -355,6 +372,7 @@ export function applyEntityVitals(readModel, vitals, state = null, worldGenerati
     foldEcologyVitals(row, fields);
     foldCountermeasureVitals(row, fields);
     foldAiState(row, fields);
+    foldSeekerVitals(row, fields);
     foldPallasSeamVitals(row, fields);
     foldOrchardPodVitals(row, fields);
     if (state && Object.hasOwn(fields, 'ceresCradlePublic')) {
