@@ -294,14 +294,16 @@ function titleOf(eventId) {
 export function getCounterweightCircuitMapMarkers(state, sectorId) {
   if (sectorId !== VENUE_SECTOR_ID) return [];
   const r = row(state);
-  if (!r?.discovered) return [];
+  const reached = state?.world?.currentSectorId === VENUE_SECTOR_ID
+    || Number(state?.world?.discovery?.[VENUE_SECTOR_ID]?.visitedCount) > 0;
+  if (!r?.discovered && !reached) return [];
   const anchor = venueAnchorGlobal();
   return [{
     id: 'counterweight_circuit_venue',
     kind: 'site',
-    label: 'Counterweight Circuit',
+    label: r?.discovered ? 'Counterweight Circuit' : 'Counterweight Circuit — approach registrar',
     pos: { x: anchor.x, z: anchor.z },
     sectorId,
-    discovered: true,
+    discovered: r?.discovered === true,
   }];
 }
