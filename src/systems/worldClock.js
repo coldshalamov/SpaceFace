@@ -15,8 +15,23 @@
 // announcement fires exactly once per transition. Reads everything else. CALENDAR clock.
 // No RNG: the calendar itself is a pure function of simTime.
 
-import { calendarAt } from '../data/worldCalendar.js';
+import { calendarAt, stationShiftAt } from '../data/worldCalendar.js';
 import { SECTORS as SECTORS_REF } from '../data/sectors.js';
+
+// Shift Bell 3 sits on the Helios→Ceres leg. The plate and the band both say it rings
+// when third watch ends. The berth PA is a different bell: this one is the buoy.
+const HELIOS_SHIFT_BELL = Object.freeze({
+  sectorId: 'sector_helios_prime',
+  stationId: 'station_helios',
+  earshotWU: 1100,
+});
+const HELIOS_SHIFT_BELL_POS = (() => {
+  const sector = SECTORS_REF.find((row) => row.id === HELIOS_SHIFT_BELL.sectorId);
+  const poi = sector && (sector.pois || []).find((row) => row.id === 'poi_helios_shift_bell');
+  return poi && Number.isFinite(poi.pos?.x) && Number.isFinite(poi.pos?.z)
+    ? { x: poi.pos.x, z: poi.pos.z }
+    : null;
+})();
 
 const SCHEMA_VERSION = 1;
 const EMIT_CAP = 48;
@@ -31,11 +46,13 @@ export const worldClock = {
   init(ctx) {
     this.state = ctx.state;
     this.bus = ctx.bus || null;
+    this._heliosWatchId = null;
     this._ensureState();
   },
 
   newGame() {
     this.state.calendar = freshState();
+    this._heliosWatchId = null;
   },
 
   serialize() {
@@ -48,6 +65,8 @@ export const worldClock = {
       schemaVersion: SCHEMA_VERSION,
       emitted: Array.isArray(src.emitted) ? src.emitted.slice(-EMIT_CAP).map(String) : [],
     };
+    // A restored clock has not observed a crossing. The next sample only arms the buoy.
+    this._heliosWatchId = null;
     return this.state.calendar;
   },
 
@@ -105,6 +124,36 @@ export const worldClock = {
           day: cal.day, dayOfYear: cal.dayOfYear,
         });
       });
+    }
+
+    // The Ceres-leg buoy strikes when Helios leaves third watch. A hull that is docked,
+    // in another sector, or outside earshot missed it — the ring is not a lingering alarm.
+    if (HELIOS_SHIFT_BELL_POS && sectorId === HELIOS_SHIFT_BELL.sectorId) {
+      const watch = stationShiftAt(HELIOS_SHIFT_BELL.stationId, simTime);
+      const previousWatch = this._heliosWatchId;
+      this._heliosWatchId = watch.id;
+      const player = s.entities && s.playerId != null ? s.entities.get(s.playerId) : null;
+      const pos = player && player.alive !== false ? player.pos : null;
+      const inEarshot = !!(pos && Number.isFinite(pos.x) && Number.isFinite(pos.z)
+        && Math.hypot(pos.x - HELIOS_SHIFT_BELL_POS.x, pos.z - HELIOS_SHIFT_BELL_POS.z) <= HELIOS_SHIFT_BELL.earshotWU);
+      if (previousWatch === 'third' && watch.id !== 'third' && !(s.ui && s.ui.docked) && inEarshot) {
+        emitOnce(`shift-bell-3:${watch.watchDay}`, () => {
+          if (!this.bus || typeof this.bus.emit !== 'function') return;
+          this.bus.emit('audio:cue', {
+            id: 'ambient_station_shift_bell',
+            gain: 0.7,
+            rate: 1,
+            position: { x: HELIOS_SHIFT_BELL_POS.x, z: HELIOS_SHIFT_BELL_POS.z },
+          });
+          this.bus.emit('comms:log', {
+            from: 'SHIFT BELL 3',
+            text: 'Third watch is off the floor. The Ceres leg heard it.',
+            kind: 'ambient',
+          });
+        });
+      }
+    } else {
+      this._heliosWatchId = null;
     }
 
     if (!stationId) return;   // berth-scoped events wait for a berth
