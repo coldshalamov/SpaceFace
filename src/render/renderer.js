@@ -180,6 +180,7 @@ import {
   authoredCompositionFingerprintForEntity,
   authoredCriticalVisualReadiness,
   authoredPrewarmRequestsForEntities,
+  initialWholeShipLodForBoundary,
   beginAuthoredInstanceMeshDisposeRegistrationProbe,
   collectAuthoredInstancePoolRoots,
   collectPreparedAuthoredCompileRoots,
@@ -241,7 +242,7 @@ import {
   queuePacedDetachedTeardown,
 } from './partsLibrary.js';
 import { entityIsMissionCritical, hasExplicitAuthoredPayloadPresentation } from '../core/presentationAdmission.js';
-import { WHOLE_SHIP_LOD_RUNTIME_DEMOTION } from './wholeShipLodPolicy.js';
+import { WHOLE_SHIP_LOD_RUNTIME_DEMOTION, isOrdinaryLodShip } from './wholeShipLodPolicy.js';
 import { ACE_MEMORY_META_KEYS, capitalBossWingRosterRows, liveSectorFullExtrasStubs, promotedAceShapeForRecord, queuedSpawnRequestRoster, saveEnvelopeFullExtrasStubs, saveEnvelopeSectorStubs, scriptedOnboardingRosterRows } from './saveEnvelopeSectorWarm.js';
 import { aceById, escalatedStyleFromMemory, returnCrewForAce, stanceForRecord, styleLoadoutForAce } from '../data/namedAces.js';
 import { clearCanonicalProgramSpecimens } from './programCanon.js';
@@ -334,7 +335,7 @@ import {
 } from './persistentSubmitLanes.js';
 import { shieldBubbleGeometry, SHIELD_SHELL_GLSL } from './ships/shipKit.js';
 import { setShieldShellClock, shieldShellUniforms } from './weapons/shieldShell.js';
-import { presentedLodWidthPx, resolvePresentedLodLevel } from './lod.js';
+import { presentedLodWidthPx, resolvePresentedLodLevel, projectedShipDiameterPx, createShipLodState } from './lod.js';
 import { resolveWebGlContextAttributes, resolveWebGlRendererFlags } from './presentPath.js';
 import {
   createOpeningAdmissionCohort,
@@ -8923,6 +8924,21 @@ const RIGID_ASHLINE_RIG_MOTION_IDENTITY = Object.freeze({
   sourceAssetId: 'SF_WHOLESHIP_ASHLINE_RIG', rigId: 'hull', bindingId: 'hull_core',
 });
 
+// Each sibling is pinned to its own package hash and the same verified source motion bank.
+const RIGID_ASHLINE_LOD_IDENTITIES = new Map([
+  ['assets/ships/release/parts/wholeships/ashline_dart_lod1.glb', Object.freeze({ ...RIGID_ASHLINE_CURRENT_MOTION_IDENTITY, packageAssetId: 'sf.render.ashline-dart-lod1', packageContentHash: 'dc52d2b8c5a964e982b2886e6912895ff8661eaffbf860e7519055196cb6b64d' })],
+  ['assets/ships/release/parts/wholeships/ashline_dart_lod2.glb', Object.freeze({ ...RIGID_ASHLINE_CURRENT_MOTION_IDENTITY, packageAssetId: 'sf.render.ashline-dart-lod2', packageContentHash: '1c3cba5e440d5132660e8d960a0e7e06ae1886d4cf90b51b2604ec5697dd2d42' })],
+  ['assets/ships/release/parts/wholeships/ashline_rig_lod1.glb', Object.freeze({ ...RIGID_ASHLINE_RIG_MOTION_IDENTITY, packageAssetId: 'sf.render.ashline-rig-lod1', packageContentHash: 'b39460ff39cf194c9cd5ea9c9538c999bfe324527ece5a11bc3b34e1723f2c81' })],
+  ['assets/ships/release/parts/wholeships/ashline_rig_lod2.glb', Object.freeze({ ...RIGID_ASHLINE_RIG_MOTION_IDENTITY, packageAssetId: 'sf.render.ashline-rig-lod2', packageContentHash: 'cdebb6c8a30e25b81c51d778598ce7ba51d3c70aab6fa2427f2e65455f59b631' })],
+]);
+function rigidAshlineIdentityForUrl(owner, url) {
+  if (url === RIGID_ASHLINE_HULL_URL) return owner._ashlineHullBatchEnabled === false
+    ? RIGID_ASHLINE_MOTION_IDENTITY : RIGID_ASHLINE_CURRENT_MOTION_IDENTITY;
+  if (owner._ashlineHullBatchEnabled === false) return null;
+  return url === RIGID_ASHLINE_RIG_HULL_URL ? RIGID_ASHLINE_RIG_MOTION_IDENTITY
+    : RIGID_ASHLINE_LOD_IDENTITIES.get(url) || null;
+}
+
 export function isRigidOpaqueAshlineCohortRoot(owner, root) {
   const data = root?.userData, id = data?.presentationEntityId;
   if (id == null || !root.parent || owner?._meshes?.get?.(id) !== root) return false;
@@ -8937,7 +8953,8 @@ export function isRigidOpaqueAshlineCohortRoot(owner, root) {
     && entity.occupantGeneration != null
     && data.presentationOccupantGeneration === entity.occupantGeneration
     && (data.authoredAssetState === 'authored' || data.authoredAssetState === 'authored-with-cleanup-error')
-    && Array.isArray(data.authoredSlots?.hull) && data.authoredSlots.hull.includes(RIGID_ASHLINE_HULL_URL);
+    && Array.isArray(data.authoredSlots?.hull) && data.authoredSlots.hull.some((url) =>
+      url === RIGID_ASHLINE_HULL_URL || (RIGID_ASHLINE_LOD_IDENTITIES.get(url)?.sourceAssetId === RIGID_ASHLINE_MOTION_IDENTITY.sourceAssetId));
 }
 
 function rigidOpaqueAshlineSourceRoot(owner, source) {
@@ -8945,9 +8962,9 @@ function rigidOpaqueAshlineSourceRoot(owner, source) {
   const body = RIGID_ASHLINE_BODY_SOURCE_NAMES.has(source?.name);
   if ((!retro && !body) || source.isMesh !== true
       || source.userData?.spacefaceInstanceProxy || source.userData?.spacefaceRenderPackagePooled) return null;
-  if (body && source.userData?.spacefacePartUrl !== RIGID_ASHLINE_HULL_URL) return null;
-  const expected = owner._ashlineHullBatchEnabled === false
-    ? RIGID_ASHLINE_MOTION_IDENTITY : RIGID_ASHLINE_CURRENT_MOTION_IDENTITY;
+  const url = source.userData?.spacefacePartUrl;
+  const expected = body ? rigidAshlineIdentityForUrl(owner, url) : null;
+  if (body && (!expected || expected.sourceAssetId !== RIGID_ASHLINE_MOTION_IDENTITY.sourceAssetId)) return null;
   let packageMatched = retro;
   for (let node = source; node; node = node.parent) {
     const identity = node.userData?.spacefaceRenderPackage;
@@ -8956,20 +8973,20 @@ function rigidOpaqueAshlineSourceRoot(owner, source) {
           || identity.contentHash !== expected.packageContentHash) return null;
       packageMatched = true;
     }
-    if (packageMatched && isRigidOpaqueAshlineCohortRoot(owner, node)) return node;
+    if (packageMatched && isRigidOpaqueAshlineCohortRoot(owner, node)
+        && (!body || node.userData.authoredSlots.hull.includes(url))) return node;
   }
   return null;
 }
 
 function isRigidOpaqueAshlineMotionOwner(owner, object, source) {
   if (!RIGID_ASHLINE_BODY_SOURCE_NAMES.has(source?.name)) return false;
-  const rig = source.userData?.spacefacePartUrl === RIGID_ASHLINE_RIG_HULL_URL;
-  if (rig && owner._ashlineHullBatchEnabled === false) return false;
+  const url = source.userData?.spacefacePartUrl;
+  const expected = rigidAshlineIdentityForUrl(owner, url);
+  if (!expected) return false;
+  const rig = expected.sourceAssetId === RIGID_ASHLINE_RIG_MOTION_IDENTITY.sourceAssetId;
   const root = rig ? rigidOpaqueShipSourceRoot(owner, source) : rigidOpaqueAshlineSourceRoot(owner, source);
-  if (!root) return false;
-  const expected = rig ? RIGID_ASHLINE_RIG_MOTION_IDENTITY
-    : owner._ashlineHullBatchEnabled === false
-      ? RIGID_ASHLINE_MOTION_IDENTITY : RIGID_ASHLINE_CURRENT_MOTION_IDENTITY;
+  if (!root || (rig && !root.userData?.authoredSlots?.hull?.includes(url))) return false;
   let matched = null;
   for (let node = source; node; node = node.parent) {
     const controllers = node.userData?.authoredMotionControllers;
@@ -19526,6 +19543,7 @@ export const render = {
         playerId: state.playerId,
         playerPos: player && player.pos,
         viewportHeight: this.viewport && this.viewport.height,
+        initialLodForEntity: (entity) => initialWholeShipLodForBoundary(entity, this._meshes?.get(entity.id)),
       });
     };
     const reviseSectorPrewarmPopulation = (record, count = 1) => {
@@ -28125,7 +28143,12 @@ export const render = {
         const lodRadius = Number.isFinite(hlodVisualRadius) && hlodVisualRadius > 0
           ? Math.max(hlodVisualRadius, cullRadius)
           : cullRadius;
-        const projectedPx = presentedLodWidthPx(
+        const shipFamily = typeName === 'ship' && userData.wholeShipLodFamilyInstalled === true;
+        const sampledShip = typeName === 'ship' && !!entity && !isPlayer
+          && posed && isOrdinaryLodShip(entity);
+        const projectedPx = shipFamily && !posed ? Infinity : (shipFamily || sampledShip) ? projectedShipDiameterPx(
+          mesh.position, Math.max(lodRadius, (Number(entity?.radius) || 0) * 2), this.cam && this.cam.obj, this.viewport,
+        ) : presentedLodWidthPx(
           userData,
           mesh.position,
           lodRadius,
@@ -28134,15 +28157,45 @@ export const render = {
           isPlayer,
           typeName,
         );
+        if (sampledShip) {
+          const sample = userData.initialShipLodSample || (userData.initialShipLodSample = {});
+          sample.entity = entity;
+          sample.px = projectedPx;
+          sample.at = performance.now();
+          sample.protectedBody = entityIsMissionCritical(entity, this.state);
+          sample.camera = this.cam?.obj || null;
+          sample.viewport = this.viewport;
+          sample.width = this.viewport?.width;
+          sample.height = this.viewport?.height;
+          const view = sample.camera?.matrixWorldInverse?.elements;
+          const projection = sample.camera?.projectionMatrix?.elements;
+          if (view && projection) {
+            if (!sample.view) sample.view = new Float64Array(16);
+            if (!sample.projection) sample.projection = new Float64Array(16);
+            sample.view.set(view);
+            sample.projection.set(projection);
+          }
+        } else if (typeName === 'ship' && userData.initialShipLodSample) {
+          userData.initialShipLodSample = null;
+        }
         if (userData.lod && userData.updateLod) {
           lodChecked++;
-          lodLevel = resolvePresentedLodLevel(userData.lod, projectedPx, this.state.simTime, isPlayer, typeName);
+          const protectedShip = shipFamily && (isPlayer || !isOrdinaryLodShip(entity)
+            || entityIsMissionCritical(entity, this.state));
+          if (shipFamily && !userData.shipLodSelection) userData.shipLodSelection = createShipLodState(userData.wholeShipLodActiveLevel);
+          const desiredLod = shipFamily
+            ? userData.shipLodSelection.resolve(projectedPx, this.state.simTime, protectedShip)
+            : resolvePresentedLodLevel(userData.lod, projectedPx, this.state.simTime, isPlayer, typeName);
           // Retain: same hysteresis band ⇒ updateLod is a no-op for picture. Asteroid/station
           // paths otherwise re-traverse detail surfaces every frame; ships already self-retain.
-          if (SYNC_ENTITY_LOD_RETAIN === false || userData._appliedLodLevel !== lodLevel) {
-            userData.updateLod(lodLevel);
-            userData._appliedLodLevel = lodLevel;
+          if (SYNC_ENTITY_LOD_RETAIN === false || userData._appliedLodLevel !== desiredLod
+              || (shipFamily && !userData.wholeShipLodTransitionPromise
+                && userData.wholeShipLodActiveLevel !== desiredLod
+                && performance.now() >= (userData.wholeShipLodRetryAfter || 0))) {
+            userData.updateLod(desiredLod);
+            userData._appliedLodLevel = desiredLod;
           }
+          lodLevel = shipFamily ? (userData.wholeShipLodActiveLevel || 'lod0') : desiredLod;
         }
         // Keeper masks remain correctness at every LOD and decorative sleep cadence.
         if (entity && userData.updateCeresCradleLayout) userData.updateCeresCradleLayout(entity, this.state);
@@ -28294,7 +28347,7 @@ export const render = {
         // Visible interactive and hero roots retain their authored per-frame presentation closures.
         // Distant LOD2 traffic is a speck: runtime/damage closures cannot change a readable pixel.
         // Off-screen runway (middle band) keeps poses every frame but refreshes closures on cadence.
-        const farSpeck = lodLevel === 'lod2' && !isPlayer;
+        const farSpeck = lodLevel === 'lod2' && !isPlayer && !shipFamily;
         if (entity && runClosures && !farSpeck && userData.updateRuntimeState) userData.updateRuntimeState(entity, simNow);
         if (entity) this._syncNemesisHullPresentation?.(entity, mesh);
         if (isPlayer && entity && this._livingHullPresentation) {

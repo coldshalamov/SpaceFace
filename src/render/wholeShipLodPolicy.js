@@ -7,16 +7,35 @@
 
 import { LOD_THRESHOLDS } from './lod.js';
 
-// OWNER RULING 2026-09-29 — the frame is sacred. SpaceFace is top-down: nothing on the glass is
-// ever "far", and the separate-file demotion loaded a SECOND model for a ship the player was
-// already looking at (full body arrives → per-frame selector demotes to LOD1 → LOD1 GLB decodes,
-// composes, compiles and swaps on screen: three bodies in a few seconds, "the ship is a box and
-// then it's a ship"). At the default zoom (144) LOD1 was the NORMAL state, so every ship paid the
-// swap. Runtime demotion is off: a live ship keeps the body its admission built. The instant
-// in-file LOD toggles (installAuthoredLod) and HLOD greeble hiding still shave detail when zoomed
-// out without loading anything. The catalog, the file map and the pure transition resolver stay
-// (tools and tests use them); only the live controller and prewarm read this flag.
+// The old blanket demotion was disabled after visible on-screen rebuilds and swap thrashing.
+// Bulk catalog warming remains off; the ordinary-ship controller requests exact siblings and
+// prepares each one before publication. Other body classes keep the previous policy.
 export const WHOLE_SHIP_LOD_RUNTIME_DEMOTION = false;
+
+// Limit the first default rollout to anonymous hostile ships. Named, mission and interactive
+// hulls keep their close-detail presentation even if they share an ordinary family.
+export function isOrdinaryLodShip(entity) {
+  if (!entity || entity.type !== 'ship' || entity.isPlayer || entity.alive === false || entity.team !== 1) return false;
+  const d = entity.data || {}, ai = d.ai || {}, flags = entity.flags || {};
+  return !(d.isBoss || d.encounterBoss || d.missionBoss || d.bossId || d.bossDressing
+    || d.champion || d.namedAceId || d.aceId || d.aceMemory || d.promotedPilot
+    || d.storyTargetId || d.missionTag || d.missionId || d.trafficRole || d.name || d.callsign
+    || d.interactive || d.missionCritical || ai.isBoss || ai.namedAceId || ai.aceId
+    || ai.ace || ai.fanatic || ai.name || ai.encounterRole === 'boss'
+    || flags.missionCritical || flags.interactive || flags.hero || flags.boss);
+}
+
+// A missing, stale or invalid projection must never choose a cheap initial body.
+export function initialShipLodFromProjection(px, protectedBody = false) {
+  if (protectedBody || !Number.isFinite(px) || px <= 0) return 'lod0';
+  return px < 32 ? 'lod2' : px < 96 ? 'lod1' : 'lod0';
+}
+
+export function initialShipLodStillSafe(level, px, protectedBody = false) {
+  if (level === 'lod0') return true;
+  if (protectedBody || !Number.isFinite(px) || px <= 0) return false;
+  return level === 'lod2' ? px <= 56 : level === 'lod1' && px <= 128;
+}
 
 export function normalizeRequestedLod(level) {
   if (level === 'lod1' || level === 'lod2' || level === 'lod0') return level;
@@ -66,12 +85,12 @@ export function resolveWholeShipLodTransition(activeLevel, requestedLevel, optio
 
 /**
  * The live controller's transition: identical to resolveWholeShipLodTransition except that a
- * 'load' (a new file admitted on screen) becomes 'keep' while runtime demotion is off. Swapping
- * between levels that are ALREADY resident stays allowed — it is instant and loads nothing.
+ * 'load' becomes 'keep' unless the caller explicitly owns a prepared family transition.
+ * Swapping between levels that are ALREADY resident stays allowed.
  */
 export function resolveLiveWholeShipLodTransition(activeLevel, requestedLevel, options = {}) {
   const transition = resolveWholeShipLodTransition(activeLevel, requestedLevel, options);
-  if (transition.action === 'load' && WHOLE_SHIP_LOD_RUNTIME_DEMOTION !== true) {
+  if (transition.action === 'load' && options.allowLoad !== true) {
     return { action: 'keep', level: normalizeRequestedLod(activeLevel), pendingLevel: null };
   }
   return transition;
