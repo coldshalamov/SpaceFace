@@ -1803,12 +1803,14 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
       // Import an exported envelope JSON into a slot — the lane-twin of
       // saveSystem.importString (main-side importFile reads the File, then
       // routes the envelope here so the worker's save system loads it).
-      ['saveImport', (args) => {
+      ['saveImport', async (args) => {
         const s = registry.get('save');
         if (!s || typeof s.importString !== 'function') return { ok: false, reason: 'save-system-unavailable' };
         const json = args && typeof args.json === 'string' ? args.json : null;
         if (!json) return { ok: false, reason: 'import-empty' };
-        const result = s.importString(json, (args && args.slot) || 'quick');
+        // Compressed/large envelopes restore asynchronously. Settle in the existing RPC
+        // drain before publishing a verdict; a nested Promise cannot cross postMessage.
+        const result = await s.importString(json, (args && args.slot) || 'quick');
         const ok = result === true || (result && result.ok === true);
         return { ok, result: result && typeof result === 'object' ? result : null };
       }],
