@@ -392,6 +392,22 @@ ${H} .orr-hmix__lbl:focus-visible { outline:none; }
   ${HD} .orr-help-list--ores .orr-help-terms dd { padding:2px 0; border-top:1px solid rgb(${BONE} / .09); }
   ${HD} .orr-help-list--ores .orr-help-terms > .orr-help-terms__row:first-child > * { border-top:0; }
 }
+/* ui-polish-338: Ores got the mid-band sheet in 335, but at 871-1200 the Ships, Commodities and Factions readings still
+   floated as bare label/value pairs between the boxed 1201+ band and the boxed Ores tab. They wear the same hairline sheet
+   (and Commodities' Legality line its frame), rows kept compact so the scrolling reading grows by only the frame.
+   The Ores rules above are more specific, so its 335 sheet is untouched. */
+@media (min-width:871px) and (max-width:1200px) and (min-height:461px) {
+  ${HD} .orr-help-terms { margin:12px 0 0; padding:2px 12px; column-gap:0; border:1px solid rgb(${BONE} / .18); border-radius:6px; background:rgb(${BONE} / .025); }
+  ${HD} .orr-help-terms dt { padding:6px 16px 6px 0; border-top:1px solid rgb(${BONE} / .09); }
+  ${HD} .orr-help-terms dd { padding:4px 0; border-top:1px solid rgb(${BONE} / .09); }
+  ${HD} .orr-help-terms > .orr-help-terms__row:first-child > * { border-top:0; }
+  ${HD} .orr-help-reading__legal { margin:8px 0 0; padding:8px 12px; border:1px solid rgb(${BONE} / .18); border-radius:6px; background:rgb(${BONE} / .025); }
+}
+/* ...and on a 461-540 tall screen the Ships reading already scrolls, so its rows close up the way Ores' did in 324 */
+@media (min-width:871px) and (max-width:1200px) and (min-height:461px) and (max-height:540px) {
+  ${HD} .orr-help-terms dt { padding-block:4px; padding-right:12px; }
+  ${HD} .orr-help-terms dd { padding-block:2px; line-height:1.3; }
+}
 /* ui-polish-282: the readings beside the Ships, Commodities, Ores and Factions instruments were loose
    label/value pairs floating on the glass (≥1201 wide), so the spec read unfinished next to the framed
    section list. The ledger now sits in one hairline-framed sheet on a faint fill, a rule between rows,

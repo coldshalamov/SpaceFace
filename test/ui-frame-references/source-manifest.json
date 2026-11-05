@@ -182,7 +182,7 @@
   "src/ui/orrery/game-overLayouts.js": "8581f52a84e3f2deb0e1eb5f59ae3fea192356c9a1786167877b76e5457d7b35",
   "src/ui/orrery/gameOverLayouts.js": "3b39c9db506336a8ff478e9ea9ab1e4097b4a48a7e28ffe13f59a6f421005276",
   "src/ui/orrery/helpInstruments.js": "dabf2863bc8e7cf3ed8b60923fc598023c761c128e71764b22e0720c13e68dc4",
-  "src/ui/orrery/helpLayouts.js": "7ca92a26ab2ae92a18bfa65d80f5448949a4dbe2a4a2648624944839ae9e8ac5",
+  "src/ui/orrery/helpLayouts.js": "baa69a034c5ef2a08de8502af1edbd289cce99b013731afee081498903de3472",
   "src/ui/orrery/helpRig.js": "e938a001ef321760c1b0417d2be761909336e72a288965e950eaf1eef34b91eb",
   "src/ui/orrery/hoverTag.js": "558307fe7f423ab960c7cffb6edb2bff99b7ee998b3e593216909650a1d2a271",
   "src/ui/orrery/hudAdapter.js": "9c27aa1096dc4d452ebddd6fd86d529c42b40e5e62f4ee2c30d1cb4a8488593e",
