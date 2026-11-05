@@ -1267,11 +1267,20 @@ export const survivalWave = {
     if (quiet) return;
     const index = Math.max(0, Math.min(SWARM_SHOOTERS_BY_WAVE.length - 1, (this._wave | 0) - 1));
     const character = this._characterFightId && state.capitalBossEncounters?.fights?.[this._characterFightId];
+    // LW-04 — an authored act may carry its own simultaneous-fire budget on the plan. It is a
+    // ceiling on the wave table's number, never a raise, and the character's clamps still
+    // apply on top of it. Absent or non-positive means the legacy cap, byte-identical.
+    const authored = this._swarm && Number.isInteger(this._swarm.shooterCap) && this._swarm.shooterCap > 0
+      ? this._swarm.shooterCap
+      : null;
+    const waveCap = authored != null
+      ? Math.min(SWARM_SHOOTERS_BY_WAVE[index], authored)
+      : SWARM_SHOOTERS_BY_WAVE[index];
     // A character's readable move earns breathing room from its henchmen: two other
     // shooters during the tell/attack, four while the mantle is open. Population is unchanged.
     const cap = character && !character.terminal && !character.suspended
-      ? Math.min(SWARM_SHOOTERS_BY_WAVE[index], character.phase === 'recovery' ? 5 : 3)
-      : SWARM_SHOOTERS_BY_WAVE[index];
+      ? Math.min(waveCap, character.phase === 'recovery' ? 5 : 3)
+      : waveCap;
     rank.sort((a, b) => a.key - b.key || a.distance - b.distance || a.id - b.id);
     for (let i = 0; i < rank.length; i++) {
       if (i >= cap && rank[i].key !== 0) continue; // authored champions keep their own attack score
